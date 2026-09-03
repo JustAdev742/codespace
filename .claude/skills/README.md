@@ -127,6 +127,21 @@ prose title where its `name:` slug belonged.
 `shared/` is not a skill. It holds `methodology.md`, which the five
 `accessibility-*` skills reference as `../shared/methodology.md`.
 
+## Fixes applied to vendored skills
+
+- `design-audit`, `ui-typography` — their SKILL.md points at
+  `references/<file>.md`, but upstream ships those files at the skill root, so
+  the skills cannot find their own references. Moved into `references/`.
+- `anthropics-claude-api` — description was 1068 chars against a 1024 limit;
+  trimmed without changing its trigger semantics.
+- `vercel-react-view-transitions` — angle brackets removed from its description
+  (`<ViewTransition>` → `ViewTransition`); the skill spec disallows them.
+
+Validated with anthropics' own `quick_validate.py`: 52/70 pass strict spec. The
+other 18 carry extra frontmatter keys that Claude Code supports but the strict
+spec does not list (`argument-hint`, `disable-model-invocation`, `when_to_use`,
+`version`). All 70 load. Those are left as upstream wrote them.
+
 ## Not installed
 
 21st.dev and 21st.dev/mcp were excluded by request.

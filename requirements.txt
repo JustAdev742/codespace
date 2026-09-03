@@ -1,0 +1,33 @@
+# Python dependencies for the vendored skills in .claude/skills/
+# Install with:  pip install -r requirements.txt
+# Nothing here is needed to *load* a skill — only to run its scripts.
+
+# anthropics-docx, anthropics-pptx, anthropics-xlsx (OOXML handling)
+defusedxml>=0.7.1
+lxml>=5.0.0
+
+# anthropics-xlsx
+openpyxl>=3.1.0
+
+# anthropics-pdf
+pypdf>=4.0.0
+pdfplumber>=0.11.0
+pdf2image>=1.17.0
+
+# anthropics-pdf, anthropics-pptx, slack-gif-creator
+pillow>=10.0.0
+
+# slack-gif-creator
+imageio>=2.31.0
+imageio-ffmpeg>=0.4.9
+numpy>=1.24.0
+
+# mcp-builder
+anthropic>=0.39.0
+mcp>=1.1.0
+
+# anthropics-skill-creator
+pyyaml>=6.0
+
+# webapp-testing (browser binaries are preinstalled in Claude Code web sessions)
+playwright>=1.49.0
