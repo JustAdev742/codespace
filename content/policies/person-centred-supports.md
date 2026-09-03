@@ -29,7 +29,7 @@ This policy applies to:
 {% for home in intake.homes %}
 - {{ home.name }}, {{ home.address }}: {{ home.participants }} participant{% if home.participants != 1 %}s{% endif %}, {% if home.co_tenants %}a shared home{% else %}a single-occupancy home{% endif %}, {{ roster(home) }};
 {% endfor %}
-- all {{ intake.workforce.headcount | default('[TO CONFIRM]', true) }} workers engaged by {{ org.name }} ({{ intake.workforce.employment_types | join(', ') }}), all key personnel, and any agency or subcontracted worker on shift in a {{ org.name }} home;
+- all {{ intake.workforce.headcount | default('[TO CONFIRM]', true) }} workers engaged by {{ org.name }} ({{ intake.workforce.employment_types | join(', ') }}), all key personnel, and any agency or subcontracted worker on shift in any home {{ org.name }} supports;
 - every kind of support delivered under a participant's service agreement, including personal care, household tasks, health support, community access{% if intake.supports.transport %}, transport{% endif %}{% if intake.supports.mealtime_management %}, mealtime support{% endif %} and communication with families, guardians and other services.
 
 ## Policy statement

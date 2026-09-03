@@ -3,7 +3,7 @@
 Goal: 150–400 candidate providers in 3 days, verified to "unregistered" before any contact.
 
 ## Sources (all free)
-1. **Provider Link** SIL category (providerlink.com.au/directory/categories/supported-independent-living-sil) — small (≈61), Tasmania-heavy, shows phone numbers and an "NDIS Registered" filter. Export unfiltered minus filtered.
+1. **Provider Link** SIL category — already scraped into `data/sources/providerlink.csv` (20 reachable listings, 15 Tasmanian, mostly large registered organisations; low value, verify before use).
 2. **MyCareSpace** provider search, service "Supported Independent Living" — lists registered and unregistered; JavaScript-rendered, so copy listings manually or use the browser's "save as CSV" extension.
 3. **Google Maps**: search "SIL provider", "supported independent living", "disability accommodation support" per metro (Sydney, Melbourne, Brisbane, Perth, Adelaide, Gold Coast, Newcastle, Geelong, Canberra, Townsville, Cairns). Export name/phone/website with a free Maps scraper extension or by hand. Highest yield for small operators.
 4. **Housing Hub / SIL vacancy boards**: providers advertising vacancies are actively recruiting participants — small/growing providers over-index here.
