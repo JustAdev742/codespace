@@ -1,0 +1,10 @@
+# Client and prospect data never goes into this public repository
+build/
+data/clients/
+data/funnel.json
+data/prospects.csv
+data/verify-worklist.csv
+data/sources/
+node_modules/
+__pycache__/
+*.pyc

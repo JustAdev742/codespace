@@ -22,3 +22,6 @@ python3 engine/render.py --intake content/intake.example.json --out build/exampl
 python3 engine/brief.py  --intake content/intake.example.json --out build/example/STAFF-BRIEFING-PACK.docx
 python3 tools/funnel.py render
 ```
+
+## Data handling
+This repository is public. `data/funnel.json`, `data/clients/`, prospect lists and rendered client documents are git-ignored and must never be committed. The dashboard shows customer codes, not names.

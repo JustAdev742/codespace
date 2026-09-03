@@ -107,7 +107,11 @@ def render(d):
         lines.append("")
     if d["payments"]:
         lines += ["## Payments (verified)", "| Date | Customer | Amount | Offer | Channel | Ref |", "|---|---|---|---|---|---|"]
-        lines += [f"| {p['date']} | {p['customer']} | A${p['amount']:,.2f} | {p['offer']} | {p['channel']} | {p['ref']} |" for p in d["payments"]]
+        # public repo: show a customer code (initials + index), never the name or the payment reference
+        codes = {}
+        for p in d["payments"]:
+            codes.setdefault(p["customer"], f"C{len(codes)+1:02d}")
+        lines += [f"| {p['date']} | {codes[p['customer']]} | A${p['amount']:,.2f} | {p['offer']} | {p['channel']} | recorded |" for p in d["payments"]]
         lines.append("")
     lines.append("Rules: only real, verified numbers go here. No projections in this table.")
     with open(DASH, "w") as f:
