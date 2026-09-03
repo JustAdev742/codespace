@@ -1,0 +1,19 @@
+{
+  "name": "codespace-agent-skills",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Vendored Claude Code agent skills, subagents, commands and MCP servers.",
+  "type": "module",
+  "scripts": {
+    "setup": "bash scripts/setup.sh",
+    "audit": "node scripts/design-audit.mjs",
+    "audit:file": "node scripts/design-audit.mjs --file ./index.html"
+  },
+  "devDependencies": {
+    "playwright": "^1.49.0"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "license": "MIT"
+}
