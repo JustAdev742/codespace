@@ -35,32 +35,18 @@ python3 -m venv .venv && . .venv/bin/activate && pip install -r requirements.txt
 Three skills also want system packages: `poppler-utils` (anthropics-pdf),
 `ffmpeg` (slack-gif-creator), `jq` (emotion-statusline).
 
-## Enabling the MCP servers
+## MCP servers
 
-`.mcp.json` is present but Claude Code asks before starting project MCP servers.
-To pre-approve them, create `.claude/settings.json`:
+`.mcp.json` declares the four servers; `.claude/settings.json` pre-approves them
+(`enableAllProjectMcpServers`) along with the four Bash commands the skills and
+commands run. Both are committed, so a fresh clone works without prompting.
 
-```json
-{
-  "$schema": "https://json.schemastore.org/claude-code-settings.json",
-  "enableAllProjectMcpServers": true,
-  "permissions": {
-    "allow": [
-      "Bash(node scripts/design-audit.mjs:*)",
-      "Bash(npm run audit:*)",
-      "Bash(npx playwright:*)",
-      "Bash(python3 .claude/skills/ui-ux-pro-max/scripts/search.py:*)",
-      "mcp__accesslint",
-      "mcp__playwright",
-      "mcp__chrome-devtools",
-      "mcp__shadcn"
-    ]
-  }
-}
-```
+Note what that means: `.claude/settings.json` grants command execution to anyone
+who opens this repo in Claude Code. Review it the way you would review a CI
+config. Narrow or delete the `permissions.allow` entries you do not want, and
+Claude Code falls back to asking per call.
 
-This file is deliberately **not** committed: it pre-approves command execution,
-so it should be a conscious choice rather than something a PR slips in.
+`.claude/settings.local.json` is personal per-machine state and is gitignored.
 
 Which skills need which server:
 
