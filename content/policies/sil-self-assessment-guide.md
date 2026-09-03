@@ -118,7 +118,7 @@ Evidence documents:
 - Complaints and Feedback Policy; Complaints Register
 - Risk Management Policy and Risk Register (per-home risk assessments)
 - Emergency and Disaster Management Plan (per-home)
-- Restrictive Practices and Behaviour Support Policy and Procedure{% if sup.restrictive_practices != 'none' %}; behaviour support plans, authorisations and monthly reports{% else %}; Statement of Non-Use{% endif %}
+- Restrictive Practices and Behaviour Support Policy and Procedure, with {% if sup.restrictive_practices != 'none' %}behaviour support plans, authorisations and monthly reports{% else %}the Statement of Non-Use{% endif %} attached
 - Safeguarding (VANED) Policy
 - Health and Wellbeing Policy
 {% if sup.medication_involvement != 'none' %}- Medication Management Policy and Procedure

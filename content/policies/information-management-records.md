@@ -14,21 +14,18 @@ review_months: 12
 # Information Management and Records Policy (including Records Retention Schedule, Document Control and IT Security)
 
 ## Purpose
-
-This policy sets out how {{ org.name }} creates, stores, controls, protects, retains and disposes of the information it holds about participants, workers and its own operations, so that records are accurate, complete, available to the people who need them, and protected from loss or misuse. It evidences NDIS Practice Standards Core Module outcome 2.4 (Information management), and works with the Privacy and Confidentiality Policy, which governs consent, use and disclosure.
+This policy sets out how {{ org.name }} creates, stores, controls, protects, retains and disposes of the information it holds about participants, workers and its operations, so that records are accurate, complete, available to those who need them and protected from loss or misuse. It evidences NDIS Practice Standards Core Module outcome 2.4 (Information management) and works with the Privacy and Confidentiality Policy, which governs consent, use and disclosure.
 
 ## Scope
 
 This policy applies to every record {{ org.name }} holds, in any format: participant records in {{ notes_software }}, rosters and shift records in {{ rostering_software }}, incident and complaint records in {{ incident_software }}, training records in {{ training_platform }}, financial and NDIS claiming records, governance records, and paper records kept at {{ org.address }} and in each of its {{ intake.homes | length }} home{% if intake.homes | length != 1 %}s{% endif %}. It binds all workers ({{ wf.employment_types | join(', ') }}), key personnel, contractors and agency staff.
 
 ## Policy statement
-
-- **Records are accurate, timely and attributable.** Every record states who made it and when; progress notes are written during or immediately after the shift; entries are factual, respectful and in the participant's own words where possible; corrections are made by a dated addendum, never by deleting or overwriting.
-- **One system of record.** {{ notes_software }} is the system of record for participant information and {{ rostering_software }} for rosters and shift attendance. Paper records are used only where a system is unavailable or a signature is needed, and are scanned into the system within 2 business days.
-- **Participants can see their records.** A participant may see and obtain a copy of their own records, ask for corrections, and choose who else may see them, under the Privacy and Confidentiality Policy. Records are written in the knowledge that the participant may read them.
-- **Access is limited to need.** Workers can see only the participants and homes they support; managers' access reflects their role; access is removed on the day a person leaves.
-- **Information is secure.** Electronic records are protected by the IT security controls in this policy; paper records are kept in locked storage; no participant information is kept on personal devices, personal email or messaging apps.
-- **Documents are controlled.** Only the current approved version of a policy, procedure or template is in use, and it can be identified by its version and approval date.
+- **Records are accurate, timely and attributable.** Every record shows who made it and when; progress notes are written during or immediately after the shift; entries are factual, respectful and in the participant's own words where possible; corrections are made by a dated addendum, never by deleting or overwriting.
+- **One system of record.** {{ notes_software }} is the system of record for participant information and {{ rostering_software }} for rosters and shift attendance. Paper is used only where a system is unavailable or a signature is needed, and is scanned in within 2 business days.
+- **Participants can see their records** and obtain a copy, ask for corrections, and choose who else may see them, under the Privacy and Confidentiality Policy. Records are written in the knowledge that the participant may read them.
+- **Access is limited to need.** Workers see only the participants and homes they support; managers' access reflects their role; access is removed the day a person leaves.
+- **Information is secure and documents are controlled.** Electronic records are protected by the IT security controls below; paper records are kept locked; no participant information is kept on personal email or messaging apps; only the current approved version of a policy or template is in use.
 - **Retention follows the schedule.** Records are kept for at least the periods in the Records Retention Schedule and then securely destroyed or de-identified, unless a legal hold applies.
 
 ## Roles and responsibilities
@@ -43,12 +40,9 @@ This policy applies to every record {{ org.name }} holds, in any format: partici
 | All workers | Record accurately and on time; use only approved systems; protect passwords and devices; report lost devices, suspicious emails or breaches immediately. |
 
 ## Document control procedure
-
-1. Every policy, procedure, register and template carries a title, version number, owner, approval date and next review date in its document control table and is listed in the Policy Register.
-2. Drafts are marked as drafts. A document becomes controlled only when approved under the Governance and Operational Management Framework.
-3. The current version is published in one location (the policy folder in {{ incident_software }} or the shared drive) and superseded versions are moved to an archive folder with the date of supersession; printed copies are marked uncontrolled.
-4. {{ quality_lead }} briefs affected workers on changes within 30 days and records the briefing in {{ training_platform }}.
-5. Forms and templates in use in homes are checked at the monthly house self-check to confirm they are the current version.
+1. Every policy, procedure, register and template carries a title, version, owner, approval date and next review date in its document control table and is listed in the Policy Register; drafts are marked as drafts and become controlled only when approved under the Governance and Operational Management Framework.
+2. The current version is published in one location (the policy folder in {{ incident_software }} or the shared drive); superseded versions are archived with the date of supersession; printed copies are marked uncontrolled.
+3. {{ quality_lead }} briefs affected workers on changes within 30 days, recorded in {{ training_platform }}, and forms in use in homes are checked at the monthly house self-check for currency.
 
 ## Policy Register template
 
@@ -57,21 +51,17 @@ This policy applies to every record {{ org.name }} holds, in any format: partici
 | Incident Management Policy and Procedure (example — delete) | incident-management | {{ gov.incident_officer | default('[TO CONFIRM]', true) }} | 1.0 | {{ director }} | [date] | [date + 12 months] | Policy folder |
 
 ## IT security controls
-
-- **Accounts.** Each user has an individual login to {{ notes_software }}, {{ rostering_software }} and {{ incident_software }}; shared logins are prohibited; multi-factor authentication is switched on wherever the platform supports it; passwords are unique, at least 12 characters, and stored only in an approved password manager.
-- **Access control.** Role-based access is set by {{ privacy_officer }}; new accounts are created only after worker screening is verified; access is removed on the day a worker leaves or is stood down, and {{ rostering_manager }} confirms this on the separation checklist.
-- **Devices.** Organisation-owned phones, tablets and computers are encrypted, locked with a passcode, kept updated, and can be remotely wiped; workers may use personal devices for {{ notes_software }} only through the vendor's app with a passcode, without downloading records, and must report loss or theft immediately.
-- **Email and messaging.** Participant information is not sent by SMS or consumer messaging apps; email attachments containing personal information are sent only to verified addresses, and health or financial details are password-protected or sent through the system.
-- **Hosting and backups.** {{ notes_software }}, {{ rostering_software }} and {{ incident_software }} are cloud-hosted by their vendors; data location, backup frequency, export rights on termination and the vendor's security certifications are [TO CONFIRM and record in the Vendor Register]. Local files are backed up at least weekly to an encrypted location, and restore is tested annually.
-- **Threat awareness.** Workers complete cyber safety training at induction and annually covering phishing, safe passwords and device care; suspicious messages are reported to {{ privacy_officer }}.
-- **Incidents.** Lost devices, unauthorised access, ransomware or misdirected information are handled under the Privacy Breach Response Procedure in the Privacy and Confidentiality Policy, including assessment under the Notifiable Data Breaches scheme.
-- **Guidance.** Controls are reviewed annually against the Australian Cyber Security Centre's Essential Eight as a benchmark for a small organisation.
+- **Accounts.** Individual logins to {{ notes_software }}, {{ rostering_software }} and {{ incident_software }}; no shared logins; multi-factor authentication wherever the platform supports it; unique passwords of at least 12 characters in an approved password manager.
+- **Access control.** Role-based access set by {{ privacy_officer }}; accounts created only after worker screening is verified and removed the day a worker leaves or is stood down, confirmed by {{ rostering_manager }} on the separation checklist.
+- **Devices and messaging.** Organisation devices are encrypted, passcode-locked, updated and remotely wipeable; personal devices use only the vendor's app with a passcode and no downloads; loss or theft is reported immediately. Participant information is not sent by SMS or consumer messaging apps, and health or financial details are password-protected or sent through the system.
+- **Hosting and backups.** The platforms are cloud-hosted by their vendors; data location, backup frequency, export rights and security certifications are [TO CONFIRM and record in the Vendor Register]. Local files are backed up weekly to an encrypted location and restore is tested annually.
+- **Awareness and incidents.** Cyber safety training at induction and annually; suspicious messages reported to {{ privacy_officer }}; lost devices, unauthorised access, ransomware or misdirected information handled under the Privacy Breach Response Procedure, including the Notifiable Data Breaches scheme. Controls are reviewed annually against the Australian Cyber Security Centre's Essential Eight.
 
 ## Records Retention Schedule
 
 | Record type | Minimum retention | Basis |
 |---|---|---|
-| Participant records: support plans, assessments, progress notes, service agreements, consents, health plans{% if sup.medication_involvement != 'none' %}, medication charts{% endif %}{% if sup.mealtime_management %}, mealtime plans{% endif %} | 7 years after the last service; where the participant was under 18, until they turn 25; where a record relates to an allegation of child abuse, 45 years | NDIS Practice Standards record-keeping; Royal Commission into Institutional Responses to Child Sexual Abuse recommendation on records |
+| Participant records: support plans, assessments, progress notes, service agreements, consents, health plans{% if sup.medication_involvement != 'none' %}, medication charts{% endif %}{% if sup.mealtime_management %}, mealtime plans{% endif %} | 7 years after the last service; until age 25 where the participant was under 18; 45 years where the record relates to an allegation of child abuse | NDIS Practice Standards; Royal Commission into Institutional Responses to Child Sexual Abuse records recommendation |
 | Incident records, including reportable incident notifications and investigations | 7 years from the day the record is made | NDIS (Incident Management and Reportable Incidents) Rules 2018 |
 | Complaints records | 7 years from the day the record is made | NDIS (Complaints Management and Resolution) Rules 2018 |
 | Restrictive practice records: behaviour support plans, authorisations, usage records, monthly reports | 7 years | NDIS (Restrictive Practices and Behaviour Support) Rules 2018; Practice Standards |
@@ -87,7 +77,7 @@ This policy applies to every record {{ org.name }} holds, in any format: partici
 | Emergency plans, drill and inspection records | 7 years | {{ org.name }} policy |
 | Privacy breach records and access request records | 7 years | Privacy Act 1988 (Cth) |
 
-At the end of the retention period {{ privacy_officer }} lists records due for destruction, {{ director }} approves, and records are shredded or securely deleted with a destruction certificate kept. Records subject to a complaint, investigation, litigation or Commission request are placed on legal hold and are not destroyed until {{ director }} lifts the hold.
+At the end of the retention period {{ privacy_officer }} lists records due for destruction, {{ director }} approves, and records are shredded or securely deleted with a destruction certificate kept. Records subject to a complaint, investigation, litigation or Commission request are placed on legal hold until {{ director }} lifts it.
 
 ## Records kept
 
@@ -99,13 +89,10 @@ At the end of the retention period {{ privacy_officer }} lists records due for d
 - Access, correction and privacy breach records (Privacy and Confidentiality Policy)
 
 ## Related documents
-
 - Privacy and Confidentiality Policy, Consent Procedure and Privacy Breach Response Procedure
-- Governance and Operational Management Framework
-- Shift Handover and Progress Notes Procedure
+- Governance and Operational Management Framework; Shift Handover and Progress Notes Procedure
 - Human Resources and Recruitment Policy and Procedure (separation checklist)
-- Financial Management, NDIS Billing and Claiming, and Fraud and Corruption Prevention Policy
-- Continuity of Supports Policy (IT outage)
+- Financial Management, NDIS Billing and Claiming, and Fraud and Corruption Prevention Policy; Continuity of Supports Policy (IT outage)
 
 ## Legislation and standards references
 
