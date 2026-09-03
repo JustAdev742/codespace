@@ -1,0 +1,14 @@
+{
+  "org": {"name": "Example Living Supports Pty Ltd", "trading_name": "Example Living", "abn": "12 345 678 901", "entity_type": "company", "address": "12 Sample Street, Parramatta NSW 2150", "phone": "02 9000 0000", "email": "admin@example-living.com.au", "website": "https://example-living.com.au", "states": ["NSW"]},
+  "key_personnel": [{"name": "Jane Citizen", "role": "Director", "email": "jane@example-living.com.au", "phone": "0400 000 000"}, {"name": "Sam Lee", "role": "Operations Manager", "email": "sam@example-living.com.au", "phone": "0400 000 001"}],
+  "governance": {"structure": "company", "has_board": false, "ceo_or_director": "Jane Citizen (Director)", "quality_lead": "Sam Lee (Operations Manager)", "complaints_officer": "Sam Lee (Operations Manager)", "incident_officer": "Sam Lee (Operations Manager)", "privacy_officer": "Jane Citizen (Director)", "whs_officer": "Sam Lee (Operations Manager)", "rostering_manager": "Sam Lee (Operations Manager)"},
+  "homes": [
+    {"name": "Harris Street house", "address": "3 Harris Street, Westmead NSW 2145", "state": "NSW", "participants": 3, "roster_model": "twenty_four_seven", "tenancy_holder": "sda_provider", "sda": true, "co_tenants": true},
+    {"name": "Bell Avenue unit", "address": "7/22 Bell Avenue, Blacktown NSW 2148", "state": "NSW", "participants": 1, "roster_model": "sleepover", "tenancy_holder": "private_landlord", "sda": false, "co_tenants": false}
+  ],
+  "workforce": {"headcount": 14, "employment_types": ["permanent", "casual"], "screening_all_current": true, "rostering_software": "ShiftCare", "notes_software": "ShiftCare", "incident_software": "ShiftCare", "training_platform": "NDIS Quality and Safeguards Commission eLearning + in-house", "first_aid_all": false},
+  "supports": {"medication_involvement": "administer", "restrictive_practices": "authorised", "behaviour_support_plans": true, "high_intensity": false, "mealtime_management": true, "transport": true, "participant_money_handling": true},
+  "history": {"years_operating": 3, "incidents_last_12m": 9, "complaints_last_12m": 2, "reportable_incidents_last_12m": 1, "previous_audit": false, "existing_policies": true},
+  "registration": {"groups": ["0138", "0115"], "auditor_chosen": "", "target_lodgement_date": "2026-09-26", "application_started": false},
+  "meta": {"generated_on": "2026-09-04", "consultant_name": "SIL Registration Sprint"}
+}
