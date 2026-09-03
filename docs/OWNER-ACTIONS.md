@@ -4,7 +4,7 @@ Everything below is an external action, account, spend or binding agreement. I p
 
 | # | Action | Why it is needed | Cost | Status |
 |---|---|---|---|---|
-| 1 | Create a Stripe account (sole trader/ABN or company) and share a Payment Link per product | Only way to take card payments; I will give you exact product names/prices to enter | Free; 1.7% + A$0.30 per domestic card payment | not started |
+| 1 | Create a Stripe account (sole trader/ABN or company) and create 4 Payment Links, then paste the URLs into `site/config.js` | Only way to take card payments | Free; 1.7% + A$0.30 per domestic card payment | not started |
 | 2 | Enable GitHub Pages on this repo (Settings → Pages → Source: GitHub Actions) | Free hosting for the sales site from this repo | Free | not started |
 | 3 | Buy a domain (optional at launch; a github.io URL works) | Trust; email sending identity | ~A$15–25/yr | not started |
 | 4 | Choose the sending identity for outreach (your Gmail, or a Google Workspace mailbox on the domain) and connect it to the outreach tool I prepare | I cannot send email as you; Spam Act requires a real sender identity and working unsubscribe | Free (Gmail) or ~A$10/mo (Workspace) | not started |
@@ -15,3 +15,19 @@ Everything below is an external action, account, spend or binding agreement. I p
 | 9 | (Optional, later) Professional indemnity insurance quote | Prudent for advisory/compliance work; not legally required | est. A$50–100/mo | not started |
 
 Approval principle: no money is spent, no message is sent, no agreement is signed by me. I prepare everything to the point of one click or one signature.
+
+## Stripe products to create (Payment Links, AUD, GST added as 10% tax rate, collect customer name, email, phone and business name)
+| Product name | Price (ex GST) | config.js key |
+|---|---|---|
+| SIL Lodgement Sprint (Phase 1) | A$1,990 | stripeSprint |
+| SIL Audit-Ready (Phase 2) | A$1,990 | stripeAuditReady |
+| SIL Registration Bundle (Phases 1+2) | A$3,490 | stripeBundle |
+| SIL Module Gap Analysis | A$1,490 | stripeGap |
+Set each link's after-payment redirect to `https://<your-pages-url>/intake.html`.
+
+## Site deployment
+The workflow `.github/workflows/pages.yml` deploys the `site/` folder to GitHub Pages on push. First run needs Pages enabled on the repo (Settings → Pages → Build and deployment → Source: GitHub Actions). The URL will be `https://justadev742.github.io/codespace/` until a custom domain is added.
+
+## Booking and intake form
+- Booking: create a free Calendly (or Google Calendar appointment schedule) with a 20-minute "SIL registration call" and paste the URL into `site/config.js` (`bookingUrl`).
+- Intake form: create a free Formspree (or Tally/Getform) endpoint that accepts JSON POST and paste it into `formEndpoint`. Until then the form downloads `intake.json` and asks the client to email it — that still works.
