@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="en-AU"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Intake — SIL Ready</title><link rel="stylesheet" href="styles.css"></head>
+<body>
+<header><div class="wrap"><a class="brand" href="index.html" data-cfg="brand">SIL Ready</a><nav><a href="index.html#pricing">Pricing</a><a href="index.html#contact">Contact</a></nav></div></header>
+<section class="hero"><div class="wrap">
+<h1>Pre-interview intake</h1>
+<p class="lead">Takes 10–15 minutes. Everything you enter is used only to prepare your documents. Fields you can't answer now are fine — we'll cover them in the interview.</p>
+<form id="intake" novalidate>
+<fieldset><legend>Organisation</legend>
+<div class="row">
+<div><label>Legal name *</label><input name="org.name" required></div>
+<div><label>Trading name</label><input name="org.trading_name"></div>
+<div><label>ABN *</label><input name="org.abn" required></div>
+<div><label>Entity type</label><select name="org.entity_type"><option value="company">Company (Pty Ltd)</option><option value="sole_trader">Sole trader</option><option value="partnership">Partnership</option><option value="incorporated_association">Incorporated association</option><option value="other">Other</option></select></div>
+<div><label>Business address</label><input name="org.address"></div>
+<div><label>Phone *</label><input name="org.phone" required></div>
+<div><label>Email *</label><input name="org.email" type="email" required></div>
+<div><label>Website</label><input name="org.website"></div>
+<div><label>States/territories you operate in</label><input name="org.states" placeholder="e.g. NSW, QLD"><div class="hint">Comma-separated</div></div>
+</div></fieldset>
+<fieldset><legend>Key personnel and roles</legend>
+<div class="row">
+<div><label>Director / CEO</label><input name="governance.ceo_or_director" placeholder="Name (Role)"></div>
+<div><label>Quality / compliance lead</label><input name="governance.quality_lead"></div>
+<div><label>Complaints officer</label><input name="governance.complaints_officer"></div>
+<div><label>Incident officer</label><input name="governance.incident_officer"></div>
+<div><label>Privacy officer</label><input name="governance.privacy_officer"></div>
+<div><label>WHS officer</label><input name="governance.whs_officer"></div>
+<div><label>Rostering manager</label><input name="governance.rostering_manager"></div>
+<div><label>Do you have a board or committee?</label><select name="governance.has_board"><option value="false">No</option><option value="true">Yes</option></select></div>
+</div>
+<label>Key personnel (one per line: Name, Role, Email, Phone)</label><textarea name="key_personnel_raw" placeholder="Jane Citizen, Director, jane@…, 0400…"></textarea>
+</fieldset>
+<fieldset><legend>SIL homes</legend>
+<div id="homes"></div><button type="button" class="btn" id="addHome">+ Add another home</button>
+</fieldset>
+<fieldset><legend>Workforce</legend>
+<div class="row">
+<div><label>Total workers (incl. casuals)</label><input name="workforce.headcount" type="number" min="0"></div>
+<div><label>Employment types</label><input name="workforce.employment_types" placeholder="permanent, casual, contractor, agency"></div>
+<div><label>Do all workers in risk-assessed roles hold a current NDIS Worker Screening Check?</label><select name="workforce.screening_all_current"><option value="true">Yes</option><option value="false">No / not sure</option></select></div>
+<div><label>Rostering software</label><input name="workforce.rostering_software"></div>
+<div><label>Progress-notes software</label><input name="workforce.notes_software"></div>
+<div><label>Incident-reporting software</label><input name="workforce.incident_software"></div>
+<div><label>Training platform</label><input name="workforce.training_platform"></div>
+<div><label>Do all workers hold current first aid?</label><select name="workforce.first_aid_all"><option value="false">No / not sure</option><option value="true">Yes</option></select></div>
+</div></fieldset>
+<fieldset><legend>Supports delivered</legend>
+<div class="row">
+<div><label>Medication involvement</label><select name="supports.medication_involvement"><option value="administer">We administer medication</option><option value="prompt">We prompt / remind only</option><option value="none">None</option></select></div>
+<div><label>Restrictive practices</label><select name="supports.restrictive_practices"><option value="none">None used</option><option value="authorised">Used, with behaviour support plan and authorisation</option><option value="in_use_unauthorised">Used, authorisation not yet in place</option></select></div>
+<div><label>Behaviour support plans in place?</label><select name="supports.behaviour_support_plans"><option value="false">No</option><option value="true">Yes</option></select></div>
+<div><label>High-intensity daily personal activities?</label><select name="supports.high_intensity"><option value="false">No</option><option value="true">Yes</option></select></div>
+<div><label>Mealtime management (e.g. dysphagia plans)?</label><select name="supports.mealtime_management"><option value="false">No</option><option value="true">Yes</option></select></div>
+<div><label>Transport participants?</label><select name="supports.transport"><option value="true">Yes</option><option value="false">No</option></select></div>
+<div><label>Handle participant money or property?</label><select name="supports.participant_money_handling"><option value="true">Yes</option><option value="false">No</option></select></div>
+</div></fieldset>
+<fieldset><legend>History and registration</legend>
+<div class="row">
+<div><label>Years operating</label><input name="history.years_operating" type="number" min="0" step="0.5"></div>
+<div><label>Incidents recorded in last 12 months</label><input name="history.incidents_last_12m" type="number" min="0"></div>
+<div><label>Complaints in last 12 months</label><input name="history.complaints_last_12m" type="number" min="0"></div>
+<div><label>Reportable incidents notified to the Commission in last 12 months</label><input name="history.reportable_incidents_last_12m" type="number" min="0"></div>
+<div><label>Been through an NDIS audit before?</label><select name="history.previous_audit"><option value="false">No</option><option value="true">Yes</option></select></div>
+<div><label>Do you have existing written policies?</label><select name="history.existing_policies"><option value="false">No</option><option value="true">Yes (we'll gap-check them)</option></select></div>
+<div><label>Registration groups you need</label><input name="registration.groups" value="0138" placeholder="0138, 0115, 0104"></div>
+<div><label>Have you started the portal application?</label><select name="registration.application_started"><option value="false">No</option><option value="true">Yes</option></select></div>
+<div><label>Auditor chosen (if any)</label><input name="registration.auditor_chosen"></div>
+<div><label>Target lodgement date</label><input name="registration.target_lodgement_date" type="date" value="2026-09-25"></div>
+</div>
+<label>Anything else we should know?</label><textarea name="meta.notes"></textarea>
+</fieldset>
+<p class="muted">By submitting you agree to our <a href="terms.html">terms</a> and <a href="privacy.html">privacy notice</a>. Your answers are used only to prepare your documents.</p>
+<button class="btn primary big" type="submit">Submit intake</button>
+<p id="status" class="muted"></p>
+</form>
+</div></section>
+<footer><div class="wrap"><p><span data-cfg="legalName">[TRADING NAME]</span> · ABN <span data-cfg="abn">[ABN]</span></p></div></footer>
+<script src="config.js"></script><script src="main.js"></script>
+<script>
+(function(){
+  var homes=document.getElementById('homes'),n=0;
+  function addHome(){n++;var d=document.createElement('div');d.className='home-block';d.innerHTML=
+   '<strong>Home '+n+'</strong><div class="row">'+
+   '<div><label>Name/label</label><input name="homes['+n+'].name" placeholder="e.g. Harris Street house"></div>'+
+   '<div><label>Address</label><input name="homes['+n+'].address"></div>'+
+   '<div><label>State</label><input name="homes['+n+'].state" placeholder="NSW"></div>'+
+   '<div><label>Participants living there</label><input name="homes['+n+'].participants" type="number" min="1"></div>'+
+   '<div><label>Roster model</label><select name="homes['+n+'].roster_model"><option value="twenty_four_seven">24/7 active</option><option value="sleepover">Sleepover nights</option><option value="active_night">Active night</option><option value="drop_in">Drop-in</option></select></div>'+
+   '<div><label>Who holds the tenancy/ownership?</label><select name="homes['+n+'].tenancy_holder"><option value="sda_provider">SDA provider</option><option value="private_landlord">Private landlord (participant leases)</option><option value="provider">Our organisation owns or leases it</option><option value="participant">Participant owns it</option></select></div>'+
+   '<div><label>SDA-enrolled dwelling?</label><select name="homes['+n+'].sda"><option value="false">No</option><option value="true">Yes</option></select></div>'+
+   '<div><label>Shared with co-tenants?</label><select name="homes['+n+'].co_tenants"><option value="true">Yes</option><option value="false">No</option></select></div></div>';
+   homes.appendChild(d);}
+  addHome();document.getElementById('addHome').onclick=addHome;
+  function set(o,p,v){var ks=p.replace(/\]/g,'').split(/\.|\[/);var cur=o;for(var i=0;i<ks.length-1;i++){var k=ks[i];var nk=ks[i+1];if(!(k in cur))cur[k]=/^\d+$/.test(nk)?[]:{};cur=cur[k];}cur[ks[ks.length-1]]=v;}
+  function coerce(v){if(v==='true')return true;if(v==='false')return false;if(/^-?\d+(\.\d+)?$/.test(v))return Number(v);return v;}
+  document.getElementById('intake').onsubmit=function(e){e.preventDefault();var f=e.target;var o={};
+   Array.prototype.forEach.call(f.elements,function(el){if(!el.name)return;var v=el.value.trim();
+     if(el.name==='org.states'||el.name==='workforce.employment_types'||el.name==='registration.groups'){set(o,el.name,v?v.split(/\s*,\s*/):[]);return;}
+     if(el.name==='key_personnel_raw'){o.key_personnel=v.split('\n').filter(Boolean).map(function(l){var p=l.split(/\s*,\s*/);return{name:p[0]||'',role:p[1]||'',email:p[2]||'',phone:p[3]||''};});return;}
+     set(o,el.name,coerce(v));});
+   o.homes=(o.homes||[]).filter(function(h){return h&&(h.name||h.address);});
+   o.meta=o.meta||{};o.meta.submitted_at=new Date().toISOString();
+   var st=document.getElementById('status');var C=window.SITE_CONFIG||{};
+   if(C.formEndpoint){st.textContent='Sending…';fetch(C.formEndpoint,{method:'POST',headers:{'Content-Type':'application/json','Accept':'application/json'},body:JSON.stringify(o)}).then(function(r){st.textContent=r.ok?'Received — we will confirm your interview time by email.':'Could not send ('+r.status+'). Please email us the downloaded file.';if(!r.ok)download(o);}).catch(function(){st.textContent='Could not send. Please email us the downloaded file.';download(o);});}
+   else{download(o);st.textContent='Downloaded intake.json — please email it to '+(C.email||'us')+'.';}
+  };
+  function download(o){var b=new Blob([JSON.stringify(o,null,2)],{type:'application/json'});var a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='intake.json';document.body.appendChild(a);a.click();a.remove();}
+})();
+</script>
+</body></html>
