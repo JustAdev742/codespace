@@ -26,7 +26,7 @@ Approval principle: no money is spent, no message is sent, no agreement is signe
 Set each link's after-payment redirect to `https://<your-pages-url>/intake.html`.
 
 ## Site deployment
-The workflow `.github/workflows/pages.yml` deploys the `site/` folder to GitHub Pages on push. It has already run and **failed at the `configure-pages` step because Pages is not enabled** — the Actions token cannot enable it. Once you enable Pages (Settings → Pages → Build and deployment → Source: GitHub Actions), re-run the latest workflow from the Actions tab or push any change to `site/`. The URL will be `https://justadev742.github.io/codespace/` until a custom domain is added. Until then, open `site/index.html` from the repo to preview.
+The workflow `.github/workflows/pages.yml` deploys the `site/` folder to GitHub Pages on push. It has already run and **failed at the `configure-pages` step because Pages is not enabled** — the Actions token cannot enable it. Once you enable Pages (Settings → Pages → Build and deployment → Source: GitHub Actions), re-run the latest workflow from the Actions tab or push any change to `site/`. The URL will be `https://justadev742.github.io/codespace/` until a custom domain is added. Until then, a private preview of the landing page is at https://claude.ai/code/artifact/5dd3c672-e694-4b58-98be-27002d56e6b7 (buttons are inert until Stripe/booking links are configured).
 
 ## Booking and intake form
 - Booking: create a free Calendly (or Google Calendar appointment schedule) with a 20-minute "SIL registration call" and paste the URL into `site/config.js` (`bookingUrl`).
