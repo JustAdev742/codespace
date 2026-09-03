@@ -3,11 +3,11 @@
 | Metric | Value |
 |---|---|
 | Target | A$32,500 |
-| Revenue (received, verified) | A$0 |
-| Remaining | A$32,500 |
+| Revenue (received, verified) | A$0.00 |
+| Remaining | A$32,500.00 |
 | Customers (paid) | 0 |
-| Average revenue / customer | A$0 |
-| Current offer | TBD (research in progress) |
+| Average revenue / customer | A$0.00 |
+| Current offer | TBD |
 | Best acquisition channel | TBD |
 | Current hypothesis | TBD |
 | Last updated | 2026-09-03 |
@@ -29,6 +29,6 @@
 | Demos / calls | 0 |
 | Proposals sent | 0 |
 | Conversions (paid) | 0 |
-| Revenue | A$0 |
+| Revenue | A$0.00 |
 
 Rules: only real, verified numbers go here. No projections in this table.
