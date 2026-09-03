@@ -22,32 +22,26 @@ This framework describes how {{ org.name }} is governed and managed so that it d
 This framework applies to {{ governing_body }}, all key personnel, managers, house leaders and workers of {{ org.name }} ({{ org.entity_type | replace('_', ' ') }}, ABN {{ org.abn | default('[TO CONFIRM]', true) }}), operating in {{ org.states | join(', ') }} across {{ intake.homes | length }} SIL home{% if intake.homes | length != 1 %}s{% endif %} with approximately {{ wf.headcount | default('[TO CONFIRM]', true) }} workers. {{ org.name }} {% if reg.application_started %}has started{% else %}is preparing{% endif %} its application for NDIS registration in groups {{ reg.groups | join(', ') }}, with a target lodgement date of {{ reg.target_lodgement_date | date }} and an Approved Quality Auditor of {{ reg.auditor_chosen | default('[TO CONFIRM]', true) }}.
 
 ## Policy statement
-
-- **Accountability is clear.** {{ governing_body }} is accountable for {{ org.name }}'s compliance, finances, quality and safety. Every operational responsibility is delegated in writing to a named role, and every delegate reports back through the meeting cadence in this framework.
-- **Participants come first.** Governance decisions are tested against their effect on participants' rights, safety, choice and control, and participants' feedback is a standing item at every governance meeting.
-- **Key personnel are suitable and known.** {{ org.name }} maintains a current list of its key personnel, verifies their suitability before appointment and annually, and tells the NDIS Quality and Safeguards Commission when they change.
-- **Policies are controlled.** Every policy is approved by {{ governing_body }}, has a named owner and a review date, is available to workers, and is reviewed after any incident, complaint, audit finding or legal change that shows it is not working.
-- **Compliance is monitored, not assumed.** Conditions of registration, the NDIS Practice Standards, the NDIS Code of Conduct and the legal obligations in each policy are tracked on a compliance calendar and reported monthly.
-- **Risk and conflicts are managed.** The Risk Management Policy and Framework and the Conflicts of Interest Policy, Procedure and Register form part of this framework.
-- **Practice is governed across homes.** The Practice Governance and Workforce Consistency Policy sets how practice is led in every home so participants receive consistent support whoever is on shift.
+- **Accountability is clear.** {{ governing_body }} is accountable for {{ org.name }}'s compliance, finances, quality and safety. Every operational responsibility is delegated in writing to a named role, which reports back through the meeting cadence below.
+- **Participants come first.** Governance decisions are tested against their effect on participants' rights, safety, choice and control, and participant feedback is a standing item at every governance meeting.
+- **Key personnel are suitable and known.** {{ org.name }} keeps a current list of key personnel, verifies their suitability before appointment and annually, and tells the NDIS Quality and Safeguards Commission when they change.
+- **Policies are controlled and compliance is monitored.** Every policy is approved by {{ governing_body }}, has an owner and a review date, and is reviewed when an incident, complaint, audit or legal change shows it is not working; obligations are tracked on a compliance calendar and reported monthly.
+- **Risk, conflicts and practice are governed.** The Risk Management Policy and Framework, the Conflicts of Interest Policy, Procedure and Register and the Practice Governance and Workforce Consistency Policy form part of this framework.
 
 ## Roles and responsibilities
-
 | Role | Responsibilities under this framework |
 |---|---|
-| {{ governing_body }}{% if gov.has_board %} (chaired by [TO CONFIRM]){% endif %} | Sets strategy and risk appetite; approves the budget, policies and delegations; appoints and reviews the Director; receives compliance, quality and safety reports; ensures key personnel remain suitable. |
-| Director — {{ director }} | Chief executive and accountable officer; holds all delegations not assigned elsewhere; signs Commission applications, notifications and declarations; approves reportable incident notifications; chairs the monthly management and compliance meeting. |
-| Quality Lead — {{ quality_lead }} | Owns this framework and the Policy Register; runs the internal audit program and quality meeting; maintains the compliance calendar and Continuous Improvement Register; coordinates the registration audit. |
+| {{ governing_body }}{% if gov.has_board %} (chaired by [TO CONFIRM]){% endif %} | Sets strategy and risk appetite; approves budget, policies and delegations; appoints and reviews the Director; receives compliance, quality and safety reports; ensures key personnel remain suitable. |
+| Director — {{ director }} | Accountable officer; holds all delegations not assigned elsewhere; signs Commission applications, notifications and declarations; approves reportable incident notifications; chairs the monthly management and compliance meeting. |
+| Quality Lead — {{ quality_lead }} | Owns this framework and the Policy Register; runs internal audits and the quality meeting; keeps the compliance calendar and Continuous Improvement Register; coordinates the registration audit. |
 | Rostering Manager — {{ rostering_manager }} | Operational management of homes and rosters in {{ rostering_software }}; supervises house leaders; reports workforce and continuity metrics. |
-| Incident Officer — {{ incident_officer }}; Complaints Officer — {{ complaints_officer }}; Privacy Officer — {{ privacy_officer }}; WHS Officer — {{ whs_officer }} | Each owns the named policy, keeps its register, and reports monthly. |
-| House leaders | Lead practice in one home; hold house meetings; escalate risks, incidents and complaints; implement decisions. |
-| All workers | Follow policies; complete training; report incidents, complaints, hazards and conflicts of interest. |
+| Incident Officer — {{ incident_officer }}; Complaints Officer — {{ complaints_officer }}; Privacy Officer — {{ privacy_officer }}; WHS Officer — {{ whs_officer }} | Each owns the named policy, keeps its register and reports monthly. |
+| House leaders and workers | Lead practice in each home; hold house meetings; follow policies; complete training; report incidents, complaints, hazards and conflicts of interest. |
 
 ## Governance arrangements
 
 ### Legal entity and governing body
-
-{% if org.entity_type == 'company' %}{{ org.name }} is a company registered under the Corporations Act 2001 (Cth). {% if gov.has_board %}Its Board of directors is the governing body and meets at least quarterly.{% else %}It does not have a separate board; the Director, {{ director }}, is the governing body and holds the duties of a company director, including the duties of care and diligence and good faith.{% endif %}{% elif org.entity_type == 'incorporated_association' %}{{ org.name }} is an incorporated association governed by its constitution and the associations incorporation legislation of {{ org.states[0] | default('[TO CONFIRM]', true) }}. Its management committee is the governing body and meets at least quarterly.{% elif org.entity_type == 'sole_trader' %}{{ org.name }} is operated by a sole trader, {{ director }}, who is the governing body and is personally responsible for every obligation in this framework.{% elif org.entity_type == 'partnership' %}{{ org.name }} is a partnership; the partners jointly form the governing body and meet at least quarterly.{% else %}{{ org.name }}'s legal structure is {{ gov.structure | default('[TO CONFIRM]', true) }}; its governing body is [TO CONFIRM].{% endif %} {% if org.entity_type in ['sole_trader', 'partnership'] or not gov.has_board %}Because there is no independent board, {{ org.name }} obtains independent challenge through its external accountant, the Approved Quality Auditor, participant feedback and an annual external review of this framework.{% endif %}
+{% if org.entity_type == 'company' %}{{ org.name }} is a company registered under the Corporations Act 2001 (Cth). {% if gov.has_board %}Its Board of directors is the governing body and meets at least quarterly.{% else %}It has no separate board: the Director, {{ director }}, is the governing body and holds the duties of a company director, including care and diligence and good faith.{% endif %}{% elif org.entity_type == 'incorporated_association' %}{{ org.name }} is an incorporated association governed by its constitution and the associations legislation of {{ org.states[0] | default('[TO CONFIRM]', true) }}; its management committee is the governing body and meets at least quarterly.{% elif org.entity_type == 'sole_trader' %}{{ org.name }} is operated by a sole trader, {{ director }}, who is the governing body and personally responsible for every obligation in this framework.{% elif org.entity_type == 'partnership' %}{{ org.name }} is a partnership; the partners jointly form the governing body and meet at least quarterly.{% else %}{{ org.name }}'s legal structure is {{ gov.structure | default('[TO CONFIRM]', true) }}; its governing body is [TO CONFIRM].{% endif %} {% if not gov.has_board %}Because there is no independent board, {{ org.name }} obtains independent challenge from its external accountant, its Approved Quality Auditor, participant feedback and an annual external review of this framework.{% endif %}
 
 ### Key personnel
 
@@ -62,78 +56,64 @@ Key personnel are the people with authority over {{ org.name }}'s management, an
 {% endfor %}
 
 ### Key personnel suitability
-
-1. Before a person is appointed to a key personnel role, and every 12 months after, {{ director }} (or {{ governing_body }} for the Director) obtains a signed suitability declaration covering the matters the Commissioner considers when deciding whether a provider and its key personnel are suitable: criminal history, bankruptcy or insolvency involvement, banning orders, disqualification from managing corporations, adverse findings by a regulator or professional body, and previous refusal, suspension or revocation of NDIS or other registration.
-2. Every key personnel role is a risk assessed role under the NDIS (Practice Standards—Worker Screening) Rules 2018; each holds a current NDIS Worker Screening clearance recorded in the Worker Screening Register.
-3. Key personnel declare conflicts of interest on appointment and annually under the Conflicts of Interest Policy.
-4. Any change in a key personnel member's suitability is reported to {{ director }} immediately and to the Commission as set out below.
+1. Before appointment and every 12 months, {{ director }} (or {{ governing_body }} for the Director) obtains a signed suitability declaration covering the matters the Commissioner considers when deciding whether a provider and its key personnel are suitable: criminal history, bankruptcy or insolvency involvement, banning orders, disqualification from managing corporations, adverse regulatory or professional findings, and any previous refusal, suspension or revocation of registration.
+2. Every key personnel role is a risk assessed role under the NDIS (Practice Standards—Worker Screening) Rules 2018; each holds a current NDIS Worker Screening clearance recorded in the Worker Screening Register, and declares conflicts of interest on appointment and annually.
+3. Any change in a key personnel member's suitability is reported to {{ director }} immediately and to the Commission as set out below.
 
 ### Delegations of authority
-
-| Decision or authority | Held by | Conditions and limits | Reported to |
+| Decision or authority | Held by | Conditions | Reported to |
 |---|---|---|---|
-| Approve, amend or withdraw policies and procedures | {{ governing_body }} | After review by {{ quality_lead }}; recorded in the Policy Register | Quarterly quality meeting |
-| Accept or decline a referral; sign SIL Service Agreements | {{ director }} | Access and Intake Procedure; declined referrals recorded with reasons | Monthly management meeting |
-| Enter, vary or end any lease, head-tenancy or SDA arrangement | {{ director }} | Conflicts of Interest Policy; never linked to a participant's choice of provider | {{ governing_body }} |
-| Approve rosters, agency use and roster changes | {{ rostering_manager }} | Within budget and the Practice Governance Policy; overnight model changes approved by {{ director }} | Monthly management meeting |
-| Financial approvals and payments | As set out in the Financial Management Policy delegations table | Two-person control for NDIS claims and new payees | Monthly management meeting |
-| Engage, stand down or dismiss workers | {{ director }} | Worker screening verified before engagement; Grievance and Disciplinary Policy | Monthly management meeting |
-| Approve reportable incident notifications | {{ director }} (Reportable Incident Approver); {{ incident_officer }} lodges as Notifier | Within 24 hours or 5 business days per the Incident Management Policy | {{ governing_body }} |
-| Escalated complaints and Commission complaints | {{ director }} | Complaints and Feedback Policy | Quarterly quality meeting |
-| Restrictive practice use in accordance with a behaviour support plan | {{ director }} with {{ quality_lead }} | Only with state authorisation and a lodged plan; monthly reporting to the Commission | Monthly management meeting |
-| Notify the Commission of changes and events; sign applications | {{ director }} | This framework | {{ governing_body }} |
-| Declare an emergency; activate the Continuity of Supports Policy | {{ director }}; in their absence {{ whs_officer }} | Emergency and Disaster Management Plan | {{ governing_body }} |
+| Approve, amend or withdraw policies | {{ governing_body }} | After review by {{ quality_lead }}; recorded in the Policy Register | Quarterly quality meeting |
+| Accept or decline referrals; sign SIL Service Agreements | {{ director }} | Access and Intake Procedure; declined referrals recorded with reasons | Monthly management meeting |
+| Enter, vary or end a lease, head-tenancy or SDA arrangement | {{ director }} | Conflicts of Interest Policy; never linked to a participant's choice of provider | {{ governing_body }} |
+| Approve rosters, agency use and roster changes | {{ rostering_manager }} | Within budget and the Practice Governance Policy; overnight model changes need {{ director }} | Monthly management meeting |
+| Financial approvals, payments and NDIS claims | Per the Financial Management Policy delegations table | Two-person control for claims and new payees | Monthly management meeting |
+| Engage, stand down or dismiss workers | {{ director }} | Screening verified before engagement; Grievance and Disciplinary Policy | Monthly management meeting |
+| Approve reportable incident notifications | {{ director }} (Approver); {{ incident_officer }} lodges (Notifier) | Incident Management Policy timeframes | {{ governing_body }} |
+| Escalated complaints; restrictive practice use under a behaviour support plan | {{ director }} with {{ quality_lead }} | Complaints Policy; state authorisation and lodged plan; monthly reporting | Quarterly quality meeting |
+| Notify the Commission; sign applications; declare an emergency; media statements | {{ director }} (emergency: {{ whs_officer }} in the Director's absence) | This framework; Emergency and Disaster Management Plan | {{ governing_body }} |
 | Notify eligible data breaches to the OAIC | {{ privacy_officer }} with {{ director }} | Privacy and Confidentiality Policy | Monthly management meeting |
-| Media and public statements | {{ director }} only | Participant privacy protected | {{ governing_body }} |
 
-Delegations may be exercised only by the named role or by a person {{ director }} appoints in writing to act during leave. Records of acting appointments are kept in the Policy Register.
+Delegations may be exercised only by the named role or by a person {{ director }} appoints in writing to act during leave; acting appointments are recorded in the Policy Register.
 
 ### Policy approval and review
-
-1. {{ quality_lead }} drafts or reviews the policy, consulting workers, participants and any relevant specialist, and checks it against the current Practice Standards, Rules and legislation.
-2. {{ governing_body }} approves the policy; the version, approver and approval date are recorded in the document control table and the Policy Register.
-3. The policy is published to workers through {{ incident_software }} or the shared drive, superseded versions are archived, and affected workers are briefed within 30 days.
-4. Each policy is reviewed by its owner at the interval in its front matter (12 months unless stated), and earlier after a serious incident, complaint, audit finding, legal change or change to a home, roster model or support type.
+1. {{ quality_lead }} drafts or reviews the policy, consults workers, participants and any specialist, and checks it against the current Practice Standards, Rules and legislation.
+2. {{ governing_body }} approves it; the version, approver and date are recorded in the document control table and the Policy Register; it is published to workers, superseded versions are archived, and affected workers are briefed within 30 days.
+3. Each policy is reviewed at the interval in its front matter (12 months unless stated) and earlier after a serious incident, complaint, audit finding, legal change, or change to a home, roster model or support type.
 
 ### Meeting cadence
-
 | Meeting | Frequency | Chair | Standing agenda | Record |
 |---|---|---|---|---|
 {% if gov.has_board %}
 | Board meeting | Quarterly | Chair of the Board | Strategy, finance, risk register, compliance report, key personnel, policy approvals | Minutes |
 {% endif %}
-| Management and compliance meeting | Monthly | {{ director }} | Incidents and reportable incidents, complaints, restrictive practices, risk register, WHS, workforce and screening, finance and claims, Commission correspondence, compliance calendar | Minutes and action log |
-| Quality and safety review | Quarterly | {{ quality_lead }} | Internal audit results, trends, Continuous Improvement Register, policy reviews, participant and worker feedback | Minutes |
+| Management and compliance meeting | Monthly | {{ director }} | Incidents, complaints, restrictive practices, risk register, WHS, workforce and screening, finance and claims, Commission correspondence, compliance calendar | Minutes and action log |
+| Quality and safety review | Quarterly | {{ quality_lead }} | Audit results, trends, Continuous Improvement Register, policy reviews, participant and worker feedback | Minutes |
 | All-staff meeting | Monthly | {{ rostering_manager }} | Practice updates from each home, training, policy briefings | Minutes |
 | House meeting (each home) | Fortnightly; weekly where a home has 3 or more participants or an active behaviour support plan | House leader | Participants' decisions and feedback, plans, health, incidents, hazards, roster | House Meeting Record |
 
 ### Compliance oversight
-
-- {{ quality_lead }} keeps a compliance calendar listing every recurring obligation: worker screening expiries, training renewals, insurance renewals, monthly restrictive practice reporting, NDIS pricing updates on 1 July, policy reviews, the mid-term audit and registration renewal, and state WHS and tenancy requirements.
-- The monthly compliance report to {{ director }} covers incidents ({{ intake.history.incidents_last_12m | default('[TO CONFIRM]', true) }} recorded in the last 12 months), reportable incidents ({{ intake.history.reportable_incidents_last_12m | default('[TO CONFIRM]', true) }}), complaints ({{ intake.history.complaints_last_12m | default('[TO CONFIRM]', true) }}), worker screening currency ({% if wf.screening_all_current %}all current at the date of this framework{% else %}gaps identified and being closed{% endif %}), training currency, roster consistency, financial position and any breach of a condition of registration.
-- {{ director }} certifies compliance to {{ governing_body }} quarterly, and {{ org.name }} completes a full self-assessment against the Core Module and SIL supplementary module annually and before every audit.
+- {{ quality_lead }} keeps a compliance calendar of every recurring obligation: worker screening and training expiries, insurance renewals, monthly restrictive practice reporting, NDIS pricing updates on 1 July, policy reviews, the mid-term audit and registration renewal, and state WHS and tenancy requirements.
+- The monthly compliance report to {{ director }} covers incidents ({{ intake.history.incidents_last_12m | default('[TO CONFIRM]', true) }} in the last 12 months), reportable incidents ({{ intake.history.reportable_incidents_last_12m | default('[TO CONFIRM]', true) }}), complaints ({{ intake.history.complaints_last_12m | default('[TO CONFIRM]', true) }}), worker screening currency ({% if wf.screening_all_current %}all current at the date of this framework{% else %}gaps identified and being closed{% endif %}), training currency, roster consistency, financial position and any breach of a condition of registration.
+- {{ director }} certifies compliance to {{ governing_body }} quarterly, and {{ org.name }} self-assesses against the Core Module and SIL supplementary module annually and before every audit.
 
 ### Notifying the NDIS Commission of changes
-
-{{ org.name }}'s registration is subject to conditions in the NDIS (Provider Registration and Practice Standards) Rules 2018, including the condition to notify the Commissioner of certain changes and events. {{ director }} notifies the Commission, using the Commission's notification form, as soon as practicable after any of the following and within any timeframe the Commission specifies:
+{{ org.name }}'s registration is subject to the conditions in the NDIS (Provider Registration and Practice Standards) Rules 2018, including the condition to notify the Commissioner of certain changes and events. {{ director }} notifies the Commission, using its notification form, as soon as practicable after any of the following and within any timeframe the Commission specifies:
 
 | Change or event | Action |
 |---|---|
 | A person becomes or ceases to be key personnel, or a key personnel member's suitability changes | Notify; update the key personnel table and Worker Screening Register |
-| Change of legal name, trading name, ABN, address, contact details or legal structure | Notify and update all participant-facing documents |
-| Change in scope: a new registration group, class of supports or state, or opening a new home | Apply to vary registration before delivering the new supports; new homes are notified and added to this framework |
+| Change of legal or trading name, ABN, address, contact details or legal structure | Notify; update participant-facing documents |
+| Change in scope: a new registration group, class of supports, state or home | Apply to vary registration before delivering the new supports; new homes are added to this framework |
 | An event affecting the ability to deliver supports: insolvency or external administration, loss of insurance, loss of a home, serious workforce shortage | Notify; activate the Continuity of Supports Policy |
 | Decision to cease providing SIL supports or to close | Notify as early as possible with a transition plan for every participant |
 
 ## Records kept
-
 - Key personnel list, suitability declarations and Worker Screening Register entries
-- Policy Register (every policy, owner, version, approval, next review) and archived versions
-- Delegations and acting appointments
+- Policy Register, archived versions, delegations and acting appointments
 - Minutes and action logs of all governance meetings
-- Compliance calendar and monthly compliance reports; quarterly certifications
-- Commission applications, notifications and correspondence
-- Annual self-assessment against the Core Module and SIL supplementary module
+- Compliance calendar, monthly compliance reports and quarterly certifications
+- Commission applications, notifications and correspondence; annual self-assessments
 
 ## Related documents
 
