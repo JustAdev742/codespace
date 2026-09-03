@@ -9,7 +9,12 @@ Deliverables per client, 5 business days from intake:
 3. Evidence checklist and audit folder structure; list of approved quality auditors to obtain quotes.
 4. One review call; 30 days of email support to lodgement.
 
-Product ladder: DIY SIL Policy Pack A$790 (instant, editable) · **Sprint A$2,490** · Sprint + Audit Support A$3,490 (adds pre-audit evidence review and corrective-action-plan drafting). Prices ex GST. 100% upfront for the first two tiers.
+Product ladder (revised after deep dive, prices ex GST):
+- **Phase 1 — Lodgement Sprint, A$1,990**: structured intake interview → tailored Core + SIL policy set → drafted self-assessment responses with evidence mapping → 60-day portal plan → review call. Goal: a valid application lodged before 1 Oct 2026 with the provider substantially involved (a Commission requirement).
+- **Phase 2 — Audit-Ready, A$1,990**: registers populated with the provider's real data, per-home emergency plans, service/tenancy agreement split, staff briefing pack, auditor quote coordination, Stage 1 desktop-audit evidence review, corrective-action drafting after audit.
+- **Bundle (both phases), A$3,490.** No DIY template tier: the Commission explicitly flags near-identical purchased documentation as a refusal trigger, so every deliverable is interview-driven.
+- Post-deadline line for the much larger registered base: **SIL Module Gap Analysis, A$1,490** (registered 0115/0138 providers audited against the new SIL module at their next audit).
+Payment: 100% upfront per phase.
 
 ## Who is paying?
 Owners/directors of small unregistered SIL providers (typically 1–5 homes, 3–30 workers) across Australia, plus a smaller group of registered 0115 providers who need SIL-module documents before their next audit, and new entrants who cannot deliver SIL until registered.
@@ -20,12 +25,12 @@ Owners/directors of small unregistered SIL providers (typically 1–5 homes, 3�
 - Provider360 (closest competitor, Platinum A$2,920–3,650 + GST) already proves buyers pay this much for a 24-hour branded pack; our differentiation is genuine tailoring to the SIL module and a human on call.
 
 ## How much will they pay?
-A$2,490 average target (A$790–3,490 range). A$32,500 = 13 Sprint clients, or ~10 Sprints plus a handful of packs/audit add-ons.
+Target A$2,700 average per customer (mix of A$1,990 single phases and A$3,490 bundles). A$32,500 ≈ 12 customers. Deep-dive estimate: 15–25% chance of 10+ paying clients before 1 Oct; the realistic path to target runs through October–December (audit-prep for everyone who lodged, plus the registered base's SIL-module gap analyses).
 
 ## How do we reach them?
 1. Direct outreach to unregistered SIL providers found on public directories (Clickability, MyCareSpace, Karista, SIL vacancy boards, Google Maps) cross-checked against the Commission's public register to confirm "unregistered". Email under Spam Act inferred-consent rules (published business address, relevant, identified sender, unsubscribe) plus phone.
 2. NDIS provider Facebook groups and LinkedIn (owner posts drafted by me).
-3. Referral partners with SIL-provider clients: NDIS bookkeepers/plan managers, SDA providers, support coordinators, approved auditors who are capacity-constrained.
+3. Referral partners: **plan managers and support coordinators** (from 1 Oct they must reject invoices from SIL providers that have not applied, so they know exactly which of their providers are unregistered and have a direct incentive to push them), NDIS bookkeepers, SDA providers, approved auditors who are capacity-constrained.
 4. After 1 Oct: pivot messaging to registered providers facing the SIL module at their next audit, new entrants, and the 2027 registration expansion; add the tender-ready pack (C2) as a second line for the same customer base (NDIS providers tender for state contracts).
 
 ## Why this path over the alternatives?
@@ -40,6 +45,9 @@ A$2,490 average target (A$790–3,490 range). A$32,500 = 13 Sprint clients, or ~
 - Fewer than 3 conversations from the first 100 contacts.
 - Auditor or Commission feedback that tailored documents are rejected (would move to auditor-partner model).
 - No sale by 20 September → switch primary to the tender-ready pack while keeping the NDIS offer live for post-deadline demand.
+
+## Honest probability
+Deep-dive estimates: NDIS path 15–25% to reach 10+ clients by 1 Oct; tender path 25–35% over 3 months. Over the same 3-month horizon the NDIS path, with the audit-prep phase and gap-analysis line, is judged comparable or better and has the only near-term forcing event, so it is the wedge. Tender-ready packs launch as a second line after 1 Oct to the same customer base (NDIS providers also tender for state contracts) and to trades.
 
 ## Known gaps (to verify before first delivery)
 - Final wording of the four SIL Practice Standards outcomes and indicators (Commission site blocks automated fetch; owner to download the PDF).
