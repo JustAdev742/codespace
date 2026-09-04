@@ -15,6 +15,7 @@ slash commands, MCP servers and scripts that make them work.
 | `scripts/design-audit.mjs` | Headless heuristic design/a11y audit. `npm run audit`. |
 | `scripts/setup.sh` | Installs every runtime dependency. `npm run setup`. |
 | `requirements.txt` | Python deps, annotated with the skill that needs each. |
+| `apps/ghost-typer/` | Ghost Typer, a desktop app built with these skills. `.github/workflows/build.yml` packages it for Windows, macOS and Linux. |
 
 ## Setup
 
