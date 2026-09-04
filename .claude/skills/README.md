@@ -1,6 +1,7 @@
 # Installed Agent Skills
 
-70 skills vendored from 7 upstream repositories into `.claude/skills/`.
+70 skills vendored from 7 upstream repositories into `.claude/skills/`, plus
+one written here (`design-pipeline`).
 Claude Code picks up every directory here that contains a `SKILL.md`.
 
 ## Sources
@@ -107,6 +108,20 @@ Claude Code picks up every directory here that contains a `SKILL.md`.
 - **`ui-styling`** — Create beautiful, accessible user interfaces with shadcn/ui components (built on Radix UI + Tailwind), Tailwind CSS utility-first styling, and canvas-based visual designs. Use when building user…
 - **`ui-ux-pro-max`** — UI/UX design intelligence for web, mobile, and desktop. This skill should be used when designing, building, reviewing, or fixing interfaces, including pages, components, design systems,…
 - **`uiux-design`** *(upstream `design`)* — Comprehensive design skill: brand identity, design tokens, UI styling, logo generation (55 styles, Gemini, Atlas Cloud, or MuAPI AI), corporate identity program (50 deliverables, CIP mockups), HTML…
+
+## Local skills
+
+Not vendored — written for this repo.
+
+- **`design-pipeline`** — routes and sequences the seven design skills that
+  contradict each other when loaded together (`ui-ux-pro-max`,
+  `bencium-innovative-ux-designer`, `bencium-controlled-ux-designer`,
+  `ui-styling`, `apple-design`, `animation-vocabulary`, `improve`). Picks one of
+  three tracks — invent, build, audit — and loads only the skills whose rules
+  are compatible with it. It carries no design guidance itself; it exists
+  because those skills make mutually exclusive claims (see its Exclusivity
+  table) and loading them together makes the model follow whichever it read
+  last.
 
 ## Notes on naming
 
