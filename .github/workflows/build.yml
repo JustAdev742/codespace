@@ -11,6 +11,11 @@ on:
       - "apps/ghost-typer/**"
       - ".github/workflows/build.yml"
   workflow_dispatch:
+    inputs:
+      release_tag:
+        description: "Publish a Release with this tag, e.g. v1.0.0 (blank = just build)"
+        required: false
+        default: ""
 
 concurrency:
   group: build-${{ github.ref }}
@@ -72,7 +77,11 @@ jobs:
           if-no-files-found: error
 
   release:
-    if: startsWith(github.ref, 'refs/tags/v')
+    # A v* tag, or a manual run that names a tag. The action creates the tag
+    # itself through the API, so no tag has to be pushed by hand.
+    if: >-
+      startsWith(github.ref, 'refs/tags/v') ||
+      (github.event_name == 'workflow_dispatch' && inputs.release_tag != '')
     needs: build
     runs-on: ubuntu-latest
     permissions:
@@ -94,7 +103,8 @@ jobs:
 
       - uses: softprops/action-gh-release@v2
         with:
-          name: Ghost Typer ${{ github.ref_name }}
+          tag_name: ${{ inputs.release_tag || github.ref_name }}
+          name: Ghost Typer ${{ inputs.release_tag || github.ref_name }}
           files: rel/*
           body: |
             Download the one for your computer, then just run it. Nothing to install.
