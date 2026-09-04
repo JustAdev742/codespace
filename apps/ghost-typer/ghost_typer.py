@@ -44,8 +44,9 @@ Run
 
 Pausing and stopping
 --------------------
-    Esc  pauses, hides this window, and holds its place. Press it again and
-         typing carries on from exactly where it stopped.
+    Esc  pauses and hides this window completely, holding its place. Press
+         it again and the window comes back, gives you five seconds to click
+         into your document, then carries on from exactly where it stopped.
     F9   stops for good.
 
     Both work while another window is focused, and both can be reassigned by
@@ -1331,6 +1332,10 @@ FEEL_NOTES = {
 }
 NEWLINES = ["Shift+Enter (chat apps)", "Enter (documents)", "Space instead"]
 
+# After the window comes back from a pause, how long the user gets to click
+# into their target before typing carries on.
+RESUME_COUNTDOWN = 5
+
 COMPOSE_SIZE = (700, 660)
 RUN_SIZE = (560, 196)
 
@@ -2175,8 +2180,8 @@ function paintKeys() {
     chip.textContent = recording === which ? "press a key" : (boot ? boot.keys[which] : "");
   }
   if (boot) {
-    $("hint").textContent = `${boot.keys.pause} pauses and hides this window; press it again to carry on where it left off. ${boot.keys.stop} stops for good. Click either key above to reassign it.`;
-    $("runhint").textContent = `${boot.keys.pause} pauses and hides  ·  ${boot.keys.stop} stops`;
+    $("hint").textContent = `${boot.keys.pause} pauses and hides this window. Press it again and the window comes back, counts you in, then carries on where it left off. ${boot.keys.stop} stops for good. Click either key above to reassign it.`;
+    $("runhint").textContent = `${boot.keys.pause} hides and pauses  ·  press it again to come back  ·  ${boot.keys.stop} stops`;
   }
 }
 
@@ -2350,7 +2355,7 @@ const tour = (() => {
         body: "Preview shows exactly what will be typed, with a dry run of the mistakes. Try it here types into a scratch pad, so a first go can't touch anything." },
       { target: "#start", title: "6 · Start typing",
         body: "Press Start, then click into the window and field you want. The countdown gives you time to get there.",
-        keys: [[k.pause, "pauses and hides Ghost Typer; press it again to carry on"], [k.stop, "stops for good"]] },
+        keys: [[k.pause, "hides Ghost Typer and pauses. Press it again and the window comes back, then counts you in so you can click into your document before it carries on"], [k.stop, "stops for good"]] },
       { title: "That's it",
         body: "Replay this any time with the ? in the corner. Your settings are remembered between runs." },
     ];
@@ -2554,6 +2559,7 @@ class GhostTyper:
         self.abort = threading.Event()
         self.running = threading.Event()       # clear = paused
         self.running.set()
+        self.resuming = threading.Event()      # set = counting back in
         self.q: queue.Queue = queue.Queue()
         self.listener = None
         self.recorder = None
@@ -2915,6 +2921,12 @@ class GhostTyper:
     # --------------------------------------------------------------- run
 
     def _hide(self):
+        """Out of sight completely - taskbar button and all.
+
+        The pause key is the way back: nothing else reveals the window
+        again, which is the point when it is typing into someone else's
+        document.
+        """
         if self.testing or self.window is None:
             return
         try:
@@ -2922,25 +2934,70 @@ class GhostTyper:
         except Exception:
             pass
 
+    def _show(self):
+        if self.testing or self.window is None:
+            return
+        try:
+            self.window.show()
+        except Exception:
+            pass
+
+    def _paused_message(self):
+        return (f"Paused and hidden. Press "
+                f"{key_label(self.hotkeys['pause'])} to bring it back.")
+
     def _toggle_pause(self):
         if self.state not in (self.COUNTDOWN, self.TYPING):
             return
+
+        if self.resuming.is_set():
+            # Pressed again while it was counting back in: hide and hold.
+            self.resuming.clear()
+            self._push(type="status", tone="warn", text=self._paused_message())
+            self._hide()
+            return
+
         if self.running.is_set():
+            # Bank the time left before touching the window, so a slow
+            # window manager cannot eat into the countdown.
             self.frozen_left = self.deadline - time.perf_counter()
             self.running.clear()
+            self._push(type="status", tone="warn", text=self._paused_message())
+            self._hide()
+            return
+
+        # Coming back. Showing the window takes keyboard focus with it, so
+        # typing cannot start in the same breath - the keystrokes would land
+        # in this window instead of the target. Show, then count the user
+        # back into place.
+        self._show()
+        self.resuming.set()
+        threading.Thread(target=self._resume_countdown, daemon=True).start()
+
+    def _resume_countdown(self):
+        end = time.perf_counter() + RESUME_COUNTDOWN
+        while self.resuming.is_set():
+            if self.abort.is_set():
+                self.resuming.clear()
+                return
+            left = end - time.perf_counter()
+            if left <= 0:
+                break
             self._push(type="status", tone="warn",
-                       text=f"Paused. Press {key_label(self.hotkeys['pause'])} "
-                            f"to carry on.")
-            self._hide()
-        else:
-            # Stay hidden on resume: showing the window would steal focus
-            # from the target and the rest of the text would land here.
-            self._hide()
-            self.deadline = time.perf_counter() + self.frozen_left
-            self.running.set()
-            self._push(type="status", tone="good",
-                       text="Typing…" if self.state == self.TYPING
-                       else "Counting down…")
+                       text=f"Click back into the window you want, "
+                            f"then typing carries on in "
+                            f"{max(1, math.ceil(left))}…")
+            self._push(type="bar", frac=1 - left / RESUME_COUNTDOWN,
+                       tone="warn")
+            time.sleep(0.1)
+        if not self.resuming.is_set():
+            return                       # a second press put it back to sleep
+        self.resuming.clear()
+        self.deadline = time.perf_counter() + self.frozen_left
+        self.running.set()
+        self._push(type="status", tone="good",
+                   text="Typing…" if self.state == self.TYPING
+                   else "Counting down…")
 
     def _countdown(self, seconds):
         while self.state == self.COUNTDOWN:
@@ -3084,6 +3141,7 @@ class GhostTyper:
         self._stop_listener()
         self.abort.clear()
         self.running.set()
+        self.resuming.clear()
         was_testing, self.testing = self.testing, False
         if self.window is not None:
             try:
