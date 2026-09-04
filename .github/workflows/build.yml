@@ -81,6 +81,36 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           path: out
+
+      # GitHub turns spaces in an asset name into dots in its download URL,
+      # so give the files plain names and the links stay predictable.
+      - name: Name the downloads
+        run: |
+          mkdir -p rel
+          mv "out/ghost-typer-windows/Ghost Typer.exe"   "rel/GhostTyper-Windows.exe"
+          mv "out/ghost-typer-macos/Ghost Typer.app.zip" "rel/GhostTyper-macOS.zip"
+          mv "out/ghost-typer-linux/ghost-typer"         "rel/GhostTyper-Linux"
+          ls -l rel
+
       - uses: softprops/action-gh-release@v2
         with:
-          files: out/**/*
+          name: Ghost Typer ${{ github.ref_name }}
+          files: rel/*
+          body: |
+            Download the one for your computer, then just run it. Nothing to install.
+
+            | | Download |
+            |---|---|
+            | **Windows** | `GhostTyper-Windows.exe` |
+            | **macOS** | `GhostTyper-macOS.zip` (unzip, then open) |
+            | **Linux** | `GhostTyper-Linux` (`chmod +x` first) |
+
+            **Windows:** SmartScreen warns on first launch because the app is not
+            code-signed. Click **More info** then **Run anyway**.
+
+            **macOS:** right-click the app and choose **Open** the first time, and
+            grant Accessibility permission when asked (System Settings → Privacy &
+            Security → Accessibility) — the app needs it to type for you.
+
+            A short tour runs the first time. The `?` in the corner replays it.
+            If anything misbehaves, `~/.ghost_typer.log` has the trail.
