@@ -1336,8 +1336,9 @@ NEWLINES = ["Shift+Enter (chat apps)", "Enter (documents)", "Space instead"]
 # into their target before typing carries on.
 RESUME_COUNTDOWN = 5
 
+# Only the opening size. After that the page measures itself: see fit().
 COMPOSE_SIZE = (700, 660)
-RUN_SIZE = (560, 196)
+MIN_SIZE = (460, 200)
 
 
 def key_label(key) -> str:
@@ -1520,7 +1521,13 @@ button { cursor: pointer; border: 0; background: none; padding: 0; }
 :focus { outline: none; }
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
 
-#app { padding: 20px 24px 18px; display: flex; flex-direction: column; gap: 0; min-height: 100%; }
+/* The scroller. Whatever the window size, DPI or font metrics, nothing can
+   end up unreachable: if it does not fit, it scrolls. */
+#app {
+  height: 100%; overflow-y: auto; overflow-x: hidden;
+  scrollbar-gutter: stable;
+  padding: 20px 24px 18px; display: flex; flex-direction: column; gap: 0;
+}
 
 /* ----------------------------------------------------------- compose */
 #compose { display: flex; flex-direction: column; transition: opacity 180ms var(--ease-out); }
@@ -2107,6 +2114,61 @@ function segmented(root, onChange) {
   return { set, get: () => current, refresh };
 }
 
+/* ---------- window sizing
+   The old code asked for three hardcoded sizes. They were guesses at the
+   content height, they ignored the window chrome (resize() sets the OUTER
+   size, so the title bar ate the bottom of the page), and switching modes
+   yanked the width about. Instead: measure what the layout actually needs,
+   learn the chrome from the result, and never touch the width. */
+let chromeH = 39;                 // window height minus viewport; corrected below
+let sizing = false, sizeQueued = false;
+
+function contentHeight() {
+  const app = $("app"), cs = getComputedStyle(app);
+  const top = app.getBoundingClientRect().top + app.scrollTop;
+  let bottom = null;
+  for (const el of app.children) {
+    const es = getComputedStyle(el);
+    if (es.position === "fixed" || es.display === "none") continue;  // sheets, tour
+    const r = el.getBoundingClientRect();
+    if (!r.height) continue;
+    const b = r.bottom + app.scrollTop + (parseFloat(es.marginBottom) || 0);
+    bottom = bottom === null ? b : Math.max(bottom, b);
+  }
+  if (bottom === null) return null;
+  let need = bottom - top + (parseFloat(cs.paddingBottom) || 0);
+  // A panel that is on its way open is still short. Ask for the height it is
+  // heading for, so the window grows first and the panel unfolds into it
+  // rather than being clipped for the length of the animation.
+  const adv = $("advanced");
+  if (adv && adv.dataset.open === "true") {
+    const inner = adv.firstElementChild;
+    if (inner) need += Math.max(0, inner.scrollHeight - adv.getBoundingClientRect().height);
+  }
+  return Math.ceil(need);
+}
+
+async function fit() {
+  if (sizing) { sizeQueued = true; return; }
+  sizing = true;
+  try {
+    do {
+      sizeQueued = false;
+      const need = contentHeight();
+      if (need === null) break;
+      await call("resize_to", Math.round(need + chromeH));
+      await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+      // What we asked for should have left exactly `need` of viewport. Any
+      // gap is chrome we guessed wrong; correct it and settle.
+      const err = need - innerHeight;
+      if (Math.abs(err) > 2 && Math.abs(err) < 500) {
+        chromeH += err;
+        await call("resize_to", Math.round(need + chromeH));
+      }
+    } while (sizeQueued);
+  } finally { sizing = false; }
+}
+
 /* ---------- state */
 const S = {
   feel: "Natural", layout: 0, wpm: 85, acc: 96, hes: 50, wait: 10, cols: 0,
@@ -2207,14 +2269,14 @@ function setMode(next) {
     const go = () => {
       if (mode !== "run") return;          // a stop landed during the fade
       clearTimeout(modeTimer); modeWait = null;
-      compose.classList.remove("leaving"); app.dataset.mode = "run"; call("resize", "run");
+      compose.classList.remove("leaving"); app.dataset.mode = "run"; fit();
     };
     if (reduced.matches) { go(); return; }
     modeWait = (e) => { if (e.target === compose && e.propertyName === "opacity") go(); };
     compose.addEventListener("transitionend", modeWait, { once: true });
     modeTimer = setTimeout(go, 260);       // fallback if the event never fires
   } else {
-    app.dataset.mode = "compose"; compose.classList.add("leaving"); call("resize", "compose");
+    app.dataset.mode = "compose"; compose.classList.add("leaving"); fit();
     requestAnimationFrame(() => requestAnimationFrame(() => { compose.classList.remove("leaving"); feelSeg.refresh(); }));
   }
 }
@@ -2252,11 +2314,11 @@ $("advtoggle").addEventListener("click", () => {
   if (advWait) { adv.removeEventListener("transitionend", advWait); advWait = null; }
   if (open) {
     // grow the window first, then let the panel unfold into the room
-    call("resize", "compose-open"); adv.dataset.open = "true";
+    adv.dataset.open = "true"; fit();
   } else {
     // fold the panel first; shrinking the window early would clip it
     adv.dataset.open = "false";
-    const shrink = () => { clearTimeout(advTimer); advWait = null; if (adv.dataset.open === "false") call("resize", "compose"); };
+    const shrink = () => { clearTimeout(advTimer); advWait = null; if (adv.dataset.open === "false") fit(); };
     if (reduced.matches) { shrink(); return; }
     advWait = (e) => { if (e.target === adv && e.propertyName === "grid-template-rows") shrink(); };
     adv.addEventListener("transitionend", advWait, { once: true });
@@ -2498,6 +2560,13 @@ async function init() {
   }
   loading = false;
   $("text").focus();
+  fit();
+  // the textarea has a resize grip; follow it rather than clip it
+  if (window.ResizeObserver) {
+    let t = 0;
+    new ResizeObserver(() => { clearTimeout(t); t = setTimeout(fit, 120); })
+      .observe($("text"));
+  }
   if (!S.tour_seen) setTimeout(tour.start, 350);   // first run: after the page settles
 }
 if (api()) init(); else addEventListener("pywebviewready", init, {once: true});
@@ -2527,8 +2596,8 @@ class Api:
     def set_on_top(self, on):
         return self._app.set_on_top(on)
 
-    def resize(self, which):
-        return self._app.resize(which)
+    def resize_to(self, height):
+        return self._app.resize_to(height)
 
     def count(self, text, layout, cols, strip):
         return self._app.count(text, layout, cols, strip)
@@ -2655,19 +2724,37 @@ class GhostTyper:
             except Exception:
                 pass
 
-    def resize(self, which):
-        if self.window is None:
-            return
-        if which == "run":
-            w, h = RUN_SIZE
-        elif which == "compose-open":
-            w, h = COMPOSE_SIZE[0], COMPOSE_SIZE[1] + 360
-        else:
-            w, h = COMPOSE_SIZE
+    def _screen_limit(self):
+        """Height of the primary display, in the same logical pixels the
+        window is measured in, so the window can never outgrow the screen.
+
+        The primary is the right answer on one monitor and a fair guess on
+        several; being clamped only costs a scrollbar now that the page can
+        scroll, while being too generous puts the buttons off-screen.
+        """
         try:
-            self.window.resize(w, h)
+            return int(webview.screens[0].height * 0.92)
+        except Exception:
+            return 100000        # no idea: let the page ask for what it likes
+
+    def resize_to(self, height):
+        """Set the window height only; the width stays where the user left it.
+
+        The page measures what it needs and adds the chrome it has learned,
+        so nothing here guesses. All this does is keep the window on screen.
+        """
+        if self.window is None:
+            return None
+        try:
+            wanted = int(height)
+        except (TypeError, ValueError):
+            return None
+        wanted = max(MIN_SIZE[1], min(wanted, self._screen_limit()))
+        try:
+            self.window.resize(self.window.width, wanted)
         except Exception:
             pass
+        return wanted
 
     def count(self, text, layout, cols, strip):
         body = text or ""
@@ -3205,7 +3292,7 @@ def main():
     window = webview.create_window(
         "Ghost Typer", html=page_html(), js_api=Api(app),
         width=COMPOSE_SIZE[0], height=COMPOSE_SIZE[1],
-        min_size=(520, 160), on_top=bool(app.settings["ontop"]),
+        min_size=MIN_SIZE, on_top=bool(app.settings["ontop"]),
         background_color="#1E2030", text_select=True)
     app.attach(window)
     debug = "--debug" in sys.argv          # opens the web inspector
