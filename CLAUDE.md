@@ -60,14 +60,24 @@ Three ways to get it into a session that is not this repository:
 
   ```json
   { "hooks": { "SessionStart": [ { "hooks": [ { "type": "command",
-      "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/session-start.sh" } ] } ] } }
+      "command": "bash \"${CLAUDE_PROJECT_DIR:-.}/.claude/hooks/session-start.sh\"" } ] } ] } }
   ```
 
-  The hook runs synchronously in web sessions only, so the skills exist before the first
-  turn; if the toolkit cannot be fetched it says so and lets the session start anyway.
-  Once merged into that repository's default branch every new session there has the toolkit.
+  The hook runs synchronously, on the web and on your own computer alike, so the skills exist
+  before the first turn; the clone is cached, so it is quick after the first run, and if the
+  toolkit cannot be fetched it says so and lets the session start anyway. Once merged into
+  that repository's default branch every new session there has the toolkit.
 
-- **By hand** - `bash scripts/install-toolkit.sh` from a checkout.
+- **By hand, once, on your own computer** - for repositories without the hook. A user-level
+  install persists on that machine across every repo, branch and session until you run it again
+  to update. Paste this into any Claude Code session on that computer (Windows included: its
+  Bash tool runs in Git Bash) and it does the rest:
+
+  ```
+  git clone --depth 1 https://github.com/JustAdev742/codespace /tmp/claude-toolkit && bash /tmp/claude-toolkit/scripts/install-toolkit.sh
+  ```
+
+  On Windows the MCP servers are registered through `cmd /c npx`, which is what stdio servers need there.
 
 After a user-level install the skill scripts live next to their skill, e.g.
 `python3 ~/.claude/skills/ui-ux-pro-max/scripts/search.py ...`; the installer leaves a note

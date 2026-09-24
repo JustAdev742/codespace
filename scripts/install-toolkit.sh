@@ -19,9 +19,13 @@
 # at run time; `npm run setup` in this repo installs the heavier extras (browsers, python deps).
 #
 # Knobs: CLAUDE_CONFIG_DIR (default ~/.claude), TOOLKIT_USE_CLI=0 to write the MCP config
-# directly instead of through `claude mcp add`.
+# directly instead of through `claude mcp add`. Works on Linux, macOS and Windows (Git Bash).
 set -u
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+# python3 on Linux and macOS; on Windows it is usually `python` or the `py` launcher
+if command -v python3 >/dev/null 2>&1; then PY=python3
+elif command -v python >/dev/null 2>&1; then PY=python
+else PY="py -3"; fi
 DEST="${CLAUDE_CONFIG_DIR:-$HOME/.claude}"
 mkdir -p "$DEST/skills" "$DEST/agents" "$DEST/commands"
 
@@ -40,7 +44,7 @@ for src in "$HERE"/.claude/agents/*.md "$HERE"/.claude/commands/*.md; do
 done
 
 # ---- MCP servers at user scope: the CLI is the supported way; fall back to the file it writes
-python3 - "$HERE/.mcp.json" "$HOME/.claude.json" <<'PY'
+$PY - "$HERE/.mcp.json" "$HOME/.claude.json" <<'PY'
 import json, os, shutil, subprocess, sys
 want = json.load(open(sys.argv[1]))["mcpServers"]
 cfg_path = sys.argv[2]
@@ -48,18 +52,22 @@ load = lambda: json.load(open(cfg_path)) if os.path.exists(cfg_path) else {}
 missing = {k: v for k, v in want.items() if k not in (load().get("mcpServers") or {})}
 if not missing:
     print(f"mcp: all {len(want)} user-scope servers already registered"); sys.exit(0)
+# On Windows npx is a .cmd file, which a stdio server cannot spawn directly: go through cmd /c.
+win = sys.platform == "win32"
+launch = lambda spec: (["cmd", "/c", spec["command"], *spec.get("args", [])] if win else [spec["command"], *spec.get("args", [])])
 cli = shutil.which("claude") if os.environ.get("TOOLKIT_USE_CLI", "1") != "0" else None
 done = 0
 if cli:
     for name, spec in missing.items():
-        r = subprocess.run([cli, "mcp", "add", "--scope", "user", name, "--", spec["command"], *spec.get("args", [])],
+        r = subprocess.run([cli, "mcp", "add", "--scope", "user", name, "--", *launch(spec)],
                            capture_output=True, text=True, timeout=60)
         if r.returncode == 0: done += 1
         else: print(f"mcp: `claude mcp add {name}` failed ({r.stderr.strip()[:100]}), writing the config directly")
 if done < len(missing):
     cfg = load(); have = cfg.setdefault("mcpServers", {})
     for k, v in want.items():
-        if k not in have: have[k] = {"type": "stdio", **v}
+        if k not in have:
+            cmd, *args = launch(v); have[k] = {"type": "stdio", "command": cmd, "args": args}
     tmp = cfg_path + ".tmp"
     with open(tmp, "w") as f: json.dump(cfg, f, indent=2)
     os.replace(tmp, cfg_path)
@@ -67,7 +75,7 @@ print(f"mcp: registered {len(missing)} user-scope server(s): {', '.join(missing)
 PY
 
 # ---- permissions: merge the allow-list into the user settings
-python3 - "$HERE/.claude/settings.json" "$DEST/settings.json" "$DEST" <<'PY'
+$PY - "$HERE/.claude/settings.json" "$DEST/settings.json" "$DEST" <<'PY'
 import json, os, sys
 src = json.load(open(sys.argv[1])); dst_path, dest = sys.argv[2], sys.argv[3]
 dst = json.load(open(dst_path)) if os.path.exists(dst_path) else {}
@@ -85,7 +93,7 @@ print(f"permissions: {len(added)} allow entries added, {len(allow)} kept")
 PY
 
 # ---- a note in the user CLAUDE.md so the skill scripts are found at their new path
-python3 - "$DEST/CLAUDE.md" "$DEST" <<'PY'
+$PY - "$DEST/CLAUDE.md" "$DEST" <<'PY'
 import os, re, sys
 path, dest = sys.argv[1], sys.argv[2]
 start, end = "<!-- toolkit:start -->", "<!-- toolkit:end -->"
