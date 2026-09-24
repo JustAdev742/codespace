@@ -14,6 +14,7 @@ slash commands, MCP servers and scripts that make them work.
 | `.mcp.json` | 4 MCP servers: `accesslint`, `playwright`, `chrome-devtools`, `shadcn`. |
 | `scripts/design-audit.mjs` | Headless heuristic design/a11y audit. `npm run audit`. |
 | `scripts/setup.sh` | Installs every runtime dependency. `npm run setup`. |
+| `scripts/install-toolkit.sh` | Installs the whole toolkit at user level (`~/.claude`) so any repo, branch or session has it. `scripts/session-start-hook.sh` is the hook other repos copy to run it. |
 | `requirements.txt` | Python deps, annotated with the skill that needs each. |
 | `apps/ghost-typer/` | Ghost Typer, a desktop app built with these skills. `.github/workflows/build.yml` packages it for Windows, macOS and Linux. |
 
@@ -35,6 +36,42 @@ python3 -m venv .venv && . .venv/bin/activate && pip install -r requirements.txt
 
 Three skills also want system packages: `poppler-utils` (anthropics-pdf),
 `ffmpeg` (slack-gif-creator), `jq` (emotion-statusline).
+
+## Use the toolkit in any repository
+
+Project skills only exist on the branch that carries them. `scripts/install-toolkit.sh`
+installs the toolkit at **user level** instead (`~/.claude`): the skills (plus `shared/`),
+the `design-review` subagent, `/design-plan` and `/design-review`, the four MCP servers at
+user scope, and the permission allow-list. It is idempotent and touches nothing else under
+`~/.claude` - your own skills, claude.ai synced skills, sessions and credentials stay put.
+
+Three ways to get it into a session that is not this repository:
+
+- **The environment's setup script** - every repository, every branch, every session. In a
+  session's title bar open the cloud environment menu, Edit, Setup script, and add:
+
+  ```bash
+  git clone --depth 1 https://github.com/JustAdev742/codespace /tmp/claude-toolkit && bash /tmp/claude-toolkit/scripts/install-toolkit.sh
+  ```
+
+- **A SessionStart hook in the other repository** - that repository, on any branch that
+  carries the two files. Copy `scripts/session-start-hook.sh` to
+  `.claude/hooks/session-start.sh` there and register it in its `.claude/settings.json`:
+
+  ```json
+  { "hooks": { "SessionStart": [ { "hooks": [ { "type": "command",
+      "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/session-start.sh" } ] } ] } }
+  ```
+
+  The hook runs synchronously in web sessions only, so the skills exist before the first
+  turn; if the toolkit cannot be fetched it says so and lets the session start anyway.
+  Once merged into that repository's default branch every new session there has the toolkit.
+
+- **By hand** - `bash scripts/install-toolkit.sh` from a checkout.
+
+After a user-level install the skill scripts live next to their skill, e.g.
+`python3 ~/.claude/skills/ui-ux-pro-max/scripts/search.py ...`; the installer leaves a note
+saying so in `~/.claude/CLAUDE.md`.
 
 ## MCP servers
 
