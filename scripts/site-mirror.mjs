@@ -33,7 +33,7 @@
  * Disallow rules are obeyed, one page loads at a time with the robots.txt Crawl-delay (default
  * 2s) between loads, and analytics, ad and error-reporting requests are blocked. A 429 or 503
  * reply is waited out (Retry-After, else a doubling backoff) and slows the rest of the crawl by
- * half; five refusals in a row stop it, and a later run resumes.
+ * half, up to 5 minutes between pages; five refusals in a row stop it, and a later run resumes.
  *
  * What no mirror can get is code that runs on the server: the backend, database and the CMS's
  * templates. Carts, search, forms, logins and checkout need that backend, so they do not work
@@ -560,7 +560,7 @@ async function crawl(args, out) {
       `${summary.frames} frames  ${url}${rec.error ? '  ' + rec.error : ''}` +
       `${rec.jsErrors ? `  [${rec.jsErrors} JS errors, first: ${rec.firstJsError.slice(0, 90)}]` : ''}`);
     if (rec.throttled) {
-      delay = Math.min(delay * 1.5, 60000);
+      delay = Math.max(delay, Math.min(delay * 1.5, 300000)); // never shorter than asked for
       console.log(`  Rate-limited ${rec.throttled}x on this page; now ${delay / 1000}s between pages.`);
     }
     refused = !rec.ok && [403, 429, 503].includes(rec.status) ? refused + 1 : 0;
