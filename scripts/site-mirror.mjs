@@ -10,11 +10,15 @@
  *
  * Usage:
  *   node scripts/site-mirror.mjs --url https://example.com [--out mirror-output] [--limit N]
- *        [--delay SECONDS] [--block REGEX] [--width 1440] [--height 900] [--max-fetch 3000]
- *        [--finalize-only]
+ *        [--delay SECONDS] [--block REGEX] [--locale en-US] [--width 1440] [--height 900]
+ *        [--max-fetch 3000] [--finalize-only]
  *
  * --block skips requests whose URL matches REGEX. Use it for calls that do not change how a page
  * looks (cart, account, pings) to cut the load each page puts on the site.
+ * --locale is the language the browser reports (default en-US). Set it to the site's own, e.g.
+ * en-AU, so prices and dates format as its visitors see them. It is always set because Chromium
+ * started with no LANG reports en-US@posix, which makes toLocaleString throw; Square Online's
+ * product pages then render empty.
  *
  * Output, in --out:
  *   site/            the offline copy: open site/index.html, or serve the folder
@@ -83,7 +87,7 @@ function retryAfterMs(header, attempt) {
 }
 
 function parseArgs(argv) {
-  const args = { out: 'mirror-output', limit: Infinity, width: 1440, height: 900, maxFetch: 3000 };
+  const args = { out: 'mirror-output', limit: Infinity, width: 1440, height: 900, maxFetch: 3000, locale: 'en-US' };
   for (let i = 2; i < argv.length; i++) {
     const a = argv[i];
     if (a === '--url') args.url = argv[++i];
@@ -93,6 +97,7 @@ function parseArgs(argv) {
     else if (a === '--block') args.block = new RegExp(argv[++i]);
     else if (a === '--width') args.width = Number(argv[++i]);
     else if (a === '--height') args.height = Number(argv[++i]);
+    else if (a === '--locale') args.locale = argv[++i];
     else if (a === '--max-fetch') args.maxFetch = Number(argv[++i]);
     else if (a === '--finalize-only') args.finalizeOnly = true;
     else if (a === '--executable') args.executable = argv[++i];
@@ -453,7 +458,7 @@ async function crawl(args, out) {
 
   const browser = await launchBrowser(args.executable);
   const context = await browser.newContext({
-    viewport: { width: args.width, height: args.height }, deviceScaleFactor: 1, serviceWorkers: 'block',
+    viewport: { width: args.width, height: args.height }, deviceScaleFactor: 1, serviceWorkers: 'block', locale: args.locale,
   });
   const robotsRes = await context.request.get(new URL('/robots.txt', start).href, { timeout: 30000 }).catch(() => null);
   const robotsText = robotsRes && robotsRes.ok() ? await robotsRes.text() : '';
@@ -552,7 +557,8 @@ async function crawl(args, out) {
     summary.frames = frames ? frames.length - 1 : 0;
     await appendJsonl(join(work, 'pages.jsonl'), summary);
     console.log(`[${i + 1}/${queue.length}] ${rec.ok ? 'ok ' : 'ERR'} ${rec.status ?? '-'} ${(rec.ms / 1000).toFixed(1)}s ` +
-      `${summary.frames} frames  ${url}${rec.error ? '  ' + rec.error : ''}`);
+      `${summary.frames} frames  ${url}${rec.error ? '  ' + rec.error : ''}` +
+      `${rec.jsErrors ? `  [${rec.jsErrors} JS errors, first: ${rec.firstJsError.slice(0, 90)}]` : ''}`);
     if (rec.throttled) {
       delay = Math.min(delay * 1.5, 60000);
       console.log(`  Rate-limited ${rec.throttled}x on this page; now ${delay / 1000}s between pages.`);
@@ -578,6 +584,12 @@ async function capturePage(context, url, pending, fromSitemap) {
     else net.failed++;
     settle();
   });
+  // A page can load fine and still render half empty when its own code throws, so count errors.
+  // Frameworks log the exceptions they catch with console.error; failed loads of blocked requests are noise.
+  const js = { errors: 0, first: null };
+  const jsError = (text) => { js.errors++; js.first = js.first || text.slice(0, 200); };
+  page.on('pageerror', (e) => jsError(String(e)));
+  page.on('console', (m) => { if (m.type() === 'error' && !/^Failed to load resource/.test(m.text())) jsError(m.text()); });
   const t0 = Date.now();
   const rec = { url, ok: false };
   try {
@@ -621,6 +633,7 @@ async function capturePage(context, url, pending, fromSitemap) {
     rec.ok = rec.status < 400 && rec.frames[rec.frames.length - 1].html != null;
   } finally {
     Object.assign(rec, { ms: Date.now() - t0, requests: net.requests, blocked: net.blocked, failedRequests: net.failed });
+    if (js.errors) Object.assign(rec, { jsErrors: js.errors, firstJsError: js.first });
     await page.close().catch(() => {});
   }
   return rec;
@@ -834,6 +847,7 @@ async function finalize(args, out) {
     pages: { saved: okPages.length, failed: failed.length },
     assets: { stored: assets.size, fetchedInFinalize: fetched, byType },
     referencesStillLive: unresolvedTotal,
+    pagesWithJsErrors: okPages.filter((p) => p.jsErrors).length,
     platformSource: sourceNote,
     pageDetail: [...records.values()],
   };
