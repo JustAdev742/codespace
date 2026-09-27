@@ -5,4 +5,5 @@ __pycache__/
 *.pyc
 .vercel/
 audit-output/
+mirror-output/
 .claude/settings.local.json

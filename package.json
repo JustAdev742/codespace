@@ -7,7 +7,8 @@
   "scripts": {
     "setup": "bash scripts/setup.sh",
     "audit": "node scripts/design-audit.mjs",
-    "audit:file": "node scripts/design-audit.mjs --file ./index.html"
+    "audit:file": "node scripts/design-audit.mjs --file ./index.html",
+    "mirror": "node scripts/site-mirror.mjs"
   },
   "devDependencies": {
     "playwright": "^1.49.0"

@@ -6,6 +6,7 @@ plus the subagent, slash commands, MCP servers and scripts that make them run.
 ```bash
 npm run setup      # install runtime dependencies
 npm run audit      # headless design + a11y audit
+npm run mirror -- --url https://example.com   # offline copy of a site, JS-built ones included
 ```
 
 - **Skills** — `.claude/skills/` (70). Provenance and pinned commits in

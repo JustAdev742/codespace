@@ -13,6 +13,7 @@ slash commands, MCP servers and scripts that make them work.
 | `.claude/plugins/emotion-statusline/` | Vendored, **not active**. See below. |
 | `.mcp.json` | 4 MCP servers: `accesslint`, `playwright`, `chrome-devtools`, `shadcn`. |
 | `scripts/design-audit.mjs` | Headless heuristic design/a11y audit. `npm run audit`. |
+| `scripts/site-mirror.mjs` | Offline copy of a website, including ones built in the browser (Square Online, Wix, SPAs) that wget saves blank. Polite: sitemap, robots.txt, crawl delay. `npm run mirror -- --url <site>`. |
 | `scripts/setup.sh` | Installs every runtime dependency. `npm run setup`. |
 | `scripts/install-toolkit.sh` | Installs the whole toolkit at user level (`~/.claude`) so any repo, branch or session has it. `scripts/session-start-hook.sh` is the hook other repos copy to run it. |
 | `requirements.txt` | Python deps, annotated with the skill that needs each. |
