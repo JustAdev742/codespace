@@ -10,7 +10,11 @@
  *
  * Usage:
  *   node scripts/site-mirror.mjs --url https://example.com [--out mirror-output] [--limit N]
- *        [--delay SECONDS] [--width 1440] [--height 900] [--max-fetch 3000] [--finalize-only]
+ *        [--delay SECONDS] [--block REGEX] [--width 1440] [--height 900] [--max-fetch 3000]
+ *        [--finalize-only]
+ *
+ * --block skips requests whose URL matches REGEX. Use it for calls that do not change how a page
+ * looks (cart, account, pings) to cut the load each page puts on the site.
  *
  * Output, in --out:
  *   site/            the offline copy: open site/index.html, or serve the folder
@@ -23,7 +27,9 @@
  *
  * Politeness: pages come from the sitemap (or from links, if there is none), robots.txt
  * Disallow rules are obeyed, one page loads at a time with the robots.txt Crawl-delay (default
- * 2s) between loads, and analytics, ad and error-reporting requests are blocked.
+ * 2s) between loads, and analytics, ad and error-reporting requests are blocked. A 429 or 503
+ * reply is waited out (Retry-After, else a doubling backoff) and slows the rest of the crawl by
+ * half; five refusals in a row stop it, and a later run resumes.
  *
  * What no mirror can get is code that runs on the server: the backend, database and the CMS's
  * templates. Carts, search, forms, logins and checkout need that backend, so they do not work
@@ -68,6 +74,14 @@ const isTracker = (u) =>
   TRACKER_HOSTS.some((h) => u.hostname === h || u.hostname.endsWith('.' + h)) || TRACKER_PATHS.test(u.pathname);
 const escapeAttr = (s) => s.replace(/&/g, '&amp;').replace(/"/g, '&quot;');
 
+// How long a 429 or 503 asks us to wait: its Retry-After (seconds or a date), else 30s doubling,
+// kept within 30s-10min.
+function retryAfterMs(header, attempt) {
+  let s = 30 * 2 ** attempt;
+  if (header != null) s = Number.isNaN(Number(header)) ? (Date.parse(header) - Date.now()) / 1000 : Number(header);
+  return 1000 * Math.round(Math.min(Math.max(s || 0, 30), 600));
+}
+
 function parseArgs(argv) {
   const args = { out: 'mirror-output', limit: Infinity, width: 1440, height: 900, maxFetch: 3000 };
   for (let i = 2; i < argv.length; i++) {
@@ -76,6 +90,7 @@ function parseArgs(argv) {
     else if (a === '--out') args.out = argv[++i];
     else if (a === '--limit') args.limit = Number(argv[++i]);
     else if (a === '--delay') args.delay = Number(argv[++i]);
+    else if (a === '--block') args.block = new RegExp(argv[++i]);
     else if (a === '--width') args.width = Number(argv[++i]);
     else if (a === '--height') args.height = Number(argv[++i]);
     else if (a === '--max-fetch') args.maxFetch = Number(argv[++i]);
@@ -444,7 +459,7 @@ async function crawl(args, out) {
   const robotsText = robotsRes && robotsRes.ok() ? await robotsRes.text() : '';
   await writeFile(join(work, 'robots.txt'), robotsText);
   const robots = parseRobots(robotsText);
-  const delay = 1000 * (args.delay ?? robots.delay ?? 2);
+  let delay = 1000 * (args.delay ?? robots.delay ?? 2);
   const sameSite = (u) => u.host === start.host;
   const wanted = (s) => {
     try {
@@ -480,7 +495,9 @@ async function crawl(args, out) {
     let u;
     try { u = new URL(req.url()); } catch { return route.continue(); }
     if (!/^https?:$/.test(u.protocol)) return route.continue();
-    if (isTracker(u) || (sameSite(u) && !robots.allowed(u))) return route.abort('blockedbyclient');
+    if (isTracker(u) || (sameSite(u) && !robots.allowed(u)) || (args.block && args.block.test(u.href))) {
+      return route.abort('blockedbyclient');
+    }
     // Third-party iframes stay live links in the copy, so their players need not load.
     let childFrame = false;
     try { childFrame = req.isNavigationRequest() && !!req.frame().parentFrame(); } catch {}
@@ -519,14 +536,14 @@ async function crawl(args, out) {
     })());
   });
 
-  let count = 0;
+  let count = 0, refused = 0;
   for (let i = 0; i < queue.length; i++) {
     const url = queue[i];
     if (done.has(pageKey(url))) continue;
     if (count++ > 0) await sleep(delay);
     const rec = await capturePage(context, url, pending, fromSitemap);
-    if (rec.raw) await saveFile(join(out, 'raw', pageFile(new URL(url))), rec.raw);
-    if (rec.frames) {
+    if (rec.ok) {
+      if (rec.raw) await saveFile(join(out, 'raw', pageFile(new URL(url))), rec.raw);
       rec.work = posix.join('pages', hash(url, 16) + '.json');
       await writeFile(join(work, rec.work), JSON.stringify({ url, finalUrl: rec.finalUrl, frames: rec.frames }));
     }
@@ -536,6 +553,15 @@ async function crawl(args, out) {
     await appendJsonl(join(work, 'pages.jsonl'), summary);
     console.log(`[${i + 1}/${queue.length}] ${rec.ok ? 'ok ' : 'ERR'} ${rec.status ?? '-'} ${(rec.ms / 1000).toFixed(1)}s ` +
       `${summary.frames} frames  ${url}${rec.error ? '  ' + rec.error : ''}`);
+    if (rec.throttled) {
+      delay = Math.min(delay * 1.5, 60000);
+      console.log(`  Rate-limited ${rec.throttled}x on this page; now ${delay / 1000}s between pages.`);
+    }
+    refused = !rec.ok && [403, 429, 503].includes(rec.status) ? refused + 1 : 0;
+    if (refused >= 5) {
+      console.log('The site refused 5 pages in a row, so stopping. Run the same command later to resume.');
+      break;
+    }
   }
   await Promise.allSettled([...pending.values()]);
   await browser.close();
@@ -555,18 +581,31 @@ async function capturePage(context, url, pending, fromSitemap) {
   const t0 = Date.now();
   const rec = { url, ok: false };
   try {
-    let res = null;
-    for (let attempt = 0; attempt < 2 && !res; attempt++) {
-      if (attempt) await sleep(10000);
+    let res = null, networkRetry = true;
+    for (let attempt = 0; attempt < 4; attempt++) {
       res = await page.goto(url, { waitUntil: 'load', timeout: 60000 }).catch((e) => {
         rec.error = e.message.split('\n')[0];
         return null;
       });
+      if (!res) {
+        if (!networkRetry) break;
+        networkRetry = false;
+        await sleep(10000);
+        continue;
+      }
+      if (res.status() !== 429 && res.status() !== 503) break;
+      // The site asked us to slow down: wait as long as it says, then try again.
+      rec.throttled = (rec.throttled || 0) + 1;
+      if (attempt === 3) break;
+      const wait = retryAfterMs(res.headers()['retry-after'], attempt);
+      console.log(`  ${res.status()} from the site; waiting ${wait / 1000}s before retrying ${url}`);
+      await sleep(wait);
     }
     if (!res) return rec;
     delete rec.error;
     rec.status = res.status();
     rec.finalUrl = page.url();
+    if (rec.status >= 400) return rec; // an error page: nothing to keep, so stop asking the site for its assets
     rec.raw = await res.body().catch(() => null);
     await networkQuiet(page, net, 1000, 20000);
     await autoScroll(page);
@@ -661,6 +700,8 @@ async function finalize(args, out) {
   const records = new Map();
   for (const p of await loadJsonl(join(work, 'pages.jsonl'))) records.set(pageKey(p.url), p);
   const okPages = [...records.values()].filter((p) => p.ok && p.work);
+  // raw/ keeps only pages that loaded; earlier versions also saved error pages there.
+  for (const p of records.values()) if (!p.ok) await rm(join(out, 'raw', pageFile(new URL(p.url))), { force: true });
   const assetRows = (await loadJsonl(join(work, 'assets.jsonl'))).filter((a) => existsSync(join(out, 'site', a.file)));
   const assets = new Map(assetRows.map((a) => [a.url, a.file]));
   const types = new Map(assetRows.map((a) => [a.url, a.type]));
