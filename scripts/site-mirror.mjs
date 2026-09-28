@@ -27,7 +27,8 @@
  *   raw/             each page's HTML exactly as the server sent it
  *   source/          Square Online/Weebly only: the owner's custom code, page data and theme
  *   manifest.json    per page: HTTP status, timing, iframes inlined, references still pointing live
- *   work/            crawl state; re-running with the same --out resumes, --finalize-only rebuilds
+ *   work/            crawl state; re-running with the same --out resumes (skipping pages saved or
+ *                    broken for good), --finalize-only rebuilds
  *
  * Politeness: pages come from the sitemap (or from links, if there is none), robots.txt
  * Disallow rules are obeyed, one page loads at a time with the robots.txt Crawl-delay (default
@@ -490,7 +491,10 @@ async function crawl(args, out) {
   console.log(`${fromSitemap ? `Sitemap lists ${listed.length} pages` : 'No sitemap; following links'}; ` +
     `robots.txt: ${robots.rules} rules, ${delay / 1000}s between pages.`);
 
-  const done = new Set((await loadJsonl(join(work, 'pages.jsonl'))).filter((p) => p.ok).map((p) => pageKey(p.url)));
+  // A resumed run skips pages already saved and pages that failed for good (redirect loops,
+  // 404/410); rate-limited and network failures are tried again.
+  const permanent = (p) => /ERR_TOO_MANY_REDIRECTS/.test(p.error || '') || [404, 410].includes(p.status);
+  const done = new Set((await loadJsonl(join(work, 'pages.jsonl'))).filter((p) => p.ok || permanent(p)).map((p) => pageKey(p.url)));
   const assets = new Set((await loadJsonl(join(work, 'assets.jsonl'))).filter((a) => existsSync(join(out, 'site', a.file))).map((a) => a.url));
   const media = new Set((await loadJsonl(join(work, 'media.jsonl'))).map((m) => m.url));
   const pending = new Map();
