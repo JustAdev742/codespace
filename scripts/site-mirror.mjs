@@ -171,7 +171,12 @@ async function sitemapUrls(http, start, robotsText) {
     if (seen.has(sm)) continue;
     seen.add(sm);
     const res = await http.get(sm, { timeout: 30000 }).catch(() => null);
-    const xml = res && res.ok() ? await res.text() : '';
+    // A missing sitemap (4xx) is normal; one the site will not serve right now would silently
+    // turn the crawl into link-following.
+    if (!res || res.status() === 429 || res.status() >= 500) {
+      throw new Error(`Sitemap ${sm} could not be fetched (${res ? `HTTP ${res.status()}` : 'network error'}), so not crawling. Try again later.`);
+    }
+    const xml = res.ok() ? await res.text() : '';
     const locs = [...xml.matchAll(/<loc>\s*([^<\s]+)\s*<\/loc>/g)].map((m) => decodeXml(m[1]));
     if (/<sitemapindex/i.test(xml)) queue.push(...locs);
     else urls.push(...locs);
@@ -462,7 +467,13 @@ async function crawl(args, out) {
     viewport: { width: args.width, height: args.height }, deviceScaleFactor: 1, serviceWorkers: 'block', locale: args.locale,
   });
   const robotsRes = await context.request.get(new URL('/robots.txt', start).href, { timeout: 30000 }).catch(() => null);
-  const robotsText = robotsRes && robotsRes.ok() ? await robotsRes.text() : '';
+  // RFC 9309: a 4xx robots.txt means no rules, but one that cannot be reached (network error, 429,
+  // 5xx) means the rules are unknown, so stop instead of crawling as if everything were allowed.
+  if (!robotsRes || robotsRes.status() === 429 || robotsRes.status() >= 500) {
+    await browser.close();
+    throw new Error(`robots.txt could not be fetched (${robotsRes ? `HTTP ${robotsRes.status()}` : 'network error'}), so not crawling. Try again later.`);
+  }
+  const robotsText = robotsRes.ok() ? await robotsRes.text() : '';
   await writeFile(join(work, 'robots.txt'), robotsText);
   const robots = parseRobots(robotsText);
   let delay = 1000 * (args.delay ?? robots.delay ?? 2);
@@ -476,7 +487,10 @@ async function crawl(args, out) {
     }
   };
 
-  const listed = (await sitemapUrls(context.request, start, robotsText)).filter(wanted);
+  const listed = (await sitemapUrls(context.request, start, robotsText).catch(async (e) => {
+    await browser.close();
+    throw e;
+  })).filter(wanted);
   const fromSitemap = listed.length > 0;
   const queue = [], queued = new Set();
   const enqueue = (s) => {
