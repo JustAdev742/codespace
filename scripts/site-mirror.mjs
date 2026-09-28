@@ -441,6 +441,22 @@ async function networkQuiet(page, net, idleMs, maxMs) {
   }
 }
 
+// Frameworks can draw after the network goes quiet (Square Online renders a product from an API
+// reply), so also wait until the DOM stops changing. Capped, because carousels never stop.
+async function settled(page, net, idleMs, maxMs) {
+  await page.evaluate(() => {
+    window.__mirrorLastMutation = Date.now();
+    new MutationObserver(() => { window.__mirrorLastMutation = Date.now(); })
+      .observe(document, { subtree: true, childList: true, attributes: true, characterData: true });
+  }).catch(() => {});
+  const end = Date.now() + maxMs;
+  while (Date.now() < end) {
+    const last = await page.evaluate(() => window.__mirrorLastMutation).catch(() => 0);
+    if (net.inflight <= 0 && Date.now() - net.last >= idleMs && Date.now() - last >= idleMs) return;
+    await page.waitForTimeout(200);
+  }
+}
+
 // Scroll to the bottom in steps so lazy images and scroll-triggered sections load.
 async function autoScroll(page) {
   await page.evaluate(async () => {
@@ -639,7 +655,7 @@ async function capturePage(context, url, pending, fromSitemap) {
     rec.raw = await res.body().catch(() => null);
     await networkQuiet(page, net, 1000, 20000);
     await autoScroll(page);
-    await networkQuiet(page, net, 1000, 15000);
+    await settled(page, net, 1500, 20000);
     await page.evaluate(() => scrollTo(0, 0)).catch(() => {});
     await page.waitForTimeout(500);
     await Promise.allSettled([...pending.values()]);
