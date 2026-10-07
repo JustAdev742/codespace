@@ -1,0 +1,113 @@
+/*
+ * Cyberbikes design tokens. One file, shared by every component and by the CSS layer that restyles
+ * Square Online's own templates. Components never use raw values; they use these names.
+ *
+ * Colour rules that follow from contrast (WCAG 2.1 AA):
+ *   - Signal yellow is 14.7:1 against black but 1.4:1 against white. It is a fill, never text,
+ *     icons or focus rings on light surfaces. On yellow, text is always ink.
+ *   - Focus rings are ink on light surfaces and signal yellow on dark ones.
+ *   - Blue is 9.1:1 on paper: links and information only.
+ *   - Borders that identify a control (inputs, checkboxes, outline buttons) use --cb-border-control,
+ *     which clears the 3:1 non-text minimum (WCAG 1.4.11). --cb-border is for dividers only.
+ */
+:root {
+  /* Brand (from the live theme) */
+  --cb-signal: #fed500;          /* the yellow: one primary action per view, charge accents */
+  --cb-signal-press: #e8c300;    /* hover/pressed fill, still 9.9:1 under ink */
+  --cb-ink: #1c1c1c;             /* text, primary dark surface */
+  --cb-black: #000;              /* display type, deepest surface */
+  --cb-blue: #02468f;            /* links, info */
+  --cb-paper: #fffdfc;           /* page background */
+
+  /* Warm neutrals: showroom light, so photography sits on something softer than white */
+  --cb-sand-50: #f7f5f1;         /* alternate section, image well */
+  --cb-sand-100: #efece6;        /* quiet fill: chips, table stripes */
+  --cb-sand-200: #e4e0d8;        /* dividers: 1.3:1, decorative, never a control's only edge */
+  --cb-sand-400: #b9b3a8;        /* disabled borders, decorative rules: 2.1:1, not text */
+  --cb-sand-500: #8c8579;        /* control borders: 3.4–3.7:1 on paper, sand and white */
+  --cb-ink-600: #57534c;         /* secondary text: 7.5:1 on paper */
+  --cb-ink-800: #2f2d29;         /* text on sand */
+
+  /* Status (each ≥ 4.5:1 on paper as text) */
+  --cb-ok: #1e7a3c;
+  --cb-warn-fill: var(--cb-signal);  /* warnings are yellow fills with ink text */
+  --cb-error: #b42318;
+  --cb-info: var(--cb-blue);
+
+  /* Semantic roles */
+  --cb-bg: var(--cb-paper);
+  --cb-surface: #fff;
+  --cb-surface-alt: var(--cb-sand-50);
+  --cb-text: var(--cb-ink);
+  --cb-text-muted: var(--cb-ink-600);
+  --cb-border: var(--cb-sand-200);
+  --cb-border-control: var(--cb-sand-500);
+  --cb-focus: var(--cb-ink);
+  --cb-action: var(--cb-signal);
+  --cb-on-action: var(--cb-ink);
+
+  /* Type. Mortend for short uppercase display lines only; Telegraf for everything else.
+     The family names match the fonts the Square theme already loads. */
+  --cb-font-display: 'Mortend-ExtraBold', 'Mortend', 'Arial Black', 'Helvetica Neue', sans-serif;
+  --cb-font-text: 'PP Telegraf Regular', 'Telegraf', 'Helvetica Neue', Arial, sans-serif;
+  --cb-font-text-medium: 'Telegraf Medium', 'Telegraf', 'Helvetica Neue', Arial, sans-serif;
+  --cb-font-text-bold: 'Telegraf Bold', 'Telegraf', 'Helvetica Neue', Arial, sans-serif;
+
+  /* Major-third scale on a 16px base; display sizes are fluid */
+  --cb-text-xs: 0.8rem;          /* 12.8 — legal small print, never body */
+  --cb-text-sm: 0.875rem;        /* 14 — labels, captions */
+  --cb-text-base: 1rem;          /* 16 — body on phones */
+  --cb-text-md: 1.0625rem;       /* 17 — body from tablet up */
+  --cb-text-lg: 1.25rem;         /* 20 */
+  --cb-text-xl: 1.5625rem;       /* 25 */
+  --cb-text-2xl: 1.953rem;       /* 31 */
+  --cb-text-3xl: clamp(2rem, 1.4rem + 2.6vw, 3.05rem);
+  --cb-text-display: clamp(2.6rem, 1.2rem + 6vw, 6rem);
+  --cb-leading-tight: 1.1;
+  --cb-leading-snug: 1.3;
+  --cb-leading-body: 1.55;
+  --cb-tracking-display: 0.01em; /* Mortend is already wide; never letter-space it further */
+  --cb-tracking-label: 0.06em;   /* small uppercase labels */
+  --cb-measure: 66ch;
+
+  /* Space: 4px base */
+  --cb-space-1: 0.25rem;
+  --cb-space-2: 0.5rem;
+  --cb-space-3: 0.75rem;
+  --cb-space-4: 1rem;
+  --cb-space-5: 1.5rem;
+  --cb-space-6: 2rem;
+  --cb-space-7: 3rem;
+  --cb-space-8: 4rem;
+  --cb-space-9: 6rem;
+  --cb-gutter: clamp(1rem, 0.6rem + 1.6vw, 2rem);
+  --cb-content-max: 77.5rem;     /* 1240px */
+
+  /* Shape */
+  --cb-radius-sm: 0.5rem;        /* chips inside cards, small media */
+  --cb-radius-md: 0.75rem;       /* inputs */
+  --cb-radius-lg: 1rem;          /* cards */
+  --cb-radius-xl: 1.5rem;        /* image wells, feature panels */
+  --cb-radius-pill: 999px;       /* buttons, badges */
+  --cb-border-w: 1px;
+  --cb-shadow-overlay: 0 24px 60px -24px rgb(0 0 0 / 0.35);  /* drawers and dialogs only */
+
+  /* Touch */
+  --cb-target: 2.75rem;          /* 44px minimum hit area */
+
+  /* Motion. Short and decelerating; transform and opacity only. */
+  --cb-ease-out: cubic-bezier(0.2, 0, 0, 1);
+  --cb-ease-in: cubic-bezier(0.4, 0, 1, 1);
+  --cb-ease-move: cubic-bezier(0.32, 0.72, 0, 1);  /* sheets and drawers */
+  --cb-dur-tap: 120ms;
+  --cb-dur-state: 220ms;
+  --cb-dur-move: 380ms;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --cb-dur-tap: 0ms;
+    --cb-dur-state: 0ms;
+    --cb-dur-move: 0ms;
+  }
+}

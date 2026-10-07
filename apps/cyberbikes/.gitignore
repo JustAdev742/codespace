@@ -1,0 +1,6 @@
+# Cyberbikes' own content and internal findings stay out of this public repository:
+# the catalogue as fetched (names, descriptions, image links, prices) and every report or
+# working document built from it. Regenerate them with the scripts in scripts/.
+data/
+reports/
+docs/
