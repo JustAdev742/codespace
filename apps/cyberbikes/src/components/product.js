@@ -144,10 +144,22 @@ export class CbBoxNotice extends CbElement {
   }
 }
 
+/** Square's own fixed add-to-cart bar, which its theme shows on phones; null when there is none. */
+function squareStickyCart() {
+  for (const button of document.querySelectorAll('button')) {
+    if (button.closest('cb-buy-bar') || !/add to cart/i.test(button.textContent)) continue;
+    for (let el = button.parentElement; el && el !== document.body; el = el.parentElement) {
+      if (getComputedStyle(el).position === 'fixed') return el;
+    }
+  }
+  return null;
+}
+
 /**
- * On phones, once the shopper scrolls past Square's own add-to-cart section, a slim bar keeps the
- * price and a way back to it in reach. It never adds to the cart itself: options and delivery are
- * chosen in Square's form, so the button takes the shopper there.
+ * Keeps the price and a way back to Square's add-to-cart section in reach on phones. Square's theme
+ * already has a sticky add-to-cart bar on phones; where it is present this bar stays out of the way
+ * and only reports that bar's height, so the compare tray sits above it. It never adds to the cart
+ * itself: options and delivery are chosen in Square's form, so the button takes the shopper there.
  */
 export class CbBuyBar extends CbElement {
   static styles = [css`
@@ -181,15 +193,38 @@ export class CbBuyBar extends CbElement {
       this.show(!entry.isIntersecting && entry.boundingClientRect.bottom < 0);
     });
     this.observer.observe(this.target);
+    this.onResize = () => this.reportOffset();
+    addEventListener('resize', this.onResize);
+    addEventListener('scroll', this.onResize, { passive: true });
   }
 
-  disconnectedCallback() { this.observer?.disconnect(); this.show(false); }
+  disconnectedCallback() {
+    this.observer?.disconnect();
+    removeEventListener('resize', this.onResize);
+    removeEventListener('scroll', this.onResize);
+    document.documentElement.style.setProperty('--cb-bottom-offset', '0px');
+  }
 
   show(on) {
     if (!this.bar) return;
-    this.bar.toggleAttribute('data-shown', on);
-    this.bar.inert = !on;  // hidden off-screen, so keep it out of the tab order and the accessibility tree
-    document.documentElement.style.setProperty('--cb-bottom-offset', on ? `${this.bar.offsetHeight}px` : '0px');
+    const yieldToSquare = Boolean(squareStickyCart());
+    this.bar.toggleAttribute('data-shown', on && !yieldToSquare);
+    this.bar.inert = !on || yieldToSquare;  // off-screen: out of the tab order and the accessibility tree
+    this.reportOffset();
+  }
+
+  /** How much of the bottom edge is covered by a purchase bar (ours or Square's), for the compare tray. */
+  reportOffset() {
+    let offset = 0;
+    const square = squareStickyCart();
+    if (square) {
+      const r = square.getBoundingClientRect();
+      offset = Math.min(r.height, Math.max(0, innerHeight - r.top));
+    } else if (this.bar?.hasAttribute('data-shown')) {
+      offset = this.bar.offsetHeight;
+    }
+    const value = `${Math.round(offset)}px`;
+    if (value !== this.lastOffset) document.documentElement.style.setProperty('--cb-bottom-offset', (this.lastOffset = value));
   }
 
   goToCart() {

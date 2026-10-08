@@ -129,7 +129,7 @@ def type_and_frame(b):
         [u for u in values(b['intended_use_from_name']) if u not in ('cargo',)]
     if 'fat-tyre' in kinds:
         kind.insert(0, 'fat-tyre')
-    t = ', '.join(dict.fromkeys(kind))
+    t = ', '.join(dict.fromkeys('MTB' if k == 'mtb' else k for k in kind))
     f = ', '.join(frame)
     return (t[:1].upper() + t[1:]) if t else None, (f[:1].upper() + f[1:]) if f else None
 
