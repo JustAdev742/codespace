@@ -42,6 +42,10 @@
 
 /* Product page */
 .product__title .w-product-title { text-wrap: balance; }
+/* Listing names run to 110+ characters; at the theme's phone size that is seven lines above the price. */
+@media (max-width: 47.99rem) {
+  .product__title .w-product-title { font-size: clamp(1.5rem, 6.5vw, 2rem) !important; }
+}
 .w-product-description { max-width: var(--cb-measure); }
 .product-gallery__wrapper img { mix-blend-mode: multiply; }
 .product-gallery__wrapper { background-color: var(--cb-sand-50); border-radius: var(--cb-radius-xl); }
