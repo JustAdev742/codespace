@@ -1,0 +1,9 @@
+{
+  "name": "cyberbikes",
+  "private": true,
+  "type": "module",
+  "description": "Cyberbikes storefront components, Square site-wide script and catalogue tooling",
+  "scripts": {
+    "test": "node --test"
+  }
+}

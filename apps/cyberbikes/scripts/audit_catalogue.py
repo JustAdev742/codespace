@@ -25,6 +25,8 @@ BIKE_CATEGORIES = {'New E-Bikes', 'Cyberbikes', 'Mamba', 'Mono', 'Vamos', 'DiroD
 BRANDS = ['Cyberbikes', 'CRUZR', 'NCM', 'Eunorau', 'Vamos', 'DiroDi', 'Mamba', 'Mono', 'Fatboy', 'Lagads']
 # A listing outside every bike category still counts as a bike when its name says so and it costs a bike's price.
 LOOKS_LIKE_BIKE = re.compile(r'electric (bike|bicycle|trike|mtb)|e-?bike\b|\bebike\b|e-?trike', re.I)
+# Listings explain the EPAC rules ("e-bike law limits road bikes to 250W ... 25km/h"); those figures are not the bike's.
+LAW = re.compile(r'\blaws?\b|\bregulations?\b', re.I)
 BOILERPLATE = re.compile(r'Online price = Bike-in-Box\..*?assembly is included in the price\.', re.I | re.S)
 
 
@@ -52,11 +54,19 @@ class Reader:
     def _after(self, m, width):
         return self.text[m.end():m.end() + width].split(' | ', 1)[0]
 
+    def _about_the_law(self, m):
+        """True when the match sits in a sentence about the law ("e-bike law limits bikes to 250W"), not this bike."""
+        start = max(self.text.rfind(b, 0, m.start()) for b in ('. ', ' | ', '; ', '! ', '? '))
+        ends = [i for i in (self.text.find(b, m.end()) for b in ('. ', ' | ', '; ', '! ', '? ')) if i >= 0]
+        return bool(LAW.search(self.text[start + 1:min(ends) if ends else len(self.text)]))
+
     def first(self, field, pattern, fmt=lambda m: m.group(1), skip=None, skip_after=None):
         for m in re.finditer(pattern, self.text, re.I):
             if skip and re.search(skip, self._before(m, 25), re.I):
                 continue
             if skip_after and re.search(skip_after, self._after(m, 20), re.I):
+                continue
+            if self._about_the_law(m):
                 continue
             self.evidence[field] = {'value': fmt(m), 'evidence': self._snip(m)}
             return fmt(m)
@@ -68,6 +78,8 @@ class Reader:
             if skip and re.search(skip, self._before(m, 25), re.I):
                 continue
             if skip_after and re.search(skip_after, self._after(m, 20), re.I):
+                continue
+            if self._about_the_law(m):
                 continue
             v = fmt(m)
             if keep(v) and v not in values:
