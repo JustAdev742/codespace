@@ -1,0 +1,36 @@
+/*
+ * The layer over Square Online's own templates. Selectors use Square's stable BEM class names
+ * (product-group, product__title, add-to-cart__wrapper ...), never its hashed CSS-module classes,
+ * and stay few: if Square renames something, that one rule stops applying and nothing else breaks.
+ */
+
+/* Focus. Square's focus ring is the brand yellow at 30% opacity: invisible on white (WCAG 2.4.7). */
+:where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
+  outline: 2px solid var(--cb-focus) !important;
+  outline-offset: 2px !important;
+}
+:where(.w-background-dark, .w-background-dark *):focus-visible { outline-color: var(--cb-signal) !important; }
+
+/* Product grids: every bike on the same warm ground, whatever background the supplier shot it on. */
+.product-group .figure__aspect-ratio,
+.product-group .product-image__link {
+  background-color: var(--cb-sand-50);
+  border-radius: var(--cb-radius-xl);
+  overflow: hidden;
+}
+.product-group .figure__aspect-ratio img { mix-blend-mode: multiply; }
+.product-group .w-product-title { text-wrap: balance; }
+.product-group .product-price__wrapper,
+.product__price { font-variant-numeric: tabular-nums lining-nums; }
+
+/* Product page */
+.product__title .w-product-title { text-wrap: balance; }
+.w-product-description { max-width: var(--cb-measure); }
+.product-gallery__wrapper img { mix-blend-mode: multiply; }
+.product-gallery__wrapper { background-color: var(--cb-sand-50); border-radius: var(--cb-radius-xl); }
+
+/* Replaced by the spec panel and the bike-in-box notice, which say the same thing once. */
+.cb-raw-specs, .cb-raw-notice { display: none !important; }
+
+/* Components placed inside Square's columns */
+cb-spec-panel, cb-box-notice { max-width: 40rem; }

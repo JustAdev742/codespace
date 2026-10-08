@@ -65,9 +65,9 @@
   --cb-text-display: clamp(2.6rem, 1.2rem + 6vw, 6rem);
   --cb-leading-tight: 1.1;
   --cb-leading-snug: 1.3;
-  --cb-leading-body: 1.55;
-  --cb-tracking-display: 0.01em; /* Mortend is already wide; never letter-space it further */
-  --cb-tracking-label: 0.06em;   /* small uppercase labels */
+  --cb-leading-body: 1.45;      /* 120–145% of the size: the readable band */
+  --cb-tracking-display: 0.05em; /* capitals always get 5–12%; Mortend is wide, so the floor of that band */
+  --cb-tracking-label: 0.08em;   /* small uppercase labels: short, never a full line */
   --cb-measure: 66ch;
 
   /* Space: 4px base */

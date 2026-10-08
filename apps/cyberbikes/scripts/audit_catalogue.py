@@ -101,11 +101,16 @@ def audit_bike(p, shown, cat_names):
 
     brand = next((b for b in BRANDS if b in shown), None) or \
         next((b for b in BRANDS if re.search(rf'\b{b}\b', p['name'], re.I)), U)
-    listing = 'rent-to-own' if re.search(r'rent[- ]to[- ]own', p['name'], re.I) else \
+    # Some rent-to-own listings do not say so in the name: their price is the weekly instalment and only
+    # the description explains the plan. No bike here sells for under $600, so that price plus a
+    # rent-to-own plan in the description marks a payment plan, not a bike for sale.
+    listing = 'rent-to-own' if re.search(r'rent[- ]to[- ]own', p['name'], re.I) or \
+        (p['price']['low'] < 600 and re.search(r'rent[- ]to[- ]own', desc, re.I)) else \
         'deposit' if re.search(r'\bdeposit\b', p['name'], re.I) else 'bike'
 
-    watts = r.every('motor_power_w', num + r'(\d{3,4})\s*w(?:atts?)?\b',
-                    keep=lambda v: 100 <= int(v) <= 5000, skip=r'peak[\w\s]{0,12}$', skip_after=r'^\W{0,3}peak')
+    # "4,000W" and "5,000W" too: the thousands separator is dropped from the value.
+    watts = r.every('motor_power_w', num + r'(\d,\d{3}|\d{3,4})\s*w(?:atts?)?\b', fmt=lambda m: m.group(1).replace(',', ''),
+                    keep=lambda v: 100 <= int(v) <= 8000, skip=r'peak[\w\s]{0,12}$', skip_after=r'^\W{0,3}peak')
     peak = r.first('motor_peak_w', num + r'(\d{3,4})\s*w(?:atts?)?\s*\)?\s*peak|peak[^|;]{0,12}?' + num + r'(\d{3,4})\s*w\b',
                    fmt=lambda m: m.group(1) or m.group(2))
     motor_type = r.every('motor_type', r'\b(mid[- ]?drive|rear[- ]hub|front[- ]hub|hub)\b(?:\s*(?:drive|motor))?',

@@ -4,6 +4,13 @@
   "type": "module",
   "description": "Cyberbikes storefront components, Square site-wide script and catalogue tooling",
   "scripts": {
-    "test": "node --test"
+    "test": "node --test",
+    "build": "node scripts/build.mjs",
+    "catalogue": "python3 scripts/fetch_catalogue.py && python3 scripts/audit_catalogue.py && python3 scripts/draft_spec_blocks.py",
+    "preview:data": "python3 scripts/build_preview_data.py",
+    "preview": "node preview/serve.mjs"
+  },
+  "devDependencies": {
+    "esbuild": "0.25.12"
   }
 }

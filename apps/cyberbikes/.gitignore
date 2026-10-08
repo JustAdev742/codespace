@@ -4,3 +4,6 @@
 data/
 reports/
 docs/
+# Built output and the local preview's copy of the catalogue (regenerate with npm run build / preview)
+dist/
+preview/data/

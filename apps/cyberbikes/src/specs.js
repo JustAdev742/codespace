@@ -74,6 +74,9 @@ const UNIT = {
 const NUMBER = String.raw`\d{1,3}(?:,\d{3})+(?:\.\d+)?|\d+(?:\.\d+)?`;
 const BLANK = /^(?:|-+|–|—|n\/?a|tbc|tba|unknown|not (?:stated|listed|known)|\?+)$/i;
 const HEADING = /^(?:(?:key|tech(?:nical)?|full)\s+)?spec(?:ification)?s?\s*:?$/i;
+
+/** True for the line that opens a Specifications block. */
+export const isSpecHeading = text => HEADING.test(String(text).trim());
 const ENTITIES = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", nbsp: ' ', ndash: '–', mdash: '—', times: '×',
   deg: '°', rsquo: '’', lsquo: '‘', rdquo: '”', ldquo: '“', hellip: '…', prime: '′', Prime: '″', middot: '·', bull: '•' };
 

@@ -31,6 +31,8 @@ FIELDS = ['Type', 'Motor', 'Rated power', 'Peak power', 'Battery', 'Battery cell
 PRIORITY = ['Battery', 'Weight', 'Range', 'Warranty', 'Brakes', 'Suspension', 'Top speed', 'Rated power', 'Type',
             'Max load', 'Wheels', 'Frame', 'Gears', 'Motor', 'Charging time', 'Peak power', 'Battery cells']
 CHECK = object()  # a stated value the owner must settle before it goes in
+EXTRA_BATTERY = re.compile(r'\bwith\s*(?:a |the )?(?:dual|double|two|three|second|extra|optional|spare|both)\b|dual[- ]batter|'
+                           r'\bbatteries\b|\bwith\s*\d{2}\s*V\s*\d', re.I)
 
 
 def values(cell):
@@ -161,12 +163,26 @@ def draft(b, evidence):
         'Standard': 'EN 15194' if b['en15194'] == 'stated' else None,
         'Road use': CHECK if b['road_legal_claim'] != U else None,
     }
+    # Why each held-back value was held back; anything not listed here had more than one value.
+    reasons = {
+        'Warranty': 'Warranty terms are a promise: write them in full (frame, motor, battery) from the supplier terms.',
+        'Road use': 'The listing says something about road use. That wording is yours to decide.',
+        'Suspension': 'The listing does not say clearly whether the fork is a suspension fork, or where the suspension is.',
+    }
     if b['options'] and re.search(r'motor\s*power|power', b['options'], re.I) and block['Rated power']:
-        block['Rated power'] = CHECK  # power is sold as an option, so the listing has more than one
+        block['Rated power'] = CHECK
+        reasons['Rated power'] = 'Power is sold as an option, so the listing has more than one figure.'
+    if block['Battery'] is CHECK and all(len(values(b[k])) <= 1 for k in ('battery_v', 'battery_ah', 'battery_wh_stated')):
+        reasons['Battery'] = 'The stated watt-hours do not match the stated volts × amp-hours.'
+    range_said = ' '.join(evidence.get('range_km', {}).get('evidence') or [])
+    if block['Range'] not in (None, CHECK) and EXTRA_BATTERY.search(range_said):
+        block['Range'] = CHECK
+        reasons['Range'] = ('The range quoted needs an optional extra battery. Give the range with the battery supplied, '
+                            'and the extended figure in brackets, e.g. "Range: 60 km (110 km with the optional second battery)".')
 
     source = {'Motor': ['motor_brand', 'motor_type'], 'Rated power': ['motor_power_w'], 'Peak power': ['motor_peak_w'],
-              'Battery': ['battery_v', 'battery_ah', 'battery_wh_stated'], 'Battery cells': ['battery_cells'],
-              'Range': ['range_km_claimed'], 'Top speed': ['top_speed_kmh'], 'Weight': ['weight_kg'],
+              'Battery': ['battery_v', 'battery_ah', 'battery_wh'], 'Battery cells': ['battery_cells'],
+              'Range': ['range_km'], 'Top speed': ['top_speed_kmh'], 'Weight': ['weight_kg'],
               'Max load': ['payload_kg'], 'Wheels': ['wheel_in'], 'Brakes': ['brakes'], 'Suspension': ['suspension'],
               'Gears': ['drivetrain'], 'Charging time': ['charge_time'], 'Warranty': ['warranty'],
               'Road use': ['road_legal_claim'], 'Type': ['frame_type'], 'Frame': ['frame_type']}
@@ -178,13 +194,8 @@ def draft(b, evidence):
         for col in source.get(label, []):
             ev = evidence.get(col, {}).get('evidence')
             said += ev if isinstance(ev, list) else [ev] if ev else []
-        why = {
-            'Warranty': 'Warranty terms are a promise: write them in full (frame, motor, battery) from the supplier terms.',
-            'Road use': 'The listing says something about road use. That wording is yours to decide.',
-            'Rated power': 'The listing states more than one power figure, or sells power as an option.',
-            'Battery': 'The listing states more than one battery figure, or watt-hours that do not match volts × amp-hours.',
-            'Suspension': 'The listing does not say clearly whether the fork is a suspension fork, or where the suspension is.',
-        }.get(label, 'The listing states more than one value, or a value that could not be read cleanly.')
+        why = reasons.get(label, 'The listing states more than one value, or one that could not be read cleanly: '
+                                 'decide which is right for this bike.')
         settle.append({'field': label, 'why': why, 'listing_says': said[:3]})
     if b['options'] and re.search(r'motor\s*power|power', b['options'], re.I):
         settle.append({'field': 'Type', 'why': 'Sold with a motor power option. Say which power suits road use and '
