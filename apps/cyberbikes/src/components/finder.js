@@ -83,9 +83,11 @@ export class CbBikeFinder extends CbElement {
       min-height: var(--cb-target); padding: 0 var(--cb-space-4);
       border: var(--cb-border-w) solid var(--cb-border-control); border-radius: var(--cb-radius-pill);
       background: var(--cb-surface); cursor: pointer; font-size: var(--cb-text-sm);
-      transition: background-color var(--cb-dur-tap) var(--cb-ease-out), color var(--cb-dur-tap) var(--cb-ease-out);
+      transition: background-color var(--cb-dur-tap) ease, color var(--cb-dur-tap) ease, transform var(--cb-dur-tap) var(--cb-ease-out);
       -webkit-tap-highlight-color: transparent;
     }
+    .chip:active { transform: scale(0.97); }
+    @media (prefers-reduced-motion: reduce) { .chip:active { transform: none; } }
     .chip .n { color: var(--cb-text-muted); font-variant-numeric: tabular-nums; }
     .chip[data-zero] { color: var(--cb-text-muted); }
     input:checked + .chip { background: var(--cb-ink); border-color: var(--cb-ink); color: var(--cb-paper); }
@@ -105,7 +107,9 @@ export class CbBikeFinder extends CbElement {
     .maybe > p { margin: var(--cb-space-2) 0 var(--cb-space-5); color: var(--cb-text-muted); max-width: var(--cb-measure); }
     .empty { padding: var(--cb-space-6); border-radius: var(--cb-radius-lg); background: var(--cb-surface-alt); max-width: var(--cb-measure); }
     .empty p + p { margin-top: var(--cb-space-3); }
-    .skeleton { aspect-ratio: 4 / 3; border-radius: var(--cb-radius-xl); background: var(--cb-sand-50); }
+    .skeleton { aspect-ratio: 4 / 3; border-radius: var(--cb-radius-xl); background: var(--cb-sand-100); animation: wait 1.1s ease-in-out infinite alternate; }
+    @keyframes wait { from { opacity: 0.55; } to { opacity: 1; } }
+    @media (prefers-reduced-motion: reduce) { .skeleton { animation: none; } }
   `];
 
   connectedCallback() {

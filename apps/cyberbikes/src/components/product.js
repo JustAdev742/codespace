@@ -1,7 +1,7 @@
 // Product page components: the spec panel (with the range explainer), the bike-in-box notice and the
 // mobile buy bar.
 
-import { CbElement, css, define, html, icon, ruler, rulerScale } from '../ui.js';
+import { CbElement, charge, css, define, html, icon, ruler, rulerScale } from '../ui.js';
 import { battery, phoneDisplay, quantity, typeset } from '../format.js';
 import { parseSpecBlock, SPEC_FIELDS } from '../specs.js';
 import { config } from '../config.js';
@@ -96,7 +96,7 @@ export class CbSpecPanel extends CbElement {
     }
     const rows = keys => keys.map(key => {
       const f = s.fields[key];
-      const range = key === 'range' && f?.min != null ? html`<div class="range-ruler">${ruler(f, rulerScale([f.max]), { ticks: true })}</div>
+      const range = key === 'range' && f?.min != null ? html`<div class="range-ruler">${ruler(f, rulerScale([f.max]), { ticks: true, animate: true })}</div>
         <details><summary>${icon('info')}What affects range?</summary><div>${rangeExplainerHTML(s)}</div></details>` : '';
       return html`<div><dt>${LABEL[key]}</dt><dd>${valueHTML(key, f)}${range}</dd></div>`;
     });
@@ -108,6 +108,7 @@ export class CbSpecPanel extends CbElement {
         html`<div><dt>${e.label}</dt><dd>${typeset(e.raw)}</dd></div>`)}</dl></section>` : ''}
       ${missing ? html`<p class="note">“Not listed” means we don’t have the manufacturer’s figure on this page yet.
         Ask us: ${contactHTML()}.</p>` : ''}`);
+    charge(this.root);
   }
 }
 
@@ -155,10 +156,11 @@ export class CbBuyBar extends CbElement {
       padding: var(--cb-space-3) var(--cb-gutter) calc(var(--cb-space-3) + env(safe-area-inset-bottom));
       background: var(--cb-paper); border-top: var(--cb-border-w) solid var(--cb-border);
       box-shadow: 0 -12px 32px -24px rgb(0 0 0 / 0.4);
-      transform: translateY(110%);
-      transition: transform var(--cb-dur-state) var(--cb-ease-out);
+      transform: translateY(110%); opacity: 0;
+      /* Leaves the way it came, a little faster than it arrived. */
+      transition: transform var(--cb-dur-exit) var(--cb-ease-move), opacity var(--cb-dur-fade) linear;
     }
-    .bar[data-shown] { transform: none; }
+    .bar[data-shown] { transform: none; opacity: 1; transition-duration: var(--cb-dur-state), var(--cb-dur-fade); }
     .what { flex: 1; min-width: 0; }
     .name { font-size: var(--cb-text-sm); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .price { font-family: var(--cb-font-text-bold); font-weight: 700; font-variant-numeric: tabular-nums; }

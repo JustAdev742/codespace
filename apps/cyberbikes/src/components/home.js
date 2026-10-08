@@ -2,7 +2,7 @@
 // attributes so the owner can change it in Square without touching code; the defaults only say what
 // the catalogue and the shop's own pages already show to be true.
 
-import { CbElement, css, define, html, icon, prose, ruler, rulerScale } from '../ui.js';
+import { CbElement, charge, css, define, html, icon, prose, ruler, rulerScale } from '../ui.js';
 import { cardHTML, CARD_CSS, fitPhotos, priceHTML } from './card.js';
 import { facts, loadBikes } from '../catalogue.js';
 import { bindCompareButtons, compareIds } from '../compare-store.js';
@@ -82,9 +82,10 @@ export class CbHero extends CbElement {
         <figcaption>
           <div class="bike"><a href="${bike.url}">${bike.name}</a>${priceHTML(bike)}</div>
           ${range?.min != null ? html`<div class="measure"><p class="measure-head"><span class="label">Range</span><strong>${quantity(range)}</strong></p>
-            ${ruler(range, rulerScale([range.max]), { ticks: true, size: 'lg' })}<p class="measure-note">Manufacturer’s figure</p></div>` : ''}
+            ${ruler(range, rulerScale([range.max]), { ticks: true, size: 'lg', animate: true })}<p class="measure-note">Manufacturer’s figure</p></div>` : ''}
         </figcaption>`.value;
       figure.hidden = false;
+      charge(this.root);
     }).catch(() => { /* the copy and buttons stand on their own */ });
   }
 }
@@ -95,11 +96,11 @@ export class CbRideTypes extends CbElement {
     @media (max-width: 30rem) { ul { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
     a { display: grid; gap: var(--cb-space-3); text-decoration: none; border-radius: var(--cb-radius-xl); }
     .media { aspect-ratio: 1; border-radius: var(--cb-radius-xl); background: var(--cb-sand-50); overflow: hidden; }
-    .media img { width: 100%; height: 100%; object-fit: contain; padding: 8%; mix-blend-mode: multiply; transition: transform var(--cb-dur-move) var(--cb-ease-out); }
+    .media img { width: 100%; height: 100%; object-fit: contain; padding: 8%; mix-blend-mode: multiply; transition: transform var(--cb-dur-state) var(--cb-ease-out); }
     .media.photo img { object-fit: cover; padding: 0; mix-blend-mode: normal; }
     .name { font-family: var(--cb-font-text-bold); font-weight: 700; line-height: var(--cb-leading-snug); }
     .n { color: var(--cb-text-muted); font-size: var(--cb-text-sm); }
-    @media (hover: hover) and (pointer: fine) { a:hover .media img { transform: scale(1.04); } a:hover .name { text-decoration: underline; text-underline-offset: 0.18em; } }
+    @media (hover: hover) and (pointer: fine) { a:hover .media img { transform: scale(var(--cb-hover-scale)); } a:hover .name { text-decoration: underline; text-underline-offset: 0.18em; } }
   `];
 
   connectedCallback() {

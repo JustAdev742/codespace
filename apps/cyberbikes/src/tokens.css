@@ -95,19 +95,26 @@
   /* Touch */
   --cb-target: 2.75rem;          /* 44px minimum hit area */
 
-  /* Motion. Short and decelerating; transform and opacity only. */
-  --cb-ease-out: cubic-bezier(0.2, 0, 0, 1);
-  --cb-ease-in: cubic-bezier(0.4, 0, 1, 1);
-  --cb-ease-move: cubic-bezier(0.32, 0.72, 0, 1);  /* sheets and drawers */
-  --cb-dur-tap: 120ms;
-  --cb-dur-state: 220ms;
-  --cb-dur-move: 380ms;
+  /* Motion. Short and decelerating, transform and opacity only, and never ease-in: an interface that
+     starts slowly feels like it did not hear you. Exits are faster than entrances. */
+  --cb-ease-out: cubic-bezier(0.23, 1, 0.32, 1);   /* strong ease-out: presses, reveals */
+  --cb-ease-move: cubic-bezier(0.32, 0.72, 0, 1);  /* critically damped feel: sheets, bars, the tray */
+  --cb-dur-tap: 120ms;      /* press feedback */
+  --cb-dur-state: 220ms;    /* hover, enter */
+  --cb-dur-exit: 160ms;     /* leave */
+  --cb-dur-move: 380ms;     /* full-screen sheet on phones */
+  --cb-dur-charge: 700ms;   /* the range ruler filling, once per page */
+  --cb-dur-fade: 150ms;     /* opacity only: kept when motion is reduced */
+  --cb-hover-scale: 1.03;   /* the one hover lift for photos */
 }
 
+/* Reduced motion keeps the fades that explain a change and drops every movement. */
 @media (prefers-reduced-motion: reduce) {
   :root {
     --cb-dur-tap: 0ms;
     --cb-dur-state: 0ms;
+    --cb-dur-exit: 0ms;
     --cb-dur-move: 0ms;
+    --cb-dur-charge: 0ms;
   }
 }

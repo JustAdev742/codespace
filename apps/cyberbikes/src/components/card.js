@@ -82,7 +82,7 @@ export const CARD_CSS = css`
   .card-media img {
     width: 100%; height: 100%; object-fit: contain; padding: 5%;
     mix-blend-mode: multiply;
-    transition: transform var(--cb-dur-move) var(--cb-ease-out);
+    transition: transform var(--cb-dur-state) var(--cb-ease-out);
   }
   .card-media.photo img { object-fit: cover; padding: 0; mix-blend-mode: normal; }
   .card-badge {
@@ -110,7 +110,7 @@ export const CARD_CSS = css`
   .price s { font-size: var(--cb-text-sm); }
   .price-from { font-size: var(--cb-text-sm); color: var(--cb-text-muted); }
   @media (hover: hover) and (pointer: fine) {
-    .card:hover .card-media img { transform: scale(1.03); }
+    .card:hover .card-media img { transform: scale(var(--cb-hover-scale)); }
     .card:hover .card-link { text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 0.18em; }
   }
 `;

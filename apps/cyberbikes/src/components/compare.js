@@ -32,15 +32,26 @@ export class CbCompare extends CbElement {
   static styles = [css`
     :host { display: contents; }
     .tray {
-      position: fixed; z-index: 2147482000; left: 50%; bottom: calc(var(--cb-bottom-offset, 0px) + var(--cb-space-3));
-      transform: translateX(-50%);
+      position: fixed; z-index: 2147482000; left: 50%; bottom: var(--cb-space-3);
+      translate: -50% 0;
+      transform: translateY(calc(var(--cb-bottom-offset, 0px) * -1));
       width: min(100% - 2 * var(--cb-space-3), 46rem);
       display: flex; align-items: center; gap: var(--cb-space-3);
       padding: var(--cb-space-2) var(--cb-space-2) var(--cb-space-2) var(--cb-space-4);
       border-radius: var(--cb-radius-pill);
       background: var(--cb-ink); color: var(--cb-paper);
       box-shadow: var(--cb-shadow-overlay);
-      transition: bottom var(--cb-dur-state) var(--cb-ease-out);
+      /* Rises from the bottom edge when the first bike is picked; follows the buy bar up and down. */
+      transition: transform var(--cb-dur-state) var(--cb-ease-move), opacity var(--cb-dur-fade) linear;
+      @starting-style { transform: translateY(calc(100% + var(--cb-space-3))); opacity: 0; }
+    }
+    /* Leaves the way it came, faster than it arrived. */
+    .tray[hidden] {
+      display: none;
+      transform: translateY(calc(100% + var(--cb-space-3)));
+      opacity: 0;
+      transition: transform var(--cb-dur-exit) var(--cb-ease-move), opacity var(--cb-dur-exit) linear,
+        display var(--cb-dur-exit) allow-discrete;
     }
     .tray-count { font-family: var(--cb-font-text-medium); white-space: nowrap; }
     .thumbs { display: flex; gap: var(--cb-space-2); flex: 1; min-width: 0; }
@@ -59,28 +70,57 @@ export class CbCompare extends CbElement {
     }
     dialog::backdrop { background: rgb(28 28 28 / 0.55); }
     @media (max-width: 47.99rem) { dialog { width: 100%; height: 100%; max-height: 100%; border-radius: 0; } }
+
+    /* Opening: the sheet scales up from just under full size (a modal stays centred); on phones it
+       rises from the bottom edge and leaves the same way. Closing is faster than opening. */
+    dialog, dialog::backdrop {
+      transition: opacity var(--cb-dur-exit) linear, transform var(--cb-dur-exit) var(--cb-ease-out),
+        overlay var(--cb-dur-exit) allow-discrete, display var(--cb-dur-exit) allow-discrete;
+    }
+    dialog { opacity: 0; transform: scale(0.97); }
+    dialog[open] { opacity: 1; transform: none; transition-duration: var(--cb-dur-fade), var(--cb-dur-state), var(--cb-dur-state), var(--cb-dur-state); }
+    dialog::backdrop { opacity: 0; }
+    dialog[open]::backdrop { opacity: 1; }
+    @starting-style {
+      dialog[open] { opacity: 0; transform: scale(0.97); }
+      dialog[open]::backdrop { opacity: 0; }
+    }
+    @media (max-width: 47.99rem) {
+      dialog { transform: translateY(100%); }
+      dialog[open] { transition-duration: var(--cb-dur-fade), var(--cb-dur-move), var(--cb-dur-move), var(--cb-dur-move);
+        transition-timing-function: linear, var(--cb-ease-move); }
+      @starting-style { dialog[open] { transform: translateY(100%); } }
+    }
     .sheet { display: flex; flex-direction: column; height: 100%; max-height: inherit; }
     header {
-      display: flex; align-items: center; flex-wrap: wrap; gap: var(--cb-space-3) var(--cb-space-5);
+      display: grid; grid-template-columns: 1fr auto auto; align-items: center; gap: var(--cb-space-2) var(--cb-space-5);
       padding: var(--cb-space-4) var(--cb-gutter); border-bottom: var(--cb-border-w) solid var(--cb-border);
     }
-    header h2 { font-size: var(--cb-text-xl); margin-right: auto; }
+    header h2 { font-size: var(--cb-text-xl); }
+    @media (max-width: 47.99rem) {
+      header { grid-template-columns: 1fr auto; }
+      .diff { grid-row: 2; grid-column: 1 / -1; }
+    }
     .diff { display: inline-flex; align-items: center; gap: var(--cb-space-2); min-height: var(--cb-target); font-size: var(--cb-text-sm); cursor: pointer; }
     .diff input { width: 1.125rem; height: 1.125rem; accent-color: var(--cb-ink); }
     .close { width: var(--cb-target); padding: 0; border-color: var(--cb-border-control); }
     .scroller { overflow: auto; flex: 1; overscroll-behavior: contain; }
-    table { border-collapse: separate; border-spacing: 0; width: 100%; min-width: calc(8rem + var(--n) * 10.5rem); font-variant-numeric: tabular-nums lining-nums; }
+    table { table-layout: fixed; border-collapse: separate; border-spacing: 0; width: 100%; min-width: calc(8rem + var(--n) * 10.5rem); font-variant-numeric: tabular-nums lining-nums; }
+    col.labels { width: 9rem; }
+    @media (max-width: 47.99rem) { col.labels { width: 7.5rem; } }
     th, td { padding: var(--cb-space-3) var(--cb-space-4); text-align: left; vertical-align: top; border-bottom: var(--cb-border-w) solid var(--cb-border); }
     tbody th[scope="row"] {
-      position: sticky; left: 0; z-index: 1; width: 9rem;
+      position: sticky; left: 0; z-index: 1;
       background: var(--cb-paper); color: var(--cb-text-muted); font-weight: 400;
     }
     thead td, thead th { position: sticky; top: 0; z-index: 2; background: var(--cb-paper); border-bottom-color: var(--cb-ink); }
     thead td { left: 0; z-index: 3; }
     .bike { display: grid; gap: var(--cb-space-2); align-content: start; font-weight: 400; }
-    .bike .media { aspect-ratio: 4 / 3; border-radius: var(--cb-radius-lg); background: var(--cb-sand-50); overflow: hidden; }
+    /* Compact, because the header row stays in view while the specs scroll under it. */
+    .bike .media { aspect-ratio: 16 / 9; max-height: 7rem; border-radius: var(--cb-radius-lg); background: var(--cb-sand-50); overflow: hidden; }
     .bike img { width: 100%; height: 100%; object-fit: contain; padding: 6%; mix-blend-mode: multiply; }
-    .bike-name { font-family: var(--cb-font-text-bold); font-weight: 700; font-size: var(--cb-text-sm); line-height: var(--cb-leading-snug); }
+    .bike-name { font-family: var(--cb-font-text-bold); font-weight: 700; font-size: var(--cb-text-sm); line-height: var(--cb-leading-snug);
+      display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
     .bike-actions { display: flex; flex-wrap: wrap; gap: var(--cb-space-1) var(--cb-space-3); font-size: var(--cb-text-sm); }
     .bike-actions button { min-height: 2.75rem; padding: 0; border: 0; background: none; color: var(--cb-text-muted); text-decoration: underline; text-underline-offset: 0.18em; }
     .bike-actions a { display: inline-flex; align-items: center; min-height: 2.75rem; }
@@ -200,9 +240,10 @@ export class CbCompare extends CbElement {
     });
     scroller.innerHTML = html`<table style="--n:${bikes.length}">
       <caption class="sr-only">The bikes you chose, side by side. Figures as stated by each manufacturer.</caption>
+      <colgroup><col class="labels">${bikes.map(() => html`<col>`)}</colgroup>
       <thead><tr><td></td>${bikes.map(b => html`<th scope="col"><div class="bike">
         <div class="media">${b.images[0] ? html`<img src="${b.images[0].src}" srcset="${b.images[0].srcset}" sizes="12rem" alt="" width="${b.images[0].width}" height="${b.images[0].height}">` : ''}</div>
-        <span class="bike-name">${b.name}</span>
+        <span class="bike-name" title="${b.name}">${b.name}</span>
         <span class="num">${b.priceHigh > b.price ? 'From ' : ''}${price(b.price)}</span>
         <span class="bike-actions"><a class="link" href="${b.url}">View bike</a>
           <button type="button" data-remove="${b.id}" data-name="${b.name}">Remove<span class="sr-only"> ${b.name}</span></button></span>

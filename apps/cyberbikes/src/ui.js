@@ -81,15 +81,27 @@ export function rulerScale(values) {
  * The range ruler: a measured track, solid yellow to the lowest stated figure and hatched to the
  * highest, so "60–80 km" reads as a span. Decorative: the figure is always written next to it.
  */
-export function ruler(range, scale, { ticks = false, size = 'md' } = {}) {
+export function ruler(range, scale, { ticks = false, size = 'md', animate = false } = {}) {
   const pct = v => `${Math.min(100, (v / scale) * 100).toFixed(2)}%`;
   const known = range && range.min != null;
   const steps = scale / 50;
   const tickMarks = ticks ? html`<div class="ruler-ticks">${Array.from({ length: steps + 1 },
     (_, i) => html`<span style="--at:${pct(i * 50)}">${i * 50}${i === steps ? '\u00a0km' : ''}</span>`)}</div>` : '';
-  return html`<div class="ruler ruler-${size}${known ? '' : ' ruler-empty'}" aria-hidden="true">
+  return html`<div class="ruler ruler-${size}${known ? '' : ' ruler-empty'}"${animate && known ? raw(' data-charge') : ''} aria-hidden="true">
     <div class="ruler-track">${known ? html`<span class="ruler-fill" style="--to:${pct(range.min)}"></span>${range.max > range.min
       ? html`<span class="ruler-span" style="--from:${pct(range.min)};--to:${pct(range.max)}"></span>` : ''}` : ''}</div>${tickMarks}</div>`;
+}
+
+/** Fills every ruler marked data-charge inside `root` once it is half in view. */
+export function charge(root) {
+  const rulers = root.querySelectorAll('.ruler[data-charge]:not([data-charged])');
+  if (!rulers.length) return;
+  const io = new IntersectionObserver(entries => entries.forEach(e => {
+    if (!e.isIntersecting) return;
+    e.target.setAttribute('data-charged', '');
+    io.unobserve(e.target);
+  }), { threshold: 0.5 });
+  rulers.forEach(r => io.observe(r));
 }
 
 export const BASE = css`
@@ -119,7 +131,7 @@ export const BASE = css`
   button, input, select { font: inherit; color: inherit; }
   button { cursor: pointer; }
   a { color: inherit; }
-  [hidden] { display: none !important; }
+  [hidden]:not(.tray) { display: none !important; }
 
   .display {
     font-family: var(--cb-font-display);
@@ -131,6 +143,8 @@ export const BASE = css`
     text-wrap: balance;
   }
   .title { font-family: var(--cb-font-text-bold); font-weight: 700; line-height: var(--cb-leading-snug); text-wrap: balance; }
+  /* Mixed-case headings tighten slightly as they grow; capitals (.display) get space instead. */
+  h2.title { letter-spacing: -0.01em; }
   .label {
     font-family: var(--cb-font-text-medium);
     font-weight: 500;
@@ -159,10 +173,11 @@ export const BASE = css`
     border: var(--cb-border-w) solid transparent; border-radius: var(--cb-radius-pill);
     font-family: var(--cb-font-text-bold); font-weight: 700; font-size: var(--cb-text-base); line-height: 1;
     text-decoration: none; white-space: nowrap;
-    transition: background-color var(--cb-dur-tap) var(--cb-ease-out), transform var(--cb-dur-tap) var(--cb-ease-out);
+    transition: background-color var(--cb-dur-tap) ease, transform var(--cb-dur-tap) var(--cb-ease-out);
     -webkit-tap-highlight-color: transparent;
   }
   .btn:active { transform: scale(0.97); }
+  @media (prefers-reduced-motion: reduce) { .btn:active { transform: none; } }
   .btn-primary { background: var(--cb-action); color: var(--cb-on-action); }
   .btn-secondary { background: transparent; color: var(--cb-text); border-color: var(--cb-border-control); }
   .btn-quiet { background: transparent; color: var(--cb-text); padding-inline: var(--cb-space-3); }
@@ -191,6 +206,13 @@ export const BASE = css`
     transform-origin: left center;
   }
   .ruler-fill { background: var(--cb-signal); }
+  /* The one flourish: a ruler marked data-charge fills left to right the first time it is seen. */
+  .ruler[data-charge] .ruler-fill, .ruler[data-charge] .ruler-span {
+    clip-path: inset(0 100% 0 0);
+    transition: clip-path var(--cb-dur-charge) var(--cb-ease-out);
+  }
+  .ruler[data-charge] .ruler-span { transition-delay: calc(var(--cb-dur-charge) * 0.35); }
+  .ruler[data-charged] .ruler-fill, .ruler[data-charged] .ruler-span { clip-path: inset(0 0 0 0); }
   .ruler-span {
     left: var(--from); width: calc(var(--to) - var(--from));
     border-radius: 0 var(--cb-radius-pill) var(--cb-radius-pill) 0;
