@@ -11,6 +11,23 @@
 }
 :where(.w-background-dark, .w-background-dark *):focus-visible { outline-color: var(--cb-signal) !important; }
 
+/* Square's product-grid links are inline wrappers that paint no outline, and the card clips anything
+   outside it: draw the focus ring inside instead (WCAG 2.4.7). */
+.product-group .product-image__link,
+.product-group .product-group__link { display: block; position: relative; }
+.product-group .product-image__link:focus-visible,
+.product-group .product-group__link:focus-visible { outline: none !important; }
+.product-group .product-image__link:focus-visible::after,
+.product-group .product-group__link:focus-visible::after {
+  content: ''; position: absolute; inset: 0; z-index: 3; pointer-events: none;
+  border-radius: inherit; outline: 3px solid var(--cb-focus); outline-offset: -3px;
+}
+
+/* The theme sets no gap between grid columns on desktop, so the rounded wells touch. */
+@media (min-width: 48rem) {
+  .content-grid.mobile-columns { column-gap: var(--cb-space-5) !important; }
+}
+
 /* Product grids: every bike on the same warm ground, whatever background the supplier shot it on. */
 .product-group .figure__aspect-ratio,
 .product-group .product-image__link {

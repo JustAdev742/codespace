@@ -3,10 +3,10 @@
 // lists, judged only on what their listings state. A bike whose listing is silent on a question is
 // never presented as a match; it is counted, and the shopper can choose to see it as "might fit".
 
-import { CbElement, css, define, html, rulerScale } from '../ui.js';
-import { cardHTML, CARD_CSS, fitPhotos } from './card.js';
+import { CbElement, css, define, html, icon, rulerScale } from '../ui.js';
+import { cardHTML, CARD_CSS, fitPhotos, syncCompareButtons } from './card.js';
 import { facts, loadBikes } from '../catalogue.js';
-import { bindCompareButtons, compareIds } from '../compare-store.js';
+import { bindCompareButtons, compareIds, openComparison } from '../compare-store.js';
 import { config } from '../config.js';
 
 const ROUGH = ['mountain', 'off-road', 'fat-tyre'];
@@ -79,6 +79,8 @@ const TESTS = {
 };
 const WHAT = { use: 'what they’re built for', distance: 'their range', terrain: 'what they’re built for', motor: 'motor power', step: 'frame style' };
 const FILTERS = ['use', 'distance', 'terrain', 'budget', 'motor'];
+const PAGE = 12;  // cards per batch: the whole catalogue at once is slow on mid-range phones
+const LOOSEN = { use: '“A bit of everything”', distance: 'a shorter distance', terrain: '“Roads and bike paths”', budget: 'a wider budget', motor: 'any motor power' };
 
 export class CbBikeFinder extends CbElement {
   static styles = [CARD_CSS, css`
@@ -87,6 +89,10 @@ export class CbBikeFinder extends CbElement {
     .head { max-width: var(--cb-measure); margin-bottom: var(--cb-space-6); }
     .jump { display: none; }
     .results:focus { outline: none; }
+    .results { scroll-margin-top: var(--cb-space-6); }
+    .status-actions { display: flex; flex-wrap: wrap; gap: var(--cb-space-3); align-items: center; }
+    .grid > li { min-width: 0; }
+    .more-results { display: flex; justify-content: center; margin-top: var(--cb-space-7); }
     @media (max-width: 63.99rem) { .jump { display: inline-flex; justify-self: start; } }
     h2.display { font-size: var(--cb-text-3xl); }
     .head p { margin-top: var(--cb-space-3); color: var(--cb-text-muted); }
@@ -114,15 +120,22 @@ export class CbBikeFinder extends CbElement {
     .chip[data-zero] { color: var(--cb-text-muted); }
     input:checked + .chip { background: var(--cb-ink); border-color: var(--cb-ink); color: var(--cb-paper); }
     input:checked + .chip .n { color: var(--cb-sand-200); }
+    @media (forced-colors: active) {
+      input:checked + .chip { forced-color-adjust: none; background: Highlight; color: HighlightText; border-color: Highlight; }
+      input:checked + .chip .n { color: HighlightText; }
+    }
     input:focus-visible + .chip { outline: 2px solid var(--cb-focus); outline-offset: 2px; }
     @media (hover: hover) and (pointer: fine) { input:not(:checked) + .chip:hover { background: var(--cb-sand-100); } }
     .check { display: flex; align-items: center; gap: var(--cb-space-3); min-height: var(--cb-target); cursor: pointer; }
     .check input { width: 1.25rem; height: 1.25rem; accent-color: var(--cb-ink); flex: none; }
     details.more { border-top: var(--cb-border-w) solid var(--cb-border); padding-top: var(--cb-space-3); }
     details.more summary {
-      display: flex; align-items: center; min-height: var(--cb-target); cursor: pointer;
-      font-family: var(--cb-font-text-medium); color: var(--cb-text);
+      display: flex; align-items: center; justify-content: space-between; min-height: var(--cb-target); cursor: pointer;
+      font-family: var(--cb-font-text-medium); color: var(--cb-text); list-style: none;
     }
+    details.more summary::-webkit-details-marker { display: none; }
+    details.more summary .icon { transition: transform var(--cb-dur-state) var(--cb-ease-out); }
+    details.more[open] summary .icon { transform: rotate(45deg); }
     details.more[open] summary { margin-bottom: var(--cb-space-3); }
     .actions { display: flex; flex-wrap: wrap; gap: var(--cb-space-3); }
 
@@ -154,12 +167,15 @@ export class CbBikeFinder extends CbElement {
       sort: SORTS.some(s => s.id === q.get('sort')) ? q.get('sort') : 'price',
       maybe: false,
     };
+    // The page's main heading unless the page already has one (the hero's lives in a shadow root).
+    this.level = this.getAttribute('heading-level') === '2' || document.querySelector('h1, cb-hero') ? 'h2' : 'h1';
+    this.limit = PAGE;
     const radios = (name, options, anyLabel = 'Any') => html`<div class="chips">${(anyLabel ? [{ id: '', label: anyLabel }, ...options] : options).map(o => html`
       <input type="radio" name="${name}" id="${name}-${o.id || 'any'}" value="${o.id}" ${(this.state[name] || '') === o.id ? 'checked' : ''}>
-      <label class="chip" for="${name}-${o.id || 'any'}" data-option="${name}:${o.id}">${o.label}<span class="n"></span></label>`)}</div>`;
+      <label class="chip" for="${name}-${o.id || 'any'}" data-option="${name}:${o.id}">${o.label}<span class="n" aria-hidden="true"></span><span class="sr-only n-said"></span></label>`)}</div>`;
     this.render(html`<div class="inner">
       <div class="head">
-        <h2 class="display">${this.getAttribute('heading') ?? 'Find your bike'}</h2>
+        <${this.level} class="display">${this.getAttribute('heading') ?? 'Find your bike'}</${this.level}>
         <p>A few questions about how you’ll ride. Every result is a bike we sell, matched on the figures in its own listing.</p>
       </div>
       <div class="layout">
@@ -170,7 +186,7 @@ export class CbBikeFinder extends CbElement {
           <fieldset><legend>What matters most?</legend>${radios('sort', SORTS, null)}
             <label class="check"><input type="checkbox" name="step" ${this.state.step ? 'checked' : ''}> Easy to step on and off (step-through frame)</label></fieldset>
           <fieldset><legend>What’s your budget?</legend>${radios('budget', BUDGETS)}</fieldset>
-          <details class="more"${this.state.motor ? ' open' : ''}><summary>More options</summary>
+          <details class="more"${this.state.motor ? ' open' : ''}><summary>More options${icon('plus')}</summary>
             <fieldset><legend>Motor power</legend><p class="hint">Rated power, as the manufacturer states it.</p>${radios('motor', MOTORS)}</fieldset>
           </details>
           <div class="actions">
@@ -179,7 +195,9 @@ export class CbBikeFinder extends CbElement {
           </div>
         </form>
         <section class="results" id="results" tabindex="-1" aria-labelledby="count" aria-busy="true">
-          <div class="status"><p class="count" id="count" role="status">Loading bikes…</p><p class="note"></p></div>
+          <div class="status"><p class="count" id="count" role="status">Loading bikes…</p>
+            <div class="status-actions"><button type="button" class="btn btn-secondary compare-now" hidden>${icon('columns')}<span></span></button></div>
+            <p class="note"></p></div>
           <div class="list"><div class="grid">${Array.from({ length: 6 }, () => html`<div class="skeleton"></div>`)}</div></div>
         </section>
       </div></div>`);
@@ -195,6 +213,7 @@ export class CbBikeFinder extends CbElement {
     form.addEventListener('change', e => {
       const { name, value, checked, type } = e.target;
       this.state[name] = type === 'checkbox' ? checked : value;
+      this.limit = PAGE;
       this.update();
     });
     form.addEventListener('reset', () => setTimeout(() => {
@@ -204,7 +223,16 @@ export class CbBikeFinder extends CbElement {
     this.root.addEventListener('change', e => {
       if (e.target.name === 'maybe') { this.state.maybe = e.target.checked; this.update(); }
     });
-    this.onCompare = () => this.$$('[data-compare]').forEach(b => this.syncCompareButton(b));
+    this.root.addEventListener('click', e => {
+      if (!e.target.closest('.show-more')) return;
+      const first = this.limit;
+      this.limit += PAGE;
+      this.update();
+      this.$$('.grid.yes > li')[first]?.querySelector('a')?.focus();  // keyboard users land on the first new card
+    });
+    // An early way into the comparison, so keyboard users needn't tab past every card to the tray.
+    this.$('.compare-now').addEventListener('click', e => openComparison(e.currentTarget));
+    this.onCompare = () => { syncCompareButtons(this.root, compareIds()); this.syncCompareNow(); };
     window.addEventListener('cb-compare-change', this.onCompare);
 
     loadBikes().then(bikes => {
@@ -220,8 +248,11 @@ export class CbBikeFinder extends CbElement {
 
   disconnectedCallback() { window.removeEventListener('cb-compare-change', this.onCompare); }
 
-  syncCompareButton(button) {
-    button.setAttribute('aria-pressed', String(compareIds().includes(button.dataset.compare)));
+  syncCompareNow() {
+    const n = compareIds().length;
+    const button = this.$('.compare-now');
+    button.hidden = n < 2;
+    button.querySelector('span').textContent = `Compare ${n} bikes`;
   }
 
   /** How one bike answers the current questions, ignoring `skip` (for the option counts). */
@@ -244,6 +275,7 @@ export class CbBikeFinder extends CbElement {
       if (!QUESTIONS[name]) continue;
       const n = this.bikes.filter(b => this.judge(b, name).verdict === 'yes' && (!id || TESTS[name](b, id) === 'yes')).length;
       label.querySelector('.n').textContent = ` ${n}`;
+      label.querySelector('.n-said').textContent = n === 1 ? ', 1 bike' : `, ${n} bikes`;
       label.toggleAttribute('data-zero', n === 0);
     }
     const sort = SORTS.find(s => s.id === state.sort);
@@ -262,7 +294,9 @@ export class CbBikeFinder extends CbElement {
     ].filter(Boolean).join(', or ');
     const scale = rulerScale([...yes, ...(state.maybe ? maybe.map(j => j.bike) : [])].map(facts.range));
     const ids = compareIds();
-    const cards = list => html`<ul class="grid" role="list">${list.map(b => html`<li>${cardHTML(b, { scale, compare: ids.includes(b.id), heading: 'h3' })}</li>`)}</ul>`;
+    const cards = (list, cls = '') => html`<ul class="grid ${cls}" role="list">${list.map(b => html`<li>${cardHTML(b, { scale, compare: ids.includes(b.id), heading: 'h3' })}</li>`)}</ul>`;
+    const shown = yes.slice(0, this.limit);
+    const loosen = FILTERS.filter(k => state[k]).map(k => LOOSEN[k]);
     const notes = [
       state.distance ? 'Matched on each manufacturer’s range figure; hills, load, cold weather and assist level all shorten it.' : '',
       sort.unknownNote && yes.some(b => sort.value(b) == null) ? `Bikes that don’t list their ${sort.unknownNote} are shown last.` : '',
@@ -283,14 +317,18 @@ export class CbBikeFinder extends CbElement {
     this.$('.jump').textContent = yes.length === 1 ? 'See the 1 bike' : `See ${yes.length} bikes`;
     this.$('.note').textContent = notes;
     this.$('.list').innerHTML = html`
-      ${yes.length ? cards(yes) : html`<div class="empty"><p>No bike we sell matches all of those answers.</p>
-        <p>Try a wider budget or a shorter distance, or look at the bikes that might fit below.</p></div>`}
+      ${yes.length ? html`${cards(shown, 'yes')}${yes.length > shown.length ? html`<div class="more-results">
+          <button type="button" class="btn btn-secondary show-more">Show ${Math.min(PAGE, yes.length - shown.length)} more of ${yes.length - shown.length}</button></div>` : ''}`
+        : html`<div class="empty"><p>No bike we sell matches all of those answers.</p>
+        <p>${loosen.length ? `Try ${loosen.join(', or ')}.` : 'Ask us: we may have one coming in.'}${maybe.length ? ' Some bikes below might fit.' : ''}</p></div>`}
       ${maybe.length ? html`<div class="maybe">
-        <h3>${maybe.length === 1 ? '1 more bike might fit' : `${maybe.length} more bikes might fit`}</h3>
-        <p>We can’t tell for sure: ${reasons}. Ask us, or look at them yourself.</p>
-        <label class="check"><input type="checkbox" name="maybe" ${state.maybe ? 'checked' : ''}> Show them</label>
+        <h3 id="maybe-title">${maybe.length === 1 ? '1 more bike might fit' : `${maybe.length} more bikes might fit`}</h3>
+        <p id="maybe-why">We can’t tell for sure: ${reasons}. Ask us, or look at them yourself.</p>
+        <label class="check"><input type="checkbox" name="maybe" aria-describedby="maybe-why" ${state.maybe ? 'checked' : ''}>
+          ${maybe.length === 1 ? 'Show the bike that might fit' : `Show the ${maybe.length} bikes that might fit`}</label>
         ${state.maybe ? cards(maybe.map(j => j.bike)) : ''}
       </div>` : ''}`.value;
+    this.syncCompareNow();
     if (refocus) this.$('input[name="maybe"]')?.focus();
   }
 }

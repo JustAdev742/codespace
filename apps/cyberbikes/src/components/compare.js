@@ -4,7 +4,7 @@
 import { CbElement, css, define, html, icon, ruler, rulerScale } from '../ui.js';
 import { battery, price, quantity, typeset } from '../format.js';
 import { loadProduct } from '../catalogue.js';
-import { clearCompare, compareIds, MAX_COMPARE, removeCompare } from '../compare-store.js';
+import { clearCompare, compareIds, MAX_COMPARE, pruneCompare, removeCompare } from '../compare-store.js';
 import { SPEC_FIELDS } from '../specs.js';
 
 const LABEL = Object.fromEntries(SPEC_FIELDS.map(f => [f.key, f.label]));
@@ -22,6 +22,13 @@ const BARS = {
   maxLoad: b => b.specs.fields.maxLoad?.max,
 };
 
+/** Somewhere sensible for focus when the control that had it disappears. */
+function focusMain() {
+  const main = document.querySelector('main') ?? document.body;
+  if (!main.hasAttribute('tabindex')) main.setAttribute('tabindex', '-1');
+  main.focus({ preventScroll: true });
+}
+
 function cellText(key, f) {
   if (!f) return null;
   if (key === 'battery') return battery(f);
@@ -32,7 +39,8 @@ export class CbCompare extends CbElement {
   static styles = [css`
     :host { display: contents; }
     .tray {
-      position: fixed; z-index: 2147482000; left: 50%; bottom: var(--cb-space-3);
+      /* Above Square's own layers, below chat widgets, which keep their own corner. */
+      position: fixed; z-index: 9000; left: 50%; bottom: var(--cb-space-3);
       translate: -50% 0;
       transform: translateY(calc(var(--cb-bottom-offset, 0px) * -1));
       width: min(100% - 2 * var(--cb-space-3), 46rem);
@@ -40,7 +48,7 @@ export class CbCompare extends CbElement {
       padding: var(--cb-space-2) var(--cb-space-2) var(--cb-space-2) var(--cb-space-4);
       border-radius: var(--cb-radius-pill);
       background: var(--cb-ink); color: var(--cb-paper);
-      box-shadow: var(--cb-shadow-overlay);
+      box-shadow: 0 0 0 1px rgb(255 255 255 / 0.16), var(--cb-shadow-overlay);  /* a hairline so it reads on dark footers */
       /* Rises from the bottom edge when the first bike is picked; follows the buy bar up and down. */
       transition: transform var(--cb-dur-state) var(--cb-ease-move), opacity var(--cb-dur-fade) linear;
       @starting-style { transform: translateY(calc(100% + var(--cb-space-3))); opacity: 0; }
@@ -60,7 +68,12 @@ export class CbCompare extends CbElement {
     .tray .btn-quiet { color: var(--cb-paper); }
     .tray .btn-primary[aria-disabled="true"] { background: var(--cb-ink-800); color: var(--cb-sand-400); cursor: not-allowed; }
     @media (hover: hover) and (pointer: fine) { .tray .btn-quiet:hover { background: var(--cb-ink-800); } }
-    @media (max-width: 30rem) { .tray .clear { display: none; } }
+    .tray .clear { width: var(--cb-target); padding: 0; }
+    /* Phones: keep clear of the bottom-right corner, where chat buttons live. */
+    @media (max-width: 47.99rem) {
+      .tray { left: var(--cb-space-3); right: 5.5rem; width: auto; translate: none; }
+    }
+    @media (max-width: 30rem) { .thumbs { display: none; } .tray-count { flex: 1; } }
 
     dialog {
       width: min(100%, 72rem); max-width: 100%; max-height: min(100%, 56rem); margin: auto;
@@ -70,6 +83,8 @@ export class CbCompare extends CbElement {
     }
     dialog::backdrop { background: rgb(28 28 28 / 0.55); }
     @media (max-width: 47.99rem) { dialog { width: 100%; height: 100%; max-height: 100%; border-radius: 0; } }
+    /* A fixed height, so the table scrolls inside the sheet and the header row stays in view. */
+    @media (min-width: 48rem) { dialog { height: min(100%, 56rem); } }
 
     /* Opening: the sheet scales up from just under full size (a modal stays centred); on phones it
        rises from the bottom edge and leaves the same way. Closing is faster than opening. */
@@ -97,6 +112,8 @@ export class CbCompare extends CbElement {
       padding: var(--cb-space-4) var(--cb-gutter); border-bottom: var(--cb-border-w) solid var(--cb-border);
     }
     header h2 { font-size: var(--cb-text-xl); }
+    header h2:focus { outline: none; }
+    @media (max-width: 30rem) { header { padding-block: var(--cb-space-2); } .bike .media { max-height: 4rem; } }
     @media (max-width: 47.99rem) {
       header { grid-template-columns: 1fr auto; }
       .diff { grid-row: 2; grid-column: 1 / -1; }
@@ -113,8 +130,8 @@ export class CbCompare extends CbElement {
       position: sticky; left: 0; z-index: 1;
       background: var(--cb-paper); color: var(--cb-text-muted); font-weight: 400;
     }
-    thead td, thead th { position: sticky; top: 0; z-index: 2; background: var(--cb-paper); border-bottom-color: var(--cb-ink); }
-    thead td { left: 0; z-index: 3; }
+    thead th { position: sticky; top: 0; z-index: 2; background: var(--cb-paper); border-bottom-color: var(--cb-ink); }
+    thead th.corner { left: 0; z-index: 3; }
     .bike { display: grid; gap: var(--cb-space-2); align-content: start; font-weight: 400; }
     /* Compact, because the header row stays in view while the specs scroll under it. */
     .bike .media { aspect-ratio: 16 / 9; max-height: 7rem; border-radius: var(--cb-radius-lg); background: var(--cb-sand-50); overflow: hidden; }
@@ -138,38 +155,48 @@ export class CbCompare extends CbElement {
       <div class="tray on-dark" hidden>
         <p class="tray-count" id="count"></p>
         <div class="thumbs"></div>
-        <button type="button" class="btn btn-quiet clear">Clear</button>
+        <button type="button" class="btn btn-quiet clear" aria-label="Clear the compare list">${icon('close')}</button>
         <button type="button" class="btn btn-primary open" aria-haspopup="dialog">${icon('columns')}<span>Compare</span></button>
       </div>
       <p class="sr-only" role="status" aria-live="polite" id="status"></p>
       <dialog aria-labelledby="cmp-title">
         <div class="sheet">
           <header>
-            <h2 class="display" id="cmp-title">Compare</h2>
+            <h2 class="display" id="cmp-title" tabindex="-1" autofocus>Compare</h2>
             <label class="diff"><input type="checkbox" id="diff"> Only show differences</label>
             <button type="button" class="btn btn-secondary close" aria-label="Close comparison">${icon('close')}</button>
           </header>
-          <div class="scroller" tabindex="0" role="region" aria-labelledby="cmp-title"></div>
+          <div class="scroller" tabindex="0" role="region" aria-label="Comparison table"></div>
         </div>
       </dialog>`);
     this.tray = this.$('.tray');
     this.dialog = this.$('dialog');
     this.$('.open').addEventListener('click', () => this.open());
-    this.$('.clear').addEventListener('click', () => { clearCompare(); this.say('Compare list cleared.'); });
+    this.$('.clear').addEventListener('click', () => { focusMain(); clearCompare(); this.say('Compare list cleared.'); });
     this.$('.close').addEventListener('click', () => this.dialog.close());
-    this.$('#diff').addEventListener('change', () => this.renderTable());
+    this.$('#diff').addEventListener('change', () => {
+      const { shown, total } = this.renderTable();
+      this.say(shown === total ? `Showing all ${total} rows.` : `Showing the ${shown} of ${total} rows that differ.`);
+    });
     this.dialog.addEventListener('click', e => { if (e.target === this.dialog) this.dialog.close(); });
-    this.dialog.addEventListener('close', () => this.returnFocus?.focus());
+    this.dialog.addEventListener('close', () => {
+      const back = this.returnFocus;
+      if (back?.isConnected && back.offsetParent !== null) back.focus(); else focusMain();
+    });
     this.root.addEventListener('click', e => {
       const button = e.target.closest('[data-remove]');
       if (!button) return;
+      this.refocusRemove = [...this.$$('[data-remove]')].indexOf(button);
       removeCompare(button.dataset.remove);
-      this.say(`${button.dataset.name} removed from compare.`);
+      const left = compareIds().length;
+      this.say(`${button.dataset.name} removed. ${left === 1 ? '1 bike' : `${left} bikes`} left to compare.`);
     });
     this.onChange = () => this.refresh();
     this.onAnnounce = e => this.say(e.detail.message);
+    this.onOpen = e => this.open(e.detail?.from);
     window.addEventListener('cb-compare-change', this.onChange);
     window.addEventListener('cb-announce', this.onAnnounce);
+    window.addEventListener('cb-compare-open', this.onOpen);
     this.bikes = new Map();
     this.refresh();
   }
@@ -177,6 +204,7 @@ export class CbCompare extends CbElement {
   disconnectedCallback() {
     window.removeEventListener('cb-compare-change', this.onChange);
     window.removeEventListener('cb-announce', this.onAnnounce);
+    window.removeEventListener('cb-compare-open', this.onOpen);
   }
 
   say(message) {
@@ -193,10 +221,19 @@ export class CbCompare extends CbElement {
     const missing = ids.filter(id => !this.bikes.has(id));
     if (missing.length) {
       const loaded = await Promise.allSettled(missing.map(loadProduct));
-      loaded.forEach((r, i) => { if (r.status === 'fulfilled' && r.value) this.bikes.set(missing[i], r.value); });
+      const gone = [];
+      loaded.forEach((r, i) => {
+        if (r.status === 'fulfilled' && r.value) this.bikes.set(missing[i], r.value);
+        // Deleted or unpublished since it was picked: free its slot. A network failure keeps it.
+        else if ((r.status === 'fulfilled' && !r.value) || / 404$/.test(r.reason?.message ?? '')) gone.push(missing[i]);
+      });
+      if (gone.length) { pruneCompare(ids.filter(id => !gone.includes(id))); return; }
     }
     const chosen = this.selected();
     this.tray.hidden = chosen.length === 0;
+    // Keyboard focus never lands under the tray: scrolling leaves room for it.
+    const offset = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--cb-bottom-offset')) || 0;
+    document.documentElement.style.scrollPaddingBottom = chosen.length ? `${this.tray.offsetHeight + offset + 24}px` : '';
     this.$('#count').textContent = `${chosen.length} of ${MAX_COMPARE}`;
     this.$('.thumbs').innerHTML = html`${chosen.map(b => html`<span class="thumb">${b.images[0]
       ? html`<img src="${b.images[0].thumb}" alt="${b.name}" width="80" height="60">` : ''}</span>`)}`.value;
@@ -208,9 +245,9 @@ export class CbCompare extends CbElement {
     }
   }
 
-  open() {
+  open(from) {
     if (this.selected().length < 2) { this.say('Pick at least two bikes to compare.'); return; }
-    this.returnFocus = this.root.activeElement ?? document.activeElement;
+    this.returnFocus = from ?? this.root.activeElement ?? document.activeElement;
     this.renderTable();
     this.dialog.showModal();
   }
@@ -219,10 +256,12 @@ export class CbCompare extends CbElement {
     const bikes = this.selected();
     const onlyDiff = this.$('#diff').checked;
     const scroller = this.$('.scroller');
-    if (!bikes.length) { scroller.innerHTML = html`<p class="empty">No bikes chosen.</p>`.value; return; }
+    if (!bikes.length) { scroller.innerHTML = html`<p class="empty">No bikes chosen.</p>`.value; return { shown: 0, total: 0 }; }
+    let total = 0;
     const rangeScale = rulerScale(bikes.map(b => b.specs.fields.range?.max));
     const row = key => {
       const cells = bikes.map(b => cellText(key, b.specs.fields[key]));
+      total++;
       if (onlyDiff && new Set(cells.map(c => c ?? '')).size === 1) return '';
       const measure = BARS[key];
       const top = measure ? Math.max(...bikes.map(b => measure(b) ?? 0)) : 0;
@@ -241,7 +280,7 @@ export class CbCompare extends CbElement {
     scroller.innerHTML = html`<table style="--n:${bikes.length}">
       <caption class="sr-only">The bikes you chose, side by side. Figures as stated by each manufacturer.</caption>
       <colgroup><col class="labels">${bikes.map(() => html`<col>`)}</colgroup>
-      <thead><tr><td></td>${bikes.map(b => html`<th scope="col"><div class="bike">
+      <thead><tr><th class="corner" scope="col"><span class="sr-only">Specification</span></th>${bikes.map(b => html`<th scope="col"><div class="bike">
         <div class="media">${b.images[0] ? html`<img src="${b.images[0].src}" srcset="${b.images[0].srcset}" sizes="12rem" alt="" width="${b.images[0].width}" height="${b.images[0].height}">` : ''}</div>
         <span class="bike-name" title="${b.name}">${b.name}</span>
         <span class="num">${b.priceHigh > b.price ? 'From ' : ''}${price(b.price)}</span>
@@ -249,6 +288,13 @@ export class CbCompare extends CbElement {
           <button type="button" data-remove="${b.id}" data-name="${b.name}">Remove<span class="sr-only"> ${b.name}</span></button></span>
       </div></th>`)}</tr></thead>
       <tbody>${groups}</tbody></table>`.value;
+    // After a removal, focus the Remove button now in that column, or the last one.
+    if (this.refocusRemove != null) {
+      const buttons = this.$$('[data-remove]');
+      (buttons[Math.min(this.refocusRemove, buttons.length - 1)] ?? this.$('.close')).focus();
+      this.refocusRemove = null;
+    }
+    return { shown: this.$$('tbody tr:not(.group)').length, total };
   }
 }
 

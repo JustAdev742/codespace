@@ -66,10 +66,20 @@ export function cardHTML(bike, { scale = 150, compare = null, heading = 'h3', ea
       <div class="card-foot">
         ${priceHTML(bike)}
         ${compare == null ? '' : html`<button type="button" class="card-compare btn btn-secondary" data-compare="${bike.id}"
-          aria-pressed="${compare}" aria-label="Compare ${bike.name}">${icon(compare ? 'check' : 'plus')}<span>Compare</span></button>`}
+          aria-pressed="${compare ? 'true' : 'false'}" aria-label="Compare ${bike.name}">${icon(compare ? 'check' : 'plus')}<span>Compare</span></button>`}
       </div>
     </div>
   </article>`;
+}
+
+/** Brings every compare button inside `root` up to date: pressed state and icon together. */
+export function syncCompareButtons(root, ids) {
+  for (const button of root.querySelectorAll('[data-compare]')) {
+    const on = ids.includes(button.dataset.compare);
+    if (button.getAttribute('aria-pressed') === String(on)) continue;
+    button.setAttribute('aria-pressed', String(on));
+    button.querySelector('svg')?.replaceWith(document.createRange().createContextualFragment(icon(on ? 'check' : 'plus').value));
+  }
 }
 
 export const CARD_CSS = css`
@@ -91,20 +101,25 @@ export const CARD_CSS = css`
     background: var(--cb-ink); color: var(--cb-paper);
   }
   .card-body { display: flex; flex-direction: column; gap: var(--cb-space-2); flex: 1; }
+  /* Two lines reserved and two shown, so facts and prices line up across a row; the full name is the link's. */
   .card-title { font-size: var(--cb-text-md); min-height: calc(2 * var(--cb-leading-snug) * 1em); }
   .card-link { text-decoration: none; }
-  .card-link span { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; }
+  .card-link span { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; overflow-wrap: anywhere; }
   .card-link::after { content: ''; position: absolute; inset: 0; border-radius: var(--cb-radius-xl); }
   .card-link:focus-visible { outline: none; }
-  .card-link:focus-visible::after { outline: 2px solid var(--cb-focus); outline-offset: 4px; }
+  /* Drawn inside the card so a scrolling row can't clip it. */
+  .card-link:focus-visible::after { outline: 2px solid var(--cb-focus); outline-offset: -3px; }
   .card-facts {
     display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--cb-space-2);
     margin-top: var(--cb-space-1); padding-top: var(--cb-space-3); border-top: var(--cb-border-w) solid var(--cb-border);
   }
   .card-facts dd { font-family: var(--cb-font-text-medium); font-size: var(--cb-text-sm); overflow-wrap: anywhere; }
-  .card-foot { display: flex; align-items: center; justify-content: space-between; gap: var(--cb-space-3); margin-top: auto; padding-top: var(--cb-space-2); }
+  .card-foot { display: flex; align-items: end; justify-content: space-between; gap: var(--cb-space-3); margin-top: auto; padding-top: var(--cb-space-2); }
   .card-compare { position: relative; z-index: 1; min-height: 2.75rem; padding-inline: var(--cb-space-4); font-size: var(--cb-text-sm); }
   .card-compare[aria-pressed="true"] { background: var(--cb-ink); color: var(--cb-paper); border-color: var(--cb-ink); }
+  @media (forced-colors: active) {
+    .card-compare[aria-pressed="true"] { forced-color-adjust: none; background: Highlight; color: HighlightText; border-color: Highlight; }
+  }
   .price { display: flex; align-items: baseline; flex-wrap: wrap; gap: 0 var(--cb-space-2); font-size: var(--cb-text-lg); }
   .price strong { font-family: var(--cb-font-text-bold); font-weight: 700; }
   .price s { font-size: var(--cb-text-sm); }

@@ -3,9 +3,9 @@
 // the catalogue and the shop's own pages already show to be true.
 
 import { CbElement, charge, css, define, html, icon, prose, ruler, rulerScale } from '../ui.js';
-import { cardHTML, CARD_CSS, fitPhotos, priceHTML } from './card.js';
+import { cardHTML, CARD_CSS, fitPhotos, priceHTML, syncCompareButtons } from './card.js';
 import { facts, loadBikes } from '../catalogue.js';
-import { bindCompareButtons, compareIds } from '../compare-store.js';
+import { bindCompareButtons, compareIds, openComparison } from '../compare-store.js';
 import { RIDE_USES } from './finder.js';
 import { config } from '../config.js';
 import { phoneDisplay, quantity } from '../format.js';
@@ -26,7 +26,9 @@ export class CbHero extends CbElement {
       max-width: var(--cb-content-max); margin-inline: auto; padding-inline: var(--cb-gutter);
       display: grid; gap: var(--cb-space-7); align-items: center;
     }
-    @media (min-width: 60rem) { .inner { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: var(--cb-space-8); } }
+    @media (min-width: 60rem) { .inner { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: var(--cb-space-8); align-items: start; } }
+    .stat { min-height: calc(var(--cb-leading-body) * 1em); }
+    @media (max-width: 30rem) { .ctas .btn { width: 100%; } }
     .copy { container-type: inline-size; }
     .eyebrow { color: var(--cb-text); }
     /* Mortend is very wide: size the headline to its column so the longest word always fits. */
@@ -59,26 +61,26 @@ export class CbHero extends CbElement {
         <p class="label eyebrow">${a('eyebrow') ?? 'E-bike showroom · Leichhardt, Sydney'}</p>
         <${level} class="display">${a('headline') ?? 'E-bikes, measured.'}</${level}>
         <p class="lede">${prose(a('lede') ?? 'Compare power, battery and range side by side, then take the one you like for a free test ride in Leichhardt.')}</p>
-        <p class="stat num" aria-live="polite"></p>
+        <p class="stat num"></p>
         <div class="ctas">
           <a class="btn btn-primary" href="${a('primary-href') ?? config.links.finder}">${a('primary-label') ?? 'Find your bike'}${icon('arrow')}</a>
           <a class="btn btn-secondary" href="${a('secondary-href') ?? config.links.booking}">${a('secondary-label') ?? 'Book a free test ride'}</a>
         </div>
       </div>
-      <figure hidden></figure>
+      <figure><div class="media"></div></figure>
     </div>`);
     loadBikes().then(bikes => {
       const brands = new Set(bikes.map(b => b.brand).filter(Boolean));
       this.$('.stat').textContent = `${bikes.length} e-bikes from ${brands.size} brands`;
       const bike = bikes.find(b => b.id === a('bike')) ?? bikes.find(b => facts.range(b) != null && b.images.length);
-      if (!bike?.images.length) return;
+      if (!bike?.images.length) { this.$('figure').hidden = true; return; }
       const range = bike.specs.fields.range;
       // Which photo, and whether it is a cut-out (contain) or a photograph that fills the frame (cover).
       const img = bike.images[Number(a('image') ?? 0)] ?? bike.images[0];
       const cover = a('image-fit') === 'cover';
       const figure = this.$('figure');
       figure.innerHTML = html`<div class="media${cover ? ' cover' : ''}" style="--pos:${a('image-position') ?? 'center'}"><img src="${img.src}" srcset="${img.srcset}" sizes="(min-width: 60rem) 40rem, 100vw"
-          alt="${bike.name}" width="${img.width}" height="${img.height}" fetchpriority="high"></div>
+          alt="" width="${img.width}" height="${img.height}" fetchpriority="high"></div>
         <figcaption>
           <div class="bike"><a href="${bike.url}">${bike.name}</a>${priceHTML(bike)}</div>
           ${range?.min != null ? html`<div class="measure"><p class="measure-head"><span class="label">Range</span><strong>${quantity(range)}</strong></p>
@@ -86,7 +88,7 @@ export class CbHero extends CbElement {
         </figcaption>`.value;
       figure.hidden = false;
       charge(this.root);
-    }).catch(() => { /* the copy and buttons stand on their own */ });
+    }).catch(() => { this.$('figure').hidden = true; /* the copy and buttons stand on their own */ });
   }
 }
 
@@ -131,7 +133,7 @@ export class CbBikeRow extends CbElement {
     .row { display: grid; grid-auto-flow: column; grid-auto-columns: min(78%, 17rem); gap: var(--cb-space-5);
       overflow-x: auto; scroll-snap-type: x mandatory; overscroll-behavior-x: contain; padding-bottom: var(--cb-space-4);
       scrollbar-width: thin; }
-    .row > li { scroll-snap-align: start; }
+    .row > li { scroll-snap-align: start; min-width: 0; }
     @media (min-width: 64rem) { .row { grid-auto-flow: row; grid-template-columns: repeat(4, minmax(0, 1fr)); overflow: visible; } }
   `];
 
@@ -150,13 +152,22 @@ export class CbBikeRow extends CbElement {
       const more = this.getAttribute('more-href');
       this.render(html`<div class="inner">
         <div class="section-head"><h2 class="display">${this.getAttribute('heading') ?? 'On sale now'}</h2>
+          <button type="button" class="btn btn-secondary compare-now" hidden>${icon('columns')}<span></span></button>
           ${more ? html`<a class="more" href="${more}">${this.getAttribute('more-label') ?? 'See all'}${icon('arrow')}</a>` : ''}</div>
         <ul class="row" role="list">${list.map(b => html`<li>${cardHTML(b, { scale, compare: ids.includes(b.id) })}</li>`)}</ul>
       </div>`);
       bindCompareButtons(this.root, new Map(bikes.map(b => [b.id, b])));
       fitPhotos(this.root);
-      window.addEventListener('cb-compare-change', () => this.$$('[data-compare]').forEach(button =>
-        button.setAttribute('aria-pressed', String(compareIds().includes(button.dataset.compare)))));
+      const shortcut = this.$('.compare-now');
+      const sync = () => {
+        const ids = compareIds();
+        syncCompareButtons(this.root, ids);
+        shortcut.hidden = ids.length < 2;
+        shortcut.querySelector('span').textContent = `Compare ${ids.length} bikes`;
+      };
+      shortcut.addEventListener('click', e => openComparison(e.currentTarget));
+      window.addEventListener('cb-compare-change', sync);
+      sync();
       this.hidden = false;
     }).catch(() => {});
   }

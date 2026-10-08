@@ -28,6 +28,10 @@ export function toggleCompare(id) {
 }
 
 export const removeCompare = id => save(compareIds().filter(x => x !== id));
+/** Drops ids that no longer resolve to a bike (deleted or unpublished since they were picked). */
+export const pruneCompare = alive => { const ids = compareIds(); if (ids.some(id => !alive.includes(id))) save(ids.filter(id => alive.includes(id))); };
+/** Opens the comparison from anywhere; focus returns to `from` when it closes. */
+export const openComparison = from => window.dispatchEvent(new CustomEvent('cb-compare-open', { detail: { from } }));
 export const clearCompare = () => save([]);
 
 /** Messages for screen readers go through the compare tray's live region. */

@@ -54,7 +54,8 @@ const EXPLAINER_CSS = css`
 export class CbSpecPanel extends CbElement {
   static styles = [EXPLAINER_CSS, css`
     :host { margin-block: var(--cb-space-7); }
-    h2 { font-size: var(--cb-text-xl); margin-bottom: var(--cb-space-2); }
+    h2 { font-size: var(--cb-text-xl); margin-bottom: var(--cb-space-2); scroll-margin-top: var(--cb-space-6); }
+    h2:focus { outline: none; }
     .intro { color: var(--cb-text-muted); max-width: var(--cb-measure); }
     section { margin-top: var(--cb-space-6); }
     h3 { padding-bottom: var(--cb-space-2); border-bottom: var(--cb-border-w) solid var(--cb-ink); }
