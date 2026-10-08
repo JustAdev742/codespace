@@ -24,7 +24,7 @@
 
   if (location.pathname === '/' || location.pathname === '/index.html') {
     replaceContent(content(), ['[[hero bike=IQNARFJR5KK42SAYKPCXBQDD image=9 image-fit=cover image-position="50% 75%"]]',
-      '[[ride-types]]', '[[bike-row heading="On sale now"]]', '[[visit]]']);
+      '[[ride-types]]', '[[bike-row heading="On sale now"]]']);
   } else if (location.pathname.startsWith('/find-your-bike')) {
     document.title = 'Find your e-bike | Cyberbikes';
     replaceContent(content(), ['[[bike-finder sync-url]]']);

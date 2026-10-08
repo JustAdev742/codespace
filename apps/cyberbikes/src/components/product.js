@@ -2,7 +2,7 @@
 // mobile buy bar.
 
 import { CbElement, charge, css, define, html, icon, ruler, rulerScale } from '../ui.js';
-import { battery, phoneDisplay, quantity, typeset } from '../format.js';
+import { battery, number, phoneDisplay, quantity, typeset } from '../format.js';
 import { parseSpecBlock, SPEC_FIELDS } from '../specs.js';
 import { config } from '../config.js';
 
@@ -78,6 +78,8 @@ export class CbSpecPanel extends CbElement {
     .empty { padding: var(--cb-space-5); border-radius: var(--cb-radius-lg); background: var(--cb-surface-alt); max-width: var(--cb-measure); }
     @media (min-width: 48rem) { dl > div { grid-template-columns: minmax(10rem, 1fr) 2fr; } }
   `];
+
+  focusHeading() { const h = this.$('h2'); if (h) { h.tabIndex = -1; h.focus({ preventScroll: true }); } }
 
   static get observedAttributes() { return ['description']; }
   attributeChangedCallback() { this.specs = parseSpecBlock(this.getAttribute('description') ?? ''); }
@@ -198,7 +200,56 @@ export class CbBuyBar extends CbElement {
   }
 }
 
+/**
+ * The first answers a shopper wants, under the price: what kind of bike, how far, what powers it,
+ * what it weighs. Unknowns say so. The full panel stays further down for anyone who wants it all.
+ */
+export class CbKeyFacts extends CbElement {
+  static styles = [css`
+    :host { margin-block: var(--cb-space-4) var(--cb-space-5); }
+    .type { font-family: var(--cb-font-text-medium); margin-bottom: var(--cb-space-3); }
+    dl { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--cb-space-3); }
+    @media (min-width: 30rem) { dl { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+    dl > div { padding: var(--cb-space-3); border-radius: var(--cb-radius-md); background: var(--cb-surface-alt); }
+    dd { margin-top: var(--cb-space-1); font-family: var(--cb-font-text-bold); font-weight: 700; font-size: var(--cb-text-lg);
+      font-variant-numeric: tabular-nums lining-nums; line-height: var(--cb-leading-snug); }
+    dd.unknown { font-family: var(--cb-font-text); font-weight: 400; font-size: var(--cb-text-base); color: var(--cb-text-muted); }
+    dd small { display: block; font-family: var(--cb-font-text); font-weight: 400; font-size: var(--cb-text-xs); color: var(--cb-text-muted); }
+    .links { display: flex; flex-wrap: wrap; gap: var(--cb-space-1) var(--cb-space-5); margin-top: var(--cb-space-3); font-size: var(--cb-text-sm); }
+    .links a, .links button { display: inline-flex; align-items: center; gap: var(--cb-space-2); min-height: var(--cb-target); padding: 0;
+      border: 0; background: none; color: var(--cb-blue); text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 0.18em; }
+  `];
+
+  set specs(specs) { this._specs = specs; if (this.isConnected) this.update(); }
+  connectedCallback() { if (this._specs) this.update(); }
+
+  update() {
+    const f = this._specs.fields;
+    const energy = f.battery?.energy;
+    const fact = (label, value, note = '') => value
+      ? html`<div><dt class="label">${label}</dt><dd>${value}${note ? html`<small>${note}</small>` : ''}</dd></div>`
+      : html`<div><dt class="label">${label}</dt><dd class="unknown">Not listed</dd></div>`;
+    const wh = energy ? `${energy.min === energy.max ? number(energy.min) : `${number(energy.min)}–${number(energy.max)}`}\u00a0Wh` : '';
+    this.render(html`${f.type ? html`<p class="type">${typeset(f.type.raw)}</p>` : ''}
+      <dl>
+        ${fact('Range', f.range?.min != null ? quantity(f.range) : '', f.range?.min != null ? 'manufacturer’s figure' : '')}
+        ${fact('Motor', f.ratedPower?.min != null ? quantity(f.ratedPower) : '')}
+        ${fact('Battery', wh, energy?.source === 'calculated' ? 'from volts × amp-hours' : '')}
+        ${fact('Weight', f.weight?.min != null ? quantity(f.weight) : '')}
+      </dl>
+      <p class="links"><button type="button" class="all">All specifications</button>
+        <a href="${config.links.booking}">${icon('calendar')}Book a free test ride</a></p>`);
+    this.$('.all').addEventListener('click', () => {
+      const panel = document.querySelector('cb-spec-panel');
+      if (!panel) return;
+      panel.scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start' });
+      panel.focusHeading?.();
+    });
+  }
+}
+
 define('cb-spec-panel', CbSpecPanel);
+define('cb-key-facts', CbKeyFacts);
 define('cb-range-explainer', CbRangeExplainer);
 define('cb-box-notice', CbBoxNotice);
 define('cb-buy-bar', CbBuyBar);

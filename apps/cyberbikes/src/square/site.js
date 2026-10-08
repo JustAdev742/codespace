@@ -114,7 +114,17 @@ function productPage() {
     panel.dataset.cbProduct = id;
     panel.specs = specs;
     descriptionBlock.after(panel);
-    if (specs.found) hideRawSpecs(description);
+    if (specs.found) {
+      hideRawSpecs(description);
+      // The key facts go under the price, but only once the listing has a spec block to read.
+      const header = document.querySelector('.product__header');
+      if (header) {
+        const facts = document.createElement('cb-key-facts');
+        facts.dataset.cbProduct = id;
+        facts.specs = specs;
+        header.after(facts);
+      }
+    }
     enrichStructuredData(id);
   }
   if (cart && !document.querySelector(`cb-box-notice[data-cb-product="${id}"]`)) {
