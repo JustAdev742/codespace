@@ -5,7 +5,7 @@
 
 import { CbElement, css, define, html, icon, rulerScale } from '../ui.js';
 import { cardHTML, CARD_CSS, fitPhotos, syncCompareButtons } from './card.js';
-import { facts, loadBikes } from '../catalogue.js';
+import { facts, isAvailable, loadBikes } from '../catalogue.js';
 import { bindCompareButtons, compareIds, openComparison } from '../compare-store.js';
 import { config } from '../config.js';
 
@@ -236,7 +236,7 @@ export class CbBikeFinder extends CbElement {
     window.addEventListener('cb-compare-change', this.onCompare);
 
     loadBikes().then(bikes => {
-      this.bikes = bikes;
+      this.bikes = bikes.filter(isAvailable);
       bindCompareButtons(this.root, new Map(bikes.map(b => [b.id, b])));
       this.update();
     }).catch(() => {

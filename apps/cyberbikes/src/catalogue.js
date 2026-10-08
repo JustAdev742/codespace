@@ -80,6 +80,13 @@ export function isPaymentPlan(p) {
     || ((p.price?.low ?? 0) < config.minBikePrice && config.notABike.test(p.short_description ?? ''));
 }
 
+/**
+ * Whether a bike may be recommended (finder, homepage sections). Sold-out bikes never are. Until stock
+ * tracking is on in Square, every bike's stock is unknown and counts as available. A bike a shopper
+ * picked to compare still shows there, marked sold out.
+ */
+export const isAvailable = bike => bike.stock !== 'out';
+
 /** One store-API product as the shape every component uses. */
 export function bikeFromProduct(p) {
   const categories = (p.categories?.data ?? []).map(c => c.name);

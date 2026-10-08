@@ -125,9 +125,10 @@ def audit_bike(p, shown, cat_names):
                   fmt=lambda m: re.sub(r'\s*(?:[-–~]|to)\s*', '–', (m.group(1) or m.group(2)).strip()))
     speed = r.every('top_speed_kmh', num + r'(\d{2})\s*(?:km\s*/?\s*h|kph|km per hour)\b', keep=lambda v: int(v) >= 15)
     # "Bike weight: 26 kg" yes; "rider weight", "battery weight", "max weight" no.
-    weight = r.first('weight_kg', r'\b(?:weight|weighs|weighing)\b[^|;]{0,20}?' + num + r'(\d{2}(?:\.\d)?)\s*kg'
-                     r'|' + num + r'(\d{2}(?:\.\d)?)\s*kg[^|;]{0,12}(?:bike |net |total )?weight',
-                     fmt=lambda m: m.group(1) or m.group(2),
+    # A stated weight range ("37.5 - 42 kg") is kept whole, never cut down to one end.
+    weight = r.first('weight_kg', r'\b(?:weight|weighs|weighing)\b[^|;]{0,20}?' + num + r'(\d{2}(?:\.\d)?(?:\s*(?:[-–~]|to)\s*\d{2}(?:\.\d)?)?)\s*kg'
+                     r'|' + num + r'(\d{2}(?:\.\d)?(?:\s*(?:[-–~]|to)\s*\d{2}(?:\.\d)?)?)\s*kg[^|;]{0,12}(?:bike |net |total )?weight',
+                     fmt=lambda m: re.sub(r'\s*(?:[-–~]|to)\s*', '–', (m.group(1) or m.group(2)).strip()),
                      skip=r'(rider|battery|max(?:imum)?|load|carry(?:ing)?|rack|payload|user)\s*$')
     payload = r.first('payload_kg', r'(?:max(?:imum)?\.?\s*(?:load|payload|rider(?: weight)?)|payload|load capacity|carrying capacity)'
                       r'[^|;]{0,25}?' + num + r'(\d{2,3})\s*kg|' + num + r'(\d{3})\s*kg\s*(?:max(?:imum)?\.?\s*)?(?:load|payload|capacity)',

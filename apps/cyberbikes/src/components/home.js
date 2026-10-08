@@ -4,11 +4,11 @@
 
 import { CbElement, charge, css, define, html, icon, prose, ruler, rulerScale } from '../ui.js';
 import { cardHTML, CARD_CSS, fitPhotos, priceHTML, syncCompareButtons } from './card.js';
-import { facts, loadBikes } from '../catalogue.js';
+import { facts, isAvailable, loadBikes } from '../catalogue.js';
 import { bindCompareButtons, compareIds, openComparison } from '../compare-store.js';
 import { RIDE_USES } from './finder.js';
 import { config } from '../config.js';
-import { phoneDisplay, quantity } from '../format.js';
+import { phoneDisplay, quantity, typeset } from '../format.js';
 
 const SECTION_CSS = css`
   :host { padding-block: var(--cb-space-8); }
@@ -69,22 +69,26 @@ export class CbHero extends CbElement {
       </div>
       <figure><div class="media"></div></figure>
     </div>`);
-    loadBikes().then(bikes => {
+    loadBikes().then(all => {
+      const bikes = all.filter(isAvailable);
       const brands = new Set(bikes.map(b => b.brand).filter(Boolean));
       this.$('.stat').textContent = `${bikes.length} e-bikes from ${brands.size} brands`;
-      const bike = bikes.find(b => b.id === a('bike')) ?? bikes.find(b => facts.range(b) != null && b.images.length);
+      // The chosen bike, or, once it sells out, the first available bike with a stated range.
+      const chosen = bikes.find(b => b.id === a('bike'));
+      const bike = chosen ?? bikes.find(b => facts.range(b) != null && b.images.length);
       if (!bike?.images.length) { this.$('figure').hidden = true; return; }
       const range = bike.specs.fields.range;
       // Which photo, and whether it is a cut-out (contain) or a photograph that fills the frame (cover).
-      const img = bike.images[Number(a('image') ?? 0)] ?? bike.images[0];
-      const cover = a('image-fit') === 'cover';
+      // These settings describe the chosen bike's photos, so a stand-in uses its first photo as it is.
+      const img = (chosen && bike.images[Number(a('image') ?? 0)]) || bike.images[0];
+      const cover = Boolean(chosen) && a('image-fit') === 'cover';
       const figure = this.$('figure');
       figure.innerHTML = html`<div class="media${cover ? ' cover' : ''}" style="--pos:${a('image-position') ?? 'center'}"><img src="${img.src}" srcset="${img.srcset}" sizes="(min-width: 60rem) 40rem, 100vw"
           alt="" width="${img.width}" height="${img.height}" fetchpriority="high"></div>
         <figcaption>
           <div class="bike"><a href="${bike.url}">${bike.name}</a>${priceHTML(bike)}</div>
           ${range?.min != null ? html`<div class="measure"><p class="measure-head"><span class="label">Range</span><strong>${quantity(range)}</strong></p>
-            ${ruler(range, rulerScale([range.max]), { ticks: true, size: 'lg', animate: true })}<p class="measure-note">Manufacturer’s figure</p></div>` : ''}
+            ${ruler(range, rulerScale([range.max]), { ticks: true, size: 'lg', animate: true })}<p class="measure-note">Manufacturer’s figure${range.note ? `, ${typeset(range.note)}` : ''}</p></div>` : ''}
         </figcaption>`.value;
       figure.hidden = false;
       charge(this.root);
@@ -109,7 +113,7 @@ export class CbRideTypes extends CbElement {
     this.hidden = true;
     loadBikes().then(bikes => {
       const tiles = RIDE_USES.map(use => {
-        const list = bikes.filter(b => facts.tags(b).some(t => use.tags.includes(t))).sort((x, y) => x.price - y.price);
+        const list = bikes.filter(b => isAvailable(b) && facts.tags(b).some(t => use.tags.includes(t))).sort((x, y) => x.price - y.price);
         return { use, list };
       }).filter(t => t.list.length >= 2);
       if (!tiles.length) return;  // types not listed yet: show nothing rather than empty tiles
@@ -141,10 +145,11 @@ export class CbBikeRow extends CbElement {
     this.hidden = true;
     loadBikes().then(bikes => {
       const show = this.getAttribute('show') ?? 'sale';
+      const available = bikes.filter(isAvailable);
       let list;
-      if (show.startsWith('ids:')) list = show.slice(4).split(',').map(id => bikes.find(b => b.id === id.trim())).filter(Boolean);
-      else if (show.startsWith('brand:')) list = bikes.filter(b => b.brand === show.slice(6));
-      else list = bikes.filter(b => b.onSale).sort((x, y) => (y.regularPrice - y.price) - (x.regularPrice - x.price));
+      if (show.startsWith('ids:')) list = show.slice(4).split(',').map(id => available.find(b => b.id === id.trim())).filter(Boolean);
+      else if (show.startsWith('brand:')) list = available.filter(b => b.brand === show.slice(6));
+      else list = available.filter(b => b.onSale).sort((x, y) => (y.regularPrice - y.price) - (x.regularPrice - x.price));
       list = list.slice(0, Number(this.getAttribute('limit') ?? 8));
       if (!list.length) return;
       const ids = compareIds();

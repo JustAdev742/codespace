@@ -12,7 +12,8 @@
  *   ...
  *
  * One "Label: value" per line, under a line that says only "Specifications". A bulleted list,
- * separate paragraphs or line breaks all work, and bold labels are fine.
+ * separate paragraphs or line breaks all work, and bold labels are fine. When a description already
+ * has a supplier's own spec section, the block pasted after it is the one read.
  *
  * Leave a field out when the manufacturer does not state it. The parser never fills a gap: a missing
  * field is reported as missing, and a value it cannot read cleanly (two different weights, a number
@@ -74,6 +75,10 @@ const UNIT = {
 const NUMBER = String.raw`\d{1,3}(?:,\d{3})+(?:\.\d+)?|\d+(?:\.\d+)?`;
 const BLANK = /^(?:|-+|–|—|n\/?a|tbc|tba|unknown|not (?:stated|listed|known)|\?+)$/i;
 const HEADING = /^(?:(?:key|tech(?:nical)?|full)\s+)?spec(?:ification)?s?\s*:?$/i;
+// A range or battery that depends on an optional or second battery ("130 km with dual battery",
+// "52V16Ah standard (optional 52V21Ah)") is not what the bike comes with: shown as written, never
+// compared or filtered.
+const EXTRA_BATTERY = /\b(?:dual|double|twin|two|three|second(?:ary)?|extra|optional|spare|additional|both)\b[^.;]{0,30}?\bbatter(?:y|ies)\b|\bbatteries\b|\boptional\b|\d\s*v\s*\/?\s*\d+(?:\.\d+)?\s*ah\s*\+/i;
 
 /** True for the line that opens a Specifications block. */
 export const isSpecHeading = text => HEADING.test(String(text).trim());
@@ -147,7 +152,7 @@ export function readQuantity(value, unit, unitOptional = false) {
   if (new RegExp(String.raw`\d\s*(?:${UNIT[unit]})(?![a-z])`, 'i').test(s)) return null;
   const q = { min: Math.min(...nums), max: Math.max(...nums) };
   if (joiner === 'alternatives') q.values = nums;
-  if (prefix && /up/i.test(prefix[1])) q.upTo = true;
+  if (prefix) q[/up/i.test(prefix[1]) ? 'upTo' : 'approx'] = true;
   if (plus) q.plus = true;
   return q;
 }
@@ -171,11 +176,20 @@ function readField(field, value, unitHint) {
   const out = { label: field.label, raw: value };
   switch (field.kind) {
     case 'quantity': {
+      if (field.key === 'range' && EXTRA_BATTERY.test(value)) return { ...out, unit: field.unit, min: null, max: null, unparsed: true };
+      // A test condition in brackets after the figure ("60 km (PAS 1, 75 kg rider)") is kept, as a note. A
+      // bracket holding a second figure in the same unit ("31 kg (battery 4 kg)") is not a condition: ambiguous.
+      const split = value.match(/^(.*?)\s*[(（]([^()（）]+)[)）]\s*$/);
+      const sameUnit = new RegExp(String.raw`\d\s*(?:${UNIT[field.unit]})(?![a-z])`, 'i');
+      const [figure, note] = split && !sameUnit.test(split[2]) ? [split[1], split[2]] : [value, null];
       const unitOptional = unitHint != null && new RegExp(`^(?:${UNIT[field.unit]})$`, 'i').test(unitHint);
-      const q = readQuantity(value, field.unit, unitOptional);
-      return q ? { ...out, unit: field.unit, ...q } : { ...out, unit: field.unit, min: null, max: null, unparsed: true };
+      const q = readQuantity(figure, field.unit, unitOptional);
+      if (!q) return { ...out, unit: field.unit, min: null, max: null, unparsed: true };
+      return note ? { ...out, unit: field.unit, ...q, note: note.trim() } : { ...out, unit: field.unit, ...q };
     }
-    case 'battery': return { ...out, ...readBattery(value) };
+    case 'battery': return EXTRA_BATTERY.test(value)
+      ? { ...out, volts: [], ampHours: [], wattHours: [], energy: null, unparsed: true }
+      : { ...out, ...readBattery(value) };
     case 'type': return { ...out, tags: Object.keys(TYPE_TAGS).filter(t => TYPE_TAGS[t].test(value)) };
     case 'standard': return { ...out, en15194: /\bEN\s*15194\b/i.test(value) };
     case 'roadUse': return { ...out, offRoad: /\boff[- ]?road\b|\bprivate (?:land|property)\b/i.test(value) };
@@ -211,11 +225,13 @@ function readBlock(lines) {
  */
 export function parseSpecBlock(description) {
   const lines = htmlToLines(description);
+  // A description can hold more than one block: a supplier's own section, then the checked block pasted
+  // at the end. The last block that states anything wins, so pasting the block replaces the supplier's.
   let best = null;
   lines.forEach((line, i) => {
     if (!HEADING.test(line)) return;
     const block = readBlock(lines.slice(i + 1));
-    if (!best || Object.keys(block.fields).length > Object.keys(best.fields).length) best = block;
+    if (Object.keys(block.fields).length) best = block;
   });
   const fields = best?.fields ?? {};
   return {

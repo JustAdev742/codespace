@@ -2,7 +2,7 @@
 // is picked and follows the shopper between pages; the sheet sets up to three bikes side by side.
 
 import { CbElement, css, define, html, icon, ruler, rulerScale } from '../ui.js';
-import { battery, price, quantity, typeset } from '../format.js';
+import { battery, price, typeset, withNote } from '../format.js';
 import { loadProduct } from '../catalogue.js';
 import { clearCompare, compareIds, MAX_COMPARE, pruneCompare, removeCompare } from '../compare-store.js';
 import { SPEC_FIELDS } from '../specs.js';
@@ -32,7 +32,7 @@ function focusMain() {
 function cellText(key, f) {
   if (!f) return null;
   if (key === 'battery') return battery(f);
-  return f.unit && f.min != null ? quantity(f) : typeset(f.raw);
+  return f.unit && f.min != null ? withNote(f) : typeset(f.raw);
 }
 
 export class CbCompare extends CbElement {
@@ -284,6 +284,7 @@ export class CbCompare extends CbElement {
         <div class="media">${b.images[0] ? html`<img src="${b.images[0].src}" srcset="${b.images[0].srcset}" sizes="12rem" alt="" width="${b.images[0].width}" height="${b.images[0].height}">` : ''}</div>
         <span class="bike-name" title="${b.name}">${b.name}</span>
         <span class="num">${b.priceHigh > b.price ? 'From ' : ''}${price(b.price)}</span>
+        ${b.stock === 'out' ? html`<span class="label">Sold out</span>` : ''}
         <span class="bike-actions"><a class="link" href="${b.url}">View bike</a>
           <button type="button" data-remove="${b.id}" data-name="${b.name}">Remove<span class="sr-only"> ${b.name}</span></button></span>
       </div></th>`)}</tr></thead>

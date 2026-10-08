@@ -2,7 +2,7 @@
 // mobile buy bar.
 
 import { CbElement, charge, css, define, html, icon, ruler, rulerScale } from '../ui.js';
-import { battery, number, phoneDisplay, quantity, typeset } from '../format.js';
+import { battery, number, phoneDisplay, quantity, typeset, withNote } from '../format.js';
 import { parseSpecBlock, SPEC_FIELDS } from '../specs.js';
 import { config } from '../config.js';
 
@@ -22,7 +22,7 @@ function contactHTML() {
 function valueHTML(key, field) {
   if (!field) return html`<span class="muted">Not listed</span>`;
   if (key === 'battery') return battery(field);
-  if (field.unit && field.min != null) return quantity(field);
+  if (field.unit && field.min != null) return withNote(field);
   return typeset(field.raw);
 }
 
@@ -250,6 +250,7 @@ export class CbKeyFacts extends CbElement {
     dd { margin-top: var(--cb-space-1); font-family: var(--cb-font-text-bold); font-weight: 700; font-size: var(--cb-text-lg);
       font-variant-numeric: tabular-nums lining-nums; line-height: var(--cb-leading-snug); }
     dd.unknown { font-family: var(--cb-font-text); font-weight: 400; font-size: var(--cb-text-base); color: var(--cb-text-muted); }
+    dd.as-written { font-family: var(--cb-font-text); font-weight: 400; font-size: var(--cb-text-sm); overflow-wrap: anywhere; }
     dd small { display: block; font-family: var(--cb-font-text); font-weight: 400; font-size: var(--cb-text-xs); color: var(--cb-text-muted); }
     .links { display: flex; flex-wrap: wrap; gap: var(--cb-space-1) var(--cb-space-5); margin-top: var(--cb-space-3); font-size: var(--cb-text-sm); }
     .links a, .links button { display: inline-flex; align-items: center; gap: var(--cb-space-2); min-height: var(--cb-target); padding: 0;
@@ -262,16 +263,18 @@ export class CbKeyFacts extends CbElement {
   update() {
     const f = this._specs.fields;
     const energy = f.battery?.energy;
-    const fact = (label, value, note = '') => value
-      ? html`<div><dt class="label">${label}</dt><dd>${value}${note ? html`<small>${note}</small>` : ''}</dd></div>`
+    const fact = (label, value, note = '', plain = false) => value
+      ? html`<div><dt class="label">${label}</dt><dd class="${plain ? 'as-written' : ''}">${value}${note ? html`<small>${note}</small>` : ''}</dd></div>`
       : html`<div><dt class="label">${label}</dt><dd class="unknown">Not listed</dd></div>`;
+    // Stated, but not as one comparable figure (two weights, a range that needs a second battery): as written.
+    const asWritten = (label, field) => fact(label, field ? typeset(field.raw) : '', '', true);
     const wh = energy ? `${energy.min === energy.max ? number(energy.min) : `${number(energy.min)}–${number(energy.max)}`}\u00a0Wh` : '';
     this.render(html`${f.type ? html`<p class="type">${typeset(f.type.raw)}</p>` : ''}
       <dl>
-        ${fact('Range', f.range?.min != null ? quantity(f.range) : '', f.range?.min != null ? 'manufacturer’s figure' : '')}
-        ${fact('Motor', f.ratedPower?.min != null ? quantity(f.ratedPower) : '')}
-        ${fact('Battery', wh, energy?.source === 'calculated' ? 'from volts × amp-hours' : '')}
-        ${fact('Weight', f.weight?.min != null ? quantity(f.weight) : '')}
+        ${f.range?.min != null ? fact('Range', quantity(f.range), `manufacturer’s figure${f.range.note ? `, ${typeset(f.range.note)}` : ''}`) : asWritten('Range', f.range)}
+        ${f.ratedPower?.min != null ? fact('Motor', quantity(f.ratedPower), f.ratedPower.note ? typeset(f.ratedPower.note) : '') : asWritten('Motor', f.ratedPower)}
+        ${wh ? fact('Battery', wh, energy.source === 'calculated' ? 'from volts × amp-hours' : '') : asWritten('Battery', f.battery)}
+        ${f.weight?.min != null ? fact('Weight', quantity(f.weight), f.weight.note ? typeset(f.weight.note) : '') : asWritten('Weight', f.weight)}
       </dl>
       <p class="links"><button type="button" class="all">All specifications</button>
         <a href="${config.links.booking}">${icon('calendar')}Book a free test ride</a></p>`);

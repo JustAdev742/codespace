@@ -31,8 +31,13 @@ FIELDS = ['Type', 'Motor', 'Rated power', 'Peak power', 'Battery', 'Battery cell
 PRIORITY = ['Battery', 'Weight', 'Range', 'Warranty', 'Brakes', 'Suspension', 'Top speed', 'Rated power', 'Type',
             'Max load', 'Wheels', 'Frame', 'Gears', 'Motor', 'Charging time', 'Peak power', 'Battery cells']
 CHECK = object()  # a stated value the owner must settle before it goes in
-EXTRA_BATTERY = re.compile(r'\bwith\s*(?:a |the )?(?:dual|double|two|three|second|extra|optional|spare|both)\b|dual[- ]batter|'
-                           r'\bbatteries\b|\bwith\s*\d{2}\s*V\s*\d', re.I)
+# The same rule the site applies (src/specs.js): a range that needs an optional or second battery.
+EXTRA_BATTERY = re.compile(r'\b(?:dual|double|twin|two|three|second(?:ary)?|extra|optional|spare|additional|both)\b[^.;|]{0,30}?'
+                           r'\bbatter(?:y|ies)\b|\bbatteries\b|\boptional\b|\d\s*v\s*/?\s*\d+(?:\.\d+)?\s*ah\s*\+|'
+                           r'\bwith\s*\d{2}\s*V\s*\d', re.I)
+# A range quoted at a set speed ("120 km (under 25 km/h)") only holds under that condition.
+RANGE_CONDITION = re.compile(r'(?:\b(?:under|below|at)|@)\s*\d+\s*(?:mph|kph|km\s*/?\s*h)', re.I)
+KM_FIGURE = re.compile(r'\d{2,3}\s*\+?\s*(?:km|kilomet)(?!\s*/?\s*h)', re.I)
 
 
 def values(cell):
@@ -139,8 +144,26 @@ def charge(b):
     return v if v in (None, CHECK) else v.replace('-', '–')
 
 
+def range_clauses(evidence):
+    """The words around each quoted range figure: the field it sits in, not the fields beside it."""
+    quoted = evidence.get('range_km', {}).get('evidence') or []
+    quoted = quoted if isinstance(quoted, list) else [quoted]
+    return [part.strip(' …') for q in quoted for part in re.split(r'[|;]', q) if KM_FIGURE.search(part)]
+
+
+def range_value(b, clauses):
+    v = single(b['range_km_claimed'])
+    if v in (None, CHECK):
+        return v
+    # "Up to 180 km" stays "up to": it is the most the supplier claims, not a typical figure.
+    first = re.match(r'[\d.]+', v).group(0)
+    up_to = any(re.search(r'\bup\s*to\s*' + re.escape(first) + r'(?![\d.])', c, re.I) for c in clauses)
+    return f'{"up to " if up_to else ""}{v} km'
+
+
 def draft(b, evidence):
     kind, frame = type_and_frame(b)
+    clauses = range_clauses(evidence)
     block = {
         'Type': kind,
         'Motor': motor(b),
@@ -148,7 +171,7 @@ def draft(b, evidence):
         'Peak power': single(b['motor_peak_w'], 'W'),
         'Battery': battery(b),
         'Battery cells': single(tidy_case(b['battery_cells'])) if b['battery_cells'] != U else None,
-        'Range': (lambda v: v if v in (None, CHECK) else f'{v} km')(single(b['range_km_claimed'])),
+        'Range': range_value(b, clauses),
         'Top speed': single(b['top_speed_kmh'], 'km/h'),
         'Weight': single(b['weight_kg'], 'kg'),
         'Max load': single(b['payload_kg'], 'kg'),
@@ -174,11 +197,16 @@ def draft(b, evidence):
         reasons['Rated power'] = 'Power is sold as an option, so the listing has more than one figure.'
     if block['Battery'] is CHECK and all(len(values(b[k])) <= 1 for k in ('battery_v', 'battery_ah', 'battery_wh_stated')):
         reasons['Battery'] = 'The stated watt-hours do not match the stated volts × amp-hours.'
-    range_said = ' '.join(evidence.get('range_km', {}).get('evidence') or [])
+    range_said = ' '.join(clauses)
     if block['Range'] not in (None, CHECK) and EXTRA_BATTERY.search(range_said):
         block['Range'] = CHECK
         reasons['Range'] = ('The range quoted needs an optional extra battery. Give the range with the battery supplied, '
-                            'and the extended figure in brackets, e.g. "Range: 60 km (110 km with the optional second battery)".')
+                            'and put the extended figure on its own line, e.g. "Range: 60 km" and "Range with the optional '
+                            'second battery: 110 km".')
+    elif block['Range'] not in (None, CHECK) and RANGE_CONDITION.search(range_said):
+        block['Range'] = CHECK
+        reasons['Range'] = ('The range is quoted at a set speed. Keep the condition in brackets after the figure, e.g. '
+                            '"Range: 120 km (under 25 km/h)".')
 
     source = {'Motor': ['motor_brand', 'motor_type'], 'Rated power': ['motor_power_w'], 'Peak power': ['motor_peak_w'],
               'Battery': ['battery_v', 'battery_ah', 'battery_wh'], 'Battery cells': ['battery_cells'],
@@ -259,7 +287,9 @@ def main():
         'field both work.\n',
         'Fields left out are shown on the site as "Not listed". Add them as the manufacturer confirms them; never '
         'estimate. If a supplier gives a range figure for a specific test (rider weight, assist level), put the '
-        'condition in brackets after the number, e.g. `Range: 60 km (PAS 1, 75 kg rider)`.\n',
+        'condition in brackets after the number, e.g. `Range: 60 km (PAS 1, 75 kg rider)`. A range that needs an '
+        'optional battery goes on its own line, e.g. `Range with the optional second battery: 110 km`, so the '
+        'standard range still compares.\n',
     ]
     open(os.path.join(args.reports, 'spec-blocks.md'), 'w').write('\n'.join(head + md) + '\n')
     json.dump(out, open(os.path.join(args.reports, 'spec-blocks.json'), 'w'), indent=1, ensure_ascii=False)

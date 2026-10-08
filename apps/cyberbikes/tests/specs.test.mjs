@@ -99,3 +99,47 @@ test('a figure in another unit makes the value unparsed, never converted', () =>
 test('abbreviated labels', () => {
   assert.equal(parseSpecBlock('Specifications\nMax. Speed: 32 km/h').fields.topSpeed.min, 32);
 });
+
+test('a range or battery that needs an optional battery is kept as written, not compared', () => {
+  const s = parseSpecBlock(['Specifications',
+    'Range: 300 km (with 48V15Ah + 48V20Ah + 48V17Ah)',
+    'Battery: 48V15Ah standard (optional second 48V20Ah battery)'].join('\n'));
+  assert.equal(s.fields.range.min, null);
+  assert.equal(s.fields.range.raw, '300 km (with 48V15Ah + 48V20Ah + 48V17Ah)');
+  assert.equal(s.fields.battery.energy, null);
+  assert.deepEqual(s.unparsed, ['range', 'battery']);
+  for (const range of ['130+ km with dual battery', 'Up to 160 km (with dual battery)', '120 km with dual batteries',
+    '100 km (second battery fitted)']) {
+    assert.equal(parseSpecBlock(`Specifications\nRange: ${range}`).fields.range.min, null, range);
+  }
+  assert.equal(parseSpecBlock('Specifications\nBattery: 48V/15Ah + Optional 15Ah Battery').fields.battery.energy, null);
+});
+
+test('a battery mentioned in passing does not count as an optional one', () => {
+  const s = parseSpecBlock('Specifications\nRange: 40 km\nBattery: 24V 10Ah battery in a removable battery casing');
+  assert.equal(s.fields.range.max, 40);
+  assert.deepEqual(s.fields.battery.energy, { min: 240, max: 240, source: 'calculated' });
+});
+
+test('the block pasted last replaces a supplier section, even with fewer lines', () => {
+  const description = ['<p>Specification</p>', '<p>Range: 300 km</p>', '<p>Weight: 40 kg</p>', '<p>Top speed: 32 km/h</p>',
+    '<p>Description of the bike.</p>', '<p>Specifications</p>', '<p>Weight: 40 kg</p>', '<p>Specs:</p>'].join('');
+  const s = parseSpecBlock(description);
+  assert.deepEqual(Object.keys(s.fields), ['weight']);  // the trailing empty heading does not count
+  assert.ok(s.missing.includes('range'));
+});
+
+test('a condition in brackets stays with the figure; approximate figures say so', () => {
+  const s = parseSpecBlock('Specifications\nRange: 60 km (PAS 1, 75 kg rider)\nTop speed: 25 km/h (32 km/h off-road)\nWeight: approx. 25 kg');
+  assert.equal(s.fields.range.max, 60);
+  assert.equal(s.fields.range.note, 'PAS 1, 75 kg rider');
+  assert.equal(s.fields.topSpeed.min, null);  // two speeds: ambiguous, kept as written
+  assert.equal(s.fields.weight.approx, true);
+  assert.equal(parseSpecBlock('Specifications\nRange: 120 km (under 25 km/h)').fields.range.note, 'under 25 km/h');
+});
+
+test('the extended range goes on its own line, so the standard one still compares', () => {
+  const s = parseSpecBlock('Specifications\nRange: 60 km\nRange with the optional second battery: 110 km');
+  assert.equal(s.fields.range.max, 60);
+  assert.deepEqual(s.extra, [{ label: 'Range with the optional second battery', raw: '110 km' }]);
+});

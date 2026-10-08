@@ -20,8 +20,11 @@ export function quantity(q) {
   const unit = NBSP + q.unit;
   if (q.values) return q.values.map(number).join(' / ') + unit;
   const text = q.min === q.max ? number(q.min) : `${number(q.min)}–${number(q.max)}`;
-  return (q.upTo ? 'up to ' : '') + text + (q.plus ? '+' : '') + unit;
+  return (q.upTo ? 'up to ' : q.approx ? 'approx. ' : '') + text + (q.plus ? '+' : '') + unit;
 }
+
+/** The figure with the condition it was stated under, if any: "60 km (PAS 1, 75 kg rider)". */
+export const withNote = q => q.note ? `${quantity(q)} (${typeset(q.note)})` : quantity(q);
 
 /** Battery as one line: "48 V 15 Ah · 720 Wh". Energy worked out from V × Ah says so. */
 export function battery(b) {
