@@ -1,0 +1,67 @@
+{
+  "mt_curvature_orthonormal": {
+    "R_trtr": "(r*(r - b(r))*(Derivative(Phi(r), r)**2 + Derivative(Phi(r), (r, 2))) - (r*Derivative(b(r), r) - b(r))*Derivative(Phi(r), r)/2)/r**2",
+    "R_tthtth": "(r - b(r))*Derivative(Phi(r), r)/r**2",
+    "R_rthrth": "(r*Derivative(b(r), r) - b(r))/(2*r**3)",
+    "R_thphthph": "b(r)/r**3"
+  },
+  "mt_stress_energy": {
+    "rho": "Derivative(b(r), r)/(8*pi*r**2)",
+    "tau": "(-2*r**2*Derivative(Phi(r), r) + 2*r*b(r)*Derivative(Phi(r), r) + b(r))/(8*pi*r**3)",
+    "p": "(2*r**3*(Derivative(Phi(r), r)**2 + Derivative(Phi(r), (r, 2))) + r**2*(-2*b(r)*Derivative(Phi(r), r)**2 - 2*b(r)*Derivative(Phi(r), (r, 2)) - Derivative(Phi(r), r)*Derivative(b(r), r) + 2*Derivative(Phi(r), r)) - r*(b(r)*Derivative(Phi(r), r) + Derivative(b(r), r)) + b(r))/(16*pi*r**3)"
+  },
+  "mt_boosted": {
+    "R_0p1p0p1p": "Derivative(Phi(r), r)**2 + Derivative(Phi(r), (r, 2)) - b(r)*Derivative(Phi(r), r)**2/r - b(r)*Derivative(Phi(r), (r, 2))/r - Derivative(Phi(r), r)*Derivative(b(r), r)/(2*r) + b(r)*Derivative(Phi(r), r)/(2*r**2)",
+    "R_0p2p0p2p": "(beta**2*(-r*Derivative(b(r), r) + b(r))/2 - r*(r - b(r))*Derivative(Phi(r), r))/(r**3*(beta**2 - 1))"
+  },
+  "schwarzschild_limit": {
+    "R_trtr": "-2*M/r**3",
+    "R_tthtth": "M/r**3",
+    "R_rthrth": "-M/r**3",
+    "R_thphthph": "2*M/r**3"
+  },
+  "ellis_stress_energy": {
+    "rho": "-r0**2/(8*pi*r**4)",
+    "tau": "r0**2/(8*pi*r**4)",
+    "p": "r0**2/(8*pi*r**4)"
+  },
+  "ellis_boosted": {
+    "R_0p1p0p1p": "0",
+    "R_0p2p0p2p": "beta**2*r0**2/(r**4*(beta**2 - 1))"
+  },
+  "tau_at_throat": "1/(8*pi*r0**2)",
+  "rho_minus_tau_at_throat": "(bprime0 - 1)/(8*pi*r0**2)",
+  "thin_shell": {
+    "K^tau_tau": "(M + a(tau)**2*Derivative(a(tau), (tau, 2)))/(sqrt(-2*M/a(tau) + Derivative(a(tau), tau)**2 + 1)*a(tau)**2)",
+    "K^theta_theta": "sqrt(-2*M/a(tau) + Derivative(a(tau), tau)**2 + 1)/a(tau)",
+    "sigma": "-sqrt(-2*M/a(tau) + Derivative(a(tau), tau)**2 + 1)/(2*pi*a(tau))",
+    "P": "(-M + a(tau)**2*Derivative(a(tau), (tau, 2)) + a(tau)*Derivative(a(tau), tau)**2 + a(tau))/(4*pi*sqrt(-2*M/a(tau) + Derivative(a(tau), tau)**2 + 1)*a(tau)**2)"
+  },
+  "thin_shell_stability": {
+    "V0": "0",
+    "dV0": "0",
+    "d2V0": "2*(-12*M**2*beta2 - 3*M**2 + 10*M*a0*beta2 + 3*M*a0 - 2*a0**2*beta2 - a0**2)/(a0**3*(-2*M + a0))",
+    "beta2_crit": "(-3*M**2 + 3*M*a0 - a0**2)/(2*(6*M**2 - 5*M*a0 + a0**2))"
+  },
+  "checks": {
+    "rho == MT88": true,
+    "tau == MT88": true,
+    "p == MT88 (conservation form)": true,
+    "|R_1'0'1'0'| == MT88 radial (up to sign)": true,
+    "R_1'0'1'0' boost invariant": true,
+    "|R_2'0'2'0'| == MT88 lateral (up to overall sign)": true,
+    "Schwarzschild R_trtr = -2M/r^3 (MTW 31.4)": true,
+    "Schwarzschild R_tthtth = +M/r^3 (MTW 31.4)": true,
+    "Schwarzschild G_ab = 0": true,
+    "Ellis rho = -r0^2/(8 pi r^4)": true,
+    "Ellis tau = +r0^2/(8 pi r^4)": true,
+    "Ellis p = +r0^2/(8 pi r^4)": true,
+    "Ellis lateral R_0'2'0'2' = -beta^2 gamma^2 r0^2/r^4": true,
+    "Ellis radial tidal = 0": true,
+    "tau(throat) = 1/(8 pi r0^2)": true,
+    "thin shell sigma == Visser 1989": true,
+    "thin shell P == Visser 1989": true,
+    "static solution: V(a0) = 0": true,
+    "static solution: V'(a0) = 0": true
+  }
+}

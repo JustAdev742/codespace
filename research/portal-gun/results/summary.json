@@ -1,0 +1,229 @@
+{
+  "symbolic_checks": {
+    "rho == MT88": true,
+    "tau == MT88": true,
+    "p == MT88 (conservation form)": true,
+    "|R_1'0'1'0'| == MT88 radial (up to sign)": true,
+    "R_1'0'1'0' boost invariant": true,
+    "|R_2'0'2'0'| == MT88 lateral (up to overall sign)": true,
+    "Schwarzschild R_trtr = -2M/r^3 (MTW 31.4)": true,
+    "Schwarzschild R_tthtth = +M/r^3 (MTW 31.4)": true,
+    "Schwarzschild G_ab = 0": true,
+    "Ellis rho = -r0^2/(8 pi r^4)": true,
+    "Ellis tau = +r0^2/(8 pi r^4)": true,
+    "Ellis p = +r0^2/(8 pi r^4)": true,
+    "Ellis lateral R_0'2'0'2' = -beta^2 gamma^2 r0^2/r^4": true,
+    "Ellis radial tidal = 0": true,
+    "tau(throat) = 1/(8 pi r0^2)": true,
+    "thin shell sigma == Visser 1989": true,
+    "thin shell P == Visser 1989": true,
+    "static solution: V(a0) = 0": true,
+    "static solution: V'(a0) = 0": true
+  },
+  "tension": {
+    "tau0_1m_Pa": 4.815453886722423e+42,
+    "r0_for_graphene_m": 6086210066600385.0,
+    "r0_for_graphene_ly": 0.6433129116445617,
+    "r0_for_neutron_star_core_m": 6939.347149928748,
+    "planck_pressure_Pa": 4.632946790733813e+113
+  },
+  "exotic_mass": {
+    "ellis_proper_1m_kg": -2.1152200731877262e+27,
+    "ellis_proper_numeric_1m_kg": -2.1152200731877163e+27,
+    "ellis_coordinate_1m_kg": -1.346590921500109e+27,
+    "thin_shell_flat_1m_kg": -2.693181843000218e+27,
+    "thin_shell_surface_pressure_1m_N_per_m": 9.630907773444846e+42,
+    "flat_face_rim_mu_kg_per_m": -3.3664773037502725e+26,
+    "flat_face_rim_total_1m_kg": -2.1152200731877262e+27,
+    "vkd_quantifier_ellis_1m_kg": -2.693181843000218e+27,
+    "in_jupiter_masses_ellis_1m": -1.1143736697561168,
+    "energy_1m_J": 1.901064994945539e+44,
+    "energy_1m_solar_years": 15736968260.190895,
+    "energy_1m_over_world_power_1s": 9.505324974727696e+30,
+    "ellis_1cm_kg": -2.115220073187726e+25,
+    "ellis_1cm_earth_masses": -3.541795706679229,
+    "rim_collapse_time_1m_s": 5.239612554879204e-09
+  },
+  "casimir_qi": {
+    "casimir_gap_1m_m": 3.080042584554486e-18,
+    "casimir_gap_1AU_m": 1.1912952965244218e-12,
+    "qi_length_1m_m": 2.810171284045162e-18,
+    "casimir_rho_1um_J_m3": -0.0004333752574825846,
+    "casimir_rho_1nm_J_m3": -433375257.48258436,
+    "ratio_tau0_to_casimir_1um": 1.1111510875574004e+46,
+    "ford_roman_band_1m_m": 1.4835764457542677e-21,
+    "ford_roman_band_1m_in_lP": 91790987424015.11
+  },
+  "tidal": {
+    "vmax_r0_0.5m": 1.1071726378483169,
+    "vmax_r0_1.0m": 2.2143452756966338,
+    "vmax_r0_2.0m": 4.428690551393267,
+    "vmax_r0_10.0m": 22.143452756966273,
+    "stretch_1m_at_1mps_m_s2": 1.9999999999999998,
+    "mt_curvature_bound_m-2": 5.4556848360991086e-17
+  },
+  "deflection_check": {
+    "max_rel_err_transmitted": 2.220446049250313e-16,
+    "max_rel_err_reflected": 5.551115123125783e-16
+  },
+  "thin_shell": {
+    "beta2_crit_flat": -0.500000000000001,
+    "beta2_crit_a0_2.5M": 3.5,
+    "beta2_crit_a0_5M": -1.0833333333333333,
+    "beta2_min_lower_bound_2M_3M": 3.23209988293885
+  },
+  "newtonian_portal": {
+    "R_m": 1.0,
+    "h_m": 4.0,
+    "g": 9.81,
+    "dx": 0.05,
+    "room_above_A": 3.2113693923007247,
+    "room_below_B": 3.2113693923006994,
+    "behind_A (below floor)": -21.06117230106259,
+    "behind_B (above ceiling)": -21.061172301062786,
+    "room_midpoint": -3.988272912271819,
+    "phi_face_A": 19.46534397119509,
+    "phi_face_B": 19.77465602876957,
+    "phi_loop_min": 16.508209656692905,
+    "phi_loop_max": 22.73179034327178,
+    "drop_max_speed_mps": 3.5078112849433465,
+    "drop_energy_drift_J_per_kg": 3.0035828935126574e-06,
+    "drop_crossings": 2,
+    "game_rule_speed_after_6s_mps": 58.8609810000701
+  },
+  "newtonian_scaling": [
+    {
+      "h_m": 2.0,
+      "room_midpoint_g": -0.11462836048256055,
+      "room_above_A_g": -0.005764842754124236,
+      "behind_A_g": -1.6104487324009922,
+      "loop_phi_range_J_kg": 0.7504912058247832
+    },
+    {
+      "h_m": 4.0,
+      "room_midpoint_g": -0.4071227894609685,
+      "room_above_A_g": 0.32781646654167895,
+      "behind_A_g": -2.1499218206557886,
+      "loop_phi_range_J_kg": 6.232320780174213
+    },
+    {
+      "h_m": 8.0,
+      "room_midpoint_g": -0.6808389402841244,
+      "room_above_A_g": 1.2802114466962615,
+      "behind_A_g": -3.1973013170428137,
+      "loop_phi_range_J_kg": 25.897154910880232
+    },
+    {
+      "h_m": 16.0,
+      "room_midpoint_g": -0.8400451547889557,
+      "room_above_A_g": 3.306161849465463,
+      "behind_A_g": -5.2662865971559585,
+      "loop_phi_range_J_kg": 77.6241594250115
+    }
+  ],
+  "time_machine": [
+    {
+      "scenario": "vertical, 10 m apart, Earth surface",
+      "separation_m": 10.0,
+      "rate": 1.0911369672198216e-15,
+      "T_ctc_s": 30570322.995110463,
+      "T_ctc_years": 0.9687150795722889,
+      "note": "T = c/g, independent of h"
+    },
+    {
+      "scenario": "ground vs 1 km mountain top, 100 km apart",
+      "separation_m": 100000.0,
+      "rate": 1.0911369672198218e-13,
+      "T_ctc_s": 3057032299.511046,
+      "T_ctc_years": 96.87150795722887,
+      "note": "same geoid otherwise"
+    },
+    {
+      "scenario": "Earth surface vs deep space, 1 AU apart",
+      "separation_m": 149597870700.0,
+      "rate": 6.961274586591855e-10,
+      "T_ctc_s": 716829623122.8861,
+      "T_ctc_years": 22714.96004521529,
+      "note": "Earth potential only"
+    },
+    {
+      "scenario": "solar photosphere vs Earth orbit, 1 AU",
+      "separation_m": 149597870700.0,
+      "rate": 2.112631941431588e-06,
+      "T_ctc_s": 236200529.79887003,
+      "T_ctc_years": 7.4847431299867555,
+      "note": "solar potential difference"
+    },
+    {
+      "scenario": "mouth on car at 30 m/s, 10 km apart",
+      "separation_m": 10000.0,
+      "rate": 4.9960036108132044e-15,
+      "T_ctc_s": 6676618377.060329,
+      "T_ctc_years": 211.56926943304717,
+      "note": "special-relativistic drift"
+    },
+    {
+      "scenario": "mouth in LEO (7.8 km/s) vs ground, 400 km",
+      "separation_m": 400000.0,
+      "rate": 2.973440863598621e-10,
+      "T_ctc_s": 4487247.071656297,
+      "T_ctc_years": 0.142192279249889,
+      "note": "velocity and gravity partly cancel"
+    }
+  ],
+  "environment": {
+    "air_to_vacuum_mass_flow_1m_kg_s_Cd1": 757.8769126019833,
+    "air_to_vacuum_jet_speed_mps": 310.64293610188525,
+    "pressure_force_1m_N": 318321.8756249858,
+    "room50_to_half_atm_1m_s": 0.05813349683917397,
+    "room50_to_half_atm_10cm_s": 5.52231966607003,
+    "room50_to_half_atm_1cm_s": 553.7869107264685,
+    "everest_flow_1m_kg_s": 606.3015300815866,
+    "water_4km": {
+      "speed_mps": 280.0949838893942,
+      "volume_m3_s": 545.5654930904489,
+      "mass_kg_s": 559204.63041771,
+      "dp_Pa": 40207265.0
+    },
+    "water_10m": {
+      "speed_mps": 14.00474919446971,
+      "volume_m3_s": 27.27827465452244,
+      "mass_kg_s": 27960.231520885503,
+      "dp_Pa": 100518.1625
+    },
+    "photosphere_flux_W_m2": 62938133.16796093,
+    "photosphere_power_1m_W": 197725976.79112214,
+    "chimney_100m_dp_Pa": 1201.314625,
+    "chimney_100m_wind_mps": 44.28690551393267
+  },
+  "views": {
+    "l = 8 r0 (approaching)": {
+      "disc_angular_radius_deg": 7.125016348901799,
+      "render_s": 1.0209739208221436
+    },
+    "l = 3 r0": {
+      "disc_angular_radius_deg": 18.43494882292201,
+      "render_s": 0.7636170387268066
+    },
+    "l = 1 r0": {
+      "disc_angular_radius_deg": 44.99999999999999,
+      "render_s": 0.8496770858764648
+    },
+    "at the throat, l = 0": {
+      "disc_angular_radius_deg": 90.0,
+      "render_s": 2.4139420986175537
+    },
+    "l = -3 r0 (through, looking back)": {
+      "disc_angular_radius_deg": 18.43494882292201,
+      "render_s": 0.7721700668334961
+    }
+  },
+  "constants": {
+    "c": 299792458.0,
+    "G": 6.6743e-11,
+    "hbar": 1.054571817e-34,
+    "l_P": 1.61625502392855e-35,
+    "M_jupiter": 1.8981245973360505e+27,
+    "g0": 9.80665
+  }
+}
