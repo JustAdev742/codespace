@@ -23,7 +23,7 @@ def test_flat_shell_threshold():
 def test_loop_collapse_time_is_pi_R_over_2():
     for R in (0.5, 1.0, 3.0):
         _, _, tc = D.loop_collapse(R)
-        assert tc == pytest.approx(math.pi * R / 2, rel=1e-6)
+        assert tc == pytest.approx(math.pi * R / 2, rel=1e-6, abs=0)
 
 
 def test_poisson_visser_published_thresholds():

@@ -47,7 +47,7 @@ def test_mass_shell_and_ledger_conservation():
     P_in = K.four_momentum(m, np.array([1e7, -2e7, 3e7]))
     P_out, L = K.traverse(P_in, A, B, uA=[5e7, 0, 0], uB=[0, -8e7, 1e7])
     eta = np.diag([-1, 1, 1, 1])
-    assert P_out @ eta @ P_out == pytest.approx(P_in @ eta @ P_in, rel=1e-9)
+    assert P_out @ eta @ P_out == pytest.approx(P_in @ eta @ P_in, rel=1e-9, abs=0)
     total = L["dP_mouth_A"] + L["dP_mouth_B"] + L["dP_object"]
     assert np.allclose(total, 0, atol=1e-6 * np.abs(P_in).max())
 
@@ -69,6 +69,6 @@ def test_energy_paid_by_mouths_relativistic():
     P_out, L = K.traverse(K.four_momentum(m, [0, 0, 0]), A, B, uA=0.6 * C.c * A[:3, 2])
     assert np.allclose(K.velocity_of(P_out), 0.6 * C.c * B[:3, 2], rtol=1e-12)
     ke = P_out[0] * C.c - m * C.c**2
-    assert ke == pytest.approx(0.25 * m * C.c**2, rel=1e-12)       # gamma = 1.25
+    assert ke == pytest.approx(0.25 * m * C.c**2, rel=1e-12, abs=0)       # gamma = 1.25
     dE_mouths = (L["dP_mouth_A"][0] + L["dP_mouth_B"][0]) * C.c
-    assert dE_mouths == pytest.approx(-ke, rel=1e-12)              # mouths pay for it
+    assert dE_mouths == pytest.approx(-ke, rel=1e-12, abs=0)              # mouths pay for it

@@ -16,32 +16,37 @@ not open anything, emit anything harmful, or look like a real weapon.
 | Part of the build | Status on 2026-10-19 |
 |---|---|
 | Parts list and prices | Every price below was read on the retailer's own page on 2026-10-19 (USD, before shipping and tax). Items marked *not priced* were not checked. Prices change. |
-| Firmware | Compiles for the Adafruit Feather RP2040 Prop-Maker with arduino-cli: 96,276 bytes of flash (1%), 11,092 bytes of RAM (4%), no compiler warnings from the project's own files. |
-| Firmware logic | 105 host tests pass: state machine, range lock, flash limits, LED current budget, battery cut-off, audio level. |
-| Enclosure | Six watertight, printable solids; 7 automated fit checks pass (no part collides with any other or with the electronics' bounding boxes). |
+| Firmware | Compiles for the Adafruit Feather RP2040 Prop-Maker with arduino-cli: 96,516 bytes of flash (1%), 11,180 bytes of RAM (4%), no compiler warnings from the project's own files (`prop/firmware/build-report.txt`). |
+| Firmware logic | 170 host checks pass in 9 test routines, including 17 scripted and randomised lighting sessions: state machine, range lock, flash limits, LED current budget, battery cut-off, audio level. |
+| Enclosure | Six watertight solids. 7 automated fit checks pass: no printed part overlaps another, and none overlaps the bounding boxes of the six modelled components (cell, Feather, range sensor, Ring, Jewel, display) by more than 1 mm³. The speaker, encoder, switch, trigger and wiring are not modelled, and printability is not tested. |
 | **Physical build** | **Not done.** I have no hardware. Nothing has been run on a real board, printed or assembled. Section 9 is a bring-up plan for the first person who does. |
 
-Some enclosure dimensions are not published on the retailer pages and are marked **assumed** in
-`make_enclosure.py` (display window diameter, encoder bushing, USB-C opening, range-sensor window). Check
-them against your parts before printing the body.
+Some enclosure dimensions are not published on the retailer pages and are marked **ASSUMED** in
+`make_enclosure.py` (display window, encoder bushing, USB-C opening, range-sensor window, switch slot).
+Check them against your parts before printing the body.
 
 ## 1. Safety rules for this build
 
 These come first because they shaped the design. Sources are in the [references](07-references.md).
 
 1. **Lithium cells can catch fire.** Use only protected cells (the one listed is), charge only with the
-   board's own charger, never unattended, and stop using a cell that swells, hisses, smells or gets hot.
-   If you would rather not have a lithium cell in the prop at all, build Variant B.
-2. **Flashing light can trigger seizures.** About 3% of people with epilepsy are photosensitive. The
-   firmware's default "Steady" mode keeps every LED, and the ring as a whole, at or below three flashes in
-   any second (WCAG 2.2 SC 2.3.1 / ITU-R BT.1702 heuristics) and never flashes saturated red. Keep Steady
-   mode for public use. These are screen standards; applying them to a handheld light is a conservative
-   choice, not a legal requirement.
+   board's own charger, only between 0 and 50 °C, never unattended, and stop using a cell that swells,
+   hisses, smells or gets hot. This cell has no temperature sensor. If you would rather not have a lithium
+   cell in the prop at all, build Variant B.
+2. **Flashing light can trigger seizures.** About 3% of people with epilepsy are photosensitive. The default
+   **Steady** mode does not flash at all: every LED's brightness can change by at most 0.09 of full
+   luminance per second, so it can never make the two quick opposing changes of 10% or more that count as a
+   flash (WCAG 2.2 SC 2.3.1), and the swirl moves by colour (green to teal) instead of brightness. **Show**
+   mode flashes, but each LED stays within three flashes in any second, flashing runs last at most about
+   4 s with an equally long calm spell after each (ITU-R BT.1702-3 cautions about sequences longer than
+   5 s), and nothing flashes saturated red. Use Steady mode in public. These are screen standards; applying
+   them to a handheld light is a conservative choice, not a legal requirement.
 3. **No lasers.** Do not add a laser pointer for "aiming". The range sensor is a Class 1, invisible 940 nm
    device that ST rates eye-safe only with its recommended settings and **no focusing optics**: do not put a
    lens in front of it.
-4. **Do not stare into the LEDs.** The firmware caps brightness, with a lower cap on blue; the diffuser
-   spreads the light. Keep the prop away from infants.
+4. **Do not stare into the LEDs, and never aim the light at people's faces.** The firmware caps each colour
+   channel, with lower caps on green (the palette's main colour) and blue; the diffuser spreads the light.
+   Keep the prop away from infants.
 5. **Workshop.** Solder in a ventilated space with the iron in its stand; wear safety glasses; wash your
    hands after handling solder; use a glue-gun stand; print in a ventilated room.
 6. **In public.** Use bright, obviously sci-fi colours. Conventions inspect props and some ban batteries in
@@ -60,26 +65,26 @@ These come first because they shaped the design. Sources are in the [references]
 | 1 | 1.28" 240 × 240 round TFT, GC9A01A, EYESPI | Adafruit 6178 | \$17.50 |
 | 1 | VL53L1X time-of-flight distance sensor, ~30–4000 mm | Adafruit 3967 | \$14.95 |
 | 1 | I2C STEMMA QT rotary encoder breakout with encoder | Adafruit 5880 | \$7.95 |
-| 2 | STEMMA QT / Qwiic JST SH 4-pin cable, 100 mm | Adafruit 4210 | \$1.90 |
+| 2 | STEMMA QT / Qwiic JST SH 4-pin cable, 100 mm | Adafruit 4210 | 2 × \$0.95 |
 | 1 | Tactile switch buttons, 12 mm square, 10-pack (trigger) | Adafruit 1119 | \$2.50 |
 | 1 | SPDT slide switch (power) | Adafruit 805 | \$0.95 |
 | 1 | Thin plastic speaker, 8 Ω 0.25 W | Adafruit 1891 | \$1.75 |
 | 1 | Lithium-ion polymer battery 3.7 V 1200 mAh, with protection circuit | Adafruit 258 | \$9.95 |
 | 1 | Electrolytic capacitor 1000 µF 25 V | SparkFun COM-08982 | \$0.50 |
 | 1 | Resistor 330 Ω 1/4 W, 20-pack | SparkFun PRT-14490 | \$1.25 |
-| 2 | Silicone-cover stranded wire 26 AWG, 2 m (black 1881, white 1882) | Adafruit 1881, 1882 | \$1.90 |
+| 2 | Silicone-cover stranded wire 26 AWG, 2 m (black, white) | Adafruit 1881, 1882 | 2 × \$0.95 |
 | 1 | JST-PH battery extension cable, 500 mm | Adafruit 1131 | \$1.95 |
 | 1 | Clear translucent PETG filament 1.75 mm, 1 kg (diffuser, canister) | MatterHackers M-AMP-JD1G | \$20.99 |
 | | **Total** | | **\$119.89** |
 
 Not priced: opaque filament for the body (any PLA or PETG), solder, hot glue or epoxy, paint, and two
-100 kΩ resistors if you want the optional battery gauge (section 3.3).
+100 kΩ resistors for the battery gauge (section 3.3), which is recommended for Variant A.
 
 ### 2.2 Variant B: no lithium cell inside the prop
 
-Same electronics and the same firmware, powered through the board's USB-C port from a power bank carried in
-a pocket or bag. The bank's cells sit inside a finished product with its own protection (I did not verify
-any particular bank's certification).
+Same electronics and the same firmware as shipped (its battery gauge is off by default), powered through the
+board's USB-C port from a power bank carried in a pocket or bag. The bank's cells sit inside a finished
+product with its own protection (I did not verify any particular bank's certification).
 
 | Change from Variant A | Retailer, product ID | Price (verified 2026-10-19) |
 |---|---|---|
@@ -87,8 +92,9 @@ any particular bank's certification).
 | Add a USB Li-ion power bank, 5000 mAh, 2 × 5 V outputs at 2.1 A | Adafruit 4288 | +\$26.95 |
 | | **Total** | **\$134.94**, plus a USB-C cable (not priced) |
 
-Adafruit notes that this bank "may 'fall asleep'" under loads below about 100 mA. If the prop switches off
-while idle, raise the idle brightness slightly or use a bank without auto-off.
+Adafruit notes that this bank "may 'fall asleep'" under loads below about 100 mA. The firmware's own estimate
+of the LED draw while idle is about 150 mA in Steady mode (section 3.2), so it should stay awake; if it does
+not, raise `Config::idle_level` in `portal_core.h` or use a bank without auto-off.
 
 *Another option researched but not built:* an ItsyBitsy RP2040 (Adafruit 4888, \$9.95) with a MAX98357A
 amplifier breakout (3006, \$5.95) and a 4 × AA holder (830, \$2.95) for **NiMH cells only** (four alkaline
@@ -99,9 +105,11 @@ but **the firmware has not been ported or compiled for that board**, so it is no
 
 ### 3.1 Wiring (Variant A and B)
 
+Wire with everything unpowered. When connecting LEDs, connect ground first and disconnect it last.
+
 | From | To | Notes |
 |---|---|---|
-| Prop-Maker NeoPixel terminal **+** | Ring 16 **5V**, then Jewel **5V** | Powered from the battery or USB, whichever is higher; switched off by the board's power-enable pin |
+| Prop-Maker NeoPixel terminal **+** | Ring 16 **5V**, then Jewel **5V** | Powered from the battery or USB, whichever is higher; switched by the board's power-enable pin |
 | Prop-Maker NeoPixel terminal **−** | Ring **GND**, then Jewel **GND** | Connect ground first, disconnect it last |
 | Prop-Maker NeoPixel terminal **data** | 330 Ω resistor, then Ring **DIN** | Put the resistor at the ring end of the wire |
 | Ring **DOUT** | Jewel **DIN** | The Jewel is pixels 16–22 in the firmware |
@@ -116,6 +124,10 @@ but **the firmware has not been ported or compiled for that board**, so it is no
 | Feather **D10 / D11 / D12 / D9** | Display **TCS / DC / RST / LITE** | Chip select, data/command, reset, backlight PWM |
 | Slide switch | Feather **EN** and **GND** | Pulls EN low to switch the board off. It does not carry LED current (its rating is 0.5 A) |
 | LiPo (Variant A) | Feather JST battery socket | Charges from USB-C |
+
+I could not confirm from the retailer pages that the display's pins carry exactly these labels or that the
+range sensor board has a second STEMMA QT port; check your boards, and daisy-chain the encoder from the
+Feather another way if needed.
 
 ```mermaid
 flowchart LR
@@ -133,21 +145,32 @@ flowchart LR
 ### 3.2 Power budget
 
 The LEDs dominate. Adafruit's worst-case figure is 60 mA per pixel at full white, so 23 pixels could draw
-1.38 A. The firmware caps each colour channel (200 of 255, blue 110) and scales whole frames to a 500 mA
-budget. In the host tests the highest estimated LED draw was 388 mA in Steady mode and 472 mA in Show mode.
-That keeps a 1200 mAh cell at about 0.4C, inside Adafruit's 1–2C discharge guidance; at the full budget the
-LEDs alone would empty it in roughly 2.4 hours (an estimate: the board's own consumption is not published,
-so total runtime is not claimed).
+1.38 A. The firmware caps each colour channel (red 200 of 255, green 170, blue 110) and scales whole frames
+to a 500 mA budget. The firmware's own estimate, from the host build:
+
+| State | Steady mode | Show mode |
+|---|---|---|
+| Idle | ~150 mA | ~180 mA |
+| Aiming | ~200 mA | ~140 mA |
+| Portal open | ~500 mA (at the budget) | ~460 mA, peaks at 500 mA |
+
+At the full budget a 1200 mAh cell discharges at about 0.4C, inside Adafruit's 1–2C guidance, and the LEDs
+alone would empty it in roughly 2.4 hours of continuous "open" state. These are estimates from Adafruit's
+60 mA rule; the board's own consumption is not published, so total runtime is not claimed.
 
 Keep the LED power wires short. I did not verify a current rating for 26 AWG wire; if in doubt, use 22 AWG
 hook-up wire (Adafruit 3111, \$19.95 for six 25 ft spools, verified) for the + and − runs.
 
-### 3.3 Optional battery gauge
+### 3.3 Battery gauge (recommended for Variant A)
 
-The firmware can read the cell voltage on A3 through a divider of two equal resistors from **BAT** to
-**GND** (100 kΩ each, not priced). It warns and dims below 3.50 V, shuts the LEDs and amplifier off below
-3.30 V (the cell's own protection trips at about 3.0 V), and recovers above 3.70 V. Without the divider,
-delete the `#define BATTERY_SENSE_PIN` line in `PortalGunProp.ino`; for Variant B, always delete it.
+The firmware can read the cell voltage on A3 through a divider of two 100 kΩ resistors from **BAT** to A3 to
+**GND**. With it enabled, the prop warns and dims below 3.50 V ("LOW BATT", trigger disabled), switches the
+LEDs and amplifier off below 3.30 V ("CHARGE"; the cell's own protection trips at about 3.0 V), and recovers
+above 3.70 V.
+
+The gauge is **off by default**, because without the divider A3 floats and could read as a flat battery.
+After fitting the divider, uncomment `#define BATTERY_SENSE_PIN A3` in `PortalGunProp.ino`. Leave it off for
+Variant B. Without the gauge, the cell's protection circuit is the only low-voltage cut-off.
 
 ## 4. Firmware
 
@@ -155,20 +178,25 @@ delete the `#define BATTERY_SENSE_PIN` line in `PortalGunProp.ino`; for Variant 
 
 - `PortalGunProp/portal_core.h/.cpp`: every decision (states, patterns, limits, sounds). No Arduino
   headers, no heap allocation, so it compiles and is tested on a desktop.
-- `PortalGunProp/PortalGunProp.ino`: moves data between the hardware and the core. Core 0 runs inputs, LEDs
-  and the display at 100 Hz; core 1 synthesises sound and streams it to the I2S amplifier. No audio files.
+- `PortalGunProp/PortalGunProp.ino`: moves data between the hardware and the core. Core 0 runs inputs and
+  LEDs at 100 Hz and redraws the display at 5 Hz; core 1 synthesises sound and streams it to the I2S
+  amplifier. No audio files.
 - `test/test_portal_core.cpp` + `Makefile`: the host tests.
 
 ### 4.2 Run the host tests (any computer with g++)
 
+From the repository root:
+
 ```bash
-cd research/portal-gun/prop/firmware/test
-make            # builds and runs: 105 passed, 0 failed
+make -C research/portal-gun/prop/firmware/test      # builds and runs: 170 passed, 0 failed
 ```
 
-The tests drive scripted and randomised sessions (seeds 1, 7, 42, 2026, 99991) and check, among other
-things, that no pixel exceeds 3 flashes in any second (worst seen: 2 in Steady, 3 in Show), that the ring
-average never exceeds 1, and that the estimated LED current never exceeds the 500 mA budget.
+The lighting tests drive two scripted sessions and fifteen randomised 60-second sessions (seeds 1, 7, 42,
+2026 and 99991, each in Steady-only, Show-only and mode-switching form) and count flashes the way WCAG
+defines them. They require: **no flash at all** for any pixel, the ring or the whole prop in Steady-only
+sessions (observed: none); otherwise at most 3 flashes in any second per pixel (observed: 3), for the ring
+average and for all LEDs together (observed: 1); no flashing sequence longer than 5 s (longest observed:
+4.8 s); no frame over the 500 mA budget or the channel caps; no saturated red.
 
 ### 4.3 Build and upload
 
@@ -176,6 +204,9 @@ Versions used for the verified compile: arduino-cli 1.5.2-rc.1; board package "R
 Pico/RP2040/RP2350" by Earle Philhower 6.3.0; libraries Adafruit NeoPixel 1.15.5, Adafruit GC9A01A 1.1.1,
 Adafruit GFX Library 1.12.6, Adafruit LIS3DH 1.3.0, Adafruit seesaw Library 1.7.9, Adafruit VL53L1X 3.1.2
 (plus their dependencies, e.g. Adafruit BusIO 1.17.4).
+
+From the repository root (skip `config init` if you already use arduino-cli; it refuses to overwrite an
+existing configuration):
 
 ```bash
 arduino-cli config init
@@ -185,9 +216,8 @@ arduino-cli core update-index
 arduino-cli core install rp2040:rp2040@6.3.0
 arduino-cli lib install "Adafruit NeoPixel@1.15.5" "Adafruit GC9A01A@1.1.1" "Adafruit GFX Library@1.12.6" \
   "Adafruit LIS3DH@1.3.0" "Adafruit seesaw Library@1.7.9" "Adafruit VL53L1X@3.1.2"
-cd research/portal-gun/prop/firmware
-arduino-cli compile --fqbn rp2040:rp2040:adafruit_feather_prop_maker PortalGunProp
-arduino-cli upload  --fqbn rp2040:rp2040:adafruit_feather_prop_maker -p <port> PortalGunProp
+arduino-cli compile --fqbn rp2040:rp2040:adafruit_feather_prop_maker research/portal-gun/prop/firmware/PortalGunProp
+arduino-cli upload  --fqbn rp2040:rp2040:adafruit_feather_prop_maker -p <port> research/portal-gun/prop/firmware/PortalGunProp
 ```
 
 In the Arduino IDE the same board appears as **Adafruit Feather RP2040 Prop-Maker**. If upload fails, add
@@ -198,13 +228,13 @@ In the Arduino IDE the same board appears as **Adafruit Feather RP2040 Prop-Make
 
 | Input | Effect |
 |---|---|
-| Turn the dial | Choose a destination code: C-137, 35-C, J19-Z7, D-716, LAB-01, HOME |
-| Press the dial | Switch between Steady (default, gentler) and Show mode |
-| Hold the trigger | Aim: the display shows the measured range; three consecutive readings within 6% between 40 mm and 4 m give a lock (a click sound) |
+| Turn the dial | Choose a destination code: C-137, 35-C, J19-Z7, D-716, LAB-01, HOME (click sound) |
+| Press the dial | Switch between Steady (default, no flashing) and Show mode |
+| Hold the trigger | Aim: the display shows the measured range. The range locks whenever three consecutive readings agree within 6% between 40 mm and 4 m; a two-tone chime marks the lock while aiming (or as soon as aiming starts, if the range was already locked) |
 | Release with a lock | Open: 1.6 s opening animation and sound, then an 8 s "portal open" swirl with a hum |
 | Release without a lock | "NO TARGET": error tone |
 | Press the trigger or double-tap the body while open | Close early |
-| Low cell (< 3.50 V) | "LOW BATT", dimmed; below 3.30 V the LEDs and amplifier are switched off and the display reads "CHARGE" |
+| Low cell (gauge enabled) | From any state: below 3.50 V "LOW BATT", dimmed, trigger gives the error tone; below 3.30 V the LEDs and amplifier are switched off and the display reads "CHARGE" |
 
 ```mermaid
 stateDiagram-v2
@@ -218,14 +248,15 @@ stateDiagram-v2
   Open --> Closing: 8 s, trigger or double tap
   Closing --> Cooldown: 0.9 s
   Cooldown --> Idle: 1.2 s
-  Idle --> LowBattery: below 3.50 V
-  LowBattery --> Shutdown: below 3.30 V
-  LowBattery --> Idle: above 3.70 V
-  Shutdown --> Idle: above 3.70 V
+  note right of Idle
+    With the battery gauge enabled, any state goes to
+    LowBattery below 3.50 V and to Shutdown below 3.30 V;
+    both return to Idle above 3.70 V.
+  end note
 ```
 
-Every number above is a field of `portal::Config` in `portal_core.h`; change them there and re-run the host
-tests.
+Timings, thresholds, caps, the idle brightness and the flash limits are fields of `portal::Config` in
+`portal_core.h`; change them there and re-run the host tests.
 
 **Sound level.** The synthesiser's peak is capped at 35% of full scale. Scaling the MAX98357A's published
 1.8 W into 8 Ω at full scale (5 V supply) by $0.35^2$ gives about 0.2 W, inside the speaker's 0.25 W rating
@@ -235,8 +266,11 @@ tests.
 
 ### 5.1 Generate the parts
 
+From the repository root:
+
 ```bash
-. .venv/bin/activate                 # numpy, manifold3d, trimesh, matplotlib
+python3 -m venv .venv && . .venv/bin/activate
+pip install -r research/portal-gun/requirements.txt
 cd research/portal-gun/prop/enclosure
 python make_enclosure.py             # writes out/*.stl, out/preview.png, out/report.json
 python -m pytest -q                  # 7 fit checks
@@ -244,7 +278,7 @@ python -m pytest -q                  # 7 fit checks
 
 | Part | Material | Volume | What it holds |
 |---|---|---|---|
-| `body.stl` | Opaque PLA or PETG | 71.7 cm³ | Feather against the rear wall (USB-C opening), cell on the floor, range sensor behind a front window, speaker grille (left), switch slot (right) |
+| `body.stl` | Opaque PLA or PETG | 71.7 cm³ | Feather against the rear wall (USB-C opening), cell on the floor, range sensor behind a front window; seen from behind, the speaker grille is on the right side and the switch slot on the left |
 | `lid.stl` | Opaque | 23.6 cm³ | Display window, canister socket, dial hole; friction-fit lip |
 | `emitter.stl` | Opaque | 45.0 cm³ | Ring 16 pocket, 3 mm air gap, rebate for the diffuser |
 | `diffuser.stl` | Clear PETG | 4.2 cm³ | 2 mm disc in front of the ring |
@@ -263,8 +297,8 @@ canister with more perimeters and no infill so they glow evenly. Print in a vent
 ## 6. Assembly
 
 1. **Bench test first** (section 9, steps 1–4) with everything on the desk before anything goes in the shell.
-2. Solder the 330 Ω resistor in line with the ring's DIN wire, at the ring. Solder the capacitor across the
-   ring's 5V and GND pads. Chain the ring's DOUT, 5V and GND to the Jewel.
+2. With the power off, solder the 330 Ω resistor in line with the ring's DIN wire, at the ring. Solder the
+   capacitor across the ring's 5V and GND pads. Chain the ring's DOUT, 5V and GND to the Jewel.
 3. Seat the ring in the emitter pocket, then press the diffuser into the rebate. Pass the three wires through
    the emitter's centre hole and the body's front pass-through.
 4. Mount the range sensor behind the front window, facing out, with nothing in front of the sensor but the
@@ -284,16 +318,18 @@ canister with more perimeters and no infill so they glow evenly. Print in a vent
 
 - Switch on: a short boot chime, the ring fades up green, the display shows "READY", the code and Steady mode.
 - Point at a wall, hold the trigger, watch the range settle, release when it locks.
-- Show mode is brighter (full rather than 80% brightness) and allows livelier per-pixel motion (2.5 Hz rather
-  than 1.5 Hz), still within the flash limits. Keep Steady for crowds.
-- Charge Variant A over USB-C while you are present; Adafruit recommends charging at or below 0.5C, which the
-  board's charger does for this cell.
+- Steady mode swirls by colour, without flashing. Show mode is brighter and swaps in a fast deep-to-bright
+  swirl for up to about 4 s at a time, then calms down for at least as long. Use Steady in public.
+- Charge Variant A over USB-C while you are present, between 0 and 50 °C. Adafruit suggests charging at or
+  below 0.5C (600 mA for this cell); the board is listed with a "200mA+" charger, so check its actual rate on
+  the product page before relying on it.
 
 ## 8. Troubleshooting
 
 | Symptom | Likely cause |
 |---|---|
-| LEDs dark, display works | NeoPixel power is enabled by the firmware; check the terminal wiring and ground, and that the cell is above 3.30 V |
+| Display reads "CHARGE" or "LOW BATT" with a full cell | Battery gauge enabled without the divider fitted (section 3.3) |
+| LEDs dark, display works | NeoPixel power is enabled by the firmware; check the terminal wiring and ground |
 | First LED wrong colour or flickers | Missing 330 Ω resistor at the ring, or a long data wire |
 | Range never locks | Something in front of the sensor window, a very dark or shiny target, or beyond 4 m |
 | Dial does nothing | Encoder not detected at 0x36: check the STEMMA QT chain |
@@ -305,13 +341,13 @@ None of these has been performed. Expected results come from the firmware's desi
 
 | # | Test | How | Pass if |
 |---|---|---|---|
-| 1 | Power-on | USB only, no cell, LEDs disconnected | Display shows READY; boot chime |
+| 1 | Power-on | USB only, no cell, LEDs disconnected, gauge off (the default) | Display shows READY; boot chime |
 | 2 | I2C devices | Watch the display: range shows "-- m" if the sensor is missing | Range readings appear; dial changes the code |
-| 3 | LEDs | Connect the ring and Jewel | Green fade-up; no first-pixel glitches |
-| 4 | Current | USB power meter in the cable, Show mode, portal open | Below about 0.6 A total (500 mA LED budget plus the board) |
-| 5 | Flash check | Film the open portal at 240 fps; step through | No pixel changes direction more than three times in any second in Steady mode |
-| 6 | Switch off | Slide switch off; measure the NeoPixel terminal with a multimeter | 0 V at the terminal (confirms the enable pin cuts LED power) |
-| 7 | Low battery | Optional gauge fitted; let a cell run down while you watch | LOW BATT and dimming at 3.50 V; LEDs off at 3.30 V |
+| 3 | LEDs | Power off; connect ground first, then the ring and Jewel; power on | Green fade-up; no first-pixel glitches |
+| 4 | Current | USB power meter in the cable, no cell connected (or a full one, so no charge current), Show mode, portal open | Below about 0.6 A total. The 0.1 A allowance for the board is my estimate |
+| 5 | Flash check | Film the prop at 240 fps through a full open–close cycle in each mode; step through | Steady: no LED makes a pair of opposing brightness changes of 10% or more within one second. Show: no LED makes more than 3 such pairs (6 opposing changes) in any second, and fast flashing stops within about 5 s |
+| 6 | Switch off | Slide switch off; measure the NeoPixel terminal with a multimeter | 0 V at the terminal (confirms that switching EN off cuts LED power) |
+| 7 | Low battery | Gauge fitted and enabled; let a cell run down while you watch | LOW BATT and dimming at 3.50 V; LEDs off at 3.30 V |
 | 8 | Heat | Run 30 min in Show mode | Nothing more than warm to the touch |
 
 ## 10. Credits, licences and limits
@@ -320,4 +356,5 @@ The enclosure and firmware are original work for this study. The portal gun is a
 Morty* (Adult Swim); this is a fan prop for personal use, and I did not research trademark questions.
 Published fan builds were consulted for comparison only and none of their files are reused: Bannerz's
 Printables model 606725 (CC BY-NC), JackSoldano's and korv's Instructables (CC BY-NC-SA 4.0), and
-pomeroyb's firmware (no licence file). Adafruit has no official guide for this prop.
+pomeroyb's firmware (no licence file). I found no official Adafruit guide for this prop (Adafruit's Learn
+site search could not be checked directly).

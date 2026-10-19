@@ -29,8 +29,12 @@ def rate_gravity(delta_phi: float) -> float:
 
 
 def rate_velocity(v: float) -> float:
-    """Fractional rate deficit of a clock moving at speed v (1 - 1/gamma)."""
-    return 1 - math.sqrt(1 - (v / C.c)**2)
+    """Fractional rate deficit of a clock moving at speed v (1 - 1/gamma).
+
+    Written as b^2 / (1 + sqrt(1 - b^2)) rather than 1 - sqrt(1 - b^2): the two are equal,
+    but the second loses most of its digits to cancellation at everyday speeds."""
+    b2 = (v / C.c)**2
+    return b2 / (1 + math.sqrt(1 - b2))
 
 
 def time_to_ctc(separation: float, eps: float) -> float:

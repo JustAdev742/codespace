@@ -90,7 +90,7 @@ def layout():
         # LiPo flat on the floor in the front half, clear of the ToF board
         "lipo": (L / 2 - w - 20 - lx / 2, 0.0, floor + lz / 2),
         "tof": (L / 2 - w - P["tof"][2] / 2 - 0.4, 0.0, floor + 9.0 + P["tof"][1] / 2),
-        "speaker_y": -W / 2,           # speaker on the left wall (seen from behind)
+        "speaker_y": -W / 2,           # speaker on the right wall (-y; seen from behind)
         "speaker_xz": (-10.0, H / 2 + 2),
         "emitter_axis_z": H / 2 + 6,
         "ring_x": L / 2,               # front face plane
@@ -112,7 +112,7 @@ def make_body():
     # edge, which faces the rear wall in this layout)
     ux, uz = P["usb_c"]
     body -= box((w + 2, ux, uz), (-L / 2 + w / 2, 0, w + 1.6 + 2.0))
-    # left wall: speaker grille (hex pattern of 3 mm holes inside the speaker circle)
+    # right wall (-y, seen from behind): speaker grille (hex pattern of 3 mm holes)
     sx, sz = lay["speaker_xz"]
     holes = []
     for i in range(-5, 6):
@@ -122,7 +122,7 @@ def make_body():
             if (hx - sx) ** 2 + (hz - sz) ** 2 < (P["speaker_d"] / 2 - 4) ** 2:
                 holes.append(cyl_y(w + 2, 1.5, hx, -W / 2 - 1, hz))
     body -= M.batch_boolean(holes, mf.OpType.Add)
-    # right wall: slide switch slot
+    # left wall (+y, seen from behind): slide switch slot, 9 x 4.5 mm (ASSUMED for Adafruit 805)
     body -= box((9.0, w + 2, 4.5), (-L / 2 + 30, W / 2 - w / 2, H - 14))
     # floor: wire channel into the handle
     body -= M.cylinder(w + 2, 4.5).translate([HANDLE_X, 0, -1])

@@ -1,12 +1,13 @@
 // Portal gun prop firmware for the Adafruit RP2040 Prop-Maker Feather (product 5768).
 //
 // This file only moves data between the hardware and portal_core (which holds every
-// decision and is unit-tested on a desktop compiler). Core 0 runs inputs, LEDs and the
-// display at 100 Hz; core 1 synthesises audio and streams it to the onboard I2S amplifier.
+// decision and is unit-tested on a desktop compiler). Core 0 runs inputs and LEDs at
+// 100 Hz and redraws the display at 5 Hz; core 1 synthesises audio and streams it to the
+// onboard I2S amplifier.
 //
 // It is a light-and-sound prop. It does not emit anything that could harm anyone: the
 // range sensor is a Class 1 (eye-safe, invisible 940 nm) time-of-flight module, and the
-// firmware keeps LED flashing below photosensitive-seizure thresholds by default.
+// default Steady mode does not flash at all (see portal_core.h).
 //
 // Libraries (Arduino Library Manager): Adafruit NeoPixel, Adafruit GC9A01A, Adafruit GFX,
 // Adafruit VL53L1X, Adafruit LIS3DH, Adafruit seesaw. Board package: "Raspberry Pi Pico/RP2040"
@@ -33,8 +34,10 @@ constexpr uint8_t ENCODER_ADDR = 0x36;   // STEMMA QT rotary encoder (seesaw)
 constexpr uint8_t ENCODER_SWITCH = 24;   // seesaw pin of the encoder's push switch
 constexpr uint8_t TOF_ADDR = 0x29;       // VL53L1X default address
 constexpr uint8_t LIS3DH_ADDR = 0x18;    // accelerometer on the Prop-Maker Feather
-#define BATTERY_SENSE_PIN A3             // optional: 2 x 100k divider from BAT. Delete this
-constexpr float BATTERY_DIVIDER = 2.0f;  // line if the divider is not fitted.
+// Battery gauge, off by default: fit a divider of two 100k resistors from BAT to A3 to GND,
+// then uncomment the next line. Without the divider A3 floats and would read nonsense.
+// #define BATTERY_SENSE_PIN A3
+constexpr float BATTERY_DIVIDER = 2.0f;
 constexpr uint32_t SAMPLE_RATE = 22050;
 constexpr uint32_t FRAME_MS = 10;        // 100 Hz logic and LED frame rate
 

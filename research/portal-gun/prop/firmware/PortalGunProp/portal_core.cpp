@@ -37,18 +37,25 @@ const RGB kGreen{40, 255, 70};
 const RGB kTeal{90, 255, 170};
 const RGB kAmber{255, 150, 30};
 
-// Per-pixel reversal governor. A pixel's luminance may not turn round (move more than
-// kReversalEps back from its running extreme) sooner than kMinReversalMs after its previous
-// turning point. Every flash needs two opposing changes, so each pixel is capped at
-// 1000 / (2 * 180) = 2.8 flashes per second, with flash leading edges >= 360 ms apart.
-// Wiggles smaller than kReversalEps (0.04) are below the 0.1 flash threshold anyway.
+// Per-pixel limiters.
+//
+// Show mode (fast animation): a reversal governor. A pixel's luminance may not turn round
+// (move more than kReversalEps back from its running extreme) sooner than min_leg_ms after
+// its previous turning point. Every flash needs two opposing changes, so with 180 ms each
+// pixel is capped at 1000 / (2 * 180) = 2.8 flashes per second, with flash leading edges
+// >= 360 ms apart. Wiggles smaller than kReversalEps (0.04) are below the 0.1 threshold.
+//
+// Everything else (all of Steady mode, and Show mode outside its fast runs): a slew
+// limiter. Luminance may change by at most steady_slew_per_s per second, so any change of
+// 0.1 or more takes over a second and two opposing ones can never share a one-second
+// window: no flashes at all, whatever the pattern asks for.
 constexpr float kReversalEps = 0.04f;
-constexpr uint32_t kMinReversalMs = 180;
 
 struct PixelGovernor {
   float ext = 0.0f;       // running extreme of the current leg
   int8_t dir = 0;         // +1 rising, -1 falling, 0 not yet moving
   uint32_t t_turn = 0;    // when the current leg started
+  float slewL = 0.0f;     // slew-limited luminance (kept in step with the output)
   RGB last{0, 0, 0};
 };
 
@@ -66,7 +73,7 @@ RGB withLuminance(RGB c, float L, RGB fallback) {
   return RGB{ch(c.r), ch(c.g), ch(c.b)};
 }
 
-RGB governPixel(int i, RGB want, uint32_t now) {
+RGB governPixel(int i, RGB want, uint32_t now, uint32_t min_leg_ms) {
   PixelGovernor& g = g_gov[i];
   const float L = luminance(want);
   float out = L;
@@ -77,21 +84,71 @@ RGB governPixel(int i, RGB want, uint32_t now) {
     if (L >= g.ext) {
       g.ext = L;
     } else if (g.ext - L > kReversalEps) {
-      if (now - g.t_turn < kMinReversalMs) out = g.ext - kReversalEps;   // too soon: hold up
+      if (now - g.t_turn < min_leg_ms) out = g.ext - kReversalEps;   // too soon: hold up
       else { g.dir = -1; g.t_turn = now; g.ext = L; }
     }
   } else {
     if (L <= g.ext) {
       g.ext = L;
     } else if (L - g.ext > kReversalEps) {
-      if (now - g.t_turn < kMinReversalMs) out = g.ext + kReversalEps;   // too soon: hold down
+      if (now - g.t_turn < min_leg_ms) out = g.ext + kReversalEps;   // too soon: hold down
       else { g.dir = 1; g.t_turn = now; g.ext = L; }
     }
   }
   RGB res = out == L ? want : withLuminance(want, out, g.last);
   g.last = res;
+  g.slewL = luminance(res);
   return res;
 }
+
+RGB slewPixel(int i, RGB want, float max_step) {
+  PixelGovernor& g = g_gov[i];
+  const float L = luminance(want);
+  float d = L - g.slewL;
+  if (d > max_step) d = max_step;
+  if (d < -max_step) d = -max_step;
+  g.slewL += d;
+  RGB res = fabsf(g.slewL - L) < 1e-6f ? want : withLuminance(want, g.slewL, g.last);
+  g.last = res;
+  // keep the reversal governor's view consistent for a later switch to fast animation
+  g.ext = g.slewL;
+  g.dir = 0;
+  return res;
+}
+
+// Turning-point times of a series, using the WCAG flash rule: legs of >= 0.1 whose darker
+// end is below 0.8. Shared by the flash counters below.
+int flashChangeTimes(const float* x, int n, float dt, float* t_change, int cap) {
+  if (n < 2) return 0;
+  const float h = 0.1f;
+  int nc = 0;
+  int dir = 0;
+  float lo = x[0], hi = x[0], ext = x[0], pivot = x[0];
+  int ext_i = 0;
+  auto record = [&](float from, float to, int at) {
+    float darker = from < to ? from : to;
+    if (fabsf(to - from) >= h && darker < 0.8f && nc < cap) t_change[nc++] = at * dt;
+  };
+  for (int i = 1; i < n; ++i) {
+    const float v = x[i];
+    if (dir == 0) {
+      if (v < lo) lo = v;
+      if (v > hi) hi = v;
+      if (v - lo >= h) { dir = 1; pivot = lo; ext = v; ext_i = i; }
+      else if (hi - v >= h) { dir = -1; pivot = hi; ext = v; ext_i = i; }
+    } else if (dir > 0) {
+      if (v > ext) { ext = v; ext_i = i; }
+      else if (ext - v >= h) { record(pivot, ext, ext_i); pivot = ext; dir = -1; ext = v; ext_i = i; }
+    } else {
+      if (v < ext) { ext = v; ext_i = i; }
+      else if (v - ext >= h) { record(pivot, ext, ext_i); pivot = ext; dir = 1; ext = v; ext_i = i; }
+    }
+  }
+  if (dir != 0) record(pivot, ext, ext_i);
+  return nc;
+}
+
+float g_changes[8192];
 
 }  // namespace
 
@@ -147,41 +204,31 @@ int batteryPercent(float v) {
 
 int maxFlashesPerSecond(const float* x, int n, float dt) {
   // Zig-zag turning points with a 0.1 hysteresis: each leg is a luminance change of at
-  // least 0.1. A leg counts as a flash half when its darker end is below 0.8 (WCAG general
-  // flash). A flash is a pair of opposing changes, so flashes in a window = changes / 2.
-  if (n < 2) return 0;
-  const float h = 0.1f;
-  static float t_change[8192];
-  int nc = 0;
-  int dir = 0;
-  float lo = x[0], hi = x[0], ext = x[0], pivot = x[0];
-  int ext_i = 0;
-  auto record = [&](float from, float to, int at) {
-    float darker = from < to ? from : to;
-    if (fabsf(to - from) >= h && darker < 0.8f && nc < 8192) t_change[nc++] = at * dt;
-  };
-  for (int i = 1; i < n; ++i) {
-    const float v = x[i];
-    if (dir == 0) {
-      if (v < lo) lo = v;
-      if (v > hi) hi = v;
-      if (v - lo >= h) { dir = 1; pivot = lo; ext = v; ext_i = i; }
-      else if (hi - v >= h) { dir = -1; pivot = hi; ext = v; ext_i = i; }
-    } else if (dir > 0) {
-      if (v > ext) { ext = v; ext_i = i; }
-      else if (ext - v >= h) { record(pivot, ext, ext_i); pivot = ext; dir = -1; ext = v; ext_i = i; }
-    } else {
-      if (v < ext) { ext = v; ext_i = i; }
-      else if (v - ext >= h) { record(pivot, ext, ext_i); pivot = ext; dir = 1; ext = v; ext_i = i; }
-    }
-  }
-  if (dir != 0) record(pivot, ext, ext_i);
+  // least 0.1. A leg counts when its darker end is below 0.8 (WCAG general flash). A flash
+  // is a pair of opposing changes, so flashes in a window = changes / 2.
+  const int nc = flashChangeTimes(x, n, dt, g_changes, 8192);
   int best = 0;
   int j = 0;
   for (int i = 0; i < nc; ++i) {
-    while (t_change[i] - t_change[j] >= 1.0f) ++j;
+    while (g_changes[i] - g_changes[j] >= 1.0f) ++j;
     const int flashes = (i - j + 1) / 2;
     if (flashes > best) best = flashes;
+  }
+  return best;
+}
+
+float longestFlashSequenceS(const float* x, int n, float dt) {
+  const int nc = flashChangeTimes(x, n, dt, g_changes, 8192);
+  float best = 0.0f;
+  int start = 0;
+  for (int i = 1; i <= nc; ++i) {
+    if (i == nc || g_changes[i] - g_changes[i - 1] >= 1.0f) {
+      if (i - start >= 2) {
+        const float len = g_changes[i - 1] - g_changes[start];
+        if (len > best) best = len;
+      }
+      start = i;
+    }
   }
   return best;
 }
@@ -206,6 +253,8 @@ void Gun::reset(uint32_t now_ms) {
   bright_ = 0.0f;
   phase_ = jphase_ = 0.0f;
   power_k_ = 1.0f;
+  fast_ms_ = 0.0f;
+  fast_rest_ = false;
   t_render_ = now_ms;
   pending_ = Sound::Boot;
   for (auto& g : g_gov) g = PixelGovernor{};
@@ -278,7 +327,10 @@ void Gun::update(uint32_t now, const Inputs& in) {
       if (age >= cfg_.boot_ms) enter(State::Idle, now);
       break;
     case State::Idle:
-      if (pressed) enter(State::Aim, now);
+      if (pressed) {
+        enter(State::Aim, now);
+        if (locked_) pending_ = Sound::Lock;   // already locked: chime as aiming starts
+      }
       break;
     case State::Aim:
       if (released) {
@@ -314,7 +366,7 @@ float Gun::targetBrightness() const {
   const float show = mode_ == Mode::Show ? 1.0f : 0.8f;
   switch (state_) {
     case State::Boot: return 0.35f * clamp01(age / cfg_.boot_ms) * show;
-    case State::Idle: return 0.24f * show;
+    case State::Idle: return cfg_.idle_level * show;
     case State::Aim: return 0.45f * show;
     case State::Opening: return (0.45f + 0.5f * clamp01(age / cfg_.opening_ms)) * show;
     case State::Open: return 0.85f * show;
@@ -327,7 +379,21 @@ float Gun::targetBrightness() const {
   return 0.0f;
 }
 
-float Gun::pixelHzCap() const { return mode_ == Mode::Show ? cfg_.max_pixel_hz_show : cfg_.max_pixel_hz_steady; }
+bool Gun::fastAllowed(float dt_s) {
+  // Show mode only, in the active states, and for at most show_fast_ms at a time: the
+  // budget fills while fast animation runs and must drain completely (1:1) before the
+  // next fast run, so flashing sequences stay under 5 s with rests in between.
+  const bool active = state_ == State::Aim || state_ == State::Opening || state_ == State::Open || state_ == State::Closing;
+  const bool wants = mode_ == Mode::Show && active;
+  if (wants && !fast_rest_) {
+    fast_ms_ += dt_s * 1000.0f;
+    if (fast_ms_ >= static_cast<float>(cfg_.show_fast_ms)) fast_rest_ = true;
+  } else {
+    fast_ms_ -= dt_s * 1000.0f;
+    if (fast_ms_ <= 0.0f) { fast_ms_ = 0.0f; fast_rest_ = false; }
+  }
+  return wants && !fast_rest_;
+}
 
 void Gun::render(uint32_t now, RGB* out) {
   float dt = (now - t_render_) / 1000.0f;
@@ -339,7 +405,8 @@ void Gun::render(uint32_t now, RGB* out) {
   bright_ += (targetBrightness() - bright_) * a;
 
   // pattern rotation speed (turns/s); per-pixel modulation frequency = lobes * speed <= cap
-  const float cap = pixelHzCap();
+  const bool fast = fastAllowed(dt);
+  const float cap = fast ? cfg_.max_pixel_hz_show : cfg_.max_pixel_hz_steady;
   const float age = static_cast<float>(now - t_state_);
   float speed = 0.12f;
   const int lobes = 1;
@@ -363,9 +430,10 @@ void Gun::render(uint32_t now, RGB* out) {
     RGB c;
     switch (state_) {
       case State::Aim: {
-        // soft comet; amber while searching, green once the range is locked
+        // soft comet; amber while searching, green once the range is locked. Without fast
+        // animation the comet is a gentle brightening (the slew limiter would flatten more)
         RGB head = locked_ ? kGreen : kAmber;
-        c = mix(scale(head, 0.15f), head, s * s);
+        c = fast ? mix(scale(head, 0.15f), head, s * s) : mix(scale(head, 0.8f), head, s * s);
         break;
       }
       case State::NoTarget:
@@ -378,7 +446,9 @@ void Gun::render(uint32_t now, RGB* out) {
         c = RGB{0, 0, 0};
         break;
       default:
-        c = mix(kDeep, mix(kGreen, kTeal, s), 0.35f + 0.65f * s);
+        // fast: deep-to-bright swirl; otherwise the swirl moves in hue (green to teal) at
+        // almost constant luminance, so it reads as motion without brightness flicker
+        c = fast ? mix(kDeep, mix(kGreen, kTeal, s), 0.35f + 0.65f * s) : mix(kGreen, kTeal, s);
         break;
     }
     px[i] = scale(c, bright_);
@@ -386,7 +456,7 @@ void Gun::render(uint32_t now, RGB* out) {
   for (int j = 0; j < JEWEL_PIXELS; ++j) {
     // jewel: centre pixel then six around it; a slow "fluid" swirl
     float s = j == 0 ? 0.7f : 0.5f + 0.5f * cosf(kTwoPi * ((j - 1) / 6.0f - jphase_));
-    RGB c = mix(kDeep, kGreen, 0.3f + 0.7f * s);
+    RGB c = fast ? mix(kDeep, kGreen, 0.3f + 0.7f * s) : mix(kGreen, kTeal, s);
     if (state_ == State::LowBattery) c = j == 0 ? kAmber : scale(kGreen, 0.3f);
     if (state_ == State::Shutdown) c = RGB{0, 0, 0};
     float jb = state_ == State::Open || state_ == State::Opening ? bright_ : 0.6f * bright_ + 0.05f;
@@ -396,7 +466,7 @@ void Gun::render(uint32_t now, RGB* out) {
   auto caps = [this](RGB* p) {
     for (int i = 0; i < TOTAL_PIXELS; ++i) {
       if (p[i].r > cfg_.max_channel) p[i].r = cfg_.max_channel;
-      if (p[i].g > cfg_.max_channel) p[i].g = cfg_.max_channel;
+      if (p[i].g > cfg_.max_green) p[i].g = cfg_.max_green;
       if (p[i].b > cfg_.max_blue) p[i].b = cfg_.max_blue;
     }
   };
@@ -406,7 +476,11 @@ void Gun::render(uint32_t now, RGB* out) {
   const float want_k = ma > cfg_.led_budget_ma ? cfg_.led_budget_ma / ma : 1.0f;
   power_k_ = want_k < power_k_ ? want_k : power_k_ + (want_k - power_k_) * a;
   for (int i = 0; i < TOTAL_PIXELS; ++i) px[i] = scale(px[i], power_k_);
-  for (int i = 0; i < TOTAL_PIXELS; ++i) px[i] = governPixel(i, px[i], now);
+  const float max_step = cfg_.steady_slew_per_s * dt;
+  for (int i = 0; i < TOTAL_PIXELS; ++i) {
+    if (state_ == State::Shutdown) { g_gov[i].slewL = 0.0f; g_gov[i].last = px[i]; continue; }   // cut at once
+    px[i] = fast ? governPixel(i, px[i], now, cfg_.show_min_leg_ms) : slewPixel(i, px[i], max_step);
+  }
   caps(px);
   limitPower(px, TOTAL_PIXELS, cfg_.led_budget_ma, cfg_.ma_per_channel);  // hard backstop
   last_ma_ = estimateCurrentMa(px, TOTAL_PIXELS, cfg_.ma_per_channel);

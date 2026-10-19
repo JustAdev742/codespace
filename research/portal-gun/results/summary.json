@@ -157,17 +157,17 @@
     {
       "scenario": "mouth on car at 30 m/s, 10 km apart",
       "separation_m": 10000.0,
-      "rate": 4.9960036108132044e-15,
-      "T_ctc_s": 6676618377.060329,
-      "T_ctc_years": 211.56926943304717,
+      "rate": 5.0069252522412946e-15,
+      "T_ctc_s": 6662054622.222207,
+      "T_ctc_years": 211.10777189083475,
       "note": "special-relativistic drift"
     },
     {
       "scenario": "mouth in LEO (7.8 km/s) vs ground, 400 km",
       "separation_m": 400000.0,
-      "rate": 2.973440863598621e-10,
-      "T_ctc_s": 4487247.071656297,
-      "T_ctc_years": 0.142192279249889,
+      "rate": 2.973440910663048e-10,
+      "T_ctc_s": 4487247.000630937,
+      "T_ctc_years": 0.14219227699923115,
       "note": "velocity and gravity partly cancel"
     }
   ],
@@ -199,23 +199,23 @@
   "views": {
     "l = 8 r0 (approaching)": {
       "disc_angular_radius_deg": 7.125016348901799,
-      "render_s": 0.9824256896972656
+      "render_s": 1.991762638092041
     },
     "l = 3 r0": {
       "disc_angular_radius_deg": 18.43494882292201,
-      "render_s": 0.8166654109954834
+      "render_s": 1.722797155380249
     },
     "l = 1 r0": {
       "disc_angular_radius_deg": 44.99999999999999,
-      "render_s": 0.9501469135284424
+      "render_s": 1.5330126285552979
     },
     "at the throat, l = 0": {
       "disc_angular_radius_deg": 90.0,
-      "render_s": 2.0319082736968994
+      "render_s": 3.3371665477752686
     },
     "l = -3 r0 (through, looking back)": {
       "disc_angular_radius_deg": 18.43494882292201,
-      "render_s": 0.7595803737640381
+      "render_s": 1.8820672035217285
     }
   },
   "constants": {

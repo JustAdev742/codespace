@@ -178,7 +178,7 @@ def fig_casimir():
     for x in (1.0, C.AU):
         ax.plot([x], [E.casimir_gap_for_throat(x)], "o", ms=6, color=PS.SERIES[0], mec=PS.SURFACE, mew=2)
     PS.note(ax, 1.5, E.casimir_gap_for_throat(1.0) / 6, "1 m: 3.1e-18 m", fontsize=8, color=PS.INK)
-    PS.note(ax, C.AU * 1.5, E.casimir_gap_for_throat(C.AU) / 6, "1 AU: 1.2e-12 m\n(MTY88 quote ~1.6e-10 cm)", fontsize=8, color=PS.INK)
+    PS.note(ax, C.AU * 1.5, E.casimir_gap_for_throat(C.AU) / 6, "1 AU: 1.2e-12 m\n(MTY88 formula: 1.6e-10 cm)", fontsize=8, color=PS.INK)
     ax.set_xlabel("throat radius r0 [m]")
     ax.set_ylabel("length scale [m]")
     ax.set_title("Negative energy at the density a throat needs is confined to sub-nuclear scales\n"

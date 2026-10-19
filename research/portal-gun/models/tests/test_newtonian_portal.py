@@ -16,7 +16,7 @@ def test_without_portals_the_uniform_field_is_recovered():
 
 def test_faces_sit_near_the_mean_potential(field):
     st = NP.face_field_stats(field)
-    assert 0.5 * (st["phi_face_A"] + st["phi_face_B"]) == pytest.approx(9.81 * 4.0 / 2, rel=2e-3)
+    assert 0.5 * (st["phi_face_A"] + st["phi_face_B"]) == pytest.approx(9.81 * 4.0 / 2, rel=2e-3, abs=0)
 
 
 def test_potential_is_single_valued_so_no_perpetual_fall(field):

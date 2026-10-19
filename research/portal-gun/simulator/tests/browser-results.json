@@ -3,7 +3,7 @@
     {
       "name": "game rule: ball keeps accelerating through the loop",
       "ok": true,
-      "detail": "v=34.9 m/s, crossings=10"
+      "detail": "v=34.6 m/s, crossings=10"
     },
     {
       "name": "portal views rendered (kinematic)",
@@ -13,7 +13,7 @@
     {
       "name": "energy-conserving: ball never exceeds free-fall speed from 6 m",
       "ok": true,
-      "detail": "v=7.72 m/s, crossings=2"
+      "detail": "v=7.24 m/s, crossings=2"
     },
     {
       "name": "portal views rendered (conservative)",
@@ -48,7 +48,7 @@
     {
       "name": "height test, energy-conserving: walking speed is reflected",
       "ok": true,
-      "detail": "reflections=6, y=0.00"
+      "detail": "reflections=6, y=-0.00"
     },
     {
       "name": "aiming: metal panel rejects, narrow pillar too small, open wall accepts",
@@ -74,15 +74,15 @@
   "errors": [],
   "timings": {
     "infinite-kinematic": {
-      "speed": 34.926216322180565,
-      "y": 0.45352067635612336,
+      "speed": 34.615238089923615,
+      "y": 3.934602285471364,
       "crossings": 10,
-      "energy": 9810.000000000002,
+      "energy": 9810,
       "renders": 3
     },
     "infinite-conservative": {
-      "speed": 7.717549762758946,
-      "y": 2.1722821245698087,
+      "speed": 7.242218472160431,
+      "y": 2.5456907657444052,
       "crossings": 2,
       "energy": 0,
       "renders": 3

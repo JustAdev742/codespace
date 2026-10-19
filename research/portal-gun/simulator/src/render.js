@@ -74,8 +74,10 @@ vec3 swirl(vec2 p) {
   float w = a + 2.6 * r - time * 1.4;
   float n = noise(vec2(cos(w) * 2.0 + r * 3.0, sin(w) * 2.0 - time * 0.4)) * 0.6
           + noise(vec2(w * 1.7, r * 6.0 - time)) * 0.4;
-  float bands = 0.5 + 0.5 * sin(6.0 * w + 4.0 * n);
-  vec3 deep = tint * 0.08;
+  // four soft bands (ITU-R BT.1702 treats more than five moving light/dark pairs as a
+  // pattern risk) at about 0.9 Hz per pixel, with moderate contrast
+  float bands = 0.5 + 0.5 * sin(4.0 * w + 4.0 * n);
+  vec3 deep = tint * 0.35;
   vec3 bright = mix(tint, vec3(1.0), 0.35);
   return mix(deep, bright, clamp(0.25 + 0.75 * bands * (0.4 + 0.6 * n), 0.0, 1.0)) * (0.65 + 0.35 * (1.0 - r));
 }

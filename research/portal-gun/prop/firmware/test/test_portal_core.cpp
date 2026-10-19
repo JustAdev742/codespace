@@ -60,6 +60,14 @@ static void test_flash_counter() {
   std::vector<float> e(300, 0.1f);
   for (int i = 100; i < 150; ++i) e[i] = 0.9f;
   CHECK(maxFlashesPerSecond(e.data(), (int)e.size(), dt) == 1, "a single on/off is one flash");
+  // flashing-sequence length: a 2 Hz sine for 3 s inside 10 s of steady light lasts ~3 s
+  std::vector<float> g(1000, 0.5f);
+  for (int i = 300; i < 600; ++i) g[i] = 0.5f + 0.4f * sinf(6.2831853f * 2.0f * (i - 300) * dt);
+  float len = longestFlashSequenceS(g.data(), (int)g.size(), dt);
+  CHECK(len > 2.4f && len < 3.1f, "a 3 s burst is a ~3 s flashing sequence, got %.2f s", len);
+  auto slow = wave(0.3f, 0.4f, 0.5f, 9.17f, dt, false);   // ends at a trough, so no truncated last leg
+  CHECK(maxFlashesPerSecond(slow.data(), (int)slow.size(), dt) == 0 && longestFlashSequenceS(slow.data(), (int)slow.size(), dt) == 0.0f,
+        "a 0.3 Hz swell (legs over 1 s) is not flashing");
 }
 
 // ------------------------------------------------------------------ state machine
@@ -113,6 +121,16 @@ static void test_state_machine() {
   CHECK(r.gun.state() == State::Closing || r.gun.state() == State::Cooldown, "open times out");
   r.hold(2500);
   CHECK(r.gun.state() == State::Idle, "back to idle");
+  // a range already locked while idle chimes as soon as aiming starts
+  {
+    Rig q;
+    q.hold(1600);
+    for (int i = 0; i < 4; ++i) q.step(rangeIn(1800));
+    CHECK(q.gun.locked() && !q.heard(Sound::Lock), "idle lock is silent");
+    Inputs p2; p2.trigger = true;
+    q.step(p2);
+    CHECK(q.gun.state() == State::Aim && q.heard(Sound::Lock), "entering aim with a lock chimes");
+  }
   // trigger closes an open portal early; so does a double tap
   r.step(press);
   for (int i = 0; i < 4; ++i) r.step(rangeIn(1500, true));
@@ -208,7 +226,7 @@ struct Trace {
 static void record(Trace& tr, const RGB* px, const Config& c, float ma) {
   for (int i = 0; i < TOTAL_PIXELS; ++i) {
     tr.per_pixel[i].push_back(luminance(px[i]));
-    if (px[i].r > c.max_channel || px[i].g > c.max_channel || px[i].b > c.max_blue) ++tr.over_cap;
+    if (px[i].r > c.max_channel || px[i].g > c.max_green || px[i].b > c.max_blue) ++tr.over_cap;
     if (isSaturatedRed(px[i])) ++tr.sat_red;
   }
   tr.ring_mean.push_back(meanLuminance(px, RING_PIXELS));
@@ -216,21 +234,31 @@ static void record(Trace& tr, const RGB* px, const Config& c, float ma) {
   if (ma > tr.max_ma) tr.max_ma = ma;
 }
 
-static void assertSafe(const Trace& tr, const Config& c, const char* label) {
+// steady_only: the session never left Steady mode, so it must contain no flash at all.
+static void assertSafe(const Trace& tr, const Config& c, const char* label, bool steady_only) {
   const float dt = 0.01f;
   int worst = 0, worst_i = -1;
+  float longest = 0.0f;
   for (int i = 0; i < TOTAL_PIXELS; ++i) {
     int f = maxFlashesPerSecond(tr.per_pixel[i].data(), (int)tr.per_pixel[i].size(), dt);
     if (f > worst) { worst = f; worst_i = i; }
+    float len = longestFlashSequenceS(tr.per_pixel[i].data(), (int)tr.per_pixel[i].size(), dt);
+    if (len > longest) longest = len;
   }
   int fm = maxFlashesPerSecond(tr.ring_mean.data(), (int)tr.ring_mean.size(), dt);
   int fa = maxFlashesPerSecond(tr.all_mean.data(), (int)tr.all_mean.size(), dt);
-  CHECK(worst <= 3, "[%s] per-pixel flashes/s %d (pixel %d)", label, worst, worst_i);
-  CHECK(fm <= 3 && fa <= 3, "[%s] whole-ring flashes/s %d / all %d", label, fm, fa);
+  if (steady_only) {
+    CHECK(worst == 0 && fm == 0 && fa == 0, "[%s] Steady must not flash: pixel %d (%d/s), ring %d, all %d", label, worst_i, worst, fm, fa);
+  } else {
+    CHECK(worst <= 3, "[%s] per-pixel flashes/s %d (pixel %d)", label, worst, worst_i);
+    CHECK(fm <= 3 && fa <= 3, "[%s] whole-ring flashes/s %d / all %d", label, fm, fa);
+  }
+  CHECK(longest <= 5.0f, "[%s] flashing sequence lasts %.2f s (> 5 s)", label, longest);
   CHECK(tr.max_ma <= c.led_budget_ma + 1.0f, "[%s] LED current %.1f mA over budget", label, tr.max_ma);
   CHECK(tr.over_cap == 0, "[%s] %d pixel-frames over the channel caps", label, tr.over_cap);
   CHECK(tr.sat_red == 0, "[%s] %d saturated-red pixel-frames", label, tr.sat_red);
-  printf("  %-28s worst pixel %d flash/s, ring %d, all %d, peak LED %.0f mA\n", label, worst, fm, fa, tr.max_ma);
+  printf("  %-28s worst pixel %d flash/s, ring %d, all %d, longest sequence %.1f s, peak LED %.0f mA\n",
+         label, worst, fm, fa, longest, tr.max_ma);
 }
 
 static void scripted(Mode mode) {
@@ -246,12 +274,14 @@ static void scripted(Mode mode) {
   for (int k = 0; k < 200; ++k) frame(k % 5 == 0 ? rangeIn(2000 + (k % 3) * 5, true) : aim);   // aim + lock
   for (int k = 0; k < 1300; ++k) frame(Inputs());                   // opening, open
   for (int k = 0; k < 400; ++k) frame(Inputs());                    // closing, cooldown, idle
-  assertSafe(tr, c, mode == Mode::Steady ? "scripted, steady mode" : "scripted, show mode");
+  assertSafe(tr, c, mode == Mode::Steady ? "scripted, steady mode" : "scripted, show mode", mode == Mode::Steady);
 }
 
 static uint32_t lcg(uint32_t& s) { s = s * 1664525u + 1013904223u; return s >> 8; }
 
-static void fuzz(uint32_t seed) {
+enum class ModePolicy { Steady, Show, Flip };
+
+static void fuzz(uint32_t seed, ModePolicy policy) {
   const uint32_t seed0 = seed;
   Config c;
   Rig r(c);
@@ -263,7 +293,9 @@ static void fuzz(uint32_t seed) {
     Inputs in;
     if (r.t >= next_toggle) { trig = !trig; next_toggle = r.t + 20 + lcg(seed) % 400; }   // mash the trigger
     in.trigger = trig;
-    if (lcg(seed) % 97 == 0) in.encoder_click = true;                                     // flip modes
+    const bool flip = lcg(seed) % 97 == 0;
+    if (policy == ModePolicy::Flip && flip) in.encoder_click = true;                       // flip modes
+    if (policy == ModePolicy::Show && k == 0) in.encoder_click = true;                     // Show throughout
     if (lcg(seed) % 53 == 0) in.encoder_delta = (int)(lcg(seed) % 5) - 2;
     if (lcg(seed) % 211 == 0) in.double_tap = true;
     if (lcg(seed) % 4 == 0) { in.range_new = true; in.range_mm = (int16_t)(lcg(seed) % 3 ? 1500 + lcg(seed) % 40 : lcg(seed) % 6000); }
@@ -272,8 +304,9 @@ static void fuzz(uint32_t seed) {
     record(tr, px, c, r.gun.lastCurrentMa());
   }
   char label[64];
-  snprintf(label, sizeof label, "fuzz seed %u", seed0);
-  assertSafe(tr, c, label);
+  const char* tag = policy == ModePolicy::Steady ? "steady" : (policy == ModePolicy::Show ? "show" : "mixed");
+  snprintf(label, sizeof label, "fuzz %s, seed %u", tag, seed0);
+  assertSafe(tr, c, label, policy == ModePolicy::Steady);
 }
 
 // ------------------------------------------------------------------ audio
@@ -316,7 +349,11 @@ int main() {
   test_battery();
   scripted(Mode::Steady);
   scripted(Mode::Show);
-  for (uint32_t seed : {1u, 7u, 42u, 2026u, 99991u}) fuzz(seed);
+  for (uint32_t seed : {1u, 7u, 42u, 2026u, 99991u}) {
+    fuzz(seed, ModePolicy::Steady);
+    fuzz(seed, ModePolicy::Show);
+    fuzz(seed, ModePolicy::Flip);
+  }
   test_synth();
   printf("%d passed, %d failed\n", g_pass, g_fail);
   return g_fail ? 1 : 0;
