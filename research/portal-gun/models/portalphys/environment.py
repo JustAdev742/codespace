@@ -39,19 +39,24 @@ def exit_velocity(p0, T0, p_back, gamma=C.gamma_air, R=C.R_air):
     return math.sqrt(2 * gamma * R / (gamma - 1) * (T0 - T))
 
 
+def _room_rhs(volume, area, p0, T0, p_back, Cd, gamma, R):
+    """Mass balance of a closed room venting through the aperture; gas expands isentropically."""
+    m0 = p0 * volume / (R * T0)
+
+    def rhs(t, y):
+        p = p0 * (y[0] / m0)**gamma
+        T = T0 * (p / p0)**((gamma - 1) / gamma)
+        return [-orifice_mass_flow(p, T, p_back, area, Cd, gamma, R)]
+    return m0, rhs
+
+
 def blowdown(volume, area, p0=C.P_sea_level, T0=C.T_air_sl, p_back=0.0, Cd=0.8, t_end=600.0,
              gamma=C.gamma_air, R=C.R_air):
     """Adiabatic blow-down of a closed room through a portal to back pressure p_back.
 
     Returns (t, p) arrays. Room gas expands isentropically: T/T0 = (p/p0)^((g-1)/g).
     """
-    m0 = p0 * volume / (R * T0)
-
-    def rhs(t, y):
-        m = y[0]
-        p = p0 * (m / m0)**gamma
-        T = T0 * (p / p0)**((gamma - 1) / gamma)
-        return [-orifice_mass_flow(p, T, p_back, area, Cd, gamma, R)]
+    m0, rhs = _room_rhs(volume, area, p0, T0, p_back, Cd, gamma, R)
 
     def floor(t, y):
         return y[0] / m0 - 1e-4
@@ -61,12 +66,19 @@ def blowdown(volume, area, p0=C.P_sea_level, T0=C.T_air_sl, p_back=0.0, Cd=0.8, 
     return sol.t, p
 
 
-def time_to_pressure(volume, area, p_target, **kw):
-    t, p = blowdown(volume, area, **kw)
-    for ti, pi in zip(t, p):
-        if pi <= p_target:
-            return ti
-    return math.inf
+def time_to_pressure(volume, area, p_target, p0=C.P_sea_level, T0=C.T_air_sl, p_back=0.0, Cd=0.8,
+                     t_end=1e7, gamma=C.gamma_air, R=C.R_air):
+    """Time for the room to fall to p_target [s], located by root-finding on the solver's dense
+    output (an event), not by scanning output samples. math.inf if it never gets there."""
+    m0, rhs = _room_rhs(volume, area, p0, T0, p_back, Cd, gamma, R)
+    m_target = m0 * (p_target / p0)**(1 / gamma)
+
+    def reached(t, y):
+        return y[0] - m_target
+    reached.terminal = True
+    reached.direction = -1
+    sol = solve_ivp(rhs, (0, t_end), [m0], events=reached, rtol=1e-10, atol=1e-12 * m0)
+    return float(sol.t_events[0][0]) if sol.t_events[0].size else math.inf
 
 
 def pressure_force(dp, area):

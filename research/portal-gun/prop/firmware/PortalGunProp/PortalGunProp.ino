@@ -24,7 +24,7 @@
 
 #include "portal_core.h"
 
-// ---- wiring (see the tutorial's wiring table) ---------------------------------
+// ---- wiring (report/04-prop-tutorial.md, section 3.1) ----------------------------
 constexpr uint8_t TFT_CS = 10;       // round 1.28" GC9A01A display on the hardware SPI pins
 constexpr uint8_t TFT_DC = 11;
 constexpr uint8_t TFT_RST = 12;

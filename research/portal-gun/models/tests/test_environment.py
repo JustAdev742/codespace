@@ -31,6 +31,18 @@ def test_blowdown_matches_analytic_choked_solution():
         assert pi == pytest.approx(exact, rel=1e-5)
 
 
+def test_time_to_pressure_matches_analytic_inversion():
+    # choked throughout (vacuum outside), so p/p0 = (1 + k t)^(-2g/(g-1)) can be inverted exactly
+    g = C.gamma_air
+    c0 = math.sqrt(g * C.R_air * C.T_air_sl)
+    Gam = (2 / (g + 1))**((g + 1) / (2 * (g - 1)))
+    for r in (1.0, 0.1, 0.01):
+        A = math.pi * r * r
+        k = (g - 1) * 0.8 * A * Gam * c0 / (2 * 50.0)
+        exact = (0.5**(-(g - 1) / (2 * g)) - 1) / k
+        assert EN.time_to_pressure(50.0, A, 0.5 * C.P_sea_level, Cd=0.8) == pytest.approx(exact, rel=1e-6)
+
+
 def test_sonic_exit_speed():
     v = EN.exit_velocity(C.P_sea_level, C.T_air_sl, 0.0)
     assert v == pytest.approx(math.sqrt(2 * C.gamma_air * C.R_air * C.T_air_sl / (C.gamma_air + 1)), rel=1e-9)

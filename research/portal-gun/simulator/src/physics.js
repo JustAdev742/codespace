@@ -13,7 +13,7 @@
 //   * A conservation ledger: apparent mouth masses (Gauss-law bookkeeping) and the
 //     mechanical energy the mouths must have supplied for each traversal.
 // What is not modelled: spacetime curvature, tidal forces, fields leaking through,
-// fluids, rotation of bodies, stacking stability. See the tutorial's limitations list.
+// fluids, rotation of bodies, stacking stability. See report/05-simulator-tutorial.md, limitations.
 
 import { Vector3 } from 'three';
 import { PORTAL_RADIUS, pairTransform, exitVelocity, closestPointOnRim, rotationOf } from './portal-math.js';

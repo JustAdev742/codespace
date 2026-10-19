@@ -3,9 +3,9 @@
     "rho == MT88": true,
     "tau == MT88": true,
     "p == MT88 (conservation form)": true,
-    "|R_1'0'1'0'| == MT88 radial (up to sign)": true,
+    "R_1'0'1'0' == MT88 eq. 47a exactly": true,
     "R_1'0'1'0' boost invariant": true,
-    "|R_2'0'2'0'| == MT88 lateral (up to overall sign)": true,
+    "R_2'0'2'0' == MT88 eq. 47b exactly": true,
     "Schwarzschild R_trtr = -2M/r^3 (MTW 31.4)": true,
     "Schwarzschild R_tthtth = +M/r^3 (MTW 31.4)": true,
     "Schwarzschild G_ab = 0": true,
@@ -175,9 +175,9 @@
     "air_to_vacuum_mass_flow_1m_kg_s_Cd1": 757.8769126019833,
     "air_to_vacuum_jet_speed_mps": 310.64293610188525,
     "pressure_force_1m_N": 318321.8756249858,
-    "room50_to_half_atm_1m_s": 0.05813349683917397,
-    "room50_to_half_atm_10cm_s": 5.52231966607003,
-    "room50_to_half_atm_1cm_s": 553.7869107264685,
+    "room50_to_half_atm_1m_s": 0.052577358247504855,
+    "room50_to_half_atm_10cm_s": 5.257735824855754,
+    "room50_to_half_atm_1cm_s": 525.7735824666682,
     "everest_flow_1m_kg_s": 606.3015300815866,
     "water_4km": {
       "speed_mps": 280.0949838893942,
@@ -199,23 +199,23 @@
   "views": {
     "l = 8 r0 (approaching)": {
       "disc_angular_radius_deg": 7.125016348901799,
-      "render_s": 1.0209739208221436
+      "render_s": 0.9824256896972656
     },
     "l = 3 r0": {
       "disc_angular_radius_deg": 18.43494882292201,
-      "render_s": 0.7636170387268066
+      "render_s": 0.8166654109954834
     },
     "l = 1 r0": {
       "disc_angular_radius_deg": 44.99999999999999,
-      "render_s": 0.8496770858764648
+      "render_s": 0.9501469135284424
     },
     "at the throat, l = 0": {
       "disc_angular_radius_deg": 90.0,
-      "render_s": 2.4139420986175537
+      "render_s": 2.0319082736968994
     },
     "l = -3 r0 (through, looking back)": {
       "disc_angular_radius_deg": 18.43494882292201,
-      "render_s": 0.7721700668334961
+      "render_s": 0.7595803737640381
     }
   },
   "constants": {

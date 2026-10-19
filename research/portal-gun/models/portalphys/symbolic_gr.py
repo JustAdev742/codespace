@@ -122,13 +122,12 @@ def morris_thorne():
 
 
 def published_forms():
-    """Expressions as printed by Morris & Thorne (1988), for comparison.
+    """Expressions exactly as printed by Morris & Thorne (1988), G = c = 1.
 
-    rho  = b'/(8 pi r^2)
-    tau  = [b/r - 2(r-b)Phi'] / (8 pi r^2)
-    p    = (r/2)[(rho - tau)Phi' - tau'] - tau          (from conservation)
-    |R_{1'0'1'0'}| = |(1-b/r)[-Phi'' - Phi'^2 + (b'r-b)/(2r(r-b)) Phi']|
-    |R_{2'0'2'0'}| = |gamma^2/(2r^2) [beta^2 (b' - b/r) + 2(r-b)Phi']|
+    Eqs. 17-19:  rho = b'/(8 pi r^2),  tau = [b/r - 2(r-b)Phi']/(8 pi r^2),
+                 p = (r/2)[(rho - tau)Phi' - tau'] - tau
+    Eq. 47a:     R_{1'0'1'0'} = -(1-b/r)[-Phi'' + (b'r-b)/(2r(r-b)) Phi' - Phi'^2]
+    Eq. 47b:     R_{2'0'2'0'} = gamma^2/(2r^2) [beta^2 (b' - b/r) + 2(r-b)Phi']
     """
     bp = sp.diff(b, r)
     Pp = sp.diff(Phi, r)
@@ -136,7 +135,7 @@ def published_forms():
     tau = (b / r - 2 * (r - b) * Pp) / (8 * sp.pi * r**2)
     p = (r / 2) * ((rho - tau) * Pp - sp.diff(tau, r)) - tau
     gam2 = 1 / (1 - beta**2)
-    Rrad = (1 - b / r) * (-sp.diff(Phi, r, 2) - Pp**2 + (bp * r - b) / (2 * r * (r - b)) * Pp)
+    Rrad = -(1 - b / r) * (-sp.diff(Phi, r, 2) + (bp * r - b) / (2 * r * (r - b)) * Pp - Pp**2)
     Rlat = gam2 / (2 * r**2) * (beta**2 * (bp - b / r) + 2 * (r - b) * Pp)
     return rho, tau, p, Rrad, Rlat
 
@@ -222,11 +221,11 @@ def main(out_dir: pathlib.Path | None = None):
         "rho == MT88": sp.simplify(stress["rho"] - rho_p) == 0,
         "tau == MT88": sp.simplify(stress["tau"] - tau_p) == 0,
         "p == MT88 (conservation form)": sp.simplify(stress["p"] - p_p) == 0,
-        "|R_1'0'1'0'| == MT88 radial (up to sign)":
-            sp.simplify(boosted["R_0p1p0p1p"] - Rrad_p) == 0 or sp.simplify(boosted["R_0p1p0p1p"] + Rrad_p) == 0,
+        "R_1'0'1'0' == MT88 eq. 47a exactly":
+            sp.simplify(boosted["R_0p1p0p1p"] - Rrad_p) == 0,
         "R_1'0'1'0' boost invariant": sp.simplify(boosted["R_0p1p0p1p"] - curv["R_trtr"]) == 0,
-        "|R_2'0'2'0'| == MT88 lateral (up to overall sign)":
-            sp.simplify(boosted["R_0p2p0p2p"] - Rlat_p) == 0 or sp.simplify(boosted["R_0p2p0p2p"] + Rlat_p) == 0,
+        "R_2'0'2'0' == MT88 eq. 47b exactly":
+            sp.simplify(boosted["R_0p2p0p2p"] - Rlat_p) == 0,
     }
     # Schwarzschild limit: Phi = (1/2) ln(1-2M/r), b = 2M must reproduce MTW eq. 31.4
     M = sp.symbols("M", positive=True)

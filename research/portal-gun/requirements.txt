@@ -1,0 +1,9 @@
+# Python dependencies for the portal study (models/ and prop/enclosure/).
+# Versions are the ones the tests passed with on 2026-10-19.
+numpy==2.5.4
+scipy==1.18.1
+sympy==1.14.0
+matplotlib==3.11.2
+pytest==9.1.1
+manifold3d==3.5.4   # prop/enclosure only
+trimesh==5.1.1      # prop/enclosure only

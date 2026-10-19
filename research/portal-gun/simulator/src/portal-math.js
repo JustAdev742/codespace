@@ -9,7 +9,7 @@
 //
 // This is the "flat-face" identification: space is flat on both sides and the map is an
 // isometry, so straight lines stay straight through the portal and rendering a portal
-// view is exact optics for this model (see report section 4.6).
+// view is exact optics for this model (see report/02-technical-report.md, section 3.5).
 
 import { Matrix3, Matrix4, Vector3, Vector4 } from 'three';
 

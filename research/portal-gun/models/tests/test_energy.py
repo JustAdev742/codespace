@@ -85,3 +85,15 @@ def test_casimir_matches_mty88_order_of_magnitude():
     # Morris, Thorne & Yurtsever (1988): plate separation ~1.6e-10 cm for a 1 AU throat.
     gap_cm = E.casimir_gap_for_throat(C.AU) * 100
     assert 0.5e-10 < gap_cm < 2e-10
+
+
+def test_visser_bending_angle_formula_matches_cone_formula():
+    for phi in (0.3, math.pi / 2, math.pi):
+        assert E.visser_edge_mass_per_length(phi) == pytest.approx(E.string_mass_per_length(2 * phi), rel=1e-12)
+    assert E.visser_edge_mass_per_length(math.pi / 2) == pytest.approx(-C.c**2 / (8 * C.G), rel=1e-12)
+
+
+def test_ford_roman_ellis_bound():
+    # FR96 Sec. 4.1: r0 <~ l_p/(2 f^2) ~ 1e4 l_p ~ 1e-31 m for f = 0.01
+    r = E.ford_roman_ellis_max_radius(0.01)
+    assert 0.5e-31 < r < 1.5e-31

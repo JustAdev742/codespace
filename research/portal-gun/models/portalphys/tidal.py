@@ -43,6 +43,22 @@ def ellis_max_speed(r0, xi, a_max):
     return C.c * math.sqrt(k / (1 + k))
 
 
+def throat_lateral_tidal(v, r0, xi, bprime0):
+    """Lateral tidal acceleration at a Phi = 0 throat with shape-function slope b'(r0).
+
+    From eq. 47b of Morris & Thorne (1988): Delta a = gamma^2 v^2 (1 - b'_0) xi / (2 r0^2).
+    Ellis (b'_0 = -1) gives gamma^2 v^2 xi / r0^2; MT's example b = sqrt(b0 r) has b'_0 = 1/2.
+    """
+    gam2 = 1.0 / (1.0 - (v / C.c)**2)
+    return gam2 * v * v * (1.0 - bprime0) * xi / (2 * r0 * r0)
+
+
+def throat_max_speed(r0, bprime0, curvature_bound):
+    """Speed at which the lateral component of eq. 47b reaches `curvature_bound` [m^-2]."""
+    k = 2 * curvature_bound * r0 * r0 / (1.0 - bprime0)
+    return C.c * math.sqrt(k / (1 + k))
+
+
 def mt_tidal_limit_curvature(a_max=C.g0, xi=2.0):
     """Morris & Thorne's tolerance written as a curvature bound |R| <= a_max/(c^2 xi) [m^-2]."""
     return a_max / (C.c**2 * xi)

@@ -3,7 +3,7 @@
     {
       "name": "game rule: ball keeps accelerating through the loop",
       "ok": true,
-      "detail": "v=34.7 m/s, crossings=10"
+      "detail": "v=34.9 m/s, crossings=10"
     },
     {
       "name": "portal views rendered (kinematic)",
@@ -13,7 +13,7 @@
     {
       "name": "energy-conserving: ball never exceeds free-fall speed from 6 m",
       "ok": true,
-      "detail": "v=7.24 m/s, crossings=2"
+      "detail": "v=7.72 m/s, crossings=2"
     },
     {
       "name": "portal views rendered (conservative)",
@@ -43,7 +43,7 @@
     {
       "name": "height test, game rule: player pops out 6.9 m up",
       "ok": true,
-      "detail": "crossings=1, y=0.00"
+      "detail": "crossings=1, y=-0.00"
     },
     {
       "name": "height test, energy-conserving: walking speed is reflected",
@@ -74,15 +74,15 @@
   "errors": [],
   "timings": {
     "infinite-kinematic": {
-      "speed": 34.71943842161599,
-      "y": 2.7869605943955227,
+      "speed": 34.926216322180565,
+      "y": 0.45352067635612336,
       "crossings": 10,
       "energy": 9810.000000000002,
       "renders": 3
     },
     "infinite-conservative": {
-      "speed": 7.242281838218044,
-      "y": 2.5466843778180426,
+      "speed": 7.717549762758946,
+      "y": 2.1722821245698087,
       "crossings": 2,
       "energy": 0,
       "renders": 3

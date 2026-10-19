@@ -107,12 +107,20 @@ def string_mass_per_length(excess_angle: float) -> float:
     return -excess_angle * C.c**2 / (8 * math.pi * C.G)
 
 
+def visser_edge_mass_per_length(bending_angle: float) -> float:
+    """Visser (1989): an edge where the throat surface bends by angle phi carries
+    mu = T = -phi c^2 / (4 pi G) (mass per length; G = c = 1 form: -phi/(4 pi G)).
+    The cube edge (phi = pi/2) gives -c^2/(8G); a zero-thickness disc rim (phi = pi)
+    gives -c^2/(4G). Equivalent to the cone formula with excess angle = 2 phi."""
+    return -bending_angle * C.c**2 / (4 * math.pi * C.G)
+
+
 def flat_face_rim_mass(R: float, excess_angle: float = 2 * math.pi) -> float:
     """Total rim mass of a circular flat-face portal pair of radius R [kg].
 
     The two rims are one closed curve of length 2 pi R after the identification, with
-    total angle 4 pi around it (excess 2 pi). Treats the rim locally as a straight
-    string, valid when the string thickness << R.
+    total angle 4 pi around it (excess 2 pi, i.e. Visser bending angle pi). Treats the
+    rim locally as a straight string, valid when the string thickness << R.
     """
     return string_mass_per_length(excess_angle) * 2 * math.pi * R
 
@@ -166,6 +174,12 @@ def ford_roman_band_max(r0: float, f: float = 0.01) -> float:
     This is an argument (the QI is proven only in flat space), not a theorem.
     """
     return (r0 / (8 * f**4 * C.l_P))**(1 / 3) * C.l_P
+
+
+def ford_roman_ellis_max_radius(f: float = 0.01) -> float:
+    """Ford & Roman (1996) eq. 51: an Ellis-type throat (Phi = 0, b = r0^2/r) whose negative
+    energy comes from a free quantum field must satisfy r0 <~ l_P / (2 f^2)  (~1e-31 m for f = 0.01)."""
+    return C.l_P / (2 * f**2)
 
 
 # --- comparisons -------------------------------------------------------------------

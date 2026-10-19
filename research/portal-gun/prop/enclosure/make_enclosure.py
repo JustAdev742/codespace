@@ -10,7 +10,7 @@ Builds six parts with constructive solid geometry (manifold3d) and writes STL fi
   handle.stl    angled grip with a pocket for the 12 mm trigger button
 
 Coordinates: millimetres, x forward (barrel), y left, z up. Component sizes come from the
-retailer pages verified for the tutorial (see prop tutorial, BOM table); sizes marked
+retailer pages verified for the tutorial (report/04-prop-tutorial.md, section 2); sizes marked
 ASSUMED were not on those pages and have generous clearances.
 
     python make_enclosure.py            # writes STLs + a preview PNG into ./out
