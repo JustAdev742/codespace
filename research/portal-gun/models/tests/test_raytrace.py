@@ -35,3 +35,10 @@ def test_ode_route_agrees_with_quadrature(psi):
 def test_disc_angular_size():
     assert RT.apparent_angular_radius(0.0) == pytest.approx(90.0)
     assert RT.apparent_angular_radius(100.0) == pytest.approx(math.degrees(math.asin(1 / math.sqrt(10001))), rel=1e-12)
+
+
+def test_second_order_weak_field_term():
+    # Nakajima & Asada (2012): alpha = pi b0^2/(4 b^2) + 9 pi b0^4/(64 b^4) + ...
+    b = 10.0
+    approx = math.pi / (4 * b**2) + 9 * math.pi / (64 * b**4)
+    assert RT.deflection_exact(b) == pytest.approx(approx, rel=1e-4)

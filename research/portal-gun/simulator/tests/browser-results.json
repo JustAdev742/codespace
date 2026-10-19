@@ -1,0 +1,93 @@
+{
+  "checks": [
+    {
+      "name": "game rule: ball keeps accelerating through the loop",
+      "ok": true,
+      "detail": "v=34.7 m/s, crossings=10"
+    },
+    {
+      "name": "portal views rendered (kinematic)",
+      "ok": true,
+      "detail": "render passes this frame: 3"
+    },
+    {
+      "name": "energy-conserving: ball never exceeds free-fall speed from 6 m",
+      "ok": true,
+      "detail": "v=7.24 m/s, crossings=2"
+    },
+    {
+      "name": "portal views rendered (conservative)",
+      "ok": true,
+      "detail": "render passes this frame: 3"
+    },
+    {
+      "name": "fling: ball leaves the west wall moving +x",
+      "ok": true,
+      "detail": "vx=12.9 m/s"
+    },
+    {
+      "name": "moving mouth: resting ball leaves at the piston speed (8 m/s)",
+      "ok": true,
+      "detail": "vOut=7.96 m/s, mouths supplied 400 J"
+    },
+    {
+      "name": "facing portals at depth 1: recursive passes",
+      "ok": true,
+      "detail": "passes=2"
+    },
+    {
+      "name": "facing portals at depth 3: recursive passes",
+      "ok": true,
+      "detail": "passes=4"
+    },
+    {
+      "name": "height test, game rule: player pops out 6.9 m up",
+      "ok": true,
+      "detail": "crossings=1, y=0.00"
+    },
+    {
+      "name": "height test, energy-conserving: walking speed is reflected",
+      "ok": true,
+      "detail": "reflections=6, y=0.00"
+    },
+    {
+      "name": "aiming: metal panel rejects, narrow pillar too small, open wall accepts",
+      "ok": true,
+      "detail": "{\"metal\":\"surface-rejects\",\"pillar\":\"surface-too-small\",\"wall\":true}"
+    },
+    {
+      "name": "through-portal pixels: west-wall blue inside A, north-wall sand outside",
+      "ok": true,
+      "detail": "inside rgb=56,73,124 outside rgb=124,101,63"
+    },
+    {
+      "name": "phone width: no horizontal page scroll",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "no console or page errors",
+      "ok": true,
+      "detail": ""
+    }
+  ],
+  "errors": [],
+  "timings": {
+    "infinite-kinematic": {
+      "speed": 34.71943842161599,
+      "y": 2.7869605943955227,
+      "crossings": 10,
+      "energy": 9810.000000000002,
+      "renders": 3
+    },
+    "infinite-conservative": {
+      "speed": 7.242281838218044,
+      "y": 2.5466843778180426,
+      "crossings": 2,
+      "energy": 0,
+      "renders": 3
+    },
+    "facing-depth-1": 2,
+    "facing-depth-3": 4
+  }
+}

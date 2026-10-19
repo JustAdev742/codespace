@@ -12,10 +12,14 @@ With mouth 4-velocities u_A, u_B (constant), an incoming 4-momentum P transforms
 
     P' = L(u_B) Rbar L(u_A)^{-1} P,      Rbar = diag(1, R_B R_y(pi) R_A^T)
 
-Momentum ledger (Gauss-law bookkeeping of the mouths' exterior 4-momenta, as in
-Visser's treatment of wormhole mouths): mouth A gains P, mouth B loses P'. The total
-object + mouths 4-momentum is conserved by construction; the physics is in WHO pays:
-an object that leaves faster than it entered is paid for by the mouths' mass-energy.
+Momentum ledger (Gauss-law bookkeeping of the mouths' exterior 4-momenta): mouth A
+gains P, mouth B loses P'. Total object + mouths 4-momentum is then conserved by
+construction; the physics is in WHO pays: an object that leaves faster than it
+entered is paid for by the mouths' mass-energy. Literature status: the mass/charge
+version is the commonly assumed picture (Wheeler's "charge without charge"; Susskind
+2005, a 2+1-D note; Gratus et al. 2019 call it the accepted notion and propose an
+alternative). No peer-reviewed 3+1-D calculation of mouth recoil was found, so treat
+the momentum part as a conservation-law argument, not an established result.
 """
 
 from __future__ import annotations

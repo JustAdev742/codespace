@@ -24,3 +24,12 @@ def test_loop_collapse_time_is_pi_R_over_2():
     for R in (0.5, 1.0, 3.0):
         _, _, tc = D.loop_collapse(R)
         assert tc == pytest.approx(math.pi * R / 2, rel=1e-6)
+
+
+def test_poisson_visser_published_thresholds():
+    # PV95 eq. 29: stable for beta0^2 <= -1/2 (a0 -> infinity limit) or, for 2M < a0 < 3M,
+    # beta0^2 >= 3/2 + sqrt(3) at best.
+    import numpy as np
+    x = np.linspace(2.0001, 2.9999, 200001)
+    assert min(D.v2_critical(a, 1.0) for a in x[::50]) == pytest.approx(1.5 + math.sqrt(3), abs=1e-3)
+    assert D.v2_critical(1e6, 1.0) == pytest.approx(-0.5, abs=1e-5)

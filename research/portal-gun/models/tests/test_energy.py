@@ -42,7 +42,7 @@ def test_casimir_gap_closed_form_and_mt_au_example():
         closed = (math.pi**3 * C.hbar * C.G * r0**2 / (90 * C.c**3))**0.25
         assert E.casimir_gap_for_throat(r0) == pytest.approx(closed, rel=1e-12)
         assert E.casimir_gap_for_throat(r0) == pytest.approx((math.pi**3 / 90)**0.25 * math.sqrt(C.l_P * r0), rel=1e-9)
-    # MT88: a 1 AU throat needs plates ~1e-10 cm apart
+    # MTY88 (PRL 61, 1446): ~1.6e-10 cm for a 1 AU throat; our matching rule gives 1.2e-10 cm
     assert 0.5e-12 < E.casimir_gap_for_throat(C.AU) < 2e-12
 
 
@@ -72,3 +72,16 @@ def test_ford_roman_band_example():
     a0 = E.ford_roman_band_max(1.0)
     assert 1e-21 < a0 < 3e-21
     assert 5e13 < a0 / C.l_P < 2e14
+
+
+def test_cone_formula_reproduces_visser_cube_edge_tension():
+    # Visser (1989) cube wormhole: edges carry mu = T = -1/(8G) (G = c = 1), i.e. an
+    # excess angle of pi. Our string formula with excess pi must give exactly that.
+    assert E.string_mass_per_length(math.pi) == pytest.approx(-C.c**2 / (8 * C.G), rel=1e-12)
+    assert E.string_mass_per_length(math.pi) * C.c**2 == pytest.approx(-1.513e43, rel=2e-3)   # J/m
+
+
+def test_casimir_matches_mty88_order_of_magnitude():
+    # Morris, Thorne & Yurtsever (1988): plate separation ~1.6e-10 cm for a 1 AU throat.
+    gap_cm = E.casimir_gap_for_throat(C.AU) * 100
+    assert 0.5e-10 < gap_cm < 2e-10

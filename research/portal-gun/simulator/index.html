@@ -1,0 +1,273 @@
+<title>Portal Traversal Lab</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="description" content="Interactive model of a linked pair of flat portals: placement, rendering, traversal and two momentum rules compared.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+  /* Layout: full-bleed 3-D chamber; instrument readouts docked in a gutter grid around it.
+     Single deliberate dark look: a lab instrument at night. Portal identities (A green,
+     B cyan) are the only saturated colours; everything else is cool graphite. */
+  :root {
+    --chassis: #0f1418;
+    --panel: rgba(17, 24, 29, 0.84);
+    --panel-solid: #141c22;
+    --line: #2b3840;
+    --text: #e4ece9;
+    --muted: #93a29d;
+    --portal-a: #35ff6a;
+    --portal-b: #29d8ff;
+    --caution: #ffb347;
+    --fault: #ff6b6b;
+    --font-display: "Chakra Petch", "Bahnschrift", "DIN Alternate", "Arial Narrow", system-ui, sans-serif;
+    --font-body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    --font-data: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+    --step--1: 0.75rem;
+    --step-0: 0.8125rem;
+    --step-1: 0.9375rem;
+    --step-2: 1.25rem;
+    --step-3: 1.75rem;
+    --radius: 6px;
+    color-scheme: dark;
+  }
+  html, body { height: 100%; }
+  body { background: var(--chassis); color: var(--text); font-family: var(--font-body); font-size: var(--step-0); overflow: hidden; }
+  #lab { position: fixed; inset: 0; }
+  #view { position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; cursor: crosshair; background: var(--chassis); }
+  .is-locked #view { cursor: none; }
+
+  /* ---- HUD grid ---------------------------------------------------------- */
+  #hud {
+    position: absolute; inset: 0; pointer-events: none;
+    display: grid; grid-template-rows: auto 1fr auto; gap: 12px;
+    padding-left: max(16px, env(safe-area-inset-left, 0px));
+    padding-right: max(16px, env(safe-area-inset-right, 0px));
+    padding-block: max(14px, env(safe-area-inset-top, 0px)) max(14px, env(safe-area-inset-bottom, 0px));
+  }
+  .panel {
+    pointer-events: auto; background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius);
+    padding: 10px 12px; backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); min-width: 0;
+  }
+  .row-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; flex-wrap: wrap; }
+  .row-bottom { display: grid; grid-template-columns: minmax(230px, 300px) minmax(0, 1fr) minmax(230px, 300px); gap: 12px; align-items: end; }
+  .eyebrow { font-family: var(--font-display); font-weight: 600; font-size: var(--step--1); letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); margin: 0 0 6px; }
+  h1 { font-family: var(--font-display); font-weight: 600; font-size: var(--step-2); letter-spacing: 0.02em; margin: 0; line-height: 1.1; text-wrap: balance; }
+  .brand { max-width: 380px; }
+  .brand p { margin: 8px 0 0; color: var(--muted); line-height: 1.45; font-size: var(--step--1); }
+
+  .seg { display: inline-flex; margin-top: 10px; border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; }
+  .seg button { font: 500 var(--step--1)/1 var(--font-body); color: var(--muted); background: transparent; border: 0; padding: 8px 10px; cursor: pointer; }
+  .seg button + button { border-left: 1px solid var(--line); }
+  .seg button[aria-pressed="true"] { color: var(--chassis); background: var(--text); }
+
+  .status { display: grid; gap: 8px; justify-items: end; }
+  .chips { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+  .chip { display: inline-flex; align-items: center; gap: 6px; font: 500 var(--step--1)/1 var(--font-data); padding: 6px 8px; border: 1px solid var(--line); border-radius: 999px; color: var(--muted); background: var(--panel-solid); }
+  .chip i { width: 8px; height: 8px; border-radius: 50%; background: var(--line); }
+  .chip b { font-weight: 500; color: var(--text); }
+  #chip-A[data-state="open"] i { background: var(--portal-a); box-shadow: 0 0 8px var(--portal-a); }
+  #chip-B[data-state="open"] i { background: var(--portal-b); box-shadow: 0 0 8px var(--portal-b); }
+  #chip-link[data-state="open"] i { background: var(--text); }
+  .meter { display: flex; align-items: center; gap: 8px; font: 400 var(--step--1)/1 var(--font-data); color: var(--muted); background: var(--panel-solid); border: 1px solid var(--line); border-radius: 999px; padding: 6px 10px; }
+  #charge-bar { --fill: 100%; width: 120px; height: 6px; border-radius: 3px; background: linear-gradient(90deg, var(--text) var(--fill), var(--line) var(--fill)); }
+
+  /* ---- readouts ----------------------------------------------------------- */
+  dl.readout { display: grid; grid-template-columns: 1fr auto; gap: 5px 12px; margin: 0; font-size: var(--step--1); }
+  dl.readout dt { color: var(--muted); }
+  dl.readout dd { margin: 0; font-family: var(--font-data); font-variant-numeric: tabular-nums; text-align: right; }
+  .last { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--line); font-family: var(--font-data); font-size: var(--step--1); color: var(--text); line-height: 1.4; overflow-wrap: anywhere; }
+  #mod-tidal[data-level="high"] { color: var(--caution); }
+  .fine { margin: 8px 0 0; color: var(--muted); font-size: 0.6875rem; line-height: 1.45; }
+
+  .controls { display: grid; gap: 10px; justify-self: center; width: min(100%, 560px); }
+  .demos { display: flex; flex-wrap: wrap; gap: 6px; }
+  .btn { font: 500 var(--step--1)/1 var(--font-body); color: var(--text); background: var(--panel-solid); border: 1px solid var(--line); border-radius: var(--radius); padding: 8px 10px; cursor: pointer; }
+  .btn:hover { border-color: var(--muted); }
+  .btn[aria-pressed="true"] { border-color: var(--text); box-shadow: inset 0 -2px 0 var(--text); }
+  .opts { display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: center; color: var(--muted); font-size: var(--step--1); }
+  .opts label { display: inline-flex; gap: 6px; align-items: center; cursor: pointer; }
+  .opts input[type="range"] { width: 84px; accent-color: var(--text); }
+  .opts input[type="checkbox"] { accent-color: var(--text); }
+  .keys { color: var(--muted); font-size: 0.6875rem; }
+  kbd { font: 500 0.6875rem/1 var(--font-data); color: var(--text); border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 3px; padding: 1px 4px; background: var(--panel-solid); }
+  button:focus-visible, input:focus-visible, .btn:focus-visible { outline: 2px solid var(--portal-b); outline-offset: 2px; }
+
+  /* ---- crosshair ------------------------------------------------------------ */
+  #crosshair { position: absolute; left: 50%; top: 50%; width: 34px; height: 34px; transform: translate(-50%, -50%); pointer-events: none; }
+  #crosshair::before, #crosshair::after { content: ""; position: absolute; top: 0; width: 15px; height: 34px; border: 2px solid var(--line); }
+  #crosshair::before { left: 0; border-right: 0; border-radius: 17px 0 0 17px; }
+  #crosshair::after { right: 0; border-left: 0; border-radius: 0 17px 17px 0; }
+  #crosshair[data-a="on"]::before { border-color: var(--portal-a); }
+  #crosshair[data-b="on"]::after { border-color: var(--portal-b); }
+  #crosshair i { position: absolute; left: 50%; top: 50%; width: 4px; height: 4px; margin: -2px 0 0 -2px; border-radius: 50%; background: var(--text); }
+  #target { position: absolute; left: 50%; top: calc(50% + 30px); transform: translateX(-50%); pointer-events: none; white-space: nowrap; font: 500 var(--step--1)/1 var(--font-data); padding: 5px 8px; border-radius: 4px; background: rgba(15, 20, 24, 0.72); color: var(--text); max-width: calc(100vw - 32px); overflow: hidden; text-overflow: ellipsis; }
+  #target[data-ok="no"] { color: var(--fault); }
+
+  #toast { position: absolute; left: 50%; top: calc(max(14px, env(safe-area-inset-top, 0px)) + 96px); transform: translateX(-50%); max-width: min(560px, calc(100vw - 32px)); padding: 9px 12px; border-radius: var(--radius); background: var(--panel-solid); border: 1px solid var(--line); font-size: var(--step-0); line-height: 1.4; pointer-events: none; }
+  #toast[data-kind="bad"] { border-color: var(--fault); }
+  #toast[data-kind="a"] { border-color: var(--portal-a); }
+  #toast[data-kind="b"] { border-color: var(--portal-b); }
+
+  /* ---- intro --------------------------------------------------------------- */
+  #intro { position: absolute; inset: 0; display: grid; place-items: center; background: rgba(9, 12, 15, 0.78); overflow-y: auto;
+    padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 24px; }
+  .card { width: min(100%, 620px); background: var(--panel-solid); border: 1px solid var(--line); border-radius: 10px; padding: 26px 26px 22px; }
+  .card h2 { font-family: var(--font-display); font-weight: 600; font-size: var(--step-3); margin: 0 0 10px; line-height: 1.05; text-wrap: balance; }
+  .card .lead { font-size: var(--step-1); line-height: 1.55; margin: 0 0 14px; max-width: 62ch; }
+  .card .note { color: var(--muted); line-height: 1.5; margin: 0 0 16px; font-size: var(--step-0); max-width: 62ch; }
+  .keymap { display: grid; grid-template-columns: auto 1fr; gap: 7px 14px; margin: 0 0 18px; font-size: var(--step-0); }
+  .keymap dt { color: var(--muted); }
+  .keymap dd { margin: 0; }
+  .pair { display: inline-flex; gap: 6px; align-items: center; }
+  .dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
+  .dot.a { background: var(--portal-a); } .dot.b { background: var(--portal-b); }
+  .enter { font: 600 var(--step-1)/1 var(--font-display); letter-spacing: 0.04em; color: var(--chassis); background: var(--text); border: 0; border-radius: var(--radius); padding: 12px 18px; cursor: pointer; }
+  #gl-error { color: var(--fault); margin: 12px 0 0; }
+
+  /* ---- touch controls ------------------------------------------------------ */
+  .touch { display: none; position: absolute; right: max(16px, env(safe-area-inset-right, 0px)); bottom: calc(max(14px, env(safe-area-inset-bottom, 0px)) + 150px); gap: 8px; grid-template-columns: repeat(2, 56px); pointer-events: auto; }
+  .touch button { width: 56px; height: 56px; border-radius: 50%; border: 1px solid var(--line); background: var(--panel); color: var(--text); font: 600 var(--step-0)/1 var(--font-display); }
+  #t-a { border-color: var(--portal-a); } #t-b { border-color: var(--portal-b); }
+  @media (pointer: coarse) { .touch { display: grid; } .keys { display: none; } }
+
+  @media (max-width: 900px) {
+    .row-bottom { grid-template-columns: 1fr; }
+    .row-bottom { display: flex; overflow-x: auto; gap: 10px; scroll-snap-type: x mandatory; padding-bottom: 2px; }
+    .row-bottom > .panel { flex: 0 0 min(300px, 82vw); scroll-snap-align: start; }
+    .controls { width: auto; }
+    .brand p { display: none; }
+  }
+  @media (max-width: 480px) {
+    h1 { font-size: var(--step-1); }
+    .status .meter { display: none; }
+    .card { padding: 20px 16px 18px; }
+  }
+  @media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; } }
+</style>
+
+<div id="lab">
+  <canvas id="view" aria-label="3-D view of the portal test chamber"></canvas>
+
+  <div id="hud">
+    <div class="row-top">
+      <section class="panel brand" aria-label="Lab and physics model">
+        <p class="eyebrow">Flat-face portal pair · R = 1.1 m</p>
+        <h1>Portal Traversal Lab</h1>
+        <div class="seg" role="group" aria-label="Physics model">
+          <button type="button" data-mode="kinematic" aria-pressed="true">Game rule</button>
+          <button type="button" data-mode="conservative" aria-pressed="false">Energy-conserving</button>
+        </div>
+        <p id="mode-note">Game rule: speed relative to the mouth is kept. In gravity this creates energy.</p>
+      </section>
+      <section class="status" aria-label="Portal status">
+        <div class="chips">
+          <span class="chip" id="chip-A" data-state="closed"><i></i>A <b>closed</b></span>
+          <span class="chip" id="chip-B" data-state="closed"><i></i>B <b>closed</b></span>
+          <span class="chip" id="chip-link" data-state="closed"><i></i><b>no link</b></span>
+        </div>
+        <div class="meter"><span>Capacitor</span><span id="charge-bar" role="img" aria-label="Gun charge"></span><span id="charge-val">100%</span></div>
+      </section>
+    </div>
+
+    <div></div>
+
+    <div class="row-bottom">
+      <section class="panel" aria-label="Conservation ledger">
+        <p class="eyebrow">Conservation ledger</p>
+        <dl class="readout">
+          <dt>Mouth A apparent mass</dt><dd id="led-ma">+0 kg</dd>
+          <dt>Mouth B apparent mass</dt><dd id="led-mb">+0 kg</dd>
+          <dt>Energy the mouths supplied</dt><dd id="led-e">+0.00 kJ</dd>
+          <dt>Crossings</dt><dd id="led-n">0</dd>
+        </dl>
+        <div class="last" id="led-last">none yet</div>
+      </section>
+
+      <section class="panel controls" aria-label="Demos and options">
+        <div class="demos" role="group" aria-label="Demos">
+          <button type="button" class="btn" data-demo="infinite" aria-pressed="false">Stacked pair</button>
+          <button type="button" class="btn" data-demo="fling" aria-pressed="false">Fling</button>
+          <button type="button" class="btn" data-demo="piston" aria-pressed="false">Moving mouth</button>
+          <button type="button" class="btn" data-demo="facing" aria-pressed="false">Facing portals</button>
+          <button type="button" class="btn" data-demo="climb" aria-pressed="false">Height test</button>
+        </div>
+        <div class="opts">
+          <label for="opt-depth">Recursion <input id="opt-depth" type="range" min="1" max="4" step="1" value="3"> <span id="depth-val">3</span></label>
+          <label for="opt-look"><input id="opt-look" type="checkbox"> Canon look (opaque swirl)</label>
+          <label for="opt-drag"><input id="opt-drag" type="checkbox" checked> Air drag</label>
+          <label for="opt-interlock"><input id="opt-interlock" type="checkbox" checked> Closure interlock</label>
+          <label for="opt-piston"><input id="opt-piston" type="checkbox"> Piston running</label>
+        </div>
+        <div class="demos">
+          <button type="button" class="btn" id="btn-ball">Drop test mass <kbd>F</kbd></button>
+          <button type="button" class="btn" id="btn-close">Close portals <kbd>C</kbd></button>
+          <button type="button" class="btn" id="btn-reset">Reset demo <kbd>R</kbd></button>
+          <button type="button" class="btn" id="btn-help">Controls</button>
+        </div>
+        <p class="keys">Look: mouse · Move: <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> · Portals: click / right-click or <kbd>Q</kbd> <kbd>E</kbd> · Model: <kbd>M</kbd> · Depth: <kbd>1</kbd>–<kbd>4</kbd></p>
+      </section>
+
+      <section class="panel" aria-label="The same crossing under real-physics models">
+        <p class="eyebrow">Same portal, real physics</p>
+        <dl class="readout">
+          <dt>Your speed</dt><dd id="mod-speed">0.0 m/s</dd>
+          <dt>Ellis throat r₀ = 1.1 m: head-to-foot stretch</dt><dd id="mod-tidal">0.00 g</dd>
+          <dt>Flat-face rim, exotic mass</dt><dd id="mod-rim">—</dd>
+        </dl>
+        <p class="fine">Stretch = γ²v²ξ/r₀² with ξ = 1.8 m (comfort limit 1 g). Rim: tension μc² with μ = −c²/4G around a 4π cone. Both are conditional estimates from the study; no known matter supplies either.</p>
+      </section>
+    </div>
+  </div>
+
+  <div id="crosshair" data-a="off" data-b="off"><i></i></div>
+  <div id="target" data-ok="no">no surface</div>
+  <div id="toast" role="status" aria-live="polite" hidden></div>
+
+  <div class="touch" aria-label="Touch controls">
+    <button type="button" id="t-a">A</button>
+    <button type="button" id="t-b">B</button>
+    <button type="button" id="t-jump">Jump</button>
+    <button type="button" id="t-ball">Mass</button>
+  </div>
+
+  <div id="intro">
+    <div class="card">
+      <p class="eyebrow">Software portal simulator</p>
+      <h2>Portal Traversal Lab</h2>
+      <p class="lead">Shoot two linked portals onto the walls of a test chamber, then walk, fall and throw things through them. Switch between the video-game rule and an energy-conserving rule and watch the ledger.</p>
+      <p class="note">This simulates a mathematical model: two discs of flat space glued together. It does not create, test or demonstrate a physical spacetime connection, and the study behind it finds that no such device can be built with known physics.</p>
+      <dl class="keymap">
+        <dt>Look</dt><dd>Mouse after you enter (<kbd>Esc</kbd> releases). Without capture, drag. On touch, drag on the right half.</dd>
+        <dt>Move</dt><dd><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd>, <kbd>Shift</kbd> to run, <kbd>Space</kbd> to jump. On touch, drag on the left half.</dd>
+        <dt>Portals</dt><dd><span class="pair"><i class="dot a"></i> A: click or <kbd>Q</kbd></span> &nbsp; <span class="pair"><i class="dot b"></i> B: right-click or <kbd>E</kbd></span></dd>
+        <dt>Lab</dt><dd><kbd>F</kbd> drop a test mass · <kbd>C</kbd> close portals · <kbd>M</kbd> physics model · <kbd>R</kbd> reset · <kbd>V</kbd> canon look · <kbd>P</kbd> piston</dd>
+      </dl>
+      <button type="button" class="enter" id="btn-enter">Enter the lab</button>
+      <p id="gl-error" hidden>WebGL is not available in this browser, so the 3-D view cannot start.</p>
+    </div>
+  </div>
+</div>
+
+<script type="importmap">
+{ "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.186.1/build/three.module.js" } }
+</script>
+<script type="module">
+  import { App } from './src/app.js';
+  const root = document.getElementById('lab');
+  try {
+    const app = new App(root);
+    window.portalSim = {
+      app,
+      world: () => app.world,
+      runDemo: (n) => app.runDemo(n),
+      setMode: (m) => app.setMode(m),
+      shoot: (w) => app.shoot(w),
+      renders: () => app.renderer.stats.renders,
+      ready: true,
+    };
+  } catch (err) {
+    console.error(err);
+    document.getElementById('gl-error').hidden = false;
+    document.getElementById('btn-enter').hidden = true;
+  }
+</script>
