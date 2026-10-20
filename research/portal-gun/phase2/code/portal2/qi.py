@@ -27,7 +27,7 @@ assumption.
 
 Two window prescriptions:
   "fr96"       L0 = f * min(curvature length, contracted variation length, temporal scale):
-               Ford & Roman's 'radius of curvature or distance to a boundary' (the default, used
+               Ford & Roman's radius of curvature or proper distance to any boundaries (the default, used
                for every headline number);
   "curvature"  no spatial 'boundary' cap: the window is limited only by the curvature radius
                within it (and, for moving observers, by the temporal scale).  For a static
@@ -128,7 +128,7 @@ def local_deficit(geom, l_c, gamma_c, f, window="fr96"):
     window="curvature" (pointwise; see the module docstring for when that is valid):
       ell  smallest radius of curvature in the observer's frame,
       d    static-frame proper distance over which the observer's density or curvature changes
-           (Ford & Roman's 'distance to a boundary'), Lorentz-contracted by gamma,
+           (Ford & Roman's distance to any boundaries), Lorentz-contracted by gamma,
       d_t  proper-time scale (x c) over which rho' changes along the worldline, which differs
            from d/gamma when the speed changes along the path (Phi' != 0).
     Returns a dict of arrays.

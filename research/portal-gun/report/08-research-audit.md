@@ -53,7 +53,7 @@ commits, all UTC, 2026-10-19 unless stated), not reconstructed from memory.
 | ~09:00–09:40 | Report written; half-pressure bug found and fixed; firmware recompiled; DOIs resolved against Crossref; fact-check passes | File times; commits `91b8081`, `afb784a` |
 | ~09:40–20:18 | Session paused (usage limit reached) | Session transcript |
 | 20:18–20:30 | Resumed: firmware no-flash rework, stricter Python tests, prop tutorial rewritten, figures and browser checks re-run | Commit `072b6a6` |
-| 2026-10-20 07:00–08:40 | Phase II (separate audit: [phase2/report/D8](../phase2/report/D8-integrity-audit.md)); in parallel, the remaining fact-check fixes to reports 01, 02, 03 and 05, and this reference list | Commits from `8109bcf` on |
+| 2026-10-20 07:08–09:45 | Phase II (separate audit: [phase2/report/D8](../phase2/report/D8-integrity-audit.md)), including its literature comparison and an adversarial review; in parallel, the remaining fact-check fixes to reports 01, 02, 03 and 05, and this reference list | Commits from `8109bcf` on |
 
 **About the time spent.** The brief asked for research at a depth of 5–15 hours. Measured by the clock, the
 first pass took about two and a half hours of wall-clock time, with up to seven agents working in parallel
