@@ -52,8 +52,9 @@ def ledger(r0=1.0, f=0.01):
              "configurations have zero Komar mass: they do not weigh -1 M_J.")
     add(id="B03", where="sec. 2, table", claim="Negative-energy band thickness <~1e-21 m if supplied by free quantum fields (Ford & Roman 1996)",
         model="Morris-Thorne thin-band wormhole; flat-space massless-scalar QI, f = 0.01",
-        recomputed=f"Generalised QI audit: thin exotic region of thickness a gives D ~ 8 (a/r0)^3 x 1.6e62; D = 1 at "
-                   f"a = {n['a_band_m']:.2e} m (fitted slope 3.0)",
+        recomputed=f"Generalised QI audit: the Morris-Thorne band with parameter a0 (proper width (pi/2) a0) gives "
+                   f"D ~ (32 pi/3) f^4 a0^3/(r0 l_P^2); D = 1 at a0 = {n['a_band_m']:.2e} m, proper width "
+                   f"{n['a_band_proper_width_m']:.2e} m (fitted slope 3.0)",
         verdict="EXTENDED",
         note="Reproduced. Phase II adds: (i) smooth throats are excluded by D = 1.6e62 for any flare-out "
              "(boost-optimised bound), so a thin band is necessary, not optional; (ii) the band needs "

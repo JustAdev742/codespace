@@ -82,12 +82,13 @@ budgets from 54 days (ground to orbit) and 354 days (stacked pair) to millennia 
 
 - The radial tension at any smooth throat is 4.8×10⁴² Pa for 1 m.
 - The QI audit excludes smooth throats by 10⁶² for any flare-out, including $b'(r_0) = 1$.
-- The only escape a walking traveller survives is a band thinner than 10⁻²¹ m carrying −1.6×10⁶⁴ J/m³. That
-  holds under Ford & Roman's sampling window; under the curvature-only window (Krasnikov 2003) the band must
-  be thinner than 10⁻⁶² m.
+- The only escape a walking traveller survives is a band about 10⁻²¹ m thick (proper width 1.4×10⁻²¹ m)
+  carrying −1.0×10⁶⁴ J/m³. That holds under Ford & Roman's sampling window; under the curvature-only window
+  (Krasnikov 2003) the band must be sub-Planckian.
 - Each light mouth must hold −0.35 Jupiter masses of negative Misner–Sharp energy; otherwise it is as heavy
   as a black hole of its size (Visser, Kar & Dadhich 2003). For mouths of any shape, the Riemannian Penrose
-  inequality still requires negative energy density somewhere outside a light mouth (D2 §4.4).
+  inequality still requires negative energy density somewhere outside a light mouth, though for a pair in one
+  universe it bounds only their total mass (D2 §4.4).
 
 **Stability.**
 
@@ -96,8 +97,9 @@ budgets from 54 days (ground to orbit) and 354 days (stacked pair) to millennia 
 - **Feedback:** needs a loop faster than 3.99 ns per metre, with actuators delivering NEC-violating stress.
 - **Parametric driving:** not demonstrated.
 - **Charge:** slows the instability near extremality, but by making the mouth a near-extremal black-hole
-  exterior. For 1 m that means about 0.7 Jupiter masses, $8\times10^8$ times the Schwinger field, and a
-  traveller arriving at $\gamma \sim 10^4$ (D2 §6.7).
+  exterior. For 1 m that means about 0.7 Jupiter masses, $8\times10^8$ times the Schwinger field, and, in the
+  hour-long case, a traveller arriving at $\gamma \approx 1.5\times10^4$ (D2 §6.7). Maldacena & Milekhin's long
+  wormholes carry the same kind of cost.
 
 **First decisive blocker.** B2 hold open [NEWPHYS]. Preceded by B1 existence [OPEN_NEG]: no natural
 mechanism, no detection, and a shortcut must violate the achronal ANEC (conjectured to hold).

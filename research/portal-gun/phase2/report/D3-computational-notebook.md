@@ -10,8 +10,8 @@ Linux container. Nothing is reported that was not run.*
 cd research/portal-gun
 python3 -m venv .venv && . .venv/bin/activate && pip install numpy scipy sympy matplotlib pytest
 cd phase2/code
-python -m pytest -q tests          # 45 tests, ~45 s
-python run_phase2.py               # all results and figures (111 s measured)
+python -m pytest -q tests          # 46 tests, ~50 s
+python run_phase2.py               # all results and figures (106-111 s measured)
 python run_phase2.py --full        # also re-runs the first parametric-drive scan
 ```
 
@@ -70,6 +70,14 @@ Two parametric-drive files are not regenerated even by `--full`. `kapitza_scan_e
 - **Result.** The deficit is exactly 0 at the throat for every speed. Its maximum is 0.16, 0.44 and 1.10
   $D_{\rm ref}$ at $|l|$ = 0.9, 1.7 and 3.3 $r_0$.
 
+### E1c. A redshift dip at a gentle throat (added after the adversarial review)
+
+- **Model.** Two-scale throat, $\varepsilon = 0.01$, $L = 400\,r_0$, plus $\Phi = \phi_ae^{-l^2/w^2}$ with $w = 3\,r_0$ and
+  $\Phi''(0)r_0^2$ = 0, 0.0025, 0.01, 0.1.
+- **Result.** At the throat the deficit falls to 1, 0.29, 0.024 and $2.6\times10^{-4}$ $D_{\rm ref}$: the fast
+  observer's window is cut by the proper-time scale $d_t$ (0.31 $r_0$ at 0.01). The scan over $|l| \le 9\,r_0$
+  finds at least $1.4\,D_{\rm ref}$ in every case, beside the dip.
+
 ### E2. Thin exotic region
 
 - **Model.** Compact throat (exotic region of proper width $a$, flat outside).
@@ -78,7 +86,8 @@ Two parametric-drive files are not regenerated even by `--full`. `kapitza_scan_e
 - **Result.** Deficit $\propto a^{3.0}$ for $a \le 0.05\,r_0$ (2.91 including $a = 0.3$). The tidal impulse for a
   walker is 0.96–1.00 m/s throughout.
 - **Validation.** The Morris–Thorne thin band gives the same law. The analytic $a_*$ for 1 m is
-  $9.2\times10^{-22}$ m.
+  $a_0 = 9.2\times10^{-22}$ m in Morris–Thorne's coordinate parameter; the proper width is $(\pi/2)a_0 =
+  1.4\times10^{-21}$ m, which is also where the compact family's law (in proper width) extrapolates.
 - **Limitation.** The finite grid in $\gamma$ leaves the maximum uncertain by under 1%.
 
 ### E2b. The two window conventions on the thin band (added in stage B)
@@ -89,8 +98,8 @@ Two parametric-drive files are not regenerated even by `--full`. `kapitza_scan_e
 - **Result.** The Ford & Roman window gives $(32\pi/3)f^4a^3/(r_0\ell_P^2)$ to within 6% (better as $a$ falls).
   The curvature-only window gives $(8\pi/3)f^4ar_0/\ell_P^2$ to within 1% for $a \le 0.01\,r_0$, with its
   maximum at the throat; for $a = 0.03$ the maximum sits near the band's edge and is 12% higher. The two
-  conventions agree to $10^{-9}$ for smooth throats. Thin-band width at $D = 1$, for 1 m: $9.2\times10^{-22}$ m
-  and $3.1\times10^{-63}$ m.
+  conventions agree to $10^{-9}$ for smooth throats. Thin-band parameter $a_0$ at $D = 1$, for 1 m:
+  $9.2\times10^{-22}$ m and $3.1\times10^{-63}$ m (proper widths $1.4\times10^{-21}$ and $4.9\times10^{-63}$ m).
 - **Limitation.** The pointwise curvature window (without the neighbourhood search) overestimates the
   deficit near the band's edge, where the local curvature vanishes; only the self-consistent version is used.
 
@@ -125,7 +134,7 @@ Two parametric-drive files are not regenerated even by `--full`. `kapitza_scan_e
   | Method | Settings | Growth rate $s$ ($c/b$) |
   |---|---|---|
   | Shooting (DOP853, rtol $10^{-11}$, Wronskian at $x = 1$, outer boundary $X = 40$) | — | 1.1819727 |
-  | Finite-difference matrix | N = 500–4000, $X = 60$ | → 1.182028 (second order; Richardson 1.181972) |
+  | Finite-difference matrix | N = 500–4000, $X = 60$ | → 1.182028 (second order; Richardson 1.181973) |
   | Chebyshev in $z = x^2$ | N = 100–220 | → 1.1819735 |
   | Leapfrog evolution with a damping layer | N = 3000, T = 40 | 1.18215 |
 
@@ -203,7 +212,7 @@ Two parametric-drive files are not regenerated even by `--full`. `kapitza_scan_e
 
 | File | Contents |
 |---|---|
-| `qi_results.json` | E1, E1b, E2, E2b, Ellis tail, redshift structures, headline numbers |
+| `qi_results.json` | E1, E1b, E1c, E2, E2b, Ellis tail, redshift structures, headline numbers |
 | `charged_results.json` | E8b |
 | `design_search.json` | E3, every design evaluated |
 | `energy_results.json` | E4 |

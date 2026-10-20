@@ -849,3 +849,20 @@ appendix.
 | Q6(c) Breda, Maset, Vermiglio | SIAM J. Sci. Comput. 27(2):482–495 (2005), DOI 10.1137/030601600 confirmed; pseudospectral discretisation of the infinitesimal generator. | Abstract only |
 | Q7 feedback and maintenance | HKL 2002 (2D): traveller gives neutral stability; exact compensation by extra ghost radiation (G² = 4λ² + F²) or pulses with ε + ε′ = 0 keeps or restores the static wormhole without fine-tuning problems. Shinkai–Hayward (4D Ellis): compensation needs fine tuning and lasts a limited time, "continual adjustments … never-ending project". No closed-loop or feedback controller found in the literature. | HKL 2002, Hayward 2009 and SH 2002 full text read; others see Q7 |
 | Q8 parametric/Kapitza/Floquet | Not found for classical wormholes or gravitational solitons. Closest: Floquet-driven SYK (Maldacena–Qi) wormhole (JHEP 2024; resonances close it); driven AdS scalar condensates (JHEP 2018); Kapitza analogies for scalar fields and the scale factor (2016, 2021). | Floquet SYK sections read; others abstract only |
+
+---
+
+## Addendum by the project lead (not part of the agent's report)
+
+Added after the adversarial review asked for a source for one D2 sentence. Read directly from the arXiv
+PDF of Blázquez-Salcedo, González-Romero, Khoo, Kunz & Navarro Moreno, "Radial perturbations of charged
+wormholes", arXiv:2510.11406v2 (text extracted with `pdftotext`, 2026-10-20 about 08:35 UTC):
+
+- On the long-lived limit: "Hence this indicates that in the region of solutions close to the eRN limit, the
+  linear radial perturbations of the wormholes can take a very long time to grow. Of course this does not
+  mean that other instabilities would not creep up, for example in the non-linear regime."
+- On the limit itself: "the electric charge and the mass are bounded by Qe = M = rT, precisely where the
+  extremal Reissner-Nordström (eRN) black hole is located (rT → rH, rH being the location of the black
+  hole horizon)."
+- Matter content: the "Einstein-Maxwell-scalar action", "where R is the Ricci scalar, F is the
+  electromagnetic tensor, and ϕ is a phantom scalar field".

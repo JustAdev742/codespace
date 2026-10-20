@@ -109,7 +109,7 @@ Each entry gives:
 
 ### M3. Thin-band matter
 
-- **Question.** Can known fields produce an energy density of about $-1.6\times10^{64}$ J/m³ in a layer about
+- **Question.** Can known fields produce an energy density of about $-1.0\times10^{64}$ J/m³ in a layer about
   $10^{-21}$ m thick, while obeying all QIs?
 - **Needed.** An explicit quantum state of Standard-Model (or other known) fields with that density and support.
 - **Counts if.** It satisfies every known QI and the M0 bounds.

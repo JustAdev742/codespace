@@ -22,9 +22,9 @@
   "where": "sec. 2, table",
   "claim": "Negative-energy band thickness <~1e-21 m if supplied by free quantum fields (Ford & Roman 1996)",
   "model": "Morris-Thorne thin-band wormhole; flat-space massless-scalar QI, f = 0.01",
-  "recomputed": "Generalised QI audit: thin exotic region of thickness a gives D ~ 8 (a/r0)^3 x 1.6e62; D = 1 at a = 9.20e-22 m (fitted slope 3.0)",
+  "recomputed": "Generalised QI audit: the Morris-Thorne band with parameter a0 (proper width (pi/2) a0) gives D ~ (32 pi/3) f^4 a0^3/(r0 l_P^2); D = 1 at a0 = 9.20e-22 m, proper width 1.45e-21 m (fitted slope 3.0)",
   "verdict": "EXTENDED",
-  "note": "Reproduced. Phase II adds: (i) smooth throats are excluded by D = 1.6e62 for any flare-out (boost-optimised bound), so a thin band is necessary, not optional; (ii) the band needs |rho| ~ 1.6e+64 J/m^3, 10^68 times the Casimir density at 1 um; (iii) slow travellers cross it with a tidal impulse of ~1 m/s; (iv) the 1e-21 m figure depends on Ford & Roman's window: with the window set by the curvature radius alone the band must be thinner than 3e-63 m.",
+  "note": "Reproduced. Phase II adds: (i) smooth throats are excluded by D = 1.6e62 for any flare-out (boost-optimised bound), so a thin band is necessary, not optional; (ii) the band needs |rho| ~ 1.0e+64 J/m^3, 10^67 times the Casimir density at 1 um; (iii) slow travellers cross it with a tidal impulse of ~1 m/s; (iv) the 1e-21 m figure depends on Ford & Roman's window: with the window set by the curvature radius alone the band must be thinner than 3e-63 m.",
   "literature": "FR96 eq. (69): a0 <~ (r0/(8 f^4 l_P))^(1/3) l_P ~ 1e-21 m for 1 m. Krasnikov (2003, sec. II) argues the curvature radius sets the window and gets a sub-Planckian band."
  },
  {

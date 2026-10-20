@@ -68,6 +68,16 @@ def two_scale(r0=1.0, eps=0.01, L=10.0):
                       sp.Integer(0), l_max=200 * max(r0, L))
 
 
+def two_scale_redshift(r0=1.0, eps=0.01, L=10.0, phi2=0.0, w=3.0):
+    """two_scale with a Gaussian redshift dip, Phi = phi_a exp(-l^2/w^2) with phi_a = -phi2 w^2/2, so that
+    Phi''(0) = phi2 and the dip is phi2 w^2/2 deep.  Used to test the scope of the throat theorem."""
+    e = sp.nsimplify(eps)
+    r2 = r0**2 + e / 2 * _l**2 + (1 - e / 2) * _l**4 / (_l**2 + L**2)
+    phi_a = -sp.nsimplify(phi2) * sp.nsimplify(w) ** 2 / 2
+    return _from_expr(f"two_scale_red_eps{eps:g}_p{phi2:g}", r0, {"eps": eps, "L": L, "phi2": phi2, "w": w},
+                      sp.sqrt(r2), phi_a * sp.exp(-_l**2 / sp.nsimplify(w) ** 2), l_max=200 * max(r0, L))
+
+
 def redshift_ellis(r0=1.0, phi_a=0.0, w=1.0):
     return _from_expr(f"redshift_ellis_a{phi_a:g}_w{w:g}", r0, {"phi_a": phi_a, "w": w},
                       sp.sqrt(_l**2 + r0**2), phi_a * sp.exp(-_l**2 / w**2), l_max=200 * r0)

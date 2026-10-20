@@ -68,9 +68,10 @@ class Architecture:
 def numbers(r0=1.0, f=0.01):
     """Headline numbers for a throat of radius r0 (m), from the package's own formulas."""
     D_smooth = (4 * np.pi / 3) * f**4 * (r0 / l_P) ** 2
-    a_band = (3 * r0 * l_P**2 / (32 * np.pi * f**4)) ** (1 / 3)        # D = 1 for the thin band
-    a_band_curv = 3 * l_P**2 / (8 * np.pi * f**4 * r0)                 # same, curvature-only window
-    rho_band = c**4 / G / (8 * a_band * r0)                            # J/m^3 (magnitude)
+    # Morris-Thorne thin band: a_band is MT's coordinate parameter a0 (proper width (pi/2) a0)
+    a_band = (3 * r0 * l_P**2 / (32 * np.pi * f**4)) ** (1 / 3)        # D = 1, Ford & Roman window
+    a_band_curv = 3 * l_P**2 / (8 * np.pi * f**4 * r0)                 # D = 1, curvature-only window
+    rho_band = c**4 / G / (4 * np.pi * a_band * r0)                    # |rho| at the throat, J/m^3
     casimir_1um = np.pi**2 * hbar * c / (720 * (1e-6) ** 4)
     gap_needed = (np.pi**2 * hbar * c / (720 * rho_band)) ** 0.25
     w_rim = np.sqrt(3 / (8 * np.pi)) * l_P / f**2
@@ -79,7 +80,9 @@ def numbers(r0=1.0, f=0.01):
         "D_smooth": D_smooth,
         "log10_D_smooth": float(np.log10(D_smooth)),
         "a_band_m": a_band,
+        "a_band_proper_width_m": np.pi / 2 * a_band,
         "a_band_curvature_window_m": a_band_curv,
+        "a_band_curvature_window_proper_m": np.pi / 2 * a_band_curv,
         "rho_band_J_m3": rho_band,
         "log10_band_vs_casimir_1um": float(np.log10(rho_band / casimir_1um)),
         "casimir_gap_for_band_m": gap_needed,
@@ -136,7 +139,7 @@ def architectures(r0=1.0, f=0.01):
             f"Ellis e-folds in {n['efold_s']*1e9:.2f} ns; feedback needs loop delay < "
             f"{n['pd_delay_max_s']*1e9:.2f} ns and NEC-violating actuation.", ""),
         Req("B4", "traverse", "Survivable crossing", "OK",
-            "Tidal impulse ~ v w / r0 ~ 1 m/s at walking speed through smooth or thin-band throats.", ""),
+            "Tidal impulse ~ 2 v w / r0 ~ 1 m/s at walking speed through smooth or thin-band throats.", ""),
         Req("B5", "endpoints", "Chronology management", "ENG",
             f"Vertical pairs reach closed causal curves in {n['vertical_pair_days']:.0f} days; "
             "the network checker gives days to millennia; manageable by schedule.", ""),

@@ -39,7 +39,9 @@ This audit lists:
 | 08:33 | Stage B notes committed | commit `1a38c25` |
 | 08:42–08:44 | Code extended from stage B (window conventions, $b'(r_0) = 1$, charged wormholes); pipeline rerun (111 s); 45 tests pass | commit `aef4c8a` (08:48) |
 | ~08:50 | Adversarial review agent launched (§7) | session record |
-| 08:50–09:10 | D2 §10, D3–D7 updated; D1 and D8 written | later commits |
+| 08:50–09:10 | D2 §10, D3–D7 updated; D1 and D8 written | commits `2c05a49` to `ed79fb1` |
+| ~09:20 | Adversarial review returned: 22 findings | [adversarial-review.md](../notes/adversarial-review.md) |
+| 09:20–09:40 | Findings checked independently, corrections made, pipeline rerun, 46 tests pass | final commits |
 
 ## 3. Executed and not executed
 
@@ -105,7 +107,7 @@ hidden; each is fixed in the files.
 | 10 | Gao–Wald described as an ANEC theorem | literature check | it assumes the NEC and a genericity condition |
 | 11 | Delayed-PD boundary first placed between 1.3 and 1.4 | refined optimisation with two starts | 1.414 ($\sqrt2$) |
 | 12 | Parametric late instability first reported as a rate | resolution test | reported as unconverged |
-| 13 | Stage A record: 0.34 Jupiter masses; band density 1.5×10⁶⁴ J/m³ | stage B arithmetic check | 0.355; 1.6×10⁶⁴ (the reports were right) |
+| 13 | Stage A record: 0.34 Jupiter masses | stage B arithmetic check | 0.355 (the reports used 0.35) |
 | 14 | Stage A: the Ellis tail "grows as $r^4$" | later runs with the variation length | true only for the curvature-only window; with Ford & Roman's it saturates (D2 §5.7) |
 | 15 | Quantum-interest delay from the 2D formula ($10^{-53}$ s) | stage B (Ford & Roman 1999) | 4D bound, $2\times10^{-24}$ s; Fewster & Teo 2000 |
 | 16 | "Mouths are born together" stated as general | stage B (Horowitz et al. 2019) | restricted to Morse topology change; remote creation THEOREM → ROBUST |
@@ -118,13 +120,21 @@ hidden; each is fixed in the files.
 | 23 | An edit script turned "\times" into a tab in one D2 line | control-character scan | fixed; edit scripts use raw strings since |
 | 24 | `--full` runtime claim never measured (§3) | this audit | corrected in D3 and the code docstring |
 | 25 | Literature placeholders ("stage B") left in the framework and ledger | re-reading | filled; a test now fails if any remain |
-| 26 | The charged-throat redshift written as $4.5(1 - Q_e/r_T)^2$ | re-deriving the coefficient from the results | $\tfrac49(1 - Q_e/r_T)^2$; the $\gamma \approx 1.5/(1 - Q_e/r_T)$ that follows was right |
+| 26 | The charged-throat redshift written as $4.5(1 - Q_e/r_T)^2$ | re-deriving the coefficient from the results (also review F1) | $\tfrac49(1 - Q_e/r_T)^2$; the $\gamma \approx 1.5/(1 - Q_e/r_T)$ that follows was right |
+| 27 | Thin band: Morris–Thorne's coordinate parameter reported as a proper width, and its density computed with the proper-width formula (1.6×10⁶⁴ J/m³); the Stage A record had 1.5×10⁶⁴ | review F3 | proper width 1.4×10⁻²¹ m ($a_0$ = 9.2×10⁻²² m); throat density 1.0×10⁶⁴ J/m³ |
+| 28 | Thin-band tidal impulse given as $v\,w_b/r_0$ and "~0.5 m/s" in one sentence | review F4 | $2v\,w_b/r_0 \approx 1$ m/s, as the code computes |
+| 29 | Throat theorem stated as needing "no length scale shorter than $r_0$" | review F2; checked with a new run | needs shape and redshift to vary no faster than over $r_0\sqrt{2/\varepsilon}$; a redshift dip only moves the worst observer (new test) |
+| 30 | Penrose corollary stated per mouth for any portal | review F5 | per asymptotic end; a one-universe pair bounds only the total mass |
+| 31 | Network criterion with non-strict inequalities | review F6; reproduced | strict inequalities on external edges; the code was already right |
+| 32 | Missing prior art: Maldacena & Milekhin for the charge costs; Krasnikov for the window comparison; Fewster & Roman and Kuhfittig 2008 for the off-throat region; Ford & Roman's second optimised example; Gibbons & Volkov for the rim mass; Ida & Hayward for $\sqrt{A/16\pi}$; an unreviewed GitHub note on Kapitza driving | review F7, F8, F14–F17 | credited in D2 and the deliverables |
+| 33 | Quotation and attribution slips: a paraphrase of Visser, Kar & Dadhich in quotation marks; a phrase credited to Ford & Roman that the notes have from Roman 2004; two other paraphrases in quotation marks; "ℝ³ with a handle" credited to the wrong Dowker paper | review F11–F13 | fixed |
+| 34 | Smaller numerical slips: Richardson value, a drive frequency, a "1/256" reference value, a tolerance, the count of borne-out predictions | review F19, F20, F22 | fixed |
 
 ## 6. Checks performed, and checks not performed
 
 **Performed.**
 
-- 45 automated tests:
+- 46 automated tests:
   - symbolic curvature against Schwarzschild, Ellis and Morris–Thorne;
   - boosted components against a full tensor transformation;
   - the QI theorem, analytic and numeric;
@@ -134,6 +144,7 @@ hidden; each is fixed in the files.
   - thin-shell and delay boundaries;
   - chronology closed forms and a Roman ring;
   - charged closed forms and limits;
+  - the redshift dip at a gentle throat;
   - the framework's first blockers;
   - the absence of literature placeholders.
 - Results regenerated from scratch by the pipeline after the last code change.
@@ -150,7 +161,32 @@ hidden; each is fixed in the files.
 
 ## 7. Adversarial review
 
-*Filled in after the review completes; see the next commit.*
+A separate AI agent was asked to find errors in D2 and the stage B code, by independent derivation and
+computation, and to check every attribution against the stage B notes. Its report, with severities, evidence
+and suggested fixes, is [notes/adversarial-review.md](../notes/adversarial-review.md). It reran the tests (45
+passed), re-derived the curvature, boosts and the theorem's algebra in its own sympy code, re-solved the
+charged backgrounds, and checked more than 60 numbers.
+
+**What it found, and what was done.** Every finding was checked here before acting on it.
+
+| Finding | Checked here how | Outcome |
+|---|---|---|
+| F1 charged coefficient 4.5 → 4/9 | already found and fixed (§5, item 26) | agreed |
+| F2 theorem scope (redshift and variation lengths) | reran with a redshift dip: the throat value fell to 0.29, 0.024 and $2.6\times10^{-4}$ $D_{\rm ref}$, as the review said, but the scan over positions found at least $1.4\,D_{\rm ref}$ beside the dip | hypothesis restated; the conclusion stands; the new check is in the pipeline and the tests |
+| F3 thin-band width and density | verified the proper width $(\pi/2)a_0$ analytically and the density $c^4/(4\pi Ga_0r_0)$ | corrected everywhere, including `feasibility.numbers()` |
+| F4 tidal impulse factor 2 | $\int r''dl = 2$ across the throat | corrected |
+| F5 Penrose corollary per end | agreed: a one-universe pair has one end | restated, with the 0.5 and 0.71 thresholds |
+| F6 network criterion boundary | reproduced the two-mouth example: margin 0, no negative cycle | strict inequalities in D2 and the code docstring |
+| F7, F8, F14–F17 prior art | checked each against the notes | credited |
+| F9 the 2026 paper's warning about nonlinear instabilities | the sentence is in the paper, read here from its arXiv PDF, but was not in the notes | quotation added to D2 and to the stability notes as a labelled addendum |
+| F10 Graham & Olum 2007 | in the phase I reference list (report 07, full text read in phase I) | kept |
+| F11–F13 quotation slips | checked against the notes | fixed |
+| F18 quantum-interest regime | agreed: 1 m² violates Ford & Roman's causal-contact condition, and Fewster & Teo make the bound necessary only | both regimes stated as necessary conditions |
+| F19–F22 small slips | each checked | fixed |
+
+**What it did not check.** It consulted no sources beyond the stage B notes, so it inherits their access
+limits. It reviewed D2 and the code, not D4–D7 directly; those were brought into line afterwards by the
+changes above.
 
 ## 8. Citation integrity
 

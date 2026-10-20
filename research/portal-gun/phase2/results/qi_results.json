@@ -120,7 +120,7 @@
   ],
   "fitted_exponent": 2.96030484259479,
   "a_at_D_1_m": 9.203373764104512e-22,
-  "rho_band_J_m3": 1.643766182052865e+64
+  "rho_band_J_m3": 1.0464540526440232e+64
  },
  "ellis_tail": [
   {
@@ -240,14 +240,50 @@
    "r_at_max": 1.4411552240613352
   }
  ],
+ "redshift_dip_at_gentle_throat": [
+  {
+   "Phi2_r0sq": 0.0,
+   "dip_depth": 0.0,
+   "D_throat_over_ref": 0.9999503161940809,
+   "d_t_at_throat_max": 7.669323232806757,
+   "D_scan_max_over_ref": 1.438419870657317,
+   "l_at_scan_max": -9.0
+  },
+  {
+   "Phi2_r0sq": 0.0025,
+   "dip_depth": 0.01125,
+   "D_throat_over_ref": 0.2907321905543727,
+   "d_t_at_throat_max": 0.630009782219936,
+   "D_scan_max_over_ref": 1.4384254360747433,
+   "l_at_scan_max": -9.0
+  },
+  {
+   "Phi2_r0sq": 0.01,
+   "dip_depth": 0.045,
+   "D_throat_over_ref": 0.023605337681539877,
+   "d_t_at_throat_max": 0.30756489429183803,
+   "D_scan_max_over_ref": 1.438442124954537,
+   "l_at_scan_max": -9.0
+  },
+  {
+   "Phi2_r0sq": 0.1,
+   "dip_depth": 0.45,
+   "D_throat_over_ref": 0.0002623214154569172,
+   "d_t_at_throat_max": 0.09728738637870273,
+   "D_scan_max_over_ref": 1.4386415270201092,
+   "l_at_scan_max": -9.0
+  }
+ ],
  "analytic": {
   "D_smooth": 1.6034995176356985e+62,
   "log10_D_smooth": 62.205068833620125,
   "a_band_m": 9.203373764104512e-22,
+  "a_band_proper_width_m": 1.4456625702775888e-21,
   "a_band_curvature_window_m": 3.11817992148343e-63,
-  "rho_band_J_m3": 1.643766182052865e+64,
-  "log10_band_vs_casimir_1um": 67.57897592857277,
-  "casimir_gap_for_band_m": 1.2742540361002264e-23,
+  "a_band_curvature_window_proper_m": 4.898025566951771e-63,
+  "rho_band_J_m3": 1.0464540526440232e+64,
+  "log10_band_vs_casimir_1um": 67.38285605154262,
+  "casimir_gap_for_band_m": 1.4265466791474152e-23,
   "w_rim_m": 5.584066548209673e-32,
   "tension_throat_Pa": 4.815453886722423e+42,
   "misner_sharp_per_side_kg": -6.732954607500545e+26,

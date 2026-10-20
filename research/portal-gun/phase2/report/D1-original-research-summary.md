@@ -15,23 +15,30 @@ independent routes, which shows the code and derivations are right but is not di
 A handful of results were **not found in the literature we searched**. Each is modest, each sharpens an
 existing obstacle rather than opening a door, and none has been reviewed by an independent expert:
 
-1. **A quantum-inequality bound that ignores how gently a throat flares.** At any smooth, reflection-symmetric
-   static throat, an observer moving at $\gamma = \sqrt{2/\varepsilon}$ sees the full deficit
-   $D = \tfrac{4\pi}{3}f^4(r_0/\ell_P)^2$ ($1.6\times10^{62}$ for 1 m) whatever the flare-out
-   $\varepsilon = 1 - b'(r_0)$. Even at $b'(r_0) = 1$, where nothing at the throat itself is negative, the
-   deficit returns just beside it. This refutes a strategy published several times (Kuhfittig 2003–2012),
+1. **A quantum-inequality bound that ignores how gently a throat flares.** At a long, smooth,
+   reflection-symmetric static throat (shape and redshift varying no faster than over $r_0\sqrt{2/\varepsilon}$),
+   an observer moving at $\gamma = \sqrt{2/\varepsilon}$ sees the full deficit $D = \tfrac{4\pi}{3}f^4(r_0/\ell_P)^2$
+   ($1.6\times10^{62}$ for 1 m) whatever the flare-out $\varepsilon = 1 - b'(r_0)$. Even at $b'(r_0) = 1$, where
+   nothing at the throat itself is negative, the deficit returns just beside it. Shorter structure, such as a
+   shallow redshift dip, only moves the worst observer. This refutes a strategy published several times (Kuhfittig 2003–2012),
    that a gentle enough flare makes Ford & Roman's constraint "trivially satisfied". It is the most useful of
    the new results.
 2. **"A light mouth needs negative energy", for any shape.** On time-symmetric or maximal slices, a mouth
    lighter than a black hole of the throat's area must contain negative energy density somewhere outside the
-   throat. This is a one-line corollary of the Riemannian Penrose inequality (Huisken & Ilmanen 2001). The
-   spherical version is published; we did not find the general one written for wormholes.
+   throat, provided the throat is the outermost minimal surface. This is a one-line corollary of the Riemannian
+   Penrose inequality (Huisken & Ilmanen 2001). It is a statement per asymptotic end: for a pair of mouths in one
+   universe it bounds only their total mass. The spherical version is published; we did not find the general
+   one written for wormholes.
 3. **What charge stabilisation costs a portal.** Charge makes the known instability of the Ellis wormhole
-   arbitrarily slow (Blázquez-Salcedo et al. 2026), but only by making the mouth a near-extremal black-hole
-   exterior. For a 1 m throat that means:
+   arbitrarily slow (Blázquez-Salcedo et al. 2026), but in that family only by making the mouth a
+   near-extremal black-hole exterior. For a 1 m throat that means:
    - about 0.7 Jupiter masses;
    - a field $8\times10^8$ times the Schwinger field (or $10^{34}$ Dirac monopoles for the magnetic version);
-   - a gravitational well that delivers a traveller at $\gamma \sim 10^4$.
+   - in the case that lasts about an hour, a gravitational well that delivers a traveller at
+     $\gamma \approx 1.5\times10^4$.
+
+   The same kind of cost appears in Maldacena & Milekhin's long wormholes, whose formula gives the same
+   monopole count. What is ours is the trade-off for the Ellis–Bronnikov family and the Schwinger limit.
 4. **Feedback and periodic driving of a wormhole throat.** Delayed feedback can hold the Ellis mode only if
    the whole loop is faster than $\sqrt2/s$, 4 ns per metre of throat. That bound is known control theory
    (Stépán); applying it to wormholes was not found. Kapitza-type driving never stabilised the full field
@@ -51,7 +58,7 @@ existing obstacle rather than opening a door, and none has been reviewed by an i
 | NEC violation at every throat; ANEC integral $-\tfrac{c^4}{4\pi G}\int e^{-\Phi}(r'/r)^2dl < 0$ | Morris & Thorne 1988; Visser, Kar & Dadhich 2003 (citing Visser 1995) |
 | Misner–Sharp sum rule $\int 4\pi r^2\rho\,dr = M - r_0c^2/2G$: heavy (0.35 Jupiter masses for 1 m) or negative | Visser, Kar & Dadhich 2003; Azreg-Aïnou 2015; Hafemann & Kontou 2025 |
 | A shortcut needs an achronal-ANEC violation; long wormholes avoid it | Standard; Maldacena, Milekhin & Popov |
-| Thin exotic band $\lesssim 10^{-21}$ m for a 1 m throat | Ford & Roman 1996 |
+| Thin exotic band $\lesssim 10^{-21}$ m for a 1 m throat (proper width $1.4\times10^{-21}$ m), and its window dependence | Ford & Roman 1996; Krasnikov 2003 |
 | Planck-thin rims for flat-face portals | Krasnikov 2003 (our bound is explicit: $5.6\times10^{-32}$ m) |
 | Ellis instability, e-folding $0.846\,b/c$ (2.8 ns for 1 m) | González, Guzmán & Sarbach 2009; Blázquez-Salcedo et al. 2018 |
 | Thin-shell stability regions | Poisson & Visser 1995 |
@@ -63,7 +70,7 @@ existing obstacle rather than opening a door, and none has been reviewed by an i
 ## 2. New derivations
 
 - **The flare-out-independent QI bound** (item 1 above; D2 §5.2), with its proof, its numerical confirmation
-  (1.000 ± 0.001 for flare-outs 0.2 to 0.001), and the $b'(r_0) = 1$ calculation.
+  (1.000 ± 0.001 for flare-outs 0.2 to 0.001), the $b'(r_0) = 1$ calculation, and the redshift-dip check.
 - **The general-shape mass corollary** (item 2; D2 §4.4), including the observation that the $t$ = const
   slices of circular rotating spacetimes are maximal, so rotating mouths are covered.
 - **A single second-order master equation** for the Ellis perturbation in the $\delta\phi = 0$ gauge
@@ -112,7 +119,8 @@ The full audit is in [D7](D7-corrected-baseline.md): 20 claims, none with a wron
 
 - Kuhfittig's "trivially satisfied" (item 1).
 - The thin-band "door" exists only under Ford & Roman's sampling window. Krasnikov's (2003) curvature-only
-  window closes it (band below $3\times10^{-63}$ m). We do not resolve which is right.
+  window closes it (a sub-Planckian band; $a_0 < 3\times10^{-63}$ m with our sampling fraction). We do not
+  resolve which is right.
 
 **With our own first drafts** (see D8 §5 for the full list):
 
@@ -120,6 +128,13 @@ The full audit is in [D7](D7-corrected-baseline.md): 20 claims, none with a wron
   distance apart, so remote creation is ROBUST, not THEOREM.
 - The quantum-interest delay was computed with a 2D formula.
 - The index-2 route was not ours.
+- The adversarial review (D8 §7) found more:
+  - the thin band's width and density mixed two conventions (corrected: proper width $1.4\times10^{-21}$ m,
+    $1.0\times10^{64}$ J/m³);
+  - a tidal impulse was halved;
+  - the throat theorem's scope was overstated;
+  - the network criterion needed strict inequalities;
+  - several prior-art credits were missing.
 
 ## 7. Needs verification
 

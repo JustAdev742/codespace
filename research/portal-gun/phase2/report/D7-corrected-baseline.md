@@ -24,7 +24,7 @@ assumes, what kind of claim it is, and in two places a statement stronger than t
 | 1 | At the throat of any smooth, static, spherically symmetric wormhole, the radial tension is $c^4/8\pi Gr_0^2$ = 4.8×10⁴² Pa for $r_0$ = 1 m, exceeding the energy density there, whatever the shape and redshift functions | Exact within the model class | High |
 | 2 | Each static spherical mouth satisfies $\int 4\pi r^2\rho\,dr = M - r_0c^2/2G$. A mouth lighter than 0.35 Jupiter masses per metre of throat radius must contain that much negative energy; a heavier one may have none, but still violates the NEC | Theorem (spherical; Visser, Kar & Dadhich 2003). For any shape, on time-symmetric or maximal slices, negative density somewhere follows from the Riemannian Penrose inequality (D2 §4.4) | High |
 | 3 | Integrated negative energy density of specific models: Ellis and flat-face rim −(π/2)$r_0c^2/G$ (−1.1 $M_J$ per metre), thin shell −2$r_0c^2/G$ (−1.4 $M_J$). These have **zero** active gravitational mass | Model results | High |
-| 4 | Free-field quantum inequalities (Ford–Roman method, f = 0.01) exclude every smooth static throat larger than ~10⁻³¹ m. For a 1 m throat the deficit is 1.6×10⁶² **for any flare-out**, including $b'(r_0) = 1$. The only static walk-in escape is an exotic band ≲ 9×10⁻²² m thick at ~−1.6×10⁶⁴ J/m³, and only under Ford & Roman's window; under the curvature-only window (Krasnikov 2003) the band must be sub-Planckian | Method-dependent bound (flat-space QI in curved space) | High within the method |
+| 4 | Free-field quantum inequalities (Ford–Roman method, f = 0.01) exclude every smooth static throat larger than ~10⁻³¹ m. For a 1 m throat the deficit is 1.6×10⁶² **for any flare-out**, including $b'(r_0) = 1$. The only static walk-in escape is an exotic band of proper width ≲ 1.4×10⁻²¹ m (Morris–Thorne $a_0$ ≲ 9×10⁻²² m) at ~−1.0×10⁶⁴ J/m³, and only under Ford & Roman's window; under the curvature-only window (Krasnikov 2003) the band must be sub-Planckian | Method-dependent bound (flat-space QI in curved space) | High within the method |
 | 5 | The Ellis–Bronnikov throat has one unstable radial mode, e-folding in 0.846 $r_0/c$ (2.8 ns for 1 m). Delayed feedback can hold it only with loop delay < 1.196 $r_0/c$ (4.0 ns for 1 m) and actuators that supply NEC-violating stress. Periodic driving did not stabilise it | Model result (linear; agrees with González, Guzmán & Sarbach 2009); control-theory result. Charge slows the mode only by making the mouth a near-extremal black-hole exterior (D2 §6.7) | High (linear) |
 | 6 | Thin-shell wormholes are linearly stable only for equations of state with $\beta^2 < -1/2$ (massless shells), $\beta^2 \ge 3/2 + \sqrt3$ (shells inside 3M), or below a negative bound (outside 3M) | Model result (Poisson & Visser 1995, reproduced) | High |
 | 7 | A slow traveller through a 1 m Ellis throat keeps tides ≤ 1 g at ≤ 2.2 m/s (2 m body); flat faces have no tides away from the rim | Calculation | High |
@@ -66,16 +66,17 @@ Each entry gives the original claim, the issue, the revised result, and the deri
 ### B03. Band thickness (§2 table): EXTENDED
 
 - **Original.** "≲ 10⁻²¹ m (Ford & Roman 1996)."
-- **Check.** Reproduced: 9.2×10⁻²² m for the Morris–Thorne thin band ($f$ = 0.01, massless scalar). The
+- **Check.** Reproduced: $a_0$ = 9.2×10⁻²² m for the Morris–Thorne thin band ($f$ = 0.01, massless scalar),
+  a proper width of 1.4×10⁻²¹ m. The
   measured law $D \propto a^3$ matches.
 - **Extension.**
   - The band is **necessary**, not one option among several. Smooth throats are excluded by 1.6×10⁶² whatever
     the flare-out (D2 §5.2), and redshift designs are untraversable on foot (§5.4).
-  - The band needs ~−1.6×10⁶⁴ J/m³, which is 10^67.6 times the Casimir density at 1 μm.
+  - The band needs ~−1.0×10⁶⁴ J/m³ at the throat, which is 10^67.4 times the Casimir density at 1 μm.
   - Slow travellers cross it with a ~1 m/s tidal impulse.
   - The 10⁻²¹ m figure assumes Ford & Roman's sampling window, capped at the band width. Krasnikov (2003)
-    argues the window should be set by the curvature radius, which makes the band thinner than 3×10⁻⁶³ m
-    (D2 §5.3).
+    argues the window should be set by the curvature radius, which makes the band sub-Planckian
+    ($a_0$ < 3×10⁻⁶³ m with $f$ = 0.01; D2 §5.3).
 
 ### B04. Stabilisation bandwidth (§2 table): EXTENDED
 

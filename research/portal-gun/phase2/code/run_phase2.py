@@ -1,6 +1,6 @@
 """Run every phase II calculation, write results/*.json and figures/*.png.
 
-    python run_phase2.py            # everything except the parametric-drive PDE scan (111 s measured)
+    python run_phase2.py            # everything except the parametric-drive PDE scan (106-111 s measured)
     python run_phase2.py --full     # also re-runs that scan (kapitza_scan.json); the same loop took
                                     # 55 s from the command line; --full itself was not run in phase II
 
@@ -114,6 +114,18 @@ def run_qi():
                      "D_max_over_ref": best["D"] / REF, "l_at_max": best["l"], "gamma_at_max": best["gamma"],
                      "r_at_max": float(g.local(np.array([best["l"]]))[0][0])})
     out["zero_flare_out_at_throat"] = zero
+    # scope of the throat theorem: a shallow redshift dip at a gentle throat (eps = 0.01)
+    dips = []
+    for P2 in (0.0, 0.0025, 0.01, 0.1):
+        g = fam.two_scale_redshift(1.0, 0.01, 400.0, P2, 3.0)
+        gam = np.geomspace(1 + 1e-6, 1e5, 3000)
+        t = qi.local_deficit(g, np.zeros_like(gam), gam, F)
+        j = int(np.argmax(t["D"]))
+        best, _ = qi.scan(g, F, l_extent=9.0)
+        dips.append({"Phi2_r0sq": P2, "dip_depth": P2 * 9.0 / 2, "D_throat_over_ref": float(t["D"][j] / REF),
+                     "d_t_at_throat_max": float(t["d_t"][j]), "D_scan_max_over_ref": best["D"] / REF,
+                     "l_at_scan_max": best["l"]})
+    out["redshift_dip_at_gentle_throat"] = dips
     out["analytic"] = {k: v for k, v in nb.items()}
     save("qi_results.json", out)
     return out

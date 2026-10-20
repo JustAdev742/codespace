@@ -99,10 +99,10 @@ Each hypothesis is judged on four axes:
 ## H3. The thin band cannot be made of known fields
 
 - **Hypothesis.** No state of Standard-Model fields produces a negative energy density of order
-  $c^4/(8Gar_0)$ in a layer $a \lesssim (r_0\ell_P^2/f^4)^{1/3}$, which is $10^{64}$ J/m³ in $10^{-21}$ m for
-  $r_0 = 1$ m.
+  $c^4/(8Gar_0)$ in a layer of proper width $a \lesssim (r_0\ell_P^2/f^4)^{1/3}$, which is about $10^{64}$ J/m³ in
+  $1.4\times10^{-21}$ m for $r_0 = 1$ m.
 - **Formulation.** Maximise the negative energy density over states of $N$ free fields, plus the known
-  interacting-field bounds, at the band's scale. The band thickness, $10^{-21}$ m, is about 800 times
+  interacting-field bounds, at the band's scale. The band thickness, $1.4\times10^{-21}$ m, is about 600 times
   shorter than the electroweak length $\hbar c/(246\text{ GeV}) \approx 8\times10^{-19}$ m. At that scale every
   Standard-Model field is effectively massless, so all of their degrees of freedom count.
 - **Predicted consequences.** The maximum achievable density falls short by a large factor even counting all

@@ -12,11 +12,14 @@ Model (weak field, slow motion, first order in U/c^2 and v^2/c^2):
 
 At a given moment the network is a weighted directed graph: external edges i -> j with weight
 d_ij/c, link edges a -> b with weight Delta + L/c and b -> a with weight -Delta + L/c.  A closed
-causal curve exists iff some cycle has total weight <= 0 (this treats the network as static over
-one cycle, valid when cycle durations are short compared with the time over which Delta and the
-positions change).  Equivalently, the network is chronology-safe iff the difference constraints
-T_b - T_a = Delta_k, T_j - T_i <= d_ij / c  admit a solution T ("a time function on the mouths").
-The chronology margin is the smallest cycle weight; it is what an operator must keep positive.
+causal curve through at least one stretch of ordinary space exists iff some cycle containing an
+external edge has total weight <= 0 (this treats the network as static over one cycle, valid when
+cycle durations are short compared with the time over which Delta and the positions change).
+Equivalently, the network is chronology-safe iff the difference constraints
+T_b - T_a = Delta_k (L_k -> 0) and T_j - T_i < d_ij / c (strict) admit a solution T ("a time
+function on the mouths").  With non-strict inequalities a weight-zero cycle (a closed null curve)
+would count as safe.  The chronology margin is the smallest weight of a cycle containing an
+external edge; it is what an operator must keep positive.
 """
 from dataclasses import dataclass, field
 from typing import Callable

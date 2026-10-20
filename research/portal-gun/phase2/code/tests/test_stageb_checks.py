@@ -89,3 +89,12 @@ def test_framework_and_ledger_carry_no_pending_literature_checks():
         text = " ".join(str(e.get(k, "")) for k in ("note", "literature", "recomputed"))
         assert "stage B" not in text and "see stage" not in text, e["id"]
     assert fz.is_acyclic(fz.milestones())
+
+
+def test_redshift_dip_cuts_the_throat_window_but_not_the_maximum():
+    g = fam.two_scale_redshift(1.0, 0.01, 400.0, 0.01, 3.0)
+    gam = np.geomspace(1 + 1e-6, 1e5, 2000)
+    at_throat = qi.local_deficit(g, np.zeros_like(gam), gam, F)["D"].max() / REF
+    assert at_throat < 0.05                                  # the fast observer's window is cut
+    best, _ = qi.scan(g, F, l_extent=9.0)
+    assert best["D"] / REF > 1.0                             # the full deficit returns beside the dip
