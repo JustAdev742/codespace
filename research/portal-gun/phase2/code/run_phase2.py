@@ -1,7 +1,8 @@
 """Run every phase II calculation, write results/*.json and figures/*.png.
 
-    python run_phase2.py            # everything except the long parametric-drive scans (~3 min)
-    python run_phase2.py --full     # also re-run the parametric-drive scans (~8 min more)
+    python run_phase2.py            # everything except the parametric-drive PDE scan (111 s measured)
+    python run_phase2.py --full     # also re-runs that scan (kapitza_scan.json); the same loop took
+                                    # 55 s from the command line; --full itself was not run in phase II
 
 Results are written to ../results and figures to ../figures.
 """

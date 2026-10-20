@@ -266,7 +266,8 @@ def milestones():
     M = [
         Milestone("M0", "Do quantum inequalities hold in curved spacetime with controlled error terms?",
                   "QIs for curved backgrounds with explicit remainders in terms of curvature and sampling time.",
-                  "Bounds valid for sampling times up to a fixed fraction of the curvature radius.",
+                  "Bounds valid for sampling times up to a fixed fraction of the curvature radius; this also "
+                  "settles whether the window may extend past a thin band's edge (D2 sec. 5.3).",
                   "Point-splitting and Hadamard-parametrix methods; null-smeared and worldline QIs.",
                   "Remainder terms small at f ~ 0.01-0.1 for the geometries of D2 sec. 5.",
                   "Explicit states violating flat-space-type bounds at those scales.",
@@ -284,7 +285,8 @@ def milestones():
                   "Rates for handle nucleation in a theory of quantum gravity, and their dependence on controllable fields.",
                   "Non-negligible rate for macroscopic or growable handles.",
                   "Euclidean instantons (Horowitz-Marolf-Santos-Wang type), causal-set or spin-foam sums with Morse-index weighting.",
-                  "A causally continuous (index-2) creation route with finite particle production and non-zero amplitude.",
+                  "Finite particle production and a non-zero amplitude for the causally continuous index-2 route "
+                  "(Dowker & Surya 1998; named an open problem by Dowker 2002).",
                   "Topology change shown to require Planck curvature with exponentially small rates for any macroscopic seed.",
                   "Local creation (C1, D1a, D2a).", "Transport, holding open."),
         Milestone("M3", "Is there NEC-violating matter that can be concentrated into a 10^-21 m band at 10^64 J/m^3?",
@@ -355,7 +357,7 @@ SHORT = {"M0": "Curved-space QIs with error terms", "M1": "Macroscopic AANEC vio
          "M2": "Computable topology change", "M3": "10^64 J/m3 thin-band matter",
          "M4": "Dynamical negative-tension strings", "M5": "A stable traversable geometry",
          "M6": "Moving a mouth", "M7": "Chronology control", "M8": "A light mouth",
-         "M9": "A natural wormhole", "M10": "Penrose-type mass bound beyond time symmetry"}
+         "M9": "A natural wormhole", "M10": "Penrose-type mass bound for dynamical mouths"}
 
 
 def mermaid(ms):
@@ -370,7 +372,7 @@ def mermaid(ms):
               '  M2 --> CREATE["Local creation"]', '  M9 -.-> EXIST["Pre-existing throat (route B)"]',
               "  CREATE --> M6", "  EXIST --> M6", "  HOLD --> M5",
               '  M7 --> NET["Portal network"]', '  M8 --> HAND["Handheld terminal"]', "  NET --> HAND",
-              '  REMOTE["Remote creation (route A)"]:::dead', "  REMOTE -. excluded classically; no known quantum route .-> CREATE",
+              '  REMOTE["Remote creation (route A)"]:::dead', "  REMOTE -. excluded classically; quantum nucleation needs prior reach .-> CREATE",
               "  classDef dead fill:#f3e3e3,stroke:#b04040"]
     return "\n".join(lines)
 

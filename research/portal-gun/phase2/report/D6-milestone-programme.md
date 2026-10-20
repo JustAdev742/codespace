@@ -19,28 +19,28 @@ flowchart TD
   M7["M7: Chronology control"]
   M8["M8: A light mouth"]
   M9["M9: A natural wormhole"]
-  M10["M10: Penrose-type mass bound beyond time symmetry"]
+  M10["M10: Penrose-type mass bound for dynamical mouths"]
   M0 --> M1
   M0 --> M3
   M0 --> M4
+  M3 --> M5
+  M5 --> M6
+  M6 --> M7
+  M3 --> M8
+  M10 --> M8
   M1 --> HOLD["Any shortcut throat held open"]
   M3 --> HOLD
   M4 --> HOLD
-  HOLD --> M5
-  M3 --> M5
   M2 --> CREATE["Local creation"]
   M9 -.-> EXIST["Pre-existing throat (route B)"]
   CREATE --> M6
   EXIST --> M6
-  M5 --> M6
-  M6 --> M7
+  HOLD --> M5
   M7 --> NET["Portal network"]
-  M3 --> M8
-  M10 --> M8
   M8 --> HAND["Handheld terminal"]
   NET --> HAND
   REMOTE["Remote creation (route A)"]:::dead
-  REMOTE -. excluded by the local-creation lemma .-> CREATE
+  REMOTE -. excluded classically; quantum nucleation needs prior reach .-> CREATE
   classDef dead fill:#f3e3e3,stroke:#b04040
 ```
 
@@ -66,8 +66,12 @@ Each entry gives:
 - **Needed.** Worldline or null-smeared QIs on curved backgrounds with remainders bounded in terms of
   curvature and sampling time.
 - **Counts if.** The remainders stay small for $f$ between 0.01 and 0.1 in throat geometries.
-- **Method.** Hadamard-parametrix and point-splitting methods, building on existing curved-space QI work
-  (stage B).
+- **Method.** Hadamard-parametrix and point-splitting methods, building on existing curved-space work: the
+  null-contracted QIs of Fewster & Roman, and the wormhole restrictions from quantum energy inequalities
+  reviewed by Kontou (2024).
+- **Why it comes first.** It also has to settle the window convention for thin bands: whether the sampling
+  window may extend past the band's edge, as the curvature-only reading (Krasnikov 2003) allows. That choice
+  moves the thin-band requirement from $10^{-21}$ m to $10^{-63}$ m (D2 §5.3).
 - **Progress.** Explicit bounds for the families of D2 §5.
 - **Stop.** Explicit states that beat the flat-space form at these scales. That would reopen every static
   design.
@@ -94,12 +98,14 @@ Each entry gives:
 - **Counts if.** The rate is non-negligible for a seed that can then be grown.
 - **Method.** Euclidean instantons, Morse-index-weighted sums over histories, causal-set or spin-foam
   amplitudes.
-- **Progress.** Show that the index-2 (causally continuous) route of D2 §7.3 gives finite particle production
-  and a non-zero amplitude.
+- **Progress.** Show that the index-2 (causally continuous) route of Dowker & Surya (1998; D2 §7.3) gives
+  finite particle production and a non-zero amplitude. Dowker (2002) calls this "a key investigation that
+  needs to be done".
 - **Stop.** Topology change shown to require Planck curvature with exponentially small rates for any
   macroscopic seed.
 - **Unlocks.** Local creation (architectures C, D1, D2). **Still unsolved:** transport. Remote creation stays
-  excluded by the local-creation lemma regardless.
+  excluded for classical topology change. Quantum nucleation can separate the mouths, but in every known
+  construction only along a background already in place (Horowitz et al. 2019; D2 §7.2).
 
 ### M3. Thin-band matter
 
@@ -110,14 +116,15 @@ Each entry gives:
 - **Method.** Optimise over states (squeezed, Casimir-type, multi-field); look for interacting-field QI violations.
 - **Progress.** Any negative energy density above the free-field QI at the relevant scale.
 - **Stop.** QIs proven for interacting fields at those densities.
-- **Unlocks.** The only static walk-in design not excluded (D2 §5.4). **Still unsolved:** stability
-  (thin-shell-like equations of state are needed), creation.
+- **Unlocks.** The only static walk-in design not excluded (D2 §5.4), if Ford & Roman's window is the right
+  one (M0). **Still unsolved:** stability (thin-shell-like equations of state are needed), creation.
 
 ### M4. Dynamical negative-tension strings
 
 - **Question.** Do codimension-2 objects with tension $-c^4/4G$ exist as movable, dynamical objects?
 - **Needed.** A consistent theory containing them, with control over position and corners.
-- **Counts if.** They can be placed, supported at polygon corners, and survive the QI (core ≲ $10^{-31}$ m).
+- **Counts if.** They can be placed, supported at polygon corners or closed into a circular loop (static ring
+  solutions exist: Gibbons & Volkov 2017), and survive the QI (core ≲ $10^{-31}$ m).
 - **Method.** Defects in string theory, effective field theories of strings, conical-defect QIs.
 - **Progress.** A candidate object with adjustable position.
 - **Stop.** Proof that negative-tension defects are always non-dynamical, or carry ghosts.
@@ -131,7 +138,8 @@ Each entry gives:
 - **Counts if.** All modes are stable (or controllable with loop delay < $\sqrt2/s$), including infalling matter.
 - **Method.** Master equations as in D2 §6, time evolution, energy methods; extend the parametric experiment
   with converged numerics.
-- **Progress.** One stable example whose matter satisfies M0 bounds.
+- **Progress.** One stable example whose matter satisfies M0 bounds. Partly stable examples exist with exotic
+  matter (phantom dust with a radial field; five-dimensional rotation; beyond-Horndeski theories; D2 §6.7).
 - **Stop.** A general instability theorem for NEC-violating throats.
 - **Unlocks.** Usable throats. **Still unsolved:** endpoints.
 
@@ -175,14 +183,18 @@ Each entry gives:
 - **Stop.** None: absence proves little.
 - **Unlocks.** Route B without topology creation. **Still unsolved:** holding open, if it must be enlarged.
 
-### M10. A mass bound beyond time symmetry
+### M10. A mass bound for dynamical mouths
 
-- **Question.** Does "heavy or negative" hold for rotating or dynamical mouths?
-- **Needed.** A spacetime Penrose-type inequality for traversable throats.
-- **Counts if.** It gives $M \ge \sqrt{A/16\pi}$ unless some observer sees negative energy density.
+- **Question.** Does "heavy or negative" hold for dynamical mouths?
+- **Already done.** It holds on time-symmetric and maximal slices, which include static mouths of any shape
+  and circular rotating ones, by the Riemannian Penrose inequality (Huisken & Ilmanen 2001; D2 §4.4).
+- **Needed.** A spacetime Penrose-type inequality for traversable throats in general initial data.
+- **Counts if.** It gives $M \ge \sqrt{A/16\pi}$ unless the dominant energy condition fails somewhere. The weak
+  energy condition is not enough: Jaracz (2023) gives counterexamples to Penrose-type inequalities that obey
+  it.
 - **Method.** Marginally outer trapped surfaces; spacetime Penrose inequality methods.
-- **Progress.** A proof for stationary rotating mouths.
-- **Stop.** A light, positive-energy traversable mouth (a counterexample).
+- **Progress.** A proof for non-maximal stationary data, then dynamical data.
+- **Stop.** A light traversable mouth whose matter obeys the dominant energy condition (a counterexample).
 - **Unlocks.** Settles M8. **Still unsolved:** none upstream.
 
 ## Earliest bottlenecks, strongest investigations, terminating findings
@@ -202,7 +214,7 @@ Each entry gives:
 | Flat-face portal (M4 instead of M1/M3) | Exotic matter on the traveller's path | Relocated: Planck-scale strings, quantum-gravity regime |
 | Thin band (M3 instead of M1) | Macroscopic AANEC violation by smooth fields | Relocated: $10^{64}$ J/m³ in $10^{-21}$ m |
 | Heavy mouth (instead of M8) | Negative energy density | Relocated: a 0.35 Jupiter-mass mouth for 1 m |
-| Remote creation (skip M6) | Transport | Not available: excluded by the local-creation lemma (without CTCs) |
+| Remote creation (skip M6) | Transport | Not available: excluded classically by the local-creation lemma (without CTCs); quantum nucleation needs a background already spanning the gap |
 
 No route removes the underlying obstacle. Each relocates it to an extreme scale (D2 §9.2).
 
@@ -221,7 +233,7 @@ and geometric analysis, with value of their own. The phase II tools are reusable
 | Baseline | Here | Change |
 |---|---|---|
 | R1 (AANEC) | M1 | Now preceded by M0, which the audit needs |
-| R2 (topology change) | M2 | Remote creation removed as a target (lemma); index-2 route added |
+| R2 (topology change) | M2 | Remote creation removed as a target (lemma); index-2 route (Dowker & Surya 1998) added |
 | R3 (stable solution) | M5 | Quantitative controllability criterion added ($s\tau < \sqrt2$) |
 | R4 (measure negative energy, test QIs) | M0, M3 | Recast as the thin-band question with its numbers |
 | R5 (detect a natural wormhole) | M9 | Kept, as an alternative to M2 |

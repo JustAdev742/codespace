@@ -976,22 +976,143 @@ macroscopic AANEC violation. Each is a milestone in [D6](D6-milestone-programme.
 
 ## 10. Comparison with the literature (stage B)
 
-*To be completed from the stage B notes in [`../notes/`](../notes/): stageB-qi-energy.md,
-stageB-stability-control.md, stageB-topology-chronology.md.*
+### 10.1 How the comparison was done, and its limits
+
+Stage A was committed (commit `8109bcf`, 07:47 UTC) with a list of ten predictions about what the literature
+would show ([`../notes/stage-A-record.md`](../notes/stage-A-record.md), §A7). Four literature reviews were then
+run in parallel by AI agents. Each wrote a notes file with the sources it read, a statement of access
+(full text, sections, abstract, or not accessed), verbatim quotations with equation numbers, and its own
+arithmetic marked as such:
+
+- [stageB-qi-energy.md](../notes/stageB-qi-energy.md): quantum inequalities, energy bookkeeping and rims
+  (46 sources);
+- [stageB-stability-control.md](../notes/stageB-stability-control.md): stability, control and driving;
+- [stageB-topology-chronology.md](../notes/stageB-topology-chronology.md): topology change, chronology,
+  alternatives and modified gravity;
+- [stageB-penrose.md](../notes/stageB-penrose.md): the Penrose inequality and positive mass.
+
+The comparison below rests on those notes. Its limits:
+
+- Several key sources were **not accessed**: Morris & Thorne 1988, Visser's book (1995), and the full
+  texts of Geroch 1967, Tipler 1977 and Frolov & Novikov 1990. For these we rely on later papers that quote
+  them.
+- Many sources were read in **part**. The searches were done by AI agents and are recorded in the notes;
+  they are not exhaustive.
+- **"Not found" means not found in those searches.** It is weak evidence of novelty, not proof.
+
+All ten Stage A predictions were borne out. The literature has the Ellis eigenvalue, the thin-shell regions,
+Ford & Roman's band thickness, Kuhfittig-type claims about $b'(r_0) \to 1$, the Roman ring, Stépán's
+$\sqrt2$, no parametric stabilisation, the Dowker–Surya index classification, and the mass formula in some
+form. The predictions were deliberately conservative, so this mainly shows that Stage A knew where it
+stood.
+
+### 10.2 Result by result
+
+Classes: **K** known (published, reproduced here independently); **K+** known, with something added here;
+**S** sharpening or generalisation of a published method; **NF** not found in the literature searched;
+**C** our result corrected or narrowed by the comparison.
+
+| Result | § | Class | Prior art, and what changed |
+|---|---|---|---|
+| Radial tension $c^4/8\pi Gr_0^2$ at any smooth throat | 3 | K | Morris & Thorne 1988, eq. 51 |
+| NEC fails at every throat | 4.1 | K | Morris & Thorne 1988; Hochberg & Visser 1997 for general static throats |
+| ANEC closed form along the radial geodesic | 4.2 | K | Visser, Kar & Dadhich 2003, eq. 7, citing Visser 1995; Kar 2022 for the Ellis value |
+| A shortcut must violate the achronal ANEC | 4.3 | K | The standard argument (e.g. Maldacena, Milekhin & Popov); a conjecture-backed exclusion |
+| Misner–Sharp sum rule; $M \ge r_0c^2/2G$ if $\rho \ge 0$ | 4.4 | K | Visser, Kar & Dadhich 2003, eq. 8; Azreg-Aïnou 2015; Hafemann & Kontou 2025; Weinbaum 2026 |
+| A light mouth of any shape needs $\rho < 0$ somewhere (time-symmetric or maximal slices) | 4.4 | NF | A one-line corollary of Huisken & Ilmanen 2001; not found written for wormholes |
+| Smooth-throat QI deficit independent of flare-out | 5.2 | S | Generalises Ford & Roman 1996 §4.2 ($\varepsilon = 1$, same optimal speed); their eq. 95 and Fewster & Roman 2005 weaken as $b'_0 \to 1$ |
+| $b'(r_0) = 1$ does not evade the QI | 5.2 | NF | Refutes the "trivially satisfied" claims of Kuhfittig 2006–2012; Fewster & Roman 2005 left this case open |
+| Thin band $a_* \approx 10^{-21}$ m | 5.3 | K, C | Ford & Roman 1996, eq. 69. Narrowed: under Krasnikov's (2003) curvature-only window the band must be $< 3\times10^{-63}$ m |
+| Redshift channel closed for walk-in portals ($\lvert\Delta\Phi\rvert \lesssim 10^{-16}$) | 5.4 | S | Ford & Roman: "large redshifts (or blueshifts)"; Fewster & Roman 2005: tidal constraints force huge $r_0$ or fine tuning; the walk-in form is ours |
+| Thin-band tidal impulse $\approx v\,w_b/r_0$, independent of $a$ | 5.4 | NF | Not found in the sources read (Morris & Thorne 1988 not accessed) |
+| Design search runs to the thin-band corner | 5.4 | NF | Computational |
+| Rim core $w \le 5.6\times10^{-32}$ m | 5.5 | K+ | Krasnikov 2003 reaches the Planck-thickness estimate for smoothed portals; our bound is explicit |
+| Pulsed throats need $\tau \lesssim \sqrt{\ell_Pr_0}/c$ | 5.6 | NF | A scaling estimate; no QI-derived open time for pulsed wormholes found |
+| Length-scale hierarchy $\ell^4 \lesssim \ell_P^2L_1L_2$ | 9.2 | K+ | Instances in Ford & Roman 1996 ("large discrepancies in length scales") and Roman 2004; the unified heuristic was not found |
+| Ellis growth rate $1.181973\,c/b$ | 6.2 | K | González, Guzmán & Sarbach 2009 (0.846); Blázquez-Salcedo et al. 2018, Azad et al. 2024 (1.182) |
+| Single $\delta R$ master equation in $\delta\phi = 0$ gauge | 6.1 | K+ | Gauge used by GGS (§III D) and Blázquez-Salcedo et al. 2018; the single second-order form not found |
+| Traveller-triggered collapse in ~$s^{-1}\ln(r_0c^2/Gm)$ | 6.3 | K+ | Consistent with Shinkai & Hayward's logarithmic collapse law (2002) |
+| Thin-shell stability regions | 6.4 | K | Poisson & Visser 1995 |
+| Delayed PD control needs $s\tau < \sqrt2$ | 6.5 | K, NF | The bound is Stépán's (1989, 1994); applying it to wormholes was not found |
+| Kapitza driving fails in the full field equation | 6.6 | NF | No prior study of parametric stabilisation of wormholes or gravitational solitons |
+| Cost of charge-stabilised mouths | 6.7 | NF | Combines Blázquez-Salcedo et al. 2026 with the Schwinger field and the walk-in constraint |
+| Morse topology change creates mouths together | 7.2 | K, C | A corollary of Borde et al. 1999 and Dowker, Garcia & Surya 2000. Narrowed: it fails for quantum nucleation (Horowitz et al. 2019) |
+| Index-2 handle creation is causally continuous | 7.3 | K | Dowker & Surya 1998; Dowker & Garcia 1998. A rediscovery |
+| Chronology of wormhole networks as a negative-cycle test | 8.1 | NF | Pieces in Visser 1994, 1997; Everett & Roman 1997; Frolov, Krtouš & Zelnikov 2023. The algorithm is textbook |
+| Vertical pair: $c/g$ for any height | 8.2 | NF | Follows from Frolov, Krtouš & Zelnikov 2023 by substitution |
+| Roman ring as a time machine | 8.1 | K | Visser 1997 |
+| Launched-mouth margin fraction | 8.2 | NF | Elementary special relativity |
+| Quantum-interest delay | 6.5 | C | Our first draft used the 2D form; corrected to Ford & Roman's 4D bound, with Fewster & Teo 2000 |
+
+### 10.3 What the comparison changed
+
+1. **The thin-band door depends on a convention** (§5.3). Ford & Roman cap the sampling window at the
+   band width; Krasnikov argues for the curvature radius. Under the second the band must be sub-Planckian.
+   Our headline numbers keep Ford & Roman's choice and state the alternative.
+2. **Born-together mouths are a Morse-theory property** (§7.2). Instanton nucleation (Horowitz et al. 2019)
+   creates mouths a finite distance apart. In the framework, remote creation moves from THEOREM to ROBUST:
+   a theorem classically, and true of every known quantum construction, but not proven in general.
+3. **The index-2 creation route is not ours** (§7.3), and the Borde–Sorkin conjecture is proven only in one
+   direction.
+4. **Quantum interest**: $2\times10^{-24}$ s (4D, 1 m²), not $10^{-53}$ s (§6.5).
+5. **Rims need not be straight** (§5.5): static circular rims are exact solutions. Rim dynamics remain
+   open.
+6. **The Penrose extension holds, with three refinements** (§4.4):
+   - Huisken & Ilmanen bound each connected component of the outermost minimal surface; Bray bounds the
+     total area.
+   - Huisken & Ilmanen need $R \ge 0$ only outside the minimal surface.
+   - The topology of the exterior region needs no curvature condition at all (Huisken & Ilmanen 2001,
+     Lemma 4.1).
+
+   For general (non-maximal) data the weak energy condition is not enough: Jaracz (2023) gives WEC
+   counterexamples to Penrose-type inequalities, so hypothesis H7 is restated with the dominant energy
+   condition.
+7. **Stage A arithmetic.** $r_0c^2/2G$ for 1 m is 0.355 Jupiter masses; the Stage A record says 0.34 (the
+   reports used 0.35).
+8. **Baseline citation.** Maldacena & Milekhin (2021) state no solar-mass figure. The baseline's
+   "~10⁴ solar masses" per mouth is our arithmetic from their $M = r_ec^2/G$.
+
+### 10.4 Is anything here new?
+
+Nothing here is a new physical mechanism, and nothing changes the verdict that a portal gun is not possible
+under known physics. Most of the physics content is **reproduction**: independent derivations, by
+different routes, of published results (the throat tension, the sum rule, the ANEC identity, the band
+thickness, the Ellis eigenvalue, the thin-shell regions, the critical delay, the Roman ring, the index-2
+route).
+
+The results we did not find in the literature, each modest:
+
+- the flare-out-independent QI deficit at smooth throats, with the $b'(r_0) = 1$ case. This is the most
+  useful, because it answers a strategy that was published repeatedly;
+- the general-shape "light mouth needs negative energy" statement, an elementary corollary of a known
+  theorem;
+- the cost of charge stabilisation for a human-scale mouth;
+- feedback and parametric-driving analyses of wormhole stability (known control theory, newly applied;
+  the second is a negative result);
+- the graph formulation of chronology for wormhole networks, with its validation;
+- the comparison of the two QI window conventions for thin bands (the curvature-only argument itself is
+  Krasnikov's);
+- the walk-in redshift constraint and the pulsed-throat estimate.
+
+None has been checked by an independent expert. Each needs review before anyone relies on it; D8 lists what
+was checked and how.
 
 ## 11. Limitations
 
 - **The QI used is the flat-space, free massless scalar inequality**, applied in curved regions with $f = 0.01$.
   Curved-space and interacting-field QIs are proven only in special cases. The deficits are conservative in
   the sense that the method only excludes. The thin band and the rims are "not excluded", not "allowed".
-- **Static, spherically symmetric geometry**, except the flat-face estimate. Rotation, charge, and genuinely
-  dynamical throats are not covered by the theorem of §5.2.
+  For thin bands the answer also depends on which window convention is right (§5.3).
+- **Static, spherically symmetric geometry**, except the flat-face estimate and the Penrose corollary of
+  §4.4. Rotation, charge, and genuinely dynamical throats are not covered by the theorem of §5.2. The charged
+  analysis of §6.7 uses the published background and the published rates; we did not recompute the modes.
 - **Stability:** the Ellis analysis is linear and radial (non-radial modes and nonlinear evolution are not
   computed here). The parametric experiment uses a model drive term, not a self-consistent oscillating
   background, and its late instability is unconverged.
 - **The local-creation lemma** holds for Morse topology change. It says nothing about quantum-gravity processes
-  without a classical spacetime description.
+  without a classical spacetime description, and the one explicit instanton construction violates its
+  conclusion (§7.2).
 - **The chronology model** is first order in $U/c^2$ and $v^2/c^2$, treats throats as short, and assumes the
   network changes slowly over one cycle.
-- **No external expert has reviewed this work.** Stage B is a literature comparison by AI agents, and the
-  adversarial check (D8) was done by AI.
+- **No external expert has reviewed this work.** Stage B is a literature comparison by AI agents, with the
+  access limits of §10.1, and the adversarial check (D8) was done by AI.
