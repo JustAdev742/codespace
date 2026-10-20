@@ -183,9 +183,12 @@ Maldacena–Milekhin–Popov.
 **Causal analysis.** By construction slower than the external route. That is what allows them to respect
 the achronal ANEC (D2 §4.3).
 
-**Status.** Consistent with known physics in specific settings, but not a shortcut (D5a, THEOREM in the
-sense of Gao–Wald time-delay results under the averaged null energy condition; stage B). Making one is
-[OPEN]: it needs magnetically charged near-extremal black holes or a dark sector.
+**Status.** Consistent with known physics in specific settings, but not a shortcut. D5a fails by definition:
+these constructions are computed to be slower than the outside route, which is what lets them respect the
+achronal ANEC. A shortcut version would need the AANEC violation of milestone M1. (For comparison, Gao &
+Wald (2000) prove that the fastest paths are not shortened by the bulk, but under the pointwise null energy
+condition and a genericity condition, which these wormholes violate, so that theorem is not the reason
+here.) Making one is [OPEN]: it needs magnetically charged near-extremal black holes or a dark sector.
 
 ## Cases that failed, and why that matters
 

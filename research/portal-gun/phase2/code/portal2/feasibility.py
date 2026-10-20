@@ -196,7 +196,9 @@ def architectures(r0=1.0, f=0.01):
                       meets_portal_definition=False)
     D5.reqs = [
         Req("D5a", "traverse", "Be a shortcut", "THEOREM",
-            "By construction slower than the outside route: this is what lets it respect the achronal ANEC.", ""),
+            "Fails by definition: these constructions are computed to be slower than the outside route "
+            "(Gao-Jafferis-Wall; Maldacena-Milekhin-Popov), which is what lets them respect the achronal "
+            "ANEC; a shortcut version would need the AANEC violation of milestone M1.", ""),
         Req("D5b", "create", "Make one", "OPEN", "Requires magnetically charged near-extremal black holes or a dark sector.", ""),
     ]
     return [A, B, C, D1, D2, D3, D4, D5]

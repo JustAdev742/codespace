@@ -490,7 +490,7 @@
      "stage": "traverse",
      "text": "Be a shortcut",
      "status": "THEOREM",
-     "basis": "By construction slower than the outside route: this is what lets it respect the achronal ANEC.",
+     "basis": "Fails by definition: these constructions are computed to be slower than the outside route (Gao-Jafferis-Wall; Maldacena-Milekhin-Popov), which is what lets them respect the achronal ANEC; a shortcut version would need the AANEC violation of milestone M1.",
      "assumptions": "",
      "log10_deficit": null,
      "na": false
@@ -517,6 +517,18 @@
  },
  "milestones": [
   {
+   "key": "M0",
+   "question": "Do quantum inequalities hold in curved spacetime with controlled error terms?",
+   "result_needed": "QIs for curved backgrounds with explicit remainders in terms of curvature and sampling time.",
+   "counts_if": "Bounds valid for sampling times up to a fixed fraction of the curvature radius.",
+   "method": "Point-splitting and Hadamard-parametrix methods; null-smeared and worldline QIs.",
+   "progress": "Remainder terms small at f ~ 0.01-0.1 for the geometries of D2 sec. 5.",
+   "terminates": "Explicit states violating flat-space-type bounds at those scales.",
+   "unlocks": "Turns the phase II QI audit from a method into theorems (M1, M3, M4 depend on it).",
+   "still_unsolved": "Everything physical.",
+   "needs": []
+  },
+  {
    "key": "M1",
    "question": "Can quantum fields coupled to gravity violate the achronal ANEC on macroscopic scales?",
    "result_needed": "A self-consistent semiclassical (or quantum-gravity) solution containing a macroscopic achronal ANEC violation, or a proof that none exists.",
@@ -526,7 +538,9 @@
    "terminates": "Proof of AANEC (or of a QI with Planck-suppressed loopholes) in curved spacetime.",
    "unlocks": "Holding open any shortcut throat (M3, M4).",
    "still_unsolved": "Topology, stability, control.",
-   "needs": []
+   "needs": [
+    "M0"
+   ]
   },
   {
    "key": "M2",
@@ -551,7 +565,7 @@
    "unlocks": "Thin-band throats (the only QI-compatible smooth-family escape).",
    "still_unsolved": "Stability, creation.",
    "needs": [
-    "M1"
+    "M0"
    ]
   },
   {
@@ -565,7 +579,7 @@
    "unlocks": "Flat-face portals (D2).",
    "still_unsolved": "Creation of the cut-and-paste topology.",
    "needs": [
-    "M1"
+    "M0"
    ]
   },
   {
@@ -621,8 +635,33 @@
    "unlocks": "Handheld devices.",
    "still_unsolved": "Everything upstream.",
    "needs": [
-    "M3"
+    "M3",
+    "M10"
    ]
+  },
+  {
+   "key": "M9",
+   "question": "Do natural traversable wormholes exist?",
+   "result_needed": "A detection (lensing by negative-mass-like objects, shadows, echoes) or a mechanism that creates and keeps them.",
+   "counts_if": "A confirmed object with a throat and no horizon.",
+   "method": "Microlensing and strong-lensing searches; event-horizon imaging; gravitational-wave echoes.",
+   "progress": "Any robust candidate.",
+   "terminates": "Not a stopping criterion: absence proves little.",
+   "unlocks": "Route B without topology creation.",
+   "still_unsolved": "Holding open is still needed if it must be enlarged.",
+   "needs": []
+  },
+  {
+   "key": "M10",
+   "question": "Does the 'heavy or negative' mass rule extend beyond time symmetry?",
+   "result_needed": "A Penrose-type inequality for traversable throats in stationary or dynamical data.",
+   "counts_if": "Bound M >= sqrt(A/16 pi) unless the energy density is negative for some observer.",
+   "method": "Spacetime Penrose inequality methods; marginally outer trapped surfaces.",
+   "progress": "Proof for stationary rotating mouths.",
+   "terminates": "A counterexample: a light, positive-energy traversable mouth.",
+   "unlocks": "Settles whether a handheld mouth must carry negative energy (M8).",
+   "still_unsolved": "None upstream.",
+   "needs": []
   }
  ],
  "acyclic": true
