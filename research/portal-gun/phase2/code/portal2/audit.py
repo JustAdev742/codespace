@@ -58,7 +58,11 @@ def ledger(r0=1.0, f=0.01):
         note="Reproduced. Phase II adds: (i) smooth throats are excluded by D = 1.6e62 for any flare-out "
              "(boost-optimised bound), so a thin band is necessary, not optional; (ii) the band needs "
              f"|rho| ~ {n['rho_band_J_m3']:.1e} J/m^3, 10^{n['log10_band_vs_casimir_1um']:.0f} times the "
-             "Casimir density at 1 um; (iii) slow travellers cross it with a tidal impulse of ~1 m/s.")
+             "Casimir density at 1 um; (iii) slow travellers cross it with a tidal impulse of ~1 m/s; "
+             "(iv) the 1e-21 m figure depends on Ford & Roman's window: with the window set by the "
+             f"curvature radius alone the band must be thinner than {n['a_band_curvature_window_m']:.0e} m.",
+        literature="FR96 eq. (69): a0 <~ (r0/(8 f^4 l_P))^(1/3) l_P ~ 1e-21 m for 1 m. Krasnikov (2003, sec. II) "
+                   "argues the curvature radius sets the window and gets a sub-Planckian band.")
     add(id="B04", where="sec. 2, table", claim="Stabilisation bandwidth faster than the 2.8 ns e-folding time (GGS 2009)",
         model="Massless Ellis-Bronnikov wormhole, linear radial perturbations",
         recomputed=f"Own derivation (delta-phi = 0 gauge), four methods: s = {s:.7f} c/b, e-folding "
@@ -68,7 +72,9 @@ def ledger(r0=1.0, f=0.01):
              f"stabilises only if the loop delay is below sqrt(2)/s = {n['pd_delay_max_s']*1e9:.2f} ns "
              "(proportional control alone never does), and the actuator must deliver NEC-violating stress. "
              "Parametric driving was tested and did not stabilise the full field equation.",
-        literature="GGS value: see stage B")
+        literature="Gonzalez, Guzman & Sarbach 2009, Table I: e-folding 0.846 b/c; Blazquez-Salcedo, Chew & Kunz "
+                   "2018 and Azad et al. 2024: omega_I = -1.182/r0. Agreement to the digits they print. No "
+                   "closed-loop controller for a wormhole was found in the literature.")
     add(id="B05", where="sec. 2, table", claim="Crossing speed for <= 1 g tides (Ellis): <= 2.2 m/s (MT88 tolerance)",
         model="Lateral tide v^2 w |R_lthlth| at the throat; body size 2 m",
         recomputed=f"v <= r0 sqrt(g/w) = {v_max_2m:.3f} m/s; tidal module scan gives {v_max_check:.2f} m/s",
@@ -83,14 +89,21 @@ def ledger(r0=1.0, f=0.01):
         recomputed="Network checker: 353.85 d for h = 2.5 m and 100 m (analytic c/g = 353.82 d)",
         verdict="EXTENDED",
         note="Independent of height. Phase II generalises to networks (cycle weights; Roman rings) and gives "
-             "a schedule-level requirement: every cycle weight must stay positive.")
+             "a schedule-level requirement: every cycle weight must stay positive.",
+        literature="'c/g independent of height' was not found stated; it follows from Frolov, Krtous & Zelnikov "
+                   "2023's T ~ l/I_C for a uniform field. No graph or negative-cycle formulation of wormhole "
+                   "networks was found in the physics literature.")
     add(id="B08", where="sec. 2, table", claim="Far-mouth placement at or below light speed (causal structure of GR)",
         model="Causal structure; topology change",
         recomputed="Local-creation lemma (Morse topology change): the regions joined by a new handle lie in "
                    "the causal past of the creation event, so both mouths start together",
         verdict="QUALIFIED",
         note="True within classical or semiclassical spacetime without closed timelike curves (Lorentzian "
-             "topology change needs them: Geroch 1967). Not established in quantum gravity.")
+             "topology change needs them: Geroch 1967). Not established in quantum gravity: the one explicit "
+             "quantum nucleation of a wormhole (Horowitz et al. 2019) makes the mouths a finite distance "
+             "apart, at a separation fixed by a background that already spans it.",
+        literature="The lemma's ingredients are explicit in Borde et al. 1999 and Dowker, Garcia & Surya 2000; "
+                   "it is a corollary of their construction.")
     add(id="B09", where="sec. 3, concept 1", claim="Throat generator 'ruled out by the causal structure of GR, independently of everything else'",
         model="as B08", recomputed="as B08", verdict="CORRECTED",
         note="Overstated. It is excluded under stated assumptions (no closed timelike curves; topology "
@@ -101,27 +114,44 @@ def ledger(r0=1.0, f=0.01):
         verdict="QUALIFIED", note="Other causal variants exist; all share the same first blocker (holding a throat open).")
     add(id="B11", where="sec. 4, item 8", claim="Mouth mass ranges from zero (massless Ellis) to ~1e4 solar masses (Maldacena-Milekhin)",
         model="Literature", recomputed="Misner-Sharp: zero-mass mouths need -0.35 M_J of negative energy per side",
-        verdict="QUALIFIED", literature="MM mass: see stage B",
+        verdict="QUALIFIED",
+        literature="Maldacena & Milekhin 2021 state no solar-mass figure; their eq. (2.5), M = r_e c^2/G with "
+                   "r_e ~ 1.5e7 m, gives 1.0e4 solar masses per mouth (our arithmetic). The sum rule is "
+                   "Visser, Kar & Dadhich 2003 eq. (8).",
         note="'Zero mass' hides the negative-energy requirement.")
     add(id="B12", where="sec. 4, item 13", claim="~1e42 Pa of tension with negative averaged null energy; forbidden in bulk by QIs for free fields",
         model="QI audit", recomputed=f"Smooth throats: D = {n['D_smooth']:.2e}; Ellis ANEC = -c^4/(8 G r0) = {-c**4/(8*G*r0):.2e} J/m^2",
         verdict="EXTENDED", note="Quantified, and shown to be independent of the flare-out; the only static "
-                                 "spherical escape is the thin band (B03).")
+                                 "spherical escape is the thin band (B03).",
+        literature="FR96's general bound (eq. 95) weakens as b'(r0) -> 1 because of its conservative curvature "
+                   "estimate, which Kuhfittig (2003-2012) used to call the QI 'trivially satisfied'; Fewster & "
+                   "Roman 2005 use static observers. The flare-out-independent result was not found.")
     add(id="B13", where="sec. 4, item 14", claim="Negative-tension rim strings: no natural mechanism known (Visser 1989)",
         model="Smoothed conical defect, excess 2 pi", recomputed=f"QI forces core radius <= {n['w_rim_m']:.1e} m; |mu| = c^2/4G = {c**2/(4*G):.2e} kg/m",
-        verdict="EXTENDED", note="Rims must be Planck-scale objects; whether thin curved loops are consistent sources is a stage B check.")
+        verdict="EXTENDED", note="Rims must be Planck-scale objects.",
+        literature="Visser 1989 treats polyhedra; static circular rims exist (Gibbons & Volkov 2017; Feng, Lemos "
+                   "& Matzner 2021). Krasnikov 2003 reaches the same Planck-thickness estimate. Zero-thickness "
+                   "strings are not distributional sources (Geroch & Traschen 1987).")
     add(id="B14", where="sec. 4, item 15", claim="Topology change forbidden classically without CTCs (Geroch) or outright (Tipler, Borde)",
         model="Classical theorems", recomputed="(literature)", verdict="QUALIFIED",
         note="Tipler's and Borde's results need energy (and generic or compactness) conditions; "
              "Geroch's needs a non-degenerate time-oriented metric. Degenerate (Morse) metrics evade both, "
-             "which is why the local-creation lemma matters.")
+             "which is why the local-creation lemma matters.",
+        literature="Borde 1994 is an unpublished preprint. Gibbons & Hawking 1992: with a spinor structure "
+                   "handles appear in pairs. Horowitz 1991: first-order gravity admits smooth topology change "
+                   "through degenerate metrics.")
     add(id="B15", where="sec. 4, item 16", claim="Unstable in all explicit models; no controller can coordinate faster than light crosses the throat",
         model="Stability programme", recomputed="Ellis s = 1.182 c/b; thin shells stable only for beta^2 < -1/2 (M = 0) "
                                                 "or > ~3.2 (a0 < 3M); PD delay limit sqrt(2)/s",
         verdict="CORRECTED",
         note="(i) Thin shells are stable for exotic equations of state, and stable examples are claimed in the "
-             "literature (stage B), so 'all explicit models' is too strong; (ii) a distributed controller needs no "
-             "global coordination; the binding limits are the loop delay (< 1.2 r0/c) and NEC-violating actuation.")
+             "literature, so 'all explicit models' is too strong; (ii) a distributed controller needs no "
+             "global coordination; the binding limits are the loop delay (< 1.2 r0/c) and NEC-violating actuation.",
+        literature="Stable or partly stable: thin shells (Poisson & Visser 1995); Bronnikov et al. 2013 (phantom "
+                   "dust plus a radial field; radial and axial modes only); 5D rotating Ellis above |J|/A = "
+                   "0.10063 (symmetry-preserving modes); beyond-Horndeski examples (Mironov, Rubakov & Volkova "
+                   "2023; high-energy modes only). Charge slows the Ellis instability without removing it "
+                   "(Blazquez-Salcedo et al. 2026).")
     add(id="B16", where="sec. 4, summary", claim="Twelve of the nineteen items are established or worked out on paper",
         model="Count", recomputed="Items 1-6 established, 7-12 investigated: 12", verdict="VERIFIED", note="")
     add(id="B17", where="sec. 5, R1", claim="ANEC 'proven in flat-space QFT (Faulkner et al. 2016; Hartman et al. 2017)'",
@@ -135,8 +165,9 @@ def ledger(r0=1.0, f=0.01):
     add(id="B19", where="report 01, finding 5", claim="A free rim collapses in 5.2 ns",
         model="Nambu-Goto loop in flat space: R(t) = R0 cos(ct/R0)", recomputed=f"pi R/(2c) = {np.pi*r0/(2*c)*1e9:.2f} ns",
         verdict="QUALIFIED",
-        note="A probe-string estimate; with |G mu/c^2| = 1/4 self-gravity is not small, and the consistency of thin "
-             "curved loops is itself in question (stage B). Read it as 'the light-crossing time'.")
+        note="A probe-string estimate; with |G mu/c^2| = 1/4 self-gravity is not small. Static circular rims exist "
+             "as exact solutions, but no rim dynamics has been computed. Read it as 'the light-crossing time'.",
+        literature="Gibbons & Volkov 2017 (static ring wormhole, tension -c^4/4G); no dynamical rim analysis found.")
     add(id="B20", where="sec. bottom line", claim="First failures: creating a handle, and holding it open with matter violating the averaged NEC macroscopically",
         model="Feasibility framework", recomputed="First decisive blocker is 'hold open' for B, C, D1, D2, D4; 'create remotely' for A",
         verdict="EXTENDED", note="Agrees; adds that local creation is open (not excluded), so holding open is the earliest decisive blocker for every causal architecture.")

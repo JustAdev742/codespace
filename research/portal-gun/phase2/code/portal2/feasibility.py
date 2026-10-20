@@ -69,6 +69,7 @@ def numbers(r0=1.0, f=0.01):
     """Headline numbers for a throat of radius r0 (m), from the package's own formulas."""
     D_smooth = (4 * np.pi / 3) * f**4 * (r0 / l_P) ** 2
     a_band = (3 * r0 * l_P**2 / (32 * np.pi * f**4)) ** (1 / 3)        # D = 1 for the thin band
+    a_band_curv = 3 * l_P**2 / (8 * np.pi * f**4 * r0)                 # same, curvature-only window
     rho_band = c**4 / G / (8 * a_band * r0)                            # J/m^3 (magnitude)
     casimir_1um = np.pi**2 * hbar * c / (720 * (1e-6) ** 4)
     gap_needed = (np.pi**2 * hbar * c / (720 * rho_band)) ** 0.25
@@ -78,6 +79,7 @@ def numbers(r0=1.0, f=0.01):
         "D_smooth": D_smooth,
         "log10_D_smooth": float(np.log10(D_smooth)),
         "a_band_m": a_band,
+        "a_band_curvature_window_m": a_band_curv,
         "rho_band_J_m3": rho_band,
         "log10_band_vs_casimir_1um": float(np.log10(rho_band / casimir_1um)),
         "casimir_gap_for_band_m": gap_needed,
@@ -90,6 +92,10 @@ def numbers(r0=1.0, f=0.01):
         "pressure_force_N": atm * np.pi * r0**2,
         "vertical_pair_days": c / g0 / day,
         "pulsed_max_open_s": np.sqrt(l_P * r0) / c,
+        # Ford & Roman 1999, 4D, cos^2 sampling: T_max = 0.338 (A / |dE|)^(1/3) (hbar = c = 1),
+        # for |dE| = m c^2 of a 70 kg traveller and a 1 m^2 collecting area
+        "quantum_interest_4d_s": 0.338 * (1.0 * hbar * c / (70 * c**2)) ** (1 / 3) / c,
+        "quantum_interest_2d_s": 0.131 * hbar / (70 * c**2),
     }
 
 
@@ -98,15 +104,23 @@ def architectures(r0=1.0, f=0.01):
     A = Architecture("A", "Direct creation (the show's gun)",
                      "The handheld device makes a new connection between here and a chosen remote place.")
     A.reqs = [
-        Req("A1", "create", "Create a connection to a distant region on demand", "THEOREM",
-            "Local-creation lemma (D2 sec. 5): in Morse topology change the regions a new handle "
-            "joins lie in the causal past of one event, so both mouths start at one place; "
-            "Lorentzian (non-degenerate) topology change needs closed timelike curves (Geroch 1967).",
-            "Classical or semiclassical spacetime; topology change either Lorentzian or through "
-            "isolated Morse degeneracies; no closed timelike curves."),
+        Req("A1", "create", "Create a connection to a chosen distant region on demand", "ROBUST",
+            "Classical spacetime: a theorem. Lorentzian (non-degenerate) topology change needs closed "
+            "timelike curves (Geroch 1967); in Morse topology change the regions a new handle joins lie "
+            "in the causal past of one event, so both mouths start there (local-creation lemma, D2 sec. "
+            "7.2, a corollary of Borde et al. 1999 and Dowker, Garcia & Surya 2000). Quantum nucleation: "
+            "the one explicit wormhole construction (Horowitz, Marolf, Santos & Wang 2019) creates the "
+            "mouths a finite distance apart, but that distance is set by a background (a cosmic string in "
+            "anti-de Sitter space) that already spans the gap, and the rate e^(-2 dS) vanishes in the "
+            "static limit. No known process puts a mouth where the device has had no prior causal reach.",
+            "Theorem for classical or semiclassical spacetime without closed timelike curves, with "
+            "topology change Lorentzian or through isolated Morse degeneracies. For quantum nucleation, an "
+            "observation about every known construction, not a theorem."),
         Req("A2", "hold", "Hold a macroscopic shortcut throat open", "NEWPHYS",
-            f"QI audit: smooth throats excluded by 10^{n['log10_D_smooth']:.0f}; the thin-band "
-            f"escape needs |rho| = {n['rho_band_J_m3']:.1e} J/m^3 (no known matter).",
+            f"QI audit: smooth throats excluded by 10^{n['log10_D_smooth']:.0f} for any flare-out; the "
+            f"thin-band escape needs |rho| = {n['rho_band_J_m3']:.1e} J/m^3 (no known matter) under Ford & "
+            f"Roman's window, and a sub-Planckian band ({n['a_band_curvature_window_m']:.0e} m) under the "
+            "curvature-only window (Krasnikov 2003).",
             "Flat-space QIs applied with f = 0.01; free fields."),
         Req("A3", "stabilise", "Keep it stable", "ROBUST", "All explicit models unstable (D2 sec. 6).", ""),
         Req("A4", "endpoints", "Reach 'other dimensions'", "OPEN_NEG", "No theory supplies a mechanism.", ""),
@@ -127,18 +141,22 @@ def architectures(r0=1.0, f=0.01):
             f"Vertical pairs reach closed causal curves in {n['vertical_pair_days']:.0f} days; "
             "the network checker gives days to millennia; manageable by schedule.", ""),
         Req("B6", "device", "Handheld (light) mouth", "NEWPHYS",
-            f"Misner-Sharp sum rule (a theorem for static spherical mouths): a mouth lighter than "
-            f"r0 c^2/2G = {abs(n['misner_sharp_per_side_MJ']):.2f} Jupiter masses must contain negative "
-            "energy of that size; otherwise it weighs as much as a black hole of the throat's size.",
-            "Static, spherically symmetric mouth."),
+            f"Misner-Sharp sum rule (Visser, Kar & Dadhich 2003 eq. 8): a static spherical mouth lighter "
+            f"than r0 c^2/2G = {abs(n['misner_sharp_per_side_MJ']):.2f} Jupiter masses contains negative "
+            "energy of that size; otherwise it weighs as much as a black hole of the throat's size. For any "
+            "shape, the Riemannian Penrose inequality (Huisken & Ilmanen 2001) still forces negative "
+            "energy density somewhere outside a light mouth (D2 sec. 4.4).",
+            "Time-symmetric or maximal slice; throat outermost from that end."),
     ]
     C = Architecture("C", "Distributed system",
                      "A facility creates throats locally, keeps them, and carries mouths at <= c; the "
                      "handheld unit is a terminal.")
     C.reqs = [
         Req("C1", "create", "Create a throat locally", "OPEN_NEG",
-            "Classical: needs CTCs (Geroch) or degenerate metrics; quantum nucleation proposed "
-            "(Horowitz et al. 2019) without controllable rates.", ""),
+            "Classical: needs CTCs (Geroch) or degenerate (Morse) metrics; a single index-2 point makes a "
+            "handle causally continuously (Dowker & Surya 1998; Dowker & Garcia 1998). Quantum: one "
+            "explicit nucleation in anti-de Sitter space (Horowitz et al. 2019), rate e^(-2 dS), "
+            "traversability argued rather than computed; no controllable rate.", ""),
         Req("C2", "hold", "Hold it open", "NEWPHYS", "As A2.", ""),
         Req("C3", "stabilise", "Stability", "ROBUST", "As B3.", ""),
         Req("C4", "traverse", "Survivable crossing", "OK", "As B4.", ""),
@@ -161,16 +179,19 @@ def architectures(r0=1.0, f=0.01):
         Req("D1f", "device", "Handheld", "NEWPHYS", "As B6.", ""),
     ]
     D2 = Architecture("D2", "Polygonal flat-face portal",
-                      "Visser's cut-and-paste portal: flat faces, exotic matter only on straight "
-                      "rim strings; the best-behaved geometry for travellers.")
+                      "Visser's cut-and-paste portal: flat faces, exotic matter only on the rim "
+                      "strings; the best-behaved geometry for travellers.")
     D2.reqs = [
         Req("D2a", "create", "Create the cut-and-paste topology", "OPEN_NEG", "As C1.", ""),
         Req("D2b", "hold", "Rim strings with tension -c^4/4G", "NEWPHYS",
-            f"QI forces rim core radius <= {n['w_rim_m']:.1e} m (Planck scale): quantum-gravity regime.",
+            f"QI forces rim core radius <= {n['w_rim_m']:.1e} m (Planck scale): quantum-gravity regime. "
+            "Krasnikov (2003) reaches the same Planck-thickness estimate for a smoothed portal.",
             "Smoothed conical defect; flat-space QI."),
         Req("D2c", "stabilise", "Rim and corner dynamics", "OPEN",
-            "Thin curved loops are not consistent sources in GR (to be checked: Unruh et al. 1989); "
-            "straight edges need corner supports; no stability analysis exists.", ""),
+            "Static circular rims exist as exact solutions (Gibbons & Volkov 2017; Feng, Lemos & Matzner "
+            "2021). Dynamics need a finite core: zero-thickness strings are not distributional sources "
+            "(Geroch & Traschen 1987) and idealised conical worldsheets must be totally geodesic (Unruh et "
+            "al. 1989; Boisseau, Charmousis & Linet 1997). No stability analysis of a rim exists.", ""),
         Req("D2d", "traverse", "Survivable crossing", "OK", "Flat faces: no tides away from the rim.", ""),
         Req("D2e", "device", "Handheld", "OPEN", "Rim mass-energy -1.1 M_J per metre radius with "
             "zero Komar mass: what a hand would feel is not established.", ""),
@@ -188,8 +209,12 @@ def architectures(r0=1.0, f=0.01):
     D4.reqs = [
         Req("D4a", "create", "Lay the corridor", "ENG", "Built at <= c along the route (Krasnikov 1998).", ""),
         Req("D4b", "hold", "NEC-violating walls", "NEWPHYS",
-            "QI constraints make the walls Planck-thin with huge negative energy (Everett & Roman 1997; to be checked).", ""),
-        Req("D4c", "endpoints", "Chronology with two corridors", "OPEN_NEG", "Two tubes can form closed timelike curves.", ""),
+            "Everett & Roman (1997): QIs make the walls <~ 10^4 Planck lengths thick, and a tube 1 m long "
+            "and 1 m wide needs ~10^16 galaxy masses of negative energy. Every Natario-class warp drive "
+            "violates the WEC, and the NEC under plausible conditions (Santiago, Schuster & Visser 2022).", ""),
+        Req("D4c", "endpoints", "Chronology with two corridors", "OPEN_NEG",
+            "Two tubes can form closed timelike curves (Everett & Roman 1997); Krasnikov (1998) calls "
+            "such devices 'square roots' of time machines.", ""),
     ]
     D5 = Architecture("D5", "Long wormhole (QFT-supported)",
                       "Traversable wormholes supported by quantum fields, longer than the outside path.",
@@ -199,7 +224,11 @@ def architectures(r0=1.0, f=0.01):
             "Fails by definition: these constructions are computed to be slower than the outside route "
             "(Gao-Jafferis-Wall; Maldacena-Milekhin-Popov), which is what lets them respect the achronal "
             "ANEC; a shortcut version would need the AANEC violation of milestone M1.", ""),
-        Req("D5b", "create", "Make one", "OPEN", "Requires magnetically charged near-extremal black holes or a dark sector.", ""),
+        Req("D5b", "create", "Make one", "OPEN",
+            "Requires magnetically charged near-extremal black holes or a dark sector. The humanly "
+            "traversable example has mouths of radius ~1.5e7 m (about 1e4 solar masses each, from "
+            "M = r_e c^2/G), a throat ~3e3 light years long and ~1e4 years of outside travel time "
+            "(Maldacena & Milekhin 2021).", ""),
     ]
     return [A, B, C, D1, D2, D3, D4, D5]
 
@@ -297,9 +326,10 @@ def milestones():
         Milestone("M8", "Can a device-scale mouth be light?",
                   "A mouth with ADM mass << r0 c^2/2G and its negative Misner-Sharp energy confined.",
                   "Lightweight mouth satisfying M3/M4.",
-                  "Misner-Sharp bookkeeping (D2 sec. 4) beyond spherical symmetry.",
+                  "Misner-Sharp bookkeeping (D2 sec. 4) beyond spherical symmetry; the Penrose-inequality "
+                  "corollary of D2 sec. 4.4 gives existence of negative energy, not its amount.",
                   "Non-spherical designs with smaller requirements.",
-                  "A general theorem extending the sum rule.",
+                  "A general quantitative theorem extending the sum rule.",
                   "Handheld devices.", "Everything upstream.", needs=["M3", "M10"]),
         Milestone("M9", "Do natural traversable wormholes exist?",
                   "A detection (lensing by negative-mass-like objects, shadows, echoes) or a mechanism that creates and keeps them.",
@@ -308,12 +338,14 @@ def milestones():
                   "Any robust candidate.",
                   "Not a stopping criterion: absence proves little.",
                   "Route B without topology creation.", "Holding open is still needed if it must be enlarged."),
-        Milestone("M10", "Does the 'heavy or negative' mass rule extend beyond time symmetry?",
-                  "A Penrose-type inequality for traversable throats in stationary or dynamical data.",
-                  "Bound M >= sqrt(A/16 pi) unless the energy density is negative for some observer.",
+        Milestone("M10", "Does the 'heavy or negative' mass rule hold for general (dynamical) mouths?",
+                  "A Penrose-type inequality for traversable throats in general initial data.",
+                  "Bound M >= sqrt(A/16 pi) unless the dominant energy condition fails somewhere.",
                   "Spacetime Penrose inequality methods; marginally outer trapped surfaces.",
-                  "Proof for stationary rotating mouths.",
-                  "A counterexample: a light, positive-energy traversable mouth.",
+                  "Already holds on time-symmetric and maximal slices, which include circular stationary "
+                  "rotating mouths (Huisken & Ilmanen 2001, applied in D2 sec. 4.4).",
+                  "A light traversable mouth whose matter obeys the dominant energy condition. (With the weak "
+                  "energy condition alone, counterexamples to Penrose-type inequalities exist: Jaracz 2023.)",
                   "Settles whether a handheld mouth must carry negative energy (M8).", "None upstream."),
     ]
     return M
@@ -338,7 +370,7 @@ def mermaid(ms):
               '  M2 --> CREATE["Local creation"]', '  M9 -.-> EXIST["Pre-existing throat (route B)"]',
               "  CREATE --> M6", "  EXIST --> M6", "  HOLD --> M5",
               '  M7 --> NET["Portal network"]', '  M8 --> HAND["Handheld terminal"]', "  NET --> HAND",
-              '  REMOTE["Remote creation (route A)"]:::dead', "  REMOTE -. excluded by the local-creation lemma .-> CREATE",
+              '  REMOTE["Remote creation (route A)"]:::dead', "  REMOTE -. excluded classically; no known quantum route .-> CREATE",
               "  classDef dead fill:#f3e3e3,stroke:#b04040"]
     return "\n".join(lines)
 

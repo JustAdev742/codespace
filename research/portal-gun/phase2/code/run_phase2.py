@@ -16,7 +16,7 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
-from portal2 import audit, chronology as ch, energy as en, families as fam, feasibility as fz
+from portal2 import audit, charged, chronology as ch, energy as en, families as fam, feasibility as fz
 from portal2 import qi, search, stability as st, tides
 from portal2.constants import c, G, g0, l_P, M_jup, day, year
 
@@ -88,8 +88,55 @@ def run_qi():
             rec.update({"beta_max": tc["beta_max"], "a_r_peak_g": tc["a_r_max"] / g0, "a_th_peak_g": tc["a_th_max"] / g0})
         reds.append(rec)
     out["redshift_structures"] = reds
-    out["analytic"] = {k: v for k, v in fz.numbers().items()}
+    # stage B: the two window prescriptions on the Morris-Thorne thin band (static observer at the
+    # throat is the worst case under both), and the flare-out b'(r0) = 1 case
+    win = []
+    pos = np.geomspace(1e-5, 3.0, 300)
+    lg = np.concatenate([-pos[::-1], [0.0], pos])
+    for a in (0.03, 0.01, 0.003, 0.001):
+        g = fam.ThinBand(1.0, a)
+        win.append({"a": a,
+                    "D_fr96_throat": float(qi.local_deficit(g, 0.0, 1.0, F, "fr96")["D"][0]),
+                    "D_fr96_analytic": (32 * np.pi / 3) * F**4 * a**3 / l_P**2,
+                    "D_curvature_selfconsistent_max": float(qi.static_deficit_curvature_window(g, lg, F)["D"].max()),
+                    "D_curvature_analytic": (8 * np.pi / 3) * F**4 * a / l_P**2})
+    nb = fz.numbers()
+    out["window_comparison"] = {"thin_band": win, "a_star_fr96_m": nb["a_band_m"],
+                                "a_star_curvature_m": nb["a_band_curvature_window_m"],
+                                "a_star_curvature_in_l_P": nb["a_band_curvature_window_m"] / l_P}
+    zero = []
+    for Lz in (1.0, 3.0, 10.0):
+        g = fam.two_scale(1.0, 0.0, Lz)
+        gam = np.geomspace(1 + 1e-6, 1e6, 400)
+        best, _ = qi.scan(g, F, l_extent=4 * Lz)
+        zero.append({"L": Lz, "D_max_at_throat_over_ref": float(qi.local_deficit(g, np.zeros_like(gam), gam, F)["D"].max() / REF),
+                     "D_max_over_ref": best["D"] / REF, "l_at_max": best["l"], "gamma_at_max": best["gamma"],
+                     "r_at_max": float(g.local(np.array([best["l"]]))[0][0])})
+    out["zero_flare_out_at_throat"] = zero
+    out["analytic"] = {k: v for k, v in nb.items()}
     save("qi_results.json", out)
+    return out
+
+
+# ------------------------------------------------------------------ charged wormholes near extremality
+
+def run_charged():
+    crit = []
+    for q in (0.5, 0.9, 0.95, 0.99, 0.999, 0.9999):
+        p = charged.critical_at(q)
+        crit.append({"Q_over_rT": q, "M_over_rT": p["M"] / p["r_T"], "G_throat": p["G_throat"],
+                     "Delta_Phi": 0.5 * np.log(p["G_throat"]), "gamma_from_rest": charged.crossing_gamma(p["G_throat"])})
+    sym = []
+    for mu in (0.5, 0.9, 0.99, 0.999, 0.9999):
+        p = charged.supercritical_symmetric(mu)
+        sym.append({"Q_over_rT": mu, "M_over_rT": p["M"] / p["r_T"], "G_throat": p["G_throat"],
+                    "gamma_from_rest": charged.crossing_gamma(p["G_throat"])})
+    out = {"source": "background of Gonzalez, Guzman & Sarbach 2009 as written in Blazquez-Salcedo et al. 2026, eqs. 2-7",
+           "critical": crit, "supercritical_symmetric": sym, "fields_rT_1m_extremal": charged.field_limits(1.0),
+           "tau0_rT_1m_s": {"Q_over_rT_0.95": charged.tau0_scaled(0.13, 1e4, 1.0),
+                            "Q_over_rT_0.9999": charged.tau0_scaled(1.1 * year, 1e4, 1.0)},
+           "tau0_reference": "critical wormhole, r_T = 10 km: 0.13 s at 0.95, about 1.1 yr at 0.9999 (Blazquez-Salcedo et al. 2026)"}
+    save("charged_results.json", out)
     return out
 
 
@@ -353,6 +400,7 @@ def main():
     qir = run_qi(); print(f"qi done {time.time() - t0:.0f}s", flush=True)
     save("design_search.json", search.random_search(400)); print(f"design search done {time.time() - t0:.0f}s", flush=True)
     run_energy(); print(f"energy done {time.time() - t0:.0f}s", flush=True)
+    run_charged(); print(f"charged done {time.time() - t0:.0f}s", flush=True)
     stab = run_stability(full); print(f"stability done {time.time() - t0:.0f}s", flush=True)
     chron = run_chronology(); print(f"chronology done {time.time() - t0:.0f}s", flush=True)
     run_framework(); print(f"framework done {time.time() - t0:.0f}s", flush=True)

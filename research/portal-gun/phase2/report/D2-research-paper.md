@@ -2,47 +2,65 @@
 
 *Project Portal, phase II, deliverable 2. Written 2026-10-20. Code: [`../code/portal2/`](../code/portal2/);
 results: [`../results/`](../results/); figures: [`../figures/`](../figures/). Every number in this paper is produced
-by that code and re-checked by its tests (`../code/tests/`, 37 tests); section 10 records which results were
-derived before the literature was consulted and how they compare with it.*
+by that code and re-checked by its tests (`../code/tests/`, 45 tests); section 10 records which results were
+derived before the literature was consulted, how they compare with it, and which turned out to be known.*
 
 ## Abstract
 
 We restate the portal-gun problem as a set of coupled constraints on a spacetime with a handle and test which
-constraints can be satisfied together. Five results carry most of the weight.
+constraints can be satisfied together. Five results carry most of the weight. Each is labelled with what the
+literature comparison of §10 found: **known** (published before, reproduced here independently), **sharpened**
+(a published method made stronger or more general) or **not found** (not located in the literature we
+searched, which is not the same as new).
 
-1. **Quantum inequalities at a smooth throat do not depend on how gently it flares.** Optimising the
-   Ford–Roman method over the observer's speed, the worst sampled deficit at any reflection-symmetric throat
-   of radius $r_0$ with no length scale shorter than $r_0$ is $D = \tfrac{4\pi}{3} f^4 (r_0/\ell_P)^2$
-   for every flare-out $1-b'(r_0) \le 2$ (proof in §5.2; numerically $1.000 \pm 0.001$ times this for
-   flare-outs from 0.2 to 0.001). For $r_0 = 1$ m and $f = 0.01$, $D = 1.6\times10^{62}$.
-2. **The only escape that a walking traveller survives is a thin exotic band.** Quantum-inequality
-   compatibility needs a length scale far below $r_0$. A redshift structure that would supply it turns the
-   mouth into a gravitational well or hill: a traveller who starts at walking speed crosses at 0.93–0.999 c
-   or not at all. A thin band of proper width $a$ gives $D \propto a^3$, reaching $D = 1$ at
-   $a \approx 9\times10^{-22}$ m (reproducing Ford & Roman's order of magnitude). It is tidally survivable (a
-   ~1 m/s kick), but needs an energy density of about $-1.6\times10^{64}$ J/m³. A random search over 400
-   throat designs, with traveller constraints fixed in advance, runs straight to this corner.
-3. **Exact energy bookkeeping.** For any static, spherically symmetric mouth,
-   $\int_{r_0}^\infty 4\pi r^2\rho\,dr = M_{\rm ADM} - r_0c^2/2G$. A mouth is either as heavy as a black hole
-   of its own size (0.35 Jupiter masses for 1 m) or contains negative energy of that size. The static energy
-   density need not be negative anywhere. The ANEC integral along the radial null geodesic is
-   $-\tfrac{c^4}{4\pi G}\int e^{-\Phi}(r'/r)^2 dl < 0$ for every such wormhole.
-4. **Stability.** Linearising the Einstein–phantom-scalar system about the Ellis wormhole in a gauge that is
-   regular at the throat gives a single master equation. Its unstable mode has growth rate
-   $s = 1.181973\,c/b$ (e-folding 2.822 ns for $b = 1$ m), found by four independent numerical methods.
-   Delayed feedback can hold it only if the whole sense–compute–act loop is faster than $\sqrt2/s$ = 3.99 ns
-   per metre. Rapid periodic (Kapitza-type) driving suppresses the mode where single-mode theory says it
-   should. In the full field equation, however, it never produced a stable run, and it needs oscillating
-   exotic stress roughly 10² times the static support.
-5. **Topology and causality.** In Morse-type topology change, the regions a new handle joins lie in the
-   causal past of a single event, so a new handle's two mouths are born together. A network of short
-   throats is free of closed causal curves if and only if a "time function" exists on its mouths; this
-   becomes a negative-cycle test on a graph, which we implement and validate (including a Roman ring).
+1. **Quantum inequalities at a smooth throat do not depend on how gently it flares** (sharpened). Optimising
+   the Ford–Roman method over the observer's speed and using the exact boosted curvature, the worst sampled
+   deficit at a reflection-symmetric throat of radius $r_0$ with no length scale shorter than $r_0$ is
+   $D = \tfrac{4\pi}{3} f^4 (r_0/\ell_P)^2$ for every flare-out $0 < 1-b'(r_0) \le 2$ (proof in §5.2;
+   numerically $1.000 \pm 0.001$ times this for flare-outs from 0.2 to 0.001). For $r_0 = 1$ m and $f = 0.01$,
+   $D = 1.6\times10^{62}$. Ford & Roman's general bound weakens as $b'(r_0) \to 1$, and that weakening has been
+   used to argue the inequality is "trivially satisfied" there. It is not: at $b'(r_0) = 1$ exactly, the
+   deficit returns just beside the throat.
+2. **The only escape that a walking traveller survives is a thin exotic band, and even that depends on a
+   convention** (known, with a new comparison). A redshift structure that would supply the needed short length
+   scale turns the mouth into a gravitational well or hill: a traveller who starts at walking speed crosses at
+   0.93–0.999 c or not at all. A thin band of proper width $a$ gives $D \propto a^3$, reaching $D = 1$ at
+   $a \approx 9\times10^{-22}$ m (Ford & Roman's result). It is tidally survivable (a ~1 m/s kick), but needs
+   about $-1.6\times10^{64}$ J/m³. A random search over 400 throat designs, with traveller constraints fixed in
+   advance, runs straight to this corner. The door exists only under Ford & Roman's choice of sampling window.
+   If the window is set by the curvature radius alone, as Krasnikov (2003) argues, the band must be thinner
+   than $3\times10^{-63}$ m, far below the Planck length.
+3. **Energy bookkeeping** (known in spherical symmetry; the general-shape step not found). For a static,
+   spherically symmetric mouth, $\int_{r_0}^\infty 4\pi r^2\rho\,dr = M_{\rm ADM} - r_0c^2/2G$ (Visser, Kar &
+   Dadhich 2003). A mouth is therefore either as heavy as a black hole of its own size (0.35 Jupiter masses for
+   1 m) or contains negative energy of that size. For mouths of any shape, on time-symmetric or maximal slices,
+   the Riemannian Penrose inequality still forces negative energy density somewhere outside a light mouth. The
+   ANEC integral along the radial null geodesic is $-\tfrac{c^4}{4\pi G}\int e^{-\Phi}(r'/r)^2 dl < 0$ for every
+   static spherical wormhole (Visser 1995).
+4. **Stability** (growth rate known; control and driving not found). Linearising the Einstein–phantom-scalar
+   system about the Ellis wormhole in a gauge that is regular at the throat gives a single master equation.
+   Its unstable mode has growth rate $s = 1.181973\,c/b$ (e-folding 2.822 ns for $b = 1$ m), found by four
+   numerical methods and matching González, Guzmán & Sarbach (2009). Delayed feedback can hold it only if
+   the whole sense–compute–act loop is faster than $\sqrt2/s$ = 3.99 ns per metre. Rapid periodic
+   (Kapitza-type) driving suppresses the mode where single-mode theory says it should, but in the full field
+   equation it never produced a stable run, and it needs oscillating exotic stress roughly 10² times the
+   static support. Charge, which the literature shows can make the instability arbitrarily slow, does so only
+   by turning the mouth into a near-extremal black-hole exterior: for a 1 m throat that means about 0.7 Jupiter
+   masses, a field $8\times10^8$ times the Schwinger field, and a gravitational well that accelerates a
+   traveller to $\gamma \sim 10^4$.
+5. **Topology and causality** (lemma known in substance; network method not found). In Morse-type topology
+   change, the regions a new handle joins lie in the causal past of a single event, so a new handle's two
+   mouths are born together. This is a corollary of Borde et al. (1999) and Dowker, Garcia & Surya (2000), and
+   it does not extend to quantum nucleation, which can create mouths a finite distance apart (Horowitz et al.
+   2019). A network of short throats is free of closed causal curves if and only if a "time function" exists
+   on its mouths. This becomes a negative-cycle test on a graph, which we implement and validate (including a
+   Roman ring). We did not find this formulation in the physics literature.
 
-No new physical mechanism for a portal was found. What was established is a sharper and more general form
-of the obstacles. In particular, the quantum-inequality obstruction cannot be evaded by geometric shaping
-within static spherical symmetry, short of a Planck-scale or sub-nuclear-scale structure, and the
-remaining loopholes are listed with their costs.
+No new physical mechanism for a portal was found, and no result here changes the verdict of phase I. What was
+established is a sharper and more general form of the obstacles, with their costs, together with
+independent reproductions of several published results. The quantum-inequality obstruction cannot be evaded
+by geometric shaping within static spherical symmetry, short of a band far below nuclear size (and below the
+Planck length under the stricter window).
 
 ## 1. Scope, method and conventions
 
@@ -159,11 +177,19 @@ the boundary term $e^{-\Phi}r'/r$ vanishing at both ends. This is the Raychaudhu
 It shows the averaged null energy condition (ANEC) fails along the radial geodesic of **every** static
 spherically symmetric wormhole. It also shows what sets the size of the violation: how fast $\ln r$ changes
 along the throat. For Ellis it equals $-c^4/(8Gr_0) = -1.5\times10^{43}$ J/m² (1 m). It can be made small only
-by making $r$ change slowly over a long distance, that is, by a long throat.
+by making $r$ change slowly over a long distance, that is, by a long throat. *Prior art:* the same closed form
+appears, in Schwarzschild-type coordinates, as eq. (7) of Visser, Kar & Dadhich (2003), who attribute the
+integration by parts to Visser's book (1995, pp. 133–134). Our proper-length form is a change of variables.
+Kar (2022) gives the Ellis value over one side, which doubles to ours.
 
 Because the identity is pure geometry ($R_{ab}k^ak^b$, not $T_{ab}$), it holds in any metric theory of gravity:
 a short throat needs $R_{ab}k^ak^b < 0$ along some null geodesic. Modified gravity can change what supplies
-that negative "focusing", not whether it is needed (§10, item 9, on the stability of theories that try).
+that negative "focusing", not whether it is needed. Santiago, Schuster & Visser (2022) make the same point
+for warp drives: in modified gravity they still violate the purely geometric null convergence condition.
+Theories that try to supply it without exotic matter run into stability problems. Horndeski theories admit
+no stable, static, spherically symmetric, asymptotically flat wormholes (Rubakov 2016; Evseev & Melichev
+2018). Beyond-Horndeski examples evade that no-go, but are shown stable only against high-energy modes,
+with slow tachyonic instabilities unconstrained (Mironov, Rubakov & Volkova 2023).
 
 ### 4.3 The shortcut property and the achronal ANEC
 
@@ -175,7 +201,12 @@ geodesics are the ones for which the achronal ANEC (AANEC) is conjectured to hol
 **a shortcut requires an AANEC violation**, which known quantum field theory is conjectured never to
 supply on macroscopic scales. Long wormholes, those slower than the route around, need no achronal
 geodesic and evade this; that is why the controlled examples in the literature are all long (phase I
-report, §2.11). Status: a conjecture-backed exclusion, not a theorem.
+report, §2.11). Status: a conjecture-backed exclusion, not a theorem. *Prior art:* this is the standard
+argument. Maldacena, Milekhin & Popov write that "traversable short wormholes that join very distant points
+in space … are not allowed by the Einstein equations combined with the achronal average null energy
+condition", and their wormholes always take longer than the outside route ($\pi\ell > d$). Horowitz et al.
+(2019) add that this is expected of all traversable wormholes, from the generalised second law and boundary
+causality.
 
 ### 4.4 Energy bookkeeping: the Misner–Sharp sum rule
 
@@ -188,6 +219,33 @@ So each mouth is either at least as heavy as a black hole of the throat's size (
 = 0.35 Jupiter masses for 1 m), or it contains negative energy in this measure, $-0.35$ Jupiter masses per side
 for a massless mouth. Conversely, a mouth with $M_{\rm ADM} \ge r_0c^2/2G$ can have $\rho \ge 0$ everywhere. The
 NEC still fails, through tension exceeding energy density, but nothing static carries negative energy.
+*Prior art:* the sum rule is eq. (8) of Visser, Kar & Dadhich (2003), "a simple generalization of the
+ordinary mass formula for relativistic stars". Azreg-Aïnou (2015) states its corollary $M \ge r_0/2$ for
+$\rho \ge 0$. Hafemann & Kontou (2025) prove the equivalence "Penrose inequality reversed ⇔ $\int r^2\rho < 0$"
+for spherical time-symmetric data and apply it to a static throat. Our derivation reproduces these.
+
+**Beyond spherical symmetry.** The sign statement survives without symmetry, as an existence result. On a
+slice with vanishing extrinsic curvature (a $t$ = const slice of any static spacetime), the constraint
+equation gives $R = 16\pi\rho$, with $\rho$ the energy density measured by the static observers (Bray 2001,
+eq. 2; Hochberg & Visser 1997, eq. 14). Huisken & Ilmanen (2001) prove that an asymptotically flat end
+whose exterior region (outside the outermost minimal surface $\Sigma$, containing no other compact minimal
+surface) has $R \ge 0$ satisfies $M_{\rm ADM} \ge \sqrt{|\Sigma_i|/16\pi}$ for each component $\Sigma_i$ of
+$\Sigma$. Applied to a wormhole whose throat is outermost as seen from one end, the contrapositive reads:
+
+> *If a static mouth of any shape is lighter than a black hole with the throat's area,
+> $M < \sqrt{A/16\pi}\,c^2/G$, then static observers measure negative energy density somewhere between the
+> throat and that end's infinity.*
+
+The same holds on maximal slices ($\mathrm{tr}K = 0$), where $R = 16\pi\rho + K_{ij}K^{ij} \ge 16\pi\rho$. The
+$t$ = const slices of circular stationary axisymmetric metrics are maximal, so slowly or rapidly rotating
+mouths are covered, with $\rho$ measured by the zero-angular-momentum observers. Two cautions. It gives
+existence, not an amount: there is no integral identity outside spherical symmetry. And it uses the
+*outermost* minimal surface; Huisken & Ilmanen show the inequality can fail for larger minimal surfaces
+hidden behind it. Schoen & Yau (1979) give the weaker statement that every end of a slice with $R \ge 0$ has
+positive mass unless the slice is flat $\mathbb R^3$, so a zero-mass wormhole such as Ellis must have
+$\rho < 0$ somewhere. We did not find the general-shape statement written for wormholes. It is a one-line
+consequence of Huisken & Ilmanen's theorem.
+
 Two further facts were checked numerically for every family:
 
 - **Tolman (Komar) mass:** $(\rho + p_l + 2p_t)\,4\pi r^2 e^\Phi = \tfrac{d}{dl}(r^2\Phi'e^\Phi)$, a total
@@ -245,8 +303,12 @@ $f = 0.01$ throughout, as in Ford & Roman; §5.8 gives the sensitivity.
 ### 5.2 Theorem: smooth throats, any flare-out
 
 *Setting.* A reflection-symmetric throat ($\Phi'(0) = 0$) with flare-out $\varepsilon \equiv 1 - b'(r_0) =
-2r_0r''(0) \in (0, 2]$, redshift curvature $|\Phi''(0)|r_0^2 \le 1$, and variation lengths no shorter than the
-curvature length (a "smooth" throat: no length scale below $r_0$).
+2r_0r''(0) \in (0, 2]$, redshift curvature $|\Phi''(0)|r_0^2 \le 1$, and variation lengths that do not cut the
+window: in the optimal observer's frame, the Lorentz-contracted distance over which the geometry changes is
+no shorter than the curvature length there. For a gentle flare this means the throat region is long, at
+least $\sim r_0\sqrt{2/\varepsilon}$ in proper length. That is the natural size of a throat whose flare is gentle
+everywhere: $r$ grows by order $r_0$ only after $l \sim r_0\sqrt{2/\varepsilon}$. (A "smooth" throat: no length
+scale below $r_0$.)
 
 *Claim.* The maximum local deficit over radial geodesic observers at the throat is
 
@@ -277,6 +339,36 @@ Two-scale throats with long gentle regions give $D/D_{\rm ref} = 1.0000$ for $\v
 0.5%. Where the geometry varies on a scale shorter than $r_0$, the factor drops to 0.20 (two-scale,
 $\varepsilon = 0.5$) or 0.25 (Ellis, $\varepsilon = 2$). Those are O(1) changes against $10^{62}$.
 
+*Relation to Ford & Roman.* Ford & Roman (1996) optimise the observer's speed in one example, $\Phi = 0$,
+$b = r_0$, which is our $\varepsilon = 1$; they find $v = 1/\sqrt2$, our $\gamma^2 = 2/\varepsilon$. Their
+general bound for $b'(r_0) \ge 0$ (their eq. 95) leaves $v$ free and bounds the boosted curvature by
+$\gamma^2/r_m^2$, which they call "a 'safe' bound … due to our rather conservative condition on $R'_{\max}$".
+Optimised over $v$, it becomes $r_m/r_0 \lesssim \sqrt{2/\varepsilon}\,f^{-1}(\ell_P/r_0)^{1/2}$, which weakens
+as $\varepsilon \to 0$; they remark that it "is weakest when $b'_0$ is extremely close to 1". The weakening
+comes from the conservative curvature estimate. The exact boosted components at the throat are proportional
+to $\varepsilon\gamma^2$, not $\gamma^2$, and with them the $\varepsilon$-dependence cancels. Fewster & Roman
+(2005) use a null-contracted inequality along static observers, deliberately avoiding boosts; their bound
+also weakens, as $\sqrt{1-b'_0}$, and they set aside $b'_0 = 1$ as non-generic.
+
+*The case $b'(r_0) = 1$.* Kuhfittig (2006, 2008, 2012) chose $b'(r_0) = 1$ so that Ford & Roman's eq. (95)
+is "trivially satisfied". At exactly $\varepsilon = 0$ no radial observer at the throat sees negative energy
+(our $\rho' = (1 - \varepsilon\gamma^2)/8\pi r_0^2 > 0$), but the NEC still fails just off the throat, and the
+argument above applies there with the local flare-out $\varepsilon_{\rm loc} = 2rr''/(1 - r'^2)$. For two-scale
+throats with $b'(r_0) = 1$ and second scale $L$ = 1, 3, 10 $r_0$, the deficit is exactly 0 at the throat, and
+its maximum over position and speed is 0.16, 0.44 and 1.10 times $D_{\rm ref}$, at $|l| \approx$ 0.9, 1.7 and
+3.3 $r_0$ ([results/qi_results.json](../results/qi_results.json), `zero_flare_out_at_throat`). Zero
+flare-out at the throat only moves the problem a short distance. (Kuhfittig himself notes that the
+inequality "cannot simply be circumvented in this manner", and his 2008 paper treats the region off the
+throat by fine-tuning the redshift function, which is the redshift route of §5.3–5.4.)
+
+*Why no smooth shaping can help (an argument, not a proof).* With $\Phi$ = const the NEC fails exactly where
+$r'' > 0$, and $r'$ must rise from 0 at the throat to 1 at infinity, so $\int r''\,dl = 1$ over the
+NEC-violating region of each side. Either that region contains a point where $\varepsilon_{\rm loc}$ is of
+order one and the geometry varies on a scale of order $r$, where the local deficit reaches order
+$D_{\rm ref}(r)$; or the flare is gentle everywhere, so the region is long and the throat value applies; or the
+integral is carried by a short length scale, which is the thin band of §5.3. A redshift function opens the
+fourth possibility of §5.3, the redshift structure.
+
 ![QI deficit versus flare-out and versus the width of the exotic region](../figures/p2_fig1_qi_throat.png)
 
 *Fig. 1.* Left: worst QI deficit at the throat, divided by $\tfrac{4\pi}{3}f^4(r_0/\ell_P)^2$, against flare-out.
@@ -292,7 +384,22 @@ candidates are:
   ones see a larger $|\rho'|$ but over a contracted window, and $D \propto \gamma^{-2}$. For the compact family,
   $D/D_{\rm ref}$ scales as $a^3$ (fitted exponent 3.0 for $a \le 0.05\,r_0$, Fig. 1 right). For
   Morris–Thorne's thin band, $D \simeq \tfrac{32\pi}{3}f^4a^3/(r_0\ell_P^2)$, which reaches 1 at
-  $a_* = (3r_0\ell_P^2/32\pi f^4)^{1/3} = 9.2\times10^{-22}$ m for 1 m. This reproduces Ford & Roman's $\sim10^{-21}$ m.
+  $a_* = (3r_0\ell_P^2/32\pi f^4)^{1/3} = 9.2\times10^{-22}$ m for 1 m. This reproduces Ford & Roman's
+  $\sim10^{-21}$ m (their eq. 69, $a_0 \lesssim (r_0/8f^4\ell_P)^{1/3}\ell_P$; the factor-1.6 difference in
+  $a_*$ comes from how the variation length is measured).
+
+  **This door depends on the window.** The $a^3$ law comes from capping the sampling window at the band
+  width, Ford & Roman's "distance to a boundary". A static observer at the throat sees a density that does
+  not change in time, and the band's curvature radius is $\sqrt{ar_0}$, far larger than $a$. If the window
+  is limited only by the curvature radius within it, as Krasnikov (2003, §II) argues, the same observer gives
+  $D \simeq \tfrac{8\pi}{3}f^4ar_0/\ell_P^2$. That reaches 1 only at $a = 3\ell_P^2/(8\pi f^4r_0) =
+  3.1\times10^{-63}$ m, which is $2\times10^{-28}\,\ell_P$. Both prescriptions are implemented
+  (`qi.local_deficit(window=...)`, and `qi.static_deficit_curvature_window`, which finds the window
+  self-consistently); they agree with these formulas to 1–6% for $a \le 0.01\,r_0$
+  ([results/qi_results.json](../results/qi_results.json), `window_comparison`). They give identical results
+  for smooth throats and rims, where the variation length is not the shortest scale. Neither has been derived
+  from a curved-space QI with controlled remainders (milestone M0). Until one is, the thin band is "not
+  excluded" only under the more permissive of two defensible conventions.
 - **Redshift structure** (large boost-invariant $R_{\hat t\hat l\hat t\hat l} = \Phi''$). In the throat model the
   deficit becomes $\approx \tfrac{8\pi}{3}f^4/(|\Phi''|\ell_P^2)$ for $|\Phi''|r_0^2 \gg 1$. Compatibility then needs
   $|\Phi''| \ge \tfrac{8\pi}{3}f^4/\ell_P^2$, a Planckian curvature independent of $r_0$.
@@ -328,7 +435,8 @@ region thins (log-slope 2.5 overall, 3 at small $a$), and the optimum runs to th
 door open: a band of proper width $\lesssim 9\times10^{-22}\,(r_0/1\text{ m})^{1/3}$ m. Its energy density is
 $|\rho| \approx c^4/(8Gar_0) = 1.6\times10^{64}$ J/m³ for 1 m. That is $10^{67.6}$ times the Casimir energy density
 between plates 1 μm apart, or the Casimir density at a plate gap of $1.3\times10^{-23}$ m, which is smaller
-than the band and a hundred million times smaller than a proton.
+than the band and a hundred million times smaller than a proton. Under the curvature-only window of §5.3 the
+door closes: the band would have to be sub-Planckian.
 
 ### 5.5 Flat-face portals push the problem into the rims
 
@@ -339,16 +447,29 @@ $\rho \approx -1/4\pi w^2$ with curvature radius $\sim w$, so $D \approx \tfrac{
 compatibility needs $w \le 0.35\,\ell_P/f^2 = 5.6\times10^{-32}$ m. A traveller crossing the face away from
 the rim feels nothing (C6 satisfied identically). The cost is that **the rim must be a Planck-scale object
 with a Planck-order tension**: $c^2/4G$ per metre is the Planck mass per Planck length divided by 4. This is a
-quantum-gravity regime, where neither the QI used nor classical GR can be trusted. Whether thin curved loops
-are even consistent sources in GR, and whether negative-tension codimension-2 objects can be dynamical, is
-taken up in §10.
+quantum-gravity regime, where neither the QI used nor classical GR can be trusted.
+
+*Prior art.* Visser (1989) derived the edge tension, $-\varphi/4\pi G$ for bending angle $\varphi$, for
+polyhedra with straight edges. Static circular rims also exist as exact solutions: the zero-mass limit of
+Kerr is a ring wormhole with tension $-c^4/4G$ (Gibbons & Volkov 2017), and Feng, Lemos & Matzner (2021)
+construct smoothed axisymmetric "portals". So our earlier restriction to straight edges was unnecessary for
+statics. Krasnikov (2003) reaches the same conclusion as this subsection for a smoothed portal: the hoops
+must be about a Planck length thick, with about $10^{-2}$ solar masses of negative energy for human size.
+We found no other QI analysis of rims. What remains open is dynamics. Strings of zero thickness are not
+distributional sources in GR (Geroch & Traschen 1987), and idealised conical worldsheets are forced to be
+totally geodesic (Unruh, Hayward, Israel & McManus 1989; Boisseau, Charmousis & Linet 1997). A moving rim
+therefore needs a finite core, and no stability analysis of one exists.
 
 ### 5.6 Pulsed portals do not help
 
 A throat held open only for a time $\tau_{\rm open}$, with stresses $\sim c^4/Gr_0^2$, gives
 $D \sim (c\tau_{\rm open})^4/(\ell_P^2r_0^2)$. $D \le 1$ needs $\tau_{\rm open} \lesssim \sqrt{\ell_Pr_0}/c = 1.3\times10^{-26}$ s
 for 1 m, far shorter than the time light takes to cross the throat. That is too short to form a throat,
-let alone cross one.
+let alone cross one. We found no QI-derived maximum open time for a pulsed Morris–Thorne wormhole in the
+literature. The nearest results are wall thicknesses for warp bubbles and Krasnikov tubes (Pfenning & Ford
+1997; Everett & Roman 1997), a Planck-scale back-reaction time for superluminal warp bubbles (Finazzi,
+Liberati & Barceló 2009), and an explicit back-reaction calculation in which the Gao–Jafferis–Wall wormhole
+stays open for less than a Planck time (Freivogel et al. 2020). This estimate is a scaling argument only.
 
 ![Length scales the QI requires](../figures/p2_fig2_qi_scales.png)
 
@@ -368,9 +489,11 @@ $\log_{10}D = 62.2 + 4\log_{10}(f/0.01) + 2\log_{10}(r_0/1\text{ m}) - \log_{10}
 Here $N$ is the number of free fields whose QIs add, and $\kappa \in [0.2, 1]$ is the window-prescription factor
 (§5.2 numerics). Granting at once $f = 10^{-3}$ (−4), $N = 10^3$ (−3) and $\kappa = 0.2$ (−0.7) still leaves
 $D \approx 10^{54}$ for a 1 m smooth throat. The thin-band width scales as $a_* \propto f^{-4/3}r_0^{1/3}N^{1/3}$:
-even $N = 10^{12}$ fields only move it to $10^{-17}$ m. The conclusion is insensitive to every assumption
-we can vary. What it rests on is the applicability of flat-space QIs, with any $f \le 1$, in regions whose
-curvature radius is far above the Planck length (§11).
+even $N = 10^{12}$ fields only move it to $10^{-17}$ m. For smooth throats and rims the conclusion is
+insensitive to every assumption we can vary. One assumption is not: the window prescription for thin bands
+(§5.3) moves the required width from $10^{-21}$ m to $10^{-63}$ m. It matters only for the thin band, and only
+in the direction of closing it. What everything rests on is the applicability of flat-space QIs, with any
+$f \le 1$, in regions whose curvature radius is far above the Planck length (§11).
 
 ### 5.9 Falsification attempts and their outcomes
 
@@ -378,7 +501,8 @@ curvature radius is far above the Planck length (§11).
 |---|---|
 | Gentler flare-out removes the QI violation (the obvious objection to Ford & Roman) | Refuted (§5.2): an observer at $\gamma = \sqrt{2/\varepsilon}$ restores the full deficit |
 | The observer-speed optimum is a numerical artefact | Analytic proof plus agreement of two independent numerical methods (local and sampled) |
-| The result depends on the window prescription | Changes the deficit by ≤ 5× (κ); conclusion unchanged |
+| The result depends on the window prescription | Smooth throats: changes the deficit by ≤ 5× (κ); conclusion unchanged. Thin band: the curvature-only window (Krasnikov 2003) moves $a_*$ from $10^{-21}$ to $10^{-63}$ m, closing that door (§5.3) |
+| $b'(r_0) = 1$ makes the QI "trivially satisfied" (Kuhfittig) | Refuted: the deficit is zero at the throat and 0.16–1.1 $D_{\rm ref}$ just beside it (§5.2) |
 | The a³ law is a property of one family | Compact family and MT thin band both give exponent 3 at small width |
 | A clever redshift profile helps | It does, but only by making the mouth untraversable on foot (§5.4); the search finds no exception |
 | Limiting case $r_0 \to 0$ | $D \to 0$: Planck-scale throats are allowed by this method, as Ford & Roman found |
@@ -419,8 +543,21 @@ Checks:
 | Time-domain evolution of a Gaussian, N = 3000 (late-time fit) | 1.18215 |
 
 There is a single growing mode, spherically symmetric and even. Its e-folding time is $0.846043\,b/c$, which is
-**2.822 ns for a 1 m throat**, confirming the baseline's 2.8 ns by an independent derivation (literature
-comparison in §10). Fig. 3 shows the mode and the convergence.
+**2.822 ns for a 1 m throat**, confirming the baseline's 2.8 ns by an independent derivation. Fig. 3 shows the
+mode and the convergence.
+
+*Prior art.* González, Guzmán & Sarbach (2009, Table I) give the e-folding time $0.846\,b/c$ for the massless
+Ellis wormhole. They derive it from a gauge-invariant variable whose master equation has an infinite
+potential wall at the throat, removed by a Darboux transformation (regularised potential
+$W = -3/(1+x^2)^2$). Blázquez-Salcedo, Chew & Kunz (2018) and Azad et al. (2024) find $\omega_I = -1.182/r_0$.
+Our number agrees with all three. The $\delta\phi = 0$ gauge itself is not new: GGS use it to rebuild the
+regular metric perturbation (their §III D), and Blázquez-Salcedo et al. fix their gauge by $\delta\phi = 0$ and
+integrate a first-order system. We did not find our single second-order equation for $\delta R$ in that gauge
+in the papers read; it is equivalent to theirs. In the nonlinear evolution the throat collapses to a black
+hole or expands, depending on the sign of the perturbation (GGS, part II; Shinkai & Hayward 2002). The
+collapse time of Shinkai & Hayward grows logarithmically with the pulse energy, with a coefficient that
+converts to about $0.85\,a$ in static time, close to the linear e-folding time (a cross-check made in the
+stage B notes, not by those authors).
 
 ![Ellis unstable mode and convergence of the methods](../figures/p2_fig3_ellis_mode.png)
 
@@ -463,8 +600,12 @@ $u = -Kq(t-\tau) - D\dot q(t-\tau)$, we computed the rightmost characteristic ro
 infinitesimal-generator method (Breda, Maset & Vermiglio 2005) and minimised it over $(K, D)$. Stabilising
 gains exist iff $s\tau < \sqrt2$: the boundary was found between 1.414 (root $-1\times10^{-4}$) and 1.420
 ($+3\times10^{-3}$), with the optimal gains degenerating at the boundary ($K \to s^2$, $D \to \tau s^2$). This is
-the known critical delay for an inverted pendulum (§10). Proportional control alone cannot stabilise a
-second-order unstable mode.
+the known critical delay for delayed PD control of an inverted pendulum, $\tau < \sqrt{2/a}$ for
+$\ddot x = ax + \dots$ (Stépán 1989, 1994; Insperger, Milton & Stépán 2013), which we recovered numerically
+before looking it up. Proportional control alone cannot stabilise a second-order unstable mode. Applying it
+to a wormhole is, as far as we found, new: the literature has open-loop compensation, in which a traveller's
+effect is cancelled by matched ghost radiation (Hayward, Kim & Lee 2002 in two dimensions), and Shinkai &
+Hayward's (2002) remark that maintenance would need "continual adjustments", but no closed-loop controller.
 
 For the Ellis throat: **loop delay < $1.196\,r_0/c$, i.e. 3.99 ns per metre of throat radius**. That covers
 sensing, computation and actuation, and the actuator must apply stress with a negative null component (the
@@ -479,9 +620,13 @@ Three consequences:
 - **The actuator is itself QI-limited.** Delivering negative energy within $\tau \sim$ ns inside the throat
   is bounded by $\sim\hbar/(c^3\tau^4)$ per unit volume, about $10^{-26}$ J/m³. Compensating one traveller
   needs $\sim mc^2 = 6\times10^{18}$ J within ~3 ns.
-- **Quantum interest (Ford & Roman 1999).** In flat space for free fields, a negative pulse of energy $|E|$
-  must be repaid within $\sim\hbar/|E|$ ($\sim10^{-53}$ s for $mc^2$ of 70 kg). That excludes such pulses
-  wherever the free-field result applies.
+- **Quantum interest (Ford & Roman 1999).** For free massless fields in flat space, a negative pulse of energy
+  $|\Delta E|$ must be followed by a larger positive one within a maximum delay. In four dimensions that delay
+  is $\approx 0.338\,(A\hbar c/|\Delta E|)^{1/3}/c$ for collecting area $A$: about $2\times10^{-24}$ s for
+  $|\Delta E| = mc^2$ of 70 kg and $A$ = 1 m². (Our first draft used the two-dimensional form, $\sim\hbar/|E|$,
+  which gives $10^{-54}$ s.) Fewster & Teo (2000) find that in four dimensions a positive delta-function
+  pulse can never compensate a negative one. That excludes such pulses wherever the free-field result
+  applies.
 
 ### 6.6 Parametric (Kapitza) driving: a negative result
 
@@ -511,38 +656,88 @@ Even at the best point the drive is ~$1.1\sqrt2s\Omega b^2 \approx 10^2$–$10^{
 potential, at $\Omega \sim 10^{11}$ rad/s for 1 m. In stress terms that is oscillating exotic stress of order
 $10^{44}$–$10^{45}$ Pa. **Status:** stabilisation not demonstrated; leading-order averaging is misleading for
 this system; and even a successful drive would multiply the exotic-matter requirement rather than remove it.
+*Prior art:* none found. The stage B search found no study of parametric, Kapitza or Floquet stabilisation
+of a classical wormhole or of any other unstable gravitational soliton. The nearest is a Floquet-driven SYK
+(Maldacena–Qi) wormhole, a quantum-mechanical model in which resonances close the wormhole.
 
 ![Parametric driving](../figures/p2_fig4_parametric.png)
 
 *Fig. 4.* Growth rate of the throat perturbation against drive amplitude (scaled to the single-mode
 threshold).
 
-### 6.7 What is established for each class
+### 6.7 Charge, rotation, and what is established for each class
+
+**Charge buys lifetime by turning the mouth into a black-hole exterior.** Adding an electric charge to the
+Ellis wormhole (phantom scalar plus Maxwell field) does not remove the instability, but its rate falls
+towards zero as the solution approaches the extremal Reissner–Nordström black hole, $Q_e = M = r_T$. For a
+critical wormhole of throat radius 10 km, Blázquez-Salcedo et al. (2026) give $\tau_0 = 0.13$ s at
+$Q_e/r_T = 0.95$ and about 1.1 years at 0.9999. At fixed $Q_e/r_T$ the rate scales as $1/r_T$, so a 1 m
+throat would have $\tau_0 \approx 13$ μs and about 58 minutes. We worked out what that limit costs a portal,
+using their background metric (`charged.py`,
+[results/charged_results.json](../results/charged_results.json)):
+
+| $Q_e/r_T$ (critical family) | 0.5 | 0.9 | 0.95 | 0.99 | 0.999 | 0.9999 |
+|---|---|---|---|---|---|---|
+| $M/r_T$ | 0.5 | 0.9 | 0.95 | 0.99 | 0.999 | 0.9999 |
+| $-g_{tt}$ at the throat | 0.16 | $4.7\times10^{-3}$ | $1.1\times10^{-3}$ | $4.5\times10^{-5}$ | $4.4\times10^{-7}$ | $4.4\times10^{-9}$ |
+| Lorentz factor at the throat, from rest at infinity | 2.5 | 15 | 30 | 150 | 1,500 | 15,000 |
+
+- **A deep well.** The long-lived limit is the near-horizon limit: $-g_{tt}$ at the throat falls as
+  $\approx 4.5(1 - Q_e/r_T)^2$. A traveller who starts at rest arrives at $\gamma \approx 1.5/(1 - Q_e/r_T)$,
+  which violates the walk-in constraint C7 ($|\Delta\Phi| \lesssim 10^{-16}$) by sixteen orders of magnitude in
+  $\Delta\Phi$. This is the redshift trade-off of §5.4 again.
+- **A heavy mouth.** $M \to r_Tc^2/G$, about 0.71 Jupiter masses for 1 m.
+- **An impossible field.** At $Q_e = r_T$ = 1 m the field at the throat is $1.0\times10^{27}$ V/m, $7.9\times10^8$
+  times the Schwinger field at which the vacuum breaks down into electron–positron pairs. Below the
+  Schwinger field needs $r_T \gtrsim 8\times10^8$ m, the same arithmetic that makes small charged black holes
+  shed their charge. The magnetic version escapes pair production but needs $1.1\times10^{34}$ Dirac monopoles,
+  a particle never observed.
+- **The phantom field is still there.** Charge adds to the exotic matter; it does not replace it.
+
+The paper itself warns that nonlinear instabilities may still appear. We did not find this cost analysis
+in the literature; the search was not exhaustive (§10).
+
+**Rotation.** In five dimensions, rotating Ellis wormholes with equal angular momenta lose the unstable mode
+above $|J|/A = 0.10063$, for perturbations that preserve the symmetry. In four dimensions there are
+slow-rotation indications of stabilisation near 30–50% of the extremal limit (Azad et al. 2024), and no
+non-perturbative result. Rotation, like charge, pushes the exterior towards a black hole's (here extremal
+Kerr).
 
 | Class | Linear stability | Basis |
 |---|---|---|
-| Ellis–Bronnikov (phantom scalar) | Unstable, one mode, $s = 1.182\,c/b$ | Own derivation, four methods; literature (§10) |
-| Thin shells | Stable only for $\beta^2 < -1/2$ ($M = 0$), $\ge 3/2+\sqrt3$ near horizon, or below a negative bound for $a_0 > 3M$ | Own derivation; Poisson & Visser 1995 |
-| Feedback-stabilised Ellis | Possible in principle only with loop delay < $\sqrt2/s$ and NEC-violating actuation | Own computation; control theory |
-| Parametrically driven Ellis | Not stabilised in any run | Own computation (new) |
-| Flat-face rims | No stability analysis exists; thin curved loops may not be consistent sources | §10 |
+| Ellis–Bronnikov (phantom scalar) | Unstable, one mode, $s = 1.182\,c/b$ | Own derivation, four methods; agrees with GGS 2009, BCK 2018 |
+| Charged Ellis–Bronnikov | Unstable for every charge; rate → 0 near extremality | GGS 2009 (charged); Blázquez-Salcedo et al. 2026; the cost analysis above is ours |
+| Rotating Ellis | 5D: stable above $\lvert J\rvert/A = 0.10063$ (symmetry-preserving modes); 4D: open | Literature (stage B notes) |
+| Phantom dust plus a radial field | Stable for $\ell = 0$ and axial modes; polar $\ell \ge 1$ not done | Bronnikov, Lipatova, Novikov & Shatskiy 2013 |
+| Beyond-Horndeski scalar–tensor | Free of ghosts and gradient instabilities at high energy; slow tachyonic modes unconstrained | Mironov, Rubakov & Volkova 2023; Horndeski itself has a no-go (Evseev & Melichev 2018) |
+| Thin shells | Stable only for $\beta^2 < -1/2$ ($M = 0$), $\ge 3/2+\sqrt3$ near horizon, or below a negative bound for $a_0 > 3M$ | Own derivation; agrees with Poisson & Visser 1995 |
+| Feedback-stabilised Ellis | Possible in principle only with loop delay < $\sqrt2/s$ and NEC-violating actuation | Own computation; the delay bound is Stépán's |
+| Parametrically driven Ellis | Not stabilised in any run | Own computation; no prior study found |
+| Flat-face rims | No stability analysis exists; static circular rims are exact solutions | §5.5 |
 
 None of this proves that every possible throat is unstable. What fails is every route to stability examined
-here, and each route that works mathematically (thin-shell equations of state, feedback) does so by
-requiring more of the same unknown matter.
+here, and each route that works mathematically does so by requiring more of the same unknown matter, or by
+moving the mouth towards a black hole. Thin-shell equations of state and feedback are examples of the
+first; charge and rotation of the second.
 
 ## 7. Topology change: can a connection be made on demand?
 
 ### 7.1 What the classical theorems assume
 
 - **Geroch (1967):** a compact topology-changing region in a spacetime with a non-degenerate, time-oriented
-  Lorentzian metric must contain closed timelike curves.
+  Lorentzian metric must contain closed timelike curves. This is kinematical: no field equation or energy
+  condition is used. (We read the abstract; the precise hypotheses come from later restatements.)
 - **Tipler (1977) and Borde (1994):** close the remaining doors under energy conditions (and generic or
-  compactness assumptions).
-- **Gibbons & Hawking (1992):** with a spinor structure, handles appear in pairs.
+  compactness assumptions). Tipler uses the Einstein equations with the weak energy condition. Borde's
+  paper is an unpublished preprint, whose Theorem 3 uses a null generic condition and a null convergence
+  condition.
+- **Gibbons & Hawking (1992):** with a spinor structure and an everywhere non-singular Lorentzian metric,
+  a single handle is forbidden and pairs are "kinematically possible", though closed timelike curves are
+  still present (Geroch).
 
 None of these excludes topology change through a **degenerate** metric, which is how it is usually modelled
-(Horowitz 1991; Sorkin's Morse-theory programme).
+(Horowitz 1991, who shows first-order gravity admits smooth topology change through metrics degenerate on a
+set of measure zero; Sorkin's Morse-theory programme).
 
 ### 7.2 Lemma: new handles are born local
 
@@ -574,6 +769,27 @@ neighbourhood is carried into a neighbourhood of the belt sphere, which shrinks 
   manifold, $\#2(S^2\times S^1)$. What the lemma constrains is geometry: where the mouths are when the
   handle forms.
 
+*Prior art.* Every ingredient of the proof is explicit in Borde, Dowker, Garcia, Sorkin & Surya (1999) and
+Dowker, Garcia & Surya (2000): the gradient of $f$ is timelike, and the sets swept by the timelike curves
+ending at and starting from the critical point "could be interpreted as the chronological past and future
+of the critical point". For index 1 the past set splits into the two pieces the handle joins. Dowker & Surya
+(1998) describe the index-1 case qualitatively: "parts of the universe which were spatially far apart
+suddenly become close". What we did not find stated is the conclusion as we use it, that the joined
+regions lie in the causal past of one event and the mouths are born together. We therefore class the lemma as a corollary of their construction, not
+as a new theorem.
+
+*What the lemma does not cover.* Quantum nucleation is outside it, and there the conclusion fails. Horowitz,
+Marolf, Santos & Wang (2019) construct Euclidean instantons, in asymptotically anti-de Sitter backgrounds,
+in which a test cosmic string breaks into two nearly static particles that stand in for black holes with
+identified horizons: a wormhole created with its mouths **a finite distance apart** (a few AdS radii,
+growing logarithmically as the background is tuned), not at one point. Its rate is $\Gamma = |K|e^{-2\Delta S}$,
+which goes to zero in the exactly static limit. Its traversability is argued from earlier work, not
+computed. So "mouths are born together" is a property of Morse topology change, not of topology change in
+general. What survives for a portal gun is weaker and is an observation, not a theorem. In this example, as
+in black-hole pair creation in background fields, the separation is set by a background that already spans
+the gap (the string, the field), so choosing where the far mouth appears still requires having reached
+that place first.
+
 ### 7.3 The causally continuous route
 
 A handle $S^2\times S^1$ can be added with an index-1 critical point (a 1-handle) or with an index-2 point (a
@@ -583,7 +799,18 @@ discontinuity and singular particle production (as in the 1+1 "trousers"), while
 continuous. So **if** topology change happens at all and the conjecture holds, the less singular way to make
 a single handle is surgery on a small loop. By the lemma, its attaching circle lies in the creation event's
 past, so its mouths are still born together. The route changes the creation physics, not the need for
-transport. (Whether this point appears in the literature is checked in §10.)
+transport.
+
+*Prior art: this is known.* Dowker & Surya (1998, §5) and Dowker & Garcia (1998, §3.2) give exactly this
+index-2 creation of $S^2\times S^1$ (and of "$\mathbb R^3$ with a handle"), contrast it with the index-1 route
+in which "two distant regions" touch, and note that "the index 2 cobordism for creation of a wormhole is
+harder to visualise". It is the topology of black-hole pair creation (the Garfinkle–Strominger instanton,
+as Dowker 2002 notes). By the Lickorish–Wallace theorem every 3+1 topology change has a cobordism with
+index-2 points only (Dowker & Surya 1998, §4). The status of the conjecture is also narrower than our
+first draft said. Borde & Sorkin never published it. Dowker, Garcia & Surya (2000) proved one direction:
+an index-1 or index-$(n-1)$ point makes every Morse geometry built from that function causally discontinuous.
+For the other indices only some geometries are shown to be causally continuous, and Dowker (2002) writes
+that the general converse "remains to be proved". We rediscovered this route; the credit is theirs.
 
 ### 7.4 Does a portal gun need on-demand creation?
 
@@ -626,6 +853,19 @@ zero-length limit of a cycle of weight $2L/c$, not a time machine.
 - A Roman ring of four links, each with a positive single-pair margin of 3.3 μs, is a time machine as a whole
   (the configuration of Visser 1997).
 
+*Prior art.* The pieces are known; the formulation was not found. Morris, Thorne & Yurtsever (1988) made the
+moving-mouth time machine, Frolov & Novikov (1990) the gravitational one. Visser (1994) adds the time shifts
+around a two-wormhole loop ($\Delta T = T_1 + T_2 + 2\zeta$) and Visser (1997) the Roman ring, whose loop
+interval $N^2(\ell^2 - T^2)$ our checker reproduces as a negative cycle. Everett & Roman (1997) observe that
+a network of Krasnikov tubes avoids closed timelike curves only if there is "a preferred axis", which is
+the existence of a time function in words. Frolov, Krtouš & Zelnikov (2023) describe the continuum version:
+a non-potential acceleration field is a non-trivial first-cohomology class, and clocks drift apart around
+non-contractible loops. We found no physics paper that treats a network of wormholes as a graph, defines a
+time function on the mouths, or uses a negative-cycle test. The algorithm itself is textbook, and
+programming-contest problems (UVa 558; USACO 2006) pose "wormholes into the past" as Bellman–Ford
+exercises, without light cones or proper-time drifts. What is ours is the relativistic version: light-time
+edges, drift-dependent time shifts, the chronology margin as a single number, and the validation.
+
 ### 8.2 Drift budgets for a portal gun
 
 Each time below is how long clocks synchronised at the start take to drift by the light-time margin
@@ -646,6 +886,10 @@ A **launched mouth** (the "projectile" picture of a portal gun) fired at speed $
 keeps a margin fraction $1 - (1 - \sqrt{1-\beta^2})/\beta$: 0.95 at 0.1 c, 0.37 at 0.9 c, 0.13 at 0.99 c. It is
 never a time machine by itself, but it approaches one as the launch speed approaches $c$.
 
+The "$c/g$ for any height" rule for a vertical pair was not found stated in the sources read. It follows from
+Frolov, Krtouš & Zelnikov's (2023) $T \approx \ell/I_C$ for a potential difference $I_C$ between the mouths
+at separation $\ell$, on substituting a uniform field, $I_C = g\ell/c^2$.
+
 ![Chronology budgets](../figures/p2_fig6_chronology.png)
 
 *Fig. 6.* Time until a closed causal curve exists for linked mouths synchronised at the start.
@@ -658,8 +902,12 @@ creates a time machine. One that alternates the heights of a pair, or closes pai
 Two cautions:
 
 - **Margin for vacuum polarisation.** The margin must be kept well above zero, not just positive, because
-  vacuum polarisation grows as closed null geodesics are approached (Kim & Thorne 1991; Hawking 1992). The
-  required safety factor is not established.
+  vacuum polarisation grows as closed null geodesics are approached. Kim & Thorne (1991) estimate
+  $T^{\mu\nu} \sim (b/D)^N/(D\,\Delta t^3)$ for throat radius $b$, loop length $D$ and proper time $\Delta t$ to
+  the chronology horizon, and argue that a Planck-time cutoff leaves the metric perturbation tiny,
+  $\sim\ell_P/D$. Hawking (1992) argues that the cutoff should be invariant, which makes the perturbation of
+  order one. Visser's (1997) Roman ring keeps the back-reaction small all the way to the reliability horizon.
+  The required safety factor is therefore not established, and the literature disagrees on its order.
 - **Transport is the expensive part.** Every correction means moving a mouth, which needs the mouth-transport
   physics of milestone M6.
 
@@ -694,6 +942,8 @@ extreme length scale:
 | Feedback control | instability | NEC-violating actuation within 4 ns per metre (§6.5) |
 | Parametric drive | instability | 10² × the exotic stress, and still unstable (§6.6) |
 | Heavy mouth | negative energy density | a 0.35 Jupiter-mass mouth (§4.4) |
+| Charge near extremality | fast instability | a black-hole exterior: 0.7 Jupiter masses, $8\times10^8$ times the Schwinger field, $\gamma \sim 10^4$ on arrival (§6.7) |
+| Zero flare-out at the throat | negative energy at the throat | the same deficit just beside it (§5.2) |
 
 A single principle seems to sit behind the QI rows. Free-field QIs bound negative energy density by
 $\hbar c/\ell^4$, where $\ell$ is the shortest length in the region, while the Einstein equations demand
@@ -716,7 +966,8 @@ spherical symmetry or flat-face geometry, flat-space QIs with any $f \le 1$, a w
 from known fields. What excludes it, in order:
 
 1. the QI (smooth throats and every redshift design);
-2. the absence of any matter reaching $10^{64}$ J/m³ in a $10^{-21}$ m band (thin bands);
+2. the absence of any matter reaching $10^{64}$ J/m³ in a $10^{-21}$ m band (thin bands; under the
+   curvature-only window the band would have to be sub-Planckian, §5.3);
 3. the quantum-gravity regime of the required rims (flat faces).
 
 A feasible mathematical region exists only if one adds one of three assumptions: a source of NEC-violating

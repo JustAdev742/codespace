@@ -179,10 +179,72 @@
    "v_inf_min": 297034325.19385606
   }
  ],
+ "window_comparison": {
+  "thin_band": [
+   {
+    "a": 0.03,
+    "D_fr96_throat": 2.9032090698825276e+58,
+    "D_fr96_analytic": 3.463558958093108e+58,
+    "D_curvature_selfconsistent_max": 1.0798585956927959e+61,
+    "D_curvature_analytic": 9.62099710581419e+60
+   },
+   {
+    "a": 0.01,
+    "D_fr96_throat": 1.208218548282105e+57,
+    "D_fr96_analytic": 1.2827996141085589e+57,
+    "D_curvature_selfconsistent_max": 3.1751904913799366e+60,
+    "D_curvature_analytic": 3.2069990352713967e+60
+   },
+   {
+    "a": 0.003,
+    "D_fr96_throat": 3.4015654324349847e+55,
+    "D_fr96_analytic": 3.463558958093109e+55,
+    "D_curvature_selfconsistent_max": 9.592425010831082e+59,
+    "D_curvature_analytic": 9.62099710581419e+59
+   },
+   {
+    "a": 0.001,
+    "D_fr96_throat": 1.2752710457934648e+54,
+    "D_fr96_analytic": 1.2827996141085588e+54,
+    "D_curvature_selfconsistent_max": 3.2040197704269394e+59,
+    "D_curvature_analytic": 3.2069990352713968e+59
+   }
+  ],
+  "a_star_fr96_m": 9.203373764104512e-22,
+  "a_star_curvature_m": 3.11817992148343e-63,
+  "a_star_curvature_in_l_P": 1.9292623226650374e-28
+ },
+ "zero_flare_out_at_throat": [
+  {
+   "L": 1.0,
+   "D_max_at_throat_over_ref": 0.0,
+   "D_max_over_ref": 0.1566345216668264,
+   "l_at_max": -0.8802840841123957,
+   "gamma_at_max": 1.0,
+   "r_at_max": 1.156854385881523
+  },
+  {
+   "L": 3.0,
+   "D_max_at_throat_over_ref": 0.0,
+   "D_max_over_ref": 0.43739871079015635,
+   "l_at_max": -1.680882435998719,
+   "gamma_at_max": 1.3351296411454516,
+   "r_at_max": 1.2942365259979571
+  },
+  {
+   "L": 10.0,
+   "D_max_at_throat_over_ref": 0.0,
+   "D_max_over_ref": 1.0959233178764753,
+   "l_at_max": -3.3060460651532626,
+   "gamma_at_max": 1.8886480819033877,
+   "r_at_max": 1.4411552240613352
+  }
+ ],
  "analytic": {
   "D_smooth": 1.6034995176356985e+62,
   "log10_D_smooth": 62.205068833620125,
   "a_band_m": 9.203373764104512e-22,
+  "a_band_curvature_window_m": 3.11817992148343e-63,
   "rho_band_J_m3": 1.643766182052865e+64,
   "log10_band_vs_casimir_1um": 67.57897592857277,
   "casimir_gap_for_band_m": 1.2742540361002264e-23,
@@ -194,6 +256,8 @@
   "pd_delay_max_s": 3.991047063523014e-09,
   "pressure_force_N": 318321.8756249858,
   "vertical_pair_days": 353.8231828137785,
-  "pulsed_max_open_s": 1.3410168690106188e-26
+  "pulsed_max_open_s": 1.3410168690106188e-26,
+  "quantum_interest_4d_s": 1.9311461233896635e-24,
+  "quantum_interest_2d_s": 2.1958770037141106e-54
  }
 }

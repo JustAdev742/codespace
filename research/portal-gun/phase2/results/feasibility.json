@@ -4,8 +4,8 @@
    "key": "A",
    "name": "Direct creation (the show's gun)",
    "portal": true,
-   "first_decisive": "A1: Create a connection to a distant region on demand [THEOREM]",
-   "worst": "A1 [THEOREM]",
+   "first_decisive": "A1: Create a connection to a chosen distant region on demand [ROBUST]",
+   "worst": "A1 [ROBUST]",
    "conditional_after": [
     "A2",
     "A3",
@@ -102,10 +102,10 @@
     {
      "key": "A1",
      "stage": "create",
-     "text": "Create a connection to a distant region on demand",
-     "status": "THEOREM",
-     "basis": "Local-creation lemma (D2 sec. 5): in Morse topology change the regions a new handle joins lie in the causal past of one event, so both mouths start at one place; Lorentzian (non-degenerate) topology change needs closed timelike curves (Geroch 1967).",
-     "assumptions": "Classical or semiclassical spacetime; topology change either Lorentzian or through isolated Morse degeneracies; no closed timelike curves.",
+     "text": "Create a connection to a chosen distant region on demand",
+     "status": "ROBUST",
+     "basis": "Classical spacetime: a theorem. Lorentzian (non-degenerate) topology change needs closed timelike curves (Geroch 1967); in Morse topology change the regions a new handle joins lie in the causal past of one event, so both mouths start there (local-creation lemma, D2 sec. 7.2, a corollary of Borde et al. 1999 and Dowker, Garcia & Surya 2000). Quantum nucleation: the one explicit wormhole construction (Horowitz, Marolf, Santos & Wang 2019) creates the mouths a finite distance apart, but that distance is set by a background (a cosmic string in anti-de Sitter space) that already spans the gap, and the rate e^(-2 dS) vanishes in the static limit. No known process puts a mouth where the device has had no prior causal reach.",
+     "assumptions": "Theorem for classical or semiclassical spacetime without closed timelike curves, with topology change Lorentzian or through isolated Morse degeneracies. For quantum nucleation, an observation about every known construction, not a theorem.",
      "log10_deficit": null,
      "na": false
     },
@@ -114,7 +114,7 @@
      "stage": "hold",
      "text": "Hold a macroscopic shortcut throat open",
      "status": "NEWPHYS",
-     "basis": "QI audit: smooth throats excluded by 10^62; the thin-band escape needs |rho| = 1.6e+64 J/m^3 (no known matter).",
+     "basis": "QI audit: smooth throats excluded by 10^62 for any flare-out; the thin-band escape needs |rho| = 1.6e+64 J/m^3 (no known matter) under Ford & Roman's window, and a sub-Planckian band (3e-63 m) under the curvature-only window (Krasnikov 2003).",
      "assumptions": "Flat-space QIs applied with f = 0.01; free fields.",
      "log10_deficit": null,
      "na": false
@@ -202,8 +202,8 @@
      "stage": "device",
      "text": "Handheld (light) mouth",
      "status": "NEWPHYS",
-     "basis": "Misner-Sharp sum rule (a theorem for static spherical mouths): a mouth lighter than r0 c^2/2G = 0.35 Jupiter masses must contain negative energy of that size; otherwise it weighs as much as a black hole of the throat's size.",
-     "assumptions": "Static, spherically symmetric mouth.",
+     "basis": "Misner-Sharp sum rule (Visser, Kar & Dadhich 2003 eq. 8): a static spherical mouth lighter than r0 c^2/2G = 0.35 Jupiter masses contains negative energy of that size; otherwise it weighs as much as a black hole of the throat's size. For any shape, the Riemannian Penrose inequality (Huisken & Ilmanen 2001) still forces negative energy density somewhere outside a light mouth (D2 sec. 4.4).",
+     "assumptions": "Time-symmetric or maximal slice; throat outermost from that end.",
      "log10_deficit": null,
      "na": false
     }
@@ -220,7 +220,7 @@
      "stage": "create",
      "text": "Create a throat locally",
      "status": "OPEN_NEG",
-     "basis": "Classical: needs CTCs (Geroch) or degenerate metrics; quantum nucleation proposed (Horowitz et al. 2019) without controllable rates.",
+     "basis": "Classical: needs CTCs (Geroch) or degenerate (Morse) metrics; a single index-2 point makes a handle causally continuously (Dowker & Surya 1998; Dowker & Garcia 1998). Quantum: one explicit nucleation in anti-de Sitter space (Horowitz et al. 2019), rate e^(-2 dS), traversability argued rather than computed; no controllable rate.",
      "assumptions": "",
      "log10_deficit": null,
      "na": false
@@ -349,7 +349,7 @@
    "key": "D2",
    "name": "Polygonal flat-face portal",
    "portal": true,
-   "description": "Visser's cut-and-paste portal: flat faces, exotic matter only on straight rim strings; the best-behaved geometry for travellers.",
+   "description": "Visser's cut-and-paste portal: flat faces, exotic matter only on the rim strings; the best-behaved geometry for travellers.",
    "reqs": [
     {
      "key": "D2a",
@@ -366,7 +366,7 @@
      "stage": "hold",
      "text": "Rim strings with tension -c^4/4G",
      "status": "NEWPHYS",
-     "basis": "QI forces rim core radius <= 5.6e-32 m (Planck scale): quantum-gravity regime.",
+     "basis": "QI forces rim core radius <= 5.6e-32 m (Planck scale): quantum-gravity regime. Krasnikov (2003) reaches the same Planck-thickness estimate for a smoothed portal.",
      "assumptions": "Smoothed conical defect; flat-space QI.",
      "log10_deficit": null,
      "na": false
@@ -376,7 +376,7 @@
      "stage": "stabilise",
      "text": "Rim and corner dynamics",
      "status": "OPEN",
-     "basis": "Thin curved loops are not consistent sources in GR (to be checked: Unruh et al. 1989); straight edges need corner supports; no stability analysis exists.",
+     "basis": "Static circular rims exist as exact solutions (Gibbons & Volkov 2017; Feng, Lemos & Matzner 2021). Dynamics need a finite core: zero-thickness strings are not distributional sources (Geroch & Traschen 1987) and idealised conical worldsheets must be totally geodesic (Unruh et al. 1989; Boisseau, Charmousis & Linet 1997). No stability analysis of a rim exists.",
      "assumptions": "",
      "log10_deficit": null,
      "na": false
@@ -452,7 +452,7 @@
      "stage": "hold",
      "text": "NEC-violating walls",
      "status": "NEWPHYS",
-     "basis": "QI constraints make the walls Planck-thin with huge negative energy (Everett & Roman 1997; to be checked).",
+     "basis": "Everett & Roman (1997): QIs make the walls <~ 10^4 Planck lengths thick, and a tube 1 m long and 1 m wide needs ~10^16 galaxy masses of negative energy. Every Natario-class warp drive violates the WEC, and the NEC under plausible conditions (Santiago, Schuster & Visser 2022).",
      "assumptions": "",
      "log10_deficit": null,
      "na": false
@@ -462,7 +462,7 @@
      "stage": "endpoints",
      "text": "Chronology with two corridors",
      "status": "OPEN_NEG",
-     "basis": "Two tubes can form closed timelike curves.",
+     "basis": "Two tubes can form closed timelike curves (Everett & Roman 1997); Krasnikov (1998) calls such devices 'square roots' of time machines.",
      "assumptions": "",
      "log10_deficit": null,
      "na": false
@@ -480,7 +480,7 @@
      "stage": "create",
      "text": "Make one",
      "status": "OPEN",
-     "basis": "Requires magnetically charged near-extremal black holes or a dark sector.",
+     "basis": "Requires magnetically charged near-extremal black holes or a dark sector. The humanly traversable example has mouths of radius ~1.5e7 m (about 1e4 solar masses each, from M = r_e c^2/G), a throat ~3e3 light years long and ~1e4 years of outside travel time (Maldacena & Milekhin 2021).",
      "assumptions": "",
      "log10_deficit": null,
      "na": false
@@ -502,6 +502,7 @@
   "D_smooth": 1.6034995176356985e+62,
   "log10_D_smooth": 62.205068833620125,
   "a_band_m": 9.203373764104512e-22,
+  "a_band_curvature_window_m": 3.11817992148343e-63,
   "rho_band_J_m3": 1.643766182052865e+64,
   "log10_band_vs_casimir_1um": 67.57897592857277,
   "casimir_gap_for_band_m": 1.2742540361002264e-23,
@@ -513,7 +514,9 @@
   "pd_delay_max_s": 3.991047063523014e-09,
   "pressure_force_N": 318321.8756249858,
   "vertical_pair_days": 353.8231828137785,
-  "pulsed_max_open_s": 1.3410168690106188e-26
+  "pulsed_max_open_s": 1.3410168690106188e-26,
+  "quantum_interest_4d_s": 1.9311461233896635e-24,
+  "quantum_interest_2d_s": 2.1958770037141106e-54
  },
  "milestones": [
   {
@@ -629,9 +632,9 @@
    "question": "Can a device-scale mouth be light?",
    "result_needed": "A mouth with ADM mass << r0 c^2/2G and its negative Misner-Sharp energy confined.",
    "counts_if": "Lightweight mouth satisfying M3/M4.",
-   "method": "Misner-Sharp bookkeeping (D2 sec. 4) beyond spherical symmetry.",
+   "method": "Misner-Sharp bookkeeping (D2 sec. 4) beyond spherical symmetry; the Penrose-inequality corollary of D2 sec. 4.4 gives existence of negative energy, not its amount.",
    "progress": "Non-spherical designs with smaller requirements.",
-   "terminates": "A general theorem extending the sum rule.",
+   "terminates": "A general quantitative theorem extending the sum rule.",
    "unlocks": "Handheld devices.",
    "still_unsolved": "Everything upstream.",
    "needs": [
@@ -653,12 +656,12 @@
   },
   {
    "key": "M10",
-   "question": "Does the 'heavy or negative' mass rule extend beyond time symmetry?",
-   "result_needed": "A Penrose-type inequality for traversable throats in stationary or dynamical data.",
-   "counts_if": "Bound M >= sqrt(A/16 pi) unless the energy density is negative for some observer.",
+   "question": "Does the 'heavy or negative' mass rule hold for general (dynamical) mouths?",
+   "result_needed": "A Penrose-type inequality for traversable throats in general initial data.",
+   "counts_if": "Bound M >= sqrt(A/16 pi) unless the dominant energy condition fails somewhere.",
    "method": "Spacetime Penrose inequality methods; marginally outer trapped surfaces.",
-   "progress": "Proof for stationary rotating mouths.",
-   "terminates": "A counterexample: a light, positive-energy traversable mouth.",
+   "progress": "Already holds on time-symmetric and maximal slices, which include circular stationary rotating mouths (Huisken & Ilmanen 2001, applied in D2 sec. 4.4).",
+   "terminates": "A light traversable mouth whose matter obeys the dominant energy condition. (With the weak energy condition alone, counterexamples to Penrose-type inequalities exist: Jaracz 2023.)",
    "unlocks": "Settles whether a handheld mouth must carry negative energy (M8).",
    "still_unsolved": "None upstream.",
    "needs": []

@@ -24,6 +24,20 @@ What is new relative to Ford & Roman: the observer's speed is optimised rather t
 curvature length uses every orthonormal component in the observer's frame, the variation length
 is measured in the observer's proper time, and the sampled version needs no constant-density
 assumption.
+
+Two window prescriptions:
+  "fr96"       L0 = f * min(curvature length, contracted variation length, temporal scale):
+               Ford & Roman's 'radius of curvature or distance to a boundary' (the default, used
+               for every headline number);
+  "curvature"  no spatial 'boundary' cap: the window is limited only by the curvature radius
+               within it (and, for moving observers, by the temporal scale).  For a static
+               observer this is the reading Krasnikov (2003, sec. II) applies to the thin-band
+               wormhole.  local_deficit(window="curvature") uses the curvature at the point, which
+               is only valid where that is the largest curvature within the window (the throat of
+               a thin band); static_deficit_curvature_window finds the window self-consistently.
+They agree wherever the variation length is not the shortest scale (smooth throats, rims) and
+differ by tens of orders of magnitude for thin bands.  Neither has been derived from a curved-
+space QI with controlled remainders.
 """
 import numpy as np
 
@@ -105,12 +119,13 @@ def _var_len(q, h):
     return np.minimum(s1, s2)
 
 
-def local_deficit(geom, l_c, gamma_c, f):
+def local_deficit(geom, l_c, gamma_c, f, window="fr96"):
     """Ford-Roman deficit for radial geodesic observers at positions l_c with Lorentz factors
     gamma_c there (arrays broadcast together; gamma_c = 1 is an observer at rest, geodesic
     only where Phi' = 0).
 
-    Sampling length L0 = f * min(ell, d/gamma, d_t):
+    Sampling length L0 = f * min(ell, d/gamma, d_t) for window="fr96", f * min(ell, d_t) for
+    window="curvature" (pointwise; see the module docstring for when that is valid):
       ell  smallest radius of curvature in the observer's frame,
       d    static-frame proper distance over which the observer's density or curvature changes
            (Ford & Roman's 'distance to a boundary'), Lorentz-contracted by gamma,
@@ -140,7 +155,12 @@ def local_deficit(geom, l_c, gamma_c, f):
     v = gamma_c * beta                       # dl / dtau
     with np.errstate(divide="ignore", invalid="ignore"):
         d_t = np.where(v > 0, _var_len(rho_t, h) / np.where(v > 0, v, 1.0), np.inf)
-    L0 = f * np.minimum.reduce([ell_c, d / gamma_c, d_t])
+    if window == "fr96":
+        L0 = f * np.minimum.reduce([ell_c, d / gamma_c, d_t])
+    elif window == "curvature":
+        L0 = f * np.minimum(ell_c, d_t)
+    else:
+        raise ValueError(f"unknown window {window!r}")
     with np.errstate(divide="ignore", invalid="ignore"):
         # a negative density with no limiting scale (flat, static) is excluded outright: D = inf
         D = np.where(rho_c < 0, -rho_c / rho_qi(L0), 0.0)
@@ -165,6 +185,36 @@ def scan(geom, f=0.01, l_grid=None, gammas=None, l_extent=10.0):
     i = int(np.argmax(D))
     best = {key: float(val[i]) for key, val in tab.items()}
     return best, tab
+
+
+def static_deficit_curvature_window(geom, l_grid, f=0.01, k=3.0, n_win=81):
+    """Deficit for static observers (geodesic only where Phi' = 0) with the "curvature" window
+    found self-consistently: the largest L0 with L0 <= f * min(curvature length) over
+    |l' - l| <= k L0, by bisection in log L0.  No variation-length cap.
+    Returns a dict of arrays over l_grid."""
+    l_grid = np.atleast_1d(np.asarray(l_grid, float))
+    r, rp, rpp, Pp, Ppp = geom.local(l_grid)
+    rho = boosted_density(r, rp, rpp, Pp, Ppp, 0.0)
+    u = np.linspace(-1.0, 1.0, n_win)[:, None]
+
+    def ell_min(L):
+        pts = l_grid[None, :] + k * L[None, :] * u
+        return np.min(curvature_length(*geom.local(pts), 0.0), axis=0)
+
+    lo = np.full_like(l_grid, 1e-30)
+    hi = f * curvature_length(r, rp, rpp, Pp, Ppp, 0.0)    # the window can be no longer than this
+    hi = np.where(np.isfinite(hi), hi, 1e6 * geom.r0)
+    ok_hi = hi <= f * ell_min(hi)
+    for _ in range(80):
+        mid = np.sqrt(lo * hi)
+        good = mid <= f * ell_min(mid)
+        lo = np.where(good, mid, lo)
+        hi = np.where(good, hi, mid)
+    L0 = np.where(ok_hi, hi, lo)
+    geodesic = np.abs(Pp) < 1e-12
+    with np.errstate(divide="ignore", invalid="ignore"):
+        D = np.where((rho < 0) & geodesic, -rho / rho_qi(L0), 0.0)
+    return {"l": l_grid, "rho": rho, "L0": L0, "D": D}
 
 
 # ------------------------------------------------------------------ sampled version

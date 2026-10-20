@@ -1,0 +1,94 @@
+{
+ "source": "background of Gonzalez, Guzman & Sarbach 2009 as written in Blazquez-Salcedo et al. 2026, eqs. 2-7",
+ "critical": [
+  {
+   "Q_over_rT": 0.5,
+   "M_over_rT": 0.49999999999999983,
+   "G_throat": 0.15634133002250783,
+   "Delta_Phi": -0.9278568244911307,
+   "gamma_from_rest": 2.529083096220683
+  },
+  {
+   "Q_over_rT": 0.9,
+   "M_over_rT": 0.8999999999999995,
+   "G_throat": 0.004726036379483206,
+   "Delta_Phi": -2.6773342012573367,
+   "gamma_from_rest": 14.546264150848888
+  },
+  {
+   "Q_over_rT": 0.95,
+   "M_over_rT": 0.9500000000000021,
+   "G_throat": 0.0011453527162810905,
+   "Delta_Phi": -3.386021320129771,
+   "gamma_from_rest": 29.548155436577822
+  },
+  {
+   "Q_over_rT": 0.99,
+   "M_over_rT": 0.9900000000000005,
+   "G_throat": 4.4712530513709095e-05,
+   "Delta_Phi": -5.007628385468449,
+   "gamma_from_rest": 149.5496411391277
+  },
+  {
+   "Q_over_rT": 0.999,
+   "M_over_rT": 0.9989999999999983,
+   "G_throat": 4.447116073954774e-07,
+   "Delta_Phi": -7.312919919069508,
+   "gamma_from_rest": 1499.5493656728024
+  },
+  {
+   "Q_over_rT": 0.9999,
+   "M_over_rT": 0.999899999999988,
+   "G_throat": 4.444674369710186e-09,
+   "Delta_Phi": -9.615779614161008,
+   "gamma_from_rest": 14999.612016167726
+  }
+ ],
+ "supercritical_symmetric": [
+  {
+   "Q_over_rT": 0.5,
+   "M_over_rT": 0.35355339059327373,
+   "G_throat": 0.5000000000000001,
+   "gamma_from_rest": 1.414213562373095
+  },
+  {
+   "Q_over_rT": 0.9,
+   "M_over_rT": 0.8889195065356241,
+   "G_throat": 0.02447174185242323,
+   "gamma_from_rest": 6.392453221499659
+  },
+  {
+   "Q_over_rT": 0.99,
+   "M_over_rT": 0.989877866156844,
+   "G_throat": 0.0002467198171342206,
+   "gamma_from_rest": 63.66459530600068
+  },
+  {
+   "Q_over_rT": 0.999,
+   "M_over_rT": 0.9989987675334039,
+   "G_throat": 2.4673990709168294e-06,
+   "gamma_from_rest": 636.6200341670593
+  },
+  {
+   "Q_over_rT": 0.9999,
+   "M_over_rT": 0.9998999876642282,
+   "G_throat": 2.4674010799817904e-08,
+   "gamma_from_rest": 6366.197749851867
+  }
+ ],
+ "fields_rT_1m_extremal": {
+  "E_V_per_m": 1.0429398144841294e+27,
+  "E_over_Schwinger": 788144232.0864152,
+  "Q_C": 1.1604270424145584e+17,
+  "Q_in_e": 7.242815915480131e+35,
+  "dirac_monopoles": 1.0570676265959173e+34,
+  "B_T": 3.4788727556452716e+18,
+  "extremal_mass_kg": 1.346590921500109e+27,
+  "r_T_for_E_eq_Schwinger_m": 788144232.0864152
+ },
+ "tau0_rT_1m_s": {
+  "Q_over_rT_0.95": 1.3000000000000001e-05,
+  "Q_over_rT_0.9999": 3471.336
+ },
+ "tau0_reference": "critical wormhole, r_T = 10 km: 0.13 s at 0.95, about 1.1 yr at 0.9999 (Blazquez-Salcedo et al. 2026)"
+}
