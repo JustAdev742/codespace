@@ -1,8 +1,9 @@
-// Physics for the portal simulator: rigid spheres, a capsule player, axis-aligned static
-// and kinematic boxes, and a linked portal pair cut into box faces.
+// Physics for the portal simulator: rigid spheres, a player built from three spheres,
+// axis-aligned static and kinematic boxes, and a linked portal pair cut into box faces.
 //
 // What is modelled
-//   * Semi-implicit Euler with fixed sub-steps, gravity, optional quadratic air drag.
+//   * Semi-implicit Euler; each frame step is split into equal sub-steps of at most 1/240 s
+//     and 0.1 m of travel (up to 64), with gravity and optional quadratic air drag.
 //   * Sphere/box collision. A box that hosts an open, linked portal has a circular hole:
 //     bodies whose centre projects inside the aperture are exempt from the box and
 //     collide only with the rim circle (a thin plate with a round hole).

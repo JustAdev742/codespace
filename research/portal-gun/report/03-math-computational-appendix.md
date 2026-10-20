@@ -53,7 +53,9 @@ assumptions, (4) governing equation, (5) derivation, (6) substitution, (7) resul
 
 6. **Substitution.** $(\pi/2)\times1\ \text{m}\times1.347\times10^{27}$ kg/m.
 7. **Result.** $M = -2.1\times10^{27}$ kg, i.e. $-1.1$ Jupiter masses, or $-1.9\times10^{44}$ J.
-   Quadrature of the same integral agrees with the closed form to $5\times10^{-15}$ (`test_ellis_mass_closed_form_matches_quadrature`).
+   Quadrature of the same integral agrees with the closed form to $5\times10^{-15}$ (value in
+   `results/summary.json`); the test `test_ellis_mass_closed_form_matches_quadrature` asserts agreement to
+   $10^{-8}$.
 8. **Dimensions.** $(c^2/G)\times r_0$: (kg/m) × m = kg. ✓
 9. **Meaning.** $1.9\times10^{44}$ J is 16 billion years of the Sun's total output. It is not a fuel bill:
    the massless Ellis wormhole's mass seen from outside is zero, because the throat's own positive mass
@@ -100,8 +102,8 @@ assumptions, (4) governing equation, (5) derivation, (6) substitution, (7) resul
 9. **Meaning.** At achievable gaps (1 µm) the Casimir energy density is $-4.3\times10^{-4}$ J/m³, short by
    a factor of $1.1\times10^{46}$.
 10. **Limits.** Morris, Thorne and Yurtsever (1988) matched the plates' *tension* ($3|\rho_C|$) instead,
-    which multiplies $a$ by $3^{1/4} = 1.32$: their $\sim1.6\times10^{-10}$ cm for 1 AU against my
-    $1.2\times10^{-10}$ cm. Real plates are not ideal at sub-nuclear gaps, and the plates restore ANEC.
+    which multiplies $a$ by $3^{1/4} = 1.32$. Their paper prints ~$10^{-10}$ cm for 1 AU; their formula gives
+    $1.6\times10^{-10}$ cm, against my $1.2\times10^{-10}$ cm. Real plates are not ideal at sub-nuclear gaps, and the plates restore ANEC.
 
 ### A5. How thin the negative energy must be: quantum inequalities
 
@@ -140,7 +142,7 @@ assumptions, (4) governing equation, (5) derivation, (6) substitution, (7) resul
 6. **Substitution.** $1\ \text{m}\times\sqrt{9.807/2}$.
 7. **Result.** $v_{\max} = 2.2$ m/s for $r_0$ = 1 m; 22 m/s for 10 m.
 8. **Dimensions.** $\text{m}\sqrt{(\text{m/s}^2)/\text{m}}$ = m/s. ✓
-9. **Meaning.** A slow walk. The radial tidal force is zero for this geometry.
+9. **Meaning.** A brisk walk (about 8 km/h). The radial tidal force is zero for this geometry.
 10. **Limits.** The tolerance is MT's convention. For a general $\Phi = 0$ throat the lateral term is
     $\gamma^2v^2(1-b_0')\xi/(2r_0^2)$; MT's example $b = \sqrt{b_0r}$ ($b_0' = 1/2$) gives 44 m/s for 10 m with
     the exact bound, and MT's 60 m/s with their rounded bound $1/(10^8\ \text{m})^2$ (`test_tidal.py`).
@@ -326,9 +328,9 @@ not physics. Changing the padding from 3 to 9 times the portal scale moves every
 | Python models | `python -m pytest -q tests` (in `models/`) | 70 passed |
 | Simulator unit tests | `npm test` (in `simulator/`) | 19 passed |
 | Simulator end-to-end | `npm run test:browser` | 14 of 14 checks passed |
-| Prop firmware host tests | `make` (in `prop/firmware/test/`) | 105 passed, 0 failed |
+| Prop firmware host tests | `make` (in `prop/firmware/test/`) | 170 passed, 0 failed (9 routines, including 17 lighting sessions checked for flashing) |
 | Enclosure fit checks | `python -m pytest -q` (in `prop/enclosure/`) | 7 passed |
-| Firmware compile for the real board | `arduino-cli compile` (tutorial 04) | 96,276 bytes flash (1%), 11,092 bytes RAM (4%), no warnings from the project's files |
+| Firmware compile for the real board | `arduino-cli compile` (tutorial 04) | 96,516 bytes flash (1%), 11,180 bytes RAM (4%), no warnings from the project's files |
 
 The Python tests, grouped by what they establish:
 
@@ -344,8 +346,9 @@ The Python tests, grouped by what they establish:
 
 ### B.4 What the verification pass found
 
-These faults were found by re-deriving results independently while writing this appendix. All are fixed
-and covered by tests.
+These faults were found by re-deriving results independently while writing this appendix, or in the
+fact-checking pass that followed. Items 1, 4, 5, 6 and 7 are fixed and covered by tests; item 2 is
+quantified by a check script (B.2); item 3 is a known limitation.
 
 1. **Half-pressure times were overestimated by 5–10%.** `time_to_pressure` returned the first solver
    sample below the target pressure; with coarse output steps that overshot the crossing (0.058 s instead
@@ -359,6 +362,17 @@ and covered by tests.
    report, comes from the closed form and is unaffected.
 4. **An earlier sign error** in my reading of MT88's radial tidal component was caught before this pass by
    comparing with the scanned equation; the code now checks exact equality with the printed eq. 47a.
+5. **Tests that could not fail.** 44 relative-tolerance comparisons used `pytest.approx` with its default
+   absolute tolerance of 10⁻¹², which made them vacuous for very small quantities (for example time-dilation
+   rates of order 10⁻¹⁵). They now set `abs=0`, and all still pass.
+6. **Round-off in the velocity time-dilation rate.** `rate_velocity` computed $1 - \sqrt{1-\beta^2}$, which
+   loses most of its digits at everyday speeds. It now uses $\beta^2/(1 + \sqrt{1-\beta^2})$. The 30 m/s
+   example in `results/summary.json` moved from 211.6 to 211.1 years; no other headline number changed.
+7. **Prop lighting could flash in its "Steady" mode.** The fact-check found that the firmware's Steady mode
+   still produced flash sequences (up to 12 s) and that the whole-ring limit was not enforced. Steady mode is
+   now slew-limited and cannot flash at all; Show mode is limited to 3 flashes per second in sequences
+   shorter than 5 s. The host tests count flashes pixel by pixel, over the ring and over all pixels
+   (tutorial 04).
 
 ### B.5 Figures
 

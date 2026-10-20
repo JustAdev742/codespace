@@ -3,6 +3,10 @@
 *Deliverable 6 of 8. If someone set out to engineer a real portal gun from the physics as it stands today,
 what would it consist of, what is the status of each part, and what would have to be discovered first?*
 
+> **Audited in phase II.** This document is kept as written, because it is the baseline that phase II
+> audited line by line. Corrections, qualifications and extensions of its claims are in
+> [phase2/report/D7-corrected-baseline.md](../phase2/report/D7-corrected-baseline.md).
+
 **Bottom line.** It cannot be built with known physics. The first parts that fail are not engineering
 problems but open (and probably negative) physics questions: creating a handle in space, and holding it open
 with matter that violates the averaged null energy condition on macroscopic scales. Everything downstream is

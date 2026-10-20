@@ -38,7 +38,7 @@ uncertain, and where this study falls short of the brief.*
 ## 3. Research log
 
 Built from timestamps that the container recorded (session transcript, file modification times and git
-commits, all UTC on 2026-10-19), not reconstructed from memory.
+commits, all UTC, 2026-10-19 unless stated), not reconstructed from memory.
 
 | Time | Event | Evidence |
 |---|---|---|
@@ -50,11 +50,15 @@ commits, all UTC on 2026-10-19), not reconstructed from memory.
 | 08:44 | Prop firmware, host tests and enclosure committed | Commit `52187b9` |
 | 08:49–08:55 | Figures regenerated; browser checks re-run (14/14) | File times; `browser-results.json` |
 | 08:57 | Grid-convergence check of the Newtonian model | `results/grid_convergence.log` |
-| ~09:00–09:40 | Report written; half-pressure bug found and fixed; firmware recompiled; DOIs resolved against Crossref; fact-check passes | File times; commit `91b8081` |
+| ~09:00–09:40 | Report written; half-pressure bug found and fixed; firmware recompiled; DOIs resolved against Crossref; fact-check passes | File times; commits `91b8081`, `afb784a` |
+| ~09:40–20:18 | Session paused (usage limit reached) | Session transcript |
+| 20:18–20:30 | Resumed: firmware no-flash rework, stricter Python tests, prop tutorial rewritten, figures and browser checks re-run | Commit `072b6a6` |
+| 2026-10-20 07:00–08:40 | Phase II (separate audit: [phase2/report/D8](../phase2/report/D8-integrity-audit.md)); in parallel, the remaining fact-check fixes to reports 01, 02, 03 and 05, and this reference list | Commits from `8109bcf` on |
 
 **About the time spent.** The brief asked for research at a depth of 5–15 hours. Measured by the clock, the
-work above took about two and a half hours of wall-clock time, with up to seven agents working in parallel
-during the literature phase. I make no claim to have spent 5–15 hours. Whether the depth is adequate should
+first pass took about two and a half hours of wall-clock time, with up to seven agents working in parallel
+during the literature phase, and the corrections after the fact-check about another hour across the two
+days. I make no claim to have spent 5–15 hours. Whether the depth is adequate should
 be judged from the content: the notes record over a hundred sources with their access status, and every
 quantitative claim in the report traces to a source or to tested code.
 
@@ -67,11 +71,11 @@ quantitative claim in the report traces to a source or to tested code.
 | Python models | `python -m pytest -q tests` | 70 passed |
 | Simulator logic | `npm test` | 19 passed |
 | Simulator end to end | `npm run test:browser` (headless Chromium, software WebGL) | 14 of 14 passed |
-| Firmware logic | `make` in `prop/firmware/test` | 105 passed, 0 failed |
-| Firmware build | `arduino-cli compile --fqbn rp2040:rp2040:adafruit_feather_prop_maker --warnings all --clean` | Builds; 96,276 bytes flash, 11,092 bytes RAM; 0 warnings from the project's own files (library headers produce some) |
+| Firmware logic | `make` in `prop/firmware/test` | 170 passed, 0 failed (including 17 lighting sessions checked for flashing) |
+| Firmware build | `arduino-cli compile --fqbn rp2040:rp2040:adafruit_feather_prop_maker --warnings all --clean` | Builds; 96,516 bytes flash, 11,180 bytes RAM; 0 warnings from the project's own files (library headers produce some); see `prop/firmware/build-report.txt` |
 | Enclosure | `python -m pytest -q` in `prop/enclosure` | 7 passed |
 | Newtonian model convergence | Three grids and three paddings (`models/checks/grid_convergence.py`) | First-order convergence; mid-room field −0.415, −0.407, −0.403 g; padding effect < 0.2% |
-| DOIs | Every DOI in the notes resolved against the Crossref API | All 128 resolve; entry-by-entry comparison with the reference list in [07-references.md](07-references.md) |
+| DOIs | Every DOI in the notes resolved against the Crossref API; then each entry of [07-references.md](07-references.md) with a DOI compared with Crossref's year, volume and first page | All 128 resolve. Of 125 entries compared: 121 match, 2 false alarms (zero-padded article numbers), 2 corrected (see 4.2, item 11) |
 | Documents against sources | Two independent fact-checking agents, one for the physics documents (01, 02, 03, 06) and one for the tutorials (04, 05), checking quotes, numbers, access status and code behaviour | Results and fixes in section 4.2 |
 | Numbers in the documents | Every headline number re-computed from the models (`summary.json`) while writing the appendix | Two errors found (4.2, items 1 and 2) |
 
@@ -88,6 +92,38 @@ quantitative claim in the report traces to a source or to tested code.
 5. **The Morris–Thorne appendix speed limit** (60 m/s for a 10 m throat) uses their rounded tidal bound; with
    the exact bound it is 44 m/s. Both are reported.
 6. **Count errors in drafts** (number of experiments; number of subsystems in each class) were corrected.
+7. **Physics fact-check (reports 01, 02, 03, 06): 22 findings.** Among them:
+   - an overclaim that the Casimir effect is "lab-confirmed negative energy" (its forces are measured; the
+     negative energy density is inferred);
+   - theorem scopes stated too broadly: global hyperbolicity for the causal-structure argument;
+     Tipler's and Borde's extra assumptions; the classes of theories in the ANEC proofs; the class of
+     ghost-scalar wormholes studied by Gonzalez, Guzmán and Sarbach;
+   - a misattributed quote (Fewster, Olum and Pfenning only), and the Morris–Thorne–Yurtsever Casimir figure
+     (printed ~10⁻¹⁰ cm, their formula 1.6×10⁻¹⁰ cm);
+   - "months" for the chronology drift (it is days to millennia), and wrong values for the water-wave
+     blocking current (0.16 m/s) and the mid-room field (0.41 g);
+   - wrong wording or numbers in several tables.
+
+   Fixed in 01, 02 and 03. Report 06 is kept as the audited baseline, with its corrections in
+   [phase2/report/D7](../phase2/report/D7-corrected-baseline.md).
+8. **Tutorial fact-check (04, 05): 34 findings.** The serious one was in the prop firmware: "Steady" mode
+   could still flash (sequences up to 12 s), and the whole-ring flash limit was not enforced. The firmware was
+   reworked, so Steady cannot flash and Show is held to 3 flashes per second in sequences under 5 s. 170 host
+   checks now count flashes per pixel, per ring and over all pixels. Also fixed:
+   - a battery-gauge pin that floated when unwired (now opt-in);
+   - the lock chime;
+   - enclosure side labels;
+   - in the simulator tutorial: the meaning of the V key and of "obstructed", disclosure that the browser
+     checks run with air drag on, the sub-stepping description, the player's collision shape, the
+     render-pass counts, and the Playwright install step;
+   - the portal swirl, softened to four low-contrast bands.
+
+   Tutorial 04 was rewritten; 05 corrected.
+9. **Tests that could not fail.** 44 relative-tolerance comparisons were vacuous for tiny quantities because
+   of pytest's default absolute tolerance. Fixed with `abs=0`; all pass.
+10. **Round-off in the velocity time-dilation rate** at everyday speeds (appendix B.4, item 6).
+11. **Bibliography.** One recorded DOI (Friedman & Higuchi 2006) pointed to a different article in the same
+    issue; one entry (Zhang et al. 2023) lacked its title, year and volume. Both corrected from Crossref.
 
 
 ### 4.3 Corrections to claims commonly made about the sources
