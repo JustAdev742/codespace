@@ -797,9 +797,10 @@ that place first.
 A handle $S^2\times S^1$ can be added with an index-1 critical point (a 1-handle) or with an index-2 point (a
 2-handle attached along an unknotted circle with framing 0; 0-surgery on the unknot in $S^3$ gives
 $S^2\times S^1$). In four dimensions the Borde–Sorkin conjecture associates indices 1 and 3 with causal
-discontinuity and singular particle production (as in the 1+1 "trousers"), while index 2 is causally
-continuous. So **if** topology change happens at all and the conjecture holds, the less singular way to make
-a single handle is surgery on a small loop. By the lemma, its attaching circle lies in the creation event's
+discontinuity, while index 2 is causally continuous. A separate conjecture of Sorkin's associates causal
+discontinuity with singular behaviour of quantum fields (as in the 1+1 "trousers"). So **if** topology
+change happens at all and both conjectures hold, the less singular way to make a single handle is surgery
+on a small loop. By the lemma, its attaching circle lies in the creation event's
 past, so its mouths are still born together. The route changes the creation physics, not the need for
 transport.
 
@@ -922,14 +923,14 @@ Two cautions:
 | Smooth throat, $r_0 \ge 1$ m | ✗ by $10^{62}$ | ✓ (≤ 2.2 m/s for 1 g, 1 m Ellis) | negative energy −0.35 $M_J$/side, or heavy | ✗ (Ellis 2.8 ns) | C4 |
 | Smooth throat, $r_0 \le 8\times10^{-32}$ m | ✓ | ✗ (nothing fits) | — | — | C2 |
 | Redshift well or hill | reduced | ✗ (relativistic crossing, $10^{16}$–$10^{18}$ g) | — | — | C7 |
-| Thin band, $a \le 10^{-21}$ m | ✓ (not excluded) | ✓ (~1 m/s kick) | as smooth | thin-shell-like: needs $\beta^2 < -1/2$ or similar | C4′: needs $-10^{64}$ J/m³ from matter no theory supplies |
-| Flat-face polygonal portal | ✓ only with Planck-scale rims | ✓ (flat faces) | rim $-1.1\,M_J$ per metre of radius, zero Komar mass | unknown | Rim strings: quantum-gravity regime |
+| Thin band, $a \le 10^{-21}$ m | ✓ (not excluded) under Ford & Roman's window; ✗ under the curvature-only window | ✓ (~1 m/s kick) | as smooth | thin-shell-like: needs $\beta^2 < -1/2$ or similar | C4′: needs $-10^{64}$ J/m³ from matter no theory supplies |
+| Flat-face portal (polygonal or circular rim) | ✓ only with Planck-scale rims | ✓ (flat faces) | rim $-1.1\,M_J$ per metre of radius, zero Komar mass | unknown | Rim strings: quantum-gravity regime |
 | Long QFT-supported wormhole | ✓ | case-dependent | case-dependent | case-dependent | Not a shortcut |
 
 ### 9.2 Conservation of difficulty
 
-Each route that removes one obstacle moves it somewhere else, and the new location is always an
-extreme length scale:
+Each route that removes one obstacle moves it somewhere else. The new location is an extreme length scale,
+an extreme mass or field, or the loss of what makes a portal useful:
 
 | Route | Avoids | Where the obstacle reappears |
 |---|---|---|
