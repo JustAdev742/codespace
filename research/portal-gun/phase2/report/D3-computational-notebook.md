@@ -176,7 +176,8 @@ Two parametric-drive files are not regenerated even by `--full`. `kapitza_scan_e
 - **Method.** For the critical family, the throat is found by bounded minimisation of the areal radius in
   $u = \sinh^{-1}(r/r_0)$, and $g_1$ by root-finding on $Q_e/r_T$. The symmetric supercritical family is
   checked against its closed form.
-- **Result.** $-g_{tt}$ at the throat is $\approx 4.5(1 - Q_e/r_T)^2$, so a traveller falling from rest arrives
+- **Result.** $-g_{tt}$ at the throat is $\approx \tfrac49(1 - Q_e/r_T)^2$ (coefficient 0.458, 0.447, 0.445, 0.444
+  at 0.95, 0.99, 0.999, 0.9999), so a traveller falling from rest arrives
   at $\gamma \approx 1.5/(1 - Q_e/r_T)$: 30 at 0.95, 15 000 at 0.9999. At $Q_e = r_T$ = 1 m the throat field is
   $1.04\times10^{27}$ V/m, $7.9\times10^8$ times the Schwinger field; the magnetic version needs $1.06\times10^{34}$
   Dirac monopoles; the mass is $1.35\times10^{27}$ kg.

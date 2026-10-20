@@ -423,16 +423,19 @@ quantum simulation of a model, with an explicit coupling between the two halves 
 
 **Escape routes [SPEC].** Degenerate metrics (Horowitz 1991: "if degenerate metrics play any role in
 quantum gravity, topology change is unavoidable"); quantum tunnelling (Horowitz, Marolf, Santos and Wang
-2019 describe nucleating a traversable wormhole with an instanton, mouths created adjacent, probability
-not quantified in the abstract); enlarging a Planck-scale "foam" wormhole (MT88 and MTY88 invite us to
+2019 describe nucleating a wormhole with an instanton in anti-de Sitter space: a test cosmic string breaks
+into two nearly static particles standing in for black holes with identified horizons, created a finite
+distance apart rather than adjacent; the rate is $e^{-2\Delta S}$, which vanishes in the exactly static limit,
+and traversability is argued rather than computed; phase II, D2 §7.2); enlarging a Planck-scale "foam"
+wormhole (MT88 and MTY88 invite us to
 "imagine" it). Hayward and Koyama (2004) show how to turn a black hole into a traversable wormhole with
 negative-energy radiation, but only starting from the eternal two-sided black hole that already has the
 topology. In the Sorkin–Dowker programme, the intuitive route ("two distant regions of space coming
 'close in hyperspace' and touching") is the kind of transition conjectured to be suppressed.
 
 **Plausibility for a portal gun.** Nobody knows a physical process that creates a wormhole. Classical GR
-forbids it without causality violation; quantum proposals give, at best, small adjacent mouths with
-unknown probability.
+forbids it without causality violation; quantum proposals give, at best, small mouths at a separation set
+by a background already in place, with exponentially small rates.
 
 ### 2.11 Time dilation and time machines
 

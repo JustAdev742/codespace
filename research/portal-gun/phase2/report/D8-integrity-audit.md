@@ -118,6 +118,7 @@ hidden; each is fixed in the files.
 | 23 | An edit script turned "\times" into a tab in one D2 line | control-character scan | fixed; edit scripts use raw strings since |
 | 24 | `--full` runtime claim never measured (§3) | this audit | corrected in D3 and the code docstring |
 | 25 | Literature placeholders ("stage B") left in the framework and ledger | re-reading | filled; a test now fails if any remain |
+| 26 | The charged-throat redshift written as $4.5(1 - Q_e/r_T)^2$ | re-deriving the coefficient from the results | $\tfrac49(1 - Q_e/r_T)^2$; the $\gamma \approx 1.5/(1 - Q_e/r_T)$ that follows was right |
 
 ## 6. Checks performed, and checks not performed
 

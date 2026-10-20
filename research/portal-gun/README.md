@@ -23,11 +23,18 @@ Source notes from the literature phase are in [`report/notes/`](report/notes/).
 
 ## Phase II: original derivations and computational tests
 
-[`phase2/`](phase2/) re-derives the baseline from the field equations, tests it numerically and pushes
-further: a quantum-inequality audit that closes the "gentle throat" loophole, exact mass bookkeeping for
-mouths, an independent stability analysis of the Ellis wormhole, a locality lemma for topology change, a
-causal-consistency checker for portal networks, a constraint framework comparing eight architectures, and a
-line-by-line audit of the engineering study. Start with the
+[`phase2/`](phase2/) re-derives the baseline from the field equations and tests it numerically, then compares
+every result with the literature. Most of it turned out to be published already; each result is credited
+in the paper's §10. The parts we did not find in the literature are modest and all point the same way:
+
+- a quantum-inequality bound that closes the "gentle throat" loophole;
+- a mass rule for mouths of any shape;
+- the cost of charge-stabilised mouths;
+- feedback and periodic-driving limits for the Ellis instability;
+- a causal-consistency checker for portal networks.
+
+Phase II also adds a constraint framework comparing eight architectures and a line-by-line audit of the
+engineering study. No mechanism for a portal was found. Start with the
 [phase II research summary](phase2/report/D1-original-research-summary.md).
 
 ## Code

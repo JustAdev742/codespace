@@ -683,7 +683,8 @@ using their background metric (`charged.py`,
 | Lorentz factor at the throat, from rest at infinity | 2.5 | 15 | 30 | 150 | 1,500 | 15,000 |
 
 - **A deep well.** The long-lived limit is the near-horizon limit: $-g_{tt}$ at the throat falls as
-  $\approx 4.5(1 - Q_e/r_T)^2$. A traveller who starts at rest arrives at $\gamma \approx 1.5/(1 - Q_e/r_T)$,
+  $\approx \tfrac49(1 - Q_e/r_T)^2$ (the fitted coefficient tends to 0.444 as $Q_e/r_T \to 1$). A traveller who
+  starts at rest arrives at $\gamma \approx 1.5/(1 - Q_e/r_T)$,
   which violates the walk-in constraint C7 ($|\Delta\Phi| \lesssim 10^{-16}$) by sixteen orders of magnitude in
   $\Delta\Phi$. This is the redshift trade-off of §5.4 again.
 - **A heavy mouth.** $M \to r_Tc^2/G$, about 0.71 Jupiter masses for 1 m.
@@ -775,8 +776,8 @@ ending at and starting from the critical point "could be interpreted as the chro
 of the critical point". For index 1 the past set splits into the two pieces the handle joins. Dowker & Surya
 (1998) describe the index-1 case qualitatively: "parts of the universe which were spatially far apart
 suddenly become close". What we did not find stated is the conclusion as we use it, that the joined
-regions lie in the causal past of one event and the mouths are born together. We therefore class the lemma as a corollary of their construction, not
-as a new theorem.
+regions lie in the causal past of one event and the mouths are born together. We therefore class the
+lemma as a corollary of their construction, not as a new theorem.
 
 *What the lemma does not cover.* Quantum nucleation is outside it, and there the conclusion fails. Horowitz,
 Marolf, Santos & Wang (2019) construct Euclidean instantons, in asymptotically anti-de Sitter backgrounds,

@@ -63,6 +63,8 @@ def test_charged_closed_forms_and_limits():
     g = [ch.critical_at(x)["G_throat"] for x in (0.99, 0.999, 0.9999)]
     assert g[0] > g[1] > g[2]
     assert g[2] / (1 - 0.9999) ** 2 == pytest.approx(g[0] / (1 - 0.99) ** 2, rel=0.02)   # G ~ (1-q)^2
+    assert g[2] / (1 - 0.9999) ** 2 == pytest.approx(4 / 9, rel=1e-3)                     # coefficient 4/9
+    assert ch.crossing_gamma(g[2]) * (1 - 0.9999) == pytest.approx(1.5, rel=1e-3)
 
 
 def test_field_limits_for_a_one_metre_throat():
