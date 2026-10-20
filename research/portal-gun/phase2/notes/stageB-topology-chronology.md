@@ -32,7 +32,7 @@ posed by the project lead. It does not evaluate the lead's Stage A results.
 | DGS00 | H.F. Dowker, R.S. Garcia & S. Surya, "Morse index and causal continuity. A criterion for topology change in quantum gravity", Class. Quantum Grav. **17**, 697–712 (2000) | gr-qc/9910034 | 10.1088/0264-9381/17/3/308 | full text read |
 | BDGSS99 | A. Borde, H.F. Dowker, R.S. Garcia, R.D. Sorkin & S. Surya, "Causal continuity in degenerate spacetimes", Class. Quantum Grav. **16**, 3457–3481 (1999) | gr-qc/9901063 (v3) | 10.1088/0264-9381/16/11/303 | full text read |
 | DG98 | H.F. Dowker & R.S. Garcia, "A handlebody calculus for topology change", Class. Quantum Grav. **15**, 1859–1879 (1998) | gr-qc/9711042 | 10.1088/0264-9381/15/7/005 | partial (§§1–3.2 read) |
-| D02 | F. Dowker, "Topology change in quantum gravity", in *The Future of Theoretical Physics and Cosmology* (Hawking 60th-birthday proceedings, CUP 2003), p. 436 per INSPIRE | gr-qc/0206020 | none found | partial (§§2–5 read) |
+| D02 | F. Dowker, "Topology change in quantum gravity". arXiv comment: "Contribution to the proceedings of the Stephen Hawking 60th birthday conference, Cambridge, January 2002". INSPIRE lists page 436; publisher and year not verified here. | gr-qc/0206020 | none found | partial (§§2–5 read) |
 | S97 | R.D. Sorkin, "Forks in the road, on the way to quantum gravity", Int. J. Theor. Phys. **36**, 2759–2781 (1997) | gr-qc/9706002 | 10.1007/BF02435709 | partial (topology-change passage pp. 12–13, references) |
 | BS | A. Borde & R.D. Sorkin, "Causal cobordism: topology change without causal anomalies" | none | none | **not accessed: never published.** DS98 ref. [21], DG98 ref. [20] and S97 ref. [53] cite it as "(in preparation)"; BDGSS99 ref. [14] cites "A. Borde and R.D. Sorkin. Unpublished." An INSPIRE search for author Borde AND author Sorkin returns only BDGSS99. |
 
@@ -170,8 +170,9 @@ closest statements, all of which are explicit, are below.
      respectively 'end' and 'begin' at p. Let us define the past set, P ≡ I⁻(N^λ, N) and the future
      set F ≡ I⁺(N^{n−λ}, N) from these punctured discs. Clearly, P lies in the subcritical region of
      N and F in the supercritical region. We now show that every point in P is to the past of
-     every other point in F." Earlier in §3 the same sets are those "which could be interpreted
-     as the chronological past and future of the critical point." Claim 2: "Any pair of points
+     every other point in F." §3 opens by saying this construction generalises, to arbitrary h,
+     the sets P and F of their earlier Cartesian-metric paper [4], "which could be interpreted as
+     the chronological past and future of the critical point." Claim 2: "Any pair of points
      s, q with s ∈ P and q ∈ F satisfy s ∈ I⁻(q, N)."
    - BDGSS99 §5.3 ("The 'chronos' of the Morse point"): "one is inclined to regard these lines as
      the null cone of the critical point p, with F constituting its chronological future and P
@@ -381,7 +382,7 @@ closest statements, all of which are explicit, are below.
 |---|---|---|---|---|
 | V97 | M. Visser, "Traversable wormholes: the Roman ring", Phys. Rev. D **55**, 5212 (1997) | gr-qc/9702043 | 10.1103/PhysRevD.55.5212 | full text read |
 | V94 | M. Visser, "van Vleck determinants: traversable wormhole spacetimes", Phys. Rev. D **49**, 3963 (1994) | gr-qc/9311026 | 10.1103/PhysRevD.49.3963 | partial (§VI, §VII) |
-| V02 | M. Visser, "The quantum physics of chronology protection", in *The Future of Theoretical Physics and Cosmology* (CUP 2003), p. 161 per INSPIRE | gr-qc/0204022 | none found | partial (the ring passage, p. 10) |
+| V02 | M. Visser, "The quantum physics of chronology protection". Preprint header: "To appear in: The future of theoretical physics and cosmology; Proceedings of the conference held in honour of Stephen Hawking on the occasion of his 60'th birthday. (Cambridge, 7–10 January 2002.)" INSPIRE lists page 161. | gr-qc/0204022 | none found | partial (the ring passage, p. 10) |
 | ER97 | Everett & Roman (1997); see Q5 | gr-qc/9702049 | 10.1103/PhysRevD.56.2100 | full text read |
 | FKZ23 | V.P. Frolov, P. Krtouš & A. Zelnikov, "Ring wormholes and time machines", Phys. Rev. D **108**, 024034 (2023) | 2305.03887 | 10.1103/PhysRevD.108.024034 | partial (§§I, III, VI, VII) |
 | UVa558 | Universidad de Valladolid Online Judge problem 558, "Wormholes" (programming-contest problem, not physics literature) | none | none | full statement read (onlinejudge.org/external/5/558.pdf) |
@@ -956,4 +957,4 @@ arXiv:1904.02187 (v2); DOI 10.1088/1361-6382/ab436f. **Partial**: §§1, 2, 4, 5
 | Q5 SSV 2022 | Every Natário-class warp drive (unit lapse, flat slices, smooth, asymptotically flat flow gradients) violates the WEC, SEC and DEC, and the NEC under plausible subsidiary conditions. Modified gravity still violates the null and timelike convergence conditions. | partial |
 | Q6 Horndeski / beyond | No-go: R16b (cubic generalised Galileons + GR, d ≥ 2) and EM18 (full Horndeski 4D; KMS stability conditions; GR restored at infinity): no stable static spherically symmetric asymptotically flat wormholes. DGNR06: stable NEC violation needs anisotropy and superluminal modes. Beyond Horndeski evades the no-go (MRV18/19, FHPST19); MRV23 example satisfies all high-energy stability conditions but slow tachyonic modes are unconstrained. Full stability is open. "Rubakov 2016 Hamiltonian analysis": no such paper found. | R16b, EM18 full; others partial or abstract |
 | Q7 MMP / MM | Long wormholes: πℓ > d always, so not time machines. MMP: ℓ = 16 r_e³/(G_N q N_f) ∝ q² l_p/N_f, outside time πℓ, proper time ~ r_e. MM-RS2 example: r_e ≈ 1.5×10⁷ m (0.05 s), ℓ ≈ 3×10³ ly, γ ≈ 2×10¹², c₂ ≈ 7×10⁷², E_bin ≈ −5×10⁹ kg, R₅ = 50 µm. 10⁴ M_⊙ per mouth is not stated; it follows from M_e = r_e/G₄ (our arithmetic). Free fermions need N_f > 10⁵². | MM full; MMP partial |
-| Q8 HMSW 2019 | In asymptotically AdS backgrounds, a test cosmic string breaks into two nearly static particles, to be replaced by small black holes with horizons identified, i.e. a wormhole. Traversability via quantum back-reaction is argued, not computed. Rate Γ = |K|e^{−2ΔS}, with ΔS = πmL + O(ε log ε) in vacuum examples; the rate → 0 in the exactly static limit. Mouths created a finite distance apart (r₁ ∝ L/ε, proper separation 2L log(2r₁/L)), not adjacent. | partial (most sections) |
+| Q8 HMSW 2019 | In asymptotically AdS backgrounds, a test cosmic string breaks into two nearly static particles, to be replaced by small black holes with horizons identified, i.e. a wormhole. Traversability via quantum back-reaction is argued, not computed. Rate Γ = \|K\| e^{−2ΔS}, with ΔS = πmL + O(ε log ε) in vacuum examples; the rate → 0 in the exactly static limit. Mouths created a finite distance apart (r₁ ∝ L/ε, proper separation 2L log(2r₁/L)), not adjacent. | partial (most sections) |
