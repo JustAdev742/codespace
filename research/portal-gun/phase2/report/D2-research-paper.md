@@ -585,8 +585,8 @@ state as $p - p_0 = \beta^2(\sigma - \sigma_0)$, we evaluated $V''(a_0)$ in clos
 - **$a_0 > 3M$:** stable iff $\beta^2$ is below a critical value, which rises from $-\infty$ just above $3M$
   toward $-1/2$ as $a_0 \to \infty$.
 
-Stability therefore always needs an equation of state with negative or "super-stiff" response, as Poisson and
-Visser found (§10). For exotic matter $\beta^2$ need not be a sound speed, so this is not itself a causality
+Stability therefore always needs an equation of state with negative or "super-stiff" response, as Poisson &
+Visser (1995) found; our regions reproduce theirs. For exotic matter $\beta^2$ need not be a sound speed, so this is not itself a causality
 violation. It is, however, a further requirement on matter that is already unknown.
 
 ![Thin-shell stability map](../figures/p2_fig5_thin_shell.png)
@@ -601,8 +601,9 @@ infinitesimal-generator method (Breda, Maset & Vermiglio 2005) and minimised it 
 gains exist iff $s\tau < \sqrt2$: the boundary was found between 1.414 (root $-1\times10^{-4}$) and 1.420
 ($+3\times10^{-3}$), with the optimal gains degenerating at the boundary ($K \to s^2$, $D \to \tau s^2$). This is
 the known critical delay for delayed PD control of an inverted pendulum, $\tau < \sqrt{2/a}$ for
-$\ddot x = ax + \dots$ (Stépán 1989, 1994; Insperger, Milton & Stépán 2013), which we recovered numerically
-before looking it up. Proportional control alone cannot stabilise a second-order unstable mode. Applying it
+$\ddot x = ax + \dots$ (Stépán 1989, 1994; Insperger, Milton & Stépán 2013). The stage A computation
+reproduced it, and the stage A record had predicted the match. Proportional control alone cannot stabilise a
+second-order unstable mode. Applying it
 to a wormhole is, as far as we found, new: the literature has open-loop compensation, in which a traveller's
 effect is cancelled by matched ghost radiation (Hayward, Kim & Lee 2002 in two dimensions), and Shinkai &
 Hayward's (2002) remark that maintenance would need "continual adjustments", but no closed-loop controller.

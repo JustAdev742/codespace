@@ -20,16 +20,20 @@ ROBUST or NEWPHYS. Everything after it is conditional on solving it.*
 
 ## Summary
 
-| | Architecture | Is it a portal? | First decisive blocker | Most severe item |
-|---|---|---|---|---|
-| A | Direct creation (the show's gun) | yes | Create a connection to a chosen distant region on demand **[ROBUST]** | same |
-| B | Pre-existing connection (network terminal) | yes | Hold a shortcut throat open with available matter **[NEWPHYS]** | B1 existence [OPEN_NEG]; B6 handheld [NEWPHYS] |
-| C | Distributed system (create locally, transport) | yes | Hold it open **[NEWPHYS]** | C1 local creation [OPEN_NEG] |
-| D1 | Mouth launcher (the video-game gun) | yes | Hold it open **[NEWPHYS]** | D1d moving a mouth [OPEN] |
-| D2 | Flat-face portal (polygonal or circular rim) | yes | Rim strings with tension −c⁴/4G **[NEWPHYS]** (Planck-scale) | same |
-| D3 | Information portal (scan, send, rebuild) | **no** | Moving the same matter through a shortcut **[THEOREM]** | — |
-| D4 | Krasnikov tube or warp corridor | partly (one-way, after building) | NEC-violating walls **[NEWPHYS]** | two corridors can form a time machine [OPEN_NEG] |
-| D5 | Long, QFT-supported wormhole | **no** (slower than going around) | Being a shortcut **[THEOREM]** | making one at all [OPEN] |
+| | Architecture | Is it a portal? | First decisive blocker | Most severe status (framework) | Other items to note |
+|---|---|---|---|---|---|
+| A | Direct creation (the show's gun) | yes | Create a connection to a chosen distant region on demand **[ROBUST]** | the same | — |
+| B | Pre-existing connection (network terminal) | yes | Hold a shortcut throat open with available matter **[NEWPHYS]** | B3 stability [ROBUST] | B1 existence [OPEN_NEG]; B6 handheld [NEWPHYS] |
+| C | Distributed system (create locally, transport) | yes | Hold it open **[NEWPHYS]** | C3 stability [ROBUST] | C1 local creation [OPEN_NEG] |
+| D1 | Mouth launcher (the video-game gun) | yes | Hold it open **[NEWPHYS]** | D1c stability during launch [ROBUST] | D1d moving a mouth [OPEN] |
+| D2 | Flat-face portal (polygonal or circular rim) | yes | Rim strings with tension −c⁴/4G **[NEWPHYS]** (Planck-scale) | the same | D2c rim dynamics [OPEN] |
+| D3 | Information portal (scan, send, rebuild) | **no** | Moving the same matter through a shortcut **[THEOREM]** | the same | — |
+| D4 | Krasnikov tube or warp corridor | partly (one-way, after building) | NEC-violating walls **[NEWPHYS]** | the same | two corridors can form a time machine [OPEN_NEG] |
+| D5 | Long, QFT-supported wormhole | **no** (slower than going around) | Being a shortcut **[THEOREM]** | the same | making one at all [OPEN] |
+
+"Most severe status" is the framework's ordering (THEOREM, then ROBUST, then NEWPHYS, and so on), as in
+[results/feasibility.json](../results/feasibility.json); it ranks how firmly a requirement is excluded, not how
+far it is from being met.
 
 **The finding.** Holding a throat open is the earliest decisive blocker for every architecture that is both
 causal and a genuine shortcut (B, C, D1, D2, D4). Only direct creation (A) fails earlier, at creation. That
