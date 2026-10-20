@@ -1,0 +1,68 @@
+{
+ "families": [
+  {
+   "family": "ellis",
+   "E_static_r0": -1.565796369109187,
+   "E_static_MJ_for_1m": -1.110823376460129,
+   "tolman": 8.131012380175218e-18,
+   "anec_direct": -0.1249999934208263,
+   "anec_identity": -0.12420423859824271,
+   "anec_J_m2_for_1m": -1.512819375797942e+43
+  },
+  {
+   "family": "gen_ellis_n4",
+   "E_static_r0": -1.2708194402204804,
+   "E_static_MJ_for_1m": -0.9015578074561538,
+   "tolman": -1.3950353887357016e-15,
+   "anec_direct": -0.13258252152742195,
+   "anec_identity": -0.13178674681146516,
+   "anec_J_m2_for_1m": -1.6045873441255245e+43
+  },
+  {
+   "family": "compact_a1",
+   "E_static_r0": -1.7732395459170844,
+   "E_static_MJ_for_1m": -1.2579898501034816,
+   "tolman": 2.988512509407434e-19,
+   "anec_direct": -0.14199226188551278,
+   "anec_identity": -0.14119901214819333,
+   "anec_J_m2_for_1m": -1.7184692503990965e+43
+  },
+  {
+   "family": "compact_a0.01",
+   "E_static_r0": -1.997732396136914,
+   "E_static_MJ_for_1m": -1.4172518785460575,
+   "tolman": 4.6888318196264246e-18,
+   "anec_direct": -0.15893812217976477,
+   "anec_identity": -0.15814629223753796,
+   "anec_J_m2_for_1m": -1.9235574675352601e+43
+  },
+  {
+   "family": "compact_a1_phi-0.5_w1",
+   "E_static_r0": -1.7732395459170844,
+   "E_static_MJ_for_1m": -1.2579898501034816,
+   "tolman": 3.9968028886505635e-15,
+   "anec_direct": -0.16261580439017334,
+   "anec_identity": -0.16182255465019607,
+   "anec_J_m2_for_1m": -1.9680668211254063e+43
+  },
+  {
+   "family": "two_scale_eps0.01_L400",
+   "E_static_r0": 74.58485900040993,
+   "E_static_MJ_for_1m": 52.91275835233504,
+   "tolman": -1.3454281711869333e-14,
+   "anec_direct": -0.022931580915595537,
+   "anec_identity": -0.022929591429318708,
+   "anec_J_m2_for_1m": -2.775307340217132e+42
+  }
+ ],
+ "closed_forms": {
+  "ellis_E": -1.5707963267948966,
+  "ellis_anec": -0.125,
+  "thin_shell_E_M0": -2.0,
+  "flat_face_rim": [
+   -0.25,
+   -1.5707963267948966
+  ],
+  "misner_sharp_per_side_kg_1m": -6.732954607500545e+26
+ }
+}

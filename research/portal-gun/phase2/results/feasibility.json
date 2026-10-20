@@ -1,0 +1,629 @@
+{
+ "table": [
+  {
+   "key": "A",
+   "name": "Direct creation (the show's gun)",
+   "portal": true,
+   "first_decisive": "A1: Create a connection to a distant region on demand [THEOREM]",
+   "worst": "A1 [THEOREM]",
+   "conditional_after": [
+    "A2",
+    "A3",
+    "A4"
+   ]
+  },
+  {
+   "key": "B",
+   "name": "Pre-existing connection (network terminal)",
+   "portal": true,
+   "first_decisive": "B2: It stays open with available matter [NEWPHYS]",
+   "worst": "B3 [ROBUST]",
+   "conditional_after": [
+    "B3",
+    "B4",
+    "B5",
+    "B6"
+   ]
+  },
+  {
+   "key": "C",
+   "name": "Distributed system",
+   "portal": true,
+   "first_decisive": "C2: Hold it open [NEWPHYS]",
+   "worst": "C3 [ROBUST]",
+   "conditional_after": [
+    "C3",
+    "C4",
+    "C5",
+    "C6"
+   ]
+  },
+  {
+   "key": "D1",
+   "name": "Mouth launcher (the video-game gun)",
+   "portal": true,
+   "first_decisive": "D1b: Hold it open [NEWPHYS]",
+   "worst": "D1c [ROBUST]",
+   "conditional_after": [
+    "D1c",
+    "D1d",
+    "D1e",
+    "D1f"
+   ]
+  },
+  {
+   "key": "D2",
+   "name": "Polygonal flat-face portal",
+   "portal": true,
+   "first_decisive": "D2b: Rim strings with tension -c^4/4G [NEWPHYS]",
+   "worst": "D2b [NEWPHYS]",
+   "conditional_after": [
+    "D2c",
+    "D2d",
+    "D2e"
+   ]
+  },
+  {
+   "key": "D3",
+   "name": "Information portal",
+   "portal": false,
+   "first_decisive": "D3a: Move the same matter through a shortcut [THEOREM]",
+   "worst": "D3a [THEOREM]",
+   "conditional_after": [
+    "D3b"
+   ]
+  },
+  {
+   "key": "D4",
+   "name": "Krasnikov tube / warp corridor",
+   "portal": true,
+   "first_decisive": "D4b: NEC-violating walls [NEWPHYS]",
+   "worst": "D4b [NEWPHYS]",
+   "conditional_after": [
+    "D4c"
+   ]
+  },
+  {
+   "key": "D5",
+   "name": "Long wormhole (QFT-supported)",
+   "portal": false,
+   "first_decisive": "D5a: Be a shortcut [THEOREM]",
+   "worst": "D5a [THEOREM]",
+   "conditional_after": []
+  }
+ ],
+ "architectures": [
+  {
+   "key": "A",
+   "name": "Direct creation (the show's gun)",
+   "portal": true,
+   "description": "The handheld device makes a new connection between here and a chosen remote place.",
+   "reqs": [
+    {
+     "key": "A1",
+     "stage": "create",
+     "text": "Create a connection to a distant region on demand",
+     "status": "THEOREM",
+     "basis": "Local-creation lemma (D2 sec. 5): in Morse topology change the regions a new handle joins lie in the causal past of one event, so both mouths start at one place; Lorentzian (non-degenerate) topology change needs closed timelike curves (Geroch 1967).",
+     "assumptions": "Classical or semiclassical spacetime; topology change either Lorentzian or through isolated Morse degeneracies; no closed timelike curves.",
+     "log10_deficit": null,
+     "na": false
+    },
+    {
+     "key": "A2",
+     "stage": "hold",
+     "text": "Hold a macroscopic shortcut throat open",
+     "status": "NEWPHYS",
+     "basis": "QI audit: smooth throats excluded by 10^62; the thin-band escape needs |rho| = 1.6e+64 J/m^3 (no known matter).",
+     "assumptions": "Flat-space QIs applied with f = 0.01; free fields.",
+     "log10_deficit": null,
+     "na": false
+    },
+    {
+     "key": "A3",
+     "stage": "stabilise",
+     "text": "Keep it stable",
+     "status": "ROBUST",
+     "basis": "All explicit models unstable (D2 sec. 6).",
+     "assumptions": "",
+     "log10_deficit": null,
+     "na": false
+    },
+    {
+     "key": "A4",
+     "stage": "endpoints",
+     "text": "Reach 'other dimensions'",
+     "status": "OPEN_NEG",
+     "basis": "No theory supplies a mechanism.",
+     "assumptions": "",
+     "log10_deficit": null,
+     "na": false
+    }
+   ]
+  },
+  {
+   "key": "B",
+   "name": "Pre-existing connection (network terminal)",
+   "portal": true,
+   "description": "Linked mouths already exist; the device opens and steers a local mouth.",
+   "reqs": [
+    {
+     "key": "B1",
+     "stage": "create",
+     "text": "A macroscopic traversable shortcut exists already (natural or built)",
+     "status": "OPEN_NEG",
+     "basis": "No natural mechanism; none detected (lensing searches give upper limits); a shortcut violates the achronal ANEC, conjectured to hold self-consistently.",
+     "assumptions": "",
+     "log10_deficit": null,
+     "na": false
+    },
+    {
+     "key": "B2",
+     "stage": "hold",
+     "text": "It stays open with available matter",
+     "status": "NEWPHYS",
+     "basis": "As A2.",
+     "assumptions": "",
+     "log10_deficit": null,
+     "na": false
+    },
+    {
+     "key": "B3",
+     "stage": "stabilise",
+     "text": "Stable against traffic and environment",
+     "status": "ROBUST",
+     "basis": "Ellis e-folds in 2.82 ns; feedback needs loop delay < 3.99 ns and NEC-violating actuation.",
+     "assumptions": "",
+     "log10_deficit": null,
+     "na": false
+    },
+    {
+     "key": "B4",
+     "stage": "traverse",
+     "text": "Survivable crossing",
+     "status": "OK",
+     "basis": "Tidal impulse ~ v w / r0 ~ 1 m/s at walking speed through smooth or thin-band throats.",
+     "assumptions": "",
+     "log10_deficit": null,
+     "na": false
+    },
+    {
+     "key": "B5",
+     "stage": "endpoints",
+     "text": "Chronology management",
+     "status": "ENG",
+     "basis": "Vertical pairs reach closed causal curves in 354 days; the network checker gives days to millennia; manageable by schedule.",
+     "assumptions": "",
+     "log10_deficit": null,
+     "na": false
+    },
+    {
+     "key": "B6",
+     "stage": "device",
+     "text": "Handheld (light) mouth",
+     "status": "NEWPHYS",
+     "basis": "Misner-Sharp sum rule (a theorem for static spherical mouths): a mouth lighter than r0 c^2/2G = 0.35 Jupiter masses must contain negative energy of that size; otherwise it weighs as much as a black hole of the throat's size.",
+     "assumptions": "Static, spherically symmetric mouth.",
+     "log10_deficit": null,
+     "na": false
+    }
+   ]
+  },
+  {
+   "key": "C",
+   "name": "Distributed system",
+   "portal": true,
+   "description": "A facility creates throats locally, keeps them, and carries mouths at <= c; the handheld unit is a terminal.",
+   "reqs": [
+    {
+     "key": "C1",
+     "stage": "create",
+     "text": "Create a throat locally",
+     "status": "OPEN_NEG",
+     "basis": "Classical: needs CTCs (Geroch) or degenerate metrics; quantum nucleation proposed (Horowitz et al. 2019) without controllable rates.",
+     "assumptions": "",
+     "log10_deficit": null,
+     "na": false
+    },
+    {
+     "key": "C2",
+     "stage": "hold",
+     "text": "Hold it open",
+     "status": "NEWPHYS",
+     "basis": "As A2.",
+     "assumptions": "",
+     "log10_deficit": null,
+     "na": false
+    },
+    {
+     "key": "C3",
+     "stage": "stabilise",
+     "text": "Stability",
+     "status": "ROBUST",
+     "basis": "As B3.",
+     "assumptions": "",
+     "log10_deficit": null,
+     "na": false
+    },
+    {
+     "key": "C4",
+     "stage": "traverse",
+     "text": "Survivable crossing",
+     "status": "OK",
+     "basis": "As B4.",
+     "assumptions": "",
+     "log10_deficit": null,
+     "na": false
+    },
+    {
+     "key": "C5",
+     "stage": "endpoints",
+     "text": "Transport mouths and manage drift",
+     "status": "ENG",
+     "basis": "A launched mouth keeps margin 1 - (1 - 1/gamma)/beta; drift rates U/c^2 - v^2/2c^2.",
+     "assumptions": "",
+     "log10_deficit": null,
+     "na": false
+    },
+    {
+     "key": "C6",
+     "stage": "device",
+     "text": "Handheld terminal",
+     "status": "NEWPHYS",
+     "basis": "As B6.",
+     "assumptions": "",
+     "log10_deficit": null,
+     "na": false
+    }
+   ]
+  },
+  {
+   "key": "D1",
+   "name": "Mouth launcher (the video-game gun)",
+   "portal": true,
+   "description": "The device holds one mouth of a locally made pair and fires the other at a surface in line of sight.",
+   "reqs": [
+    {
+     "key": "D1a",
+     "stage": "create",
+     "text": "Create a throat at the device",
+     "status": "OPEN_NEG",
+     "basis": "As C1.",
+     "assumptions": "",
+     "log10_deficit": null,
+     "na": false
+    },
+    {
+     "key": "D1b",
+     "stage": "hold",
+     "text": "Hold it open",
+     "status": "NEWPHYS",
+     "basis": "As A2.",
+     "assumptions": "",
+     "log10_deficit": null,
+     "na": false
+    },
+    {
+     "key": "D1c",
+     "stage": "stabilise",
+     "text": "Stability during launch",
+     "status": "ROBUST",
+     "basis": "As B3, plus acceleration loads.",
+     "assumptions": "",
+     "log10_deficit": null,
+     "na": false
+    },
+    {
+     "key": "D1d",
+     "stage": "endpoints",
+     "text": "Fire a mouth to the target",
+     "status": "OPEN",
+     "basis": "Accelerating a mouth means pushing its exotic structure; its inertia is its ADM mass, zero for a massless mouth: no established dynamics.",
+     "assumptions": "",
+     "log10_deficit": null,
+     "na": false
+    },
+    {
+     "key": "D1e",
+     "stage": "endpoints",
+     "text": "Causality of the shot",
+     "status": "OK",
+     "basis": "Launch at beta leaves margin fraction 1 - (1 - sqrt(1-beta^2))/beta > 0.",
+     "assumptions": "",
+     "log10_deficit": null,
+     "na": false
+    },
+    {
+     "key": "D1f",
+     "stage": "device",
+     "text": "Handheld",
+     "status": "NEWPHYS",
+     "basis": "As B6.",
+     "assumptions": "",
+     "log10_deficit": null,
+     "na": false
+    }
+   ]
+  },
+  {
+   "key": "D2",
+   "name": "Polygonal flat-face portal",
+   "portal": true,
+   "description": "Visser's cut-and-paste portal: flat faces, exotic matter only on straight rim strings; the best-behaved geometry for travellers.",
+   "reqs": [
+    {
+     "key": "D2a",
+     "stage": "create",
+     "text": "Create the cut-and-paste topology",
+     "status": "OPEN_NEG",
+     "basis": "As C1.",
+     "assumptions": "",
+     "log10_deficit": null,
+     "na": false
+    },
+    {
+     "key": "D2b",
+     "stage": "hold",
+     "text": "Rim strings with tension -c^4/4G",
+     "status": "NEWPHYS",
+     "basis": "QI forces rim core radius <= 5.6e-32 m (Planck scale): quantum-gravity regime.",
+     "assumptions": "Smoothed conical defect; flat-space QI.",
+     "log10_deficit": null,
+     "na": false
+    },
+    {
+     "key": "D2c",
+     "stage": "stabilise",
+     "text": "Rim and corner dynamics",
+     "status": "OPEN",
+     "basis": "Thin curved loops are not consistent sources in GR (to be checked: Unruh et al. 1989); straight edges need corner supports; no stability analysis exists.",
+     "assumptions": "",
+     "log10_deficit": null,
+     "na": false
+    },
+    {
+     "key": "D2d",
+     "stage": "traverse",
+     "text": "Survivable crossing",
+     "status": "OK",
+     "basis": "Flat faces: no tides away from the rim.",
+     "assumptions": "",
+     "log10_deficit": null,
+     "na": false
+    },
+    {
+     "key": "D2e",
+     "stage": "device",
+     "text": "Handheld",
+     "status": "OPEN",
+     "basis": "Rim mass-energy -1.1 M_J per metre radius with zero Komar mass: what a hand would feel is not established.",
+     "assumptions": "",
+     "log10_deficit": null,
+     "na": false
+    }
+   ]
+  },
+  {
+   "key": "D3",
+   "name": "Information portal",
+   "portal": false,
+   "description": "Scan, transmit at light speed, rebuild; plus a live two-way window.",
+   "reqs": [
+    {
+     "key": "D3a",
+     "stage": "traverse",
+     "text": "Move the same matter through a shortcut",
+     "status": "THEOREM",
+     "basis": "Nothing moves; signals take at least the light time. Fails the portal definition by design.",
+     "assumptions": "",
+     "log10_deficit": null,
+     "na": false
+    },
+    {
+     "key": "D3b",
+     "stage": "device",
+     "text": "Live window and delivery",
+     "status": "ENG",
+     "basis": "Telepresence exists; delivery is ordinary transport.",
+     "assumptions": "",
+     "log10_deficit": null,
+     "na": false
+    }
+   ]
+  },
+  {
+   "key": "D4",
+   "name": "Krasnikov tube / warp corridor",
+   "portal": true,
+   "description": "A corridor of modified spacetime laid at <= c, then fast for later travellers.",
+   "reqs": [
+    {
+     "key": "D4a",
+     "stage": "create",
+     "text": "Lay the corridor",
+     "status": "ENG",
+     "basis": "Built at <= c along the route (Krasnikov 1998).",
+     "assumptions": "",
+     "log10_deficit": null,
+     "na": false
+    },
+    {
+     "key": "D4b",
+     "stage": "hold",
+     "text": "NEC-violating walls",
+     "status": "NEWPHYS",
+     "basis": "QI constraints make the walls Planck-thin with huge negative energy (Everett & Roman 1997; to be checked).",
+     "assumptions": "",
+     "log10_deficit": null,
+     "na": false
+    },
+    {
+     "key": "D4c",
+     "stage": "endpoints",
+     "text": "Chronology with two corridors",
+     "status": "OPEN_NEG",
+     "basis": "Two tubes can form closed timelike curves.",
+     "assumptions": "",
+     "log10_deficit": null,
+     "na": false
+    }
+   ]
+  },
+  {
+   "key": "D5",
+   "name": "Long wormhole (QFT-supported)",
+   "portal": false,
+   "description": "Traversable wormholes supported by quantum fields, longer than the outside path.",
+   "reqs": [
+    {
+     "key": "D5b",
+     "stage": "create",
+     "text": "Make one",
+     "status": "OPEN",
+     "basis": "Requires magnetically charged near-extremal black holes or a dark sector.",
+     "assumptions": "",
+     "log10_deficit": null,
+     "na": false
+    },
+    {
+     "key": "D5a",
+     "stage": "traverse",
+     "text": "Be a shortcut",
+     "status": "THEOREM",
+     "basis": "By construction slower than the outside route: this is what lets it respect the achronal ANEC.",
+     "assumptions": "",
+     "log10_deficit": null,
+     "na": false
+    }
+   ]
+  }
+ ],
+ "numbers": {
+  "D_smooth": 1.6034995176356985e+62,
+  "log10_D_smooth": 62.205068833620125,
+  "a_band_m": 9.203373764104512e-22,
+  "rho_band_J_m3": 1.643766182052865e+64,
+  "log10_band_vs_casimir_1um": 67.57897592857277,
+  "casimir_gap_for_band_m": 1.2742540361002264e-23,
+  "w_rim_m": 5.584066548209673e-32,
+  "tension_throat_Pa": 4.815453886722423e+42,
+  "misner_sharp_per_side_kg": -6.732954607500545e+26,
+  "misner_sharp_per_side_MJ": -0.3547151463545987,
+  "efold_s": 2.822096442651781e-09,
+  "pd_delay_max_s": 3.991047063523014e-09,
+  "pressure_force_N": 318321.8756249858,
+  "vertical_pair_days": 353.8231828137785,
+  "pulsed_max_open_s": 1.3410168690106188e-26
+ },
+ "milestones": [
+  {
+   "key": "M1",
+   "question": "Can quantum fields coupled to gravity violate the achronal ANEC on macroscopic scales?",
+   "result_needed": "A self-consistent semiclassical (or quantum-gravity) solution containing a macroscopic achronal ANEC violation, or a proof that none exists.",
+   "counts_if": "Solution with throat >> l_P satisfying the semiclassical Einstein equation and known QIs.",
+   "method": "Curved-space QI/ANEC proofs (null-projected and smeared QIs), holographic constructions, lattice QFT on curved backgrounds.",
+   "progress": "Any controlled example of AANEC violation over a region larger than the curvature scale.",
+   "terminates": "Proof of AANEC (or of a QI with Planck-suppressed loopholes) in curved spacetime.",
+   "unlocks": "Holding open any shortcut throat (M3, M4).",
+   "still_unsolved": "Topology, stability, control.",
+   "needs": []
+  },
+  {
+   "key": "M2",
+   "question": "Is there a physical, computable mechanism for topology change?",
+   "result_needed": "Rates for handle nucleation in a theory of quantum gravity, and their dependence on controllable fields.",
+   "counts_if": "Non-negligible rate for macroscopic or growable handles.",
+   "method": "Euclidean instantons (Horowitz-Marolf-Santos-Wang type), causal-set or spin-foam sums with Morse-index weighting.",
+   "progress": "A causally continuous (index-2) creation route with finite particle production and non-zero amplitude.",
+   "terminates": "Topology change shown to require Planck curvature with exponentially small rates for any macroscopic seed.",
+   "unlocks": "Local creation (C1, D1a, D2a).",
+   "still_unsolved": "Transport, holding open.",
+   "needs": []
+  },
+  {
+   "key": "M3",
+   "question": "Is there NEC-violating matter that can be concentrated into a 10^-21 m band at 10^64 J/m^3?",
+   "result_needed": "A state of known fields reaching the thin-band requirement while obeying all QIs.",
+   "counts_if": "Explicit state (e.g. squeezed or Casimir-type) with the required density and support.",
+   "method": "QI optimisation over states; search for interacting-field QI violations.",
+   "progress": "Any negative energy density above the free-field QI at the needed scale.",
+   "terminates": "QIs proven for interacting fields at those densities.",
+   "unlocks": "Thin-band throats (the only QI-compatible smooth-family escape).",
+   "still_unsolved": "Stability, creation.",
+   "needs": [
+    "M1"
+   ]
+  },
+  {
+   "key": "M4",
+   "question": "Do negative-tension codimension-2 objects (|mu| = c^2/4G) exist as dynamical objects?",
+   "result_needed": "A consistent theory with movable negative-tension strings at Planck thickness.",
+   "counts_if": "Dynamical defects whose tension can be set and whose ends/corners can be supported.",
+   "method": "String-theory defects, effective field theories of defects, QI analysis of conical excess.",
+   "progress": "Candidate objects with controllable positions.",
+   "terminates": "Proof that negative-tension defects are always non-dynamical or ghost-like.",
+   "unlocks": "Flat-face portals (D2).",
+   "still_unsolved": "Creation of the cut-and-paste topology.",
+   "needs": [
+    "M1"
+   ]
+  },
+  {
+   "key": "M5",
+   "question": "Is any traversable geometry stable against generic perturbations and traffic?",
+   "result_needed": "A solution with no growing modes for all perturbations, including infalling matter.",
+   "counts_if": "Spectral and nonlinear stability with physical matter.",
+   "method": "Master equations (as in D2 sec. 6), time evolution, energy methods; parametric and feedback schemes.",
+   "progress": "Stable example with matter satisfying QIs (or the matter of M3/M4).",
+   "terminates": "General instability theorem for NEC-violating throats.",
+   "unlocks": "Usable throats.",
+   "still_unsolved": "Creation, endpoints.",
+   "needs": [
+    "M3"
+   ]
+  },
+  {
+   "key": "M6",
+   "question": "Can a mouth be moved and steered with known forces?",
+   "result_needed": "Equations of motion of a mouth under applied stress-energy, including its exotic support.",
+   "counts_if": "A mouth accelerated to v without destroying the throat.",
+   "method": "Matched asymptotics / effective point-particle description of mouths; numerical relativity.",
+   "progress": "Controlled transport in a model.",
+   "terminates": "Inconsistency of mouth transport with QIs or stability.",
+   "unlocks": "Networks (B, C, D1).",
+   "still_unsolved": "Chronology management (engineering).",
+   "needs": [
+    "M5"
+   ]
+  },
+  {
+   "key": "M7",
+   "question": "Can chronology be managed operationally?",
+   "result_needed": "Control laws keeping every cycle weight of the network positive with a safety margin.",
+   "counts_if": "Schedules that bound all time shifts below the light-time margins.",
+   "method": "The chronology checker (D3) plus vacuum-polarisation estimates near the margin.",
+   "progress": "Demonstrated policies for realistic networks.",
+   "terminates": "Semiclassical instability at margins far larger than any achievable control.",
+   "unlocks": "Persistent networks.",
+   "still_unsolved": "None at this level.",
+   "needs": [
+    "M6"
+   ]
+  },
+  {
+   "key": "M8",
+   "question": "Can a device-scale mouth be light?",
+   "result_needed": "A mouth with ADM mass << r0 c^2/2G and its negative Misner-Sharp energy confined.",
+   "counts_if": "Lightweight mouth satisfying M3/M4.",
+   "method": "Misner-Sharp bookkeeping (D2 sec. 4) beyond spherical symmetry.",
+   "progress": "Non-spherical designs with smaller requirements.",
+   "terminates": "A general theorem extending the sum rule.",
+   "unlocks": "Handheld devices.",
+   "still_unsolved": "Everything upstream.",
+   "needs": [
+    "M3"
+   ]
+  }
+ ],
+ "acyclic": true
+}

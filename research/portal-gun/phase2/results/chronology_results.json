@@ -1,0 +1,74 @@
+{
+ "scenarios": [
+  {
+   "scenario": "Floor and ceiling (2.5 m)",
+   "years": 0.96875,
+   "note": "any height: c/g"
+  },
+  {
+   "scenario": "Gun at 1.2 m, wall mouth 10 m away at 1.5 m",
+   "years": 32.3125,
+   "note": ""
+  },
+  {
+   "scenario": "Home and office, 20 km apart, 100 m height difference",
+   "years": 193.625,
+   "note": ""
+  },
+  {
+   "scenario": "Valley and mountain top, 10 km apart, 3 km higher",
+   "years": 3.3725,
+   "note": ""
+  },
+  {
+   "scenario": "Ground and space station (400 km, 7.67 km/s)",
+   "years": 0.14763735401033312,
+   "rate": -2.8637761523432235e-10,
+   "note": "at closest approach; velocity term dominates"
+  },
+  {
+   "scenario": "Earth surface and Moon surface",
+   "years": 61.4396534376341,
+   "rate": 6.473678036615127e-10,
+   "note": ""
+  },
+  {
+   "scenario": "Earth and Mars (surface to surface)",
+   "years": 1463.9184458566597,
+   "rate": 5.659983249884761e-09,
+   "note": "at opposition"
+  },
+  {
+   "scenario": "Sun-neighbour star (4.37 ly, 25 km/s relative)",
+   "years": 1256819241.9455657,
+   "rate": 3.477031425167558e-09,
+   "note": "velocity term only"
+  }
+ ],
+ "launched_mouth_margin": [
+  {
+   "beta": 0.01,
+   "margin_fraction": 0.9949998749937508
+  },
+  {
+   "beta": 0.1,
+   "margin_fraction": 0.9498743710661997
+  },
+  {
+   "beta": 0.5,
+   "margin_fraction": 0.7320508075688772
+  },
+  {
+   "beta": 0.9,
+   "margin_fraction": 0.3732109937267414
+  },
+  {
+   "beta": 0.99,
+   "margin_fraction": 0.13239127252187777
+  },
+  {
+   "beta": 0.999,
+   "margin_fraction": 0.04375393174395992
+  }
+ ]
+}

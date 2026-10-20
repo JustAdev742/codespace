@@ -1,0 +1,184 @@
+[
+ {
+  "id": "B01",
+  "where": "sec. 2, table",
+  "claim": "Throat tension, exceeding the energy density: 4.8e42 Pa (MT88 eq. 51)",
+  "model": "Static, spherically symmetric, smooth throat (Morris-Thorne)",
+  "recomputed": "tau(r0) = c^4/(8 pi G r0^2) = 4.815e+42 Pa from the sympy-derived p_l at r' = 0; independent of the shape and redshift functions when Phi' is finite",
+  "verdict": "VERIFIED",
+  "note": "Applies to smooth throats. Thin shells carry surface stresses and flat-face portals carry the stress on line defects instead, so the number is model-class specific."
+ },
+ {
+  "id": "B02",
+  "where": "sec. 2, table",
+  "claim": "Negative mass-energy present: ~-2e27 kg (about -1 Jupiter mass); Ellis, flat-face and thin-shell models",
+  "model": "Integrated static-frame energy density",
+  "recomputed": "Ellis -2.12e+27 kg (-1.11 M_J); flat-face rim of radius 1 m -2.12e+27 kg; thin shell -2.69e+27 kg (-1.42 M_J) (proper-volume integrals, both sides)",
+  "verdict": "QUALIFIED",
+  "note": "Model-specific, and not a requirement in general. The Misner-Sharp sum rule gives, per mouth, Int 4 pi r^2 rho dr = M_ADM - r0 c^2/2G: a light mouth needs -6.73e+26 kg (-0.35 M_J) per side, while a mouth heavier than r0 c^2/2G can have positive energy density everywhere (the NEC still fails through tension > density). All these configurations have zero Komar mass: they do not weigh -1 M_J."
+ },
+ {
+  "id": "B03",
+  "where": "sec. 2, table",
+  "claim": "Negative-energy band thickness <~1e-21 m if supplied by free quantum fields (Ford & Roman 1996)",
+  "model": "Morris-Thorne thin-band wormhole; flat-space massless-scalar QI, f = 0.01",
+  "recomputed": "Generalised QI audit: thin exotic region of thickness a gives D ~ 8 (a/r0)^3 x 1.6e62; D = 1 at a = 9.20e-22 m (fitted slope 3.0)",
+  "verdict": "EXTENDED",
+  "note": "Reproduced. Phase II adds: (i) smooth throats are excluded by D = 1.6e62 for any flare-out (boost-optimised bound), so a thin band is necessary, not optional; (ii) the band needs |rho| ~ 1.6e+64 J/m^3, 10^68 times the Casimir density at 1 um; (iii) slow travellers cross it with a tidal impulse of ~1 m/s."
+ },
+ {
+  "id": "B04",
+  "where": "sec. 2, table",
+  "claim": "Stabilisation bandwidth faster than the 2.8 ns e-folding time (GGS 2009)",
+  "model": "Massless Ellis-Bronnikov wormhole, linear radial perturbations",
+  "recomputed": "Own derivation (delta-phi = 0 gauge), four methods: s = 1.1819727 c/b, e-folding 0.846043 b/c = 2.822 ns for b = 1 m",
+  "verdict": "EXTENDED",
+  "note": "The control requirement is sharper than 'faster than the e-folding time': delayed PD feedback stabilises only if the loop delay is below sqrt(2)/s = 3.99 ns (proportional control alone never does), and the actuator must deliver NEC-violating stress. Parametric driving was tested and did not stabilise the full field equation.",
+  "literature": "GGS value: see stage B"
+ },
+ {
+  "id": "B05",
+  "where": "sec. 2, table",
+  "claim": "Crossing speed for <= 1 g tides (Ellis): <= 2.2 m/s (MT88 tolerance)",
+  "model": "Lateral tide v^2 w |R_lthlth| at the throat; body size 2 m",
+  "recomputed": "v <= r0 sqrt(g/w) = 2.214 m/s; tidal module scan gives 2.21 m/s",
+  "verdict": "VERIFIED",
+  "note": "With MT's 2 m used for the body's width; for a 0.5 m wide body the limit is 4.4 m/s."
+ },
+ {
+  "id": "B06",
+  "where": "sec. 2, table",
+  "claim": "Pressure seal must hold 1 atm across the aperture (32 tonnes-force)",
+  "model": "Force = Delta p x pi r0^2 with r0 = 1 m",
+  "recomputed": "3.183e+05 N = 32.5 tonnes-force",
+  "verdict": "VERIFIED",
+  "note": "'Aperture' means a 1 m radius (2 m diameter) opening."
+ },
+ {
+  "id": "B07",
+  "where": "sec. 2, table",
+  "claim": "Vertical pairs reach closed timelike curves in 354 days",
+  "model": "Weak-field drift Delta = -g h t / c^2 against the light-time h/c",
+  "recomputed": "Network checker: 353.85 d for h = 2.5 m and 100 m (analytic c/g = 353.82 d)",
+  "verdict": "EXTENDED",
+  "note": "Independent of height. Phase II generalises to networks (cycle weights; Roman rings) and gives a schedule-level requirement: every cycle weight must stay positive."
+ },
+ {
+  "id": "B08",
+  "where": "sec. 2, table",
+  "claim": "Far-mouth placement at or below light speed (causal structure of GR)",
+  "model": "Causal structure; topology change",
+  "recomputed": "Local-creation lemma (Morse topology change): the regions joined by a new handle lie in the causal past of the creation event, so both mouths start together",
+  "verdict": "QUALIFIED",
+  "note": "True within classical or semiclassical spacetime without closed timelike curves (Lorentzian topology change needs them: Geroch 1967). Not established in quantum gravity."
+ },
+ {
+  "id": "B09",
+  "where": "sec. 3, concept 1",
+  "claim": "Throat generator 'ruled out by the causal structure of GR, independently of everything else'",
+  "model": "as B08",
+  "recomputed": "as B08",
+  "verdict": "CORRECTED",
+  "note": "Overstated. It is excluded under stated assumptions (no closed timelike curves; topology change either Lorentzian or through isolated degeneracies). Dropping them means allowing a time machine or a non-classical spacetime, which is a different claim from 'ruled out'."
+ },
+ {
+  "id": "B10",
+  "where": "sec. 3, concept 2",
+  "claim": "Network terminal is 'the only concept consistent with causality'",
+  "model": "Architecture comparison (D4)",
+  "recomputed": "Mouth launcher (D1) and Krasnikov-type corridors are also causal",
+  "verdict": "QUALIFIED",
+  "note": "Other causal variants exist; all share the same first blocker (holding a throat open)."
+ },
+ {
+  "id": "B11",
+  "where": "sec. 4, item 8",
+  "claim": "Mouth mass ranges from zero (massless Ellis) to ~1e4 solar masses (Maldacena-Milekhin)",
+  "model": "Literature",
+  "recomputed": "Misner-Sharp: zero-mass mouths need -0.35 M_J of negative energy per side",
+  "verdict": "QUALIFIED",
+  "literature": "MM mass: see stage B",
+  "note": "'Zero mass' hides the negative-energy requirement."
+ },
+ {
+  "id": "B12",
+  "where": "sec. 4, item 13",
+  "claim": "~1e42 Pa of tension with negative averaged null energy; forbidden in bulk by QIs for free fields",
+  "model": "QI audit",
+  "recomputed": "Smooth throats: D = 1.60e+62; Ellis ANEC = -c^4/(8 G r0) = -1.51e+43 J/m^2",
+  "verdict": "EXTENDED",
+  "note": "Quantified, and shown to be independent of the flare-out; the only static spherical escape is the thin band (B03)."
+ },
+ {
+  "id": "B13",
+  "where": "sec. 4, item 14",
+  "claim": "Negative-tension rim strings: no natural mechanism known (Visser 1989)",
+  "model": "Smoothed conical defect, excess 2 pi",
+  "recomputed": "QI forces core radius <= 5.6e-32 m; |mu| = c^2/4G = 3.37e+26 kg/m",
+  "verdict": "EXTENDED",
+  "note": "Rims must be Planck-scale objects; whether thin curved loops are consistent sources is a stage B check."
+ },
+ {
+  "id": "B14",
+  "where": "sec. 4, item 15",
+  "claim": "Topology change forbidden classically without CTCs (Geroch) or outright (Tipler, Borde)",
+  "model": "Classical theorems",
+  "recomputed": "(literature)",
+  "verdict": "QUALIFIED",
+  "note": "Tipler's and Borde's results need energy (and generic or compactness) conditions; Geroch's needs a non-degenerate time-oriented metric. Degenerate (Morse) metrics evade both, which is why the local-creation lemma matters."
+ },
+ {
+  "id": "B15",
+  "where": "sec. 4, item 16",
+  "claim": "Unstable in all explicit models; no controller can coordinate faster than light crosses the throat",
+  "model": "Stability programme",
+  "recomputed": "Ellis s = 1.182 c/b; thin shells stable only for beta^2 < -1/2 (M = 0) or > ~3.2 (a0 < 3M); PD delay limit sqrt(2)/s",
+  "verdict": "CORRECTED",
+  "note": "(i) Thin shells are stable for exotic equations of state, and stable examples are claimed in the literature (stage B), so 'all explicit models' is too strong; (ii) a distributed controller needs no global coordination; the binding limits are the loop delay (< 1.2 r0/c) and NEC-violating actuation."
+ },
+ {
+  "id": "B16",
+  "where": "sec. 4, summary",
+  "claim": "Twelve of the nineteen items are established or worked out on paper",
+  "model": "Count",
+  "recomputed": "Items 1-6 established, 7-12 investigated: 12",
+  "verdict": "VERIFIED",
+  "note": ""
+ },
+ {
+  "id": "B17",
+  "where": "sec. 5, R1",
+  "claim": "ANEC 'proven in flat-space QFT (Faulkner et al. 2016; Hartman et al. 2017)'",
+  "model": "Literature",
+  "recomputed": "(literature)",
+  "verdict": "QUALIFIED",
+  "note": "Those proofs are of the ANEC in flat space (Faulkner et al. for states built from local operators; Hartman et al. for interacting theories with a UV fixed point in d > 2). The achronal ANEC in curved spacetime, which is what a shortcut must violate, remains a conjecture (Graham & Olum 2007)."
+ },
+ {
+  "id": "B18",
+  "where": "sec. 5, R8",
+  "claim": "Stop if 'instability grows faster than any causal control'",
+  "model": "Delay-differential stability",
+  "recomputed": "Quantitative criterion: loop delay < sqrt(2)/s = 3.99 ns for 1 m",
+  "verdict": "EXTENDED",
+  "note": "A testable stop criterion replaces a qualitative one."
+ },
+ {
+  "id": "B19",
+  "where": "report 01, finding 5",
+  "claim": "A free rim collapses in 5.2 ns",
+  "model": "Nambu-Goto loop in flat space: R(t) = R0 cos(ct/R0)",
+  "recomputed": "pi R/(2c) = 5.24 ns",
+  "verdict": "QUALIFIED",
+  "note": "A probe-string estimate; with |G mu/c^2| = 1/4 self-gravity is not small, and the consistency of thin curved loops is itself in question (stage B). Read it as 'the light-crossing time'."
+ },
+ {
+  "id": "B20",
+  "where": "sec. bottom line",
+  "claim": "First failures: creating a handle, and holding it open with matter violating the averaged NEC macroscopically",
+  "model": "Feasibility framework",
+  "recomputed": "First decisive blocker is 'hold open' for B, C, D1, D2, D4; 'create remotely' for A",
+  "verdict": "EXTENDED",
+  "note": "Agrees; adds that local creation is open (not excluded), so holding open is the earliest decisive blocker for every causal architecture."
+ }
+]

@@ -1,7 +1,7 @@
 """Linear stability of the Ellis-Bronnikov wormhole, and related stability calculations.
 
 1. Ellis-Bronnikov wormhole (massless; phantom scalar).  Derived in
-   scratch/derive_ellis_pert.py (sympy, reproduced by tests/test_stability.py) from
+   derivations/ellis_perturbations.py (sympy; checked by tests/test_energy_stability_chronology.py) from
    G_ab = 8 pi T_ab with T_ab = -(d_a phi d_b phi - g_ab (d phi)^2 / 2), metric
    ds^2 = -e^{2a} dt^2 + e^{2c} dx^2 + R^2 dOmega^2 about a = c = 0, R0 = sqrt(x^2 + b^2),
    phi0 = arctan(x/b) / (2 sqrt(pi)), in the gauge delta-phi = 0 (regular everywhere because
