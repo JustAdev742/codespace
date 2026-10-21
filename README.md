@@ -13,6 +13,8 @@ npm run audit      # headless design + a11y audit
 - **Subagent** — `design-review`, drives a real browser for WCAG 2.1 AA review.
 - **Commands** — `/design-plan`, `/design-review`.
 - **MCP servers** — `accesslint`, `playwright`, `chrome-devtools`, `shadcn`.
+- **Apps** — `apps/ghost-typer` (a desktop app) and `apps/ludora` (an educational
+  game platform; see [`apps/ludora/README.md`](apps/ludora/README.md)).
 
 Setup, MCP enablement, and the list of local deviations from upstream are in
 [`CLAUDE.md`](CLAUDE.md).

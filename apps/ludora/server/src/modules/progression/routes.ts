@@ -6,6 +6,7 @@ import { achievements, userAchievements } from '../../db/schema.ts';
 import { noStore, requireAuth } from '../../http/context.ts';
 import { parse } from '../../lib/validate.ts';
 import { claimQuest, ensureQuests } from './quests.ts';
+import { metricValues } from './achievements.ts';
 
 export async function progressionRoutes(app: FastifyInstance, deps: AppDeps) {
   app.get('/api/quests', async (req, reply) => {
@@ -30,15 +31,18 @@ export async function progressionRoutes(app: FastifyInstance, deps: AppDeps) {
   app.get('/api/achievements', async (req, reply) => {
     noStore(reply);
     const auth = requireAuth(req);
-    const [all, mine] = await Promise.all([
+    const [all, mine, values] = await Promise.all([
       deps.db.select().from(achievements).orderBy(achievements.sort),
       deps.db.select().from(userAchievements).where(eq(userAchievements.userId, auth.user.id)),
+      metricValues(deps.db, auth.user.id),
     ]);
     const unlocked = new Map(mine.map((m) => [m.achievementId, m.unlockedAt]));
+    const secretLeft = all.filter((a) => a.secret && !unlocked.has(a.id)).length;
     return {
       achievements: all
         .filter((a) => !a.secret || unlocked.has(a.id))
-        .map((a) => ({ id: a.id, title: a.title, description: a.description, metric: a.metric, target: a.target, reward: a.reward, tier: a.tier, hue: a.hue, unlockedAt: unlocked.get(a.id) ?? null })),
+        .map((a) => ({ id: a.id, title: a.title, description: a.description, metric: a.metric, target: a.target, progress: Math.min(a.target, values[a.metric] ?? 0), reward: a.reward, tier: a.tier, hue: a.hue, unlockedAt: unlocked.get(a.id) ?? null })),
+      secretLeft,
     };
   });
 }

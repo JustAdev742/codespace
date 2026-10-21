@@ -29,7 +29,7 @@ export async function moderationRoutes(app: FastifyInstance, deps: AppDeps) {
    */
   app.post(
     '/api/reports',
-    { config: { rateLimit: { max: 8, timeWindow: '10 minutes', keyGenerator: (req) => (req.auth ? `report:${req.auth.user.id}` : `report-ip:${req.ip}`) } } },
+    { config: { rateLimit: { max: 8, timeWindow: '10 minutes', keyGenerator: (req) => (req.auth ? `report:${req.auth.user.id}` : `report-ip:${req.ip || 'gone'}`) } } },
     async (req) => {
       const auth = requireAuth(req);
       const body = parse(reportSchema, req.body);
@@ -208,15 +208,22 @@ export async function moderationRoutes(app: FastifyInstance, deps: AppDeps) {
     if (q.filter === 'hidden') conds.push(isNotNull(questionSets.hiddenAt));
     if (q.filter === 'featured') conds.push(eq(questionSets.isFeatured, true));
     if (q.filter === 'reported') conds.push(sql`${openReports} > 0`);
-    const rows = await db
-      .select({ s: questionSets, ownerName: owner.displayName, ownerUsername: owner.username, openReports })
-      .from(questionSets)
-      .leftJoin(owner, eq(owner.id, questionSets.ownerId))
-      .where(and(...conds))
-      .orderBy(desc(questionSets.updatedAt))
-      .limit(50)
-      .offset(q.offset);
+    const where = and(...conds);
+    const [rows, [total]] = await Promise.all([
+      db
+        .select({ s: questionSets, ownerName: owner.displayName, ownerUsername: owner.username, openReports })
+        .from(questionSets)
+        .leftJoin(owner, eq(owner.id, questionSets.ownerId))
+        .where(where)
+        .orderBy(desc(questionSets.updatedAt))
+        .limit(50)
+        .offset(q.offset),
+      db.select({ n: count() }).from(questionSets).leftJoin(owner, eq(owner.id, questionSets.ownerId)).where(where),
+    ]);
     return {
+      total: total?.n ?? 0,
+      offset: q.offset,
+      pageSize: 50,
       sets: rows.map(({ s, ownerName, ownerUsername, openReports: n }) => ({
         id: s.id,
         title: s.title,

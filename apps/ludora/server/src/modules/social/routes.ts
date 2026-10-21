@@ -71,7 +71,7 @@ export async function socialRoutes(app: FastifyInstance, deps: AppDeps) {
   });
 
   /** Ask by friend code (always allowed unless they chose nobody), or by account id from a profile (only if they accept requests from everyone). */
-  app.post('/api/friends/request', { config: { rateLimit: { max: 30, timeWindow: '1 hour', keyGenerator: (r) => (r.auth ? `friend:${r.auth.user.id}` : r.ip) } } }, async (req) => {
+  app.post('/api/friends/request', { config: { rateLimit: { max: 30, timeWindow: '1 hour', keyGenerator: (r) => (r.auth ? `friend:${r.auth.user.id}` : r.ip || 'gone') } } }, async (req) => {
     const auth = requireAccount(req);
     const body = parse(z.object({ friendCode: z.string().trim().toUpperCase().regex(/^[A-Z0-9]{4}-[A-Z0-9]{4}$/, 'Friend codes look like ABCD-1234.').optional(), userId: z.string().uuid().optional() }).refine((b) => Boolean(b.friendCode) !== Boolean(b.userId), 'Enter a friend code.'), req.body);
     const me = auth.user.id;

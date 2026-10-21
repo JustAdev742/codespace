@@ -45,6 +45,10 @@
   --focus: #5b3fd6;
   --link: #5b3fd6;
   --scrim: rgb(29 24 70 / 0.55);
+  --glim-text: #08704f;
+  --lantern-text: #845400;
+  --ember-text: #b51f37;
+  --sky-text: #0a5f97;
 }
 
 @media (prefers-color-scheme: light) {
@@ -64,7 +68,27 @@
     --focus: #5b3fd6;
     --link: #5b3fd6;
     --scrim: rgb(29 24 70 / 0.55);
+    --glim-text: #08704f;
+    --lantern-text: #845400;
+    --ember-text: #b51f37;
+    --sky-text: #0a5f97;
   }
+}
+
+/*
+ * The accent colours are bright enough to read on the dark theme but not as text
+ * on the light one, so text in those colours switches to darker shades there.
+ * Filled buttons and badges keep the bright colour.
+ */
+:root[data-theme='light'] .text-glim { color: var(--glim-text); }
+:root[data-theme='light'] .text-lantern { color: var(--lantern-text); }
+:root[data-theme='light'] .text-ember { color: var(--ember-text); }
+:root[data-theme='light'] .text-sky { color: var(--sky-text); }
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme='dark']) .text-glim { color: var(--glim-text); }
+  :root:not([data-theme='dark']) .text-lantern { color: var(--lantern-text); }
+  :root:not([data-theme='dark']) .text-ember { color: var(--ember-text); }
+  :root:not([data-theme='dark']) .text-sky { color: var(--sky-text); }
 }
 
 :root {

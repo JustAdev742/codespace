@@ -9,7 +9,8 @@ export interface UnlockNote {
   title: string;
 }
 
-async function metricValues(tx: DbOrTx, userId: string): Promise<Record<string, number>> {
+/** The numbers achievements are measured against, for unlocking and for showing progress. */
+export async function metricValues(tx: DbOrTx, userId: string): Promise<Record<string, number>> {
   const [stats] = await tx.select().from(userStats).where(eq(userStats.userId, userId)).limit(1);
   const [user] = await tx.select({ level: users.level }).from(users).where(eq(users.id, userId)).limit(1);
   const [glims] = await tx

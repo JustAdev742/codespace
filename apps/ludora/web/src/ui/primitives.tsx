@@ -152,19 +152,27 @@ export function Field({ label, hint, error, children, id }: { label: string; hin
 }
 
 const inputClass =
-  'h-11 w-full rounded-[12px] border border-line-strong bg-sunken px-3.5 text-[15px] text-text placeholder:text-text-3 transition-colors focus:border-lantern focus:outline-none focus-visible:outline-none focus:ring-2 focus:ring-[var(--focus)] aria-[invalid=true]:border-ember disabled:opacity-60';
+  'rounded-[12px] border border-line-strong bg-sunken px-3.5 text-[15px] text-text placeholder:text-text-3 transition-colors focus:border-lantern focus:outline-none focus-visible:outline-none focus:ring-2 focus:ring-[var(--focus)] aria-[invalid=true]:border-ember disabled:opacity-60';
+
+/** Full width and standard height unless the caller sets their own width or height. */
+function sizeFor(className: string, height = 'h-11'): string {
+  const classes = className.split(/\s+/);
+  const w = classes.some((c) => /^w-/.test(c)) ? '' : 'w-full';
+  const h = classes.some((c) => /^h-/.test(c)) ? '' : height;
+  return `${w} ${h}`;
+}
 
 export const Input = forwardRef<HTMLInputElement, InputHTMLAttributes<HTMLInputElement>>(function Input({ className = '', ...rest }, ref) {
-  return <input ref={ref} className={`${inputClass} ${className}`} {...rest} />;
+  return <input ref={ref} className={`${inputClass} ${sizeFor(className)} ${className}`} {...rest} />;
 });
 
 export const Textarea = forwardRef<HTMLTextAreaElement, TextareaHTMLAttributes<HTMLTextAreaElement>>(function Textarea({ className = '', ...rest }, ref) {
-  return <textarea ref={ref} className={`${inputClass} h-auto min-h-[88px] py-2.5 leading-relaxed ${className}`} {...rest} />;
+  return <textarea ref={ref} className={`${inputClass} ${sizeFor(className, 'min-h-[88px]')} py-2.5 leading-relaxed ${className}`} {...rest} />;
 });
 
 export const Select = forwardRef<HTMLSelectElement, SelectHTMLAttributes<HTMLSelectElement>>(function Select({ className = '', children, ...rest }, ref) {
   return (
-    <select ref={ref} className={`${inputClass} cursor-pointer appearance-none bg-[length:12px] bg-[right_14px_center] bg-no-repeat pr-9 ${className}`} style={{ backgroundImage: "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%239c94d4' stroke-width='2'/%3E%3C/svg%3E\")" }} {...rest}>
+    <select ref={ref} className={`${inputClass} ${sizeFor(className)} cursor-pointer appearance-none bg-[length:12px] bg-[right_14px_center] bg-no-repeat pr-9 ${className}`} style={{ backgroundImage: "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%239c94d4' stroke-width='2'/%3E%3C/svg%3E\")" }} {...rest}>
       {children}
     </select>
   );

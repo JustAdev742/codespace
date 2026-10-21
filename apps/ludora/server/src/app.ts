@@ -37,6 +37,8 @@ export async function buildApp(base: Omit<AppDeps, 'serveSpa' | 'rooms' | 'log'>
   const deps = { ...base, log: app.log } as AppDeps;
   deps.rooms = new RoomManager(deps);
   app.addHook('onClose', async () => deps.rooms.shutdown());
+  // First, so every hook, plugin and route reports errors in the same shape.
+  registerErrorHandler(app, deps);
 
   await app.register(cookie);
   await app.register(helmet, {
@@ -57,7 +59,9 @@ export async function buildApp(base: Omit<AppDeps, 'serveSpa' | 'rooms' | 'log'>
     },
     crossOriginEmbedderPolicy: false,
   });
-  await app.register(rateLimit, { global: true, max: 600, timeWindow: '1 minute' });
+  // A request the browser has already abandoned has no remote address left; the
+  // default key function would throw on it and log a 500 nobody is waiting for.
+  await app.register(rateLimit, { global: true, max: 600, timeWindow: '1 minute', keyGenerator: (req) => req.ip || 'gone' });
   await app.register(multipart, { limits: { fileSize: 2_000_000, files: 1, fields: 5 } });
 
   registerAuthHook(app, deps);
@@ -77,6 +81,5 @@ export async function buildApp(base: Omit<AppDeps, 'serveSpa' | 'rooms' | 'log'>
     deps.serveSpa = async (_req, reply) => reply.type('text/html').header('cache-control', 'no-cache').sendFile('index.html');
     app.get('/', (req, reply) => deps.serveSpa!(req, reply));
   }
-  registerErrorHandler(app, deps);
   return { app, deps };
 }

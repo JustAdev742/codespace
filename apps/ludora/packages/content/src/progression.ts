@@ -51,7 +51,7 @@ export const ACHIEVEMENTS: SeedAchievement[] = [
   { id: 'a-daily-30', title: 'Lantern never out', description: 'Play on 30 days in a row.', metric: 'daily_streak', target: 30, reward: { moonstones: 40 }, tier: 3, hue: 20, sort: 23 },
   { id: 'a-modes-5', title: 'Sampler', description: 'Play 5 different game modes.', metric: 'distinct_modes', target: 5, reward: { sparks: 150 }, tier: 1, hue: 320, sort: 24 },
   { id: 'a-modes-15', title: 'Connoisseur', description: 'Play 15 different game modes.', metric: 'distinct_modes', target: 15, reward: { moonstones: 20 }, tier: 3, hue: 320, sort: 25 },
-  { id: 'a-packs-10', title: 'Lantern lighter', description: 'Open 10 Lanterns.', metric: 'packs_opened', target: 10, reward: { sparks: 100 }, tier: 1, hue: 45, sort: 26 },
-  { id: 'a-packs-100', title: 'Festival of lights', description: 'Open 100 Lanterns.', metric: 'packs_opened', target: 100, reward: { moonstones: 20 }, tier: 3, hue: 45, sort: 27 },
+  { id: 'a-packs-10', title: 'Lamplighter', description: 'Open 10 Lanterns.', metric: 'packs_opened', target: 10, reward: { sparks: 100 }, tier: 1, hue: 45, sort: 26 },
+  { id: 'a-packs-100', title: 'Sky full of lights', description: 'Open 100 Lanterns.', metric: 'packs_opened', target: 100, reward: { moonstones: 20 }, tier: 3, hue: 45, sort: 27 },
   { id: 'a-set-1', title: 'Question writer', description: 'Create your first question set.', metric: 'sets_created', target: 1, reward: { sparks: 100 }, tier: 1, hue: 190, sort: 28 },
 ];

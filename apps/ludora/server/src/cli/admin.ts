@@ -81,7 +81,7 @@ if (isMain) {
   const args = process.argv.slice(2);
   const reasonAt = args.indexOf('--reason');
   const reason = reasonAt >= 0 ? (args[reasonAt + 1] ?? '') : '';
-  const positional = args.filter((_, i) => i !== reasonAt && i !== reasonAt + 1);
+  const positional = reasonAt >= 0 ? args.filter((_, i) => i !== reasonAt && i !== reasonAt + 1) : args;
   const [command, username, role] = positional;
   if (!command) usage();
   const config = loadConfig();

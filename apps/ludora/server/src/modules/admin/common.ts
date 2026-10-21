@@ -36,7 +36,7 @@ export function staffLimit(max: number, timeWindow = '1 minute') {
       rateLimit: {
         max,
         timeWindow,
-        keyGenerator: (req: FastifyRequest) => (req.auth ? `staff:${req.auth.user.id}` : `ip:${req.ip}`),
+        keyGenerator: (req: FastifyRequest) => (req.auth ? `staff:${req.auth.user.id}` : `ip:${req.ip || 'gone'}`),
       },
     },
   };

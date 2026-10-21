@@ -1,0 +1,97 @@
+# Checks Ludora on every change to it: typecheck, lint, the full test suite
+# against a real Postgres, the production build, and the Docker image.
+
+name: Ludora
+
+on:
+  push:
+    branches: [main, "claude/**"]
+    paths:
+      - "apps/ludora/**"
+      - ".github/workflows/ludora.yml"
+  pull_request:
+    paths:
+      - "apps/ludora/**"
+      - ".github/workflows/ludora.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: ludora-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    env:
+      # Each server test file creates and drops its own database through this connection.
+      TEST_DATABASE_ADMIN_URL: postgres://postgres:postgres@localhost:5432/postgres
+    defaults:
+      run:
+        working-directory: apps/ludora
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: apps/ludora/package-lock.json
+
+      - run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Tests
+        run: npm test
+
+      - name: Production build
+        run: npm run build
+
+  docker:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    needs: check
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build the image
+        run: docker build -t ludora:ci apps/ludora
+
+      - name: Start it against Postgres and check it answers
+        run: |
+          docker network create ludora
+          docker run -d --name db --network ludora -e POSTGRES_PASSWORD=ci -e POSTGRES_DB=ludora postgres:16-alpine
+          for i in $(seq 1 30); do docker exec db pg_isready -U postgres && break; sleep 1; done
+          docker run -d --name app --network ludora -p 8787:8787 \
+            -e DATABASE_URL=postgres://postgres:ci@db:5432/ludora \
+            -e PUBLIC_ORIGIN=http://localhost:8787 \
+            -e IP_HASH_KEY=ci-only-ip-hash-key-0123456789 \
+            ludora:ci
+          for i in $(seq 1 60); do curl -sf http://localhost:8787/api/health && break; sleep 1; done
+          curl -sf http://localhost:8787/api/health
+          curl -sf http://localhost:8787/ | grep -q '<div id="root">'
+          curl -sf http://localhost:8787/api/modes > /dev/null
+
+      - name: Container logs
+        if: always()
+        run: docker logs app || true

@@ -201,7 +201,7 @@ export async function classRoutes(app: FastifyInstance, deps: AppDeps) {
     return { ok: true, joinCode };
   });
 
-  app.post('/api/classes/join', { config: { rateLimit: { max: 20, timeWindow: '10 minutes', keyGenerator: (r) => (r.auth ? `classjoin:${r.auth.user.id}` : r.ip) } } }, async (req) => {
+  app.post('/api/classes/join', { config: { rateLimit: { max: 20, timeWindow: '10 minutes', keyGenerator: (r) => (r.auth ? `classjoin:${r.auth.user.id}` : r.ip || 'gone') } } }, async (req) => {
     const auth = requireAccount(req);
     const { code } = parse(z.object({ code: z.string().trim().toUpperCase().regex(/^[A-Z0-9]{6}$/, 'Class codes are 6 letters and numbers.') }), req.body);
     const [cls] = await db.select().from(classes).where(and(eq(classes.joinCode, code), isNull(classes.archivedAt))).limit(1);

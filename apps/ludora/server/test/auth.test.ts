@@ -106,10 +106,13 @@ describe('request protection', () => {
   it('blocks state-changing requests without the CSRF header', async () => {
     const res = await t.app.inject({ method: 'POST', url: '/api/auth/guest', payload: {} });
     expect(res.statusCode).toBe(403);
+    // The same error shape as every other API error, so the app can show the message.
+    expect(res.json()).toEqual({ error: { code: 'forbidden', message: 'Request blocked. Reload the page and try again.' } });
   });
   it('blocks requests from a foreign origin', async () => {
     const res = await t.app.inject({ method: 'POST', url: '/api/auth/guest', payload: {}, headers: { 'x-ludora-csrf': '1', origin: 'https://evil.example' } });
     expect(res.statusCode).toBe(403);
+    expect(res.json().error.code).toBe('forbidden');
   });
   it('sends security headers', async () => {
     const res = await t.app.inject({ method: 'GET', url: '/api/health' });
@@ -120,5 +123,27 @@ describe('request protection', () => {
     const res = await t.app.inject({ method: 'GET', url: '/api/nope' });
     expect(res.statusCode).toBe(404);
     expect(res.json().error.code).toBe('not_found');
+  });
+});
+
+describe('serving the built web app', () => {
+  it('serves the app for page routes, JSON for unknown API routes, and the usual error shape from hooks', async () => {
+    const { mkdtempSync, writeFileSync } = await import('node:fs');
+    const { tmpdir } = await import('node:os');
+    const { join } = await import('node:path');
+    const dist = mkdtempSync(join(tmpdir(), 'ludora-web-'));
+    writeFileSync(join(dist, 'index.html'), '<!doctype html><title>Ludora</title>');
+    const web = await createTestApp({ WEB_DIST: dist });
+    try {
+      const page = await web.app.inject({ method: 'GET', url: '/shop' });
+      expect(page.statusCode).toBe(200);
+      expect(page.body).toContain('<title>Ludora</title>');
+      const api = await web.app.inject({ method: 'GET', url: '/api/nope' });
+      expect(api.json()).toEqual({ error: { code: 'not_found', message: 'No such endpoint.' } });
+      const blocked = await web.app.inject({ method: 'POST', url: '/api/auth/guest', payload: {} });
+      expect(blocked.json()).toEqual({ error: { code: 'forbidden', message: 'Request blocked. Reload the page and try again.' } });
+    } finally {
+      await web.close();
+    }
   });
 });
