@@ -184,3 +184,10 @@ fair to use: bright colour, chunky controls, collectible characters, packs with
 disclosed odds, live games joined with a code. Another game's characters,
 artwork, names and branding are not, even on request. Visual work goes into
 Ludora's own Glims, Lanterns and style.
+
+**D31. Shipped item art updates itself until staff customise the item.** Redrawn
+Glims should reach existing installs without a forced reseed, which would also
+wipe staff edits. Items carry `customized_at`, set by any staff edit (the
+migration marks items already changed since creation). On start the seed
+refreshes art, name and description for uncustomised shipped items when they
+differ, and never touches rarity, collection or release state.

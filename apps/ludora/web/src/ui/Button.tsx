@@ -3,13 +3,13 @@ import { Link, type LinkProps } from 'react-router';
 import { Loader2 } from 'lucide-react';
 
 export type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger' | 'success';
-export type ButtonSize = 'sm' | 'md' | 'lg' | 'xl';
+export type ButtonSize = 'sm' | 'md' | 'lg' | 'xl' | '2xl';
 
 const VARIANTS: Record<ButtonVariant, string> = {
   primary: 'sticker bg-lantern text-on-accent',
   success: 'sticker bg-glim text-on-accent',
   danger: 'sticker bg-ember text-on-accent',
-  secondary: 'border border-line-strong bg-raised text-text hover:bg-surface-2 active:bg-surface-3',
+  secondary: 'press-soft bg-raised text-text hover:bg-surface-2 active:bg-surface-3',
   ghost: 'text-text-2 hover:bg-surface-2 hover:text-text active:bg-surface-3',
 };
 
@@ -18,6 +18,8 @@ const SIZES: Record<ButtonSize, string> = {
   md: 'h-10 px-4 text-[15px] gap-2 rounded-[12px]',
   lg: 'h-12 px-5 text-base gap-2 rounded-[14px]',
   xl: 'h-14 px-7 text-lg gap-2.5 rounded-[16px] font-display tracking-wide',
+  /** Stage calls to action: join, start, play again. */
+  '2xl': 'h-16 px-8 text-2xl gap-3 rounded-[18px] font-display font-extrabold tracking-wide [--press:6px]',
 };
 
 export function buttonClass(variant: ButtonVariant = 'secondary', size: ButtonSize = 'md', extra = '') {

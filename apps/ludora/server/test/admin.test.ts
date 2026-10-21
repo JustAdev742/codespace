@@ -1,9 +1,11 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { and, eq, gt } from 'drizzle-orm';
+import { and, eq, gt, inArray } from 'drizzle-orm';
 import { ROLE_PERMISSIONS, type Permission, type Role } from '@ludora/shared';
 import { Client, createTestApp, registered, type TestContext } from './helpers.ts';
 import { auditLog, entitlements, inventory, items, ledger, pityCounters, reports, users, wallets } from '../src/db/schema.ts';
 import { cliChangeRole } from '../src/cli/admin.ts';
+import { seedContent } from '../src/db/seed.ts';
+import { GLIMS } from '@ludora/content';
 
 /*
  * Staff tools: who may call what (the authorisation matrix), and the rules
@@ -530,6 +532,21 @@ describe('catalogue, shop and live operations', () => {
     expect(row(held!.id).owners).toBe(await owners(held!.id));
     expect(row(held!.id).owners).toBeGreaterThan(0);
     expect(row(other!.id).owners).toBe(await owners(other!.id));
+  });
+
+  it('keeps shipped art up to date until staff customise an item', async () => {
+    const older = { kind: 'glim', body: 'blob', hue: 1, accentHue: 1, saturation: 10, eyes: 'dot', mouth: 'smile', pattern: 'none', topper: 'none', cheeks: true };
+    // An install seeded with an older drawing of two Glims, one of which staff then rename.
+    await t.db.update(items).set({ art: older }).where(inArray(items.id, ['glim-pebblet', 'glim-sprig']));
+    expect((await as.admin.client.patch('/api/admin/items/glim-sprig', { name: 'Sprigsy', reason: 'event rename' })).status).toBe(200);
+    const seeded = await seedContent(t.db);
+    expect(seeded.inserted.items ?? 0).toBe(0);
+    const [pebblet] = await t.db.select().from(items).where(eq(items.id, 'glim-pebblet'));
+    const [sprig] = await t.db.select().from(items).where(eq(items.id, 'glim-sprig'));
+    expect(pebblet!.art).toEqual(GLIMS.find((g) => g.id === 'glim-pebblet')!.art);
+    expect(sprig).toMatchObject({ name: 'Sprigsy', art: older });
+    // Nothing changes on a second start.
+    expect((await seedContent(t.db)).inserted.itemsRefreshed ?? 0).toBe(0);
   });
 
   it('item art has to match the item type', async () => {

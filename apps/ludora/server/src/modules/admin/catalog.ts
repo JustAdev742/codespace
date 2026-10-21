@@ -197,7 +197,7 @@ export async function adminCatalogRoutes(app: FastifyInstance, deps: AppDeps) {
     await assertCollection(db, body.collectionId);
     const { reason, ...values } = body;
     return db.transaction(async (tx) => {
-      const [created] = await tx.insert(items).values(values).onConflictDoNothing().returning();
+      const [created] = await tx.insert(items).values({ ...values, customizedAt: new Date() }).onConflictDoNothing().returning();
       if (!created) throw conflict('An item with that id already exists.', { id: 'Already taken.' });
       await audit(deps, req, tx, { actor: auth, action: 'item.create', targetType: 'item', targetId: created.id, targetName: created.name, reason, after: created });
       return { ok: true, item: created };
@@ -214,7 +214,7 @@ export async function adminCatalogRoutes(app: FastifyInstance, deps: AppDeps) {
       const [before] = await tx.select().from(items).where(eq(items.id, id)).for('update');
       if (!before) throw notFound('No item with that id.');
       if (patch.art && patch.art.kind !== before.type) throw new AppError(400, 'validation_failed', 'The art does not match the item type.', { art: `Expected art of kind ${before.type}.` });
-      const [after] = await tx.update(items).set({ ...patch, updatedAt: new Date() }).where(eq(items.id, id)).returning();
+      const [after] = await tx.update(items).set({ ...patch, updatedAt: new Date(), customizedAt: new Date() }).where(eq(items.id, id)).returning();
       await audit(deps, req, tx, { actor: auth, action: 'item.update', targetType: 'item', targetId: id, targetName: before.name, reason, before, after });
       return { ok: true, item: after };
     });

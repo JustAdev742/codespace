@@ -329,6 +329,8 @@ export const items = pgTable(
     sort: integer('sort').notNull().default(0),
     createdAt: now('created_at'),
     updatedAt: now('updated_at'),
+    /** Set when staff edit the item. Until then, the shipped content keeps its art, name and description up to date. */
+    customizedAt: ts('customized_at'),
   },
   (t) => [index('items_type_idx').on(t.type, t.rarity), index('items_collection_idx').on(t.collectionId)],
 );

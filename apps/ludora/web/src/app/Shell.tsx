@@ -59,10 +59,10 @@ const SOCIAL: NavItem[] = [
 ];
 
 const MOBILE: NavItem[] = [
-  { to: '/', label: 'Home', icon: <Home className="size-6" />, end: true },
-  { to: '/play', label: 'Join', icon: <Gamepad2 className="size-6" /> },
-  { to: '/host', label: 'Host', icon: <Presentation className="size-6" /> },
-  { to: '/collection', label: 'Glims', icon: <Sparkles className="size-6" /> },
+  { to: '/', label: 'Home', icon: <Home className="size-5" />, end: true },
+  { to: '/play', label: 'Join', icon: <Gamepad2 className="size-5" /> },
+  { to: '/host', label: 'Host', icon: <Presentation className="size-5" /> },
+  { to: '/collection', label: 'Glims', icon: <Sparkles className="size-5" /> },
 ];
 
 function NavLinkItem({ item, onNavigate }: { item: NavItem; onNavigate?: () => void }) {
@@ -72,12 +72,12 @@ function NavLinkItem({ item, onNavigate }: { item: NavItem; onNavigate?: () => v
       end={item.end}
       onClick={onNavigate}
       className={({ isActive }) =>
-        `relative flex h-10 items-center gap-3 rounded-[12px] px-3 text-[15px] font-semibold transition-colors ${isActive ? 'bg-surface-2 text-text before:absolute before:top-2 before:bottom-2 before:-left-3 before:w-1 before:rounded-r-full before:bg-lantern' : 'text-text-2 hover:bg-surface-2 hover:text-text'}`
+        `relative flex h-10 items-center gap-3 rounded-[12px] px-3 text-[15px] font-semibold transition-colors ${isActive ? 'bg-lantern text-on-accent shadow-[0_3px_0_var(--ink)]' : 'text-text-2 hover:bg-surface-2 hover:text-text'}`
       }
     >
       {({ isActive }) => (
         <>
-          <span className={isActive ? 'text-lantern' : 'text-text-3'}>{item.icon}</span>
+          <span className={isActive ? 'text-on-accent' : 'text-text-3'}>{item.icon}</span>
           {item.label}
         </>
       )}
@@ -209,7 +209,7 @@ export function Shell() {
       <a href="#main" className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-50 focus:rounded-lg focus:bg-lantern focus:px-3 focus:py-2 focus:text-on-accent">
         Skip to content
       </a>
-      <aside className="sticky top-0 hidden h-dvh flex-col gap-6 overflow-y-auto border-r border-line bg-sunken px-3 py-5 lg:flex">
+      <aside className="stage-plain on-stage sticky top-0 hidden h-dvh flex-col gap-6 overflow-y-auto px-3 py-5 lg:flex">
         <Link to="/" className="px-2" aria-label="Ludora home">
           <Logo size={26} />
         </Link>
@@ -235,16 +235,22 @@ export function Shell() {
         </main>
       </div>
 
-      <nav aria-label="Quick" className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-5 border-t border-line bg-sunken/95 pb-[env(safe-area-inset-bottom)] backdrop-blur lg:hidden">
+      <nav aria-label="Quick" className="stage-plain on-stage fixed inset-x-0 bottom-0 z-30 grid grid-cols-5 pb-[env(safe-area-inset-bottom)] lg:hidden">
         {MOBILE.map((i) => (
-          <NavLink key={i.to} to={i.to} end={i.end} className={({ isActive }) => `flex flex-col items-center gap-0.5 py-2 text-[11px] font-semibold ${isActive ? 'text-lantern' : 'text-text-3'}`}>
-            {i.icon}
-            {i.label}
+          <NavLink key={i.to} to={i.to} end={i.end} className={({ isActive }) => `flex flex-col items-center gap-0.5 py-2 text-[11px] font-semibold ${isActive ? 'text-lantern' : 'text-text-2'}`}>
+            {({ isActive }) => (
+              <>
+                <span className={`grid h-7 w-12 place-items-center rounded-full transition-colors ${isActive ? 'bg-lantern text-on-accent' : ''}`}>{i.icon}</span>
+                {i.label}
+              </>
+            )}
           </NavLink>
         ))}
         <RDialog.Root open={moreOpen} onOpenChange={setMoreOpen}>
-          <RDialog.Trigger className="flex flex-col items-center gap-0.5 py-2 text-[11px] font-semibold text-text-3">
-            <Menu className="size-6" />
+          <RDialog.Trigger className="flex flex-col items-center gap-0.5 py-2 text-[11px] font-semibold text-text-2">
+            <span className="grid h-7 w-12 place-items-center">
+              <Menu className="size-5" />
+            </span>
             More
           </RDialog.Trigger>
           <RDialog.Portal>

@@ -27,6 +27,10 @@
   --focus: #ffb020;
   --link: #b3a1ff;
   --scrim: rgb(8 6 26 / 0.72);
+  --glim-text: #08704f;
+  --lantern-text: #845400;
+  --ember-text: #b51f37;
+  --sky-text: #0a5f97;
 }
 
 :root[data-theme='light'] {
@@ -91,6 +95,57 @@
   :root:not([data-theme='dark']) .text-sky { color: var(--sky-text); }
 }
 
+/*
+ * Colour scopes. `.on-stage` (and `.stage`) re-point the theme variables for
+ * anything drawn on the dusk sky, so ordinary components stay legible there in
+ * either theme. `.paper` does the reverse for a white card placed on the stage.
+ */
+.stage,
+.on-stage {
+  color-scheme: dark;
+  --text: #ffffff;
+  --text-2: #e4ddff;
+  --text-3: #c4b8f5;
+  --bg-raised: rgb(255 255 255 / 0.1);
+  --bg-sunken: rgb(12 8 48 / 0.35);
+  --surface-2: rgb(255 255 255 / 0.12);
+  --surface-3: rgb(255 255 255 / 0.18);
+  --line: rgb(255 255 255 / 0.2);
+  --line-strong: rgb(255 255 255 / 0.38);
+  --link: #ffd36b;
+  --focus: #ffcf5c;
+  color: var(--text);
+}
+:root .stage .text-glim,
+:root .on-stage .text-glim { color: var(--glim); }
+:root .stage .text-lantern,
+:root .on-stage .text-lantern { color: var(--lantern); }
+:root .stage .text-ember,
+:root .on-stage .text-ember { color: #ff8a98; }
+:root .stage .text-sky,
+:root .on-stage .text-sky { color: var(--sky); }
+
+.paper {
+  color-scheme: light;
+  --text: #1d1846;
+  --text-2: #4b4580;
+  --text-3: #6d67a0;
+  --bg-raised: #ffffff;
+  --bg-sunken: #efecfa;
+  --surface-2: #f7f5fd;
+  --surface-3: #ece8fb;
+  --line: #d7d1ee;
+  --line-strong: #b3aadb;
+  --link: #5b3fd6;
+  --focus: #5b3fd6;
+  color: var(--text);
+  background: #ffffff;
+}
+:root .paper .text-glim { color: var(--glim-text, #08704f); }
+:root .paper .text-lantern { color: var(--lantern-text, #845400); }
+:root .paper .text-ember { color: var(--ember-text, #b51f37); }
+:root .paper .text-sky { color: var(--sky-text, #0a5f97); }
+
 :root {
   --lantern: #ffb020;
   --lantern-deep: #e08e00;
@@ -114,6 +169,17 @@
   --r-epic: #b07bff;
   --r-legendary: #ffb020;
   --r-mythic: #ff5fa2;
+
+  /*
+   * The stage: a lantern-festival sky at dusk. Game screens, the landing hero,
+   * the join flow and the sidebar sit on it, in both themes. White text passes
+   * AA on every stop (6:1 at the horizon).
+   */
+  --stage-1: #1f1670;
+  --stage-2: #3b22a6;
+  --stage-3: #5b2bb8;
+  --stage-4: #9c3a8e;
+  --stage-sky: linear-gradient(180deg, var(--stage-1) 0%, var(--stage-2) 42%, var(--stage-3) 78%, var(--stage-4) 118%);
 
   --radius-s: 8px;
   --radius-m: 14px;
@@ -209,7 +275,7 @@
 @layer components {
   /* The tactile "sticker" treatment for things you press in a game. */
   .sticker {
-    border: 2px solid var(--ink);
+    border: 2.5px solid var(--ink);
     box-shadow: 0 var(--press) 0 var(--ink);
     transition:
       transform 120ms var(--ease-out),
@@ -235,6 +301,49 @@
     background: var(--bg-raised);
     border: 1px solid var(--line);
     border-radius: var(--radius-m);
+  }
+  /* A soft press for secondary controls: tactile, but quieter than a sticker. */
+  .press-soft {
+    border: 2px solid var(--line-strong);
+    box-shadow: 0 3px 0 var(--line-strong);
+    transition:
+      transform 120ms var(--ease-out),
+      box-shadow 120ms var(--ease-out),
+      background-color 120ms;
+  }
+  .press-soft:not(:disabled):active {
+    transform: translateY(2px);
+    box-shadow: 0 1px 0 var(--line-strong);
+  }
+  /* The dusk sky with a faint star field. */
+  .stage {
+    background-color: var(--stage-2);
+    /* Star layers tile at unrelated sizes so the field never lines up into a grid. */
+    background-image:
+      radial-gradient(circle at 12% 18%, rgb(255 255 255 / 0.8) 0 1.2px, transparent 1.8px),
+      radial-gradient(circle at 71% 63%, rgb(255 255 255 / 0.45) 0 1px, transparent 1.6px),
+      radial-gradient(circle at 37% 81%, rgb(255 255 255 / 0.55) 0 1.1px, transparent 1.7px),
+      radial-gradient(circle at 88% 22%, rgb(255 236 180 / 0.6) 0 1.3px, transparent 1.9px),
+      radial-gradient(circle at 54% 41%, rgb(255 255 255 / 0.35) 0 0.9px, transparent 1.5px),
+      var(--stage-sky);
+    background-size:
+      293px 217px,
+      397px 341px,
+      173px 389px,
+      521px 457px,
+      241px 163px,
+      100% 100%;
+  }
+  /* The same sky without stars, for narrow chrome such as the sidebar. */
+  .stage-plain {
+    background-color: var(--stage-2);
+    background-image: var(--stage-sky);
+  }
+  /* A card on the stage: white paper with an ink edge. */
+  .stage-card {
+    border: 2.5px solid var(--ink);
+    border-radius: var(--radius-l);
+    box-shadow: 0 6px 0 rgb(12 8 48 / 0.55);
   }
   .skeleton {
     background: linear-gradient(90deg, var(--surface-2) 0%, var(--surface-3) 50%, var(--surface-2) 100%);
@@ -338,5 +447,15 @@
   100% {
     transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy))) scale(1);
     opacity: 0;
+  }
+}
+
+@keyframes lantern-drift {
+  0%,
+  100% {
+    transform: translateY(0) rotate(-2deg);
+  }
+  50% {
+    transform: translateY(-14px) rotate(2deg);
   }
 }

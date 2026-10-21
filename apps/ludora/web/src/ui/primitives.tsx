@@ -16,13 +16,20 @@ export function Panel({ className = '', children, as: As = 'section', ...rest }:
   );
 }
 
-export function PageHeader({ title, description, actions, eyebrow }: { title: ReactNode; description?: ReactNode; actions?: ReactNode; eyebrow?: ReactNode }) {
+export function PageHeader({ title, description, actions, eyebrow, art }: { title: ReactNode; description?: ReactNode; actions?: ReactNode; eyebrow?: ReactNode; /** A character or illustration beside the title, hidden on narrow screens. */ art?: ReactNode }) {
   return (
     <header className="mb-6 flex flex-wrap items-end justify-between gap-4">
-      <div className="min-w-0">
-        {eyebrow ? <div className="mb-1 text-sm text-text-3">{eyebrow}</div> : null}
-        <h1 className="font-display text-3xl font-extrabold text-text sm:text-4xl">{title}</h1>
-        {description ? <p className="mt-1.5 max-w-[62ch] text-text-2">{description}</p> : null}
+      <div className="flex min-w-0 items-end gap-4">
+        {art ? (
+          <div className="hidden shrink-0 sm:block" aria-hidden>
+            {art}
+          </div>
+        ) : null}
+        <div className="min-w-0">
+          {eyebrow ? <div className="mb-1 text-sm text-text-3">{eyebrow}</div> : null}
+          <h1 className="font-display text-3xl font-extrabold text-text sm:text-[2.6rem] sm:leading-[1.05]">{title}</h1>
+          {description ? <p className="mt-1.5 max-w-[62ch] text-text-2">{description}</p> : null}
+        </div>
       </div>
       {actions ? <div className="flex flex-wrap items-center gap-2">{actions}</div> : null}
     </header>

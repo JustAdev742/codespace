@@ -46,8 +46,11 @@ docker compose exec app node dist/admin.js grant <username> superadmin --reason 
 
 On start the app applies database migrations and adds any shipped content that is
 missing (Glims, cosmetics, Lanterns, shop listings, quests, achievements, the
-built-in question sets). Content that staff have edited is left alone. To reset
-the catalogue to the shipped content on purpose:
+built-in question sets). Shipped items also pick up new art, names and
+descriptions from an update, until staff edit them: an edited item is marked as
+customised and left alone from then on. Rarity, collection and release state
+are never changed on start, because they move odds and the shop. To reset the
+catalogue to the shipped content on purpose:
 
 ```bash
 docker compose exec app node dist/seed.js --force

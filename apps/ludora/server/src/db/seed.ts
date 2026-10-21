@@ -86,11 +86,20 @@ export async function seedContent(db: Db, opts: SeedOptions = {}): Promise<{ ins
               releaseState: sql`excluded.release_state`,
               sort: sql`excluded.sort`,
               updatedAt: sql`now()`,
+              customizedAt: null,
             },
           })
-        : q.onConflictDoNothing()
-      ).returning({ id: items.id });
-      inserted.items = (inserted.items ?? 0) + done.length;
+        : // Shipped art, names and descriptions follow the content package until staff
+          // customise an item. Rarity, collection and release state never change here:
+          // they move odds and the shop, so they change only by a staff action or `force`.
+          q.onConflictDoUpdate({
+            target: items.id,
+            set: { name: sql`excluded.name`, description: sql`excluded.description`, art: sql`excluded.art` },
+            setWhere: sql`${items.customizedAt} is null and (${items.art} is distinct from excluded.art or ${items.name} is distinct from excluded.name or ${items.description} is distinct from excluded.description)`,
+          })
+      ).returning({ id: items.id, inserted: sql<boolean>`(xmax = 0)` });
+      inserted.items = (inserted.items ?? 0) + done.filter((r) => r.inserted).length;
+      if (!force) inserted.itemsRefreshed = (inserted.itemsRefreshed ?? 0) + done.filter((r) => !r.inserted).length;
     }
     for (const p of PACKS) {
       const q = tx.insert(packs).values(p);
