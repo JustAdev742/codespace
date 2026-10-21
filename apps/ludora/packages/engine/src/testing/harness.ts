@@ -1,7 +1,9 @@
 import { createRng, type CommonSettings, type Question } from '@ludora/shared';
 import { GameRuntime, type EngineResults } from '../runtime/runtime.ts';
 import { prepareQuestions, resolveGameConfig } from '../registry.ts';
-import type { EngineTeam } from '../sdk/types.ts';
+import { makeTeams } from '../teams.ts';
+
+export { makeTeams };
 
 /*
  * Plays a whole game with bots on a fake clock. Every mode and variant in
@@ -38,12 +40,6 @@ export interface SimulateResult {
   stalled: boolean;
 }
 
-const TEAM_NAMES = ['Comets', 'Lanterns', 'Fireflies', 'Moonbeams', 'Embers', 'Tides'];
-const TEAM_HUES = [42, 200, 145, 280, 8, 175];
-
-export function makeTeams(count: number): EngineTeam[] {
-  return Array.from({ length: count }, (_, i) => ({ id: `t${i + 1}`, name: TEAM_NAMES[i]!, hue: TEAM_HUES[i]! }));
-}
 
 /** Finds authored question objects (with their answers) inside a view, which must never happen. */
 export function findAnswerLeaks(view: unknown, path = 'view'): string[] {

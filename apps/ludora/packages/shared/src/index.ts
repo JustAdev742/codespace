@@ -7,3 +7,4 @@ export * from './modes.ts';
 export * from './realtime.ts';
 export * from './errors.ts';
 export * from './random.ts';
+export * from './progression.ts';

@@ -140,6 +140,18 @@ export interface ResultsView {
   durationMs: number;
 }
 
+/** What a player earned from a finished game. */
+export interface RewardSummary {
+  status: 'pending' | 'granted' | 'none';
+  sparks: number;
+  xp: number;
+  levelUp?: { from: number; to: number };
+  quests: { title: string; progress: number; target: number; completed: boolean }[];
+  achievements: { title: string }[];
+  /** Plain-language notes, e.g. the daily limit was reached or guests need an account to keep rewards. */
+  notes: string[];
+}
+
 export interface RoomView<G = unknown> {
   version: number;
   serverNow: number;
@@ -155,15 +167,19 @@ export interface RoomView<G = unknown> {
     questionCount: number;
     hostName: string;
     locked: boolean;
+    solo: boolean;
     options: RoomOptions;
     common: CommonSettings;
     settings: SettingValues;
     teams: TeamView[];
+    hostConnected: boolean;
   };
-  me: { playerId: string | null; role: 'host' | 'player'; name: string | null; teamId: string | null };
+  me: { playerId: string | null; role: 'host' | 'player'; name: string | null; teamId: string | null; reconnectToken: string | null };
   players: RoomPlayerView[];
   game: G | null;
   results: ResultsView | null;
+  rewards: RewardSummary | null;
+  feed: FeedItem[];
 }
 
 export type EmoteGlyph = (typeof EMOTE_GLYPHS)[number];
