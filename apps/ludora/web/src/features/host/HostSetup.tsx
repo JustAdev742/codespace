@@ -1,4 +1,5 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { Link, useNavigate, useSearchParams } from 'react-router';
 import { Check, Search, Users } from 'lucide-react';
 import { toast } from 'sonner';
@@ -175,6 +176,17 @@ export default function HostSetup() {
   const [params] = useSearchParams();
   const solo = params.get('solo') === '1';
   const [set, setSet] = useState<SetSummary | null>(null);
+  // The set editor's Host button links here with ?set=<id>; start with that set picked.
+  const preset = params.get('set');
+  const presetSet = useQuery({
+    queryKey: ['set', preset],
+    queryFn: () => api.get<{ set: SetSummary }>(`/api/sets/${preset}`),
+    enabled: Boolean(preset),
+  });
+  const presetData = presetSet.data?.set;
+  useEffect(() => {
+    if (presetData) setSet((current) => current ?? presetData);
+  }, [presetData]);
   const [choice, setChoice] = useState<Choice | null>(null);
   const [settings, setSettings] = useState<Record<string, unknown>>({});
   const [common, setCommon] = useState<Record<string, number | boolean>>({});

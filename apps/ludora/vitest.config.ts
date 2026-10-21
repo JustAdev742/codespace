@@ -7,6 +7,8 @@ export default defineConfig({
       // Full-game simulations (12 bots through a 4-minute game, with strict state checks) take a few seconds each.
       { test: { name: 'engine', include: ['packages/engine/test/**/*.test.ts'], testTimeout: 20_000 } },
       { test: { name: 'content', include: ['packages/content/test/**/*.test.ts'] } },
+      // Pure browser-side logic (no DOM): parsers, importers and exporters.
+      { test: { name: 'web', include: ['web/src/**/*.test.ts'] } },
       {
         test: {
           name: 'server',

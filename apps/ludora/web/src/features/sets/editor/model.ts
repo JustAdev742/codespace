@@ -22,6 +22,7 @@ import {
   type Subject,
   type Visibility,
 } from '@ludora/shared';
+import { SUBJECT_COVER_DEFAULTS } from '../covers.ts';
 
 /** Limits from packages/shared/src/questions.ts, repeated so the editor can show them before validating. The schema stays the judge. */
 export const LIMITS = {
@@ -520,21 +521,7 @@ export function buildSetCandidate(details: SetDetails, questions: Record<string,
   };
 }
 
-/** Mirrors SUBJECT_DEFAULTS in SetCover.tsx: the cover a set shows until the author picks one. */
-export const SUBJECT_COVER_DEFAULTS: Record<Subject, CoverChoice> = {
-  math: { glyph: 'calculator', hue: 215 },
-  science: { glyph: 'flask', hue: 160 },
-  english: { glyph: 'book', hue: 330 },
-  vocabulary: { glyph: 'book', hue: 280 },
-  geography: { glyph: 'globe', hue: 190 },
-  history: { glyph: 'landmark', hue: 30 },
-  languages: { glyph: 'languages', hue: 0 },
-  computing: { glyph: 'cpu', hue: 250 },
-  arts: { glyph: 'palette', hue: 300 },
-  music: { glyph: 'music', hue: 45 },
-  health: { glyph: 'heart', hue: 350 },
-  general: { glyph: 'star', hue: 42 },
-};
+export { SUBJECT_COVER_DEFAULTS };
 
 export function coverFor(details: Pick<SetDetails, 'cover' | 'subject'>): CoverChoice {
   return details.cover ?? SUBJECT_COVER_DEFAULTS[details.subject || 'general'];

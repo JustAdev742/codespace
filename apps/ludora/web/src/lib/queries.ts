@@ -89,6 +89,7 @@ export interface SetSummary {
   description: string;
   subject: string;
   gradeBand: string | null;
+  language?: string;
   tags: string[];
   visibility: 'private' | 'unlisted' | 'public';
   cover: { glyph: string; hue: number } | null;

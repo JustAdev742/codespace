@@ -199,3 +199,8 @@ archives their active classes before switching away, so students are never
 left in a class nobody runs. Modes that wait for a host (a host-paced variant
 with automatic moving on turned off) cannot be assigned or played solo: the
 server refuses them, using the same check as the assignment picker.
+
+**D33. A set that class assignments use cannot be deleted.** The database would
+cascade and silently remove the assignments, and with them a class's work.
+The server refuses and says how many assignments use the set; the teacher
+removes them first or makes the set private instead.

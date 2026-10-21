@@ -278,7 +278,14 @@ describe('account type', () => {
     expect(discussion.body.error.message).toMatch(/waits for a host/);
     const solo = await teacher.client.post('/api/rooms', { setId: set.body.set.id, modeId: 'classic', solo: true, settings: { autoAdvance: false } });
     expect(solo.status).toBe(409);
-    expect((await teacher.client.post(`/api/classes/${cls.body.class.id}/assignments`, { setId: set.body.set.id, modeId: 'classic', title: 'Quick check' })).status).toBe(200);
+    const quick = await teacher.client.post(`/api/classes/${cls.body.class.id}/assignments`, { setId: set.body.set.id, modeId: 'classic', title: 'Quick check' });
+    expect(quick.status).toBe(200);
+    // A set an assignment uses cannot be deleted out from under the class.
+    const refused = await teacher.client.delete(`/api/sets/${set.body.set.id}`);
+    expect(refused.status).toBe(409);
+    expect(refused.body.error.message).toMatch(/class assignment uses this set/);
+    expect((await teacher.client.delete(`/api/classes/${cls.body.class.id}/assignments/${quick.body.assignment.id}`)).status).toBe(200);
+    expect((await teacher.client.delete(`/api/sets/${set.body.set.id}`)).status).toBe(200);
   });
 });
 

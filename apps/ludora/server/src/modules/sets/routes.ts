@@ -3,9 +3,9 @@ import { and, desc, eq, ilike, isNull, or, sql, type SQL } from 'drizzle-orm';
 import { z } from 'zod';
 import { questionSchema, questionSetInputSchema, SUBJECTS, type Question } from '@ludora/shared';
 import type { AppDeps } from '../../app.ts';
-import { questionSets, users } from '../../db/schema.ts';
+import { assignments, questionSets, users } from '../../db/schema.ts';
 import { noStore, requireAccount, requireAuth, requirePermission } from '../../http/context.ts';
-import { AppError, forbidden, notFound } from '../../lib/errors.ts';
+import { AppError, conflict, forbidden, notFound } from '../../lib/errors.ts';
 import { parse } from '../../lib/validate.ts';
 import { canEdit, canView, loadSet, type SetRow } from './access.ts';
 import { withOperation } from '../economy/service.ts';
@@ -26,6 +26,7 @@ function summary(s: SetRow & { ownerName?: string | null }) {
     description: s.description,
     subject: s.subject,
     gradeBand: s.gradeBand,
+    language: s.language,
     tags: s.tags,
     visibility: s.visibility,
     cover: s.cover,
@@ -144,6 +145,11 @@ export async function setRoutes(app: FastifyInstance, deps: AppDeps) {
     const { id } = parse(z.object({ id: z.string().uuid() }), req.params);
     const set = await loadSet(deps.db, id);
     if (!set || !canEdit(set, auth)) throw notFound('That question set does not exist.');
+    // Deleting would silently take class assignments with it (the database cascades), so ask first.
+    const [used] = await deps.db.select({ n: sql<number>`count(*)::int` }).from(assignments).where(eq(assignments.setId, id));
+    if ((used?.n ?? 0) > 0) {
+      throw conflict(`${used!.n === 1 ? 'A class assignment uses' : `${used!.n} class assignments use`} this set. Remove ${used!.n === 1 ? 'it' : 'them'} from the class first, or make the set private instead.`);
+    }
     await deps.db.delete(questionSets).where(eq(questionSets.id, id));
     return { ok: true };
   });

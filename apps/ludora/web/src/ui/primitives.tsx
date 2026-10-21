@@ -144,7 +144,7 @@ export function Field({ label, hint, error, children, id }: { label: string; hin
         {label}
       </label>
       {children({ id: fid, 'aria-invalid': Boolean(error), 'aria-describedby': [hintId, errId].filter(Boolean).join(' ') || undefined })}
-      {hint && !error ? (
+      {hint ? (
         <p id={hintId} className="text-xs text-text-3">
           {hint}
         </p>
@@ -193,10 +193,15 @@ export function Switch({ checked, onCheckedChange, label, description, disabled 
         <label htmlFor={id} className="font-semibold text-text">
           {label}
         </label>
-        {description ? <p className="text-sm text-text-3">{description}</p> : null}
+        {description ? (
+          <p id={`${id}-desc`} className="text-sm text-text-3">
+            {description}
+          </p>
+        ) : null}
       </div>
       <RSwitch.Root
         id={id}
+        aria-describedby={description ? `${id}-desc` : undefined}
         checked={checked}
         onCheckedChange={onCheckedChange}
         disabled={disabled}
