@@ -1,4 +1,4 @@
-import { useRef, useState, type CSSProperties } from 'react';
+import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { Bot, Copy, Lock, LockOpen, Shuffle, UserMinus } from 'lucide-react';
 import { toast } from 'sonner';
 import type { RoomPlayerView, RoomView, TeamView } from '@ludora/shared';
@@ -6,24 +6,36 @@ import type { RoomHandle } from '../../lib/useRoom.ts';
 import { Glim } from '../../art/glim/Glim.tsx';
 import { Button } from '../../ui/Button.tsx';
 import { ReactionBar } from './game/Reactions.tsx';
-import { GREETERS, NameTag, Pill, PlayerGlim, StagePanel, motionOK } from './game/stage.tsx';
+import { GREETERS, NameTag, Pill, PlayerGlim, SIGN, StagePanel, motionOK } from './game/stage.tsx';
+
+/** One column per team on a wide screen, up to what fits. */
+const TEAM_COLS: Record<number, string> = { 1: '', 2: 'md:grid-cols-2', 3: 'md:grid-cols-3', 4: 'md:grid-cols-2 xl:grid-cols-4', 5: 'md:grid-cols-3', 6: 'md:grid-cols-3' };
 
 /** Glims get smaller as the crowd grows, so a whole class still fits on one projector screen. */
 function seatSize(n: number, inTeam: boolean): string {
-  if (inTeam) return n <= 6 ? 'clamp(4rem, 5.6vw, 6.5rem)' : 'clamp(3.25rem, 4.2vw, 5rem)';
+  if (inTeam) return n <= 6 ? 'clamp(4rem, 5.6vw, 6.5rem)' : n <= 12 ? 'clamp(3.5rem, 4.6vw, 5.5rem)' : 'clamp(3rem, 3.6vw, 4.25rem)';
   if (n <= 6) return 'clamp(5.5rem, 9.5vw, 11rem)';
   if (n <= 12) return 'clamp(4.75rem, 7vw, 8.5rem)';
   if (n <= 24) return 'clamp(4rem, 5.4vw, 6.5rem)';
   return 'clamp(3.25rem, 4vw, 5rem)';
 }
 
-/** One player in the lobby crowd: their Glim, a paper name tag, and a remove button for the host. */
-function Seat({ p, onKick, delay }: { p: RoomPlayerView; onKick?: (() => void) | undefined; delay: number }) {
+/** How long a newcomer waves hello before settling into the crowd. */
+const WAVE_MS = 4000;
+
+/** One player in the lobby crowd: their Glim, a paper name tag, and a remove button for the host. Newcomers wave as they arrive. */
+function Seat({ p, onKick, delay, fresh }: { p: RoomPlayerView; onKick?: (() => void) | undefined; delay: number; fresh: boolean }) {
+  const [waving, setWaving] = useState(fresh);
+  useEffect(() => {
+    if (!fresh) return;
+    const t = setTimeout(() => setWaving(false), WAVE_MS);
+    return () => clearTimeout(t);
+  }, [fresh]);
   return (
-    <li className="group relative flex w-[calc(var(--seat)*1.3)] flex-col items-center gap-1.5" style={motionOK() ? { animation: `stage-arrive 560ms var(--ease-spring) ${delay}ms both` } : undefined}>
-      <PlayerGlim avatar={p.avatar} seed={p.id} size={128} className={`size-[var(--seat)] ${p.connected ? '' : 'opacity-45 grayscale'}`} />
-      <NameTag className="text-[length:clamp(0.85rem,calc(var(--seat)*0.15),1.4rem)]">{p.name}</NameTag>
-      {p.isBot || !p.connected ? <span className="text-sm font-semibold text-text-2">{!p.connected ? 'Away' : 'Practice bot'}</span> : null}
+    <li className="group relative flex w-[max(calc(var(--seat)*1.3),6.5rem)] flex-col items-center gap-1.5" style={motionOK() ? { animation: `stage-arrive 560ms var(--ease-spring) ${delay}ms both` } : undefined}>
+      <PlayerGlim avatar={p.avatar} seed={p.id} size={128} pose={waving ? 'wave' : 'idle'} className={`size-[var(--seat)] ${p.connected ? '' : 'opacity-45 grayscale'}`} />
+      <NameTag className="text-[length:clamp(0.9rem,calc(var(--seat)*0.15),1.4rem)]">{p.name}</NameTag>
+      {p.isBot || !p.connected ? <span className="text-sm font-semibold whitespace-nowrap text-text-2">{!p.connected ? 'Away' : 'Bot'}</span> : null}
       {onKick ? (
         <button
           type="button"
@@ -47,7 +59,7 @@ function Crowd({ players, onKick, inTeam = false }: { players: RoomPlayerView[];
   return (
     <ul className="flex flex-wrap items-start justify-center gap-x-[calc(var(--seat)*0.18)] gap-y-[calc(var(--seat)*0.16)]" style={{ '--seat': seatSize(players.length, inTeam) } as CSSProperties}>
       {players.map((p, i) => (
-        <Seat key={p.id} p={p} onKick={onKick ? () => onKick(p) : undefined} delay={initial.has(p.id) ? Math.min(i, 16) * 55 : 0} />
+        <Seat key={p.id} p={p} onKick={onKick ? () => onKick(p) : undefined} delay={initial.has(p.id) ? Math.min(i, 16) * 55 : 0} fresh={!initial.has(p.id)} />
       ))}
     </ul>
   );
@@ -128,7 +140,7 @@ export function HostLobby({ room, handle }: { room: RoomView; handle: RoomHandle
         </div>
         <div className="flex flex-col justify-between gap-5">
           <div className="flex flex-col gap-2">
-            <h1 className="font-display text-[clamp(2.5rem,4.2vw,5rem)] leading-none font-extrabold">{room.room.title}</h1>
+            <h1 className={`font-display text-[clamp(2.5rem,4.2vw,5rem)] leading-none font-extrabold ${SIGN}`}>{room.room.title}</h1>
             <p className="text-[clamp(1.15rem,1.6vw,1.8rem)] font-semibold text-text-2">{room.room.setTitle}</p>
             <ul className="mt-2 flex flex-wrap gap-2 text-[clamp(0.95rem,1.15vw,1.3rem)]" aria-label="Game settings">
               <li>
@@ -161,8 +173,8 @@ export function HostLobby({ room, handle }: { room: RoomView; handle: RoomHandle
       </section>
 
       <section className="flex flex-1 flex-col gap-[clamp(0.75rem,2vh,1.5rem)]" aria-labelledby="lobby-crowd">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <h2 id="lobby-crowd" className="font-display text-[clamp(1.5rem,2.3vw,2.75rem)] font-extrabold">
+        <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
+          <h2 id="lobby-crowd" className={`font-display text-[clamp(1.5rem,2.3vw,2.75rem)] font-extrabold ${SIGN}`}>
             {room.players.length === 0 ? 'Nobody here yet' : `${humans} ${humans === 1 ? 'player' : 'players'}${bots ? ` and ${bots} practice ${bots === 1 ? 'bot' : 'bots'}` : ''}`}
           </h2>
           <div className="flex flex-wrap gap-2">
@@ -175,7 +187,7 @@ export function HostLobby({ room, handle }: { room: RoomView; handle: RoomHandle
               Add 3 practice bots
             </Button>
             {bots ? (
-              <Button variant="ghost" onClick={() => run('nobots', { cmd: 'removeBots' })}>
+              <Button onClick={() => run('nobots', { cmd: 'removeBots' })}>
                 Remove bots
               </Button>
             ) : null}
@@ -184,7 +196,7 @@ export function HostLobby({ room, handle }: { room: RoomView; handle: RoomHandle
         {room.players.length === 0 ? (
           <EmptySeats />
         ) : teams.length ? (
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+          <div className={`grid grid-cols-1 gap-4 ${TEAM_COLS[Math.min(teams.length, 6)] ?? 'md:grid-cols-3'}`}>
             {teams.map((t) => (
               <TeamCrowd key={t.id} team={t} players={room.players.filter((p) => p.teamId === t.id)} onKick={kick} />
             ))}
@@ -206,10 +218,10 @@ export function PlayerLobby({ room, handle }: { room: RoomView; handle: RoomHand
     <div className="mx-auto flex w-full max-w-md flex-1 flex-col items-center justify-center gap-5 text-center">
       <div className="relative grid place-items-center">
         <span className="absolute size-60 rounded-full bg-[radial-gradient(circle,rgb(255_206_110/0.5)_0%,rgb(255_176_32/0.18)_45%,rgb(255_176_32/0)_70%)]" aria-hidden />
-        <PlayerGlim avatar={me?.avatar} seed={room.me.playerId ?? room.me.name ?? 'you'} size={180} bob className="relative" />
+        <PlayerGlim avatar={me?.avatar} seed={room.me.playerId ?? room.me.name ?? 'you'} size={180} bob pose="wave" className="relative" />
       </div>
       <div>
-        <h1 className="font-display text-5xl font-extrabold">You are in!</h1>
+        <h1 className={`font-display text-5xl font-extrabold ${SIGN}`}>You are in!</h1>
         <p className="mt-2 text-xl text-text-2">
           Playing as <span className="font-bold text-text">{room.me.name}</span>
           {team ? (

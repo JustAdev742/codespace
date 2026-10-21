@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import { ArrowDown, ArrowUp, Check, Send, Users } from 'lucide-react';
-import type { Answer, PublicQuestion } from '@ludora/shared';
+import type { Answer, Media, PublicQuestion } from '@ludora/shared';
 import { AnswerShape, ANSWER_LETTERS } from '../../../art/icons.tsx';
+import { QuestionImage } from './QuestionCard.tsx';
 
 /*
  * Answer controls for every question type. Choices always carry a shape and
@@ -36,6 +37,22 @@ const SIZE: Record<TileSize, { tile: string; stack: string; text: string; long: 
   },
 };
 
+/*
+ * The sticker look (ink edge, hard press shadow that collapses when pressed),
+ * built from utilities rather than the shared `.sticker` class: tiles are
+ * disabled on the host screen and at every reveal, and `.sticker:disabled`
+ * would grey them out. Same `--press` depth as every other sticker.
+ */
+const PIECE =
+  'border-[3px] border-ink text-on-accent shadow-[0_var(--press)_0_var(--ink)] transition-[translate,box-shadow,filter] duration-[120ms] ease-[var(--ease-out)] enabled:hover:brightness-105 enabled:active:translate-y-[calc(var(--press)-1px)] enabled:active:shadow-[0_1px_0_var(--ink)] data-[pressed=true]:translate-y-[calc(var(--press)-1px)] data-[pressed=true]:shadow-[0_1px_0_var(--ink)]';
+const UNLIT = 'border-[3px] border-white/30 bg-[rgb(17_10_62/0.5)] text-text';
+/** Taller projector tiles when there are only two rows of them, so they fill the screen. */
+const TALL = 'min-h-[clamp(5.5rem,15.5vh,11.5rem)]!';
+/** Taller two-up phone tiles when there are four or fewer: bigger targets that still fit above the fold. */
+const TALL_STACK = 'min-h-[clamp(7rem,18vh,10rem)]!';
+/** Shorter two-up phone tiles for five or six answers, so the last row stays above the fold. */
+const DENSE_STACK = 'min-h-[5.25rem]!';
+
 /**
  * One answer as a chunky, pressable game piece. At a reveal, answers that were
  * not right go unlit (translucent, white text) rather than fading out, so every
@@ -56,6 +73,9 @@ export function ChoiceTile({
   count,
   max = 0,
   keyHint = false,
+  tall = false,
+  dense = false,
+  media,
 }: {
   index: number;
   text: string;
@@ -74,6 +94,10 @@ export function ChoiceTile({
   max?: number;
   /** Show the number key that picks this tile (players with a keyboard). */
   keyHint?: boolean;
+  tall?: boolean;
+  dense?: boolean;
+  /** A picture on the answer itself. */
+  media?: Media | undefined;
 }) {
   const s = SIZE[size ?? (compact ? 'sm' : 'md')];
   const lit = !dimmed;
@@ -86,18 +110,17 @@ export function ChoiceTile({
       disabled={disabled}
       data-pressed={selected || undefined}
       aria-pressed={selected}
-      className={`sticker relative flex w-full text-left disabled:cursor-default ${layout === 'stack' ? `flex-col items-start justify-between ${s.stack}` : `items-center ${s.tile}`} ${
-        lit
-          ? 'border-ink text-on-accent shadow-[0_var(--press)_0_var(--ink)] enabled:active:shadow-[0_1px_0_var(--ink)] data-[pressed=true]:shadow-[0_1px_0_var(--ink)]'
-          : 'border-white/30 bg-white/8 text-text shadow-none'
-      } ${correct ? 'ring-[5px] ring-glim ring-offset-[3px] ring-offset-ink' : ''}`}
+      className={`relative flex w-full text-left [--press:5px] disabled:cursor-default ${layout === 'stack' ? `flex-col items-start justify-between ${s.stack} ${tall ? TALL_STACK : dense ? DENSE_STACK : ''}` : `items-center ${s.tile} ${tall ? TALL : ''}`} ${lit ? PIECE : UNLIT} ${
+        correct ? 'ring-[5px] ring-glim ring-offset-[3px] ring-offset-ink' : ''
+      }`}
       style={lit ? { background: bg } : undefined}
     >
       <span className={`flex shrink-0 items-center font-display leading-none font-extrabold text-on-accent ${s.badge} ${lit ? 'bg-white/55' : ''}`} style={lit ? undefined : { background: bg }}>
         <AnswerShape index={index} size={s.shape} />
         <span>{ANSWER_LETTERS[index]}</span>
       </span>{' '}
-      <span className={`min-w-0 flex-1 leading-tight font-bold break-words ${long ? s.long : s.text} ${layout === 'stack' ? 'flex w-full items-end' : ''}`}>{text}</span>
+      {media ? <QuestionImage media={media} size="tile" className={layout === 'stack' ? 'self-start' : ''} /> : null}
+      {text ? <span className={`min-w-0 flex-1 leading-tight font-bold break-words ${long ? s.long : s.text} ${layout === 'stack' ? 'flex w-full items-end' : ''}`}>{text}</span> : <span className="flex-1" />}
       {keyHint ? (
         <span className="hidden self-start font-display text-sm font-bold opacity-60 sm:block" aria-hidden>
           {index + 1}
@@ -105,7 +128,7 @@ export function ChoiceTile({
       ) : null}
       {count !== undefined && count !== null ? (
         <>
-          <span className={`flex shrink-0 items-center gap-1.5 self-center rounded-full px-3 py-1 font-display font-extrabold tabular ${lit ? 'bg-ink/85 text-white' : 'bg-sunken text-text'} ${size === 'lg' ? 'text-[clamp(1.1rem,1.8vw,2rem)]' : 'text-base'}`}>
+          <span className={`flex shrink-0 items-center gap-1.5 self-center rounded-full px-3 py-1 font-display font-extrabold tabular ${lit ? 'bg-ink/85 text-white' : 'bg-[rgb(17_10_62/0.62)] text-text'} ${size === 'lg' ? 'text-[clamp(1.1rem,1.8vw,2rem)]' : 'text-base'}`}>
             <Users className="size-[0.9em]" aria-hidden />
             {count}
             <span className="sr-only"> {count === 1 ? 'player' : 'players'}</span>
@@ -128,12 +151,19 @@ export function ChoiceTile({
 }
 
 /** Two-up tiles when every choice is short enough to sit side by side on a phone; the odd one out spans the row. */
-export function choiceGrid(texts: string[], host = false): { grid: string; layout: 'row' | 'stack' } {
+export function choiceGrid(texts: string[], host = false): { grid: string; layout: 'row' | 'stack'; tall: boolean; dense: boolean } {
+  const n = texts.length;
   const short = texts.every((t) => t.length <= 18);
   const odd = '[&>*:last-child:nth-child(odd)]:col-span-2';
-  if (host) return { grid: `grid grid-cols-2 gap-[clamp(0.75rem,1.4vw,1.5rem)] ${odd}`, layout: 'row' };
-  if (texts.length <= 2 || short) return { grid: `grid grid-cols-2 gap-3 ${odd}`, layout: 'stack' };
-  return { grid: 'grid grid-cols-1 gap-3 sm:grid-cols-2', layout: 'row' };
+  const tall = n <= 4;
+  const dense = n > 4;
+  if (host) {
+    // Three or six short answers sit three across on a wide screen: one row fewer to read, and it fits a 768-pixel projector.
+    const threeUp = (n === 3 || n === 6) && texts.every((t) => t.length <= 32);
+    return { grid: threeUp ? 'grid grid-cols-3 gap-[clamp(0.75rem,1.4vw,1.5rem)]' : `grid grid-cols-2 gap-[clamp(0.75rem,1.4vw,1.5rem)] ${odd}`, layout: 'row', tall, dense };
+  }
+  if (n <= 2 || short) return { grid: `grid grid-cols-2 gap-3 ${odd}`, layout: 'stack', tall, dense };
+  return { grid: 'grid grid-cols-1 gap-3 sm:grid-cols-2', layout: 'row', tall: false, dense };
 }
 
 function useNumberKeys(count: number, onPick: (i: number) => void, enabled: boolean) {
@@ -167,17 +197,17 @@ function ChoiceAnswer({ q, onSubmit, disabled, chosen, compact }: AnswerInputPro
     if (!ok) setPicked(null);
   };
   useNumberKeys(q.choices.length, (i) => void pick(q.choices[i]!.id), !locked);
-  const { grid, layout } = choiceGrid(q.choices.map((c) => c.text));
+  const { grid, layout, tall, dense } = choiceGrid(q.choices.map((c) => c.text));
   return (
     <div className={grid} role="group" aria-label="Answers">
       {q.choices.map((c, i) => (
-        <ChoiceTile key={c.id} index={i} text={c.text} selected={picked === c.id} dimmed={picked !== null && picked !== c.id} onClick={() => void pick(c.id)} disabled={locked && picked !== c.id} compact={compact} layout={layout} keyHint />
+        <ChoiceTile key={c.id} index={i} text={c.text} media={c.media} selected={picked === c.id} dimmed={picked !== null && picked !== c.id} onClick={() => void pick(c.id)} disabled={locked && picked !== c.id} compact={compact} layout={layout} tall={tall && !compact && !q.media} dense={dense} keyHint />
       ))}
     </div>
   );
 }
 
-function TrueFalseAnswer({ onSubmit, disabled, compact }: AnswerInputProps) {
+function TrueFalseAnswer({ q, onSubmit, disabled, compact }: AnswerInputProps) {
   const [picked, setPicked] = useState<boolean | null>(null);
   const locked = disabled || picked !== null;
   const pick = async (v: boolean) => {
@@ -188,8 +218,8 @@ function TrueFalseAnswer({ onSubmit, disabled, compact }: AnswerInputProps) {
   useNumberKeys(2, (i) => void pick(i === 0), !locked);
   return (
     <div className="grid grid-cols-2 gap-3" role="group" aria-label="Answers">
-      <ChoiceTile index={0} text="True" selected={picked === true} dimmed={picked === false} onClick={() => void pick(true)} disabled={locked} compact={compact} layout="stack" keyHint />
-      <ChoiceTile index={1} text="False" selected={picked === false} dimmed={picked === true} onClick={() => void pick(false)} disabled={locked} compact={compact} layout="stack" keyHint />
+      <ChoiceTile index={0} text="True" selected={picked === true} dimmed={picked === false} onClick={() => void pick(true)} disabled={locked} compact={compact} layout="stack" tall={!compact && !q.media} keyHint />
+      <ChoiceTile index={1} text="False" selected={picked === false} dimmed={picked === true} onClick={() => void pick(false)} disabled={locked} compact={compact} layout="stack" tall={!compact && !q.media} keyHint />
     </div>
   );
 }
@@ -205,13 +235,13 @@ function MultiAnswer({ q, onSubmit, disabled, compact }: AnswerInputProps & { q:
     setSent(true);
     if (!(await onSubmit({ type: 'multi', choiceIds: sel }))) setSent(false);
   };
-  const { grid, layout } = choiceGrid(q.choices.map((c) => c.text));
+  const { grid, layout, dense } = choiceGrid(q.choices.map((c) => c.text));
   return (
     <div className="flex flex-col gap-3">
       <p className="font-semibold text-text-2">{q.selectCount ? `Pick ${q.selectCount}.` : 'Pick every correct answer.'}</p>
       <div className={grid} role="group" aria-label="Answers">
         {q.choices.map((c, i) => (
-          <ChoiceTile key={c.id} index={i} text={c.text} selected={sel.includes(c.id)} dimmed={locked && !sel.includes(c.id)} onClick={() => toggle(c.id)} disabled={locked} compact={compact} layout={layout} keyHint />
+          <ChoiceTile key={c.id} index={i} text={c.text} media={c.media} selected={sel.includes(c.id)} dimmed={locked && !sel.includes(c.id)} onClick={() => toggle(c.id)} disabled={locked} compact={compact} layout={layout} dense={dense} keyHint />
         ))}
       </div>
       <SubmitButton disabled={locked || sel.length === 0} sent={sent} onClick={submit} label={sel.length ? `Submit ${sel.length} ${sel.length === 1 ? 'answer' : 'answers'}` : 'Submit answers'} />
@@ -276,7 +306,7 @@ function TextAnswer({ numeric, unit, onSubmit, disabled }: { numeric: boolean; u
         {unit ? <span className="font-display text-2xl font-bold text-text">{unit}</span> : null}
       </div>
       {error ? (
-        <p id="answer-text-error" className="rounded-[12px] bg-sunken px-3 py-2 font-semibold text-ember">
+        <p id="answer-text-error" className="rounded-[12px] bg-[rgb(17_10_62/0.62)] px-3 py-2 font-semibold text-ember">
           {error}
         </p>
       ) : null}

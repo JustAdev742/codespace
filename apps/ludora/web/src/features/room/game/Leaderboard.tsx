@@ -19,22 +19,38 @@ const MOVE = 'cubic-bezier(0.77, 0, 0.175, 1)';
 export const PLACE_BG = ['var(--lantern)', 'var(--tile-b)', 'var(--tile-d)'];
 
 /**
- * Slides rows to their new places. On first showing, rows start in last
- * round's order (score minus this round's gain), hold for a beat so the room
- * can see it, then slide; after that, any reorder slides from where rows were.
+ * The order each kind of board (projector or phone) was last shown in, so the
+ * next showing can start from it. Ties in score are common early in a game,
+ * and only the order the room actually saw makes the slide honest.
+ */
+const lastShown = new Map<string, string[]>();
+
+/**
+ * Slides rows to their new places. On first showing, rows start in the order
+ * the board was last shown in (falling back to last round's scores, score
+ * minus this round's gain), hold for a beat so the room can see it, then
+ * slide; while the board stays up, any reorder slides from where rows were.
  * Nothing moves when motion is reduced.
  */
-function useRankSlide(listRef: RefObject<HTMLOListElement | null>, rows: LeaderRow[], orderKey: string) {
+function useRankSlide(listRef: RefObject<HTMLOListElement | null>, rows: LeaderRow[], orderKey: string, memory: string) {
   const last = useRef<Map<string, number> | null>(null);
+  // The order last measured. Running again for the same order (React's
+  // development double effects, or a resize) must not cancel a slide in flight.
+  const lastKey = useRef<string | null>(null);
   const rowsRef = useRef(rows);
   rowsRef.current = rows;
   useLayoutEffect(() => {
     const list = listRef.current;
-    if (!list) return;
+    if (!list || lastKey.current === orderKey) return;
+    lastKey.current = orderKey;
     const nodes = Array.from(list.children).filter((n): n is HTMLElement => n instanceof HTMLElement && Boolean(n.dataset.row));
     for (const n of nodes) for (const a of n.getAnimations()) a.cancel();
     const top0 = list.getBoundingClientRect().top;
     const tops = new Map(nodes.map((n) => [n.dataset.row!, n.getBoundingClientRect().top - top0]));
+    const ranked = rowsRef.current;
+    const ids = ranked.map((r) => r.playerId);
+    const remembered = lastShown.get(memory);
+    lastShown.set(memory, ids);
     const previous = last.current;
     last.current = tops;
     if (!motionOK()) return;
@@ -42,11 +58,16 @@ function useRankSlide(listRef: RefObject<HTMLOListElement | null>, rows: LeaderR
     let delay = 0;
     let duration = 520;
     if (!from) {
-      const ranked = rowsRef.current;
-      if (!ranked.some((r) => r.gain)) return;
+      const seen = (remembered ?? []).filter((id) => ids.includes(id));
+      const prevScore = (id: string) => {
+        const r = ranked.find((x) => x.playerId === id)!;
+        return r.score - (r.gain ?? 0);
+      };
+      const rest = ids.filter((id) => !seen.includes(id)).sort((a, b) => prevScore(b) - prevScore(a));
+      const before = [...seen, ...rest];
+      if (before.every((id, i) => id === ids[i])) return;
       const slots = nodes.map((n) => tops.get(n.dataset.row!) ?? 0);
-      const before = [...ranked].sort((a, b) => b.score - (b.gain ?? 0) - (a.score - (a.gain ?? 0)));
-      from = new Map(before.map((r, i) => [r.playerId, slots[i] ?? 0]));
+      from = new Map(before.map((id, i) => [id, slots[Math.min(i, slots.length - 1)] ?? 0]));
       delay = 600;
       duration = 900;
     }
@@ -62,7 +83,7 @@ function useRankSlide(listRef: RefObject<HTMLOListElement | null>, rows: LeaderR
       anim.onfinish = reset;
       anim.oncancel = reset;
     }
-  }, [orderKey, listRef]);
+  }, [orderKey, listRef, memory]);
 }
 
 export function RankBadge({ rank, big = false }: { rank: number; big?: boolean }) {
@@ -78,17 +99,34 @@ export function RankBadge({ rank, big = false }: { rank: number; big?: boolean }
 }
 
 /** Ranked rows with each player's Glim and the points just gained. The `you` row is highlighted (and appended if below the cut). */
-export function Leaderboard({ rows, you, players, teams, big = false, label }: { rows: LeaderRow[]; you?: LeaderRow | null; players: RoomPlayerView[]; teams?: TeamView[]; big?: boolean; label?: (r: LeaderRow) => string }) {
+export function Leaderboard({
+  rows,
+  you,
+  players,
+  teams,
+  big = false,
+  dense = false,
+  label,
+}: {
+  rows: LeaderRow[];
+  you?: LeaderRow | null;
+  players: RoomPlayerView[];
+  teams?: TeamView[];
+  big?: boolean;
+  /** Projector type in compact rows, for a board in a side panel. */
+  dense?: boolean;
+  label?: (r: LeaderRow) => string;
+}) {
   const listRef = useRef<HTMLOListElement>(null);
   const team = (id: string | null) => teams?.find((t) => t.id === id);
   const all = you && !rows.some((r) => r.playerId === you.playerId) ? [...rows, you] : rows;
-  useRankSlide(listRef, rows, all.map((r) => r.playerId).join('|'));
-  const roomy = all.length <= 5;
+  useRankSlide(listRef, rows, all.map((r) => r.playerId).join('|'), big ? 'projector' : 'phone');
+  const roomy = all.length <= 5 && !dense;
   // Projector sizes scale with the screen, and shrink when the board is long so ten rows still fit.
   const vars = (
     big
       ? roomy
-        ? { '--lb-row': 'clamp(4.25rem, 10.5vh, 7.5rem)', '--lb-glim': 'clamp(3.5rem, 8.5vh, 6.25rem)', '--lb-rank': 'clamp(3rem, 7vh, 4.75rem)', '--lb-name': 'clamp(1.4rem, 2.5vw, 3rem)', '--lb-score': 'clamp(1.6rem, 2.9vw, 3.5rem)' }
+        ? { '--lb-row': 'clamp(4.5rem, 12vh, 8.5rem)', '--lb-glim': 'clamp(3.75rem, 10vh, 7.25rem)', '--lb-rank': 'clamp(3rem, 7.5vh, 5rem)', '--lb-name': 'clamp(1.5rem, 2.7vw, 3.25rem)', '--lb-score': 'clamp(1.7rem, 3vw, 3.75rem)' }
         : { '--lb-row': 'clamp(3rem, 6.2vh, 4.75rem)', '--lb-glim': 'clamp(2.5rem, 5.4vh, 4rem)', '--lb-rank': 'clamp(2.4rem, 5vh, 3.5rem)', '--lb-name': 'clamp(1.1rem, 1.8vw, 2.1rem)', '--lb-score': 'clamp(1.25rem, 2vw, 2.4rem)' }
       : { '--lb-row': '3.75rem', '--lb-glim': '2.75rem', '--lb-rank': '2.75rem', '--lb-name': '1.125rem', '--lb-score': '1.25rem' }
   ) as CSSProperties;
@@ -101,13 +139,13 @@ export function Leaderboard({ rows, you, players, teams, big = false, label }: {
           <li
             key={r.playerId}
             data-row={r.playerId}
-            className={`relative flex min-h-[var(--lb-row)] items-center rounded-[20px] border bg-sunken ${big ? 'gap-[clamp(0.75rem,1.4vw,1.5rem)] px-[clamp(0.75rem,1.2vw,1.25rem)] py-1' : 'gap-3 px-2.5 py-1.5'} ${isYou ? 'border-lantern ring-2 ring-lantern' : 'border-white/12'}`}
+            className={`relative flex min-h-[var(--lb-row)] items-center rounded-[20px] border bg-[rgb(17_10_62/0.62)] ${big ? 'gap-[clamp(0.75rem,1.4vw,1.5rem)] px-[clamp(0.75rem,1.2vw,1.25rem)] py-1' : 'gap-3 px-2.5 py-1.5'} ${isYou ? 'border-lantern ring-2 ring-lantern' : 'border-white/12'}`}
           >
             <RankBadge rank={r.rank} big={big} />
-            <PlayerGlim avatar={avatarOf(players, r.playerId)} seed={r.playerId} size={64} className="size-[var(--lb-glim)] shrink-0" />
+            <PlayerGlim avatar={avatarOf(players, r.playerId)} seed={r.playerId} size={64} pose={r.rank === 1 ? 'cheer' : 'idle'} className="size-[var(--lb-glim)] shrink-0" />
             <span className="min-w-0 flex-1 truncate text-[length:var(--lb-name)] leading-tight font-bold">
               {r.name}
-              {isYou ? <span className="ml-2 text-[0.75em] font-semibold text-text-2">(you)</span> : null}
+              {isYou ? <span className={big ? 'ml-2 text-[0.75em] font-semibold text-text-2' : 'sr-only'}> (you)</span> : null}
             </span>
             {t ? <span className="size-4 shrink-0 rounded-full border-2 border-ink" style={{ background: `hsl(${t.hue} 80% 60%)` }} title={t.name} aria-hidden /> : null}
             {t ? <span className="sr-only">{t.name}</span> : null}

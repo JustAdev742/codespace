@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import type { AvatarLite, GlimArt, Rarity, RoomPlayerView } from '@ludora/shared';
-import { Glim } from '../../../art/glim/Glim.tsx';
+import { Glim, type GlimPose } from '../../../art/glim/Glim.tsx';
 import { prefersReducedMotion } from '../../../lib/prefs.ts';
 
 /*
@@ -8,6 +8,20 @@ import { prefersReducedMotion } from '../../../lib/prefs.ts';
  * paper name tags and calm information panels. Kept with the room screens;
  * candidates for the shared UI kit once the look settles.
  */
+
+/**
+ * The calm surface for panels, rows and readouts on the stage: deep night blue,
+ * opaque enough that a lantern drifting behind never weakens the text on it
+ * (white stays above 7:1, coloured text above 4.5:1 anywhere on the sky).
+ */
+export const NIGHT = 'bg-[rgb(17_10_62/0.62)]';
+
+/**
+ * Big headings on the open sky get a hard ink drop shadow and a soft night
+ * glow, like a painted festival sign: they read from the back of the room and
+ * stay legible when a lantern drifts behind them.
+ */
+export const SIGN = '[text-shadow:0_0.07em_0_var(--ink),0_0_0.35em_rgb(17_10_62/0.75)]';
 
 /** True unless the player (or their device) asked for less motion. Read at render; settings change rarely. */
 export function motionOK(): boolean {
@@ -47,9 +61,33 @@ export const avatarOf = (players: RoomPlayerView[], id: string): AvatarLite | nu
 /**
  * A player's Glim, or a stand-in when they have none. Size it with `size`, or
  * with a CSS size class (the SVG scales to its box) for crowds that flex with the screen.
+ *
+ * Room views do not say how rare a player's Glim is, so the finish stays plain
+ * unless a caller knows better: an `aura` (the winner's glow) adds light around
+ * the Glim without dressing it up as a rarer collectible than it is.
  */
-export function PlayerGlim({ avatar, seed, size = 72, className, bob = false, aura = null, title }: { avatar: AvatarLite | null | undefined; seed: string; size?: number; className?: string; bob?: boolean; aura?: Rarity | null; title?: string }) {
-  return <Glim art={avatar?.art ?? fallbackArt(seed)} accessories={avatar?.accessories} size={size} className={className} bob={bob} aura={aura} title={title} />;
+export function PlayerGlim({
+  avatar,
+  seed,
+  size = 72,
+  className,
+  bob = false,
+  aura = null,
+  rarity = 'common',
+  pose = 'idle',
+  title,
+}: {
+  avatar: AvatarLite | null | undefined;
+  seed: string;
+  size?: number;
+  className?: string;
+  bob?: boolean;
+  aura?: Rarity | null;
+  rarity?: Rarity;
+  pose?: GlimPose;
+  title?: string;
+}) {
+  return <Glim art={avatar?.art ?? fallbackArt(seed)} accessories={avatar?.accessories} size={size} className={className} bob={bob} aura={aura} rarity={rarity} pose={pose} title={title} />;
 }
 
 /** A white paper name tag with an ink edge, for names under Glims. */
@@ -64,7 +102,7 @@ export function NameTag({ children, className = '', tone = 'paper' }: { children
 /** A calm, flat information panel on the stage. Darker than the sky so coloured text keeps its contrast. */
 export function StagePanel({ children, className = '', as: As = 'div', label }: { children: ReactNode; className?: string; as?: 'div' | 'section' | 'aside'; label?: string }) {
   return (
-    <As className={`rounded-[22px] border border-white/12 bg-sunken ${className}`} aria-label={label}>
+    <As className={`rounded-[22px] border border-white/12 ${NIGHT} ${className}`} aria-label={label}>
       {children}
     </As>
   );
@@ -73,7 +111,7 @@ export function StagePanel({ children, className = '', as: As = 'div', label }: 
 /** A small rounded readout on the stage: counts, clocks, goals. */
 export function Pill({ children, className = '', tone = 'calm' }: { children: ReactNode; className?: string; tone?: 'calm' | 'lantern' | 'glim' | 'ember' | 'dusk' }) {
   const t = {
-    calm: 'bg-sunken text-text border border-white/12',
+    calm: `${NIGHT} text-text border border-white/12`,
     lantern: 'bg-lantern text-on-accent border-2 border-ink',
     glim: 'bg-glim text-on-accent border-2 border-ink',
     ember: 'bg-ember text-on-accent border-2 border-ink',

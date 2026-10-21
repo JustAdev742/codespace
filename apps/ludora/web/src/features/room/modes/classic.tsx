@@ -8,7 +8,7 @@ import { TimerBar } from '../game/TimerBar.tsx';
 import { ChoicesDisplay, ResultBanner, RevealAnswer } from '../game/Reveal.tsx';
 import { Leaderboard, TeamScores, type LeaderRow } from '../game/Leaderboard.tsx';
 import { Explanation, IntroScreen, LockedIn, RoundHeader, myAvatar } from '../game/parts.tsx';
-import { Pill, PlayerGlim } from '../game/stage.tsx';
+import { Pill, PlayerGlim, SIGN } from '../game/stage.tsx';
 import { formatNumber, ordinal } from '../../../lib/format.ts';
 
 /* Views for Classic (and every host-paced mode built on synced rounds with the same view shape). */
@@ -54,7 +54,7 @@ export function ClassicPlayer({ view, act, gameNow, paused, room }: ModeScreenPr
         <div className="flex items-center gap-3">
           <PlayerGlim avatar={myAvatar(room)} seed={seed} size={76} className="shrink-0" />
           <div>
-            <h2 className="font-display text-3xl font-extrabold">{me ? `You are ${ordinal(me.rank)}` : 'Standings'}</h2>
+            <h2 className={`font-display text-3xl font-extrabold ${SIGN}`}>{me ? `You are ${ordinal(me.rank)}` : 'Standings'}</h2>
             {me ? <p className="font-semibold text-text-2">{formatNumber(me.score)} points so far</p> : null}
           </div>
         </div>
@@ -122,7 +122,7 @@ export function ClassicHost({ view, gameNow, paused, room }: ModeScreenProps<Cla
     return (
       <div className={`mx-auto grid w-full grid-cols-1 gap-[clamp(1rem,2.5vw,2.5rem)] ${view.teams ? 'max-w-[100rem] lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]' : 'max-w-[76rem]'}`}>
         <div className="flex flex-col gap-[clamp(0.75rem,2vh,1.5rem)]">
-          <h2 className="font-display text-[clamp(2.5rem,4.6vw,5.5rem)] leading-none font-extrabold">Leaderboard</h2>
+          <h2 className={`font-display text-[clamp(2.5rem,4.6vw,5.5rem)] leading-none font-extrabold ${SIGN}`}>Leaderboard</h2>
           <Leaderboard rows={view.board.rows} players={room.players} teams={room.room.teams} big />
         </div>
         {view.teams ? (

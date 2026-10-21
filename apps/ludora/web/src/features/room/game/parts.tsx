@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import type { RoomPlayerView, RoomView } from '@ludora/shared';
 import { useNow } from '../../../lib/useNow.ts';
-import { Pill, PlayerGlim, StagePanel } from './stage.tsx';
+import { Pill, PlayerGlim, SIGN, StagePanel } from './stage.tsx';
 
 /*
  * Pieces shared by the round-based screens: the intro, the round header, the
@@ -49,7 +49,7 @@ export function IntroScreen({ kicker, title, children, until, gameNow, big = fal
       {art}
       <div className="flex flex-col items-center gap-2">
         {kicker ? <p className={`font-display font-bold text-text-2 ${big ? 'text-[clamp(1.5rem,2.6vw,3rem)]' : 'text-2xl'}`}>{kicker}</p> : null}
-        <h2 className={`font-display leading-none font-extrabold ${big ? 'text-[clamp(3.5rem,7.5vw,9rem)]' : 'text-5xl'}`}>{title}</h2>
+        <h2 className={`font-display leading-none font-extrabold ${SIGN} ${big ? 'text-[clamp(3.5rem,7.5vw,9rem)]' : 'text-5xl'}`}>{title}</h2>
       </div>
       {children ? <div className={`max-w-[46ch] font-semibold text-text-2 ${big ? 'text-[clamp(1.2rem,1.9vw,2.2rem)]' : 'text-lg'}`}>{children}</div> : null}
       <BigCountdown until={until} gameNow={gameNow} big={big} label="First question in" />
@@ -62,10 +62,10 @@ export function IntroScreen({ kicker, title, children, until, gameNow, big = fal
 export function RoundHeader({ round, total, children, big = false, label = 'Question' }: { round: number; total: number; children?: ReactNode; big?: boolean; label?: string }) {
   return (
     <div className="flex flex-wrap items-center justify-between gap-2">
-      <Pill className={big ? 'px-5 py-1.5 text-[clamp(1.1rem,1.8vw,2rem)]' : 'text-base'}>
+      <Pill className={big ? 'px-5 py-1.5 text-[clamp(1.1rem,1.8vw,2rem)]' : 'px-2.5 text-sm min-[400px]:px-3 min-[400px]:text-base'}>
         {label} {round + 1} of {total}
       </Pill>
-      {children ? <div className={`flex flex-wrap items-center justify-end gap-2 ${big ? 'text-[clamp(1.1rem,1.8vw,2rem)]' : 'text-base'}`}>{children}</div> : null}
+      {children ? <div className={`flex flex-wrap items-center justify-end gap-1.5 ${big ? 'gap-2 text-[clamp(1.1rem,1.8vw,2rem)]' : 'text-sm min-[400px]:text-base [&>*]:px-2.5'}`}>{children}</div> : null}
     </div>
   );
 }

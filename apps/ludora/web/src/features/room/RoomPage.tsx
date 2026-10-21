@@ -40,7 +40,7 @@ function FeedToasts({ feed }: { feed: RoomView['feed'] }) {
       {visible.map((f) => (
         <div
           key={f.id}
-          className={`rounded-full border-2 border-ink px-3.5 py-1 text-sm font-bold shadow-[0_3px_0_var(--ink)] lg:text-lg ${f.tone === 'big' ? 'bg-lantern text-on-accent' : f.tone === 'good' ? 'bg-glim text-on-accent' : f.tone === 'bad' ? 'bg-ember text-on-accent' : 'paper'}`}
+          className={`rounded-[16px] border-2 border-ink px-3.5 py-1.5 text-sm leading-snug font-bold shadow-[0_3px_0_var(--ink)] lg:text-lg ${f.tone === 'big' ? 'bg-lantern text-on-accent' : f.tone === 'good' ? 'bg-glim text-on-accent' : f.tone === 'bad' ? 'bg-ember text-on-accent' : 'paper'}`}
           style={{ animation: 'rise-fade 240ms var(--ease-out)' }}
         >
           {f.text}
@@ -227,7 +227,7 @@ export default function RoomPage() {
             </p>
           </div>
           {isHost && live && !room.room.solo && room.room.options.lateJoin && !room.room.locked ? (
-            <p className="ml-2 hidden items-center gap-2 rounded-full border border-white/15 bg-sunken py-1 pr-1.5 pl-4 text-base font-semibold text-text-2 xl:flex">
+            <p className="ml-2 hidden items-center gap-2 rounded-full border border-white/15 bg-[rgb(17_10_62/0.62)] py-1 pr-1.5 pl-4 text-base font-semibold text-text-2 xl:flex">
               Join at {window.location.host}/play
               <span className="rounded-full bg-white px-3 py-0.5 font-display text-xl font-extrabold text-[#1d1846] tabular">{spaced(room.room.code)}</span>
             </p>

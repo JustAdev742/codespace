@@ -8,14 +8,14 @@ import { useOverview } from '../../../lib/queries.ts';
 export function ChoicesDisplay({ q, size = 'lg' }: { q: PublicQuestion; size?: TileSize }) {
   const host = size === 'lg';
   if (q.type === 'mcq' || q.type === 'multi') {
-    const { grid, layout } = choiceGrid(
+    const { grid, layout, dense } = choiceGrid(
       q.choices.map((c) => c.text),
       host,
     );
     return (
       <div className={grid}>
         {q.choices.map((c, i) => (
-          <ChoiceTile key={c.id} index={i} text={c.text} disabled size={size} layout={layout} />
+          <ChoiceTile key={c.id} index={i} text={c.text} media={c.media} disabled size={size} layout={layout} tall={host && q.choices.length <= 4 && !q.media} dense={dense} />
         ))}
       </div>
     );
@@ -23,8 +23,8 @@ export function ChoicesDisplay({ q, size = 'lg' }: { q: PublicQuestion; size?: T
   if (q.type === 'truefalse') {
     return (
       <div className={host ? 'grid grid-cols-2 gap-[clamp(0.75rem,1.4vw,1.5rem)]' : 'grid grid-cols-2 gap-3'}>
-        <ChoiceTile index={0} text="True" disabled size={size} layout={host ? 'row' : 'stack'} />
-        <ChoiceTile index={1} text="False" disabled size={size} layout={host ? 'row' : 'stack'} />
+        <ChoiceTile index={0} text="True" disabled size={size} layout={host ? 'row' : 'stack'} tall={host && !q.media} />
+        <ChoiceTile index={1} text="False" disabled size={size} layout={host ? 'row' : 'stack'} tall={host && !q.media} />
       </div>
     );
   }
@@ -40,14 +40,14 @@ export function RevealAnswer({ q, reveal, mine, distribution, compact, size }: {
   const count = (key: string) => (distribution ? (distribution[key] ?? 0) : null);
   if ((q.type === 'mcq' || q.type === 'multi') && (reveal.type === 'mcq' || reveal.type === 'multi')) {
     const correct = new Set(reveal.type === 'mcq' ? [reveal.correct] : reveal.correct);
-    const { grid, layout } = choiceGrid(
+    const { grid, layout, dense } = choiceGrid(
       q.choices.map((c) => c.text),
       host,
     );
     return (
       <div className={grid}>
         {q.choices.map((c, i) => (
-          <ChoiceTile key={c.id} index={i} text={c.text} correct={correct.has(c.id)} dimmed={!correct.has(c.id)} wrong={mine === c.id && !correct.has(c.id)} disabled size={sz} layout={layout} count={count(c.id)} max={max} />
+          <ChoiceTile key={c.id} index={i} text={c.text} media={c.media} dense={dense} correct={correct.has(c.id)} dimmed={!correct.has(c.id)} wrong={mine === c.id && !correct.has(c.id)} disabled size={sz} layout={layout} count={count(c.id)} max={max} tall={host && q.choices.length <= 4 && !q.media} />
         ))}
       </div>
     );
@@ -55,8 +55,8 @@ export function RevealAnswer({ q, reveal, mine, distribution, compact, size }: {
   if (q.type === 'truefalse' && reveal.type === 'truefalse') {
     return (
       <div className={host ? 'grid grid-cols-2 gap-[clamp(0.75rem,1.4vw,1.5rem)]' : 'grid grid-cols-2 gap-3'}>
-        <ChoiceTile index={0} text="True" correct={reveal.correct} dimmed={!reveal.correct} disabled size={sz} layout={host ? 'row' : 'stack'} count={count('true')} max={max} />
-        <ChoiceTile index={1} text="False" correct={!reveal.correct} dimmed={reveal.correct} disabled size={sz} layout={host ? 'row' : 'stack'} count={count('false')} max={max} />
+        <ChoiceTile index={0} text="True" correct={reveal.correct} dimmed={!reveal.correct} disabled size={sz} layout={host ? 'row' : 'stack'} count={count('true')} max={max} tall={host && !q.media} />
+        <ChoiceTile index={1} text="False" correct={!reveal.correct} dimmed={reveal.correct} disabled size={sz} layout={host ? 'row' : 'stack'} count={count('false')} max={max} tall={host && !q.media} />
       </div>
     );
   }

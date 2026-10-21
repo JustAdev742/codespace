@@ -31,24 +31,24 @@ export function DebugOverlay({ handle }: { handle: RoomHandle }) {
   return (
     <div className="fixed bottom-20 left-3 z-40 lg:bottom-3">
       {open ? (
-        <div className="w-72 rounded-[14px] border border-line-strong bg-sunken/95 p-3 font-mono text-[11px] text-text shadow-xl backdrop-blur" role="region" aria-label="Debug overlay">
-          <div className="mb-2 flex items-center justify-between font-sans text-xs font-semibold">
+        <div className="paper w-72 rounded-[16px] border-2 border-ink p-3 font-mono text-[11px] shadow-[0_4px_0_rgb(12_8_48/0.55)]" role="region" aria-label="Debug overlay">
+          <div className="mb-2 flex items-center justify-between font-sans text-xs font-bold">
             <span>Debug</span>
-            <button type="button" className="text-text-3 hover:text-text" onClick={() => setOpen(false)}>
+            <button type="button" className="rounded-[8px] px-1.5 py-0.5 text-text-2 hover:bg-surface-3 hover:text-text" onClick={() => setOpen(false)}>
               Hide
             </button>
           </div>
           <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5">
             {rows.map(([k, val]) => (
               <div key={k} className="contents">
-                <dt className="text-text-3">{k}</dt>
+                <dt className="text-text-2">{k}</dt>
                 <dd className="truncate text-right">{val}</dd>
               </div>
             ))}
           </dl>
         </div>
       ) : (
-        <button type="button" onClick={() => setOpen(true)} className="grid size-9 place-items-center rounded-full border border-line-strong bg-sunken/90 text-text-2 hover:text-text" aria-label="Show debug overlay" title="Debug overlay">
+        <button type="button" onClick={() => setOpen(true)} className="paper grid size-10 place-items-center rounded-full border-2 border-ink shadow-[0_2px_0_rgb(12_8_48/0.55)]" aria-label="Show debug overlay" title="Debug overlay">
           <Bug className="size-4" />
         </button>
       )}

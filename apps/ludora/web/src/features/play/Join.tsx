@@ -10,7 +10,7 @@ import { Glim } from '../../art/glim/Glim.tsx';
 import { Button, buttonClass } from '../../ui/Button.tsx';
 import { Field, Input, Spinner } from '../../ui/primitives.tsx';
 import { Stage } from '../../ui/Stage.tsx';
-import { GREETERS } from '../room/game/stage.tsx';
+import { GREETERS, SIGN } from '../room/game/stage.tsx';
 import { CodeEntry } from './CodeEntry.tsx';
 
 interface RoomInfo {
@@ -28,10 +28,10 @@ interface RoomInfo {
 /** Three Glims peeking over the top of the card. Decoration only. */
 function Greeters() {
   return (
-    <div className="pointer-events-none relative z-0 -mb-7 flex items-end justify-center" aria-hidden>
-      <Glim art={GREETERS[0]!} size={76} className="translate-x-2 translate-y-2 -rotate-6" />
-      <Glim art={GREETERS[1]!} size={96} />
-      <Glim art={GREETERS[2]!} size={76} className="-translate-x-2 translate-y-2 rotate-6" />
+    <div className="pointer-events-none relative z-0 -mb-6 flex items-end justify-center" aria-hidden>
+      <Glim art={GREETERS[0]!} size={76} className="translate-x-2 -rotate-6" />
+      <Glim art={GREETERS[1]!} size={96} pose="wave" />
+      <Glim art={GREETERS[2]!} size={76} className="-translate-x-2 rotate-6" />
     </div>
   );
 }
@@ -94,7 +94,7 @@ export default function Join() {
           {!code ? (
             <>
               <div className="text-center">
-                <h1 className="font-display text-5xl leading-none font-extrabold">Join a game</h1>
+                <h1 className={`font-display text-5xl leading-none font-extrabold ${SIGN}`}>Join a game</h1>
                 <p className="mt-3 text-lg font-semibold text-text-2">Type the 6-digit code on the host&apos;s screen.</p>
               </div>
               <Card>

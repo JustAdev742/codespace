@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useState, type CSSProperties } from 'react';
 import { Check, Zap } from 'lucide-react';
 import type { GlimArt, LanternArt, Media } from '@ludora/shared';
 import type { ModeScreenProps } from './registry.ts';
 import { Countdown } from '../game/TimerBar.tsx';
-import { Leaderboard, type LeaderRow } from '../game/Leaderboard.tsx';
+import { Leaderboard, RankBadge, type LeaderRow } from '../game/Leaderboard.tsx';
+import { NIGHT, Pill, PlayerGlim, SIGN, StagePanel, avatarOf } from '../game/stage.tsx';
 import { Glim } from '../../../art/glim/Glim.tsx';
 import { Lantern } from '../../../art/Lantern.tsx';
 import { ProgressBar } from '../../../ui/primitives.tsx';
@@ -105,20 +106,20 @@ function MemoryCard({ card, total, missed, disabled, onFlip }: { card: CardFace;
           aria-hidden
         >
           {card.side === 'question' ? <Lantern art={LANTERN_ART} size={38} /> : <Glim art={GLIM_ART} size={46} />}
-          <span className="font-display text-[11px] font-bold tracking-wide uppercase sm:text-xs">{SIDE_LABEL[card.side]}</span>
+          <span className="font-display text-xs font-extrabold sm:text-sm">{SIDE_LABEL[card.side]}</span>
         </span>
         {/* Face */}
         <span
-          className={`absolute inset-0 flex flex-col gap-1 overflow-hidden rounded-[14px] border-2 p-1.5 text-left sm:p-2 ${
-            matched ? 'border-glim bg-glim/15' : missed ? 'border-ember bg-raised ring-4 ring-ember/40' : 'border-ink bg-raised'
+          className={`absolute inset-0 flex flex-col gap-1 overflow-hidden rounded-[14px] border-[3px] p-1.5 text-left sm:p-2 ${
+            matched ? 'border-ink bg-glim text-on-accent' : missed ? 'paper border-ember ring-4 ring-ember' : 'paper border-ink'
           }`}
           style={{ backfaceVisibility: 'hidden', transform: 'rotateY(180deg)' }}
           aria-hidden
         >
-          <span className={`max-w-full self-start truncate rounded-full px-1.5 text-[10px] font-bold uppercase sm:text-[11px] sm:tracking-wide ${card.side === 'question' ? 'bg-dusk text-white' : 'bg-glim text-on-accent'}`}>{SIDE_LABEL[card.side]}</span>
-          {matched ? <Check className="absolute right-1 bottom-1 size-5 rounded-full border-2 border-ink bg-glim p-0.5 text-on-accent" /> : null}
+          <span className={`max-w-full self-start truncate rounded-full px-1.5 text-[11px] font-bold sm:text-xs ${card.side === 'question' ? 'bg-dusk text-on-accent' : matched ? 'bg-white/60 text-on-accent' : 'bg-glim text-on-accent'}`}>{SIDE_LABEL[card.side]}</span>
+          {matched ? <Check className="absolute right-1 bottom-1 size-5 rounded-full border-2 border-ink bg-white p-0.5 text-on-accent" /> : null}
           {card.media ? <img src={card.media.url} alt="" className="max-h-[45%] w-full rounded-[8px] object-contain" /> : null}
-          {text ? <span className={`${matched ? 'line-clamp-3 opacity-75' : 'line-clamp-4'} leading-snug font-semibold break-words text-text ${textSize(text)}`}>{text}</span> : null}
+          {text ? <span className={`${matched ? 'line-clamp-3' : 'line-clamp-4'} leading-snug font-bold break-words ${textSize(text)}`}>{text}</span> : null}
         </span>
       </span>
     </button>
@@ -130,16 +131,16 @@ function ReadOut({ cards, title }: { cards: CardFace[]; title: string | null }) 
   if (!cards.length) return null;
   return (
     <div className="flex flex-col gap-2">
-      {title ? <p className="font-semibold text-text-2">{title}</p> : null}
+      {title ? <p className="font-bold text-text-2">{title}</p> : null}
       <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
         {cards.map((c) => (
-          <div key={c.i} className="flex gap-3 rounded-[14px] border border-line bg-raised px-4 py-3">
+          <div key={c.i} className={`flex gap-3 rounded-[16px] border border-white/12 px-4 py-3 ${NIGHT}`}>
             <span className="mt-0.5 shrink-0" aria-hidden>
               {c.side === 'question' ? <Lantern art={LANTERN_ART} size={22} /> : <Glim art={GLIM_ART} size={26} />}
             </span>
             <span className="min-w-0">
-              <span className="block text-xs font-bold tracking-wide text-text-3 uppercase">{SIDE_LABEL[c.side]}</span>
-              <span className="block font-semibold break-words">{faceText(c)}</span>
+              <span className="block text-sm font-bold text-text-2">{SIDE_LABEL[c.side]}</span>
+              <span className="block font-bold break-words">{faceText(c)}</span>
             </span>
           </div>
         ))}
@@ -156,12 +157,12 @@ function TeamBars({ teams }: { teams: NonNullable<LanternMatchView['teams']> }) 
       {[...teams]
         .sort((a, b) => b.avg - a.avg)
         .map((t) => (
-          <li key={t.teamId} className="flex items-center gap-3">
-            <span className="w-28 truncate text-lg font-semibold">{t.name}</span>
-            <span className="h-8 flex-1 overflow-hidden rounded-[10px] bg-surface-3" aria-hidden>
-              <span className="block h-full rounded-[10px] transition-[width] duration-700" style={{ width: `${Math.max(3, (t.avg / max) * 100)}%`, background: `hsl(${t.hue} 80% 62%)` }} />
+          <li key={t.teamId} className="flex items-center gap-3 text-[clamp(1.05rem,1.5vw,1.6rem)]">
+            <span className="w-32 truncate font-bold">{t.name}</span>
+            <span className="relative h-9 flex-1 overflow-hidden rounded-[12px] border-2 border-ink bg-[rgb(17_10_62/0.7)]" aria-hidden>
+              <span className="absolute inset-0 origin-left rounded-[10px] transition-transform duration-700 ease-[var(--ease-out)]" style={{ transform: `scaleX(${Math.max(0.03, t.avg / max)})`, background: `hsl(${t.hue} 80% 62%)` }} />
             </span>
-            <span className="w-12 text-right font-display text-xl font-bold tabular">{t.avg.toFixed(1)}</span>
+            <span className="w-14 text-right font-display font-extrabold tabular">{t.avg.toFixed(1)}</span>
           </li>
         ))}
     </ul>
@@ -199,28 +200,28 @@ export function LanternMatchPlayer({ view, act, gameNow, paused, room }: ModeScr
   return (
     <div className="mx-auto flex w-full max-w-3xl flex-col gap-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex flex-wrap items-center gap-2 text-sm font-semibold">
-          <span className="rounded-full bg-surface-3 px-3 py-1 font-display text-base font-bold tabular">{plural(you.pairs, 'pair')}</span>
-          <span className="rounded-full bg-surface-2 px-3 py-1 text-text-2 tabular">{plural(you.misses, 'miss', 'misses')}</span>
-          {you.cleared ? <span className="rounded-full bg-glim px-3 py-1 text-on-accent tabular">{plural(you.cleared, 'board')} cleared</span> : null}
-          {mine && view.leaders.length > 1 ? <span className="text-text-3">Place {mine.rank}</span> : null}
+        <div className="flex flex-wrap items-center gap-2">
+          <Pill>{plural(you.pairs, 'pair')}</Pill>
+          <Pill className="text-text-2">{plural(you.misses, 'miss', 'misses')}</Pill>
+          {you.cleared ? <Pill tone="glim">{plural(you.cleared, 'board')} cleared</Pill> : null}
+          {mine && view.leaders.length > 1 ? <span className="font-bold text-text-2">Place {mine.rank}</span> : null}
         </div>
-        <span className="rounded-full bg-surface-3 px-3 py-1 text-lg">
+        <Pill>
           <Countdown until={view.endsAt} gameNow={gameNow} label="Time left" />
-        </span>
+        </Pill>
       </div>
       {view.sprint ? (
-        <p className="flex items-center gap-2 rounded-[14px] bg-lantern/15 px-4 py-2 text-sm font-semibold">
-          <Zap className="size-4 text-lantern" /> Sprint: the first player to clear their board wins.
-        </p>
+        <StagePanel className="flex items-center gap-2 px-4 py-2 font-bold">
+          <Zap className="size-4 fill-lantern text-lantern" aria-hidden /> Sprint: the first player to clear their board wins.
+        </StagePanel>
       ) : null}
       <div className="flex items-center gap-3">
         <ProgressBar value={you.boardPairs} max={you.boardTotal} tone="mint" label="Pairs found on this board" />
-        <span className="shrink-0 text-sm font-semibold text-text-2 tabular">
+        <span className="shrink-0 text-sm font-bold text-text-2 tabular">
           Board {you.board}: {you.boardPairs} / {you.boardTotal}
         </span>
       </div>
-      <p className="min-h-6 font-semibold" role="status" aria-live="polite">
+      <p className="min-h-6 font-bold" role="status" aria-live="polite">
         {status}
       </p>
       <div key={you.board} className={`mx-auto grid w-full max-w-2xl gap-2 sm:gap-3 ${gridFor(you.cards.length)}`} style={{ animation: you.board > 1 ? 'pop-in 260ms var(--ease-spring)' : undefined }}>
@@ -231,7 +232,7 @@ export function LanternMatchPlayer({ view, act, gameNow, paused, room }: ModeScr
       <ReadOut cards={up.length ? up : pair} title={you.missed ? 'These two do not belong together:' : up.length ? null : pair.length ? 'Matched:' : null} />
       {view.leaders.length > 1 ? (
         <div className="flex flex-col gap-2">
-          <h3 className="font-display text-lg font-bold">Most pairs</h3>
+          <h3 className={`font-display text-xl font-extrabold ${SIGN}`}>Most pairs</h3>
           <Leaderboard rows={toLeaderRows(view.leaders)} you={mine ? toLeaderRows([mine])[0] : null} players={room.players} teams={room.room.teams} label={(r) => plural(r.score, 'pair')} />
         </div>
       ) : null}
@@ -241,47 +242,43 @@ export function LanternMatchPlayer({ view, act, gameNow, paused, room }: ModeScr
 
 export function LanternMatchHost({ view, gameNow, room }: ModeScreenProps<LanternMatchView>) {
   const rows = view.leaders;
+  const text = 'text-[clamp(1.05rem,1.6vw,1.75rem)]';
   return (
-    <div className="mx-auto flex w-full max-w-6xl flex-col gap-6">
+    <div className="mx-auto flex w-full max-w-[110rem] flex-1 flex-col gap-[clamp(0.75rem,2vh,1.5rem)]">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h2 className="font-display text-4xl font-extrabold">Lantern Match</h2>
-          <p className="text-lg text-text-2">
-            {view.sprint ? 'Sprint: the first to clear a board wins.' : `Find the pairs. ${view.pairsPerBoard} pairs on every board.`}
-          </p>
+          <h2 className={`font-display text-[clamp(2.25rem,4vw,4.75rem)] leading-none font-extrabold ${SIGN}`}>Lantern Match</h2>
+          <p className={`mt-1 font-semibold text-text-2 ${text}`}>{view.sprint ? 'Sprint: the first to clear a board wins.' : `Find the pairs. ${view.pairsPerBoard} pairs on every board.`}</p>
         </div>
-        <span className="rounded-full bg-surface-3 px-4 py-2 text-3xl">
+        <Pill className="px-5 py-1.5 text-[clamp(1.25rem,2.2vw,2.5rem)]">
           <Countdown until={view.endsAt} gameNow={gameNow} label="Time left" />
-        </span>
+        </Pill>
       </div>
-      <div className={`grid grid-cols-1 gap-6 ${view.teams ? 'lg:grid-cols-[1.5fr_1fr]' : ''}`}>
-        <ol className="flex flex-col gap-2" aria-label="Pairs found">
-          {rows.map((r) => {
-            const avatar = room.players.find((p) => p.id === r.playerId)?.avatar;
-            return (
-              <li key={r.playerId} className="grid grid-cols-[3rem_auto_1fr_auto] items-center gap-3 rounded-[14px] border border-line bg-raised px-4 py-2.5">
-                <span className={`text-center font-display text-2xl font-extrabold tabular ${r.rank <= 3 ? 'text-lantern' : 'text-text-3'}`}>{r.rank}</span>
-                {avatar ? <Glim art={avatar.art} accessories={avatar.accessories} size={44} /> : <span className="size-11" />}
-                <span className="flex min-w-0 flex-col gap-1">
-                  <span className="truncate text-xl font-semibold">{r.name}</span>
-                  <span className="flex items-center gap-2">
-                    <ProgressBar value={r.boardPairs} max={r.boardTotal} tone="mint" label={`${r.name}: board ${r.cleared + 1}, ${r.boardPairs} of ${r.boardTotal} pairs`} className="max-w-xs" />
-                    <span className="text-sm text-text-3 tabular">{r.cleared ? `${plural(r.cleared, 'board')} cleared` : `${r.boardPairs} / ${r.boardTotal}`}</span>
-                  </span>
+      <div className={`grid grid-cols-1 gap-[clamp(1rem,2vw,2rem)] ${view.teams ? 'lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]' : ''}`}>
+        <ol className={`flex flex-col gap-1.5 ${text}`} aria-label="Pairs found" style={{ '--lb-rank': 'clamp(2.5rem, 5.5vh, 3.75rem)' } as CSSProperties}>
+          {rows.map((r) => (
+            <li key={r.playerId} className={`grid grid-cols-[auto_auto_1fr_auto] items-center gap-[clamp(0.6rem,1.2vw,1.25rem)] rounded-[20px] border border-white/12 px-3 py-1.5 ${NIGHT}`}>
+              <RankBadge rank={r.rank} big />
+              <PlayerGlim avatar={avatarOf(room.players, r.playerId)} seed={r.playerId} size={56} className="size-[clamp(2.75rem,6vh,4.25rem)]" />
+              <span className="flex min-w-0 flex-col gap-1">
+                <span className="truncate font-bold">{r.name}</span>
+                <span className="flex items-center gap-2">
+                  <ProgressBar value={r.boardPairs} max={r.boardTotal} tone="mint" label={`${r.name}: board ${r.cleared + 1}, ${r.boardPairs} of ${r.boardTotal} pairs`} className="max-w-xs" />
+                  <span className="text-[0.8em] font-semibold whitespace-nowrap text-text-2 tabular">{r.cleared ? `${plural(r.cleared, 'board')} cleared` : `${r.boardPairs} / ${r.boardTotal}`}</span>
                 </span>
-                <span className="text-right">
-                  <span className="block font-display text-3xl font-bold tabular">{r.pairs}</span>
-                  <span className="block text-sm text-text-3 tabular">{plural(r.misses, 'miss', 'misses')}</span>
-                </span>
-              </li>
-            );
-          })}
+              </span>
+              <span className="text-right">
+                <span className="block font-display text-[1.6em] leading-none font-extrabold tabular">{r.pairs}</span>
+                <span className="block text-[0.8em] font-semibold text-text-2 tabular">{plural(r.misses, 'miss', 'misses')}</span>
+              </span>
+            </li>
+          ))}
         </ol>
         {view.teams ? (
-          <div>
-            <h3 className="mb-3 font-display text-2xl font-bold">Teams: pairs per player</h3>
+          <StagePanel className="flex flex-col gap-3 p-5">
+            <h3 className="font-display text-[clamp(1.4rem,2.2vw,2.5rem)] font-extrabold">Teams: pairs per player</h3>
             <TeamBars teams={view.teams} />
-          </div>
+          </StagePanel>
         ) : null}
       </div>
     </div>
