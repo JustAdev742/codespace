@@ -32,6 +32,8 @@ export async function equippedArt(deps: AppDeps, userId: string) {
   return Object.fromEntries(rows.map((r) => [r.slot, { itemId: r.itemId, name: r.name, rarity: r.rarity, art: r.art as ItemArt }]));
 }
 
+const QUEST_ORDER = ['daily', 'weekly', 'event'];
+
 export async function profileRoutes(app: FastifyInstance, deps: AppDeps) {
   app.get('/api/me/overview', async (req, reply) => {
     noStore(reply);
@@ -80,7 +82,7 @@ export async function profileRoutes(app: FastifyInstance, deps: AppDeps) {
         resets: quests.resets,
         list: quests.rows
           .map(({ uq, q }) => ({ id: q.id, kind: q.kind, title: q.title, description: q.description, progress: uq.progress, target: uq.target, period: uq.period, completed: Boolean(uq.completedAt), claimed: Boolean(uq.claimedAt), reward: q.reward }))
-          .sort((a, b) => (a.kind === b.kind ? 0 : a.kind === 'daily' ? -1 : 1)),
+          .sort((a, b) => QUEST_ORDER.indexOf(a.kind) - QUEST_ORDER.indexOf(b.kind)),
       },
       recentGames: recent.map((g) => ({ ...g, title: modeTitle(g.modeId, g.variantId) })),
     };

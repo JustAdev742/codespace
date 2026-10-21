@@ -218,6 +218,8 @@ export const answerEvents = pgTable(
     correct: boolean('correct').notNull(),
     partial: real('partial').notNull(),
     responseMs: integer('response_ms').notNull(),
+    /** 'answer', 'attempt' (one of several tries in a puzzle) or 'self' (self-graded). Reports weigh them differently. */
+    kind: text('kind').notNull().default('answer'),
     createdAt: now('created_at'),
   },
   (t) => [

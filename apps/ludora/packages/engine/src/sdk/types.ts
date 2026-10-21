@@ -98,6 +98,18 @@ export interface QuestionApi {
   timeLimitMs(iid: string): number;
 }
 
+/**
+ * What an answer record stands for. Rewards, streaks and teacher reports
+ * treat them differently, so a mode that records many small tries cannot
+ * inflate any of them.
+ * - 'answer' (the default): a graded response to a question.
+ * - 'attempt': one of several tries at the same question inside a puzzle,
+ *   such as turning over a memory pair or marking a bingo square.
+ * - 'self': the player graded themselves (flashcards). Never counted as a
+ *   correct answer for rewards, quests, achievements or streaks.
+ */
+export type AnswerKind = 'answer' | 'attempt' | 'self';
+
 export interface AnswerRecord {
   playerId: PlayerId;
   qid: string;
@@ -105,6 +117,7 @@ export interface AnswerRecord {
   partial: number;
   responseMs: number;
   at: number;
+  kind?: AnswerKind;
 }
 
 export interface ModeContext<TSettings extends SettingValues = SettingValues> {

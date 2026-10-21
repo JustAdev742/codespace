@@ -12,7 +12,8 @@ export interface EquippedSlot {
 
 export interface QuestView {
   id: string;
-  kind: 'daily' | 'weekly';
+  /** 'event' quests belong to a running limited-time event such as the Frost Festival. */
+  kind: 'daily' | 'weekly' | 'event';
   title: string;
   description: string;
   progress: number;
@@ -20,7 +21,7 @@ export interface QuestView {
   period: string;
   completed: boolean;
   claimed: boolean;
-  reward: { sparks?: number; moonstones?: number; xp?: number };
+  reward: { sparks?: number; moonstones?: number; xp?: number; frost_tickets?: number };
 }
 
 export interface Overview {

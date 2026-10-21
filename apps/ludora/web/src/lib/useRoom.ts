@@ -30,6 +30,8 @@ export interface RoomState {
   closedMessage: string | null;
   role: 'host' | 'player' | null;
   reactions: Reaction[];
+  /** Connection numbers for the staff debug overlay. */
+  debug: { transport: string; views: number; reconnects: number; lastAckMs: number | null };
 }
 
 const tokenKey = (code: string) => `ludora.rt.${code}`;
@@ -68,6 +70,7 @@ export function useRoom(code: string, opts: { name?: string | undefined; as?: 'h
     closedMessage: null,
     role: null,
     reactions: [],
+    debug: { transport: '-', views: 0, reconnects: 0, lastAckMs: null },
   });
   const socketRef = useRef<Socket | null>(null);
   const nameRef = useRef(opts.name);
@@ -94,14 +97,18 @@ export function useRoom(code: string, opts: { name?: string | undefined; as?: 'h
       setState((s) => ({ ...s, phase: 'joined', error: null, role: (ack.role as 'host' | 'player') ?? 'player' }));
     };
 
+    let connects = 0;
     socket.on('connect', () => {
-      setState((s) => ({ ...s, online: true }));
+      const transport = socket.io.engine?.transport?.name ?? '-';
+      socket.io.engine?.on('upgrade', (t: { name: string }) => setState((s) => ({ ...s, debug: { ...s.debug, transport: t.name } })));
+      setState((s) => ({ ...s, online: true, debug: { ...s.debug, transport, reconnects: connects++ } }));
       void join();
     });
     socket.on('disconnect', () => setState((s) => ({ ...s, online: false })));
     socket.on('connect_error', () => setState((s) => ({ ...s, online: false })));
     socket.on('room:view', (view: RoomView) => {
       setState((s) => {
+        s = { ...s, debug: { ...s.debug, views: s.debug.views + 1 } };
         if (s.view && view.version < s.view.version && view.room.code === s.view.room.code) return s;
         return { ...s, view, receivedAt: Date.now() };
       });
@@ -130,8 +137,11 @@ export function useRoom(code: string, opts: { name?: string | undefined; as?: 'h
     const socket = socketRef.current;
     if (!socket) return { ok: false, error: { code: 'offline', message: 'Not connected.' } };
     const actionId = newRequestKey('a').slice(0, 30);
+    const sent = performance.now();
     let ack = await emitWithAck(socket, 'room:action', { actionId, action });
     if (!ack.ok && ack.error.code === 'timeout') ack = await emitWithAck(socket, 'room:action', { actionId, action });
+    const ms = Math.round(performance.now() - sent);
+    setState((s) => ({ ...s, debug: { ...s.debug, lastAckMs: ms } }));
     return ack;
   }, []);
 

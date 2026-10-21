@@ -35,7 +35,7 @@ export function Leaderboard({ rows, you, players, teams, big = false, label }: {
               {isYou ? <span className="ml-1.5 text-sm text-text-3">(you)</span> : null}
             </span>
             {t ? <span className="hidden size-3 rounded-full sm:block" style={{ background: `hsl(${t.hue} 80% 60%)` }} title={t.name} /> : null}
-            {r.gain ? <span className="font-semibold text-glim tabular">+{formatNumber(r.gain)}</span> : null}
+            {r.gain ? <span className={`font-semibold tabular ${r.gain > 0 ? 'text-glim' : 'text-ember'}`}>{r.gain > 0 ? '+' : '\u2212'}{formatNumber(Math.abs(r.gain))}</span> : null}
             <span className={`font-display font-bold tabular ${big ? 'text-2xl' : 'text-lg'}`}>{label ? label(r) : formatNumber(r.score)}</span>
           </li>
         );
@@ -44,7 +44,7 @@ export function Leaderboard({ rows, you, players, teams, big = false, label }: {
   );
 }
 
-export function TeamScores({ teams }: { teams: { teamId: string; name: string; hue: number; score: number; members?: number }[] }) {
+export function TeamScores({ teams, format = formatNumber }: { teams: { teamId: string; name: string; hue: number; score: number; members?: number }[]; /** How a score reads, e.g. as a percentage. */ format?: (score: number) => string }) {
   const max = Math.max(1, ...teams.map((t) => t.score));
   return (
     <div className="flex flex-col gap-2">
@@ -55,7 +55,7 @@ export function TeamScores({ teams }: { teams: { teamId: string; name: string; h
             <span className="w-28 truncate font-semibold">{t.name}</span>
             <div className="h-7 flex-1 overflow-hidden rounded-[10px] bg-surface-3">
               <div className="flex h-full items-center justify-end rounded-[10px] px-2 font-display font-bold text-on-accent tabular transition-[width] duration-700" style={{ width: `${Math.max(8, (t.score / max) * 100)}%`, background: `hsl(${t.hue} 80% 62%)` }}>
-                {formatNumber(t.score)}
+                {format(t.score)}
               </div>
             </div>
           </div>

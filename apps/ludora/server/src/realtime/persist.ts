@@ -1,6 +1,6 @@
 import { eq, sql } from 'drizzle-orm';
 import type { RewardSummary } from '@ludora/shared';
-import type { EngineResults } from '@ludora/engine';
+import type { AnswerRecord, EngineResults } from '@ludora/engine';
 import type { AppDeps } from '../app.ts';
 import { answerEvents, gameParticipants, gameSessions, questionSets } from '../db/schema.ts';
 import type { PersistOutcome, Room } from './room.ts';
@@ -8,6 +8,43 @@ import { applyGameResult, applyHostResult } from '../modules/progression/rewards
 
 const MAX_ANSWER_ROWS = 10_000;
 const QUICK_MS = 5000;
+/** At most this many questions count towards one game's rewards, however long it ran. */
+export const MAX_REWARDED_QUESTIONS = 40;
+
+/**
+ * What a player's answers are worth for rewards, quests and achievements.
+ * Each question counts once however many tries it took; self-graded
+ * answers never count as correct; streaks and quick answers only count
+ * graded responses. This keeps modes that record many small tries (memory
+ * pairs, bingo marks, flashcards) from paying more than a quiz.
+ */
+export function rewardCounts(answers: readonly AnswerRecord[]) {
+  const seen = new Set<string>();
+  const right = new Set<string>();
+  let streak = 0;
+  let bestStreak = 0;
+  let quick = 0;
+  let responseMs = 0;
+  for (const a of answers) {
+    const kind = a.kind ?? 'answer';
+    if (!seen.has(a.qid)) responseMs += Math.max(0, a.responseMs);
+    seen.add(a.qid);
+    if (a.correct && kind !== 'self') right.add(a.qid);
+    if (kind !== 'answer') continue;
+    if (a.correct) {
+      streak++;
+      bestStreak = Math.max(bestStreak, streak);
+      if (a.responseMs < QUICK_MS) quick++;
+    } else streak = 0;
+  }
+  return {
+    answered: Math.min(seen.size, MAX_REWARDED_QUESTIONS),
+    correct: Math.min(right.size, MAX_REWARDED_QUESTIONS),
+    bestStreak,
+    quickCorrect: Math.min(quick, MAX_REWARDED_QUESTIONS),
+    responseMsTotal: responseMs,
+  };
+}
 
 /**
  * Save a finished game and pay rewards. The game record is written first in
@@ -84,6 +121,7 @@ export async function persistGame(deps: AppDeps, room: Room, results: EngineResu
           correct: a.correct,
           partial: a.partial,
           responseMs: Math.max(0, Math.round(a.responseMs)),
+          kind: a.kind ?? 'answer',
         })),
       );
     }
@@ -99,7 +137,7 @@ export async function persistGame(deps: AppDeps, room: Room, results: EngineResu
       continue;
     }
     if (results.endedBy === 'error' && s.stats.answered === 0) continue;
-    const mine = results.answers.filter((a) => a.playerId === s.playerId);
+    const counts = rewardCounts(results.answers.filter((a) => a.playerId === s.playerId));
     try {
       const summary = await applyGameResult(deps.db, {
         userId: who.userId,
@@ -107,11 +145,7 @@ export async function persistGame(deps: AppDeps, room: Room, results: EngineResu
         modeId: room.mode.meta.id,
         rank: s.rank,
         humans,
-        answered: s.stats.answered,
-        correct: s.stats.correct,
-        bestStreak: s.stats.bestStreak,
-        responseMsTotal: s.stats.responseMsSum,
-        quickCorrect: mine.filter((a) => a.correct && a.responseMs < QUICK_MS).length,
+        ...counts,
         solo: room.solo || humans === 1,
         teams: room.teams.length > 0,
         outcome: results.outcome,

@@ -4,6 +4,7 @@ import { Toaster } from 'sonner';
 import { TooltipProvider } from '../ui/primitives.tsx';
 import { router } from './routes.tsx';
 import { ApiError } from '../lib/api.ts';
+import { NoticeGate } from '../features/moderation/NoticeGate.tsx';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -19,6 +20,7 @@ export function App() {
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <RouterProvider router={router} />
+        <NoticeGate />
         <Toaster position="top-center" richColors closeButton toastOptions={{ className: 'font-sans' }} />
       </TooltipProvider>
     </QueryClientProvider>

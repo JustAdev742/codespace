@@ -1,17 +1,19 @@
 import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router';
-import { DoorOpen, FastForward, Pause, Play, Square, WifiOff } from 'lucide-react';
+import { DoorOpen, FastForward, Flag, Pause, Play, Square, WifiOff } from 'lucide-react';
 import { toast } from 'sonner';
-import { useMe } from '../../lib/session.ts';
+import { useFlag, useMe } from '../../lib/session.ts';
 import { useRoom, type RoomHandle } from '../../lib/useRoom.ts';
 import { useNow } from '../../lib/useNow.ts';
 import { LogoMark } from '../../art/icons.tsx';
-import { Button, buttonClass } from '../../ui/Button.tsx';
+import { Button, IconButton, buttonClass } from '../../ui/Button.tsx';
 import { Dialog, Spinner } from '../../ui/primitives.tsx';
 import { HostLobby, PlayerLobby } from './Lobby.tsx';
 import { Results } from './Results.tsx';
 import { MODE_SCREENS } from './modes/registry.ts';
 import { ReactionBar, ReactionLayer } from './game/Reactions.tsx';
+import { ReportDialog } from '../moderation/ReportDialog.tsx';
+import { DebugOverlay } from './DebugOverlay.tsx';
 import type { RoomView } from '@ludora/shared';
 
 const nameKey = (code: string) => `ludora.name.${code}`;
@@ -136,6 +138,8 @@ export default function RoomPage() {
   }, [code, stateName]);
   const handle = useRoom(code, { name, enabled: !me.isLoading });
   const room = handle.view;
+  const [reporting, setReporting] = useState(false);
+  const debug = useFlag('debug.overlay');
 
   useEffect(() => {
     if (handle.phase === 'error' && handle.error?.code === 'validation_failed') {
@@ -205,11 +209,22 @@ export default function RoomPage() {
               Finish now
             </Button>
           ) : null}
+          {!room.room.solo ? (
+            <IconButton label="Report a problem in this room" size="sm" onClick={() => setReporting(true)}>
+              <Flag className="size-4" />
+            </IconButton>
+          ) : null}
           <Button size="sm" variant="ghost" icon={<DoorOpen className="size-4" />} onClick={() => void leave()}>
             {isHost ? 'Leave' : 'Leave game'}
           </Button>
         </div>
       </header>
+      <ReportDialog
+        open={reporting}
+        onOpenChange={setReporting}
+        target={{ type: 'room', id: room.room.code, label: 'a problem in this room' }}
+        people={[...new Set([...(isHost ? [] : [room.room.hostName]), ...room.players.filter((p) => !p.isBot && p.id !== room.me.playerId).map((p) => p.name)])]}
+      />
       <main className="flex flex-1 flex-col px-4 py-6 sm:px-6">
         {status === 'lobby' ? isHost ? <HostLobby room={room} handle={handle} /> : <PlayerLobby room={room} handle={handle} /> : null}
         {status === 'running' || status === 'paused' ? <GameStage room={room} handle={handle} isHost={isHost} /> : null}
@@ -222,6 +237,7 @@ export default function RoomPage() {
       ) : null}
       <FeedToasts feed={room.feed} />
       <ReactionLayer reactions={handle.reactions} />
+      {debug ? <DebugOverlay handle={handle} /> : null}
     </div>
   );
 }

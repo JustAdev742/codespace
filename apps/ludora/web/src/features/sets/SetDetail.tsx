@@ -1,7 +1,8 @@
+import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { Copy, Pencil, Play, Presentation } from 'lucide-react';
+import { Copy, Flag, Pencil, Play, Presentation } from 'lucide-react';
 import { QUESTION_TYPE_LABELS, SUBJECT_LABELS, type Question, type QuestionType } from '@ludora/shared';
 import { api, ApiError } from '../../lib/api.ts';
 import { useMe } from '../../lib/session.ts';
@@ -9,6 +10,7 @@ import type { SetSummary } from '../../lib/queries.ts';
 import { Badge, EmptyState, ErrorNotice, Panel, Spinner } from '../../ui/primitives.tsx';
 import { Button, ButtonLink } from '../../ui/Button.tsx';
 import { SetCover } from './SetCover.tsx';
+import { ReportDialog } from '../moderation/ReportDialog.tsx';
 
 interface SetResponse {
   set: SetSummary;
@@ -44,6 +46,7 @@ export default function SetDetail() {
   const me = useMe();
   const navigate = useNavigate();
   const data = useQuery({ queryKey: ['set', id], queryFn: () => api.get<SetResponse>(`/api/sets/${id}`) });
+  const [reporting, setReporting] = useState(false);
   const copy = useMutation({
     mutationFn: () => api.post<{ set: SetSummary }>(`/api/sets/${id}/copy`),
     onSuccess: (r) => {
@@ -91,8 +94,14 @@ export default function SetDetail() {
               Copy and edit
             </Button>
           ) : null}
+          {signedIn && !editable ? (
+            <Button variant="ghost" icon={<Flag className="size-4" />} onClick={() => setReporting(true)}>
+              Report
+            </Button>
+          ) : null}
         </div>
       </div>
+      <ReportDialog open={reporting} onOpenChange={setReporting} target={{ type: 'set', id: set.id, label: 'this question set' }} />
       <Panel className="p-5">
         <div className="mb-4 flex flex-wrap gap-1.5">
           {Object.entries(typeCounts).map(([t, n]) => (

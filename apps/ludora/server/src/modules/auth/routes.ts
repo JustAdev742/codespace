@@ -19,6 +19,7 @@ import {
   revokeSession,
 } from './service.ts';
 import { afterAccountCreated } from '../economy/welcome.ts';
+import { flagsFor } from '../flags/service.ts';
 
 const thisYear = new Date().getUTCFullYear();
 const birthYear = z.number().int().min(thisYear - 120).max(thisYear - 4).optional();
@@ -73,8 +74,10 @@ export async function authRoutes(app: FastifyInstance, deps: AppDeps) {
 
   app.get('/api/auth/me', async (req, reply) => {
     noStore(reply);
-    if (!req.auth) return { user: null, roles: [], permissions: [], environment: deps.config.APP_ENV };
-    return meResponse(req.auth, deps);
+    // Feature flags as they apply to this viewer, so the app can switch features on and off. Evaluated on the server.
+    const flags = await flagsFor(deps.db, req.auth);
+    if (!req.auth) return { user: null, roles: [], permissions: [], environment: deps.config.APP_ENV, flags };
+    return { ...meResponse(req.auth, deps), flags };
   });
 
   // A classroom often shares one public IP, so these limits are per IP but generous;

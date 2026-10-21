@@ -33,7 +33,7 @@ function QuestRow({ q }: { q: QuestView }) {
   const claim = useMutation({
     mutationFn: () => api.post<{ reward: QuestView['reward'] }>(`/api/quests/${q.id}/claim`, { period: q.period }),
     onSuccess: async () => {
-      const parts = [q.reward.sparks ? `${q.reward.sparks} Sparks` : '', q.reward.moonstones ? `${q.reward.moonstones} Moonstones` : '', q.reward.xp ? `${q.reward.xp} XP` : ''].filter(Boolean);
+      const parts = [q.reward.sparks ? `${q.reward.sparks} Sparks` : '', q.reward.moonstones ? `${q.reward.moonstones} Moonstones` : '', q.reward.frost_tickets ? `${q.reward.frost_tickets} Frost Tickets` : '', q.reward.xp ? `${q.reward.xp} XP` : ''].filter(Boolean);
       toast.success(`Quest complete: +${parts.join(', ')}`);
       await qc.invalidateQueries({ queryKey: ['overview'] });
       await qc.invalidateQueries({ queryKey: ['me'] });
@@ -45,7 +45,7 @@ function QuestRow({ q }: { q: QuestView }) {
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
           <span className="font-semibold">{q.title}</span>
-          {q.kind === 'weekly' ? <Badge tone="violet">Weekly</Badge> : null}
+          {q.kind === 'weekly' ? <Badge tone="violet">Weekly</Badge> : q.kind === 'event' ? <Badge tone="sky">Frost Festival</Badge> : null}
         </div>
         <p className="text-sm text-text-3">{q.description}</p>
         {!q.completed ? <ProgressBar value={q.progress} max={q.target} className="mt-2" label={`${q.title} progress`} /> : null}
@@ -65,6 +65,7 @@ function QuestRow({ q }: { q: QuestView }) {
         <span className="flex gap-2">
           {q.reward.sparks ? <Amount currency="sparks" value={q.reward.sparks} size="sm" /> : null}
           {q.reward.moonstones ? <Amount currency="moonstones" value={q.reward.moonstones} size="sm" /> : null}
+          {q.reward.frost_tickets ? <Amount currency="frost_tickets" value={q.reward.frost_tickets} size="sm" /> : null}
         </span>
       </div>
     </li>

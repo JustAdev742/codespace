@@ -31,12 +31,19 @@ export interface Me {
   roles: string[];
   permissions: Permission[];
   environment: 'development' | 'test' | 'sandbox' | 'production';
+  /** Feature flags evaluated for this viewer by the server. */
+  flags?: Record<string, boolean>;
 }
 
 export const meKey = ['me'] as const;
 
 export function useMe() {
   return useQuery({ queryKey: meKey, queryFn: () => api.get<Me>('/api/auth/me'), staleTime: 60_000 });
+}
+
+export function useFlag(key: string): boolean {
+  const { data } = useMe();
+  return Boolean(data?.flags?.[key]);
 }
 
 export function useCan(permission: Permission): boolean {
