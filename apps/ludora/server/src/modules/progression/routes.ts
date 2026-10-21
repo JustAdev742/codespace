@@ -14,6 +14,7 @@ export async function progressionRoutes(app: FastifyInstance, deps: AppDeps) {
     const q = await ensureQuests(deps.db, auth.user.id);
     return {
       resets: q.resets,
+      events: q.events,
       quests: q.rows.map(({ uq, q: quest }) => ({ id: quest.id, kind: quest.kind, title: quest.title, description: quest.description, progress: uq.progress, target: uq.target, period: uq.period, completed: Boolean(uq.completedAt), claimed: Boolean(uq.claimedAt), reward: quest.reward })),
     };
   });
@@ -21,7 +22,7 @@ export async function progressionRoutes(app: FastifyInstance, deps: AppDeps) {
   app.post('/api/quests/:id/claim', { config: { rateLimit: { max: 30, timeWindow: '1 minute' } } }, async (req) => {
     const auth = requireAuth(req);
     const { id } = parse(z.object({ id: z.string().min(1).max(60) }), req.params);
-    const { period } = parse(z.object({ period: z.string().regex(/^\d{4}-(\d{2}-\d{2}|W\d{2})$/) }), req.body);
+    const { period } = parse(z.object({ period: z.string().regex(/^(?:[a-z_]{2,32}:)?\d{4}-(\d{2}-\d{2}|W\d{2})$/) }), req.body);
     const { result } = await claimQuest(deps.db, auth.user.id, id, period);
     return result;
   });

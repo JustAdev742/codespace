@@ -1,0 +1,1 @@
+ALTER TABLE "moderation_actions" ADD COLUMN "acknowledged_at" timestamp with time zone;

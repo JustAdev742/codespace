@@ -1,6 +1,6 @@
 import type { SeedAchievement, SeedQuest } from './types.ts';
 
-/** Three daily quests are drawn from this pool for each player each day. */
+/** Three daily and three weekly quests are drawn from this pool for each player; event quests are all given while their event runs. */
 export const QUESTS: SeedQuest[] = [
   { id: 'd-correct-15', kind: 'daily', title: 'Warm up', description: 'Answer 15 questions correctly.', metric: 'correct_answers', target: 15, reward: { sparks: 40, xp: 30 } },
   { id: 'd-correct-30', kind: 'daily', title: 'In the zone', description: 'Answer 30 questions correctly.', metric: 'correct_answers', target: 30, reward: { sparks: 70, xp: 50 } },
@@ -19,6 +19,10 @@ export const QUESTS: SeedQuest[] = [
   { id: 'w-modes-5', kind: 'weekly', title: 'Explorer', description: 'Play 5 different game modes this week.', metric: 'distinct_modes', target: 5, reward: { sparks: 250, moonstones: 5, xp: 120 } },
   { id: 'w-daily-10', kind: 'weekly', title: 'Quest keeper', description: 'Complete 10 daily quests this week.', metric: 'daily_quests', target: 10, reward: { sparks: 400, moonstones: 10, xp: 200 } },
   { id: 'w-lanterns-5', kind: 'weekly', title: 'Lantern lighter', description: 'Open 5 Lanterns this week.', metric: 'lanterns_opened', target: 5, reward: { sparks: 200, moonstones: 3, xp: 100 } },
+  // Frost Festival: all three each week while the festival runs. They are the only way to earn Frost Tickets.
+  { id: 'e-frost-games-5', kind: 'event', title: 'Festival regular', description: 'Finish 5 games this week.', metric: 'games_played', target: 5, reward: { frost_tickets: 40, xp: 60 } },
+  { id: 'e-frost-correct-60', kind: 'event', title: 'Frosty focus', description: 'Answer 60 questions correctly this week.', metric: 'correct_answers', target: 60, reward: { frost_tickets: 40, xp: 60 } },
+  { id: 'e-frost-lanterns-2', kind: 'event', title: 'Festival lights', description: 'Open 2 Lanterns this week.', metric: 'lanterns_opened', target: 2, reward: { frost_tickets: 30, xp: 40 } },
 ];
 
 export const ACHIEVEMENTS: SeedAchievement[] = [

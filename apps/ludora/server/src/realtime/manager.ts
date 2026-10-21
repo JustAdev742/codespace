@@ -84,6 +84,25 @@ export class RoomManager {
     return [...this.rooms.values()];
   }
 
+  /**
+   * Take an account out of every live room: rooms it hosts close (saving
+   * any game in progress), and it is removed from rooms it plays in.
+   * Returns how many rooms were affected.
+   */
+  removeUser(userId: string, notice: string): number {
+    let affected = 0;
+    for (const room of this.list()) {
+      if (room.isClosed()) continue;
+      if (room.hostUserId === userId) {
+        room.close(notice);
+        affected++;
+      } else if (room.removeUser(userId, notice)) {
+        affected++;
+      }
+    }
+    return affected;
+  }
+
   sweep() {
     for (const room of [...this.rooms.values()]) {
       try {

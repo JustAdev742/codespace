@@ -610,6 +610,8 @@ export const moderationActions = pgTable(
     until: ts('until'),
     reportId: big('report_id'),
     createdAt: now('created_at'),
+    /** When the player dismissed the notice for a warning or mute. */
+    acknowledgedAt: ts('acknowledged_at'),
   },
   (t) => [index('moderation_target_idx').on(t.targetUserId, t.createdAt)],
 );

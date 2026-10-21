@@ -7,6 +7,7 @@ import { AppError, notFound } from '../../lib/errors.ts';
 import { credit, withOperation } from '../economy/service.ts';
 import { addXp } from './levels.ts';
 import { getRules } from '../economy/config.ts';
+import { runningEvents } from '../events/service.ts';
 
 const DAILY_COUNT = 3;
 const WEEKLY_COUNT = 3;
@@ -38,10 +39,15 @@ export function periodsFor(now = new Date()) {
   return { daily: utcDay(now), weekly: isoWeek(now) };
 }
 
-/** Make sure today's and this week's quests are assigned, then return them. */
+/** Event quests run weekly, in a period of their own so they never crowd out the regular weekly quests. */
+export const eventPeriod = (eventKey: string, weekly: string) => `${eventKey}:${weekly}`;
+
+/** Make sure today's, this week's and any running event's quests are assigned, then return them. */
 export async function ensureQuests(db: DbOrTx, userId: string, now = new Date()) {
   const { daily, weekly } = periodsFor(now);
-  const existing = await db.select().from(userQuests).where(and(eq(userQuests.userId, userId), inArray(userQuests.period, [daily, weekly])));
+  const events = await runningEvents(db, now);
+  const periods = [daily, weekly, ...events.map((e) => eventPeriod(e.key, weekly))];
+  const existing = await db.select().from(userQuests).where(and(eq(userQuests.userId, userId), inArray(userQuests.period, periods)));
   const pool = await db.select().from(quests).where(eq(quests.active, true));
   const missing: (typeof userQuests.$inferInsert)[] = [];
   for (const [kind, period, count] of [['daily', daily, DAILY_COUNT], ['weekly', weekly, WEEKLY_COUNT]] as const) {
@@ -49,13 +55,18 @@ export async function ensureQuests(db: DbOrTx, userId: string, now = new Date())
     const eligible = pool.filter((q) => q.kind === kind);
     for (const q of pickWeighted(eligible, count, `${userId}:${period}`)) missing.push({ userId, questId: q.id, period, target: q.target, progress: 0 });
   }
+  for (const ev of events) {
+    const period = eventPeriod(ev.key, weekly);
+    if (existing.some((e) => e.period === period)) continue;
+    for (const q of pool.filter((q) => q.kind === ev.questKind)) missing.push({ userId, questId: q.id, period, target: q.target, progress: 0 });
+  }
   if (missing.length) await db.insert(userQuests).values(missing).onConflictDoNothing();
   const rows = await db
     .select({ uq: userQuests, q: quests })
     .from(userQuests)
     .innerJoin(quests, eq(quests.id, userQuests.questId))
-    .where(and(eq(userQuests.userId, userId), inArray(userQuests.period, [daily, weekly])));
-  return { rows, daily, weekly, resets: { daily: nextDailyReset(now).toISOString(), weekly: nextWeeklyReset(now).toISOString() } };
+    .where(and(eq(userQuests.userId, userId), inArray(userQuests.period, periods)));
+  return { rows, daily, weekly, events: events.map((e) => ({ key: e.key, name: e.name, period: eventPeriod(e.key, weekly) })), resets: { daily: nextDailyReset(now).toISOString(), weekly: nextWeeklyReset(now).toISOString() } };
 }
 
 export interface QuestProgressNote {

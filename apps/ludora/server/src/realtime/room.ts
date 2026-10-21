@@ -333,11 +333,25 @@ export class Room {
     this.removePlayer(p, `${p.name} left.`);
   }
 
-  private removePlayer(p: RoomPlayer, line: string) {
+  /** Staff removal: like a host kick, for every player slot this account holds, and it cannot rejoin. */
+  removeUser(userId: string, notice: string): boolean {
+    this.kickedUsers.add(userId);
+    let removed = false;
+    for (const p of [...this.players.values()]) {
+      if (p.userId !== userId) continue;
+      this.kickedTokens.add(p.reconnectToken);
+      this.removePlayer(p, `${p.name} was removed.`, notice);
+      removed = true;
+    }
+    return removed;
+  }
+
+  private removePlayer(p: RoomPlayer, line: string, notice?: string) {
     this.players.delete(p.id);
     this.runtime?.removePlayer(p.id);
     this.clearBot(p.id);
-    for (const sub of this.subscribers.values()) if (sub.playerId === p.id) sub.emit('room:closed', { reason: 'removed', message: line.includes('removed') ? 'The host removed you from the room.' : 'You left the room.' });
+    const message = notice ?? (line.includes('removed') ? 'The host removed you from the room.' : 'You left the room.');
+    for (const sub of this.subscribers.values()) if (sub.playerId === p.id) sub.emit('room:closed', { reason: 'removed', message });
     for (const [id, sub] of this.subscribers) if (sub.playerId === p.id) this.subscribers.delete(id);
     if (!p.isBot && !this.solo) this.pushFeed(line, 'info');
     this.scheduleBroadcast();

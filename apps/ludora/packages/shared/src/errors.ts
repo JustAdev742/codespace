@@ -21,6 +21,7 @@ export const ERROR_CODES = [
   'not_host',
   'invalid_state',
   'account_suspended',
+  'confirmation_required',
   'internal',
 ] as const;
 export type ErrorCode = (typeof ERROR_CODES)[number];

@@ -19,6 +19,8 @@ export interface AppDeps {
   pool: pg.Pool;
   log?: FastifyBaseLogger;
   rooms: RoomManager;
+  /** Set once Socket.IO is attached. Absent in HTTP-only tests. */
+  realtime?: { disconnectUser(userId: string, message: string): number; connectedSockets(): number };
   /** Serves the single-page app for non-API routes in production. */
   serveSpa?: (req: FastifyRequest, reply: FastifyReply) => Promise<unknown>;
 }

@@ -185,6 +185,8 @@ export async function purchase(db: Db, args: { userId: string; listingId: string
     if (l.packId) {
       [packRow] = await tx.select().from(packs).where(eq(packs.id, l.packId)).limit(1);
       if (!packRow || packRow.releaseState !== 'live') throw notAvailable('This Lantern is not available right now.');
+      if (packRow.availableFrom && packRow.availableFrom > now) throw notAvailable('This Lantern is not on sale yet.');
+      if (packRow.availableUntil && packRow.availableUntil < now) throw notAvailable('This Lantern is no longer on sale.');
     }
     let charge;
     try {

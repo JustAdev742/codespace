@@ -34,7 +34,7 @@ export async function verifySecret(stored: string | null, secret: string): Promi
   return verify(stored, secret).catch(() => false);
 }
 
-const normalizeRecovery = (code: string) => code.toUpperCase().replace(/[^A-Z0-9]/g, '');
+export const normalizeRecovery = (code: string) => code.toUpperCase().replace(/[^A-Z0-9]/g, '');
 
 export function ageBandFor(birthYear: number | undefined, now = new Date()): string | null {
   if (!birthYear) return null;

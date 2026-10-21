@@ -1,3 +1,4 @@
+import { FROST_FESTIVAL } from './shop.ts';
 import type { SeedCurrency } from './types.ts';
 
 export const CURRENCIES: SeedCurrency[] = [
@@ -39,6 +40,7 @@ export const CURRENCIES: SeedCurrency[] = [
     hue: 195,
     howToEarn: 'Weekly quests during the Frost Festival.',
     howToSpend: 'Frost Festival items in the Event shop.',
+    expiresAt: FROST_FESTIVAL.endsAt,
     sort: 4,
   },
 ];

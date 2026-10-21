@@ -257,3 +257,34 @@ describe('secure randomness', () => {
     }
   });
 });
+
+describe('events', () => {
+  it('hands out Frost Festival quests only while the festival runs, and they pay Frost Tickets', async () => {
+    const { EVENTS, saveEventWindow } = await import('../src/modules/events/service.ts');
+    const { featureFlags, userQuests } = await import('../src/db/schema.ts');
+    const { clearFlagCache } = await import('../src/modules/flags/service.ts');
+    const frost = EVENTS[0]!;
+    const day = 86_400_000;
+    await saveEventWindow(t.db, frost, { startsAt: new Date(Date.now() - day), endsAt: new Date(Date.now() + day) }, null);
+    await t.db.update(featureFlags).set({ enabled: true }).where(eq(featureFlags.key, frost.flag));
+    clearFlagCache();
+
+    const u = await registered(t.app);
+    const res = await u.client.get('/api/quests');
+    const event = res.body.quests.filter((q: { kind: string }) => q.kind === 'event');
+    expect(event).toHaveLength(3);
+    expect(res.body.events).toEqual([{ key: 'frost_festival', name: 'Frost Festival', period: event[0].period }]);
+    // Finish one and claim it.
+    const q = event.find((x: { id: string }) => x.id === 'e-frost-lanterns-2');
+    await t.db.update(userQuests).set({ progress: q.target, completedAt: new Date() }).where(and(eq(userQuests.userId, u.userId), eq(userQuests.questId, q.id)));
+    const claim = await u.client.post(`/api/quests/${q.id}/claim`, { period: q.period });
+    expect(claim.status, JSON.stringify(claim.body)).toBe(200);
+    expect(await balance(u.userId, 'frost_tickets')).toBe(30);
+
+    // Outside the window nobody gets them.
+    await saveEventWindow(t.db, frost, { startsAt: new Date(Date.now() - 3 * day), endsAt: new Date(Date.now() - 2 * day) }, null);
+    const late = await registered(t.app);
+    const none = await late.client.get('/api/quests');
+    expect(none.body.quests.filter((x: { kind: string }) => x.kind === 'event')).toHaveLength(0);
+  });
+});

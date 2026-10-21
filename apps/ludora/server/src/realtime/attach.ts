@@ -187,6 +187,21 @@ export function attachRealtime(app: FastifyInstance, deps: AppDeps) {
     io.close();
   });
 
+  deps.realtime = {
+    /** Drop every socket signed in as this account, e.g. after a ban or suspension. */
+    disconnectUser(userId: string, message: string) {
+      let n = 0;
+      for (const socket of io.sockets.sockets.values()) {
+        if ((socket.data as SocketState).auth?.user.id !== userId) continue;
+        socket.emit('room:closed', { reason: 'signed_out', message });
+        socket.disconnect(true);
+        n++;
+      }
+      return n;
+    },
+    connectedSockets: () => io.sockets.sockets.size,
+  };
+
   return {
     io,
     manager,

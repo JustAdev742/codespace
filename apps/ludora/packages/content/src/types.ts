@@ -97,12 +97,13 @@ export type QuestMetric =
 
 export interface SeedQuest {
   id: string;
-  kind: 'daily' | 'weekly';
+  /** 'event' quests are handed out weekly, only while their event is running. */
+  kind: 'daily' | 'weekly' | 'event';
   title: string;
   description: string;
   metric: QuestMetric;
   target: number;
-  reward: { sparks?: number; moonstones?: number; xp?: number };
+  reward: { sparks?: number; moonstones?: number; xp?: number; frost_tickets?: number };
   weight?: number;
 }
 
