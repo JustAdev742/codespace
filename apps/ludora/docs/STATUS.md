@@ -71,8 +71,11 @@ Last updated: 2026-10-21.
   use, and every action is checked again by the API. Each section was driven in
   a real browser at phone and desktop widths, and the end-to-end suite opens
   every one of them at 390 and 1366 pixels.
+- **Docker image**: CI builds it on every change, starts it against Postgres
+  and checks that it answers (the development sandbox cannot build images, as
+  its network goes through a proxy containers cannot use).
 - **End-to-end tests** (`e2e/`, Playwright against the production build and a
-  fresh database): a host and a guest play Classic from join code to results;
+  fresh database, locally and in CI): a host and a guest play Classic from join code to results;
   a new player buys and opens a Lantern; a staff warning reaches the player and
   the audit log; ten player pages and every staff section fit a phone, have one
   main heading and log no errors.
@@ -112,12 +115,6 @@ Not built yet:
   `ANTHROPIC_API_KEY` setting exist; the feature does not.
 - **Email.** An outbox table exists; nothing sends email yet, so there is no
   email verification or email password reset (recovery codes cover resets).
-- **Docker image not built here.** The image could not be built in this
-  development sandbox (its network goes through a proxy containers cannot use),
-  so the Dockerfile's runtime steps were checked by hand instead: the server's
-  production-only install, the bundles, migrations, seeding and serving the web
-  app in production mode all work. The CI workflow builds and starts the real
-  image on every change.
 
 ## Running it
 
