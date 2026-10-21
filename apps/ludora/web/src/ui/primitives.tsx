@@ -124,8 +124,9 @@ export function Amount({ currency, value, size = 'md', className = '' }: { curre
 export function ProgressBar({ value, max, tone = 'amber', label, className = '' }: { value: number; max: number; tone?: 'amber' | 'mint' | 'violet'; label?: string; className?: string }) {
   const pct = max > 0 ? Math.max(0, Math.min(100, (value / max) * 100)) : 0;
   const fill = tone === 'mint' ? 'bg-glim' : tone === 'violet' ? 'bg-dusk' : 'bg-lantern';
+  // The same inked edge as the game-side Meter, at a size that suits dense pages.
   return (
-    <div className={`h-2.5 w-full overflow-hidden rounded-full bg-surface-3 ${className}`} role="progressbar" aria-valuenow={value} aria-valuemin={0} aria-valuemax={max} aria-label={label}>
+    <div className={`h-3 w-full overflow-hidden rounded-full border-[1.5px] border-ink/70 bg-surface-3 ${className}`} role="progressbar" aria-valuenow={value} aria-valuemin={0} aria-valuemax={max} aria-label={label}>
       <div className={`h-full rounded-full ${fill} transition-[width] duration-500`} style={{ width: `${pct}%` }} />
     </div>
   );
@@ -223,10 +224,10 @@ export function Tabs({ value, onValueChange, items, children, label }: { value: 
           <RTabs.Trigger
             key={i.value}
             value={i.value}
-            className="flex h-9 shrink-0 items-center gap-1.5 rounded-[10px] px-3.5 text-sm font-semibold text-text-2 transition-colors hover:text-text data-[state=active]:bg-raised data-[state=active]:text-text data-[state=active]:shadow-[0_1px_0_var(--line-strong)]"
+            className="group flex h-9 shrink-0 items-center gap-1.5 rounded-[10px] px-3.5 text-sm font-semibold text-text-2 transition-colors hover:text-text data-[state=active]:bg-lantern data-[state=active]:text-on-accent data-[state=active]:shadow-[0_2px_0_var(--ink)]"
           >
             {i.label}
-            {i.count !== undefined ? <span className="rounded-full bg-surface-3 px-1.5 text-xs text-text-3">{i.count}</span> : null}
+            {i.count !== undefined ? <span className="rounded-full bg-surface-3 px-1.5 text-xs text-text-3 group-data-[state=active]:bg-[rgb(29_24_70/0.14)] group-data-[state=active]:text-on-accent">{i.count}</span> : null}
           </RTabs.Trigger>
         ))}
       </RTabs.List>
