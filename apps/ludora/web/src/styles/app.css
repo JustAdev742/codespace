@@ -282,13 +282,6 @@
       box-shadow 120ms var(--ease-out),
       filter 120ms;
   }
-  .sticker:disabled {
-    background: var(--surface-3);
-    color: var(--text-3);
-    border-color: var(--line-strong);
-    box-shadow: 0 2px 0 var(--line-strong);
-    opacity: 1;
-  }
   .sticker:not(:disabled):hover {
     filter: brightness(1.05);
   }
@@ -356,6 +349,16 @@
     background-size: 300% 100%;
     animation: shimmer 6s linear infinite;
   }
+}
+
+/* Outside the layers on purpose: a disabled sticker must lose its colour even when a
+   utility such as bg-lantern sets one, or it reads as pressable. */
+.sticker:disabled {
+  background: var(--surface-3);
+  color: var(--text-3);
+  border-color: var(--line-strong);
+  box-shadow: 0 2px 0 var(--line-strong);
+  opacity: 1;
 }
 
 @keyframes skeleton {

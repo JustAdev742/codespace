@@ -249,6 +249,39 @@ describe('classes and assignments', () => {
   });
 });
 
+describe('account type', () => {
+  it('anyone with an account can switch to teacher, with the rules that keep it safe', async () => {
+    const p = await registered(t.app);
+    expect((await p.client.post('/api/classes', { name: 'Not yet' })).status).toBe(403);
+    expect((await p.client.patch('/api/me/account-type', { accountType: 'teacher' })).status).toBe(200);
+    const made = await p.client.post('/api/classes', { name: 'Year 5 Maths' });
+    expect(made.status).toBe(200);
+    // A teacher with an active class archives it before switching away.
+    expect((await p.client.patch('/api/me/account-type', { accountType: 'player' })).status).toBe(409);
+    expect((await p.client.patch(`/api/classes/${made.body.class.id}`, { archived: true })).status).toBe(200);
+    expect((await p.client.patch('/api/me/account-type', { accountType: 'player' })).status).toBe(200);
+    // Under-13 accounts cannot become teachers, and guests have no account type to change.
+    const child = new Client(t.app);
+    expect((await child.post('/api/auth/register', { username: `kid${Date.now().toString(36)}`, password: 'correct horse battery', birthYear: new Date().getFullYear() - 10, accountType: 'student' })).status).toBe(200);
+    expect((await child.patch('/api/me/account-type', { accountType: 'teacher' })).status).toBe(403);
+    const guest = new Client(t.app);
+    await guest.post('/api/auth/guest', {});
+    expect((await guest.patch('/api/me/account-type', { accountType: 'teacher' })).status).toBe(403);
+  });
+
+  it('refuses assignments and solo rooms that would wait for a host', async () => {
+    const teacher = await registered(t.app, { accountType: 'teacher' });
+    const cls = await teacher.client.post('/api/classes', { name: 'Discussion test' });
+    const set = await teacher.client.post('/api/sets', { title: 'Three facts', description: 'For a solo test', subject: 'science', visibility: 'private', questions: [{ id: 'a', type: 'truefalse', prompt: 'Ice floats.', correct: true }, { id: 'b', type: 'truefalse', prompt: 'Fish fly.', correct: false }, { id: 'c', type: 'truefalse', prompt: 'Owls hoot.', correct: true }] });
+    const discussion = await teacher.client.post(`/api/classes/${cls.body.class.id}/assignments`, { setId: set.body.set.id, modeId: 'classic', variantId: 'classic-discussion', title: 'Talk it through' });
+    expect(discussion.status).toBe(409);
+    expect(discussion.body.error.message).toMatch(/waits for a host/);
+    const solo = await teacher.client.post('/api/rooms', { setId: set.body.set.id, modeId: 'classic', solo: true, settings: { autoAdvance: false } });
+    expect(solo.status).toBe(409);
+    expect((await teacher.client.post(`/api/classes/${cls.body.class.id}/assignments`, { setId: set.body.set.id, modeId: 'classic', title: 'Quick check' })).status).toBe(200);
+  });
+});
+
 describe('my stats', () => {
   it('summarises by mode and subject and lists questions to practise', async () => {
     const p = await registered(t.app);

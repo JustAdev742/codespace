@@ -16,7 +16,7 @@ Last updated: 2026-10-21.
 | M3 Multiplayer and modes | Done | 14 playable modes, 28 variants, all passing the conformance suite and smoke-tested in the real app. |
 | M4 Economy and progression | Done | Shop, Lanterns with disclosed odds, collections, locker, quests, achievements, levels, streaks. |
 | M5 Staff tools | Done | Staff API and all 14 staff sections in the web app. An end-to-end test opens every section as a super administrator at phone and desktop widths. |
-| M6 Content, social, classes, analytics | In progress | Server done and tested (friends, blocks, leaderboards, classes, assignments, reports, stats). Quests, friends, profiles, my stats and leaderboard pages done. Set editor, class and report pages are being built. |
+| M6 Content, social, classes, analytics | In progress | Server done and tested (friends, blocks, leaderboards, classes, assignments, reports, stats). Quests, friends, profiles, my stats, leaderboards, classes, assignment reports, hosted games and game reports done. The set editor is being built. |
 | M7-8 Polish, CI, deployment | In progress | Production build, Docker image, compose file, CI workflow, docs and end-to-end tests (run in CI) are in. A visual overhaul, a full accessibility pass and the final design review are next. |
 
 ## What works today (verified)
@@ -59,7 +59,12 @@ Last updated: 2026-10-21.
   in a real browser at phone and desktop widths, by keyboard as well.
 - **Classes**: teacher accounts create classes with join codes, students join,
   assignments are played solo (even from a private set, without exposing its
-  answers), teachers get per-student results and per-question first-try rates.
+  answers), teachers get per-student results and per-question first-try rates,
+  with CSV downloads that cannot inject spreadsheet formulas. Teachers rename,
+  archive and re-code classes and remove students; students see only their own
+  results. Anyone can switch account type in Settings (D32). Hosts get a report
+  for every game they ran. All of it was driven in a real browser at phone and
+  desktop widths, with an axe check in both themes.
 - **Staff area**: 14 sections (overview, players and player detail, reports,
   question sets, live rooms, game modes, economy, catalogue, shop, events, feature
   flags, testing, system health, audit log). Menus show only what a role may
@@ -97,7 +102,6 @@ Being built now:
 - A visual overhaul: brighter, chunkier and more character-led, with better
   original Glims (D30). The dusk stage, sidebar and controls are in.
 - Set editor with CSV, JSON and paste import and export.
-- Class, assignment report, hosted games and game report pages.
 - More honestly labelled mode variants.
 
 Not built yet:

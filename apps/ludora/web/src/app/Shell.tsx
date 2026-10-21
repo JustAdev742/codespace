@@ -3,6 +3,7 @@ import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router';
 import { DropdownMenu, Dialog as RDialog } from 'radix-ui';
 import { useQueryClient } from '@tanstack/react-query';
 import {
+  BarChart3,
   BookOpen,
   Gamepad2,
   Home,
@@ -169,6 +170,7 @@ function AccountMenu() {
           {[
             { to: `/profile/${user.id}`, label: 'Profile', icon: <User className="size-4" /> },
             { to: '/me', label: 'My stats', icon: <Swords className="size-4" /> },
+            { to: '/reports', label: 'Games I hosted', icon: <BarChart3 className="size-4" /> },
             { to: '/locker', label: 'Locker', icon: <Shirt className="size-4" /> },
             { to: '/settings', label: 'Settings', icon: <Settings className="size-4" /> },
           ].map((i) => (

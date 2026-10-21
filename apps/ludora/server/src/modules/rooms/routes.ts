@@ -2,6 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { commonSettingsSchema, roomCodeSchema, roomOptionsSchema } from '@ludora/shared';
 import { getMode, getVariant } from '@ludora/engine';
+import { soloBlocker } from '@ludora/engine/catalog';
 import type { AppDeps } from '../../app.ts';
 import { requirePermission } from '../../http/context.ts';
 import { AppError, notFound } from '../../lib/errors.ts';
@@ -29,6 +30,10 @@ export async function roomRoutes(app: FastifyInstance, deps: AppDeps) {
       const mode = getMode(body.variantId ? (getVariant(body.variantId)?.meta.modeId ?? body.modeId) : body.modeId);
       if (!mode) throw notFound('That game mode does not exist.');
       const solo = body.solo === true || mode.meta.pacing === 'solo';
+      if (solo) {
+        const blocker = soloBlocker(mode.meta.id, body.variantId ?? null, body.settings ?? {});
+        if (blocker) throw new AppError(409, 'conflict', blocker);
+      }
       await isModePlayableBy(deps, auth, mode.meta.id, body.variantId ?? null);
       if (manager.hostedBy(auth.user.id).filter((r) => !r.solo).length >= MAX_ROOMS_PER_HOST && !solo) {
         throw new AppError(409, 'conflict', 'You already have several rooms open. Close one first.');

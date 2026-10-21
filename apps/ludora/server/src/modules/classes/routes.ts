@@ -2,6 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import { and, asc, count, desc, eq, inArray, isNull, sql } from 'drizzle-orm';
 import { z } from 'zod';
 import { getMode, getVariant } from '@ludora/engine';
+import { soloBlocker } from '@ludora/engine/catalog';
 import { levelFromXp, questionSchema, roomOptionsSchema, type Question } from '@ludora/shared';
 import type { AppDeps } from '../../app.ts';
 import type { DbOrTx } from '../../db/client.ts';
@@ -64,14 +65,16 @@ async function loadClass(db: DbOrTx, id: string, auth: AuthContext): Promise<{ c
 }
 
 function requireTeacherAccount(auth: AuthContext) {
-  if (auth.user.accountType !== 'teacher') throw forbidden('Classes are made with a teacher account. You can change your account type in Settings.');
+  if (auth.user.accountType !== 'teacher') throw forbidden('Classes are made with a teacher account. You can switch to one in Settings.');
 }
 
 /** Solo-playable modes only: assignments are played by each student on their own. */
 function assertAssignable(modeId: string, variantId: string | null) {
   const mode = getMode(variantId ? (getVariant(variantId)?.meta.modeId ?? modeId) : modeId);
   if (!mode) throw notFound('That game mode does not exist.');
-  if (mode.meta.players.min > 1) throw conflict(`${mode.meta.title} needs several players at once, so it cannot be an assignment. Pick a mode that works solo.`);
+  // Assignments are played alone, so the mode has to work for one player with no host.
+  const blocker = soloBlocker(mode.meta.id, variantId, {});
+  if (blocker) throw conflict(`${blocker} Assignments are played alone.`);
   return mode;
 }
 

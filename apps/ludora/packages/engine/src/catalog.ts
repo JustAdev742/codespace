@@ -35,3 +35,24 @@ export function catalogCounts() {
   });
   return { playable: count('playable'), beta: count('beta'), planned: count('planned') };
 }
+
+/**
+ * Why a mode or variant cannot be played by one person on their own (a solo room or a
+ * class assignment), or null if it can. Solo rooms have no host screen, so a host-paced
+ * game must move on by itself. `settings` are the host's choices, which locked
+ * variant settings override.
+ */
+export function soloBlocker(modeId: string, variantId: string | null, settings: Readonly<Record<string, unknown>> = {}): string | null {
+  const found = variantId ? findCatalogVariant(variantId) : undefined;
+  const mode = found?.mode ?? findCatalogMode(modeId);
+  if (!mode) return 'That game mode does not exist.';
+  const variant = found?.variant;
+  const title = variant?.meta.title ?? mode.meta.title;
+  if (mode.meta.players.min > 1) return `${title} needs several players at once. Pick a mode that works solo.`;
+  const field = mode.settings.find((f) => f.key === 'autoAdvance');
+  if (mode.meta.pacing === 'host' && field) {
+    const chosen = variant?.locked?.includes('autoAdvance') ? variant.settings?.autoAdvance : (settings.autoAdvance ?? variant?.settings?.autoAdvance);
+    if ((chosen ?? field.default) === false) return `${title} waits for a host to move on to each question, so it cannot be played alone.`;
+  }
+  return null;
+}

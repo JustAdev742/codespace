@@ -1,13 +1,13 @@
 import type { FastifyInstance } from 'fastify';
-import { and, desc, eq, lt, sql } from 'drizzle-orm';
+import { and, desc, eq, isNull, lt, sql } from 'drizzle-orm';
 import { z } from 'zod';
 import { displayNameSchema, levelFromXp, type ItemArt } from '@ludora/shared';
 import { getMode, getVariant } from '@ludora/engine';
 import type { AppDeps } from '../../app.ts';
-import { currencies, equipped, friendships, gameParticipants, gameSessions, items, userStats, users } from '../../db/schema.ts';
-import { noStore, requireAuth } from '../../http/context.ts';
+import { classes, currencies, equipped, friendships, gameParticipants, gameSessions, items, userStats, users } from '../../db/schema.ts';
+import { noStore, requireAccount, requireAuth } from '../../http/context.ts';
 import { isFlagOn } from '../flags/service.ts';
-import { AppError, notFound } from '../../lib/errors.ts';
+import { AppError, conflict, forbidden, notFound } from '../../lib/errors.ts';
 import { parse } from '../../lib/validate.ts';
 import { utcDay } from '../../lib/time.ts';
 import { balancesOf } from '../economy/service.ts';
@@ -115,6 +115,24 @@ export async function profileRoutes(app: FastifyInstance, deps: AppDeps) {
     }
     await deps.db.update(users).set({ displayName: body.displayName, nameChangedAt: new Date(), updatedAt: new Date() }).where(eq(users.id, auth.user.id));
     return { ok: true };
+  });
+
+  // Account type only decides who can make classes. Anyone with an account can switch
+  // between player, student and teacher, except that under-13 accounts cannot become
+  // teachers, and a teacher with active classes archives them before switching away.
+  app.patch('/api/me/account-type', { config: { rateLimit: { max: 10, timeWindow: '1 hour' } } }, async (req) => {
+    const auth = requireAccount(req);
+    const { accountType } = parse(z.object({ accountType: z.enum(['player', 'student', 'teacher']) }), req.body);
+    const [me] = await deps.db.select({ ageBand: users.ageBand, accountType: users.accountType }).from(users).where(eq(users.id, auth.user.id)).limit(1);
+    if (!me) throw notFound('Account not found.');
+    if (accountType === me.accountType) return { ok: true, accountType };
+    if (accountType === 'teacher' && me.ageBand === 'under13') throw forbidden('Teacher accounts are for adults. Ask your teacher for their class code instead.');
+    if (me.accountType === 'teacher') {
+      const [active] = await deps.db.select({ n: sql<number>`count(*)::int` }).from(classes).where(and(eq(classes.ownerId, auth.user.id), isNull(classes.archivedAt)));
+      if ((active?.n ?? 0) > 0) throw conflict('Archive your classes first. Students keep their results.');
+    }
+    await deps.db.update(users).set({ accountType, updatedAt: new Date() }).where(eq(users.id, auth.user.id));
+    return { ok: true, accountType };
   });
 
   app.patch('/api/me/preferences', async (req) => {

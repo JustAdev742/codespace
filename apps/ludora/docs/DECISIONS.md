@@ -191,3 +191,11 @@ wipe staff edits. Items carry `customized_at`, set by any staff edit (the
 migration marks items already changed since creation). On start the seed
 refreshes art, name and description for uncustomised shipped items when they
 differ, and never touches rarity, collection or release state.
+
+**D32. Account type is self-service, with two limits.** It only decides who can
+make classes, so anyone with an account can switch between player, student and
+teacher in Settings. Under-13 accounts cannot become teachers, and a teacher
+archives their active classes before switching away, so students are never
+left in a class nobody runs. Modes that wait for a host (a host-paced variant
+with automatic moving on turned off) cannot be assigned or played solo: the
+server refuses them, using the same check as the assignment picker.

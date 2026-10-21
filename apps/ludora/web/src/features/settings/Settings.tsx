@@ -78,6 +78,14 @@ export default function Settings() {
     },
     onError: (err) => (err instanceof ApiError ? setPwErrors(Object.keys(err.fields).length ? err.fields : { newPassword: err.message }) : toast.error('Could not change your password.')),
   });
+  const changeType = useMutation({
+    mutationFn: (accountType: string) => api.patch('/api/me/account-type', { accountType }),
+    onSuccess: async () => {
+      toast.success('Account type changed');
+      await qc.invalidateQueries({ queryKey: ['me'] });
+    },
+    onError: (err) => toast.error(err instanceof ApiError ? err.message : 'Could not change your account type.'),
+  });
   const newCode = useMutation({
     mutationFn: () => api.post<{ recoveryCode: string }>('/api/auth/recovery-code'),
     onSuccess: (r) => setCode(r.recoveryCode),
@@ -175,7 +183,7 @@ export default function Settings() {
           </div>
         </Panel>
 
-        <Panel className="flex flex-col gap-5 p-5">
+        <Panel id="account" className="flex scroll-mt-20 flex-col gap-5 p-5">
           <h2 className="font-display text-xl font-bold">Account</h2>
           <form
             className="flex flex-wrap items-end gap-2"
@@ -202,6 +210,17 @@ export default function Settings() {
             </div>
           ) : (
             <>
+              <div className="max-w-sm">
+                <Field label="Account type" hint="Teacher accounts can make classes and set assignments. Everyone plays the same games.">
+                  {(fp) => (
+                    <Select {...fp} value={user.accountType} disabled={changeType.isPending} onChange={(e) => changeType.mutate(e.target.value)}>
+                      <option value="player">Player</option>
+                      <option value="student">Student</option>
+                      <option value="teacher">Teacher</option>
+                    </Select>
+                  )}
+                </Field>
+              </div>
               <form
                 className="grid grid-cols-1 gap-3 sm:grid-cols-[1fr_1fr_auto] sm:items-end"
                 onSubmit={(e: FormEvent) => {
