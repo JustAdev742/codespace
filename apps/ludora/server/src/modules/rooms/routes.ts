@@ -53,7 +53,8 @@ export async function roomRoutes(app: FastifyInstance, deps: AppDeps) {
       return { code: room.code, solo };
     });
 
-    app.get('/api/rooms/:code', { config: { rateLimit: { max: 60, timeWindow: '1 minute' } } }, async (req) => {
+    // Generous because a whole class looks the code up at once, often from one school IP.
+    app.get('/api/rooms/:code', { config: { rateLimit: { max: 240, timeWindow: '1 minute' } } }, async (req) => {
       const code = parse(roomCodeSchema, (req.params as { code: string }).code);
       const room = manager.get(code);
       if (!room || room.solo) throw new AppError(404, 'room_not_found', 'No game with that code. Check the code on the host screen.');

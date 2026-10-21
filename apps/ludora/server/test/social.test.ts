@@ -178,6 +178,8 @@ describe('classes and assignments', () => {
     expect(room.assignmentId).toBe(a.body.assignment.id);
     expect(room.classId).toBe(classId);
     expect((await other.client.post(`/api/assignments/${a.body.assignment.id}/play`)).status).toBe(404);
+    const mine = (await teacher.client.get('/api/classes')).body.teaching.find((c: { id: string }) => c.id === classId);
+    expect(mine).toMatchObject({ members: 1, assignments: 1 });
   });
 
   it('reports to the teacher only, judging each question on the first try', async () => {

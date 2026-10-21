@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { displayNameSchema, levelFromXp, passwordSchema, usernameSchema } from '@ludora/shared';
 import type { AppDeps } from '../../app.ts';
 import { noStore, requireAccount, requireAuth, type AuthContext } from '../../http/context.ts';
+import { ipKey } from '../../http/limits.ts';
 import { sessionCookieOptions } from '../../http/plugins.ts';
 import { parse } from '../../lib/validate.ts';
 import {
@@ -70,7 +71,8 @@ async function startSession(deps: AppDeps, req: FastifyRequest, reply: FastifyRe
 }
 
 export async function authRoutes(app: FastifyInstance, deps: AppDeps) {
-  const limited = (max: number, minutes: number) => ({ config: { rateLimit: { max, timeWindow: `${minutes} minutes` } } });
+  // Per IP even when a session exists, so a fresh guest session is not a fresh budget.
+  const limited = (max: number, minutes: number) => ({ config: { rateLimit: { max, timeWindow: `${minutes} minutes`, keyGenerator: ipKey } } });
 
   app.get('/api/auth/me', async (req, reply) => {
     noStore(reply);

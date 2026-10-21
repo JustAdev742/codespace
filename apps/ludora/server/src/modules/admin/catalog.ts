@@ -14,6 +14,7 @@ import {
 } from '@ludora/shared';
 import type { AppDeps } from '../../app.ts';
 import { collections, currencies, featureFlags, inventory, items, packs, purchases, shopListings } from '../../db/schema.ts';
+import { outer } from '../../db/sql.ts';
 import { noStore } from '../../http/context.ts';
 import { AppError, conflict, notFound } from '../../lib/errors.ts';
 import { randomToken } from '../../lib/crypto.ts';
@@ -178,7 +179,7 @@ export async function adminCatalogRoutes(app: FastifyInstance, deps: AppDeps) {
     const where = and(...conds);
     const [rows, [total]] = await Promise.all([
       db
-        .select({ i: items, owners: sql<number>`(select count(*)::int from ${inventory} where ${inventory.itemId} = ${items.id} and ${inventory.quantity} > 0)` })
+        .select({ i: items, owners: sql<number>`(select count(*)::int from ${inventory} where ${inventory.itemId} = ${outer(items.id)} and ${inventory.quantity} > 0)` })
         .from(items)
         .where(where)
         .orderBy(asc(items.type), asc(items.sort), asc(items.id))
@@ -223,7 +224,7 @@ export async function adminCatalogRoutes(app: FastifyInstance, deps: AppDeps) {
     noStore(reply);
     staff(req, 'catalog.manage');
     const rows = await db
-      .select({ c: collections, items: sql<number>`(select count(*)::int from ${items} where ${items.collectionId} = ${collections.id} and ${items.releaseState} = 'live')` })
+      .select({ c: collections, items: sql<number>`(select count(*)::int from ${items} where ${items.collectionId} = ${outer(collections.id)} and ${items.releaseState} = 'live')` })
       .from(collections)
       .orderBy(asc(collections.sort));
     return { collections: rows.map(({ c, items: n }) => ({ ...c, liveItems: n })) };

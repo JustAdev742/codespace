@@ -10,6 +10,7 @@ import type pg from 'pg';
 import type { Config } from './config.ts';
 import type { Db } from './db/client.ts';
 import { registerAuthHook, registerCsrfGuard, registerErrorHandler } from './http/plugins.ts';
+import { notApi, requestKey } from './http/limits.ts';
 import { authRoutes } from './modules/auth/routes.ts';
 import { RoomManager } from './realtime/manager.ts';
 
@@ -59,9 +60,7 @@ export async function buildApp(base: Omit<AppDeps, 'serveSpa' | 'rooms' | 'log'>
     },
     crossOriginEmbedderPolicy: false,
   });
-  // A request the browser has already abandoned has no remote address left; the
-  // default key function would throw on it and log a 500 nobody is waiting for.
-  await app.register(rateLimit, { global: true, max: 600, timeWindow: '1 minute', keyGenerator: (req) => req.ip || 'gone' });
+  await app.register(rateLimit, { global: true, max: 600, timeWindow: '1 minute', keyGenerator: requestKey, allowList: notApi });
   await app.register(multipart, { limits: { fileSize: 2_000_000, files: 1, fields: 5 } });
 
   registerAuthHook(app, deps);

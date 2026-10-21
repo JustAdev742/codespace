@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { and, eq } from 'drizzle-orm';
+import { and, eq, gt } from 'drizzle-orm';
 import { ROLE_PERMISSIONS, type Permission, type Role } from '@ludora/shared';
 import { Client, createTestApp, registered, type TestContext } from './helpers.ts';
 import { auditLog, entitlements, inventory, items, ledger, pityCounters, reports, users, wallets } from '../src/db/schema.ts';
@@ -515,6 +515,21 @@ describe('catalogue, shop and live operations', () => {
     const shop = await as.player.client.get('/api/shop');
     expect(shop.body.listings.some((x: { id: string }) => x.id === 'l-lantern-starfall')).toBe(false);
     await as.admin.client.patch('/api/admin/shop/listings/l-lantern-starfall', { active: true, reason: 'resume' });
+  });
+
+  it('counts live Glims per collection and owners per item', async () => {
+    const live = await t.db.select({ id: items.id }).from(items).where(and(eq(items.collectionId, 'meadow'), eq(items.releaseState, 'live')));
+    expect(live.length).toBeGreaterThan(1);
+    const cols = await as.admin.client.get('/api/admin/collections');
+    expect(cols.body.collections.find((c: { id: string }) => c.id === 'meadow').liveItems).toBe(live.length);
+    const [held, other] = live;
+    await t.db.insert(inventory).values({ userId: as.player.userId, itemId: held!.id, quantity: 1, source: 'test' }).onConflictDoNothing();
+    const owners = async (id: string) => (await t.db.select({ userId: inventory.userId }).from(inventory).where(and(eq(inventory.itemId, id), gt(inventory.quantity, 0)))).length;
+    const listed = (await as.admin.client.get('/api/admin/items?collection=meadow')).body.items as { id: string; owners: number }[];
+    const row = (id: string) => listed.find((i) => i.id === id)!;
+    expect(row(held!.id).owners).toBe(await owners(held!.id));
+    expect(row(held!.id).owners).toBeGreaterThan(0);
+    expect(row(other!.id).owners).toBe(await owners(other!.id));
   });
 
   it('item art has to match the item type', async () => {

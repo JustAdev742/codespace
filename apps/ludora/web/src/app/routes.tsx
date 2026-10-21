@@ -56,6 +56,8 @@ export const router = createBrowserRouter([
   {
     element: <Root />,
     errorElement: <RouteError />,
+    // Shown while the first page's code loads; without it the router warns on every visit.
+    hydrateFallbackElement: <Spinner label="Loading Ludora" />,
     children: [
       { path: 'signin', lazy: page(() => import('../features/auth/SignIn.tsx')) },
       { path: 'signup', lazy: page(() => import('../features/auth/SignUp.tsx')) },

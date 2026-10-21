@@ -15,7 +15,7 @@
     "start": "npm run start -w @ludora/server",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:e2e": "playwright test",
+    "test:e2e": "npm run build && playwright test",
     "typecheck": "tsc -p packages/shared && tsc -p packages/engine && tsc -p packages/content && tsc -p server && tsc -p web",
     "lint": "oxlint packages server/src web/src e2e",
     "check": "npm run typecheck && npm run lint && npm test",

@@ -157,8 +157,8 @@ const inputClass =
 /** Full width and standard height unless the caller sets their own width or height. */
 function sizeFor(className: string, height = 'h-11'): string {
   const classes = className.split(/\s+/);
-  const w = classes.some((c) => /^w-/.test(c)) ? '' : 'w-full';
-  const h = classes.some((c) => /^h-/.test(c)) ? '' : height;
+  const w = classes.some((c) => c.startsWith('w-')) ? '' : 'w-full';
+  const h = classes.some((c) => c.startsWith('h-')) ? '' : height;
   return `${w} ${h}`;
 }
 

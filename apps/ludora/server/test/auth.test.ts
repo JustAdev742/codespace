@@ -126,6 +126,17 @@ describe('request protection', () => {
   });
 });
 
+describe('the API rate limit', () => {
+  it('counts signed-in requests per account, so people sharing an IP do not share a budget', async () => {
+    const a = await registered(t.app);
+    const b = await registered(t.app);
+    let status = 200;
+    for (let i = 0; i < 700 && status !== 429; i++) status = (await a.client.get('/api/me/overview')).status;
+    expect(status).toBe(429);
+    expect((await b.client.get('/api/me/overview')).status).toBe(200);
+  });
+});
+
 describe('serving the built web app', () => {
   it('serves the app for page routes, JSON for unknown API routes, and the usual error shape from hooks', async () => {
     const { mkdtempSync, writeFileSync } = await import('node:fs');
@@ -133,8 +144,11 @@ describe('serving the built web app', () => {
     const { join } = await import('node:path');
     const dist = mkdtempSync(join(tmpdir(), 'ludora-web-'));
     writeFileSync(join(dist, 'index.html'), '<!doctype html><title>Ludora</title>');
+    writeFileSync(join(dist, 'app.js'), 'console.log(1)');
     const web = await createTestApp({ WEB_DIST: dist });
     try {
+      // Static files are never rate limited: a class behind one school IP loads dozens each.
+      for (let i = 0; i < 650; i++) expect((await web.app.inject({ method: 'GET', url: '/app.js' })).statusCode).toBe(200);
       const page = await web.app.inject({ method: 'GET', url: '/shop' });
       expect(page.statusCode).toBe(200);
       expect(page.body).toContain('<title>Ludora</title>');

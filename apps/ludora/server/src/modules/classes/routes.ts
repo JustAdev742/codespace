@@ -6,6 +6,7 @@ import { levelFromXp, questionSchema, roomOptionsSchema, type Question } from '@
 import type { AppDeps } from '../../app.ts';
 import type { DbOrTx } from '../../db/client.ts';
 import { assignments, classMembers, classes, gameParticipants, gameSessions, questionSets, users } from '../../db/schema.ts';
+import { outer } from '../../db/sql.ts';
 import { noStore, requireAccount, type AuthContext } from '../../http/context.ts';
 import { AppError, conflict, forbidden, notFound } from '../../lib/errors.ts';
 import { CLEAR_ALPHABET, randomCode } from '../../lib/crypto.ts';
@@ -84,8 +85,8 @@ export async function classRoutes(app: FastifyInstance, deps: AppDeps) {
     const teaching = await db
       .select({
         c: classes,
-        members: sql<number>`(select count(*)::int from ${classMembers} where ${classMembers.classId} = ${classes.id})`,
-        assignmentCount: sql<number>`(select count(*)::int from ${assignments} where ${assignments.classId} = ${classes.id})`,
+        members: sql<number>`(select count(*)::int from ${classMembers} where ${classMembers.classId} = ${outer(classes.id)})`,
+        assignmentCount: sql<number>`(select count(*)::int from ${assignments} where ${assignments.classId} = ${outer(classes.id)})`,
       })
       .from(classes)
       .where(eq(classes.ownerId, me))

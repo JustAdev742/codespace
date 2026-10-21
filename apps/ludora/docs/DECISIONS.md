@@ -167,3 +167,20 @@ unlit oil and launching only on a gust removed all the risk the mode is about.
 Ludora's own upload store, never arbitrary URLs (the content security policy
 also blocks external images). Until uploads exist, new sets have no images, and
 existing image fields are preserved when a set is edited.
+
+## Classrooms and originality
+
+**D29. Rate limits count accounts, not school IPs.** Schools usually put every
+pupil behind one public IP. The global API limit is therefore counted per
+account for signed-in requests (guests included) and per IP only for anonymous
+ones, static files are not limited at all (one page load fetches dozens), and
+room lookups and joins allow a few classes at once. Sign-in, sign-up and
+recovery stay per IP even with a session, so a fresh guest is not a fresh
+budget. The end-to-end suite found this: forty page loads from one address got
+blank pages.
+
+**D30. Ludora's look and characters are its own.** The genre's conventions are
+fair to use: bright colour, chunky controls, collectible characters, packs with
+disclosed odds, live games joined with a code. Another game's characters,
+artwork, names and branding are not, even on request. Visual work goes into
+Ludora's own Glims, Lanterns and style.

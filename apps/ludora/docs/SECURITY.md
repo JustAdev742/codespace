@@ -39,10 +39,16 @@ a security problem privately to the maintainers rather than in a public issue.
   the origin too.
 - **Validation**: every body, query and parameter is parsed with a zod schema;
   failures return field-level messages and nothing else runs.
-- **Rate limits**: a global per-IP limit, tighter limits on sign-in, sign-up,
-  purchases, reports and room creation, per-account limits on staff writes, and
-  per-socket event budgets plus per-IP join limits for game rooms (room codes
-  cannot be brute-forced quickly).
+- **Rate limits**: the API has a global limit counted per account for
+  signed-in requests (guests included) and per IP otherwise, so a class behind
+  one school IP does not share one budget; static files are not limited.
+  Sign-in, sign-up and recovery are limited per IP whatever the session.
+  Purchases, reports and room creation have tighter limits, staff writes are
+  limited per account, and game rooms have per-socket event budgets and per-IP
+  join limits. Room lookups (240 a minute) and joins (150 a minute) are generous
+  per IP because whole classes join at once; sweeping every 6-digit code from
+  one IP would take about three days, and hosts can lock a room or require
+  accounts (`server/src/http/limits.ts`, D29).
 - **Headers**: a strict Content Security Policy (scripts from self only, no
   inline scripts, no framing, images from self and data/blob only), HSTS in
   production, `nosniff`.

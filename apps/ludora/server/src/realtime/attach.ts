@@ -47,7 +47,8 @@ function parseCookies(header: string | undefined): Record<string, string> {
   return out;
 }
 
-const JOINS_PER_MINUTE = 40;
+// Per IP. A school often puts every class behind one public IP, so this has to fit a few classes joining at once.
+const JOINS_PER_MINUTE = 150;
 const joinAsSchema = joinRequestSchema.extend({ as: z.enum(['host', 'player']).optional() });
 
 export function attachRealtime(app: FastifyInstance, deps: AppDeps) {

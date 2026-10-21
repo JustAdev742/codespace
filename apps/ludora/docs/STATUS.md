@@ -15,9 +15,9 @@ Last updated: 2026-10-21.
 | M2 Engine and first loop | Done | Deterministic engine, 8 question types, Classic played host + player in the browser. |
 | M3 Multiplayer and modes | Done | 14 playable modes, 28 variants, all passing the conformance suite and smoke-tested in the real app. |
 | M4 Economy and progression | Done | Shop, Lanterns with disclosed odds, collections, locker, quests, achievements, levels, streaks. |
-| M5 Staff tools | In progress | Staff API complete and tested. Staff web pages: overview, players and player detail done; the other twelve sections are being built. |
+| M5 Staff tools | Done | Staff API and all 14 staff sections in the web app. An end-to-end test opens every section as a super administrator at phone and desktop widths. |
 | M6 Content, social, classes, analytics | In progress | Server done and tested (friends, blocks, leaderboards, classes, assignments, reports, stats). Quests and achievements page done. Set editor, social, class and report pages are being built. |
-| M7-8 Polish, CI, deployment | In progress | Production build, Docker image, compose file, CI workflow and the docs set are in. End-to-end tests in the repo, a full accessibility pass and the final design review are next. |
+| M7-8 Polish, CI, deployment | In progress | Production build, Docker image, compose file, CI workflow, docs and end-to-end tests (run in CI) are in. A visual overhaul, a full accessibility pass and the final design review are next. |
 
 ## What works today (verified)
 
@@ -54,6 +54,17 @@ Last updated: 2026-10-21.
 - **Classes**: teacher accounts create classes with join codes, students join,
   assignments are played solo (even from a private set, without exposing its
   answers), teachers get per-student results and per-question first-try rates.
+- **Staff area**: 14 sections (overview, players and player detail, reports,
+  question sets, live rooms, game modes, economy, catalogue, shop, events, feature
+  flags, testing, system health, audit log). Menus show only what a role may
+  use, and every action is checked again by the API. Each section was driven in
+  a real browser at phone and desktop widths, and the end-to-end suite opens
+  every one of them at 390 and 1366 pixels.
+- **End-to-end tests** (`e2e/`, Playwright against the production build and a
+  fresh database): a host and a guest play Classic from join code to results;
+  a new player buys and opens a Lantern; a staff warning reaches the player and
+  the audit log; ten player pages and every staff section fit a phone, have one
+  main heading and log no errors.
 
 ## Tests
 
@@ -64,9 +75,12 @@ creates and drops its own database).
 |---|---|---|
 | content | 2 | catalogue integrity and every built-in question set |
 | engine | 8 | 373, including the conformance suite for every mode and variant |
-| server | 6 | auth, realtime, economy (20), staff (52), social and classes (13), reward counting |
+| server | 6 | auth and rate limits, realtime, economy (20), staff (53), social and classes (13), reward counting |
 | shared | 0 | no tests of its own; its schemas are exercised by the other projects |
-| **Total** | **16** | **591 passing** at the last full run |
+| **Total** | **16** | **594 passing** at the last full run |
+
+End-to-end: `npm run test:e2e` (needs Postgres; builds first, then runs 5
+browser tests against a fresh `ludora_e2e` database). All 5 pass.
 
 `npm run typecheck` is clean. `npm run lint` reports 12 stylistic warnings and
 no errors.
@@ -74,8 +88,8 @@ no errors.
 ## Open items
 
 Being built now:
-- Staff web pages for reports, question sets, rooms, modes, flags, system,
-  audit, economy, catalogue, shop, events and testing.
+- A visual overhaul: brighter, chunkier and more character-led, with better
+  original Glims (D30).
 - Set editor with CSV, JSON and paste import and export.
 - Friends, profile, my stats and leaderboard pages.
 - Class, assignment report, hosted games and game report pages.
@@ -94,8 +108,6 @@ Not built yet:
   production-only install, the bundles, migrations, seeding and serving the web
   app in production mode all work. The CI workflow builds and starts the real
   image on every change.
-- **End-to-end tests in the repo.** Browser checks so far were run from
-  scripts outside the repo; Playwright tests in `e2e/` are M7-8.
 
 ## Running it
 
