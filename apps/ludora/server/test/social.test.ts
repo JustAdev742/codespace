@@ -1,7 +1,8 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { eq } from 'drizzle-orm';
 import { Client, createTestApp, registered, type TestContext } from './helpers.ts';
-import { answerEvents, gameParticipants, gameSessions, users } from '../src/db/schema.ts';
+import { answerEvents, featureFlags, gameParticipants, gameSessions, users } from '../src/db/schema.ts';
+import { clearFlagCache } from '../src/modules/flags/service.ts';
 
 let t: TestContext;
 beforeAll(async () => {
@@ -16,6 +17,26 @@ const codeOf = async (a: Account) => (await a.client.get('/api/friends')).body.f
 const setPrivacy = (a: Account, privacy: object) => a.client.patch('/api/me/preferences', { privacy });
 
 describe('friends', () => {
+  it('staff can switch friends off, and blocks keep working while they are', async () => {
+    const a = await registered(t.app);
+    const b = await registered(t.app);
+    const code = await codeOf(b);
+    await t.db.update(featureFlags).set({ enabled: false }).where(eq(featureFlags.key, 'social.friends'));
+    clearFlagCache();
+    try {
+      expect((await a.client.get('/api/friends')).status).toBe(403);
+      expect((await a.client.post('/api/friends/request', { friendCode: code })).body.error.code).toBe('not_available');
+      expect((await a.client.get('/api/leaderboards?scope=friends')).status).toBe(403);
+      expect((await a.client.get(`/api/profiles/${b.userId}`)).body.canRequest).toBe(false);
+      expect((await a.client.post('/api/blocks', { userId: b.userId })).status).toBe(200);
+      expect((await a.client.delete(`/api/blocks/${b.userId}`)).status).toBe(200);
+    } finally {
+      await t.db.update(featureFlags).set({ enabled: true }).where(eq(featureFlags.key, 'social.friends'));
+      clearFlagCache();
+    }
+    expect((await a.client.post('/api/friends/request', { friendCode: code })).status).toBe(200);
+  });
+
   it('asks by friend code, accepts, lists and removes', async () => {
     const a = await registered(t.app);
     const b = await registered(t.app);

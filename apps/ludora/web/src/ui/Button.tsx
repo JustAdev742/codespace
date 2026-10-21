@@ -33,9 +33,20 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   icon?: ReactNode;
 }
 
-export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button({ variant = 'secondary', size = 'md', loading = false, icon, className = '', children, disabled, type = 'button', ...rest }, ref) {
+export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button({ variant = 'secondary', size = 'md', loading = false, icon, className = '', children, disabled, type = 'button', onClick, ...rest }, ref) {
+  // While loading the button ignores presses but stays focusable: disabling it
+  // would drop keyboard focus to the page in the middle of an action.
   return (
-    <button ref={ref} type={type} className={buttonClass(variant, size, className)} disabled={disabled || loading} aria-busy={loading || undefined} {...rest}>
+    <button
+      ref={ref}
+      type={type}
+      className={buttonClass(variant, size, `${loading ? 'cursor-progress' : ''} ${className}`)}
+      disabled={disabled}
+      aria-disabled={loading || undefined}
+      aria-busy={loading || undefined}
+      onClick={loading ? (e) => e.preventDefault() : onClick}
+      {...rest}
+    >
       {loading ? <Loader2 className="size-[1.1em] animate-spin" aria-hidden /> : icon}
       {children}
     </button>

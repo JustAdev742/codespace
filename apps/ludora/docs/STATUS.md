@@ -16,7 +16,7 @@ Last updated: 2026-10-21.
 | M3 Multiplayer and modes | Done | 14 playable modes, 28 variants, all passing the conformance suite and smoke-tested in the real app. |
 | M4 Economy and progression | Done | Shop, Lanterns with disclosed odds, collections, locker, quests, achievements, levels, streaks. |
 | M5 Staff tools | Done | Staff API and all 14 staff sections in the web app. An end-to-end test opens every section as a super administrator at phone and desktop widths. |
-| M6 Content, social, classes, analytics | In progress | Server done and tested (friends, blocks, leaderboards, classes, assignments, reports, stats). Quests and achievements page done. Set editor, social, class and report pages are being built. |
+| M6 Content, social, classes, analytics | In progress | Server done and tested (friends, blocks, leaderboards, classes, assignments, reports, stats). Quests, friends, profiles, my stats and leaderboard pages done. Set editor, class and report pages are being built. |
 | M7-8 Polish, CI, deployment | In progress | Production build, Docker image, compose file, CI workflow, docs and end-to-end tests (run in CI) are in. A visual overhaul, a full accessibility pass and the final design review are next. |
 
 ## What works today (verified)
@@ -48,9 +48,15 @@ Last updated: 2026-10-21.
   capped, audited grants; catalogue, Lantern, shop, event, flag, mode and room
   management; system health; audit log; test accounts, resets, QA scenarios and
   unlimited test currency with production restrictions.
-- **Player safety**: report a room, a set or (soon) a profile; warnings and mutes
+- **Player safety**: report a room, a set or a profile; warnings and mutes
   reach the player as a notice; blocks; friend requests follow privacy settings
-  and never reveal why they were refused; no free-text chat in rooms.
+  and never reveal why they were refused; staff can switch friends off with a
+  flag while blocks keep working; no free-text chat in rooms.
+- **Friends and profiles**: add friends by code, accept, decline, cancel and
+  remove; block and unblock; profiles that follow privacy settings; my stats by
+  mode and subject with an accessible chart and a table view; leaderboards for
+  friends, a class and everyone, this week or all time. Every action was driven
+  in a real browser at phone and desktop widths, by keyboard as well.
 - **Classes**: teacher accounts create classes with join codes, students join,
   assignments are played solo (even from a private set, without exposing its
   answers), teachers get per-student results and per-question first-try rates.
@@ -89,10 +95,10 @@ no errors.
 
 Being built now:
 - A visual overhaul: brighter, chunkier and more character-led, with better
-  original Glims (D30).
+  original Glims (D30). The dusk stage, sidebar and controls are in.
 - Set editor with CSV, JSON and paste import and export.
-- Friends, profile, my stats and leaderboard pages.
 - Class, assignment report, hosted games and game report pages.
+- More honestly labelled mode variants.
 
 Not built yet:
 - **Image uploads.** Questions accept images only from Ludora's own upload

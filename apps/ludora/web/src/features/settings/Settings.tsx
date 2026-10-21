@@ -1,4 +1,5 @@
-import { useState, type FormEvent } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
+import { useLocation } from 'react-router';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { PASSWORD_RULES } from '@ludora/shared';
@@ -44,6 +45,12 @@ export default function Settings() {
   const [pw, setPw] = useState({ currentPassword: '', newPassword: '' });
   const [pwErrors, setPwErrors] = useState<Record<string, string>>({});
   const [code, setCode] = useState<string | null>(null);
+  const { hash } = useLocation();
+  const signedIn = Boolean(user);
+  // Links such as /settings#privacy land on their panel, which renders once the account has loaded.
+  useEffect(() => {
+    if (signedIn && hash) document.getElementById(decodeURIComponent(hash.slice(1)))?.scrollIntoView();
+  }, [signedIn, hash]);
 
   const save = useMutation({
     mutationFn: (patch: Patch) => api.patch<{ preferences: Preferences }>('/api/me/preferences', patch),
@@ -131,7 +138,7 @@ export default function Settings() {
           </div>
         </Panel>
 
-        <Panel className="divide-y divide-line px-5 py-2">
+        <Panel id="privacy" className="scroll-mt-20 divide-y divide-line px-5 py-2">
           <h2 className="py-3 font-display text-xl font-bold">Privacy</h2>
           <Row label="Who can see my profile">
             <Select value={p.privacy.profileVisibility} onChange={(e) => save.mutate({ privacy: { profileVisibility: e.target.value as Preferences['privacy']['profileVisibility'] } })} className="w-44">

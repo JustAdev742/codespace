@@ -6,6 +6,7 @@ import { getMode, getVariant } from '@ludora/engine';
 import type { AppDeps } from '../../app.ts';
 import { currencies, equipped, friendships, gameParticipants, gameSessions, items, userStats, users } from '../../db/schema.ts';
 import { noStore, requireAuth } from '../../http/context.ts';
+import { isFlagOn } from '../flags/service.ts';
 import { AppError, notFound } from '../../lib/errors.ts';
 import { parse } from '../../lib/validate.ts';
 import { utcDay } from '../../lib/time.ts';
@@ -149,7 +150,8 @@ export async function profileRoutes(app: FastifyInstance, deps: AppDeps) {
     const visibility = prefs.privacy.profileVisibility;
     const full = !blockedByMe && (isSelf || staff || visibility === 'public' || (visibility === 'friends' && isFriend));
     const [avatar, slots] = await Promise.all([loadAvatar(deps.db, u.id), equippedArt(deps, u.id)]);
-    const canRequest = Boolean(viewer && !viewer.user.isGuest && !isSelf && !u.isGuest && !blockedByMe && friendship === 'none' && prefs.privacy.allowFriendRequests === 'everyone');
+    const friendsOn = viewer ? await isFlagOn(deps.db, 'social.friends', viewer) : false;
+    const canRequest = Boolean(friendsOn && viewer && !viewer.user.isGuest && !isSelf && !u.isGuest && !blockedByMe && friendship === 'none' && prefs.privacy.allowFriendRequests === 'everyone');
     const base = { id: u.id, displayName: u.displayName, avatar, equipped: slots, level: levelFromXp(u.xp).level, isFriend, isSelf, friendship, canRequest, blockedByMe, isGuest: u.isGuest, restricted: !full };
     if (!full) return base;
     const [s] = await deps.db.select().from(userStats).where(eq(userStats.userId, u.id)).limit(1);

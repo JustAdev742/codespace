@@ -5,7 +5,8 @@ import { levelFromXp } from '@ludora/shared';
 import type { AppDeps } from '../../app.ts';
 import type { DbOrTx } from '../../db/client.ts';
 import { blocks, classMembers, classes, friendships, gameParticipants, gameSessions, users, userStats } from '../../db/schema.ts';
-import { noStore, requireAccount, requireAuth } from '../../http/context.ts';
+import { noStore, requireAccount, requireAuth, type AuthContext } from '../../http/context.ts';
+import { isFlagOn } from '../flags/service.ts';
 import { AppError, conflict, notFound } from '../../lib/errors.ts';
 import { parse } from '../../lib/validate.ts';
 import { isoWeek, weekStart } from '../../lib/time.ts';
@@ -25,6 +26,7 @@ import { MAX_FRIENDS, blockedEitherWay, pairOf } from './service.ts';
  */
 
 const NOT_ACCEPTING = 'That player is not accepting friend requests right now.';
+const FRIENDS_OFF = 'Friends are switched off at the moment.';
 const idParam = z.object({ id: z.string().uuid() });
 
 async function friendCount(db: DbOrTx, userId: string): Promise<number> {
@@ -41,10 +43,16 @@ function person(u: { id: string; displayName: string; xp: number }, avatar: unkn
 
 export async function socialRoutes(app: FastifyInstance, deps: AppDeps) {
   const { db } = deps;
+  // Staff can switch friends off with the social.friends flag, for example while
+  // dealing with abuse. Blocks keep working whatever the flag says: they are a safety tool.
+  const requireFriendsOn = async (auth: AuthContext) => {
+    if (!(await isFlagOn(db, 'social.friends', auth))) throw new AppError(403, 'not_available', FRIENDS_OFF);
+  };
 
   app.get('/api/friends', async (req, reply) => {
     noStore(reply);
     const auth = requireAccount(req);
+    await requireFriendsOn(auth);
     const me = auth.user.id;
     const rows = await db
       .select()
@@ -73,6 +81,7 @@ export async function socialRoutes(app: FastifyInstance, deps: AppDeps) {
   /** Ask by friend code (always allowed unless they chose nobody), or by account id from a profile (only if they accept requests from everyone). */
   app.post('/api/friends/request', { config: { rateLimit: { max: 30, timeWindow: '1 hour', keyGenerator: (r) => (r.auth ? `friend:${r.auth.user.id}` : r.ip || 'gone') } } }, async (req) => {
     const auth = requireAccount(req);
+    await requireFriendsOn(auth);
     const body = parse(z.object({ friendCode: z.string().trim().toUpperCase().regex(/^[A-Z0-9]{4}-[A-Z0-9]{4}$/, 'Friend codes look like ABCD-1234.').optional(), userId: z.string().uuid().optional() }).refine((b) => Boolean(b.friendCode) !== Boolean(b.userId), 'Enter a friend code.'), req.body);
     const me = auth.user.id;
     const [target] = await db
@@ -106,6 +115,7 @@ export async function socialRoutes(app: FastifyInstance, deps: AppDeps) {
 
   app.post('/api/friends/:id/accept', async (req) => {
     const auth = requireAccount(req);
+    await requireFriendsOn(auth);
     const { id } = parse(idParam, req.params);
     const [a, b] = pairOf(auth.user.id, id);
     return db.transaction(async (tx) => {
@@ -120,6 +130,7 @@ export async function socialRoutes(app: FastifyInstance, deps: AppDeps) {
   /** Remove a friend, cancel your request or decline theirs. */
   app.delete('/api/friends/:id', async (req) => {
     const auth = requireAccount(req);
+    await requireFriendsOn(auth);
     const { id } = parse(idParam, req.params);
     const [a, b] = pairOf(auth.user.id, id);
     await db.delete(friendships).where(and(eq(friendships.userA, a), eq(friendships.userB, b)));
@@ -173,6 +184,7 @@ export async function socialRoutes(app: FastifyInstance, deps: AppDeps) {
     const me = auth.user.id;
     let pool: string[] | null = null;
     if (q.scope === 'friends') {
+      await requireFriendsOn(auth);
       const rows = await db.select().from(friendships).where(and(or(eq(friendships.userA, me), eq(friendships.userB, me)), eq(friendships.status, 'accepted')));
       pool = [me, ...rows.map((r) => (r.userA === me ? r.userB : r.userA))];
     } else if (q.scope === 'class') {

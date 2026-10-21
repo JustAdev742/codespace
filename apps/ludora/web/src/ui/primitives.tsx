@@ -1,4 +1,4 @@
-import { forwardRef, useId, type InputHTMLAttributes, type ReactNode, type SelectHTMLAttributes, type TextareaHTMLAttributes } from 'react';
+import { forwardRef, useId, useLayoutEffect, useRef, type InputHTMLAttributes, type ReactNode, type SelectHTMLAttributes, type TextareaHTMLAttributes } from 'react';
 import { Dialog as RDialog, Switch as RSwitch, Tabs as RTabs, Tooltip as RTooltip } from 'radix-ui';
 import { X } from 'lucide-react';
 import type { Rarity } from '@ludora/shared';
@@ -236,11 +236,26 @@ export const TabPanel = RTabs.Content;
 
 export function Dialog({ open, onOpenChange, title, description, children, footer, size = 'md' }: { open: boolean; onOpenChange: (v: boolean) => void; title: ReactNode; description?: ReactNode; children?: ReactNode; footer?: ReactNode; size?: 'sm' | 'md' | 'lg' }) {
   const w = size === 'sm' ? 'max-w-sm' : size === 'lg' ? 'max-w-2xl' : 'max-w-lg';
+  // These dialogs are opened from code, so there is no trigger for focus to return
+  // to. Remember what had focus when the dialog opened (a layout effect runs before
+  // the dialog moves focus inside) and put it back on close.
+  const returnTo = useRef<HTMLElement | null>(null);
+  useLayoutEffect(() => {
+    if (open) returnTo.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+  }, [open]);
+  const restoreFocus = (e: Event) => {
+    const el = returnTo.current;
+    returnTo.current = null;
+    if (el && el.isConnected) {
+      e.preventDefault();
+      el.focus();
+    }
+  };
   return (
     <RDialog.Root open={open} onOpenChange={onOpenChange}>
       <RDialog.Portal>
         <RDialog.Overlay className="fixed inset-0 z-50 bg-[var(--scrim)] data-[state=open]:animate-[rise-fade_150ms_ease-out]" />
-        <RDialog.Content className={`fixed top-1/2 left-1/2 z-50 max-h-[90dvh] w-[calc(100vw-32px)] ${w} -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-[20px] border border-line bg-raised p-5 shadow-[0_24px_60px_rgb(0_0_0/0.35)] focus:outline-none data-[state=open]:animate-[pop-in_180ms_var(--ease-out)] sm:p-6`}>
+        <RDialog.Content onCloseAutoFocus={restoreFocus} className={`fixed top-1/2 left-1/2 z-50 max-h-[90dvh] w-[calc(100vw-32px)] ${w} -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-[20px] border border-line bg-raised p-5 shadow-[0_24px_60px_rgb(0_0_0/0.35)] focus:outline-none data-[state=open]:animate-[pop-in_180ms_var(--ease-out)] sm:p-6`}>
           <div className="mb-4 flex items-start justify-between gap-4">
             <div>
               <RDialog.Title className="font-display text-xl font-bold text-text">{title}</RDialog.Title>

@@ -18,6 +18,7 @@ import {
   Sparkles,
   Swords,
   Target,
+  Trophy,
   User,
   Users,
   X,
@@ -37,6 +38,8 @@ interface NavItem {
   icon: ReactNode;
   end?: boolean;
   show?: 'signedIn' | 'staff';
+  /** Hidden while this feature flag is off for the viewer. */
+  flag?: string;
 }
 
 const PRIMARY: NavItem[] = [
@@ -53,8 +56,9 @@ const COLLECT: NavItem[] = [
   { to: '/quests', label: 'Quests', icon: <Target className="size-5" />, show: 'signedIn' },
 ];
 const SOCIAL: NavItem[] = [
-  { to: '/friends', label: 'Friends', icon: <Users className="size-5" />, show: 'signedIn' },
+  { to: '/friends', label: 'Friends', icon: <Users className="size-5" />, show: 'signedIn', flag: 'social.friends' },
   { to: '/classes', label: 'Classes', icon: <School className="size-5" />, show: 'signedIn' },
+  { to: '/leaderboards', label: 'Leaderboards', icon: <Trophy className="size-5" />, show: 'signedIn' },
   { to: '/staff', label: 'Staff', icon: <Shield className="size-5" />, show: 'staff' },
 ];
 
@@ -89,7 +93,8 @@ function NavGroups({ onNavigate }: { onNavigate?: () => void }) {
   const me = useMe();
   const signedIn = Boolean(me.data?.user);
   const staff = Boolean(me.data?.permissions.includes('staff.access'));
-  const visible = (i: NavItem) => !i.show || (i.show === 'signedIn' ? signedIn : staff);
+  const flagOn = (key?: string) => !key || me.data?.flags?.[key] !== false;
+  const visible = (i: NavItem) => flagOn(i.flag) && (!i.show || (i.show === 'signedIn' ? signedIn : staff));
   const groups: [string | null, NavItem[]][] = [
     [null, PRIMARY],
     ['Collect', COLLECT.filter(visible)],

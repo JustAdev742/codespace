@@ -85,6 +85,7 @@ export const router = createBrowserRouter([
           { path: 'friends', lazy: page(() => import('../features/social/Friends.tsx')) },
           { path: 'classes', lazy: page(() => import('../features/classes/Classes.tsx')) },
           { path: 'classes/:id', lazy: page(() => import('../features/classes/ClassDetail.tsx')) },
+          { path: 'leaderboards', lazy: page(() => import('../features/social/Leaderboards.tsx')) },
           { path: 'settings', lazy: page(() => import('../features/settings/Settings.tsx')) },
           { path: 'staff/*', lazy: page(() => import('../features/admin/StaffApp.tsx')) },
           { path: '*', lazy: page(() => import('../features/errors/NotFound.tsx')) },
