@@ -1,6 +1,8 @@
 import { Check, X } from 'lucide-react';
 import type { AnswerReveal, PublicQuestion } from '@ludora/shared';
 import { ChoiceTile } from './AnswerInput.tsx';
+import { Burst } from '../../../art/bursts.tsx';
+import { useOverview } from '../../../lib/queries.ts';
 
 /** The choices of a live question with nothing marked, for the host screen while answers are open. */
 export function ChoicesDisplay({ q }: { q: PublicQuestion }) {
@@ -88,10 +90,13 @@ export function RevealAnswer({ q, reveal, mine, distribution, compact }: { q: Pu
 }
 
 export function ResultBanner({ correct, partial, points, text }: { correct: boolean | null; partial?: number | null; points?: number | null; text?: string | undefined }) {
+  const overview = useOverview();
+  const effect = overview.data?.equipped.effect?.art;
   if (correct === null) return null;
   const part = !correct && partial && partial > 0;
   return (
-    <div role="status" className={`flex items-center gap-3 rounded-[16px] border-2 border-ink px-4 py-3 font-display text-xl font-bold text-on-accent ${correct ? 'bg-glim' : part ? 'bg-lantern' : 'bg-ember'}`} style={{ animation: 'pop-in 220ms var(--ease-spring)' }}>
+    <div role="status" className={`relative flex items-center gap-3 rounded-[16px] border-2 border-ink px-4 py-3 font-display text-xl font-bold text-on-accent ${correct ? 'bg-glim' : part ? 'bg-lantern' : 'bg-ember'}`} style={{ animation: 'pop-in 220ms var(--ease-spring)' }}>
+      {correct && effect?.kind === 'effect' ? <Burst style={effect.style} hue={effect.hue} size={180} /> : null}
       {correct ? <Check className="size-7" /> : <X className="size-7" />}
       <span className="flex-1">{correct ? 'Correct!' : part ? `Partly right (${Math.round(partial! * 100)}%)` : 'Not this time'}</span>
       {points ? <span className="tabular">+{points.toLocaleString('en-GB')}</span> : null}

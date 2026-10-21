@@ -151,15 +151,23 @@ export const LANTERN_PATTERNS = ['plain', 'waves', 'stars', 'leaves', 'flames', 
 export const lanternArtSchema = z.object({ hue, accentHue: hue, pattern: z.enum(LANTERN_PATTERNS) });
 export type LanternArt = z.infer<typeof lanternArtSchema>;
 
-/** Drop table for a Lantern: rarity weights plus the item pool. */
-export const dropTableSchema = z.object({
-  /** Relative weights per rarity. Missing rarities never drop. */
-  weights: z.partialRecord(z.enum(RARITIES), z.number().int().min(0).max(1_000_000)),
-  /** Items that can drop. Each is drawn uniformly within its rarity. */
-  itemIds: z.array(z.string().min(1).max(64)).min(1).max(500),
-  /** Opening this many Lanterns without an epic-or-better guarantees one. 0 disables. */
-  pityEvery: z.number().int().min(0).max(200).default(0),
-});
+/**
+ * Drop table for a Lantern: rarity weights plus where items come from.
+ * Collections are resolved when the Lantern is opened, so Glims an admin
+ * adds to a collection drop straight away. '*' means every collection.
+ */
+export const dropTableSchema = z
+  .object({
+    /** Relative weights per rarity. Rarities with no available items are skipped and the rest rescaled. */
+    weights: z.partialRecord(z.enum(RARITIES), z.number().int().min(0).max(1_000_000)),
+    itemIds: z.array(z.string().min(1).max(64)).max(500).default([]),
+    collectionIds: z.array(z.string().min(1).max(64)).max(50).default([]),
+    /** Only items at or above this rarity count from collections. */
+    minRarity: z.enum(RARITIES).optional(),
+    /** Opening this many Lanterns without an epic-or-better guarantees one. 0 disables. */
+    pityEvery: z.number().int().min(0).max(200).default(0),
+  })
+  .refine((t) => t.itemIds.length > 0 || t.collectionIds.length > 0, 'A Lantern needs at least one item or collection.');
 export type DropTable = z.infer<typeof dropTableSchema>;
 
 export const SHOP_SECTIONS = [

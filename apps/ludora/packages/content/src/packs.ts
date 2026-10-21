@@ -25,32 +25,34 @@ const LANTERN_LOOK: Record<string, Pick<LanternArt, 'pattern'> & { price: number
 };
 
 export function buildPacks(collections: readonly SeedCollection[], glims: readonly SeedItem[]): SeedPack[] {
-  const packs: SeedPack[] = collections.map((c, i) => {
+  const packs = collections.map((c, i) => {
     const look = LANTERN_LOOK[c.id] ?? { pattern: 'plain' as const, price: 150 };
-    const itemIds = glims.filter((g) => g.collectionId === c.id && (g.releaseState ?? 'live') === 'live').map((g) => g.id);
+    const hasItems = glims.some((g) => g.collectionId === c.id && (g.releaseState ?? 'live') === 'live');
     return {
+      hasItems,
       id: `lantern-${c.id}`,
       name: c.name.replace(/ Glims$/, ' Lantern'),
       description: `Holds one Glim from the ${c.name} collection.`,
       art: { hue: c.hue, accentHue: (c.hue + 40) % 360, pattern: look.pattern },
       priceCurrency: 'sparks',
       priceAmount: look.price,
-      dropTable: { weights: STANDARD_WEIGHTS, itemIds, pityEvery: 15 },
+      dropTable: { weights: STANDARD_WEIGHTS, itemIds: [], collectionIds: [c.id], pityEvery: 15 },
       sort: i + 1,
     };
   });
-  const rareAndUp = glims.filter((g) => ['rare', 'epic', 'legendary', 'mythic'].includes(g.rarity) && (g.releaseState ?? 'live') === 'live').map((g) => g.id);
-  if (rareAndUp.length) {
-    packs.push({
+  const rareAndUp = glims.some((g) => ['rare', 'epic', 'legendary', 'mythic'].includes(g.rarity) && (g.releaseState ?? 'live') === 'live');
+  const result: SeedPack[] = packs.filter((p) => p.hasItems).map(({ hasItems: _h, ...p }) => p);
+  if (rareAndUp) {
+    result.push({
       id: 'lantern-moonlit',
       name: 'Moonlit Lantern',
       description: 'Always rare or better, from any collection.',
       art: { hue: 255, accentHue: 45, pattern: 'moons' },
       priceCurrency: 'moonstones',
       priceAmount: 20,
-      dropTable: { weights: MOONLIT_WEIGHTS, itemIds: rareAndUp, pityEvery: 0 },
+      dropTable: { weights: MOONLIT_WEIGHTS, itemIds: [], collectionIds: ['*'], minRarity: 'rare', pityEvery: 0 },
       sort: 100,
     });
   }
-  return packs.filter((p) => p.dropTable.itemIds.length > 0);
+  return result;
 }

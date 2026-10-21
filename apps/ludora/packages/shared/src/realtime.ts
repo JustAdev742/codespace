@@ -93,6 +93,8 @@ export type RoomStatus = 'lobby' | 'running' | 'paused' | 'ended' | 'closed';
 export interface AvatarLite {
   art: GlimArt;
   accessories?: AccessoryArt[];
+  /** Equipped victory effect, played on the podium when this player wins. */
+  victory?: { style: string; hue: number };
 }
 
 export interface TeamView {

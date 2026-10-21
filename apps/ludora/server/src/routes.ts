@@ -5,6 +5,7 @@ import { modeRoutes } from './modules/modes/routes.ts';
 import { setRoutes } from './modules/sets/routes.ts';
 import { progressionRoutes } from './modules/progression/routes.ts';
 import { systemRoutes } from './modules/system/routes.ts';
+import { shopRoutes } from './modules/shop/routes.ts';
 
 /** Every HTTP route module, in registration order. Auth and health are registered by buildApp itself. */
-export const allRoutes: RouteModule[] = [roomRoutes, profileRoutes, modeRoutes, setRoutes, progressionRoutes, systemRoutes];
+export const allRoutes: RouteModule[] = [roomRoutes, profileRoutes, modeRoutes, setRoutes, progressionRoutes, systemRoutes, shopRoutes];

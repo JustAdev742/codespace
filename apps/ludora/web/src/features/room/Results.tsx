@@ -10,6 +10,7 @@ import { Button, buttonClass } from '../../ui/Button.tsx';
 import { duration, formatNumber, ordinal } from '../../lib/format.ts';
 import { TeamScores } from './game/Leaderboard.tsx';
 import { prefersReducedMotion } from '../../lib/prefs.ts';
+import { Burst } from '../../art/bursts.tsx';
 
 function Podium({ room }: { room: RoomView }) {
   const top = room.results!.standings.slice(0, 3);
@@ -23,7 +24,10 @@ function Podium({ room }: { room: RoomView }) {
         const a = avatar(s!.playerId);
         return (
           <div key={s!.playerId} className="flex w-28 flex-col items-center gap-2 sm:w-36" style={{ animation: prefersReducedMotion() ? undefined : `rise-fade 500ms ${pos === 1 ? 300 : pos === 0 ? 150 : 0}ms both var(--ease-out)` }}>
-            {a ? <Glim art={a.art} accessories={a.accessories} size={s === top[0] ? 96 : 76} aura={s === top[0] ? 'legendary' : null} bob={s === top[0]} /> : null}
+            <div className="relative">
+              {a ? <Glim art={a.art} accessories={a.accessories} size={s === top[0] ? 96 : 76} aura={s === top[0] ? 'legendary' : null} bob={s === top[0]} /> : null}
+              {s === top[0] && a?.victory ? <Burst style={a.victory.style} hue={a.victory.hue} size={200} rise /> : null}
+            </div>
             <span className="max-w-full truncate text-center font-semibold">{s!.name}</span>
             <span className="text-sm text-text-2 tabular">{s!.label}</span>
             <div className={`flex w-full items-start justify-center rounded-t-[14px] border-2 border-b-0 border-ink pt-2 font-display text-3xl font-extrabold text-on-accent ${heights[pos]}`} style={{ background: pos === 1 ? 'var(--lantern)' : pos === 0 ? 'var(--tile-b)' : 'var(--tile-d)' }}>

@@ -42,7 +42,7 @@ export function roomCode(): string {
   return String(randomInt(100000, 1000000));
 }
 
-/** Crypto-random float in [0, 1) for server-side reward rolls. */
+/** Crypto-random float in [0, 1) for server-side reward rolls (48 bits of randomness). */
 export function secureRandom(): number {
-  return randomInt(0, 2 ** 48) / 2 ** 48;
+  return randomBytes(6).readUIntBE(0, 6) / 2 ** 48;
 }

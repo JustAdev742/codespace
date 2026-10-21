@@ -47,7 +47,7 @@ export interface SeedOptions {
 export async function seedContent(db: Db, opts: SeedOptions = {}): Promise<{ inserted: Record<string, number> }> {
   const force = opts.force ?? false;
   const inserted: Record<string, number> = {};
-  const count = (k: string, rows: unknown[]) => (inserted[k] = rows.length);
+  const count = (k: string, rows: unknown[]) => (inserted[k] = (inserted[k] ?? 0) + rows.length);
 
   await db.transaction(async (tx) => {
     for (const c of CURRENCIES) {
