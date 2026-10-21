@@ -8,6 +8,7 @@ import { noStore, requireAccount, requireAuth, requirePermission } from '../../h
 import { AppError, conflict, forbidden, notFound } from '../../lib/errors.ts';
 import { parse } from '../../lib/validate.ts';
 import { canEdit, canView, loadSet, type SetRow } from './access.ts';
+import { assertUploadsUsable } from '../uploads/service.ts';
 import { withOperation } from '../economy/service.ts';
 import { checkAchievements } from '../progression/achievements.ts';
 
@@ -110,6 +111,7 @@ export async function setRoutes(app: FastifyInstance, deps: AppDeps) {
     requireAccount(req);
     const body = parse(questionSetInputSchema, req.body);
     checkVisibility(body.visibility, auth);
+    await assertUploadsUsable(deps.db, body.questions);
     const [owned] = (await deps.db.select({ n: sql<number>`count(*)::int` }).from(questionSets).where(eq(questionSets.ownerId, auth.user.id))) as [{ n: number }];
     if (owned.n >= 500) throw new AppError(409, 'conflict', 'You have reached the limit of 500 sets. Delete some you no longer use.');
     const [row] = await deps.db
@@ -132,6 +134,7 @@ export async function setRoutes(app: FastifyInstance, deps: AppDeps) {
     if (!canEdit(set, auth)) throw forbidden('Only the owner can edit this set. Make a copy to change it.');
     const body = parse(questionSetInputSchema, req.body);
     if (body.visibility !== set.visibility) checkVisibility(body.visibility, auth);
+    await assertUploadsUsable(deps.db, body.questions);
     const [row] = await deps.db
       .update(questionSets)
       .set({ title: body.title, description: body.description, subject: body.subject, gradeBand: body.gradeBand ?? null, language: body.language, tags: body.tags, visibility: body.visibility, cover: body.cover ?? null, questions: body.questions, questionCount: body.questions.length, updatedAt: new Date() })

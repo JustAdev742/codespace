@@ -163,10 +163,12 @@ unlit oil and launching only on a gust removed all the risk the mode is about.
 
 ## Deferred, on purpose
 
-**D28. Image uploads are not built yet.** Question images may only come from
-Ludora's own upload store, never arbitrary URLs (the content security policy
-also blocks external images). Until uploads exist, new sets have no images, and
-existing image fields are preserved when a set is edited.
+**D28. Question images come only from Ludora's own upload store.** Never
+arbitrary URLs: the content security policy blocks external images too.
+Uploads are checked without an image library (format from the bytes,
+dimensions from the header, metadata stripped by rewriting segments), which
+keeps native dependencies out of the server. Uploaded images are served for a
+day at a time, not forever, so an image moderators hide stops showing soon.
 
 ## Classrooms and originality
 

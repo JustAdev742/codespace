@@ -620,6 +620,27 @@ export const moderationActions = pgTable(
   (t) => [index('moderation_target_idx').on(t.targetUserId, t.createdAt)],
 );
 
+/**
+ * Images people upload for their questions. Files live in UPLOAD_DIR under a
+ * random name; this table says who uploaded them and whether staff hid them.
+ */
+export const uploads = pgTable(
+  'uploads',
+  {
+    id: text('id').primaryKey(),
+    ownerId: uuid('owner_id').references(() => users.id, { onDelete: 'set null' }),
+    mime: text('mime').notNull(),
+    bytes: integer('bytes').notNull(),
+    width: integer('width').notNull(),
+    height: integer('height').notNull(),
+    sha256: text('sha256').notNull(),
+    createdAt: now('created_at'),
+    hiddenAt: ts('hidden_at'),
+    hiddenBy: uuid('hidden_by').references(() => users.id, { onDelete: 'set null' }),
+  },
+  (t) => [index('uploads_owner_idx').on(t.ownerId, t.createdAt), check('uploads_mime_valid', sql`${t.mime} in ('image/png','image/jpeg','image/gif','image/webp')`)],
+);
+
 export const auditLog = pgTable(
   'audit_log',
   {

@@ -4,7 +4,8 @@ import { DIFFICULTIES, QUESTION_TYPE_LABELS, QUESTION_TYPES, type QuestionType }
 import { IconButton } from '../../../ui/Button.tsx';
 import { Input, Select, Textarea } from '../../../ui/primitives.tsx';
 import { answerSummary, LIMITS, splitTags, type DraftQuestion } from './model.ts';
-import { domIds, EditorField, ERROR_BORDER, ERROR_TEXT, MediaNote, promptLabel, TYPE_ICONS, type TypeEditorProps } from './parts.tsx';
+import { domIds, EditorField, ERROR_BORDER, ERROR_TEXT, promptLabel, TYPE_ICONS, type TypeEditorProps } from './parts.tsx';
+import { QuestionImage } from './QuestionImage.tsx';
 import type { EditorAction } from './state.ts';
 import type { FieldErrors } from './validation.ts';
 import { ChoicesEditor } from './types/ChoicesEditor.tsx';
@@ -202,7 +203,17 @@ export const QuestionCard = memo(function QuestionCard({ question: q, index, tot
               )}
             </EditorField>
           </div>
-          {q.media ? <MediaNote media={q.media} id={domIds.field(q.id, 'media-alt')} label="Image description" error={errors.media} onAltChange={(alt) => edit((d) => (d.media ? { ...d, media: { ...d.media, alt } } : d))} /> : null}
+          <QuestionImage
+            media={q.media}
+            altId={domIds.field(q.id, 'media-alt')}
+            altError={errors.media}
+            onChange={(media) =>
+              edit((d) => {
+                const { media: _old, ...rest } = d;
+                return media ? { ...rest, media } : rest;
+              })
+            }
+          />
           <TypeEditor q={q} errors={errors} edit={edit} />
           <MoreOptions q={q} errors={errors} edit={edit} />
         </div>

@@ -7,5 +7,7 @@ coverage/
 *.log
 test-results/
 playwright-report/
-uploads/
+# Uploaded images (UPLOAD_DIR), wherever the server was started from. Not src/modules/uploads.
+/uploads/
+/server/uploads/
 .vite/

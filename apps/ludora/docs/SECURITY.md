@@ -49,6 +49,13 @@ a security problem privately to the maintainers rather than in a public issue.
   per IP because whole classes join at once; sweeping every 6-digit code from
   one IP would take about three days, and hosts can lock a room or require
   accounts (`server/src/http/limits.ts`, D29).
+- **Uploads**: images only (PNG, JPEG, GIF, WebP), identified from their first
+  bytes, never from the file name or declared type, so SVG and HTML cannot get
+  in; at most 2 MB and 4000 pixels a side; EXIF, XMP, IPTC and text metadata
+  (GPS positions included) removed before storing; random 128-bit names;
+  served with `nosniff` and `Content-Security-Policy: default-src 'none';
+  sandbox`. Question sets may only reference uploads that exist and are not
+  hidden by moderators (`server/src/modules/uploads`).
 - **Headers**: a strict Content Security Policy (scripts from self only, no
   inline scripts, no framing, images from self and data/blob only), HSTS in
   production, `nosniff`.
@@ -122,6 +129,7 @@ a security problem privately to the maintainers rather than in a public issue.
 ## Known limits
 
 - One API process holds live rooms; see DEPLOYMENT.md for scaling notes.
-- Image uploads are not built; question images are restricted to Ludora's own
-  upload path by schema and by the content security policy.
+- Uploaded images are checked from their bytes and their header only; there is
+  no image library re-encoding them. Browsers decode them sandboxed, and the
+  dimension cap keeps decoding cheap.
 - No email delivery yet, so no email verification.

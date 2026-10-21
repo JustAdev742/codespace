@@ -80,6 +80,14 @@ Last updated: 2026-10-21.
   keyboard reordering, an error summary that links to each field, and a copy
   flow for other people's sets. 157 browser checks and an axe check in six
   states passed.
+- **Question images**: authors upload PNG, JPEG, GIF or WebP up to 2 MB in the
+  set editor, with a preview, a description for players who cannot see it,
+  replace and remove. The server identifies the format from the file's bytes
+  (an SVG or HTML file named .png is refused), caps dimensions at 4000 pixels,
+  strips location and camera metadata, stores files under random names and
+  serves them with a sandboxing policy. Sets may only use real, visible
+  uploads; moderators can hide one. Upload, save and play were driven in a real
+  browser; metadata stripping was checked by decoding the results in Chromium.
 - **End-to-end tests** (`e2e/`, Playwright against the production build and a
   fresh database, locally and in CI): a host and a guest play Classic from join code to results;
   a new player buys and opens a Lantern; a staff warning reaches the player and
@@ -95,7 +103,7 @@ creates and drops its own database).
 |---|---|---|
 | content | 2 | catalogue integrity and every built-in question set |
 | engine | 8 | 373, including the conformance suite for every mode and variant |
-| server | 6 | auth and rate limits, realtime, economy (20), staff (53), social and classes (13), reward counting |
+| server | 7 | auth and rate limits, realtime, economy (20), staff (54), social and classes (16), uploads (6), reward counting |
 | shared | 0 | no tests of its own; its schemas are exercised by the other projects |
 | **Total** | **16** | **594 passing** at the last full run |
 
@@ -113,9 +121,6 @@ Being built now:
 - More honestly labelled mode variants.
 
 Not built yet:
-- **Image uploads.** Questions accept images only from Ludora's own upload
-  store (`/uploads/...`), and there is no upload endpoint yet, so new sets have
-  no images. Existing image fields are kept when a set is edited.
 - **AI question drafts.** The `ai.question_drafts` flag and the
   `ANTHROPIC_API_KEY` setting exist; the feature does not.
 - **Email.** An outbox table exists; nothing sends email yet, so there is no
