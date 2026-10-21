@@ -1,0 +1,256 @@
+/*
+ * Motion and finishes for the home and collecting pages (home, shop, collection,
+ * locker, quests, modes, auth). The global rules in app.css already cut every
+ * animation and transition under reduced motion; the block at the end also
+ * drops the entrance delays there, so nothing waits invisible before appearing.
+ */
+
+/* The landing hero's one entrance: Glims pop up from behind the hill. */
+@keyframes fx-pop-up {
+  0% {
+    transform: translateY(38%) scale(0.7);
+    opacity: 0;
+  }
+  55% {
+    transform: translateY(-6%) scale(1.04);
+    opacity: 1;
+  }
+  78% {
+    transform: translateY(2%) scale(0.98);
+  }
+  100% {
+    transform: none;
+    opacity: 1;
+  }
+}
+
+/* A Lantern lowered on its cord, swinging to rest. */
+@keyframes fx-lower {
+  0% {
+    transform: translateY(-70%) rotate(-7deg);
+    opacity: 0;
+  }
+  45% {
+    transform: translateY(4%) rotate(5deg);
+    opacity: 1;
+  }
+  70% {
+    transform: translateY(-1%) rotate(-2.5deg);
+  }
+  100% {
+    transform: none;
+    opacity: 1;
+  }
+}
+
+@keyframes fx-sway {
+  0%,
+  100% {
+    transform: rotate(-2.5deg);
+  }
+  50% {
+    transform: rotate(2.5deg);
+  }
+}
+
+@keyframes fx-shake {
+  0%,
+  100% {
+    transform: rotate(0);
+  }
+  20% {
+    transform: rotate(-5deg);
+  }
+  40% {
+    transform: rotate(4deg);
+  }
+  60% {
+    transform: rotate(-3deg);
+  }
+  80% {
+    transform: rotate(2deg);
+  }
+}
+
+/* The light inside a Lantern building up before it opens. */
+@keyframes fx-build {
+  0% {
+    transform: scale(0.55);
+    opacity: 0.35;
+  }
+  100% {
+    transform: scale(1.2);
+    opacity: 1;
+  }
+}
+
+@keyframes fx-flicker {
+  0%,
+  100% {
+    opacity: 0.7;
+    transform: scale(0.94);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.06);
+  }
+}
+
+/* Motes of light rising off the Lantern. */
+@keyframes fx-mote {
+  0% {
+    transform: translate(0, 0) scale(0.6);
+    opacity: 0;
+  }
+  20% {
+    opacity: 1;
+  }
+  100% {
+    transform: translate(var(--mx, 0px), -150px) scale(1);
+    opacity: 0;
+  }
+}
+
+/* The cap lifting off as the Lantern opens. */
+@keyframes fx-cap-off {
+  0% {
+    transform: none;
+  }
+  100% {
+    transform: translate(18%, -260%) rotate(28deg);
+    opacity: 0;
+  }
+}
+
+/* The Lantern itself giving way to the light. */
+@keyframes fx-lantern-out {
+  0% {
+    transform: scale(1);
+    opacity: 1;
+    filter: brightness(1);
+  }
+  60% {
+    transform: scale(1.12);
+    opacity: 1;
+    filter: brightness(1.8);
+  }
+  100% {
+    transform: scale(1.3);
+    opacity: 0;
+    filter: brightness(2.4);
+  }
+}
+
+@keyframes fx-flash {
+  0% {
+    transform: scale(0.15);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(2.6);
+    opacity: 0;
+  }
+}
+
+/* The Glim springing out of the light. */
+@keyframes fx-reveal {
+  0% {
+    transform: translateY(16%) scale(0.35);
+    opacity: 0;
+  }
+  45% {
+    transform: translateY(-5%) scale(1.08);
+    opacity: 1;
+  }
+  70% {
+    transform: translateY(1%) scale(0.97);
+  }
+  100% {
+    transform: none;
+    opacity: 1;
+  }
+}
+
+@keyframes fx-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes fx-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes fx-stamp {
+  0% {
+    transform: scale(1.6) rotate(-8deg);
+    opacity: 0;
+  }
+  60% {
+    transform: scale(0.94) rotate(-3deg);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1) rotate(-3deg);
+    opacity: 1;
+  }
+}
+
+.fx-pop-up {
+  animation: fx-pop-up 760ms var(--ease-out) both;
+}
+.fx-lower {
+  transform-origin: 50% 0;
+  animation: fx-lower 1100ms var(--ease-out) both;
+}
+.fx-sway {
+  transform-origin: 50% 0;
+  animation: fx-sway 3.6s ease-in-out infinite;
+}
+
+/* Collectible card hover: a small lift, felt rather than seen. */
+.fx-lift {
+  transition:
+    transform 160ms var(--ease-out),
+    box-shadow 160ms var(--ease-out);
+}
+.fx-lift:hover {
+  transform: translateY(-3px);
+}
+.fx-lift:active {
+  transform: translateY(1px);
+}
+
+/* Mythic finish: the shimmer used by the mythic rarity, as a border. */
+.fx-mythic-frame {
+  border-color: transparent !important;
+  background:
+    linear-gradient(var(--card-bg, var(--bg-raised)), var(--card-bg, var(--bg-raised))) padding-box,
+    linear-gradient(110deg, #ff5fa2, #ffb020, #33d6a6, #47b5ff, #a58dff, #ff5fa2) border-box;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root:not([data-motion='on']) .fx-pop-up,
+  :root:not([data-motion='on']) .fx-lower,
+  :root:not([data-motion='on']) [data-fx-delay] {
+    animation-delay: 0s !important;
+  }
+  :root:not([data-motion='on']) .fx-lift:hover,
+  :root:not([data-motion='on']) .fx-lift:active {
+    transform: none;
+  }
+}
+:root[data-motion='off'] .fx-pop-up,
+:root[data-motion='off'] .fx-lower,
+:root[data-motion='off'] [data-fx-delay] {
+  animation-delay: 0s !important;
+}
+:root[data-motion='off'] .fx-lift:hover,
+:root[data-motion='off'] .fx-lift:active {
+  transform: none;
+}

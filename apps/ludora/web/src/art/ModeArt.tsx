@@ -2,8 +2,9 @@ import { memo } from 'react';
 import type { ModeThumbnail } from '@ludora/shared';
 
 /*
- * Mode thumbnails: a flat coloured card, a soft pattern in the accent hue
- * and one bold glyph. Glyphs are drawn in a 48 x 48 box.
+ * Mode thumbnails: every mode is a stall at the festival. A striped awning in
+ * the mode's colours, a counter, and the mode's glyph as a die-cut sticker
+ * (white border, hard shadow). Glyphs are drawn in a 48 x 48 box.
  */
 
 const G: Record<string, string> = {
@@ -30,7 +31,7 @@ const G: Record<string, string> = {
   sword: 'M38 4L44 4L44 10L20 34L14 28ZM12 30L18 36M8 34L14 40M10 42A2 2 0 1 0 10.1 42Z',
   shield: 'M24 4L40 10V22C40 32 33 40 24 44C15 40 8 32 8 22V10Z',
   rocket: 'M24 4C32 10 36 18 34 30H14C12 18 16 10 24 4ZM14 30L8 40L16 36M34 30L40 40L32 36M24 18A4 4 0 1 0 24.1 18Z',
-  lantern: 'M18 6H30M20 6V10M28 6V10M12 18C12 12 17 10 24 10C31 10 36 12 36 18V32C36 38 31 42 24 42C17 42 12 38 12 32Z',
+  lantern: 'M18 7H30L32 13H16ZM12 22C12 15 17 13 24 13C31 13 36 15 36 22V33C36 40 31 42 24 42C17 42 12 40 12 33ZM19 41H29L27 46H21Z',
   brain: 'M24 8C20 4 10 6 10 14C4 16 4 26 10 28C8 36 16 42 24 38C32 42 40 36 38 28C44 26 44 16 38 14C38 6 28 4 24 8ZM24 8V38',
   globe: 'M24 4A20 20 0 1 1 23.9 4ZM4 24H44M24 4C16 12 16 36 24 44M24 4C32 12 32 36 24 44',
   numbers: 'M10 14L16 10V38M24 16C24 10 36 10 36 16C36 22 24 28 24 38H38',
@@ -60,6 +61,13 @@ const G: Record<string, string> = {
   spark: 'M24 2C26 14 34 22 46 24C34 26 26 34 24 46C22 34 14 26 2 24C14 22 22 14 24 2Z',
 };
 
+/** Ink detail drawn over a filled glyph: lantern ribs, the lid of a chest. */
+const DETAIL: Record<string, string> = {
+  lantern: 'M24 2V7M18.5 13.5C16.5 22 16.5 33 18.5 41.5M29.5 13.5C31.5 22 31.5 33 29.5 41.5',
+  chest: 'M6 26H42',
+  potion: 'M12 28H36',
+};
+
 const FILLED = new Set(['bolt', 'heart', 'crown', 'castle', 'shield', 'chest', 'mountain', 'tree', 'spark', 'puzzle', 'ghost', 'potion', 'trophy', 'lantern', 'rocket', 'mask', 'fish', 'flag']);
 
 export const MODE_GLYPHS = Object.keys(G);
@@ -70,25 +78,61 @@ export function ModeGlyph({ glyph, size = 48, color = 'currentColor', className 
   return (
     <svg width={size} height={size} viewBox="0 0 48 48" className={className} aria-hidden focusable={false}>
       <path d={d} fill={filled ? color : 'none'} stroke={filled ? 'var(--ink)' : color} strokeWidth={filled ? 2.5 : 4} strokeLinecap="round" strokeLinejoin="round" />
+      {DETAIL[glyph] ? <path d={DETAIL[glyph]} fill="none" stroke="var(--ink)" strokeWidth={2} strokeLinecap="round" /> : null}
     </svg>
   );
 }
 
+const INK = '#1d1846';
+const SPARKLE = 'M0 -5Q0.9 -0.9 5 0Q0.9 0.9 0 5Q-0.9 0.9 -5 0Q-0.9 -0.9 0 -5Z';
+
 export const ModeArt = memo(function ModeArt({ thumb, className, label }: { thumb: ModeThumbnail; className?: string; label?: string }) {
   const bg = `hsl(${thumb.hue} 72% 58%)`;
-  const deep = `hsl(${thumb.hue} 60% 42%)`;
-  const accent = `hsl(${thumb.accentHue} 90% 72%)`;
+  const counter = `hsl(${thumb.hue} 62% 44%)`;
+  const counterTop = `hsl(${thumb.hue} 70% 66%)`;
+  const stripe = `hsl(${thumb.accentHue} 92% 74%)`;
+  const glyphFill = `hsl(${thumb.accentHue} 95% 70%)`;
   const d = G[thumb.glyph] ?? G.spark!;
+  const detail = DETAIL[thumb.glyph];
   const filled = FILLED.has(thumb.glyph);
+  // Ten awning stripes, each ending in a scallop.
+  const stripes = Array.from({ length: 10 }, (_, i) => i);
   return (
-    <svg viewBox="0 0 160 100" className={className} role={label ? 'img' : undefined} aria-label={label} aria-hidden={label ? undefined : true} preserveAspectRatio="xMidYMid slice">
+    <svg viewBox="0 0 160 100" className={className} role={label ? 'img' : undefined} aria-label={label} aria-hidden={label ? undefined : true} preserveAspectRatio="xMidYMid slice" focusable={false}>
       <rect width="160" height="100" fill={bg} />
-      <circle cx="132" cy="18" r="34" fill={accent} opacity={0.35} />
-      <circle cx="22" cy="92" r="26" fill={deep} opacity={0.4} />
-      <circle cx="148" cy="88" r="9" fill={accent} opacity={0.5} />
-      <g transform="translate(56 26) scale(1)">
-        <path d={d} transform="translate(2 3)" fill={filled ? 'rgb(11 9 34 / 0.35)' : 'none'} stroke={filled ? 'none' : 'rgb(11 9 34 / 0.35)'} strokeWidth={4} strokeLinecap="round" strokeLinejoin="round" />
-        <path d={d} fill={filled ? '#fff' : 'none'} stroke={filled ? '#0b0922' : '#fff'} strokeWidth={filled ? 2.6 : 4.4} strokeLinecap="round" strokeLinejoin="round" />
+      {/* Light falling from the awning */}
+      <path d="M18 20H142L156 100H4Z" fill="#fff" opacity={0.1} />
+      {/* Counter */}
+      <rect x="-2" y="80" width="164" height="22" fill={counter} />
+      <rect x="-2" y="78" width="164" height="5" fill={counterTop} />
+      <path d="M-2 80.5H162" stroke={INK} strokeWidth="1.6" opacity={0.55} />
+      {/* Sparkles */}
+      <g fill="#fff">
+        <path d={SPARKLE} transform="translate(24 46) scale(1.1)" />
+        <path d={SPARKLE} transform="translate(138 40) scale(0.8)" />
+        <path d={SPARKLE} transform="translate(126 66) scale(0.6)" opacity={0.85} />
+      </g>
+      {/* The glyph as a die-cut sticker standing on the counter */}
+      <g transform="translate(56 30) rotate(-5 24 24)">
+        <g transform="translate(1.5 4)" opacity={0.3}>
+          <path d={d} fill={filled ? INK : 'none'} stroke={INK} strokeWidth={filled ? 9 : 13} strokeLinecap="round" strokeLinejoin="round" />
+        </g>
+        <path d={d} fill={filled ? '#fff' : 'none'} stroke="#fff" strokeWidth={filled ? 9 : 13} strokeLinecap="round" strokeLinejoin="round" />
+        {filled ? (
+          <>
+            <path d={d} fill={glyphFill} stroke={INK} strokeWidth={2.6} strokeLinecap="round" strokeLinejoin="round" />
+            {detail ? <path d={detail} fill="none" stroke={INK} strokeWidth={2.2} strokeLinecap="round" /> : null}
+          </>
+        ) : (
+          <path d={d} fill="none" stroke={INK} strokeWidth={4.6} strokeLinecap="round" strokeLinejoin="round" />
+        )}
+      </g>
+      {/* Awning */}
+      <g>
+        {stripes.map((i) => (
+          <path key={i} d={`M${i * 16} 0H${i * 16 + 16}V14A8 8 0 0 1 ${i * 16} 14Z`} fill={i % 2 ? stripe : '#fff'} />
+        ))}
+        <path d={stripes.map((i) => `${i ? '' : 'M0 14'}A8 8 0 0 0 ${i * 16 + 16} 14`).join('')} fill="none" stroke={INK} strokeWidth="1.6" opacity={0.7} />
       </g>
     </svg>
   );

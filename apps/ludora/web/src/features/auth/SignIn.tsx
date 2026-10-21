@@ -74,7 +74,7 @@ export default function SignIn() {
           Forgot your password?
         </Link>
       </form>
-      <div className="my-6 flex items-center gap-3 text-xs text-text-3">
+      <div className="my-6 flex items-center gap-3 text-sm text-text-3">
         <span className="h-px flex-1 bg-line" />
         or
         <span className="h-px flex-1 bg-line" />
@@ -82,7 +82,7 @@ export default function SignIn() {
       <Button size="lg" className="w-full" onClick={guest} loading={busy === 'guest'}>
         Play as a guest
       </Button>
-      <p className="mt-2 text-center text-xs text-text-3">Joining a game with a code needs no account at all.</p>
+      <p className="mt-2.5 text-center text-sm text-text-3">Joining a game with a code needs no account at all.</p>
     </AuthLayout>
   );
 }

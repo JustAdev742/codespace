@@ -41,6 +41,15 @@ Last updated: 2026-10-21.
   plays to the end with its mode's minimum players, survives players leaving
   and replays from a seed; each new rule has its own test. Fading Lights and
   Kindling were also played to the end in the real app.
+- **Look and feel** (D30, Ludora's own lantern-festival world): a dusk-sky
+  stage behind the landing hero, sign-in, the dashboard greeting and the
+  Lantern opening; stall cards for modes and Lanterns with the odds written on
+  every Lantern; collectible cards with rarity frames in the shop, collection
+  and locker; shape-only silhouettes for Glims not found yet. The Lantern
+  opening builds up longer for rarer Glims, can be skipped by tapping, shows
+  the Glim straight away under reduced motion, and keeps the odds on screen.
+  Every redesigned page was checked at 360 pixels in both themes for one h1,
+  no sideways scroll and no console errors.
 - **Glims**: all 112 redrawn as original die-cut sticker characters with faces,
   arms and feet, distinct silhouettes per collection, rarity finishes (glossy,
   gradient, gold rim light, iridescent sheen) and idle, wave and cheer poses,
@@ -129,8 +138,8 @@ no errors.
 ## Open items
 
 Being built now:
-- A visual overhaul: brighter, chunkier and more character-led, with better
-  original Glims (D30). The dusk stage, sidebar and controls are in.
+- The live game screens on the dusk stage (join, lobby, questions, reveals,
+  leaderboard, results with a podium); a checkpoint is committed.
 
 Not built yet:
 - **AI question drafts.** The `ai.question_drafts` flag and the

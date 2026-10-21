@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
+import { Gamepad2, GraduationCap, Presentation } from 'lucide-react';
 import { PASSWORD_RULES, USERNAME_RULES } from '@ludora/shared';
 import { api, ApiError } from '../../lib/api.ts';
 import { useMe } from '../../lib/session.ts';
@@ -11,9 +12,9 @@ import { AuthLayout } from './AuthLayout.tsx';
 import { RecoveryCodeDialog } from './RecoveryCodeDialog.tsx';
 
 const TYPES = [
-  { value: 'student', label: 'Student', hint: 'Play in class and at home' },
-  { value: 'teacher', label: 'Teacher', hint: 'Host games and run classes' },
-  { value: 'player', label: 'Just playing', hint: 'Quizzes for fun' },
+  { value: 'student', label: 'Student', hint: 'Play in class and at home.', icon: GraduationCap },
+  { value: 'teacher', label: 'Teacher', hint: 'Host games and run your classes.', icon: Presentation },
+  { value: 'player', label: 'Just playing', hint: 'Quizzes for fun, with friends or on your own.', icon: Gamepad2 },
 ] as const;
 
 const thisYear = new Date().getFullYear();
@@ -70,16 +71,27 @@ export default function SignUp() {
       }
     >
       <form onSubmit={submit} className="flex flex-col gap-4" noValidate>
-        <fieldset>
+        <fieldset aria-describedby="account-type-hint">
           <legend className="mb-2 text-sm font-semibold">I am</legend>
           <div className="grid grid-cols-3 gap-2">
-            {TYPES.map((t) => (
-              <label key={t.value} className={`cursor-pointer rounded-[12px] border-2 px-2 py-2.5 text-center text-sm transition-colors ${form.accountType === t.value ? 'border-lantern bg-dusk/20 text-text' : 'border-line text-text-2 hover:border-line-strong'}`}>
-                <input type="radio" name="accountType" value={t.value} checked={form.accountType === t.value} onChange={set('accountType')} className="sr-only" />
-                <span className="block font-semibold">{t.label}</span>
-              </label>
-            ))}
+            {TYPES.map((t) => {
+              const on = form.accountType === t.value;
+              const Icon = t.icon;
+              return (
+                <label
+                  key={t.value}
+                  className={`flex cursor-pointer flex-col items-center gap-1 rounded-[16px] border-2 px-1.5 py-3 text-center text-sm transition-[transform,box-shadow] active:translate-y-[2px] has-[:focus-visible]:outline-3 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-[var(--focus)] ${on ? 'border-ink bg-lantern text-on-accent shadow-[0_3px_0_var(--ink)]' : 'border-line-strong bg-raised text-text-2 shadow-[0_3px_0_var(--line-strong)] hover:text-text'}`}
+                >
+                  <input type="radio" name="accountType" value={t.value} checked={on} onChange={set('accountType')} className="sr-only" />
+                  <Icon className="size-6" aria-hidden />
+                  <span className="font-bold leading-tight">{t.label}</span>
+                </label>
+              );
+            })}
           </div>
+          <p id="account-type-hint" className="mt-2 text-xs text-text-3">
+            {TYPES.find((t) => t.value === form.accountType)?.hint}
+          </p>
         </fieldset>
         <Field label="Username" hint={USERNAME_RULES} error={errors.username}>
           {(p) => <Input {...p} autoComplete="username" value={form.username} onChange={set('username')} required maxLength={20} />}
