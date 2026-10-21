@@ -41,6 +41,13 @@ Last updated: 2026-10-21.
   plays to the end with its mode's minimum players, survives players leaving
   and replays from a seed; each new rule has its own test. Fading Lights and
   Kindling were also played to the end in the real app.
+- **Accessibility**: an axe-core audit (WCAG 2.2 A and AA rules) of every
+  player page, the sign-in pages and the main staff sections, in both themes at
+  phone and desktop widths, finds no violations; the layout end-to-end test now
+  runs the same checks on thirteen pages, so CI catches regressions. Buttons
+  whose visible text is terse (Buy 150, collection cards) take their accessible
+  names from their content, so speech users can say what they see. Automated
+  checks cover only part of WCAG; a manual screen-reader pass has not been done.
 - **Look and feel** (D30, Ludora's own lantern-festival world): a dusk-sky
   stage behind the landing hero, sign-in, the dashboard greeting and the
   Lantern opening; stall cards for modes and Lanterns with the odds written on

@@ -155,8 +155,8 @@ function AccountMenu() {
   const avatar = overview.data?.avatar;
   return (
     <DropdownMenu.Root>
-      <DropdownMenu.Trigger className="flex items-center gap-2 rounded-full border border-line bg-raised py-1 pr-3 pl-1 hover:bg-surface-2" aria-label="Account menu">
-        <span className="grid size-8 place-items-center overflow-hidden rounded-full bg-surface-3">{avatar ? <Glim art={avatar.art} accessories={avatar.accessories} size={34} /> : <User className="size-4" />}</span>
+      <DropdownMenu.Trigger className="flex items-center gap-2 rounded-full border border-line bg-raised py-1 pr-3 pl-1 hover:bg-surface-2" aria-label={`${user.displayName}, Lv ${user.level.level}, account menu`}>
+        <span className="grid size-8 place-items-center overflow-hidden rounded-full bg-surface-3">{avatar ? <Glim art={avatar.art} accessories={avatar.accessories} rarity={avatar.rarity} size={34} /> : <User className="size-4" />}</span>
         <span className="hidden max-w-[10rem] truncate text-sm font-semibold sm:block">{user.displayName}</span>
         <span className="rounded-full bg-dusk/25 px-1.5 text-xs font-bold text-link tabular">Lv {user.level.level}</span>
       </DropdownMenu.Trigger>

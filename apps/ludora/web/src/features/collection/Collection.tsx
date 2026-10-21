@@ -132,19 +132,26 @@ function GlimDetail({ glim, collection, dust, isBuddy, onClose }: { glim: Collec
 function GlimCard({ g, isBuddy, onOpen }: { g: CollectionGlim; isBuddy: boolean; onOpen: () => void }) {
   const owned = g.owned > 0;
   const f = frameProps(g.rarity, { missing: !owned });
-  const label = owned ? `${g.name}, ${RARITY_INFO[g.rarity].label}${g.owned > 1 ? `, you have ${g.owned}` : ''}${isBuddy ? ', your buddy' : ''}` : `Not found yet, ${RARITY_INFO[g.rarity].label}`;
+  // The card's own text names the button (WCAG 2.5.3), with hidden words where the visible ones are terse.
   return (
     <li>
-      <button type="button" onClick={onOpen} className={`relative flex w-full flex-col items-center p-1 pb-2 text-center ${owned ? 'fx-lift' : 'hover:border-text-2'} ${f.className}`} style={f.style} aria-label={label}>
+      <button type="button" onClick={onOpen} className={`relative flex w-full flex-col items-center p-1 pb-2 text-center ${owned ? 'fx-lift' : 'hover:border-text-2'} ${f.className}`} style={f.style}>
         <RarityPanel rarity={g.rarity} missing={!owned} tag={false} className="aspect-square w-full">
           {g.art ? <Glim art={g.art} size={120} rarity={g.rarity} className="h-auto w-[84%]" /> : <Glim art={shadowArt(g.silhouette!)} size={120} silhouette className="h-auto w-[78%] opacity-80" />}
         </RarityPanel>
-        {owned ? <span className="mt-1 w-full truncate px-1 font-display text-[15px] leading-tight font-bold">{g.name}</span> : null}
+        {owned ? <span className="mt-1 w-full truncate px-1 font-display text-[15px] leading-tight font-bold">{g.name}</span> : <span className="sr-only">Not found yet,</span>}
         <span className={`inline-flex items-center gap-1 font-semibold text-text-2 ${owned ? 'text-[11px]' : 'mt-1 font-display text-sm'}`}>
           <span className={`size-2 rounded-full border border-ink ${g.rarity === 'mythic' ? 'rarity-mythic-shimmer' : ''}`} style={g.rarity === 'mythic' ? undefined : { background: `var(--r-${g.rarity})` }} aria-hidden />
           {RARITY_INFO[g.rarity].label}
         </span>
-        {g.owned > 1 ? <span className="absolute top-2 right-2 rounded-full border-2 border-ink bg-raised px-1.5 text-xs font-extrabold tabular">x{g.owned}</span> : null}
+        {g.owned > 1 ? (
+          <>
+            <span className="absolute top-2 right-2 rounded-full border-2 border-ink bg-raised px-1.5 text-xs font-extrabold tabular" aria-hidden>
+              x{g.owned}
+            </span>
+            <span className="sr-only">, you have {g.owned}</span>
+          </>
+        ) : null}
         {isBuddy ? <span className="absolute top-2 left-2 rounded-full border-2 border-ink bg-lantern px-1.5 text-[11px] font-bold text-on-accent">Buddy</span> : null}
       </button>
     </li>

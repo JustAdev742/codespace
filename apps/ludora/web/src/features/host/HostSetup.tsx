@@ -299,7 +299,11 @@ export default function HostSetup() {
           </Button>
         </div>
         <p className="text-center text-sm text-text-3">
-          Want your own questions? <Link to="/sets/new">Make a set</Link>.
+          Want your own questions?{' '}
+          <Link to="/sets/new" className="font-semibold underline underline-offset-2">
+            Make a set
+          </Link>
+          .
         </p>
       </div>
     </>

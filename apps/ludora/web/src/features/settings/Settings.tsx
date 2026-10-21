@@ -149,14 +149,14 @@ export default function Settings() {
         <Panel id="privacy" className="scroll-mt-20 divide-y divide-line px-5 py-2">
           <h2 className="py-3 font-display text-xl font-bold">Privacy</h2>
           <Row label="Who can see my profile">
-            <Select value={p.privacy.profileVisibility} onChange={(e) => save.mutate({ privacy: { profileVisibility: e.target.value as Preferences['privacy']['profileVisibility'] } })} className="w-44">
+            <Select aria-label="Who can see my profile" value={p.privacy.profileVisibility} onChange={(e) => save.mutate({ privacy: { profileVisibility: e.target.value as Preferences['privacy']['profileVisibility'] } })} className="w-44">
               <option value="public">Everyone</option>
               <option value="friends">Friends only</option>
               <option value="private">Only me</option>
             </Select>
           </Row>
           <Row label="Who can send friend requests">
-            <Select value={p.privacy.allowFriendRequests} onChange={(e) => save.mutate({ privacy: { allowFriendRequests: e.target.value as Preferences['privacy']['allowFriendRequests'] } })} className="w-44">
+            <Select aria-label="Who can send friend requests" value={p.privacy.allowFriendRequests} onChange={(e) => save.mutate({ privacy: { allowFriendRequests: e.target.value as Preferences['privacy']['allowFriendRequests'] } })} className="w-44">
               <option value="everyone">Anyone</option>
               <option value="friend_code">People with my friend code</option>
               <option value="nobody">Nobody</option>

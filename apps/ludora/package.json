@@ -29,6 +29,7 @@
   },
   "license": "UNLICENSED",
   "devDependencies": {
+    "@axe-core/playwright": "^4.14.0",
     "@playwright/test": "^1.64.1",
     "@types/node": "^22.19.0",
     "oxlint": "^1.89.0",

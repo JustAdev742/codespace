@@ -126,9 +126,14 @@ function PriceButton({ l, onBuy, wide = false }: { l: Listing; onBuy: (l: Listin
     return <span className={`rounded-full border-2 border-ink bg-glim px-3 py-1 text-center text-sm font-bold text-on-accent ${wide ? 'block w-full' : ''}`}>{l.blocked}</span>;
   }
   return (
-    <Button variant="primary" onClick={() => onBuy(l)} aria-label={`Buy ${l.title} for ${l.price.amount} ${currencyName(l.price.currency)}`} className={`gap-2.5 pl-3.5 ${wide ? 'w-full' : ''}`}>
-      <span>Buy</span>
+    // The name is built from the content, with the item and currency in hidden text, so the
+    // visible "Buy 150" is part of it (WCAG 2.5.3) and screen readers hear the whole thing.
+    <Button variant="primary" onClick={() => onBuy(l)} className={`gap-2.5 pl-3.5 ${wide ? 'w-full' : ''}`}>
+      <span>
+        Buy<span className="sr-only"> {l.title} for</span>
+      </span>
       <Amount currency={l.price.currency} value={l.price.amount} size="sm" className="rounded-full bg-white/55 px-2 py-0.5" />
+      <span className="sr-only">{currencyName(l.price.currency)}</span>
     </Button>
   );
 }

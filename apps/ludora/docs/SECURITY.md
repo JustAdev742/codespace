@@ -133,3 +133,6 @@ a security problem privately to the maintainers rather than in a public issue.
   no image library re-encoding them. Browsers decode them sandboxed, and the
   dimension cap keeps decoding cheap.
 - No email delivery yet, so no email verification.
+- `npm audit` reports moderate advisories in the esbuild copy bundled with
+  drizzle-kit, the development tool that generates migrations. It is not part
+  of the server bundle or the Docker image.
