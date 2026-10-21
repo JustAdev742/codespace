@@ -206,3 +206,10 @@ server refuses them, using the same check as the assignment picker.
 cascade and silently remove the assignments, and with them a class's work.
 The server refuses and says how many assignments use the set; the teacher
 removes them first or makes the set private instead.
+
+**D34. A variant changes a rule, never just a number.** Titles promise a
+different game, so each variant turns on a rule the base mode does not have
+(a penalty, a multiplier, a knockout, a co-op goal, a returning question) and
+says plainly what changed. New rule settings default to off, so the base modes
+play exactly as before; a question that comes back is recorded as an attempt,
+so it never pays twice. Rules that would need new screens wait for them.

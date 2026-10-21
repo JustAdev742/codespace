@@ -13,9 +13,10 @@ import { streamInit, streamNext, streamSubmit, type StreamState } from '../../me
 import { DEADLINE_GRACE_MS } from '../../mechanics/syncRounds.ts';
 import { normalizeAnswerText } from '../../questions/grade.ts';
 import { answerText } from '../flashcard-study/answer-text.ts';
+import { recordingAs } from '../rules.ts';
 import { meta, settings } from './meta.ts';
 
-type Settings = { hints: boolean; wordTimer: boolean };
+type Settings = { hints: boolean; wordTimer: boolean; oneTry: boolean; secondChance: boolean; streak: boolean };
 
 export const POINTS_PER_LETTER = 10;
 export const HINT_COST = 10;
@@ -61,6 +62,16 @@ interface Player {
   nextAt: number | null;
   /** Between words: the answer to the word that just ended. */
   answerText: string | null;
+  /** Words in the set this player plays first; second chances come after them. */
+  main: number;
+  /** Words this player will play in all: the main words plus any second chances. */
+  target: number;
+  /** Second chances still to come (question ids). */
+  again: string[];
+  /** The word on screen is a second chance. */
+  retry: boolean;
+  /** Words solved in a row. */
+  inRow: number;
 }
 
 export interface State {
@@ -148,10 +159,22 @@ export function matchesAnswer(text: string, accepted: readonly string[]): boolea
 
 export const wordValue = (sc: Scramble) => Math.max(0, POINTS_PER_LETTER * sc.tiles.length - HINT_COST * sc.hints);
 
+/** Spelling streak: what the next solved word is multiplied by after `inRow` solved in a row. */
+export const streakMultiplier = (inRow: number) => Math.min(3, inRow + 1);
+
+/** What a word is worth to this player now: streak multiplier, then half for a second chance. */
+function worth(p: Player, base: number, ctx: ModeContext<Settings>): number {
+  const value = ctx.settings.streak ? base * streakMultiplier(p.inRow) : base;
+  return p.retry ? Math.round(value / 2) : value;
+}
+
 const acceptedFor = (q: Question): string[] => (q.type === 'short' ? [...q.accepted] : [answerText(q)]);
 
 function startWord(p: Player, playerId: PlayerId, ctx: ModeContext<Settings>) {
-  streamNext(p.stream, ctx);
+  // Second chances come once the main words are done, in the order they were missed.
+  p.retry = p.done >= p.main && p.again.length > 0;
+  if (p.retry) p.stream.iid = ctx.questions.present(p.again.shift()!);
+  else streamNext(p.stream, ctx);
   const id = p.stream.iid!;
   const q = ctx.questions.get(ctx.questions.instance(id).qid);
   const source = scrambleSource(q);
@@ -163,7 +186,7 @@ function startWord(p: Player, playerId: PlayerId, ctx: ModeContext<Settings>) {
   if (deadline !== null) ctx.setTimer(`word:${playerId}`, deadline + DEADLINE_GRACE_MS);
 }
 
-function newPlayer(playerId: PlayerId, ctx: ModeContext<Settings>): Player {
+function newPlayer(playerId: PlayerId, total: number, ctx: ModeContext<Settings>): Player {
   const p: Player = {
     stream: streamInit(ctx, { present: false }),
     word: null,
@@ -174,6 +197,11 @@ function newPlayer(playerId: PlayerId, ctx: ModeContext<Settings>): Player {
     finished: false,
     nextAt: null,
     answerText: null,
+    main: total,
+    target: total,
+    again: [],
+    retry: false,
+    inRow: 0,
   };
   startWord(p, playerId, ctx);
   return p;
@@ -211,7 +239,8 @@ function endWord(s: State, p: Player, playerId: PlayerId, ctx: ModeContext<Setti
       ...(explanation ? { explanation } : {}),
     };
     p.stream.iid = null;
-    ctx.recordAnswer({ playerId, qid: inst.qid, correct: end.correct, partial: end.correct ? 1 : 0, responseMs: ctx.now() - inst.shownAt });
+    // A second chance counts for reports, not again for rewards.
+    ctx.recordAnswer({ playerId, qid: inst.qid, correct: end.correct, partial: end.correct ? 1 : 0, responseMs: ctx.now() - inst.shownAt, ...(p.retry ? { kind: 'attempt' as const } : {}) });
   }
   if (p.stream.last) {
     p.stream.last.points = end.points;
@@ -219,11 +248,17 @@ function endWord(s: State, p: Player, playerId: PlayerId, ctx: ModeContext<Setti
   }
   p.points += end.points;
   if (end.correct) p.solved++;
+  p.inRow = end.correct ? p.inRow + 1 : 0;
+  if (!end.correct && ctx.settings.secondChance && !p.retry) {
+    p.again.push(inst.qid);
+    p.target++;
+    ctx.feed('That word comes back once after your last word, for half points.', { to: [playerId], tone: 'info' });
+  }
   p.done++;
   p.answerText = answerText(ctx.questions.get(inst.qid));
   p.word = null;
   ctx.clearTimer(`word:${playerId}`);
-  if (p.done >= s.total) {
+  if (p.done >= p.target) {
     p.finished = true;
     p.nextAt = null;
     ctx.clearTimer(`next:${playerId}`);
@@ -236,12 +271,12 @@ function endWord(s: State, p: Player, playerId: PlayerId, ctx: ModeContext<Setti
 }
 
 function solved(s: State, p: Player, playerId: PlayerId, sc: Scramble, ctx: ModeContext<Settings>) {
-  const points = wordValue(sc);
+  const points = worth(p, wordValue(sc), ctx);
   endWord(s, p, playerId, ctx, { correct: true, points, text: `+${points}`, recorded: false });
 }
 
-function wordView(w: Word, ctx: ModeContext) {
-  if (!w.scramble) return { kind: 'plain' as const, iid: w.iid, question: ctx.questions.view(w.iid, { deadline: w.deadline }), value: PLAIN_POINTS, deadline: w.deadline };
+function wordView(w: Word, p: Player, ctx: ModeContext<Settings>) {
+  if (!w.scramble) return { kind: 'plain' as const, iid: w.iid, question: ctx.questions.view(w.iid, { deadline: w.deadline }), value: worth(p, PLAIN_POINTS, ctx), deadline: w.deadline };
   const sc = w.scramble;
   const shown = ctx.questions.view(w.iid);
   return {
@@ -256,7 +291,7 @@ function wordView(w: Word, ctx: ModeContext) {
     hinted: sc.solution.slice(0, sc.hints),
     hints: sc.hints,
     maxHints: sc.maxHints,
-    value: wordValue(sc),
+    value: worth(p, wordValue(sc), ctx),
     tries: sc.tries,
   };
 }
@@ -299,12 +334,12 @@ export const wordScramble = defineMode<State, Settings, Action>({
     const total = Math.min(ctx.questions.count(), ctx.common.questionLimit || Infinity);
     const limitSec = ctx.common.timeLimitSec > 0 ? ctx.common.timeLimitSec : DEFAULT_LIMIT_SEC;
     const s: State = { players: {}, total, endsAt: ctx.now() + limitSec * 1000 };
-    for (const p of ctx.players()) s.players[p.id] = newPlayer(p.id, ctx);
+    for (const p of ctx.players()) s.players[p.id] = newPlayer(p.id, total, ctx);
     ctx.setTimer('time', s.endsAt);
     return s;
   },
   onPlayerJoin(s, p, ctx) {
-    s.players[p.id] ??= newPlayer(p.id, ctx);
+    s.players[p.id] ??= newPlayer(p.id, s.total, ctx);
   },
   onPlayerLeave(s, _p, ctx) {
     checkEnd(s, ctx);
@@ -335,22 +370,25 @@ export const wordScramble = defineMode<State, Settings, Action>({
       case 'solve':
         if (!sc) return { error: 'Answer this one with the answer buttons.' };
         if (matchesAnswer(a.text, sc.accepted)) return solved(s, p, playerId, sc, ctx);
+        if (ctx.settings.oneTry) return endWord(s, p, playerId, ctx, { correct: false, points: 0, text: 'Not quite, and there is only one try', recorded: false });
         sc.tries++;
         return;
       case 'answer': {
         if (!sc) {
-          const res = streamSubmit(p.stream, playerId, w.iid, a.answer, ctx);
+          const points = worth(p, PLAIN_POINTS, ctx);
+          const res = streamSubmit(p.stream, playerId, w.iid, a.answer, p.retry ? recordingAs(ctx, 'attempt') : ctx);
           if ('error' in res) return res;
           return endWord(s, p, playerId, ctx, {
             correct: res.correct,
-            points: res.correct ? PLAIN_POINTS : 0,
-            text: res.correct ? `+${PLAIN_POINTS}` : 'Not this time',
+            points: res.correct ? points : 0,
+            text: res.correct ? `+${points}` : 'Not this time',
             recorded: true,
           });
         }
         // Practice bots answer in the question's own form. Players spell the word.
         if (!ctx.player(playerId)?.isBot) return { error: 'Spell the answer with the tiles, or type it.' };
         if (ctx.questions.grade(w.iid, a.answer).correct) return solved(s, p, playerId, sc, ctx);
+        if (ctx.settings.oneTry) return endWord(s, p, playerId, ctx, { correct: false, points: 0, text: 'Not quite, and there is only one try', recorded: false });
         sc.tries++;
         return;
       }
@@ -374,7 +412,8 @@ export const wordScramble = defineMode<State, Settings, Action>({
     const last = p && !p.word ? p.stream.last : null;
     return {
       endsAt: s.endsAt,
-      total: s.total,
+      // Players count their own second chances; the big screen counts the set.
+      total: p ? p.target : s.total,
       hints: ctx.settings.hints,
       timed: ctx.settings.wordTimer,
       playing: present.length,
@@ -388,7 +427,7 @@ export const wordScramble = defineMode<State, Settings, Action>({
             solved: p.solved,
             finished: p.finished,
             nextAt: p.nextAt,
-            word: p.word ? wordView(p.word, ctx) : null,
+            word: p.word ? wordView(p.word, p, ctx) : null,
             last,
             answerText: last ? p.answerText : null,
             lastQuestion: last ? ctx.questions.view(last.iid) : null,

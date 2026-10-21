@@ -34,6 +34,9 @@ export const meta: ModeMeta = {
 export const settings: SettingField[] = [
   { kind: 'number', key: 'ropeLength', label: 'Spaces from the middle to each end', min: 8, max: 60, step: 1, default: 20, unit: 'spaces' },
   { kind: 'toggle', key: 'slack', label: 'Slippery rope', help: 'Wrong answers let the rope slip half a pull towards the other side.', default: false },
+  { kind: 'toggle', key: 'heave', label: 'Heave', help: 'Every third correct answer in a row pulls twice as far.', default: false },
+  { kind: 'toggle', key: 'underdog', label: 'Underdog grip', help: 'The side the knot leans away from pulls 50% harder.', default: false },
+  { kind: 'toggle', key: 'surge', label: 'Final surge', help: 'In the last 30 seconds every pull counts double.', default: false },
 ];
 
 export const variants: ModeVariant[] = [
@@ -63,5 +66,44 @@ export const variants: ModeVariant[] = [
     },
     settings: { slack: true },
     locked: ['slack'],
+  },
+  {
+    meta: {
+      id: 'tug-of-war-heave-ho',
+      modeId: 'tug-of-war',
+      title: 'Heave Ho',
+      tagline: 'Three right in a row and you heave twice as hard.',
+      changes: 'Every third correct answer in a row is a heave that pulls the rope twice as far, so a player on a streak moves the knot faster.',
+      status: 'playable',
+      thumbnail: { hue: 30, accentHue: 200 },
+    },
+    settings: { heave: true },
+    locked: ['heave'],
+  },
+  {
+    meta: {
+      id: 'tug-of-war-underdog',
+      modeId: 'tug-of-war',
+      title: 'Underdog Rope',
+      tagline: 'The side that is behind pulls harder.',
+      changes: 'Whichever side the knot is leaning away from pulls 50% harder, so a side that falls behind can always fight back.',
+      status: 'playable',
+      thumbnail: { hue: 130, accentHue: 30 },
+    },
+    settings: { underdog: true },
+    locked: ['underdog'],
+  },
+  {
+    meta: {
+      id: 'tug-of-war-final-surge',
+      modeId: 'tug-of-war',
+      title: 'Final Surge',
+      tagline: 'Every pull counts double in the last 30 seconds.',
+      changes: 'In the last 30 seconds before time runs out every pull counts double, so a side that is behind can still win it at the end.',
+      status: 'playable',
+      thumbnail: { hue: 0, accentHue: 45 },
+    },
+    settings: { surge: true },
+    locked: ['surge'],
   },
 ];

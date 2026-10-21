@@ -12,12 +12,13 @@
  * The back of the card is only in the view once the player has turned it.
  */
 import { z } from 'zod';
+import type { Question } from '@ludora/shared';
 import { defineMode } from '../../sdk/define.ts';
 import type { ModeContext, PlayerId } from '../../sdk/types.ts';
 import { answerText } from './answer-text.ts';
 import { meta, settings } from './meta.ts';
 
-type Settings = { quick: boolean };
+type Settings = { quick: boolean; reverse: boolean };
 
 export const MASTERED_BOX = 3;
 /** Cards graded before a card in this box is due again. New cards already waiting can come first. */
@@ -29,6 +30,8 @@ interface Card {
   iid: string;
   flipped: boolean;
   flippedAt: number | null;
+  /** Back to front: the answer is on the front and the question on the back. */
+  reversed?: boolean;
 }
 
 interface Study {
@@ -65,6 +68,21 @@ const action = z.discriminatedUnion('type', [
 ]);
 type Action = z.infer<typeof action>;
 
+/**
+ * Back to front: whether a question makes sense the other way round, with
+ * its answer as the front. Only a single written answer does: not a picture
+ * (on either side), a number, a list, or true or false.
+ */
+export function reversible(q: Question): boolean {
+  if (q.media) return false;
+  if (q.type === 'flashcard' || q.type === 'short') return Boolean(answerText(q).trim());
+  if (q.type === 'mcq') {
+    const c = q.choices.find((x) => x.id === q.correct);
+    return Boolean(c?.text.trim() && !c.media);
+  }
+  return false;
+}
+
 /** The card due soonest, other than the one just graded unless it is the only one left. */
 export function nextDue(st: Pick<Study, 'order' | 'boxes' | 'due' | 'scheduled'>, justGraded: string | null): string | null {
   let best: string | null = null;
@@ -77,7 +95,7 @@ export function nextDue(st: Pick<Study, 'order' | 'boxes' | 'due' | 'scheduled'>
   return best;
 }
 
-function showNext(st: Study, justGraded: string | null, ctx: ModeContext) {
+function showNext(st: Study, justGraded: string | null, ctx: ModeContext<Settings>) {
   const qid = nextDue(st, justGraded);
   if (qid === null) {
     st.card = null;
@@ -85,10 +103,11 @@ function showNext(st: Study, justGraded: string | null, ctx: ModeContext) {
     st.doneAt = ctx.now();
     return;
   }
-  st.card = { qid, iid: ctx.questions.present(qid), flipped: false, flippedAt: null };
+  const reversed = ctx.settings.reverse && reversible(ctx.questions.get(qid));
+  st.card = { qid, iid: ctx.questions.present(qid), flipped: false, flippedAt: null, ...(reversed ? { reversed } : {}) };
 }
 
-function newStudy(cards: readonly string[], ctx: ModeContext): Study {
+function newStudy(cards: readonly string[], ctx: ModeContext<Settings>): Study {
   const order = ctx.common.shuffleQuestions ? ctx.rng.shuffle(cards) : cards.slice();
   const st: Study = {
     order,
@@ -117,14 +136,17 @@ const allDone = (s: State, ctx: ModeContext) => {
 function cardView(c: Card, st: Study, ctx: ModeContext) {
   const shown = ctx.questions.view(c.iid);
   const q = ctx.questions.get(c.qid);
+  // Back to front: the answer is the front, and the question is what is on the back.
+  const front = c.reversed ? { type: 'flashcard' as const, prompt: answerText(q) } : shown.q;
+  const back = c.reversed ? q.prompt : answerText(q);
   return {
     iid: c.iid,
-    q: shown.q,
+    q: front,
     shownAt: shown.shownAt,
     box: st.boxes[c.qid] ?? 1,
     flipped: c.flipped,
     // The back exists in the view only after the card has been turned over.
-    ...(c.flipped ? { back: answerText(q), ...(q.explanation ? { explanation: q.explanation } : {}) } : {}),
+    ...(c.flipped ? { back, ...(q.explanation ? { explanation: q.explanation } : {}) } : {}),
   };
 }
 

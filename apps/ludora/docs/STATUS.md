@@ -13,7 +13,7 @@ Last updated: 2026-10-21.
 | M0 Audit and plan | Done | Findings and plan in the first report; decisions in [DECISIONS.md](DECISIONS.md). |
 | M1 Foundation | Done | Monorepo, Postgres + Drizzle migrations, auth (accounts, guests, recovery codes), design system, app shell. |
 | M2 Engine and first loop | Done | Deterministic engine, 8 question types, Classic played host + player in the browser. |
-| M3 Multiplayer and modes | Done | 14 playable modes, 28 variants, all passing the conformance suite and smoke-tested in the real app. |
+| M3 Multiplayer and modes | Done | 14 playable modes and 70 variants (84 in all), every variant a rule change, all passing the conformance suite. |
 | M4 Economy and progression | Done | Shop, Lanterns with disclosed odds, collections, locker, quests, achievements, levels, streaks. |
 | M5 Staff tools | Done | Staff API and all 14 staff sections in the web app. An end-to-end test opens every section as a super administrator at phone and desktop widths. |
 | M6 Content, social, classes, analytics | In progress | Server done and tested (friends, blocks, leaderboards, classes, assignments, reports, stats). Quests, friends, profiles, my stats, leaderboards, classes, assignment reports, hosted games, game reports and the set editor done. |
@@ -34,6 +34,19 @@ Last updated: 2026-10-21.
   flashcard-only sets and teams, is deterministic for a seed, and never leaks
   answers into a view (conformance suite). All 14 were also started, played and
   ended through the real web app.
+- **Variants (70)**: each changes a rule, never just a number (for example a
+  wrong-answer penalty, a streak multiplier, a knockout, co-op wins, comeback
+  bonuses, questions that come back at the end). New rules default to off, and
+  173 recorded bot games of the base modes replay identically. Every variant
+  plays to the end with its mode's minimum players, survives players leaving
+  and replays from a seed; each new rule has its own test. Fading Lights and
+  Kindling were also played to the end in the real app.
+- **Glims**: all 112 redrawn as original die-cut sticker characters with faces,
+  arms and feet, distinct silhouettes per collection, rarity finishes (glossy,
+  gradient, gold rim light, iridescent sheen) and idle, wave and cheer poses,
+  legible from 28 to 240 pixels in both themes. A development gallery at
+  `/dev/glims.html` shows every collection, size, part, accessory, pose and
+  finish.
 - **Rewards**: Sparks, XP, quests and achievements after each game, with a daily
   Spark cap, a minimum number of answers, a solo multiplier, and counting that
   stops puzzle retries or self-graded flashcards from paying more than a quiz.
@@ -118,7 +131,6 @@ no errors.
 Being built now:
 - A visual overhaul: brighter, chunkier and more character-led, with better
   original Glims (D30). The dusk stage, sidebar and controls are in.
-- More honestly labelled mode variants.
 
 Not built yet:
 - **AI question drafts.** The `ai.question_drafts` flag and the

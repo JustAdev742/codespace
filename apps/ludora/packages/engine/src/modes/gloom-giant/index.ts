@@ -14,11 +14,17 @@ import type { ModeContext, PlayerId } from '../../sdk/types.ts';
 import { streamInit, streamNext, streamQuestionView, streamSubmit, type StreamState } from '../../mechanics/selfPaced.ts';
 import { meta, settings } from './meta.ts';
 
-type Settings = { hpPerPlayer: number; shieldBase: number; shieldPerPlayer: string };
+type Settings = { hpPerPlayer: number; shieldBase: number; shieldPerPlayer: string; regen: boolean; mending: boolean; swift: boolean };
 
 export const CRIT_CHANCE = 0.1;
 /** A streak of this many correct answers or more adds 1 damage. */
 export const STREAK_FROM = 3;
+/** Healing giant: how often it heals (1 health for every player). */
+export const REGEN_EVERY_MS = 15_000;
+/** Shield mending: every this many correct answers in a row mends the shield by 1. */
+export const MEND_EVERY = 5;
+/** Swift strikes: a correct answer this quick is a critical hit. */
+export const SWIFT_MS = 6_000;
 const LOG_KEEP = 10;
 
 interface Fighter {
@@ -119,6 +125,7 @@ export const gloomGiant = defineMode<State, Settings, Action>({
     const shield = startingShield(ctx.settings.shieldBase, n, ctx.settings.shieldPerPlayer);
     const endsAt = ctx.common.timeLimitSec > 0 ? ctx.now() + ctx.common.timeLimitSec * 1000 : null;
     if (endsAt) ctx.setTimer('time', endsAt);
+    if (ctx.settings.regen) ctx.setTimer('regen', ctx.now() + REGEN_EVERY_MS);
     return { fighters, counted, maxHp, hp: maxHp, enraged: false, shieldMax: shield, shield, cracked: false, endsAt, result: null, reason: null, finalBlow: null, log: [], seq: 0 };
   },
   onPlayerJoin(s, p, ctx) {
@@ -138,22 +145,31 @@ export const gloomGiant = defineMode<State, Settings, Action>({
     const at = ctx.now();
     const name = nameOf(ctx, playerId);
     if (res.correct) {
+      const st = ctx.settings;
       const streak = res.streak >= STREAK_FROM;
-      const crit = ctx.rng.chance(CRIT_CHANCE);
+      const crit = st.swift ? res.responseMs <= SWIFT_MS : ctx.rng.chance(CRIT_CHANCE);
       const dealt = Math.min(1 + (streak ? 1 : 0) + (crit ? 1 : 0), s.hp);
       s.hp -= dealt;
       f.damage += dealt;
       f.hits++;
       if (crit) f.crits++;
       log(s, { playerId, kind: crit ? 'crit' : 'hit', amount: dealt, at });
-      const notes = [streak ? 'streak' : null, crit ? 'critical hit' : null].filter(Boolean);
+      const mended = st.mending && s.hp > 0 && res.streak % MEND_EVERY === 0 && s.shield < s.shieldMax;
+      if (mended) {
+        s.shield++;
+        // Mended out of danger: a new crack will be announced again.
+        if (s.shield > 2) s.cracked = false;
+      }
+      const notes = [streak ? 'streak' : null, crit ? 'critical hit' : null, mended ? 'shield mended' : null].filter(Boolean);
       if (f.stream.last) f.stream.last.text = `Hit for ${dealt}${notes.length ? ` (${notes.join(', ')})` : ''}`;
       if (s.hp <= 0) {
         s.finalBlow = playerId;
         ctx.feed(`${name} landed the final blow${crit ? ' with a critical hit' : ''}!`, { tone: 'big' });
         return finish(s, 'win', 'defeated', ctx);
       }
-      if (crit) ctx.feed(`${name} landed a critical hit!`, { tone: 'good' });
+      if (mended) ctx.feed(`${name} mended the shield.`, { tone: 'good' });
+      // Swift critical hits are common, so only lucky ones are announced to the room.
+      if (crit && !st.swift) ctx.feed(`${name} landed a critical hit!`, { tone: 'good' });
       if (!s.enraged && s.hp < s.maxHp / 2) {
         s.enraged = true;
         ctx.feed('The Gloom Giant is enraged! Wrong answers now cost 2 shield.', { tone: 'bad' });
@@ -176,6 +192,16 @@ export const gloomGiant = defineMode<State, Settings, Action>({
     streamNext(f.stream, ctx);
   },
   onTimer(s, id, ctx) {
+    if (id === 'regen') {
+      if (s.result) return;
+      const heal = Math.min(s.maxHp - s.hp, Math.max(1, ctx.players().length));
+      if (heal > 0) {
+        s.hp += heal;
+        ctx.feed(`The Gloom Giant heals ${heal}.`, { tone: 'bad' });
+      }
+      ctx.setTimer('regen', ctx.now() + REGEN_EVERY_MS);
+      return;
+    }
     if (id !== 'time' || s.result) return;
     ctx.feed('Time is up! The Gloom Giant still stands.', { tone: 'bad' });
     finish(s, 'loss', 'time', ctx);

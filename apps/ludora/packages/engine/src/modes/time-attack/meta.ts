@@ -43,6 +43,8 @@ export const settings: SettingField[] = [
   },
   { kind: 'number', key: 'penaltySeconds', label: 'Seconds lost for a wrong answer', min: 0, max: 10, step: 1, default: 3, unit: 'seconds' },
   { kind: 'toggle', key: 'suddenDeath', label: 'Sudden death', help: 'The first wrong answer ends the run.', default: false },
+  { kind: 'number', key: 'bonusSeconds', label: 'Seconds won for a correct answer', help: 'The clock never goes above its starting time.', min: 0, max: 5, step: 1, default: 0, unit: 'seconds' },
+  { kind: 'toggle', key: 'overdrive', label: 'Overdrive', help: 'The multiplier has no top limit, but a wrong answer costs the lost seconds times your multiplier.', default: false },
 ];
 
 export const variants: ModeVariant[] = [
@@ -71,5 +73,31 @@ export const variants: ModeVariant[] = [
     },
     settings: { clock: '120' },
     locked: ['clock'],
+  },
+  {
+    meta: {
+      id: 'time-attack-keep-it-lit',
+      modeId: 'time-attack',
+      title: 'Keep It Lit',
+      tagline: 'Thirty seconds of fuse, and every right answer adds two.',
+      changes: 'The clock starts at 30 seconds, but every correct answer adds 2 seconds back (never above 30), so a run lasts as long as you keep answering well.',
+      status: 'playable',
+      thumbnail: { glyph: 'lantern', hue: 36, accentHue: 10 },
+    },
+    settings: { clock: '30', bonusSeconds: 2 },
+    locked: ['clock', 'bonusSeconds'],
+  },
+  {
+    meta: {
+      id: 'time-attack-supernova',
+      modeId: 'time-attack',
+      title: 'Supernova',
+      tagline: 'No top multiplier, but every slip costs more.',
+      changes: 'The multiplier keeps climbing past ×3, one step for every five right in a row, with no top limit. The catch: a wrong answer costs 3 seconds times your multiplier.',
+      status: 'playable',
+      thumbnail: { hue: 290, accentHue: 48 },
+    },
+    settings: { overdrive: true },
+    locked: ['overdrive'],
   },
 ];

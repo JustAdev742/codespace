@@ -39,6 +39,9 @@ export const settings: SettingField[] = [
     help: 'Each word must be solved within the seconds-per-question limit. Running out counts as wrong.',
     default: false,
   },
+  { kind: 'toggle', key: 'oneTry', label: 'One try per word', help: 'A wrong spelling ends the word.', default: false },
+  { kind: 'toggle', key: 'secondChance', label: 'Second chances', help: 'Every word you skip or get wrong comes back once after your last word, for half points.', default: false },
+  { kind: 'toggle', key: 'streak', label: 'Spelling streak', help: 'Words solved in a row are worth more: double for the second, triple from the third on.', default: false },
 ];
 
 export const variants: ModeVariant[] = [
@@ -68,5 +71,44 @@ export const variants: ModeVariant[] = [
     settings: { wordTimer: true },
     common: { questionTimeSec: 20 },
     locked: ['wordTimer', 'questionTimeSec'],
+  },
+  {
+    meta: {
+      id: 'word-scramble-first-spell',
+      modeId: 'word-scramble',
+      title: 'First Spell',
+      tagline: 'One go at every word. Check before the last tile.',
+      changes: 'You get one go at each word: a wrong spelling ends it and shows the answer, so think before the last tile goes down.',
+      status: 'playable',
+      thumbnail: { hue: 330, accentHue: 172 },
+    },
+    settings: { oneTry: true },
+    locked: ['oneTry'],
+  },
+  {
+    meta: {
+      id: 'word-scramble-second-chances',
+      modeId: 'word-scramble',
+      title: 'Second Chances',
+      tagline: 'Missed words come back at the end.',
+      changes: 'Every word you skip or get wrong comes back once after your last word, worth half points, so you finish having seen every answer twice.',
+      status: 'playable',
+      thumbnail: { hue: 150, accentHue: 300 },
+    },
+    settings: { secondChance: true },
+    locked: ['secondChance'],
+  },
+  {
+    meta: {
+      id: 'word-scramble-spelling-streak',
+      modeId: 'word-scramble',
+      title: 'Spelling Streak',
+      tagline: 'Solve words in a row to multiply their points.',
+      changes: 'Words solved in a row are worth more: the second in a row scores double and every one after that triple. Skipping or missing a word breaks the streak.',
+      status: 'playable',
+      thumbnail: { hue: 45, accentHue: 172 },
+    },
+    settings: { streak: true },
+    locked: ['streak'],
   },
 ];

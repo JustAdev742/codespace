@@ -31,6 +31,8 @@ export const meta: ModeMeta = {
 export const settings: SettingField[] = [
   { kind: 'number', key: 'hearts', label: 'Hearts', min: 1, max: 5, step: 1, default: 3, unit: 'hearts' },
   { kind: 'toggle', key: 'restores', label: 'Win hearts back', help: 'Every 10 correct answers restore a heart, up to the starting number.', default: true },
+  { kind: 'toggle', key: 'secondWind', label: 'Second wind', help: 'A question you miss comes back three questions later. Answer it right to win back the heart it cost.', default: false },
+  { kind: 'number', key: 'heartCap', label: 'Most hearts you can hold', help: 'Hearts won back can fill up to this many. 0 means the number you start with.', min: 0, max: 5, step: 1, default: 0, unit: 'hearts' },
 ];
 
 export const variants: ModeVariant[] = [
@@ -46,5 +48,31 @@ export const variants: ModeVariant[] = [
     },
     settings: { hearts: 1, restores: false },
     locked: ['hearts', 'restores'],
+  },
+  {
+    meta: {
+      id: 'survival-run-second-wind',
+      modeId: 'survival-run',
+      title: 'Second Wind',
+      tagline: 'Missed questions come back. Get them right to heal.',
+      changes: 'Every question you miss comes back three questions later. Answer it right the second time and you win back the heart it cost. Streaks no longer win hearts back.',
+      status: 'playable',
+      thumbnail: { hue: 170, accentHue: 350 },
+    },
+    settings: { secondWind: true, restores: false },
+    locked: ['secondWind', 'restores'],
+  },
+  {
+    meta: {
+      id: 'survival-run-phoenix',
+      modeId: 'survival-run',
+      title: 'Phoenix Run',
+      tagline: 'Start on one heart. Earn your way up to five.',
+      changes: 'You start with a single heart, but every 10 correct answers win one more, up to five, so the run gets safer the longer you last.',
+      status: 'playable',
+      thumbnail: { hue: 15, accentHue: 50 },
+    },
+    settings: { hearts: 1, heartCap: 5, restores: true },
+    locked: ['hearts', 'heartCap', 'restores'],
   },
 ];

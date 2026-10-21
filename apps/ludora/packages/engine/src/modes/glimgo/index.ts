@@ -33,7 +33,7 @@ export interface Progress {
   /** The fewest further marks that would meet the win condition. */
   toGo: number;
 }
-type Settings = { win: string; cardSize: string; callSeconds: number; lockoutSeconds: number };
+type Settings = { win: string; cardSize: string; callSeconds: number; lockoutSeconds: number; finders: number; luckyStars: boolean };
 type Phase = 'intro' | 'call' | 'reveal' | 'finale' | 'done';
 
 export interface Card {
@@ -87,6 +87,8 @@ const INTRO_MS = 6000;
 const REVEAL_MS = 3000;
 const FINALE_MS = 5000;
 const RECENT = 5;
+/** Lucky stars: after every this many calls, the players furthest from Glimgo get a free square. */
+export const LUCKY_EVERY = 5;
 
 const opts = (ctx: ModeContext) => ctx.settings as Settings;
 const winRule = (ctx: ModeContext): WinRule => {
@@ -254,10 +256,38 @@ function startCall(s: State, ctx: ModeContext) {
   setPhase(s, ctx, 'call', call.endsAt, call.endsAt + DEADLINE_GRACE_MS);
 }
 
+/**
+ * Lucky stars: the connected players furthest from Glimgo (when not everyone
+ * is level) each get a free square on the line they are closest to
+ * finishing, or anywhere open for a full card. Someone furthest away is at
+ * least two marks from winning, so a star never wins the game by itself.
+ */
+function giveLuckyStars(s: State, ctx: ModeContext) {
+  const win = winRule(ctx);
+  const here = ctx.players().filter((p) => p.connected && s.cards[p.id] && s.progress[p.id]);
+  if (here.length < 2) return;
+  const toGo = here.map((p) => s.progress[p.id]!.toGo);
+  const furthest = Math.max(...toGo);
+  if (furthest <= Math.min(...toGo)) return;
+  const lucky = here.filter((p) => s.progress[p.id]!.toGo === furthest);
+  for (const p of lucky) {
+    const card = s.cards[p.id]!;
+    const open = win === 'full' ? [card.cells.map((_, i) => i).filter((i) => !isMarked(card, i))] : cardLines(s.size).map((line) => line.filter((i) => !isMarked(card, i)));
+    const fewest = Math.min(...open.filter((o) => o.length > 0).map((o) => o.length));
+    const squares = [...new Set(open.filter((o) => o.length === fewest).flat())].sort((a, b) => a - b);
+    const square = ctx.rng.pick(squares);
+    card.cells[square] = -1;
+    card.marks[square] = 0;
+    s.progress[p.id] = cardProgress(card, s.size, win);
+  }
+  ctx.feed('A lucky star! You were furthest from Glimgo, so one of your squares is now free.', { to: lucky.map((p) => p.id), tone: 'good' });
+}
+
 function closeCall(s: State, ctx: ModeContext) {
   const call = openCall(s);
   if (call) call.closed = true;
   setPhase(s, ctx, 'reveal', ctx.now() + REVEAL_MS);
+  if (call && opts(ctx).luckyStars && call.n % LUCKY_EVERY === 0) giveLuckyStars(s, ctx);
 }
 
 function advance(s: State, ctx: ModeContext) {
@@ -378,8 +408,9 @@ export const glimgo = defineMode<State, Settings, Action>({
       setPhase(s, ctx, 'finale', now + FINALE_MS);
       return;
     }
-    // Everyone who could mark this call has: show the answer and move on.
-    if (!stillNeeded(s, ctx, call.answer)) closeCall(s, ctx);
+    // Everyone who could mark this call has (or as many as may): show the answer and move on.
+    const finders = opts(ctx).finders;
+    if ((finders > 0 && call.found >= finders) || !stillNeeded(s, ctx, call.answer)) closeCall(s, ctx);
   },
   onTimer(s, id, ctx) {
     if (id === TIMER) advance(s, ctx);

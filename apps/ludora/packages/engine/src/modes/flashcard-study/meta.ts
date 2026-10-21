@@ -31,6 +31,13 @@ export const meta: ModeMeta = {
 
 export const settings: SettingField[] = [
   { kind: 'toggle', key: 'quick', label: 'Quick review', help: 'Knowing a card once masters it.', default: false },
+  {
+    kind: 'toggle',
+    key: 'reverse',
+    label: 'Answer side first',
+    help: 'See the answer and recall the question. Cards whose answer is a picture, a number, a list or true or false stay the usual way round.',
+    default: false,
+  },
 ];
 
 export const variants: ModeVariant[] = [
@@ -46,5 +53,18 @@ export const variants: ModeVariant[] = [
     },
     settings: { quick: true },
     locked: ['quick'],
+  },
+  {
+    meta: {
+      id: 'flashcard-study-back-to-front',
+      modeId: 'flashcard-study',
+      title: 'Back to Front',
+      tagline: 'See the answer, recall the question.',
+      changes: 'Cards are turned around: the front shows the answer and you recall the term or question it belongs to. Cards whose answer is a picture, a number, a list or true or false stay the usual way round.',
+      status: 'playable',
+      thumbnail: { hue: 210, accentHue: 150 },
+    },
+    settings: { reverse: true },
+    locked: ['reverse'],
   },
 ];

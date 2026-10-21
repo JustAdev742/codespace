@@ -13,7 +13,7 @@ import { DEADLINE_GRACE_MS } from '../../mechanics/syncRounds.ts';
 import { answerText } from '../flashcard-study/answer-text.ts';
 import { meta, settings } from './meta.ts';
 
-type Settings = { clock: string; penaltySeconds: number; suddenDeath: boolean };
+type Settings = { clock: string; penaltySeconds: number; suddenDeath: boolean; bonusSeconds: number; overdrive: boolean };
 
 export const BASE_POINTS = 100;
 export const STREAK_FOR_BOOST = 5;
@@ -42,6 +42,12 @@ type Action = z.infer<typeof action>;
 
 /** ×1 for the first five in a row, ×2 for the next five, then ×3. */
 export const multiplierFor = (inRow: number) => Math.min(MAX_MULTIPLIER, 1 + Math.floor(inRow / STREAK_FOR_BOOST));
+
+/** Overdrive: the same steps of five, with no top multiplier. */
+export const overdriveMultiplier = (inRow: number) => 1 + Math.floor(inRow / STREAK_FOR_BOOST);
+
+/** Seconds a wrong answer takes off: the penalty, times the multiplier in overdrive. */
+const penaltySecondsFor = (r: { multiplier: number }, ctx: ModeContext<Settings>) => ctx.settings.penaltySeconds * (ctx.settings.overdrive ? r.multiplier : 1);
 
 const clockMs = (ctx: ModeContext<Settings>) => (Number(ctx.settings.clock) || 60) * 1000;
 const endTimer = (playerId: PlayerId) => `end:${playerId}`;
@@ -107,10 +113,23 @@ export const timeAttack = defineMode<State, Settings, Action>({
       const before = r.multiplier;
       r.score += points;
       r.inRow++;
-      r.multiplier = multiplierFor(r.inRow);
+      r.multiplier = ctx.settings.overdrive ? overdriveMultiplier(r.inRow) : multiplierFor(r.inRow);
       last.points = points;
-      if (r.multiplier > before) last.text = `×${r.multiplier} multiplier`;
+      const notes: string[] = [];
+      const bonusMs = ctx.settings.bonusSeconds * 1000;
+      if (bonusMs > 0) {
+        // The fuse can be topped up, never beyond the time it started with.
+        const endsAt = Math.min(r.endsAt + bonusMs, ctx.now() + clockMs(ctx));
+        if (endsAt > r.endsAt) {
+          notes.push(`+${Math.round((endsAt - r.endsAt) / 100) / 10} s`);
+          r.endsAt = endsAt;
+          ctx.setTimer(endTimer(playerId), r.endsAt + DEADLINE_GRACE_MS);
+        }
+      }
+      if (r.multiplier > before) notes.push(`×${r.multiplier} multiplier`);
+      if (notes.length) last.text = notes.join(', ');
     } else {
+      const lost = penaltySecondsFor(r, ctx);
       r.inRow = 0;
       r.multiplier = 1;
       r.mistakes++;
@@ -120,10 +139,10 @@ export const timeAttack = defineMode<State, Settings, Action>({
         checkEnd(s, ctx);
         return;
       }
-      const penaltyMs = ctx.settings.penaltySeconds * 1000;
+      const penaltyMs = lost * 1000;
       if (penaltyMs > 0) {
         r.endsAt -= penaltyMs;
-        last.text = `−${ctx.settings.penaltySeconds} s`;
+        last.text = `−${lost} s`;
         ctx.setTimer(endTimer(playerId), r.endsAt + DEADLINE_GRACE_MS);
       }
     }
@@ -149,7 +168,8 @@ export const timeAttack = defineMode<State, Settings, Action>({
     const last = r?.stream.last ?? null;
     return {
       clockMs: clockMs(ctx),
-      penaltyMs: ctx.settings.penaltySeconds * 1000,
+      // What the next wrong answer would cost this player (it grows with the multiplier in overdrive).
+      penaltyMs: (r ? penaltySecondsFor(r, ctx) : ctx.settings.penaltySeconds) * 1000,
       suddenDeath: ctx.settings.suddenDeath,
       rows: ctx
         .players()
@@ -167,7 +187,7 @@ export const timeAttack = defineMode<State, Settings, Action>({
             score: r.score,
             multiplier: r.multiplier,
             inRow: r.inRow,
-            nextBoostIn: r.multiplier < MAX_MULTIPLIER ? STREAK_FOR_BOOST - (r.inRow % STREAK_FOR_BOOST) : null,
+            nextBoostIn: r.multiplier < MAX_MULTIPLIER || ctx.settings.overdrive ? STREAK_FOR_BOOST - (r.inRow % STREAK_FOR_BOOST) : null,
             correct: r.stream.correct,
             answered: r.stream.answered,
             bestStreak: r.stream.bestStreak,

@@ -23,7 +23,7 @@ import {
 } from '../../mechanics/syncRounds.ts';
 import { meta, settings } from './meta.ts';
 
-type Settings = { penalty: boolean; target: number; autoAdvance: boolean };
+type Settings = { penalty: boolean; target: number; autoAdvance: boolean; teamTry: boolean };
 
 export interface RoundWin {
   /** Round index (0-based). */
@@ -62,6 +62,14 @@ function champion(s: State, ctx: ModeContext): PlayerId | null {
   return Object.entries(s.sync.scores).find(([, v]) => v >= target)?.[0] ?? null;
 }
 
+/** One Voice: a teammate has already answered this question wrong, so this player's team is locked out of it. */
+function teamLocked(s: State, id: PlayerId, ctx: ModeContext): boolean {
+  if (!opts(ctx).teamTry) return false;
+  const team = ctx.player(id)?.teamId;
+  if (!team) return false;
+  return ctx.players().some((p) => p.id !== id && p.teamId === team && s.sync.answers[p.id] && !s.sync.answers[p.id]!.correct);
+}
+
 const cfg: SyncConfig<State> = {
   introMs: 3000,
   revealMs: 4500,
@@ -70,9 +78,15 @@ const cfg: SyncConfig<State> = {
   // The tally sits beside every reveal, so there is no separate leaderboard phase.
   showLeaderboard: () => false,
   closeOnFirstCorrect: true,
+  canAnswer: (s, id, ctx) => !teamLocked(s, id, ctx),
   score: (s, playerId, r, ctx) => {
     if (r.correct) return 1;
     s.misses[playerId] = (s.misses[playerId] ?? 0) + 1;
+    const team = opts(ctx).teamTry ? ctx.player(playerId)?.teamId : null;
+    if (team) {
+      const mates = ctx.players().filter((p) => p.id !== playerId && p.teamId === team && !s.sync.answers[p.id]).map((p) => p.id);
+      if (mates.length) ctx.feed(`${nameOf(ctx, playerId)} answered for your team and it was wrong: your team is locked out of this question.`, { to: mates, tone: 'bad' });
+    }
     // syncRounds only ever adds points, so the penalty comes off here, at submission.
     if (opts(ctx).penalty && (s.sync.scores[playerId] ?? 0) > 0) {
       s.sync.scores[playerId] = (s.sync.scores[playerId] ?? 0) - 1;
@@ -127,7 +141,7 @@ export const quickDraw = defineMode<State, Settings, Action>({
   onPlayerLeave(s, _p, ctx) {
     // If everyone still here has had their try, there is nothing left to wait for.
     if (s.sync.phase !== 'question') return;
-    const waiting = ctx.players().filter((p) => p.connected);
+    const waiting = ctx.players().filter((p) => p.connected && !teamLocked(s, p.id, ctx));
     if (waiting.length && waiting.every((p) => s.sync.answers[p.id])) syncAdvance(s, cfg, ctx);
   },
   onAction(s, playerId, a, ctx) {
@@ -148,7 +162,11 @@ export const quickDraw = defineMode<State, Settings, Action>({
     const last = s.wins[s.wins.length - 1];
     const roundWin = revealed && last && last.round === round ? last : null;
     const winner = roundWin ? { playerId: roundWin.playerId, name: nameOf(ctx, roundWin.playerId), responseMs: roundWin.responseMs } : null;
-    const lockedOut = live ? Object.values(s.sync.answers).filter((a) => !a.correct).length : 0;
+    const lockedOut = !live
+      ? 0
+      : st.teamTry
+        ? ctx.players().filter((p) => (s.sync.answers[p.id] && !s.sync.answers[p.id]!.correct) || teamLocked(s, p.id, ctx)).length
+        : Object.values(s.sync.answers).filter((a) => !a.correct).length;
     let fastest: { playerId: PlayerId; name: string; responseMs: number } | null = null;
     for (const w of s.wins) if (!fastest || w.responseMs < fastest.responseMs) fastest = { playerId: w.playerId, name: nameOf(ctx, w.playerId), responseMs: w.responseMs };
     let you = null;
@@ -158,7 +176,8 @@ export const quickDraw = defineMode<State, Settings, Action>({
       you = {
         score: s.sync.scores[me] ?? 0,
         // A correct answer would have ended the round, so a player who answered while it is still open was wrong.
-        lockedOut: Boolean(mine && !mine.correct),
+        // With one try per team, a teammate's wrong answer locks you out too.
+        lockedOut: Boolean(mine && !mine.correct) || (live && teamLocked(s, me, ctx)),
         won: winner?.playerId === me,
         lostPoint: live && s.penalised[me] === round,
         wins: s.wins.filter((w) => w.playerId === me).length,

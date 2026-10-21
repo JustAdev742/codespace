@@ -56,6 +56,9 @@ export const settings: SettingField[] = [
     // Simulated rooms almost never won with less: at 80% accuracy, 12 players won 0% with half a shield per player and about 85% with 3.
     default: '3',
   },
+  { kind: 'toggle', key: 'regen', label: 'Healing giant', help: 'Every 15 seconds the giant heals 1 health for every player.', default: false },
+  { kind: 'toggle', key: 'mending', label: 'Shield mending', help: 'Every fifth correct answer in a row mends the shield by 1, up to its starting strength.', default: false },
+  { kind: 'toggle', key: 'swift', label: 'Swift strikes', help: 'A correct answer within 6 seconds is a critical hit, and there are no lucky ones.', default: false },
 ];
 
 export const variants: ModeVariant[] = [
@@ -85,5 +88,44 @@ export const variants: ModeVariant[] = [
     settings: { hpPerPlayer: 8 },
     common: { timeLimitSec: 180 },
     locked: ['hpPerPlayer', 'timeLimitSec'],
+  },
+  {
+    meta: {
+      id: 'gloom-giant-healing',
+      modeId: 'gloom-giant',
+      title: 'Healing Gloom',
+      tagline: 'The giant heals itself. Keep the hits coming.',
+      changes: 'Every 15 seconds the giant heals 1 health for every player in the room, so a slow or hesitant room loses ground it has already won.',
+      status: 'playable',
+      thumbnail: { hue: 280, accentHue: 140 },
+    },
+    settings: { regen: true },
+    locked: ['regen'],
+  },
+  {
+    meta: {
+      id: 'gloom-giant-menders',
+      modeId: 'gloom-giant',
+      title: 'Glim Menders',
+      tagline: 'Long streaks mend the shield.',
+      changes: 'Every fifth correct answer in a row mends the team shield by 1, up to the strength it started with, so steady players undo the damage from wrong answers.',
+      status: 'playable',
+      thumbnail: { glyph: 'shield', hue: 200, accentHue: 280 },
+    },
+    settings: { mending: true },
+    locked: ['mending'],
+  },
+  {
+    meta: {
+      id: 'gloom-giant-swift',
+      modeId: 'gloom-giant',
+      title: 'Swift Strikes',
+      tagline: 'Fast answers land critical hits.',
+      changes: 'Critical hits are earned, not lucky: a correct answer given within 6 seconds of its question appearing is always a critical hit, and a slower one never is.',
+      status: 'playable',
+      thumbnail: { glyph: 'sword', hue: 350, accentHue: 50 },
+    },
+    settings: { swift: true },
+    locked: ['swift'],
   },
 ];

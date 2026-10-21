@@ -35,6 +35,7 @@ export const meta: ModeMeta = {
 export const settings: SettingField[] = [
   { kind: 'number', key: 'pairs', label: 'Pairs on each board', min: 4, max: 10, step: 1, default: 6, unit: 'pairs' },
   { kind: 'toggle', key: 'sprint', label: 'Sprint', help: 'The game ends as soon as one player clears their first board. That player wins.', default: false },
+  { kind: 'number', key: 'missCost', label: 'Lose a pair every', help: 'Every this many misses costs one of the pairs you have found. 0 turns it off.', min: 0, max: 5, step: 1, default: 0, unit: 'misses' },
 ];
 
 export const variants: ModeVariant[] = [
@@ -63,5 +64,18 @@ export const variants: ModeVariant[] = [
     },
     settings: { sprint: true },
     locked: ['sprint'],
+  },
+  {
+    meta: {
+      id: 'lantern-match-careful',
+      modeId: 'lantern-match',
+      title: 'Careful Match',
+      tagline: 'Every third miss costs a pair you have found.',
+      changes: 'Every third miss costs you one of the pairs you have already found, so turning cards over at random no longer pays: remember what you have seen.',
+      status: 'playable',
+      thumbnail: { hue: 180, accentHue: 350 },
+    },
+    settings: { missCost: 3 },
+    locked: ['missCost'],
   },
 ];

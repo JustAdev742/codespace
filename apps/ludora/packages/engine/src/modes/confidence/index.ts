@@ -18,7 +18,7 @@ import { DEADLINE_GRACE_MS, leaderboard } from '../../mechanics/syncRounds.ts';
 import { meta, settings } from './meta.ts';
 
 export type Level = 1 | 2 | 3;
-type Settings = { wagerSeconds: number; highStakes: boolean; autoAdvance: boolean; leaderboard: boolean };
+type Settings = { wagerSeconds: number; highStakes: boolean; autoAdvance: boolean; leaderboard: boolean; returning: boolean; risingStakes: boolean };
 type Phase = 'intro' | 'wager' | 'question' | 'reveal' | 'leaderboard' | 'done';
 
 interface Answered {
@@ -59,6 +59,8 @@ interface State {
   scores: Record<PlayerId, number>;
   lastGain: Record<PlayerId, number>;
   tallies: Record<PlayerId, Tally>;
+  /** Questions in the game before any came back; rounds from here on are returning questions. */
+  baseRounds: number;
 }
 
 const action = z.discriminatedUnion('type', [
@@ -79,6 +81,17 @@ const opts = (ctx: ModeContext) => ctx.settings as Settings;
 export function confidenceChange(level: Level, correct: boolean, highStakes = false): number {
   if (correct) return 100 * level;
   return highStakes ? -100 * level : -50 * (level - 1);
+}
+
+/** Rising stakes: what every stake is multiplied by in a round (0-based). */
+export function stakeMultiplier(round: number, rising: boolean): number {
+  return rising ? 1 + Math.floor(Math.max(0, round) / 4) : 1;
+}
+
+/** The change for a level in this round, with rising stakes applied. */
+function changeFor(s: State, ctx: ModeContext, level: Level, correct: boolean): number {
+  const st = opts(ctx);
+  return confidenceChange(level, correct, st.highStakes) * stakeMultiplier(s.round, st.risingStakes);
 }
 
 function setPhase(s: State, ctx: ModeContext, phase: Phase, endsAt: number | null, timerAt: number | null = endsAt) {
@@ -120,6 +133,8 @@ function finish(s: State, ctx: ModeContext) {
 function startRound(s: State, ctx: ModeContext) {
   s.round++;
   if (s.round >= s.order.length) return finish(s, ctx);
+  if (opts(ctx).risingStakes && s.round > 0 && s.round % 4 === 0) ctx.feed(`The stakes rise: every stake is now ×${stakeMultiplier(s.round, true)}.`, { tone: 'big' });
+  if (s.round === s.baseRounds) ctx.feed('Returning questions: the ones most of you missed come round again.', { tone: 'big' });
   s.iid = null;
   s.wagers = {};
   s.answers = {};
@@ -147,13 +162,20 @@ function closeRound(s: State, ctx: ModeContext) {
     const level = picked ?? 1;
     const correct = a?.correct ?? false;
     const before = s.scores[p.id] ?? 0;
-    const after = Math.max(0, before + confidenceChange(level, correct, st.highStakes));
+    const after = Math.max(0, before + changeFor(s, ctx, level, correct));
     s.scores[p.id] = after;
     s.lastGain[p.id] = after - before;
     s.outcomes[p.id] = { level, answered: Boolean(a), correct, change: after - before };
     const t = (s.tallies[p.id] ??= { picks: [0, 0, 0], right: [0, 0, 0] });
     t.picks[level - 1] = (t.picks[level - 1] ?? 0) + 1;
     if (correct) t.right[level - 1] = (t.right[level - 1] ?? 0) + 1;
+  }
+  if (st.returning && s.round < s.baseRounds) {
+    const took = Object.values(s.outcomes);
+    if (took.length && took.filter((o) => o.correct).length * 2 < took.length) {
+      s.order.push(s.order[s.round]!);
+      ctx.feed('Fewer than half got that one. It comes back at the end.', { tone: 'info' });
+    }
   }
   setPhase(s, ctx, 'reveal', st.autoAdvance ? ctx.now() + REVEAL_MS : null);
 }
@@ -220,7 +242,9 @@ export const confidence = defineMode<State, Settings, Action>({
       scores,
       lastGain: {},
       tallies: {},
+      baseRounds: 0,
     };
+    s.baseRounds = s.order.length;
     setPhase(s, ctx, 'intro', ctx.now() + INTRO_MS);
     return s;
   },
@@ -254,7 +278,9 @@ export const confidence = defineMode<State, Settings, Action>({
       level: s.wagers[playerId] ?? 1,
       token: a.answer.type === 'mcq' ? a.answer.choiceId : a.answer.type === 'truefalse' ? String(a.answer.value) : null,
     };
-    ctx.recordAnswer({ playerId, qid: ctx.questions.instance(s.iid).qid, correct: grade.correct, partial: grade.partial, responseMs });
+    // A returning question is a second go: it counts for reports, not again for rewards.
+    const kind = s.round >= s.baseRounds ? { kind: 'attempt' as const } : {};
+    ctx.recordAnswer({ playerId, qid: ctx.questions.instance(s.iid).qid, correct: grade.correct, partial: grade.partial, responseMs, ...kind });
     if (everyone(ctx, (id) => Boolean(s.answers[id]))) closeRound(s, ctx);
   },
   onTimer(s, id, ctx) {
@@ -301,7 +327,7 @@ export const confidence = defineMode<State, Settings, Action>({
       phaseEndsAt: s.phaseEndsAt,
       roundStartedAt: s.roundStartedAt,
       highStakes: st.highStakes,
-      stakes: LEVELS.map((level) => ({ level, gain: confidenceChange(level, true, st.highStakes), loss: -confidenceChange(level, false, st.highStakes) })),
+      stakes: LEVELS.map((level) => ({ level, gain: changeFor(s, ctx, level, true), loss: -changeFor(s, ctx, level, false) })),
       prompt,
       question,
       reveal: revealed && s.iid ? ctx.questions.reveal(s.iid) : null,

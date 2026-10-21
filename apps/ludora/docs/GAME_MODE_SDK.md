@@ -84,6 +84,39 @@ example Classic's Sudden Death). Variants can lock settings so hosts cannot undo
 the twist. Only add variants a player would describe as a different game; never
 pad the catalogue with renames.
 
+### Adding a rule option behind a variant
+
+Most variants need a new rule, not just new numbers. The pattern:
+
+1. **Add a setting that defaults to off** (`false`, `0`, or the current
+   behaviour as a select's default), so the base mode plays exactly as before.
+   It appears in the host form automatically.
+2. **Implement it in the mode**, and lock it in the variant. `meta.changes`
+   says plainly what differs.
+3. **Make it visible through what the screen already shows**: the per-answer
+   `text` on the feedback (`stream.last.text`, e.g. "+3 spaces (Momentum)"),
+   counters the view already has (scores, lives, positions, team totals,
+   question totals), and `ctx.feed` lines (`{ to: [...] }` for private ones;
+   send one line for many players rather than one line each). Extra view fields
+   are fine only if the screen can ignore them. If the rule cannot be understood
+   without new UI, it is the wrong rule for now.
+4. **Keep randomness behind the setting.** Draw from `ctx.rng` only when the
+   option is on, so seeded games with the option off replay exactly as they did.
+5. **Second goes at the same question** (encores, second chances) are recorded
+   as attempts, so they count for reports but never twice for rewards or
+   streaks: pass `recordingAs(ctx, 'attempt')` from `modes/rules.ts` to the
+   helper that records the answer.
+6. **Leave the mechanics alone.** Synced rounds can be extended from the mode:
+   append to `state.sync.order` in `onClosed` to replay a question, take a
+   penalty off `state.sync.scores` inside `score` and show it through
+   `state.sync.lastGain` in `onClosed`, and catch the start of a round by
+   wrapping `syncOnTimer`/`syncHostNext` (see Classic and Lantern Out).
+
+Test each option with a focused test that proves the rule, driving a
+`GameRuntime` on a fake clock (`test/rule-helpers.ts` has a small driver).
+`test/variants.test.ts` plays every variant with its mode's fewest players, with
+churn on a flashcard-only set, and twice from one seed.
+
 ## Status and the conformance test
 
 `packages/engine/test/modes.test.ts` plays every registered mode and variant to the

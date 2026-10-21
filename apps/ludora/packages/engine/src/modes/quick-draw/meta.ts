@@ -38,6 +38,7 @@ export const settings: SettingField[] = [
   { kind: 'toggle', key: 'penalty', label: 'Wrong answers cost a point', help: 'Scores never drop below 0.', default: false },
   { kind: 'number', key: 'target', label: 'Points to win', help: '0 plays every question; the most points wins.', min: 0, max: 20, step: 1, default: 0, unit: 'points' },
   { kind: 'toggle', key: 'autoAdvance', label: 'Move on automatically', help: 'Turn off to talk through each answer before moving on.', default: true },
+  { kind: 'toggle', key: 'teamTry', label: 'One try per team', help: 'With teams on, a wrong answer locks the whole team out of that question.', default: false },
 ];
 
 export const variants: ModeVariant[] = [
@@ -67,5 +68,19 @@ export const variants: ModeVariant[] = [
     },
     settings: { penalty: true },
     locked: ['penalty'],
+  },
+  {
+    meta: {
+      id: 'quick-draw-one-voice',
+      modeId: 'quick-draw',
+      title: 'One Voice',
+      tagline: 'One try per team. Whoever answers speaks for everyone.',
+      changes: 'Players are split into teams, and each team gets one try per question: if anyone on your team answers wrong, the whole team is locked out until the next question. Every round a player wins counts for their team.',
+      status: 'playable',
+      thumbnail: { hue: 205, accentHue: 14 },
+    },
+    settings: { teamTry: true },
+    common: { teamCount: 2 },
+    locked: ['teamTry'],
   },
 ];

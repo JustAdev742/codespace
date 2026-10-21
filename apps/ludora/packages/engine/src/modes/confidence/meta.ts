@@ -37,6 +37,8 @@ export const settings: SettingField[] = [
   { kind: 'toggle', key: 'highStakes', label: 'High stakes', help: 'A wrong answer costs 100 points for every level of confidence.', default: false },
   { kind: 'toggle', key: 'autoAdvance', label: 'Move on automatically', help: 'Turn off to talk through each answer before moving on.', default: true },
   { kind: 'toggle', key: 'leaderboard', label: 'Leaderboard between questions', default: true },
+  { kind: 'toggle', key: 'returning', label: 'Returning questions', help: 'Questions fewer than half the players got right come back once at the end.', default: false },
+  { kind: 'toggle', key: 'risingStakes', label: 'Rising stakes', help: 'Every stake goes up after every four questions: double, then triple, and so on.', default: false },
 ];
 
 export const variants: ModeVariant[] = [
@@ -52,5 +54,31 @@ export const variants: ModeVariant[] = [
     },
     settings: { highStakes: true },
     locked: ['highStakes'],
+  },
+  {
+    meta: {
+      id: 'confidence-returning-comets',
+      modeId: 'confidence',
+      title: 'Returning Comets',
+      tagline: 'The questions most of the room missed come round again.',
+      changes: 'When fewer than half the players get a question right, it comes back once at the end of the game, with a fresh choice of how sure you are.',
+      status: 'playable',
+      thumbnail: { glyph: 'comet', hue: 250, accentHue: 160 },
+    },
+    settings: { returning: true },
+    locked: ['returning'],
+  },
+  {
+    meta: {
+      id: 'confidence-rising-stakes',
+      modeId: 'confidence',
+      title: 'Rising Stakes',
+      tagline: 'The stakes climb every four questions.',
+      changes: 'Every stake, won or lost, goes up every four questions: double from question 5, triple from question 9, and so on, so being certain late in the game can win or lose far more than early on.',
+      status: 'playable',
+      thumbnail: { hue: 300, accentHue: 45 },
+    },
+    settings: { risingStakes: true },
+    locked: ['risingStakes'],
   },
 ];

@@ -13,7 +13,7 @@ import { normalizeAnswerText } from '../../questions/grade.ts';
 import { answerFace } from '../flashcard-study/answer-text.ts';
 import { meta, settings } from './meta.ts';
 
-type Settings = { pairs: number; sprint: boolean };
+type Settings = { pairs: number; sprint: boolean; missCost: number };
 
 export type CardSide = 'question' | 'answer';
 
@@ -40,6 +40,8 @@ interface Player {
   pairs: number;
   misses: number;
   cleared: number;
+  /** Careful match: pairs taken away for misses. */
+  lost: number;
   last: { result: 'match' | 'miss' | 'cleared'; at: number } | null;
   /** The pair just matched on this board, so its two faces can be read out. */
   lastPair: number[] | null;
@@ -92,7 +94,7 @@ function dealBoard(ctx: ModeContext<Settings>, deck: Deck, no: number): Board {
 
 function newPlayer(ctx: ModeContext<Settings>): Player {
   const deck = createDeck(ctx.questions.ids(), ctx.rng, ctx.common.shuffleQuestions);
-  return { deck, board: dealBoard(ctx, deck, 1), pairs: 0, misses: 0, cleared: 0, last: null, lastPair: null };
+  return { deck, board: dealBoard(ctx, deck, 1), pairs: 0, misses: 0, cleared: 0, lost: 0, last: null, lastPair: null };
 }
 
 function cardView(card: Card, i: number, b: Board, ctx: ModeContext) {
@@ -188,6 +190,12 @@ export const lanternMatch = defineMode<State, Settings, Action>({
       b.up = [first, a.index];
       p.misses++;
       p.last = { result: 'miss', at: ctx.now() };
+      const every = ctx.settings.missCost;
+      if (every > 0 && p.misses % every === 0 && p.pairs > 0) {
+        p.pairs--;
+        p.lost++;
+        ctx.feed(`That was miss number ${p.misses}: it cost you a pair.`, { to: [playerId], tone: 'bad' });
+      }
       return;
     }
     b.matched[first] = true;
@@ -243,7 +251,8 @@ export const lanternMatch = defineMode<State, Settings, Action>({
       const p = s.players[pl.id];
       const pairs = p?.pairs ?? 0;
       const misses = p?.misses ?? 0;
-      const summary = `${plural(pairs, 'pair', 'pairs')}, ${plural(misses, 'miss', 'misses')}`;
+      const lost = p?.lost ? ` (${plural(p.lost, 'pair', 'pairs')} lost)` : '';
+      const summary = `${plural(pairs, 'pair', 'pairs')}, ${plural(misses, 'miss', 'misses')}${lost}`;
       return {
         playerId: pl.id,
         // Pairs decide the order; fewer misses breaks a tie.

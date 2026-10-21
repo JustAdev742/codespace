@@ -21,10 +21,16 @@ import type { EnginePlayer, ModeContext, PlayerId } from '../../sdk/types.ts';
 import { streamInit, streamNext, streamQuestionView, streamSubmit, type StreamState } from '../../mechanics/selfPaced.ts';
 import { meta, settings } from './meta.ts';
 
-type Settings = { ropeLength: number; slack: boolean };
+type Settings = { ropeLength: number; slack: boolean; heave: boolean; underdog: boolean; surge: boolean };
 export type Side = 'left' | 'right';
 
 const EPS = 1e-6;
+/** Heave: every this many correct answers in a row pulls double. */
+export const HEAVE_EVERY = 3;
+/** Underdog grip: how much harder the side the knot leans away from pulls. */
+export const UNDERDOG_GRIP = 1.5;
+/** Final surge: pulls count double for this long before time runs out. */
+export const SURGE_MS = 30_000;
 const SIDES: readonly Side[] = ['left', 'right'];
 
 interface Puller {
@@ -125,6 +131,22 @@ function newPuller(s: State, p: EnginePlayer, ctx: ModeContext): Puller {
   return { stream: streamInit(ctx), side: assignSide(s, p, ctx), pulls: 0, slips: 0, distance: 0 };
 }
 
+/** The side the knot leans away from, or null when it is dead level. */
+export function trailingSide(pos: number): Side | null {
+  const lean = leanOf(pos);
+  return lean === 'draw' ? null : other(lean);
+}
+
+const inSurge = (s: State, ctx: ModeContext<Settings>) => ctx.settings.surge && s.endsAt !== null && ctx.now() >= s.endsAt - SURGE_MS;
+
+/** Spaces one correct answer from this side pulls right now, before any heave: team sizes, then underdog grip and the final surge. */
+function sideStrength(s: State, side: Side, counts: Record<Side, number>, ctx: ModeContext<Settings>): number {
+  let strength = pullStrength(side, counts);
+  if (ctx.settings.underdog && trailingSide(s.pos) === side) strength *= UNDERDOG_GRIP;
+  if (inSurge(s, ctx)) strength *= 2;
+  return strength;
+}
+
 function move(s: State, towards: Side, amount: number, ropeLength: number) {
   const next = s.pos + (towards === 'left' ? -amount : amount);
   s.pos = round6(Math.max(-ropeLength, Math.min(ropeLength, next)));
@@ -167,6 +189,10 @@ export const tugOfWar = defineMode<State, Settings, Action>({
     };
     for (const p of ctx.players()) s.pullers[p.id] = newPuller(s, p, ctx);
     if (s.endsAt) ctx.setTimer('time', s.endsAt);
+    if (ctx.settings.surge && s.endsAt !== null) {
+      if (s.endsAt - SURGE_MS > ctx.now()) ctx.setTimer('surge', s.endsAt - SURGE_MS);
+      else ctx.feed('Final surge! Every pull counts double.', { tone: 'big' });
+    }
     return s;
   },
   onPlayerJoin(s, p, ctx) {
@@ -179,15 +205,25 @@ export const tugOfWar = defineMode<State, Settings, Action>({
     const res = streamSubmit(pl.stream, playerId, a.iid, a.answer, ctx);
     if ('error' in res) return res;
     const L = ctx.settings.ropeLength;
-    const strength = pullStrength(pl.side, sideCounts(s, ctx, true));
+    const counts = sideCounts(s, ctx, true);
+    const strength = pullStrength(pl.side, counts);
     let text = 'No pull this time';
     if (res.correct) {
-      move(s, pl.side, strength, L);
+      const st = ctx.settings;
+      const notes: string[] = [];
+      let pull = sideStrength(s, pl.side, counts, ctx);
+      if (st.underdog && trailingSide(s.pos) === pl.side) notes.push('underdog grip');
+      if (inSurge(s, ctx)) notes.push('final surge');
+      if (st.heave && res.streak % HEAVE_EVERY === 0) {
+        pull *= 2;
+        notes.push('heave');
+      }
+      move(s, pl.side, pull, L);
       pl.pulls++;
-      pl.distance = round6(pl.distance + strength);
-      s.totals[pl.side] = round6(s.totals[pl.side] + strength);
+      pl.distance = round6(pl.distance + pull);
+      s.totals[pl.side] = round6(s.totals[pl.side] + pull);
       s.pullCounts[pl.side]++;
-      text = `Pulled ${spaces(strength)}`;
+      text = `Pulled ${spaces(pull)}${notes.length ? ` (${notes.join(', ')})` : ''}`;
     } else if (ctx.settings.slack) {
       const slip = strength / 2;
       move(s, other(pl.side), slip, L);
@@ -207,6 +243,10 @@ export const tugOfWar = defineMode<State, Settings, Action>({
     streamNext(pl.stream, ctx);
   },
   onTimer(s, id, ctx) {
+    if (id === 'surge') {
+      if (!s.winner) ctx.feed('Final surge! Every pull now counts double.', { tone: 'big' });
+      return;
+    }
     if (id !== 'time' || s.winner) return;
     s.winner = leanOf(s.pos);
     s.endedBy = 'time';
@@ -225,7 +265,7 @@ export const tugOfWar = defineMode<State, Settings, Action>({
         hue: teams[0]?.hue ?? (side === 'left' ? 42 : 200),
         players: present[side],
         connected: connected[side],
-        strength: pullStrength(side, connected),
+        strength: sideStrength(s, side, connected, ctx),
         pulls: s.pullCounts[side],
         distance: s.totals[side],
         top: topPullers(s, ctx, side, viewer.kind === 'host' ? 3 : 1, me),
@@ -244,7 +284,7 @@ export const tugOfWar = defineMode<State, Settings, Action>({
             pulls: pl.pulls,
             slips: pl.slips,
             distance: pl.distance,
-            strength: pullStrength(pl.side, connected),
+            strength: sideStrength(s, pl.side, connected, ctx),
             streak: pl.stream.streak,
             question: streamQuestionView(pl.stream, ctx),
             last: pl.stream.last,

@@ -12,14 +12,17 @@ import type { ModeContext, PlayerId } from '../../sdk/types.ts';
 import { streamInit, streamNext, streamQuestionView, streamSubmit, type StreamState } from '../../mechanics/selfPaced.ts';
 import { DEADLINE_GRACE_MS } from '../../mechanics/syncRounds.ts';
 import { answerText } from '../flashcard-study/answer-text.ts';
+import { recordingAs } from '../rules.ts';
 import { meta, settings } from './meta.ts';
 
-type Settings = { hearts: number; restores: boolean };
+type Settings = { hearts: number; restores: boolean; secondWind: boolean; heartCap: number };
 
 export const START_MS = 15_000;
 export const STEP_MS = 500;
 export const FLOOR_MS = 6_000;
 export const RESTORE_EVERY = 10;
+/** Second wind: a missed question comes back after this many other questions. */
+export const RETURN_AFTER = 3;
 const PAUSE_RIGHT_MS = 1000;
 const PAUSE_WRONG_MS = 2500;
 
@@ -36,6 +39,10 @@ interface Runner {
   /** Hearts gained (+1) or lost (-1) by the last answer. */
   heartChange: number;
   endedAt: number | null;
+  /** Second wind: missed questions waiting to come back, due once `after` questions have been answered. */
+  returns: { qid: string; after: number }[];
+  /** The question on screen is one coming back for a second go. */
+  returning: boolean;
 }
 
 export interface State {
@@ -53,10 +60,16 @@ type Action = z.infer<typeof action>;
 /** The timer after `correct` correct answers: 15 s, half a second less for each, never under 6 s. */
 export const timerAfter = (correct: number) => Math.max(FLOOR_MS, START_MS - STEP_MS * correct);
 
+/** The most hearts a runner can hold: the starting number, or more if the host raised the cap. */
+const maxHearts = (ctx: ModeContext<Settings>) => Math.max(ctx.settings.hearts, ctx.settings.heartCap);
+
 const plural = (n: number, one: string, many: string) => `${n.toLocaleString('en-GB')} ${n === 1 ? one : many}`;
 
 function ask(r: Runner, playerId: PlayerId, ctx: ModeContext<Settings>) {
-  streamNext(r.stream, ctx);
+  const due = ctx.settings.secondWind ? r.returns.findIndex((x) => r.stream.answered >= x.after) : -1;
+  r.returning = due >= 0;
+  if (r.returning) r.stream.iid = ctx.questions.present(r.returns.splice(due, 1)[0]!.qid);
+  else streamNext(r.stream, ctx);
   r.phase = 'question';
   r.deadline = ctx.now() + r.timerMs;
   r.nextAt = null;
@@ -75,6 +88,8 @@ function newRunner(playerId: PlayerId, ctx: ModeContext<Settings>): Runner {
     restored: 0,
     heartChange: 0,
     endedAt: null,
+    returns: [],
+    returning: false,
   };
   ask(r, playerId, ctx);
   return r;
@@ -94,7 +109,12 @@ function settle(s: State, r: Runner, playerId: PlayerId, correct: boolean, ctx: 
   r.heartChange = 0;
   if (correct) {
     r.timerMs = timerAfter(r.stream.correct);
-    if (ctx.settings.restores && r.stream.correct % RESTORE_EVERY === 0 && r.hearts < ctx.settings.hearts) {
+    if (r.returning && r.hearts < maxHearts(ctx)) {
+      r.hearts++;
+      r.restored++;
+      r.heartChange = 1;
+      if (r.stream.last) r.stream.last.text = 'Second wind: heart won back';
+    } else if (ctx.settings.restores && r.stream.correct % RESTORE_EVERY === 0 && r.hearts < maxHearts(ctx)) {
       r.hearts++;
       r.restored++;
       r.heartChange = 1;
@@ -103,6 +123,12 @@ function settle(s: State, r: Runner, playerId: PlayerId, correct: boolean, ctx: 
   } else {
     r.hearts--;
     r.heartChange = -1;
+    // Second wind: a first miss comes back for one more go (a miss on its return does not).
+    const last = r.stream.last;
+    if (ctx.settings.secondWind && !r.returning && r.hearts > 0 && last) {
+      r.returns.push({ qid: ctx.questions.instance(last.iid).qid, after: r.stream.answered + RETURN_AFTER });
+      last.text = `${last.text ? `${last.text}. ` : ''}It comes back in ${RETURN_AFTER} questions`;
+    }
   }
   if (r.hearts <= 0) {
     r.phase = 'over';
@@ -125,7 +151,7 @@ function timeOut(s: State, r: Runner, playerId: PlayerId, ctx: ModeContext<Setti
   r.stream.streak = 0;
   r.stream.last = { iid: id, correct: false, partial: 0, reveal: ctx.questions.reveal(id), ...(explanation ? { explanation } : {}), text: 'Out of time' };
   r.stream.iid = null;
-  ctx.recordAnswer({ playerId, qid: inst.qid, correct: false, partial: 0, responseMs: ctx.now() - inst.shownAt });
+  ctx.recordAnswer({ playerId, qid: inst.qid, correct: false, partial: 0, responseMs: ctx.now() - inst.shownAt, ...(r.returning ? { kind: 'attempt' as const } : {}) });
   settle(s, r, playerId, false, ctx);
 }
 
@@ -158,7 +184,8 @@ export const survivalRun = defineMode<State, Settings, Action>({
     }
     if (r.phase !== 'question') return { error: 'There is no question to answer right now.' };
     if (r.deadline !== null && ctx.now() > r.deadline + DEADLINE_GRACE_MS) return { error: 'Time is up for that question.' };
-    const res = streamSubmit(r.stream, playerId, a.iid, a.answer, ctx);
+    // A question coming back is a second go: it counts for reports, not again for rewards.
+    const res = streamSubmit(r.stream, playerId, a.iid, a.answer, r.returning ? recordingAs(ctx, 'attempt') : ctx);
     if ('error' in res) return res;
     settle(s, r, playerId, res.correct, ctx);
   },
@@ -179,7 +206,7 @@ export const survivalRun = defineMode<State, Settings, Action>({
     const last = r && r.phase !== 'question' ? r.stream.last : null;
     return {
       endsAt: s.endsAt,
-      maxHearts: ctx.settings.hearts,
+      maxHearts: maxHearts(ctx),
       restores: ctx.settings.restores,
       rows: ctx
         .players()

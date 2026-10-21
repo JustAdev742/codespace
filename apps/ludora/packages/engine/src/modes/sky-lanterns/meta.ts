@@ -61,6 +61,29 @@ export const settings: SettingField[] = [
     unit: '%',
   },
   { kind: 'toggle', key: 'gales', label: 'Gales', help: 'A rare wind that makes every lantern launched while it blows worth ×4.', default: false },
+  {
+    kind: 'select',
+    key: 'windPattern',
+    label: 'Wind pattern',
+    options: [
+      { value: 'random', label: 'Unpredictable' },
+      { value: 'rising', label: 'Rising: one step stronger at every change until a storm' },
+      { value: 'finale', label: 'Festival finale: the last wind is always a gale' },
+    ],
+    default: 'random',
+  },
+  { kind: 'toggle', key: 'spill', label: 'Leaky can', help: 'A wrong answer spills 1 oil.', default: false },
+  {
+    kind: 'number',
+    key: 'stormSafe',
+    label: 'Lanterns safe from storms',
+    help: 'A storm only blows out the lanterns of players with more than this many waiting. 0 puts every lantern at risk.',
+    min: 0,
+    max: 4,
+    step: 1,
+    default: 0,
+    unit: 'lanterns',
+  },
 ];
 
 export const variants: ModeVariant[] = [
@@ -89,5 +112,57 @@ export const variants: ModeVariant[] = [
     },
     settings: { storms: true, stormChance: 25, stormRise: 15, gales: true },
     locked: ['storms', 'stormChance', 'stormRise', 'gales'],
+  },
+  {
+    meta: {
+      id: 'sky-lanterns-gathering-winds',
+      modeId: 'sky-lanterns',
+      title: 'Gathering Winds',
+      tagline: 'The wind only grows stronger, until the storm breaks.',
+      changes: 'The wind is no longer a surprise: at every change it grows one step stronger (calm, breezy, gusty) until a storm resets it to calm. You can see the gust coming, so the question is how long to wait while the storm chance climbs.',
+      status: 'playable',
+      thumbnail: { hue: 205, accentHue: 30 },
+    },
+    settings: { windPattern: 'rising' },
+    locked: ['windPattern'],
+  },
+  {
+    meta: {
+      id: 'sky-lanterns-festival-finale',
+      modeId: 'sky-lanterns',
+      title: 'Festival Finale',
+      tagline: 'The last wind of the night is always a gale.',
+      changes: 'The last wind before time runs out is always a gale (×4) and brings no storm, so lanterns that survive until the finale score big. Storms still threaten everything waiting on the ground before then.',
+      status: 'playable',
+      thumbnail: { hue: 320, accentHue: 45 },
+    },
+    settings: { windPattern: 'finale' },
+    locked: ['windPattern'],
+  },
+  {
+    meta: {
+      id: 'sky-lanterns-leaky-can',
+      modeId: 'sky-lanterns',
+      title: 'Leaky Can',
+      tagline: 'Every wrong answer spills a drop of oil.',
+      changes: 'A wrong answer spills 1 oil from your can, so careless guesses can cost you a lantern.',
+      status: 'playable',
+      thumbnail: { hue: 25, accentHue: 200 },
+    },
+    settings: { spill: true },
+    locked: ['spill'],
+  },
+  {
+    meta: {
+      id: 'sky-lanterns-lightning-rods',
+      modeId: 'sky-lanterns',
+      title: 'Lightning Rods',
+      tagline: 'Storms only strike the tallest stacks.',
+      changes: 'A storm only blows out the lanterns of players with three or more waiting on the ground: one or two lit lanterns are safe. Stack up more than that and you become a lightning rod.',
+      status: 'playable',
+      thumbnail: { glyph: 'bolt', hue: 250, accentHue: 55 },
+    },
+    settings: { stormSafe: 2 },
+    locked: ['stormSafe'],
   },
 ];

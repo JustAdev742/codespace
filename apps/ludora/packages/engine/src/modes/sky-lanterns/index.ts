@@ -19,7 +19,17 @@ import type { ModeContext, PlayerId } from '../../sdk/types.ts';
 import { streamInit, streamNext, streamQuestionView, streamSubmit, type StreamState } from '../../mechanics/selfPaced.ts';
 import { meta, settings } from './meta.ts';
 
-type Settings = { lanternCost: number; windChangeSec: number; storms: boolean; stormChance: number; stormRise: number; gales: boolean };
+type Settings = {
+  lanternCost: number;
+  windChangeSec: number;
+  storms: boolean;
+  stormChance: number;
+  stormRise: number;
+  gales: boolean;
+  windPattern: string;
+  spill: boolean;
+  stormSafe: number;
+};
 
 export type WindKind = 'calm' | 'breezy' | 'gusty' | 'gale';
 
@@ -130,6 +140,23 @@ function scheduleChange(s: State, ctx: ModeContext<Settings>) {
   }
 }
 
+/** Gathering Winds: the wind after `kind`, one step stronger. Gusty only becomes a gale when gales are on. */
+export function strongerWind(kind: WindKind, gales: boolean): WindKind {
+  if (kind === 'calm') return 'breezy';
+  if (kind === 'breezy') return 'gusty';
+  return gales ? 'gale' : kind;
+}
+
+/** Festival finale: the change at game time `at` brings the last wind of the game. */
+function isFinalChange(at: number, s: State, ctx: ModeContext<Settings>) {
+  return at + ctx.settings.windChangeSec * 1000 >= s.endsAt;
+}
+
+/** Festival finale: the coming change brings the gale and no storm, so the forecast says so. */
+function forecastFinale(s: State, ctx: ModeContext<Settings>) {
+  if (ctx.settings.windPattern === 'finale' && s.wind.changeAt !== null && isFinalChange(s.wind.changeAt, s, ctx)) s.stormChance = 0;
+}
+
 function pickWind(ctx: ModeContext<Settings>): WindKind {
   const odds = WIND_ODDS[ctx.settings.gales ? 'gales' : 'normal'];
   const total = odds.reduce((n, [, w]) => n + w, 0);
@@ -144,12 +171,26 @@ function pickWind(ctx: ModeContext<Settings>): WindKind {
 function changeWind(s: State, ctx: ModeContext<Settings>) {
   const at = s.wind.changeAt ?? ctx.now();
   const changes = s.wind.changes + 1;
+  if (ctx.settings.windPattern === 'finale' && isFinalChange(at, s, ctx)) {
+    s.changesSinceStorm++;
+    s.wind = { kind: 'gale', since: at, changeAt: null, changes, storm: null };
+    ctx.feed('Festival finale! The last wind is a gale: every lantern launched now scores ×4.', { tone: 'big' });
+    s.stormChance = stormChanceAfter(s.changesSinceStorm, ctx.settings);
+    scheduleChange(s, ctx);
+    return;
+  }
   // The storm roll only happens here, at the change, so the next wind is never in any state a view could show.
   const storm = ctx.settings.storms && ctx.rng.next() * 100 < s.stormChance;
   if (storm) {
     let lost = 0;
+    let sheltered = 0;
     for (const f of Object.values(s.flyers)) {
       if (f.ground === 0) continue;
+      // Lightning rods: small stacks are safe; only bigger ones draw the storm.
+      if (f.ground <= ctx.settings.stormSafe) {
+        sheltered += f.ground;
+        continue;
+      }
       lost += f.ground;
       f.lost += f.ground;
       f.lastLoss = { count: f.ground, at };
@@ -158,15 +199,23 @@ function changeWind(s: State, ctx: ModeContext<Settings>) {
     s.storms++;
     s.changesSinceStorm = 0;
     s.wind = { kind: 'calm', since: at, changeAt: null, changes, storm: { at, lost } };
-    ctx.feed(lost ? `A storm blew out ${plural(lost, 'lantern')}!` : 'A storm swept through, but no lanterns were waiting.', { tone: 'bad' });
+    ctx.feed(
+      lost
+        ? `A storm blew out ${plural(lost, 'lantern')}!${sheltered ? ` ${plural(sheltered, 'lantern')} in small stacks came through safely.` : ''}`
+        : sheltered
+          ? 'A storm swept through, but every waiting stack was small enough to be safe.'
+          : 'A storm swept through, but no lanterns were waiting.',
+      { tone: 'bad' },
+    );
   } else {
-    const kind = pickWind(ctx);
+    const kind = ctx.settings.windPattern === 'rising' ? strongerWind(s.wind.kind, ctx.settings.gales) : pickWind(ctx);
     s.changesSinceStorm++;
     s.wind = { kind, since: at, changeAt: null, changes, storm: null };
     if (kind === 'gale') ctx.feed('A gale! Every lantern launched now scores ×4.', { tone: 'big' });
   }
   s.stormChance = stormChanceAfter(s.changesSinceStorm, ctx.settings);
   scheduleChange(s, ctx);
+  forecastFinale(s, ctx);
 }
 
 function nameOf(ctx: ModeContext, id: PlayerId) {
@@ -222,6 +271,11 @@ export const skyLanterns = defineMode<State, Settings, Action>({
       launches: [],
     };
     scheduleChange(s, ctx);
+    forecastFinale(s, ctx);
+    const st = ctx.settings;
+    if (st.windPattern === 'finale' && s.wind.changeAt === null) s.wind.kind = 'gale';
+    if (st.windPattern === 'rising') ctx.feed('Gathering winds: the wind grows stronger at every change until a storm resets it.', { tone: 'info' });
+    if (st.windPattern === 'finale') ctx.feed('Festival finale: the last wind of the game is always a gale, with no storm.', { tone: 'info' });
     return s;
   },
   onPlayerJoin(s, p, ctx) {
@@ -235,6 +289,10 @@ export const skyLanterns = defineMode<State, Settings, Action>({
         const res = streamSubmit(f.stream, playerId, a.iid, a.answer, ctx);
         if ('error' in res) return res;
         let text = 'No oil this time';
+        if (!res.correct && ctx.settings.spill && f.oil > 0) {
+          f.oil--;
+          text = 'Spilt 1 oil';
+        }
         if (res.correct) {
           const bonus = res.streak > 0 && res.streak % BONUS_EVERY === 0;
           const gain = bonus ? 2 : 1;

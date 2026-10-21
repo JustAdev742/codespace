@@ -23,9 +23,13 @@ import {
   type SyncConfig,
   type SyncState,
 } from '../../mechanics/syncRounds.ts';
+import { listNames } from '../rules.ts';
 import { meta, settings } from './meta.ts';
 
-type Settings = { lives: number; reviveEvery: number; autoAdvance: boolean };
+type Settings = { lives: number; reviveEvery: number; autoAdvance: boolean; kindling: boolean; slowest: boolean; lastTeam: boolean; vigil: boolean };
+
+/** Kindling: every this many correct answers in a row relights a lantern. */
+export const KINDLING_EVERY = 3;
 
 interface State {
   sync: SyncState;
@@ -38,8 +42,11 @@ interface State {
   startedWith: number;
   /** Whether the current round is a revival round, fixed as the round starts. */
   revival: { round: number; on: boolean };
-  /** What the last closed round did, for the reveal. */
-  last: { round: number; blown: PlayerId[]; out: PlayerId[]; relit: PlayerId[] } | null;
+  /** What the last closed round did, for the reveal. `kindled` and `slow` are only used by the rule options. */
+  last: { round: number; blown: PlayerId[]; out: PlayerId[]; relit: PlayerId[]; kindled: PlayerId[]; slow: PlayerId[] } | null;
+  /** Last team standing: teams with players at the start, and the round each team's last lantern went out. */
+  startTeams: number;
+  teamOutAt: Record<string, number>;
 }
 
 const action = z.object({ type: z.literal('answer'), iid: z.string().max(24), answer: answerSchema });
@@ -61,6 +68,28 @@ export function revivalDue(question: number, every: number): boolean {
   return every > 0 && question > 0 && question % every === 0;
 }
 
+/** Teams with at least one player still in the game holding a lit lantern. */
+function litTeams(s: State, ctx: ModeContext) {
+  return ctx.teams().filter((t) => ctx.players().some((p) => p.teamId === t.id && !isOut(s, p.id)));
+}
+
+const lastTeamOn = (s: State, ctx: ModeContext) => opts(ctx).lastTeam && s.startTeams >= 2;
+
+/** Last team standing: note when a team's last lantern goes out (or a revival brings it back). */
+function trackTeams(s: State, ctx: ModeContext) {
+  const lit = new Set(litTeams(s, ctx).map((t) => t.id));
+  for (const t of ctx.teams()) {
+    if (!ctx.players().some((p) => p.teamId === t.id)) continue;
+    if (!lit.has(t.id) && s.teamOutAt[t.id] === undefined) {
+      s.teamOutAt[t.id] = s.sync.round;
+      ctx.feed(`The ${t.name} have no lanterns left!`, { tone: 'bad' });
+    } else if (lit.has(t.id) && s.teamOutAt[t.id] !== undefined) {
+      delete s.teamOutAt[t.id];
+      ctx.feed(`The ${t.name} are back in the game!`, { tone: 'good' });
+    }
+  }
+}
+
 const cfg: SyncConfig<State> = {
   introMs: 4000,
   revealMs: 5000,
@@ -72,7 +101,17 @@ const cfg: SyncConfig<State> = {
   onClosed: (s, ctx) => {
     const round = s.sync.round;
     const revival = isRevival(s);
-    const last: NonNullable<State['last']> = { round, blown: [], out: [], relit: [] };
+    const st = opts(ctx);
+    const last: NonNullable<State['last']> = { round, blown: [], out: [], relit: [], kindled: [], slow: [] };
+    const blowOut = (p: { id: PlayerId; name: string }) => {
+      s.lanterns[p.id] = Math.max(0, (s.lanterns[p.id] ?? 0) - 1);
+      last.blown.push(p.id);
+      if (s.lanterns[p.id] === 0) {
+        s.outAt[p.id] = round;
+        last.out.push(p.id);
+        ctx.feed(`${p.name}'s last lantern went out.`, { tone: 'bad' });
+      }
+    };
     for (const p of ctx.players()) {
       const a = s.sync.answers[p.id];
       if (revival) {
@@ -86,27 +125,65 @@ const cfg: SyncConfig<State> = {
       }
       // Someone who joined after this question appeared has not had a fair go at it.
       if (isOut(s, p.id) || a?.correct || p.joinedAt > s.sync.startedAt) continue;
-      s.lanterns[p.id] = Math.max(0, (s.lanterns[p.id] ?? 0) - 1);
-      last.blown.push(p.id);
-      if (s.lanterns[p.id] === 0) {
-        s.outAt[p.id] = round;
-        last.out.push(p.id);
-        ctx.feed(`${p.name}'s last lantern went out.`, { tone: 'bad' });
+      blowOut(p);
+    }
+    const right = revival ? [] : ctx.players().filter((p) => !isOut(s, p.id) && s.sync.answers[p.id]?.correct && p.joinedAt <= s.sync.startedAt);
+    if (st.slowest && right.length >= 2) {
+      // Slowest flame: the slowest correct answer loses a lantern too, unless everyone right was exactly as quick.
+      const slowMs = Math.max(...right.map((p) => s.sync.answers[p.id]!.responseMs));
+      const slow = right.filter((p) => s.sync.answers[p.id]!.responseMs === slowMs);
+      if (slow.length < right.length) {
+        for (const p of slow) {
+          last.slow.push(p.id);
+          blowOut(p);
+        }
+        ctx.feed(`${listNames(slow.map((p) => p.name))} answered right but slowest, and lost a lantern.`, { tone: 'bad' });
       }
     }
+    if (st.kindling) {
+      const kindled = right.filter((p) => !isOut(s, p.id) && (s.sync.streaks[p.id] ?? 0) % KINDLING_EVERY === 0 && (s.lanterns[p.id] ?? 0) < st.lives);
+      for (const p of kindled) {
+        s.lanterns[p.id] = (s.lanterns[p.id] ?? 0) + 1;
+        last.kindled.push(p.id);
+      }
+      if (kindled.length) ctx.feed(`Three in a row relit a lantern for ${listNames(kindled.map((p) => p.name))}.`, { tone: 'good' });
+    }
+    if (lastTeamOn(s, ctx)) trackTeams(s, ctx);
     s.last = last;
   },
   isOver: (s, ctx) => {
     const alive = ctx.players().filter((p) => !isOut(s, p.id)).length;
-    return alive === 0 || (s.startedWith > 1 && alive <= 1);
+    if (alive === 0) return true;
+    // Playing together, the room keeps going to the last question.
+    if (opts(ctx).vigil) return false;
+    if (lastTeamOn(s, ctx)) return litTeams(s, ctx).length <= 1;
+    return s.startedWith > 1 && alive <= 1;
   },
   onFinished: (s, ctx) => {
     const alive = ctx.players().filter((p) => !isOut(s, p.id));
+    if (opts(ctx).vigil) {
+      const n = ctx.players().length;
+      ctx.endGame(vigilWon(s, ctx) ? `${alive.length} of ${n} still have a lantern lit: the room wins together!` : `Only ${alive.length} of ${n} still have a lantern lit: the room needed half.`);
+      return;
+    }
+    if (lastTeamOn(s, ctx)) {
+      const lit = litTeams(s, ctx);
+      if (lit.length === 1) ctx.endGame(`The ${lit[0]!.name} are the last team with a lantern lit.`);
+      else if (lit.length === 0) ctx.endGame('Every lantern has gone out.');
+      else ctx.endGame(`${lit.length} teams still had a lantern lit at the end.`);
+      return;
+    }
     if (alive.length === 0) ctx.endGame('Every lantern has gone out.');
     else if (alive.length === 1) ctx.endGame(s.startedWith > 1 ? `${alive[0]!.name} kept the last lantern burning.` : 'Your lantern stayed lit to the end.');
     else ctx.endGame(`${alive.length} players still had a lantern lit at the end.`);
   },
 };
+
+/** Night vigil: at least half the players still in the room have a lantern lit. */
+function vigilWon(s: State, ctx: ModeContext): boolean {
+  const here = ctx.players();
+  return here.length > 0 && here.filter((p) => !isOut(s, p.id)).length * 2 >= here.length;
+}
 
 /** Decide, as a round starts, whether it is a revival round. */
 function roundStarted(s: State, ctx: ModeContext) {
@@ -168,7 +245,11 @@ export const lanternOut = defineMode<State, Settings, Action>({
       startedWith: ctx.players().length,
       revival: { round: -1, on: false },
       last: null,
+      startTeams: ctx.teams().filter((t) => ctx.players().some((p) => p.teamId === t.id)).length,
+      teamOutAt: {},
     };
+    if (ctx.settings.vigil) ctx.feed('Play together: the room wins if at least half of you still have a lantern lit at the end.', { tone: 'info' });
+    if (ctx.settings.lastTeam && s.startTeams >= 2) ctx.feed('The last team with a lantern lit wins.', { tone: 'info' });
     syncBegin(s, cfg, ctx);
     return s;
   },
@@ -217,7 +298,7 @@ export const lanternOut = defineMode<State, Settings, Action>({
       alive: players.filter((p) => !isOut(s, p.id)).length,
       out: players.filter((p) => isOut(s, p.id)).length,
       roster: viewer.kind === 'host' ? roster.slice(0, 60) : roster.slice(0, 8),
-      last: last ? { blown: last.blown.length, out: names(last.out), relit: names(last.relit) } : null,
+      last: last ? { blown: last.blown.length, out: names(last.out), relit: names(last.relit), kindled: names(last.kindled), slow: names(last.slow) } : null,
       teams: ctx.teams().length ? teamScores(s, ctx) : null,
       board: leaderboard(s.sync.scores, s.sync.lastGain, ctx, viewer, 5),
       you: me
@@ -242,13 +323,22 @@ export const lanternOut = defineMode<State, Settings, Action>({
       const at = lit > 0 ? (s.leftAt[p.id] ?? 0) : (s.outAt[p.id] ?? 0);
       return { playerId: p.id, score: (at + 2) * 100_000 + pts, label: lit > 0 ? `Left on question ${at + 1}` : `Out on question ${at + 1}` };
     });
+    const lastTeam = lastTeamOn(s, ctx);
     const teams = ctx.teams().length
-      ? teamScores(s, ctx).map((t) => ({ teamId: t.teamId, score: t.score * 1_000_000 + t.points, label: `${t.score}% of lanterns lit` }))
+      ? teamScores(s, ctx).map((t) => {
+          if (!lastTeam) return { teamId: t.teamId, score: t.score * 1_000_000 + t.points, label: `${t.score}% of lanterns lit` };
+          // Teams still lit rank first, then teams that went out later; the share of lanterns lit breaks ties.
+          const outAt = s.teamOutAt[t.teamId];
+          const base = outAt === undefined ? 10_000_000_000 : (outAt + 2) * 10_000_000;
+          return { teamId: t.teamId, score: base + t.score * 10_000 + Math.min(9_999, t.points), label: outAt === undefined ? `Still lit: ${t.score}% of lanterns` : `Out on question ${outAt + 1}` };
+        })
       : undefined;
     const alive = ctx.players().filter((p) => !isOut(s, p.id)).length;
+    const vigil = opts(ctx).vigil ? { outcome: vigilWon(s, ctx) ? ('coop-win' as const) : ('coop-loss' as const) } : {};
     return {
       standings,
       ...(teams ? { teamStandings: teams } : {}),
+      ...vigil,
       summary: alive ? `${alive} ${alive === 1 ? 'lantern holder' : 'lantern holders'} made it to the end.` : 'Every lantern went out.',
     };
   },

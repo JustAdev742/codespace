@@ -58,6 +58,8 @@ export const settings: SettingField[] = [
   },
   { kind: 'number', key: 'callSeconds', label: 'Time per call', min: 5, max: 60, step: 1, default: 15, unit: 'seconds' },
   { kind: 'number', key: 'lockoutSeconds', label: 'Lockout after a wrong square', help: '0 turns the lockout off.', min: 0, max: 15, step: 1, default: 5, unit: 'seconds' },
+  { kind: 'number', key: 'finders', label: 'Players who can mark each call', help: 'Once this many players have found a call, it closes. 0 lets everyone find it.', min: 0, max: 10, step: 1, default: 0, unit: 'players' },
+  { kind: 'toggle', key: 'luckyStars', label: 'Lucky stars', help: 'After every fifth call, whoever is furthest from Glimgo gets a free square.', default: false },
 ];
 
 export const variants: ModeVariant[] = [
@@ -86,5 +88,31 @@ export const variants: ModeVariant[] = [
     },
     settings: { callSeconds: 8 },
     locked: ['callSeconds'],
+  },
+  {
+    meta: {
+      id: 'glimgo-rush',
+      modeId: 'glimgo',
+      title: 'Glimgo Rush',
+      tagline: 'Only the first three to find a call get to mark it.',
+      changes: 'Only the first three players to find each call get to mark it: once three have found it, the call closes and the next one comes up, so being quick matters as much as being right.',
+      status: 'playable',
+      thumbnail: { hue: 20, accentHue: 160 },
+    },
+    settings: { finders: 3 },
+    locked: ['finders'],
+  },
+  {
+    meta: {
+      id: 'glimgo-lucky-stars',
+      modeId: 'glimgo',
+      title: 'Lucky Stars',
+      tagline: 'Fall behind and a lucky star helps you catch up.',
+      changes: 'After every fifth call, whoever is furthest from Glimgo gets a lucky star: one square on the line they are closest to finishing becomes free.',
+      status: 'playable',
+      thumbnail: { hue: 55, accentHue: 260 },
+    },
+    settings: { luckyStars: true },
+    locked: ['luckyStars'],
   },
 ];
