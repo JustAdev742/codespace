@@ -16,7 +16,7 @@ Last updated: 2026-10-21.
 | M3 Multiplayer and modes | Done | 14 playable modes, 28 variants, all passing the conformance suite and smoke-tested in the real app. |
 | M4 Economy and progression | Done | Shop, Lanterns with disclosed odds, collections, locker, quests, achievements, levels, streaks. |
 | M5 Staff tools | Done | Staff API and all 14 staff sections in the web app. An end-to-end test opens every section as a super administrator at phone and desktop widths. |
-| M6 Content, social, classes, analytics | In progress | Server done and tested (friends, blocks, leaderboards, classes, assignments, reports, stats). Quests, friends, profiles, my stats, leaderboards, classes, assignment reports, hosted games and game reports done. The set editor is being built. |
+| M6 Content, social, classes, analytics | In progress | Server done and tested (friends, blocks, leaderboards, classes, assignments, reports, stats). Quests, friends, profiles, my stats, leaderboards, classes, assignment reports, hosted games, game reports and the set editor done. |
 | M7-8 Polish, CI, deployment | In progress | Production build, Docker image, compose file, CI workflow, docs and end-to-end tests (run in CI) are in. A visual overhaul, a full accessibility pass and the final design review are next. |
 
 ## What works today (verified)
@@ -74,6 +74,12 @@ Last updated: 2026-10-21.
 - **Docker image**: CI builds it on every change, starts it against Postgres
   and checks that it answers (the development sandbox cannot build images, as
   its network goes through a proxy containers cannot use).
+- **Set editor**: all 8 question types, import from JSON, CSV or pasted text
+  with a preview that names each bad row, export to JSON and CSV (formula-safe,
+  round trips keep question ids), local drafts with restore, a leave warning,
+  keyboard reordering, an error summary that links to each field, and a copy
+  flow for other people's sets. 157 browser checks and an axe check in six
+  states passed.
 - **End-to-end tests** (`e2e/`, Playwright against the production build and a
   fresh database, locally and in CI): a host and a guest play Classic from join code to results;
   a new player buys and opens a Lantern; a staff warning reaches the player and
@@ -104,7 +110,6 @@ no errors.
 Being built now:
 - A visual overhaul: brighter, chunkier and more character-led, with better
   original Glims (D30). The dusk stage, sidebar and controls are in.
-- Set editor with CSV, JSON and paste import and export.
 - More honestly labelled mode variants.
 
 Not built yet:
