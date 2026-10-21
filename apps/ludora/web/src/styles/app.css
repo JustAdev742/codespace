@@ -1,0 +1,304 @@
+@import 'tailwindcss';
+@import '@fontsource-variable/grandstander/index.css';
+@import '@fontsource-variable/atkinson-hyperlegible-next/wght.css';
+
+/*
+ * Ludora design tokens.
+ * Night ("lantern night") is a deep indigo, Day ("paper lantern by day")
+ * a cool lavender white. Accents are lantern amber, glim mint, ember coral
+ * and dusk violet. Interactive game pieces get an ink outline and a hard
+ * offset shadow that collapses when pressed; panels stay flat.
+ */
+
+:root,
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --bg: #17133a;
+  --bg-raised: #211c4f;
+  --bg-sunken: #110e2c;
+  --surface-2: #2a2460;
+  --surface-3: #342d72;
+  --line: #3b3480;
+  --line-strong: #5a51b0;
+  --text: #f4f2ff;
+  --text-2: #c8c2f0;
+  --text-3: #9c94d4;
+  --ink: #0b0922;
+  --focus: #ffb020;
+  --link: #b3a1ff;
+  --scrim: rgb(8 6 26 / 0.72);
+}
+
+:root[data-theme='light'] {
+  color-scheme: light;
+  --bg: #f2f0fa;
+  --bg-raised: #ffffff;
+  --bg-sunken: #e6e2f5;
+  --surface-2: #f7f5fd;
+  --surface-3: #ece8fb;
+  --line: #d7d1ee;
+  --line-strong: #b3aadb;
+  --text: #1d1846;
+  --text-2: #4b4580;
+  --text-3: #6d67a0;
+  --ink: #1d1846;
+  --focus: #5b3fd6;
+  --link: #5b3fd6;
+  --scrim: rgb(29 24 70 / 0.55);
+}
+
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme='dark']) {
+    color-scheme: light;
+    --bg: #f2f0fa;
+    --bg-raised: #ffffff;
+    --bg-sunken: #e6e2f5;
+    --surface-2: #f7f5fd;
+    --surface-3: #ece8fb;
+    --line: #d7d1ee;
+    --line-strong: #b3aadb;
+    --text: #1d1846;
+    --text-2: #4b4580;
+    --text-3: #6d67a0;
+    --ink: #1d1846;
+    --focus: #5b3fd6;
+    --link: #5b3fd6;
+    --scrim: rgb(29 24 70 / 0.55);
+  }
+}
+
+:root {
+  --lantern: #ffb020;
+  --lantern-deep: #e08e00;
+  --glim: #33d6a6;
+  --ember: #ff5a6e;
+  --dusk: #8f72ff;
+  --sky: #47b5ff;
+  --rose: #ff85d8;
+  --on-accent: #1d1846;
+
+  --tile-a: #ffb020;
+  --tile-b: #47b5ff;
+  --tile-c: #33d6a6;
+  --tile-d: #ff7a7a;
+  --tile-e: #a58dff;
+  --tile-f: #ff8fdc;
+
+  --r-common: #a3abc2;
+  --r-uncommon: #3ccb7f;
+  --r-rare: #3d9bff;
+  --r-epic: #b07bff;
+  --r-legendary: #ffb020;
+  --r-mythic: #ff5fa2;
+
+  --radius-s: 8px;
+  --radius-m: 14px;
+  --radius-l: 22px;
+  --press: 4px;
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* Player-chosen text size and contrast (Settings). */
+:root[data-text='large'] {
+  font-size: 112.5%;
+}
+:root[data-text='larger'] {
+  font-size: 125%;
+}
+:root[data-contrast='high'] {
+  --line: var(--line-strong);
+  --text-2: var(--text);
+  --text-3: var(--text-2);
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-raised: var(--bg-raised);
+  --color-sunken: var(--bg-sunken);
+  --color-surface-2: var(--surface-2);
+  --color-surface-3: var(--surface-3);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-text: var(--text);
+  --color-text-2: var(--text-2);
+  --color-text-3: var(--text-3);
+  --color-ink: var(--ink);
+  --color-lantern: var(--lantern);
+  --color-lantern-deep: var(--lantern-deep);
+  --color-glim: var(--glim);
+  --color-ember: var(--ember);
+  --color-dusk: var(--dusk);
+  --color-sky: var(--sky);
+  --color-rose: var(--rose);
+  --color-on-accent: var(--on-accent);
+  --color-link: var(--link);
+  --font-display: 'Grandstander Variable', 'Atkinson Hyperlegible Next Variable', ui-rounded, system-ui, sans-serif;
+  --font-sans: 'Atkinson Hyperlegible Next Variable', ui-sans-serif, system-ui, sans-serif;
+  --radius-s: var(--radius-s);
+  --radius-m: var(--radius-m);
+  --radius-l: var(--radius-l);
+}
+
+@layer base {
+  html {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-sans);
+    -webkit-text-size-adjust: 100%;
+    text-rendering: optimizeLegibility;
+  }
+  body {
+    margin: 0;
+    min-height: 100dvh;
+    background: var(--bg);
+    line-height: 1.5;
+    font-feature-settings: 'tnum' 0;
+  }
+  h1,
+  h2,
+  h3 {
+    font-family: var(--font-display);
+    line-height: 1.12;
+    letter-spacing: -0.01em;
+    text-wrap: balance;
+  }
+  p {
+    text-wrap: pretty;
+  }
+  a {
+    color: var(--link);
+  }
+  :focus-visible {
+    outline: 3px solid var(--focus);
+    outline-offset: 2px;
+    border-radius: 6px;
+  }
+  ::selection {
+    background: color-mix(in oklab, var(--dusk) 40%, transparent);
+  }
+  .tabular {
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+@layer components {
+  /* The tactile "sticker" treatment for things you press in a game. */
+  .sticker {
+    border: 2px solid var(--ink);
+    box-shadow: 0 var(--press) 0 var(--ink);
+    transition:
+      transform 120ms var(--ease-out),
+      box-shadow 120ms var(--ease-out),
+      filter 120ms;
+  }
+  .sticker:disabled {
+    background: var(--surface-3);
+    color: var(--text-3);
+    border-color: var(--line-strong);
+    box-shadow: 0 2px 0 var(--line-strong);
+    opacity: 1;
+  }
+  .sticker:not(:disabled):hover {
+    filter: brightness(1.05);
+  }
+  .sticker:not(:disabled):active,
+  .sticker[data-pressed='true'] {
+    transform: translateY(calc(var(--press) - 1px));
+    box-shadow: 0 1px 0 var(--ink);
+  }
+  .panel {
+    background: var(--bg-raised);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-m);
+  }
+  .skeleton {
+    background: linear-gradient(90deg, var(--surface-2) 0%, var(--surface-3) 50%, var(--surface-2) 100%);
+    background-size: 200% 100%;
+    animation: skeleton 1.4s ease-in-out infinite;
+    border-radius: var(--radius-s);
+  }
+  .rarity-mythic-shimmer {
+    background: linear-gradient(110deg, #ff5fa2, #ffb020, #33d6a6, #47b5ff, #a58dff, #ff5fa2);
+    background-size: 300% 100%;
+    animation: shimmer 6s linear infinite;
+  }
+}
+
+@keyframes skeleton {
+  0% {
+    background-position: 100% 0;
+  }
+  100% {
+    background-position: -100% 0;
+  }
+}
+@keyframes shimmer {
+  to {
+    background-position: 300% 0;
+  }
+}
+@keyframes glim-bob {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-3%);
+  }
+}
+@keyframes pop-in {
+  from {
+    transform: scale(0.85);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+@keyframes rise-fade {
+  from {
+    transform: translateY(8px);
+    opacity: 0;
+  }
+  to {
+    transform: none;
+    opacity: 1;
+  }
+}
+
+/* Reduced motion: the OS setting, or the player's own choice in Settings. */
+@media (prefers-reduced-motion: reduce) {
+  :root:not([data-motion='on']) *,
+  :root:not([data-motion='on']) *::before,
+  :root:not([data-motion='on']) *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+:root[data-motion='off'] *,
+:root[data-motion='off'] *::before,
+:root[data-motion='off'] *::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+  scroll-behavior: auto !important;
+}
+
+@keyframes reaction-float {
+  0% {
+    transform: translateY(0) scale(0.6);
+    opacity: 0;
+  }
+  15% {
+    transform: translateY(-20px) scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(-260px) scale(1);
+    opacity: 0;
+  }
+}

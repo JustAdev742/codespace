@@ -180,7 +180,8 @@ export type Answer = z.infer<typeof answerSchema>;
 
 /** A question as a player sees it: no answers, choices in presentation order. */
 export type PublicQuestion =
-  | { type: 'mcq' | 'multi'; prompt: string; media?: Media; choices: { id: string; text: string; media?: Media }[]; selectCount?: number }
+  | { type: 'mcq'; prompt: string; media?: Media; choices: { id: string; text: string; media?: Media }[] }
+  | { type: 'multi'; prompt: string; media?: Media; choices: { id: string; text: string; media?: Media }[]; selectCount?: number }
   | { type: 'truefalse'; prompt: string; media?: Media }
   | { type: 'short'; prompt: string; media?: Media }
   | { type: 'numeric'; prompt: string; media?: Media; unit?: string }
