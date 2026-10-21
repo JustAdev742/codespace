@@ -15,6 +15,7 @@ export const meta: ModeMeta = {
   teams: 'optional',
   questionTypes: ['short', 'mcq', 'truefalse', 'numeric', 'multi', 'order', 'match'],
   minQuestions: 4,
+  common: { fields: ['timeLimitSec', 'questionLimit', 'questionTimeSec'], defaults: { timeLimitSec: 240 }, help: { questionTimeSec: 'Only used when the word timer is on.' } },
   rules: [
     'The letters of each answer are shuffled into tiles. Spaces between words stay as gaps.',
     'Tap the tiles in order to spell the answer, or type it. Capitals and punctuation do not matter.',

@@ -35,6 +35,10 @@ export const PACING_INFO: Record<Pacing, string> = {
   solo: 'One player, on their own.',
 };
 
+/** Shared game settings a mode may read. Everything else is a mode setting. */
+export const COMMON_FIELDS = ['questionTimeSec', 'timeLimitSec', 'questionLimit'] as const;
+export type CommonField = (typeof COMMON_FIELDS)[number];
+
 export type ModeThumbnail = {
   /** Icon drawn on the thumbnail; see web/src/art/ModeArt.tsx. */
   glyph: string;
@@ -57,6 +61,12 @@ export interface ModeMeta {
   /** Question types the mode can use directly. Others are adapted when possible. */
   questionTypes: readonly QuestionType[];
   minQuestions: number;
+  /**
+   * The shared settings this mode reads and its defaults for them. The host
+   * form shows only these fields, starting from these values, and the
+   * engine uses the same defaults. A time limit of 0 means no limit.
+   */
+  common: { fields: readonly CommonField[]; defaults: Partial<Record<CommonField, number>>; help?: Partial<Record<CommonField, string>> };
   rules: readonly string[];
   thumbnail: ModeThumbnail;
   status: ModeStatus;

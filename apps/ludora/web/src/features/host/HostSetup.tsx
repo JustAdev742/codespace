@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router';
 import { Check, Search, Users } from 'lucide-react';
 import { toast } from 'sonner';
-import type { SettingField } from '@ludora/shared';
+import type { CommonField, SettingField } from '@ludora/shared';
 import { SUBJECT_LABELS } from '@ludora/shared';
 import { api, ApiError } from '../../lib/api.ts';
 import { useMe } from '../../lib/session.ts';
@@ -71,7 +71,7 @@ type Choice = { mode: CatalogEntry; variant: CatalogVariant | null };
 
 function ModePicker({ value, onChange, solo }: { value: Choice | null; onChange: (c: Choice) => void; solo: boolean }) {
   const modes = useModes();
-  const list = (modes.data?.modes ?? []).filter((m) => m.meta.status !== 'planned' && (solo ? m.meta.pacing !== 'host' : m.meta.pacing !== 'solo'));
+  const list = (modes.data?.modes ?? []).filter((m) => m.meta.status !== 'planned' && (solo ? m.meta.pacing !== 'host' && m.meta.players.min <= 1 : m.meta.pacing !== 'solo'));
   return (
     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
       {list.flatMap((m) => [null, ...m.variants].map((v) => ({ mode: m, variant: v }))).map(({ mode, variant }) => {
@@ -98,6 +98,50 @@ function ModePicker({ value, onChange, solo }: { value: Choice | null; onChange:
         );
       })}
     </div>
+  );
+}
+
+const COMMON_FALLBACK: Record<CommonField, number> = { questionTimeSec: 20, timeLimitSec: 300, questionLimit: 0 };
+const TIME_LIMITS = [60, 120, 180, 240, 300, 360, 480, 600, 900, 1200, 1800, 2700, 3600];
+
+function minutes(sec: number): string {
+  if (sec < 60) return `${sec} seconds`;
+  const m = sec / 60;
+  return `${Number.isInteger(m) ? m : m.toFixed(1)} ${m === 1 ? 'minute' : 'minutes'}`;
+}
+
+/** One of the shared settings, shown only for modes that read it and starting from that mode's default. */
+function CommonInput({ field, meta, value, locked, onChange }: { field: CommonField; meta: CatalogEntry['meta']; value: number; locked: boolean; onChange: (v: number) => void }) {
+  const fixed = locked ? 'Fixed by this variant.' : undefined;
+  const help = fixed ?? meta.common.help?.[field];
+  if (field === 'timeLimitSec') {
+    const allowNone = meta.common.defaults.timeLimitSec === 0;
+    const options = [...new Set([...(allowNone ? [0] : []), ...TIME_LIMITS, value])].sort((a, b) => a - b);
+    return (
+      <Field label="Time limit" hint={help ?? 'The game ends when time runs out, if it has not ended already.'}>
+        {(p) => (
+          <Select {...p} value={String(value)} onChange={(e) => onChange(Number(e.target.value))} disabled={locked}>
+            {options.map((o) => (
+              <option key={o} value={o}>
+                {o === 0 ? 'No time limit' : minutes(o)}
+              </option>
+            ))}
+          </Select>
+        )}
+      </Field>
+    );
+  }
+  if (field === 'questionLimit') {
+    return (
+      <Field label="How many questions" hint={help ?? '0 plays every question in the set.'}>
+        {(p) => <Input {...p} type="number" min={0} max={250} value={String(value)} disabled={locked} onChange={(e) => onChange(Math.max(0, Number(e.target.value)))} className="w-28" />}
+      </Field>
+    );
+  }
+  return (
+    <Field label="Seconds per question" hint={help ?? 'Questions with their own time limit keep it.'}>
+      {(p) => <Input {...p} type="number" min={5} max={120} value={String(value)} disabled={locked} onChange={(e) => onChange(Number(e.target.value))} className="w-28" />}
+    </Field>
   );
 }
 
@@ -138,6 +182,8 @@ export default function HostSetup() {
   const [busy, setBusy] = useState(false);
   const locked = useMemo(() => new Set(choice?.variant?.locked ?? []), [choice]);
   const effective = (k: string, fallback: unknown) => (k in settings ? settings[k] : (choice?.variant?.settings?.[k] ?? fallback));
+  // Host choice, then the variant's preset, then the mode's own default.
+  const commonValue = (k: CommonField): number => Number(common[k] ?? choice?.variant?.common?.[k] ?? choice?.mode.meta.common.defaults[k] ?? COMMON_FALLBACK[k]);
 
   if (!me.isLoading && !me.data?.user) {
     return (
@@ -197,18 +243,9 @@ export default function HostSetup() {
             <h2 className="mb-1 font-display text-xl font-bold">3. Settings</h2>
             <p className="mb-4 text-sm text-text-2">{choice.variant ? choice.variant.meta.changes : meta.description}</p>
             <div className="grid grid-cols-1 gap-x-8 gap-y-4 md:grid-cols-2">
-              <Field label="Seconds per question" hint={locked.has('questionTimeSec') ? 'Fixed by this variant.' : undefined}>
-                {(p) => <Input {...p} type="number" min={5} max={120} value={String(common.questionTimeSec ?? choice.variant?.common?.questionTimeSec ?? 20)} disabled={locked.has('questionTimeSec')} onChange={(e) => setCommon((c) => ({ ...c, questionTimeSec: Number(e.target.value) }))} className="w-28" />}
-              </Field>
-              {meta.pacing === 'host' ? (
-                <Field label="How many questions" hint="0 plays every question in the set.">
-                  {(p) => <Input {...p} type="number" min={0} max={250} value={String(common.questionLimit ?? choice.variant?.common?.questionLimit ?? 12)} onChange={(e) => setCommon((c) => ({ ...c, questionLimit: Number(e.target.value) }))} className="w-28" />}
-                </Field>
-              ) : (
-                <Field label="Time limit (minutes)" hint="The game ends when time runs out, if it has not ended already.">
-                  {(p) => <Input {...p} type="number" min={1} max={60} value={String(Math.round(Number(common.timeLimitSec ?? 300) / 60))} onChange={(e) => setCommon((c) => ({ ...c, timeLimitSec: Math.max(1, Number(e.target.value)) * 60 }))} className="w-28" />}
-                </Field>
-              )}
+              {meta.common.fields.map((k) => (
+                <CommonInput key={k} field={k} meta={meta} value={commonValue(k)} locked={locked.has(k)} onChange={(v) => setCommon((c) => ({ ...c, [k]: v }))} />
+              ))}
               {meta.teams !== 'none' && !solo ? (
                 <Field label="Teams" hint={meta.teams === 'required' ? 'This mode is always played in teams.' : undefined}>
                   {(p) => (

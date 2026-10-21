@@ -22,7 +22,7 @@ export const HINT_COST = 10;
 /** Points for an answer asked as an ordinary question because it cannot be scrambled. */
 export const PLAIN_POINTS = 50;
 const MAX_SCRAMBLE_LENGTH = 24;
-const DEFAULT_LIMIT_SEC = 240;
+const DEFAULT_LIMIT_SEC = meta.common.defaults.timeLimitSec!;
 /** How long the result of a word stays up before the next one, unless the player moves on. */
 const PAUSE_SOLVED_MS = 1400;
 const PAUSE_MISSED_MS = 3000;
@@ -293,7 +293,7 @@ function teamRows(s: State, ctx: ModeContext) {
 export const wordScramble = defineMode<State, Settings, Action>({
   meta,
   settings,
-  defaults: { timeLimitSec: DEFAULT_LIMIT_SEC },
+  defaults: meta.common.defaults,
   action,
   init(ctx) {
     const total = Math.min(ctx.questions.count(), ctx.common.questionLimit || Infinity);

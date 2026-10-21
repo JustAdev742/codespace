@@ -81,7 +81,7 @@ function checkEnd(s: State, ctx: ModeContext) {
 export const timeAttack = defineMode<State, Settings, Action>({
   meta,
   settings,
-  defaults: { timeLimitSec: 0 },
+  defaults: meta.common.defaults,
   action,
   init(ctx) {
     const runs: State['runs'] = {};

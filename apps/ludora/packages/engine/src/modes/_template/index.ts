@@ -32,7 +32,7 @@ type Action = z.infer<typeof action>;
 export const templateRace = defineMode<State, Settings, Action>({
   meta,
   settings,
-  defaults: { timeLimitSec: 300 },
+  defaults: meta.common.defaults,
   action,
   init(ctx) {
     const players: State['players'] = {};

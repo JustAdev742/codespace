@@ -114,7 +114,7 @@ const pointsLabel = (n: number) => `${n} ${n === 1 ? 'point' : 'points'}`;
 export const quickDraw = defineMode<State, Settings, Action>({
   meta,
   settings,
-  defaults: { questionTimeSec: 20, questionLimit: 12 },
+  defaults: meta.common.defaults,
   action,
   init(ctx) {
     const s: State = { sync: syncInit(ctx), wins: [], penalised: {}, misses: {} };

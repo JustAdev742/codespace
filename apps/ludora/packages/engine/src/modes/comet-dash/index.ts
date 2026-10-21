@@ -61,7 +61,7 @@ function lanes(s: State, ctx: ModeContext, me: PlayerId | null, limit: number) {
 export const cometDash = defineMode<State, Settings, Action>({
   meta,
   settings,
-  defaults: { timeLimitSec: 300 },
+  defaults: meta.common.defaults,
   action,
   init(ctx) {
     const racers: Record<PlayerId, Racer> = {};

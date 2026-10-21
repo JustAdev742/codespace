@@ -15,6 +15,7 @@ export const meta: ModeMeta = {
   teams: 'optional',
   questionTypes: ['mcq', 'multi', 'truefalse', 'short', 'numeric', 'order', 'match'],
   minQuestions: 5,
+  common: { fields: ['timeLimitSec'], defaults: { timeLimitSec: 300 } },
   rules: [
     'Each correct answer moves you one space.',
     'Every third correct answer in a row is a boost: one extra space.',

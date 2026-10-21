@@ -21,9 +21,15 @@ import { survivalRun } from './survival-run/index.ts';
 import { variants as survivalRunVariants } from './survival-run/meta.ts';
 import { flashcardStudy } from './flashcard-study/index.ts';
 import { variants as flashcardStudyVariants } from './flashcard-study/meta.ts';
+import { skyLanterns } from './sky-lanterns/index.ts';
+import { variants as skyLanternsVariants } from './sky-lanterns/meta.ts';
+import { gloomGiant } from './gloom-giant/index.ts';
+import { variants as gloomGiantVariants } from './gloom-giant/meta.ts';
+import { tugOfWar } from './tug-of-war/index.ts';
+import { variants as tugOfWarVariants } from './tug-of-war/meta.ts';
 
 /** Every mode with logic. Order here is the default catalogue order. */
-export const MODES: readonly GameMode[] = [classic, cometDash, quickDraw, lanternOut, confidence, glimgo, lanternMatch, wordScramble, timeAttack, survivalRun, flashcardStudy];
+export const MODES: readonly GameMode[] = [classic, cometDash, quickDraw, lanternOut, confidence, glimgo, lanternMatch, wordScramble, timeAttack, survivalRun, flashcardStudy, skyLanterns, gloomGiant, tugOfWar];
 
 export const VARIANTS: readonly ModeVariant[] = [
   ...classicVariants,
@@ -37,4 +43,7 @@ export const VARIANTS: readonly ModeVariant[] = [
   ...timeAttackVariants,
   ...survivalRunVariants,
   ...flashcardStudyVariants,
+  ...skyLanternsVariants,
+  ...gloomGiantVariants,
+  ...tugOfWarVariants,
 ];

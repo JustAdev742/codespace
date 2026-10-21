@@ -57,22 +57,29 @@ function Track({ lanes, distance, players, big = false }: { lanes: Lane[]; dista
 export function CometDashPlayer({ view, act, gameNow, room }: ModeScreenProps<CometView>) {
   const you = view.you;
   const [feedback, setFeedback] = useState<FeedbackView | null>(null);
-  const lastSeen = useRef<string | null>(null);
-  const prevQuestion = useRef<QuestionView | null>(null);
   const [shownQuestion, setShownQuestion] = useState<QuestionView | null>(null);
+  const lastSeen = useRef<string | null>(null);
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Every question shown, by instance id. The view that carries an answer's
+  // result already holds the next question, so the reveal looks up the one answered.
+  const asked = useRef(new Map<string, QuestionView>());
+  const latest = useRef(you?.last ?? null);
+  latest.current = you?.last ?? null;
+  const lastIid = you?.last?.iid ?? null;
 
   // Show each answer's result for a moment before the next question appears.
+  // Keyed by the answer, so the stream of view updates in a busy room does not restart the timer.
   useEffect(() => {
-    const last = you?.last;
-    if (last && last.iid !== lastSeen.current) {
-      lastSeen.current = last.iid;
-      setFeedback(last);
-      const t = setTimeout(() => setFeedback(null), last.correct ? 1100 : 2200);
-      return () => clearTimeout(t);
-    }
-  }, [you?.last]);
+    const last = latest.current;
+    if (!last || last.iid === lastSeen.current) return;
+    lastSeen.current = last.iid;
+    setFeedback(last);
+    if (timer.current) clearTimeout(timer.current);
+    timer.current = setTimeout(() => setFeedback(null), last.correct ? 1100 : 2200);
+  }, [lastIid]);
+  useEffect(() => () => void (timer.current && clearTimeout(timer.current)), []);
   useEffect(() => {
-    if (you?.question) prevQuestion.current = you.question;
+    if (you?.question) asked.current.set(you.question.iid, you.question);
     if (!feedback) setShownQuestion(you?.question ?? null);
   }, [you?.question, feedback]);
 
@@ -81,7 +88,7 @@ export function CometDashPlayer({ view, act, gameNow, room }: ModeScreenProps<Co
     if (!shownQuestion) return false;
     return (await act({ type: 'answer', iid: shownQuestion.iid, answer })).ok;
   };
-  const answeredQ = feedback ? prevQuestion.current : null;
+  const answeredQ = feedback ? (asked.current.get(feedback.iid) ?? null) : null;
   return (
     <div className="mx-auto flex w-full max-w-3xl flex-col gap-5">
       <div className="flex items-center justify-between gap-3">

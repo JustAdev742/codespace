@@ -16,6 +16,7 @@ export const meta: ModeMeta = {
   // Order and match questions make no sense without their items, so they are left out.
   questionTypes: ['mcq', 'multi', 'truefalse', 'short', 'numeric'],
   minQuestions: 3,
+  common: { fields: ['questionTimeSec', 'questionLimit'], defaults: { questionTimeSec: 20, questionLimit: 12 } },
   rules: [
     'Each question starts with just the question, without the answers.',
     'Choose how sure you are: 1 (guessing), 2 (fairly sure) or 3 (certain). If you do not choose, you are guessing.',

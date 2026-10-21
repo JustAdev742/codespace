@@ -29,3 +29,9 @@ export function nextWeeklyReset(d = new Date()): Date {
   const day = d.getUTCDay() || 7;
   return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() + (8 - day)));
 }
+
+/** Monday 00:00 UTC of the week containing `d`. */
+export function weekStart(d = new Date()): Date {
+  const day = d.getUTCDay() || 7;
+  return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() - (day - 1)));
+}

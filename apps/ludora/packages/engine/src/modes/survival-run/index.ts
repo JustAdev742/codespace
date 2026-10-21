@@ -132,7 +132,7 @@ function timeOut(s: State, r: Runner, playerId: PlayerId, ctx: ModeContext<Setti
 export const survivalRun = defineMode<State, Settings, Action>({
   meta,
   settings,
-  defaults: { timeLimitSec: 0 },
+  defaults: meta.common.defaults,
   action,
   init(ctx) {
     const runners: State['runners'] = {};

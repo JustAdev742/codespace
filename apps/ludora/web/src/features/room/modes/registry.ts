@@ -58,4 +58,16 @@ export const MODE_SCREENS: Record<string, { Player: Screen; Host: Screen }> = {
     Player: lazy(() => import('./flashcard-study.tsx').then((m) => ({ default: m.FlashcardStudyPlayer }))),
     Host: lazy(() => import('./flashcard-study.tsx').then((m) => ({ default: m.FlashcardStudyHost }))),
   },
+  'sky-lanterns': {
+    Player: lazy(() => import('./sky-lanterns.tsx').then((m) => ({ default: m.SkyLanternsPlayer }))),
+    Host: lazy(() => import('./sky-lanterns.tsx').then((m) => ({ default: m.SkyLanternsHost }))),
+  },
+  'gloom-giant': {
+    Player: lazy(() => import('./gloom-giant.tsx').then((m) => ({ default: m.GloomGiantPlayer }))),
+    Host: lazy(() => import('./gloom-giant.tsx').then((m) => ({ default: m.GloomGiantHost }))),
+  },
+  'tug-of-war': {
+    Player: lazy(() => import('./tug-of-war.tsx').then((m) => ({ default: m.TugOfWarPlayer }))),
+    Host: lazy(() => import('./tug-of-war.tsx').then((m) => ({ default: m.TugOfWarHost }))),
+  },
 };

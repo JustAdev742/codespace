@@ -15,6 +15,7 @@ export const meta: ModeMeta = {
   teams: 'none',
   questionTypes: ['mcq', 'multi', 'truefalse', 'short', 'numeric', 'order', 'match'],
   minQuestions: 5,
+  common: { fields: ['timeLimitSec'], defaults: { timeLimitSec: 0 }, help: { timeLimitSec: 'No limit means the run lasts until the last heart is gone.' } },
   rules: [
     'You start with three hearts. A wrong answer, or running out of time, costs one.',
     'The timer starts at 15 seconds and gets half a second shorter with every correct answer, down to 6 seconds.',

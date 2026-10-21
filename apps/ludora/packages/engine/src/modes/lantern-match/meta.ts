@@ -15,6 +15,7 @@ export const meta: ModeMeta = {
   teams: 'optional',
   questionTypes: ['mcq', 'short', 'numeric', 'flashcard'],
   minQuestions: 4,
+  common: { fields: ['timeLimitSec'], defaults: { timeLimitSec: 240 } },
   rules: [
     'Everyone has their own board. Each card is a question or an answer, face down.',
     'Question cards have a lantern on the back and answer cards have a Glim, so you always know which kind you are turning over.',

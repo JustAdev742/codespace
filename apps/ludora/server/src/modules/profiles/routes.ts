@@ -13,6 +13,7 @@ import { balancesOf } from '../economy/service.ts';
 import { getRules } from '../economy/config.ts';
 import { ensureQuests } from '../progression/quests.ts';
 import { loadAvatar } from './avatar.ts';
+import { blockedEitherWay, pairOf } from '../social/service.ts';
 import { mergePreferences, preferencesPatchSchema, readPreferences } from '../users/preferences.ts';
 
 const NAME_CHANGE_GAP_MS = 24 * 3600_000;
@@ -132,17 +133,24 @@ export async function profileRoutes(app: FastifyInstance, deps: AppDeps) {
     const viewer = req.auth;
     const isSelf = viewer?.user.id === u.id;
     const prefs = readPreferences(u.preferences);
-    let isFriend = false;
-    if (viewer && !isSelf) {
-      const [a, b] = viewer.user.id < u.id ? [viewer.user.id, u.id] : [u.id, viewer.user.id];
-      const f = await deps.db.select().from(friendships).where(and(eq(friendships.userA, a), eq(friendships.userB, b), eq(friendships.status, 'accepted'))).limit(1);
-      isFriend = f.length > 0;
-    }
     const staff = Boolean(viewer?.permissions.has('users.read'));
+    let friendship: 'none' | 'friends' | 'requested' | 'incoming' = 'none';
+    let blockedByMe = false;
+    if (viewer && !isSelf) {
+      const block = await blockedEitherWay(deps.db, viewer.user.id, u.id);
+      // Someone who blocked you looks the same as someone who does not exist.
+      if (block.byThem && !staff) throw notFound('That player does not exist.');
+      blockedByMe = block.byMe;
+      const [a, b] = pairOf(viewer.user.id, u.id);
+      const [f] = await deps.db.select().from(friendships).where(and(eq(friendships.userA, a), eq(friendships.userB, b))).limit(1);
+      if (f) friendship = f.status === 'accepted' ? 'friends' : f.requestedBy === viewer.user.id ? 'requested' : 'incoming';
+    }
+    const isFriend = friendship === 'friends';
     const visibility = prefs.privacy.profileVisibility;
-    const full = isSelf || staff || visibility === 'public' || (visibility === 'friends' && isFriend);
+    const full = !blockedByMe && (isSelf || staff || visibility === 'public' || (visibility === 'friends' && isFriend));
     const [avatar, slots] = await Promise.all([loadAvatar(deps.db, u.id), equippedArt(deps, u.id)]);
-    const base = { id: u.id, displayName: u.displayName, avatar, equipped: slots, level: levelFromXp(u.xp).level, isFriend, isSelf, restricted: !full };
+    const canRequest = Boolean(viewer && !viewer.user.isGuest && !isSelf && !u.isGuest && !blockedByMe && friendship === 'none' && prefs.privacy.allowFriendRequests === 'everyone');
+    const base = { id: u.id, displayName: u.displayName, avatar, equipped: slots, level: levelFromXp(u.xp).level, isFriend, isSelf, friendship, canRequest, blockedByMe, isGuest: u.isGuest, restricted: !full };
     if (!full) return base;
     const [s] = await deps.db.select().from(userStats).where(eq(userStats.userId, u.id)).limit(1);
     const glimCount = await deps.db.execute<{ n: number }>(sql`select count(*)::int as n from inventory inv join items i on i.id = inv.item_id where inv.user_id = ${u.id} and i.type = 'glim' and inv.quantity > 0`);

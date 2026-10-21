@@ -15,6 +15,7 @@ export const meta: ModeMeta = {
   teams: 'optional',
   questionTypes: ['mcq', 'multi', 'truefalse', 'short', 'numeric', 'order', 'match'],
   minQuestions: 3,
+  common: { fields: ['questionTimeSec', 'questionLimit'], defaults: { questionTimeSec: 20, questionLimit: 12 } },
   rules: [
     'Everyone gets the same question at the same time.',
     'A correct answer is worth 500 points plus up to 500 for speed.',

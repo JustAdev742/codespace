@@ -11,6 +11,9 @@ import * as wordScramble from './word-scramble/meta.ts';
 import * as timeAttack from './time-attack/meta.ts';
 import * as survivalRun from './survival-run/meta.ts';
 import * as flashcardStudy from './flashcard-study/meta.ts';
+import * as skyLanterns from './sky-lanterns/meta.ts';
+import * as gloomGiant from './gloom-giant/meta.ts';
+import * as tugOfWar from './tug-of-war/meta.ts';
 
 /**
  * Metadata only, no game logic, so the browser can import the catalogue
@@ -28,4 +31,7 @@ export const CATALOG_DATA: readonly { meta: ModeMeta; settings: readonly Setting
   timeAttack,
   survivalRun,
   flashcardStudy,
+  skyLanterns,
+  gloomGiant,
+  tugOfWar,
 ];

@@ -155,7 +155,7 @@ const lanternsText = (n: number) => `${n} ${n === 1 ? 'lantern' : 'lanterns'}`;
 export const lanternOut = defineMode<State, Settings, Action>({
   meta,
   settings,
-  defaults: { questionTimeSec: 20, questionLimit: 20 },
+  defaults: meta.common.defaults,
   action,
   init(ctx) {
     const lanterns: Record<PlayerId, number> = {};

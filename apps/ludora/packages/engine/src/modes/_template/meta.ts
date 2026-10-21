@@ -19,6 +19,7 @@ export const meta: ModeMeta = {
   teams: 'optional', // none | optional | required
   questionTypes: ['mcq', 'multi', 'truefalse', 'short', 'numeric', 'order', 'match'], // others get converted when possible
   minQuestions: 5,
+  common: { fields: ['timeLimitSec'], defaults: { timeLimitSec: 300 } },
   rules: ['Short sentences, one rule each.', 'Players read these before playing.'],
   thumbnail: { glyph: 'spark', hue: 160, accentHue: 40 }, // glyph names: web/src/art/ModeArt.tsx
   status: 'playable', // only after the conformance tests pass; otherwise 'beta' or 'planned'

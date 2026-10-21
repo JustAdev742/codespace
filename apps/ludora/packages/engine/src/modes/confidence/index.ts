@@ -198,7 +198,7 @@ const fmt = (n: number) => n.toLocaleString('en-GB');
 export const confidence = defineMode<State, Settings, Action>({
   meta,
   settings,
-  defaults: { questionTimeSec: 20, questionLimit: 12 },
+  defaults: meta.common.defaults,
   action,
   init(ctx) {
     const ids = ctx.common.shuffleQuestions ? ctx.rng.shuffle(ctx.questions.ids()) : ctx.questions.ids().slice();

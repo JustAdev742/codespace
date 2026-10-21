@@ -54,7 +54,7 @@ export interface State {
 const action = z.object({ type: z.literal('flip'), index: z.number().int().min(0).max(39) });
 type Action = z.infer<typeof action>;
 
-const DEFAULT_LIMIT_SEC = 240;
+const DEFAULT_LIMIT_SEC = meta.common.defaults.timeLimitSec!;
 
 const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
 
@@ -149,7 +149,7 @@ function teamRows(s: State, ctx: ModeContext) {
 export const lanternMatch = defineMode<State, Settings, Action>({
   meta,
   settings,
-  defaults: { timeLimitSec: DEFAULT_LIMIT_SEC },
+  defaults: meta.common.defaults,
   action,
   init(ctx) {
     const players: State['players'] = {};

@@ -15,6 +15,7 @@ export const meta: ModeMeta = {
   teams: 'optional',
   questionTypes: ['mcq', 'multi', 'truefalse', 'short', 'numeric', 'order', 'match'],
   minQuestions: 3,
+  common: { fields: ['questionTimeSec', 'questionLimit'], defaults: { questionTimeSec: 20, questionLimit: 20 } },
   rules: [
     'Everyone starts with the same number of lanterns.',
     'A wrong or missed answer blows out one of your lanterns. When none are left, you are out.',

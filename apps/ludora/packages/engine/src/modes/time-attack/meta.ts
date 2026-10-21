@@ -15,6 +15,7 @@ export const meta: ModeMeta = {
   teams: 'none',
   questionTypes: ['mcq', 'multi', 'truefalse', 'short', 'numeric', 'order', 'match'],
   minQuestions: 5,
+  common: { fields: [], defaults: { timeLimitSec: 0 } },
   rules: [
     'Answer as many questions as you can before the clock reaches zero.',
     'A correct answer scores 100 points, times your multiplier.',

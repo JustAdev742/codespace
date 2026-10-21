@@ -97,7 +97,7 @@ function teamScores(s: State, ctx: ModeContext) {
 export const classic = defineMode<State, Settings, Action>({
   meta,
   settings,
-  defaults: { questionTimeSec: 20, questionLimit: 12 },
+  defaults: meta.common.defaults,
   action,
   init(ctx) {
     const s: State = { sync: syncInit(ctx), out: {}, startedWith: ctx.players().length };

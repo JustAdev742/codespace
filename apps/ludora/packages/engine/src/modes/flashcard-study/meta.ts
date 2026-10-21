@@ -15,6 +15,7 @@ export const meta: ModeMeta = {
   teams: 'none',
   questionTypes: ['mcq', 'multi', 'truefalse', 'short', 'numeric', 'order', 'match', 'flashcard'],
   minQuestions: 1,
+  common: { fields: ['timeLimitSec', 'questionLimit'], defaults: { timeLimitSec: 600 } },
   rules: [
     'Every question is a card with the question on the front and the answer on the back.',
     'Think of the answer, turn the card over, then choose "Knew it" or "Not yet". Be honest: it is how the cards learn what you need.',

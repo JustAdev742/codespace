@@ -16,6 +16,7 @@ export const meta: ModeMeta = {
   // Every card square is a short answer; other question types are converted where they can be.
   questionTypes: ['mcq', 'short', 'numeric', 'flashcard'],
   minQuestions: 8,
+  common: { fields: ['questionLimit'], defaults: { questionLimit: 24 }, help: { questionLimit: 'How many calls at most. Each question can be called twice.' } },
   rules: [
     'Everyone gets their own card of answers from the question set: 4 by 4 when the set has at least 16 different answers, otherwise 3 by 3.',
     'Each call shows a question without its answer. Tap the square on your card that answers it.',

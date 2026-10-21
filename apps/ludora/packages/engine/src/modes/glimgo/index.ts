@@ -290,7 +290,7 @@ function promptOf(ctx: ModeContext, qid: string): { prompt: string; media?: Medi
 export const glimgo = defineMode<State, Settings, Action>({
   meta,
   settings,
-  defaults: { questionLimit: 24 },
+  defaults: meta.common.defaults,
   action,
   init(ctx) {
     const ids = ctx.common.shuffleQuestions ? ctx.rng.shuffle(ctx.questions.ids()) : ctx.questions.ids().slice();

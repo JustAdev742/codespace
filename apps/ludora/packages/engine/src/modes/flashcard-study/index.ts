@@ -22,7 +22,7 @@ type Settings = { quick: boolean };
 export const MASTERED_BOX = 3;
 /** Cards graded before a card in this box is due again. New cards already waiting can come first. */
 export const RETURN_GAP: Readonly<Record<number, number>> = { 1: 2, 2: 5 };
-const DEFAULT_LIMIT_SEC = 600;
+const DEFAULT_LIMIT_SEC = meta.common.defaults.timeLimitSec!;
 
 interface Card {
   qid: string;
@@ -136,7 +136,7 @@ function accuracy(st: Study | undefined) {
 export const flashcardStudy = defineMode<State, Settings, Action>({
   meta,
   settings,
-  defaults: { timeLimitSec: DEFAULT_LIMIT_SEC },
+  defaults: meta.common.defaults,
   action,
   init(ctx) {
     const ids = ctx.common.shuffleQuestions ? ctx.rng.shuffle(ctx.questions.ids()) : ctx.questions.ids().slice();
