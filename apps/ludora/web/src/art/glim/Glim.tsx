@@ -1,263 +1,57 @@
-import { memo, useId } from 'react';
+import { memo, useId, useMemo, type ReactNode } from 'react';
 import type { AccessoryArt, GlimArt, Rarity } from '@ludora/shared';
-import { BODIES, type BodyGeometry, type GlimColors } from './bodies.ts';
+import { BODIES, type BodyGeometry, type GlimColors, type Part } from './bodies.ts';
 import { Accessory } from './accessories.tsx';
+import { Brows, Cheeks, Eyes, FaceOver, FaceUnder, Mouth, type FaceInk } from './face.tsx';
+import { FINE_PATTERNS, Pattern } from './patterns.tsx';
+import { armParts, backParts, BIG_BACKS, earParts, feetParts, tailParts, topperParts, type Pose } from './parts.ts';
+import { pathBounds, sparkle } from './geometry.ts';
 
 /*
  * Draws a Glim from its genome. Pure SVG, no images: every Glim in the
  * catalogue is generated from a few numbers and choices, so new Glims cost
  * a line of data, not an illustration.
+ *
+ * The look is a die-cut sticker: every shape is drawn once as a thick outer
+ * contour in a dark tint of the Glim's hue, then again with its flat fill and
+ * a fine inner line. Inside the body there is one cel-shade crescent at the
+ * lower right and one soft highlight at the upper left. Rarity adds finishes
+ * on top: a pattern accent, gloss and sparkles, a two-tone body, a gold rim
+ * light with a halo and motes, and an iridescent sheen.
  */
+
+export type GlimPose = Pose;
+
+const hsl = (h: number, s: number, l: number) => `hsl(${Math.round(((h % 360) + 360) % 360)} ${Math.round(Math.max(0, Math.min(100, s)))}% ${Math.round(Math.max(0, Math.min(100, l)))}%)`;
+
+/** Shadows lean towards blue and purple, which reads warmer than plain darkening. */
+function deepHue(h: number) {
+  return h > 70 && h < 260 ? h + 10 : h - 10;
+}
 
 export function glimColors(art: GlimArt): GlimColors {
   const sat = art.saturation ?? 70;
-  const light = sat < 35 ? 78 : 64;
+  const h = art.hue;
+  const ah = art.accentHue;
+  const pale = sat < 35;
+  // Pale Glims get a little more colour than their number says, so they still read as stickers.
+  const s = pale ? sat + 12 : sat;
+  const L = pale ? 82 - sat * 0.2 : 63 + (h >= 200 && h <= 290 ? 3 : 0);
   return {
-    body: `hsl(${art.hue} ${sat}% ${light}%)`,
-    outline: `hsl(${art.hue} ${Math.min(sat, 55)}% 20%)`,
-    accent: `hsl(${art.accentHue} ${Math.max(sat, 45)}% ${sat < 35 ? 82 : 70}%)`,
-    belly: `hsl(${art.hue} ${Math.round(sat * 0.6)}% ${Math.min(94, light + 18)}%)`,
-    glow: `hsl(${art.accentHue} 100% 75%)`,
-    ink: `hsl(${art.hue} 40% 14%)`,
+    body: hsl(h, s, L),
+    deep: hsl(deepHue(h), s + 4, L - 14),
+    outline: hsl(h, Math.min(62, Math.max(24, sat * 0.8)), 21),
+    accent: hsl(ah, Math.max(sat, 62), 66),
+    accentDeep: hsl(ah, Math.max(sat, 50), 38),
+    belly: hsl(h, s * 0.6, Math.min(95, L + 22)),
+    glow: hsl(ah, 100, 76),
+    ink: hsl(h, 45, 13),
+    blush: 'hsl(350 95% 74%)',
+    second: hsl(ah + 120, Math.max(sat, 62), 70),
   };
 }
 
-function Eyes({ kind, x, y, c }: { kind: GlimArt['eyes']; x: number; y: number; c: GlimColors }) {
-  const L = x - 13;
-  const R = x + 13;
-  const pupil = (cx: number, r = 4) => (
-    <>
-      <circle cx={cx} cy={y} r={r} fill={c.ink} />
-      <circle cx={cx + r * 0.35} cy={y - r * 0.4} r={r * 0.35} fill="#fff" />
-    </>
-  );
-  switch (kind) {
-    case 'dot':
-      return (
-        <>
-          <circle cx={L} cy={y} r={3.6} fill={c.ink} />
-          <circle cx={R} cy={y} r={3.6} fill={c.ink} />
-        </>
-      );
-    case 'big':
-      return (
-        <>
-          <circle cx={L} cy={y} r={7.5} fill="#fff" stroke={c.outline} strokeWidth={1.5} />
-          <circle cx={R} cy={y} r={7.5} fill="#fff" stroke={c.outline} strokeWidth={1.5} />
-          {pupil(L + 1, 4.2)}
-          {pupil(R + 1, 4.2)}
-        </>
-      );
-    case 'sleepy':
-      return (
-        <g fill="none" stroke={c.ink} strokeWidth={3} strokeLinecap="round">
-          <path d={`M${L - 6} ${y} Q${L} ${y + 5} ${L + 6} ${y}`} />
-          <path d={`M${R - 6} ${y} Q${R} ${y + 5} ${R + 6} ${y}`} />
-        </g>
-      );
-    case 'happy':
-      return (
-        <g fill="none" stroke={c.ink} strokeWidth={3.2} strokeLinecap="round">
-          <path d={`M${L - 6} ${y + 2} Q${L} ${y - 6} ${L + 6} ${y + 2}`} />
-          <path d={`M${R - 6} ${y + 2} Q${R} ${y - 6} ${R + 6} ${y + 2}`} />
-        </g>
-      );
-    case 'wink':
-      return (
-        <>
-          <circle cx={L} cy={y} r={3.8} fill={c.ink} />
-          <path d={`M${R - 6} ${y + 2} Q${R} ${y - 6} ${R + 6} ${y + 2}`} fill="none" stroke={c.ink} strokeWidth={3.2} strokeLinecap="round" />
-        </>
-      );
-    case 'star': {
-      const star = (cx: number) => `M${cx} ${y - 6}Q${cx + 1.2} ${y - 1.2} ${cx + 6} ${y}Q${cx + 1.2} ${y + 1.2} ${cx} ${y + 6}Q${cx - 1.2} ${y + 1.2} ${cx - 6} ${y}Q${cx - 1.2} ${y - 1.2} ${cx} ${y - 6}Z`;
-      return <path d={`${star(L)} ${star(R)}`} fill={c.ink} />;
-    }
-    case 'cyclops':
-      return (
-        <>
-          <circle cx={x} cy={y - 1} r={10.5} fill="#fff" stroke={c.outline} strokeWidth={1.8} />
-          <circle cx={x + 1} cy={y - 1} r={6} fill={c.ink} />
-          <circle cx={x + 3} cy={y - 4} r={2} fill="#fff" />
-        </>
-      );
-    case 'visor':
-      return (
-        <>
-          <rect x={x - 22} y={y - 6} width={44} height={12} rx={6} fill={c.ink} />
-          <rect x={x - 18} y={y - 3} width={36} height={6} rx={3} fill={c.glow} opacity={0.95} />
-          <circle cx={L} cy={y} r={2} fill="#fff" />
-          <circle cx={R} cy={y} r={2} fill="#fff" />
-        </>
-      );
-    case 'sparkle':
-      return (
-        <>
-          <circle cx={L} cy={y} r={7} fill={c.ink} />
-          <circle cx={R} cy={y} r={7} fill={c.ink} />
-          {[L, R].map((cx) => (
-            <g key={cx} fill="#fff">
-              <path d={`M${cx + 2.5} ${y - 5}Q${cx + 3} ${y - 3} ${cx + 5} ${y - 2.5}Q${cx + 3} ${y - 2} ${cx + 2.5} ${y}Q${cx + 2} ${y - 2} ${cx} ${y - 2.5}Q${cx + 2} ${y - 3} ${cx + 2.5} ${y - 5}Z`} />
-              <circle cx={cx - 2.5} cy={y + 2.5} r={1.4} />
-            </g>
-          ))}
-        </>
-      );
-    case 'curious':
-      return (
-        <>
-          <circle cx={L} cy={y + 1} r={4} fill={c.ink} />
-          <circle cx={R} cy={y} r={6.5} fill="#fff" stroke={c.outline} strokeWidth={1.5} />
-          {pupil(R + 1, 3.6)}
-          <path d={`M${R - 6} ${y - 11} Q${R} ${y - 15} ${R + 7} ${y - 10}`} fill="none" stroke={c.ink} strokeWidth={2.4} strokeLinecap="round" />
-        </>
-      );
-  }
-}
-
-function Mouth({ kind, x, y, c }: { kind: GlimArt['mouth']; x: number; y: number; c: GlimColors }) {
-  const m = y + 13;
-  const line = { fill: 'none', stroke: c.ink, strokeWidth: 2.8, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const };
-  switch (kind) {
-    case 'smile':
-      return <path d={`M${x - 7} ${m} Q${x} ${m + 6} ${x + 7} ${m}`} {...line} />;
-    case 'grin':
-      return (
-        <>
-          <path d={`M${x - 9} ${m - 1} Q${x} ${m + 12} ${x + 9} ${m - 1}Z`} fill={c.ink} stroke={c.ink} strokeWidth={1.5} strokeLinejoin="round" />
-          <path d={`M${x - 4} ${m + 5} Q${x} ${m + 2} ${x + 4} ${m + 5} Q${x} ${m + 8} ${x - 4} ${m + 5}Z`} fill="#ff8aa6" />
-        </>
-      );
-    case 'o':
-      return <ellipse cx={x} cy={m + 2} rx={3.6} ry={4.4} fill={c.ink} />;
-    case 'cat':
-      return <path d={`M${x - 8} ${m} Q${x - 4} ${m + 5} ${x} ${m} Q${x + 4} ${m + 5} ${x + 8} ${m}`} {...line} />;
-    case 'tooth':
-      return (
-        <>
-          <path d={`M${x - 8} ${m} Q${x} ${m + 7} ${x + 8} ${m}`} {...line} />
-          <rect x={x - 3} y={m + 2} width={6} height={4.5} rx={1} fill="#fff" stroke={c.ink} strokeWidth={1.2} />
-        </>
-      );
-    case 'tongue':
-      return (
-        <>
-          <path d={`M${x + 1} ${m + 2} q0 7 4.5 7 q4.5 0 4.5 -7Z`} fill="#ff8aa6" stroke={c.ink} strokeWidth={1.4} />
-          <path d={`M${x - 8} ${m} Q${x} ${m + 6} ${x + 8} ${m}`} {...line} />
-        </>
-      );
-    case 'smirk':
-      return <path d={`M${x - 7} ${m + 1} Q${x + 2} ${m + 4} ${x + 8} ${m - 3}`} {...line} />;
-    case 'none':
-      return null;
-  }
-}
-
-function Pattern({ kind, geo, c }: { kind: GlimArt['pattern']; geo: BodyGeometry; c: GlimColors }) {
-  const { x, y } = geo.face;
-  switch (kind) {
-    case 'spots':
-      return (
-        <g fill={c.accent} opacity={0.85}>
-          <circle cx={x - 26} cy={y - 14} r={6} />
-          <circle cx={x + 28} cy={y + 6} r={7} />
-          <circle cx={x - 20} cy={y + 26} r={5} />
-          <circle cx={x + 14} cy={y - 26} r={4} />
-          <circle cx={x + 6} cy={y + 32} r={4.5} />
-        </g>
-      );
-    case 'stripes':
-      return (
-        <g fill="none" stroke={c.accent} strokeWidth={6} opacity={0.75} strokeLinecap="round">
-          <path d={`M${x - 50} ${y - 22} Q${x} ${y - 30} ${x + 50} ${y - 22}`} />
-          <path d={`M${x - 50} ${y + 22} Q${x} ${y + 14} ${x + 50} ${y + 22}`} />
-          <path d={`M${x - 50} ${y + 36} Q${x} ${y + 28} ${x + 50} ${y + 36}`} />
-        </g>
-      );
-    case 'belly':
-      return <ellipse cx={x} cy={y + 26} rx={22} ry={18} fill={c.belly} opacity={0.95} />;
-    case 'freckles':
-      return (
-        <g fill={c.outline} opacity={0.45}>
-          {[-24, -20, -26, 20, 24, 26].map((dx, i) => (
-            <circle key={i} cx={x + dx} cy={y + 8 + (i % 3) * 3} r={1.3} />
-          ))}
-        </g>
-      );
-    case 'stars':
-      return (
-        <g fill={c.glow} opacity={0.9}>
-          {[
-            [-28, -12, 4],
-            [26, -18, 3],
-            [30, 18, 4.5],
-            [-22, 24, 3],
-            [4, 34, 3.5],
-          ].map(([dx, dy, r], i) => (
-            <path
-              key={i}
-              d={`M${x + dx!} ${y + dy! - r!}Q${x + dx! + r! * 0.25} ${y + dy! - r! * 0.25} ${x + dx! + r!} ${y + dy!}Q${x + dx! + r! * 0.25} ${y + dy! + r! * 0.25} ${x + dx!} ${y + dy! + r!}Q${x + dx! - r! * 0.25} ${y + dy! + r! * 0.25} ${x + dx! - r!} ${y + dy!}Q${x + dx! - r! * 0.25} ${y + dy! - r! * 0.25} ${x + dx!} ${y + dy! - r!}Z`}
-            />
-          ))}
-        </g>
-      );
-    case 'patch':
-      return <path d={`M${x + 8} ${y - 34}C${x + 34} ${y - 34} ${x + 50} ${y - 10} ${x + 44} ${y + 12}C${x + 30} ${y + 8} ${x + 14} ${y - 8} ${x + 8} ${y - 34}Z`} fill={c.accent} opacity={0.8} />;
-    case 'none':
-      return null;
-  }
-}
-
-function Topper({ kind, geo, c }: { kind: GlimArt['topper']; geo: BodyGeometry; c: GlimColors }) {
-  const { x, y } = geo.top;
-  const st = { stroke: c.outline, strokeWidth: 3, strokeLinejoin: 'round' as const, strokeLinecap: 'round' as const };
-  switch (kind) {
-    case 'antenna':
-      return (
-        <>
-          <path d={`M${x} ${y + 2} Q${x + 3} ${y - 9} ${x + 1} ${y - 15}`} fill="none" {...st} />
-          <circle cx={x + 1} cy={y - 18} r={5} fill={c.glow} {...st} strokeWidth={2.5} />
-        </>
-      );
-    case 'leaf':
-      return <path d={`M${x} ${y + 2}C${x - 2} ${y - 6} ${x + 4} ${y - 16} ${x + 16} ${y - 18}C${x + 16} ${y - 8} ${x + 10} ${y} ${x} ${y + 2}Z`} fill={c.accent} {...st} />;
-    case 'horns':
-      return (
-        <>
-          <path d={`M${x - 16} ${y + 6}C${x - 22} ${y - 2} ${x - 22} ${y - 10} ${x - 18} ${y - 16}C${x - 14} ${y - 8} ${x - 10} ${y - 2} ${x - 8} ${y + 4}Z`} fill={c.accent} {...st} />
-          <path d={`M${x + 16} ${y + 6}C${x + 22} ${y - 2} ${x + 22} ${y - 10} ${x + 18} ${y - 16}C${x + 14} ${y - 8} ${x + 10} ${y - 2} ${x + 8} ${y + 4}Z`} fill={c.accent} {...st} />
-        </>
-      );
-    case 'flame':
-      return <path d={`M${x} ${y - 20}C${x + 4} ${y - 12} ${x + 10} ${y - 10} ${x + 9} ${y - 2}C${x + 8} ${y + 4} ${x + 3} ${y + 5} ${x} ${y + 5}C${x - 3} ${y + 5} ${x - 8} ${y + 4} ${x - 9} ${y - 2}C${x - 10} ${y - 8} ${x - 3} ${y - 10} ${x} ${y - 20}Z`} fill="#ffb020" {...st} />;
-    case 'halo':
-      return <ellipse cx={x} cy={y - 10} rx={geo.headW * 0.38} ry={4.5} fill="none" stroke={c.glow} strokeWidth={4} />;
-    case 'tuft':
-      return (
-        <g fill="none" {...st} strokeWidth={3.2}>
-          <path d={`M${x} ${y + 2} Q${x - 2} ${y - 8} ${x - 8} ${y - 12}`} />
-          <path d={`M${x} ${y + 2} Q${x + 1} ${y - 10} ${x + 2} ${y - 15}`} />
-          <path d={`M${x} ${y + 2} Q${x + 4} ${y - 8} ${x + 10} ${y - 10}`} />
-        </g>
-      );
-    case 'spikes':
-      return <path d={`M${x - 16} ${y + 6}L${x - 11} ${y - 8}L${x - 5} ${y + 3}L${x} ${y - 11}L${x + 5} ${y + 3}L${x + 11} ${y - 8}L${x + 16} ${y + 6}Z`} fill={c.accent} {...st} />;
-    case 'bolt':
-      return <path d={`M${x + 3} ${y - 22}L${x - 7} ${y - 6}H${x}L${x - 4} ${y + 6}L${x + 9} ${y - 10}H${x + 2}Z`} fill="#ffd23f" {...st} strokeWidth={2.5} />;
-    case 'bud':
-      return (
-        <>
-          <path d={`M${x} ${y + 2} V${y - 8}`} fill="none" {...st} />
-          {[0, 72, 144, 216, 288].map((a) => (
-            <circle key={a} cx={x + 6 * Math.cos(((a - 90) * Math.PI) / 180)} cy={y - 13 + 6 * Math.sin(((a - 90) * Math.PI) / 180)} r={4.2} fill={c.accent} stroke={c.outline} strokeWidth={1.8} />
-          ))}
-          <circle cx={x} cy={y - 13} r={3.2} fill="#ffd23f" stroke={c.outline} strokeWidth={1.5} />
-        </>
-      );
-    case 'none':
-      return null;
-  }
-}
+const RANK: Record<Rarity, number> = { common: 0, uncommon: 1, rare: 2, epic: 3, legendary: 4, mythic: 5 };
 
 const AURA: Partial<Record<Rarity, string>> = {
   uncommon: 'var(--r-uncommon)',
@@ -267,73 +61,364 @@ const AURA: Partial<Record<Rarity, string>> = {
   mythic: 'var(--r-mythic)',
 };
 
+const SILHOUETTE: GlimColors = {
+  body: 'var(--surface-3)',
+  deep: 'var(--surface-3)',
+  outline: 'var(--line-strong)',
+  accent: 'var(--surface-3)',
+  accentDeep: 'var(--surface-3)',
+  belly: 'var(--surface-3)',
+  glow: 'var(--surface-3)',
+  ink: 'var(--line-strong)',
+  blush: 'var(--surface-3)',
+  second: 'var(--surface-3)',
+};
+
+const GOLD_RIM = 'hsl(45 100% 70%)';
+const MOTION_CSS = `@keyframes glim-wave{0%,100%{transform:rotate(0deg)}50%{transform:rotate(-26deg)}}@keyframes glim-blink{0%,93%,100%{transform:scaleY(1)}96%{transform:scaleY(.1)}}@keyframes glim-mote{0%{transform:translateY(4px);opacity:0}25%{opacity:1}100%{transform:translateY(-10px);opacity:0}}@keyframes glim-sheen{from{transform:translateX(-44px)}to{transform:translateX(44px)}}@keyframes glim-spin{to{transform:rotate(360deg)}}.glim-wave{animation:glim-wave 1.3s ease-in-out infinite}.glim-blink{animation:glim-blink 5.4s infinite}.glim-mote{animation:glim-mote 3.6s ease-in-out infinite}.glim-sheen{animation:glim-sheen 4.8s ease-in-out infinite alternate}.glim-rays{animation:glim-spin 40s linear infinite}@media (prefers-reduced-motion:reduce){:root:not([data-motion='on']) :is(.glim-wave,.glim-blink,.glim-mote,.glim-sheen,.glim-rays){animation:none}}:root[data-motion='off'] :is(.glim-wave,.glim-blink,.glim-mote,.glim-sheen,.glim-rays){animation:none}`;
+
 export interface GlimProps {
   art: GlimArt;
   accessories?: AccessoryArt[] | undefined;
   size?: number;
-  /** Rarity glow behind the Glim (collection and reveal views). */
+  /** Rarity glow behind the Glim (collection and reveal views). Also sets the finish when `rarity` is not given. */
   aura?: Rarity | null;
-  /** Gentle idle bob. Respects reduced motion through CSS. */
+  /** Rarity finish: gloss, sparkles, two-tone body, gold rim light, iridescence. Defaults to `aura`. */
+  rarity?: Rarity | null | undefined;
+  /** Arm pose: 'wave' to greet, 'cheer' (arms up) for reveals and podiums. */
+  pose?: GlimPose | undefined;
+  /**
+   * Gentle idle bob for featured Glims (reveals, profiles, lobbies). Also turns on the decorative motion:
+   * a blink now and then, floating motes and slowly turning rays on legendaries, the sheen on mythics.
+   * All of it stops under reduced motion.
+   */
   bob?: boolean;
-  /** Draw as a dark silhouette (not yet collected). */
+  /** Draw as one dark shape (not yet collected). */
   silhouette?: boolean;
   title?: string;
   className?: string;
 }
 
-export const Glim = memo(function Glim({ art, accessories, size = 96, aura = null, bob = false, silhouette = false, title, className }: GlimProps) {
-  const uid = useId().replace(/:/g, '');
+interface Built {
+  geo: BodyGeometry;
+  back: Part[];
+  front: Part[];
+  /** Scale (around the feet) that keeps every part inside the box. */
+  fit: number;
+}
+
+/** The feet stay put when a Glim is scaled to fit: everything shrinks towards this point. */
+const GROUND = { x: 60, y: 109 };
+const MARGIN = 2.5;
+
+function fitScale(parts: Part[]): number {
+  let s = 1;
+  for (const p of parts) {
+    const [x0, y0, x1] = pathBounds(p.d);
+    const pad = (p.line ? p.line / 2 : 0) + 3.2;
+    if (y0 - pad < MARGIN) s = Math.min(s, (GROUND.y - MARGIN) / (GROUND.y - (y0 - pad)));
+    if (x0 - pad < MARGIN) s = Math.min(s, (GROUND.x - MARGIN) / (GROUND.x - (x0 - pad)));
+    if (x1 + pad > 120 - MARGIN) s = Math.min(s, (120 - MARGIN - GROUND.x) / (x1 + pad - GROUND.x));
+  }
+  return s;
+}
+
+function build(art: GlimArt, c: GlimColors, pose: Pose, hideTopper: boolean): Built {
   const geo = BODIES[art.body] ?? BODIES.blob;
-  const c = glimColors(art);
-  const sc: GlimColors = silhouette ? { body: 'var(--surface-3)', outline: 'var(--line-strong)', accent: 'var(--surface-3)', belly: 'var(--surface-3)', glow: 'var(--surface-3)', ink: 'var(--line-strong)' } : c;
-  const auraColor = aura && !silhouette ? AURA[aura] : undefined;
-  const clip = `glim-clip-${uid}`;
-  // Hats need headroom: shrink the whole Glim a little towards its feet so tall hats are not clipped.
-  const hasHat = Boolean(accessories?.some((a) => a.slot === 'hat'));
+  const ears = earParts(art.ears ?? 'none', geo, c);
+  const backs = backParts(art.back ?? 'none', geo, c);
+  const bigBack = BIG_BACKS.includes(art.back ?? 'none');
+  const ringed = art.ears === 'mane' || art.ears === 'petals';
+  const back: Part[] = [
+    ...(bigBack ? backs : []),
+    ...(ringed ? ears.behind : []),
+    ...tailParts(art.tail ?? 'none', geo, c),
+    ...(bigBack ? [] : backs),
+    ...(ringed ? [] : ears.behind),
+    ...(geo.back?.(c) ?? []),
+    ...feetParts(geo, c),
+  ];
+  const front: Part[] = [...armParts(geo, c, pose), ...(geo.front?.(c) ?? []), ...ears.front, ...(hideTopper ? [] : topperParts(art.topper ?? 'none', geo, c))];
+  return { geo, back, front, fit: fitScale([...back, ...front]) };
+}
+
+function ContourPass({ parts, color, width }: { parts: Part[]; color: string; width: number }) {
   return (
-    <svg viewBox="0 0 120 120" width={size} height={size} className={className} role={title ? 'img' : 'presentation'} aria-label={title} aria-hidden={title ? undefined : true}>
-      {title ? <title>{title}</title> : null}
-      <defs>
-        <clipPath id={clip}>
-          <path d={geo.path} />
-        </clipPath>
-        {auraColor ? (
-          <radialGradient id={`aura-${uid}`}>
-            <stop offset="0%" stopColor={auraColor} stopOpacity={aura === 'legendary' || aura === 'mythic' ? 0.75 : 0.5} />
-            <stop offset="100%" stopColor={auraColor} stopOpacity={0} />
-          </radialGradient>
-        ) : null}
-      </defs>
-      {auraColor ? <circle cx="60" cy="62" r="58" fill={`url(#aura-${uid})`} /> : null}
-      <ellipse cx="60" cy="108" rx="30" ry="5" fill="var(--ink)" opacity={0.18} />
-      <g transform={hasHat ? 'translate(60 108) scale(0.84) translate(-60 -108)' : undefined}>
-      <g style={bob ? { animation: 'glim-bob 3.2s ease-in-out infinite', transformOrigin: '60px 100px' } : undefined}>
-        {geo.back?.(sc).map((s, i) => <path key={i} d={s.d} fill={s.fill} stroke={s.stroke ?? sc.outline} strokeWidth={3} strokeLinejoin="round" strokeLinecap="round" />)}
-        <path d={geo.path} fill={sc.body} />
-        {!silhouette ? (
-          <g clipPath={`url(#${clip})`}>
-            <Pattern kind={art.pattern ?? 'none'} geo={geo} c={c} />
-            <ellipse cx={geo.face.x - 18} cy={geo.face.y - 22} rx={9} ry={5.5} fill="#fff" opacity={0.35} transform={`rotate(-25 ${geo.face.x - 18} ${geo.face.y - 22})`} />
+    <g fill={color} stroke={color} strokeLinejoin="round" strokeLinecap="round">
+      {parts.map((p, i) =>
+        p.flat || p.stalk ? null : (
+          <path
+            key={i}
+            d={p.d}
+            fill={p.line ? 'none' : color}
+            strokeWidth={p.line ? p.line + width : width}
+            fillRule={p.evenodd ? 'evenodd' : undefined}
+            className={p.anim?.cls}
+            style={p.anim ? { transformOrigin: p.anim.origin } : undefined}
+          />
+        ),
+      )}
+    </g>
+  );
+}
+
+function FillPass({ parts, line, width, silhouette, silhouetteFill }: { parts: Part[]; line: string; width: number; silhouette: boolean; silhouetteFill: string }) {
+  return (
+    <>
+      {parts.map((p, i) => {
+        if (silhouette && p.flat) return null;
+        const anim = p.anim ? { className: p.anim.cls, style: { transformOrigin: p.anim.origin } } : {};
+        if (p.line) {
+          return <path key={i} d={p.d} fill="none" stroke={silhouette && !p.stalk ? silhouetteFill : p.fill} strokeWidth={p.line} strokeLinecap="round" strokeLinejoin="round" opacity={silhouette ? undefined : p.opacity} {...anim} />;
+        }
+        return (
+          <path
+            key={i}
+            d={p.d}
+            fill={silhouette ? silhouetteFill : p.fill}
+            fillRule={p.evenodd ? 'evenodd' : undefined}
+            stroke={silhouette || p.flat ? 'none' : line}
+            strokeWidth={width}
+            strokeLinejoin="round"
+            opacity={silhouette ? undefined : p.opacity}
+            {...anim}
+          />
+        );
+      })}
+    </>
+  );
+}
+
+/** Second colour of a two-tone body: the hue leans towards the accent, at most 50 degrees. */
+function twoTone(art: GlimArt): string {
+  const sat = art.saturation ?? 70;
+  let delta = ((art.accentHue - art.hue + 540) % 360) - 180;
+  delta = Math.max(-50, Math.min(50, delta === 0 ? 30 : delta));
+  const pale = sat < 35;
+  return hsl(art.hue + delta, (pale ? sat + 12 : sat) + 8, pale ? 74 : 56);
+}
+
+export const Glim = memo(function Glim({ art, accessories, size = 96, aura = null, rarity, pose = 'idle', bob = false, silhouette = false, title, className }: GlimProps) {
+  const uid = useId().replace(/[^a-zA-Z0-9_-]/g, '');
+  const c = useMemo(() => glimColors(art), [art]);
+  const hasHat = Boolean(accessories?.some((a) => a.slot === 'hat'));
+  const hasEyewear = Boolean(accessories?.some((a) => a.slot === 'eyes'));
+  const sc = silhouette ? SILHOUETTE : c;
+  const { geo, back, front, fit } = useMemo(() => build(art, sc, pose, hasHat), [art, sc, pose, hasHat]);
+
+  const tiny = size <= 40;
+  const finish: Rarity = silhouette ? 'common' : (rarity ?? aura ?? 'common');
+  const rank = RANK[finish];
+  const contourW = silhouette ? 8 : tiny ? 8.4 : 6.4;
+  const innerW = tiny ? 3.2 : 2.6;
+  const k = geo.eyeScale * (tiny ? 1.08 : 1);
+  const auraColor = aura && !silhouette ? AURA[aura] : undefined;
+  const legendary = rank >= 4;
+  const mythic = rank >= 5;
+  // Decorative motion (blinks, motes, rays, sheen) only runs on featured Glims, the ones callers ask to bob,
+  // so a page of 112 collection tiles stays still and cheap to paint. Waving is part of the pose, so it always runs.
+  const lively = bob && !silhouette && !tiny;
+  const blink = lively;
+  const animated = !silhouette && (pose === 'wave' || lively);
+
+  const id = (name: string) => `glim-${name}-${uid}`;
+  const bodyFill = rank >= 3 ? `url(#${id('tone')})` : (geo.fill?.(c) ?? c.body);
+  const onScreen = art.face === 'screen';
+  const ink: FaceInk = onScreen ? { ink: c.glow, iris: c.accent, outline: c.ink } : { ink: c.ink, iris: `hsl(${art.accentHue} 90% 66%)`, outline: c.outline };
+  const eyeCtx = { x: geo.face.x, y: geo.face.y, gap: geo.eyeGap, k, ink, blink };
+  const mouthY = geo.face.y + (art.face === 'snout' ? 15.5 : art.face === 'beard' ? 14 : 13) * k;
+  const [x0, , x1] = geo.box;
+  const legendGlow = legendary && !auraColor;
+
+  const shadeClip = `M-200 -200H320V320H-200Z${geo.path}`;
+
+  let interior: ReactNode = null;
+  if (!silhouette) {
+    interior = (
+      <g clipPath={`url(#${id('clip')})`}>
+        {geo.fill && rank >= 3 ? <path d={geo.path} fill={geo.fill(c)} opacity={0.55} /> : null}
+        {geo.crust ? <path d={geo.path} fill="none" stroke={rank >= 3 ? `url(#${id('tone')})` : c.body} strokeWidth={geo.crust} /> : null}
+        {geo.marks?.(c).map((m, i) =>
+          m.line ? <path key={i} d={m.d} fill="none" stroke={m.fill} strokeWidth={m.line} strokeLinecap="round" opacity={m.opacity} /> : <path key={i} d={m.d} fill={m.fill} opacity={m.opacity} />,
+        )}
+        {rank === 1 && !tiny ? <PrintAccent geo={geo} clip={id('trim')} /> : null}
+        {tiny && FINE_PATTERNS.has(art.pattern ?? 'none') ? null : <Pattern kind={art.pattern ?? 'none'} geo={geo} c={c} />}
+        <rect x={-10} y={-10} width={140} height={140} fill={c.outline} opacity={0.2} clipPath={`url(#${id('shade')})`} />
+        {legendary ? <rect x={-10} y={-10} width={140} height={140} fill={mythic ? `url(#${id('iri')})` : GOLD_RIM} clipPath={`url(#${id('rim')})`} opacity={0.95} /> : null}
+        {mythic ? (
+          <g className={lively ? 'glim-sheen' : undefined}>
+            <rect x={x0 - 30} y={-10} width={(x1 - x0) * 0.7} height={140} fill={`url(#${id('sheen')})`} opacity={0.5} transform={`rotate(18 60 60)`} />
           </g>
         ) : null}
-        <path d={geo.path} fill="none" stroke={sc.outline} strokeWidth={3.2} strokeLinejoin="round" />
-        {geo.front?.(sc).map((s, i) => <path key={i} d={s.d} fill={s.fill} stroke={s.stroke} strokeWidth={s.strokeWidth ?? 0} strokeLinejoin="round" strokeLinecap="round" />)}
-        <Topper kind={art.topper ?? 'none'} geo={geo} c={sc} />
-        {!silhouette ? (
+        {art.cheeks !== false && !onScreen ? <Cheeks geo={geo} k={k} c={c} frosty={art.face === 'frosty'} onScreen={false} /> : null}
+        <ellipse cx={geo.hl[0]} cy={geo.hl[1]} rx={geo.hl[2] * (rank >= 2 ? 1.25 : 1)} ry={geo.hl[3] * (rank >= 2 ? 1.25 : 1)} transform={`rotate(${geo.hl[4]} ${geo.hl[0]} ${geo.hl[1]})`} fill={`url(#${id('hl')})`} />
+        {rank >= 2 ? (
           <>
-            <Eyes kind={art.eyes} x={geo.face.x} y={geo.face.y} c={c} />
-            <Mouth kind={art.mouth} x={geo.face.x} y={geo.face.y} c={c} />
-            {art.cheeks !== false ? (
-              <g fill="#ff7f9c" opacity={0.45}>
-                <ellipse cx={geo.face.x - 22} cy={geo.face.y + 9} rx={5} ry={3} />
-                <ellipse cx={geo.face.x + 22} cy={geo.face.y + 9} rx={5} ry={3} />
-              </g>
-            ) : null}
-            {accessories?.map((a, i) => <Accessory key={`${a.slot}-${i}`} art={a} geo={geo} />)}
+            <ellipse cx={geo.hl[0] - 0.5} cy={geo.hl[1] - 0.5} rx={geo.hl[2] * 0.5} ry={geo.hl[3] * 0.42} transform={`rotate(${geo.hl[4]} ${geo.hl[0]} ${geo.hl[1]})`} fill="#fff" opacity={0.95} />
+            <circle cx={geo.hl[0] + geo.hl[2] * 1.15} cy={geo.hl[1] + geo.hl[3] * 0.9} r={1.6} fill="#fff" opacity={0.9} />
           </>
         ) : null}
       </g>
+    );
+  }
+
+  // Hats need headroom, and so do tall ears and toppers: shrink the whole Glim towards its feet so nothing is clipped.
+  const scale = Math.min(fit, hasHat ? 0.84 : 1);
+  const shrink = scale < 1 ? `translate(${GROUND.x} ${GROUND.y}) scale(${scale.toFixed(3)}) translate(${-GROUND.x} ${-GROUND.y})` : undefined;
+
+  return (
+    <svg viewBox="0 0 120 120" width={size} height={size} className={className} role={title ? 'img' : 'presentation'} aria-label={title} aria-hidden={title ? undefined : true}>
+      {title ? <title>{title}</title> : null}
+      {animated ? <style>{MOTION_CSS}</style> : null}
+      <defs>
+        <clipPath id={id('clip')}>
+          <path d={geo.path} />
+        </clipPath>
+        {!silhouette ? (
+          <>
+            <clipPath id={id('shade')}>
+              <path d={shadeClip} clipRule="evenodd" transform="translate(-5 -6)" />
+            </clipPath>
+            <radialGradient id={id('hl')}>
+              <stop offset="0%" stopColor="#fff" stopOpacity={rank >= 2 ? 0.95 : 0.8} />
+              <stop offset="60%" stopColor="#fff" stopOpacity={rank >= 2 ? 0.55 : 0.4} />
+              <stop offset="100%" stopColor="#fff" stopOpacity={0} />
+            </radialGradient>
+          </>
+        ) : null}
+        {rank === 1 && !tiny ? (
+          <clipPath id={id('trim')}>
+            <rect x={0} y={Math.min(geo.face.y + 13, geo.box[3] - (geo.box[3] - geo.box[1]) * 0.3)} width={120} height={120} />
+          </clipPath>
+        ) : null}
+        {rank >= 3 ? (
+          <linearGradient id={id('tone')} x1="0.15" y1="0" x2="0.6" y2="1">
+            <stop offset="0.25" stopColor={c.body} />
+            <stop offset="1" stopColor={twoTone(art)} />
+          </linearGradient>
+        ) : null}
+        {legendary ? (
+          <clipPath id={id('rim')}>
+            <path d={shadeClip} clipRule="evenodd" transform="translate(-2.4 -2.8)" />
+          </clipPath>
+        ) : null}
+        {mythic ? (
+          <>
+            <linearGradient id={id('iri')} x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0" stopColor="hsl(320 100% 78%)" />
+              <stop offset="0.5" stopColor="hsl(190 100% 72%)" />
+              <stop offset="1" stopColor="hsl(55 100% 72%)" />
+            </linearGradient>
+            <linearGradient id={id('sheen')} x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0" stopColor="#fff" stopOpacity={0} />
+              <stop offset="0.2" stopColor="hsl(320 100% 80%)" />
+              <stop offset="0.4" stopColor="hsl(55 100% 80%)" />
+              <stop offset="0.6" stopColor="hsl(160 100% 76%)" />
+              <stop offset="0.8" stopColor="hsl(220 100% 80%)" />
+              <stop offset="1" stopColor="#fff" stopOpacity={0} />
+            </linearGradient>
+          </>
+        ) : null}
+        {auraColor || legendGlow ? (
+          <radialGradient id={id('aura')}>
+            <stop offset="0%" stopColor={auraColor ?? (mythic ? 'var(--r-mythic)' : 'var(--r-legendary)')} stopOpacity={legendary ? 0.7 : 0.45} />
+            <stop offset="55%" stopColor={auraColor ?? (mythic ? 'var(--r-mythic)' : 'var(--r-legendary)')} stopOpacity={legendary ? 0.28 : 0.16} />
+            <stop offset="100%" stopColor={auraColor ?? (mythic ? 'var(--r-mythic)' : 'var(--r-legendary)')} stopOpacity={0} />
+          </radialGradient>
+        ) : null}
+      </defs>
+      {auraColor || legendGlow ? <circle cx="60" cy="64" r="58" fill={`url(#${id('aura')})`} /> : null}
+      {legendary && !tiny ? <Rays mythic={mythic} spin={lively} id={id('rays')} /> : null}
+      <ellipse cx="60" cy="109" rx="28" ry="4.6" fill="var(--ink)" opacity={0.18} />
+      <g transform={shrink}>
+        <g style={bob ? { animation: 'glim-bob 3.2s ease-in-out infinite', transformOrigin: '60px 100px' } : undefined}>
+          <ContourPass parts={[...back, { d: geo.path, fill: '' }, ...front]} color={sc.outline} width={contourW} />
+          <FillPass parts={back} line={sc.outline} width={innerW} silhouette={silhouette} silhouetteFill={SILHOUETTE.body} />
+          <path d={geo.path} fill={silhouette ? SILHOUETTE.body : bodyFill} />
+          {interior}
+          {!silhouette ? <path d={geo.path} fill="none" stroke={c.outline} strokeWidth={innerW} strokeLinejoin="round" /> : null}
+          <FillPass parts={front} line={sc.outline} width={innerW} silhouette={silhouette} silhouetteFill={SILHOUETTE.body} />
+          {!silhouette ? (
+            <>
+              <FaceUnder kind={art.face} geo={geo} k={k} c={c} />
+              {art.cheeks !== false && onScreen ? <Cheeks geo={geo} k={k} c={c} frosty={false} onScreen /> : null}
+              <Eyes kind={art.eyes} ctx={eyeCtx} />
+              <Brows kind={art.brows} eyes={art.eyes} ctx={eyeCtx} />
+              <Mouth kind={art.mouth} x={geo.face.x} y={mouthY} k={k * 1.15} ink={ink} />
+              {art.face === 'spectacles' && hasEyewear ? null : <FaceOver kind={art.face} eyes={art.eyes} geo={geo} k={k} c={c} />}
+              {accessories?.map((a, i) => <Accessory key={`${a.slot}-${i}`} art={a} geo={geo} />)}
+            </>
+          ) : null}
+        </g>
       </g>
+      {!silhouette && rank >= 2 && !tiny ? <Sparkles rank={rank} geo={geo} c={c} float={lively} /> : null}
     </svg>
   );
 });
+
+/**
+ * Uncommon finish: a dotted white trim following the body's own outline just
+ * inside it, around the lower half, like a printed sticker border.
+ */
+function PrintAccent({ geo, clip }: { geo: BodyGeometry; clip: string }) {
+  const [x0, y0, x1, y1] = geo.box;
+  const cx = (x0 + x1) / 2;
+  const cy = (y0 + y1) / 2;
+  const k = 0.84;
+  return (
+    <g clipPath={`url(#${clip})`}>
+      <path d={geo.path} transform={`translate(${cx} ${cy}) scale(${k}) translate(${-cx} ${-cy})`} fill="none" stroke="#fff" strokeOpacity={0.9} strokeWidth={3 / k} strokeDasharray={`0.01 ${6.2 / k}`} strokeLinecap="round" />
+    </g>
+  );
+}
+
+/** Legendary and mythic: soft beams of light behind the Glim, fading out towards their tips. */
+function Rays({ mythic, spin, id }: { mythic: boolean; spin: boolean; id: string }) {
+  const color = mythic ? 'hsl(325 100% 72%)' : 'hsl(44 100% 62%)';
+  let d = '';
+  for (let i = 0; i < 10; i++) {
+    const a = (i / 10) * Math.PI * 2;
+    const a1 = a - 0.1;
+    const a2 = a + 0.1;
+    d += `M60 64L${(60 + 62 * Math.cos(a1)).toFixed(1)} ${(64 + 62 * Math.sin(a1)).toFixed(1)}L${(60 + 62 * Math.cos(a2)).toFixed(1)} ${(64 + 62 * Math.sin(a2)).toFixed(1)}Z`;
+  }
+  return (
+    <>
+      <defs>
+        <radialGradient id={id} cx="60" cy="64" r="62" gradientUnits="userSpaceOnUse">
+          <stop offset="0.4" stopColor={color} stopOpacity={0.75} />
+          <stop offset="1" stopColor={color} stopOpacity={0} />
+        </radialGradient>
+      </defs>
+      <g className={spin ? 'glim-rays' : undefined} style={spin ? { transformOrigin: '60px 64px' } : undefined}>
+        <path d={d} fill={`url(#${id})`} />
+      </g>
+    </>
+  );
+}
+
+function Sparkles({ rank, geo, c, float }: { rank: number; geo: BodyGeometry; c: GlimColors; float: boolean }) {
+  const [x0, y0, x1, y1] = geo.box;
+  const spots: [number, number, number][] = [[Math.min(112, x1 + 3), Math.max(10, y0 + 6), 5.5]];
+  if (rank >= 3) spots.push([Math.max(8, x0 - 4), y0 + (y1 - y0) * 0.45, 4], [Math.min(113, x1 + 6), y0 + (y1 - y0) * 0.72, 3.2]);
+  const motes: [number, number, number, number][] =
+    rank >= 4
+      ? [
+          [Math.max(9, x0 - 1), y0 + 4, 1.9, 0],
+          [Math.min(110, x1 - 2), y1 - 2, 1.6, 1.2],
+          [30, 22, 1.4, 2.1],
+          [92, 30, 2.1, 0.6],
+          [16, y1 - 8, 1.5, 1.7],
+        ]
+      : [];
+  // Strong enough to read on the light theme too: sparkles get a thin dark edge, motes a deeper gold.
+  const moteFill = rank >= 5 ? 'hsl(322 95% 68%)' : 'hsl(42 100% 56%)';
+  return (
+    <>
+      <path d={spots.map(([x, y, r]) => sparkle(x, y, r, 0.24)).join('')} fill="#fff" stroke={c.outline} strokeOpacity={0.55} strokeWidth={1.1} strokeLinejoin="round" />
+      {motes.map(([x, y, r, delay], i) => (
+        <circle key={i} cx={x} cy={y} r={r} fill={i % 2 && rank >= 5 ? 'hsl(188 95% 55%)' : moteFill} className={float ? 'glim-mote' : undefined} style={float ? { animationDelay: `${delay}s` } : undefined} />
+      ))}
+    </>
+  );
+}

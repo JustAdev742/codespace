@@ -1,71 +1,83 @@
 import type { AccessoryArt } from '@ludora/shared';
-import type { BodyGeometry } from './bodies.ts';
+import { BODIES, type BodyGeometry } from './bodies.ts';
 
 /*
  * Accessories sit on a body's anchors: hats on `top` (scaled to the head's
- * width), eyewear on `face`, neckwear on `neck`. Drawn at a reference head
- * width of 44 and scaled from there.
+ * width), eyewear on `face` (lenses over the eyes, at the body's eye gap),
+ * neckwear on `neck`. Drawn in the same sticker style as the Glims: flat
+ * fills, a dark outline tinted from the accessory's hue, a small highlight.
  */
-
-const OUT = '#1d1846';
 
 function colors(art: AccessoryArt) {
   const accentHue = art.accentHue ?? (art.hue + 50) % 360;
   return {
     main: `hsl(${art.hue} 72% 60%)`,
-    dark: `hsl(${art.hue} 60% 40%)`,
-    light: `hsl(${art.hue} 85% 82%)`,
-    accent: `hsl(${accentHue} 85% 65%)`,
+    dark: `hsl(${art.hue} 58% 42%)`,
+    light: `hsl(${art.hue} 85% 84%)`,
+    accent: `hsl(${accentHue} 88% 64%)`,
+    out: `hsl(${art.hue} 50% 18%)`,
   };
 }
 
-function Hat({ shape, c }: { shape: string; c: ReturnType<typeof colors> }) {
-  const st = { stroke: OUT, strokeWidth: 2.6, strokeLinejoin: 'round' as const, strokeLinecap: 'round' as const };
+type C = ReturnType<typeof colors>;
+const GOLD = 'hsl(44 100% 62%)';
+const GOLD_LIGHT = 'hsl(48 100% 86%)';
+const SHINE = { fill: '#fff', opacity: 0.55 };
+
+function Hat({ shape, c }: { shape: string; c: C }) {
+  const st = { stroke: c.out, strokeWidth: 3, strokeLinejoin: 'round' as const, strokeLinecap: 'round' as const };
   switch (shape) {
     case 'beanie':
       return (
         <>
           <path d="M-22 4C-22 -14 -12 -22 0 -22C12 -22 22 -14 22 4Z" fill={c.main} {...st} />
-          <rect x={-24} y={0} width={48} height={8} rx={4} fill={c.dark} {...st} />
-          <circle cx={0} cy={-25} r={5} fill={c.light} {...st} />
+          <path d="M-8 -19C-11 -14 -12 -8 -12 0M2 -21V0M11 -18C13 -13 13.5 -7 13.5 0" fill="none" stroke={c.dark} strokeWidth={1.6} opacity={0.5} />
+          <rect x={-24.5} y={-0.5} width={49} height={9} rx={4.5} fill={c.dark} {...st} />
+          <circle cx={0} cy={-25} r={5.5} fill={c.light} {...st} />
+          <ellipse cx={-11} cy={-13} rx={3.4} ry={2} transform="rotate(-35 -11 -13)" {...SHINE} />
         </>
       );
     case 'wizard':
       return (
         <>
-          <path d="M-14 2L2 -40L16 2Z" fill={c.main} {...st} />
-          <ellipse cx={1} cy={3} rx={26} ry={6} fill={c.dark} {...st} />
-          <path d="M3 -24l1.5 3 3 .4-2.2 2 .6 3-2.9-1.5-2.9 1.5.6-3-2.2-2 3-.4z" fill="#ffd23f" />
-          <circle cx={-3} cy={-10} r={1.8} fill="#ffd23f" />
+          <path d="M-15 2C-8 -14 -2 -30 4 -42C6 -38 9 -36 12 -35C10 -24 13 -10 17 2Z" fill={c.main} {...st} />
+          <ellipse cx={1} cy={3} rx={27} ry={6.5} fill={c.dark} {...st} />
+          <path d="M4 -24l1.6 3.2 3.4.5-2.5 2.4.6 3.4-3.1-1.6-3.1 1.6.6-3.4-2.5-2.4 3.4-.5z" fill={GOLD} />
+          <circle cx={-4} cy={-9} r={1.9} fill={GOLD} />
+          <circle cx={8} cy={-6} r={1.3} fill={GOLD} />
         </>
       );
     case 'party':
       return (
         <>
-          <path d="M-13 3L0 -34L13 3Z" fill={c.main} {...st} />
-          <path d="M-9 -8L5 -2M-5 -19L8 -13" stroke={c.accent} strokeWidth={4} strokeLinecap="round" />
-          <circle cx={0} cy={-36} r={5} fill={c.accent} {...st} />
+          <path d="M-14 3L0 -34L14 3Z" fill={c.main} {...st} />
+          <path d="M-9.5 -8L6 -2M-5 -19L9 -13" stroke={c.accent} strokeWidth={4.4} strokeLinecap="round" />
+          <circle cx={0} cy={-36} r={5.5} fill={c.accent} {...st} />
+          <path d="M-14 3L0 -34L14 3Z" fill="none" {...st} />
         </>
       );
     case 'crown':
       return (
         <>
-          <path d="M-20 4L-22 -16L-11 -6L0 -20L11 -6L22 -16L20 4Z" fill="#ffc83d" {...st} />
-          <circle cx={0} cy={-5} r={3.4} fill={c.main} stroke={OUT} strokeWidth={1.6} />
-          <circle cx={-12} cy={-1} r={2.4} fill={c.accent} />
-          <circle cx={12} cy={-1} r={2.4} fill={c.accent} />
+          <path d="M-20 4L-22.5 -16L-11 -6L0 -21L11 -6L22.5 -16L20 4Z" fill={GOLD} {...st} />
+          <path d="M-19 -1H19" stroke="hsl(36 90% 46%)" strokeWidth={1.6} opacity={0.6} />
+          <circle cx={0} cy={-6} r={3.6} fill={c.main} stroke={c.out} strokeWidth={1.8} />
+          <circle cx={-12} cy={-1.5} r={2.5} fill={c.accent} stroke={c.out} strokeWidth={1.2} />
+          <circle cx={12} cy={-1.5} r={2.5} fill={c.accent} stroke={c.out} strokeWidth={1.2} />
+          <path d="M-15 -7L-17 -13" stroke={GOLD_LIGHT} strokeWidth={2} strokeLinecap="round" />
         </>
       );
     case 'flowers':
       return (
         <>
-          <path d="M-24 2C-12 -6 12 -6 24 2" fill="none" stroke="#3fa34d" strokeWidth={3} strokeLinecap="round" />
+          <path d="M-25 2C-12 -6 12 -6 25 2" fill="none" stroke="hsl(122 45% 34%)" strokeWidth={5.2} strokeLinecap="round" />
+          <path d="M-25 2C-12 -6 12 -6 25 2" fill="none" stroke="hsl(112 55% 52%)" strokeWidth={2.6} strokeLinecap="round" />
           {[-18, -6, 6, 18].map((x, i) => (
-            <g key={x} transform={`translate(${x} ${-3 - (i === 1 || i === 2 ? 2 : 0)})`}>
+            <g key={x} transform={`translate(${x} ${-3 - (i === 1 || i === 2 ? 2.5 : 0)})`}>
               {[0, 72, 144, 216, 288].map((a) => (
-                <circle key={a} cx={4 * Math.cos((a * Math.PI) / 180)} cy={4 * Math.sin((a * Math.PI) / 180)} r={3.4} fill={i % 2 ? c.main : c.accent} stroke={OUT} strokeWidth={1.2} />
+                <circle key={a} cx={4.2 * Math.cos((a * Math.PI) / 180)} cy={4.2 * Math.sin((a * Math.PI) / 180)} r={3.6} fill={i % 2 ? c.main : c.accent} stroke={c.out} strokeWidth={1.4} />
               ))}
-              <circle r={2.4} fill="#ffd23f" />
+              <circle r={2.6} fill={GOLD} stroke={c.out} strokeWidth={1} />
             </g>
           ))}
         </>
@@ -73,10 +85,11 @@ function Hat({ shape, c }: { shape: string; c: ReturnType<typeof colors> }) {
     case 'mortarboard':
       return (
         <>
-          <path d="M-14 -4H14V4C14 7 -14 7 -14 4Z" fill={c.dark} {...st} />
-          <path d="M-28 -10L0 -20L28 -10L0 0Z" fill={c.main} {...st} />
-          <path d="M0 -10L18 -6V8" fill="none" stroke="#ffc83d" strokeWidth={2.4} strokeLinecap="round" />
-          <circle cx={18} cy={10} r={3} fill="#ffc83d" stroke={OUT} strokeWidth={1.5} />
+          <path d="M-14 -4H14V4C14 7.5 -14 7.5 -14 4Z" fill={c.dark} {...st} />
+          <path d="M-29 -10L0 -21L29 -10L0 1Z" fill={c.main} {...st} />
+          <path d="M0 -10L18 -6V8" fill="none" stroke={GOLD} strokeWidth={2.6} strokeLinecap="round" />
+          <circle cx={18} cy={10.5} r={3.4} fill={GOLD} stroke={c.out} strokeWidth={1.6} />
+          <circle cx={0} cy={-10} r={2} fill={GOLD} />
         </>
       );
     case 'headphones':
@@ -84,41 +97,47 @@ function Hat({ shape, c }: { shape: string; c: ReturnType<typeof colors> }) {
       return null;
     case 'bow':
       return (
-        <g transform="translate(12 -4) rotate(18)">
-          <path d="M0 0C-10 -12 -20 -8 -18 0C-20 8 -10 12 0 0Z" fill={c.main} {...st} />
-          <path d="M0 0C10 -12 20 -8 18 0C20 8 10 12 0 0Z" fill={c.main} {...st} />
-          <circle r={4} fill={c.dark} {...st} />
+        <g transform="translate(13 -4) rotate(18)">
+          <path d="M0 0C-10 -13 -21 -9 -19 0C-21 9 -10 13 0 0Z" fill={c.main} {...st} />
+          <path d="M0 0C10 -13 21 -9 19 0C21 9 10 13 0 0Z" fill={c.main} {...st} />
+          <path d="M-14 -4C-11 -6 -8 -5 -6 -3M14 -4C11 -6 8 -5 6 -3" fill="none" stroke={c.dark} strokeWidth={1.4} opacity={0.6} />
+          <circle r={4.4} fill={c.dark} {...st} />
         </g>
       );
     case 'tophat':
       return (
         <>
-          <rect x={-14} y={-30} width={28} height={30} rx={3} fill={c.dark} {...st} />
-          <rect x={-14} y={-10} width={28} height={6} fill={c.accent} />
-          <ellipse cx={0} cy={1} rx={25} ry={5.5} fill={c.dark} {...st} />
+          <rect x={-14} y={-31} width={28} height={31} rx={3} fill={c.dark} {...st} />
+          <rect x={-14} y={-11} width={28} height={6.5} fill={c.accent} stroke={c.out} strokeWidth={1.6} />
+          <ellipse cx={0} cy={1} rx={25.5} ry={6} fill={c.dark} {...st} />
+          <path d="M-9 -27V-15" stroke="#fff" strokeWidth={2.4} strokeLinecap="round" opacity={0.3} />
         </>
       );
     case 'propeller':
       return (
         <>
           <path d="M-20 4C-20 -12 -10 -18 0 -18C10 -18 20 -12 20 4Z" fill={c.main} {...st} />
-          <path d="M-20 -4H20" stroke={c.accent} strokeWidth={4} />
-          <path d="M0 -18V-25" stroke={OUT} strokeWidth={2.6} />
-          <path d="M0 -26C-6 -31 -18 -30 -18 -26C-18 -22 -6 -22 0 -26C6 -30 18 -30 18 -26C18 -22 6 -21 0 -26Z" fill={c.accent} {...st} strokeWidth={2} />
+          <path d="M-20 -4H20" stroke={c.accent} strokeWidth={4.4} />
+          <path d="M-20 4C-20 -12 -10 -18 0 -18C10 -18 20 -12 20 4Z" fill="none" {...st} />
+          <path d="M0 -18V-25" stroke={c.out} strokeWidth={3} />
+          <path d="M0 -26C-6 -31.5 -19 -30.5 -19 -26C-19 -21.5 -6 -21.5 0 -26C6 -30.5 19 -30.5 19 -26C19 -21.5 6 -20.5 0 -26Z" fill={c.accent} {...st} strokeWidth={2.2} />
+          <circle cx={0} cy={-26} r={2.4} fill={c.dark} stroke={c.out} strokeWidth={1.4} />
         </>
       );
     case 'chef':
       return (
         <>
-          <rect x={-15} y={-8} width={30} height={12} rx={2} fill="#fff" {...st} />
-          <path d="M-15 -8C-26 -10 -24 -28 -12 -26C-10 -36 10 -36 12 -26C24 -28 26 -10 15 -8Z" fill="#fff" {...st} />
+          <rect x={-15} y={-8} width={30} height={12} rx={2.5} fill="#fff" {...st} />
+          <path d="M-15 -8C-27 -10 -25 -29 -12 -27C-10 -37 10 -37 12 -27C25 -29 27 -10 15 -8Z" fill="#fff" {...st} />
+          <path d="M-6 -8V-18M6 -8V-18" stroke={c.out} strokeWidth={1.4} opacity={0.3} />
         </>
       );
     case 'beret':
       return (
         <g transform="rotate(-10)">
-          <ellipse cx={2} cy={-4} rx={24} ry={9} fill={c.main} {...st} />
-          <path d="M2 -13V-17" stroke={OUT} strokeWidth={3} strokeLinecap="round" />
+          <ellipse cx={2} cy={-4} rx={25} ry={9.5} fill={c.main} {...st} />
+          <path d="M-18 -1C-6 3 10 3 24 -2" fill="none" stroke={c.dark} strokeWidth={1.6} opacity={0.5} />
+          <path d="M2 -13.5V-18" stroke={c.out} strokeWidth={3.4} strokeLinecap="round" />
         </g>
       );
     default:
@@ -126,51 +145,63 @@ function Hat({ shape, c }: { shape: string; c: ReturnType<typeof colors> }) {
   }
 }
 
-function Eyewear({ shape, c }: { shape: string; c: ReturnType<typeof colors> }) {
-  const frame = { fill: 'none', stroke: c.dark, strokeWidth: 2.6 };
+function Eyewear({ shape, c, g, r }: { shape: string; c: C; g: number; r: number }) {
+  const frame = { fill: 'none', stroke: c.dark, strokeWidth: 2.8 };
+  const bridge = `M${-g + r} -1Q0 -4.5 ${g - r} -1`;
   switch (shape) {
     case 'round':
       return (
         <>
-          <circle cx={-13} cy={0} r={8.5} {...frame} />
-          <circle cx={13} cy={0} r={8.5} {...frame} />
-          <path d="M-4.5 -1Q0 -4 4.5 -1" {...frame} />
+          <circle cx={-g} cy={0} r={r} {...frame} fill="#fff" fillOpacity={0.14} />
+          <circle cx={g} cy={0} r={r} {...frame} fill="#fff" fillOpacity={0.14} />
+          <path d={bridge} {...frame} />
+          <path d={`M${-g - r * 0.5} ${-r * 0.45}l${r * 0.3} ${-r * 0.25}M${g - r * 0.5} ${-r * 0.45}l${r * 0.3} ${-r * 0.25}`} stroke="#fff" strokeWidth={1.8} strokeLinecap="round" opacity={0.7} />
         </>
       );
     case 'stars': {
-      const star = (cx: number) => `M${cx} -10L${cx + 3} -3.5L${cx + 10} -3L${cx + 4.6} 1.6L${cx + 6.4} 8.6L${cx} 4.8L${cx - 6.4} 8.6L${cx - 4.6} 1.6L${cx - 10} -3L${cx - 3} -3.5Z`;
+      const k = r / 10;
+      const star = (cx: number) =>
+        `M${cx} ${-10.5 * k}L${cx + 3.1 * k} ${-3.6 * k}L${cx + 10.4 * k} ${-3.1 * k}L${cx + 4.8 * k} ${1.7 * k}L${cx + 6.6 * k} ${8.9 * k}L${cx} ${5 * k}L${cx - 6.6 * k} ${8.9 * k}L${cx - 4.8 * k} ${1.7 * k}L${cx - 10.4 * k} ${-3.1 * k}L${cx - 3.1 * k} ${-3.6 * k}Z`;
       return (
         <>
-          <path d={`${star(-13)} ${star(13)}`} fill={c.main} stroke={OUT} strokeWidth={2} strokeLinejoin="round" opacity={0.95} />
-          <path d="M-3.5 -1H3.5" stroke={OUT} strokeWidth={2.4} />
+          <path d={`${star(-g)} ${star(g)}`} fill={c.main} stroke={c.out} strokeWidth={2.2} strokeLinejoin="round" opacity={0.94} />
+          <path d={`M${-g + 9 * k} -1H${g - 9 * k}`} stroke={c.out} strokeWidth={2.6} />
         </>
       );
     }
     case 'monocle':
       return (
         <>
-          <circle cx={13} cy={0} r={8.5} fill="rgb(255 255 255 / 0.25)" stroke="#d4a017" strokeWidth={2.6} />
-          <path d="M20 6Q24 18 18 28" fill="none" stroke="#d4a017" strokeWidth={1.6} />
+          <circle cx={g} cy={0} r={r} fill="#fff" fillOpacity={0.22} stroke={GOLD} strokeWidth={2.8} />
+          <circle cx={g} cy={0} r={r + 1.6} fill="none" stroke="hsl(36 80% 34%)" strokeWidth={0.9} opacity={0.6} />
+          <path d={`M${g + r * 0.7} ${r * 0.7}Q${g + r + 4} ${r + 10} ${g + 4} ${r + 18}`} fill="none" stroke={GOLD} strokeWidth={1.7} />
         </>
       );
     case 'goggles':
       return (
         <>
-          <path d="M-30 -2H30" stroke={c.dark} strokeWidth={4} />
-          <circle cx={-13} cy={0} r={9} fill={c.light} stroke={OUT} strokeWidth={2.6} opacity={0.9} />
-          <circle cx={13} cy={0} r={9} fill={c.light} stroke={OUT} strokeWidth={2.6} opacity={0.9} />
-          <circle cx={-16} cy={-3} r={2.4} fill="#fff" />
-          <circle cx={10} cy={-3} r={2.4} fill="#fff" />
+          <path d={`M${-g - r - 8} -2H${g + r + 8}`} stroke={c.dark} strokeWidth={4.6} strokeLinecap="round" />
+          <circle cx={-g} cy={0} r={r + 0.5} fill={c.light} stroke={c.out} strokeWidth={2.8} opacity={0.92} />
+          <circle cx={g} cy={0} r={r + 0.5} fill={c.light} stroke={c.out} strokeWidth={2.8} opacity={0.92} />
+          <circle cx={-g - r * 0.35} cy={-r * 0.35} r={r * 0.26} fill="#fff" />
+          <circle cx={g - r * 0.35} cy={-r * 0.35} r={r * 0.26} fill="#fff" />
         </>
       );
     case 'visor':
-      return <path d="M-26 -6H26L22 6C10 9 -10 9 -22 6Z" fill={c.main} stroke={OUT} strokeWidth={2.4} strokeLinejoin="round" opacity={0.92} />;
-    case 'heart': {
-      const heart = (cx: number) => `M${cx} 7C${cx - 12} -1 ${cx - 10} -11 ${cx - 4} -9C${cx - 2} -8 ${cx} -6 ${cx} -4C${cx} -6 ${cx + 2} -8 ${cx + 4} -9C${cx + 10} -11 ${cx + 12} -1 ${cx} 7Z`;
       return (
         <>
-          <path d={`${heart(-13)} ${heart(13)}`} fill="#ff6b9a" stroke={OUT} strokeWidth={2} strokeLinejoin="round" opacity={0.92} />
-          <path d="M-4 -3H4" stroke={OUT} strokeWidth={2.2} />
+          <path d={`M${-g - r - 2} -7H${g + r + 2}L${g + r - 2} 6C${g * 0.6} 9.5 ${-g * 0.6} 9.5 ${-g - r + 2} 6Z`} fill={c.main} stroke={c.out} strokeWidth={2.6} strokeLinejoin="round" opacity={0.9} />
+          <path d={`M${-g - r + 4} -3H${-g + 2}`} stroke="#fff" strokeWidth={2} strokeLinecap="round" opacity={0.6} />
+        </>
+      );
+    case 'heart': {
+      const k = r / 10;
+      const heart = (cx: number) =>
+        `M${cx} ${8 * k}C${cx - 13 * k} ${-1 * k} ${cx - 11 * k} ${-12 * k} ${cx - 4.5 * k} ${-10 * k}C${cx - 2 * k} ${-9 * k} ${cx} ${-6.5 * k} ${cx} ${-4.5 * k}C${cx} ${-6.5 * k} ${cx + 2 * k} ${-9 * k} ${cx + 4.5 * k} ${-10 * k}C${cx + 11 * k} ${-12 * k} ${cx + 13 * k} ${-1 * k} ${cx} ${8 * k}Z`;
+      return (
+        <>
+          <path d={`${heart(-g)} ${heart(g)}`} fill="hsl(340 95% 70%)" stroke={c.out} strokeWidth={2.2} strokeLinejoin="round" opacity={0.92} />
+          <path d={`M${-g + 9 * k} -3H${g - 9 * k}`} stroke={c.out} strokeWidth={2.4} />
         </>
       );
     }
@@ -179,49 +210,58 @@ function Eyewear({ shape, c }: { shape: string; c: ReturnType<typeof colors> }) 
   }
 }
 
-function Neckwear({ shape, c }: { shape: string; c: ReturnType<typeof colors> }) {
-  const st = { stroke: OUT, strokeWidth: 2.4, strokeLinejoin: 'round' as const, strokeLinecap: 'round' as const };
+function Neckwear({ shape, c }: { shape: string; c: C }) {
+  const st = { stroke: c.out, strokeWidth: 2.8, strokeLinejoin: 'round' as const, strokeLinecap: 'round' as const };
   switch (shape) {
     case 'scarf':
       return (
         <>
-          <path d="M-24 -4C-12 4 12 4 24 -4L24 4C12 12 -12 12 -24 4Z" fill={c.main} {...st} />
-          <path d="M10 6L14 22L22 20L18 4Z" fill={c.main} {...st} />
-          <path d="M-18 1H-12M-4 4H2M10 3H16" stroke={c.light} strokeWidth={2.4} />
+          <path d="M10 6L14 23L23 20.5L18 4Z" fill={c.dark} {...st} />
+          <path d="M-25 -4C-12 4 12 4 25 -4L25 4.5C12 12.5 -12 12.5 -25 4.5Z" fill={c.main} {...st} />
+          <path d="M-18 1.5H-12M-4 4H2M10 3H16" stroke={c.light} strokeWidth={2.6} strokeLinecap="round" />
         </>
       );
     case 'bowtie':
       return (
         <>
-          <path d="M0 0L-13 -8V8Z" fill={c.main} {...st} />
-          <path d="M0 0L13 -8V8Z" fill={c.main} {...st} />
-          <rect x={-3.5} y={-4} width={7} height={8} rx={2} fill={c.dark} {...st} />
+          <path d="M0 0L-14 -8.5V8.5Z" fill={c.main} {...st} />
+          <path d="M0 0L14 -8.5V8.5Z" fill={c.main} {...st} />
+          <rect x={-4} y={-4.5} width={8} height={9} rx={2.4} fill={c.dark} {...st} />
         </>
       );
     case 'medal':
       return (
         <>
-          <path d="M-12 -6L-2 12M12 -6L2 12" stroke={c.main} strokeWidth={5} strokeLinecap="round" />
-          <circle cx={0} cy={15} r={7} fill="#ffc83d" {...st} />
-          <path d="M0 11l1.3 2.6 2.8.4-2 2 .5 2.8L0 17.5l-2.6 1.3.5-2.8-2-2 2.8-.4z" fill="#fff6c8" />
+          <path d="M-12 -6L-2 12M12 -6L2 12" stroke={c.out} strokeWidth={7.6} strokeLinecap="round" />
+          <path d="M-12 -6L-2 12M12 -6L2 12" stroke={c.main} strokeWidth={4.6} strokeLinecap="round" />
+          <circle cx={0} cy={15.5} r={7.5} fill={GOLD} {...st} />
+          <path d="M0 11.2l1.4 2.8 3 .4-2.2 2.1.5 3L0 18.1l-2.7 1.4.5-3-2.2-2.1 3-.4z" fill={GOLD_LIGHT} />
         </>
       );
     case 'bandana':
-      return <path d="M-22 -4C-10 2 10 2 22 -4L0 18Z" fill={c.main} {...st} />;
+      return (
+        <>
+          <path d="M-23 -4C-10 2 10 2 23 -4L0 19Z" fill={c.main} {...st} />
+          <circle cx={-6} cy={4} r={1.6} fill={c.light} />
+          <circle cx={5} cy={3.5} r={1.6} fill={c.light} />
+          <circle cx={0} cy={10} r={1.6} fill={c.light} />
+        </>
+      );
     case 'pearls':
       return (
-        <g fill="#fbf7ff" stroke={OUT} strokeWidth={1.2}>
+        <g fill="#fbf7ff" stroke={c.out} strokeWidth={1.4}>
           {[-18, -12, -6, 0, 6, 12, 18].map((x, i) => (
-            <circle key={x} cx={x} cy={Math.abs(x) * -0.18 + 4 + (i % 2) * 0.5} r={3} />
+            <circle key={x} cx={x} cy={Math.abs(x) * -0.18 + 4 + (i % 2) * 0.5} r={3.2} />
           ))}
         </g>
       );
     case 'bell':
       return (
         <>
-          <path d="M-20 -3C-8 4 8 4 20 -3" fill="none" stroke={c.main} strokeWidth={5} strokeLinecap="round" />
-          <path d="M-5 4C-5 -1 5 -1 5 4L7 11H-7Z" fill="#ffc83d" {...st} />
-          <circle cx={0} cy={12} r={1.8} fill={OUT} />
+          <path d="M-21 -3C-8 4 8 4 21 -3" fill="none" stroke={c.out} strokeWidth={7.6} strokeLinecap="round" />
+          <path d="M-21 -3C-8 4 8 4 21 -3" fill="none" stroke={c.main} strokeWidth={4.6} strokeLinecap="round" />
+          <path d="M-5.5 4.5C-5.5 -1.5 5.5 -1.5 5.5 4.5L7.5 12H-7.5Z" fill={GOLD} {...st} />
+          <circle cx={0} cy={13} r={2} fill={c.out} />
         </>
       );
     default:
@@ -233,12 +273,14 @@ export function Accessory({ art, geo }: { art: AccessoryArt; geo: BodyGeometry }
   const c = colors(art);
   if (art.slot === 'hat') {
     if (art.shape === 'headphones') {
-      const w = Math.max(30, geo.headW * 0.62);
+      const w = geo.sideW ?? Math.max(28, (geo.box[2] - geo.box[0]) / 2 - 1);
+      const { x, y } = geo.face;
       return (
         <g>
-          <path d={`M${geo.face.x - w} ${geo.face.y - 4}C${geo.face.x - w} ${geo.top.y - 14} ${geo.face.x + w} ${geo.top.y - 14} ${geo.face.x + w} ${geo.face.y - 4}`} fill="none" stroke={c.dark} strokeWidth={5} strokeLinecap="round" />
-          <rect x={geo.face.x - w - 7} y={geo.face.y - 12} width={12} height={18} rx={5} fill={c.main} stroke={OUT} strokeWidth={2.4} />
-          <rect x={geo.face.x + w - 5} y={geo.face.y - 12} width={12} height={18} rx={5} fill={c.main} stroke={OUT} strokeWidth={2.4} />
+          <path d={`M${x - w} ${y - 4}C${x - w} ${geo.top.y - 15} ${x + w} ${geo.top.y - 15} ${x + w} ${y - 4}`} fill="none" stroke={c.out} strokeWidth={8} strokeLinecap="round" />
+          <path d={`M${x - w} ${y - 4}C${x - w} ${geo.top.y - 15} ${x + w} ${geo.top.y - 15} ${x + w} ${y - 4}`} fill="none" stroke={c.dark} strokeWidth={4.6} strokeLinecap="round" />
+          <rect x={x - w - 7} y={y - 13} width={13} height={19} rx={5.5} fill={c.main} stroke={c.out} strokeWidth={2.8} />
+          <rect x={x + w - 6} y={y - 13} width={13} height={19} rx={5.5} fill={c.main} stroke={c.out} strokeWidth={2.8} />
         </g>
       );
     }
@@ -252,7 +294,7 @@ export function Accessory({ art, geo }: { art: AccessoryArt; geo: BodyGeometry }
   if (art.slot === 'eyes') {
     return (
       <g transform={`translate(${geo.face.x} ${geo.face.y})`}>
-        <Eyewear shape={art.shape} c={c} />
+        <Eyewear shape={art.shape} c={c} g={geo.eyeGap} r={10.5 * geo.eyeScale} />
       </g>
     );
   }
@@ -265,7 +307,7 @@ export function Accessory({ art, geo }: { art: AccessoryArt; geo: BodyGeometry }
 
 /** An accessory on its own (shop and locker previews), on a plain head-shaped stand. */
 export function AccessoryPreview({ art, size = 72 }: { art: AccessoryArt; size?: number }) {
-  const stand: BodyGeometry = { path: '', face: { x: 60, y: 62 }, top: { x: 60, y: 44 }, headW: 50, neck: 84 };
+  const stand: BodyGeometry = { ...BODIES.blob, path: '', face: { x: 60, y: 62 }, top: { x: 60, y: 44 }, headW: 50, neck: 84, eyeGap: 13, eyeScale: 0.9, box: [30, 34, 90, 94] };
   return (
     <svg viewBox="0 0 120 120" width={size} height={size} aria-hidden>
       <circle cx="60" cy="64" r="30" fill="var(--surface-3)" />

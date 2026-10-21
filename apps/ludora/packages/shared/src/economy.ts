@@ -67,14 +67,35 @@ export type ReleaseState = (typeof RELEASE_STATES)[number];
 /* Procedural art specs. Every collectible is drawn from one of these. */
 /* ------------------------------------------------------------------ */
 
+/*
+ * Glim genome vocabulary. Values are only ever added, never removed or
+ * renamed: stored items and staff tools refer to them by name.
+ */
 export const GLIM_BODIES = [
   'blob', 'drop', 'bean', 'star', 'cloud', 'bell', 'ghost', 'cat',
   'owl', 'jelly', 'flame', 'sprout', 'crystal', 'moth', 'orb', 'mushroom',
+  'fluff', 'lantern', 'book', 'box', 'dumpling', 'bulb', 'toast',
 ] as const;
-export const GLIM_EYES = ['dot', 'big', 'sleepy', 'happy', 'wink', 'star', 'cyclops', 'visor', 'sparkle', 'curious'] as const;
-export const GLIM_MOUTHS = ['smile', 'grin', 'o', 'cat', 'tooth', 'tongue', 'none', 'smirk'] as const;
-export const GLIM_PATTERNS = ['none', 'spots', 'stripes', 'belly', 'freckles', 'stars', 'patch'] as const;
-export const GLIM_TOPPERS = ['none', 'antenna', 'leaf', 'horns', 'flame', 'halo', 'tuft', 'spikes', 'bolt', 'bud'] as const;
+export const GLIM_EYES = ['dot', 'big', 'sleepy', 'happy', 'wink', 'star', 'cyclops', 'visor', 'sparkle', 'curious', 'half', 'pixel'] as const;
+export const GLIM_MOUTHS = ['smile', 'grin', 'o', 'cat', 'tooth', 'tongue', 'none', 'smirk', 'fang', 'toothy', 'beak', 'yawn', 'wobble'] as const;
+export const GLIM_PATTERNS = [
+  'none', 'spots', 'stripes', 'belly', 'freckles', 'stars', 'patch',
+  'bands', 'drip', 'tabby', 'split', 'circuit', 'bubbles', 'constellation', 'sprinkles', 'snowcap',
+] as const;
+export const GLIM_TOPPERS = [
+  'none', 'antenna', 'leaf', 'horns', 'flame', 'halo', 'tuft', 'spikes', 'bolt', 'bud',
+  'sprout', 'clover', 'fern', 'kelp', 'shell', 'coral', 'lure', 'steam', 'snowflake',
+  'icicles', 'berries', 'quill', 'moon', 'star', 'unihorn', 'book', 'stem', 'crown', 'rose', 'tendrils',
+] as const;
+/** Eyebrows, for attitude. */
+export const GLIM_BROWS = ['none', 'soft', 'determined', 'worried', 'smug', 'surprised', 'grumpy', 'bushy'] as const;
+/** Ears, fins and other shapes on the sides of the head. 'mane' and 'petals' ring the whole head. */
+export const GLIM_EARS = ['none', 'cat', 'fox', 'bunny', 'bear', 'mouse', 'droopy', 'dogear', 'fin', 'leaf', 'feelers', 'crystal', 'bolts', 'mane', 'petals'] as const;
+export const GLIM_TAILS = ['none', 'curl', 'fox', 'flame', 'comet', 'fish', 'dragon', 'tassel', 'plug', 'ribbon'] as const;
+/** Wings, shells and capes behind the body. */
+export const GLIM_BACKS = ['none', 'feather', 'fairy', 'bat', 'paper', 'cape', 'snail', 'scallop', 'burst'] as const;
+/** Something worn or grown on the face. */
+export const GLIM_FACES = ['none', 'spectacles', 'whiskers', 'snout', 'frosty', 'mask', 'beard', 'screen'] as const;
 
 const hue = z.number().int().min(0).max(359);
 
@@ -91,6 +112,15 @@ export const glimArtSchema = z.object({
   pattern: z.enum(GLIM_PATTERNS).default('none'),
   topper: z.enum(GLIM_TOPPERS).default('none'),
   cheeks: z.boolean().default(true),
+  /*
+   * Later additions. Optional with no default, so genomes saved before they
+   * existed still parse unchanged, and leaving one out means 'none'.
+   */
+  brows: z.enum(GLIM_BROWS).optional(),
+  ears: z.enum(GLIM_EARS).optional(),
+  tail: z.enum(GLIM_TAILS).optional(),
+  back: z.enum(GLIM_BACKS).optional(),
+  face: z.enum(GLIM_FACES).optional(),
 });
 export type GlimArt = z.infer<typeof glimArtSchema>;
 
