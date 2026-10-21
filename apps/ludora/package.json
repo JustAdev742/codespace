@@ -1,0 +1,38 @@
+{
+  "name": "ludora",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Ludora: an educational gaming platform. Quiz-powered multiplayer games, collectible Glims, shops and classroom tools.",
+  "type": "module",
+  "workspaces": [
+    "packages/*",
+    "server",
+    "web"
+  ],
+  "scripts": {
+    "dev": "node scripts/dev.mjs",
+    "build": "npm run build -w @ludora/web && npm run build -w @ludora/server",
+    "start": "npm run start -w @ludora/server",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:e2e": "playwright test",
+    "typecheck": "tsc -p packages/shared && tsc -p packages/engine && tsc -p packages/content && tsc -p server && tsc -p web",
+    "lint": "oxlint packages server/src web/src e2e",
+    "check": "npm run typecheck && npm run lint && npm test",
+    "db:migrate": "npm run db:migrate -w @ludora/server",
+    "db:generate": "npm run db:generate -w @ludora/server",
+    "db:seed": "npm run db:seed -w @ludora/server",
+    "admin": "npm run admin -w @ludora/server --"
+  },
+  "engines": {
+    "node": ">=22.12"
+  },
+  "license": "UNLICENSED",
+  "devDependencies": {
+    "@playwright/test": "^1.64.1",
+    "@types/node": "^22.19.0",
+    "oxlint": "^1.89.0",
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.5"
+  }
+}
