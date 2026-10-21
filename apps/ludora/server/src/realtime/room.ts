@@ -105,9 +105,27 @@ export function defaultAvatar(seed: string): AvatarLite {
   const bodies = ['blob', 'drop', 'bean', 'cloud', 'orb', 'bell'] as const;
   const eyes = ['dot', 'big', 'happy', 'curious', 'sparkle'] as const;
   const mouths = ['smile', 'grin', 'o', 'cat'] as const;
+  // Ears and brows give guests in a crowded lobby a little personality of their own.
+  const ears = ['none', 'none', 'cat', 'bunny', 'bear', 'mouse', 'fox'] as const;
+  const brows = ['none', 'soft', 'determined', 'surprised'] as const;
   const hue = r.int(0, 359);
+  const ear = r.pick(ears);
+  const brow = r.pick(brows);
   return {
-    art: { kind: 'glim', body: r.pick(bodies), hue, accentHue: (hue + 40) % 360, saturation: 65, eyes: r.pick(eyes), mouth: r.pick(mouths), pattern: 'none', topper: 'none', cheeks: true },
+    art: {
+      kind: 'glim',
+      body: r.pick(bodies),
+      hue,
+      accentHue: (hue + 40) % 360,
+      saturation: 65,
+      eyes: r.pick(eyes),
+      mouth: r.pick(mouths),
+      pattern: 'none',
+      topper: 'none',
+      cheeks: true,
+      ...(ear !== 'none' ? { ears: ear } : {}),
+      ...(brow !== 'none' ? { brows: brow } : {}),
+    },
   };
 }
 

@@ -5,6 +5,7 @@ import { credit } from '../src/modules/economy/service.ts';
 import { entitlements, inventory, items, ledger, packOpenings, pityCounters, shopListings, users, wallets } from '../src/db/schema.ts';
 import { rotationPicks } from '../src/modules/shop/service.ts';
 import { openPack } from '../src/modules/packs/service.ts';
+import { GLIMS } from '@ludora/content';
 
 let t: TestContext;
 beforeAll(async () => {
@@ -176,6 +177,12 @@ describe('collection, recycling and crafting', () => {
     const missing = meadow.glims.find((g: any) => g.owned === 0);
     expect(missing.art).toBeNull();
     expect(missing.name).toBeNull();
+    // Silhouettes keep the shape (body, ears, topper, tail, wings) and never colours or a face.
+    for (const g of meadow.glims.filter((x: any) => x.owned === 0)) {
+      expect(Object.keys(g.silhouette).every((k) => ['body', 'topper', 'ears', 'tail', 'back'].includes(k))).toBe(true);
+    }
+    const eared = GLIMS.find((g) => g.collectionId === 'meadow' && (g.art as { ears?: string }).ears && !meadow.glims.find((x: any) => x.id === g.id).owned);
+    if (eared) expect(meadow.glims.find((x: any) => x.id === eared.id).silhouette.ears).toBe((eared.art as { ears: string }).ears);
   });
 
   it('recycles spares for Glow Dust but always keeps one', async () => {
@@ -227,6 +234,8 @@ describe('locker', () => {
     expect((await u.client.post('/api/locker/unequip', { slot: 'buddy' })).status).toBe(400);
     const locker = await u.client.get('/api/locker');
     expect(locker.body.equipped.buddy).toBe('glim-dewdrop');
+    // The avatar carries the buddy's rarity, so its finish shows wherever it appears.
+    expect((await u.client.get('/api/me/overview')).body.avatar).toMatchObject({ rarity: 'common' });
   });
 });
 

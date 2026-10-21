@@ -13,6 +13,11 @@ import { computeOdds, parseDropTable, payCollectionRewards, resolvePool } from '
 import { checkAchievements } from '../progression/achievements.ts';
 import { purchase, shopView } from './service.ts';
 
+const SHAPE_FIELDS = ['body', 'topper', 'ears', 'tail', 'back'] as const;
+function silhouetteOf(art: Record<string, unknown>): Record<string, unknown> {
+  return Object.fromEntries(SHAPE_FIELDS.filter((k) => art[k] !== undefined).map((k) => [k, art[k]]));
+}
+
 const requestKey = z.string().regex(IDEMPOTENCY_KEY_PATTERN, 'Missing request key');
 
 export async function shopRoutes(app: FastifyInstance, deps: AppDeps) {
@@ -87,7 +92,8 @@ export async function shopRoutes(app: FastifyInstance, deps: AppDeps) {
               rarity: g.rarity,
               description: q > 0 ? g.description : null,
               art: q > 0 ? g.art : null,
-              silhouette: q > 0 ? null : { body: (g.art as { body: string }).body },
+              // Shape only, never colours or face, so an uncollected Glim is recognisable without spoiling it.
+              silhouette: q > 0 ? null : silhouetteOf(g.art as Record<string, unknown>),
               owned: q,
               acquiredAt: o?.first ?? null,
               dustValue: RARITY_INFO[g.rarity as Rarity].dustValue,

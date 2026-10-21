@@ -1,5 +1,5 @@
 import { inArray } from 'drizzle-orm';
-import { accessoryArtSchema, glimArtSchema, victoryArtSchema, type AvatarLite } from '@ludora/shared';
+import { RARITIES, accessoryArtSchema, glimArtSchema, victoryArtSchema, type AvatarLite, type Rarity } from '@ludora/shared';
 import type { DbOrTx } from '../../db/client.ts';
 import { equipped, items } from '../../db/schema.ts';
 
@@ -16,8 +16,9 @@ export async function loadAvatars(db: DbOrTx, userIds: readonly string[]): Promi
   const ids = [...new Set(userIds)];
   if (!ids.length) return out;
   const slots = (await db.select().from(equipped).where(inArray(equipped.userId, ids))).filter((s) => AVATAR_SLOTS.includes(s.slot));
-  const rows = slots.length ? await db.select({ id: items.id, art: items.art }).from(items).where(inArray(items.id, [...new Set(slots.map((s) => s.itemId))])) : [];
+  const rows = slots.length ? await db.select({ id: items.id, art: items.art, rarity: items.rarity }).from(items).where(inArray(items.id, [...new Set(slots.map((s) => s.itemId))])) : [];
   const artOf = new Map(rows.map((r) => [r.id, r.art]));
+  const rarityOf = new Map(rows.map((r) => [r.id, r.rarity]));
   for (const id of ids) {
     const mine = slots.filter((s) => s.userId === id);
     const buddy = mine.find((s) => s.slot === 'buddy');
@@ -33,8 +34,10 @@ export async function loadAvatars(db: DbOrTx, userIds: readonly string[]): Promi
       .map((r) => r.data!);
     const victorySlot = mine.find((s) => s.slot === 'victory');
     const victory = victorySlot ? victoryArtSchema.safeParse(artOf.get(victorySlot.itemId)) : null;
+    const rarity = buddy ? rarityOf.get(buddy.itemId) : undefined;
     out.set(id, {
       art: art.data,
+      ...((RARITIES as readonly string[]).includes(rarity ?? '') ? { rarity: rarity as Rarity } : {}),
       ...(accessories.length ? { accessories } : {}),
       ...(victory?.success ? { victory: { style: victory.data.style, hue: victory.data.hue } } : {}),
     });

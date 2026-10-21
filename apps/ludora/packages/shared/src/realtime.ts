@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { roomCodeSchema } from './validation.ts';
 import type { GlimArt, AccessoryArt, EMOTE_GLYPHS } from './economy.ts';
+import type { Rarity } from './rarity.ts';
 import type { SettingValues } from './modes.ts';
 
 /**
@@ -92,6 +93,8 @@ export type RoomStatus = 'lobby' | 'running' | 'paused' | 'ended' | 'closed';
 
 export interface AvatarLite {
   art: GlimArt;
+  /** The buddy Glim's rarity, for its finish (gloss, gold rim, sheen). */
+  rarity?: Rarity;
   accessories?: AccessoryArt[];
   /** Equipped victory effect, played on the podium when this player wins. */
   victory?: { style: string; hue: number };
