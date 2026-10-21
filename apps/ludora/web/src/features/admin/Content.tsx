@@ -428,11 +428,55 @@ function num(n: number): string {
   return n.toLocaleString('en-GB', { maximumFractionDigits: 10 });
 }
 
+const UPLOAD_ID = /^\/uploads\/([a-f0-9]{32})\.(?:png|jpg|gif|webp)$/;
+
 function MediaView({ media, small = false }: { media: Media; small?: boolean }) {
+  const uploadId = UPLOAD_ID.exec(media.url)?.[1];
+  // A hidden or deleted upload no longer loads; say so instead of showing a broken image.
+  const [missing, setMissing] = useState(false);
+  const [hidden, setHidden] = useState(false);
+  const [asking, setAsking] = useState<'hide' | 'restore' | null>(null);
+  const visibility = useStaffMutation((v: { hidden: boolean; reason: string }) => api.post(`/api/admin/uploads/${uploadId}/visibility`, v), {
+    // The dialog shows a failure itself.
+    silentError: true,
+    success: (_res, v) => (v.hidden ? 'Image hidden. Players no longer see it.' : 'Image restored.'),
+    onSuccess: (_res, v) => {
+      setHidden(v.hidden);
+      setMissing(false);
+    },
+  });
+  const gone = hidden || missing;
   return (
     <figure className={small ? 'mt-1' : 'mt-2'}>
-      <img src={media.url} alt={media.alt} loading="lazy" className={`${small ? 'max-h-16' : 'max-h-48'} max-w-full rounded-[10px] border border-line bg-sunken object-contain`} />
-      <figcaption className="mt-0.5 text-xs text-text-3">Image description: {media.alt || 'none given'}</figcaption>
+      {gone ? (
+        <div className={`grid ${small ? 'h-16 w-24' : 'h-32 w-48'} place-items-center rounded-[10px] border border-dashed border-line-strong bg-sunken px-2 text-center text-xs text-text-3`}>
+          {hidden ? 'Hidden by staff' : 'Image not available'}
+        </div>
+      ) : (
+        <img src={media.url} alt={media.alt} loading="lazy" onError={() => setMissing(true)} className={`${small ? 'max-h-16' : 'max-h-48'} max-w-full rounded-[10px] border border-line bg-sunken object-contain`} />
+      )}
+      <figcaption className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-text-3">
+        <span>Image description: {media.alt || 'none given'}</span>
+        {uploadId ? (
+          <button type="button" className="font-semibold text-link underline underline-offset-2" onClick={() => setAsking(gone ? 'restore' : 'hide')}>
+            {gone ? 'Restore image' : 'Hide image'}
+          </button>
+        ) : null}
+      </figcaption>
+      {uploadId ? (
+        <ActionDialog
+          open={asking !== null}
+          onOpenChange={(v) => !v && setAsking(null)}
+          title={asking === 'restore' ? 'Restore this image' : 'Hide this image'}
+          description={asking === 'restore' ? 'Players will see the image again wherever it is used.' : 'The image stops loading everywhere it is used, and nobody can add it to a set again. The question itself stays.'}
+          confirmLabel={asking === 'restore' ? 'Restore image' : 'Hide image'}
+          variant={asking === 'restore' ? 'primary' : 'danger'}
+          onSubmit={async ({ reason }) => {
+            await visibility.mutateAsync({ hidden: asking !== 'restore', reason });
+            setAsking(null);
+          }}
+        />
+      ) : null}
     </figure>
   );
 }
