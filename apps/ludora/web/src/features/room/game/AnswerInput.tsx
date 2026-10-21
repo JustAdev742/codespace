@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
-import { ArrowDown, ArrowUp, Check, Send } from 'lucide-react';
+import { ArrowDown, ArrowUp, Check, Send, Users } from 'lucide-react';
 import type { Answer, PublicQuestion } from '@ludora/shared';
 import { AnswerShape, ANSWER_LETTERS } from '../../../art/icons.tsx';
 
@@ -8,7 +8,7 @@ import { AnswerShape, ANSWER_LETTERS } from '../../../art/icons.tsx';
  * a letter as well as a colour, and number keys 1 to 6 pick them.
  */
 
-const TILE_BG = ['var(--tile-a)', 'var(--tile-b)', 'var(--tile-c)', 'var(--tile-d)', 'var(--tile-e)', 'var(--tile-f)'];
+export const TILE_BG = ['var(--tile-a)', 'var(--tile-b)', 'var(--tile-c)', 'var(--tile-d)', 'var(--tile-e)', 'var(--tile-f)'];
 
 export interface AnswerInputProps {
   q: PublicQuestion;
@@ -17,11 +17,68 @@ export interface AnswerInputProps {
   disabled?: boolean;
   /** Token of the choice already submitted, to keep it highlighted. */
   chosen?: string | null;
-  /** Bigger tiles for the projector-free, phone-first layout. */
+  /** Smaller tiles, for modes where the question shares the phone with a game board. */
   compact?: boolean;
 }
 
-export function ChoiceTile({ index, text, selected, dimmed, correct, wrong, onClick, disabled, compact }: { index: number; text: string; selected?: boolean; dimmed?: boolean; correct?: boolean; wrong?: boolean; onClick?: () => void; disabled?: boolean; compact?: boolean }) {
+export type TileSize = 'sm' | 'md' | 'lg';
+
+const SIZE: Record<TileSize, { tile: string; stack: string; text: string; long: string; badge: string; shape: number }> = {
+  sm: { tile: 'min-h-[3.75rem] gap-3 rounded-[18px] px-3 py-2', stack: 'min-h-[5.5rem] gap-2 rounded-[18px] p-3', text: 'text-lg', long: 'text-base', badge: 'gap-1 rounded-[11px] px-1.5 py-1 text-base', shape: 18 },
+  md: { tile: 'min-h-[4.5rem] gap-3 rounded-[20px] px-3.5 py-2.5', stack: 'min-h-[7rem] gap-2 rounded-[20px] p-3.5', text: 'text-xl', long: 'text-base', badge: 'gap-1 rounded-[12px] px-2 py-1 text-lg', shape: 20 },
+  lg: {
+    tile: 'min-h-[clamp(5rem,12.5vh,9.5rem)] gap-[clamp(0.75rem,1.4vw,1.5rem)] rounded-[24px] px-[clamp(1rem,1.6vw,1.75rem)] py-3',
+    stack: 'min-h-[clamp(7rem,18vh,12rem)] gap-3 rounded-[24px] p-[clamp(1rem,1.6vw,1.75rem)]',
+    text: 'text-[clamp(1.4rem,2.3vw,2.75rem)]',
+    long: 'text-[clamp(1.1rem,1.6vw,1.9rem)]',
+    badge: 'gap-1.5 rounded-[16px] px-[clamp(0.5rem,0.8vw,0.9rem)] py-[clamp(0.3rem,0.6vh,0.6rem)] text-[clamp(1.3rem,2.2vw,2.5rem)]',
+    shape: 34,
+  },
+};
+
+/**
+ * One answer as a chunky, pressable game piece. At a reveal, answers that were
+ * not right go unlit (translucent, white text) rather than fading out, so every
+ * label stays readable; their badge keeps the answer's colour and shape.
+ */
+export function ChoiceTile({
+  index,
+  text,
+  selected,
+  dimmed,
+  correct,
+  wrong,
+  onClick,
+  disabled,
+  compact,
+  size,
+  layout = 'row',
+  count,
+  max = 0,
+  keyHint = false,
+}: {
+  index: number;
+  text: string;
+  selected?: boolean;
+  dimmed?: boolean;
+  correct?: boolean;
+  wrong?: boolean;
+  onClick?: () => void;
+  disabled?: boolean;
+  compact?: boolean;
+  size?: TileSize;
+  /** `stack` puts the badge above the text, for two-up tiles on a phone. */
+  layout?: 'row' | 'stack';
+  /** How many players chose this answer, shown at the reveal. */
+  count?: number | null | undefined;
+  max?: number;
+  /** Show the number key that picks this tile (players with a keyboard). */
+  keyHint?: boolean;
+}) {
+  const s = SIZE[size ?? (compact ? 'sm' : 'md')];
+  const lit = !dimmed;
+  const bg = TILE_BG[index % TILE_BG.length];
+  const long = text.length > 60;
   return (
     <button
       type="button"
@@ -29,21 +86,54 @@ export function ChoiceTile({ index, text, selected, dimmed, correct, wrong, onCl
       disabled={disabled}
       data-pressed={selected || undefined}
       aria-pressed={selected}
-      className={`sticker relative flex w-full items-center gap-3 rounded-[18px] px-4 text-left text-on-accent transition-opacity disabled:cursor-default ${compact ? 'min-h-[64px] py-3' : 'min-h-[84px] py-4'} ${dimmed ? 'opacity-35' : ''} ${correct ? 'ring-4 ring-glim ring-offset-2 ring-offset-[var(--bg)]' : ''}`}
-      style={{ background: TILE_BG[index % TILE_BG.length] }}
+      className={`sticker relative flex w-full text-left disabled:cursor-default ${layout === 'stack' ? `flex-col items-start justify-between ${s.stack}` : `items-center ${s.tile}`} ${
+        lit
+          ? 'border-ink text-on-accent shadow-[0_var(--press)_0_var(--ink)] enabled:active:shadow-[0_1px_0_var(--ink)] data-[pressed=true]:shadow-[0_1px_0_var(--ink)]'
+          : 'border-white/30 bg-white/8 text-text shadow-none'
+      } ${correct ? 'ring-[5px] ring-glim ring-offset-[3px] ring-offset-ink' : ''}`}
+      style={lit ? { background: bg } : undefined}
     >
-      <span className="grid size-10 shrink-0 place-items-center rounded-[12px] bg-white/45 font-display text-lg font-extrabold">
-        <span className="sr-only">{ANSWER_LETTERS[index]}</span>
-        <AnswerShape index={index} size={22} />
-      </span>
-      <span className={`min-w-0 flex-1 font-semibold break-words ${text.length > 60 ? 'text-base' : 'text-lg'}`}>{text}</span>
-      <span className="hidden font-display text-sm font-bold opacity-60 sm:block" aria-hidden>
-        {index + 1}
-      </span>
-      {correct ? <Check className="absolute -top-2 -right-2 size-8 rounded-full border-2 border-ink bg-glim p-1" aria-label="Correct answer" /> : null}
-      {wrong ? <span className="absolute -top-2 -right-2 rounded-full border-2 border-ink bg-ember px-2 text-xs font-bold">Yours</span> : null}
+      <span className={`flex shrink-0 items-center font-display leading-none font-extrabold text-on-accent ${s.badge} ${lit ? 'bg-white/55' : ''}`} style={lit ? undefined : { background: bg }}>
+        <AnswerShape index={index} size={s.shape} />
+        <span>{ANSWER_LETTERS[index]}</span>
+      </span>{' '}
+      <span className={`min-w-0 flex-1 leading-tight font-bold break-words ${long ? s.long : s.text} ${layout === 'stack' ? 'flex w-full items-end' : ''}`}>{text}</span>
+      {keyHint ? (
+        <span className="hidden self-start font-display text-sm font-bold opacity-60 sm:block" aria-hidden>
+          {index + 1}
+        </span>
+      ) : null}
+      {count !== undefined && count !== null ? (
+        <>
+          <span className={`flex shrink-0 items-center gap-1.5 self-center rounded-full px-3 py-1 font-display font-extrabold tabular ${lit ? 'bg-ink/85 text-white' : 'bg-sunken text-text'} ${size === 'lg' ? 'text-[clamp(1.1rem,1.8vw,2rem)]' : 'text-base'}`}>
+            <Users className="size-[0.9em]" aria-hidden />
+            {count}
+            <span className="sr-only"> {count === 1 ? 'player' : 'players'}</span>
+          </span>
+          {max > 0 ? (
+            <span className="pointer-events-none absolute inset-x-3 bottom-1.5 h-1.5 overflow-hidden rounded-full" aria-hidden>
+              <span className={`block h-full origin-left rounded-full ${lit ? 'bg-ink/45' : 'bg-white/45'}`} style={{ transform: `scaleX(${Math.min(1, count / max)})`, animation: 'stage-grow 600ms var(--ease-out) both' }} />
+            </span>
+          ) : null}
+        </>
+      ) : null}
+      {correct ? (
+        <span className="absolute -top-3 -right-3 grid size-10 place-items-center rounded-full border-[3px] border-ink bg-glim text-on-accent" role="img" aria-label="Correct answer">
+          <Check className="size-6" strokeWidth={3} aria-hidden />
+        </span>
+      ) : null}
+      {wrong ? <span className="absolute -top-3 right-3 rounded-full border-2 border-ink bg-ember px-2.5 py-0.5 text-sm font-bold text-on-accent">Your answer</span> : null}
     </button>
   );
+}
+
+/** Two-up tiles when every choice is short enough to sit side by side on a phone; the odd one out spans the row. */
+export function choiceGrid(texts: string[], host = false): { grid: string; layout: 'row' | 'stack' } {
+  const short = texts.every((t) => t.length <= 18);
+  const odd = '[&>*:last-child:nth-child(odd)]:col-span-2';
+  if (host) return { grid: `grid grid-cols-2 gap-[clamp(0.75rem,1.4vw,1.5rem)] ${odd}`, layout: 'row' };
+  if (texts.length <= 2 || short) return { grid: `grid grid-cols-2 gap-3 ${odd}`, layout: 'stack' };
+  return { grid: 'grid grid-cols-1 gap-3 sm:grid-cols-2', layout: 'row' };
 }
 
 function useNumberKeys(count: number, onPick: (i: number) => void, enabled: boolean) {
@@ -77,10 +167,11 @@ function ChoiceAnswer({ q, onSubmit, disabled, chosen, compact }: AnswerInputPro
     if (!ok) setPicked(null);
   };
   useNumberKeys(q.choices.length, (i) => void pick(q.choices[i]!.id), !locked);
+  const { grid, layout } = choiceGrid(q.choices.map((c) => c.text));
   return (
-    <div className={`grid gap-3 ${q.choices.length > 2 ? 'sm:grid-cols-2' : 'sm:grid-cols-2'}`} role="group" aria-label="Answers">
+    <div className={grid} role="group" aria-label="Answers">
       {q.choices.map((c, i) => (
-        <ChoiceTile key={c.id} index={i} text={c.text} selected={picked === c.id} dimmed={picked !== null && picked !== c.id} onClick={() => void pick(c.id)} disabled={locked && picked !== c.id} compact={compact} />
+        <ChoiceTile key={c.id} index={i} text={c.text} selected={picked === c.id} dimmed={picked !== null && picked !== c.id} onClick={() => void pick(c.id)} disabled={locked && picked !== c.id} compact={compact} layout={layout} keyHint />
       ))}
     </div>
   );
@@ -97,8 +188,8 @@ function TrueFalseAnswer({ onSubmit, disabled, compact }: AnswerInputProps) {
   useNumberKeys(2, (i) => void pick(i === 0), !locked);
   return (
     <div className="grid grid-cols-2 gap-3" role="group" aria-label="Answers">
-      <ChoiceTile index={0} text="True" selected={picked === true} dimmed={picked === false} onClick={() => void pick(true)} disabled={locked} compact={compact} />
-      <ChoiceTile index={1} text="False" selected={picked === false} dimmed={picked === true} onClick={() => void pick(false)} disabled={locked} compact={compact} />
+      <ChoiceTile index={0} text="True" selected={picked === true} dimmed={picked === false} onClick={() => void pick(true)} disabled={locked} compact={compact} layout="stack" keyHint />
+      <ChoiceTile index={1} text="False" selected={picked === false} dimmed={picked === true} onClick={() => void pick(false)} disabled={locked} compact={compact} layout="stack" keyHint />
     </div>
   );
 }
@@ -114,23 +205,24 @@ function MultiAnswer({ q, onSubmit, disabled, compact }: AnswerInputProps & { q:
     setSent(true);
     if (!(await onSubmit({ type: 'multi', choiceIds: sel }))) setSent(false);
   };
+  const { grid, layout } = choiceGrid(q.choices.map((c) => c.text));
   return (
     <div className="flex flex-col gap-3">
-      <p className="text-sm font-semibold text-text-2">{q.selectCount ? `Pick ${q.selectCount}.` : 'Pick every correct answer.'}</p>
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2" role="group" aria-label="Answers">
+      <p className="font-semibold text-text-2">{q.selectCount ? `Pick ${q.selectCount}.` : 'Pick every correct answer.'}</p>
+      <div className={grid} role="group" aria-label="Answers">
         {q.choices.map((c, i) => (
-          <ChoiceTile key={c.id} index={i} text={c.text} selected={sel.includes(c.id)} dimmed={locked && !sel.includes(c.id)} onClick={() => toggle(c.id)} disabled={locked} compact={compact} />
+          <ChoiceTile key={c.id} index={i} text={c.text} selected={sel.includes(c.id)} dimmed={locked && !sel.includes(c.id)} onClick={() => toggle(c.id)} disabled={locked} compact={compact} layout={layout} keyHint />
         ))}
       </div>
-      <SubmitButton disabled={locked || sel.length === 0} sent={sent} onClick={submit} label={`Submit ${sel.length || ''} ${sel.length === 1 ? 'answer' : 'answers'}`} />
+      <SubmitButton disabled={locked || sel.length === 0} sent={sent} onClick={submit} label={sel.length ? `Submit ${sel.length} ${sel.length === 1 ? 'answer' : 'answers'}` : 'Submit answers'} />
     </div>
   );
 }
 
 function SubmitButton({ disabled, sent, onClick, label = 'Submit answer' }: { disabled: boolean; sent: boolean; onClick?: () => void; label?: string }) {
   return (
-    <button type={onClick ? 'button' : 'submit'} onClick={onClick} disabled={disabled} className="sticker inline-flex h-14 items-center justify-center gap-2 rounded-[16px] bg-lantern px-6 font-display text-lg font-bold text-on-accent disabled:cursor-not-allowed disabled:opacity-55">
-      {sent ? <Check className="size-5" /> : <Send className="size-5" />}
+    <button type={onClick ? 'button' : 'submit'} onClick={onClick} disabled={disabled} className="sticker inline-flex h-16 w-full items-center justify-center gap-2.5 rounded-[18px] bg-lantern px-6 font-display text-xl font-extrabold text-on-accent [--press:6px] disabled:cursor-not-allowed sm:w-auto sm:self-start">
+      {sent ? <Check className="size-6" aria-hidden /> : <Send className="size-5" aria-hidden />}
       {sent ? 'Answer sent' : label}
     </button>
   );
@@ -148,7 +240,7 @@ function TextAnswer({ numeric, unit, onSubmit, disabled }: { numeric: boolean; u
     if (locked || !value.trim()) return;
     let answer: Answer;
     if (numeric) {
-      const n = Number(value.replace(/,/g, '').replace(/\u2212/g, '-').trim());
+      const n = Number(value.replace(/,/g, '').replace(/−/g, '-').trim());
       if (!Number.isFinite(n)) {
         setError('Type a number, like 42 or 3.5.');
         return;
@@ -178,11 +270,16 @@ function TextAnswer({ numeric, unit, onSubmit, disabled }: { numeric: boolean; u
           maxLength={200}
           placeholder={numeric ? 'Type a number' : 'Type your answer'}
           aria-invalid={Boolean(error)}
-          className="h-16 min-w-0 flex-1 rounded-[16px] border-2 border-ink bg-raised px-4 font-display text-2xl font-bold text-text placeholder:font-sans placeholder:text-lg placeholder:font-normal placeholder:text-text-3 focus:outline-none focus-visible:ring-4 focus-visible:ring-[var(--focus)] disabled:opacity-70"
+          aria-describedby={error ? 'answer-text-error' : undefined}
+          className="paper h-16 min-w-0 flex-1 rounded-[18px] border-[3px] border-ink px-4 font-display text-2xl font-bold shadow-[0_4px_0_var(--ink)] placeholder:font-sans placeholder:text-lg placeholder:font-normal placeholder:text-text-3 focus:outline-none focus-visible:ring-4 focus-visible:ring-lantern disabled:opacity-80"
         />
-        {unit ? <span className="font-display text-xl font-bold text-text-2">{unit}</span> : null}
+        {unit ? <span className="font-display text-2xl font-bold text-text">{unit}</span> : null}
       </div>
-      {error ? <p className="text-sm font-semibold text-ember">{error}</p> : null}
+      {error ? (
+        <p id="answer-text-error" className="rounded-[12px] bg-sunken px-3 py-2 font-semibold text-ember">
+          {error}
+        </p>
+      ) : null}
       <SubmitButton disabled={locked || !value.trim()} sent={sent} />
     </form>
   );
@@ -207,17 +304,17 @@ function OrderAnswer({ q, onSubmit, disabled }: AnswerInputProps & { q: Extract<
   };
   return (
     <div className="flex flex-col gap-3">
-      <p className="text-sm font-semibold text-text-2">Move the items into the right order, first at the top.</p>
+      <p className="font-semibold text-text-2">Move the items into the right order, first at the top.</p>
       <ol className="flex flex-col gap-2">
         {items.map((item, i) => (
-          <li key={item.id} className="flex items-center gap-2 rounded-[14px] border-2 border-ink bg-raised p-2 pl-4">
-            <span className="w-6 font-display font-bold text-text-3 tabular">{i + 1}</span>
-            <span className="min-w-0 flex-1 font-semibold">{item.text}</span>
-            <button type="button" className="grid size-10 place-items-center rounded-[10px] bg-surface-3 disabled:opacity-30" onClick={() => move(i, -1)} disabled={locked || i === 0} aria-label={`Move ${item.text} up`}>
-              <ArrowUp className="size-5" />
+          <li key={item.id} className="paper flex items-center gap-2 rounded-[16px] border-[3px] border-ink p-2 pl-3 shadow-[0_3px_0_var(--ink)]">
+            <span className="grid size-9 shrink-0 place-items-center rounded-full bg-lantern font-display font-extrabold text-on-accent tabular">{i + 1}</span>
+            <span className="min-w-0 flex-1 font-bold">{item.text}</span>
+            <button type="button" className="grid size-11 place-items-center rounded-[12px] bg-surface-3 disabled:opacity-30" onClick={() => move(i, -1)} disabled={locked || i === 0} aria-label={`Move ${item.text} up`}>
+              <ArrowUp className="size-5" aria-hidden />
             </button>
-            <button type="button" className="grid size-10 place-items-center rounded-[10px] bg-surface-3 disabled:opacity-30" onClick={() => move(i, 1)} disabled={locked || i === items.length - 1} aria-label={`Move ${item.text} down`}>
-              <ArrowDown className="size-5" />
+            <button type="button" className="grid size-11 place-items-center rounded-[12px] bg-surface-3 disabled:opacity-30" onClick={() => move(i, 1)} disabled={locked || i === items.length - 1} aria-label={`Move ${item.text} down`}>
+              <ArrowDown className="size-5" aria-hidden />
             </button>
           </li>
         ))}
@@ -254,7 +351,7 @@ function MatchAnswer({ q, onSubmit, disabled }: AnswerInputProps & { q: Extract<
   };
   return (
     <div className="flex flex-col gap-3">
-      <p className="text-sm font-semibold text-text-2">Pick an item on the left, then its match on the right.</p>
+      <p className="font-semibold text-text-2">Pick an item on the left, then its match on the right.</p>
       <div className="grid grid-cols-2 gap-3">
         <div className="flex flex-col gap-2">
           {q.left.map((l) => (
@@ -264,8 +361,8 @@ function MatchAnswer({ q, onSubmit, disabled }: AnswerInputProps & { q: Extract<
               disabled={locked}
               onClick={() => setActive(l.id)}
               aria-pressed={active === l.id}
-              className={`min-h-14 rounded-[14px] border-2 px-3 py-2 text-left font-semibold transition-colors ${active === l.id ? 'border-lantern bg-dusk/20' : 'border-ink bg-raised'}`}
-              style={pairs[l.id] ? { boxShadow: `inset 6px 0 0 ${colorOf[l.id]}` } : undefined}
+              className={`paper min-h-14 rounded-[16px] border-[3px] px-3 py-2 text-left font-bold transition-colors ${active === l.id ? 'border-lantern ring-4 ring-lantern/60' : 'border-ink'}`}
+              style={pairs[l.id] ? { boxShadow: `inset 8px 0 0 ${colorOf[l.id]}` } : undefined}
             >
               {l.text}
             </button>
@@ -280,8 +377,8 @@ function MatchAnswer({ q, onSubmit, disabled }: AnswerInputProps & { q: Extract<
                 type="button"
                 disabled={locked || !active}
                 onClick={() => pickRight(r.id)}
-                className="min-h-14 rounded-[14px] border-2 border-ink bg-raised px-3 py-2 text-left font-semibold disabled:cursor-default"
-                style={owner ? { boxShadow: `inset -6px 0 0 ${colorOf[owner]}` } : undefined}
+                className="paper min-h-14 rounded-[16px] border-[3px] border-ink px-3 py-2 text-left font-bold disabled:cursor-default"
+                style={owner ? { boxShadow: `inset -8px 0 0 ${colorOf[owner]}` } : undefined}
                 aria-label={owner ? `${r.text}, matched with ${q.left.find((l) => l.id === owner)?.text}` : r.text}
               >
                 {r.text}

@@ -1,0 +1,69 @@
+/*
+ * Motion for the live game screens (room and join flow), kept beside the
+ * screens that use it. One spectacle per moment: players arriving in the
+ * lobby, the podium reveal and the reveal bars. The global reduced-motion
+ * rules in app.css cut every animation here to a single frame; components
+ * also drop their delays when motion is reduced, so nothing waits to appear.
+ */
+
+/* A Glim hops into the lobby crowd. */
+@keyframes stage-arrive {
+  0% {
+    opacity: 0;
+    transform: translateY(18px) scale(0.92);
+  }
+  60% {
+    opacity: 1;
+    transform: translateY(-6px) scale(1.02);
+  }
+  100% {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* A podium block rises out of the floor. Its parent clips it. */
+@keyframes stage-rise {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: none;
+  }
+}
+
+/* A podium Glim lands on its block. */
+@keyframes stage-land {
+  from {
+    opacity: 0;
+    transform: translateY(-28px) scale(0.94);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* The winner's victory hop, twice, then still. */
+@keyframes stage-hop {
+  0%,
+  100% {
+    transform: none;
+  }
+  25% {
+    transform: translateY(-12%);
+  }
+  50% {
+    transform: none;
+  }
+  70% {
+    transform: translateY(-6%);
+  }
+}
+
+/* Answer counts grow from the left edge at the reveal. */
+@keyframes stage-grow {
+  from {
+    transform: scaleX(0);
+  }
+}

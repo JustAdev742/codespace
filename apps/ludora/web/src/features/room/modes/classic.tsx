@@ -1,12 +1,15 @@
+import { Flame } from 'lucide-react';
 import type { Answer, AnswerReveal } from '@ludora/shared';
 import type { ModeScreenProps } from './registry.ts';
 import type { QuestionView } from '../game/types.ts';
 import { AnswerInput } from '../game/AnswerInput.tsx';
 import { QuestionCard } from '../game/QuestionCard.tsx';
-import { TimerBar, Countdown } from '../game/TimerBar.tsx';
+import { TimerBar } from '../game/TimerBar.tsx';
 import { ChoicesDisplay, ResultBanner, RevealAnswer } from '../game/Reveal.tsx';
 import { Leaderboard, TeamScores, type LeaderRow } from '../game/Leaderboard.tsx';
-import { formatNumber } from '../../../lib/format.ts';
+import { Explanation, IntroScreen, LockedIn, RoundHeader, myAvatar } from '../game/parts.tsx';
+import { Pill, PlayerGlim } from '../game/stage.tsx';
+import { formatNumber, ordinal } from '../../../lib/format.ts';
 
 /* Views for Classic (and every host-paced mode built on synced rounds with the same view shape). */
 
@@ -34,23 +37,27 @@ export interface ClassicView {
   score: number | null;
 }
 
-function Intro({ view, gameNow, title }: { view: ClassicView; gameNow: () => number; title: string }) {
-  return (
-    <div className="flex flex-1 flex-col items-center justify-center gap-4 text-center" style={{ animation: 'pop-in 300ms var(--ease-spring)' }}>
-      <p className="text-lg font-semibold text-text-2">Get ready</p>
-      <h2 className="font-display text-5xl font-extrabold">{title}</h2>
-      <p className="text-text-2">{view.sync.total} questions. First one in <Countdown until={view.sync.phaseEndsAt} gameNow={gameNow} /></p>
-    </div>
-  );
-}
-
 export function ClassicPlayer({ view, act, gameNow, paused, room }: ModeScreenProps<ClassicView>) {
   const s = view.sync;
-  if (s.phase === 'intro') return <Intro view={view} gameNow={gameNow} title={room.room.title} />;
+  const seed = room.me.playerId ?? 'you';
+  if (s.phase === 'intro') {
+    return (
+      <IntroScreen kicker="Get ready" title={room.room.title} until={s.phaseEndsAt} gameNow={gameNow} room={room} art={<PlayerGlim avatar={myAvatar(room)} seed={seed} size={120} bob />}>
+        {s.total} questions
+      </IntroScreen>
+    );
+  }
   if (s.phase === 'leaderboard' || s.phase === 'done') {
+    const me = view.board.you;
     return (
       <div className="mx-auto flex w-full max-w-xl flex-col gap-4">
-        <h2 className="font-display text-3xl font-extrabold">Leaderboard</h2>
+        <div className="flex items-center gap-3">
+          <PlayerGlim avatar={myAvatar(room)} seed={seed} size={76} className="shrink-0" />
+          <div>
+            <h2 className="font-display text-3xl font-extrabold">{me ? `You are ${ordinal(me.rank)}` : 'Standings'}</h2>
+            {me ? <p className="font-semibold text-text-2">{formatNumber(me.score)} points so far</p> : null}
+          </div>
+        </div>
         {view.teams ? <TeamScores teams={view.teams} /> : null}
         <Leaderboard rows={view.board.rows} you={view.board.you} players={room.players} teams={room.room.teams} />
       </div>
@@ -60,9 +67,10 @@ export function ClassicPlayer({ view, act, gameNow, paused, room }: ModeScreenPr
   if (!q) return null;
   if (view.out) {
     return (
-      <div className="flex flex-1 flex-col items-center justify-center gap-3 text-center">
+      <div className="mx-auto flex w-full max-w-3xl flex-1 flex-col items-center justify-center gap-3 text-center">
+        <PlayerGlim avatar={myAvatar(room)} seed={seed} size={96} className="opacity-70 grayscale" />
         <h2 className="font-display text-3xl font-extrabold">You are out</h2>
-        <p className="text-text-2">Keep watching: {view.alive} still standing.</p>
+        <p className="font-semibold text-text-2">Keep watching: {view.alive} still standing.</p>
         <QuestionCard q={q.q} index={q.index} total={q.total} />
       </div>
     );
@@ -72,34 +80,29 @@ export function ClassicPlayer({ view, act, gameNow, paused, room }: ModeScreenPr
     return ack.ok;
   };
   return (
-    <div className="mx-auto flex w-full max-w-3xl flex-col gap-5">
-      <div className="flex items-center justify-between gap-3 text-sm font-semibold text-text-2">
-        <span>
-          Question {s.round + 1} of {s.total}
-        </span>
-        <span className="tabular">
-          {formatNumber(view.score ?? 0)} pts{s.you && s.you.streak > 1 ? `, streak ${s.you.streak}` : ''}
-        </span>
-      </div>
+    <div className="mx-auto flex w-full max-w-3xl flex-col gap-4">
+      <RoundHeader round={s.round} total={s.total}>
+        {s.you && s.you.streak > 1 ? (
+          <Pill tone="lantern">
+            <Flame className="size-4" aria-hidden /> Streak {s.you.streak}
+          </Pill>
+        ) : null}
+        <Pill>{formatNumber(view.score ?? 0)} pts</Pill>
+      </RoundHeader>
       {s.phase === 'question' ? <TimerBar deadline={q.deadline} start={q.shownAt} gameNow={gameNow} paused={paused} /> : null}
       <QuestionCard q={q.q} />
       {s.phase === 'question' ? (
         s.you?.answered ? (
-          <div className="rounded-[16px] border-2 border-dashed border-line-strong px-5 py-6 text-center" role="status">
-            <p className="font-display text-2xl font-bold">Answer locked in</p>
-            <p className="text-text-2">
-              {s.answered} of {s.eligible} have answered.
-            </p>
-          </div>
+          <LockedIn answered={s.answered} eligible={s.eligible} avatar={myAvatar(room)} seed={seed} />
         ) : (
           <AnswerInput key={q.iid} q={q.q} onSubmit={submit} disabled={paused} />
         )
       ) : (
         <div className="flex flex-col gap-4">
           <ResultBanner correct={s.you?.answered ? (s.you.correct ?? false) : false} partial={s.you?.partial} points={s.you?.points} />
-          {!s.you?.answered ? <p className="text-text-2">No answer this time.</p> : null}
+          {!s.you?.answered ? <p className="font-semibold text-text-2">No answer this time.</p> : null}
           {s.reveal ? <RevealAnswer q={q.q} reveal={s.reveal} compact /> : null}
-          {s.explanation ? <p className="rounded-[14px] bg-surface-2 px-4 py-3 text-text-2">{s.explanation}</p> : null}
+          <Explanation text={s.explanation} />
         </div>
       )}
     </div>
@@ -108,19 +111,25 @@ export function ClassicPlayer({ view, act, gameNow, paused, room }: ModeScreenPr
 
 export function ClassicHost({ view, gameNow, paused, room }: ModeScreenProps<ClassicView>) {
   const s = view.sync;
-  if (s.phase === 'intro') return <Intro view={view} gameNow={gameNow} title={room.room.title} />;
+  if (s.phase === 'intro') {
+    return (
+      <IntroScreen kicker="Get ready" title={room.room.title} until={s.phaseEndsAt} gameNow={gameNow} room={room} big>
+        {s.total} questions
+      </IntroScreen>
+    );
+  }
   if (s.phase === 'leaderboard' || s.phase === 'done') {
     return (
-      <div className="mx-auto grid grid-cols-1 w-full max-w-5xl gap-6 lg:grid-cols-[1.4fr_1fr]">
-        <div>
-          <h2 className="mb-4 font-display text-4xl font-extrabold">Leaderboard</h2>
+      <div className={`mx-auto grid w-full grid-cols-1 gap-[clamp(1rem,2.5vw,2.5rem)] ${view.teams ? 'max-w-[100rem] lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]' : 'max-w-[76rem]'}`}>
+        <div className="flex flex-col gap-[clamp(0.75rem,2vh,1.5rem)]">
+          <h2 className="font-display text-[clamp(2.5rem,4.6vw,5.5rem)] leading-none font-extrabold">Leaderboard</h2>
           <Leaderboard rows={view.board.rows} players={room.players} teams={room.room.teams} big />
         </div>
         {view.teams ? (
-          <div>
-            <h3 className="mb-3 font-display text-2xl font-bold">Teams</h3>
-            <TeamScores teams={view.teams} />
-          </div>
+          <section className="flex flex-col gap-3 lg:pt-[clamp(3.5rem,6.5vw,7rem)]" aria-label="Teams">
+            <h3 className="font-display text-[clamp(1.5rem,2.4vw,2.75rem)] font-extrabold">Teams</h3>
+            <TeamScores teams={view.teams} big />
+          </section>
         ) : null}
       </div>
     );
@@ -128,26 +137,25 @@ export function ClassicHost({ view, gameNow, paused, room }: ModeScreenProps<Cla
   const q = s.question;
   if (!q) return null;
   return (
-    <div className="mx-auto flex w-full max-w-5xl flex-col gap-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <span className="font-display text-xl font-bold text-text-2">
-          Question {s.round + 1} of {s.total}
+    <div className="mx-auto flex w-full max-w-[100rem] flex-1 flex-col gap-[clamp(0.75rem,2vh,1.5rem)]">
+      <RoundHeader round={s.round} total={s.total} big>
+        {view.suddenDeath ? <Pill className="px-5 py-1.5">{view.alive} still standing</Pill> : null}
+        <span aria-live="polite">
+          <Pill className="px-5 py-1.5">
+            {s.answered} of {s.eligible} answered
+          </Pill>
         </span>
-        <span className="rounded-full bg-surface-3 px-3 py-1 font-display text-lg font-bold tabular" aria-live="polite">
-          {s.answered} / {s.eligible} answered
-        </span>
-      </div>
-      {s.phase === 'question' ? <TimerBar deadline={q.deadline} start={q.shownAt} gameNow={gameNow} paused={paused} /> : null}
+      </RoundHeader>
+      {s.phase === 'question' ? <TimerBar deadline={q.deadline} start={q.shownAt} gameNow={gameNow} paused={paused} size="lg" /> : null}
       <QuestionCard q={q.q} size="lg" />
       {s.phase === 'question' ? (
         <ChoicesDisplay q={q.q} />
       ) : s.reveal ? (
-        <div className="flex flex-col gap-4">
-          <RevealAnswer q={q.q} reveal={s.reveal} distribution={s.distribution} />
-          {s.explanation ? <p className="rounded-[14px] bg-surface-2 px-5 py-4 text-lg text-text-2">{s.explanation}</p> : null}
+        <div className="flex flex-col gap-[clamp(0.75rem,2vh,1.25rem)]">
+          <RevealAnswer q={q.q} reveal={s.reveal} distribution={s.distribution} size="lg" />
+          <Explanation text={s.explanation} big />
         </div>
       ) : null}
-      {view.suddenDeath ? <p className="font-semibold text-text-2">Still standing: {view.alive}</p> : null}
     </div>
   );
 }
