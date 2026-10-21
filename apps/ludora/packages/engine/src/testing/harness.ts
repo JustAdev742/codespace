@@ -1,6 +1,9 @@
 import { createRng, type CommonSettings, type Question } from '@ludora/shared';
 import { GameRuntime, type EngineResults } from '../runtime/runtime.ts';
-import { prepareQuestions, resolveGameConfig } from '../registry.ts';
+import { prepareQuestions, resolveGameConfig, type GameConfig, type Resolved } from '../registry.ts';
+import { parseSettings } from '../sdk/settings.ts';
+import type { GameMode, ModeVariant } from '../sdk/types.ts';
+import { commonSettingsSchema } from '@ludora/shared';
 import { makeTeams } from '../teams.ts';
 
 export { makeTeams };
@@ -15,6 +18,9 @@ export { makeTeams };
 export interface SimulateOptions {
   modeId: string;
   variantId?: string;
+  /** Test a mode (and optional variant) that is not registered yet. */
+  mode?: GameMode;
+  variant?: ModeVariant;
   questions: readonly Question[];
   players: number;
   /** Chance each bot answers correctly. */
@@ -51,14 +57,22 @@ export function findAnswerLeaks(view: unknown, path = 'view'): string[] {
   return leaks;
 }
 
+/** The same merging rules as resolveGameConfig, for a mode object that is not in the registry yet. */
+function resolveUnregistered(mode: GameMode, variant: ModeVariant | null, settings: Record<string, unknown>, common: Record<string, unknown>): Resolved<GameConfig> {
+  const locked = [...(variant?.locked ?? [])];
+  const parsed = commonSettingsSchema.safeParse({ ...mode.defaults, ...variant?.common, ...common });
+  if (!parsed.success) return { ok: false, message: 'Some game settings are out of range.' };
+  const c = parsed.data;
+  if (mode.meta.teams === 'none') c.teamCount = 0;
+  if (mode.meta.teams === 'required' && c.teamCount < 2) c.teamCount = 2;
+  return { ok: true, value: { mode, variant, settings: parseSettings(mode.settings, { ...variant?.settings, ...settings }), common: c, locked } };
+}
+
 export function simulateGame(opts: SimulateOptions): SimulateResult {
   const seed = opts.seed ?? 1234;
-  const resolved = resolveGameConfig({
-    modeId: opts.modeId,
-    variantId: opts.variantId ?? null,
-    settings: opts.settings ?? {},
-    common: opts.common ?? {},
-  });
+  const resolved = opts.mode
+    ? resolveUnregistered(opts.mode, opts.variant ?? null, opts.settings ?? {}, opts.common ?? {})
+    : resolveGameConfig({ modeId: opts.modeId, variantId: opts.variantId ?? null, settings: opts.settings ?? {}, common: opts.common ?? {} });
   if (!resolved.ok) throw new Error(resolved.message);
   const { mode, settings, common } = resolved.value;
   const prepared = prepareQuestions(mode, opts.questions, seed);

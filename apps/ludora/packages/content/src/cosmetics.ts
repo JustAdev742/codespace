@@ -1,9 +1,138 @@
 import type { SeedItem } from './types.ts';
 
-/** Accessories, frames, banners, titles, emotes, victory effects, themes and answer effects. (Full catalogue in progress.) */
+/**
+ * Accessories, frames, banners, titles, emotes, victory effects, themes and
+ * answer effects. Cosmetics never belong to a collection. Ids starting with
+ * `frost-` are Frost Festival event items, sold in the Event shop while the
+ * festival runs. Items marked `unreleased` are previews for testers.
+ */
 export const COSMETICS: SeedItem[] = [
-  { id: 'acc-beanie', type: 'accessory', name: 'Cosy Beanie', description: 'Knitted with care. Slightly too big.', rarity: 'common', collectionId: null, art: { kind: 'accessory', slot: 'hat', shape: 'beanie', hue: 8 } },
+  // Accessories: every shape in ACCESSORY_SHAPES, a few in a second colourway.
+  { id: 'acc-beanie', type: 'accessory', name: 'Cosy Beanie', description: 'Knitted with care and slightly too big.', rarity: 'common', collectionId: null, art: { kind: 'accessory', slot: 'hat', shape: 'beanie', hue: 8 } },
+  { id: 'acc-wizard-hat', type: 'accessory', name: 'Wizard Hat', description: 'Pointy, purple and said to make long division feel slightly magical.', rarity: 'uncommon', collectionId: null, art: { kind: 'accessory', slot: 'hat', shape: 'wizard', hue: 265, accentHue: 50 } },
+  { id: 'acc-starry-wizard-hat', type: 'accessory', name: 'Starry Wizard Hat', description: 'Stitched with starlight, or at least with very convincing silver thread.', rarity: 'rare', collectionId: null, art: { kind: 'accessory', slot: 'hat', shape: 'wizard', hue: 225, accentHue: 45 } },
+  { id: 'acc-party-hat', type: 'accessory', name: 'Party Hat', description: 'For birthdays, half-birthdays and getting full marks on a quiz.', rarity: 'common', collectionId: null, art: { kind: 'accessory', slot: 'hat', shape: 'party', hue: 330, accentHue: 55 } },
+  { id: 'acc-crown', type: 'accessory', name: 'Little Crown', description: 'Fit for royalty, or for anyone who finished their reading log.', rarity: 'epic', collectionId: null, art: { kind: 'accessory', slot: 'hat', shape: 'crown', hue: 45, accentHue: 350 } },
+  { id: 'acc-crown-moonstone', type: 'accessory', name: 'Moonstone Crown', description: 'Set with moonstones that glow a little brighter every day of your streak.', rarity: 'legendary', collectionId: null, releaseState: 'unreleased', art: { kind: 'accessory', slot: 'hat', shape: 'crown', hue: 255, accentHue: 190 } },
+  { id: 'acc-flower-crown', type: 'accessory', name: 'Flower Crown', description: 'Daisies, clover and one very confused bee.', rarity: 'uncommon', collectionId: null, art: { kind: 'accessory', slot: 'hat', shape: 'flowers', hue: 330, accentHue: 100 } },
+  { id: 'acc-mortarboard', type: 'accessory', name: 'Mortarboard', description: 'The tassel swings to the other side every time you learn something new.', rarity: 'rare', collectionId: null, art: { kind: 'accessory', slot: 'hat', shape: 'mortarboard', hue: 230, accentHue: 45 } },
+  { id: 'acc-headphones', type: 'accessory', name: 'Comfy Headphones', description: 'Plays your favourite song just quietly enough that nobody else can hear it.', rarity: 'uncommon', collectionId: null, art: { kind: 'accessory', slot: 'hat', shape: 'headphones', hue: 190, accentHue: 330 } },
+  { id: 'acc-neon-headphones', type: 'accessory', name: 'Neon Headphones', description: 'Glow in the dark and turn up the volume on every victory dance.', rarity: 'rare', collectionId: null, art: { kind: 'accessory', slot: 'hat', shape: 'headphones', hue: 305, accentHue: 170 } },
+  { id: 'acc-big-bow', type: 'accessory', name: 'Big Bow', description: 'A bow so big it could wrap a present, or a small Glim.', rarity: 'common', collectionId: null, art: { kind: 'accessory', slot: 'hat', shape: 'bow', hue: 350, accentHue: 20 } },
+  { id: 'acc-top-hat', type: 'accessory', name: 'Top Hat', description: 'Very dapper and only slightly likely to have a rabbit inside.', rarity: 'rare', collectionId: null, art: { kind: 'accessory', slot: 'hat', shape: 'tophat', hue: 260, accentHue: 0 } },
+  { id: 'acc-propeller-cap', type: 'accessory', name: 'Propeller Cap', description: "Spins faster when you're thinking hard, but has never once taken off.", rarity: 'uncommon', collectionId: null, art: { kind: 'accessory', slot: 'hat', shape: 'propeller', hue: 210, accentHue: 0 } },
+  { id: 'acc-chef-hat', type: 'accessory', name: "Chef's Hat", description: 'For serious bakers and anyone who has made toast without burning it.', rarity: 'common', collectionId: null, art: { kind: 'accessory', slot: 'hat', shape: 'chef', hue: 40, accentHue: 0 } },
+  { id: 'acc-beret', type: 'accessory', name: "Artist's Beret", description: 'Worn at a jaunty angle by Glims who love painting, poetry and fancy cheese.', rarity: 'uncommon', collectionId: null, art: { kind: 'accessory', slot: 'hat', shape: 'beret', hue: 0, accentHue: 220 } },
+  { id: 'acc-round-glasses', type: 'accessory', name: 'Round Glasses', description: 'Perfect for reading the small print and looking thoughtful.', rarity: 'common', collectionId: null, art: { kind: 'accessory', slot: 'eyes', shape: 'round', hue: 30, accentHue: 200 } },
+  { id: 'acc-ruby-specs', type: 'accessory', name: 'Ruby Specs', description: 'Rose-tinted, so every quiz question looks friendly.', rarity: 'uncommon', collectionId: null, art: { kind: 'accessory', slot: 'eyes', shape: 'round', hue: 350, accentHue: 45 } },
+  { id: 'acc-star-glasses', type: 'accessory', name: 'Star Glasses', description: 'Shaped like stars for maximum sparkle at every party.', rarity: 'uncommon', collectionId: null, art: { kind: 'accessory', slot: 'eyes', shape: 'stars', hue: 50, accentHue: 300 } },
+  { id: 'acc-monocle', type: 'accessory', name: 'Fancy Monocle', description: "Pairs well with a raised eyebrow and the words 'how very interesting'.", rarity: 'rare', collectionId: null, art: { kind: 'accessory', slot: 'eyes', shape: 'monocle', hue: 45 } },
+  { id: 'acc-lab-goggles', type: 'accessory', name: 'Lab Goggles', description: 'Safety first: every great scientist starts by protecting their eyes.', rarity: 'common', collectionId: null, art: { kind: 'accessory', slot: 'eyes', shape: 'goggles', hue: 160, accentHue: 30 } },
+  { id: 'acc-cyber-visor', type: 'accessory', name: 'Cyber Visor', description: 'Shows a little loading bar while you think, so everyone knows to wait.', rarity: 'rare', collectionId: null, art: { kind: 'accessory', slot: 'eyes', shape: 'visor', hue: 180, accentHue: 310 } },
+  { id: 'acc-heart-glasses', type: 'accessory', name: 'Heart Glasses', description: 'For when you really, truly love the question you just got.', rarity: 'uncommon', collectionId: null, art: { kind: 'accessory', slot: 'eyes', shape: 'heart', hue: 340, accentHue: 0 } },
+  { id: 'acc-stripy-scarf', type: 'accessory', name: 'Stripy Scarf', description: 'Long enough to wrap round twice and still trail in the puddles.', rarity: 'common', collectionId: null, art: { kind: 'accessory', slot: 'neck', shape: 'scarf', hue: 0, accentHue: 45 } },
+  { id: 'acc-bow-tie', type: 'accessory', name: 'Smart Bow Tie', description: 'Bow ties are smart, and so is whoever wears one.', rarity: 'uncommon', collectionId: null, art: { kind: 'accessory', slot: 'neck', shape: 'bowtie', hue: 230, accentHue: 0 } },
+  { id: 'acc-gold-medal', type: 'accessory', name: 'Gold Medal', description: 'Awarded for excellence in quizzing, napping or, ideally, both.', rarity: 'epic', collectionId: null, art: { kind: 'accessory', slot: 'neck', shape: 'medal', hue: 45, accentHue: 220 } },
+  { id: 'acc-bandana', type: 'accessory', name: "Explorer's Bandana", description: 'Handy for adventures, picnics and dramatic entrances.', rarity: 'common', collectionId: null, art: { kind: 'accessory', slot: 'neck', shape: 'bandana', hue: 15, accentHue: 40 } },
+  { id: 'acc-pearls', type: 'accessory', name: 'String of Pearls', description: 'Each pearl was a gift from a very friendly oyster.', rarity: 'rare', collectionId: null, art: { kind: 'accessory', slot: 'neck', shape: 'pearls', hue: 40, accentHue: 280 } },
+  { id: 'acc-jingle-collar', type: 'accessory', name: 'Jingle Collar', description: "Jingles softly so your friends always know when you're coming.", rarity: 'uncommon', collectionId: null, art: { kind: 'accessory', slot: 'neck', shape: 'bell', hue: 0, accentHue: 50 } },
+
+  // Profile frames: every FRAME_STYLES value.
   { id: 'frame-ring', type: 'frame', name: 'Simple Ring', description: 'A clean ring around your buddy.', rarity: 'common', collectionId: null, art: { kind: 'frame', style: 'ring', hue: 42 } },
+  { id: 'frame-dotted', type: 'frame', name: 'Dotted Line', description: 'A neat dotted border, like the edge of a page waiting for a sticker.', rarity: 'common', collectionId: null, art: { kind: 'frame', style: 'dotted', hue: 200, accentHue: 40 } },
+  { id: 'frame-petals', type: 'frame', name: 'Petal Ring', description: 'A ring of soft petals that drift a little whenever you move.', rarity: 'common', collectionId: null, art: { kind: 'frame', style: 'petals', hue: 330, accentHue: 60 } },
+  { id: 'frame-stars', type: 'frame', name: 'Starry Frame', description: 'Little stars that wink whenever someone visits your profile.', rarity: 'uncommon', collectionId: null, art: { kind: 'frame', style: 'stars', hue: 260, accentHue: 50 } },
+  { id: 'frame-waves', type: 'frame', name: 'Wave Frame', description: 'Gentle waves that lap around your buddy like a calm tide.', rarity: 'uncommon', collectionId: null, art: { kind: 'frame', style: 'waves', hue: 195, accentHue: 170 } },
+  { id: 'frame-laurel', type: 'frame', name: 'Laurel Wreath', description: 'The classic crown of champions, as worn at the ancient Olympic Games.', rarity: 'rare', collectionId: null, art: { kind: 'frame', style: 'laurel', hue: 100, accentHue: 45 } },
+  { id: 'frame-flames', type: 'frame', name: 'Flame Frame', description: 'Hot stuff, for players on a winning streak.', rarity: 'rare', collectionId: null, art: { kind: 'frame', style: 'flames', hue: 15, accentHue: 45 } },
+  { id: 'frame-circuit', type: 'frame', name: 'Circuit Frame', description: 'Traced with glowing lines that buzz quietly whenever you win.', rarity: 'rare', collectionId: null, art: { kind: 'frame', style: 'circuit', hue: 175, accentHue: 310 } },
+  { id: 'frame-amethyst', type: 'frame', name: 'Amethyst Frame', description: 'Carved from amethyst that hums a single clear note when you level up.', rarity: 'epic', collectionId: null, art: { kind: 'frame', style: 'crystal', hue: 280, accentHue: 320 } },
+  { id: 'frame-aurora', type: 'frame', name: 'Aurora Frame', description: 'Ribbons of northern lights that ripple slowly around your picture.', rarity: 'epic', collectionId: null, art: { kind: 'frame', style: 'aurora', hue: 150, accentHue: 280 } },
+  { id: 'frame-golden-laurel', type: 'frame', name: 'Golden Laurel', description: 'Polished until it gleams, for players who never give up on a tricky question.', rarity: 'legendary', collectionId: null, releaseState: 'unreleased', art: { kind: 'frame', style: 'laurel', hue: 45, accentHue: 30 } },
+
+  // Banners: every BANNER_PATTERNS value.
+  { id: 'banner-seaside-waves', type: 'banner', name: 'Seaside Waves', description: 'The sea on a sunny day, all blue and bouncy.', rarity: 'common', collectionId: null, art: { kind: 'banner', pattern: 'waves', hue: 200, accentHue: 175 } },
+  { id: 'banner-confetti', type: 'banner', name: 'Confetti Burst', description: 'A permanent party, with none of the tidying up afterwards.', rarity: 'common', collectionId: null, art: { kind: 'banner', pattern: 'confetti', hue: 320, accentHue: 50 } },
+  { id: 'banner-bold-stripes', type: 'banner', name: 'Bold Stripes', description: 'Classic stripes that go with absolutely everything.', rarity: 'common', collectionId: null, art: { kind: 'banner', pattern: 'stripes', hue: 10, accentHue: 45 } },
+  { id: 'banner-rolling-hills', type: 'banner', name: 'Rolling Hills', description: 'Green hills under a sunny sky, ideal for a picnic and a good long think.', rarity: 'common', collectionId: null, art: { kind: 'banner', pattern: 'hills', hue: 110, accentHue: 60 } },
+  { id: 'banner-graph-paper', type: 'banner', name: 'Graph Paper', description: 'For maths fans who like their lines straight and their angles right.', rarity: 'uncommon', collectionId: null, art: { kind: 'banner', pattern: 'grid', hue: 210, accentHue: 0 } },
+  { id: 'banner-circuit-board', type: 'banner', name: 'Circuit Board', description: 'Tiny glowing tracks that carry bright ideas from one side to the other.', rarity: 'uncommon', collectionId: null, art: { kind: 'banner', pattern: 'circuit', hue: 165, accentHue: 310 } },
+  { id: 'banner-bubbles', type: 'banner', name: 'Bubble Bath', description: 'Fizzy, floaty and very relaxing to look at.', rarity: 'uncommon', collectionId: null, art: { kind: 'banner', pattern: 'bubbles', hue: 185, accentHue: 300 } },
+  { id: 'banner-constellations', type: 'banner', name: 'Constellations', description: 'Join the dots to find a bear, a swan and something that might be a teapot.', rarity: 'rare', collectionId: null, art: { kind: 'banner', pattern: 'constellation', hue: 240, accentHue: 50 } },
+  { id: 'banner-lantern-festival', type: 'banner', name: 'Lantern Festival', description: 'Rows of paper lanterns glowing over a busy night market.', rarity: 'rare', collectionId: null, art: { kind: 'banner', pattern: 'lanterns', hue: 30, accentHue: 275 } },
+  { id: 'banner-sunset-hills', type: 'banner', name: 'Sunset Hills', description: 'Golden evening light over the hills, just before the first stars appear.', rarity: 'rare', collectionId: null, art: { kind: 'banner', pattern: 'hills', hue: 25, accentHue: 280 } },
+  { id: 'banner-northern-lights', type: 'banner', name: 'Northern Lights', description: "The sky's own light show, now hanging behind your name.", rarity: 'epic', collectionId: null, art: { kind: 'banner', pattern: 'aurora', hue: 150, accentHue: 285 } },
+
+  // Titles
   { id: 'title-newcomer', type: 'title', name: 'Newcomer', description: 'Everyone starts somewhere.', rarity: 'common', collectionId: null, art: { kind: 'title', text: 'Newcomer' } },
+  { id: 'title-bookworm', type: 'title', name: 'Bookworm', description: 'Never seen without a book, and usually in the middle of a good bit.', rarity: 'common', collectionId: null, art: { kind: 'title', text: 'Bookworm' } },
+  { id: 'title-word-nerd', type: 'title', name: 'Word Nerd', description: "Knows what 'onomatopoeia' means and how to spell it, which is rarer.", rarity: 'common', collectionId: null, art: { kind: 'title', text: 'Word Nerd' } },
+  { id: 'title-fact-finder', type: 'title', name: 'Fact Finder', description: "Asks 'why?' forty times a day and remembers every answer.", rarity: 'common', collectionId: null, art: { kind: 'title', text: 'Fact Finder' } },
+  { id: 'title-team-player', type: 'title', name: 'Team Player', description: 'Shares the glory, shares the snacks and cheers the loudest.', rarity: 'common', collectionId: null, art: { kind: 'title', text: 'Team Player' } },
+  { id: 'title-good-sport', type: 'title', name: 'Good Sport', description: "Wins kindly, loses cheerfully and always says 'good game'.", rarity: 'common', collectionId: null, art: { kind: 'title', text: 'Good Sport' } },
+  { id: 'title-early-bird', type: 'title', name: 'Early Bird', description: 'Always first to arrive and first to say good morning.', rarity: 'common', collectionId: null, art: { kind: 'title', text: 'Early Bird' } },
+  { id: 'title-explorer', type: 'title', name: 'Explorer', description: "Has tried every game mode at least once and wants to know what's next.", rarity: 'common', collectionId: null, art: { kind: 'title', text: 'Explorer' } },
+  { id: 'title-curious-mind', type: 'title', name: 'Curious Mind', description: 'Never stops asking questions, which is exactly how learning works.', rarity: 'common', collectionId: null, art: { kind: 'title', text: 'Curious Mind' } },
+  { id: 'title-night-owl', type: 'title', name: 'Night Owl', description: 'Does their best thinking after dinner and their best yawning at breakfast.', rarity: 'uncommon', collectionId: null, art: { kind: 'title', text: 'Night Owl' } },
+  { id: 'title-glim-collector', type: 'title', name: 'Glim Collector', description: 'Has a shelf, a box and a drawer full of Glims, with room for more.', rarity: 'uncommon', collectionId: null, art: { kind: 'title', text: 'Glim Collector' } },
+  { id: 'title-number-cruncher', type: 'title', name: 'Number Cruncher', description: 'Adds, subtracts, multiplies and divides faster than a calculator can blink.', rarity: 'uncommon', collectionId: null, art: { kind: 'title', text: 'Number Cruncher' } },
+  { id: 'title-quick-thinker', type: 'title', name: 'Quick Thinker', description: 'First to the buzzer, first to the answer and first to the snacks.', rarity: 'uncommon', collectionId: null, art: { kind: 'title', text: 'Quick Thinker' } },
+  { id: 'title-star-pupil', type: 'title', name: 'Star Pupil', description: 'Shines brightly in every subject, even the tricky ones.', rarity: 'uncommon', collectionId: null, art: { kind: 'title', text: 'Star Pupil' } },
+  { id: 'title-brainstormer', type: 'title', name: 'Brainstormer', description: 'Full of ideas, some brilliant and some wonderfully strange.', rarity: 'uncommon', collectionId: null, art: { kind: 'title', text: 'Brainstormer' } },
+  { id: 'title-history-buff', type: 'title', name: 'History Buff', description: 'Knows a fact about every century and is happy to share several.', rarity: 'uncommon', collectionId: null, art: { kind: 'title', text: 'History Buff' } },
+  { id: 'title-science-whiz', type: 'title', name: 'Science Whiz', description: 'Measures twice, experiments once and always wears the goggles.', rarity: 'uncommon', collectionId: null, art: { kind: 'title', text: 'Science Whiz' } },
+  { id: 'title-quiz-wizard', type: 'title', name: 'Quiz Wizard', description: 'Can answer a question before it has finished appearing.', rarity: 'rare', collectionId: null, art: { kind: 'title', text: 'Quiz Wizard' } },
+  { id: 'title-lantern-keeper', type: 'title', name: 'Lantern Keeper', description: 'Keeper of Lanterns, finder of Glims and friend to every moth.', rarity: 'rare', collectionId: null, art: { kind: 'title', text: 'Lantern Keeper' } },
+  { id: 'title-comet-chaser', type: 'title', name: 'Comet Chaser', description: 'Always racing ahead, with a bright streak of right answers behind.', rarity: 'rare', collectionId: null, art: { kind: 'title', text: 'Comet Chaser' } },
+  { id: 'title-puzzle-master', type: 'title', name: 'Puzzle Master', description: 'No riddle too tricky and no brain-teaser too twisty.', rarity: 'rare', collectionId: null, art: { kind: 'title', text: 'Puzzle Master' } },
+  { id: 'title-streak-keeper', type: 'title', name: 'Streak Keeper', description: "Hasn't missed a day in ages, and the Glims have noticed.", rarity: 'rare', collectionId: null, art: { kind: 'title', text: 'Streak Keeper' } },
+  { id: 'title-trivia-titan', type: 'title', name: 'Trivia Titan', description: 'A giant of general knowledge who never stops learning.', rarity: 'epic', collectionId: null, art: { kind: 'title', text: 'Trivia Titan' } },
+  { id: 'title-living-legend', type: 'title', name: 'Living Legend', description: 'Spoken of in whispers at every Lantern stall in Ludora.', rarity: 'legendary', collectionId: null, art: { kind: 'title', text: 'Living Legend' } },
+
+  // Emotes: one per EMOTE_GLYPHS value.
   { id: 'emote-wave', type: 'emote', name: 'Wave', description: 'Hello there.', rarity: 'common', collectionId: null, art: { kind: 'emote', glyph: 'wave', hue: 42 } },
+  { id: 'emote-laugh', type: 'emote', name: 'Giggle', description: 'For jokes, puns and anything involving a rubber chicken.', rarity: 'common', collectionId: null, art: { kind: 'emote', glyph: 'laugh', hue: 50 } },
+  { id: 'emote-wow', type: 'emote', name: 'Wow!', description: 'For when an answer surprises everyone, including you.', rarity: 'common', collectionId: null, art: { kind: 'emote', glyph: 'wow', hue: 190 } },
+  { id: 'emote-gg', type: 'emote', name: 'Good Game', description: 'The best way to end any match, win or lose.', rarity: 'common', collectionId: null, art: { kind: 'emote', glyph: 'gg', hue: 140 } },
+  { id: 'emote-clap', type: 'emote', name: 'Applause', description: 'A round of applause for a brilliant answer from anyone.', rarity: 'common', collectionId: null, art: { kind: 'emote', glyph: 'clap', hue: 30 } },
+  { id: 'emote-heart', type: 'emote', name: 'Big Heart', description: 'Send a little love across the room.', rarity: 'uncommon', collectionId: null, art: { kind: 'emote', glyph: 'heart', hue: 345 } },
+  { id: 'emote-think', type: 'emote', name: 'Deep Thought', description: 'For tricky questions that deserve a proper think.', rarity: 'uncommon', collectionId: null, art: { kind: 'emote', glyph: 'think', hue: 220 } },
+  { id: 'emote-party', type: 'emote', name: 'Party Time', description: 'Celebrate a win, a level-up or simply a Tuesday.', rarity: 'uncommon', collectionId: null, art: { kind: 'emote', glyph: 'party', hue: 300 } },
+  { id: 'emote-sleepy', type: 'emote', name: 'Snooze', description: 'For when the waiting room takes a little too long.', rarity: 'uncommon', collectionId: null, art: { kind: 'emote', glyph: 'sleepy', hue: 250 } },
+  { id: 'emote-fire', type: 'emote', name: 'On Fire', description: 'For streaks so hot they need their own emote.', rarity: 'rare', collectionId: null, art: { kind: 'emote', glyph: 'fire', hue: 15 } },
+  { id: 'emote-cool', type: 'emote', name: 'Too Cool', description: 'Sunglasses on, worries off.', rarity: 'rare', collectionId: null, art: { kind: 'emote', glyph: 'cool', hue: 200 } },
+  { id: 'emote-star', type: 'emote', name: 'Gold Star', description: 'The top mark, as awarded by teachers everywhere.', rarity: 'epic', collectionId: null, art: { kind: 'emote', glyph: 'star', hue: 48 } },
+
+  // Victory effects: one per VICTORY_STYLES value.
+  { id: 'victory-confetti', type: 'victory', name: 'Confetti Shower', description: 'A cheerful burst of paper confetti for every podium finish.', rarity: 'common', collectionId: null, art: { kind: 'victory', style: 'confetti', hue: 330 } },
+  { id: 'victory-bubbles', type: 'victory', name: 'Bubble Parade', description: 'A wobbly parade of bubbles that pop in time with the cheering.', rarity: 'uncommon', collectionId: null, art: { kind: 'victory', style: 'bubbles', hue: 190 } },
+  { id: 'victory-lanterns', type: 'victory', name: 'Lantern Release', description: 'A sky full of glowing lanterns floats up as you take the win.', rarity: 'rare', collectionId: null, art: { kind: 'victory', style: 'lanterns', hue: 38 } },
+  { id: 'victory-petals', type: 'victory', name: 'Petal Storm', description: 'A whirl of blossom drifts down while you celebrate.', rarity: 'rare', collectionId: null, art: { kind: 'victory', style: 'petals', hue: 340 } },
+  { id: 'victory-fireworks', type: 'victory', name: 'Grand Fireworks', description: 'Lights up the whole screen with a proper fireworks display.', rarity: 'epic', collectionId: null, art: { kind: 'victory', style: 'fireworks', hue: 20 } },
+  { id: 'victory-comets', type: 'victory', name: 'Comet Shower', description: 'Comets streak across the sky and very nearly spell out your name.', rarity: 'legendary', collectionId: null, art: { kind: 'victory', style: 'comets', hue: 265 } },
+
+  // Themes: the accent colours of the player's own interface.
+  { id: 'theme-spring-meadow', type: 'theme', name: 'Spring Meadow', description: 'Fresh greens and buttercup yellow, with a hint of honey.', rarity: 'common', collectionId: null, art: { kind: 'theme', hue: 100, accentHue: 55 } },
+  { id: 'theme-ember-glow', type: 'theme', name: 'Ember Glow', description: 'Cosy reds and oranges, like sitting by a crackling fire.', rarity: 'uncommon', collectionId: null, art: { kind: 'theme', hue: 15, accentHue: 40 } },
+  { id: 'theme-starlight', type: 'theme', name: 'Starlight', description: 'Deep violet skies sprinkled with golden stars.', rarity: 'uncommon', collectionId: null, art: { kind: 'theme', hue: 260, accentHue: 48 } },
+  { id: 'theme-deep-sea', type: 'theme', name: 'Deep Sea', description: 'Cool blues and glowing teals from the bottom of the ocean.', rarity: 'rare', collectionId: null, art: { kind: 'theme', hue: 205, accentHue: 175 } },
+  { id: 'theme-sunset-market', type: 'theme', name: 'Sunset Market', description: 'Warm lantern amber fading into dusky purple.', rarity: 'rare', collectionId: null, art: { kind: 'theme', hue: 30, accentHue: 280 } },
+  { id: 'theme-neon-arcade', type: 'theme', name: 'Neon Arcade', description: 'Bright magenta and cyan, buzzing like your favourite arcade.', rarity: 'epic', collectionId: null, art: { kind: 'theme', hue: 310, accentHue: 175 } },
+  { id: 'theme-eclipse', type: 'theme', name: 'Eclipse', description: 'A dark, dramatic theme with a golden ring of light.', rarity: 'epic', collectionId: null, releaseState: 'unreleased', art: { kind: 'theme', hue: 270, accentHue: 40 } },
+  { id: 'theme-aurora', type: 'theme', name: 'Aurora', description: 'Shimmering greens and violets, like the northern sky on a clear night.', rarity: 'legendary', collectionId: null, art: { kind: 'theme', hue: 150, accentHue: 285 } },
+
+  // Answer effects: one per EFFECT_STYLES value.
+  { id: 'effect-sparkle', type: 'effect', name: 'Sparkle Pop', description: 'A little burst of sparkles every time you answer.', rarity: 'common', collectionId: null, art: { kind: 'effect', style: 'sparkle', hue: 50 } },
+  { id: 'effect-bubbles', type: 'effect', name: 'Fizzy Bubbles', description: 'Answers fizz up like freshly poured lemonade.', rarity: 'common', collectionId: null, art: { kind: 'effect', style: 'bubbles', hue: 190 } },
+  { id: 'effect-ripple', type: 'effect', name: 'Ripple', description: 'Answers land like a pebble dropped in a calm pond.', rarity: 'uncommon', collectionId: null, art: { kind: 'effect', style: 'ripple', hue: 200 } },
+  { id: 'effect-leaves', type: 'effect', name: 'Falling Leaves', description: 'A swirl of leaves blows across the screen when you answer.', rarity: 'uncommon', collectionId: null, art: { kind: 'effect', style: 'leaves', hue: 100 } },
+  { id: 'effect-stars', type: 'effect', name: 'Shooting Stars', description: 'A tiny shower of stars follows every answer you give.', rarity: 'rare', collectionId: null, art: { kind: 'effect', style: 'stars', hue: 265 } },
+  { id: 'effect-embers', type: 'effect', name: 'Glowing Embers', description: 'Warm embers drift up from every answer, like sparks from a bonfire.', rarity: 'epic', collectionId: null, art: { kind: 'effect', style: 'embers', hue: 18 } },
+
+  // Frost Festival event items.
+  { id: 'frost-snowflake-frame', type: 'frame', name: 'Snowflake Frame', description: 'Six-sided and sparkling, just like every real snowflake.', rarity: 'rare', collectionId: null, art: { kind: 'frame', style: 'crystal', hue: 195, accentHue: 210 } },
+  { id: 'frost-snowy-peaks', type: 'banner', name: 'Snowy Peaks', description: 'Snow-capped hills under a pale winter sky, straight from the Frost Festival.', rarity: 'uncommon', collectionId: null, art: { kind: 'banner', pattern: 'hills', hue: 205, accentHue: 190 } },
+  { id: 'frost-snow-day', type: 'title', name: 'Snow Day', description: 'For Frost Festival regulars who love nothing more than fresh snow.', rarity: 'rare', collectionId: null, art: { kind: 'title', text: 'Snow Day' } },
+  { id: 'frost-festival-scarf', type: 'accessory', name: 'Festival Scarf', description: 'Knitted at the Frost Festival and long enough to share with a friend.', rarity: 'uncommon', collectionId: null, art: { kind: 'accessory', slot: 'neck', shape: 'scarf', hue: 200, accentHue: 0 } },
+  { id: 'frost-chilled-out', type: 'emote', name: 'Chilled Out', description: 'Totally calm, perfectly frosty and ready for the next round.', rarity: 'rare', collectionId: null, art: { kind: 'emote', glyph: 'cool', hue: 195 } },
 ];

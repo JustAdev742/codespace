@@ -19,16 +19,19 @@ export function FrameRing({ style, hue, accentHue, size = 96, children }: { styl
       case 'dotted':
         return <circle cx="60" cy="60" r="54" fill="none" stroke={c} strokeWidth="7" strokeDasharray="1 10" strokeLinecap="round" />;
       case 'laurel':
+        // Two sprays of leaves rising up the sides, tilted along the ring, open at the top.
         return (
-          <g fill={c}>
-            {Array.from({ length: 14 }, (_, i) => {
-              const ang = -100 + i * 15;
-              const side = i < 7 ? -1 : 1;
-              const t = ((i < 7 ? ang : ang + 20) * Math.PI) / 180;
-              const x = 60 + side * Math.abs(54 * Math.cos(t));
-              const y = 60 + 54 * Math.sin(t);
-              return <ellipse key={i} cx={x} cy={y} rx="5" ry="9" transform={`rotate(${side * (i * 13)} ${x} ${y})`} />;
-            })}
+          <g fill={c} stroke="var(--ink)" strokeWidth="0.8">
+            {[-1, 1].flatMap((side) =>
+              Array.from({ length: 7 }, (_, k) => {
+                const deg = side < 0 ? 112 + k * 21 : 68 - k * 21;
+                const t = (deg * Math.PI) / 180;
+                const x = 60 + 54 * Math.cos(t);
+                const y = 60 + 54 * Math.sin(t);
+                const tilt = deg + (side < 0 ? 60 : 120);
+                return <ellipse key={`${side}-${k}`} cx={x} cy={y} rx="7.5" ry="3.6" transform={`rotate(${tilt} ${x} ${y})`} />;
+              }),
+            )}
           </g>
         );
       case 'stars':
