@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ImagePlus, RefreshCw, Trash2 } from 'lucide-react';
 import type { Media } from '@ludora/shared';
 import { api, ApiError } from '../../../lib/api.ts';
@@ -20,6 +20,15 @@ export function QuestionImage({ media, altId, altError, onChange }: { media: Med
   const input = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
+  // After an upload the description is the next thing to fill in. Focus it once the
+  // new image has rendered: an effect runs after React commits, so the field exists.
+  const focusAlt = useRef(false);
+  useEffect(() => {
+    if (focusAlt.current && media) {
+      focusAlt.current = false;
+      document.getElementById(altId)?.focus();
+    }
+  }, [media, altId]);
 
   const pick = () => input.current?.click();
   const upload = async (file: File | undefined) => {
@@ -30,9 +39,8 @@ export function QuestionImage({ media, altId, altError, onChange }: { media: Med
     setBusy(true);
     try {
       const res = await api.upload<{ url: string }>('/api/uploads', file);
+      focusAlt.current = true;
       onChange({ kind: 'image', url: res.url, alt: media?.alt ?? '' });
-      // The description is the next thing to fill in.
-      requestAnimationFrame(() => document.getElementById(altId)?.focus());
     } catch (err) {
       setProblem(err instanceof ApiError ? err.message : 'The image did not upload. Try again.');
     } finally {
