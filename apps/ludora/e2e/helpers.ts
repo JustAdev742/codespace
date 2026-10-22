@@ -1,9 +1,16 @@
 import { execFileSync } from 'node:child_process';
 import { expect, type Browser, type BrowserContext, type Page } from '@playwright/test';
+import { containsBlockedLanguage } from '@ludora/shared';
 
 export const CSRF = { 'x-ludora-csrf': '1' };
 let n = 0;
-export const uniqueName = (prefix: string) => `${prefix}${Date.now().toString(36).slice(-5)}${++n}`;
+/** A fresh username. The name filter reads digits as letters, so the odd random name would be refused: those are skipped. */
+export function uniqueName(prefix: string) {
+  for (;;) {
+    const name = `${prefix}${Date.now().toString(36).slice(-5)}${++n}`;
+    if (!containsBlockedLanguage(name)) return name;
+  }
+}
 
 export interface Player {
   context: BrowserContext;

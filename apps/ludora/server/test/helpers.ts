@@ -1,6 +1,7 @@
 import pg from 'pg';
 import type { FastifyInstance, LightMyRequestResponse } from 'fastify';
 import { randomBytes } from 'node:crypto';
+import { containsBlockedLanguage } from '@ludora/shared';
 import { loadConfig, type Config } from '../src/config.ts';
 import { createDb, type Db } from '../src/db/client.ts';
 import { runMigrations } from '../src/db/migrate.ts';
@@ -112,8 +113,12 @@ export class Client {
 
 let n = 0;
 export function uniqueName(prefix = 'user') {
-  n++;
-  return `${prefix}${Date.now().toString(36).slice(-5)}${n}`;
+  // The name filter reads digits as letters (7175 is "tits"), so a random name now and then is
+  // refused at sign-up; skip those rather than fail a test at random.
+  for (;;) {
+    const name = `${prefix}${Date.now().toString(36).slice(-5)}${++n}`;
+    if (!containsBlockedLanguage(name)) return name;
+  }
 }
 
 export async function registered(app: FastifyInstance, opts: { username?: string; password?: string; accountType?: string } = {}) {
