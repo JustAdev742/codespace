@@ -17,6 +17,7 @@ slash commands, MCP servers and scripts that make them work.
 | `scripts/install-toolkit.sh` | Installs the whole toolkit at user level (`~/.claude`) so any repo, branch or session has it. `scripts/session-start-hook.sh` is the hook other repos copy to run it. |
 | `requirements.txt` | Python deps, annotated with the skill that needs each. |
 | `apps/ghost-typer/` | Ghost Typer, a desktop app built with these skills. `.github/workflows/build.yml` packages it for Windows, macOS and Linux. |
+| `.devcontainer/` | Codespaces / dev container for Ludora: Node 22 and Postgres 16; builds Ludora on create and runs the production build on port 8787 (`start.sh` restarts it). |
 | `apps/ludora/` | Ludora, an educational game platform (TypeScript monorepo: shared, engine, content, server, web). Start at `apps/ludora/README.md`; `docs/STATUS.md` there is the live status. `.github/workflows/ludora.yml` typechecks, lints, tests and builds it. |
 
 ## Setup

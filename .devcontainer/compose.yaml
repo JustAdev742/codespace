@@ -1,0 +1,23 @@
+# The dev container: a Node 22 workspace that shares its network with Postgres 16,
+# so the server's default DATABASE_URL (postgres@localhost:5432/ludora) works as is.
+# The database password is a local default for this throwaway container, not a secret.
+services:
+  dev:
+    image: mcr.microsoft.com/devcontainers/javascript-node:1-22-bookworm
+    volumes:
+      - ../..:/workspaces:cached
+    command: sleep infinity
+    network_mode: service:db
+
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ludora
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+volumes:
+  pgdata:

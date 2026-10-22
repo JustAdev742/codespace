@@ -17,6 +17,31 @@ reports. Nothing costs real money.
 
 Status, what is verified and what is not built yet: [docs/STATUS.md](docs/STATUS.md).
 
+## Try it in a Codespace
+
+The quickest way to try everything, with nothing to install:
+
+1. On the repository's GitHub page choose **Code**, then **Codespaces**, then
+   **Create codespace** on the branch that has Ludora.
+2. Wait while it installs and builds: a few minutes the first time. A Ludora
+   tab opens when it is ready; if your browser blocks it, open the **Ports**
+   tab and open port 8787.
+3. Sign up in the app, then make your account a super administrator in the
+   Codespace's terminal:
+
+   ```bash
+   cd apps/ludora && npm run admin -- grant <username> superadmin --reason "testing"
+   ```
+
+4. To let other people join from their own devices, right-click port 8787 in
+   the **Ports** tab and set **Port visibility** to **Public**. Anyone with the
+   address can then reach it, so set it back to Private when you are done.
+
+The Codespace runs the production build with its own Postgres (see
+`.devcontainer/` at the repository root). The server log is at
+`~/.ludora/server.log`, and `bash .devcontainer/start.sh` restarts it. A
+stopped Codespace keeps its data and starts Ludora again when it wakes.
+
 ## Run it locally
 
 You need Node.js 22.12 or newer and PostgreSQL 16.
