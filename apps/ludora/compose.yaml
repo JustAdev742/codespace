@@ -30,6 +30,10 @@ services:
       TRUST_PROXY: ${TRUST_PROXY:-true}
       COOKIE_SECURE: ${COOKIE_SECURE:-true}
       LOG_LEVEL: ${LOG_LEVEL:-info}
+      # Optional: AI question drafts. Empty leaves them off.
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      ANTHROPIC_MODEL: ${ANTHROPIC_MODEL:-claude-opus-5-5}
+      AI_DRAFTS_DAILY_LIMIT: ${AI_DRAFTS_DAILY_LIMIT:-500}
     ports:
       - "${PORT:-8787}:8787"
     volumes:

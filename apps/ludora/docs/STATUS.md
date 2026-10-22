@@ -16,7 +16,7 @@ Last updated: 2026-10-22.
 | M3 Multiplayer and modes | Done | 14 playable modes and 70 variants (84 in all), every variant a rule change, all passing the conformance suite. |
 | M4 Economy and progression | Done | Shop, Lanterns with disclosed odds, collections, locker, quests, achievements, levels, streaks. |
 | M5 Staff tools | Done | Staff API and all 14 staff sections in the web app. An end-to-end test opens every section as a super administrator at phone and desktop widths. |
-| M6 Content, social, classes, analytics | In progress | Server done and tested (friends, blocks, leaderboards, classes, assignments, reports, stats). Quests, friends, profiles, my stats, leaderboards, classes, assignment reports, hosted games, game reports and the set editor done. |
+| M6 Content, social, classes, analytics | Done | Friends, blocks, profiles, my stats, leaderboards, classes, assignments and their reports, hosted games, game reports, the set editor with image uploads, and AI question drafts. |
 | M7-8 Polish, CI, deployment | In progress | Production build, Docker image, compose file, CI workflow, docs and end-to-end tests (run in CI) are in. The visual overhaul is done across player pages and the live game, and automated accessibility checks pass on every player page and game screen. A final design review and a manual screen-reader pass remain. |
 
 ## What works today (verified)
@@ -134,9 +134,22 @@ Last updated: 2026-10-22.
   serves them with a sandboxing policy. Sets may only use real, visible
   uploads; moderators can hide one. Upload, save and play were driven in a real
   browser; metadata stripping was checked by decoding the results in Chromium.
+- **AI question drafts** (D37): with an Anthropic API key and the
+  `ai.question_drafts` flag on, teachers, creators and staff can describe a
+  topic, age band, number and kinds of question, and get drafts back in the
+  set editor to tick, add and edit before saving. The server checks who may
+  draft, the daily allowances (30 per account, a site-wide cap) and one request
+  at a time; it validates every draft against the question rules and records
+  each request without its topic. Server tests run the drafter against a
+  stand-in for the API client and the routes against a stand-in drafter; an
+  end-to-end test drives the dialog with the AI endpoints answered in the
+  browser and saves the drafted set through the real server, with axe checks
+  on both steps. **Not yet done: a real call to the Claude API**, because this
+  environment has no API key.
 - **End-to-end tests** (`e2e/`, Playwright against the production build and a
   fresh database, locally and in CI): a host and a guest play Classic from join code to results;
-  a teacher writes a set with a picture and players see it in a game; a new
+  a teacher writes a set with a picture and players see it in a game; a teacher
+  drafts questions with AI, keeps two and saves the set; a new
   player buys and opens a Lantern; a staff warning reaches the player and the
   audit log; thirteen player pages and every staff section fit a phone, have one
   main heading and log no errors, and the player pages pass axe.
@@ -150,13 +163,13 @@ creates and drops its own database).
 |---|---|---|
 | content | 2 | 112: catalogue integrity and every built-in question set |
 | engine | 13 | 715, including the conformance suite for every mode and variant |
-| server | 7 | 119: auth and rate limits (14), realtime (5), economy (20), staff (54), social and classes (16), uploads (6), reward counting (4) |
+| server | 8 | 130: auth and rate limits (14), realtime (5), economy (20), staff (54), social and classes (16), uploads (6), AI drafts (11), reward counting (4) |
 | web | 1 | 45: the set editor's checks, import and export |
 | shared | 0 | no tests of its own; its schemas are exercised by the other projects |
-| **Total** | **23** | **991 passing** at the last full run |
+| **Total** | **24** | **1002 passing** at the last full run |
 
-End-to-end: `npm run test:e2e` (needs Postgres; builds first, then runs 6
-browser tests against a fresh `ludora_e2e` database). All 6 pass.
+End-to-end: `npm run test:e2e` (needs Postgres; builds first, then runs 7
+browser tests against a fresh `ludora_e2e` database). All 7 pass.
 
 `npm run typecheck` is clean. `npm run lint` reports 12 stylistic warnings and
 no errors.
@@ -164,8 +177,6 @@ no errors.
 ## Open items
 
 Not built yet:
-- **AI question drafts.** The `ai.question_drafts` flag and the
-  `ANTHROPIC_API_KEY` setting exist; the feature does not.
 - **Email.** An outbox table exists; nothing sends email yet, so there is no
   email verification or email password reset (recovery codes cover resets).
 

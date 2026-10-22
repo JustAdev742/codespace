@@ -272,7 +272,8 @@ export function Dialog({ open, onOpenChange, title, description, children, foote
             </RDialog.Close>
           </div>
           {children}
-          {footer ? <div className="mt-6 flex flex-wrap justify-end gap-2">{footer}</div> : null}
+          {/* The buttons stay in view while a long dialog scrolls. */}
+          {footer ? <div className="sticky -bottom-5 z-10 -mx-5 mt-6 -mb-5 flex flex-wrap justify-end gap-2 border-t border-line bg-raised px-5 py-4 sm:-bottom-6 sm:-mx-6 sm:-mb-6 sm:px-6">{footer}</div> : null}
         </RDialog.Content>
       </RDialog.Portal>
     </RDialog.Root>

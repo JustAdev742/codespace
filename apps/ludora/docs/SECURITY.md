@@ -126,6 +126,27 @@ a security problem privately to the maintainers rather than in a public issue.
 - Reports and friend-request refusals never reveal whether an account exists or
   who blocked whom.
 
+## AI question drafts
+
+- Off unless the server has `ANTHROPIC_API_KEY` and the `ai.question_drafts`
+  flag is on for the person. The key never leaves the server.
+- Only teacher accounts, creators who publish public sets, and staff may draft.
+  Guests and under-13 accounts never can. The server checks this on every
+  request; the editor only hides the button.
+- What goes to Anthropic: the topic, the age band, how many questions, which
+  kinds, the set's language and the teacher's optional notes. No account
+  details and nothing about pupils. The dialog asks teachers to leave pupils'
+  names and personal details out of the notes.
+- The teacher's text can only shape that teacher's own drafts. Every draft is
+  checked against the question rules on the server, shown as plain text, and
+  saved only when the teacher saves the set, through the same validation as
+  any other question.
+- Limits: 10 requests an hour and 30 a day per account, one at a time, and a
+  site-wide daily cap (`AI_DRAFTS_DAILY_LIMIT`). A database lock stops parallel
+  requests slipping past the limits together.
+- Each request is recorded with who asked, the model, the outcome and token
+  counts, but not the topic or notes.
+
 ## Known limits
 
 - One API process holds live rooms; see DEPLOYMENT.md for scaling notes.

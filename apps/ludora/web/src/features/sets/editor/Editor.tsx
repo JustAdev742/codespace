@@ -1,15 +1,17 @@
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react';
 import { Link, useBlocker, useNavigate, type BlockerFunction } from 'react-router';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { ChevronsDownUp, ChevronsUpDown, Eye, History, Presentation, Save, Trash2, Upload } from 'lucide-react';
-import { questionSchema, type Question, type QuestionType, type Visibility } from '@ludora/shared';
+import { ChevronsDownUp, ChevronsUpDown, Eye, History, Presentation, Save, Sparkles, Trash2, Upload } from 'lucide-react';
+import { questionSchema, type AiDraftStatus, type Question, type QuestionType, type Visibility } from '@ludora/shared';
 import { api, ApiError } from '../../../lib/api.ts';
 import { plural, timeAgo } from '../../../lib/format.ts';
 import type { SetSummary } from '../../../lib/queries.ts';
+import { useMe } from '../../../lib/session.ts';
 import { Button, ButtonLink } from '../../../ui/Button.tsx';
 import { Badge, Dialog, EmptyState, PageHeader } from '../../../ui/primitives.tsx';
 import { AddQuestion } from './AddQuestion.tsx';
+import { AiDraftDialog } from './AiDraftDialog.tsx';
 import { DetailsPanel } from './DetailsPanel.tsx';
 import { downloadText } from './download.ts';
 import { clearDraft, draftKey, readDraft, writeDraft, type StoredDraft } from './draftStore.ts';
@@ -168,6 +170,11 @@ export function Editor({ userId, setId, initial, baseUpdatedAt, canPublish, save
   const [saving, setSaving] = useState(false);
   const [savedAt, setSavedAt] = useState<Date | null>(null);
   const [importOpen, setImportOpen] = useState(false);
+  const [aiOpen, setAiOpen] = useState(false);
+  // AI drafts are for teachers, creators and staff; the server decides, this only avoids asking for others.
+  const me = useMe().data;
+  const mayDraft = Boolean(me?.user && !me.user.isGuest && (me.user.accountType === 'teacher' || me.permissions.includes('sets.publish_public') || me.permissions.includes('staff.access')));
+  const aiStatus = useQuery({ queryKey: ['ai-drafts-status'], queryFn: () => api.get<AiDraftStatus>('/api/ai/drafts/status'), enabled: mayDraft, staleTime: 60_000 });
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [announcement, setAnnouncement] = useState('');
@@ -552,6 +559,11 @@ export function Editor({ userId, setId, initial, baseUpdatedAt, canPublish, save
             <Button icon={<Upload className="size-4" />} onClick={() => setImportOpen(true)}>
               Import
             </Button>
+            {aiStatus.data?.available ? (
+              <Button icon={<Sparkles className="size-4" aria-hidden />} onClick={() => setAiOpen(true)}>
+                Draft with AI
+              </Button>
+            ) : null}
             <ExportMenu onExport={onExport} />
             {setId ? (
               <>
@@ -676,6 +688,22 @@ export function Editor({ userId, setId, initial, baseUpdatedAt, canPublish, save
       </div>
 
       <ImportDialog open={importOpen} onOpenChange={setImportOpen} currentCount={count} allBlank={allBlank} hasTitle={state.details.title.trim() !== ''} onImport={applyImport} />
+      {aiStatus.data?.available ? (
+        <AiDraftDialog
+          open={aiOpen}
+          onOpenChange={setAiOpen}
+          language={state.details.language}
+          remaining={aiStatus.data.remainingToday}
+          limit={aiStatus.data.limitToday}
+          room={LIMITS.questions - (allBlank ? 0 : count)}
+          onAdd={(questions) => {
+            // A new set's empty starter question gives way to the drafts.
+            applyImport({ questions, mode: allBlank ? 'replace' : 'add', details: null });
+            setAiOpen(false);
+          }}
+          onSettled={() => void qc.invalidateQueries({ queryKey: ['ai-drafts-status'] })}
+        />
+      ) : null}
 
       <Dialog
         open={blocker.state === 'blocked'}

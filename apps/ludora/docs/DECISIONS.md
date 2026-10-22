@@ -224,3 +224,13 @@ podium and every mode screen show each player's own buddy with its real rarity
 finish, and the winner's glow only adds light around it. A common Glim that
 wins still looks common, so a game never shows a rarer collectible than the
 player owns.
+
+**D37. AI drafts are for teachers, and every draft is reviewed.** Claude drafts
+questions only for teacher accounts, creators who publish public sets, and
+staff, never guests or children, and only when the server has a key and staff
+have switched the flag on. Drafts arrive in the editor like an import: the
+teacher unticks what they do not want and edits the rest before saving, so no
+AI text reaches players without a person choosing it. Each draft must pass
+the same question rules as a typed one; any that fail are dropped and counted.
+Daily allowances per account and per site cap the spending. Requests are
+recorded without their topic, so a teacher's notes are not kept.

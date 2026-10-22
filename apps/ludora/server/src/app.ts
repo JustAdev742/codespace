@@ -13,6 +13,7 @@ import { registerAuthHook, registerCsrfGuard, registerErrorHandler } from './htt
 import { notApi, requestKey } from './http/limits.ts';
 import { authRoutes } from './modules/auth/routes.ts';
 import { RoomManager } from './realtime/manager.ts';
+import type { QuestionDrafter } from './modules/ai/drafter.ts';
 
 export interface AppDeps {
   config: Config;
@@ -24,6 +25,8 @@ export interface AppDeps {
   realtime?: { disconnectUser(userId: string, message: string): number; connectedSockets(): number };
   /** Serves the single-page app for non-API routes in production. */
   serveSpa?: (req: FastifyRequest, reply: FastifyReply) => Promise<unknown>;
+  /** Drafts questions with Claude. Present only when ANTHROPIC_API_KEY is set; tests pass a stand-in. */
+  drafter?: QuestionDrafter;
 }
 
 export type RouteModule = (app: FastifyInstance, deps: AppDeps) => Promise<void>;

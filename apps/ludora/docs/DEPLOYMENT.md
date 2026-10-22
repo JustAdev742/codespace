@@ -32,8 +32,11 @@ Nothing secret is committed; copy `.env.example` to `.env` for compose.
 | `COOKIE_SECURE` | no | Defaults to `true` in production. Only set `false` to try the image over plain http on your own machine. |
 | `PORT`, `HOST` | no | Default `8787`, `0.0.0.0`. |
 | `LOG_LEVEL` | no | `info` by default. Cookies and authorisation headers are redacted from logs. |
-| `UPLOAD_DIR` | no | Reserved for image uploads (not built yet). |
-| `ANTHROPIC_API_KEY`, `SMTP_URL` | no | Reserved for features that are not built yet (AI drafts, email). |
+| `UPLOAD_DIR` | no | Where uploaded question images are kept. The image uses `/data/uploads`, which compose mounts as the `uploads` volume so images survive upgrades. |
+| `ANTHROPIC_API_KEY` | no | Turns on AI question drafts in the set editor, once staff also switch on the `ai.question_drafts` flag. It stays on the server and is never sent to browsers. |
+| `ANTHROPIC_MODEL` | no | The Claude model that drafts questions. Default `claude-opus-5-5`. |
+| `AI_DRAFTS_DAILY_LIMIT` | no | Draft requests allowed across the whole site in any 24 hours, to cap spending. Default 500. Each account also has its own allowance of 30 a day. |
+| `SMTP_URL` | no | Reserved for email, which is not built yet. |
 
 ## Running with compose
 
@@ -55,6 +58,15 @@ catalogue to the shipped content on purpose:
 ```bash
 docker compose exec app node dist/seed.js --force
 ```
+
+### AI question drafts
+
+With `ANTHROPIC_API_KEY` set, switch on the `ai.question_drafts` flag in the
+staff area (Feature flags) for everyone, some roles or a rollout percentage.
+Teachers, creators and staff then see "Draft with AI" in the set editor. A
+request can take up to a minute or two, so if a reverse proxy sits in front of
+the app, give `/api/ai/drafts` a read timeout of at least 180 seconds. The
+System page in the staff area shows whether drafting is configured.
 
 ### The first administrator
 

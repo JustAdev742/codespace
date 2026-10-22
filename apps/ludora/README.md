@@ -8,7 +8,9 @@ reports. Nothing costs real money.
 - 14 playable game modes with 70 variants, each variant a real rule change, and
   every one passing an automated full-game test suite.
 - Questions in 8 types (multiple choice, select all, true or false, short
-  answer, number, ordering, matching, flashcards), 20 built-in sets.
+  answer, number, ordering, matching, flashcards), 20 built-in sets, picture
+  uploads, and optional AI drafts (with an Anthropic API key) that teachers
+  review before saving.
 - Server-authoritative realtime games with reconnection and host controls.
 - An economy with disclosed Lantern odds, a ledger and idempotent purchases.
 - Staff tools with server-enforced roles, an audit log and safe test accounts.

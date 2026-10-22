@@ -182,7 +182,7 @@ export async function adminLiveRoutes(app: FastifyInstance, deps: AppDeps) {
       accounts: { registered: Number(c?.users ?? 0), guests: Number(c?.guests ?? 0), test: Number(c?.tests ?? 0), activeLastDay: Number(c?.active_day ?? 0) },
       gamesLastDay: Number(c?.games_day ?? 0),
       errorsLastDay: Object.fromEntries(errors.map((e) => [e.source, e.n])),
-      features: { aiQuestionDrafts: Boolean(deps.config.ANTHROPIC_API_KEY), email: Boolean(deps.config.SMTP_URL) },
+      features: { aiQuestionDrafts: Boolean(deps.drafter), email: Boolean(deps.config.SMTP_URL) },
     };
   });
 

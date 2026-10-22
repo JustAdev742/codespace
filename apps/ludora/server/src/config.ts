@@ -32,8 +32,11 @@ const schema = z.object({
   /** Built web app to serve (production). */
   WEB_DIST: z.string().default('../web/dist'),
   LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent']).default('info'),
+  /** Turns on AI question drafts (with the ai.question_drafts flag). */
   ANTHROPIC_API_KEY: z.string().optional(),
-  ANTHROPIC_MODEL: z.string().default('claude-sonnet-5-5'),
+  ANTHROPIC_MODEL: z.string().default('claude-opus-5-5'),
+  /** AI draft requests allowed across the whole site in any 24 hours, to cap spending. */
+  AI_DRAFTS_DAILY_LIMIT: z.coerce.number().int().min(0).default(500),
   SMTP_URL: z.string().optional(),
   MAIL_FROM: z.string().default('Ludora <no-reply@ludora.local>'),
 });

@@ -624,6 +624,29 @@ export const moderationActions = pgTable(
  * Images people upload for their questions. Files live in UPLOAD_DIR under a
  * random name; this table says who uploaded them and whether staff hid them.
  */
+/** One AI draft request: who asked, how it went and what it used. The topic is not kept. */
+export const aiDraftRequests = pgTable(
+  'ai_draft_requests',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    createdAt: now('created_at'),
+    model: text('model').notNull(),
+    requested: integer('requested').notNull(),
+    returned: integer('returned').notNull().default(0),
+    outcome: text('outcome').notNull().default('pending'),
+    inputTokens: integer('input_tokens'),
+    outputTokens: integer('output_tokens'),
+  },
+  (t) => [
+    index('ai_draft_requests_user_idx').on(t.userId, t.createdAt),
+    index('ai_draft_requests_created_idx').on(t.createdAt),
+    check('ai_draft_requests_outcome_valid', sql`${t.outcome} in ('pending','ok','refused','failed')`),
+  ],
+);
+
 export const uploads = pgTable(
   'uploads',
   {
