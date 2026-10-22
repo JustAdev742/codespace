@@ -316,3 +316,36 @@ describe('In Unison: a team bonus when every player is right', () => {
     ]);
   });
 });
+
+describe('Late joiners', () => {
+  it('may answer the open question, and a missed one is marked as joined late, not held against them', () => {
+    const h = start({}, ['a', 'b']);
+    h.tick(3000);
+    h.rt.addPlayer({ id: 'late', name: 'Late', teamId: null, isBot: false });
+    h.rt.addPlayer({ id: 'quick', name: 'Quick', teamId: null, isBot: false });
+    expect(h.view('late').sync.you).toMatchObject({ eligible: true, answered: false, joinedLate: true });
+    expect(h.view('a').sync.you.joinedLate).toBe(false);
+    h.answer('quick', 'right');
+    h.answer('a', 'right');
+    closeByTime(h); // b and late say nothing
+    expect(h.view('late').sync.phase).toBe('reveal');
+    expect(h.view('late').sync.you).toMatchObject({ answered: false, joinedLate: true, streak: 0 });
+    expect(h.view('b').sync.you).toMatchObject({ answered: false, joinedLate: false });
+    expect(scores(h, ['quick', 'a', 'late'])).toEqual([1000, 1000, 0]);
+    // From the next question on they play like everyone else.
+    next(h);
+    expect(h.view('late').sync.phase).toBe('question');
+    expect(h.view('late').sync.you.joinedLate).toBe(false);
+    expect(h.errors).toEqual([]);
+  });
+
+  it('says a late joiner in a knockout game is watching, not out', () => {
+    const h = start({ knockout: true }, ['a', 'b', 'c']);
+    h.rt.addPlayer({ id: 'late', name: 'Late', teamId: null, isBot: false });
+    expect(h.view('late')).toMatchObject({ out: true, watching: true });
+    h.answer('a', 'right');
+    h.answer('b', 'right');
+    closeByTime(h); // c is knocked out
+    expect(h.view('c')).toMatchObject({ out: true, watching: false });
+  });
+});

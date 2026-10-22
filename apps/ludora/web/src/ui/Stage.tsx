@@ -31,8 +31,11 @@ const LANTERNS: SkyLantern[] = [
   { x: 46, y: 2, size: 18, hue: 48, drift: 8.5, delay: -1, opacity: 0.45, wide: true },
 ];
 
-/** Full-width game screens put headings and pills along the top, so the big top-left lantern hangs lower there. */
-const GAME_LANTERNS: SkyLantern[] = LANTERNS.map((l) => (l.x < 10 && l.y < 20 ? { ...l, y: 52 } : l));
+/**
+ * Game screens fill the width with headings and text, so there is no spot a big lantern could drift without
+ * sitting behind words: they keep only the small, faint ones at the very edges and behind the header.
+ */
+const GAME_LANTERNS: SkyLantern[] = LANTERNS.filter((l) => l.size <= 22).map((l) => ({ ...l, opacity: Math.min(l.opacity, 0.45) }));
 
 function PaperLantern({ hue, size }: { hue: number; size: number }) {
   const id = `sky-lantern-${useId().replace(/:/g, '')}`;

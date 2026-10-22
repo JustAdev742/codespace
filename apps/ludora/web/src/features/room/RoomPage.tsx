@@ -18,6 +18,8 @@ import { DebugOverlay } from './DebugOverlay.tsx';
 import type { RoomView } from '@ludora/shared';
 import './stage.css';
 import { Announcer, useAnnounce } from './game/announce.tsx';
+import { AnswerMemory } from './game/answerMemory.tsx';
+import { Online } from './game/online.tsx';
 
 const nameKey = (code: string) => `ludora.name.${code}`;
 const spaced = (code: string) => `${code.slice(0, 3)} ${code.slice(3)}`;
@@ -52,6 +54,9 @@ function FeedToasts({ feed }: { feed: RoomView['feed'] }) {
   );
 }
 
+/** Header controls read from the back of the room on a big projector: taller, with larger text, from 1600 pixels wide. */
+const WIDE = 'min-[1600px]:h-12 min-[1600px]:px-4 min-[1600px]:text-lg';
+
 function HostControls({ room, handle }: { room: RoomView; handle: RoomHandle }) {
   const [confirmEnd, setConfirmEnd] = useState(false);
   const status = room.room.status;
@@ -65,20 +70,20 @@ function HostControls({ room, handle }: { room: RoomView; handle: RoomHandle }) 
     <div className="flex items-center gap-1.5 sm:gap-2">
       {game?.sync ? (
         // The one button that moves a host-paced game on: big and lantern-lit when the room is waiting for it.
-        <Button variant={waitingForHost ? 'primary' : 'secondary'} size={waitingForHost ? 'lg' : 'sm'} icon={<FastForward className="size-4" aria-hidden />} onClick={() => run({ cmd: 'next' })} disabled={status !== 'running'}>
+        <Button variant={waitingForHost ? 'primary' : 'secondary'} size={waitingForHost ? 'lg' : 'sm'} className={waitingForHost ? '' : WIDE} icon={<FastForward className="size-4" aria-hidden />} onClick={() => run({ cmd: 'next' })} disabled={status !== 'running'}>
           {waitingForHost ? 'Next' : 'Skip ahead'}
         </Button>
       ) : null}
       {status === 'paused' ? (
-        <Button size="sm" variant="success" icon={<Play className="size-4" aria-hidden />} onClick={() => run({ cmd: 'resume' })}>
+        <Button size="sm" variant="success" className={WIDE} icon={<Play className="size-4" aria-hidden />} onClick={() => run({ cmd: 'resume' })}>
           Resume
         </Button>
       ) : (
-        <Button size="sm" icon={<Pause className="size-4" aria-hidden />} onClick={() => run({ cmd: 'pause' })} disabled={status !== 'running'}>
+        <Button size="sm" className={WIDE} icon={<Pause className="size-4" aria-hidden />} onClick={() => run({ cmd: 'pause' })} disabled={status !== 'running'}>
           <span className="max-md:sr-only">Pause</span>
         </Button>
       )}
-      <Button size="sm" variant="ghost" icon={<Square className="size-4" aria-hidden />} onClick={() => setConfirmEnd(true)}>
+      <Button size="sm" variant="ghost" className={WIDE} icon={<Square className="size-4" aria-hidden />} onClick={() => setConfirmEnd(true)}>
         <span className="max-md:sr-only">End game</span>
       </Button>
       <Dialog
@@ -106,6 +111,16 @@ function HostControls({ room, handle }: { room: RoomView; handle: RoomHandle }) 
   );
 }
 
+/** Says when the connection drops and when it is back (not on the first connect). */
+function ConnectionNews({ online }: { online: boolean }) {
+  const [dropped, setDropped] = useState(false);
+  useEffect(() => {
+    if (!online) setDropped(true);
+  }, [online]);
+  useAnnounce(!online ? 'The connection dropped. Reconnecting.' : dropped ? 'Back online.' : null, online);
+  return null;
+}
+
 /** Says when the host pauses, and when the game is back on after a pause. */
 function PauseNews({ paused, hostConnected }: { paused: boolean; hostConnected: boolean }) {
   const [wasPaused, setWasPaused] = useState(paused);
@@ -127,9 +142,11 @@ function GameStage({ room, handle, isHost }: { room: RoomView; handle: RoomHandl
   return (
     <div className="relative flex flex-1 flex-col">
       <PauseNews paused={paused} hostConnected={room.room.hostConnected} />
-      <Suspense fallback={<Spinner />}>
-        <Screen view={room.game} room={room} act={handle.act} gameNow={handle.gameNow} paused={paused} />
-      </Suspense>
+      <AnswerMemory>
+        <Suspense fallback={<Spinner />}>
+          <Screen view={room.game} room={room} act={handle.act} gameNow={handle.gameNow} paused={paused} />
+        </Suspense>
+      </AnswerMemory>
       {paused && isHost ? (
         // The host screen is on the projector: tell the room, but leave the question readable.
         <div className="pointer-events-none absolute inset-x-0 top-0 z-20 flex justify-center">
@@ -175,6 +192,7 @@ export default function RoomPage() {
   const handle = useRoom(code, { name, enabled: !me.isLoading });
   const room = handle.view;
   const [reporting, setReporting] = useState(false);
+  const [confirmLeave, setConfirmLeave] = useState(false);
   const debug = useFlag('debug.overlay');
 
   useEffect(() => {
@@ -225,6 +243,10 @@ export default function RoomPage() {
     if (!isHost) await handle.leave();
     navigate('/');
   };
+  // Leaving mid-game is easy to do by accident and costs something, so it asks first:
+  // a player starts again from zero, and players wait on a host who has gone.
+  const othersHere = room.players.some((p) => !p.isBot && p.id !== room.me.playerId);
+  const askFirst = isHost ? (live || othersHere) && !room.room.solo : live && !room.room.solo;
   // The lobby and results screens carry their own main heading; during play the room's title is the page's one heading.
   const Title = live ? 'h1' : 'p';
 
@@ -232,12 +254,12 @@ export default function RoomPage() {
     <Stage className={STAGE} lanterns="game">
       <Announcer>
       <header className="sticky top-0 z-30 border-b border-white/12 bg-[rgb(16_10_58/0.55)] backdrop-blur-md">
-        <div className="flex h-14 items-center gap-2.5 px-3 sm:h-16 sm:gap-3 sm:px-5">
+        <div className="flex h-14 items-center gap-2.5 px-3 sm:h-16 sm:gap-3 sm:px-5 min-[1600px]:h-20 min-[1600px]:px-8">
           {/* On a phone, a host mid-game needs the header's width for the game controls. */}
-          <LogoMark size={30} className={`shrink-0 ${isHost && live ? 'max-sm:hidden' : ''}`} />
+          <LogoMark size={30} className={`shrink-0 min-[1600px]:size-11 ${isHost && live ? 'max-sm:hidden' : ''}`} />
           <div className={`min-w-0 ${isHost && live ? 'max-sm:sr-only' : ''}`}>
-            <Title className="truncate font-display text-base leading-tight font-extrabold text-text sm:text-lg">{room.room.title}</Title>
-            <p className="truncate text-xs font-semibold text-text-2 sm:text-sm">
+            <Title className="truncate font-display text-base leading-tight font-extrabold text-text sm:text-lg min-[1600px]:text-2xl">{room.room.title}</Title>
+            <p className="truncate text-xs font-semibold text-text-2 sm:text-sm min-[1600px]:text-base">
               {isHost ? `Hosting game ${spaced(room.room.code)}` : room.room.solo ? 'Solo game' : `Game ${spaced(room.room.code)}`}
             </p>
           </div>
@@ -247,9 +269,12 @@ export default function RoomPage() {
               <span className="rounded-full bg-white px-3 py-0.5 font-display text-xl font-extrabold text-[#1d1846] tabular">{spaced(room.room.code)}</span>
             </p>
           ) : null}
+          <ConnectionNews online={handle.online} />
           {!handle.online ? (
-            <span className="flex shrink-0 items-center gap-1.5 rounded-full border-2 border-ink bg-ember px-2.5 py-1 text-xs font-bold text-on-accent" role="status">
-              <WifiOff className="size-3.5" aria-hidden /> Reconnecting…
+            // Icon only on a phone, so the room's name keeps its room.
+            <span className="flex shrink-0 items-center gap-1.5 rounded-full border-2 border-ink bg-ember px-2 py-1 text-xs font-bold text-on-accent sm:px-2.5" title="Reconnecting">
+              <WifiOff className="size-3.5" aria-hidden />
+              <span className="max-sm:sr-only">Reconnecting…</span>
             </span>
           ) : null}
           <div className="ml-auto flex shrink-0 items-center gap-1.5 sm:gap-2">
@@ -260,17 +285,38 @@ export default function RoomPage() {
               </Button>
             ) : null}
             {!room.room.solo ? (
-              <IconButton label="Report a problem in this room" size="sm" onClick={() => setReporting(true)}>
+              <IconButton label="Report a problem in this room" size="sm" className="max-sm:size-11 min-[1600px]:size-12" onClick={() => setReporting(true)}>
                 <Flag className="size-4" aria-hidden />
               </IconButton>
             ) : null}
-            <Button size="sm" variant="ghost" icon={<DoorOpen className="size-4" aria-hidden />} onClick={() => void leave()}>
+            <Button size="sm" variant="ghost" className={`max-sm:ml-1 max-sm:h-11 ${WIDE}`} icon={<DoorOpen className="size-4" aria-hidden />} onClick={() => (askFirst ? setConfirmLeave(true) : void leave())}>
               {/* A host running a game from a phone needs the room for the game controls: the label goes to screen readers only. */}
               {isHost && live ? <span className="max-sm:sr-only">Leave</span> : isHost ? 'Leave' : 'Leave game'}
             </Button>
           </div>
         </div>
       </header>
+      <Dialog
+        open={confirmLeave}
+        onOpenChange={setConfirmLeave}
+        size="sm"
+        title={isHost ? (live ? 'Leave the game for now?' : 'Leave the lobby?') : 'Leave this game?'}
+        description={
+          isHost
+            ? live
+              ? `${room.room.pacing === 'host' ? 'Players see the game paused until you come back.' : 'Players keep playing while you are away.'} You can return to it from the Host page. If you are away for 10 minutes, the game ends.`
+              : 'The room stays open, and you can come back to it from the Host page.'
+            : 'You leave for good: if you join again, you start from zero points.'
+        }
+        footer={
+          <>
+            <Button onClick={() => setConfirmLeave(false)}>{isHost ? 'Stay' : 'Keep playing'}</Button>
+            <Button variant="danger" icon={<DoorOpen className="size-4" aria-hidden />} onClick={() => void leave()}>
+              {isHost ? (live ? 'Leave for now' : 'Leave') : 'Leave game'}
+            </Button>
+          </>
+        }
+      />
       <ReportDialog
         open={reporting}
         onOpenChange={setReporting}
@@ -279,7 +325,11 @@ export default function RoomPage() {
       />
       <main className="flex flex-1 flex-col px-3 pt-4 pb-6 sm:px-6 lg:px-10 lg:pt-6">
         {status === 'lobby' ? isHost ? <HostLobby room={room} handle={handle} /> : <PlayerLobby room={room} handle={handle} /> : null}
-        {live ? <GameStage room={room} handle={handle} isHost={isHost} /> : null}
+        {live ? (
+          <Online.Provider value={handle.online}>
+            <GameStage room={room} handle={handle} isHost={isHost} />
+          </Online.Provider>
+        ) : null}
         {status === 'ended' && room.results ? <Results room={room} handle={handle} isHost={isHost} guest={!me.data?.user || me.data.user.isGuest} /> : null}
       </main>
       {!isHost && !room.room.solo && live ? (
@@ -288,7 +338,7 @@ export default function RoomPage() {
         </footer>
       ) : null}
       <FeedToasts feed={room.feed} />
-      <ReactionLayer reactions={handle.reactions} />
+      <ReactionLayer reactions={handle.reactions} big={isHost} />
       {debug ? <DebugOverlay handle={handle} /> : null}
       </Announcer>
     </Stage>

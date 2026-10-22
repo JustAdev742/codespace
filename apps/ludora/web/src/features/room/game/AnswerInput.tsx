@@ -3,6 +3,8 @@ import { ArrowDown, ArrowUp, Check, Send, Users } from 'lucide-react';
 import type { Answer, Media, PublicQuestion } from '@ludora/shared';
 import { AnswerShape, ANSWER_LETTERS } from '../../../art/icons.tsx';
 import { QuestionImage } from './QuestionCard.tsx';
+import { useAnswerMemory, useRememberingSubmit } from './answerMemory.tsx';
+import { useOnline } from './online.tsx';
 
 /*
  * Answer controls for every question type. Choices always carry a shape and
@@ -65,6 +67,7 @@ export function ChoiceTile({
   dimmed,
   correct,
   wrong,
+  mine,
   onClick,
   disabled,
   compact,
@@ -83,6 +86,8 @@ export function ChoiceTile({
   dimmed?: boolean;
   correct?: boolean;
   wrong?: boolean;
+  /** The player's own pick, tagged at the reveal whether it was right or not. */
+  mine?: boolean;
   onClick?: () => void;
   disabled?: boolean;
   compact?: boolean;
@@ -145,7 +150,11 @@ export function ChoiceTile({
           <Check className="size-6" strokeWidth={3} aria-hidden />
         </span>
       ) : null}
-      {wrong ? <span className="absolute -top-3 right-3 rounded-full border-2 border-ink bg-ember px-2.5 py-0.5 text-sm font-bold text-on-accent">Your answer</span> : null}
+      {wrong || mine ? (
+        <span className={`absolute -top-3 rounded-full border-2 border-ink px-2.5 py-0.5 text-sm font-bold ${correct ? 'paper right-10' : 'right-3 bg-ember text-on-accent'}`}>
+          <span className="sr-only">, </span>Your answer
+        </span>
+      ) : null}
     </button>
   );
 }
@@ -431,21 +440,43 @@ function MatchAnswer({ q, onSubmit, disabled }: AnswerInputProps & { q: Extract<
 /** Picks the right control for the question type. Remount (key by iid) for each new question. */
 export function AnswerInput(props: AnswerInputProps) {
   const { q } = props;
+  // A new question, or one that comes back, starts with no answer from this player.
+  const { begin } = useAnswerMemory();
+  useEffect(() => begin(q.prompt), [q.prompt, begin]);
+  const onSubmit = useRememberingSubmit(q, props.onSubmit);
+  const online = useOnline();
+  const p = { ...props, onSubmit, disabled: props.disabled || !online };
+  if (!online) {
+    return (
+      <div className="flex flex-col gap-3">
+        <p className="rounded-[14px] border-2 border-ember bg-[rgb(17_10_62/0.62)] px-4 py-2.5 font-bold text-text">The connection dropped. Your answer can go in as soon as it is back.</p>
+        {/* Dimmed, so they do not look tappable while they wait. */}
+        <div className="opacity-55">
+          <AnswerControls {...p} />
+        </div>
+      </div>
+    );
+  }
+  return <AnswerControls {...p} />;
+}
+
+function AnswerControls(p: AnswerInputProps) {
+  const { q, onSubmit } = p;
   switch (q.type) {
     case 'mcq':
-      return <ChoiceAnswer {...props} q={q} />;
+      return <ChoiceAnswer {...p} q={q} />;
     case 'multi':
-      return <MultiAnswer {...props} q={q} />;
+      return <MultiAnswer {...p} q={q} />;
     case 'truefalse':
-      return <TrueFalseAnswer {...props} />;
+      return <TrueFalseAnswer {...p} />;
     case 'short':
-      return <TextAnswer numeric={false} onSubmit={props.onSubmit} disabled={props.disabled} />;
+      return <TextAnswer numeric={false} onSubmit={onSubmit} disabled={p.disabled} />;
     case 'numeric':
-      return <TextAnswer numeric unit={q.unit} onSubmit={props.onSubmit} disabled={props.disabled} />;
+      return <TextAnswer numeric unit={q.unit} onSubmit={onSubmit} disabled={p.disabled} />;
     case 'order':
-      return <OrderAnswer {...props} q={q} />;
+      return <OrderAnswer {...p} q={q} />;
     case 'match':
-      return <MatchAnswer {...props} q={q} />;
+      return <MatchAnswer {...p} q={q} />;
     case 'flashcard':
       return <p className="text-text-2">This question needs a study mode.</p>;
   }

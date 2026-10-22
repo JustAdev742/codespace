@@ -338,6 +338,8 @@ export const classic = defineMode<State, Settings, Action>({
       suddenDeath: elim,
       alive: elim ? ctx.players().filter((p) => !isOut(s, p.id)).length : null,
       out: viewer.kind === 'player' ? isOut(s, viewer.playerId) : false,
+      // Out because they joined after the start (see onPlayerJoin), not knocked out.
+      watching: viewer.kind === 'player' && s.out[viewer.playerId] === -1,
       score: viewer.kind === 'player' ? (s.sync.scores[viewer.playerId] ?? 0) : null,
       // Optional extras (screens may ignore them): the open question is an encore; the viewer scores double for it.
       encore: s.sync.round >= 0 && isEncore(s),

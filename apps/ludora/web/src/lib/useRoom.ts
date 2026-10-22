@@ -135,7 +135,8 @@ export function useRoom(code: string, opts: { name?: string | undefined; as?: 'h
 
   const act = useCallback(async (action: unknown): Promise<AckResult> => {
     const socket = socketRef.current;
-    if (!socket) return { ok: false, error: { code: 'offline', message: 'Not connected.' } };
+    // Not queued while offline: a buffered action could reach the server before the room is rejoined and be dropped.
+    if (!socket?.connected) return { ok: false, error: { code: 'offline', message: 'You are offline. Answer again when the connection is back.' } };
     const actionId = newRequestKey('a').slice(0, 30);
     const sent = performance.now();
     let ack = await emitWithAck(socket, 'room:action', { actionId, action });

@@ -4,6 +4,7 @@ import { ChoiceTile, HOST_PAIR, choiceGrid, type TileSize } from './AnswerInput.
 import { Burst } from '../../../art/bursts.tsx';
 import { useOverview } from '../../../lib/queries.ts';
 import { useAnnounce } from './announce.tsx';
+import { myAnswerWords, useMyAnswer } from './answerMemory.tsx';
 
 /** The choices of a live question with nothing marked: the host screen while answers are open. */
 export function ChoicesDisplay({ q, size = 'lg' }: { q: PublicQuestion; size?: TileSize }) {
@@ -62,7 +63,13 @@ export function answerWords(q: PublicQuestion, reveal: AnswerReveal): string | n
 }
 
 export function RevealAnswer({ q, reveal, mine, distribution, compact, size }: { q: PublicQuestion; reveal: AnswerReveal; mine?: string | null; distribution?: Record<string, number> | null; compact?: boolean; size?: TileSize }) {
-  useAnnounce(answerWords(q, reveal), `${q.prompt}|${JSON.stringify(reveal)}`);
+  // What this player sent, so their pick is marked and, if it was wrong, read out too.
+  const sent = useMyAnswer(q);
+  const picked = new Set<string>(mine ? [mine] : sent?.type === 'mcq' ? [sent.choiceId] : sent?.type === 'multi' ? sent.choiceIds : sent?.type === 'truefalse' ? [String(sent.value)] : []);
+  const missed =
+    (reveal.type === 'mcq' && sent?.type === 'mcq' && sent.choiceId !== reveal.correct) || (reveal.type === 'truefalse' && sent?.type === 'truefalse' && sent.value !== reveal.correct);
+  const said = answerWords(q, reveal);
+  useAnnounce(said && missed && sent ? `${said} You answered ${myAnswerWords(q, sent)}.` : said, `${q.prompt}|${JSON.stringify(reveal)}`);
   const sz: TileSize = size ?? (compact ? 'sm' : distribution ? 'lg' : 'md');
   const host = sz === 'lg';
   const max = distribution ? Math.max(1, ...Object.values(distribution)) : 0;
@@ -76,7 +83,7 @@ export function RevealAnswer({ q, reveal, mine, distribution, compact, size }: {
     return (
       <div className={grid}>
         {q.choices.map((c, i) => (
-          <ChoiceTile key={c.id} index={i} text={c.text} media={c.media} dense={dense} correct={correct.has(c.id)} dimmed={!correct.has(c.id)} wrong={mine === c.id && !correct.has(c.id)} disabled size={sz} layout={layout} count={count(c.id)} max={max} tall={host && q.choices.length <= 4 && !q.media} />
+          <ChoiceTile key={c.id} index={i} text={c.text} media={c.media} dense={dense} correct={correct.has(c.id)} dimmed={!correct.has(c.id)} wrong={picked.has(c.id) && !correct.has(c.id)} mine={picked.has(c.id)} disabled size={sz} layout={layout} count={count(c.id)} max={max} tall={host && q.choices.length <= 4 && !q.media} />
         ))}
       </div>
     );
@@ -84,8 +91,8 @@ export function RevealAnswer({ q, reveal, mine, distribution, compact, size }: {
   if (q.type === 'truefalse' && reveal.type === 'truefalse') {
     return (
       <div className={host ? HOST_PAIR : 'grid grid-cols-2 gap-3'}>
-        <ChoiceTile index={0} text="True" correct={reveal.correct} dimmed={!reveal.correct} disabled size={sz} layout={host ? 'row' : 'stack'} count={count('true')} max={max} tall={host && !q.media} />
-        <ChoiceTile index={1} text="False" correct={!reveal.correct} dimmed={reveal.correct} disabled size={sz} layout={host ? 'row' : 'stack'} count={count('false')} max={max} tall={host && !q.media} />
+        <ChoiceTile index={0} text="True" correct={reveal.correct} dimmed={!reveal.correct} wrong={picked.has('true') && !reveal.correct} mine={picked.has('true')} disabled size={sz} layout={host ? 'row' : 'stack'} count={count('true')} max={max} tall={host && !q.media} />
+        <ChoiceTile index={1} text="False" correct={!reveal.correct} dimmed={reveal.correct} wrong={picked.has('false') && reveal.correct} mine={picked.has('false')} disabled size={sz} layout={host ? 'row' : 'stack'} count={count('false')} max={max} tall={host && !q.media} />
       </div>
     );
   }

@@ -2,7 +2,7 @@ import { z } from 'zod';
 import { roomCodeSchema } from './validation.ts';
 import type { GlimArt, AccessoryArt, EMOTE_GLYPHS } from './economy.ts';
 import type { Rarity } from './rarity.ts';
-import type { SettingValues } from './modes.ts';
+import type { Pacing, SettingValues } from './modes.ts';
 
 /**
  * The Socket.IO protocol between browsers and the game server.
@@ -166,6 +166,8 @@ export interface RoomView<G = unknown> {
     code: string;
     status: RoomStatus;
     modeId: string;
+    /** Host-paced games pause while the host is away; self-paced ones keep going. */
+    pacing: Pacing;
     variantId: string | null;
     title: string;
     setTitle: string;

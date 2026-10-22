@@ -679,6 +679,7 @@ export class Room {
         code: this.code,
         status: this.status,
         modeId: this.mode.meta.id,
+        pacing: this.mode.meta.pacing,
         variantId: this.variant?.meta.id ?? null,
         title: this.variant?.meta.title ?? this.mode.meta.title,
         setTitle: this.set.title,

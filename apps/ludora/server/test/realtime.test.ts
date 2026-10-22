@@ -108,6 +108,8 @@ describe('hosting and playing Classic over sockets', () => {
 
     const lobby = await hostViews.until((v) => v.players.length === 2);
     expect(lobby.room.status).toBe('lobby');
+    // Classic waits for the host, so the leave dialog can say the game pauses while they are away.
+    expect(lobby.room.pacing).toBe('host');
     expect(lobby.players.map((p: any) => p.name)).toContain('Quiet Fern');
 
     // Only the host can start.

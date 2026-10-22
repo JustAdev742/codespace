@@ -3,6 +3,7 @@ import type { RoomPlayerView, RoomView } from '@ludora/shared';
 import { useNow } from '../../../lib/useNow.ts';
 import { Pill, PlayerGlim, SIGN, StagePanel } from './stage.tsx';
 import { useAnnounce } from './announce.tsx';
+import { useLastAnswerWords } from './answerMemory.tsx';
 
 /*
  * Pieces shared by the round-based screens: the intro, the round header, the
@@ -76,12 +77,14 @@ export function RoundHeader({ round, total, children, big = false, label = 'Ques
 /** The wait after answering: the player's Glim and how many are still thinking. */
 export function LockedIn({ answered, eligible, avatar, seed, title = 'Answer locked in' }: { answered: number; eligible: number; avatar: RoomPlayerView['avatar'] | undefined; seed: string; title?: string }) {
   // Said once; the count is there to read, but re-reading it on every answer would drown a big class.
-  useAnnounce(`${title}.`);
+  const mine = useLastAnswerWords();
+  useAnnounce(`${title}.${mine ? ` Your answer: ${mine}.` : ''}`, title);
   return (
     <StagePanel className="flex items-center gap-4 px-4 py-4" as="div">
       <PlayerGlim avatar={avatar} seed={seed} size={84} bob className="shrink-0" />
       <div className="min-w-0">
         <p className="font-display text-2xl font-extrabold">{title}</p>
+        {mine ? <p className="font-bold break-words text-text">Your answer: {mine}</p> : null}
         <p className="font-semibold text-text-2">
           {answered} of {eligible} have answered.
         </p>

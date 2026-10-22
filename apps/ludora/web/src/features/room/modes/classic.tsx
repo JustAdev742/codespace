@@ -8,7 +8,7 @@ import { TimerBar } from '../game/TimerBar.tsx';
 import { ChoicesDisplay, ResultBanner, RevealAnswer } from '../game/Reveal.tsx';
 import { Leaderboard, TeamScores, type LeaderRow } from '../game/Leaderboard.tsx';
 import { Explanation, IntroScreen, LockedIn, RoundHeader, myAvatar } from '../game/parts.tsx';
-import { Pill, PlayerGlim, SIGN } from '../game/stage.tsx';
+import { Pill, PlayerGlim, SIGN, StagePanel } from '../game/stage.tsx';
 import { formatNumber, ordinal } from '../../../lib/format.ts';
 import { useAnnounce } from '../game/announce.tsx';
 
@@ -25,7 +25,8 @@ interface SyncView {
   answered: number;
   eligible: number;
   distribution: Record<string, number> | null;
-  you: { eligible: boolean; answered: boolean; correct: boolean | null; points: number | null; partial: number | null; streak: number } | null;
+  /** `joinedLate`: joined after this question started, so a missed answer does not count against them. */
+  you: { eligible: boolean; answered: boolean; joinedLate?: boolean; correct: boolean | null; points: number | null; partial: number | null; streak: number } | null;
 }
 
 export interface ClassicView {
@@ -40,6 +41,8 @@ export interface ClassicView {
   boosted?: boolean;
   alive: number | null;
   out: boolean;
+  /** Out because they joined a knockout game after it started: they watch. */
+  watching?: boolean;
   score: number | null;
 }
 
@@ -75,9 +78,11 @@ export function ClassicPlayer({ view, act, gameNow, paused, room }: ModeScreenPr
   if (view.out) {
     return (
       <div className="mx-auto flex w-full max-w-3xl flex-1 flex-col items-center justify-center gap-3 text-center">
-        <PlayerGlim avatar={myAvatar(room)} seed={seed} size={96} className="opacity-70 grayscale" />
-        <h2 className="font-display text-3xl font-extrabold">You are out</h2>
-        <p className="font-semibold text-text-2">Keep watching: {view.alive} still standing.</p>
+        <PlayerGlim avatar={myAvatar(room)} seed={seed} size={96} className={view.watching ? undefined : 'opacity-70 grayscale'} />
+        <h2 className="font-display text-3xl font-extrabold">{view.watching ? 'You are watching' : 'You are out'}</h2>
+        <p className="font-semibold text-text-2">
+          {view.watching ? `In a knockout game, people who join after the start watch. ${view.alive} still standing.` : `Keep watching: ${view.alive} still standing.`}
+        </p>
         <QuestionCard q={q.q} index={q.index} total={q.total} />
       </div>
     );
@@ -86,6 +91,8 @@ export function ClassicPlayer({ view, act, gameNow, paused, room }: ModeScreenPr
     const ack = await act({ type: 'answer', iid: q.iid, answer });
     return ack.ok;
   };
+  // Joined during this question and did not answer it: no result for it, they play from the next one.
+  const lateJoiner = Boolean(s.you?.joinedLate && !s.you.answered);
   return (
     <div className="mx-auto flex w-full max-w-3xl flex-col gap-4">
       <RoundHeader round={s.round} total={s.total}>
@@ -108,14 +115,27 @@ export function ClassicPlayer({ view, act, gameNow, paused, room }: ModeScreenPr
         )
       ) : (
         <div className="flex flex-col gap-4">
-          <ResultBanner correct={s.you?.answered ? (s.you.correct ?? false) : false} partial={s.you?.partial} points={s.you?.points} />
-          {!s.you?.answered ? <p className="font-semibold text-text-2">No answer this time.</p> : null}
+          {lateJoiner ? (
+            <JoinedMidQuestion />
+          ) : (
+            <>
+              <ResultBanner correct={s.you?.answered ? (s.you.correct ?? false) : false} partial={s.you?.partial} points={s.you?.points} />
+              {!s.you?.answered ? <p className="font-semibold text-text-2">No answer this time.</p> : null}
+            </>
+          )}
           {s.reveal ? <RevealAnswer q={q.q} reveal={s.reveal} compact /> : null}
           <Explanation text={s.explanation} />
         </div>
       )}
     </div>
   );
+}
+
+const JOINED_LATE = 'You joined during this question, so it does not count. You play from the next one.';
+
+function JoinedMidQuestion() {
+  useAnnounce(JOINED_LATE, 'late');
+  return <StagePanel className="px-4 py-3 font-semibold text-text">{JOINED_LATE}</StagePanel>;
 }
 
 export function ClassicHost({ view, gameNow, paused, room }: ModeScreenProps<ClassicView>) {

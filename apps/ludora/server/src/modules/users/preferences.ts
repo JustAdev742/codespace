@@ -1,10 +1,16 @@
 import { z } from 'zod';
 
+const theme = z.enum(['system', 'light', 'dark']);
+const reducedMotion = z.enum(['system', 'on', 'off']);
+const textSize = z.enum(['normal', 'large', 'larger']);
+const profileVisibility = z.enum(['public', 'friends', 'private']);
+const allowFriendRequests = z.enum(['everyone', 'friend_code', 'nobody']);
+
 export const preferencesSchema = z.object({
-  theme: z.enum(['system', 'light', 'dark']).default('system'),
-  reducedMotion: z.enum(['system', 'on', 'off']).default('system'),
+  theme: theme.default('system'),
+  reducedMotion: reducedMotion.default('system'),
   sound: z.boolean().default(true),
-  textSize: z.enum(['normal', 'large', 'larger']).default('normal'),
+  textSize: textSize.default('normal'),
   highContrast: z.boolean().default(false),
   notifications: z
     .object({
@@ -15,29 +21,27 @@ export const preferencesSchema = z.object({
     .default({ friendRequests: true, gameInvites: true, rewards: true }),
   privacy: z
     .object({
-      profileVisibility: z.enum(['public', 'friends', 'private']).default('public'),
-      allowFriendRequests: z.enum(['everyone', 'friend_code', 'nobody']).default('everyone'),
+      profileVisibility: profileVisibility.default('public'),
+      allowFriendRequests: allowFriendRequests.default('everyone'),
       showOnLeaderboards: z.boolean().default(true),
     })
     .default({ profileVisibility: 'public', allowFriendRequests: 'everyone', showOnLeaderboards: true }),
 });
 export type Preferences = z.infer<typeof preferencesSchema>;
 
+/**
+ * A change to some preferences. No defaults here: a field the request leaves
+ * out must stay out, or merging would put the player's other choices (larger
+ * text, less motion) back to their defaults.
+ */
 export const preferencesPatchSchema = z.object({
-  theme: preferencesSchema.shape.theme.optional(),
-  reducedMotion: preferencesSchema.shape.reducedMotion.optional(),
+  theme: theme.optional(),
+  reducedMotion: reducedMotion.optional(),
   sound: z.boolean().optional(),
-  textSize: preferencesSchema.shape.textSize.optional(),
+  textSize: textSize.optional(),
   highContrast: z.boolean().optional(),
   notifications: z.object({ friendRequests: z.boolean(), gameInvites: z.boolean(), rewards: z.boolean() }).partial().optional(),
-  privacy: z
-    .object({
-      profileVisibility: z.enum(['public', 'friends', 'private']),
-      allowFriendRequests: z.enum(['everyone', 'friend_code', 'nobody']),
-      showOnLeaderboards: z.boolean(),
-    })
-    .partial()
-    .optional(),
+  privacy: z.object({ profileVisibility, allowFriendRequests, showOnLeaderboards: z.boolean() }).partial().optional(),
 });
 
 /** Parse stored preferences, filling anything missing with defaults. Never throws. */
@@ -56,11 +60,15 @@ export function defaultPreferences(ageBand: string | null): Preferences {
   return p;
 }
 
+/** Only the keys a patch actually sets; an undefined value never overwrites a stored choice. */
+const defined = <T extends object>(o: T | undefined): Partial<T> => Object.fromEntries(Object.entries(o ?? {}).filter(([, v]) => v !== undefined)) as Partial<T>;
+
 export function mergePreferences(current: Preferences, patch: z.infer<typeof preferencesPatchSchema>): Preferences {
+  const { notifications, privacy, ...top } = patch;
   return preferencesSchema.parse({
     ...current,
-    ...patch,
-    notifications: { ...current.notifications, ...patch.notifications },
-    privacy: { ...current.privacy, ...patch.privacy },
+    ...defined(top),
+    notifications: { ...current.notifications, ...defined(notifications) },
+    privacy: { ...current.privacy, ...defined(privacy) },
   });
 }

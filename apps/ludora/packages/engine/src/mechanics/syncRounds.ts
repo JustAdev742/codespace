@@ -220,7 +220,8 @@ export interface SyncView {
   eligible: number;
   /** How many picked each choice. Only after the reveal. */
   distribution: Record<string, number> | null;
-  you: { eligible: boolean; answered: boolean; correct: boolean | null; points: number | null; partial: number | null; streak: number } | null;
+  /** `joinedLate`: joined after the open question started, so a missed answer is not held against them. */
+  you: { eligible: boolean; answered: boolean; joinedLate: boolean; correct: boolean | null; points: number | null; partial: number | null; streak: number } | null;
 }
 
 export function syncView<S extends { sync: SyncState }>(s: S, cfg: SyncConfig<S>, viewer: Viewer, ctx: ModeContext): SyncView {
@@ -236,9 +237,11 @@ export function syncView<S extends { sync: SyncState }>(s: S, cfg: SyncConfig<S>
   let you: SyncView['you'] = null;
   if (viewer.kind === 'player') {
     const a = sync.answers[viewer.playerId];
+    const joinedAt = ctx.player(viewer.playerId)?.joinedAt ?? 0;
     you = {
       eligible: cfg.canAnswer ? cfg.canAnswer(s, viewer.playerId, ctx) : true,
       answered: Boolean(a),
+      joinedLate: live && joinedAt > sync.startedAt,
       // Correctness stays hidden until the reveal so nobody can signal answers to friends.
       correct: revealed && a ? a.correct : null,
       points: revealed && a ? a.points : null,

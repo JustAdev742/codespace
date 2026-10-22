@@ -4,14 +4,14 @@ import type { Reaction } from '../../../lib/useRoom.ts';
 
 const EMOTES = ['wave', 'laugh', 'wow', 'clap', 'heart', 'fire', 'think', 'gg'];
 
-/** Floating reactions from the room, rising from the bottom edge. */
-export function ReactionLayer({ reactions }: { reactions: Reaction[] }) {
+/** Floating reactions from the room, rising from the bottom edge; projector-sized on the host screen. */
+export function ReactionLayer({ reactions, big = false }: { reactions: Reaction[]; big?: boolean }) {
   return (
     <div className="pointer-events-none fixed inset-x-0 bottom-20 z-40 h-0" aria-live="off">
       {reactions.map((r) => (
         <div key={r.key} className="absolute flex flex-col items-center" style={{ left: `${10 + ((r.key * 37) % 80)}%`, animation: 'reaction-float 3s var(--ease-out) forwards' }}>
-          <EmoteGlyph glyph={r.emote} size={48} />
-          <span className="paper mt-0.5 max-w-[8rem] truncate rounded-full border-2 border-ink px-2 text-xs font-bold">{r.name}</span>
+          <EmoteGlyph glyph={r.emote} size={big ? 76 : 48} />
+          <span className={`paper mt-0.5 truncate rounded-full border-2 border-ink font-bold ${big ? 'max-w-[14rem] px-3 py-0.5 text-[clamp(1rem,1.3vw,1.5rem)]' : 'max-w-[8rem] px-2 text-xs'}`}>{r.name}</span>
         </div>
       ))}
     </div>

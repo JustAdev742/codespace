@@ -50,7 +50,12 @@ function Podium({ room, big }: { room: RoomView; big: boolean }) {
                 <PlayerGlim avatar={a} seed={s.playerId} size={first ? 120 : 92} aura={first ? 'legendary' : null} pose={first ? 'cheer' : waving ? 'wave' : 'idle'} className={first ? (big ? 'size-[clamp(6rem,17vh,11.5rem)]' : 'size-[6rem]') : big ? 'size-[clamp(4.75rem,12.5vh,8.5rem)]' : 'size-[4.5rem]'} />
               </div>
               {first ? <Burst style={a?.victory?.style ?? 'festival'} hue={a?.victory?.hue ?? 42} size={big ? 380 : 250} rise delay={land + 380} count={20} /> : null}
-              <NameTag className={`mt-1 ${big ? 'text-[clamp(1rem,1.6vw,1.75rem)]' : 'text-sm'}`}>{s.name}</NameTag>
+              {big ? (
+                <NameTag className="mt-1 text-[clamp(1rem,1.6vw,1.75rem)]">{s.name}</NameTag>
+              ) : (
+                // A phone's podium column is narrow: names wrap onto a second line rather than lose their end.
+                <span className="paper mt-1 line-clamp-2 max-w-full rounded-[12px] border-2 border-ink px-2 py-0.5 text-center text-sm leading-tight font-bold break-words shadow-[0_2px_0_var(--ink)]">{s.name}</span>
+              )}
               <span className={`mt-1 font-display font-extrabold tabular ${big ? 'text-[clamp(1rem,1.7vw,1.9rem)]' : 'text-base'}`}>{s.label}</span>
             </div>
             <div className="mt-2 w-full overflow-hidden" style={{ height: `calc(var(--podium) * ${HEIGHT[place]})` }}>
