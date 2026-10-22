@@ -23,7 +23,9 @@ Last updated: 2026-10-22.
 
 - **Accounts**: register, sign in, guest play, claim a guest account, recovery
   codes, password change, lockout after repeated failures, privacy defaults for
-  under-13s. Sessions are HttpOnly cookies storing only a hash server-side.
+  under-13s. Sessions are HttpOnly cookies storing only a hash server-side. A
+  student who loses their recovery code gets a new one from their teacher
+  (Sign-in help on the class page) or from support; no email is involved (D38).
 - **Rooms**: 6-digit join codes, lobby, reconnection with a reconnect token,
   host controls (start, pause, resume, skip, end, kick, lock, practice bots,
   teams), late joining, solo rooms, per-socket rate limits, join limits per IP.
@@ -149,7 +151,8 @@ Last updated: 2026-10-22.
 - **End-to-end tests** (`e2e/`, Playwright against the production build and a
   fresh database, locally and in CI): a host and a guest play Classic from join code to results;
   a teacher writes a set with a picture and players see it in a game; a teacher
-  drafts questions with AI, keeps two and saves the set; a new
+  drafts questions with AI, keeps two and saves the set; a teacher makes a
+  student a recovery code and the student gets back in with it; a new
   player buys and opens a Lantern; a staff warning reaches the player and the
   audit log; thirteen player pages and every staff section fit a phone, have one
   main heading and log no errors, and the player pages pass axe.
@@ -163,22 +166,24 @@ creates and drops its own database).
 |---|---|---|
 | content | 2 | 112: catalogue integrity and every built-in question set |
 | engine | 13 | 715, including the conformance suite for every mode and variant |
-| server | 8 | 130: auth and rate limits (14), realtime (5), economy (20), staff (54), social and classes (16), uploads (6), AI drafts (11), reward counting (4) |
+| server | 9 | 133: auth and rate limits (14), realtime (5), economy (20), staff (54), social and classes (16), sign-in help (3), uploads (6), AI drafts (11), reward counting (4) |
 | web | 1 | 45: the set editor's checks, import and export |
 | shared | 0 | no tests of its own; its schemas are exercised by the other projects |
-| **Total** | **24** | **1002 passing** at the last full run |
+| **Total** | **25** | **1005 passing** at the last full run |
 
-End-to-end: `npm run test:e2e` (needs Postgres; builds first, then runs 7
-browser tests against a fresh `ludora_e2e` database). All 7 pass.
+End-to-end: `npm run test:e2e` (needs Postgres; builds first, then runs 8
+browser tests against a fresh `ludora_e2e` database). All 8 pass.
 
 `npm run typecheck` is clean. `npm run lint` reports 12 stylistic warnings and
 no errors.
 
 ## Open items
 
-Not built yet:
-- **Email.** An outbox table exists; nothing sends email yet, so there is no
-  email verification or email password reset (recovery codes cover resets).
+Left out on purpose:
+- **Email.** Accounts do not collect email addresses (D38): recovery codes,
+  teachers and support cover sign-in help, which suits an audience of
+  children. The unused outbox table and `SMTP_URL` setting remain in case an
+  operator wants email later.
 
 Not checked yet:
 - **A manual screen-reader pass.** Automated axe checks pass wherever they run,

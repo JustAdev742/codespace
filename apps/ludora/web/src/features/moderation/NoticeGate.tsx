@@ -7,7 +7,7 @@ import { Dialog } from '../../ui/primitives.tsx';
 
 interface Notice {
   id: number;
-  action: 'warn' | 'mute' | 'unmute' | 'reset_name';
+  action: 'warn' | 'mute' | 'unmute' | 'reset_name' | 'teacher_recovery_code';
   reason: string;
   until: string | null;
   createdAt: string;
@@ -18,6 +18,7 @@ const TITLES: Record<Notice['action'], string> = {
   mute: 'Your account is muted for now',
   unmute: 'Your mute has been lifted',
   reset_name: 'Your display name was changed',
+  teacher_recovery_code: 'Your teacher made you a new recovery code',
 };
 
 function body(n: Notice): string {
@@ -29,12 +30,15 @@ function body(n: Notice): string {
       return 'A moderator replaced your display name with a neutral one. You can pick a new, friendly name in Settings.';
     case 'unmute':
       return 'Reactions and name changes are back on.';
+    case 'teacher_recovery_code':
+      // The reason names the teacher and the class.
+      return `${n.reason} made a new recovery code for your account, so you can set a new password if you cannot sign in. Your old code no longer works. If you did not ask for this, tell your teacher.`;
     default:
       return 'Please read this and keep Ludora friendly for everyone.';
   }
 }
 
-/** Shows moderation notices (warnings, mutes, name resets) until the player dismisses each one. */
+/** Shows moderation notices (warnings, mutes, name resets), and a teacher's new recovery code, until the player dismisses each one. */
 export function NoticeGate() {
   const me = useMe();
   const qc = useQueryClient();
@@ -66,7 +70,8 @@ export function NoticeGate() {
         </Button>
       }
     >
-      {current.action !== 'unmute' ? (
+      {/* A moderator's reason is quoted; the teacher and class are already in the text of a recovery code notice. */}
+      {current.action !== 'unmute' && current.action !== 'teacher_recovery_code' ? (
         <blockquote className="rounded-[12px] border-l-4 border-lantern bg-surface-2 px-4 py-3 text-text whitespace-pre-wrap">{current.reason}</blockquote>
       ) : null}
     </Dialog>

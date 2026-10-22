@@ -15,7 +15,8 @@ const idParam = z.object({ id: z.coerce.number().int().positive() });
 const setParam = z.object({ id: z.string().uuid('No set with that id.') });
 
 /** Notices a player must see: warnings, mutes and name resets, until they dismiss them. */
-const NOTICE_ACTIONS = ['warn', 'mute', 'reset_name', 'unmute'] as const;
+/** What the player is told about: moderation, and a teacher making them a new recovery code (D38). */
+const NOTICE_ACTIONS = ['warn', 'mute', 'reset_name', 'unmute', 'teacher_recovery_code'] as const;
 
 export async function moderationRoutes(app: FastifyInstance, deps: AppDeps) {
   const { db } = deps;

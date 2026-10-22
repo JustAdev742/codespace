@@ -32,7 +32,8 @@ interface Detail {
     confirmWord: string;
   };
   roles: { role: Role; reason: string | null; grantedAt: string; grantedBy: string | null }[];
-  moderation: { id: number; action: ModerationAction; reason: string; until: string | null; actor: string; createdAt: string; acknowledgedAt: string | null }[];
+  /** Moderation, plus account help the player is told about: a teacher making them a recovery code (D38). */
+  moderation: { id: number; action: ModerationAction | 'teacher_recovery_code'; reason: string; until: string | null; actor: string; createdAt: string; acknowledgedAt: string | null }[];
   reports: { id: number; reason: ReportReason; details: string; status: string; createdAt: string }[];
   sessions: { active: number; lastSeenAt: string | null };
   stats: { gamesPlayed: number; gamesWon: number; gamesHosted: number; questionsAnswered: number; questionsCorrect: number; packsOpened: number; dailyStreak: number } | null;
@@ -190,11 +191,11 @@ export default function UserDetail() {
               empty="No moderation actions."
               columns={[
                 { key: 'when', header: 'When', cell: (m) => dateTime(m.createdAt) },
-                { key: 'action', header: 'Action', cell: (m) => MODERATION_ACTION_INFO[m.action]?.past ?? m.action },
+                { key: 'action', header: 'Action', cell: (m) => (m.action === 'teacher_recovery_code' ? 'Teacher made a recovery code' : MODERATION_ACTION_INFO[m.action].past) },
                 { key: 'reason', header: 'Reason', cell: (m) => <span className="whitespace-pre-wrap">{m.reason}</span> },
                 { key: 'until', header: 'Until', cell: (m) => (m.until ? dateTime(m.until) : '-') },
                 { key: 'by', header: 'By', cell: (m) => m.actor },
-                { key: 'seen', header: 'Seen by player', cell: (m) => (m.action === 'warn' || m.action === 'mute' || m.action === 'reset_name' ? (m.acknowledgedAt ? dateTime(m.acknowledgedAt) : 'Not yet') : '-') },
+                { key: 'seen', header: 'Seen by player', cell: (m) => (m.action === 'warn' || m.action === 'mute' || m.action === 'reset_name' || m.action === 'teacher_recovery_code' ? (m.acknowledgedAt ? dateTime(m.acknowledgedAt) : 'Not yet') : '-') },
               ]}
             />
           </Card>

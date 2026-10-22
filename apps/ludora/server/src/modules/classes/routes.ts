@@ -3,18 +3,20 @@ import { and, asc, count, desc, eq, inArray, isNull, sql } from 'drizzle-orm';
 import { z } from 'zod';
 import { getMode, getVariant } from '@ludora/engine';
 import { soloBlocker } from '@ludora/engine/catalog';
-import { levelFromXp, questionSchema, roomOptionsSchema, type Question } from '@ludora/shared';
+import { hasPermission, levelFromXp, questionSchema, roomOptionsSchema, type Question } from '@ludora/shared';
 import type { AppDeps } from '../../app.ts';
 import type { DbOrTx } from '../../db/client.ts';
-import { assignments, classMembers, classes, gameParticipants, gameSessions, questionSets, users } from '../../db/schema.ts';
+import { assignments, classMembers, classes, gameParticipants, gameSessions, moderationActions, questionSets, users } from '../../db/schema.ts';
 import { outer } from '../../db/sql.ts';
 import { noStore, requireAccount, type AuthContext } from '../../http/context.ts';
 import { AppError, conflict, forbidden, notFound } from '../../lib/errors.ts';
-import { CLEAR_ALPHABET, randomCode } from '../../lib/crypto.ts';
+import { CLEAR_ALPHABET, randomCode, recoveryCode } from '../../lib/crypto.ts';
 import { parse } from '../../lib/validate.ts';
 import { isModePlayableBy } from '../modes/service.ts';
 import { canView, loadSet } from '../sets/access.ts';
 import { questionReport } from '../analytics/report.ts';
+import { audit } from '../admin/common.ts';
+import { hashSecret, normalizeRecovery, rolesOf } from '../auth/service.ts';
 
 /*
  * Classes and assignments. A teacher account creates a class and shares its
@@ -225,6 +227,42 @@ export async function classRoutes(app: FastifyInstance, deps: AppDeps) {
     if (!teacher && userId !== auth.user.id) throw forbidden('Only the teacher can remove other students.');
     await db.delete(classMembers).where(and(eq(classMembers.classId, id), eq(classMembers.userId, userId)));
     return { ok: true };
+  });
+
+  /**
+   * Sign-in help (D38): the teacher makes a new recovery code for a student who cannot sign in and
+   * has lost theirs. The student sets a new password with it on the recovery page, as with their own
+   * code. Shown once; the old code stops working; the student is told who made it, and staff can see
+   * it in the audit log. Teacher and staff accounts get this help from Ludora support instead.
+   */
+  app.post('/api/classes/:id/members/:userId/recovery-code', { config: { rateLimit: { max: 30, timeWindow: '1 hour' } } }, async (req, reply) => {
+    noStore(reply);
+    const auth = requireAccount(req);
+    const { id, userId } = parse(z.object({ id: z.string().uuid(), userId: z.string().uuid() }), req.params);
+    const { cls, teacher } = await loadClass(db, id, auth);
+    if (!teacher) throw forbidden('Only the teacher can make recovery codes for students.');
+    if (cls.archivedAt) throw conflict('This class is archived. Restore it to help its students.');
+    const code = recoveryCode();
+    const codeHash = await hashSecret(normalizeRecovery(code));
+    const student = await db.transaction(async (tx) => {
+      const [row] = await tx
+        .select({ username: users.username, isGuest: users.isGuest, accountType: users.accountType })
+        .from(classMembers)
+        .innerJoin(users, eq(users.id, classMembers.userId))
+        .where(and(eq(classMembers.classId, id), eq(classMembers.userId, userId)))
+        .limit(1)
+        .for('update', { of: users });
+      if (!row) throw notFound('That student is not in this class.');
+      if (row.isGuest || !row.username) throw conflict('Guest accounts have no password to recover.');
+      if (row.accountType === 'teacher' || hasPermission(await rolesOf(tx, userId), 'staff.access')) throw forbidden('Teacher and staff accounts get sign-in help from Ludora support.');
+      // A new code also lifts a lockout from too many wrong passwords.
+      await tx.update(users).set({ recoveryCodeHash: codeHash, failedLogins: 0, lockedUntil: null, updatedAt: new Date() }).where(eq(users.id, userId));
+      await tx.insert(moderationActions).values({ targetUserId: userId, actorId: auth.user.id, action: 'teacher_recovery_code', reason: `${auth.user.displayName} (${cls.name})` });
+      // The code itself is never written to the audit log.
+      await audit(deps, req, tx, { actor: auth, action: 'class.recovery_code', targetType: 'user', targetId: userId, targetName: row.username, reason: `Teacher of ${cls.name}` });
+      return row;
+    });
+    return { ok: true, recoveryCode: code, username: student.username };
   });
 
   app.post('/api/classes/:id/assignments', { config: { rateLimit: { max: 60, timeWindow: '1 hour' } } }, async (req) => {

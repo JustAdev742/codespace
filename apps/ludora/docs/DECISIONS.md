@@ -234,3 +234,12 @@ AI text reaches players without a person choosing it. Each draft must pass
 the same question rules as a typed one; any that fail are dropped and counted.
 Daily allowances per account and per site cap the spending. Requests are
 recorded without their topic, so a teacher's notes are not kept.
+
+**D38. No email; sign-in help comes from recovery codes, teachers and support.**
+Most players are children, and an email address is personal data Ludora does
+not need. So accounts do not collect one. Everyone gets a recovery code at
+sign-up. A student who loses theirs asks their teacher, who can make a new one
+from the class page; teacher and staff accounts ask support. A teacher's code
+changes nothing until the student uses it, the student is told who made it,
+and the audit log records it without the code. This also means there are no
+reset links to phish.

@@ -2,7 +2,7 @@ import { useMemo, useState, type FormEvent } from 'react';
 import { Link, useNavigate, useParams } from 'react-router';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { Archive, ArchiveRestore, ClipboardList, Copy, LogOut, Pencil, Play, Plus, RefreshCw, School, Search, Trash2, UserMinus, Users } from 'lucide-react';
+import { Archive, ArchiveRestore, ClipboardList, Copy, KeyRound, LogOut, Pencil, Play, Plus, RefreshCw, School, Search, Trash2, UserMinus, Users } from 'lucide-react';
 import { api, ApiError } from '../../lib/api.ts';
 import { useMe } from '../../lib/session.ts';
 import { useNow } from '../../lib/useNow.ts';
@@ -12,6 +12,7 @@ import { Badge, Dialog, EmptyState, ErrorNotice, Field, Input, PageHeader, Panel
 import { Button, ButtonLink, IconButton } from '../../ui/Button.tsx';
 import { BackLink, dateText, dateTimeText, errorText, hasStatus, NoValue, TableBox, Th, usePageTitle } from '../reports/reportUi.tsx';
 import { AssignmentDialog } from './AssignmentDialog.tsx';
+import { CodeTicket } from '../auth/RecoveryCodeDialog.tsx';
 import {
   classKeys,
   copyText,
@@ -101,7 +102,7 @@ function TeacherAssignmentRow({ a, classId, now, onEdit, onDelete }: { a: Teache
   );
 }
 
-function Roster({ members, onRemove }: { members: ClassMember[]; onRemove: (m: ClassMember) => void }) {
+function Roster({ members, onRemove, onHelp }: { members: ClassMember[]; onRemove: (m: ClassMember) => void; onHelp: (m: ClassMember) => void }) {
   const [q, setQ] = useState('');
   const shown = useMemo(() => {
     const t = q.trim().toLowerCase();
@@ -123,7 +124,7 @@ function Roster({ members, onRemove }: { members: ClassMember[]; onRemove: (m: C
           <Input type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Find a student" className="h-10 pl-9" />
         </label>
       ) : null}
-      <TableBox caption="Students in this class" minWidth={600}>
+      <TableBox caption="Students in this class" minWidth={720}>
         <thead className="bg-surface-2">
           <tr>
             <Th>Student</Th>
@@ -155,10 +156,15 @@ function Roster({ members, onRemove }: { members: ClassMember[]; onRemove: (m: C
                   <NoValue label="Not seen yet" />
                 )}
               </td>
-              <td className="px-3 py-2 text-right">
-                <Button size="sm" variant="ghost" icon={<UserMinus className="size-4" />} onClick={() => onRemove(m)} aria-label={`Remove ${m.displayName} from the class`}>
-                  Remove
-                </Button>
+              <td className="px-3 py-2">
+                <div className="flex justify-end gap-1">
+                  <Button size="sm" variant="ghost" icon={<KeyRound className="size-4" aria-hidden />} onClick={() => onHelp(m)}>
+                    Sign-in help<span className="sr-only"> for {m.displayName}</span>
+                  </Button>
+                  <Button size="sm" variant="ghost" icon={<UserMinus className="size-4" />} onClick={() => onRemove(m)} aria-label={`Remove ${m.displayName} from the class`}>
+                    Remove
+                  </Button>
+                </div>
               </td>
             </tr>
           ))}
@@ -239,6 +245,7 @@ function TeacherView({ data }: { data: TeacherClassDetail }) {
   const [editor, setEditor] = useState<{ editing: TeacherAssignment | null } | null>(null);
   const [deleting, setDeleting] = useState<TeacherAssignment | null>(null);
   const [removing, setRemoving] = useState<ClassMember | null>(null);
+  const [helping, setHelping] = useState<ClassMember | null>(null);
   const refresh = () => qc.invalidateQueries({ queryKey: classKeys.all });
 
   const unarchive = useMutation({
@@ -323,7 +330,7 @@ function TeacherView({ data }: { data: TeacherClassDetail }) {
           )}
         </TabPanel>
         <TabPanel value="students" className="focus-visible:outline-offset-4">
-          <Roster members={data.members} onRemove={setRemoving} />
+          <Roster members={data.members} onRemove={setRemoving} onHelp={setHelping} />
         </TabPanel>
       </Tabs>
 
@@ -375,6 +382,8 @@ function TeacherView({ data }: { data: TeacherClassDetail }) {
         }}
       />
 
+      <SignInHelpDialog classId={cls.id} student={helping} onClose={() => setHelping(null)} />
+
       <ConfirmDialog
         open={removing !== null}
         onOpenChange={(open) => !open && setRemoving(null)}
@@ -389,6 +398,76 @@ function TeacherView({ data }: { data: TeacherClassDetail }) {
         }}
       />
     </>
+  );
+}
+
+/**
+ * Sign-in help (D38): a new recovery code for a student who cannot sign in and has lost theirs.
+ * Shown once. The student uses it on the recovery page, like their own code.
+ */
+function SignInHelpDialog({ classId, student, onClose }: { classId: string; student: ClassMember | null; onClose: () => void }) {
+  const [result, setResult] = useState<{ code: string; username: string } | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [problem, setProblem] = useState<string | null>(null);
+  const name = student?.displayName ?? 'this student';
+  const close = () => {
+    onClose();
+    setResult(null);
+    setProblem(null);
+  };
+  const make = async () => {
+    if (!student) return;
+    setBusy(true);
+    setProblem(null);
+    try {
+      const res = await api.post<{ recoveryCode: string; username: string }>(`/api/classes/${classId}/members/${student.id}/recovery-code`);
+      setResult({ code: res.recoveryCode, username: res.username });
+    } catch (err) {
+      setProblem(errorText(err, 'The code was not made. Try again.'));
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <Dialog
+      open={student !== null}
+      onOpenChange={(open) => !open && !busy && close()}
+      title={`Help ${name} sign in`}
+      description={result ? undefined : `If ${name} cannot sign in and has lost their recovery code, make them a new one. Their old code stops working, and they will see that you made it.`}
+      footer={
+        result ? (
+          <Button variant="primary" onClick={close}>
+            Done
+          </Button>
+        ) : (
+          <>
+            <Button onClick={close} disabled={busy}>
+              Cancel
+            </Button>
+            <Button variant="primary" icon={<KeyRound className="size-4" aria-hidden />} loading={busy} onClick={() => void make()}>
+              Make a recovery code
+            </Button>
+          </>
+        )
+      }
+    >
+      {result ? (
+        <div className="flex flex-col gap-4">
+          <CodeTicket code={result.code} label={`Recovery code for ${name}`} />
+          <ol className="flex list-decimal flex-col gap-1.5 pl-5 text-sm text-text">
+            <li>On the sign-in page, they choose Forgot your password?</li>
+            <li>
+              They enter their username, <strong className="font-semibold">{result.username}</strong>, this code and a new password.
+            </li>
+          </ol>
+          <p className="text-sm text-text-2">Give it to them privately. It works once, and it will not be shown again.</p>
+        </div>
+      ) : problem ? (
+        <p role="alert" className="text-sm font-semibold text-ember">
+          {problem}
+        </p>
+      ) : null}
+    </Dialog>
   );
 }
 

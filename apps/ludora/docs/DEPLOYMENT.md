@@ -36,7 +36,7 @@ Nothing secret is committed; copy `.env.example` to `.env` for compose.
 | `ANTHROPIC_API_KEY` | no | Turns on AI question drafts in the set editor, once staff also switch on the `ai.question_drafts` flag. It stays on the server and is never sent to browsers. |
 | `ANTHROPIC_MODEL` | no | The Claude model that drafts questions. Default `claude-opus-5-5`. |
 | `AI_DRAFTS_DAILY_LIMIT` | no | Draft requests allowed across the whole site in any 24 hours, to cap spending. Default 500. Each account also has its own allowance of 30 a day. |
-| `SMTP_URL` | no | Reserved for email, which is not built yet. |
+| `SMTP_URL` | no | Unused: Ludora does not send email (D38). |
 
 ## Running with compose
 

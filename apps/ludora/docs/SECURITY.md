@@ -29,6 +29,13 @@ a security problem privately to the maintainers rather than in a public issue.
   password change, recovery, suspension and ban.
 - Recovery: a one-time recovery code shown at sign-up; support can issue a new one
   (which signs the account out everywhere) only for accounts they outrank.
+- Sign-in help from a teacher (D38): the teacher of an active class can make a
+  new recovery code for a student in it, shown once. It replaces the old code
+  and lifts a lockout, but changes nothing else until the student uses it. Never
+  for teacher or staff accounts, never from outside the class (which is not even
+  confirmed to exist), audited without the code, and the student gets a notice
+  naming the teacher and class. There is no email, so no reset link can be
+  phished or intercepted.
 
 ## Requests
 
