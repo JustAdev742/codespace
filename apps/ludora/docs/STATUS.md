@@ -50,7 +50,14 @@ Last updated: 2026-10-22.
   game was scanned the same way while being played, host on a projector-sized
   screen and player on a phone, from the lobby to the results, in all 14 modes
   (Classic in both themes): 120 scans, no violations after one fix (Lantern
-  Match card names now contain every word on the card). Buttons
+  Match card names now contain every word on the card). For screen reader
+  users the game announces each change once through a single polite live
+  region: the start, each question with its number, the result with the right
+  answer, a five-second warning, the player's place, pauses and the end. When
+  the answer button that had focus disappears, focus moves to the new question.
+  This was checked by recording the accessibility tree and every live-region
+  message through a whole game, and the end-to-end game test asserts the focus
+  and the messages. Buttons
   whose visible text is terse (Buy 150, collection cards) take their accessible
   names from their content, so speech users can say what they see. Automated
   checks cover only part of WCAG; a manual screen-reader pass has not been done.
@@ -186,8 +193,9 @@ Left out on purpose:
   operator wants email later.
 
 Not checked yet:
-- **A manual screen-reader pass.** Automated axe checks pass wherever they run,
-  but nobody has played a game with NVDA, JAWS or VoiceOver.
+- **A manual screen-reader pass.** Automated axe checks pass wherever they run
+  and the game's announcements were recorded and tested, but nobody has played
+  a game with NVDA, JAWS or VoiceOver.
 
 ## Running it
 

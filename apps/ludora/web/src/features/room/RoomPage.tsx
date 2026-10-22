@@ -17,6 +17,7 @@ import { ReportDialog } from '../moderation/ReportDialog.tsx';
 import { DebugOverlay } from './DebugOverlay.tsx';
 import type { RoomView } from '@ludora/shared';
 import './stage.css';
+import { Announcer, useAnnounce } from './game/announce.tsx';
 
 const nameKey = (code: string) => `ludora.name.${code}`;
 const spaced = (code: string) => `${code.slice(0, 3)} ${code.slice(3)}`;
@@ -105,6 +106,16 @@ function HostControls({ room, handle }: { room: RoomView; handle: RoomHandle }) 
   );
 }
 
+/** Says when the host pauses, and when the game is back on after a pause. */
+function PauseNews({ paused, hostConnected }: { paused: boolean; hostConnected: boolean }) {
+  const [wasPaused, setWasPaused] = useState(paused);
+  useEffect(() => {
+    if (paused) setWasPaused(true);
+  }, [paused]);
+  useAnnounce(paused ? `The game is paused. ${hostConnected ? 'The host will be back in a moment.' : 'Waiting for the host to reconnect.'}` : wasPaused ? 'The game is back on.' : null, paused);
+  return null;
+}
+
 function GameStage({ room, handle, isHost }: { room: RoomView; handle: RoomHandle; isHost: boolean }) {
   const screens = MODE_SCREENS[room.room.modeId];
   const paused = room.room.status === 'paused';
@@ -115,19 +126,20 @@ function GameStage({ room, handle, isHost }: { room: RoomView; handle: RoomHandl
   const Screen = isHost ? screens.Host : screens.Player;
   return (
     <div className="relative flex flex-1 flex-col">
+      <PauseNews paused={paused} hostConnected={room.room.hostConnected} />
       <Suspense fallback={<Spinner />}>
         <Screen view={room.game} room={room} act={handle.act} gameNow={handle.gameNow} paused={paused} />
       </Suspense>
       {paused && isHost ? (
         // The host screen is on the projector: tell the room, but leave the question readable.
-        <div className="pointer-events-none absolute inset-x-0 top-0 z-20 flex justify-center" role="status">
+        <div className="pointer-events-none absolute inset-x-0 top-0 z-20 flex justify-center">
           <span className="paper stage-card flex items-center gap-2 px-5 py-2 font-display text-[clamp(1.25rem,2vw,2rem)] font-extrabold">
             <Pause className="size-[1.1em]" aria-hidden /> Paused
           </span>
         </div>
       ) : null}
       {paused && !isHost ? (
-        <div className="absolute inset-0 z-20 grid place-items-center rounded-[24px] bg-[rgb(12_8_40/0.62)] backdrop-blur-sm" role="status">
+        <div className="absolute inset-0 z-20 grid place-items-center rounded-[24px] bg-[rgb(12_8_40/0.62)] backdrop-blur-sm">
           <div className="paper stage-card mx-4 flex max-w-xs flex-col items-center gap-1 px-6 py-5 text-center">
             <Pause className="mb-1 size-10" aria-hidden />
             <p className="font-display text-3xl font-extrabold">Paused</p>
@@ -218,6 +230,7 @@ export default function RoomPage() {
 
   return (
     <Stage className={STAGE} lanterns="game">
+      <Announcer>
       <header className="sticky top-0 z-30 border-b border-white/12 bg-[rgb(16_10_58/0.55)] backdrop-blur-md">
         <div className="flex h-14 items-center gap-2.5 px-3 sm:h-16 sm:gap-3 sm:px-5">
           {/* On a phone, a host mid-game needs the header's width for the game controls. */}
@@ -277,6 +290,7 @@ export default function RoomPage() {
       <FeedToasts feed={room.feed} />
       <ReactionLayer reactions={handle.reactions} />
       {debug ? <DebugOverlay handle={handle} /> : null}
+      </Announcer>
     </Stage>
   );
 }

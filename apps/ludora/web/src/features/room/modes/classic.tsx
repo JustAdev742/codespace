@@ -10,6 +10,7 @@ import { Leaderboard, TeamScores, type LeaderRow } from '../game/Leaderboard.tsx
 import { Explanation, IntroScreen, LockedIn, RoundHeader, myAvatar } from '../game/parts.tsx';
 import { Pill, PlayerGlim, SIGN } from '../game/stage.tsx';
 import { formatNumber, ordinal } from '../../../lib/format.ts';
+import { useAnnounce } from '../game/announce.tsx';
 
 /* Views for Classic (and every host-paced mode built on synced rounds with the same view shape). */
 
@@ -45,6 +46,8 @@ export interface ClassicView {
 export function ClassicPlayer({ view, act, gameNow, paused, room }: ModeScreenProps<ClassicView>) {
   const s = view.sync;
   const seed = room.me.playerId ?? 'you';
+  const me = view.board.you;
+  useAnnounce(s.phase === 'leaderboard' && me ? `You are ${ordinal(me.rank)} with ${formatNumber(me.score)} points.` : null, `${s.phase}${s.round}`);
   if (s.phase === 'intro') {
     return (
       <IntroScreen kicker="Get ready" title={room.room.title} until={s.phaseEndsAt} gameNow={gameNow} room={room} art={<PlayerGlim avatar={myAvatar(room)} seed={seed} size={120} bob />}>
@@ -53,7 +56,6 @@ export function ClassicPlayer({ view, act, gameNow, paused, room }: ModeScreenPr
     );
   }
   if (s.phase === 'leaderboard' || s.phase === 'done') {
-    const me = view.board.you;
     return (
       <div className="mx-auto flex w-full max-w-xl flex-col gap-4">
         <div className="flex items-center gap-3">
@@ -152,11 +154,9 @@ export function ClassicHost({ view, gameNow, paused, room }: ModeScreenProps<Cla
           </Pill>
         ) : null}
         {view.suddenDeath ? <Pill className="px-5 py-1.5">{view.alive} still standing</Pill> : null}
-        <span aria-live="polite">
-          <Pill className="px-5 py-1.5">
-            {s.answered} of {s.eligible} answered
-          </Pill>
-        </span>
+        <Pill className="px-5 py-1.5">
+          {s.answered} of {s.eligible} answered
+        </Pill>
       </RoundHeader>
       {s.phase === 'question' ? <TimerBar deadline={q.deadline} start={q.shownAt} gameNow={gameNow} paused={paused} size="lg" /> : null}
       <QuestionCard q={q.q} size="lg" />

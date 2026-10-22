@@ -317,9 +317,7 @@ export function ConfidenceHost({ view, gameNow, paused, room }: ModeScreenProps<
   }
   const header = (count: string) => (
     <RoundHeader round={view.round} total={view.total} big>
-      <span aria-live="polite">
-        <Pill className="px-5 py-1.5">{count}</Pill>
-      </span>
+      <Pill className="px-5 py-1.5">{count}</Pill>
     </RoundHeader>
   );
   if (view.phase === 'wager') {

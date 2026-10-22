@@ -1,5 +1,6 @@
-import type { ReactNode } from 'react';
+import { useEffect, useRef, type ReactNode } from 'react';
 import type { Media, PublicQuestion } from '@ludora/shared';
+import { useAnnounce } from './announce.tsx';
 
 const IMAGE_HEIGHT = {
   /** Projector: beside the prompt, as tall as the screen comfortably allows. */
@@ -33,6 +34,14 @@ export function QuestionImage({ media, size, className = '' }: { media: Media; s
  * `size="md"` is the phone version, white on the dusk sky, with the picture underneath.
  */
 export function QuestionCard({ q, index, total, children, size = 'md' }: { q: PublicQuestion; index?: number | undefined; total?: number | undefined; children?: ReactNode; size?: 'md' | 'lg' }) {
+  // A new question is read out. If the answer button that had focus went away with the last one,
+  // focus moves to the new prompt, so keyboard and screen reader users keep their place.
+  const key = `${index ?? ''}|${q.prompt}`;
+  useAnnounce(index !== undefined && total ? `Question ${index + 1} of ${total}. ${q.prompt}` : q.prompt, key);
+  const heading = useRef<HTMLHeadingElement>(null);
+  useEffect(() => {
+    if (!document.activeElement || document.activeElement === document.body) heading.current?.focus({ preventScroll: true });
+  }, [key]);
   const len = q.prompt.length;
   const many = (q.type === 'mcq' || q.type === 'multi') && q.choices.length > 4;
   const counter =
@@ -47,7 +56,9 @@ export function QuestionCard({ q, index, total, children, size = 'md' }: { q: Pu
       <div className="paper stage-card flex flex-col gap-3 px-[clamp(1.25rem,2.6vw,3.25rem)] py-[clamp(1rem,2.6vh,2.25rem)]">
         {counter}
         <div className="flex flex-col gap-[clamp(1rem,2vw,2.5rem)] sm:flex-row sm:items-center">
-          <h2 className={`min-w-0 flex-1 font-display leading-[1.06] font-extrabold break-words text-text ${text} max-sm:text-[1.9rem]`}>{q.prompt}</h2>
+          <h2 ref={heading} tabIndex={-1} className={`min-w-0 flex-1 font-display leading-[1.06] font-extrabold break-words text-text outline-none ${text} max-sm:text-[1.9rem]`}>
+            {q.prompt}
+          </h2>
           {q.media ? <QuestionImage media={q.media} size={many ? 'hostCompact' : 'host'} className="self-start sm:max-w-[42%] sm:self-auto" /> : null}
         </div>
         {children}
@@ -58,7 +69,9 @@ export function QuestionCard({ q, index, total, children, size = 'md' }: { q: Pu
   return (
     <div className="flex flex-col gap-2.5">
       {counter}
-      <h2 className={`font-display font-extrabold text-text ${text}`}>{q.prompt}</h2>
+      <h2 ref={heading} tabIndex={-1} className={`font-display font-extrabold text-text outline-none ${text}`}>
+        {q.prompt}
+      </h2>
       {q.media ? <QuestionImage media={q.media} size={many || len > 70 ? 'phoneCompact' : 'phone'} className="self-start" /> : null}
       {children}
     </div>

@@ -32,7 +32,8 @@ test('a host and a player play Classic from join code to results', async ({ brow
   await player.goto(`/join/${code}`);
   await player.getByLabel('Your name').fill('Sunny Otter');
   await player.getByRole('button', { name: 'Join game' }).click();
-  await expect(player.getByText('You are in!')).toBeVisible();
+  // Exact: the screen reader announcer also says these words, inside a longer sentence.
+  await expect(player.getByText('You are in!', { exact: true })).toBeVisible();
   await expect(host.page.getByText('Sunny Otter', { exact: true })).toBeVisible();
 
   const next = host.page.getByRole('button', { name: /Next|Skip ahead/ });
@@ -44,18 +45,24 @@ test('a host and a player play Classic from join code to results', async ({ brow
     ['Spiders are insects.', 'False'],
     ['Water boils at 100 °C at sea level.', 'True'],
   ] as const;
+  const announcer = player.locator('.sr-only[role="status"][aria-live="polite"]');
   for (const [i, [prompt, answer]] of rounds.entries()) {
-    await expect(player.getByText(prompt)).toBeVisible();
+    await expect(player.getByRole('heading', { name: prompt })).toBeVisible();
+    // The answer button that had focus went with the last question, so focus moves to the new one.
+    await expect(player.getByRole('heading', { name: prompt })).toBeFocused();
+    await expect(announcer).toContainText(`Question ${i + 1} of 3.`);
     await player.getByRole('button', { name: new RegExp(`^[A-F]? ?${answer}$`) }).first().click();
     // Everyone has answered, so the round closes and shows the answer.
-    await expect(player.getByText('Correct!')).toBeVisible();
+    await expect(player.getByText('Correct!', { exact: true })).toBeVisible();
+    await expect(announcer).toContainText(`Correct! Plus`);
+    await expect(announcer).toContainText(`The answer was ${answer}.`);
     await next.click();
     if (i < rounds.length - 1) {
       await expect(host.page.getByText('Leaderboard')).toBeVisible();
       await next.click();
     }
   }
-  await expect(player.getByText('Game over')).toBeVisible();
+  await expect(player.getByRole('heading', { level: 1, name: 'Game over' })).toBeVisible();
   await expect(host.page.getByText(/Game over|Results/).first()).toBeVisible();
   // Guests are told how to keep rewards, rather than given any.
   await expect(player.getByText(/Sign in before you join/)).toBeVisible();

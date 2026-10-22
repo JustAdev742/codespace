@@ -307,11 +307,9 @@ export function LanternOutHost({ view, gameNow, paused, room }: ModeScreenProps<
           <Pill className="px-4 py-1.5">
             <Wind className="size-[0.9em]" aria-hidden /> {view.out} out
           </Pill>
-          <span aria-live="polite">
-            <Pill className="px-4 py-1.5">
-              {s.answered} of {s.eligible} answered
-            </Pill>
-          </span>
+          <Pill className="px-4 py-1.5">
+            {s.answered} of {s.eligible} answered
+          </Pill>
         </RoundHeader>
         <RevivalBanner view={view} big />
         {s.phase === 'question' ? <TimerBar deadline={q.deadline} start={q.shownAt} gameNow={gameNow} paused={paused} tone={view.revival ? 'violet' : 'amber'} size="lg" /> : null}

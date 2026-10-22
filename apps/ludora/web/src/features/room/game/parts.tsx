@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import type { RoomPlayerView, RoomView } from '@ludora/shared';
 import { useNow } from '../../../lib/useNow.ts';
 import { Pill, PlayerGlim, SIGN, StagePanel } from './stage.tsx';
+import { useAnnounce } from './announce.tsx';
 
 /*
  * Pieces shared by the round-based screens: the intro, the round header, the
@@ -44,6 +45,7 @@ export function LineUp({ players, big = false }: { players: RoomPlayerView[]; bi
  * projector version lines every player's Glim up underneath.
  */
 export function IntroScreen({ kicker, title, children, until, gameNow, big = false, art, room, lineUp = big }: { kicker?: ReactNode; title: ReactNode; children?: ReactNode; until: number | null; gameNow: () => number; big?: boolean; art?: ReactNode; room: RoomView; lineUp?: boolean }) {
+  useAnnounce(`The game is starting: ${typeof title === 'string' ? title : room.room.title}. The first question is coming up.`, 'intro');
   return (
     <div className="flex flex-1 flex-col items-center justify-center gap-[clamp(1rem,3vh,2rem)] text-center" style={{ animation: 'pop-in 300ms var(--ease-spring)' }}>
       {art}
@@ -60,6 +62,7 @@ export function IntroScreen({ kicker, title, children, until, gameNow, big = fal
 
 /** "Question 2 of 10" on the left, anything else (score, answered count) on the right. */
 export function RoundHeader({ round, total, children, big = false, label = 'Question' }: { round: number; total: number; children?: ReactNode; big?: boolean; label?: string }) {
+  useAnnounce(`${label} ${round + 1} of ${total}.`, `${label}${round}`);
   return (
     <div className="flex flex-wrap items-center justify-between gap-2">
       <Pill className={big ? 'px-5 py-1.5 text-[clamp(1.1rem,1.8vw,2rem)]' : 'px-2.5 text-sm min-[400px]:px-3 min-[400px]:text-base'}>
@@ -72,10 +75,12 @@ export function RoundHeader({ round, total, children, big = false, label = 'Ques
 
 /** The wait after answering: the player's Glim and how many are still thinking. */
 export function LockedIn({ answered, eligible, avatar, seed, title = 'Answer locked in' }: { answered: number; eligible: number; avatar: RoomPlayerView['avatar'] | undefined; seed: string; title?: string }) {
+  // Said once; the count is there to read, but re-reading it on every answer would drown a big class.
+  useAnnounce(`${title}.`);
   return (
     <StagePanel className="flex items-center gap-4 px-4 py-4" as="div">
       <PlayerGlim avatar={avatar} seed={seed} size={84} bob className="shrink-0" />
-      <div role="status" className="min-w-0">
+      <div className="min-w-0">
         <p className="font-display text-2xl font-extrabold">{title}</p>
         <p className="font-semibold text-text-2">
           {answered} of {eligible} have answered.

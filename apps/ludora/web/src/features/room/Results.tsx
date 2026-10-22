@@ -10,6 +10,7 @@ import { duration, formatNumber, ordinal } from '../../lib/format.ts';
 import { PLACE_BG, RankBadge, TeamScores } from './game/Leaderboard.tsx';
 import { NameTag, PlayerGlim, SIGN, avatarOf, motionOK } from './game/stage.tsx';
 import { Burst } from '../../art/bursts.tsx';
+import { useAnnounce } from './game/announce.tsx';
 
 /** Block heights as a share of the tallest, and when each block starts to rise (ms): third, then second, then first. */
 const HEIGHT = [1, 0.72, 0.5];
@@ -108,7 +109,8 @@ function Standings({ room, big, hold = false }: { room: RoomView; big: boolean; 
             <span className="min-w-0 flex-1">
               <span className="block truncate font-bold">
                 {s.name}
-                {mine ? <span className="ml-1.5 text-[0.85em] font-semibold text-text-2">(you)</span> : null}
+                {/* A real space, so a screen reader does not run the name into "(you)". */}
+                {mine ? <span className="text-[0.85em] font-semibold text-text-2"> (you)</span> : null}
               </span>
               <span className="block truncate text-sm text-text-2">
                 {s.correct} of {s.answered} right{t ? `, ${t}` : ''}
@@ -123,10 +125,14 @@ function Standings({ room, big, hold = false }: { room: RoomView; big: boolean; 
 }
 
 function Rewards({ rewards, guest }: { rewards: RewardSummary | null; guest: boolean }) {
+  useAnnounce(
+    rewards?.status === 'granted' ? `You earned ${formatNumber(rewards.sparks)} Sparks and ${formatNumber(rewards.xp)} XP.${rewards.levelUp ? ` You reached level ${rewards.levelUp.to}!` : ''}` : null,
+    rewards?.status,
+  );
   if (!rewards) return null;
   if (rewards.status === 'pending') {
     return (
-      <div className="paper stage-card px-5 py-4" role="status">
+      <div className="paper stage-card px-5 py-4">
         <p className="font-semibold">Adding up your rewards…</p>
       </div>
     );
@@ -196,6 +202,8 @@ export function Results({ room, handle, isHost, guest }: { room: RoomView; handl
   const mine = r.standings.find((s) => s.playerId === room.me.playerId);
   const competitive = r.outcome === 'competitive';
   const podium = competitive && r.standings.length > 1;
+  const title = r.outcome === 'coop-win' ? 'Victory!' : r.outcome === 'coop-loss' ? 'So close' : 'Game over';
+  useAnnounce(`${title} ${mine && podium ? `You came ${ordinal(mine.rank)}. ` : ''}${r.summary}`, 'results');
   const restart = async () => {
     setBusy(true);
     const ack = await handle.host({ cmd: 'restart' });
@@ -206,7 +214,7 @@ export function Results({ room, handle, isHost, guest }: { room: RoomView; handl
   return (
     <div className={`mx-auto flex w-full flex-1 flex-col ${big ? 'max-w-[112rem] gap-[clamp(1rem,3vh,2rem)]' : 'max-w-3xl gap-6'}`}>
       <div className="text-center">
-        <h1 className={`font-display leading-none font-extrabold ${SIGN} ${big ? 'text-[clamp(3rem,5.5vw,6.5rem)]' : 'text-5xl'}`}>{r.outcome === 'coop-win' ? 'Victory!' : r.outcome === 'coop-loss' ? 'So close' : 'Game over'}</h1>
+        <h1 className={`font-display leading-none font-extrabold ${SIGN} ${big ? 'text-[clamp(3rem,5.5vw,6.5rem)]' : 'text-5xl'}`}>{title}</h1>
         <p className={`mt-2 font-semibold text-text-2 ${big ? 'text-[clamp(1.1rem,1.6vw,1.8rem)]' : 'text-lg'}`}>{r.summary}</p>
         {mine && r.standings.length > 1 && competitive ? <p className={`mt-2 font-display text-3xl font-extrabold text-lantern ${SIGN}`}>You came {ordinal(mine.rank)}</p> : null}
       </div>

@@ -3,6 +3,7 @@ import type { AnswerReveal, PublicQuestion } from '@ludora/shared';
 import { ChoiceTile, HOST_PAIR, choiceGrid, type TileSize } from './AnswerInput.tsx';
 import { Burst } from '../../../art/bursts.tsx';
 import { useOverview } from '../../../lib/queries.ts';
+import { useAnnounce } from './announce.tsx';
 
 /** The choices of a live question with nothing marked: the host screen while answers are open. */
 export function ChoicesDisplay({ q, size = 'lg' }: { q: PublicQuestion; size?: TileSize }) {
@@ -33,7 +34,35 @@ export function ChoicesDisplay({ q, size = 'lg' }: { q: PublicQuestion; size?: T
 }
 
 /** The correct answer, shown in the form the question was asked in. With `distribution`, each choice shows how many picked it. */
+/** The right answer in words, for screen readers; null when the question has no short way to say it. */
+export function answerWords(q: PublicQuestion, reveal: AnswerReveal): string | null {
+  const choice = (id: string) => {
+    if (q.type !== 'mcq' && q.type !== 'multi') return id;
+    const i = q.choices.findIndex((c) => c.id === id);
+    return i < 0 ? id : `${String.fromCharCode(65 + i)}, ${q.choices[i]!.text || q.choices[i]!.media?.alt || 'a picture'}`;
+  };
+  switch (reveal.type) {
+    case 'mcq':
+      return `The answer was ${choice(reveal.correct)}.`;
+    case 'multi':
+      return `The answers were ${reveal.correct.map(choice).join(' and ')}.`;
+    case 'truefalse':
+      return `The answer was ${reveal.correct ? 'True' : 'False'}.`;
+    case 'short':
+      return reveal.accepted.length > 1 ? `Accepted answers: ${reveal.accepted.join(', ')}.` : `The answer was ${reveal.accepted[0]}.`;
+    case 'numeric':
+      return `The answer was ${reveal.answer}${reveal.unit ? ` ${reveal.unit}` : ''}.`;
+    case 'order':
+      return q.type === 'order' ? `The right order: ${reveal.itemIds.map((id) => q.items.find((i) => i.id === id)?.text ?? id).join(', ')}.` : null;
+    case 'flashcard':
+      return `The answer: ${reveal.back}.`;
+    default:
+      return null;
+  }
+}
+
 export function RevealAnswer({ q, reveal, mine, distribution, compact, size }: { q: PublicQuestion; reveal: AnswerReveal; mine?: string | null; distribution?: Record<string, number> | null; compact?: boolean; size?: TileSize }) {
+  useAnnounce(answerWords(q, reveal), `${q.prompt}|${JSON.stringify(reveal)}`);
   const sz: TileSize = size ?? (compact ? 'sm' : distribution ? 'lg' : 'md');
   const host = sz === 'lg';
   const max = distribution ? Math.max(1, ...Object.values(distribution)) : 0;
@@ -104,6 +133,8 @@ export function RevealAnswer({ q, reveal, mine, distribution, compact, size }: {
  * answer effect, or with the festival mix when they have none; a miss stays calm.
  */
 export function ResultBanner({ correct, partial, points, text }: { correct: boolean | null; partial?: number | null; points?: number | null; text?: string | undefined }) {
+  const said = correct === null ? null : `${correct ? 'Correct!' : partial && partial > 0 ? `Partly right, ${Math.round(partial * 100)} percent.` : 'Not this time.'}${points ? ` Plus ${points.toLocaleString('en-GB')} points.` : ''}${text ? ` ${text}` : ''}`;
+  useAnnounce(said);
   const overview = useOverview();
   const effect = overview.data?.equipped.effect?.art;
   if (correct === null) return null;
@@ -111,7 +142,6 @@ export function ResultBanner({ correct, partial, points, text }: { correct: bool
   const own = correct && effect && effect.kind === 'effect' ? effect : null;
   return (
     <div
-      role="status"
       className={`relative isolate flex flex-wrap items-center gap-x-3 gap-y-1 rounded-[22px] border-[3px] border-ink px-4 py-3.5 text-on-accent shadow-[0_5px_0_var(--ink)] ${correct ? 'bg-glim' : part ? 'bg-lantern' : 'bg-ember'}`}
       style={{ animation: 'pop-in 280ms var(--ease-spring)' }}
     >

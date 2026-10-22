@@ -151,11 +151,16 @@ export function Leaderboard({
             {t ? <span className="sr-only">{t.name}</span> : null}
             {r.gain ? (
               <span className={`shrink-0 rounded-full border-2 border-ink px-2.5 py-0.5 font-display font-extrabold text-on-accent tabular ${r.gain > 0 ? 'bg-glim' : 'bg-ember'} ${big ? 'text-[length:calc(var(--lb-score)*0.62)] max-sm:hidden' : 'text-sm'}`}>
-                {r.gain > 0 ? '+' : '−'}
+                <span aria-hidden>{r.gain > 0 ? '+' : '−'}</span>
+                <span className="sr-only">{r.gain > 0 ? 'up ' : 'down '}</span>
                 {formatNumber(Math.abs(r.gain))}
+                <span className="sr-only"> this round,</span>
               </span>
             ) : null}
-            <span className="shrink-0 text-right font-display text-[length:var(--lb-score)] leading-none font-extrabold tabular">{label ? label(r) : formatNumber(r.score)}</span>
+            <span className="shrink-0 text-right font-display text-[length:var(--lb-score)] leading-none font-extrabold tabular">
+              {label ? label(r) : formatNumber(r.score)}
+              {label ? null : <span className="sr-only"> points</span>}
+            </span>
           </li>
         );
       })}

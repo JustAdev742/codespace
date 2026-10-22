@@ -7,6 +7,7 @@ import { Glim, type GlimPose } from '../../art/glim/Glim.tsx';
 import { Button } from '../../ui/Button.tsx';
 import { ReactionBar } from './game/Reactions.tsx';
 import { GREETERS, NameTag, Pill, PlayerGlim, SIGN, StagePanel, motionOK } from './game/stage.tsx';
+import { useAnnounce } from './game/announce.tsx';
 
 /** One column per team on a wide screen, up to what fits. */
 const TEAM_COLS: Record<number, string> = { 1: '', 2: 'md:grid-cols-2', 3: 'md:grid-cols-3', 4: 'md:grid-cols-2 xl:grid-cols-4', 5: 'md:grid-cols-3', 6: 'md:grid-cols-3' };
@@ -248,6 +249,7 @@ export function PlayerLobby({ room, handle }: { room: RoomView; handle: RoomHand
   const others = room.players.filter((p) => p.id !== room.me.playerId);
   const shown = others.slice(0, 7);
   const [pose, cheer] = useOwnPose();
+  useAnnounce(`You are in! Waiting for ${room.room.hostName} to start.`, 'joined');
   return (
     <div className="mx-auto flex w-full max-w-md flex-1 flex-col items-center justify-center gap-5 text-center">
       <div className="relative grid place-items-center">
@@ -282,7 +284,7 @@ export function PlayerLobby({ room, handle }: { room: RoomView; handle: RoomHand
             {others.length > shown.length ? <span className="mb-2 ml-1.5 font-display text-lg font-extrabold">+{others.length - shown.length}</span> : null}
           </div>
         ) : null}
-        <p className="mt-3 font-semibold text-text-2" role="status">
+        <p className="mt-3 font-semibold text-text-2">
           Waiting for {room.room.hostName} to start. {room.players.length} in the room.
         </p>
       </div>

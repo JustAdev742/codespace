@@ -204,11 +204,9 @@ export function QuickDrawHost({ view, gameNow, paused, room }: ModeScreenProps<Q
       <div className="flex min-w-0 flex-col gap-[clamp(0.75rem,2vh,1.25rem)]">
         <RoundHeader round={s.round} total={s.total} big>
           <TargetBadge target={view.target} big />
-          <span aria-live="polite">
-            <Pill className="px-5 py-1.5">
-              <Lock className="size-[0.9em]" aria-hidden /> {view.lockedOut} locked out
-            </Pill>
-          </span>
+          <Pill className="px-5 py-1.5">
+            <Lock className="size-[0.9em]" aria-hidden /> {view.lockedOut} locked out
+          </Pill>
         </RoundHeader>
         {s.phase === 'question' ? <TimerBar deadline={q.deadline} start={q.shownAt} gameNow={gameNow} paused={paused} size="lg" /> : null}
         {s.phase === 'reveal' ? <FirstIn winner={view.winner} players={room.players} big /> : null}
