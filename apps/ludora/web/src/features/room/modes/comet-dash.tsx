@@ -30,7 +30,7 @@ export interface CometView {
 }
 
 /** The race: one lane per player, a comet tail behind each Glim and a finish strip at the far end. */
-function Track({ lanes, distance, players, big = false }: { lanes: Lane[]; distance: number; players: RoomPlayerView[]; big?: boolean }) {
+function Track({ lanes, distance, players, big = false, together = false }: { lanes: Lane[]; distance: number; players: RoomPlayerView[]; big?: boolean; together?: boolean }) {
   const size = lanes.length > 8 ? 'clamp(2.25rem, 4.6vh, 3.5rem)' : lanes.length > 5 ? 'clamp(3rem, 7.5vh, 5.5rem)' : 'clamp(3.5rem, 10vh, 7rem)';
   const vars = (
     big
@@ -46,7 +46,7 @@ function Track({ lanes, distance, players, big = false }: { lanes: Lane[]; dista
             key={l.playerId}
             role="listitem"
             className={`grid grid-cols-[var(--name)_1fr] items-center gap-2 rounded-[14px] ${l.isYou ? 'bg-lantern/18 ring-2 ring-lantern' : 'bg-white/6'}`}
-            aria-label={`${l.name}: ${l.place ? `finished ${ordinal(l.place)}` : `${l.pos} of ${distance} spaces`}`}
+            aria-label={`${l.name}: ${l.place ? (together ? 'home' : `finished ${ordinal(l.place)}`) : `${l.pos} of ${distance} spaces`}`}
           >
             <span className={`truncate pl-3 font-bold ${big ? 'text-[clamp(1rem,1.6vw,1.75rem)]' : 'text-sm'}`} aria-hidden>
               {l.name}
@@ -65,7 +65,7 @@ function Track({ lanes, distance, players, big = false }: { lanes: Lane[]; dista
               {l.place ? (
                 <span className="absolute top-1/2 right-5 -translate-y-1/2">
                   <Pill tone="lantern" className={big ? 'text-[clamp(0.9rem,1.4vw,1.5rem)]' : 'px-2 py-0.5 text-xs'}>
-                    {ordinal(l.place)}
+                    {together ? 'Home' : ordinal(l.place)}
                   </Pill>
                 </span>
               ) : null}
@@ -76,6 +76,9 @@ function Track({ lanes, distance, players, big = false }: { lanes: Lane[]; dista
     </div>
   );
 }
+
+/** Constellation Run: the whole room races together and wins only if every Glim gets home in time. */
+const isTogether = (room: ModeScreenProps['room']) => room.room.settings.together === true;
 
 export function CometDashPlayer({ view, act, gameNow, room }: ModeScreenProps<CometView>) {
   const you = view.you;
@@ -115,7 +118,7 @@ export function CometDashPlayer({ view, act, gameNow, room }: ModeScreenProps<Co
   return (
     <div className="mx-auto flex w-full max-w-3xl flex-col gap-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="font-display text-2xl font-extrabold tabular">{you.place ? `You finished ${ordinal(you.place)}!` : `${you.pos} of ${view.distance} spaces`}</p>
+        <p className="font-display text-2xl font-extrabold tabular">{you.place ? (isTogether(room) ? 'You made it home!' : `You finished ${ordinal(you.place)}!`) : `${you.pos} of ${view.distance} spaces`}</p>
         <div className="flex items-center gap-2">
           {you.streak > 1 ? (
             <Pill tone="lantern">
@@ -129,7 +132,7 @@ export function CometDashPlayer({ view, act, gameNow, room }: ModeScreenProps<Co
           ) : null}
         </div>
       </div>
-      <Track lanes={view.lanes} distance={view.distance} players={room.players} />
+      <Track lanes={view.lanes} distance={view.distance} players={room.players} together={isTogether(room)} />
       {you.place ? (
         <StagePanel className="flex items-center gap-4 px-4 py-4">
           <PlayerGlim avatar={myAvatar(room)} seed={room.me.playerId ?? 'you'} size={84} bob pose="cheer" className="shrink-0" />
@@ -138,7 +141,9 @@ export function CometDashPlayer({ view, act, gameNow, room }: ModeScreenProps<Co
               <Flag className="size-6 text-lantern" aria-hidden /> Across the line
             </p>
             <p className="font-semibold text-text-2">
-              {view.finished} of {view.finishersNeeded} podium places taken. Watch the rest of the race.
+              {isTogether(room)
+                ? `${view.finished} of ${view.finishersNeeded} racers are home. The room wins when every Glim crosses the line.`
+                : `${view.finished} of ${view.finishersNeeded} podium places taken. Watch the rest of the race.`}
             </p>
           </div>
         </StagePanel>
@@ -168,7 +173,7 @@ export function CometDashHost({ view, gameNow, room }: ModeScreenProps<CometView
         <h2 className={`font-display text-[clamp(2.25rem,4vw,4.75rem)] leading-none font-extrabold ${SIGN}`}>Comet trail</h2>
         <div className="flex items-center gap-3 text-[clamp(1.1rem,1.8vw,2rem)]">
           <Pill className="px-5 py-1.5">
-            <Flag className="size-[0.9em]" aria-hidden /> Podium {view.finished} of {view.finishersNeeded}
+            <Flag className="size-[0.9em]" aria-hidden /> {isTogether(room) ? 'Home' : 'Podium'} {view.finished} of {view.finishersNeeded}
           </Pill>
           {view.endsAt ? (
             <Pill className="px-5 py-1.5">
@@ -177,9 +182,14 @@ export function CometDashHost({ view, gameNow, room }: ModeScreenProps<CometView
           ) : null}
         </div>
       </div>
-      <Track lanes={view.lanes} distance={view.distance} players={room.players} big />
+      <Track lanes={view.lanes} distance={view.distance} players={room.players} big together={isTogether(room)} />
       <p className="text-center text-[clamp(1rem,1.5vw,1.6rem)] font-semibold text-text-2">
-        Every right answer moves you along. {view.finishersNeeded === 1 ? 'The first Glim across the line wins.' : `The first ${view.finishersNeeded} Glims across the line take the podium.`}
+        Every right answer moves you along.{' '}
+        {isTogether(room)
+          ? 'The room wins together if every Glim crosses the line before time runs out.'
+          : view.finishersNeeded === 1
+            ? 'The first Glim across the line wins.'
+            : `The first ${view.finishersNeeded} Glims across the line take the podium.`}
       </p>
     </div>
   );

@@ -47,9 +47,11 @@ export interface LanternOutView {
   alive: number;
   out: number;
   roster: RosterRow[];
-  last: { blown: number; out: string[]; relit: string[] } | null;
+  /** `kindled` and `slow` (names) are only filled by the kindling and slowest-flame rules. */
+  last: { blown: number; out: string[]; relit: string[]; kindled?: string[]; slow?: string[] } | null;
   teams: { teamId: string; name: string; hue: number; score: number; members: number }[] | null;
-  you: { lanterns: number; out: boolean; outAt: number | null; points: number; lost: boolean; knockedOut: boolean; relit: boolean } | null;
+  /** `slow` (right but slowest, so a lantern went out) and `kindled` (a streak relit one) come from the rule options. */
+  you: { lanterns: number; out: boolean; outAt: number | null; points: number; lost: boolean; knockedOut: boolean; relit: boolean; slow?: boolean; kindled?: boolean } | null;
 }
 
 const lanternWord = (n: number) => `${n} ${n === 1 ? 'lantern' : 'lanterns'}`;
@@ -142,12 +144,19 @@ function Outcome({ view }: { view: LanternOutView }) {
   const you = view.you;
   const s = view.sync;
   if (!you) return null;
+  // The slowest right answer can cost a lantern; three in a row can relight one.
+  const slow = Boolean(you.slow);
+  const kindled = Boolean(you.kindled);
   if (you.relit) return <LanternNews tone="good" title="Lantern relit!" detail="You are back in the game." lit={you.lanterns} total={view.lives} />;
+  if (kindled) return <LanternNews tone="good" title="Three in a row!" detail={`Your streak relit a lantern. ${lanternWord(you.lanterns)} lit.`} lit={you.lanterns} total={view.lives} />;
   if (you.knockedOut) {
     const later = view.reviveEvery > 0 && view.nextRevival !== null ? 'Watch for now: a revival round can bring you back.' : 'You can keep watching to the end.';
-    return <LanternNews tone="bad" title="Your last lantern went out" detail={later} lit={0} total={view.lives} />;
+    return <LanternNews tone="bad" title="Your last lantern went out" detail={slow ? `Right, but the slowest answer. ${later}` : later} lit={0} total={view.lives} />;
   }
-  if (you.lost) return <LanternNews tone="bad" title="A lantern blew out" detail={`${lanternWord(you.lanterns)} left.`} lit={you.lanterns} total={view.lives} />;
+  if (you.lost) {
+    const left = `${lanternWord(you.lanterns)} left.`;
+    return <LanternNews tone="bad" title={slow ? 'Right, but slowest' : 'A lantern blew out'} detail={slow ? `The slowest right answer loses a lantern. ${left}` : left} lit={you.lanterns} total={view.lives} />;
+  }
   if (s.you?.eligible && s.you.answered) return <ResultBanner correct={s.you.correct ?? false} points={s.you.points} />;
   return null;
 }
@@ -159,7 +168,9 @@ function RoundSummary({ view, big = false }: { view: LanternOutView; big?: boole
   if (view.revival) parts.push(last.relit.length ? `Relit: ${last.relit.join(', ')}.` : 'Nobody relit a lantern.');
   else {
     parts.push(last.blown ? `${lanternWord(last.blown)} blew out.` : 'Every lantern survived that one.');
+    if (last.slow?.length) parts.push(`Right but slowest: ${last.slow.join(', ')}.`);
     if (last.out.length) parts.push(`Out: ${last.out.join(', ')}.`);
+    if (last.kindled?.length) parts.push(`Three in a row relit a lantern for ${last.kindled.join(', ')}.`);
   }
   return <StagePanel className={`font-semibold ${big ? 'px-6 py-4 text-[clamp(1.1rem,1.7vw,1.9rem)]' : 'px-4 py-3'}`}>{parts.join(' ')}</StagePanel>;
 }

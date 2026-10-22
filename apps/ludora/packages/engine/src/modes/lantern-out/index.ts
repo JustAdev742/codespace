@@ -310,6 +310,8 @@ export const lanternOut = defineMode<State, Settings, Action>({
             lost: Boolean(last?.blown.includes(me)),
             knockedOut: Boolean(last?.out.includes(me)),
             relit: Boolean(last?.relit.includes(me)),
+            slow: Boolean(last?.slow.includes(me)),
+            kindled: Boolean(last?.kindled.includes(me)),
           }
         : null,
     };

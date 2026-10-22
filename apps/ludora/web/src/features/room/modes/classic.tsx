@@ -30,8 +30,13 @@ interface SyncView {
 export interface ClassicView {
   sync: SyncView;
   board: { rows: LeaderRow[]; you: LeaderRow | null };
-  teams: { teamId: string; name: string; hue: number; score: number; members: number }[] | null;
+  /** With the unison rule, `score` is the team's average plus any `bonus` it earned. */
+  teams: { teamId: string; name: string; hue: number; score: number; members: number; average?: number; bonus?: number }[] | null;
   suddenDeath: boolean;
+  /** Encore rule: the open question is coming back for half points. */
+  encore?: boolean;
+  /** Comeback rule: this player is in the bottom half and scores double for the open question. */
+  boosted?: boolean;
   alive: number | null;
   out: boolean;
   score: number | null;
@@ -82,6 +87,8 @@ export function ClassicPlayer({ view, act, gameNow, paused, room }: ModeScreenPr
   return (
     <div className="mx-auto flex w-full max-w-3xl flex-col gap-4">
       <RoundHeader round={s.round} total={s.total}>
+        {view.encore ? <Pill tone="dusk">Encore, half points</Pill> : null}
+        {view.boosted && s.phase === 'question' ? <Pill tone="glim">Double points</Pill> : null}
         {s.you && s.you.streak > 1 ? (
           <Pill tone="lantern">
             <Flame className="size-4" aria-hidden /> Streak {s.you.streak}
@@ -139,6 +146,11 @@ export function ClassicHost({ view, gameNow, paused, room }: ModeScreenProps<Cla
   return (
     <div className="mx-auto flex w-full max-w-[100rem] flex-1 flex-col gap-[clamp(0.75rem,2vh,1.5rem)]">
       <RoundHeader round={s.round} total={s.total} big>
+        {view.encore ? (
+          <Pill tone="dusk" className="px-5 py-1.5">
+            Encore, half points
+          </Pill>
+        ) : null}
         {view.suddenDeath ? <Pill className="px-5 py-1.5">{view.alive} still standing</Pill> : null}
         <span aria-live="polite">
           <Pill className="px-5 py-1.5">

@@ -155,7 +155,7 @@ export function QuickDrawPlayer({ view, act, gameNow, paused, room }: ModeScreen
                 <Lock className="size-6 text-ember" aria-hidden /> Locked out
               </p>
               <p className="font-semibold text-text-2">
-                That was not it. Wait for the next question.
+                {s.you?.answered ? 'That was not it.' : 'Your team is out of this one: a teammate answered and it was not right.'} Wait for the next question.
                 {you?.lostPoint ? ' It cost you a point.' : ''}
               </p>
               {view.lockedOut > 1 ? <p className="text-sm font-semibold text-text-2">{view.lockedOut} players are locked out of this one.</p> : null}

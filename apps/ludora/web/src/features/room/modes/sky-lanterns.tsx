@@ -244,18 +244,22 @@ function GroundLanterns({ count, size = 30, max = 8, emptyText = 'No lanterns on
   );
 }
 
-function Advice({ view }: { view: SkyLanternsView }) {
+function Advice({ view, safe }: { view: SkyLanternsView; safe: number }) {
   const you = view.you!;
   let text: string | null = null;
   if (you.oil >= view.oilCap) text = 'Your oil can is full. Light a lantern so your next answers are not wasted.';
   else if (you.ground && view.wind.changeAt === null) text = 'This is the last wind. Launch before time runs out!';
   else if (you.ground && view.wind.mult >= 3) text = `${view.wind.label} ×${view.wind.mult}! A great moment to launch.`;
-  else if (you.ground && view.forecast.storms && view.forecast.chance >= 50) text = 'A storm is likely at the next change. Launch now, or risk it?';
+  else if (you.ground && view.forecast.storms && view.forecast.chance >= 50) {
+    // Lightning rods: a storm only reaches stacks bigger than `safe`.
+    if (you.ground <= safe) text = 'A storm is likely, but your stack is small enough to be safe.';
+    else text = safe ? `A storm is likely at the next change, and stacks over ${safe} are at risk. Launch now, or risk it?` : 'A storm is likely at the next change. Launch now, or risk it?';
+  }
   else if (you.oil >= view.cost) text = 'You have enough oil to light a lantern.';
   return text ? <p className="text-sm font-bold text-text-2">{text}</p> : null;
 }
 
-export function SkyLanternsPlayer({ view, act, gameNow, paused }: ModeScreenProps<SkyLanternsView>) {
+export function SkyLanternsPlayer({ view, act, gameNow, paused, room }: ModeScreenProps<SkyLanternsView>) {
   const you = view.you;
   const flow = useAnswerFlow(you?.last, you?.question);
   const [busy, setBusy] = useState(false);
@@ -330,7 +334,7 @@ export function SkyLanternsPlayer({ view, act, gameNow, paused }: ModeScreenProp
             {note}
           </p>
         ) : (
-          <Advice view={view} />
+          <Advice view={view} safe={Number(room.room.settings.stormSafe ?? 0)} />
         )}
       </StagePanel>
 
@@ -394,7 +398,7 @@ function LanternField({ count }: { count: number }) {
   );
 }
 
-function SkyScene({ view, gameNow }: { view: SkyLanternsView; gameNow: () => number }) {
+function SkyScene({ view, gameNow, safe }: { view: SkyLanternsView; gameNow: () => number; safe: number }) {
   useNow(1000, Boolean(view.wind.storm));
   const storm = view.wind.storm;
   const freshStorm = storm && gameNow() - storm.at < 6000;
@@ -414,7 +418,7 @@ function SkyScene({ view, gameNow }: { view: SkyLanternsView; gameNow: () => num
             <div className="text-center">
               <CloudLightning className="mx-auto size-16 text-ember" aria-hidden />
               <p className={`font-display text-[clamp(2.25rem,4vw,4rem)] font-extrabold ${SIGN}`}>Storm!</p>
-              <p className="text-[clamp(1.1rem,1.7vw,1.9rem)] font-bold">{storm.lost ? `${plural(storm.lost, 'lantern')} blown out` : 'Nobody had a lantern waiting'}</p>
+              <p className="text-[clamp(1.1rem,1.7vw,1.9rem)] font-bold">{storm.lost ? `${plural(storm.lost, 'lantern')} blown out` : safe > 0 && waiting ? 'Every waiting stack was small enough to be safe' : 'Nobody had a lantern waiting'}</p>
             </div>
           </div>
         ) : null}
@@ -457,7 +461,7 @@ export function SkyLanternsHost({ view, gameNow, room }: ModeScreenProps<SkyLant
           <Countdown until={view.endsAt} gameNow={gameNow} label="Time left" />
         </Pill>
       </div>
-      <SkyScene view={view} gameNow={gameNow} />
+      <SkyScene view={view} gameNow={gameNow} safe={Number(room.room.settings.stormSafe ?? 0)} />
       <div className="grid grid-cols-1 gap-[clamp(1rem,2vw,2rem)] lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
         <section aria-labelledby="sky-board">
           <h3 id="sky-board" className={`mb-2 font-display text-[clamp(1.4rem,2.2vw,2.5rem)] font-extrabold ${SIGN}`}>

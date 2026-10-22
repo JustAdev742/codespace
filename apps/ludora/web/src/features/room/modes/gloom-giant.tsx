@@ -96,7 +96,7 @@ function Giant({ enraged, hp, size, className }: { enraged: boolean; hp: number;
   }, [hp]);
   return (
     <div ref={ref} style={{ filter: enraged ? 'brightness(0.72) saturate(1.5) drop-shadow(0 0 22px var(--ember))' : 'brightness(0.6) saturate(1.1) drop-shadow(0 0 18px var(--dusk))' }}>
-      <Glim art={enraged ? ENRAGED : GIANT} size={size} bob title={enraged ? 'The Gloom Giant, enraged' : 'The Gloom Giant'} className={className} />
+      <Glim art={enraged ? ENRAGED : GIANT} size={size} bob pose={enraged ? 'cheer' : 'idle'} title={enraged ? 'The Gloom Giant, enraged' : 'The Gloom Giant'} className={className} />
     </div>
   );
 }

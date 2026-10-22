@@ -1,4 +1,4 @@
-import { useState, type CSSProperties } from 'react';
+import { useEffect, useState, type CSSProperties } from 'react';
 import { Link } from 'react-router';
 import { Download, Home, RotateCcw, Sparkles, Trophy } from 'lucide-react';
 import { toast } from 'sonner';
@@ -15,15 +15,24 @@ import { Burst } from '../../art/bursts.tsx';
 const HEIGHT = [1, 0.72, 0.5];
 const RISE_AT = [1300, 700, 150];
 const ORDER = ['order-2', 'order-1', 'order-3'];
+/** The runners-up wave to the room once they land, then settle, so nothing keeps moving while the teacher talks. */
+const WAVE_UNTIL = RISE_AT[1]! + 450 + 4000;
 
 /**
  * The podium reveal. Each block rises out of the floor, then its Glim, name
- * and score land on top, third place first; the winner hops and their victory
- * effect bursts. With reduced motion everything is simply there.
+ * and score land on top, third place first; the winner hops, throws both arms
+ * up and their victory effect bursts, while second and third wave to the room.
+ * With reduced motion everything is simply there.
  */
 function Podium({ room, big }: { room: RoomView; big: boolean }) {
   const top = room.results!.standings.slice(0, 3);
   const moving = motionOK();
+  const [waving, setWaving] = useState(true);
+  useEffect(() => {
+    if (!moving) return;
+    const t = window.setTimeout(() => setWaving(false), WAVE_UNTIL);
+    return () => window.clearTimeout(t);
+  }, [moving]);
   const vars = { '--podium': big ? 'clamp(8.5rem, 27vh, 19rem)' : '8.5rem' } as CSSProperties;
   return (
     <div className="flex w-full flex-col items-center" style={vars}>
@@ -37,7 +46,7 @@ function Podium({ room, big }: { room: RoomView; big: boolean }) {
           <li key={s.playerId} className={`flex min-w-0 flex-col items-center ${ORDER[place]} ${big ? 'w-[clamp(7rem,13vw,16rem)]' : 'w-[6.75rem]'}`}>
             <div className="relative flex w-full flex-col items-center" style={moving ? { animation: `stage-land 480ms var(--ease-out) ${land}ms both` } : undefined}>
               <div className="relative" style={first && moving ? { animation: `stage-hop 950ms var(--ease-out) ${land + 450}ms both` } : undefined}>
-                <PlayerGlim avatar={a} seed={s.playerId} size={first ? 120 : 92} aura={first ? 'legendary' : null} pose="cheer" className={first ? (big ? 'size-[clamp(6rem,17vh,11.5rem)]' : 'size-[6rem]') : big ? 'size-[clamp(4.75rem,12.5vh,8.5rem)]' : 'size-[4.5rem]'} />
+                <PlayerGlim avatar={a} seed={s.playerId} size={first ? 120 : 92} aura={first ? 'legendary' : null} pose={first ? 'cheer' : waving ? 'wave' : 'idle'} className={first ? (big ? 'size-[clamp(6rem,17vh,11.5rem)]' : 'size-[6rem]') : big ? 'size-[clamp(4.75rem,12.5vh,8.5rem)]' : 'size-[4.5rem]'} />
               </div>
               {first ? <Burst style={a?.victory?.style ?? 'festival'} hue={a?.victory?.hue ?? 42} size={big ? 380 : 250} rise delay={land + 380} count={20} /> : null}
               <NameTag className={`mt-1 ${big ? 'text-[clamp(1rem,1.6vw,1.75rem)]' : 'text-sm'}`}>{s.name}</NameTag>

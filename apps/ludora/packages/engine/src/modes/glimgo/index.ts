@@ -139,11 +139,18 @@ export function cardLines(size: number): number[][] {
 
 const isMarked = (card: Card, i: number) => card.cells[i] === -1 || (card.marks[i] ?? 0) > 0;
 
-/** Marked squares (not counting free ones), completed lines, and how many more marks the win needs. */
+/**
+ * Marked squares (not counting free ones), completed lines, and how many more marks the win needs.
+ * Only lines with an answer square count: when a small set leaves many free squares, a row of them
+ * alone is not a line, or the first correct mark anywhere would win.
+ */
 export function cardProgress(card: Card, size: number, win: WinRule): Progress {
-  const open = cardLines(size).map((line) => line.filter((i) => !isMarked(card, i)));
-  const lines = open.filter((o) => o.length === 0).length;
   const marks = card.cells.filter((a, i) => a >= 0 && (card.marks[i] ?? 0) > 0).length;
+  const playable = cardLines(size).filter((line) => line.some((i) => card.cells[i]! >= 0));
+  // A card without a single answer square cannot be won (the game ends at once when the set has no answers).
+  if (!playable.length) return { marks, lines: 0, toGo: size * size };
+  const open = playable.map((line) => line.filter((i) => !isMarked(card, i)));
+  const lines = open.filter((o) => o.length === 0).length;
   let toGo: number;
   if (win === 'full') toGo = card.cells.filter((_, i) => !isMarked(card, i)).length;
   else if (win === 'line') toGo = Math.min(...open.map((o) => o.length));

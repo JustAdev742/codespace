@@ -46,9 +46,9 @@ export function QuestionCard({ q, index, total, children, size = 'md' }: { q: Pu
     return (
       <div className="paper stage-card flex flex-col gap-3 px-[clamp(1.25rem,2.6vw,3.25rem)] py-[clamp(1rem,2.6vh,2.25rem)]">
         {counter}
-        <div className="flex items-center gap-[clamp(1rem,2vw,2.5rem)]">
-          <h2 className={`min-w-0 flex-1 font-display leading-[1.06] font-extrabold text-text ${text}`}>{q.prompt}</h2>
-          {q.media ? <QuestionImage media={q.media} size={many ? 'hostCompact' : 'host'} className="max-w-[42%]" /> : null}
+        <div className="flex flex-col gap-[clamp(1rem,2vw,2.5rem)] sm:flex-row sm:items-center">
+          <h2 className={`min-w-0 flex-1 font-display leading-[1.06] font-extrabold break-words text-text ${text} max-sm:text-[1.9rem]`}>{q.prompt}</h2>
+          {q.media ? <QuestionImage media={q.media} size={many ? 'hostCompact' : 'host'} className="self-start sm:max-w-[42%] sm:self-auto" /> : null}
         </div>
         {children}
       </div>

@@ -298,7 +298,7 @@ export function TugOfWarHost({ view, gameNow, room }: ModeScreenProps<TugOfWarVi
       </div>
       <StagePanel className="px-[clamp(0.75rem,1.6vw,1.5rem)] pb-[clamp(0.5rem,1.4vh,1rem)]">
         {/* Never taller than the screen allows, so the knot and the line under it stay in view on a 768-pixel projector. */}
-        <div className="mx-auto w-full max-w-[calc((100dvh-27rem)*3.6)] min-w-[min(100%,36rem)]">
+        <div className="mx-auto w-full max-w-[calc((100dvh-30rem)*3.6)] min-w-[min(100%,36rem)]">
           <RopeStage view={view} players={room.players} />
         </div>
       </StagePanel>

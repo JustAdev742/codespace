@@ -1,6 +1,6 @@
 import { Check, X } from 'lucide-react';
 import type { AnswerReveal, PublicQuestion } from '@ludora/shared';
-import { ChoiceTile, choiceGrid, type TileSize } from './AnswerInput.tsx';
+import { ChoiceTile, HOST_PAIR, choiceGrid, type TileSize } from './AnswerInput.tsx';
 import { Burst } from '../../../art/bursts.tsx';
 import { useOverview } from '../../../lib/queries.ts';
 
@@ -22,7 +22,7 @@ export function ChoicesDisplay({ q, size = 'lg' }: { q: PublicQuestion; size?: T
   }
   if (q.type === 'truefalse') {
     return (
-      <div className={host ? 'grid grid-cols-2 gap-[clamp(0.75rem,1.4vw,1.5rem)]' : 'grid grid-cols-2 gap-3'}>
+      <div className={host ? HOST_PAIR : 'grid grid-cols-2 gap-3'}>
         <ChoiceTile index={0} text="True" disabled size={size} layout={host ? 'row' : 'stack'} tall={host && !q.media} />
         <ChoiceTile index={1} text="False" disabled size={size} layout={host ? 'row' : 'stack'} tall={host && !q.media} />
       </div>
@@ -54,7 +54,7 @@ export function RevealAnswer({ q, reveal, mine, distribution, compact, size }: {
   }
   if (q.type === 'truefalse' && reveal.type === 'truefalse') {
     return (
-      <div className={host ? 'grid grid-cols-2 gap-[clamp(0.75rem,1.4vw,1.5rem)]' : 'grid grid-cols-2 gap-3'}>
+      <div className={host ? HOST_PAIR : 'grid grid-cols-2 gap-3'}>
         <ChoiceTile index={0} text="True" correct={reveal.correct} dimmed={!reveal.correct} disabled size={sz} layout={host ? 'row' : 'stack'} count={count('true')} max={max} tall={host && !q.media} />
         <ChoiceTile index={1} text="False" correct={!reveal.correct} dimmed={reveal.correct} disabled size={sz} layout={host ? 'row' : 'stack'} count={count('false')} max={max} tall={host && !q.media} />
       </div>

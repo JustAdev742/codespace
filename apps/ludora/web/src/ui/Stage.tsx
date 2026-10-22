@@ -31,6 +31,9 @@ const LANTERNS: SkyLantern[] = [
   { x: 46, y: 2, size: 18, hue: 48, drift: 8.5, delay: -1, opacity: 0.45, wide: true },
 ];
 
+/** Full-width game screens put headings and pills along the top, so the big top-left lantern hangs lower there. */
+const GAME_LANTERNS: SkyLantern[] = LANTERNS.map((l) => (l.x < 10 && l.y < 20 ? { ...l, y: 52 } : l));
+
 function PaperLantern({ hue, size }: { hue: number; size: number }) {
   const id = `sky-lantern-${useId().replace(/:/g, '')}`;
   return (
@@ -56,10 +59,10 @@ function PaperLantern({ hue, size }: { hue: number; size: number }) {
   );
 }
 
-export function SkyLanterns({ count = LANTERNS.length }: { count?: number }) {
+export function SkyLanterns({ count = LANTERNS.length, layout = 'hero' }: { count?: number; layout?: 'hero' | 'game' }) {
   return (
     <div className="pointer-events-none absolute inset-0 -z-10 overflow-hidden" aria-hidden>
-      {LANTERNS.slice(0, count).map((l, i) => (
+      {(layout === 'game' ? GAME_LANTERNS : LANTERNS).slice(0, count).map((l, i) => (
         <div
           key={i}
           className={l.wide ? 'absolute hidden md:block' : 'absolute'}
@@ -77,10 +80,11 @@ export function SkyLanterns({ count = LANTERNS.length }: { count?: number }) {
   );
 }
 
-export function Stage({ children, className = '', lanterns = true, as: As = 'div' }: { children: ReactNode; className?: string; lanterns?: boolean; as?: 'div' | 'section' | 'main' }) {
+/** `lanterns`: false for none; 'game' keeps the top band clear for a game screen's headings. */
+export function Stage({ children, className = '', lanterns = true, as: As = 'div' }: { children: ReactNode; className?: string; lanterns?: boolean | 'game'; as?: 'div' | 'section' | 'main' }) {
   return (
     <As className={`stage relative isolate overflow-hidden ${className}`}>
-      {lanterns ? <SkyLanterns /> : null}
+      {lanterns ? <SkyLanterns layout={lanterns === 'game' ? 'game' : 'hero'} /> : null}
       {children}
     </As>
   );

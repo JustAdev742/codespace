@@ -2,8 +2,8 @@
  * Motion for the live game screens (room and join flow), kept beside the
  * screens that use it. One spectacle per moment: players arriving in the
  * lobby, the podium reveal and the reveal bars. The global reduced-motion
- * rules in app.css cut every animation here to a single frame; components
- * also drop their delays when motion is reduced, so nothing waits to appear.
+ * rules in app.css cut every animation here to a single frame with no delay,
+ * so nothing waits to appear; most components also skip them outright.
  */
 
 /* A Glim hops into the lobby crowd. */

@@ -62,9 +62,10 @@ export const avatarOf = (players: RoomPlayerView[], id: string): AvatarLite | nu
  * A player's Glim, or a stand-in when they have none. Size it with `size`, or
  * with a CSS size class (the SVG scales to its box) for crowds that flex with the screen.
  *
- * Room views do not say how rare a player's Glim is, so the finish stays plain
- * unless a caller knows better: an `aura` (the winner's glow) adds light around
- * the Glim without dressing it up as a rarer collectible than it is.
+ * The finish follows the player's own buddy (`avatar.rarity`): gloss on a rare,
+ * a gold rim on a legendary, wherever that Glim turns up in the room. Guests and
+ * stand-ins stay plain. An `aura` (the winner's glow) only adds light around the
+ * Glim; it never dresses a buddy up as a rarer collectible than it is.
  */
 export function PlayerGlim({
   avatar,
@@ -73,7 +74,7 @@ export function PlayerGlim({
   className,
   bob = false,
   aura = null,
-  rarity = 'common',
+  rarity,
   pose = 'idle',
   title,
 }: {
@@ -87,7 +88,19 @@ export function PlayerGlim({
   pose?: GlimPose;
   title?: string;
 }) {
-  return <Glim art={avatar?.art ?? fallbackArt(seed)} accessories={avatar?.accessories} size={size} className={className} bob={bob} aura={aura} rarity={rarity} pose={pose} title={title} />;
+  return (
+    <Glim
+      art={avatar?.art ?? fallbackArt(seed)}
+      accessories={avatar?.accessories}
+      size={size}
+      className={className}
+      bob={bob}
+      aura={aura}
+      rarity={rarity ?? avatar?.rarity ?? 'common'}
+      pose={pose}
+      title={title}
+    />
+  );
 }
 
 /** A white paper name tag with an ink edge, for names under Glims. */

@@ -664,6 +664,30 @@ describe('Glimgo rules', () => {
     expect(cardProgress(card, 3, 'full').toGo).toBe(5);
   });
 
+  it('never counts a line made only of free squares', () => {
+    // The whole top-left to bottom-right diagonal is free.
+    const card: Card = { cells: [-1, 1, 2, 3, -1, 5, 6, 7, -1], marks: [0, 0, 0, 0, 0, 0, 0, 0, 0] };
+    expect(cardProgress(card, 3, 'line')).toEqual({ marks: 0, lines: 0, toGo: 2 });
+    expect(cardProgress(card, 3, 'two-lines').toGo).toBe(3);
+    expect(cardProgress(card, 3, 'full').toGo).toBe(6);
+    card.marks[1] = 1;
+    card.marks[2] = 2; // the top row: one free square and two marks
+    expect(cardProgress(card, 3, 'line')).toEqual({ marks: 2, lines: 1, toGo: 0 });
+  });
+
+  it('with only a few different answers, nobody starts with a finished line', () => {
+    // Eight questions but three different answers: each card has six free squares.
+    const few = WORDS8.map((q, i) => ({ ...q, accepted: [['Alpha', 'Bravo', 'Charlie'][i % 3]!] }));
+    const ids = Array.from({ length: 12 }, (_, i) => `p${i}`);
+    const h = start({}, few, ids);
+    for (const id of ids) {
+      const v = h.view(id);
+      expect(v.you.squares.filter((sq: { free: boolean }) => sq.free)).toHaveLength(6);
+      expect(v.you).toMatchObject({ marks: 0, lines: 0 });
+      expect(v.you.toGo).toBeGreaterThan(0);
+    }
+  });
+
   it('a player who completes a line wins and the game ends', () => {
     const h = start({ lockoutSeconds: 0 }, WORDS, ['a', 'b']);
     let guard = 0;

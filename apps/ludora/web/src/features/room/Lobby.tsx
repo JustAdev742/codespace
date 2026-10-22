@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
-import { Bot, Copy, Lock, LockOpen, Shuffle, UserMinus } from 'lucide-react';
+import { Bot, Copy, Lock, LockOpen, Shuffle, UserMinus, WifiOff } from 'lucide-react';
 import { toast } from 'sonner';
 import type { RoomPlayerView, RoomView, TeamView } from '@ludora/shared';
 import type { RoomHandle } from '../../lib/useRoom.ts';
-import { Glim } from '../../art/glim/Glim.tsx';
+import { Glim, type GlimPose } from '../../art/glim/Glim.tsx';
 import { Button } from '../../ui/Button.tsx';
 import { ReactionBar } from './game/Reactions.tsx';
 import { GREETERS, NameTag, Pill, PlayerGlim, SIGN, StagePanel, motionOK } from './game/stage.tsx';
@@ -11,19 +11,26 @@ import { GREETERS, NameTag, Pill, PlayerGlim, SIGN, StagePanel, motionOK } from 
 /** One column per team on a wide screen, up to what fits. */
 const TEAM_COLS: Record<number, string> = { 1: '', 2: 'md:grid-cols-2', 3: 'md:grid-cols-3', 4: 'md:grid-cols-2 xl:grid-cols-4', 5: 'md:grid-cols-3', 6: 'md:grid-cols-3' };
 
-/** Glims get smaller as the crowd grows, so a whole class still fits on one projector screen. */
+/**
+ * Glims get smaller as the crowd grows, so a whole class still fits on one projector screen.
+ * The height counts as well as the width: a 1366 by 768 projector is short for its width.
+ */
 function seatSize(n: number, inTeam: boolean): string {
-  if (inTeam) return n <= 6 ? 'clamp(4rem, 5.6vw, 6.5rem)' : n <= 12 ? 'clamp(3.5rem, 4.6vw, 5.5rem)' : 'clamp(3rem, 3.6vw, 4.25rem)';
-  if (n <= 6) return 'clamp(5.5rem, 9.5vw, 11rem)';
-  if (n <= 12) return 'clamp(4.75rem, 7vw, 8.5rem)';
-  if (n <= 24) return 'clamp(4rem, 5.4vw, 6.5rem)';
-  return 'clamp(3.25rem, 4vw, 5rem)';
+  if (inTeam) return n <= 6 ? 'clamp(3.5rem, min(5.6vw, 9vh), 6.5rem)' : n <= 12 ? 'clamp(3rem, min(4.6vw, 7vh), 5.5rem)' : 'clamp(2.75rem, min(3.6vw, 5.5vh), 4.25rem)';
+  if (n <= 6) return 'clamp(5.5rem, min(9.5vw, 17vh), 11rem)';
+  if (n <= 12) return 'clamp(4.25rem, min(7vw, 12vh), 8.5rem)';
+  if (n <= 24) return 'clamp(3.5rem, min(5.4vw, 8.5vh), 6.5rem)';
+  return 'clamp(3rem, min(4vw, 6.5vh), 5rem)';
 }
 
 /** How long a newcomer waves hello before settling into the crowd. */
 const WAVE_MS = 4000;
 
-/** One player in the lobby crowd: their Glim, a paper name tag, and a remove button for the host. Newcomers wave as they arrive. */
+/**
+ * One player in the lobby crowd: their Glim, a paper name tag, and a remove button for the host. Newcomers wave as they arrive.
+ * A seat grows to fit its name, up to about twice the Glim's width, before the name is shortened. Bots and players who
+ * dropped out wear a small badge on their Glim rather than an extra line, so a full class keeps to one screen.
+ */
 function Seat({ p, onKick, delay, fresh }: { p: RoomPlayerView; onKick?: (() => void) | undefined; delay: number; fresh: boolean }) {
   const [waving, setWaving] = useState(fresh);
   useEffect(() => {
@@ -32,10 +39,20 @@ function Seat({ p, onKick, delay, fresh }: { p: RoomPlayerView; onKick?: (() => 
     return () => clearTimeout(t);
   }, [fresh]);
   return (
-    <li className="group relative flex w-[max(calc(var(--seat)*1.3),6.5rem)] flex-col items-center gap-1.5" style={motionOK() ? { animation: `stage-arrive 560ms var(--ease-spring) ${delay}ms both` } : undefined}>
-      <PlayerGlim avatar={p.avatar} seed={p.id} size={128} pose={waving ? 'wave' : 'idle'} className={`size-[var(--seat)] ${p.connected ? '' : 'opacity-45 grayscale'}`} />
+    <li className="group relative flex max-w-[max(calc(var(--seat)*2.1),9.5rem)] min-w-[max(calc(var(--seat)*1.3),6.5rem)] flex-col items-center gap-1.5" style={motionOK() ? { animation: `stage-arrive 560ms var(--ease-spring) ${delay}ms both` } : undefined}>
+      <span className="relative">
+        <PlayerGlim avatar={p.avatar} seed={p.id} size={128} pose={waving ? 'wave' : 'idle'} className={`size-[var(--seat)] ${p.connected ? '' : 'opacity-45 grayscale'}`} />
+        {p.isBot || !p.connected ? (
+          <span
+            className={`absolute -right-1 bottom-0 grid size-[max(1.6rem,calc(var(--seat)*0.3))] place-items-center rounded-full border-2 border-ink shadow-[0_2px_0_var(--ink)] ${p.connected ? 'bg-dusk text-on-accent' : 'paper'}`}
+            title={p.connected ? 'Practice bot' : 'Away'}
+          >
+            {p.connected ? <Bot className="size-[60%]" aria-hidden /> : <WifiOff className="size-[55%]" aria-hidden />}
+            <span className="sr-only">{p.connected ? 'Bot' : 'Away'}</span>
+          </span>
+        ) : null}
+      </span>
       <NameTag className="text-[length:clamp(0.9rem,calc(var(--seat)*0.15),1.4rem)]">{p.name}</NameTag>
-      {p.isBot || !p.connected ? <span className="text-sm font-semibold whitespace-nowrap text-text-2">{!p.connected ? 'Away' : 'Bot'}</span> : null}
       {onKick ? (
         <button
           type="button"
@@ -209,16 +226,33 @@ export function HostLobby({ room, handle }: { room: RoomView; handle: RoomHandle
   );
 }
 
+/** The player's own Glim waves hello on arrival, then jumps for joy for a moment whenever they send a reaction. */
+function useOwnPose(): [GlimPose, () => void] {
+  const [settled, setSettled] = useState(false);
+  const [cheerAt, setCheerAt] = useState(0);
+  useEffect(() => {
+    const t = setTimeout(() => setSettled(true), WAVE_MS);
+    return () => clearTimeout(t);
+  }, []);
+  useEffect(() => {
+    if (!cheerAt) return;
+    const t = setTimeout(() => setCheerAt(0), 1200);
+    return () => clearTimeout(t);
+  }, [cheerAt]);
+  return [cheerAt ? 'cheer' : settled ? 'idle' : 'wave', () => setCheerAt(Date.now())];
+}
+
 export function PlayerLobby({ room, handle }: { room: RoomView; handle: RoomHandle }) {
   const me = room.players.find((p) => p.id === room.me.playerId);
   const team = room.room.teams.find((t) => t.id === room.me.teamId);
   const others = room.players.filter((p) => p.id !== room.me.playerId);
   const shown = others.slice(0, 7);
+  const [pose, cheer] = useOwnPose();
   return (
     <div className="mx-auto flex w-full max-w-md flex-1 flex-col items-center justify-center gap-5 text-center">
       <div className="relative grid place-items-center">
         <span className="absolute size-60 rounded-full bg-[radial-gradient(circle,rgb(255_206_110/0.5)_0%,rgb(255_176_32/0.18)_45%,rgb(255_176_32/0)_70%)]" aria-hidden />
-        <PlayerGlim avatar={me?.avatar} seed={room.me.playerId ?? room.me.name ?? 'you'} size={180} bob pose="wave" className="relative" />
+        <PlayerGlim avatar={me?.avatar} seed={room.me.playerId ?? room.me.name ?? 'you'} size={180} bob pose={pose} className="relative" />
       </div>
       <div>
         <h1 className={`font-display text-5xl font-extrabold ${SIGN}`}>You are in!</h1>
@@ -252,7 +286,12 @@ export function PlayerLobby({ room, handle }: { room: RoomView; handle: RoomHand
           Waiting for {room.room.hostName} to start. {room.players.length} in the room.
         </p>
       </div>
-      <ReactionBar onReact={(e) => void handle.react(e)} />
+      <ReactionBar
+        onReact={(e) => {
+          void handle.react(e);
+          cheer();
+        }}
+      />
     </div>
   );
 }

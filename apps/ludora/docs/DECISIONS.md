@@ -213,3 +213,14 @@ different game, so each variant turns on a rule the base mode does not have
 says plainly what changed. New rule settings default to off, so the base modes
 play exactly as before; a question that comes back is recorded as an attempt,
 so it never pays twice. Rules that would need new screens wait for them.
+
+**D35. Free squares never make a Glimgo line on their own.** A small set leaves
+several free squares on each card, and a row made only of them used to count as
+a finished line, so a player's first correct mark anywhere won the game. Only
+lines with at least one answer square count now.
+
+**D36. A Glim looks as rare as it is, everywhere.** The lobby, leaderboards,
+podium and every mode screen show each player's own buddy with its real rarity
+finish, and the winner's glow only adds light around it. A common Glim that
+wins still looks common, so a game never shows a rarer collectible than the
+player owns.

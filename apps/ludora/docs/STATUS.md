@@ -4,7 +4,7 @@ Live status of the build. Updated with each milestone commit. Everything marked
 **verified** was checked by an automated test or by driving the real app in a
 browser; anything else says what it is.
 
-Last updated: 2026-10-21.
+Last updated: 2026-10-22.
 
 ## Milestones
 
@@ -17,7 +17,7 @@ Last updated: 2026-10-21.
 | M4 Economy and progression | Done | Shop, Lanterns with disclosed odds, collections, locker, quests, achievements, levels, streaks. |
 | M5 Staff tools | Done | Staff API and all 14 staff sections in the web app. An end-to-end test opens every section as a super administrator at phone and desktop widths. |
 | M6 Content, social, classes, analytics | In progress | Server done and tested (friends, blocks, leaderboards, classes, assignments, reports, stats). Quests, friends, profiles, my stats, leaderboards, classes, assignment reports, hosted games, game reports and the set editor done. |
-| M7-8 Polish, CI, deployment | In progress | Production build, Docker image, compose file, CI workflow, docs and end-to-end tests (run in CI) are in. A visual overhaul, a full accessibility pass and the final design review are next. |
+| M7-8 Polish, CI, deployment | In progress | Production build, Docker image, compose file, CI workflow, docs and end-to-end tests (run in CI) are in. The visual overhaul is done across player pages and the live game, and automated accessibility checks pass on every player page and game screen. A final design review and a manual screen-reader pass remain. |
 
 ## What works today (verified)
 
@@ -44,19 +44,36 @@ Last updated: 2026-10-21.
 - **Accessibility**: an axe-core audit (WCAG 2.2 A and AA rules) of every
   player page, the sign-in pages and the main staff sections, in both themes at
   phone and desktop widths, finds no violations; the layout end-to-end test now
-  runs the same checks on thirteen pages, so CI catches regressions. Buttons
+  runs the same checks on thirteen pages, so CI catches regressions. The live
+  game was scanned the same way while being played, host on a projector-sized
+  screen and player on a phone, from the lobby to the results, in all 14 modes
+  (Classic in both themes): 120 scans, no violations after one fix (Lantern
+  Match card names now contain every word on the card). Buttons
   whose visible text is terse (Buy 150, collection cards) take their accessible
   names from their content, so speech users can say what they see. Automated
   checks cover only part of WCAG; a manual screen-reader pass has not been done.
 - **Look and feel** (D30, Ludora's own lantern-festival world): a dusk-sky
-  stage behind the landing hero, sign-in, the dashboard greeting and the
-  Lantern opening; stall cards for modes and Lanterns with the odds written on
+  stage behind the landing hero, sign-in, the dashboard greeting, the Lantern
+  opening and the whole live game; stall cards for modes and Lanterns with the odds written on
   every Lantern; collectible cards with rarity frames in the shop, collection
   and locker; shape-only silhouettes for Glims not found yet. The Lantern
   opening builds up longer for rarer Glims, can be skipped by tapping, shows
   the Glim straight away under reduced motion, and keeps the odds on screen.
   Every redesigned page was checked at 360 pixels in both themes for one h1,
   no sideways scroll and no console errors.
+- **Live game screens**: joining shows greeter Glims and a large code entry.
+  The host lobby puts the room code on a paper ticket while players' Glims pop
+  into a crowd that resizes so 30 players with full names fit a 1366 by 768
+  projector. Questions use chunky answer tiles, each with a shape, a letter and
+  a colour, two-up and thumb-sized on phones; reveals show how many picked each
+  answer; leaderboard rows slide to their new rank; results raise a podium,
+  third place first, with the winner cheering on top (co-op games get a team
+  photo). Question pictures display at a fixed height on every screen size.
+  All 14 modes use the same stage, every player's Glim shows its real rarity
+  finish (D36), and a host can run a game from a phone. Every mode was played
+  to its results in a real browser with a host, a player and bots, at 390
+  pixels and at projector size; eight variants were played to check their new
+  screen text; with reduced motion nothing moves and nothing waits to appear.
 - **Glims**: all 112 redrawn as original die-cut sticker characters with faces,
   arms and feet, distinct silhouettes per collection, rarity finishes (glossy,
   gradient, gold rim light, iridescent sheen) and idle, wave and cheer poses,
@@ -119,9 +136,10 @@ Last updated: 2026-10-21.
   browser; metadata stripping was checked by decoding the results in Chromium.
 - **End-to-end tests** (`e2e/`, Playwright against the production build and a
   fresh database, locally and in CI): a host and a guest play Classic from join code to results;
-  a new player buys and opens a Lantern; a staff warning reaches the player and
-  the audit log; ten player pages and every staff section fit a phone, have one
-  main heading and log no errors.
+  a teacher writes a set with a picture and players see it in a game; a new
+  player buys and opens a Lantern; a staff warning reaches the player and the
+  audit log; thirteen player pages and every staff section fit a phone, have one
+  main heading and log no errors, and the player pages pass axe.
 
 ## Tests
 
@@ -130,29 +148,30 @@ creates and drops its own database).
 
 | Project | Files | Tests |
 |---|---|---|
-| content | 2 | catalogue integrity and every built-in question set |
-| engine | 8 | 373, including the conformance suite for every mode and variant |
-| server | 7 | auth and rate limits, realtime, economy (20), staff (54), social and classes (16), uploads (6), reward counting |
+| content | 2 | 112: catalogue integrity and every built-in question set |
+| engine | 13 | 715, including the conformance suite for every mode and variant |
+| server | 7 | 119: auth and rate limits (14), realtime (5), economy (20), staff (54), social and classes (16), uploads (6), reward counting (4) |
+| web | 1 | 45: the set editor's checks, import and export |
 | shared | 0 | no tests of its own; its schemas are exercised by the other projects |
-| **Total** | **16** | **594 passing** at the last full run |
+| **Total** | **23** | **991 passing** at the last full run |
 
-End-to-end: `npm run test:e2e` (needs Postgres; builds first, then runs 5
-browser tests against a fresh `ludora_e2e` database). All 5 pass.
+End-to-end: `npm run test:e2e` (needs Postgres; builds first, then runs 6
+browser tests against a fresh `ludora_e2e` database). All 6 pass.
 
 `npm run typecheck` is clean. `npm run lint` reports 12 stylistic warnings and
 no errors.
 
 ## Open items
 
-Being built now:
-- The live game screens on the dusk stage (join, lobby, questions, reveals,
-  leaderboard, results with a podium); a checkpoint is committed.
-
 Not built yet:
 - **AI question drafts.** The `ai.question_drafts` flag and the
   `ANTHROPIC_API_KEY` setting exist; the feature does not.
 - **Email.** An outbox table exists; nothing sends email yet, so there is no
   email verification or email password reset (recovery codes cover resets).
+
+Not checked yet:
+- **A manual screen-reader pass.** Automated axe checks pass wherever they run,
+  but nobody has played a game with NVDA, JAWS or VoiceOver.
 
 ## Running it
 

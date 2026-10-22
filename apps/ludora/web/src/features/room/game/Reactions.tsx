@@ -35,7 +35,7 @@ export function ReactionBar({ onReact, disabled }: { onReact: (emote: string) =>
           type="button"
           onClick={() => react(e)}
           disabled={cooling || disabled}
-          className="grid size-10 shrink-0 place-items-center rounded-[14px] border border-white/20 bg-white/10 transition-[transform,background-color] duration-150 hover:-translate-y-0.5 hover:bg-white/20 active:translate-y-0 disabled:opacity-40 sm:size-11"
+          className="grid size-10 shrink-0 place-items-center rounded-[14px] border border-white/20 bg-white/10 transition-[translate,background-color] duration-150 hover:-translate-y-0.5 hover:bg-white/20 active:translate-y-0 disabled:opacity-40 sm:size-11"
           aria-label={`React: ${e}`}
         >
           <EmoteGlyph glyph={e} size={26} />

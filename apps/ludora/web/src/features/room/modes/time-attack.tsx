@@ -14,7 +14,6 @@ import { formatNumber, plural } from '../../../lib/format.ts';
 /* Time Attack: a solo score attack against a clock that wrong answers shorten. */
 
 const STREAK_FOR_BOOST = 5;
-const MAX_MULTIPLIER = 3;
 
 export interface TimeAttackView {
   clockMs: number;
@@ -60,7 +59,8 @@ function Clock({ endsAt, clockMs, gameNow, running }: { endsAt: number; clockMs:
 
 /** Five dots towards the next multiplier. */
 function Boost({ multiplier, inRow, nextBoostIn }: { multiplier: number; inRow: number; nextBoostIn: number | null }) {
-  const filled = multiplier >= MAX_MULTIPLIER ? STREAK_FOR_BOOST : inRow % STREAK_FOR_BOOST;
+  // Full only at the top multiplier; in overdrive there is none, so the dots keep counting towards the next.
+  const filled = nextBoostIn === null ? STREAK_FOR_BOOST : inRow % STREAK_FOR_BOOST;
   return (
     <div className="flex items-center gap-3">
       <span className={`flex items-center gap-1 rounded-[14px] border-[3px] border-ink px-3 py-1 font-display text-2xl font-extrabold shadow-[0_3px_0_var(--ink)] ${multiplier === 1 ? `${NIGHT} text-text` : multiplier === 2 ? 'bg-lantern text-on-accent' : 'bg-glim text-on-accent'}`}>

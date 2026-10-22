@@ -36,11 +36,12 @@ function FeedToasts({ feed }: { feed: RoomView['feed'] }) {
   const visible = feed.filter((f) => now - (seen.current.get(f.id) ?? 0) < 5000).slice(-3);
   if (!visible.length) return null;
   return (
-    <div className="pointer-events-none fixed right-3 bottom-20 z-30 flex max-w-[17rem] flex-col items-end gap-1.5 lg:right-6 lg:bottom-6 lg:max-w-[24rem]" aria-live="polite">
+    // On a phone the news drops in under the header, clear of the answers in the thumb zone; on the projector it sits bottom right.
+    <div className="pointer-events-none fixed inset-x-3 top-[4.25rem] z-30 flex flex-col items-center gap-1.5 sm:top-[4.75rem] lg:inset-x-auto lg:top-auto lg:right-6 lg:bottom-6 lg:max-w-[24rem] lg:items-end" aria-live="polite">
       {visible.map((f) => (
         <div
           key={f.id}
-          className={`rounded-[16px] border-2 border-ink px-3.5 py-1.5 text-sm leading-snug font-bold shadow-[0_3px_0_var(--ink)] lg:text-lg ${f.tone === 'big' ? 'bg-lantern text-on-accent' : f.tone === 'good' ? 'bg-glim text-on-accent' : f.tone === 'bad' ? 'bg-ember text-on-accent' : 'paper'}`}
+          className={`max-w-[22rem] rounded-[16px] border-2 border-ink px-3.5 py-1.5 text-sm leading-snug font-bold shadow-[0_3px_0_var(--ink)] lg:max-w-none lg:text-lg ${f.tone === 'big' ? 'bg-lantern text-on-accent' : f.tone === 'good' ? 'bg-glim text-on-accent' : f.tone === 'bad' ? 'bg-ember text-on-accent' : 'paper'}`}
           style={{ animation: 'rise-fade 240ms var(--ease-out)' }}
         >
           {f.text}
@@ -216,11 +217,12 @@ export default function RoomPage() {
   const Title = live ? 'h1' : 'p';
 
   return (
-    <Stage className={STAGE}>
+    <Stage className={STAGE} lanterns="game">
       <header className="sticky top-0 z-30 border-b border-white/12 bg-[rgb(16_10_58/0.55)] backdrop-blur-md">
         <div className="flex h-14 items-center gap-2.5 px-3 sm:h-16 sm:gap-3 sm:px-5">
-          <LogoMark size={30} className="shrink-0" />
-          <div className="min-w-0">
+          {/* On a phone, a host mid-game needs the header's width for the game controls. */}
+          <LogoMark size={30} className={`shrink-0 ${isHost && live ? 'max-sm:hidden' : ''}`} />
+          <div className={`min-w-0 ${isHost && live ? 'max-sm:sr-only' : ''}`}>
             <Title className="truncate font-display text-base leading-tight font-extrabold text-text sm:text-lg">{room.room.title}</Title>
             <p className="truncate text-xs font-semibold text-text-2 sm:text-sm">
               {isHost ? `Hosting game ${spaced(room.room.code)}` : room.room.solo ? 'Solo game' : `Game ${spaced(room.room.code)}`}
@@ -250,7 +252,8 @@ export default function RoomPage() {
               </IconButton>
             ) : null}
             <Button size="sm" variant="ghost" icon={<DoorOpen className="size-4" aria-hidden />} onClick={() => void leave()}>
-              {isHost ? 'Leave' : 'Leave game'}
+              {/* A host running a game from a phone needs the room for the game controls: the label goes to screen readers only. */}
+              {isHost && live ? <span className="max-sm:sr-only">Leave</span> : isHost ? 'Leave' : 'Leave game'}
             </Button>
           </div>
         </div>

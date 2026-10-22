@@ -84,20 +84,16 @@ function textSize(text: string) {
 function MemoryCard({ card, total, missed, disabled, onFlip }: { card: CardFace; total: number; missed: boolean; disabled: boolean; onFlip: () => void }) {
   const faceUp = card.state !== 'down';
   const matched = card.state === 'matched';
+  // The name comes from hidden text rather than aria-label: both faces stay in the page (one is turned
+  // away), so an aria-label could not contain every word on the card, and speech users say what they see.
   const label =
     card.state === 'down'
       ? `${SIDE_LABEL[card.side]} card, face down`
-      : `${matched ? 'Matched ' : ''}${SIDE_LABEL[card.side].toLowerCase()}: ${faceText(card)}${missed ? '. Not a pair' : ''}`;
+      : `${SIDE_LABEL[card.side]}: ${faceText(card)}${matched ? ', matched' : ''}${missed ? '. Not a pair' : ''}`;
   const text = card.text ?? '';
   return (
-    <button
-      type="button"
-      onClick={onFlip}
-      disabled={matched || disabled}
-      aria-label={`Card ${card.i + 1} of ${total}. ${label}`}
-      className="relative aspect-[4/5] w-full rounded-[14px] disabled:cursor-default"
-      style={{ perspective: '900px' }}
-    >
+    <button type="button" onClick={onFlip} disabled={matched || disabled} className="relative aspect-[4/5] w-full rounded-[14px] disabled:cursor-default" style={{ perspective: '900px' }}>
+      <span className="sr-only">{`Card ${card.i + 1} of ${total}. ${label}`}</span>
       <span className="absolute inset-0 block transition-transform duration-300 ease-[var(--ease-out)]" style={{ transformStyle: 'preserve-3d', transform: faceUp ? 'rotateY(180deg)' : 'none' }}>
         {/* Back: the picture tells question cards (lantern) from answer cards (Glim), and so does the word. */}
         <span

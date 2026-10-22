@@ -126,8 +126,8 @@ export function Leaderboard({
   const vars = (
     big
       ? roomy
-        ? { '--lb-row': 'clamp(4.5rem, 12vh, 8.5rem)', '--lb-glim': 'clamp(3.75rem, 10vh, 7.25rem)', '--lb-rank': 'clamp(3rem, 7.5vh, 5rem)', '--lb-name': 'clamp(1.5rem, 2.7vw, 3.25rem)', '--lb-score': 'clamp(1.7rem, 3vw, 3.75rem)' }
-        : { '--lb-row': 'clamp(3rem, 6.2vh, 4.75rem)', '--lb-glim': 'clamp(2.5rem, 5.4vh, 4rem)', '--lb-rank': 'clamp(2.4rem, 5vh, 3.5rem)', '--lb-name': 'clamp(1.1rem, 1.8vw, 2.1rem)', '--lb-score': 'clamp(1.25rem, 2vw, 2.4rem)' }
+        ? { '--lb-row': 'clamp(3.5rem, min(12vh, 16vw), 8.5rem)', '--lb-glim': 'clamp(2.5rem, min(10vh, 12vw), 7.25rem)', '--lb-rank': 'clamp(2.25rem, min(7.5vh, 9vw), 5rem)', '--lb-name': 'clamp(1.15rem, 2.7vw, 3.25rem)', '--lb-score': 'clamp(1.25rem, 3vw, 3.75rem)' }
+        : { '--lb-row': 'clamp(3rem, 6.2vh, 4.75rem)', '--lb-glim': 'clamp(2.5rem, 5.4vh, 4rem)', '--lb-rank': 'clamp(2.25rem, 5vh, 3.5rem)', '--lb-name': 'clamp(1.1rem, 1.8vw, 2.1rem)', '--lb-score': 'clamp(1.25rem, 2vw, 2.4rem)' }
       : { '--lb-row': '3.75rem', '--lb-glim': '2.75rem', '--lb-rank': '2.75rem', '--lb-name': '1.125rem', '--lb-score': '1.25rem' }
   ) as CSSProperties;
   return (
@@ -150,7 +150,7 @@ export function Leaderboard({
             {t ? <span className="size-4 shrink-0 rounded-full border-2 border-ink" style={{ background: `hsl(${t.hue} 80% 60%)` }} title={t.name} aria-hidden /> : null}
             {t ? <span className="sr-only">{t.name}</span> : null}
             {r.gain ? (
-              <span className={`shrink-0 rounded-full border-2 border-ink px-2.5 py-0.5 font-display font-extrabold text-on-accent tabular ${r.gain > 0 ? 'bg-glim' : 'bg-ember'} ${big ? 'text-[length:calc(var(--lb-score)*0.62)]' : 'text-sm'}`}>
+              <span className={`shrink-0 rounded-full border-2 border-ink px-2.5 py-0.5 font-display font-extrabold text-on-accent tabular ${r.gain > 0 ? 'bg-glim' : 'bg-ember'} ${big ? 'text-[length:calc(var(--lb-score)*0.62)] max-sm:hidden' : 'text-sm'}`}>
                 {r.gain > 0 ? '+' : '−'}
                 {formatNumber(Math.abs(r.gain))}
               </span>
@@ -164,7 +164,17 @@ export function Leaderboard({
 }
 
 /** Team totals as bars in each team's colour, longest first. */
-export function TeamScores({ teams, format = formatNumber, big = false }: { teams: { teamId: string; name: string; hue: number; score: number; members?: number }[]; /** How a score reads, e.g. as a percentage. */ format?: (score: number) => string; big?: boolean }) {
+export function TeamScores({
+  teams,
+  format = formatNumber,
+  big = false,
+}: {
+  /** `bonus`, when a team earned one, is already in `score` and is called out under it. */
+  teams: { teamId: string; name: string; hue: number; score: number; members?: number; bonus?: number }[];
+  /** How a score reads, e.g. as a percentage. */
+  format?: (score: number) => string;
+  big?: boolean;
+}) {
   const max = Math.max(1, ...teams.map((t) => t.score));
   return (
     <ul className="flex flex-col gap-2.5" aria-label="Team scores">
@@ -179,7 +189,10 @@ export function TeamScores({ teams, format = formatNumber, big = false }: { team
             <span className={`relative overflow-hidden rounded-[12px] border-2 border-ink bg-sunken ${big ? 'h-10' : 'h-7'}`} aria-hidden>
               <span className="absolute inset-0 origin-left rounded-[10px] transition-transform duration-700 ease-[var(--ease-out)]" style={{ transform: `scaleX(${Math.max(0.04, t.score / max)})`, background: `hsl(${t.hue} 80% 62%)` }} />
             </span>
-            <span className="min-w-[3ch] text-right font-display font-extrabold tabular">{format(t.score)}</span>
+            <span className="min-w-[3ch] text-right font-display leading-tight font-extrabold tabular">
+              {format(t.score)}
+              {t.bonus ? <span className="block text-[0.62em] font-bold text-text-2">+{formatNumber(t.bonus)} bonus</span> : null}
+            </span>
           </li>
         ))}
     </ul>

@@ -28,7 +28,7 @@ const SIZE: Record<TileSize, { tile: string; stack: string; text: string; long: 
   sm: { tile: 'min-h-[3.75rem] gap-3 rounded-[18px] px-3 py-2', stack: 'min-h-[5.5rem] gap-2 rounded-[18px] p-3', text: 'text-lg', long: 'text-base', badge: 'gap-1 rounded-[11px] px-1.5 py-1 text-base', shape: 18 },
   md: { tile: 'min-h-[4.5rem] gap-3 rounded-[20px] px-3.5 py-2.5', stack: 'min-h-[7rem] gap-2 rounded-[20px] p-3.5', text: 'text-xl', long: 'text-base', badge: 'gap-1 rounded-[12px] px-2 py-1 text-lg', shape: 20 },
   lg: {
-    tile: 'min-h-[clamp(5rem,12.5vh,9.5rem)] gap-[clamp(0.75rem,1.4vw,1.5rem)] rounded-[24px] px-[clamp(1rem,1.6vw,1.75rem)] py-3',
+    tile: 'min-h-[clamp(5rem,12.5vh,9.5rem)] gap-[clamp(0.75rem,1.4vw,1.5rem)] rounded-[24px] px-[clamp(1rem,1.6vw,1.75rem)] py-3 max-sm:min-h-[4.5rem]',
     stack: 'min-h-[clamp(7rem,18vh,12rem)] gap-3 rounded-[24px] p-[clamp(1rem,1.6vw,1.75rem)]',
     text: 'text-[clamp(1.4rem,2.3vw,2.75rem)]',
     long: 'text-[clamp(1.1rem,1.6vw,1.9rem)]',
@@ -46,8 +46,8 @@ const SIZE: Record<TileSize, { tile: string; stack: string; text: string; long: 
 const PIECE =
   'border-[3px] border-ink text-on-accent shadow-[0_var(--press)_0_var(--ink)] transition-[translate,box-shadow,filter] duration-[120ms] ease-[var(--ease-out)] enabled:hover:brightness-105 enabled:active:translate-y-[calc(var(--press)-1px)] enabled:active:shadow-[0_1px_0_var(--ink)] data-[pressed=true]:translate-y-[calc(var(--press)-1px)] data-[pressed=true]:shadow-[0_1px_0_var(--ink)]';
 const UNLIT = 'border-[3px] border-white/30 bg-[rgb(17_10_62/0.5)] text-text';
-/** Taller projector tiles when there are only two rows of them, so they fill the screen. */
-const TALL = 'min-h-[clamp(5.5rem,15.5vh,11.5rem)]!';
+/** Taller projector tiles when there are only two rows of them, so they fill the screen (not on a host screen opened on a phone). */
+const TALL = 'min-h-[clamp(5.5rem,15.5vh,11.5rem)]! max-sm:min-h-[4.5rem]!';
 /** Taller two-up phone tiles when there are four or fewer: bigger targets that still fit above the fold. */
 const TALL_STACK = 'min-h-[clamp(7rem,18vh,10rem)]!';
 /** Shorter two-up phone tiles for five or six answers, so the last row stays above the fold. */
@@ -150,17 +150,23 @@ export function ChoiceTile({
   );
 }
 
+/** True and False on the projector: side by side, or stacked on a host screen opened on a phone. */
+export const HOST_PAIR = 'grid grid-cols-1 gap-[clamp(0.75rem,1.4vw,1.5rem)] sm:grid-cols-2';
+
 /** Two-up tiles when every choice is short enough to sit side by side on a phone; the odd one out spans the row. */
 export function choiceGrid(texts: string[], host = false): { grid: string; layout: 'row' | 'stack'; tall: boolean; dense: boolean } {
   const n = texts.length;
   const short = texts.every((t) => t.length <= 18);
   const odd = '[&>*:last-child:nth-child(odd)]:col-span-2';
+  const oddWide = 'sm:[&>*:last-child:nth-child(odd)]:col-span-2';
   const tall = n <= 4;
   const dense = n > 4;
   if (host) {
     // Three or six short answers sit three across on a wide screen: one row fewer to read, and it fits a 768-pixel projector.
     const threeUp = (n === 3 || n === 6) && texts.every((t) => t.length <= 32);
-    return { grid: threeUp ? 'grid grid-cols-3 gap-[clamp(0.75rem,1.4vw,1.5rem)]' : `grid grid-cols-2 gap-[clamp(0.75rem,1.4vw,1.5rem)] ${odd}`, layout: 'row', tall, dense };
+    // A host screen opened on a phone gets one column, so the projector-sized text never has to break a word.
+    const gap = 'gap-[clamp(0.75rem,1.4vw,1.5rem)]';
+    return { grid: threeUp ? `grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 ${gap} sm:max-lg:[&>*:last-child:nth-child(odd)]:col-span-2` : `grid grid-cols-1 sm:grid-cols-2 ${gap} ${oddWide}`, layout: 'row', tall, dense };
   }
   if (n <= 2 || short) return { grid: `grid grid-cols-2 gap-3 ${odd}`, layout: 'stack', tall, dense };
   return { grid: 'grid grid-cols-1 gap-3 sm:grid-cols-2', layout: 'row', tall: false, dense };
