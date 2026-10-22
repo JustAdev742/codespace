@@ -11,6 +11,7 @@ import {
   LogOut,
   Menu,
   Presentation,
+  RefreshCw,
   School,
   Settings,
   Shield,
@@ -29,8 +30,8 @@ import { useOverview } from '../lib/queries.ts';
 import { api } from '../lib/api.ts';
 import { Logo, LogoMark } from '../art/icons.tsx';
 import { Glim } from '../art/glim/Glim.tsx';
-import { Amount } from '../ui/primitives.tsx';
-import { buttonClass } from '../ui/Button.tsx';
+import { Amount, Skeleton } from '../ui/primitives.tsx';
+import { Button, buttonClass } from '../ui/Button.tsx';
 import { toast } from 'sonner';
 
 interface NavItem {
@@ -134,6 +135,20 @@ function AccountMenu() {
   const navigate = useNavigate();
   const qc = useQueryClient();
   const user = me.data?.user;
+  // Until the account check answers, the header stays neutral: a signed-in player never sees the signed-out buttons.
+  if (!me.data) {
+    if (me.isError) {
+      return (
+        <div className="flex items-center gap-3">
+          <span className="hidden text-sm text-text-2 md:inline">Your account did not load.</span>
+          <Button size="sm" icon={<RefreshCw className="size-4" aria-hidden />} loading={me.isFetching} onClick={() => void me.refetch()}>
+            Try again
+          </Button>
+        </div>
+      );
+    }
+    return <Skeleton className="h-[42px] w-24 rounded-full sm:w-44" />;
+  }
   if (!user) {
     return (
       <div className="flex items-center gap-2">
@@ -157,7 +172,8 @@ function AccountMenu() {
     <DropdownMenu.Root>
       <DropdownMenu.Trigger className="flex items-center gap-2 rounded-full border border-line bg-raised py-1 pr-3 pl-1 hover:bg-surface-2" aria-label={`${user.displayName}, Lv ${user.level.level}, account menu`}>
         <span className="grid size-8 place-items-center overflow-hidden rounded-full bg-surface-3">{avatar ? <Glim art={avatar.art} accessories={avatar.accessories} rarity={avatar.rarity} size={34} /> : <User className="size-4" />}</span>
-        <span className="hidden max-w-[10rem] truncate text-sm font-semibold sm:block">{user.displayName}</span>
+        {/* The space keeps the visible "Name Lv 1" readable as words, so it matches the label (WCAG 2.5.3). */}
+        <span className="hidden max-w-[10rem] truncate text-sm font-semibold sm:block">{user.displayName}</span>{' '}
         <span className="rounded-full bg-dusk/25 px-1.5 text-xs font-bold text-link tabular">Lv {user.level.level}</span>
       </DropdownMenu.Trigger>
       <DropdownMenu.Portal>
@@ -197,13 +213,19 @@ function AccountMenu() {
 }
 
 function Balances() {
+  const me = useMe();
   const overview = useOverview();
   const b = overview.data?.balances;
-  if (!b) return null;
+  if (!me.data?.user) return null;
+  // Never zeros it does not know: a placeholder while loading, and nothing if the load failed.
+  if (!b) return overview.isLoading ? <Skeleton className="hidden h-[34px] w-32 rounded-full sm:block" /> : null;
   return (
-    <Link to="/shop" className="hidden items-center gap-3 rounded-full border border-line bg-raised px-3 py-1.5 hover:bg-surface-2 sm:flex" aria-label={`${b.sparks ?? 0} Sparks and ${b.moonstones ?? 0} Moonstones. Open the shop`}>
+    // The name comes from the numbers shown, with the currency names added for screen readers (WCAG 2.5.3).
+    <Link to="/shop" className="hidden items-center gap-3 rounded-full border border-line bg-raised px-3 py-1.5 hover:bg-surface-2 sm:flex">
       <Amount currency="sparks" value={b.sparks ?? 0} size="sm" />
+      <span className="sr-only"> Sparks and </span>
       <Amount currency="moonstones" value={b.moonstones ?? 0} size="sm" />
+      <span className="sr-only"> Moonstones. Open the shop</span>
     </Link>
   );
 }

@@ -108,7 +108,7 @@ function Standings({ room, big, hold = false }: { room: RoomView; big: boolean; 
         const mine = s.playerId === room.me.playerId;
         const t = team(s.teamId);
         return (
-          <li key={s.playerId} className={`flex items-center gap-3 rounded-[18px] border bg-[rgb(17_10_62/0.62)] px-2.5 py-1.5 ${big ? 'text-[clamp(1rem,1.25vw,1.4rem)]' : ''} ${mine ? 'border-lantern ring-2 ring-lantern' : 'border-white/12'}`}>
+          <li key={s.playerId} className={`flex flex-wrap items-center gap-x-3 gap-y-0.5 rounded-[18px] border bg-[rgb(17_10_62/0.62)] px-2.5 py-1.5 ${big ? 'text-[clamp(1rem,1.25vw,1.4rem)]' : ''} ${mine ? 'border-lantern ring-2 ring-lantern' : 'border-white/12'}`}>
             <RankBadge rank={s.rank} />
             <PlayerGlim avatar={avatarOf(room.players, s.playerId)} seed={s.playerId} size={44} className="shrink-0" />
             <span className="min-w-0 flex-1">
@@ -121,7 +121,8 @@ function Standings({ room, big, hold = false }: { room: RoomView; big: boolean; 
                 {s.correct} of {s.answered} right{t ? `, ${t}` : ''}
               </span>
             </span>
-            <span className={`max-w-[48%] text-right font-display leading-tight font-extrabold tabular ${s.label.length > 12 ? 'text-[0.95em]' : 'shrink-0 text-[1.15em]'}`}>{s.label}</span>
+            {/* On a phone a long result ("4,500 points, 36 correct") takes its own line, so the name is not cut short. */}
+            <span className={`max-w-[48%] text-right font-display leading-tight font-extrabold tabular ${s.label.length > 12 ? `text-[0.95em] ${big ? '' : 'max-sm:max-w-none max-sm:basis-full'}` : 'shrink-0 text-[1.15em]'}`}>{s.label}</span>
           </li>
         );
       })}
@@ -253,7 +254,20 @@ export function Results({ room, handle, isHost, guest }: { room: RoomView; handl
           ) : null}
           <Standings room={room} big={big} hold={big && podium} />
           <p className="text-sm font-semibold text-text-2">Played for {duration(r.durationMs)}.</p>
-          {isHost ? null : (
+          {isHost ? null : room.room.solo ? (
+            // A solo player is their own host: they can go again straight away.
+            <div className="flex flex-wrap gap-2" role="group" aria-label="What next">
+              <Button variant="primary" size="lg" className="grow" icon={<RotateCcw className="size-5" aria-hidden />} loading={busy} onClick={restart}>
+                Play again
+              </Button>
+              <Link to="/host?solo=1" className={buttonClass('secondary', 'lg', 'grow')}>
+                Try another mode
+              </Link>
+              <Link to="/" className={buttonClass('ghost', 'lg', 'grow')}>
+                <Home className="size-5" aria-hidden /> Back to home
+              </Link>
+            </div>
+          ) : (
             <div className="flex flex-col gap-2">
               <Link to="/" className={buttonClass('secondary', 'lg')}>
                 <Home className="size-5" aria-hidden /> Back to home

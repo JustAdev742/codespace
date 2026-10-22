@@ -6,17 +6,18 @@ import { PASSWORD_RULES } from '@ludora/shared';
 import { api, ApiError } from '../../lib/api.ts';
 import { useMe, type Preferences } from '../../lib/session.ts';
 import { applyPreferences, applyTheme, localTheme } from '../../lib/prefs.ts';
-import { Field, Input, PageHeader, Panel, Select, Switch } from '../../ui/primitives.tsx';
+import { AccountError, Field, Input, PageHeader, Panel, Select, Skeleton, Switch } from '../../ui/primitives.tsx';
 import { Button, ButtonLink } from '../../ui/Button.tsx';
 import { RecoveryCodeDialog } from '../auth/RecoveryCodeDialog.tsx';
 
 type Patch = Partial<Omit<Preferences, 'notifications' | 'privacy'>> & { notifications?: Partial<Preferences['notifications']>; privacy?: Partial<Preferences['privacy']> };
 
 function Segmented<T extends string>({ value, onChange, options, label }: { value: T; onChange: (v: T) => void; options: { value: T; label: string }[]; label: string }) {
+  // Thumb-sized on phones, where the control takes the full width under its label; compact on wider screens.
   return (
-    <div role="radiogroup" aria-label={label} className="inline-flex rounded-[12px] border border-line bg-sunken p-1">
+    <div role="radiogroup" aria-label={label} className="inline-flex rounded-[12px] border border-line bg-sunken p-1 max-sm:w-full">
       {options.map((o) => (
-        <button key={o.value} type="button" role="radio" aria-checked={value === o.value} onClick={() => onChange(o.value)} className={`h-8 rounded-[9px] px-3 text-sm font-semibold ${value === o.value ? 'bg-raised text-text shadow-[0_1px_0_var(--line-strong)]' : 'text-text-2 hover:text-text'}`}>
+        <button key={o.value} type="button" role="radio" aria-checked={value === o.value} onClick={() => onChange(o.value)} className={`h-8 rounded-[9px] px-3 text-sm font-semibold max-sm:h-11 max-sm:flex-1 ${value === o.value ? 'bg-raised text-text shadow-[0_1px_0_var(--line-strong)]' : 'text-text-2 hover:text-text'}`}>
           {o.label}
         </button>
       ))}
@@ -92,6 +93,29 @@ export default function Settings() {
     onError: (err) => toast.error(err instanceof ApiError ? err.message : 'Could not make a new code.'),
   });
 
+  // A signed-in player must not see the signed-out page while their account loads, or if it fails to.
+  if (me.isLoading) {
+    return (
+      <>
+        <PageHeader title="Settings" description="Changes save as you make them." />
+        <div className="flex flex-col gap-6" aria-busy="true">
+          <span role="status" className="sr-only">
+            Loading your settings
+          </span>
+          <Skeleton className="h-80 rounded-[var(--radius-m)]" />
+          <Skeleton className="h-64 rounded-[var(--radius-m)]" />
+        </div>
+      </>
+    );
+  }
+  if (me.isError && !me.data) {
+    return (
+      <>
+        <PageHeader title="Settings" />
+        <AccountError onRetry={() => void me.refetch()} />
+      </>
+    );
+  }
   if (!user) {
     return (
       <>

@@ -43,8 +43,8 @@ export default function ModesPage() {
             value: c,
             label: (
               <>
-                {MODE_CATEGORY_INFO[c].label}
-                {modes.data ? <span className="ml-1.5 opacity-70 tabular">{count(c)}</span> : null}
+                {/* A real space, not a margin, so the chip's name reads "Party 4" rather than "Party4". */}
+                {MODE_CATEGORY_INFO[c].label} {modes.data ? <span className="opacity-70 tabular">{count(c)}</span> : null}
               </>
             ),
           })),

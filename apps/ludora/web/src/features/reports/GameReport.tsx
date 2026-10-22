@@ -4,7 +4,7 @@ import { Download, FileSearch } from 'lucide-react';
 import { api } from '../../lib/api.ts';
 import { useMe } from '../../lib/session.ts';
 import { duration, formatNumber, ordinal, plural } from '../../lib/format.ts';
-import { Badge, EmptyState, ErrorNotice, PageHeader, SectionTitle, Skeleton } from '../../ui/primitives.tsx';
+import { AccountError, Badge, EmptyState, ErrorNotice, PageHeader, SectionTitle, Skeleton } from '../../ui/primitives.tsx';
 import { Button, ButtonLink } from '../../ui/Button.tsx';
 import { csvDateTime, csvPercent, downloadCsv, fileDate, slug, type CsvCell } from './csv.ts';
 import {
@@ -143,6 +143,14 @@ export default function GameReport() {
         </div>
         <Skeleton className="h-64" />
       </div>
+    );
+  }
+  if (me.isError && !me.data) {
+    return (
+      <>
+        <PageHeader title="Game report" />
+        <AccountError onRetry={() => void me.refetch()} />
+      </>
     );
   }
   if (!signedIn || hasStatus(report.error, 401)) {

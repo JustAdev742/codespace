@@ -160,7 +160,7 @@ function FlagCard({ flag }: { flag: FlagRow }) {
         </div>
       </div>
 
-      <div className={`mt-3 grid grid-cols-1 gap-x-6 gap-y-3 md:grid-cols-[8.5rem_minmax(0,1fr)] xl:grid-cols-[8.5rem_minmax(0,1fr)_minmax(0,20rem)] ${enabled ? 'opacity-70' : ''}`}>
+      <div className="mt-3 grid grid-cols-1 gap-x-6 gap-y-3 md:grid-cols-[8.5rem_minmax(0,1fr)] xl:grid-cols-[8.5rem_minmax(0,1fr)_minmax(0,20rem)]">
         <Field id={`${fieldId}-rollout`} label="Rollout" hint="Share of other signed-in players" error={rolloutOk ? undefined : 'A whole number from 0 to 100.'}>
           {(p) => (
             <span className="flex items-center gap-2">

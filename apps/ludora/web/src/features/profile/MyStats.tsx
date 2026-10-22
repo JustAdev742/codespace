@@ -7,7 +7,7 @@ import { api } from '../../lib/api.ts';
 import { useMe } from '../../lib/session.ts';
 import { useModes, useOverview, type Overview } from '../../lib/queries.ts';
 import { formatNumber, ordinal, plural, timeAgo } from '../../lib/format.ts';
-import { Badge, EmptyState, ErrorNotice, PageHeader, Panel, Skeleton } from '../../ui/primitives.tsx';
+import { AccountError, Badge, EmptyState, ErrorNotice, PageHeader, Panel, Skeleton } from '../../ui/primitives.tsx';
 import { Button, ButtonLink } from '../../ui/Button.tsx';
 import { Dot } from '../social/parts.tsx';
 import { errorText, usePageTitle } from '../social/data.ts';
@@ -423,6 +423,14 @@ export default function MyStats() {
       <>
         <PageHeader title="My stats" />
         <Skeleton className="h-72" />
+      </>
+    );
+  }
+  if (me.isError && !me.data) {
+    return (
+      <>
+        <PageHeader title="My stats" />
+        <AccountError onRetry={() => void me.refetch()} />
       </>
     );
   }

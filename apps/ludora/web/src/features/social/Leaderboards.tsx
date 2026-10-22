@@ -7,7 +7,7 @@ import type { AvatarLite } from '@ludora/shared';
 import { api } from '../../lib/api.ts';
 import { useMe, type MeUser } from '../../lib/session.ts';
 import { formatNumber, ordinal, plural } from '../../lib/format.ts';
-import { Badge, EmptyState, ErrorNotice, PageHeader, Select, Skeleton, TabPanel, Tabs } from '../../ui/primitives.tsx';
+import { AccountError, Badge, EmptyState, ErrorNotice, PageHeader, Select, Skeleton, TabPanel, Tabs } from '../../ui/primitives.tsx';
 import { ButtonLink } from '../../ui/Button.tsx';
 import { PlayerAvatar } from './parts.tsx';
 import { errorText, friendsKey, getFriends, usePageTitle } from './data.ts';
@@ -250,6 +250,14 @@ export default function Leaderboards() {
       <>
         <PageHeader title="Leaderboards" />
         <RowsSkeleton />
+      </>
+    );
+  }
+  if (me.isError && !me.data) {
+    return (
+      <>
+        <PageHeader title="Leaderboards" />
+        <AccountError onRetry={() => void me.refetch()} />
       </>
     );
   }

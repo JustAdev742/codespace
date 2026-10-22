@@ -6,7 +6,7 @@ import { ITEM_TYPE_INFO, type AccessoryArt, type GlimArt, type ItemArt, type Ite
 import { api, ApiError } from '../../lib/api.ts';
 import { useMe } from '../../lib/session.ts';
 import { ItemArtView } from '../../art/cosmetics.tsx';
-import { EmptyState, PageHeader, Skeleton } from '../../ui/primitives.tsx';
+import { AccountError, EmptyState, ErrorNotice, PageHeader, Skeleton } from '../../ui/primitives.tsx';
 import { Button, ButtonLink } from '../../ui/Button.tsx';
 import { StickerTabPanel, StickerTabs } from '../home/kit.tsx';
 import { ProfileCard } from './ProfileCard.tsx';
@@ -66,6 +66,15 @@ export default function Locker() {
   const accessories = (['hat', 'eyes', 'neck'] as const).map((s) => eq(s)?.art as AccessoryArt | undefined).filter((a): a is AccessoryArt => Boolean(a));
   const emotes = (data?.items ?? []).filter((i) => i.type === 'emote');
 
+  const header = <PageHeader title="Locker" description="Pick your buddy and dress it up. Other players see your buddy in games and on your profile." />;
+  if (me.isError && !me.data) {
+    return (
+      <>
+        {header}
+        <AccountError onRetry={() => void me.refetch()} />
+      </>
+    );
+  }
   if (!me.isLoading && !me.data?.user) {
     return (
       <>
@@ -74,6 +83,15 @@ export default function Locker() {
       </>
     );
   }
+  if (locker.isError && !data) {
+    return (
+      <>
+        {header}
+        <ErrorNotice message="Your locker could not be loaded." onRetry={() => void locker.refetch()} />
+      </>
+    );
+  }
+  const loading = me.isLoading || locker.isLoading;
   // Shown under the card on wide screens, and after the items on phones.
   const emotesPanel = (className: string) =>
     emotes.length ? (
@@ -95,10 +113,7 @@ export default function Locker() {
   const list = (data?.items ?? []).filter(active.match);
   return (
     <>
-      <PageHeader
-        title="Locker"
-        description="Pick your buddy and dress it up. Other players see your buddy in games and on your profile."
-      />
+      {header}
       <div className="grid grid-cols-1 gap-7 lg:grid-cols-[340px_minmax(0,1fr)]">
         <div className="flex flex-col gap-4 lg:sticky lg:top-20 lg:self-start">
           {data ? (
@@ -114,10 +129,11 @@ export default function Locker() {
           {emotesPanel('hidden lg:block')}
         </div>
         <div className="min-w-0">
-          <StickerTabs value={slot} onValueChange={setSlot} label="What to change" items={SLOTS.map((s) => ({ value: s.value, label: s.label, count: (data?.items ?? []).filter(s.match).length }))}>
+          {/* Counts appear once they are known, rather than as zeros while the locker loads. */}
+          <StickerTabs value={slot} onValueChange={setSlot} label="What to change" items={SLOTS.map((s) => ({ value: s.value, label: s.label, ...(data ? { count: data.items.filter(s.match).length } : {}) }))}>
             <StickerTabPanel value={slot} className="focus-visible:outline-offset-8">
               {active.note ? <p className="mb-4 text-text-2">{active.note}</p> : null}
-              {locker.isLoading ? (
+              {loading ? (
                 <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 xl:grid-cols-4">
                   {[0, 1, 2].map((i) => (
                     <Skeleton key={i} className="h-60 rounded-[20px]" />

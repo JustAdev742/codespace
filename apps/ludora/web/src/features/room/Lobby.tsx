@@ -8,6 +8,7 @@ import { Button } from '../../ui/Button.tsx';
 import { ReactionBar } from './game/Reactions.tsx';
 import { GREETERS, NameTag, Pill, PlayerGlim, SIGN, StagePanel, motionOK } from './game/stage.tsx';
 import { useAnnounce } from './game/announce.tsx';
+import { plural } from '../../lib/format.ts';
 
 /** One column per team on a wide screen, up to what fits. */
 const TEAM_COLS: Record<number, string> = { 1: '', 2: 'md:grid-cols-2', 3: 'md:grid-cols-3', 4: 'md:grid-cols-2 xl:grid-cols-4', 5: 'md:grid-cols-3', 6: 'md:grid-cols-3' };
@@ -162,7 +163,7 @@ export function HostLobby({ room, handle }: { room: RoomView; handle: RoomHandle
             <p className="text-[clamp(1.15rem,1.6vw,1.8rem)] font-semibold text-text-2">{room.room.setTitle}</p>
             <ul className="mt-2 flex flex-wrap gap-2 text-[clamp(0.95rem,1.15vw,1.3rem)]" aria-label="Game settings">
               <li>
-                <Pill>{room.room.questionCount} questions</Pill>
+                <Pill>{plural(room.room.questionCount, 'question')}</Pill>
               </li>
               <li>
                 <Pill>{room.room.common.questionTimeSec} s per question</Pill>

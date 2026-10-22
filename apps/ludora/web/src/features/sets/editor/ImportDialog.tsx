@@ -51,6 +51,8 @@ export function ImportDialog({ open, onOpenChange, currentCount, allBlank, hasTi
   const [fileError, setFileError] = useState<string | null>(null);
   const [mode, setMode] = useState<'add' | 'replace'>('add');
   const [useDetails, setUseDetails] = useState(false);
+  // On a phone the typing rules start folded, so the text box is near the top instead of a long scroll down.
+  const [rulesOpen] = useState(() => window.matchMedia?.('(min-width: 640px)').matches ?? true);
   const fileInput = useRef<HTMLInputElement>(null);
   const textId = useId();
   const deferredText = useDeferredValue(text);
@@ -126,11 +128,14 @@ export function ImportDialog({ open, onOpenChange, currentCount, allBlank, hasTi
     >
       <Tabs value={format} onValueChange={(v) => setFormat(v as ImportFormat)} label="Format" items={FORMAT_TABS}>
         <TabPanel value="text" className="flex flex-col gap-2 text-sm text-text-2">
-          <ul className="flex list-disc flex-col gap-1 pl-5">
-            {PASTE_RULES.map((rule) => (
-              <li key={rule}>{rule}</li>
-            ))}
-          </ul>
+          <details open={rulesOpen} className="rounded-[12px] border border-line">
+            <summary className="cursor-pointer rounded-[12px] px-3 py-2 font-semibold text-text hover:bg-surface-2">How to type questions</summary>
+            <ul className="flex list-disc flex-col gap-1 border-t border-line py-2 pr-3 pl-8">
+              {PASTE_RULES.map((rule) => (
+                <li key={rule}>{rule}</li>
+              ))}
+            </ul>
+          </details>
           <details className="rounded-[12px] border border-line">
             <summary className="cursor-pointer rounded-[12px] px-3 py-2 font-semibold text-text hover:bg-surface-2">Example</summary>
             <pre className="max-h-56 overflow-auto border-t border-line px-3 py-2 font-mono text-xs leading-relaxed whitespace-pre-wrap text-text">{PASTE_EXAMPLE}</pre>

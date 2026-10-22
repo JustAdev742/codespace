@@ -148,17 +148,6 @@ export function TimeCell({ iso }: { iso: string }) {
   );
 }
 
-/** On narrow screens the tab strip scrolls; keep the chosen tab in view. */
-export function useActiveTabIntoView(tab: string) {
-  useEffect(() => {
-    const el = document.querySelector<HTMLElement>('[role="tablist"] [role="tab"][data-state="active"]');
-    const list = el?.parentElement;
-    if (!el || !list) return;
-    const left = el.offsetLeft - list.offsetLeft;
-    if (left < list.scrollLeft || left + el.offsetWidth > list.scrollLeft + list.clientWidth) list.scrollTo({ left: Math.max(0, left - 16) });
-  }, [tab]);
-}
-
 /** Read and change several ?query params at once (one history entry). */
 export function useQueryParams(): [URLSearchParams, (patch: Record<string, string | null | undefined>, opts?: { push?: boolean }) => void] {
   const [params, setParams] = useSearchParams();
@@ -736,7 +725,6 @@ export default function Economy() {
   const canGrant = useCan('economy.grant');
   const raw = params.get('tab');
   const tab: Tab = (TABS as readonly string[]).includes(raw ?? '') ? (raw as Tab) : 'overview';
-  useActiveTabIntoView(tab);
   return (
     <StaffPage title="Economy" description="What is in circulation, where it comes from and where it goes, the ledger of every balance change, the earning rules and currencies. Figures leave out test accounts.">
       <Tabs

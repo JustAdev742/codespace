@@ -4,6 +4,7 @@ import { Plus, Search } from 'lucide-react';
 import { SUBJECTS, SUBJECT_LABELS } from '@ludora/shared';
 import { useMe } from '../../lib/session.ts';
 import { useSets } from '../../lib/queries.ts';
+import { plural } from '../../lib/format.ts';
 import { Badge, EmptyState, ErrorNotice, Input, PageHeader, Select, Skeleton } from '../../ui/primitives.tsx';
 import { Button, ButtonLink } from '../../ui/Button.tsx';
 import { SetCover } from './SetCover.tsx';
@@ -71,7 +72,7 @@ export default function Library() {
                     </div>
                     <p className="mt-1 line-clamp-2 text-sm text-text-2">{s.description}</p>
                     <p className="mt-2 text-xs text-text-3">
-                      {s.questionCount} questions, {SUBJECT_LABELS[s.subject as keyof typeof SUBJECT_LABELS] ?? s.subject}
+                      {plural(s.questionCount, 'question')}, {SUBJECT_LABELS[s.subject as keyof typeof SUBJECT_LABELS] ?? s.subject}
                       {s.ownerName ? `, by ${s.ownerName}` : ''}
                     </p>
                   </div>

@@ -243,3 +243,25 @@ from the class page; teacher and staff accounts ask support. A teacher's code
 changes nothing until the student uses it, the student is told who made it,
 and the audit log records it without the code. This also means there are no
 reset links to phish.
+
+**D39. A question someone joins halfway through does not count against them.**
+A player who joins while a question is open may still answer it, and scores as
+usual if they do. If they do not, the reveal says they joined during the
+question instead of showing a red "Not this time", and their streak is
+untouched. The engine reports this as `joinedLate` in the synced-round view, so
+every mode built on synced rounds can say the same. In a knockout game, people
+who join after the start watch, because they would have dodged the questions
+that knocked others out; the screen says they are watching, not that they are
+out.
+
+**D40. A host may have six games open, and closes them from the Host page.**
+Only games in the lobby, running or paused count toward the six; finished and
+solo games do not, so a finished game no longer blocks a new one for 20
+minutes. "Your open games", on the Host page and the home page, lets a host
+rejoin a game they left or close it. Closing a game in progress ends it the
+way End game does: it is saved and players see their results and rewards.
+Closing a lobby sends its players out. Only the room's host can close it, and
+anyone else gets the same answer as for a code that does not exist, so codes
+cannot be probed. A finished room stays open for its results screen and Play
+again, but once a host holds more than six rooms the oldest finished ones
+close, so Play again in old rooms cannot take a host past the limit.

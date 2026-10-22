@@ -16,6 +16,7 @@ import { Stage } from '../../ui/Stage.tsx';
 import { Amount, Badge, ErrorNotice, Panel, Skeleton } from '../../ui/primitives.tsx';
 import { Button, ButtonLink } from '../../ui/Button.tsx';
 import { ModeCard } from '../modes/ModeCard.tsx';
+import { OpenGames } from '../host/OpenGames.tsx';
 import { BLEED_ROUNDING, Bleed, Meter } from './kit.tsx';
 
 /** Shown until the overview loads, or if a player somehow has no buddy. */
@@ -173,6 +174,9 @@ export default function Dashboard() {
       ) : null}
 
       {overview.isError ? <ErrorNotice message="Your overview could not be loaded." onRetry={() => overview.refetch()} /> : null}
+
+      {/* Only there when this player is hosting games: a way back into them, or to close them. */}
+      <OpenGames />
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)]">
         <Panel className="p-5 sm:p-6" aria-labelledby="quests-title">

@@ -53,7 +53,6 @@ import {
   localInputToIso,
   parseWhole,
   percentText,
-  useActiveTabIntoView,
   useCurrencyChoices,
   useQueryParams,
   wholeError,
@@ -140,7 +139,6 @@ export default function Catalog() {
   const [params, patch] = useQueryParams();
   const raw = params.get('tab');
   const tab: Tab = (TABS as readonly string[]).includes(raw ?? '') ? (raw as Tab) : 'items';
-  useActiveTabIntoView(tab);
   return (
     <StaffPage title="Catalogue" description="Every item, collection and Lantern. Live items are sold in the shop and drop from Lanterns, so changes to them reach players straight away.">
       <Tabs
@@ -645,7 +643,7 @@ function CollectionsTab() {
       align: 'right',
       cell: (c) => (
         <span className="flex justify-end gap-1.5">
-          <Button size="sm" variant="ghost" aria-label={`View the items in ${c.name}`} onClick={() => patch({ tab: null, collection: c.id, q: null, type: null, rarity: null, state: null, offset: null }, { push: true })}>
+          <Button size="sm" variant="ghost" aria-label={`View items in ${c.name}`} onClick={() => patch({ tab: null, collection: c.id, q: null, type: null, rarity: null, state: null, offset: null }, { push: true })}>
             View items
           </Button>
           <Button size="sm" onClick={() => setEditing(c)} aria-label={`Edit ${c.name}`}>

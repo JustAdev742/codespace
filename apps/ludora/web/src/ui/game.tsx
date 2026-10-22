@@ -1,5 +1,6 @@
-import { useEffect, useRef, type CSSProperties, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { Tabs as RTabs } from 'radix-ui';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { RARITY_INFO, type Rarity } from '@ludora/shared';
 
 /*
@@ -19,6 +20,7 @@ export interface StickerTab {
 /** Chunky tabs for game-side pages: the active tab is a lantern-amber sticker. */
 export function StickerTabs({ value, onValueChange, items, label, children, className = '' }: { value: string; onValueChange: (v: string) => void; items: StickerTab[]; label: string; children?: ReactNode; className?: string }) {
   const list = useRef<HTMLDivElement>(null);
+  const [hidden, setHidden] = useState({ before: false, after: false });
   // On phones the tabs scroll sideways; keep the active one in view without moving the page.
   useEffect(() => {
     const el = list.current;
@@ -27,22 +29,59 @@ export function StickerTabs({ value, onValueChange, items, label, children, clas
     const left = active.offsetLeft - el.offsetLeft;
     if (left < el.scrollLeft || left + active.offsetWidth > el.scrollLeft + el.clientWidth) el.scrollLeft = left - (el.clientWidth - active.offsetWidth) / 2;
   }, [value]);
+  // Which ends have tabs scrolled out of sight, so those edges can fade and show an arrow.
+  useEffect(() => {
+    const el = list.current;
+    if (!el) return;
+    const update = () => {
+      const end = el.scrollWidth - el.clientWidth;
+      const before = el.scrollLeft > 4;
+      const after = el.scrollLeft < end - 4;
+      setHidden((h) => (h.before === before && h.after === after ? h : { before, after }));
+    };
+    update();
+    el.addEventListener('scroll', update, { passive: true });
+    const observer = new ResizeObserver(update);
+    observer.observe(el);
+    return () => {
+      el.removeEventListener('scroll', update);
+      observer.disconnect();
+    };
+  }, [items.length]);
+  const fade = hidden.before || hidden.after ? `linear-gradient(to right, ${hidden.before ? 'transparent, #000 3.5rem' : '#000'}, ${hidden.after ? '#000 calc(100% - 3.5rem), transparent' : '#000'})` : undefined;
+  const scroll = (dir: -1 | 1) => list.current?.scrollBy({ left: dir * list.current.clientWidth * 0.7, behavior: 'smooth' });
   return (
     <RTabs.Root value={value} onValueChange={onValueChange} className={className}>
-      <RTabs.List ref={list} aria-label={label} className="relative -mx-1 mb-5 flex gap-2 overflow-x-auto px-1 pt-0.5 pb-2 [scrollbar-width:none] md:flex-wrap md:overflow-visible">
-        {items.map((i) => (
-          <RTabs.Trigger
-            key={i.value}
-            value={i.value}
-            className="flex h-11 shrink-0 items-center gap-2 rounded-full border-2 border-line-strong bg-raised px-4 font-display text-[15px] font-bold whitespace-nowrap text-text-2 shadow-[0_3px_0_var(--line-strong)] transition-[transform,box-shadow,background-color] hover:text-text active:translate-y-[2px] active:shadow-[0_1px_0_var(--line-strong)] data-[state=active]:border-ink data-[state=active]:bg-lantern data-[state=active]:text-on-accent data-[state=active]:shadow-[0_3px_0_var(--ink)]"
-          >
-            {i.label}
-            {i.count !== undefined ? <span className="min-w-6 rounded-full bg-[rgb(29_24_70/0.12)] px-1.5 text-center font-sans text-xs font-bold tabular">{i.count}</span> : null}
-          </RTabs.Trigger>
-        ))}
-      </RTabs.List>
+      <div className="relative">
+        <RTabs.List ref={list} aria-label={label} className="relative -mx-1 mb-5 flex gap-2 overflow-x-auto px-1 pt-0.5 pb-2 [scrollbar-width:none] md:flex-wrap md:overflow-visible" style={fade ? { maskImage: fade, WebkitMaskImage: fade } : undefined}>
+          {items.map((i) => (
+            <RTabs.Trigger
+              key={i.value}
+              value={i.value}
+              className="flex h-11 shrink-0 items-center gap-2 rounded-full border-2 border-line-strong bg-raised px-4 font-display text-[15px] font-bold whitespace-nowrap text-text-2 shadow-[0_3px_0_var(--line-strong)] transition-[transform,box-shadow,background-color] hover:text-text active:translate-y-[2px] active:shadow-[0_1px_0_var(--line-strong)] data-[state=active]:border-ink data-[state=active]:bg-lantern data-[state=active]:text-on-accent data-[state=active]:shadow-[0_3px_0_var(--ink)]"
+            >
+              {i.label}
+              {i.count !== undefined ? <span className="min-w-6 rounded-full bg-[rgb(29_24_70/0.12)] px-1.5 text-center font-sans text-xs font-bold tabular">{i.count}</span> : null}
+            </RTabs.Trigger>
+          ))}
+        </RTabs.List>
+        {/* Arrows for pointers; touch scrolls and the keyboard moves through the tabs, so they stay out of the tab order. */}
+        {hidden.before ? <ScrollArrow side="before" onClick={() => scroll(-1)} /> : null}
+        {hidden.after ? <ScrollArrow side="after" onClick={() => scroll(1)} /> : null}
+      </div>
       {children}
     </RTabs.Root>
+  );
+}
+
+function ScrollArrow({ side, onClick }: { side: 'before' | 'after'; onClick: () => void }) {
+  const Icon = side === 'before' ? ChevronLeft : ChevronRight;
+  return (
+    <button type="button" tabIndex={-1} aria-hidden onClick={onClick} className={`absolute top-0.5 grid h-11 w-10 place-items-center ${side === 'before' ? '-left-1' : '-right-1'}`}>
+      <span className="grid size-8 place-items-center rounded-full border-2 border-ink bg-raised text-text shadow-[0_2px_0_var(--ink)]">
+        <Icon className="size-4" />
+      </span>
+    </button>
   );
 }
 

@@ -41,10 +41,16 @@ export async function profileRoutes(app: FastifyInstance, deps: AppDeps) {
     noStore(reply);
     const auth = requireAuth(req);
     const uid = auth.user.id;
-    const [balances, curr, statsRows, avatar, slots, quests, recent, rules] = await Promise.all([
+    const [balances, curr, statsRows, hostedRows, avatar, slots, quests, recent, rules] = await Promise.all([
       balancesOf(deps.db, uid),
       deps.db.select().from(currencies).where(eq(currencies.active, true)).orderBy(currencies.sort),
       deps.db.select().from(userStats).where(eq(userStats.userId, uid)).limit(1),
+      // Every game you hosted, as /api/me/hosted lists them. user_stats.games_hosted only counts
+      // games that earned hosting rewards (two or more players), so it is for quests, not for this.
+      deps.db
+        .select({ n: sql<number>`count(*)::int` })
+        .from(gameSessions)
+        .where(and(eq(gameSessions.hostUserId, uid), eq(gameSessions.isSolo, false))),
       loadAvatar(deps.db, uid),
       equippedArt(deps, uid),
       ensureQuests(deps.db, uid),
@@ -66,7 +72,7 @@ export async function profileRoutes(app: FastifyInstance, deps: AppDeps) {
         gamesPlayed: s?.gamesPlayed ?? 0,
         gamesWon: s?.gamesWon ?? 0,
         podiums: s?.podiums ?? 0,
-        gamesHosted: s?.gamesHosted ?? 0,
+        gamesHosted: hostedRows[0]?.n ?? 0,
         questionsAnswered: s?.questionsAnswered ?? 0,
         questionsCorrect: s?.questionsCorrect ?? 0,
         accuracy: s?.questionsAnswered ? s.questionsCorrect / s.questionsAnswered : null,

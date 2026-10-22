@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { eq } from 'drizzle-orm';
-import { Client, createTestApp, registered, type TestContext } from './helpers.ts';
+import { Client, createTestApp, registered, uniqueName, type TestContext } from './helpers.ts';
 import { answerEvents, featureFlags, gameParticipants, gameSessions, users } from '../src/db/schema.ts';
 import { clearFlagCache } from '../src/modules/flags/service.ts';
 
@@ -85,7 +85,7 @@ describe('friends', () => {
   it('starts players under 13 on friend-code-only requests', async () => {
     const kid = new Client(t.app);
     const year = new Date().getUTCFullYear() - 10;
-    await kid.post('/api/auth/register', { username: `kid${Date.now().toString(36)}`, password: 'a long passphrase', accountType: 'student', birthYear: year });
+    await kid.post('/api/auth/register', { username: uniqueName('kid'), password: 'a long passphrase', accountType: 'student', birthYear: year });
     const me = await kid.get('/api/auth/me');
     expect(me.body.user.preferences.privacy.allowFriendRequests).toBe('friend_code');
     expect(me.body.user.preferences.privacy.profileVisibility).toBe('friends');
@@ -112,10 +112,10 @@ describe('blocks', () => {
   });
 });
 
-async function playedGame(opts: { hostUserId: string; players: { userId: string; correct: number; answered: number; rank: number }[]; classId?: string; assignmentId?: string; answers?: { userId: string; questionId: string; correct: boolean; kind?: string }[]; setId?: string }) {
+async function playedGame(opts: { hostUserId: string; players: { userId: string; correct: number; answered: number; rank: number }[]; classId?: string; assignmentId?: string; answers?: { userId: string; questionId: string; correct: boolean; kind?: string }[]; setId?: string; solo?: boolean }) {
   const [g] = await t.db
     .insert(gameSessions)
-    .values({ roomCode: '123456', modeId: 'classic', hostUserId: opts.hostUserId, setId: opts.setId ?? null, setTitle: 'Test set', settings: {}, common: {}, status: 'completed', endedBy: 'mode', playerCount: opts.players.length, classId: opts.classId ?? null, assignmentId: opts.assignmentId ?? null, isSolo: Boolean(opts.assignmentId), startedAt: new Date(Date.now() - 60_000), endedAt: new Date(), durationMs: 60_000 })
+    .values({ roomCode: '123456', modeId: 'classic', hostUserId: opts.hostUserId, setId: opts.setId ?? null, setTitle: 'Test set', settings: {}, common: {}, status: 'completed', endedBy: 'mode', playerCount: opts.players.length, classId: opts.classId ?? null, assignmentId: opts.assignmentId ?? null, isSolo: opts.solo ?? Boolean(opts.assignmentId), startedAt: new Date(Date.now() - 60_000), endedAt: new Date(), durationMs: 60_000 })
     .returning();
   await t.db.insert(gameParticipants).values(opts.players.map((p, i) => ({ gameId: g!.id, userId: p.userId, playerKey: `p${i}`, displayName: `Player ${i}`, isGuest: false, isBot: false, rank: p.rank, score: p.correct * 100, label: '', answered: p.answered, correct: p.correct, avgResponseMs: 2000, bestStreak: 1 })));
   if (opts.answers?.length) {
@@ -262,7 +262,7 @@ describe('account type', () => {
     expect((await p.client.patch('/api/me/account-type', { accountType: 'player' })).status).toBe(200);
     // Under-13 accounts cannot become teachers, and guests have no account type to change.
     const child = new Client(t.app);
-    expect((await child.post('/api/auth/register', { username: `kid${Date.now().toString(36)}`, password: 'correct horse battery', birthYear: new Date().getFullYear() - 10, accountType: 'student' })).status).toBe(200);
+    expect((await child.post('/api/auth/register', { username: uniqueName('kid'), password: 'correct horse battery', birthYear: new Date().getFullYear() - 10, accountType: 'student' })).status).toBe(200);
     expect((await child.patch('/api/me/account-type', { accountType: 'teacher' })).status).toBe(403);
     const guest = new Client(t.app);
     await guest.post('/api/auth/guest', {});
@@ -298,5 +298,22 @@ describe('my stats', () => {
     expect(stats.body.byMode[0]).toMatchObject({ modeId: 'classic', games: 1, correct: 1, answered: 2 });
     expect(stats.body.bySubject[0]).toMatchObject({ subject: 'math', games: 1 });
     expect(stats.body.practise.map((x: { prompt: string }) => x.prompt)).toEqual(['What is 7 x 8?']);
+  });
+
+  it('counts every game you hosted, the same games the hosted list shows', async () => {
+    const host = await registered(t.app, { accountType: 'teacher' });
+    const a = await registered(t.app);
+    const b = await registered(t.app);
+    const player = (userId: string, rank: number) => ({ userId, correct: 1, answered: 2, rank });
+    // One player earns no hosting reward, but it was still a game you hosted.
+    await playedGame({ hostUserId: host.userId, players: [player(a.userId, 1)] });
+    await playedGame({ hostUserId: host.userId, players: [player(a.userId, 1), player(b.userId, 2)] });
+    // Playing on your own is not hosting.
+    await playedGame({ hostUserId: host.userId, players: [player(host.userId, 1)], solo: true });
+    const hosted = await host.client.get('/api/me/hosted');
+    expect(hosted.body.games).toHaveLength(2);
+    const overview = await host.client.get('/api/me/overview');
+    expect(overview.body.stats.gamesHosted).toBe(2);
+    expect((await a.client.get('/api/me/overview')).body.stats.gamesHosted).toBe(0);
   });
 });

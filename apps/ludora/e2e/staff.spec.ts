@@ -52,6 +52,8 @@ const SECTIONS = [
 ];
 
 test('every staff section loads for a super administrator, fits a phone and logs no errors', async ({ browser }) => {
+  // Forty page loads (twenty sections at two widths): more than the default allowance on a busy machine.
+  test.setTimeout(180_000);
   const staff = await account(browser, { displayName: 'Night Shift' });
   expect(operator('grant', staff.username, 'superadmin', '--reason', 'e2e')).toContain('Granted');
   const errors = watchErrors(staff.page);

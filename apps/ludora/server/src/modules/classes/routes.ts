@@ -74,7 +74,7 @@ function requireTeacherAccount(auth: AuthContext) {
 function assertAssignable(modeId: string, variantId: string | null) {
   const mode = getMode(variantId ? (getVariant(variantId)?.meta.modeId ?? modeId) : modeId);
   if (!mode) throw notFound('That game mode does not exist.');
-  // Assignments are played alone, so the mode has to work for one player with no host.
+  // Assignments are played alone, so the mode has to work for one player, with no host and no teams.
   const blocker = soloBlocker(mode.meta.id, variantId, {});
   if (blocker) throw conflict(`${blocker} Assignments are played alone.`);
   return mode;

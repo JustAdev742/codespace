@@ -11,7 +11,8 @@ import { formatNumber, untilText } from '../../lib/format.ts';
 import { ItemArtView } from '../../art/cosmetics.tsx';
 import { Lantern } from '../../art/Lantern.tsx';
 import { Glim } from '../../art/glim/Glim.tsx';
-import { Amount, Dialog, EmptyState, ErrorNotice, PageHeader, Skeleton } from '../../ui/primitives.tsx';
+import { CurrencyIcon } from '../../art/icons.tsx';
+import { AccountError, Amount, Dialog, EmptyState, ErrorNotice, PageHeader, Skeleton } from '../../ui/primitives.tsx';
 import { Button, ButtonLink } from '../../ui/Button.tsx';
 import { StickerTabPanel, StickerTabs, formatPercent } from '../home/kit.tsx';
 import { RarityPanel, frameProps } from '../collection/rarity.tsx';
@@ -303,6 +304,14 @@ export default function Shop() {
   }, [shop.data]);
   const tabs = TAB_ORDER.filter((t) => t.sections.some((s) => (bySection.get(s)?.length ?? 0) > 0));
 
+  if (me.isError && !me.data) {
+    return (
+      <>
+        <PageHeader title="Shop" art={<Lantern art={{ hue: 38, accentHue: 18, pattern: 'stars' }} size={84} lit />} />
+        <AccountError onRetry={() => void me.refetch()} />
+      </>
+    );
+  }
   if (!me.isLoading && !me.data?.user) {
     return (
       <>
@@ -314,11 +323,14 @@ export default function Shop() {
     );
   }
 
-  const balances = shop.data?.balances ?? {};
-  const afford = (l: Listing) => (balances[l.price.currency] ?? 0) >= l.price.amount;
-  const shortBy = (l: Listing) => l.price.amount - (balances[l.price.currency] ?? 0);
+  // The shop's own balances, or the account's while the shop loads. Unknown balances are never shown as zeros.
+  const balances = shop.data?.balances ?? overview.data?.balances;
+  const loading = me.isLoading || shop.isLoading;
+  const afford = (l: Listing) => (balances?.[l.price.currency] ?? 0) >= l.price.amount;
+  const shortBy = (l: Listing) => l.price.amount - (balances?.[l.price.currency] ?? 0);
   const activeTab = tabs.find((t) => t.value === tab) ?? tabs[0];
-  const wallet = ['sparks', 'moonstones', 'dust', ...(balances.frost_tickets || tabs.some((t) => t.value === 'event') ? ['frost_tickets'] : [])];
+  const wallet = ['sparks', 'moonstones', 'dust', ...(balances?.frost_tickets || tabs.some((t) => t.value === 'event') ? ['frost_tickets'] : [])];
+  const walletPill = 'flex flex-wrap items-center gap-x-4 gap-y-1 rounded-full border-2 border-ink bg-raised px-4 py-2 shadow-[0_3px_0_var(--ink)]';
 
   return (
     <>
@@ -333,14 +345,26 @@ export default function Shop() {
         }
         actions={
           <>
-            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 rounded-full border-2 border-ink bg-raised px-4 py-2 shadow-[0_3px_0_var(--ink)]" role="group" aria-label="Your wallet">
-              {wallet.map((c) => (
-                <span key={c} className="inline-flex items-center" title={currencyName(c)}>
-                  <Amount currency={c} value={balances[c] ?? 0} />
-                  <span className="sr-only"> {currencyName(c)}</span>
-                </span>
-              ))}
-            </div>
+            {balances ? (
+              <div className={walletPill} role="group" aria-label="Your wallet">
+                {wallet.map((c) => (
+                  <span key={c} className="inline-flex items-center" title={currencyName(c)}>
+                    <Amount currency={c} value={balances[c] ?? 0} />
+                    <span className="sr-only"> {currencyName(c)}</span>
+                  </span>
+                ))}
+              </div>
+            ) : loading || overview.isLoading ? (
+              <div className={walletPill}>
+                <span className="sr-only">Loading your wallet</span>
+                {wallet.map((c) => (
+                  <span key={c} className="inline-flex items-center gap-1" aria-hidden>
+                    <CurrencyIcon code={c} size={18} />
+                    <Skeleton className="h-4 w-7" />
+                  </span>
+                ))}
+              </div>
+            ) : null}
             <Button size="md" variant="ghost" icon={<HelpCircle className="size-4" aria-hidden />} onClick={() => setCurrenciesOpen(true)}>
               How to earn
             </Button>
@@ -348,12 +372,17 @@ export default function Shop() {
         }
       />
       {shop.isError ? <ErrorNotice message="The shop could not be loaded." onRetry={() => shop.refetch()} /> : null}
-      {shop.isLoading ? (
-        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+      {loading ? (
+        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4" aria-busy="true">
+          <span role="status" className="sr-only">
+            Loading the shop
+          </span>
           {[0, 1, 2, 3].map((i) => (
             <Skeleton key={i} className="h-80 rounded-[22px]" />
           ))}
         </div>
+      ) : shop.data && !activeTab ? (
+        <EmptyState title="Nothing on sale right now">New picks arrive every day.</EmptyState>
       ) : activeTab ? (
         <StickerTabs value={activeTab.value} onValueChange={setTab} label="Shop sections" items={tabs.map((t) => ({ value: t.value, label: t.label }))}>
           <StickerTabPanel value={activeTab.value} className="focus-visible:outline-offset-8">
@@ -407,7 +436,7 @@ export default function Shop() {
           ) : null
         }
       >
-        {confirm ? <ConfirmBody listing={confirm.listing} balance={balances[confirm.listing.price.currency] ?? 0} canAfford={afford(confirm.listing)} shortBy={shortBy(confirm.listing)} onOdds={setOddsFor} /> : null}
+        {confirm ? <ConfirmBody listing={confirm.listing} balance={balances?.[confirm.listing.price.currency] ?? 0} canAfford={afford(confirm.listing)} shortBy={shortBy(confirm.listing)} onOdds={setOddsFor} /> : null}
       </Dialog>
 
       <OddsDialog packId={oddsFor} onClose={() => setOddsFor(null)} />
@@ -438,7 +467,7 @@ export default function Shop() {
         <ul className="flex flex-col gap-4">
           {(overview.data?.currencies ?? []).map((c) => (
             <li key={c.code} className="flex gap-3 rounded-[16px] bg-surface-2 p-3">
-              <Amount currency={c.code} value={balances[c.code] ?? 0} size="lg" className="w-24 shrink-0" />
+              <Amount currency={c.code} value={balances?.[c.code] ?? 0} size="lg" className="w-24 shrink-0" />
               <div className="text-sm">
                 <div className="font-display text-base font-bold">{c.name}</div>
                 <p className="text-text-2">{c.description}</p>

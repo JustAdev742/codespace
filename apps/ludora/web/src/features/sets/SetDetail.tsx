@@ -7,7 +7,8 @@ import { QUESTION_TYPE_LABELS, SUBJECT_LABELS, type Question, type QuestionType 
 import { api, ApiError } from '../../lib/api.ts';
 import { useMe } from '../../lib/session.ts';
 import type { SetSummary } from '../../lib/queries.ts';
-import { Badge, EmptyState, ErrorNotice, Panel, Spinner } from '../../ui/primitives.tsx';
+import { formatNumber, plural } from '../../lib/format.ts';
+import { Badge, EmptyState, ErrorNotice, PageHeader, Panel, Spinner } from '../../ui/primitives.tsx';
 import { Button, ButtonLink } from '../../ui/Button.tsx';
 import { SetCover } from './SetCover.tsx';
 import { ReportDialog } from '../moderation/ReportDialog.tsx';
@@ -56,7 +57,29 @@ export default function SetDetail() {
     onError: (err) => toast.error(err instanceof ApiError ? err.message : 'Could not copy the set.'),
   });
   if (data.isLoading) return <Spinner />;
-  if (data.isError) return data.error instanceof ApiError && data.error.status === 404 ? <EmptyState title="Set not found" action={<ButtonLink to="/library">Back to the library</ButtonLink>}>It may be private or deleted.</EmptyState> : <ErrorNotice message="The set could not be loaded." onRetry={() => data.refetch()} />;
+  if (data.isError) {
+    const status = data.error instanceof ApiError ? data.error.status : 0;
+    return (
+      <div className="flex flex-col gap-6">
+        <Link to="/library" className="text-sm font-semibold">
+          All question sets
+        </Link>
+        <PageHeader title="Question set" />
+        {/* A malformed id is refused before any lookup (400); a set that is missing or private is a 404. */}
+        {status === 400 ? (
+          <EmptyState title="This link does not point to a set" action={<ButtonLink to="/library">Browse the library</ButtonLink>}>
+            Part of the address may be missing or mistyped. Check the link, or find the set in the library.
+          </EmptyState>
+        ) : status === 404 ? (
+          <EmptyState title="Set not found" action={<ButtonLink to="/library">Back to the library</ButtonLink>}>
+            It may be private or deleted.
+          </EmptyState>
+        ) : (
+          <ErrorNotice message="The set could not be loaded." onRetry={() => data.refetch()} />
+        )}
+      </div>
+    );
+  }
   const { set, editable, questions, preview, typeCounts } = data.data!;
   const signedIn = Boolean(me.data?.user);
   return (
@@ -70,12 +93,12 @@ export default function SetDetail() {
           <h1 className="font-display text-4xl font-extrabold">{set.title}</h1>
           <p className="mt-1 max-w-[62ch] text-text-2">{set.description}</p>
           <div className="mt-3 flex flex-wrap gap-1.5">
-            <Badge tone="violet">{set.questionCount} questions</Badge>
+            <Badge tone="violet">{plural(set.questionCount, 'question')}</Badge>
             <Badge>{SUBJECT_LABELS[set.subject as keyof typeof SUBJECT_LABELS] ?? set.subject}</Badge>
             {set.gradeBand ? <Badge>{set.gradeBand}</Badge> : null}
             {set.isOfficial ? <Badge tone="amber">By Ludora</Badge> : set.ownerName ? <Badge>By {set.ownerName}</Badge> : null}
             {set.visibility !== 'public' ? <Badge>{set.visibility === 'private' ? 'Private' : 'Unlisted'}</Badge> : null}
-            {set.plays ? <Badge>Played {set.plays} times</Badge> : null}
+            {set.plays ? <Badge>{set.plays === 1 ? 'Played once' : `Played ${formatNumber(set.plays)} times`}</Badge> : null}
           </div>
         </div>
         <div className="flex flex-wrap gap-2">

@@ -128,7 +128,7 @@ export async function adminUserRoutes(app: FastifyInstance, deps: AppDeps) {
     const granter = alias(users, 'granter');
     const actor = alias(users, 'actor');
     const now = new Date();
-    const [roleRows, modRows, statRows, sessionRows, reportRows, inventoryRows, gameRows, entRows] = await Promise.all([
+    const [roleRows, modRows, statRows, sessionRows, reportRows, inventoryRows, gameRows, entRows, hostedRows] = await Promise.all([
       db
         .select({ role: userRoles.role, reason: userRoles.reason, grantedAt: userRoles.grantedAt, grantedBy: granter.displayName })
         .from(userRoles)
@@ -179,6 +179,11 @@ export async function adminUserRoutes(app: FastifyInstance, deps: AppDeps) {
         .where(eq(entitlements.userId, id))
         .orderBy(desc(entitlements.createdAt))
         .limit(20),
+      // The same count the player sees on their own stats page: every game they hosted with other people.
+      db
+        .select({ n: count() })
+        .from(gameSessions)
+        .where(and(eq(gameSessions.hostUserId, id), eq(gameSessions.isSolo, false))),
     ]);
 
     const canEconomy = auth.permissions.has('economy.view');
@@ -220,7 +225,7 @@ export async function adminUserRoutes(app: FastifyInstance, deps: AppDeps) {
         ? {
             gamesPlayed: stats.gamesPlayed,
             gamesWon: stats.gamesWon,
-            gamesHosted: stats.gamesHosted,
+            gamesHosted: hostedRows[0]?.n ?? 0,
             questionsAnswered: stats.questionsAnswered,
             questionsCorrect: stats.questionsCorrect,
             packsOpened: stats.packsOpened,

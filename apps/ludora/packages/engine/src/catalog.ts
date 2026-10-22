@@ -37,10 +37,19 @@ export function catalogCounts() {
 }
 
 /**
+ * Whether a mode or variant is always played in teams. The engine puts players into
+ * teams for these whatever the host picks (see resolveGameConfig), and one player
+ * cannot make up teams.
+ */
+export function teamsOnly(mode: CatalogMode, variant?: ModeVariant | null): boolean {
+  return mode.meta.teams === 'required' || Boolean(variant?.common?.teamCount);
+}
+
+/**
  * Why a mode or variant cannot be played by one person on their own (a solo room or a
  * class assignment), or null if it can. Solo rooms have no host screen, so a host-paced
- * game must move on by itself. `settings` are the host's choices, which locked
- * variant settings override.
+ * game must move on by itself, and team games need several players. `settings` are the
+ * host's choices, which locked variant settings override.
  */
 export function soloBlocker(modeId: string, variantId: string | null, settings: Readonly<Record<string, unknown>> = {}): string | null {
   const found = variantId ? findCatalogVariant(variantId) : undefined;
@@ -49,6 +58,7 @@ export function soloBlocker(modeId: string, variantId: string | null, settings: 
   const variant = found?.variant;
   const title = variant?.meta.title ?? mode.meta.title;
   if (mode.meta.players.min > 1) return `${title} needs several players at once. Pick a mode that works solo.`;
+  if (teamsOnly(mode, variant)) return `${title} is played in teams, so it needs several players at once. Pick a mode that works solo.`;
   const field = mode.settings.find((f) => f.key === 'autoAdvance');
   if (mode.meta.pacing === 'host' && field) {
     const chosen = variant?.locked?.includes('autoAdvance') ? variant.settings?.autoAdvance : (settings.autoAdvance ?? variant?.settings?.autoAdvance);

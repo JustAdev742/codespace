@@ -128,6 +128,17 @@ function ExistingSet({ id, userId, canPublish }: { id: string; userId: string; c
   const fresh = query.isFetchedAfterMount || created !== null;
 
   if (query.isError && !query.data) {
+    // A malformed id is refused before any lookup.
+    if (query.error instanceof ApiError && query.error.status === 400) {
+      return (
+        <>
+          <PageHeader title="Edit question set" />
+          <EmptyState title="This link does not point to a set" action={<ButtonLink to="/library">Browse the library</ButtonLink>}>
+            Part of the address may be missing or mistyped. Check the link, or open the set from the library.
+          </EmptyState>
+        </>
+      );
+    }
     if (query.error instanceof ApiError && query.error.status === 404) {
       return (
         <>

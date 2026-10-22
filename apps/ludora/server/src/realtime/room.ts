@@ -398,7 +398,7 @@ export class Room {
       case 'end':
         if (this.status === 'lobby') return fail('invalid_state', 'The game has not started.');
         if (this.status === 'ended') return { ok: true };
-        this.runtime?.end('host', 'The host ended the game.');
+        this.runtime?.end('host', this.solo ? 'You finished the game early.' : 'The host ended the game.');
         return { ok: true };
       case 'next': {
         if (!this.runtime) return fail('invalid_state', 'The game has not started.');

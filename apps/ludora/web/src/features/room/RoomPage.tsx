@@ -290,8 +290,9 @@ export default function RoomPage() {
               </IconButton>
             ) : null}
             <Button size="sm" variant="ghost" className={`max-sm:ml-1 max-sm:h-11 ${WIDE}`} icon={<DoorOpen className="size-4" aria-hidden />} onClick={() => (askFirst ? setConfirmLeave(true) : void leave())}>
-              {/* A host running a game from a phone needs the room for the game controls: the label goes to screen readers only. */}
-              {isHost && live ? <span className="max-sm:sr-only">Leave</span> : isHost ? 'Leave' : 'Leave game'}
+              {/* A host running a game from a phone needs the room for the game controls, and a solo game's title needs it
+                  beside Finish now: the label goes to screen readers only. */}
+              {isHost && live ? <span className="max-sm:sr-only">Leave</span> : isHost ? 'Leave' : room.room.solo && live ? <span className="max-sm:sr-only">Leave game</span> : 'Leave game'}
             </Button>
           </div>
         </div>

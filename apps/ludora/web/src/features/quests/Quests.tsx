@@ -8,7 +8,7 @@ import { formatNumber, untilText } from '../../lib/format.ts';
 import { useMe } from '../../lib/session.ts';
 import { useOverview, type QuestView } from '../../lib/queries.ts';
 import { Glim } from '../../art/glim/Glim.tsx';
-import { Amount, EmptyState, ErrorNotice, PageHeader, Skeleton } from '../../ui/primitives.tsx';
+import { AccountError, Amount, EmptyState, ErrorNotice, PageHeader, Skeleton } from '../../ui/primitives.tsx';
 import { Button, ButtonLink } from '../../ui/Button.tsx';
 import { Meter, ToggleChips } from '../home/kit.tsx';
 
@@ -158,6 +158,14 @@ export default function Quests() {
     return all;
   }, [achievements.data, filter]);
 
+  if (me.isError && !me.data) {
+    return (
+      <>
+        <PageHeader title="Quests and achievements" />
+        <AccountError onRetry={() => void me.refetch()} />
+      </>
+    );
+  }
   if (!me.isLoading && !signedIn) {
     return (
       <>

@@ -9,8 +9,9 @@ import { useOverview } from '../../lib/queries.ts';
 import { formatNumber } from '../../lib/format.ts';
 import { Glim } from '../../art/glim/Glim.tsx';
 import { Lantern } from '../../art/Lantern.tsx';
+import { CurrencyIcon } from '../../art/icons.tsx';
 import { Stage } from '../../ui/Stage.tsx';
-import { Amount, Dialog, EmptyState, ErrorNotice, Input, PageHeader, Select, Skeleton } from '../../ui/primitives.tsx';
+import { AccountError, Amount, Dialog, EmptyState, ErrorNotice, Input, PageHeader, Select, Skeleton } from '../../ui/primitives.tsx';
 import { Button, ButtonLink } from '../../ui/Button.tsx';
 import { Meter, RarityTag, ToggleChips } from '../home/kit.tsx';
 import { RarityPanel, frameProps } from './rarity.tsx';
@@ -45,7 +46,7 @@ const PATTERN: Record<string, LanternArt['pattern']> = { meadow: 'leaves', tidep
 
 const CURRENCY_NAME: Record<string, string> = { sparks: 'Sparks', moonstones: 'Moonstones', dust: 'Glow Dust' };
 
-function GlimDetail({ glim, collection, dust, isBuddy, onClose }: { glim: CollectionGlim; collection: string; dust: number; isBuddy: boolean; onClose: () => void }) {
+function GlimDetail({ glim, collection, dust, isBuddy, onClose }: { glim: CollectionGlim; collection: string; dust: number | null; isBuddy: boolean; onClose: () => void }) {
   const qc = useQueryClient();
   const [qty, setQty] = useState(1);
   const refresh = async () => {
@@ -118,9 +119,10 @@ function GlimDetail({ glim, collection, dust, isBuddy, onClose }: { glim: Collec
         ) : null}
         <div className="flex flex-wrap items-center justify-between gap-2 rounded-[16px] bg-surface-2 px-3 py-2.5">
           <span className="text-sm text-text-2">
-            {owned ? 'Craft another' : 'Craft it'} with Glow Dust <span className="whitespace-nowrap">(you have {formatNumber(dust)})</span>
+            {owned ? 'Craft another' : 'Craft it'} with Glow Dust{dust !== null ? <span className="whitespace-nowrap"> (you have {formatNumber(dust)})</span> : null}
           </span>
-          <Button size="sm" variant={owned ? 'secondary' : 'primary'} disabled={dust < glim.craftCost} loading={craft.isPending} onClick={() => craft.mutate()}>
+          {/* With the balance unknown the server decides, rather than a guess of zero. */}
+          <Button size="sm" variant={owned ? 'secondary' : 'primary'} disabled={dust !== null && dust < glim.craftCost} loading={craft.isPending} onClick={() => craft.mutate()}>
             Craft for <Amount currency="dust" value={glim.craftCost} size="sm" />
           </Button>
         </div>
@@ -175,6 +177,14 @@ export default function Collection() {
     return all.sort((a, b) => RARITY_INFO[b.rarity].rank - RARITY_INFO[a.rarity].rank).slice(0, 3);
   }, [data.data]);
 
+  if (me.isError && !me.data) {
+    return (
+      <>
+        <PageHeader title="Collection" />
+        <AccountError onRetry={() => void me.refetch()} />
+      </>
+    );
+  }
   if (!me.isLoading && !me.data?.user) {
     return (
       <>
@@ -196,7 +206,10 @@ export default function Collection() {
   };
   const visible = (data.data?.collections ?? []).map((c) => ({ c, list: c.glims.filter(keep) })).filter((x) => x.list.length > 0);
   const filtered = filter !== 'all' || rarity !== '' || q.trim() !== '';
-  const dust = overview.data?.balances.dust ?? 0;
+  // Unknown until the account's balances load; never shown as a zero.
+  const dust = overview.data ? (overview.data.balances.dust ?? 0) : null;
+  const loading = me.isLoading || data.isLoading;
+  const dustPill = 'inline-flex items-center gap-2 rounded-full border-2 border-ink bg-raised px-4 py-2 font-semibold shadow-[0_3px_0_var(--ink)]';
 
   return (
     <>
@@ -214,9 +227,17 @@ export default function Collection() {
         }
         actions={
           <>
-            <span className="inline-flex items-center gap-2 rounded-full border-2 border-ink bg-raised px-4 py-2 font-semibold shadow-[0_3px_0_var(--ink)]">
-              <Amount currency="dust" value={dust} /> <span className="text-sm text-text-2">Glow Dust</span>
-            </span>
+            {dust !== null ? (
+              <span className={dustPill}>
+                <Amount currency="dust" value={dust} /> <span className="text-sm text-text-2">Glow Dust</span>
+              </span>
+            ) : me.isLoading || overview.isLoading ? (
+              <span className={dustPill}>
+                <CurrencyIcon code="dust" size={18} />
+                <Skeleton className="h-4 w-7" />
+                <span className="text-sm text-text-2">Glow Dust</span>
+              </span>
+            ) : null}
             <ButtonLink to="/shop?tab=lanterns" variant="primary">
               Open a Lantern
             </ButtonLink>
@@ -270,7 +291,7 @@ export default function Collection() {
       </div>
 
       {data.isError ? <ErrorNotice message="Your collection could not be loaded." onRetry={() => data.refetch()} /> : null}
-      {data.isLoading ? (
+      {loading ? (
         <div className="grid grid-cols-3 gap-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6">
           {Array.from({ length: 12 }, (_, i) => (
             <Skeleton key={i} className="aspect-[4/5] rounded-[20px]" />

@@ -4,7 +4,7 @@ import { ChevronRight, Clock, Presentation, Users } from 'lucide-react';
 import { api } from '../../lib/api.ts';
 import { useMe } from '../../lib/session.ts';
 import { duration, plural } from '../../lib/format.ts';
-import { EmptyState, ErrorNotice, PageHeader, Skeleton } from '../../ui/primitives.tsx';
+import { AccountError, EmptyState, ErrorNotice, PageHeader, Skeleton } from '../../ui/primitives.tsx';
 import { Button, ButtonLink } from '../../ui/Button.tsx';
 import { dateTimeText, errorText, hasStatus, SignInPrompt, usePageTitle } from './reportUi.tsx';
 
@@ -81,6 +81,14 @@ export default function HostedGames() {
     />
   );
 
+  if (me.isError && !me.data) {
+    return (
+      <>
+        {header}
+        <AccountError onRetry={() => void me.refetch()} />
+      </>
+    );
+  }
   if (!me.isLoading && (!signedIn || hasStatus(hosted.error, 401))) {
     return (
       <>

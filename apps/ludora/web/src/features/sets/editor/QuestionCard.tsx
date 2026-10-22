@@ -158,17 +158,19 @@ export const QuestionCard = memo(function QuestionCard({ question: q, index, tot
           </span>
           <ChevronDown className={`mt-1.5 size-5 shrink-0 text-text-3 transition-transform ${open ? 'rotate-180' : ''}`} aria-hidden />
         </button>
-        <div className="ml-auto flex shrink-0 items-center pt-1">
-          <IconButton id={domIds.field(q.id, 'up')} size="sm" label={`Move question ${n} up`} disabled={index === 0} onClick={() => onMove(q.id, -1)}>
+        {/* 44px targets on phones (compact on wider screens), with Delete set apart so it is not hit by mistake. */}
+        <div className="ml-auto flex shrink-0 items-center gap-0.5 pt-1 max-sm:gap-1">
+          <IconButton id={domIds.field(q.id, 'up')} size="sm" className="max-sm:size-11" label={`Move question ${n} up`} disabled={index === 0} onClick={() => onMove(q.id, -1)}>
             <ArrowUp className="size-4" />
           </IconButton>
-          <IconButton id={domIds.field(q.id, 'down')} size="sm" label={`Move question ${n} down`} disabled={index === total - 1} onClick={() => onMove(q.id, 1)}>
+          <IconButton id={domIds.field(q.id, 'down')} size="sm" className="max-sm:size-11" label={`Move question ${n} down`} disabled={index === total - 1} onClick={() => onMove(q.id, 1)}>
             <ArrowDown className="size-4" />
           </IconButton>
-          <IconButton size="sm" label={`Duplicate question ${n}`} disabled={!canDuplicate} onClick={() => onDuplicate(q.id)}>
+          <IconButton size="sm" className="max-sm:size-11" label={`Duplicate question ${n}`} disabled={!canDuplicate} onClick={() => onDuplicate(q.id)}>
             <Copy className="size-4" />
           </IconButton>
-          <IconButton size="sm" label={`Delete question ${n}`} onClick={() => onRemove(q.id)}>
+          <span className="mx-1 h-5 w-px bg-line max-sm:mx-2" aria-hidden />
+          <IconButton size="sm" className="max-sm:size-11" label={`Delete question ${n}`} onClick={() => onRemove(q.id)}>
             <Trash2 className="size-4" />
           </IconButton>
         </div>

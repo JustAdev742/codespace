@@ -6,7 +6,7 @@ import { Check, Copy, Eye, Trophy, UserMinus, UserPlus, Users } from 'lucide-rea
 import { api, ApiError } from '../../lib/api.ts';
 import { useMe, type Preferences } from '../../lib/session.ts';
 import { formatNumber, timeAgo } from '../../lib/format.ts';
-import { Dialog, EmptyState, ErrorNotice, Input, PageHeader, Panel, Skeleton } from '../../ui/primitives.tsx';
+import { AccountError, Dialog, EmptyState, ErrorNotice, Input, PageHeader, Panel, Skeleton } from '../../ui/primitives.tsx';
 import { Button, ButtonLink } from '../../ui/Button.tsx';
 import { Dot, PlayerAvatar } from './parts.tsx';
 import { blocksKey, errorText, friendsKey, getBlocks, getFriends, shortDate, useFocusAfterUpdate, useReturnFocus, useSocialRefresh, usePageTitle, type BlockedPlayer, type Friend } from './data.ts';
@@ -279,6 +279,14 @@ export default function Friends() {
       </>
     );
   }
+  if (me.isError && !me.data) {
+    return (
+      <>
+        <PageHeader title="Friends" />
+        <AccountError onRetry={() => void me.refetch()} />
+      </>
+    );
+  }
   if (!user) return <SignedOut />;
   const refusedAsGuest = friends.error instanceof ApiError && friends.error.status === 403;
   if (user.isGuest || refusedAsGuest) return <GuestPrompt />;
@@ -331,7 +339,7 @@ export default function Friends() {
                   <ul className="divide-y divide-line">
                     {data.outgoing.map((p) => (
                       <PersonRow key={p.id} person={p} detail={`Sent ${timeAgo(p.since)}`}>
-                        <Button size="sm" variant="ghost" loading={drop.isPending && drop.variables?.person.id === p.id} onClick={() => drop.mutate({ person: p, kind: 'cancel' })} aria-label={`Cancel your request to ${p.displayName}`}>
+                        <Button size="sm" variant="ghost" loading={drop.isPending && drop.variables?.person.id === p.id} onClick={() => drop.mutate({ person: p, kind: 'cancel' })} aria-label={`Cancel request to ${p.displayName}`}>
                           Cancel request
                         </Button>
                       </PersonRow>

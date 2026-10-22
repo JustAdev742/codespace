@@ -86,12 +86,17 @@
  */
 :root[data-theme='light'] .text-glim { color: var(--glim-text); }
 :root[data-theme='light'] .text-lantern { color: var(--lantern-text); }
-:root[data-theme='light'] .text-ember { color: var(--ember-text); }
+/* A coral badge's tint makes its background lighter than the page, so on dark
+   surfaces its words need a lighter coral than plain coral text does. */
+.badge-coral { color: #ff8a98; }
+:root[data-theme='light'] .text-ember,
+:root[data-theme='light'] .badge-coral { color: var(--ember-text); }
 :root[data-theme='light'] .text-sky { color: var(--sky-text); }
 @media (prefers-color-scheme: light) {
   :root:not([data-theme='dark']) .text-glim { color: var(--glim-text); }
   :root:not([data-theme='dark']) .text-lantern { color: var(--lantern-text); }
-  :root:not([data-theme='dark']) .text-ember { color: var(--ember-text); }
+  :root:not([data-theme='dark']) .text-ember,
+  :root:not([data-theme='dark']) .badge-coral { color: var(--ember-text); }
   :root:not([data-theme='dark']) .text-sky { color: var(--sky-text); }
 }
 
@@ -121,7 +126,9 @@
 :root .stage .text-lantern,
 :root .on-stage .text-lantern { color: var(--lantern); }
 :root .stage .text-ember,
-:root .on-stage .text-ember { color: #ff8a98; }
+:root .on-stage .text-ember,
+:root .stage .badge-coral,
+:root .on-stage .badge-coral { color: #ff8a98; }
 :root .stage .text-sky,
 :root .on-stage .text-sky { color: var(--sky); }
 
@@ -143,7 +150,8 @@
 }
 :root .paper .text-glim { color: var(--glim-text, #08704f); }
 :root .paper .text-lantern { color: var(--lantern-text, #845400); }
-:root .paper .text-ember { color: var(--ember-text, #b51f37); }
+:root .paper .text-ember,
+:root .paper .badge-coral { color: var(--ember-text, #b51f37); }
 :root .paper .text-sky { color: var(--sky-text, #0a5f97); }
 
 :root {
@@ -359,6 +367,111 @@
   border-color: var(--line-strong);
   box-shadow: 0 2px 0 var(--line-strong);
   opacity: 1;
+}
+
+/*
+ * Toasts (sonner) as Ludora tags, matching the game's news: paper with an ink
+ * edge and a hard shadow, filled with the accent of their kind. Ink text passes
+ * AA on every fill, in both themes. Sonner injects its stylesheet after this
+ * one, so each selector carries an extra :root to win.
+ */
+:root [data-sonner-toaster] {
+  font-family: var(--font-sans);
+  /* Still usable while a modal dialog makes the rest of the page inert. */
+  pointer-events: auto;
+}
+:root [data-sonner-toast][data-styled='true'] {
+  gap: 10px;
+  padding: 12px 14px;
+  border: 2px solid var(--ink);
+  border-radius: 16px;
+  background: #ffffff;
+  color: var(--on-accent);
+  box-shadow: 0 3px 0 var(--ink);
+  font-size: 15px;
+}
+:root [data-sonner-toast][data-styled='true']:has(> [data-close-button]) {
+  padding-right: 54px;
+}
+:root [data-sonner-toast][data-type='success'] {
+  background: var(--glim);
+}
+:root [data-sonner-toast][data-type='error'] {
+  background: var(--ember);
+}
+:root [data-sonner-toast][data-type='warning'] {
+  background: var(--lantern);
+}
+:root [data-sonner-toast][data-type='info'] {
+  background: var(--sky);
+}
+:root [data-sonner-toast][data-styled='true']:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 2px;
+  box-shadow: 0 3px 0 var(--ink);
+}
+:root [data-sonner-toast][data-styled='true'] [data-title] {
+  font-weight: 700;
+  line-height: 1.35;
+}
+:root [data-sonner-toast][data-styled='true'] [data-description] {
+  color: inherit;
+  font-size: 14px;
+}
+:root [data-sonner-toast][data-styled='true'] [data-icon] {
+  width: 20px;
+  height: 20px;
+  margin: 0;
+}
+:root [data-sonner-toast][data-styled='true'] [data-icon] svg {
+  margin: 0;
+}
+:root [data-sonner-toaster] .sonner-loading-bar {
+  background: var(--on-accent);
+}
+/* The close button sits inside the tag on the right: 36px to see, 44px to hit. */
+:root [data-sonner-toast][data-styled='true'] [data-close-button] {
+  left: auto;
+  right: 7px;
+  top: 50%;
+  width: 36px;
+  height: 36px;
+  transform: translateY(-50%);
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: inherit;
+}
+:root [data-sonner-toast][data-styled='true'] [data-close-button]::after {
+  content: '';
+  position: absolute;
+  inset: -4px;
+}
+:root [data-sonner-toast][data-styled='true']:hover [data-close-button]:hover {
+  background: rgb(29 24 70 / 0.12);
+}
+:root [data-sonner-toast][data-styled='true'] [data-close-button]:focus-visible,
+:root [data-sonner-toast][data-styled='true'] [data-button]:focus-visible {
+  outline: 2.5px solid var(--on-accent);
+  outline-offset: 1px;
+  box-shadow: none;
+}
+/* Undo and other actions: a small paper sticker inside the tag. */
+:root [data-sonner-toast][data-styled='true'] [data-button] {
+  height: 34px;
+  padding: 0 12px;
+  border: 2px solid var(--ink);
+  border-radius: 10px;
+  background: #ffffff;
+  color: var(--on-accent);
+  box-shadow: 0 2px 0 var(--ink);
+  font-size: 14px;
+  font-weight: 700;
+}
+/* On a plain paper tag the action takes the lantern colour so it does not read as part of the paper. */
+:root [data-sonner-toast]:not([data-type]) [data-button],
+:root [data-sonner-toast][data-type='default'] [data-button] {
+  background: var(--lantern);
 }
 
 @keyframes skeleton {

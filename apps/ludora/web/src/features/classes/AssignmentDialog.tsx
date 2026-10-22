@@ -3,6 +3,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { Search } from 'lucide-react';
 import { SUBJECT_LABELS } from '@ludora/shared';
+import { soloBlocker } from '@ludora/engine/catalog';
 import { api, ApiError } from '../../lib/api.ts';
 import { useModes, useSets, thumbFor, type CatalogEntry, type CatalogVariant, type SetSummary } from '../../lib/queries.ts';
 import { ModeArt } from '../../art/ModeArt.tsx';
@@ -10,6 +11,7 @@ import { Badge, Dialog, EmptyState, ErrorNotice, Field, Input, Skeleton, Textare
 import { Button, ButtonLink } from '../../ui/Button.tsx';
 import { SetCover } from '../sets/SetCover.tsx';
 import { classKeys, fromLocalInput, toLocalInput, useModeInfo, type TeacherAssignment } from './classData.ts';
+import { plural } from '../../lib/format.ts';
 
 /*
  * New and edit assignment. A new assignment needs a question set (the
@@ -121,7 +123,7 @@ function SetPicker({ onPick }: { onPick: (s: SetSummary) => void }) {
                     <span className="min-w-0 flex-1">
                       <span className="block truncate font-semibold">{s.title}</span>
                       <span className="block truncate text-xs text-text-3">
-                        {s.questionCount} questions, {subjectLabel(s.subject)}
+                        {plural(s.questionCount, 'question')}, {subjectLabel(s.subject)}
                         {shownScope === 'public' && s.ownerName ? `, by ${s.ownerName}` : ''}
                       </span>
                     </span>
@@ -150,25 +152,16 @@ function SetPicker({ onPick }: { onPick: (s: SetSummary) => void }) {
 }
 
 /**
- * Host-paced games wait for someone to press Next when "Move on
- * automatically" is off (Class Discussion turns it off and locks it). A
- * student playing an assignment alone has no Next button, so the game
- * would stop after the first question.
+ * Modes a student can play alone, using the server's own check: one player is
+ * enough, it is not played in teams, and it moves on by itself (Class
+ * Discussion waits for a host to press Next). Modes still being built or
+ * hidden are left out too.
  */
-function waitsForHost(mode: CatalogEntry, variant: CatalogVariant | null): boolean {
-  if (mode.meta.pacing !== 'host') return false;
-  const field = mode.settings.find((f) => f.key === 'autoAdvance');
-  if (!field) return false;
-  const preset = variant?.settings?.autoAdvance;
-  return (preset !== undefined ? preset : field.default) === false;
-}
-
-/** Modes a student can play alone: one player is enough, it is not still being built or hidden, and it moves on by itself. */
 function assignableChoices(modes: CatalogEntry[]): Choice[] {
   return modes
-    .filter((m) => m.meta.players.min <= 1 && m.meta.status !== 'planned' && !m.hidden)
+    .filter((m) => m.meta.status !== 'planned' && !m.hidden)
     .flatMap((m) => [{ mode: m, variant: null }, ...m.variants.filter((v) => v.meta.status !== 'planned' && !v.hidden).map((v) => ({ mode: m, variant: v }))])
-    .filter((c) => !waitsForHost(c.mode, c.variant));
+    .filter((c) => !soloBlocker(c.mode.meta.id, c.variant?.meta.id ?? null));
 }
 
 function ModePicker({ onPick }: { onPick: (c: Choice) => void }) {
@@ -221,7 +214,7 @@ function Chosen({ art, title, detail, changeLabel, onChange, focusOnMount }: { a
       {art}
       <span className="min-w-0 flex-1">
         <span className="block font-semibold break-words">{title}</span>
-        <span className="block text-xs break-words text-text-3">{detail}</span>
+        <span className="block text-xs break-words text-text-2">{detail}</span>
       </span>
       <Button ref={ref} size="sm" variant="ghost" onClick={onChange} aria-label={changeLabel}>
         Change
@@ -327,7 +320,7 @@ function AssignmentForm({ classId, editing, onDone }: { classId: string; editing
               <Chosen
                 art={<SetCover cover={set.cover} subject={set.subject} size={40} />}
                 title={set.title}
-                detail={`${set.questionCount} questions, ${subjectLabel(set.subject)}`}
+                detail={`${plural(set.questionCount, 'question')}, ${subjectLabel(set.subject)}`}
                 changeLabel={`Change the question set, ${set.title}`}
                 onChange={() => setSet(null)}
                 focusOnMount={picked.set}
@@ -343,7 +336,7 @@ function AssignmentForm({ classId, editing, onDone }: { classId: string; editing
           </section>
 
           <section aria-labelledby="assign-mode">
-            <SectionHeading id="assign-mode" note="Only modes that work with one player are listed. Each student plays on their own.">
+            <SectionHeading id="assign-mode" note="Each student plays on their own, so only modes that work for one player are listed. Team games are left out.">
               Game mode
             </SectionHeading>
             {choice ? (

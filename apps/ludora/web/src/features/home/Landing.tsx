@@ -1,7 +1,6 @@
 import { Link } from 'react-router';
 import { PencilLine, Presentation, ShieldCheck } from 'lucide-react';
 import type { GlimArt, Rarity } from '@ludora/shared';
-import { RARITY_INFO } from '@ludora/shared';
 import { useModes } from '../../lib/queries.ts';
 import { CodeEntry } from '../play/CodeEntry.tsx';
 import { Glim } from '../../art/glim/Glim.tsx';
@@ -10,7 +9,7 @@ import { ButtonLink } from '../../ui/Button.tsx';
 import { Skeleton } from '../../ui/primitives.tsx';
 import { ModeCard } from '../modes/ModeCard.tsx';
 import { COMPACT_SCENE, GLIMS, GlimCrowd, HERO_SCENE } from './GlimCrowd.tsx';
-import { BLEED_ROUNDING, Bleed } from './kit.tsx';
+import { BLEED_ROUNDING, Bleed, RarityTag } from './kit.tsx';
 
 /** One Glim of every rarity, from common to mythic. */
 const LADDER: { rarity: Rarity; name: string; art: GlimArt }[] = [
@@ -104,9 +103,8 @@ export default function Landing() {
               >
                 <Glim art={g.art} size={120} rarity={g.rarity} aura={g.rarity === 'common' ? null : g.rarity} className="h-auto w-full max-w-[120px]" />
                 <span className="font-display text-[15px] leading-tight font-bold text-[#1d1846]">{g.name}</span>
-                <span className="mt-1 rounded-full px-2 text-xs font-bold text-[#1d1846]" style={g.rarity === 'mythic' ? undefined : { background: `color-mix(in oklab, var(--r-${g.rarity}) 35%, white)` }}>
-                  {RARITY_INFO[g.rarity].label}
-                </span>
+                {/* The same rarity tag as the shop and collection cards, mythic included. */}
+                <RarityTag rarity={g.rarity} className="mt-1" />
               </li>
             ))}
           </ul>

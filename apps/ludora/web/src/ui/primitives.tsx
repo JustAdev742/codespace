@@ -86,13 +86,18 @@ export function ErrorNotice({ title = 'That did not load', message, onRetry }: {
   );
 }
 
+/** For pages that depend on who is signed in, when that could not be checked: never claims the viewer is signed out. */
+export function AccountError({ onRetry }: { onRetry: () => void }) {
+  return <ErrorNotice title="Your account did not load" message="Ludora could not check who is signed in. Check your connection and try again." onRetry={onRetry} />;
+}
+
 /* ---------------------------------- Badges ---------------------------------- */
 
 const TONES = {
   neutral: 'bg-surface-3 text-text-2',
   amber: 'bg-surface-3 text-lantern',
   mint: 'bg-glim/15 text-glim',
-  coral: 'bg-ember/15 text-ember',
+  coral: 'bg-ember/15 badge-coral',
   violet: 'bg-dusk/20 text-link',
   sky: 'bg-sky/15 text-sky',
 } as const;
@@ -200,15 +205,18 @@ export function Switch({ checked, onCheckedChange, label, description, disabled 
           </p>
         ) : null}
       </div>
+      {/* On phones the button is a 44px target around the same 48 by 28 track; the negative margin keeps the row height. */}
       <RSwitch.Root
         id={id}
         aria-describedby={description ? `${id}-desc` : undefined}
         checked={checked}
         onCheckedChange={onCheckedChange}
         disabled={disabled}
-        className="relative mt-0.5 h-7 w-12 shrink-0 rounded-full border-2 border-ink bg-surface-3 transition-colors data-[state=checked]:bg-glim disabled:opacity-50"
+        className="group -my-2 grid h-11 w-14 shrink-0 place-items-center rounded-[12px] disabled:opacity-50 sm:my-0 sm:mt-0.5 sm:h-7 sm:w-12 sm:rounded-full"
       >
-        <RSwitch.Thumb className="block size-5 translate-x-0.5 rounded-full border-2 border-ink bg-white transition-transform data-[state=checked]:translate-x-[22px]" />
+        <span className="flex h-7 w-12 items-center rounded-full border-2 border-ink bg-surface-3 transition-colors group-data-[state=checked]:bg-glim">
+          <RSwitch.Thumb className="block size-5 translate-x-0.5 rounded-full border-2 border-ink bg-white transition-transform data-[state=checked]:translate-x-[22px]" />
+        </span>
       </RSwitch.Root>
     </div>
   );
@@ -219,12 +227,13 @@ export function Switch({ checked, onCheckedChange, label, description, disabled 
 export function Tabs({ value, onValueChange, items, children, label }: { value: string; onValueChange: (v: string) => void; items: { value: string; label: ReactNode; count?: number }[]; children?: ReactNode; label: string }) {
   return (
     <RTabs.Root value={value} onValueChange={onValueChange}>
-      <RTabs.List aria-label={label} className="mb-5 flex gap-1 overflow-x-auto rounded-[14px] border border-line bg-sunken p-1 [scrollbar-width:none]">
+      {/* Hugs its tabs; when they do not fit they wrap onto another row, and each row shares out its width, so none is ever cut off. */}
+      <RTabs.List aria-label={label} className="mb-5 flex w-fit max-w-full flex-wrap gap-1 rounded-[14px] border border-line bg-sunken p-1">
         {items.map((i) => (
           <RTabs.Trigger
             key={i.value}
             value={i.value}
-            className="group flex h-9 shrink-0 items-center gap-1.5 rounded-[10px] px-3.5 text-sm font-semibold text-text-2 transition-colors hover:text-text data-[state=active]:bg-lantern data-[state=active]:text-on-accent data-[state=active]:shadow-[0_2px_0_var(--ink)]"
+            className="group flex min-h-9 grow items-center justify-center gap-1.5 rounded-[10px] px-3.5 py-1 text-center text-sm font-semibold text-text-2 transition-colors hover:text-text data-[state=active]:bg-lantern data-[state=active]:text-on-accent data-[state=active]:shadow-[0_2px_0_var(--ink)]"
           >
             {i.label}
             {i.count !== undefined ? <span className="rounded-full bg-surface-3 px-1.5 text-xs text-text-3 group-data-[state=active]:bg-[rgb(29_24_70/0.14)] group-data-[state=active]:text-on-accent">{i.count}</span> : null}
@@ -240,7 +249,26 @@ export const TabPanel = RTabs.Content;
 
 /* --------------------------------- Dialogs ---------------------------------- */
 
-export function Dialog({ open, onOpenChange, title, description, children, footer, size = 'md' }: { open: boolean; onOpenChange: (v: boolean) => void; title: ReactNode; description?: ReactNode; children?: ReactNode; footer?: ReactNode; size?: 'sm' | 'md' | 'lg' }) {
+export function Dialog({
+  open,
+  onOpenChange,
+  title,
+  description,
+  children,
+  footer,
+  size = 'md',
+  dismissible = true,
+}: {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  title: ReactNode;
+  description?: ReactNode;
+  children?: ReactNode;
+  footer?: ReactNode;
+  size?: 'sm' | 'md' | 'lg';
+  /** False for a step that has to be finished: no close button, and Escape or a click outside does nothing. The footer's buttons are the way out. */
+  dismissible?: boolean;
+}) {
   const w = size === 'sm' ? 'max-w-sm' : size === 'lg' ? 'max-w-2xl' : 'max-w-lg';
   // These dialogs are opened from code, so there is no trigger for focus to return
   // to. Remember what had focus when the dialog opened (a layout effect runs before
@@ -261,15 +289,26 @@ export function Dialog({ open, onOpenChange, title, description, children, foote
     <RDialog.Root open={open} onOpenChange={onOpenChange}>
       <RDialog.Portal>
         <RDialog.Overlay className="fixed inset-0 z-50 bg-[var(--scrim)] data-[state=open]:animate-[rise-fade_150ms_ease-out]" />
-        <RDialog.Content onCloseAutoFocus={restoreFocus} className={`fixed top-1/2 left-1/2 z-50 max-h-[90dvh] w-[calc(100vw-32px)] ${w} -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-[20px] border border-line bg-raised p-5 shadow-[0_24px_60px_rgb(0_0_0/0.35)] focus:outline-none data-[state=open]:animate-[pop-in_180ms_var(--ease-out)] sm:p-6`}>
+        {/* With a footer, scroll padding keeps a field that takes focus clear of the sticky buttons. */}
+        <RDialog.Content
+          onCloseAutoFocus={restoreFocus}
+          onEscapeKeyDown={dismissible ? undefined : (e) => e.preventDefault()}
+          onInteractOutside={(e) => {
+            // Toasts sit outside the dialog: closing one must not close the dialog as well.
+            if (!dismissible || (e.target instanceof Element && e.target.closest('[data-sonner-toaster]'))) e.preventDefault();
+          }}
+          className={`fixed top-1/2 left-1/2 z-50 max-h-[90dvh] w-[calc(100vw-32px)] ${w} -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-[20px] border border-line bg-raised p-5 shadow-[0_24px_60px_rgb(0_0_0/0.35)] focus:outline-none data-[state=open]:animate-[pop-in_180ms_var(--ease-out)] sm:p-6 ${footer ? 'scroll-pb-24' : ''}`}
+        >
           <div className="mb-4 flex items-start justify-between gap-4">
             <div>
               <RDialog.Title className="font-display text-xl font-bold text-text">{title}</RDialog.Title>
               {description ? <RDialog.Description className="mt-1 text-sm text-text-2">{description}</RDialog.Description> : <RDialog.Description className="sr-only">{typeof title === 'string' ? title : 'Dialog'}</RDialog.Description>}
             </div>
-            <RDialog.Close className="-m-1 rounded-[10px] p-1.5 text-text-3 hover:bg-surface-2 hover:text-text" aria-label="Close">
-              <X className="size-5" />
-            </RDialog.Close>
+            {dismissible ? (
+              <RDialog.Close className="-m-1 rounded-[10px] p-1.5 text-text-3 hover:bg-surface-2 hover:text-text" aria-label="Close">
+                <X className="size-5" />
+              </RDialog.Close>
+            ) : null}
           </div>
           {children}
           {/* The buttons stay in view while a long dialog scrolls. */}
