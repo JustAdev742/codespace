@@ -28,7 +28,8 @@ export function BigCountdown({ until, gameNow, big = false, label = 'Starting in
 
 /** The players lined up along the bottom of an intro, so everyone spots their Glim before the first question. */
 export function LineUp({ players, big = false }: { players: RoomPlayerView[]; big?: boolean }) {
-  const shown = players.slice(0, big ? 18 : 8);
+  // Sixteen Glims and the count of the rest fit one row on a 1366 or 1920 projector; a second row would push the intro off screen.
+  const shown = players.slice(0, big ? 16 : 8);
   if (!shown.length) return null;
   return (
     <div className="flex flex-wrap items-end justify-center gap-[clamp(0.25rem,0.8vw,0.9rem)]" aria-hidden>
@@ -66,7 +67,8 @@ export function RoundHeader({ round, total, children, big = false, label = 'Ques
   useAnnounce(`${label} ${round + 1} of ${total}.`, `${label}${round}`);
   return (
     <div className="flex flex-wrap items-center justify-between gap-2">
-      <Pill className={big ? 'px-5 py-1.5 text-[clamp(1.1rem,1.8vw,2rem)]' : 'px-2.5 text-sm min-[400px]:px-3 min-[400px]:text-base'}>
+      {/* `!`: Pill's own px-3 would otherwise win over a smaller padding passed in. */}
+      <Pill className={big ? 'px-5 py-1.5 text-[clamp(1.1rem,1.8vw,2rem)]' : 'px-2.5! text-sm min-[400px]:px-3! min-[400px]:text-base'}>
         {label} {round + 1} of {total}
       </Pill>
       {children ? <div className={`flex flex-wrap items-center justify-end gap-1.5 ${big ? 'gap-2 text-[clamp(1.1rem,1.8vw,2rem)]' : 'text-sm min-[400px]:text-base [&>*]:px-2.5'}`}>{children}</div> : null}

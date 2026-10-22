@@ -259,14 +259,19 @@ function MultiAnswer({ q, onSubmit, disabled, compact }: AnswerInputProps & { q:
           <ChoiceTile key={c.id} index={i} text={c.text} media={c.media} selected={sel.includes(c.id)} dimmed={locked && !sel.includes(c.id)} onClick={() => toggle(c.id)} disabled={locked} compact={compact} layout={layout} dense={dense} keyHint />
         ))}
       </div>
-      <SubmitButton disabled={locked || sel.length === 0} sent={sent} onClick={submit} label={sel.length ? `Submit ${sel.length} ${sel.length === 1 ? 'answer' : 'answers'}` : 'Submit answers'} />
+      <SubmitButton disabled={locked || sel.length === 0} sent={sent} onClick={submit} label={sel.length ? `Submit ${sel.length} ${sel.length === 1 ? 'answer' : 'answers'}` : 'Submit answers'} sticky />
     </div>
   );
 }
 
-function SubmitButton({ disabled, sent, onClick, label = 'Submit answer' }: { disabled: boolean; sent: boolean; onClick?: () => void; label?: string }) {
+/**
+ * `sticky` keeps the button in view at the bottom of the screen while a long list of
+ * items above it scrolls: matching, ordering and select-all questions outgrow short phones.
+ * Only once it can be pressed: a disabled sticker is see-through on the stage.
+ */
+function SubmitButton({ disabled, sent, onClick, label = 'Submit answer', sticky = false }: { disabled: boolean; sent: boolean; onClick?: () => void; label?: string; sticky?: boolean }) {
   return (
-    <button type={onClick ? 'button' : 'submit'} onClick={onClick} disabled={disabled} className="sticker inline-flex h-16 w-full items-center justify-center gap-2.5 rounded-[18px] bg-lantern px-6 font-display text-xl font-extrabold text-on-accent [--press:6px] disabled:cursor-not-allowed sm:w-auto sm:self-start">
+    <button type={onClick ? 'button' : 'submit'} onClick={onClick} disabled={disabled} className={`sticker inline-flex h-16 w-full items-center justify-center gap-2.5 rounded-[18px] bg-lantern px-6 font-display text-xl font-extrabold text-on-accent [--press:6px] disabled:cursor-not-allowed sm:w-auto sm:self-start ${sticky && !disabled ? 'sticky bottom-3 z-10' : ''}`}>
       {sent ? <Check className="size-6" aria-hidden /> : <Send className="size-5" aria-hidden />}
       {sent ? 'Answer sent' : label}
     </button>
@@ -364,7 +369,7 @@ function OrderAnswer({ q, onSubmit, disabled }: AnswerInputProps & { q: Extract<
           </li>
         ))}
       </ol>
-      <SubmitButton disabled={locked} sent={sent} onClick={submit} label="Lock in this order" />
+      <SubmitButton disabled={locked} sent={sent} onClick={submit} label="Lock in this order" sticky />
     </div>
   );
 }
@@ -432,7 +437,7 @@ function MatchAnswer({ q, onSubmit, disabled }: AnswerInputProps & { q: Extract<
           })}
         </div>
       </div>
-      <SubmitButton disabled={locked || !complete} sent={sent} onClick={submit} label="Lock in matches" />
+      <SubmitButton disabled={locked || !complete} sent={sent} onClick={submit} label="Lock in matches" sticky />
     </div>
   );
 }
