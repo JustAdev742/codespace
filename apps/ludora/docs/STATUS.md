@@ -94,7 +94,8 @@ Last updated: 2026-10-22.
   their top rows and count the rest), and on phones every single-answer
   question and its action fit at 390 by 844, 375 by 667 and 360 by 640.
   Matching, ordering and select-all questions still need a scroll below 390
-  by 844. Variant intros name the variant and state each rule switched on. Every mode was played
+  by 844, but their button stays in view once it can be pressed. Variant
+  intros name the variant and state each rule switched on. Every mode was played
   to its results in a real browser with a host, a player and bots, at 390
   pixels and at projector size; eight variants were played to check their new
   screen text; with reduced motion nothing moves and nothing waits to appear.
