@@ -14,6 +14,11 @@ describe('preference changes', () => {
     expect(preferencesPatchSchema.parse({ privacy: { showOnLeaderboards: false } })).toEqual({ privacy: { showOnLeaderboards: false } });
   });
 
+  it('turns music on for accounts that never chose, including ones saved before it existed', () => {
+    expect(readPreferences({ sound: false }).music).toBe(true);
+    expect(readPreferences({ music: false }).music).toBe(false);
+  });
+
   it('merging one change keeps every other choice', () => {
     const chosen = readPreferences({ theme: 'dark', textSize: 'larger', reducedMotion: 'on', highContrast: true, privacy: { profileVisibility: 'private' } });
     const merged = mergePreferences(chosen, preferencesPatchSchema.parse({ sound: false }));
@@ -32,7 +37,7 @@ afterAll(async () => {
 describe('PATCH /api/me/preferences', () => {
   it('changes one setting at a time and leaves the rest alone', async () => {
     const { client } = await registered(t.app);
-    for (const patch of [{ theme: 'dark' }, { textSize: 'larger' }, { reducedMotion: 'on' }, { highContrast: true }, { privacy: { allowFriendRequests: 'nobody' } }, { sound: false }, { notifications: { rewards: false } }]) {
+    for (const patch of [{ theme: 'dark' }, { textSize: 'larger' }, { reducedMotion: 'on' }, { highContrast: true }, { privacy: { allowFriendRequests: 'nobody' } }, { sound: false }, { music: false }, { notifications: { rewards: false } }]) {
       expect((await client.patch('/api/me/preferences', patch)).status, JSON.stringify(patch)).toBe(200);
     }
     const prefs = (await client.get('/api/auth/me')).body.user.preferences;
@@ -42,6 +47,7 @@ describe('PATCH /api/me/preferences', () => {
       reducedMotion: 'on',
       highContrast: true,
       sound: false,
+      music: false,
       privacy: { allowFriendRequests: 'nobody', profileVisibility: 'public', showOnLeaderboards: true },
       notifications: { rewards: false, friendRequests: true, gameInvites: true },
     });

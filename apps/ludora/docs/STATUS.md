@@ -99,6 +99,19 @@ Last updated: 2026-10-22.
   to its results in a real browser with a host, a player and bots, at 390
   pixels and at projector size; eight variants were played to check their new
   screen text; with reduced motion nothing moves and nothing waits to appear.
+- **Sound and music** (D41): every sound is synthesised in the browser, with
+  no recordings: answering, results, the clock's last seconds, players joining,
+  reactions, purchases, and Lantern openings that grow grander with rarity.
+  Two original music loops (lobby and game) play on the host's screen and in
+  solo games, never on players' phones. A speaker button in the game header
+  mutes everything on that device and is remembered; Settings turns effects
+  and music off for the account. Checked:
+  - every effect and both loops render offline without errors or clipping,
+    with the music at about -24 LUFS under the effects;
+  - a browser run counting sound starts showed music on the host's screen only,
+    silence after muting (still muted after a reload), the player's own
+    lock-in and result sounds, and the music stopping at the results.
+  **Not yet judged by ear**: nobody has listened to it through speakers.
 - **Glims**: all 112 redrawn as original die-cut sticker characters with faces,
   arms and feet, distinct silhouettes per collection, rarity finishes (glossy,
   gradient, gold rim light, iridescent sheen) and idle, wave and cheer poses,
@@ -189,10 +202,10 @@ creates and drops its own database).
 |---|---|---|
 | content | 2 | 112: catalogue integrity and every built-in question set |
 | engine | 14 | 720, including the conformance suite for every mode and variant |
-| server | 11 | 141: auth and rate limits (14), realtime (5), economy (20), staff (54), social and classes (17), preferences (3), open games (4), sign-in help (3), uploads (6), AI drafts (11), reward counting (4) |
-| web | 1 | 45: the set editor's checks, import and export |
+| server | 11 | 142: auth and rate limits (14), realtime (5), economy (20), staff (54), social and classes (17), preferences (4), open games (4), sign-in help (3), uploads (6), AI drafts (11), reward counting (4) |
+| web | 2 | 61: the set editor's checks, import and export (45); the music, in key and looping cleanly (16) |
 | shared | 0 | no tests of its own; its schemas are exercised by the other projects |
-| **Total** | **28** | **1018 passing** at the last full run |
+| **Total** | **29** | **1035 passing** at the last full run |
 
 End-to-end: `npm run test:e2e` (needs Postgres; builds first, then runs 8
 browser tests against a fresh `ludora_e2e` database). All 8 pass.

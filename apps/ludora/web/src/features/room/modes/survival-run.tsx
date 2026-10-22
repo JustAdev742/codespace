@@ -93,7 +93,7 @@ export function SurvivalRunPlayer({ view, act, gameNow, paused, room }: ModeScre
         </StagePanel>
       ) : you.phase === 'result' && last ? (
         <div className="flex flex-col gap-3">
-          <ResultBanner correct={last.correct} partial={last.partial} text={last.text} />
+          <ResultBanner key={last.iid} correct={last.correct} partial={last.partial} text={last.text} />
           {you.heartChange < 0 ? (
             <p className={`flex items-center gap-2 self-start rounded-[14px] px-3 py-2 font-bold text-ember ${NIGHT}`} role="status">
               <HeartCrack className="size-5" aria-hidden /> You lost a heart.

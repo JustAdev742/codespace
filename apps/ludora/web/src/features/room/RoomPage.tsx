@@ -18,6 +18,8 @@ import { DebugOverlay } from './DebugOverlay.tsx';
 import type { RoomView } from '@ludora/shared';
 import './stage.css';
 import { Announcer, useAnnounce } from './game/announce.tsx';
+import { MuteButton } from './game/MuteButton.tsx';
+import { SoundRoleContext, useMusic, type SoundRole } from '../../lib/sound/react.tsx';
 import { AnswerMemory } from './game/answerMemory.tsx';
 import { Online } from './game/online.tsx';
 
@@ -71,7 +73,8 @@ function HostControls({ room, handle }: { room: RoomView; handle: RoomHandle }) 
       {game?.sync ? (
         // The one button that moves a host-paced game on: big and lantern-lit when the room is waiting for it.
         <Button variant={waitingForHost ? 'primary' : 'secondary'} size={waitingForHost ? 'lg' : 'sm'} className={waitingForHost ? '' : WIDE} icon={<FastForward className="size-4" aria-hidden />} onClick={() => run({ cmd: 'next' })} disabled={status !== 'running'}>
-          {waitingForHost ? 'Next' : 'Skip ahead'}
+          {/* On a phone the host's header is full: Skip ahead keeps its label for screen readers, like Pause and End game. */}
+          {waitingForHost ? 'Next' : <span className="max-sm:sr-only">Skip ahead</span>}
         </Button>
       ) : null}
       {status === 'paused' ? (
@@ -194,6 +197,13 @@ export default function RoomPage() {
   const [reporting, setReporting] = useState(false);
   const [confirmLeave, setConfirmLeave] = useState(false);
   const debug = useFlag('debug.overlay');
+  // Music plays on the host's screen and in solo games, never on players' phones: lobby music while
+  // people arrive, then the game loop. It rests while the game is paused and stops for the results.
+  const role: SoundRole = !room ? 'page' : room.me.role === 'host' ? 'host' : room.room.solo ? 'solo' : 'player';
+  const roomStatus = room?.room.status;
+  useMusic(role === 'host' && roomStatus === 'lobby' ? 'lobby' : (role === 'host' || role === 'solo') && roomStatus === 'running' ? 'game' : null);
+  const pacing = room?.room.pacing ?? null;
+  const soundScene = useMemo(() => ({ role, pacing }), [role, pacing]);
 
   useEffect(() => {
     if (handle.phase === 'error' && handle.error?.code === 'validation_failed') {
@@ -252,6 +262,7 @@ export default function RoomPage() {
 
   return (
     <Stage className={STAGE} lanterns="game">
+      <SoundRoleContext.Provider value={soundScene}>
       <Announcer>
       <header className="sticky top-0 z-30 border-b border-white/12 bg-[rgb(16_10_58/0.55)] backdrop-blur-md">
         <div className="flex h-14 items-center gap-2.5 px-3 sm:h-16 sm:gap-3 sm:px-5 min-[1600px]:h-20 min-[1600px]:px-8">
@@ -284,15 +295,28 @@ export default function RoomPage() {
                 Finish now
               </Button>
             ) : null}
+            <MuteButton className="max-sm:size-11 min-[1600px]:size-12" />
             {!room.room.solo ? (
-              <IconButton label="Report a problem in this room" size="sm" className="max-sm:size-11 min-[1600px]:size-12" onClick={() => setReporting(true)}>
+              // A host running a live game from a phone needs the header for the game controls; Report is there in the lobby and on bigger screens.
+              <IconButton label="Report a problem in this room" size="sm" className={`max-sm:size-11 min-[1600px]:size-12 ${isHost && live ? 'max-sm:hidden' : ''}`} onClick={() => setReporting(true)}>
                 <Flag className="size-4" aria-hidden />
               </IconButton>
             ) : null}
             <Button size="sm" variant="ghost" className={`max-sm:ml-1 max-sm:h-11 ${WIDE}`} icon={<DoorOpen className="size-4" aria-hidden />} onClick={() => (askFirst ? setConfirmLeave(true) : void leave())}>
               {/* A host running a game from a phone needs the room for the game controls, and a solo game's title needs it
                   beside Finish now: the label goes to screen readers only. */}
-              {isHost && live ? <span className="max-sm:sr-only">Leave</span> : isHost ? 'Leave' : room.room.solo && live ? <span className="max-sm:sr-only">Leave game</span> : 'Leave game'}
+              {isHost && live ? (
+                <span className="max-sm:sr-only">Leave</span>
+              ) : isHost ? (
+                'Leave'
+              ) : room.room.solo && live ? (
+                <span className="max-sm:sr-only">Leave game</span>
+              ) : (
+                // On the narrowest phones "game" is left to screen readers, so the room code keeps its room.
+                <>
+                  Leave<span className="max-[399px]:sr-only"> game</span>
+                </>
+              )}
             </Button>
           </div>
         </div>
@@ -342,6 +366,7 @@ export default function RoomPage() {
       <ReactionLayer reactions={handle.reactions} big={isHost} />
       {debug ? <DebugOverlay handle={handle} /> : null}
       </Announcer>
+      </SoundRoleContext.Provider>
     </Stage>
   );
 }

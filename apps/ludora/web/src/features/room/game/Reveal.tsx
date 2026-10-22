@@ -5,6 +5,7 @@ import { Burst } from '../../../art/bursts.tsx';
 import { useOverview } from '../../../lib/queries.ts';
 import { useAnnounce } from './announce.tsx';
 import { myAnswerWords, useMyAnswer } from './answerMemory.tsx';
+import { useSfx, useSoundRole } from '../../../lib/sound/react.tsx';
 
 /** The choices of a live question with nothing marked: the host screen while answers are open. */
 export function ChoicesDisplay({ q, size = 'lg' }: { q: PublicQuestion; size?: TileSize }) {
@@ -70,6 +71,9 @@ export function RevealAnswer({ q, reveal, mine, distribution, compact, size }: {
     (reveal.type === 'mcq' && sent?.type === 'mcq' && sent.choiceId !== reveal.correct) || (reveal.type === 'truefalse' && sent?.type === 'truefalse' && sent.value !== reveal.correct);
   const said = answerWords(q, reveal);
   useAnnounce(said && missed && sent ? `${said} You answered ${myAnswerWords(q, sent)}.` : said, `${q.prompt}|${JSON.stringify(reveal)}`);
+  // The big screen chimes as the answer appears; players hear their own result instead (ResultBanner).
+  const role = useSoundRole();
+  useSfx('reveal', `${q.prompt}|${JSON.stringify(reveal)}`, role === 'host');
   const sz: TileSize = size ?? (compact ? 'sm' : distribution ? 'lg' : 'md');
   const host = sz === 'lg';
   const max = distribution ? Math.max(1, ...Object.values(distribution)) : 0;
@@ -142,6 +146,9 @@ export function RevealAnswer({ q, reveal, mine, distribution, compact, size }: {
 export function ResultBanner({ correct, partial, points, text }: { correct: boolean | null; partial?: number | null; points?: number | null; text?: string | undefined }) {
   const said = correct === null ? null : `${correct ? 'Correct!' : partial && partial > 0 ? `Partly right, ${Math.round(partial * 100)} percent.` : 'Not this time.'}${points ? ` Plus ${points.toLocaleString('en-GB')} points.` : ''}${text ? ` ${text}` : ''}`;
   useAnnounce(said);
+  // Each result is its own component (call sites key it by question), so it plays once as it appears.
+  const role = useSoundRole();
+  useSfx(correct ? 'correct' : partial && partial > 0 ? 'rankUp' : 'wrong', said, correct !== null && role !== 'host');
   const overview = useOverview();
   const effect = overview.data?.equipped.effect?.art;
   if (correct === null) return null;

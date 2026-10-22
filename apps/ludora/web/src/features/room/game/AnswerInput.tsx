@@ -1,10 +1,11 @@
-import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import { ArrowDown, ArrowUp, Check, Send, Users } from 'lucide-react';
 import type { Answer, Media, PublicQuestion } from '@ludora/shared';
 import { AnswerShape, ANSWER_LETTERS } from '../../../art/icons.tsx';
 import { QuestionImage } from './QuestionCard.tsx';
 import { useAnswerMemory, useRememberingSubmit } from './answerMemory.tsx';
 import { useOnline } from './online.tsx';
+import { playSfx, useSoundPacing, useSoundRole } from '../../../lib/sound/react.tsx';
 
 /*
  * Answer controls for every question type. Choices always carry a shape and
@@ -243,7 +244,11 @@ function MultiAnswer({ q, onSubmit, disabled, compact }: AnswerInputProps & { q:
   const [sel, setSel] = useState<string[]>([]);
   const [sent, setSent] = useState(false);
   const locked = disabled || sent;
-  const toggle = (id: string) => !locked && setSel((s) => (s.includes(id) ? s.filter((x) => x !== id) : [...s, id]));
+  const toggle = (id: string) => {
+    if (locked) return;
+    playSfx('select');
+    setSel((s) => (s.includes(id) ? s.filter((x) => x !== id) : [...s, id]));
+  };
   useNumberKeys(q.choices.length, (i) => toggle(q.choices[i]!.id), !locked);
   const submit = async () => {
     if (locked || sel.length === 0) return;
@@ -342,6 +347,7 @@ function OrderAnswer({ q, onSubmit, disabled }: AnswerInputProps & { q: Extract<
   const move = (i: number, d: -1 | 1) => {
     const j = i + d;
     if (locked || j < 0 || j >= items.length) return;
+    playSfx('tap');
     setItems((list) => {
       const next = list.slice();
       [next[i], next[j]] = [next[j]!, next[i]!];
@@ -385,6 +391,7 @@ function MatchAnswer({ q, onSubmit, disabled }: AnswerInputProps & { q: Extract<
   const rightOwner = (rid: string) => Object.entries(pairs).find(([, r]) => r === rid)?.[0];
   const pickRight = (rid: string) => {
     if (locked || !active) return;
+    playSfx('select');
     setPairs((p) => {
       const next = { ...p };
       for (const [l, r] of Object.entries(next)) if (r === rid) delete next[l];
@@ -409,7 +416,10 @@ function MatchAnswer({ q, onSubmit, disabled }: AnswerInputProps & { q: Extract<
               key={l.id}
               type="button"
               disabled={locked}
-              onClick={() => setActive(l.id)}
+              onClick={() => {
+                playSfx('tap');
+                setActive(l.id);
+              }}
               aria-pressed={active === l.id}
               className={`paper min-h-14 rounded-[16px] border-[3px] px-3 py-2 text-left font-bold transition-colors ${active === l.id ? 'border-lantern ring-4 ring-lantern/60' : 'border-ink'}`}
               style={pairs[l.id] ? { boxShadow: `inset 8px 0 0 ${colorOf[l.id]}` } : undefined}
@@ -448,7 +458,20 @@ export function AnswerInput(props: AnswerInputProps) {
   // A new question, or one that comes back, starts with no answer from this player.
   const { begin } = useAnswerMemory();
   useEffect(() => begin(q.prompt), [q.prompt, begin]);
-  const onSubmit = useRememberingSubmit(q, props.onSubmit);
+  const remembering = useRememberingSubmit(q, props.onSubmit);
+  // In host-paced games the result comes later, so the answer going in gets its own sound;
+  // self-paced games play the result straight away instead.
+  const pacing = useSoundPacing();
+  const role = useSoundRole();
+  const lockInSound = pacing === 'host' && role !== 'host';
+  const onSubmit = useCallback(
+    async (answer: Answer) => {
+      const ok = await remembering(answer);
+      if (ok && lockInSound) playSfx('lockIn');
+      return ok;
+    },
+    [remembering, lockInSound],
+  );
   const online = useOnline();
   const p = { ...props, onSubmit, disabled: props.disabled || !online };
   if (!online) {

@@ -295,7 +295,7 @@ function PlainQuestion({ word, act, paused, onSkip }: { word: PlainWord; act: Mo
 function Between({ last, answer, onNext, paused }: { last: FeedbackView; answer: string | null; onNext: () => void; paused: boolean }) {
   return (
     <div className="flex flex-col gap-3">
-      <ResultBanner correct={last.correct} partial={last.partial} points={last.points ?? null} text={last.correct ? undefined : last.text} />
+      <ResultBanner key={last.iid} correct={last.correct} partial={last.partial} points={last.points ?? null} text={last.correct ? undefined : last.text} />
       {answer ? (
         <div className="rounded-[20px] border-[3px] border-ink bg-glim px-5 py-4 text-on-accent shadow-[0_4px_0_var(--ink)]">
           <div className="text-sm font-bold">{last.correct ? 'You spelt' : 'The answer was'}</div>

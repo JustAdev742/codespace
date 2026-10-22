@@ -9,6 +9,7 @@ import { ReactionBar } from './game/Reactions.tsx';
 import { GREETERS, NameTag, Pill, PlayerGlim, SIGN, StagePanel, motionOK } from './game/stage.tsx';
 import { useAnnounce } from './game/announce.tsx';
 import { plural } from '../../lib/format.ts';
+import { playSfx } from '../../lib/sound/react.tsx';
 
 /** One column per team on a wide screen, up to what fits. */
 const TEAM_COLS: Record<number, string> = { 1: '', 2: 'md:grid-cols-2', 3: 'md:grid-cols-3', 4: 'md:grid-cols-2 xl:grid-cols-4', 5: 'md:grid-cols-3', 6: 'md:grid-cols-3' };
@@ -121,6 +122,13 @@ export function HostLobby({ room, handle }: { room: RoomView; handle: RoomHandle
   const kick = (p: RoomPlayerView) => void run('kick', { cmd: 'kick', playerId: p.id });
   const humans = room.players.filter((p) => !p.isBot).length;
   const bots = room.players.length - humans;
+  // A pop as each player arrives, a step up the scale each time, so a crowd joining plays a little tune.
+  const count = room.players.length;
+  const seen = useRef(count);
+  useEffect(() => {
+    if (count > seen.current) playSfx('join', { n: count });
+    seen.current = count;
+  }, [count]);
   const teams = room.room.teams;
   const code = room.room.code;
   return (

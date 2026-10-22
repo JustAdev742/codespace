@@ -129,7 +129,7 @@ export function TimeAttackPlayer({ view, act, gameNow, paused, room }: ModeScree
           <div className="min-h-[3.25rem]" aria-live="polite">
             {flash ? (
               <div className="flex flex-col gap-1">
-                <ResultBanner correct={flash.correct} partial={flash.partial} points={flash.points ?? null} text={flash.text} />
+                <ResultBanner key={flash.iid} correct={flash.correct} partial={flash.partial} points={flash.points ?? null} text={flash.text} />
                 {!flash.correct && you.answerText && flash.iid === you.last?.iid ? <p className="px-1 font-semibold text-text-2">Answer: {you.answerText}</p> : null}
               </div>
             ) : (

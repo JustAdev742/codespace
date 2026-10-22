@@ -10,6 +10,8 @@ export const preferencesSchema = z.object({
   theme: theme.default('system'),
   reducedMotion: reducedMotion.default('system'),
   sound: z.boolean().default(true),
+  /** Music on the host's screen and in solo games. Players' phones never play music. */
+  music: z.boolean().default(true),
   textSize: textSize.default('normal'),
   highContrast: z.boolean().default(false),
   notifications: z
@@ -38,6 +40,7 @@ export const preferencesPatchSchema = z.object({
   theme: theme.optional(),
   reducedMotion: reducedMotion.optional(),
   sound: z.boolean().optional(),
+  music: z.boolean().optional(),
   textSize: textSize.optional(),
   highContrast: z.boolean().optional(),
   notifications: z.object({ friendRequests: z.boolean(), gameInvites: z.boolean(), rewards: z.boolean() }).partial().optional(),

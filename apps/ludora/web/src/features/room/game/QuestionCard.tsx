@@ -1,6 +1,7 @@
 import { useEffect, useRef, type ReactNode } from 'react';
 import type { Media, PublicQuestion } from '@ludora/shared';
 import { useAnnounce } from './announce.tsx';
+import { useSfx, useSharedSounds } from '../../../lib/sound/react.tsx';
 
 const IMAGE_HEIGHT = {
   /** Projector: beside the prompt, as tall as the screen comfortably allows. */
@@ -38,6 +39,7 @@ export function QuestionCard({ q, index, total, children, size = 'md' }: { q: Pu
   // focus moves to the new prompt, so keyboard and screen reader users keep their place.
   const key = `${index ?? ''}|${q.prompt}`;
   useAnnounce(index !== undefined && total ? `Question ${index + 1} of ${total}. ${q.prompt}` : q.prompt, key);
+  useSfx('question', key, useSharedSounds());
   const heading = useRef<HTMLHeadingElement>(null);
   useEffect(() => {
     if (!document.activeElement || document.activeElement === document.body) heading.current?.focus({ preventScroll: true });

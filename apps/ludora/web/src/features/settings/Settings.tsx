@@ -166,7 +166,10 @@ export default function Settings() {
             <Switch checked={p.highContrast} onCheckedChange={(v) => save.mutate({ highContrast: v })} label="High contrast" description="Stronger borders and text." />
           </div>
           <div>
-            <Switch checked={p.sound} onCheckedChange={(v) => save.mutate({ sound: v })} label="Sound effects" />
+            <Switch checked={p.sound} onCheckedChange={(v) => save.mutate({ sound: v })} label="Sound effects" description="Answers, the timer, results and opening Lanterns." />
+          </div>
+          <div>
+            <Switch checked={p.music} onCheckedChange={(v) => save.mutate({ music: v })} label="Music" description="Plays on the host's screen and in solo games, never on players' phones." />
           </div>
         </Panel>
 

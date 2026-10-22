@@ -25,6 +25,16 @@ test('a host and a player play Classic from join code to results', async ({ brow
   await host.page.goto(`/room/${code}`);
   await expect(host.page.getByRole('button', { name: 'Start game' })).toBeVisible();
 
+  // The speaker button mutes every sound on this device, and the choice outlasts a reload.
+  const mute = host.page.getByRole('button', { name: 'Mute sound' });
+  await expect(mute).toHaveAttribute('aria-pressed', 'false');
+  await mute.click();
+  await expect(mute).toHaveAttribute('aria-pressed', 'true');
+  await host.page.reload();
+  await expect(host.page.getByRole('button', { name: 'Mute sound' })).toHaveAttribute('aria-pressed', 'true');
+  await host.page.getByRole('button', { name: 'Mute sound' }).click();
+  await expect(host.page.getByRole('button', { name: 'Mute sound' })).toHaveAttribute('aria-pressed', 'false');
+
   // The player is a guest: a code and a name are enough.
   const playerContext = await browser.newContext({ viewport: { width: 390, height: 844 } });
   const player = await playerContext.newPage();

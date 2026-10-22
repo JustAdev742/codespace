@@ -11,6 +11,7 @@ import { PLACE_BG, RankBadge, TeamScores } from './game/Leaderboard.tsx';
 import { NameTag, PlayerGlim, SIGN, avatarOf, motionOK } from './game/stage.tsx';
 import { Burst } from '../../art/bursts.tsx';
 import { useAnnounce } from './game/announce.tsx';
+import { useSfx, useSharedSounds } from '../../lib/sound/react.tsx';
 
 /** Block heights as a share of the tallest, and when each block starts to rise (ms): third, then second, then first. */
 const HEIGHT = [1, 0.72, 0.5];
@@ -135,6 +136,7 @@ function Rewards({ rewards, guest }: { rewards: RewardSummary | null; guest: boo
     rewards?.status === 'granted' ? `You earned ${formatNumber(rewards.sparks)} Sparks and ${formatNumber(rewards.xp)} XP.${rewards.levelUp ? ` You reached level ${rewards.levelUp.to}!` : ''}` : null,
     rewards?.status,
   );
+  useSfx('levelUp', rewards?.levelUp?.to ?? null, Boolean(rewards?.levelUp));
   if (!rewards) return null;
   if (rewards.status === 'pending') {
     return (
@@ -210,6 +212,8 @@ export function Results({ room, handle, isHost, guest }: { room: RoomView; handl
   const podium = competitive && r.standings.length > 1;
   const title = r.outcome === 'coop-win' ? 'Victory!' : r.outcome === 'coop-loss' ? 'So close' : 'Game over';
   useAnnounce(`${title} ${mine && podium ? `You came ${ordinal(mine.rank)}. ` : ''}${r.summary}`, 'results');
+  const shared = useSharedSounds();
+  useSfx(shared ? 'fanfare' : 'reveal', 'results');
   const restart = async () => {
     setBusy(true);
     const ack = await handle.host({ cmd: 'restart' });

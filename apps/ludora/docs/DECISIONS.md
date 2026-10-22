@@ -265,3 +265,14 @@ anyone else gets the same answer as for a code that does not exist, so codes
 cannot be probed. A finished room stays open for its results screen and Play
 again, but once a host holds more than six rooms the oldest finished ones
 close, so Play again in old rooms cannot take a host past the limit.
+
+**D41. Sound is made in the browser, and phones keep to their own.** Every
+effect and both music loops are synthesised with the Web Audio API from
+Ludora's own notes, so there are no recordings to license or copy. Music plays
+on the host's screen and in solo games only: thirty phones playing music in
+one classroom would drown the teacher. Phones play short sounds about their own
+answers; the clock, the reveal and players joining sound once, on the big
+screen. Effects and music are on by default and follow the account's Settings.
+A speaker button in every game mutes the device at once, and the choice is
+remembered on that device. Nothing plays before the person has interacted with
+the page, as browsers require.

@@ -6,6 +6,7 @@ export interface Preferences {
   theme: 'system' | 'light' | 'dark';
   reducedMotion: 'system' | 'on' | 'off';
   sound: boolean;
+  music: boolean;
   textSize: 'normal' | 'large' | 'larger';
   highContrast: boolean;
   notifications: { friendRequests: boolean; gameInvites: boolean; rewards: boolean };

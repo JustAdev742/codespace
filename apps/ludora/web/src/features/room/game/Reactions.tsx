@@ -1,11 +1,17 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { EmoteGlyph } from '../../../art/cosmetics.tsx';
 import type { Reaction } from '../../../lib/useRoom.ts';
+import { playSfx } from '../../../lib/sound/react.tsx';
 
 const EMOTES = ['wave', 'laugh', 'wow', 'clap', 'heart', 'fire', 'think', 'gg'];
 
 /** Floating reactions from the room, rising from the bottom edge; projector-sized on the host screen. */
 export function ReactionLayer({ reactions, big = false }: { reactions: Reaction[]; big?: boolean }) {
+  // A soft pop for each reaction on the big screen; phones stay quiet.
+  const latest = reactions.at(-1)?.key ?? null;
+  useEffect(() => {
+    if (big && latest !== null) playSfx('reaction', { n: latest });
+  }, [big, latest]);
   return (
     <div className="pointer-events-none fixed inset-x-0 bottom-20 z-40 h-0" aria-live="off">
       {reactions.map((r) => (

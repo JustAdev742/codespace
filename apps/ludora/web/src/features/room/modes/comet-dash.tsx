@@ -176,7 +176,7 @@ export function CometDashPlayer({ view, act, gameNow, room }: ModeScreenProps<Co
         </StagePanel>
       ) : feedback ? (
         <div className="flex flex-col gap-3" onClick={() => setFeedback(null)}>
-          <ResultBanner correct={feedback.correct} partial={feedback.partial} text={feedback.text} />
+          <ResultBanner key={feedback.iid} correct={feedback.correct} partial={feedback.partial} text={feedback.text} />
           {!feedback.correct && answeredQ ? <RevealAnswer q={answeredQ.q} reveal={feedback.reveal} compact /> : null}
           {!feedback.correct ? <Explanation text={feedback.explanation} /> : null}
           <button type="button" onClick={() => setFeedback(null)} className="self-center rounded-[12px] px-4 py-2 font-bold text-text-2 hover:bg-white/10">

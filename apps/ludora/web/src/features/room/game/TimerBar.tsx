@@ -1,6 +1,7 @@
 import { useNow } from '../../../lib/useNow.ts';
 import { plural } from '../../../lib/format.ts';
 import { useAnnounce } from './announce.tsx';
+import { useSfx, useSharedSounds } from '../../../lib/sound/react.tsx';
 
 /**
  * Time left for a question, from the game clock. The last stretch (five seconds, or a quarter of a short timer) turns coral and is announced once through the game announcer.
@@ -16,6 +17,8 @@ export function TimerBar({ deadline, start, gameNow, paused = false, tone = 'amb
   const urgent = deadline !== null && secs <= warnAt && secs > 0;
   // Said once per question as the last stretch starts; the number itself stays quiet.
   useAnnounce(urgent && !paused ? `${plural(warnAt, 'second')} left.` : null, `${deadline}|${urgent && !paused}`);
+  // The clock ticks through the last stretch on the shared screen (the projector, or a solo game).
+  useSfx(secs === 1 ? 'tickFinal' : 'tick', `${deadline}|${secs}`, useSharedSounds() && urgent && !paused);
   if (deadline === null) return null;
   const big = size === 'lg';
   const fill = urgent ? 'bg-ember' : tone === 'violet' ? 'bg-dusk' : 'bg-lantern';

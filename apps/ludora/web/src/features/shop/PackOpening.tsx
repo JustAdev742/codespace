@@ -13,6 +13,7 @@ import { formatNumber } from '../../lib/format.ts';
 import { RarityTag, formatPercent } from '../home/kit.tsx';
 import { OddsBar, usePackDetail } from './odds.tsx';
 import '../home/festival.css';
+import { playSfx } from '../../lib/sound/react.tsx';
 
 export interface OpenedGlim {
   item: { id: string; name: string; rarity: Rarity; art: unknown };
@@ -117,6 +118,18 @@ function Sequence({ lantern, packId, packName, result, onClose, again, onMakeBud
     timers.current.forEach(clearTimeout);
     setPhase('reveal');
   }, []);
+
+  // The sound follows the moments: the light building, the Lantern opening, then the Glim, grander for rarer ones.
+  const stopRise = useRef<() => void>(() => {});
+  useEffect(() => {
+    if (phase === 'glow') stopRise.current = playSfx('lanternRise', { seconds: (GLOW_MS[result.item.rarity] + OPEN_MS) / 1000 });
+    if (phase === 'open') playSfx('lanternOpen');
+    if (phase === 'reveal') {
+      stopRise.current();
+      playSfx('lanternReveal', { rarity: result.item.rarity });
+    }
+  }, [phase, result.item.rarity]);
+  useEffect(() => () => stopRise.current(), []);
 
   // Keyboard focus follows the moment: the Lantern while it glows, then Done (which never spends anything).
   useEffect(() => {

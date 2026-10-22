@@ -18,6 +18,7 @@ import { StickerTabPanel, StickerTabs, formatPercent } from '../home/kit.tsx';
 import { RarityPanel, frameProps } from '../collection/rarity.tsx';
 import { PackOpening, type OpenedGlim } from './PackOpening.tsx';
 import { OddsBar, usePackDetail } from './odds.tsx';
+import { playSfx } from '../../lib/sound/react.tsx';
 
 interface ShopItem {
   id: string;
@@ -277,7 +278,10 @@ export default function Shop() {
     onSuccess: async (res, args) => {
       setConfirm(null);
       if (res.pack) setOpening({ result: res.pack, listing: args.listing, key: args.key });
-      else toast.success(res.granted.length ? `Bought ${res.granted.map((g) => g.name).join(', ')}` : 'Bought');
+      else {
+        playSfx('purchase');
+        toast.success(res.granted.length ? `Bought ${res.granted.map((g) => g.name).join(', ')}` : 'Bought');
+      }
       if (res.unlimited) toast.message('Test account: nothing was charged.');
       qc.setQueryData(['shop'], (d: ShopData | undefined) => (d ? { ...d, balances: res.balances } : d));
       await Promise.all([qc.invalidateQueries({ queryKey: ['shop'] }), qc.invalidateQueries({ queryKey: ['overview'] }), qc.invalidateQueries({ queryKey: ['collection'] }), qc.invalidateQueries({ queryKey: ['locker'] })]);

@@ -197,7 +197,7 @@ export function TugOfWarPlayer({ view, act, gameNow, paused }: ModeScreenProps<T
 
       {flow.feedback ? (
         <div className="flex flex-col gap-3">
-          <ResultBanner correct={flow.feedback.correct} partial={flow.feedback.partial} text={flow.feedback.text} />
+          <ResultBanner key={flow.feedback.iid} correct={flow.feedback.correct} partial={flow.feedback.partial} text={flow.feedback.text} />
           {!flow.feedback.correct && flow.answered ? <RevealAnswer q={flow.answered.q} reveal={flow.feedback.reveal} compact /> : null}
           {!flow.feedback.correct ? <Explanation text={flow.feedback.explanation} /> : null}
           <button type="button" onClick={flow.dismiss} className="self-center rounded-[12px] px-4 py-2 font-bold text-text-2 hover:bg-white/10">
