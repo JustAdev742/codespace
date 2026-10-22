@@ -18,31 +18,105 @@
  * Source: https://github.com/Blooket-Council/Blooket-Cheats 05konz994@gmail.com
 */
 
-/* THE UPDATE CHECKER IS ADDED DURING COMMIT PREP, THERE MAY BE REDUNDANT CODE, DO NOT TOUCH */
-
 (() => {
+    // A hidden iframe gives us native alert/prompt/confirm even if the page overrode them.
     let iframe = document.querySelector("iframe");
     if (!iframe) {
         iframe = document.createElement("iframe");
         iframe.style.display = "none";
         document.body.append(iframe);
     }
-    /* By CryptoDude3 */
-    if (window.fetch.call.toString() == 'function call() { [native code] }') {
+    /* Stop Blooket's cheat-detection pings to s.blooket.com/rc (by CryptoDude3) */
+    if (window.fetch.call.toString() == "function call() { [native code] }") {
         const call = window.fetch.call;
         window.fetch.call = function () {
             if (!arguments[1].includes("s.blooket.com/rc")) return call.apply(this, arguments);
-        }
+        };
     }
-    const timeProcessed = 1730769913729;
-    let latestProcess = -1;
+
+    // --- Robust, React-version-agnostic game state-node resolver ----------
+    // Every cheat needs the game screen's React class-component instance.
+    // The old code read it from element._owner and fixed child indices;
+    // React 19 no longer sets _owner, and any markup change broke the fixed
+    // path. This walks the fiber tree and feature-detects the game component,
+    // so it keeps working across React 16/17/18/19, and falls back to the
+    // legacy method if the walk comes up empty (never worse than before).
+    const __bcFiber = (el) => {
+        if (!el) return null;
+        const k = Object.keys(el).find((k) => k.startsWith("__reactFiber$") || k.startsWith("__reactInternalInstance$"));
+        return k ? el[k] : null;
+    };
+    const __bcIsGame = (sn) =>
+        !!(sn && sn.state && sn.props && (sn.props.liveGameController || sn.props.client || "question" in sn.state || "stage" in sn.state));
+    const __bcScore = (sn) => {
+        let s = 0;
+        if (sn.props.liveGameController) s += 4;
+        if (sn.props.client) s += 2;
+        if (sn.state && ("question" in sn.state || "stage" in sn.state)) s += 1;
+        return s;
+    };
+    const __bcResolve = () => {
+        let f =
+            __bcFiber(document.querySelector("#app")) ||
+            __bcFiber(document.querySelector("#root")) ||
+            __bcFiber(document.querySelector("body>div"));
+        if (f) {
+            while (f.return) f = f.return;
+            const stack = [f], seen = new Set();
+            let best = null, bestScore = -1;
+            while (stack.length) {
+                const node = stack.pop();
+                if (!node || seen.has(node)) continue;
+                seen.add(node);
+                const sn = node.stateNode;
+                if (__bcIsGame(sn)) {
+                    const sc = __bcScore(sn);
+                    if (sc > bestScore) { bestScore = sc; best = sn; }
+                    if (sc >= 7) break;
+                }
+                if (node.child) stack.push(node.child);
+                if (node.sibling) stack.push(node.sibling);
+            }
+            if (best) return best;
+        }
+        // Legacy pre-React-19 fallback: the original _owner-based lookup.
+        try {
+            return Object.values(
+                (function react(r = document.querySelector("body>div")) {
+                    return Object.values(r)[1]?.children?.[0]?._owner?.stateNode ? r : react(r.querySelector(":scope>div"));
+                })()
+            )[1].children[0]._owner.stateNode;
+        } catch (e) {
+            return null;
+        }
+    };
+    const __bcOwner = () => ({ stateNode: __bcResolve() });
+    const __bcTyping = () => {
+        const el = document.querySelector("[class*='typingAnswerWrapper']");
+        let f = __bcFiber(el);
+        const stack = f ? [f] : [], seen = new Set();
+        while (f) {
+            if (f.stateNode && typeof f.stateNode.sendAnswer === "function") return f.stateNode;
+            f = f.return;
+        }
+        while (stack.length) {
+            const n = stack.pop();
+            if (!n || seen.has(n)) continue;
+            seen.add(n);
+            if (n.stateNode && typeof n.stateNode.sendAnswer === "function") return n.stateNode;
+            if (n.child) stack.push(n.child);
+            if (n.sibling) stack.push(n.sibling);
+        }
+        return {};
+    };
+    // ----------------------------------------------------------------------
     const cheat = (async () => {
         let i = document.createElement('iframe');
         document.body.append(i);
         window.prompt = i.contentWindow.prompt.bind(window);
         window.alert = i.contentWindow.alert.bind(window);
         i.remove();
-        let { stateNode } = Object.values((function react(r = document.querySelector("body>div")) { return Object.values(r)[1]?.children?.[0]?._owner.stateNode ? r : react(r.querySelector(":scope>div")) })())[1].children[0]._owner;
+        let { stateNode } = __bcOwner();
         stateNode.props.liveGameController.getDatabaseVal("c", function (val) {
             if (val == null) return;
             const players = [];
@@ -69,31 +143,5 @@
             stateNode.setState({ doubloons: target.doubloons });
         });
     });
-    let img = new Image;
-    img.src = "https://raw.githubusercontent.com/Blooket-Council/Blooket-Cheats/main/autoupdate/timestamps/voyage/swapDoubloons.png?" + Date.now();
-    img.crossOrigin = "Anonymous";
-    img.onload = function() {
-        const c = document.createElement("canvas");
-        const ctx = c.getContext("2d");
-        ctx.drawImage(img, 0, 0, this.width, this.height);
-        let { data } = ctx.getImageData(0, 0, this.width, this.height), decode = "", last;
-        let i = 0;
-        while (i < data.length) {
-            let char = String.fromCharCode(data[i % 4 == 3 ? (i++, i++) : i++] + data[i % 4 == 3 ? (i++, i++) : i++] * 256);
-            decode += char;
-            if (char == "/" && last == "*") break;
-            last = char;
-        }
-        let _, time = timeProcessed, error = "There was an error checking for script updates. Run cheat anyway?";
-        try {
-            [_, time, error] = decode.match(/LastUpdated: (.+?); ErrorMessage: "((.|\n)+?)"/);
-        } catch (e) {}
-        if ((latestProcess = parseInt(time)) <= timeProcessed || iframe.contentWindow.confirm(error)) cheat();
-    }
-    img.onerror = img.onabort = () => {
-        img.onerror = img.onabort = null;
-        cheat();
-        let iframe = document.querySelector("iframe");
-        iframe.contentWindow.alert("It seems the GitHub is either blocked or down.\n\nIf it's NOT blocked, join the Discord server for updates\nhttps://discord.gg/jHjGrrdXP6\n(The cheat will still run after this alert)")
-    }
+    cheat();
 })();
