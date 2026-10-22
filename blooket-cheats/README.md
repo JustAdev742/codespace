@@ -27,14 +27,23 @@ This repository is licensed under the AGPL 3.0 License.
 
 We as the original creators of this repository can not be charged or held liable for any damages made by modified content.
 
+## Install
+
+The easiest path is the **[install page](install/index.html)**: open it in your
+browser for a searchable grid of every GUI and cheat — drag a button to your
+bookmarks bar, or click **Copy** to paste into the console. See
+[`install/README.md`](install/README.md) for the bulk bookmark import and the
+Tampermonkey userscript too.
+
 ## Information
 
 <details><summary><h3>How to use</h3></summary>
 
-There are 2 good methods to using these scripts:
-1. Importing one of the Bookmarklets.html files using [these instructions](https://github.com/Blooket-Council/Blooket-Cheats/blob/main/tutorial/readme.md)
-<!-- 2. Going to the [GitHub pages site](https://blooket-council.github.io/Blooket-Cheats), choosing a gamemode, then dragging a cheat to your bookmarks bar or clicking one to copy the script -->
-2. Copying a script and running it in the inspect element console
+There are a few good methods to using these scripts:
+1. Open the [install page](install/index.html) and drag a cheat to your bookmarks bar (or click Copy)
+2. Importing one of the Bookmarklets.html files using [these instructions](https://github.com/Blooket-Council/Blooket-Cheats/blob/main/tutorial/readme.md)
+3. Copying a script and running it in the inspect element console
+4. Installing the [userscript](install/blooket-cheats.user.js) and pressing Alt+B on any Blooket page
 </details>
 
 <details><summary><h3>What can I do if JavaScript is blocked?</h3></summary>

@@ -38,13 +38,24 @@
     // Every cheat needs the game screen's React class-component instance.
     // The old code read it from element._owner and fixed child indices;
     // React 19 no longer sets _owner, and any markup change broke the fixed
-    // path. This walks the fiber tree and feature-detects the game component,
-    // so it keeps working across React 16/17/18/19, and falls back to the
-    // legacy method if the walk comes up empty (never worse than before).
+    // path. This reads the React fiber (via the __reactFiber$ /
+    // __reactInternalInstance$ key, not _owner), finds it even if Blooket
+    // renames its root container, walks the fiber tree, and feature-detects
+    // the game component. Falls back to the legacy method if all else fails,
+    // so it is never worse than before.
     const __bcFiber = (el) => {
         if (!el) return null;
         const k = Object.keys(el).find((k) => k.startsWith("__reactFiber$") || k.startsWith("__reactInternalInstance$"));
         return k ? el[k] : null;
+    };
+    const __bcFiberAny = () => {
+        // Known roots first, then scan the DOM so a renamed/moved container
+        // cannot hide the fiber from us.
+        const seeds = [document.querySelector("#app"), document.querySelector("#root"), document.querySelector("body>div")];
+        for (const el of seeds) { const f = __bcFiber(el); if (f) return f; }
+        const all = document.querySelectorAll("div");
+        for (let i = 0; i < all.length; i++) { const f = __bcFiber(all[i]); if (f) return f; }
+        return null;
     };
     const __bcIsGame = (sn) =>
         !!(sn && sn.state && sn.props && (sn.props.liveGameController || sn.props.client || "question" in sn.state || "stage" in sn.state));
@@ -56,10 +67,7 @@
         return s;
     };
     const __bcResolve = () => {
-        let f =
-            __bcFiber(document.querySelector("#app")) ||
-            __bcFiber(document.querySelector("#root")) ||
-            __bcFiber(document.querySelector("body>div"));
+        let f = __bcFiberAny();
         if (f) {
             while (f.return) f = f.return;
             const stack = [f], seen = new Set();

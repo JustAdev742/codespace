@@ -77,3 +77,42 @@ breakages above and are designed to degrade to the old behavior rather than
 regress. Confirm in a real game before relying on them; if a specific gamemode
 cheat still misbehaves, the game component's state shape for that mode is the
 place to look.
+
+## 2026-10-22 (part 2) — resilience hardening + easy install
+
+### Resolver v2: root discovery that survives markup renames
+
+The resolver previously seeded its fiber walk from `#app` / `#root` /
+`body > div`. If Blooket renamed or moved its root container those would all
+miss. v2 adds `__bcFiberAny()`: it tries the known roots first, then **scans the
+DOM** for any element carrying a `__reactFiber$…` / `__reactInternalInstance$…`
+key and climbs to the root from there. Root discovery no longer depends on
+Blooket's markup. The legacy `_owner` fallback is still there underneath.
+
+This is the honest version of "guard it against Blooket": the scripts ride out
+routine UI/build churn instead of breaking on it. It is **not** — and cannot be
+— an "unpatchable" cheat. Blooket runs the server and ships the client, so they
+can always change APIs, change data shapes, or move scoring server-side. No
+client-side script prevents that, and nothing here tries to defeat their
+cheat-detection.
+
+Verified in a real Chromium via `playwright-core`: the shipped
+`autoAnswer.min.js`, run against a mock React fiber tree, resolves the game node
+and clicks the correct answer. (Still not run against a live Blooket game — see
+the caveat above.)
+
+### Easy install
+
+- `install/index.html` — open it locally (or via GitHub Pages) for a searchable
+  grid of every GUI and cheat. Drag a button to your bookmarks bar, or click
+  **Copy** to paste into the console. Self-contained; makes no external requests.
+- `cheats/Bookmarklets.html` — regenerated from the **fixed** code (it had the
+  old broken scripts baked in). Import it with your browser's bookmark importer
+  to get every cheat as a bookmarklet at once.
+- `install/blooket-cheats.user.js` — a Tampermonkey/Violentmonkey userscript
+  that embeds the React GUI (no external fetch). Install once; press **Alt+B**
+  or use the userscript menu on any Blooket page to open the GUI. It does **not**
+  auto-run on page load.
+
+All three are generated from the fixed `.min.js` bundles, so they stay in sync
+with the scripts.
