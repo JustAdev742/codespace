@@ -222,10 +222,26 @@ function OutcomeBanner({ outcome, stakes }: { outcome: NonNullable<NonNullable<C
   );
 }
 
+/** The rules in play: how confidence pays, then each rule a variant (or the host) switched on. */
+function rulesText(view: ConfidenceView, room: ModeScreenProps['room']): string {
+  const st = room.room.settings;
+  const parts = ['You will see each question before its answers. Decide how sure you are, then answer.'];
+  parts.push(view.highStakes ? 'Being sure and right pays most, but a wrong or missed answer costs 100 points for every level of confidence, so even a guess costs 100.' : 'Being sure and right pays most; being sure and wrong costs points.');
+  if (st.risingStakes === true) parts.push('Every stake goes up after every four questions: double from question 5, triple from question 9, and so on.');
+  if (st.returning === true) parts.push('Questions fewer than half of you get right come back once at the end.');
+  parts.push(`${view.total} questions.`);
+  return parts.join(' ');
+}
+
+/** A long set of rules steps down a size on the projector, so the countdown and the line-up stay on screen. */
+function RulesText({ text, big }: { text: string; big: boolean }) {
+  return big && text.length > 150 ? <span className="text-[0.85em]">{text}</span> : <>{text}</>;
+}
+
 function Intro({ view, gameNow, room, big = false }: { view: ConfidenceView; gameNow: () => number; room: ModeScreenProps['room']; big?: boolean }) {
   return (
-    <IntroScreen title="Confidence" until={view.phaseEndsAt} gameNow={gameNow} room={room} big={big} art={<Scale className={`${big ? 'size-[clamp(4rem,10vh,6.5rem)]' : 'size-14'} text-lantern`} aria-hidden />}>
-      You will see each question before its answers. Decide how sure you are, then answer. Being sure and right pays most; being sure and wrong costs points. {view.total} questions.
+    <IntroScreen title={room.room.title} until={view.phaseEndsAt} gameNow={gameNow} room={room} big={big} art={<Scale className={`${big ? 'size-[clamp(4rem,10vh,6.5rem)]' : 'size-14'} text-lantern`} aria-hidden />}>
+      <RulesText text={rulesText(view, room)} big={big} />
     </IntroScreen>
   );
 }
@@ -261,7 +277,7 @@ export function ConfidencePlayer({ view, act, gameNow, paused, room }: ModeScree
   );
   if (view.phase === 'wager') {
     return (
-      <div className="mx-auto flex w-full max-w-3xl flex-col gap-4">
+      <div className="mx-auto flex w-full max-w-3xl flex-col gap-3 sm:gap-4">
         {header}
         <WagerClock start={view.roundStartedAt} end={view.phaseEndsAt} gameNow={gameNow} paused={paused} />
         {view.prompt ? <PromptCard prompt={view.prompt} /> : null}
@@ -274,7 +290,7 @@ export function ConfidencePlayer({ view, act, gameNow, paused, room }: ModeScree
   const submit = async (answer: Answer) => (await act({ type: 'answer', iid: q.iid, answer })).ok;
   const level = you?.wager ?? 1;
   return (
-    <div className="mx-auto flex w-full max-w-3xl flex-col gap-4">
+    <div className="mx-auto flex w-full max-w-3xl flex-col gap-3 sm:gap-4">
       {header}
       {view.phase === 'question' ? (
         <>

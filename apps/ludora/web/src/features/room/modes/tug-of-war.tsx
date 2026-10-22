@@ -9,7 +9,7 @@ import { Countdown } from '../game/TimerBar.tsx';
 import { ResultBanner, RevealAnswer } from '../game/Reveal.tsx';
 import { Explanation } from '../game/parts.tsx';
 import { NIGHT, Pill, PlayerGlim, SIGN, StagePanel, avatarOf } from '../game/stage.tsx';
-import { formatNumber, plural } from '../../../lib/format.ts';
+import { plural } from '../../../lib/format.ts';
 
 /* Tug of War: two sides pull one rope. Each correct answer pulls the knot towards your end. */
 
@@ -104,29 +104,36 @@ function knotPercent(view: TugOfWarView) {
 function MiniRope({ view, mySide }: { view: TugOfWarView; mySide: Side | null }) {
   const { left, right } = view.sides;
   return (
-    <div className="flex flex-col gap-2">
+    <div className="flex flex-col gap-1.5 sm:gap-2">
       <div className="flex justify-between gap-3 font-bold">
-        <span className={mySide === 'left' ? 'text-text' : 'text-text-2'}>
-          {left.label}
-          {mySide === 'left' ? ' (you)' : ''}
+        <span className={`flex min-w-0 items-center gap-1.5 ${mySide === 'left' ? 'text-text' : 'text-text-2'}`}>
+          <span className="size-3.5 shrink-0 rounded-full border-2 border-ink" style={zoneStyle('left', left.hue)} aria-hidden />
+          <span className="truncate">
+            {left.label}
+            {mySide === 'left' ? ' (you)' : ''}
+          </span>
         </span>
-        <span className={`text-right ${mySide === 'right' ? 'text-text' : 'text-text-2'}`}>
-          {right.label}
-          {mySide === 'right' ? ' (you)' : ''}
+        <span className={`flex min-w-0 items-center justify-end gap-1.5 text-right ${mySide === 'right' ? 'text-text' : 'text-text-2'}`}>
+          <span className="truncate">
+            {right.label}
+            {mySide === 'right' ? ' (you)' : ''}
+          </span>
+          <span className="size-3.5 shrink-0 rounded-full border-2 border-ink" style={zoneStyle('right', right.hue)} aria-hidden />
         </span>
       </div>
-      <div className="relative h-9" role="img" aria-label={knotText(view)}>
+      <div className="relative h-8 sm:h-9" role="img" aria-label={knotText(view)}>
         <div className="absolute inset-y-0 left-0 w-[12%] rounded-l-full border-[3px] border-ink" style={zoneStyle('left', left.hue)} />
         <div className="absolute inset-y-0 right-0 w-[12%] rounded-r-full border-[3px] border-ink" style={zoneStyle('right', right.hue)} />
         <div className="absolute inset-x-[12%] top-1/2 h-3 -translate-y-1/2 border-y-2 border-ink/50 bg-[#c99556]" />
         <div className="absolute inset-y-1 left-1/2 w-0.5 -translate-x-1/2 bg-white/50" />
         <div className="absolute inset-y-0 right-[12%] left-[12%]">
           <div className="absolute inset-0 transition-transform duration-700 ease-[var(--ease-out)]" style={{ transform: `translateX(${knotPercent(view)}%)` }}>
-            <span className="absolute top-1/2 left-0 size-8 -translate-x-1/2 -translate-y-1/2 rounded-full border-[3px] border-ink bg-ember" />
+            <span className="absolute top-1/2 left-0 size-7 -translate-x-1/2 -translate-y-1/2 rounded-full border-[3px] border-ink bg-ember sm:size-8" />
           </div>
         </div>
       </div>
-      <p className="font-semibold text-text-2">{knotText(view)}</p>
+      {/* The rope says where the knot is; on a phone the words would only push the question down. */}
+      <p className="font-semibold text-text-2 max-sm:hidden">{knotText(view)}</p>
     </div>
   );
 }
@@ -143,11 +150,14 @@ export function TugOfWarPlayer({ view, act, gameNow, paused }: ModeScreenProps<T
     return (await act({ type: 'answer', iid: q.iid, answer })).ok;
   };
   return (
-    <div className="mx-auto flex w-full max-w-3xl flex-col gap-4">
+    <div className="mx-auto flex w-full max-w-3xl flex-col gap-3 sm:gap-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="flex items-center gap-2 font-display text-2xl font-extrabold">
+        <p className="flex min-w-0 items-center gap-2 font-display text-2xl font-extrabold">
           <span className="size-6 shrink-0 rounded-full border-[3px] border-ink" style={zoneStyle(you.side, mine.hue)} aria-hidden />
-          You pull for the {mine.label}
+          <span className="min-w-0">
+            {/* On a phone the rope's labels name your side, which keeps this line short enough to share with the clock. */}
+            {plural(you.pulls, 'pull')} <span className="text-lg text-text-2 max-sm:sr-only">for the {mine.label}</span>
+          </span>
         </p>
         <div className="flex items-center gap-2">
           {you.streak > 1 ? (
@@ -163,14 +173,26 @@ export function TugOfWarPlayer({ view, act, gameNow, paused }: ModeScreenProps<T
         </div>
       </div>
 
-      <StagePanel as="section" className="flex flex-col gap-3 p-4" label="The rope">
+      <StagePanel as="section" className="flex flex-col gap-2 px-3 py-2.5 sm:gap-3 sm:p-4" label="The rope">
         <MiniRope view={view} mySide={you.side} />
-        <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 border-t border-white/15 pt-3">
-          <span className="font-display text-xl font-extrabold">Your pulls: {formatNumber(you.pulls)}</span>
-          <span className="font-semibold text-text-2">Each right answer pulls {spaces(you.strength)}.</span>
-        </div>
-        {you.strength < 1 ? <p className="text-text-2">Your side has more players than the {theirs.label}, so each of your pulls is a little smaller. Together you pull just as hard.</p> : null}
-        {view.slack ? <p className="text-text-2">Slippery rope: a wrong answer lets the rope slip back half a pull.</p> : null}
+        {/* Phones get the short form of the notes, so the question below stays above the fold. */}
+        <p className="text-sm leading-snug font-semibold text-text-2 sm:border-t sm:border-white/15 sm:pt-3 sm:text-base">
+          Each right answer pulls <span className="font-display font-extrabold text-text">{spaces(you.strength)}</span>
+          {you.strength < 1 ? (
+            <>
+              <span className="sm:hidden"> (your side is bigger).</span>
+              <span className="max-sm:hidden">. Your side has more players than the {theirs.label}, so each pull is a little smaller. Together you pull just as hard.</span>
+            </>
+          ) : (
+            '.'
+          )}
+          {view.slack ? (
+            <>
+              <span className="sm:hidden"> Slippery rope: wrong answers slip back half a pull.</span>
+              <span className="max-sm:hidden"> Slippery rope: a wrong answer lets the rope slip back half a pull.</span>
+            </>
+          ) : null}
+        </p>
       </StagePanel>
 
       {flow.feedback ? (
@@ -267,12 +289,14 @@ function SideCard({ side, view, players }: { side: Side; view: TugOfWarView; pla
         </div>
       </div>
       {s.top.length ? (
-        <ol className={`flex flex-wrap gap-1.5 ${right ? 'justify-end' : ''}`} aria-label={`Top pullers for the ${s.label}`}>
+        // One row whatever the names, so the card never grows and pushes the rope off a 768-pixel projector:
+        // narrower screens show the top two (the pair on the end zone), and long names shorten.
+        <ol className={`flex max-w-full min-w-0 flex-nowrap gap-1.5 max-[1600px]:[&>li:nth-child(n+3)]:hidden ${right ? 'justify-end' : ''}`} aria-label={`Top pullers for the ${s.label}`}>
           {s.top.map((t) => (
-            <li key={t.playerId} className={`flex items-center gap-1.5 rounded-full border border-white/15 py-0.5 pr-3 pl-0.5 ${NIGHT}`}>
-              <PlayerGlim avatar={avatarOf(players, t.playerId)} seed={t.playerId} size={36} className="size-[clamp(1.75rem,2.8vw,2.5rem)] shrink-0" />
-              <span className="max-w-[11rem] truncate font-bold">{t.name}</span>
-              <span className="font-display font-extrabold text-text-2 tabular">{plural(t.pulls, 'pull')}</span>
+            <li key={t.playerId} className={`flex min-w-0 shrink items-center gap-1.5 rounded-full border border-white/15 py-0.5 pr-3 pl-0.5 ${NIGHT}`}>
+              <PlayerGlim avatar={avatarOf(players, t.playerId)} seed={t.playerId} size={36} className="size-[clamp(1.75rem,min(2.8vw,5vh),2.5rem)] shrink-0" />
+              <span className="max-w-[11rem] min-w-0 truncate font-bold">{t.name}</span>
+              <span className="shrink-0 font-display font-extrabold whitespace-nowrap text-text-2 tabular">{plural(t.pulls, 'pull')}</span>
             </li>
           ))}
         </ol>

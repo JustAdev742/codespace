@@ -236,14 +236,26 @@ export function LanternMatchPlayer({ view, act, gameNow, paused, room }: ModeScr
   );
 }
 
+/** Projector columns for the pairs table: more as the class grows, at most eight rows each (two columns beside team scores). */
+const tableColumns = (n: number, teams: boolean) => Math.min(teams ? 2 : 3, n <= 8 ? 1 : n <= 16 ? 2 : 3);
+const TABLE_ROWS = 8;
+
 export function LanternMatchHost({ view, gameNow, room }: ModeScreenProps<LanternMatchView>) {
-  const rows = view.leaders;
-  const text = 'text-[clamp(1.05rem,1.6vw,1.75rem)]';
+  const all = view.leaders;
+  const cols = tableColumns(all.length, Boolean(view.teams));
+  const cap = cols * TABLE_ROWS;
+  // Showing every row but one would waste the line that counts them.
+  const rows = all.length > cap ? all.slice(0, cap - 1) : all;
+  const more = room.players.length - rows.length;
+  const perCol = Math.ceil(rows.length / cols);
+  const text = 'text-[clamp(1rem,min(1.6vw,2.8vh),1.75rem)]';
+  // Rows get smaller type once there are several columns, so eight two-line rows fit under the title.
+  const rowText = cols === 1 ? text : 'text-[clamp(0.95rem,min(1.3vw,2.3vh),1.6rem)]';
   return (
     <div className="mx-auto flex w-full max-w-[110rem] flex-1 flex-col gap-[clamp(0.75rem,2vh,1.5rem)]">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h2 className={`font-display text-[clamp(2.25rem,4vw,4.75rem)] leading-none font-extrabold ${SIGN}`}>Lantern Match</h2>
+          <h2 className={`font-display text-[clamp(2.25rem,min(4vw,7vh),4.75rem)] leading-none font-extrabold ${SIGN}`}>Lantern Match</h2>
           <p className={`mt-1 font-semibold text-text-2 ${text}`}>{view.sprint ? 'Sprint: the first to clear a board wins.' : `Find the pairs. ${view.pairsPerBoard} pairs on every board.`}</p>
         </div>
         <Pill className="px-5 py-1.5 text-[clamp(1.25rem,2.2vw,2.5rem)]">
@@ -251,25 +263,33 @@ export function LanternMatchHost({ view, gameNow, room }: ModeScreenProps<Lanter
         </Pill>
       </div>
       <div className={`grid grid-cols-1 gap-[clamp(1rem,2vw,2rem)] ${view.teams ? 'lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]' : ''}`}>
-        <ol className={`flex flex-col gap-1.5 ${text}`} aria-label="Pairs found" style={{ '--lb-rank': 'clamp(2.5rem, 5.5vh, 3.75rem)' } as CSSProperties}>
-          {rows.map((r) => (
-            <li key={r.playerId} className={`grid grid-cols-[auto_auto_1fr_auto] items-center gap-[clamp(0.6rem,1.2vw,1.25rem)] rounded-[20px] border border-white/12 px-3 py-1.5 ${NIGHT}`}>
-              <RankBadge rank={r.rank} big />
-              <PlayerGlim avatar={avatarOf(room.players, r.playerId)} seed={r.playerId} size={56} className="size-[clamp(2.75rem,6vh,4.25rem)]" />
-              <span className="flex min-w-0 flex-col gap-1">
-                <span className="truncate font-bold">{r.name}</span>
-                <span className="flex items-center gap-2">
-                  <ProgressBar value={r.boardPairs} max={r.boardTotal} tone="mint" label={`${r.name}: board ${r.cleared + 1}, ${r.boardPairs} of ${r.boardTotal} pairs`} className="max-w-xs" />
-                  <span className="text-[0.8em] font-semibold whitespace-nowrap text-text-2 tabular">{r.cleared ? `${plural(r.cleared, 'board')} cleared` : `${r.boardPairs} / ${r.boardTotal}`}</span>
+        <div className="flex min-w-0 flex-col gap-1.5">
+          {/* Rows share the screen's height, so a whole class fits a projector without scrolling. */}
+          <ol
+            className={`grid grid-flow-col gap-x-[clamp(0.75rem,1.4vw,1.25rem)] gap-y-1.5 leading-tight ${rowText}`}
+            aria-label="Pairs found"
+            style={{ '--lb-rank': 'clamp(2rem, 4.2vh, 3.5rem)', '--rows': perCol, gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))`, gridTemplateRows: `repeat(${perCol}, auto)` } as CSSProperties}
+          >
+            {rows.map((r) => (
+              <li key={r.playerId} className={`grid min-w-0 grid-cols-[auto_auto_1fr_auto] items-center gap-[clamp(0.5rem,1vw,1rem)] rounded-[20px] border border-white/12 px-3 py-1 ${NIGHT}`}>
+                <RankBadge rank={r.rank} big />
+                <PlayerGlim avatar={avatarOf(room.players, r.playerId)} seed={r.playerId} size={56} className="size-[clamp(1.75rem,calc((76dvh-8rem)/var(--rows)-1rem),4.25rem)]" />
+                <span className="flex min-w-0 flex-col gap-0.5">
+                  <span className="truncate font-bold">{r.name}</span>
+                  <span className="flex min-w-0 items-center gap-2">
+                    <ProgressBar value={r.boardPairs} max={r.boardTotal} tone="mint" label={`${r.name}: board ${r.cleared + 1}, ${r.boardPairs} of ${r.boardTotal} pairs`} className="max-w-xs min-w-0" />
+                    <span className="text-[0.8em] font-semibold whitespace-nowrap text-text-2 tabular">{r.cleared ? `${plural(r.cleared, 'board')} cleared` : `${r.boardPairs} / ${r.boardTotal}`}</span>
+                  </span>
                 </span>
-              </span>
-              <span className="text-right">
-                <span className="block font-display text-[1.6em] leading-none font-extrabold tabular">{r.pairs}</span>
-                <span className="block text-[0.8em] font-semibold text-text-2 tabular">{plural(r.misses, 'miss', 'misses')}</span>
-              </span>
-            </li>
-          ))}
-        </ol>
+                <span className="text-right">
+                  <span className="block font-display text-[1.5em] leading-none font-extrabold tabular">{r.pairs}</span>
+                  <span className="block text-[0.8em] font-semibold whitespace-nowrap text-text-2 tabular">{plural(r.misses, 'miss', 'misses')}</span>
+                </span>
+              </li>
+            ))}
+          </ol>
+          {more > 0 ? <p className={`font-semibold text-text-2 ${text}`}>And {more} more {more === 1 ? 'player' : 'players'}.</p> : null}
+        </div>
         {view.teams ? (
           <StagePanel className="flex flex-col gap-3 p-5">
             <h3 className="font-display text-[clamp(1.4rem,2.2vw,2.5rem)] font-extrabold">Teams: pairs per player</h3>

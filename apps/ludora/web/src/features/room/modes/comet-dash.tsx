@@ -29,16 +29,42 @@ export interface CometView {
   you: { pos: number; place: number | null; streak: number; question: QuestionView | null; last: FeedbackView | null; lastMove: { gain: number; notes: string[] } | null } | null;
 }
 
+/**
+ * Projector columns for the race: one column for a small group, then two, three and four as the
+ * class grows, so every racer stays on screen without scrolling.
+ */
+const laneColumns = (n: number) => (n <= 8 ? 1 : n <= 20 ? 2 : n <= 32 ? 3 : 4);
+
+/** On a phone, the lanes that matter to you: the leader, the racer ahead of you and you (or the two behind you when you lead). */
+function nearYou(lanes: Lane[]): Lane[] {
+  const i = lanes.findIndex((l) => l.isYou);
+  if (lanes.length <= 3 || i < 0) return lanes.slice(0, 3);
+  if (i <= 1) return lanes.slice(0, 3);
+  return [lanes[0]!, lanes[i - 1]!, lanes[i]!];
+}
+
 /** The race: one lane per player, a comet tail behind each Glim and a finish strip at the far end. */
 function Track({ lanes, distance, players, big = false, together = false }: { lanes: Lane[]; distance: number; players: RoomPlayerView[]; big?: boolean; together?: boolean }) {
-  const size = lanes.length > 8 ? 'clamp(2.25rem, 4.6vh, 3.5rem)' : lanes.length > 5 ? 'clamp(3rem, 7.5vh, 5.5rem)' : 'clamp(3.5rem, 10vh, 7rem)';
-  const vars = (
-    big
-      ? { '--g': size, '--name': 'clamp(8rem, 15vw, 17rem)' }
-      : { '--g': '2.25rem', '--name': '5.75rem' }
-  ) as CSSProperties;
+  const cols = big ? laneColumns(lanes.length) : 1;
+  const rows = Math.ceil(lanes.length / cols);
+  // Lanes share the screen's height: each row gets its slice of what is left under the title, within readable limits.
+  const vars: Record<string, string | number> = big
+    ? {
+        '--rows': rows,
+        // What the title, caption and header leave of the screen (about 8rem + 22vh), shared out between the rows.
+        '--g': `clamp(1.5rem, calc((78dvh - 8rem) / var(--rows) - 0.9rem), ${rows <= 5 ? '7rem' : '5rem'})`,
+        // Names keep enough room to tell 'Bot Badger' from 'Bot Badger 2'; the track takes the rest.
+        '--name': cols === 1 ? 'clamp(8rem, 15vw, 17rem)' : cols === 2 ? 'clamp(8rem, 13vw, 16rem)' : cols === 3 ? 'clamp(7rem, 11vw, 13rem)' : 'clamp(6rem, 8.5vw, 10rem)',
+      }
+    : { '--g': '1.75rem', '--name': '5.75rem' };
+  const name = big ? (cols === 1 ? 'text-[clamp(1rem,1.6vw,1.75rem)]' : 'text-[clamp(0.95rem,min(1.25vw,2.6vh),1.5rem)]') : 'text-sm';
   return (
-    <div className={`relative flex flex-col rounded-[22px] border border-white/12 ${NIGHT} ${big ? 'gap-[clamp(0.25rem,0.8vh,0.6rem)] p-[clamp(0.5rem,1.2vw,1rem)]' : 'gap-1.5 p-2'}`} style={vars} role="list" aria-label="Race positions">
+    <div
+      className={`relative grid rounded-[22px] border border-white/12 ${NIGHT} ${big ? 'grid-flow-col gap-x-[clamp(0.75rem,1.6vw,1.5rem)] gap-y-[clamp(0.25rem,0.8vh,0.6rem)] p-[clamp(0.5rem,1.2vw,1rem)] [grid-template-rows:repeat(var(--rows),auto)]' : 'gap-1 p-1.5'}`}
+      style={{ ...vars, gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` } as CSSProperties}
+      role="list"
+      aria-label="Race positions"
+    >
       {lanes.map((l) => {
         const pct = Math.min(100, (l.pos / distance) * 100);
         return (
@@ -48,7 +74,7 @@ function Track({ lanes, distance, players, big = false, together = false }: { la
             className={`grid grid-cols-[var(--name)_1fr] items-center gap-2 rounded-[14px] ${l.isYou ? 'bg-lantern/18 ring-2 ring-lantern' : 'bg-white/6'}`}
             aria-label={`${l.name}: ${l.place ? (together ? 'home' : `finished ${ordinal(l.place)}`) : `${l.pos} of ${distance} spaces`}`}
           >
-            <span className={`truncate pl-3 font-bold ${big ? 'text-[clamp(1rem,1.6vw,1.75rem)]' : 'text-sm'}`} aria-hidden>
+            <span className={`truncate pl-3 font-bold ${name}`} aria-hidden>
               {l.name}
             </span>
             <div className="relative h-[calc(var(--g)+0.5rem)]" aria-hidden>
@@ -116,7 +142,7 @@ export function CometDashPlayer({ view, act, gameNow, room }: ModeScreenProps<Co
   };
   const answeredQ = feedback ? (asked.current.get(feedback.iid) ?? null) : null;
   return (
-    <div className="mx-auto flex w-full max-w-3xl flex-col gap-4">
+    <div className="mx-auto flex w-full max-w-3xl flex-col gap-3 sm:gap-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="font-display text-2xl font-extrabold tabular">{you.place ? (isTogether(room) ? 'You made it home!' : `You finished ${ordinal(you.place)}!`) : `${you.pos} of ${view.distance} spaces`}</p>
         <div className="flex items-center gap-2">
@@ -132,7 +158,8 @@ export function CometDashPlayer({ view, act, gameNow, room }: ModeScreenProps<Co
           ) : null}
         </div>
       </div>
-      <Track lanes={view.lanes} distance={view.distance} players={room.players} together={isTogether(room)} />
+      {/* The whole race is on the projector; the phone keeps to the racers near you, so the question stays above the fold. */}
+      <Track lanes={nearYou(view.lanes)} distance={view.distance} players={room.players} together={isTogether(room)} />
       {you.place ? (
         <StagePanel className="flex items-center gap-4 px-4 py-4">
           <PlayerGlim avatar={myAvatar(room)} seed={room.me.playerId ?? 'you'} size={84} bob pose="cheer" className="shrink-0" />

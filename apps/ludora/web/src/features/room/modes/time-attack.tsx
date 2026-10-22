@@ -102,15 +102,18 @@ export function TimeAttackPlayer({ view, act, gameNow, paused, room }: ModeScree
   const submit = async (answer: Answer) => (q ? (await act({ type: 'answer', iid: q.iid, answer })).ok : false);
 
   return (
-    <div className="mx-auto flex w-full max-w-3xl flex-col gap-4">
-      <Clock endsAt={you.endsAt} clockMs={view.clockMs} gameNow={gameNow} running={running} />
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <Boost multiplier={you.multiplier} inRow={you.inRow} nextBoostIn={you.nextBoostIn} />
-        <span className={`font-display text-4xl font-extrabold tabular ${SIGN}`}>
+    <div className="mx-auto flex w-full max-w-3xl flex-col gap-3 sm:gap-4">
+      {/* The clock and the score share a line, so the question sits higher on a small phone. */}
+      <div className="flex items-center gap-3">
+        <div className="min-w-0 flex-1">
+          <Clock endsAt={you.endsAt} clockMs={view.clockMs} gameNow={gameNow} running={running} />
+        </div>
+        <span className={`shrink-0 font-display text-3xl font-extrabold tabular sm:text-4xl ${SIGN}`}>
           <span className="sr-only">Score: </span>
           {formatNumber(you.score)}
         </span>
       </div>
+      <Boost multiplier={you.multiplier} inRow={you.inRow} nextBoostIn={you.nextBoostIn} />
       {you.over ? (
         <StagePanel className="flex flex-col items-center gap-2 px-5 py-7 text-center">
           <PlayerGlim avatar={myAvatar(room)} seed={room.me.playerId ?? 'you'} size={110} bob />

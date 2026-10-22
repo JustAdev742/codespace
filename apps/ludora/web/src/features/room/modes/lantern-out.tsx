@@ -1,3 +1,4 @@
+import type { CSSProperties } from 'react';
 import { Eye, Flame, Sparkles, Wind } from 'lucide-react';
 import type { Answer, AnswerReveal, RoomPlayerView } from '@ludora/shared';
 import type { ModeScreenProps } from './registry.ts';
@@ -8,6 +9,7 @@ import { TimerBar } from '../game/TimerBar.tsx';
 import { ChoicesDisplay, ResultBanner, RevealAnswer } from '../game/Reveal.tsx';
 import { TeamScores } from '../game/Leaderboard.tsx';
 import { Explanation, IntroScreen, RoundHeader, myAvatar } from '../game/parts.tsx';
+import { useAnnounce } from '../game/announce.tsx';
 import { NIGHT, Pill, PlayerGlim, SIGN, StagePanel, avatarOf } from '../game/stage.tsx';
 import { formatNumber } from '../../../lib/format.ts';
 
@@ -24,7 +26,8 @@ interface SyncView {
   answered: number;
   eligible: number;
   distribution: Record<string, number> | null;
-  you: { eligible: boolean; answered: boolean; correct: boolean | null; points: number | null; partial: number | null; streak: number } | null;
+  /** `joinedLate`: this player arrived after the open question began, so it does not count for them. */
+  you: { eligible: boolean; answered: boolean; correct: boolean | null; points: number | null; partial: number | null; streak: number; joinedLate?: boolean } | null;
 }
 
 interface RosterRow {
@@ -95,11 +98,28 @@ function revivalText(view: LanternOutView): string {
   return `Next revival round: question ${view.nextRevival}.`;
 }
 
+/** The rules in play, in the order they matter: lives, revival, then any rule a variant or the host switched on. */
+function rulesText(view: LanternOutView, room: ModeScreenProps['room']): string {
+  const st = room.room.settings;
+  const parts = [`Everyone has ${lanternWord(view.lives)}. A wrong or missed answer blows one out.`];
+  parts.push(view.reviveEvery > 0 ? `Every ${view.reviveEvery} questions, players who are out get a chance to relight one.` : 'Once you are out, you stay out.');
+  if (st.kindling === true) parts.push('Three right answers in a row relight one of your lanterns.');
+  if (st.slowest === true) parts.push('When two or more players are right, the slowest of them loses a lantern too.');
+  if (st.lastTeam === true && view.teams) parts.push('The last team with a lantern lit wins.');
+  if (st.vigil === true) parts.push('You play together: the room wins if at least half of you still have a lantern lit at the end.');
+  parts.push(`${view.sync.total} questions.`);
+  return parts.join(' ');
+}
+
+/** A long set of rules steps down a size on the projector, so the countdown and the line-up stay on screen. */
+function RulesText({ text, big }: { text: string; big: boolean }) {
+  return big && text.length > 150 ? <span className="text-[0.85em]">{text}</span> : <>{text}</>;
+}
+
 function Intro({ view, gameNow, room, big = false }: { view: LanternOutView; gameNow: () => number; room: ModeScreenProps['room']; big?: boolean }) {
   return (
-    <IntroScreen title="Lantern Out" until={view.sync.phaseEndsAt} gameNow={gameNow} room={room} big={big} art={<LanternRow lit={view.lives} total={view.lives} size={big ? 64 : 44} showCount={false} />}>
-      Everyone has {lanternWord(view.lives)}. A wrong or missed answer blows one out.
-      {view.reviveEvery > 0 ? ` Every ${view.reviveEvery} questions, players who are out get a chance to relight one.` : ' Once you are out, you stay out.'} {view.sync.total} questions.
+    <IntroScreen title={room.room.title} until={view.sync.phaseEndsAt} gameNow={gameNow} room={room} big={big} art={<LanternRow lit={view.lives} total={view.lives} size={big ? 64 : 44} showCount={false} />}>
+      <RulesText text={rulesText(view, room)} big={big} />
     </IntroScreen>
   );
 }
@@ -114,12 +134,19 @@ function RevivalBanner({ view, big = false }: { view: LanternOutView; big?: bool
       ? 'Your chance to get back in: answer correctly to relight a lantern.'
       : 'Players who are out are trying to get back in. Sit this one out; your lanterns are safe.';
   return (
-    <div role="status" className={`flex items-center gap-3 rounded-[22px] border-[3px] border-ink bg-dusk px-4 py-3 text-on-accent shadow-[0_4px_0_var(--ink)] ${big ? 'text-[clamp(1.1rem,1.6vw,1.75rem)]' : ''}`} style={{ animation: 'pop-in 260ms var(--ease-spring)' }}>
-      <Sparkles className={big ? 'size-[clamp(2rem,3vw,3rem)] shrink-0' : 'size-7 shrink-0'} aria-hidden />
-      <div>
-        <p className={`font-display font-extrabold ${big ? 'text-[clamp(1.6rem,2.6vw,3rem)]' : 'text-xl'}`}>Revival round</p>
-        <p className="font-semibold">{text}</p>
-      </div>
+    <div role="status" className={`flex items-center gap-3 rounded-[22px] border-[3px] border-ink bg-dusk text-on-accent shadow-[0_4px_0_var(--ink)] ${big ? 'px-4 py-[clamp(0.4rem,1.2vh,0.75rem)] text-[clamp(1.05rem,min(1.5vw,2.7vh),1.75rem)]' : 'px-4 py-3'}`} style={{ animation: 'pop-in 260ms var(--ease-spring)' }}>
+      <Sparkles className={big ? 'size-[clamp(1.75rem,min(2.6vw,4.6vh),3rem)] shrink-0' : 'size-7 shrink-0'} aria-hidden />
+      {big ? (
+        <p className="font-semibold">
+          <span className="mr-2 font-display text-[1.3em] font-extrabold">Revival round.</span>
+          {text}
+        </p>
+      ) : (
+        <div>
+          <p className="font-display text-xl font-extrabold">Revival round</p>
+          <p className="font-semibold">{text}</p>
+        </div>
+      )}
     </div>
   );
 }
@@ -161,6 +188,13 @@ function Outcome({ view }: { view: LanternOutView }) {
   return null;
 }
 
+const LATE = 'You joined during this question, so it does not count. You play from the next one.';
+
+function JoinedLate() {
+  useAnnounce(LATE, 'late');
+  return <StagePanel className="px-4 py-3 font-semibold text-text">{LATE}</StagePanel>;
+}
+
 function RoundSummary({ view, big = false }: { view: LanternOutView; big?: boolean }) {
   const last = view.last;
   if (!last) return null;
@@ -172,34 +206,59 @@ function RoundSummary({ view, big = false }: { view: LanternOutView; big?: boole
     if (last.out.length) parts.push(`Out: ${last.out.join(', ')}.`);
     if (last.kindled?.length) parts.push(`Three in a row relit a lantern for ${last.kindled.join(', ')}.`);
   }
-  return <StagePanel className={`font-semibold ${big ? 'px-6 py-4 text-[clamp(1.1rem,1.7vw,1.9rem)]' : 'px-4 py-3'}`}>{parts.join(' ')}</StagePanel>;
+  return <StagePanel className={`font-semibold ${big ? 'px-4 py-[clamp(0.5rem,1.4vh,1rem)] text-[clamp(1rem,min(1.4vw,2.5vh),1.6rem)]' : 'px-4 py-3'}`}>{parts.join(' ')}</StagePanel>;
 }
 
-/** `wall` is the whole projector screen (two columns), `side` a projector side panel, `phone` the player's screen. */
-function Roster({ view, players, meId = null, size = 'phone' }: { view: LanternOutView; players: RoomPlayerView[]; meId?: string | null; size?: 'phone' | 'side' | 'wall' }) {
+/** Rows a projector side panel shows before counting the rest. */
+const SIDE_ROWS = 10;
+/** The standings wall: two columns, three past 24 players, and at most twelve rows a column. */
+const wallColumns = (n: number) => (n > 24 ? 3 : 2);
+const WALL_ROWS = 12;
+
+/** `wall` is the whole projector screen (columns), `side` a projector side panel, `phone` the player's screen. */
+function Roster({ view, players, meId = null, size = 'phone', sideRows = SIDE_ROWS }: { view: LanternOutView; players: RoomPlayerView[]; meId?: string | null; size?: 'phone' | 'side' | 'wall'; sideRows?: number }) {
   const big = size !== 'phone';
+  const all = view.roster;
+  const cols = size === 'wall' ? wallColumns(all.length) : 1;
+  const cap = size === 'side' ? sideRows : size === 'wall' ? cols * WALL_ROWS : all.length;
+  // Showing every row but one would waste the line that counts them.
+  const shown = all.length > cap ? all.slice(0, cap - 1) : all;
+  const rest = all.slice(shown.length);
+  const rows = Math.ceil(shown.length / cols);
+  const glim = size === 'wall' ? 'size-[clamp(1.75rem,calc((76dvh-6rem)/var(--rows)-1rem),3.75rem)]' : size === 'side' ? 'size-[clamp(2rem,4.2vh,3.25rem)]' : 'size-11';
   return (
-    <ul className={`grid gap-1.5 ${size === 'wall' ? 'grid-cols-1 text-[clamp(1.05rem,1.6vw,1.75rem)] sm:grid-cols-2' : size === 'side' ? 'grid-cols-1 text-[clamp(1rem,1.3vw,1.4rem)]' : 'grid-cols-1'}`} aria-label="Lanterns">
-      {view.roster.map((r) => {
-        const out = r.lanterns <= 0;
-        const mine = r.playerId === meId;
-        return (
-          <li key={r.playerId} className={`flex items-center gap-3 rounded-[18px] border px-2.5 py-1.5 ${NIGHT} ${mine ? 'border-lantern ring-2 ring-lantern' : 'border-white/12'}`}>
-            <PlayerGlim avatar={avatarOf(players, r.playerId)} seed={r.playerId} size={44} className={`${big ? 'size-[clamp(2.5rem,5vh,3.75rem)]' : 'size-11'} shrink-0 ${out ? 'opacity-60 grayscale' : ''}`} />
-            <span className="min-w-0 flex-1 truncate font-bold">
-              {r.name}
-              {mine ? <span className="sr-only"> (you)</span> : null}
-            </span>
-            {out ? (
-              <Pill className="px-2 py-0.5 text-xs">
-                <Wind className="size-3.5" aria-hidden /> Out
-              </Pill>
-            ) : null}
-            <LanternRow lit={r.lanterns} total={view.lives} size={big ? 24 : 18} />
-          </li>
-        );
-      })}
-    </ul>
+    <div className="flex flex-col gap-1.5">
+      <ul
+        className={`grid gap-1.5 ${size === 'wall' ? 'grid-flow-col gap-x-[clamp(0.75rem,1.4vw,1.25rem)] text-[clamp(1.05rem,min(1.6vw,2.8vh),1.75rem)]' : size === 'side' ? 'grid-cols-1 text-[clamp(1rem,min(1.3vw,2.4vh),1.4rem)]' : 'grid-cols-1'}`}
+        style={size === 'wall' ? ({ '--rows': rows, gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))`, gridTemplateRows: `repeat(${rows}, auto)` } as CSSProperties) : undefined}
+        aria-label="Lanterns"
+      >
+        {shown.map((r) => {
+          const out = r.lanterns <= 0;
+          const mine = r.playerId === meId;
+          return (
+            <li key={r.playerId} className={`flex min-w-0 items-center gap-3 rounded-[18px] border px-2.5 ${big ? 'py-1' : 'py-1.5'} ${NIGHT} ${mine ? 'border-lantern ring-2 ring-lantern' : 'border-white/12'}`}>
+              <PlayerGlim avatar={avatarOf(players, r.playerId)} seed={r.playerId} size={44} className={`${glim} shrink-0 ${out ? 'opacity-60 grayscale' : ''}`} />
+              <span className="min-w-0 flex-1 truncate font-bold">
+                {r.name}
+                {mine ? <span className="sr-only"> (you)</span> : null}
+              </span>
+              {out ? (
+                <Pill className="px-2! py-0.5! text-xs">
+                  <Wind className="size-3.5" aria-hidden /> Out
+                </Pill>
+              ) : null}
+              <LanternRow lit={r.lanterns} total={view.lives} size={big ? 22 : 18} />
+            </li>
+          );
+        })}
+      </ul>
+      {rest.length ? (
+        <p className={`font-semibold text-text-2 ${size === 'wall' ? 'text-[clamp(1rem,min(1.5vw,2.6vh),1.6rem)]' : 'text-[clamp(1rem,min(1.3vw,2.4vh),1.4rem)]'}`}>
+          And {rest.length} more: {rest.filter((r) => r.lanterns > 0).length} still lit, {rest.filter((r) => r.lanterns <= 0).length} out.
+        </p>
+      ) : null}
+    </div>
   );
 }
 
@@ -220,16 +279,18 @@ export function LanternOutPlayer({ view, act, gameNow, paused, room }: ModeScree
   if (!q) return null;
   const submit = async (answer: Answer) => (await act({ type: 'answer', iid: q.iid, answer })).ok;
   const canAnswer = Boolean(s.you?.eligible);
+  // Arrived after this question began and did not answer it: it does not count, so no result for it.
+  const late = Boolean(s.you?.joinedLate && !s.you.answered);
   return (
-    <div className="mx-auto flex w-full max-w-3xl flex-col gap-4">
+    <div className="mx-auto flex w-full max-w-3xl flex-col gap-3 sm:gap-4">
       <RoundHeader round={s.round} total={s.total}>
         <Pill>
           <Flame className="size-4 text-lantern" aria-hidden /> {view.alive} still lit
         </Pill>
       </RoundHeader>
       {you ? (
-        <StagePanel className="flex items-center justify-between gap-3 px-4 py-2.5">
-          <LanternRow lit={you.lanterns} total={view.lives} />
+        <StagePanel className="flex items-center justify-between gap-3 px-3 py-1.5 sm:px-4 sm:py-2.5">
+          <LanternRow lit={you.lanterns} total={view.lives} size={22} />
           <span className="font-display text-lg font-extrabold tabular">{formatNumber(you.points)} pts</span>
         </StagePanel>
       ) : null}
@@ -267,8 +328,8 @@ export function LanternOutPlayer({ view, act, gameNow, paused, room }: ModeScree
         )
       ) : (
         <div className="flex flex-col gap-4">
-          <Outcome view={view} />
-          {canAnswer && !s.you?.answered ? <p className="font-semibold text-text-2">No answer this time.</p> : null}
+          {late ? <JoinedLate /> : <Outcome view={view} />}
+          {canAnswer && !s.you?.answered && !late ? <p className="font-semibold text-text-2">No answer this time.</p> : null}
           {s.reveal ? <RevealAnswer q={q.q} reveal={s.reveal} compact /> : null}
           <Explanation text={s.explanation} />
           <RoundSummary view={view} />
@@ -289,25 +350,29 @@ export function LanternOutHost({ view, gameNow, paused, room }: ModeScreenProps<
   if (s.phase === 'intro') return <Intro view={view} gameNow={gameNow} room={room} big />;
   if (s.phase === 'leaderboard' || s.phase === 'done') {
     return (
-      <div className="mx-auto flex w-full max-w-[100rem] flex-col gap-[clamp(0.75rem,2vh,1.5rem)]">
-        <h2 className={`font-display text-[clamp(2.5rem,4.6vw,5.5rem)] leading-none font-extrabold ${SIGN}`}>Lanterns</h2>
+      <div className="mx-auto flex w-full max-w-[110rem] flex-col gap-[clamp(0.75rem,2vh,1.5rem)]">
+        <h2 className={`font-display text-[clamp(2.5rem,min(4.6vw,8vh),5.5rem)] leading-none font-extrabold ${SIGN}`}>Lanterns</h2>
         <Roster view={view} players={room.players} size="wall" />
       </div>
     );
   }
   const q = s.question;
   if (!q) return null;
+  // At the reveal, why the answer is right and what happened to the lanterns sit in the side panel, so the answer fits the left column.
+  const summary = s.phase === 'reveal' && view.last;
+  const pill = 'px-4 py-1.5 text-[clamp(1rem,min(1.5vw,2.8vh),1.75rem)]';
   return (
-    <div className="mx-auto grid w-full max-w-[110rem] flex-1 grid-cols-1 gap-[clamp(1rem,2vw,2rem)] lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
-      <div className="flex min-w-0 flex-col gap-[clamp(0.75rem,2vh,1.25rem)]">
+    // The question takes two thirds of the width, so long prompts wrap less and the reveal fits a 768-pixel projector.
+    <div className="mx-auto grid w-full max-w-[110rem] flex-1 grid-cols-1 gap-[clamp(1rem,2vw,2rem)] lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+      <div className="flex min-w-0 flex-col gap-[clamp(0.6rem,1.4vh,1.25rem)]">
         <RoundHeader round={s.round} total={s.total} big>
-          <Pill tone="lantern" className="px-4 py-1.5">
+          <Pill tone="lantern" className={pill}>
             <Flame className="size-[0.9em]" aria-hidden /> {view.alive} still lit
           </Pill>
-          <Pill className="px-4 py-1.5">
+          <Pill className={pill}>
             <Wind className="size-[0.9em]" aria-hidden /> {view.out} out
           </Pill>
-          <Pill className="px-4 py-1.5">
+          <Pill className={pill}>
             {s.answered} of {s.eligible} answered
           </Pill>
         </RoundHeader>
@@ -317,18 +382,21 @@ export function LanternOutHost({ view, gameNow, paused, room }: ModeScreenProps<
         {s.phase === 'question' ? (
           <ChoicesDisplay q={q.q} />
         ) : s.reveal ? (
-          <div className="flex flex-col gap-[clamp(0.75rem,2vh,1.25rem)]">
+          <div className="flex flex-col gap-[clamp(0.6rem,1.4vh,1.25rem)]">
             <RevealAnswer q={q.q} reveal={s.reveal} distribution={s.distribution} size="lg" />
-            <Explanation text={s.explanation} big />
-            <RoundSummary view={view} big />
+            <div className="lg:hidden">
+              <Explanation text={s.explanation} big />
+            </div>
           </div>
         ) : null}
       </div>
-      <aside className="flex min-w-0 flex-col gap-3">
-        <h3 className={`font-display text-[clamp(1.5rem,2.4vw,2.75rem)] font-extrabold ${SIGN}`}>Lanterns</h3>
+      <aside className="flex min-w-0 flex-col gap-[clamp(0.5rem,1.4vh,0.75rem)]">
+        <h3 className={`font-display text-[clamp(1.5rem,min(2.4vw,4.2vh),2.75rem)] leading-tight font-extrabold ${SIGN}`}>Lanterns</h3>
+        {s.phase === 'reveal' && s.explanation ? <StagePanel className="px-4 py-[clamp(0.4rem,1.2vh,0.75rem)] text-[clamp(1rem,min(1.3vw,2.4vh),1.4rem)] font-semibold text-text max-lg:hidden">{s.explanation}</StagePanel> : null}
+        {summary ? <RoundSummary view={view} big /> : null}
         {view.teams ? <TeamScores teams={view.teams} /> : null}
-        <p className="text-[clamp(1rem,1.3vw,1.4rem)] font-semibold text-text-2">{revivalText(view)}</p>
-        <Roster view={view} players={room.players} size="side" />
+        <p className="text-[clamp(1rem,min(1.3vw,2.4vh),1.4rem)] font-semibold text-text-2">{revivalText(view)}</p>
+        <Roster view={view} players={room.players} size="side" sideRows={view.teams ? 5 : s.phase === 'reveal' ? 6 : SIDE_ROWS} />
       </aside>
     </div>
   );

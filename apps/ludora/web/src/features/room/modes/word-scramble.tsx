@@ -164,7 +164,7 @@ function ScrambleBoard({ word, paused, onSolve, onHint, onSkip }: { word: Scramb
   const hintsLeft = word.maxHints - word.hints;
   let k = 0;
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-3 sm:gap-4">
       <div className="flex flex-wrap items-center gap-2 font-semibold text-text-2">
         <Pill tone="lantern">Worth {word.value}</Pill>
         <span>{plural(total, 'letter')}</span>
@@ -321,7 +321,7 @@ export function WordScramblePlayer({ view, act, gameNow, paused, room }: ModeScr
   };
   const mine = view.leaders.find((r) => r.isYou) ?? null;
   return (
-    <div className="mx-auto flex w-full max-w-3xl flex-col gap-5">
+    <div className="mx-auto flex w-full max-w-3xl flex-col gap-3 sm:gap-5">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex flex-wrap items-center gap-2">
           <Pill>
@@ -369,13 +369,19 @@ export function WordScramblePlayer({ view, act, gameNow, paused, room }: ModeScr
   );
 }
 
+/** Rows of the projector board that fit a 768-pixel screen under the title. */
+const BOARD_ROWS = 10;
+
 export function WordScrambleHost({ view, gameNow, room }: ModeScreenProps<WordScrambleView>) {
+  // The server sends up to forty rows; past ten, nine show and the rest are counted, so the board never scrolls.
+  const rows = view.leaders.length > BOARD_ROWS ? view.leaders.slice(0, BOARD_ROWS - 1) : view.leaders;
+  const more = room.players.length - rows.length;
   return (
     <div className="mx-auto flex w-full max-w-[110rem] flex-1 flex-col gap-[clamp(0.75rem,2vh,1.5rem)]">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h2 className={`font-display text-[clamp(2.25rem,4vw,4.75rem)] leading-none font-extrabold ${SIGN}`}>Word Scramble</h2>
-          <p className="mt-1 text-[clamp(1.05rem,1.6vw,1.75rem)] font-semibold text-text-2">
+          <h2 className={`font-display text-[clamp(2.25rem,min(4vw,7vh),4.75rem)] leading-none font-extrabold ${SIGN}`}>Word Scramble</h2>
+          <p className="mt-1 text-[clamp(1.05rem,min(1.6vw,2.8vh),1.75rem)] font-semibold text-text-2">
             {view.finished} of {view.playing} finished all {view.total} words{view.timed ? '. Every word is on a timer' : ''}.
           </p>
         </div>
@@ -384,7 +390,10 @@ export function WordScrambleHost({ view, gameNow, room }: ModeScreenProps<WordSc
         </Pill>
       </div>
       <div className={`grid grid-cols-1 gap-[clamp(1rem,2vw,2rem)] ${view.teams ? 'lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]' : ''}`}>
-        <Leaderboard rows={toLeaderRows(view.leaders)} players={room.players} teams={room.room.teams} big label={(r) => `${formatNumber(r.score)} pts`} />
+        <div className="flex min-w-0 flex-col gap-1.5">
+          <Leaderboard rows={toLeaderRows(rows)} players={room.players} teams={room.room.teams} big label={(r) => `${formatNumber(r.score)} pts`} />
+          {more > 0 ? <p className="text-[clamp(1rem,min(1.5vw,2.6vh),1.6rem)] font-semibold text-text-2">And {more} more {more === 1 ? 'player' : 'players'}.</p> : null}
+        </div>
         {view.teams ? (
           <StagePanel className="flex flex-col gap-3 p-5">
             <h3 className="font-display text-[clamp(1.4rem,2.2vw,2.5rem)] font-extrabold">Teams: average points</h3>

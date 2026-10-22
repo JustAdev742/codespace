@@ -17,7 +17,7 @@ Last updated: 2026-10-22.
 | M4 Economy and progression | Done | Shop, Lanterns with disclosed odds, collections, locker, quests, achievements, levels, streaks. |
 | M5 Staff tools | Done | Staff API and all 14 staff sections in the web app. An end-to-end test opens every section as a super administrator at phone and desktop widths. |
 | M6 Content, social, classes, analytics | Done | Friends, blocks, profiles, my stats, leaderboards, classes, assignments and their reports, hosted games, game reports, the set editor with image uploads, and AI question drafts. |
-| M7-8 Polish, CI, deployment | In progress | Production build, Docker image, compose file, CI workflow, docs and end-to-end tests (run in CI) are in. The visual overhaul is done across player pages and the live game, and automated accessibility checks pass on every player page and game screen. A final design review and a manual screen-reader pass remain. |
+| M7-8 Polish, CI, deployment | In progress | Production build, Docker image, compose file, CI workflow, docs and end-to-end tests (run in CI) are in. The visual overhaul is done across player pages and the live game, and automated accessibility checks pass on every player page, game screen and staff section. A design review of the whole app was done and its findings fixed. A manual screen-reader pass remains. |
 
 ## What works today (verified)
 
@@ -29,6 +29,15 @@ Last updated: 2026-10-22.
 - **Rooms**: 6-digit join codes, lobby, reconnection with a reconnect token,
   host controls (start, pause, resume, skip, end, kick, lock, practice bots,
   teams), late joining, solo rooms, per-socket rate limits, join limits per IP.
+  "Your open games" on the Host and home pages lets a host rejoin or close a
+  game they left; only games in the lobby, running or paused count toward the
+  six a host may have open (D40). Leaving mid-game asks first, and says what
+  happens: a player starts again from zero; players see a host-paced game
+  paused until the host is back, and the game ends after 10 minutes away.
+  Someone who joins during a question may still answer it; a missed one is
+  not held against them (D39). Players see their own answer when locked in
+  and on the reveal, and answering is held while the connection is down.
+  Solo games end with Play again.
 - **Modes (14)**: Classic, Comet Dash, Quick Draw, Lantern Out, Confidence,
   Glimgo, Lantern Match, Word Scramble, Time Attack, Survival Run, Flashcard
   Study, Sky Lanterns, Gloom Giant, Tug of War. Each one plays to the end with
@@ -44,7 +53,7 @@ Last updated: 2026-10-22.
   and replays from a seed; each new rule has its own test. Fading Lights and
   Kindling were also played to the end in the real app.
 - **Accessibility**: an axe-core audit (WCAG 2.2 A and AA rules) of every
-  player page, the sign-in pages and the main staff sections, in both themes at
+  player page, the sign-in pages and every staff section, in both themes at
   phone and desktop widths, finds no violations; the layout end-to-end test now
   runs the same checks on thirteen pages, so CI catches regressions. The live
   game was scanned the same way while being played, host on a projector-sized
@@ -79,7 +88,13 @@ Last updated: 2026-10-22.
   third place first, with the winner cheering on top (co-op games get a team
   photo). Question pictures display at a fixed height on every screen size.
   All 14 modes use the same stage, every player's Glim shows its real rarity
-  finish (D36), and a host can run a game from a phone. Every mode was played
+  finish (D36), and a host can run a game from a phone. Measured after the
+  design review: every host screen fits a 1366 by 768 and a 1920 by 1080
+  projector without scrolling with 5, 12, 21 and 30 players (long lists show
+  their top rows and count the rest), and on phones every single-answer
+  question and its action fit at 390 by 844, 375 by 667 and 360 by 640.
+  Matching, ordering and select-all questions still need a scroll below 390
+  by 844. Variant intros name the variant and state each rule switched on. Every mode was played
   to its results in a real browser with a host, a player and bots, at 390
   pixels and at projector size; eight variants were played to check their new
   screen text; with reduced motion nothing moves and nothing waits to appear.
@@ -172,11 +187,11 @@ creates and drops its own database).
 | Project | Files | Tests |
 |---|---|---|
 | content | 2 | 112: catalogue integrity and every built-in question set |
-| engine | 13 | 715, including the conformance suite for every mode and variant |
-| server | 9 | 133: auth and rate limits (14), realtime (5), economy (20), staff (54), social and classes (16), sign-in help (3), uploads (6), AI drafts (11), reward counting (4) |
+| engine | 14 | 720, including the conformance suite for every mode and variant |
+| server | 11 | 141: auth and rate limits (14), realtime (5), economy (20), staff (54), social and classes (17), preferences (3), open games (4), sign-in help (3), uploads (6), AI drafts (11), reward counting (4) |
 | web | 1 | 45: the set editor's checks, import and export |
 | shared | 0 | no tests of its own; its schemas are exercised by the other projects |
-| **Total** | **25** | **1005 passing** at the last full run |
+| **Total** | **28** | **1018 passing** at the last full run |
 
 End-to-end: `npm run test:e2e` (needs Postgres; builds first, then runs 8
 browser tests against a fresh `ludora_e2e` database). All 8 pass.

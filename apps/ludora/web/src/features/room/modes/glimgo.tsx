@@ -62,6 +62,20 @@ export interface GlimgoView {
 
 const GOAL: Record<WinRule, string> = { line: 'Complete a line', 'two-lines': 'Complete two lines', full: 'Fill the whole card' };
 
+/** The rules in play, for the intro: the goal, then each rule a variant (or the host) changed. */
+function rulesText(view: GlimgoView, room: ModeScreenProps['room']): string {
+  const st = room.room.settings;
+  const parts = [`${GOAL[view.win]} to win.`];
+  const secs = Number(st.callSeconds ?? 0);
+  if (secs > 0) parts.push(`Each call lasts ${secs} seconds.`);
+  const finders = Number(st.finders ?? 0);
+  if (finders > 0) parts.push(`Only the first ${finders === 1 ? 'player' : `${finders} players`} to find each call can mark it.`);
+  const lockout = Number(st.lockoutSeconds ?? 0);
+  if (lockout > 0) parts.push(`A wrong tap locks you out for ${lockout} seconds.`);
+  if (st.luckyStars === true) parts.push('After every fifth call, whoever is furthest from Glimgo gets a free square.');
+  return parts.join(' ');
+}
+
 function toGoText(n: number): string {
   if (n <= 0) return 'Glimgo!';
   if (n === 1) return 'One to go!';
@@ -98,7 +112,8 @@ function CallPrompt({ call, big = false }: { call: CallInfo; big?: boolean }) {
 /** A card of squares. With `onMark`, unmarked squares are buttons. */
 function Card({ squares, size, onMark, canMark = false, wrong = null, big = false, showLines = false, label }: { squares: Square[]; size: number; onMark?: (i: number) => void; canMark?: boolean; wrong?: number | null; big?: boolean; showLines?: boolean; label: string }) {
   // Squares grow with long answers (flashcard backs can be a sentence) rather than clipping them.
-  const text = size >= 4 ? (big ? 'min-h-[clamp(5.5rem,13vh,8rem)] text-[clamp(1rem,1.4vw,1.5rem)]' : 'min-h-[4.5rem] text-[11px] min-[380px]:text-xs sm:min-h-24 sm:text-sm') : big ? 'min-h-[clamp(7rem,17vh,10rem)] text-[clamp(1.2rem,1.8vw,2rem)]' : 'min-h-24 text-sm sm:min-h-28 sm:text-base';
+  // On the projector the squares share the screen's height with the winner's banner, so the whole card shows on a 768-pixel screen.
+  const text = size >= 4 ? (big ? 'min-h-[clamp(4rem,10.5vh,8rem)] text-[clamp(1rem,min(1.4vw,2.5vh),1.5rem)]' : 'min-h-[4.5rem] text-[11px] min-[380px]:text-xs sm:min-h-24 sm:text-sm') : big ? 'min-h-[clamp(5rem,14vh,10rem)] text-[clamp(1.2rem,min(1.8vw,3.2vh),2rem)]' : 'min-h-24 text-sm sm:min-h-28 sm:text-base';
   const winning = showLines ? completedSquares(squares, size) : null;
   return (
     <div role="group" aria-label={label} className={`grid gap-2 ${size >= 4 ? 'grid-cols-4' : 'grid-cols-3'}`}>
@@ -148,10 +163,10 @@ function RecentCalls({ recent, big = false }: { recent: GlimgoView['recent']; bi
   if (!recent.length) return null;
   return (
     <div>
-      <h3 className={`mb-2 font-display font-extrabold ${SIGN} ${big ? 'text-[clamp(1.4rem,2.2vw,2.5rem)]' : 'text-lg'}`}>Recent calls</h3>
-      <ol className={`flex flex-col gap-1.5 ${big ? 'text-[clamp(1rem,1.3vw,1.4rem)]' : 'text-sm'}`}>
+      <h3 className={`mb-2 font-display font-extrabold ${SIGN} ${big ? 'text-[clamp(1.4rem,min(2.2vw,3.9vh),2.5rem)] leading-tight' : 'text-lg'}`}>Recent calls</h3>
+      <ol className={`flex flex-col gap-1.5 ${big ? 'text-[clamp(1rem,min(1.3vw,2.4vh),1.4rem)]' : 'text-sm'}`}>
         {recent.map((c) => (
-          <li key={c.n} className={`flex items-baseline gap-3 rounded-[14px] border border-white/12 px-3 py-2 ${NIGHT}`}>
+          <li key={c.n} className={`flex items-baseline gap-3 rounded-[14px] border border-white/12 px-3 ${big ? 'py-[clamp(0.25rem,0.9vh,0.5rem)]' : 'py-2'} ${NIGHT}`}>
             <span className="shrink-0 font-display font-extrabold text-text-2 tabular">{c.n}</span>
             <span className="min-w-0 flex-1 truncate text-text-2">{c.prompt}</span>
             <span className="max-w-[45%] shrink-0 truncate font-bold">{c.text}</span>
@@ -162,15 +177,21 @@ function RecentCalls({ recent, big = false }: { recent: GlimgoView['recent']; bi
   );
 }
 
+/** Leaders that fit the projector's side panel above the recent calls; the rest are counted. */
+const LEADERS_SHOWN = 7;
+
 function Leaders({ view, players, big = false }: { view: GlimgoView; players: RoomPlayerView[]; big?: boolean }) {
   if (!view.leaders.length) return null;
+  const shown = big ? view.leaders.slice(0, LEADERS_SHOWN) : view.leaders;
+  // The server sends the closest twelve; count everyone else in the room.
+  const more = big ? Math.max(0, players.length - shown.length) : 0;
   return (
     <div>
-      <h3 className={`mb-2 font-display font-extrabold ${SIGN} ${big ? 'text-[clamp(1.4rem,2.2vw,2.5rem)]' : 'text-lg'}`}>Closest to Glimgo</h3>
-      <ol className={`flex flex-col gap-1.5 ${big ? 'text-[clamp(1rem,1.35vw,1.5rem)]' : 'text-sm'}`} aria-label="Players closest to Glimgo">
-        {view.leaders.map((p) => (
-          <li key={p.playerId} className={`flex items-center gap-3 rounded-[14px] border px-2.5 py-1.5 ${NIGHT} ${p.toGo === 1 ? 'border-lantern ring-2 ring-lantern' : 'border-white/12'}`}>
-            <PlayerGlim avatar={avatarOf(players, p.playerId)} seed={p.playerId} size={40} className={big ? 'size-[clamp(2.25rem,4.5vh,3.25rem)] shrink-0' : 'size-9 shrink-0'} />
+      <h3 className={`mb-2 font-display font-extrabold ${SIGN} ${big ? 'text-[clamp(1.4rem,min(2.2vw,3.9vh),2.5rem)] leading-tight' : 'text-lg'}`}>Closest to Glimgo</h3>
+      <ol className={`flex flex-col gap-1.5 ${big ? 'text-[clamp(1rem,min(1.35vw,2.4vh),1.5rem)]' : 'text-sm'}`} aria-label="Players closest to Glimgo">
+        {shown.map((p) => (
+          <li key={p.playerId} className={`flex items-center gap-3 rounded-[14px] border px-2.5 ${big ? 'py-1' : 'py-1.5'} ${NIGHT} ${p.toGo === 1 ? 'border-lantern ring-2 ring-lantern' : 'border-white/12'}`}>
+            <PlayerGlim avatar={avatarOf(players, p.playerId)} seed={p.playerId} size={40} className={big ? 'size-[clamp(2rem,4.2vh,3.25rem)] shrink-0' : 'size-9 shrink-0'} />
             <span className="min-w-0 flex-1 truncate font-bold">{p.name}</span>
             <span className="font-semibold text-text-2 tabular">
               {p.marks} {p.marks === 1 ? 'mark' : 'marks'}
@@ -179,6 +200,7 @@ function Leaders({ view, players, big = false }: { view: GlimgoView; players: Ro
           </li>
         ))}
       </ol>
+      {more > 0 ? <p className="mt-1.5 text-[clamp(1rem,min(1.3vw,2.4vh),1.4rem)] font-semibold text-text-2">And {more} more.</p> : null}
     </div>
   );
 }
@@ -236,7 +258,7 @@ export function GlimgoPlayer({ view, act, gameNow, paused, room }: ModeScreenPro
             <div>
               <p className="font-display text-2xl font-extrabold">Study your card</p>
               <p className="font-semibold text-text-2">
-                {GOAL[view.win]}. Each call is a question: tap the square that answers it. First call in <Countdown until={view.phaseEndsAt} gameNow={gameNow} />
+                Each call is a question: tap the square that answers it. {rulesText(view, room)} First call in <Countdown until={view.phaseEndsAt} gameNow={gameNow} />
               </p>
             </div>
           ) : view.phase === 'finale' ? (
@@ -307,8 +329,8 @@ export function GlimgoHost({ view, gameNow, paused, room }: ModeScreenProps<Glim
         </div>
         {view.phase === 'intro' ? (
           <div className="flex flex-col items-center gap-[clamp(1rem,3vh,2rem)] py-4 text-center" style={{ animation: 'pop-in 300ms var(--ease-spring)' }}>
-            <h2 className={`font-display text-[clamp(3.5rem,7.5vw,9rem)] leading-none font-extrabold ${SIGN}`}>Glimgo</h2>
-            <p className="max-w-[44ch] text-[clamp(1.2rem,1.9vw,2.2rem)] font-semibold text-text-2">Everyone has their own card of answers. Each call is a question: find the answer on your card and tap it. A wrong tap locks you out for a moment.</p>
+            <h2 className={`font-display text-[clamp(3.5rem,min(7.5vw,13vh),9rem)] leading-none font-extrabold ${SIGN}`}>{room.room.title}</h2>
+            <p className="max-w-[48ch] text-[clamp(1.1rem,min(1.7vw,3vh),2.2rem)] font-semibold text-text-2">Everyone has their own card of answers. Each call is a question: find the answer on your card and tap it. {rulesText(view, room)}</p>
             <BigCountdown until={view.phaseEndsAt} gameNow={gameNow} big label="First call in" />
             <LineUp players={room.players} big />
           </div>
@@ -342,9 +364,9 @@ export function GlimgoHost({ view, gameNow, paused, room }: ModeScreenProps<Glim
           </div>
         ) : null}
       </div>
-      <aside className="flex min-w-0 flex-col gap-5">
+      <aside className="flex min-w-0 flex-col gap-[clamp(0.75rem,2vh,1.25rem)]">
         <Leaders view={view} players={room.players} big />
-        <RecentCalls recent={view.recent} big />
+        <RecentCalls recent={view.recent.slice(0, 3)} big />
       </aside>
     </div>
   );

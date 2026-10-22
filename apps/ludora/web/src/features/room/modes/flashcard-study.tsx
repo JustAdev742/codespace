@@ -45,11 +45,13 @@ export interface FlashcardStudyView {
 function FrontDetails({ q }: { q: PublicQuestion }) {
   switch (q.type) {
     case 'mcq':
-    case 'multi':
+    case 'multi': {
+      // Short choices sit two to a row on a phone too, so the button to turn the card stays above the fold.
+      const short = q.choices.every((c) => (c.text || c.media?.alt || 'Picture').length <= 18);
       return (
         <div className="flex flex-col gap-2">
           {q.type === 'multi' ? <p className="text-sm font-semibold text-text-2">More than one is right.</p> : null}
-          <ul className="grid grid-cols-1 gap-1.5 sm:grid-cols-2">
+          <ul className={`grid gap-1.5 sm:grid-cols-2 ${short ? 'grid-cols-2' : 'grid-cols-1'}`}>
             {q.choices.map((c, i) => (
               <li key={c.id} className="rounded-[10px] bg-surface-2 px-3 py-1.5 font-semibold">
                 <span className="mr-1.5 text-text-3">{ANSWER_LETTERS[i]}</span>
@@ -59,6 +61,7 @@ function FrontDetails({ q }: { q: PublicQuestion }) {
           </ul>
         </div>
       );
+    }
     case 'truefalse':
       return <p className="font-semibold text-text-2">True or false?</p>;
     case 'numeric':
@@ -160,7 +163,7 @@ export function FlashcardStudyPlayer({ view, act, gameNow, paused, room }: ModeS
   if (!you) return <p className="font-semibold text-text-2">Watching.</p>;
   const line = lastLine(you.last, view.quick);
   return (
-    <div className="mx-auto flex w-full max-w-2xl flex-col gap-4">
+    <div className="mx-auto flex w-full max-w-2xl flex-col gap-3 sm:gap-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex min-w-[12rem] flex-1 flex-col gap-1.5">
           <span className="font-display text-lg font-extrabold tabular">
@@ -195,7 +198,7 @@ export function FlashcardStudyPlayer({ view, act, gameNow, paused, room }: ModeS
           <div key={card.iid} style={{ perspective: '1400px', animation: 'rise-fade 260ms var(--ease-out) both' }}>
             <div className="grid transition-transform duration-500 ease-[var(--ease-out)]" style={{ transformStyle: 'preserve-3d', transform: card.flipped ? 'rotateY(180deg)' : 'none' }}>
               <section
-                className="paper flex min-h-[16rem] flex-col gap-4 rounded-[24px] border-[3px] border-ink p-5 shadow-[0_6px_0_rgb(12_8_48/0.55)] sm:p-7"
+                className="paper flex min-h-[16rem] flex-col gap-3 rounded-[24px] border-[3px] border-ink p-4 shadow-[0_6px_0_rgb(12_8_48/0.55)] sm:gap-4 sm:p-7"
                 style={{ gridArea: '1 / 1', backfaceVisibility: 'hidden' }}
                 aria-hidden={card.flipped}
               >
@@ -207,7 +210,7 @@ export function FlashcardStudyPlayer({ view, act, gameNow, paused, room }: ModeS
                 <FrontDetails q={card.q} />
               </section>
               <section
-                className="flex min-h-[16rem] flex-col gap-3 rounded-[24px] border-[3px] border-ink bg-glim p-5 text-on-accent shadow-[0_6px_0_rgb(12_8_48/0.55)] sm:p-7"
+                className="flex min-h-[16rem] flex-col gap-3 rounded-[24px] border-[3px] border-ink bg-glim p-4 text-on-accent shadow-[0_6px_0_rgb(12_8_48/0.55)] sm:p-7"
                 style={{ gridArea: '1 / 1', backfaceVisibility: 'hidden', transform: 'rotateY(180deg)' }}
                 aria-hidden={!card.flipped}
               >

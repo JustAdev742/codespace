@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type CSSProperties } from 'react';
+import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { Flame, Shield, ShieldAlert, Swords, Users, Zap } from 'lucide-react';
 import type { Answer, GlimArt } from '@ludora/shared';
 import type { ModeScreenProps } from './registry.ts';
@@ -101,59 +101,129 @@ function Giant({ enraged, hp, size, className }: { enraged: boolean; hp: number;
   );
 }
 
-function HealthBar({ hp, maxHp, enraged, big = false }: { hp: number; maxHp: number; enraged: boolean; big?: boolean }) {
-  const pct = maxHp > 0 ? Math.max(0, Math.min(100, (hp / maxHp) * 100)) : 0;
+const percent = (value: number, max: number) => (max > 0 ? Math.max(0, Math.min(100, (value / max) * 100)) : 0);
+
+/** The giant's health on the projector: a thick bar with the enrage line at half. */
+function HealthBar({ hp, maxHp, enraged }: { hp: number; maxHp: number; enraged: boolean }) {
   return (
-    <div className="flex w-full flex-col gap-2">
-      <div className="flex flex-wrap items-baseline justify-between gap-x-2 gap-y-1">
-        <span className={`flex items-center gap-2 font-display font-extrabold whitespace-nowrap ${big ? 'text-[clamp(1.4rem,2.4vw,2.75rem)]' : 'text-lg'}`}>
-          {big ? 'Gloom Giant' : 'Health'}
+    <div className="flex w-full flex-col gap-[clamp(0.25rem,0.8vh,0.5rem)]">
+      <div className="flex flex-wrap items-baseline justify-between gap-x-2 gap-y-1 leading-tight">
+        <span className="flex items-center gap-2 font-display text-[clamp(1.4rem,min(2.4vw,4.2vh),2.75rem)] font-extrabold whitespace-nowrap">
+          Gloom Giant
           {enraged ? (
-            <Pill tone="ember" className={big ? 'text-[0.55em]' : 'px-2 py-0.5 text-xs'}>
+            <Pill tone="ember" className="text-[0.55em]">
               Enraged
             </Pill>
           ) : null}
         </span>
-        <span className={`font-display font-extrabold whitespace-nowrap tabular ${big ? 'text-[clamp(1.6rem,3vw,3.5rem)]' : 'text-xl'}`}>
+        <span className="font-display text-[clamp(1.6rem,min(3vw,5vh),3.5rem)] font-extrabold whitespace-nowrap tabular">
           {formatNumber(hp)} / {formatNumber(maxHp)}
           <span className="sr-only"> health</span>
         </span>
       </div>
-      <div className={`relative overflow-hidden rounded-full border-[3px] border-ink bg-[rgb(17_10_62/0.7)] ${big ? 'h-[clamp(1.75rem,4vh,3rem)]' : 'h-5'}`} role="meter" aria-label="Giant health" aria-valuenow={hp} aria-valuemin={0} aria-valuemax={maxHp}>
-        <div className="absolute inset-0 rounded-full bg-ember transition-transform duration-500 ease-[var(--ease-out)]" style={{ transform: `translateX(${pct - 100}%)` }} />
+      <div className="relative h-[clamp(1.5rem,3.6vh,3rem)] overflow-hidden rounded-full border-[3px] border-ink bg-[rgb(17_10_62/0.7)]" role="meter" aria-label="Giant health" aria-valuenow={hp} aria-valuemin={0} aria-valuemax={maxHp}>
+        <div className="absolute inset-0 rounded-full bg-ember transition-transform duration-500 ease-[var(--ease-out)]" style={{ transform: `translateX(${percent(hp, maxHp) - 100}%)` }} />
         {/* Below this line the giant is enraged. */}
         <span className="absolute inset-y-0 left-1/2 w-[3px] -translate-x-1/2 bg-ink/70" aria-hidden />
       </div>
-      {big ? <span className="text-[clamp(1rem,1.5vw,1.6rem)] font-semibold text-text-2">{enraged ? 'Enraged: every wrong answer now costs 2 shield.' : 'Below half health the giant becomes enraged.'}</span> : null}
+      <span className="text-[clamp(1rem,min(1.5vw,2.6vh),1.6rem)] font-semibold text-text-2">{enraged ? 'Enraged: every wrong answer now costs 2 shield.' : 'Below half health the giant becomes enraged.'}</span>
     </div>
   );
 }
 
-function ShieldMeter({ shield, max, big = false }: { shield: number; max: number; big?: boolean }) {
+/** The team shield on the projector: one shield per point while they fit, a bar beyond that. */
+function ShieldMeter({ shield, max }: { shield: number; max: number }) {
   const pips = max <= 24;
   const low = shield <= 2;
   return (
-    <div className="flex flex-col gap-2">
-      <div className="flex items-baseline justify-between gap-2">
-        <span className={`flex items-center gap-2 font-display font-extrabold ${big ? 'text-[clamp(1.4rem,2.4vw,2.75rem)]' : 'text-lg'}`}>
+    <div className="flex flex-col gap-[clamp(0.25rem,0.8vh,0.5rem)]">
+      <div className="flex items-baseline justify-between gap-2 leading-tight">
+        <span className="flex items-center gap-2 font-display text-[clamp(1.4rem,min(2.4vw,4.2vh),2.75rem)] font-extrabold">
           <Shield className="size-[0.9em]" aria-hidden /> Team shield
         </span>
-        <span className={`font-display font-extrabold tabular ${low ? 'text-ember' : ''} ${big ? 'text-[clamp(1.6rem,3vw,3.5rem)]' : 'text-xl'}`}>
+        <span className={`font-display text-[clamp(1.6rem,min(3vw,5vh),3.5rem)] font-extrabold tabular ${low ? 'text-ember' : ''}`}>
           {shield} / {max}
         </span>
       </div>
       {pips ? (
         <div className="flex flex-wrap gap-1" role="meter" aria-label="Team shield" aria-valuenow={shield} aria-valuemin={0} aria-valuemax={max}>
           {Array.from({ length: max }, (_, i) => (
-            <Shield key={i} className={`${big ? 'size-[clamp(1.75rem,3.4vh,2.75rem)]' : 'size-6'} ${i < shield ? 'fill-sky text-ink' : 'text-white/35'}`} strokeWidth={2.2} aria-hidden />
+            <Shield key={i} className={`size-[clamp(1.5rem,3.2vh,2.75rem)] ${i < shield ? 'fill-sky text-ink' : 'text-white/35'}`} strokeWidth={2.2} aria-hidden />
           ))}
         </div>
       ) : (
-        <div className={`relative overflow-hidden rounded-full border-[3px] border-ink bg-[rgb(17_10_62/0.7)] ${big ? 'h-7' : 'h-4'}`} role="meter" aria-label="Team shield" aria-valuenow={shield} aria-valuemin={0} aria-valuemax={max}>
-          <div className="absolute inset-0 rounded-full bg-sky transition-transform duration-500 ease-[var(--ease-out)]" style={{ transform: `translateX(${(shield / Math.max(1, max)) * 100 - 100}%)` }} />
+        <div className="relative h-7 overflow-hidden rounded-full border-[3px] border-ink bg-[rgb(17_10_62/0.7)]" role="meter" aria-label="Team shield" aria-valuenow={shield} aria-valuemin={0} aria-valuemax={max}>
+          <div className="absolute inset-0 rounded-full bg-sky transition-transform duration-500 ease-[var(--ease-out)]" style={{ transform: `translateX(${percent(shield, max) - 100}%)` }} />
         </div>
       )}
     </div>
+  );
+}
+
+/** One line of the phone's battle strip: a label and its number over a slim bar. */
+function StripMeter({ label, value, max, unit, meterLabel, fill, low = false, children }: { label: ReactNode; value: number; max: number; unit: string; meterLabel: string; fill: string; low?: boolean; children?: ReactNode }) {
+  return (
+    <div className="flex flex-col gap-1">
+      <div className="flex items-center justify-between gap-2 font-display text-sm leading-tight font-extrabold sm:text-base">
+        <span className="flex min-w-0 items-center gap-1.5 whitespace-nowrap">{label}</span>
+        <span className={`whitespace-nowrap tabular ${low ? 'text-ember' : ''}`}>
+          {formatNumber(value)} / {formatNumber(max)}
+          <span className="sr-only"> {unit}</span>
+        </span>
+      </div>
+      <div className="relative h-3.5 overflow-hidden rounded-full border-2 border-ink bg-[rgb(17_10_62/0.7)]" role="meter" aria-label={meterLabel} aria-valuenow={value} aria-valuemin={0} aria-valuemax={max}>
+        <div className={`absolute inset-0 rounded-full ${fill} transition-transform duration-500 ease-[var(--ease-out)]`} style={{ transform: `translateX(${percent(value, max) - 100}%)` }} />
+        {children}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * The battle on a player's screen: the giant beside its health and the team
+ * shield as bars with numbers. Kept to one short strip, so the question and
+ * every answer under it stay above the fold on a small phone.
+ */
+function BattleStrip({ view }: { view: GloomGiantView }) {
+  return (
+    <StagePanel as="section" className="flex items-center gap-3 px-3 py-2.5 sm:gap-4 sm:px-4 sm:py-3" label="The battle">
+      <Giant enraged={view.enraged} hp={view.hp} size={72} className="size-14 sm:size-[4.5rem]" />
+      <div className="flex min-w-0 flex-1 flex-col gap-2">
+        <StripMeter
+          label={
+            <>
+              Health
+              {view.enraged ? (
+                <Pill tone="ember" className="px-2! py-0! text-xs">
+                  Enraged
+                </Pill>
+              ) : null}
+            </>
+          }
+          value={view.hp}
+          max={view.maxHp}
+          unit="health"
+          meterLabel="Giant health"
+          fill="bg-ember"
+        >
+          {/* Below this line the giant is enraged. */}
+          <span className="absolute inset-y-0 left-1/2 w-0.5 -translate-x-1/2 bg-ink/70" aria-hidden />
+        </StripMeter>
+        <StripMeter
+          label={
+            <>
+              <Shield className="size-[1em]" aria-hidden /> Team shield
+            </>
+          }
+          value={view.shield}
+          max={view.shieldMax}
+          unit="shield"
+          meterLabel="Team shield"
+          fill="bg-sky"
+          low={view.shield <= 2}
+        />
+      </div>
+    </StagePanel>
   );
 }
 
@@ -179,11 +249,11 @@ export function GloomGiantPlayer({ view, act, gameNow, paused }: ModeScreenProps
     return (await act({ type: 'answer', iid: q.iid, answer })).ok;
   };
   return (
-    <div className="mx-auto flex w-full max-w-3xl flex-col gap-4">
+    <div className="mx-auto flex w-full max-w-3xl flex-col gap-3 sm:gap-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="font-display text-2xl font-extrabold">
           {formatNumber(you.damage)} damage
-          {you.rank && view.fighters > 1 ? <span className="ml-2 text-lg text-text-2">{ordinal(you.rank)} in the room</span> : null}
+          {you.rank && view.fighters > 1 ? <span className="ml-2 text-base text-text-2 min-[400px]:text-lg">{ordinal(you.rank)} in the room</span> : null}
         </p>
         <div className="flex items-center gap-2">
           {you.streak > 1 ? (
@@ -199,15 +269,7 @@ export function GloomGiantPlayer({ view, act, gameNow, paused }: ModeScreenProps
         </div>
       </div>
 
-      <StagePanel as="section" className="flex flex-col gap-3 p-3.5" label="The battle">
-        <div className="flex items-center gap-3">
-          <div className="shrink-0">
-            <Giant enraged={view.enraged} hp={view.hp} size={84} />
-          </div>
-          <HealthBar hp={view.hp} maxHp={view.maxHp} enraged={view.enraged} />
-        </div>
-        <ShieldMeter shield={view.shield} max={view.shieldMax} />
-      </StagePanel>
+      <BattleStrip view={view} />
 
       {flow.feedback ? (
         <div className="flex flex-col gap-3">
@@ -228,12 +290,18 @@ export function GloomGiantPlayer({ view, act, gameNow, paused }: ModeScreenProps
   );
 }
 
+/** Projector list rows: sized by the screen's height, so six rows and the battle fit a 768-pixel projector. */
+const HOST_GLIM = 'size-[clamp(2rem,4.2vh,3.5rem)]';
+/** The server sends up to eight blows; six fit beside the top damage. */
+const BLOWS_SHOWN = 6;
+
 export function GloomGiantHost({ view, gameNow, room }: ModeScreenProps<GloomGiantView>) {
-  const text = 'text-[clamp(1.05rem,1.6vw,1.75rem)]';
+  const text = 'text-[clamp(1.05rem,min(1.6vw,2.8vh),1.75rem)]';
+  const heading = `mb-[clamp(0.25rem,1vh,0.5rem)] font-display text-[clamp(1.4rem,min(2.2vw,3.9vh),2.5rem)] leading-tight font-extrabold ${SIGN}`;
   return (
     <div className="mx-auto flex w-full max-w-[110rem] flex-1 flex-col gap-[clamp(0.75rem,2vh,1.5rem)]">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 className={`font-display text-[clamp(2.25rem,4vw,4.75rem)] leading-none font-extrabold ${SIGN}`}>Defeat the Gloom Giant</h2>
+        <h2 className={`font-display text-[clamp(2.25rem,min(4vw,7vh),4.75rem)] leading-none font-extrabold ${SIGN}`}>Defeat the Gloom Giant</h2>
         <div className="flex items-center gap-3 text-[clamp(1.1rem,1.8vw,2rem)]">
           <Pill className="px-5 py-1.5">
             <Users className="size-[0.9em]" aria-hidden /> {view.fighters} fighting
@@ -246,27 +314,28 @@ export function GloomGiantHost({ view, gameNow, room }: ModeScreenProps<GloomGia
         </div>
       </div>
 
-      <StagePanel as="section" className="grid grid-cols-1 items-center gap-[clamp(1rem,3vw,3rem)] px-[clamp(1rem,2vw,2rem)] py-[clamp(0.75rem,1.8vh,1.5rem)] md:grid-cols-[auto_1fr]" label="The battle">
+      <StagePanel as="section" className="grid grid-cols-1 items-center gap-[clamp(1rem,3vw,3rem)] px-[clamp(1rem,2vw,2rem)] py-[clamp(0.5rem,1.4vh,1.5rem)] md:grid-cols-[auto_1fr]" label="The battle">
         <div className="mx-auto">
-          <Giant enraged={view.enraged} hp={view.hp} size={240} className="size-[clamp(8rem,23vh,19rem)]" />
+          <Giant enraged={view.enraged} hp={view.hp} size={240} className="size-[clamp(6.5rem,19vh,17rem)]" />
         </div>
-        <div className="flex flex-col gap-[clamp(0.75rem,2.4vh,2rem)]">
-          <HealthBar hp={view.hp} maxHp={view.maxHp} enraged={view.enraged} big />
-          <ShieldMeter shield={view.shield} max={view.shieldMax} big />
+        {/* Health and shield side by side on a projector, so the panel is no taller than the giant. */}
+        <div className="grid grid-cols-1 items-start gap-x-[clamp(1.5rem,3vw,3rem)] gap-y-[clamp(0.5rem,1.8vh,1.5rem)] lg:grid-cols-2">
+          <HealthBar hp={view.hp} maxHp={view.maxHp} enraged={view.enraged} />
+          <ShieldMeter shield={view.shield} max={view.shieldMax} />
         </div>
       </StagePanel>
 
       <div className="grid grid-cols-1 gap-[clamp(1rem,2.5vw,2.5rem)] lg:grid-cols-2">
         <section aria-labelledby="gg-top">
-          <h3 id="gg-top" className={`mb-2 font-display text-[clamp(1.4rem,2.2vw,2.5rem)] font-extrabold ${SIGN}`}>
+          <h3 id="gg-top" className={heading}>
             Top damage
           </h3>
           {view.top.some((t) => t.damage > 0) ? (
-            <ol className={`flex flex-col gap-1.5 ${text}`} style={{ '--lb-rank': 'clamp(2.5rem, 5.5vh, 3.75rem)' } as CSSProperties}>
+            <ol className={`flex flex-col gap-1.5 leading-tight ${text}`} style={{ '--lb-rank': 'clamp(2rem, 4.2vh, 3.5rem)' } as CSSProperties}>
               {view.top.map((t) => (
-                <li key={t.playerId} className={`flex items-center gap-3 rounded-[18px] border border-white/12 px-3 py-1.5 ${NIGHT}`}>
+                <li key={t.playerId} className={`flex items-center gap-3 rounded-[18px] border border-white/12 px-3 py-1 ${NIGHT}`}>
                   <RankBadge rank={t.rank} big />
-                  <PlayerGlim avatar={avatarOf(room.players, t.playerId)} seed={t.playerId} size={56} className="size-[clamp(2.5rem,5.5vh,3.75rem)] shrink-0" />
+                  <PlayerGlim avatar={avatarOf(room.players, t.playerId)} seed={t.playerId} size={56} className={`${HOST_GLIM} shrink-0`} />
                   <span className="min-w-0 flex-1 truncate font-bold">{t.name}</span>
                   <span className="font-display text-[1.3em] font-extrabold tabular">{formatNumber(t.damage)}</span>
                 </li>
@@ -277,16 +346,16 @@ export function GloomGiantHost({ view, gameNow, room }: ModeScreenProps<GloomGia
           )}
         </section>
         <section aria-labelledby="gg-blows">
-          <h3 id="gg-blows" className={`mb-2 font-display text-[clamp(1.4rem,2.2vw,2.5rem)] font-extrabold ${SIGN}`}>
+          <h3 id="gg-blows" className={heading}>
             Latest blows
           </h3>
           {view.recent.length ? (
-            <ul className={`flex flex-col gap-1.5 ${text}`} aria-live="off">
-              {view.recent.map((b) => (
-                <li key={b.seq} className={`flex items-center gap-3 rounded-[18px] border px-3 py-2 ${NIGHT} ${b.kind === 'strike' ? 'border-ember' : 'border-white/12'}`} style={{ animation: 'rise-fade 300ms var(--ease-out) both' }}>
+            <ul className={`flex flex-col gap-1.5 leading-tight ${text}`} aria-live="off">
+              {view.recent.slice(0, BLOWS_SHOWN).map((b) => (
+                <li key={b.seq} className={`flex min-h-[clamp(2.5rem,5.2vh,4.25rem)] items-center gap-3 rounded-[18px] border px-3 py-1 ${NIGHT} ${b.kind === 'strike' ? 'border-ember' : 'border-white/12'}`} style={{ animation: 'rise-fade 300ms var(--ease-out) both' }}>
                   <BlowIcon kind={b.kind} />
-                  <span className="min-w-0 truncate font-bold">{b.name}</span>
-                  <span className="text-text-2">{blowText(b)}</span>
+                  <span className="max-w-[55%] min-w-0 shrink-0 truncate font-bold">{b.name}</span>
+                  <span className="min-w-0 flex-1 truncate text-text-2">{blowText(b)}</span>
                 </li>
               ))}
             </ul>
