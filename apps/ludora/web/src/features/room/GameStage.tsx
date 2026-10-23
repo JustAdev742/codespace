@@ -90,11 +90,12 @@ export function FeedToasts({ feed }: { feed: RoomView['feed'] }) {
   if (!visible.length) return null;
   return (
     // On a phone the news drops in under the header, clear of the answers in the thumb zone; on the projector it sits bottom right.
-    <div className="pointer-events-none fixed inset-x-3 top-[4.25rem] z-30 flex flex-col items-center gap-1.5 sm:top-[4.75rem] lg:inset-x-auto lg:top-auto lg:right-6 lg:bottom-6 lg:max-w-[24rem] lg:items-end" aria-live="polite">
+    // A phone shows only the newest line, two lines at most, so busy rooms never bury the game's own status row.
+    <div className="pointer-events-none fixed inset-x-3 top-[4.25rem] z-30 flex flex-col items-center gap-1.5 sm:top-[4.75rem] max-lg:[&>*:not(:last-child)]:hidden lg:inset-x-auto lg:top-auto lg:right-6 lg:bottom-6 lg:max-w-[24rem] lg:items-end" aria-live="polite">
       {visible.map((f) => (
         <div
           key={f.id}
-          className={`max-w-[22rem] rounded-[16px] border-2 border-ink px-3.5 py-1.5 text-sm leading-snug font-bold shadow-[0_3px_0_var(--ink)] lg:max-w-none lg:text-lg ${f.tone === 'big' ? 'bg-lantern text-on-accent' : f.tone === 'good' ? 'bg-glim text-on-accent' : f.tone === 'bad' ? 'bg-ember text-on-accent' : 'paper'}`}
+          className={`max-w-[22rem] rounded-[16px] border-2 border-ink px-3.5 py-1.5 text-sm leading-snug font-bold shadow-[0_3px_0_var(--ink)] max-lg:line-clamp-2 lg:max-w-none lg:text-lg ${f.tone === 'big' ? 'bg-lantern text-on-accent' : f.tone === 'good' ? 'bg-glim text-on-accent' : f.tone === 'bad' ? 'bg-ember text-on-accent' : 'paper'}`}
           style={{ animation: 'rise-fade 240ms var(--ease-out)' }}
         >
           {f.text}
