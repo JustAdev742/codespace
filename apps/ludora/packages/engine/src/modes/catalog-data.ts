@@ -15,6 +15,7 @@ import * as skyLanterns from './sky-lanterns/meta.ts';
 import * as gloomGiant from './gloom-giant/meta.ts';
 import * as tugOfWar from './tug-of-war/meta.ts';
 import * as nightMarket from './night-market/meta.ts';
+import * as lanternGuard from './lantern-guard/meta.ts';
 
 /**
  * Metadata only, no game logic, so the browser can import the catalogue
@@ -36,4 +37,5 @@ export const CATALOG_DATA: readonly { meta: ModeMeta; settings: readonly Setting
   gloomGiant,
   tugOfWar,
   nightMarket,
+  lanternGuard,
 ];

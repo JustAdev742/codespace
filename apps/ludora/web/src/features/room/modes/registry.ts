@@ -74,4 +74,8 @@ export const MODE_SCREENS: Record<string, { Player: Screen; Host: Screen }> = {
     Player: lazy(() => import('./night-market.tsx').then((m) => ({ default: m.NightMarketPlayer }))),
     Host: lazy(() => import('./night-market.tsx').then((m) => ({ default: m.NightMarketHost }))),
   },
+  'lantern-guard': {
+    Player: lazy(() => import('./lantern-guard.tsx').then((m) => ({ default: m.LanternGuardPlayer }))),
+    Host: lazy(() => import('./lantern-guard.tsx').then((m) => ({ default: m.LanternGuardHost }))),
+  },
 };
