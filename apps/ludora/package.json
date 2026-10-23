@@ -12,10 +12,12 @@
   "scripts": {
     "dev": "node scripts/dev.mjs",
     "build": "npm run build -w @ludora/web && npm run build -w @ludora/server",
+    "build:demo": "npm run build:demo -w @ludora/web",
     "start": "npm run start -w @ludora/server",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "npm run build && playwright test",
+    "test:demo": "npm run build:demo && playwright test -c playwright.demo.config.ts",
     "typecheck": "tsc -p packages/shared && tsc -p packages/engine && tsc -p packages/content && tsc -p server && tsc -p web",
     "lint": "oxlint packages server/src web/src e2e",
     "check": "npm run typecheck && npm run lint && npm test",

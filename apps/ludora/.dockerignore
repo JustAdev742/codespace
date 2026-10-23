@@ -1,9 +1,11 @@
 **/node_modules
 **/dist
+**/dist-demo
 **/.vite
 **/coverage
 **/test-results
 **/playwright-report
+**/playwright-report-demo
 **/*.log
 .env
 .env.*

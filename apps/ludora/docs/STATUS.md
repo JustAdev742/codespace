@@ -17,7 +17,7 @@ Last updated: 2026-10-22.
 | M4 Economy and progression | Done | Shop, Lanterns with disclosed odds, collections, locker, quests, achievements, levels, streaks. |
 | M5 Staff tools | Done | Staff API and all 14 staff sections in the web app. An end-to-end test opens every section as a super administrator at phone and desktop widths. |
 | M6 Content, social, classes, analytics | Done | Friends, blocks, profiles, my stats, leaderboards, classes, assignments and their reports, hosted games, game reports, the set editor with image uploads, and AI question drafts. |
-| M7-8 Polish, CI, deployment | In progress | Production build, Docker image, compose file, CI workflow, docs and end-to-end tests (run in CI) are in. The visual overhaul is done across player pages and the live game, and automated accessibility checks pass on every player page, game screen and staff section. A design review of the whole app was done and its findings fixed. A manual screen-reader pass remains. |
+| M7-8 Polish, CI, deployment | In progress | Production build, Docker image, compose file, CI workflow, docs and end-to-end tests (run in CI) are in. The visual overhaul is done across player pages and the live game, and automated accessibility checks pass on every player page, game screen and staff section. A design review of the whole app was done and its findings fixed. A playable demo builds for GitHub Pages. A manual screen-reader pass remains. |
 
 ## What works today (verified)
 
@@ -112,6 +112,24 @@ Last updated: 2026-10-22.
     silence after muting (still muted after a reload), the player's own
     lock-in and result sounds, and the music stopping at the results.
   **Not yet judged by ear**: nobody has listened to it through speakers.
+- **Playable demo** (D42): a static build for GitHub Pages
+  (`npm run build:demo`) where a whole game runs in the browser against up to
+  19 practice bots: every mode, the 20 built-in sets, the big-screen view with
+  the host's controls, reactions, results with Play again, sound and music. It
+  runs the server's own room code; nothing is saved and nothing calls a server.
+  Checked:
+  - four end-to-end tests (`npm run test:demo`, run in CI) serve the build
+    under a sub-path with no server, as Pages does: a full Classic game from
+    the start page to Play again, with an answer of whatever type comes up,
+    the big screen showing the reveal without your answer, pause and resume,
+    and no requests outside the demo and no console errors; one-player and
+    team modes and set picking; a game address surviving a reload; and a
+    360-pixel phone with no sideways scrolling. Axe passes on the start page,
+    the game and the big screen. Repeated 8 times in a row: all passed;
+  - all 14 modes started and drew both screens without errors in a browser.
+  **Not checked yet**: the publish itself. The Pages workflow
+  (`.github/workflows/pages.yml`) publishes from `main` once Pages is set to
+  GitHub Actions in the repository settings; neither has happened yet.
 - **Glims**: all 112 redrawn as original die-cut sticker characters with faces,
   arms and feet, distinct silhouettes per collection, rarity finishes (glossy,
   gradient, gold rim light, iridescent sheen) and idle, wave and cheer poses,
@@ -209,6 +227,8 @@ creates and drops its own database).
 
 End-to-end: `npm run test:e2e` (needs Postgres; builds first, then runs 8
 browser tests against a fresh `ludora_e2e` database). All 8 pass.
+`npm run test:demo` builds the playable demo and runs its 4 browser tests with
+no server. All 4 pass.
 
 `npm run typecheck` is clean. `npm run lint` reports 12 stylistic warnings and
 no errors.

@@ -1,4 +1,3 @@
-import { randomUUID } from 'node:crypto';
 import {
   createRng,
   displayNameSchema,
@@ -30,7 +29,9 @@ import {
 /*
  * One live room: a lobby, then one or more games of one mode. Knows nothing
  * about sockets or the database; the realtime layer subscribes to it and the
- * manager supplies persistence.
+ * manager supplies persistence. It uses only what Node and browsers share
+ * (the global crypto.randomUUID), so the playable demo runs the same room in a
+ * browser.
  */
 
 export type Ack<T = object> = ({ ok: true } & T) | { ok: false; error: { code: string; message: string } };
@@ -316,7 +317,7 @@ export class Room {
       isBot: false,
       teamId: this.smallestTeam(),
       connected: true,
-      reconnectToken: randomUUID().replace(/-/g, ''),
+      reconnectToken: crypto.randomUUID().replace(/-/g, ''),
       avatar: input.avatar ?? defaultAvatar(name),
       disconnectedAt: null,
       recent: new Map(),
@@ -342,7 +343,7 @@ export class Room {
       const candidate = `${base.slice(0, 21)} ${i}`;
       if (!taken.has(candidate.toLowerCase())) return candidate;
     }
-    return `${base.slice(0, 16)} ${randomUUID().slice(0, 4)}`;
+    return `${base.slice(0, 16)} ${crypto.randomUUID().slice(0, 4)}`;
   }
 
   leave(playerId: string) {
@@ -437,7 +438,7 @@ export class Room {
             isBot: true,
             teamId: this.smallestTeam(),
             connected: true,
-            reconnectToken: randomUUID(),
+            reconnectToken: crypto.randomUUID(),
             avatar: defaultAvatar(name),
             disconnectedAt: null,
             recent: new Map(),
@@ -493,7 +494,7 @@ export class Room {
     this.rewards.clear();
     this.rewardsPending = false;
     this.endedAt = null;
-    this.gameId = randomUUID();
+    this.gameId = crypto.randomUUID();
     const runtime = new GameRuntime({
       mode: this.mode,
       settings: this.settings,

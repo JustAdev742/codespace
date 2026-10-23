@@ -1,0 +1,91 @@
+# Publishes Ludora's playable demo to GitHub Pages: a static build with no
+# server, where a whole game runs in the browser against practice bots
+# (apps/ludora, `npm run build:demo`). The full platform needs its server; see
+# apps/ludora/README.md for running all of it.
+#
+# Turn it on once: Settings > Pages > Build and deployment > Source: GitHub Actions.
+# Then every push to the default branch that touches Ludora publishes the demo at
+# https://<owner>.github.io/<repository>/, and Run workflow publishes it by hand.
+# While Pages is off, a run says so and stops.
+
+name: Ludora demo on Pages
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "apps/ludora/**"
+      - ".github/workflows/pages.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# One publish at a time. A newer one waits rather than cancelling a publish halfway.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      pages: read
+    outputs:
+      publish: ${{ steps.pages.outputs.publish }}
+    defaults:
+      run:
+        working-directory: apps/ludora
+    steps:
+      - name: Is Pages set to publish from GitHub Actions?
+        id: pages
+        working-directory: .
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          build_type=$(gh api "repos/$GITHUB_REPOSITORY/pages" --jq .build_type 2>/dev/null || true)
+          if [ "$build_type" = "workflow" ]; then
+            echo "publish=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "publish=false" >> "$GITHUB_OUTPUT"
+            echo "::notice title=GitHub Pages is off::Nothing was published. In Settings > Pages, set Source to GitHub Actions, then run this workflow again."
+          fi
+
+      - uses: actions/checkout@v4
+        if: steps.pages.outputs.publish == 'true'
+
+      - uses: actions/setup-node@v4
+        if: steps.pages.outputs.publish == 'true'
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: apps/ludora/package-lock.json
+
+      - run: npm ci
+        if: steps.pages.outputs.publish == 'true'
+
+      - name: Build the demo
+        if: steps.pages.outputs.publish == 'true'
+        run: npm run build:demo
+
+      - uses: actions/upload-pages-artifact@v3
+        if: steps.pages.outputs.publish == 'true'
+        with:
+          path: apps/ludora/web/dist-demo
+
+  deploy:
+    needs: build
+    if: needs.build.outputs.publish == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

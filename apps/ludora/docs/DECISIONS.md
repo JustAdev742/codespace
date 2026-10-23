@@ -276,3 +276,19 @@ screen. Effects and music are on by default and follow the account's Settings.
 A speaker button in every game mutes the device at once, and the choice is
 remembered on that device. Nothing plays before the person has interacted with
 the page, as browsers require.
+
+**D42. The playable demo runs the server's own room in the browser, on its
+own build.** GitHub Pages serves only static files, so the demo cannot have
+accounts, rewards, the shop or classes, and does not pretend to. It runs a
+real game instead: the same `Room` class the server runs (it uses nothing
+Node-only), with the page as the player's screen and the host's big screen,
+and practice bots in the other seats. Its save hook does nothing, so no
+rewards are paid and nothing is stored, and the API client refuses every
+request in the demo build, so the static page never calls a server. Host-paced
+modes run with Automatic advance on, as nobody is at the front to press Next;
+the one variant that locks it off (Discussion) is left out. The demo is a
+separate Vite entry (`web/demo.html`, `vite.demo.config.ts`) with relative
+paths and hash routes, so it works at a project's Pages address and survives a
+reload. It shares the app's screens unchanged, and its own end-to-end tests
+serve it under a sub-path with no server, as Pages does. Pages publishes from
+the default branch, and only once the repository turns Pages on.

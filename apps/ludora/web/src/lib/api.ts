@@ -13,6 +13,8 @@ export class ApiError extends Error {
 }
 
 async function request<T>(method: string, path: string, body?: unknown, signal?: AbortSignal): Promise<T> {
+  // The playable demo is a static page: there is no server to ask, and a static host would answer with a web page.
+  if (import.meta.env.MODE === 'demo') throw new ApiError(0, 'network', 'This demo runs without a server, so this part of Ludora is not here.');
   let res: Response;
   const form = body instanceof FormData;
   try {

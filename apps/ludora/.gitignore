@@ -1,5 +1,7 @@
 node_modules/
 dist/
+# The playable demo build (npm run build:demo).
+dist-demo/
 coverage/
 .env
 .env.*
@@ -7,6 +9,7 @@ coverage/
 *.log
 test-results/
 playwright-report/
+playwright-report-demo/
 # Uploaded images (UPLOAD_DIR), wherever the server was started from. Not src/modules/uploads.
 /uploads/
 /server/uploads/

@@ -4,7 +4,8 @@
   "private": true,
   "type": "module",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./sets": "./src/sets/index.ts"
   },
   "dependencies": {
     "@ludora/shared": "*"

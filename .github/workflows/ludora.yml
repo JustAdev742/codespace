@@ -1,6 +1,6 @@
 # Checks Ludora on every change to it: typecheck, lint, the full test suite
-# against a real Postgres, the production build, end-to-end browser tests, and
-# the Docker image.
+# against a real Postgres, the production build, end-to-end browser tests (of
+# the app and of the playable demo), and the Docker image.
 
 name: Ludora
 
@@ -106,6 +106,9 @@ jobs:
       - name: End-to-end tests (production build, real server, Chromium)
         run: npm run test:e2e
 
+      - name: Playable demo (static build under a sub-path, no server)
+        run: npm run test:demo
+
       - name: Keep the report and traces
         if: failure()
         uses: actions/upload-artifact@v4
@@ -113,6 +116,7 @@ jobs:
           name: playwright-report
           path: |
             apps/ludora/playwright-report
+            apps/ludora/playwright-report-demo
             apps/ludora/test-results
           retention-days: 7
 

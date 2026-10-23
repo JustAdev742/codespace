@@ -1,21 +1,18 @@
-import { useEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from 'react';
+import { useEffect, useMemo, useRef, useState, type RefObject } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate, useSearchParams } from 'react-router';
-import { Check, Search, Users } from 'lucide-react';
+import { Search, Users } from 'lucide-react';
 import { toast } from 'sonner';
 import type { CommonField, SettingField } from '@ludora/shared';
-import { MODE_CATEGORIES, MODE_CATEGORY_INFO, SUBJECT_LABELS, type ModeCategory } from '@ludora/shared';
 import { soloBlocker } from '@ludora/engine/catalog';
 import { api, ApiError } from '../../lib/api.ts';
 import { useMe } from '../../lib/session.ts';
-import { useModes, thumbFor, type CatalogEntry, type CatalogVariant, type SetSummary } from '../../lib/queries.ts';
-import { ModeArt } from '../../art/ModeArt.tsx';
-import { AccountError, Badge, EmptyState, ErrorNotice, Field, Input, PageHeader, Panel, Select, Skeleton, Switch } from '../../ui/primitives.tsx';
+import { useModes, type CatalogEntry, type SetSummary } from '../../lib/queries.ts';
+import { AccountError, EmptyState, ErrorNotice, Field, Input, PageHeader, Panel, Select, Skeleton, Switch } from '../../ui/primitives.tsx';
 import { ToggleChips } from '../../ui/game.tsx';
 import { Button, ButtonLink } from '../../ui/Button.tsx';
-import { SetCover } from '../sets/SetCover.tsx';
 import { OpenGames, openGamesKey, useOpenGames, type OpenGame } from './OpenGames.tsx';
-import { plural } from '../../lib/format.ts';
+import { ChosenSet, ModeGrid, SetButton, type Choice } from './pickers.tsx';
 
 /*
  * Setting up a game: a question set, a mode (then one of its variants), the
@@ -24,8 +21,6 @@ import { plural } from '../../lib/format.ts';
  * the chosen mode's variants are shown, under its row, so the page stays short.
  * Hosts who left games open see them at the top, to rejoin or close.
  */
-
-const subjectLabel = (s: string) => SUBJECT_LABELS[s as keyof typeof SUBJECT_LABELS] ?? s;
 
 function useDebounced<T>(value: T, ms: number): T {
   const [v, setV] = useState(value);
@@ -118,16 +113,7 @@ function SetPicker({ onPick, focusOnMount }: { onPick: (s: SetSummary) => void; 
           <ul ref={list} className={`grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3 ${sets.isPlaceholderData ? 'opacity-60' : ''}`} aria-busy={sets.isPlaceholderData || undefined}>
             {visible.map((s) => (
               <li key={s.id}>
-                <button type="button" onClick={() => onPick(s)} className="flex h-full w-full items-center gap-3 rounded-[14px] border-2 border-line bg-raised p-2.5 text-left transition-colors hover:border-line-strong">
-                  <SetCover cover={s.cover} subject={s.subject} size={44} />
-                  <span className="min-w-0 flex-1">
-                    <span className="block font-semibold break-words">{s.title}</span>
-                    <span className="block text-xs text-text-3">
-                      {plural(s.questionCount, 'question')}, {subjectLabel(s.subject)}
-                      {scope === 'public' && s.ownerName ? `, by ${s.ownerName}` : ''}
-                    </span>
-                  </span>
-                </button>
+                <SetButton set={s} detail={scope === 'public' && s.ownerName ? `, by ${s.ownerName}` : ''} onPick={() => onPick(s)} />
               </li>
             ))}
           </ul>
@@ -154,32 +140,7 @@ function SetPicker({ onPick, focusOnMount }: { onPick: (s: SetSummary) => void; 
   );
 }
 
-/** The chosen set, folded into one line with a way to change it. */
-function ChosenSet({ set, onChange, focusOnMount }: { set: SetSummary; onChange: () => void; focusOnMount: boolean }) {
-  const ref = useRef<HTMLButtonElement>(null);
-  useEffect(() => {
-    // The set button that had focus has gone; keep keyboard users in the same place.
-    if (focusOnMount) ref.current?.focus();
-  }, [focusOnMount]);
-  return (
-    <div className="flex items-center gap-3 rounded-[14px] border-2 border-lantern bg-dusk/15 p-3">
-      <SetCover cover={set.cover} subject={set.subject} size={48} />
-      <span className="min-w-0 flex-1">
-        <span className="block font-display text-lg leading-tight font-bold break-words">{set.title}</span>
-        <span className="block text-sm text-text-2">
-          {plural(set.questionCount, 'question')}, {subjectLabel(set.subject)}
-        </span>
-      </span>
-      <Button ref={ref} size="sm" onClick={onChange} aria-label={`Change the question set, ${set.title}`}>
-        Change
-      </Button>
-    </div>
-  );
-}
-
 /* ----------------------------------- game mode ----------------------------------- */
-
-type Choice = { mode: CatalogEntry; variant: CatalogVariant | null };
 
 /**
  * The modes this page offers, each with only the variants it offers. Hosting
@@ -190,170 +151,6 @@ function offered(modes: CatalogEntry[], solo: boolean): CatalogEntry[] {
   return modes
     .filter((m) => m.meta.status !== 'planned' && (solo ? m.meta.pacing !== 'host' && !soloBlocker(m.meta.id, null) : m.meta.pacing !== 'solo'))
     .map((m) => ({ ...m, variants: m.variants.filter((v) => v.meta.status !== 'planned' && (!solo || !soloBlocker(m.meta.id, v.meta.id))) }));
-}
-
-/** A card holding a radio button. The radio covers the card, so focus scrolling and clicks take the whole card. */
-function RadioCard({ name, checked, onSelect, children, className = '' }: { name: string; checked: boolean; onSelect: () => void; children: ReactNode; className?: string }) {
-  return (
-    <label
-      className={`relative flex cursor-pointer overflow-hidden rounded-[14px] border-2 transition-colors has-[:focus-visible]:outline-3 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-[var(--focus)] ${checked ? 'border-lantern bg-dusk/20' : 'border-line bg-raised hover:border-line-strong'} ${className}`}
-    >
-      <input type="radio" name={name} checked={checked} onChange={onSelect} className="absolute inset-0 m-0 size-full cursor-pointer appearance-none opacity-0" />
-      {children}
-      {checked ? (
-        <span className="absolute top-2 right-2 grid size-6 place-items-center rounded-full border-2 border-ink bg-lantern text-on-accent" aria-hidden>
-          <Check className="size-3.5" strokeWidth={3} />
-        </span>
-      ) : null}
-    </label>
-  );
-}
-
-/** Variants shown before Show all: the standard rules and the first few twists. Shorter lists show in full. */
-const FIRST_VARIANTS = 5;
-const FOLD_FROM = 10;
-
-function VariantPicker({ choice, onChange }: { choice: Choice; onChange: (c: Choice) => void }) {
-  const { mode } = choice;
-  const [all, setAll] = useState(false);
-  const [focusFrom, setFocusFrom] = useState<number | null>(null);
-  const list = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    // After Show all, carry on from the first variant it revealed.
-    if (focusFrom === null) return;
-    list.current?.querySelectorAll<HTMLElement>('input')[focusFrom]?.focus();
-    setFocusFrom(null);
-  }, [focusFrom]);
-  const options: (CatalogVariant | null)[] = [null, ...mode.variants];
-  // A variant chosen from the full list stays in view if the list folds again.
-  const chosenAt = options.findIndex((v) => (v?.meta.id ?? null) === (choice.variant?.meta.id ?? null));
-  const shown = all || options.length < FOLD_FROM ? options : options.slice(0, Math.max(FIRST_VARIANTS + 1, chosenAt + 1));
-  return (
-    <div className="rounded-[16px] border-2 border-dashed border-lantern-deep bg-surface-2 p-3 sm:p-4">
-      <fieldset className="min-w-0">
-        <legend className="mb-2.5 font-display text-lg font-bold">Variants of {mode.meta.title}</legend>
-        <div ref={list} className="grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-3">
-          {shown.map((v) => {
-            const meta = v?.meta;
-            return (
-              <RadioCard key={meta?.id ?? 'standard'} name="host-variant" checked={(choice.variant?.meta.id ?? null) === (meta?.id ?? null)} onSelect={() => onChange({ mode, variant: v })}>
-                <span className="min-w-0 flex-1 py-2 pr-9 pl-3">
-                  <span className="flex flex-wrap items-center gap-x-2 font-bold">
-                    {meta?.title ?? 'Standard rules'}
-                    {meta?.status === 'beta' ? <Badge tone="amber">Beta</Badge> : null}
-                  </span>
-                  <span className="line-clamp-2 block text-sm text-text-2">{meta?.tagline ?? mode.meta.tagline}</span>
-                </span>
-              </RadioCard>
-            );
-          })}
-        </div>
-      </fieldset>
-      {shown.length < options.length ? (
-        <Button
-          size="sm"
-          className="mt-3"
-          onClick={() => {
-            setFocusFrom(shown.length);
-            setAll(true);
-          }}
-        >
-          Show all {mode.variants.length} variants
-        </Button>
-      ) : null}
-    </div>
-  );
-}
-
-/** How many columns a CSS grid has right now. */
-function useColumns(ref: RefObject<HTMLElement | null>): number {
-  const [columns, setColumns] = useState(1);
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    const measure = () => setColumns(Math.max(1, getComputedStyle(el).gridTemplateColumns.split(' ').filter(Boolean).length));
-    measure();
-    const observer = new ResizeObserver(measure);
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, [ref]);
-  return columns;
-}
-
-type Kind = ModeCategory | 'all';
-
-/**
- * Modes by kind, as on the game modes page: one grid, in the same order, with the
- * same filter. The chosen mode's variants open in a row of their own straight
- * under the row of the chosen mode.
- */
-function ModeGrid({ modes, value, onChange }: { modes: CatalogEntry[]; value: Choice | null; onChange: (c: Choice) => void }) {
-  const [kind, setKind] = useState<Kind>('all');
-  const grid = useRef<HTMLDivElement>(null);
-  const columns = useColumns(grid);
-  const ordered = MODE_CATEGORIES.flatMap((c) => modes.filter((m) => m.meta.category === c));
-  const shown = ordered.filter((m) => kind === 'all' || m.meta.category === kind);
-  const count = (c: ModeCategory) => modes.filter((m) => m.meta.category === c).length;
-  const at = shown.findIndex((m) => m.meta.id === value?.mode.meta.id);
-  const rowEnd = at < 0 || !value?.mode.variants.length ? -1 : Math.min(shown.length, (Math.floor(at / columns) + 1) * columns) - 1;
-  return (
-    <>
-      <ToggleChips<Kind>
-        className="mb-4"
-        value={kind}
-        onChange={setKind}
-        label="Show modes by kind"
-        options={[
-          { value: 'all', label: 'All' },
-          ...MODE_CATEGORIES.filter((c) => count(c) > 0).map((c) => ({
-            value: c,
-            // A real space, not a margin, so the chip's name reads "Party 4" rather than "Party4".
-            label: (
-              <>
-                {MODE_CATEGORY_INFO[c].label} <span className="opacity-70 tabular">{count(c)}</span>
-              </>
-            ),
-          })),
-        ]}
-      />
-      <fieldset aria-labelledby="host-step-mode" className="min-w-0">
-        <div ref={grid} className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 xl:grid-cols-3">
-          {shown.map((m, i) => {
-            const variants = m.variants.length;
-            return [
-              <RadioCard key={m.meta.id} name="host-mode" checked={value?.mode.meta.id === m.meta.id} onSelect={() => onChange({ mode: m, variant: null })}>
-                <ModeArt thumb={thumbFor(m.meta)} className="w-20 shrink-0 self-stretch sm:w-24" />
-                <span className="min-w-0 flex-1 py-2.5 pr-9 pl-3">
-                  <span className="flex flex-wrap items-center gap-x-2 font-display text-lg leading-tight font-bold">
-                    {m.meta.title}
-                    {m.meta.status === 'beta' ? <Badge tone="amber">Beta</Badge> : null}
-                  </span>
-                  <span className="mt-0.5 line-clamp-2 block text-sm text-text-2">{m.meta.tagline}</span>
-                  <span className="mt-1 block text-xs font-semibold text-text-2">
-                    {MODE_CATEGORY_INFO[m.meta.category].label}
-                    {variants ? `, ${variants} ${variants === 1 ? 'variant' : 'variants'}` : ''}
-                  </span>
-                </span>
-              </RadioCard>,
-              i === rowEnd && value ? (
-                <div key={`${m.meta.id}-variants`} className="col-span-full">
-                  <VariantPicker key={value.mode.meta.id} choice={value} onChange={onChange} />
-                </div>
-              ) : null,
-            ];
-          })}
-        </div>
-      </fieldset>
-      {at < 0 && value ? (
-        <p className="mt-3 text-sm text-text-2">
-          You chose {value.variant?.meta.title ?? value.mode.meta.title}, from {MODE_CATEGORY_INFO[value.mode.meta.category].label}.{' '}
-          <button type="button" onClick={() => setKind(value.mode.meta.category)} className="font-semibold text-link underline underline-offset-2">
-            Show {MODE_CATEGORY_INFO[value.mode.meta.category].label}
-          </button>
-        </p>
-      ) : null}
-    </>
-  );
 }
 
 function ModePicker({ value, onChange, solo }: { value: Choice | null; onChange: (c: Choice) => void; solo: boolean }) {
@@ -369,7 +166,7 @@ function ModePicker({ value, onChange, solo }: { value: Choice | null; onChange:
       </div>
     );
   }
-  return <ModeGrid modes={list} value={value} onChange={onChange} />;
+  return <ModeGrid modes={list} value={value} onChange={onChange} labelledBy="host-step-mode" />;
 }
 
 /* ----------------------------------- settings ------------------------------------ */

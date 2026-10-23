@@ -46,3 +46,33 @@ export function watchErrors(page: Page): string[] {
   });
   return errors;
 }
+
+/**
+ * Answers whatever question is on a player's screen, right or wrong: a choice,
+ * a typed number or word, select-all (one pick), an order (as shown) or a
+ * matching (in the order shown). For games whose questions come in a random order.
+ */
+export async function answerAnyQuestion(page: Page) {
+  const main = page.locator('main');
+  const typed = main.getByPlaceholder(/^Type (a number|your answer)$/);
+  const choices = main.getByRole('group', { name: 'Answers' });
+  const order = main.getByRole('button', { name: 'Lock in this order' });
+  const matches = main.getByRole('button', { name: 'Lock in matches' });
+  await expect(typed.or(choices).or(order).or(matches).first()).toBeVisible();
+  if (await typed.count()) {
+    await typed.fill('1');
+    await main.getByRole('button', { name: 'Submit answer' }).click();
+  } else if (await order.count()) {
+    await order.click();
+  } else if (await matches.count()) {
+    // Left items are toggles; each pick on the right pairs with the next unmatched left item.
+    const columns = main.locator('.grid-cols-2 > div');
+    await columns.nth(0).getByRole('button').first().click();
+    for (const right of await columns.nth(1).getByRole('button').all()) await right.click();
+    await matches.click();
+  } else {
+    await choices.getByRole('button').first().click();
+    const submit = main.getByRole('button', { name: /^Submit \d+ answers?$/ });
+    if (await submit.count()) await submit.click();
+  }
+}

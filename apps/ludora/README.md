@@ -42,6 +42,34 @@ The Codespace runs the production build with its own Postgres (see
 `~/.ludora/server.log`, and `bash .devcontainer/start.sh` restarts it. A
 stopped Codespace keeps its data and starts Ludora again when it wakes.
 
+## Play the demo on GitHub Pages
+
+A playable demo that needs no server: a whole game runs in the browser against
+practice bots, with every mode, the built-in question sets, the big-screen view,
+reactions, sound and music. Accounts, rewards, Lanterns, the shop, classes and
+the staff tools need the server, so they are not in it, and nothing in it is
+saved. It runs the server's own game room inside the page, and nothing it does
+can reach a Ludora server, an account or a database.
+
+To publish it, once:
+
+1. Merge the branch that has Ludora into `main`.
+2. In the repository's **Settings**, open **Pages** and set **Source** to
+   **GitHub Actions**.
+3. In **Actions**, open **Ludora demo on Pages** and choose **Run workflow**.
+
+It goes live at `https://<owner>.github.io/<repository>/`. After that, every
+push to `main` that changes Ludora publishes it again. A Pages site is public,
+even for a private repository.
+
+To build and try it on your own computer:
+
+```bash
+cd apps/ludora
+npm run build:demo                # writes web/dist-demo
+npm run preview:demo -w @ludora/web   # serves it on http://localhost:4174
+```
+
 ## Run it locally
 
 You need Node.js 22.12 or newer and PostgreSQL 16.
@@ -66,6 +94,8 @@ npm run admin -- grant <username> superadmin --reason "first admin"
 ```bash
 npm run check        # typecheck, lint and every test
 npm run build        # production build of the web app and the server
+npm run test:e2e     # browser tests against the production build (needs Postgres)
+npm run test:demo    # browser tests of the playable demo (no server needed)
 ```
 
 Server tests create and drop their own databases; set

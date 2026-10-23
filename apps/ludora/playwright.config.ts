@@ -16,6 +16,8 @@ const localChromium = '/opt/pw-browsers/chromium';
 
 export default defineConfig({
   testDir: 'e2e',
+  // The demo has its own config: a static build with no server (playwright.demo.config.ts).
+  testIgnore: 'demo.spec.ts',
   fullyParallel: false,
   workers: 1,
   timeout: 90_000,
