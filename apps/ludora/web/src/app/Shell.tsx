@@ -174,7 +174,7 @@ function AccountMenu() {
         <span className="grid size-8 place-items-center overflow-hidden rounded-full bg-surface-3">{avatar ? <Glim art={avatar.art} accessories={avatar.accessories} rarity={avatar.rarity} size={34} /> : <User className="size-4" />}</span>
         {/* The space keeps the visible "Name Lv 1" readable as words, so it matches the label (WCAG 2.5.3). */}
         <span className="hidden max-w-[10rem] truncate text-sm font-semibold sm:block">{user.displayName}</span>{' '}
-        <span className="rounded-full bg-dusk/25 px-1.5 text-xs font-bold text-link tabular">Lv {user.level.level}</span>
+        <span className="rounded-full bg-surface-3 px-1.5 text-xs font-bold text-text tabular">Lv {user.level.level}</span>
       </DropdownMenu.Trigger>
       <DropdownMenu.Portal>
         <DropdownMenu.Content align="end" sideOffset={8} className="z-50 min-w-56 rounded-[14px] border border-line bg-raised p-1.5 shadow-xl">
