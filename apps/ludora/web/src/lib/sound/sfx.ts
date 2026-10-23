@@ -179,6 +179,133 @@ export const EFFECTS = {
     cascade.forEach((n, i) => bell(ctx, out, t + 0.35 + i * 0.07, n, { gain: 0.06, decay: 1.2 }));
     return 0.35 + cascade.length * 0.07 + 1.2;
   },
+
+  /* Game events for modes with coins, tricks, battles, towers and boards. */
+
+  /** A few coins. */
+  coin: (ctx, out, t) => {
+    bell(ctx, out, t, 93, { gain: 0.06, decay: 0.35, wet: 0.2 });
+    return 0.05 + bell(ctx, out, t + 0.05, 98, { gain: 0.06, decay: 0.5, wet: 0.2 });
+  },
+
+  /** A big win: coins pour in. */
+  jackpot: (ctx, out, t) => {
+    arpeggio(ctx, out, t, [74, 78, 81, 86], 0.06, 0.13, 0.5);
+    [98, 95, 93, 98, 100].forEach((n, i) => bell(ctx, out, t + 0.22 + i * 0.06, n, { gain: 0.05, decay: 0.6, wet: 0.3 }));
+    return 0.22 + 5 * 0.06 + 0.6;
+  },
+
+  /** You took something from another player. */
+  steal: (ctx, out, t) => {
+    blip(ctx, out, t, 1400, 500, { dur: 0.12, gain: 0.09 });
+    return 0.12 + pluck(ctx, out, t + 0.12, 81, { gain: 0.14, decay: 0.45 });
+  },
+
+  /** Another player took something from you. */
+  stolen: (ctx, out, t) => {
+    blip(ctx, out, t, 500, 1300, { dur: 0.1, gain: 0.07 });
+    pluck(ctx, out, t + 0.1, 62, { gain: 0.15, decay: 0.3, bright: 3 });
+    return 0.26 + pluck(ctx, out, t + 0.26, 57, { gain: 0.15, decay: 0.5, bright: 2.5 });
+  },
+
+  /** Two things trade places. */
+  swap: (ctx, out, t) => {
+    pluck(ctx, out, t, 74, { gain: 0.12, decay: 0.3 });
+    pluck(ctx, out, t + 0.09, 81, { gain: 0.12, decay: 0.3 });
+    pluck(ctx, out, t + 0.18, 81, { gain: 0.12, decay: 0.3 });
+    return 0.27 + pluck(ctx, out, t + 0.27, 74, { gain: 0.12, decay: 0.5 });
+  },
+
+  /** A shield goes up, or blocks something. */
+  shield: (ctx, out, t) => {
+    noiseHit(ctx, out, t, { dur: 0.25, attack: 0.05, freq: 1200, sweep: 6000, q: 1.2, gain: 0.04, wet: 0.4 });
+    return bell(ctx, out, t + 0.04, 86, { gain: 0.09, decay: 1.1, wet: 0.35 });
+  },
+
+  /** Something went wrong: coins lost, a dud, a miss. */
+  bust: (ctx, out, t) => {
+    kick(ctx, out, t, { gain: 0.12 });
+    return pluck(ctx, out, t + 0.02, 50, { gain: 0.16, decay: 0.55, bright: 2.5, wet: 0.15 });
+  },
+
+  /** Something is built or placed. */
+  build: (ctx, out, t) => {
+    noiseHit(ctx, out, t, { dur: 0.05, freq: 900, q: 1.5, gain: 0.08 });
+    kick(ctx, out, t, { gain: 0.1 });
+    return pluck(ctx, out, t + 0.03, 69, { gain: 0.13, decay: 0.4, bright: 4 });
+  },
+
+  /** Something gets better. */
+  upgrade: (ctx, out, t) => arpeggio(ctx, out, t, [69, 74, 78, 81], 0.055, 0.12, 0.45),
+
+  /** A hit lands. */
+  hit: (ctx, out, t) => {
+    noiseHit(ctx, out, t, { dur: 0.07, freq: 2600, q: 0.9, gain: 0.08 });
+    return kick(ctx, out, t, { gain: 0.16 });
+  },
+
+  /** You take a hit, or the festival loses a light. */
+  hurt: (ctx, out, t) => {
+    kick(ctx, out, t, { gain: 0.14 });
+    return blip(ctx, out, t + 0.02, 420, 160, { dur: 0.22, gain: 0.08, type: 'triangle' });
+  },
+
+  /** A power is switched on. */
+  powerUp: (ctx, out, t) => {
+    riser(ctx, out, t, 330, 1320, 0.32, 0.05);
+    return 0.3 + bell(ctx, out, t + 0.3, 90, { gain: 0.08, decay: 0.8 });
+  },
+
+  /** Something happens to the whole room: an event begins. */
+  event: (ctx, out, t) => {
+    noiseHit(ctx, out, t, { dur: 0.3, attack: 0.15, freq: 400, sweep: 4000, q: 0.8, gain: 0.04, wet: 0.3 });
+    pad(ctx, out, t + 0.2, [66, 69, 74, 78], 1.2, { gain: 0.07 });
+    return 0.2 + bell(ctx, out, t + 0.2, 86, { gain: 0.09, decay: 1.3 });
+  },
+
+  /** You won a round or a duel. */
+  win: (ctx, out, t) => {
+    arpeggio(ctx, out, t, [74, 78, 81], 0.07, 0.15, 0.5);
+    return 0.21 + bell(ctx, out, t + 0.21, 90, { gain: 0.1, decay: 1.2 });
+  },
+
+  /** You lost a round or a duel. */
+  lose: (ctx, out, t) => {
+    pluck(ctx, out, t, 62, { gain: 0.14, decay: 0.35, bright: 3 });
+    pluck(ctx, out, t + 0.2, 59, { gain: 0.14, decay: 0.35, bright: 3 });
+    return 0.4 + pluck(ctx, out, t + 0.4, 55, { gain: 0.14, decay: 0.7, bright: 2.5 });
+  },
+
+  /** Dice rattle and land. */
+  dice: (ctx, out, t) => {
+    for (let i = 0; i < 6; i++) noiseHit(ctx, out, t + i * 0.045 + (i % 2) * 0.01, { dur: 0.02, freq: 2400 + i * 300, q: 2, gain: 0.05 });
+    return 0.3 + pluck(ctx, out, t + 0.3, 76, { gain: 0.1, decay: 0.3 });
+  },
+
+  /** A token hops one space. */
+  step: (ctx, out, t, o) => blip(ctx, out, t, 600 + ((o.n ?? 0) % 6) * 70, 900 + ((o.n ?? 0) % 6) * 70, { dur: 0.05, gain: 0.07 }),
+
+  /** Territory or a prize changes hands. */
+  capture: (ctx, out, t) => {
+    kick(ctx, out, t, { gain: 0.14 });
+    arpeggio(ctx, out, t, [69, 74, 78], 0.05, 0.13, 0.4);
+    return 0.15 + bell(ctx, out, t + 0.15, 86, { gain: 0.08, decay: 0.9 });
+  },
+
+  /** Danger: something is about to go wrong. */
+  alarm: (ctx, out, t) => {
+    blip(ctx, out, t, 880, 880, { dur: 0.12, gain: 0.08, type: 'triangle' });
+    return 0.18 + blip(ctx, out, t + 0.18, 660, 660, { dur: 0.16, gain: 0.08, type: 'triangle' });
+  },
+
+  /** One beat of a countdown before something starts. */
+  countdown: (ctx, out, t) => blip(ctx, out, t, 990, 990, { dur: 0.08, gain: 0.1, type: 'triangle' }),
+
+  /** Go! */
+  go: (ctx, out, t) => {
+    blip(ctx, out, t, 1320, 1320, { dur: 0.25, gain: 0.1, type: 'triangle' });
+    return pluck(ctx, out, t, 86, { gain: 0.12, decay: 0.6 });
+  },
 } satisfies Record<string, Effect>;
 
 export type SfxName = keyof typeof EFFECTS;
