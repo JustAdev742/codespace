@@ -44,7 +44,13 @@ The Codespace runs the production build with its own Postgres (see
 `.devcontainer/` at the repository root). A stopped Codespace keeps its data
 and starts Ludora again when it wakes.
 
-If port 8787 shows an error page, Ludora is not running: it may still be
+If port 8787 shows a blank **HTTP ERROR 401**, GitHub has refused the request
+before it reached Ludora. The port is private, so it opens only in a browser
+signed in to the GitHub account that owns the Codespace. Open it with the globe
+icon in the **Ports** tab, in the browser where the Codespace is open. On any
+other device or browser, make the port **Public** first (step 4).
+
+If port 8787 shows any other error page, Ludora is not running: it may still be
 building, or it stopped. Run `bash .devcontainer/start.sh` in the Codespace's
 terminal. It prints the address when Ludora is running. If Ludora cannot
 start, it prints the last lines of the log instead (the full log is
