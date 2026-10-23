@@ -337,14 +337,20 @@ export const glimgo = defineMode<State, Settings, Action>({
     const answerOf: Record<string, number> = {};
     const pool: string[] = [];
     for (const qid of limited) {
-      const text = glimgoAnswerText(ctx.questions.get(qid));
+      const q = ctx.questions.get(qid);
+      const text = glimgoAnswerText(q);
       if (!text) continue;
-      const key = normalizeAnswerText(text);
+      // A number is one answer with or without its unit: "56 legs" shares the square of a "56" from
+      // another question, and a square shared by different spellings shows the bare number.
+      const bare = q.type === 'numeric' ? String(q.answer) : text;
+      const key = normalizeAnswerText(bare);
       let a = byKey.get(key);
       if (a === undefined) {
         a = answers.length;
         answers.push({ key, text });
         byKey.set(key, a);
+      } else if (answers[a]!.text !== text) {
+        answers[a]!.text = bare;
       }
       answerOf[qid] = a;
       pool.push(qid);

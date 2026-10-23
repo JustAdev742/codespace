@@ -555,6 +555,20 @@ describe('Glimgo rules', () => {
     expect(glimgoAnswerText(MIXED_SET[4]!)).toBeNull();
   });
 
+  it('treats a number with or without its unit as one answer', () => {
+    // 7 x 8 and the spiders' legs are both 56: one square, written "56", answers both calls.
+    const sevenEights: Question = { id: 'm', type: 'mcq', prompt: 'What is 7 × 8?', choices: [{ id: 'a', text: '56' }, { id: 'b', text: '54' }], correct: 'a' };
+    const spiders: Question = { id: 'n', type: 'numeric', prompt: 'How many legs do 7 spiders have?', answer: 56, unit: 'legs' };
+    for (const order of [[sevenEights, spiders], [spiders, sevenEights]]) {
+      const h = start({}, [...order, ...WORDS8], ['a']);
+      const texts = h.view('a').you.squares.map((sq: any) => sq.text);
+      expect(texts.filter((t: string) => t.includes('56'))).toEqual(['56']);
+    }
+    // A number with a unit that no other answer shares keeps its unit.
+    const h = start({}, [spiders, ...WORDS8], ['a']);
+    expect(h.view('a').you.squares.map((sq: any) => sq.text)).toContain('56 legs');
+  });
+
   it('chooses a card size from the number of different answers', () => {
     expect(cardSizeFor(16, 'auto')).toBe(4);
     expect(cardSizeFor(15, 'auto')).toBe(3);
