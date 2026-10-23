@@ -13,7 +13,7 @@ Last updated: 2026-10-22.
 | M0 Audit and plan | Done | Findings and plan in the first report; decisions in [DECISIONS.md](DECISIONS.md). |
 | M1 Foundation | Done | Monorepo, Postgres + Drizzle migrations, auth (accounts, guests, recovery codes), design system, app shell. |
 | M2 Engine and first loop | Done | Deterministic engine, 8 question types, Classic played host + player in the browser. |
-| M3 Multiplayer and modes | Done | 18 playable modes and 90 variants (108 in all), every variant a rule change, all passing the conformance suite. Two more modes are being built (see Open items). |
+| M3 Multiplayer and modes | Done | 20 playable modes and 100 variants (120 in all), every variant a rule change, all passing the conformance suite. |
 | M4 Economy and progression | Done | Shop, Lanterns with disclosed odds, collections, locker, quests, achievements, levels, streaks. |
 | M5 Staff tools | Done | Staff API and all 14 staff sections in the web app. An end-to-end test opens every section as a super administrator at phone and desktop widths. |
 | M6 Content, social, classes, analytics | Done | Friends, blocks, profiles, my stats, leaderboards, classes, assignments and their reports, hosted games, game reports, the set editor with image uploads, and AI question drafts. |
@@ -38,18 +38,18 @@ Last updated: 2026-10-22.
   not held against them (D39). Players see their own answer when locked in
   and on the reveal, and answering is held while the connection is down.
   Solo games end with Play again.
-- **Modes (18)**: Classic, Comet Dash, Quick Draw, Lantern Out, Confidence,
+- **Modes (20)**: Classic, Comet Dash, Quick Draw, Lantern Out, Confidence,
   Glimgo, Lantern Match, Word Scramble, Time Attack, Survival Run, Flashcard
   Study, Sky Lanterns, Gloom Giant, Tug of War, Night Market, Lantern Guard,
-  Glim Duels, Lantern Trail.
+  Glim Duels, Lantern Trail, Lantern Lands, Festival Workshop.
   - Every one plays to the end with 1, 4 and 12 bots (conformance suite).
   - Every one survives players leaving and pausing, and works with
     flashcard-only sets and teams.
   - Every one is deterministic for a seed and never leaks answers into a view.
   - The first 14 were also started, played and ended through the real web
-    app. The four newest were played to their results in the static demo,
+    app. The six newest were played to their results in the static demo,
     which runs the same room code with no server.
-- **Variants (90)**: each changes a rule, never just a number (for example a
+- **Variants (100)**: each changes a rule, never just a number (for example a
   wrong-answer penalty, a streak multiplier, a knockout, co-op wins, comeback
   bonuses, questions that come back at the end). New rules default to off, and
   173 recorded bot games of the base modes replay identically. Every variant
@@ -95,6 +95,43 @@ Last updated: 2026-10-22.
     one;
   - play-throughs in the static demo at phone and projector sizes, including
     a 20-player room, with axe and no console errors.
+- **Lantern Lands** (D44), a team mode on a shared hexagon map. Right
+  answers give energy to claim, fortify or raid lands. Shrines between the
+  teams are worth more. Each team scores its lands every 10 seconds, double
+  in the final glow.
+  - Fairness: maps, homes and shrines are symmetric for 2 to 6 teams. Teams
+    behind on lands or short of players fill a bonus meter for extra energy.
+  - Phones: every action is also a plain button list, so nobody has to tap a
+    small hexagon.
+
+  Checked:
+  - 45 rules tests and the conformance suite for its 5 variants;
+  - views under 8 KB with 40 players on the big map;
+  - 96-game simulations of seat fairness for each team count;
+  - play-throughs in the static demo at phone and projector sizes, with axe
+    and no console errors.
+
+  Open:
+  - Teams one player larger still win more often between equal bots (14 of
+    24 games at 4 against 3).
+  - With five teams, the team placed between two rivals is the weakest seat.
+- **Festival Workshop** (D44), a festival tycoon. Right answers bring
+  paydays; coins build, upgrade and replace stations that earn every second.
+  - One market for the whole class: goods everyone makes go cheap, so market
+    readers beat copycats in simulations.
+  - Parade orders, room events, a Grand finale, and Festival Favours (one of
+    them a prank on a rival).
+
+  Checked:
+  - 40 rules tests and the conformance suite for its 5 variants;
+  - balance simulations with the real engine;
+  - two play-throughs in the static demo, one a full 7-minute game, with axe
+    and no console errors.
+
+  Open:
+  - Fast answerers pull far ahead, because paydays grow with income. In a
+    demo against bots a slow player trails a long way.
+  - Long names are cut short in the projector's two-column board.
 - **Accessibility**: an axe-core audit (WCAG 2.2 A and AA rules) of every
   player page, the sign-in pages and every staff section, in both themes at
   phone and desktop widths, finds no violations; the layout end-to-end test now
@@ -279,11 +316,11 @@ creates and drops its own database).
 | Project | Files | Tests |
 |---|---|---|
 | content | 2 | 112: catalogue integrity and every built-in question set |
-| engine | 17 | 917, including the conformance suite for every mode and variant |
+| engine | 20 | 1139, including the conformance suite for every mode and variant |
 | server | 11 | 142: auth and rate limits (14), realtime (5), economy (20), staff (54), social and classes (17), preferences (4), open games (4), sign-in help (3), uploads (6), AI drafts (11), reward counting (4) |
 | web | 4 | 84: the set editor's checks, import and export (45); the synthesised music, in key and looping cleanly (16); the recorded sounds, every effect with a file and every loop a whole number of bars (16); which music plays when (7) |
 | shared | 0 | no tests of its own; its schemas are exercised by the other projects |
-| **Total** | **34** | **1255 passing** at the last full run |
+| **Total** | **37** | **1477 passing** at the last full run |
 
 End-to-end: `npm run test:e2e` (needs Postgres; builds first, then runs 8
 browser tests against a fresh `ludora_e2e` database). All 8 pass.
@@ -294,13 +331,6 @@ no server. All 4 pass.
 no errors.
 
 ## Open items
-
-Being built:
-- **Festival Workshop and Lantern Lands**, two more modes in the D44 style:
-  - Festival Workshop: a workshop tycoon with a market the whole class shares.
-  - Lantern Lands: teams claim, fortify and raid lands on a hex map.
-
-  Neither is merged yet.
 
 Left out on purpose:
 - **Email.** Accounts do not collect email addresses (D38): recovery codes,
