@@ -25,9 +25,10 @@ The quickest way to try everything, with nothing to install:
 
 1. On the repository's GitHub page choose **Code**, then **Codespaces**, then
    **Create codespace** on the branch that has Ludora.
-2. Wait while it installs and builds: a few minutes the first time. A Ludora
-   tab opens when it is ready; if your browser blocks it, open the **Ports**
-   tab and open port 8787.
+2. Wait while it installs and builds: a few minutes the first time. When the
+   creation log says Ludora is running, open the **Ports** tab and open port
+   8787 (the globe icon). It works at that address, and at the localhost port
+   VS Code desktop forwards it to.
 3. Sign up in the app, then make your account a super administrator in the
    Codespace's terminal:
 
@@ -40,9 +41,14 @@ The quickest way to try everything, with nothing to install:
    address can then reach it, so set it back to Private when you are done.
 
 The Codespace runs the production build with its own Postgres (see
-`.devcontainer/` at the repository root). The server log is at
-`~/.ludora/server.log`, and `bash .devcontainer/start.sh` restarts it. A
-stopped Codespace keeps its data and starts Ludora again when it wakes.
+`.devcontainer/` at the repository root). A stopped Codespace keeps its data
+and starts Ludora again when it wakes.
+
+If port 8787 shows an error page, Ludora is not running: it may still be
+building, or it stopped. Run `bash .devcontainer/start.sh` in the Codespace's
+terminal. It prints the address when Ludora is running. If Ludora cannot
+start, it prints the last lines of the log instead (the full log is
+`~/.ludora/server.log`).
 
 ## Play the demo on GitHub Pages
 

@@ -5,6 +5,7 @@ import { z } from 'zod';
 import { actionRequestSchema, C2S, hostCommandSchema, joinRequestSchema, reactionSchema } from '@ludora/shared';
 import type { AppDeps } from '../app.ts';
 import type { AuthContext } from '../http/context.ts';
+import { originAllowed } from '../http/origins.ts';
 import { hashIp } from '../lib/crypto.ts';
 import { SESSION_COOKIE, resolveSession } from '../modules/auth/service.ts';
 import { loadAvatar } from '../modules/profiles/avatar.ts';
@@ -63,7 +64,7 @@ export function attachRealtime(app: FastifyInstance, deps: AppDeps) {
     // Browsers always send Origin cross-site, so a missing Origin is a same-origin request or not a browser.
     allowRequest: (req, cb) => {
       const origin = req.headers.origin;
-      cb(null, !origin || deps.config.allowedOrigins.includes(origin));
+      cb(null, !origin || originAllowed(origin, req.headers, deps.config.allowedOrigins, deps.config.trustProxy));
     },
   });
 

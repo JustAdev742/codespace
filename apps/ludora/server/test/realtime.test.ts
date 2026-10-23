@@ -28,6 +28,22 @@ function socketFor(cookie?: string): Socket {
 }
 afterAll(() => sockets.forEach((s) => s.close()));
 
+describe('connection origins', () => {
+  const attempt = (origin: string) =>
+    new Promise<'connected' | 'refused'>((resolve) => {
+      const s = connect(base, { transports: ['websocket'], extraHeaders: { origin }, forceNew: true, reconnection: false });
+      sockets.push(s);
+      s.on('connect', () => resolve('connected'));
+      s.on('connect_error', () => resolve('refused'));
+    });
+  it('accepts a page at the address the server was reached at, such as a forwarded Codespace port', async () => {
+    expect(await attempt(base)).toBe('connected');
+  });
+  it('refuses a page on another site', async () => {
+    expect(await attempt('https://evil.example')).toBe('refused');
+  });
+});
+
 function emit<T = any>(s: Socket, event: string, payload: unknown): Promise<T> {
   return new Promise((resolve, reject) => {
     const timer = setTimeout(() => reject(new Error(`no ack for ${event}`)), 5000);

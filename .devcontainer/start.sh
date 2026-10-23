@@ -7,8 +7,15 @@ app="$(cd "$(dirname "$0")/../apps/ludora" && pwd)"
 state="$HOME/.ludora"
 mkdir -p "$state/uploads"
 
-# The address people open. The server refuses requests and game connections from any
-# other origin, so in a Codespace it is the forwarded address of port 8787.
+# The production build comes from setup.sh, which runs once while the container is created.
+if [ ! -s "$app/server/dist/index.js" ] || [ ! -s "$app/web/dist/index.html" ]; then
+  echo "Ludora is not built yet. If the Codespace is still being created, wait for it to finish." >&2
+  echo "Otherwise build it and start it: bash .devcontainer/setup.sh && bash .devcontainer/start.sh" >&2
+  exit 1
+fi
+
+# The address people open. The server also accepts pages at whatever address reaches it
+# (server/src/http/origins.ts), so VS Code's forwarded localhost port works as well.
 if [ -n "${CODESPACE_NAME:-}" ]; then
   origin="https://${CODESPACE_NAME}-8787.${GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN:-app.github.dev}"
   secure=true
@@ -65,7 +72,7 @@ for _ in $(seq 1 90); do
     exit 1
   fi
   if answering; then
-    echo "Ludora is running at $origin"
+    echo "Ludora is running. Open port 8787 from the Ports tab, or go to $origin"
     exit 0
   fi
   sleep 1

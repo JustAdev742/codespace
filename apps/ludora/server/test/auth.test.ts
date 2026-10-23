@@ -114,6 +114,11 @@ describe('request protection', () => {
     expect(res.statusCode).toBe(403);
     expect(res.json().error.code).toBe('forbidden');
   });
+  it('accepts requests from a page at the address they were sent to, as in a Codespace', async () => {
+    const host = 'fuzzy-train-8787.app.github.dev';
+    const res = await t.app.inject({ method: 'POST', url: '/api/auth/guest', payload: {}, headers: { 'x-ludora-csrf': '1', origin: `https://${host}`, host } });
+    expect(res.statusCode).toBeLessThan(300);
+  });
   it('sends security headers', async () => {
     const res = await t.app.inject({ method: 'GET', url: '/api/health' });
     expect(res.headers['content-security-policy']).toContain("frame-ancestors 'none'");

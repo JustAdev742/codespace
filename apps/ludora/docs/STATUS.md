@@ -317,10 +317,10 @@ creates and drops its own database).
 |---|---|---|
 | content | 2 | 112: catalogue integrity and every built-in question set |
 | engine | 20 | 1139, including the conformance suite for every mode and variant |
-| server | 11 | 142: auth and rate limits (14), realtime (5), economy (20), staff (54), social and classes (17), preferences (4), open games (4), sign-in help (3), uploads (6), AI drafts (11), reward counting (4) |
+| server | 12 | 149: auth and rate limits (15), realtime (7), economy (20), staff (54), social and classes (17), preferences (4), open games (4), sign-in help (3), uploads (6), AI drafts (11), reward counting (4), origin checks (4) |
 | web | 4 | 84: the set editor's checks, import and export (45); the synthesised music, in key and looping cleanly (16); the recorded sounds, every effect with a file and every loop a whole number of bars (16); which music plays when (7) |
 | shared | 0 | no tests of its own; its schemas are exercised by the other projects |
-| **Total** | **37** | **1477 passing** at the last full run |
+| **Total** | **38** | **1484 passing** at the last full run |
 
 End-to-end: `npm run test:e2e` (needs Postgres; builds first, then runs 8
 browser tests against a fresh `ludora_e2e` database). All 8 pass.

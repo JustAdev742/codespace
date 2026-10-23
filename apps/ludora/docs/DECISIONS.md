@@ -335,3 +335,22 @@ odds are shown to players where they choose. Balance is tuned with bot
 simulations before a mode ships, and the numbers go in its commit. The
 mechanics, names and art are Ludora's own.
 
+**D45. The origin check also accepts the address a request was sent to.**
+Ludora is reached at addresses its operator cannot always name in advance:
+- a Codespace's forwarded `app.github.dev` address;
+- the localhost port VS Code desktop forwards it to, which can change when
+  the port is busy;
+- a school network address.
+
+With a single configured origin, a page at any of these loaded but every
+sign-in, join and game connection was refused as an unexpected origin.
+
+The check now also passes when the page's origin is the host the request was
+sent to (the `Host` header, or `X-Forwarded-Host` behind a trusted proxy).
+This keeps the protection:
+- A cross-site page sends its own origin, while its requests carry our host.
+- It cannot set `X-Forwarded-Host`: that needs a CORS preflight the server
+  never answers, and browsers add no headers to WebSocket handshakes.
+- The `x-ludora-csrf` header requirement, the first line against forged
+  requests, is unchanged.
+

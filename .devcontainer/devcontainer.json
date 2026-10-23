@@ -1,6 +1,7 @@
 {
   // A Codespace (or VS Code dev container) with Ludora installed, built and running on port 8787.
-  // Opening one takes a few minutes the first time; the Ludora tab opens by itself when it is ready.
+  // Opening one takes a few minutes the first time. When the creation log says Ludora is running,
+  // open port 8787 from the Ports tab.
   "name": "Ludora",
   "dockerComposeFile": "compose.yaml",
   "service": "dev",

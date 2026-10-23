@@ -41,9 +41,11 @@ a security problem privately to the maintainers rather than in a public issue.
 
 - **CSRF**: every state-changing `/api` request needs the `x-ludora-csrf: 1`
   header, which a cross-site form or image cannot send without a CORS preflight
-  that the server never answers, and the `Origin` header, when present, must be
-  an allowed origin (`server/src/http/plugins.ts`). WebSocket connections check
-  the origin too.
+  that the server never answers. The `Origin` header, when present, must also
+  be the configured origin or the address the request was sent to: its `Host`,
+  or the forwarded host behind a trusted proxy (`server/src/http/origins.ts`).
+  A page on another site always sends its own origin, so it never matches.
+  WebSocket connections check the origin the same way.
 - **Validation**: every body, query and parameter is parsed with a zod schema;
   failures return field-level messages and nothing else runs.
 - **Rate limits**: the API has a global limit counted per account for

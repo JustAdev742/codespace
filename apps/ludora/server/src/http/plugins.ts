@@ -3,6 +3,7 @@ import { AppError } from '../lib/errors.ts';
 import type { AppDeps } from '../app.ts';
 import { SESSION_COOKIE, resolveSession } from '../modules/auth/service.ts';
 import { errorReports } from '../db/schema.ts';
+import { originAllowed } from './origins.ts';
 
 const UNSAFE = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
 export const CSRF_HEADER = 'x-ludora-csrf';
@@ -11,14 +12,14 @@ export const CSRF_HEADER = 'x-ludora-csrf';
  * Cross-site request forgery protection for cookie-authenticated calls.
  * A custom header cannot be sent cross-origin without a CORS preflight,
  * and this server answers no preflights, so requiring it blocks forged
- * requests. The Origin check is a second, independent line.
+ * requests. The Origin check (see origins.ts) is a second, independent line.
  */
 export function registerCsrfGuard(app: FastifyInstance, deps: AppDeps) {
   app.addHook('onRequest', async (req: FastifyRequest) => {
     if (!UNSAFE.has(req.method) || !req.url.startsWith('/api/')) return;
     if (req.headers[CSRF_HEADER] !== '1') throw new AppError(403, 'forbidden', 'Request blocked. Reload the page and try again.');
     const origin = req.headers.origin;
-    if (origin && !deps.config.allowedOrigins.includes(origin)) throw new AppError(403, 'forbidden', 'Request blocked: unexpected origin.');
+    if (origin && !originAllowed(origin, req.headers, deps.config.allowedOrigins, deps.config.trustProxy)) throw new AppError(403, 'forbidden', 'Request blocked: unexpected origin.');
   });
 }
 
