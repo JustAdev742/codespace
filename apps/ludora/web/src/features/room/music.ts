@@ -38,6 +38,9 @@ export const MODE_MUSIC: Record<string, MusicId> = {
 /** How long before a timed game's end the final-stretch track comes in. */
 export const STRETCH_MS = 30_000;
 
+/** At the end, the music waits for the fanfare (or the gentler sting after a lost co-op game). */
+const AFTER_THE_FANFARE = { delay: 2.4, fade: 1.5 };
+
 type GameShape = Record<string, unknown>;
 
 /** Modes with their own idea of a final stretch; `false` for none (studying at your own pace). */
@@ -99,7 +102,7 @@ export function useRoomMusic(room: RoomView | null, role: SoundRole, gameNow: ((
     const timer = setInterval(check, 1000);
     return () => clearInterval(timer);
   }, [running, modeId, game, gameNow]);
-  useMusic(roomMusic(room, role, stretch));
+  useMusic(roomMusic(room, role, stretch), room?.room.status === 'ended' ? AFTER_THE_FANFARE : undefined);
   const shared = role === 'host' || role === 'solo';
   const next: MusicId[] = room?.room.status === 'lobby' ? [MODE_MUSIC[modeId] ?? 'game', 'intense', 'results'] : running ? ['intense', 'results'] : [];
   usePrefetchMusic(next, shared);

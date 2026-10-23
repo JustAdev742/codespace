@@ -213,7 +213,8 @@ export function Results({ room, handle, isHost, guest }: { room: RoomView; handl
   const title = r.outcome === 'coop-win' ? 'Victory!' : r.outcome === 'coop-loss' ? 'So close' : 'Game over';
   useAnnounce(`${title} ${mine && podium ? `You came ${ordinal(mine.rank)}. ` : ''}${r.summary}`, 'results');
   const shared = useSharedSounds();
-  useSfx(shared ? 'fanfare' : 'reveal', 'results');
+  // The big screen celebrates, unless the class lost a co-op game: then a gentle sting, not a fanfare.
+  useSfx(shared ? (r.outcome === 'coop-loss' ? 'lose' : 'fanfare') : 'reveal', 'results');
   const restart = async () => {
     setBusy(true);
     const ack = await handle.host({ cmd: 'restart' });

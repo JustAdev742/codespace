@@ -45,11 +45,6 @@ const DUCK: Partial<Record<SfxAssetName, [depth: number, hold: number]>> = {
   'lanternReveal-mythic': [0.4, 2.4],
 };
 
-/** Tracks that wait before coming in: the results music lets the fanfare finish first. */
-const ENTRY: Partial<Record<MusicId, { delay: number; fade: number }>> = {
-  results: { delay: 2.4, fade: 1.5 },
-};
-
 /** If a track's file cannot be loaded, the synthesised loop that stands in for it. */
 const SYNTH_FALLBACK: Record<MusicId, SynthTrackId> = { lobby: 'lobby', calm: 'lobby', results: 'lobby', game: 'game', market: 'game', battle: 'game', intense: 'game' };
 
@@ -94,6 +89,12 @@ export function buildMix(ctx: BaseAudioContext): Mix {
   return { sfx, music, duck, reverb };
 }
 
+/** How a track comes in: after `delay` seconds (the old one fading at once), fading in over `fade`. */
+export interface MusicEntry {
+  delay: number;
+  fade: number;
+}
+
 export interface SoundState {
   /** Muted on this device. */
   muted: boolean;
@@ -109,6 +110,7 @@ class SoundEngine {
   private interacted = false;
   private state: SoundState = { muted: readMuted(), effects: true, music: true };
   private wanted: MusicId | null = null;
+  private wantedEntry: MusicEntry | null = null;
   private playing: Playing | null = null;
   private readonly bank = new SampleBank();
   /** Tracks whose files could not be loaded this visit; they play their synthesised stand-in. */
@@ -267,9 +269,13 @@ class SoundEngine {
     p.setTargetAtTime(1, until, 0.45);
   }
 
-  /** The music that should be playing, or null for none. It starts once the page may play sound. */
-  setMusic(track: MusicId | null) {
+  /**
+   * The music that should be playing, or null for none. It starts once the page may play sound. With
+   * `entry`, the track waits before coming in (the results music lets the fanfare finish first).
+   */
+  setMusic(track: MusicId | null, entry?: MusicEntry) {
     this.wanted = track;
+    this.wantedEntry = entry ?? null;
     this.syncMusic();
   }
 
@@ -302,7 +308,9 @@ class SoundEngine {
       this.playing = { id: want, synth };
       return;
     }
-    // Whatever is playing carries on until the new track's file is ready.
+    // Whatever is playing carries on until the new track's file is ready, unless the new one waits its turn
+    // anyway (at the end of a game the old music makes way for the fanfare at once).
+    if (this.wantedEntry) this.stopPlaying(0.6);
     if (this.loading.has(want)) return;
     this.loading.add(want);
     void this.bank.load(asset.url).then((loaded) => {
@@ -315,7 +323,7 @@ class SoundEngine {
   /** Brings in a recorded loop: on the outgoing loop's next bar line when there is one, so the change lands on the beat. */
   private startLoop(g: Graph, id: MusicId, sample: Sample) {
     const now = g.ctx.currentTime;
-    const entry = ENTRY[id];
+    const entry = this.wantedEntry;
     const prev = this.playing;
     const player = new LoopPlayer(g.ctx, g.music, id, MUSIC_ASSETS[id], sample.buffer);
     if (entry) {

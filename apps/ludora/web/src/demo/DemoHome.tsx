@@ -159,7 +159,7 @@ export default function DemoHome() {
             )}
             <div className="flex flex-col">
               <Switch checked={prefs.effects} onCheckedChange={(v) => changePrefs({ effects: v })} label="Sound effects" description="Chimes for answers, and the clock in the last seconds." />
-              <Switch checked={prefs.music} onCheckedChange={(v) => changePrefs({ music: v })} label="Music" description="A light tune under the game." />
+              <Switch checked={prefs.music} onCheckedChange={(v) => changePrefs({ music: v })} label="Music" description="Each kind of game has its own track, and the last seconds have their own." />
             </div>
           </div>
         </Panel>

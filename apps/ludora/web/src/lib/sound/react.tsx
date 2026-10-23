@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useRef, useSyncExternalStore } from 'react';
 import type { Pacing } from '@ludora/shared';
 import { useMe } from '../session.ts';
-import { sound } from './engine.ts';
+import { sound, type MusicEntry } from './engine.ts';
 import type { SfxName, SfxOptions } from './sfx.ts';
 import type { MusicId } from './assets.generated.ts';
 
@@ -51,11 +51,13 @@ export function useSfx(name: SfxName, key: unknown, enabled = true, options?: Sf
   }, [key]);
 }
 
-/** The music for this screen; null for none. Stops when the screen goes. */
-export function useMusic(track: MusicId | null) {
+/** The music for this screen; null for none. Stops when the screen goes. `entry` delays a track's start. */
+export function useMusic(track: MusicId | null, entry?: MusicEntry) {
+  const delay = entry?.delay;
+  const fade = entry?.fade;
   useEffect(() => {
-    sound.setMusic(track);
-  }, [track]);
+    sound.setMusic(track, delay === undefined || fade === undefined ? undefined : { delay, fade });
+  }, [track, delay, fade]);
   useEffect(() => () => sound.setMusic(null), []);
 }
 
