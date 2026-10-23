@@ -78,4 +78,8 @@ export const MODE_SCREENS: Record<string, { Player: Screen; Host: Screen }> = {
     Player: lazy(() => import('./lantern-guard.tsx').then((m) => ({ default: m.LanternGuardPlayer }))),
     Host: lazy(() => import('./lantern-guard.tsx').then((m) => ({ default: m.LanternGuardHost }))),
   },
+  'glim-duels': {
+    Player: lazy(() => import('./glim-duels.tsx').then((m) => ({ default: m.GlimDuelsPlayer }))),
+    Host: lazy(() => import('./glim-duels.tsx').then((m) => ({ default: m.GlimDuelsHost }))),
+  },
 };
