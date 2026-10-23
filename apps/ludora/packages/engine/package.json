@@ -11,7 +11,8 @@
     "./night-market-odds": "./src/modes/night-market/odds.ts",
     "./lantern-guard-maps": "./src/modes/lantern-guard/maps.ts",
     "./lantern-trail-board": "./src/modes/lantern-trail/board.ts",
-    "./lantern-lands-map": "./src/modes/lantern-lands/map.ts"
+    "./lantern-lands-map": "./src/modes/lantern-lands/map.ts",
+    "./festival-workshop": "./src/modes/festival-workshop/meta.ts"
   },
   "dependencies": {
     "@ludora/shared": "*",
