@@ -12,7 +12,7 @@ import { AUTH_SCENE, GLIMS, GlimCrowd } from '../home/GlimCrowd.tsx';
  */
 export function AuthLayout({ title, intro, children, footer }: { title: string; intro: ReactNode; children: ReactNode; footer?: ReactNode }) {
   return (
-    <Stage className="flex min-h-dvh flex-col" lanterns>
+    <Stage className="flex min-h-dvh flex-col">
       <header className="relative z-10 mx-auto w-full max-w-[1180px] px-4 pt-5 sm:px-6 lg:pt-7">
         <Link to="/" aria-label="Ludora home" className="inline-block rounded-[10px]">
           <Logo size={28} />

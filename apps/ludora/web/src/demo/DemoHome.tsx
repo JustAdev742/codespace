@@ -62,7 +62,7 @@ export default function DemoHome() {
   const title = variant?.meta.title ?? mode.meta.title;
   return (
     <div className="flex min-h-dvh flex-col">
-      <Stage lanterns={false} className="px-4 pt-5 sm:px-6">
+      <Stage className="px-4 pt-5 sm:px-6">
         <div className="mx-auto flex w-full max-w-[1120px] items-center gap-3">
           <Logo size={26} />
           <Badge tone="amber">Demo</Badge>

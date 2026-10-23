@@ -27,7 +27,7 @@ export function PageHeader({ title, description, actions, eyebrow, art }: { titl
         ) : null}
         <div className="min-w-0">
           {eyebrow ? <div className="mb-1 text-sm text-text-3">{eyebrow}</div> : null}
-          <h1 className="font-display text-3xl font-extrabold text-text sm:text-[2.6rem] sm:leading-[1.05]">{title}</h1>
+          <h1 className="font-display text-[2.25rem] leading-[1.02] font-bold text-text sm:text-[2.9rem]">{title}</h1>
           {description ? <p className="mt-1.5 max-w-[62ch] text-text-2">{description}</p> : null}
         </div>
       </div>
@@ -39,7 +39,7 @@ export function PageHeader({ title, description, actions, eyebrow, art }: { titl
 export function SectionTitle({ children, action }: { children: ReactNode; action?: ReactNode }) {
   return (
     <div className="mb-3 flex items-center justify-between gap-3">
-      <h2 className="font-display text-xl font-bold text-text">{children}</h2>
+      <h2 className="font-display text-2xl font-bold text-text">{children}</h2>
       {action}
     </div>
   );

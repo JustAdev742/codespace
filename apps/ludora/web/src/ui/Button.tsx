@@ -14,12 +14,13 @@ const VARIANTS: Record<ButtonVariant, string> = {
 };
 
 const SIZES: Record<ButtonSize, string> = {
-  sm: 'h-8 px-3 text-sm gap-1.5 rounded-[10px]',
-  md: 'h-10 px-4 text-[15px] gap-2 rounded-[12px]',
-  lg: 'h-12 px-5 text-base gap-2 rounded-[14px]',
-  xl: 'h-14 px-7 text-lg gap-2.5 rounded-[16px] font-display tracking-wide',
+  sm: 'h-8 px-3 text-sm gap-1.5 rounded-[8px]',
+  md: 'h-10 px-4 text-[15px] gap-2 rounded-[10px]',
+  lg: 'h-12 px-5 text-base gap-2 rounded-[10px]',
+  /** Condensed display type runs small, so the big sizes take a larger step. */
+  xl: 'h-14 px-7 text-[1.35rem] gap-2.5 rounded-[12px] font-display font-bold',
   /** Stage calls to action: join, start, play again. */
-  '2xl': 'h-16 px-8 text-2xl gap-3 rounded-[18px] font-display font-extrabold tracking-wide [--press:6px]',
+  '2xl': 'h-16 px-8 text-[1.85rem] gap-3 rounded-[14px] font-display font-extrabold [--press:6px]',
 };
 
 export function buttonClass(variant: ButtonVariant = 'secondary', size: ButtonSize = 'md', extra = '') {
@@ -68,7 +69,7 @@ export const IconButton = forwardRef<HTMLButtonElement, ButtonHTMLAttributes<HTM
 ) {
   const s = size === 'sm' ? 'size-8' : size === 'lg' ? 'size-12' : 'size-10';
   return (
-    <button ref={ref} type={type} aria-label={label} title={label} className={`inline-grid shrink-0 place-items-center rounded-[12px] transition-colors disabled:opacity-50 ${s} ${VARIANTS[variant]} ${className}`} {...rest}>
+    <button ref={ref} type={type} aria-label={label} title={label} className={`inline-grid shrink-0 place-items-center rounded-[10px] transition-colors disabled:opacity-50 ${s} ${VARIANTS[variant]} ${className}`} {...rest}>
       {children}
     </button>
   );

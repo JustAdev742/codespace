@@ -84,7 +84,7 @@ function GlimDetail({ glim, collection, dust, isBuddy, onClose }: { glim: Collec
   return (
     <Dialog open onOpenChange={(o) => !o && onClose()} title={glim.name ?? 'Not found yet'} description={`${RARITY_INFO[glim.rarity].label} Glim from ${collection}`}>
       <div className="flex flex-col items-center gap-3">
-        <Stage lanterns={false} className="grid w-full place-items-center rounded-[20px] border-[2.5px] border-ink py-4">
+        <Stage className="grid w-full place-items-center rounded-[20px] border-[2.5px] border-ink py-4">
           {glim.art ? <Glim art={glim.art} size={190} aura={glim.rarity} rarity={glim.rarity} pose="wave" bob /> : <Glim art={shadowArt(glim.silhouette!)} size={190} silhouette />}
         </Stage>
         <RarityTag rarity={glim.rarity} size="md" />

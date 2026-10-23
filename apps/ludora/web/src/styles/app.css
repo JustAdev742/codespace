@@ -1,32 +1,35 @@
 @import 'tailwindcss';
-@import '@fontsource-variable/grandstander/index.css';
+@import '@fontsource/barlow-condensed/600.css';
+@import '@fontsource/barlow-condensed/700.css';
+@import '@fontsource/barlow-condensed/800.css';
+@import '@fontsource/barlow-condensed/800-italic.css';
 @import '@fontsource-variable/atkinson-hyperlegible-next/wght.css';
 
 /*
- * Ludora design tokens.
- * Night ("lantern night") is a deep indigo, Day ("paper lantern by day")
- * a cool lavender white. Accents are lantern amber, glim mint, ember coral
- * and dusk violet. Interactive game pieces get an ink outline and a hard
- * offset shadow that collapses when pressed; panels stay flat.
+ * Ludora design tokens: "game night, live" (docs/DESIGN.md).
+ * Dark is midnight navy, light a cool white; the stage is always midnight.
+ * Accents keep their old names (lantern is gold, glim mint, ember coral,
+ * dusk violet). Pieces you press are solid colour with a darker bottom edge
+ * that collapses when pressed; panels stay flat. No ink outlines.
  */
 
 :root,
 :root[data-theme='dark'] {
   color-scheme: dark;
-  --bg: #17133a;
-  --bg-raised: #211c4f;
-  --bg-sunken: #110e2c;
-  --surface-2: #2a2460;
-  --surface-3: #342d72;
-  --line: #3b3480;
-  --line-strong: #5a51b0;
-  --text: #f4f2ff;
-  --text-2: #c8c2f0;
-  --text-3: #9c94d4;
-  --ink: #0b0922;
-  --focus: #ffb020;
-  --link: #b3a1ff;
-  --scrim: rgb(8 6 26 / 0.72);
+  --bg: #0d1230;
+  --bg-raised: #151b40;
+  --bg-sunken: #090d24;
+  --surface-2: #1b2350;
+  --surface-3: #242d60;
+  --line: #2c3670;
+  --line-strong: #44518f;
+  --text: #f4f6ff;
+  --text-2: #c5ccee;
+  --text-3: #959dc9;
+  --ink: #060a1c;
+  --focus: #ffc233;
+  --link: #8fb0ff;
+  --scrim: rgb(5 8 24 / 0.75);
   --glim-text: #08704f;
   --lantern-text: #845400;
   --ember-text: #b51f37;
@@ -35,20 +38,20 @@
 
 :root[data-theme='light'] {
   color-scheme: light;
-  --bg: #f2f0fa;
+  --bg: #f3f5fb;
   --bg-raised: #ffffff;
-  --bg-sunken: #e6e2f5;
-  --surface-2: #f7f5fd;
-  --surface-3: #ece8fb;
-  --line: #d7d1ee;
-  --line-strong: #b3aadb;
-  --text: #1d1846;
-  --text-2: #4b4580;
-  --text-3: #6d67a0;
-  --ink: #1d1846;
-  --focus: #5b3fd6;
-  --link: #5b3fd6;
-  --scrim: rgb(29 24 70 / 0.55);
+  --bg-sunken: #e6e9f4;
+  --surface-2: #f7f8fc;
+  --surface-3: #eceff8;
+  --line: #d6dbec;
+  --line-strong: #aeb7d6;
+  --text: #0e1430;
+  --text-2: #3b4470;
+  --text-3: #5a638c;
+  --ink: #0e1430;
+  --focus: #2f55e0;
+  --link: #2f55e0;
+  --scrim: rgb(14 20 48 / 0.55);
   --glim-text: #08704f;
   --lantern-text: #845400;
   --ember-text: #b51f37;
@@ -58,20 +61,20 @@
 @media (prefers-color-scheme: light) {
   :root:not([data-theme='dark']) {
     color-scheme: light;
-    --bg: #f2f0fa;
+    --bg: #f3f5fb;
     --bg-raised: #ffffff;
-    --bg-sunken: #e6e2f5;
-    --surface-2: #f7f5fd;
-    --surface-3: #ece8fb;
-    --line: #d7d1ee;
-    --line-strong: #b3aadb;
-    --text: #1d1846;
-    --text-2: #4b4580;
-    --text-3: #6d67a0;
-    --ink: #1d1846;
-    --focus: #5b3fd6;
-    --link: #5b3fd6;
-    --scrim: rgb(29 24 70 / 0.55);
+    --bg-sunken: #e6e9f4;
+    --surface-2: #f7f8fc;
+    --surface-3: #eceff8;
+    --line: #d6dbec;
+    --line-strong: #aeb7d6;
+    --text: #0e1430;
+    --text-2: #3b4470;
+    --text-3: #5a638c;
+    --ink: #0e1430;
+    --focus: #2f55e0;
+    --link: #2f55e0;
+    --scrim: rgb(14 20 48 / 0.55);
     --glim-text: #08704f;
     --lantern-text: #845400;
     --ember-text: #b51f37;
@@ -102,23 +105,23 @@
 
 /*
  * Colour scopes. `.on-stage` (and `.stage`) re-point the theme variables for
- * anything drawn on the dusk sky, so ordinary components stay legible there in
+ * anything drawn on the stage, so ordinary components stay legible there in
  * either theme. `.paper` does the reverse for a white card placed on the stage.
  */
 .stage,
 .on-stage {
   color-scheme: dark;
   --text: #ffffff;
-  --text-2: #e4ddff;
-  --text-3: #c4b8f5;
-  --bg-raised: rgb(255 255 255 / 0.1);
-  --bg-sunken: rgb(12 8 48 / 0.35);
-  --surface-2: rgb(255 255 255 / 0.12);
-  --surface-3: rgb(255 255 255 / 0.18);
-  --line: rgb(255 255 255 / 0.2);
-  --line-strong: rgb(255 255 255 / 0.38);
+  --text-2: #d5dcfa;
+  --text-3: #a9b3e0;
+  --bg-raised: rgb(255 255 255 / 0.07);
+  --bg-sunken: rgb(3 6 20 / 0.4);
+  --surface-2: rgb(255 255 255 / 0.09);
+  --surface-3: rgb(255 255 255 / 0.14);
+  --line: rgb(255 255 255 / 0.14);
+  --line-strong: rgb(255 255 255 / 0.3);
   --link: #ffd36b;
-  --focus: #ffcf5c;
+  --focus: #ffc233;
   color: var(--text);
 }
 :root .stage .text-glim,
@@ -134,17 +137,17 @@
 
 .paper {
   color-scheme: light;
-  --text: #1d1846;
-  --text-2: #4b4580;
-  --text-3: #6d67a0;
+  --text: #0e1430;
+  --text-2: #3b4470;
+  --text-3: #5a638c;
   --bg-raised: #ffffff;
-  --bg-sunken: #efecfa;
-  --surface-2: #f7f5fd;
-  --surface-3: #ece8fb;
-  --line: #d7d1ee;
-  --line-strong: #b3aadb;
-  --link: #5b3fd6;
-  --focus: #5b3fd6;
+  --bg-sunken: #eef1f8;
+  --surface-2: #f7f8fc;
+  --surface-3: #eceff8;
+  --line: #d6dbec;
+  --line-strong: #aeb7d6;
+  --link: #2f55e0;
+  --focus: #2f55e0;
   color: var(--text);
   background: #ffffff;
 }
@@ -155,43 +158,45 @@
 :root .paper .text-sky { color: var(--sky-text, #0a5f97); }
 
 :root {
-  --lantern: #ffb020;
-  --lantern-deep: #e08e00;
-  --glim: #33d6a6;
-  --ember: #ff5a6e;
-  --dusk: #8f72ff;
-  --sky: #47b5ff;
-  --rose: #ff85d8;
-  --on-accent: #1d1846;
+  --lantern: #ffc233;
+  --lantern-deep: #e9a400;
+  --glim: #1fd38f;
+  --ember: #ff4d6a;
+  --dusk: #8c6bff;
+  --sky: #3d9bff;
+  --rose: #ff5ca8;
+  --floodlight: #3a6bff;
+  --on-accent: #0b1020;
 
-  --tile-a: #ffb020;
-  --tile-b: #47b5ff;
-  --tile-c: #33d6a6;
-  --tile-d: #ff7a7a;
-  --tile-e: #a58dff;
-  --tile-f: #ff8fdc;
+  /* Answer tiles: ink text passes 4.5:1 on each; letters and shapes tell them apart too. */
+  --tile-a: #ff8a2a;
+  --tile-b: #3d9bff;
+  --tile-c: #2bd47e;
+  --tile-d: #ff5c8a;
+  --tile-e: #a07cff;
+  --tile-f: #22cfc3;
 
-  --r-common: #a3abc2;
-  --r-uncommon: #3ccb7f;
-  --r-rare: #3d9bff;
-  --r-epic: #b07bff;
-  --r-legendary: #ffb020;
-  --r-mythic: #ff5fa2;
+  --r-common: #9aa5c4;
+  --r-uncommon: #34d17b;
+  --r-rare: #3d8bff;
+  --r-epic: #a66bff;
+  --r-legendary: #ffb627;
+  --r-mythic: #ff4fa3;
 
   /*
-   * The stage: a lantern-festival sky at dusk. Game screens, the landing hero,
-   * the join flow and the sidebar sit on it, in both themes. White text passes
-   * AA on every stop (6:1 at the horizon).
+   * The stage: midnight navy lit by a blue floodlight from the top centre.
+   * Game screens, the landing hero, the join flow and the sidebar sit on it,
+   * in both themes. White text passes AA everywhere on it (9:1 in the glow).
    */
-  --stage-1: #1f1670;
-  --stage-2: #3b22a6;
-  --stage-3: #5b2bb8;
-  --stage-4: #9c3a8e;
-  --stage-sky: linear-gradient(180deg, var(--stage-1) 0%, var(--stage-2) 42%, var(--stage-3) 78%, var(--stage-4) 118%);
+  --stage-1: #16205a;
+  --stage-2: #0f1640;
+  --stage-3: #0b1130;
+  --stage-4: #0b1130;
+  --stage-sky: radial-gradient(120% 70% at 50% -12%, rgb(58 107 255 / 0.42) 0%, rgb(58 107 255 / 0.12) 38%, transparent 62%), linear-gradient(180deg, var(--stage-1) 0%, var(--stage-2) 45%, var(--stage-3) 100%);
 
-  --radius-s: 8px;
-  --radius-m: 14px;
-  --radius-l: 22px;
+  --radius-s: 6px;
+  --radius-m: 10px;
+  --radius-l: 14px;
   --press: 4px;
   --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
   --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
@@ -231,7 +236,7 @@
   --color-rose: var(--rose);
   --color-on-accent: var(--on-accent);
   --color-link: var(--link);
-  --font-display: 'Grandstander Variable', 'Atkinson Hyperlegible Next Variable', ui-rounded, system-ui, sans-serif;
+  --font-display: 'Barlow Condensed', 'Atkinson Hyperlegible Next Variable', ui-sans-serif, system-ui, sans-serif;
   --font-sans: 'Atkinson Hyperlegible Next Variable', ui-sans-serif, system-ui, sans-serif;
   --radius-s: var(--radius-s);
   --radius-m: var(--radius-m);
@@ -257,8 +262,9 @@
   h2,
   h3 {
     font-family: var(--font-display);
-    line-height: 1.12;
-    letter-spacing: -0.01em;
+    font-weight: 700;
+    line-height: 1.05;
+    letter-spacing: 0;
     text-wrap: balance;
   }
   p {
@@ -273,7 +279,7 @@
     border-radius: 6px;
   }
   ::selection {
-    background: color-mix(in oklab, var(--dusk) 40%, transparent);
+    background: color-mix(in oklab, var(--floodlight) 40%, transparent);
   }
   .tabular {
     font-variant-numeric: tabular-nums;
@@ -281,70 +287,110 @@
 }
 
 @layer components {
-  /* The tactile "sticker" treatment for things you press in a game. */
+  /*
+   * Things you press in a game: solid colour with a darker band inside the bottom
+   * edge (an inset shadow, so it works on any fill) and a slight lift. Pressing
+   * moves it down and thins the band, like a controller button. No outline.
+   */
   .sticker {
-    border: 2.5px solid var(--ink);
-    box-shadow: 0 var(--press) 0 var(--ink);
+    border: 0;
+    box-shadow:
+      inset 0 calc(-1 * var(--press)) 0 rgb(0 0 0 / 0.24),
+      0 2px 0 rgb(0 0 0 / 0.18);
     transition:
       transform 120ms var(--ease-out),
       box-shadow 120ms var(--ease-out),
       filter 120ms;
   }
   .sticker:not(:disabled):hover {
-    filter: brightness(1.05);
+    filter: brightness(1.06);
   }
   .sticker:not(:disabled):active,
   .sticker[data-pressed='true'] {
-    transform: translateY(calc(var(--press) - 1px));
-    box-shadow: 0 1px 0 var(--ink);
+    transform: translateY(2px);
+    box-shadow:
+      inset 0 calc(-1 * (var(--press) - 2px)) 0 rgb(0 0 0 / 0.24),
+      0 0 0 rgb(0 0 0 / 0.18);
   }
   .panel {
     background: var(--bg-raised);
     border: 1px solid var(--line);
     border-radius: var(--radius-m);
   }
-  /* A soft press for secondary controls: tactile, but quieter than a sticker. */
+  /* A quiet press for secondary controls: a fine line and a thin bottom edge. */
   .press-soft {
-    border: 2px solid var(--line-strong);
-    box-shadow: 0 3px 0 var(--line-strong);
+    border: 1px solid var(--line-strong);
+    box-shadow: inset 0 -3px 0 color-mix(in oklab, var(--line-strong) 55%, transparent);
     transition:
       transform 120ms var(--ease-out),
       box-shadow 120ms var(--ease-out),
       background-color 120ms;
   }
   .press-soft:not(:disabled):active {
-    transform: translateY(2px);
-    box-shadow: 0 1px 0 var(--line-strong);
+    transform: translateY(1px);
+    box-shadow: inset 0 -1px 0 color-mix(in oklab, var(--line-strong) 55%, transparent);
   }
-  /* The dusk sky with a faint star field. */
+  /* The stage: midnight navy under a floodlight, with the faint grid of a pitch. */
   .stage {
-    background-color: var(--stage-2);
-    /* Star layers tile at unrelated sizes so the field never lines up into a grid. */
+    background-color: var(--stage-3);
     background-image:
-      radial-gradient(circle at 12% 18%, rgb(255 255 255 / 0.8) 0 1.2px, transparent 1.8px),
-      radial-gradient(circle at 71% 63%, rgb(255 255 255 / 0.45) 0 1px, transparent 1.6px),
-      radial-gradient(circle at 37% 81%, rgb(255 255 255 / 0.55) 0 1.1px, transparent 1.7px),
-      radial-gradient(circle at 88% 22%, rgb(255 236 180 / 0.6) 0 1.3px, transparent 1.9px),
-      radial-gradient(circle at 54% 41%, rgb(255 255 255 / 0.35) 0 0.9px, transparent 1.5px),
+      linear-gradient(rgb(255 255 255 / 0.035) 1px, transparent 1px),
+      linear-gradient(90deg, rgb(255 255 255 / 0.035) 1px, transparent 1px),
       var(--stage-sky);
     background-size:
-      293px 217px,
-      397px 341px,
-      173px 389px,
-      521px 457px,
-      241px 163px,
+      56px 56px,
+      56px 56px,
       100% 100%;
+    background-position: center top;
   }
-  /* The same sky without stars, for narrow chrome such as the sidebar. */
+  /* The same light without the grid, for narrow chrome such as the sidebar. */
   .stage-plain {
-    background-color: var(--stage-2);
-    background-image: var(--stage-sky);
+    background-color: var(--stage-3);
+    background-image: linear-gradient(180deg, var(--stage-1) 0%, var(--stage-3) 100%);
   }
-  /* A card on the stage: white paper with an ink edge. */
+  /* A card on the stage: it floats on a soft dark shadow; no outline. */
   .stage-card {
-    border: 2.5px solid var(--ink);
+    border: 0;
     border-radius: var(--radius-l);
-    box-shadow: 0 6px 0 rgb(12 8 48 / 0.55);
+    box-shadow: 0 14px 36px -12px rgb(2 5 20 / 0.7);
+  }
+  /* The same float for any surface. */
+  .lift {
+    box-shadow: 0 14px 36px -12px rgb(2 5 20 / 0.55);
+  }
+  /*
+   * The signature: a slanted plate, leaning back like a broadcast caption, for
+   * short labels at big moments. Its children stay upright.
+   */
+  .plate {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4em;
+    padding: 0.2em 0.75em;
+    border-radius: var(--radius-s);
+    transform: skewX(-10deg);
+    font-family: var(--font-display);
+    font-weight: 800;
+    line-height: 1.1;
+    background: var(--stage-1);
+    color: #ffffff;
+  }
+  .plate > * {
+    transform: skewX(10deg);
+  }
+  .plate-gold {
+    background: var(--lantern);
+    color: var(--on-accent);
+  }
+  .plate-blue {
+    background: var(--floodlight);
+    color: #ffffff;
+  }
+  /* A HUD bar over the stage: smoked glass, a fine edge. */
+  .hud {
+    background: rgb(4 8 26 / 0.55);
+    border: 1px solid rgb(255 255 255 / 0.08);
+    backdrop-filter: blur(8px);
   }
   .skeleton {
     background: linear-gradient(90deg, var(--surface-2) 0%, var(--surface-3) 50%, var(--surface-2) 100%);
@@ -353,7 +399,7 @@
     border-radius: var(--radius-s);
   }
   .rarity-mythic-shimmer {
-    background: linear-gradient(110deg, #ff5fa2, #ffb020, #33d6a6, #47b5ff, #a58dff, #ff5fa2);
+    background: linear-gradient(110deg, #ff4fa3, #ffb627, #1fd38f, #3d9bff, #a66bff, #ff4fa3);
     background-size: 300% 100%;
     animation: shimmer 6s linear infinite;
   }
@@ -364,16 +410,16 @@
 .sticker:disabled {
   background: var(--surface-3);
   color: var(--text-3);
-  border-color: var(--line-strong);
-  box-shadow: 0 2px 0 var(--line-strong);
+  border-color: transparent;
+  box-shadow: inset 0 -2px 0 var(--line-strong);
   opacity: 1;
 }
 
 /*
- * Toasts (sonner) as Ludora tags, matching the game's news: paper with an ink
- * edge and a hard shadow, filled with the accent of their kind. Ink text passes
- * AA on every fill, in both themes. Sonner injects its stylesheet after this
- * one, so each selector carries an extra :root to win.
+ * Toasts (sonner), matching the game's news: a solid fill in the accent of
+ * their kind, floating on a soft shadow. Ink text passes AA on every fill, in
+ * both themes. Sonner injects its stylesheet after this one, so each selector
+ * carries an extra :root to win.
  */
 :root [data-sonner-toaster] {
   font-family: var(--font-sans);
@@ -383,11 +429,11 @@
 :root [data-sonner-toast][data-styled='true'] {
   gap: 10px;
   padding: 12px 14px;
-  border: 2px solid var(--ink);
-  border-radius: 16px;
+  border: 0;
+  border-radius: var(--radius-m);
   background: #ffffff;
   color: var(--on-accent);
-  box-shadow: 0 3px 0 var(--ink);
+  box-shadow: 0 12px 30px -10px rgb(2 5 20 / 0.6);
   font-size: 15px;
 }
 :root [data-sonner-toast][data-styled='true']:has(> [data-close-button]) {
@@ -408,7 +454,6 @@
 :root [data-sonner-toast][data-styled='true']:focus-visible {
   outline: 3px solid var(--focus);
   outline-offset: 2px;
-  box-shadow: 0 3px 0 var(--ink);
 }
 :root [data-sonner-toast][data-styled='true'] [data-title] {
   font-weight: 700;
@@ -448,7 +493,7 @@
   inset: -4px;
 }
 :root [data-sonner-toast][data-styled='true']:hover [data-close-button]:hover {
-  background: rgb(29 24 70 / 0.12);
+  background: rgb(11 16 32 / 0.12);
 }
 :root [data-sonner-toast][data-styled='true'] [data-close-button]:focus-visible,
 :root [data-sonner-toast][data-styled='true'] [data-button]:focus-visible {
@@ -456,19 +501,19 @@
   outline-offset: 1px;
   box-shadow: none;
 }
-/* Undo and other actions: a small paper sticker inside the tag. */
+/* Undo and other actions: a small white button inside the toast, with the same pressable bottom edge. */
 :root [data-sonner-toast][data-styled='true'] [data-button] {
   height: 34px;
   padding: 0 12px;
-  border: 2px solid var(--ink);
-  border-radius: 10px;
+  border: 0;
+  border-radius: 8px;
   background: #ffffff;
   color: var(--on-accent);
-  box-shadow: 0 2px 0 var(--ink);
+  box-shadow: inset 0 -3px 0 rgb(0 0 0 / 0.18);
   font-size: 14px;
   font-weight: 700;
 }
-/* On a plain paper tag the action takes the lantern colour so it does not read as part of the paper. */
+/* On a plain white toast the action takes the gold so it does not read as part of the toast. */
 :root [data-sonner-toast]:not([data-type]) [data-button],
 :root [data-sonner-toast][data-type='default'] [data-button] {
   background: var(--lantern);
@@ -565,15 +610,5 @@
   100% {
     transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy))) scale(1);
     opacity: 0;
-  }
-}
-
-@keyframes lantern-drift {
-  0%,
-  100% {
-    transform: translateY(0) rotate(-2deg);
-  }
-  50% {
-    transform: translateY(-14px) rotate(2deg);
   }
 }

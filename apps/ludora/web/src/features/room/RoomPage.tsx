@@ -122,7 +122,7 @@ export default function RoomPage() {
   const Title = live ? 'h1' : 'p';
 
   return (
-    <Stage className={STAGE} lanterns="game">
+    <Stage className={STAGE}>
       <SoundRoleContext.Provider value={soundScene}>
       <Announcer>
       <header className="sticky top-0 z-30 border-b border-white/12 bg-[rgb(16_10_58/0.55)] backdrop-blur-md">

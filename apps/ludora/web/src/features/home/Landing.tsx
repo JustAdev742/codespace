@@ -34,7 +34,7 @@ export default function Landing() {
     <div className="flex flex-col gap-16 pb-12 sm:gap-20">
       <Bleed>
         <section aria-labelledby="hero-title">
-          <Stage lanterns={false} className={`px-4 pt-8 sm:px-6 lg:pt-12 ${BLEED_ROUNDING}`}>
+          <Stage className={`px-4 pt-8 sm:px-6 lg:pt-12 ${BLEED_ROUNDING}`}>
             <div className="mx-auto grid max-w-[1120px] grid-cols-1 gap-x-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)]">
               <div className="relative z-10 flex flex-col gap-5 pb-10 lg:self-center lg:pb-28">
                 <h1 id="hero-title" className="order-1 font-display text-[2.75rem] leading-[1.02] font-extrabold sm:text-6xl xl:text-[4.2rem]">
