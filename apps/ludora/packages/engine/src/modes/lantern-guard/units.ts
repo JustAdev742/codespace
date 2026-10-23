@@ -44,11 +44,24 @@ export const TOWER_SETS: Record<string, readonly TowerKind[]> = {
 };
 
 /**
- * Gloomling health for each `towers` setting. Frost and Firework towers on
- * their own deal far less damage for their gold than a mix with Sparks and
- * Beams, so the gloom is weaker to match (measured with bot games).
+ * Gloomling health for each `towers` setting, on top of the room's own
+ * toughness: measured points [players, toughness], with straight lines between
+ * them and the last value beyond the end. With only Frost and Firework towers a
+ * small group can afford just a few 110-gold Fireworks, so its gloom is much
+ * weaker; a big class fills every spot with Fireworks before the first wave,
+ * and upgraded Fireworks hit a crowd far harder than the usual mix with Sparks,
+ * so its gloom is tougher than usual (measured with bot games).
  */
-export const TOWER_SET_TOUGHNESS: Record<string, number> = { all: 1, 'frost-fire': 0.66 };
+export const TOWER_SET_TOUGHNESS: Record<string, readonly (readonly [players: number, toughness: number])[]> = {
+  all: [[1, 1]],
+  'frost-fire': [
+    [1, 0.66],
+    [4, 0.82],
+    [12, 1.1],
+    [20, 1.45],
+    [30, 1.65],
+  ],
+};
 
 export const MAX_LEVEL = 3;
 /** Upgrade price as a share of the tower's own price: to level 2, then to level 3. */

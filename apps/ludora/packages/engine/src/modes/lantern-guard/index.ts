@@ -79,6 +79,21 @@ export const ROOM_TOUGHNESS: readonly (readonly [players: number, toughness: num
   [30, 6.55],
   [40, 6.6],
 ];
+/**
+ * An endless night's extra toughness for the number of connected players, on
+ * top of ROOM_TOUGHNESS (points as there). A night runs to the time limit (17
+ * waves in the default eight minutes), and a room of more than a handful has
+ * filled and upgraded every spot long before dawn, so only its flares still
+ * grow while the waves keep growing: its gloom is weaker to match. A small room
+ * is still building all night, so its gloom stays as it is. Tuned with
+ * practice-bot simulations; the numbers are in the mode's report.
+ */
+export const ENDLESS_TOUGHNESS: readonly (readonly [players: number, toughness: number])[] = [
+  [1, 1],
+  [4, 1],
+  [8, 0.63],
+  [12, 0.45],
+];
 /** Every gloomling's health is scaled by this on top of the wave, room, difficulty, map and towers. */
 export const HP_SCALE = 1;
 /** How many Wisps, Shades and Brutes a wave brings, for each `crowd` setting. */
@@ -222,8 +237,18 @@ const round = (v: number, places: number) => Math.round(v * 10 ** places) / 10 *
 
 /** Gloomling toughness for a room of this many connected players (see ROOM_TOUGHNESS). */
 export function roomFactor(players: number): number {
+  return byRoom(ROOM_TOUGHNESS, players);
+}
+
+/** The extra toughness the `towers` setting and an endless night add for a room of this many connected players. */
+export function variantFactor(st: Pick<Settings, 'towers' | 'endless'>, players: number): number {
+  return byRoom(TOWER_SET_TOUGHNESS[st.towers] ?? TOWER_SET_TOUGHNESS.all!, players) * (st.endless ? byRoom(ENDLESS_TOUGHNESS, players) : 1);
+}
+
+/** A value from a table of measured points [players, value]: straight lines between them, the end values beyond them. */
+function byRoom(table: readonly (readonly [players: number, value: number])[], players: number): number {
   const n = Math.max(1, players);
-  const table = ROOM_TOUGHNESS;
+  if (n <= table[0]![0]) return table[0]![1];
   for (let i = 1; i < table.length; i++) {
     const [n1, v1] = table[i]!;
     if (n > n1) continue;
@@ -293,9 +318,19 @@ function connected(ctx: ModeContext) {
   return ctx.players().filter((p) => p.connected);
 }
 
-/** Everyone starts able to build at once: START_GOLD, or the price of the cheapest tower in the game if that is more (Frost and Fire). */
+/** The cheapest tower in the game that fights rather than only slows: a Spark, or a Firework in Frost and Fire. */
+export function firstFighter(allowed: readonly TowerKind[]): TowerKind {
+  const fighters = allowed.filter((k) => !TOWERS[k].slow);
+  return (fighters.length ? fighters : allowed).reduce((a, b) => (TOWERS[b].cost < TOWERS[a].cost ? b : a));
+}
+
+/**
+ * Everyone starts able to build a tower that fights at once: START_GOLD, or the
+ * price of firstFighter if that is more. In Frost and Fire that is a Firework,
+ * since a lone Frost tower slows the first wave but cannot stop it.
+ */
 export function startingGold(allowed: readonly TowerKind[]): number {
-  return Math.max(START_GOLD, Math.min(...allowed.map((k) => TOWERS[k].cost)));
+  return Math.max(START_GOLD, TOWERS[firstFighter(allowed)].cost);
 }
 
 function newGuard(ctx: ModeContext<Settings>): Guard {
@@ -348,7 +383,8 @@ function startWave(s: State, at: number, ctx: ModeContext<Settings>) {
 function spawn(s: State, sp: Spawn, ctx: ModeContext<Settings>) {
   const g = GLOOMLINGS[sp.kind];
   const st = ctx.settings;
-  const tough = roomFactor(connected(ctx).length) * (DIFFICULTY_HP[st.difficulty] ?? 1) * mapOf(ctx).toughness * (TOWER_SET_TOUGHNESS[st.towers] ?? 1) * HP_SCALE;
+  const n = connected(ctx).length;
+  const tough = roomFactor(n) * variantFactor(st, n) * (DIFFICULTY_HP[st.difficulty] ?? 1) * mapOf(ctx).toughness * HP_SCALE;
   const maxHp = Math.max(1, Math.round(g.hp * waveHp(sp.wave) * tough));
   s.nextId++;
   s.gloom.push({ id: s.nextId, kind: sp.kind, road: sp.road, p: 0, hp: maxHp, maxHp, slowUntil: 0, wave: sp.wave });
@@ -595,7 +631,7 @@ function logView(e: LogEntry, ctx: ModeContext) {
 
 /** The order bots pick towers in once the room has its first Sparks, so a room of bots builds a mix. */
 const BOT_MIX: readonly TowerKind[] = ['spark', 'beam', 'frost', 'spark', 'firework', 'beam', 'spark', 'firework'];
-/** The room's first towers are Sparks (cheap, and ready before the first wave); after that each bot follows the mix. */
+/** The room's first towers are Sparks (cheap, and ready before the first wave; Fireworks in Frost and Fire); after that each bot follows the mix. */
 const BOT_SPARKS_FIRST = 4;
 const reachMemo = new Map<string, number>();
 const progressMemo = new Map<string, number>();
@@ -628,15 +664,15 @@ function hashId(id: string) {
 }
 
 /**
- * The tower a bot saves up for next: Sparks (or the first tower allowed) while
- * the room has fewer than BOT_SPARKS_FIRST towers, then its own place in the
- * mix. Without the room-wide count, a big room of bots would fill every spot
- * with a first Spark and never build a Beam.
+ * The tower a bot saves up for next: Sparks (firstFighter) while the room has
+ * fewer than BOT_SPARKS_FIRST towers, then its own place in the mix. Without
+ * the room-wide count, a big room of bots would fill every spot with a first
+ * Spark and never build a Beam.
  */
 export function botTowerChoice(allowed: readonly TowerKind[], built: number, playerId: string, roomTowers: number): TowerKind {
+  if (roomTowers < BOT_SPARKS_FIRST) return firstFighter(allowed);
   const mix = BOT_MIX.filter((k) => allowed.includes(k));
   const pool = mix.length ? mix : allowed;
-  if (roomTowers < BOT_SPARKS_FIRST) return pool[0]!;
   return pool[(hashId(playerId) + built) % pool.length]!;
 }
 

@@ -75,10 +75,14 @@ Last updated: 2026-10-22.
     screen at 1366x768 and 1920x1080, axe with no violations, no console
     errors.
 
-  Two Lantern Guard variants are still out of balance and are being retuned:
-  Frost and Fire is too hard for one player, and big classes never last
-  Endless Night. Glim Duels has not been seen in a browser with more than
-  10 duels at once.
+  Two Lantern Guard variants were retuned after the first simulations:
+  - Frost and Fire went from 17%, 70% and 100% wins (1, 4 and 12 players) to
+    80%, 80% and 73%. Everyone now starts with enough gold for a Firework,
+    and toughness grows with the room.
+  - Endless Night: 12 players went from never reaching dawn to 40%, with 1
+    and 4 players unchanged.
+
+  Glim Duels has not been seen in a browser with more than 10 duels at once.
 - **Accessibility**: an axe-core audit (WCAG 2.2 A and AA rules) of every
   player page, the sign-in pages and every staff section, in both themes at
   phone and desktop widths, finds no violations; the layout end-to-end test now
