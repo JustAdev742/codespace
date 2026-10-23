@@ -7,7 +7,8 @@
     ".": "./src/index.ts",
     "./catalog": "./src/catalog.ts",
     "./questions": "./src/questions/index.ts",
-    "./testing": "./src/testing/index.ts"
+    "./testing": "./src/testing/index.ts",
+    "./lantern-lands-map": "./src/modes/lantern-lands/map.ts"
   },
   "dependencies": {
     "@ludora/shared": "*",
