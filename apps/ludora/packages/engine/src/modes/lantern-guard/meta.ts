@@ -80,7 +80,7 @@ export const settings: SettingField[] = [
     label: 'Towers',
     options: [
       { value: 'all', label: 'All four towers' },
-      { value: 'frost-fire', label: 'Only Frost and Firework towers, against weaker gloomlings' },
+      { value: 'frost-fire', label: 'Only Frost and Firework towers' },
     ],
     default: 'all',
   },
@@ -156,7 +156,7 @@ export const variants: ModeVariant[] = [
       modeId: 'lantern-guard',
       title: 'Frost and Fire',
       tagline: 'Only Frost and Firework towers. Slow them, then burst them.',
-      changes: 'Spark and Beam towers are not available: the class defends with Frost towers that slow the gloom and Firework towers that burst over crowds, so the two have to work together. Everyone starts with 60 gold, enough for a Frost tower at once, and the gloomlings have about two thirds of their usual health to make up for the missing towers.',
+      changes: `Spark and Beam towers are not available: the class defends with Frost towers that slow the gloom and Firework towers that burst over crowds, so the two have to work together. Everyone starts with ${TOWERS.firework.cost} gold, enough for a Firework at once. Gloomlings have less health than usual in a small group, which can afford only a few Fireworks, and more in a big class, whose bursts fill the road.`,
       status: 'playable',
       thumbnail: { glyph: 'snow', hue: 195, accentHue: 20 },
     },

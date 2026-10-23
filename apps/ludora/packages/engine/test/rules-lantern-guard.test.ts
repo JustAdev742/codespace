@@ -1,11 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import {
   CROWD,
+  ENDLESS_TOUGHNESS,
   FLARE_PER_GUARD,
   ROOM_TOUGHNESS,
   WAVE_MIX,
   botSpend,
   botTowerChoice,
+  firstFighter,
   flareCost,
   guardPoints,
   lanternGuard,
@@ -13,6 +15,7 @@ import {
   roomFactor,
   roster,
   startingGold,
+  variantFactor,
   waveHp,
   type Target,
 } from '../src/modes/lantern-guard/index.ts';
@@ -469,8 +472,29 @@ describe('Lantern Guard room toughness', () => {
     expect(DIFFICULTY_HP).toEqual({ easy: 0.75, normal: 1, hard: 1.15 });
     expect(wisp({ difficulty: 'easy' }, ['a'])).toBe(Math.round(30 * roomFactor(1) * 0.75));
     expect(wisp({ difficulty: 'hard' }, ['a'])).toBe(Math.round(30 * roomFactor(1) * 1.15));
-    // Frost and Fire alone deal less damage for their gold, so its gloomlings are weaker.
-    expect(wisp({ towers: 'frost-fire' }, ['a'])).toBe(Math.round(30 * roomFactor(1) * TOWER_SET_TOUGHNESS['frost-fire']!));
+    // Frost and Fire alone deal less damage for their gold, so its gloomlings are weaker; a big room's endless night too.
+    expect(wisp({ towers: 'frost-fire' }, ['a'])).toBe(Math.round(30 * roomFactor(1) * TOWER_SET_TOUGHNESS['frost-fire']![0]![1]));
+    expect(wisp({ endless: true }, ['a', 'b', 'c', 'd'])).toBe(Math.round(30 * roomFactor(4) * variantFactor({ towers: 'all', endless: true }, 4)));
+  });
+
+  it('weakens the gloom for Frost and Fire and for a big room on an endless night, by the room size', () => {
+    const plain = { towers: 'all', endless: false };
+    const ff = { towers: 'frost-fire', endless: false };
+    const night = { towers: 'all', endless: true };
+    for (const n of [0, 1, 4, 12, 40]) expect(variantFactor(plain, n)).toBe(1);
+    for (const [n, v] of TOWER_SET_TOUGHNESS['frost-fire']!) expect(variantFactor(ff, n)).toBeCloseTo(v, 9);
+    for (const [n, v] of ENDLESS_TOUGHNESS) expect(variantFactor(night, n)).toBeCloseTo(v, 9);
+    expect(variantFactor(ff, 200)).toBe(variantFactor(ff, 30));
+    expect(variantFactor(night, 200)).toBe(variantFactor(night, 12));
+    // A small group can afford only a few 110-gold Fireworks, so its gloom is far weaker; a big class's bursts fill the road.
+    expect(variantFactor(ff, 1)).toBeLessThan(0.75);
+    expect(variantFactor(ff, 1)).toBeLessThan(variantFactor(ff, 4));
+    expect(variantFactor(ff, 4)).toBeLessThan(variantFactor(ff, 12));
+    // A lone guard's endless night is as tough as a normal game; a big room's map stops growing, so its gloom is weaker.
+    expect(variantFactor(night, 1)).toBe(1);
+    expect(variantFactor(night, 12)).toBeLessThan(0.9);
+    for (const n of [2, 4, 8, 12]) expect(variantFactor(night, n)).toBeLessThanOrEqual(variantFactor(night, n / 2));
+    expect(variantFactor({ towers: 'frost-fire', endless: true }, 12)).toBeCloseTo(variantFactor(ff, 12) * variantFactor(night, 12), 9);
   });
 });
 
@@ -614,7 +638,9 @@ describe('Lantern Guard bots', () => {
     const h = guard();
     expect(botSpend(h.view('a'), 'a')).toEqual({ type: 'build', spot: bestSpot('river'), tower: 'spark' });
     expect(botTowerChoice(['spark', 'beam', 'frost', 'firework'], 0, 'p1', 0)).toBe('spark');
-    expect(botTowerChoice(['frost', 'firework'], 0, 'p1', 0)).toBe('frost');
+    // In Frost and Fire the first towers are Fireworks: a Frost tower alone slows the gloom but cannot stop it.
+    expect(botTowerChoice(['frost', 'firework'], 0, 'p1', 0)).toBe('firework');
+    expect(botSpend(guard(pick('lantern-guard-frost-fire').settings).view('a'), 'a')).toMatchObject({ type: 'build', tower: 'firework' });
     // Once the room has a few towers, each bot follows its own mix, so a room of bots builds every kind.
     const kinds = new Set(Array.from({ length: 12 }, (_, i) => botTowerChoice(['spark', 'beam', 'frost', 'firework'], i % 3, `p${i}`, 6)));
     expect([...kinds].sort()).toEqual(['beam', 'firework', 'frost', 'spark']);
@@ -658,10 +684,13 @@ describe('Lantern Guard variants', () => {
     expect([3, 6, 9, 10].map((w) => roster(w, rush).lord)).toEqual([1, 1, 1, 1]);
     const ff = guard(pick('lantern-guard-frost-fire').settings);
     expect(ff.view('a').allowed).toEqual(['frost', 'firework']);
-    // Everyone can still build at once: the starting gold covers a Frost tower.
-    expect(ff.view('a').you.gold).toBe(TOWERS.frost.cost);
+    // Everyone can still build a tower that fights at once: the starting gold covers a Firework.
+    expect(firstFighter(['frost', 'firework'])).toBe('firework');
+    expect(ff.view('a').you.gold).toBe(TOWERS.firework.cost);
+    expect(pick('lantern-guard-frost-fire').meta.changes).toContain(`starts with ${TOWERS.firework.cost} gold`);
+    expect(firstFighter(['spark', 'beam', 'frost', 'firework'])).toBe('spark');
     expect(startingGold(['spark', 'beam', 'frost', 'firework'])).toBe(50);
-    expect(ff.rt.act('a', { type: 'build', spot: 0, tower: 'frost' }).ok).toBe(true);
+    expect(ff.rt.act('a', { type: 'build', spot: 0, tower: 'firework' }).ok).toBe(true);
     expect(ff.rt.act('a', { type: 'build', spot: 0, tower: 'spark' })).toMatchObject({ ok: false, message: 'That tower is not used in this game.' });
     expect(guard(pick('lantern-guard-fragile').settings).view('a')).toMatchObject({ lights: 8, maxLights: 8 });
     expect(guard(pick('lantern-guard-twin-gates').settings).view('a').map).toBe('twin');
