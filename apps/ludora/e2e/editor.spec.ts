@@ -14,7 +14,8 @@ test('a teacher writes a set with a picture in the editor, and players see the p
   await page.getByLabel('Question', { exact: true }).fill('Which colour is the middle stripe?');
   const choices = page.locator('input[aria-label^="Choice"], input[id*="choice"]');
   for (const [i, text] of ['Violet', 'Amber', 'Mint', 'Coral'].entries()) await choices.nth(i).fill(text);
-  await page.getByLabel('Choice A is correct').check({ force: true });
+  // The checkbox is see-through but covers its round button, so it can be checked like any other.
+  await page.getByLabel('Choice A is correct').check();
   // The "Add an image" button opens this input.
   await page.locator('input[type=file]').first().setInputFiles({ name: 'stripes.png', mimeType: 'image/png', buffer: PNG });
   await expect(page.getByLabel('Image description')).toBeFocused();
@@ -24,7 +25,10 @@ test('a teacher writes a set with a picture in the editor, and players see the p
   for (const [prompt, truth] of [['Amber is a colour.', 'True'], ['Violet is a fruit.', 'False']] as const) {
     await page.getByRole('button', { name: /^True or false/ }).last().click();
     await page.getByLabel('Statement', { exact: true }).last().fill(prompt);
-    await page.getByRole('radio', { name: truth }).last().check({ force: true });
+    // The radio itself is visually hidden; a person clicks its label. (A forced click on the hidden radio
+    // skips the checks that it is still and uncovered, so the sticky save bar or a late scroll could take it.)
+    await page.locator('label').filter({ has: page.getByRole('radio', { name: truth }) }).last().click();
+    await expect(page.getByRole('radio', { name: truth }).last()).toBeChecked();
   }
   await page.getByRole('button', { name: /^Save/ }).first().click();
   await expect(page).toHaveURL(/\/sets\/[0-9a-f-]+\/edit/);
