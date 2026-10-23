@@ -70,4 +70,8 @@ export const MODE_SCREENS: Record<string, { Player: Screen; Host: Screen }> = {
     Player: lazy(() => import('./tug-of-war.tsx').then((m) => ({ default: m.TugOfWarPlayer }))),
     Host: lazy(() => import('./tug-of-war.tsx').then((m) => ({ default: m.TugOfWarHost }))),
   },
+  'festival-workshop': {
+    Player: lazy(() => import('./festival-workshop.tsx').then((m) => ({ default: m.FestivalWorkshopPlayer }))),
+    Host: lazy(() => import('./festival-workshop.tsx').then((m) => ({ default: m.FestivalWorkshopHost }))),
+  },
 };
