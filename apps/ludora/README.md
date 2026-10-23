@@ -5,7 +5,7 @@ live game, play together with a 6-digit code or on their own, collect Glims and
 cosmetics with what they earn, and teachers run classes with assignments and
 reports. Nothing costs real money.
 
-- 17 playable game modes with 85 variants, each variant a real rule change, and
+- 18 playable game modes with 90 variants, each variant a real rule change, and
   every one passing an automated full-game test suite.
 - Questions in 8 types (multiple choice, select all, true or false, short
   answer, number, ordering, matching, flashcards), 20 built-in sets, picture

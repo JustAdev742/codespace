@@ -13,7 +13,7 @@ Last updated: 2026-10-22.
 | M0 Audit and plan | Done | Findings and plan in the first report; decisions in [DECISIONS.md](DECISIONS.md). |
 | M1 Foundation | Done | Monorepo, Postgres + Drizzle migrations, auth (accounts, guests, recovery codes), design system, app shell. |
 | M2 Engine and first loop | Done | Deterministic engine, 8 question types, Classic played host + player in the browser. |
-| M3 Multiplayer and modes | Done | 17 playable modes and 85 variants (102 in all), every variant a rule change, all passing the conformance suite. Three more modes are being built (see Open items). |
+| M3 Multiplayer and modes | Done | 18 playable modes and 90 variants (108 in all), every variant a rule change, all passing the conformance suite. Two more modes are being built (see Open items). |
 | M4 Economy and progression | Done | Shop, Lanterns with disclosed odds, collections, locker, quests, achievements, levels, streaks. |
 | M5 Staff tools | Done | Staff API and all 14 staff sections in the web app. An end-to-end test opens every section as a super administrator at phone and desktop widths. |
 | M6 Content, social, classes, analytics | Done | Friends, blocks, profiles, my stats, leaderboards, classes, assignments and their reports, hosted games, game reports, the set editor with image uploads, and AI question drafts. |
@@ -38,18 +38,18 @@ Last updated: 2026-10-22.
   not held against them (D39). Players see their own answer when locked in
   and on the reveal, and answering is held while the connection is down.
   Solo games end with Play again.
-- **Modes (17)**: Classic, Comet Dash, Quick Draw, Lantern Out, Confidence,
+- **Modes (18)**: Classic, Comet Dash, Quick Draw, Lantern Out, Confidence,
   Glimgo, Lantern Match, Word Scramble, Time Attack, Survival Run, Flashcard
   Study, Sky Lanterns, Gloom Giant, Tug of War, Night Market, Lantern Guard,
-  Glim Duels.
+  Glim Duels, Lantern Trail.
   - Every one plays to the end with 1, 4 and 12 bots (conformance suite).
   - Every one survives players leaving and pausing, and works with
     flashcard-only sets and teams.
   - Every one is deterministic for a seed and never leaks answers into a view.
   - The first 14 were also started, played and ended through the real web
-    app. The three newest were played to their results in the static demo,
+    app. The four newest were played to their results in the static demo,
     which runs the same room code with no server.
-- **Variants (85)**: each changes a rule, never just a number (for example a
+- **Variants (90)**: each changes a rule, never just a number (for example a
   wrong-answer penalty, a streak multiplier, a knockout, co-op wins, comeback
   bonuses, questions that come back at the end). New rules default to off, and
   173 recorded bot games of the base modes replay identically. Every variant
@@ -83,6 +83,18 @@ Last updated: 2026-10-22.
     and 4 players unchanged.
 
   Glim Duels has not been seen in a browser with more than 10 duels at once.
+- **Lantern Trail** (D44), a festival board game. Right answers roll the
+  dice and walk your Glim around a 32-space town loop: coin spaces, chance
+  cards, ferries, puddles and a shortcut. Players race to the Golden Lantern
+  stall, which moves each time someone buys. Rooms of 10 or more get a
+  second stall. Checked:
+  - 52 rules tests and the conformance suite for the mode and its 5
+    variants;
+  - simulations at classroom pace: the first lantern is bought in 25 to 90
+    seconds, depending on room size, and at most 2% of players end without
+    one;
+  - play-throughs in the static demo at phone and projector sizes, including
+    a 20-player room, with axe and no console errors.
 - **Accessibility**: an axe-core audit (WCAG 2.2 A and AA rules) of every
   player page, the sign-in pages and every staff section, in both themes at
   phone and desktop widths, finds no violations; the layout end-to-end test now
@@ -284,13 +296,11 @@ no errors.
 ## Open items
 
 Being built:
-- **Festival Workshop, Lantern Trail and Lantern Lands**, three more modes in
-  the D44 style:
+- **Festival Workshop and Lantern Lands**, two more modes in the D44 style:
   - Festival Workshop: a workshop tycoon with a market the whole class shares.
-  - Lantern Trail: a board game chasing a Golden Lantern stall that moves.
   - Lantern Lands: teams claim, fortify and raid lands on a hex map.
 
-  None of them is merged yet.
+  Neither is merged yet.
 
 Left out on purpose:
 - **Email.** Accounts do not collect email addresses (D38): recovery codes,
