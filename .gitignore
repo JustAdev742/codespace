@@ -6,3 +6,5 @@ __pycache__/
 .vercel/
 audit-output/
 .claude/settings.local.json
+# Worktrees that background agents work in.
+.claude/worktrees/

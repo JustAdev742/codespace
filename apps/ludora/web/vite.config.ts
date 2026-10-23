@@ -19,5 +19,7 @@ export default defineConfig({
     target: 'es2022',
     sourcemap: true,
     chunkSizeWarningLimit: 600,
+    // Sound files stay files: the sound engine fetches them, and the CSP does not let fetch read data: URLs.
+    assetsInlineLimit: (file) => (file.endsWith('.mp3') ? false : undefined),
   },
 });

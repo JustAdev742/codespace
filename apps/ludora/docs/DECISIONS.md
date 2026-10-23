@@ -292,3 +292,24 @@ paths and hash routes, so it works at a project's Pages address and survives a
 reload. It shares the app's screens unchanged, and its own end-to-end tests
 serve it under a sub-path with no server, as Pages does. Pages publishes from
 the default branch, and only once the repository turns Pages on.
+
+**D43. Music and effects are rendered offline from Ludora's own scores.** The
+synthesised sounds of D41 were thin next to the games players know. The scores
+and effects are now code in `tools/audio`. They render through FluidSynth with
+the MuseScore General soundfont (MIT; some samples public domain or CC0), then
+are mixed and mastered in Python: EQ and compression from pedalboard, a reverb
+generated in code, and loudness measured to ITU-R BS.1770. There are still no
+recordings, loops or sound packs from anywhere else. The soundfont's notice
+ships next to the files (`web/src/assets/audio/CREDITS.md`).
+
+The build's output is committed (the MP3s and a generated manifest), so
+building the app needs no Python. Rebuilding with no changes gives
+byte-identical files. A loop's file holds half a second of music either side of
+the loop, so a decoder that shifts the audio by a few milliseconds cannot break
+the seam.
+
+Each kind of game has its own track, with a final-stretch track for the end and
+results music after the fanfare. In the browser, the common effects load first
+after the first interaction and the rest follow in the background; until a file
+is ready, its synthesised version plays. Phones fetch the effects (about
+1.4 MB) but never the music. Who hears what is unchanged from D41.

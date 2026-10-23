@@ -7,7 +7,7 @@ import { extname, join, normalize, resolve } from 'node:path';
 const root = resolve(process.argv[2] ?? 'web/dist-demo');
 const port = Number(process.argv[3] ?? 8898);
 const prefix = '/ludora-demo/';
-const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css', '.svg': 'image/svg+xml', '.woff2': 'font/woff2', '.json': 'application/json', '.png': 'image/png', '.map': 'application/json' };
+const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css', '.svg': 'image/svg+xml', '.woff2': 'font/woff2', '.json': 'application/json', '.png': 'image/png', '.map': 'application/json', '.mp3': 'audio/mpeg' };
 
 createServer(async (req, res) => {
   const path = decodeURIComponent(new URL(req.url ?? '/', 'http://x').pathname);

@@ -82,7 +82,8 @@ server/src
 ```
 web/src
   app/        router, shell (navigation, balances, account menu), preference sync
-  lib/        API client (adds the CSRF header), session and permission hooks, room hook (Socket.IO), formatting
+  lib/        API client (adds the CSRF header), session and permission hooks, room hook (Socket.IO), formatting, sound
+  assets/     the music and sound effects (MP3s rendered by tools/audio) and their credits
   ui/         primitives (panels, forms, dialogs, tabs, badges) and buttons
   art/        procedural art: Glims, accessories, cosmetics, Lanterns, mode thumbnails, effects
   features/   one folder per area; features/admin is the staff area
@@ -95,6 +96,14 @@ web/src
 - Design tokens are CSS variables with a dark and a light theme, player-chosen
   text size, high contrast and reduced motion. Game pieces use the "sticker"
   style; answers are told apart by shape and letter as well as colour.
+- Sound (`lib/sound`) is one engine per page. The effects and the music loops
+  are files rendered offline by `tools/audio`, a Python build that turns
+  Ludora's scores into MP3s and writes `assets.generated.ts` (file URLs, loop
+  points, tempos). Effects play their synthesised version from `sfx.ts` until
+  their file has loaded. Music loops between the points the manifest gives,
+  changes on the bar line, and dips under big effects.
+  `features/room/music.ts` picks the track: the lobby, each mode's own, the
+  final stretch, then the results.
 
 ## Data model highlights
 

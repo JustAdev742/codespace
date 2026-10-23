@@ -1,8 +1,10 @@
 import { bass, bell, kick, noiseHit, pad, pluck, type Out } from './synth.ts';
 
 /*
- * Ludora's music: two original loops in D major pentatonic, the lantern-festival
- * sound of plucked notes, soft pads and little bells.
+ * Synthesised music: two original loops in D major pentatonic, the
+ * lantern-festival sound of plucked notes, soft pads and little bells. They
+ * stand in for the recorded tracks (assets.generated.ts) when a track's file
+ * cannot be loaded.
  * - Lobby: relaxed, while players arrive. Sixteen bars, a tune and an answer.
  * - Game: lighter and steadier under the questions, so it never competes with
  *   thinking. Eight bars.
@@ -10,7 +12,7 @@ import { bass, bell, kick, noiseHit, pad, pluck, type Out } from './synth.ts';
  * MusicPlayer plays those on a clock that schedules a little ahead.
  */
 
-export type TrackId = 'lobby' | 'game';
+export type SynthTrackId = 'lobby' | 'game';
 
 /** A note in a part: `step` is a 16th note from the start of the loop, `len` is in 16ths. */
 export interface PartNote {
@@ -26,7 +28,7 @@ export interface Chord {
 }
 
 export interface Track {
-  id: TrackId;
+  id: SynthTrackId;
   bpm: number;
   bars: number;
   /** One chord per bar. */
@@ -128,7 +130,7 @@ export const GAME: Track = {
   level: { melody: 0.1, bells: 0.045, pad: 0.05, bass: 0.16, kick: 0.13, snare: 0.028, shaker: 0.016, arp: 0.06 },
 };
 
-export const TRACKS: Record<TrackId, Track> = { lobby: LOBBY, game: GAME };
+export const TRACKS: Record<SynthTrackId, Track> = { lobby: LOBBY, game: GAME };
 
 /** Seconds per 16th note. */
 export const stepSeconds = (track: Track) => 60 / track.bpm / 4;

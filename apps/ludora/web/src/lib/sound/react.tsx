@@ -3,7 +3,7 @@ import type { Pacing } from '@ludora/shared';
 import { useMe } from '../session.ts';
 import { sound } from './engine.ts';
 import type { SfxName, SfxOptions } from './sfx.ts';
-import type { TrackId } from './music.ts';
+import type { MusicId } from './assets.generated.ts';
 
 /*
  * Sound for React screens. A game room says whose screen it is: the host's
@@ -52,11 +52,19 @@ export function useSfx(name: SfxName, key: unknown, enabled = true, options?: Sf
 }
 
 /** The music for this screen; null for none. Stops when the screen goes. */
-export function useMusic(track: TrackId | null) {
+export function useMusic(track: MusicId | null) {
   useEffect(() => {
     sound.setMusic(track);
   }, [track]);
   useEffect(() => () => sound.setMusic(null), []);
+}
+
+/** Fetches tracks this screen is likely to want next, so they start without a wait. */
+export function usePrefetchMusic(tracks: MusicId[], enabled = true) {
+  const key = tracks.join(' ');
+  useEffect(() => {
+    if (enabled && key) sound.prefetchMusic(key.split(' ') as MusicId[]);
+  }, [key, enabled]);
 }
 
 export const playSfx = (name: SfxName, options?: SfxOptions) => sound.play(name, options);

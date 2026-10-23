@@ -122,7 +122,8 @@ function Sequence({ lantern, packId, packName, result, onClose, again, onMakeBud
   // The sound follows the moments: the light building, the Lantern opening, then the Glim, grander for rarer ones.
   const stopRise = useRef<() => void>(() => {});
   useEffect(() => {
-    if (phase === 'glow') stopRise.current = playSfx('lanternRise', { seconds: (GLOW_MS[result.item.rarity] + OPEN_MS) / 1000 });
+    // The build-up lands as the Lantern opens.
+    if (phase === 'glow') stopRise.current = playSfx('lanternRise', { seconds: GLOW_MS[result.item.rarity] / 1000 });
     if (phase === 'open') playSfx('lanternOpen');
     if (phase === 'reveal') {
       stopRise.current();

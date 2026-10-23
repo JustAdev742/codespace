@@ -31,6 +31,8 @@ export default defineConfig({
     outDir: 'dist-demo',
     emptyOutDir: true,
     chunkSizeWarningLimit: 900,
+    // Sound files stay files, fetched by the sound engine when needed.
+    assetsInlineLimit: (file) => (file.endsWith('.mp3') ? false : undefined),
     rollupOptions: { input: 'demo.html' },
   },
   preview: { port: 4174, strictPort: true },

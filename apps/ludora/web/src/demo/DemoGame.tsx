@@ -11,7 +11,8 @@ import { Announcer } from '../features/room/game/announce.tsx';
 import { MuteButton } from '../features/room/game/MuteButton.tsx';
 import { AnswerMemory } from '../features/room/game/answerMemory.tsx';
 import { FeedToasts, GameStage, HostControls, STAGE, WIDE } from '../features/room/GameStage.tsx';
-import { SoundRoleContext, useMusic, type SoundRole } from '../lib/sound/react.tsx';
+import { SoundRoleContext, type SoundRole } from '../lib/sound/react.tsx';
+import { useRoomMusic } from '../features/room/music.ts';
 import '../features/room/stage.css';
 import { useLocalRoom, type DemoSetup } from './localRoom.ts';
 import { choiceFromParams, readName, resolveChoice, toSetup } from './setup.ts';
@@ -40,7 +41,7 @@ function DemoRoom({ setup }: { setup: DemoSetup }) {
   const live = status === 'running' || status === 'paused';
   // Your screen is a solo player's, with the clock and the music; the big screen is the host's.
   const role: SoundRole = big ? 'host' : 'solo';
-  useMusic(status === 'running' ? 'game' : null);
+  useRoomMusic(room, role, handle?.gameNow);
   const pacing = room?.room.pacing ?? null;
   const soundScene = useMemo(() => ({ role, pacing }), [role, pacing]);
   const title = room?.room.title;

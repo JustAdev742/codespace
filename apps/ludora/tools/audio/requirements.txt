@@ -1,0 +1,10 @@
+# The audio build (build.py). Pinned, so a rebuild renders the same sound: the effects and the
+# reverb use seeded random numbers, and the EQ and compression come from these exact versions.
+numpy==2.5.4
+scipy==1.18.1
+# Spotify's audio effects: filters, EQ and compression.
+pedalboard==0.9.26
+# Loudness to ITU-R BS.1770, so every track and effect sits at its intended level.
+pyloudnorm==0.2.0
+soundfile==0.14.0
+mido==1.3.3

@@ -14,6 +14,8 @@ reports. Nothing costs real money.
 - Server-authoritative realtime games with reconnection and host controls.
 - An economy with disclosed Lantern odds, a ledger and idempotent purchases.
 - Staff tools with server-enforced roles, an audit log and safe test accounts.
+- Original music and sound effects: seven music loops and sixty effects, composed for Ludora
+  and rendered from code (`tools/audio`), with a track for each kind of game.
 
 Status, what is verified and what is not built yet: [docs/STATUS.md](docs/STATUS.md).
 
@@ -111,3 +113,4 @@ Server tests create and drop their own databases; set
 | [docs/GAME_MODE_SDK.md](docs/GAME_MODE_SDK.md) | How to write a game mode and what it must pass. |
 | [docs/SECURITY.md](docs/SECURITY.md) | The security model. |
 | [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) | Docker, configuration, environments, operations. |
+| [tools/audio/README.md](tools/audio/README.md) | How the music and sound effects are written and built. |

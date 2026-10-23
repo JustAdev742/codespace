@@ -14,3 +14,7 @@ playwright-report-demo/
 /uploads/
 /server/uploads/
 .vite/
+# The audio build's render cache and virtualenv (tools/audio).
+tools/audio/.cache/
+tools/audio/.venv/
+__pycache__/

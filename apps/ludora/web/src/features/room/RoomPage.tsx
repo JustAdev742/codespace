@@ -16,7 +16,8 @@ import './stage.css';
 import { Announcer, useAnnounce } from './game/announce.tsx';
 import { FeedToasts, GameStage, HostControls, STAGE, WIDE } from './GameStage.tsx';
 import { MuteButton } from './game/MuteButton.tsx';
-import { SoundRoleContext, useMusic, type SoundRole } from '../../lib/sound/react.tsx';
+import { SoundRoleContext, type SoundRole } from '../../lib/sound/react.tsx';
+import { useRoomMusic } from './music.ts';
 import { Online } from './game/online.tsx';
 import { AnswerMemory } from './game/answerMemory.tsx';
 
@@ -59,11 +60,9 @@ export default function RoomPage() {
   const [reporting, setReporting] = useState(false);
   const [confirmLeave, setConfirmLeave] = useState(false);
   const debug = useFlag('debug.overlay');
-  // Music plays on the host's screen and in solo games, never on players' phones: lobby music while
-  // people arrive, then the game loop. It rests while the game is paused and stops for the results.
+  // Music plays on the host's screen and in solo games, never on players' phones (see music.ts).
   const role: SoundRole = !room ? 'page' : room.me.role === 'host' ? 'host' : room.room.solo ? 'solo' : 'player';
-  const roomStatus = room?.room.status;
-  useMusic(role === 'host' && roomStatus === 'lobby' ? 'lobby' : (role === 'host' || role === 'solo') && roomStatus === 'running' ? 'game' : null);
+  useRoomMusic(room, role, handle.gameNow);
   const pacing = room?.room.pacing ?? null;
   const soundScene = useMemo(() => ({ role, pacing }), [role, pacing]);
 
