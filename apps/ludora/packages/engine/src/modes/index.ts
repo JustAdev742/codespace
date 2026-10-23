@@ -33,9 +33,11 @@ import { lanternGuard } from './lantern-guard/index.ts';
 import { variants as lanternGuardVariants } from './lantern-guard/meta.ts';
 import { glimDuels } from './glim-duels/index.ts';
 import { variants as glimDuelsVariants } from './glim-duels/meta.ts';
+import { lanternTrail } from './lantern-trail/index.ts';
+import { variants as lanternTrailVariants } from './lantern-trail/meta.ts';
 
 /** Every mode with logic. Order here is the default catalogue order. */
-export const MODES: readonly GameMode[] = [classic, cometDash, quickDraw, lanternOut, confidence, glimgo, lanternMatch, wordScramble, timeAttack, survivalRun, flashcardStudy, skyLanterns, gloomGiant, tugOfWar, nightMarket, lanternGuard, glimDuels];
+export const MODES: readonly GameMode[] = [classic, cometDash, quickDraw, lanternOut, confidence, glimgo, lanternMatch, wordScramble, timeAttack, survivalRun, flashcardStudy, skyLanterns, gloomGiant, tugOfWar, nightMarket, lanternGuard, glimDuels, lanternTrail];
 
 export const VARIANTS: readonly ModeVariant[] = [
   ...classicVariants,
@@ -55,4 +57,5 @@ export const VARIANTS: readonly ModeVariant[] = [
   ...nightMarketVariants,
   ...lanternGuardVariants,
   ...glimDuelsVariants,
+  ...lanternTrailVariants,
 ];

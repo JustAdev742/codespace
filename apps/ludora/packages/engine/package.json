@@ -9,7 +9,8 @@
     "./questions": "./src/questions/index.ts",
     "./testing": "./src/testing/index.ts",
     "./night-market-odds": "./src/modes/night-market/odds.ts",
-    "./lantern-guard-maps": "./src/modes/lantern-guard/maps.ts"
+    "./lantern-guard-maps": "./src/modes/lantern-guard/maps.ts",
+    "./lantern-trail-board": "./src/modes/lantern-trail/board.ts"
   },
   "dependencies": {
     "@ludora/shared": "*",

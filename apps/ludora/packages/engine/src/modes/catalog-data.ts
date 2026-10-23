@@ -17,6 +17,7 @@ import * as tugOfWar from './tug-of-war/meta.ts';
 import * as nightMarket from './night-market/meta.ts';
 import * as lanternGuard from './lantern-guard/meta.ts';
 import * as glimDuels from './glim-duels/meta.ts';
+import * as lanternTrail from './lantern-trail/meta.ts';
 
 /**
  * Metadata only, no game logic, so the browser can import the catalogue
@@ -40,4 +41,5 @@ export const CATALOG_DATA: readonly { meta: ModeMeta; settings: readonly Setting
   nightMarket,
   lanternGuard,
   glimDuels,
+  lanternTrail,
 ];
