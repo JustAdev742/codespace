@@ -86,4 +86,8 @@ export const MODE_SCREENS: Record<string, { Player: Screen; Host: Screen }> = {
     Player: lazy(() => import('./lantern-trail.tsx').then((m) => ({ default: m.LanternTrailPlayer }))),
     Host: lazy(() => import('./lantern-trail.tsx').then((m) => ({ default: m.LanternTrailHost }))),
   },
+  'lantern-lands': {
+    Player: lazy(() => import('./lantern-lands.tsx').then((m) => ({ default: m.LanternLandsPlayer }))),
+    Host: lazy(() => import('./lantern-lands.tsx').then((m) => ({ default: m.LanternLandsHost }))),
+  },
 };
