@@ -313,3 +313,25 @@ results music after the fanfare. In the browser, the common effects load first
 after the first interaction and the rest follow in the background; until a file
 is ready, its synthesised version plays. Phones fetch the effects (about
 1.4 MB) but never the music. Who hears what is unchanged from D41.
+
+**D44. New modes are games first: a choice after every right answer, and
+players affecting each other.** Players asked for modes as lively as the
+games they know, not a quiz with a skin. Each new mode is built around:
+- a decision after answering (which lantern to open, which tower to build,
+  which power to spend);
+- ways to affect other players, each with a limit;
+- room-wide events;
+- a way back for whoever is behind.
+
+The limits are part of the design:
+- Tricks can be blocked by shields everyone can see.
+- A player who was just tricked is safe for a few seconds, and nobody can
+  trick the same player twice in a row.
+- A choice nobody makes is made for the player after a short time.
+- Co-op modes scale their toughness with the size of the room.
+
+Every random outcome uses the room's seeded generator on the server, and its
+odds are shown to players where they choose. Balance is tuned with bot
+simulations before a mode ships, and the numbers go in its commit. The
+mechanics, names and art are Ludora's own.
+

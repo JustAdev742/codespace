@@ -13,7 +13,7 @@ Last updated: 2026-10-22.
 | M0 Audit and plan | Done | Findings and plan in the first report; decisions in [DECISIONS.md](DECISIONS.md). |
 | M1 Foundation | Done | Monorepo, Postgres + Drizzle migrations, auth (accounts, guests, recovery codes), design system, app shell. |
 | M2 Engine and first loop | Done | Deterministic engine, 8 question types, Classic played host + player in the browser. |
-| M3 Multiplayer and modes | Done | 14 playable modes and 70 variants (84 in all), every variant a rule change, all passing the conformance suite. |
+| M3 Multiplayer and modes | Done | 17 playable modes and 85 variants (102 in all), every variant a rule change, all passing the conformance suite. Three more modes are being built (see Open items). |
 | M4 Economy and progression | Done | Shop, Lanterns with disclosed odds, collections, locker, quests, achievements, levels, streaks. |
 | M5 Staff tools | Done | Staff API and all 14 staff sections in the web app. An end-to-end test opens every section as a super administrator at phone and desktop widths. |
 | M6 Content, social, classes, analytics | Done | Friends, blocks, profiles, my stats, leaderboards, classes, assignments and their reports, hosted games, game reports, the set editor with image uploads, and AI question drafts. |
@@ -38,20 +38,47 @@ Last updated: 2026-10-22.
   not held against them (D39). Players see their own answer when locked in
   and on the reveal, and answering is held while the connection is down.
   Solo games end with Play again.
-- **Modes (14)**: Classic, Comet Dash, Quick Draw, Lantern Out, Confidence,
+- **Modes (17)**: Classic, Comet Dash, Quick Draw, Lantern Out, Confidence,
   Glimgo, Lantern Match, Word Scramble, Time Attack, Survival Run, Flashcard
-  Study, Sky Lanterns, Gloom Giant, Tug of War. Each one plays to the end with
-  1, 4 and 12 bots, survives players leaving and pausing, works with
-  flashcard-only sets and teams, is deterministic for a seed, and never leaks
-  answers into a view (conformance suite). All 14 were also started, played and
-  ended through the real web app.
-- **Variants (70)**: each changes a rule, never just a number (for example a
+  Study, Sky Lanterns, Gloom Giant, Tug of War, Night Market, Lantern Guard,
+  Glim Duels.
+  - Every one plays to the end with 1, 4 and 12 bots (conformance suite).
+  - Every one survives players leaving and pausing, and works with
+    flashcard-only sets and teams.
+  - Every one is deterministic for a seed and never leaks answers into a view.
+  - The first 14 were also started, played and ended through the real web
+    app. The three newest were played to their results in the static demo,
+    which runs the same room code with no server.
+- **Variants (85)**: each changes a rule, never just a number (for example a
   wrong-answer penalty, a streak multiplier, a knockout, co-op wins, comeback
   bonuses, questions that come back at the end). New rules default to off, and
   173 recorded bot games of the base modes replay identically. Every variant
   plays to the end with its mode's minimum players, survives players leaving
   and replays from a seed; each new rule has its own test. Fading Lights and
   Kindling were also played to the end in the real app.
+- **Night Market, Lantern Guard and Glim Duels** (D44), three modes built to
+  play like games rather than quizzes with a skin:
+  - **Night Market**: right answers pick one of three mystery lanterns. They
+    hold coins, a gamble, a trick on another player (swipe, swap or toll) or
+    a charm.
+  - **Lantern Guard**: the class builds and upgrades towers against waves of
+    gloomlings and Gloom Lords, and can fill the Great Lantern for a flare.
+  - **Glim Duels**: head-to-head duels on the class's questions, with
+    shields, power strikes and mends, and a Shadow Glim for the odd player out.
+
+  Every random outcome has its odds shown to players. Checked:
+  - rules tests: 28, 38 and 47;
+  - the conformance suite for all three and their 15 variants;
+  - bot simulations, used to tune balance (the numbers are in each mode's
+    commit);
+  - play-throughs in the static demo: phone at 390x844 and 360x640, big
+    screen at 1366x768 and 1920x1080, axe with no violations, no console
+    errors.
+
+  Two Lantern Guard variants are still out of balance and are being retuned:
+  Frost and Fire is too hard for one player, and big classes never last
+  Endless Night. Glim Duels has not been seen in a browser with more than
+  10 duels at once.
 - **Accessibility**: an axe-core audit (WCAG 2.2 A and AA rules) of every
   player page, the sign-in pages and every staff section, in both themes at
   phone and desktop widths, finds no violations; the layout end-to-end test now
@@ -236,11 +263,11 @@ creates and drops its own database).
 | Project | Files | Tests |
 |---|---|---|
 | content | 2 | 112: catalogue integrity and every built-in question set |
-| engine | 14 | 720, including the conformance suite for every mode and variant |
+| engine | 17 | 917, including the conformance suite for every mode and variant |
 | server | 11 | 142: auth and rate limits (14), realtime (5), economy (20), staff (54), social and classes (17), preferences (4), open games (4), sign-in help (3), uploads (6), AI drafts (11), reward counting (4) |
 | web | 4 | 84: the set editor's checks, import and export (45); the synthesised music, in key and looping cleanly (16); the recorded sounds, every effect with a file and every loop a whole number of bars (16); which music plays when (7) |
 | shared | 0 | no tests of its own; its schemas are exercised by the other projects |
-| **Total** | **31** | **1059 passing** at the last full run |
+| **Total** | **34** | **1255 passing** at the last full run |
 
 End-to-end: `npm run test:e2e` (needs Postgres; builds first, then runs 8
 browser tests against a fresh `ludora_e2e` database). All 8 pass.
@@ -251,6 +278,15 @@ no server. All 4 pass.
 no errors.
 
 ## Open items
+
+Being built:
+- **Festival Workshop, Lantern Trail and Lantern Lands**, three more modes in
+  the D44 style:
+  - Festival Workshop: a workshop tycoon with a market the whole class shares.
+  - Lantern Trail: a board game chasing a Golden Lantern stall that moves.
+  - Lantern Lands: teams claim, fortify and raid lands on a hex map.
+
+  None of them is merged yet.
 
 Left out on purpose:
 - **Email.** Accounts do not collect email addresses (D38): recovery codes,
