@@ -27,9 +27,11 @@ import { gloomGiant } from './gloom-giant/index.ts';
 import { variants as gloomGiantVariants } from './gloom-giant/meta.ts';
 import { tugOfWar } from './tug-of-war/index.ts';
 import { variants as tugOfWarVariants } from './tug-of-war/meta.ts';
+import { lanternGuard } from './lantern-guard/index.ts';
+import { variants as lanternGuardVariants } from './lantern-guard/meta.ts';
 
 /** Every mode with logic. Order here is the default catalogue order. */
-export const MODES: readonly GameMode[] = [classic, cometDash, quickDraw, lanternOut, confidence, glimgo, lanternMatch, wordScramble, timeAttack, survivalRun, flashcardStudy, skyLanterns, gloomGiant, tugOfWar];
+export const MODES: readonly GameMode[] = [classic, cometDash, quickDraw, lanternOut, confidence, glimgo, lanternMatch, wordScramble, timeAttack, survivalRun, flashcardStudy, skyLanterns, gloomGiant, tugOfWar, lanternGuard];
 
 export const VARIANTS: readonly ModeVariant[] = [
   ...classicVariants,
@@ -46,4 +48,5 @@ export const VARIANTS: readonly ModeVariant[] = [
   ...skyLanternsVariants,
   ...gloomGiantVariants,
   ...tugOfWarVariants,
+  ...lanternGuardVariants,
 ];
