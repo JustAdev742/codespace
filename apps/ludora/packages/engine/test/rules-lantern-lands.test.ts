@@ -3,6 +3,7 @@ import { createRng } from '@ludora/shared';
 import {
   BONUS_METER_MAX,
   HIDDEN_FORT,
+  SHRINE_NEWS_GAP_MS,
   NOBODY,
   UNSEEN,
   botMove,
@@ -299,6 +300,16 @@ describe('Lantern Lands map actions', () => {
     expect(h.rt.act('a', { type: 'raid', land: centre }).ok).toBe(true);
     expect(h.host().owner[centre]).toBe(0);
     expect(h.feed.map((f) => f.text)).toContain('A captured the centre shrine from the Lanterns for the Comets!');
+    // B takes it straight back: Big plays lists it, but the room is not told again so soon.
+    charge(h, 'b', 2);
+    expect(h.rt.act('b', { type: 'raid', land: centre }).ok).toBe(true);
+    expect(h.host().owner[centre]).toBe(1);
+    expect(h.host().plays[0].text).toBe('B captured the centre shrine from the Comets');
+    expect(h.feed.filter((f) => f.text.includes('captured the centre shrine'))).toHaveLength(1);
+    h.tick(SHRINE_NEWS_GAP_MS);
+    charge(h, 'a', 2);
+    expect(h.rt.act('a', { type: 'raid', land: centre }).ok).toBe(true);
+    expect(h.feed.filter((f) => f.text.includes('captured the centre shrine'))).toHaveLength(2);
   });
 
   it('checks every action against the map when it arrives: whoever gets there first wins, and a refusal costs nothing', () => {

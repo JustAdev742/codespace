@@ -75,6 +75,8 @@ export const HIDDEN_FORT = -1;
 const CHANGES_KEPT = 24;
 const CHANGE_GLOW_MS = 4000;
 const PLAYS_KEPT = 6;
+/** A shrine that keeps changing hands is announced to the room at most this often; Big plays still lists every capture. */
+export const SHRINE_NEWS_GAP_MS = 15_000;
 /** A team's bonus meter holds at most this much, so it cannot be saved up for the final glow. */
 export const BONUS_METER_MAX = 3;
 /** Contribution points: what each kind of help is worth in the player standings. */
@@ -135,6 +137,8 @@ interface State {
   eventsRun: number;
   /** Shrines lit at least once, so only the first claim of each is announced. */
   lit: number[];
+  /** When each shrine's capture was last announced, by land. */
+  shrineNews: Record<number, number>;
   changes: Change[];
   plays: Play[];
   winners: number[] | null;
@@ -383,7 +387,10 @@ function mapAction(s: State, playerId: PlayerId, m: Member, kind: 'claim' | 'for
       recordChange(s, l, team, owner, at);
       const shrine = isShrine(s, l);
       recordPlay(s, { at, team, text: `${who} captured ${placeName(s, l)} from the ${teamName(s, owner)}`, shrine });
-      if (shrine) ctx.feed(`${who} captured ${shrineName(s.map.radius, l)} from the ${teamName(s, owner)} for the ${teamName(s, team)}!`, { tone: 'big' });
+      if (shrine && at - (s.shrineNews[l] ?? -SHRINE_NEWS_GAP_MS) >= SHRINE_NEWS_GAP_MS) {
+        s.shrineNews[l] = at;
+        ctx.feed(`${who} captured ${shrineName(s.map.radius, l)} from the ${teamName(s, owner)} for the ${teamName(s, team)}!`, { tone: 'big' });
+      }
       return;
     }
   }
@@ -614,6 +621,7 @@ export const lanternLands = defineMode<State, Settings, Action>({
       nextEventAt: null,
       eventsRun: 0,
       lit: [],
+      shrineNews: {},
       changes: [],
       plays: [],
       winners: null,
