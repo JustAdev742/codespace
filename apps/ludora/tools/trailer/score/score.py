@@ -1,7 +1,7 @@
 """The trailer's score: an upbeat synth-pop cue in D major at 120 BPM, written to the edit.
 
 One bar is 2 seconds. Every instrument is synthesized here (band-limited saws, FM keys, a synthesized drum kit),
-the classroom is crowd.py, and the app's own sound effects are laid over it from cues.json. Run with
+the classroom is real public-domain and CC0 recordings (samples/), and the app's own sound effects are laid over it from cues.json. Run with
 tools/audio/.venv/bin/python score.py <out.wav> [cues.json].
 
   0-8     cold open: a school bell, a ticking clock, the class murmuring, a pad and a dark arpeggio; 3-2-1; silence
@@ -239,6 +239,77 @@ def lerp(a: float, b: float, t: float) -> float:
     return a + (b - a) * t
 
 
+# ---------------------------------------------------------------- the crowd, from real recordings
+# Public-domain and CC0 recordings from Wikimedia Commons (samples/CREDITS.md). A few real voices become a room
+# by layering copies a few milliseconds apart, each at a slightly different speed and place in the stereo field.
+SAMPLES = Path(__file__).resolve().parent / "samples"
+
+
+def load(name: str) -> np.ndarray:
+    data = subprocess.run(["ffmpeg", "-v", "error", "-i", str(SAMPLES / name), "-f", "f32le", "-ac", "2", "-ar", str(SR), "-"], capture_output=True, check=True).stdout
+    return np.frombuffer(data, dtype=np.float32).reshape(-1, 2).copy()
+
+
+def cut(x: np.ndarray, a: float, b: float, fade: float = 0.04, fade_out: float | None = None) -> np.ndarray:
+    y = x[int(a * SR):int(b * SR)].copy()
+    k, ko = int(fade * SR), int((fade_out or fade) * SR)
+    y[:k] *= np.linspace(0, 1, k, dtype=np.float32)[:, None]
+    y[-ko:] *= np.linspace(1, 0, ko, dtype=np.float32)[:, None]
+    return y
+
+
+def respeed(x: np.ndarray, r: float) -> np.ndarray:
+    """Tape-style speed change: r > 1 is higher and shorter."""
+    n = int(len(x) / r)
+    src = np.arange(n) * r
+    i = np.arange(len(x))
+    return np.stack([np.interp(src, i, x[:, c]) for c in range(x.shape[1])], axis=1).astype(np.float32)
+
+
+def stack(x: np.ndarray, layers: list[tuple[float, float, float, float]]) -> np.ndarray:
+    """Copies of x: (offset s, speed, pan, gain dB) each."""
+    n = max(int(o * SR) + int(len(x) / r) for o, r, _, _ in layers) + 1
+    out = np.zeros((n, 2), np.float32)
+    for o, r, p, g in layers:
+        y = st(respeed(x, r).mean(axis=1), p) * dsp.db(g)
+        a = int(o * SR)
+        out[a:a + len(y)] += y
+    return out
+
+
+HURRAY = load("clapping-hurray.ogg")
+SHOUT = cut(HURRAY, 6.25, 8.45, fade_out=0.25)  # clapping and shouting
+YEAH = cut(HURRAY, 10.38, 11.2, fade_out=0.2)  # one big "yeah!"
+APPLAUSE_I = load("applause-i.ogg")
+APPLAUSE_II = load("applause-ii.ogg")
+CONCERT = load("applause-concert.ogg")
+ROOM = [(0.0, 1.0, -0.5, 0), (0.035, 1.035, 0.55, -1), (0.07, 0.97, -0.15, -2), (0.11, 1.07, 0.8, -3), (0.15, 0.94, -0.8, -3), (0.19, 1.05, 0.2, -4)]
+
+
+def room_cheer(seed: int = 0, waves: int = 1) -> np.ndarray:
+    """The whole room going up: the shout layered six deep, then the "yeah!" on top."""
+    r = np.random.default_rng(seed)
+    parts = []
+    for w in range(waves):
+        lay = [(o + w * 0.42 + r.uniform(0, 0.02), sp * r.uniform(0.99, 1.01), p * (1 if w % 2 == 0 else -1), g - w * 1.5) for o, sp, p, g in ROOM]
+        parts.append((0.0, stack(SHOUT, lay)))
+        parts.append((1.85 + w * 0.42, stack(YEAH, lay[:4])))
+    n = max(int(a * SR) + len(x) for a, x in parts)
+    out = np.zeros((n, 2), np.float32)
+    for a, x in parts:
+        out[int(a * SR):int(a * SR) + len(x)] += x
+    return out
+
+
+def yeah(pan: float = 0.0, deep: int = 3) -> np.ndarray:
+    lay = [(o, sp, max(-1, min(1, pan + p * 0.35)), g) for o, sp, p, g in ROOM[:deep]]
+    return stack(YEAH, lay)
+
+
+def applause_from(x: np.ndarray, a: float, b: float, fade_out: float = 1.2) -> np.ndarray:
+    return cut(x, a, b, fade=0.03, fade_out=fade_out)
+
+
 # ---------------------------------------------------------------- the arrangement
 BUS = {k: np.zeros((N, 2), np.float32) for k in ("drums", "bass", "music", "lead", "fx", "crowd", "app", "keys")}
 KICKS: list[float] = []
@@ -336,7 +407,6 @@ def roll(a: float, b: float, gain_db: float = -4.0) -> None:
 def build() -> None:
     # 0-8: the cold open.
     put("fx", crowd.room_tone(8.0), 0.0, -6)
-    put("crowd", crowd.murmur(6.2), 0.0, -14)
     put("fx", crowd.bell(), 0.25, 4)
     for i in range(16):
         put("drums", tick(i % 2 == 0, 0.5 + 0.5 * i / 15), i * BEAT, -10 + i * 0.4)
@@ -352,7 +422,6 @@ def build() -> None:
     for i, at in enumerate((6.0, 6.5, 7.0)):
         put("drums", tom(45 - i * 3, 1.0), at, 0)
         put("fx", synth.impact(0.6, 120, 40, 0.5), at, -6)
-    put("crowd", crowd.cheer(1.8, voices=22, seed=7, word="ooh", spread=0.3, shout=0.1), 5.9, -10)
 
     # 8-18: the game.
     put("fx", synth.impact(1.2, 150, 38, 1.0, crack=0.4), 8.0, 0)
@@ -362,8 +431,9 @@ def build() -> None:
     put("drums", crash(1.0), 12.2, -2)
     put("fx", synth.impact(0.8, 130, 40, 0.7), 12.2, -4)
     groove(12.0, 18.0, arp_db=-4, stabs_db=-8, pad_db=-10, clap_db=-2)
-    put("crowd", crowd.cheer(3.6, voices=34, seed=11, word="mix", spread=0.3), 12.25, 0)
-    put("crowd", crowd.applause(3.8, clappers=28, seed=12), 12.45, 2)
+    put("crowd", room_cheer(seed=11), 12.22, 4)
+    put("crowd", applause_from(APPLAUSE_I, 1.4, 5.2), 12.32, 2)
+    put("crowd", applause_from(CONCERT, 0.0, 3.3), 12.3, -2)
     put("drums", crash(0.7), 16.0, -6)
     for at in (17.0, 17.5):
         put("music", stab(CH["D"] + [74], 0.4, gain=1.2), at, -3)
@@ -382,9 +452,9 @@ def build() -> None:
     put("fx", synth.impact(1.2, 150, 38, 1.0, crack=0.4), 28.0, 0)
     put("drums", crash(1.0), 28.0, -3)
     groove(28.0, 40.0, arp_db=-7, pad_db=-8, hook_db=0, clap_db=-1)
-    put("crowd", crowd.cheer(0.9, voices=14, seed=21, word="woo", spread=0.15), 30.05, -6)
-    put("crowd", crowd.cheer(0.9, voices=14, seed=22, word="yeah", spread=0.15), 30.55, -6)
-    put("crowd", crowd.cheer(1.0, voices=16, seed=23, word="woo", spread=0.15), 31.05, -5)
+    put("crowd", yeah(-0.6), 30.03, -3)
+    put("crowd", yeah(0.6), 30.53, -3)
+    put("crowd", yeah(-0.6, deep=4), 31.03, -2)
     put("drums", crash(0.9), 36.0, -4)
     for i in range(20):
         at = 36.3 + 1.1 * (1 - (1 - i / 19) ** 1.6)
@@ -430,12 +500,13 @@ def build() -> None:
         for e, m, ln in HOOK[cycle]:
             put("lead", lead(m + 12, ln * 0.25 - 0.03, gain=0.5, pan=0.3), at + e * 0.25, -6)
     put("drums", crash(1.0), 71.0, -3)
-    put("crowd", crowd.cheer(3.2, voices=38, seed=31, word="mix", spread=0.35), 71.05, 1)
-    put("crowd", crowd.applause(3.4, clappers=34, seed=32), 71.2, 3)
+    put("crowd", room_cheer(seed=31, waves=2), 71.02, 3)
+    put("crowd", applause_from(CONCERT, 3.5, 6.6), 71.1, 0)
+    put("crowd", applause_from(APPLAUSE_I, 1.6, 4.6), 71.2, 1)
     put("drums", crash(0.8), 75.5, -5)
     # One more round? The class says yes.
-    put("crowd", crowd.cheer(1.6, voices=34, seed=41, word="yeah", spread=0.12), 76.02, 0)
-    put("crowd", crowd.applause(1.9, clappers=26, seed=42, fade=0.8), 76.2, -1)
+    put("crowd", yeah(0.0, deep=6), 76.0, 4)
+    put("crowd", applause_from(APPLAUSE_II, 1.8, 3.9, fade_out=0.7), 76.15, 0)
     groove(76.5, 78.0, clap_db=-80, open_hats=False, arp_db=-5)
     roll(76.5, 77.98, -2)
     put("fx", synth.riser(1.5, f0=220, f1=3000, gain=0.35), 76.5, -1)
@@ -474,7 +545,14 @@ def mix(out_path: str) -> None:
     crowd_bus = dsp.process(BUS["crowd"], dsp.eq_board(150, 9000, None, (-18, 2.5)))
     crowd_bus = crowd_bus + dsp.reverb(crowd_bus, ir_room) * dsp.db(-8)
     wet = dsp.reverb(music * 0.5 + lead_ * 0.4 + BUS["keys"] * 0.6, ir_hall) * dsp.db(-6)
-    full = drums * dsp.db(-4) + bass_ * dsp.db(-6) + music * dsp.db(2) + lead_ * dsp.db(1) + BUS["keys"] * dsp.db(1) + wet
+    # The music steps back a little while the room cheers.
+    tt = np.arange(n) / SR
+    dip = np.ones(n, np.float32)
+    for a, b in ((12.2, 14.9), (30.0, 31.6), (71.0, 73.7), (76.0, 77.3)):
+        dip = np.minimum(dip, 1 - (1 - dsp.db(-4.0)) * np.clip(np.minimum((tt - a) / 0.08, (b - tt) / 0.5), 0, 1))
+    dip = dip[:, None]
+    full = (drums * dsp.db(-4) * (0.5 + 0.5 * dip) + bass_ * dsp.db(-6) * dip + music * dsp.db(2) * dip + lead_ * dsp.db(1) * dip
+            + BUS["keys"] * dsp.db(1) + wet * dip)
     full = full + BUS["fx"] * dsp.db(-3) + dsp.reverb(BUS["fx"], ir_hall) * dsp.db(-12)
     full = full + crowd_bus * dsp.db(-2) + BUS["app"] * dsp.db(-2)
     # The silences: just before the first drop, and the beat before the logo.

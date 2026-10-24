@@ -3,13 +3,13 @@
 An 88-second trailer for schools. No Blender: Playwright plays real games against a local server and films the
 projector and the phones; an HTML page composes the shots, with an illustrated classroom (28 students at their
 desks, the real game on their projector) for the moments the room reacts; Chromium renders it frame by frame;
-ffmpeg joins the frames to a score synthesized in Python.
+ffmpeg joins the frames to a score synthesized in Python, with real recordings for the cheering.
 
 | Folder | What it does |
 |---|---|
 | `capture/` | Films the footage. `rig.mts` registers a teacher, opens rooms and plays as eight named students. `cast.mts` records a page with the Chrome DevTools screencast and resamples it to 30 fps. |
 | `comp/` | The composition. `trailer.js` draws any frame from its time alone (`window.renderFrame(t)`); `footage.js` says which frames of which shot each scene uses; `classroom.js` draws the illustrated classroom (students, desks, laptops and tablets, a teacher at the lectern) from the time and a cue (lean in, cheer, stand, team colours). |
-| `score/` | `score.py`, the music: synth-pop in D major at 120 BPM (one bar = 2 s), every instrument synthesized, cut to the edit. `crowd.py`, the classroom: applause, cheering, an anticipating "ooh", a school bell, all synthesized. `cues.json`, the app's own sound effects laid over it. `spec.py` draws a spectrogram, for checking a render by eye. |
+| `score/` | `score.py`, the music: synth-pop in D major at 120 BPM (one bar = 2 s), every instrument synthesized, cut to the edit. The cheering and applause are real public-domain and CC0 recordings from Wikimedia Commons (`samples/`, credited in `samples/CREDITS.md`), layered into a room. `crowd.py` synthesizes the school bell and the room tone. `cues.json`, the app's own sound effects laid over it. `spec.py` draws a spectrogram, for checking a render by eye. |
 | `sheet.py`, `tsheet.py` | Contact sheets of a shot or of rendered frames, for picking in-points and reviewing a render. |
 
 Footage, frames and the finished video are large and stay out of git (`.gitignore`).

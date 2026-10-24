@@ -346,7 +346,7 @@ Last updated: 2026-10-24.
   filmed with Playwright on a local server (projector and phones, a class of 16
   firing reactions at a reveal, Play again), with an illustrated classroom that
   cheers along, composed as an HTML page rendered frame by frame, and a
-  synthesized synth-pop score with a synthesized classroom (applause, cheers).
+  synthesized synth-pop score, with real public-domain recordings for the cheering.
   Its README rebuilds it and lists where each claim in it comes from. The footage
   and the video stay out of git.
 
