@@ -142,7 +142,7 @@ export function ProgressBar({ value, max, tone = 'amber', label, className = '' 
   const fill = tone === 'mint' ? 'bg-glim' : tone === 'violet' ? 'bg-dusk' : 'bg-lantern';
   // A sunken groove with a fine edge and a solid fill, like the game-side Meter, at a size that suits dense pages.
   return (
-    <div className={`h-2.5 w-full overflow-hidden rounded-[var(--radius-s)] bg-sunken shadow-[inset_0_0_0_1px_var(--line)] ${className}`} role="progressbar" aria-valuenow={value} aria-valuemin={0} aria-valuemax={max} aria-label={label}>
+    <div className={`progress-groove h-2.5 w-full overflow-hidden rounded-[var(--radius-s)] bg-sunken shadow-[inset_0_0_0_1px_var(--line)] ${className}`} role="progressbar" aria-valuenow={value} aria-valuemin={0} aria-valuemax={max} aria-label={label}>
       <div className={`progress-fill h-full rounded-[var(--radius-s)] ${fill} transition-[width] duration-200 ease-[var(--ease-out)]`} style={{ width: `${pct}%` }} />
     </div>
   );

@@ -9,7 +9,7 @@ import { Stage } from '../../ui/Stage.tsx';
 import { ButtonLink } from '../../ui/Button.tsx';
 import { Skeleton } from '../../ui/primitives.tsx';
 import { ModeCard } from '../modes/ModeCard.tsx';
-import { GLIMS } from './GlimCrowd.tsx';
+import { GLIMS } from './glims.ts';
 import { BLEED_ROUNDING, Bleed, RarityTag } from './kit.tsx';
 
 /** One Glim of every rarity, from common to mythic. */

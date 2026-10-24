@@ -405,6 +405,12 @@
   }
 }
 
+/* On the stage a progress groove is a light trough, like the game's own meters, not a dark well. */
+:root .stage .progress-groove,
+:root .on-stage .progress-groove {
+  background-color: rgb(255 255 255 / 0.12);
+}
+
 /*
  * On the light theme a bright fill barely stands out from its pale groove
  * (gold is 1.6:1). A darker edge of the fill's own colour gives the filled
