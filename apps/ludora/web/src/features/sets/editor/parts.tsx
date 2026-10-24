@@ -105,7 +105,7 @@ export function EditorField({ id, label, hint, error, optional, children, classN
 /** An image that came with the question or choice. It stays as it is; only its description can be edited. */
 export function MediaNote({ media, id, label, error, onAltChange }: { media: Media; id: string; label: string; error?: string | undefined; onAltChange: (alt: string) => void }) {
   return (
-    <div className="flex min-w-0 flex-col gap-2 rounded-[12px] border border-dashed border-line-strong bg-sunken/40 p-3">
+    <div className="flex min-w-0 flex-col gap-2 rounded-[var(--radius-m)] border border-dashed border-line-strong bg-sunken/40 p-3">
       <p className="flex items-center gap-2 text-sm font-semibold text-text-2">
         <ImageIcon className="size-4 shrink-0" aria-hidden />
         Has an image
@@ -128,7 +128,7 @@ export interface TypeEditorProps {
 /** A visible row label: A, B, C… for choices, 1, 2, 3… for ordered items. */
 export function RowMarker({ children }: { children: ReactNode }) {
   return (
-    <span className="grid h-11 w-7 shrink-0 place-items-center font-display text-sm font-bold text-text-3 tabular" aria-hidden>
+    <span className="grid h-11 w-7 shrink-0 place-items-center font-display text-base font-bold text-text-3 tabular" aria-hidden>
       {children}
     </span>
   );

@@ -36,8 +36,8 @@ function answerOf(q: Question): string {
 function Draft({ q, picked, onPick }: { q: Question; picked: boolean; onPick: (v: boolean) => void }) {
   const id = useId();
   return (
-    <li className={`flex gap-3 rounded-[14px] border p-3 ${picked ? 'border-line-strong bg-surface-2' : 'border-line opacity-70'}`}>
-      <input id={id} type="checkbox" checked={picked} onChange={(e) => onPick(e.target.checked)} className="mt-1 size-4 shrink-0 accent-[var(--lantern)]" />
+    <li className={`flex gap-3 rounded-[var(--radius-m)] border p-3 ${picked ? 'border-line-strong bg-surface-2' : 'border-dashed border-line-strong'}`}>
+      <input id={id} type="checkbox" checked={picked} onChange={(e) => onPick(e.target.checked)} className="mt-0.5 size-5 shrink-0 accent-[var(--lantern)]" />
       <div className="flex min-w-0 flex-col gap-1.5">
         <label htmlFor={id} className="font-semibold break-words text-text">
           {q.prompt}
@@ -224,8 +224,8 @@ export function AiDraftDialog({
             <legend className="mb-1.5 text-sm font-semibold text-text">Kinds of question</legend>
             <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
               {AI_DRAFT_TYPES.map((t) => (
-                <label key={t} className="flex items-center gap-2.5 text-sm text-text">
-                  <input type="checkbox" checked={form.types.includes(t)} onChange={(e) => toggleType(t, e.target.checked)} disabled={busy} className="size-4 shrink-0 accent-[var(--lantern)]" />
+                <label key={t} className="flex min-h-11 items-center gap-2.5 text-sm text-text sm:min-h-9">
+                  <input type="checkbox" checked={form.types.includes(t)} onChange={(e) => toggleType(t, e.target.checked)} disabled={busy} className="size-5 shrink-0 accent-[var(--lantern)]" />
                   {QUESTION_TYPE_LABELS[t]}
                 </label>
               ))}

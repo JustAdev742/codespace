@@ -102,7 +102,8 @@ export function Segmented<T extends string>({ label, value, onChange, options }:
         {options.map((o) => (
           <label
             key={o.value}
-            className="relative flex min-h-10 cursor-pointer items-center justify-center rounded-[12px] border border-line-strong px-2 py-1 text-center text-sm font-semibold text-text-2 has-[:checked]:border-lantern has-[:checked]:bg-surface-2 has-[:checked]:text-text has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-[var(--focus)]"
+            // The chosen option inverts, like the shared filter chips, so it is told by lightness and not by an edge colour alone.
+            className="relative flex min-h-11 cursor-pointer items-center justify-center rounded-[var(--radius-m)] border border-line-strong px-2 py-1 text-center text-sm font-semibold text-text-2 has-[:checked]:border-transparent has-[:checked]:bg-text has-[:checked]:text-bg has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-[var(--focus)]"
           >
             <input type="radio" name={name} value={o.value} checked={value === o.value} onChange={() => onChange(o.value)} className="sr-only" />
             {o.label}
@@ -357,7 +358,7 @@ export function pickedFrom(i: AdminItem): PickedItem {
 /** A fixed-size box for item art, so wide banners and tall Glims line up in lists. */
 export function ArtThumb({ art, rarity, size = 44 }: { art: ItemArt | null | undefined; rarity?: Rarity; size?: number }) {
   return (
-    <span className="grid shrink-0 place-items-center overflow-hidden rounded-[10px] bg-sunken" style={{ width: size, height: size }} aria-hidden>
+    <span className="grid shrink-0 place-items-center overflow-hidden rounded-[var(--radius-m)] bg-sunken" style={{ width: size, height: size }} aria-hidden>
       {art ? (
         <span className="grid place-items-center" style={{ width: size - 4, height: art.kind === 'banner' ? (size - 4) * 0.55 : size - 4 }}>
           <ItemArtView art={art} rarity={rarity} size={size - 4} />
@@ -392,7 +393,7 @@ export function ItemPicker({ label, value, onChange, type, hint, exclude = [], d
     return (
       <div className="flex flex-col gap-1.5">
         <span className="text-sm font-semibold text-text">{label}</span>
-        <div className="flex min-w-0 items-center gap-3 rounded-[12px] border border-line-strong bg-sunken p-2">
+        <div className="flex min-w-0 items-center gap-3 rounded-[var(--radius-m)] border border-line-strong bg-sunken p-2">
           <ArtThumb art={value.art} rarity={value.rarity} size={44} />
           <div className="min-w-0 flex-1">
             <div className="truncate font-semibold text-text">{value.name}</div>
@@ -425,10 +426,10 @@ export function ItemPicker({ label, value, onChange, type, hint, exclude = [], d
         ) : search.isLoading ? (
           <Skeleton className="h-24" />
         ) : results.length ? (
-          <ul className="flex max-h-64 flex-col gap-1 overflow-y-auto rounded-[12px] border border-line p-1" aria-label="Matching items">
+          <ul className="flex max-h-64 flex-col gap-1 overflow-y-auto rounded-[var(--radius-m)] border border-line p-1" aria-label="Matching items">
             {results.map((i) => (
               <li key={i.id}>
-                <button type="button" onClick={() => onChange(pickedFrom(i))} className="flex w-full min-w-0 items-center gap-3 rounded-[10px] p-1.5 text-left hover:bg-surface-2 focus-visible:bg-surface-2">
+                <button type="button" onClick={() => onChange(pickedFrom(i))} className="flex w-full min-w-0 items-center gap-3 rounded-[var(--radius-m)] p-1.5 text-left hover:bg-surface-2 focus-visible:bg-surface-2">
                   <ArtThumb art={i.art} rarity={i.rarity} size={40} />
                   <span className="min-w-0 flex-1">
                     <span className="block truncate text-sm font-semibold text-text">{i.name}</span>
@@ -506,14 +507,14 @@ export function AccountSearch({ label = 'Find an account', kind, onPick, selecte
           <Skeleton className="h-20" />
         ) : users.length ? (
           <>
-            <ul className="flex max-h-72 flex-col gap-1 overflow-y-auto rounded-[12px] border border-line p-1" aria-label="Matching accounts">
+            <ul className="flex max-h-72 flex-col gap-1 overflow-y-auto rounded-[var(--radius-m)] border border-line p-1" aria-label="Matching accounts">
               {users.slice(0, 10).map((u) => (
                 <li key={u.id}>
                   <button
                     type="button"
                     aria-pressed={selectedId === u.id}
                     onClick={() => onPick(u.id, u)}
-                    className="flex w-full min-w-0 flex-wrap items-center gap-x-3 gap-y-1 rounded-[10px] px-2.5 py-2 text-left hover:bg-surface-2 focus-visible:bg-surface-2 aria-pressed:bg-surface-2"
+                    className="flex w-full min-w-0 flex-wrap items-center gap-x-3 gap-y-1 rounded-[var(--radius-m)] px-2.5 py-2 text-left hover:bg-surface-2 focus-visible:bg-surface-2 aria-pressed:bg-surface-2"
                   >
                     <span className="min-w-0 flex-1">
                       <span className="block truncate text-sm font-semibold text-text">{accountName(u)}</span>
@@ -809,7 +810,7 @@ function OverviewTab() {
         Real accounts only, since {dateTime(d.since)}. Test accounts, unlimited test currency and guaranteed Lantern draws are left out.
       </p>
       <section aria-labelledby="circulation-h">
-        <h2 id="circulation-h" className="mb-2 font-semibold text-text">
+        <h2 id="circulation-h" className="mb-2 font-display text-xl leading-tight font-bold text-text">
           In circulation now
         </h2>
         {!d.currencies.length ? <p className="text-sm text-text-3">No currencies yet.</p> : null}
@@ -893,7 +894,7 @@ function FlowBlock({ code, name, flows }: { code: string; name: string; flows: O
   return (
     <div className="min-w-0">
       <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-        <h3 className="flex items-center gap-1.5 font-semibold text-text">
+        <h3 className="flex items-center gap-1.5 font-sans font-semibold text-text">
           <CurrencyIcon code={code} size={18} />
           {name}
         </h3>
@@ -906,12 +907,12 @@ function FlowBlock({ code, name, flows }: { code: string; name: string; flows: O
         </span>
       </div>
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-        <div className="min-w-0 rounded-[12px] border border-line p-3">
-          <h4 className="mb-2 text-xs font-semibold text-text-3">Earned (sources)</h4>
+        <div className="min-w-0 rounded-[var(--radius-m)] border border-line p-3">
+          <h4 className="mb-2 font-sans text-xs font-semibold text-text-3">Earned (sources)</h4>
           {list(sources, 'in')}
         </div>
-        <div className="min-w-0 rounded-[12px] border border-line p-3">
-          <h4 className="mb-2 text-xs font-semibold text-text-3">Spent or removed (sinks)</h4>
+        <div className="min-w-0 rounded-[var(--radius-m)] border border-line p-3">
+          <h4 className="mb-2 font-sans text-xs font-semibold text-text-3">Spent or removed (sinks)</h4>
           {list(sinks, 'out')}
         </div>
       </div>
@@ -921,9 +922,9 @@ function FlowBlock({ code, name, flows }: { code: string; name: string; flows: O
 
 function LanternOddsBlock({ lantern }: { lantern: OverviewData['lanterns'][number] }) {
   return (
-    <div className="min-w-0 rounded-[12px] border border-line p-3">
+    <div className="min-w-0 rounded-[var(--radius-m)] border border-line p-3">
       <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-        <h3 className="min-w-0 truncate font-semibold text-text">{lantern.name}</h3>
+        <h3 className="min-w-0 truncate font-sans font-semibold text-text">{lantern.name}</h3>
         <span className="flex items-center gap-2 text-xs text-text-3">
           <StatusPill status={lantern.releaseState} />
           {plural(lantern.opened, 'opening')}
@@ -1078,7 +1079,7 @@ function LedgerTab() {
           <div className="flex min-w-0 flex-col gap-1.5">
             <span className="text-sm font-semibold text-text">Account</span>
             {userId ? (
-              <div className="flex h-11 min-w-0 items-center gap-2 rounded-[12px] border border-line-strong bg-sunken pr-1 pl-3">
+              <div className="flex h-11 min-w-0 items-center gap-2 rounded-[var(--radius-m)] border border-line-strong bg-sunken pr-1 pl-3">
                 <span className="min-w-0 flex-1 truncate text-[15px]">{shownUser}</span>
                 <IconButton
                   label="Show every account"
@@ -1395,7 +1396,7 @@ function RulesTab() {
                 {draft.starters.length ? (
                   <ul className="flex flex-col gap-1.5">
                     {draft.starters.map((id, i) => (
-                      <li key={id} className="flex min-w-0 items-center gap-2 rounded-[12px] border border-line px-3 py-2">
+                      <li key={id} className="flex min-w-0 items-center gap-2 rounded-[var(--radius-m)] border border-line px-3 py-2">
                         <span className="min-w-0 flex-1 truncate font-mono text-sm">{id}</span>
                         {i === 0 ? <Badge tone="mint">Buddy</Badge> : null}
                         {!ro && i > 0 ? (
@@ -1415,7 +1416,7 @@ function RulesTab() {
                   <p className="text-sm text-text-3">No starter items. New accounts start with no Glims.</p>
                 )}
                 {!ro ? (
-                  <div className="flex flex-col gap-2 rounded-[12px] border border-dashed border-line-strong p-3">
+                  <div className="flex flex-col gap-2 rounded-[var(--radius-m)] border border-dashed border-line-strong p-3">
                     <ItemPicker label="Add a starter item" value={adding} onChange={setAdding} exclude={draft.starters} />
                     <div>
                       <Button
@@ -1469,7 +1470,7 @@ function RulesTab() {
         }}
       >
         <div>
-          <h3 className="mb-1.5 text-sm font-semibold text-text">What changes</h3>
+          <h3 className="mb-1.5 font-sans text-sm font-semibold text-text">What changes</h3>
           <ul className="flex flex-col gap-1 text-sm">
             {changes.map((c) => (
               <li key={c.label} className="flex flex-wrap gap-x-2">
@@ -1676,7 +1677,7 @@ function CurrencyDialog({ open, onOpenChange, currency }: { open: boolean; onOpe
           {(p) => (
             <div className="flex items-center gap-2">
               <Input {...p} inputMode="numeric" value={f.hue} onChange={(e) => set('hue', e.target.value)} className="min-w-0 flex-1" />
-              <span className="size-9 shrink-0 rounded-full border-2 border-ink" style={{ background: `hsl(${hue ?? 0} 80% 60%)` }} aria-hidden />
+              <span className="size-9 shrink-0 rounded-full shadow-[inset_0_0_0_1px_rgb(0_0_0/0.25)]" style={{ background: `hsl(${hue ?? 0} 80% 60%)` }} aria-hidden />
             </div>
           )}
         </Field>
@@ -1764,7 +1765,7 @@ function GrantTab() {
               {picked?.id === accountId ? <p className="-mt-2 mb-3 text-sm text-text-3">{picked.displayName}</p> : null}
               <ul className="grid grid-cols-1 gap-2 sm:grid-cols-2" aria-label="Balances">
                 {codes.map((code) => (
-                  <li key={code} className="flex min-w-0 items-center justify-between gap-2 rounded-[12px] border border-line px-3 py-2">
+                  <li key={code} className="flex min-w-0 items-center justify-between gap-2 rounded-[var(--radius-m)] border border-line px-3 py-2">
                     <span className="min-w-0 truncate text-sm text-text-2">{currencyName(choices, code)}</span>
                     <Amount currency={code} value={w.balances[code] ?? 0} size="sm" />
                   </li>
@@ -1785,7 +1786,7 @@ function GrantTab() {
                 )}
               </div>
               {w.self ? (
-                <p className="mt-3 rounded-[12px] border border-ember/50 bg-ember/10 px-3 py-2 text-sm text-text-2" role="note">
+                <p className="mt-3 rounded-[var(--radius-m)] border border-ember/50 bg-ember/10 px-3 py-2 text-sm text-text-2" role="note">
                   This is your own account. Staff tools cannot change your own balance or items. Use a test account instead.
                 </p>
               ) : canGrant ? (

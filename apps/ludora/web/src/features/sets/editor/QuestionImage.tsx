@@ -53,8 +53,8 @@ export function QuestionImage({ media, altId, altError, onChange }: { media: Med
     <div className="flex min-w-0 flex-col gap-2">
       <input ref={input} type="file" accept={ACCEPT} className="sr-only" tabIndex={-1} aria-hidden onChange={(e) => void upload(e.target.files?.[0])} />
       {media ? (
-        <div className="flex min-w-0 flex-col gap-3 rounded-[12px] border border-line bg-sunken/40 p-3 sm:flex-row">
-          <img src={media.url} alt="" className="h-28 w-auto max-w-full self-start rounded-[10px] border border-line bg-white object-contain sm:max-w-[40%]" />
+        <div className="flex min-w-0 flex-col gap-3 rounded-[var(--radius-m)] border border-line bg-sunken/40 p-3 sm:flex-row">
+          <img src={media.url} alt="" className="h-28 w-auto max-w-full self-start rounded-[var(--radius-s)] border border-line bg-white object-contain sm:max-w-[40%]" />
           <div className="flex min-w-0 flex-1 flex-col gap-2">
             <EditorField id={altId} label="Image description" hint="Say what the picture shows, for players who cannot see it." error={altError}>
               {(p) => <Input {...p} value={media.alt} maxLength={LIMITS.alt} onChange={(e) => onChange({ ...media, alt: e.target.value })} />}

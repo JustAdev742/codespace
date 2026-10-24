@@ -279,12 +279,12 @@ function AccountPanel({ account, info, onClose, choices }: { account: TestAccoun
         />
 
         <section aria-labelledby="test-balances-h">
-          <h3 id="test-balances-h" className="mb-2 text-sm font-semibold text-text">
+          <h3 id="test-balances-h" className="mb-2 font-sans text-sm font-semibold text-text">
             Balances
           </h3>
           <ul className="grid grid-cols-1 gap-2 sm:grid-cols-2">
             {codes.map((code) => (
-              <li key={code} className="flex min-w-0 items-center justify-between gap-2 rounded-[12px] border border-line px-3 py-2">
+              <li key={code} className="flex min-w-0 items-center justify-between gap-2 rounded-[var(--radius-m)] border border-line px-3 py-2">
                 <span className="min-w-0 truncate text-sm text-text-2">{currencyName(choices, code)}</span>
                 <Amount currency={code} value={account.balances[code] ?? 0} size="sm" />
               </li>
@@ -303,7 +303,7 @@ function AccountPanel({ account, info, onClose, choices }: { account: TestAccoun
         </section>
 
         <section aria-labelledby="test-unlimited-h">
-          <h3 id="test-unlimited-h" className="mb-1 text-sm font-semibold text-text">
+          <h3 id="test-unlimited-h" className="mb-1 font-sans text-sm font-semibold text-text">
             Unlimited currency
           </h3>
           <p className="mb-2 text-sm text-text-2">
@@ -321,13 +321,13 @@ function AccountPanel({ account, info, onClose, choices }: { account: TestAccoun
         </section>
 
         <section aria-labelledby="test-scenarios-h">
-          <h3 id="test-scenarios-h" className="mb-1 text-sm font-semibold text-text">
+          <h3 id="test-scenarios-h" className="mb-1 font-sans text-sm font-semibold text-text">
             QA scenarios
           </h3>
           <p className="mb-3 text-sm text-text-2">{info.scenariosEnabled ? 'Put this account into a known state in one step.' : 'Switched off in production so nobody can reshape accounts here. Run scenarios in the sandbox.'}</p>
           <ul className="grid grid-cols-1 gap-2 md:grid-cols-2">
             {QA_SCENARIOS.map((s) => (
-              <li key={s} className="flex min-w-0 flex-col justify-between gap-2 rounded-[12px] border border-line p-3">
+              <li key={s} className="flex min-w-0 flex-col justify-between gap-2 rounded-[var(--radius-m)] border border-line p-3">
                 <div>
                   <div className="font-semibold text-text">{QA_SCENARIO_INFO[s].label}</div>
                   <p className="text-sm text-text-2">{QA_SCENARIO_INFO[s].description}</p>
@@ -390,7 +390,7 @@ function ResetDialog({ open, onOpenChange, account }: { open: boolean; onOpenCha
       <fieldset className="flex flex-col gap-2">
         <legend className="mb-1.5 text-sm font-semibold text-text">What to reset</legend>
         {RESET_SCOPES.map((s) => (
-          <label key={s} className="flex cursor-pointer items-start gap-3 rounded-[12px] border border-line p-3 has-[:checked]:border-lantern">
+          <label key={s} className="flex cursor-pointer items-start gap-3 rounded-[var(--radius-m)] border border-line p-3 has-[:checked]:border-lantern">
             <input
               type="checkbox"
               className="mt-1 size-4 shrink-0 accent-[var(--lantern)]"
@@ -593,7 +593,7 @@ function ConvertCard({ initialId }: { initialId: string }) {
         />
         <div className="min-w-0">
           {user ? (
-            <div className="flex flex-col gap-3 rounded-[12px] border border-line p-3">
+            <div className="flex flex-col gap-3 rounded-[var(--radius-m)] border border-line p-3">
               <div>
                 <div className="flex flex-wrap items-center gap-1.5 font-semibold text-text">
                   {name}

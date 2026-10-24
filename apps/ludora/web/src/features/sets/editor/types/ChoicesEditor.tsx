@@ -50,7 +50,7 @@ export function ChoicesEditor({ q, errors, edit }: TypeEditorProps) {
               <div className="flex min-w-0 items-center gap-1.5 sm:gap-2">
                 <RowMarker>{letter(i)}</RowMarker>
                 <label
-                  className={`relative grid size-11 shrink-0 cursor-pointer place-items-center border-2 transition-colors has-[:focus-visible]:ring-[3px] has-[:focus-visible]:ring-[var(--focus)] ${multi ? 'rounded-[10px]' : 'rounded-full'} ${checked ? 'border-ink bg-glim text-on-accent' : 'border-line-strong bg-sunken text-transparent hover:border-text-3'}`}
+                  className={`relative grid size-11 shrink-0 cursor-pointer place-items-center border transition-colors has-[:focus-visible]:ring-[3px] has-[:focus-visible]:ring-[var(--focus)] ${multi ? 'rounded-[var(--radius-m)]' : 'rounded-full'} ${checked ? 'border-transparent bg-glim text-on-accent shadow-[inset_0_-3px_0_rgb(0_0_0/0.2)]' : 'input-well border-line-strong text-transparent hover:border-text-3'}`}
                 >
                   <input
                     id={domIds.row(q.id, 'correct', c.id)}

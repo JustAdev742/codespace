@@ -7,6 +7,7 @@ import { api, ApiError } from '../../lib/api.ts';
 import { plural } from '../../lib/format.ts';
 import { Badge, Dialog, EmptyState, ErrorNotice, Field, Input, PageHeader, Panel, SectionTitle, Skeleton } from '../../ui/primitives.tsx';
 import { Button } from '../../ui/Button.tsx';
+import { ToggleChips } from '../../ui/game.tsx';
 import { errorText, hasStatus, usePageTitle } from '../reports/reportUi.tsx';
 import { classKeys, copyText, useAccountState, useClassList, type MemberClass, type TeachingClass } from './classData.ts';
 import { ClassAccountGate, ClassIcon, JoinCode } from './classUi.tsx';
@@ -18,12 +19,12 @@ import { ClassAccountGate, ClassIcon, JoinCode } from './classUi.tsx';
 
 function ClassCard({ c }: { c: TeachingClass }) {
   return (
-    <li className="relative flex flex-col gap-3 rounded-[var(--radius-m)] border border-line bg-raised p-4 transition-colors hover:border-line-strong">
+    <li className="relative flex flex-col gap-3 rounded-[var(--radius-l)] border border-line bg-raised p-4 transition-colors hover:border-line-strong hover:bg-surface-2">
       <div className="flex items-start gap-3">
         <ClassIcon />
         <div className="min-w-0 flex-1">
-          <h3 className="font-display text-lg leading-tight font-bold break-words">
-            <Link to={`/classes/${c.id}`} className="text-text no-underline after:absolute after:inset-0 after:rounded-[var(--radius-m)]">
+          <h3 className="font-display text-xl leading-tight font-bold break-words">
+            <Link to={`/classes/${c.id}`} className="text-text no-underline after:absolute after:inset-0 after:rounded-[var(--radius-l)]">
               {c.name}
             </Link>
           </h3>
@@ -36,7 +37,7 @@ function ClassCard({ c }: { c: TeachingClass }) {
       {c.archived ? (
         <p className="mt-auto text-sm text-text-3">Students cannot join it or play its assignments while it is archived.</p>
       ) : (
-        <div className="relative z-10 mt-auto flex flex-wrap items-center gap-x-3 gap-y-1 rounded-[12px] bg-surface-2 py-1.5 pr-1.5 pl-3">
+        <div className="relative z-10 mt-auto flex flex-wrap items-center gap-x-3 gap-y-1 rounded-[var(--radius-m)] bg-sunken py-1.5 pr-1.5 pl-3">
           <span className="text-xs text-text-3">Join code</span>
           <JoinCode code={c.joinCode} className="text-lg" />
           <Button size="sm" variant="ghost" className="ml-auto" icon={<Copy className="size-4" />} onClick={() => void copyText(c.joinCode, 'Join code copied')} aria-label={`Copy the join code for ${c.name}`}>
@@ -57,19 +58,16 @@ function TeachingSection({ classes, canTeach, onNew }: { classes: TeachingClass[
     <section>
       <SectionTitle>Your classes</SectionTitle>
       {archivedCount > 0 ? (
-        <div className="mb-4 flex flex-wrap gap-2" role="group" aria-label="Show classes">
-          {(['active', 'archived'] as const).map((v) => (
-            <button
-              key={v}
-              type="button"
-              aria-pressed={shownView === v}
-              onClick={() => setView(v)}
-              className={`h-9 rounded-full px-4 text-sm font-semibold ${shownView === v ? 'bg-text text-bg' : 'bg-surface-2 text-text-2 hover:text-text'}`}
-            >
-              {v === 'active' ? `Active (${classes.length - archivedCount})` : `Archived (${archivedCount})`}
-            </button>
-          ))}
-        </div>
+        <ToggleChips<'active' | 'archived'>
+          value={shownView}
+          onChange={setView}
+          label="Show classes"
+          className="mb-4"
+          options={[
+            { value: 'active', label: `Active (${classes.length - archivedCount})` },
+            { value: 'archived', label: `Archived (${archivedCount})` },
+          ]}
+        />
       ) : null}
       {classes.length === 0 ? (
         <EmptyState
@@ -125,7 +123,7 @@ function JoinPanel() {
   };
   return (
     <Panel className="p-5">
-      <h2 className="font-display text-xl font-bold">Join a class</h2>
+      <h2 className="font-display text-2xl font-bold">Join a class</h2>
       <p className="mt-1 mb-4 text-sm text-text-2">Your teacher gives you a code of 6 letters and numbers.</p>
       <form onSubmit={submit} noValidate>
         <Field label="Class code" error={error ?? undefined}>
@@ -166,7 +164,7 @@ function MemberPanel({ classes }: { classes: MemberClass[] }) {
         <ul className="flex flex-col gap-2">
           {classes.map((c) => (
             <li key={c.id}>
-              <Link to={`/classes/${c.id}`} className="flex items-center gap-3 rounded-[12px] bg-surface-2 p-2.5 text-text no-underline transition-colors hover:bg-surface-3">
+              <Link to={`/classes/${c.id}`} className="flex items-center gap-3 rounded-[var(--radius-m)] bg-surface-2 p-2.5 text-text no-underline transition-colors hover:bg-surface-3">
                 <ClassIcon />
                 <span className="min-w-0 flex-1">
                   <span className="block font-semibold break-words">{c.name}</span>

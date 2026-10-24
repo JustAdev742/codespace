@@ -123,11 +123,12 @@ export default function Reports() {
                   type="button"
                   aria-pressed={active}
                   onClick={() => update({ type: t })}
-                  className={`inline-flex h-8 items-center gap-1.5 rounded-full border px-3 text-sm font-semibold transition-colors ${active ? 'border-lantern bg-surface-2 text-text' : 'border-line text-text-2 hover:bg-surface-2 hover:text-text'}`}
+                  // The chosen filter inverts, like the shared filter chips, so it stands out by lightness and not by its edge colour alone. 44px on phones.
+                  className={`inline-flex h-11 items-center gap-1.5 rounded-full border px-3.5 text-sm font-semibold transition-colors sm:h-9 ${active ? 'chip-on border-transparent' : 'border-line-strong text-text-2 hover:bg-surface-2 hover:text-text'}`}
                 >
                   {t ? TARGET_INFO[t].filter : 'All types'}
                   {status === 'open' && list.data ? (
-                    <span className="rounded-full bg-surface-3 px-1.5 text-xs text-text-3 tabular">
+                    <span className="rounded-full bg-[color-mix(in_oklab,currentColor_14%,transparent)] px-1.5 text-xs tabular">
                       {formatNumber(count)}
                       <span className="sr-only"> open</span>
                     </span>
@@ -203,7 +204,7 @@ function ReportCard({ r, can, onResolve, onReopen, onReviewSet }: { r: ReportRow
             {info.icon}
             {info.label}
           </div>
-          <h2 className="mt-0.5 flex flex-wrap items-center gap-2 text-base font-semibold break-words text-text">
+          <h2 className="mt-0.5 flex flex-wrap items-center gap-2 font-sans text-base font-semibold break-words text-text">
             <span className={`min-w-0 break-words ${exists ? '' : 'text-text-3'}`}>{r.target.label}</span>
             {r.target.status ? <StatusPill status={r.target.status === 'public' ? 'published' : r.target.status} label={TARGET_STATUS[r.target.status] ?? r.target.status} /> : null}
           </h2>
@@ -219,7 +220,7 @@ function ReportCard({ r, can, onResolve, onReopen, onReviewSet }: { r: ReportRow
           by <span className="font-semibold text-text">{r.reporter}</span>
         </span>
       </div>
-      <p className={`mt-2 rounded-[10px] bg-surface-2 px-3 py-2 text-sm whitespace-pre-wrap break-words ${r.details ? 'text-text' : 'text-text-3'}`}>{r.details || 'No details given.'}</p>
+      <p className={`mt-2 rounded-[var(--radius-m)] bg-surface-2 px-3 py-2 text-sm whitespace-pre-wrap break-words ${r.details ? 'text-text' : 'text-text-3'}`}>{r.details || 'No details given.'}</p>
       <p className="mt-2 text-xs text-text-3">
         {r.status === 'open'
           ? others > 0

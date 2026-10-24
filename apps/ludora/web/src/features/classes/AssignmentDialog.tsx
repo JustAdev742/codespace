@@ -9,6 +9,7 @@ import { useModes, useSets, thumbFor, type CatalogEntry, type CatalogVariant, ty
 import { ModeArt } from '../../art/ModeArt.tsx';
 import { Badge, Dialog, EmptyState, ErrorNotice, Field, Input, Skeleton, Textarea } from '../../ui/primitives.tsx';
 import { Button, ButtonLink } from '../../ui/Button.tsx';
+import { ToggleChips } from '../../ui/game.tsx';
 import { SetCover } from '../sets/SetCover.tsx';
 import { classKeys, fromLocalInput, toLocalInput, useModeInfo, type TeacherAssignment } from './classData.ts';
 import { plural } from '../../lib/format.ts';
@@ -52,13 +53,15 @@ function SetPicker({ onPick }: { onPick: (s: SetSummary) => void }) {
   return (
     <div className="flex flex-col gap-3">
       <div className="flex flex-wrap items-center gap-2">
-        <div className="flex gap-2" role="group" aria-label="Where to look">
-          {(['mine', 'public'] as const).map((s) => (
-            <button key={s} type="button" aria-pressed={shownScope === s} onClick={() => choose(s)} className={`h-9 rounded-full px-4 text-sm font-semibold ${shownScope === s ? 'bg-text text-bg' : 'bg-surface-2 text-text-2 hover:text-text'}`}>
-              {s === 'mine' ? 'My sets' : 'Library'}
-            </button>
-          ))}
-        </div>
+        <ToggleChips<'mine' | 'public'>
+          value={shownScope}
+          onChange={choose}
+          label="Where to look"
+          options={[
+            { value: 'mine', label: 'My sets' },
+            { value: 'public', label: 'Library' },
+          ]}
+        />
         <label className="relative min-w-[11rem] flex-1">
           <span className="sr-only">Search sets</span>
           <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-text-3" aria-hidden />
@@ -70,7 +73,7 @@ function SetPicker({ onPick }: { onPick: (s: SetSummary) => void }) {
               setPage(1);
             }}
             placeholder="Search sets"
-            className="h-9 pl-9"
+            className="pl-9"
           />
         </label>
       </div>
@@ -110,7 +113,7 @@ function SetPicker({ onPick }: { onPick: (s: SetSummary) => void }) {
             {list.map((s) => (
               <li key={s.id}>
                 {s.hidden ? (
-                  <div className="flex items-center gap-3 rounded-[14px] border-2 border-dashed border-line p-2.5 opacity-70">
+                  <div className="flex items-center gap-3 rounded-[var(--radius-m)] border border-dashed border-line-strong p-2.5">
                     <SetCover cover={s.cover} subject={s.subject} size={40} />
                     <span className="min-w-0 flex-1">
                       <span className="block truncate font-semibold">{s.title}</span>
@@ -118,7 +121,7 @@ function SetPicker({ onPick }: { onPick: (s: SetSummary) => void }) {
                     </span>
                   </div>
                 ) : (
-                  <button type="button" onClick={() => onPick(s)} className="flex w-full items-center gap-3 rounded-[14px] border-2 border-line bg-raised p-2.5 text-left transition-colors hover:border-line-strong">
+                  <button type="button" onClick={() => onPick(s)} className="flex w-full items-center gap-3 rounded-[var(--radius-m)] border border-line bg-raised p-2.5 text-left transition-colors hover:border-line-strong hover:bg-surface-2">
                     <SetCover cover={s.cover} subject={s.subject} size={40} />
                     <span className="min-w-0 flex-1">
                       <span className="block truncate font-semibold">{s.title}</span>
@@ -184,10 +187,10 @@ function ModePicker({ onPick }: { onPick: (c: Choice) => void }) {
         const meta = variant?.meta ?? mode.meta;
         return (
           <li key={meta.id}>
-            <button type="button" onClick={() => onPick({ mode, variant })} className="flex h-full w-full overflow-hidden rounded-[14px] border-2 border-line text-left transition-colors hover:border-line-strong">
+            <button type="button" onClick={() => onPick({ mode, variant })} className="group flex h-full w-full overflow-hidden rounded-[var(--radius-m)] border border-line text-left transition-colors hover:border-line-strong">
               <ModeArt thumb={thumbFor(mode.meta, variant?.meta)} className="w-20 shrink-0 self-stretch" />
-              <span className="min-w-0 flex-1 bg-raised p-2.5">
-                <span className="flex flex-wrap items-center gap-x-2 gap-y-0.5 font-display font-bold">
+              <span className="min-w-0 flex-1 bg-raised p-2.5 transition-colors group-hover:bg-surface-2">
+                <span className="flex flex-wrap items-center gap-x-2 gap-y-0.5 font-display text-lg leading-tight font-bold">
                   {meta.title}
                   {meta.status === 'beta' ? <Badge tone="amber">Beta</Badge> : null}
                 </span>
@@ -210,7 +213,8 @@ function Chosen({ art, title, detail, changeLabel, onChange, focusOnMount }: { a
     if (focusOnMount) ref.current?.focus();
   }, [focusOnMount]);
   return (
-    <div className="flex items-center gap-3 rounded-[14px] border-2 border-lantern bg-dusk/15 p-2.5">
+    // Chosen: the gold edge and tint that chosen cards have across Ludora.
+    <div className="flex items-center gap-3 rounded-[var(--radius-m)] border border-lantern bg-lantern/[0.08] p-2.5 ring-1 ring-lantern">
       {art}
       <span className="min-w-0 flex-1">
         <span className="block font-semibold break-words">{title}</span>
@@ -226,7 +230,7 @@ function Chosen({ art, title, detail, changeLabel, onChange, focusOnMount }: { a
 function SectionHeading({ id, children, note, className = 'mb-2' }: { id: string; children: ReactNode; note?: ReactNode; className?: string }) {
   return (
     <div className={className}>
-      <h3 id={id} className="font-display text-lg font-bold text-text">
+      <h3 id={id} className="font-display text-xl font-bold text-text">
         {children}
       </h3>
       {note ? <p className="text-sm text-text-3">{note}</p> : null}
@@ -306,8 +310,8 @@ function AssignmentForm({ classId, editing, onDone }: { classId: string; editing
   return (
     <form onSubmit={submit} noValidate className="flex flex-col gap-6">
       {editing && editingMode ? (
-        <div className="flex items-center gap-3 rounded-[14px] bg-surface-2 p-3 text-sm">
-          <ModeArt thumb={editingMode.thumb} className="h-12 w-16 shrink-0 overflow-hidden rounded-[8px]" />
+        <div className="flex items-center gap-3 rounded-[var(--radius-m)] bg-surface-2 p-3 text-sm">
+          <ModeArt thumb={editingMode.thumb} className="h-12 w-16 shrink-0 overflow-hidden rounded-[var(--radius-s)]" />
           <p className="min-w-0 flex-1 text-text-2">
             <span className="font-semibold break-words text-text">{editing.setTitle}</span>, played as {editingMode.title}. To use a different set or mode, make a new assignment.
           </p>
@@ -341,7 +345,7 @@ function AssignmentForm({ classId, editing, onDone }: { classId: string; editing
             </SectionHeading>
             {choice ? (
               <Chosen
-                art={<ModeArt thumb={thumbFor(choice.mode.meta, choice.variant?.meta)} className="h-10 w-14 shrink-0 overflow-hidden rounded-[8px]" />}
+                art={<ModeArt thumb={thumbFor(choice.mode.meta, choice.variant?.meta)} className="h-10 w-14 shrink-0 overflow-hidden rounded-[var(--radius-s)]" />}
                 title={choice.variant?.meta.title ?? choice.mode.meta.title}
                 detail={choice.variant ? `A twist on ${choice.mode.meta.title}` : choice.mode.meta.tagline}
                 changeLabel={`Change the game mode, ${choice.variant?.meta.title ?? choice.mode.meta.title}`}

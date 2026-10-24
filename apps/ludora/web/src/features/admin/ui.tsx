@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode, type RefObject } from 'react';
 import { useMutation, useQueryClient, type QueryKey } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
@@ -36,7 +36,7 @@ export function Card({ title, actions, children, className = '' }: { title?: Rea
     <section className={`min-w-0 rounded-[var(--radius-m)] border border-line bg-raised p-4 ${className}`}>
       {title || actions ? (
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-          {title ? <h2 className="font-semibold text-text">{title}</h2> : <span />}
+          {title ? <h2 className="font-display text-xl leading-tight font-bold text-text">{title}</h2> : <span />}
           {actions ? <div className="flex flex-wrap items-center gap-2">{actions}</div> : null}
         </div>
       ) : null}
@@ -53,12 +53,33 @@ export interface Column<T> {
   align?: 'left' | 'right';
 }
 
-/** A plain table that scrolls sideways inside its own box on narrow screens, never the page. */
+/** Whether a box is wider inside than out, so it scrolls sideways. */
+function useScrollsSideways(ref: RefObject<HTMLElement | null>, deps: unknown[]): boolean {
+  const [scrolls, setScrolls] = useState(false);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const check = () => setScrolls(el.scrollWidth > el.clientWidth + 1);
+    check();
+    const observer = new ResizeObserver(check);
+    observer.observe(el);
+    return () => observer.disconnect();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, deps);
+  return scrolls;
+}
+
+/**
+ * A plain table that scrolls sideways inside its own box on narrow screens, never the page. When it does
+ * scroll, the box takes keyboard focus so the arrow keys can move it.
+ */
 export function DataTable<T>({ columns, rows, rowKey, empty = 'Nothing here.', loading = false, error, onRetry, onRowClick, caption, minWidth = 640 }: { columns: Column<T>[]; rows: T[] | undefined; rowKey: (row: T) => string | number; empty?: ReactNode; loading?: boolean; error?: unknown; onRetry?: () => void; onRowClick?: (row: T) => void; caption?: string; /** Below this width the table scrolls inside its box. */ minWidth?: number }) {
+  const box = useRef<HTMLDivElement>(null);
+  const scrolls = useScrollsSideways(box, [rows, minWidth, error, loading]);
   if (error) return <ErrorNotice message={error instanceof ApiError ? error.message : 'Could not load this list.'} onRetry={onRetry} />;
   if (loading && !rows) return <Skeleton className="h-48" />;
   return (
-    <div className="relative overflow-x-auto rounded-[var(--radius-m)] border border-line">
+    <div ref={box} className="relative overflow-x-auto rounded-[var(--radius-m)] border border-line" {...(scrolls ? { role: 'region', 'aria-label': caption ?? 'Table', tabIndex: 0 } : {})}>
       <table className="w-full border-collapse text-sm" style={{ minWidth }}>
         {caption ? <caption className="sr-only">{caption}</caption> : null}
         <thead className="bg-surface-2 text-left text-xs font-semibold text-text-3">
@@ -148,8 +169,10 @@ const STATUS_TONE: Record<string, 'mint' | 'coral' | 'amber' | 'neutral' | 'viol
   retired: 'neutral',
 };
 
+/** A status as a tag, in sentence case ("Live", "In review") unless a label is given. */
 export function StatusPill({ status, label }: { status: string; label?: string }) {
-  return <Badge tone={STATUS_TONE[status] ?? 'neutral'}>{label ?? status.replace(/_/g, ' ')}</Badge>;
+  const words = status.replace(/_/g, ' ');
+  return <Badge tone={STATUS_TONE[status] ?? 'neutral'}>{label ?? words.charAt(0).toUpperCase() + words.slice(1)}</Badge>;
 }
 
 export function Stat({ label, value, hint }: { label: string; value: ReactNode; hint?: ReactNode }) {
@@ -307,7 +330,7 @@ export function SecretDialog({ open, onOpenChange, title, description, values }:
           <div key={label}>
             <dt className="text-sm text-text-3">{label}</dt>
             <dd className="mt-1 flex items-center gap-2">
-              <code className="min-w-0 flex-1 truncate rounded-[10px] bg-sunken px-3 py-2 font-mono text-base text-text">{value}</code>
+              <code className="min-w-0 flex-1 truncate rounded-[var(--radius-m)] bg-sunken px-3 py-2 font-mono text-base text-text">{value}</code>
               <Button
                 size="sm"
                 onClick={() => {

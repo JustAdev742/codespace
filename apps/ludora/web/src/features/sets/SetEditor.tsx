@@ -200,7 +200,7 @@ function NotOwner({ set }: { set: SetSummary }) {
       <Panel className="flex flex-col gap-4 p-5 sm:flex-row sm:items-start">
         <SetCover cover={set.cover} subject={set.subject} size={64} />
         <div className="min-w-0 flex-1">
-          <h2 className="font-display text-xl font-bold text-text [overflow-wrap:anywhere]">“{set.title}” belongs to someone else</h2>
+          <h2 className="font-display text-2xl font-bold text-text [overflow-wrap:anywhere]">“{set.title}” belongs to someone else</h2>
           <p className="mt-1 max-w-[62ch] text-text-2">Only the person who wrote a set can change it. Make a copy to get your own version that you can edit, play and share. The original stays as it is.</p>
           <div className="mt-4 flex flex-wrap gap-2">
             <Button variant="primary" icon={<Copy className="size-4" />} loading={copy.isPending} onClick={() => copy.mutate()}>

@@ -95,7 +95,7 @@ export default function Overview() {
             <ul className="grid grid-cols-1 gap-2 sm:grid-cols-2">
               {areas.map((s) => (
                 <li key={s.path}>
-                  <Link to={`/staff/${s.path}`} className="flex items-center gap-2 rounded-[10px] border border-line px-3 py-2 text-sm font-semibold text-text hover:bg-surface-2">
+                  <Link to={`/staff/${s.path}`} className="flex min-h-11 items-center gap-2 rounded-[var(--radius-m)] border border-line px-3 py-2 text-sm font-semibold text-text hover:bg-surface-2">
                     <span className="text-text-3">{s.icon}</span>
                     {s.label}
                   </Link>

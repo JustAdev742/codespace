@@ -1,7 +1,7 @@
 import { useState, type ReactNode } from 'react';
 import { Link } from 'react-router';
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
-import { BarChart3, ChevronRight, History, Presentation, Target, User } from 'lucide-react';
+import { ArrowDown, ArrowUp, BarChart3, ChevronRight, History, Minus, Presentation, Target, User } from 'lucide-react';
 import { MODE_CATEGORY_INFO, SUBJECT_LABELS, type Subject } from '@ludora/shared';
 import { api } from '../../lib/api.ts';
 import { useMe } from '../../lib/session.ts';
@@ -9,6 +9,7 @@ import { useModes, useOverview, type Overview } from '../../lib/queries.ts';
 import { formatNumber, ordinal, plural, timeAgo } from '../../lib/format.ts';
 import { AccountError, Badge, EmptyState, ErrorNotice, PageHeader, Panel, Skeleton } from '../../ui/primitives.tsx';
 import { Button, ButtonLink } from '../../ui/Button.tsx';
+import { Stage } from '../../ui/Stage.tsx';
 import { Dot } from '../social/parts.tsx';
 import { errorText, usePageTitle } from '../social/data.ts';
 
@@ -79,13 +80,16 @@ const weekDay = (d: Date, month: 'short' | 'long' = 'short') => d.toLocaleDateSt
 
 const percent = (correct: number, answered: number) => (answered ? Math.round((correct / answered) * 100) : null);
 
-function Tile({ label, value, note }: { label: string; value: string; note: string }) {
+function Tile({ label, value, unit, note }: { label: string; value: string; unit?: string; note: string }) {
   return (
-    <div className="flex flex-col rounded-[var(--radius-m)] border border-line bg-raised px-4 py-3.5">
-      <dt className="text-sm text-text-2">{label}</dt>
-      {/* Words ("None yet") get a smaller size than numbers so they stay on one line on a phone. */}
-      <dd className={/\d/.test(value) ? 'mt-0.5 text-3xl font-bold' : 'mt-1.5 mb-1 text-xl font-bold'}>{value}</dd>
-      <dd className="mt-1 text-xs text-text-3">{note}</dd>
+    <div className="flex min-w-0 flex-col rounded-[var(--radius-m)] bg-white/[0.07] px-3.5 py-3 sm:px-4">
+      <dt className="text-sm font-semibold text-text-2">{label}</dt>
+      {/* Numbers are the heroes: big, condensed and tabular. Words ("None yet") are smaller, so they stay on one line on a phone. */}
+      <dd className={/\d/.test(value) ? 'mt-1 font-display text-[2.75rem] leading-none font-extrabold tabular' : 'mt-2 mb-1 font-display text-2xl leading-none font-bold'}>
+        {value}
+        {unit ? <span className="ml-1 text-xl font-bold text-text-2">{unit}</span> : null}
+      </dd>
+      <dd className="mt-1.5 text-xs text-text-2">{note}</dd>
     </div>
   );
 }
@@ -93,15 +97,18 @@ function Tile({ label, value, note }: { label: string; value: string; note: stri
 function Headline({ s }: { s: Overview['stats'] }) {
   const pct = s.accuracy === null ? null : Math.round(s.accuracy * 100);
   const streakNote = s.playedToday ? `Played today. Longest: ${plural(s.longestDailyStreak, 'day')}` : s.dailyStreak > 0 ? 'Play today to keep it going' : s.longestDailyStreak > 0 ? `Longest: ${plural(s.longestDailyStreak, 'day')}` : 'Play a game today to start one';
+  // Your totals as a HUD on the stage, in both themes, like the stats graphic of a broadcast.
   return (
-    <dl className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-6">
-      <Tile label="Games played" value={formatNumber(s.gamesPlayed)} note={s.gamesHosted ? `And ${plural(s.gamesHosted, 'game')} hosted` : 'Every finished game counts'} />
-      <Tile label="Wins" value={formatNumber(s.gamesWon)} note="First place against two or more players" />
-      <Tile label="Podium finishes" value={formatNumber(s.podiums)} note="Top three against two or more players" />
-      <Tile label="Accuracy" value={pct === null ? 'None yet' : `${pct}%`} note={s.questionsAnswered ? `${formatNumber(s.questionsCorrect)} of ${formatNumber(s.questionsAnswered)} right` : 'Answer a question to start'} />
-      <Tile label="Best streak" value={formatNumber(s.bestStreak)} note="Right answers in a row" />
-      <Tile label="Daily streak" value={plural(s.dailyStreak, 'day')} note={streakNote} />
-    </dl>
+    <Stage className="rounded-[var(--radius-l)] p-2.5 sm:p-3">
+      <dl className="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-6">
+        <Tile label="Games played" value={formatNumber(s.gamesPlayed)} note={s.gamesHosted ? `And ${plural(s.gamesHosted, 'game')} hosted` : 'Every finished game counts'} />
+        <Tile label="Wins" value={formatNumber(s.gamesWon)} note="First place against two or more players" />
+        <Tile label="Podium finishes" value={formatNumber(s.podiums)} note="Top three against two or more players" />
+        <Tile label="Accuracy" value={pct === null ? 'None yet' : `${pct}%`} note={s.questionsAnswered ? `${formatNumber(s.questionsCorrect)} of ${formatNumber(s.questionsAnswered)} right` : 'Answer a question to start'} />
+        <Tile label="Best streak" value={formatNumber(s.bestStreak)} note="Right answers in a row" />
+        <Tile label="Daily streak" value={formatNumber(s.dailyStreak)} unit={s.dailyStreak === 1 ? 'day' : 'days'} note={streakNote} />
+      </dl>
+    </Stage>
   );
 }
 
@@ -114,13 +121,13 @@ function AccuracyRow({ label, badge, correct, answered, detail }: { label: strin
           <span className="truncate font-semibold">{label}</span>
           {badge ? <Badge>{badge}</Badge> : null}
         </span>
-        <span className="shrink-0 font-bold tabular">
+        <span className={pct === null ? 'shrink-0 text-sm font-semibold text-text-2' : 'shrink-0 font-display text-2xl leading-none font-extrabold tabular'}>
           {pct === null ? 'No answers yet' : `${pct}%`}
           {pct === null ? null : <span className="sr-only"> right</span>}
         </span>
       </div>
-      <div aria-hidden className="mt-1.5 h-2.5 overflow-hidden rounded-full bg-surface-3">
-        <div className="h-full rounded-full bg-dusk" style={{ width: `${pct ?? 0}%` }} />
+      <div aria-hidden className="mt-2 h-2.5 overflow-hidden rounded-[var(--radius-s)] bg-sunken shadow-[inset_0_0_0_1px_var(--line)]">
+        <div className="h-full rounded-[var(--radius-s)] bg-[var(--floodlight)] transition-[width] duration-200 ease-[var(--ease-out)]" style={{ width: `${pct ?? 0}%` }} />
       </div>
       <p className="mt-1 text-sm text-text-3">
         {formatNumber(correct)} of {formatNumber(answered)} right
@@ -159,15 +166,15 @@ function WeeklyChart({ weeks }: { weeks: Week[] }) {
                   {i === last ? 'This week' : `Week of ${weekDay(w.start, 'long')}`}: {plural(w.games, 'game')}
                   {w.answered ? `, ${w.correct} of ${w.answered} right` : ''}
                 </span>
-                <div aria-hidden className="w-full max-w-6 rounded-t-[4px] bg-dusk group-hover:brightness-110" style={{ height: at(w.games) }} />
+                <div aria-hidden className={`w-full max-w-6 rounded-t-[var(--radius-s)] group-hover:brightness-110 ${i === last ? 'bg-text' : 'bg-[var(--floodlight)]'}`} style={{ height: at(w.games) }} />
                 {i === last && w.games > 0 ? (
-                  <span aria-hidden className="absolute text-xs font-bold text-text tabular" style={{ bottom: `calc(${at(w.games)} + 4px)` }}>
+                  <span aria-hidden className="absolute font-display text-base leading-none font-bold text-text tabular" style={{ bottom: `calc(${at(w.games)} + 4px)` }}>
                     {w.games}
                   </span>
                 ) : null}
                 <div
                   aria-hidden
-                  className={`pointer-events-none absolute z-10 hidden whitespace-nowrap rounded-[10px] border border-line bg-raised px-2.5 py-1.5 text-xs shadow-lg group-hover:block ${i < 2 ? 'left-0' : i > last - 2 ? 'right-0' : 'left-1/2 -translate-x-1/2'}`}
+                  className={`lift pointer-events-none absolute z-10 hidden whitespace-nowrap rounded-[var(--radius-s)] border border-line bg-raised px-2.5 py-1.5 text-xs group-hover:block ${i < 2 ? 'left-0' : i > last - 2 ? 'right-0' : 'left-1/2 -translate-x-1/2'}`}
                   style={{ bottom: `calc(${at(w.games)} + 22px)` }}
                 >
                   <div className="font-bold text-text">{plural(w.games, 'game')}</div>
@@ -193,7 +200,7 @@ function WeeklyChart({ weeks }: { weeks: Week[] }) {
         ))}
       </div>
       <details className="mt-4 text-sm">
-        <summary className="cursor-pointer font-semibold text-link">Show as a table</summary>
+        <summary className="cursor-pointer py-2.5 font-semibold text-link">Show as a table</summary>
         <table className="mt-2 w-full text-left">
           <caption className="sr-only">Games each week</caption>
           <thead className="text-text-3">
@@ -232,7 +239,7 @@ function PractiseList({ items }: { items: StatsData['practise'] }) {
       <ul className="flex flex-col gap-2">
         {shown.map((q) => (
           <li key={`${q.setId}:${q.questionId}`}>
-            <Link to={`/sets/${q.setId}`} className="block rounded-[12px] bg-surface-2 px-3.5 py-3 text-text no-underline transition-colors hover:bg-surface-3">
+            <Link to={`/sets/${q.setId}`} className="block rounded-[var(--radius-m)] bg-surface-2 px-3.5 py-3 text-text no-underline transition-colors hover:bg-surface-3">
               <span className="line-clamp-2 font-semibold">{q.prompt}</span>
               <span className="mt-0.5 block truncate text-sm text-text-3">
                 {q.setTitle}
@@ -244,7 +251,7 @@ function PractiseList({ items }: { items: StatsData['practise'] }) {
         ))}
       </ul>
       {items.length > 5 ? (
-        <button type="button" onClick={() => setAll((v) => !v)} className="mt-3 text-sm font-semibold text-link" aria-expanded={all}>
+        <button type="button" onClick={() => setAll((v) => !v)} className="mt-1 min-h-11 text-sm font-semibold text-link" aria-expanded={all}>
           {all ? 'Show fewer' : `Show all ${items.length}`}
         </button>
       ) : null}
@@ -252,10 +259,39 @@ function PractiseList({ items }: { items: StatsData['practise'] }) {
   );
 }
 
+/** Gold, silver and bronze, as on the leaderboards. */
+const MEDALS: Record<number, string> = { 1: 'var(--lantern)', 2: '#c3c8de', 3: '#d0884f' };
+
+/** Where you finished. A podium finish against other players sits on its medal colour; the words say it as well. */
+function Finish({ g }: { g: PlayedGame }) {
+  if (g.isSolo) return <div className="font-display text-2xl leading-none font-bold text-text-2">Solo</div>;
+  const medal = g.players > 1 ? MEDALS[g.rank] : undefined;
+  return (
+    <div className="flex items-baseline justify-end gap-1.5">
+      <span className={`font-display text-2xl leading-none font-extrabold tabular ${medal ? 'rounded-[var(--radius-s)] px-1.5 py-0.5 text-on-accent' : ''}`} style={medal ? { background: medal } : undefined}>
+        {ordinal(g.rank)}
+      </span>
+      {g.players > 1 ? <span className="text-sm text-text-2">of {g.players}</span> : null}
+    </div>
+  );
+}
+
+/** This week against last week, in words and with an arrow, never by colour alone. */
+function WeekChange({ now, before }: { now: number; before: number }) {
+  const diff = now - before;
+  const Icon = diff > 0 ? ArrowUp : diff < 0 ? ArrowDown : Minus;
+  return (
+    <span className="inline-flex items-center gap-1 text-sm font-semibold text-text-2">
+      <Icon className="size-4 shrink-0" strokeWidth={2.5} aria-hidden />
+      {diff > 0 ? `${diff} more than last week` : diff < 0 ? `${-diff} fewer than last week` : 'Same as last week'}
+    </span>
+  );
+}
+
 function PanelTitle({ id, children, note }: { id: string; children: ReactNode; note?: ReactNode }) {
   return (
     <div className="mb-2">
-      <h2 id={id} className="font-display text-xl font-bold">
+      <h2 id={id} className="font-display text-2xl font-bold">
         {children}
       </h2>
       {note ? <p className="mt-0.5 text-sm text-text-3">{note}</p> : null}
@@ -317,7 +353,7 @@ function PlayedPanel() {
                   </div>
                 </div>
                 <div className="shrink-0 text-right">
-                  <div className="font-display font-bold">{g.isSolo ? 'Solo' : g.players > 1 ? `${ordinal(g.rank)} of ${g.players}` : ordinal(g.rank)}</div>
+                  <Finish g={g} />
                   <div className="text-xs text-text-3">
                     {g.answered ? `${g.correct} of ${g.answered} right` : 'No answers'}
                     <Dot />
@@ -379,7 +415,7 @@ function HostedPanel() {
           <ul className="-mx-2 flex flex-col">
             {games.map((g) => (
               <li key={g.id}>
-                <Link to={`/reports/${g.id}`} className="flex items-center gap-3 rounded-[12px] px-2 py-3 text-text no-underline transition-colors hover:bg-surface-2">
+                <Link to={`/reports/${g.id}`} className="flex items-center gap-3 rounded-[var(--radius-m)] px-2 py-3 text-text no-underline transition-colors hover:bg-surface-2">
                   <div className="min-w-0 flex-1">
                     <div className="truncate font-semibold">
                       <span className="sr-only">Report for </span>
@@ -461,6 +497,7 @@ export default function MyStats() {
   const weeks = s ? lastWeeks(s.weekly) : [];
   const weekTotal = weeks.reduce((n, w) => n + w.games, 0);
   const thisWeek = weeks[weeks.length - 1]?.games ?? 0;
+  const lastWeek = weeks[weeks.length - 2]?.games ?? 0;
 
   return (
     <>
@@ -479,11 +516,7 @@ export default function MyStats() {
         ) : overview.data ? (
           <Headline s={overview.data.stats} />
         ) : (
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-6">
-            {[0, 1, 2, 3, 4, 5].map((i) => (
-              <Skeleton key={i} className="h-28" />
-            ))}
-          </div>
+          <Skeleton className="h-[236px] rounded-[var(--radius-l)] sm:h-[164px] xl:h-[116px]" />
         )}
 
         {stats.isError ? (
@@ -545,13 +578,20 @@ export default function MyStats() {
 
             <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
               <Panel className="p-5" aria-labelledby="weekly-heading">
-                <PanelTitle id="weekly-heading" note={s && weekTotal ? `${plural(thisWeek, 'game')} this week, ${formatNumber(weekTotal)} in the last 8 weeks.` : 'Games you played each week, Monday to Sunday.'}>
+                <PanelTitle id="weekly-heading" note={s && weekTotal ? `${formatNumber(weekTotal)} in the last 8 weeks, Monday to Sunday.` : 'Games you played each week, Monday to Sunday.'}>
                   Games each week
                 </PanelTitle>
                 {!s ? (
                   <Skeleton className="h-48" />
                 ) : weekTotal ? (
-                  <WeeklyChart weeks={weeks} />
+                  <>
+                    <p className="mb-4 flex flex-wrap items-baseline gap-x-3 gap-y-1">
+                      <span className="font-display text-[2.75rem] leading-none font-extrabold tabular">{formatNumber(thisWeek)}</span>
+                      <span className="text-text-2">{thisWeek === 1 ? 'game this week' : 'games this week'}</span>
+                      <WeekChange now={thisWeek} before={lastWeek} />
+                    </p>
+                    <WeeklyChart weeks={weeks} />
+                  </>
                 ) : (
                   <p className="py-2 text-sm text-text-2">No games in the last 8 weeks. Play one and this chart starts to fill in.</p>
                 )}

@@ -223,7 +223,7 @@ function FilterChip({ label, onClear }: { label: string; onClear: () => void }) 
   return (
     <span className="inline-flex max-w-full min-w-0 items-center gap-1 rounded-full border border-lantern bg-surface-2 py-0.5 pr-1 pl-3 font-semibold text-text">
       <span className="truncate">{label}</span>
-      <button type="button" onClick={onClear} className="grid size-6 shrink-0 place-items-center rounded-full text-text-3 hover:bg-surface-3 hover:text-text" aria-label={`Remove filter: ${label}`}>
+      <button type="button" onClick={onClear} className="relative grid size-6 shrink-0 place-items-center rounded-full text-text-3 after:absolute after:-inset-2.5 hover:bg-surface-3 hover:text-text" aria-label={`Remove filter: ${label}`}>
         <X className="size-3.5" aria-hidden />
       </button>
     </span>
@@ -259,7 +259,7 @@ function AuditItem({ e, perms, onActor, onTarget }: { e: AuditEntry; perms: Set<
           ))}
         </div>
         <div className="mt-1 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-sm text-text-2">
-          <code className="rounded-[6px] bg-surface-2 px-1.5 py-0.5 text-xs font-semibold break-all text-text">{e.action}</code>
+          <code className="rounded-[var(--radius-s)] bg-surface-2 px-1.5 py-0.5 text-xs font-semibold break-all text-text">{e.action}</code>
           {targetText ? (
             <span className="inline-flex min-w-0 flex-wrap items-center gap-1">
               <span>on</span>
@@ -271,7 +271,7 @@ function AuditItem({ e, perms, onActor, onTarget }: { e: AuditEntry; perms: Set<
                 <span className="font-semibold text-text">{targetText}</span>
               )}
               {link && perms.has(link.permission) ? (
-                <Link to={link.to} className="inline-grid size-6 place-items-center rounded-[6px] text-link hover:bg-surface-2" aria-label={`Open ${targetText}`} title={`Open ${targetText}`}>
+                <Link to={link.to} className="relative inline-grid size-6 place-items-center rounded-[var(--radius-s)] text-link after:absolute after:-inset-2.5 hover:bg-surface-2" aria-label={`Open ${targetText}`} title={`Open ${targetText}`}>
                   <ArrowUpRight className="size-4" aria-hidden />
                 </Link>
               ) : null}
@@ -297,7 +297,7 @@ function JsonBlock({ label, value, changed }: { label: string; value: unknown; c
       <>
         <span className="block">{'{'}</span>
         {Object.entries(value).map(([k, v], i, all) => (
-          <span key={k} className={`block ${changed.includes(k) ? '-mx-1 rounded-[4px] bg-lantern/20 px-1 text-text' : ''}`}>
+          <span key={k} className={`block ${changed.includes(k) ? '-mx-1 rounded-[var(--radius-s)] bg-lantern/20 px-1 text-text' : ''}`}>
             {`  ${JSON.stringify(k)}: ${(JSON.stringify(v, null, 2) ?? 'null').replace(/\n/g, '\n  ')}${i < all.length - 1 ? ',' : ''}`}
           </span>
         ))}
@@ -309,7 +309,7 @@ function JsonBlock({ label, value, changed }: { label: string; value: unknown; c
   return (
     <div className="min-w-0">
       <div className="mb-1 text-xs font-semibold text-text-3">{label}</div>
-      <pre className="max-h-96 overflow-auto rounded-[10px] bg-sunken p-3 font-mono text-xs leading-relaxed text-text-2">{lines}</pre>
+      <pre className="max-h-96 overflow-auto rounded-[var(--radius-m)] bg-sunken p-3 font-mono text-xs leading-relaxed text-text-2">{lines}</pre>
     </div>
   );
 }

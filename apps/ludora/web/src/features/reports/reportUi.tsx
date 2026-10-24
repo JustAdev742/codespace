@@ -100,12 +100,13 @@ export function StatRow({ children, label }: { children: ReactNode; label: strin
   );
 }
 
+/** A headline number: condensed, tabular and big, so a report can be read at a glance. */
 export function StatTile({ label, value, children }: { label: string; value: ReactNode; children?: ReactNode }) {
   return (
-    <div className="flex min-w-0 flex-col rounded-[var(--radius-m)] border border-line bg-raised p-4">
-      <dt className="text-sm text-text-2">{label}</dt>
-      <dd className="mt-1 font-display text-2xl font-extrabold break-words text-text sm:text-3xl">{value}</dd>
-      {children ? <dd className="mt-auto pt-2 text-sm text-text-3">{children}</dd> : null}
+    <div className="flex min-w-0 flex-col rounded-[var(--radius-l)] border border-line bg-raised p-4">
+      <dt className="text-sm font-semibold text-text-2">{label}</dt>
+      <dd className="mt-1.5 font-display text-[2rem] leading-none font-extrabold break-words text-text tabular sm:text-[2.5rem]">{value}</dd>
+      {children ? <dd className="mt-auto pt-2.5 text-sm text-text-3">{children}</dd> : null}
     </div>
   );
 }
@@ -127,7 +128,7 @@ export function TableBox({ caption, minWidth = 640, children }: { caption: strin
   return (
     // Focusable so keyboard users can scroll it when it is wider than the screen. Relative, so
     // visually hidden text in cells (absolutely positioned) is clipped here instead of widening the page.
-    <div className="relative overflow-x-auto rounded-[var(--radius-m)] border border-line bg-raised" role="region" aria-label={caption} tabIndex={0}>
+    <div className="relative overflow-x-auto rounded-[var(--radius-l)] border border-line bg-raised" role="region" aria-label={caption} tabIndex={0}>
       <table className="w-full border-collapse text-left text-sm" style={{ minWidth }}>
         <caption className="sr-only">{caption}</caption>
         {children}
@@ -157,7 +158,8 @@ export function SortTh<K extends string>({ label, sortKey, sort, onSort, align =
   const Icon = !active ? ArrowUpDown : sort.dir === 'asc' ? ArrowUp : ArrowDown;
   return (
     <th scope="col" aria-sort={active ? (sort.dir === 'asc' ? 'ascending' : 'descending') : undefined} className={`${thClass} ${align === 'right' ? 'text-right' : ''}`}>
-      <button type="button" onClick={() => onSort(sortKey)} className={`inline-flex items-center gap-1 rounded-[6px] font-semibold hover:text-text ${active ? 'text-text' : ''}`}>
+      {/* Takes presses across 44px: an invisible strip above and below fills the header row. */}
+      <button type="button" onClick={() => onSort(sortKey)} className={`relative inline-flex items-center gap-1 rounded-[var(--radius-s)] font-semibold after:absolute after:-inset-x-1.5 after:-inset-y-3.5 hover:text-text ${active ? 'text-text' : ''}`}>
         {label}
         <Icon className={`size-3.5 shrink-0 ${active ? '' : 'opacity-60'}`} aria-hidden />
       </button>
@@ -165,14 +167,17 @@ export function SortTh<K extends string>({ label, sortKey, sort, onSort, align =
   );
 }
 
-/** A share from 0 to 1 as a short bar with its percentage beside it. The number carries the meaning; the bar helps scanning. */
+/**
+ * A share from 0 to 1 as a short bar with its percentage beside it. The number carries the meaning; the bar helps
+ * scanning. A plain groove with a solid fill in the brand blue, which stands out from the groove in both themes.
+ */
 export function RateBar({ rate }: { rate: number }) {
   const pct = Math.round(Math.max(0, Math.min(1, rate)) * 100);
   return (
     <span className="flex items-center gap-2.5">
-      <span className="w-10 shrink-0 text-right font-semibold text-text tabular">{pct}%</span>
-      <span className="h-2 w-20 shrink-0 overflow-hidden rounded-full bg-surface-3 sm:w-28" aria-hidden>
-        <span className="block h-full rounded-full bg-lantern" style={{ width: `${pct}%` }} />
+      <span className="w-11 shrink-0 text-right font-display text-lg leading-none font-bold text-text tabular">{pct}%</span>
+      <span className="h-2.5 w-20 shrink-0 overflow-hidden rounded-[var(--radius-s)] bg-sunken shadow-[inset_0_0_0_1px_var(--line)] sm:w-28" aria-hidden>
+        <span className="block h-full rounded-[var(--radius-s)] bg-[var(--floodlight)]" style={{ width: `${pct}%` }} />
       </span>
     </span>
   );

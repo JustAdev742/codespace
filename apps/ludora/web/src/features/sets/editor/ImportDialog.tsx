@@ -128,16 +128,16 @@ export function ImportDialog({ open, onOpenChange, currentCount, allBlank, hasTi
     >
       <Tabs value={format} onValueChange={(v) => setFormat(v as ImportFormat)} label="Format" items={FORMAT_TABS}>
         <TabPanel value="text" className="flex flex-col gap-2 text-sm text-text-2">
-          <details open={rulesOpen} className="rounded-[12px] border border-line">
-            <summary className="cursor-pointer rounded-[12px] px-3 py-2 font-semibold text-text hover:bg-surface-2">How to type questions</summary>
+          <details open={rulesOpen} className="rounded-[var(--radius-m)] border border-line">
+            <summary className="cursor-pointer rounded-[var(--radius-m)] px-3 py-3 font-semibold text-text hover:bg-surface-2">How to type questions</summary>
             <ul className="flex list-disc flex-col gap-1 border-t border-line py-2 pr-3 pl-8">
               {PASTE_RULES.map((rule) => (
                 <li key={rule}>{rule}</li>
               ))}
             </ul>
           </details>
-          <details className="rounded-[12px] border border-line">
-            <summary className="cursor-pointer rounded-[12px] px-3 py-2 font-semibold text-text hover:bg-surface-2">Example</summary>
+          <details className="rounded-[var(--radius-m)] border border-line">
+            <summary className="cursor-pointer rounded-[var(--radius-m)] px-3 py-3 font-semibold text-text hover:bg-surface-2">Example</summary>
             <pre className="max-h-56 overflow-auto border-t border-line px-3 py-2 font-mono text-xs leading-relaxed whitespace-pre-wrap text-text">{PASTE_EXAMPLE}</pre>
             <div className="border-t border-line px-3 py-2">
               <Button size="sm" variant="ghost" onClick={() => setText(PASTE_EXAMPLE)}>
@@ -153,8 +153,8 @@ export function ImportDialog({ open, onOpenChange, currentCount, allBlank, hasTi
               Download the template
             </Button>
           </div>
-          <details className="rounded-[12px] border border-line">
-            <summary className="cursor-pointer rounded-[12px] px-3 py-2 font-semibold text-text hover:bg-surface-2">What each column means</summary>
+          <details className="rounded-[var(--radius-m)] border border-line">
+            <summary className="cursor-pointer rounded-[var(--radius-m)] px-3 py-3 font-semibold text-text hover:bg-surface-2">What each column means</summary>
             <dl className="flex flex-col gap-2 border-t border-line px-3 py-2">
               {CSV_COLUMNS.map((c) => (
                 <div key={c}>
@@ -167,8 +167,8 @@ export function ImportDialog({ open, onOpenChange, currentCount, allBlank, hasTi
         </TabPanel>
         <TabPanel value="json" className="flex flex-col gap-2 text-sm text-text-2">
           <p>A file exported from Ludora, or a list of questions in the same shape. Ludora files keep everything, including images.</p>
-          <details className="rounded-[12px] border border-line">
-            <summary className="cursor-pointer rounded-[12px] px-3 py-2 font-semibold text-text hover:bg-surface-2">Example</summary>
+          <details className="rounded-[var(--radius-m)] border border-line">
+            <summary className="cursor-pointer rounded-[var(--radius-m)] px-3 py-3 font-semibold text-text hover:bg-surface-2">Example</summary>
             <pre className="max-h-56 overflow-auto border-t border-line px-3 py-2 font-mono text-xs leading-relaxed whitespace-pre-wrap text-text">{JSON_EXAMPLE}</pre>
           </details>
         </TabPanel>
@@ -215,7 +215,7 @@ export function ImportDialog({ open, onOpenChange, currentCount, allBlank, hasTi
         />
       </div>
 
-      <section aria-label="Preview" className="mt-4 flex flex-col gap-3 rounded-[14px] border border-line bg-sunken/40 p-3">
+      <section aria-label="Preview" className="mt-4 flex flex-col gap-3 rounded-[var(--radius-m)] border border-line bg-sunken/40 p-3">
         <p role="status" className="font-semibold text-text">
           {status}
         </p>
@@ -240,7 +240,7 @@ export function ImportDialog({ open, onOpenChange, currentCount, allBlank, hasTi
         ) : null}
         {ready && result?.details && format === 'json' ? (
           <label className="flex items-start gap-2.5 text-sm text-text">
-            <input type="checkbox" checked={useDetails} onChange={(e) => setUseDetails(e.target.checked)} className="mt-0.5 size-4 shrink-0 accent-[var(--lantern)]" />
+            <input type="checkbox" checked={useDetails} onChange={(e) => setUseDetails(e.target.checked)} className="size-5 shrink-0 accent-[var(--lantern)]" />
             <span>
               Also use this file's set details{result.details.title ? ` (“${result.details.title}”)` : ''}: title, description, subject and cover
             </span>
@@ -249,12 +249,12 @@ export function ImportDialog({ open, onOpenChange, currentCount, allBlank, hasTi
         {ready && askMode ? (
           <fieldset className="flex flex-col gap-1.5">
             <legend className="mb-1 text-sm font-semibold text-text">What to do with them</legend>
-            <label className="flex items-center gap-2.5 text-sm text-text">
-              <input type="radio" name="import-mode" checked={mode === 'add'} onChange={() => setMode('add')} className="size-4 accent-[var(--lantern)]" />
+            <label className="flex min-h-11 items-center gap-2.5 text-sm text-text sm:min-h-9">
+              <input type="radio" name="import-mode" checked={mode === 'add'} onChange={() => setMode('add')} className="size-5 shrink-0 accent-[var(--lantern)]" />
               Add them after the {plural(currentCount, 'current question')}
             </label>
-            <label className="flex items-center gap-2.5 text-sm text-text">
-              <input type="radio" name="import-mode" checked={mode === 'replace'} onChange={() => setMode('replace')} className="size-4 accent-[var(--lantern)]" />
+            <label className="flex min-h-11 items-center gap-2.5 text-sm text-text sm:min-h-9">
+              <input type="radio" name="import-mode" checked={mode === 'replace'} onChange={() => setMode('replace')} className="size-5 shrink-0 accent-[var(--lantern)]" />
               Replace the current questions
             </label>
           </fieldset>

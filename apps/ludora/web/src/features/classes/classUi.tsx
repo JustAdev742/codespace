@@ -143,7 +143,7 @@ export function ClassPageSkeleton() {
 
 export function ClassIcon() {
   return (
-    <span className="grid size-11 shrink-0 place-items-center rounded-[12px] bg-surface-2 text-lantern" aria-hidden>
+    <span className="grid size-11 shrink-0 place-items-center rounded-[var(--radius-m)] bg-surface-3 text-lantern" aria-hidden>
       <School className="size-5" />
     </span>
   );

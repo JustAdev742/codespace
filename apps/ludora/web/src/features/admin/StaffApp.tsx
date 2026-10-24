@@ -97,11 +97,13 @@ export default function StaffApp() {
                   to={s.path ? `/staff/${s.path}` : '/staff'}
                   end={!s.path}
                   className={({ isActive }) =>
-                    `flex h-9 items-center gap-2 rounded-[10px] px-3 text-sm font-semibold whitespace-nowrap transition-colors ${isActive ? 'bg-surface-2 text-text' : 'text-text-2 hover:bg-surface-2 hover:text-text'}`
+                    `relative flex h-11 items-center gap-2 rounded-[var(--radius-m)] px-3 text-sm font-semibold whitespace-nowrap transition-colors lg:h-9 ${isActive ? 'bg-surface-3 text-text' : 'text-text-2 hover:bg-surface-2 hover:text-text'}`
                   }
                 >
                   {({ isActive }) => (
                     <>
+                      {/* The current section has a gold bar as well as its fill, as in the main menu: under it on phones, beside it on wide screens. */}
+                      {isActive ? <span className="absolute inset-x-3 bottom-0 h-[3px] rounded-t-[2px] bg-lantern lg:inset-x-auto lg:inset-y-2 lg:left-0 lg:h-auto lg:w-[3px] lg:rounded-t-none lg:rounded-r-[2px]" aria-hidden /> : null}
                       <span className={isActive ? 'text-lantern' : 'text-text-3'}>{s.icon}</span>
                       {s.label}
                     </>
