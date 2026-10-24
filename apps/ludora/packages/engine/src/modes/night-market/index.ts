@@ -330,7 +330,7 @@ function checkGoal(s: State, ctx: ModeContext<Settings>, id: PlayerId) {
   if (!goal || s.winner || !st || st.coins < goal) return;
   s.winner = id;
   addNews(s, ctx.now(), { kind: 'goal', by: id, to: null, amount: st.coins, trick: null });
-  ctx.feed(`${nameOf(ctx, id)} reached ${coinsText(goal)}!`, { tone: 'big' });
+  ctx.feed(`${nameOf(ctx, id)} reached ${coinsText(goal)}.`, { tone: 'big' });
   ctx.endGame();
 }
 
@@ -362,15 +362,15 @@ function openFortune(s: State, ctx: ModeContext<Settings>, id: PlayerId, content
   let detail = flat ? boostDetail(m.event, lucky, m.level > 1 ? m.level : null) : null;
   let big = false;
   if (content === 'jackpot') {
-    title = `Jackpot! +${coinsText(gain)}`;
+    title = `Jackpot: +${coinsText(gain)}`;
     big = true;
     addNews(s, at, { kind: 'jackpot', by: id, to: null, amount: gain, trick: null });
-    ctx.feed(`${name} found a jackpot: +${coinsText(gain)}!`, { tone: 'big' });
+    ctx.feed(`${name} found a jackpot: +${coinsText(gain)}.`, { tone: 'big' });
   } else if (content === 'double') {
-    title = `Double! +${coinsText(gain)}`;
+    title = `Double: +${coinsText(gain)}`;
     big = true;
     addNews(s, at, { kind: 'double', by: id, to: null, amount: gain, trick: null });
-    ctx.feed(`${name}’s coins doubled: +${fmt(gain)}!`, { tone: 'big' });
+    ctx.feed(`${name}’s coins doubled: +${fmt(gain)}.`, { tone: 'big' });
   } else {
     if (content === 'quarter') detail = `${String(row.percent ?? 0)}% of your coins.`;
     if (gain >= BIG_FORTUNE) {
@@ -389,7 +389,7 @@ function openWild(s: State, ctx: ModeContext<Settings>, id: PlayerId, content: C
     const gain = Math.max(wildGrowMin(ctx.settings.wildness), Math.round(st.coins * (growth - 1)));
     st.coins += gain;
     if (gain >= BIG_WILD) addNews(s, at, { kind: 'wildWin', by: id, to: null, amount: gain, trick: null });
-    return { delta: gain, title: `Coins ×${String(growth)}! +${coinsText(gain)}`, detail: m.event === 'winds' ? 'Wild Winds made it bigger.' : null, waiting: false, blocked: false, big: gain >= BIG_WILD };
+    return { delta: gain, title: `Coins ×${String(growth)}: +${coinsText(gain)}`, detail: m.event === 'winds' ? 'Wild Winds made it bigger.' : null, waiting: false, blocked: false, big: gain >= BIG_WILD };
   }
   const pct = wildLossPercent(ctx.settings.wildness, content as 'loseSmall' | 'loseBig');
   const loss = Math.round((st.coins * pct) / 100);
@@ -421,11 +421,11 @@ function openTrick(s: State, ctx: ModeContext<Settings>, id: PlayerId, content: 
     if (total > 0) {
       if (total >= NEWS_TOLL) addNews(s, at, { kind: 'toll', by: id, to: null, amount: total, trick: null });
       // Everyone paid, but only a big toll is worth a line for the whole room; the payers each get a note.
-      ctx.feed(`${name} rang the toll bell and collected ${coinsText(total)}!`, total >= BIG_SWIPE ? { tone: 'big' } : { tone: 'info', to: [id] });
+      ctx.feed(`${name} rang the toll bell and collected ${coinsText(total)}.`, total >= BIG_SWIPE ? { tone: 'big' } : { tone: 'info', to: [id] });
     }
     return {
       delta: total,
-      title: total ? `Toll! +${coinsText(total)}` : 'Toll! Nobody had coins to pay',
+      title: total ? `Toll: +${coinsText(total)}` : 'Toll: nobody had coins to pay',
       detail: payers ? `${String(payers)} ${payers === 1 ? 'player' : 'players'} paid you.` : null,
       waiting: false,
       blocked: false,
@@ -442,7 +442,7 @@ function openTrick(s: State, ctx: ModeContext<Settings>, id: PlayerId, content: 
   const swap = content === 'swap';
   return {
     delta: 0,
-    title: swap ? 'Swap!' : `Swipe ${String(swipePercent(ctx.settings.greed, content as 'swipe1'))}%!`,
+    title: swap ? 'Swap' : `Swipe ${String(swipePercent(ctx.settings.greed, content as 'swipe1'))}%`,
     detail: swap ? 'Choose who to swap coins with.' : 'Choose who to swipe from.',
     waiting: true,
     blocked: false,
@@ -514,10 +514,10 @@ function playTrick(s: State, ctx: ModeContext<Settings>, id: PlayerId, targetId:
   if (target.shield) {
     const calm = s.event?.id === 'calm';
     if (!calm) target.shield = false;
-    note(s, target, at, `Your shield blocked ${me}’s ${word}!${calm ? ' Calm Night kept it whole.' : ''}`, 'good', 'shield');
+    note(s, target, at, `Your shield blocked ${me}’s ${word}.${calm ? ' Calm Night kept it whole.' : ''}`, 'good', 'shield');
     note(s, st, at, `${them}’s shield blocked your ${word}.`, 'bad', 'shield', true);
     addNews(s, at, { kind: 'block', by: id, to: targetId, amount: 0, trick: swap ? 'swap' : 'swipe' });
-    ctx.feed(`${them}’s shield blocked ${me}’s ${word}!`, { tone: 'info', to: [id, targetId] });
+    ctx.feed(`${them}’s shield blocked ${me}’s ${word}.`, { tone: 'info', to: [id, targetId] });
     finish(0, `${them}’s shield blocked your ${word}`, [autoNote, calm ? 'Calm Night: their shield held.' : 'Their shield broke.'].filter(Boolean).join(' '), true);
     return;
   }
@@ -530,7 +530,7 @@ function playTrick(s: State, ctx: ModeContext<Settings>, id: PlayerId, targetId:
     note(s, target, at, delta > 0 ? `${me} swapped coins with you: you lost ${coinsText(delta)}.` : delta < 0 ? `${me} swapped coins with you: you gained ${coinsText(-delta)}.` : `${me} swapped coins with you. You had the same.`, delta > 0 ? 'bad' : 'good', 'swap');
     note(s, st, at, `You swapped coins with ${them}: ${signed(delta)}.`, delta >= 0 ? 'good' : 'bad', 'swap', true);
     addNews(s, at, { kind: 'swap', by: id, to: targetId, amount: delta, trick: 'swap' });
-    ctx.feed(`${me} swapped coins with ${them}!`, { tone: 'big' });
+    ctx.feed(`${me} swapped coins with ${them}.`, { tone: 'big' });
     finish(delta, delta === 0 ? `Swapped with ${them}: no change` : `Swapped with ${them}: ${signed(delta)} coins`, autoNote);
     checkGoal(s, ctx, id);
     checkGoal(s, ctx, targetId);
@@ -545,7 +545,7 @@ function playTrick(s: State, ctx: ModeContext<Settings>, id: PlayerId, targetId:
   note(s, st, at, `You swiped ${coinsText(amount)} from ${them}.`, 'good', 'swipe', true);
   if (amount > (s.biggestSwipe?.amount ?? 0)) s.biggestSwipe = { by: id, from: targetId, amount };
   if (amount >= NEWS_SWIPE) addNews(s, at, { kind: 'swipe', by: id, to: targetId, amount, trick: 'swipe' });
-  ctx.feed(`${me} swiped ${coinsText(amount)} from ${them}!`, amount >= BIG_SWIPE ? { tone: 'big' } : { tone: 'info', to: [id, targetId] });
+  ctx.feed(`${me} swiped ${coinsText(amount)} from ${them}.`, amount >= BIG_SWIPE ? { tone: 'big' } : { tone: 'info', to: [id, targetId] });
   finish(amount, amount ? `Swiped ${coinsText(amount)} from ${them}` : `${them} had no coins to swipe`, autoNote);
   checkGoal(s, ctx, id);
 }
@@ -571,12 +571,12 @@ function autoTrick(s: State, ctx: ModeContext<Settings>, id: PlayerId) {
 /* ------------------------------ market events ----------------------------- */
 
 const EVENT_LINES: Record<MarketEventId, string> = {
-  golden: 'Golden Hour! Fortune lanterns pay double for 30 seconds.',
-  trickster: 'Trickster Moon! Trick lanterns are twice as likely for 30 seconds.',
-  rain: 'Lantern Rain! Every right answer gives two picks for 30 seconds.',
-  calm: 'Calm Night! No trick lanterns for 30 seconds, and shields cannot break.',
-  winds: 'Wild Winds! Wild lanterns are twice as likely and win bigger for 30 seconds.',
-  lastCall: 'Last Call! Fortune lanterns pay double until the market closes.',
+  golden: 'Golden Hour: Fortune lanterns pay double for 30 seconds.',
+  trickster: 'Trickster Moon: Trick lanterns are twice as likely for 30 seconds.',
+  rain: 'Lantern Rain: every right answer gives two picks for 30 seconds.',
+  calm: 'Calm Night: no Trick lanterns for 30 seconds, and shields cannot break.',
+  winds: 'Wild Winds: Wild lanterns are twice as likely and win bigger for 30 seconds.',
+  lastCall: 'Last Call: Fortune lanterns pay double until the market closes.',
 };
 
 /** Schedule the next 30-second event `from` a game time, if it ends before Last Call. */
@@ -739,7 +739,7 @@ export const nightMarket = defineMode<State, Settings, Action>({
         const res = streamSubmit(st.stream, playerId, a.iid, a.answer, ctx);
         if ('error' in res) return res;
         if (!res.correct) {
-          if (st.stream.last) st.stream.last.text = 'No lantern this time';
+          if (st.stream.last) st.stream.last.text = 'No lantern';
           streamNext(st.stream, ctx);
           return;
         }
@@ -747,8 +747,8 @@ export const nightMarket = defineMode<State, Settings, Action>({
         st.extraPicks = rain ? 1 : 0;
         makeOffer(s, ctx, playerId, false);
         const levelUp = st.stream.correct % LEVEL_EVERY === 0 ? stallLevel(st.stream.correct) : null;
-        if (levelUp) note(s, st, ctx.now(), `Stall level ${String(levelUp)}! Your coin lanterns are worth more.`, 'good', 'level', true);
-        if (st.stream.last) st.stream.last.text = `${levelUp ? `Stall level ${String(levelUp)}! ` : ''}${rain ? 'Lantern Rain: pick 2 lanterns.' : 'Pick a lantern.'}`;
+        if (levelUp) note(s, st, ctx.now(), `Stall level ${String(levelUp)}: your coin lanterns are worth more.`, 'good', 'level', true);
+        if (st.stream.last) st.stream.last.text = `${levelUp ? `Stall level ${String(levelUp)}. ` : ''}${rain ? 'Lantern Rain: pick 2 lanterns.' : 'Pick a lantern.'}`;
         return;
       }
       case 'pick': {

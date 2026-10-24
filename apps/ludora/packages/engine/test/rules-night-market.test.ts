@@ -202,7 +202,7 @@ describe('Night Market rules', () => {
   it('a wrong answer brings the next question; a right answer offers three lanterns and no question', () => {
     const h = market({ players: ['a'] });
     expect(h.answer('a', 'wrong').ok).toBe(true);
-    expect(h.view('a').you).toMatchObject({ offer: null, last: { correct: false, text: 'No lantern this time' } });
+    expect(h.view('a').you).toMatchObject({ offer: null, last: { correct: false, text: 'No lantern' } });
     expect(h.view('a').you.question).not.toBeNull();
 
     expect(h.answer('a', 'right').ok).toBe(true);
@@ -240,7 +240,7 @@ describe('Night Market rules', () => {
       h.answer('a', 'right');
     }
     expect(h.view('a').you.level).toBe(2);
-    expect(stall(h, 'a').notes[0].text).toMatch(/^Stall level 2! Your coin lanterns are worth more\.$/);
+    expect(stall(h, 'a').notes[0].text).toMatch(/^Stall level 2: your coin lanterns are worth more\.$/);
 
     const at = offerWith(h, 'a', content('coins40'));
     const you = h.view('a').you;
@@ -266,8 +266,8 @@ describe('Night Market rules', () => {
     was = coinsOf(h, 'a');
     pick(h, 'a', at);
     expect(coinsOf(h, 'a')).toBe(was + Math.max(50, was));
-    expect(h.view('a').you.opened).toMatchObject({ title: `Double! +${(Math.max(50, was)).toLocaleString('en-GB')} coins`, big: true });
-    expect(h.feedTo('b')).toContain(`A’s coins doubled: +${Math.max(50, was).toLocaleString('en-GB')}!`);
+    expect(h.view('a').you.opened).toMatchObject({ title: `Double: +${(Math.max(50, was)).toLocaleString('en-GB')} coins`, big: true });
+    expect(h.feedTo('b')).toContain(`A’s coins doubled: +${Math.max(50, was).toLocaleString('en-GB')}.`);
 
     at = offerWith(h, 'a', content('jackpot'));
     const you = h.view('a').you;
@@ -275,7 +275,7 @@ describe('Night Market rules', () => {
     pick(h, 'a', at);
     const gain = Math.round(250 * levelMultiplier(you.level) * fortuneMultiplier(null, you.lucky));
     expect(coinsOf(h, 'a') - was).toBe(gain);
-    expect(h.feedTo('b')).toContain(`A found a jackpot: +${gain.toLocaleString('en-GB')} coins!`);
+    expect(h.feedTo('b')).toContain(`A found a jackpot: +${gain.toLocaleString('en-GB')} coins.`);
     expect(h.host().news[0]).toMatchObject({ kind: 'jackpot', name: 'A', amount: gain });
   });
 
@@ -321,7 +321,7 @@ describe('Night Market rules', () => {
     settle(h, 'a');
     h.tick(h.view('a').endsAt - EVENT_TIMING.lastCallSec * 1000 - h.rt.gameNow());
     expect(h.view('a').event).toMatchObject({ id: 'lastCall', endsAt: h.view('a').endsAt });
-    expect(texts(h)).toContain('Last Call! Fortune lanterns pay double until the market closes.');
+    expect(texts(h)).toContain('Last Call: Fortune lanterns pay double until the market closes.');
     at = luckyOfferWith(content('coins20'));
     you = h.view('a').you;
     was = coinsOf(h, 'a');
@@ -350,7 +350,7 @@ describe('Night Market rules', () => {
       was = coinsOf(h, 'a');
       pick(h, 'a', at);
       expect(coinsOf(h, 'a') - was).toBe(Math.max(40, Math.round(was * (grow - 1))));
-      expect(h.view('a').you.opened.title).toMatch(new RegExp(`^Coins ×${grow}! \\+`));
+      expect(h.view('a').you.opened.title).toMatch(new RegExp(`^Coins ×${grow}: \\+`));
       for (const [id, pct] of [
         ['loseSmall', small],
         ['loseBig', big],
@@ -395,7 +395,7 @@ describe('Night Market tricks', () => {
     expect(choose).toMatchObject({ trick: 'swipe', percent: 15 });
     expect(choose.deadline).toBe(h.rt.gameNow() + TRICK_CHOOSE_SEC * 1000);
     expect(h.view('a').you.question).toBeNull();
-    expect(h.view('a').you.opened).toMatchObject({ title: 'Swipe 15%!', waiting: true });
+    expect(h.view('a').you.opened).toMatchObject({ title: 'Swipe 15%', waiting: true });
 
     const b = coinsOf(h, 'b');
     const a = coinsOf(h, 'a');
@@ -405,7 +405,7 @@ describe('Night Market tricks', () => {
     expect(h.view('a').you).toMatchObject({ choose: null, opened: { waiting: false, delta: amount, title: `Swiped ${amount} coins from B` } });
     expect(h.view('a').you.question).not.toBeNull();
     expect(h.view('b').you.notes[0]).toMatchObject({ text: `A swiped ${amount} coins from you.`, tone: 'bad' });
-    const line = `A swiped ${amount} coins from B!`;
+    const line = `A swiped ${amount} coins from B.`;
     expect(amount).toBeLessThan(100);
     expect(h.feedTo('b')).toContain(line);
     expect(h.feedTo('c')).not.toContain(line);
@@ -418,7 +418,7 @@ describe('Night Market tricks', () => {
     expect(target(h, 'a', 'c').ok).toBe(true);
     const big = Math.round(c * 0.25);
     expect(big).toBeGreaterThanOrEqual(100);
-    expect(h.feedTo('b')).toContain(`A swiped ${big.toLocaleString('en-GB')} coins from C!`);
+    expect(h.feedTo('b')).toContain(`A swiped ${big.toLocaleString('en-GB')} coins from C.`);
     expect(h.host().news[0]).toMatchObject({ kind: 'swipe', name: 'A', target: 'C', amount: big });
   });
 
@@ -432,7 +432,7 @@ describe('Night Market tricks', () => {
     expect(b).toBeGreaterThan(a);
     expect(target(h, 'a', 'b').ok).toBe(true);
     expect([coinsOf(h, 'a'), coinsOf(h, 'b')]).toEqual([b, a]);
-    expect(h.feedTo('c')).toContain('A swapped coins with B!');
+    expect(h.feedTo('c')).toContain('A swapped coins with B.');
     expect(h.view('b').you.notes[0].text).toBe(`A swapped coins with you: you lost ${(b - a).toLocaleString('en-GB')} ${b - a === 1 ? 'coin' : 'coins'}.`);
     expect(h.view('a').you.opened.title).toBe(`Swapped with B: +${(b - a).toLocaleString('en-GB')} coins`);
   });
@@ -454,11 +454,11 @@ describe('Night Market tricks', () => {
     expect(pays[0]).toBe(25);
     expect(stall(h, 'b').shield).toBe(true);
     const total = pays.reduce((n, x) => n + x, 0);
-    expect(h.view('a').you.opened).toMatchObject({ kind: 'trick', content: 'toll', delta: total, title: `Toll! +${total} coins` });
+    expect(h.view('a').you.opened).toMatchObject({ kind: 'trick', content: 'toll', delta: total, title: `Toll: +${total} coins` });
     // A small toll is news for the player who rang it; each payer gets a note instead.
     expect(total).toBeLessThan(100);
-    expect(h.feedTo('a')).toContain(`A rang the toll bell and collected ${total} coins!`);
-    expect(h.feedTo('d')).not.toContain(`A rang the toll bell and collected ${total} coins!`);
+    expect(h.feedTo('a')).toContain(`A rang the toll bell and collected ${total} coins.`);
+    expect(h.feedTo('d')).not.toContain(`A rang the toll bell and collected ${total} coins.`);
     expect(h.view('c').you.notes[0].text).toBe(`A’s toll took ${pays[1]} ${pays[1] === 1 ? 'coin' : 'coins'} from you.`);
   });
 
@@ -473,8 +473,8 @@ describe('Night Market tricks', () => {
     expect([coinsOf(h, 'a'), coinsOf(h, 'b')]).toEqual([a, b]);
     expect(stall(h, 'b').shield).toBe(false);
     expect(h.view('a').you.opened).toMatchObject({ blocked: true, delta: 0, title: 'B’s shield blocked your swap', detail: 'Their shield broke.' });
-    expect(h.view('b').you.notes[0]).toMatchObject({ text: 'Your shield blocked A’s swap!', tone: 'good' });
-    expect(h.feed).toContainEqual({ text: 'B’s shield blocked A’s swap!', to: ['a', 'b'] });
+    expect(h.view('b').you.notes[0]).toMatchObject({ text: 'Your shield blocked A’s swap.', tone: 'good' });
+    expect(h.feed).toContainEqual({ text: 'B’s shield blocked A’s swap.', to: ['a', 'b'] });
 
     // The next one lands. B is the only player A can trick, so the usual limits relax.
     openTrick(h, 'a', 'swipe1');
@@ -492,7 +492,7 @@ describe('Night Market tricks', () => {
       shieldUp(h, 'b');
       h.tick(EVENT_TIMING.firstSec * 1000 - h.rt.gameNow());
       if (h.view('a').event?.id !== 'calm') continue;
-      expect(texts(h)).toContain('Calm Night! No trick lanterns for 30 seconds, and shields cannot break.');
+      expect(texts(h)).toContain('Calm Night: no Trick lanterns for 30 seconds, and shields cannot break.');
       pick(h, 'a', at);
       expect(target(h, 'a', 'b').ok).toBe(true);
       expect(stall(h, 'b').shield).toBe(true);
@@ -658,7 +658,7 @@ describe('Night Market events', () => {
     expect(h.view('a').next).toEqual({ at: endsAt - 45_000, lastCall: true });
     h.tick(endsAt - 45_000 - h.rt.gameNow());
     expect(h.view('a')).toMatchObject({ event: { id: 'lastCall', endsAt }, next: null });
-    expect(texts(h).filter((t) => /! /.test(t) && /seconds|closes/.test(t))).toHaveLength(7);
+    expect(texts(h).filter((t) => /^(Golden Hour|Trickster Moon|Lantern Rain|Calm Night|Wild Winds|Last Call): /.test(t) && /seconds|closes/.test(t))).toHaveLength(7);
   });
 
   it('never runs Trickster Moon or Calm Night when nobody can trick anybody, and runs no events when they are off', () => {
@@ -715,7 +715,7 @@ describe('Night Market games', () => {
     expect(h.rt.results).toMatchObject({ endedBy: 'mode', standings: [{ playerId: 'a', rank: 1 }, { playerId: 'b' }] });
     expect(h.rt.results!.standings[0]!.score).toBeGreaterThanOrEqual(250);
     expect(h.rt.results!.summary).toMatch(/^A reached 250 coins first\./);
-    expect(texts(h)).toContain('A reached 250 coins!');
+    expect(texts(h)).toContain('A reached 250 coins.');
     expect(pickVariant('night-market-race').settings).toEqual({ goalCoins: 2500 });
   });
 
