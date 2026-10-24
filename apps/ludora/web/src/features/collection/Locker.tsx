@@ -169,16 +169,16 @@ export default function Locker() {
                           <div className="mt-auto">
                             {on ? (
                               active.kind === 'buddy' ? (
-                                <Button size="sm" className="h-11 w-full" disabled>
+                                <Button size="sm" className="w-full" disabled>
                                   {words.on}
                                 </Button>
                               ) : (
-                                <Button size="sm" variant="ghost" className="h-11 w-full" onClick={() => unequip.mutate(slot)} loading={busy} aria-label={`${words.remove}: ${i.name}`}>
+                                <Button size="sm" variant="ghost" className="w-full" onClick={() => unequip.mutate(slot)} loading={busy} aria-label={`${words.remove}: ${i.name}`}>
                                   {words.remove}
                                 </Button>
                               )
                             ) : (
-                              <Button size="sm" className="h-11 w-full" onClick={() => equip.mutate(i.id)} loading={busy} aria-label={`${words.put}: ${i.name}`}>
+                              <Button size="sm" className="w-full" onClick={() => equip.mutate(i.id)} loading={busy} aria-label={`${words.put}: ${i.name}`}>
                                 {words.put}
                               </Button>
                             )}

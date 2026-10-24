@@ -124,7 +124,7 @@ function GlimDetail({ glim, collection, dust, isBuddy, onClose }: { glim: Collec
               </button>
               <span className="text-sm text-text-2">of {spares} spare</span>
             </div>
-            <Button size="sm" className="h-11 px-3.5" loading={recycle.isPending} onClick={() => recycle.mutate()}>
+            <Button size="sm" loading={recycle.isPending} onClick={() => recycle.mutate()}>
               Get <Amount currency="dust" value={qty * glim.dustValue} size="sm" />
             </Button>
           </div>
@@ -134,7 +134,7 @@ function GlimDetail({ glim, collection, dust, isBuddy, onClose }: { glim: Collec
             {owned ? 'Craft another' : 'Craft it'} with Glow Dust{dust !== null ? <span className="whitespace-nowrap"> (you have {formatNumber(dust)})</span> : null}
           </span>
           {/* With the balance unknown the server decides, rather than a guess of zero. */}
-          <Button size="sm" className="h-11 px-3.5" variant={owned ? 'secondary' : 'primary'} disabled={dust !== null && dust < glim.craftCost} loading={craft.isPending} onClick={() => craft.mutate()}>
+          <Button size="sm" variant={owned ? 'secondary' : 'primary'} disabled={dust !== null && dust < glim.craftCost} loading={craft.isPending} onClick={() => craft.mutate()}>
             Craft for <Amount currency="dust" value={glim.craftCost} size="sm" />
           </Button>
         </div>
