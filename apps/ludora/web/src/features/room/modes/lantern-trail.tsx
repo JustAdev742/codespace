@@ -10,6 +10,7 @@ import {
   FerrisWheel,
   Flame,
   Footprints,
+  HandCoins,
   HandGrab,
   Hourglass,
   Map as MapIcon,
@@ -17,7 +18,6 @@ import {
   MoonStar,
   Sailboat,
   Signpost,
-  Sparkles,
   Tag,
   Ticket,
   Wallet,
@@ -49,10 +49,10 @@ import type { FeedbackView, QuestionView } from '../game/types.ts';
 import { AnswerInput } from '../game/AnswerInput.tsx';
 import { QuestionCard } from '../game/QuestionCard.tsx';
 import { Countdown } from '../game/TimerBar.tsx';
-import { ResultBanner, RevealAnswer } from '../game/Reveal.tsx';
+import { ResultBanner, RevealAnswer, shortAnswer } from '../game/Reveal.tsx';
 import { RankBadge, TeamScores } from '../game/Leaderboard.tsx';
-import { Explanation, myAvatar } from '../game/parts.tsx';
-import { NIGHT, Pill, PlayerGlim, SIGN, StagePanel, avatarOf, motionOK } from '../game/stage.tsx';
+import { Explanation, ModeTitle, myAvatar } from '../game/parts.tsx';
+import { NIGHT, Pill, PlayerGlim, StagePanel, avatarOf, motionOK } from '../game/stage.tsx';
 import { useAnnounce } from '../game/announce.tsx';
 import { Lantern } from '../../../art/Lantern.tsx';
 import { Button, buttonClass } from '../../../ui/Button.tsx';
@@ -178,13 +178,14 @@ export interface LanternTrailView {
 
 /* ------------------------------ the board art ------------------------------ */
 
-const GOLD: LanternArt = { hue: 44, accentHue: 16, pattern: 'stars' };
+const GOLD: LanternArt = { hue: 44, accentHue: 16, pattern: 'flames' };
 
+/** Each kind of space: its own icon and colour (from the tokens), and ink icons on every one, so none relies on colour. */
 const KIND: Record<SpaceKind, { label: string; icon: LucideIcon; bg: string }> = {
   gate: { label: 'Town Gate', icon: Castle, bg: 'var(--rose)' },
   coins: { label: 'Coin space', icon: Coins, bg: 'var(--lantern)' },
   fair: { label: 'Lucky fair', icon: FerrisWheel, bg: 'var(--glim)' },
-  gloom: { label: 'Gloom puddle', icon: CloudRain, bg: '#a3abcc' },
+  gloom: { label: 'Gloom puddle', icon: CloudRain, bg: 'var(--r-common)' },
   chance: { label: 'Chance', icon: CircleQuestionMark, bg: 'var(--dusk)' },
   ferry: { label: 'Ferry', icon: Sailboat, bg: 'var(--sky)' },
   fork: { label: 'Crossroads', icon: Signpost, bg: '#ffffff' },
@@ -192,7 +193,7 @@ const KIND: Record<SpaceKind, { label: string; icon: LucideIcon; bg: string }> =
 
 const LEGEND: SpaceKind[] = ['coins', 'fair', 'gloom', 'chance', 'ferry', 'fork', 'gate'];
 
-const CARD_ICON: Record<CardId, LucideIcon> = { wind: Wind, purse: Wallet, shower: Sparkles, rumour: Megaphone, ticket: Ticket, pickpocket: HandGrab, trade: ArrowLeftRight, gloom: CloudRain };
+const CARD_ICON: Record<CardId, LucideIcon> = { wind: Wind, purse: Wallet, shower: HandCoins, rumour: Megaphone, ticket: Ticket, pickpocket: HandGrab, trade: ArrowLeftRight, gloom: CloudRain };
 const EVENT_ICON: Record<EventId, LucideIcon> = { double: Dices, sale: Tag, rush: Coins, parade: Footprints, gloomy: MoonStar };
 
 interface Rules {
@@ -265,43 +266,42 @@ const LOOP_PATH = `M${Array.from({ length: LOOP }, (_, i) => unit(i).join(' ')).
 const SHORTCUT_PATH = `M${[CROSSROADS, ...SHORTCUT, REJOIN].map((i) => unit(i).join(' ')).join('L')}`;
 const RIVER = 'M-6 51C18 47 34 52 46 57S62 61 75 55S110 47 156 54';
 
-/** The town under the spaces: a river with its ferry and bridge, and the trail strung with festival lights. */
+/**
+ * The town under the spaces: the river the ferry crosses, the Old Bridge, and the trail itself as one
+ * crisp track round the loop with a narrower one for the shortcut. In Last lanterns the loop turns gold.
+ */
 function TownArt({ last }: { last: boolean }) {
-  const lights = last ? '#ffd36b' : '#ffb020';
   return (
     <svg viewBox="0 0 150 100" className="absolute inset-0 size-full" aria-hidden focusable={false}>
-      <defs>
-        <radialGradient id="lt-glow">
-          <stop offset="0%" stopColor="#ffcf5c" stopOpacity="0.32" />
-          <stop offset="100%" stopColor="#ffcf5c" stopOpacity="0" />
-        </radialGradient>
-      </defs>
-      {/* Warm pools of light where the town gathers. */}
-      <circle cx="75" cy="88" r="22" fill="url(#lt-glow)" />
-      <circle cx="75" cy="18" r="18" fill="url(#lt-glow)" />
-      <circle cx="98" cy="70" r="16" fill="url(#lt-glow)" opacity={0.6} />
-      {/* The river, and the ferry's route along it. */}
-      <path d={RIVER} fill="none" stroke="#2f7fd1" strokeWidth={7} strokeLinecap="round" opacity={0.55} />
-      <path d={RIVER} fill="none" stroke="#7cc7ff" strokeWidth={1.1} strokeDasharray="5 4" opacity={0.85} />
+      <path d={RIVER} fill="none" stroke="var(--sky)" strokeOpacity={0.3} strokeWidth={7} strokeLinecap="round" />
       {/* The Old Bridge carries the shortcut over the water. */}
-      <path d="M51.5 52.5Q57 49.5 62.5 52.5M51.5 63Q57 66 62.5 63" fill="none" stroke="#d9c7a1" strokeWidth={1.4} strokeLinecap="round" />
-      {/* The trail: a soft glow, then strings of bulbs. */}
-      <path d={LOOP_PATH} fill="none" stroke={lights} strokeWidth={2.6} strokeLinejoin="round" opacity={last ? 0.5 : 0.28} />
-      <path d={SHORTCUT_PATH} fill="none" stroke={lights} strokeWidth={2} strokeLinejoin="round" opacity={0.22} strokeDasharray="3 2" />
-      <path d={LOOP_PATH} fill="none" stroke={lights} strokeWidth={1.1} strokeLinecap="round" strokeDasharray="0.01 3.3" />
-      <path d={LOOP_PATH} fill="none" stroke="#ff85d8" strokeWidth={1.1} strokeLinecap="round" strokeDasharray="0.01 3.3" strokeDashoffset={1.65} opacity={last ? 0 : 0.9} />
-      <path d={SHORTCUT_PATH} fill="none" stroke="#c4b8f5" strokeWidth={0.9} strokeLinecap="round" strokeDasharray="0.01 2.6" />
+      <path d="M51.5 52.5Q57 49.5 62.5 52.5M51.5 63Q57 66 62.5 63" fill="none" stroke="rgb(255 255 255 / 0.5)" strokeWidth={1.2} strokeLinecap="round" />
+      <path d={SHORTCUT_PATH} fill="none" stroke="rgb(255 255 255 / 0.16)" strokeWidth={1.5} strokeLinejoin="round" strokeLinecap="round" />
+      <path d={LOOP_PATH} fill="none" stroke={last ? 'var(--lantern)' : 'rgb(255 255 255 / 0.2)'} strokeOpacity={last ? 0.55 : 1} strokeWidth={2.2} strokeLinejoin="round" />
     </svg>
   );
 }
 
+/**
+ * A space as a solid token: its colour, an ink icon, and a darker band at the bottom like the game's
+ * pieces. A space with a Golden Lantern stall wears a gold ring. Sized in ems from `size`, so the
+ * ring keeps its proportions at every size.
+ */
 function SpaceDot({ kind, size, ring = false }: { kind: SpaceKind; size: string; ring?: boolean }) {
   const k = KIND[kind];
   const Icon = k.icon;
+  // The white Crossroads token keeps a faint edge, so it still shows in the map dialog's light theme.
+  const edge = `inset 0 -0.08em 0 rgb(0 0 0 / 0.22)${kind === 'fork' ? ', inset 0 0 0 0.05em rgb(11 16 32 / 0.25)' : ''}`;
   return (
     <span
-      className={`grid place-items-center rounded-full border-ink text-on-accent ${ring ? 'shadow-[0_0_0_0.35em_rgb(255_207_92/0.55),0_0_1.2em_0.3em_rgb(255_190_60/0.7)]' : 'shadow-[0_0.12em_0_var(--ink)]'}`}
-      style={{ width: size, height: size, background: k.bg, borderWidth: `calc(${size} * 0.09)` }}
+      className="grid place-items-center rounded-full text-on-accent"
+      style={{
+        fontSize: size,
+        width: '1em',
+        height: '1em',
+        background: k.bg,
+        boxShadow: ring ? `${edge}, 0 0 0 0.09em var(--stage-2), 0 0 0 0.21em var(--lantern)` : edge,
+      }}
     >
       <Icon style={{ width: '58%', height: '58%' }} strokeWidth={2.4} aria-hidden />
     </span>
@@ -390,7 +390,8 @@ function StallMarker({ stall, size }: { stall: StallView; size: number }) {
   return (
     <div className="pointer-events-none absolute z-20 -translate-x-1/2 -translate-y-1/2" style={{ left: `calc(${s.x}% - ${ox * size * 0.8}cqw)`, top: `calc(${s.y}% - ${oy * size * 0.8}cqw)` }}>
       <div ref={ref} style={{ width: `${size}cqw` }}>
-        <Lantern art={GOLD} size={64} lit className="h-auto w-full drop-shadow-[0_0_0.6em_rgb(255_200_80/0.9)]" />
+        {/* The objective of the game: the one thing on the board with a light round it. */}
+        <Lantern art={GOLD} size={64} lit className="h-auto w-full drop-shadow-[0_0_0.45em_var(--lantern)]" />
       </div>
     </div>
   );
@@ -415,7 +416,8 @@ function Board({ view, players, rules, big, youId = null, children }: { view: La
     groups.set(node, list);
   }
   return (
-    <div data-board className="on-stage @container relative aspect-[3/2] w-full overflow-hidden rounded-[22px] border border-white/12 bg-[radial-gradient(ellipse_at_50%_45%,rgb(48_30_120/0.85),rgb(17_10_62/0.92))]">
+    // A dark map well in the stage's own navy (opaque, so it reads the same in the map dialog in either theme).
+    <div data-board className="on-stage @container relative aspect-[3/2] w-full overflow-hidden rounded-[var(--radius-l)] bg-[var(--stage-2)] ring-1 ring-white/10 ring-inset">
       <div className="absolute inset-0" aria-hidden>
         <TownArt last={view.finalStretch} />
         {SPACES.map((s) => (
@@ -443,9 +445,10 @@ function Board({ view, players, rules, big, youId = null, children }: { view: La
               className="absolute z-30 -translate-x-1/2 -translate-y-1/2"
               style={{ left: `calc(${s.x}% + ${x}cqw)`, top: `calc(${s.y}% + ${y}cqw)`, width: `${glim}cqw`, height: `${glim}cqw`, transition: `left ${jump ? 700 : 170}ms ease-in-out, top ${jump ? 700 : 170}ms ease-in-out` }}
             >
-              <PlayerGlim avatar={avatarOf(players, w.id)} seed={w.id} size={48} className={`size-full ${w.id === youId ? 'drop-shadow-[0_0_0.35em_#ffd36b]' : ''}`} />
+              <PlayerGlim avatar={avatarOf(players, w.id)} seed={w.id} size={48} className="size-full" />
               {w.id === youId ? (
-                <span className="absolute -top-[0.9em] left-1/2 -translate-x-1/2 rounded-full border-2 border-ink bg-lantern px-[0.45em] font-display leading-tight font-extrabold text-on-accent" style={{ fontSize: `${glim * 0.32}cqw` }}>
+                // Your Glim carries a gold "You" tag, so it is found by its words as well as its place.
+                <span className="absolute -top-[1em] left-1/2 -translate-x-1/2 rounded-[var(--radius-s)] bg-lantern px-[0.45em] leading-tight font-bold text-on-accent shadow-[0_4px_10px_-4px_rgb(2_5_20/0.8)]" style={{ fontSize: `${glim * 0.32}cqw` }}>
                   You
                 </span>
               ) : null}
@@ -456,7 +459,7 @@ function Board({ view, players, rules, big, youId = null, children }: { view: La
           ids.length > 3 ? (
             <span
               key={`more-${node}`}
-              className="absolute z-30 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-ink bg-white px-[0.4em] font-display leading-tight font-extrabold text-[#1d1846] tabular"
+              className="absolute z-30 -translate-x-1/2 -translate-y-1/2 rounded-full bg-white px-[0.4em] font-display leading-tight font-extrabold text-on-accent tabular shadow-[0_4px_10px_-4px_rgb(2_5_20/0.8)]"
               style={{ left: `calc(${SPACES[node]!.x}% + ${OUT[node]![0] * glim * 2.15}cqw)`, top: `calc(${SPACES[node]!.y}% + ${OUT[node]![1] * glim * 2.15}cqw)`, fontSize: `${glim * 0.36}cqw` }}
             >
               +{ids.length - 3}
@@ -523,21 +526,21 @@ function noteText(n: Note, path: number[]): string {
       if (n.kind === 'fair') return `${at(path, n.i)}, a lucky fair: +${n.coins} coins.`;
       return n.coins < 0 ? `${at(path, n.i)}, a gloom puddle: −${-n.coins} coins.` : `${at(path, n.i)}, a gloom puddle. No coins to lose.`;
     case 'ferry':
-      return `All aboard! The ferry carried you to ${placeName(n.to)}.`;
+      return `The ferry carried you to ${placeName(n.to)}.`;
     case 'route':
       if (n.auto) return 'No choice in time, so the long way round.';
       return n.route === 'short' ? 'You took the shortcut.' : 'You took the long way round.';
     case 'card': {
       const title = CHANCE_CARDS.find((c) => c.id === n.card)!.title;
-      if (n.card === 'purse') return `Chance card: ${title}! +${n.coins} coins.`;
-      if (n.card === 'shower') return `Chance card: ${title}! Everyone gets coins, and you get ${n.coins}.`;
-      if (n.card === 'wind') return `Chance card: ${title}! 3 more steps.`;
-      if (n.card === 'ticket') return `Chance card: ${title}! Your next Golden Lantern costs 10 less.`;
+      if (n.card === 'purse') return `Chance card: ${title}. +${n.coins} coins.`;
+      if (n.card === 'shower') return `Chance card: ${title}. Everyone gets coins, and you get ${n.coins}.`;
+      if (n.card === 'wind') return `Chance card: ${title}. 3 more steps.`;
+      if (n.card === 'ticket') return `Chance card: ${title}. Your next Golden Lantern costs 10 less.`;
       if (n.card === 'gloom') return n.coins < 0 ? `Chance card: ${title}. −${-n.coins} coins.` : `Chance card: ${title}. No coins to lose.`;
-      return `Chance card: ${title}!`;
+      return `Chance card: ${title}.`;
     }
     case 'rumour':
-      return n.came ? 'The stall came right to you!' : `The stall moved to ${placeName(n.to)}.`;
+      return n.came ? 'The stall came right to you.' : `The stall moved to ${placeName(n.to)}.`;
     case 'steal':
       return n.coins ? `You took ${plural(n.coins, 'coin')} from ${n.name}.` : `${n.name}’s purse was empty.`;
     case 'trade':
@@ -545,9 +548,9 @@ function noteText(n: Note, path: number[]): string {
     case 'fizzle':
       return 'Nobody to pick right now, so nothing happened.';
     case 'short':
-      return `The Golden Lantern stall! You need ${n.price} coins to buy one.`;
+      return `The Golden Lantern stall. You need ${n.price} coins to buy one.`;
     case 'buy':
-      return `You bought a Golden Lantern for ${n.price} coins! The stall moved to ${placeName(n.to)}.`;
+      return `You bought a Golden Lantern for ${n.price} coins. The stall moved to ${placeName(n.to)}.`;
     case 'pass':
       return 'You kept walking.';
     case 'missed':
@@ -713,10 +716,12 @@ function Die({ value, faded = false, tumble }: { value: number; faded?: boolean;
     );
   }, [tumble]);
   return (
+    // A white die with ink pips and a darker band along its bottom edge, like the game's pieces.
     <svg ref={ref} viewBox="0 0 48 48" className={`size-14 shrink-0 sm:size-16 ${faded ? 'opacity-40' : ''}`} aria-hidden focusable={false}>
-      <rect x="3" y="3" width="42" height="42" rx="10" fill="#fffdf5" stroke="#1d1846" strokeWidth="3.5" />
+      <rect x="2" y="2" width="44" height="44" rx="9" fill="#d9deec" />
+      <rect x="2" y="2" width="44" height="40" rx="9" fill="#ffffff" />
       {PIPS[value]!.map(([cx, cy], i) => (
-        <circle key={i} cx={cx} cy={cy} r="4.4" fill="#1d1846" />
+        <circle key={i} cx={cx} cy={cy - 2} r="4.4" fill="var(--on-accent)" />
       ))}
     </svg>
   );
@@ -757,7 +762,7 @@ function RollPanel({ move, idx, compact }: { move: MoveView; idx: number; compac
           {notes.map((n, i) => {
             const Icon = noteIcon(n);
             return (
-              <li key={i} className="flex items-start gap-2 text-sm leading-snug font-bold sm:text-base" style={motionOK() ? { animation: 'rise-fade 240ms var(--ease-out) both' } : undefined}>
+              <li key={i} className="flex items-start gap-2 text-sm leading-snug font-bold sm:text-base" style={{ animation: 'rise-fade 200ms var(--ease-out) both' }}>
                 <Icon className="mt-0.5 size-4 shrink-0 text-lantern" aria-hidden />
                 <span>{noteText(n, move.path)}</span>
               </li>
@@ -771,7 +776,8 @@ function RollPanel({ move, idx, compact }: { move: MoveView; idx: number; compac
 
 /* --------------------------------- prompts --------------------------------- */
 
-const choiceButton = (variant: 'primary' | 'success' | 'secondary') => buttonClass(variant, 'xl', 'h-auto! min-h-16 w-full flex-col items-start! gap-0.5! whitespace-normal! px-4! py-3! text-left');
+/** A way to go as a big solid button: its name in the display face, what it means underneath in the body face. */
+const choiceButton = (variant: 'primary' | 'success' | 'secondary') => buttonClass(variant, 'lg', 'h-auto! min-h-16 w-full flex-col items-start! gap-0.5! whitespace-normal! px-4! py-3! text-left [--press:5px]');
 
 function Deadline({ until, gameNow, text }: { until: number; gameNow: () => number; text: string }) {
   return (
@@ -798,11 +804,11 @@ function ForkPrompt({ view, gameNow, choose, busy }: { view: LanternTrailView; g
       ) : null}
       <div className="grid gap-2 sm:grid-cols-2">
         <button type="button" className={choiceButton('primary')} disabled={busy} onClick={() => choose('long')}>
-          <span>Long way round</span>
+          <span className="font-display text-[1.5rem] leading-tight font-extrabold">Long way round</span>
           <span className="text-sm font-semibold">11 steps to the Clock Tower, past a lucky fair, the West Pier ferry and 2 chance spaces.</span>
         </button>
         <button type="button" className={choiceButton('success')} disabled={busy} onClick={() => choose('short')}>
-          <span>Shortcut</span>
+          <span className="font-display text-[1.5rem] leading-tight font-extrabold">Shortcut</span>
           <span className="text-sm font-semibold">5 steps to the Clock Tower, over the Old Bridge. 2 of its 4 spaces are gloom puddles.</span>
         </button>
       </div>
@@ -814,13 +820,16 @@ function ForkPrompt({ view, gameNow, choose, busy }: { view: LanternTrailView; g
 function BuyPrompt({ view, gameNow, decide, busy }: { view: LanternTrailView; gameNow: () => number; decide: (buy: boolean) => void; busy: boolean }) {
   const you = view.you!;
   const pending = you.pending as Extract<PendingView, { kind: 'buy' }>;
-  useAnnounce(`The Golden Lantern stall! Buy a Golden Lantern for ${pending.price} coins? You have ${you.coins}.`, `buy:${pending.deadline}`);
+  useAnnounce(`The Golden Lantern stall. Buy a Golden Lantern for ${pending.price} coins? You have ${you.coins}.`, `buy:${pending.deadline}`);
   return (
-    <StagePanel as="section" className="flex flex-col gap-3 border-2 border-lantern! p-3 sm:p-4" label="Golden Lantern stall">
+    // The moment the trail is about: the stall's name on the gold plate, the price on the button.
+    <StagePanel as="section" className="flex flex-col gap-3 p-3 ring-2 ring-lantern ring-inset sm:p-4" label="Golden Lantern stall">
       <div className="flex items-center gap-3">
         <Lantern art={GOLD} size={54} lit className="shrink-0" />
-        <div>
-          <h2 className="font-display text-2xl leading-tight font-extrabold">The Golden Lantern stall!</h2>
+        <div className="flex min-w-0 flex-col items-start gap-1.5">
+          <h2 className="plate plate-gold text-2xl">
+            <span>Golden Lantern stall</span>
+          </h2>
           <p className="font-bold text-text-2">
             You have {plural(you.coins, 'coin')}.{pending.ticket ? ' Your Golden ticket takes 10 off.' : ''}
           </p>
@@ -842,9 +851,9 @@ function BuyPrompt({ view, gameNow, decide, busy }: { view: LanternTrailView; ga
 function TargetPrompt({ view, gameNow, players, pick, busy }: { view: LanternTrailView; gameNow: () => number; players: RoomPlayerView[]; pick: (id: string) => void; busy: boolean }) {
   const pending = view.you!.pending as Extract<PendingView, { kind: 'target' }>;
   const steal = pending.card === 'pickpocket';
-  const title = steal ? 'Pickpocket Glim!' : 'Trade places!';
+  const title = steal ? 'Pickpocket Glim' : 'Trade places';
   const ask = steal ? 'Pick a player to take 5 coins from.' : 'Pick a player to swap places with.';
-  useAnnounce(`${title} ${ask}`, `target:${pending.deadline}`);
+  useAnnounce(`${title}. ${ask}`, `target:${pending.deadline}`);
   return (
     <StagePanel as="section" className="flex flex-col gap-3 p-3 sm:p-4" label={title}>
       <div>
@@ -887,9 +896,10 @@ function routeFrom(path: number[], from: number, count: number): number[] {
 function TrailStrip({ route, glimAt, stalls, rules, avatar, seed }: { route: number[]; glimAt: number; stalls: StallView[]; rules: Rules; avatar: RoomPlayerView['avatar'] | undefined; seed: string }) {
   const stallSpaces = new Set(stalls.map((s) => s.pos));
   return (
-    <ol className="grid grid-cols-9 items-end gap-[3px] pt-5" aria-hidden>
+    // Nine spaces across, each a little narrower than its column (9 columns and 8 gaps of 3px share the strip's width).
+    <ol className="@container grid grid-cols-9 items-end gap-[3px] pt-5" aria-hidden>
       {route.map((id, i) => (
-        <li key={`${i}-${id}`} className="relative flex justify-center">
+        <li key={`${i}-${id}`} className={`relative flex justify-center ${stallSpaces.has(id) ? 'z-[1]' : ''}`}>
           {i === glimAt ? (
             <span className="absolute bottom-[78%] left-1/2 z-10 w-[118%] -translate-x-1/2" style={{ transition: 'left 170ms ease-in-out' }}>
               <PlayerGlim avatar={avatar} seed={seed} size={40} className="h-auto w-full" />
@@ -899,11 +909,7 @@ function TrailStrip({ route, glimAt, stalls, rules, avatar, seed }: { route: num
               <Lantern art={GOLD} size={32} lit className="h-auto w-full" />
             </span>
           ) : null}
-          <span className="block w-full">
-            <span className="mx-auto block aspect-square w-[92%]">
-              <SpaceDot kind={kindOf(id, rules.puddles)} size="100%" ring={stallSpaces.has(id)} />
-            </span>
-          </span>
+          <SpaceDot kind={kindOf(id, rules.puddles)} size="calc(10.2cqw - 2.5px)" ring={stallSpaces.has(id)} />
         </li>
       ))}
     </ol>
@@ -915,14 +921,14 @@ function MiniMap({ you, stalls }: { you: number; stalls: StallView[] }) {
   const [x, y] = unit(you);
   return (
     <svg viewBox="0 0 150 100" className="h-full w-auto" aria-hidden focusable={false}>
-      <path d={RIVER} fill="none" stroke="#2f7fd1" strokeWidth={8} opacity={0.6} />
-      <path d={LOOP_PATH} fill="none" stroke="#c4b8f5" strokeWidth={5} strokeLinejoin="round" />
-      <path d={SHORTCUT_PATH} fill="none" stroke="#c4b8f5" strokeWidth={3.5} strokeDasharray="6 5" />
+      <path d={RIVER} fill="none" stroke="var(--sky)" strokeOpacity={0.45} strokeWidth={8} />
+      <path d={LOOP_PATH} fill="none" stroke="rgb(255 255 255 / 0.55)" strokeWidth={5} strokeLinejoin="round" />
+      <path d={SHORTCUT_PATH} fill="none" stroke="rgb(255 255 255 / 0.35)" strokeWidth={3.5} strokeLinejoin="round" />
       {stalls.map((st) => {
         const [sx, sy] = unit(st.pos);
-        return <circle key={st.id} cx={sx} cy={sy} r={10} fill="#ffcf5c" stroke="#1d1846" strokeWidth={3.5} />;
+        return <circle key={st.id} cx={sx} cy={sy} r={10} fill="var(--lantern)" stroke="var(--stage-3)" strokeWidth={3.5} />;
       })}
-      <circle cx={x} cy={y} r={9} fill="#ffffff" stroke="#1d1846" strokeWidth={4} />
+      <circle cx={x} cy={y} r={9} fill="#ffffff" stroke="var(--stage-3)" strokeWidth={4} />
     </svg>
   );
 }
@@ -971,13 +977,28 @@ function HitNews({ hit, gameNow, own }: { hit: NonNullable<LanternTrailView['you
     seen.current = hit.n;
     if (own) playSfx(hit.kind === 'pickpocket' ? 'stolen' : 'swap');
   }, [hit, own]);
-  const text = !hit ? null : hit.kind === 'pickpocket' ? (hit.coins ? `${hit.name}’s Pickpocket Glim took ${plural(hit.coins, 'coin')} from you!` : `${hit.name}’s Pickpocket Glim found your purse empty!`) : `${hit.name} traded places with you! You are at ${placeName(hit.to)}.`;
-  useAnnounce(fresh ? text : null, hit?.n ?? 0);
+  const title = hit?.kind === 'pickpocket' ? 'Pickpocket Glim' : 'Trade places';
+  const detail = !hit ? null : hit.kind === 'pickpocket' ? (hit.coins ? `${hit.name}’s Pickpocket Glim took ${plural(hit.coins, 'coin')} from you.` : `${hit.name}’s Pickpocket Glim found your purse empty.`) : `${hit.name} traded places with you. You are at ${placeName(hit.to)}.`;
+  useAnnounce(fresh ? detail : null, hit?.n ?? 0);
   if (!hit || gameNow() - hit.at > 6000) return null;
+  // A trick played on you: coral for coins taken, blue for a swap, each with its own icon and words.
   return (
-    <div className={`flex items-center gap-3 rounded-[18px] border-2 border-ember px-4 py-2.5 font-bold ${NIGHT}`} role="status">
-      {hit.kind === 'pickpocket' ? <HandGrab className="size-6 shrink-0 text-ember" aria-hidden /> : <ArrowLeftRight className="size-6 shrink-0 text-sky" aria-hidden />}
-      {text}
+    <div role="status" className={`lift flex items-center gap-3 rounded-[var(--radius-l)] px-4 py-3 text-on-accent ${hit.kind === 'pickpocket' ? 'bg-ember' : 'bg-sky'}`} style={{ animation: 'pop-in 200ms var(--ease-out)' }}>
+      <span className="grid size-10 shrink-0 place-items-center rounded-full bg-ink/85 text-white" aria-hidden>
+        {hit.kind === 'pickpocket' ? <HandGrab className="size-6" /> : <ArrowLeftRight className="size-6" />}
+      </span>
+      <div className="min-w-0 flex-1">
+        <p className="font-display text-[1.75rem] leading-tight font-extrabold italic">{title}</p>
+        <p className="leading-snug font-semibold">{detail}</p>
+      </div>
+      {hit.kind === 'pickpocket' && hit.coins ? (
+        <span className="plate shrink-0 text-[1.6rem] tabular">
+          <span>
+            −{hit.coins}
+            <span className="sr-only"> coins</span>
+          </span>
+        </span>
+      ) : null}
     </div>
   );
 }
@@ -1100,7 +1121,7 @@ export function LanternTrailPlayer({ view, act, gameNow, paused, room }: ModeScr
               )
             ) : null}
           </p>
-          <button type="button" onClick={() => setMapOpen(true)} className="flex h-12 shrink-0 items-center gap-1 rounded-[12px] border border-white/20 bg-white/10 py-1 pr-2 pl-1 font-bold hover:bg-white/15" aria-label="Map of the whole trail">
+          <button type="button" onClick={() => setMapOpen(true)} className="press-soft flex h-12 shrink-0 items-center gap-1 rounded-[var(--radius-m)] bg-raised py-1 pr-2 pl-1 font-bold hover:bg-surface-2" aria-label="Map of the whole trail">
             <MiniMap you={here} stalls={view.stalls} />
             <MapIcon className="size-4 shrink-0" aria-hidden />
           </button>
@@ -1117,10 +1138,10 @@ export function LanternTrailPlayer({ view, act, gameNow, paused, room }: ModeScr
 
       {miss.miss ? (
         <div className="flex flex-col gap-3">
-          <ResultBanner key={miss.miss.iid} correct={false} partial={miss.miss.partial} text={miss.miss.text} />
+          <ResultBanner key={miss.miss.iid} correct={false} partial={miss.miss.partial} text={miss.miss.text} answer={miss.answered ? shortAnswer(miss.answered.q, miss.miss.reveal) : null} />
           {miss.answered ? <RevealAnswer q={miss.answered.q} reveal={miss.miss.reveal} compact /> : null}
           <Explanation text={miss.miss.explanation} />
-          <button type="button" onClick={miss.dismiss} className="min-h-11 self-center rounded-[12px] px-4 py-2 font-bold text-text-2 hover:bg-white/10">
+          <button type="button" onClick={miss.dismiss} className="min-h-11 self-center rounded-[var(--radius-m)] px-4 py-2 font-bold text-text-2 hover:bg-white/10">
             Next question
           </button>
         </div>
@@ -1132,7 +1153,7 @@ export function LanternTrailPlayer({ view, act, gameNow, paused, room }: ModeScr
           {prompt?.kind === 'buy' ? <BuyPrompt view={view} gameNow={gameNow} busy={busy || paused} decide={(buy) => void send({ type: 'buy', buy })} /> : null}
           {prompt?.kind === 'target' ? <TargetPrompt view={view} gameNow={gameNow} players={room.players} busy={busy || paused} pick={(playerId) => void send({ type: 'target', playerId })} /> : null}
           {!pending ? (
-            <button type="button" onClick={walk.close} className="min-h-11 self-center rounded-[12px] px-4 py-2 font-bold text-text-2 hover:bg-white/10">
+            <button type="button" onClick={walk.close} className="min-h-11 self-center rounded-[var(--radius-m)] px-4 py-2 font-bold text-text-2 hover:bg-white/10">
               Next question
             </button>
           ) : null}
@@ -1195,7 +1216,7 @@ function useJackpot(plays: PlayView[], shared: boolean, me: string | null) {
 
 /* ------------------------------ the big screen ----------------------------- */
 
-const PLAY_ICON: Record<PlayView['kind'], LucideIcon> = { buy: Crown, steal: HandGrab, trade: ArrowLeftRight, shower: Sparkles, rumour: Megaphone, goal: Crown };
+const PLAY_ICON: Record<PlayView['kind'], LucideIcon> = { buy: Crown, steal: HandGrab, trade: ArrowLeftRight, shower: HandCoins, rumour: Megaphone, goal: Crown };
 
 /** The room event (or Last lanterns), big, with its countdown; between events, when the next one comes. */
 function EventBanner({ view, gameNow, rules }: { view: LanternTrailView; gameNow: () => number; rules: Rules }) {
@@ -1203,21 +1224,27 @@ function EventBanner({ view, gameNow, rules }: { view: LanternTrailView; gameNow
   if (view.finalStretch || view.event) {
     const info = view.finalStretch ? FINALE_EVENT : eventInfo(view.event!.kind, rules.stalls);
     const Icon = view.finalStretch ? Flame : EVENT_ICON[view.event!.kind];
+    // A room event is a moment: a solid banner with its icon on a disc, its name, and the clock on the plain plate.
     return (
-      <div className={`flex min-w-0 flex-1 items-center gap-3 rounded-[18px] border-[3px] border-ink px-4 py-1.5 text-on-accent shadow-[0_4px_0_var(--ink)] ${view.finalStretch ? 'bg-lantern' : 'bg-glim'}`} style={motionOK() ? { animation: 'pop-in 300ms var(--ease-spring)' } : undefined} key={view.finalStretch ? 'last' : view.event!.startsAt}>
-        <Icon className="size-[clamp(1.75rem,4vh,2.75rem)] shrink-0" aria-hidden />
+      // No taller than the title plate beside it, so the board below keeps its height on a 768-pixel projector.
+      <div className={`lift flex min-w-0 flex-1 items-center gap-3 rounded-[var(--radius-l)] px-3 py-1 text-on-accent ${view.finalStretch ? 'bg-lantern' : 'bg-glim'}`} style={{ animation: 'pop-in 200ms var(--ease-out)' }} key={view.finalStretch ? 'last' : view.event!.startsAt}>
+        <span className="grid size-[clamp(2rem,4.4vh,3.25rem)] shrink-0 place-items-center rounded-full bg-ink/85 text-white" aria-hidden>
+          <Icon className="size-[56%]" />
+        </span>
         <div className="min-w-0 flex-1">
-          <p className="font-display text-[clamp(1.3rem,min(2.2vw,4vh),2.4rem)] leading-tight font-extrabold">{info.title}!</p>
-          <p className={`truncate font-bold ${small}`}>{info.text}</p>
+          <p className="font-display text-[clamp(1.3rem,min(2.1vw,3.7vh),2.4rem)] leading-[1.05] font-extrabold italic">{info.title}</p>
+          <p className={`truncate leading-tight font-bold ${small}`}>{info.text}</p>
         </div>
-        <span className="shrink-0 font-display text-[clamp(1.3rem,min(2.2vw,4vh),2.4rem)] font-extrabold tabular">
-          <Countdown until={view.finalStretch ? view.endsAt : view.event!.endsAt} gameNow={gameNow} label={view.finalStretch ? 'Time left' : 'Event ends in'} />
+        <span className="plate shrink-0 text-[clamp(1.2rem,min(2vw,3.6vh),2.2rem)] tabular">
+          <span>
+            <Countdown until={view.finalStretch ? view.endsAt : view.event!.endsAt} gameNow={gameNow} label={view.finalStretch ? 'Time left' : 'Event ends in'} />
+          </span>
         </span>
       </div>
     );
   }
   return (
-    <div className={`flex min-w-0 flex-1 items-center gap-3 rounded-[18px] border border-white/12 px-4 py-2 ${NIGHT}`}>
+    <div className={`flex min-w-0 flex-1 items-center gap-3 rounded-[var(--radius-l)] px-4 py-2 ${NIGHT}`}>
       <Hourglass className="size-[clamp(1.5rem,3.4vh,2.25rem)] shrink-0 text-lantern" aria-hidden />
       <p className={`min-w-0 flex-1 font-bold ${small}`}>
         {view.nextEventAt !== null ? 'Next room event in ' : 'Last lanterns in '}
@@ -1237,7 +1264,7 @@ function BigMoment({ view, players, gameNow }: { view: LanternTrailView; players
   if (!play || gameNow() - play.at > 2600) return null;
   return (
     <div className="absolute inset-y-[28%] right-[11%] left-[38%] z-40 flex items-center justify-center" key={play.n}>
-      <div className="paper stage-card flex max-w-full items-center gap-[1.2cqw] px-[1.8cqw] py-[1.2cqw]" style={motionOK() ? { animation: 'pop-in 320ms var(--ease-spring)' } : undefined}>
+      <div className="paper stage-card flex max-w-full items-center gap-[1.2cqw] px-[1.8cqw] py-[1.2cqw]" style={{ animation: 'pop-in 200ms var(--ease-out)' }}>
         <PlayerGlim avatar={avatarOf(players, play.playerId)} seed={play.playerId} size={64} pose="cheer" className="shrink-0" />
         <div className="min-w-0">
           <p className="font-display leading-tight font-extrabold" style={{ fontSize: '2.6cqw' }}>
@@ -1257,7 +1284,7 @@ function StallCard({ view }: { view: LanternTrailView }) {
   const sale = view.price < view.basePrice;
   const places = view.stalls.map((s) => placeName(s.pos));
   return (
-    <div className="absolute top-[28.5%] right-[17%] left-[45%] flex items-center gap-[1cqw] rounded-[1.4cqw] border border-white/15 bg-[rgb(17_10_62/0.72)] px-[1.4cqw] py-[0.9cqw]" style={{ fontSize: '1.7cqw' }}>
+    <div className="absolute top-[28.5%] right-[17%] left-[45%] flex items-center gap-[1cqw] rounded-[var(--radius-m)] bg-white/[0.07] px-[1.4cqw] py-[0.9cqw] ring-1 ring-white/10 ring-inset" style={{ fontSize: '1.7cqw' }}>
       <Lantern art={GOLD} size={56} lit className="h-auto w-[5.5cqw] shrink-0" />
       <div className="min-w-0">
         <p className="font-bold text-text-2">Golden Lantern</p>
@@ -1280,28 +1307,30 @@ export function LanternTrailHost({ view, gameNow, room }: ModeScreenProps<Lanter
   useEventNews(view, rules, shared);
   useJackpot(view.plays, shared, null);
   const text = 'text-[clamp(0.95rem,min(1.4vw,2.5vh),1.6rem)]';
-  const heading = `mb-[clamp(0.25rem,0.8vh,0.5rem)] font-display text-[clamp(1.25rem,min(2vw,3.6vh),2.25rem)] leading-tight font-extrabold ${SIGN}`;
+  const heading = 'mb-[clamp(0.25rem,0.8vh,0.5rem)] font-display text-[clamp(1.25rem,min(2vw,3.6vh),2.25rem)] leading-tight font-extrabold';
   const rows = [...view.walkers].sort((a, b) => a.rank - b.rank || b.l - a.l || b.c - a.c).slice(0, view.teams ? 5 : 8);
   const plays = view.plays.slice(0, view.teams ? 2 : 3);
   const name = (id: string) => room.players.find((p) => p.id === id)?.name ?? 'Player';
   const leaders = rows.filter((r) => r.rank === 1 && r.l > 0);
   return (
     <div className="mx-auto flex w-full max-w-[120rem] flex-1 flex-col gap-[clamp(0.5rem,1.6vh,1.25rem)]">
+      {/* The title on its plate at the top left, the room event beside it and the clock at the top right. */}
       <div className="flex flex-wrap items-center gap-3">
-        <h2 className={`font-display text-[clamp(2rem,min(3.6vw,6.4vh),4.25rem)] leading-none font-extrabold ${SIGN}`}>Lantern Trail</h2>
+        <ModeTitle className="shrink-0">Lantern Trail</ModeTitle>
         <EventBanner view={view} gameNow={gameNow} rules={rules} />
         <Pill className="px-5 py-1.5 text-[clamp(1.25rem,2.2vw,2.5rem)]">
           <Countdown until={view.endsAt} gameNow={gameNow} label="Time left" />
         </Pill>
       </div>
       <div className="grid grid-cols-1 items-start gap-[clamp(0.75rem,1.6vw,1.75rem)] lg:grid-cols-[minmax(0,1.75fr)_minmax(0,1fr)]">
-        <section aria-labelledby="lt-board" className="mx-auto w-full max-w-[calc((100dvh-15.25rem)*1.5)]">
+        <section aria-labelledby="lt-board" className="mx-auto w-full max-w-[calc((100dvh-16rem)*1.5)]">
           <h3 id="lt-board" className="sr-only">
             The trail
           </h3>
           <Board view={view} players={room.players} rules={rules} big>
             <StallCard view={view} />
-            <Legend rules={rules} className="absolute top-[61.5%] right-[14%] left-[43.5%] grid-cols-3! gap-x-[1cqw] gap-y-[0.6cqw]" style={{ fontSize: '1.4cqw' }} />
+            {/* Clear of the loop's lower right, where a stall stands on the inside of the trail. */}
+            <Legend rules={rules} className="absolute top-[61.5%] right-[18.5%] left-[42%] grid-cols-3! gap-x-[0.9cqw] gap-y-[0.6cqw]" style={{ fontSize: '1.35cqw' }} />
             <BigMoment view={view} players={room.players} gameNow={gameNow} />
           </Board>
           <p className="sr-only">
@@ -1317,7 +1346,7 @@ export function LanternTrailHost({ view, gameNow, room }: ModeScreenProps<Lanter
             <ol className={`flex flex-col gap-1.5 ${text}`} style={{ '--lb-rank': 'clamp(2rem, 4.2vh, 3.2rem)' } as CSSProperties}>
               {rows.map((r, i) => (
                 // A short projector shows six rows, so the big plays stay on screen too.
-                <li key={r.id} className={`flex items-center gap-[clamp(0.4rem,0.8vw,0.75rem)] rounded-[16px] border border-white/12 px-2.5 py-0.5 ${ROW} ${NIGHT} ${i >= 6 ? '[@media(max-height:820px)]:hidden' : ''}`}>
+                <li key={r.id} className={`flex items-center gap-[clamp(0.4rem,0.8vw,0.75rem)] rounded-[var(--radius-m)] px-2.5 py-0.5 ${ROW} ${NIGHT} ${i >= 6 ? '[@media(max-height:820px)]:hidden' : ''}`}>
                   <RankBadge rank={r.rank} big />
                   <PlayerGlim avatar={avatarOf(room.players, r.id)} seed={r.id} size={48} className="size-[clamp(1.9rem,4.2vh,3.2rem)] shrink-0" />
                   <span className="min-w-0 flex-1 truncate font-bold">{name(r.id)}</span>
@@ -1344,9 +1373,10 @@ export function LanternTrailHost({ view, gameNow, room }: ModeScreenProps<Lanter
                 {plays.map((p) => {
                   const Icon = PLAY_ICON[p.kind];
                   return (
-                    <li key={p.n} className={`flex items-center gap-2.5 rounded-[16px] border border-white/12 px-3 py-1 ${ROW} ${NIGHT}`} style={motionOK() ? { animation: 'rise-fade 300ms var(--ease-out) both' } : undefined}>
+                    // One line each, so a long play cannot push the bottom of the column off a 768-pixel projector.
+                    <li key={p.n} className={`flex items-center gap-2.5 rounded-[var(--radius-m)] px-3 py-1 ${ROW} ${NIGHT}`} style={{ animation: 'rise-fade 200ms var(--ease-out) both' }}>
                       <Icon className="size-[1.15em] shrink-0 text-lantern" aria-hidden />
-                      <span className="min-w-0 flex-1 font-bold">{p.text}</span>
+                      <span className="min-w-0 flex-1 truncate font-bold">{p.text}</span>
                     </li>
                   );
                 })}
