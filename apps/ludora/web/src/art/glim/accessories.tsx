@@ -4,8 +4,8 @@ import { BODIES, type BodyGeometry } from './bodies.ts';
 /*
  * Accessories sit on a body's anchors: hats on `top` (scaled to the head's
  * width), eyewear on `face` (lenses over the eyes, at the body's eye gap),
- * neckwear on `neck`. Drawn in the same sticker style as the Glims: flat
- * fills, a dark outline tinted from the accessory's hue, a small highlight.
+ * neckwear on `neck`. Drawn in the same crisp style as the Glims: flat fills,
+ * a near-black outline tinted from the accessory's hue, a small highlight.
  */
 
 function colors(art: AccessoryArt) {
@@ -15,7 +15,7 @@ function colors(art: AccessoryArt) {
     dark: `hsl(${art.hue} 58% 42%)`,
     light: `hsl(${art.hue} 85% 84%)`,
     accent: `hsl(${accentHue} 88% 64%)`,
-    out: `hsl(${art.hue} 50% 18%)`,
+    out: `hsl(${art.hue} 45% 10%)`,
   };
 }
 
@@ -25,7 +25,7 @@ const GOLD_LIGHT = 'hsl(48 100% 86%)';
 const SHINE = { fill: '#fff', opacity: 0.55 };
 
 function Hat({ shape, c }: { shape: string; c: C }) {
-  const st = { stroke: c.out, strokeWidth: 3, strokeLinejoin: 'round' as const, strokeLinecap: 'round' as const };
+  const st = { stroke: c.out, strokeWidth: 2.6, strokeLinejoin: 'round' as const, strokeLinecap: 'round' as const };
   switch (shape) {
     case 'beanie':
       return (
@@ -211,7 +211,7 @@ function Eyewear({ shape, c, g, r }: { shape: string; c: C; g: number; r: number
 }
 
 function Neckwear({ shape, c }: { shape: string; c: C }) {
-  const st = { stroke: c.out, strokeWidth: 2.8, strokeLinejoin: 'round' as const, strokeLinecap: 'round' as const };
+  const st = { stroke: c.out, strokeWidth: 2.5, strokeLinejoin: 'round' as const, strokeLinecap: 'round' as const };
   switch (shape) {
     case 'scarf':
       return (
@@ -294,7 +294,7 @@ export function Accessory({ art, geo }: { art: AccessoryArt; geo: BodyGeometry }
   if (art.slot === 'eyes') {
     return (
       <g transform={`translate(${geo.face.x} ${geo.face.y})`}>
-        <Eyewear shape={art.shape} c={c} g={geo.eyeGap} r={10.5 * geo.eyeScale} />
+        <Eyewear shape={art.shape} c={c} g={geo.eyeGap} r={9.6 * geo.eyeScale} />
       </g>
     );
   }
@@ -305,12 +305,13 @@ export function Accessory({ art, geo }: { art: AccessoryArt; geo: BodyGeometry }
   );
 }
 
-/** An accessory on its own (shop and locker previews), on a plain head-shaped stand. */
+/** An accessory on its own (shop and locker previews), on a plain display head, like a mannequin. */
 export function AccessoryPreview({ art, size = 72 }: { art: AccessoryArt; size?: number }) {
   const stand: BodyGeometry = { ...BODIES.blob, path: '', face: { x: 60, y: 62 }, top: { x: 60, y: 44 }, headW: 50, neck: 84, eyeGap: 13, eyeScale: 0.9, box: [30, 34, 90, 94] };
   return (
     <svg viewBox="0 0 120 120" width={size} height={size} aria-hidden>
-      <circle cx="60" cy="64" r="30" fill="var(--surface-3)" />
+      <path d="M50 84H70L74 104H46Z" fill="var(--surface-3)" stroke="var(--line-strong)" strokeWidth="1.6" strokeLinejoin="round" />
+      <ellipse cx="60" cy="63" rx="25" ry="24" fill="var(--surface-3)" stroke="var(--line-strong)" strokeWidth="1.6" />
       <Accessory art={art} geo={stand} />
     </svg>
   );
