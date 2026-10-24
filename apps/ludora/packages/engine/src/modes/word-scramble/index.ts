@@ -370,7 +370,7 @@ export const wordScramble = defineMode<State, Settings, Action>({
       case 'solve':
         if (!sc) return { error: 'Answer this one with the answer buttons.' };
         if (matchesAnswer(a.text, sc.accepted)) return solved(s, p, playerId, sc, ctx);
-        if (ctx.settings.oneTry) return endWord(s, p, playerId, ctx, { correct: false, points: 0, text: 'Not quite, and there is only one try', recorded: false });
+        if (ctx.settings.oneTry) return endWord(s, p, playerId, ctx, { correct: false, points: 0, text: 'Only one try per word', recorded: false });
         sc.tries++;
         return;
       case 'answer': {
@@ -381,14 +381,14 @@ export const wordScramble = defineMode<State, Settings, Action>({
           return endWord(s, p, playerId, ctx, {
             correct: res.correct,
             points: res.correct ? points : 0,
-            text: res.correct ? `+${points}` : 'Not this time',
+            text: res.correct ? `+${points}` : 'No points',
             recorded: true,
           });
         }
         // Practice bots answer in the question's own form. Players spell the word.
         if (!ctx.player(playerId)?.isBot) return { error: 'Spell the answer with the tiles, or type it.' };
         if (ctx.questions.grade(w.iid, a.answer).correct) return solved(s, p, playerId, sc, ctx);
-        if (ctx.settings.oneTry) return endWord(s, p, playerId, ctx, { correct: false, points: 0, text: 'Not quite, and there is only one try', recorded: false });
+        if (ctx.settings.oneTry) return endWord(s, p, playerId, ctx, { correct: false, points: 0, text: 'Only one try per word', recorded: false });
         sc.tries++;
         return;
       }

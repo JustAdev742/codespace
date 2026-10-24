@@ -17,7 +17,7 @@ export function ReactionLayer({ reactions, big = false }: { reactions: Reaction[
       {reactions.map((r) => (
         <div key={r.key} className="absolute flex flex-col items-center" style={{ left: `${10 + ((r.key * 37) % 80)}%`, animation: 'reaction-float 3s var(--ease-out) forwards' }}>
           <EmoteGlyph glyph={r.emote} size={big ? 76 : 48} />
-          <span className={`paper mt-0.5 truncate rounded-full border-2 border-ink font-bold ${big ? 'max-w-[14rem] px-3 py-0.5 text-[clamp(1rem,1.3vw,1.5rem)]' : 'max-w-[8rem] px-2 text-xs'}`}>{r.name}</span>
+          <span className={`paper mt-0.5 truncate rounded-[var(--radius-s)] font-bold shadow-[0_6px_14px_-6px_rgb(2_5_20/0.8)] ${big ? 'max-w-[14rem] px-2.5 py-0.5 text-[clamp(1rem,1.3vw,1.5rem)]' : 'max-w-[8rem] px-1.5 text-xs'}`}>{r.name}</span>
         </div>
       ))}
     </div>
@@ -34,14 +34,15 @@ export function ReactionBar({ onReact, disabled }: { onReact: (emote: string) =>
     setTimeout(() => setCooling(false), 1500);
   };
   return (
-    <div className="flex justify-center gap-1 sm:gap-1.5" role="group" aria-label="Send a reaction">
+    // Eight presets share the width of the narrowest phone: each is 44px tall and as wide as fits, up to 48px.
+    <div className="mx-auto flex w-full max-w-md justify-center gap-1 sm:gap-1.5" role="group" aria-label="Send a reaction">
       {EMOTES.map((e) => (
         <button
           key={e}
           type="button"
           onClick={() => react(e)}
           disabled={cooling || disabled}
-          className="grid size-10 shrink-0 place-items-center rounded-[14px] border border-white/20 bg-white/10 transition-[translate,background-color] duration-150 hover:-translate-y-0.5 hover:bg-white/20 active:translate-y-0 disabled:opacity-40 sm:size-11"
+          className="press-soft grid h-11 max-w-12 min-w-0 flex-1 place-items-center rounded-[var(--radius-m)] bg-white/[0.08] hover:bg-white/[0.16] disabled:opacity-40"
           aria-label={`React: ${e}`}
         >
           <EmoteGlyph glyph={e} size={26} />

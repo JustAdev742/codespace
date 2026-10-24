@@ -18,21 +18,22 @@ const IMAGE_HEIGHT = {
 
 /**
  * A question or answer picture at a fixed display height, so a tiny upload is
- * scaled up rather than shown as a dot, on white paper with an ink edge so
- * transparent pictures still read as pictures. The author writes the alt text.
+ * scaled up rather than shown as a dot, framed in white so transparent pictures
+ * still read as pictures on the stage. The author writes the alt text.
  */
 export function QuestionImage({ media, size, className = '' }: { media: Media; size: keyof typeof IMAGE_HEIGHT; className?: string }) {
   return (
-    <span className={`paper inline-grid max-w-full shrink-0 place-items-center overflow-hidden border-ink ${size === 'tile' ? 'rounded-[12px] border-2 p-1' : 'rounded-[18px] border-[3px] p-2 shadow-[0_4px_0_rgb(12_8_48/0.55)]'} ${className}`}>
-      <img src={media.url} alt={media.alt} className={`block w-auto max-w-full rounded-[10px] object-contain ${IMAGE_HEIGHT[size]}`} />
+    <span className={`paper inline-grid max-w-full shrink-0 place-items-center overflow-hidden ${size === 'tile' ? 'rounded-[var(--radius-s)] p-1' : 'lift rounded-[var(--radius-m)] p-1.5'} ${className}`}>
+      <img src={media.url} alt={media.alt} className={`block w-auto max-w-full rounded-[4px] object-contain ${IMAGE_HEIGHT[size]}`} />
     </span>
   );
 }
 
 /**
- * The prompt, with its image if it has one.
- * `size="lg"` is the projector card: dark ink on white paper, as big as the prompt allows, with the picture beside it.
- * `size="md"` is the phone version, white on the dusk sky, with the picture underneath.
+ * The prompt, with its image if it has one, in the reading face: questions are
+ * read carefully, so they get the most legible type rather than the display face.
+ * `size="lg"` is the projector card: dark ink on white, as big as the prompt allows, with the picture beside it.
+ * `size="md"` is the phone version, white on the stage, with the picture underneath.
  */
 export function QuestionCard({ q, index, total, children, size = 'md' }: { q: PublicQuestion; index?: number | undefined; total?: number | undefined; children?: ReactNode; size?: 'md' | 'lg' }) {
   // A new question is read out. If the answer button that had focus went away with the last one,
@@ -48,17 +49,17 @@ export function QuestionCard({ q, index, total, children, size = 'md' }: { q: Pu
   const many = (q.type === 'mcq' || q.type === 'multi') && q.choices.length > 4;
   const counter =
     index !== undefined && total ? (
-      <p className={`font-display font-bold ${size === 'lg' ? 'text-[clamp(1.1rem,1.7vw,1.9rem)] text-text-2' : 'text-base text-text-2'}`}>
+      <p className={`font-display font-bold tabular ${size === 'lg' ? 'text-[clamp(1.25rem,1.9vw,2.1rem)] text-text-2' : 'text-lg text-text-2'}`}>
         Question {index + 1} of {total}
       </p>
     ) : null;
   if (size === 'lg') {
-    const text = len > 160 ? 'text-[clamp(1.6rem,2.5vw,3rem)]' : len > 90 ? 'text-[clamp(2rem,3.2vw,3.9rem)]' : 'text-[clamp(2.5rem,4.2vw,5.25rem)]';
+    const text = len > 160 ? 'text-[clamp(1.5rem,2.3vw,2.75rem)]' : len > 90 ? 'text-[clamp(1.85rem,2.9vw,3.5rem)]' : 'text-[clamp(2.25rem,3.8vw,4.75rem)]';
     return (
       <div className="paper stage-card flex flex-col gap-3 px-[clamp(1.25rem,2.6vw,3.25rem)] py-[clamp(1rem,2.6vh,2.25rem)]">
         {counter}
         <div className="flex flex-col gap-[clamp(1rem,2vw,2.5rem)] sm:flex-row sm:items-center">
-          <h2 ref={heading} tabIndex={-1} className={`min-w-0 flex-1 font-display leading-[1.06] font-extrabold break-words text-text outline-none ${text} max-sm:text-[1.9rem]`}>
+          <h2 ref={heading} tabIndex={-1} className={`min-w-0 flex-1 font-sans leading-[1.12] font-bold tracking-[-0.01em] text-pretty break-words text-text outline-none ${text} max-sm:text-[1.6rem]`}>
             {q.prompt}
           </h2>
           {q.media ? <QuestionImage media={q.media} size={many ? 'hostCompact' : 'host'} className="self-start sm:max-w-[42%] sm:self-auto" /> : null}
@@ -67,11 +68,11 @@ export function QuestionCard({ q, index, total, children, size = 'md' }: { q: Pu
       </div>
     );
   }
-  const text = len > 140 ? 'text-lg sm:text-xl' : len > 70 ? 'text-xl sm:text-2xl' : 'text-[1.7rem] leading-[1.12] sm:text-3xl';
+  const text = len > 140 ? 'text-lg sm:text-xl' : len > 70 ? 'text-xl sm:text-2xl' : 'text-[1.6rem] leading-[1.18] sm:text-[1.75rem]';
   return (
     <div className="flex flex-col gap-2.5">
       {counter}
-      <h2 ref={heading} tabIndex={-1} className={`font-display font-extrabold text-text outline-none ${text}`}>
+      <h2 ref={heading} tabIndex={-1} className={`font-sans leading-snug font-bold text-pretty text-text outline-none ${text}`}>
         {q.prompt}
       </h2>
       {q.media ? <QuestionImage media={q.media} size={many || len > 70 ? 'phoneCompact' : 'phone'} className="self-start" /> : null}

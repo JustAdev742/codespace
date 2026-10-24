@@ -82,10 +82,10 @@ function trackTeams(s: State, ctx: ModeContext) {
     if (!ctx.players().some((p) => p.teamId === t.id)) continue;
     if (!lit.has(t.id) && s.teamOutAt[t.id] === undefined) {
       s.teamOutAt[t.id] = s.sync.round;
-      ctx.feed(`The ${t.name} have no lanterns left!`, { tone: 'bad' });
+      ctx.feed(`The ${t.name} have no lanterns left.`, { tone: 'bad' });
     } else if (lit.has(t.id) && s.teamOutAt[t.id] !== undefined) {
       delete s.teamOutAt[t.id];
-      ctx.feed(`The ${t.name} are back in the game!`, { tone: 'good' });
+      ctx.feed(`The ${t.name} are back in the game.`, { tone: 'good' });
     }
   }
 }
@@ -163,7 +163,7 @@ const cfg: SyncConfig<State> = {
     const alive = ctx.players().filter((p) => !isOut(s, p.id));
     if (opts(ctx).vigil) {
       const n = ctx.players().length;
-      ctx.endGame(vigilWon(s, ctx) ? `${alive.length} of ${n} still have a lantern lit: the room wins together!` : `Only ${alive.length} of ${n} still have a lantern lit: the room needed half.`);
+      ctx.endGame(vigilWon(s, ctx) ? `${alive.length} of ${n} still have a lantern lit: the room wins together.` : `Only ${alive.length} of ${n} still have a lantern lit: the room needed half.`);
       return;
     }
     if (lastTeamOn(s, ctx)) {

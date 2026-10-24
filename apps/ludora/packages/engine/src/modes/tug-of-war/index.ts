@@ -158,7 +158,7 @@ function announce(s: State, ctx: ModeContext<Settings>) {
     const quarter = Math.floor((towards / ctx.settings.ropeLength) * 4 + EPS);
     if (quarter < 2 || quarter >= 4 || quarter <= s.milestones[side]) continue;
     s.milestones[side] = quarter;
-    ctx.feed(quarter === 2 ? `${theSide(side, ctx, true)} have the knot halfway to their line!` : `${theSide(side, ctx, true)} are nearly over the line!`, { tone: 'good' });
+    ctx.feed(quarter === 2 ? `${theSide(side, ctx, true)} have the knot halfway to their line.` : `${theSide(side, ctx, true)} are nearly over the line.`, { tone: 'good' });
   }
 }
 
@@ -235,7 +235,7 @@ export const tugOfWar = defineMode<State, Settings, Action>({
     if (winner) {
       s.winner = winner;
       s.endedBy = 'line';
-      ctx.feed(`${theSide(winner, ctx, true)} pulled the knot over the line!`, { tone: 'big' });
+      ctx.feed(`${theSide(winner, ctx, true)} pulled the knot over the line.`, { tone: 'big' });
       ctx.endGame();
       return;
     }
@@ -309,7 +309,7 @@ export const tugOfWar = defineMode<State, Settings, Action>({
     });
     let summary: string;
     if (lean === 'draw') summary = s.endedBy === 'time' ? 'Time is up with the knot dead level. It is a draw.' : 'The game ended with the knot dead level.';
-    else if (s.endedBy === 'line') summary = `${theSide(lean, ctx, true)} pulled the knot over the line!`;
+    else if (s.endedBy === 'line') summary = `${theSide(lean, ctx, true)} pulled the knot over the line.`;
     else summary = `${s.endedBy === 'time' ? 'Time is up' : 'The game ended'} with the knot ${spaces(gap)} towards ${theSide(lean, ctx)}.`;
     return { standings, ...(teamStandings.length ? { teamStandings } : {}), summary };
   },

@@ -1,14 +1,14 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
-import { Flag, Flame } from 'lucide-react';
+import { Flag } from 'lucide-react';
 import type { Answer, RoomPlayerView } from '@ludora/shared';
 import type { ModeScreenProps } from './registry.ts';
 import type { FeedbackView, QuestionView } from '../game/types.ts';
 import { AnswerInput } from '../game/AnswerInput.tsx';
 import { QuestionCard } from '../game/QuestionCard.tsx';
 import { Countdown } from '../game/TimerBar.tsx';
-import { ResultBanner, RevealAnswer } from '../game/Reveal.tsx';
-import { Explanation, myAvatar } from '../game/parts.tsx';
-import { NIGHT, Pill, PlayerGlim, SIGN, StagePanel, avatarOf } from '../game/stage.tsx';
+import { ResultBanner, RevealAnswer, shortAnswer } from '../game/Reveal.tsx';
+import { Explanation, ModeTitle, StreakChip, myAvatar } from '../game/parts.tsx';
+import { NIGHT, Pill, PlayerGlim, StagePanel, avatarOf } from '../game/stage.tsx';
 import { ordinal } from '../../../lib/format.ts';
 
 interface Lane {
@@ -43,7 +43,7 @@ function nearYou(lanes: Lane[]): Lane[] {
   return [lanes[0]!, lanes[i - 1]!, lanes[i]!];
 }
 
-/** The race: one lane per player, a comet tail behind each Glim and a finish strip at the far end. */
+/** The race: one lane per player, a comet tail behind each Glim and a gold finish line at the far end. */
 function Track({ lanes, distance, players, big = false, together = false }: { lanes: Lane[]; distance: number; players: RoomPlayerView[]; big?: boolean; together?: boolean }) {
   const cols = big ? laneColumns(lanes.length) : 1;
   const rows = Math.ceil(lanes.length / cols);
@@ -60,7 +60,7 @@ function Track({ lanes, distance, players, big = false, together = false }: { la
   const name = big ? (cols === 1 ? 'text-[clamp(1rem,1.6vw,1.75rem)]' : 'text-[clamp(0.95rem,min(1.25vw,2.6vh),1.5rem)]') : 'text-sm';
   return (
     <div
-      className={`relative grid rounded-[22px] border border-white/12 ${NIGHT} ${big ? 'grid-flow-col gap-x-[clamp(0.75rem,1.6vw,1.5rem)] gap-y-[clamp(0.25rem,0.8vh,0.6rem)] p-[clamp(0.5rem,1.2vw,1rem)] [grid-template-rows:repeat(var(--rows),auto)]' : 'gap-1 p-1.5'}`}
+      className={`relative grid rounded-[var(--radius-l)] border border-white/10 ${NIGHT} ${big ? 'grid-flow-col gap-x-[clamp(0.75rem,1.6vw,1.5rem)] gap-y-[clamp(0.25rem,0.8vh,0.6rem)] p-[clamp(0.5rem,1.2vw,1rem)] [grid-template-rows:repeat(var(--rows),auto)]' : 'gap-1 p-1.5'}`}
       style={{ ...vars, gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` } as CSSProperties}
       role="list"
       aria-label="Race positions"
@@ -71,15 +71,15 @@ function Track({ lanes, distance, players, big = false, together = false }: { la
           <div
             key={l.playerId}
             role="listitem"
-            className={`grid grid-cols-[var(--name)_1fr] items-center gap-2 rounded-[14px] ${l.isYou ? 'bg-lantern/18 ring-2 ring-lantern' : 'bg-white/6'}`}
+            className={`grid grid-cols-[var(--name)_1fr] items-center gap-2 rounded-[var(--radius-m)] ${l.isYou ? 'bg-lantern/[0.16] ring-2 ring-lantern ring-inset' : 'bg-white/[0.05]'}`}
             aria-label={`${l.name}: ${l.place ? (together ? 'home' : `finished ${ordinal(l.place)}`) : `${l.pos} of ${distance} spaces`}`}
           >
             <span className={`truncate pl-3 font-bold ${name}`} aria-hidden>
               {l.name}
             </span>
             <div className="relative h-[calc(var(--g)+0.5rem)]" aria-hidden>
-              {/* Finish strip */}
-              <span className="absolute inset-y-1 right-1 w-2.5 rounded-full border-2 border-ink bg-[repeating-linear-gradient(180deg,#ffffff_0_6px,var(--ink)_6px_12px)]" />
+              {/* The finish line. */}
+              <span className="absolute inset-y-1 right-1.5 w-1.5 rounded-full bg-lantern" />
               <div className="absolute inset-y-0 right-[calc(var(--g)+0.75rem)] left-1">
                 <span className="absolute top-1/2 left-0 h-[30%] w-full origin-left rounded-full bg-gradient-to-r from-transparent via-lantern/40 to-lantern transition-transform duration-700 ease-[var(--ease-out)]" style={{ transform: `translateY(-50%) scaleX(${pct / 100})` }} />
                 <div className="absolute inset-y-0 left-0 w-full transition-transform duration-700 ease-[var(--ease-out)]" style={{ transform: `translateX(${pct}%)` }}>
@@ -90,7 +90,7 @@ function Track({ lanes, distance, players, big = false, together = false }: { la
               </div>
               {l.place ? (
                 <span className="absolute top-1/2 right-5 -translate-y-1/2">
-                  <Pill tone="lantern" className={big ? 'text-[clamp(0.9rem,1.4vw,1.5rem)]' : 'px-2 py-0.5 text-xs'}>
+                  <Pill tone="lantern" className={big ? 'text-[clamp(0.95rem,1.4vw,1.5rem)]' : 'px-2 py-0.5 text-xs'}>
                     {together ? 'Home' : ordinal(l.place)}
                   </Pill>
                 </span>
@@ -144,13 +144,18 @@ export function CometDashPlayer({ view, act, gameNow, room }: ModeScreenProps<Co
   return (
     <div className="mx-auto flex w-full max-w-3xl flex-col gap-3 sm:gap-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="font-display text-2xl font-extrabold tabular">{you.place ? (isTogether(room) ? 'You made it home!' : `You finished ${ordinal(you.place)}!`) : `${you.pos} of ${view.distance} spaces`}</p>
+        {you.place ? (
+          <p className="plate plate-gold text-2xl">
+            <span>{isTogether(room) ? 'You made it home' : `You finished ${ordinal(you.place)}`}</span>
+          </p>
+        ) : (
+          <p className="flex items-baseline gap-1.5 leading-none whitespace-nowrap">
+            <span className="font-display text-[1.9rem] font-extrabold tabular">{you.pos}</span>
+            <span className="font-bold text-text-2">of {view.distance} spaces</span>
+          </p>
+        )}
         <div className="flex items-center gap-2">
-          {you.streak > 1 ? (
-            <Pill tone="lantern">
-              <Flame className="size-4" aria-hidden /> Streak {you.streak}
-            </Pill>
-          ) : null}
+          <StreakChip streak={you.streak} />
           {view.endsAt ? (
             <Pill>
               <Countdown until={view.endsAt} gameNow={gameNow} label="Time left" />
@@ -162,9 +167,9 @@ export function CometDashPlayer({ view, act, gameNow, room }: ModeScreenProps<Co
       <Track lanes={nearYou(view.lanes)} distance={view.distance} players={room.players} together={isTogether(room)} />
       {you.place ? (
         <StagePanel className="flex items-center gap-4 px-4 py-4">
-          <PlayerGlim avatar={myAvatar(room)} seed={room.me.playerId ?? 'you'} size={84} bob pose="cheer" className="shrink-0" />
+          <PlayerGlim avatar={myAvatar(room)} seed={room.me.playerId ?? 'you'} size={84} pose="cheer" className="shrink-0" />
           <div role="status">
-            <p className="flex items-center gap-2 font-display text-2xl font-extrabold">
+            <p className="flex items-center gap-2 font-display text-[1.75rem] leading-tight font-extrabold">
               <Flag className="size-6 text-lantern" aria-hidden /> Across the line
             </p>
             <p className="font-semibold text-text-2">
@@ -176,10 +181,10 @@ export function CometDashPlayer({ view, act, gameNow, room }: ModeScreenProps<Co
         </StagePanel>
       ) : feedback ? (
         <div className="flex flex-col gap-3" onClick={() => setFeedback(null)}>
-          <ResultBanner key={feedback.iid} correct={feedback.correct} partial={feedback.partial} text={feedback.text} />
+          <ResultBanner key={feedback.iid} correct={feedback.correct} partial={feedback.partial} text={feedback.text} answer={answeredQ ? shortAnswer(answeredQ.q, feedback.reveal) : null} />
           {!feedback.correct && answeredQ ? <RevealAnswer q={answeredQ.q} reveal={feedback.reveal} compact /> : null}
           {!feedback.correct ? <Explanation text={feedback.explanation} /> : null}
-          <button type="button" onClick={() => setFeedback(null)} className="self-center rounded-[12px] px-4 py-2 font-bold text-text-2 hover:bg-white/10">
+          <button type="button" onClick={() => setFeedback(null)} className="min-h-11 self-center rounded-[var(--radius-m)] px-4 py-2 font-bold text-text-2 hover:bg-white/10">
             Continue
           </button>
         </div>
@@ -197,7 +202,7 @@ export function CometDashHost({ view, gameNow, room }: ModeScreenProps<CometView
   return (
     <div className="mx-auto flex w-full max-w-[110rem] flex-1 flex-col gap-[clamp(0.75rem,2vh,1.5rem)]">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 className={`font-display text-[clamp(2.25rem,4vw,4.75rem)] leading-none font-extrabold ${SIGN}`}>Comet trail</h2>
+        <ModeTitle>Comet trail</ModeTitle>
         <div className="flex items-center gap-3 text-[clamp(1.1rem,1.8vw,2rem)]">
           <Pill className="px-5 py-1.5">
             <Flag className="size-[0.9em]" aria-hidden /> {isTogether(room) ? 'Home' : 'Podium'} {view.finished} of {view.finishersNeeded}

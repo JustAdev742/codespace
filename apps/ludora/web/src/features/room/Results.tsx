@@ -1,6 +1,6 @@
-import { useEffect, useState, type CSSProperties } from 'react';
+import { useState, type CSSProperties } from 'react';
 import { Link } from 'react-router';
-import { Download, Home, RotateCcw, Sparkles, Trophy } from 'lucide-react';
+import { Download, Home, RotateCcw, Trophy } from 'lucide-react';
 import { toast } from 'sonner';
 import type { RewardSummary, RoomView, StandingView } from '@ludora/shared';
 import type { RoomHandle } from '../../lib/useRoom.ts';
@@ -8,108 +8,106 @@ import { Amount, Badge } from '../../ui/primitives.tsx';
 import { Button, buttonClass } from '../../ui/Button.tsx';
 import { duration, formatNumber, ordinal } from '../../lib/format.ts';
 import { PLACE_BG, RankBadge, TeamScores } from './game/Leaderboard.tsx';
-import { NameTag, PlayerGlim, SIGN, avatarOf, motionOK } from './game/stage.tsx';
+import { NameTag, PlayerGlim, StagePanel, avatarOf, motionOK } from './game/stage.tsx';
 import { Burst } from '../../art/bursts.tsx';
 import { useAnnounce } from './game/announce.tsx';
 import { useSfx, useSharedSounds } from '../../lib/sound/react.tsx';
 
 /** Block heights as a share of the tallest, and when each block starts to rise (ms): third, then second, then first. */
 const HEIGHT = [1, 0.72, 0.5];
-const RISE_AT = [1300, 700, 150];
+const RISE_AT = [900, 500, 150];
+const RISE_MS = 360;
+/** Each place's Glim, name and score land this long after its block starts to rise. */
+const LAND_AFTER = 260;
 const ORDER = ['order-2', 'order-1', 'order-3'];
-/** The runners-up wave to the room once they land, then settle, so nothing keeps moving while the teacher talks. */
-const WAVE_UNTIL = RISE_AT[1]! + 450 + 4000;
 
 /**
- * The podium reveal. Each block rises out of the floor, then its Glim, name
- * and score land on top, third place first; the winner hops, throws both arms
- * up and their victory effect bursts, while second and third wave to the room.
- * With reduced motion everything is simply there.
+ * The podium reveal, the game's last moment. Each block rises out of the floor,
+ * then its Glim, name and score land on top, third place first; the winner's
+ * victory effect bursts as they land. Then everything holds still while the
+ * teacher talks. With reduced motion everything is simply there.
  */
 function Podium({ room, big }: { room: RoomView; big: boolean }) {
   const top = room.results!.standings.slice(0, 3);
   const moving = motionOK();
-  const [waving, setWaving] = useState(true);
-  useEffect(() => {
-    if (!moving) return;
-    const t = window.setTimeout(() => setWaving(false), WAVE_UNTIL);
-    return () => window.clearTimeout(t);
-  }, [moving]);
   const vars = { '--podium': big ? 'clamp(8.5rem, 27vh, 19rem)' : '8.5rem' } as CSSProperties;
   return (
     <div className="flex w-full flex-col items-center" style={vars}>
-    <ol className="flex w-full items-end justify-center gap-[clamp(0.5rem,1.6vw,1.75rem)]" aria-label="Podium">
-      {top.map((s, place) => {
-        const a = avatarOf(room.players, s.playerId);
-        const first = place === 0;
-        const rise = RISE_AT[place]!;
-        const land = rise + 450;
-        return (
-          <li key={s.playerId} className={`flex min-w-0 flex-col items-center ${ORDER[place]} ${big ? 'w-[clamp(7rem,13vw,16rem)]' : 'w-[6.75rem]'}`}>
-            <div className="relative flex w-full flex-col items-center" style={moving ? { animation: `stage-land 480ms var(--ease-out) ${land}ms both` } : undefined}>
-              <div className="relative" style={first && moving ? { animation: `stage-hop 950ms var(--ease-out) ${land + 450}ms both` } : undefined}>
-                <PlayerGlim avatar={a} seed={s.playerId} size={first ? 120 : 92} aura={first ? 'legendary' : null} pose={first ? 'cheer' : waving ? 'wave' : 'idle'} className={first ? (big ? 'size-[clamp(6rem,17vh,11.5rem)]' : 'size-[6rem]') : big ? 'size-[clamp(4.75rem,12.5vh,8.5rem)]' : 'size-[4.5rem]'} />
+      <ol className="flex w-full items-end justify-center gap-[clamp(0.5rem,1.6vw,1.75rem)]" aria-label="Podium">
+        {top.map((s, place) => {
+          const a = avatarOf(room.players, s.playerId);
+          const first = place === 0;
+          const rise = RISE_AT[place]!;
+          const land = rise + LAND_AFTER;
+          return (
+            <li key={s.playerId} className={`flex min-w-0 flex-col items-center ${ORDER[place]} ${big ? 'w-[clamp(7rem,13vw,16rem)]' : 'w-[6.75rem]'}`}>
+              <div className="relative flex w-full flex-col items-center" style={moving ? { animation: `stage-land 220ms var(--ease-out) ${land}ms both` } : undefined}>
+                <PlayerGlim avatar={a} seed={s.playerId} size={first ? 120 : 92} aura={first ? 'legendary' : null} pose={first ? 'cheer' : 'idle'} className={first ? (big ? 'size-[clamp(6rem,17vh,11.5rem)]' : 'size-[6rem]') : big ? 'size-[clamp(4.75rem,12.5vh,8.5rem)]' : 'size-[4.5rem]'} />
+                {first ? <Burst style={a?.victory?.style ?? 'festival'} hue={a?.victory?.hue ?? 42} size={big ? 380 : 250} rise delay={land + 120} count={20} /> : null}
+                {/* The winner's name is on gold; the runners-up on white. */}
+                {big ? (
+                  <NameTag tone={first ? 'lantern' : 'paper'} className="mt-1 text-[clamp(1rem,1.6vw,1.75rem)]">
+                    {s.name}
+                  </NameTag>
+                ) : (
+                  // A phone's podium column is narrow: names wrap onto a second line rather than lose their end.
+                  <span className={`mt-1 line-clamp-2 max-w-full rounded-[var(--radius-s)] px-2 py-0.5 text-center text-sm leading-tight font-bold break-words shadow-[0_6px_16px_-8px_rgb(2_5_20/0.8)] ${first ? 'bg-lantern text-on-accent' : 'paper'}`}>{s.name}</span>
+                )}
+                {/* A long label ("12 points from 4 lanterns") wraps under itself, centred over the block. */}
+                <span className={`mt-1 text-center font-display leading-tight font-extrabold tabular ${big ? 'text-[clamp(1.15rem,1.9vw,2.1rem)]' : 'text-lg'}`}>{s.label}</span>
               </div>
-              {first ? <Burst style={a?.victory?.style ?? 'festival'} hue={a?.victory?.hue ?? 42} size={big ? 380 : 250} rise delay={land + 380} count={20} /> : null}
-              {big ? (
-                <NameTag className="mt-1 text-[clamp(1rem,1.6vw,1.75rem)]">{s.name}</NameTag>
-              ) : (
-                // A phone's podium column is narrow: names wrap onto a second line rather than lose their end.
-                <span className="paper mt-1 line-clamp-2 max-w-full rounded-[12px] border-2 border-ink px-2 py-0.5 text-center text-sm leading-tight font-bold break-words shadow-[0_2px_0_var(--ink)]">{s.name}</span>
-              )}
-              <span className={`mt-1 font-display font-extrabold tabular ${big ? 'text-[clamp(1rem,1.7vw,1.9rem)]' : 'text-base'}`}>{s.label}</span>
-            </div>
-            <div className="mt-2 w-full overflow-hidden" style={{ height: `calc(var(--podium) * ${HEIGHT[place]})` }}>
-              <div
-                className="flex h-full w-full items-start justify-center rounded-t-[22px] border-[3px] border-b-0 border-ink pt-[clamp(0.25rem,1vh,0.75rem)] font-display leading-none font-extrabold text-on-accent shadow-[inset_0_-12px_0_rgb(0_0_0/0.1)]"
-                style={{ background: PLACE_BG[place], animation: moving ? `stage-rise 620ms var(--ease-out) ${rise}ms both` : undefined }}
-              >
-                <span className="text-[length:calc(var(--podium)*0.3)]">
-                  <span className="sr-only">{ordinal(s.rank)} place</span>
-                  <span aria-hidden>{s.rank}</span>
-                </span>
+              <div className="mt-2 w-full overflow-hidden" style={{ height: `calc(var(--podium) * ${HEIGHT[place]})` }}>
+                {/* A solid block with a lit top edge and a darker base, like the stage's pressable pieces. */}
+                <div
+                  className="flex h-full w-full items-start justify-center rounded-t-[var(--radius-l)] pt-[clamp(0.25rem,1vh,0.75rem)] font-display leading-none font-extrabold text-on-accent italic shadow-[inset_0_3px_0_rgb(255_255_255/0.35),inset_0_-14px_0_rgb(0_0_0/0.14)]"
+                  style={{ background: PLACE_BG[place], animation: moving ? `stage-rise ${RISE_MS}ms var(--ease-out) ${rise}ms both` : undefined }}
+                >
+                  <span className="text-[length:calc(var(--podium)*0.32)]">
+                    <span className="sr-only">{ordinal(s.rank)} place</span>
+                    <span aria-hidden>{s.rank}</span>
+                  </span>
+                </div>
               </div>
-            </div>
-          </li>
-        );
-      })}
-    </ol>
-    {/* The stage floor the blocks rise out of. */}
-    <div className="h-2.5 w-[min(100%,52rem)] rounded-full border-2 border-ink bg-lantern-deep shadow-[0_6px_18px_rgb(255_176_32/0.35)]" aria-hidden />
+            </li>
+          );
+        })}
+      </ol>
+      {/* The stage floor the blocks rise out of. */}
+      <div className="h-1.5 w-[min(100%,52rem)] rounded-full bg-white/25" aria-hidden />
     </div>
   );
 }
 
-/** Co-op endings: the whole room together, cheering a win or shrugging off a loss. */
+/** Co-op endings: the whole room together, cheering a win or standing still after a loss. */
 function TeamPhoto({ room, won, big }: { room: RoomView; won: boolean; big: boolean }) {
   const people = room.players.slice(0, 12);
   const size = people.length <= 6 ? (big ? 'size-[clamp(5.5rem,15vh,10rem)]' : 'size-20') : big ? 'size-[clamp(4rem,10vh,7rem)]' : 'size-14';
   return (
     <div className="relative flex flex-wrap items-end justify-center gap-[clamp(0.25rem,1.2vw,1.25rem)] py-4" aria-hidden>
       {people.map((p, i) => (
-        <span key={p.id} style={motionOK() ? { animation: `stage-arrive 520ms var(--ease-spring) ${i * 60}ms both` } : undefined}>
+        <span key={p.id} style={motionOK() ? { animation: `stage-arrive 220ms var(--ease-out) ${i * 40}ms both` } : undefined}>
           <PlayerGlim avatar={p.avatar} seed={p.id} size={120} pose={won ? 'cheer' : 'idle'} className={`${size} ${won ? '' : 'opacity-85'}`} />
         </span>
       ))}
-      {won ? <Burst size={big ? 460 : 280} rise delay={500} count={20} /> : null}
+      {won ? <Burst size={big ? 460 : 280} rise delay={400} count={20} /> : null}
     </div>
   );
 }
 
 /** When the winner has landed on the podium: the projector's full standings wait until then, so the room is not told early. */
-const AFTER_PODIUM_MS = RISE_AT[0]! + 450 + 480;
+const AFTER_PODIUM_MS = RISE_AT[0]! + LAND_AFTER + 220;
 
 function Standings({ room, big, hold = false }: { room: RoomView; big: boolean; hold?: boolean }) {
   const team = (id: string | null) => room.room.teams.find((t) => t.id === id)?.name ?? null;
   // On the projector the list scrolls inside the space left beside the podium, so the host's buttons stay on screen.
   const fit = room.results!.teamStandings.length ? 'lg:max-h-[max(9rem,calc(100dvh-37rem))]' : 'lg:max-h-[max(12rem,calc(100dvh-28rem))]';
   return (
-    <ol className={`flex flex-col gap-1.5 ${big ? `${fit} lg:overflow-y-auto lg:pr-1` : ''}`} aria-label="Final standings" tabIndex={big ? 0 : undefined} style={hold && motionOK() ? { animation: `rise-fade 420ms var(--ease-out) ${AFTER_PODIUM_MS}ms both` } : undefined}>
+    <ol className={`flex flex-col gap-1.5 ${big ? `${fit} lg:overflow-y-auto lg:pr-1` : ''}`} aria-label="Final standings" tabIndex={big ? 0 : undefined} style={hold && motionOK() ? { animation: `rise-fade 260ms var(--ease-out) ${AFTER_PODIUM_MS}ms both` } : undefined}>
       {room.results!.standings.map((s: StandingView) => {
         const mine = s.playerId === room.me.playerId;
         const t = team(s.teamId);
         return (
-          <li key={s.playerId} className={`flex flex-wrap items-center gap-x-3 gap-y-0.5 rounded-[18px] border bg-[rgb(17_10_62/0.62)] px-2.5 py-1.5 ${big ? 'text-[clamp(1rem,1.25vw,1.4rem)]' : ''} ${mine ? 'border-lantern ring-2 ring-lantern' : 'border-white/12'}`}>
+          <li key={s.playerId} className={`flex flex-wrap items-center gap-x-3 gap-y-0.5 rounded-[var(--radius-m)] px-2.5 py-1.5 ${big ? 'text-[clamp(1rem,1.25vw,1.4rem)]' : ''} ${mine ? 'bg-lantern/[0.14] ring-2 ring-lantern ring-inset' : 'bg-white/[0.07]'}`}>
             <RankBadge rank={s.rank} />
             <PlayerGlim avatar={avatarOf(room.players, s.playerId)} seed={s.playerId} size={44} className="shrink-0" />
             <span className="min-w-0 flex-1">
@@ -123,7 +121,7 @@ function Standings({ room, big, hold = false }: { room: RoomView; big: boolean; 
               </span>
             </span>
             {/* On a phone a long result ("4,500 points, 36 correct") takes its own line, so the name is not cut short. */}
-            <span className={`max-w-[48%] text-right font-display leading-tight font-extrabold tabular ${s.label.length > 12 ? `text-[0.95em] ${big ? '' : 'max-sm:max-w-none max-sm:basis-full'}` : 'shrink-0 text-[1.15em]'}`}>{s.label}</span>
+            <span className={`max-w-[48%] text-right font-display leading-tight font-extrabold tabular ${s.label.length > 12 ? `text-[1.05em] ${big ? '' : 'max-sm:max-w-none max-sm:basis-full'}` : 'shrink-0 text-[1.3em]'}`}>{s.label}</span>
           </li>
         );
       })}
@@ -133,7 +131,7 @@ function Standings({ room, big, hold = false }: { room: RoomView; big: boolean; 
 
 function Rewards({ rewards, guest }: { rewards: RewardSummary | null; guest: boolean }) {
   useAnnounce(
-    rewards?.status === 'granted' ? `You earned ${formatNumber(rewards.sparks)} Sparks and ${formatNumber(rewards.xp)} XP.${rewards.levelUp ? ` You reached level ${rewards.levelUp.to}!` : ''}` : null,
+    rewards?.status === 'granted' ? `You earned ${formatNumber(rewards.sparks)} Sparks and ${formatNumber(rewards.xp)} XP.${rewards.levelUp ? ` You reached level ${rewards.levelUp.to}.` : ''}` : null,
     rewards?.status,
   );
   useSfx('levelUp', rewards?.levelUp?.to ?? null, Boolean(rewards?.levelUp));
@@ -146,15 +144,13 @@ function Rewards({ rewards, guest }: { rewards: RewardSummary | null; guest: boo
     );
   }
   return (
-    <div className="paper stage-card flex flex-col gap-3 px-5 py-4" style={{ animation: 'pop-in 260ms var(--ease-spring)' }}>
-      <h2 className="flex items-center gap-2 font-display text-2xl font-extrabold">
-        <Sparkles className="size-6 text-lantern" aria-hidden /> Your rewards
-      </h2>
+    <div className="paper stage-card flex flex-col gap-3 px-5 py-4" style={{ animation: 'pop-in 200ms var(--ease-out)' }}>
+      <h2 className="font-display text-[1.75rem] leading-tight font-bold">Your rewards</h2>
       {rewards.status === 'granted' ? (
         <div className="flex flex-wrap items-center gap-4">
           <Amount currency="sparks" value={rewards.sparks} size="lg" />
-          <span className="font-display text-2xl font-extrabold text-link tabular">+{formatNumber(rewards.xp)} XP</span>
-          {rewards.levelUp ? <Badge tone="violet">Level {rewards.levelUp.to}!</Badge> : null}
+          <span className="font-display text-[1.75rem] font-extrabold text-link tabular">+{formatNumber(rewards.xp)} XP</span>
+          {rewards.levelUp ? <Badge tone="violet">Level {rewards.levelUp.to}</Badge> : null}
         </div>
       ) : null}
       {rewards.quests.length ? (
@@ -210,8 +206,10 @@ export function Results({ room, handle, isHost, guest }: { room: RoomView; handl
   const mine = r.standings.find((s) => s.playerId === room.me.playerId);
   const competitive = r.outcome === 'competitive';
   const podium = competitive && r.standings.length > 1;
-  const title = r.outcome === 'coop-win' ? 'Victory!' : r.outcome === 'coop-loss' ? 'So close' : 'Game over';
-  useAnnounce(`${title} ${mine && podium ? `You came ${ordinal(mine.rank)}. ` : ''}${r.summary}`, 'results');
+  // Something stands beside the standings: the podium, or the team photo of a co-op game. A lone player has neither.
+  const side = podium || !competitive;
+  const title = r.outcome === 'coop-win' ? 'Victory' : r.outcome === 'coop-loss' ? 'Defeat' : 'Game over';
+  useAnnounce(`${title}. ${mine && podium ? `You came ${ordinal(mine.rank)}. ` : ''}${r.summary}`, 'results');
   const shared = useSharedSounds();
   // The big screen celebrates, unless the class lost a co-op game: then a gentle sting, not a fanfare.
   useSfx(shared ? (r.outcome === 'coop-loss' ? 'lose' : 'fanfare') : 'reveal', 'results');
@@ -224,16 +222,23 @@ export function Results({ room, handle, isHost, guest }: { room: RoomView; handl
   const big = isHost;
   return (
     <div className={`mx-auto flex w-full flex-1 flex-col ${big ? 'max-w-[112rem] gap-[clamp(1rem,3vh,2rem)]' : 'max-w-3xl gap-6'}`}>
-      <div className="text-center">
-        <h1 className={`font-display leading-none font-extrabold ${SIGN} ${big ? 'text-[clamp(3rem,5.5vw,6.5rem)]' : 'text-5xl'}`}>{title}</h1>
+      <div className="flex flex-col items-center text-center">
+        <h1 className={`font-display leading-[0.92] font-extrabold ${big ? 'text-[clamp(3.5rem,6.2vw,7.5rem)]' : 'text-[3.5rem]'}`}>{title}</h1>
         <p className={`mt-2 font-semibold text-text-2 ${big ? 'text-[clamp(1.1rem,1.6vw,1.8rem)]' : 'text-lg'}`}>{r.summary}</p>
-        {mine && r.standings.length > 1 && competitive ? <p className={`mt-2 font-display text-3xl font-extrabold text-lantern ${SIGN}`}>You came {ordinal(mine.rank)}</p> : null}
+        {mine && r.standings.length > 1 && competitive ? (
+          <p className={`plate plate-gold mt-3 ${big ? 'text-[clamp(1.75rem,2.6vw,3rem)]' : 'text-[2rem]'}`}>
+            <span>You came {ordinal(mine.rank)}</span>
+          </p>
+        ) : null}
       </div>
-      <div className={`grid grid-cols-1 gap-[clamp(1rem,2.5vw,2.5rem)] ${big ? 'lg:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)] lg:items-start' : ''}`}>
+      {/* With nothing to stand beside them, a lone player's standings take the middle of the projector rather than leave half of it empty. */}
+      <div className={`grid grid-cols-1 gap-[clamp(1rem,2.5vw,2.5rem)] ${big ? (side ? 'lg:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)] lg:items-start' : 'mx-auto w-full max-w-[48rem]') : ''}`}>
         {/* On the projector the podium stays in view, standing on the bottom of the screen, however long the standings get. */}
-        <div className={`flex flex-col ${podium ? 'justify-end' : 'justify-center'} ${big ? 'lg:sticky lg:top-[5.5rem] lg:h-[calc(100dvh-19.5rem)] lg:min-h-[22rem]' : ''}`}>
-          {podium ? <Podium room={room} big={big} /> : !competitive ? <TeamPhoto room={room} won={r.outcome === 'coop-win'} big={big} /> : null}
-        </div>
+        {side ? (
+          <div className={`flex flex-col ${podium ? 'justify-end' : 'justify-center'} ${big ? 'lg:sticky lg:top-[5.5rem] lg:h-[calc(100dvh-19.5rem)] lg:min-h-[22rem]' : ''}`}>
+            {podium ? <Podium room={room} big={big} /> : <TeamPhoto room={room} won={r.outcome === 'coop-win'} big={big} />}
+          </div>
+        ) : null}
         <div className="flex flex-col gap-4">
           {isHost ? (
             // The host's next steps come first, so they stay on screen however long the standings are.
@@ -252,10 +257,10 @@ export function Results({ room, handle, isHost, guest }: { room: RoomView; handl
             <Rewards rewards={room.rewards} guest={guest} />
           )}
           {r.teamStandings.length ? (
-            <section className="rounded-[22px] border border-white/12 bg-[rgb(17_10_62/0.62)] p-4" aria-label="Teams">
-              <h2 className="mb-3 font-display text-xl font-extrabold">Teams</h2>
+            <StagePanel as="section" className="p-4" label="Teams">
+              <h2 className="mb-3 font-display text-2xl font-bold">Teams</h2>
               <TeamScores teams={r.teamStandings.map((t) => ({ teamId: t.teamId, name: t.name, score: t.score, hue: room.room.teams.find((x) => x.id === t.teamId)?.hue ?? 42 }))} />
-            </section>
+            </StagePanel>
           ) : null}
           <Standings room={room} big={big} hold={big && podium} />
           <p className="text-sm font-semibold text-text-2">Played for {duration(r.durationMs)}.</p>

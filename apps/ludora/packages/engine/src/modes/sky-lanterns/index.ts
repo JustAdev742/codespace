@@ -325,7 +325,7 @@ export const skyLanterns = defineMode<State, Settings, Action>({
         f.lastLaunch = { count, mult: wind.mult, points, at };
         s.launches = [{ playerId, count, mult: wind.mult, points, at }, ...s.launches].slice(0, RECENT_LAUNCHES);
         if (points >= BIG_LAUNCH) {
-          ctx.feed(`${nameOf(ctx, playerId)} launched ${plural(count, 'lantern')} on a ${wind.label.toLowerCase()} wind for ${points} points!`, { tone: 'big' });
+          ctx.feed(`${nameOf(ctx, playerId)} launched ${plural(count, 'lantern')} on a ${wind.label.toLowerCase()} wind for ${points} points.`, { tone: 'big' });
         }
         return;
       }

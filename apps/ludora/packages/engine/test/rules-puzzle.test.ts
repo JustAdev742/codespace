@@ -64,7 +64,7 @@ describe('Word Scramble rule options', () => {
     const h = scramble(pick(scrambleVariants, 'word-scramble-first-spell').settings!);
     solve(h, 'not the answer');
     expect(word(h)).toBeNull();
-    expect(h.view('a').you).toMatchObject({ points: 0, last: { correct: false, text: 'Not quite, and there is only one try' }, answerText: 'Paris' });
+    expect(h.view('a').you).toMatchObject({ points: 0, last: { correct: false, text: 'Only one try per word' }, answerText: 'Paris' });
     expect(h.rt.answerLog()).toMatchObject([{ qid: 's1', correct: false }]);
   });
 

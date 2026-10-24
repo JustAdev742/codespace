@@ -122,7 +122,7 @@ describe('Lantern Out rule options', () => {
     h.answer('b', 'right');
     h.answer('c', 'wrong');
     h.answer('d', 'wrong');
-    expect(texts(h)).toContain('The Lanterns have no lanterns left!');
+    expect(texts(h)).toContain('The Lanterns have no lanterns left.');
     next(h);
     // Two players are still in, but they are on the same team.
     expect(h.rt.status).toBe('ended');
@@ -153,7 +153,7 @@ describe('Lantern Out rule options', () => {
       won.answer('d', q === 0 ? 'wrong' : 'right');
       next(won);
     }
-    expect(won.rt.results).toMatchObject({ outcome: 'coop-win', summary: '2 of 4 still have a lantern lit: the room wins together!' });
+    expect(won.rt.results).toMatchObject({ outcome: 'coop-win', summary: '2 of 4 still have a lantern lit: the room wins together.' });
   });
 });
 

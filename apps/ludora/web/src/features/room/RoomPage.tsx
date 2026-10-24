@@ -14,7 +14,7 @@ import { ReportDialog } from '../moderation/ReportDialog.tsx';
 import { DebugOverlay } from './DebugOverlay.tsx';
 import './stage.css';
 import { Announcer, useAnnounce } from './game/announce.tsx';
-import { FeedToasts, GameStage, HostControls, STAGE, WIDE } from './GameStage.tsx';
+import { FeedToasts, GameStage, HUD_BAR, HUD_FOOT, HostControls, LiveTag, STAGE, WIDE } from './GameStage.tsx';
 import { MuteButton } from './game/MuteButton.tsx';
 import { SoundRoleContext, type SoundRole } from '../../lib/sound/react.tsx';
 import { useRoomMusic } from './music.ts';
@@ -82,7 +82,7 @@ export default function RoomPage() {
       <Stage as="main" className={`${STAGE} items-center justify-center px-4 py-10`}>
         <div className="paper stage-card flex w-full max-w-md flex-col items-center gap-4 px-6 py-7 text-center">
           <LogoMark size={56} />
-          <h1 className="font-display text-3xl font-extrabold">{handle.phase === 'closed' ? 'This room has closed' : 'Could not join'}</h1>
+          <h1 className="font-display text-[2.25rem] font-bold">{handle.phase === 'closed' ? 'This room has closed' : 'Could not join'}</h1>
           <p className="text-text-2">{msg}</p>
           <div className="flex flex-wrap justify-center gap-2">
             <Link to="/play" className={buttonClass('primary', 'lg')}>
@@ -101,7 +101,9 @@ export default function RoomPage() {
       <Stage as="main" className={`${STAGE} items-center justify-center px-4`}>
         <div className="flex flex-col items-center text-center">
           <Spinner label="Joining the game" />
-          <h1 className="font-display text-3xl font-extrabold">Joining game {spaced(code)}</h1>
+          <h1 className="font-display text-[2.25rem] font-bold">
+            Joining game <span className="tabular">{spaced(code)}</span>
+          </h1>
         </div>
       </Stage>
     );
@@ -125,26 +127,39 @@ export default function RoomPage() {
     <Stage className={STAGE}>
       <SoundRoleContext.Provider value={soundScene}>
       <Announcer>
-      <header className="sticky top-0 z-30 border-b border-white/12 bg-[rgb(16_10_58/0.55)] backdrop-blur-md">
+      {/* The game's HUD bar: what is on and where to join, then the controls. */}
+      <header className={HUD_BAR}>
         <div className="flex h-14 items-center gap-2.5 px-3 sm:h-16 sm:gap-3 sm:px-5 min-[1600px]:h-20 min-[1600px]:px-8">
           {/* On a phone, a host mid-game needs the header's width for the game controls. */}
           <LogoMark size={30} className={`shrink-0 min-[1600px]:size-11 ${isHost && live ? 'max-sm:hidden' : ''}`} />
           <div className={`min-w-0 ${isHost && live ? 'max-sm:sr-only' : ''}`}>
-            <Title className="truncate font-display text-base leading-tight font-extrabold text-text sm:text-lg min-[1600px]:text-2xl">{room.room.title}</Title>
-            <p className="truncate text-xs font-semibold text-text-2 sm:text-sm min-[1600px]:text-base">
-              {isHost ? `Hosting game ${spaced(room.room.code)}` : room.room.solo ? 'Solo game' : `Game ${spaced(room.room.code)}`}
+            <Title className="truncate font-display text-lg leading-tight font-bold text-text sm:text-xl min-[1600px]:text-[1.75rem]">{room.room.title}</Title>
+            <p className="flex min-w-0 items-center gap-2 text-xs font-semibold text-text-2 sm:text-sm min-[1600px]:text-base">
+              {status === 'running' ? <LiveTag /> : null}
+              <span className="truncate">
+                {room.room.solo ? (
+                  'Solo game'
+                ) : (
+                  <>
+                    {isHost ? 'Hosting game ' : 'Game '}
+                    <span className="font-display text-[1.15em] font-bold text-text tabular">{spaced(room.room.code)}</span>
+                  </>
+                )}
+              </span>
             </p>
           </div>
           {isHost && live && !room.room.solo && room.room.options.lateJoin && !room.room.locked ? (
-            <p className="ml-2 hidden items-center gap-2 rounded-full border border-white/15 bg-[rgb(17_10_62/0.62)] py-1 pr-1.5 pl-4 text-base font-semibold text-text-2 xl:flex">
+            <p className="ml-2 hidden items-center gap-3 rounded-full bg-white/[0.08] py-1 pr-1.5 pl-4 text-base font-semibold text-text-2 xl:flex">
               Join at {window.location.host}/play
-              <span className="rounded-full bg-white px-3 py-0.5 font-display text-xl font-extrabold text-[#1d1846] tabular">{spaced(room.room.code)}</span>
+              <span className="plate plate-gold text-xl tabular">
+                <span>{spaced(room.room.code)}</span>
+              </span>
             </p>
           ) : null}
           <ConnectionNews online={handle.online} />
           {!handle.online ? (
             // Icon only on a phone, so the room's name keeps its room.
-            <span className="flex shrink-0 items-center gap-1.5 rounded-full border-2 border-ink bg-ember px-2 py-1 text-xs font-bold text-on-accent sm:px-2.5" title="Reconnecting">
+            <span className="flex shrink-0 items-center gap-1.5 rounded-full bg-ember px-2 py-1 text-xs font-bold text-on-accent sm:px-2.5" title="Reconnecting">
               <WifiOff className="size-3.5" aria-hidden />
               <span className="max-sm:sr-only">Reconnecting…</span>
             </span>
@@ -221,7 +236,7 @@ export default function RoomPage() {
         {status === 'ended' && room.results ? <Results room={room} handle={handle} isHost={isHost} guest={!me.data?.user || me.data.user.isGuest} /> : null}
       </main>
       {!isHost && !room.room.solo && live ? (
-        <footer className="border-t border-white/12 bg-[rgb(16_10_58/0.45)] px-3 py-2">
+        <footer className={`${HUD_FOOT} px-3 py-2`}>
           <ReactionBar onReact={(e) => void handle.react(e)} />
         </footer>
       ) : null}

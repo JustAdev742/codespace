@@ -238,7 +238,7 @@ describe('Rare Light: split the pot', () => {
     h.answer('c', 'right');
     h.answer('d', 'wrong');
     expect(h.view('c').score).toBe(4000);
-    expect(h.feed.map((f) => f.text)).toContain('C took the whole pot of 4,000 points!');
+    expect(h.feed.map((f) => f.text)).toContain('C took the whole pot of 4,000 points.');
     next(h);
     h.answer('a', 'wrong');
     h.answer('b', 'wrong');
@@ -271,7 +271,7 @@ describe('Ladder of Lights: easy to hard, harder scores more', () => {
     expect(gained).toEqual([1000, 1000, 1500, 1500, 2000]);
     const lines = h.feed.map((f) => f.text);
     expect(lines).toContain('Medium questions now: one and a half times the points.');
-    expect(lines).toContain('Hard questions now: double points!');
+    expect(lines).toContain('Hard questions now: double points.');
   });
 });
 

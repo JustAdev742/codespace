@@ -393,7 +393,7 @@ describe('Gloom Giant rules', () => {
     g.answer('a');
     const after = g.view('a').you;
     expect(after.damage - before.damage).toBe(1 + (after.crits - before.crits));
-    expect(g.feed.some((f) => f.endsWith('landed a critical hit!'))).toBe(true);
+    expect(g.feed.some((f) => f.endsWith('landed a critical hit.'))).toBe(true);
   });
 
   it('wrong answers cost the shield 1, then 2 once the giant is enraged below half health', () => {
@@ -416,7 +416,7 @@ describe('Gloom Giant rules', () => {
     expect(g.rt.status).toBe('ended');
     const r = g.rt.results!;
     expect(r.outcome).toBe('coop-win');
-    expect(r.summary).toMatch(/^The Gloom Giant is down! [AB] landed the final blow\.$/);
+    expect(r.summary).toMatch(/^The Gloom Giant is down\. [AB] landed the final blow\.$/);
     expect(r.standings.reduce((n, s) => n + s.score, 0)).toBe(8);
     for (const s of r.standings) expect(s.label).toBe(`${s.score} damage`);
     expect(g.feed.some((f) => /landed the final blow/.test(f))).toBe(true);
@@ -434,7 +434,7 @@ describe('Gloom Giant rules', () => {
     g.answer('b', false);
     expect(g.rt.status).toBe('ended');
     expect(g.rt.results).toMatchObject({ outcome: 'coop-loss', summary: `The shield broke with the Gloom Giant on ${hp} of 24 health.` });
-    expect(g.feed).toContain('The shield shattered!');
+    expect(g.feed).toContain('The shield shattered.');
   });
 
   it('loses for everyone when time runs out', () => {
@@ -510,11 +510,11 @@ describe('Tug of War rules', () => {
     const g = play(tugOfWar, { players: [side('a', 1), side('b', 2)], teams: 2, settings: { ropeLength: 8 } });
     for (let i = 0; i < 7; i++) g.answer('a');
     expect(g.rt.status).toBe('running');
-    expect(g.feed).toEqual(['The Comets have the knot halfway to their line!', 'The Comets are nearly over the line!']);
+    expect(g.feed).toEqual(['The Comets have the knot halfway to their line.', 'The Comets are nearly over the line.']);
     g.answer('a');
     expect(g.rt.status).toBe('ended');
     const r = g.rt.results!;
-    expect(r.summary).toBe('The Comets pulled the knot over the line!');
+    expect(r.summary).toBe('The Comets pulled the knot over the line.');
     expect(r.teamStandings).toEqual([
       { teamId: 't1', name: 'Comets', rank: 1, score: 100, label: 'Won: knot over their line' },
       { teamId: 't2', name: 'Lanterns', rank: 2, score: 0, label: 'Lost: knot over the other line' },
