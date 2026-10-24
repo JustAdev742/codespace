@@ -16,6 +16,6 @@ export function Bleed({ children, className = '' }: { children: ReactNode; class
   return <div className={`-mx-4 -mt-6 sm:-mx-6 ${className}`}>{children}</div>;
 }
 /** Rounds a full-bleed stage once it stops touching the column edges. */
-export const BLEED_ROUNDING = 'min-[1448px]:rounded-b-[36px]';
+export const BLEED_ROUNDING = 'min-[1448px]:rounded-b-[var(--radius-l)]';
 
 export { Meter, RarityTag, StickerTabPanel, StickerTabs, ToggleChips, formatPercent, type StickerTab } from '../../ui/game.tsx';

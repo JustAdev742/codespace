@@ -120,7 +120,7 @@
   --surface-3: rgb(255 255 255 / 0.14);
   --line: rgb(255 255 255 / 0.14);
   --line-strong: rgb(255 255 255 / 0.3);
-  --link: #ffd36b;
+  --link: var(--lantern);
   --focus: #ffc233;
   color: var(--text);
 }
@@ -315,7 +315,7 @@
   .panel {
     background: var(--bg-raised);
     border: 1px solid var(--line);
-    border-radius: var(--radius-m);
+    border-radius: var(--radius-l);
   }
   /* A quiet press for secondary controls: a fine line and a thin bottom edge. */
   .press-soft {
@@ -610,6 +610,50 @@
   100% {
     transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy))) scale(1);
     opacity: 0;
+  }
+}
+
+/* === pages === */
+/*
+ * The app shell, shared UI and player pages. In the components layer, so a
+ * utility on the element still wins.
+ */
+@layer components {
+  /* Text fields (ui/primitives.tsx): a dark well on dark surfaces, plain white on light ones. */
+  .input-well {
+    background-color: var(--bg-sunken);
+  }
+  :root[data-theme='light'] .input-well {
+    background-color: #ffffff;
+  }
+  @media (prefers-color-scheme: light) {
+    :root:not([data-theme='dark']) .input-well {
+      background-color: #ffffff;
+    }
+  }
+  :root .stage .input-well,
+  :root .on-stage .input-well {
+    background-color: var(--bg-sunken);
+  }
+  :root .paper .input-well {
+    background-color: #ffffff;
+  }
+
+  /*
+   * A chosen filter chip (ToggleChips): the theme's text colour as its fill and
+   * the page colour as its words. On the stage the text is white in both themes,
+   * so the words take the stage navy; on paper, white.
+   */
+  .chip-on {
+    background-color: var(--text);
+    color: var(--bg);
+  }
+  :root .stage .chip-on,
+  :root .on-stage .chip-on {
+    color: var(--stage-3);
+  }
+  :root .paper .chip-on {
+    color: #ffffff;
   }
 }
 
