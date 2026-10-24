@@ -34,6 +34,13 @@ import { Amount, Skeleton } from '../ui/primitives.tsx';
 import { Button, buttonClass } from '../ui/Button.tsx';
 import { toast } from 'sonner';
 
+/*
+ * The frame around every page: the sidebar, the header and the phone's bottom
+ * bar sit on the stage in both themes, like the chrome of a broadcast, so a
+ * stage hero runs straight on from the header. The page itself follows the
+ * theme. The current section is marked by a gold bar as well as its fill.
+ */
+
 interface NavItem {
   to: string;
   label: string;
@@ -71,6 +78,7 @@ const MOBILE: NavItem[] = [
   { to: '/collection', label: 'Glims', icon: <Sparkles className="size-5" /> },
 ];
 
+/** A section link on the stage: 44px tall in the phone menu, 40px in the sidebar. */
 function NavLinkItem({ item, onNavigate }: { item: NavItem; onNavigate?: () => void }) {
   return (
     <NavLink
@@ -78,12 +86,13 @@ function NavLinkItem({ item, onNavigate }: { item: NavItem; onNavigate?: () => v
       end={item.end}
       onClick={onNavigate}
       className={({ isActive }) =>
-        `relative flex h-10 items-center gap-3 rounded-[12px] px-3 text-[15px] font-semibold transition-colors ${isActive ? 'bg-lantern text-on-accent shadow-[0_3px_0_var(--ink)]' : 'text-text-2 hover:bg-surface-2 hover:text-text'}`
+        `relative flex h-11 items-center gap-3 rounded-[var(--radius-m)] px-3 text-[15px] font-semibold transition-colors lg:h-10 ${isActive ? 'bg-white/[0.12] text-text' : 'text-text-2 hover:bg-white/[0.06] hover:text-text'}`
       }
     >
       {({ isActive }) => (
         <>
-          <span className={isActive ? 'text-on-accent' : 'text-text-3'}>{item.icon}</span>
+          {isActive ? <span className="absolute inset-y-2 left-0 w-1 rounded-r-[3px] bg-lantern" aria-hidden /> : null}
+          <span className={isActive ? 'text-lantern' : 'text-text-3'}>{item.icon}</span>
           {item.label}
         </>
       )}
@@ -123,11 +132,13 @@ function EnvironmentBadge() {
   const env = me.data?.environment;
   if (!env || env === 'production') return null;
   return (
-    <span className="rounded-full border-2 border-dashed border-lantern px-2 py-0.5 text-xs font-bold text-lantern" title="Test environment: balances and test tools here do not affect the live game.">
+    <span className="rounded-[var(--radius-s)] border border-dashed border-lantern/80 px-2 py-0.5 text-xs font-bold text-lantern" title="Test environment: balances and test tools here do not affect the live game.">
       {env === 'sandbox' ? 'Sandbox' : env === 'development' ? 'Dev' : env}
     </span>
   );
 }
+
+const MENU_ITEM = 'flex min-h-11 cursor-pointer items-center gap-2.5 rounded-[var(--radius-m)] px-3 text-sm font-semibold outline-none data-[highlighted]:bg-surface-2';
 
 function AccountMenu() {
   const me = useMe();
@@ -147,7 +158,7 @@ function AccountMenu() {
         </div>
       );
     }
-    return <Skeleton className="h-[42px] w-24 rounded-full sm:w-44" />;
+    return <Skeleton className="h-11 w-24 rounded-full sm:w-44" />;
   }
   if (!user) {
     return (
@@ -170,14 +181,15 @@ function AccountMenu() {
   const avatar = overview.data?.avatar;
   return (
     <DropdownMenu.Root>
-      <DropdownMenu.Trigger className="flex items-center gap-2 rounded-full border border-line bg-raised py-1 pr-3 pl-1 hover:bg-surface-2" aria-label={`${user.displayName}, Lv ${user.level.level}, account menu`}>
-        <span className="grid size-8 place-items-center overflow-hidden rounded-full bg-surface-3">{avatar ? <Glim art={avatar.art} accessories={avatar.accessories} rarity={avatar.rarity} size={34} /> : <User className="size-4" />}</span>
+      <DropdownMenu.Trigger className="flex h-11 items-center gap-2 rounded-full border border-line bg-raised pr-2 pl-1 hover:bg-surface-2 sm:pr-3" aria-label={`${user.displayName}, Lv ${user.level.level}, account menu`}>
+        <span className="grid size-9 place-items-center overflow-hidden rounded-full bg-surface-3">{avatar ? <Glim art={avatar.art} accessories={avatar.accessories} rarity={avatar.rarity} size={38} /> : <User className="size-4" />}</span>
         {/* The space keeps the visible "Name Lv 1" readable as words, so it matches the label (WCAG 2.5.3). */}
         <span className="hidden max-w-[10rem] truncate text-sm font-semibold sm:block">{user.displayName}</span>{' '}
-        <span className="rounded-full bg-surface-3 px-1.5 text-xs font-bold text-text tabular">Lv {user.level.level}</span>
+        {/* The player's level on gold, like a HUD: ink on gold is 11:1. */}
+        <span className="rounded-[var(--radius-s)] bg-lantern px-1.5 font-display text-[15px] leading-6 font-bold text-on-accent tabular">Lv {user.level.level}</span>
       </DropdownMenu.Trigger>
       <DropdownMenu.Portal>
-        <DropdownMenu.Content align="end" sideOffset={8} className="z-50 min-w-56 rounded-[14px] border border-line bg-raised p-1.5 shadow-xl">
+        <DropdownMenu.Content align="end" sideOffset={8} className="z-50 min-w-60 rounded-[var(--radius-l)] border border-line bg-raised p-1.5 shadow-[0_18px_40px_-12px_rgb(2_5_20/0.6)]">
           <div className="px-3 py-2">
             <div className="font-semibold">{user.displayName}</div>
             <div className="text-xs text-text-3">{user.isGuest ? 'Guest account' : `@${user.username}`}</div>
@@ -190,19 +202,19 @@ function AccountMenu() {
             { to: '/locker', label: 'Locker', icon: <Shirt className="size-4" /> },
             { to: '/settings', label: 'Settings', icon: <Settings className="size-4" /> },
           ].map((i) => (
-            <DropdownMenu.Item key={i.to} onSelect={() => navigate(i.to)} className="flex cursor-pointer items-center gap-2.5 rounded-[10px] px-3 py-2 text-sm font-semibold text-text-2 outline-none data-[highlighted]:bg-surface-2 data-[highlighted]:text-text">
+            <DropdownMenu.Item key={i.to} onSelect={() => navigate(i.to)} className={`${MENU_ITEM} text-text-2 data-[highlighted]:text-text`}>
               {i.icon}
               {i.label}
             </DropdownMenu.Item>
           ))}
           {user.isGuest ? (
-            <DropdownMenu.Item onSelect={() => navigate('/signup')} className="flex cursor-pointer items-center gap-2.5 rounded-[10px] px-3 py-2 text-sm font-semibold text-lantern outline-none data-[highlighted]:bg-surface-2">
+            <DropdownMenu.Item onSelect={() => navigate('/signup')} className={`${MENU_ITEM} text-lantern`}>
               <Sparkles className="size-4" />
               Save progress with an account
             </DropdownMenu.Item>
           ) : null}
           <DropdownMenu.Separator className="my-1 h-px bg-line" />
-          <DropdownMenu.Item onSelect={() => void signOut()} className="flex cursor-pointer items-center gap-2.5 rounded-[10px] px-3 py-2 text-sm font-semibold text-text-2 outline-none data-[highlighted]:bg-surface-2 data-[highlighted]:text-text">
+          <DropdownMenu.Item onSelect={() => void signOut()} className={`${MENU_ITEM} text-text-2 data-[highlighted]:text-text`}>
             <LogOut className="size-4" />
             Sign out
           </DropdownMenu.Item>
@@ -218,13 +230,13 @@ function Balances() {
   const b = overview.data?.balances;
   if (!me.data?.user) return null;
   // Never zeros it does not know: a placeholder while loading, and nothing if the load failed.
-  if (!b) return overview.isLoading ? <Skeleton className="hidden h-[34px] w-32 rounded-full sm:block" /> : null;
+  if (!b) return overview.isLoading ? <Skeleton className="hidden h-11 w-36 rounded-[var(--radius-m)] sm:block" /> : null;
   return (
-    // The name comes from the numbers shown, with the currency names added for screen readers (WCAG 2.5.3).
-    <Link to="/shop" className="hidden items-center gap-3 rounded-full border border-line bg-raised px-3 py-1.5 hover:bg-surface-2 sm:flex">
-      <Amount currency="sparks" value={b.sparks ?? 0} size="sm" />
+    // A HUD readout of the two currencies. The name comes from the numbers shown, with the currency names added for screen readers (WCAG 2.5.3).
+    <Link to="/shop" className="hidden h-11 items-center gap-3.5 rounded-[var(--radius-m)] border border-line bg-raised px-3 text-text no-underline hover:bg-surface-2 sm:flex">
+      <Amount currency="sparks" value={b.sparks ?? 0} />
       <span className="sr-only"> Sparks and </span>
-      <Amount currency="moonstones" value={b.moonstones ?? 0} size="sm" />
+      <Amount currency="moonstones" value={b.moonstones ?? 0} />
       <span className="sr-only"> Moonstones. Open the shop</span>
     </Link>
   );
@@ -235,11 +247,11 @@ export function Shell() {
   const location = useLocation();
   return (
     <div className="min-h-dvh lg:grid lg:grid-cols-[248px_1fr]">
-      <a href="#main" className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-50 focus:rounded-lg focus:bg-lantern focus:px-3 focus:py-2 focus:text-on-accent">
+      <a href="#main" className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-50 focus:rounded-[var(--radius-s)] focus:bg-lantern focus:px-3 focus:py-2 focus:font-semibold focus:text-on-accent">
         Skip to content
       </a>
-      <aside className="stage-plain on-stage sticky top-0 hidden h-dvh flex-col gap-6 overflow-y-auto px-3 py-5 lg:flex">
-        <Link to="/" className="px-2" aria-label="Ludora home">
+      <aside className="stage-plain on-stage sticky top-0 hidden h-dvh flex-col gap-6 overflow-y-auto border-r border-white/[0.06] px-3 py-5 lg:flex">
+        <Link to="/" className="self-start rounded-[var(--radius-s)] px-2" aria-label="Ludora home">
           <Logo size={26} />
         </Link>
         <NavGroups />
@@ -249,8 +261,9 @@ export function Shell() {
       </aside>
 
       <div className="flex min-w-0 flex-col">
-        <header className="sticky top-0 z-30 flex h-16 items-center gap-3 border-b border-line bg-bg/90 px-4 backdrop-blur-sm sm:px-6">
-          <Link to="/" className="lg:hidden" aria-label="Ludora home">
+        {/* On the stage in both themes, the same navy as the top of the sidebar, so the chrome reads as one frame. */}
+        <header className="on-stage sticky top-0 z-30 flex h-16 items-center gap-3 border-b border-white/10 bg-[color-mix(in_oklab,var(--stage-1)_96%,transparent)] px-4 backdrop-blur-sm sm:px-6">
+          <Link to="/" className="rounded-[var(--radius-s)] lg:hidden" aria-label="Ludora home">
             <LogoMark size={34} />
           </Link>
           <EnvironmentBadge />
@@ -264,30 +277,33 @@ export function Shell() {
         </main>
       </div>
 
-      <nav aria-label="Quick" className="stage-plain on-stage fixed inset-x-0 bottom-0 z-30 grid grid-cols-5 pb-[env(safe-area-inset-bottom)] lg:hidden">
+      <nav aria-label="Quick" className="stage-plain on-stage fixed inset-x-0 bottom-0 z-30 grid grid-cols-5 border-t border-white/10 pb-[env(safe-area-inset-bottom)] lg:hidden">
         {MOBILE.map((i) => (
-          <NavLink key={i.to} to={i.to} end={i.end} className={({ isActive }) => `flex flex-col items-center gap-0.5 py-2 text-[11px] font-semibold ${isActive ? 'text-lantern' : 'text-text-2'}`}>
+          <NavLink key={i.to} to={i.to} end={i.end} className={({ isActive }) => `relative flex min-h-14 flex-col items-center justify-center gap-0.5 py-2 text-xs font-semibold ${isActive ? 'text-lantern' : 'text-text-2 hover:text-text'}`}>
             {({ isActive }) => (
               <>
-                <span className={`grid h-7 w-12 place-items-center rounded-full transition-colors ${isActive ? 'bg-lantern text-on-accent' : ''}`}>{i.icon}</span>
+                {/* The current section: a gold bar along the top edge, as well as the gold label. */}
+                {isActive ? <span className="absolute inset-x-3 top-0 h-[3px] rounded-b-[3px] bg-lantern" aria-hidden /> : null}
+                <span className="grid h-7 place-items-center">{i.icon}</span>
                 {i.label}
               </>
             )}
           </NavLink>
         ))}
         <RDialog.Root open={moreOpen} onOpenChange={setMoreOpen}>
-          <RDialog.Trigger className="flex flex-col items-center gap-0.5 py-2 text-[11px] font-semibold text-text-2">
-            <span className="grid h-7 w-12 place-items-center">
+          <RDialog.Trigger className="flex min-h-14 flex-col items-center justify-center gap-0.5 py-2 text-xs font-semibold text-text-2 hover:text-text">
+            <span className="grid h-7 place-items-center">
               <Menu className="size-5" />
             </span>
             More
           </RDialog.Trigger>
           <RDialog.Portal>
             <RDialog.Overlay className="fixed inset-0 z-40 bg-[var(--scrim)]" />
-            <RDialog.Content className="fixed inset-x-0 bottom-0 z-50 max-h-[85dvh] overflow-y-auto rounded-t-[22px] border-t border-line bg-raised p-4 pb-[calc(16px+env(safe-area-inset-bottom))] focus:outline-none">
+            {/* The sheet rises from the bottom bar and keeps its stage colours. */}
+            <RDialog.Content className="stage-plain on-stage fixed inset-x-0 bottom-0 z-50 max-h-[85dvh] overflow-y-auto rounded-t-[var(--radius-l)] border-t border-white/10 p-4 pb-[calc(16px+env(safe-area-inset-bottom))] focus:outline-none">
               <div className="mb-3 flex items-center justify-between">
-                <RDialog.Title className="font-display text-lg font-bold">Everything</RDialog.Title>
-                <RDialog.Close className="rounded-[10px] p-2 text-text-3 hover:bg-surface-2" aria-label="Close">
+                <RDialog.Title className="px-1 font-display text-2xl font-bold">Menu</RDialog.Title>
+                <RDialog.Close className="-mr-1 grid size-11 place-items-center rounded-[var(--radius-m)] text-text-3 hover:bg-white/[0.08] hover:text-text" aria-label="Close">
                   <X className="size-5" />
                 </RDialog.Close>
               </div>

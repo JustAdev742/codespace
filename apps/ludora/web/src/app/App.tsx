@@ -25,7 +25,7 @@ export function App() {
         <RouterProvider router={router} />
         <NoticeGate />
         <SoundSettingsSync />
-        {/* Styled as Ludora tags in app.css: paper or an accent fill by type, with an ink edge, like the game's news. */}
+        {/* Styled in app.css: a solid fill by kind (white, mint, coral, gold or blue) with ink text, floating on a soft shadow. */}
         <Toaster position="top-center" closeButton icons={{ close: <X className="size-[18px]" strokeWidth={2.5} aria-hidden /> }} toastOptions={{ closeButtonAriaLabel: 'Close notification' }} style={{ '--width': '380px' } as CSSProperties} />
       </TooltipProvider>
     </QueryClientProvider>
