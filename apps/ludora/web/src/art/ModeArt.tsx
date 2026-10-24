@@ -2,9 +2,10 @@ import { memo } from 'react';
 import type { ModeThumbnail } from '@ludora/shared';
 
 /*
- * Mode thumbnails: every mode is a stall at the festival. A striped awning in
- * the mode's colours, a counter, and the mode's glyph as a die-cut sticker
- * (white border, hard shadow). Glyphs are drawn in a 48 x 48 box.
+ * Mode thumbnails, like the covers in a game catalogue: each mode stands on its
+ * own small stage in its colour, under the floodlight, over the faint lines of
+ * a pitch, with its glyph big in the middle and a crisp ink contour so it reads
+ * on any colour. Glyphs are drawn in a 48 x 48 box.
  */
 
 const G: Record<string, string> = {
@@ -83,56 +84,43 @@ export function ModeGlyph({ glyph, size = 48, color = 'currentColor', className 
   );
 }
 
-const INK = '#1d1846';
-const SPARKLE = 'M0 -5Q0.9 -0.9 5 0Q0.9 0.9 0 5Q-0.9 0.9 -5 0Q-0.9 -0.9 0 -5Z';
+/** The ink of the contour: the same navy as text on bright fills. */
+const INK = '#0b1020';
+/** Faint pitch lines every 16 units across the 160 x 100 box. */
+const GRID = [
+  ...Array.from({ length: 9 }, (_, i) => `M${(i + 1) * 16} 0V100`),
+  ...Array.from({ length: 6 }, (_, i) => `M0 ${(i + 1) * 16}H160`),
+].join('');
 
 export const ModeArt = memo(function ModeArt({ thumb, className, label }: { thumb: ModeThumbnail; className?: string; label?: string }) {
-  const bg = `hsl(${thumb.hue} 72% 58%)`;
-  const counter = `hsl(${thumb.hue} 62% 44%)`;
-  const counterTop = `hsl(${thumb.hue} 70% 66%)`;
-  const stripe = `hsl(${thumb.accentHue} 92% 74%)`;
-  const glyphFill = `hsl(${thumb.accentHue} 95% 70%)`;
+  const base = `hsl(${thumb.hue} 68% 50%)`;
+  const floor = `hsl(${thumb.hue} 72% 36%)`;
+  const glyphFill = `hsl(${thumb.accentHue} 96% 66%)`;
   const d = G[thumb.glyph] ?? G.spark!;
   const detail = DETAIL[thumb.glyph];
   const filled = FILLED.has(thumb.glyph);
-  // Ten awning stripes, each ending in a scallop.
-  const stripes = Array.from({ length: 10 }, (_, i) => i);
   return (
     <svg viewBox="0 0 160 100" className={className} role={label ? 'img' : undefined} aria-label={label} aria-hidden={label ? undefined : true} preserveAspectRatio="xMidYMid slice" focusable={false}>
-      <rect width="160" height="100" fill={bg} />
-      {/* Light falling from the awning */}
-      <path d="M18 20H142L156 100H4Z" fill="#fff" opacity={0.1} />
-      {/* Counter */}
-      <rect x="-2" y="80" width="164" height="22" fill={counter} />
-      <rect x="-2" y="78" width="164" height="5" fill={counterTop} />
-      <path d="M-2 80.5H162" stroke={INK} strokeWidth="1.6" opacity={0.55} />
-      {/* Sparkles */}
-      <g fill="#fff">
-        <path d={SPARKLE} transform="translate(24 46) scale(1.1)" />
-        <path d={SPARKLE} transform="translate(138 40) scale(0.8)" />
-        <path d={SPARKLE} transform="translate(126 66) scale(0.6)" opacity={0.85} />
-      </g>
-      {/* The glyph as a die-cut sticker standing on the counter */}
-      <g transform="translate(56 30) rotate(-5 24 24)">
-        <g transform="translate(1.5 4)" opacity={0.3}>
-          <path d={d} fill={filled ? INK : 'none'} stroke={INK} strokeWidth={filled ? 9 : 13} strokeLinecap="round" strokeLinejoin="round" />
-        </g>
-        <path d={d} fill={filled ? '#fff' : 'none'} stroke="#fff" strokeWidth={filled ? 9 : 13} strokeLinecap="round" strokeLinejoin="round" />
+      <rect width="160" height="100" fill={base} />
+      {/* The floor, its edge leaning like the slanted plate */}
+      <path d="M0 76L160 58V100H0Z" fill={floor} />
+      <path d={GRID} fill="none" stroke="#fff" strokeOpacity={0.1} strokeWidth={0.6} />
+      {/* The floodlight from the top centre */}
+      <path d="M62 -2H98L134 102H26Z" fill="#fff" opacity={0.12} />
+      {/* The glyph standing in the light: a shadow on the floor, then the glyph with its ink contour */}
+      <ellipse cx="80" cy="84" rx="25" ry="4.5" fill={INK} opacity={0.32} />
+      <g transform="translate(80 48) rotate(-6) scale(1.3) translate(-24 -24)">
         {filled ? (
           <>
-            <path d={d} fill={glyphFill} stroke={INK} strokeWidth={2.6} strokeLinecap="round" strokeLinejoin="round" />
+            <path d={d} fill={glyphFill} stroke={INK} strokeWidth={3} strokeLinecap="round" strokeLinejoin="round" />
             {detail ? <path d={detail} fill="none" stroke={INK} strokeWidth={2.2} strokeLinecap="round" /> : null}
           </>
         ) : (
-          <path d={d} fill="none" stroke={INK} strokeWidth={4.6} strokeLinecap="round" strokeLinejoin="round" />
+          <>
+            <path d={d} fill="none" stroke={INK} strokeWidth={9} strokeLinecap="round" strokeLinejoin="round" />
+            <path d={d} fill="none" stroke={glyphFill} strokeWidth={4.6} strokeLinecap="round" strokeLinejoin="round" />
+          </>
         )}
-      </g>
-      {/* Awning */}
-      <g>
-        {stripes.map((i) => (
-          <path key={i} d={`M${i * 16} 0H${i * 16 + 16}V14A8 8 0 0 1 ${i * 16} 14Z`} fill={i % 2 ? stripe : '#fff'} />
-        ))}
-        <path d={stripes.map((i) => `${i ? '' : 'M0 14'}A8 8 0 0 0 ${i * 16 + 16} 14`).join('')} fill="none" stroke={INK} strokeWidth="1.6" opacity={0.7} />
       </g>
     </svg>
   );

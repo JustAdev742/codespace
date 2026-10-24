@@ -49,9 +49,10 @@ export function useOpenGames(enabled = true) {
 
 const spaced = (code: string) => `${code.slice(0, 3)} ${code.slice(3)}`;
 
-const STATUS: Record<OpenGame['status'], { label: string; tone: 'sky' | 'mint' | 'amber' }> = {
+/** A game in progress is Live, like a broadcast. Each status is a word as well as a colour. */
+const STATUS: Record<OpenGame['status'], { label: string; tone: 'sky' | 'coral' | 'amber' }> = {
   lobby: { label: 'In the lobby', tone: 'sky' },
-  running: { label: 'Playing', tone: 'mint' },
+  running: { label: 'Live', tone: 'coral' },
   paused: { label: 'Paused', tone: 'amber' },
 };
 
@@ -69,12 +70,12 @@ function GameRow({ game, onClose }: { game: OpenGame; onClose: () => void }) {
   const status = STATUS[game.status];
   const name = `${game.title}, game ${spaced(game.code)}`;
   return (
-    <li className="flex flex-wrap items-center gap-x-4 gap-y-3 rounded-[16px] border-2 border-line bg-surface-2 p-3 sm:flex-nowrap">
+    <li className="flex flex-wrap items-center gap-x-4 gap-y-3 rounded-[var(--radius-m)] border border-line bg-surface-2 p-3 sm:flex-nowrap">
       <div className="flex min-w-0 flex-1 items-center gap-3">
-        {mode ? <ModeArt thumb={thumbFor(mode.meta, variant?.meta)} className="h-14 w-20 shrink-0 overflow-hidden rounded-[10px] border-2 border-ink" /> : null}
+        {mode ? <ModeArt thumb={thumbFor(mode.meta, variant?.meta)} className="h-14 w-20 shrink-0 overflow-hidden rounded-[var(--radius-s)]" /> : null}
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
-            <span className="font-display text-lg leading-tight font-bold break-words">{game.title}</span>
+            <span className="font-display text-xl leading-tight font-bold break-words">{game.title}</span>
             <Badge tone={status.tone}>{status.label}</Badge>
           </div>
           <p className="break-words text-text-2">{game.setTitle}</p>
@@ -142,7 +143,7 @@ export const OpenGames = forwardRef<HTMLHeadingElement, { notice?: ReactNode; cl
             if (typeof ref === 'function') ref(el);
             else if (ref) ref.current = el;
           }}
-          className="scroll-mt-24 font-display text-2xl font-extrabold"
+          className="scroll-mt-24 font-display text-[1.75rem] leading-tight font-bold"
         >
           Your open games
         </h2>

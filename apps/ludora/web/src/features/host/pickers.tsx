@@ -25,7 +25,7 @@ export type SetLike = Pick<SetSummary, 'title' | 'subject' | 'questionCount' | '
 /** A set in a picker list: its cover, title, size and subject. `detail` adds to the small print. */
 export function SetButton({ set, detail = '', onPick }: { set: SetLike; detail?: string; onPick: () => void }) {
   return (
-    <button type="button" onClick={onPick} className="flex h-full w-full items-center gap-3 rounded-[14px] border-2 border-line bg-raised p-2.5 text-left transition-colors hover:border-line-strong">
+    <button type="button" onClick={onPick} className="flex h-full min-h-16 w-full items-center gap-3 rounded-[var(--radius-m)] border border-line bg-raised p-2.5 text-left transition-colors hover:border-line-strong hover:bg-surface-2">
       <SetCover cover={set.cover} subject={set.subject} size={44} />
       <span className="min-w-0 flex-1">
         <span className="block font-semibold break-words">{set.title}</span>
@@ -46,10 +46,11 @@ export function ChosenSet({ set, onChange, focusOnMount }: { set: SetLike; onCha
     if (focusOnMount) ref.current?.focus();
   }, [focusOnMount]);
   return (
-    <div className="flex items-center gap-3 rounded-[14px] border-2 border-lantern bg-dusk/15 p-3">
+    // Chosen: the gold edge and tint every chosen card in these pickers has.
+    <div className="flex items-center gap-3 rounded-[var(--radius-m)] border border-lantern bg-lantern/[0.08] p-3 ring-1 ring-lantern">
       <SetCover cover={set.cover} subject={set.subject} size={48} />
       <span className="min-w-0 flex-1">
-        <span className="block font-display text-lg leading-tight font-bold break-words">{set.title}</span>
+        <span className="block font-display text-xl leading-tight font-bold break-words">{set.title}</span>
         <span className="block text-sm text-text-2">
           {plural(set.questionCount, 'question')}, {subjectLabel(set.subject)}
         </span>
@@ -65,16 +66,19 @@ export function ChosenSet({ set, onChange, focusOnMount }: { set: SetLike; onCha
 
 export type Choice = { mode: CatalogEntry; variant: CatalogVariant | null };
 
-/** A card holding a radio button. The radio covers the card, so focus scrolling and clicks take the whole card. */
+/**
+ * A card holding a radio button. The radio covers the card, so focus scrolling and clicks take the whole card.
+ * Chosen: a gold edge (border and ring, so nothing shifts), a gold tint and a tick, so it is never told by colour alone.
+ */
 export function RadioCard({ name, checked, onSelect, children, className = '' }: { name: string; checked: boolean; onSelect: () => void; children: ReactNode; className?: string }) {
   return (
     <label
-      className={`relative flex cursor-pointer overflow-hidden rounded-[14px] border-2 transition-colors has-[:focus-visible]:outline-3 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-[var(--focus)] ${checked ? 'border-lantern bg-dusk/20' : 'border-line bg-raised hover:border-line-strong'} ${className}`}
+      className={`relative flex cursor-pointer overflow-hidden rounded-[var(--radius-m)] border transition-[border-color,background-color,box-shadow] has-[:focus-visible]:outline-3 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-[var(--focus)] ${checked ? 'border-lantern bg-lantern/[0.08] ring-1 ring-lantern' : 'border-line bg-raised hover:border-line-strong hover:bg-surface-2'} ${className}`}
     >
       <input type="radio" name={name} checked={checked} onChange={onSelect} className="absolute inset-0 m-0 size-full cursor-pointer appearance-none opacity-0" />
       {children}
       {checked ? (
-        <span className="absolute top-2 right-2 grid size-6 place-items-center rounded-full border-2 border-ink bg-lantern text-on-accent" aria-hidden>
+        <span className="absolute top-2 right-2 grid size-6 place-items-center rounded-full bg-lantern text-on-accent" aria-hidden>
           <Check className="size-3.5" strokeWidth={3} />
         </span>
       ) : null}
@@ -102,9 +106,9 @@ function VariantPicker({ choice, onChange }: { choice: Choice; onChange: (c: Cho
   const chosenAt = options.findIndex((v) => (v?.meta.id ?? null) === (choice.variant?.meta.id ?? null));
   const shown = all || options.length < FOLD_FROM ? options : options.slice(0, Math.max(FIRST_VARIANTS + 1, chosenAt + 1));
   return (
-    <div className="rounded-[16px] border-2 border-dashed border-lantern-deep bg-surface-2 p-3 sm:p-4">
+    <div className="rounded-[var(--radius-l)] border border-line bg-surface-2 p-3 sm:p-4">
       <fieldset className="min-w-0">
-        <legend className="mb-2.5 font-display text-lg font-bold">Variants of {mode.meta.title}</legend>
+        <legend className="mb-2.5 font-display text-xl leading-tight font-bold">Variants of {mode.meta.title}</legend>
         <div ref={list} className="grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-3">
           {shown.map((v) => {
             const meta = v?.meta;
@@ -197,7 +201,7 @@ export function ModeGrid({ modes, value, onChange, labelledBy }: { modes: Catalo
               <RadioCard key={m.meta.id} name="host-mode" checked={value?.mode.meta.id === m.meta.id} onSelect={() => onChange({ mode: m, variant: null })}>
                 <ModeArt thumb={thumbFor(m.meta)} className="w-20 shrink-0 self-stretch sm:w-24" />
                 <span className="min-w-0 flex-1 py-2.5 pr-9 pl-3">
-                  <span className="flex flex-wrap items-center gap-x-2 font-display text-lg leading-tight font-bold">
+                  <span className="flex flex-wrap items-center gap-x-2 font-display text-xl leading-tight font-bold">
                     {m.meta.title}
                     {m.meta.status === 'beta' ? <Badge tone="amber">Beta</Badge> : null}
                   </span>

@@ -4,10 +4,17 @@ import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { RARITY_INFO, type Rarity } from '@ludora/shared';
 
 /*
- * Game-side primitives: the chunky, sticker-like pieces used on player pages
- * (shop, collection, quests, dashboard). Staff and settings pages use the
- * calmer controls in primitives.tsx.
+ * Game-side primitives: the pressable pieces used on player pages (shop,
+ * collection, quests, dashboard). Solid fills with a darker bottom edge, no
+ * outlines (docs/DESIGN.md). Staff and settings pages use the calmer controls
+ * in primitives.tsx.
  */
+
+/**
+ * The quiet pressable look (`.press-soft`) as utilities, so a state variant can
+ * swap it for the solid one (`.sticker`: a darker band inside the bottom edge).
+ */
+const SOFT = 'border border-line-strong bg-raised text-text-2 shadow-[inset_0_-3px_0_color-mix(in_oklab,var(--line-strong)_55%,transparent)] hover:text-text';
 
 /* ----------------------------------- Tabs ----------------------------------- */
 
@@ -17,7 +24,7 @@ export interface StickerTab {
   count?: number;
 }
 
-/** Chunky tabs for game-side pages: the active tab is a lantern-amber sticker. */
+/** Tabs for game-side pages: pills that press; the active one is solid gold with ink text. */
 export function StickerTabs({ value, onValueChange, items, label, children, className = '' }: { value: string; onValueChange: (v: string) => void; items: StickerTab[]; label: string; children?: ReactNode; className?: string }) {
   const list = useRef<HTMLDivElement>(null);
   const [hidden, setHidden] = useState({ before: false, after: false });
@@ -58,10 +65,11 @@ export function StickerTabs({ value, onValueChange, items, label, children, clas
             <RTabs.Trigger
               key={i.value}
               value={i.value}
-              className="flex h-11 shrink-0 items-center gap-2 rounded-full border-2 border-line-strong bg-raised px-4 font-display text-[15px] font-bold whitespace-nowrap text-text-2 shadow-[0_3px_0_var(--line-strong)] transition-[transform,box-shadow,background-color] hover:text-text active:translate-y-[2px] active:shadow-[0_1px_0_var(--line-strong)] data-[state=active]:border-ink data-[state=active]:bg-lantern data-[state=active]:text-on-accent data-[state=active]:shadow-[0_3px_0_var(--ink)]"
+              className={`flex h-11 shrink-0 items-center gap-2 rounded-full px-4 text-[15px] font-semibold whitespace-nowrap transition-[translate,box-shadow,background-color,color] duration-[120ms] ease-[var(--ease-out)] active:translate-y-px ${SOFT} data-[state=active]:border-transparent data-[state=active]:bg-lantern data-[state=active]:text-on-accent data-[state=active]:shadow-[inset_0_-4px_0_rgb(0_0_0/0.24),0_2px_0_rgb(0_0_0/0.18)] data-[state=active]:hover:text-on-accent`}
             >
               {i.label}
-              {i.count !== undefined ? <span className="min-w-6 rounded-full bg-[rgb(29_24_70/0.12)] px-1.5 text-center font-sans text-xs font-bold tabular">{i.count}</span> : null}
+              {/* Tinted from the label's own colour, so it reads on the plain pill and on the gold one. */}
+              {i.count !== undefined ? <span className="min-w-6 rounded-full bg-[color-mix(in_oklab,currentColor_14%,transparent)] px-1.5 text-center text-xs font-bold tabular">{i.count}</span> : null}
             </RTabs.Trigger>
           ))}
         </RTabs.List>
@@ -78,7 +86,7 @@ function ScrollArrow({ side, onClick }: { side: 'before' | 'after'; onClick: () 
   const Icon = side === 'before' ? ChevronLeft : ChevronRight;
   return (
     <button type="button" tabIndex={-1} aria-hidden onClick={onClick} className={`absolute top-0.5 grid h-11 w-10 place-items-center ${side === 'before' ? '-left-1' : '-right-1'}`}>
-      <span className="grid size-8 place-items-center rounded-full border-2 border-ink bg-raised text-text shadow-[0_2px_0_var(--ink)]">
+      <span className="lift grid size-8 place-items-center rounded-full border border-line-strong bg-raised text-text">
         <Icon className="size-4" />
       </span>
     </button>
@@ -89,7 +97,11 @@ export const StickerTabPanel = RTabs.Content;
 
 /* ---------------------------------- Chips ----------------------------------- */
 
-/** A row of toggle chips for filtering. Each chip is a button with aria-pressed. */
+/**
+ * A row of toggle chips for filtering. Each chip is a button with aria-pressed.
+ * The chosen one inverts (`.chip-on` in app.css: the theme's text colour as its
+ * fill), so it stands out by lightness, not by hue alone; 44px tall for thumbs.
+ */
 export function ToggleChips<T extends string>({ value, onChange, options, label, className = '' }: { value: T; onChange: (v: T) => void; options: { value: T; label: ReactNode }[]; label: string; className?: string }) {
   return (
     <div role="group" aria-label={label} className={`flex flex-wrap gap-2 ${className}`}>
@@ -101,7 +113,7 @@ export function ToggleChips<T extends string>({ value, onChange, options, label,
             type="button"
             aria-pressed={on}
             onClick={() => onChange(o.value)}
-            className={`h-10 rounded-full border-2 px-4 text-sm font-bold transition-[transform,box-shadow,background-color] active:translate-y-[2px] ${on ? 'border-ink bg-text text-bg shadow-[0_3px_0_var(--ink)] active:shadow-[0_1px_0_var(--ink)]' : 'border-line-strong bg-raised text-text-2 shadow-[0_3px_0_var(--line-strong)] hover:text-text active:shadow-[0_1px_0_var(--line-strong)]'}`}
+            className={`h-11 rounded-full px-4 text-sm font-semibold transition-[translate,box-shadow,background-color,color] duration-[120ms] ease-[var(--ease-out)] active:translate-y-px ${on ? 'chip-on border border-transparent shadow-[inset_0_-3px_0_rgb(0_0_0/0.22)]' : SOFT}`}
           >
             {o.label}
           </button>
@@ -115,27 +127,29 @@ export function ToggleChips<T extends string>({ value, onChange, options, label,
 
 const METER_FILL = { amber: 'var(--lantern)', mint: 'var(--glim)', violet: 'var(--dusk)', sky: 'var(--sky)', rose: 'var(--rose)' } as const;
 
-/** A chunky progress bar with an ink edge, for XP, collections and quests. */
+/** A progress bar for XP, collections and quests: a sunken groove with a fine edge and a solid fill, like a HUD meter. */
 export function Meter({ value, max, tone = 'amber', label, size = 'md', className = '', fill }: { value: number; max: number; tone?: keyof typeof METER_FILL; label: string; size?: 'sm' | 'md' | 'lg'; className?: string; fill?: string }) {
   const pct = max > 0 ? Math.max(0, Math.min(100, (value / max) * 100)) : 0;
-  const h = size === 'sm' ? 'h-3' : size === 'lg' ? 'h-5' : 'h-4';
+  const h = size === 'sm' ? 'h-2.5' : size === 'lg' ? 'h-4' : 'h-3';
   return (
-    <div className={`${h} w-full overflow-hidden rounded-full border-2 border-ink bg-surface-3 ${className}`} role="progressbar" aria-valuenow={value} aria-valuemin={0} aria-valuemax={max} aria-label={label}>
-      <div className={`h-full rounded-full border-ink transition-[width] duration-700 ease-out ${pct > 0 && pct < 100 ? 'border-r-2' : ''}`} style={{ width: `${pct}%`, background: fill ?? METER_FILL[tone] }}>
-        <div className="mx-1.5 mt-[2px] h-[30%] rounded-full bg-white/40" />
-      </div>
+    <div className={`${h} w-full overflow-hidden rounded-[var(--radius-s)] bg-sunken shadow-[inset_0_0_0_1px_var(--line)] ${className}`} role="progressbar" aria-valuenow={value} aria-valuemin={0} aria-valuemax={max} aria-label={label}>
+      <div className="h-full rounded-[var(--radius-s)] transition-[width] duration-200 ease-[var(--ease-out)]" style={{ width: `${pct}%`, background: fill ?? METER_FILL[tone] }} />
     </div>
   );
 }
 
 /* ---------------------------------- Rarity ---------------------------------- */
 
-/** Rarity as a filled tag in its own colour. Ink text passes AA on every rarity colour. */
+/**
+ * Rarity as a filled tag in its own colour, like the rarity strip on a trading
+ * card: condensed capitals (DESIGN.md allows capitals for a rarity on a card).
+ * Ink text passes AA on every rarity colour.
+ */
 export function RarityTag({ rarity, size = 'sm', className = '', style }: { rarity: Rarity; size?: 'sm' | 'md' | 'lg'; className?: string; style?: CSSProperties }) {
-  const sizing = size === 'lg' ? 'px-4 py-0.5 font-display text-lg shadow-[0_2px_0_var(--ink)]' : size === 'md' ? 'px-3 py-0.5 text-sm' : 'px-2 py-px text-xs';
+  const sizing = size === 'lg' ? 'px-3 py-0.5 text-xl' : size === 'md' ? 'px-2.5 py-0.5 text-base' : 'px-2 text-[13px]';
   return (
     <span
-      className={`inline-flex items-center rounded-full border-2 border-ink font-bold whitespace-nowrap text-on-accent ${sizing} ${rarity === 'mythic' ? 'rarity-mythic-shimmer' : ''} ${className}`}
+      className={`inline-flex items-center rounded-[var(--radius-s)] font-display leading-tight font-bold tracking-[0.06em] whitespace-nowrap text-on-accent uppercase ${sizing} ${rarity === 'mythic' ? 'rarity-mythic-shimmer' : ''} ${className}`}
       style={{ ...(rarity === 'mythic' ? {} : { background: `var(--r-${rarity})` }), ...style }}
     >
       {RARITY_INFO[rarity].label}

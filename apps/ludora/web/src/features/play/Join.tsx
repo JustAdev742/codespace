@@ -1,16 +1,14 @@
 import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router';
 import { useQuery } from '@tanstack/react-query';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Shuffle } from 'lucide-react';
 import { displayNameSchema, generateName } from '@ludora/shared';
 import { api, ApiError } from '../../lib/api.ts';
 import { useMe } from '../../lib/session.ts';
 import { Logo } from '../../art/icons.tsx';
-import { Glim } from '../../art/glim/Glim.tsx';
 import { Button, buttonClass } from '../../ui/Button.tsx';
 import { Field, Input, Spinner } from '../../ui/primitives.tsx';
 import { Stage } from '../../ui/Stage.tsx';
-import { GREETERS, SIGN } from '../room/game/stage.tsx';
 import { CodeEntry } from './CodeEntry.tsx';
 
 interface RoomInfo {
@@ -25,26 +23,12 @@ interface RoomInfo {
   isHost: boolean;
 }
 
-/** Three Glims peeking over the top of the card. Decoration only. */
-function Greeters() {
-  return (
-    <div className="pointer-events-none relative z-0 -mb-6 flex items-end justify-center" aria-hidden>
-      <Glim art={GREETERS[0]!} size={76} className="translate-x-2 -rotate-6" />
-      <Glim art={GREETERS[1]!} size={96} pose="wave" />
-      <Glim art={GREETERS[2]!} size={76} className="-translate-x-2 rotate-6" />
-    </div>
-  );
-}
-
-/** A white paper card on the stage, with Glims peeking over it. */
+/** A smoked panel on the stage, like a console's menu: the fields inside are white. */
 function Card({ children, as: As = 'div', onSubmit }: { children: ReactNode; as?: 'div' | 'form'; onSubmit?: (e: FormEvent) => void }) {
   return (
-    <div>
-      <Greeters />
-      <As onSubmit={onSubmit} className="paper stage-card relative z-10 flex flex-col gap-5 px-5 py-6 sm:px-7">
-        {children}
-      </As>
-    </div>
+    <As onSubmit={onSubmit} className="hud stage-card flex flex-col gap-5 px-5 py-6 sm:px-7">
+      {children}
+    </As>
   );
 }
 
@@ -80,12 +64,12 @@ export default function Join() {
   return (
     <Stage as="main" className="flex min-h-dvh flex-col overflow-x-clip! overflow-y-visible!">
       <div className="mx-auto flex w-full max-w-md flex-1 flex-col px-4 pt-4 pb-8 sm:px-5">
-        <div className="flex items-center justify-between gap-3">
-          <Link to="/" aria-label="Ludora home" className="rounded-[10px]">
+        <div className="flex min-h-11 items-center justify-between gap-3">
+          <Link to="/" aria-label="Ludora home" className="rounded-[var(--radius-s)]">
             <Logo size={24} />
           </Link>
           {code ? (
-            <Link to="/play" className="flex items-center gap-1.5 rounded-[10px] px-2 py-1 text-sm font-bold">
+            <Link to="/play" className="flex min-h-11 items-center gap-1.5 rounded-[var(--radius-s)] px-2 text-sm font-bold">
               <ArrowLeft className="size-4" aria-hidden /> Different code
             </Link>
           ) : null}
@@ -94,24 +78,24 @@ export default function Join() {
           {!code ? (
             <>
               <div className="text-center">
-                <h1 className={`font-display text-5xl leading-none font-extrabold ${SIGN}`}>Join a game</h1>
-                <p className="mt-3 text-lg font-semibold text-text-2">Type the 6-digit code on the host&apos;s screen.</p>
+                <h1 className="font-display text-[3.25rem] leading-none font-extrabold">Join a game</h1>
+                <p className="mt-3 text-lg text-text-2">Type the 6-digit code on the host&apos;s screen.</p>
               </div>
               <Card>
                 <CodeEntry size="xl" autoFocus layout="stacked" />
               </Card>
-              <p className="text-center font-semibold text-text-2">No account needed to play.</p>
+              <p className="text-center text-text-2">No account needed to play.</p>
             </>
           ) : info.isLoading ? (
             <div className="flex flex-col items-center text-center">
               <Spinner label="Finding the game" />
-              <h1 className="font-display text-3xl font-extrabold">Finding the game</h1>
+              <h1 className="font-display text-[2.25rem] leading-none font-bold">Finding the game</h1>
             </div>
           ) : info.isError ? (
             <Card>
               <div className="text-center">
-                <h1 className="font-display text-3xl font-extrabold">No game with that code</h1>
-                <p className="mt-2 text-text-2">{info.error instanceof ApiError ? info.error.message : 'Check the code and try again.'}</p>
+                <h1 className="font-display text-[2.25rem] leading-none font-bold">No game with that code</h1>
+                <p className="mt-3 text-text-2">{info.error instanceof ApiError ? info.error.message : 'Check the code and try again.'}</p>
               </div>
               <CodeEntry size="xl" layout="stacked" />
             </Card>
@@ -119,11 +103,16 @@ export default function Join() {
             <Card as="form" onSubmit={submit}>
               <div>
                 <p className="font-semibold text-text-2">Joining {info.data.hostName}&apos;s game</p>
-                <h1 className="font-display text-[2.6rem] leading-[1.05] font-extrabold">{info.data.title}</h1>
+                {/* The game's name on the slanted plate: the moment before you walk in. */}
+                <h1 className="mt-3 mb-2 font-display text-[2rem] leading-none">
+                  <span className="plate plate-gold max-w-full">
+                    <span className="break-words">{info.data.title}</span>
+                  </span>
+                </h1>
                 <p className="text-lg text-text-2">{info.data.setTitle}</p>
               </div>
               {!info.data.joinable ? (
-                <p className="rounded-[14px] border-2 border-ember bg-ember/10 px-4 py-3 font-semibold">
+                <p className="rounded-[var(--radius-m)] border border-ember/60 bg-ember/15 px-4 py-3 font-semibold">
                   {info.data.status === 'ended' ? 'This game has finished. Ask the host to start another.' : 'The host has locked this room, or the game has already started.'}
                 </p>
               ) : info.data.requireAccount && (!me.data?.user || me.data.user.isGuest) ? (
@@ -145,8 +134,8 @@ export default function Join() {
                   <Field label="Your name" error={error ?? undefined} hint="Use your first name or a nickname. Other players will see it.">
                     {(p) => (
                       <div className="flex gap-2">
-                        <Input {...p} value={name} onChange={(e) => setName(e.target.value)} maxLength={24} autoFocus autoComplete="nickname" className="h-14 border-2 text-xl font-semibold" />
-                        <Button type="button" size="lg" className="h-14" onClick={() => setName(generateName())}>
+                        <Input {...p} value={name} onChange={(e) => setName(e.target.value)} maxLength={24} autoFocus autoComplete="nickname" className="h-14 bg-white text-xl font-semibold text-on-accent placeholder:text-[#5a638c]" />
+                        <Button type="button" size="lg" className="h-14" icon={<Shuffle className="size-4" aria-hidden />} onClick={() => setName(generateName())}>
                           Random
                         </Button>
                       </div>

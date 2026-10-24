@@ -2,7 +2,7 @@ import { useState, type FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { Gamepad2, GraduationCap, Presentation } from 'lucide-react';
+import { Check, Gamepad2, GraduationCap, Presentation } from 'lucide-react';
 import { PASSWORD_RULES, USERNAME_RULES } from '@ludora/shared';
 import { api, ApiError } from '../../lib/api.ts';
 import { useMe } from '../../lib/session.ts';
@@ -80,11 +80,17 @@ export default function SignUp() {
               return (
                 <label
                   key={t.value}
-                  className={`flex cursor-pointer flex-col items-center gap-1 rounded-[16px] border-2 px-1.5 py-3 text-center text-sm transition-[transform,box-shadow] active:translate-y-[2px] has-[:focus-visible]:outline-3 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-[var(--focus)] ${on ? 'border-ink bg-lantern text-on-accent shadow-[0_3px_0_var(--ink)]' : 'border-line-strong bg-raised text-text-2 shadow-[0_3px_0_var(--line-strong)] hover:text-text'}`}
+                  className={`relative flex min-h-[5.25rem] cursor-pointer flex-col items-center justify-center gap-1 rounded-[var(--radius-m)] border px-1.5 py-3 text-center text-sm transition-[translate,box-shadow,background-color] duration-[120ms] ease-[var(--ease-out)] active:translate-y-px has-[:focus-visible]:outline-3 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-[var(--focus)] ${on ? 'border-transparent bg-lantern text-on-accent shadow-[inset_0_-4px_0_rgb(0_0_0/0.24),0_2px_0_rgb(0_0_0/0.18)]' : 'border-line-strong bg-raised text-text-2 shadow-[inset_0_-3px_0_color-mix(in_oklab,var(--line-strong)_55%,transparent)] hover:text-text'}`}
                 >
                   <input type="radio" name="accountType" value={t.value} checked={on} onChange={set('accountType')} className="sr-only" />
+                  {/* The chosen one carries a tick as well as the gold, so it is never told by colour alone. */}
+                  {on ? (
+                    <span className="absolute top-1.5 right-1.5 grid size-5 place-items-center rounded-full bg-on-accent text-lantern" aria-hidden>
+                      <Check className="size-3.5" strokeWidth={3} />
+                    </span>
+                  ) : null}
                   <Icon className="size-6" aria-hidden />
-                  <span className="font-bold leading-tight">{t.label}</span>
+                  <span className="leading-tight font-bold">{t.label}</span>
                 </label>
               );
             })}
@@ -130,7 +136,7 @@ export default function SignUp() {
         onDone={async () => {
           setCode(null);
           await qc.invalidateQueries();
-          toast.success(isGuest ? 'Your progress is saved to your new account.' : 'Welcome to Ludora!');
+          toast.success(isGuest ? 'Your progress is saved to your new account.' : 'Account created. Welcome to Ludora.');
           navigate('/');
         }}
       />

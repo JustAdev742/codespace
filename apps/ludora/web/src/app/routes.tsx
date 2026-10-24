@@ -4,6 +4,7 @@ import { Shell } from './Shell.tsx';
 import { PrefsSync } from './PrefsSync.tsx';
 import { Spinner } from '../ui/primitives.tsx';
 import { buttonClass } from '../ui/Button.tsx';
+import { Stage } from '../ui/Stage.tsx';
 import { LogoMark } from '../art/icons.tsx';
 
 const page = (load: () => Promise<{ default: React.ComponentType }>) => async () => ({ Component: (await load()).default });
@@ -33,22 +34,29 @@ function RouteError() {
     }
   }, [err]);
   const notFound = isRouteErrorResponse(err) && err.status === 404;
+  // On the stage, which needs no theme: this page replaces everything, the theme sync included.
   return (
-    <main className="mx-auto flex min-h-dvh max-w-md flex-col items-center justify-center gap-4 px-4 text-center">
-      <LogoMark size={64} />
-      <h1 className="font-display text-3xl font-extrabold">{notFound ? 'Nothing here' : 'That page tripped over'}</h1>
-      <p className="text-text-2">{notFound ? 'The link may be old, or the page has moved.' : 'Something went wrong while showing this page. Reloading usually fixes it.'}</p>
-      <div className="flex gap-2">
-        <Link to="/" className={buttonClass('primary', 'lg')}>
-          Go home
-        </Link>
-        {!notFound ? (
-          <button type="button" className={buttonClass('secondary', 'lg')} onClick={() => location.reload()}>
-            Reload
-          </button>
-        ) : null}
+    <Stage as="main" className="flex min-h-dvh flex-col items-center justify-center gap-4 px-4 text-center">
+      <LogoMark size={56} />
+      <h1 className="font-display text-[2.6rem] leading-none font-bold sm:text-5xl">{notFound ? 'Page not found' : 'Something went wrong'}</h1>
+      <p className="max-w-md text-lg text-text-2">{notFound ? 'The link may be old, or the page has moved.' : 'Ludora hit an error while showing this page. Reloading usually fixes it.'}</p>
+      <div className="mt-2 flex flex-wrap justify-center gap-3">
+        {notFound ? (
+          <Link to="/" className={buttonClass('primary', 'lg')}>
+            Go home
+          </Link>
+        ) : (
+          <>
+            <button type="button" className={buttonClass('primary', 'lg')} onClick={() => location.reload()}>
+              Reload
+            </button>
+            <Link to="/" className={buttonClass('secondary', 'lg')}>
+              Go home
+            </Link>
+          </>
+        )}
       </div>
-    </main>
+    </Stage>
   );
 }
 

@@ -2,12 +2,10 @@ import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { Check, Clock } from 'lucide-react';
-import { RARITIES, type Rarity } from '@ludora/shared';
 import { api, ApiError } from '../../lib/api.ts';
 import { formatNumber, untilText } from '../../lib/format.ts';
 import { useMe } from '../../lib/session.ts';
-import { useOverview, type QuestView } from '../../lib/queries.ts';
-import { Glim } from '../../art/glim/Glim.tsx';
+import type { QuestView } from '../../lib/queries.ts';
 import { AccountError, Amount, EmptyState, ErrorNotice, PageHeader, Skeleton } from '../../ui/primitives.tsx';
 import { Button, ButtonLink } from '../../ui/Button.tsx';
 import { Meter, ToggleChips } from '../home/kit.tsx';
@@ -42,7 +40,7 @@ function RewardChips({ reward }: { reward: QuestView['reward'] | Achievement['re
       {reward.sparks ? <Amount currency="sparks" value={reward.sparks} size="sm" /> : null}
       {reward.moonstones ? <Amount currency="moonstones" value={reward.moonstones} size="sm" /> : null}
       {'frost_tickets' in reward && reward.frost_tickets ? <Amount currency="frost_tickets" value={reward.frost_tickets} size="sm" /> : null}
-      {reward.xp ? <span className="text-sm font-bold text-text-2 tabular">{formatNumber(reward.xp)} XP</span> : null}
+      {reward.xp ? <span className="font-display text-base leading-tight font-bold text-text-2 tabular">{formatNumber(reward.xp)} XP</span> : null}
       {'itemId' in reward && reward.itemId ? <span className="text-sm font-semibold text-text-2">and an item</span> : null}
     </span>
   );
@@ -53,22 +51,24 @@ function QuestCard({ q, fill }: { q: QuestView; fill: string }) {
   const claim = useMutation({
     mutationFn: () => api.post<{ levelUp: { from: number; to: number } | null }>(`/api/quests/${q.id}/claim`, { period: q.period }),
     onSuccess: async (res) => {
-      toast.success(res.levelUp ? `Reward claimed. You reached level ${res.levelUp.to}!` : 'Reward claimed');
+      toast.success(res.levelUp ? `Reward claimed. You reached level ${res.levelUp.to}.` : 'Reward claimed');
       await Promise.all([qc.invalidateQueries({ queryKey: ['quests'] }), qc.invalidateQueries({ queryKey: ['overview'] }), qc.invalidateQueries({ queryKey: ['me'] })]);
     },
     onError: (err) => toast.error(err instanceof ApiError ? err.message : 'Could not claim the reward.'),
   });
   const ready = q.completed && !q.claimed;
   return (
-    <li className={`flex flex-col gap-3 rounded-[20px] border-2 border-t-[6px] p-4 ${ready ? 'border-ink bg-glim/15 shadow-[0_4px_0_var(--ink)]' : q.claimed ? 'border-line bg-raised opacity-80' : 'border-line bg-raised'}`} style={ready ? undefined : { borderTopColor: fill }}>
+    <li className={`relative flex flex-col gap-3 overflow-hidden rounded-[var(--radius-l)] border p-4 pt-5 ${ready ? 'border-glim bg-glim/10' : q.claimed ? 'border-line bg-raised opacity-80' : 'border-line bg-raised'}`}>
+      {/* The group's colour along the top edge; mint once it is ready to claim. */}
+      <span className="absolute inset-x-0 top-0 h-1" style={{ background: ready ? 'var(--glim)' : fill }} aria-hidden />
       <div className="min-w-0">
-        <h3 className="font-display text-lg leading-tight font-bold">{q.title}</h3>
+        <h3 className="font-display text-xl leading-tight font-bold">{q.title}</h3>
         <p className="mt-0.5 text-sm text-text-2">{q.description}</p>
       </div>
       {!q.completed ? (
         <div className="flex items-center gap-3">
           <Meter value={q.progress} max={q.target} size="sm" fill={fill} label={`${q.title}: ${q.progress} of ${q.target}`} />
-          <span className="shrink-0 text-sm font-bold text-text-2 tabular">
+          <span className="shrink-0 font-display text-base font-bold text-text-2 tabular">
             {formatNumber(q.progress)}/{formatNumber(q.target)}
           </span>
         </div>
@@ -76,7 +76,7 @@ function QuestCard({ q, fill }: { q: QuestView; fill: string }) {
       <div className="mt-auto flex flex-wrap items-center justify-between gap-2">
         <RewardChips reward={q.reward} />
         {q.claimed ? (
-          <span className="inline-flex items-center gap-1 rounded-full bg-glim/20 px-2.5 py-0.5 text-sm font-bold text-glim">
+          <span className="inline-flex items-center gap-1 rounded-[var(--radius-s)] bg-glim px-2 py-0.5 text-sm font-bold text-on-accent">
             <Check className="size-4" aria-hidden /> Claimed
           </span>
         ) : ready ? (
@@ -96,11 +96,11 @@ function QuestGroup({ title, reset, note, quests, tone, fill }: { title: string;
     <section className="flex flex-col gap-3" aria-labelledby={`quests-${title}`}>
       <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
         <div className="flex items-center gap-3">
-          <span className={`h-8 w-2 rounded-full ${tone}`} aria-hidden />
-          <h2 id={`quests-${title}`} className="font-display text-2xl font-extrabold">
+          <span className={`h-7 w-1.5 rounded-[2px] ${tone}`} aria-hidden />
+          <h2 id={`quests-${title}`} className="font-display text-[1.75rem] leading-tight font-bold">
             {title}
           </h2>
-          <span className="rounded-full bg-surface-3 px-2.5 py-0.5 text-sm font-bold text-text-2 tabular">
+          <span className="rounded-[var(--radius-s)] bg-surface-3 px-2 py-0.5 text-sm font-bold text-text-2 tabular">
             {done} of {quests.length} done
           </span>
         </div>
@@ -146,7 +146,6 @@ type AchievementFilter = 'all' | 'progress' | 'earned';
 
 export default function Quests() {
   const me = useMe();
-  const overview = useOverview();
   const signedIn = Boolean(me.data?.user);
   const quests = useQuery({ queryKey: ['quests'], queryFn: () => api.get<QuestsResponse>('/api/quests'), enabled: signedIn });
   const achievements = useQuery({ queryKey: ['achievements'], queryFn: () => api.get<{ achievements: Achievement[]; secretLeft: number }>('/api/achievements'), enabled: signedIn });
@@ -180,17 +179,11 @@ export default function Quests() {
   const q = quests.data;
   const earned = (achievements.data?.achievements ?? []).filter((a) => a.unlockedAt).length;
   const total = achievements.data?.achievements.length ?? 0;
-  const avatar = overview.data?.avatar;
-  const buddyRarity: Rarity | undefined = avatar?.rarity ?? RARITIES.find((r) => r === overview.data?.equipped.buddy?.rarity);
   return (
     <>
-      <PageHeader
-        title="Quests and achievements"
-        description="Quests change every day and every week. Claim each reward when you finish. Achievements are yours for good, and pay out the moment you earn them."
-        art={avatar ? <Glim art={avatar.art} accessories={avatar.accessories} size={104} rarity={buddyRarity} pose="cheer" /> : undefined}
-      />
+      <PageHeader title="Quests and achievements" description="Quests change every day and every week. Claim each reward when you finish. Achievements are yours for good, and pay out the moment you earn them." />
       <div className="flex flex-col gap-10">
-        {quests.isLoading ? <Skeleton className="h-48 rounded-[20px]" /> : null}
+        {quests.isLoading ? <Skeleton className="h-48 rounded-[var(--radius-l)]" /> : null}
         {quests.error ? <ErrorNotice message="Your quests did not load." onRetry={() => void quests.refetch()} /> : null}
         {q ? (
           <>
@@ -205,7 +198,7 @@ export default function Quests() {
         <section className="flex flex-col gap-4" aria-labelledby="achievements-title">
           <div className="flex flex-wrap items-end justify-between gap-3">
             <div>
-              <h2 id="achievements-title" className="font-display text-2xl font-extrabold">
+              <h2 id="achievements-title" className="font-display text-[1.75rem] leading-tight font-bold">
                 Achievements
               </h2>
               {achievements.data ? (
@@ -225,7 +218,7 @@ export default function Quests() {
               ]}
             />
           </div>
-          {achievements.isLoading ? <Skeleton className="h-60 rounded-[20px]" /> : null}
+          {achievements.isLoading ? <Skeleton className="h-60 rounded-[var(--radius-l)]" /> : null}
           {achievements.error ? <ErrorNotice message="Achievements did not load." onRetry={() => void achievements.refetch()} /> : null}
           {achievements.data && !list.length ? (
             <EmptyState title={filter === 'earned' ? 'None earned yet' : 'All earned'} action={filter === 'earned' ? <ButtonLink to="/play" variant="primary">Join a game</ButtonLink> : undefined}>
@@ -234,11 +227,11 @@ export default function Quests() {
           ) : null}
           <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
             {list.map((a) => (
-              <li key={a.id} className={`flex gap-3.5 rounded-[20px] border-2 p-4 ${a.unlockedAt ? 'border-ink bg-raised shadow-[0_4px_0_var(--ink)]' : 'border-dashed border-line-strong'}`}>
+              <li key={a.id} className={`flex gap-3.5 rounded-[var(--radius-l)] border p-4 ${a.unlockedAt ? 'border-line bg-raised' : 'border-dashed border-line-strong'}`}>
                 <Medal a={a} />
                 <div className="flex min-w-0 flex-1 flex-col gap-1.5">
                   <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
-                    <h3 className="font-display text-lg leading-tight font-bold">{a.title}</h3>
+                    <h3 className="font-display text-xl leading-tight font-bold">{a.title}</h3>
                     <span className="text-xs font-semibold text-text-2">{TIER[a.tier].label}</span>
                   </div>
                   <p className="text-sm text-text-2">{a.description}</p>
