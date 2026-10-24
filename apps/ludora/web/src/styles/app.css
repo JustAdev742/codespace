@@ -381,8 +381,9 @@
     background: var(--lantern);
     color: var(--on-accent);
   }
+  /* A shade darker than the floodlight, so white text passes AA at any size (5.6:1). */
   .plate-blue {
-    background: var(--floodlight);
+    background: #2f5ae8;
     color: #ffffff;
   }
   /* A HUD bar over the stage: smoked glass, a fine edge. */
