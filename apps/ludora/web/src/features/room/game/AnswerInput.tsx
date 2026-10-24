@@ -113,7 +113,7 @@ export function ChoiceTile({
       data-pressed={selected || undefined}
       aria-pressed={selected}
       className={`relative flex w-full text-left [--press:5px] disabled:cursor-default ${layout === 'stack' ? `flex-col items-start justify-between ${s.stack} ${tall ? TALL_STACK : dense ? DENSE_STACK : ''}` : `items-center ${s.tile} ${tall ? TALL : ''}`} ${lit ? 'piece text-on-accent' : 'piece-off'} ${
-        correct ? 'ring-[3px] ring-glim ring-offset-[3px] ring-offset-[#0b1130]' : ''
+        correct ? 'ring-[3px] ring-glim ring-offset-[3px] ring-offset-[color:var(--stage-3)]' : ''
       }`}
       style={lit ? { background: bg } : undefined}
     >
@@ -150,7 +150,7 @@ export function ChoiceTile({
         </>
       ) : null}
       {correct ? (
-        <span className="absolute -top-3 -right-3 grid size-10 place-items-center rounded-full bg-glim text-on-accent shadow-[0_0_0_3px_#0b1130]" role="img" aria-label="Correct answer">
+        <span className="absolute -top-3 -right-3 grid size-10 place-items-center rounded-full bg-glim text-on-accent shadow-[0_0_0_3px_var(--stage-3)]" role="img" aria-label="Correct answer">
           <Check className="size-6" strokeWidth={3} aria-hidden />
         </span>
       ) : null}

@@ -120,7 +120,7 @@ function Card({ squares, size, onMark, canMark = false, wrong = null, big = fals
       {squares.map((sq, i) => {
         const done = sq.free || sq.marked;
         // A square on a completed line gets a gold ring, so the line reads without colour.
-        const ring = winning?.has(i) ? 'ring-4 ring-lantern ring-offset-2 ring-offset-[#0b1130]' : '';
+        const ring = winning?.has(i) ? 'ring-4 ring-lantern ring-offset-2 ring-offset-[color:var(--stage-3)]' : '';
         const base = `relative flex items-center justify-center rounded-[var(--radius-m)] p-1.5 text-center font-bold leading-tight break-words hyphens-auto ${text} ${ring}`;
         if (sq.free) {
           return (
@@ -151,7 +151,7 @@ function Card({ squares, size, onMark, canMark = false, wrong = null, big = fals
             onClick={() => onMark(i)}
             disabled={!canMark}
             aria-label={sq.text}
-            className={`paper piece ${base} [--press:4px] disabled:cursor-default ${wrong === i ? 'ring-4 ring-ember ring-offset-2 ring-offset-[#0b1130]' : ''}`}
+            className={`paper piece ${base} [--press:4px] disabled:cursor-default ${wrong === i ? 'ring-4 ring-ember ring-offset-2 ring-offset-[color:var(--stage-3)]' : ''}`}
           >
             {body}
           </button>

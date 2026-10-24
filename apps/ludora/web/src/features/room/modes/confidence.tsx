@@ -137,7 +137,7 @@ function WagerPicker({ view, act, paused }: { view: ConfidenceView; act: ModeScr
               onClick={() => void pick(st.level)}
               // The chosen level is held down and checked; the others dim. Each also has its number and name.
               data-pressed={on || undefined}
-              className={`${LEVEL_PIECE} min-h-[5.5rem] px-4 py-3 sm:min-h-[8rem] sm:flex-col sm:items-start ${on ? 'ring-[3px] ring-lantern ring-offset-[3px] ring-offset-[#0b1130]' : chosen !== null ? 'opacity-75 saturate-50' : ''}`}
+              className={`${LEVEL_PIECE} min-h-[5.5rem] px-4 py-3 sm:min-h-[8rem] sm:flex-col sm:items-start ${on ? 'ring-[3px] ring-lantern ring-offset-[3px] ring-offset-[color:var(--stage-3)]' : chosen !== null ? 'opacity-75 saturate-50' : ''}`}
               style={{ background: LEVEL_BG[st.level] }}
             >
               <span className="grid size-12 shrink-0 place-items-center rounded-[var(--radius-m)] bg-black/[0.1] font-display text-[2rem] font-extrabold">{st.level}</span>
