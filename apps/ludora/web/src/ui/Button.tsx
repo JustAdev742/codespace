@@ -13,16 +13,25 @@ const VARIANTS: Record<ButtonVariant, string> = {
   ghost: 'text-text-2 hover:bg-surface-2 hover:text-text active:bg-surface-3',
 };
 
+/*
+ * Radii follow the 6 / 10 / 14 scale. The two small sizes draw at 32 and 40px but
+ * take presses across 44px: an invisible strip above and below (::after) makes up
+ * the difference without moving anything around them.
+ */
+const HIT_SM = 'relative after:absolute after:inset-x-0 after:-inset-y-1.5';
+const HIT_MD = 'relative after:absolute after:inset-x-0 after:-inset-y-0.5';
+
 const SIZES: Record<ButtonSize, string> = {
-  sm: 'h-8 px-3 text-sm gap-1.5 rounded-[8px]',
-  md: 'h-10 px-4 text-[15px] gap-2 rounded-[10px]',
-  lg: 'h-12 px-5 text-base gap-2 rounded-[10px]',
+  sm: `h-8 px-3 text-sm gap-1.5 rounded-[var(--radius-s)] ${HIT_SM}`,
+  md: `h-10 px-4 text-[15px] gap-2 rounded-[var(--radius-m)] ${HIT_MD}`,
+  lg: 'h-12 px-5 text-base gap-2 rounded-[var(--radius-m)]',
   /** Condensed display type runs small, so the big sizes take a larger step. */
-  xl: 'h-14 px-7 text-[1.35rem] gap-2.5 rounded-[12px] font-display font-bold',
+  xl: 'h-14 px-7 text-[1.35rem] gap-2.5 rounded-[var(--radius-l)] font-display font-bold',
   /** Stage calls to action: join, start, play again. */
-  '2xl': 'h-16 px-8 text-[1.85rem] gap-3 rounded-[14px] font-display font-extrabold [--press:6px]',
+  '2xl': 'h-16 px-8 text-[1.85rem] gap-3 rounded-[var(--radius-l)] font-display font-extrabold [--press:6px]',
 };
 
+/* A disabled solid button loses its colour (`.sticker:disabled` in app.css) so it never reads as pressable; quiet buttons fade instead. */
 export function buttonClass(variant: ButtonVariant = 'secondary', size: ButtonSize = 'md', extra = '') {
   return `inline-flex shrink-0 select-none items-center justify-center font-semibold whitespace-nowrap transition-colors disabled:cursor-not-allowed disabled:opacity-55 ${VARIANTS[variant]} ${SIZES[size]} ${extra}`;
 }
@@ -67,9 +76,10 @@ export const IconButton = forwardRef<HTMLButtonElement, ButtonHTMLAttributes<HTM
   { label, size = 'md', variant = 'ghost', className = '', children, type = 'button', ...rest },
   ref,
 ) {
-  const s = size === 'sm' ? 'size-8' : size === 'lg' ? 'size-12' : 'size-10';
+  // The small sizes take presses across 44px, like the buttons above.
+  const s = size === 'sm' ? 'size-8 relative after:absolute after:-inset-1.5' : size === 'lg' ? 'size-12' : 'size-10 relative after:absolute after:-inset-0.5';
   return (
-    <button ref={ref} type={type} aria-label={label} title={label} className={`inline-grid shrink-0 place-items-center rounded-[10px] transition-colors disabled:opacity-50 ${s} ${VARIANTS[variant]} ${className}`} {...rest}>
+    <button ref={ref} type={type} aria-label={label} title={label} className={`inline-grid shrink-0 place-items-center rounded-[var(--radius-m)] transition-colors disabled:opacity-50 ${s} ${VARIANTS[variant]} ${className}`} {...rest}>
       {children}
     </button>
   );

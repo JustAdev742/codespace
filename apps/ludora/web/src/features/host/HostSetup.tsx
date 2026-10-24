@@ -241,6 +241,17 @@ function SettingInput({ field, value, onChange, locked }: { field: SettingField;
 
 /* ------------------------------------- page -------------------------------------- */
 
+/** A step's heading: its number on a gold tile, then its name. Read aloud as "1. Questions". */
+function StepTitle({ id, n, children, className = 'mb-4' }: { id: string; n: number; children: string; className?: string }) {
+  return (
+    <h2 id={id} className={`flex items-center gap-2.5 font-display text-2xl leading-tight font-bold ${className}`}>
+      <span className="grid size-8 shrink-0 place-items-center rounded-[var(--radius-s)] bg-lantern text-xl text-on-accent tabular">{n}</span>
+      <span className="sr-only">. </span>
+      {children}
+    </h2>
+  );
+}
+
 /**
  * Keyboard focus must never land under the sticky Create bar or the page header.
  * Scroll padding on the page keeps a focused control clear of both; the bar is
@@ -355,11 +366,11 @@ function Setup({ solo, preset }: { solo: boolean; preset: string | null }) {
             notice={
               atLimit ? (
                 full ? (
-                  <p role="alert" className="mb-3 rounded-[12px] border-2 border-lantern-deep bg-lantern/15 px-3.5 py-2.5 font-semibold">
+                  <p role="alert" className="mb-3 rounded-[var(--radius-m)] border border-lantern/70 bg-lantern/10 px-3.5 py-2.5 font-semibold">
                     You have {open?.limit} games open, the most you can have at once. Close one, then press Create game again.
                   </p>
                 ) : (
-                  <p role="status" className="mb-3 rounded-[12px] border-2 border-glim bg-glim/15 px-3.5 py-2.5 font-semibold">
+                  <p role="status" className="mb-3 rounded-[var(--radius-m)] border border-glim/70 bg-glim/10 px-3.5 py-2.5 font-semibold">
                     There is room for a new game now. Press Create game when you are ready.
                   </p>
                 )
@@ -368,9 +379,9 @@ function Setup({ solo, preset }: { solo: boolean; preset: string | null }) {
           />
         ) : null}
         <Panel className="p-5" aria-labelledby="host-step-set">
-          <h2 id="host-step-set" className="mb-3 font-display text-xl font-bold">
-            1. Questions
-          </h2>
+          <StepTitle id="host-step-set" n={1} className="mb-3">
+            Questions
+          </StepTitle>
           {set ? (
             <ChosenSet
               set={set}
@@ -400,9 +411,9 @@ function Setup({ solo, preset }: { solo: boolean; preset: string | null }) {
           )}
         </Panel>
         <Panel className="p-5" aria-labelledby="host-step-mode">
-          <h2 id="host-step-mode" className="mb-4 font-display text-xl font-bold">
-            2. Game mode
-          </h2>
+          <StepTitle id="host-step-mode" n={2}>
+            Game mode
+          </StepTitle>
           <ModePicker
             value={choice}
             solo={solo}
@@ -415,9 +426,9 @@ function Setup({ solo, preset }: { solo: boolean; preset: string | null }) {
         </Panel>
         {meta && choice ? (
           <Panel className="p-5" aria-labelledby="host-step-settings">
-            <h2 id="host-step-settings" className="mb-1 font-display text-xl font-bold">
-              3. Settings
-            </h2>
+            <StepTitle id="host-step-settings" n={3} className="mb-1">
+              Settings
+            </StepTitle>
             <p className="mb-4 text-sm text-text-2">{choice.variant ? choice.variant.meta.changes : meta.description}</p>
             <div className="grid grid-cols-1 gap-x-8 gap-y-4 md:grid-cols-2">
               {meta.common.fields.map((k) => (
@@ -443,7 +454,7 @@ function Setup({ solo, preset }: { solo: boolean; preset: string | null }) {
             </div>
             {!solo ? (
               <div className="mt-6 border-t border-line pt-4">
-                <h3 className="mb-1 flex items-center gap-2 font-display text-lg font-bold">
+                <h3 className="mb-1 flex items-center gap-2 font-display text-xl font-bold">
                   <Users className="size-5 text-text-3" aria-hidden /> Room
                 </h3>
                 <div className="grid grid-cols-1 gap-x-8 md:grid-cols-2">
@@ -455,7 +466,7 @@ function Setup({ solo, preset }: { solo: boolean; preset: string | null }) {
             ) : null}
           </Panel>
         ) : null}
-        <div ref={bar} className="sticky bottom-20 z-10 flex flex-wrap items-center justify-between gap-3 rounded-[18px] border border-line bg-raised/95 p-4 backdrop-blur lg:bottom-4">
+        <div ref={bar} className="lift sticky bottom-20 z-10 flex flex-wrap items-center justify-between gap-3 rounded-[var(--radius-l)] border border-line bg-raised/95 p-4 backdrop-blur lg:bottom-4">
           <p className="min-w-0 text-sm text-text-2">
             {!set ? 'Choose a question set.' : !choice ? 'Choose a game mode.' : `${choice.variant?.meta.title ?? choice.mode.meta.title} with “${set.title}”.`}
           </p>
