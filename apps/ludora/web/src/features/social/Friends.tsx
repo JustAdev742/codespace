@@ -53,7 +53,7 @@ function PersonRow({ person, detail, children }: { person: Friend; detail: React
 function SectionHeading({ id, children, action, headingRef }: { id?: string; children: ReactNode; action?: ReactNode; headingRef?: RefObject<HTMLHeadingElement | null> }) {
   return (
     <div className="mb-1 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
-      <h2 id={id} ref={headingRef} tabIndex={-1} className="font-display text-xl font-bold text-text focus:outline-none">
+      <h2 id={id} ref={headingRef} tabIndex={-1} className="font-display text-2xl font-bold text-text focus:outline-none">
         {children}
       </h2>
       {action}
@@ -106,10 +106,10 @@ function CodePanel({ code, requestsOff }: { code: string; requestsOff: boolean }
   return (
     <Panel className="grid grid-cols-1 gap-6 p-5 md:grid-cols-2">
       <div className="min-w-0">
-        <h2 className="font-display text-xl font-bold">Your friend code</h2>
+        <h2 className="font-display text-2xl font-bold">Your friend code</h2>
         <p className="mt-1 text-sm text-text-2">Give it to people you know. They enter it on their Friends page to send you a request.</p>
-        <div className="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-[14px] border-2 border-dashed border-line-strong bg-sunken px-4 py-3">
-          <code className="font-display text-2xl font-bold tracking-wider select-all">{code}</code>
+        <div className="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-[var(--radius-m)] border border-dashed border-line-strong bg-sunken px-4 py-3">
+          <code className="font-display text-[2rem] leading-none font-extrabold tracking-wider select-all">{code}</code>
           <Button size="sm" icon={<Copy className="size-4" />} onClick={() => void copy()} aria-label="Copy your friend code">
             Copy
           </Button>
@@ -125,7 +125,7 @@ function CodePanel({ code, requestsOff }: { code: string; requestsOff: boolean }
         ) : null}
       </div>
       <form className="min-w-0" onSubmit={submit} noValidate>
-        <h2 className="font-display text-xl font-bold">Add a friend</h2>
+        <h2 className="font-display text-2xl font-bold">Add a friend</h2>
         <p className="mt-1 text-sm text-text-2">Ask a friend for their code and enter it here.</p>
         <label htmlFor={inputId} className="mt-3 block text-sm font-semibold">
           Friend code
@@ -163,7 +163,7 @@ function CodePanel({ code, requestsOff }: { code: string; requestsOff: boolean }
 function PrivacyPanel({ privacy }: { privacy: Privacy }) {
   return (
     <Panel className="p-5">
-      <h2 className="mb-3 font-display text-xl font-bold">Your privacy</h2>
+      <h2 className="mb-3 font-display text-2xl font-bold">Your privacy</h2>
       <ul className="flex flex-col gap-2.5 text-sm text-text-2">
         <li className="flex gap-2.5">
           <Eye className="mt-0.5 size-4 shrink-0 text-text-3" aria-hidden />
@@ -178,7 +178,7 @@ function PrivacyPanel({ privacy }: { privacy: Privacy }) {
           {privacy.showOnLeaderboards ? 'Other players can see you on leaderboards.' : 'Other players cannot see you on leaderboards.'}
         </li>
       </ul>
-      <Link to="/settings#privacy" className="mt-4 inline-block text-sm font-semibold">
+      <Link to="/settings#privacy" className="mt-2 inline-flex min-h-11 items-center text-sm font-semibold">
         Change these in Settings
       </Link>
     </Panel>
@@ -318,7 +318,7 @@ export default function Friends() {
               </SectionHeading>
               {data.incoming.length ? (
                 <>
-                  <h3 className="mt-3 text-sm font-semibold text-text-2">Waiting for you</h3>
+                  <h3 className="mt-3 font-sans text-sm font-semibold text-text-2">Waiting for you</h3>
                   <ul className="divide-y divide-line">
                     {data.incoming.map((p) => (
                       <PersonRow key={p.id} person={p} detail={`Asked ${timeAgo(p.since)}`}>
@@ -335,7 +335,7 @@ export default function Friends() {
               ) : null}
               {data.outgoing.length ? (
                 <>
-                  <h3 className="mt-3 text-sm font-semibold text-text-2">Waiting for them</h3>
+                  <h3 className="mt-3 font-sans text-sm font-semibold text-text-2">Waiting for them</h3>
                   <ul className="divide-y divide-line">
                     {data.outgoing.map((p) => (
                       <PersonRow key={p.id} person={p} detail={`Sent ${timeAgo(p.since)}`}>

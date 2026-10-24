@@ -7,8 +7,9 @@ import type { AvatarLite } from '@ludora/shared';
 import { api } from '../../lib/api.ts';
 import { useMe, type MeUser } from '../../lib/session.ts';
 import { formatNumber, ordinal, plural } from '../../lib/format.ts';
-import { AccountError, Badge, EmptyState, ErrorNotice, PageHeader, Select, Skeleton, TabPanel, Tabs } from '../../ui/primitives.tsx';
+import { AccountError, EmptyState, ErrorNotice, PageHeader, Select, Skeleton, TabPanel, Tabs } from '../../ui/primitives.tsx';
 import { ButtonLink } from '../../ui/Button.tsx';
+import { Stage } from '../../ui/Stage.tsx';
 import { PlayerAvatar } from './parts.tsx';
 import { errorText, friendsKey, getFriends, usePageTitle } from './data.ts';
 
@@ -53,7 +54,8 @@ const SCOPES: { value: Scope; label: string }[] = [
   { value: 'global', label: 'Everyone' },
 ];
 
-const MEDALS: Record<number, string> = { 1: '#f5c451', 2: '#c7cbe0', 3: '#d89a6a' };
+/** Gold, silver and bronze, as the medals on the quests page. Ink text passes AA on each. */
+const MEDALS: Record<number, string> = { 1: 'var(--lantern)', 2: '#c3c8de', 3: '#d0884f' };
 
 /** Monday 00:00 UTC of this week: the moment weekly scores start again. */
 function weekStart(): Date {
@@ -62,6 +64,7 @@ function weekStart(): Date {
   return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - (day - 1)));
 }
 
+/** Like the segmented controls in Settings: the chosen period is lifted out of the groove, not only coloured. 44px on phones. */
 function PeriodToggle({ value, onChange }: { value: Period; onChange: (v: Period) => void }) {
   const options: [Period, string][] = [
     ['week', 'This week'],
@@ -75,10 +78,14 @@ function PeriodToggle({ value, onChange }: { value: Period; onChange: (v: Period
         if (v === 'week' || v === 'all') onChange(v);
       }}
       aria-label="Time period"
-      className="inline-flex rounded-[12px] border border-line bg-sunken p-1"
+      className="inline-flex rounded-[var(--radius-m)] border border-line bg-sunken p-1 max-sm:w-full"
     >
       {options.map(([v, label]) => (
-        <ToggleGroup.Item key={v} value={v} className="h-8 rounded-[9px] px-3 text-sm font-semibold text-text-2 transition-colors hover:text-text data-[state=on]:bg-raised data-[state=on]:text-text data-[state=on]:shadow-[0_1px_0_var(--line-strong)]">
+        <ToggleGroup.Item
+          key={v}
+          value={v}
+          className="h-9 rounded-[var(--radius-s)] px-3.5 text-sm font-semibold text-text-2 transition-colors hover:text-text data-[state=on]:bg-raised data-[state=on]:text-text data-[state=on]:shadow-[0_1px_3px_rgb(2_5_20/0.3)] data-[state=on]:ring-1 data-[state=on]:ring-line-strong max-sm:h-11 max-sm:flex-1"
+        >
           {label}
         </ToggleGroup.Item>
       ))}
@@ -86,39 +93,80 @@ function PeriodToggle({ value, onChange }: { value: Period; onChange: (v: Period
   );
 }
 
-function Row({ e }: { e: Entry }) {
-  const medal = MEDALS[e.rank];
-  return (
-    <li className={`flex items-center gap-3 rounded-[12px] px-3 py-2.5 ${e.me ? 'bg-dusk/20 ring-2 ring-lantern' : 'bg-surface-2'}`}>
-      <span
-        className={medal ? 'grid size-8 shrink-0 place-items-center rounded-full border-2 border-ink font-display text-sm font-extrabold text-on-accent' : 'w-8 shrink-0 text-center font-display font-bold text-text-3 tabular'}
-        style={medal ? { background: medal } : undefined}
-      >
+/** The rank: a medal tile for the top three, a big plain number below them. */
+function Rank({ rank }: { rank: number }) {
+  const medal = MEDALS[rank];
+  if (medal) {
+    return (
+      <span className="grid size-11 shrink-0 place-items-center rounded-[var(--radius-m)] font-display text-[1.75rem] leading-none font-extrabold text-on-accent tabular" style={{ background: medal }}>
         <span className="sr-only">Rank </span>
-        {e.rank}
+        {rank}
       </span>
-      <PlayerAvatar avatar={e.avatar} size={40} />
+    );
+  }
+  return (
+    <span className="w-11 shrink-0 text-center font-display text-[1.75rem] leading-none font-extrabold text-text-2 tabular">
+      <span className="sr-only">Rank </span>
+      {rank}
+    </span>
+  );
+}
+
+/** "You" beside your own name: one of three marks on your row, with the gold edge and bar, so it never rests on colour. */
+function YouTag() {
+  return <span className="shrink-0 rounded-[var(--radius-s)] bg-lantern px-1.5 text-xs leading-5 font-bold text-on-accent">You</span>;
+}
+
+function Row({ e }: { e: Entry }) {
+  const podium = e.rank <= 3;
+  return (
+    <li className={`relative flex items-center gap-3 rounded-[var(--radius-m)] px-2.5 sm:px-3.5 ${podium ? 'py-3' : 'py-2.5'} ${e.me ? 'bg-white/[0.14] ring-2 ring-lantern' : podium ? 'bg-white/[0.09]' : 'bg-white/[0.05]'}`}>
+      {e.me ? <span className="absolute inset-y-2.5 left-0 w-1 rounded-r-[3px] bg-lantern" aria-hidden /> : null}
+      <Rank rank={e.rank} />
+      <PlayerAvatar avatar={e.avatar} size={podium ? 44 : 40} />
       <div className="min-w-0 flex-1">
         <div className="flex min-w-0 items-center gap-2">
           {e.id ? (
-            <Link to={`/profile/${e.id}`} className="truncate font-semibold text-text underline-offset-2 hover:underline">
+            <Link to={`/profile/${e.id}`} className={`truncate text-text underline-offset-2 hover:underline ${e.me ? 'font-bold' : 'font-semibold'}`}>
               {e.displayName}
             </Link>
           ) : (
-            <span className="truncate font-semibold">{e.displayName}</span>
+            <span className={`truncate ${e.me ? 'font-bold' : 'font-semibold'}`}>{e.displayName}</span>
           )}
-          {e.me ? <Badge tone="violet">You</Badge> : null}
+          {e.me ? <YouTag /> : null}
         </div>
-        <div className="text-sm text-text-3">Level {e.level}</div>
+        <div className="text-sm text-text-2">Level {e.level}</div>
       </div>
       <div className="shrink-0 text-right">
-        <div className="text-lg font-bold tabular">
+        <div className={`font-display leading-none font-extrabold tabular ${podium ? 'text-[2rem]' : 'text-[1.75rem]'}`}>
           {formatNumber(e.score)}
           <span className="sr-only"> correct answers</span>
         </div>
-        <div className="text-xs text-text-3">{plural(e.games, 'game')}</div>
+        <div className="mt-0.5 text-xs text-text-2">{plural(e.games, 'game')}</div>
       </div>
     </li>
+  );
+}
+
+/** Your place on the board, as a broadcast caption: the rank on the gold plate, your score, and how far behind the next place you are. */
+function YourPlace({ rank, score, above }: { rank: number; score: number; above: Entry | null }) {
+  const gap = above ? above.score - score : 0;
+  return (
+    <div className="mb-4 flex flex-wrap items-center gap-x-4 gap-y-2 rounded-[var(--radius-m)] bg-white/[0.07] px-3.5 py-3">
+      <span className="plate plate-gold text-[2rem]">
+        <span className="tabular">
+          <span className="sr-only">Your place: </span>
+          {ordinal(rank)}
+        </span>
+      </span>
+      <p className="min-w-0 flex-1 text-text-2">
+        <span aria-hidden className="block font-semibold text-text">
+          Your place
+        </span>
+        {plural(score, 'correct answer')}
+        {rank === 1 ? ', top of the board' : above ? (gap > 0 ? `, ${gap} behind ${above.displayName}` : `, level with ${above.displayName}`) : ''}
+      </p>
+    </div>
   );
 }
 
@@ -141,7 +189,7 @@ function NotOnBoard({ user, scope, period, teaching }: { user: MeUser; scope: Sc
   } else {
     text = period === 'week' ? 'You are not on this board yet. Finish a game this week to get on it.' : 'You are not on this board yet. Finish a game to get on it.';
   }
-  return <p className="mt-3 rounded-[12px] border border-dashed border-line-strong px-3 py-2.5 text-sm text-text-2">{text}</p>;
+  return <p className="mt-3 rounded-[var(--radius-m)] border border-dashed border-line-strong px-3.5 py-3 text-sm text-text-2">{text}</p>;
 }
 
 function BoardView({ board, dim, user, scope, period, teaching }: { board: Board; dim: boolean; user: MeUser; scope: Scope; period: Period; teaching: boolean }) {
@@ -165,30 +213,35 @@ function BoardView({ board, dim, user, scope, period, teaching }: { board: Board
       </EmptyState>
     );
   }
-  const onBoard = board.entries.some((e) => e.me);
+  const mine = board.entries.findIndex((e) => e.me);
+  const me = mine >= 0 ? board.entries[mine]! : null;
   return (
     <div aria-busy={dim || undefined} className={`transition-opacity ${dim ? 'opacity-60' : ''}`}>
-      <div aria-hidden className="mb-1.5 flex justify-between px-3 text-xs font-semibold text-text-3">
-        <span>Player</span>
-        <span>Correct answers</span>
-      </div>
-      <ol className="flex flex-col gap-1.5">
-        {board.entries.map((e) => (
-          <Row key={e.rank} e={e} />
-        ))}
-      </ol>
-      {board.me ? (
-        <div className="mt-3 flex items-center gap-3 rounded-[12px] bg-dusk/20 px-3 py-2.5 ring-2 ring-lantern">
-          <span className="w-8 shrink-0 text-center font-display font-bold tabular" aria-hidden>
-            {board.me.rank}
-          </span>
-          <p className="text-sm text-text-2">
-            <span className="font-semibold text-text">You are {ordinal(board.me.rank)}</span> with {plural(board.me.score, 'correct answer')}. Only the top 50 are listed.
-          </p>
+      {/* The scoreboard sits on the stage in both themes, like a broadcast graphic. */}
+      <Stage className="rounded-[var(--radius-l)] p-2.5 sm:p-4">
+        {me ? <YourPlace rank={me.rank} score={me.score} above={mine > 0 ? board.entries[mine - 1]! : null} /> : board.me ? <YourPlace rank={board.me.rank} score={board.me.score} above={null} /> : null}
+        <div aria-hidden className="mb-1.5 flex justify-between px-3.5 text-xs font-semibold text-text-2">
+          <span>Player</span>
+          <span>Correct answers</span>
         </div>
-      ) : onBoard ? null : (
-        <NotOnBoard user={user} scope={scope} period={period} teaching={teaching} />
-      )}
+        <ol className="flex flex-col gap-1.5">
+          {board.entries.map((e) => (
+            <Row key={e.rank} e={e} />
+          ))}
+        </ol>
+        {board.me ? (
+          <div className="relative mt-3 flex items-center gap-3 rounded-[var(--radius-m)] bg-white/[0.14] px-2.5 py-2.5 ring-2 ring-lantern sm:px-3.5">
+            <span className="absolute inset-y-2.5 left-0 w-1 rounded-r-[3px] bg-lantern" aria-hidden />
+            <span className="w-11 shrink-0 text-center font-display text-[1.75rem] leading-none font-extrabold tabular" aria-hidden>
+              {board.me.rank}
+            </span>
+            <p className="text-sm text-text-2">
+              <span className="font-semibold text-text">You are {ordinal(board.me.rank)}</span> with {plural(board.me.score, 'correct answer')}. Only the top 50 are listed.
+            </p>
+          </div>
+        ) : null}
+      </Stage>
+      {me || board.me ? null : <NotOnBoard user={user} scope={scope} period={period} teaching={teaching} />}
     </div>
   );
 }
@@ -360,7 +413,7 @@ export default function Leaderboards() {
                   {scope === 'class' && chosenClass ? (
                     <label className="flex min-w-0 items-center gap-2 text-sm font-semibold">
                       Class
-                      <Select value={chosenClass.id} onChange={(e) => update({ class: e.target.value })} className="h-10 w-auto max-w-56 min-w-0">
+                      <Select value={chosenClass.id} onChange={(e) => update({ class: e.target.value })} className="w-auto max-w-56 min-w-0">
                         {classOptions.map((c) => (
                           <option key={c.id} value={c.id}>
                             {c.teaching ? `${c.name} (you teach it)` : c.name}
@@ -378,7 +431,7 @@ export default function Leaderboards() {
                   .
                 </p>
                 {isAccount && !user.preferences.privacy.showOnLeaderboards ? (
-                  <p className="mb-4 rounded-[12px] bg-surface-2 px-3 py-2.5 text-sm text-text-2">Other players cannot see you on leaderboards. You still see yourself here.</p>
+                  <p className="mb-4 rounded-[var(--radius-m)] bg-surface-2 px-3.5 py-3 text-sm text-text-2">Other players cannot see you on leaderboards. You still see yourself here.</p>
                 ) : null}
               </>
             ) : null}
