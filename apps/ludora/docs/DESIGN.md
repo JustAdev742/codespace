@@ -38,7 +38,7 @@ Core palette (tokens in `web/src/styles/app.css`):
 
 | Name | Hex | Use |
 |---|---|---|
-| Midnight | `#0B1130` | The stage: game screens, the landing hero, the sidebar |
+| Midnight | `#0A0F2C` | The stage: game screens, the landing hero, the sidebar |
 | Floodlight | `#3A6BFF` | Brand blue: glows, focus on the stage, links on dark |
 | Gold | `#FFC233` | Primary calls to action, coins and rewards; ink text on it |
 | Mint | `#1FD38F` | Correct, success |
@@ -86,8 +86,9 @@ Avoid: pastel lilac washes, purple-to-pink sky gradients, glitter, blush pink.
 
 ## The stage
 
-Midnight navy, lit from the top centre by a soft blue floodlight, with a faint
-grid like the lines of a pitch. No stars, lanterns or string lights. Game
+Midnight navy, lit from the top centre by a soft blue floodlight, with two
+faint glows low in the corners, teal and violet, like arena lights. No pattern
+at all: no grid or squares, no stars, lanterns or string lights. Game
 screens lay out like a broadcast: a slim header bar, the action in the
 middle, scores and timers as HUD elements.
 
@@ -119,4 +120,5 @@ Unchanged: the recorded music and effects (D43) already suit the range.
 - Touch targets are at least 44px; no sideways scrolling at 360px.
 - No leftovers of the old look: `font-display` on body text, `border-ink`
   outlines on pieces, offset ink shadows (`shadow-[0_Npx_0_var(--ink)]`),
-  lilac or purple-pink gradients, star or lantern decoration, blush.
+  lilac or purple-pink gradients, grids or square patterns, star or lantern
+  decoration, blush.
