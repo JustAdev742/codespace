@@ -377,7 +377,7 @@ function startWave(s: State, at: number, ctx: ModeContext<Settings>) {
   s.open[String(w)] = list.length;
   s.nextWaveAt = st.endless || w < st.waves ? at + WAVE_EVERY_MS : null;
   const lords = list.filter((x) => x.kind === 'lord').length;
-  if (lords) ctx.feed(lords > 1 ? `Wave ${w}: ${lords} Gloom Lords are coming!` : `Wave ${w}: a Gloom Lord is coming!`, { tone: 'bad' });
+  if (lords) ctx.feed(lords > 1 ? `Wave ${w}: ${lords} Gloom Lords are coming.` : `Wave ${w}: a Gloom Lord is coming.`, { tone: 'bad' });
 }
 
 function spawn(s: State, sp: Spawn, ctx: ModeContext<Settings>) {
@@ -438,7 +438,7 @@ function defeat(s: State, g: Gloomling, by: Tower, ctx: ModeContext<Settings>) {
   }
   if (g.kind === 'lord') {
     s.lordsDown++;
-    ctx.feed(`The Gloom Lord is down! ${nameOf(ctx, by.by)}’s ${TOWERS[by.kind].name} tower landed the last hit.`, { tone: 'big' });
+    ctx.feed(`The Gloom Lord is down. ${nameOf(ctx, by.by)}’s ${TOWERS[by.kind].name} tower landed the last hit.`, { tone: 'big' });
     log(s, { at: s.simAt, kind: 'lord', playerId: by.by });
   }
 }
@@ -476,13 +476,13 @@ function flareNow(s: State, T: number, ctx: ModeContext<Settings>) {
     burned++;
     if (g.kind === 'lord') {
       s.lordsDown++;
-      ctx.feed('The Great Lantern’s flare brought down the Gloom Lord!', { tone: 'big' });
+      ctx.feed('The Great Lantern’s flare brought down the Gloom Lord.', { tone: 'big' });
       log(s, { at: T, kind: 'lord', playerId: null });
     }
   }
   const givers = s.flare.givers.map((id) => nameOf(ctx, id));
   const thanks = givers.length > 3 ? `${givers.slice(0, 2).join(', ')} and ${plural(givers.length - 2, 'other')}` : listNames(givers);
-  ctx.feed(`The Great Lantern flared${burned ? ` and burned away ${plural(burned, 'gloomling')}` : ''}! Thanks to ${thanks}.`, { tone: 'big' });
+  ctx.feed(`The Great Lantern flared${burned ? ` and burned away ${plural(burned, 'gloomling')}` : ''}. Thanks to ${thanks}.`, { tone: 'big' });
   log(s, { at: T, kind: 'flare', burned });
   s.flare = { pot: 0, cost: flareCost(connected(ctx).length), charged: false, count: s.flare.count + 1, at: T, givers: [] };
 }
@@ -516,7 +516,7 @@ function step(s: State, T: number, ctx: ModeContext<Settings>) {
       s.open[String(g.wave)] = (s.open[String(g.wave)] ?? 1) - 1;
       s.lost[String(g.wave)] = (s.lost[String(g.wave)] ?? 0) + lights;
       if (g.kind === 'lord' || g.kind === 'brute') log(s, { at: T, kind: 'leak', gloom: g.kind, lights });
-      if (g.kind === 'lord' && s.lights > 0) ctx.feed(`A Gloom Lord reached the Great Lantern and put out ${plural(lights, 'light')}!`, { tone: 'bad' });
+      if (g.kind === 'lord' && s.lights > 0) ctx.feed(`A Gloom Lord reached the Great Lantern and put out ${plural(lights, 'light')}.`, { tone: 'bad' });
     }
     if (s.lights <= 0) {
       ctx.feed(`The gloom reached the Great Lantern and its last light went out on wave ${s.wave}.`, { tone: 'bad' });
@@ -524,7 +524,7 @@ function step(s: State, T: number, ctx: ModeContext<Settings>) {
     }
     if (!s.warned && s.lights <= Math.max(3, Math.ceil(s.maxLights / 4))) {
       s.warned = true;
-      ctx.feed(`Only ${plural(s.lights, 'light')} left on the Great Lantern!`, { tone: 'bad' });
+      ctx.feed(`Only ${plural(s.lights, 'light')} left on the Great Lantern.`, { tone: 'bad' });
     }
   }
 
@@ -560,12 +560,12 @@ function step(s: State, T: number, ctx: ModeContext<Settings>) {
     delete s.lost[key];
     log(s, { at: T, kind: 'held', wave: Number(key), lost });
     const last = !ctx.settings.endless && s.nextWaveAt === null && idle(s);
-    if (!last) ctx.feed(lost ? `Wave ${key} is over, with ${plural(lost, 'light')} lost. Every guard gets ${WAVE_GOLD} gold.` : `Wave ${key} held! Every guard gets ${WAVE_GOLD} gold.`, { tone: lost ? 'info' : 'good' });
+    if (!last) ctx.feed(lost ? `Wave ${key} is over, with ${plural(lost, 'light')} lost. Every guard gets ${WAVE_GOLD} gold.` : `Wave ${key} held. Every guard gets ${WAVE_GOLD} gold.`, { tone: lost ? 'info' : 'good' });
   }
 
   // 7. The last wave held: the festival is safe.
   if (!ctx.settings.endless && s.nextWaveAt === null && idle(s) && Object.keys(s.open).length === 0) {
-    ctx.feed(`The festival is safe! Every wave was held with ${plural(s.lights, 'light')} still burning.`, { tone: 'big' });
+    ctx.feed(`The festival is safe. Every wave was held with ${plural(s.lights, 'light')} still burning.`, { tone: 'big' });
     finish(s, 'win', 'waves', ctx);
   }
 }
@@ -760,7 +760,7 @@ export const lanternGuard = defineMode<State, Settings, Action>({
           const gain = GOLD_PER_RIGHT + (bonus ? STREAK_GOLD : 0);
           g.gold += gain;
           if (g.stream.last) g.stream.last.text = `+${gain} gold${bonus ? ' (streak bonus)' : ''}`;
-        } else if (g.stream.last) g.stream.last.text = 'No gold this time';
+        } else if (g.stream.last) g.stream.last.text = 'No gold';
         streamNext(g.stream, ctx);
         return;
       }
@@ -806,7 +806,7 @@ export const lanternGuard = defineMode<State, Settings, Action>({
         log(s, { at: ctx.now(), kind: 'feed', playerId, gold: gift });
         if (s.flare.pot >= s.flare.cost) {
           s.flare.charged = true;
-          if (!busyRoad(s)) ctx.feed('The Great Lantern is full! It will flare when the gloom crowds the road.', { tone: 'good' });
+          if (!busyRoad(s)) ctx.feed('The Great Lantern is full. It will flare when the gloom crowds the road.', { tone: 'good' });
         }
         return;
       }
@@ -820,7 +820,7 @@ export const lanternGuard = defineMode<State, Settings, Action>({
     if (s.result) return;
     const st = ctx.settings;
     ctx.feed(
-      st.endless ? `Dawn has come! The class held ${plural(s.held, 'wave')} with ${plural(s.lights, 'light')} still burning.` : `Time is up! The Great Lantern is still burning with ${plural(s.lights, 'light')}.`,
+      st.endless ? `Dawn has come. The class held ${plural(s.held, 'wave')} with ${plural(s.lights, 'light')} still burning.` : `Time is up. The Great Lantern is still burning with ${plural(s.lights, 'light')}.`,
       { tone: 'big' },
     );
     finish(s, 'win', 'time', ctx);
@@ -890,7 +890,7 @@ export const lanternGuard = defineMode<State, Settings, Action>({
     const lights = plural(s.lights, 'light');
     let summary: string;
     if (s.reason === 'lights') summary = st.endless ? `The gloom reached the Great Lantern on wave ${s.wave}, after ${plural(s.held, 'wave')} held.` : `The gloom reached the Great Lantern on wave ${s.wave}.`;
-    else if (s.reason === 'waves') summary = `The festival is safe! ${s.held} of ${st.waves} waves held with ${lights} left.`;
+    else if (s.reason === 'waves') summary = `The festival is safe. ${s.held} of ${st.waves} waves held with ${lights} left.`;
     else if (s.reason === 'time') summary = st.endless ? `Dawn came with ${plural(s.held, 'wave')} held and ${lights} left.` : `Time ran out with ${s.held} of ${st.waves} waves held and ${lights} left.`;
     else summary = `The game ended on wave ${s.wave} with ${lights} left.`;
     return { standings, outcome: s.result === 'win' ? 'coop-win' : 'coop-loss', summary };
