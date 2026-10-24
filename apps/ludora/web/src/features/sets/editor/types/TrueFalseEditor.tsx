@@ -13,7 +13,7 @@ export function TrueFalseEditor({ q, errors, edit }: TypeEditorProps) {
           return (
             <label
               key={String(value)}
-              className={`flex h-12 cursor-pointer items-center justify-center gap-2 rounded-[12px] border-2 font-semibold transition-colors has-[:focus-visible]:ring-[3px] has-[:focus-visible]:ring-[var(--focus)] ${checked ? 'border-ink bg-glim text-on-accent' : 'border-line-strong bg-sunken text-text-2 hover:border-text-3'}`}
+              className={`flex h-12 cursor-pointer items-center justify-center gap-2 rounded-[var(--radius-m)] border font-semibold transition-colors has-[:focus-visible]:ring-[3px] has-[:focus-visible]:ring-[var(--focus)] ${checked ? 'border-transparent bg-glim text-on-accent shadow-[inset_0_-3px_0_rgb(0_0_0/0.2)]' : 'input-well border-line-strong text-text-2 hover:border-text-3'}`}
             >
               <input id={domIds.row(q.id, 'truth', String(value))} type="radio" name={`${q.id}-truth`} checked={checked} onChange={() => edit((d) => ({ ...d, truth: value }))} className="sr-only" />
               <Icon className="size-5" aria-hidden />

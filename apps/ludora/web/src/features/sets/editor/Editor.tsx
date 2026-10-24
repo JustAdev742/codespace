@@ -584,7 +584,7 @@ export function Editor({ userId, setId, initial, baseUpdatedAt, canPublish, save
       </p>
 
       {pendingDraft ? (
-        <section aria-label="Unsaved changes on this device" className="flex flex-wrap items-center gap-3 rounded-[var(--radius-m)] border border-line-strong bg-surface-2 p-4">
+        <section aria-label="Unsaved changes on this device" className="flex flex-wrap items-center gap-3 rounded-[var(--radius-l)] border border-line-strong bg-surface-2 p-4">
           <History className="size-5 shrink-0 text-link" aria-hidden />
           <p className="min-w-0 flex-1 basis-60 text-sm text-text">
             <span className="font-semibold">Changes you made {timeAgo(new Date(pendingDraft.savedAt))} were not saved.</span>{' '}
@@ -607,8 +607,8 @@ export function Editor({ userId, setId, initial, baseUpdatedAt, canPublish, save
 
       <section aria-labelledby="questions-heading" className="flex min-w-0 flex-col gap-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <h2 id="questions-heading" className="flex items-center gap-2 font-display text-xl font-bold text-text">
-            Questions <Badge tone="violet">{count}</Badge>
+          <h2 id="questions-heading" className="flex items-center gap-2 font-display text-2xl font-bold text-text">
+            Questions <Badge className="tabular">{count}</Badge>
           </h2>
           {count > 1 ? (
             <div className="flex flex-wrap gap-1">
@@ -646,9 +646,9 @@ export function Editor({ userId, setId, initial, baseUpdatedAt, canPublish, save
       </section>
 
       {setId ? (
-        <section aria-labelledby="delete-set-heading" className="flex flex-wrap items-center justify-between gap-3 rounded-[var(--radius-m)] border border-line p-4">
+        <section aria-labelledby="delete-set-heading" className="flex flex-wrap items-center justify-between gap-3 rounded-[var(--radius-l)] border border-line p-4">
           <div className="min-w-0 flex-1 basis-60">
-            <h2 id="delete-set-heading" className="font-display text-lg font-bold text-text">
+            <h2 id="delete-set-heading" className="font-display text-xl font-bold text-text">
               Delete this set
             </h2>
             <p className="text-sm text-text-2">Removes it for everyone, along with any class assignments that use it.</p>
@@ -659,7 +659,7 @@ export function Editor({ userId, setId, initial, baseUpdatedAt, canPublish, save
         </section>
       ) : null}
 
-      <div className="sticky bottom-20 z-20 flex items-center gap-3 rounded-[18px] border border-line bg-raised/95 p-3 shadow-[0_8px_30px_rgb(0_0_0/0.25)] backdrop-blur lg:bottom-4">
+      <div className="lift sticky bottom-20 z-20 flex items-center gap-3 rounded-[var(--radius-l)] border border-line bg-raised/95 p-3 backdrop-blur lg:bottom-4">
         <p className="min-w-0 flex-1 text-sm text-text-2">
           <span className="hidden sm:inline">
             <span className="font-semibold text-text">{plural(count, 'question')}</span>

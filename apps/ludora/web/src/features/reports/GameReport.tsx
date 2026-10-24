@@ -94,7 +94,7 @@ function Standings({ standings }: { standings: Standing[] }) {
       <tbody>
         {standings.map((s, i) => (
           <tr key={`${s.rank}-${s.name}-${i}`} className="border-t border-line">
-            <td className="px-3 py-2.5 font-display font-bold whitespace-nowrap text-text tabular">{ordinal(s.rank)}</td>
+            <td className="px-3 py-2.5 font-display text-lg leading-none font-bold whitespace-nowrap text-text tabular">{ordinal(s.rank)}</td>
             <td className="px-3 py-2.5">
               <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
                 <span className="font-semibold break-words text-text">{s.name}</span>

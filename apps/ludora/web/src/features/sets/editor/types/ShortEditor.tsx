@@ -79,7 +79,7 @@ export function ShortEditor({ q, errors, edit }: TypeEditorProps) {
           </Button>
         </div>
       </fieldset>
-      <div className="grid gap-x-8 rounded-[12px] border border-line px-3 sm:grid-cols-2">
+      <div className="grid gap-x-8 rounded-[var(--radius-m)] border border-line px-3 sm:grid-cols-2">
         <Switch checked={q.fuzzy} onCheckedChange={(v) => edit((d) => ({ ...d, fuzzy: v }))} label="Allow small typos" description="An answer with a letter or two wrong still counts. Numbers must be exact." />
         <Switch checked={q.caseSensitive} onCheckedChange={(v) => edit((d) => ({ ...d, caseSensitive: v }))} label="Match capital letters" description="When on, Paris and paris count as different answers." />
       </div>

@@ -34,7 +34,7 @@ function body(n: Notice): string {
       // The reason names the teacher and the class.
       return `${n.reason} made a new recovery code for your account, so you can set a new password if you cannot sign in. Your old code no longer works. If you did not ask for this, tell your teacher.`;
     default:
-      return 'Please read this and keep Ludora friendly for everyone.';
+      return 'Read it, and keep Ludora friendly for everyone.';
   }
 }
 
@@ -72,7 +72,7 @@ export function NoticeGate() {
     >
       {/* A moderator's reason is quoted; the teacher and class are already in the text of a recovery code notice. */}
       {current.action !== 'unmute' && current.action !== 'teacher_recovery_code' ? (
-        <blockquote className="rounded-[12px] border-l-4 border-lantern bg-surface-2 px-4 py-3 text-text whitespace-pre-wrap">{current.reason}</blockquote>
+        <blockquote className="rounded-[var(--radius-m)] border-l-4 border-lantern bg-surface-2 px-4 py-3 text-text whitespace-pre-wrap">{current.reason}</blockquote>
       ) : null}
     </Dialog>
   );

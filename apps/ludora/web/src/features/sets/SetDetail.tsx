@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { Copy, Flag, Pencil, Play, Presentation } from 'lucide-react';
+import { Check, Copy, Flag, Pencil, Play, Presentation } from 'lucide-react';
 import { QUESTION_TYPE_LABELS, SUBJECT_LABELS, type Question, type QuestionType } from '@ludora/shared';
 import { api, ApiError } from '../../lib/api.ts';
 import { useMe } from '../../lib/session.ts';
@@ -90,10 +90,10 @@ export default function SetDetail() {
       <div className="flex flex-wrap items-start gap-5">
         <SetCover cover={set.cover} subject={set.subject} size={88} />
         <div className="min-w-0 flex-1">
-          <h1 className="font-display text-4xl font-extrabold">{set.title}</h1>
-          <p className="mt-1 max-w-[62ch] text-text-2">{set.description}</p>
+          <h1 className="font-display text-[2.25rem] leading-[1.02] font-bold break-words sm:text-[2.9rem]">{set.title}</h1>
+          {set.description ? <p className="mt-2 max-w-[62ch] text-text-2">{set.description}</p> : null}
           <div className="mt-3 flex flex-wrap gap-1.5">
-            <Badge tone="violet">{plural(set.questionCount, 'question')}</Badge>
+            <Badge>{plural(set.questionCount, 'question')}</Badge>
             <Badge>{SUBJECT_LABELS[set.subject as keyof typeof SUBJECT_LABELS] ?? set.subject}</Badge>
             {set.gradeBand ? <Badge>{set.gradeBand}</Badge> : null}
             {set.isOfficial ? <Badge tone="amber">By Ludora</Badge> : set.ownerName ? <Badge>By {set.ownerName}</Badge> : null}
@@ -129,7 +129,7 @@ export default function SetDetail() {
         <div className="mb-4 flex flex-wrap gap-1.5">
           {Object.entries(typeCounts).map(([t, n]) => (
             <Badge key={t}>
-              {n} {QUESTION_TYPE_LABELS[t as QuestionType]}
+              <span className="tabular">{n}</span> {QUESTION_TYPE_LABELS[t as QuestionType]}
             </Badge>
           ))}
         </div>
@@ -137,11 +137,18 @@ export default function SetDetail() {
           <ol className="flex flex-col divide-y divide-line">
             {questions.map((q, i) => (
               <li key={q.id} className="flex gap-3 py-3">
-                <span className="w-7 font-display font-bold text-text-3 tabular">{i + 1}</span>
+                <span className="w-8 shrink-0 font-display text-xl leading-6 font-bold text-text-3 tabular">{i + 1}</span>
                 <div className="min-w-0">
-                  <p className="font-semibold">{q.prompt}</p>
-                  <p className="text-sm text-glim">{answerText(q)}</p>
-                  {q.explanation ? <p className="text-sm text-text-3">{q.explanation}</p> : null}
+                  <p className="font-semibold [overflow-wrap:anywhere]">{q.prompt}</p>
+                  {/* The answer is marked by a tick and its label, not only by its colour. */}
+                  <p className="mt-0.5 flex items-start gap-1.5 text-sm font-semibold text-glim [overflow-wrap:anywhere]">
+                    <Check className="mt-0.5 size-4 shrink-0" strokeWidth={3} aria-hidden />
+                    <span>
+                      <span className="sr-only">Answer: </span>
+                      {answerText(q)}
+                    </span>
+                  </p>
+                  {q.explanation ? <p className="mt-0.5 text-sm text-text-3">{q.explanation}</p> : null}
                 </div>
               </li>
             ))}
@@ -152,9 +159,9 @@ export default function SetDetail() {
             <ol className="flex flex-col divide-y divide-line">
               {(preview ?? []).map((q, i) => (
                 <li key={q.id} className="flex gap-3 py-3">
-                  <span className="w-7 font-display font-bold text-text-3 tabular">{i + 1}</span>
-                  <div>
-                    <p className="font-semibold">{q.prompt}</p>
+                  <span className="w-8 shrink-0 font-display text-xl leading-6 font-bold text-text-3 tabular">{i + 1}</span>
+                  <div className="min-w-0">
+                    <p className="font-semibold [overflow-wrap:anywhere]">{q.prompt}</p>
                     {q.choices ? <p className="text-sm text-text-3">{q.choices.join(', ')}</p> : null}
                   </div>
                 </li>

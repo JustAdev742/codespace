@@ -1,5 +1,5 @@
 import { memo } from 'react';
-import { Globe2, Link2, Lock, type LucideIcon } from 'lucide-react';
+import { Check, Globe2, Link2, Lock, type LucideIcon } from 'lucide-react';
 import { SET_COVER_GLYPHS, SUBJECT_LABELS, SUBJECTS, type Subject, type Visibility } from '@ludora/shared';
 import { Button } from '../../../ui/Button.tsx';
 import { Input, Panel, Select, Textarea } from '../../../ui/primitives.tsx';
@@ -29,8 +29,9 @@ function hueName(hue: number): string {
 }
 
 const HUE_TRACK = `linear-gradient(to right, ${[0, 40, 80, 120, 160, 200, 240, 280, 320, 359].map((h) => `hsl(${h} 65% 52%)`).join(', ')})`;
+/* A white thumb with a soft dark edge, so it stands out against every colour on the track. */
 const THUMB =
-  '[&::-webkit-slider-thumb]:size-6 [&::-webkit-slider-thumb]:cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-ink [&::-webkit-slider-thumb]:bg-white [&::-moz-range-thumb]:size-5 [&::-moz-range-thumb]:cursor-pointer [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border-2 [&::-moz-range-thumb]:border-ink [&::-moz-range-thumb]:bg-white';
+  '[&::-webkit-slider-thumb]:size-6 [&::-webkit-slider-thumb]:cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:shadow-[0_0_0_2px_rgb(6_10_28/0.6),0_2px_6px_rgb(2_5_20/0.35)] [&::-moz-range-thumb]:size-5 [&::-moz-range-thumb]:cursor-pointer [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border-0 [&::-moz-range-thumb]:bg-white [&::-moz-range-thumb]:shadow-[0_0_0_2px_rgb(6_10_28/0.6),0_2px_6px_rgb(2_5_20/0.35)]';
 
 export interface DetailsPanelProps {
   details: SetDetails;
@@ -51,7 +52,7 @@ export const DetailsPanel = memo(function DetailsPanel({ details, errors, canPub
 
   return (
     <Panel className="p-4 sm:p-5" aria-labelledby="set-details-heading">
-      <h2 id="set-details-heading" className="mb-4 font-display text-xl font-bold text-text">
+      <h2 id="set-details-heading" className="mb-4 font-display text-2xl font-bold text-text">
         Set details
       </h2>
       <div className="grid min-w-0 gap-4 md:grid-cols-3">
@@ -109,16 +110,22 @@ export const DetailsPanel = memo(function DetailsPanel({ details, errors, canPub
             const Icon = info.icon;
             const checked = details.visibility === v;
             return (
+              // Chosen: a gold edge (border and ring, so nothing shifts), a gold tint and a tick, as in the host pickers.
               <label
                 key={v}
-                className={`flex min-w-0 cursor-pointer gap-3 rounded-[12px] border-2 p-3 transition-colors has-[:focus-visible]:ring-[3px] has-[:focus-visible]:ring-[var(--focus)] ${checked ? 'border-lantern bg-dusk/15' : 'border-line hover:border-line-strong'}`}
+                className={`relative flex min-w-0 cursor-pointer gap-3 rounded-[var(--radius-m)] border p-3 pr-10 transition-[border-color,background-color,box-shadow] has-[:focus-visible]:ring-[3px] has-[:focus-visible]:ring-[var(--focus)] ${checked ? 'border-lantern bg-lantern/[0.08] ring-1 ring-lantern' : 'border-line hover:border-line-strong hover:bg-surface-2'}`}
               >
                 <input id={domIds.detail(`visibility-${v}`)} type="radio" name="set-visibility" value={v} checked={checked} onChange={() => onChange({ visibility: v })} className="sr-only" />
-                <Icon className={`mt-0.5 size-5 shrink-0 ${checked ? 'text-lantern' : 'text-text-3'}`} aria-hidden />
+                <Icon className="mt-0.5 size-5 shrink-0 text-text-2" aria-hidden />
                 <span className="min-w-0">
                   <span className="block font-semibold text-text">{info.label}</span>
                   <span className="block text-sm text-text-2">{info.help}</span>
                 </span>
+                {checked ? (
+                  <span className="absolute top-2.5 right-2.5 grid size-6 place-items-center rounded-full bg-lantern text-on-accent" aria-hidden>
+                    <Check className="size-3.5" strokeWidth={3} />
+                  </span>
+                ) : null}
               </label>
             );
           })}
@@ -139,7 +146,7 @@ export const DetailsPanel = memo(function DetailsPanel({ details, errors, canPub
               <legend className="mb-1.5 text-sm text-text-2">Picture</legend>
               <div className="flex flex-wrap gap-1.5">
                 {SET_COVER_GLYPHS.map((g) => (
-                  <label key={g} className={`relative cursor-pointer rounded-[16px] border-2 p-0.5 transition-colors has-[:focus-visible]:ring-[3px] has-[:focus-visible]:ring-[var(--focus)] ${cover.glyph === g ? 'border-lantern' : 'border-transparent hover:border-line-strong'}`}>
+                  <label key={g} className={`relative cursor-pointer rounded-[var(--radius-l)] border-2 p-0.5 transition-colors has-[:focus-visible]:ring-[3px] has-[:focus-visible]:ring-[var(--focus)] ${cover.glyph === g ? 'border-lantern' : 'border-transparent hover:border-line-strong'}`}>
                     <input id={domIds.detail(`cover-${g}`)} type="radio" name="set-cover-glyph" value={g} checked={cover.glyph === g} onChange={() => onChange({ cover: { glyph: g, hue: cover.hue } })} className="sr-only" />
                     <SetCover cover={{ glyph: g, hue: cover.hue }} subject="general" size={40} />
                     <span className="sr-only">{GLYPH_LABELS[g]}</span>

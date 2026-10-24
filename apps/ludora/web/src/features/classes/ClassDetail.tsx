@@ -34,7 +34,7 @@ import { ClassAccountGate, ClassPageSkeleton, ConfirmDialog, DueLabel, JoinCode 
  * Play button; never anyone else's results (the API only returns theirs).
  */
 
-const artClass = 'h-14 w-20 shrink-0 overflow-hidden rounded-[10px] border border-line';
+const artClass = 'h-14 w-20 shrink-0 overflow-hidden rounded-[var(--radius-m)]';
 
 /* ------------------------------- Teacher view ------------------------------- */
 
@@ -42,8 +42,8 @@ function JoinCodePanel({ code, onNewCode }: { code: string; onNewCode: () => voi
   return (
     <Panel className="mb-6 flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between">
       <div className="min-w-0">
-        <h2 className="text-sm font-semibold text-text-2">Join code</h2>
-        <JoinCode code={code} className="mt-1 block text-4xl sm:text-5xl" />
+        <h2 className="font-sans text-sm font-semibold text-text-2">Join code</h2>
+        <JoinCode code={code} className="mt-1 block text-[2.75rem] leading-none sm:text-[3.5rem]" />
         <p className="mt-2 text-sm text-text-3">Students choose Join a class on their Classes page and type this code.</p>
       </div>
       <div className="flex flex-wrap gap-2">
@@ -61,12 +61,12 @@ function JoinCodePanel({ code, onNewCode }: { code: string; onNewCode: () => voi
 function TeacherAssignmentRow({ a, classId, now, onEdit, onDelete }: { a: TeacherAssignment; classId: string; now: number; onEdit: () => void; onDelete: () => void }) {
   const info = useModeInfo()(a.modeId, a.variantId);
   return (
-    <li className="relative flex flex-col gap-4 rounded-[var(--radius-m)] border border-line bg-raised p-4 transition-colors hover:border-line-strong md:flex-row md:items-center">
+    <li className="relative flex flex-col gap-4 rounded-[var(--radius-l)] border border-line bg-raised p-4 transition-colors hover:border-line-strong hover:bg-surface-2 md:flex-row md:items-center">
       <div className="flex min-w-0 flex-1 items-start gap-3">
         <ModeArt thumb={info.thumb} className={artClass} />
         <div className="min-w-0 flex-1">
-          <h3 className="font-display text-lg leading-tight font-bold break-words">
-            <Link to={`/classes/${classId}/assignments/${a.id}`} className="text-text no-underline after:absolute after:inset-0 after:rounded-[var(--radius-m)]">
+          <h3 className="font-display text-xl leading-tight font-bold break-words">
+            <Link to={`/classes/${classId}/assignments/${a.id}`} className="text-text no-underline after:absolute after:inset-0 after:rounded-[var(--radius-l)]">
               {a.title}
               <span className="sr-only">, open the report</span>
             </Link>
@@ -81,9 +81,9 @@ function TeacherAssignmentRow({ a, classId, now, onEdit, onDelete }: { a: Teache
       </div>
       <div className="flex items-center gap-3 md:w-80">
         <div className="min-w-0 flex-1">
-          <div className="mb-1 flex justify-between gap-2 text-sm">
+          <div className="mb-1.5 flex items-baseline justify-between gap-2 text-sm">
             <span className="text-text-2">Started</span>
-            <span className="font-semibold text-text tabular">
+            <span className="font-display text-lg leading-none font-bold text-text tabular">
               {a.started} of {a.of}
             </span>
           </div>
@@ -287,7 +287,7 @@ function TeacherView({ data }: { data: TeacherClassDetail }) {
       />
 
       {cls.archived ? (
-        <div className="mb-6 rounded-[var(--radius-m)] border border-line bg-surface-2 px-4 py-3 text-sm text-text-2">
+        <div className="mb-6 rounded-[var(--radius-l)] border border-line bg-surface-2 px-4 py-3 text-sm text-text-2">
           <p className="font-semibold text-text">This class is archived.</p>
           <p>Students cannot join it or play its assignments, and it is not on their list of classes. You can still see its reports. Unarchive it to use it again.</p>
         </div>
@@ -478,7 +478,7 @@ function MyResultText({ mine }: { mine: MyResult | null }) {
   return (
     <div className="text-sm sm:text-right">
       {/* Best right answers and most answered can come from different plays, so only one play shows both. */}
-      <p className="font-semibold text-text">{mine.plays === 1 ? `${mine.bestCorrect} of ${mine.bestAnswered} right` : `Best: ${mine.bestCorrect} right`}</p>
+      <p className="font-display text-xl leading-tight font-bold text-text tabular">{mine.plays === 1 ? `${mine.bestCorrect} of ${mine.bestAnswered} right` : `Best: ${mine.bestCorrect} right`}</p>
       <p className="text-text-3">
         {mine.plays === 1 ? 'Played' : `Played ${mine.plays} times, most recently`} <time dateTime={mine.lastPlayedAt}>{timeAgo(mine.lastPlayedAt)}</time>
       </p>
@@ -490,11 +490,11 @@ function StudentAssignmentRow({ a, now, archived, starting, onPlay }: { a: Stude
   const info = useModeInfo()(a.modeId, a.variantId);
   const label = a.mine ? 'Play again' : 'Play';
   return (
-    <li className="flex flex-col gap-4 rounded-[var(--radius-m)] border border-line bg-raised p-4 sm:flex-row sm:items-center">
+    <li className="flex flex-col gap-4 rounded-[var(--radius-l)] border border-line bg-raised p-4 sm:flex-row sm:items-center">
       <div className="flex min-w-0 flex-1 items-start gap-3">
         <ModeArt thumb={info.thumb} className={artClass} />
         <div className="min-w-0 flex-1">
-          <h3 className="font-display text-lg leading-tight font-bold break-words">{a.title}</h3>
+          <h3 className="font-display text-xl leading-tight font-bold break-words">{a.title}</h3>
           <p className="mt-0.5 text-sm break-words text-text-2">
             {a.setTitle}, {info.title}
           </p>
@@ -554,7 +554,7 @@ function StudentView({ data }: { data: StudentClassDetail }) {
         }
       />
       {cls.archived ? (
-        <div className="mb-6 rounded-[var(--radius-m)] border border-line bg-surface-2 px-4 py-3 text-sm text-text-2">
+        <div className="mb-6 rounded-[var(--radius-l)] border border-line bg-surface-2 px-4 py-3 text-sm text-text-2">
           <p className="font-semibold text-text">This class is archived.</p>
           <p>Its assignments cannot be played right now. Your results so far are kept.</p>
         </div>

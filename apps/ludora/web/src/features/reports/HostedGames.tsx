@@ -27,10 +27,10 @@ interface HostedPage {
 function GameRow({ g }: { g: HostedGame }) {
   return (
     <li>
-      <Link to={`/reports/${g.id}`} className="flex items-center gap-3 rounded-[var(--radius-m)] border border-line bg-raised px-4 py-3 text-text no-underline transition-colors hover:border-line-strong">
+      <Link to={`/reports/${g.id}`} className="flex items-center gap-3 rounded-[var(--radius-l)] border border-line bg-raised px-4 py-3 text-text no-underline transition-colors hover:border-line-strong hover:bg-surface-2">
         <span className="flex min-w-0 flex-1 flex-col gap-1 sm:flex-row sm:items-center sm:gap-4">
           <span className="min-w-0 flex-1">
-            <span className="block font-display text-lg leading-tight font-bold break-words">{g.mode}</span>
+            <span className="block font-display text-xl leading-tight font-bold break-words">{g.mode}</span>
             <span className="block text-sm break-words text-text-2">{g.setTitle}</span>
           </span>
           <span className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-text-2 sm:justify-end">

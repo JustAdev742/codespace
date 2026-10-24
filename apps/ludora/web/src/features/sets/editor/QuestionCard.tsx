@@ -2,9 +2,9 @@ import { memo, useCallback, useState, type Dispatch } from 'react';
 import { ArrowDown, ArrowUp, ChevronDown, Copy, SlidersHorizontal, Trash2 } from 'lucide-react';
 import { DIFFICULTIES, QUESTION_TYPE_LABELS, QUESTION_TYPES, type QuestionType } from '@ludora/shared';
 import { IconButton } from '../../../ui/Button.tsx';
-import { Input, Select, Textarea } from '../../../ui/primitives.tsx';
+import { Badge, Input, Select, Textarea } from '../../../ui/primitives.tsx';
 import { answerSummary, LIMITS, splitTags, type DraftQuestion } from './model.ts';
-import { domIds, EditorField, ERROR_BORDER, ERROR_TEXT, promptLabel, TYPE_ICONS, type TypeEditorProps } from './parts.tsx';
+import { domIds, EditorField, ERROR_BORDER, promptLabel, TYPE_ICONS, type TypeEditorProps } from './parts.tsx';
 import { QuestionImage } from './QuestionImage.tsx';
 import type { EditorAction } from './state.ts';
 import type { FieldErrors } from './validation.ts';
@@ -60,13 +60,13 @@ function MoreOptions({ q, errors, edit }: TypeEditorProps) {
   const summary = optionSummary(q);
   const set = (patch: Partial<DraftQuestion>) => edit((d) => ({ ...d, ...patch }));
   return (
-    <div className="min-w-0 rounded-[12px] border border-line">
+    <div className="min-w-0 rounded-[var(--radius-m)] border border-line">
       <button
         type="button"
         aria-expanded={open}
         aria-controls={open ? panelId : undefined}
         onClick={() => setWanted(!open)}
-        className="flex w-full min-w-0 items-center gap-2 rounded-[12px] px-3 py-2.5 text-left hover:bg-surface-2"
+        className="flex min-h-11 w-full min-w-0 items-center gap-2 rounded-[var(--radius-m)] px-3 py-2.5 text-left hover:bg-surface-2"
       >
         <SlidersHorizontal className="size-4 shrink-0 text-text-3" aria-hidden />
         <span className="shrink-0 font-semibold text-text">More options</span>
@@ -128,7 +128,7 @@ export const QuestionCard = memo(function QuestionCard({ question: q, index, tot
   const summary = open ? '' : answerSummary(q);
 
   return (
-    <li id={domIds.card(q.id)} className={`min-w-0 scroll-mt-24 rounded-[var(--radius-m)] border bg-raised ${problems ? ERROR_BORDER : 'border-line'}`}>
+    <li id={domIds.card(q.id)} className={`min-w-0 scroll-mt-24 rounded-[var(--radius-l)] border bg-raised ${problems ? ERROR_BORDER : 'border-line'}`}>
       <div className="flex flex-wrap items-start gap-x-1 gap-y-0 p-2 sm:gap-x-2 sm:p-3">
         <button
           type="button"
@@ -136,18 +136,16 @@ export const QuestionCard = memo(function QuestionCard({ question: q, index, tot
           aria-expanded={open}
           aria-controls={open ? domIds.panel(q.id) : undefined}
           onClick={() => dispatch({ type: 'toggle', id: q.id })}
-          className="flex min-w-0 grow basis-[12rem] items-start gap-3 rounded-[10px] p-1.5 text-left hover:bg-surface-2"
+          className="flex min-w-0 grow basis-[12rem] items-start gap-3 rounded-[var(--radius-m)] p-1.5 text-left hover:bg-surface-2"
         >
-          <span className="grid size-8 shrink-0 place-items-center rounded-full bg-surface-3 font-display text-sm font-bold text-text tabular">{n}</span>
+          <span className="grid size-8 shrink-0 place-items-center rounded-[var(--radius-s)] bg-surface-3 font-display text-lg leading-none font-bold text-text tabular">{n}</span>
           <span className="min-w-0 flex-1 pt-1">
             <span className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm font-semibold text-text-2">
               <span className="inline-flex items-start gap-1.5">
                 <Icon className="mt-0.5 size-4 shrink-0 text-text-3" aria-hidden />
                 {QUESTION_TYPE_LABELS[q.type]}
               </span>
-              {problems ? (
-                <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-semibold ${ERROR_TEXT} ${ERROR_BORDER}`}>{problems === 1 ? '1 thing to fix' : `${problems} things to fix`}</span>
-              ) : null}
+              {problems ? <Badge tone="coral">{problems === 1 ? '1 thing to fix' : `${problems} things to fix`}</Badge> : null}
             </span>
             {!open ? (
               <>

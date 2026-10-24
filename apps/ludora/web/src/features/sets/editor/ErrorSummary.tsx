@@ -25,7 +25,7 @@ export const ErrorSummary = forwardRef<HTMLDivElement, { items: SummaryItem[]; s
   const title = serverError ? 'The set was not saved' : count === 1 ? 'Fix 1 thing before saving' : `Fix ${count} things before saving`;
   return (
     <div ref={ref} tabIndex={-1} role="alert" aria-labelledby="error-summary-title" className={`rounded-[var(--radius-m)] border-2 bg-raised p-4 focus:outline-none focus-visible:ring-[3px] focus-visible:ring-[var(--focus)] ${ERROR_BORDER}`}>
-      <h2 id="error-summary-title" className={`flex items-center gap-2 font-display text-lg font-bold ${ERROR_TEXT}`}>
+      <h2 id="error-summary-title" className={`flex items-center gap-2 font-display text-xl font-bold ${ERROR_TEXT}`}>
         <CircleAlert className="size-5 shrink-0" aria-hidden />
         {title}
       </h2>
