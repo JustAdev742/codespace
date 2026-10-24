@@ -123,11 +123,12 @@ export default function Reports() {
                   type="button"
                   aria-pressed={active}
                   onClick={() => update({ type: t })}
-                  className={`inline-flex h-8 items-center gap-1.5 rounded-full border px-3 text-sm font-semibold transition-colors ${active ? 'border-lantern bg-surface-2 text-text' : 'border-line text-text-2 hover:bg-surface-2 hover:text-text'}`}
+                  // The chosen filter inverts, like the shared filter chips, so it stands out by lightness and not by its edge colour alone. 44px on phones.
+                  className={`inline-flex h-11 items-center gap-1.5 rounded-full border px-3.5 text-sm font-semibold transition-colors sm:h-9 ${active ? 'chip-on border-transparent' : 'border-line-strong text-text-2 hover:bg-surface-2 hover:text-text'}`}
                 >
                   {t ? TARGET_INFO[t].filter : 'All types'}
                   {status === 'open' && list.data ? (
-                    <span className="rounded-full bg-surface-3 px-1.5 text-xs text-text-3 tabular">
+                    <span className="rounded-full bg-[color-mix(in_oklab,currentColor_14%,transparent)] px-1.5 text-xs tabular">
                       {formatNumber(count)}
                       <span className="sr-only"> open</span>
                     </span>

@@ -102,7 +102,8 @@ export function Segmented<T extends string>({ label, value, onChange, options }:
         {options.map((o) => (
           <label
             key={o.value}
-            className="relative flex min-h-10 cursor-pointer items-center justify-center rounded-[var(--radius-m)] border border-line-strong px-2 py-1 text-center text-sm font-semibold text-text-2 has-[:checked]:border-lantern has-[:checked]:bg-surface-2 has-[:checked]:text-text has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-[var(--focus)]"
+            // The chosen option inverts, like the shared filter chips, so it is told by lightness and not by an edge colour alone.
+            className="relative flex min-h-11 cursor-pointer items-center justify-center rounded-[var(--radius-m)] border border-line-strong px-2 py-1 text-center text-sm font-semibold text-text-2 has-[:checked]:border-transparent has-[:checked]:bg-text has-[:checked]:text-bg has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-[var(--focus)]"
           >
             <input type="radio" name={name} value={o.value} checked={value === o.value} onChange={() => onChange(o.value)} className="sr-only" />
             {o.label}
