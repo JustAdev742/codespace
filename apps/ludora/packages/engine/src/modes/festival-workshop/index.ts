@@ -624,15 +624,15 @@ function startEvent(s: State, ctx: Ctx, c: Config) {
     ev.goods = goods;
     ev.target = paradeTarget(goods, present(s, ctx).length);
     for (const w of Object.values(s.workshops)) w.contribution = 0;
-    ctx.feed(`Parade order! The parade needs ${GOODS_INFO[goods].many}. Make ${fmt(ev.target)} coins' worth together in 30 seconds.`, { tone: 'big' });
+    ctx.feed(`Parade order: the parade needs ${GOODS_INFO[goods].many}. Make ${fmt(ev.target)} coins' worth together in 30 seconds.`, { tone: 'big' });
   } else if (kind === 'swing') {
     s.swingUntil = ev.endsAt;
     s.event = ev;
     reprice(s, ctx, at, c, true);
-    ctx.feed(`Market swing! Prices jump between ×${MARKET.wide.min} and ×${MARKET.wide.max} for 30 seconds.`, { tone: 'big' });
-  } else if (kind === 'rush') ctx.feed('Rush hour! Paydays are doubled for 30 seconds.', { tone: 'big' });
-  else if (kind === 'sparks') ctx.feed('Lucky sparks! Each right answer has a 1 in 4 chance to upgrade a station for free.', { tone: 'big' });
-  else ctx.feed('Glim tea break! Glim Helpers count double for 30 seconds.', { tone: 'big' });
+    ctx.feed(`Market swing: prices jump between ×${MARKET.wide.min} and ×${MARKET.wide.max} for 30 seconds.`, { tone: 'big' });
+  } else if (kind === 'rush') ctx.feed('Rush hour: paydays are doubled for 30 seconds.', { tone: 'big' });
+  else if (kind === 'sparks') ctx.feed('Lucky sparks: each right answer has a 1 in 4 chance to upgrade a station for free.', { tone: 'big' });
+  else ctx.feed('Glim tea break: Glim Helpers count double for 30 seconds.', { tone: 'big' });
   s.event = ev;
   recomputeAll(s, at, c);
   ctx.setTimer('eventEnd', ev.endsAt);
@@ -670,7 +670,7 @@ function finishParade(s: State, ctx: Ctx, ev: FestivalEvent, at: number, c: Conf
   if (reached) for (const [, w] of makers) w.paradeUntil = at + PARADE.boostMs;
   s.parade = { goods, target: ev.target, total: Math.round(total), reached, top, boosted: reached ? makers.length : 0, at };
   const many = GOODS_INFO[goods].many;
-  if (reached) ctx.feed(`The parade got its ${many}! Everyone who made some earns ×${PARADE.boost} income for 30 seconds.`, { tone: 'good' });
+  if (reached) ctx.feed(`The parade got its ${many}. Everyone who made some earns ×${PARADE.boost} income for 30 seconds.`, { tone: 'good' });
   else ctx.feed(`The parade fell short this time: ${fmt(total)} of ${fmt(ev.target)} coins of ${many}.`, { tone: 'info' });
   if (top.length) {
     ctx.feed(`Top ${many} makers: ${listNames(top.map((t) => nameOf(ctx, t.playerId)))}. Each earns ${seconds} seconds of income.`, { tone: 'good' });
@@ -683,7 +683,7 @@ function startFinale(s: State, ctx: Ctx, c: Config) {
   settleAll(s, at, c);
   s.finale = true;
   recomputeAll(s, at, c);
-  ctx.feed(`Grand finale! Fireworks sell at ×${c.finaleDemand} and paydays are 50% bigger.`, { tone: 'big' });
+  ctx.feed(`Grand finale: fireworks sell at ×${c.finaleDemand} and paydays are 50% bigger.`, { tone: 'big' });
   addNews(s, { at, kind: 'finale', who: null, other: null, station: null, level: 0, goods: 'fireworks' });
 }
 
@@ -757,7 +757,7 @@ function playPrank(s: State, ctx: Ctx, pid: PlayerId, targetId: PlayerId, at: nu
     t.lock = false;
     t.pranked = { by: pid, station: kind, slot, until: at, blocked: true, at };
     w.favour = { kind: 'prank', at, amount: 0, target: targetId, station: kind, blocked: true, swapped: false, auto };
-    ctx.feed(`${them}'s lock stopped ${by}'s prank!`, { tone: 'info', ...(to ? { to } : {}) });
+    ctx.feed(`${them}'s lock stopped ${by}'s prank.`, { tone: 'info', ...(to ? { to } : {}) });
     addNews(s, { at, kind: 'blocked', who: targetId, other: pid, station: kind, level: 0, goods: null });
     return;
   }
@@ -767,7 +767,7 @@ function playPrank(s: State, ctx: Ctx, pid: PlayerId, targetId: PlayerId, at: nu
   recompute(t, s, at, c);
   t.pranked = { by: pid, station: kind, slot, until: st.stoppedUntil, blocked: false, at };
   w.favour = { kind: 'prank', at, amount: 0, target: targetId, station: kind, blocked: false, swapped: false, auto };
-  ctx.feed(`${by}'s prank tangled ${them}'s ${STATIONS[kind].name} for ${PRANK_MS / 1000} seconds!`, { tone: 'bad', ...(to ? { to } : {}) });
+  ctx.feed(`${by}'s prank tangled ${them}'s ${STATIONS[kind].name} for ${PRANK_MS / 1000} seconds.`, { tone: 'bad', ...(to ? { to } : {}) });
   addNews(s, { at, kind: 'prank', who: pid, other: targetId, station: kind, level: 0, goods: null });
 }
 
@@ -839,7 +839,7 @@ function checkGoal(s: State, ctx: Ctx, c: Config) {
   if (winner) {
     s.winner = winner.id;
     settleAll(s, now, c);
-    ctx.feed(`${nameOf(ctx, winner.id)}'s workshop reached ${fmt(c.goal)} coins!`, { tone: 'big' });
+    ctx.feed(`${nameOf(ctx, winner.id)}'s workshop reached ${fmt(c.goal)} coins.`, { tone: 'big' });
     ctx.endGame();
     return;
   }
@@ -1101,7 +1101,7 @@ export const festivalWorkshop = defineMode<State, Settings, Action>({
             const st = w.slots[ctx.rng.pick(eligible)]!;
             st.level++;
             recompute(w, s, now, c);
-            parts.push(`Lucky spark! Your ${STATIONS[st.kind].name} went up to level ${st.level}`);
+            parts.push(`Lucky spark: your ${STATIONS[st.kind].name} went up to level ${st.level}`);
             addNews(s, { at: now, kind: 'spark', who: pid, other: null, station: st.kind, level: st.level, goods: null });
           }
         }

@@ -1,10 +1,11 @@
 import { useEffect, useId, useRef, useState, type CSSProperties, type KeyboardEvent, type ReactNode } from 'react';
-import { ArrowDown, ArrowRight, ArrowUp, Coins, Flame, Hammer, Lock, PartyPopper, RefreshCw, Sparkles, Store, Timer, TrendingUp, Zap } from 'lucide-react';
+import { ArrowDown, ArrowDownUp, ArrowRight, ArrowUp, CircleQuestionMark, Clover, Coffee, Coins, Flag, Flame, Hammer, Lock, RefreshCw, Rocket, Store, Timer, TimerOff, Zap, type LucideIcon } from 'lucide-react';
 import type { Answer, GlimArt, LanternArt, RoomPlayerView } from '@ludora/shared';
 import {
   EVENTS,
   EVENT_ORDER,
   FAVOURS,
+  FAVOUR_EVERY,
   FAVOUR_ORDER,
   GOODS,
   GOODS_INFO,
@@ -26,15 +27,15 @@ import type { FeedbackView, QuestionView } from '../game/types.ts';
 import { AnswerInput } from '../game/AnswerInput.tsx';
 import { QuestionCard } from '../game/QuestionCard.tsx';
 import { Countdown } from '../game/TimerBar.tsx';
-import { ResultBanner, RevealAnswer } from '../game/Reveal.tsx';
+import { ResultBanner, RevealAnswer, shortAnswer } from '../game/Reveal.tsx';
 import { RankBadge, TeamScores } from '../game/Leaderboard.tsx';
-import { Explanation } from '../game/parts.tsx';
-import { NIGHT, Pill, PlayerGlim, SIGN, StagePanel, avatarOf, motionOK } from '../game/stage.tsx';
+import { Explanation, ModeTitle } from '../game/parts.tsx';
+import { NIGHT, Pill, PlayerGlim, StagePanel, avatarOf, motionOK } from '../game/stage.tsx';
 import { useAnnounce } from '../game/announce.tsx';
 import { Lantern } from '../../../art/Lantern.tsx';
 import { Glim } from '../../../art/glim/Glim.tsx';
 import { Burst } from '../../../art/bursts.tsx';
-import { Button } from '../../../ui/Button.tsx';
+import { Button, buttonClass } from '../../../ui/Button.tsx';
 import { Dialog } from '../../../ui/primitives.tsx';
 import { useNow } from '../../../lib/useNow.ts';
 import { formatNumber, ordinal, plural } from '../../../lib/format.ts';
@@ -224,7 +225,7 @@ function affordable(you: You, coins: number): number {
 
 /* ---------------------------------- icons ---------------------------------- */
 
-const LANTERN: LanternArt = { hue: 14, accentHue: 40, pattern: 'stars' };
+const LANTERN: LanternArt = { hue: 14, accentHue: 40, pattern: 'flames' };
 const HELPER: GlimArt = { kind: 'glim', body: 'bean', hue: 48, accentHue: 20, saturation: 85, eyes: 'happy', mouth: 'smile', pattern: 'none', topper: 'antenna', cheeks: true };
 
 /** Each kind of goods has its own shape, so none relies on colour. */
@@ -272,13 +273,34 @@ function Arrow({ heading, className = 'size-[1em]' }: { heading: Heading; classN
   return <ArrowRight className={className} strokeWidth={3} aria-hidden />;
 }
 
+/** A station's level as five pips: solid for each level reached, hollow for the rest, so it reads without the colour. */
 function LevelPips({ level, className = '' }: { level: number; className?: string }) {
   return (
-    <span className={`inline-flex items-center gap-0.5 ${className}`} role="img" aria-label={`Level ${level} of ${MAX_LEVEL}`}>
+    <span className={`inline-flex items-center gap-1 ${className}`} role="img" aria-label={`Level ${level} of ${MAX_LEVEL}`}>
       {Array.from({ length: MAX_LEVEL }, (_, i) => (
-        <span key={i} className={`size-2 rounded-full border border-ink ${i < level ? 'bg-lantern' : 'bg-white/20'}`} />
+        <span key={i} className={`size-2 rounded-full ${i < level ? 'bg-lantern' : 'ring-[1.5px] ring-white/35 ring-inset'}`} />
       ))}
     </span>
+  );
+}
+
+/**
+ * A moment for this player or the room, as a solid banner in the accent of its news: an icon disc,
+ * a short title and what it means. `children` sit at the end (a gain plate, a countdown).
+ */
+function NewsBanner({ tone, icon: Icon, title, children, detail }: { tone: 'glim' | 'lantern' | 'ember' | 'sky' | 'dusk'; icon: LucideIcon; title: ReactNode; detail?: ReactNode; children?: ReactNode }) {
+  const bg = { glim: 'bg-glim', lantern: 'bg-lantern', ember: 'bg-ember', sky: 'bg-sky', dusk: 'bg-dusk' }[tone];
+  return (
+    <div className={`lift flex items-center gap-3 rounded-[var(--radius-l)] px-4 py-3 text-on-accent ${bg}`} style={{ animation: 'pop-in 200ms var(--ease-out)' }}>
+      <span className="grid size-10 shrink-0 place-items-center rounded-full bg-ink/85 text-white" aria-hidden>
+        <Icon className="size-6" />
+      </span>
+      <div className="min-w-0 flex-1">
+        <p className="font-display text-[1.75rem] leading-tight font-extrabold italic">{title}</p>
+        {detail ? <p className="leading-snug font-semibold">{detail}</p> : null}
+      </div>
+      {children}
+    </div>
   );
 }
 
@@ -328,6 +350,10 @@ function shiftHint(m: Market): string {
   return parts.length ? parts.join(', ') : 'prices look steady';
 }
 
+/** How a price stands: in demand (mint), cheap (coral) or in between. The number and the words say it too. */
+const priceTone = (p: number) => (p >= 1.3 ? 'text-glim' : p <= 0.7 ? 'text-ember' : 'text-text');
+const priceWash = (p: number) => (p >= 1.3 ? 'bg-glim/[0.14]' : p <= 0.7 ? 'bg-ember/[0.14]' : 'bg-white/[0.07]');
+
 /** The four prices in one line, for the phone's header. */
 function MarketStrip({ market, gameNow }: { market: Market; gameNow: () => number }) {
   useNow(1000, market.shiftAt !== null);
@@ -339,9 +365,9 @@ function MarketStrip({ market, gameNow }: { market: Market; gameNow: () => numbe
           const p = market.demand[g];
           const next = soon ? market.heading[g] : trendOf(market, g);
           return (
-            <li key={g} className={`flex min-w-0 items-center justify-center gap-0.5 rounded-[10px] border px-1 py-0.5 ${p >= 1.3 ? 'border-glim' : p <= 0.7 ? 'border-ember' : 'border-white/20'}`}>
+            <li key={g} className={`flex min-w-0 items-center justify-center gap-0.5 rounded-[var(--radius-m)] px-1 py-1 ${priceWash(p)} ${priceTone(p)}`}>
               <GoodsIcon goods={g} size={18} />
-              <span className="font-display text-sm font-extrabold tabular">{price(p)}</span>
+              <span className="font-display text-[0.95rem] leading-none font-extrabold tabular">{price(p)}</span>
               <Arrow heading={next} className={`size-3.5 shrink-0 ${soon ? 'opacity-70' : ''}`} />
               <span className="sr-only">
                 {GOODS_INFO[g].label} {price(p)}, {soon ? `heading ${next}` : next === 'steady' ? 'steady' : `${next} since the last shift`}.
@@ -368,7 +394,7 @@ function MarketPanel({ market, finale, gameNow }: { market: Market; finale: Fest
   return (
     <StagePanel as="section" className="flex flex-col gap-2 p-3" label="Market">
       <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
-        <h3 className="flex items-center gap-1.5 font-display text-lg font-extrabold">
+        <h3 className="flex items-center gap-1.5 font-display text-xl font-extrabold">
           <Store className="size-5" aria-hidden /> Class market
         </h3>
         <span className={`text-sm font-bold ${soon ? 'text-lantern' : 'text-text-2'}`}>
@@ -382,10 +408,10 @@ function MarketPanel({ market, finale, gameNow }: { market: Market; finale: Fest
           const t = trendOf(market, g);
           const fixed = finale.on && g === 'fireworks';
           return (
-            <li key={g} className="flex items-center gap-2 rounded-[14px] border border-white/15 px-2 py-1.5">
+            <li key={g} className={`flex items-center gap-2 rounded-[var(--radius-m)] px-2 py-1.5 ${NIGHT}`}>
               <GoodsIcon goods={g} size={30} />
               <div className="min-w-0">
-                <div className="flex items-center gap-1 font-display text-lg leading-tight font-extrabold tabular">
+                <div className={`flex items-center gap-1 font-display text-xl leading-tight font-extrabold tabular ${priceTone(p)}`}>
                   {price(p)} <Arrow heading={soon ? market.heading[g] : t} className="size-4" />
                 </div>
                 <div className="text-xs leading-snug font-semibold text-text-2">
@@ -409,8 +435,8 @@ function MarketPanel({ market, finale, gameNow }: { market: Market; finale: Fest
 /* --------------------------------- events ---------------------------------- */
 
 function eventTitle(ev: FestivalEventView): string {
-  if (ev.kind === 'parade' && ev.goods) return `The parade needs ${GOODS_INFO[ev.goods].many}!`;
-  return `${EVENTS[ev.kind].title}!`;
+  if (ev.kind === 'parade' && ev.goods) return `The parade needs ${GOODS_INFO[ev.goods].many}`;
+  return EVENTS[ev.kind].title;
 }
 
 function eventText(ev: FestivalEventView): string {
@@ -418,12 +444,13 @@ function eventText(ev: FestivalEventView): string {
   return EVENTS[ev.kind].text;
 }
 
+const EVENT_ICON: Record<EventKind, LucideIcon> = { parade: Flag, rush: Zap, sparks: Clover, swing: ArrowDownUp, tea: Coffee };
+/** Each event's banner colour on the big screen; ink text passes AA on every one. */
+const EVENT_TONE: Record<EventKind, 'glim' | 'lantern' | 'sky' | 'dusk'> = { parade: 'glim', rush: 'lantern', sparks: 'lantern', swing: 'sky', tea: 'dusk' };
+
 function EventIcon({ kind, className = 'size-[1.1em]' }: { kind: EventKind; className?: string }) {
-  if (kind === 'parade') return <PartyPopper className={className} aria-hidden />;
-  if (kind === 'rush') return <Zap className={className} aria-hidden />;
-  if (kind === 'sparks') return <Sparkles className={className} aria-hidden />;
-  if (kind === 'swing') return <TrendingUp className={className} aria-hidden />;
-  return <Flame className={className} aria-hidden />;
+  const Icon = EVENT_ICON[kind];
+  return <Icon className={className} aria-hidden />;
 }
 
 /** The event now (or the next one, or the finale) as one chip for the phone's header. */
@@ -432,7 +459,7 @@ function EventChip({ view, gameNow }: { view: FestivalWorkshopView; gameNow: () 
   if (view.finale.on) {
     return (
       <Pill tone="lantern" className="max-w-full px-2! py-0.5! text-xs">
-        <Sparkles className="size-3.5" aria-hidden /> Finale: fireworks {price(view.finale.demand)}
+        <Rocket className="size-3.5" aria-hidden /> Finale: fireworks {price(view.finale.demand)}
       </Pill>
     );
   }
@@ -467,19 +494,23 @@ function StationCard({ st, slot, coins, gameNow, busy, paused, full, onUpgrade, 
   const up = st.upgrade;
   const short = up ? Math.ceil(up.cost - coins) : 0;
   return (
-    <li className={`flex min-w-0 flex-col gap-1.5 rounded-[18px] border-2 p-2.5 ${stopped ? 'border-dashed border-ember' : 'border-white/15'} ${NIGHT}`} aria-label={`Slot ${slot + 1}: ${info.name}, level ${st.level}`}>
+    // A tangled station gets a coral edge and says so in words, with its countdown.
+    <li className={`flex min-w-0 flex-col gap-1.5 rounded-[var(--radius-l)] p-2.5 ${stopped ? 'bg-ember/[0.1] ring-2 ring-ember ring-inset' : NIGHT}`} aria-label={`Slot ${slot + 1}: ${info.name}, level ${st.level}`}>
       <div className="flex items-center gap-2">
         <span className={stopped ? 'opacity-50 grayscale' : ''}>
           <StationIcon kind={st.kind} size={32} />
         </span>
         <div className="min-w-0 flex-1">
-          <div className="truncate font-display text-base leading-tight font-extrabold">{info.name}</div>
+          <div className="truncate font-display text-lg leading-tight font-bold">{info.name}</div>
           <LevelPips level={st.level} />
         </div>
       </div>
       {stopped ? (
         <p className="text-sm leading-snug font-bold text-text">
-          Tangled{st.stoppedBy ? ` by ${st.stoppedBy}` : ''}: back in <Countdown until={st.stoppedUntil} gameNow={gameNow} label="Back in" />
+          <span className="mr-1 inline-flex items-center gap-1 rounded-full bg-ember px-2 py-0.5 align-[1px] text-xs text-on-accent">
+            <TimerOff className="size-3.5" aria-hidden /> Tangled
+          </span>
+          {st.stoppedBy ? `by ${st.stoppedBy}` : ''}: back in <Countdown until={st.stoppedUntil} gameNow={gameNow} label="Back in" />
         </p>
       ) : (
         <p className="text-sm leading-snug font-semibold text-text-2">
@@ -507,7 +538,7 @@ function StationCard({ st, slot, coins, gameNow, busy, paused, full, onUpgrade, 
             </span>
           </Button>
         ) : (
-          <span className="flex h-11 items-center justify-center rounded-[12px] border border-white/15 text-sm font-bold text-text-2">Top level</span>
+          <span className="flex h-11 items-center justify-center rounded-[var(--radius-m)] bg-white/[0.06] text-sm font-bold text-text-2">Top level</span>
         )}
         {full ? (
           <Button variant="secondary" size="sm" className="h-11 w-full px-2" icon={<RefreshCw className="size-4" aria-hidden />} disabled={busy || paused} onClick={onReplace}>
@@ -521,7 +552,8 @@ function StationCard({ st, slot, coins, gameNow, busy, paused, full, onUpgrade, 
 
 function EmptySlot({ slot, cheapest, coins, onBuild, disabled }: { slot: number; cheapest: number; coins: number; onBuild: () => void; disabled: boolean }) {
   return (
-    <li className="flex min-h-[8.5rem] flex-col items-center justify-center gap-2 rounded-[18px] border-2 border-dashed border-white/30 p-2.5 text-center">
+    // An empty slot is hollow: the same shape as a station, with nothing in it.
+    <li className="flex min-h-[8.5rem] flex-col items-center justify-center gap-2 rounded-[var(--radius-l)] p-2.5 text-center ring-2 ring-white/15 ring-inset">
       <span className="text-sm font-bold text-text-2">Slot {slot + 1} is free</span>
       <Button variant={coins >= cheapest ? 'success' : 'secondary'} size="sm" className="h-11 px-4" icon={<Hammer className="size-4" aria-hidden />} disabled={disabled} onClick={onBuild} aria-label={`Build in slot ${slot + 1}`}>
         Build
@@ -551,10 +583,10 @@ function BuildSheet({ you, slot, replace, coins, market, finale, onClose, onBuil
           const goods = info.goods;
           const p = goods ? (finale.on && goods === 'fireworks' ? finale.demand : market.demand[goods]) : null;
           return (
-            <li key={k} className="flex items-center gap-3 rounded-[14px] border border-line px-3 py-2">
+            <li key={k} className="flex items-center gap-3 rounded-[var(--radius-m)] border border-line px-3 py-2">
               <StationIcon kind={k} size={34} />
               <div className="min-w-0 flex-1">
-                <div className="font-display text-base leading-tight font-extrabold">{info.name}</div>
+                <div className="font-display text-lg leading-tight font-bold">{info.name}</div>
                 <div className="text-sm leading-snug text-text-2">
                   {goods ? (
                     <>
@@ -588,8 +620,8 @@ function OddsInfo({ view }: { view: FestivalWorkshopView }) {
   const deck = FAVOUR_ORDER.filter((k) => view.pranks || (k !== 'prank' && k !== 'lock'));
   const chances = offerChances(deck);
   return (
-    <details className={`rounded-[18px] border border-white/15 px-3 py-2 ${NIGHT}`}>
-      <summary className="cursor-pointer py-1 font-display text-base font-extrabold">How the festival works, with the odds</summary>
+    <details className={`rounded-[var(--radius-l)] border border-white/10 px-3 py-1 ${NIGHT}`}>
+      <summary className="min-h-11 cursor-pointer content-center py-2 font-bold">How the festival works, with the odds</summary>
       <div className="flex flex-col gap-2 pb-1 text-sm leading-snug font-semibold text-text-2">
         <p>
           <span className="font-bold text-text">Paydays:</span> a right answer pays 8 seconds of your income (at least 10 coins), up to 50% more on a streak.
@@ -628,38 +660,50 @@ function OddsInfo({ view }: { view: FestivalWorkshopView }) {
 
 /* --------------------------------- favours --------------------------------- */
 
+const FAVOUR_ICON: Record<FavourKind, LucideIcon> = { overtime: Timer, tipJar: Coins, prank: TimerOff, lock: Lock };
+
+/** How far to the next Festival Favour: a pip for each right answer it takes, solid once answered, and the count in words. */
+function FavourProgress({ toGo }: { toGo: number }) {
+  const done = Math.max(0, FAVOUR_EVERY - toGo);
+  return (
+    <p className="flex items-center justify-center gap-2 text-sm font-semibold text-text-2">
+      <span className="inline-flex shrink-0 gap-1" aria-hidden>
+        {Array.from({ length: FAVOUR_EVERY }, (_, i) => (
+          <span key={i} className={`size-2.5 rounded-full ${i < done ? 'bg-lantern' : 'ring-[1.5px] ring-white/35 ring-inset'}`} />
+        ))}
+      </span>
+      <span>{toGo === 1 ? 'Your next right answer earns a Festival Favour.' : `${toGo} more right answers to a Festival Favour.`}</span>
+    </p>
+  );
+}
+
 function FavourIcon({ kind, className = 'size-6' }: { kind: FavourKind; className?: string }) {
-  if (kind === 'overtime') return <Timer className={className} aria-hidden />;
-  if (kind === 'tipJar') return <Coins className={className} aria-hidden />;
-  if (kind === 'prank') return <Sparkles className={className} aria-hidden />;
-  return <Lock className={className} aria-hidden />;
+  const Icon = FAVOUR_ICON[kind];
+  return <Icon className={className} aria-hidden />;
 }
 
 function FavourOffer({ offer, gameNow, busy, onPick }: { offer: NonNullable<You['offer']>; gameNow: () => number; busy: boolean; onPick: (card: FavourKind, target?: string) => void }) {
   const [choosing, setChoosing] = useState(offer.prank);
   const chances = offerChances(offer.deck);
   const other = offer.cards.find((c) => c !== 'prank');
-  useAnnounce(`Festival Favour! Pick ${offer.cards.map((c) => FAVOURS[c].title).join(' or ')}.`, offer.until);
+  useAnnounce(`Festival Favour. Pick ${offer.cards.map((c) => FAVOURS[c].title).join(' or ')}.`, offer.until);
   if (choosing) {
     return (
       <StagePanel as="section" className="flex flex-col gap-2.5 p-3" label="Prank: pick a player">
         <div className="flex flex-wrap items-baseline justify-between gap-2">
-          <h3 className="font-display text-xl font-extrabold">Who gets the prank?</h3>
+          <h3 className="flex items-center gap-2 font-display text-2xl font-extrabold">
+            <TimerOff className="size-6 text-ember" aria-hidden /> Who gets the prank?
+          </h3>
           <span className="text-sm font-bold text-text-2">
             Closes in <Countdown until={offer.until} gameNow={gameNow} label="Closes in" />
           </span>
         </div>
         <p className="text-sm font-semibold text-text-2">Their best station stops for {PRANK_MS / 1000} seconds. A lock blocks it. If you do not pick, it goes to the biggest takings.</p>
-        <ul className="flex max-h-[45dvh] flex-col gap-1.5 overflow-y-auto">
+        <ul className="flex max-h-[45dvh] flex-col gap-1.5 overflow-y-auto p-0.5">
           {offer.targets.map((t) => (
             <li key={t.playerId}>
-              <button
-                type="button"
-                disabled={busy}
-                onClick={() => onPick('prank', t.playerId)}
-                className="flex min-h-12 w-full items-center gap-2 rounded-[14px] border-2 border-white/20 px-3 py-1.5 text-left hover:border-lantern focus-visible:border-lantern disabled:opacity-55"
-              >
-                <span className="w-9 shrink-0 font-display font-extrabold tabular">{ordinal(t.rank)}</span>
+              <button type="button" disabled={busy} onClick={() => onPick('prank', t.playerId)} className={buttonClass('secondary', 'lg', 'h-auto! min-h-12 w-full justify-start! gap-2! px-3! py-1.5! text-left')}>
+                <span className="w-9 shrink-0 font-display text-lg font-extrabold tabular">{ordinal(t.rank)}</span>
                 <span className="min-w-0 flex-1">
                   <span className="block truncate font-bold">{t.name}</span>
                   <span className="block truncate text-xs font-semibold text-text-2">
@@ -685,8 +729,11 @@ function FavourOffer({ offer, gameNow, busy, onPick }: { offer: NonNullable<You[
   }
   return (
     <StagePanel as="section" className="flex flex-col gap-2.5 p-3" label="Festival Favour">
-      <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <h3 className={`font-display text-2xl font-extrabold ${SIGN}`}>Festival Favour!</h3>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        {/* The reward of this screen, on the gold plate. */}
+        <h3 className="plate plate-gold text-2xl">
+          <span>Festival Favour</span>
+        </h3>
         <span className="text-sm font-bold text-text-2">
           Pick one · <Countdown until={offer.until} gameNow={gameNow} label="Closes in" />
         </span>
@@ -703,10 +750,11 @@ function FavourOffer({ offer, gameNow, busy, onPick }: { offer: NonNullable<You[
                 onPick('prank');
               } else onPick(card);
             }}
-            className="paper stage-card flex min-h-[9.5rem] flex-col items-start gap-1.5 p-3 text-left transition-transform active:translate-y-0.5 disabled:opacity-60"
-            style={motionOK() ? { animation: 'pop-in 280ms var(--ease-spring) both' } : undefined}
+            // A favour is a card you press: white, with the pieces' bottom edge.
+            className="paper piece flex min-h-[9.5rem] flex-col items-start gap-1.5 rounded-[var(--radius-l)] p-3 text-left [--press:5px] disabled:opacity-60"
+            style={{ animation: 'pop-in 200ms var(--ease-out) both' }}
           >
-            <span className="flex items-center gap-1.5 font-display text-lg leading-tight font-extrabold">
+            <span className="flex items-center gap-1.5 font-display text-[1.4rem] leading-tight font-extrabold">
               <FavourIcon kind={card} className="size-5" /> {FAVOURS[card].title}
             </span>
             <span className="text-sm leading-snug font-semibold">{FAVOURS[card].text}</span>
@@ -732,52 +780,69 @@ function Notices({ you, gameNow, view }: { you: You; gameNow: () => number; view
   const b = you.bonus;
   const freshBonus = useFresh(b?.at, gameNow, 6000);
 
-  let favourText: string | null = null;
+  // Each notice is a title, what it means and any coins it brought; screen readers hear them as one sentence.
+  type Notice = { title: string; detail: string; gain: number };
+  let favour: Notice | null = null;
   if (f && freshFavour) {
-    if (f.kind === 'overtime') favourText = 'Overtime! Your income is ×1.5 for 30 seconds.';
-    else if (f.kind === 'tipJar') favourText = f.swapped ? `Nobody could be pranked, so you got a tip jar: +${formatNumber(f.amount)} coins.` : `Tip jar: +${formatNumber(f.amount)} coins.`;
-    else if (f.kind === 'lock') favourText = f.swapped ? `You already had a lock: +${SECOND_LOCK_COINS} coins instead.` : 'Lock ready: it blocks the next prank on you.';
-    else if (f.blocked) favourText = `${f.target}'s lock stopped your prank.`;
-    else favourText = `Your prank tangled ${f.target}'s ${f.station ? STATIONS[f.station].name : 'station'} for ${PRANK_MS / 1000} seconds!`;
+    if (f.kind === 'overtime') favour = { title: 'Overtime', detail: 'Your income is ×1.5 for 30 seconds.', gain: 0 };
+    else if (f.kind === 'tipJar') favour = { title: 'Tip jar', detail: f.swapped ? 'Nobody could be pranked, so you got a tip jar instead.' : 'A quarter of your coins on top, at least 30.', gain: f.amount };
+    else if (f.kind === 'lock') favour = f.swapped ? { title: 'Second lock', detail: 'You already had a lock, so you get coins instead.', gain: SECOND_LOCK_COINS } : { title: 'Lock ready', detail: 'It blocks the next prank on you.', gain: 0 };
+    else if (f.blocked) favour = { title: 'Prank blocked', detail: `${f.target}'s lock stopped your prank.`, gain: 0 };
+    else favour = { title: 'Prank landed', detail: `Your prank tangled ${f.target}'s ${f.station ? STATIONS[f.station].name : 'station'} for ${PRANK_MS / 1000} seconds.`, gain: 0 };
   }
-  const prankText = pr && stopped ? `${pr.by} tangled your ${STATIONS[pr.station].name}` : pr && freshBlock ? `Your lock stopped ${pr.by}'s prank!` : null;
-  const bonusText = b && freshBonus ? `Parade bonus: +${formatNumber(b.amount)} coins for the ${ordinal(b.place)} most ${view.parade ? GOODS_INFO[view.parade.goods].many : 'goods'}.` : null;
+  const prank: Notice | null = pr && stopped ? { title: 'Tangled', detail: `${pr.by} tangled your ${STATIONS[pr.station].name}.`, gain: 0 } : pr && freshBlock ? { title: 'Lock held', detail: `Your lock stopped ${pr.by}'s prank.`, gain: 0 } : null;
+  const goods = view.parade ? GOODS_INFO[view.parade.goods].many : 'goods';
+  const bonus: Notice | null = b && freshBonus ? { title: 'Parade bonus', detail: b.place === 1 ? `You made the most ${goods}.` : `You made the ${ordinal(b.place)} most ${goods}.`, gain: b.amount } : null;
+  const said = (n: Notice | null) => (n ? `${n.title}${n.gain ? `: +${formatNumber(n.gain)} coins` : ''}. ${n.detail}` : null);
 
-  useAnnounce(favourText, f?.at ?? null);
-  useAnnounce(prankText, pr?.at ?? null);
-  useAnnounce(bonusText, b?.at ?? null);
+  useAnnounce(said(favour), f?.at ?? null);
+  useAnnounce(said(prank), pr?.at ?? null);
+  useAnnounce(said(bonus), b?.at ?? null);
   const favourSound = f ? (f.kind === 'overtime' ? 'powerUp' : f.kind === 'tipJar' ? 'coin' : f.kind === 'lock' ? 'shield' : f.blocked ? 'bust' : 'steal') : 'coin';
-  useSfx(favourSound, f?.at ?? null, mine && Boolean(favourText));
-  useSfx(pr?.blocked ? 'shield' : 'stolen', pr?.at ?? null, mine && Boolean(prankText));
-  useSfx('jackpot', b?.at ?? null, mine && Boolean(bonusText));
+  useSfx(favourSound, f?.at ?? null, mine && Boolean(favour));
+  useSfx(pr?.blocked ? 'shield' : 'stolen', pr?.at ?? null, mine && Boolean(prank));
+  useSfx('jackpot', b?.at ?? null, mine && Boolean(bonus));
 
-  if (!favourText && !prankText && !bonusText) return null;
+  if (!favour && !prank && !bonus) return null;
+  // Coins gained sit on a plain plate at the end of the banner: the number is the hero.
+  const gain = (n: number) =>
+    n > 0 ? (
+      <span className="plate shrink-0 text-[1.6rem] tabular">
+        <span>
+          +{formatNumber(n)}
+          <span className="sr-only"> coins</span>
+        </span>
+      </span>
+    ) : null;
   return (
     <div className="flex flex-col gap-2">
-      {prankText ? (
-        <div className={`flex items-center gap-3 rounded-[18px] border-2 px-3 py-2.5 font-bold ${NIGHT} ${pr?.blocked ? 'border-glim' : 'border-ember'}`}>
-          {pr?.blocked ? <Lock className="size-6 shrink-0 text-glim" aria-hidden /> : <Sparkles className="size-6 shrink-0 text-ember" aria-hidden />}
-          <span>
-            {prankText}
-            {stopped && pr ? (
-              <>
-                : back in <Countdown until={pr.until} gameNow={gameNow} label="Back in" />
-              </>
-            ) : null}
-          </span>
-        </div>
+      {prank ? (
+        <NewsBanner
+          tone={pr?.blocked ? 'glim' : 'ember'}
+          icon={pr?.blocked ? Lock : TimerOff}
+          title={prank.title}
+          detail={
+            <>
+              {prank.detail}
+              {stopped && pr ? (
+                <>
+                  {' '}
+                  Back in <Countdown until={pr.until} gameNow={gameNow} label="Back in" />
+                </>
+              ) : null}
+            </>
+          }
+        />
       ) : null}
-      {favourText ? (
-        <div className={`flex items-center gap-3 rounded-[18px] border-2 border-lantern px-3 py-2.5 font-bold ${NIGHT}`} style={motionOK() ? { animation: 'rise-fade 240ms var(--ease-out)' } : undefined}>
-          {f ? <FavourIcon kind={f.kind} className="size-6 shrink-0 text-lantern" /> : null}
-          <span>{favourText}</span>
-        </div>
+      {favour && f ? (
+        <NewsBanner tone={f.kind === 'prank' && f.blocked ? 'sky' : 'lantern'} icon={FAVOUR_ICON[f.kind]} title={favour.title} detail={favour.detail}>
+          {gain(favour.gain)}
+        </NewsBanner>
       ) : null}
-      {bonusText ? (
-        <div className={`flex items-center gap-3 rounded-[18px] border-2 border-glim px-3 py-2.5 font-bold ${NIGHT}`}>
-          <PartyPopper className="size-6 shrink-0 text-glim" aria-hidden />
-          <span>{bonusText}</span>
-        </div>
+      {bonus ? (
+        <NewsBanner tone="glim" icon={Flag} title={bonus.title} detail={bonus.detail}>
+          {gain(bonus.gain)}
+        </NewsBanner>
       ) : null}
     </div>
   );
@@ -794,10 +859,10 @@ function useRoomMoments(view: FestivalWorkshopView, gameNow: () => number) {
   const p = view.parade;
   const best = [...GOODS].sort((a, b) => m.demand[b] - m.demand[a])[0]!;
   const fresh = (at: number | null | undefined) => at !== null && at !== undefined && gameNow() - at < 3000;
-  useAnnounce(ev ? `${eventTitle(ev)} ${eventText(ev)}` : null, ev?.seq ?? null);
+  useAnnounce(ev ? `${eventTitle(ev)}. ${eventText(ev)}` : null, ev?.seq ?? null);
   useAnnounce(m.shifts > 0 ? `The market shifted. ${priceWords(best, m.demand[best])}.` : null, m.shifts);
-  useAnnounce(p ? (p.reached ? `The parade got its ${GOODS_INFO[p.goods].many}!` : 'The parade fell short this time.') : null, p?.at ?? null);
-  useAnnounce(view.finale.on ? `Grand finale! Fireworks sell at ${price(view.finale.demand)} and paydays are 50% bigger.` : null, view.finale.on);
+  useAnnounce(p ? (p.reached ? `The parade got its ${GOODS_INFO[p.goods].many}.` : 'The parade fell short this time.') : null, p?.at ?? null);
+  useAnnounce(view.finale.on ? `Grand finale. Fireworks sell at ${price(view.finale.demand)} and paydays are 50% bigger.` : null, view.finale.on);
   useSfx('event', ev?.seq ?? null, shared && fresh(ev?.startedAt));
   useSfx('swap', m.shifts, shared && m.shifts > 0 && fresh(m.lastShiftAt));
   useSfx('win', p?.at ?? null, shared && Boolean(p?.reached) && fresh(p?.at));
@@ -873,13 +938,14 @@ export function FestivalWorkshopPlayer({ view, act, gameNow, paused }: ModeScree
       {/* Takings, coins, income, rank, the event and the market in one compact panel, so the question stays above the fold. */}
       <StagePanel as="section" className="flex flex-col gap-1.5 px-2.5 py-2 sm:gap-2 sm:p-3.5" label="Your workshop">
         <div className="flex items-center justify-between gap-2">
-          <div className="relative min-w-0">
-            <span className="font-display text-[1.6rem] leading-none font-extrabold tabular sm:text-3xl">{formatNumber(Math.floor(money.takings))}</span>
-            <span className="ml-1.5 text-sm font-bold text-text-2">taken</span>
-            {you.rank && view.players > 1 ? <span className="ml-2 font-display text-base font-extrabold text-text-2">{ordinal(you.rank)}</span> : null}
+          <div className="relative flex min-w-0 items-baseline gap-1.5 leading-none">
+            <span className="font-display text-[1.75rem] font-extrabold tabular sm:text-[2rem]">{formatNumber(Math.floor(money.takings))}</span>
+            <span className="text-sm font-bold text-text-2">taken</span>
+            {you.rank && view.players > 1 ? <span className="ml-1 font-bold text-text-2 tabular">{ordinal(you.rank)}</span> : null}
             {freshPay && you.payday ? (
-              <span key={you.payday.at} className="pointer-events-none absolute -top-2 left-0 font-display text-lg font-extrabold whitespace-nowrap text-glim" style={motionOK() ? { animation: 'reaction-float 2.4s var(--ease-out) forwards' } : undefined} aria-hidden>
-                +{formatNumber(you.payday.amount)}
+              // A payday lands on a mint plate: the moment of this screen.
+              <span key={you.payday.at} className="plate pointer-events-none absolute -top-2 left-0 bg-glim text-lg whitespace-nowrap text-on-accent" style={{ animation: 'reaction-float 1.8s var(--ease-out) forwards' }} aria-hidden>
+                <span>+{formatNumber(you.payday.amount)}</span>
               </span>
             ) : null}
           </div>
@@ -919,7 +985,8 @@ export function FestivalWorkshopPlayer({ view, act, gameNow, paused }: ModeScree
         <MarketStrip market={view.market} gameNow={gameNow} />
       </StagePanel>
 
-      <div role="tablist" aria-label="Your screen" className="grid grid-cols-2 gap-2">
+      {/* Two tabs in a groove; the open one is lifted out of it in white, not only coloured. */}
+      <div role="tablist" aria-label="Your screen" className={`grid grid-cols-2 gap-1 rounded-[var(--radius-l)] p-1 ${NIGHT}`}>
         {tabs.map((t) => {
           const on = tab === t.id;
           return (
@@ -933,12 +1000,12 @@ export function FestivalWorkshopPlayer({ view, act, gameNow, paused }: ModeScree
               tabIndex={on ? 0 : -1}
               onKeyDown={onTabKey}
               onClick={() => setTab(t.id)}
-              className={`relative flex h-11 items-center justify-center gap-2 rounded-full border-2 font-display text-base font-extrabold transition-colors ${on ? 'border-ink bg-lantern text-on-accent shadow-[0_3px_0_var(--ink)]' : 'border-white/25 text-text hover:border-white/50'}`}
+              className={`relative flex min-h-11 items-center justify-center gap-2 rounded-[var(--radius-m)] font-bold transition-colors ${on ? 'chip-on shadow-[0_2px_6px_rgb(2_5_20/0.35)]' : 'text-text-2 hover:bg-white/[0.06] hover:text-text'}`}
             >
-              {t.id === 'questions' ? <Sparkles className="size-4" aria-hidden /> : <Hammer className="size-4" aria-hidden />}
+              {t.id === 'questions' ? <CircleQuestionMark className="size-4" aria-hidden /> : <Hammer className="size-4" aria-hidden />}
               {t.label}
               {t.id === 'workshop' && canBuy > 0 && !on ? (
-                <span className="rounded-full border-2 border-ink bg-glim px-1.5 text-xs leading-tight text-on-accent">
+                <span className="rounded-full bg-glim px-1.5 font-display text-sm leading-tight font-extrabold text-on-accent tabular">
                   {canBuy}
                   <span className="sr-only"> {canBuy === 1 ? 'thing' : 'things'} you can buy</span>
                 </span>
@@ -961,10 +1028,10 @@ export function FestivalWorkshopPlayer({ view, act, gameNow, paused }: ModeScree
           <FavourOffer key={you.offer.until} offer={you.offer} gameNow={gameNow} busy={busy || paused} onPick={(card, target) => void send({ type: 'favour', card, ...(target ? { target } : {}) })} />
         ) : flow.feedback ? (
           <div className="flex flex-col gap-3">
-            <ResultBanner key={flow.feedback.iid} correct={flow.feedback.correct} partial={flow.feedback.partial} text={flow.feedback.text} />
+            <ResultBanner key={flow.feedback.iid} correct={flow.feedback.correct} partial={flow.feedback.partial} text={flow.feedback.text} answer={flow.answered ? shortAnswer(flow.answered.q, flow.feedback.reveal) : null} />
             {!flow.feedback.correct && flow.answered ? <RevealAnswer q={flow.answered.q} reveal={flow.feedback.reveal} compact /> : null}
             {!flow.feedback.correct ? <Explanation text={flow.feedback.explanation} /> : null}
-            <button type="button" onClick={flow.dismiss} className="min-h-11 self-center rounded-[12px] px-4 py-2 font-bold text-text-2 hover:bg-white/10">
+            <button type="button" onClick={flow.dismiss} className="min-h-11 self-center rounded-[var(--radius-m)] px-4 py-2 font-bold text-text-2 hover:bg-white/10">
               Next question
             </button>
           </div>
@@ -972,7 +1039,7 @@ export function FestivalWorkshopPlayer({ view, act, gameNow, paused }: ModeScree
           <div className="flex flex-col gap-3">
             <QuestionCard q={you.question.q} />
             <AnswerInput key={you.question.iid} q={you.question.q} onSubmit={submit} disabled={paused} compact />
-            {view.favours ? <p className="text-center text-xs font-semibold text-text-2">{you.toFavour === 1 ? 'Your next right answer earns a Festival Favour.' : `${you.toFavour} more right answers to a Festival Favour.`}</p> : null}
+            {view.favours ? <FavourProgress toGo={you.toFavour} /> : null}
           </div>
         ) : null}
       </div>
@@ -980,7 +1047,7 @@ export function FestivalWorkshopPlayer({ view, act, gameNow, paused }: ModeScree
       <div id={`${ids}-panel-workshop`} role="tabpanel" aria-labelledby={`${ids}-tab-workshop`} hidden={tab !== 'workshop'} className="flex flex-col gap-3">
         <section aria-labelledby={`${ids}-stations`} className="flex flex-col gap-2">
           <div className="flex flex-wrap items-baseline justify-between gap-2">
-            <h3 id={`${ids}-stations`} className="font-display text-lg font-extrabold">
+            <h3 id={`${ids}-stations`} className="font-display text-xl font-extrabold">
               Your stations
             </h3>
             <span className="text-sm font-semibold text-text-2">{you.full ? 'Every slot is full: replace a station to change what you make.' : `${plural(you.stations.filter((s) => s === null).length, 'free slot')}`}</span>
@@ -1041,56 +1108,69 @@ export function FestivalWorkshopPlayer({ view, act, gameNow, paused }: ModeScree
 
 /* -------------------------------- host screen ------------------------------- */
 
-/** Price on the projector's columns: ×0.4 at the floor to ×2 at the top. */
-const columnHeight = (p: number) => Math.max(8, Math.min(100, ((p - 0.3) / 1.7) * 100));
+/** Where a price sits on the board's meter: ×0.3 at the left to ×2 at the right. */
+const meterAt = (p: number) => Math.max(4, Math.min(100, ((p - 0.3) / 1.7) * 100));
+/** "+0.2", "−0.3", "0.0": a price's move since the last shift. */
+const moveText = (d: number) => `${d > 0 ? '+' : d < 0 ? '−' : ''}${Math.abs(d).toFixed(1)}`;
 
-function MarketColumns({ market, finale, gameNow }: { market: Market; finale: FestivalWorkshopView['finale']; gameNow: () => number }) {
+/**
+ * The market on the projector, as a live trading board: one row a goods, with its price as the hero
+ * number, its move since the last shift on a chip (arrow, sign and colour), where the price sits
+ * between cheap and in demand, and what the class makes of it. Rows keep their order, so a price can
+ * be found in the same place all game.
+ */
+function MarketBoard({ market, finale, gameNow }: { market: Market; finale: FestivalWorkshopView['finale']; gameNow: () => number }) {
   useNow(1000, market.shiftAt !== null);
   const left = market.shiftAt === null ? null : market.shiftAt - gameNow();
   const soon = left !== null && left <= SHIFT_HINT_MS;
   const text = 'text-[clamp(1rem,min(1.45vw,2.5vh),1.6rem)]';
+  const small = 'text-[clamp(0.85rem,min(1.1vw,2vh),1.3rem)]';
   return (
-    <section aria-labelledby="fw-market" className={`flex min-h-0 flex-col gap-[clamp(0.25rem,1vh,0.75rem)] rounded-[24px] border border-white/12 p-[clamp(0.75rem,1.6vh,1.25rem)] ${NIGHT}`}>
+    <section aria-labelledby="fw-market" className={`flex min-h-0 flex-col gap-[clamp(0.3rem,0.9vh,0.7rem)] rounded-[var(--radius-l)] border border-white/10 p-[clamp(0.7rem,1.5vh,1.25rem)] ${NIGHT}`}>
       <div className="flex flex-wrap items-baseline justify-between gap-x-4">
-        <h3 id="fw-market" className={`font-display text-[clamp(1.4rem,min(2.2vw,3.9vh),2.5rem)] leading-tight font-extrabold ${SIGN}`}>
-          The class market
+        <h3 id="fw-market" className="flex items-center gap-2 font-display text-[clamp(1.4rem,min(2.2vw,3.9vh),2.5rem)] leading-tight font-extrabold">
+          <Store className="size-[0.85em]" aria-hidden /> Class market
         </h3>
-        {/* One line, so the takings below still fit a 768-pixel projector; each column says where its price is heading. */}
+        {/* One line, so the takings below still fit a 768-pixel projector. */}
         <span className={`font-bold ${text} ${soon ? 'text-lantern' : 'text-text-2'}`}>
-          {left === null ? 'No more shifts' : soon ? `Market shifts in ${Math.max(1, Math.ceil(left / 1000))} s` : <>Shifts in <Countdown until={market.shiftAt} gameNow={gameNow} label="Market shifts in" /></>}
+          {left === null ? 'No more shifts' : soon ? `Shifts in ${Math.max(1, Math.ceil(left / 1000))} s` : <>Shifts in <Countdown until={market.shiftAt} gameNow={gameNow} label="Market shifts in" /></>}
         </span>
       </div>
-      <ul className="grid flex-1 grid-cols-4 gap-[clamp(0.5rem,1.2vw,1.5rem)]">
+      <ul className="flex flex-col gap-[clamp(0.25rem,0.7vh,0.5rem)]" aria-label="Market prices">
         {GOODS.map((g) => {
           const p = market.demand[g];
-          const t = soon ? market.heading[g] : trendOf(market, g);
+          const d = Math.round((market.demand[g] - market.prev[g]) * 10) / 10;
+          const moved = trendOf(market, g);
+          const next = market.heading[g];
           const fixed = finale.on && g === 'fireworks';
-          const tone = p >= 1.3 ? 'bg-glim' : p <= 0.7 ? 'bg-ember' : 'bg-sky';
+          const status = fixed ? 'Finale price' : soon ? (next === 'steady' ? 'Steady next' : `Heading ${next}`) : p >= 1.3 ? 'In demand' : p <= 0.7 ? 'Cheap' : 'Steady';
+          const chip = moved === 'up' ? 'bg-glim text-on-accent' : moved === 'down' ? 'bg-ember text-on-accent' : 'bg-white/[0.1] text-text';
+          const fill = p >= 1.3 ? 'bg-glim' : p <= 0.7 ? 'bg-ember' : 'bg-sky';
           return (
-            <li key={g} className="flex min-w-0 flex-col items-center gap-1">
-              <div className="flex items-center gap-1 font-display text-[clamp(1.5rem,min(2.6vw,4.6vh),3rem)] leading-none font-extrabold tabular">
-                {price(p)}
-                <Arrow heading={t} className="size-[0.8em]" />
-              </div>
-              {/* The columns take what height the screen can spare, so ten rows of takings still fit under them on a 768-pixel projector. */}
-              <div className="relative flex h-[clamp(3.5rem,11vh,13rem)] w-full max-w-[9rem] items-end justify-center rounded-[14px] border-2 border-white/15 bg-[rgb(12_8_40/0.5)]" aria-hidden>
-                <div
-                  className={`w-[70%] rounded-t-[10px] border-[3px] border-b-0 border-ink ${tone} transition-[height] duration-700 ease-[var(--ease-out)]`}
-                  style={{ height: `${columnHeight(p)}%`, backgroundImage: p <= 0.7 ? 'repeating-linear-gradient(135deg, rgb(0 0 0 / 0.18) 0 6px, transparent 6px 12px)' : undefined }}
-                />
-                {/* Even price: ×1. */}
-                <span className="absolute inset-x-1 border-t-2 border-dashed border-white/50" style={{ bottom: `${columnHeight(1)}%` }} />
-              </div>
-              <div className={`flex items-center gap-1.5 font-bold ${text}`}>
-                <GoodsIcon goods={g} size={30} />
-                <span className="truncate">{GOODS_INFO[g].label}</span>
-              </div>
-              <div className="max-w-full truncate text-center text-[clamp(0.8rem,min(1.05vw,2vh),1.3rem)] leading-tight font-semibold text-text-2">
-                {fixed ? 'Finale price' : soon ? (t === 'steady' ? 'Steady' : `Heading ${t}`) : p >= 1.3 ? 'In demand' : p <= 0.7 ? 'Cheap' : 'Steady'} · {formatNumber(market.shares[g])}% made
-                <span className="sr-only">
-                  . {priceWords(g, p)}, {t === 'steady' ? 'steady' : soon ? `heading ${t}` : t}.
+            <li key={g} className="grid min-h-[clamp(2.4rem,5.4vh,4.25rem)] grid-cols-[minmax(0,1.25fr)_auto_minmax(4.4em,auto)_minmax(0,1fr)] items-center gap-x-[clamp(0.6rem,1.1vw,1.25rem)] rounded-[var(--radius-m)] bg-white/[0.05] px-[clamp(0.5rem,0.9vw,1rem)] py-1">
+              <span className="flex min-w-0 items-center gap-[0.5em]">
+                <GoodsIcon goods={g} size={34} className="size-[clamp(1.5rem,3.6vh,2.5rem)]" />
+                <span className="min-w-0 leading-tight">
+                  <span className={`block truncate font-bold ${text}`}>{GOODS_INFO[g].label}</span>
+                  <span className={`block truncate font-semibold text-text-2 ${small}`}>
+                    {status} · {formatNumber(market.shares[g])}% made
+                  </span>
                 </span>
-              </div>
+              </span>
+              <span className={`font-display text-[clamp(1.6rem,min(2.7vw,4.6vh),3.1rem)] leading-none font-extrabold tabular ${priceTone(p)}`}>{price(p)}</span>
+              <span className={`inline-flex items-center justify-center gap-[0.2em] justify-self-start rounded-full px-[0.55em] py-[0.15em] font-display font-extrabold tabular ${text} ${chip}`} aria-hidden>
+                <Arrow heading={moved} className="size-[0.85em]" />
+                {moveText(d)}
+              </span>
+              {/* Where the price sits from cheap to in demand; the tick is the even price, ×1. */}
+              <span className="relative h-[clamp(0.6rem,1.4vh,1rem)] rounded-full bg-white/[0.12]" aria-hidden>
+                <span className={`absolute inset-y-0 left-0 rounded-full ${fill} transition-[width] duration-500 ease-[var(--ease-out)]`} style={{ width: `${meterAt(p)}%` }} />
+                <span className="absolute -inset-y-1 w-0.5 rounded-full bg-white/70" style={{ left: `${meterAt(1)}%` }} />
+              </span>
+              <span className="sr-only">
+                {priceWords(g, p)}, {moved === 'steady' ? 'no change since the last shift' : `${moved} ${Math.abs(d).toFixed(1)} since the last shift`}
+                {soon ? `, heading ${next} at the next shift` : ''}.
+              </span>
             </li>
           );
         })}
@@ -1102,68 +1182,106 @@ function MarketColumns({ market, finale, gameNow }: { market: Market; finale: Fe
 function EventPanel({ view, gameNow }: { view: FestivalWorkshopView; gameNow: () => number }) {
   const ev = view.event;
   useNow(500, Boolean(ev));
-  const big = 'font-display text-[clamp(1.75rem,min(3vw,5.2vh),3.5rem)] leading-[1.05] font-extrabold';
-  const text = 'text-[clamp(1rem,min(1.45vw,2.5vh),1.6rem)] leading-snug font-semibold text-text-2';
-  const pad = `flex min-h-0 flex-col justify-center gap-[clamp(0.25rem,1vh,0.75rem)] rounded-[24px] border border-white/12 p-[clamp(0.75rem,1.6vh,1.25rem)] ${NIGHT}`;
+  // Sized by the screen's height as much as its width, so the panel fills a 1080-pixel projector and still fits a 768-pixel one.
+  const big = 'font-display text-[clamp(1.75rem,min(3.4vw,6vh),4.5rem)] leading-[1.05] font-extrabold';
+  const text = 'text-[clamp(1rem,min(1.6vw,2.8vh),2rem)] leading-snug font-semibold';
+  // A live moment is a solid banner in its accent; between moments the panel is calm.
+  const banner = (tone: string) => `lift flex min-h-0 flex-col justify-center gap-[clamp(0.3rem,1.2vh,1rem)] rounded-[var(--radius-l)] p-[clamp(0.75rem,1.8vh,1.75rem)] text-on-accent ${tone}`;
+  const calm = `flex min-h-0 flex-col justify-center gap-[clamp(0.25rem,1vh,0.75rem)] rounded-[var(--radius-l)] border border-white/10 p-[clamp(0.75rem,1.8vh,1.75rem)] ${NIGHT}`;
+  const disc = 'grid size-[clamp(2.5rem,6.4vh,5.5rem)] shrink-0 place-items-center rounded-full bg-ink/85 text-white';
   const p = view.parade;
   const freshParade = p && gameNow() - p.at < 12_000;
   if (ev) {
     const leftPct = Math.max(0, Math.min(100, ((ev.endsAt - gameNow()) / (ev.endsAt - ev.startedAt)) * 100));
     const parade = ev.kind === 'parade' && ev.target > 0;
     const pct = parade ? Math.min(100, (ev.progress / ev.target) * 100) : 0;
+    const Icon = EVENT_ICON[ev.kind];
     return (
-      <section aria-labelledby="fw-event" className={pad}>
-        <div className="flex items-center justify-between gap-3">
-          <h3 id="fw-event" className={`flex items-center gap-2 ${big} ${SIGN}`}>
-            <EventIcon kind={ev.kind} /> {eventTitle(ev)}
+      <section aria-labelledby="fw-event" key={ev.seq} className={banner({ glim: 'bg-glim', lantern: 'bg-lantern', sky: 'bg-sky', dusk: 'bg-dusk' }[EVENT_TONE[ev.kind]])} style={{ animation: 'pop-in 200ms var(--ease-out)' }}>
+        <div className="flex items-center gap-[clamp(0.6rem,1vw,1rem)]">
+          <span className={disc} aria-hidden>
+            <Icon className="size-[56%]" />
+          </span>
+          <h3 id="fw-event" className={`min-w-0 flex-1 italic ${big}`}>
+            {eventTitle(ev)}
           </h3>
-          <Pill tone="lantern" className="px-4 py-1 text-[clamp(1.1rem,1.8vw,2rem)]">
-            <Countdown until={ev.endsAt} gameNow={gameNow} label="Event ends in" />
-          </Pill>
+          {/* Inside a coloured banner the clock sits on the plain plate. */}
+          <span className="plate shrink-0 text-[clamp(1.3rem,min(2.4vw,4.2vh),3.2rem)] tabular">
+            <span>
+              <Countdown until={ev.endsAt} gameNow={gameNow} label="Event ends in" />
+            </span>
+          </span>
         </div>
         <p className={text}>{eventText(ev)}</p>
         {parade ? (
           <>
-            <div className="relative h-[clamp(1.75rem,4.5vh,3.25rem)] overflow-hidden rounded-full border-[3px] border-ink bg-[rgb(17_10_62/0.7)]" role="meter" aria-label={`Parade order: ${GOODS_INFO[ev.goods!].many}`} aria-valuenow={Math.floor(ev.progress)} aria-valuemin={0} aria-valuemax={ev.target}>
-              <div className="absolute inset-0 rounded-full bg-glim transition-transform duration-500 ease-[var(--ease-out)]" style={{ transform: `translateX(${pct - 100}%)` }} />
+            <div className="relative h-[clamp(1.25rem,3.6vh,3rem)] overflow-hidden rounded-full bg-ink/[0.18]" role="meter" aria-label={`Parade order: ${GOODS_INFO[ev.goods!].many}`} aria-valuenow={Math.floor(ev.progress)} aria-valuemin={0} aria-valuemax={ev.target}>
+              <div className="absolute inset-0 rounded-full bg-ink/80 transition-transform duration-500 ease-[var(--ease-out)]" style={{ transform: `translateX(${pct - 100}%)` }} />
             </div>
-            <p className="font-display text-[clamp(1.2rem,min(2vw,3.4vh),2.2rem)] font-extrabold tabular">
+            <p className="font-display text-[clamp(1.2rem,min(2.2vw,3.8vh),2.75rem)] leading-tight font-extrabold tabular">
               {formatNumber(ev.progress)} of {formatNumber(ev.target)} coins’ worth · {Math.floor(pct)}%
             </p>
           </>
         ) : (
-          <div className="h-3 overflow-hidden rounded-full border-2 border-ink bg-[rgb(17_10_62/0.7)]" aria-hidden>
-            <div className="h-full rounded-full bg-lantern" style={{ width: `${leftPct}%` }} />
+          // The time this event has left.
+          <div className="h-[clamp(0.5rem,1.3vh,1rem)] overflow-hidden rounded-full bg-ink/[0.18]" aria-hidden>
+            <div className="h-full rounded-full bg-ink/80" style={{ width: `${leftPct}%` }} />
           </div>
         )}
       </section>
     );
   }
+  if (freshParade && p?.reached) {
+    return (
+      <section aria-labelledby="fw-event" key={p.at} className={banner('bg-glim')} style={{ animation: 'pop-in 200ms var(--ease-out)' }}>
+        <div className="flex items-center gap-[clamp(0.6rem,1vw,1rem)]">
+          <span className={disc} aria-hidden>
+            <Flag className="size-[56%]" />
+          </span>
+          <h3 id="fw-event" className={`min-w-0 flex-1 italic ${big}`}>
+            The parade got its {GOODS_INFO[p.goods].many}
+          </h3>
+        </div>
+        <p className={text}>
+          {formatNumber(p.total)} of {formatNumber(p.target)} coins’ worth. {plural(p.boosted, 'maker')} earn ×1.25 for 30 seconds.
+          {p.top.length ? ` Top makers: ${p.top.map((t) => t.name).join(', ')}.` : ''}
+        </p>
+      </section>
+    );
+  }
+  if (view.finale.on && !freshParade) {
+    return (
+      <section aria-labelledby="fw-event" className={banner('bg-lantern')}>
+        <div className="flex items-center gap-[clamp(0.6rem,1vw,1rem)]">
+          <span className={disc} aria-hidden>
+            <Rocket className="size-[56%]" />
+          </span>
+          <h3 id="fw-event" className={`min-w-0 flex-1 italic ${big}`}>
+            Grand finale
+          </h3>
+        </div>
+        <p className={text}>Fireworks sell at {price(view.finale.demand)} and paydays are 50% bigger until the end.</p>
+      </section>
+    );
+  }
   return (
-    <section aria-labelledby="fw-event" className={pad}>
+    <section aria-labelledby="fw-event" className={calm}>
       {freshParade && p ? (
         <>
-          <h3 id="fw-event" className={`${big} ${SIGN}`}>
-            {p.reached ? `The parade got its ${GOODS_INFO[p.goods].many}!` : 'The parade fell short'}
+          <h3 id="fw-event" className={big}>
+            The parade fell short
           </h3>
-          <p className={text}>
-            {formatNumber(p.total)} of {formatNumber(p.target)} coins’ worth.{p.reached ? ` ${plural(p.boosted, 'maker')} earn ×1.25 for 30 seconds.` : ''}
+          <p className={`${text} text-text-2`}>
+            {formatNumber(p.total)} of {formatNumber(p.target)} coins’ worth.
             {p.top.length ? ` Top makers: ${p.top.map((t) => t.name).join(', ')}.` : ''}
           </p>
         </>
-      ) : view.finale.on ? (
-        <>
-          <h3 id="fw-event" className={`${big} ${SIGN}`}>
-            Grand finale!
-          </h3>
-          <p className={text}>Fireworks sell at {price(view.finale.demand)} and paydays are 50% bigger until the end.</p>
-        </>
       ) : (
         <>
-          <h3 id="fw-event" className={`${big} ${SIGN}`}>
+          <h3 id="fw-event" className={big}>
             {view.nextEventAt !== null ? 'Next festival event' : view.finale.at !== null ? 'Grand finale coming' : 'Festival events'}
           </h3>
-          <p className={text}>
+          <p className={`${text} text-text-2`}>
             {view.nextEventAt !== null ? (
               <>
                 In <Countdown until={view.nextEventAt} gameNow={gameNow} label="Next festival event in" />.{' '}
@@ -1225,7 +1343,7 @@ function HostBoard({ rows, players, gameNow }: { rows: Row[]; players: RoomPlaye
       {rows.map((r) => {
         const by = move(r.playerId);
         return (
-          <li key={r.playerId} className={`flex min-w-0 items-center gap-[clamp(0.4rem,0.8vw,0.75rem)] rounded-[20px] border border-white/12 px-2.5 py-1 ${NIGHT}`}>
+          <li key={r.playerId} className={`flex min-w-0 items-center gap-[clamp(0.4rem,0.8vw,0.75rem)] rounded-[var(--radius-m)] px-2.5 py-1 ${NIGHT}`}>
             <RankBadge rank={r.rank} big />
             <PlayerGlim avatar={avatarOf(players, r.playerId)} seed={r.playerId} size={56} className={`${ROW_GLIM} shrink-0`} />
             <span className="min-w-0 flex-1 truncate font-bold">
@@ -1250,38 +1368,54 @@ function HostBoard({ rows, players, gameNow }: { rows: Row[]; players: RoomPlaye
   );
 }
 
+const NEWS_ICON: Record<News['kind'], { icon: LucideIcon; tone: string }> = {
+  prank: { icon: TimerOff, tone: 'text-ember' },
+  blocked: { icon: Lock, tone: 'text-glim' },
+  lab: { icon: Hammer, tone: 'text-lantern' },
+  max: { icon: ArrowUp, tone: 'text-glim' },
+  spark: { icon: Clover, tone: 'text-lantern' },
+  streak: { icon: Flame, tone: 'text-lantern' },
+  parade: { icon: Flag, tone: 'text-glim' },
+  finale: { icon: Rocket, tone: 'text-lantern' },
+};
+
 function newsLine(n: News): { icon: ReactNode; text: string } {
   const station = n.station ? STATIONS[n.station].name : 'station';
+  const { icon: Icon, tone } = NEWS_ICON[n.kind];
+  const icon = <Icon className={`size-[1.1em] shrink-0 ${tone}`} aria-hidden />;
   switch (n.kind) {
     case 'prank':
-      return { icon: <Sparkles className="size-[1.1em] shrink-0 text-ember" aria-hidden />, text: `${n.who} tangled ${n.other}'s ${station}` };
+      return { icon, text: `${n.who} tangled ${n.other}'s ${station}` };
     case 'blocked':
-      return { icon: <Lock className="size-[1.1em] shrink-0 text-glim" aria-hidden />, text: `${n.who}'s lock stopped ${n.other}'s prank` };
+      return { icon, text: `${n.who}'s lock stopped ${n.other}'s prank` };
     case 'lab':
-      return { icon: <Hammer className="size-[1.1em] shrink-0 text-lantern" aria-hidden />, text: `${n.who} opened a Firework Lab` };
+      return { icon, text: `${n.who} opened a Firework Lab` };
     case 'max':
-      return { icon: <ArrowUp className="size-[1.1em] shrink-0 text-glim" aria-hidden />, text: `${n.who}'s ${station} reached level ${n.level}` };
+      return { icon, text: `${n.who}'s ${station} reached level ${n.level}` };
     case 'spark':
-      return { icon: <Sparkles className="size-[1.1em] shrink-0 text-lantern" aria-hidden />, text: `Lucky spark! ${n.who}'s ${station} went up to level ${n.level}` };
+      return { icon, text: `Lucky spark: ${n.who}'s ${station} went up to level ${n.level}` };
     case 'streak':
-      return { icon: <Flame className="size-[1.1em] shrink-0 text-lantern" aria-hidden />, text: `${n.who} is on a streak of ${n.level}: paydays +50%` };
+      return { icon, text: `${n.who} is on a streak of ${n.level}: paydays +50%` };
     case 'parade':
-      return { icon: <PartyPopper className="size-[1.1em] shrink-0 text-glim" aria-hidden />, text: `${n.who} made the most ${n.goods ? GOODS_INFO[n.goods].many : 'goods'} for the parade` };
+      return { icon, text: `${n.who} made the most ${n.goods ? GOODS_INFO[n.goods].many : 'goods'} for the parade` };
     default:
-      return { icon: <Sparkles className="size-[1.1em] shrink-0 text-lantern" aria-hidden />, text: 'The grand finale began' };
+      return { icon, text: 'The grand finale began' };
   }
 }
 
-/** Fireworks over the projector in the finale: a new burst every couple of seconds (none when motion is reduced). */
-function FinaleSky({ on }: { on: boolean }) {
-  const now = useNow(1600, on && motionOK());
-  if (!on || !motionOK()) return null;
-  const beat = Math.floor(now / 1600);
+/** Fireworks over the projector as the finale starts: one burst for the moment, and none when motion is reduced. */
+function FinaleSky({ at, gameNow }: { at: number | null; gameNow: () => number }) {
+  const fresh = at !== null && gameNow() - at < 2500;
+  useNow(1000, fresh);
+  if (!fresh || !motionOK()) return null;
   return (
     <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden>
-      {[0, 1].map((i) => (
-        <div key={`${beat}-${i}`} className="absolute" style={{ left: `${12 + ((beat * 37 + i * 41) % 76)}%`, top: `${8 + ((beat * 23 + i * 29) % 40)}%`, width: 1, height: 1 }}>
-          <Burst style="fireworks" hue={(beat * 67 + i * 120) % 360} size={260} />
+      {[
+        [24, 22, 30],
+        [72, 16, 200],
+      ].map(([x, y, hue]) => (
+        <div key={`${at}-${x}`} className="absolute" style={{ left: `${x}%`, top: `${y}%`, width: 1, height: 1 }}>
+          <Burst style="fireworks" hue={hue!} size={300} />
         </div>
       ))}
     </div>
@@ -1289,7 +1423,7 @@ function FinaleSky({ on }: { on: boolean }) {
 }
 
 export function FestivalWorkshopHost({ view, gameNow, room }: ModeScreenProps<FestivalWorkshopView>) {
-  const heading = `mb-[clamp(0.25rem,1vh,0.5rem)] font-display text-[clamp(1.4rem,min(2.2vw,3.9vh),2.5rem)] leading-tight font-extrabold ${SIGN}`;
+  const heading = 'mb-[clamp(0.25rem,1vh,0.5rem)] font-display text-[clamp(1.4rem,min(2.2vw,3.9vh),2.5rem)] leading-tight font-extrabold';
   const text = 'text-[clamp(1rem,min(1.5vw,2.6vh),1.65rem)]';
   const m = view.market;
   // The room hears each event, each shift and the finale once; a parade that made it gets a cheer.
@@ -1298,13 +1432,14 @@ export function FestivalWorkshopHost({ view, gameNow, room }: ModeScreenProps<Fe
   const favourite = standing ? [...STATION_ORDER].sort((a, b) => standing[b] - standing[a])[0]! : null;
   return (
     <div className="relative mx-auto flex w-full max-w-[110rem] flex-1 flex-col gap-[clamp(0.6rem,1.6vh,1.25rem)]">
-      <FinaleSky on={view.finale.on} />
+      <FinaleSky at={view.finale.on ? view.finale.at : null} gameNow={gameNow} />
+      {/* The title on its plate at the top left, the clocks at the top right, as a broadcast lays them out. */}
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 className={`font-display text-[clamp(2rem,min(3.6vw,5.8vh),4.5rem)] leading-none font-extrabold ${SIGN}`}>Festival Workshop</h2>
+        <ModeTitle>Festival Workshop</ModeTitle>
         <div className="flex items-center gap-2 text-[clamp(1.1rem,1.8vw,2rem)]">
           {view.finale.on ? (
             <Pill tone="lantern" className="px-4 py-1.5">
-              <Sparkles className="size-[0.9em]" aria-hidden /> Grand finale
+              <Rocket className="size-[0.9em]" aria-hidden /> Grand finale
             </Pill>
           ) : null}
           <Pill className="px-5 py-1.5">
@@ -1313,7 +1448,7 @@ export function FestivalWorkshopHost({ view, gameNow, room }: ModeScreenProps<Fe
         </div>
       </div>
       <div className="grid grid-cols-1 gap-[clamp(0.6rem,1.4vw,1.5rem)] lg:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)]">
-        <MarketColumns market={m} finale={view.finale} gameNow={gameNow} />
+        <MarketBoard market={m} finale={view.finale} gameNow={gameNow} />
         <EventPanel view={view} gameNow={gameNow} />
       </div>
       <div className="grid grid-cols-1 gap-[clamp(0.75rem,1.6vw,1.75rem)] lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
@@ -1330,12 +1465,15 @@ export function FestivalWorkshopHost({ view, gameNow, room }: ModeScreenProps<Fe
             </h3>
             {view.news.length ? (
               <ul className={`flex flex-col gap-1.5 leading-tight ${text}`} aria-live="off">
-                {view.news.slice(0, view.teams ? 3 : 5).map((n) => {
+                {view.news.slice(0, view.teams ? 3 : 5).map((n, i) => {
                   const line = newsLine(n);
+                  // A line can take two rows, so the projector's height sets how many show: the newest two on a 768-pixel
+                  // screen and four on a 1080-pixel one (one and two beside the team scores), so the column ends with the board.
+                  const extra = view.teams ? (i >= 2 ? '[@media(max-height:1100px)]:hidden' : i >= 1 ? '[@media(max-height:820px)]:hidden' : '') : i >= 4 ? '[@media(max-height:1100px)]:hidden' : i >= 2 ? '[@media(max-height:820px)]:hidden' : '';
                   return (
-                    <li key={n.seq} className={`flex min-h-[clamp(2.25rem,4.8vh,3.75rem)] items-center gap-2.5 rounded-[18px] border border-white/12 px-3 py-1 ${NIGHT}`} style={motionOK() ? { animation: 'rise-fade 300ms var(--ease-out) both' } : undefined}>
+                    <li key={n.seq} className={`flex min-h-[clamp(2.25rem,4.8vh,3.75rem)] items-center gap-2.5 rounded-[var(--radius-m)] px-3 py-1 ${NIGHT} ${extra}`} style={{ animation: 'rise-fade 200ms var(--ease-out) both' }}>
                       {line.icon}
-                      <span className="min-w-0 flex-1 font-semibold">{line.text}</span>
+                      <span className="line-clamp-2 min-w-0 flex-1 font-semibold">{line.text}</span>
                     </li>
                   );
                 })}
@@ -1344,7 +1482,7 @@ export function FestivalWorkshopHost({ view, gameNow, room }: ModeScreenProps<Fe
               <p className={`font-semibold text-text-2 ${text}`}>Big builds, pranks and lucky sparks will show up here.</p>
             )}
             {favourite && standing && standing[favourite] > 0 ? (
-              <p className={`mt-1.5 flex items-center gap-2 font-semibold text-text-2 ${text}`}>
+              <p className={`mt-1.5 flex items-center gap-2 font-semibold text-text-2 ${text} ${view.teams ? '[@media(max-height:1100px)]:hidden' : ''}`}>
                 <StationIcon kind={favourite} size={26} /> Class favourite: {STATIONS[favourite].many} ({standing[favourite]})
               </p>
             ) : null}
