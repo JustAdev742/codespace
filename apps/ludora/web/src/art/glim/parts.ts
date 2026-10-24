@@ -71,14 +71,14 @@ export function earParts(kind: GlimArt['ears'], geo: BodyGeometry, c: GlimColors
   const both = (d: string, fill: string, t: Place = at, extra: Partial<Part> = {}) => pair(d, t).map((p) => ({ d: p, fill, ...extra }) as Part);
   switch (kind) {
     case 'cat':
-      behind.push(...both(EAR.cat, c.body), ...both(EAR.catIn, c.blush, at, { flat: true, opacity: 0.85 }));
+      behind.push(...both(EAR.cat, c.body), ...both(EAR.catIn, c.deep, at, { flat: true, opacity: 0.8 }));
       break;
     case 'fox':
       behind.push(...both(EAR.fox, c.body), ...both(EAR.foxIn, c.belly, at, { flat: true }));
       break;
     case 'bunny': {
       const t = { ...at, r: a * 0.45, s: s * 1.02 };
-      behind.push(...both(EAR.bunny, c.body, t), ...both(EAR.bunnyIn, c.blush, t, { flat: true, opacity: 0.8 }));
+      behind.push(...both(EAR.bunny, c.body, t), ...both(EAR.bunnyIn, c.deep, t, { flat: true, opacity: 0.75 }));
       break;
     }
     case 'bear': {
@@ -88,7 +88,7 @@ export function earParts(kind: GlimArt['ears'], geo: BodyGeometry, c: GlimColors
     }
     case 'mouse': {
       const t = { ...at, x: x + 1, y: y + 2 };
-      behind.push(...both(circle(0, -9, 13.5), c.body, t), ...both(circle(0, -9.5, 8.5), c.blush, t, { flat: true, opacity: 0.8 }));
+      behind.push(...both(circle(0, -9, 13.5), c.body, t), ...both(circle(0, -9.5, 8.5), c.deep, t, { flat: true, opacity: 0.75 }));
       break;
     }
     case 'droopy': {

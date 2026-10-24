@@ -3,15 +3,17 @@ import type { ItemArt, Rarity } from '@ludora/shared';
 import { Glim } from './glim/Glim.tsx';
 import { AccessoryPreview } from './glim/accessories.tsx';
 
-/* Previews for every item type, plus the frame and banner used on profiles. */
+/* Previews for every item type, plus the frame and banner used on profiles. Crisp shapes, dark edges, the game's colours. */
 
 type FrameStyle = Extract<ItemArt, { kind: 'frame' }>['style'];
 type BannerPattern = Extract<ItemArt, { kind: 'banner' }>['pattern'];
 
 /** A decorative ring drawn around an avatar. Children sit in the middle. */
 export function FrameRing({ style, hue, accentHue, size = 96, children }: { style: FrameStyle; hue: number; accentHue?: number | undefined; size?: number; children?: ReactNode }) {
-  const c = `hsl(${hue} 80% 62%)`;
-  const a = `hsl(${accentHue ?? (hue + 40) % 360} 90% 74%)`;
+  const c = `hsl(${hue} 86% 60%)`;
+  const a = `hsl(${accentHue ?? (hue + 40) % 360} 92% 72%)`;
+  /** A dark bezel under every frame, so it reads crisply on light and dark alike. */
+  const bezel = `hsl(${hue} 45% 12%)`;
   const ring = (() => {
     switch (style) {
       case 'ring':
@@ -21,7 +23,7 @@ export function FrameRing({ style, hue, accentHue, size = 96, children }: { styl
       case 'laurel':
         // Two sprays of leaves rising up the sides, tilted along the ring, open at the top.
         return (
-          <g fill={c} stroke="var(--ink)" strokeWidth="0.8">
+          <g fill={c} stroke={bezel} strokeWidth="1.2">
             {[-1, 1].flatMap((side) =>
               Array.from({ length: 7 }, (_, k) => {
                 const deg = side < 0 ? 112 + k * 21 : 68 - k * 21;
@@ -42,7 +44,7 @@ export function FrameRing({ style, hue, accentHue, size = 96, children }: { styl
               const t = (i * 45 * Math.PI) / 180;
               const x = 60 + 54 * Math.cos(t);
               const y = 60 + 54 * Math.sin(t);
-              return <path key={i} d={`M${x} ${y - 7}L${x + 2} ${y - 2}L${x + 7} ${y}L${x + 2} ${y + 2}L${x} ${y + 7}L${x - 2} ${y + 2}L${x - 7} ${y}L${x - 2} ${y - 2}Z`} fill={a} stroke="var(--ink)" strokeWidth="1" />;
+              return <path key={i} d={`M${x} ${y - 7}L${x + 2} ${y - 2}L${x + 7} ${y}L${x + 2} ${y + 2}L${x} ${y + 7}L${x - 2} ${y + 2}L${x - 7} ${y}L${x - 2} ${y - 2}Z`} fill={a} stroke={bezel} strokeWidth="1.2" />;
             })}
           </g>
         );
@@ -95,6 +97,7 @@ export function FrameRing({ style, hue, accentHue, size = 96, children }: { styl
     <span className="relative inline-grid place-items-center" style={{ width: size, height: size }}>
       <span className="absolute inset-[9%] grid place-items-center overflow-hidden rounded-full">{children}</span>
       <svg viewBox="0 0 120 120" width={size} height={size} className="pointer-events-none absolute inset-0" aria-hidden>
+        <circle cx="60" cy="60" r="54" fill="none" stroke={bezel} strokeWidth="10" />
         {ring}
       </svg>
     </span>
@@ -129,7 +132,7 @@ export const BannerArt = memo(function BannerArt({ pattern, hue, accentHue, clas
         return (
           <g>
             {Array.from({ length: 28 }, (_, i) => (
-              <rect key={i} x={(i * 53) % 320} y={(i * 37) % 100} width="6" height="12" rx="2" fill={i % 3 === 0 ? a : i % 3 === 1 ? '#fff' : mid} transform={`rotate(${(i * 47) % 180} ${(i * 53) % 320} ${(i * 37) % 100})`} opacity={0.85} />
+              <rect key={i} x={(i * 53) % 320} y={(i * 37) % 100} width="5" height="13" rx="1" fill={i % 3 === 0 ? a : i % 3 === 1 ? '#fff' : mid} transform={`rotate(${(i * 47) % 180} ${(i * 53) % 320} ${(i * 37) % 100})`} opacity={0.85} />
             ))}
           </g>
         );
@@ -142,10 +145,21 @@ export const BannerArt = memo(function BannerArt({ pattern, hue, accentHue, clas
           </g>
         );
       case 'grid':
+        // Graph paper without the squares: two axes and a plotted rise, for the maths fans.
         return (
-          <g stroke={a} strokeWidth="1" opacity={0.35}>
-            {Array.from({ length: 33 }, (_, i) => <line key={`v${i}`} x1={i * 10} y1="0" x2={i * 10} y2="100" />)}
-            {Array.from({ length: 11 }, (_, i) => <line key={`h${i}`} x1="0" y1={i * 10} x2="320" y2={i * 10} />)}
+          <g fill="none" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M26 10V84H300" stroke={a} strokeWidth="2.5" opacity={0.5} />
+            <path d="M26 82L92 77L152 70L212 61L300 50" stroke={mid} strokeWidth="3.5" />
+            <path d="M26 76L72 62L114 68L158 44L202 50L246 27L298 16" stroke={a} strokeWidth="4.5" />
+            {[
+              [72, 62],
+              [114, 68],
+              [158, 44],
+              [202, 50],
+              [246, 27],
+            ].map(([x, y]) => (
+              <circle key={x} cx={x} cy={y} r="5" fill={bg} stroke={a} strokeWidth="3" />
+            ))}
           </g>
         );
       case 'hills':
@@ -157,13 +171,15 @@ export const BannerArt = memo(function BannerArt({ pattern, hue, accentHue, clas
           </g>
         );
       case 'lanterns':
+        // A printed row of Lantern marks: cap, glowing body, base.
         return (
           <g>
-            <path d="M0 14Q160 40 320 14" fill="none" stroke={a} strokeWidth="1.5" opacity={0.7} />
-            {[40, 100, 160, 220, 280].map((x, i) => (
-              <g key={x}>
-                <line x1={x} y1={14 + Math.sin((x / 320) * Math.PI) * 20} x2={x} y2={30 + Math.sin((x / 320) * Math.PI) * 20} stroke={a} strokeWidth="1.5" />
-                <ellipse cx={x} cy={44 + Math.sin((x / 320) * Math.PI) * 20} rx="10" ry="13" fill={i % 2 ? a : '#ffb020'} opacity={0.9} />
+            {[30, 90, 150, 210, 270].map((x, i) => (
+              <g key={x} transform={`translate(${x} ${i % 2 ? 54 : 30})`}>
+                <rect x="-7" y="-14" width="14" height="5" rx="1.5" fill={mid} />
+                <rect x="-10" y="-9" width="20" height="24" rx="3" fill={i % 2 ? a : 'var(--lantern)'} opacity={0.92} />
+                <rect x="-2" y="-9" width="4" height="24" fill={bg} opacity={0.35} />
+                <rect x="-7" y="15" width="14" height="5" rx="1.5" fill={mid} />
               </g>
             ))}
           </g>
@@ -210,8 +226,8 @@ export const BannerArt = memo(function BannerArt({ pattern, hue, accentHue, clas
 });
 
 export function EmoteGlyph({ glyph, hue, size = 40 }: { glyph: string; hue?: number; size?: number }) {
-  const face = `hsl(${hue ?? 42} 95% 62%)`;
-  const ink = '#1d1846';
+  const face = `hsl(${hue ?? 42} 95% 60%)`;
+  const ink = 'hsl(232 45% 11%)';
   const eyes = <><circle cx="15" cy="17" r="2.2" fill={ink} /><circle cx="25" cy="17" r="2.2" fill={ink} /></>;
   const base = <circle cx="20" cy="20" r="16" fill={face} stroke={ink} strokeWidth="2" />;
   const content = (() => {
@@ -233,7 +249,7 @@ export function EmoteGlyph({ glyph, hue, size = 40 }: { glyph: string; hue?: num
       case 'clap':
         return <><path d="M10 30L6 14C5 11 9 10 10 13L13 22M13 22L11 9C10 6 14 5 15 8L18 20M18 20L18 8C18 5 22 5 22 8L23 22L26 16C28 13 31 15 30 18L26 30C24 35 14 36 10 30Z" fill={face} stroke={ink} strokeWidth="1.8" strokeLinejoin="round" /><path d="M30 6l2-3M34 10l3-1" stroke={ink} strokeWidth="2" strokeLinecap="round" /></>;
       case 'party':
-        return <><path d="M6 36L16 8L32 26Z" fill={face} stroke={ink} strokeWidth="2" strokeLinejoin="round" /><circle cx="30" cy="8" r="2.5" fill="#33d6a6" /><circle cx="36" cy="16" r="2" fill="#47b5ff" /><rect x="22" y="2" width="3" height="6" rx="1" fill="#ff5a6e" transform="rotate(30 23 5)" /></>;
+        return <><path d="M6 36L16 8L32 26Z" fill={face} stroke={ink} strokeWidth="2" strokeLinejoin="round" /><circle cx="30" cy="8" r="2.5" fill="var(--glim)" /><circle cx="36" cy="16" r="2" fill="var(--sky)" /><rect x="22" y="2" width="3" height="6" rx="1" fill="var(--ember)" transform="rotate(30 23 5)" /></>;
       case 'cool':
         return <>{base}<path d="M8 15H32V18C32 21 29 22 26 22C23 22 21 20 20 18C19 20 17 22 14 22C11 22 8 21 8 18Z" fill={ink} /><path d="M15 27Q21 30 26 26" fill="none" stroke={ink} strokeWidth="2" strokeLinecap="round" /></>;
       case 'sleepy':
@@ -255,7 +271,7 @@ export function EmoteGlyph({ glyph, hue, size = 40 }: { glyph: string; hue?: num
 export function ItemArtView({ art, rarity, size = 96, owned = true }: { art: ItemArt; rarity?: Rarity; size?: number; owned?: boolean }) {
   switch (art.kind) {
     case 'glim':
-      return <Glim art={art} size={size} aura={owned ? (rarity ?? null) : null} silhouette={!owned} />;
+      return <Glim art={art} size={size} rarity={owned ? (rarity ?? null) : null} silhouette={!owned} />;
     case 'accessory':
       return <AccessoryPreview art={art} size={size} />;
     case 'frame':
@@ -265,11 +281,11 @@ export function ItemArtView({ art, rarity, size = 96, owned = true }: { art: Ite
         </FrameRing>
       );
     case 'banner':
-      return <BannerArt pattern={art.pattern} hue={art.hue} accentHue={art.accentHue} className="h-full w-full rounded-[10px]" />;
+      return <BannerArt pattern={art.pattern} hue={art.hue} accentHue={art.accentHue} className="h-full w-full rounded-[var(--radius-m)]" />;
     case 'title':
       return (
-        <span className="inline-grid max-w-full place-items-center rounded-full border-2 border-ink bg-surface-3 px-3 py-1 text-center font-display text-sm font-bold text-text" style={{ minHeight: size * 0.34 }}>
-          {art.text}
+        <span className="plate plate-gold max-w-full text-center" style={{ fontSize: Math.max(10, Math.min(18, size * 0.15)), paddingInline: size < 80 ? '0.45em' : undefined }}>
+          <span className="block truncate">{art.text}</span>
         </span>
       );
     case 'emote':
@@ -277,12 +293,13 @@ export function ItemArtView({ art, rarity, size = 96, owned = true }: { art: Ite
     case 'victory':
       return <VictoryPreview style={art.style} hue={art.hue} size={size} />;
     case 'theme':
+      // A small profile card in the theme's colours: its banner, the buddy's circle and two lines of name.
       return (
-        <span className="grid grid-cols-2 overflow-hidden rounded-[12px] border-2 border-ink" style={{ width: size * 0.8, height: size * 0.6 }}>
-          <span style={{ background: `hsl(${art.hue} 70% 55%)` }} />
-          <span style={{ background: `hsl(${art.accentHue} 85% 70%)` }} />
-          <span style={{ background: `hsl(${art.hue} 45% 22%)` }} />
-          <span style={{ background: `hsl(${art.accentHue} 60% 40%)` }} />
+        <span className="relative block overflow-hidden rounded-[var(--radius-m)] border border-line-strong shadow-[0_6px_16px_-8px_rgb(2_5_20/0.6)]" style={{ width: size * 0.8, height: size * 0.6, background: `hsl(${art.hue} 45% 22%)` }}>
+          <span className="absolute inset-x-0 top-0 h-[42%]" style={{ background: `linear-gradient(160deg, hsl(${art.hue} 70% 55%), hsl(${art.accentHue} 60% 40%))` }} />
+          <span className="absolute top-[22%] left-[12%] aspect-square w-[30%] rounded-full" style={{ background: `hsl(${art.accentHue} 85% 70%)`, boxShadow: `0 0 0 3px hsl(${art.hue} 45% 22%)` }} />
+          <span className="absolute top-[58%] left-[50%] h-[9%] w-[38%] rounded-full" style={{ background: `hsl(${art.hue} 70% 55%)` }} />
+          <span className="absolute top-[74%] left-[50%] h-[9%] w-[24%] rounded-full" style={{ background: `hsl(${art.accentHue} 60% 40%)` }} />
         </span>
       );
     case 'effect':
@@ -295,10 +312,10 @@ function VictoryPreview({ style, hue, size }: { style: string; hue: number; size
   return (
     <svg viewBox="0 0 80 80" width={size * 0.8} height={size * 0.8} aria-hidden>
       <path d="M26 66H54L50 52H30Z" fill="var(--surface-3)" stroke="var(--ink)" strokeWidth="2" />
-      <path d="M28 22H52V34C52 42 46 46 40 46C34 46 28 42 28 34Z" fill="#ffc83d" stroke="var(--ink)" strokeWidth="2" />
+      <path d="M28 22H52V34C52 42 46 46 40 46C34 46 28 42 28 34Z" fill="var(--lantern)" stroke="var(--ink)" strokeWidth="2" />
       {style === 'fireworks' && [0, 60, 120, 180, 240, 300].map((a) => <line key={a} x1={40 + 14 * Math.cos((a * Math.PI) / 180)} y1={14 + 14 * Math.sin((a * Math.PI) / 180) - 4} x2={40 + 22 * Math.cos((a * Math.PI) / 180)} y2={14 + 22 * Math.sin((a * Math.PI) / 180) - 4} stroke={c} strokeWidth="3" strokeLinecap="round" />)}
-      {style === 'confetti' && [10, 22, 58, 70, 16, 64].map((x, i) => <rect key={i} x={x} y={8 + (i % 3) * 12} width="4" height="8" rx="1" fill={i % 2 ? c : '#33d6a6'} transform={`rotate(${i * 40} ${x} ${8 + (i % 3) * 12})`} />)}
-      {style === 'lanterns' && [16, 40, 64].map((x) => <ellipse key={x} cx={x} cy={x === 40 ? 8 : 14} rx="6" ry="8" fill={c} stroke="var(--ink)" strokeWidth="1.5" />)}
+      {style === 'confetti' && [10, 22, 58, 70, 16, 64].map((x, i) => <rect key={i} x={x} y={8 + (i % 3) * 12} width="4" height="8" rx="1" fill={i % 2 ? c : 'var(--glim)'} transform={`rotate(${i * 40} ${x} ${8 + (i % 3) * 12})`} />)}
+      {style === 'lanterns' && [16, 40, 64].map((x) => <rect key={x} x={x - 5} y={x === 40 ? 2 : 8} width="10" height="13" rx="2" fill={c} stroke="var(--ink)" strokeWidth="1.5" />)}
       {style === 'comets' && [14, 36, 58].map((x) => <path key={x} d={`M${x} 18l10 -10M${x - 2} 20a3 3 0 1 0 0.1 0`} stroke={c} strokeWidth="3" strokeLinecap="round" fill={c} />)}
       {style === 'bubbles' && [12, 26, 54, 68, 40].map((x, i) => <circle key={x} cx={x} cy={10 + (i % 3) * 8} r={3 + (i % 3)} fill="none" stroke={c} strokeWidth="2" />)}
       {style === 'petals' && [12, 28, 52, 68].map((x, i) => <ellipse key={x} cx={x} cy={12 + (i % 2) * 10} rx="5" ry="3" fill={c} transform={`rotate(${i * 50} ${x} ${12 + (i % 2) * 10})`} />)}
