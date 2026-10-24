@@ -1,16 +1,24 @@
 // Where each shot comes from: real Ludora footage, filmed with Playwright at 30 fps.
 // Sequences: { dir, count, in (first frame), speed }. Stills: { file }. Paths are relative to the trailer folder.
 window.FOOTAGE = {
-  q_big: { dir: 'footage/classic/r8-big', count: 442, in: 70, speed: 1.25 },
-  hero_correct: { dir: 'footage/classic/r2-phone', count: 435, in: 46, speed: 2 },
+  // The game with a class of 16: the question counting in, the reveal and the reactions, the leaderboard.
+  q_big: { dir: 'footage/react16/x3-big', count: 447, in: 40, speed: 1.4 },
+  cr_reveal: { dir: 'footage/react16/x3-big', count: 447, in: 154 },
+  lb_big: { dir: 'footage/react16/x3-big', count: 447, in: 325 },
+  // The same question on Maya's phone, filmed alongside: tapped at frame 28, Correct at frame 87.
+  hero_correct: { dir: 'footage/react16b/x2-phone', count: 359, in: 12, speed: 1.6 },
   // The two phones either side are the same question at other moments: one still choosing, one locked in.
-  phone_b: { dir: 'footage/classic/r2-phone', count: 435, in: 1, speed: 0.7 },
-  phone_c: { dir: 'footage/classic/r2-phone', count: 435, in: 62 },
-  lb_big: { dir: 'footage/classic/r8-big', count: 442, in: 296 },
-  lobby: { dir: 'footage/classic/b1-lobby', count: 350, in: 1, speed: 2 },
+  phone_b: { dir: 'footage/react16b/x2-phone', count: 359, in: 1, speed: 0.6 },
+  phone_c: { dir: 'footage/react16b/x2-phone', count: 359, in: 34, speed: 0.8 },
+  // The lobby filling with 16 students who wave as they arrive.
+  lobby: { dir: 'footage/react16/l1-lobby', count: 742, in: 30, speed: 3 },
+  cr_lobby: { dir: 'footage/react16/l1-lobby', count: 742, in: 600 },
   join_phone: { dir: 'footage/classic/p1-join', count: 111, in: 5 },
-  lobby_fill: { dir: 'footage/classic/b1-lobby', count: 350, in: 200 },
+  lobby_fill: { dir: 'footage/react16/l1-lobby', count: 742, in: 470, speed: 2 },
+  // Play again with the same players: the click at frame 40, then Get ready and the countdown.
+  cr_again: { dir: 'footage/react16/a1-again', count: 179, in: 20, speed: 1.6 },
   podium: { dir: 'footage/classic/b5-podium', count: 238, in: 34 },
+  cr_podium: { dir: 'footage/classic/b5-podium', count: 238, in: 110, speed: 0.7 },
   first_phone: { dir: 'footage/classic/r6-phone', count: 424, in: 265 },
   m_classic: { dir: 'footage/classic/r3-big', count: 425, in: 1 },
   classic_still: { file: 'footage/classic/b1-lobby.png' },

@@ -342,11 +342,13 @@ Last updated: 2026-10-24.
   player buys and opens a Lantern; a staff warning reaches the player and the
   audit log; thirteen player pages and every staff section fit a phone, have one
   main heading and log no errors, and the player pages pass axe.
-- **A trailer for schools** (`tools/trailer/`): 86 seconds, cut from real games
-  filmed with Playwright on a local server (projector and phones), composed as an
-  HTML page rendered frame by frame, scored with `tools/audio`. Its README
-  rebuilds it and lists where each claim in it comes from. The footage and the
-  video stay out of git.
+- **A trailer for schools** (`tools/trailer/`): 88 seconds, cut from real games
+  filmed with Playwright on a local server (projector and phones, a class of 16
+  firing reactions at a reveal, Play again), with an illustrated classroom that
+  cheers along, composed as an HTML page rendered frame by frame, and a
+  synthesized synth-pop score with a synthesized classroom (applause, cheers).
+  Its README rebuilds it and lists where each claim in it comes from. The footage
+  and the video stay out of git.
 
 ## Tests
 

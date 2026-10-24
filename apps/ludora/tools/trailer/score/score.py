@@ -1,26 +1,25 @@
-"""The trailer's score: an original 86-second cue at 120 BPM in D minor, written for the cut.
+"""The trailer's score: an upbeat synth-pop cue in D major at 120 BPM, written to the edit.
 
-One bar is 2 seconds, so the edit and the music share a grid:
+One bar is 2 seconds. Every instrument is synthesized here (band-limited saws, FM keys, a synthesized drum kit),
+the classroom is crowd.py, and the app's own sound effects are laid over it from cues.json. Run with
+tools/audio/.venv/bin/python score.py <out.wav> [cues.json].
 
-  bars  0-3   0-8 s   cold open: a low drone, a ticking clock, a heartbeat, the 3-2-1 countdown
-  bars  4-7   8-16 s  the game appears: the groove starts on a big hit
-  bars  8-11  16-24 s joining: the groove with plucked strings
-  bars 12-19  24-40 s the modes montage: the hook on horns and strings, full drums
-  bars 20-25  40-52 s for teachers: piano and strings, no drums, then a build
-  bars 26-29  52-60 s rewards: the groove with a glockenspiel sparkle
-  bars 30-33  60-68 s trust: half-time drums, wide strings
-  bars 34-37  68-76 s the podium: everything, the hook with choir; silence for the last half beat
-  bars 38-41  76-84 s the logo: one hit and a long chord
-
-Rendered with Ludora's own audio library (FluidSynth and the MIT MuseScore General soundfont, mixed in
-Python). Run with tools/audio/.venv/bin/python score.py <out.wav> [cues.json]. cues.json may list the
-app's own sound effects to lay over the music at given times: [{"t": 11.5, "file": "...mp3", "db": -6}],
-with paths relative to apps/ludora.
+  0-8     cold open: a school bell, a ticking clock, the class murmuring, a pad and a dark arpeggio; 3-2-1; silence
+  8-18    the game: the drop, the groove; the classroom erupts at 12.2
+  18-26   joining: a lighter groove
+  26-28   build: snare roll and riser
+  28-40   the modes: the hook, everything in
+  40-52   for teachers: keys, a shaker, then a build
+  52-60   rewards: the groove with a glockenspiel
+  60-68   built for school: half time, wide pads
+  68-78   the finale: the hook again, the class on its feet; a hard stop at 78
+  78.5    the logo: one hit and a long major chord
 """
 
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -28,341 +27,474 @@ from pathlib import Path
 import numpy as np
 import soundfile as sf
 
-LUDORA = Path(__file__).resolve().parents[3]
+LUDORA = Path(os.environ.get("LUDORA", Path(__file__).resolve().parents[3]))
 sys.path.insert(0, str(LUDORA / "tools" / "audio"))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 from ludora_audio import dsp, synth  # noqa: E402
-from ludora_audio.instruments import (  # noqa: E402
-    BRASS,
-    CELESTA,
-    CELLI_FAST,
-    CHOIR,
-    FRENCH_HORNS,
-    GLOCKENSPIEL,
-    GRAND_PIANO,
-    KIT_POWER,
-    PIZZICATO,
-    STRINGS_SLOW,
-    SYNTH_BASS,
-    TAIKO,
-    TIMPANI,
-    TROMBONE,
-    VIOLINS_FAST,
-)
-from ludora_audio.notation import DRUM, Mix, Note, Part, drums, melody, midi  # noqa: E402
-from ludora_audio.render import SR, render_part  # noqa: E402
-from ludora_audio.theory import arp, bass_line, pads  # noqa: E402
+import crowd  # noqa: E402
 
-BPM = 120
-BEAT = 60 / BPM
-BARS = 42
-TOTAL_BEATS = BARS * 4
+SR = 48000
+BEAT = 0.5
+BAR = 2.0
+DUR = 88.5
+N = int((DUR + 3) * SR)
+rng = np.random.default_rng(12)
 
 
-def b(bar: float, beat: float = 0) -> float:
-    """Beats from the start for a bar (0-based) and a beat within it."""
-    return bar * 4 + beat
+def hz(m: float) -> float:
+    return 440.0 * 2 ** ((m - 69) / 12)
 
 
-def sec(t: float) -> float:
-    return t / BEAT
+def T(n: int) -> np.ndarray:
+    return np.arange(n) / SR
 
 
-# --- Harmony, one chord per bar -------------------------------------------------------------------
-MAIN = ["Dm", "Bb", "F", "C"]
-TURN = ["Gm", "Bb", "F", "A"]
-CHORDS: list[str] = (
-    ["Dm"] * 4  # cold open (the drone)
-    + MAIN  # 4-7
-    + MAIN  # 8-11
-    + MAIN + TURN  # 12-19
-    + ["Bb", "F", "Gm", "Dm", "Bb", "C"]  # 20-25 breakdown
-    + MAIN  # 26-29
-    + ["Bb", "F", "C", "A"]  # 30-33
-    + MAIN[:2] + ["Gm", "A"]  # 34-37
-    + ["Dm", "Dm", "D", "D"]  # 38-41
-)
-assert len(CHORDS) == BARS
+def env_adsr(n: int, a: float, d: float, s: float, r: float, hold: float | None = None) -> np.ndarray:
+    t = T(n)
+    hold = (n / SR) - r if hold is None else hold
+    e = np.where(t < a, t / max(a, 1e-4), s + (1 - s) * np.exp(-(t - a) / max(d, 1e-4)))
+    rel = np.clip((t - hold) / max(r, 1e-4), 0, 1)
+    return (e * (1 - rel)).astype(np.float32)
 
 
-def span(first: int, last: int) -> list[str]:
-    """The progression for bars first..last, padded so a part's pattern can start at beat 0 of `first`."""
-    return CHORDS[first : last + 1]
+def saw(f: float | np.ndarray, n: int, phase0: float = 0.0) -> np.ndarray:
+    """A band-limited sawtooth (polyBLEP)."""
+    f = np.broadcast_to(np.asarray(f, dtype=np.float64), (n,))
+    dt = f / SR
+    ph = (phase0 + np.cumsum(dt)) % 1.0
+    y = 2 * ph - 1
+    m = ph < dt
+    tt = ph[m] / dt[m]
+    y[m] -= tt + tt - tt * tt - 1
+    m = ph > 1 - dt
+    tt = (ph[m] - 1) / dt[m]
+    y[m] -= tt * tt + tt + tt + 1
+    return y.astype(np.float32)
 
 
-def at_bar(notes: list[Note], bar: int) -> list[Note]:
-    return [Note(n.start + b(bar), n.dur, n.pitch, n.vel) for n in notes]
+def lowpass(x: np.ndarray, fc: float, order: int = 2) -> np.ndarray:
+    from scipy.signal import butter, sosfilt
+    return sosfilt(butter(order, min(fc, SR * 0.45) / (SR / 2), output="sos"), x, axis=0).astype(np.float32)
 
 
-# --- The hook --------------------------------------------------------------------------------------
-HOOK_A = "d5:4 f5:2 a5:2 d6:6 c6:2 | bb5:4 a5:2 f5:2 d5:8 | c5:4 f5:2 a5:2 c6:6 bb5:2 | a5:4 g5:4 e5:4 c5:4"
-HOOK_B = "g5:4 bb5:2 d6:2 g6:6 f6:2 | f6:4 d6:2 bb5:2 f5:8 | a5:4 c6:2 f6:2 e6:4 c6:4 | c#6:8 e6:8"
-HOOK_C = "d5:4 f5:2 a5:2 d6:6 c6:2 | bb5:4 a5:2 f5:2 d5:8 | g5:4 bb5:2 d6:2 g6:6 f6:2 | e6:8 c#6:8"
+def highpass(x: np.ndarray, fc: float, order: int = 2) -> np.ndarray:
+    from scipy.signal import butter, sosfilt
+    return sosfilt(butter(order, fc / (SR / 2), btype="high", output="sos"), x, axis=0).astype(np.float32)
 
 
-def hook_part() -> list[Note]:
-    notes = melody(HOOK_A, b(12), vel=96, legato=0.92) + melody(HOOK_B, b(16), vel=100, legato=0.92)
-    notes += melody(HOOK_C, b(34), vel=110, legato=0.95)
-    return notes
+def bandpass(x: np.ndarray, lo: float, hi: float, order: int = 2) -> np.ndarray:
+    from scipy.signal import butter, sosfilt
+    return sosfilt(butter(order, [lo / (SR / 2), min(hi, SR * 0.45) / (SR / 2)], btype="band", output="sos"), x, axis=0).astype(np.float32)
 
 
-# --- Drums -----------------------------------------------------------------------------------------
-GROOVE = {"kick": "X.....x.X.x.....", "snare": "....X.......X...", "hat": "x.x.x.x.x.x.x.x."}
-DRIVE = {"kick": "X..x..x.X..x..x.", "snare": "....X.......X...", "hat": "xxxxxxxxxxxxxxxx", "open": "..............x."}
-HALF = {"kick": "X.........x.....", "snare": "........X.......", "hat": "x...x...x...x..."}
-FILL = {"kick": "X.....x.X.......", "snare": "....X...xoxoxxXX", "tom_hi": "........x.x.....", "tom_lo": "............x.x."}
+def st(x: np.ndarray, pan: float = 0.0) -> np.ndarray:
+    a = (pan + 1) * np.pi / 4
+    return np.stack([x * np.cos(a), x * np.sin(a)], axis=1).astype(np.float32)
 
 
-def kit() -> list[Note]:
-    notes: list[Note] = []
-    for bar in range(2, 4):  # a heartbeat under the cold open
-        notes += drums({"kick": "x..x............"}, b(bar), vel=72)
-    plan = {**{bar: GROOVE for bar in range(4, 12)}, **{bar: DRIVE for bar in range(12, 20)}, **{bar: GROOVE for bar in range(26, 30)}, **{bar: HALF for bar in range(30, 34)}, **{bar: DRIVE for bar in range(34, 38)}}
-    fills = {7, 11, 15, 19, 29, 33}
-    for bar, pattern in plan.items():
-        notes += drums(FILL if bar in fills else pattern, b(bar), vel=94 if pattern is not HALF else 100)
-    for bar in (4, 8, 12, 16, 26, 30, 34):
-        notes += drums({"crash": "X..............."}, b(bar), vel=100)
-    # A snare build into the rewards, and a roll into the silence before the logo.
-    notes += drums({"snare": "x...x...x...x..." "x.x.x.x.x.x.x.x." "xxxxxxxxxxxxxxxx" "xxxxxxxxXXXXXXXX"}, b(22), vel=70)
-    notes += drums({"snare": "xxxxxxxxxxxxxxxx" "xxxxxxxxXXXX...."}, b(36), vel=88)
-    # The bar of 37 ends half a beat early: nothing after 75.5 s.
-    return [n for n in notes if not (b(37, 3.5) <= n.start < b(38))]
+# ---------------------------------------------------------------- the kit
+def kick(gain: float = 1.0) -> np.ndarray:
+    n = int(0.5 * SR)
+    t = T(n)
+    f = 46 + 110 * np.exp(-t / 0.032)
+    x = np.sin(2 * np.pi * np.cumsum(f) / SR) * np.exp(-t / 0.22)
+    click = highpass(rng.normal(0, 1, n).astype(np.float32), 2500) * np.exp(-t / 0.004) * 0.35
+    return st(np.tanh(1.8 * (x + click)) * gain)
 
 
-def taiko() -> list[Note]:
-    notes: list[Note] = []
-    # The countdown: 3, 2, 1 at 6.0, 6.5 and 7.0 s.
-    for i, t in enumerate((6.0, 6.5, 7.0)):
-        notes.append(Note(sec(t), 1.0, 50, 96 + i * 12))
-        notes.append(Note(sec(t), 1.0, 45, 90 + i * 12))
-    for bar in (4, 12, 16, 26, 34, 36):
-        notes.append(Note(b(bar), 1.5, 50, 118))
-    for bar in (11, 19, 25, 33):
-        notes += [Note(b(bar, 3), 0.25, 50, 100), Note(b(bar, 3.5), 0.25, 50, 116)]
-    notes.append(Note(b(38), 2.0, 50, 127))
-    return notes
+def clap(gain: float = 1.0) -> np.ndarray:
+    n = int(0.4 * SR)
+    t = T(n)
+    e = np.zeros(n)
+    for o in (0.0, 0.009, 0.019):
+        e += np.exp(-np.clip(t - o, 0, None) / 0.006) * (t >= o)
+    e += np.exp(-np.clip(t - 0.028, 0, None) / 0.11) * (t >= 0.028)
+    x = bandpass(rng.normal(0, 1, n).astype(np.float32), 900, 4200) * e
+    return st(x * 0.9 * gain)
 
 
-def timpani() -> list[Note]:
-    notes = [Note(b(4), 2, midi("d2"), 116), Note(b(12), 2, midi("d2"), 110), Note(b(26), 2, midi("d2"), 110), Note(b(34), 2, midi("d2"), 120), Note(b(38), 3, midi("d2"), 127)]
-    # Rolls into the big moments.
-    for start, end, pitch in ((b(3), b(3, 3.5), "a1"), (b(25), b(26), "a1"), (b(37), b(37, 3.5), "a1")):
-        t = start
-        while t < end:
-            v = int(60 + 60 * (t - start) / max(0.1, end - start))
-            notes.append(Note(t, 0.12, midi(pitch), v))
-            t += 0.125
-    return notes
+def snare(gain: float = 1.0) -> np.ndarray:
+    n = int(0.35 * SR)
+    t = T(n)
+    tone = np.sin(2 * np.pi * 195 * t) * np.exp(-t / 0.06)
+    noise = highpass(rng.normal(0, 1, n).astype(np.float32), 1400) * np.exp(-t / 0.13)
+    return st((tone * 0.6 + noise * 0.7) * gain)
 
 
-def ticks() -> list[Note]:
-    """A clock under the cold open: every beat from 0.5 s to the countdown."""
-    return [Note(t, 0.1, DRUM["rim"], 64 + (8 if i % 2 == 0 else 0)) for i, t in enumerate(np.arange(1, 12, 1.0))]
+def hat(open_: bool = False, gain: float = 1.0) -> np.ndarray:
+    n = int((0.3 if open_ else 0.08) * SR)
+    t = T(n)
+    x = bandpass(rng.normal(0, 1, n).astype(np.float32), 7000, 15000) * np.exp(-t / (0.16 if open_ else 0.028))
+    return st(x * 0.55 * gain, 0.25)
 
 
-# --- Pitched parts ---------------------------------------------------------------------------------
-def bass() -> list[Note]:
-    notes: list[Note] = []
-    pattern = [(i * 2, 2, "R") for i in range(8)]
-    for first, last in ((4, 19), (26, 37)):
-        line = bass_line(span(first, last), pattern, octave_note=38, vel=100)
-        notes += [Note(n.start + b(first), n.dur, n.pitch, n.vel) for n in line]
-    return [n for n in notes if n.start < b(37, 3.5)]
+def shaker(gain: float = 1.0) -> np.ndarray:
+    n = int(0.12 * SR)
+    t = T(n)
+    x = bandpass(rng.normal(0, 1, n).astype(np.float32), 4500, 11000) * np.minimum(1, t / 0.012) * np.exp(-t / 0.04)
+    return st(x * 0.4 * gain, -0.3)
 
 
-def strings_ostinato() -> list[Note]:
-    notes: list[Note] = []
-    for first, last, step in ((4, 11, 0.5), (12, 19, 0.25), (26, 29, 0.25), (30, 33, 0.5), (34, 37, 0.25)):
-        ns = arp(span(first, last), 62, 77, step=step, pattern=[0, 1, 2, 1], size=3, vel=80, gate=0.45)
-        notes += [Note(n.start + b(first), n.dur, n.pitch, n.vel) for n in ns]
-    return [n for n in notes if n.start < b(37, 3.5)]
+def crash(gain: float = 1.0, dur: float = 2.6) -> np.ndarray:
+    n = int(dur * SR)
+    t = T(n)
+    noise = highpass(rng.normal(0, 1, (n, 2)).astype(np.float32), 3500)
+    metal = sum(np.sin(2 * np.pi * f * t + rng.uniform(0, 6)) for f in (3120, 4470, 5310, 6890, 8120)) * 0.08
+    x = (noise * 0.5 + metal[:, None]) * (np.exp(-t / 0.9) * np.minimum(1, t / 0.002))[:, None]
+    return (x * gain).astype(np.float32)
 
 
-def celli() -> list[Note]:
-    notes: list[Note] = []
-    for first, last in ((12, 19), (34, 37)):
-        ns = arp(span(first, last), 38, 53, step=0.5, pattern=[0, 2, 0, 1], size=3, vel=88, gate=0.55)
-        notes += [Note(n.start + b(first), n.dur, n.pitch, n.vel) for n in ns]
-    return [n for n in notes if n.start < b(37, 3.5)]
+def tom(m: float, gain: float = 1.0) -> np.ndarray:
+    n = int(0.6 * SR)
+    t = T(n)
+    f = hz(m) * (0.62 + 0.38 * np.exp(-t / 0.08))
+    x = np.sin(2 * np.pi * np.cumsum(f) / SR) * np.exp(-t / 0.32)
+    x += lowpass(rng.normal(0, 1, n).astype(np.float32), 1200) * np.exp(-t / 0.05) * 0.4
+    return st(np.tanh(1.6 * x) * gain)
 
 
-def plucks() -> list[Note]:
-    ns = arp(span(8, 11), 62, 81, step=0.5, pattern=[0, 2, 1, 3, 2, 1], size=4, vel=78, gate=0.4)
-    return [Note(n.start + b(8), n.dur, n.pitch, n.vel) for n in ns]
+def tick(high: bool, gain: float = 1.0) -> np.ndarray:
+    n = int(0.06 * SR)
+    t = T(n)
+    f = 2300 if high else 1750
+    x = np.sin(2 * np.pi * f * t) * np.exp(-t / 0.012) + bandpass(rng.normal(0, 1, n).astype(np.float32), 2000, 6000) * np.exp(-t / 0.004) * 0.6
+    return st(x * 0.35 * gain, 0.15 if high else -0.15)
 
 
-def brass_stabs() -> list[Note]:
-    notes: list[Note] = []
-    stab = "[d4,f4,a4]:2 r:6 [d4,f4,a4]:2 r:2 [d4,f4,a4]:2 r:2"
-    for bar, chord in zip(range(4, 8), ["[d4,f4,a4]", "[d4,f4,bb4]", "[c4,f4,a4]", "[c4,e4,g4]"]):
-        notes += melody(stab.replace("[d4,f4,a4]", chord), b(bar), vel=104, legato=0.8)
-    # The card at 14 and 15 s: two hits.
-    notes += melody("[c4,e4,g4,c5]:4", sec(14.0), vel=118, legato=0.9) + melody("[c4,e4,g4,c5]:4", sec(15.0), vel=124, legato=0.9)
-    return notes
+# ---------------------------------------------------------------- the synths
+def supersaw(m: float, dur: float, voices: int = 7, spread: float = 0.16) -> np.ndarray:
+    n = int(dur * SR)
+    out = np.zeros((n, 2), np.float32)
+    for i in range(voices):
+        d = (i - (voices - 1) / 2) / ((voices - 1) / 2) * spread
+        x = saw(hz(m + d), n, rng.random())
+        out += st(x, (i - (voices - 1) / 2) / ((voices - 1) / 2) * 0.8)
+    return out / voices
 
 
-def brass_long() -> list[Note]:
-    notes = pads(span(30, 33), 50, 67, size=3, vel=86)
-    notes = [Note(n.start + b(30), n.dur, n.pitch, n.vel) for n in notes]
-    notes += [Note(n.start + b(34), n.dur, n.pitch, n.vel) for n in pads(span(34, 37), 50, 69, size=4, vel=104)]
-    notes = [Note(n.start, min(n.dur, b(37, 3.5) - n.start), n.pitch, n.vel) for n in notes if n.start < b(37, 3.5)]
-    # The logo: one long D minor chord, opening to D major two bars later.
-    notes += [Note(b(38), 8, midi(p), 118) for p in ("d3", "a3", "d4", "f4", "a4")]
-    notes += [Note(b(40), 7, midi(p), 96) for p in ("d3", "a3", "d4", "f#4", "a4")]
-    return notes
+def stab(chord: list[int], dur: float = 0.32, bright: float = 5200, gain: float = 1.0) -> np.ndarray:
+    n = int((dur + 0.25) * SR)
+    x = sum(supersaw(m, n / SR) for m in chord)
+    x = lowpass(x, bright)
+    return (x * env_adsr(n, 0.004, 0.16, 0.25, 0.2, dur)[:, None] * 0.5 * gain).astype(np.float32)
 
 
-def trombones() -> list[Note]:
-    ns = [Note(b(bar), 3.8, midi(p), 100) for bar, p in zip(range(12, 20), ["d3", "bb2", "f2", "c3", "g2", "bb2", "f2", "a2"])]
-    ns += [Note(b(bar), 3.8, midi(p), 112) for bar, p in zip(range(34, 38), ["d3", "bb2", "g2", "a2"])]
-    return [Note(n.start, min(n.dur, b(37, 3.5) - n.start), n.pitch, n.vel) for n in ns]
+def pad(chord: list[int], dur: float, cutoff: float = 2200, gain: float = 1.0, attack: float = 0.35) -> np.ndarray:
+    n = int((dur + 0.9) * SR)
+    x = sum(supersaw(m, n / SR, voices=5, spread=0.12) for m in chord)
+    x = lowpass(x, cutoff)
+    return (x * env_adsr(n, attack, 1.0, 0.85, 0.9, dur)[:, None] * 0.32 * gain).astype(np.float32)
 
 
-def pad_drone() -> list[Note]:
-    notes = [Note(0, b(4) - 0.1, midi(p), 70) for p in ("d2", "a2", "d3")]
-    ns = pads(span(20, 25), 50, 69, size=4, vel=66)
-    notes += [Note(n.start + b(20), n.dur, n.pitch, n.vel) for n in ns]
-    notes += [Note(b(38), 16, midi(p), 92) for p in ("d2", "a2", "f3", "a3", "d4")]
-    return notes
+def pluck(m: float, dur: float = 0.25, dark: float = 0.0, gain: float = 1.0, pan: float = 0.0) -> np.ndarray:
+    n = int((dur + 0.35) * SR)
+    t = T(n)
+    x = 0.6 * saw(hz(m), n, rng.random()) + 0.4 * saw(hz(m) * 1.006, n, rng.random())
+    bright = lowpass(x, lerp(7500, 1800, dark))
+    dull = lowpass(x, lerp(1100, 450, dark))
+    k = np.exp(-t / 0.07)
+    y = (bright * k + dull * (1 - k)) * np.minimum(1, t / 0.002) * np.exp(-t / 0.32)
+    return st(y * 0.5 * gain, pan)
 
 
-def choir() -> list[Note]:
-    ns = pads(span(34, 37), 57, 74, size=3, vel=96)
-    ns = [Note(n.start + b(34), min(n.dur, b(37, 3.5) - (n.start + b(34))), n.pitch, n.vel) for n in ns]
-    ns += [Note(b(38), 10, midi(p), 110) for p in ("d4", "f4", "a4", "d5")]
-    return ns
+def lead(m: float, dur: float, gain: float = 1.0, pan: float = 0.0) -> np.ndarray:
+    n = int((dur + 0.18) * SR)
+    t = T(n)
+    vib = 1 + 0.006 * np.sin(2 * np.pi * 5.4 * t) * np.clip((t - 0.14) / 0.1, 0, 1)
+    f = hz(m) * vib
+    sq = saw(f, n, 0.0) - saw(f, n, 0.5)
+    x = 0.55 * saw(f, n, 0.1) + 0.35 * sq + 0.25 * saw(f * 2.0, n, 0.3)
+    x = lowpass(x, 5200)
+    return st(x * env_adsr(n, 0.006, 0.12, 0.7, 0.1, dur) * 0.32 * gain, pan)
 
 
-def piano() -> list[Note]:
-    ns = arp(span(20, 25), 55, 76, step=0.5, pattern=[0, 2, 1, 3, 2, 1, 2, 3], size=4, vel=70, gate=1.6)
-    notes = [Note(n.start + b(20), n.dur, n.pitch, n.vel) for n in ns]
-    # The hook, slow and quiet, over the breakdown.
-    notes += melody("d5:8 f5:4 a5:4 | g5:8 f5:4 c5:4 | bb4:8 d5:4 g5:4 | a5:16", b(20), vel=84, legato=1.0)
-    return notes
+def bass(m: float, dur: float, gain: float = 1.0) -> np.ndarray:
+    n = int((dur + 0.05) * SR)
+    t = T(n)
+    x = np.sin(2 * np.pi * hz(m) * t) + 0.35 * lowpass(saw(hz(m), n), 420)
+    x = np.tanh(1.4 * x) * env_adsr(n, 0.004, 0.2, 0.8, 0.04, dur)
+    return st(x * 0.55 * gain)
 
 
-def sparkle() -> list[Note]:
-    ns = arp(span(26, 29), 74, 93, step=0.25, pattern=[0, 1, 2, 3, 2, 1], size=4, vel=70, gate=0.5)
-    notes = [Note(n.start + b(26), n.dur, n.pitch, n.vel) for n in ns]
-    return notes
+def keys(m: float, dur: float = 1.8, gain: float = 1.0, pan: float = 0.0) -> np.ndarray:
+    n = int((dur + 1.0) * SR)
+    t = T(n)
+    f = hz(m)
+    idx = 2.0 * np.exp(-t / 0.35) + 0.3
+    x = np.sin(2 * np.pi * f * t + idx * np.sin(2 * np.pi * f * t)) * np.exp(-t / 1.4)
+    x += np.sin(2 * np.pi * f * 4 * t) * np.exp(-t / 0.05) * 0.12
+    x *= np.minimum(1, t / 0.002) * (1 - np.clip((t - dur) / 0.6, 0, 1))
+    return st(x * 0.3 * gain, pan)
 
 
-def celesta_end() -> list[Note]:
-    return [Note(b(40), 3, midi(p), 80) for p in ("d6", "f#6", "a6")] + [Note(b(40, 1.5), 3, midi("d7"), 70)]
+def glock(m: float, gain: float = 1.0, pan: float = 0.0) -> np.ndarray:
+    n = int(1.4 * SR)
+    t = T(n)
+    f = hz(m)
+    x = sum(a * np.sin(2 * np.pi * f * r * t) * np.exp(-t / d) for r, a, d in ((1, 1, 0.9), (2.76, 0.35, 0.35), (5.4, 0.18, 0.15)))
+    return st(x * np.minimum(1, t / 0.001) * 0.22 * gain, pan)
 
 
-# --- Mixing a linear cue ---------------------------------------------------------------------------
-PARTS: list[tuple[Part, list[tuple[float, float]] | None]] = [
-    (Part("drone", STRINGS_SLOW, pad_drone(), Mix(gain_db=-4, reverb=0.35, highpass=40, width=1.2)), [(0, -18), (7.6, 0), (7.75, -60), (40, -6), (52, -6), (76, 0)]),
-    (Part("ticks", KIT_POWER, ticks(), Mix(gain_db=-12, reverb=0.3, highpass=300, delay=0.15)), None),
-    (Part("kit", KIT_POWER, kit(), Mix(gain_db=-4, reverb=0.1, comp=(-14, 3), eq=[("high_shelf", 9000, -2, 0.7)])), None),
-    (Part("taiko", TAIKO, taiko(), Mix(gain_db=-3, reverb=0.3, highpass=35)), None),
-    (Part("timpani", TIMPANI, timpani(), Mix(gain_db=-5, reverb=0.3)), None),
-    (Part("bass", SYNTH_BASS, bass(), Mix(gain_db=-9, reverb=0.02, highpass=32, lowpass=3500, comp=(-18, 3), duck=0.35)), None),
-    (Part("strings", VIOLINS_FAST, strings_ostinato(), Mix(gain_db=-2, pan=0.25, reverb=0.22, highpass=220, width=1.3)), None),
-    (Part("celli", CELLI_FAST, celli(), Mix(gain_db=-4, pan=-0.2, reverb=0.2, highpass=60)), None),
-    (Part("plucks", PIZZICATO, plucks(), Mix(gain_db=-4, pan=-0.3, reverb=0.25, highpass=200)), None),
-    (Part("stabs", BRASS, brass_stabs(), Mix(gain_db=-7, pan=-0.05, reverb=0.22, highpass=140)), None),
-    (Part("brass", BRASS, brass_long(), Mix(gain_db=-8, reverb=0.3, highpass=120)), None),
-    (Part("horns", FRENCH_HORNS, hook_part(), Mix(gain_db=-3, pan=-0.1, reverb=0.3, highpass=120)), None),
-    (Part("hook_vln", VIOLINS_FAST, [Note(n.start, n.dur, n.pitch + 12, max(1, n.vel - 14)) for n in hook_part()], Mix(gain_db=-10, pan=0.15, reverb=0.3, highpass=400)), None),
-    (Part("trombones", TROMBONE, trombones(), Mix(gain_db=-8, pan=0.1, reverb=0.25, highpass=60)), None),
-    (Part("choir", CHOIR, choir(), Mix(gain_db=-6, reverb=0.4, highpass=150, width=1.3)), None),
-    (Part("piano", GRAND_PIANO, piano(), Mix(gain_db=-3, reverb=0.35, highpass=80)), None),
-    (Part("sparkle", GLOCKENSPIEL, sparkle(), Mix(gain_db=-13, pan=0.3, reverb=0.3, delay=0.15, highpass=900)), None),
-    (Part("celesta", CELESTA, celesta_end(), Mix(gain_db=-8, reverb=0.5, delay=0.25, highpass=600)), None),
+def lerp(a: float, b: float, t: float) -> float:
+    return a + (b - a) * t
+
+
+# ---------------------------------------------------------------- the arrangement
+BUS = {k: np.zeros((N, 2), np.float32) for k in ("drums", "bass", "music", "lead", "fx", "crowd", "app", "keys")}
+KICKS: list[float] = []
+
+
+def put(bus: str, x: np.ndarray, at: float, gain_db: float = 0.0) -> None:
+    dsp.place(BUS[bus], x * dsp.db(gain_db), int(at * SR))
+
+
+CH = {"D": [62, 66, 69], "A": [61, 64, 69], "Bm": [62, 66, 71], "G": [62, 67, 71]}
+ROOT = {"D": 38, "A": 33, "Bm": 35, "G": 31}
+PROG = ["D", "A", "Bm", "G"]
+# The hook, on an eighth-note grid, one list per bar: (eighth, note, length in eighths).
+HOOK = [
+    [(0, 74, 1), (2, 78, 1), (3, 81, 2), (5, 81, 1), (6, 83, 1), (7, 81, 1)],
+    [(1, 76, 1), (3, 76, 1), (4, 78, 1), (5, 76, 1), (6, 73, 2)],
+    [(0, 74, 1), (2, 78, 1), (3, 83, 2), (5, 81, 1), (6, 78, 1), (7, 74, 1)],
+    [(0, 76, 1), (2, 74, 1), (3, 76, 1), (4, 78, 2), (6, 76, 2)],
 ]
 
 
-def envelope(n: int, points: list[tuple[float, float]]) -> np.ndarray:
-    """A gain curve (linear amplitude) through (seconds, dB) points."""
+def chord_at(t: float) -> str:
+    return PROG[int(t // BAR) % 4]
+
+
+def groove(a: float, b: float, *, kick_on: bool = True, clap_db: float = 0.0, hats: bool = True, open_hats: bool = True,
+           bass_on: bool = True, arp_db: float | None = -2.0, stabs_db: float | None = None, pad_db: float | None = None,
+           hook_db: float | None = None, glock_db: float | None = None, half: bool = False) -> None:
+    t = a
+    while t < b - 1e-6:
+        c = chord_at(t)
+        bar_t = t
+        for beat in range(4):
+            bt = bar_t + beat * BEAT
+            if bt >= b - 1e-6:
+                break
+            if kick_on and (not half or beat in (0,)) :
+                put("drums", kick(), bt)
+                KICKS.append(bt)
+            if half and beat == 2:
+                put("drums", snare(), bt, -2)
+                put("drums", clap(), bt, -4)
+            if not half and beat in (1, 3) and clap_db > -60:
+                put("drums", clap(), bt, clap_db)
+            if hats:
+                for s in range(4 if not half else 2):
+                    ht = bt + s * (BEAT / (4 if not half else 2))
+                    if ht < b:
+                        put("drums", hat(gain=1.0 if s % 2 else 0.6), ht, -6 if s % 2 == 0 else -3)
+                if open_hats and not half:
+                    put("drums", hat(True), bt + BEAT / 2, -7)
+            if bass_on:
+                r = ROOT[c]
+                if half:
+                    if beat == 0:
+                        put("bass", bass(r, 1.9), bt, -1)
+                else:
+                    for e in range(2):
+                        put("bass", bass(r + (12 if (beat == 3 and e == 1) else 0), 0.22), bt + e * 0.25, -1)
+        if arp_db is not None:
+            tones = CH[c] + [m + 12 for m in CH[c]]
+            order = [0, 1, 2, 3, 4, 3, 2, 1]
+            for s in range(16):
+                at = bar_t + s * 0.125
+                if at < b:
+                    put("music", pluck(tones[order[s % 8]] + 12, 0.12, gain=0.8, pan=(-0.35 if s % 2 else 0.35)), at, arp_db)
+        if stabs_db is not None:
+            for off in (0.25, 0.75, 1.25, 1.75):
+                if bar_t + off < b:
+                    put("music", stab(CH[c], 0.14), bar_t + off, stabs_db)
+        if pad_db is not None:
+            put("music", pad(CH[c] + [CH[c][0] + 12], min(BAR, b - bar_t), cutoff=3000), bar_t, pad_db)
+        if hook_db is not None or glock_db is not None:
+            cycle = int((bar_t - a) // BAR) % 4
+            for e, m, ln in HOOK[cycle]:
+                at = bar_t + e * 0.25
+                if at >= b:
+                    continue
+                if hook_db is not None:
+                    put("lead", lead(m, ln * 0.25 - 0.03), at, hook_db)
+                if glock_db is not None:
+                    put("music", glock(m + 12, pan=0.2), at, glock_db)
+        t += BAR
+
+
+def roll(a: float, b: float, gain_db: float = -4.0) -> None:
+    """A snare roll that speeds up and swells into b."""
+    t = a
+    while t < b - 0.01:
+        p = (t - a) / (b - a)
+        put("drums", snare(0.4 + 0.6 * p), t, gain_db)
+        t += 0.25 if p < 0.5 else 0.125 if p < 0.8 else 0.0625
+
+
+def build() -> None:
+    # 0-8: the cold open.
+    put("fx", crowd.room_tone(8.0), 0.0, -6)
+    put("crowd", crowd.murmur(6.2), 0.0, -14)
+    put("fx", crowd.bell(), 0.25, 4)
+    for i in range(16):
+        put("drums", tick(i % 2 == 0, 0.5 + 0.5 * i / 15), i * BEAT, -10 + i * 0.4)
+    put("music", pad([50, 57, 62, 66], 7.5, cutoff=900, attack=2.0), 0.6, -6)
+    for s in range(int((7.5 - 2.0) / 0.125)):
+        at = 2.0 + s * 0.125
+        tones = CH["D"] + [m + 12 for m in CH["D"]]
+        p = s / ((7.5 - 2.0) / 0.125)
+        put("music", pluck(tones[[0, 1, 2, 3, 4, 3, 2, 1][s % 8]] + 12, 0.12, dark=1 - p, gain=0.3 + 0.7 * p), at, -10 + 6 * p)
+    for e in range(int((7.5 - 4.0) / 0.25)):
+        put("bass", bass(38, 0.2, gain=0.4 + 0.6 * e / 14), 4.0 + e * 0.25, -4)
+    put("fx", synth.riser(3.15, f0=160, f1=1800, gain=0.3), 4.6, -2)
+    for i, at in enumerate((6.0, 6.5, 7.0)):
+        put("drums", tom(45 - i * 3, 1.0), at, 0)
+        put("fx", synth.impact(0.6, 120, 40, 0.5), at, -6)
+    put("crowd", crowd.cheer(1.8, voices=22, seed=7, word="ooh", spread=0.3, shout=0.1), 5.9, -10)
+
+    # 8-18: the game.
+    put("fx", synth.impact(1.2, 150, 38, 1.0, crack=0.4), 8.0, 0)
+    put("drums", crash(1.0), 8.0, -3)
+    groove(8.0, 12.0, arp_db=-3, stabs_db=-10, clap_db=-2)
+    put("fx", synth.whoosh(0.6, 400, 2500, 0.4), 11.7, -6)
+    put("drums", crash(1.0), 12.2, -2)
+    put("fx", synth.impact(0.8, 130, 40, 0.7), 12.2, -4)
+    groove(12.0, 18.0, arp_db=-4, stabs_db=-8, pad_db=-10, clap_db=-2)
+    put("crowd", crowd.cheer(3.6, voices=34, seed=11, word="mix", spread=0.3), 12.25, 0)
+    put("crowd", crowd.applause(3.8, clappers=28, seed=12), 12.45, 2)
+    put("drums", crash(0.7), 16.0, -6)
+    for at in (17.0, 17.5):
+        put("music", stab(CH["D"] + [74], 0.4, gain=1.2), at, -3)
+        put("fx", synth.impact(0.5, 110, 45, 0.5), at, -8)
+
+    # 18-26: joining.
+    groove(18.0, 26.0, arp_db=-3, clap_db=-5, stabs_db=-10)
+
+    # 26-28: the build into the modes.
+    groove(26.0, 27.5, kick_on=True, clap_db=-80, open_hats=False, arp_db=-6, bass_on=True)
+    roll(26.0, 27.9, -4)
+    put("fx", synth.riser(1.9, f0=200, f1=2600, gain=0.35), 26.0, -2)
+    put("music", stab(CH["Bm"] + [83], 0.35, gain=1.2), 27.0, -3)
+
+    # 28-40: the modes. The hook, everything in.
+    put("fx", synth.impact(1.2, 150, 38, 1.0, crack=0.4), 28.0, 0)
+    put("drums", crash(1.0), 28.0, -3)
+    groove(28.0, 40.0, arp_db=-7, pad_db=-8, hook_db=0, clap_db=-1)
+    put("crowd", crowd.cheer(0.9, voices=14, seed=21, word="woo", spread=0.15), 30.05, -6)
+    put("crowd", crowd.cheer(0.9, voices=14, seed=22, word="yeah", spread=0.15), 30.55, -6)
+    put("crowd", crowd.cheer(1.0, voices=16, seed=23, word="woo", spread=0.15), 31.05, -5)
+    put("drums", crash(0.9), 36.0, -4)
+    for i in range(20):
+        at = 36.3 + 1.1 * (1 - (1 - i / 19) ** 1.6)
+        put("fx", synth.pop(900 + i * 70, 0.06, 0.4), at, -12)
+
+    # 40-52: for teachers.
+    put("fx", synth.whoosh(1.0, 2500, 300, 0.35), 40.0, -6)
+    put("keys", keys(62, 1.8) + keys(66, 1.8, pan=-0.2) + keys(69, 1.8, pan=0.2) + keys(76, 1.8, gain=0.6), 41.0, -2)
+    for bi, c in enumerate(["D", "A", "Bm", "G"]):
+        at = 42.0 + bi * BAR
+        for m in CH[c]:
+            put("keys", keys(m, 1.8, pan=(m % 3 - 1) * 0.2), at, -3)
+        put("keys", keys(ROOT[c] + 12, 1.8), at, -5)
+        for beat in (0, 2):
+            put("drums", kick(0.6), at + beat * BEAT, -4)
+            KICKS.append(at + beat * BEAT)
+        for s in range(8):
+            put("drums", shaker(1.0 if s % 2 else 0.6), at + s * 0.25, -8)
+        for e, m, ln in HOOK[bi]:
+            put("music", pluck(m, ln * 0.25, gain=0.6, pan=0.25), at + e * 0.25, -9)
+    groove(50.0, 52.0, clap_db=-80, open_hats=False, arp_db=-6)
+    roll(50.0, 51.95, -3)
+    put("fx", synth.riser(1.95, f0=180, f1=2400, gain=0.35), 50.0, -2)
+
+    # 52-60: rewards.
+    put("fx", synth.impact(1.0, 140, 40, 0.9), 52.0, -1)
+    put("drums", crash(1.0), 52.0, -4)
+    groove(52.0, 60.0, arp_db=-8, stabs_db=-12, glock_db=-4, clap_db=-2)
+
+    # 60-68: built for school, half time.
+    put("drums", crash(0.8), 60.0, -6)
+    groove(60.0, 68.0, half=True, arp_db=None, pad_db=-6, bass_on=True)
+    for bi in range(4):
+        c = PROG[bi]
+        put("lead", lead(CH[c][2] + 12, 1.7, gain=0.7), 60.0 + bi * BAR, -7)
+
+    # 68-78: the finale.
+    put("fx", synth.impact(1.2, 150, 38, 1.0, crack=0.4), 68.0, 0)
+    put("drums", crash(1.0), 68.0, -3)
+    groove(68.0, 76.5, arp_db=-7, pad_db=-7, hook_db=0, clap_db=-1)
+    for at in (68.0, 70.0, 72.0, 74.0):
+        cycle = int((at - 68.0) // BAR) % 4
+        for e, m, ln in HOOK[cycle]:
+            put("lead", lead(m + 12, ln * 0.25 - 0.03, gain=0.5, pan=0.3), at + e * 0.25, -6)
+    put("drums", crash(1.0), 71.0, -3)
+    put("crowd", crowd.cheer(3.2, voices=38, seed=31, word="mix", spread=0.35), 71.05, 1)
+    put("crowd", crowd.applause(3.4, clappers=34, seed=32), 71.2, 3)
+    put("drums", crash(0.8), 75.5, -5)
+    # One more round? The class says yes.
+    put("crowd", crowd.cheer(1.6, voices=34, seed=41, word="yeah", spread=0.12), 76.02, 0)
+    put("crowd", crowd.applause(1.9, clappers=26, seed=42, fade=0.8), 76.2, -1)
+    groove(76.5, 78.0, clap_db=-80, open_hats=False, arp_db=-5)
+    roll(76.5, 77.98, -2)
+    put("fx", synth.riser(1.5, f0=220, f1=3000, gain=0.35), 76.5, -1)
+
+    # 78.5: the logo.
+    put("fx", synth.impact(1.6, 160, 34, 1.0, crack=0.5), 78.5, 0)
+    put("drums", crash(1.0, 4.0), 78.5, -2)
+    put("music", pad([50, 57, 62, 66, 69, 76], 7.0, cutoff=2600, attack=0.02), 78.5, -3)
+    put("keys", keys(62, 5.0) + keys(66, 5.0, pan=-0.2) + keys(69, 5.0, pan=0.2) + keys(74, 5.0) + keys(78, 5.0, gain=0.7), 78.5, -3)
+    put("bass", bass(38, 3.0), 78.5, 0)
+    for i, m in enumerate([74, 78, 81, 86, 90]):
+        put("music", glock(m, pan=-0.4 + i * 0.2), 79.4 + i * 0.12, -4)
+    for i, m in enumerate([74, 78, 81, 86]):
+        put("music", pluck(m, 0.2, gain=0.8, pan=0.2), 82.0 + i * 0.125, -6)
+
+
+def app_cues(path: str | None) -> None:
+    if not path:
+        return
+    for cue in json.loads(Path(path).read_text()):
+        data = subprocess.run(["ffmpeg", "-v", "error", "-i", str(LUDORA / cue["file"]), "-f", "f32le", "-ac", "2", "-ar", str(SR), "-"], capture_output=True, check=True).stdout
+        x = np.frombuffer(data, dtype=np.float32).reshape(-1, 2)
+        put("app", x, cue["t"], cue.get("db", 0))
+
+
+def mix(out_path: str) -> None:
+    n = N
+    duck = dsp.duck_curve(n, KICKS, 0.55, release_s=0.18)[:, None]
+    ir_room = dsp.make_ir(1.6, seed=31)
+    ir_hall = dsp.make_ir(2.6, seed=32)
+    music = BUS["music"] * duck
+    lead_ = BUS["lead"]
+    lead_ = lead_ + dsp.echo(lead_, 0.375, feedback=0.3, repeats=4) * dsp.db(-9)
+    bass_ = BUS["bass"] * (0.35 + 0.65 * duck)
+    drums = dsp.process(BUS["drums"], dsp.eq_board(30, 16000, None, (-14, 3.0)))
+    crowd_bus = dsp.process(BUS["crowd"], dsp.eq_board(150, 9000, None, (-18, 2.5)))
+    crowd_bus = crowd_bus + dsp.reverb(crowd_bus, ir_room) * dsp.db(-8)
+    wet = dsp.reverb(music * 0.5 + lead_ * 0.4 + BUS["keys"] * 0.6, ir_hall) * dsp.db(-6)
+    full = drums * dsp.db(-4) + bass_ * dsp.db(-6) + music * dsp.db(2) + lead_ * dsp.db(1) + BUS["keys"] * dsp.db(1) + wet
+    full = full + BUS["fx"] * dsp.db(-3) + dsp.reverb(BUS["fx"], ir_hall) * dsp.db(-12)
+    full = full + crowd_bus * dsp.db(-2) + BUS["app"] * dsp.db(-2)
+    # The silences: just before the first drop, and the beat before the logo.
     t = np.arange(n) / SR
-    xs = [p[0] for p in points]
-    ys = [p[1] for p in points]
-    return (10 ** (np.interp(t, xs, ys) / 20)).astype(np.float32)
-
-
-def fx_track(n: int) -> np.ndarray:
-    """Trailer sound design: booms, risers, whooshes and downlifters on the cuts."""
-    out = np.zeros((n, 2), dtype=np.float32)
-
-    def put(x: np.ndarray, t: float, db: float = 0.0):
-        dsp.place(out, x * dsp.db(db), int(t * SR))
-
-    def boom(t: float, db: float = 0.0, length: float = 2.6):
-        # A deep pitched-down sine under a crack: the trailer "braaam" floor.
-        tt = np.arange(int(length * SR)) / SR
-        f = 26 + 64 * np.exp(-tt * 5)
-        sub = np.sin(2 * np.pi * np.cumsum(f) / SR) * np.exp(-tt * 1.4)
-        st = np.stack([sub, sub], axis=1).astype(np.float32) * 0.9
-        put(st, t, db)
-        put(synth.impact(0.6, 160, 40, gain=0.7, crack=0.35, seed=int(t * 10)), t, db - 2)
-
-    put(synth.riser(3.6, 120, 1800, gain=0.32, noise=0.5, seed=3), 4.05, -3)
-    boom(8.0, 0)
-    put(synth.whoosh(0.7, 300, 3000, gain=0.25, seed=5, pan_sweep=0.8), 15.5, -6)
-    boom(16.0, -6, 1.6)
-    put(synth.whoosh(0.8, 200, 2400, gain=0.3, seed=6, pan_sweep=-0.8), 23.3, -4)
-    boom(24.0, -2)
-    put(synth.riser(1.9, 300, 2600, gain=0.25, noise=0.6, seed=8), 32.1, -6)
-    boom(34.0, -3, 2.0)
-    # Into the breakdown: a downlifter.
-    put(synth.whoosh(1.4, 2600, 180, gain=0.28, seed=9, pan_sweep=0.3), 39.9, -6)
-    put(synth.riser(3.8, 150, 2200, gain=0.3, noise=0.55, seed=10), 48.2, -4)
-    boom(52.0, -1)
-    put(synth.whoosh(0.7, 400, 3200, gain=0.26, seed=11, pan_sweep=0.8), 59.4, -6)
-    boom(60.0, -6, 1.8)
-    put(synth.riser(1.9, 200, 2400, gain=0.28, noise=0.55, seed=12), 66.1, -5)
-    boom(68.0, 0)
-    put(synth.riser(2.4, 160, 3200, gain=0.34, noise=0.6, seed=13), 73.1, -2)
-    boom(76.0, 2, 4.5)
-    return out
-
-
-def main(out_path: str, cues_path: str | None = None) -> None:
-    n = int((BARS * 4 * BEAT + 6) * SR)
-    dry = np.zeros((n, 2), dtype=np.float32)
-    rev = np.zeros_like(dry)
-    echo = np.zeros_like(dry)
-    kick_times = sorted(nn.start * BEAT for part, _ in PARTS if part.name == "kit" for nn in part.notes if nn.pitch in (DRUM["kick"], DRUM["kick2"]))
-    for part, env in PARTS:
-        x = render_part(part, BPM, TOTAL_BEATS, repeats=1, humanize=0.006 if not part.instrument.drums else 0.003, seed=len(part.name))
-        x = dsp.fit(x, n)
-        m = part.mix
-        x = dsp.process(x, dsp.eq_board(m.highpass, m.lowpass, m.eq, m.comp))
-        if m.width != 1.0:
-            x = dsp.width(x, m.width)
-        x = x * dsp.db(m.gain_db)
-        if m.duck and kick_times:
-            x = x * dsp.duck_curve(n, kick_times, m.duck)[:, None]
-        if m.pan:
-            x = dsp.pan(x, m.pan)
-        if env:
-            x = x * envelope(n, env)[:, None]
-        dry += x
-        rev += x * m.reverb
-        if m.delay:
-            echo += x * m.delay
-        print(f"{part.name:10s} peak {np.max(np.abs(x)):.3f}")
-    wet = dsp.reverb(rev, dsp.make_ir(2.4, seed=21)) * dsp.db(-3)
-    mix = dry + wet + dsp.echo(echo, 0.75 * BEAT)
-    fx = fx_track(n)
-    mix = mix + fx + dsp.reverb(fx * 0.25, dsp.make_ir(1.6, seed=22)) * dsp.db(-6)
-    # The two cuts to silence: just before the first hit, and just before the logo.
-    mix = mix * envelope(n, [(0, 0), (7.72, 0), (7.76, -70), (7.99, -70), (8.0, 0), (75.48, 0), (75.52, -80), (75.99, -80), (76.0, 0)])[:, None]
-    if cues_path:
-        for cue in json.loads(Path(cues_path).read_text()):
-            data = subprocess.run(["ffmpeg", "-v", "error", "-i", str(LUDORA / cue["file"]), "-f", "f32le", "-ac", "2", "-ar", str(SR), "-"], capture_output=True, check=True).stdout
-            x = np.frombuffer(data, dtype=np.float32).reshape(-1, 2)
-            dsp.place(mix, x * dsp.db(cue.get("db", 0)), int(cue["t"] * SR))
-    mix = dsp.master(mix, glue=(-16, 2.2))
-    end = int(86 * SR)
-    mix = mix[:end]
-    mix = dsp.fade(mix, 0.0, 1.5)
-    mix = dsp.normalize_loudness(mix, -14.0, ceiling_db=-1.0)
-    sf.write(out_path, mix, SR, subtype="PCM_24")
-    print("loudness", round(dsp.lufs(mix), 2), "LUFS, true peak", round(dsp.true_peak_db(mix), 2), "dBTP,", round(len(mix) / SR, 2), "s")
+    gate = np.ones(n, np.float32)
+    gate[(t >= 7.76) & (t < 8.0)] = 0.0
+    gate[(t >= 78.0) & (t < 78.5)] = 0.0
+    from scipy.ndimage import uniform_filter1d
+    gate = uniform_filter1d(gate, 48)
+    full = full * gate[:, None]
+    full = dsp.master(full, glue=(-16, 2.0))
+    full = full[: int(DUR * SR)]
+    full = dsp.fade(full, 0.0, 2.0)
+    full = dsp.normalize_loudness(full, -13.8, ceiling_db=-1.0)
+    full = dsp.limit(full, -2.8)
+    sf.write(out_path, full, SR, subtype="PCM_24")
+    print("loudness", round(dsp.lufs(full), 2), "LUFS; true peak", round(dsp.true_peak_db(full), 2), "dBTP;", round(len(full) / SR, 2), "s")
 
 
 if __name__ == "__main__":
-    main(sys.argv[1], sys.argv[2] if len(sys.argv) > 2 else None)
+    build()
+    app_cues(sys.argv[2] if len(sys.argv) > 2 else None)
+    mix(sys.argv[1])
