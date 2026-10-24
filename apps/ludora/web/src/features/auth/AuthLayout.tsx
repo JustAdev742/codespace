@@ -26,7 +26,7 @@ export function AuthLayout({ title, intro, children, footer }: { title: string; 
       <div className="mx-auto grid w-full max-w-[1180px] flex-1 grid-cols-1 items-center gap-x-16 px-4 sm:px-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,460px)]">
         <div className="hidden lg:block">
           <p className="max-w-[20ch] font-display text-[3.4rem] leading-[0.95] font-extrabold">
-            Learn something. <span className="text-lantern">Win something.</span> Collect something.
+            Learn something. Win something. Collect something.
           </p>
           <ul className="mt-8 flex flex-col gap-3.5">
             {PERKS.map(({ icon: Icon, text }) => (

@@ -127,7 +127,7 @@ export default function Landing() {
               <div className="flex flex-col gap-5">
                 <h1 id="hero-title" className="font-display text-[2.75rem] leading-[0.95] font-extrabold min-[400px]:text-[3.25rem] sm:text-[4.25rem] xl:text-[4.75rem]">
                   <span className="block">Answer fast.</span>
-                  <span className="block text-lantern">Climb the board.</span>
+                  <span className="block">Climb the board.</span>
                 </h1>
                 {/* The way in comes first: most people arrive with a code from their teacher. */}
                 <div className="hud stage-card max-w-[480px] p-4 sm:p-5">

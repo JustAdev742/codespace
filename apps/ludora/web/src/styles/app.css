@@ -120,7 +120,7 @@
   --surface-3: rgb(255 255 255 / 0.14);
   --line: rgb(255 255 255 / 0.14);
   --line-strong: rgb(255 255 255 / 0.3);
-  --link: #ffd36b;
+  --link: var(--lantern);
   --focus: #ffc233;
   color: var(--text);
 }
@@ -315,7 +315,7 @@
   .panel {
     background: var(--bg-raised);
     border: 1px solid var(--line);
-    border-radius: var(--radius-m);
+    border-radius: var(--radius-l);
   }
   /* A quiet press for secondary controls: a fine line and a thin bottom edge. */
   .press-soft {

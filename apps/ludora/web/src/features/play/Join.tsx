@@ -95,7 +95,7 @@ export default function Join() {
             <Card>
               <div className="text-center">
                 <h1 className="font-display text-[2.25rem] leading-none font-bold">No game with that code</h1>
-                <p className="mt-3 text-text-2">{info.error instanceof ApiError ? info.error.message : 'Check the code and try again.'}</p>
+                <p className="mt-3 text-text-2">{info.error instanceof ApiError && info.error.code !== 'room_not_found' ? info.error.message : 'Check the code on the host screen and type it again.'}</p>
               </div>
               <CodeEntry size="xl" layout="stacked" />
             </Card>
