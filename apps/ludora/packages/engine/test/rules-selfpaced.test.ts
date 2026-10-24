@@ -76,7 +76,7 @@ describe('Comet Dash rule options', () => {
     expect(h.view('a').you.pos).toBe(first - 1);
     h.answer('a', 'right');
     expect(h.view('a').you).toMatchObject({ pos: first + 3, last: { text: '+4 spaces (Wormhole)' } });
-    expect(h.feed.map((f) => f.text)).toContain(`A found a wormhole at space ${first}!`);
+    expect(h.feed.map((f) => f.text)).toContain(`A found a wormhole at space ${first}.`);
     // Where they are is never sent to anyone.
     expect(JSON.stringify([h.view('b'), h.host()])).not.toContain('wormhole');
   });
@@ -92,7 +92,7 @@ describe('Comet Dash rule options', () => {
     expect(h.view('b').you.last.text).toBe('+2 spaces (Towed)');
     run(h, 'b', ['right', 'right', 'right']);
     expect(h.rt.status).toBe('ended');
-    expect(h.rt.results).toMatchObject({ outcome: 'coop-win', summary: 'Every racer crossed the line. The room wins together!' });
+    expect(h.rt.results).toMatchObject({ outcome: 'coop-win', summary: 'Every racer crossed the line. The room wins together.' });
 
     const late = race({ ...v.settings, distance: 8 }, ['a', 'b']);
     run(late, 'a', Array(8).fill('right'));

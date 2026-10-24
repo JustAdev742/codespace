@@ -164,12 +164,12 @@ export const gloomGiant = defineMode<State, Settings, Action>({
       if (f.stream.last) f.stream.last.text = `Hit for ${dealt}${notes.length ? ` (${notes.join(', ')})` : ''}`;
       if (s.hp <= 0) {
         s.finalBlow = playerId;
-        ctx.feed(`${name} landed the final blow${crit ? ' with a critical hit' : ''}!`, { tone: 'big' });
+        ctx.feed(`${name} landed the final blow${crit ? ' with a critical hit' : ''}.`, { tone: 'big' });
         return finish(s, 'win', 'defeated', ctx);
       }
       if (mended) ctx.feed(`${name} mended the shield.`, { tone: 'good' });
       // Swift critical hits are common, so only lucky ones are announced to the room.
-      if (crit && !st.swift) ctx.feed(`${name} landed a critical hit!`, { tone: 'good' });
+      if (crit && !st.swift) ctx.feed(`${name} landed a critical hit.`, { tone: 'good' });
       if (!s.enraged && s.hp < s.maxHp / 2) {
         s.enraged = true;
         ctx.feed('The Gloom Giant is enraged! Wrong answers now cost 2 shield.', { tone: 'bad' });
@@ -181,12 +181,12 @@ export const gloomGiant = defineMode<State, Settings, Action>({
       log(s, { playerId, kind: 'strike', amount: strike, at });
       if (f.stream.last) f.stream.last.text = `The giant struck the shield (−${strike})`;
       if (s.shield <= 0) {
-        ctx.feed('The shield shattered!', { tone: 'bad' });
+        ctx.feed('The shield shattered.', { tone: 'bad' });
         return finish(s, 'loss', 'shield', ctx);
       }
       if (!s.cracked && s.shield <= 2) {
         s.cracked = true;
-        ctx.feed(`The shield is cracking: ${s.shield} left!`, { tone: 'bad' });
+        ctx.feed(`The shield is cracking: ${s.shield} left.`, { tone: 'bad' });
       }
     }
     streamNext(f.stream, ctx);
@@ -248,7 +248,7 @@ export const gloomGiant = defineMode<State, Settings, Action>({
     });
     const left = `${s.hp} of ${s.maxHp} health`;
     let summary: string;
-    if (s.result === 'win') summary = `The Gloom Giant is down! ${nameOf(ctx, s.finalBlow)} landed the final blow.`;
+    if (s.result === 'win') summary = `The Gloom Giant is down. ${nameOf(ctx, s.finalBlow)} landed the final blow.`;
     else if (s.reason === 'shield') summary = `The shield broke with the Gloom Giant on ${left}.`;
     else if (s.reason === 'time') summary = `Time ran out with the Gloom Giant on ${left}.`;
     else summary = `The battle ended with the Gloom Giant on ${left}.`;

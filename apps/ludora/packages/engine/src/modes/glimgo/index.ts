@@ -417,7 +417,7 @@ export const glimgo = defineMode<State, Settings, Action>({
     if (progress.toGo === 0) {
       s.winner = playerId;
       call.closed = true;
-      ctx.feed(`${nameOf(ctx, playerId)} called Glimgo!`, { tone: 'big' });
+      ctx.feed(`${nameOf(ctx, playerId)} called Glimgo.`, { tone: 'big' });
       setPhase(s, ctx, 'finale', now + FINALE_MS);
       return;
     }

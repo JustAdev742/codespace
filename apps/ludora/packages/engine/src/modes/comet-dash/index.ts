@@ -86,7 +86,7 @@ function checkEnd(s: State, ctx: ModeContext<Settings>) {
   if (ctx.settings.together) {
     if (!allDone) return;
     s.allHome = true;
-    ctx.endGame('Every racer crossed the line. The room wins together!');
+    ctx.endGame('Every racer crossed the line. The room wins together.');
     return;
   }
   if (s.finishOrder.length >= finishersNeeded(s, ctx) || allDone) {
@@ -176,7 +176,7 @@ export const cometDash = defineMode<State, Settings, Action>({
       r.pos = Math.min(st.distance, from + WORMHOLE_JUMP);
       gain += r.pos - from;
       notes.push('Wormhole');
-      ctx.feed(`${ctx.player(playerId)?.name ?? 'A racer'} found a wormhole at space ${from}!`, { tone: 'good' });
+      ctx.feed(`${ctx.player(playerId)?.name ?? 'A racer'} found a wormhole at space ${from}.`, { tone: 'good' });
     }
     r.lastMove = { gain, notes };
     if (r.stream.last) r.stream.last.text = gain > 0 ? `+${gain} ${gain === 1 ? 'space' : 'spaces'}${notes.length ? ` (${notes.join(', ')})` : ''}` : gain < 0 ? (setback ?? 'Back one space') : 'No move';

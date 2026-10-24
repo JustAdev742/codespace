@@ -123,7 +123,7 @@ function sharePot(s: State, ctx: ModeContext) {
     s.sync.lastGain[pid] = share;
   }
   if (!winners.length) ctx.feed('Nobody got that one, so nobody shares the pot.', { tone: 'info' });
-  else if (winners.length === 1) ctx.feed(`${ctx.player(winners[0]!)?.name ?? 'One player'} took the whole pot of ${fmt(pot)} points!`, { tone: 'big' });
+  else if (winners.length === 1) ctx.feed(`${ctx.player(winners[0]!)?.name ?? 'One player'} took the whole pot of ${fmt(pot)} points.`, { tone: 'big' });
   else ctx.feed(`${winners.length} players shared the pot of ${fmt(pot)} points.`, { tone: 'good' });
 }
 
@@ -259,7 +259,7 @@ function roundStarted(s: State, ctx: ModeContext) {
   if (scoringOf(ctx) === 'climb' && !isEncore(s)) {
     const now = climbFactor(difficultyOf(ctx, s.sync.order[s.sync.round]));
     const before = s.sync.round > 0 ? climbFactor(difficultyOf(ctx, s.sync.order[s.sync.round - 1])) : 1;
-    if (now > before) ctx.feed(now >= 2 ? 'Hard questions now: double points!' : 'Medium questions now: one and a half times the points.', { tone: 'big' });
+    if (now > before) ctx.feed(now >= 2 ? 'Hard questions now: double points.' : 'Medium questions now: one and a half times the points.', { tone: 'big' });
   }
 }
 

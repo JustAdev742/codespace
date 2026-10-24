@@ -211,7 +211,7 @@ export const lanternMatch = defineMode<State, Settings, Action>({
     const name = ctx.player(playerId)?.name ?? 'A player';
     if (ctx.settings.sprint) {
       s.winner = playerId;
-      ctx.feed(`${name} cleared their board first!`, { tone: 'big' });
+      ctx.feed(`${name} cleared their board first.`, { tone: 'big' });
       ctx.endGame(`${name} cleared their board first.`);
       return;
     }
