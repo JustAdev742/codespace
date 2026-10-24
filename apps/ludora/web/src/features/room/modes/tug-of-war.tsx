@@ -247,10 +247,11 @@ function RopeStage({ view, players }: { view: TugOfWarView; players: RoomPlayerV
         <rect x="4" y="22" width="116" height="196" rx="14" fill={`url(#stripes-${uid})`} />
         <rect x="880" y="22" width="116" height="196" rx="14" fill={colour(right.hue)} />
         <rect x="880" y="22" width="116" height="196" rx="14" fill={`url(#spots-${uid})`} />
+        {/* Quarter ticks along the rope, and the halfway mark where the knot starts. */}
         {[-3, -2, -1, 1, 2, 3].map((q) => (
-          <line key={q} x1={500 + q * 95} x2={500 + q * 95} y1="80" y2="160" stroke="rgb(255 255 255 / 0.4)" strokeWidth="4" strokeLinecap="round" />
+          <line key={q} x1={500 + q * 95} x2={500 + q * 95} y1="138" y2="156" stroke="rgb(255 255 255 / 0.45)" strokeWidth="4" strokeLinecap="round" />
         ))}
-        <line x1="500" x2="500" y1="34" y2="206" stroke="rgb(255 255 255 / 0.7)" strokeWidth="5" strokeDasharray="12 10" />
+        <line x1="500" x2="500" y1="72" y2="168" stroke="rgb(255 255 255 / 0.75)" strokeWidth="5" strokeLinecap="round" />
         {/* The rope: a tan cord with a darker twist. */}
         <line x1="24" y1="120" x2="976" y2="120" stroke="#c99556" strokeWidth="20" strokeLinecap="round" />
         <line x1="24" y1="120" x2="976" y2="120" stroke="#6f4a1f" strokeWidth="20" strokeDasharray="5 11" opacity="0.45" />

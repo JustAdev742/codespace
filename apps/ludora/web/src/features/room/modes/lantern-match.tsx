@@ -55,12 +55,9 @@ export interface LanternMatchView {
 }
 
 const SIDE_LABEL: Record<Side, string> = { question: 'Question', answer: 'Answer' };
-/** Question cards and answer cards differ in letter and pattern as well as colour: violet with stripes and a Q, mint with dots and an A. */
+/** Question cards and answer cards differ in letter and word as well as colour: a violet Q and a mint A. */
 const SIDE_LETTER: Record<Side, string> = { question: 'Q', answer: 'A' };
-const SIDE_BACK: Record<Side, string> = {
-  question: 'bg-dusk bg-[repeating-linear-gradient(135deg,rgb(255_255_255/0.14)_0_7px,transparent_7px_14px)]',
-  answer: 'bg-glim bg-[radial-gradient(rgb(255_255_255/0.32)_2px,transparent_2.5px)] bg-[length:12px_12px]',
-};
+const SIDE_BACK: Record<Side, string> = { question: 'bg-dusk', answer: 'bg-glim' };
 
 /** The small letter chip that marks a card's side wherever its text is shown. */
 function SideChip({ side }: { side: Side }) {
@@ -107,7 +104,7 @@ function MemoryCard({ card, total, missed, disabled, onFlip }: { card: CardFace;
     <button type="button" onClick={onFlip} disabled={matched || disabled} className="relative aspect-[4/5] w-full rounded-[var(--radius-m)] disabled:cursor-default" style={{ perspective: '900px' }}>
       <span className="sr-only">{`Card ${card.i + 1} of ${total}. ${label}`}</span>
       <span className="absolute inset-0 block transition-transform duration-300 ease-[var(--ease-out)]" style={{ transformStyle: 'preserve-3d', transform: faceUp ? 'rotateY(180deg)' : 'none' }}>
-        {/* Back: a big Q or A on its own pattern tells question cards from answer cards, and so does the word. */}
+        {/* Back: a big Q or A tells question cards from answer cards, and so does the word. */}
         <span
           className={`piece absolute inset-0 flex flex-col items-center justify-center gap-0.5 rounded-[var(--radius-m)] text-on-accent ${SIDE_BACK[card.side]}`}
           style={{ backfaceVisibility: 'hidden' }}

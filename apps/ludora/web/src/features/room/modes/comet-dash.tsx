@@ -43,7 +43,7 @@ function nearYou(lanes: Lane[]): Lane[] {
   return [lanes[0]!, lanes[i - 1]!, lanes[i]!];
 }
 
-/** The race: one lane per player, a comet tail behind each Glim and a finish strip at the far end. */
+/** The race: one lane per player, a comet tail behind each Glim and a gold finish line at the far end. */
 function Track({ lanes, distance, players, big = false, together = false }: { lanes: Lane[]; distance: number; players: RoomPlayerView[]; big?: boolean; together?: boolean }) {
   const cols = big ? laneColumns(lanes.length) : 1;
   const rows = Math.ceil(lanes.length / cols);
@@ -78,8 +78,8 @@ function Track({ lanes, distance, players, big = false, together = false }: { la
               {l.name}
             </span>
             <div className="relative h-[calc(var(--g)+0.5rem)]" aria-hidden>
-              {/* The finish strip: a chequered line. */}
-              <span className="absolute inset-y-1 right-1 w-2.5 overflow-hidden rounded-[3px] bg-[repeating-linear-gradient(180deg,#ffffff_0_6px,#0b1020_6px_12px)]" />
+              {/* The finish line. */}
+              <span className="absolute inset-y-1 right-1.5 w-1.5 rounded-full bg-lantern" />
               <div className="absolute inset-y-0 right-[calc(var(--g)+0.75rem)] left-1">
                 <span className="absolute top-1/2 left-0 h-[30%] w-full origin-left rounded-full bg-gradient-to-r from-transparent via-lantern/40 to-lantern transition-transform duration-700 ease-[var(--ease-out)]" style={{ transform: `translateY(-50%) scaleX(${pct / 100})` }} />
                 <div className="absolute inset-y-0 left-0 w-full transition-transform duration-700 ease-[var(--ease-out)]" style={{ transform: `translateX(${pct}%)` }}>
