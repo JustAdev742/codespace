@@ -518,12 +518,12 @@ const cfg: SyncConfig<State> = {
     if (kos.length === 1) {
       const k = kos[0]!;
       const text = k.faster
-        ? `${upper(k.winner)} and ${k.loser} knocked each other out! ${upper(k.winner)} was faster.`
+        ? `${upper(k.winner)} and ${k.loser} knocked each other out. ${upper(k.winner)} was faster.`
         : k.both
-          ? `${upper(k.winner)} and ${k.loser} knocked each other out!`
-          : `${upper(k.winner)} knocked out ${k.loser}!`;
+          ? `${upper(k.winner)} and ${k.loser} knocked each other out.`
+          : `${upper(k.winner)} knocked out ${k.loser}.`;
       ctx.feed(text, { tone: 'big' });
-    } else if (kos.length > 1) ctx.feed(`${kos.length} knockouts!`, { tone: 'big' });
+    } else if (kos.length > 1) ctx.feed(`${kos.length} knockouts.`, { tone: 'big' });
     if (s.duels.every((d) => d.over) || s.q >= st.duelLength - 1) finishRound(s, ctx);
   },
   isOver: (s) => s.finished,
@@ -709,7 +709,7 @@ function summaryOf(s: State, ctx: ModeContext): string {
   const best = Math.max(...all.map((x) => standingScore(x.f)));
   const top = all.filter((x) => standingScore(x.f) === best);
   const f = top[0]!.f;
-  if (f.wins === 0 && f.draws === 0) return 'Nobody won a duel this time.';
+  if (f.wins === 0 && f.draws === 0) return 'Nobody won a duel.';
   const record = f.wins > 0 ? plural(f.wins, 'win') : plural(f.draws, 'draw');
   if (top.length > 1) return `${listNames(top.map((x) => x.name))} share the top spot with ${record} each.`;
   return f.wins > 0 ? `${top[0]!.name} is the duel champion with ${record}.` : `${top[0]!.name} tops the standings with ${record}.`;
