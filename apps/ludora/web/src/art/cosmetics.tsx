@@ -145,10 +145,21 @@ export const BannerArt = memo(function BannerArt({ pattern, hue, accentHue, clas
           </g>
         );
       case 'grid':
+        // Graph paper without the squares: two axes and a plotted rise, for the maths fans.
         return (
-          <g stroke={a} strokeWidth="1" opacity={0.35}>
-            {Array.from({ length: 33 }, (_, i) => <line key={`v${i}`} x1={i * 10} y1="0" x2={i * 10} y2="100" />)}
-            {Array.from({ length: 11 }, (_, i) => <line key={`h${i}`} x1="0" y1={i * 10} x2="320" y2={i * 10} />)}
+          <g fill="none" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M26 10V84H300" stroke={a} strokeWidth="2.5" opacity={0.5} />
+            <path d="M26 82L92 77L152 70L212 61L300 50" stroke={mid} strokeWidth="3.5" />
+            <path d="M26 76L72 62L114 68L158 44L202 50L246 27L298 16" stroke={a} strokeWidth="4.5" />
+            {[
+              [72, 62],
+              [114, 68],
+              [158, 44],
+              [202, 50],
+              [246, 27],
+            ].map(([x, y]) => (
+              <circle key={x} cx={x} cy={y} r="5" fill={bg} stroke={a} strokeWidth="3" />
+            ))}
           </g>
         );
       case 'hills':
@@ -282,12 +293,13 @@ export function ItemArtView({ art, rarity, size = 96, owned = true }: { art: Ite
     case 'victory':
       return <VictoryPreview style={art.style} hue={art.hue} size={size} />;
     case 'theme':
+      // A small profile card in the theme's colours: its banner, the buddy's circle and two lines of name.
       return (
-        <span className="grid grid-cols-2 overflow-hidden rounded-[var(--radius-m)] border border-line-strong shadow-[0_6px_16px_-8px_rgb(2_5_20/0.6)]" style={{ width: size * 0.8, height: size * 0.6 }}>
-          <span style={{ background: `hsl(${art.hue} 70% 55%)` }} />
-          <span style={{ background: `hsl(${art.accentHue} 85% 70%)` }} />
-          <span style={{ background: `hsl(${art.hue} 45% 22%)` }} />
-          <span style={{ background: `hsl(${art.accentHue} 60% 40%)` }} />
+        <span className="relative block overflow-hidden rounded-[var(--radius-m)] border border-line-strong shadow-[0_6px_16px_-8px_rgb(2_5_20/0.6)]" style={{ width: size * 0.8, height: size * 0.6, background: `hsl(${art.hue} 45% 22%)` }}>
+          <span className="absolute inset-x-0 top-0 h-[42%]" style={{ background: `linear-gradient(160deg, hsl(${art.hue} 70% 55%), hsl(${art.accentHue} 60% 40%))` }} />
+          <span className="absolute top-[22%] left-[12%] aspect-square w-[30%] rounded-full" style={{ background: `hsl(${art.accentHue} 85% 70%)`, boxShadow: `0 0 0 3px hsl(${art.hue} 45% 22%)` }} />
+          <span className="absolute top-[58%] left-[50%] h-[9%] w-[38%] rounded-full" style={{ background: `hsl(${art.hue} 70% 55%)` }} />
+          <span className="absolute top-[74%] left-[50%] h-[9%] w-[24%] rounded-full" style={{ background: `hsl(${art.accentHue} 60% 40%)` }} />
         </span>
       );
     case 'effect':
