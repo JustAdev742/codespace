@@ -86,12 +86,6 @@ export function ModeGlyph({ glyph, size = 48, color = 'currentColor', className 
 
 /** The ink of the contour: the same navy as text on bright fills. */
 const INK = '#0b1020';
-/** Faint pitch lines every 16 units across the 160 x 100 box. */
-const GRID = [
-  ...Array.from({ length: 9 }, (_, i) => `M${(i + 1) * 16} 0V100`),
-  ...Array.from({ length: 6 }, (_, i) => `M0 ${(i + 1) * 16}H160`),
-].join('');
-
 export const ModeArt = memo(function ModeArt({ thumb, className, label }: { thumb: ModeThumbnail; className?: string; label?: string }) {
   const base = `hsl(${thumb.hue} 68% 50%)`;
   const floor = `hsl(${thumb.hue} 72% 36%)`;
@@ -104,7 +98,6 @@ export const ModeArt = memo(function ModeArt({ thumb, className, label }: { thum
       <rect width="160" height="100" fill={base} />
       {/* The floor, its edge leaning like the slanted plate */}
       <path d="M0 76L160 58V100H0Z" fill={floor} />
-      <path d={GRID} fill="none" stroke="#fff" strokeOpacity={0.1} strokeWidth={0.6} />
       {/* The floodlight from the top centre */}
       <path d="M62 -2H98L134 102H26Z" fill="#fff" opacity={0.12} />
       {/* The glyph standing in the light: a shadow on the floor, then the glyph with its ink contour */}
