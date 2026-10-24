@@ -4,7 +4,7 @@ Live status of the build. Updated with each milestone commit. Everything marked
 **verified** was checked by an automated test or by driving the real app in a
 browser; anything else says what it is.
 
-Last updated: 2026-10-22.
+Last updated: 2026-10-24.
 
 ## Milestones
 
@@ -17,7 +17,7 @@ Last updated: 2026-10-22.
 | M4 Economy and progression | Done | Shop, Lanterns with disclosed odds, collections, locker, quests, achievements, levels, streaks. |
 | M5 Staff tools | Done | Staff API and all 14 staff sections in the web app. An end-to-end test opens every section as a super administrator at phone and desktop widths. |
 | M6 Content, social, classes, analytics | Done | Friends, blocks, profiles, my stats, leaderboards, classes, assignments and their reports, hosted games, game reports, the set editor with image uploads, and AI question drafts. |
-| M7-8 Polish, CI, deployment | In progress | Production build, Docker image, compose file, CI workflow, docs and end-to-end tests (run in CI) are in. The visual overhaul is done across player pages and the live game, and automated accessibility checks pass on every player page, game screen and staff section. A design review of the whole app was done and its findings fixed. A playable demo builds for GitHub Pages. A manual screen-reader pass remains. |
+| M7-8 Polish, CI, deployment | In progress | Production build, Docker image, compose file, CI workflow, docs and end-to-end tests (run in CI) are in. The whole app is restyled for players aged 8 to 17 (D46), and automated accessibility checks pass on every page, game screen and staff section. A design review of the whole app was done and its findings fixed. A playable demo builds for GitHub Pages. A manual screen-reader pass remains. |
 
 ## What works today (verified)
 
@@ -150,35 +150,64 @@ Last updated: 2026-10-22.
   whose visible text is terse (Buy 150, collection cards) take their accessible
   names from their content, so speech users can say what they see. Automated
   checks cover only part of WCAG; a manual screen-reader pass has not been done.
-- **Look and feel** (D30, Ludora's own lantern-festival world): a dusk-sky
-  stage behind the landing hero, sign-in, the dashboard greeting, the Lantern
-  opening and the whole live game; stall cards for modes and Lanterns with the odds written on
-  every Lantern; collectible cards with rarity frames in the shop, collection
-  and locker; shape-only silhouettes for Glims not found yet. The Lantern
-  opening builds up longer for rarer Glims, can be skipped by tapping, shows
-  the Glim straight away under reduced motion, and keeps the odds on screen.
-  Every redesigned page was checked at 360 pixels in both themes for one h1,
-  no sideways scroll and no console errors.
-- **Live game screens**: joining shows greeter Glims and a large code entry.
-  The host lobby puts the room code on a paper ticket while players' Glims pop
-  into a crowd that resizes so 30 players with full names fit a 1366 by 768
-  projector. Questions use chunky answer tiles, each with a shape, a letter and
-  a colour, two-up and thumb-sized on phones; reveals show how many picked each
-  answer; leaderboard rows slide to their new rank; results raise a podium,
+- **Look and feel** (D30, D46; docs/DESIGN.md): "game night, live", for
+  players aged 8 to 17.
+  - A midnight stage under a floodlight, with faint arena glows and no
+    pattern, behind the landing hero, sign-in, the join flow, the home
+    greeting, pack opening and the whole live game.
+  - Barlow Condensed for headings and numbers.
+  - Solid pressable pieces with a darker bottom edge, and a slanted plate
+    for big moments.
+  - Glims only where a collectible belongs.
+  - Straight-talk copy.
+  - Rarity shows like a trading card: a coloured frame, then foil and a
+    sheen from epic up, and always in words.
+  - The shop lists items as trading cards, with odds on every Lantern.
+  - Opening a Lantern takes 1 to 1.7 seconds, can be skipped, shows the card
+    straight away under reduced motion, and keeps the odds on screen.
+
+  Checked after the restyle, in Chromium:
+  - 27 pages, signed out and signed in (staff pages included), in both
+    themes at 390x844, 360x640, 1366x768 and 1920x1080: 216 screenshots;
+    axe (WCAG 2.2 A and AA rules) on each page at phone and laptop size in
+    both themes, with no violations; no sideways scroll at 360; no console
+    errors.
+  - A long display name steps the home greeting down a size on phones
+    instead of breaking mid-word.
+- **Live game screens**: joining shows the game's name on a gold plate and a
+  large code entry. The host lobby shows the join code huge on a white card
+  while players arrive as cards (the crowd resizes so 30 players with full
+  names fit a 1366 by 768 projector, measured before the restyle). Questions
+  use solid answer tiles, each with a shape, a letter and a colour, two-up and
+  thumb-sized on phones; a chosen tile is held down with a check; the result
+  says "Correct" with the points, or "Incorrect" with the answer; reveals show
+  how many picked each answer; leaderboard rows slide to their new rank; results raise a podium,
   third place first, with the winner cheering on top (co-op games get a team
   photo). Question pictures display at a fixed height on every screen size.
-  All 14 modes use the same stage, every player's Glim shows its real rarity
+  All 20 modes use the same stage, every player's Glim shows its real rarity
   finish (D36), and a host can run a game from a phone. Measured after the
   design review: every host screen fits a 1366 by 768 and a 1920 by 1080
   projector without scrolling with 5, 12, 21 and 30 players (long lists show
   their top rows and count the rest), and on phones every single-answer
   question and its action fit at 390 by 844, 375 by 667 and 360 by 640.
   Matching, ordering and select-all questions still need a scroll below 390
-  by 844, but their button stays in view once it can be pressed. Variant
+  by 844. Select-all keeps its button in view once it can be pressed; ordering
+  and matching put theirs below the list, where it never covers the move and
+  match controls. Variant
   intros name the variant and state each rule switched on. Every mode was played
   to its results in a real browser with a host, a player and bots, at 390
   pixels and at projector size; eight variants were played to check their new
   screen text; with reduced motion nothing moves and nothing waits to appear.
+  After the restyle (D46), checked in Chromium:
+  - All 20 modes, played against bots in the demo through to their results,
+    at 390x844, 360x640, 1366x768 and 1920x1080: no axe violations on the
+    phone, big-screen and results views, no sideways scroll, no console
+    errors.
+  - A Classic game hosted on the real server with two phones: lobby,
+    question, reveal and results pass axe with no console errors, and the
+    results fit a 1366x768 and a 1920x1080 projector without scrolling.
+  - Modes whose big screen lists the room's news show no news toasts over
+    it.
 - **Sound and music** (D41, D43): the music and effects are files rendered
   offline from Ludora's own scores by `tools/audio`: FluidSynth with the MIT
   MuseScore General soundfont, then mixing and mastering in Python. Seven loops
@@ -227,10 +256,16 @@ Last updated: 2026-10-22.
   **Not checked yet**: the publish itself. The Pages workflow
   (`.github/workflows/pages.yml`) publishes from `main` once Pages is set to
   GitHub Actions in the repository settings; neither has happened yet.
-- **Glims**: all 112 redrawn as original die-cut sticker characters with faces,
-  arms and feet, distinct silhouettes per collection, rarity finishes (glossy,
-  gradient, gold rim light, iridescent sheen) and idle, wave and cheer poses,
-  legible from 28 to 240 pixels in both themes. A development gallery at
+- **Glims**: all 112 are original characters with faces, arms and feet and
+  distinct silhouettes per collection. Restyled for 8 to 17 (D46):
+  - no blush;
+  - smaller eyes under lids set by the brows, so each has an expression;
+  - a crisp dark contour and hard cel shading;
+  - rarity as a finish (a glint from rare, two-tone from epic, a gold rim on
+    legendary, an iridescent rim on mythic);
+  - wave and cheer poses; they do not bob.
+
+  Legible from 24 to 220 pixels in both themes. A development gallery at
   `/dev/glims.html` shows every collection, size, part, accessory, pose and
   finish.
 - **Rewards**: Sparks, XP, quests and achievements after each game, with a daily
@@ -317,10 +352,10 @@ creates and drops its own database).
 |---|---|---|
 | content | 2 | 112: catalogue integrity and every built-in question set |
 | engine | 20 | 1139, including the conformance suite for every mode and variant |
-| server | 12 | 149: auth and rate limits (15), realtime (7), economy (20), staff (54), social and classes (17), preferences (4), open games (4), sign-in help (3), uploads (6), AI drafts (11), reward counting (4), origin checks (4) |
+| server | 12 | 150: auth and rate limits (15), realtime (7), economy (20), staff (54), social and classes (18), preferences (4), open games (4), sign-in help (3), uploads (6), AI drafts (11), reward counting (4), origin checks (4) |
 | web | 4 | 84: the set editor's checks, import and export (45); the synthesised music, in key and looping cleanly (16); the recorded sounds, every effect with a file and every loop a whole number of bars (16); which music plays when (7) |
 | shared | 0 | no tests of its own; its schemas are exercised by the other projects |
-| **Total** | **38** | **1484 passing** at the last full run |
+| **Total** | **38** | **1485 passing** at the last full run |
 
 End-to-end: `npm run test:e2e` (needs Postgres; builds first, then runs 8
 browser tests against a fresh `ludora_e2e` database). All 8 pass.
@@ -339,6 +374,8 @@ Left out on purpose:
   operator wants email later.
 
 Not checked yet:
+- **The new look in Safari and Firefox.** Every screenshot and axe check after
+  the restyle ran in Chromium.
 - **A manual screen-reader pass.** Automated axe checks pass wherever they run
   and the game's announcements were recorded and tested, but nobody has played
   a game with NVDA, JAWS or VoiceOver.
