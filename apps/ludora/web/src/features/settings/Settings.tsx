@@ -13,11 +13,19 @@ import { RecoveryCodeDialog } from '../auth/RecoveryCodeDialog.tsx';
 type Patch = Partial<Omit<Preferences, 'notifications' | 'privacy'>> & { notifications?: Partial<Preferences['notifications']>; privacy?: Partial<Preferences['privacy']> };
 
 function Segmented<T extends string>({ value, onChange, options, label }: { value: T; onChange: (v: T) => void; options: { value: T; label: string }[]; label: string }) {
-  // Thumb-sized on phones, where the control takes the full width under its label; compact on wider screens.
+  // Thumb-sized on phones, where the control takes the full width under its label; a little smaller on wider screens.
+  // The chosen option is lifted out of the groove (a raised fill and a fine edge), not only coloured.
   return (
-    <div role="radiogroup" aria-label={label} className="inline-flex rounded-[12px] border border-line bg-sunken p-1 max-sm:w-full">
+    <div role="radiogroup" aria-label={label} className="inline-flex rounded-[var(--radius-m)] border border-line bg-sunken p-1 max-sm:w-full">
       {options.map((o) => (
-        <button key={o.value} type="button" role="radio" aria-checked={value === o.value} onClick={() => onChange(o.value)} className={`h-8 rounded-[9px] px-3 text-sm font-semibold max-sm:h-11 max-sm:flex-1 ${value === o.value ? 'bg-raised text-text shadow-[0_1px_0_var(--line-strong)]' : 'text-text-2 hover:text-text'}`}>
+        <button
+          key={o.value}
+          type="button"
+          role="radio"
+          aria-checked={value === o.value}
+          onClick={() => onChange(o.value)}
+          className={`h-9 rounded-[var(--radius-s)] px-3.5 text-sm font-semibold transition-colors max-sm:h-11 max-sm:flex-1 ${value === o.value ? 'bg-raised text-text shadow-[0_1px_3px_rgb(2_5_20/0.3)] ring-1 ring-line-strong' : 'text-text-2 hover:text-text'}`}
+        >
           {o.label}
         </button>
       ))}
@@ -152,11 +160,11 @@ export default function Settings() {
       <PageHeader title="Settings" description="Changes save as you make them." />
       <div className="flex flex-col gap-6">
         <Panel className="divide-y divide-line px-5 py-2">
-          <h2 className="py-3 font-display text-xl font-bold">Appearance and accessibility</h2>
+          <h2 className="py-3 font-display text-2xl leading-tight font-bold">Appearance and accessibility</h2>
           <Row label="Theme">
             <Segmented label="Theme" value={p.theme} onChange={(v) => save.mutate({ theme: v })} options={[{ value: 'system', label: 'Auto' }, { value: 'light', label: 'Day' }, { value: 'dark', label: 'Night' }]} />
           </Row>
-          <Row label="Motion" description="Less motion turns off bobbing, sliding and pack animations.">
+          <Row label="Motion" description="Less motion turns off animations and slides, pack openings included.">
             <Segmented label="Motion" value={p.reducedMotion} onChange={(v) => save.mutate({ reducedMotion: v })} options={[{ value: 'system', label: 'Auto' }, { value: 'on', label: 'Less' }, { value: 'off', label: 'Full' }]} />
           </Row>
           <Row label="Text size">
@@ -174,7 +182,7 @@ export default function Settings() {
         </Panel>
 
         <Panel id="privacy" className="scroll-mt-20 divide-y divide-line px-5 py-2">
-          <h2 className="py-3 font-display text-xl font-bold">Privacy</h2>
+          <h2 className="py-3 font-display text-2xl leading-tight font-bold">Privacy</h2>
           <Row label="Who can see my profile">
             <Select aria-label="Who can see my profile" value={p.privacy.profileVisibility} onChange={(e) => save.mutate({ privacy: { profileVisibility: e.target.value as Preferences['privacy']['profileVisibility'] } })} className="w-44">
               <option value="public">Everyone</option>
@@ -193,12 +201,12 @@ export default function Settings() {
             <Switch checked={p.privacy.showOnLeaderboards} onCheckedChange={(v) => save.mutate({ privacy: { showOnLeaderboards: v } })} label="Show me on public leaderboards" description="Only your display name and buddy are ever shown." />
           </div>
           <Row label="My friend code" description="Share it with friends so they can add you.">
-            <code className="font-display text-lg font-bold tracking-wider">{user.friendCode}</code>
+            <code className="font-display text-2xl font-bold tracking-wider tabular">{user.friendCode}</code>
           </Row>
         </Panel>
 
         <Panel className="divide-y divide-line px-5 py-2">
-          <h2 className="py-3 font-display text-xl font-bold">Notifications</h2>
+          <h2 className="py-3 font-display text-2xl leading-tight font-bold">Notifications</h2>
           <div>
             <Switch checked={p.notifications.friendRequests} onCheckedChange={(v) => save.mutate({ notifications: { friendRequests: v } })} label="Friend requests" />
           </div>
@@ -211,7 +219,7 @@ export default function Settings() {
         </Panel>
 
         <Panel id="account" className="flex scroll-mt-20 flex-col gap-5 p-5">
-          <h2 className="font-display text-xl font-bold">Account</h2>
+          <h2 className="font-display text-2xl leading-tight font-bold">Account</h2>
           <form
             className="flex flex-wrap items-end gap-2"
             onSubmit={(e: FormEvent) => {
@@ -229,7 +237,7 @@ export default function Settings() {
             </Button>
           </form>
           {user.isGuest ? (
-            <div className="rounded-[14px] border border-dashed border-lantern/60 p-4">
+            <div className="rounded-[var(--radius-m)] border border-lantern/60 bg-lantern/[0.06] p-4">
               <p className="text-sm text-text-2">Guest accounts have no password. Save your progress to an account to sign in anywhere.</p>
               <ButtonLink to="/signup" variant="primary" size="sm" className="mt-3">
                 Save my progress

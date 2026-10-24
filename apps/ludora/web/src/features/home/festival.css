@@ -1,28 +1,9 @@
 /*
- * Motion and finishes for the home and collecting pages (home, shop, collection,
- * locker, quests, modes, auth). The global rules in app.css already cut every
- * animation and transition under reduced motion; the block at the end also
- * drops the entrance delays there, so nothing waits invisible before appearing.
+ * Motion and finishes for the collecting pages (shop, pack opening, collection,
+ * locker). The global rules in app.css already cut every animation and
+ * transition under reduced motion; the block at the end also drops the entrance
+ * delays there, so nothing waits invisible before appearing.
  */
-
-/* The landing hero's one entrance: Glims pop up from behind the hill. */
-@keyframes fx-pop-up {
-  0% {
-    transform: translateY(38%) scale(0.7);
-    opacity: 0;
-  }
-  55% {
-    transform: translateY(-6%) scale(1.04);
-    opacity: 1;
-  }
-  78% {
-    transform: translateY(2%) scale(0.98);
-  }
-  100% {
-    transform: none;
-    opacity: 1;
-  }
-}
 
 /* A Lantern lowered on its cord, swinging to rest. */
 @keyframes fx-lower {
@@ -201,9 +182,6 @@
   }
 }
 
-.fx-pop-up {
-  animation: fx-pop-up 760ms var(--ease-out) both;
-}
 .fx-lower {
   transform-origin: 50% 0;
   animation: fx-lower 1100ms var(--ease-out) both;
@@ -226,16 +204,15 @@
   transform: translateY(1px);
 }
 
-/* Mythic finish: the shimmer used by the mythic rarity, as a border. */
+/* Mythic finish: the colours of the mythic shimmer (.rarity-mythic-shimmer in app.css), as a border. */
 .fx-mythic-frame {
   border-color: transparent !important;
   background:
     linear-gradient(var(--card-bg, var(--bg-raised)), var(--card-bg, var(--bg-raised))) padding-box,
-    linear-gradient(110deg, #ff5fa2, #ffb020, #33d6a6, #47b5ff, #a58dff, #ff5fa2) border-box;
+    linear-gradient(110deg, var(--r-mythic), var(--r-legendary), var(--glim), var(--sky), var(--r-epic), var(--r-mythic)) border-box;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  :root:not([data-motion='on']) .fx-pop-up,
   :root:not([data-motion='on']) .fx-lower,
   :root:not([data-motion='on']) [data-fx-delay] {
     animation-delay: 0s !important;
@@ -245,7 +222,6 @@
     transform: none;
   }
 }
-:root[data-motion='off'] .fx-pop-up,
 :root[data-motion='off'] .fx-lower,
 :root[data-motion='off'] [data-fx-delay] {
   animation-delay: 0s !important;
