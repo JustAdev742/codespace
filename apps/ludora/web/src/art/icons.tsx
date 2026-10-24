@@ -24,8 +24,9 @@ function svgProps({ size = 20, className, title }: IconProps): SVGProps<SVGSVGEl
 export function SparkIcon(p: IconProps) {
   return (
     <svg {...svgProps(p)}>
-      <path d="M12 1.8C12.9 7.6 16.4 11.1 22.2 12C16.4 12.9 12.9 16.4 12 22.2C11.1 16.4 7.6 12.9 1.8 12C7.6 11.1 11.1 7.6 12 1.8Z" fill="#FFB020" stroke="#7A4A00" strokeWidth="1.4" strokeLinejoin="round" />
-      <path d="M12 6.5C12.4 9.3 14.7 11.6 17.5 12C14.7 12.4 12.4 14.7 12 17.5" fill="none" stroke="#FFE7A8" strokeWidth="1.3" strokeLinecap="round" />
+      <path d="M12 1.6L14.6 9.4L22.4 12L14.6 14.6L12 22.4L9.4 14.6L1.6 12L9.4 9.4Z" fill="#FFC233" stroke="#5A3A00" strokeWidth="1.5" strokeLinejoin="round" />
+      <path d="M12 5.4L13.4 10.6L12 12L10.6 10.6Z" fill="#FFF1C2" />
+      <path d="M12 12L18.6 12L14 13.4Z" fill="#E09A00" />
     </svg>
   );
 }
@@ -33,8 +34,10 @@ export function SparkIcon(p: IconProps) {
 export function MoonstoneIcon(p: IconProps) {
   return (
     <svg {...svgProps(p)}>
-      <path d="M12 2.5L19.5 7V17L12 21.5L4.5 17V7Z" fill="#9D85FF" stroke="#2B1A7A" strokeWidth="1.4" strokeLinejoin="round" />
-      <path d="M14.6 8.2A4.4 4.4 0 1 0 14.6 15.8A3.5 3.5 0 1 1 14.6 8.2Z" fill="#F1ECFF" />
+      <path d="M12 2.2L20 6.8V17.2L12 21.8L4 17.2V6.8Z" fill="#A66BFF" stroke="#24104F" strokeWidth="1.5" strokeLinejoin="round" />
+      <path d="M12 2.2L20 6.8L12 11.4L4 6.8Z" fill="#C7A6FF" />
+      <path d="M12 11.4L20 6.8V17.2L12 21.8Z" fill="#7F45E6" />
+      <path d="M14.4 8.6A3.9 3.9 0 1 0 14.4 15.4A3.1 3.1 0 1 1 14.4 8.6Z" fill="#F6F0FF" />
     </svg>
   );
 }
@@ -42,9 +45,9 @@ export function MoonstoneIcon(p: IconProps) {
 export function DustIcon(p: IconProps) {
   return (
     <svg {...svgProps(p)}>
-      <path d="M9 3C9.6 6.6 11.4 8.4 15 9C11.4 9.6 9.6 11.4 9 15C8.4 11.4 6.6 9.6 3 9C6.6 8.4 8.4 6.6 9 3Z" fill="#33D6A6" stroke="#0B5E46" strokeWidth="1.2" strokeLinejoin="round" />
-      <path d="M17 12C17.4 14.4 18.6 15.6 21 16C18.6 16.4 17.4 17.6 17 20C16.6 17.6 15.4 16.4 13 16C15.4 15.6 16.6 14.4 17 12Z" fill="#7DF0CB" stroke="#0B5E46" strokeWidth="1.1" strokeLinejoin="round" />
-      <circle cx="18.5" cy="5.5" r="1.6" fill="#7DF0CB" />
+      <path d="M9 2.6L10.6 7.4L15.4 9L10.6 10.6L9 15.4L7.4 10.6L2.6 9L7.4 7.4Z" fill="#1FD38F" stroke="#063F2B" strokeWidth="1.3" strokeLinejoin="round" />
+      <path d="M17 11.6L18.1 14.9L21.4 16L18.1 17.1L17 20.4L15.9 17.1L12.6 16L15.9 14.9Z" fill="#8CF2C8" stroke="#063F2B" strokeWidth="1.2" strokeLinejoin="round" />
+      <path d="M18.5 3.6L19.3 5.7L21.4 6.5L19.3 7.3L18.5 9.4L17.7 7.3L15.6 6.5L17.7 5.7Z" fill="#8CF2C8" stroke="#063F2B" strokeWidth="1" strokeLinejoin="round" />
     </svg>
   );
 }
@@ -52,8 +55,9 @@ export function DustIcon(p: IconProps) {
 export function TicketIcon(p: IconProps) {
   return (
     <svg {...svgProps(p)}>
-      <path d="M3 7.5A1.5 1.5 0 0 1 4.5 6H19.5A1.5 1.5 0 0 1 21 7.5V10A2 2 0 0 0 21 14V16.5A1.5 1.5 0 0 1 19.5 18H4.5A1.5 1.5 0 0 1 3 16.5V14A2 2 0 0 0 3 10Z" fill="#7CCBFF" stroke="#0D3F66" strokeWidth="1.4" strokeLinejoin="round" />
-      <path d="M12 8.5V15.5M9 10L15 14M15 10L9 14" stroke="#F2FAFF" strokeWidth="1.4" strokeLinecap="round" />
+      <path d="M3 7.5A1.5 1.5 0 0 1 4.5 6H19.5A1.5 1.5 0 0 1 21 7.5V10A2 2 0 0 0 21 14V16.5A1.5 1.5 0 0 1 19.5 18H4.5A1.5 1.5 0 0 1 3 16.5V14A2 2 0 0 0 3 10Z" fill="#6CC2FF" stroke="#0A3157" strokeWidth="1.5" strokeLinejoin="round" />
+      <path d="M15.5 6.8V17.2" stroke="#0A3157" strokeWidth="1.2" strokeDasharray="1.6 1.6" />
+      <path d="M9.5 8.6V15.4M6.9 10.1L12.1 13.9M12.1 10.1L6.9 13.9" stroke="#F2FAFF" strokeWidth="1.5" strokeLinecap="round" />
     </svg>
   );
 }

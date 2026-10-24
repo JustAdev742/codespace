@@ -381,8 +381,9 @@
     background: var(--lantern);
     color: var(--on-accent);
   }
+  /* A shade darker than the floodlight, so white text passes AA at any size (5.6:1). */
   .plate-blue {
-    background: var(--floodlight);
+    background: #2f5ae8;
     color: #ffffff;
   }
   /* A HUD bar over the stage: smoked glass, a fine edge. */
@@ -609,6 +610,192 @@
   100% {
     transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy))) scale(1);
     opacity: 0;
+  }
+}
+
+/* === collect === */
+/*
+ * Collectible cards (shop, collection, locker, the Lantern reveal) read like
+ * trading cards: the rarity's colour is the frame. Epic and up get a foil edge
+ * and a sheen across the art; mythic gets an iridescent edge and its sheen
+ * moves. The rarity is always written on the card too. Set --r to the rarity
+ * colour on the card. Under reduced motion the global rule stops the sheen at
+ * its last frame, off the art, so it holds still.
+ */
+/* The card's face is --card-bg when set (an opaque colour on the stage, where --bg-raised is see-through). */
+.tcard {
+  border: 2px solid var(--r, var(--line));
+  background-color: var(--card-bg, var(--bg-raised));
+}
+.tcard-foil {
+  border-color: transparent;
+  background:
+    linear-gradient(var(--card-bg, var(--bg-raised)), var(--card-bg, var(--bg-raised))) padding-box,
+    linear-gradient(135deg, var(--r) 0%, color-mix(in oklab, var(--r) 45%, #fff) 26%, var(--r) 48%, color-mix(in oklab, var(--r) 62%, #000) 76%, var(--r) 100%) border-box;
+}
+.tcard-mythic {
+  border-color: transparent;
+  background:
+    linear-gradient(var(--card-bg, var(--bg-raised)), var(--card-bg, var(--bg-raised))) padding-box,
+    linear-gradient(125deg, #ff4fa3 0%, #ffb627 22%, #1fd38f 44%, #3d9bff 66%, #a66bff 84%, #ff4fa3 100%) border-box;
+}
+/* Foil and iridescent edges are a touch heavier, so the rare stuff looks rare at any size. */
+.tcard-foil,
+.tcard-mythic {
+  border-width: 3px;
+}
+/* The window that holds the art: lit from above in the rarity's colour. */
+.tcard-art {
+  background:
+    radial-gradient(110% 80% at 50% 12%, color-mix(in oklab, var(--r) 36%, transparent) 0%, transparent 70%),
+    color-mix(in oklab, var(--r) 13%, var(--bg-sunken));
+}
+/* A mythic's window is iridescent too. */
+.tcard-art-mythic {
+  background:
+    radial-gradient(110% 80% at 50% 12%, rgb(255 79 163 / 0.32) 0%, transparent 70%),
+    linear-gradient(135deg, color-mix(in oklab, #ff4fa3 16%, var(--bg-sunken)) 0%, color-mix(in oklab, #3d9bff 16%, var(--bg-sunken)) 50%, color-mix(in oklab, #1fd38f 14%, var(--bg-sunken)) 100%);
+}
+.tcard-sheen::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  border-radius: inherit;
+  background: linear-gradient(112deg, transparent 30%, rgb(255 255 255 / 0.24) 43%, rgb(255 255 255 / 0.07) 50%, transparent 60%);
+  background-size: 250% 100%;
+  background-position: 40% 0;
+}
+.tcard-sheen-move::after {
+  animation: tcard-sheen 3.4s var(--ease-out) infinite;
+}
+/* Cards you open: a small lift under the pointer, felt rather than seen. */
+.tcard-press {
+  transition:
+    transform 160ms var(--ease-out),
+    border-color 160ms;
+}
+.tcard-press:hover {
+  transform: translateY(-2px);
+}
+.tcard-press:active {
+  transform: translateY(1px);
+}
+@media (prefers-reduced-motion: reduce) {
+  :root:not([data-motion='on']) .tcard-press:hover,
+  :root:not([data-motion='on']) .tcard-press:active {
+    transform: none;
+  }
+}
+:root[data-motion='off'] .tcard-press:hover,
+:root[data-motion='off'] .tcard-press:active {
+  transform: none;
+}
+@keyframes tcard-sheen {
+  0% {
+    background-position: 130% 0;
+  }
+  50%,
+  100% {
+    background-position: -30% 0;
+  }
+}
+
+/* The Lantern reveal: one fast sequence. The Lantern drops in and charges, flashes open, and the card lands. */
+@keyframes pack-drop {
+  from {
+    transform: translateY(-28px) scale(0.92);
+    opacity: 0;
+  }
+  to {
+    transform: none;
+    opacity: 1;
+  }
+}
+@keyframes pack-charge {
+  from {
+    transform: scale(0.6);
+    opacity: 0.4;
+  }
+  to {
+    transform: scale(1.12);
+    opacity: 1;
+  }
+}
+/* The charge's light is gold, then turns the rarity's colour (set as --tint on the element). */
+@keyframes pack-tint {
+  0%,
+  42% {
+    background-color: var(--lantern);
+  }
+  100% {
+    background-color: var(--tint);
+  }
+}
+@keyframes pack-shake {
+  0%,
+  100% {
+    transform: rotate(0);
+  }
+  25% {
+    transform: rotate(-3.5deg);
+  }
+  75% {
+    transform: rotate(3.5deg);
+  }
+}
+@keyframes pack-cap-off {
+  to {
+    transform: translate(10%, -160%) rotate(16deg);
+    opacity: 0;
+  }
+}
+@keyframes pack-out {
+  to {
+    transform: scale(1.25);
+    opacity: 0;
+    filter: brightness(2);
+  }
+}
+@keyframes pack-flash {
+  from {
+    transform: scale(0.3);
+    opacity: 1;
+  }
+  to {
+    transform: scale(2.2);
+    opacity: 0;
+  }
+}
+@keyframes pack-card-land {
+  from {
+    transform: translateY(20px) scale(0.86);
+    opacity: 0;
+  }
+  to {
+    transform: none;
+    opacity: 1;
+  }
+}
+@keyframes pack-plate-stamp {
+  from {
+    transform: skewX(-10deg) scale(1.5);
+    opacity: 0;
+  }
+  to {
+    transform: skewX(-10deg) scale(1);
+    opacity: 1;
+  }
+}
+@keyframes collect-rise-in {
+  from {
+    transform: translateY(10px);
+    opacity: 0;
+  }
+  to {
+    transform: none;
+    opacity: 1;
   }
 }
 

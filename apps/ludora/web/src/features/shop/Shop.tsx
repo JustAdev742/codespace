@@ -1,8 +1,8 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, type CSSProperties } from 'react';
 import { useSearchParams } from 'react-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { Clock, HelpCircle, Info } from 'lucide-react';
+import { Check, Clock, HelpCircle, Info, ShieldCheck } from 'lucide-react';
 import { ITEM_TYPE_INFO, RARITY_INFO, SHOP_SECTION_INFO, type GlimArt, type ItemArt, type ItemType, type LanternArt, type Rarity, type ShopSection } from '@ludora/shared';
 import { api, ApiError, newRequestKey } from '../../lib/api.ts';
 import { useMe } from '../../lib/session.ts';
@@ -14,8 +14,8 @@ import { Glim } from '../../art/glim/Glim.tsx';
 import { CurrencyIcon } from '../../art/icons.tsx';
 import { AccountError, Amount, Dialog, EmptyState, ErrorNotice, PageHeader, Skeleton } from '../../ui/primitives.tsx';
 import { Button, ButtonLink } from '../../ui/Button.tsx';
-import { StickerTabPanel, StickerTabs, formatPercent } from '../home/kit.tsx';
-import { RarityPanel, frameProps } from '../collection/rarity.tsx';
+import { StickerTabPanel, StickerTabs, formatPercent } from '../../ui/game.tsx';
+import { RarityLabel, RarityPanel, frameProps } from '../collection/rarity.tsx';
 import { PackOpening, type OpenedGlim } from './PackOpening.tsx';
 import { OddsBar, usePackDetail } from './odds.tsx';
 import { playSfx } from '../../lib/sound/react.tsx';
@@ -56,6 +56,11 @@ interface ShopData {
 const CURRENCY_NAME: Record<string, string> = { sparks: 'Sparks', moonstones: 'Moonstones', dust: 'Glow Dust', frost_tickets: 'Frost Tickets' };
 const currencyName = (c: string) => CURRENCY_NAME[c] ?? c.replace(/_/g, ' ');
 
+/** A dark display case in the Lantern's own colour, for Lantern art. */
+const caseStyle = (hue: number): CSSProperties => ({
+  background: `radial-gradient(90% 70% at 50% 38%, hsl(${hue} 85% 55% / 0.42) 0%, transparent 70%), linear-gradient(180deg, hsl(${hue} 45% 20%) 0%, hsl(${hue} 50% 11%) 100%)`,
+});
+
 /* --------------------------------- Odds dialog --------------------------------- */
 
 function OddsDialog({ packId, onClose }: { packId: string | null; onClose: () => void }) {
@@ -81,12 +86,9 @@ function OddsDialog({ packId, onClose }: { packId: string | null; onClose: () =>
               {q.data.odds.map((o) => (
                 <tr key={o.rarity} className="border-t border-line">
                   <td className="py-2">
-                    <span className="inline-flex items-center gap-2 font-semibold">
-                      <span className={`size-3 rounded-full border border-ink ${o.rarity === 'mythic' ? 'rarity-mythic-shimmer' : ''}`} style={o.rarity === 'mythic' ? undefined : { background: `var(--r-${o.rarity})` }} aria-hidden />
-                      {RARITY_INFO[o.rarity].label}
-                    </span>
+                    <RarityLabel rarity={o.rarity} />
                   </td>
-                  <td className="py-2 font-bold tabular">{formatPercent(o.percent)}</td>
+                  <td className="py-2 font-display text-lg font-bold tabular">{formatPercent(o.percent)}</td>
                   <td className="py-2 tabular">{o.items}</td>
                   <td className="py-2 text-text-2 tabular">{o.perItemPercent < 0.1 ? o.perItemPercent.toFixed(3) : o.perItemPercent.toFixed(2)}%</td>
                 </tr>
@@ -94,7 +96,7 @@ function OddsDialog({ packId, onClose }: { packId: string | null; onClose: () =>
             </tbody>
           </table>
           {q.data.pity ? (
-            <p className="flex gap-2 rounded-[14px] bg-surface-2 px-3 py-2.5 text-sm text-text-2">
+            <p className="flex gap-2 rounded-[var(--radius-m)] border border-line bg-surface-2 px-3 py-2.5 text-sm text-text-2">
               <Info className="mt-0.5 size-4 shrink-0" aria-hidden />
               <span>
                 At least one in every {q.data.pity.every} is epic or better: if {q.data.pity.every - 1} in a row are not, the next one is guaranteed to be. Yours is due within your next {q.data.pity.untilGuaranteed}.
@@ -106,10 +108,12 @@ function OddsDialog({ packId, onClose }: { packId: string | null; onClose: () =>
               const owned = i.owned > 0;
               const f = frameProps(i.rarity, { missing: !owned });
               return (
-                <li key={i.id} className={`flex flex-col items-center gap-0.5 p-1.5 pb-2 text-center ${f.className}`} style={{ ...f.style, boxShadow: undefined }}>
-                  <Glim art={i.art as GlimArt} size={64} rarity={owned ? i.rarity : null} silhouette={!owned} />
-                  <span className="w-full truncate text-xs font-bold">{owned ? i.name : 'Not found yet'}</span>
-                  <span className="text-[11px] text-text-2">{RARITY_INFO[i.rarity].label}</span>
+                <li key={i.id} className={`flex flex-col items-center gap-0.5 overflow-hidden p-1 pb-2 text-center ${f.className}`} style={f.style}>
+                  <RarityPanel rarity={i.rarity} missing={!owned} tag={false} className="aspect-square w-full">
+                    <Glim art={i.art as GlimArt} size={64} rarity={owned ? i.rarity : null} silhouette={!owned} className="h-auto w-[78%]" />
+                  </RarityPanel>
+                  <span className="mt-0.5 w-full truncate text-xs font-bold">{owned ? i.name : 'Not found yet'}</span>
+                  <RarityLabel rarity={i.rarity} className="text-[11px] text-text-2" />
                 </li>
               );
             })}
@@ -125,47 +129,69 @@ function OddsDialog({ packId, onClose }: { packId: string | null; onClose: () =>
 
 function PriceButton({ l, onBuy, wide = false }: { l: Listing; onBuy: (l: Listing) => void; wide?: boolean }) {
   if (l.blocked) {
-    return <span className={`rounded-full border-2 border-ink bg-glim px-3 py-1 text-center text-sm font-bold text-on-accent ${wide ? 'block w-full' : ''}`}>{l.blocked}</span>;
+    return (
+      <span className={`inline-flex h-10 items-center justify-center gap-1.5 rounded-[var(--radius-m)] border border-line bg-surface-2 px-3 text-sm font-bold text-text-2 ${wide ? 'w-full' : ''}`}>
+        <Check className="size-4 text-glim" aria-hidden /> {l.blocked}
+      </span>
+    );
   }
   return (
     // The name is built from the content, with the item and currency in hidden text, so the
     // visible "Buy 150" is part of it (WCAG 2.5.3) and screen readers hear the whole thing.
-    <Button variant="primary" onClick={() => onBuy(l)} className={`gap-2.5 pl-3.5 ${wide ? 'w-full' : ''}`}>
+    <Button variant="primary" onClick={() => onBuy(l)} className={`gap-2 pr-3 pl-4 ${wide ? 'w-full' : ''}`}>
       <span>
         Buy<span className="sr-only"> {l.title} for</span>
       </span>
-      <Amount currency={l.price.currency} value={l.price.amount} size="sm" className="rounded-full bg-white/55 px-2 py-0.5" />
+      <span className="h-5 w-px bg-on-accent/25" aria-hidden />
+      <span className="inline-flex items-center gap-1 font-display text-[1.15rem] leading-none font-extrabold tabular">
+        <CurrencyIcon code={l.price.currency} size={17} />
+        {formatNumber(l.price.amount)}
+      </span>
       <span className="sr-only">{currencyName(l.price.currency)}</span>
     </Button>
   );
 }
 
-/** A Lantern at its stall: hanging, lit, with its odds written on the card. */
-function LanternCard({ l, onBuy, onOdds }: { l: Listing; onBuy: (l: Listing) => void; onOdds: (packId: string) => void }) {
-  const pack = l.pack!;
-  const detail = usePackDetail(pack.id);
+/** The odds on a Lantern's card, always in view, with the full table one tap away. */
+function CardOdds({ packId, onOdds }: { packId: string; onOdds: (packId: string) => void }) {
+  const detail = usePackDetail(packId);
   return (
-    <article className="group flex flex-col overflow-hidden rounded-[22px] border-[2.5px] border-ink bg-raised shadow-[0_5px_0_var(--ink)]">
-      <div className="relative flex h-52 justify-center overflow-hidden border-b-[2.5px] border-ink" style={{ background: `hsl(${pack.art.hue} 46% 25%)` }}>
-        <span className="absolute top-5 left-6 size-1.5 rounded-full bg-white/70" aria-hidden />
-        <span className="absolute top-12 right-8 size-1 rounded-full bg-white/60" aria-hidden />
-        <span className="absolute right-14 bottom-8 size-1.5 rounded-full bg-white/40" aria-hidden />
-        <div className="origin-top group-hover:animate-[fx-sway_2.4s_ease-in-out_infinite]">
-          <div className="mx-auto h-4 w-[3px] bg-[#120b3d]" aria-hidden />
-          <Lantern art={pack.art} size={144} lit />
-        </div>
+    <div>
+      <div className="mb-1.5 flex items-center justify-between gap-2">
+        <span className="text-sm font-bold">Odds</span>
+        <button type="button" onClick={() => onOdds(packId)} className="-my-2 inline-flex min-h-11 items-center gap-1 rounded-[var(--radius-s)] text-sm font-bold text-link">
+          <HelpCircle className="size-4" aria-hidden /> What's inside
+        </button>
+      </div>
+      {detail.data ? <OddsBar odds={detail.data.odds} compact /> : detail.isError ? <p className="text-sm text-text-2">The odds did not load. Open What's inside to try again.</p> : <Skeleton className="h-14" />}
+      {detail.data?.pity ? (
+        <p className="mt-2 inline-flex items-center gap-1.5 text-[13px] text-text-2">
+          <ShieldCheck className="size-4 shrink-0 text-glim" aria-hidden />
+          {detail.data.pity.untilGuaranteed === 1 ? 'Your next one is epic or better, guaranteed' : `Epic or better guaranteed within ${detail.data.pity.untilGuaranteed}`}
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
+/** A Lantern for sale: a premium pack in a display case of its own colour, its odds on the card. */
+function LanternCard({ l, onBuy, onOdds, featured = false }: { l: Listing; onBuy: (l: Listing) => void; onOdds: (packId: string) => void; featured?: boolean }) {
+  const pack = l.pack!;
+  return (
+    <article className={`panel flex overflow-hidden rounded-[var(--radius-l)] ${featured ? 'flex-col sm:flex-row' : 'flex-col'}`}>
+      <div className={`relative grid shrink-0 place-items-center ${featured ? 'h-56 sm:h-auto sm:w-[46%]' : 'h-48'}`} style={caseStyle(pack.art.hue)}>
+        {featured ? (
+          <span className="plate plate-gold absolute top-3 left-3 text-sm uppercase">
+            <span>Featured</span>
+          </span>
+        ) : null}
+        <Lantern art={pack.art} size={featured ? 168 : 128} lit className="drop-shadow-[0_14px_18px_rgb(0_0_0/0.45)]" />
       </div>
       <div className="flex flex-1 flex-col gap-1.5 p-4">
-        <h3 className="font-display text-xl leading-tight font-extrabold">{l.title}</h3>
+        <h3 className={`font-display leading-tight font-bold ${featured ? 'text-[1.9rem]' : 'text-[1.45rem]'}`}>{l.title}</h3>
         <p className="text-sm text-text-2">{l.description}</p>
         <div className="mt-2">
-          <div className="mb-1.5 flex items-center justify-between gap-2">
-            <span className="text-sm font-bold">Chances</span>
-            <button type="button" onClick={() => onOdds(pack.id)} className="inline-flex items-center gap-1 rounded-[8px] text-sm font-bold text-link">
-              <HelpCircle className="size-4" aria-hidden /> What's inside
-            </button>
-          </div>
-          {detail.data ? <OddsBar odds={detail.data.odds} compact /> : detail.isError ? <p className="text-sm text-text-2">The odds did not load. Open What's inside to try again.</p> : <Skeleton className="h-14" />}
+          <CardOdds packId={pack.id} onOdds={onOdds} />
         </div>
         <div className="mt-auto pt-4">
           <PriceButton l={l} onBuy={onBuy} wide />
@@ -180,12 +206,12 @@ function ItemCard({ l, onBuy }: { l: Listing; onBuy: (l: Listing) => void }) {
   const f = frameProps(item.rarity);
   const info = ITEM_TYPE_INFO[item.type];
   return (
-    <article className={`flex flex-col ${f.className}`} style={f.style}>
+    <article className={`flex flex-col overflow-hidden ${f.className}`} style={f.style}>
       <RarityPanel rarity={item.rarity} className="m-1.5 h-40">
-        <ItemArtView art={item.art} rarity={item.rarity} size={item.type === 'banner' ? 150 : 112} />
+        <ItemArtView art={item.art} rarity={item.rarity} size={item.type === 'banner' ? 150 : 124} />
       </RarityPanel>
       <div className="flex flex-1 flex-col gap-1 px-3.5 pt-1 pb-3.5">
-        <h3 className="font-display text-lg leading-tight font-extrabold">{l.title}</h3>
+        <h3 className="font-display text-[1.3rem] leading-tight font-bold">{l.title}</h3>
         <p className="text-xs font-bold text-text-2">{info.label}</p>
         <p className="line-clamp-2 text-sm text-text-2">{l.description}</p>
         {item.owned && info.stackable ? <p className="text-sm text-text-2">You have {item.owned}</p> : null}
@@ -201,28 +227,40 @@ function BundleCard({ l, onBuy }: { l: Listing; onBuy: (l: Listing) => void }) {
   const items = l.bundle ?? [];
   const save = l.worth && l.worth > l.price.amount ? Math.round((1 - l.price.amount / l.worth) * 100) : 0;
   return (
-    <article className="flex flex-col overflow-hidden rounded-[22px] border-[2.5px] border-ink bg-raised shadow-[0_5px_0_var(--ink)]">
-      <div className="relative flex h-44 items-center justify-center border-b-[2.5px] border-ink bg-surface-3">
-        {items.slice(0, 3).map((b, i) => {
+    <article className="panel flex flex-col overflow-hidden rounded-[var(--radius-l)]">
+      <div className="relative flex h-44 items-center justify-center gap-2 bg-sunken px-3 pt-8">
+        {items.slice(0, 3).map((b) => {
           const f = frameProps(b.rarity);
           return (
-            <div key={b.id} className={`-mx-2.5 grid size-[4.75rem] shrink-0 place-items-center overflow-hidden ${f.className}`} style={{ ...f.style, transform: `rotate(${(i - 1) * 8}deg) translateY(${i === 1 ? -8 : 0}px)`, zIndex: i === 1 ? 2 : 1 }}>
-              <ItemArtView art={b.art} rarity={b.rarity} size={58} />
+            <div key={b.id} className={`grid aspect-square w-[30%] max-w-[5.25rem] place-items-center overflow-hidden p-1 ${f.className}`} style={f.style}>
+              <RarityPanel rarity={b.rarity} tag={false} className="size-full">
+                <ItemArtView art={b.art} rarity={b.rarity} size={58} />
+              </RarityPanel>
             </div>
           );
         })}
-        {save ? <span className="absolute top-3 left-3 rotate-[-4deg] rounded-[10px] border-2 border-ink bg-glim px-2 py-0.5 font-display text-sm font-extrabold text-on-accent shadow-[0_2px_0_var(--ink)]">Save {save}%</span> : null}
+        {save ? (
+          <span className="plate absolute top-3 left-3 bg-glim text-base text-on-accent">
+            <span>Save {save}%</span>
+          </span>
+        ) : null}
       </div>
       <div className="flex flex-1 flex-col gap-1 p-4">
-        <h3 className="font-display text-xl leading-tight font-extrabold">{l.title}</h3>
+        <h3 className="font-display text-[1.45rem] leading-tight font-bold">{l.title}</h3>
         <p className="text-sm text-text-2">{l.description}</p>
         <ul className="mt-1 flex flex-wrap gap-1.5" aria-label="In this bundle">
           {items.map((b) => (
-            <li key={b.id} className="rounded-full bg-surface-3 px-2.5 py-0.5 text-xs font-semibold text-text-2">
+            <li key={b.id} className="inline-flex items-center gap-1 rounded-full bg-surface-3 px-2.5 py-0.5 text-xs font-semibold text-text">
               {b.name}
+              <span className="font-normal text-text-2">· {RARITY_INFO[b.rarity].label}</span>
             </li>
           ))}
         </ul>
+        {l.worth && save ? (
+          <p className="mt-1 text-sm text-text-2">
+            Worth <span className="line-through tabular">{formatNumber(l.worth)}</span> bought one by one
+          </p>
+        ) : null}
         <div className="mt-auto flex justify-end pt-3">
           <PriceButton l={l} onBuy={onBuy} />
         </div>
@@ -231,8 +269,8 @@ function BundleCard({ l, onBuy }: { l: Listing; onBuy: (l: Listing) => void }) {
   );
 }
 
-function ListingCard({ l, onBuy, onOdds }: { l: Listing; onBuy: (l: Listing) => void; onOdds: (packId: string) => void }) {
-  if (l.kind === 'pack' && l.pack) return <LanternCard l={l} onBuy={onBuy} onOdds={onOdds} />;
+function ListingCard({ l, onBuy, onOdds, featured }: { l: Listing; onBuy: (l: Listing) => void; onOdds: (packId: string) => void; featured?: boolean }) {
+  if (l.kind === 'pack' && l.pack) return <LanternCard l={l} onBuy={onBuy} onOdds={onOdds} featured={featured} />;
   if (l.kind === 'bundle') return <BundleCard l={l} onBuy={onBuy} />;
   if (l.item) return <ItemCard l={l} onBuy={onBuy} />;
   return null;
@@ -250,6 +288,8 @@ const TAB_ORDER: { value: string; label: string; sections: ShopSection[] }[] = [
   { value: 'effects', label: 'Effects', sections: ['effects'] },
   { value: 'event', label: 'Frost Festival', sections: ['event'] },
 ];
+
+const walletClass = 'flex min-h-11 flex-wrap items-center gap-x-4 gap-y-1 rounded-[var(--radius-m)] border border-line bg-raised px-4 py-1.5';
 
 export default function Shop() {
   const me = useMe();
@@ -311,7 +351,7 @@ export default function Shop() {
   if (me.isError && !me.data) {
     return (
       <>
-        <PageHeader title="Shop" art={<Lantern art={{ hue: 38, accentHue: 18, pattern: 'stars' }} size={84} lit />} />
+        <PageHeader title="Shop" />
         <AccountError onRetry={() => void me.refetch()} />
       </>
     );
@@ -319,7 +359,7 @@ export default function Shop() {
   if (!me.isLoading && !me.data?.user) {
     return (
       <>
-        <PageHeader title="Shop" art={<Lantern art={{ hue: 38, accentHue: 18, pattern: 'stars' }} size={84} lit />} />
+        <PageHeader title="Shop" />
         <EmptyState title="Sign in to shop" action={<ButtonLink to="/signin?next=/shop" variant="primary">Sign in</ButtonLink>}>
           Everything in the shop is bought with Sparks and Moonstones you earn by playing.
         </EmptyState>
@@ -334,42 +374,36 @@ export default function Shop() {
   const shortBy = (l: Listing) => l.price.amount - (balances?.[l.price.currency] ?? 0);
   const activeTab = tabs.find((t) => t.value === tab) ?? tabs[0];
   const wallet = ['sparks', 'moonstones', 'dust', ...(balances?.frost_tickets || tabs.some((t) => t.value === 'event') ? ['frost_tickets'] : [])];
-  const walletPill = 'flex flex-wrap items-center gap-x-4 gap-y-1 rounded-full border-2 border-ink bg-raised px-4 py-2 shadow-[0_3px_0_var(--ink)]';
 
   return (
     <>
       <PageHeader
         title="Shop"
         description="Spend what you earn by playing. Nothing here costs real money."
-        art={
-          <div className="flex items-end gap-1 pr-1">
-            <Lantern art={{ hue: 340, accentHue: 50, pattern: 'leaves' }} size={52} lit className="mb-3 -rotate-6" />
-            <Lantern art={{ hue: 38, accentHue: 18, pattern: 'stars' }} size={84} lit />
-          </div>
-        }
         actions={
           <>
             {balances ? (
-              <div className={walletPill} role="group" aria-label="Your wallet">
+              <div className={walletClass} role="group" aria-label="Your wallet">
                 {wallet.map((c) => (
-                  <span key={c} className="inline-flex items-center" title={currencyName(c)}>
-                    <Amount currency={c} value={balances[c] ?? 0} />
+                  <span key={c} className="inline-flex items-center gap-1.5 font-display text-xl leading-none font-bold tabular" title={currencyName(c)}>
+                    <CurrencyIcon code={c} size={20} />
+                    {formatNumber(balances[c] ?? 0)}
                     <span className="sr-only"> {currencyName(c)}</span>
                   </span>
                 ))}
               </div>
             ) : loading || overview.isLoading ? (
-              <div className={walletPill}>
+              <div className={walletClass}>
                 <span className="sr-only">Loading your wallet</span>
                 {wallet.map((c) => (
-                  <span key={c} className="inline-flex items-center gap-1" aria-hidden>
-                    <CurrencyIcon code={c} size={18} />
-                    <Skeleton className="h-4 w-7" />
+                  <span key={c} className="inline-flex items-center gap-1.5" aria-hidden>
+                    <CurrencyIcon code={c} size={20} />
+                    <Skeleton className="h-4 w-8" />
                   </span>
                 ))}
               </div>
             ) : null}
-            <Button size="md" variant="ghost" icon={<HelpCircle className="size-4" aria-hidden />} onClick={() => setCurrenciesOpen(true)}>
+            <Button size="md" variant="ghost" className="h-11" icon={<HelpCircle className="size-4" aria-hidden />} onClick={() => setCurrenciesOpen(true)}>
               How to earn
             </Button>
           </>
@@ -377,12 +411,12 @@ export default function Shop() {
       />
       {shop.isError ? <ErrorNotice message="The shop could not be loaded." onRetry={() => shop.refetch()} /> : null}
       {loading ? (
-        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4" aria-busy="true">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4" aria-busy="true">
           <span role="status" className="sr-only">
             Loading the shop
           </span>
           {[0, 1, 2, 3].map((i) => (
-            <Skeleton key={i} className="h-80 rounded-[22px]" />
+            <Skeleton key={i} className="h-80 rounded-[var(--radius-l)]" />
           ))}
         </div>
       ) : shop.data && !activeTab ? (
@@ -391,29 +425,35 @@ export default function Shop() {
         <StickerTabs value={activeTab.value} onValueChange={setTab} label="Shop sections" items={tabs.map((t) => ({ value: t.value, label: t.label }))}>
           <StickerTabPanel value={activeTab.value} className="focus-visible:outline-offset-8">
             {activeTab.sections.map((s) => {
-              const list = bySection.get(s) ?? [];
+              // On the Featured tab the featured Lantern leads, on its wide card.
+              const list = s === 'featured' ? [...(bySection.get(s) ?? [])].sort((a, b) => Number(b.kind === 'pack') - Number(a.kind === 'pack')) : (bySection.get(s) ?? []);
               if (!list.length) return null;
               const reset = s === 'daily' ? shop.data?.resets.daily : s === 'weekly' ? shop.data?.resets.weekly : null;
               const ends = s === 'event' ? list.find((l) => l.endsAt)?.endsAt : null;
               return (
                 <section key={s} className="mb-10" aria-labelledby={`shop-${s}`}>
-                  <div className="mb-4 flex flex-wrap items-end justify-between gap-2">
+                  <div className="mb-4 flex flex-wrap items-end justify-between gap-x-4 gap-y-2">
                     <div>
-                      <h2 id={`shop-${s}`} className="font-display text-2xl font-extrabold">
+                      <h2 id={`shop-${s}`} className="font-display text-[1.75rem] leading-tight font-bold">
                         {SHOP_SECTION_INFO[s].label}
                       </h2>
                       <p className="text-text-2">{SHOP_SECTION_INFO[s].description}</p>
                     </div>
                     {reset || ends ? (
-                      <span className="inline-flex items-center gap-1.5 rounded-full bg-surface-3 px-3 py-1 text-sm font-semibold text-text-2">
+                      <span className="inline-flex items-center gap-1.5 rounded-full border border-line bg-raised px-3 py-1 text-sm font-semibold text-text-2">
                         <Clock className="size-4" aria-hidden /> {reset ? `New picks in ${untilText(reset)}` : `Ends in ${untilText(ends!)}`}
                       </span>
                     ) : null}
                   </div>
-                  <div className="grid grid-cols-1 gap-5 min-[480px]:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                    {list.map((l) => (
-                      <ListingCard key={l.id} l={l} onBuy={(x) => setConfirm({ listing: x, key: newRequestKey('buy') })} onOdds={setOddsFor} />
-                    ))}
+                  <div className="grid grid-cols-1 gap-4 min-[480px]:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                    {list.map((l, i) => {
+                      const featured = s === 'featured' && i === 0 && l.kind === 'pack';
+                      return (
+                        <div key={l.id} className={featured ? 'min-[480px]:col-span-2' : 'flex flex-col [&>*]:flex-1'}>
+                          <ListingCard l={l} onBuy={(x) => setConfirm({ listing: x, key: newRequestKey('buy') })} onOdds={setOddsFor} featured={featured} />
+                        </div>
+                      );
+                    })}
                   </div>
                 </section>
               );
@@ -468,12 +508,15 @@ export default function Shop() {
       />
 
       <Dialog open={currenciesOpen} onOpenChange={setCurrenciesOpen} title="How to earn" description="Everything in Ludora is earned by playing. None of it can be bought with money." size="lg">
-        <ul className="flex flex-col gap-4">
+        <ul className="flex flex-col gap-3">
           {(overview.data?.currencies ?? []).map((c) => (
-            <li key={c.code} className="flex gap-3 rounded-[16px] bg-surface-2 p-3">
-              <Amount currency={c.code} value={balances?.[c.code] ?? 0} size="lg" className="w-24 shrink-0" />
+            <li key={c.code} className="flex gap-3 rounded-[var(--radius-m)] border border-line bg-surface-2 p-3">
+              <span className="inline-flex w-24 shrink-0 items-center gap-1.5 self-start font-display text-2xl leading-none font-bold tabular">
+                <CurrencyIcon code={c.code} size={24} />
+                {formatNumber(balances?.[c.code] ?? 0)}
+              </span>
               <div className="text-sm">
-                <div className="font-display text-base font-bold">{c.name}</div>
+                <div className="font-display text-lg font-bold">{c.name}</div>
                 <p className="text-text-2">{c.description}</p>
                 <p className="mt-1 text-text-2">
                   <span className="font-semibold text-text">Earn:</span> {c.howToEarn}
@@ -493,38 +536,51 @@ export default function Shop() {
 
 function ConfirmBody({ listing, balance, canAfford, shortBy, onOdds }: { listing: Listing; balance: number; canAfford: boolean; shortBy: number; onOdds: (packId: string) => void }) {
   const detail = usePackDetail(listing.pack?.id);
+  const item = listing.item;
   return (
     <div className="flex flex-col gap-4 text-sm">
       {listing.pack ? (
-        <div className="flex items-center gap-4 rounded-[16px] p-3" style={{ background: `hsl(${listing.pack.art.hue} 46% 25%)` }}>
+        <div className="flex items-center gap-4 rounded-[var(--radius-m)] p-3" style={caseStyle(listing.pack.art.hue)}>
           <Lantern art={listing.pack.art} size={64} lit className="shrink-0" />
           <p className="text-[15px] text-white">{listing.pack.description}</p>
+        </div>
+      ) : item ? (
+        <div className="flex items-center gap-3">
+          <div className={`shrink-0 overflow-hidden p-1 ${frameProps(item.rarity).className}`} style={frameProps(item.rarity).style}>
+            <RarityPanel rarity={item.rarity} tag={false} className="size-20">
+              <ItemArtView art={item.art} rarity={item.rarity} size={item.type === 'banner' ? 76 : 64} />
+            </RarityPanel>
+          </div>
+          <div className="min-w-0">
+            <RarityLabel rarity={item.rarity} className="text-text-2" />
+            <p className="text-text-2">{ITEM_TYPE_INFO[item.type].label}</p>
+          </div>
         </div>
       ) : null}
       {listing.pack ? (
         <div>
           <p className="mb-1.5 font-semibold text-text">Chance of each rarity</p>
           {detail.data ? <OddsBar odds={detail.data.odds} compact /> : <Skeleton className="h-10" />}
-          <button type="button" className="mt-2 text-sm font-bold text-link" onClick={() => onOdds(listing.pack!.id)}>
+          <button type="button" className="mt-1 inline-flex min-h-11 items-center text-sm font-bold text-link" onClick={() => onOdds(listing.pack!.id)}>
             What's inside
           </button>
         </div>
       ) : null}
-      <dl className="flex flex-col gap-2 rounded-[16px] bg-surface-2 px-3.5 py-3">
-        <div className="flex justify-between">
+      <dl className="flex flex-col gap-2 rounded-[var(--radius-m)] border border-line bg-surface-2 px-3.5 py-3">
+        <div className="flex items-center justify-between">
           <dt className="text-text-2">Price</dt>
           <dd>
             <Amount currency={listing.price.currency} value={listing.price.amount} />
           </dd>
         </div>
-        <div className="flex justify-between">
+        <div className="flex items-center justify-between">
           <dt className="text-text-2">You have</dt>
           <dd>
             <Amount currency={listing.price.currency} value={balance} />
           </dd>
         </div>
         {canAfford ? (
-          <div className="flex justify-between border-t border-line pt-2">
+          <div className="flex items-center justify-between border-t border-line pt-2">
             <dt className="text-text-2">Left after</dt>
             <dd>
               <Amount currency={listing.price.currency} value={balance - listing.price.amount} />
@@ -535,10 +591,11 @@ function ConfirmBody({ listing, balance, canAfford, shortBy, onOdds }: { listing
       {canAfford ? (
         <p className="text-text-2">Paid with {currencyName(listing.price.currency)} you earned by playing. No real money, ever.</p>
       ) : (
-        <p className="rounded-[14px] bg-ember/12 px-3 py-2.5 font-semibold text-text">
+        <p className="rounded-[var(--radius-m)] border border-ember/40 bg-ember/10 px-3 py-2.5 font-semibold text-text">
           You need {formatNumber(shortBy)} more {currencyName(listing.price.currency)}. Play a game or two to earn them.
         </p>
       )}
     </div>
   );
 }
+

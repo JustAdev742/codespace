@@ -4,13 +4,15 @@ import type { BodyGeometry, GlimColors } from './bodies.ts';
 import { fmt as f, softStar, sparkle } from './geometry.ts';
 
 /*
- * Faces. The eyes are the cute centre of gravity: big, a little below the
- * middle of the body, wide apart, with a big pupil and two catchlights.
+ * Faces with attitude. The eyes are small and set under a lid whose angle
+ * comes from the brow, so every Glim wears an expression: steady, sure of
+ * itself, worried, wide-eyed or fed up. A genome that names no brow gets one
+ * from its eyes and mouth. One small catchlight per eye; no blush.
  */
 
 const WHITE = '#fff';
-const TONGUE = 'hsl(350 90% 72%)';
-const TONGUE_DEEP = 'hsl(350 60% 45%)';
+const TONGUE = 'hsl(355 78% 60%)';
+const TONGUE_DEEP = 'hsl(352 62% 36%)';
 
 export interface FaceInk {
   /** Eye and mouth colour. */
@@ -20,63 +22,139 @@ export interface FaceInk {
   outline: string;
 }
 
-interface EyeCtx {
+export type Brow = NonNullable<GlimArt['brows']>;
+
+export interface EyeCtx {
   x: number;
   y: number;
   gap: number;
   k: number;
   ink: FaceInk;
-  blink: boolean;
+  /** The expression: sets the lids and the brows. */
+  brow: Brow;
+  /** Avatar sizes: no catchlights or lid lines, which would only blur at 24 to 40 pixels. */
+  tiny: boolean;
 }
 
-/** Top of the eye above its centre, for placing brows. */
-export function eyeTop(kind: GlimArt['eyes']): number {
-  switch (kind) {
-    case 'big':
-    case 'sparkle':
-    case 'curious':
-      return 9.6;
-    case 'cyclops':
-      return 13;
-    case 'visor':
-      return 8.6;
-    case 'sleepy':
-    case 'happy':
-      return 5.5;
-    case 'half':
-      return 4;
+/** The brow a Glim wears when its genome names none, read from its eyes and mouth. */
+export function browFor(art: Pick<GlimArt, 'brows' | 'eyes' | 'mouth' | 'face'>): Brow {
+  if (art.brows && art.brows !== 'none') return art.brows;
+  if (art.eyes === 'visor') return 'none';
+  if (art.eyes === 'wink' || art.eyes === 'half') return 'smug';
+  if (art.eyes === 'star') return 'surprised';
+  switch (art.mouth) {
+    case 'smirk':
+    case 'tongue':
+      return 'smug';
+    case 'fang':
+    case 'toothy':
+    case 'grin':
+    case 'beak':
+      return 'determined';
+    case 'wobble':
+      return 'worried';
+    case 'o':
+    case 'yawn':
+      return art.eyes === 'sleepy' ? 'soft' : 'surprised';
     default:
-      return 8;
+      return art.eyes === 'cyclops' ? 'determined' : 'soft';
   }
 }
 
-function bead(cx: number, cy: number, rx: number, ry: number, k: number, ink: FaceInk) {
+/** How far the lid comes down (a share of the eye's height, at its middle) and how it tilts (positive: lower at the inner corner). */
+const LID: Record<Brow, { drop: number; tilt: number }> = {
+  none: { drop: 0.1, tilt: 0 },
+  soft: { drop: 0.16, tilt: 0.06 },
+  determined: { drop: 0.26, tilt: 0.34 },
+  worried: { drop: 0.2, tilt: -0.34 },
+  smug: { drop: 0.42, tilt: 0.08 },
+  surprised: { drop: 0, tilt: 0 },
+  grumpy: { drop: 0.36, tilt: 0.5 },
+  bushy: { drop: 0.26, tilt: 0.12 },
+};
+
+interface Lid {
+  /** y of the lid line through the eye's centre column. */
+  mid: number;
+  /** Slope in y per unit of x (already signed for the eye's side). */
+  m: number;
+}
+
+function lidFor(brow: Brow, cx: number, cy: number, ry: number, side: 1 | -1, scale = 1): Lid | null {
+  const l = LID[brow];
+  if (l.drop <= 0 && l.tilt === 0) return null;
+  // Positive tilt drops the inner corner (towards the face centre): for the right eye that is the left end, so y falls as x grows.
+  return { mid: cy - ry + 2 * ry * l.drop * scale, m: -l.tilt * side * scale };
+}
+
+const lidY = (lid: Lid, cx: number, x: number) => lid.mid + lid.m * (x - cx);
+
+/** An ellipse with everything above the lid line cut away. */
+function lidEllipse(cx: number, cy: number, rx: number, ry: number, lid: Lid | null): string {
+  const full = `M${f(cx - rx)} ${f(cy)}A${f(rx)} ${f(ry)} 0 1 0 ${f(cx + rx)} ${f(cy)}A${f(rx)} ${f(ry)} 0 1 0 ${f(cx - rx)} ${f(cy)}Z`;
+  if (!lid) return full;
+  // Solve u^2/rx^2 + (c0 + m u)^2/ry^2 = 1, with u = x - cx and v = y - cy on the line v = c0 + m u.
+  const c0 = lid.mid - cy;
+  const m = lid.m;
+  const A = 1 / (rx * rx) + (m * m) / (ry * ry);
+  const B = (2 * c0 * m) / (ry * ry);
+  const C = (c0 * c0) / (ry * ry) - 1;
+  const disc = B * B - 4 * A * C;
+  if (disc <= 0) return c0 < 0 ? full : '';
+  const s = Math.sqrt(disc);
+  const u1 = (-B - s) / (2 * A);
+  const u2 = (-B + s) / (2 * A);
+  const p1 = [cx + u1, cy + c0 + m * u1] as const;
+  const p2 = [cx + u2, cy + c0 + m * u2] as const;
+  const large = c0 < 0 ? 1 : 0;
+  return `M${f(p1[0])} ${f(p1[1])}L${f(p2[0])} ${f(p2[1])}A${f(rx)} ${f(ry)} 0 ${large} 1 ${f(p1[0])} ${f(p1[1])}Z`;
+}
+
+/** The lid's own line, a little past the eye at the outer corner, like a lash line. */
+function lidLine(cx: number, rx: number, lid: Lid, side: 1 | -1, k: number, color: string, w = 2.1): ReactNode {
+  const xi = cx - side * rx * 0.92;
+  const xo = cx + side * (rx + 1.3 * k);
+  return <path d={`M${f(xi)} ${f(lidY(lid, cx, xi))}L${f(xo)} ${f(lidY(lid, cx, xo) - 0.5 * k)}`} fill="none" stroke={color} strokeWidth={w * k} strokeLinecap="round" />;
+}
+
+/** One catchlight, high on the outer side of the eye, kept under the lid. */
+function catchlight(cx: number, cy: number, rx: number, ry: number, lid: Lid | null, side: 1 | -1, r: number): ReactNode {
+  const x = cx + side * rx * 0.34;
+  let y = cy - ry * 0.32;
+  if (lid) y = Math.max(y, lidY(lid, cx, x) + r * 1.15);
+  if (y + r > cy + ry * 0.7) return null;
+  return <circle cx={x} cy={y} r={r} fill={WHITE} />;
+}
+
+function bead(cx: number, cy: number, rx0: number, ry0: number, ctx: EyeCtx, side: 1 | -1) {
+  const { k, ink, brow, tiny } = ctx;
+  const rx = rx0 * k;
+  const ry = ry0 * k;
+  const lid = lidFor(brow, cx, cy, ry, side, tiny ? 0.7 : 1);
   return (
     <>
-      <ellipse cx={cx} cy={cy} rx={rx * k} ry={ry * k} fill={ink.ink} />
-      <circle cx={cx + rx * 0.36 * k} cy={cy - ry * 0.36 * k} r={Math.max(rx, ry) * 0.33 * k} fill={WHITE} />
-      <circle cx={cx - rx * 0.36 * k} cy={cy + ry * 0.4 * k} r={Math.max(rx, ry) * 0.15 * k} fill={WHITE} />
+      <path d={lidEllipse(cx, cy, rx, ry, lid)} fill={ink.ink} />
+      {tiny ? null : catchlight(cx, cy, rx, ry, lid, side, Math.max(rx, ry) * 0.27)}
     </>
   );
 }
 
-function bigEye(cx: number, cy: number, k: number, ink: FaceInk, sparkly = false) {
-  const rx = 8.2 * k;
-  const ry = 9.6 * k;
+function bigEye(cx: number, cy: number, ctx: EyeCtx, side: 1 | -1, sparkly = false) {
+  const { k, ink, brow, tiny } = ctx;
+  const rx = 6.3 * k;
+  const ry = 7.4 * k;
+  const lid = lidFor(brow, cx, cy, ry, side, tiny ? 0.7 : 1);
+  const shape = lidEllipse(cx, cy, rx, ry, lid);
+  const r = 1.75 * k;
+  const hx = cx + side * rx * 0.3;
+  const hy = lid ? Math.max(cy - ry * 0.3, lidY(lid, cx, hx) + r * 1.2) : cy - ry * 0.3;
   return (
     <>
-      <ellipse cx={cx} cy={cy} rx={rx} ry={ry} fill={ink.ink} />
-      <ellipse cx={cx} cy={cy + 4.6 * k} rx={5.6 * k} ry={3.6 * k} fill={ink.iris} opacity={0.92} />
-      {sparkly ? (
+      <path d={shape} fill={ink.ink} />
+      {tiny ? null : (
         <>
-          <path d={sparkle(cx + 2.5 * k, cy - 3.3 * k, 4.6 * k, 0.26)} fill={WHITE} />
-          <circle cx={cx - 3.1 * k} cy={cy + 1.9 * k} r={1.5 * k} fill={WHITE} />
-          <circle cx={cx - 2.9 * k} cy={cy - 4.2 * k} r={1 * k} fill={WHITE} opacity={0.9} />
-        </>
-      ) : (
-        <>
-          <circle cx={cx + 2.7 * k} cy={cy - 3.6 * k} r={3.4 * k} fill={WHITE} />
-          <circle cx={cx - 3 * k} cy={cy + 1.8 * k} r={1.6 * k} fill={WHITE} />
+          <ellipse cx={cx} cy={cy + 3.9 * k} rx={3.9 * k} ry={2.4 * k} fill={ink.iris} opacity={0.95} />
+          {sparkly ? <path d={sparkle(hx, hy, 2.9 * k, 0.26)} fill={WHITE} /> : <circle cx={hx} cy={hy} r={r} fill={WHITE} />}
         </>
       )}
     </>
@@ -87,79 +165,86 @@ function arc(cx: number, cy: number, w: number, h: number, k: number, color: str
   return <path d={`M${f(cx - w * k)} ${f(cy)}Q${f(cx)} ${f(cy + h * k)} ${f(cx + w * k)} ${f(cy)}`} fill="none" stroke={color} strokeWidth={width * k} strokeLinecap="round" />;
 }
 
-function halfEye(cx: number, cy: number, k: number, ink: FaceInk, side: 1 | -1) {
-  const rx = 7 * k;
-  const ry = 8.2 * k;
-  const ly = cy - 1.6 * k;
-  const wx = rx * Math.sqrt(1 - ((ly - cy) / ry) ** 2);
+function halfEye(cx: number, cy: number, ctx: EyeCtx, side: 1 | -1) {
+  const { k, ink, tiny } = ctx;
+  const rx = 5.5 * k;
+  const ry = 6.4 * k;
+  // A heavy, level lid: the bored half-look, whatever the brow.
+  const lid: Lid = { mid: cy - 0.9 * k, m: -0.06 * side };
   return (
     <>
-      <path d={`M${f(cx - wx)} ${f(ly)}A${f(rx)} ${f(ry)} 0 1 0 ${f(cx + wx)} ${f(ly)}Z`} fill={ink.ink} />
-      <path d={`M${f(cx - wx - 1.6 * k)} ${f(ly + (side > 0 ? 0.6 : -0.6) * k)}L${f(cx + wx + 1.6 * k)} ${f(ly + (side > 0 ? -0.6 : 0.6) * k)}`} stroke={ink.ink} strokeWidth={3 * k} strokeLinecap="round" />
-      <circle cx={cx + 2.5 * k} cy={ly + 2.8 * k} r={2 * k} fill={WHITE} />
-      <circle cx={cx - 2.7 * k} cy={ly + 5.4 * k} r={1 * k} fill={WHITE} />
+      <path d={lidEllipse(cx, cy, rx, ry, lid)} fill={ink.ink} />
+      {lidLine(cx, rx, lid, side, k, ink.ink, 2.6)}
+      {tiny ? null : <circle cx={cx + side * 1.8 * k} cy={cy + 1.6 * k} r={1.4 * k} fill={WHITE} />}
     </>
   );
 }
 
-function pixelEye(cx: number, cy: number, k: number, ink: FaceInk) {
-  const w = 11.4 * k;
-  const h = 12.6 * k;
+function pixelEye(cx: number, cy: number, ctx: EyeCtx, side: 1 | -1) {
+  const { k, ink, brow, tiny } = ctx;
+  const w = 8.6 * k;
+  const h = 9.8 * k;
+  const lid = lidFor(brow, cx, cy, h / 2, side, 0.8);
+  const x0 = cx - w / 2;
+  const x1 = cx + w / 2;
+  const top0 = lid ? Math.max(cy - h / 2, lidY(lid, cx, x0)) : cy - h / 2;
+  const top1 = lid ? Math.max(cy - h / 2, lidY(lid, cx, x1)) : cy - h / 2;
+  const bottom = cy + h / 2;
+  const r = 1.6 * k;
   return (
     <>
-      <rect x={cx - w / 2} y={cy - h / 2} width={w} height={h} rx={2.8 * k} fill={ink.ink} />
-      <rect x={cx + 0.6 * k} y={cy - 4.6 * k} width={3.4 * k} height={3.4 * k} rx={0.7 * k} fill={WHITE} />
-      <rect x={cx - 3.8 * k} y={cy + 1.9 * k} width={1.8 * k} height={1.8 * k} rx={0.4 * k} fill={WHITE} />
+      <path d={`M${f(x0)} ${f(top0)}L${f(x1)} ${f(top1)}V${f(bottom - r)}Q${f(x1)} ${f(bottom)} ${f(x1 - r)} ${f(bottom)}H${f(x0 + r)}Q${f(x0)} ${f(bottom)} ${f(x0)} ${f(bottom - r)}Z`} fill={ink.ink} />
+      {tiny ? null : <rect x={cx + side * 0.6 * k - (side < 0 ? 2.6 * k : 0)} y={Math.max(top0, top1) + 1.2 * k} width={2.6 * k} height={2.6 * k} rx={0.5 * k} fill={WHITE} />}
     </>
   );
 }
 
 function EyePair({ kind, ctx }: { kind: GlimArt['eyes']; ctx: EyeCtx }): ReactNode {
-  const { x, y, gap, k, ink } = ctx;
+  const { x, y, gap, k, ink, brow, tiny } = ctx;
   const L = x - gap;
   const R = x + gap;
   switch (kind) {
     case 'dot':
       return (
         <>
-          {bead(L, y, 6, 7.3, k, ink)}
-          {bead(R, y, 6, 7.3, k, ink)}
+          {bead(L, y, 4.9, 6.2, ctx, -1)}
+          {bead(R, y, 4.9, 6.2, ctx, 1)}
         </>
       );
     case 'big':
       return (
         <>
-          {bigEye(L, y, k, ink)}
-          {bigEye(R, y, k, ink)}
+          {bigEye(L, y, ctx, -1)}
+          {bigEye(R, y, ctx, 1)}
         </>
       );
     case 'sparkle':
       return (
         <>
-          {bigEye(L, y, k, ink, true)}
-          {bigEye(R, y, k, ink, true)}
+          {bigEye(L, y, ctx, -1, true)}
+          {bigEye(R, y, ctx, 1, true)}
         </>
       );
     case 'sleepy':
       return (
         <>
-          {arc(L, y - 1 * k, 6.8, 5.6, k, ink.ink, 3.5)}
-          {arc(R, y - 1 * k, 6.8, 5.6, k, ink.ink, 3.5)}
-          <path d={`M${f(L - 6.6 * k)} ${f(y - 0.6 * k)}l${f(-2.6 * k)} ${f(-1.4 * k)}M${f(R + 6.6 * k)} ${f(y - 0.6 * k)}l${f(2.6 * k)} ${f(-1.4 * k)}`} stroke={ink.ink} strokeWidth={2.4 * k} strokeLinecap="round" />
+          {arc(L, y - 0.6 * k, 5.2, 3.8, k, ink.ink, 3)}
+          {arc(R, y - 0.6 * k, 5.2, 3.8, k, ink.ink, 3)}
+          {tiny ? null : <path d={`M${f(L - 5 * k)} ${f(y - 0.4 * k)}l${f(-2 * k)} ${f(-1.1 * k)}M${f(R + 5 * k)} ${f(y - 0.4 * k)}l${f(2 * k)} ${f(-1.1 * k)}`} stroke={ink.ink} strokeWidth={2.1 * k} strokeLinecap="round" />}
         </>
       );
     case 'happy':
       return (
         <>
-          {arc(L, y + 3 * k, 7.2, -11, k, ink.ink, 3.7)}
-          {arc(R, y + 3 * k, 7.2, -11, k, ink.ink, 3.7)}
+          {arc(L, y + 2.2 * k, 5.4, -7.6, k, ink.ink, 3.2)}
+          {arc(R, y + 2.2 * k, 5.4, -7.6, k, ink.ink, 3.2)}
         </>
       );
     case 'wink':
       return (
         <>
-          {bead(L, y, 6.6, 8, k, ink)}
-          {arc(R, y + 3 * k, 7.2, -11, k, ink.ink, 3.7)}
+          {bead(L, y, 5.2, 6.4, ctx, -1)}
+          {arc(R, y + 2.2 * k, 5.6, -7.6, k, ink.ink, 3.2)}
         </>
       );
     case 'star':
@@ -167,205 +252,255 @@ function EyePair({ kind, ctx }: { kind: GlimArt['eyes']; ctx: EyeCtx }): ReactNo
         <>
           {[L, R].map((cx) => (
             <g key={cx}>
-              <path d={softStar(cx, y + 0.5 * k, 9.6 * k, 5.2 * k)} fill={ink.ink} />
-              <circle cx={cx + 2.3 * k} cy={y - 1.8 * k} r={2.2 * k} fill={WHITE} />
-              <circle cx={cx - 2.1 * k} cy={y + 2.6 * k} r={1 * k} fill={WHITE} />
+              <path d={softStar(cx, y + 0.4 * k, 7.4 * k, 4 * k)} fill={ink.ink} />
+              {tiny ? null : <circle cx={cx + 1.7 * k} cy={y - 1.3 * k} r={1.5 * k} fill={WHITE} />}
             </g>
           ))}
         </>
       );
-    case 'cyclops':
+    case 'cyclops': {
+      const r = 10.4 * k;
+      const cy = y - 1 * k;
+      const lid = lidFor(brow, x, cy, r, 1, 0.8);
+      // A single eye has no inner corner: level the lid, keep its height.
+      const level = lid ? { mid: lid.mid, m: 0 } : null;
+      const ix = x + 0.5 * k;
+      const iy = y + 0.6 * k;
+      const shine = { x: x + 2.9 * k, y: Math.max(y - 1.6 * k, level ? level.mid + 2.4 * k : -Infinity) };
       return (
         <>
-          <circle cx={x} cy={y - 1 * k} r={13.2 * k} fill={WHITE} stroke={ink.outline} strokeWidth={2.6 * k} />
-          <circle cx={x + 0.6 * k} cy={y} r={8.8 * k} fill={ink.iris} />
-          <circle cx={x + 0.6 * k} cy={y} r={5 * k} fill={ink.ink} />
-          <circle cx={x + 3.8 * k} cy={y - 3.8 * k} r={3 * k} fill={WHITE} />
-          <circle cx={x - 2.9 * k} cy={y + 3.1 * k} r={1.4 * k} fill={WHITE} />
+          <path d={lidEllipse(x, cy, r, r, level)} fill={WHITE} stroke={ink.outline} strokeWidth={2.2 * k} strokeLinejoin="round" />
+          <path d={lidEllipse(ix, iy, 6.6 * k, 6.6 * k, level)} fill={ink.iris} />
+          <path d={lidEllipse(ix, iy, 3.8 * k, 3.8 * k, level)} fill={ink.ink} />
+          {tiny ? null : <circle cx={shine.x} cy={shine.y} r={1.9 * k} fill={WHITE} />}
+          {level && !tiny ? <path d={`M${f(x - r * 0.96)} ${f(level.mid)}H${f(x + r * 0.96)}`} stroke={ink.outline} strokeWidth={2.4 * k} strokeLinecap="round" /> : null}
         </>
       );
-    case 'visor':
+    }
+    case 'visor': {
+      const lidL = lidFor(brow === 'none' ? 'determined' : brow, L + 2 * k, y, 4.6 * k, -1, 0.8);
+      const lidR = lidFor(brow === 'none' ? 'determined' : brow, R - 2 * k, y, 4.6 * k, 1, 0.8);
       return (
         <>
-          <rect x={x - 27 * k} y={y - 8.6 * k} width={54 * k} height={17.2 * k} rx={8.6 * k} fill={ink.outline} />
-          {[L + 2 * k, R - 2 * k].map((cx) => (
-            <g key={cx}>
-              <ellipse cx={cx} cy={y} rx={5.8 * k} ry={6.2 * k} fill={ink.iris} />
-              <circle cx={cx + 2 * k} cy={y - 2.1 * k} r={1.9 * k} fill={WHITE} />
-            </g>
-          ))}
+          <rect x={x - 25 * k} y={y - 7.4 * k} width={50 * k} height={14.8 * k} rx={7.4 * k} fill={ink.outline} />
+          <path d={lidEllipse(L + 2 * k, y + 0.4 * k, 5.6 * k, 4.6 * k, lidL)} fill={ink.iris} />
+          <path d={lidEllipse(R - 2 * k, y + 0.4 * k, 5.6 * k, 4.6 * k, lidR)} fill={ink.iris} />
+          {tiny ? null : <path d={`M${f(x - 20 * k)} ${f(y - 4.6 * k)}h${f(7 * k)}`} stroke={WHITE} strokeWidth={1.6 * k} strokeLinecap="round" opacity={0.35} />}
         </>
       );
+    }
     case 'curious':
       return (
         <>
-          {bead(L, y + 1 * k, 5.2, 6.4, k, ink)}
-          {bigEye(R, y, k, ink)}
+          {bead(L, y + 0.8 * k, 4.5, 5.6, { ...ctx, brow: 'determined' }, -1)}
+          {bigEye(R, y, { ...ctx, brow: 'surprised' }, 1)}
         </>
       );
     case 'half':
       return (
         <>
-          {halfEye(L, y, k, ink, -1)}
-          {halfEye(R, y, k, ink, 1)}
+          {halfEye(L, y, ctx, -1)}
+          {halfEye(R, y, ctx, 1)}
         </>
       );
     case 'pixel':
       return (
         <>
-          {pixelEye(L, y, k, ink)}
-          {pixelEye(R, y, k, ink)}
+          {pixelEye(L, y, ctx, -1)}
+          {pixelEye(R, y, ctx, 1)}
         </>
       );
   }
 }
 
-const OPEN_EYES: ReadonlySet<GlimArt['eyes']> = new Set(['dot', 'big', 'sparkle', 'star', 'cyclops', 'curious', 'pixel', 'wink']);
-
 export function Eyes({ kind, ctx }: { kind: GlimArt['eyes']; ctx: EyeCtx }) {
-  const pair = <EyePair kind={kind} ctx={ctx} />;
-  if (!ctx.blink || !OPEN_EYES.has(kind)) return pair;
-  return (
-    <g className="glim-blink" style={{ transformOrigin: `${ctx.x}px ${ctx.y}px` }}>
-      {pair}
-    </g>
-  );
+  return <EyePair kind={kind} ctx={ctx} />;
 }
 
 /* ------------------------------------------------------------------ */
 
-export function Brows({ kind, eyes, ctx }: { kind: GlimArt['brows']; eyes: GlimArt['eyes']; ctx: EyeCtx }): ReactNode {
-  const { x, y, gap, k, ink } = ctx;
-  const single = eyes === 'cyclops' || eyes === 'visor';
-  const by = y - (eyeTop(eyes) + 4.6) * k;
-  // Brow paths for the right eye, centred on (ex, by); the left one mirrors it.
-  const right = (ex: number): string | null => {
-    switch (kind) {
-      case 'soft':
-        return `M${f(ex - 4.6 * k)} ${f(by + 1 * k)}Q${f(ex)} ${f(by - 2.2 * k)} ${f(ex + 4.6 * k)} ${f(by + 1 * k)}`;
-      case 'determined':
-        return `M${f(ex - 5 * k)} ${f(by + 2.2 * k)}Q${f(ex)} ${f(by - 0.4 * k)} ${f(ex + 4.8 * k)} ${f(by - 1.6 * k)}`;
-      case 'worried':
-        return `M${f(ex - 5 * k)} ${f(by - 2.2 * k)}Q${f(ex)} ${f(by - 1.2 * k)} ${f(ex + 4.6 * k)} ${f(by + 1.8 * k)}`;
-      case 'surprised':
-        return `M${f(ex - 4.6 * k)} ${f(by - 1.8 * k)}Q${f(ex)} ${f(by - 6.4 * k)} ${f(ex + 4.6 * k)} ${f(by - 1.8 * k)}`;
-      case 'grumpy':
-        return `M${f(ex - 5.6 * k)} ${f(by + 4 * k)}L${f(ex + 5 * k)} ${f(by - 0.8 * k)}`;
-      default:
-        return null;
-    }
+/** Top of the eye above its centre, for placing brows. */
+function eyeTop(kind: GlimArt['eyes']): number {
+  switch (kind) {
+    case 'big':
+    case 'sparkle':
+    case 'curious':
+      return 7.4;
+    case 'cyclops':
+      return 11.4;
+    case 'visor':
+      return 7.4;
+    case 'sleepy':
+    case 'happy':
+      return 4.4;
+    case 'half':
+      return 3.4;
+    case 'pixel':
+      return 4.9;
+    case 'star':
+      return 7;
+    default:
+      return 6.2;
+  }
+}
+
+/**
+ * A brow as a filled, tapering stroke from the inner end to the outer end,
+ * through a control point: heavier at the inner end, the way a drawn brow sits.
+ */
+function taper(x0: number, y0: number, cx: number, cy: number, x1: number, y1: number, t0: number, t1: number): string {
+  const n = 8;
+  const top: string[] = [];
+  const bottom: string[] = [];
+  for (let i = 0; i <= n; i++) {
+    const t = i / n;
+    const px = (1 - t) * (1 - t) * x0 + 2 * (1 - t) * t * cx + t * t * x1;
+    const py = (1 - t) * (1 - t) * y0 + 2 * (1 - t) * t * cy + t * t * y1;
+    const dx = 2 * (1 - t) * (cx - x0) + 2 * t * (x1 - cx);
+    const dy = 2 * (1 - t) * (cy - y0) + 2 * t * (y1 - cy);
+    const len = Math.hypot(dx, dy) || 1;
+    const nx = -dy / len;
+    const ny = dx / len;
+    const w = (t0 + (t1 - t0) * t) / 2;
+    top.push(`${f(px + nx * w)} ${f(py + ny * w)}`);
+    bottom.push(`${f(px - nx * w)} ${f(py - ny * w)}`);
+  }
+  return `M${top.join('L')}L${bottom.reverse().join('L')}Z`;
+}
+
+/** The right brow's centre line for an expression: inner end, control point, outer end (dx, dy from the brow's centre), and weights. */
+const BROW_LINE: Record<Exclude<Brow, 'none' | 'bushy' | 'smug'>, { i: [number, number]; c: [number, number]; o: [number, number]; t: [number, number] }> = {
+  soft: { i: [-4.6, 0.9], c: [0, -1.6], o: [4.8, 0.5], t: [2.6, 1.7] },
+  determined: { i: [-4.8, 2.5], c: [0, 0.3], o: [4.8, -1.4], t: [3.1, 1.9] },
+  worried: { i: [-4.8, -1.8], c: [0, -0.9], o: [4.6, 1.8], t: [2.8, 1.8] },
+  surprised: { i: [-4.4, -0.6], c: [0, -4.4], o: [4.6, -0.6], t: [2.5, 1.7] },
+  grumpy: { i: [-5.2, 3.6], c: [0, 1.3], o: [5, -1.6], t: [3.7, 2.3] },
+};
+
+export function Brows({ eyes, ctx, kind }: { eyes: GlimArt['eyes']; ctx: EyeCtx; kind?: Brow }): ReactNode {
+  const { x, y, gap, k, ink, tiny } = ctx;
+  const brow = kind ?? ctx.brow;
+  if (eyes === 'visor') return null;
+  const single = eyes === 'cyclops';
+  const by = y - (eyeTop(eyes) + (tiny ? 2.6 : 3.4)) * k;
+  const weight = tiny ? 1.35 : 1;
+  const draw = (line: { i: [number, number]; c: [number, number]; o: [number, number]; t: [number, number] }, ex: number, side: 1 | -1, lift = 0) => {
+    const X = (dx: number) => ex + side * dx * k;
+    const Y = (dy: number) => by + (dy + lift) * k;
+    return taper(X(line.i[0]), Y(line.i[1]), X(line.c[0]), Y(line.c[1]), X(line.o[0]), Y(line.o[1]), line.t[0] * k * weight, line.t[1] * k * weight);
   };
-  const mirror = (d: string) => d.replace(/(-?\d+\.?\d*) (-?\d+\.?\d*)/g, (_, a: string, b: string) => `${f(2 * x - Number(a))} ${b}`);
-  const stroke = { fill: 'none', stroke: ink.ink, strokeWidth: (kind === 'grumpy' ? 4 : 3.3) * k, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const };
-  if (kind === 'smug') {
-    const ex = single ? x + 5 * k : x + gap;
-    const lx = single ? x - 5 * k : x - gap;
-    return (
-      <g {...stroke}>
-        <path d={`M${f(ex - 4.6 * k)} ${f(by - 0.8 * k)}Q${f(ex)} ${f(by - 5 * k)} ${f(ex + 4.6 * k)} ${f(by - 0.6 * k)}`} />
-        <path d={`M${f(lx - 4.6 * k)} ${f(by + 1.6 * k)}L${f(lx + 4.6 * k)} ${f(by + 1.4 * k)}`} />
-      </g>
-    );
-  }
-  if (kind === 'bushy') {
-    const brow = (ex: number, dir: 1 | -1) => {
+  if (brow === 'bushy') {
+    const shape = (ex: number, dir: 1 | -1) => {
       const p = (dx: number, dy: number) => `${f(ex + dx * dir * k)} ${f(by + dy * k)}`;
-      return `M${p(-6.5, 2.4)}Q${p(-7.5, -2.5)} ${p(-3.5, -2.8)}Q${p(-1.5, -5.6)} ${p(1.5, -3.6)}Q${p(5.5, -5)} ${p(7, -0.6)}Q${p(8, 2.6)} ${p(4.5, 2.2)}Q${p(0, 3.6)} ${p(-6.5, 2.4)}Z`;
+      return `M${p(-6, 2.2)}Q${p(-7, -2.3)} ${p(-3.2, -2.6)}Q${p(-1.4, -5.2)} ${p(1.4, -3.3)}Q${p(5.1, -4.6)} ${p(6.5, -0.5)}Q${p(7.4, 2.4)} ${p(4.2, 2)}Q${p(0, 3.3)} ${p(-6, 2.2)}Z`;
     };
-    return <path d={single ? brow(x, 1) : `${brow(x + gap, 1)}${brow(x - gap, -1)}`} fill={WHITE} stroke={ink.outline} strokeWidth={1.8 * k} strokeLinejoin="round" />;
+    return <path d={single ? shape(x, 1) : `${shape(x + gap, 1)}${shape(x - gap, -1)}`} fill={WHITE} stroke={ink.outline} strokeWidth={1.7 * k} strokeLinejoin="round" />;
   }
-  if (kind === 'none' || kind === undefined) {
+  if (brow === 'none') {
     // Curious eyes raise one brow on their own.
     if (eyes !== 'curious') return null;
-    return <path d={`M${f(x + gap - 5 * k)} ${f(by - 1.6 * k)}Q${f(x + gap)} ${f(by - 5.6 * k)} ${f(x + gap + 5.6 * k)} ${f(by - 0.6 * k)}`} {...stroke} />;
+    return <path d={`${draw(BROW_LINE.surprised, x + gap, 1, -0.6)}${draw(BROW_LINE.determined, x - gap, -1, 0.8)}`} fill={ink.ink} />;
+  }
+  if (brow === 'smug') {
+    // One brow up, one flat: sure of itself.
+    const up = { i: [-4.4, 0.2] as [number, number], c: [0, -3.4] as [number, number], o: [4.8, -0.4] as [number, number], t: [2.6, 1.7] as [number, number] };
+    const flat = { i: [-4.6, 1.6] as [number, number], c: [0, 1] as [number, number], o: [4.6, 1.4] as [number, number], t: [2.8, 1.9] as [number, number] };
+    if (single) return <path d={`${draw(up, x + 4.2 * k, 1)}${draw(flat, x - 4.2 * k, -1)}`} fill={ink.ink} />;
+    return <path d={`${draw(up, x + gap, 1, -0.4)}${draw(flat, x - gap, -1, 0.6)}`} fill={ink.ink} />;
+  }
+  const line = BROW_LINE[brow];
+  if (eyes === 'curious') {
+    return <path d={`${draw(BROW_LINE.surprised, x + gap, 1, -0.6)}${draw(line, x - gap, -1, 0.8)}`} fill={ink.ink} />;
   }
   // One big eye gets one brow across the middle, drawn as two mirrored halves.
-  const d = right(single ? x + 5 * k : x + gap);
-  if (!d) return null;
-  return (
-    <g {...stroke}>
-      <path d={d} />
-      <path d={mirror(d)} />
-    </g>
-  );
+  if (single) return <path d={`${draw(line, x + 5 * k, 1)}${draw(line, x - 5 * k, -1)}`} fill={ink.ink} />;
+  return <path d={`${draw(line, x + gap, 1)}${draw(line, x - gap, -1)}`} fill={ink.ink} />;
 }
 
 /* ------------------------------------------------------------------ */
 
-export function Mouth({ kind, x, y, k, ink }: { kind: GlimArt['mouth']; x: number; y: number; k: number; ink: FaceInk }): ReactNode {
+export function Mouth({ kind, x, y, k, ink, tiny = false }: { kind: GlimArt['mouth']; x: number; y: number; k: number; ink: FaceInk; tiny?: boolean }): ReactNode {
   const m = y;
-  const line = { fill: 'none', stroke: ink.ink, strokeWidth: 3 * k, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const };
+  const w = (tiny ? 3.4 : 2.7) * k;
+  const line = { fill: 'none', stroke: ink.ink, strokeWidth: w, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const };
   const X = (dx: number) => f(x + dx * k);
   const Y = (dy: number) => f(m + dy * k);
   switch (kind) {
     case 'smile':
-      return <path d={`M${X(-6.5)} ${Y(0)}Q${X(0)} ${Y(6.4)} ${X(6.5)} ${Y(0)}`} {...line} />;
+      return <path d={`M${X(-5.4)} ${Y(0.2)}Q${X(0.4)} ${Y(5)} ${X(5.6)} ${Y(-0.4)}`} {...line} />;
     case 'grin':
       return (
         <>
-          <path d={`M${X(-8)} ${Y(-1)}Q${X(0)} ${Y(1.6)} ${X(8)} ${Y(-1)}Q${X(7.4)} ${Y(9.6)} ${X(0)} ${Y(9.6)}Q${X(-7.4)} ${Y(9.6)} ${X(-8)} ${Y(-1)}Z`} fill={ink.ink} stroke={ink.ink} strokeWidth={1.4 * k} strokeLinejoin="round" />
-          <path d={`M${X(-4.6)} ${Y(7.4)}Q${X(0)} ${Y(3)} ${X(4.6)} ${Y(7.4)}Q${X(0)} ${Y(9.4)} ${X(-4.6)} ${Y(7.4)}Z`} fill={TONGUE} />
+          <path d={`M${X(-6.6)} ${Y(-0.8)}Q${X(0)} ${Y(1.2)} ${X(6.6)} ${Y(-0.8)}Q${X(6)} ${Y(7.6)} ${X(0)} ${Y(7.6)}Q${X(-6)} ${Y(7.6)} ${X(-6.6)} ${Y(-0.8)}Z`} fill={ink.ink} stroke={ink.ink} strokeWidth={1.3 * k} strokeLinejoin="round" />
+          {tiny ? null : <path d={`M${X(-3.6)} ${Y(5.9)}Q${X(0)} ${Y(2.6)} ${X(3.6)} ${Y(5.9)}Q${X(0)} ${Y(7.4)} ${X(-3.6)} ${Y(5.9)}Z`} fill={TONGUE} />}
         </>
       );
     case 'o':
-      return (
-        <>
-          <ellipse cx={x} cy={m + 2.6 * k} rx={3.5 * k} ry={4.2 * k} fill={ink.ink} />
-          <ellipse cx={x} cy={m + 4.6 * k} rx={2 * k} ry={1.3 * k} fill={TONGUE} />
-        </>
-      );
+      return <ellipse cx={x} cy={m + 2.2 * k} rx={2.8 * k} ry={3.3 * k} fill={ink.ink} />;
     case 'cat':
-      return <path d={`M${X(-7)} ${Y(0)}Q${X(-3.5)} ${Y(4.8)} ${X(0)} ${Y(0.6)}Q${X(3.5)} ${Y(4.8)} ${X(7)} ${Y(0)}`} {...line} strokeWidth={2.8 * k} />;
+      return <path d={`M${X(-5.6)} ${Y(0.2)}Q${X(-2.8)} ${Y(3.6)} ${X(0)} ${Y(0.6)}Q${X(2.8)} ${Y(3.6)} ${X(5.6)} ${Y(0.2)}`} {...line} />;
     case 'tooth':
       return (
         <>
-          <path d={`M${X(-3)} ${Y(2.6)}h${f(6 * k)}v${f(3.2 * k)}q0 ${f(1 * k)} ${f(-1 * k)} ${f(1 * k)}h${f(-4 * k)}q${f(-1 * k)} 0 ${f(-1 * k)} ${f(-1 * k)}Z`} fill={WHITE} stroke={ink.ink} strokeWidth={1.3 * k} strokeLinejoin="round" />
-          <path d={`M${X(0)} ${Y(2.8)}v${f(3.6 * k)}`} stroke={ink.ink} strokeWidth={1.1 * k} />
-          <path d={`M${X(-7)} ${Y(0)}Q${X(0)} ${Y(6)} ${X(7)} ${Y(0)}`} {...line} />
+          {tiny ? null : (
+            <>
+              <path d={`M${X(-2.4)} ${Y(2)}h${f(4.8 * k)}v${f(2.6 * k)}q0 ${f(0.8 * k)} ${f(-0.8 * k)} ${f(0.8 * k)}h${f(-3.2 * k)}q${f(-0.8 * k)} 0 ${f(-0.8 * k)} ${f(-0.8 * k)}Z`} fill={WHITE} stroke={ink.ink} strokeWidth={1.2 * k} strokeLinejoin="round" />
+              <path d={`M${X(0)} ${Y(2.2)}v${f(2.8 * k)}`} stroke={ink.ink} strokeWidth={1 * k} />
+            </>
+          )}
+          <path d={`M${X(-5.8)} ${Y(0)}Q${X(0)} ${Y(4.8)} ${X(5.8)} ${Y(0)}`} {...line} />
         </>
       );
     case 'tongue':
       return (
         <>
-          <path d={`M${X(0.6)} ${Y(2.6)}q0 ${f(5.4 * k)} ${f(3.4 * k)} ${f(5.4 * k)}q${f(3.4 * k)} 0 ${f(3.4 * k)} ${f(-5.6 * k)}Z`} fill={TONGUE} stroke={ink.ink} strokeWidth={1.4 * k} strokeLinejoin="round" />
-          <path d={`M${X(4)} ${Y(3.4)}v${f(2.6 * k)}`} stroke={TONGUE_DEEP} strokeWidth={1 * k} strokeLinecap="round" />
-          <path d={`M${X(-7.5)} ${Y(0)}Q${X(0)} ${Y(6)} ${X(7.5)} ${Y(0)}`} {...line} />
+          {tiny ? null : (
+            <>
+              <path d={`M${X(0.6)} ${Y(2.1)}q0 ${f(4.4 * k)} ${f(2.8 * k)} ${f(4.4 * k)}q${f(2.8 * k)} 0 ${f(2.8 * k)} ${f(-4.6 * k)}Z`} fill={TONGUE} stroke={ink.ink} strokeWidth={1.3 * k} strokeLinejoin="round" />
+              <path d={`M${X(3.4)} ${Y(2.8)}v${f(2.1 * k)}`} stroke={TONGUE_DEEP} strokeWidth={0.9 * k} strokeLinecap="round" />
+            </>
+          )}
+          <path d={`M${X(-6)} ${Y(0)}Q${X(0)} ${Y(4.8)} ${X(6)} ${Y(0)}`} {...line} />
         </>
       );
     case 'smirk':
-      return <path d={`M${X(-6)} ${Y(1.8)}Q${X(1)} ${Y(4.8)} ${X(6.4)} ${Y(-1.6)}M${X(5)} ${Y(-2.6)}l${f(2.6 * k)} ${f(1.6 * k)}`} {...line} />;
+      return <path d={`M${X(-5)} ${Y(1.6)}Q${X(1)} ${Y(4)} ${X(5.4)} ${Y(-1.2)}M${X(4.2)} ${Y(-2.1)}l${f(2.1 * k)} ${f(1.3 * k)}`} {...line} />;
     case 'fang':
       return (
         <>
-          <path d={`M${X(1.2)} ${Y(2.6)}L${X(2.9)} ${Y(6.6)}L${X(4.6)} ${Y(2.1)}Z`} fill={WHITE} stroke={ink.ink} strokeWidth={1.3 * k} strokeLinejoin="round" />
-          <path d={`M${X(-6.5)} ${Y(0)}Q${X(0)} ${Y(5.6)} ${X(6.5)} ${Y(0)}`} {...line} />
+          {tiny ? null : <path d={`M${X(1)} ${Y(2)}L${X(2.4)} ${Y(5.4)}L${X(3.8)} ${Y(1.6)}Z`} fill={WHITE} stroke={ink.ink} strokeWidth={1.2 * k} strokeLinejoin="round" />}
+          <path d={`M${X(-5.4)} ${Y(0.2)}Q${X(0)} ${Y(4.6)} ${X(5.4)} ${Y(-0.2)}`} {...line} />
         </>
       );
     case 'toothy':
       return (
         <>
-          <path d={`M${X(-9.5)} ${Y(-1.4)}Q${X(0)} ${Y(1.4)} ${X(9.5)} ${Y(-1.4)}Q${X(8.4)} ${Y(10)} ${X(0)} ${Y(10)}Q${X(-8.4)} ${Y(10)} ${X(-9.5)} ${Y(-1.4)}Z`} fill={ink.ink} stroke={ink.ink} strokeWidth={1.4 * k} strokeLinejoin="round" />
-          <path d={`M${X(-8.6)} ${Y(-0.6)}Q${X(0)} ${Y(2.1)} ${X(8.6)} ${Y(-0.6)}L${X(8)} ${Y(2.6)}Q${X(0)} ${Y(5.2)} ${X(-8)} ${Y(2.6)}Z`} fill={WHITE} />
-          <path d={`M${X(-3)} ${Y(0.8)}V${Y(4)}M${X(3)} ${Y(0.8)}V${Y(4)}`} stroke={ink.ink} strokeWidth={1.1 * k} />
-          <path d={`M${X(-4.4)} ${Y(8.2)}Q${X(0)} ${Y(5)} ${X(4.4)} ${Y(8.2)}Q${X(0)} ${Y(9.8)} ${X(-4.4)} ${Y(8.2)}Z`} fill={TONGUE} />
+          <path d={`M${X(-7.8)} ${Y(-1.1)}Q${X(0)} ${Y(1.2)} ${X(7.8)} ${Y(-1.1)}Q${X(6.9)} ${Y(8.2)} ${X(0)} ${Y(8.2)}Q${X(-6.9)} ${Y(8.2)} ${X(-7.8)} ${Y(-1.1)}Z`} fill={ink.ink} stroke={ink.ink} strokeWidth={1.3 * k} strokeLinejoin="round" />
+          {tiny ? null : (
+            <>
+              <path d={`M${X(-7)} ${Y(-0.5)}Q${X(0)} ${Y(1.7)} ${X(7)} ${Y(-0.5)}L${X(6.5)} ${Y(2.1)}Q${X(0)} ${Y(4.2)} ${X(-6.5)} ${Y(2.1)}Z`} fill={WHITE} />
+              <path d={`M${X(-2.4)} ${Y(0.7)}V${Y(3.3)}M${X(2.4)} ${Y(0.7)}V${Y(3.3)}`} stroke={ink.ink} strokeWidth={1 * k} />
+              <path d={`M${X(-3.6)} ${Y(6.7)}Q${X(0)} ${Y(4.1)} ${X(3.6)} ${Y(6.7)}Q${X(0)} ${Y(8)} ${X(-3.6)} ${Y(6.7)}Z`} fill={TONGUE} />
+            </>
+          )}
         </>
       );
     case 'beak':
       return (
         <>
-          <path d={`M${X(-5.4)} ${Y(-2.4)}Q${X(0)} ${Y(-4.4)} ${X(5.4)} ${Y(-2.4)}Q${X(2.4)} ${Y(4.8)} ${X(0)} ${Y(6.4)}Q${X(-2.4)} ${Y(4.8)} ${X(-5.4)} ${Y(-2.4)}Z`} fill="hsl(38 96% 60%)" stroke={ink.outline} strokeWidth={2 * k} strokeLinejoin="round" />
-          <path d={`M${X(-3.6)} ${Y(0.2)}Q${X(0)} ${Y(1.6)} ${X(3.6)} ${Y(0.2)}`} fill="none" stroke={ink.outline} strokeWidth={1.2 * k} strokeLinecap="round" opacity={0.6} />
+          <path d={`M${X(-4.6)} ${Y(-2)}Q${X(0)} ${Y(-3.7)} ${X(4.6)} ${Y(-2)}Q${X(2)} ${Y(4)} ${X(0)} ${Y(5.4)}Q${X(-2)} ${Y(4)} ${X(-4.6)} ${Y(-2)}Z`} fill="hsl(38 96% 58%)" stroke={ink.outline} strokeWidth={1.9 * k} strokeLinejoin="round" />
+          {tiny ? null : <path d={`M${X(-3)} ${Y(0.2)}Q${X(0)} ${Y(1.4)} ${X(3)} ${Y(0.2)}`} fill="none" stroke={ink.outline} strokeWidth={1.1 * k} strokeLinecap="round" opacity={0.6} />}
         </>
       );
     case 'yawn':
       return (
         <>
-          <ellipse cx={x} cy={m + 3.6 * k} rx={4.9 * k} ry={6.4 * k} fill={ink.ink} />
-          <ellipse cx={x} cy={m + 7.2 * k} rx={3.1 * k} ry={2.1 * k} fill={TONGUE} />
+          <ellipse cx={x} cy={m + 3 * k} rx={4 * k} ry={5.2 * k} fill={ink.ink} />
+          {tiny ? null : <ellipse cx={x} cy={m + 5.9 * k} rx={2.5 * k} ry={1.7 * k} fill={TONGUE} />}
         </>
       );
     case 'wobble':
-      return <path d={`M${X(-7.5)} ${Y(1.2)}q${f(1.9 * k)} ${f(-2.6 * k)} ${f(3.75 * k)} 0t${f(3.75 * k)} 0t${f(3.75 * k)} 0t${f(3.75 * k)} 0`} {...line} strokeWidth={2.7 * k} />;
+      return <path d={`M${X(-6)} ${Y(1)}q${f(1.5 * k)} ${f(-2.1 * k)} ${f(3 * k)} 0t${f(3 * k)} 0t${f(3 * k)} 0t${f(3 * k)} 0`} {...line} strokeWidth={w * 0.92} />;
     case 'none':
       return null;
   }
@@ -373,29 +508,13 @@ export function Mouth({ kind, x, y, k, ink }: { kind: GlimArt['mouth']; x: numbe
 
 /* ------------------------------------------------------------------ */
 
-/** The blush, under the eyes. Frosty Glims get icy cheeks with a glint. */
-export function Cheeks({ geo, k, c, frosty, onScreen }: { geo: BodyGeometry; k: number; c: GlimColors; frosty: boolean; onScreen: boolean }) {
-  const dx = geo.eyeGap + 6.8 * k;
-  const y = geo.face.y + 11.2 * k;
+/** Frosty faces: two short strokes of frost across each cheek, like face paint. No blush. */
+export function FrostMarks({ geo, k }: { geo: BodyGeometry; k: number }) {
+  const dx = geo.eyeGap + 5.4 * k;
+  const y = geo.face.y + 8.6 * k;
   const { x } = geo.face;
-  if (onScreen) {
-    return (
-      <g fill={c.blush} opacity={0.9}>
-        <rect x={x - dx - 3.6 * k} y={y - 1.6 * k} width={7.2 * k} height={3.2 * k} rx={1.6 * k} />
-        <rect x={x + dx - 3.6 * k} y={y - 1.6 * k} width={7.2 * k} height={3.2 * k} rx={1.6 * k} />
-      </g>
-    );
-  }
-  const fill = frosty ? 'hsl(194 95% 86%)' : c.blush;
-  return (
-    <>
-      <g fill={fill} opacity={frosty ? 0.9 : 0.6}>
-        <ellipse cx={x - dx} cy={y} rx={5.8 * k} ry={3.6 * k} />
-        <ellipse cx={x + dx} cy={y} rx={5.8 * k} ry={3.6 * k} />
-      </g>
-      {frosty ? <path d={`${sparkle(x - dx + 2.4 * k, y - 1.4 * k, 2.4 * k)}${sparkle(x + dx + 2.4 * k, y - 1.4 * k, 2.4 * k)}`} fill={WHITE} /> : null}
-    </>
-  );
+  const mark = (cx: number, dir: 1 | -1) => `M${f(cx - dir * 2.6 * k)} ${f(y - 1.4 * k)}l${f(dir * 4.6 * k)} ${f(-1.6 * k)}M${f(cx - dir * 2 * k)} ${f(y + 1.6 * k)}l${f(dir * 4.2 * k)} ${f(-1.5 * k)}`;
+  return <path d={`${mark(x - dx, -1)}${mark(x + dx, 1)}`} fill="none" stroke="hsl(196 100% 90%)" strokeWidth={1.9 * k} strokeLinecap="round" />;
 }
 
 /** Things on the face that sit behind the eyes (screen, mask, snout, beard). */
@@ -406,35 +525,34 @@ export function FaceUnder({ kind, geo, k, c }: { kind: GlimArt['face']; geo: Bod
     case 'screen':
       return (
         <>
-          <rect x={x - g - 12.5 * k} y={y - 12.5 * k} width={2 * g + 25 * k} height={33 * k} rx={9 * k} fill={c.ink} stroke={c.outline} strokeWidth={2.4} />
-          <path d={`M${f(x - g - 7 * k)} ${f(y - 8.5 * k)}h${f(9 * k)}`} stroke={WHITE} strokeWidth={2 * k} strokeLinecap="round" opacity={0.28} />
+          <rect x={x - g - 11 * k} y={y - 11 * k} width={2 * g + 22 * k} height={28 * k} rx={7 * k} fill={c.ink} stroke={c.outline} strokeWidth={2.4} />
+          <path d={`M${f(x - g - 6 * k)} ${f(y - 7.4 * k)}h${f(8 * k)}`} stroke={WHITE} strokeWidth={1.8 * k} strokeLinecap="round" opacity={0.26} />
         </>
       );
     case 'mask':
       return (
         <path
-          d={`M${f(x - g - 12 * k)} ${f(y - 3 * k)}Q${f(x)} ${f(y - 12 * k)} ${f(x + g + 12 * k)} ${f(y - 3 * k)}Q${f(x + g + 13 * k)} ${f(y + 7 * k)} ${f(x + g + 3 * k)} ${f(y + 7.5 * k)}Q${f(x)} ${f(y + 4 * k)} ${f(x - g - 3 * k)} ${f(y + 7.5 * k)}Q${f(x - g - 13 * k)} ${f(y + 7 * k)} ${f(x - g - 12 * k)} ${f(y - 3 * k)}Z`}
+          d={`M${f(x - g - 10.5 * k)} ${f(y - 2.6 * k)}Q${f(x)} ${f(y - 10.5 * k)} ${f(x + g + 10.5 * k)} ${f(y - 2.6 * k)}Q${f(x + g + 11.4 * k)} ${f(y + 6 * k)} ${f(x + g + 2.6 * k)} ${f(y + 6.5 * k)}Q${f(x)} ${f(y + 3.5 * k)} ${f(x - g - 2.6 * k)} ${f(y + 6.5 * k)}Q${f(x - g - 11.4 * k)} ${f(y + 6 * k)} ${f(x - g - 10.5 * k)} ${f(y - 2.6 * k)}Z`}
           fill={c.deep}
           stroke={c.outline}
           strokeWidth={1.6 * k}
-          opacity={0.95}
         />
       );
     case 'snout':
       return (
         <>
-          <ellipse cx={x} cy={y + 13.5 * k} rx={10.5 * k} ry={7.8 * k} fill={c.belly} stroke={c.outline} strokeWidth={1.8 * k} />
-          <path d={`M${f(x - 3.4 * k)} ${f(y + 8.4 * k)}Q${f(x)} ${f(y + 7.2 * k)} ${f(x + 3.4 * k)} ${f(y + 8.4 * k)}Q${f(x + 1 * k)} ${f(y + 12 * k)} ${f(x)} ${f(y + 12 * k)}Q${f(x - 1 * k)} ${f(y + 12 * k)} ${f(x - 3.4 * k)} ${f(y + 8.4 * k)}Z`} fill={c.ink} />
+          <ellipse cx={x} cy={y + 11.5 * k} rx={9 * k} ry={6.6 * k} fill={c.belly} stroke={c.outline} strokeWidth={1.7 * k} />
+          <path d={`M${f(x - 2.9 * k)} ${f(y + 7.2 * k)}Q${f(x)} ${f(y + 6.2 * k)} ${f(x + 2.9 * k)} ${f(y + 7.2 * k)}Q${f(x + 0.9 * k)} ${f(y + 10.2 * k)} ${f(x)} ${f(y + 10.2 * k)}Q${f(x - 0.9 * k)} ${f(y + 10.2 * k)} ${f(x - 2.9 * k)} ${f(y + 7.2 * k)}Z`} fill={c.ink} />
         </>
       );
     case 'beard': {
-      const top = y + 15 * k;
+      const top = y + 12.6 * k;
       return (
         <path
-          d={`M${f(x - 15 * k)} ${f(top)}Q${f(x)} ${f(top - 5 * k)} ${f(x + 15 * k)} ${f(top)}Q${f(x + 16 * k)} ${f(top + 9 * k)} ${f(x + 9 * k)} ${f(top + 14 * k)}Q${f(x + 6 * k)} ${f(top + 20 * k)} ${f(x + 1 * k)} ${f(top + 18 * k)}Q${f(x - 4 * k)} ${f(top + 21 * k)} ${f(x - 7 * k)} ${f(top + 15 * k)}Q${f(x - 15 * k)} ${f(top + 12 * k)} ${f(x - 15 * k)} ${f(top)}Z`}
+          d={`M${f(x - 13 * k)} ${f(top)}Q${f(x)} ${f(top - 4.4 * k)} ${f(x + 13 * k)} ${f(top)}Q${f(x + 14 * k)} ${f(top + 8 * k)} ${f(x + 8 * k)} ${f(top + 12 * k)}Q${f(x + 5 * k)} ${f(top + 17.5 * k)} ${f(x + 1 * k)} ${f(top + 15.6 * k)}Q${f(x - 3.6 * k)} ${f(top + 18.4 * k)} ${f(x - 6.2 * k)} ${f(top + 13 * k)}Q${f(x - 13 * k)} ${f(top + 10.5 * k)} ${f(x - 13 * k)} ${f(top)}Z`}
           fill={WHITE}
           stroke={c.outline}
-          strokeWidth={1.8 * k}
+          strokeWidth={1.7 * k}
           strokeLinejoin="round"
         />
       );
@@ -451,27 +569,27 @@ export function FaceOver({ kind, eyes, geo, k, c }: { kind: GlimArt['face']; eye
   switch (kind) {
     case 'spectacles': {
       if (eyes === 'cyclops') {
-        return <circle cx={x} cy={y - 1 * k} r={15 * k} fill={WHITE} fillOpacity={0.15} stroke={c.ink} strokeWidth={2.4 * k} />;
+        return <circle cx={x} cy={y - 1 * k} r={12.4 * k} fill={WHITE} fillOpacity={0.14} stroke={c.ink} strokeWidth={2.2 * k} />;
       }
-      const r = 10.5 * k;
+      const r = 8.6 * k;
       return (
-        <g fill={WHITE} fillOpacity={0.16} stroke={c.ink} strokeWidth={2.3 * k} strokeLinecap="round">
+        <g fill={WHITE} fillOpacity={0.14} stroke={c.ink} strokeWidth={2.1 * k} strokeLinecap="round">
           <circle cx={x - g} cy={y} r={r} />
           <circle cx={x + g} cy={y} r={r} />
-          <path d={`M${f(x - g + r)} ${f(y - 1 * k)}Q${f(x)} ${f(y - 4.5 * k)} ${f(x + g - r)} ${f(y - 1 * k)}`} fill="none" />
+          <path d={`M${f(x - g + r)} ${f(y - 0.8 * k)}Q${f(x)} ${f(y - 3.8 * k)} ${f(x + g - r)} ${f(y - 0.8 * k)}`} fill="none" />
         </g>
       );
     }
     case 'whiskers': {
-      const wx = g + 9 * k;
-      const wy = y + 7 * k;
+      const wx = g + 7.6 * k;
+      const wy = y + 6 * k;
       const d = [-1, 1]
         .map((dir) => {
           const sx = x + dir * wx;
-          return `M${f(sx)} ${f(wy)}l${f(dir * 12 * k)} ${f(-3 * k)}M${f(sx)} ${f(wy + 3.4 * k)}l${f(dir * 12.5 * k)} ${f(1 * k)}`;
+          return `M${f(sx)} ${f(wy)}l${f(dir * 10.5 * k)} ${f(-2.6 * k)}M${f(sx)} ${f(wy + 3 * k)}l${f(dir * 11 * k)} ${f(0.9 * k)}`;
         })
         .join('');
-      return <path d={d} stroke={c.ink} strokeWidth={2.1 * k} strokeLinecap="round" opacity={0.8} />;
+      return <path d={d} stroke={c.ink} strokeWidth={1.9 * k} strokeLinecap="round" opacity={0.85} />;
     }
     default:
       return null;

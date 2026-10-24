@@ -8,7 +8,7 @@ import { useMe } from '../../lib/session.ts';
 import { ItemArtView } from '../../art/cosmetics.tsx';
 import { AccountError, EmptyState, ErrorNotice, PageHeader, Skeleton } from '../../ui/primitives.tsx';
 import { Button, ButtonLink } from '../../ui/Button.tsx';
-import { StickerTabPanel, StickerTabs } from '../home/kit.tsx';
+import { StickerTabPanel, StickerTabs } from '../../ui/game.tsx';
 import { ProfileCard } from './ProfileCard.tsx';
 import { RarityPanel, frameProps } from './rarity.tsx';
 
@@ -95,11 +95,11 @@ export default function Locker() {
   // Shown under the card on wide screens, and after the items on phones.
   const emotesPanel = (className: string) =>
     emotes.length ? (
-      <section className={`panel p-4 ${className}`} aria-label="Your emotes">
-        <h2 className="mb-2 font-display text-lg font-bold">Your emotes</h2>
+      <section className={`panel rounded-[var(--radius-l)] p-4 ${className}`} aria-label="Your emotes">
+        <h2 className="mb-2 font-display text-xl font-bold">Your emotes</h2>
         <ul className="flex flex-wrap gap-2">
           {emotes.map((e) => (
-            <li key={e.id} title={e.name} className="grid size-14 place-items-center rounded-[14px] bg-surface-2">
+            <li key={e.id} title={e.name} className="grid size-14 place-items-center rounded-[var(--radius-m)] border border-line bg-surface-2">
               <ItemArtView art={e.art} size={52} />
               <span className="sr-only">{e.name}</span>
             </li>
@@ -124,7 +124,7 @@ export default function Locker() {
               equipment={{ frame: eq('frame')?.art, banner: eq('banner')?.art, title: eq('title')?.art, theme: eq('theme')?.art }}
             />
           ) : (
-            <Skeleton className="h-96 rounded-[24px]" />
+            <Skeleton className="h-96 rounded-[var(--radius-l)]" />
           )}
           {emotesPanel('hidden lg:block')}
         </div>
@@ -136,7 +136,7 @@ export default function Locker() {
               {loading ? (
                 <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 xl:grid-cols-4">
                   {[0, 1, 2].map((i) => (
-                    <Skeleton key={i} className="h-60 rounded-[20px]" />
+                    <Skeleton key={i} className="h-60 rounded-[var(--radius-l)]" />
                   ))}
                 </div>
               ) : null}
@@ -152,18 +152,18 @@ export default function Locker() {
                   const busy = (equip.isPending && equip.variables === i.id) || (on && unequip.isPending && unequip.variables === slot);
                   return (
                     <li key={i.id}>
-                      <div className={`flex h-full flex-col ${f.className}`} style={f.style}>
+                      <div className={`flex h-full flex-col overflow-hidden ${f.className}`} style={f.style}>
                         <RarityPanel rarity={i.rarity} className="m-1.5 h-32">
                           <ItemArtView art={i.art} rarity={i.rarity} size={i.type === 'banner' ? 130 : i.type === 'frame' ? 82 : 96} />
                           {on ? (
-                            <span className="absolute bottom-2 left-1/2 inline-flex -translate-x-1/2 items-center gap-1 rounded-full border-2 border-ink bg-lantern px-2 text-xs font-bold whitespace-nowrap text-on-accent shadow-[0_2px_0_var(--ink)]">
+                            <span className="absolute bottom-2 left-1/2 z-[2] inline-flex -translate-x-1/2 items-center gap-1 rounded-full bg-lantern px-2 py-0.5 text-xs font-bold whitespace-nowrap text-on-accent shadow-[0_4px_10px_-4px_rgb(2_5_20/0.6)]">
                               <Check className="size-3.5" aria-hidden /> {words.on}
                             </span>
                           ) : null}
                         </RarityPanel>
                         <div className="flex flex-1 flex-col gap-2 px-3 pb-3">
                           <div className="min-w-0">
-                            <div className="truncate font-display text-[15px] font-bold">{i.name}</div>
+                            <div className="truncate font-display text-[1.05rem] leading-tight font-bold">{i.name}</div>
                             {ITEM_TYPE_INFO[i.type].stackable && i.quantity > 1 ? <div className="text-xs text-text-2">You have {i.quantity}</div> : null}
                           </div>
                           <div className="mt-auto">
