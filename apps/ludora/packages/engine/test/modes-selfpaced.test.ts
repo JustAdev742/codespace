@@ -180,7 +180,7 @@ describe('Sky Lanterns rules', () => {
     expect(oilAfter(true)).toBe(4);
     expect(g.view('a').you.last.text).toBe('+2 oil (streak bonus)');
     expect(oilAfter(false)).toBe(4);
-    expect(g.view('a').you.last.text).toBe('No oil this time');
+    expect(g.view('a').you.last.text).toBe('No oil');
     expect(oilAfter(true)).toBe(5);
     expect(oilAfter(true)).toBe(6);
     // Third in a row again (+2), but the can holds 6.

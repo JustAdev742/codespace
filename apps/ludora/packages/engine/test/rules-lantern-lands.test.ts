@@ -142,7 +142,7 @@ describe('Lantern Lands energy', () => {
     expect(you(h, 'a').last.text).toBe('+2 energy (6 in a row)');
     h.answer('a', 'wrong');
     expect(you(h, 'a')).toMatchObject({ energy: 3, streak: 0 });
-    expect(you(h, 'a').last.text).toBe('No energy this time');
+    expect(you(h, 'a').last.text).toBe('No energy');
     expect(h.errors).toEqual([]);
   });
 

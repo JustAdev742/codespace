@@ -288,7 +288,7 @@ export const skyLanterns = defineMode<State, Settings, Action>({
       case 'answer': {
         const res = streamSubmit(f.stream, playerId, a.iid, a.answer, ctx);
         if ('error' in res) return res;
-        let text = 'No oil this time';
+        let text = 'No oil';
         if (!res.correct && ctx.settings.spill && f.oil > 0) {
           f.oil--;
           text = 'Spilt 1 oil';

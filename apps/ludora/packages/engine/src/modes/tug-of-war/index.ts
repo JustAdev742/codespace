@@ -207,7 +207,7 @@ export const tugOfWar = defineMode<State, Settings, Action>({
     const L = ctx.settings.ropeLength;
     const counts = sideCounts(s, ctx, true);
     const strength = pullStrength(pl.side, counts);
-    let text = 'No pull this time';
+    let text = 'No pull';
     if (res.correct) {
       const st = ctx.settings;
       const notes: string[] = [];

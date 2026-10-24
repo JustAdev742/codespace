@@ -656,7 +656,7 @@ export const lanternLands = defineMode<State, Settings, Action>({
     if (s.winners) return { error: 'The game is over.' };
     const res = streamSubmit(m.stream, playerId, a.iid, a.answer, ctx);
     if ('error' in res) return res;
-    let text = 'No energy this time';
+    let text = 'No energy';
     if (res.correct) {
       m.right++;
       const surge = s.event?.kind === 'double';

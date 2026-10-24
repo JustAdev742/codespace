@@ -822,7 +822,7 @@ export const lanternTrail = defineMode<State, Settings, Action>({
         const res = streamSubmit(w.stream, id, a.iid, a.answer, ctx);
         if ('error' in res) return res;
         if (!res.correct) {
-          if (w.stream.last) w.stream.last.text = 'No roll this time.';
+          if (w.stream.last) w.stream.last.text = 'No roll';
           streamNext(w.stream, ctx);
           return;
         }

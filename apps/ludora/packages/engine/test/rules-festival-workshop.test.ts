@@ -71,7 +71,7 @@ describe('Festival Workshop: paydays and money', () => {
     expect(pays).toEqual([35, 38, 42, 45, 48, 48, 48]);
     expect(you(h).last.text).toBe('Payday: +48 coins (streak +50%)');
     h.answer('a', 'wrong');
-    expect(you(h)).toMatchObject({ streak: 0, last: { correct: false, text: 'No payday this time' } });
+    expect(you(h)).toMatchObject({ streak: 0, last: { correct: false, text: 'No payday' } });
     const before = you(h).takings;
     h.answer('a', 'right');
     expect(you(h).takings - before).toBe(32);

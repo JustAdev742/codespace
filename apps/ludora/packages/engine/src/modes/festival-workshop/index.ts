@@ -1084,7 +1084,7 @@ export const festivalWorkshop = defineMode<State, Settings, Action>({
         const res = streamSubmit(w.stream, pid, a.iid, a.answer, ctx);
         if ('error' in res) return res;
         if (!res.correct) {
-          if (w.stream.last) w.stream.last.text = 'No payday this time';
+          if (w.stream.last) w.stream.last.text = 'No payday';
           streamNext(w.stream, ctx);
           break;
         }

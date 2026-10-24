@@ -64,7 +64,7 @@ export const EFFECTS = {
     return 0.21 + bell(ctx, out, t + 0.21, 86, { gain: 0.1, decay: 1.3 });
   },
 
-  /** Not this time: two soft, falling notes. Gentle, never a buzzer. */
+  /** Incorrect: two soft, falling notes. Gentle, never a buzzer. */
   wrong: (ctx, out, t) => {
     pluck(ctx, out, t, 57, { gain: 0.16, decay: 0.26, bright: 3, wet: 0.15 });
     return 0.17 + pluck(ctx, out, t + 0.17, 53, { gain: 0.16, decay: 0.5, bright: 2.5, wet: 0.15 });

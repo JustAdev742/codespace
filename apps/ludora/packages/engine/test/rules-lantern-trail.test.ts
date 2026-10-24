@@ -204,7 +204,7 @@ describe('Lantern Trail rolls and spaces', () => {
     expect(g.wrong('a').ok).toBe(true);
     const you = g.view('a').you;
     expect(you).toMatchObject({ pos: GATE, coins: START_COINS, move: null, pending: null });
-    expect(you.last).toMatchObject({ correct: false, text: 'No roll this time.' });
+    expect(you.last).toMatchObject({ correct: false, text: 'No roll' });
     expect(you.question.iid).not.toBe(before);
   });
 

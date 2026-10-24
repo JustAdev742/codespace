@@ -175,7 +175,7 @@ describe('Sky Lanterns rule options', () => {
   it('Leaky Can: a wrong answer spills 1 oil, but an empty can has nothing to spill', () => {
     const h = sky(pick(skyVariants, 'sky-lanterns-leaky-can').settings!);
     h.answer('a', 'wrong');
-    expect(h.view('a').you).toMatchObject({ oil: 0, last: { text: 'No oil this time' } });
+    expect(h.view('a').you).toMatchObject({ oil: 0, last: { text: 'No oil' } });
     run(h, 'a', ['right', 'right']);
     h.answer('a', 'wrong');
     expect(h.view('a').you).toMatchObject({ oil: 1, last: { text: 'Spilt 1 oil' } });
