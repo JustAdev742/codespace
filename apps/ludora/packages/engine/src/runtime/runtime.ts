@@ -21,6 +21,11 @@ import type {
   QuestionApi,
   Viewer,
 } from '../sdk/types.ts';
+import { ChaosEngine, emptyChaosState } from '../chaos/engine.ts';
+import { chaosAdapterFor } from '../chaos/adapters/index.ts';
+import { getCheat } from '../chaos/registry.ts';
+import '../chaos/cheats/index.ts';
+import type { CastOutcome, CastRequest, ChaosState, ChaosView } from '../chaos/types.ts';
 
 export interface RuntimeClock {
   /** Wall-clock milliseconds. */
@@ -60,6 +65,8 @@ export interface RuntimeOptions {
    * example inside view()) throws. Used by tests; too slow for production.
    */
   strict?: boolean;
+  /** Let players who unlocked the secret chaos menu cast cheats in this game. */
+  chaos?: boolean;
 }
 
 export interface PlayerStats {
@@ -91,6 +98,8 @@ export interface EngineResults {
   endedBy: 'mode' | 'host' | 'error';
   durationMs: number;
   answers: AnswerRecord[];
+  /** Set when anyone cast a chaos cheat in this game. */
+  chaos: { casts: number; casters: PlayerId[] } | null;
 }
 
 export type DispatchResult = { ok: true } | { ok: false; code: 'invalid_state' | 'rejected' | 'internal'; message: string };
@@ -104,6 +113,11 @@ interface Effects {
 }
 
 const MAX_TIMER_FIRES_PER_TICK = 500;
+/** The pseudo-timer id under which the chaos layer's expiries and ticks are scheduled. */
+const CHAOS_TIMER = '\u0000chaos';
+
+type ChaosDraft = ChaosState & { rng: number };
+type TxFn = (draft: any, ctx: ModeContext, chaos: ChaosDraft | null) => ActionResult;
 
 function readOnly(what: string): never {
   throw new Error(`${what}() cannot be called while drawing a view or results`);
@@ -147,6 +161,8 @@ export class GameRuntime {
   private pausedAt: number | null = null;
   private pausedTotal = 0;
   private feedSeq = 0;
+  private chaosState: ChaosDraft | null = null;
+  private readonly chaos: ChaosEngine | null = null;
 
   constructor(opts: RuntimeOptions) {
     this.mode = opts.mode;
@@ -164,6 +180,11 @@ export class GameRuntime {
     for (const p of opts.players) {
       this.players.set(p.id, { ...p, connected: p.connected ?? true, joinedAt: 0 });
       this.stats.set(p.id, emptyStats());
+    }
+    const adapter = opts.chaos ? chaosAdapterFor(opts.mode.meta.id) : null;
+    if (adapter) {
+      this.chaos = new ChaosEngine(adapter, { players: () => [...this.players.values()], teams: () => this.teams, name: (id) => this.nameOf(id) }, this.teams, this.settings);
+      this.chaosState = emptyChaosState(opts.seed ^ 0x5eed);
     }
   }
 
@@ -231,6 +252,11 @@ export class GameRuntime {
     if (!p) return { ok: true };
     this.players.delete(id);
     this.departed.set(id, p);
+    if (this.status === 'running' || this.status === 'paused') {
+      if (this.chaos && this.chaosState && this.chaos.touchesPlayer(this.chaosState, id)) {
+        this.transact('chaos:left', (draft, ctx, cd) => this.chaos!.dropPlayer(draft, ctx, cd!, id));
+      }
+    }
     if (this.status === 'idle' || this.status === 'ended' || !this.mode.onPlayerLeave) {
       this.bump();
       return { ok: true };
@@ -262,7 +288,94 @@ export class GameRuntime {
     if (!this.players.has(playerId)) return { ok: false, code: 'rejected', message: 'You are not in this game.' };
     const parsed = this.mode.action.safeParse(raw);
     if (!parsed.success) return { ok: false, code: 'rejected', message: 'That move is not allowed here.' };
+    if (this.chaos && this.chaosState?.effects.length) {
+      const blocked = this.chaosGate(playerId, parsed.data);
+      if (blocked) return { ok: false, code: 'rejected', message: blocked };
+    }
     return this.transact('action', (draft, ctx) => this.mode.onAction(draft, playerId, parsed.data, ctx));
+  }
+
+  /* -------------------------------- chaos -------------------------------- */
+
+  /** Whether this game runs the chaos layer at all. */
+  get chaosEnabled(): boolean {
+    return this.chaos !== null;
+  }
+
+  /** Cast chaos cheats (one, or several as a combination). All or nothing. */
+  cast(playerId: PlayerId, requests: readonly CastRequest[]): CastOutcome {
+    if (!this.chaos || !this.chaosState) return { ok: false, code: 'invalid_state', message: 'Chaos is switched off in this game.' };
+    if (this.status !== 'running') {
+      return { ok: false, code: 'invalid_state', message: this.status === 'paused' ? 'The game is paused.' : 'Chaos only works while a game is running.' };
+    }
+    let outcome: CastOutcome = { ok: false, code: 'internal', message: 'Something went wrong with that cheat.' };
+    const r = this.transact('chaos:cast', (draft, ctx, cd) => {
+      outcome = this.chaos!.cast(draft, ctx, cd!, playerId, requests);
+      if (!outcome.ok) return { error: outcome.message };
+    });
+    if (!r.ok && outcome.ok) return { ok: false, code: r.code, message: r.message };
+    if (!r.ok && r.code === 'internal') return { ok: false, code: 'internal', message: r.message };
+    return outcome;
+  }
+
+  undoCast(playerId: PlayerId, castId: string): DispatchResult {
+    return this.chaosCommand((draft, ctx, cd) => {
+      const r = this.chaos!.undo(draft, ctx, cd, playerId, castId);
+      if (!r.ok) return { error: r.message };
+    });
+  }
+
+  stopEffect(playerId: PlayerId, eid: string): DispatchResult {
+    return this.chaosCommand((draft, ctx, cd) => {
+      const r = this.chaos!.stop(draft, ctx, cd, playerId, eid);
+      if (!r.ok) return { error: r.message };
+    });
+  }
+
+  /** The host ends all chaos for the rest of this game. */
+  calmChaos(): DispatchResult {
+    if (this.chaosState?.calmed) return { ok: true };
+    return this.chaosCommand((draft, ctx, cd) => this.chaos!.calm(draft, ctx, cd));
+  }
+
+  chaosView(viewer: Viewer, unlocked: boolean): ChaosView | null {
+    if (!this.chaos || !this.chaosState || this.status === 'idle') return null;
+    return this.chaos.view(this.chaosState, viewer, this.gameNow(), unlocked);
+  }
+
+  /** Chaos state, for tests and debugging tools only. */
+  debugChaos(): ChaosState | null {
+    return this.chaosState;
+  }
+
+  private chaosCommand(fn: (draft: any, ctx: ModeContext, cd: ChaosDraft) => ActionResult): DispatchResult {
+    if (!this.chaos || !this.chaosState) return { ok: false, code: 'invalid_state', message: 'Chaos is switched off in this game.' };
+    if (this.status !== 'running' && this.status !== 'paused') return { ok: false, code: 'invalid_state', message: 'The game is not running.' };
+    return this.transact('chaos:command', (draft, ctx, cd) => fn(draft, ctx, cd!));
+  }
+
+  /**
+   * Let active effects refuse an action before the mode sees it. Gates read
+   * the committed state; any bookkeeping they do (charges used) is kept even
+   * though the action itself is refused.
+   */
+  private chaosGate(playerId: PlayerId, action: unknown): string | null {
+    const cd = structuredClone(this.chaosState!);
+    const fx: Effects = { timers: new Map(this.timers), instances: new Map(), feed: [], answers: [], end: null };
+    const ctx = this.makeContext(fx);
+    let blocked: string | null;
+    try {
+      blocked = this.chaos!.gate(this.state, ctx, cd, playerId, action);
+    } catch (err) {
+      this.listener.error?.(err, 'chaos:gate');
+      return null;
+    }
+    this.chaosState = cd;
+    if (blocked) {
+      for (const f of fx.feed) this.emitFeed(f);
+      this.bump();
+    }
+    return blocked;
   }
 
   hostNext(): DispatchResult {
@@ -280,8 +393,16 @@ export class GameRuntime {
       const due = this.earliestTimer();
       if (!due || due[1] > this.gameNow()) break;
       const [id] = due;
-      this.timers.delete(id);
       fired++;
+      if (id === CHAOS_TIMER) {
+        const r = this.transact('chaos:tick', (draft, ctx, cd) => this.chaos!.fireDue(draft, ctx, cd!));
+        if (!r.ok && this.chaosState) {
+          this.chaos!.dropDue(this.chaosState, this.gameNow());
+          this.bump();
+        }
+        continue;
+      }
+      this.timers.delete(id);
       if (this.mode.onTimer) this.transact(`timer:${id}`, (draft, ctx) => this.mode.onTimer!(draft, id, ctx));
     }
     if (fired >= MAX_TIMER_FIRES_PER_TICK) this.fail(new Error('Timer loop: too many timers fired at once'), 'timers');
@@ -303,6 +424,8 @@ export class GameRuntime {
   private earliestTimer(): [string, number] | null {
     let best: [string, number] | null = null;
     for (const entry of this.timers) if (!best || entry[1] < best[1]) best = entry;
+    const chaosAt = this.chaos && this.chaosState ? this.chaos.nextDue(this.chaosState) : null;
+    if (chaosAt !== null && (!best || chaosAt < best[1])) best = [CHAOS_TIMER, chaosAt];
     return best;
   }
 
@@ -374,37 +497,57 @@ export class GameRuntime {
    * normally; discard everything (state, timers, feed, randomness) if it
    * rejects or throws. A thrown error counts towards stopping the game.
    */
-  private transact(where: string, fn: (draft: any, ctx: ModeContext) => ActionResult, isInit = false): DispatchResult {
+  private transact(where: string, fn: TxFn, isInit = false): DispatchResult {
     const draft = isInit ? undefined : structuredClone(this.state);
     const rngState = this.rng.state();
     const fx: Effects = { timers: new Map(this.timers), instances: new Map(), feed: [], answers: [], end: null };
     const ctx = this.makeContext(fx);
+    const cd = this.chaosState && !isInit ? structuredClone(this.chaosState) : null;
+    // Lasting cheats bend what the mode itself does (points, coins), never what other cheats do.
+    const before = cd && this.chaos && cd.effects.length && !where.startsWith('chaos') ? this.chaos.snapshot(draft, ctx, cd) : null;
     let outcome: ActionResult;
     try {
-      outcome = fn(draft, ctx);
+      outcome = fn(draft, ctx, cd);
     } catch (err) {
       this.rng = createRng(rngState);
       if (isInit) this.state = undefined;
-      this.fail(err, where);
+      // A broken cheat is refused; it never counts towards stopping the game.
+      if (where.startsWith('chaos')) this.listener.error?.(err, where);
+      else this.fail(err, where);
       return { ok: false, code: 'internal', message: 'Something went wrong in this game.' };
+    }
+    let result = draft;
+    if (before && !(outcome && typeof outcome === 'object' && 'error' in outcome)) {
+      const safe = structuredClone(draft);
+      try {
+        this.chaos!.afterTransact(draft, ctx, cd!, before);
+      } catch (err) {
+        // The mode's own move stands; the effect that failed to bend it is removed.
+        this.listener.error?.(err, 'chaos:delta');
+        result = safe;
+        cd!.effects = cd!.effects.filter((e) => !Object.keys(getCheat(e.cheatId)?.hooks?.delta ?? {}).length);
+      }
     }
     if (outcome && typeof outcome === 'object' && 'error' in outcome) {
       this.rng = createRng(rngState);
       return { ok: false, code: 'rejected', message: outcome.error };
     }
-    if (!isInit) this.state = draft;
+    if (!isInit) this.state = result;
+    if (cd) this.chaosState = cd;
     if (this.strict) deepFreeze(this.state);
     this.timers = fx.timers;
     for (const [iid, inst] of fx.instances) this.instances.set(iid, inst);
     for (const a of fx.answers) this.applyAnswer(a);
     this.bump();
-    for (const f of fx.feed) {
-      const item: FeedItem = { id: ++this.feedSeq, at: this.gameNow(), text: f.text, ...(f.tone ? { tone: f.tone } : {}), ...(f.to ? { to: f.to } : {}) };
-      this.listener.feed?.(item);
-    }
+    for (const f of fx.feed) this.emitFeed(f);
     if (fx.end) this.finish('mode', fx.end.summary);
     else this.listener.timersChanged?.();
     return { ok: true };
+  }
+
+  private emitFeed(f: Effects['feed'][number]) {
+    const item: FeedItem = { id: ++this.feedSeq, at: this.gameNow(), text: f.text, ...(f.tone ? { tone: f.tone } : {}), ...(f.to ? { to: f.to } : {}) };
+    this.listener.feed?.(item);
   }
 
   private applyAnswer(a: AnswerRecord) {
@@ -497,7 +640,8 @@ export class GameRuntime {
       score: item.score,
       label: item.label,
     }));
-    return { standings, teamStandings, outcome: r.outcome ?? 'competitive', summary, endedBy, durationMs, answers: this.answers.slice() };
+    const chaos = this.chaosState && this.chaosState.totalCasts > 0 ? { casts: this.chaosState.totalCasts, casters: this.chaosState.usedBy.slice() } : null;
+    return { standings, teamStandings, outcome: r.outcome ?? 'competitive', summary, endedBy, durationMs, answers: this.answers.slice(), chaos };
   }
 
   private fallbackResults(endedBy: EngineResults['endedBy'], summary: string): EngineResults {
