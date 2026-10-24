@@ -6,10 +6,10 @@ import type { QuestionView } from '../game/types.ts';
 import { AnswerInput, ChoiceTile } from '../game/AnswerInput.tsx';
 import { QuestionCard } from '../game/QuestionCard.tsx';
 import { TimerBar } from '../game/TimerBar.tsx';
-import { ChoicesDisplay, ResultBanner, RevealAnswer, answerWords } from '../game/Reveal.tsx';
+import { ChoicesDisplay, ResultBanner, RevealAnswer, answerWords, shortAnswer } from '../game/Reveal.tsx';
 import { Leaderboard, TeamScores, type LeaderRow } from '../game/Leaderboard.tsx';
-import { Explanation, IntroScreen, LockedIn, myAvatar } from '../game/parts.tsx';
-import { NIGHT, Pill, PlayerGlim, SIGN, StagePanel, avatarOf, motionOK } from '../game/stage.tsx';
+import { Explanation, HudCount, HudScore, IntroScreen, LockedIn, myAvatar } from '../game/parts.tsx';
+import { NIGHT, Pill, PlayerGlim, StagePanel, avatarOf, motionOK } from '../game/stage.tsx';
 import { useAnnounce } from '../game/announce.tsx';
 import { playSfx, useSfx, useSharedSounds, useSoundRole } from '../../../lib/sound/react.tsx';
 import type { SfxName } from '../../../lib/sound/sfx.ts';
@@ -19,6 +19,11 @@ import { ordinal, plural } from '../../../lib/format.ts';
  * Glim Duels: everyone duels a classmate on the same questions. Right answers
  * hit the rival's Glim at the reveal; hits build charge for a shield, a power
  * strike or a mend. The phone shows your duel; the projector shows every duel.
+ *
+ * The look (docs/DESIGN.md): the reveal is the orchestrated moment. A beat after
+ * the answer shows, each hit lands on a coral plate over the Glim it struck
+ * (a shield's block on a blue one), the health grooves drain and a knockout
+ * stamps KO on its plate. Powers are solid pieces; the round sits on the blue plate.
  */
 
 type Power = 'shield' | 'strike' | 'mend';
@@ -181,7 +186,7 @@ function HealthBar({ health, max, mirror = false, big = false, label, delay = 0 
   const tone = pct > 50 ? 'bg-glim' : pct > 25 ? 'bg-lantern' : 'bg-ember';
   return (
     <div
-      className={`relative w-full overflow-hidden rounded-full border-2 border-ink bg-[rgb(17_10_62/0.75)] ${big ? 'h-[clamp(0.65rem,1.3vh,1rem)]' : 'h-3'}`}
+      className={`relative w-full overflow-hidden rounded-full bg-white/[0.12] ${big ? 'h-[clamp(0.65rem,1.3vh,1rem)]' : 'h-3'}`}
       role="meter"
       aria-label={label}
       aria-valuemin={0}
@@ -197,12 +202,12 @@ function HealthBar({ health, max, mirror = false, big = false, label, delay = 0 
   );
 }
 
-/** Charge as bolts: filled ones are held, hollow ones are not, so the count never depends on colour. */
+/** Charge as bolts: solid ones are held, hollow ones (the same bolt in outline) are not, so the count never depends on colour. */
 function ChargeBolts({ charge, cap, big = false }: { charge: number; cap: number; big?: boolean }) {
   return (
     <span className="inline-flex items-center gap-px" role="img" aria-label={`${charge} of ${cap} charge`}>
       {Array.from({ length: cap }, (_, i) => (
-        <Zap key={i} aria-hidden strokeWidth={2.4} className={`${big ? 'size-[clamp(0.85rem,1.6vh,1.25rem)]' : 'size-4'} ${i < charge ? 'fill-lantern text-ink' : 'text-white/40'}`} />
+        <Zap key={i} aria-hidden strokeWidth={2.4} className={`${big ? 'size-[clamp(0.85rem,1.6vh,1.25rem)]' : 'size-4'} ${i < charge ? 'fill-lantern text-lantern' : 'text-white/40'}`} />
       ))}
     </span>
   );
@@ -211,7 +216,7 @@ function ChargeBolts({ charge, cap, big = false }: { charge: number; cap: number
 /** A shield or a ready strike, drawn the same as on the power buttons, and named for screen readers. */
 function Ready({ side, big = false }: { side: SideView; big?: boolean }) {
   const icon = big ? 'size-[clamp(1rem,1.9vh,1.5rem)]' : 'size-4';
-  const chip = `inline-grid place-items-center rounded-full border-2 border-ink text-ink ${big ? 'p-[3px]' : 'p-0.5'}`;
+  const chip = `inline-grid place-items-center rounded-full text-on-accent ${big ? 'p-[3px]' : 'p-0.5'}`;
   return (
     <>
       {side.shield ? (
@@ -230,34 +235,45 @@ function Ready({ side, big = false }: { side: SideView; big?: boolean }) {
   );
 }
 
-/** The damage a hit did, popping up over the Glim it landed on. */
+/**
+ * The damage a hit did, landing on a coral plate over the Glim it struck; a shield's block on a blue
+ * one. The plate pops in on a wrapper, so the animation never takes the plate's slant with it.
+ */
 function HitMark({ hit, big = false, delay = 0 }: { hit: HitView; big?: boolean; delay?: number }) {
-  const text = big ? 'text-[clamp(1rem,2vh,1.6rem)]' : 'text-base';
-  const style: CSSProperties | undefined = motionOK() ? { animation: `pop-in 280ms var(--ease-spring) ${delay}ms both` } : undefined;
-  if (hit.blocked) {
-    return (
-      <span className={`inline-flex items-center gap-1 rounded-full border-2 border-ink bg-sky px-2 py-0.5 font-display leading-none font-extrabold whitespace-nowrap text-ink ${text}`} style={style}>
-        <Shield className="size-[1em]" strokeWidth={2.8} aria-hidden /> Blocked
-      </span>
-    );
-  }
+  // On a phone the plate fits across the Glim: a block shows as its shield (the sentence under the result says it in words).
+  const text = big ? (hit.blocked ? 'text-[clamp(0.95rem,1.9vh,1.5rem)]' : 'text-[clamp(1.05rem,2.1vh,1.7rem)]') : 'text-base';
+  const style: CSSProperties | undefined = motionOK() ? { animation: `pop-in 200ms var(--ease-out) ${delay}ms both` } : undefined;
   return (
-    <span className={`inline-flex items-center gap-0.5 rounded-full border-2 border-ink bg-ember px-2 py-0.5 font-display leading-none font-extrabold whitespace-nowrap text-on-accent tabular ${text}`} style={style}>
-      {hit.strike ? <Swords className="size-[0.95em]" strokeWidth={2.8} aria-hidden /> : null}
-      <span aria-hidden>−</span>
-      {hit.dmg}
+    <span className="inline-block" style={style}>
+      {hit.blocked ? (
+        <span className={`plate lift bg-sky px-[0.5em] whitespace-nowrap text-on-accent ${text}`}>
+          <span className="flex items-center gap-1">
+            <Shield className="size-[0.95em]" strokeWidth={2.8} aria-hidden />
+            <span className={big ? '' : 'sr-only'}>Blocked</span>
+          </span>
+        </span>
+      ) : (
+        <span className={`plate lift bg-ember px-[0.5em] whitespace-nowrap text-on-accent tabular ${text}`}>
+          <span className="flex items-center gap-0.5">
+            {hit.strike ? <Swords className="size-[0.9em]" strokeWidth={2.8} aria-hidden /> : null}
+            <span aria-hidden>−</span>
+            {hit.dmg}
+          </span>
+        </span>
+      )}
     </span>
   );
 }
 
-/** The knocked-out stamp. */
+/** The knockout: KO on a coral plate across the Glim. */
 function KoStamp({ big = false, delay = 0 }: { big?: boolean; delay?: number }) {
   return (
-    <span
-      className={`pointer-events-none absolute top-1/2 left-1/2 z-10 -translate-x-1/2 -translate-y-1/2 -rotate-12 rounded-[10px] border-[3px] border-ink bg-ember px-2 font-display leading-tight font-extrabold text-on-accent shadow-[0_3px_0_var(--ink)] ${big ? 'text-[clamp(1.2rem,2.6vh,2rem)]' : 'text-xl'}`}
-      style={motionOK() ? { animation: `pop-in 320ms var(--ease-spring) ${delay}ms both` } : undefined}
-    >
-      KO
+    <span className="pointer-events-none absolute top-1/2 left-1/2 z-10 -translate-x-1/2 -translate-y-1/2">
+      <span className="block" style={motionOK() ? { animation: `pop-in 200ms var(--ease-out) ${delay}ms both` } : undefined}>
+        <span className={`plate lift bg-ember text-on-accent ${big ? 'text-[clamp(1.3rem,2.8vh,2.2rem)]' : 'text-2xl'}`}>
+          <span>KO</span>
+        </span>
+      </span>
     </span>
   );
 }
@@ -295,35 +311,38 @@ function duelLines(d: PlayerDuel, room: RoomView, answered: boolean): { mine: st
 
 function outcomeText(result: Result, how: How | null, d: { me: SideView; rival: SideView }, room: RoomView): { title: string; line: string } {
   const rival = called(d.rival, room);
-  if (how === 'forfeit') return { title: 'Duel won!', line: `${upper(rival)} left, so you win the duel.` };
+  if (how === 'forfeit') return { title: 'Duel won', line: `${upper(rival)} left, so you win the duel.` };
   if (how === 'ko') {
-    if (result === 'win') return { title: 'Knockout!', line: d.me.health <= 0 ? `You both went down, but you were faster. You win the duel.` : `You knocked out ${rival}. You win the duel.` };
+    if (result === 'win') return { title: 'Knockout', line: d.me.health <= 0 ? `You both went down, but you were faster. You win the duel.` : `You knocked out ${rival}. You win the duel.` };
     if (result === 'loss') return { title: 'Knocked out', line: d.rival.health <= 0 ? `You both went down, and ${rival} was faster.` : `${upper(rival)} knocked you out this time.` };
     return { title: 'Double knockout', line: 'You knocked each other out at the same moment: it is a draw.' };
   }
   const level = d.me.health === d.rival.health;
-  if (result === 'win') return { title: 'Duel won!', line: level ? 'Level on health, but you dealt more damage.' : 'You had more health left at the end.' };
+  if (result === 'win') return { title: 'Duel won', line: level ? 'Level on health, but you dealt more damage.' : 'You had more health left at the end.' };
   if (result === 'loss') return { title: 'Duel lost', line: level ? `Level on health, but ${rival} dealt more damage.` : `${upper(rival)} had more health left at the end.` };
   return { title: 'A draw', line: 'Level on health and on damage dealt.' };
 }
 
 /* ------------------------------ the phone ------------------------------ */
 
-/** "Round 2 of 4 · Question 3 of 5", announced as each question opens. */
+/** The HUD row: "Round 2 of 4" on the blue plate and "Question 3 of 5" beside it, announced as each question opens; anything else on the right. */
 function DuelProgress({ view, children }: { view: Base; children?: ReactNode }) {
   const live = view.sync.phase === 'question' || view.sync.phase === 'reveal';
   useAnnounce(live && view.round >= 0 ? `Round ${view.round + 1} of ${view.rounds}, question ${view.q + 1} of ${view.duelLength}.` : null, `${view.round}|${view.q}`);
   return (
-    <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
-      <span className="text-sm font-bold text-text-2">
-        Round {view.round + 1} of {view.rounds}
+    <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5">
+      <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
+        <p className="plate plate-blue text-xl tabular">
+          <span>
+            Round {view.round + 1} of {view.rounds}
+          </span>
+        </p>
         {live ? (
-          <>
-            {' '}
-            · Question {view.q + 1} of {view.duelLength}
-          </>
+          <span className="text-sm font-bold text-text-2 tabular min-[400px]:text-base">
+            Question {view.q + 1} of {view.duelLength}
+          </span>
         ) : null}
-      </span>
+      </div>
       {children}
     </div>
   );
@@ -347,8 +366,8 @@ function Fighter({ side, label, room, rules, mirror = false, hit, ko, phase, che
       <div ref={glim} className="relative shrink-0">
         <SideGlim side={side} room={room} className="size-11 min-[400px]:size-14" pose={cheer ? 'cheer' : 'idle'} down={ko} />
         {hit && revealed ? (
-          // Anchored on the side towards the middle, so a wide "Blocked" never runs off the screen.
-          <span className={`absolute -top-3 z-10 ${mirror ? 'right-0' : 'left-0'}`}>
+          // Across the Glim's feet, no wider than the Glim, so the name, health and charge beside it stay readable.
+          <span className="absolute bottom-0 left-1/2 z-10 -translate-x-1/2 translate-y-1/3">
             <HitMark hit={hit} delay={420} />
           </span>
         ) : null}
@@ -367,7 +386,7 @@ function Fighter({ side, label, room, rules, mirror = false, hit, ko, phase, che
           {rules.powers && side.charge !== undefined ? <ChargeBolts charge={side.charge} cap={rules.cap} /> : null}
           <Ready side={side} />
           {mirror && side.answered && phase === 'question' ? (
-            <span className="inline-flex items-center gap-0.5 text-xs font-bold text-text">
+            <span className="inline-flex items-center gap-0.5 rounded-full bg-glim px-1.5 text-xs font-bold text-on-accent">
               <Check className="size-3.5" strokeWidth={3} aria-hidden /> Answered
             </span>
           ) : null}
@@ -384,13 +403,10 @@ function DuelHeader({ view, room }: { view: GlimDuelsView; room: RoomView }) {
   const meKo = d.how === 'ko' && d.result !== 'win';
   const rivalKo = d.how === 'ko' && d.result !== 'loss';
   return (
-    <StagePanel as="section" label="Your duel" className="flex flex-col gap-1.5 px-2.5 py-2 sm:gap-2 sm:px-4 sm:py-3">
-      <DuelProgress view={view}>
-        <span className="font-display text-base font-extrabold">{plural(view.you?.points ?? 0, 'point')}</span>
-      </DuelProgress>
+    <StagePanel as="section" label="Your duel" className="px-2.5 py-2.5 sm:px-4 sm:py-3">
       <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-1.5 sm:gap-3">
         <Fighter side={d.me} label="You" room={room} rules={view.rules} hit={d.hits?.theirs ?? null} ko={meKo} phase={phase} cheer={d.result === 'win'} />
-        <span className={`px-0.5 font-display text-lg font-extrabold text-text-2 min-[400px]:px-1.5 ${SIGN}`}>vs</span>
+        <span className="px-0.5 font-display text-xl font-extrabold text-text-2 italic min-[400px]:px-1.5">vs</span>
         <Fighter side={d.rival} label={nameOf(d.rival, room)} room={room} rules={view.rules} mirror hit={d.hits?.mine ?? null} ko={rivalKo} phase={phase} cheer={d.result === 'loss'} />
       </div>
     </StagePanel>
@@ -435,16 +451,25 @@ function PowerBar({ view, act, paused }: { view: GlimDuelsView; act: ModeScreenP
           const Icon = POWER_ICON[p];
           const on = you.used === p;
           return (
+            // A solid piece in the power's colour; the one used this question is held down and checked; one that cannot be used is out of play, saying why.
             <button
               key={p}
               type="button"
               onClick={() => void use(p)}
               disabled={paused || busy || why !== null}
               title={POWER_NAME[p]}
-              className={`flex min-h-14 min-w-0 flex-col items-center justify-center rounded-[16px] border-[3px] border-ink px-1 py-1 text-ink shadow-[0_4px_0_var(--ink)] transition-[translate,box-shadow,filter] duration-[120ms] enabled:hover:brightness-105 enabled:active:translate-y-[3px] enabled:active:shadow-[0_1px_0_var(--ink)] disabled:cursor-not-allowed ${on ? `${POWER_TONE[p]} translate-y-[3px] shadow-[0_1px_0_var(--ink)]` : why ? 'border-white/35 bg-[rgb(17_10_62/0.55)] text-text shadow-none' : POWER_TONE[p]}`}
+              aria-pressed={on}
+              data-pressed={on || undefined}
+              className={`flex min-h-14 min-w-0 flex-col items-center justify-center rounded-[var(--radius-m)] px-1 py-1 [--press:5px] disabled:cursor-not-allowed ${on || !why ? `piece text-on-accent ${POWER_TONE[p]}` : 'piece-off'}`}
             >
-              <span className="flex items-center gap-1 font-display text-base leading-tight font-extrabold min-[400px]:text-lg">
-                <Icon className="size-[1.05em] shrink-0" strokeWidth={2.6} aria-hidden />
+              <span className="flex items-center gap-1 text-base leading-tight font-extrabold min-[400px]:text-lg">
+                {on ? (
+                  <span className="grid size-[1.15em] shrink-0 place-items-center rounded-full bg-ink text-white" aria-hidden>
+                    <Check className="size-[0.75em]" strokeWidth={3.4} />
+                  </span>
+                ) : (
+                  <Icon className="size-[1.05em] shrink-0" strokeWidth={2.6} aria-hidden />
+                )}
                 {POWER_BUTTON[p]}
               </span>
               <span className={`text-xs leading-tight font-bold ${why && !on ? 'text-text-2' : ''}`}>{why ?? charges(r.cost[p])}</span>
@@ -474,16 +499,16 @@ function DuelOutcome({ d, room, rules, last }: { d: PlayerDuel; room: RoomView; 
   return (
     <div
       role="status"
-      className={`relative isolate flex items-center gap-3 rounded-[22px] border-[3px] border-ink px-4 py-3 text-on-accent shadow-[0_5px_0_var(--ink)] ${tone}`}
-      style={d.endedNow && motionOK() ? { animation: 'pop-in 320ms var(--ease-spring) 650ms both' } : undefined}
+      className={`lift relative isolate flex items-center gap-3 rounded-[var(--radius-l)] px-4 py-3 text-on-accent ${tone}`}
+      style={d.endedNow && motionOK() ? { animation: 'pop-in 200ms var(--ease-out) 650ms both' } : undefined}
     >
       <SideGlim side={d.me} room={room} className="size-14" pose={d.result === 'win' ? 'cheer' : 'idle'} />
       <div className="min-w-0">
-        <p className="flex items-center gap-1.5 font-display text-2xl leading-tight font-extrabold">
-          {d.result === 'win' ? <Crown className="size-6 shrink-0" strokeWidth={2.6} aria-hidden /> : null}
+        <p className="flex items-center gap-1.5 font-display text-[2.1rem] leading-none font-extrabold italic">
+          {d.result === 'win' ? <Crown className="size-7 shrink-0" strokeWidth={2.6} aria-hidden /> : null}
           {title}
         </p>
-        <p className="font-bold">{line}</p>
+        <p className="mt-1 font-bold">{line}</p>
         <p className="text-sm font-semibold">{after}</p>
       </div>
     </div>
@@ -495,15 +520,13 @@ function WaitingPanel({ view, room }: { view: GlimDuelsView; room: RoomView }) {
   const text = last ? 'This is the last duel round. Answer along for practice.' : view.rules.powers ? 'Answer now to build charge for your first duel.' : 'Answer now to warm up.';
   useAnnounce(last ? text : `You join the next round. ${text}`, 'waiting');
   return (
-    <StagePanel className="flex flex-col gap-1.5 px-3 py-2.5 sm:px-4 sm:py-3">
-      <DuelProgress view={view}>{view.rules.powers && view.you ? <ChargeBolts charge={view.you.charge} cap={view.rules.cap} /> : null}</DuelProgress>
-      <div className="flex items-center gap-3">
-        <PlayerGlim avatar={myAvatar(room)} seed={room.me.playerId ?? 'you'} size={56} className="shrink-0" />
-        <div className="min-w-0">
-          <p className="font-display text-xl leading-tight font-extrabold">{last ? 'Watching the last round' : 'You join the next round'}</p>
-          <p className="font-semibold text-text-2">{text}</p>
-        </div>
+    <StagePanel className="flex items-center gap-3 px-3 py-2.5 sm:px-4 sm:py-3">
+      <PlayerGlim avatar={myAvatar(room)} seed={room.me.playerId ?? 'you'} size={56} className="shrink-0" />
+      <div className="min-w-0 flex-1">
+        <p className="font-display text-2xl leading-tight font-extrabold">{last ? 'Watching the last round' : 'You join the next round'}</p>
+        <p className="font-semibold text-text-2">{text}</p>
       </div>
+      {view.rules.powers && view.you ? <ChargeBolts charge={view.you.charge} cap={view.rules.cap} /> : null}
     </StagePanel>
   );
 }
@@ -517,13 +540,13 @@ function NextDuel({ view, room, title = 'Next duel' }: { view: GlimDuelsView; ro
   return (
     <StagePanel className="flex items-center gap-3 px-4 py-3" label={title}>
       <PlayerGlim avatar={myAvatar(room)} seed={room.me.playerId ?? 'you'} size={64} className="size-14 shrink-0" />
-      <span className={`font-display text-xl font-extrabold text-text-2 ${SIGN}`} aria-hidden>
+      <span className="font-display text-xl font-extrabold text-text-2 italic" aria-hidden>
         vs
       </span>
       {rival ? <SideGlim side={rival} room={room} className="size-14" /> : null}
       <div className="min-w-0 flex-1">
         <p className="text-sm font-bold text-text-2">{title}</p>
-        <p className="font-display text-xl leading-tight font-extrabold break-words">{text}</p>
+        <p className="font-display text-2xl leading-tight font-extrabold break-words">{text}</p>
         {n?.shadow ? (
           <p className="text-sm font-semibold text-text-2">
             A computer rival with no powers. It gets {view.rules.shadow.accuracy}% of questions right and answers at a random moment between {view.rules.shadow.from}% and {view.rules.shadow.to}% of the time.
@@ -552,7 +575,8 @@ function Standings({ view, room }: { view: GlimDuelsView; room: RoomView }) {
         <PlayerGlim avatar={myAvatar(room)} seed={room.me.playerId ?? 'you'} size={76} className="shrink-0" pose={d?.result === 'win' ? 'cheer' : 'idle'} />
         <div className="min-w-0">
           <p className="font-bold text-text-2">{done ? 'Final standings' : `Round ${view.round + 1} of ${view.rounds} done`}</p>
-          <h2 className={`font-display text-3xl leading-tight font-extrabold ${SIGN}`}>{me ? `You are ${ordinal(me.rank)}` : 'Standings'}</h2>
+          {/* Your rank on the gold plate: the moment of the standings. */}
+          <h2 className={me ? 'plate plate-gold my-1 text-[2rem]' : 'font-display text-[2.25rem] leading-tight font-bold'}>{me ? <span>You are {ordinal(me.rank)}</span> : 'Standings'}</h2>
           {me ? (
             <p className="font-semibold text-text-2">
               {plural(me.points, 'point')}, {record(me)}
@@ -594,10 +618,10 @@ export function GlimDuelsPlayer({ view, act, gameNow, paused, room }: ModeScreen
         room={room}
         art={
           <div className="flex items-center gap-3">
-            <PlayerGlim avatar={myAvatar(room)} seed={seed} size={110} bob />
+            <PlayerGlim avatar={myAvatar(room)} seed={seed} size={110} />
             {rival ? (
               <>
-                <span className={`font-display text-3xl font-extrabold ${SIGN}`}>vs</span>
+                <span className="font-display text-[2.5rem] font-extrabold text-text-2 italic">vs</span>
                 <SideGlim side={rival} room={room} className="size-[110px]" />
               </>
             ) : null}
@@ -617,8 +641,12 @@ export function GlimDuelsPlayer({ view, act, gameNow, paused, room }: ModeScreen
   const submit = async (answer: Answer) => (await act({ type: 'answer', iid: q.iid, answer })).ok;
   const lastRound = view.round >= view.rounds - 1;
   const inDuel = d !== null && d.result === null;
+  const points = view.you?.points ?? 0;
   return (
     <div className="mx-auto flex w-full max-w-3xl flex-col gap-3 sm:gap-4">
+      <DuelProgress view={view}>
+        <HudScore value={points} unit={points === 1 ? 'point' : 'points'} />
+      </DuelProgress>
       {d ? <DuelHeader view={view} room={room} /> : <WaitingPanel view={view} room={room} />}
       {s.phase === 'question' ? (
         <>
@@ -654,9 +682,9 @@ function PlayerReveal({ view, room, q, last }: { view: GlimDuelsView; room: Room
         <StagePanel className="px-4 py-3 font-semibold text-text">You joined during this question, so it does not count. You play from the next one.</StagePanel>
       ) : (
         <>
-          <ResultBanner key={q.iid} correct={answered ? (s.you?.correct ?? false) : false} partial={s.you?.partial} text={lines ? `${lines.mine}${charge}` : charge.trim() || undefined} />
-          {lines ? <p className={`rounded-[14px] px-3 py-2 font-bold ${NIGHT}`}>{lines.theirs}</p> : null}
-          {!answered ? <p className="font-semibold text-text-2">No answer this time.</p> : null}
+          <ResultBanner key={q.iid} correct={answered ? (s.you?.correct ?? false) : false} partial={s.you?.partial} text={lines ? `${lines.mine}${charge}` : charge.trim() || undefined} answer={s.reveal ? shortAnswer(q.q, s.reveal) : null} />
+          {lines ? <p className={`rounded-[var(--radius-m)] px-3 py-2 font-bold ${NIGHT}`}>{lines.theirs}</p> : null}
+          {!answered ? <p className="font-semibold text-text-2">You did not answer.</p> : null}
         </>
       )}
       {s.reveal ? <RevealAnswer q={q.q} reveal={s.reveal} compact /> : null}
@@ -686,7 +714,7 @@ function HostSide({ side, room, rules, mirror = false, hit, result, how, phase, 
   const ko = how === 'ko' && result !== 'win' && side.health <= 0;
   const t = TIER[tier];
   const row = mirror ? 'flex-row-reverse' : '';
-  const label = 'font-display text-[clamp(0.85rem,1.6vh,1.2rem)] font-extrabold';
+  const chip = 'px-2! py-0! text-[clamp(0.85rem,1.6vh,1.2rem)]';
   return (
     <div className={`relative flex min-w-0 items-center gap-[clamp(0.35rem,0.6vw,0.75rem)] ${row}`}>
       <div className="relative shrink-0">
@@ -708,15 +736,15 @@ function HostSide({ side, room, rules, mirror = false, hit, result, how, phase, 
         </div>
         <div className={`flex min-h-[clamp(1.1rem,2.2vh,1.75rem)] items-center gap-1 ${row}`}>
           {result === 'win' ? (
-            <span className={`inline-flex items-center gap-1 text-lantern ${label}`}>
-              <Crown className="size-[1.1em]" strokeWidth={2.6} aria-hidden /> Won
-            </span>
+            <Pill tone="lantern" className={chip}>
+              <Crown className="size-[1.05em]" strokeWidth={2.6} aria-hidden /> Won
+            </Pill>
           ) : null}
-          {result === 'draw' ? <span className={`text-text-2 ${label}`}>Draw</span> : null}
+          {result === 'draw' ? <Pill className={chip}>Draw</Pill> : null}
           {!result && rules.powers && side.charge !== undefined && tier !== 'dense' ? <ChargeBolts charge={side.charge} cap={rules.cap} big /> : null}
           {!result ? <Ready side={side} big /> : null}
           {!result && side.answered && phase === 'question' ? (
-            <span className="inline-grid place-items-center rounded-full border-2 border-ink bg-glim p-[2px] text-ink" title="Locked in">
+            <span className="inline-grid place-items-center rounded-full bg-glim p-[2px] text-on-accent" title="Locked in">
               <Check className="size-[clamp(0.8rem,1.6vh,1.2rem)]" strokeWidth={3.2} aria-hidden />
               <span className="sr-only">Locked in</span>
             </span>
@@ -734,7 +762,7 @@ function TeamDot({ id, room }: { id: string | null; room: RoomView }) {
   if (!team) return null;
   return (
     <>
-      <span className="size-[0.7em] shrink-0 rounded-full border-2 border-ink" style={{ background: `hsl(${team.hue} 80% 60%)` }} title={team.name} aria-hidden />
+      <span className="size-[0.7em] shrink-0 rounded-full" style={{ background: `hsl(${team.hue} 80% 60%)` }} title={team.name} aria-hidden />
       <span className="sr-only">({team.name})</span>
     </>
   );
@@ -748,7 +776,7 @@ function DuelCard({ d, room, rules, phase, tier }: { d: HostDuel; room: RoomView
   return (
     <li
       data-duel={d.id}
-      className={`relative grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-x-[clamp(0.25rem,0.6vw,0.75rem)] gap-y-[clamp(0.1rem,0.4vh,0.3rem)] rounded-[18px] border px-[clamp(0.5rem,0.8vw,0.9rem)] ${TIER[tier].pad} ${NIGHT} ${d.endedNow ? 'border-lantern ring-2 ring-lantern' : 'border-white/12'}`}
+      className={`relative grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-x-[clamp(0.25rem,0.6vw,0.75rem)] gap-y-[clamp(0.1rem,0.4vh,0.3rem)] rounded-[var(--radius-m)] px-[clamp(0.5rem,0.8vw,0.9rem)] ${TIER[tier].pad} ${d.endedNow ? 'bg-lantern/[0.12] ring-2 ring-lantern ring-inset' : NIGHT}`}
     >
       {/* Names take a row of their own across the card, so they are not squeezed by the Glims. */}
       <span className={name}>
@@ -761,7 +789,7 @@ function DuelCard({ d, room, rules, phase, tier }: { d: HostDuel; room: RoomView
         <span className="min-w-0 truncate">{nameOf(b, room)}</span>
       </span>
       <HostSide side={a} room={room} rules={rules} hit={d.hits?.[1] ?? null} result={res(0)} how={d.how} phase={phase} tier={tier} />
-      <span className="px-[clamp(0.25rem,0.7vw,0.8rem)] text-center font-display text-[clamp(0.8rem,1.4vh,1.1rem)] font-extrabold text-text-2">vs</span>
+      <span className="px-[clamp(0.25rem,0.7vw,0.8rem)] text-center font-display text-[clamp(0.9rem,1.6vh,1.25rem)] font-extrabold text-text-2 italic">vs</span>
       <HostSide side={b} room={room} rules={rules} mirror hit={d.hits?.[0] ?? null} result={res(1)} how={d.how} phase={phase} tier={tier} />
       {verdict ? <span className="sr-only">{verdict}</span> : null}
     </li>
@@ -845,11 +873,12 @@ function DuelGrid({ view, room }: { view: GlimDuelsHostView; room: RoomView }) {
   return (
     <section aria-label="Duels" className="flex min-w-0 flex-col gap-[clamp(0.4rem,1vh,0.75rem)]">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h3 className={`font-display text-[clamp(1.4rem,min(2.2vw,3.9vh),2.5rem)] leading-tight font-extrabold ${SIGN}`}>{plural(view.duels.length, 'duel')}</h3>
+        <h3 className="font-display text-[clamp(1.6rem,min(2.5vw,4.3vh),2.75rem)] leading-tight font-bold">{plural(view.duels.length, 'duel')}</h3>
         <div className={`flex flex-wrap items-center gap-2 ${small}`}>
+          {view.sync.phase === 'question' ? <HudCount value={view.sync.answered} total={view.sync.eligible} label="answered" className="text-[1.1em]" /> : null}
           {view.sync.phase === 'reveal' && view.kos > 0 ? (
             <Pill tone="ember" className="px-4">
-              {view.kos === 1 ? '1 knockout!' : `${view.kos} knockouts!`}
+              {view.kos === 1 ? '1 knockout' : `${view.kos} knockouts`}
             </Pill>
           ) : null}
           {view.waiting > 0 ? <Pill className="px-4">{view.waiting} join next round</Pill> : null}
@@ -870,7 +899,7 @@ function DuelGrid({ view, room }: { view: GlimDuelsHostView; room: RoomView }) {
           {view.rules.powers ? (
             <>
               <span className="inline-flex items-center gap-1">
-                <Zap className="size-[1em] fill-lantern text-ink" aria-hidden /> charge
+                <Zap className="size-[1em] fill-lantern text-lantern" aria-hidden /> charge
               </span>
               <span className="inline-flex items-center gap-1">
                 <Shield className="size-[1em]" aria-hidden /> shield up
@@ -892,20 +921,25 @@ function DuelGrid({ view, room }: { view: GlimDuelsHostView; room: RoomView }) {
   );
 }
 
-function HostHeader({ view }: { view: GlimDuelsHostView }) {
-  const s = view.sync;
-  const text = 'text-[clamp(1.1rem,1.8vw,2rem)]';
+/** The big screen's HUD row: "Round 2 of 4" on the blue plate, the question within the duel, and how many have answered. */
+/**
+ * The big screen's HUD row: "Round 2 of 4" on the blue plate, the question within the duel and,
+ * while a question is open, its timer in the same row, so a long question and five or six
+ * answers still fit a 768-pixel projector.
+ */
+function HostHeader({ view, timer }: { view: GlimDuelsHostView; timer?: ReactNode }) {
   useAnnounce(`Round ${view.round + 1} of ${view.rounds}, question ${view.q + 1} of ${view.duelLength}.`, `${view.round}|${view.q}`);
   return (
-    <div className={`flex flex-wrap items-center justify-between gap-2 ${text}`}>
-      <Pill className="px-5 py-1.5">
-        Round {view.round + 1} of {view.rounds} · Question {view.q + 1} of {view.duelLength}
-      </Pill>
-      {s.phase === 'question' ? (
-        <Pill className="px-5 py-1.5">
-          {s.answered} of {s.eligible} answered
-        </Pill>
-      ) : null}
+    <div className="flex flex-wrap items-center gap-x-[clamp(0.75rem,1.2vw,1.25rem)] gap-y-2">
+      <p className="plate plate-blue text-[clamp(1.4rem,2.1vw,2.4rem)] tabular">
+        <span>
+          Round {view.round + 1} of {view.rounds}
+        </span>
+      </p>
+      <span className="text-[clamp(1.1rem,1.8vw,2rem)] font-bold text-text-2 tabular">
+        Question {view.q + 1} of {view.duelLength}
+      </span>
+      {timer ? <div className="min-w-[14rem] flex-1">{timer}</div> : null}
     </div>
   );
 }
@@ -919,7 +953,7 @@ function HostStandings({ view, room }: { view: GlimDuelsHostView; room: RoomView
   const twoCols = shown.length > 10;
   const name = (id: string | null) => (id === null ? SHADOW_NAME : (room.players.find((p) => p.id === id)?.name ?? 'A player'));
   useAnnounce(done ? 'Final standings.' : `Round ${view.round + 1} is over. Here are the standings and the next duels.`, `standings|${view.round}`);
-  const heading = `font-display text-[clamp(1.5rem,min(2.4vw,4.2vh),2.75rem)] leading-tight font-extrabold ${SIGN}`;
+  const heading = 'font-display text-[clamp(1.5rem,min(2.4vw,4.2vh),2.75rem)] leading-tight font-bold';
   const teams = view.teams ? (
     <StagePanel className="flex flex-col gap-2 p-[clamp(0.6rem,1.4vh,1.1rem)]">
       <h3 className={heading}>{view.rules.clash ? 'Teams (total points)' : 'Teams (average points)'}</h3>
@@ -929,7 +963,7 @@ function HostStandings({ view, room }: { view: GlimDuelsHostView; room: RoomView
   return (
     <div className="mx-auto grid w-full max-w-[110rem] grid-cols-1 gap-[clamp(1rem,2.5vw,2.5rem)] lg:grid-cols-[minmax(0,1.25fr)_minmax(0,1fr)]">
       <div className="flex min-w-0 flex-col gap-[clamp(0.5rem,1.5vh,1rem)]">
-        <h2 className={`font-display text-[clamp(2.25rem,min(4.2vw,7vh),5rem)] leading-none font-extrabold ${SIGN}`}>{done ? 'Final standings' : `After round ${view.round + 1} of ${view.rounds}`}</h2>
+        <h2 className="font-display text-[clamp(2.1rem,min(3.9vw,6.4vh),4.75rem)] leading-none font-extrabold">{done ? 'Final standings' : `After round ${view.round + 1} of ${view.rounds}`}</h2>
         <Leaderboard rows={view.board.slice(0, 8).map(toLeader)} players={room.players} teams={room.room.teams} big dense label={(r) => `${r.score} pts`} />
       </div>
       {/* The teams and the next duels share the second column, so the standings keep their eight rows on a 768-pixel projector. */}
@@ -942,10 +976,10 @@ function HostStandings({ view, room }: { view: GlimDuelsHostView; room: RoomView
             </h3>
             <ul className={`grid gap-1.5 ${twoCols ? 'xl:grid-cols-2' : ''}`}>
               {shown.map(([a, b]) => (
-                <li key={`${a}-${b}`} className={`flex min-w-0 items-center gap-[clamp(0.4rem,0.8vw,0.75rem)] rounded-[18px] border border-white/12 px-3 ${TIER[tier].pad} ${NIGHT} ${TIER[tier].text}`}>
+                <li key={`${a}-${b}`} className={`flex min-w-0 items-center gap-[clamp(0.4rem,0.8vw,0.75rem)] rounded-[var(--radius-m)] px-3 ${TIER[tier].pad} ${NIGHT} ${TIER[tier].text}`}>
                   <SideGlim side={{ id: a, health: 0 }} room={room} className={TIER[tier].glim} />
                   <span className="min-w-0 flex-1 truncate font-bold">{name(a)}</span>
-                  <span className="font-display font-extrabold text-text-2">vs</span>
+                  <span className="font-display font-extrabold text-text-2 italic">vs</span>
                   <span className="min-w-0 flex-1 truncate text-right font-bold">{name(b)}</span>
                   <SideGlim side={{ id: b, health: 0 }} room={room} className={TIER[tier].glim} />
                 </li>
@@ -970,10 +1004,10 @@ export function GlimDuelsHost({ view, gameNow, paused, room }: ModeScreenProps<G
   const landed = view.duels.some((d) => d.hits?.some((h) => h && !h.blocked));
   // One sound for the room as the hits land: a knockout if there was one.
   useLaterSfx(view.kos > 0 ? 'capture' : landed ? 'hit' : null, `${view.round}|${view.q}|${s.phase}`, shared && s.phase === 'reveal');
-  useAnnounce(s.phase === 'reveal' && view.kos > 0 ? (view.kos === 1 ? 'A knockout!' : `${view.kos} knockouts!`) : null, `${view.round}|${view.q}|kos`);
+  useAnnounce(s.phase === 'reveal' && view.kos > 0 ? (view.kos === 1 ? 'A knockout.' : `${view.kos} knockouts.`) : null, `${view.round}|${view.q}|kos`);
   if (s.phase === 'intro') {
     return (
-      <IntroScreen kicker="Get ready to duel" title={room.room.title} until={s.phaseEndsAt} gameNow={gameNow} room={room} big art={<Swords className="size-[clamp(4rem,10vh,6.5rem)] text-lantern" strokeWidth={2.4} aria-hidden />}>
+      <IntroScreen kicker="Get ready to duel" title={room.room.title} until={s.phaseEndsAt} gameNow={gameNow} room={room} big>
         Everyone duels a classmate. {rulesLine(view)}
       </IntroScreen>
     );
@@ -984,20 +1018,19 @@ export function GlimDuelsHost({ view, gameNow, paused, room }: ModeScreenProps<G
   const asking = s.phase === 'question';
   return (
     <div className={`mx-auto grid w-full max-w-[115rem] flex-1 grid-cols-1 gap-[clamp(0.75rem,1.8vw,2rem)] ${asking ? 'lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)]' : 'lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.3fr)]'}`}>
-      <div className="flex min-w-0 flex-col gap-[clamp(0.5rem,1.4vh,1.1rem)]">
-        <HostHeader view={view} />
+      <div className="flex min-w-0 flex-col gap-[clamp(0.35rem,1vh,0.9rem)]">
+        <HostHeader view={view} timer={asking ? <TimerBar deadline={q.deadline} start={q.shownAt} gameNow={gameNow} paused={paused} size="lg" /> : null} />
         {asking ? (
           <>
-            <TimerBar deadline={q.deadline} start={q.shownAt} gameNow={gameNow} paused={paused} size="lg" />
             <QuestionCard q={q.q} size="lg" />
             <ChoicesDisplay q={q.q} />
           </>
         ) : (
           <>
             {/* At the reveal the duels take the room: the question shrinks to a line above its answer. */}
-            <h2 className="paper stage-card line-clamp-3 px-[clamp(1rem,1.6vw,1.75rem)] py-[clamp(0.5rem,1.2vh,1rem)] font-display text-[clamp(1.3rem,min(2vw,3.6vh),2.4rem)] leading-tight font-extrabold text-text">{q.q.prompt}</h2>
+            <h2 className="paper stage-card line-clamp-3 px-[clamp(1rem,1.6vw,1.75rem)] py-[clamp(0.5rem,1.2vh,1rem)] font-sans text-[clamp(1.2rem,min(1.8vw,3.3vh),2.2rem)] leading-tight font-bold text-pretty text-text">{q.q.prompt}</h2>
             {s.reveal ? <HostAnswer q={q.q} reveal={s.reveal} distribution={s.distribution} /> : null}
-            <div className="max-lg:hidden">
+            <div className={`max-lg:hidden ${q.q.type === 'order' || q.q.type === 'match' ? '[@media(max-height:860px)]:hidden' : ''}`}>
               <Explanation text={s.explanation} big />
             </div>
           </>

@@ -11,7 +11,7 @@ export const meta: ModeMeta = {
   title: 'Night Market',
   tagline: 'Every right answer picks a mystery lantern. Coins, gambles, tricks and charms: the richest stall wins.',
   description:
-    'Each right answer lets you pick one of three floating lanterns. A lantern’s colour tells you what kind it is (coins, a gamble, a trick on another player or a lucky charm) but never exactly what is inside. Market events shake up the odds for everyone, swipes and swaps can turn the lead around in a moment, and the richest stall when the market closes wins.',
+    'Each right answer lets you pick one of three mystery lanterns. A lantern’s colour tells you what kind it is (coins, a gamble, a trick on another player or a lucky charm) but never exactly what is inside. Market events shake up the odds for everyone, swipes and swaps can turn the lead around in a moment, and the richest stall when the market closes wins.',
   category: 'party',
   pacing: 'self',
   players: { min: 1, max: 200, recommended: '3 to 60' },

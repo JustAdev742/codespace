@@ -105,7 +105,7 @@ describe('knockouts', () => {
     expect(duel(h, 'b').me.health).toBe(0);
     expect(h.view('a').you.points).toBe(DUEL_POINTS.win);
     expect(h.view('b').you.points).toBe(0);
-    expect(texts(h)).toContain('A knocked out B!');
+    expect(texts(h)).toContain('A knocked out B.');
     expect(h.host().kos).toBe(1);
     // The only duel is over, so the standings come next, with the next pairing.
     next(h);
@@ -127,7 +127,7 @@ describe('knockouts', () => {
     expect(duel(h, 'a').me.health).toBe(0);
     expect(duel(h, 'b').me.health).toBe(0);
     expect(duel(h, 'a')).toMatchObject({ result: 'win', how: 'ko' });
-    expect(texts(h)).toContain('A and B knocked each other out! A was faster.');
+    expect(texts(h)).toContain('A and B knocked each other out. A was faster.');
   });
 
   it('make a dead heat a draw when both go down at the same moment', () => {
@@ -138,7 +138,7 @@ describe('knockouts', () => {
     expect(duel(h, 'a')).toMatchObject({ result: 'draw', how: 'ko' });
     expect([h.view('a').you.points, h.view('b').you.points]).toEqual([DUEL_POINTS.draw, DUEL_POINTS.draw]);
     // Named in the order the pair was drawn up.
-    expect(texts(h).filter((t) => /^(A and B|B and A) knocked each other out!$/.test(t))).toHaveLength(1);
+    expect(texts(h).filter((t) => /^(A and B|B and A) knocked each other out\.$/.test(t))).toHaveLength(1);
   });
 
   it('leave a round going until every duel is over; players whose duel ended keep answering for charge', () => {

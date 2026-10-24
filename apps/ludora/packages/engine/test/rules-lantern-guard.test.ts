@@ -151,7 +151,7 @@ describe('Lantern Guard gold, building and upgrading', () => {
     h.answer('a', 'right');
     expect(h.view('a').you).toMatchObject({ gold: 115, last: { text: '+25 gold (streak bonus)' } });
     h.answer('a', 'wrong');
-    expect(h.view('a').you).toMatchObject({ gold: 115, last: { text: 'No gold this time' } });
+    expect(h.view('a').you).toMatchObject({ gold: 115, last: { text: 'No gold' } });
     // The streak starts again.
     h.answer('a', 'right');
     expect(h.view('a').you.gold).toBe(135);
@@ -293,10 +293,10 @@ describe('Lantern Guard waves and the battle', () => {
     const bySight = map.spots.map((_, i) => i).sort((x, y) => pathInReach(map, map.spots[y]!, 22) - pathInReach(map, map.spots[x]!, 22));
     for (const spot of bySight.slice(0, 3)) h.rt.act('a', { type: 'build', spot, tower: 'spark' });
     until(h, FIRST_WAVE_MS + 2 * WAVE_EVERY_MS);
-    expect(h.feed.map((f) => f.text)).toContain('Wave 3: a Gloom Lord is coming!');
+    expect(h.feed.map((f) => f.text)).toContain('Wave 3: a Gloom Lord is coming.');
     until(h, FIRST_WAVE_MS + 2 * WAVE_EVERY_MS + SPAWN_WINDOW_MS + 41_000);
     expect(h.state().log.some((e: { kind: string; gloom?: string; lights?: number }) => e.kind === 'leak' && e.gloom === 'lord' && e.lights === 6)).toBe(true);
-    expect(h.feed.map((f) => f.text)).toContain('A Gloom Lord reached the Great Lantern and put out 6 lights!');
+    expect(h.feed.map((f) => f.text)).toContain('A Gloom Lord reached the Great Lantern and put out 6 lights.');
   });
 
   it('fires a Spark every half second for 6 damage at the gloomling in front, and credits the defeat to its builder', () => {
@@ -380,7 +380,7 @@ describe('Lantern Guard waves and the battle', () => {
     expect(h.view('a').held).toBe(1);
     expect(h.view('a').you.gold).toBe(before.a + 10);
     expect(h.view('b').you.gold).toBe(before.b);
-    expect(h.feed.map((f) => f.text)).toContain('Wave 1 held! Every guard gets 10 gold.');
+    expect(h.feed.map((f) => f.text)).toContain('Wave 1 held. Every guard gets 10 gold.');
 
     // With no towers at all the wave still ends, but not "held" without a scratch.
     const bare = guard({ lives: 20 });
@@ -412,7 +412,7 @@ describe('Lantern Guard flare', () => {
     expect(h.view('b').flare).toMatchObject({ pot: 120, charged: true });
     expect(h.view('b').you.gold).toBe(115 - 70);
     expect(h.rt.act('b', { type: 'feed' })).toMatchObject({ ok: false, message: 'The Great Lantern is full. It will flare when the gloom crowds the road.' });
-    expect(h.feed.map((f) => f.text)).toContain('The Great Lantern is full! It will flare when the gloom crowds the road.');
+    expect(h.feed.map((f) => f.text)).toContain('The Great Lantern is full. It will flare when the gloom crowds the road.');
   });
 
   it('flares once five gloomlings are on the road, burning 35% of every one’s health (10% of a Gloom Lord’s)', () => {
@@ -437,7 +437,7 @@ describe('Lantern Guard flare', () => {
     expect(v.gloom.map((x: { hp: number }) => x.hp)).toEqual([left, left, left, left, left]);
     expect(v.gloom.every((x: { v: number }) => x.v < GLOOMLINGS.wisp.speed)).toBe(true);
     expect(v.flare).toMatchObject({ pot: 0, charged: false, count: 1, cost: 60 });
-    expect(h.feed.map((f) => f.text)).toContain('The Great Lantern flared! Thanks to A.');
+    expect(h.feed.map((f) => f.text)).toContain('The Great Lantern flared. Thanks to A.');
   });
 });
 
@@ -552,13 +552,13 @@ describe('Lantern Guard endings and results', () => {
     for (const spot of bySight.slice(0, 12)) h.rt.act('a', { type: 'build', spot, tower: 'beam' });
     until(h, 300_000);
     expect(h.rt.results?.outcome).toBe('coop-win');
-    expect(lastSummary(h)).toMatch(/^The festival is safe! 5 of 5 waves held with \d+ lights left\.$/);
+    expect(lastSummary(h)).toMatch(/^The festival is safe\. 5 of 5 waves held with \d+ lights left\.$/);
     const [first, second] = h.rt.results!.standings;
     expect(first).toMatchObject({ playerId: 'a', rank: 1 });
     expect(first!.label).toMatch(/^\d+ guard points$/);
     // B never answered or spent: unspent gold earns no guard points.
     expect(second).toMatchObject({ playerId: 'b', score: 0, label: '0 guard points' });
-    expect(h.feed.map((f) => f.text).some((t) => /^The festival is safe! Every wave was held with \d+ lights still burning\.$/.test(t))).toBe(true);
+    expect(h.feed.map((f) => f.text).some((t) => /^The festival is safe\. Every wave was held with \d+ lights still burning\.$/.test(t))).toBe(true);
   });
 
   it('ends at the time limit: the class wins if the lantern is still burning', () => {

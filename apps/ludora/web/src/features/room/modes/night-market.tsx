@@ -16,16 +16,16 @@ import {
   Gem,
   HandCoins,
   Moon,
-  MoonStar,
   Shield,
   ShieldCheck,
-  Sparkles,
   Store,
   Sun,
+  Timer,
   TrendingDown,
   TrendingUp,
   Trophy,
   VenetianMask,
+  Wand,
   Wind,
   type LucideIcon,
 } from 'lucide-react';
@@ -50,11 +50,11 @@ import type { FeedbackView, QuestionView } from '../game/types.ts';
 import { AnswerInput } from '../game/AnswerInput.tsx';
 import { QuestionCard } from '../game/QuestionCard.tsx';
 import { Countdown } from '../game/TimerBar.tsx';
-import { ResultBanner, RevealAnswer } from '../game/Reveal.tsx';
+import { ResultBanner, RevealAnswer, shortAnswer } from '../game/Reveal.tsx';
 import { RankBadge, TeamScores } from '../game/Leaderboard.tsx';
-import { Explanation } from '../game/parts.tsx';
+import { Explanation, ModeTitle } from '../game/parts.tsx';
 import { useAnnounce } from '../game/announce.tsx';
-import { NIGHT, Pill, PlayerGlim, SIGN, StagePanel, avatarOf, motionOK } from '../game/stage.tsx';
+import { NIGHT, Pill, PlayerGlim, StagePanel, avatarOf, motionOK } from '../game/stage.tsx';
 import { Lantern } from '../../../art/Lantern.tsx';
 import { Burst } from '../../../art/bursts.tsx';
 import { Dialog } from '../../../ui/primitives.tsx';
@@ -68,6 +68,11 @@ import type { SfxName } from '../../../lib/sound/sfx.ts';
  * Coins, a gamble, a trick on another player or a lucky charm. The player's
  * phone shows the stall, the pick and the tricks; the projector shows the
  * market: the event of the moment, the richest stalls and the big plays.
+ *
+ * The look (docs/DESIGN.md): the offer is the premium moment, three lantern
+ * cases lit in their kind's colour with the kind's name plate along the
+ * bottom; opening one is this screen's orchestrated reveal. Everything else
+ * is calm smoked panels, solid chips and big condensed numbers.
  */
 
 /* --------------------------------- the view -------------------------------- */
@@ -191,7 +196,7 @@ export interface NightMarketView {
 
 /* ------------------------------- looks and words ------------------------------ */
 
-const KIND_ICON: Record<LanternKind, LucideIcon> = { fortune: Coins, wild: Dices, trick: VenetianMask, charm: Sparkles };
+const KIND_ICON: Record<LanternKind, LucideIcon> = { fortune: Coins, wild: Dices, trick: VenetianMask, charm: Wand };
 
 /** A lantern's paper, pattern and trim for its kind; fog draws a plain night-blue one. */
 function artFor(kind: LanternKind | null): LanternArt {
@@ -200,12 +205,32 @@ function artFor(kind: LanternKind | null): LanternArt {
   return { hue: k.hue, accentHue: k.accentHue, pattern: k.pattern };
 }
 
-/** A light tint of the kind's colour: ink text on it passes AA. */
-const kindTint = (kind: LanternKind | null) => (kind ? `hsl(${KIND_INFO[kind].hue} 90% 74%)` : 'hsl(236 45% 80%)');
+/**
+ * Each kind's colour as a solid fill, from the tokens: gold Fortune, red (coral) Wild,
+ * violet Trick, teal Charm; a cool grey when fog hides the kind. Ink text passes AA on every one,
+ * and the kind is always written and drawn as an icon too.
+ */
+const KIND_FILL: Record<LanternKind, string> = { fortune: 'var(--lantern)', wild: 'var(--ember)', trick: 'var(--dusk)', charm: 'var(--tile-f)' };
+const fillOf = (kind: LanternKind | null) => (kind ? KIND_FILL[kind] : 'var(--r-common)');
+
+/**
+ * A lantern case on offer: midnight navy lit from behind the lantern in its kind's colour, with
+ * the kind's name plate in the solid colour along the bottom (`--band` tall). The plate is part
+ * of the background, so the piece's darker bottom edge falls across it. (A navy base keeps gold
+ * a warm light; tinting the whole case gold turns it brown.)
+ */
+function caseBackground(kind: LanternKind | null): string {
+  const fill = fillOf(kind);
+  return [
+    `linear-gradient(to top, ${fill} var(--band), transparent var(--band))`,
+    `radial-gradient(70% 48% at 50% 36%, color-mix(in oklab, ${fill} 58%, transparent) 0%, transparent 74%)`,
+    `linear-gradient(180deg, color-mix(in oklab, ${fill} 12%, var(--stage-1)) 0%, var(--stage-4) 100%)`,
+  ].join(', ');
+}
 
 const EVENT_LOOK: Record<MarketEventId, { icon: LucideIcon; bg: string; short: string }> = {
   golden: { icon: Sun, bg: 'bg-lantern', short: 'Fortune pays double' },
-  trickster: { icon: MoonStar, bg: 'bg-dusk', short: 'Twice the tricks' },
+  trickster: { icon: VenetianMask, bg: 'bg-dusk', short: 'Twice the tricks' },
   rain: { icon: CloudRain, bg: 'bg-sky', short: 'Two picks per right answer' },
   calm: { icon: Moon, bg: 'bg-glim', short: 'No tricks, shields hold' },
   winds: { icon: Wind, bg: 'bg-ember', short: 'More Wild, bigger wins' },
@@ -216,7 +241,7 @@ const NOTE_ICON: Record<Note['icon'], LucideIcon> = { swipe: HandCoins, swap: Ar
 
 const NEWS_LOOK: Record<NewsKind, { icon: LucideIcon; tint: string }> = {
   jackpot: { icon: Gem, tint: 'bg-lantern' },
-  double: { icon: Sparkles, tint: 'bg-lantern' },
+  double: { icon: TrendingUp, tint: 'bg-lantern' },
   coins: { icon: Coins, tint: 'bg-lantern' },
   swipe: { icon: HandCoins, tint: 'bg-dusk' },
   swap: { icon: ArrowLeftRight, tint: 'bg-dusk' },
@@ -256,10 +281,10 @@ function newsLine(n: News): { text: string; amount: string | null } {
 
 /** The big moments that take over the big screen for a few seconds. */
 const SPECTACLE: Partial<Record<NewsKind, { headline: string; sound: SfxName }>> = {
-  jackpot: { headline: 'Jackpot!', sound: 'jackpot' },
-  double: { headline: 'Double!', sound: 'jackpot' },
-  swap: { headline: 'Swap!', sound: 'swap' },
-  goal: { headline: 'Winner!', sound: 'win' },
+  jackpot: { headline: 'Jackpot', sound: 'jackpot' },
+  double: { headline: 'Double', sound: 'jackpot' },
+  swap: { headline: 'Swap', sound: 'swap' },
+  goal: { headline: 'Winner', sound: 'win' },
 };
 /** A swap only takes over the big screen when it moves this many coins: in a big class small swaps are frequent. */
 const BIG_SWAP = 500;
@@ -285,23 +310,21 @@ function moment(view: NightMarketView, room: RoomView, you: Pick<You, 'tricksLiv
   };
 }
 
-/* Motion for this mode only; the global reduced-motion rules cut every one of these to a single frame. */
+/*
+ * The opening: the one orchestrated moment of the offer. The picked lantern rattles and swells,
+ * its cap lifts off and its light flares while the other two step back; then the result card
+ * pops in. Nothing moves while the offer waits. Only runs when motion is allowed (the opening is
+ * skipped outright otherwise), and the global reduced-motion rules cut it to a single frame.
+ */
 const MOTION_CSS = `
-@keyframes nm-sway{0%,100%{transform:rotate(-3deg)}50%{transform:rotate(3deg)}}
-@keyframes nm-open{0%{transform:scale(1)}30%{transform:scale(1.1) rotate(-5deg)}60%{transform:scale(1.16) rotate(4deg)}100%{transform:scale(1.24);filter:brightness(1.35)}}
+@keyframes nm-open{0%{transform:scale(1)}30%{transform:scale(1.08) rotate(-4deg)}60%{transform:scale(1.14) rotate(3deg)}100%{transform:scale(1.2);filter:brightness(1.35)}}
 @keyframes nm-cap{to{transform:translateY(-22px) rotate(-18deg);opacity:0}}
 @keyframes nm-glow{to{transform:scale(2.4);opacity:.15}}
-@keyframes nm-dim{to{opacity:.3;transform:scale(.92)}}
-@keyframes nm-rise{from{transform:translateY(0)}to{transform:translateY(-118vh)}}
-@keyframes nm-twinkle{0%,100%{opacity:.45}50%{opacity:1}}
-@keyframes nm-banner{from{transform:translateY(-10px) scale(.98);opacity:0}to{transform:none;opacity:1}}
-.nm-sway{transform-origin:50% 0;animation:nm-sway 3.4s ease-in-out infinite}
+@keyframes nm-dim{to{opacity:.35;transform:scale(.94)}}
 .nm-open{animation:nm-open 650ms var(--ease-out) forwards}
 .nm-cap{animation:nm-cap 480ms 140ms var(--ease-out) forwards}
 .nm-glow{animation:nm-glow 650ms ease-out forwards}
-.nm-dim{animation:nm-dim 280ms ease-out forwards}
-.nm-twinkle{animation:nm-twinkle 2.6s ease-in-out infinite}
-.nm-banner{animation:nm-banner 420ms var(--ease-spring) both}
+.nm-dim{animation:nm-dim 220ms var(--ease-out) forwards}
 `;
 
 function MotionStyle() {
@@ -402,10 +425,11 @@ function useOpenedFlow(opened: Opened | null | undefined, hold: boolean) {
   return { shown, dismiss: () => setShown(null) };
 }
 
+/** A stall chip: smoked for calm facts, solid colour with ink text for what you hold. No outline. */
 function Chip({ icon: Icon, children, tone = 'calm', said }: { icon?: LucideIcon; children: ReactNode; tone?: 'calm' | 'glim' | 'lantern' | 'dusk'; said?: string }) {
-  const t = { calm: `${NIGHT} border border-white/15 text-text`, glim: 'bg-glim text-on-accent border-2 border-ink', lantern: 'bg-lantern text-on-accent border-2 border-ink', dusk: 'bg-dusk text-on-accent border-2 border-ink' }[tone];
+  const t = { calm: 'bg-white/[0.09] text-text', glim: 'bg-glim text-on-accent', lantern: 'bg-lantern text-on-accent', dusk: 'bg-dusk text-on-accent' }[tone];
   return (
-    <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-bold whitespace-nowrap sm:text-sm ${t}`}>
+    <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-bold whitespace-nowrap sm:text-sm ${t}`}>
       {Icon ? <Icon className="size-[1.1em] shrink-0" aria-hidden /> : null}
       {said ? (
         <>
@@ -430,7 +454,7 @@ function EventStrip({ view, gameNow }: { view: NightMarketView; gameNow: () => n
     if (!soon) return null;
     return (
       <p className="flex items-center gap-1.5 text-xs font-bold text-text-2 sm:text-sm">
-        {view.next!.lastCall ? <BellRing className="size-4 shrink-0" aria-hidden /> : <Sparkles className="size-4 shrink-0" aria-hidden />}
+        {view.next!.lastCall ? <BellRing className="size-4 shrink-0" aria-hidden /> : <Timer className="size-4 shrink-0" aria-hidden />}
         {view.next!.lastCall ? 'Last Call in ' : 'A market event in '}
         <Countdown until={view.next!.at} gameNow={gameNow} label={view.next!.lastCall ? 'Last Call in' : 'Next market event in'} />
       </p>
@@ -439,13 +463,13 @@ function EventStrip({ view, gameNow }: { view: NightMarketView; gameNow: () => n
   const look = EVENT_LOOK[e.id];
   const Icon = look.icon;
   return (
-    <div key={e.id} className={`nm-banner flex items-center gap-2 rounded-[12px] border-2 border-ink px-2.5 py-1 text-sm font-bold text-on-accent ${look.bg}`}>
+    <div key={e.id} className={`flex items-center gap-2 rounded-[var(--radius-m)] px-2.5 py-1.5 text-sm font-bold text-on-accent ${look.bg}`} style={{ animation: 'pop-in 200ms var(--ease-out)' }}>
       <Icon className="size-5 shrink-0" aria-hidden />
       <span className="min-w-0 flex-1 leading-tight">
-        <span className="font-display font-extrabold">{EVENT_INFO[e.id].label}</span>
+        <span className="font-display text-[1.1rem] font-extrabold">{EVENT_INFO[e.id].label}</span>
         <span className="max-[359px]:hidden">: {look.short}</span>
       </span>
-      <span className="shrink-0 tabular">
+      <span className="shrink-0 text-base tabular">
         <Countdown until={e.endsAt} gameNow={gameNow} label={`${EVENT_INFO[e.id].label} ends in`} />
       </span>
     </div>
@@ -459,17 +483,17 @@ function StallHeader({ view, you, gameNow, onOdds }: { view: NightMarketView; yo
       <EventStrip view={view} gameNow={gameNow} />
       <div className="flex items-center justify-between gap-2">
         <div className="flex min-w-0 items-center gap-2">
-          <span className="grid size-9 shrink-0 place-items-center rounded-full border-[3px] border-ink bg-lantern text-on-accent sm:size-11" aria-hidden>
+          <span className="grid size-9 shrink-0 place-items-center rounded-full bg-lantern text-on-accent sm:size-11" aria-hidden>
             <Coins className="size-5 sm:size-6" />
           </span>
           <div className="min-w-0 leading-none">
-            <CoinCount value={you.coins} className="font-display text-[1.75rem] font-extrabold sm:text-4xl" />
+            <CoinCount value={you.coins} className="font-display text-[2rem] font-extrabold sm:text-[2.5rem]" />
             <span className="ml-1 text-sm font-bold text-text-2" aria-hidden>
               coins
             </span>
           </div>
           {rank ? (
-            <span className="shrink-0 font-display text-lg font-extrabold text-text-2 sm:text-xl">
+            <span className="shrink-0 font-display text-xl font-extrabold text-text-2 tabular sm:text-2xl">
               <span className="sr-only">You are </span>
               {ordinal(rank)}
             </span>
@@ -479,7 +503,7 @@ function StallHeader({ view, you, gameNow, onOdds }: { view: NightMarketView; yo
           <Pill className="px-2.5! py-0.5! text-sm sm:text-base">
             <Countdown until={view.endsAt} gameNow={gameNow} label="Time left" />
           </Pill>
-          <button type="button" onClick={onOdds} className="grid size-11 place-items-center rounded-full border border-white/20 text-text hover:bg-white/10" aria-label="What’s inside? The odds right now" title="What’s inside?">
+          <button type="button" onClick={onOdds} className="grid size-11 place-items-center rounded-full bg-white/[0.09] text-text hover:bg-white/[0.16]" aria-label="What’s inside? The odds right now" title="What’s inside?">
             <CircleHelp className="size-6" aria-hidden />
           </button>
         </div>
@@ -527,7 +551,12 @@ function boostOf(kind: LanternKind | null, odds: OddsMoment): { badge: string; w
   return null;
 }
 
-/** One of the three lanterns on offer: its kind as a word, an icon and a paper pattern, never colour alone. */
+/**
+ * One of the three lanterns on offer, as a collectible case: the lantern lit in its kind's colour,
+ * what is inside on a price tag when Lantern Sight shows it, and the kind's name plate along the
+ * bottom. Its kind is a word, an icon and a paper pattern, never colour alone. A piece, so it keeps
+ * its colour while the offer is busy; the picked one is held down while it opens.
+ */
 function LanternButton({ lantern, index, count, onPick, disabled, state, odds }: { lantern: OfferLantern; index: number; count: number; onPick: () => void; disabled: boolean; state: 'idle' | 'opening' | 'dimmed'; odds: OddsMoment }) {
   const kind = lantern.kind;
   const Icon = kind ? KIND_ICON[kind] : CircleHelp;
@@ -535,9 +564,8 @@ function LanternButton({ lantern, index, count, onPick, disabled, state, odds }:
   const inside = lantern.content ? contentLabel(lantern.content, odds) : null;
   const boost = boostOf(kind, odds);
   const descId = useId();
-  const sway = state === 'idle' && motionOK();
   // The button is named by what it shows, in reading order (so the name always contains the visible words);
-  // the order classes put the lantern on top, what is inside under it and the kind tag at the bottom.
+  // the order classes put the lantern on top, what is inside under it and the name plate at the bottom.
   return (
     <div className="flex min-w-0">
       <button
@@ -545,37 +573,41 @@ function LanternButton({ lantern, index, count, onPick, disabled, state, odds }:
         onClick={onPick}
         disabled={disabled}
         aria-describedby={descId}
-        className={`group relative flex min-h-[9.75rem] min-w-0 flex-1 flex-col items-center justify-end gap-1.5 rounded-[20px] border-2 border-white/15 px-1 pt-2 pb-2 transition-[border-color,transform] hover:border-white/45 active:translate-y-0.5 disabled:cursor-default sm:min-h-[12rem] ${NIGHT} ${state === 'dimmed' ? 'nm-dim' : ''}`}
-        style={{ boxShadow: `inset 0 -40px 60px -30px hsl(${kind ? KIND_INFO[kind].hue : 236} 90% 60% / 0.35)` }}
+        data-pressed={state === 'opening' || undefined}
+        className={`piece relative flex min-h-[10rem] min-w-0 flex-1 flex-col items-center justify-end overflow-hidden rounded-[var(--radius-l)] text-on-accent [--band:2.25rem] [--press:5px] disabled:cursor-default sm:min-h-[12.5rem] sm:[--band:2.5rem] ${state === 'dimmed' ? 'nm-dim' : ''}`}
+        style={{ background: caseBackground(kind) }}
       >
         <span className="sr-only">
           Lantern {index + 1} of {count}:{' '}
         </span>
-        <span className="order-3 inline-flex max-w-full items-center gap-1 rounded-full border-2 border-ink px-2 py-0.5 text-sm font-extrabold text-on-accent sm:text-base" style={{ background: kindTint(kind) }}>
+        <span className="order-3 flex h-[var(--band)] w-full items-center justify-center gap-1 px-1 pb-[5px] text-sm leading-tight font-extrabold sm:text-base">
           <Icon className="size-4 shrink-0" aria-hidden />
           <span className="truncate">{word}</span>
         </span>
         <span className="sr-only">{kind ? `, ${KIND_INFO[kind].colour}.` : ', hidden by fog.'} </span>
         {inside ? (
-          <span className="order-2 paper max-w-full rounded-[8px] border-2 border-ink px-1.5 py-0.5 text-center text-[0.72rem] leading-tight font-bold sm:text-sm">
+          <span className="order-2 paper mx-1 mb-1.5 max-w-[calc(100%-0.5rem)] rounded-[var(--radius-s)] px-1.5 py-0.5 text-center text-[0.72rem] leading-tight font-bold sm:text-sm">
             <span className="sr-only">Inside: </span>
             {inside}
           </span>
         ) : null}
         {boost ? (
-          <span className="absolute top-1.5 right-1.5 z-10 rounded-full border-2 border-ink bg-lantern px-1.5 font-display text-sm font-extrabold text-on-accent shadow-[0_2px_0_var(--ink)]">
-            <span className="sr-only">, pays </span>
-            {boost.badge}
+          <span className="plate plate-gold absolute top-1.5 right-1.5 z-10 px-[0.5em] text-base tabular">
+            <span>
+              <span className="sr-only">, pays </span>
+              {boost.badge}
+            </span>
           </span>
         ) : null}
-        <span className={`order-1 block ${sway ? 'nm-sway' : ''} ${state === 'opening' ? 'nm-open' : ''}`} style={sway ? ({ animationDelay: `${index * -0.9}s` } as CSSProperties) : undefined}>
+        <span className={`relative order-1 mb-1.5 block ${state === 'opening' ? 'nm-open' : ''}`}>
           <Lantern art={artFor(kind)} size={84} lit capClassName={state === 'opening' ? 'nm-cap' : undefined} glowClassName={state === 'opening' ? 'nm-glow' : undefined} className="max-[379px]:w-[68px] sm:w-[104px]" />
+          {!kind && !inside ? (
+            // Over the lantern's glass.
+            <span className="pointer-events-none absolute inset-x-0 top-[30%] grid h-[47%] place-items-center font-display text-3xl font-extrabold text-on-accent" aria-hidden>
+              ?
+            </span>
+          ) : null}
         </span>
-        {!kind && !inside ? (
-          <span className="pointer-events-none absolute top-[3rem] font-display text-3xl font-extrabold text-on-accent max-[379px]:top-[2.6rem] sm:top-[3.7rem]" aria-hidden>
-            ?
-          </span>
-        ) : null}
       </button>
       <span id={descId} className="sr-only">
         {kind ? KIND_INFO[kind].blurb : 'Fog hides what kind it is.'}
@@ -588,11 +620,13 @@ function LanternButton({ lantern, index, count, onPick, disabled, state, odds }:
 function OfferPicker({ offer, last, odds, onPick, busy, paused, opening, onOdds }: { offer: Offer; last: FeedbackView | null; odds: OddsMoment; onPick: (i: number) => void; busy: boolean; paused: boolean; opening: number | null; onOdds: () => void }) {
   const title = offer.bonus ? 'Pick your second lantern' : 'Pick a lantern';
   useAnnounce(offer.sight ? `${title}. Lantern Sight shows what is inside.` : `${title}.`, offer.seq);
+  // The heading under the banner already says "Pick a lantern"; the banner keeps any news beyond it (a level, Lantern Rain).
+  const news = last?.text && !/^Pick a lantern\.?$/.test(last.text) ? last.text : undefined;
   return (
     <section aria-labelledby="nm-offer" className="flex flex-col gap-2.5">
-      {last && last.correct && !offer.bonus ? <ResultBanner key={last.iid} correct partial={last.partial} text={last.text} /> : null}
+      {last && last.correct && !offer.bonus ? <ResultBanner key={last.iid} correct partial={last.partial} text={news} /> : null}
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h3 id="nm-offer" className="font-display text-2xl font-extrabold">
+        <h3 id="nm-offer" className="font-display text-[1.75rem] leading-tight font-extrabold">
           {title}
         </h3>
         {offer.bonus ? <Chip icon={CloudRain}>Lantern Rain</Chip> : null}
@@ -607,7 +641,7 @@ function OfferPicker({ offer, last, odds, onPick, busy, paused, opening, onOdds 
           <LanternButton key={i} lantern={l} index={i} count={offer.lanterns.length} odds={odds} onPick={() => onPick(i)} disabled={busy || paused || opening !== null} state={opening === null ? 'idle' : opening === i ? 'opening' : 'dimmed'} />
         ))}
       </div>
-      <button type="button" onClick={onOdds} className="inline-flex min-h-11 items-center gap-1.5 self-center rounded-[12px] px-3 font-bold text-text-2 hover:bg-white/10 hover:text-text">
+      <button type="button" onClick={onOdds} className="inline-flex min-h-11 items-center gap-1.5 self-center rounded-[var(--radius-m)] px-3 font-bold text-text-2 hover:bg-white/10 hover:text-text">
         <CircleHelp className="size-5" aria-hidden /> What’s inside?
       </button>
     </section>
@@ -630,7 +664,7 @@ function openedSound(o: Opened): SfxName {
   }
 }
 
-/** What came out of the lantern just opened. */
+/** What came out of the lantern just opened: a banner in the kind's colour, the outcome as the hero line. */
 function OpenedCard({ opened, onNext }: { opened: Opened; onNext: (() => void) | null }) {
   const Icon = KIND_ICON[opened.kind];
   useAnnounce(`${KIND_INFO[opened.kind].label} lantern: ${opened.title}.${opened.detail ? ` ${opened.detail}` : ''}`, `${opened.seq}|${String(opened.waiting)}|${opened.title}`);
@@ -639,19 +673,21 @@ function OpenedCard({ opened, onNext }: { opened: Opened; onNext: (() => void) |
   useSfx(openedSound(opened), `${opened.seq}|${String(opened.waiting)}|${opened.title}`, role !== 'host');
   return (
     <div className="flex flex-col gap-2">
-      <div className="relative isolate flex items-center gap-3 rounded-[22px] border-[3px] border-ink px-3 py-3 text-on-accent shadow-[0_5px_0_var(--ink)] sm:px-4" style={{ background: kindTint(opened.kind), animation: 'pop-in 280ms var(--ease-spring)' }}>
+      <div className="lift relative isolate flex items-center gap-3 rounded-[var(--radius-l)] px-4 py-3 text-on-accent" style={{ background: fillOf(opened.kind), animation: 'pop-in 200ms var(--ease-out)' }}>
         {opened.big ? <Burst style="festival" hue={KIND_INFO[opened.kind].hue} size={320} /> : null}
-        <Lantern art={artFor(opened.kind)} size={52} lit className="shrink-0" />
+        <span className="grid size-14 shrink-0 place-items-center rounded-full bg-ink/85" aria-hidden>
+          <Lantern art={artFor(opened.kind)} size={36} lit />
+        </span>
         <div className="min-w-0 flex-1">
           <p className="flex items-center gap-1.5 text-sm font-bold">
             <Icon className="size-4 shrink-0" aria-hidden /> {KIND_INFO[opened.kind].label} lantern
           </p>
-          <p className="font-display text-[1.6rem] leading-tight font-extrabold break-words sm:text-3xl">{opened.title}</p>
-          {opened.detail && !opened.waiting ? <p className="text-sm leading-snug font-bold">{opened.detail}</p> : null}
+          <p className="font-display text-[2rem] leading-[1.05] font-extrabold break-words italic">{opened.title}</p>
+          {opened.detail && !opened.waiting ? <p className="mt-0.5 text-sm leading-snug font-bold">{opened.detail}</p> : null}
         </div>
       </div>
       {onNext ? (
-        <button type="button" onClick={onNext} className="min-h-11 self-center rounded-[12px] px-4 py-2 font-bold text-text-2 hover:bg-white/10">
+        <button type="button" onClick={onNext} className="min-h-11 self-center rounded-[var(--radius-m)] px-4 py-2 font-bold text-text-2 hover:bg-white/10">
           Next question
         </button>
       ) : null}
@@ -669,7 +705,7 @@ function TargetPicker({ choose, you, players, onPick, busy, paused, gameNow }: {
   return (
     <section aria-labelledby="nm-targets" className="flex flex-col gap-2">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h3 id="nm-targets" className="font-display text-xl font-extrabold sm:text-2xl">
+        <h3 id="nm-targets" className="font-display text-2xl leading-tight font-extrabold sm:text-[1.75rem]">
           {heading}
         </h3>
         <Pill className="px-2.5! py-0.5! text-sm">
@@ -697,11 +733,12 @@ function TargetPicker({ choose, you, players, onPick, busy, paused, gameNow }: {
                   : 'Nothing to take yet';
           return (
             <li key={t.playerId}>
+              {/* A quiet pressable row; a player who cannot be chosen is out of play (flat), with the reason written under the name. */}
               <button
                 type="button"
                 disabled={busy || paused || blocked}
                 onClick={() => onPick(t.playerId)}
-                className={`flex min-h-14 w-full items-center gap-2.5 rounded-[18px] border-2 px-2.5 py-1.5 text-left transition-colors disabled:cursor-not-allowed disabled:opacity-60 sm:gap-3 sm:px-3 ${NIGHT} ${blocked ? 'border-white/10' : 'border-white/25 hover:border-lantern'}`}
+                className={`flex min-h-14 w-full items-center gap-2.5 rounded-[var(--radius-m)] px-2.5 py-1.5 text-left text-text transition-colors disabled:cursor-not-allowed sm:gap-3 sm:px-3 ${blocked ? 'piece-off opacity-70' : 'press-soft bg-white/[0.07] hover:bg-white/[0.13] disabled:opacity-60'}`}
               >
                 <PlayerGlim avatar={avatarOf(players, t.playerId)} seed={t.playerId} size={40} className="shrink-0" />
                 <span className="min-w-0 flex-1">
@@ -717,11 +754,11 @@ function TargetPicker({ choose, you, players, onPick, busy, paused, gameNow }: {
                   </span>
                 </span>
                 {t.shield ? (
-                  <span className="inline-flex shrink-0 items-center gap-1 rounded-full border-2 border-ink bg-glim px-2 py-0.5 text-xs font-bold text-on-accent">
+                  <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-glim px-2 py-0.5 text-xs font-bold text-on-accent">
                     <Shield className="size-3.5" aria-hidden /> Shield
                   </span>
                 ) : null}
-                <span className="shrink-0 text-right font-display text-lg font-extrabold tabular">
+                <span className="shrink-0 text-right font-display text-xl font-extrabold tabular">
                   {formatNumber(t.coins)}
                   <span className="sr-only"> coins</span>
                 </span>
@@ -751,7 +788,7 @@ function MyNews({ notes }: { notes: Note[] }) {
         {notes.slice(0, 3).map((n) => {
           const Icon = NOTE_ICON[n.icon];
           return (
-            <li key={n.id} className="flex items-start gap-2 text-sm leading-snug font-semibold" style={{ animation: 'rise-fade 240ms var(--ease-out) both' }}>
+            <li key={n.id} className="flex items-start gap-2 text-sm leading-snug font-semibold" style={{ animation: 'rise-fade 200ms var(--ease-out) both' }}>
               <Icon className={`mt-0.5 size-4 shrink-0 ${n.tone === 'bad' ? 'text-ember' : n.tone === 'good' ? 'text-glim' : 'text-text-2'}`} aria-hidden />
               <span>{n.text}</span>
             </li>
@@ -770,7 +807,7 @@ function OddsDialog({ open, onOpenChange, odds, fog, tricksOn }: { open: boolean
     <Dialog open={open} onOpenChange={onOpenChange} title="What’s inside?" description="The odds right now. Each of your 3 lanterns is drawn on its own." size="md">
       <div className="flex flex-col gap-5 text-sm">
         {event ? (
-          <p className="rounded-[12px] border border-line bg-surface-2 px-3 py-2 font-bold">
+          <p className="rounded-[var(--radius-m)] border border-line bg-surface-2 px-3 py-2 font-bold">
             {event.label}: {event.blurb}
           </p>
         ) : null}
@@ -843,7 +880,7 @@ export function NightMarketPlayer({ view, act, gameNow, paused, room }: ModeScre
   const result = useOpenedFlow(you?.opened, opening !== null);
   const shared = useSharedSounds();
   const eventKey = view.event ? `${view.event.id}|${view.event.endsAt}` : null;
-  useAnnounce(view.event ? `${EVENT_INFO[view.event.id].label}! ${EVENT_INFO[view.event.id].blurb}` : null, eventKey);
+  useAnnounce(view.event ? `${EVENT_INFO[view.event.id].label}. ${EVENT_INFO[view.event.id].blurb}` : null, eventKey);
   // Room events sound on shared screens only (a solo game's screen is one).
   useSfx('event', eventKey, shared && view.event !== null);
   useEffect(() => {
@@ -896,10 +933,10 @@ export function NightMarketPlayer({ view, act, gameNow, paused, room }: ModeScre
   } else if (miss.feedback) {
     main = (
       <div className="flex flex-col gap-3">
-        <ResultBanner key={miss.feedback.iid} correct={false} partial={miss.feedback.partial} text={miss.feedback.text} />
+        <ResultBanner key={miss.feedback.iid} correct={false} partial={miss.feedback.partial} text={miss.feedback.text} answer={miss.answered ? shortAnswer(miss.answered.q, miss.feedback.reveal) : null} />
         {miss.answered ? <RevealAnswer q={miss.answered.q} reveal={miss.feedback.reveal} compact /> : null}
         <Explanation text={miss.feedback.explanation} />
-        <button type="button" onClick={miss.dismiss} className="min-h-11 self-center rounded-[12px] px-4 py-2 font-bold text-text-2 hover:bg-white/10">
+        <button type="button" onClick={miss.dismiss} className="min-h-11 self-center rounded-[var(--radius-m)] px-4 py-2 font-bold text-text-2 hover:bg-white/10">
           Next question
         </button>
       </div>
@@ -931,87 +968,21 @@ export function NightMarketPlayer({ view, act, gameNow, paused, room }: ModeScre
 
 /* ---------------------------------- host ---------------------------------- */
 
-/** A striped awning with a scalloped edge along the top of the big screen: the market stall itself. */
-function Awning() {
-  return (
-    <div className="pointer-events-none relative -mx-[clamp(0.5rem,1.5vw,1.5rem)] -mt-[clamp(0.25rem,1vh,0.75rem)]" aria-hidden>
-      <div className="h-[clamp(0.75rem,1.8vh,1.25rem)]" style={{ background: 'repeating-linear-gradient(90deg, #fff7e6 0 32px, var(--ember) 32px 64px)' }} />
-      <div
-        className="h-4"
-        style={{
-          background: 'radial-gradient(circle at 50% 0, #fff7e6 15px, transparent 16px) 0 0 / 64px 16px repeat-x, radial-gradient(circle at 50% 0, var(--ember) 15px, transparent 16px) 32px 0 / 64px 16px repeat-x',
-        }}
-      />
-      {/* String lights under the awning. */}
-      <svg className="absolute top-[clamp(1.5rem,3.4vh,2.25rem)] left-0 h-8 w-full" viewBox="0 0 1000 32" preserveAspectRatio="none">
-        <path d="M0 4Q250 30 500 6Q750 30 1000 4" fill="none" stroke="rgb(255 255 255 / 0.35)" strokeWidth="1.5" vectorEffect="non-scaling-stroke" />
-      </svg>
-      <div className="absolute top-[clamp(1.6rem,3.6vh,2.4rem)] left-0 flex w-full justify-around">
-        {Array.from({ length: 14 }, (_, i) => (
-          <span key={i} className="nm-twinkle block size-2.5 rounded-full" style={{ background: ['#ffd36b', '#ff85d8', '#47b5ff', '#33d6a6'][i % 4], boxShadow: '0 0 10px currentColor', color: ['#ffd36b', '#ff85d8', '#47b5ff', '#33d6a6'][i % 4], marginTop: `${Math.round(Math.abs(Math.sin((i / 13) * Math.PI * 2)) * 12)}px`, animationDelay: `${(i % 5) * 0.45}s` }} />
-        ))}
-      </div>
-    </div>
-  );
-}
-
-/** Lanterns drifting up behind the market, in the colours of the kinds opened so far. More open, more float. */
-function FloatingLanterns({ opened }: { opened: Record<LanternKind, number> | undefined }) {
-  const counts = opened ?? { fortune: 0, wild: 0, trick: 0, charm: 0 };
-  const total = Object.values(counts).reduce((n, x) => n + x, 0);
-  const n = Math.min(26, 8 + Math.floor(total / 6));
-  // Kinds in proportion to what has been opened (fortune first while nothing has).
-  const kinds: LanternKind[] = [];
-  const order: LanternKind[] = ['fortune', 'trick', 'wild', 'charm'];
-  for (let i = 0; i < n; i++) {
-    let pick: LanternKind = 'fortune';
-    if (total > 0) {
-      let roll = ((i * 37 + 11) % 100) / 100;
-      for (const k of order) {
-        roll -= counts[k] / total;
-        if (roll < 0) {
-          pick = k;
-          break;
-        }
-      }
-    } else pick = order[i % 4]!;
-    kinds.push(pick);
-  }
-  const moving = motionOK();
-  return (
-    <div className="pointer-events-none absolute inset-0 -z-10 overflow-hidden" aria-hidden>
-      {kinds.map((k, i) => (
-        <div
-          key={i}
-          className="absolute"
-          style={{
-            left: `${2 + ((i * 41 + 7) % 94)}%`,
-            top: moving ? '104%' : `${8 + ((i * 53 + 5) % 80)}%`,
-            opacity: 0.32 + ((i * 7) % 4) * 0.08,
-            animation: moving ? `nm-rise ${16 + (i % 7) * 2.5}s linear ${-((i * 2.9) % 22)}s infinite` : undefined,
-          }}
-        >
-          <Lantern art={artFor(k)} size={20 + ((i * 5) % 4) * 8} lit />
-        </div>
-      ))}
-    </div>
-  );
-}
-
 /** The event of the moment, the one coming, and the kind odds right now: the market's weather. */
 function EventBanner({ view, room, gameNow }: { view: NightMarketView; room: RoomView; gameNow: () => number }) {
   const odds = moment(view, room, { tricksLive: view.tricksLive ?? false, level: 1, lucky: 0 });
   const kinds = kindPercents(odds);
   const small = 'text-[clamp(1rem,min(1.45vw,2.5vh),1.6rem)]';
   const e = view.event;
+  // The odds stay on show: what each lantern is likely to be, with the event applied.
   const oddsLine = (
-    <p className={`flex flex-wrap gap-x-4 gap-y-1 font-bold ${small}`}>
+    <p className={`flex flex-wrap items-baseline gap-x-5 gap-y-1 font-bold ${small}`}>
       {kinds.map((k) => {
         const Icon = KIND_ICON[k.kind];
         return (
           <span key={k.kind} className="inline-flex items-center gap-1.5 whitespace-nowrap">
-            <Icon className="size-[1.1em]" aria-hidden />
-            {KIND_INFO[k.kind].label} {percentText(k.percent)}
+            <Icon className="size-[1.1em] self-center" aria-hidden />
+            {KIND_INFO[k.kind].label} <span className="font-display text-[1.2em] font-extrabold tabular">{percentText(k.percent)}</span>
           </span>
         );
       })}
@@ -1021,12 +992,17 @@ function EventBanner({ view, room, gameNow }: { view: NightMarketView; room: Roo
     const look = EVENT_LOOK[e.id];
     const Icon = look.icon;
     return (
-      <section key={`${e.id}${e.endsAt}`} aria-label="Market event" className={`nm-banner flex flex-wrap items-center gap-x-[clamp(1rem,2vw,2rem)] gap-y-2 rounded-[22px] border-[3px] border-ink px-[clamp(1rem,2vw,2rem)] py-[clamp(0.5rem,1.4vh,1rem)] text-on-accent shadow-[0_5px_0_var(--ink)] ${look.bg}`}>
-        <span className={`grid size-[clamp(3.5rem,8vh,5.5rem)] shrink-0 place-items-center rounded-full border-[3px] border-ink bg-white/55 ${e.id === 'lastCall' ? 'nm-twinkle' : ''}`}>
-          <Icon className="size-[60%]" aria-hidden />
+      <section
+        key={`${e.id}${e.endsAt}`}
+        aria-label="Market event"
+        className={`lift flex flex-wrap items-center gap-x-[clamp(1rem,2vw,2rem)] gap-y-2 rounded-[var(--radius-l)] px-[clamp(1rem,2vw,2rem)] py-[clamp(0.5rem,1.4vh,1rem)] text-on-accent ${look.bg}`}
+        style={{ animation: 'pop-in 200ms var(--ease-out)' }}
+      >
+        <span className="grid size-[clamp(3.25rem,7.5vh,5.25rem)] shrink-0 place-items-center rounded-full bg-ink/85 text-white">
+          <Icon className="size-[56%]" aria-hidden />
         </span>
         <div className="min-w-0 flex-1">
-          <p className="font-display text-[clamp(2rem,min(3.6vw,6.4vh),4.5rem)] leading-none font-extrabold">{EVENT_INFO[e.id].label}</p>
+          <p className="font-display text-[clamp(2.1rem,min(3.8vw,6.6vh),4.75rem)] leading-none font-extrabold italic">{EVENT_INFO[e.id].label}</p>
           <p className="text-[clamp(1.05rem,min(1.7vw,3vh),1.9rem)] font-bold">{EVENT_INFO[e.id].blurb}</p>
         </div>
         <div className="shrink-0 text-right">
@@ -1035,14 +1011,14 @@ function EventBanner({ view, room, gameNow }: { view: NightMarketView; room: Roo
           </p>
           <p className={`font-bold ${small}`}>{e.id === 'lastCall' ? 'until the market closes' : 'left'}</p>
         </div>
-        <div className="basis-full border-t-2 border-ink/25 pt-1.5">{oddsLine}</div>
+        <div className="basis-full border-t border-black/15 pt-1.5">{oddsLine}</div>
       </section>
     );
   }
   return (
-    <section aria-label="Market event" className={`flex flex-wrap items-center gap-x-[clamp(1rem,2vw,2rem)] gap-y-2 rounded-[22px] border border-white/12 px-[clamp(1rem,2vw,2rem)] py-[clamp(0.5rem,1.4vh,1rem)] ${NIGHT}`}>
-      <span className="grid size-[clamp(3rem,7vh,4.75rem)] shrink-0 place-items-center rounded-full border-2 border-white/25 text-lantern">
-        {view.next?.lastCall ? <Bell className="size-[55%]" aria-hidden /> : <Sparkles className="size-[55%]" aria-hidden />}
+    <section aria-label="Market event" className={`flex flex-wrap items-center gap-x-[clamp(1rem,2vw,2rem)] gap-y-2 rounded-[var(--radius-l)] border border-white/10 px-[clamp(1rem,2vw,2rem)] py-[clamp(0.5rem,1.4vh,1rem)] ${NIGHT}`}>
+      <span className="grid size-[clamp(3rem,7vh,4.75rem)] shrink-0 place-items-center rounded-full bg-white/[0.09] text-lantern">
+        {view.next?.lastCall ? <Bell className="size-[55%]" aria-hidden /> : <Timer className="size-[55%]" aria-hidden />}
       </span>
       <div className="min-w-0 flex-1">
         <p className="font-display text-[clamp(1.6rem,min(2.8vw,5vh),3.4rem)] leading-tight font-extrabold">
@@ -1052,12 +1028,12 @@ function EventBanner({ view, room, gameNow }: { view: NightMarketView; room: Roo
               <Countdown until={view.next.at} gameNow={gameNow} label={view.next.lastCall ? 'Last Call in' : 'Next market event in'} />
             </>
           ) : (
-            'A quiet night at the market'
+            'No market events tonight'
           )}
         </p>
-        <p className={`font-semibold text-text-2 ${small}`}>{view.next ? (view.next.lastCall ? 'Fortune lanterns pay double at the end of the night.' : 'Nobody knows what it will be until it starts.') : 'No market events tonight.'}</p>
+        <p className={`font-semibold text-text-2 ${small}`}>{view.next ? (view.next.lastCall ? 'Fortune lanterns pay double at the end of the night.' : 'Nobody knows what it will be until it starts.') : 'The odds hold steady to the end.'}</p>
       </div>
-      <div className="basis-full border-t border-white/15 pt-1.5 text-text">{oddsLine}</div>
+      <div className="basis-full border-t border-white/10 pt-1.5 text-text">{oddsLine}</div>
     </section>
   );
 }
@@ -1095,7 +1071,10 @@ function BoardCoins({ value }: { value: number }) {
   return <CoinCount value={value} className="min-w-[3ch] shrink-0 text-right font-display text-[1.3em] font-extrabold" />;
 }
 
-/** The ten richest stalls; past five they sit in two columns, so they fit on a 768-pixel projector. */
+/**
+ * The ten richest stalls; past five they sit in two columns, so they fit on a 768-pixel projector.
+ * A stall that just climbed shows its arrow and a quiet mint tint (in a big class many climb at once).
+ */
 function MarketBoard({ rows, players, teams }: { rows: BoardRow[]; players: RoomPlayerView[]; teams: RoomView['room']['teams'] }) {
   const moved = useRankMoves(rows);
   const two = rows.length > 5;
@@ -1107,22 +1086,20 @@ function MarketBoard({ rows, players, teams }: { rows: BoardRow[]; players: Room
     >
       {rows.map((r) => {
         const by = moved(r.playerId);
+        const team = teams.find((t) => t.id === r.teamId);
         return (
-          <li key={r.playerId} className={`flex min-w-0 items-center gap-[clamp(0.5rem,1vw,0.75rem)] rounded-[20px] border px-3 py-1 ${NIGHT} ${by > 0 ? 'border-glim' : 'border-white/12'}`}>
+          <li key={r.playerId} className={`flex min-w-0 items-center gap-[clamp(0.5rem,1vw,0.75rem)] rounded-[var(--radius-m)] px-3 py-1 ${by > 0 ? 'bg-glim/[0.14]' : NIGHT}`}>
             <RankBadge rank={r.rank} big />
             <PlayerGlim avatar={avatarOf(players, r.playerId)} seed={r.playerId} size={56} className={`${ROW_GLIM} shrink-0`} pose={r.rank === 1 ? 'cheer' : 'idle'} />
             <span className="min-w-0 flex-1 truncate font-bold">{r.name}</span>
-            {(() => {
-              const team = teams.find((t) => t.id === r.teamId);
-              return team ? (
-                <span className="shrink-0" title={team.name}>
-                  <span className="block size-[0.8em] rounded-full border-2 border-ink" style={{ background: `hsl(${team.hue} 80% 60%)` }} aria-hidden />
-                  <span className="sr-only">{team.name}</span>
-                </span>
-              ) : null;
-            })()}
+            {team ? (
+              <span className="shrink-0" title={team.name}>
+                <span className="block size-[0.8em] rounded-full" style={{ background: `hsl(${team.hue} 80% 60%)` }} aria-hidden />
+                <span className="sr-only">{team.name}</span>
+              </span>
+            ) : null}
             {by !== 0 ? (
-              <span className={`inline-flex shrink-0 items-center font-display font-extrabold ${by > 0 ? 'text-glim' : 'text-ember'}`} style={{ animation: 'pop-in 260ms var(--ease-spring)' }}>
+              <span className={`inline-flex shrink-0 items-center font-display font-extrabold tabular ${by > 0 ? 'text-glim' : 'text-ember'}`} style={{ animation: 'pop-in 200ms var(--ease-out)' }}>
                 {by > 0 ? <ArrowUp className="size-[1em]" aria-hidden /> : <ArrowDown className="size-[1em]" aria-hidden />}
                 {Math.abs(by)}
                 <span className="sr-only">{by > 0 ? ' places up' : ' places down'}</span>
@@ -1142,29 +1119,33 @@ function MarketBoard({ rows, players, teams }: { rows: BoardRow[]; players: Room
   );
 }
 
-/** A big moment takes the middle of the big screen for a few seconds: a jackpot, a double, a swap, a winner. */
+/** A big moment takes the middle of the big screen for a few seconds: a jackpot, a double, a big swap, a winner. The coins it moved land on a plate. */
 function Spectacle({ news, gameNow }: { news: News[]; gameNow: () => number }) {
   const top = news.find(isSpectacle);
   const fresh = top && gameNow() - top.at < SPECTACLE_MS ? top : null;
   useNow(500, Boolean(fresh));
   const live = fresh && gameNow() - fresh.at < SPECTACLE_MS ? fresh : null;
-  useAnnounce(live ? `${SPECTACLE[live.kind]!.headline} ${newsLine(live).text}${newsLine(live).amount ? `, ${newsLine(live).amount} coins` : ''}.` : null, live?.id);
+  useAnnounce(live ? `${SPECTACLE[live.kind]!.headline}. ${newsLine(live).text}${newsLine(live).amount ? `, ${newsLine(live).amount} coins` : ''}.` : null, live?.id);
   if (!live) return null;
   const look = SPECTACLE[live.kind]!;
   const line = newsLine(live);
   const Icon = NEWS_LOOK[live.kind].icon;
   return (
     <div className="pointer-events-none absolute inset-0 z-20 grid place-items-center" key={live.id}>
-      <div className="paper stage-card relative isolate flex items-center gap-[clamp(0.75rem,1.6vw,1.5rem)] px-[clamp(1.25rem,3vw,3rem)] py-[clamp(0.6rem,1.8vh,1.4rem)]" style={{ animation: 'pop-in 320ms var(--ease-spring)' }}>
+      <div className="paper stage-card relative isolate flex items-center gap-[clamp(0.75rem,1.6vw,1.5rem)] px-[clamp(1.25rem,3vw,3rem)] py-[clamp(0.6rem,1.8vh,1.4rem)]" style={{ animation: 'pop-in 220ms var(--ease-out)' }}>
         <Burst style="festival" hue={44} size={520} />
-        <span className={`grid size-[clamp(3.5rem,9vh,6rem)] shrink-0 place-items-center rounded-full border-[3px] border-ink text-on-accent ${NEWS_LOOK[live.kind].tint}`}>
+        <span className={`grid size-[clamp(3.5rem,9vh,6rem)] shrink-0 place-items-center rounded-full text-on-accent ${NEWS_LOOK[live.kind].tint}`}>
           <Icon className="size-[58%]" aria-hidden />
         </span>
         <div className="min-w-0">
-          <p className="font-display text-[clamp(2.4rem,min(5vw,8vh),5.5rem)] leading-none font-extrabold">{look.headline}</p>
-          <p className="text-[clamp(1.2rem,min(2vw,3.4vh),2.2rem)] font-bold">
+          <p className="font-display text-[clamp(2.4rem,min(5vw,8vh),5.5rem)] leading-none font-extrabold italic">{look.headline}</p>
+          <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[clamp(1.2rem,min(2vw,3.4vh),2.2rem)] font-bold">
             {line.text}
-            {line.amount && live.kind !== 'goal' ? <span className="ml-2 font-display font-extrabold tabular">{line.amount}</span> : null}
+            {line.amount && live.kind !== 'goal' ? (
+              <span className={`plate text-on-accent tabular ${live.amount < 0 ? 'bg-ember' : 'bg-glim'}`}>
+                <span>{line.amount}</span>
+              </span>
+            ) : null}
           </p>
         </div>
       </div>
@@ -1175,7 +1156,7 @@ function Spectacle({ news, gameNow }: { news: News[]; gameNow: () => number }) {
 function NewsList({ news, limit }: { news: News[]; limit: number }) {
   const text = 'text-[clamp(1rem,min(1.45vw,2.7vh),1.7rem)]';
   const items = news.slice(0, limit);
-  if (!items.length) return <p className={`font-semibold text-text-2 ${text}`}>The lanterns are glowing. Who will open the first one?</p>;
+  if (!items.length) return <p className={`font-semibold text-text-2 ${text}`}>No big plays yet. Jackpots, swipes and swaps show here.</p>;
   return (
     <ul className={`flex flex-col gap-1.5 leading-tight ${text}`} aria-live="off">
       {items.map((n) => {
@@ -1183,12 +1164,12 @@ function NewsList({ news, limit }: { news: News[]; limit: number }) {
         const Icon = look.icon;
         const line = newsLine(n);
         return (
-          <li key={n.id} className={`flex min-h-[clamp(2.5rem,5.2vh,4.25rem)] items-center gap-3 rounded-[18px] border border-white/12 px-3 py-1 ${NIGHT}`} style={{ animation: 'rise-fade 300ms var(--ease-out) both' }}>
-            <span className={`grid size-[1.7em] shrink-0 place-items-center rounded-full border-2 border-ink text-on-accent ${look.tint}`}>
+          <li key={n.id} className={`flex min-h-[clamp(2.5rem,5.2vh,4.25rem)] items-center gap-3 rounded-[var(--radius-m)] px-3 py-1 ${NIGHT}`} style={{ animation: 'rise-fade 200ms var(--ease-out) both' }}>
+            <span className={`grid size-[1.7em] shrink-0 place-items-center rounded-full text-on-accent ${look.tint}`}>
               <Icon className="size-[60%]" aria-hidden />
             </span>
             <span className="min-w-0 flex-1 truncate font-bold">{line.text}</span>
-            {line.amount && n.kind !== 'goal' ? <span className="shrink-0 font-display font-extrabold tabular">{line.amount}</span> : null}
+            {line.amount && n.kind !== 'goal' ? <span className={`shrink-0 font-display text-[1.15em] font-extrabold tabular ${n.amount < 0 ? 'text-ember' : 'text-glim'}`}>{line.amount}</span> : null}
           </li>
         );
       })}
@@ -1215,34 +1196,42 @@ function useNewsSounds(news: News[]) {
   }, [newest, shared]);
 }
 
+/** A count in the market's summary line: the number bold, its word plain. */
+function Stat({ n, one }: { n: number; one: string }) {
+  const words = plural(n, one);
+  return (
+    <>
+      <span className="font-display text-[1.2em] font-extrabold text-text tabular">{formatNumber(n)}</span>
+      {words.slice(words.indexOf(' '))}
+    </>
+  );
+}
+
 export function NightMarketHost({ view, gameNow, room }: ModeScreenProps<NightMarketView>) {
   const news = view.news ?? [];
-  const heading = `mb-[clamp(0.25rem,1vh,0.5rem)] font-display text-[clamp(1.4rem,min(2.2vw,3.9vh),2.5rem)] leading-tight font-extrabold ${SIGN}`;
+  const heading = 'mb-[clamp(0.25rem,1vh,0.5rem)] font-display text-[clamp(1.6rem,min(2.5vw,4.3vh),2.75rem)] leading-tight font-bold';
   const small = 'text-[clamp(1rem,min(1.45vw,2.5vh),1.6rem)]';
   const opened = view.opened ? Object.values(view.opened).reduce((n, x) => n + x, 0) : 0;
   const eventKey = view.event ? `${view.event.id}|${view.event.endsAt}` : null;
-  useAnnounce(view.event ? `${EVENT_INFO[view.event.id].label}! ${EVENT_INFO[view.event.id].blurb}` : null, eventKey);
+  useAnnounce(view.event ? `${EVENT_INFO[view.event.id].label}. ${EVENT_INFO[view.event.id].blurb}` : null, eventKey);
   useSfx(view.event?.id === 'lastCall' ? 'alarm' : 'event', eventKey, useSharedSounds() && view.event !== null);
   useNewsSounds(news);
   return (
-    <div className="relative isolate mx-auto flex w-full max-w-[110rem] flex-1 flex-col gap-[clamp(0.6rem,1.6vh,1.25rem)]">
-      <MotionStyle />
-      <FloatingLanterns opened={view.opened} />
-      <Awning />
-      <div className="flex flex-wrap items-end justify-between gap-3 pt-[clamp(0.5rem,1.6vh,1.25rem)]">
-        <div className="min-w-0">
-          <h2 className={`font-display text-[clamp(2.25rem,min(4vw,7vh),4.75rem)] leading-none font-extrabold ${SIGN}`}>Night Market</h2>
-          <p className={`font-bold text-text-2 ${small}`}>
-            {plural(view.players, 'stall')} · {plural(opened, 'lantern')} opened{view.tricks ? ` · ${plural(view.tricksPlayed ?? 0, 'trick')}` : ''} · {formatNumber(view.coins ?? 0)} coins in the market
+    <div className="mx-auto flex w-full max-w-[110rem] flex-1 flex-col gap-[clamp(0.6rem,1.6vh,1.25rem)]">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="flex min-w-0 flex-col items-start gap-[clamp(0.25rem,0.8vh,0.5rem)]">
+          <ModeTitle>Night Market</ModeTitle>
+          <p className={`font-semibold text-text-2 ${small}`}>
+            <Stat n={view.players} one="stall" /> · <Stat n={opened} one="lantern" /> opened{view.tricks ? <> · <Stat n={view.tricksPlayed ?? 0} one="trick" /></> : null} · <Stat n={view.coins ?? 0} one="coin" /> in the market
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 text-[clamp(1.1rem,1.8vw,2rem)]">
           {view.goal ? (
-            <Pill tone="lantern" className="px-4 py-1.5 text-[clamp(1.1rem,1.8vw,2rem)]">
+            <Pill tone="lantern" className="px-5 py-1.5">
               <Flag className="size-[1em]" aria-hidden /> First to {formatNumber(view.goal)}
             </Pill>
           ) : null}
-          <Pill className="px-5 py-1.5 text-[clamp(1.25rem,2.2vw,2.5rem)]">
+          <Pill className="px-5 py-1.5 text-[1.15em]">
             <Countdown until={view.endsAt} gameNow={gameNow} label="Time left" />
           </Pill>
         </div>
@@ -1267,7 +1256,7 @@ export function NightMarketHost({ view, gameNow, room }: ModeScreenProps<NightMa
           </section>
           {view.teams ? (
             <StagePanel className="flex flex-col gap-3 p-[clamp(0.75rem,1.6vh,1.25rem)]">
-              <h3 className="font-display text-[clamp(1.4rem,min(2.2vw,3.9vh),2.5rem)] font-extrabold">Teams (average coins)</h3>
+              <h3 className="font-display text-[clamp(1.6rem,min(2.5vw,4.3vh),2.75rem)] font-bold">Teams (average coins)</h3>
               <TeamScores teams={view.teams.map((t) => ({ teamId: t.teamId, name: t.name, hue: t.hue, score: t.average }))} big />
             </StagePanel>
           ) : null}

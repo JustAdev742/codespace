@@ -22,6 +22,11 @@ import { motionOK } from '../game/stage.tsx';
  * frame; with reduced motion they only move when a view arrives and towers do
  * not flash. Every piece has its own shape and outline, so nothing depends on
  * colour.
+ *
+ * The look (docs/DESIGN.md): a crisp tactical map on the midnight stage. Flat
+ * ground a shade lighter than the stage, a lantern-lit road with a dark edge,
+ * solid rings for the free spots, and colours from the tokens. Nothing on the
+ * map moves unless the battle moves it.
  */
 
 export interface TowerView {
@@ -54,89 +59,102 @@ const SHOT_MS = 320;
 
 const SIZE: Record<GloomKind, number> = { wisp: 2.3, shade: 2.9, brute: 3.8, lord: 6 };
 
+/* The map's colours, from the tokens (app.css). */
+const INK = 'var(--ink)';
+const GOLD = 'var(--lantern)';
+const GOLD_DEEP = 'var(--lantern-deep)';
+/** Lacquer for the lantern's cap and base: the deep gold in shadow. */
+const BRONZE = 'color-mix(in oklab, var(--lantern-deep) 42%, var(--stage-4))';
+const WARM_WHITE = 'color-mix(in oklab, var(--lantern) 22%, white)';
+const ICE = 'color-mix(in oklab, var(--sky) 16%, white)';
+const ICE_BRIGHT = 'color-mix(in oklab, var(--sky) 55%, white)';
+const PAD = 'var(--stage-1)';
+const PAD_RIM = 'color-mix(in oklab, var(--floodlight) 50%, var(--stage-1))';
+/** The road: lantern light on pale stone, so the gloom's violet stands out on it. */
+const ROAD = 'color-mix(in oklab, var(--lantern) 50%, var(--r-common))';
+
 /** Shapes for each gloomling, centred on 0,0, facing right. Distinct outlines: a flame, a ghost, a horned block and a crowned giant. */
 export function GloomShape({ kind, slowed = false }: { kind: GloomKind; slowed?: boolean }) {
-  const ink = 'var(--ink)';
   switch (kind) {
     case 'wisp':
       return (
         <g>
-          <path d="M2.4 0C2.4 1.6 1.2 2.4 0 2.4C-1.4 2.4 -2.2 1.4 -3.8 1.6C-2.8 0.8 -3.4 0 -4.4 -0.6C-2.8 -0.8 -2.4 -2.4 0 -2.4C1.2 -2.4 2.4 -1.6 2.4 0Z" fill="#c9b6ff" stroke={ink} strokeWidth={0.5} strokeLinejoin="round" />
-          <circle cx={0.9} cy={-0.5} r={0.45} fill={ink} />
-          <circle cx={-0.3} cy={-0.5} r={0.45} fill={ink} />
+          <path d="M2.4 0C2.4 1.6 1.2 2.4 0 2.4C-1.4 2.4 -2.2 1.4 -3.8 1.6C-2.8 0.8 -3.4 0 -4.4 -0.6C-2.8 -0.8 -2.4 -2.4 0 -2.4C1.2 -2.4 2.4 -1.6 2.4 0Z" fill="var(--dusk)" stroke={INK} strokeWidth={0.5} strokeLinejoin="round" />
+          <circle cx={0.9} cy={-0.5} r={0.45} fill={INK} />
+          <circle cx={-0.3} cy={-0.5} r={0.45} fill={INK} />
           {slowed ? <SlowMark r={3} /> : null}
         </g>
       );
     case 'shade':
       return (
         <g>
-          <path d="M-2.6 2.8V-0.2C-2.6 -2 -1.4 -3 0 -3C1.4 -3 2.6 -2 2.6 -0.2V2.8L1.7 2L0.9 2.8L0 2L-0.9 2.8L-1.7 2Z" fill="#7a4fd6" stroke={ink} strokeWidth={0.55} strokeLinejoin="round" />
-          <ellipse cx={0.9} cy={-0.6} rx={0.55} ry={0.75} fill="#fff" stroke={ink} strokeWidth={0.25} />
-          <ellipse cx={-0.5} cy={-0.6} rx={0.55} ry={0.75} fill="#fff" stroke={ink} strokeWidth={0.25} />
-          <circle cx={1.05} cy={-0.5} r={0.28} fill={ink} />
-          <circle cx={-0.35} cy={-0.5} r={0.28} fill={ink} />
+          <path d="M-2.6 2.8V-0.2C-2.6 -2 -1.4 -3 0 -3C1.4 -3 2.6 -2 2.6 -0.2V2.8L1.7 2L0.9 2.8L0 2L-0.9 2.8L-1.7 2Z" fill="color-mix(in oklab, var(--dusk) 58%, var(--stage-4))" stroke={INK} strokeWidth={0.55} strokeLinejoin="round" />
+          <ellipse cx={0.9} cy={-0.6} rx={0.55} ry={0.75} fill="#fff" stroke={INK} strokeWidth={0.25} />
+          <ellipse cx={-0.5} cy={-0.6} rx={0.55} ry={0.75} fill="#fff" stroke={INK} strokeWidth={0.25} />
+          <circle cx={1.05} cy={-0.5} r={0.28} fill={INK} />
+          <circle cx={-0.35} cy={-0.5} r={0.28} fill={INK} />
           {slowed ? <SlowMark r={3.6} /> : null}
         </g>
       );
     case 'brute':
       return (
         <g>
-          <path d="M-2.6 -2.6L-3.6 -4.6L-1.6 -3.2M2.6 -2.6L3.6 -4.6L1.6 -3.2" fill="#e7dcc4" stroke={ink} strokeWidth={0.5} strokeLinejoin="round" />
-          <rect x={-3.4} y={-3.2} width={6.8} height={6.2} rx={1.8} fill="#4a4370" stroke={ink} strokeWidth={0.6} />
-          <path d="M-1.9 -1.5L-0.4 -0.9M1.9 -1.5L0.4 -0.9" stroke="#ffd36b" strokeWidth={0.55} strokeLinecap="round" />
-          <circle cx={-1.1} cy={-0.3} r={0.42} fill="#ffd36b" />
-          <circle cx={1.1} cy={-0.3} r={0.42} fill="#ffd36b" />
-          <path d="M-1.4 1.5H1.4" stroke={ink} strokeWidth={0.5} strokeLinecap="round" />
+          <path d="M-2.6 -2.6L-3.6 -4.6L-1.6 -3.2M2.6 -2.6L3.6 -4.6L1.6 -3.2" fill={WARM_WHITE} stroke={INK} strokeWidth={0.5} strokeLinejoin="round" />
+          <rect x={-3.4} y={-3.2} width={6.8} height={6.2} rx={1.8} fill="color-mix(in oklab, var(--floodlight) 26%, var(--stage-2))" stroke={INK} strokeWidth={0.6} />
+          <path d="M-1.9 -1.5L-0.4 -0.9M1.9 -1.5L0.4 -0.9" stroke={GOLD} strokeWidth={0.55} strokeLinecap="round" />
+          <circle cx={-1.1} cy={-0.3} r={0.42} fill={GOLD} />
+          <circle cx={1.1} cy={-0.3} r={0.42} fill={GOLD} />
+          <path d="M-1.4 1.5H1.4" stroke={INK} strokeWidth={0.5} strokeLinecap="round" />
           {slowed ? <SlowMark r={4.8} /> : null}
         </g>
       );
     case 'lord':
       return (
         <g>
-          <path d="M-5.2 5.4V-0.8C-5.2 -4 -3 -5.6 0 -5.6C3 -5.6 5.2 -4 5.2 -0.8V5.4L3.6 4L2 5.4L0 4L-2 5.4L-3.6 4Z" fill="#3b1d57" stroke="#ff5a6e" strokeWidth={0.7} strokeLinejoin="round" />
-          <path d="M-3.4 -4.6L-3 -7.8L-1.4 -5.6L0 -8.4L1.4 -5.6L3 -7.8L3.4 -4.6" fill="#ffb020" stroke={ink} strokeWidth={0.5} strokeLinejoin="round" />
-          <ellipse cx={0.6} cy={-1.2} rx={2} ry={1.6} fill="#fff1c7" stroke={ink} strokeWidth={0.4} />
-          <circle cx={1} cy={-1.2} r={0.9} fill="#ff5a6e" stroke={ink} strokeWidth={0.3} />
-          <path d="M-2.2 2.2Q0.6 3.6 3 2.2" fill="none" stroke="#ff5a6e" strokeWidth={0.5} strokeLinecap="round" />
+          <path d="M-5.2 5.4V-0.8C-5.2 -4 -3 -5.6 0 -5.6C3 -5.6 5.2 -4 5.2 -0.8V5.4L3.6 4L2 5.4L0 4L-2 5.4L-3.6 4Z" fill="color-mix(in oklab, var(--dusk) 32%, var(--stage-4))" stroke="var(--ember)" strokeWidth={0.7} strokeLinejoin="round" />
+          <path d="M-3.4 -4.6L-3 -7.8L-1.4 -5.6L0 -8.4L1.4 -5.6L3 -7.8L3.4 -4.6" fill={GOLD} stroke={INK} strokeWidth={0.5} strokeLinejoin="round" />
+          <ellipse cx={0.6} cy={-1.2} rx={2} ry={1.6} fill={WARM_WHITE} stroke={INK} strokeWidth={0.4} />
+          <circle cx={1} cy={-1.2} r={0.9} fill="var(--ember)" stroke={INK} strokeWidth={0.3} />
+          <path d="M-2.2 2.2Q0.6 3.6 3 2.2" fill="none" stroke="var(--ember)" strokeWidth={0.5} strokeLinecap="round" />
           {slowed ? <SlowMark r={7.2} /> : null}
         </g>
       );
   }
 }
 
+/** A frost tower's slow: an icy ring around the gloomling. */
 function SlowMark({ r }: { r: number }) {
-  return <circle r={r} fill="none" stroke="#bfe9ff" strokeWidth={0.45} strokeDasharray="0.9 0.7" />;
+  return <circle r={r} fill="none" stroke={ICE_BRIGHT} strokeWidth={0.5} />;
 }
 
-/** Tower drawings on a round stone pad: a bolt, a crystal, a snowflake and a rocket. */
+/** Tower drawings on a round pad: a bolt, a crystal, a snowflake and a rocket. */
 export function TowerShape({ kind, level }: { kind: TowerKind; level: number }) {
-  const ink = 'var(--ink)';
   return (
     <g>
-      <circle r={4.5} fill="#2c2466" stroke={ink} strokeWidth={0.6} />
-      <circle r={3.7} fill="none" stroke="#5a51b0" strokeWidth={0.35} />
+      <circle r={4.5} fill={PAD} stroke={INK} strokeWidth={0.6} />
+      <circle r={3.7} fill="none" stroke={PAD_RIM} strokeWidth={0.35} />
       {kind === 'spark' ? (
         <g>
-          <circle r={3} fill="#ffd36b" stroke={ink} strokeWidth={0.55} />
-          <path d="M0.5 -2.3L-1.4 0.3H0.1L-0.5 2.3L1.4 -0.4H-0.1Z" fill={ink} />
+          <circle r={3} fill={GOLD} stroke={INK} strokeWidth={0.55} />
+          <path d="M0.5 -2.3L-1.4 0.3H0.1L-0.5 2.3L1.4 -0.4H-0.1Z" fill={INK} />
         </g>
       ) : null}
       {kind === 'beam' ? (
         <g>
-          <path d="M0 -4.4L2.6 -0.3L0 3.4L-2.6 -0.3Z" fill="#7fd4ff" stroke={ink} strokeWidth={0.55} strokeLinejoin="round" />
+          <path d="M0 -4.4L2.6 -0.3L0 3.4L-2.6 -0.3Z" fill={ICE_BRIGHT} stroke={INK} strokeWidth={0.55} strokeLinejoin="round" />
           <path d="M0 -4.4L0.7 -0.3L0 3.4M-2.6 -0.3H2.6" fill="none" stroke="#fff" strokeWidth={0.35} opacity={0.85} />
         </g>
       ) : null}
       {kind === 'frost' ? (
         <g>
-          <path d="M0 -3.3L2.86 -1.65V1.65L0 3.3L-2.86 1.65V-1.65Z" fill="#dff4ff" stroke={ink} strokeWidth={0.55} strokeLinejoin="round" />
-          <path d="M0 -2.3V2.3M-2 -1.15L2 1.15M-2 1.15L2 -1.15" stroke="#2a7fc0" strokeWidth={0.45} strokeLinecap="round" />
+          <path d="M0 -3.3L2.86 -1.65V1.65L0 3.3L-2.86 1.65V-1.65Z" fill={ICE} stroke={INK} strokeWidth={0.55} strokeLinejoin="round" />
+          <path d="M0 -2.3V2.3M-2 -1.15L2 1.15M-2 1.15L2 -1.15" stroke="var(--sky)" strokeWidth={0.45} strokeLinecap="round" />
         </g>
       ) : null}
       {kind === 'firework' ? (
         <g transform="rotate(-35)">
-          <path d="M-1.2 2.2V-1.6L0 -3.6L1.2 -1.6V2.2Z" fill="#ff7a5c" stroke={ink} strokeWidth={0.5} strokeLinejoin="round" />
-          <path d="M-1.2 0.8L-2.4 2.6H-1.2M1.2 0.8L2.4 2.6H1.2" fill="#ffd36b" stroke={ink} strokeWidth={0.45} strokeLinejoin="round" />
+          <path d="M-1.2 2.2V-1.6L0 -3.6L1.2 -1.6V2.2Z" fill="var(--ember)" stroke={INK} strokeWidth={0.5} strokeLinejoin="round" />
+          <path d="M-1.2 0.8L-2.4 2.6H-1.2M1.2 0.8L2.4 2.6H1.2" fill={GOLD} stroke={INK} strokeWidth={0.45} strokeLinejoin="round" />
           <path d="M-1.2 -0.6H1.2" stroke="#fff" strokeWidth={0.45} />
         </g>
       ) : null}
@@ -149,8 +167,8 @@ export function TowerShape({ kind, level }: { kind: TowerKind; level: number }) 
 function Pennant() {
   return (
     <g transform="translate(3.2 -3.6)">
-      <path d="M0 0V-4.2" stroke="var(--ink)" strokeWidth={0.5} strokeLinecap="round" />
-      <path d="M0.2 -4.2L3 -3.3L0.2 -2.4Z" fill="#fff" stroke="var(--ink)" strokeWidth={0.35} strokeLinejoin="round" />
+      <path d="M0 0V-4.2" stroke={INK} strokeWidth={0.5} strokeLinecap="round" />
+      <path d="M0.2 -4.2L3 -3.3L0.2 -2.4Z" fill="#fff" stroke={INK} strokeWidth={0.35} strokeLinejoin="round" />
     </g>
   );
 }
@@ -159,7 +177,7 @@ function LevelPips({ level }: { level: number }) {
   return (
     <g transform="translate(0 5.2)">
       {Array.from({ length: level }, (_, i) => (
-        <circle key={i} cx={(i - (level - 1) / 2) * 1.9} r={0.75} fill="#fff" stroke="var(--ink)" strokeWidth={0.35} />
+        <circle key={i} cx={(i - (level - 1) / 2) * 1.9} r={0.75} fill="#fff" stroke={INK} strokeWidth={0.35} />
       ))}
     </g>
   );
@@ -171,20 +189,20 @@ function GreatLantern({ at, glow, hurt }: { at: Point; glow: number; hurt: numbe
   return (
     <g transform={`translate(${x} ${y})`}>
       <circle cy={-9} r={8 + glow * 10} fill="url(#lg-halo)" opacity={0.35 + glow * 0.65} />
-      <path d="M0 0V-3" stroke="var(--ink)" strokeWidth={1.2} />
-      <ellipse cy={0.4} rx={4.2} ry={1.3} fill="#2c2466" stroke="var(--ink)" strokeWidth={0.5} />
+      <path d="M0 0V-3" stroke={INK} strokeWidth={1.2} />
+      <ellipse cy={0.4} rx={4.2} ry={1.3} fill={PAD} stroke={INK} strokeWidth={0.5} />
       <g key={hurt} style={hurt ? { animation: 'lg-flicker 700ms ease-out' } : undefined}>
-        <path d="M-3.6 -17H3.6L4.6 -15H-4.6Z" fill="#5b2a1c" stroke="var(--ink)" strokeWidth={0.5} strokeLinejoin="round" />
-        <path d="M-5 -14.8C-5 -16 -2.8 -16.4 0 -16.4C2.8 -16.4 5 -16 5 -14.8V-5.4C5 -4.2 2.8 -3.8 0 -3.8C-2.8 -3.8 -5 -4.2 -5 -5.4Z" fill={glow > 0 ? '#ffcf5c' : '#7b6a8f'} stroke="var(--ink)" strokeWidth={0.6} />
-        <ellipse cy={-10} rx={3.2} ry={4.2} fill="#fff6d0" opacity={0.25 + glow * 0.65} />
-        <path d="M-2.6 -16V-4.2M2.6 -16V-4.2M0 -16.4V-3.8" stroke="#b5651d" strokeWidth={0.35} opacity={0.6} />
-        <path d="M-3.4 -3.8H3.4L2.6 -2.6H-2.6Z" fill="#5b2a1c" stroke="var(--ink)" strokeWidth={0.45} strokeLinejoin="round" />
+        <path d="M-3.6 -17H3.6L4.6 -15H-4.6Z" fill={BRONZE} stroke={INK} strokeWidth={0.5} strokeLinejoin="round" />
+        <path d="M-5 -14.8C-5 -16 -2.8 -16.4 0 -16.4C2.8 -16.4 5 -16 5 -14.8V-5.4C5 -4.2 2.8 -3.8 0 -3.8C-2.8 -3.8 -5 -4.2 -5 -5.4Z" fill={glow > 0 ? GOLD : 'var(--r-common)'} stroke={INK} strokeWidth={0.6} />
+        <ellipse cy={-10} rx={3.2} ry={4.2} fill={WARM_WHITE} opacity={0.25 + glow * 0.65} />
+        <path d="M-2.6 -16V-4.2M2.6 -16V-4.2M0 -16.4V-3.8" stroke={GOLD_DEEP} strokeWidth={0.35} opacity={0.7} />
+        <path d="M-3.4 -3.8H3.4L2.6 -2.6H-2.6Z" fill={BRONZE} stroke={INK} strokeWidth={0.45} strokeLinejoin="round" />
       </g>
     </g>
   );
 }
 
-/** Small scenery in the open ground (trees, stones and flowers), the same every time for a map. */
+/** A few trees and stones in the open ground, the same every time for a map: flat and dark, so the road and the battle stay on top. */
 function useScenery(map: GuardMap) {
   return useMemo(() => {
     let h = 2166136261;
@@ -201,74 +219,57 @@ function useScenery(map: GuardMap) {
       roadPts.every(([px, py]) => (px - x) ** 2 + (py - y) ** 2 > road * road) &&
       map.spots.every(([sx, sy]) => (sx - x) ** 2 + (sy - y) ** 2 > spot * spot) &&
       (map.lantern[0] - x) ** 2 + (map.lantern[1] - 10 - y) ** 2 > 196;
-    const items: { kind: 'tree' | 'stone' | 'flower'; x: number; y: number; s: number }[] = [];
-    for (let i = 0; i < 260 && items.length < 46; i++) {
+    const items: { kind: 'tree' | 'stone'; x: number; y: number; s: number }[] = [];
+    for (let i = 0; i < 260 && items.length < 30; i++) {
       const x = 3 + rand() * (MAP_W - 6);
       const y = 3 + rand() * (MAP_H - 6);
-      const r = rand();
-      const kind = r < 0.45 ? 'tree' : r < 0.7 ? 'stone' : 'flower';
+      const kind = rand() < 0.6 ? 'tree' : 'stone';
       if (!clear(x, y, kind === 'tree' ? 9 : 7, kind === 'tree' ? 7.5 : 5.5)) continue;
       if (items.some((o) => (o.x - x) ** 2 + (o.y - y) ** 2 < 25)) continue;
       items.push({ kind, x, y, s: 0.8 + rand() * 0.5 });
     }
-    const flies = Array.from({ length: 18 }, () => ({ x: rand() * MAP_W, y: rand() * MAP_H, d: rand() * 4 }));
-    return { items, flies };
+    return items;
   }, [map]);
 }
 
-/** The ground, scenery, road, entrances, spots and the lantern's post: everything that never moves. */
-const Ground = memo(function Ground({ map, compact }: { map: GuardMap; compact: boolean }) {
-  const { items, flies } = useScenery(map);
+/** The ground, scenery, road, entrances and spots: everything that never moves. */
+const Ground = memo(function Ground({ map }: { map: GuardMap }) {
+  const items = useScenery(map);
   const roads = map.paths.map((p) => p.points.map((q) => q.join(',')).join(' '));
   return (
     <g>
       <rect width={MAP_W} height={MAP_H} fill="url(#lg-ground)" />
-      {map.id === 'river' ? <path d="M-2 62C12 58 22 70 34 76C44 81 50 92 52 96H-2Z" fill="#1d4a7a" opacity={0.75} stroke="#3d7fbf" strokeWidth={0.6} /> : null}
-      {map.id === 'spiral' ? <ellipse cx={64} cy={57} rx={22} ry={7} fill="none" stroke="#3a3178" strokeWidth={0.6} strokeDasharray="2 1.5" /> : null}
+      {map.id === 'river' ? <path d="M-2 62C12 58 22 70 34 76C44 81 50 92 52 96H-2Z" fill="color-mix(in oklab, var(--sky) 30%, var(--stage-3))" stroke="color-mix(in oklab, var(--sky) 58%, var(--stage-3))" strokeWidth={0.6} /> : null}
       {items.map((o, i) =>
         o.kind === 'tree' ? (
           <g key={i} transform={`translate(${o.x} ${o.y}) scale(${o.s})`}>
-            <circle cy={0.6} r={2.6} fill="#13304a" />
-            <circle r={2.4} fill="#1f5a52" stroke="#0e2a2a" strokeWidth={0.35} />
-            <circle cx={-0.7} cy={-0.7} r={0.9} fill="#2f7a68" />
+            <circle cy={0.6} r={2.6} fill="var(--stage-4)" opacity={0.7} />
+            <circle r={2.4} fill="color-mix(in oklab, var(--tile-f) 28%, var(--stage-2))" stroke="var(--stage-4)" strokeWidth={0.35} />
           </g>
-        ) : o.kind === 'stone' ? (
-          <ellipse key={i} cx={o.x} cy={o.y} rx={1.3 * o.s} ry={0.9 * o.s} fill="#4b4486" stroke="#2a245c" strokeWidth={0.3} />
         ) : (
-          <g key={i} transform={`translate(${o.x} ${o.y})`}>
-            <circle r={0.55} fill="#ff85d8" />
-            <circle cx={1.3} cy={0.5} r={0.45} fill="#ffd36b" />
-          </g>
+          <ellipse key={i} cx={o.x} cy={o.y} rx={1.3 * o.s} ry={0.9 * o.s} fill="color-mix(in oklab, var(--floodlight) 26%, var(--stage-2))" stroke="var(--stage-4)" strokeWidth={0.3} />
         ),
       )}
-      {!compact
-        ? flies.map((f, i) => <circle key={i} cx={f.x} cy={f.y} r={0.35} fill="#fff4b0" className="lg-firefly" style={{ animationDelay: `${f.d}s` }} />)
-        : null}
-      {/* The glowing road: a soft halo, an ink edge, the stones and a dashed centre line. */}
+      {/* The road: a dark edge and the lit stone, crisp. */}
       {roads.map((pts, i) => (
-        <polyline key={`h${i}`} points={pts} fill="none" stroke="#ffb020" strokeOpacity={0.22} strokeWidth={compact ? 12 : 15} strokeLinecap="round" strokeLinejoin="round" filter={compact ? undefined : 'url(#lg-soft)'} />
+        <polyline key={`e${i}`} points={pts} fill="none" stroke="var(--stage-4)" strokeWidth={9.6} strokeLinecap="round" strokeLinejoin="round" />
       ))}
       {roads.map((pts, i) => (
-        <polyline key={`e${i}`} points={pts} fill="none" stroke="var(--ink)" strokeWidth={9.6} strokeLinecap="round" strokeLinejoin="round" />
+        <polyline key={`r${i}`} points={pts} fill="none" stroke={ROAD} strokeWidth={8} strokeLinecap="round" strokeLinejoin="round" />
       ))}
-      {roads.map((pts, i) => (
-        <polyline key={`r${i}`} points={pts} fill="none" stroke="#c9945a" strokeWidth={8} strokeLinecap="round" strokeLinejoin="round" />
-      ))}
-      {roads.map((pts, i) => (
-        <polyline key={`c${i}`} points={pts} fill="none" stroke="#f7d9a0" strokeWidth={0.7} strokeDasharray="2.4 2.2" strokeLinecap="round" opacity={0.85} />
-      ))}
-      {/* Where the gloom comes from: a dark cloud at each entrance. */}
+      {/* Where the gloom comes from: a dark gate at each entrance. */}
       {map.paths.map((p, i) => {
         const [x, y] = p.points[0]!;
         return (
           <g key={`g${i}`} transform={`translate(${Math.max(4, x + 10)} ${y})`}>
             <circle r={7} fill="url(#lg-gloom)" />
-            <circle cx={-1} cy={-1} r={3.4} fill="#1a0c2e" stroke="#7a4fd6" strokeWidth={0.5} strokeDasharray="1.4 1" />
+            <circle cx={-1} cy={-1} r={3.4} fill="var(--stage-4)" stroke="var(--dusk)" strokeWidth={0.6} />
           </g>
         );
       })}
+      {/* Free spots: solid rings where a tower can go. */}
       {map.spots.map(([x, y], i) => (
-        <circle key={`s${i}`} cx={x} cy={y} r={3.8} fill="#211a52" fillOpacity={0.85} stroke="#a99cf0" strokeWidth={0.45} strokeDasharray="1.2 0.9" />
+        <circle key={`s${i}`} cx={x} cy={y} r={3.8} fill="var(--stage-4)" fillOpacity={0.72} stroke="rgb(255 255 255 / 0.34)" strokeWidth={0.4} />
       ))}
     </g>
   );
@@ -277,28 +278,24 @@ const Ground = memo(function Ground({ map, compact }: { map: GuardMap; compact: 
 function Defs() {
   return (
     <defs>
-      <radialGradient id="lg-ground" cx="70%" cy="45%" r="85%">
-        <stop offset="0%" stopColor="#2a2470" />
-        <stop offset="60%" stopColor="#1a1550" />
-        <stop offset="100%" stopColor="#100c34" />
+      <radialGradient id="lg-ground" cx="62%" cy="40%" r="85%">
+        <stop offset="0%" stopColor="color-mix(in oklab, var(--floodlight) 24%, var(--stage-2))" />
+        <stop offset="100%" stopColor="var(--stage-2)" />
       </radialGradient>
       <radialGradient id="lg-halo">
-        <stop offset="0%" stopColor="#ffe08a" stopOpacity="0.9" />
-        <stop offset="55%" stopColor="#ffb020" stopOpacity="0.35" />
-        <stop offset="100%" stopColor="#ffb020" stopOpacity="0" />
+        <stop offset="0%" stopColor={WARM_WHITE} stopOpacity="0.9" />
+        <stop offset="55%" stopColor={GOLD} stopOpacity="0.35" />
+        <stop offset="100%" stopColor={GOLD} stopOpacity="0" />
       </radialGradient>
       <radialGradient id="lg-gloom">
-        <stop offset="0%" stopColor="#4b1f7a" stopOpacity="0.95" />
-        <stop offset="100%" stopColor="#4b1f7a" stopOpacity="0" />
+        <stop offset="0%" stopColor="var(--dusk)" stopOpacity="0.55" />
+        <stop offset="100%" stopColor="var(--dusk)" stopOpacity="0" />
       </radialGradient>
       <radialGradient id="lg-flare">
-        <stop offset="0%" stopColor="#fff6d0" stopOpacity="0.95" />
-        <stop offset="40%" stopColor="#ffd36b" stopOpacity="0.55" />
-        <stop offset="100%" stopColor="#ffb020" stopOpacity="0" />
+        <stop offset="0%" stopColor={WARM_WHITE} stopOpacity="0.95" />
+        <stop offset="40%" stopColor={GOLD} stopOpacity="0.55" />
+        <stop offset="100%" stopColor={GOLD_DEEP} stopOpacity="0" />
       </radialGradient>
-      <filter id="lg-soft" x="-10%" y="-10%" width="120%" height="120%">
-        <feGaussianBlur stdDeviation="1.6" />
-      </filter>
     </defs>
   );
 }
@@ -311,30 +308,30 @@ function ShotMark({ kind, from, to, splash }: { kind: TowerKind; from: Point; to
   if (kind === 'spark') {
     const mx = (x1 + x2) / 2 + (y2 - y1) * 0.15;
     const my = (y1 + y2) / 2 - (x2 - x1) * 0.15;
-    return <polyline points={`${x1},${y1} ${mx},${my} ${x2},${y2}`} fill="none" stroke="#ffe27a" strokeWidth={0.8} strokeLinejoin="round" style={style} />;
+    return <polyline points={`${x1},${y1} ${mx},${my} ${x2},${y2}`} fill="none" stroke={GOLD} strokeWidth={0.8} strokeLinejoin="round" style={style} />;
   }
   if (kind === 'beam')
     return (
       <g style={style}>
-        <line x1={x1} y1={y1} x2={x2} y2={y2} stroke="#7fd4ff" strokeWidth={2} strokeLinecap="round" opacity={0.6} />
+        <line x1={x1} y1={y1} x2={x2} y2={y2} stroke={ICE_BRIGHT} strokeWidth={2} strokeLinecap="round" opacity={0.6} />
         <line x1={x1} y1={y1} x2={x2} y2={y2} stroke="#fff" strokeWidth={0.7} strokeLinecap="round" />
       </g>
     );
   if (kind === 'frost')
     return (
       <g style={style}>
-        <line x1={x1} y1={y1} x2={x2} y2={y2} stroke="#bfe9ff" strokeWidth={0.7} strokeDasharray="1 0.8" />
-        <circle cx={x2} cy={y2} r={2.4} fill="#dff4ff" opacity={0.6} />
+        <line x1={x1} y1={y1} x2={x2} y2={y2} stroke={ICE_BRIGHT} strokeWidth={0.7} strokeLinecap="round" />
+        <circle cx={x2} cy={y2} r={2.4} fill={ICE} opacity={0.6} />
       </g>
     );
   const cx = (x1 + x2) / 2;
   const cy = Math.min(y1, y2) - 8;
   return (
     <g style={{ animation: `lg-shot ${SHOT_MS + 180}ms ease-out forwards` }}>
-      <path d={`M${x1} ${y1}Q${cx} ${cy} ${x2} ${y2}`} fill="none" stroke="#ffb18a" strokeWidth={0.6} strokeDasharray="1.2 1" />
-      <circle cx={x2} cy={y2} r={splash} fill="#ff7a5c" fillOpacity={0.18} stroke="#ffd36b" strokeWidth={0.6} />
+      <path d={`M${x1} ${y1}Q${cx} ${cy} ${x2} ${y2}`} fill="none" stroke="var(--ember)" strokeWidth={0.6} strokeLinecap="round" />
+      <circle cx={x2} cy={y2} r={splash} fill="var(--ember)" fillOpacity={0.18} stroke={GOLD} strokeWidth={0.6} />
       {[0, 60, 120, 180, 240, 300].map((a) => (
-        <line key={a} x1={x2} y1={y2} x2={x2 + Math.cos((a * Math.PI) / 180) * splash * 0.8} y2={y2 + Math.sin((a * Math.PI) / 180) * splash * 0.8} stroke="#ffd36b" strokeWidth={0.5} strokeLinecap="round" />
+        <line key={a} x1={x2} y1={y2} x2={x2 + Math.cos((a * Math.PI) / 180) * splash * 0.8} y2={y2 + Math.sin((a * Math.PI) / 180) * splash * 0.8} stroke={GOLD} strokeWidth={0.5} strokeLinecap="round" />
       ))}
     </g>
   );
@@ -358,7 +355,7 @@ interface FieldProps {
   maxLights: number;
   flareAt: number | null;
   gameNow: () => number;
-  /** The projector draws the scenery's glow and every health bar; a phone keeps it lighter. */
+  /** A phone keeps the battle lighter: health bars only for Brutes and Gloom Lords. */
   compact?: boolean;
   selection?: Selection;
   /** The reach to draw around the selection (a tower's, or the tower about to be built). */
@@ -437,11 +434,13 @@ export function Battlefield({ mapId, tick, towers, gloom, lights, maxLights, fla
       onPointerUp={onPick ? pick : undefined}
     >
       <Defs />
-      <Ground map={map} compact={compact} />
+      <Ground map={map} />
       <GreatLantern at={map.lantern} glow={maxLights > 0 ? lights / maxLights : 0} hurt={effects.hurt} />
       {hint !== null && map.spots[hint] ? (
+        // The best free spot: a gold marker with a plus, build here.
         <g transform={`translate(${map.spots[hint]![0]} ${map.spots[hint]![1]})`} aria-hidden>
-          <path d="M0 -2.6L0.8 -0.8L2.6 -0.6L1.2 0.6L1.6 2.4L0 1.4L-1.6 2.4L-1.2 0.6L-2.6 -0.6L-0.8 -0.8Z" fill="#ffd36b" stroke="var(--ink)" strokeWidth={0.35} />
+          <circle r={2.5} fill={GOLD} stroke={INK} strokeWidth={0.4} />
+          <path d="M-1.25 0H1.25M0 -1.25V1.25" stroke={INK} strokeWidth={0.6} strokeLinecap="round" />
         </g>
       ) : null}
       {towers.map((t) => {
@@ -456,12 +455,17 @@ export function Battlefield({ mapId, tick, towers, gloom, lights, maxLights, fla
       })}
       {selSpot ? (
         <g transform={`translate(${selSpot[0]} ${selSpot[1]})`} pointerEvents="none">
-          {reach ? <circle r={reach} fill="#ffd36b" fillOpacity={0.1} stroke="#ffd36b" strokeWidth={0.5} strokeDasharray="2 1.4" /> : null}
-          <circle r={6.2} fill="none" stroke="var(--ink)" strokeWidth={1.6} />
-          <circle r={6.2} fill="none" stroke="#ffd36b" strokeWidth={0.9} className={moving ? 'lg-pulse' : undefined} />
+          {reach ? <circle r={reach} fill={GOLD} fillOpacity={0.1} stroke={GOLD} strokeWidth={0.5} /> : null}
+          <circle r={6.2} fill="none" stroke={INK} strokeWidth={1.6} />
+          <circle r={6.2} fill="none" stroke={GOLD} strokeWidth={0.9} />
         </g>
       ) : null}
-      {selection?.kind === 'lantern' ? <circle cx={map.lantern[0]} cy={map.lantern[1] - 9} r={10} fill="none" stroke="#ffd36b" strokeWidth={0.9} pointerEvents="none" /> : null}
+      {selection?.kind === 'lantern' ? (
+        <g pointerEvents="none">
+          <circle cx={map.lantern[0]} cy={map.lantern[1] - 9} r={10} fill="none" stroke={INK} strokeWidth={1.6} />
+          <circle cx={map.lantern[0]} cy={map.lantern[1] - 9} r={10} fill="none" stroke={GOLD} strokeWidth={0.9} />
+        </g>
+      ) : null}
       {moving
         ? towers.map((t) => {
             if (!t.shot || tick - t.shot.at > SHOT_MS) return null;
@@ -488,8 +492,8 @@ export function Battlefield({ mapId, tick, towers, gloom, lights, maxLights, fla
             </g>
             {showBar ? (
               <g transform={`translate(${-w / 2} ${-SIZE[g.kind] - 2.6})`}>
-                <rect width={w} height={1.1} rx={0.5} fill="#120c30" stroke="var(--ink)" strokeWidth={0.25} />
-                <rect width={Math.max(0, (w * g.hp) / Math.max(1, g.max))} height={1.1} rx={0.5} fill={g.kind === 'lord' ? '#ff5a6e' : '#7cf2c6'} />
+                <rect width={w} height={1.1} rx={0.5} fill="var(--stage-4)" stroke={INK} strokeWidth={0.25} />
+                <rect width={Math.max(0, (w * g.hp) / Math.max(1, g.max))} height={1.1} rx={0.5} fill={g.kind === 'lord' ? 'var(--ember)' : 'var(--glim)'} />
               </g>
             ) : null}
           </g>
@@ -542,7 +546,7 @@ function useBattleEffects(map: GuardMap, tick: number, gloom: GloomView[], light
         until: now + 600,
         node: (
           <g key={`p${g.id}`} transform={`translate(${x} ${y})`} pointerEvents="none">
-            <circle r={r * 1.6} fill="none" stroke="#fff4b0" strokeWidth={0.6} style={{ animation: 'lg-puff 520ms ease-out forwards', transformBox: 'fill-box', transformOrigin: 'center' }} />
+            <circle r={r * 1.6} fill="none" stroke={WARM_WHITE} strokeWidth={0.6} style={{ animation: 'lg-puff 520ms ease-out forwards', transformBox: 'fill-box', transformOrigin: 'center' }} />
           </g>
         ),
       });
@@ -565,39 +569,29 @@ function useBattleEffects(map: GuardMap, tick: number, gloom: GloomView[], light
   return { marks: marks.map((m) => m.node), hurt };
 }
 
-/** A row of little lanterns, one per light: lit ones filled, lost ones a dashed outline. */
+/** A row of little lanterns, one per light: lit ones solid gold, lost ones a hollow outline of the same shape. */
 export function LightsRow({ lights, max, size = 18 }: { lights: number; max: number; size?: number }) {
   return (
     <span className="flex flex-wrap items-center gap-[0.15em]" role="img" aria-label={`${lights} of ${max} lights still burning`}>
-      {Array.from({ length: max }, (_, i) => (
-        <svg key={i} viewBox="0 0 12 16" width={size * 0.75} height={size} aria-hidden focusable={false}>
-          <path d="M3.5 1.5H8.5L9.2 3H2.8Z" fill={i < lights ? '#5b2a1c' : 'none'} stroke={i < lights ? 'var(--ink)' : 'rgb(255 255 255 / 0.45)'} strokeWidth={0.9} />
-          <rect
-            x={1.6}
-            y={3}
-            width={8.8}
-            height={10}
-            rx={3.4}
-            fill={i < lights ? '#ffcf5c' : 'none'}
-            stroke={i < lights ? 'var(--ink)' : 'rgb(255 255 255 / 0.45)'}
-            strokeWidth={1}
-            strokeDasharray={i < lights ? undefined : '1.6 1.3'}
-          />
-          {i < lights ? <ellipse cx={6} cy={8} rx={2.2} ry={3} fill="#fff6d0" opacity={0.8} /> : null}
-        </svg>
-      ))}
+      {Array.from({ length: max }, (_, i) => {
+        const lit = i < lights;
+        const line = lit ? GOLD_DEEP : 'rgb(255 255 255 / 0.4)';
+        return (
+          <svg key={i} viewBox="0 0 12 16" width={size * 0.75} height={size} aria-hidden focusable={false}>
+            <path d="M3.5 1.5H8.5L9.2 3H2.8Z" fill={lit ? GOLD_DEEP : 'none'} stroke={line} strokeWidth={0.9} strokeLinejoin="round" />
+            <rect x={1.6} y={3} width={8.8} height={10} rx={3.4} fill={lit ? GOLD : 'none'} stroke={line} strokeWidth={1.1} />
+            {lit ? <ellipse cx={6} cy={8} rx={2.2} ry={3} fill={WARM_WHITE} opacity={0.85} /> : null}
+          </svg>
+        );
+      })}
     </span>
   );
 }
 
-/** The CSS this battlefield animates with, written once for both screens. */
+/** The CSS this battlefield animates with, written once for both screens: shots, puffs, the flare and the lantern's flicker when it is hurt. */
 export const FIELD_CSS = `
 @keyframes lg-shot { from { opacity: 1 } to { opacity: 0 } }
 @keyframes lg-puff { from { opacity: 1; transform: scale(0.4) } to { opacity: 0; transform: scale(1.4) } }
 @keyframes lg-flare { 0% { opacity: 0; transform: scale(0.05) } 25% { opacity: 1 } 100% { opacity: 0; transform: scale(1) } }
 @keyframes lg-flicker { 0%, 100% { opacity: 1 } 20% { opacity: 0.35 } 45% { opacity: 0.9 } 65% { opacity: 0.5 } }
-@keyframes lg-twinkle { 0%, 100% { opacity: 0.15 } 50% { opacity: 0.9 } }
-@keyframes lg-pulse { 0%, 100% { stroke-opacity: 1 } 50% { stroke-opacity: 0.35 } }
-.lg-firefly { animation: lg-twinkle 3.6s ease-in-out infinite; }
-.lg-pulse { animation: lg-pulse 1.2s ease-in-out infinite; }
 `;
