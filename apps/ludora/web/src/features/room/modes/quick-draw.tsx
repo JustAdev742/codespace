@@ -1,4 +1,4 @@
-import { Lock, Target, Timer, Zap } from 'lucide-react';
+import { Lock, Target, Timer } from 'lucide-react';
 import type { Answer, AnswerReveal, RoomPlayerView } from '@ludora/shared';
 import type { ModeScreenProps } from './registry.ts';
 import type { QuestionView } from '../game/types.ts';
@@ -7,8 +7,8 @@ import { QuestionCard } from '../game/QuestionCard.tsx';
 import { TimerBar } from '../game/TimerBar.tsx';
 import { ChoicesDisplay, RevealAnswer } from '../game/Reveal.tsx';
 import { Leaderboard, TeamScores, type LeaderRow } from '../game/Leaderboard.tsx';
-import { Explanation, IntroScreen, RoundHeader, myAvatar } from '../game/parts.tsx';
-import { NIGHT, Pill, PlayerGlim, SIGN, StagePanel, avatarOf } from '../game/stage.tsx';
+import { Explanation, HudCount, HudScore, IntroScreen, RoundHeader, myAvatar } from '../game/parts.tsx';
+import { NIGHT, Pill, PlayerGlim, StagePanel, avatarOf } from '../game/stage.tsx';
 import { useAnnounce } from '../game/announce.tsx';
 
 /* Quick Draw: buzzer rounds. The first correct answer takes the round; a wrong answer locks you out of it. */
@@ -70,7 +70,7 @@ function RulesText({ text, big }: { text: string; big: boolean }) {
 
 function Intro({ view, gameNow, room, big = false }: { view: QuickDrawView; gameNow: () => number; room: ModeScreenProps['room']; big?: boolean }) {
   return (
-    <IntroScreen title={room.room.title} until={view.sync.phaseEndsAt} gameNow={gameNow} room={room} big={big} art={<Zap className={`${big ? 'size-[clamp(4rem,10vh,6.5rem)]' : 'size-14'} fill-lantern text-ink`} aria-hidden />}>
+    <IntroScreen kicker="Get ready" title={room.room.title} until={view.sync.phaseEndsAt} gameNow={gameNow} room={room} big={big}>
       <RulesText text={rulesText(view, room)} big={big} />
     </IntroScreen>
   );
@@ -87,9 +87,9 @@ function JoinedLate() {
 function FirstIn({ winner, players, you, side = false }: { winner: Buzz | null; players: RoomPlayerView[]; you?: QuickDrawView['you']; side?: boolean }) {
   if (!winner) {
     return (
-      <StagePanel className={`border-2 border-dashed border-white/30 text-center ${side ? 'px-5 py-[clamp(0.6rem,1.6vh,1.25rem)]' : 'px-5 py-4'}`}>
-        <div role="status" style={{ animation: 'pop-in 260ms var(--ease-spring)' }}>
-          <p className={`font-display font-extrabold ${side ? 'text-[clamp(1.75rem,min(3vw,5.4vh),3.5rem)]' : 'text-3xl'}`}>Nobody got it</p>
+      <StagePanel className={`text-center ${side ? 'px-5 py-[clamp(0.6rem,1.6vh,1.25rem)]' : 'px-5 py-4'}`}>
+        <div role="status" style={{ animation: 'pop-in 200ms var(--ease-out)' }}>
+          <p className={`font-display font-extrabold ${side ? 'text-[clamp(1.9rem,min(3.2vw,5.6vh),3.75rem)]' : 'text-[2.1rem]'}`}>Nobody got it</p>
           <p className={`font-semibold text-text-2 ${side ? 'text-[clamp(1rem,min(1.4vw,2.5vh),1.6rem)]' : ''}`}>No point this round.</p>
         </div>
       </StagePanel>
@@ -99,13 +99,13 @@ function FirstIn({ winner, players, you, side = false }: { winner: Buzz | null; 
   return (
     <div
       role="status"
-      className={`flex items-center rounded-[24px] border-[3px] border-ink text-on-accent shadow-[0_5px_0_var(--ink)] ${side ? 'gap-[clamp(0.75rem,1.4vw,1.25rem)] px-[clamp(0.75rem,1.4vw,1.25rem)] py-[clamp(0.4rem,1.2vh,0.75rem)]' : 'gap-4 px-4 py-3'} ${mine ? 'bg-glim' : 'bg-lantern'}`}
-      style={{ animation: 'pop-in 320ms var(--ease-spring)' }}
+      className={`lift flex items-center rounded-[var(--radius-l)] text-on-accent ${side ? 'gap-[clamp(0.75rem,1.4vw,1.25rem)] px-[clamp(0.75rem,1.4vw,1.25rem)] py-[clamp(0.4rem,1.2vh,0.75rem)]' : 'gap-4 px-4 py-3'} ${mine ? 'bg-glim' : 'bg-lantern'}`}
+      style={{ animation: 'pop-in 200ms var(--ease-out)' }}
     >
-      <PlayerGlim avatar={avatarOf(players, winner.playerId)} seed={winner.playerId} size={side ? 110 : 76} aura="legendary" pose="cheer" bob className={side ? 'size-[clamp(3.25rem,9vh,6rem)] shrink-0' : 'shrink-0'} />
+      <PlayerGlim avatar={avatarOf(players, winner.playerId)} seed={winner.playerId} size={side ? 110 : 76} aura="legendary" pose="cheer" className={side ? 'size-[clamp(3.25rem,9vh,6rem)] shrink-0' : 'shrink-0'} />
       <div className="min-w-0 flex-1">
-        <p className={`font-display font-bold ${side ? 'text-[clamp(1rem,min(1.5vw,2.7vh),1.6rem)]' : 'text-lg'}`}>{mine ? 'You were first!' : 'First in'}</p>
-        <p className={`truncate font-display leading-tight font-extrabold ${side ? 'text-[clamp(1.6rem,min(2.8vw,5vh),3.25rem)]' : 'text-4xl'}`}>{mine ? '+1 point' : winner.name}</p>
+        <p className={`font-bold ${side ? 'text-[clamp(1rem,min(1.5vw,2.7vh),1.6rem)]' : 'text-lg'}`}>{mine ? 'You were first' : 'First in'}</p>
+        <p className={`truncate font-display leading-tight font-extrabold italic ${side ? 'text-[clamp(1.75rem,min(3vw,5.2vh),3.5rem)]' : 'text-[2.5rem]'}`}>{mine ? '+1 point' : winner.name}</p>
         <p className={side ? 'text-[clamp(1.05rem,min(1.6vw,2.8vh),1.75rem)]' : 'text-xl'}>
           <span className="flex items-center gap-2 font-display font-extrabold tabular">
             <Timer className="size-[1em]" aria-hidden />
@@ -131,7 +131,7 @@ function Tally({ view, room, big = false, dense = false, limit }: { view: QuickD
     <div className="flex flex-col gap-3">
       {view.teams ? <TeamScores teams={view.teams} big={big} /> : null}
       <Leaderboard rows={rows} you={you} players={room.players} teams={room.room.teams} big={big} dense={dense} label={(r) => points(r.score)} />
-      {lost.length ? <p className={`rounded-[14px] px-3 py-2 font-semibold text-ember ${NIGHT} ${big ? 'text-[clamp(1rem,1.4vw,1.5rem)]' : 'text-sm'}`}>Lost a point for a wrong answer: {lost.join(', ')}</p> : null}
+      {lost.length ? <p className={`rounded-[var(--radius-m)] px-3 py-2 font-semibold text-ember ${NIGHT} ${big ? 'text-[clamp(1rem,1.4vw,1.5rem)]' : 'text-sm'}`}>Lost a point for a wrong answer: {lost.join(', ')}</p> : null}
     </div>
   );
 }
@@ -152,7 +152,7 @@ export function QuickDrawPlayer({ view, act, gameNow, paused, room }: ModeScreen
   if (s.phase === 'leaderboard' || s.phase === 'done') {
     return (
       <div className="mx-auto flex w-full max-w-xl flex-col gap-4">
-        <h2 className={`font-display text-3xl font-extrabold ${SIGN}`}>Round wins</h2>
+        <h2 className="font-display text-[2.25rem] font-bold">Round wins</h2>
         <Tally view={view} room={room} />
       </div>
     );
@@ -166,20 +166,20 @@ export function QuickDrawPlayer({ view, act, gameNow, paused, room }: ModeScreen
     <div className="mx-auto flex w-full max-w-3xl flex-col gap-3 sm:gap-4">
       <RoundHeader round={s.round} total={s.total}>
         <TargetBadge target={view.target} />
-        <Pill>{points(you?.score ?? 0)}</Pill>
+        <HudScore value={you?.score ?? 0} unit={(you?.score ?? 0) === 1 ? 'point' : 'points'} />
       </RoundHeader>
       {s.phase === 'question' ? <TimerBar deadline={q.deadline} start={q.shownAt} gameNow={gameNow} paused={paused} /> : null}
       <QuestionCard q={q.q} />
       {s.phase === 'question' ? (
         you?.lockedOut ? (
-          <StagePanel className="flex items-center gap-4 border-2 border-ember px-4 py-4">
+          <StagePanel className="flex items-center gap-4 border-ember/70 px-4 py-4">
             <PlayerGlim avatar={myAvatar(room)} seed={room.me.playerId ?? 'you'} size={72} className="shrink-0 opacity-70 grayscale" />
             <div role="status">
-              <p className="flex items-center gap-2 font-display text-2xl font-extrabold">
+              <p className="flex items-center gap-2 font-display text-[1.75rem] leading-tight font-extrabold">
                 <Lock className="size-6 text-ember" aria-hidden /> Locked out
               </p>
               <p className="font-semibold text-text-2">
-                {s.you?.answered ? 'That was not it.' : 'Your team is out of this one: a teammate answered and it was not right.'} Wait for the next question.
+                {s.you?.answered ? 'Incorrect.' : 'Your team is out of this one: a teammate answered and it was wrong.'} Wait for the next question.
                 {you?.lostPoint ? ' It cost you a point.' : ''}
               </p>
               {view.lockedOut > 1 ? <p className="text-sm font-semibold text-text-2">{view.lockedOut} players are locked out of this one.</p> : null}
@@ -187,7 +187,7 @@ export function QuickDrawPlayer({ view, act, gameNow, paused, room }: ModeScreen
           </StagePanel>
         ) : s.you?.answered ? (
           <StagePanel className="px-5 py-5 text-center">
-            <p className="font-display text-2xl font-extrabold" role="status">
+            <p className="font-display text-[1.75rem] font-extrabold" role="status">
               Answer in
             </p>
           </StagePanel>
@@ -201,7 +201,7 @@ export function QuickDrawPlayer({ view, act, gameNow, paused, room }: ModeScreen
         <div className="flex flex-col gap-4">
           <FirstIn winner={view.winner} players={room.players} you={you} />
           {late ? <JoinedLate /> : null}
-          {you?.lostPoint ? <p className={`rounded-[14px] px-3 py-2 font-semibold text-ember ${NIGHT}`}>Your wrong answer cost a point.</p> : null}
+          {you?.lostPoint ? <p className={`rounded-[var(--radius-m)] px-3 py-2 font-semibold text-ember ${NIGHT}`}>Your wrong answer cost a point.</p> : null}
           {s.reveal ? <RevealAnswer q={q.q} reveal={s.reveal} compact /> : null}
           <Explanation text={s.explanation} />
           <Tally view={view} room={room} />
@@ -220,7 +220,7 @@ export function QuickDrawHost({ view, gameNow, paused, room }: ModeScreenProps<Q
   if (s.phase === 'leaderboard' || s.phase === 'done') {
     return (
       <div className="mx-auto flex w-full max-w-[76rem] flex-col gap-[clamp(0.75rem,2vh,1.5rem)]">
-        <h2 className={`font-display text-[clamp(2.5rem,min(4.6vw,8vh),5.5rem)] leading-none font-extrabold ${SIGN}`}>Round wins</h2>
+        <h2 className="font-display text-[clamp(2.75rem,min(5vw,8.5vh),6rem)] leading-none font-extrabold">Round wins</h2>
         <Tally view={view} room={room} big />
       </div>
     );
@@ -236,9 +236,7 @@ export function QuickDrawHost({ view, gameNow, paused, room }: ModeScreenProps<Q
       <div className="flex min-w-0 flex-col gap-[clamp(0.6rem,1.4vh,1.25rem)]">
         <RoundHeader round={s.round} total={s.total} big>
           <TargetBadge target={view.target} big />
-          <Pill className="px-5 py-1.5">
-            <Lock className="size-[0.9em]" aria-hidden /> {view.lockedOut} locked out
-          </Pill>
+          <HudCount value={view.lockedOut} label="locked out" big />
         </RoundHeader>
         {s.phase === 'question' ? <TimerBar deadline={q.deadline} start={q.shownAt} gameNow={gameNow} paused={paused} size="lg" /> : null}
         <QuestionCard q={q.q} size="lg" />
@@ -255,7 +253,7 @@ export function QuickDrawHost({ view, gameNow, paused, room }: ModeScreenProps<Q
       </div>
       {/* The side panel keeps to what fits a 768-pixel projector: who was first and why (at the reveal), the top of the tally, the fastest and the last few rounds. */}
       <aside className="flex min-w-0 flex-col gap-[clamp(0.5rem,1.4vh,0.75rem)]">
-        <h3 className={`font-display text-[clamp(1.5rem,min(2.4vw,4.2vh),2.75rem)] leading-tight font-extrabold ${SIGN}`}>Tally</h3>
+        <h3 className="font-display text-[clamp(1.75rem,min(2.7vw,4.6vh),3rem)] leading-tight font-bold">Tally</h3>
         {revealed ? <FirstIn winner={view.winner} players={room.players} side /> : null}
         {revealed && s.explanation ? (
           <StagePanel className={`px-4 py-[clamp(0.4rem,1.2vh,0.75rem)] font-semibold text-text max-lg:hidden ${small}`}>{s.explanation}</StagePanel>
@@ -269,10 +267,10 @@ export function QuickDrawHost({ view, gameNow, paused, room }: ModeScreenProps<Q
         ) : null}
         {view.recent.length && s.phase === 'question' && !view.teams ? (
           <div>
-            <h4 className="mb-1.5 font-display text-[clamp(1.1rem,min(1.6vw,2.8vh),1.75rem)] font-extrabold">Recent rounds</h4>
+            <h4 className="mb-1.5 font-display text-[clamp(1.3rem,min(1.9vw,3.2vh),2rem)] font-bold">Recent rounds</h4>
             <ol className={`flex flex-col gap-1.5 ${small}`}>
               {view.recent.slice(0, 3).map((r) => (
-                <li key={r.round} className={`flex items-center justify-between gap-3 rounded-[14px] border border-white/12 px-3 py-[clamp(0.25rem,0.9vh,0.5rem)] ${NIGHT}`}>
+                <li key={r.round} className={`flex items-center justify-between gap-3 rounded-[var(--radius-m)] px-3 py-[clamp(0.25rem,0.9vh,0.5rem)] ${NIGHT}`}>
                   <span className="font-semibold text-text-2 tabular">Q{r.round + 1}</span>
                   <span className="min-w-0 flex-1 truncate font-bold">{r.name}</span>
                   <span className="font-display font-extrabold tabular">{seconds(r.responseMs)}</span>

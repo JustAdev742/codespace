@@ -1,11 +1,11 @@
 import { useState } from 'react';
-import { Check, Lock, Megaphone, Star } from 'lucide-react';
+import { Check, Lock, Megaphone } from 'lucide-react';
 import type { Media, RoomPlayerView } from '@ludora/shared';
 import type { ModeScreenProps } from './registry.ts';
 import { Countdown, TimerBar } from '../game/TimerBar.tsx';
 import { QuestionImage } from '../game/QuestionCard.tsx';
-import { BigCountdown, LineUp } from '../game/parts.tsx';
-import { NIGHT, Pill, PlayerGlim, SIGN, StagePanel, avatarOf } from '../game/stage.tsx';
+import { BigCountdown, HudCount, LineUp } from '../game/parts.tsx';
+import { NIGHT, Pill, PlayerGlim, StagePanel, avatarOf } from '../game/stage.tsx';
 import { Burst } from '../../../art/bursts.tsx';
 import { useNow } from '../../../lib/useNow.ts';
 
@@ -78,7 +78,7 @@ function rulesText(view: GlimgoView, room: ModeScreenProps['room']): string {
 
 function toGoText(n: number): string {
   if (n <= 0) return 'Glimgo!';
-  if (n === 1) return 'One to go!';
+  if (n === 1) return 'One to go';
   return `${n} to go`;
 }
 
@@ -96,14 +96,14 @@ function CallPrompt({ call, big = false }: { call: CallInfo; big?: boolean }) {
   if (big) {
     return (
       <div className="paper stage-card flex items-center gap-[clamp(1rem,2vw,2.5rem)] px-[clamp(1.25rem,2.6vw,3.25rem)] py-[clamp(1rem,2.6vh,2.25rem)]">
-        <h2 className={`min-w-0 flex-1 font-display leading-[1.06] font-extrabold text-text ${long ? 'text-[clamp(1.75rem,2.8vw,3.25rem)]' : 'text-[clamp(2.5rem,4.2vw,5rem)]'}`}>{call.prompt}</h2>
+        <h2 className={`min-w-0 flex-1 font-sans leading-[1.12] font-bold tracking-[-0.01em] text-pretty text-text ${long ? 'text-[clamp(1.6rem,2.5vw,3rem)]' : 'text-[clamp(2.25rem,3.8vw,4.5rem)]'}`}>{call.prompt}</h2>
         {call.media ? <QuestionImage media={call.media} size="host" className="max-w-[42%]" /> : null}
       </div>
     );
   }
   return (
     <div className="flex flex-col gap-2">
-      <h2 className={`font-display font-extrabold text-text ${long ? 'text-lg sm:text-xl' : 'text-2xl sm:text-3xl'}`}>{call.prompt}</h2>
+      <h2 className={`font-sans leading-snug font-bold text-pretty text-text ${long ? 'text-lg sm:text-xl' : 'text-[1.4rem] sm:text-[1.6rem]'}`}>{call.prompt}</h2>
       {call.media ? <QuestionImage media={call.media} size="phone" className="self-start" /> : null}
     </div>
   );
@@ -119,20 +119,22 @@ function Card({ squares, size, onMark, canMark = false, wrong = null, big = fals
     <div role="group" aria-label={label} className={`grid gap-2 ${size >= 4 ? 'grid-cols-4' : 'grid-cols-3'}`}>
       {squares.map((sq, i) => {
         const done = sq.free || sq.marked;
-        const ring = winning?.has(i) ? 'ring-4 ring-lantern ring-offset-2 ring-offset-ink' : '';
-        const base = `relative flex items-center justify-center rounded-[14px] border-[3px] border-ink p-1.5 text-center font-bold leading-tight break-words hyphens-auto ${text} ${ring}`;
+        // A square on a completed line gets a gold ring, so the line reads without colour.
+        const ring = winning?.has(i) ? 'ring-4 ring-lantern ring-offset-2 ring-offset-[#0b1130]' : '';
+        const base = `relative flex items-center justify-center rounded-[var(--radius-m)] p-1.5 text-center font-bold leading-tight break-words hyphens-auto ${text} ${ring}`;
         if (sq.free) {
           return (
             <div key={i} className={`${base} bg-lantern text-on-accent`} role="img" aria-label="Free square">
-              <Star className="size-1/3 max-h-10 max-w-10 fill-current" aria-hidden />
-              <span className="sr-only">Free</span>
+              <span className="font-display text-[1.35em] font-extrabold italic" aria-hidden>
+                Free
+              </span>
             </div>
           );
         }
         const body = (
           <>
             <span className="min-w-0">{sq.text}</span>
-            {sq.marked ? <Check className="absolute top-1 right-1 size-5 rounded-full border-2 border-ink bg-white p-0.5 text-ink" aria-hidden /> : null}
+            {sq.marked ? <Check className="absolute top-1 right-1 size-5 rounded-full bg-ink p-0.5 text-white" strokeWidth={3} aria-hidden /> : null}
           </>
         );
         if (!onMark || done) {
@@ -149,7 +151,7 @@ function Card({ squares, size, onMark, canMark = false, wrong = null, big = fals
             onClick={() => onMark(i)}
             disabled={!canMark}
             aria-label={sq.text}
-            className={`paper ${base} shadow-[0_4px_0_var(--ink)] transition-[translate,box-shadow] duration-[120ms] ease-[var(--ease-out)] enabled:active:translate-y-[3px] enabled:active:shadow-[0_1px_0_var(--ink)] disabled:cursor-default ${wrong === i ? 'ring-4 ring-ember ring-offset-2 ring-offset-ink' : ''}`}
+            className={`paper piece ${base} [--press:4px] disabled:cursor-default ${wrong === i ? 'ring-4 ring-ember ring-offset-2 ring-offset-[#0b1130]' : ''}`}
           >
             {body}
           </button>
@@ -163,10 +165,10 @@ function RecentCalls({ recent, big = false }: { recent: GlimgoView['recent']; bi
   if (!recent.length) return null;
   return (
     <div>
-      <h3 className={`mb-2 font-display font-extrabold ${SIGN} ${big ? 'text-[clamp(1.4rem,min(2.2vw,3.9vh),2.5rem)] leading-tight' : 'text-lg'}`}>Recent calls</h3>
+      <h3 className={`mb-2 font-display font-bold ${big ? 'text-[clamp(1.6rem,min(2.5vw,4.3vh),2.75rem)] leading-tight' : 'text-xl'}`}>Recent calls</h3>
       <ol className={`flex flex-col gap-1.5 ${big ? 'text-[clamp(1rem,min(1.3vw,2.4vh),1.4rem)]' : 'text-sm'}`}>
         {recent.map((c) => (
-          <li key={c.n} className={`flex items-baseline gap-3 rounded-[14px] border border-white/12 px-3 ${big ? 'py-[clamp(0.25rem,0.9vh,0.5rem)]' : 'py-2'} ${NIGHT}`}>
+          <li key={c.n} className={`flex items-baseline gap-3 rounded-[var(--radius-m)] px-3 ${big ? 'py-[clamp(0.25rem,0.9vh,0.5rem)]' : 'py-2'} ${NIGHT}`}>
             <span className="shrink-0 font-display font-extrabold text-text-2 tabular">{c.n}</span>
             <span className="min-w-0 flex-1 truncate text-text-2">{c.prompt}</span>
             <span className="max-w-[45%] shrink-0 truncate font-bold">{c.text}</span>
@@ -187,10 +189,10 @@ function Leaders({ view, players, big = false }: { view: GlimgoView; players: Ro
   const more = big ? Math.max(0, players.length - shown.length) : 0;
   return (
     <div>
-      <h3 className={`mb-2 font-display font-extrabold ${SIGN} ${big ? 'text-[clamp(1.4rem,min(2.2vw,3.9vh),2.5rem)] leading-tight' : 'text-lg'}`}>Closest to Glimgo</h3>
+      <h3 className={`mb-2 font-display font-bold ${big ? 'text-[clamp(1.6rem,min(2.5vw,4.3vh),2.75rem)] leading-tight' : 'text-xl'}`}>Closest to Glimgo</h3>
       <ol className={`flex flex-col gap-1.5 ${big ? 'text-[clamp(1rem,min(1.35vw,2.4vh),1.5rem)]' : 'text-sm'}`} aria-label="Players closest to Glimgo">
         {shown.map((p) => (
-          <li key={p.playerId} className={`flex items-center gap-3 rounded-[14px] border px-2.5 ${big ? 'py-1' : 'py-1.5'} ${NIGHT} ${p.toGo === 1 ? 'border-lantern ring-2 ring-lantern' : 'border-white/12'}`}>
+          <li key={p.playerId} className={`flex items-center gap-3 rounded-[var(--radius-m)] px-2.5 ${big ? 'py-1' : 'py-1.5'} ${p.toGo === 1 ? 'bg-lantern/[0.14] ring-2 ring-lantern ring-inset' : NIGHT}`}>
             <PlayerGlim avatar={avatarOf(players, p.playerId)} seed={p.playerId} size={40} className={big ? 'size-[clamp(2rem,4.2vh,3.25rem)] shrink-0' : 'size-9 shrink-0'} />
             <span className="min-w-0 flex-1 truncate font-bold">{p.name}</span>
             <span className="font-semibold text-text-2 tabular">
@@ -211,14 +213,14 @@ function Finale({ view, players, big = false, me = null }: { view: GlimgoView; p
   const avatar = avatarOf(players, w.playerId);
   const mine = w.playerId === me;
   return (
-    <div role="status" className={`relative isolate flex items-center rounded-[24px] border-[3px] border-ink bg-glim px-5 py-4 text-on-accent shadow-[0_5px_0_var(--ink)] ${big ? 'gap-6' : 'gap-4'}`} style={{ animation: 'pop-in 360ms var(--ease-spring)' }}>
+    <div role="status" className={`lift relative isolate flex items-center rounded-[var(--radius-l)] bg-glim px-5 py-4 text-on-accent ${big ? 'gap-6' : 'gap-4'}`} style={{ animation: 'pop-in 220ms var(--ease-out)' }}>
       <span className="relative shrink-0">
-        {avatar ? <PlayerGlim avatar={avatar} seed={w.playerId} size={big ? 140 : 80} aura="legendary" pose="cheer" bob className={big ? 'size-[clamp(5rem,14vh,9rem)]' : ''} /> : <Megaphone className={big ? 'size-24' : 'size-14'} aria-hidden />}
+        {avatar ? <PlayerGlim avatar={avatar} seed={w.playerId} size={big ? 140 : 80} aura="legendary" pose="cheer" className={big ? 'size-[clamp(5rem,14vh,9rem)]' : ''} /> : <Megaphone className={big ? 'size-24' : 'size-14'} aria-hidden />}
         <Burst style={avatar?.victory?.style ?? 'festival'} hue={avatar?.victory?.hue ?? 42} size={big ? 360 : 240} rise />
       </span>
       <div className="min-w-0">
-        <p className={`font-display leading-none font-extrabold ${big ? 'text-[clamp(3rem,6vw,7rem)]' : 'text-5xl'}`}>Glimgo!</p>
-        <p className={`truncate font-display font-extrabold ${big ? 'text-[clamp(1.75rem,3vw,3.5rem)]' : 'text-2xl'}`}>{mine ? 'You win!' : `${w.name} wins`}</p>
+        <p className={`font-display leading-none font-extrabold italic ${big ? 'text-[clamp(3.25rem,6.5vw,7.5rem)]' : 'text-[3.25rem]'}`}>Glimgo!</p>
+        <p className={`truncate font-display font-extrabold ${big ? 'text-[clamp(1.9rem,3.2vw,3.75rem)]' : 'text-[1.75rem]'}`}>{mine ? 'You win' : `${w.name} wins`}</p>
       </div>
     </div>
   );
@@ -243,11 +245,11 @@ export function GlimgoPlayer({ view, act, gameNow, paused, room }: ModeScreenPro
   return (
     <div className="mx-auto flex w-full max-w-2xl flex-col gap-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <Pill>{view.callCount ? `Call ${view.call?.n ?? view.callCount}` : 'Your card'}</Pill>
+        <p className="plate plate-blue text-xl tabular">
+          <span>{view.callCount ? `Call ${view.call?.n ?? view.callCount}` : 'Your card'}</span>
+        </p>
         <div className="flex flex-wrap items-center gap-2">
-          <Pill>
-            {you.marks} {you.marks === 1 ? 'mark' : 'marks'}
-          </Pill>
+          <HudCount value={you.marks} label={you.marks === 1 ? 'mark' : 'marks'} />
           <Pill tone={you.toGo === 1 ? 'lantern' : 'calm'}>{toGoText(you.toGo)}</Pill>
         </div>
       </div>
@@ -256,7 +258,7 @@ export function GlimgoPlayer({ view, act, gameNow, paused, room }: ModeScreenPro
         <div aria-live="polite" className="flex flex-col gap-3">
           {view.phase === 'intro' ? (
             <div>
-              <p className="font-display text-2xl font-extrabold">Study your card</p>
+              <p className="font-display text-[1.75rem] leading-tight font-extrabold">Study your card</p>
               <p className="font-semibold text-text-2">
                 Each call is a question: tap the square that answers it. {rulesText(view, room)} First call in <Countdown until={view.phaseEndsAt} gameNow={gameNow} />
               </p>
@@ -271,7 +273,7 @@ export function GlimgoPlayer({ view, act, gameNow, paused, room }: ModeScreenPro
           ) : view.revealed ? (
             <div>
               <p className="font-semibold text-text-2">{view.revealed.prompt}</p>
-              <p className="font-display text-2xl font-extrabold">
+              <p className="font-display text-[1.75rem] leading-tight font-extrabold">
                 It was: <span className="text-glim">{view.revealed.text}</span>
               </p>
             </div>
@@ -283,10 +285,10 @@ export function GlimgoPlayer({ view, act, gameNow, paused, room }: ModeScreenPro
         <p role="status" className={`min-h-6 font-bold ${lockLeft ? 'text-ember' : you.found ? 'text-glim' : 'text-text-2'}`}>
           {lockLeft ? (
             <span className="inline-flex items-center gap-1.5">
-              <Lock className="size-4" aria-hidden /> Not that one. Locked for {lockLeft} s.
+              <Lock className="size-4" aria-hidden /> Wrong square. Locked for {lockLeft} s.
             </span>
           ) : you.found ? (
-            'Found it! Wait for the next call.'
+            'Found it. Wait for the next call.'
           ) : note && note.n === call.n ? (
             note.text
           ) : (
@@ -298,8 +300,8 @@ export function GlimgoPlayer({ view, act, gameNow, paused, room }: ModeScreenPro
       <div className="relative">
         <Card squares={you.squares} size={view.size} onMark={(i) => void mark(i)} canMark={canMark} wrong={wrongNow} showLines={view.phase === 'finale' && view.winner?.playerId === room.me.playerId} label="Your Glimgo card" />
         {lockLeft ? (
-          <div className="pointer-events-none absolute inset-0 grid place-items-center rounded-[16px] bg-[rgb(12_8_40/0.6)]" aria-hidden>
-            <span className="flex items-center gap-2 rounded-full border-[3px] border-ink bg-ember px-4 py-2 font-display text-2xl font-extrabold text-on-accent">
+          <div className="pointer-events-none absolute inset-0 grid place-items-center rounded-[var(--radius-l)] bg-[rgb(5_8_24/0.62)]" aria-hidden>
+            <span className="flex items-center gap-2 rounded-full bg-ember px-4 py-2 font-display text-[1.75rem] font-extrabold text-on-accent tabular">
               <Lock className="size-6" /> {lockLeft}
             </span>
           </div>
@@ -317,7 +319,9 @@ export function GlimgoHost({ view, gameNow, paused, room }: ModeScreenProps<Glim
     <div className="mx-auto grid w-full max-w-[110rem] flex-1 grid-cols-1 gap-[clamp(1rem,2vw,2rem)] lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
       <div className="flex min-w-0 flex-col gap-[clamp(0.75rem,2vh,1.25rem)]">
         <div className="flex flex-wrap items-center justify-between gap-3 text-[clamp(1.1rem,1.8vw,2rem)]">
-          <Pill className="px-5 py-1.5">{view.callCount ? `Call ${view.call?.n ?? view.callCount}` : 'Glimgo'}</Pill>
+          <p className="plate plate-blue text-[clamp(1.4rem,2.1vw,2.4rem)] tabular">
+            <span>{view.callCount ? `Call ${view.call?.n ?? view.callCount}` : 'Glimgo'}</span>
+          </p>
           <span className="flex flex-wrap items-center gap-2">
             <Pill className="px-5 py-1.5">{GOAL[view.win]}</Pill>
             {view.oneToGo ? (
@@ -328,8 +332,11 @@ export function GlimgoHost({ view, gameNow, paused, room }: ModeScreenProps<Glim
           </span>
         </div>
         {view.phase === 'intro' ? (
-          <div className="flex flex-col items-center gap-[clamp(1rem,3vh,2rem)] py-4 text-center" style={{ animation: 'pop-in 300ms var(--ease-spring)' }}>
-            <h2 className={`font-display text-[clamp(3.5rem,min(7.5vw,13vh),9rem)] leading-none font-extrabold ${SIGN}`}>{room.room.title}</h2>
+          <div className="flex flex-col items-center gap-[clamp(1rem,3vh,2rem)] py-4 text-center" style={{ animation: 'rise-fade 220ms var(--ease-out)' }}>
+            <p className="plate plate-gold text-[clamp(1.5rem,2.6vw,3rem)]">
+              <span>Get ready</span>
+            </p>
+            <h2 className="font-display text-[clamp(3.75rem,min(8vw,13.5vh),9.5rem)] leading-[0.95] font-extrabold">{room.room.title}</h2>
             <p className="max-w-[48ch] text-[clamp(1.1rem,min(1.7vw,3vh),2.2rem)] font-semibold text-text-2">Everyone has their own card of answers. Each call is a question: find the answer on your card and tap it. {rulesText(view, room)}</p>
             <BigCountdown until={view.phaseEndsAt} gameNow={gameNow} big label="First call in" />
             <LineUp players={room.players} big />
@@ -352,9 +359,9 @@ export function GlimgoHost({ view, gameNow, paused, room }: ModeScreenProps<Glim
             </p>
           </div>
         ) : view.revealed ? (
-          <div className="flex flex-col gap-3" style={{ animation: 'pop-in 260ms var(--ease-spring)' }}>
+          <div className="flex flex-col gap-3" style={{ animation: 'pop-in 200ms var(--ease-out)' }}>
             <p className="text-[clamp(1.3rem,2.2vw,2.5rem)] font-semibold text-text-2">{view.revealed.prompt}</p>
-            <p className={`font-display text-[clamp(2.75rem,5.5vw,6.5rem)] leading-tight font-extrabold ${SIGN}`}>
+            <p className="font-display text-[clamp(3rem,5.8vw,7rem)] leading-tight font-extrabold">
               <span className="text-text-2">It was </span>
               <span className="text-glim">{view.revealed.text}</span>
             </p>

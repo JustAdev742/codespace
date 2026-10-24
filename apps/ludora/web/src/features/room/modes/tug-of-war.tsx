@@ -1,14 +1,14 @@
 import { useEffect, useId, useRef, useState, type CSSProperties } from 'react';
-import { Flame, Users } from 'lucide-react';
+import { Users } from 'lucide-react';
 import type { Answer, RoomPlayerView } from '@ludora/shared';
 import type { ModeScreenProps } from './registry.ts';
 import type { FeedbackView, QuestionView } from '../game/types.ts';
 import { AnswerInput } from '../game/AnswerInput.tsx';
 import { QuestionCard } from '../game/QuestionCard.tsx';
 import { Countdown } from '../game/TimerBar.tsx';
-import { ResultBanner, RevealAnswer } from '../game/Reveal.tsx';
-import { Explanation } from '../game/parts.tsx';
-import { NIGHT, Pill, PlayerGlim, SIGN, StagePanel, avatarOf } from '../game/stage.tsx';
+import { ResultBanner, RevealAnswer, shortAnswer } from '../game/Reveal.tsx';
+import { Explanation, ModeTitle, StreakChip } from '../game/parts.tsx';
+import { NIGHT, Pill, PlayerGlim, StagePanel, avatarOf } from '../game/stage.tsx';
 import { plural } from '../../../lib/format.ts';
 
 /* Tug of War: two sides pull one rope. Each correct answer pulls the knot towards your end. */
@@ -107,7 +107,7 @@ function MiniRope({ view, mySide }: { view: TugOfWarView; mySide: Side | null })
     <div className="flex flex-col gap-1.5 sm:gap-2">
       <div className="flex justify-between gap-3 font-bold">
         <span className={`flex min-w-0 items-center gap-1.5 ${mySide === 'left' ? 'text-text' : 'text-text-2'}`}>
-          <span className="size-3.5 shrink-0 rounded-full border-2 border-ink" style={zoneStyle('left', left.hue)} aria-hidden />
+          <span className="size-4 shrink-0 rounded-full" style={zoneStyle('left', left.hue)} aria-hidden />
           <span className="truncate">
             {left.label}
             {mySide === 'left' ? ' (you)' : ''}
@@ -118,17 +118,18 @@ function MiniRope({ view, mySide }: { view: TugOfWarView; mySide: Side | null })
             {right.label}
             {mySide === 'right' ? ' (you)' : ''}
           </span>
-          <span className="size-3.5 shrink-0 rounded-full border-2 border-ink" style={zoneStyle('right', right.hue)} aria-hidden />
+          <span className="size-4 shrink-0 rounded-full" style={zoneStyle('right', right.hue)} aria-hidden />
         </span>
       </div>
       <div className="relative h-8 sm:h-9" role="img" aria-label={knotText(view)}>
-        <div className="absolute inset-y-0 left-0 w-[12%] rounded-l-full border-[3px] border-ink" style={zoneStyle('left', left.hue)} />
-        <div className="absolute inset-y-0 right-0 w-[12%] rounded-r-full border-[3px] border-ink" style={zoneStyle('right', right.hue)} />
-        <div className="absolute inset-x-[12%] top-1/2 h-3 -translate-y-1/2 border-y-2 border-ink/50 bg-[#c99556]" />
+        <div className="absolute inset-y-0 left-0 w-[12%] rounded-l-[var(--radius-m)]" style={zoneStyle('left', left.hue)} />
+        <div className="absolute inset-y-0 right-0 w-[12%] rounded-r-[var(--radius-m)]" style={zoneStyle('right', right.hue)} />
+        {/* The rope: a tan cord with a darker twist. */}
+        <div className="absolute inset-x-[12%] top-1/2 h-3 -translate-y-1/2 rounded-full bg-[#c99556] bg-[repeating-linear-gradient(115deg,transparent_0_6px,rgb(80_50_20/0.35)_6px_9px)]" />
         <div className="absolute inset-y-1 left-1/2 w-0.5 -translate-x-1/2 bg-white/50" />
         <div className="absolute inset-y-0 right-[12%] left-[12%]">
           <div className="absolute inset-0 transition-transform duration-700 ease-[var(--ease-out)]" style={{ transform: `translateX(${knotPercent(view)}%)` }}>
-            <span className="absolute top-1/2 left-0 size-7 -translate-x-1/2 -translate-y-1/2 rounded-full border-[3px] border-ink bg-ember sm:size-8" />
+            <span className="absolute top-1/2 left-0 size-7 -translate-x-1/2 -translate-y-1/2 rounded-full bg-ember shadow-[0_0_0_3px_#ffffff,0_4px_10px_rgb(2_5_20/0.6)] sm:size-8" />
           </div>
         </div>
       </div>
@@ -152,19 +153,16 @@ export function TugOfWarPlayer({ view, act, gameNow, paused }: ModeScreenProps<T
   return (
     <div className="mx-auto flex w-full max-w-3xl flex-col gap-3 sm:gap-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="flex min-w-0 items-center gap-2 font-display text-2xl font-extrabold">
-          <span className="size-6 shrink-0 rounded-full border-[3px] border-ink" style={zoneStyle(you.side, mine.hue)} aria-hidden />
-          <span className="min-w-0">
+        <p className="flex min-w-0 items-center gap-2">
+          <span className="size-6 shrink-0 rounded-full" style={zoneStyle(you.side, mine.hue)} aria-hidden />
+          <span className="min-w-0 leading-none">
             {/* On a phone the rope's labels name your side, which keeps this line short enough to share with the clock. */}
-            {plural(you.pulls, 'pull')} <span className="text-lg text-text-2 max-sm:sr-only">for the {mine.label}</span>
+            <span className="font-display text-[1.9rem] font-extrabold tabular">{you.pulls}</span> <span className="font-bold text-text-2">{you.pulls === 1 ? 'pull' : 'pulls'}</span>{' '}
+            <span className="font-bold text-text-2 max-sm:sr-only">for the {mine.label}</span>
           </span>
         </p>
         <div className="flex items-center gap-2">
-          {you.streak > 1 ? (
-            <Pill tone="lantern">
-              <Flame className="size-4" aria-hidden /> Streak {you.streak}
-            </Pill>
-          ) : null}
+          <StreakChip streak={you.streak} />
           {view.endsAt ? (
             <Pill>
               <Countdown until={view.endsAt} gameNow={gameNow} label="Time left" />
@@ -176,7 +174,7 @@ export function TugOfWarPlayer({ view, act, gameNow, paused }: ModeScreenProps<T
       <StagePanel as="section" className="flex flex-col gap-2 px-3 py-2.5 sm:gap-3 sm:p-4" label="The rope">
         <MiniRope view={view} mySide={you.side} />
         {/* Phones get the short form of the notes, so the question below stays above the fold. */}
-        <p className="text-sm leading-snug font-semibold text-text-2 sm:border-t sm:border-white/15 sm:pt-3 sm:text-base">
+        <p className="text-sm leading-snug font-semibold text-text-2 sm:border-t sm:border-white/10 sm:pt-3 sm:text-base">
           Each right answer pulls <span className="font-display font-extrabold text-text">{spaces(you.strength)}</span>
           {you.strength < 1 ? (
             <>
@@ -197,10 +195,10 @@ export function TugOfWarPlayer({ view, act, gameNow, paused }: ModeScreenProps<T
 
       {flow.feedback ? (
         <div className="flex flex-col gap-3">
-          <ResultBanner key={flow.feedback.iid} correct={flow.feedback.correct} partial={flow.feedback.partial} text={flow.feedback.text} />
+          <ResultBanner key={flow.feedback.iid} correct={flow.feedback.correct} partial={flow.feedback.partial} text={flow.feedback.text} answer={flow.answered ? shortAnswer(flow.answered.q, flow.feedback.reveal) : null} />
           {!flow.feedback.correct && flow.answered ? <RevealAnswer q={flow.answered.q} reveal={flow.feedback.reveal} compact /> : null}
           {!flow.feedback.correct ? <Explanation text={flow.feedback.explanation} /> : null}
-          <button type="button" onClick={flow.dismiss} className="self-center rounded-[12px] px-4 py-2 font-bold text-text-2 hover:bg-white/10">
+          <button type="button" onClick={flow.dismiss} className="min-h-11 self-center rounded-[var(--radius-m)] px-4 py-2 font-bold text-text-2 hover:bg-white/10">
             Next question
           </button>
         </div>
@@ -245,21 +243,22 @@ function RopeStage({ view, players }: { view: TugOfWarView; players: RoomPlayerV
             <circle cx="10" cy="10" r="4" fill="rgb(255 255 255 / 0.5)" />
           </pattern>
         </defs>
-        <rect x="4" y="22" width="116" height="196" rx="20" fill={colour(left.hue)} />
-        <rect x="4" y="22" width="116" height="196" rx="20" fill={`url(#stripes-${uid})`} stroke="var(--ink)" strokeWidth="5" />
-        <rect x="880" y="22" width="116" height="196" rx="20" fill={colour(right.hue)} />
-        <rect x="880" y="22" width="116" height="196" rx="20" fill={`url(#spots-${uid})`} stroke="var(--ink)" strokeWidth="5" />
+        <rect x="4" y="22" width="116" height="196" rx="14" fill={colour(left.hue)} />
+        <rect x="4" y="22" width="116" height="196" rx="14" fill={`url(#stripes-${uid})`} />
+        <rect x="880" y="22" width="116" height="196" rx="14" fill={colour(right.hue)} />
+        <rect x="880" y="22" width="116" height="196" rx="14" fill={`url(#spots-${uid})`} />
         {[-3, -2, -1, 1, 2, 3].map((q) => (
           <line key={q} x1={500 + q * 95} x2={500 + q * 95} y1="80" y2="160" stroke="rgb(255 255 255 / 0.4)" strokeWidth="4" strokeLinecap="round" />
         ))}
         <line x1="500" x2="500" y1="34" y2="206" stroke="rgb(255 255 255 / 0.7)" strokeWidth="5" strokeDasharray="12 10" />
-        <line x1="24" y1="120" x2="976" y2="120" stroke="var(--ink)" strokeWidth="26" strokeLinecap="round" />
-        <line x1="24" y1="120" x2="976" y2="120" stroke="#c99556" strokeWidth="18" strokeLinecap="round" />
-        <line x1="24" y1="120" x2="976" y2="120" stroke="#6f4a1f" strokeWidth="18" strokeDasharray="5 11" opacity="0.5" />
-        <g style={{ transform: `translateX(${x - 500}px)`, transition: 'transform 700ms var(--ease-out)' }}>
-          <path d="M500 124L480 194L500 181L520 194Z" fill="var(--ember)" stroke="var(--ink)" strokeWidth="5" strokeLinejoin="round" />
-          <circle cx="500" cy="120" r="27" fill="var(--ember)" stroke="var(--ink)" strokeWidth="6" />
-          <circle cx="491" cy="111" r="8" fill="rgb(255 255 255 / 0.5)" />
+        {/* The rope: a tan cord with a darker twist. */}
+        <line x1="24" y1="120" x2="976" y2="120" stroke="#c99556" strokeWidth="20" strokeLinecap="round" />
+        <line x1="24" y1="120" x2="976" y2="120" stroke="#6f4a1f" strokeWidth="20" strokeDasharray="5 11" opacity="0.45" />
+        {/* The knot, ringed in white so it stands out on any side. */}
+        <g style={{ transform: `translateX(${x - 500}px)`, transition: 'transform 600ms var(--ease-out)' }}>
+          <path d="M500 128L482 194L500 182L518 194Z" fill="var(--ember)" />
+          <circle cx="500" cy="120" r="29" fill="#ffffff" />
+          <circle cx="500" cy="120" r="23" fill="var(--ember)" />
         </g>
       </svg>
       {/* Over the drawing, so the crew stands on the top edge of each end zone. */}
@@ -277,9 +276,9 @@ function SideCard({ side, view, players }: { side: Side; view: TugOfWarView; pla
   return (
     <StagePanel className={`flex flex-col gap-2 px-[clamp(1rem,1.6vw,1.5rem)] py-[clamp(0.6rem,1.4vh,1.1rem)] text-[clamp(1rem,1.4vw,1.5rem)] ${right ? 'items-end text-right' : ''}`}>
       <div className={`flex items-center gap-3 ${right ? 'flex-row-reverse' : ''}`}>
-        <span className="size-[clamp(2.25rem,3.6vw,3.5rem)] shrink-0 rounded-[14px] border-[3px] border-ink" style={zoneStyle(side, s.hue)} aria-hidden />
+        <span className="size-[clamp(2.25rem,3.6vw,3.5rem)] shrink-0 rounded-[var(--radius-m)]" style={zoneStyle(side, s.hue)} aria-hidden />
         <div className="min-w-0">
-          <div className="font-display text-[clamp(1.6rem,2.8vw,3rem)] leading-none font-extrabold">{s.label}</div>
+          <div className="font-display text-[clamp(1.8rem,3vw,3.25rem)] leading-none font-extrabold">{s.label}</div>
           <div className={`mt-1 flex items-center gap-1.5 font-semibold text-text-2 ${right ? 'flex-row-reverse' : ''}`}>
             <Users className="size-[1em] shrink-0" aria-hidden />
             <span>
@@ -293,7 +292,7 @@ function SideCard({ side, view, players }: { side: Side; view: TugOfWarView; pla
         // narrower screens show the top two (the pair on the end zone), and long names shorten.
         <ol className={`flex max-w-full min-w-0 flex-nowrap gap-1.5 max-[1600px]:[&>li:nth-child(n+3)]:hidden ${right ? 'justify-end' : ''}`} aria-label={`Top pullers for the ${s.label}`}>
           {s.top.map((t) => (
-            <li key={t.playerId} className={`flex min-w-0 shrink items-center gap-1.5 rounded-full border border-white/15 py-0.5 pr-3 pl-0.5 ${NIGHT}`}>
+            <li key={t.playerId} className={`flex min-w-0 shrink items-center gap-1.5 rounded-full py-0.5 pr-3 pl-0.5 ${NIGHT}`}>
               <PlayerGlim avatar={avatarOf(players, t.playerId)} seed={t.playerId} size={36} className="size-[clamp(1.75rem,min(2.8vw,5vh),2.5rem)] shrink-0" />
               <span className="max-w-[11rem] min-w-0 truncate font-bold">{t.name}</span>
               <span className="shrink-0 font-display font-extrabold whitespace-nowrap text-text-2 tabular">{plural(t.pulls, 'pull')}</span>
@@ -309,7 +308,7 @@ export function TugOfWarHost({ view, gameNow, room }: ModeScreenProps<TugOfWarVi
   return (
     <div className="mx-auto flex w-full max-w-[110rem] flex-1 flex-col gap-[clamp(0.75rem,2vh,1.5rem)]">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 className={`font-display text-[clamp(2.25rem,4vw,4.75rem)] leading-none font-extrabold ${SIGN}`}>Tug of War</h2>
+        <ModeTitle>Tug of War</ModeTitle>
         {view.endsAt ? (
           <Pill className="px-5 py-1.5 text-[clamp(1.1rem,1.8vw,2rem)]">
             <Countdown until={view.endsAt} gameNow={gameNow} label="Time left" />
@@ -327,7 +326,7 @@ export function TugOfWarHost({ view, gameNow, room }: ModeScreenProps<TugOfWarVi
         </div>
       </StagePanel>
       <div className="text-center">
-        <p className={`font-display text-[clamp(1.6rem,2.8vw,3.25rem)] leading-tight font-extrabold ${SIGN}`}>{knotText(view)}</p>
+        <p className="font-display text-[clamp(1.8rem,3vw,3.5rem)] leading-tight font-extrabold">{knotText(view)}</p>
         <p className="text-[clamp(1rem,1.4vw,1.5rem)] font-semibold text-text-2">
           Drag the knot {spaces(view.ropeLength)} from the middle into your end zone to win.
           {view.slack ? ' Slippery rope: wrong answers let it slip back.' : ''}

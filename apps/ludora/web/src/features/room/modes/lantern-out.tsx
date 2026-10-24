@@ -1,17 +1,16 @@
 import type { CSSProperties } from 'react';
-import { Eye, Flame, Sparkles, Wind } from 'lucide-react';
+import { Eye, Flame, Wind } from 'lucide-react';
 import type { Answer, AnswerReveal, RoomPlayerView } from '@ludora/shared';
 import type { ModeScreenProps } from './registry.ts';
 import type { QuestionView } from '../game/types.ts';
 import { AnswerInput } from '../game/AnswerInput.tsx';
 import { QuestionCard } from '../game/QuestionCard.tsx';
 import { TimerBar } from '../game/TimerBar.tsx';
-import { ChoicesDisplay, ResultBanner, RevealAnswer } from '../game/Reveal.tsx';
+import { ChoicesDisplay, ResultBanner, RevealAnswer, shortAnswer } from '../game/Reveal.tsx';
 import { TeamScores } from '../game/Leaderboard.tsx';
-import { Explanation, IntroScreen, RoundHeader, myAvatar } from '../game/parts.tsx';
+import { Explanation, HudCount, HudScore, IntroScreen, RoundHeader, myAvatar } from '../game/parts.tsx';
 import { useAnnounce } from '../game/announce.tsx';
-import { NIGHT, Pill, PlayerGlim, SIGN, StagePanel, avatarOf } from '../game/stage.tsx';
-import { formatNumber } from '../../../lib/format.ts';
+import { NIGHT, Pill, PlayerGlim, StagePanel, avatarOf } from '../game/stage.tsx';
 
 /* Lantern Out: survival with lanterns as lives, and revival rounds for players who are out. */
 
@@ -59,19 +58,21 @@ export interface LanternOutView {
 
 const lanternWord = (n: number) => `${n} ${n === 1 ? 'lantern' : 'lanterns'}`;
 
-/** One lantern: lit (amber, with a flame) or blown out (dark, with a wisp of smoke). */
+/** One lantern, a life: lit (solid gold with a flame) or blown out (hollow, with a wisp of smoke), so its state never relies on colour. */
 function LanternIcon({ lit, size = 28 }: { lit: boolean; size?: number }) {
+  const line = lit ? 'var(--lantern-deep)' : 'rgb(255 255 255 / 0.5)';
+  const fill = lit ? 'var(--lantern)' : 'transparent';
   return (
-    <svg viewBox="0 0 32 40" width={size} height={(size * 40) / 32} aria-hidden focusable={false} style={lit ? { filter: 'drop-shadow(0 0 6px rgb(255 176 32 / 0.65))' } : undefined}>
-      <path d="M16 1.5V6" stroke={lit ? 'var(--ink)' : 'rgb(255 255 255 / 0.45)'} strokeWidth="2.4" strokeLinecap="round" />
-      <rect x="10" y="5" width="12" height="5" rx="2" fill={lit ? 'var(--lantern-deep)' : 'rgb(255 255 255 / 0.12)'} stroke={lit ? 'var(--ink)' : 'rgb(255 255 255 / 0.45)'} strokeWidth="2" />
-      <path d="M6.5 15C6.5 11.2 10.8 9.5 16 9.5C21.2 9.5 25.5 11.2 25.5 15V28C25.5 31.8 21.2 33.5 16 33.5C10.8 33.5 6.5 31.8 6.5 28Z" fill={lit ? 'var(--lantern)' : 'rgb(255 255 255 / 0.12)'} stroke={lit ? 'var(--ink)' : 'rgb(255 255 255 / 0.45)'} strokeWidth="2" />
+    <svg viewBox="0 0 32 40" width={size} height={(size * 40) / 32} aria-hidden focusable={false}>
+      <path d="M16 1.5V6" stroke={line} strokeWidth="2.4" strokeLinecap="round" />
+      <rect x="10" y="5" width="12" height="5" rx="1.5" fill={lit ? 'var(--lantern-deep)' : 'transparent'} stroke={line} strokeWidth="2" />
+      <path d="M6.5 15C6.5 11.2 10.8 9.5 16 9.5C21.2 9.5 25.5 11.2 25.5 15V28C25.5 31.8 21.2 33.5 16 33.5C10.8 33.5 6.5 31.8 6.5 28Z" fill={fill} stroke={line} strokeWidth="2" />
       {lit ? (
         <path d="M16 14.5C17.6 17.6 20.2 19.3 20.2 23C20.2 26.2 18.3 28.4 16 28.4C13.7 28.4 11.8 26.4 11.8 23.7C11.8 21.2 13.6 20 14.3 18C14.9 19.6 15.4 20.2 16.1 20.7C15.6 18.7 15.5 16.8 16 14.5Z" fill="#fff6c8" />
       ) : (
         <path d="M15 27C13 24.5 17.5 22.5 15.5 19.5C14.5 18 16 16.5 17 15.5" stroke="rgb(255 255 255 / 0.7)" strokeWidth="1.8" fill="none" strokeLinecap="round" />
       )}
-      <rect x="11" y="32.5" width="10" height="4.5" rx="1.6" fill={lit ? 'var(--lantern-deep)' : 'rgb(255 255 255 / 0.12)'} stroke={lit ? 'var(--ink)' : 'rgb(255 255 255 / 0.45)'} strokeWidth="2" />
+      <rect x="11" y="32.5" width="10" height="4.5" rx="1.5" fill={lit ? 'var(--lantern-deep)' : 'transparent'} stroke={line} strokeWidth="2" />
     </svg>
   );
 }
@@ -118,7 +119,7 @@ function RulesText({ text, big }: { text: string; big: boolean }) {
 
 function Intro({ view, gameNow, room, big = false }: { view: LanternOutView; gameNow: () => number; room: ModeScreenProps['room']; big?: boolean }) {
   return (
-    <IntroScreen title={room.room.title} until={view.sync.phaseEndsAt} gameNow={gameNow} room={room} big={big} art={<LanternRow lit={view.lives} total={view.lives} size={big ? 64 : 44} showCount={false} />}>
+    <IntroScreen kicker="Get ready" title={room.room.title} until={view.sync.phaseEndsAt} gameNow={gameNow} room={room} big={big} art={<LanternRow lit={view.lives} total={view.lives} size={big ? 64 : 44} showCount={false} />}>
       <RulesText text={rulesText(view, room)} big={big} />
     </IntroScreen>
   );
@@ -134,16 +135,16 @@ function RevivalBanner({ view, big = false }: { view: LanternOutView; big?: bool
       ? 'Your chance to get back in: answer correctly to relight a lantern.'
       : 'Players who are out are trying to get back in. Sit this one out; your lanterns are safe.';
   return (
-    <div role="status" className={`flex items-center gap-3 rounded-[22px] border-[3px] border-ink bg-dusk text-on-accent shadow-[0_4px_0_var(--ink)] ${big ? 'px-4 py-[clamp(0.4rem,1.2vh,0.75rem)] text-[clamp(1.05rem,min(1.5vw,2.7vh),1.75rem)]' : 'px-4 py-3'}`} style={{ animation: 'pop-in 260ms var(--ease-spring)' }}>
-      <Sparkles className={big ? 'size-[clamp(1.75rem,min(2.6vw,4.6vh),3rem)] shrink-0' : 'size-7 shrink-0'} aria-hidden />
+    <div role="status" className={`lift flex items-center gap-3 rounded-[var(--radius-l)] bg-dusk text-on-accent ${big ? 'px-4 py-[clamp(0.4rem,1.2vh,0.75rem)] text-[clamp(1.05rem,min(1.5vw,2.7vh),1.75rem)]' : 'px-4 py-3'}`} style={{ animation: 'pop-in 200ms var(--ease-out)' }}>
+      <Flame className={big ? 'size-[clamp(1.75rem,min(2.6vw,4.6vh),3rem)] shrink-0' : 'size-7 shrink-0'} aria-hidden />
       {big ? (
         <p className="font-semibold">
-          <span className="mr-2 font-display text-[1.3em] font-extrabold">Revival round.</span>
+          <span className="mr-2 font-display text-[1.4em] font-extrabold">Revival round.</span>
           {text}
         </p>
       ) : (
         <div>
-          <p className="font-display text-xl font-extrabold">Revival round</p>
+          <p className="font-display text-2xl leading-tight font-extrabold">Revival round</p>
           <p className="font-semibold">{text}</p>
         </div>
       )}
@@ -154,10 +155,12 @@ function RevivalBanner({ view, big = false }: { view: LanternOutView; big?: bool
 /** A lantern blowing out (or coming back), with the lanterns drawn as well as written. */
 function LanternNews({ tone, title, detail, lit, total }: { tone: 'bad' | 'good'; title: string; detail: string; lit: number; total: number }) {
   return (
-    <div role="status" className={`flex flex-wrap items-center gap-3 rounded-[22px] border-[3px] border-ink px-4 py-3 text-on-accent shadow-[0_5px_0_var(--ink)] ${tone === 'good' ? 'bg-glim' : 'bg-ember'}`} style={{ animation: 'pop-in 220ms var(--ease-spring)' }}>
-      {tone === 'good' ? <Sparkles className="size-8 shrink-0" aria-hidden /> : <Wind className="size-8 shrink-0" aria-hidden />}
+    <div role="status" className={`lift flex flex-wrap items-center gap-3 rounded-[var(--radius-l)] px-4 py-3 text-on-accent ${tone === 'good' ? 'bg-glim' : 'bg-ember'}`} style={{ animation: 'pop-in 200ms var(--ease-out)' }}>
+      <span className="grid size-10 shrink-0 place-items-center rounded-full bg-ink/85 text-white" aria-hidden>
+        {tone === 'good' ? <Flame className="size-6" /> : <Wind className="size-6" />}
+      </span>
       <div className="min-w-0 flex-1">
-        <p className="font-display text-2xl leading-tight font-extrabold">{title}</p>
+        <p className="font-display text-[1.75rem] leading-tight font-extrabold italic">{title}</p>
         <p className="font-semibold">{detail}</p>
       </div>
       <span className="rounded-full bg-ink/80 px-2 py-1">
@@ -174,8 +177,8 @@ function Outcome({ view }: { view: LanternOutView }) {
   // The slowest right answer can cost a lantern; three in a row can relight one.
   const slow = Boolean(you.slow);
   const kindled = Boolean(you.kindled);
-  if (you.relit) return <LanternNews tone="good" title="Lantern relit!" detail="You are back in the game." lit={you.lanterns} total={view.lives} />;
-  if (kindled) return <LanternNews tone="good" title="Three in a row!" detail={`Your streak relit a lantern. ${lanternWord(you.lanterns)} lit.`} lit={you.lanterns} total={view.lives} />;
+  if (you.relit) return <LanternNews tone="good" title="Lantern relit" detail="You are back in the game." lit={you.lanterns} total={view.lives} />;
+  if (kindled) return <LanternNews tone="good" title="Three in a row" detail={`Your streak relit a lantern. ${lanternWord(you.lanterns)} lit.`} lit={you.lanterns} total={view.lives} />;
   if (you.knockedOut) {
     const later = view.reviveEvery > 0 && view.nextRevival !== null ? 'Watch for now: a revival round can bring you back.' : 'You can keep watching to the end.';
     return <LanternNews tone="bad" title="Your last lantern went out" detail={slow ? `Right, but the slowest answer. ${later}` : later} lit={0} total={view.lives} />;
@@ -184,7 +187,7 @@ function Outcome({ view }: { view: LanternOutView }) {
     const left = `${lanternWord(you.lanterns)} left.`;
     return <LanternNews tone="bad" title={slow ? 'Right, but slowest' : 'A lantern blew out'} detail={slow ? `The slowest right answer loses a lantern. ${left}` : left} lit={you.lanterns} total={view.lives} />;
   }
-  if (s.you?.eligible && s.you.answered) return <ResultBanner correct={s.you.correct ?? false} points={s.you.points} />;
+  if (s.you?.eligible && s.you.answered) return <ResultBanner correct={s.you.correct ?? false} points={s.you.points} answer={s.question && s.reveal ? shortAnswer(s.question.q, s.reveal) : null} />;
   return null;
 }
 
@@ -237,7 +240,7 @@ function Roster({ view, players, meId = null, size = 'phone', sideRows = SIDE_RO
           const out = r.lanterns <= 0;
           const mine = r.playerId === meId;
           return (
-            <li key={r.playerId} className={`flex min-w-0 items-center gap-3 rounded-[18px] border px-2.5 ${big ? 'py-1' : 'py-1.5'} ${NIGHT} ${mine ? 'border-lantern ring-2 ring-lantern' : 'border-white/12'}`}>
+            <li key={r.playerId} className={`flex min-w-0 items-center gap-3 rounded-[var(--radius-m)] px-2.5 ${big ? 'py-1' : 'py-1.5'} ${mine ? 'bg-lantern/[0.14] ring-2 ring-lantern ring-inset' : NIGHT}`}>
               <PlayerGlim avatar={avatarOf(players, r.playerId)} seed={r.playerId} size={44} className={`${glim} shrink-0 ${out ? 'opacity-60 grayscale' : ''}`} />
               <span className="min-w-0 flex-1 truncate font-bold">
                 {r.name}
@@ -269,7 +272,7 @@ export function LanternOutPlayer({ view, act, gameNow, paused, room }: ModeScree
   if (s.phase === 'leaderboard' || s.phase === 'done') {
     return (
       <div className="mx-auto flex w-full max-w-xl flex-col gap-4">
-        <h2 className={`font-display text-3xl font-extrabold ${SIGN}`}>Lanterns</h2>
+        <h2 className="font-display text-[2.25rem] font-bold">Lanterns</h2>
         {view.teams ? <TeamScores teams={view.teams} /> : null}
         <Roster view={view} players={room.players} meId={room.me.playerId} />
       </div>
@@ -285,21 +288,21 @@ export function LanternOutPlayer({ view, act, gameNow, paused, room }: ModeScree
     <div className="mx-auto flex w-full max-w-3xl flex-col gap-3 sm:gap-4">
       <RoundHeader round={s.round} total={s.total}>
         <Pill>
-          <Flame className="size-4 text-lantern" aria-hidden /> {view.alive} still lit
+          <Flame className="size-4 text-lantern" aria-hidden /> <span className="font-display text-[1.25em] font-extrabold">{view.alive}</span> still lit
         </Pill>
       </RoundHeader>
       {you ? (
         <StagePanel className="flex items-center justify-between gap-3 px-3 py-1.5 sm:px-4 sm:py-2.5">
           <LanternRow lit={you.lanterns} total={view.lives} size={22} />
-          <span className="font-display text-lg font-extrabold tabular">{formatNumber(you.points)} pts</span>
+          <HudScore value={you.points} />
         </StagePanel>
       ) : null}
       <RevivalBanner view={view} />
       {you?.out && !view.revival && !(s.phase === 'reveal' && you.knockedOut) ? (
-        <StagePanel className="flex items-center gap-3 border-2 border-dashed border-white/30 px-4 py-3">
+        <StagePanel className="flex items-center gap-3 px-4 py-3">
           <Eye className="size-7 shrink-0 text-text-2" aria-hidden />
           <div role="status">
-            <p className="font-display text-xl font-extrabold">Your lanterns are out</p>
+            <p className="font-display text-2xl leading-tight font-extrabold">Your lanterns are out</p>
             <p className="font-semibold text-text-2">You are watching for now. {revivalText(view)}</p>
           </div>
         </StagePanel>
@@ -309,10 +312,10 @@ export function LanternOutPlayer({ view, act, gameNow, paused, room }: ModeScree
       {s.phase === 'question' ? (
         canAnswer ? (
           s.you?.answered ? (
-            <StagePanel className="flex items-center gap-4 px-4 py-4">
-              <PlayerGlim avatar={myAvatar(room)} seed={room.me.playerId ?? 'you'} size={72} bob className="shrink-0" />
+            <StagePanel className="flex items-center gap-4 px-4 py-3.5">
+              <PlayerGlim avatar={myAvatar(room)} seed={room.me.playerId ?? 'you'} size={72} className="shrink-0" />
               <div role="status">
-                <p className="font-display text-2xl font-extrabold">Answer locked in</p>
+                <p className="font-display text-[1.75rem] leading-tight font-extrabold">Answer locked in</p>
                 <p className="font-semibold text-text-2">
                   {s.answered} of {s.eligible} have answered.
                 </p>
@@ -329,7 +332,7 @@ export function LanternOutPlayer({ view, act, gameNow, paused, room }: ModeScree
       ) : (
         <div className="flex flex-col gap-4">
           {late ? <JoinedLate /> : <Outcome view={view} />}
-          {canAnswer && !s.you?.answered && !late ? <p className="font-semibold text-text-2">No answer this time.</p> : null}
+          {canAnswer && !s.you?.answered && !late ? <p className="font-semibold text-text-2">You did not answer.</p> : null}
           {s.reveal ? <RevealAnswer q={q.q} reveal={s.reveal} compact /> : null}
           <Explanation text={s.explanation} />
           <RoundSummary view={view} />
@@ -351,7 +354,7 @@ export function LanternOutHost({ view, gameNow, paused, room }: ModeScreenProps<
   if (s.phase === 'leaderboard' || s.phase === 'done') {
     return (
       <div className="mx-auto flex w-full max-w-[110rem] flex-col gap-[clamp(0.75rem,2vh,1.5rem)]">
-        <h2 className={`font-display text-[clamp(2.5rem,min(4.6vw,8vh),5.5rem)] leading-none font-extrabold ${SIGN}`}>Lanterns</h2>
+        <h2 className="font-display text-[clamp(2.75rem,min(5vw,8.5vh),6rem)] leading-none font-extrabold">Lanterns</h2>
         <Roster view={view} players={room.players} size="wall" />
       </div>
     );
@@ -367,14 +370,12 @@ export function LanternOutHost({ view, gameNow, paused, room }: ModeScreenProps<
       <div className="flex min-w-0 flex-col gap-[clamp(0.6rem,1.4vh,1.25rem)]">
         <RoundHeader round={s.round} total={s.total} big>
           <Pill tone="lantern" className={pill}>
-            <Flame className="size-[0.9em]" aria-hidden /> {view.alive} still lit
+            <Flame className="size-[0.9em]" aria-hidden /> <span className="font-display text-[1.25em] font-extrabold">{view.alive}</span> still lit
           </Pill>
           <Pill className={pill}>
-            <Wind className="size-[0.9em]" aria-hidden /> {view.out} out
+            <Wind className="size-[0.9em]" aria-hidden /> <span className="font-display text-[1.25em] font-extrabold">{view.out}</span> out
           </Pill>
-          <Pill className={pill}>
-            {s.answered} of {s.eligible} answered
-          </Pill>
+          <HudCount value={s.answered} total={s.eligible} label="answered" big className="text-[clamp(1rem,min(1.5vw,2.8vh),1.75rem)]" />
         </RoundHeader>
         <RevivalBanner view={view} big />
         {s.phase === 'question' ? <TimerBar deadline={q.deadline} start={q.shownAt} gameNow={gameNow} paused={paused} tone={view.revival ? 'violet' : 'amber'} size="lg" /> : null}
@@ -391,7 +392,7 @@ export function LanternOutHost({ view, gameNow, paused, room }: ModeScreenProps<
         ) : null}
       </div>
       <aside className="flex min-w-0 flex-col gap-[clamp(0.5rem,1.4vh,0.75rem)]">
-        <h3 className={`font-display text-[clamp(1.5rem,min(2.4vw,4.2vh),2.75rem)] leading-tight font-extrabold ${SIGN}`}>Lanterns</h3>
+        <h3 className="font-display text-[clamp(1.75rem,min(2.7vw,4.6vh),3rem)] leading-tight font-bold">Lanterns</h3>
         {s.phase === 'reveal' && s.explanation ? <StagePanel className="px-4 py-[clamp(0.4rem,1.2vh,0.75rem)] text-[clamp(1rem,min(1.3vw,2.4vh),1.4rem)] font-semibold text-text max-lg:hidden">{s.explanation}</StagePanel> : null}
         {summary ? <RoundSummary view={view} big /> : null}
         {view.teams ? <TeamScores teams={view.teams} /> : null}

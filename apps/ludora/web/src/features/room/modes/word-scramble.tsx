@@ -8,8 +8,8 @@ import { QuestionCard } from '../game/QuestionCard.tsx';
 import { Countdown, TimerBar } from '../game/TimerBar.tsx';
 import { ResultBanner } from '../game/Reveal.tsx';
 import { Leaderboard, TeamScores, type LeaderRow } from '../game/Leaderboard.tsx';
-import { Explanation } from '../game/parts.tsx';
-import { NIGHT, Pill, SIGN, StagePanel } from '../game/stage.tsx';
+import { Explanation, HudScore, ModeTitle } from '../game/parts.tsx';
+import { NIGHT, Pill, StagePanel } from '../game/stage.tsx';
 import { Button } from '../../../ui/Button.tsx';
 import { formatNumber, plural } from '../../../lib/format.ts';
 
@@ -160,7 +160,8 @@ function ScrambleBoard({ word, paused, onSolve, onHint, onSkip }: { word: Scramb
   };
 
   const small = total > 12;
-  const slotSize = small ? 'size-9 text-lg sm:size-10 sm:text-xl' : 'size-11 text-2xl sm:size-12';
+  // Slots are square and share their word's row: up to 44px (48px on a tablet), smaller when a long word has to fit a phone.
+  const slotSize = `aspect-square w-full ${small ? 'text-lg sm:text-xl' : total > 8 ? 'text-xl sm:text-2xl' : 'text-2xl'}`;
   const hintsLeft = word.maxHints - word.hints;
   let k = 0;
   return (
@@ -177,14 +178,14 @@ function ScrambleBoard({ word, paused, onSolve, onHint, onSkip }: { word: Scramb
           const start = k;
           k += len;
           return (
-            <div key={w} className="flex gap-1.5">
+            <div key={w} className="grid min-w-0 grid-flow-col auto-cols-[minmax(0,2.75rem)] gap-1.5 sm:auto-cols-[minmax(0,3rem)]">
               {Array.from({ length: len }, (_, j) => {
                 const id = slots[start + j];
                 const tile = id ? byId.get(id) : undefined;
                 const hinted = id ? word.hinted.includes(id) : false;
                 const next = !id && start + j === slots.length;
                 if (!tile) {
-                  return <span key={j} className={`grid place-items-center rounded-[12px] border-[3px] border-dashed ${slotSize} ${next ? 'border-lantern bg-lantern/15' : 'border-white/40'}`} aria-hidden />;
+                  return <span key={j} className={`grid place-items-center rounded-[var(--radius-m)] border-2 border-dashed ${slotSize} ${next ? 'border-lantern bg-lantern/15' : 'border-white/35'}`} aria-hidden />;
                 }
                 return (
                   <button
@@ -193,7 +194,7 @@ function ScrambleBoard({ word, paused, onSolve, onHint, onSkip }: { word: Scramb
                     onClick={() => unpick(tile.id)}
                     disabled={hinted || locked}
                     aria-label={hinted ? `${tile.ch}, from a hint` : `${tile.ch}, tap to take back`}
-                    className={`grid place-items-center rounded-[12px] border-[3px] font-display font-extrabold ${slotSize} ${hinted ? 'border-ink bg-lantern text-on-accent' : 'paper border-ink'}`}
+                    className={`grid place-items-center rounded-[var(--radius-m)] font-display font-extrabold ${slotSize} ${hinted ? 'bg-lantern text-on-accent' : 'paper'}`}
                   >
                     {tile.ch}
                   </button>
@@ -204,8 +205,8 @@ function ScrambleBoard({ word, paused, onSolve, onHint, onSkip }: { word: Scramb
         })}
       </div>
       {word.tries ? (
-        <p key={word.tries} className={`self-start rounded-[14px] border-2 border-ember px-3 py-2 font-bold text-ember ${NIGHT}`} role="status" style={{ animation: 'pop-in 220ms var(--ease-spring)' }}>
-          Not quite. Move some letters and try again.
+        <p key={word.tries} className={`self-start rounded-[var(--radius-m)] border border-ember/70 px-3 py-2 font-bold text-ember ${NIGHT}`} role="status" style={{ animation: 'pop-in 200ms var(--ease-out)' }}>
+          Incorrect. Move some letters and try again.
         </p>
       ) : null}
       {/* The rack of tiles still to place. */}
@@ -218,7 +219,7 @@ function ScrambleBoard({ word, paused, onSolve, onHint, onSkip }: { word: Scramb
               onClick={() => pick(t.id)}
               disabled={locked}
               aria-label={`Letter ${t.ch}`}
-              className={`grid place-items-center rounded-[14px] border-[3px] border-ink bg-lantern font-display font-extrabold text-on-accent shadow-[0_4px_0_var(--ink)] transition-[translate,box-shadow] duration-[120ms] ease-[var(--ease-out)] enabled:active:translate-y-[3px] enabled:active:shadow-[0_1px_0_var(--ink)] ${small ? 'size-11 text-xl' : 'size-12 text-2xl sm:size-14 sm:text-3xl'}`}
+              className={`sticker grid place-items-center rounded-[var(--radius-m)] bg-lantern font-display font-extrabold text-on-accent ${small ? 'size-11 text-[1.4rem]' : 'size-12 text-[1.6rem] sm:size-14 sm:text-[2rem]'}`}
             >
               {t.ch}
             </button>
@@ -231,21 +232,21 @@ function ScrambleBoard({ word, paused, onSolve, onHint, onSkip }: { word: Scramb
             Check
           </Button>
         ) : null}
-        <Button size="lg" icon={<Delete className="size-5" />} onClick={() => mine.length && unpick(mine[mine.length - 1]!)} disabled={locked || !mine.length}>
+        <Button size="lg" icon={<Delete className="size-5" aria-hidden />} onClick={() => mine.length && unpick(mine[mine.length - 1]!)} disabled={locked || !mine.length}>
           Back
         </Button>
-        <Button size="lg" icon={<Eraser className="size-5" />} onClick={() => setPicked([])} disabled={locked || !mine.length}>
+        <Button size="lg" icon={<Eraser className="size-5" aria-hidden />} onClick={() => setPicked([])} disabled={locked || !mine.length}>
           Clear
         </Button>
         {word.maxHints > 0 ? (
-          <Button size="lg" icon={<Lightbulb className="size-5" />} onClick={() => void run(onHint)} disabled={locked || hintsLeft <= 0}>
+          <Button size="lg" icon={<Lightbulb className="size-5" aria-hidden />} onClick={() => void run(onHint)} disabled={locked || hintsLeft <= 0}>
             Hint, −10 ({hintsLeft} left)
           </Button>
         ) : null}
-        <Button size="lg" variant="ghost" icon={<Keyboard className="size-5" />} onClick={() => setTyping((t) => !t)} aria-pressed={typing}>
+        <Button size="lg" variant="ghost" icon={<Keyboard className="size-5" aria-hidden />} onClick={() => setTyping((t) => !t)} aria-pressed={typing}>
           {typing ? 'Use the tiles' : 'Type it'}
         </Button>
-        <Button size="lg" variant="ghost" icon={<SkipForward className="size-5" />} onClick={() => void run(onSkip)} disabled={locked}>
+        <Button size="lg" variant="ghost" icon={<SkipForward className="size-5" aria-hidden />} onClick={() => void run(onSkip)} disabled={locked}>
           Skip
         </Button>
       </div>
@@ -265,7 +266,7 @@ function ScrambleBoard({ word, paused, onSolve, onHint, onSkip }: { word: Scramb
             spellCheck={false}
             placeholder="Type the answer"
             disabled={locked}
-            className="paper h-14 min-w-0 flex-1 rounded-[16px] border-[3px] border-ink px-4 font-display text-xl font-bold placeholder:font-sans placeholder:text-base placeholder:font-normal placeholder:text-text-3 focus:outline-none focus-visible:ring-4 focus-visible:ring-lantern"
+            className="paper h-14 min-w-0 flex-1 rounded-[var(--radius-l)] border border-line-strong px-4 text-xl font-bold placeholder:text-base placeholder:font-normal placeholder:text-text-3 focus:outline-none focus-visible:ring-4 focus-visible:ring-lantern"
           />
           <Button type="submit" variant="primary" size="lg" disabled={locked || !typed.trim()}>
             Check
@@ -285,7 +286,7 @@ function PlainQuestion({ word, act, paused, onSkip }: { word: PlainWord; act: Mo
       <p className="font-semibold text-text-2">This answer cannot be scrambled, so answer it as a normal question. Worth {word.value}.</p>
       <QuestionCard q={word.question.q} />
       <AnswerInput key={word.iid} q={word.question.q} onSubmit={submit} disabled={paused} compact />
-      <Button variant="ghost" icon={<SkipForward className="size-5" />} onClick={() => void onSkip()} disabled={paused} className="self-start">
+      <Button variant="ghost" icon={<SkipForward className="size-5" aria-hidden />} onClick={() => void onSkip()} disabled={paused} className="self-start">
         Skip
       </Button>
     </div>
@@ -297,9 +298,9 @@ function Between({ last, answer, onNext, paused }: { last: FeedbackView; answer:
     <div className="flex flex-col gap-3">
       <ResultBanner key={last.iid} correct={last.correct} partial={last.partial} points={last.points ?? null} text={last.correct ? undefined : last.text} />
       {answer ? (
-        <div className="rounded-[20px] border-[3px] border-ink bg-glim px-5 py-4 text-on-accent shadow-[0_4px_0_var(--ink)]">
+        <div className="lift rounded-[var(--radius-l)] bg-glim px-5 py-4 text-on-accent">
           <div className="text-sm font-bold">{last.correct ? 'You spelt' : 'The answer was'}</div>
-          <div className="font-display text-3xl font-extrabold break-words">{answer}</div>
+          <div className="font-display text-[2rem] leading-tight font-extrabold break-words">{answer}</div>
         </div>
       ) : null}
       <Explanation text={last.explanation} />
@@ -324,11 +325,13 @@ export function WordScramblePlayer({ view, act, gameNow, paused, room }: ModeScr
     <div className="mx-auto flex w-full max-w-3xl flex-col gap-3 sm:gap-5">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex flex-wrap items-center gap-2">
-          <Pill>
-            Word {Math.min(you.done + (w ? 1 : 0), view.total)} of {view.total}
-          </Pill>
-          <Pill>{plural(you.points, 'point')}</Pill>
-          {mine && view.leaders.length > 1 ? <span className="font-bold text-text-2">Place {mine.rank}</span> : null}
+          <p className="plate plate-blue text-xl tabular">
+            <span>
+              Word {Math.min(you.done + (w ? 1 : 0), view.total)} of {view.total}
+            </span>
+          </p>
+          <HudScore value={you.points} unit={you.points === 1 ? 'point' : 'points'} />
+          {mine && view.leaders.length > 1 ? <span className="font-bold text-text-2 tabular">Place {mine.rank}</span> : null}
         </div>
         <Pill>
           <Countdown until={view.endsAt} gameNow={gameNow} label="Time left" />
@@ -338,7 +341,7 @@ export function WordScramblePlayer({ view, act, gameNow, paused, room }: ModeScr
       {you.finished ? (
         <StagePanel className="px-5 py-6 text-center">
           <div role="status">
-          <p className="font-display text-3xl font-extrabold">Every word done!</p>
+          <p className="font-display text-[2.25rem] leading-tight font-extrabold">Every word done</p>
           <p className="font-semibold text-text-2">
             {plural(you.solved, 'word')} solved for {plural(you.points, 'point')}.
             {view.playing > 1 ? ` ${view.finished} of ${view.playing} players have finished.` : ''}
@@ -361,7 +364,7 @@ export function WordScramblePlayer({ view, act, gameNow, paused, room }: ModeScr
       ) : null}
       {view.leaders.length > 1 ? (
         <div className="flex flex-col gap-2">
-          <h3 className={`font-display text-xl font-extrabold ${SIGN}`}>Leaderboard</h3>
+          <h3 className="font-display text-2xl font-bold">Leaderboard</h3>
           <Leaderboard rows={toLeaderRows(view.leaders)} you={mine ? toLeaderRows([mine])[0] : null} players={room.players} teams={room.room.teams} label={(r) => `${formatNumber(r.score)} pts`} />
         </div>
       ) : null}
@@ -380,8 +383,8 @@ export function WordScrambleHost({ view, gameNow, room }: ModeScreenProps<WordSc
     <div className="mx-auto flex w-full max-w-[110rem] flex-1 flex-col gap-[clamp(0.75rem,2vh,1.5rem)]">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h2 className={`font-display text-[clamp(2.25rem,min(4vw,7vh),4.75rem)] leading-none font-extrabold ${SIGN}`}>Word Scramble</h2>
-          <p className="mt-1 text-[clamp(1.05rem,min(1.6vw,2.8vh),1.75rem)] font-semibold text-text-2">
+          <ModeTitle>Word Scramble</ModeTitle>
+          <p className="mt-2 text-[clamp(1.05rem,min(1.6vw,2.8vh),1.75rem)] font-semibold text-text-2">
             {view.finished} of {view.playing} finished all {view.total} words{view.timed ? '. Every word is on a timer' : ''}.
           </p>
         </div>
@@ -396,7 +399,7 @@ export function WordScrambleHost({ view, gameNow, room }: ModeScreenProps<WordSc
         </div>
         {view.teams ? (
           <StagePanel className="flex flex-col gap-3 p-5">
-            <h3 className="font-display text-[clamp(1.4rem,2.2vw,2.5rem)] font-extrabold">Teams: average points</h3>
+            <h3 className="font-display text-[clamp(1.6rem,2.5vw,2.75rem)] font-bold">Teams: average points</h3>
             <TeamScores teams={view.teams} big />
           </StagePanel>
         ) : null}

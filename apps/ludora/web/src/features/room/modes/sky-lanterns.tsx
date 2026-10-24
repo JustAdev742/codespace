@@ -6,10 +6,10 @@ import type { FeedbackView, QuestionView } from '../game/types.ts';
 import { AnswerInput } from '../game/AnswerInput.tsx';
 import { QuestionCard } from '../game/QuestionCard.tsx';
 import { Countdown } from '../game/TimerBar.tsx';
-import { ResultBanner, RevealAnswer } from '../game/Reveal.tsx';
+import { ResultBanner, RevealAnswer, shortAnswer } from '../game/Reveal.tsx';
 import { RankBadge, TeamScores } from '../game/Leaderboard.tsx';
-import { Explanation } from '../game/parts.tsx';
-import { NIGHT, Pill, PlayerGlim, SIGN, StagePanel, avatarOf } from '../game/stage.tsx';
+import { Explanation, ModeTitle, StreakChip } from '../game/parts.tsx';
+import { NIGHT, Pill, PlayerGlim, StagePanel, avatarOf } from '../game/stage.tsx';
 import { Lantern } from '../../../art/Lantern.tsx';
 import { Button } from '../../../ui/Button.tsx';
 import { useNow } from '../../../lib/useNow.ts';
@@ -152,13 +152,13 @@ function WindPanel({ wind, gameNow }: { wind: Wind; gameNow: () => number }) {
   const tone = wind.mult >= 3 ? 'bg-glim text-on-accent' : wind.mult === 2 ? 'bg-sky text-on-accent' : 'bg-white/15 text-text';
   const small = 'text-[clamp(0.95rem,min(1.3vw,2.3vh),1.4rem)]';
   return (
-    <div className={`flex items-center gap-4 rounded-[18px] border border-white/12 px-5 py-[clamp(0.5rem,1.6vh,1rem)] ${NIGHT}`}>
-      <span className={`grid size-[clamp(3.5rem,8vh,5.5rem)] shrink-0 place-items-center rounded-[14px] border-[3px] border-ink ${tone}`}>
+    <div className={`flex items-center gap-4 rounded-[var(--radius-l)] px-5 py-[clamp(0.5rem,1.6vh,1rem)] ${NIGHT}`}>
+      <span className={`grid size-[clamp(3.5rem,8vh,5.5rem)] shrink-0 place-items-center rounded-[var(--radius-m)] ${tone}`}>
         <WindStreaks mult={wind.mult} size={52} />
       </span>
       <div className="min-w-0 flex-1">
         <div className={`font-bold text-text-2 ${small}`}>{wind.storm ? 'After the storm' : 'Wind now'}</div>
-        <div className="font-display text-[clamp(2rem,min(3.4vw,6vh),4.25rem)] leading-none font-extrabold" aria-live="polite" aria-atomic="true">
+        <div className="font-display text-[clamp(2.25rem,min(3.7vw,6.4vh),4.5rem)] leading-none font-extrabold" aria-live="polite" aria-atomic="true">
           {wind.label} <span className="tabular">×{wind.mult}</span>
         </div>
         <div className={`font-semibold text-text-2 ${small}`}>
@@ -178,14 +178,14 @@ function WindPanel({ wind, gameNow }: { wind: Wind; gameNow: () => number }) {
 /** The storm forecast on the projector. */
 function ForecastPanel({ forecast, wind }: { forecast: Forecast; wind: Wind }) {
   const small = 'text-[clamp(0.95rem,min(1.3vw,2.3vh),1.4rem)]';
-  const pad = `rounded-[18px] border border-white/12 px-5 py-[clamp(0.5rem,1.6vh,1rem)] ${NIGHT}`;
+  const pad = `rounded-[var(--radius-l)] px-5 py-[clamp(0.5rem,1.6vh,1rem)] ${NIGHT}`;
   if (!forecast.storms) {
     return (
       <div className={`flex items-center gap-3 ${pad}`}>
         <CloudSun className="size-12 shrink-0 text-lantern" aria-hidden />
         <div className="min-w-0">
           <div className={`font-bold text-text-2 ${small}`}>Forecast</div>
-          <div className="font-display text-[clamp(1.75rem,min(2.8vw,5vh),3rem)] leading-tight font-extrabold">No storms today</div>
+          <div className="font-display text-[clamp(1.9rem,min(3vw,5.4vh),3.25rem)] leading-tight font-extrabold">No storms today</div>
           <div className={`font-semibold text-text-2 ${small}`}>Lanterns are safe on the ground. Wait for a gust, but not too long.</div>
         </div>
       </div>
@@ -201,7 +201,7 @@ function ForecastPanel({ forecast, wind }: { forecast: Forecast; wind: Wind }) {
         </span>
         <span className="font-display text-[clamp(1.75rem,min(3vw,5.4vh),3.25rem)] leading-tight font-extrabold tabular">{last ? 'None' : `${chance}%`}</span>
       </div>
-      <div className="relative mt-1 h-[clamp(0.9rem,2vh,1.25rem)] overflow-hidden rounded-full border-2 border-ink bg-[rgb(17_10_62/0.7)]" role="meter" aria-label="Storm chance at the next wind change" aria-valuenow={chance} aria-valuemin={0} aria-valuemax={100}>
+      <div className="relative mt-1 h-[clamp(0.75rem,1.8vh,1.1rem)] overflow-hidden rounded-full bg-white/[0.12]" role="meter" aria-label="Storm chance at the next wind change" aria-valuenow={chance} aria-valuemin={0} aria-valuemax={100}>
         <div className="absolute inset-0 rounded-full bg-ember transition-transform duration-500 ease-[var(--ease-out)]" style={{ transform: `translateX(${chance - 100}%)` }} />
       </div>
       <div className={`mt-1 font-semibold text-text-2 ${small}`}>
@@ -218,7 +218,7 @@ function WindLine({ wind, gameNow }: { wind: Wind; gameNow: () => number }) {
   const tone = wind.mult >= 3 ? 'bg-glim text-on-accent' : wind.mult === 2 ? 'bg-sky text-on-accent' : 'bg-white/15 text-text';
   return (
     <div className="flex min-w-0 items-center gap-2">
-      <span className={`grid size-9 shrink-0 place-items-center rounded-[12px] border-[3px] border-ink sm:size-12 ${tone}`}>
+      <span className={`grid size-9 shrink-0 place-items-center rounded-[var(--radius-m)] sm:size-12 ${tone}`}>
         <WindStreaks mult={wind.mult} size={26} />
       </span>
       <div className="min-w-0">
@@ -248,7 +248,7 @@ function StormLine({ forecast, wind }: { forecast: Forecast; wind: Wind }) {
         <CloudSun className="size-7 shrink-0 text-lantern" aria-hidden />
         <div className="min-w-0">
           <div className="text-xs font-bold text-text-2 sm:text-sm">Forecast</div>
-          <div className="font-display text-base leading-tight font-extrabold sm:text-lg">No storms</div>
+          <div className="font-display text-lg leading-tight font-extrabold sm:text-xl">No storms</div>
         </div>
       </div>
     );
@@ -264,7 +264,7 @@ function StormLine({ forecast, wind }: { forecast: Forecast; wind: Wind }) {
         <span className="font-display text-lg leading-none font-extrabold tabular">{last ? 'None' : `${chance}%`}</span>
       </div>
       <div
-        className="relative h-3 overflow-hidden rounded-full border-2 border-ink bg-[rgb(17_10_62/0.7)]"
+        className="relative h-2.5 overflow-hidden rounded-full bg-white/[0.12]"
         role="meter"
         aria-label="Storm chance at the next wind change"
         aria-valuenow={chance}
@@ -285,7 +285,8 @@ function OilGauge({ oil, cap, cost }: { oil: number; cap: number; cost: number }
       <span className="shrink-0 text-xs font-bold text-text-2 sm:text-sm">Oil</span>
       <div className="flex min-w-0 flex-1 gap-0.5" role="meter" aria-label="Oil" aria-valuenow={oil} aria-valuemin={0} aria-valuemax={cap}>
         {Array.from({ length: cap }, (_, i) => (
-          <span key={i} className={`h-3 min-w-0 flex-1 rounded-[4px] border-2 transition-colors ${i < oil ? 'border-ink bg-lantern' : 'border-white/30 bg-white/10'} ${(i + 1) % cost === 0 && i + 1 < cap ? 'mr-1' : ''}`} />
+          // Full or hollow, so the oil reads without the colour.
+          <span key={i} className={`h-3 min-w-0 flex-1 rounded-[3px] transition-colors ${i < oil ? 'bg-lantern' : 'ring-[1.5px] ring-white/35 ring-inset'} ${(i + 1) % cost === 0 && i + 1 < cap ? 'mr-1' : ''}`} />
         ))}
       </div>
       <span className="shrink-0 font-display text-base font-extrabold tabular">
@@ -324,8 +325,8 @@ function Advice({ view, safe }: { view: SkyLanternsView; safe: number }) {
   let text: string | null = null;
   let urgent = true;
   if (you.oil >= view.oilCap) text = 'Your oil can is full. Light a lantern so your next answers are not wasted.';
-  else if (you.ground && view.wind.changeAt === null) text = 'This is the last wind. Launch before time runs out!';
-  else if (you.ground && view.wind.mult >= 3) text = `${view.wind.label} ×${view.wind.mult}! A great moment to launch.`;
+  else if (you.ground && view.wind.changeAt === null) text = 'Last wind. Launch before time runs out.';
+  else if (you.ground && view.wind.mult >= 3) text = `${view.wind.label} ×${view.wind.mult}. A good moment to launch.`;
   else if (you.ground && view.forecast.storms && view.forecast.chance >= 50) {
     // Lightning rods: a storm only reaches stacks bigger than `safe`.
     if (you.ground <= safe) text = 'A storm is likely, but your stack is small enough to be safe.';
@@ -365,33 +366,35 @@ export function SkyLanternsPlayer({ view, act, gameNow, paused, room }: ModeScre
       {/* Score, sky and lanterns in one panel: the question underneath stays above the fold on a small phone. */}
       <StagePanel as="section" className="flex flex-col gap-1.5 px-2.5 py-2 sm:gap-3 sm:p-4" label="Your lanterns">
         <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
-          <div className="relative font-display text-xl font-extrabold sm:text-2xl">
-            {plural(you.score, 'point')}
-            {rank && view.board.length > 1 ? <span className="ml-2 text-base text-text-2 sm:text-lg">{ordinal(rank)}</span> : null}
+          <div className="relative flex items-baseline gap-1.5 leading-none">
+            <span className="font-display text-[1.75rem] font-extrabold tabular sm:text-[2rem]">{formatNumber(you.score)}</span>
+            <span className="font-bold text-text-2">{you.score === 1 ? 'point' : 'points'}</span>
+            {rank && view.board.length > 1 ? <span className="ml-1 font-bold text-text-2 tabular">{ordinal(rank)}</span> : null}
             {launchFresh ? (
-              <span key={you.lastLaunch!.at} className="pointer-events-none absolute -top-1 left-0 font-display text-lg font-extrabold whitespace-nowrap text-glim" style={{ animation: 'reaction-float 2.4s var(--ease-out) forwards' }} aria-hidden>
-                +{you.lastLaunch!.points}
+              // The launch's points land on a mint plate: the moment of this screen.
+              <span key={you.lastLaunch!.at} className="plate pointer-events-none absolute -top-2 left-0 bg-glim text-lg whitespace-nowrap text-on-accent" style={{ animation: 'reaction-float 1.8s var(--ease-out) forwards' }} aria-hidden>
+                <span>+{you.lastLaunch!.points}</span>
               </span>
             ) : null}
           </div>
           <div className="flex items-center gap-2">
-            {you.streak > 1 ? <Pill tone="lantern" className="px-2.5! py-0.5! text-sm sm:text-base">Streak {you.streak}</Pill> : null}
+            <StreakChip streak={you.streak} className="py-0.5 text-sm sm:text-base" />
             <Pill className="px-2.5! py-0.5! text-sm sm:text-base">
               <Countdown until={view.endsAt} gameNow={gameNow} label="Time left" />
             </Pill>
           </div>
         </div>
-        <div className="grid grid-cols-2 gap-x-3 gap-y-1.5 sm:gap-x-4 sm:gap-y-2 sm:border-t sm:border-white/12 sm:pt-3">
+        <div className="grid grid-cols-2 gap-x-3 gap-y-1.5 sm:gap-x-4 sm:gap-y-2 sm:border-t sm:border-white/10 sm:pt-3">
           <WindLine wind={view.wind} gameNow={gameNow} />
           <StormLine forecast={view.forecast} wind={view.wind} />
           <OilGauge oil={you.oil} cap={view.oilCap} cost={view.cost} />
           <WaitingLine count={you.ground} />
         </div>
         <div className="grid grid-cols-2 gap-2">
-          <Button variant="primary" size="lg" className="max-sm:h-10 max-sm:px-2" icon={<Flame className="size-5" />} disabled={paused || busy || you.oil < view.cost} onClick={() => void send({ type: 'light' })}>
+          <Button variant="primary" size="lg" className="max-sm:h-11 max-sm:px-2" icon={<Flame className="size-5" aria-hidden />} disabled={paused || busy || you.oil < view.cost} onClick={() => void send({ type: 'light' })}>
             Light ({view.cost} oil)
           </Button>
-          <Button variant="success" size="lg" className="max-sm:h-10 max-sm:px-2" icon={<Rocket className="size-5" />} disabled={paused || busy || you.ground === 0} onClick={() => void send({ type: 'launch' })}>
+          <Button variant="success" size="lg" className="max-sm:h-11 max-sm:px-2" icon={<Rocket className="size-5" aria-hidden />} disabled={paused || busy || you.ground === 0} onClick={() => void send({ type: 'launch' })}>
             {you.ground ? `Launch for ${formatNumber(you.ground * view.wind.mult)}` : 'Launch'}
           </Button>
         </div>
@@ -405,7 +408,7 @@ export function SkyLanternsPlayer({ view, act, gameNow, paused, room }: ModeScre
       </StagePanel>
 
       {stormHitYou ? (
-        <div className={`flex items-center gap-3 rounded-[18px] border-2 border-ember px-4 py-3 font-bold ${NIGHT}`} role="status">
+        <div className={`flex items-center gap-3 rounded-[var(--radius-m)] border border-ember/70 px-4 py-3 font-bold ${NIGHT}`} role="status">
           <CloudLightning className="size-6 shrink-0 text-ember" aria-hidden />
           The storm blew out your {plural(you.lastLoss!.count, 'lantern')}. Launched points are safe.
         </div>
@@ -413,10 +416,10 @@ export function SkyLanternsPlayer({ view, act, gameNow, paused, room }: ModeScre
 
       {flow.feedback ? (
         <div className="flex flex-col gap-3">
-          <ResultBanner key={flow.feedback.iid} correct={flow.feedback.correct} partial={flow.feedback.partial} text={flow.feedback.text} />
+          <ResultBanner key={flow.feedback.iid} correct={flow.feedback.correct} partial={flow.feedback.partial} text={flow.feedback.text} answer={flow.answered ? shortAnswer(flow.answered.q, flow.feedback.reveal) : null} />
           {!flow.feedback.correct && flow.answered ? <RevealAnswer q={flow.answered.q} reveal={flow.feedback.reveal} compact /> : null}
           {!flow.feedback.correct ? <Explanation text={flow.feedback.explanation} /> : null}
-          <button type="button" onClick={flow.dismiss} className="self-center rounded-[12px] px-4 py-2 font-bold text-text-2 hover:bg-white/10">
+          <button type="button" onClick={flow.dismiss} className="min-h-11 self-center rounded-[var(--radius-m)] px-4 py-2 font-bold text-text-2 hover:bg-white/10">
             Next question
           </button>
         </div>
@@ -453,7 +456,7 @@ function RisingLanterns({ launches, gameNow }: { launches: Launch[]; gameNow: ()
   );
 }
 
-/** Every lantern launched so far stays up in the sky, so the big screen fills with light as the game goes on. */
+/** Every lantern launched so far stays up in the sky, so the big screen fills with light as the game goes on. They hold still: the launches rising are the moment. */
 function LanternField({ count }: { count: number }) {
   const shown = Math.min(count, 60);
   return (
@@ -462,7 +465,7 @@ function LanternField({ count }: { count: number }) {
         <div
           key={i}
           className="absolute"
-          style={{ left: `${3 + ((i * 37 + 11) % 91)}%`, top: `${2 + ((i * 53 + 7) % 72)}%`, opacity: 0.55 + ((i * 7) % 5) * 0.09, animation: `glim-bob ${3 + (i % 4)}s ease-in-out ${(i % 7) * 0.4}s infinite` }}
+          style={{ left: `${3 + ((i * 37 + 11) % 91)}%`, top: `${2 + ((i * 53 + 7) % 72)}%`, opacity: 0.55 + ((i * 7) % 5) * 0.09 }}
         >
           <Lantern art={{ ...LANTERN, hue: (i * 29) % 360 }} size={14 + ((i * 5) % 4) * 3} lit />
         </div>
@@ -477,7 +480,7 @@ function SkyScene({ view, gameNow, safe }: { view: SkyLanternsView; gameNow: () 
   const freshStorm = storm && gameNow() - storm.at < 6000;
   const waiting = view.totals.waiting;
   return (
-    <div className={`relative overflow-hidden rounded-[24px] border border-white/12 p-[clamp(0.75rem,1.6vh,1.25rem)] ${NIGHT}`}>
+    <div className={`relative overflow-hidden rounded-[var(--radius-l)] border border-white/10 p-[clamp(0.75rem,1.6vh,1.25rem)] ${NIGHT}`}>
       <div className="relative grid grid-cols-1 gap-[clamp(0.75rem,1.6vh,1rem)] lg:grid-cols-2">
         <WindPanel wind={view.wind} gameNow={gameNow} />
         <ForecastPanel forecast={view.forecast} wind={view.wind} />
@@ -488,11 +491,11 @@ function SkyScene({ view, gameNow, safe }: { view: SkyLanternsView; gameNow: () 
         <RisingLanterns launches={view.launches} gameNow={gameNow} />
         {view.totals.launched ? <span className="absolute top-1 right-1 text-[clamp(1rem,min(1.5vw,2.6vh),1.6rem)] font-bold text-text-2">{plural(view.totals.launched, 'lantern')} in the sky</span> : null}
         {freshStorm ? (
-          <div className="absolute inset-x-0 top-0 bottom-10 grid place-items-center rounded-[18px] bg-[rgb(120_20_40/0.55)]" role="status" style={{ animation: 'pop-in 260ms var(--ease-spring)' }}>
+          <div className="absolute inset-x-0 top-0 bottom-10 grid place-items-center rounded-[var(--radius-m)] bg-[rgb(120_20_40/0.6)]" role="status" style={{ animation: 'pop-in 200ms var(--ease-out)' }}>
             <div className="flex items-center gap-4 text-left">
               <CloudLightning className="size-[clamp(2.5rem,7vh,4rem)] shrink-0 text-ember" aria-hidden />
               <div>
-                <p className={`font-display text-[clamp(2rem,min(4vw,6vh),4rem)] leading-none font-extrabold ${SIGN}`}>Storm!</p>
+                <p className="font-display text-[clamp(2.25rem,min(4.3vw,6.4vh),4.25rem)] leading-none font-extrabold italic">Storm</p>
                 <p className="text-[clamp(1.1rem,min(1.7vw,3vh),1.9rem)] font-bold">{storm.lost ? `${plural(storm.lost, 'lantern')} blown out` : safe > 0 && waiting ? 'Every waiting stack was small enough to be safe' : 'Nobody had a lantern waiting'}</p>
               </div>
             </div>
@@ -520,7 +523,7 @@ function SkyBoard({ rows, players }: { rows: BoardRow[]; players: RoomPlayerView
       style={{ '--lb-rank': 'clamp(2rem, 4.2vh, 3.5rem)', gridTemplateRows: two ? `repeat(${Math.ceil(rows.length / 2)}, auto)` : undefined } as CSSProperties}
     >
       {rows.map((r) => (
-        <li key={r.playerId} className={`flex min-w-0 items-center gap-[clamp(0.5rem,1vw,0.75rem)] rounded-[20px] border border-white/12 px-3 py-1 ${NIGHT}`}>
+        <li key={r.playerId} className={`flex min-w-0 items-center gap-[clamp(0.5rem,1vw,0.75rem)] rounded-[var(--radius-m)] px-3 py-1 ${NIGHT}`}>
           <RankBadge rank={r.rank} big />
           <PlayerGlim avatar={avatarOf(players, r.playerId)} seed={r.playerId} size={56} className={`${ROW_GLIM} shrink-0`} />
           <span className="min-w-0 flex-1 truncate font-bold">{r.name}</span>
@@ -538,13 +541,13 @@ function SkyBoard({ rows, players }: { rows: BoardRow[]; players: RoomPlayerView
 
 export function SkyLanternsHost({ view, gameNow, room }: ModeScreenProps<SkyLanternsView>) {
   const text = 'text-[clamp(1.05rem,min(1.6vw,2.8vh),1.75rem)]';
-  const heading = `mb-[clamp(0.25rem,1vh,0.5rem)] font-display text-[clamp(1.4rem,min(2.2vw,3.9vh),2.5rem)] leading-tight font-extrabold ${SIGN}`;
+  const heading = 'mb-[clamp(0.25rem,1vh,0.5rem)] font-display text-[clamp(1.6rem,min(2.5vw,4.3vh),2.75rem)] leading-tight font-bold';
   // Beside a five-row board there is room for five launches, or three above the team scores.
   const launches = view.launches.slice(0, view.teams ? 3 : 5);
   return (
     <div className="mx-auto flex w-full max-w-[110rem] flex-1 flex-col gap-[clamp(0.75rem,2vh,1.5rem)]">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 className={`font-display text-[clamp(2.25rem,min(4vw,7vh),4.75rem)] leading-none font-extrabold ${SIGN}`}>Sky Lanterns</h2>
+        <ModeTitle>Sky Lanterns</ModeTitle>
         <Pill className="px-5 py-1.5 text-[clamp(1.25rem,2.2vw,2.5rem)]">
           <Countdown until={view.endsAt} gameNow={gameNow} label="Time left" />
         </Pill>
@@ -565,7 +568,7 @@ export function SkyLanternsHost({ view, gameNow, room }: ModeScreenProps<SkyLant
             {launches.length ? (
               <ul className={`flex flex-col gap-1.5 leading-tight ${text}`}>
                 {launches.map((l) => (
-                  <li key={`${l.playerId}-${l.at}`} className={`flex min-h-[clamp(2.5rem,5.2vh,4.25rem)] items-center gap-3 rounded-[18px] border border-white/12 px-3 py-1 ${NIGHT}`} style={{ animation: 'rise-fade 300ms var(--ease-out) both' }}>
+                  <li key={`${l.playerId}-${l.at}`} className={`flex min-h-[clamp(2.5rem,5.2vh,4.25rem)] items-center gap-3 rounded-[var(--radius-m)] px-3 py-1 ${NIGHT}`} style={{ animation: 'rise-fade 200ms var(--ease-out) both' }}>
                     <Rocket className="size-[1.1em] shrink-0 text-glim" aria-hidden />
                     <span className="min-w-0 flex-1 truncate font-bold">{l.name}</span>
                     <span className="shrink-0 font-semibold text-text-2 tabular">
@@ -576,12 +579,12 @@ export function SkyLanternsHost({ view, gameNow, room }: ModeScreenProps<SkyLant
                 ))}
               </ul>
             ) : (
-              <p className={`font-semibold text-text-2 ${text}`}>No lanterns have flown yet. Who will go first?</p>
+              <p className={`font-semibold text-text-2 ${text}`}>No lanterns launched yet.</p>
             )}
           </section>
           {view.teams ? (
             <StagePanel className="flex flex-col gap-3 p-[clamp(0.75rem,1.6vh,1.25rem)]">
-              <h3 className="font-display text-[clamp(1.4rem,min(2.2vw,3.9vh),2.5rem)] font-extrabold">Teams (average points)</h3>
+              <h3 className="font-display text-[clamp(1.6rem,min(2.5vw,4.3vh),2.75rem)] font-bold">Teams (average points)</h3>
               <TeamScores teams={view.teams.map((t) => ({ teamId: t.teamId, name: t.name, hue: t.hue, score: t.average }))} big />
             </StagePanel>
           ) : null}
