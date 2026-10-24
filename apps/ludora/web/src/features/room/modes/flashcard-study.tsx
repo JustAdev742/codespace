@@ -170,7 +170,7 @@ export function FlashcardStudyPlayer({ view, act, gameNow, paused, room }: ModeS
             <span className="font-display text-[1.75rem] font-extrabold tabular">{you.mastered}</span>
             <span className="font-bold text-text-2">of {view.total} mastered</span>
           </span>
-          <ProgressBar value={you.mastered} max={view.total} tone="mint" label="Cards mastered" className="h-3! border-0! bg-white/[0.12]!" />
+          <ProgressBar value={you.mastered} max={view.total} tone="mint" label="Cards mastered" className="h-3! bg-white/[0.12]!" />
         </div>
         <Pill>
           <Countdown until={view.endsAt} gameNow={gameNow} label="Time left" />
@@ -297,7 +297,7 @@ export function FlashcardStudyHost({ view, gameNow }: ModeScreenProps<FlashcardS
                 {r.mastered} of {view.total} mastered{r.done ? ', all done' : ''}, knew {r.accuracy}%
               </span>
             </span>
-            <ProgressBar value={r.mastered} max={view.total} tone="mint" label={`${r.name}: cards mastered`} className="border-0! bg-white/[0.12]!" />
+            <ProgressBar value={r.mastered} max={view.total} tone="mint" label={`${r.name}: cards mastered`} className="bg-white/[0.12]!" />
           </li>
         ))}
       </ul>

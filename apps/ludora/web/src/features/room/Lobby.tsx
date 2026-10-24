@@ -253,11 +253,11 @@ export function PlayerLobby({ room, handle }: { room: RoomView; handle: RoomHand
   const others = room.players.filter((p) => p.id !== room.me.playerId);
   const shown = others.slice(0, 7);
   const [pose, cheer] = useOwnPose();
-  useAnnounce(`You're in. Waiting for ${room.room.hostName} to start.`, 'joined');
+  useAnnounce(`You are in. Waiting for ${room.room.hostName} to start.`, 'joined');
   return (
     <div className="mx-auto flex w-full max-w-md flex-1 flex-col items-center justify-center gap-5 text-center">
       <h1 className="plate plate-gold text-[2.5rem]">
-        <span>You&apos;re in</span>
+        <span>You are in</span>
       </h1>
       {/* The player's card: their Glim under the stage light, their name and their team. */}
       <div className="stage-card flex w-full flex-col items-center gap-2 bg-white/[0.07] bg-[radial-gradient(90%_70%_at_50%_0%,rgb(58_107_255/0.35)_0%,transparent_70%)] px-5 pt-5 pb-4">

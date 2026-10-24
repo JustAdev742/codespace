@@ -53,7 +53,8 @@ function Podium({ room, big }: { room: RoomView; big: boolean }) {
                   // A phone's podium column is narrow: names wrap onto a second line rather than lose their end.
                   <span className={`mt-1 line-clamp-2 max-w-full rounded-[var(--radius-s)] px-2 py-0.5 text-center text-sm leading-tight font-bold break-words shadow-[0_6px_16px_-8px_rgb(2_5_20/0.8)] ${first ? 'bg-lantern text-on-accent' : 'paper'}`}>{s.name}</span>
                 )}
-                <span className={`mt-1 font-display font-extrabold tabular ${big ? 'text-[clamp(1.15rem,1.9vw,2.1rem)]' : 'text-lg'}`}>{s.label}</span>
+                {/* A long label ("12 points from 4 lanterns") wraps under itself, centred over the block. */}
+                <span className={`mt-1 text-center font-display leading-tight font-extrabold tabular ${big ? 'text-[clamp(1.15rem,1.9vw,2.1rem)]' : 'text-lg'}`}>{s.label}</span>
               </div>
               <div className="mt-2 w-full overflow-hidden" style={{ height: `calc(var(--podium) * ${HEIGHT[place]})` }}>
                 {/* A solid block with a lit top edge and a darker base, like the stage's pressable pieces. */}
@@ -205,6 +206,8 @@ export function Results({ room, handle, isHost, guest }: { room: RoomView; handl
   const mine = r.standings.find((s) => s.playerId === room.me.playerId);
   const competitive = r.outcome === 'competitive';
   const podium = competitive && r.standings.length > 1;
+  // Something stands beside the standings: the podium, or the team photo of a co-op game. A lone player has neither.
+  const side = podium || !competitive;
   const title = r.outcome === 'coop-win' ? 'Victory' : r.outcome === 'coop-loss' ? 'Defeat' : 'Game over';
   useAnnounce(`${title}. ${mine && podium ? `You came ${ordinal(mine.rank)}. ` : ''}${r.summary}`, 'results');
   const shared = useSharedSounds();
@@ -228,11 +231,14 @@ export function Results({ room, handle, isHost, guest }: { room: RoomView; handl
           </p>
         ) : null}
       </div>
-      <div className={`grid grid-cols-1 gap-[clamp(1rem,2.5vw,2.5rem)] ${big ? 'lg:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)] lg:items-start' : ''}`}>
+      {/* With nothing to stand beside them, a lone player's standings take the middle of the projector rather than leave half of it empty. */}
+      <div className={`grid grid-cols-1 gap-[clamp(1rem,2.5vw,2.5rem)] ${big ? (side ? 'lg:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)] lg:items-start' : 'mx-auto w-full max-w-[48rem]') : ''}`}>
         {/* On the projector the podium stays in view, standing on the bottom of the screen, however long the standings get. */}
-        <div className={`flex flex-col ${podium ? 'justify-end' : 'justify-center'} ${big ? 'lg:sticky lg:top-[5.5rem] lg:h-[calc(100dvh-19.5rem)] lg:min-h-[22rem]' : ''}`}>
-          {podium ? <Podium room={room} big={big} /> : !competitive ? <TeamPhoto room={room} won={r.outcome === 'coop-win'} big={big} /> : null}
-        </div>
+        {side ? (
+          <div className={`flex flex-col ${podium ? 'justify-end' : 'justify-center'} ${big ? 'lg:sticky lg:top-[5.5rem] lg:h-[calc(100dvh-19.5rem)] lg:min-h-[22rem]' : ''}`}>
+            {podium ? <Podium room={room} big={big} /> : <TeamPhoto room={room} won={r.outcome === 'coop-win'} big={big} />}
+          </div>
+        ) : null}
         <div className="flex flex-col gap-4">
           {isHost ? (
             // The host's next steps come first, so they stay on screen however long the standings are.

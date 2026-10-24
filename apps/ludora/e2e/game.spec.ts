@@ -43,7 +43,7 @@ test('a host and a player play Classic from join code to results', async ({ brow
   await player.getByLabel('Your name').fill('Sunny Otter');
   await player.getByRole('button', { name: 'Join game' }).click();
   // Exact: the screen reader announcer also says these words, inside a longer sentence.
-  await expect(player.getByText("You're in", { exact: true })).toBeVisible();
+  await expect(player.getByText('You are in', { exact: true })).toBeVisible();
   await expect(host.page.getByText('Sunny Otter', { exact: true })).toBeVisible();
 
   const next = host.page.getByRole('button', { name: /Next|Skip ahead/ });

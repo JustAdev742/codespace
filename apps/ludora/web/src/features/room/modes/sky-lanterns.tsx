@@ -501,7 +501,7 @@ function SkyScene({ view, gameNow, safe }: { view: SkyLanternsView; gameNow: () 
             </div>
           </div>
         ) : null}
-        <div className="absolute inset-x-0 bottom-0 flex flex-wrap items-end justify-between gap-3 border-t-2 border-dashed border-white/35 pt-1.5">
+        <div className="absolute inset-x-0 bottom-0 flex flex-wrap items-end justify-between gap-3 border-t-2 border-white/25 pt-1.5">
           <GroundLanterns count={waiting} size={24} max={16} />
           <span className="text-[clamp(1rem,min(1.5vw,2.6vh),1.6rem)] font-bold text-text-2">{plural(waiting, 'lantern')} waiting on the ground</span>
         </div>

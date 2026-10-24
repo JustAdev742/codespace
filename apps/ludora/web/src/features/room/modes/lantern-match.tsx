@@ -223,7 +223,7 @@ export function LanternMatchPlayer({ view, act, gameNow, paused, room }: ModeScr
         </StagePanel>
       ) : null}
       <div className="flex items-center gap-3">
-        <ProgressBar value={you.boardPairs} max={you.boardTotal} tone="mint" label="Pairs found on this board" className="border-0! bg-white/[0.12]!" />
+        <ProgressBar value={you.boardPairs} max={you.boardTotal} tone="mint" label="Pairs found on this board" className="bg-white/[0.12]!" />
         <span className="shrink-0 text-sm font-bold text-text-2 tabular">
           Board {you.board}: {you.boardPairs} / {you.boardTotal}
         </span>
@@ -288,7 +288,7 @@ export function LanternMatchHost({ view, gameNow, room }: ModeScreenProps<Lanter
                 <span className="flex min-w-0 flex-col gap-0.5">
                   <span className="truncate font-bold">{r.name}</span>
                   <span className="flex min-w-0 items-center gap-2">
-                    <ProgressBar value={r.boardPairs} max={r.boardTotal} tone="mint" label={`${r.name}: board ${r.cleared + 1}, ${r.boardPairs} of ${r.boardTotal} pairs`} className="max-w-xs min-w-0 border-0! bg-white/[0.12]!" />
+                    <ProgressBar value={r.boardPairs} max={r.boardTotal} tone="mint" label={`${r.name}: board ${r.cleared + 1}, ${r.boardPairs} of ${r.boardTotal} pairs`} className="max-w-xs min-w-0 bg-white/[0.12]!" />
                     <span className="text-[0.8em] font-semibold whitespace-nowrap text-text-2 tabular">{r.cleared ? `${plural(r.cleared, 'board')} cleared` : `${r.boardPairs} / ${r.boardTotal}`}</span>
                   </span>
                 </span>
