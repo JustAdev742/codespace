@@ -12,8 +12,8 @@ import { Lantern } from '../../art/Lantern.tsx';
 import { CurrencyIcon } from '../../art/icons.tsx';
 import { AccountError, Amount, Dialog, EmptyState, ErrorNotice, Input, PageHeader, Select, Skeleton } from '../../ui/primitives.tsx';
 import { Button, ButtonLink } from '../../ui/Button.tsx';
-import { Meter, ToggleChips } from '../../ui/game.tsx';
-import { RarityLabel, RarityPanel, RarityPlate, frameProps } from './rarity.tsx';
+import { Meter, RarityTag, ToggleChips } from '../../ui/game.tsx';
+import { RarityLabel, RarityPanel, frameProps } from './rarity.tsx';
 
 interface CollectionGlim {
   id: string;
@@ -92,7 +92,7 @@ function GlimDetail({ glim, collection, dust, isBuddy, onClose }: { glim: Collec
           </RarityPanel>
           {!owned ? (
             <p className="py-2 text-center">
-              <RarityPlate rarity={glim.rarity} size="md" />
+              <RarityTag rarity={glim.rarity} size="md" />
             </p>
           ) : null}
         </div>
