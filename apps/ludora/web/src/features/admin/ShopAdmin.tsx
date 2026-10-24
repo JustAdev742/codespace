@@ -86,9 +86,11 @@ function RowSwitch({ checked, label, onClick }: { checked: boolean; label: strin
         e.stopPropagation();
         onClick();
       }}
-      className="group relative inline-flex h-6 w-10 shrink-0 items-center rounded-full border-2 border-ink bg-surface-3 transition-colors aria-checked:bg-glim"
+      // Like the shared Switch: off is a grey thumb at the left of an outlined groove, on an ink thumb at the right of a mint track.
+      // The invisible strip around it takes presses across 44px without making the row taller.
+      className="group relative inline-flex h-7 w-12 shrink-0 items-center rounded-full border border-line-strong bg-sunken transition-colors after:absolute after:-inset-x-1 after:-inset-y-2 aria-checked:border-transparent aria-checked:bg-glim"
     >
-      <span className="block size-4 translate-x-0.5 rounded-full border-2 border-ink bg-white transition-transform group-aria-checked:translate-x-[18px]" />
+      <span className="block size-5 translate-x-[3px] rounded-full bg-text-3 shadow-[0_1px_2px_rgb(2_5_20/0.3)] transition-[translate,transform,background-color] duration-150 ease-[var(--ease-out)] group-aria-checked:translate-x-[23px] group-aria-checked:bg-on-accent" />
     </button>
   );
 }
@@ -389,10 +391,10 @@ function TargetPreview({ listing }: { listing: AdminListing }) {
   const packs = usePacks(canCatalog && Boolean(listing.packId));
   const pack = packs.data?.packs.find((p) => p.id === listing.packId);
   return (
-    <div className="flex min-w-0 items-center gap-3 rounded-[14px] border border-line bg-sunken p-3">
+    <div className="flex min-w-0 items-center gap-3 rounded-[var(--radius-l)] border border-line bg-sunken p-3">
       <div className="flex shrink-0 gap-1.5">
         {listing.packId ? (
-          <span className="grid size-16 place-items-center rounded-[10px] bg-surface-2">{pack ? <Lantern art={pack.art} size={48} /> : null}</span>
+          <span className="grid size-16 place-items-center rounded-[var(--radius-m)] bg-surface-2">{pack ? <Lantern art={pack.art} size={48} /> : null}</span>
         ) : (
           (items.data ?? ids.map(() => null)).slice(0, 4).map((it, i) => <ArtThumb key={ids[i] ?? i} art={it?.art} rarity={it?.rarity} size={56} />)
         )}
@@ -571,7 +573,7 @@ function ListingDialog({ open, onOpenChange, listing }: { open: boolean; onOpenC
               {f.bundle.length ? (
                 <ul className="flex flex-col gap-1.5">
                   {f.bundle.map((b) => (
-                    <li key={b.id} className="flex min-w-0 items-center gap-2 rounded-[12px] border border-line p-1.5 pr-2">
+                    <li key={b.id} className="flex min-w-0 items-center gap-2 rounded-[var(--radius-m)] border border-line p-1.5 pr-2">
                       <ArtThumb art={b.art} rarity={b.rarity} size={36} />
                       <span className="min-w-0 flex-1">
                         <span className="block truncate text-sm font-semibold">{b.name}</span>
@@ -661,7 +663,7 @@ function ListingDialog({ open, onOpenChange, listing }: { open: boolean; onOpenC
         </div>
       </div>
       {listing && 'priceAmount' in patch ? (
-        <p className="rounded-[12px] border border-lantern/50 bg-lantern/10 px-3 py-2 text-sm text-text-2">
+        <p className="rounded-[var(--radius-m)] border border-lantern/50 bg-lantern/10 px-3 py-2 text-sm text-text-2">
           Players will pay {formatNumber(price ?? 0)} instead of {formatNumber(listing.priceAmount)} from now on. Earlier purchases are not affected.
         </p>
       ) : null}

@@ -185,7 +185,7 @@ export default function Rooms() {
       </div>
 
       {rooms.error && rooms.data ? (
-        <p role="status" className="mb-3 rounded-[12px] border border-ember/50 bg-ember/10 px-3 py-2 text-sm text-text">
+        <p role="status" className="mb-3 rounded-[var(--radius-m)] border border-ember/50 bg-ember/10 px-3 py-2 text-sm text-text">
           Could not refresh the list. Showing rooms as of {clock(rooms.dataUpdatedAt)}.
         </p>
       ) : null}
@@ -336,7 +336,7 @@ function RoomDialog({ code, onClose, canUsers }: { code: string | null; onClose:
               ]}
             />
             <section aria-labelledby="room-players">
-              <h3 id="room-players" className="mb-2 font-semibold text-text">
+              <h3 id="room-players" className="mb-2 font-sans font-semibold text-text">
                 People in the room <span className="font-normal text-text-3">({plural(r.players, 'player')}{r.bots ? `, ${plural(r.bots, 'bot')}` : ''})</span>
               </h3>
               <DataTable caption="People in the room" minWidth={hasTeams ? 480 : 420} columns={columns} rows={d.players} rowKey={(p) => p.id} empty="Nobody has joined yet." />

@@ -67,7 +67,7 @@ function clock(ms: number): string {
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
     <section className="min-w-0">
-      <h2 className="mb-2 text-sm font-semibold text-text-2">{title}</h2>
+      <h2 className="mb-2 font-display text-lg leading-tight font-bold text-text">{title}</h2>
       <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-4">{children}</div>
     </section>
   );
@@ -116,7 +116,7 @@ export default function System() {
       }
     >
       {system.error && s ? (
-        <p role="status" className="mb-4 rounded-[12px] border border-ember/50 bg-ember/10 px-3 py-2 text-sm text-text">
+        <p role="status" className="mb-4 rounded-[var(--radius-m)] border border-ember/50 bg-ember/10 px-3 py-2 text-sm text-text">
           The latest check failed, so these figures are from {clock(system.dataUpdatedAt)}.
         </p>
       ) : null}
@@ -238,8 +238,8 @@ function ErrorReports() {
                       {e.stack || e.context ? (
                         <details className="mt-1.5">
                           <summary className="cursor-pointer text-sm font-semibold text-link">{e.stack ? 'Stack trace and details' : 'Details'}</summary>
-                          {e.stack ? <pre className="mt-2 max-h-80 overflow-auto rounded-[10px] bg-sunken p-3 font-mono text-xs leading-relaxed text-text-2">{e.stack}</pre> : null}
-                          {e.context ? <pre className="mt-2 max-h-48 overflow-auto rounded-[10px] bg-sunken p-3 font-mono text-xs leading-relaxed text-text-2">{JSON.stringify(e.context, null, 2)}</pre> : null}
+                          {e.stack ? <pre className="mt-2 max-h-80 overflow-auto rounded-[var(--radius-m)] bg-sunken p-3 font-mono text-xs leading-relaxed text-text-2">{e.stack}</pre> : null}
+                          {e.context ? <pre className="mt-2 max-h-48 overflow-auto rounded-[var(--radius-m)] bg-sunken p-3 font-mono text-xs leading-relaxed text-text-2">{JSON.stringify(e.context, null, 2)}</pre> : null}
                         </details>
                       ) : null}
                     </li>

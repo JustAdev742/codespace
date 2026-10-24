@@ -312,7 +312,7 @@ function SetReviewBody({ detail: d, onAction }: { detail: StaffSetDetail; onActi
       <div className="flex flex-col gap-3">
         <SetStatus visibility={s.visibility} hidden={hidden} featured={s.isFeatured} official={s.isOfficial} />
         {hidden ? (
-          <div className="rounded-[12px] border border-ember/50 bg-ember/10 px-3 py-2 text-sm text-text">
+          <div className="rounded-[var(--radius-m)] border border-ember/50 bg-ember/10 px-3 py-2 text-sm text-text">
             Hidden from players since {dateTime(s.hiddenAt)}.{s.hiddenReason ? <span className="text-text-2"> Reason: {s.hiddenReason}</span> : null}
           </div>
         ) : null}
@@ -361,7 +361,7 @@ function SetReviewBody({ detail: d, onAction }: { detail: StaffSetDetail; onActi
       ) : null}
 
       <section aria-labelledby="set-reports">
-        <h3 id="set-reports" className="mb-2 font-semibold text-text">
+        <h3 id="set-reports" className="mb-2 font-sans font-semibold text-text">
           Reports{' '}
           {d.reports.length ? (
             <span className="font-normal text-text-3">
@@ -370,7 +370,7 @@ function SetReviewBody({ detail: d, onAction }: { detail: StaffSetDetail; onActi
           ) : null}
         </h3>
         {d.reports.length ? (
-          <ul className="flex flex-col divide-y divide-line rounded-[12px] border border-line">
+          <ul className="flex flex-col divide-y divide-line rounded-[var(--radius-m)] border border-line">
             {d.reports.map((r) => (
               <li key={r.id} className="flex flex-col gap-1 px-3 py-2 text-sm">
                 <div className="flex flex-wrap items-center gap-2">
@@ -391,7 +391,7 @@ function SetReviewBody({ detail: d, onAction }: { detail: StaffSetDetail; onActi
 
       <section aria-labelledby="set-questions">
         <div className="mb-2 flex flex-wrap items-center gap-1.5">
-          <h3 id="set-questions" className="mr-1 font-semibold text-text">
+          <h3 id="set-questions" className="mr-1 font-sans font-semibold text-text">
             Questions and answers
           </h3>
           {Object.entries(typeCounts).map(([t, n]) => (
@@ -401,7 +401,7 @@ function SetReviewBody({ detail: d, onAction }: { detail: StaffSetDetail; onActi
           ))}
         </div>
         {invalid ? (
-          <p className="mb-2 flex items-start gap-2 rounded-[12px] border border-lantern/50 bg-lantern/10 px-3 py-2 text-sm text-text">
+          <p className="mb-2 flex items-start gap-2 rounded-[var(--radius-m)] border border-lantern/50 bg-lantern/10 px-3 py-2 text-sm text-text">
             <TriangleAlert className="mt-0.5 size-4 shrink-0" aria-hidden />
             {invalid === 1 ? '1 question does not pass the question checks, so games leave it out.' : `${invalid} questions do not pass the question checks, so games leave them out.`}
           </p>
@@ -409,7 +409,7 @@ function SetReviewBody({ detail: d, onAction }: { detail: StaffSetDetail; onActi
         {parsed.length ? (
           <ol className="flex flex-col gap-2">
             {parsed.map((p, i) => (
-              <li key={i} className="min-w-0 rounded-[12px] border border-line p-3">
+              <li key={i} className="min-w-0 rounded-[var(--radius-m)] border border-line p-3">
                 {p.result.success ? <QuestionView q={p.result.data} index={i} /> : <BrokenQuestion raw={p.raw} index={i} />}
               </li>
             ))}
@@ -449,11 +449,11 @@ function MediaView({ media, small = false }: { media: Media; small?: boolean }) 
   return (
     <figure className={small ? 'mt-1' : 'mt-2'}>
       {gone ? (
-        <div className={`grid ${small ? 'h-16 w-24' : 'h-32 w-48'} place-items-center rounded-[10px] border border-dashed border-line-strong bg-sunken px-2 text-center text-xs text-text-3`}>
+        <div className={`grid ${small ? 'h-16 w-24' : 'h-32 w-48'} place-items-center rounded-[var(--radius-m)] border border-dashed border-line-strong bg-sunken px-2 text-center text-xs text-text-3`}>
           {hidden ? 'Hidden by staff' : 'Image not available'}
         </div>
       ) : (
-        <img src={media.url} alt={media.alt} loading="lazy" onError={() => setMissing(true)} className={`${small ? 'max-h-16' : 'max-h-48'} max-w-full rounded-[10px] border border-line bg-sunken object-contain`} />
+        <img src={media.url} alt={media.alt} loading="lazy" onError={() => setMissing(true)} className={`${small ? 'max-h-16' : 'max-h-48'} max-w-full rounded-[var(--radius-m)] border border-line bg-sunken object-contain`} />
       )}
       <figcaption className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-text-3">
         <span>Image description: {media.alt || 'none given'}</span>
@@ -523,7 +523,7 @@ function ChoiceList({ choices, correct }: { choices: { id: string; text: string;
       {choices.map((c) => {
         const ok = correct.includes(c.id);
         return (
-          <li key={c.id} className={`flex min-w-0 items-start gap-2 rounded-[10px] border px-2.5 py-1.5 text-sm ${ok ? 'border-glim/60 bg-glim/10 text-text' : 'border-transparent text-text-2'}`}>
+          <li key={c.id} className={`flex min-w-0 items-start gap-2 rounded-[var(--radius-m)] border px-2.5 py-1.5 text-sm ${ok ? 'border-glim/60 bg-glim/10 text-text' : 'border-transparent text-text-2'}`}>
             {ok ? <Check className="mt-0.5 size-4 shrink-0 text-glim" aria-hidden /> : <Circle className="mt-0.5 size-4 shrink-0 text-text-3" aria-hidden />}
             <span className="min-w-0 flex-1 break-words">
               {c.text || <span className="text-text-3">Image only</span>}
@@ -538,7 +538,7 @@ function ChoiceList({ choices, correct }: { choices: { id: string; text: string;
 }
 
 function Chip({ children }: { children: ReactNode }) {
-  return <span className="inline-block max-w-full rounded-[8px] border border-glim/60 bg-glim/10 px-2 py-0.5 text-sm font-semibold whitespace-pre-wrap break-words text-text">{children}</span>;
+  return <span className="inline-block max-w-full rounded-[var(--radius-s)] border border-glim/60 bg-glim/10 px-2 py-0.5 text-sm font-semibold whitespace-pre-wrap break-words text-text">{children}</span>;
 }
 
 function AnswerView({ q }: { q: Question }) {
@@ -635,7 +635,7 @@ function AnswerView({ q }: { q: Question }) {
       return (
         <>
           <AnswerLabel>Back of the card</AnswerLabel>
-          <p className="rounded-[10px] bg-surface-2 px-3 py-2 text-sm whitespace-pre-wrap break-words text-text">{q.back}</p>
+          <p className="rounded-[var(--radius-m)] bg-surface-2 px-3 py-2 text-sm whitespace-pre-wrap break-words text-text">{q.back}</p>
         </>
       );
   }
@@ -651,7 +651,7 @@ function BrokenQuestion({ raw, index }: { raw: unknown; index: number }) {
       </div>
       {prompt ? <p className="mt-1.5 font-semibold whitespace-pre-wrap break-words text-text">{prompt}</p> : null}
       <p className="mt-1 text-sm text-text-2">Games leave this question out. This is exactly what is stored:</p>
-      <pre className="mt-1 max-h-48 overflow-auto rounded-[10px] bg-sunken p-2 font-mono text-xs text-text-2">{JSON.stringify(raw, null, 2)}</pre>
+      <pre className="mt-1 max-h-48 overflow-auto rounded-[var(--radius-m)] bg-sunken p-2 font-mono text-xs text-text-2">{JSON.stringify(raw, null, 2)}</pre>
     </div>
   );
 }

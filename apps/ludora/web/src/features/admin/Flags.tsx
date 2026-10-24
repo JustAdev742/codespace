@@ -142,7 +142,7 @@ function FlagCard({ flag }: { flag: FlagRow }) {
     <Card>
       <div className="flex flex-wrap items-start justify-between gap-x-6 gap-y-2">
         <div className="min-w-0 flex-1 basis-80">
-          <h2 className="flex flex-wrap items-center gap-2">
+          <h2 className="flex flex-wrap items-center gap-2 font-sans">
             <code className="font-mono text-[15px] font-semibold break-all text-text">{flag.key}</code>
             <FlagState f={flag} />
           </h2>
@@ -155,7 +155,7 @@ function FlagCard({ flag }: { flag: FlagRow }) {
             </span>
           </p>
         </div>
-        <div className="w-full shrink-0 rounded-[12px] border border-line px-3 sm:w-auto sm:min-w-56">
+        <div className="w-full shrink-0 rounded-[var(--radius-m)] border border-line px-3 sm:w-auto sm:min-w-56">
           <Switch checked={enabled} onCheckedChange={setEnabled} label="On for everyone" />
         </div>
       </div>

@@ -134,7 +134,7 @@ function EventCard({ ev }: { ev: AdminEvent }) {
           ) : null}
         </div>
 
-        <div className="rounded-[12px] border border-line p-3">
+        <div className="rounded-[var(--radius-m)] border border-line p-3">
           <Switch
             checked={ev.enabled}
             onCheckedChange={() => setFlagOpen(true)}
@@ -143,9 +143,9 @@ function EventCard({ ev }: { ev: AdminEvent }) {
           />
         </div>
 
-        <section aria-labelledby={`dates-${ev.key}`} className="flex flex-col gap-3 rounded-[12px] border border-line p-3">
+        <section aria-labelledby={`dates-${ev.key}`} className="flex flex-col gap-3 rounded-[var(--radius-m)] border border-line p-3">
           <div>
-            <h3 id={`dates-${ev.key}`} className="font-semibold text-text">
+            <h3 id={`dates-${ev.key}`} className="font-sans font-semibold text-text">
               Dates
             </h3>
             <p className="text-sm text-text-2">

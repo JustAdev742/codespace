@@ -471,8 +471,8 @@ function ItemDialog({ open, onOpenChange, item, collections }: { open: boolean; 
         }
       }}
     >
-      <div className="flex min-w-0 items-center gap-4 rounded-[14px] border border-line bg-sunken p-3">
-        <div className="grid size-28 shrink-0 place-items-center overflow-hidden rounded-[12px] bg-surface-2" aria-label="Preview" role="img">
+      <div className="flex min-w-0 items-center gap-4 rounded-[var(--radius-l)] border border-line bg-sunken p-3">
+        <div className="grid size-28 shrink-0 place-items-center overflow-hidden rounded-[var(--radius-m)] bg-surface-2" aria-label="Preview" role="img">
           {art ? (
             <span className="grid w-full place-items-center px-1" style={{ height: f.type === 'banner' ? 60 : undefined }}>
               <ItemArtView art={art} rarity={f.rarity} size={104} />
@@ -482,7 +482,7 @@ function ItemDialog({ open, onOpenChange, item, collections }: { open: boolean; 
           )}
         </div>
         <div className="min-w-0">
-          <div className="truncate font-display text-lg font-bold text-text">{f.name.trim() || 'Unnamed item'}</div>
+          <div className="truncate font-display text-xl leading-tight font-bold text-text">{f.name.trim() || 'Unnamed item'}</div>
           <div className="mt-1 flex flex-wrap items-center gap-2">
             <RarityBadge rarity={f.rarity} />
             <span className="text-xs text-text-3">{ITEM_TYPE_INFO[f.type].label}</span>
@@ -563,7 +563,7 @@ function ItemDialog({ open, onOpenChange, item, collections }: { open: boolean; 
           {(p) => <Input {...p} inputMode="numeric" value={f.sort} onChange={(e) => set('sort', e.target.value)} />}
         </Field>
       </div>
-      {leavingLive ? <p className="rounded-[12px] border border-ember/50 bg-ember/10 px-3 py-2 text-sm text-text-2">It stops being sold and stops dropping from Lanterns. Players who own it keep it.</p> : null}
+      {leavingLive ? <p className="rounded-[var(--radius-m)] border border-ember/50 bg-ember/10 px-3 py-2 text-sm text-text-2">It stops being sold and stops dropping from Lanterns. Players who own it keep it.</p> : null}
       <Switch checked={f.isTestOnly} onCheckedChange={(v) => set('isTestOnly', v)} label="Test only" description="Never drops, cannot be sold, and can only be given to test accounts." />
       <div className="flex flex-col gap-2">
         <div className="grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-[minmax(0,1fr)_104px]">
@@ -571,7 +571,7 @@ function ItemDialog({ open, onOpenChange, item, collections }: { open: boolean; 
             <JsonField label="Art" value={f.art} onChange={(v) => set('art', v)} rows={9} hint={`The ${ITEM_TYPE_INFO[f.type].label.toLowerCase()} art spec. The preview redraws as you type.`} />
           </div>
           <div className="order-first flex items-center gap-3 sm:order-none sm:flex-col sm:items-stretch sm:pt-7">
-            <div className="grid size-[104px] shrink-0 place-items-center overflow-hidden rounded-[12px] border border-line bg-sunken" role="img" aria-label={art ? 'Art preview' : 'No preview: the art has a problem'}>
+            <div className="grid size-[104px] shrink-0 place-items-center overflow-hidden rounded-[var(--radius-m)] border border-line bg-sunken" role="img" aria-label={art ? 'Art preview' : 'No preview: the art has a problem'}>
               {art ? (
                 <span className="grid w-full place-items-center px-1" style={{ height: f.type === 'banner' ? 56 : undefined }}>
                   <ItemArtView art={art} rarity={f.rarity} size={92} />
@@ -590,7 +590,7 @@ function ItemDialog({ open, onOpenChange, item, collections }: { open: boolean; 
             ))}
           </ul>
         ) : null}
-        <details className="rounded-[12px] border border-line px-3 py-2 text-xs text-text-2">
+        <details className="rounded-[var(--radius-m)] border border-line px-3 py-2 text-xs text-text-2">
           <summary className="cursor-pointer font-semibold text-text">Allowed values for a {ITEM_TYPE_INFO[f.type].label.toLowerCase()}</summary>
           <dl className="mt-2 flex flex-col gap-1.5">
             <div>
@@ -624,7 +624,7 @@ function CollectionsTab() {
       header: 'Collection',
       cell: (c) => (
         <div className="flex min-w-0 items-start gap-2.5">
-          <span className="mt-0.5 size-5 shrink-0 rounded-full border-2 border-ink" style={{ background: `hsl(${c.hue} 70% 58%)` }} aria-hidden />
+          <span className="mt-0.5 size-5 shrink-0 rounded-full shadow-[inset_0_0_0_1px_rgb(0_0_0/0.25)]" style={{ background: `hsl(${c.hue} 70% 58%)` }} aria-hidden />
           <div className="min-w-0">
             <div className="font-semibold">{c.name}</div>
             <div className="font-mono text-xs text-text-3">{c.id}</div>
@@ -726,7 +726,7 @@ function CollectionDialog({ open, onOpenChange, collection }: { open: boolean; o
           {(p) => (
             <div className="flex items-center gap-2">
               <Input {...p} inputMode="numeric" value={f.hue} onChange={(e) => setF({ ...f, hue: e.target.value })} className="min-w-0 flex-1" />
-              <span className="size-9 shrink-0 rounded-full border-2 border-ink" style={{ background: `hsl(${hue ?? 0} 70% 58%)` }} aria-hidden />
+              <span className="size-9 shrink-0 rounded-full shadow-[inset_0_0_0_1px_rgb(0_0_0/0.25)]" style={{ background: `hsl(${hue ?? 0} 70% 58%)` }} aria-hidden />
             </div>
           )}
         </Field>
@@ -866,12 +866,12 @@ function LanternCard({ pack, onEdit }: { pack: AdminPack; onEdit: () => void }) 
   return (
     <Card className="flex flex-col gap-3">
       <div className="flex min-w-0 items-start gap-3">
-        <div className="grid size-20 shrink-0 place-items-center rounded-[12px] bg-sunken">
+        <div className="grid size-20 shrink-0 place-items-center rounded-[var(--radius-m)] bg-sunken">
           <Lantern art={pack.art} size={60} />
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
-            <h3 className="font-display text-lg font-bold text-text">{pack.name}</h3>
+            <h3 className="font-display text-xl leading-tight font-bold text-text">{pack.name}</h3>
             <StatusPill status={pack.releaseState} />
           </div>
           <div className="font-mono text-xs break-all text-text-3">{pack.id}</div>
@@ -1119,12 +1119,12 @@ function LanternDialog({ open, onOpenChange, pack, onSaved }: { open: boolean; o
         }
       }}
     >
-      <div className="flex min-w-0 items-center gap-4 rounded-[14px] border border-line bg-sunken p-3">
+      <div className="flex min-w-0 items-center gap-4 rounded-[var(--radius-l)] border border-line bg-sunken p-3">
         <div className="grid size-24 shrink-0 place-items-center" role="img" aria-label="Lantern preview">
           {art ? <Lantern art={art} size={76} lit /> : <span className="text-center text-xs text-text-3">Fix the colours to see it</span>}
         </div>
         <div className="min-w-0">
-          <div className="truncate font-display text-lg font-bold text-text">{f.name.trim() || 'Unnamed Lantern'}</div>
+          <div className="truncate font-display text-xl leading-tight font-bold text-text">{f.name.trim() || 'Unnamed Lantern'}</div>
           <div className="mt-1 flex flex-wrap items-center gap-2">
             {price !== null ? <Amount currency={f.priceCurrency} value={price} size="sm" /> : null}
             <StatusPill status={f.releaseState} />
@@ -1172,7 +1172,7 @@ function LanternDialog({ open, onOpenChange, pack, onSaved }: { open: boolean; o
           {(p) => <Input {...p} inputMode="numeric" value={f.priceAmount} onChange={(e) => set('priceAmount', e.target.value)} />}
         </Field>
       </div>
-      {priceChanging ? <p className="rounded-[12px] border border-lantern/50 bg-lantern/10 px-3 py-2 text-sm text-text-2">Shop listings that sell this Lantern at its current price will move to the new price. Listings at a deliberate discount stay as they are.</p> : null}
+      {priceChanging ? <p className="rounded-[var(--radius-m)] border border-lantern/50 bg-lantern/10 px-3 py-2 text-sm text-text-2">Shop listings that sell this Lantern at its current price will move to the new price. Listings at a deliberate discount stay as they are.</p> : null}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <Field label="Release state" hint={RELEASE_INFO[f.releaseState]?.description}>
           {(p) => (
@@ -1195,7 +1195,7 @@ function LanternDialog({ open, onOpenChange, pack, onSaved }: { open: boolean; o
       </div>
       {!pack ? <Switch checked={f.addListing} onCheckedChange={(v) => set('addListing', v)} label="List it in the shop" description="Adds a listing to the Lanterns section at the same price." /> : null}
 
-      <fieldset className="flex min-w-0 flex-col gap-4 rounded-[14px] border border-line p-3">
+      <fieldset className="flex min-w-0 flex-col gap-4 rounded-[var(--radius-l)] border border-line p-3">
         <legend className="px-1 text-sm font-semibold text-text">Drop table</legend>
         <div>
           <p className="mb-2 text-xs text-text-3">Relative weights per rarity. Leave a rarity empty or at 0 to leave it out. Only rarities that have live Glims in the pool count.</p>
@@ -1281,9 +1281,9 @@ function LanternDialog({ open, onOpenChange, pack, onSaved }: { open: boolean; o
         {errors.table ? <p className="text-sm font-semibold text-ember">{errors.table}</p> : null}
       </fieldset>
 
-      <section aria-live="polite" aria-labelledby="lantern-preview-h" className="flex min-w-0 flex-col gap-2 rounded-[14px] border border-line-strong bg-sunken p-3">
+      <section aria-live="polite" aria-labelledby="lantern-preview-h" className="flex min-w-0 flex-col gap-2 rounded-[var(--radius-l)] border border-line-strong bg-sunken p-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <h3 id="lantern-preview-h" className="text-sm font-semibold text-text">
+          <h3 id="lantern-preview-h" className="font-sans text-sm font-semibold text-text">
             Odds players will see
           </h3>
           {settling || preview.isFetching ? <span className="text-xs text-text-3">Working out the odds</span> : null}
