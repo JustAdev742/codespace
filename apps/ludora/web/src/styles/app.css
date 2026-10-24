@@ -405,6 +405,20 @@
   }
 }
 
+/*
+ * On the light theme a bright fill barely stands out from its pale groove
+ * (gold is 1.6:1). A darker edge of the fill's own colour gives the filled
+ * part 3:1 against the groove, as WCAG asks of meaningful graphics.
+ */
+:root[data-theme='light'] .progress-fill {
+  box-shadow: inset 0 0 0 1px rgb(0 0 0 / 0.35);
+}
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme='dark']) .progress-fill {
+    box-shadow: inset 0 0 0 1px rgb(0 0 0 / 0.35);
+  }
+}
+
 /* Outside the layers on purpose: a disabled sticker must lose its colour even when a
    utility such as bg-lantern sets one, or it reads as pressable. */
 .sticker:disabled {

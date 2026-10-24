@@ -36,6 +36,13 @@ export async function equippedArt(deps: AppDeps, userId: string) {
 
 const QUEST_ORDER = ['daily', 'weekly', 'event'];
 
+/**
+ * Everyone who took part in a game, practice bots included: the field a rank
+ * is out of. A game's playerCount counts people only (a win against bots is
+ * not a win), so "5th of 2" would follow from using it here.
+ */
+const entrants = sql<number>`(select count(*)::int from game_participants gp where gp.game_id = ${gameSessions.id})`;
+
 export async function profileRoutes(app: FastifyInstance, deps: AppDeps) {
   app.get('/api/me/overview', async (req, reply) => {
     noStore(reply);
@@ -55,7 +62,7 @@ export async function profileRoutes(app: FastifyInstance, deps: AppDeps) {
       equippedArt(deps, uid),
       ensureQuests(deps.db, uid),
       deps.db
-        .select({ gameId: gameSessions.id, modeId: gameSessions.modeId, variantId: gameSessions.variantId, setTitle: gameSessions.setTitle, endedAt: gameSessions.endedAt, players: gameSessions.playerCount, rank: gameParticipants.rank, label: gameParticipants.label, correct: gameParticipants.correct, answered: gameParticipants.answered })
+        .select({ gameId: gameSessions.id, modeId: gameSessions.modeId, variantId: gameSessions.variantId, setTitle: gameSessions.setTitle, endedAt: gameSessions.endedAt, players: gameSessions.playerCount, entrants, rank: gameParticipants.rank, label: gameParticipants.label, correct: gameParticipants.correct, answered: gameParticipants.answered })
         .from(gameParticipants)
         .innerJoin(gameSessions, eq(gameSessions.id, gameParticipants.gameId))
         .where(eq(gameParticipants.userId, uid))
@@ -101,7 +108,7 @@ export async function profileRoutes(app: FastifyInstance, deps: AppDeps) {
     const auth = requireAuth(req);
     const q = parse(z.object({ before: z.string().datetime().optional(), limit: z.coerce.number().int().min(1).max(50).default(20) }), req.query);
     const rows = await deps.db
-      .select({ gameId: gameSessions.id, modeId: gameSessions.modeId, variantId: gameSessions.variantId, setTitle: gameSessions.setTitle, endedAt: gameSessions.endedAt, durationMs: gameSessions.durationMs, players: gameSessions.playerCount, isSolo: gameSessions.isSolo, rank: gameParticipants.rank, label: gameParticipants.label, correct: gameParticipants.correct, answered: gameParticipants.answered, avgResponseMs: gameParticipants.avgResponseMs, rewards: gameParticipants.rewards })
+      .select({ gameId: gameSessions.id, modeId: gameSessions.modeId, variantId: gameSessions.variantId, setTitle: gameSessions.setTitle, endedAt: gameSessions.endedAt, durationMs: gameSessions.durationMs, players: gameSessions.playerCount, entrants, isSolo: gameSessions.isSolo, rank: gameParticipants.rank, label: gameParticipants.label, correct: gameParticipants.correct, answered: gameParticipants.answered, avgResponseMs: gameParticipants.avgResponseMs, rewards: gameParticipants.rewards })
       .from(gameParticipants)
       .innerJoin(gameSessions, eq(gameSessions.id, gameParticipants.gameId))
       .where(and(eq(gameParticipants.userId, auth.user.id), q.before ? lt(gameSessions.endedAt, new Date(q.before)) : sql`true`))

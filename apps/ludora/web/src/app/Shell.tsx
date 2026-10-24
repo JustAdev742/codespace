@@ -180,7 +180,8 @@ function AccountMenu() {
   };
   const avatar = overview.data?.avatar;
   return (
-    <DropdownMenu.Root>
+    // Not modal: the menu keeps focus while open without hiding the page from assistive technology behind it.
+    <DropdownMenu.Root modal={false}>
       <DropdownMenu.Trigger className="flex h-11 items-center gap-2 rounded-full border border-line bg-raised pr-2 pl-1 hover:bg-surface-2 sm:pr-3" aria-label={`${user.displayName}, Lv ${user.level.level}, account menu`}>
         <span className="grid size-9 place-items-center overflow-hidden rounded-full bg-surface-3">{avatar ? <Glim art={avatar.art} accessories={avatar.accessories} rarity={avatar.rarity} size={38} /> : <User className="size-4" />}</span>
         {/* The space keeps the visible "Name Lv 1" readable as words, so it matches the label (WCAG 2.5.3). */}

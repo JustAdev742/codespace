@@ -317,3 +317,14 @@ describe('my stats', () => {
     expect((await a.client.get('/api/me/overview')).body.stats.gamesHosted).toBe(0);
   });
 });
+
+describe('game history', () => {
+  it('gives a rank out of everyone who played, practice bots included, while the player count stays people only', async () => {
+    const a = await registered(t.app);
+    const b = await registered(t.app);
+    const gameId = await playedGame({ hostUserId: a.userId, players: [{ userId: b.userId, correct: 9, answered: 10, rank: 1 }, { userId: a.userId, correct: 2, answered: 10, rank: 5 }] });
+    await t.db.insert(gameParticipants).values([2, 3, 4].map((rank) => ({ gameId, userId: null, playerKey: `bot${rank}`, displayName: `Bot ${rank}`, isGuest: true, isBot: true, rank, score: 500, label: '', answered: 10, correct: 5, avgResponseMs: 2000, bestStreak: 1 })));
+    expect((await a.client.get('/api/me/history')).body.games[0]).toMatchObject({ gameId, players: 2, entrants: 5, rank: 5 });
+    expect((await a.client.get('/api/me/overview')).body.recentGames[0]).toMatchObject({ gameId, players: 2, entrants: 5, rank: 5 });
+  });
+});

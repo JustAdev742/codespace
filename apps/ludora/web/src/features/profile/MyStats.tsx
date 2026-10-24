@@ -27,7 +27,10 @@ interface PlayedGame {
   title: string;
   setTitle: string;
   endedAt: string;
+  /** People in the game; practice bots are not counted. */
   players: number;
+  /** Everyone the rank is out of, practice bots included. */
+  entrants: number;
   isSolo: boolean;
   rank: number;
   label: string;
@@ -271,7 +274,7 @@ function Finish({ g }: { g: PlayedGame }) {
       <span className={`font-display text-2xl leading-none font-extrabold tabular ${medal ? 'rounded-[var(--radius-s)] px-1.5 py-0.5 text-on-accent' : ''}`} style={medal ? { background: medal } : undefined}>
         {ordinal(g.rank)}
       </span>
-      {g.players > 1 ? <span className="text-sm text-text-2">of {g.players}</span> : null}
+      {g.players > 1 ? <span className="text-sm text-text-2">of {g.entrants}</span> : null}
     </div>
   );
 }

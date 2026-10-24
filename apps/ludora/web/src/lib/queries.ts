@@ -46,7 +46,7 @@ export interface Overview {
   equipped: Record<string, EquippedSlot>;
   level: LevelInfo;
   quests: { resets: { daily: string; weekly: string }; list: QuestView[] };
-  recentGames: { gameId: string; modeId: string; title: string; setTitle: string; endedAt: string; players: number; rank: number; label: string; correct: number; answered: number }[];
+  recentGames: { gameId: string; modeId: string; title: string; setTitle: string; endedAt: string; players: number; entrants: number; rank: number; label: string; correct: number; answered: number }[];
 }
 
 export function useOverview() {
