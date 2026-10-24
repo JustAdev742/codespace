@@ -112,7 +112,7 @@ function Rank({ rank }: { rank: number }) {
   );
 }
 
-/** "You" beside your own name: one of three marks on your row, with the gold edge and bar, so it never rests on colour. */
+/** "You" on your own row: one of three marks there, with the gold edge and bar, so it never rests on colour. */
 function YouTag() {
   return <span className="shrink-0 rounded-[var(--radius-s)] bg-lantern px-1.5 text-xs leading-5 font-bold text-on-accent">You</span>;
 }
@@ -125,17 +125,18 @@ function Row({ e }: { e: Entry }) {
       <Rank rank={e.rank} />
       <PlayerAvatar avatar={e.avatar} size={podium ? 44 : 40} />
       <div className="min-w-0 flex-1">
-        <div className="flex min-w-0 items-center gap-2">
-          {e.id ? (
-            <Link to={`/profile/${e.id}`} className={`truncate text-text underline-offset-2 hover:underline ${e.me ? 'font-bold' : 'font-semibold'}`}>
-              {e.displayName}
-            </Link>
-          ) : (
-            <span className={`truncate ${e.me ? 'font-bold' : 'font-semibold'}`}>{e.displayName}</span>
-          )}
+        {e.id ? (
+          <Link to={`/profile/${e.id}`} className={`block truncate text-text underline-offset-2 hover:underline ${e.me ? 'font-bold' : 'font-semibold'}`}>
+            {e.displayName}
+          </Link>
+        ) : (
+          <span className={`block truncate ${e.me ? 'font-bold' : 'font-semibold'}`}>{e.displayName}</span>
+        )}
+        {/* The tag sits beside the level, so a phone keeps the whole name on the line above. */}
+        <div className="flex items-center gap-1.5 text-sm text-text-2">
           {e.me ? <YouTag /> : null}
+          Level {e.level}
         </div>
-        <div className="text-sm text-text-2">Level {e.level}</div>
       </div>
       <div className="shrink-0 text-right">
         <div className={`font-display leading-none font-extrabold tabular ${podium ? 'text-[2rem]' : 'text-[1.75rem]'}`}>
@@ -411,9 +412,9 @@ export default function Leaderboards() {
                 <div className="mb-3 flex flex-wrap items-center gap-3">
                   <PeriodToggle value={period} onChange={(v) => update({ period: v })} />
                   {scope === 'class' && chosenClass ? (
-                    <label className="flex min-w-0 items-center gap-2 text-sm font-semibold">
+                    <label className="flex min-w-0 flex-1 items-center gap-2 text-sm font-semibold sm:flex-none">
                       Class
-                      <Select value={chosenClass.id} onChange={(e) => update({ class: e.target.value })} className="w-auto max-w-56 min-w-0">
+                      <Select value={chosenClass.id} onChange={(e) => update({ class: e.target.value })} className="w-full min-w-0 sm:w-auto sm:max-w-72">
                         {classOptions.map((c) => (
                           <option key={c.id} value={c.id}>
                             {c.teaching ? `${c.name} (you teach it)` : c.name}
