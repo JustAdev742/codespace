@@ -63,8 +63,10 @@ export function answerWords(q: PublicQuestion, reveal: AnswerReveal): string | n
 }
 
 /**
- * The right answer in a few words to show in a result banner ("C, Paris", "0 °C"), or null when
- * it needs the full reveal underneath (several answers, an order, pairs).
+ * The right answer in a few words for a result banner, when the answer was a choice ("C, Paris",
+ * "True"): the tiles underneath show it by place, the banner says it. Null for typed answers,
+ * whose reveal underneath already says them in big words, and for answers that need the full
+ * reveal (several answers, an order, pairs).
  */
 export function shortAnswer(q: PublicQuestion, reveal: AnswerReveal): string | null {
   switch (reveal.type) {
@@ -77,12 +79,6 @@ export function shortAnswer(q: PublicQuestion, reveal: AnswerReveal): string | n
     }
     case 'truefalse':
       return reveal.correct ? 'True' : 'False';
-    case 'short':
-      return reveal.accepted[0] ?? null;
-    case 'numeric':
-      return `${reveal.answer}${reveal.unit ? ` ${reveal.unit}` : ''}`;
-    case 'flashcard':
-      return reveal.back || null;
     default:
       return null;
   }
