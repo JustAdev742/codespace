@@ -274,7 +274,7 @@ describe('Festival Workshop: festival events', () => {
     until(h, 419_000);
     // 420 seconds with a 45-second finale: events at 45, 120, 195, 270 and 345 seconds, the last ending as the finale starts.
     expect(h.state().events).toBe(5);
-    expect(h.feed.filter((f) => /^(Parade order|Rush hour|Lucky sparks|Market swing|Glim tea break)!/.test(f.text))).toHaveLength(5);
+    expect(h.feed.filter((f) => /^(Parade order|Rush hour|Lucky sparks|Market swing|Glim tea break):/.test(f.text))).toHaveLength(5);
   });
 
   it('Rush hour doubles paydays', () => {
@@ -311,7 +311,7 @@ describe('Festival Workshop: festival events', () => {
     let sparks = 0;
     for (let i = 0; i < 80; i++) {
       h.answer('a', 'right');
-      if (you(h).last.text.includes('Lucky spark!')) sparks++;
+      if (you(h).last.text.includes('Lucky spark:')) sparks++;
     }
     const levels = you(h).stations.reduce((n: number, st: any) => n + st.level - 1, 0);
     expect(levels).toBe(sparks);
@@ -365,7 +365,7 @@ describe('Festival Workshop: parade orders', () => {
     until(h, 105_000);
     // The boost is over; the market shifted at 90 seconds.
     expect(you(h, 'a').rate).toBeCloseTo(3 * h.host().market.demand.lanterns, 9);
-    expect(h.feed.map((f) => f.text)).toContain('The parade got its paper lanterns! Everyone who made some earns ×1.25 income for 30 seconds.');
+    expect(h.feed.map((f) => f.text)).toContain('The parade got its paper lanterns. Everyone who made some earns ×1.25 income for 30 seconds.');
     expect(h.feed.map((f) => f.text)).toContain('Top paper lanterns makers: A and B. Each earns 20 seconds of income.');
   });
 
@@ -417,7 +417,7 @@ describe('Festival Workshop: the grand finale', () => {
     expect(you(h).rate).toBeCloseTo(4 * kites + 30 * 2, 6);
     h.answer('a', 'right');
     expect(you(h).last.text).toMatch(/finale \+50%/);
-    expect(h.feed.map((f) => f.text)).toContain('Grand finale! Fireworks sell at ×2 and paydays are 50% bigger.');
+    expect(h.feed.map((f) => f.text)).toContain('Grand finale: fireworks sell at ×2 and paydays are 50% bigger.');
   });
 
   it('Fireworks Finale: 90 seconds, at ×3; no finale leaves the music to the clock', () => {
@@ -527,7 +527,7 @@ describe('Festival Workshop: Festival Favours', () => {
     const at = h.rt.gameNow();
     expect(you(h, 'b').stations[1]).toMatchObject({ kind: 'loom', stoppedUntil: at + 15_000, stoppedBy: 'A' });
     expect(you(h, 'b')).toMatchObject({ rate: 1, pranked: { by: 'A', station: 'loom', blocked: false } });
-    expect(h.feed.find((f) => f.text === "A's prank tangled B's Kite Loom for 15 seconds!")).toMatchObject({ to: ['a', 'b'] });
+    expect(h.feed.find((f) => f.text === "A's prank tangled B's Kite Loom for 15 seconds.")).toMatchObject({ to: ['a', 'b'] });
     h.tick(15_000);
     expect(you(h, 'b').rate).toBe(5);
     expect(you(h, 'b').stations[1].stoppedUntil).toBeNull();
@@ -542,7 +542,7 @@ describe('Festival Workshop: Festival Favours', () => {
     act(h, 'a', { type: 'favour', card: 'prank', target: 'c' });
     expect(you(h, 'c')).toMatchObject({ lock: false, pranked: { by: 'A', blocked: true } });
     expect(you(h, 'c').stations[0].stoppedUntil).toBeNull();
-    expect(h.feed.find((f) => f.text === "C's lock stopped A's prank!")?.to).toBeUndefined();
+    expect(h.feed.find((f) => f.text === "C's lock stopped A's prank.")?.to).toBeUndefined();
   });
 
   it('a second Lock gives +40 coins instead, and a prank left untargeted goes to the biggest takings', () => {
@@ -647,7 +647,7 @@ describe('Festival Workshop: the room', () => {
     expect(top).toBeLessThan(5000 + 12);
     expect(h.rt.results!.durationMs).toBeLessThan(400_000);
     expect(h.rt.results!.summary).toBe("A's workshop reached 5,000 coins first. The class built Kite Looms most.");
-    expect(h.feed.map((f) => f.text)).toContain("A's workshop reached 5,000 coins!");
+    expect(h.feed.map((f) => f.text)).toContain("A's workshop reached 5,000 coins.");
   });
 
   it('with no time limit the workshop still closes after 7 minutes', () => {

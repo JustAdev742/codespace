@@ -306,7 +306,7 @@ function roll(s: State, w: Walker, ctx: Ctx): Pick<Move, 'dice' | 'kept' | 'hot'
 
 function rollText(m: Move): string {
   if (m.kept !== null) return `Lucky dice: ${m.dice[0]} and ${m.dice[1]}, you keep ${m.dice[m.kept]}`;
-  if (m.dice.length === 2) return `${m.hot ? 'Hot streak! ' : 'Double dice! '}You rolled ${m.dice[0]} + ${m.dice[1]} = ${m.steps}`;
+  if (m.dice.length === 2) return `${m.hot ? 'Hot streak' : 'Double dice'}: you rolled ${m.dice[0]} + ${m.dice[1]} = ${m.steps}`;
   return `You rolled ${m.steps}`;
 }
 
@@ -529,7 +529,7 @@ function drawCard(s: State, id: PlayerId, ctx: Ctx) {
       for (const p of ctx.players()) if (p.id !== id && s.walkers[p.id]) s.walkers[p.id]!.coins += SHOWER_COINS.others;
       w.coins += SHOWER_COINS.you;
       note(w, { k: 'card', i, card, coins: SHOWER_COINS.you });
-      const text = `${name}’s coin shower! Everyone gets ${SHOWER_COINS.others} coins.`;
+      const text = `${name}’s coin shower: everyone gets ${SHOWER_COINS.others} coins.`;
       ctx.feed(text, { tone: 'good' });
       addPlay(s, 'shower', id, text, ctx);
       return;
@@ -540,7 +540,7 @@ function drawCard(s: State, id: PlayerId, ctx: Ctx) {
       if (moved) {
         note(w, { k: 'rumour', i, to: moved.to, came: moved.came });
         // The big screen lists it with the other big plays; phones see the stall move on their own trail.
-        const text = moved.came ? `A stall rumour brought the stall right to ${name}!` : `A stall rumour moved the stall to ${placeName(moved.to)}.`;
+        const text = moved.came ? `A stall rumour brought the stall right to ${name}.` : `A stall rumour moved the stall to ${placeName(moved.to)}.`;
         addPlay(s, 'rumour', id, text, ctx);
       }
       return;
@@ -617,13 +617,13 @@ function buy(s: State, id: PlayerId, stall: Stall, price: number, ticket: boolea
   const [min, max] = s.last ? [FINALE.minSteps, FINALE.maxSteps] : [STALL_MOVE_MIN, Infinity];
   const to = stallSpot(s, stall.id, w.pos, min, max, ctx);
   note(w, { k: 'buy', i: here(w), price, ticket, to, auto });
-  const text = `${name} bought a Golden Lantern! The stall moved to ${placeName(to)}.`;
+  const text = `${name} bought a Golden Lantern. The stall moved to ${placeName(to)}.`;
   ctx.feed(text, { tone: 'big' });
-  addPlay(s, 'buy', id, `${name} bought a Golden Lantern!`, ctx);
+  addPlay(s, 'buy', id, `${name} bought a Golden Lantern.`, ctx);
   moveStall(s, stall, to, 'bought', ctx);
   if (won) {
     s.champion = id;
-    const line = `${name} collected ${lanternWord(w.lanterns)} first!`;
+    const line = `${name} collected ${lanternWord(w.lanterns)} first.`;
     addPlay(s, 'goal', id, line, ctx);
     ctx.endGame(line);
   }
@@ -669,7 +669,7 @@ function resolveTarget(s: State, id: PlayerId, target: PlayerId | null, ctx: Ctx
       w.coins += coins;
       tw.hit = { kind: 'pickpocket', name: me, coins, to: tw.pos, at: ctx.now(), n };
       note(w, { k: 'steal', i: here(w), name: them, coins });
-      const text = coins ? `${me}’s Pickpocket Glim took ${plural(coins, 'coin')} from ${them}!` : `${me}’s Pickpocket Glim found ${them}’s purse empty!`;
+      const text = coins ? `${me}’s Pickpocket Glim took ${plural(coins, 'coin')} from ${them}.` : `${me}’s Pickpocket Glim found ${them}’s purse empty.`;
       ctx.feed(text, { tone: 'bad' });
       addPlay(s, 'steal', id, text, ctx);
     } else {
@@ -680,7 +680,7 @@ function resolveTarget(s: State, id: PlayerId, target: PlayerId | null, ctx: Ctx
       w.move!.jumps.push(here(w));
       tw.hit = { kind: 'trade', name: me, coins: 0, to: tw.pos, at: ctx.now(), n };
       note(w, { k: 'trade', i: here(w), name: them, to: w.pos });
-      const text = `${me} traded places with ${them}!`;
+      const text = `${me} traded places with ${them}.`;
       ctx.feed(text, { tone: 'info' });
       addPlay(s, 'trade', id, text, ctx);
     }
@@ -700,7 +700,7 @@ function scheduleEvent(s: State, at: number, ctx: Ctx) {
 function eventLine(kind: EventId, stalls: number): string {
   const e = ROOM_EVENTS.find((x) => x.id === kind)!;
   const text = kind === 'parade' && stalls > 1 ? 'Both stalls hop 3 spaces forward every 10 seconds.' : e.text;
-  return `${e.title}! ${text}`;
+  return `${e.title}. ${text}`;
 }
 
 function startEvent(s: State, ctx: Ctx) {
@@ -854,7 +854,7 @@ export const lanternTrail = defineMode<State, Settings, Action>({
     }
     if (timerId === 'last') {
       s.last = true;
-      ctx.feed(`${FINALE_EVENT.title}! Golden Lanterns cost ${Math.min(basePrice(ctx), FINALE.price)} coins until the end, and the stall stays close.`, { tone: 'big' });
+      ctx.feed(`${FINALE_EVENT.title}: Golden Lanterns cost ${Math.min(basePrice(ctx), FINALE.price)} coins until the end, and the stall stays close.`, { tone: 'big' });
       return;
     }
     if (timerId === 'event') {
@@ -935,7 +935,7 @@ export const lanternTrail = defineMode<State, Settings, Action>({
     const best = Math.max(0, ...ctx.everyone().map((p) => s.walkers[p.id]?.lanterns ?? 0));
     const leaders = ctx.everyone().filter((p) => (s.walkers[p.id]?.lanterns ?? 0) === best).map((p) => nameOf(ctx, p.id));
     let summary = 'Nobody bought a Golden Lantern this time.';
-    if (s.champion) summary = `${nameOf(ctx, s.champion)} collected ${lanternWord(s.walkers[s.champion]!.lanterns)} first!`;
+    if (s.champion) summary = `${nameOf(ctx, s.champion)} collected ${lanternWord(s.walkers[s.champion]!.lanterns)} first.`;
     else if (best > 0) summary = leaders.length === 1 ? `${leaders[0]} collected ${lanternWord(best)}.` : `${listNames(leaders)} collected ${lanternWord(best)} each.`;
     return {
       standings,

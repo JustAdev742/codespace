@@ -265,7 +265,7 @@ describe('Lantern Trail rolls and spaces', () => {
     let you = g.view('a').you;
     expect(you.move).toMatchObject({ dice: [2, 3], steps: 5, hot: true });
     expect(you.pos).toBe(9);
-    expect(you.last.text).toBe('Hot streak! You rolled 2 + 3 = 5.');
+    expect(you.last.text).toBe('Hot streak: you rolled 2 + 3 = 5.');
     g.place('a', 4);
     g.dice(1, 1);
     g.right('a');
@@ -380,10 +380,10 @@ describe('Lantern Trail Golden Lanterns', () => {
     expect(you).toMatchObject({ lanterns: 1, pos: 11, coins: 25 - 20 + 3, pending: null });
     expect(STEPS[10]![to]).toBeGreaterThanOrEqual(STALL_MOVE_MIN);
     expect(['ferry', 'fork']).not.toContain(SPACES[to]!.kind);
-    expect(g.feed).toContain(`A bought a Golden Lantern! The stall moved to ${placeName(to)}.`);
+    expect(g.feed).toContain(`A bought a Golden Lantern. The stall moved to ${placeName(to)}.`);
     expect(g.notes('a')).toContainEqual({ k: 'buy', i: 1, price: 20, ticket: false, to, auto: false });
     expect(g.host().stalls[0]).toMatchObject({ pos: to, from: 10, why: 'bought', n: 1 });
-    expect(g.host().plays[0]).toMatchObject({ kind: 'buy', playerId: 'a', text: 'A bought a Golden Lantern!' });
+    expect(g.host().plays[0]).toMatchObject({ kind: 'buy', playerId: 'a', text: 'A bought a Golden Lantern.' });
   });
 
   it('Keep walking leaves the stall where it is', () => {
@@ -481,7 +481,7 @@ describe('Lantern Trail Golden Lanterns', () => {
     g.right('a');
     g.act('a', { type: 'buy', buy: true });
     expect(g.rt.status).toBe('ended');
-    expect(g.rt.results!.summary).toBe('A collected 2 Golden Lanterns first!');
+    expect(g.rt.results!.summary).toBe('A collected 2 Golden Lanterns first.');
     // The game ends the moment the lantern is bought: the rest of the move never happens.
     expect(g.rt.results!.standings[0]).toMatchObject({ playerId: 'a', rank: 1, label: '2 Golden Lanterns, 5 coins' });
   });
@@ -525,7 +525,7 @@ describe('Lantern Trail chance cards', () => {
     const g = setup({ players: ['a', 'b', 'c'] });
     landOnChance(g, 'a', 'shower');
     expect([g.view('a').you.coins, g.view('b').you.coins, g.view('c').you.coins]).toEqual([START_COINS + 6, START_COINS + 3, START_COINS + 3]);
-    expect(g.feed).toContain('A’s coin shower! Everyone gets 3 coins.');
+    expect(g.feed).toContain('A’s coin shower: everyone gets 3 coins.');
   });
 
   it('Golden ticket is kept for the next lantern', () => {
@@ -554,7 +554,7 @@ describe('Lantern Trail chance cards', () => {
     landOnChance(g, 'a', 'rumour');
     expect(g.stallAt()).toBe(2);
     expect(g.view('a').you.pending).toMatchObject({ kind: 'buy', price: 20 });
-    expect(g.host().plays[0]).toMatchObject({ kind: 'rumour', text: 'A stall rumour brought the stall right to A!' });
+    expect(g.host().plays[0]).toMatchObject({ kind: 'rumour', text: 'A stall rumour brought the stall right to A.' });
     // A stall behind you comes forward to meet you.
     g.act('a', { type: 'buy', buy: false });
     g.stall(31);
@@ -582,7 +582,7 @@ describe('Lantern Trail chance cards', () => {
     expect(g.view('a').you.coins).toBe(START_COINS + 3);
     expect(g.view('c').you.coins).toBe(0);
     expect(g.view('c').you.hit).toMatchObject({ kind: 'pickpocket', name: 'A', coins: 3 });
-    expect(g.feed).toContain('A’s Pickpocket Glim took 3 coins from C!');
+    expect(g.feed).toContain('A’s Pickpocket Glim took 3 coins from C.');
     expect(g.notes('a')).toContainEqual({ k: 'steal', i: 1, name: 'C', coins: 3 });
   });
 
@@ -610,7 +610,7 @@ describe('Lantern Trail chance cards', () => {
     expect(a.move).toMatchObject({ path: [1, 2, 20], jumps: [2] });
     expect(g.view('b').you.pos).toBe(2);
     expect(g.view('b').you.hit).toMatchObject({ kind: 'trade', name: 'A', to: 2 });
-    expect(g.feed).toContain('A traded places with B!');
+    expect(g.feed).toContain('A traded places with B.');
     expect(a.pending).toMatchObject({ kind: 'buy', price: 20 });
   });
 
@@ -684,7 +684,7 @@ describe('Lantern Trail room events and Last lanterns', () => {
       [330_000, 360_000],
     ]);
     for (let i = 1; i < events.length; i++) expect(events[i]!.kind).not.toBe(events[i - 1]!.kind);
-    for (const e of events) expect(g.feed.some((f) => f.startsWith(`${ROOM_EVENTS.find((x) => x.id === e.kind)!.title}!`))).toBe(true);
+    for (const e of events) expect(g.feed.some((f) => f.startsWith(`${ROOM_EVENTS.find((x) => x.id === e.kind)!.title}.`))).toBe(true);
     expect(g.rt.status).toBe('ended');
   });
 
@@ -699,7 +699,7 @@ describe('Lantern Trail room events and Last lanterns', () => {
     expect(off.feed).toEqual([]);
     off.advanceTo(375_000);
     expect(off.host()).toMatchObject({ finalStretch: true, price: FINALE.price });
-    expect(off.feed).toEqual(['Last lanterns! Golden Lanterns cost 10 coins until the end, and the stall stays close.']);
+    expect(off.feed).toEqual(['Last lanterns: Golden Lanterns cost 10 coins until the end, and the stall stays close.']);
     // No time limit set: the game still ends, after 7 minutes.
     const open = setup({ players: ['a'], common: { timeLimitSec: 0 } });
     expect(open.host().endsAt).toBe(420_000);
@@ -729,7 +729,7 @@ describe('Lantern Trail room events and Last lanterns', () => {
     g.pick(ROOM_EVENTS.find((e) => e.id === 'sale'));
     g.advanceTo(EVENT_TIMING.firstSec * 1000);
     expect(g.host()).toMatchObject({ event: { kind: 'sale' }, price: 10 });
-    expect(g.feed).toContain('Lantern sale! Golden Lanterns cost half.');
+    expect(g.feed).toContain('Lantern sale. Golden Lanterns cost half.');
     g.advanceTo(90_000);
     expect(g.host()).toMatchObject({ event: null, price: 20, nextEventAt: 150_000 });
     g.pick(ROOM_EVENTS.find((e) => e.id === 'double'));
@@ -739,7 +739,7 @@ describe('Lantern Trail room events and Last lanterns', () => {
     g.dice(2, 3);
     g.right('a');
     expect(g.view('a').you.move).toMatchObject({ dice: [2, 3], steps: 5, double: true, hot: false });
-    expect(g.view('a').you.last.text).toBe('Double dice! You rolled 2 + 3 = 5.');
+    expect(g.view('a').you.last.text).toBe('Double dice: you rolled 2 + 3 = 5.');
   });
 
   it('Coin rush triples coin spaces; Gloomy night doubles puddles and lucky fairs', () => {

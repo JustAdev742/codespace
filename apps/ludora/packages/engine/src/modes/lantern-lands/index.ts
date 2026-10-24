@@ -344,7 +344,7 @@ function mapAction(s: State, playerId: PlayerId, m: Member, kind: 'claim' | 'for
       if (isShrine(s, l) && !s.lit.includes(l)) {
         s.lit.push(l);
         const name = shrineName(s.map.radius, l);
-        ctx.feed(`The ${teamName(s, team)} lit ${name}!`, { tone: 'good' });
+        ctx.feed(`The ${teamName(s, team)} lit ${name}.`, { tone: 'good' });
         recordPlay(s, { at, team, text: `${who} lit ${name} for the ${teamName(s, team)}`, shrine: true });
       }
       return;
@@ -389,7 +389,7 @@ function mapAction(s: State, playerId: PlayerId, m: Member, kind: 'claim' | 'for
       recordPlay(s, { at, team, text: `${who} captured ${placeName(s, l)} from the ${teamName(s, owner)}`, shrine });
       if (shrine && at - (s.shrineNews[l] ?? -SHRINE_NEWS_GAP_MS) >= SHRINE_NEWS_GAP_MS) {
         s.shrineNews[l] = at;
-        ctx.feed(`${who} captured ${shrineName(s.map.radius, l)} from the ${teamName(s, owner)} for the ${teamName(s, team)}!`, { tone: 'big' });
+        ctx.feed(`${who} captured ${shrineName(s.map.radius, l)} from the ${teamName(s, owner)} for the ${teamName(s, team)}.`, { tone: 'big' });
       }
       return;
     }
@@ -422,7 +422,7 @@ function scoreTick(s: State, at: number, ctx: Ctx) {
     if (best >= goal) {
       s.winners = s.points.flatMap((p, t) => (p === best ? [t] : []));
       s.endedBy = 'goal';
-      ctx.feed(`The ${s.winners.map((t) => teamName(s, t)).join(' and the ')} reached ${fmt(goal)} points!`, { tone: 'big' });
+      ctx.feed(`The ${s.winners.map((t) => teamName(s, t)).join(' and the ')} reached ${fmt(goal)} points.`, { tone: 'big' });
       ctx.endGame();
       return;
     }
@@ -449,11 +449,11 @@ export function pickEvent(last: EventKind | null, roll: number): EventKind {
 }
 
 const EVENT_START: Record<EventKind, string> = {
-  storm: 'Lantern storm! For 30 seconds no fort can be lowered and no land captured.',
-  bloom: 'Shrine bloom! Shrines score double for 30 seconds.',
-  double: 'Double energy! Every right answer gives 2 energy for 30 seconds.',
-  rumble: 'Rumbling ground! Every fort dropped by 1.',
-  fog: 'Fog! Rival forts are hidden for 30 seconds.',
+  storm: 'Lantern storm: for 30 seconds no fort can be lowered and no land captured.',
+  bloom: 'Shrine bloom: shrines score double for 30 seconds.',
+  double: 'Double energy: every right answer gives 2 energy for 30 seconds.',
+  rumble: 'Rumbling ground: every fort dropped by 1.',
+  fog: 'Fog: rival forts are hidden for 30 seconds.',
 };
 
 function startEvent(s: State, at: number, ctx: Ctx) {
@@ -631,7 +631,7 @@ export const lanternLands = defineMode<State, Settings, Action>({
     ctx.setTimer('time', endsAt);
     if (s.nextScoreAt <= endsAt) ctx.setTimer('score', s.nextScoreAt);
     if (s.glowAt > now) ctx.setTimer('glow', s.glowAt);
-    else ctx.feed('Final glow! Every score counts double.', { tone: 'big' });
+    else ctx.feed('Final glow: every score counts double.', { tone: 'big' });
     if (st.events && now + EVENT_FIRST_MS < s.glowAt) {
       s.nextEventAt = now + EVENT_FIRST_MS;
       ctx.setTimer('event', s.nextEventAt);
@@ -690,7 +690,7 @@ export const lanternLands = defineMode<State, Settings, Action>({
         scoreTick(s, s.nextScoreAt, ctx);
         return;
       case 'glow':
-        ctx.feed('Final glow! Every score counts double for the last 45 seconds.', { tone: 'big' });
+        ctx.feed('Final glow: every score counts double for the last 45 seconds.', { tone: 'big' });
         recordPlay(s, { at: s.glowAt, team: NOBODY, text: 'Final glow', shrine: false });
         return;
       case 'event':

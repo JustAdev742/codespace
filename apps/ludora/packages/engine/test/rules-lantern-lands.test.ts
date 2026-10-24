@@ -279,7 +279,7 @@ describe('Lantern Lands map actions', () => {
     claimToward(h, 'b', centre);
     charge(h, 'b');
     expect(h.rt.act('b', { type: 'claim', land: centre }).ok).toBe(true);
-    expect(h.feed.map((f) => f.text)).toContain('The Lanterns lit the centre shrine!');
+    expect(h.feed.map((f) => f.text)).toContain('The Lanterns lit the centre shrine.');
     expect(h.host().plays[0].text).toBe('B lit the centre shrine for the Lanterns');
     // With 1 energy B cannot fortify the shrine: that needs 2.
     setEnergy(h, 'b', 1);
@@ -299,7 +299,7 @@ describe('Lantern Lands map actions', () => {
     charge(h, 'a', 2);
     expect(h.rt.act('a', { type: 'raid', land: centre }).ok).toBe(true);
     expect(h.host().owner[centre]).toBe(0);
-    expect(h.feed.map((f) => f.text)).toContain('A captured the centre shrine from the Lanterns for the Comets!');
+    expect(h.feed.map((f) => f.text)).toContain('A captured the centre shrine from the Lanterns for the Comets.');
     // B takes it straight back: Big plays lists it, but the room is not told again so soon.
     charge(h, 'b', 2);
     expect(h.rt.act('b', { type: 'raid', land: centre }).ok).toBe(true);
@@ -400,7 +400,7 @@ describe('Lantern Lands scoring', () => {
     expect(h.host().finalStretch).toBe(true);
     expect(h.view('a').finalStretch).toBe(true);
     expect(h.host().teams.map((t: any) => t.gain)).toEqual([2, 2]);
-    expect(h.feed.map((f) => f.text)).toContain('Final glow! Every score counts double for the last 45 seconds.');
+    expect(h.feed.map((f) => f.text)).toContain('Final glow: every score counts double for the last 45 seconds.');
   });
 
   it('counts a scoring due at the very end, then ends with the team on the most points winning', () => {
@@ -432,7 +432,7 @@ describe('Lantern Lands scoring', () => {
     for (let i = 0; i < 40 && h.rt.status === 'running'; i++) h.tick(10_000);
     expect(h.rt.status).toBe('ended');
     expect(h.rt.gameNow()).toBeLessThan(435_000);
-    expect(h.feed.map((f) => f.text)).toContain('The Comets reached 250 points!');
+    expect(h.feed.map((f) => f.text)).toContain('The Comets reached 250 points.');
     expect(h.rt.results!.summary).toMatch(/^The Comets reached 250 points first, with \d+ lands lit\.$/);
     expect(h.rt.results!.teamStandings[0]!.score).toBeGreaterThanOrEqual(250);
   });
@@ -527,7 +527,7 @@ describe('Lantern Lands room events', () => {
 
   it('Lantern storm: raids are refused, but claiming and fortifying still work, until it passes', () => {
     const h = withFirstEvent('storm', meet);
-    expect(h.feed.map((f) => f.text)).toContain('Lantern storm! For 30 seconds no fort can be lowered and no land captured.');
+    expect(h.feed.map((f) => f.text)).toContain('Lantern storm: for 30 seconds no fort can be lowered and no land captured.');
     const target = you(h, 'a').options.raid[0];
     charge(h, 'a', 2);
     const before = you(h, 'a').energy;
@@ -549,7 +549,7 @@ describe('Lantern Lands room events', () => {
       g.rt.act('a', { type: 'fortify', land });
       g.rt.act('a', { type: 'fortify', land });
     });
-    expect(h.feed.map((f) => f.text)).toContain('Rumbling ground! Every fort dropped by 1.');
+    expect(h.feed.map((f) => f.text)).toContain('Rumbling ground: every fort dropped by 1.');
     expect(h.host().fort[land]).toBe(1);
     expect(h.host().owner[homeOf(h, 'a')]).toBe(0);
   });
