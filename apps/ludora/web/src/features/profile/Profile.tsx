@@ -48,18 +48,18 @@ function StatsPanel({ stats, joinedAt }: { stats: NonNullable<PublicProfile['sta
     { label: 'Glims collected', value: formatNumber(stats.glims) },
   ];
   return (
-    <Panel className="p-5" aria-labelledby="profile-stats">
+    <Panel className="rounded-[var(--radius-l)] p-5" aria-labelledby="profile-stats">
       <div className="mb-3 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
-        <h2 id="profile-stats" className="font-display text-xl font-bold">
+        <h2 id="profile-stats" className="font-display text-[1.6rem] font-bold">
           Stats
         </h2>
         {joinedAt ? <span className="text-sm text-text-3">Playing since {new Date(joinedAt).toLocaleDateString('en-GB', { month: 'long', year: 'numeric' })}</span> : null}
       </div>
       <dl className="grid grid-cols-2 gap-3 sm:grid-cols-3">
         {tiles.map((t) => (
-          <div key={t.label} className="rounded-[12px] bg-surface-2 px-3.5 py-3">
+          <div key={t.label} className="rounded-[var(--radius-m)] border border-line bg-surface-2 px-3.5 py-3">
             <dt className="text-sm text-text-2">{t.label}</dt>
-            <dd className="mt-0.5 text-2xl font-bold">{t.value}</dd>
+            <dd className="mt-1 font-display text-[2rem] leading-none font-extrabold tabular">{t.value}</dd>
           </div>
         ))}
       </dl>
@@ -307,7 +307,7 @@ export default function Profile() {
           <ProfileCard name={p.displayName} level={p.level} avatar={p.avatar} equipment={{ frame: p.equipped.frame?.art, banner: p.equipped.banner?.art, title: p.equipped.title?.art, theme: p.equipped.theme?.art }} />
         </div>
         <div className="flex min-w-0 flex-col gap-6">
-          <Panel className="p-5" aria-label={p.isSelf ? 'Your profile' : `You and ${p.displayName}`}>
+          <Panel className="rounded-[var(--radius-l)] p-5" aria-label={p.isSelf ? 'Your profile' : `You and ${p.displayName}`}>
             <div key={actionKey} ref={actionsRef} tabIndex={-1} className="focus:outline-none">
               {actions}
             </div>
@@ -343,7 +343,7 @@ export default function Profile() {
           {p.stats ? (
             <StatsPanel stats={p.stats} joinedAt={p.joinedAt} />
           ) : p.restricted && !p.blockedByMe ? (
-            <Panel className="flex items-start gap-3 p-5">
+            <Panel className="flex items-start gap-3 rounded-[var(--radius-l)] p-5">
               <Lock className="mt-0.5 size-5 shrink-0 text-text-3" aria-hidden />
               <p className="text-text-2">{p.displayName} keeps their profile private.</p>
             </Panel>

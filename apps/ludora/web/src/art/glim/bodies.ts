@@ -21,15 +21,16 @@ export interface GlimColors {
   deep: string;
   /** Darker accent, for linework drawn on accent-coloured parts. */
   accentDeep: string;
+  /** Kept for older callers; the restyle has no blush, so this is the deep tone. */
   blush: string;
   /** A hue a third of the way round from the accent, for two-colour parts (aurora ribbons). */
   second: string;
 }
 
 /**
- * One shape of a Glim. Shapes are drawn twice: first all together as a thick
- * outer contour (the die-cut sticker edge), then one by one with their fill
- * and a thin inner line, so parts that overlap show a fine seam.
+ * One shape of a Glim. Shapes are drawn twice: first all together as a crisp,
+ * dark outer contour, then one by one with their fill and a thin inner line,
+ * so parts that overlap show a fine seam.
  */
 export interface Part {
   d: string;
@@ -270,8 +271,8 @@ export const BODIES: Record<GlimArt['body'], BodyGeometry> = {
     hl: [40, 53, 7, 4.5, -35],
     box: [23, 19, 97, 104],
     marks: (c) => [
-      { d: 'M71.5 37.5C74 32 77 27.5 80 25C82.5 30 85 35 86.5 40.5C82 38 76 37 71.5 37.5Z', fill: c.blush, flat: true, opacity: 0.85 },
-      { d: 'M48.5 37.5C46 32 43 27.5 40 25C37.5 30 35 35 33.5 40.5C38 38 44 37 48.5 37.5Z', fill: c.blush, flat: true, opacity: 0.85 },
+      { d: 'M71.5 37.5C74 32 77 27.5 80 25C82.5 30 85 35 86.5 40.5C82 38 76 37 71.5 37.5Z', fill: c.deep, flat: true, opacity: 0.8 },
+      { d: 'M48.5 37.5C46 32 43 27.5 40 25C37.5 30 35 35 33.5 40.5C38 38 44 37 48.5 37.5Z', fill: c.deep, flat: true, opacity: 0.8 },
     ],
   },
   owl: {
