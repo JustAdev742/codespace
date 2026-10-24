@@ -354,3 +354,31 @@ This keeps the protection:
 - The `x-ludora-csrf` header requirement, the first line against forged
   requests, is unchanged.
 
+**D46. Ludora looks like a game for 8 to 17, not for small children.** The
+first look read as made for young children: a bubbly display font,
+ink-outlined "sticker" pieces, lilac washes, string lights, drifting paper
+lanterns and blush-cheeked Glims as decoration. The owner asked for the range
+Blooket plays to. The games that age group chooses in class do not win with
+cute art. They win with:
+- competition shown live: ranks that move, streaks, a podium;
+- collectibles with status;
+- saturated colour on dark;
+- instant, neutral feedback;
+- short words.
+
+The new direction is "game night, live" (docs/DESIGN.md):
+- a midnight stage under a floodlight, with faint arena glows in the corners
+  and no pattern;
+- Barlow Condensed for headings and numbers;
+- solid pressable pieces with a darker bottom edge instead of ink outlines;
+- one signature device, a slanted plate for big moments;
+- Glims only where a collectible belongs, redrawn without blush and with
+  more attitude;
+- rarity shown like a trading card;
+- straight-talk copy: "Incorrect", never "Not this time".
+
+An early version put a faint grid of squares on the stage; the owner found it
+horrible on game screens and sign-in, and it is gone. It stays Ludora's own
+(D30): no other product's fonts, colours, layouts, art or words. Behaviour,
+odds and sound are unchanged.
+

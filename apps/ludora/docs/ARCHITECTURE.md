@@ -94,8 +94,10 @@ web/src
 - Each mode has a player screen and a host screen in `features/room/modes`,
   loaded only when that mode is played.
 - Design tokens are CSS variables with a dark and a light theme, player-chosen
-  text size, high contrast and reduced motion. Game pieces use the "sticker"
-  style; answers are told apart by shape and letter as well as colour.
+  text size, high contrast and reduced motion (docs/DESIGN.md). Pressable
+  pieces are solid colour with a darker bottom edge (the `.sticker` and
+  `.piece` classes); answers are told apart by shape and letter as well as
+  colour.
 - Sound (`lib/sound`) is one engine per page. The effects and the music loops
   are files rendered offline by `tools/audio`, a Python build that turns
   Ludora's scores into MP3s and writes `assets.generated.ts` (file URLs, loop
