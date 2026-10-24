@@ -1,0 +1,8 @@
+footage/
+frames/
+preview/
+sheets/
+*.png
+!comp/assets/*.png
+*.mp4
+*.wav

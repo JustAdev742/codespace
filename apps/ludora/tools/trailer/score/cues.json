@@ -1,0 +1,17 @@
+[
+  {"t": 10.37, "file": "web/src/assets/audio/sfx/lockIn.mp3", "db": -9},
+  {"t": 11.76, "file": "web/src/assets/audio/sfx/correct.mp3", "db": -4},
+  {"t": 12.7, "file": "web/src/assets/audio/sfx/rankUp.mp3", "db": -11},
+  {"t": 16.75, "file": "web/src/assets/audio/sfx/join-0.mp3", "db": -8},
+  {"t": 17.25, "file": "web/src/assets/audio/sfx/join-1.mp3", "db": -8},
+  {"t": 17.85, "file": "web/src/assets/audio/sfx/join-2.mp3", "db": -8},
+  {"t": 18.55, "file": "web/src/assets/audio/sfx/join-3.mp3", "db": -8},
+  {"t": 19.15, "file": "web/src/assets/audio/sfx/join-4.mp3", "db": -8},
+  {"t": 20.67, "file": "web/src/assets/audio/sfx/join-5.mp3", "db": -6},
+  {"t": 22.27, "file": "web/src/assets/audio/sfx/join-6.mp3", "db": -8},
+  {"t": 23.87, "file": "web/src/assets/audio/sfx/join-7.mp3", "db": -8},
+  {"t": 52.05, "file": "web/src/assets/audio/sfx/lanternOpen.mp3", "db": -10},
+  {"t": 53.37, "file": "web/src/assets/audio/sfx/lanternReveal-legendary.mp3", "db": -3},
+  {"t": 69.2, "file": "web/src/assets/audio/sfx/rankUp.mp3", "db": -10},
+  {"t": 73.0, "file": "web/src/assets/audio/sfx/win.mp3", "db": -10}
+]

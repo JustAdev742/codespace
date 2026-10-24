@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8" />
+<title>Ludora trailer</title>
+<style>
+@font-face { font-family: BC; font-weight: 600; src: url(assets/fonts/barlow-condensed-latin-600-normal.woff2); }
+@font-face { font-family: BC; font-weight: 700; src: url(assets/fonts/barlow-condensed-latin-700-normal.woff2); }
+@font-face { font-family: BC; font-weight: 800; src: url(assets/fonts/barlow-condensed-latin-800-normal.woff2); }
+@font-face { font-family: BC; font-weight: 800; font-style: italic; src: url(assets/fonts/barlow-condensed-latin-800-italic.woff2); }
+@font-face { font-family: AT; font-weight: 200 800; src: url(assets/fonts/atkinson-hyperlegible-next-latin-wght-normal.woff2); }
+:root { --gold: #ffc233; --gold-deep: #e9a400; --mint: #1fd38f; --coral: #ff4d6a; --ink: #0b1020; --blue: #2f5ae8; --flood: #3a6bff; --text2: #c5ccee; --text3: #959dc9; }
+* { box-sizing: border-box; }
+html, body { margin: 0; width: 1920px; height: 1080px; overflow: hidden; background: #000; }
+#stage { position: absolute; inset: 0; overflow: hidden; background: #070a20; font-family: AT, sans-serif; color: #fff; }
+.layer { position: absolute; inset: 0; }
+.scene { position: absolute; inset: 0; display: none; }
+.persp { position: absolute; inset: 0; perspective: 2400px; perspective-origin: 50% 45%; }
+.screen { position: absolute; left: 0; top: 0; width: 1280px; height: 720px; border-radius: 18px; overflow: hidden; background: #0a0f2c; transform-origin: 50% 50%; box-shadow: 0 70px 140px -40px rgba(0, 0, 4, 0.9), 0 0 0 1px rgba(255, 255, 255, 0.09), 0 0 90px -20px rgba(58, 107, 255, 0.35); will-change: transform; }
+.screen img, .phone img, .still img { position: absolute; inset: 0; width: 100%; height: 100%; display: block; object-fit: cover; }
+.glare { position: absolute; inset: -40%; background: linear-gradient(115deg, transparent 40%, rgba(255, 255, 255, 0.10) 48%, rgba(255, 255, 255, 0.02) 54%, transparent 60%); pointer-events: none; }
+.phone { position: absolute; left: 0; top: 0; width: 330px; height: 700px; border-radius: 52px; padding: 11px; background: linear-gradient(160deg, #262c4a, #0b0f22 40%, #05070f); box-shadow: 0 60px 120px -30px rgba(0, 0, 6, 0.95), inset 0 0 0 1.5px rgba(255, 255, 255, 0.14), 0 0 0 1px rgba(0, 0, 0, 0.6); transform-origin: 50% 50%; will-change: transform; }
+.phone .glass { position: relative; width: 100%; height: 100%; border-radius: 42px; overflow: hidden; background: #0a0f2c; }
+.phone .island { position: absolute; top: 9px; left: 50%; width: 92px; height: 26px; margin-left: -46px; border-radius: 20px; background: #000; z-index: 3; }
+.super { position: absolute; font-family: BC; font-weight: 800; line-height: 0.92; letter-spacing: -0.005em; color: #fff; text-shadow: 0 6px 40px rgba(0, 0, 8, 0.55); white-space: nowrap; }
+.sub { position: absolute; font-family: AT; font-weight: 500; font-size: 34px; line-height: 1.35; color: var(--text2); max-width: 760px; text-shadow: 0 4px 24px rgba(0, 0, 8, 0.6); }
+.plate { display: inline-block; background: var(--gold); color: var(--ink); padding: 0.02em 0.28em 0.06em; border-radius: 12px; transform: skewX(-10deg); box-shadow: inset 0 -0.07em 0 var(--gold-deep), 0 20px 50px -18px rgba(255, 194, 51, 0.55); }
+.plate > span { display: inline-block; transform: skewX(10deg); }
+.plate.blue { background: var(--blue); color: #fff; box-shadow: inset 0 -0.07em 0 #1f3fb0, 0 20px 50px -18px rgba(47, 90, 232, 0.6); }
+.plate.mint { background: var(--mint); color: var(--ink); box-shadow: inset 0 -0.07em 0 #0f9e69; }
+.tag { position: absolute; font-family: BC; font-weight: 800; font-style: italic; font-size: 54px; line-height: 1; }
+.card { position: absolute; width: 520px; padding: 40px 40px 44px; border-radius: 22px; background: rgba(255, 255, 255, 0.07); border: 1px solid rgba(255, 255, 255, 0.11); box-shadow: 0 40px 90px -30px rgba(0, 0, 6, 0.9); backdrop-filter: blur(6px); }
+.card h3 { margin: 0 0 18px; font-family: BC; font-weight: 800; font-size: 64px; line-height: 0.95; }
+.card p { margin: 0; font-size: 29px; line-height: 1.42; color: var(--text2); }
+.card .ico { width: 72px; height: 72px; border-radius: 18px; display: grid; place-items: center; margin-bottom: 26px; }
+#bg { background: radial-gradient(70% 55% at 50% -12%, rgba(84, 128, 255, 0.5) 0%, rgba(58, 107, 255, 0.14) 45%, transparent 72%), radial-gradient(45% 50% at 0% 100%, rgba(34, 207, 195, 0.16) 0%, transparent 70%), radial-gradient(45% 50% at 100% 100%, rgba(160, 124, 255, 0.16) 0%, transparent 70%), linear-gradient(180deg, #121c55 0%, #0b1236 55%, #070a20 100%); }
+.beam { position: absolute; width: 900px; height: 2400px; top: -700px; background: linear-gradient(180deg, rgba(120, 160, 255, 0.0), rgba(120, 160, 255, 0.10) 40%, rgba(120, 160, 255, 0.0)); filter: blur(40px); transform-origin: 50% 0%; mix-blend-mode: screen; }
+#grain { background-image: url(assets/grain.png); opacity: 0.075; mix-blend-mode: overlay; pointer-events: none; }
+#vignette { background: radial-gradient(120% 95% at 50% 45%, transparent 55%, rgba(0, 0, 6, 0.65) 100%); pointer-events: none; }
+#flash { background: #fff; opacity: 0; pointer-events: none; }
+#black { background: #000; opacity: 0; pointer-events: none; }
+.bar { position: absolute; left: 0; right: 0; height: 0; background: #000; z-index: 50; }
+#fx { position: absolute; inset: 0; pointer-events: none; }
+.count { position: absolute; left: 0; right: 0; top: 50%; text-align: center; font-family: BC; font-weight: 800; font-style: italic; font-size: 560px; line-height: 1; margin-top: -290px; color: var(--gold); text-shadow: 0 0 80px rgba(255, 194, 51, 0.45); }
+.ring { position: absolute; left: 50%; top: 50%; border-radius: 50%; border: 6px solid rgba(255, 194, 51, 0.8); }
+.line { position: absolute; left: 0; right: 0; text-align: center; font-family: AT; font-weight: 600; font-size: 60px; letter-spacing: 0.01em; color: #dfe4ff; }
+.count-num { font-variant-numeric: tabular-nums; }
+.modename { position: absolute; left: 34px; bottom: 30px; font-family: BC; font-weight: 800; font-style: italic; font-size: 64px; }
+.wall { position: absolute; left: 50%; top: 50%; width: 0; height: 0; transform-style: preserve-3d; }
+.tile { position: absolute; width: 640px; height: 360px; border-radius: 14px; overflow: hidden; box-shadow: 0 30px 60px -20px rgba(0, 0, 0, 0.8), 0 0 0 1px rgba(255, 255, 255, 0.08); }
+.tile img { width: 100%; height: 100%; display: block; object-fit: cover; }
+.logo-mark { position: absolute; }
+</style>
+</head>
+<body>
+<div id="stage">
+  <div id="bg" class="layer"></div>
+  <div id="beams" class="layer"><div class="beam" id="beam1"></div><div class="beam" id="beam2"></div></div>
+  <div id="scenes" class="layer"></div>
+  <canvas id="fx" width="1920" height="1080"></canvas>
+  <div id="grain" class="layer"></div>
+  <div id="vignette" class="layer"></div>
+  <div id="black" class="layer"></div>
+  <div id="flash" class="layer"></div>
+  <div class="bar" id="barTop" style="top:0"></div>
+  <div class="bar" id="barBot" style="bottom:0"></div>
+</div>
+<script src="footage.js"></script>
+<script src="trailer.js"></script>
+</body>
+</html>
