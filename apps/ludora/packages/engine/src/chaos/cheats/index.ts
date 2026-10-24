@@ -1,2 +1,22 @@
 // Importing a pack registers its cheats.
 import './score.ts';
+import '../packs/classic.ts';
+import '../packs/comet-dash.ts';
+import '../packs/confidence.ts';
+import '../packs/festival-workshop.ts';
+import '../packs/flashcard-study.ts';
+import '../packs/glim-duels.ts';
+import '../packs/glimgo.ts';
+import '../packs/gloom-giant.ts';
+import '../packs/lantern-guard.ts';
+import '../packs/lantern-lands.ts';
+import '../packs/lantern-match.ts';
+import '../packs/lantern-out.ts';
+import '../packs/lantern-trail.ts';
+import '../packs/night-market.ts';
+import '../packs/quick-draw.ts';
+import '../packs/sky-lanterns.ts';
+import '../packs/survival-run.ts';
+import '../packs/time-attack.ts';
+import '../packs/tug-of-war.ts';
+import '../packs/word-scramble.ts';
