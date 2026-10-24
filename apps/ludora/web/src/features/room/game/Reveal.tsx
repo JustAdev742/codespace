@@ -32,10 +32,9 @@ export function ChoicesDisplay({ q, size = 'lg' }: { q: PublicQuestion; size?: T
     );
   }
   const line = q.type === 'order' ? `Players are putting ${q.items.length} items in order.` : q.type === 'match' ? `Players are matching ${q.left.length} pairs.` : 'Players are typing their answers.';
-  return <p className={`font-display font-bold text-text-2 ${host ? 'text-[clamp(1.4rem,2.2vw,2.5rem)]' : 'text-xl'}`}>{line}</p>;
+  return <p className={`font-semibold text-text-2 ${host ? 'text-[clamp(1.4rem,2.2vw,2.5rem)]' : 'text-xl'}`}>{line}</p>;
 }
 
-/** The correct answer, shown in the form the question was asked in. With `distribution`, each choice shows how many picked it. */
 /** The right answer in words, for screen readers; null when the question has no short way to say it. */
 export function answerWords(q: PublicQuestion, reveal: AnswerReveal): string | null {
   const choice = (id: string) => {
@@ -63,6 +62,33 @@ export function answerWords(q: PublicQuestion, reveal: AnswerReveal): string | n
   }
 }
 
+/**
+ * The right answer in a few words to show in a result banner ("C, Paris", "0 °C"), or null when
+ * it needs the full reveal underneath (several answers, an order, pairs).
+ */
+export function shortAnswer(q: PublicQuestion, reveal: AnswerReveal): string | null {
+  switch (reveal.type) {
+    case 'mcq': {
+      if (q.type !== 'mcq' && q.type !== 'multi') return null;
+      const i = q.choices.findIndex((c) => c.id === reveal.correct);
+      if (i < 0) return null;
+      const c = q.choices[i]!;
+      return `${String.fromCharCode(65 + i)}, ${c.text || c.media?.alt || 'the picture'}`;
+    }
+    case 'truefalse':
+      return reveal.correct ? 'True' : 'False';
+    case 'short':
+      return reveal.accepted[0] ?? null;
+    case 'numeric':
+      return `${reveal.answer}${reveal.unit ? ` ${reveal.unit}` : ''}`;
+    case 'flashcard':
+      return reveal.back || null;
+    default:
+      return null;
+  }
+}
+
+/** The correct answer, shown in the form the question was asked in. With `distribution`, each choice shows how many picked it. */
 export function RevealAnswer({ q, reveal, mine, distribution, compact, size }: { q: PublicQuestion; reveal: AnswerReveal; mine?: string | null; distribution?: Record<string, number> | null; compact?: boolean; size?: TileSize }) {
   // What this player sent, so their pick is marked and, if it was wrong, read out too.
   const sent = useMyAnswer(q);
@@ -100,14 +126,14 @@ export function RevealAnswer({ q, reveal, mine, distribution, compact, size }: {
       </div>
     );
   }
-  const rowText = host ? 'text-[clamp(1.2rem,1.9vw,2.2rem)] px-5 py-3' : 'text-lg px-4 py-2.5';
+  const rowText = host ? 'text-[clamp(1.2rem,1.9vw,2.2rem)] px-5 py-3' : 'text-lg px-3.5 py-2.5';
   if (q.type === 'order' && reveal.type === 'order') {
     const byId = new Map(q.items.map((i) => [i.id, i.text]));
     return (
       <ol className="flex flex-col gap-2" aria-label="The right order">
         {reveal.itemIds.map((id, i) => (
-          <li key={id} className={`flex items-center gap-3 rounded-[16px] border-[3px] border-ink bg-glim font-bold text-on-accent shadow-[0_3px_0_var(--ink)] ${rowText}`}>
-            <span className="grid size-[1.8em] shrink-0 place-items-center rounded-full bg-white/60 font-display font-extrabold tabular">{i + 1}</span>
+          <li key={id} className={`flex items-center gap-3 rounded-[var(--radius-m)] bg-glim font-bold text-on-accent ${rowText}`}>
+            <span className="grid size-[1.8em] shrink-0 place-items-center rounded-full bg-ink font-display font-extrabold text-white tabular">{i + 1}</span>
             {byId.get(id)}
           </li>
         ))}
@@ -119,7 +145,7 @@ export function RevealAnswer({ q, reveal, mine, distribution, compact, size }: {
     return (
       <ul className="flex flex-col gap-2" aria-label="The right pairs">
         {q.left.map((l) => (
-          <li key={l.id} className={`grid grid-cols-2 gap-3 rounded-[16px] border-[3px] border-ink bg-glim font-bold text-on-accent shadow-[0_3px_0_var(--ink)] ${rowText}`}>
+          <li key={l.id} className={`grid grid-cols-2 gap-3 rounded-[var(--radius-m)] bg-glim font-bold text-on-accent ${rowText}`}>
             <span>{l.text}</span>
             <span>{right.get(reveal.pairs[l.id] ?? '')}</span>
           </li>
@@ -132,40 +158,46 @@ export function RevealAnswer({ q, reveal, mine, distribution, compact, size }: {
   else if (reveal.type === 'numeric') text = `${reveal.answer}${reveal.unit ? ` ${reveal.unit}` : ''}${reveal.tolerance ? ` (give or take ${reveal.tolerance})` : ''}`;
   else if (reveal.type === 'flashcard') text = reveal.back;
   return (
-    <div className={`rounded-[20px] border-[3px] border-ink bg-glim text-on-accent shadow-[0_4px_0_var(--ink)] ${host ? 'px-7 py-5' : 'px-5 py-4'}`}>
+    <div className={`lift rounded-[var(--radius-l)] bg-glim text-on-accent ${host ? 'px-7 py-5' : 'px-5 py-4'}`}>
       <div className={`font-bold ${host ? 'text-[clamp(1rem,1.4vw,1.5rem)]' : 'text-sm'}`}>Answer</div>
-      <div className={`font-display font-extrabold break-words ${host ? 'text-[clamp(2rem,3.6vw,4.25rem)]' : 'text-3xl'}`}>{text}</div>
+      <div className={`font-display font-extrabold break-words ${host ? 'text-[clamp(2.25rem,4vw,4.75rem)] leading-[1.02]' : 'text-[2rem] leading-tight'}`}>{text}</div>
     </div>
   );
 }
 
 /**
- * The player's own result. A correct answer bursts with the player's equipped
- * answer effect, or with the festival mix when they have none; a miss stays calm.
+ * The player's own result: "Correct" with the points on a plate as the hero
+ * number, "Partly right (60%)", or "Incorrect" with the right answer when the
+ * caller passes `answer`. A correct answer bursts with the player's equipped
+ * answer effect, or the default mix when they have none; a miss stays calm.
  */
-export function ResultBanner({ correct, partial, points, text }: { correct: boolean | null; partial?: number | null; points?: number | null; text?: string | undefined }) {
-  const said = correct === null ? null : `${correct ? 'Correct!' : partial && partial > 0 ? `Partly right, ${Math.round(partial * 100)} percent.` : 'Not this time.'}${points ? ` Plus ${points.toLocaleString('en-GB')} points.` : ''}${text ? ` ${text}` : ''}`;
+export function ResultBanner({ correct, partial, points, text, answer }: { correct: boolean | null; partial?: number | null; points?: number | null; text?: string | undefined; answer?: string | null | undefined }) {
+  const part = !correct && Boolean(partial && partial > 0);
+  const percent = Math.round((partial ?? 0) * 100);
+  const said = correct === null ? null : `${correct ? 'Correct.' : part ? `Partly right, ${percent} percent.` : 'Incorrect.'}${points ? ` Plus ${points.toLocaleString('en-GB')} points.` : ''}${text ? ` ${text}` : ''}`;
   useAnnounce(said);
   // Each result is its own component (call sites key it by question), so it plays once as it appears.
   const role = useSoundRole();
-  useSfx(correct ? 'correct' : partial && partial > 0 ? 'rankUp' : 'wrong', said, correct !== null && role !== 'host');
+  useSfx(correct ? 'correct' : part ? 'rankUp' : 'wrong', said, correct !== null && role !== 'host');
   const overview = useOverview();
   const effect = overview.data?.equipped.effect?.art;
   if (correct === null) return null;
-  const part = !correct && partial && partial > 0;
   const own = correct && effect && effect.kind === 'effect' ? effect : null;
+  const showAnswer = !correct && answer;
   return (
-    <div
-      className={`relative isolate flex flex-wrap items-center gap-x-3 gap-y-1 rounded-[22px] border-[3px] border-ink px-4 py-3.5 text-on-accent shadow-[0_5px_0_var(--ink)] ${correct ? 'bg-glim' : part ? 'bg-lantern' : 'bg-ember'}`}
-      style={{ animation: 'pop-in 280ms var(--ease-spring)' }}
-    >
+    <div className={`lift relative isolate flex flex-wrap items-center gap-x-3 gap-y-1.5 rounded-[var(--radius-l)] px-4 py-3 text-on-accent ${correct ? 'bg-glim' : part ? 'bg-lantern' : 'bg-ember'}`} style={{ animation: 'pop-in 200ms var(--ease-out)' }}>
       {correct ? <Burst style={own?.style ?? 'festival'} hue={own?.hue ?? 42} size={300} /> : null}
-      <span className="grid size-12 shrink-0 place-items-center rounded-full border-[3px] border-ink bg-white/60" aria-hidden>
-        {correct || part ? <Check className="size-7" strokeWidth={3.2} /> : <X className="size-7" strokeWidth={3.2} />}
+      <span className="grid size-10 shrink-0 place-items-center rounded-full bg-ink/85 text-white" aria-hidden>
+        {correct || part ? <Check className="size-6" strokeWidth={3.2} /> : <X className="size-6" strokeWidth={3.2} />}
       </span>
-      <span className="min-w-0 flex-1 font-display text-[1.75rem] leading-tight font-extrabold">{correct ? 'Correct!' : part ? `Partly right (${Math.round(partial! * 100)}%)` : 'Not this time'}</span>
-      {points ? <span className="font-display text-[1.75rem] leading-tight font-extrabold tabular">+{points.toLocaleString('en-GB')}</span> : null}
-      {text ? <span className="basis-full pl-[3.75rem] text-base font-bold">{text}</span> : null}
+      <span className={`min-w-0 flex-1 font-display leading-none font-extrabold italic ${part ? 'text-[1.7rem]' : 'text-[2.1rem]'}`}>{correct ? 'Correct' : part ? `Partly right (${percent}%)` : 'Incorrect'}</span>
+      {points ? (
+        <span className="plate text-[2.1rem] tabular">
+          <span>+{points.toLocaleString('en-GB')}</span>
+        </span>
+      ) : null}
+      {showAnswer ? <span className="basis-full pl-[3.25rem] text-lg leading-snug font-bold break-words">Answer: {answer}</span> : null}
+      {text ? <span className="basis-full pl-[3.25rem] text-base leading-snug font-bold">{text}</span> : null}
     </div>
   );
 }

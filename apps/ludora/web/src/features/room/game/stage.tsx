@@ -4,24 +4,26 @@ import { Glim, type GlimPose } from '../../../art/glim/Glim.tsx';
 import { prefersReducedMotion } from '../../../lib/prefs.ts';
 
 /*
- * Small building blocks for screens drawn on the dusk stage: players' Glims,
- * paper name tags and calm information panels. Kept with the room screens;
- * candidates for the shared UI kit once the look settles.
+ * Small building blocks for screens drawn on the stage: players' Glims, name
+ * tags, calm information panels, HUD chips. Every mode screen uses them, so
+ * they carry the look ("game night, live", docs/DESIGN.md): smoked panels on
+ * the midnight stage, solid chips with no outline, numbers in the display face.
  */
 
 /**
- * The calm surface for panels, rows and readouts on the stage: deep night blue,
- * opaque enough that a lantern drifting behind never weakens the text on it
- * (white stays above 7:1, coloured text above 4.5:1 anywhere on the sky).
+ * The calm surface for panels, rows and readouts on the stage: a smoked,
+ * slightly lit panel. White text stays above 12:1 on it and coloured text
+ * above 4.5:1, nested or not. Kept under its old name for the screens that
+ * pass it as a class.
  */
-export const NIGHT = 'bg-[rgb(17_10_62/0.62)]';
+export const NIGHT = 'bg-white/[0.07]';
 
 /**
- * Big headings on the open sky get a hard ink drop shadow and a soft night
- * glow, like a painted festival sign: they read from the back of the room and
- * stay legible when a lantern drifts behind them.
+ * Headings on the stage used to carry a painted sign's ink drop shadow. Nothing
+ * drifts behind them any more and the stage is dark everywhere, so a heading
+ * needs nothing extra: this is empty, kept so screens that add it still compile.
  */
-export const SIGN = '[text-shadow:0_0.07em_0_var(--ink),0_0_0.35em_rgb(17_10_62/0.75)]';
+export const SIGN = '';
 
 /** True unless the player (or their device) asked for less motion. Read at render; settings change rarely. */
 export function motionOK(): boolean {
@@ -103,34 +105,38 @@ export function PlayerGlim({
   );
 }
 
-/** A white paper name tag with an ink edge, for names under Glims. */
+/** A name on a white tag (or a gold one), for names under Glims: no outline, a soft float. */
 export function NameTag({ children, className = '', tone = 'paper' }: { children: ReactNode; className?: string; tone?: 'paper' | 'lantern' }) {
   return (
-    <span className={`inline-block max-w-full truncate rounded-full border-2 border-ink px-3 py-0.5 text-center font-bold leading-snug shadow-[0_2px_0_var(--ink)] ${tone === 'lantern' ? 'bg-lantern text-on-accent' : 'paper'} ${className}`}>
+    <span className={`inline-block max-w-full truncate rounded-[var(--radius-s)] px-2.5 py-0.5 text-center leading-snug font-bold shadow-[0_6px_16px_-8px_rgb(2_5_20/0.8)] ${tone === 'lantern' ? 'bg-lantern text-on-accent' : 'paper'} ${className}`}>
       {children}
     </span>
   );
 }
 
-/** A calm, flat information panel on the stage. Darker than the sky so coloured text keeps its contrast. */
+/** A calm, flat information panel on the stage: smoked, with a fine edge. Coloured text keeps its contrast on it. */
 export function StagePanel({ children, className = '', as: As = 'div', label }: { children: ReactNode; className?: string; as?: 'div' | 'section' | 'aside'; label?: string }) {
   return (
-    <As className={`rounded-[22px] border border-white/12 ${NIGHT} ${className}`} aria-label={label}>
+    <As className={`rounded-[var(--radius-l)] border border-white/10 ${NIGHT} ${className}`} aria-label={label}>
       {children}
     </As>
   );
 }
 
-/** A small rounded readout on the stage: counts, clocks, goals. */
+/**
+ * A small readout chip on the stage: counts, clocks, goals, a streak. Solid
+ * colour with ink text for the accents, smoked for calm; no outline. Body face,
+ * tabular figures; put a number that is the hero of a screen in `font-display` yourself.
+ */
 export function Pill({ children, className = '', tone = 'calm' }: { children: ReactNode; className?: string; tone?: 'calm' | 'lantern' | 'glim' | 'ember' | 'dusk' }) {
   const t = {
-    calm: `${NIGHT} text-text border border-white/12`,
-    lantern: 'bg-lantern text-on-accent border-2 border-ink',
-    glim: 'bg-glim text-on-accent border-2 border-ink',
-    ember: 'bg-ember text-on-accent border-2 border-ink',
-    dusk: 'bg-dusk text-on-accent border-2 border-ink',
+    calm: 'bg-white/[0.09] text-text',
+    lantern: 'bg-lantern text-on-accent',
+    glim: 'bg-glim text-on-accent',
+    ember: 'bg-ember text-on-accent',
+    dusk: 'bg-dusk text-on-accent',
   }[tone];
-  return <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 font-display font-bold whitespace-nowrap ${t} ${className}`}>{children}</span>;
+  return <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 leading-tight font-bold whitespace-nowrap tabular ${t} ${className}`}>{children}</span>;
 }
 
 /** Three Glims who turn up on the join screens before anyone has an avatar. */

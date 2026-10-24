@@ -18,13 +18,28 @@ import { useAnnounce } from './game/announce.tsx';
 
 /*
  * The room sits on the stage in both themes. The stage clips sideways overflow
- * (bursts and drifting lanterns) without becoming a scroll container, so the
+ * (answer bursts, reactions) without becoming a scroll container, so the
  * header can stay pinned while long screens scroll.
  */
 export const STAGE = 'flex min-h-dvh flex-col overflow-x-clip! overflow-y-visible!';
 
 /** Header controls read from the back of the room on a big projector: taller, with larger text, from 1600 pixels wide. */
 export const WIDE = 'min-[1600px]:h-12 min-[1600px]:px-4 min-[1600px]:text-lg';
+
+/** The game's header: a slim smoked HUD bar pinned over the stage, like a broadcast's top bar. */
+export const HUD_BAR = 'hud sticky top-0 z-30 border-x-0 border-t-0';
+
+/** The bar along the bottom of a player's screen (the reactions), in the same smoked glass. */
+export const HUD_FOOT = 'hud border-x-0 border-b-0';
+
+/** "LIVE" on a coral plate, in the header while a game runs. The narrowest phones leave it out, so the game code keeps its room. */
+export function LiveTag() {
+  return (
+    <span className="plate shrink-0 bg-ember px-1.5 py-0 text-[0.85em] leading-[1.35] text-on-accent max-[379px]:hidden">
+      <span>LIVE</span>
+    </span>
+  );
+}
 
 export function HostControls({ room, handle }: { room: RoomView; handle: RoomHandle }) {
   const [confirmEnd, setConfirmEnd] = useState(false);
@@ -38,7 +53,7 @@ export function HostControls({ room, handle }: { room: RoomView; handle: RoomHan
   return (
     <div className="flex items-center gap-1.5 sm:gap-2">
       {game?.sync ? (
-        // The one button that moves a host-paced game on: big and lantern-lit when the room is waiting for it.
+        // The one button that moves a host-paced game on: big and gold when the room is waiting for it.
         <Button variant={waitingForHost ? 'primary' : 'secondary'} size={waitingForHost ? 'lg' : 'sm'} className={waitingForHost ? '' : WIDE} icon={<FastForward className="size-4" aria-hidden />} onClick={() => run({ cmd: 'next' })} disabled={status !== 'running'}>
           {/* On a phone the host's header is full: Skip ahead keeps its label for screen readers, like Pause and End game. */}
           {waitingForHost ? 'Next' : <span className="max-sm:sr-only">Skip ahead</span>}
@@ -81,7 +96,7 @@ export function HostControls({ room, handle }: { room: RoomView; handle: RoomHan
   );
 }
 
-/** Recent game events (finishes, eliminations) as short-lived paper tags. */
+/** Recent game events (finishes, eliminations) as short-lived toasts: a solid fill in the colour of their news, like the app's own toasts. */
 export function FeedToasts({ feed }: { feed: RoomView['feed'] }) {
   const seen = useRef(new Map<number, number>());
   const now = useNow(1000, feed.length > 0);
@@ -95,8 +110,8 @@ export function FeedToasts({ feed }: { feed: RoomView['feed'] }) {
       {visible.map((f) => (
         <div
           key={f.id}
-          className={`max-w-[22rem] rounded-[16px] border-2 border-ink px-3.5 py-1.5 text-sm leading-snug font-bold shadow-[0_3px_0_var(--ink)] max-lg:line-clamp-2 lg:max-w-none lg:text-lg ${f.tone === 'big' ? 'bg-lantern text-on-accent' : f.tone === 'good' ? 'bg-glim text-on-accent' : f.tone === 'bad' ? 'bg-ember text-on-accent' : 'paper'}`}
-          style={{ animation: 'rise-fade 240ms var(--ease-out)' }}
+          className={`max-w-[22rem] rounded-[var(--radius-m)] px-3.5 py-2 text-sm leading-snug font-bold shadow-[0_12px_30px_-10px_rgb(2_5_20/0.7)] max-lg:line-clamp-2 lg:max-w-none lg:px-4 lg:py-2.5 lg:text-lg ${f.tone === 'big' ? 'bg-lantern text-on-accent' : f.tone === 'good' ? 'bg-glim text-on-accent' : f.tone === 'bad' ? 'bg-ember text-on-accent' : 'paper'}`}
+          style={{ animation: 'rise-fade 200ms var(--ease-out)' }}
         >
           {f.text}
         </div>
@@ -133,16 +148,16 @@ export function GameStage({ room, handle, isHost }: { room: RoomView; handle: Ro
       {paused && isHost ? (
         // The host screen is on the projector: tell the room, but leave the question readable.
         <div className="pointer-events-none absolute inset-x-0 top-0 z-20 flex justify-center">
-          <span className="paper stage-card flex items-center gap-2 px-5 py-2 font-display text-[clamp(1.25rem,2vw,2rem)] font-extrabold">
+          <span className="paper stage-card flex items-center gap-2 px-5 py-2 font-display text-[clamp(1.5rem,2.3vw,2.4rem)] font-extrabold">
             <Pause className="size-[1.1em]" aria-hidden /> Paused
           </span>
         </div>
       ) : null}
       {paused && !isHost ? (
-        <div className="absolute inset-0 z-20 grid place-items-center rounded-[24px] bg-[rgb(12_8_40/0.62)] backdrop-blur-sm">
+        <div className="absolute -inset-2 z-20 grid place-items-center rounded-[var(--radius-l)] bg-[rgb(5_8_24/0.72)] backdrop-blur-sm">
           <div className="paper stage-card mx-4 flex max-w-xs flex-col items-center gap-1 px-6 py-5 text-center">
             <Pause className="mb-1 size-10" aria-hidden />
-            <p className="font-display text-3xl font-extrabold">Paused</p>
+            <p className="font-display text-[2.25rem] leading-tight font-extrabold">Paused</p>
             <p className="text-text-2">{room.room.hostConnected ? 'The host will be back in a moment.' : 'Waiting for the host to reconnect.'}</p>
           </div>
         </div>

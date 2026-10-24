@@ -4,8 +4,9 @@ import { useAnnounce } from './announce.tsx';
 import { useSfx, useSharedSounds } from '../../../lib/sound/react.tsx';
 
 /**
- * Time left for a question, from the game clock. The last stretch (five seconds, or a quarter of a short timer) turns coral and is announced once through the game announcer.
- * `size="lg"` is the projector version: a thick bar and a big number someone at the back of the room can read.
+ * Time left for a question, from the game clock: a slim bar that empties and the seconds on a solid disc.
+ * The last stretch (five seconds, or a quarter of a short timer) turns coral and is announced once through the game announcer.
+ * `size="lg"` is the projector version: a thicker bar and a big number someone at the back of the room can read.
  */
 export function TimerBar({ deadline, start, gameNow, paused = false, tone = 'amber', size = 'md' }: { deadline: number | null; start: number; gameNow: () => number; paused?: boolean; tone?: 'amber' | 'violet'; size?: 'md' | 'lg' }) {
   useNow(100, deadline !== null && !paused);
@@ -24,15 +25,11 @@ export function TimerBar({ deadline, start, gameNow, paused = false, tone = 'amb
   const fill = urgent ? 'bg-ember' : tone === 'violet' ? 'bg-dusk' : 'bg-lantern';
   return (
     <div className={`flex items-center ${big ? 'gap-4' : 'gap-3'}`} role="timer" aria-label={`${plural(secs, 'second')} left`}>
-      <div className={`relative flex-1 overflow-hidden rounded-full border-ink bg-sunken ${big ? 'h-[clamp(1.25rem,2.2vh,1.75rem)] border-[3px]' : 'h-4 border-2'}`}>
+      <div className={`relative flex-1 overflow-hidden rounded-full bg-white/[0.12] ${big ? 'h-[clamp(0.9rem,1.8vh,1.35rem)]' : 'h-3'}`}>
         {/* Slides rather than resizes, so it stays smooth on slow classroom laptops. */}
         <div className={`absolute inset-0 rounded-full transition-transform duration-100 ease-linear ${fill}`} style={{ transform: `translateX(${pct - 100}%)` }} />
       </div>
-      <span
-        className={`grid shrink-0 place-items-center rounded-full border-ink font-display font-extrabold text-on-accent tabular ${fill} ${big ? 'size-[clamp(4rem,7vh,5.5rem)] border-[3px] text-[clamp(2rem,3.6vh,3rem)] shadow-[0_4px_0_var(--ink)]' : 'size-11 border-2 text-xl shadow-[0_2px_0_var(--ink)]'}`}
-      >
-        {secs}
-      </span>
+      <span className={`grid shrink-0 place-items-center rounded-full font-display font-extrabold text-on-accent tabular ${fill} ${big ? 'size-[clamp(4rem,7vh,5.5rem)] text-[clamp(2.25rem,4.2vh,3.4rem)]' : 'size-12 text-[1.6rem]'}`}>{secs}</span>
     </div>
   );
 }

@@ -48,7 +48,7 @@ test('a teacher writes a set with a picture in the editor, and players see the p
   await player.goto(`/join/${code}`);
   await player.getByLabel('Your name').fill('Picture Fan');
   await player.getByRole('button', { name: 'Join game' }).click();
-  await expect(player.getByText('You are in!', { exact: true })).toBeVisible();
+  await expect(player.getByText("You're in", { exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Start game' }).click();
   await page.getByRole('button', { name: /Next|Skip ahead/ }).first().click();
   await expect(player.getByRole('heading', { name: 'Which colour is the middle stripe?' })).toBeVisible();

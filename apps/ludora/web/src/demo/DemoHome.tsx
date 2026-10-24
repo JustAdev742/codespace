@@ -5,8 +5,7 @@ import { displayNameSchema, generateName } from '@ludora/shared';
 import { Logo } from '../art/icons.tsx';
 import { Stage } from '../ui/Stage.tsx';
 import { Button } from '../ui/Button.tsx';
-import { Badge, Field, Input, Panel, Select, Switch } from '../ui/primitives.tsx';
-import { COMPACT_SCENE, GlimCrowd } from '../features/home/GlimCrowd.tsx';
+import { Field, Input, Panel, Select, Switch } from '../ui/primitives.tsx';
 import { ChosenSet, ModeGrid, SetButton, type SetLike } from '../features/host/pickers.tsx';
 import { sound } from '../lib/sound/engine.ts';
 import { DEMO_MODES, SETS, choiceToParams, readChoice, readName, readSound, resolveChoice, saveChoice, saveName, saveSound, type DemoChoice, type SoundPrefs } from './setup.ts';
@@ -65,20 +64,19 @@ export default function DemoHome() {
       <Stage className="px-4 pt-5 sm:px-6">
         <div className="mx-auto flex w-full max-w-[1120px] items-center gap-3">
           <Logo size={26} />
-          <Badge tone="amber">Demo</Badge>
+          <span className="plate plate-gold text-base">
+            <span>DEMO</span>
+          </span>
         </div>
-        <div className="mx-auto grid w-full max-w-[1120px] grid-cols-1 items-end gap-x-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,25rem)]">
-          <div className="flex flex-col gap-4 pt-8 pb-10 lg:pt-12 lg:pb-14">
-            <h1 className="font-display text-[2.6rem] leading-[1.02] font-extrabold sm:text-6xl">Play Ludora in your browser</h1>
-            <p className="max-w-[46ch] text-lg text-text-2 sm:text-xl">A full game runs on this page, against practice bots. There is no account to make, and nothing you do here is saved.</p>
-          </div>
-          <GlimCrowd scene={COMPACT_SCENE} entrance ground="none" aspect="10 / 6.4" className="hidden max-w-[400px] self-end justify-self-end lg:block" />
+        <div className="mx-auto flex w-full max-w-[1120px] flex-col gap-4 pt-8 pb-10 lg:pt-12 lg:pb-14">
+          <h1 className="font-display text-[2.9rem] leading-[0.98] font-extrabold sm:text-[4.25rem]">Play Ludora in your browser</h1>
+          <p className="max-w-[46ch] text-lg text-text-2 sm:text-xl">A full game runs on this page, against practice bots. There is no account to make, and nothing you do here is saved.</p>
         </div>
       </Stage>
 
       <main id="main" className="mx-auto flex w-full max-w-[1120px] flex-1 flex-col gap-6 px-4 pt-6 pb-10 sm:px-6">
         <Panel className="p-5" aria-labelledby="demo-step-name">
-          <h2 id="demo-step-name" className="mb-3 font-display text-xl font-bold">
+          <h2 id="demo-step-name" className="mb-3 font-display text-2xl font-bold">
             Your name
           </h2>
           <div className="max-w-xl">
@@ -96,7 +94,7 @@ export default function DemoHome() {
         </Panel>
 
         <Panel className="p-5" aria-labelledby="demo-step-set">
-          <h2 id="demo-step-set" className="mb-3 font-display text-xl font-bold">
+          <h2 id="demo-step-set" className="mb-3 font-display text-2xl font-bold">
             Questions
           </h2>
           {pickingSet ? (
@@ -130,7 +128,7 @@ export default function DemoHome() {
         </Panel>
 
         <Panel className="p-5" aria-labelledby="demo-step-mode">
-          <h2 id="demo-step-mode" className="mb-1 font-display text-xl font-bold">
+          <h2 id="demo-step-mode" className="mb-1 font-display text-2xl font-bold">
             Game mode
           </h2>
           <p className="mb-4 text-sm text-text-2">Games that wait for a teacher to move them on run by themselves here.</p>
@@ -138,7 +136,7 @@ export default function DemoHome() {
         </Panel>
 
         <Panel className="p-5" aria-labelledby="demo-step-players">
-          <h2 id="demo-step-players" className="mb-3 font-display text-xl font-bold">
+          <h2 id="demo-step-players" className="mb-3 font-display text-2xl font-bold">
             Players and sound
           </h2>
           <div className="grid grid-cols-1 gap-x-8 gap-y-2 md:grid-cols-2">
@@ -164,7 +162,7 @@ export default function DemoHome() {
           </div>
         </Panel>
 
-        <div className="sticky bottom-4 z-10 flex flex-wrap items-center justify-between gap-3 rounded-[18px] border border-line bg-raised/95 p-4 backdrop-blur">
+        <div className="lift sticky bottom-4 z-10 flex flex-wrap items-center justify-between gap-3 rounded-[var(--radius-l)] border border-line bg-raised/95 p-4 backdrop-blur">
           <p className="min-w-0 text-sm text-text-2">
             {title} with “{set.title}”, {range.max === 0 ? 'on your own' : bots === 0 ? 'just you' : `you and ${bots} practice ${bots === 1 ? 'bot' : 'bots'}`}.
           </p>
@@ -173,8 +171,8 @@ export default function DemoHome() {
           </Button>
         </div>
 
-        <section aria-labelledby="demo-about" className="rounded-[18px] border border-dashed border-line-strong p-5">
-          <h2 id="demo-about" className="mb-2 font-display text-xl font-bold">
+        <section aria-labelledby="demo-about" className="rounded-[var(--radius-l)] border border-line p-5">
+          <h2 id="demo-about" className="mb-2 font-display text-2xl font-bold">
             About this demo
           </h2>
           <div className="flex max-w-[68ch] flex-col gap-2 text-text-2">

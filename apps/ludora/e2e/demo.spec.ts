@@ -35,8 +35,8 @@ test('plays a game against practice bots with nothing but static files', async (
   // The first question, of whatever type the shuffle dealt: answer it, and the game takes the answer.
   await expect(page.getByText(/^Question 1 of \d+$/)).toBeVisible();
   await answerAnyQuestion(page);
-  await expect(page.getByText(/^(Answer locked in|Correct!|Partly right \(\d+%\)|Not this time)$/).first()).toBeVisible();
-  await expect(page.getByText('No answer this time.')).toHaveCount(0);
+  await expect(page.getByText(/^(Answer locked in|Correct|Partly right \(\d+%\)|Incorrect)$/).first()).toBeVisible();
+  await expect(page.getByText('You did not answer.')).toHaveCount(0);
 
   // The big screen is the host's view of the same game, with the host's controls, and never shows your answer.
   const bigScreen = page.getByRole('button', { name: 'Big screen' });

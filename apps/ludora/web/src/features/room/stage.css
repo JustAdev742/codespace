@@ -1,22 +1,19 @@
 /*
- * Motion for the live game screens (room and join flow), kept beside the
- * screens that use it. One spectacle per moment: players arriving in the
- * lobby, the podium reveal and the reveal bars. The global reduced-motion
- * rules in app.css cut every animation here to a single frame with no delay,
- * so nothing waits to appear; most components also skip them outright.
+ * Motion for the live game screens, kept beside the screens that use it. One
+ * orchestrated moment per screen, fast and crisp (docs/DESIGN.md): a player's
+ * card arriving in the lobby, the podium reveal and the reveal bars. The
+ * global reduced-motion rules in app.css cut every animation here to a single
+ * frame with no delay, so nothing waits to appear; most components also skip
+ * them outright.
  */
 
-/* A Glim hops into the lobby crowd. */
+/* A player's card slides up into the lobby. */
 @keyframes stage-arrive {
-  0% {
+  from {
     opacity: 0;
-    transform: translateY(18px) scale(0.92);
+    transform: translateY(14px) scale(0.96);
   }
-  60% {
-    opacity: 1;
-    transform: translateY(-6px) scale(1.02);
-  }
-  100% {
+  to {
     opacity: 1;
     transform: none;
   }
@@ -32,32 +29,15 @@
   }
 }
 
-/* A podium Glim lands on its block. */
+/* A podium Glim, name and score land on their block. */
 @keyframes stage-land {
   from {
     opacity: 0;
-    transform: translateY(-28px) scale(0.94);
+    transform: translateY(-20px);
   }
   to {
     opacity: 1;
     transform: none;
-  }
-}
-
-/* The winner's victory hop, twice, then still. */
-@keyframes stage-hop {
-  0%,
-  100% {
-    transform: none;
-  }
-  25% {
-    transform: translateY(-12%);
-  }
-  50% {
-    transform: none;
-  }
-  70% {
-    transform: translateY(-6%);
   }
 }
 

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
-import { ArrowDown, ArrowUp, Check, Send, Users } from 'lucide-react';
+import { ArrowDown, ArrowUp, Check, Send, Users, WifiOff, X } from 'lucide-react';
 import type { Answer, Media, PublicQuestion } from '@ludora/shared';
 import { AnswerShape, ANSWER_LETTERS } from '../../../art/icons.tsx';
 import { QuestionImage } from './QuestionCard.tsx';
@@ -27,28 +27,20 @@ export interface AnswerInputProps {
 
 export type TileSize = 'sm' | 'md' | 'lg';
 
-const SIZE: Record<TileSize, { tile: string; stack: string; text: string; long: string; badge: string; shape: number }> = {
-  sm: { tile: 'min-h-[3.75rem] gap-3 rounded-[18px] px-3 py-2', stack: 'min-h-[5.5rem] gap-2 rounded-[18px] p-3', text: 'text-lg', long: 'text-base', badge: 'gap-1 rounded-[11px] px-1.5 py-1 text-base', shape: 18 },
-  md: { tile: 'min-h-[4.5rem] gap-3 rounded-[20px] px-3.5 py-2.5', stack: 'min-h-[7rem] gap-2 rounded-[20px] p-3.5', text: 'text-xl', long: 'text-base', badge: 'gap-1 rounded-[12px] px-2 py-1 text-lg', shape: 20 },
+const SIZE: Record<TileSize, { tile: string; stack: string; text: string; long: string; badge: string; shape: number; mark: string }> = {
+  sm: { tile: 'min-h-[3.75rem] gap-3 rounded-[12px] px-3 py-2', stack: 'min-h-[5.5rem] gap-2 rounded-[12px] p-3', text: 'text-lg', long: 'text-base', badge: 'gap-1 px-1.5 py-1 text-lg', shape: 18, mark: 'size-7' },
+  md: { tile: 'min-h-[4.5rem] gap-3 rounded-[14px] px-3.5 py-2.5', stack: 'min-h-[7rem] gap-2 rounded-[14px] p-3.5', text: 'text-xl', long: 'text-base', badge: 'gap-1.5 px-1.5 py-1 text-[1.35rem]', shape: 22, mark: 'size-8' },
   lg: {
-    tile: 'min-h-[clamp(5rem,12.5vh,9.5rem)] gap-[clamp(0.75rem,1.4vw,1.5rem)] rounded-[24px] px-[clamp(1rem,1.6vw,1.75rem)] py-3 max-sm:min-h-[4.5rem]',
-    stack: 'min-h-[clamp(7rem,18vh,12rem)] gap-3 rounded-[24px] p-[clamp(1rem,1.6vw,1.75rem)]',
+    tile: 'min-h-[clamp(5rem,12.5vh,9.5rem)] gap-[clamp(0.75rem,1.4vw,1.5rem)] rounded-[14px] px-[clamp(1rem,1.6vw,1.75rem)] py-3 max-sm:min-h-[4.5rem]',
+    stack: 'min-h-[clamp(7rem,18vh,12rem)] gap-3 rounded-[14px] p-[clamp(1rem,1.6vw,1.75rem)]',
     text: 'text-[clamp(1.4rem,2.3vw,2.75rem)]',
     long: 'text-[clamp(1.1rem,1.6vw,1.9rem)]',
-    badge: 'gap-1.5 rounded-[16px] px-[clamp(0.5rem,0.8vw,0.9rem)] py-[clamp(0.3rem,0.6vh,0.6rem)] text-[clamp(1.3rem,2.2vw,2.5rem)]',
-    shape: 34,
+    badge: 'gap-2 px-[clamp(0.4rem,0.7vw,0.75rem)] py-[clamp(0.25rem,0.5vh,0.5rem)] text-[clamp(1.5rem,2.4vw,2.75rem)]',
+    shape: 36,
+    mark: 'size-[clamp(2.25rem,4vh,3rem)]',
   },
 };
 
-/*
- * The sticker look (ink edge, hard press shadow that collapses when pressed),
- * built from utilities rather than the shared `.sticker` class: tiles are
- * disabled on the host screen and at every reveal, and `.sticker:disabled`
- * would grey them out. Same `--press` depth as every other sticker.
- */
-const PIECE =
-  'border-[3px] border-ink text-on-accent shadow-[0_var(--press)_0_var(--ink)] transition-[translate,box-shadow,filter] duration-[120ms] ease-[var(--ease-out)] enabled:hover:brightness-105 enabled:active:translate-y-[calc(var(--press)-1px)] enabled:active:shadow-[0_1px_0_var(--ink)] data-[pressed=true]:translate-y-[calc(var(--press)-1px)] data-[pressed=true]:shadow-[0_1px_0_var(--ink)]';
-const UNLIT = 'border-[3px] border-white/30 bg-[rgb(17_10_62/0.5)] text-text';
 /** Taller projector tiles when there are only two rows of them, so they fill the screen (not on a host screen opened on a phone). */
 const TALL = 'min-h-[clamp(5.5rem,15.5vh,11.5rem)]! max-sm:min-h-[4.5rem]!';
 /** Taller two-up phone tiles when there are four or fewer: bigger targets that still fit above the fold. */
@@ -57,9 +49,12 @@ const TALL_STACK = 'min-h-[clamp(7rem,18vh,10rem)]!';
 const DENSE_STACK = 'min-h-[5.25rem]!';
 
 /**
- * One answer as a chunky, pressable game piece. At a reveal, answers that were
- * not right go unlit (translucent, white text) rather than fading out, so every
- * label stays readable; their badge keeps the answer's colour and shape.
+ * One answer as a solid, pressable game piece (`.piece`): its tile colour, ink
+ * words, its letter and shape. A chosen tile is held down and carries a check;
+ * tiles out of play go smoked (`.piece-off`) rather than fading, so every label
+ * stays readable, and their letter keeps the answer's colour and shape. At the
+ * reveal the right answer stays lit with a mint ring and a check badge, and the
+ * player's own pick is tagged "Your answer". Nothing is told by colour alone.
  */
 export function ChoiceTile({
   index,
@@ -109,6 +104,7 @@ export function ChoiceTile({
   const lit = !dimmed;
   const bg = TILE_BG[index % TILE_BG.length];
   const long = text.length > 60;
+  const tagged = wrong || mine;
   return (
     <button
       type="button"
@@ -116,43 +112,51 @@ export function ChoiceTile({
       disabled={disabled}
       data-pressed={selected || undefined}
       aria-pressed={selected}
-      className={`relative flex w-full text-left [--press:5px] disabled:cursor-default ${layout === 'stack' ? `flex-col items-start justify-between ${s.stack} ${tall ? TALL_STACK : dense ? DENSE_STACK : ''}` : `items-center ${s.tile} ${tall ? TALL : ''}`} ${lit ? PIECE : UNLIT} ${
-        correct ? 'ring-[5px] ring-glim ring-offset-[3px] ring-offset-ink' : ''
+      className={`relative flex w-full text-left [--press:5px] disabled:cursor-default ${layout === 'stack' ? `flex-col items-start justify-between ${s.stack} ${tall ? TALL_STACK : dense ? DENSE_STACK : ''}` : `items-center ${s.tile} ${tall ? TALL : ''}`} ${lit ? 'piece text-on-accent' : 'piece-off'} ${
+        correct ? 'ring-[3px] ring-glim ring-offset-[3px] ring-offset-[#0b1130]' : ''
       }`}
       style={lit ? { background: bg } : undefined}
     >
-      <span className={`flex shrink-0 items-center font-display leading-none font-extrabold text-on-accent ${s.badge} ${lit ? 'bg-white/55' : ''}`} style={lit ? undefined : { background: bg }}>
+      {/* On a lit tile the letter and shape sit straight on its colour; on a smoked one they keep a chip of it. */}
+      <span className={`flex shrink-0 items-center rounded-[var(--radius-s)] font-display leading-none font-extrabold text-on-accent ${s.badge} ${lit ? 'bg-black/[0.07]' : ''}`} style={lit ? undefined : { background: bg }}>
         <AnswerShape index={index} size={s.shape} />
         <span>{ANSWER_LETTERS[index]}</span>
       </span>{' '}
       {media ? <QuestionImage media={media} size="tile" className={layout === 'stack' ? 'self-start' : ''} /> : null}
       {text ? <span className={`min-w-0 flex-1 leading-tight font-bold break-words ${long ? s.long : s.text} ${layout === 'stack' ? 'flex w-full items-end' : ''}`}>{text}</span> : <span className="flex-1" />}
-      {keyHint ? (
-        <span className="hidden self-start font-display text-sm font-bold opacity-60 sm:block" aria-hidden>
+      {keyHint && !selected ? (
+        <span className="hidden self-start font-display text-base font-bold opacity-70 sm:block" aria-hidden>
           {index + 1}
+        </span>
+      ) : null}
+      {selected ? (
+        // The chosen tile is held down and checked, so the pick reads without its colour.
+        <span className={`absolute top-2 right-2 grid place-items-center rounded-full bg-ink text-white ${s.mark}`} aria-hidden>
+          <Check className="size-[60%]" strokeWidth={3} />
         </span>
       ) : null}
       {count !== undefined && count !== null ? (
         <>
-          <span className={`flex shrink-0 items-center gap-1.5 self-center rounded-full px-3 py-1 font-display font-extrabold tabular ${lit ? 'bg-ink/85 text-white' : 'bg-[rgb(17_10_62/0.62)] text-text'} ${size === 'lg' ? 'text-[clamp(1.1rem,1.8vw,2rem)]' : 'text-base'}`}>
-            <Users className="size-[0.9em]" aria-hidden />
+          <span className={`flex shrink-0 items-center gap-1.5 self-center rounded-full px-3 py-1 font-display font-extrabold tabular ${lit ? 'bg-ink/85 text-white' : 'bg-white/[0.12] text-text'} ${size === 'lg' ? 'text-[clamp(1.25rem,2vw,2.25rem)]' : 'text-lg'}`}>
+            <Users className="size-[0.85em]" aria-hidden />
             {count}
             <span className="sr-only"> {count === 1 ? 'player' : 'players'}</span>
           </span>
           {max > 0 ? (
-            <span className="pointer-events-none absolute inset-x-3 bottom-1.5 h-1.5 overflow-hidden rounded-full" aria-hidden>
-              <span className={`block h-full origin-left rounded-full ${lit ? 'bg-ink/45' : 'bg-white/45'}`} style={{ transform: `scaleX(${Math.min(1, count / max)})`, animation: 'stage-grow 600ms var(--ease-out) both' }} />
+            <span className="pointer-events-none absolute inset-x-3 bottom-2 h-1.5 overflow-hidden rounded-full" aria-hidden>
+              <span className={`block h-full origin-left rounded-full ${lit ? 'bg-ink/45' : 'bg-white/45'}`} style={{ transform: `scaleX(${Math.min(1, count / max)})`, animation: 'stage-grow 420ms var(--ease-out) both' }} />
             </span>
           ) : null}
         </>
       ) : null}
       {correct ? (
-        <span className="absolute -top-3 -right-3 grid size-10 place-items-center rounded-full border-[3px] border-ink bg-glim text-on-accent" role="img" aria-label="Correct answer">
+        <span className="absolute -top-3 -right-3 grid size-10 place-items-center rounded-full bg-glim text-on-accent shadow-[0_0_0_3px_#0b1130]" role="img" aria-label="Correct answer">
           <Check className="size-6" strokeWidth={3} aria-hidden />
         </span>
       ) : null}
-      {wrong || mine ? (
-        <span className={`absolute -top-3 rounded-full border-2 border-ink px-2.5 py-0.5 text-sm font-bold ${correct ? 'paper right-10' : 'right-3 bg-ember text-on-accent'}`}>
+      {tagged ? (
+        <span className={`absolute -top-3 inline-flex items-center gap-1 rounded-[var(--radius-s)] px-2 py-0.5 text-sm font-bold shadow-[0_6px_14px_-6px_rgb(2_5_20/0.8)] ${correct ? 'paper right-10' : 'right-3 bg-ember text-on-accent'}`}>
+          {correct ? null : <X className="size-3.5" strokeWidth={3} aria-hidden />}
           <span className="sr-only">, </span>Your answer
         </span>
       ) : null}
@@ -276,7 +280,12 @@ function MultiAnswer({ q, onSubmit, disabled, compact }: AnswerInputProps & { q:
  */
 function SubmitButton({ disabled, sent, onClick, label = 'Submit answer', sticky = false }: { disabled: boolean; sent: boolean; onClick?: () => void; label?: string; sticky?: boolean }) {
   return (
-    <button type={onClick ? 'button' : 'submit'} onClick={onClick} disabled={disabled} className={`sticker inline-flex h-16 w-full items-center justify-center gap-2.5 rounded-[18px] bg-lantern px-6 font-display text-xl font-extrabold text-on-accent [--press:6px] disabled:cursor-not-allowed sm:w-auto sm:self-start ${sticky && !disabled ? 'sticky bottom-3 z-10' : ''}`}>
+    <button
+      type={onClick ? 'button' : 'submit'}
+      onClick={onClick}
+      disabled={disabled}
+      className={`sticker inline-flex h-16 w-full items-center justify-center gap-2.5 rounded-[var(--radius-l)] bg-lantern px-6 font-display text-[1.6rem] font-extrabold text-on-accent [--press:6px] disabled:cursor-not-allowed sm:w-auto sm:self-start ${sticky && !disabled ? 'sticky bottom-3 z-10' : ''}`}
+    >
       {sent ? <Check className="size-6" aria-hidden /> : <Send className="size-5" aria-hidden />}
       {sent ? 'Answer sent' : label}
     </button>
@@ -326,12 +335,12 @@ function TextAnswer({ numeric, unit, onSubmit, disabled }: { numeric: boolean; u
           placeholder={numeric ? 'Type a number' : 'Type your answer'}
           aria-invalid={Boolean(error)}
           aria-describedby={error ? 'answer-text-error' : undefined}
-          className="paper h-16 min-w-0 flex-1 rounded-[18px] border-[3px] border-ink px-4 font-display text-2xl font-bold shadow-[0_4px_0_var(--ink)] placeholder:font-sans placeholder:text-lg placeholder:font-normal placeholder:text-text-3 focus:outline-none focus-visible:ring-4 focus-visible:ring-lantern disabled:opacity-80"
+          className="paper h-16 min-w-0 flex-1 rounded-[var(--radius-l)] border border-line-strong px-4 text-2xl font-bold placeholder:text-lg placeholder:font-normal placeholder:text-text-3 focus:outline-none focus-visible:ring-4 focus-visible:ring-lantern disabled:opacity-80"
         />
-        {unit ? <span className="font-display text-2xl font-bold text-text">{unit}</span> : null}
+        {unit ? <span className="font-display text-[1.75rem] font-bold text-text">{unit}</span> : null}
       </div>
       {error ? (
-        <p id="answer-text-error" className="rounded-[12px] bg-[rgb(17_10_62/0.62)] px-3 py-2 font-semibold text-ember">
+        <p id="answer-text-error" className="rounded-[var(--radius-m)] border border-ember/60 bg-white/[0.07] px-3 py-2 font-semibold text-ember">
           {error}
         </p>
       ) : null}
@@ -363,13 +372,13 @@ function OrderAnswer({ q, onSubmit, disabled }: AnswerInputProps & { q: Extract<
       <p className="font-semibold text-text-2">Move the items into the right order, first at the top.</p>
       <ol className="flex flex-col gap-2">
         {items.map((item, i) => (
-          <li key={item.id} className="paper flex items-center gap-2 rounded-[16px] border-[3px] border-ink p-2 pl-3 shadow-[0_3px_0_var(--ink)]">
-            <span className="grid size-9 shrink-0 place-items-center rounded-full bg-lantern font-display font-extrabold text-on-accent tabular">{i + 1}</span>
+          <li key={item.id} className="paper flex items-center gap-2 rounded-[var(--radius-m)] p-2 pl-3 shadow-[0_8px_20px_-10px_rgb(2_5_20/0.7)]">
+            <span className="grid size-9 shrink-0 place-items-center rounded-full bg-lantern font-display text-lg font-extrabold text-on-accent tabular">{i + 1}</span>
             <span className="min-w-0 flex-1 font-bold">{item.text}</span>
-            <button type="button" className="grid size-11 place-items-center rounded-[12px] bg-surface-3 disabled:opacity-30" onClick={() => move(i, -1)} disabled={locked || i === 0} aria-label={`Move ${item.text} up`}>
+            <button type="button" className="grid size-11 place-items-center rounded-[var(--radius-s)] bg-surface-3 text-text hover:bg-surface-2 disabled:opacity-30" onClick={() => move(i, -1)} disabled={locked || i === 0} aria-label={`Move ${item.text} up`}>
               <ArrowUp className="size-5" aria-hidden />
             </button>
-            <button type="button" className="grid size-11 place-items-center rounded-[12px] bg-surface-3 disabled:opacity-30" onClick={() => move(i, 1)} disabled={locked || i === items.length - 1} aria-label={`Move ${item.text} down`}>
+            <button type="button" className="grid size-11 place-items-center rounded-[var(--radius-s)] bg-surface-3 text-text hover:bg-surface-2 disabled:opacity-30" onClick={() => move(i, 1)} disabled={locked || i === items.length - 1} aria-label={`Move ${item.text} down`}>
               <ArrowDown className="size-5" aria-hidden />
             </button>
           </li>
@@ -380,7 +389,16 @@ function OrderAnswer({ q, onSubmit, disabled }: AnswerInputProps & { q: Extract<
   );
 }
 
-const PAIR_COLORS = ['var(--tile-a)', 'var(--tile-b)', 'var(--tile-c)', 'var(--tile-d)', 'var(--tile-e)', 'var(--tile-f)', '#ffd23f', '#9be7ff'];
+/** Each left item's colour, and its number: a matched pair shows the same number on both sides, so pairs never rely on colour. */
+const PAIR_COLORS = ['var(--tile-a)', 'var(--tile-b)', 'var(--tile-c)', 'var(--tile-d)', 'var(--tile-e)', 'var(--tile-f)', 'var(--lantern)', 'var(--r-common)'];
+
+function PairNumber({ n, color }: { n: number; color: string }) {
+  return (
+    <span className="grid size-7 shrink-0 place-items-center rounded-full font-display text-base font-extrabold text-on-accent tabular" style={{ background: color }} aria-hidden>
+      {n}
+    </span>
+  );
+}
 
 function MatchAnswer({ q, onSubmit, disabled }: AnswerInputProps & { q: Extract<PublicQuestion, { type: 'match' }> }) {
   const [pairs, setPairs] = useState<Record<string, string>>({});
@@ -388,6 +406,7 @@ function MatchAnswer({ q, onSubmit, disabled }: AnswerInputProps & { q: Extract<
   const [sent, setSent] = useState(false);
   const locked = disabled || sent;
   const colorOf = useMemo(() => Object.fromEntries(q.left.map((l, i) => [l.id, PAIR_COLORS[i % PAIR_COLORS.length]!])), [q.left]);
+  const numberOf = useMemo(() => Object.fromEntries(q.left.map((l, i) => [l.id, i + 1])), [q.left]);
   const rightOwner = (rid: string) => Object.entries(pairs).find(([, r]) => r === rid)?.[0];
   const pickRight = (rid: string) => {
     if (locked || !active) return;
@@ -421,10 +440,10 @@ function MatchAnswer({ q, onSubmit, disabled }: AnswerInputProps & { q: Extract<
                 setActive(l.id);
               }}
               aria-pressed={active === l.id}
-              className={`paper min-h-14 rounded-[16px] border-[3px] px-3 py-2 text-left font-bold transition-colors ${active === l.id ? 'border-lantern ring-4 ring-lantern/60' : 'border-ink'}`}
-              style={pairs[l.id] ? { boxShadow: `inset 8px 0 0 ${colorOf[l.id]}` } : undefined}
+              className={`paper flex min-h-14 items-center gap-2 rounded-[var(--radius-m)] px-2.5 py-2 text-left font-bold transition-shadow ${active === l.id ? 'ring-4 ring-lantern' : ''}`}
             >
-              {l.text}
+              <PairNumber n={numberOf[l.id]!} color={colorOf[l.id]!} />
+              <span className="min-w-0 flex-1 break-words">{l.text}</span>
             </button>
           ))}
         </div>
@@ -437,11 +456,14 @@ function MatchAnswer({ q, onSubmit, disabled }: AnswerInputProps & { q: Extract<
                 type="button"
                 disabled={locked || !active}
                 onClick={() => pickRight(r.id)}
-                className="paper min-h-14 rounded-[16px] border-[3px] border-ink px-3 py-2 text-left font-bold disabled:cursor-default"
-                style={owner ? { boxShadow: `inset -8px 0 0 ${colorOf[owner]}` } : undefined}
-                aria-label={owner ? `${r.text}, matched with ${q.left.find((l) => l.id === owner)?.text}` : r.text}
+                className="paper flex min-h-14 items-center gap-2 rounded-[var(--radius-m)] px-2.5 py-2 text-left font-bold disabled:cursor-default"
               >
-                {r.text}
+                {/* The name starts with the words on the button, then says the pair (the number chip is for sighted players). */}
+                <span className="min-w-0 flex-1 break-words">
+                  {r.text}
+                  {owner ? <span className="sr-only">, matched with {q.left.find((l) => l.id === owner)?.text}</span> : null}
+                </span>
+                {owner ? <PairNumber n={numberOf[owner]!} color={colorOf[owner]!} /> : <span className="size-7 shrink-0 rounded-full border-2 border-dashed border-line-strong" aria-hidden />}
               </button>
             );
           })}
@@ -477,7 +499,10 @@ export function AnswerInput(props: AnswerInputProps) {
   if (!online) {
     return (
       <div className="flex flex-col gap-3">
-        <p className="rounded-[14px] border-2 border-ember bg-[rgb(17_10_62/0.62)] px-4 py-2.5 font-bold text-text">The connection dropped. Your answer can go in as soon as it is back.</p>
+        <p className="flex items-center gap-2.5 rounded-[var(--radius-m)] border border-ember/60 bg-white/[0.07] px-4 py-2.5 font-bold text-text">
+          <WifiOff className="size-5 shrink-0 text-ember" aria-hidden />
+          The connection dropped. Your answer can go in as soon as it is back.
+        </p>
         {/* Dimmed, so they do not look tappable while they wait. */}
         <div className="opacity-55">
           <AnswerControls {...p} />

@@ -10,7 +10,7 @@ import { ReactionBar, ReactionLayer } from '../features/room/game/Reactions.tsx'
 import { Announcer } from '../features/room/game/announce.tsx';
 import { MuteButton } from '../features/room/game/MuteButton.tsx';
 import { AnswerMemory } from '../features/room/game/answerMemory.tsx';
-import { FeedToasts, GameStage, HostControls, STAGE, WIDE } from '../features/room/GameStage.tsx';
+import { FeedToasts, GameStage, HUD_BAR, HUD_FOOT, HostControls, LiveTag, STAGE, WIDE } from '../features/room/GameStage.tsx';
 import { SoundRoleContext, type SoundRole } from '../lib/sound/react.tsx';
 import { useRoomMusic } from '../features/room/music.ts';
 import '../features/room/stage.css';
@@ -55,7 +55,7 @@ function DemoRoom({ setup }: { setup: DemoSetup }) {
       <Stage as="main" className={`${STAGE} items-center justify-center px-4 py-10`}>
         <div className="paper stage-card flex w-full max-w-md flex-col items-center gap-4 px-6 py-7 text-center">
           <LogoMark size={56} />
-          <h1 className="font-display text-3xl font-extrabold">This game could not start</h1>
+          <h1 className="font-display text-[2.25rem] font-bold">This game could not start</h1>
           <p className="text-text-2">{local.error}</p>
           <Link to="/" className={buttonClass('primary', 'lg')}>
             Choose another game
@@ -79,14 +79,16 @@ function DemoRoom({ setup }: { setup: DemoSetup }) {
     <Stage className={STAGE}>
       <SoundRoleContext.Provider value={soundScene}>
         <Announcer>
-          <header className="sticky top-0 z-30 border-b border-white/12 bg-[rgb(16_10_58/0.55)] backdrop-blur-md">
+          {/* The game's HUD bar: what is on, then the controls. */}
+          <header className={HUD_BAR}>
             <div className="flex h-14 items-center gap-2.5 px-3 sm:h-16 sm:gap-3 sm:px-5 min-[1600px]:h-20 min-[1600px]:px-8">
               <LogoMark size={30} className="shrink-0 min-[1600px]:size-11" />
               {/* On a phone the game's controls need the header's width; the title stays for screen readers. */}
               <div className={`min-w-0 ${live ? 'max-sm:sr-only' : ''}`}>
-                <Title className="truncate font-display text-base leading-tight font-extrabold text-text sm:text-lg min-[1600px]:text-2xl">{room.room.title}</Title>
-                <p className="truncate text-xs font-semibold text-text-2 sm:text-sm min-[1600px]:text-base">
-                  Demo, {withBots ? `with ${room.players.length - 1} practice ${room.players.length === 2 ? 'bot' : 'bots'}` : 'on your own'}
+                <Title className="truncate font-display text-lg leading-tight font-bold text-text sm:text-xl min-[1600px]:text-[1.75rem]">{room.room.title}</Title>
+                <p className="flex min-w-0 items-center gap-2 text-xs font-semibold text-text-2 sm:text-sm min-[1600px]:text-base">
+                  {status === 'running' ? <LiveTag /> : null}
+                  <span className="truncate">Demo, {withBots ? `with ${room.players.length - 1} practice ${room.players.length === 2 ? 'bot' : 'bots'}` : 'on your own'}</span>
                 </p>
               </div>
               <div className="ml-auto flex shrink-0 items-center gap-1.5 sm:gap-2">
@@ -116,7 +118,7 @@ function DemoRoom({ setup }: { setup: DemoSetup }) {
           </header>
           <main className="flex flex-1 flex-col px-3 pt-4 pb-6 sm:px-6 lg:px-10 lg:pt-6">
             {big ? (
-              <p className="mx-auto mb-4 max-w-2xl rounded-full border border-white/15 bg-[rgb(17_10_62/0.62)] px-4 py-1.5 text-center text-sm font-semibold text-text-2">
+              <p className="mx-auto mb-4 max-w-2xl rounded-full bg-white/[0.07] px-4 py-1.5 text-center text-sm font-semibold text-text-2">
                 This is the big screen, as a class would see it on the projector. Turn off Big screen to answer.
               </p>
             ) : null}
@@ -132,7 +134,7 @@ function DemoRoom({ setup }: { setup: DemoSetup }) {
             {status === 'ended' && room.results ? <Results room={room} handle={handle} isHost={big} guest={false} /> : null}
           </main>
           {!big && live && withBots ? (
-            <footer className="border-t border-white/12 bg-[rgb(16_10_58/0.45)] px-3 py-2">
+            <footer className={`${HUD_FOOT} px-3 py-2`}>
               <ReactionBar onReact={(e) => void handle.react(e)} />
             </footer>
           ) : null}

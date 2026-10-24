@@ -15,8 +15,8 @@ export interface LeaderRow {
 /** Strong ease-in-out: rows travel across the screen rather than enter it. */
 const MOVE = 'cubic-bezier(0.77, 0, 0.175, 1)';
 
-/** Podium colours, shared by rank badges and the podium itself. */
-export const PLACE_BG = ['var(--lantern)', 'var(--tile-b)', 'var(--tile-d)'];
+/** Podium colours, shared by rank badges and the podium itself: gold, silver and bronze. Ink text passes AA on each. */
+export const PLACE_BG = ['var(--lantern)', 'var(--r-common)', 'var(--tile-a)'];
 
 /**
  * The order each kind of board (projector or phone) was last shown in, so the
@@ -56,7 +56,7 @@ function useRankSlide(listRef: RefObject<HTMLOListElement | null>, rows: LeaderR
     if (!motionOK()) return;
     let from = previous;
     let delay = 0;
-    let duration = 520;
+    let duration = 420;
     if (!from) {
       const seen = (remembered ?? []).filter((id) => ids.includes(id));
       const prevScore = (id: string) => {
@@ -68,8 +68,9 @@ function useRankSlide(listRef: RefObject<HTMLOListElement | null>, rows: LeaderR
       if (before.every((id, i) => id === ids[i])) return;
       const slots = nodes.map((n) => tops.get(n.dataset.row!) ?? 0);
       from = new Map(before.map((id, i) => [id, slots[Math.min(i, slots.length - 1)] ?? 0]));
-      delay = 600;
-      duration = 900;
+      // The rank change is the moment of the board: a beat to see the old order, then a quick, readable slide.
+      delay = 450;
+      duration = 650;
     }
     for (const n of nodes) {
       const a = from.get(n.dataset.row!);
@@ -86,11 +87,12 @@ function useRankSlide(listRef: RefObject<HTMLOListElement | null>, rows: LeaderR
   }, [orderKey, listRef, memory]);
 }
 
+/** A rank as a disc: gold, silver and bronze for the podium places, smoked for the rest. The ordinal is always written, so colour is never the only cue. */
 export function RankBadge({ rank, big = false }: { rank: number; big?: boolean }) {
   const medal = rank >= 1 && rank <= 3;
   return (
     <span
-      className={`grid shrink-0 place-items-center rounded-full font-display font-extrabold tabular ${big ? 'size-[var(--lb-rank)] text-[length:calc(var(--lb-rank)*0.36)]' : 'size-11 text-base'} ${medal ? 'border-[3px] border-ink text-on-accent shadow-[0_2px_0_var(--ink)]' : 'border-2 border-white/25 text-text'}`}
+      className={`grid shrink-0 place-items-center rounded-full font-display font-extrabold tabular ${big ? 'size-[var(--lb-rank)] text-[length:calc(var(--lb-rank)*0.4)]' : 'size-11 text-lg'} ${medal ? 'text-on-accent' : 'bg-white/[0.1] text-text'}`}
       style={medal ? { background: PLACE_BG[rank - 1] } : undefined}
     >
       {ordinal(rank)}
@@ -139,7 +141,7 @@ export function Leaderboard({
           <li
             key={r.playerId}
             data-row={r.playerId}
-            className={`relative flex min-h-[var(--lb-row)] items-center rounded-[20px] border bg-[rgb(17_10_62/0.62)] ${big ? 'gap-[clamp(0.75rem,1.4vw,1.5rem)] px-[clamp(0.75rem,1.2vw,1.25rem)] py-1' : 'gap-3 px-2.5 py-1.5'} ${isYou ? 'border-lantern ring-2 ring-lantern' : 'border-white/12'}`}
+            className={`relative flex min-h-[var(--lb-row)] items-center rounded-[var(--radius-m)] ${big ? 'gap-[clamp(0.75rem,1.4vw,1.5rem)] px-[clamp(0.75rem,1.2vw,1.25rem)] py-1' : 'gap-3 px-2.5 py-1.5'} ${isYou ? 'bg-lantern/[0.14] ring-2 ring-lantern ring-inset' : 'bg-white/[0.07]'}`}
           >
             <RankBadge rank={r.rank} big={big} />
             <PlayerGlim avatar={avatarOf(players, r.playerId)} seed={r.playerId} size={64} pose={r.rank === 1 ? 'cheer' : 'idle'} className="size-[var(--lb-glim)] shrink-0" />
@@ -147,14 +149,17 @@ export function Leaderboard({
               {r.name}
               {isYou ? <span className={big ? 'ml-2 text-[0.75em] font-semibold text-text-2' : 'sr-only'}> (you)</span> : null}
             </span>
-            {t ? <span className="size-4 shrink-0 rounded-full border-2 border-ink" style={{ background: `hsl(${t.hue} 80% 60%)` }} title={t.name} aria-hidden /> : null}
+            {t ? <span className="size-4 shrink-0 rounded-full ring-2 ring-white/50" style={{ background: `hsl(${t.hue} 80% 60%)` }} title={t.name} aria-hidden /> : null}
             {t ? <span className="sr-only">{t.name}</span> : null}
             {r.gain ? (
-              <span className={`shrink-0 rounded-full border-2 border-ink px-2.5 py-0.5 font-display font-extrabold text-on-accent tabular ${r.gain > 0 ? 'bg-glim' : 'bg-ember'} ${big ? 'text-[length:calc(var(--lb-score)*0.62)] max-sm:hidden' : 'text-sm'}`}>
-                <span aria-hidden>{r.gain > 0 ? '+' : '−'}</span>
-                <span className="sr-only">{r.gain > 0 ? 'up ' : 'down '}</span>
-                {formatNumber(Math.abs(r.gain))}
-                <span className="sr-only"> this round,</span>
+              // The points just gained, on a slanted plate: the moment of this row.
+              <span className={`plate shrink-0 text-on-accent tabular ${r.gain > 0 ? 'bg-glim' : 'bg-ember'} ${big ? 'text-[length:calc(var(--lb-score)*0.66)] max-sm:hidden' : 'px-2 text-base'}`}>
+                <span>
+                  <span aria-hidden>{r.gain > 0 ? '+' : '−'}</span>
+                  <span className="sr-only">{r.gain > 0 ? 'up ' : 'down '}</span>
+                  {formatNumber(Math.abs(r.gain))}
+                  <span className="sr-only"> this round,</span>
+                </span>
               </span>
             ) : null}
             <span className="shrink-0 text-right font-display text-[length:var(--lb-score)] leading-none font-extrabold tabular">
@@ -188,11 +193,11 @@ export function TeamScores({
         .map((t) => (
           <li key={t.teamId} className={`grid items-center gap-3 ${big ? 'grid-cols-[minmax(6rem,12rem)_1fr_auto] text-[clamp(1.1rem,1.7vw,1.9rem)]' : 'grid-cols-[minmax(4.5rem,7.5rem)_1fr_auto]'}`}>
             <span className="flex min-w-0 items-center gap-2 font-bold">
-              <span className="size-3.5 shrink-0 rounded-full border-2 border-ink" style={{ background: `hsl(${t.hue} 80% 62%)` }} aria-hidden />
+              <span className="size-3.5 shrink-0 rounded-full ring-2 ring-white/50" style={{ background: `hsl(${t.hue} 80% 62%)` }} aria-hidden />
               <span className="truncate">{t.name}</span>
             </span>
-            <span className={`relative overflow-hidden rounded-[12px] border-2 border-ink bg-sunken ${big ? 'h-10' : 'h-7'}`} aria-hidden>
-              <span className="absolute inset-0 origin-left rounded-[10px] transition-transform duration-700 ease-[var(--ease-out)]" style={{ transform: `scaleX(${Math.max(0.04, t.score / max)})`, background: `hsl(${t.hue} 80% 62%)` }} />
+            <span className={`relative overflow-hidden rounded-[var(--radius-s)] bg-white/[0.1] ${big ? 'h-10' : 'h-7'}`} aria-hidden>
+              <span className="absolute inset-0 origin-left rounded-[var(--radius-s)] transition-transform duration-500 ease-[var(--ease-out)]" style={{ transform: `scaleX(${Math.max(0.04, t.score / max)})`, background: `hsl(${t.hue} 80% 62%)` }} />
             </span>
             <span className="min-w-[3ch] text-right font-display leading-tight font-extrabold tabular">
               {format(t.score)}
