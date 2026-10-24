@@ -375,10 +375,10 @@ function OrderAnswer({ q, onSubmit, disabled }: AnswerInputProps & { q: Extract<
           <li key={item.id} className="paper flex items-center gap-2 rounded-[var(--radius-m)] p-2 pl-3 shadow-[0_8px_20px_-10px_rgb(2_5_20/0.7)]">
             <span className="grid size-9 shrink-0 place-items-center rounded-full bg-lantern font-display text-lg font-extrabold text-on-accent tabular">{i + 1}</span>
             <span className="min-w-0 flex-1 font-bold">{item.text}</span>
-            <button type="button" className="grid size-11 place-items-center rounded-[var(--radius-s)] bg-surface-3 text-text hover:bg-surface-2 disabled:opacity-30" onClick={() => move(i, -1)} disabled={locked || i === 0} aria-label={`Move ${item.text} up`}>
+            <button type="button" className="grid size-11 scroll-mb-28 place-items-center rounded-[var(--radius-s)] bg-surface-3 text-text hover:bg-surface-2 disabled:opacity-30" onClick={() => move(i, -1)} disabled={locked || i === 0} aria-label={`Move ${item.text} up`}>
               <ArrowUp className="size-5" aria-hidden />
             </button>
-            <button type="button" className="grid size-11 place-items-center rounded-[var(--radius-s)] bg-surface-3 text-text hover:bg-surface-2 disabled:opacity-30" onClick={() => move(i, 1)} disabled={locked || i === items.length - 1} aria-label={`Move ${item.text} down`}>
+            <button type="button" className="grid size-11 scroll-mb-28 place-items-center rounded-[var(--radius-s)] bg-surface-3 text-text hover:bg-surface-2 disabled:opacity-30" onClick={() => move(i, 1)} disabled={locked || i === items.length - 1} aria-label={`Move ${item.text} down`}>
               <ArrowDown className="size-5" aria-hidden />
             </button>
           </li>
@@ -440,7 +440,7 @@ function MatchAnswer({ q, onSubmit, disabled }: AnswerInputProps & { q: Extract<
                 setActive(l.id);
               }}
               aria-pressed={active === l.id}
-              className={`paper flex min-h-14 items-center gap-2 rounded-[var(--radius-m)] px-2.5 py-2 text-left font-bold transition-shadow ${active === l.id ? 'ring-4 ring-lantern' : ''}`}
+              className={`paper flex min-h-14 scroll-mb-28 items-center gap-2 rounded-[var(--radius-m)] px-2.5 py-2 text-left font-bold transition-shadow ${active === l.id ? 'ring-4 ring-lantern' : ''}`}
             >
               <PairNumber n={numberOf[l.id]!} color={colorOf[l.id]!} />
               <span className="min-w-0 flex-1 break-words">{l.text}</span>
@@ -456,7 +456,7 @@ function MatchAnswer({ q, onSubmit, disabled }: AnswerInputProps & { q: Extract<
                 type="button"
                 disabled={locked || !active}
                 onClick={() => pickRight(r.id)}
-                className="paper flex min-h-14 items-center gap-2 rounded-[var(--radius-m)] px-2.5 py-2 text-left font-bold disabled:cursor-default"
+                className="paper flex min-h-14 scroll-mb-28 items-center gap-2 rounded-[var(--radius-m)] px-2.5 py-2 text-left font-bold disabled:cursor-default"
               >
                 {/* The name starts with the words on the button, then says the pair (the number chip is for sighted players). */}
                 <span className="min-w-0 flex-1 break-words">

@@ -14,7 +14,7 @@ import { ReportDialog } from '../moderation/ReportDialog.tsx';
 import { DebugOverlay } from './DebugOverlay.tsx';
 import './stage.css';
 import { Announcer, useAnnounce } from './game/announce.tsx';
-import { FeedToasts, GameStage, HUD_BAR, HUD_FOOT, HostControls, LiveTag, STAGE, WIDE } from './GameStage.tsx';
+import { FeedToasts, GameStage, HUD_BAR, HUD_FOOT, HostControls, LiveTag, STAGE, WIDE, hostListsFeed } from './GameStage.tsx';
 import { MuteButton } from './game/MuteButton.tsx';
 import { SoundRoleContext, type SoundRole } from '../../lib/sound/react.tsx';
 import { useRoomMusic } from './music.ts';
@@ -240,7 +240,7 @@ export default function RoomPage() {
           <ReactionBar onReact={(e) => void handle.react(e)} />
         </footer>
       ) : null}
-      <FeedToasts feed={room.feed} />
+      <FeedToasts feed={room.feed} quiet={isHost && live && hostListsFeed(room.room.modeId)} />
       <ReactionLayer reactions={handle.reactions} big={isHost} />
       {debug ? <DebugOverlay handle={handle} /> : null}
       </Announcer>

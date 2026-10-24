@@ -96,13 +96,18 @@ export function HostControls({ room, handle }: { room: RoomView; handle: RoomHan
   );
 }
 
+/** Whether this mode's host screen lists the room's news itself, so its big screen needs no news toasts. */
+export function hostListsFeed(modeId: string): boolean {
+  return Boolean(MODE_SCREENS[modeId]?.hostFeed);
+}
+
 /** Recent game events (finishes, eliminations) as short-lived toasts: a solid fill in the colour of their news, like the app's own toasts. */
-export function FeedToasts({ feed }: { feed: RoomView['feed'] }) {
+export function FeedToasts({ feed, quiet = false }: { feed: RoomView['feed']; /** The screen lists the news itself. */ quiet?: boolean }) {
   const seen = useRef(new Map<number, number>());
   const now = useNow(1000, feed.length > 0);
   for (const f of feed) if (!seen.current.has(f.id)) seen.current.set(f.id, Date.now());
   const visible = feed.filter((f) => now - (seen.current.get(f.id) ?? 0) < 5000).slice(-3);
-  if (!visible.length) return null;
+  if (quiet || !visible.length) return null;
   return (
     // On a phone the news drops in under the header, clear of the answers in the thumb zone; on the projector it sits bottom right.
     // A phone shows only the newest line, two lines at most, so busy rooms never bury the game's own status row.

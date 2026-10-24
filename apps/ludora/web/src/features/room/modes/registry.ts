@@ -13,7 +13,7 @@ export interface ModeScreenProps<V = any> {
 type Screen = LazyExoticComponent<ComponentType<ModeScreenProps>>;
 
 /** Each mode's player and host screens, loaded only when that mode is played. */
-export const MODE_SCREENS: Record<string, { Player: Screen; Host: Screen }> = {
+export const MODE_SCREENS: Record<string, { Player: Screen; Host: Screen; /** The host screen lists the room's news itself, so the big screen shows no news toasts over it. */ hostFeed?: boolean }> = {
   classic: {
     Player: lazy(() => import('./classic.tsx').then((m) => ({ default: m.ClassicPlayer }))),
     Host: lazy(() => import('./classic.tsx').then((m) => ({ default: m.ClassicHost }))),
@@ -85,13 +85,16 @@ export const MODE_SCREENS: Record<string, { Player: Screen; Host: Screen }> = {
   'lantern-trail': {
     Player: lazy(() => import('./lantern-trail.tsx').then((m) => ({ default: m.LanternTrailPlayer }))),
     Host: lazy(() => import('./lantern-trail.tsx').then((m) => ({ default: m.LanternTrailHost }))),
+    hostFeed: true,
   },
   'lantern-lands': {
     Player: lazy(() => import('./lantern-lands.tsx').then((m) => ({ default: m.LanternLandsPlayer }))),
     Host: lazy(() => import('./lantern-lands.tsx').then((m) => ({ default: m.LanternLandsHost }))),
+    hostFeed: true,
   },
   'festival-workshop': {
     Player: lazy(() => import('./festival-workshop.tsx').then((m) => ({ default: m.FestivalWorkshopPlayer }))),
     Host: lazy(() => import('./festival-workshop.tsx').then((m) => ({ default: m.FestivalWorkshopHost }))),
+    hostFeed: true,
   },
 };

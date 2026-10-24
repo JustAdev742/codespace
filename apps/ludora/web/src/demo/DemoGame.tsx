@@ -10,7 +10,7 @@ import { ReactionBar, ReactionLayer } from '../features/room/game/Reactions.tsx'
 import { Announcer } from '../features/room/game/announce.tsx';
 import { MuteButton } from '../features/room/game/MuteButton.tsx';
 import { AnswerMemory } from '../features/room/game/answerMemory.tsx';
-import { FeedToasts, GameStage, HUD_BAR, HUD_FOOT, HostControls, LiveTag, STAGE, WIDE } from '../features/room/GameStage.tsx';
+import { FeedToasts, GameStage, HUD_BAR, HUD_FOOT, HostControls, LiveTag, STAGE, WIDE, hostListsFeed } from '../features/room/GameStage.tsx';
 import { SoundRoleContext, type SoundRole } from '../lib/sound/react.tsx';
 import { useRoomMusic } from '../features/room/music.ts';
 import '../features/room/stage.css';
@@ -138,7 +138,7 @@ function DemoRoom({ setup }: { setup: DemoSetup }) {
               <ReactionBar onReact={(e) => void handle.react(e)} />
             </footer>
           ) : null}
-          <FeedToasts feed={room.feed} />
+          <FeedToasts feed={room.feed} quiet={big && live && hostListsFeed(room.room.modeId)} />
           <ReactionLayer reactions={handle.reactions} big={big} />
         </Announcer>
       </SoundRoleContext.Provider>
