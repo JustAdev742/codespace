@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { Minus, Plus, Search } from 'lucide-react';
+import { Check, Minus, Plus, Search } from 'lucide-react';
 import { RARITIES, RARITY_INFO, type GlimArt, type LanternArt, type Rarity } from '@ludora/shared';
 import { api, ApiError, newRequestKey } from '../../lib/api.ts';
 import { useMe } from '../../lib/session.ts';
@@ -10,11 +10,10 @@ import { formatNumber } from '../../lib/format.ts';
 import { Glim } from '../../art/glim/Glim.tsx';
 import { Lantern } from '../../art/Lantern.tsx';
 import { CurrencyIcon } from '../../art/icons.tsx';
-import { Stage } from '../../ui/Stage.tsx';
 import { AccountError, Amount, Dialog, EmptyState, ErrorNotice, Input, PageHeader, Select, Skeleton } from '../../ui/primitives.tsx';
 import { Button, ButtonLink } from '../../ui/Button.tsx';
-import { Meter, RarityTag, ToggleChips } from '../home/kit.tsx';
-import { RarityPanel, frameProps } from './rarity.tsx';
+import { Meter, ToggleChips } from '../../ui/game.tsx';
+import { RarityLabel, RarityPanel, RarityPlate, frameProps } from './rarity.tsx';
 
 interface CollectionGlim {
   id: string;
@@ -41,10 +40,12 @@ type GlimShape = Pick<GlimArt, 'body'> & Partial<Pick<GlimArt, 'topper' | 'ears'
 /** A Glim you have not found, drawn from its shape alone: recognisable, with nothing given away. */
 const shadowArt = (shape: GlimShape): GlimArt => ({ kind: 'glim', hue: 0, accentHue: 0, saturation: 0, eyes: 'dot', mouth: 'none', pattern: 'none', topper: 'none', cheeks: false, ...shape });
 
-/** Each collection's Lantern pattern, for the little Lantern beside its name. */
+/** Each collection's Lantern pattern, for the Lantern beside its name: the one you open to fill it. */
 const PATTERN: Record<string, LanternArt['pattern']> = { meadow: 'leaves', tidepool: 'waves', ember: 'flames', frost: 'frost', starfall: 'stars', library: 'books', circuit: 'circuit', nightmarket: 'moons' };
 
 const CURRENCY_NAME: Record<string, string> = { sparks: 'Sparks', moonstones: 'Moonstones', dust: 'Glow Dust' };
+
+const stepper = 'press-soft grid size-11 place-items-center rounded-[var(--radius-m)] bg-raised text-text disabled:opacity-50';
 
 function GlimDetail({ glim, collection, dust, isBuddy, onClose }: { glim: CollectionGlim; collection: string; dust: number | null; isBuddy: boolean; onClose: () => void }) {
   const qc = useQueryClient();
@@ -65,7 +66,7 @@ function GlimDetail({ glim, collection, dust, isBuddy, onClose }: { glim: Collec
   const craft = useMutation({
     mutationFn: () => api.post<{ name: string; collectionsCompleted: string[] }>('/api/collection/craft', { itemId: glim.id, requestKey: newRequestKey('craft') }),
     onSuccess: async (r) => {
-      toast.success(r.collectionsCompleted.length ? `Crafted ${r.name}. Collection complete!` : `Crafted ${r.name}`);
+      toast.success(r.collectionsCompleted.length ? `Crafted ${r.name}. Collection complete.` : `Crafted ${r.name}`);
       await refresh();
       onClose();
     },
@@ -81,15 +82,26 @@ function GlimDetail({ glim, collection, dust, isBuddy, onClose }: { glim: Collec
   });
   const owned = glim.owned > 0;
   const spares = Math.max(0, glim.owned - 1);
+  const f = frameProps(glim.rarity, { missing: !owned });
   return (
     <Dialog open onOpenChange={(o) => !o && onClose()} title={glim.name ?? 'Not found yet'} description={`${RARITY_INFO[glim.rarity].label} Glim from ${collection}`}>
       <div className="flex flex-col items-center gap-3">
-        <Stage className="grid w-full place-items-center rounded-[20px] border-[2.5px] border-ink py-4">
-          {glim.art ? <Glim art={glim.art} size={190} aura={glim.rarity} rarity={glim.rarity} pose="wave" bob /> : <Glim art={shadowArt(glim.silhouette!)} size={190} silhouette />}
-        </Stage>
-        <RarityTag rarity={glim.rarity} size="md" />
+        <div className={`relative w-full max-w-[17rem] overflow-hidden p-1.5 ${f.className}`} style={f.style}>
+          <RarityPanel rarity={glim.rarity} missing={!owned} className="aspect-square w-full">
+            {glim.art ? <Glim art={glim.art} size={190} aura={glim.rarity} rarity={glim.rarity} pose="wave" className="h-auto w-[84%]" /> : <Glim art={shadowArt(glim.silhouette!)} size={190} silhouette className="h-auto w-[78%]" />}
+          </RarityPanel>
+          {!owned ? (
+            <p className="py-2 text-center">
+              <RarityPlate rarity={glim.rarity} size="md" />
+            </p>
+          ) : null}
+        </div>
         <p className="text-center text-text-2">{glim.description ?? 'Find it in a Lantern, pick it from the daily shop, or craft it with Glow Dust.'}</p>
-        {owned ? <p className="text-sm font-semibold text-text-2">You have {glim.owned}</p> : null}
+        {owned ? (
+          <p className="font-display text-xl font-bold">
+            You have <span className="tabular">{glim.owned}</span>
+          </p>
+        ) : null}
       </div>
       <div className="mt-5 flex flex-col gap-3 border-t border-line pt-4">
         {owned ? (
@@ -98,31 +110,31 @@ function GlimDetail({ glim, collection, dust, isBuddy, onClose }: { glim: Collec
           </Button>
         ) : null}
         {spares > 0 ? (
-          <div className="flex flex-wrap items-center justify-between gap-2 rounded-[16px] bg-surface-2 px-3 py-2.5">
+          <div className="flex flex-wrap items-center justify-between gap-2 rounded-[var(--radius-m)] border border-line bg-surface-2 px-3 py-2.5">
             <div className="flex items-center gap-2">
               <span className="text-sm font-semibold">Recycle</span>
-              <button type="button" className="grid size-9 place-items-center rounded-[10px] border-2 border-line-strong bg-raised disabled:opacity-50" onClick={() => setQty((q) => Math.max(1, q - 1))} disabled={qty <= 1} aria-label="One fewer">
+              <button type="button" className={stepper} onClick={() => setQty((q) => Math.max(1, q - 1))} disabled={qty <= 1} aria-label="One fewer">
                 <Minus className="size-4" aria-hidden />
               </button>
-              <span className="w-6 text-center font-bold tabular" aria-live="polite">
+              <span className="w-7 text-center font-display text-xl font-bold tabular" aria-live="polite">
                 {qty}
               </span>
-              <button type="button" className="grid size-9 place-items-center rounded-[10px] border-2 border-line-strong bg-raised disabled:opacity-50" onClick={() => setQty((q) => Math.min(spares, q + 1))} disabled={qty >= spares} aria-label="One more">
+              <button type="button" className={stepper} onClick={() => setQty((q) => Math.min(spares, q + 1))} disabled={qty >= spares} aria-label="One more">
                 <Plus className="size-4" aria-hidden />
               </button>
               <span className="text-sm text-text-2">of {spares} spare</span>
             </div>
-            <Button size="sm" loading={recycle.isPending} onClick={() => recycle.mutate()}>
+            <Button size="sm" className="h-11 px-3.5" loading={recycle.isPending} onClick={() => recycle.mutate()}>
               Get <Amount currency="dust" value={qty * glim.dustValue} size="sm" />
             </Button>
           </div>
         ) : null}
-        <div className="flex flex-wrap items-center justify-between gap-2 rounded-[16px] bg-surface-2 px-3 py-2.5">
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-[var(--radius-m)] border border-line bg-surface-2 px-3 py-2.5">
           <span className="text-sm text-text-2">
             {owned ? 'Craft another' : 'Craft it'} with Glow Dust{dust !== null ? <span className="whitespace-nowrap"> (you have {formatNumber(dust)})</span> : null}
           </span>
           {/* With the balance unknown the server decides, rather than a guess of zero. */}
-          <Button size="sm" variant={owned ? 'secondary' : 'primary'} disabled={dust !== null && dust < glim.craftCost} loading={craft.isPending} onClick={() => craft.mutate()}>
+          <Button size="sm" className="h-11 px-3.5" variant={owned ? 'secondary' : 'primary'} disabled={dust !== null && dust < glim.craftCost} loading={craft.isPending} onClick={() => craft.mutate()}>
             Craft for <Amount currency="dust" value={glim.craftCost} size="sm" />
           </Button>
         </div>
@@ -137,24 +149,21 @@ function GlimCard({ g, isBuddy, onOpen }: { g: CollectionGlim; isBuddy: boolean;
   // The card's own text names the button (WCAG 2.5.3), with hidden words where the visible ones are terse.
   return (
     <li>
-      <button type="button" onClick={onOpen} className={`relative flex w-full flex-col items-center p-1 pb-2 text-center ${owned ? 'fx-lift' : 'hover:border-text-2'} ${f.className}`} style={f.style}>
+      <button type="button" onClick={onOpen} className={`flex h-full w-full flex-col items-center overflow-hidden p-1 pb-2 text-center ${owned ? 'tcard-press' : 'hover:border-text-3'} ${f.className}`} style={f.style}>
         <RarityPanel rarity={g.rarity} missing={!owned} tag={false} className="aspect-square w-full">
-          {g.art ? <Glim art={g.art} size={120} rarity={g.rarity} className="h-auto w-[84%]" /> : <Glim art={shadowArt(g.silhouette!)} size={120} silhouette className="h-auto w-[78%] opacity-80" />}
+          {g.art ? <Glim art={g.art} size={120} rarity={g.rarity} className="h-auto w-[86%]" /> : <Glim art={shadowArt(g.silhouette!)} size={120} silhouette className="h-auto w-[78%] opacity-80" />}
         </RarityPanel>
-        {owned ? <span className="mt-1 w-full truncate px-1 font-display text-[15px] leading-tight font-bold">{g.name}</span> : <span className="sr-only">Not found yet,</span>}
-        <span className={`inline-flex items-center gap-1 font-semibold text-text-2 ${owned ? 'text-[11px]' : 'mt-1 font-display text-sm'}`}>
-          <span className={`size-2 rounded-full border border-ink ${g.rarity === 'mythic' ? 'rarity-mythic-shimmer' : ''}`} style={g.rarity === 'mythic' ? undefined : { background: `var(--r-${g.rarity})` }} aria-hidden />
-          {RARITY_INFO[g.rarity].label}
-        </span>
+        {owned ? <span className="mt-1.5 w-full truncate px-1 font-display text-[1.05rem] leading-tight font-bold">{g.name}</span> : <span className="sr-only">Not found yet,</span>}
+        <RarityLabel rarity={g.rarity} className={`text-text-2 ${owned ? 'mt-0.5 text-[11px]' : 'mt-1.5 text-xs'}`} />
         {g.owned > 1 ? (
           <>
-            <span className="absolute top-2 right-2 rounded-full border-2 border-ink bg-raised px-1.5 text-xs font-extrabold tabular" aria-hidden>
-              x{g.owned}
+            <span className="absolute top-2 right-2 z-[2] rounded-full bg-[rgb(6_10_28/0.78)] px-1.5 font-display text-sm leading-5 font-bold text-white tabular" aria-hidden>
+              ×{g.owned}
             </span>
             <span className="sr-only">, you have {g.owned}</span>
           </>
         ) : null}
-        {isBuddy ? <span className="absolute top-2 left-2 rounded-full border-2 border-ink bg-lantern px-1.5 text-[11px] font-bold text-on-accent">Buddy</span> : null}
+        {isBuddy ? <span className="absolute top-2 left-2 z-[2] rounded-full bg-lantern px-1.5 text-[11px] leading-5 font-bold text-on-accent">Buddy</span> : null}
       </button>
     </li>
   );
@@ -172,9 +181,10 @@ export default function Collection() {
     const cols = data.data?.collections ?? [];
     return { owned: cols.reduce((n, c) => n + c.owned, 0), total: cols.reduce((n, c) => n + c.total, 0) };
   }, [data.data]);
-  const showcase = useMemo(() => {
-    const all = (data.data?.collections ?? []).flatMap((c) => c.glims).filter((g) => g.owned > 0 && g.art);
-    return all.sort((a, b) => RARITY_INFO[b.rarity].rank - RARITY_INFO[a.rarity].rank).slice(0, 3);
+  /** Found and total for each rarity, for the summary. */
+  const byRarity = useMemo(() => {
+    const glims = (data.data?.collections ?? []).flatMap((c) => c.glims);
+    return RARITIES.map((r) => ({ rarity: r, total: glims.filter((g) => g.rarity === r).length, owned: glims.filter((g) => g.rarity === r && g.owned > 0).length })).filter((x) => x.total > 0);
   }, [data.data]);
 
   if (me.isError && !me.data) {
@@ -209,36 +219,31 @@ export default function Collection() {
   // Unknown until the account's balances load; never shown as a zero.
   const dust = overview.data ? (overview.data.balances.dust ?? 0) : null;
   const loading = me.isLoading || data.isLoading;
-  const dustPill = 'inline-flex items-center gap-2 rounded-full border-2 border-ink bg-raised px-4 py-2 font-semibold shadow-[0_3px_0_var(--ink)]';
+  const dustPill = 'inline-flex min-h-11 items-center gap-2 rounded-[var(--radius-m)] border border-line bg-raised px-4 py-1.5';
 
   return (
     <>
       <PageHeader
         title="Collection"
         description={data.data ? `You have found ${totals.owned} of ${totals.total} Glims. Fill a collection to earn its reward.` : 'Every Glim you find lives here.'}
-        art={
-          showcase.length ? (
-            <div className="flex items-end">
-              {showcase.map((g, i) => (
-                <Glim key={g.id} art={g.art!} size={i === 0 ? 96 : 72} rarity={g.rarity} className={i === 0 ? 'relative z-10 order-2 -mx-3' : i === 1 ? 'order-1' : 'order-3'} />
-              ))}
-            </div>
-          ) : undefined
-        }
         actions={
           <>
             {dust !== null ? (
               <span className={dustPill}>
-                <Amount currency="dust" value={dust} /> <span className="text-sm text-text-2">Glow Dust</span>
+                <span className="inline-flex items-center gap-1.5 font-display text-xl leading-none font-bold tabular">
+                  <CurrencyIcon code="dust" size={20} />
+                  {formatNumber(dust)}
+                </span>
+                <span className="text-sm text-text-2">Glow Dust</span>
               </span>
             ) : me.isLoading || overview.isLoading ? (
               <span className={dustPill}>
-                <CurrencyIcon code="dust" size={18} />
-                <Skeleton className="h-4 w-7" />
+                <CurrencyIcon code="dust" size={20} />
+                <Skeleton className="h-4 w-8" />
                 <span className="text-sm text-text-2">Glow Dust</span>
               </span>
             ) : null}
-            <ButtonLink to="/shop?tab=lanterns" variant="primary">
+            <ButtonLink to="/shop?tab=lanterns" variant="primary" className="h-11">
               Open a Lantern
             </ButtonLink>
           </>
@@ -246,16 +251,31 @@ export default function Collection() {
       />
 
       {data.data ? (
-        <div className="mb-6 flex items-center gap-4 rounded-[20px] border-2 border-ink bg-raised p-4 shadow-[0_4px_0_var(--ink)]">
-          <span className="font-display text-3xl font-extrabold tabular sm:text-4xl">
-            {totals.owned}
-            <span className="text-xl text-text-2 sm:text-2xl">/{totals.total}</span>
-          </span>
-          <div className="min-w-0 flex-1">
-            <p className="mb-1.5 text-sm font-semibold text-text-2">Glims found across {data.data.collections.length} collections</p>
-            <Meter value={totals.owned} max={totals.total} tone="mint" size="lg" label="Glims found" />
+        <section className="panel mb-6 rounded-[var(--radius-l)] p-4 sm:p-5" aria-label="Your progress">
+          <div className="flex items-center gap-4">
+            <span className="font-display text-[2.6rem] leading-none font-extrabold tabular sm:text-5xl">
+              {totals.owned}
+              <span className="text-[1.6rem] text-text-2 sm:text-3xl">/{totals.total}</span>
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="mb-1.5 text-sm font-semibold text-text-2">Glims found across {data.data.collections.length} collections</p>
+              <Meter value={totals.owned} max={totals.total} tone="mint" size="lg" label="Glims found" />
+            </div>
           </div>
-        </div>
+          <dl className="mt-4 grid grid-cols-3 gap-2 sm:grid-cols-6">
+            {byRarity.map((r) => (
+              <div key={r.rarity} className="rounded-[var(--radius-m)] border border-line bg-surface-2 px-2.5 py-2" style={{ boxShadow: `inset 0 3px 0 var(--r-${r.rarity})` }}>
+                <dt>
+                  <RarityLabel rarity={r.rarity} className="text-xs text-text-2" />
+                </dt>
+                <dd className="mt-0.5 font-display text-2xl leading-none font-bold tabular">
+                  {r.owned}
+                  <span className="text-base text-text-2">/{r.total}</span>
+                </dd>
+              </div>
+            ))}
+          </dl>
+        </section>
       ) : null}
 
       <div className="mb-7 flex flex-wrap items-center gap-3">
@@ -274,11 +294,11 @@ export default function Collection() {
           <label className="relative min-w-0 flex-1 md:w-56">
             <span className="sr-only">Search by name</span>
             <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-text-3" aria-hidden />
-            <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search names" className="h-10 pl-9" />
+            <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search names" className="h-11 pl-9" />
           </label>
           <label className="shrink-0">
             <span className="sr-only">Rarity</span>
-            <Select value={rarity} onChange={(e) => setRarity(e.target.value as Rarity | '')} className="h-10 w-36">
+            <Select value={rarity} onChange={(e) => setRarity(e.target.value as Rarity | '')} className="h-11 w-36">
               <option value="">All rarities</option>
               {RARITIES.map((r) => (
                 <option key={r} value={r}>
@@ -294,7 +314,7 @@ export default function Collection() {
       {loading ? (
         <div className="grid grid-cols-3 gap-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6">
           {Array.from({ length: 12 }, (_, i) => (
-            <Skeleton key={i} className="aspect-[4/5] rounded-[20px]" />
+            <Skeleton key={i} className="aspect-[4/5] rounded-[var(--radius-l)]" />
           ))}
         </div>
       ) : null}
@@ -326,24 +346,26 @@ export default function Collection() {
             <section key={c.id} aria-labelledby={`col-${c.id}`}>
               <div className="mb-4 flex flex-wrap items-end justify-between gap-x-6 gap-y-3">
                 <div className="flex min-w-0 items-center gap-3">
-                  <Lantern art={{ hue: c.hue, accentHue: (c.hue + 40) % 360, pattern: PATTERN[c.id] ?? 'plain' }} size={46} lit={complete} className="shrink-0" />
+                  <Lantern art={{ hue: c.hue, accentHue: (c.hue + 40) % 360, pattern: PATTERN[c.id] ?? 'plain' }} size={40} lit={complete} className="shrink-0" />
                   <div className="min-w-0">
-                    <h2 id={`col-${c.id}`} className="font-display text-2xl font-extrabold">
+                    <h2 id={`col-${c.id}`} className="font-display text-[1.75rem] leading-tight font-bold">
                       {c.name}
                     </h2>
                     <p className="text-sm text-text-2">{c.description}</p>
                   </div>
                 </div>
                 <div className="flex w-full items-center gap-3 sm:w-80">
-                  <Meter value={c.owned} max={c.total} tone="mint" label={`${c.name}: ${c.owned} of ${c.total} found`} fill={`hsl(${c.hue} 70% 58%)`} />
-                  <span className="shrink-0 text-sm font-bold tabular">
+                  <Meter value={c.owned} max={c.total} tone="mint" label={`${c.name}: ${c.owned} of ${c.total} found`} fill={`hsl(${c.hue} 72% 54%)`} />
+                  <span className="shrink-0 font-display text-lg leading-none font-bold tabular">
                     {c.owned}/{c.total}
                   </span>
                   {c.reward ? (
                     c.rewarded ? (
-                      <span className="shrink-0 rounded-full border-2 border-ink bg-glim px-2 text-xs font-bold text-on-accent">Reward claimed</span>
+                      <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-glim/15 px-2 py-0.5 text-xs font-bold text-glim">
+                        <Check className="size-3.5" aria-hidden /> Reward claimed
+                      </span>
                     ) : (
-                      <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-surface-3 px-2 py-0.5" title={`Fill it to get ${c.reward.amount} ${CURRENCY_NAME[c.reward.currency] ?? c.reward.currency}`}>
+                      <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-line bg-raised px-2 py-0.5" title={`Fill it to get ${c.reward.amount} ${CURRENCY_NAME[c.reward.currency] ?? c.reward.currency}`}>
                         <Amount currency={c.reward.currency} value={c.reward.amount} size="sm" />
                         <span className="sr-only">reward for filling it</span>
                       </span>
@@ -351,7 +373,7 @@ export default function Collection() {
                   ) : null}
                 </div>
               </div>
-              <ul className="grid grid-cols-3 gap-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7">
+              <ul className="grid grid-cols-3 gap-2.5 sm:grid-cols-4 sm:gap-3 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7">
                 {list.map((g) => (
                   <GlimCard key={g.id} g={g} isBuddy={data.data?.buddy === g.id} onOpen={() => setSelected({ glim: g, collection: c.name })} />
                 ))}
