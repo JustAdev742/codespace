@@ -127,7 +127,8 @@ export default function Dashboard() {
                 <Buddy />
               </div>
               <div className="flex min-w-0 flex-col gap-3">
-                <h1 className="font-display text-[2.4rem] leading-none font-extrabold break-words sm:text-[3.4rem]">Hi, {user.displayName}</h1>
+                {/* Long names step down a size on phones, so a name breaks between words rather than in the middle of one. */}
+                <h1 className={`font-display leading-none font-extrabold break-words sm:text-[3.4rem] ${user.displayName.length > 18 ? 'text-[1.35rem]' : user.displayName.length > 14 ? 'text-[1.6rem]' : user.displayName.length > 10 ? 'text-[2rem]' : 'text-[2.4rem]'}`}>Hi, {user.displayName}</h1>
                 <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
                   <span className="plate plate-gold text-xl sm:text-2xl">
                     <span className="tabular">Level {lv.level}</span>
