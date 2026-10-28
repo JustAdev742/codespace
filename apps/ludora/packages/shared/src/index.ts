@@ -10,3 +10,4 @@ export * from './random.ts';
 export * from './progression.ts';
 export * from './admin.ts';
 export * from './ai.ts';
+export * from './studio.ts';

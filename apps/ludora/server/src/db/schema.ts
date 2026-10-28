@@ -738,3 +738,28 @@ export const outboxEmails = pgTable('outbox_emails', {
   sentAt: ts('sent_at'),
   createdAt: now('created_at'),
 });
+
+/* ------------------------------ creator studio ------------------------------ */
+
+/**
+ * Things designers are making in the Creator Studio. A draft is private to
+ * the studio until published, when it becomes an ordinary item (and maybe a
+ * shop listing) and `itemId` points at it.
+ */
+export const studioDrafts = pgTable(
+  'studio_drafts',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    ownerId: uuid('owner_id').references(() => users.id, { onDelete: 'set null' }),
+    kind: text('kind').notNull(),
+    name: text('name').notNull(),
+    description: text('description').notNull(),
+    rarity: text('rarity').notNull(),
+    art: jsonb('art').notNull(),
+    status: text('status').notNull().default('draft'),
+    itemId: text('item_id').references(() => items.id, { onDelete: 'set null' }),
+    createdAt: now('created_at'),
+    updatedAt: now('updated_at'),
+  },
+  (t) => [index('studio_drafts_status_idx').on(t.status, t.updatedAt), check('studio_drafts_status_valid', sql`${t.status} in ('draft','published')`)],
+);

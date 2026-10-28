@@ -10,6 +10,7 @@ export const ROLES = [
   'player',
   'trusted',
   'creator',
+  'designer',
   'tester',
   'moderator',
   'support',
@@ -42,6 +43,8 @@ export const PERMISSIONS = [
   'audit.read',
   'testing.tools',
   'testing.entitlements',
+  'studio.use',
+  'studio.publish',
 ] as const;
 export type Permission = (typeof PERMISSIONS)[number];
 
@@ -49,6 +52,7 @@ export const ROLE_INFO: Record<Role, { label: string; description: string; rank:
   player: { label: 'Player', description: 'Plays, hosts games and makes private sets.', rank: 0 },
   trusted: { label: 'Trusted player', description: 'Can publish sets to the public library.', rank: 1 },
   creator: { label: 'Content creator', description: 'Publishes sets and can be featured.', rank: 2 },
+  designer: { label: 'Studio designer', description: 'Makes Glims, items and Lanterns in the Creator Studio and puts them in the shop.', rank: 2 },
   tester: { label: 'Tester', description: 'Uses staff testing tools on test accounts.', rank: 2 },
   moderator: { label: 'Moderator', description: 'Handles reports and moderates players and content.', rank: 3 },
   support: { label: 'Support', description: 'Looks up accounts, resets passwords, reads economy history.', rank: 3 },
@@ -62,6 +66,8 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
   player: PLAYER,
   trusted: [...PLAYER, 'sets.publish_public'],
   creator: [...PLAYER, 'sets.publish_public'],
+  // The Creator Studio is its own page, not the staff panel: a designer has no other staff rights.
+  designer: [...PLAYER, 'studio.use', 'studio.publish'],
   tester: [...PLAYER, 'staff.access', 'testing.tools'],
   moderator: [
     ...PLAYER,

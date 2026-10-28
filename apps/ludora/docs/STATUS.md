@@ -371,6 +371,16 @@ Last updated: 2026-10-28.
   Lantern Night (October 2026), Jacaranda, Tinsel, Seaside, Lucky Lantern and
   Harmony (March 2027). The book shows the current and past months, with a
   note saying whether the Lantern is still in the shop.
+- **Creator Studio** (D50): accounts with the `designer` role (granted through
+  the audited role system) get a Studio page: a Glim Maker with live 2D and
+  3D previews and a Surprise me button, an item maker for accessories,
+  frames, banners and titles, a Lantern maker that schedules a limited Lantern
+  from Glim drafts with its odds shown, and a shared drafts board with Edit,
+  Delete and Publish (optionally into the shop at a price inside the rarity's
+  band). The server checks the role on every request, the house rules (names,
+  unique looks, rarities, prices) and audits every publish. Checked in a
+  browser: a player gets "page not found", a designer made Glims and a beret,
+  scheduled a Lantern and put the beret in the shop.
 - **End-to-end tests** (`e2e/`, Playwright against the production build and a
   fresh database, locally and in CI): a host and a guest play Classic from join code to results;
   a teacher writes a set with a picture and players see it in a game; a teacher
@@ -396,7 +406,7 @@ creates and drops its own database).
 |---|---|---|
 | content | 4 | 132: catalogue integrity, every built-in question set, the seasonal calendar (11) and the monthly drops (9) |
 | engine | 43 | 5968, including the conformance suite for every mode and variant, and the chaos suite: every cheat in every mode it supports (4366 tests), the core rules and each mode's pack |
-| server | 13 | 159: auth and rate limits (15), realtime (7), economy (22), staff (55), social and classes (18), preferences (4), open games (4), sign-in help (3), uploads (6), AI drafts (11), reward counting (4), origin checks (4), chaos (9) |
+| server | 13 | 159: auth and rate limits (15), realtime (7), economy (22), staff (55), social and classes (18), preferences (4), open games (4), sign-in help (3), uploads (6), AI drafts (11), reward counting (4), origin checks (4), chaos (9), Creator Studio (6) |
 | web | 4 | 84: the set editor's checks, import and export (45); the synthesised music, in key and looping cleanly (16); the recorded sounds, every effect with a file and every loop a whole number of bars (16); which music plays when (7) |
 | shared | 0 | no tests of its own; its schemas are exercised by the other projects |
 | **Total** | **62** | **6323 passing** at the last full run (2026-10-28) |

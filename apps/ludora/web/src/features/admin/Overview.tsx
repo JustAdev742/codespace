@@ -50,6 +50,8 @@ const PERMISSION_TEXT: Record<Permission, string> = {
   'audit.read': 'Read the audit log',
   'testing.tools': 'Use test accounts and QA tools',
   'testing.entitlements': 'Grant test entitlements in production and convert accounts',
+  'studio.use': 'Make Glims, items and Lanterns in the Creator Studio',
+  'studio.publish': 'Publish Studio work to the catalogue and the shop',
 };
 
 export default function Overview() {

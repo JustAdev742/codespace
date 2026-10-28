@@ -50,6 +50,13 @@
       "when": 1793166634755,
       "tag": "0006_chaos",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1793187449576,
+      "tag": "0007_studio",
+      "breakpoints": true
     }
   ]
 }

@@ -427,3 +427,19 @@ gone, and a month still to come is not shown. Monthly Glims never appear in the
 daily picks or the Moonlit Lantern, so the month is the only way to find them.
 The drops run October 2026 to March 2027; later months are added the same way
 (`packages/content/src/monthly.ts`).
+
+**D50. The Creator Studio is a role the server checks, not a hidden page.**
+Chosen people get the `designer` role through the same audited role system as
+every other role (Staff, Players, or `npm run admin -- grant <username>
+designer --reason "..."` on the server); there is no secret link, flag in the
+browser or name that grants it. Designers have `studio.use` and
+`studio.publish` and nothing from the staff panel. Every Studio route checks
+the permission on the server and refuses guests; anyone else who opens
+/studio sees the ordinary "page not found", and the nav shows no Studio.
+What designers make keeps the house style because it can only be built from
+the Glim genome and the cosmetic vocabulary (no uploads), with the
+catalogue's naming rules, unique names and looks, rarities up to legendary
+and Spark prices inside a band for each rarity. Publishing needs a reason and
+is audited. A Studio Lantern publishes its Glims into their own collection,
+on sale only between its dates, with the standard odds shown; Studio Glims,
+like monthly ones, never appear in the Moonlit Lantern.

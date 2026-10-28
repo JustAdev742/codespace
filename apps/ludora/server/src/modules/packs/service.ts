@@ -36,8 +36,8 @@ export async function resolvePool(db: DbOrTx, table: DropTable): Promise<PoolIte
     ? await db
         .select({ id: items.id, name: items.name, rarity: items.rarity, art: items.art, collectionId: items.collectionId })
         .from(items)
-        // '*' means every permanent collection: monthly Glims come only from their own month's Lantern.
-        .where(and(...conds, all ? sql`${items.collectionId} is not null and ${items.collectionId} not like ${`${MONTHLY_PREFIX}%`}` : inArray(items.collectionId, table.collectionIds)))
+        // '*' means every permanent collection: monthly and Studio Glims come only from their own Lantern or listing.
+        .where(and(...conds, all ? sql`${items.collectionId} is not null and ${items.collectionId} not like ${`${MONTHLY_PREFIX}%`} and ${items.collectionId} not like 'studio%'` : inArray(items.collectionId, table.collectionIds)))
     : [];
   const listed = table.itemIds.length
     ? await db

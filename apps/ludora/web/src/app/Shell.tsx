@@ -10,6 +10,7 @@ import {
   LayoutGrid,
   LogOut,
   Menu,
+  Palette,
   Presentation,
   RefreshCw,
   School,
@@ -46,7 +47,7 @@ interface NavItem {
   label: string;
   icon: ReactNode;
   end?: boolean;
-  show?: 'signedIn' | 'staff';
+  show?: 'signedIn' | 'staff' | 'studio';
   /** Hidden while this feature flag is off for the viewer. */
   flag?: string;
 }
@@ -68,6 +69,7 @@ const SOCIAL: NavItem[] = [
   { to: '/friends', label: 'Friends', icon: <Users className="size-5" />, show: 'signedIn', flag: 'social.friends' },
   { to: '/classes', label: 'Classes', icon: <School className="size-5" />, show: 'signedIn' },
   { to: '/leaderboards', label: 'Leaderboards', icon: <Trophy className="size-5" />, show: 'signedIn' },
+  { to: '/studio', label: 'Studio', icon: <Palette className="size-5" />, show: 'studio' },
   { to: '/staff', label: 'Staff', icon: <Shield className="size-5" />, show: 'staff' },
 ];
 
@@ -104,8 +106,9 @@ function NavGroups({ onNavigate }: { onNavigate?: () => void }) {
   const me = useMe();
   const signedIn = Boolean(me.data?.user);
   const staff = Boolean(me.data?.permissions.includes('staff.access'));
+  const studio = Boolean(me.data?.permissions.includes('studio.use'));
   const flagOn = (key?: string) => !key || me.data?.flags?.[key] !== false;
-  const visible = (i: NavItem) => flagOn(i.flag) && (!i.show || (i.show === 'signedIn' ? signedIn : staff));
+  const visible = (i: NavItem) => flagOn(i.flag) && (!i.show || (i.show === 'signedIn' ? signedIn : i.show === 'studio' ? studio : staff));
   const groups: [string | null, NavItem[]][] = [
     [null, PRIMARY],
     ['Collect', COLLECT.filter(visible)],
