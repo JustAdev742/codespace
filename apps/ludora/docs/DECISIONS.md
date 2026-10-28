@@ -382,3 +382,24 @@ horrible on game screens and sign-in, and it is gone. It stays Ludora's own
 (D30): no other product's fonts, colours, layouts, art or words. Behaviour,
 odds and sound are unchanged.
 
+
+**D47. Chaos is an Easter egg anyone can find, kept secret by the server.** The
+owner asked for a hidden cheat menu that any player can unlock, themselves
+included, with no admin grant and no request form, and for the cheat code to
+stay hidden from people who download the app's files. So:
+- The unlock is a four-stage sequence (knock, riddle, ritual, light) checked
+  stage by stage on the server. The knock comes from a server secret, the
+  riddle and ritual are drawn fresh each attempt, and the browser only
+  reports what the player did. Finding it is the only way in.
+- The unlock lives on the account until the player puts the lantern out.
+  Effects never outlast a game and never touch Sparks, items or collections.
+- Casts run in the game runtime's transactions and either change real state
+  or are refused. The server checks the unlock on every cast.
+- The menu's code and the cheat list are served only to unlocked accounts and
+  answer 404 otherwise; the public build holds no cheat, and CI checks that.
+- Chaos must not buy rewards: a caster earns nothing from that game and places
+  earn nothing for anyone. The host can calm the room and assignments never
+  have chaos.
+- The brief asked for 1,000 cheats. 666 are built and each passes a test that
+  shows it changing a real game; the count is reported as it is rather than
+  padded with copies (docs/CHAOS.md).

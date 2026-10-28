@@ -4,7 +4,7 @@ Live status of the build. Updated with each milestone commit. Everything marked
 **verified** was checked by an automated test or by driving the real app in a
 browser; anything else says what it is.
 
-Last updated: 2026-10-24.
+Last updated: 2026-10-28.
 
 ## Milestones
 
@@ -17,6 +17,7 @@ Last updated: 2026-10-24.
 | M4 Economy and progression | Done | Shop, Lanterns with disclosed odds, collections, locker, quests, achievements, levels, streaks. |
 | M5 Staff tools | Done | Staff API and all 14 staff sections in the web app. An end-to-end test opens every section as a super administrator at phone and desktop widths. |
 | M6 Content, social, classes, analytics | Done | Friends, blocks, profiles, my stats, leaderboards, classes, assignments and their reports, hosted games, game reports, the set editor with image uploads, and AI question drafts. |
+| Chaos (D47) | Done | The secret cheat menu: 666 cheats and 10 combos, each tested in a real game; the unlock sequence; the private menu. See [CHAOS.md](CHAOS.md). |
 | M7-8 Polish, CI, deployment | In progress | Production build, Docker image, compose file, CI workflow, docs and end-to-end tests (run in CI) are in. The whole app is restyled for players aged 8 to 17 (D46), and automated accessibility checks pass on every page, game screen and staff section. A design review of the whole app was done and its findings fixed. A playable demo builds for GitHub Pages. A manual screen-reader pass remains. |
 
 ## What works today (verified)
@@ -132,6 +133,28 @@ Last updated: 2026-10-24.
   - Fast answerers pull far ahead, because paydays grow with income. In a
     demo against bots a slow player trails a long way.
   - Long names are cut short in the projector's two-column board.
+- **Chaos, the secret cheat menu** (D47, [CHAOS.md](CHAOS.md)). Any player can
+  unlock it by finding the lantern's secret: a knock on the About panel, a
+  riddle, a ritual of reactions in a live game, and a lantern to hold. Every
+  stage is checked on the server. Unlocked players cast cheats from a
+  searchable menu that the server sends only to them.
+  - 666 cheats and 10 combos: 209 work in any mode and 457 belong to one of
+    the 20 modes. Seven categories: score, advantage, troll, round, economy,
+    visual and random. That is short of the 1,000 asked for; no cheat is a
+    copy of another.
+  - Each cheat was cast into one of two identical bot games, in every mode
+    it supports, and the two games differed afterwards. Screen cheats had to
+    show on the target's screen.
+  - Energy, cooldowns, shields, conflicts, combos, undo, the host's Calm the
+    room and repeated requests have their own tests. Chaos is off in
+    assignments, and casters earn no rewards from that game.
+  - An end-to-end test does the whole sequence in real browsers, casts Upside
+    Down on another player and sees it on their screen. The menu and cheat
+    list answer 404 for locked accounts, and CI fails if a cheat turns up in
+    the public files.
+  - Not done: effects on one part of the screen (a name, a score) work only
+    where screens use the shared leaderboard, answer tiles and question card.
+    Sequence progress resets when the server restarts.
 - **Accessibility**: an axe-core audit (WCAG 2.2 A and AA rules) of every
   player page, the sign-in pages and every staff section, in both themes at
   phone and desktop widths, finds no violations; the layout end-to-end test now
@@ -358,14 +381,15 @@ creates and drops its own database).
 | Project | Files | Tests |
 |---|---|---|
 | content | 2 | 112: catalogue integrity and every built-in question set |
-| engine | 20 | 1139, including the conformance suite for every mode and variant |
-| server | 12 | 150: auth and rate limits (15), realtime (7), economy (20), staff (54), social and classes (18), preferences (4), open games (4), sign-in help (3), uploads (6), AI drafts (11), reward counting (4), origin checks (4) |
+| engine | 43 | 5968, including the conformance suite for every mode and variant, and the chaos suite: every cheat in every mode it supports (4366 tests), the core rules and each mode's pack |
+| server | 13 | 159: auth and rate limits (15), realtime (7), economy (20), staff (54), social and classes (18), preferences (4), open games (4), sign-in help (3), uploads (6), AI drafts (11), reward counting (4), origin checks (4), chaos (9) |
 | web | 4 | 84: the set editor's checks, import and export (45); the synthesised music, in key and looping cleanly (16); the recorded sounds, every effect with a file and every loop a whole number of bars (16); which music plays when (7) |
 | shared | 0 | no tests of its own; its schemas are exercised by the other projects |
-| **Total** | **38** | **1485 passing** at the last full run |
+| **Total** | **62** | **6323 passing** at the last full run (2026-10-28) |
 
-End-to-end: `npm run test:e2e` (needs Postgres; builds first, then runs 8
-browser tests against a fresh `ludora_e2e` database). All 8 pass.
+End-to-end: `npm run test:e2e` (needs Postgres; builds first, then runs 9
+browser tests against a fresh `ludora_e2e` database). All 8 passed at their
+last run; the ninth, the chaos test, passed on its own on 2026-10-28.
 `npm run test:demo` builds the playable demo and runs its 4 browser tests with
 no server. All 4 pass.
 
