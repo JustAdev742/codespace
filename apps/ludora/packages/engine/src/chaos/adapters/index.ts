@@ -6,6 +6,7 @@ import { festivalWorkshopAdapter } from './festival-workshop.ts';
 import { flashcardStudyAdapter } from './flashcard-study.ts';
 import { glimDuelsAdapter } from './glim-duels.ts';
 import { glimgoAdapter } from './glimgo.ts';
+import { goldRushAdapter } from './gold-rush.ts';
 import { gloomGiantAdapter } from './gloom-giant.ts';
 import { lanternGuardAdapter } from './lantern-guard.ts';
 import { lanternLandsAdapter } from './lantern-lands.ts';
@@ -28,6 +29,7 @@ export const CHAOS_ADAPTERS: readonly ChaosAdapter[] = [
   flashcardStudyAdapter,
   glimDuelsAdapter,
   glimgoAdapter,
+  goldRushAdapter,
   gloomGiantAdapter,
   lanternGuardAdapter,
   lanternLandsAdapter,
