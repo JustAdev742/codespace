@@ -4,3 +4,4 @@ set -euo pipefail
 cd "$(dirname "$0")/../apps/ludora"
 npm ci
 npm run build
+npm run build:demo

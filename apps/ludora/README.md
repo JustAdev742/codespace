@@ -124,5 +124,6 @@ Server tests create and drop their own databases; set
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Packages, engine, server, web app and data model. |
 | [docs/GAME_MODE_SDK.md](docs/GAME_MODE_SDK.md) | How to write a game mode and what it must pass. |
 | [docs/SECURITY.md](docs/SECURITY.md) | The security model. |
+| [docs/DEMO.md](docs/DEMO.md) | Showing Ludora to a school: a Codespace, phones joining, and a one-screen fallback. |
 | [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) | Docker, configuration, environments, operations. |
 | [tools/audio/README.md](tools/audio/README.md) | How the music and sound effects are written and built. |

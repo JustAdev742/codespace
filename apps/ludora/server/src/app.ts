@@ -83,5 +83,12 @@ export async function buildApp(base: Omit<AppDeps, 'serveSpa' | 'rooms' | 'log'>
     deps.serveSpa = async (_req, reply) => reply.type('text/html').header('cache-control', 'no-cache').sendFile('index.html');
     app.get('/', (req, reply) => deps.serveSpa!(req, reply));
   }
+  // The demo runs entirely in the browser (bots, no server calls), so it is just files: handy
+  // for showing the games on one screen when players' devices cannot join.
+  const demoDist = resolve(process.cwd(), config.WEB_DEMO_DIST);
+  if (existsSync(resolve(demoDist, 'index.html'))) {
+    await app.register(fastifyStatic, { root: demoDist, prefix: '/demo/', decorateReply: false, index: ['index.html'] });
+    app.get('/demo', (_req, reply) => reply.redirect('/demo/'));
+  }
   return { app, deps };
 }
