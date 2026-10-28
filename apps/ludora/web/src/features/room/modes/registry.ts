@@ -23,6 +23,11 @@ export const MODE_SCREENS: Record<string, { Player: Screen; Host: Screen; /** Th
     Host: lazy(() => import('./gold-rush.tsx').then((m) => ({ default: m.GoldRushHost }))),
     hostFeed: true,
   },
+  'code-breakers': {
+    Player: lazy(() => import('./code-breakers.tsx').then((m) => ({ default: m.CodeBreakersPlayer }))),
+    Host: lazy(() => import('./code-breakers.tsx').then((m) => ({ default: m.CodeBreakersHost }))),
+    hostFeed: true,
+  },
   classic: {
     Player: lazy(() => import('./classic.tsx').then((m) => ({ default: m.ClassicPlayer }))),
     Host: lazy(() => import('./classic.tsx').then((m) => ({ default: m.ClassicHost }))),
