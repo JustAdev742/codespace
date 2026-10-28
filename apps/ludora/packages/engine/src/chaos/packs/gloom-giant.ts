@@ -1,6 +1,7 @@
 import { defineCheats } from '../registry.ts';
 import type { ChaosApi, CheatDef } from '../types.ts';
 import { odds, rollOdds, share, target } from '../cheats/kit.ts';
+import { SWIFT_MS } from '../../modes/gloom-giant/index.ts';
 
 /*
  * Cheats that only make sense in gloom-giant: they wound or heal the giant,
@@ -20,7 +21,7 @@ import { odds, rollOdds, share, target } from '../cheats/kit.ts';
 const MODE = 'gloom-giant';
 
 interface Fighter {
-  stream: { streak: number; correct: number; last: { text?: string } | null };
+  stream: { streak: number; correct: number; last: { text?: string; iid?: string } | null };
   damage: number;
   hits: number;
   crits: number;
@@ -682,4 +683,332 @@ const lasting: CheatDef[] = [
   },
 ];
 
-defineCheats([...instant, ...lasting]);
+/** How long ago the question a fighter just answered appeared on their screen, or null. */
+function answeredInMs(api: ChaosApi, id: string): number | null {
+  const iid = fighter(api, id)?.stream.last?.iid;
+  if (!iid) return null;
+  try {
+    return api.now() - api.ctx.questions.instance(iid).shownAt;
+  } catch {
+    return null;
+  }
+}
+
+/** Add 1 damage to a hit the mode just logged, inside a score delta hook. Returns the extra dealt (0 when the giant is on its last health). */
+function extraOnHit(api: ChaosApi, d: Record<string, number>, id: string, b: Blow, why: string): number {
+  const extra = wound(api, 1);
+  if (!extra) return 0;
+  d[id] = (d[id] ?? 0) + extra;
+  b.amount += extra;
+  note(api, id, `${why} +${extra}`);
+  return extra;
+}
+
+/** A positive change to the giant's health in a mode transaction that is a heal, not the giant growing for a late joiner. */
+function healed(api: ChaosApi, data: Record<string, unknown>, d: Record<string, number>): number {
+  const grew = maxHp(api) !== data.maxHp;
+  data.maxHp = maxHp(api);
+  return over(api) || grew ? 0 : Math.max(0, d.game ?? 0);
+}
+
+const more: CheatDef[] = [
+  {
+    id: 'gloom-giant.streak-cash-in',
+    name: 'Gloom Streak Cash-In',
+    category: 'economy',
+    description: 'Cash in your streak: the giant takes as much damage as your streak is long, credited to you, and your streak goes back to zero (so you lose its bonus until you build it again). It never lands the final blow: the giant is left on at least 1 health.',
+    target: 'self',
+    modes: [MODE],
+    needs: ['giant', 'meter:streak'],
+    cost: 20,
+    cooldownMs: 40_000,
+    apply: (api, c) => {
+      const run = api.get('streak', c.caster);
+      if (run < 1) return { error: 'You have no streak to cash in.' };
+      const no = noFinish(api);
+      if (no) return no;
+      api.set('streak', c.caster, 0);
+      const dealt = strike(api, c.caster, run);
+      api.feed(`${api.name(c.caster)} cashed in a streak of ${run}: the giant took ${dealt} damage.`, 'good');
+    },
+  },
+  {
+    id: 'gloom-giant.encore-hit',
+    name: 'Gloom Encore Hit',
+    category: 'advantage',
+    description: 'The most recent hit anyone landed on the giant (in the last 10 seconds) lands again for the same damage, credited to whoever landed it. It never lands the final blow: the giant is left on at least 1 health.',
+    target: 'room',
+    modes: [MODE],
+    needs: GIANT,
+    cost: 25,
+    cooldownMs: 40_000,
+    apply: (api) => {
+      const no = noFinish(api);
+      if (no) return no;
+      const b = (api.s.log as Blow[])
+        .slice()
+        .reverse()
+        .find((x) => x.kind !== 'strike' && x.amount > 0 && api.now() - x.at <= 10_000 && fighter(api, x.playerId));
+      if (!b) return { error: 'Nobody has hit the giant in the last 10 seconds.' };
+      const dealt = strike(api, b.playerId, b.amount);
+      api.feed(`Encore! ${api.name(b.playerId)}'s last hit landed again for ${dealt}.`, 'good');
+    },
+  },
+  {
+    id: 'gloom-giant.itching-powder',
+    name: 'Giant Itching Powder',
+    category: 'advantage',
+    description: 'Sprinkle itching powder on the giant: four times, 4 seconds apart, it loses 1 health, credited to you. It is never left on less than 1.',
+    target: 'self',
+    modes: [MODE],
+    needs: GIANT,
+    cost: 30,
+    cooldownMs: 50_000,
+    durationMs: 17_000,
+    tickMs: 4_000,
+    apply: (api) => noFinish(api) ?? undefined,
+    hooks: {
+      tick: (api, fx) => {
+        if (!over(api)) strike(api, fx.caster, 1);
+      },
+    },
+    overlay: () => ({ kind: 'badge', text: 'Itching powder: the giant is scratching', tone: 'good' }),
+  },
+  {
+    id: 'gloom-giant.mending-melody',
+    name: 'Gloom Mending Melody',
+    category: 'advantage',
+    description: 'Hum a mending melody: three times, 5 seconds apart, the shield the room shares mends by 1, up to the strength it started with.',
+    target: 'room',
+    modes: [MODE],
+    needs: GIANT,
+    cost: 30,
+    cooldownMs: 50_000,
+    durationMs: 16_000,
+    tickMs: 5_000,
+    apply: (api) => (shield(api) >= shieldMax(api) ? { error: 'The shield is already at full strength.' } : undefined),
+    hooks: {
+      tick: (api) => {
+        if (!over(api)) api.add('shield', 'game', 1);
+      },
+    },
+    overlay: () => ({ kind: 'banner', text: 'Mending melody: the shield is mending', tone: 'good' }),
+  },
+  {
+    id: 'gloom-giant.teamwork',
+    name: 'Gloom Teamwork Hits',
+    category: 'advantage',
+    description: 'For 15 seconds, whenever two different fighters hit the giant within 2 seconds of each other, the second hit deals 1 more damage, credited to whoever landed it.',
+    target: 'room',
+    modes: [MODE],
+    needs: GIANT,
+    cost: 30,
+    cooldownMs: 50_000,
+    durationMs: 15_000,
+    priority: 25,
+    hooks: {
+      delta: {
+        score: (api, fx, d) => {
+          if (over(api)) return;
+          for (const [id, n] of Object.entries(d)) {
+            if (n <= 0) continue;
+            const b = blowNow(api, id, 'hit');
+            if (!b) continue;
+            const last = fx.data.last as { id: string; at: number } | undefined;
+            fx.data.last = { id, at: api.now() };
+            if (last && last.id !== id && api.now() - last.at <= 2_000) extraOnHit(api, d, id, b, 'teamwork');
+          }
+        },
+      },
+    },
+    overlay: () => ({ kind: 'banner', text: 'Teamwork: hit right after a friend for +1', tone: 'good' }),
+  },
+  {
+    id: 'gloom-giant.short-temper',
+    name: 'Giant\'s Short Temper',
+    category: 'advantage',
+    description: 'The enraged giant loses its temper and gets clumsy: for 20 seconds, every hit anyone lands deals 1 more damage. Only while it is enraged.',
+    target: 'room',
+    modes: [MODE],
+    needs: GIANT,
+    cost: 30,
+    cooldownMs: 50_000,
+    durationMs: 20_000,
+    priority: 25,
+    apply: (api) => (api.s.enraged ? (noFinish(api) ?? undefined) : { error: 'The giant is not enraged yet.' }),
+    hooks: {
+      delta: {
+        score: (api, _fx, d) => {
+          if (over(api) || !api.s.enraged) return;
+          for (const [id, n] of Object.entries(d)) {
+            const b = n > 0 ? blowNow(api, id, 'hit') : null;
+            if (b) extraOnHit(api, d, id, b, 'short temper');
+          }
+        },
+      },
+    },
+    overlay: () => ({ kind: 'banner', text: 'Short temper: every hit deals 1 more', tone: 'good' }),
+  },
+  {
+    id: 'gloom-giant.borrowed-swift',
+    name: 'Borrowed Swift Strikes',
+    category: 'round',
+    description: `For 20 seconds the Swift Strikes rule is on in a game without it: a correct answer given within ${SWIFT_MS / 1000} seconds of its question appearing is a critical hit (+1 damage) if it was not one already. Lucky critical hits still happen too. Not in a game where Swift Strikes is already on.`,
+    target: 'room',
+    modes: [MODE],
+    needs: GIANT,
+    cost: 30,
+    cooldownMs: 50_000,
+    durationMs: 20_000,
+    priority: 20,
+    apply: (api) => (api.ctx.settings.swift ? { error: 'Swift Strikes is already on in this game.' } : undefined),
+    hooks: {
+      delta: {
+        score: (api, _fx, d) => {
+          if (over(api)) return;
+          for (const [id, n] of Object.entries(d)) {
+            const b = n > 0 ? blowNow(api, id, 'hit') : null;
+            if (!b || b.kind === 'crit') continue;
+            const ms = answeredInMs(api, id);
+            if (ms === null || ms > SWIFT_MS) continue;
+            if (!extraOnHit(api, d, id, b, 'swift strike: critical hit')) continue;
+            b.kind = 'crit';
+            fighter(api, id)!.crits++;
+          }
+        },
+      },
+    },
+    overlay: () => ({ kind: 'banner', text: `Swift strikes: answer within ${SWIFT_MS / 1000}s for a critical hit`, tone: 'info' }),
+  },
+  {
+    id: 'gloom-giant.make-amends',
+    name: 'Gloom Make Amends',
+    category: 'advantage',
+    description: 'For 25 seconds, every time you answer right straight after a wrong answer, the shield mends by as much as the giant struck it for on that wrong answer (up to the strength it started with).',
+    target: 'self',
+    modes: [MODE],
+    needs: ['giant', 'meter:misses'],
+    cost: 25,
+    cooldownMs: 45_000,
+    durationMs: 25_000,
+    hooks: {
+      delta: {
+        misses: (api, fx, d) => {
+          if ((d[fx.caster] ?? 0) <= 0 || over(api)) return;
+          // Remember the strike by its number: other cheats may still change how hard it was.
+          const b = blowNow(api, fx.caster, 'strike');
+          fx.data.seq = b ? b.seq : null;
+        },
+        score: (api, fx, d) => {
+          const me = fx.caster;
+          if ((d[me] ?? 0) <= 0 || over(api) || !blowNow(api, me, 'hit')) return;
+          const seq = fx.data.seq;
+          fx.data.seq = null;
+          const miss = (api.s.log as Blow[]).find((x) => x.seq === seq && x.kind === 'strike');
+          if (!miss) return;
+          const mended = api.add('shield', 'game', miss.amount);
+          if (mended) note(api, me, `amends made: shield +${mended}`);
+        },
+      },
+    },
+    overlay: () => ({ kind: 'badge', text: 'Make amends: a right answer after a miss mends the shield', tone: 'good' }),
+  },
+  {
+    id: 'gloom-giant.bubble',
+    name: 'Gloom Bubble Barrier',
+    category: 'advantage',
+    description: 'Blow a bubble in front of the shield: for 20 seconds it soaks up the giant\'s strikes from anyone\'s wrong answers, up to 3 points of shield in all, then pops. It works even when the shield is at full strength. (A strike that would shatter the shield still shatters it.)',
+    target: 'room',
+    modes: [MODE],
+    needs: GIANT,
+    cost: 30,
+    cooldownMs: 50_000,
+    durationMs: 20_000,
+    priority: 35,
+    apply: (_api, _c, fx) => {
+      if (fx) fx.data.left = 3;
+    },
+    hooks: {
+      delta: {
+        shield: (api, fx, d) => {
+          if (over(api) || (d.game ?? 0) >= 0) return;
+          const left = Number(fx.data.left);
+          const soak = Math.min(left, -d.game!);
+          if (soak <= 0) return;
+          d.game! += soak;
+          fx.data.left = left - soak;
+          const b = (api.s.log as Blow[]).at(-1);
+          if (b && b.kind === 'strike' && b.at === api.now()) note(api, b.playerId, `the bubble soaked up ${soak}`);
+          if (left - soak <= 0) {
+            api.feed('The bubble barrier popped.', 'info');
+            api.endEffect(fx.eid, 'used');
+          }
+        },
+      },
+    },
+    overlay: (fx) => ({ kind: 'badge', text: `Bubble barrier: soaks up ${Number(fx.data.left)} more`, tone: 'good' }),
+  },
+  {
+    id: 'gloom-giant.silver-lining',
+    name: 'Gloom Silver Lining',
+    category: 'advantage',
+    description: 'For 30 seconds, every time the healing giant heals itself, the shield the room shares mends by 2 (up to the strength it started with). Needs Healing Giant on.',
+    target: 'room',
+    modes: [MODE],
+    needs: ['giant', 'regen'],
+    cost: 25,
+    cooldownMs: 50_000,
+    durationMs: 30_000,
+    priority: 50,
+    apply: (api, _c, fx) => {
+      if (shield(api) >= shieldMax(api)) return { error: 'The shield is already at full strength.' };
+      if (fx) fx.data.maxHp = maxHp(api);
+    },
+    hooks: {
+      delta: {
+        giantHp: (api, fx, d) => {
+          if (!healed(api, fx.data, d)) return;
+          const mended = api.add('shield', 'game', 2);
+          if (mended) api.feed(`Silver lining: the giant healed, and the shield mended by ${mended} too.`, 'good');
+        },
+      },
+    },
+    overlay: () => ({ kind: 'banner', text: 'Silver lining: each heal mends the shield', tone: 'good' }),
+  },
+  {
+    id: 'gloom-giant.growth-spurt',
+    name: 'Giant Growth Spurt',
+    category: 'troll',
+    description: 'For 30 seconds, every time the healing giant heals itself it heals twice as much (never past its full health). Needs Healing Giant on.',
+    target: 'room',
+    hostile: true,
+    modes: [MODE],
+    needs: ['giant', 'regen'],
+    cost: 25,
+    cooldownMs: 50_000,
+    durationMs: 30_000,
+    // After Giantbane Poison (40), which stops healing altogether.
+    priority: 45,
+    apply: (api, _c, fx) => {
+      if (hp(api) >= maxHp(api)) return { error: 'The giant is at full health, so it has nothing to heal.' };
+      if (fx) fx.data.maxHp = maxHp(api);
+    },
+    hooks: {
+      delta: {
+        giantHp: (api, fx, d) => {
+          const heal = healed(api, fx.data, d);
+          if (!heal) return;
+          // The mode has already healed it by `heal`; the extra is capped by full health.
+          const before = hp(api) - heal;
+          const total = Math.min(heal * 2, maxHp(api) - before);
+          if (total <= heal) return;
+          d.game = total;
+          api.feed(`Growth spurt: the giant healed ${total} instead of ${heal}.`, 'bad');
+        },
+      },
+    },
+    overlay: () => ({ kind: 'banner', text: 'Growth spurt: the giant heals double', tone: 'bad' }),
+  },
+];
+
+defineCheats([...instant, ...lasting, ...more]);

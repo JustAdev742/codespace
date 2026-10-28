@@ -16,5 +16,7 @@ export const scenarios: ScenarioSet = {
     'gloom-giant.vampire': someoneMisses,
     'gloom-giant.lullaby': someoneMisses,
     'gloom-giant.decoy': someoneMisses,
+    'gloom-giant.bubble': someoneMisses,
+    'gloom-giant.make-amends': someoneMisses,
   },
 };

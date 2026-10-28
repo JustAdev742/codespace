@@ -306,3 +306,174 @@ describe('tug-of-war pack: heaves, slips and grips', () => {
     expect(sim.errors).toEqual([]);
   });
 });
+
+describe('tug-of-war pack: streaks, trades and tiebreaks', () => {
+  it('Rope Rhythm Thief moves an opponent\'s streak onto yours, as far as your correct answers allow', () => {
+    const sim = game({ heave: true });
+    expect(cast(sim, 'p1', 'rhythm-thief', 'p2')).toMatchObject({ ok: false });
+    right(sim, 'p1');
+    right(sim, 'p1');
+    wrong(sim, 'p1');
+    for (let i = 0; i < 3; i++) right(sim, 'p2');
+    // -1 -1, then +1 +1 and a heave of +2.
+    expect(pos(sim)).toBe(2);
+    expect(cast(sim, 'p1', 'rhythm-thief', 'p2').ok).toBe(true);
+    expect(sim.state().pullers.p2.stream.streak).toBe(0);
+    // p1 has 2 correct answers, so keeps 2 of the 3.
+    expect(sim.state().pullers.p1.stream.streak).toBe(2);
+    right(sim, 'p1');
+    expect(pos(sim)).toBe(0);
+  });
+
+  it('Rope Rhythm Thief is refused when you could keep none of the streak', () => {
+    const sim = game({ heave: true });
+    right(sim, 'p1');
+    right(sim, 'p2');
+    const r = cast(sim, 'p1', 'rhythm-thief', 'p2');
+    expect(r).toMatchObject({ ok: false });
+    if (!r.ok) expect(r.message).toMatch(/could not keep/);
+  });
+
+  it('Selfless Heave trades a quarter of your pulls for 2 spaces, and stops short of the line', () => {
+    const sim = game({ ropeLength: 8 });
+    expect(cast(sim, 'p1', 'selfless-heave')).toMatchObject({ ok: false });
+    for (let i = 0; i < 4; i++) right(sim, 'p1');
+    expect(cast(sim, 'p1', 'selfless-heave').ok).toBe(true);
+    expect(pos(sim)).toBe(-6);
+    expect(sim.state().pullers.p1.pulls).toBe(3);
+    sim.run(31_000);
+    expect(cast(sim, 'p1', 'selfless-heave').ok).toBe(true);
+    expect(pos(sim)).toBe(-7);
+    expect(sim.state().pullers.p1.pulls).toBe(2);
+    sim.run(31_000);
+    expect(cast(sim, 'p1', 'selfless-heave')).toMatchObject({ ok: false });
+    expect(sim.state().pullers.p1.pulls).toBe(2);
+  });
+
+  it('Knot Tiebreaker moves the knot 2 spaces towards the side with more pulls, only near the middle', () => {
+    const sim = game();
+    expect(cast(sim, 'p1', 'tiebreaker')).toMatchObject({ ok: false });
+    right(sim, 'p2');
+    // Cast by the left side, it still helps the right, which has made more pulls.
+    expect(cast(sim, 'p1', 'tiebreaker').ok).toBe(true);
+    expect(pos(sim)).toBe(3);
+    sim.run(61_000);
+    expect(cast(sim, 'p1', 'tiebreaker')).toMatchObject({ ok: false });
+  });
+});
+
+describe('tug-of-war pack: contests, drums and borrowed rules', () => {
+  it('Tug Snap Pull doubles only answers given within 4 seconds of the question appearing', () => {
+    const sim = game();
+    expect(cast(sim, 'p1', 'snap-pull').ok).toBe(true);
+    right(sim, 'p1');
+    expect(pos(sim)).toBe(-2);
+    sim.run(5_000);
+    right(sim, 'p1');
+    expect(pos(sim)).toBe(-3);
+    right(sim, 'p3');
+    expect(pos(sim)).toBe(-4);
+  });
+
+  it('Tug Pulling Contest moves the knot 2 spaces towards whoever answered more right, and nothing on a tie', () => {
+    const sim = game();
+    expect(cast(sim, 'p1', 'pulling-contest', 'p3')).toMatchObject({ ok: false });
+    expect(cast(sim, 'p1', 'pulling-contest', 'p2').ok).toBe(true);
+    right(sim, 'p1');
+    right(sim, 'p1');
+    right(sim, 'p2');
+    expect(pos(sim)).toBe(-1);
+    sim.run(15_500);
+    expect(pos(sim)).toBe(-3);
+    const tie = game();
+    cast(tie, 'p1', 'pulling-contest', 'p2');
+    right(tie, 'p1');
+    right(tie, 'p2');
+    tie.run(15_500);
+    expect(pos(tie)).toBe(0);
+  });
+
+  it('Tug Drumbeat beats four times and moves the knot 1 space towards the side that pulled more since the last beat', () => {
+    const sim = game();
+    expect(cast(sim, 'p1', 'drumbeat').ok).toBe(true);
+    right(sim, 'p1');
+    sim.run(5_100);
+    expect(pos(sim)).toBe(-2);
+    right(sim, 'p2');
+    right(sim, 'p4');
+    expect(pos(sim)).toBe(0);
+    sim.run(5_000);
+    expect(pos(sim)).toBe(1);
+    // No pulls before the third beat: the knot stays put.
+    sim.run(5_000);
+    expect(pos(sim)).toBe(1);
+    right(sim, 'p3');
+    sim.run(5_000);
+    expect(pos(sim)).toBe(-1);
+    // Four beats, then it is over: a pull after the last beat is not answered by one.
+    right(sim, 'p1');
+    sim.run(5_000);
+    expect(pos(sim)).toBe(-2);
+    expect(sim.chaos().effects.some((e) => e.cheatId === 'tug-of-war.drumbeat')).toBe(false);
+  });
+
+  it('Borrowed Heave makes every third correct answer in a row pull double, and is refused when Heave is on', () => {
+    const sim = game();
+    expect(cast(sim, 'p1', 'borrowed-heave').ok).toBe(true);
+    right(sim, 'p1');
+    right(sim, 'p1');
+    expect(pos(sim)).toBe(-2);
+    right(sim, 'p1');
+    expect(pos(sim)).toBe(-4);
+    sim.run(20_500);
+    for (let i = 0; i < 3; i++) right(sim, 'p2');
+    expect(pos(sim)).toBe(-1);
+    expect(cast(game({ heave: true }), 'p1', 'borrowed-heave')).toMatchObject({ ok: false });
+  });
+
+  it('Rope Domino Slip: a wrong answer on the other side breaks every streak on that side', () => {
+    const sim = game({ heave: true });
+    right(sim, 'p2');
+    right(sim, 'p4');
+    right(sim, 'p1');
+    expect(cast(sim, 'p1', 'domino-slip', team(sim, 'p2')).ok).toBe(true);
+    wrong(sim, 'p4');
+    expect(sim.state().pullers.p2.stream.streak).toBe(0);
+    expect(sim.state().pullers.p4.stream.streak).toBe(0);
+    right(sim, 'p3');
+    wrong(sim, 'p3');
+    // The caster's own side is left alone.
+    expect(sim.state().pullers.p1.stream.streak).toBe(1);
+  });
+});
+
+describe('tug-of-war pack: Knot Guard', () => {
+  it('refuses cheats that would drag the knot towards the other end, but not answers or your own side\'s cheats', () => {
+    const sim = game();
+    cast(sim, 'p1', 'yank', undefined, { spaces: 3 });
+    expect(pos(sim)).toBe(-3);
+    expect(cast(sim, 'p1', 'knot-guard', team(sim, 'p1')).ok).toBe(true);
+    for (const id of ['yank', 'reset', 'mirror', 'gamble']) expect(cast(sim, 'p2', id)).toMatchObject({ ok: false });
+    expect(cast(sim, 'p2', 'current', team(sim, 'p2'))).toMatchObject({ ok: false });
+    expect(pos(sim)).toBe(-3);
+    // Answers still move it, and the guarding side's own cheats still pull their way.
+    right(sim, 'p2');
+    expect(pos(sim)).toBe(-2);
+    expect(cast(sim, 'p3', 'yank', undefined, { spaces: 1 }).ok).toBe(true);
+    expect(pos(sim)).toBe(-3);
+    sim.run(20_500);
+    expect(cast(sim, 'p2', 'reset').ok).toBe(true);
+    expect(pos(sim)).toBe(0);
+  });
+
+  it('holds back lasting cheats\' moves towards the other end while it lasts', () => {
+    const sim = game();
+    expect(cast(sim, 'p2', 'current', team(sim, 'p2')).ok).toBe(true);
+    sim.run(3_100);
+    expect(pos(sim)).toBe(0.5);
+    expect(cast(sim, 'p1', 'knot-guard', team(sim, 'p1')).ok).toBe(true);
+    sim.run(6_000);
+    expect(pos(sim)).toBe(0.5);
+    expect(sim.errors).toEqual([]);
+  });
+});

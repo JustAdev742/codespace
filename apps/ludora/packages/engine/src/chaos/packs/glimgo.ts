@@ -16,6 +16,10 @@ import { cardLines, cardProgress, LUCKY_EVERY, type Card, type WinRule } from '.
  * carries the number of the call that announced its answer, and a square chaos
  * frees becomes a free square exactly as a lucky star makes one, so every card
  * stays one the mode could have produced.
+ *
+ * Cheats aimed at another player's card check `laminated` first (Laminated
+ * Glimgo Card), and any cheat that moves a player's last tap calls `retap`, so
+ * effects that watch for new taps never mistake a moved tap for a new one.
  */
 
 const MODE = 'glimgo';
@@ -206,6 +210,50 @@ function callable(api: ChaosApi, want: (answer: number) => boolean): string[] {
   return (s.pool as string[]).filter((q) => (s.timesCalled[q] ?? 0) === 1 && want(s.answerOf[q]));
 }
 
+/** Laminated Glimgo Card tags its caster with this: other players' cheats leave that card alone. */
+const LAMINATED = 'glimgo-laminated';
+
+/** Refused when a cheat cast by someone else would change a laminated card. */
+function laminated(api: ChaosApi, id: string, caster: string): { error: string } | null {
+  return id !== caster && api.hasTag(id, LAMINATED) ? { error: `${api.name(id)}'s card is laminated: other players' cheats cannot change it right now.` } : null;
+}
+
+/** The mark Ink Blot and Smudge rub out: the one whose loss sets the card furthest back. Null when no mark can be. */
+function blotChoice(api: ChaosApi, card: Card): number | null {
+  const options = rubbable(api, card).map((i) => {
+    const after = clone(card);
+    after.marks[i] = 0;
+    return { i, p: progressOf(api, after) };
+  });
+  if (!options.length) return null;
+  return options.sort((x, y) => y.p.toGo - x.p.toGo || x.p.lines - y.p.lines || x.i - y.i)[0]!.i;
+}
+
+/** How many more calls the caller could still make for an answer (each of its questions at most twice). */
+function callsLeft(api: ChaosApi, answer: number): number {
+  const s = st(api);
+  return (s.pool as string[]).reduce((n, q) => n + (sameAnswer(api, s.answerOf[q], answer) ? Math.max(0, 2 - (s.timesCalled[q] ?? 0)) : 0), 0);
+}
+
+/** Free squares on a card (dealt free, or made free by a lucky star or a cheat). */
+const freeCount = (card: Card) => card.cells.filter((a) => a === -1).length;
+
+/** The player whose taps a tap-watching effect follows. */
+const watched = (fx: { cheatId: string; caster: string; targets: string[] }) => (fx.cheatId === 'glimgo.chain-reaction' ? fx.caster : fx.targets[0]!);
+
+/**
+ * After a cheat moves a player's last tap (to another square, or onto another player with a card),
+ * effects that watch for new taps take the moved tap as already seen, so it is not mistaken for a new one.
+ */
+function retap(api: ChaosApi) {
+  for (const fx of api.effects()) if (fx.cheatId.startsWith('glimgo.') && typeof fx.data.tap === 'string') fx.data.tap = tapKey(api, watched(fx));
+}
+
+/** Entry i is the square that lands on square i when a card turns a quarter turn clockwise. */
+function quarterTurn(size: number): number[] {
+  return Array.from({ length: size * size }, (_, i) => (size - 1 - (i % size)) * size + Math.floor(i / size));
+}
+
 /* --------------------------------- cards -------------------------------- */
 
 const cards: CheatDef[] = [
@@ -264,15 +312,12 @@ const cards: CheatDef[] = [
       const t = target(c);
       const card = needCard(api, t);
       if ('error' in card) return card;
-      const options = rubbable(api, card).map((i) => {
-        const after = clone(card);
-        after.marks[i] = 0;
-        return { i, p: progressOf(api, after) };
-      });
-      if (!options.length) return { error: `${api.name(t)} has no mark that can be rubbed out.` };
-      const best = options.sort((x, y) => y.p.toGo - x.p.toGo || x.p.lines - y.p.lines || x.i - y.i)[0]!;
-      const text = answerText(api, card.cells[best.i]!);
-      card.marks[best.i] = 0;
+      const lam = laminated(api, t, c.caster);
+      if (lam) return lam;
+      const i = blotChoice(api, card);
+      if (i === null) return { error: `${api.name(t)} has no mark that can be rubbed out.` };
+      const text = answerText(api, card.cells[i]!);
+      card.marks[i] = 0;
       refresh(api, t);
       api.feed(`Glimgo Ink Blot: your mark on "${text}" was rubbed out.`, 'bad', [t]);
     },
@@ -292,6 +337,8 @@ const cards: CheatDef[] = [
       const t = target(c);
       const theirs = needCard(api, t);
       if ('error' in theirs) return theirs;
+      const lam = laminated(api, t, c.caster);
+      if (lam) return lam;
       const mine = needCard(api, c.caster);
       if ('error' in mine) return mine;
       const options = rubbable(api, theirs).flatMap((i) => {
@@ -326,6 +373,8 @@ const cards: CheatDef[] = [
       const t = target(c);
       const theirs = needCard(api, t);
       if ('error' in theirs) return theirs;
+      const lam = laminated(api, t, c.caster);
+      if (lam) return lam;
       const mine = needCard(api, c.caster);
       if ('error' in mine) return mine;
       const s = st(api);
@@ -347,6 +396,7 @@ const cards: CheatDef[] = [
       delete s.lastMark[t];
       if (lb) s.lastMark[c.caster] = lb;
       if (la) s.lastMark[t] = la;
+      retap(api);
       api.feed(`Glimgo Card Switcheroo: ${api.name(c.caster)} and ${api.name(t)} traded cards.`, 'big');
     },
   },
@@ -365,6 +415,8 @@ const cards: CheatDef[] = [
       const t = target(c);
       const card = needCard(api, t);
       if ('error' in card) return card;
+      const lam = laminated(api, t, c.caster);
+      if (lam) return lam;
       const now = progressOf(api, card);
       const n = card.cells.length;
       let best: { order: number[]; toGo: number; lines: number } | null = null;
@@ -381,6 +433,7 @@ const cards: CheatDef[] = [
       card.marks.splice(0, n, ...marks);
       const last = st(api).lastMark[t];
       if (last) last.square = order.indexOf(last.square);
+      retap(api);
       refresh(api, t);
       api.feed(`Scrambled Glimgo Card: ${api.name(t)}'s card was shuffled.`, 'bad');
     },
@@ -415,6 +468,7 @@ const cards: CheatDef[] = [
       }
       if (!best) return { error: 'No slide would bring you closer without winning outright.' };
       swapSquares(api, c.caster, card, best.i, best.j);
+      retap(api);
       refresh(api, c.caster);
       api.feed(`Glimgo Sliding Tile: your mark moved to ${where(api, best.j)}.`, 'good', [c.caster]);
     },
@@ -445,6 +499,185 @@ const cards: CheatDef[] = [
         api.feed(`Dauber's Gamble: you lost your mark at ${where(api, i)}.`, 'bad', [c.caster]);
       }
       refresh(api, c.caster);
+    },
+  },
+  {
+    id: 'glimgo.star-thief',
+    name: 'Glimgo Star Thief',
+    category: 'troll',
+    description:
+      'Take one of an opponent\'s free squares: on their card it becomes an unmarked square again, holding an answer that is not on their card and can still be called, and one unmarked square on the line you are closest to finishing (anywhere open in a whole-card game) becomes free. The square taken is the one whose loss sets them furthest back. Refused when you are one square from Glimgo.',
+    target: 'opponent',
+    modes: MODES,
+    needs: NEEDS,
+    cost: 40,
+    cooldownMs: 60_000,
+    undoable: false,
+    apply: (api, c) => {
+      const t = target(c);
+      const theirs = needCard(api, t);
+      if ('error' in theirs) return theirs;
+      const lam = laminated(api, t, c.caster);
+      if (lam) return lam;
+      const mine = needCard(api, c.caster);
+      if ('error' in mine) return mine;
+      if (progressOf(api, mine).toGo < 2) return { error: 'You are one square from Glimgo: a free square would win it for you.' };
+      const frees = theirs.cells.flatMap((a, i) => (a === -1 ? [i] : []));
+      if (!frees.length) return { error: `${api.name(t)} has no free square to take.` };
+      const answers = st(api).answers as unknown[];
+      const spare = answers.map((_, a) => a).filter((a) => !theirs.cells.some((x) => sameAnswer(api, x, a)) && callsLeft(api, a) > 0);
+      if (!spare.length) return { error: `Every answer the caller can still call is already on ${api.name(t)}'s card.` };
+      const answer = api.rng.pick(spare);
+      const pick = frees
+        .map((i) => {
+          const after = clone(theirs);
+          after.cells[i] = answer;
+          after.marks[i] = 0;
+          return { i, p: progressOf(api, after) };
+        })
+        .sort((x, y) => y.p.toGo - x.p.toGo || x.p.lines - y.p.lines || x.i - y.i)[0]!;
+      theirs.cells[pick.i] = answer;
+      theirs.marks[pick.i] = 0;
+      refresh(api, t);
+      const j = api.rng.pick(starSquares(api, mine));
+      free(mine, j);
+      refresh(api, c.caster);
+      api.feed(`Glimgo Star Thief: ${api.name(c.caster)} took a free square from ${api.name(t)}.`, 'bad');
+      api.feed(`Glimgo Star Thief: your free square at ${where(api, pick.i)} is now "${answerText(api, answer)}" again.`, 'bad', [t]);
+      api.feed(`Glimgo Star Thief: your square at ${where(api, j)} is now free.`, 'good', [c.caster]);
+    },
+  },
+  {
+    id: 'glimgo.pass-the-cards',
+    name: 'Glimgo Pass the Cards',
+    category: 'round',
+    description:
+      'Every card moves one seat along, marks and all: each player takes the card of the player after them, and the last player takes the first player\'s. Laminated cards stay where they are (unless you laminated your own).',
+    target: 'room',
+    hostile: true,
+    modes: MODES,
+    needs: NEEDS,
+    cost: 50,
+    cooldownMs: 120_000,
+    undoable: false,
+    apply: (api, c) => {
+      const no = gameOn(api);
+      if (no) return no;
+      const s = st(api);
+      const seats = api.ids().filter((id) => s.cards[id] && s.progress[id] && !laminated(api, id, c.caster));
+      if (seats.length < 2) return { error: 'Fewer than two cards can be passed along.' };
+      const n = seats.length;
+      const cardsBefore = seats.map((id) => s.cards[id] as Card);
+      const progressBefore = seats.map((id) => s.progress[id]);
+      // A find on the open call and the last tap belong to the card they were made on.
+      const foundBefore = seats.map((id) => Boolean(s.found[id]));
+      const lastBefore = seats.map((id) => s.lastMark[id]);
+      seats.forEach((id, k) => {
+        const from = (k + 1) % n;
+        s.cards[id] = cardsBefore[from];
+        s.progress[id] = progressBefore[from];
+        if (foundBefore[from]) s.found[id] = true;
+        else delete s.found[id];
+        if (lastBefore[from]) s.lastMark[id] = lastBefore[from];
+        else delete s.lastMark[id];
+      });
+      retap(api);
+      api.feed(`Glimgo Pass the Cards: ${n === api.ids().length ? 'every card' : `${n} cards`} moved one seat along.`, 'big');
+    },
+  },
+  {
+    id: 'glimgo.laminate',
+    name: 'Laminated Glimgo Card',
+    category: 'advantage',
+    description:
+      'For 40 seconds your card is laminated: other players\' Glimgo cheats cannot rub out, take or move anything on it, turn or shuffle it, swap it away or take its free squares. Your own cheats still work on it.',
+    target: 'self',
+    modes: MODES,
+    needs: NEEDS,
+    tags: [LAMINATED],
+    cost: 30,
+    cooldownMs: 60_000,
+    durationMs: 40_000,
+    apply: (api, c) => {
+      const card = needCard(api, c.caster);
+      if ('error' in card) return card;
+    },
+    overlay: (fx) => ({ kind: 'countdown', label: 'Laminated card: rivals\' card cheats cannot touch it', until: fx.endsAt }),
+  },
+  {
+    id: 'glimgo.trade-in',
+    name: 'Glimgo Trade-In',
+    category: 'economy',
+    description:
+      'Trade two of your marks for a free square: two marks (never the one from the open call) are rubbed out and one unmarked square on the line you are then closest to finishing becomes free, chosen so you end up closer to Glimgo but never at it. Not in a whole-card game, where a trade-in could only set you back.',
+    target: 'self',
+    modes: MODES,
+    needs: NEEDS,
+    cost: 25,
+    cooldownMs: 45_000,
+    undoable: false,
+    apply: (api, c) => {
+      const card = needCard(api, c.caster);
+      if ('error' in card) return card;
+      if (win(api) === 'full') return { error: 'In a whole-card game a trade-in could only set you back.' };
+      const now = progressOf(api, card);
+      const marks = rubbable(api, card);
+      let best: { a: number; b: number; f: number; toGo: number; lines: number } | null = null;
+      for (let x = 0; x < marks.length; x++) {
+        for (let y = x + 1; y < marks.length; y++) {
+          const a = marks[x]!;
+          const b = marks[y]!;
+          const after = clone(card);
+          after.marks[a] = 0;
+          after.marks[b] = 0;
+          for (const f of starSquares(api, after)) {
+            if (f === a || f === b || !isAnswer(after, f)) continue;
+            const t = clone(after);
+            free(t, f);
+            const p = progressOf(api, t);
+            if (p.toGo < 1 || p.toGo >= now.toGo) continue;
+            if (!best || p.toGo < best.toGo || (p.toGo === best.toGo && p.lines > best.lines)) best = { a, b, f, toGo: p.toGo, lines: p.lines };
+          }
+        }
+      }
+      if (!best) return { error: 'No trade-in would bring you closer to Glimgo without winning outright.' };
+      const lost = [answerText(api, card.cells[best.a]!), answerText(api, card.cells[best.b]!)];
+      card.marks[best.a] = 0;
+      card.marks[best.b] = 0;
+      free(card, best.f);
+      refresh(api, c.caster);
+      api.feed(`Glimgo Trade-In: you gave up your marks on "${lost[0]}" and "${lost[1]}", and your square at ${where(api, best.f)} is now free.`, 'good', [c.caster]);
+    },
+  },
+  {
+    id: 'glimgo.turntable',
+    name: 'Glimgo Card Turntable',
+    category: 'troll',
+    description:
+      'An opponent\'s card turns a quarter turn clockwise, marks and all. Rows become columns, so every line they had is still a line and they are no nearer or further from Glimgo: only where their squares sit changes.',
+    target: 'opponent',
+    modes: MODES,
+    needs: NEEDS,
+    cost: 20,
+    cooldownMs: 30_000,
+    undoable: false,
+    apply: (api, c) => {
+      const t = target(c);
+      const card = needCard(api, t);
+      if ('error' in card) return card;
+      const lam = laminated(api, t, c.caster);
+      if (lam) return lam;
+      const from = quarterTurn(st(api).size);
+      const cells = from.map((i) => card.cells[i]!);
+      const marks = from.map((i) => card.marks[i]!);
+      if (cells.every((x, i) => x === card.cells[i]) && marks.every((x, i) => x === card.marks[i])) return { error: `${api.name(t)}'s card would look just the same turned round.` };
+      card.cells.splice(0, cells.length, ...cells);
+      card.marks.splice(0, marks.length, ...marks);
+      const last = st(api).lastMark[t];
+      if (last) last.square = from.indexOf(last.square);
+      retap(api);
+      refresh(api, t);
+      api.feed(`Glimgo Card Turntable: ${api.name(t)}'s card turned a quarter turn.`, 'bad');
     },
   },
 ];
@@ -693,6 +926,101 @@ const marking: CheatDef[] = [
     overlayFor: 'caster',
     overlay: (fx) => ({ kind: 'countdown', label: 'Copycat: copying a rival\'s marks', until: fx.endsAt }),
   },
+  {
+    id: 'glimgo.pass-the-ink',
+    name: 'Glimgo Pass the Ink',
+    category: 'troll',
+    description:
+      'Hand your lockout to an opponent: you can mark again at once, and they are locked out for the time you had left (or for as long as they already were, if that is longer). Only while you are locked out.',
+    target: 'opponent',
+    modes: MODES,
+    needs: NEEDS,
+    cost: 25,
+    cooldownMs: 40_000,
+    undoable: false,
+    apply: (api, c) => {
+      const no = gameOn(api);
+      if (no) return no;
+      const t = target(c);
+      if (!cardOf(api, t)) return { error: `${api.name(t)} has no card.` };
+      const s = st(api);
+      const now = api.now();
+      const left = (s.lockedUntil[c.caster] ?? 0) - now;
+      if (left <= 0) return { error: 'You are not locked out, so there is no lockout to pass on.' };
+      s.lockedUntil[c.caster] = now;
+      s.lockedUntil[t] = Math.max(s.lockedUntil[t] ?? 0, now + left);
+      const secs = Math.ceil(left / 1000);
+      api.feed(`Glimgo Pass the Ink: ${api.name(c.caster)} passed ${secs} ${secs === 1 ? 'second' : 'seconds'} of lockout to ${api.name(t)}.`, 'bad');
+    },
+  },
+  {
+    id: 'glimgo.smudge',
+    name: 'Glimgo Smudge',
+    category: 'troll',
+    description:
+      'For 30 seconds, every wrong square an opponent taps smudges away one of their marks: the one whose loss sets them furthest back from Glimgo (never a free square, and never the mark from the open call).',
+    target: 'opponent',
+    modes: MODES,
+    needs: NEEDS,
+    cost: 30,
+    cooldownMs: 45_000,
+    durationMs: 30_000,
+    tickMs: 250,
+    apply: (api, c, fx) => {
+      const t = target(c);
+      const card = needCard(api, t);
+      if ('error' in card) return card;
+      const lam = laminated(api, t, c.caster);
+      if (lam) return lam;
+      if (fx) fx.data.tap = tapKey(api, t);
+    },
+    hooks: {
+      tick: (api, fx) => {
+        const t = target(fx);
+        if (tapKey(api, t) === fx.data.tap) return;
+        fx.data.tap = tapKey(api, t);
+        const last = st(api).lastMark[t];
+        const card = cardOf(api, t);
+        if (!last || last.ok || !card || gameOn(api) || laminated(api, t, fx.caster)) return;
+        const i = blotChoice(api, card);
+        if (i === null) return;
+        const text = answerText(api, card.cells[i]!);
+        card.marks[i] = 0;
+        refresh(api, t);
+        api.feed(`Glimgo Smudge: that wrong square smudged away your mark on "${text}".`, 'bad', [t]);
+      },
+    },
+    overlay: (fx) => ({ kind: 'countdown', label: 'Smudge: a wrong square rubs out a mark', until: fx.endsAt }),
+  },
+  {
+    id: 'glimgo.late-dab',
+    name: 'Glimgo Late Dab',
+    category: 'advantage',
+    description:
+      'While a call is being revealed, if its answer is an unmarked square on your card, that square is marked for you now, as if you had found it in time. Refused when the mark would complete your card: Glimgo is only ever called by your own mark.',
+    target: 'self',
+    modes: MODES,
+    needs: NEEDS,
+    cost: 30,
+    cooldownMs: 45_000,
+    undoable: false,
+    apply: (api, c) => {
+      const card = needCard(api, c.caster);
+      if ('error' in card) return card;
+      const s = st(api);
+      const call: Call | undefined = s.calls.at(-1);
+      if (s.phase !== 'reveal' || !call) return { error: 'A late dab only works while a call is being revealed.' };
+      const j = card.cells.findIndex((a, i) => sameAnswer(api, a, call.answer) && !isMarked(card, i));
+      if (j < 0) return { error: 'The answer being revealed is not an unmarked square on your card.' };
+      const after = clone(card);
+      after.marks[j] = call.n;
+      if (progressOf(api, after).toGo < 1) return { error: 'That mark would complete your card, and Glimgo has to be your own mark in time.' };
+      card.marks[j] = call.n;
+      call.found++;
+      refresh(api, c.caster);
+      api.feed(`Glimgo Late Dab: you marked "${answerText(api, call.answer)}" just after the call closed.`, 'good', [c.caster]);
+    },
+  },
 ];
 
 /* -------------------------------- the caller ----------------------------- */
@@ -861,7 +1189,163 @@ const caller: CheatDef[] = [
     overlayFor: 'all',
     overlay: (fx) => ({ kind: 'badge', text: Number(fx.data.factor) < 1 ? 'Fast calls' : 'Slow calls', tone: 'info' }),
   },
+  {
+    id: 'glimgo.race-to-two',
+    name: 'Glimgo Race to Two',
+    category: 'round',
+    description:
+      'For 40 seconds, once two players have found a call (the open one included), nobody else can mark it and it closes within a quarter of a second, as in Glimgo Rush. Not in a game where calls already close after two finders or fewer.',
+    target: 'room',
+    modes: MODES,
+    needs: NEEDS,
+    cost: 30,
+    cooldownMs: 60_000,
+    durationMs: 40_000,
+    tickMs: 250,
+    stacking: 'reject',
+    apply: (api) => {
+      const no = gameOn(api);
+      if (no) return no;
+      const finders = Number(api.ctx.settings.finders) || 0;
+      if (finders > 0 && finders <= 2) return { error: `Calls here already close after ${finders === 1 ? 'one finder' : 'two finders'}.` };
+      raceToTwo(api);
+    },
+    hooks: {
+      gate: (api, _fx, id, action) => {
+        const call = openCall(api);
+        if (markAction(action) && call && call.found >= 2 && !st(api).found[id]) return { block: 'Two players have already found this call.' };
+      },
+      tick: (api) => raceToTwo(api),
+    },
+    overlayFor: 'all',
+    overlay: () => ({ kind: 'badge', text: 'Race to two: calls close after two finders', tone: 'info' }),
+  },
+  {
+    id: 'glimgo.long-reveal',
+    name: 'Glimgo Long Reveal',
+    category: 'round',
+    description: 'The answer being revealed now stays on screen 8 seconds longer before the next call comes up.',
+    target: 'room',
+    modes: MODES,
+    needs: NEEDS,
+    cost: 15,
+    cooldownMs: 30_000,
+    undoable: false,
+    apply: (api) => {
+      const no = gameOn(api);
+      if (no) return no;
+      const s = st(api);
+      if (s.phase !== 'reveal') return { error: 'No answer is being revealed right now.' };
+      s.phaseEndsAt = Math.max(Number(s.phaseEndsAt ?? 0), api.now()) + 8000;
+      api.ctx.setTimer(TIMER, s.phaseEndsAt);
+      api.feed('Glimgo Long Reveal: this answer stays up 8 seconds longer.', 'info');
+    },
+  },
+  {
+    id: 'glimgo.whisper',
+    name: 'Glimgo Caller\'s Whisper',
+    category: 'advantage',
+    description:
+      'For the call that is open now (or the next one, if none is open), the caller whispers to you: your screen names the square on your card that answers it, or tells you it is not on your card. It lasts until that call closes.',
+    target: 'self',
+    modes: MODES,
+    needs: NEEDS,
+    cost: 35,
+    cooldownMs: 60_000,
+    durationMs: CALL_SPAN_MS + REVEAL_MS + 3000,
+    tickMs: 250,
+    stacking: 'reject',
+    apply: (api, c, fx) => {
+      const card = needCard(api, c.caster);
+      if ('error' in card) return card;
+      const call = openCall(api);
+      if (call && st(api).found[c.caster]) return { error: 'You already found this call.' };
+      if (fx) {
+        fx.data.n = call ? call.n : st(api).calls.length + 1;
+        whisper(api, fx.caster, fx.data);
+      }
+    },
+    hooks: {
+      tick: (api, fx) => {
+        const n = Number(fx.data.n);
+        const call: Call | undefined = st(api).calls[n - 1];
+        if (call && (call.closed || openCall(api)?.n !== n)) {
+          api.endEffect(fx.eid, 'used');
+          return;
+        }
+        whisper(api, fx.caster, fx.data);
+      },
+    },
+    overlay: (fx) => (typeof fx.data.text === 'string' ? { kind: 'badge', text: fx.data.text, tone: 'good' } : null),
+  },
+  {
+    id: 'glimgo.star-stowaway',
+    name: 'Glimgo Star Stowaway',
+    category: 'advantage',
+    description:
+      'The next time lucky stars are handed out (within 2 minutes), you get one too even if you are not furthest from Glimgo: one unmarked square on the line you are closest to finishing (anywhere open in a whole-card game) becomes free. If a lucky star comes to you anyway, nothing extra happens, and none comes when you are one square from Glimgo. Needs Lucky Stars on.',
+    target: 'self',
+    modes: MODES,
+    needs: [...NEEDS, 'lucky-stars'],
+    cost: 30,
+    cooldownMs: 90_000,
+    durationMs: 120_000,
+    tickMs: 250,
+    stacking: 'reject',
+    apply: (api, c, fx) => {
+      const card = needCard(api, c.caster);
+      if ('error' in card) return card;
+      if (fx) {
+        const call = openCall(api);
+        const next = call ? call.n : st(api).calls.length + 1;
+        // Lucky stars come when every fifth call closes.
+        fx.data.n = Math.ceil(next / LUCKY_EVERY) * LUCKY_EVERY;
+        fx.data.free = freeCount(card);
+      }
+    },
+    hooks: {
+      tick: (api, fx) => {
+        const card = cardOf(api, fx.caster);
+        const call: Call | undefined = st(api).calls[Number(fx.data.n) - 1];
+        if (!card) return;
+        if (!call?.closed) {
+          fx.data.free = freeCount(card);
+          return;
+        }
+        api.endEffect(fx.eid, 'used');
+        // The game was won on that call, the star came anyway, or a star would win: nothing to add.
+        if (gameOn(api) || freeCount(card) > Number(fx.data.free) || progressOf(api, card).toGo < 2) return;
+        const squares = starSquares(api, card);
+        if (!squares.length) return;
+        const i = api.rng.pick(squares);
+        free(card, i);
+        refresh(api, fx.caster);
+        api.feed(`Glimgo Star Stowaway: you slipped in with the lucky stars. Your square at ${where(api, i)} is now free.`, 'good', [fx.caster]);
+      },
+    },
+    overlay: () => ({ kind: 'badge', text: 'Star stowaway: waiting for the lucky stars', tone: 'good' }),
+  },
 ];
+
+/** Race to Two: close the open call once two players have found it. */
+function raceToTwo(api: ChaosApi) {
+  const call = openCall(api);
+  if (!call || call.found < 2 || gameOn(api)) return;
+  closeCall(api);
+  api.feed('Glimgo Race to Two: two players found it, so the call is closed.', 'info');
+}
+
+/** Caller's Whisper: what the caster's screen says about the call it is following. */
+function whisper(api: ChaosApi, id: string, data: Record<string, unknown>) {
+  const call = openCall(api);
+  const card = cardOf(api, id);
+  if (!call || call.n !== data.n || !card) {
+    delete data.text;
+    return;
+  }
+  const j = card.cells.findIndex((a) => sameAnswer(api, a, call.answer));
+  data.text = j < 0 ? 'Caller\'s whisper: this one is not on your card' : isMarked(card, j) ? 'Caller\'s whisper: you have marked this one' : `Caller's whisper: ${where(api, j)}`;
+}
 
 /** Give the open call its new length once (Caller's Tempo). */
 function retime(api: ChaosApi, data: Record<string, unknown>) {

@@ -1,6 +1,6 @@
 import { defineCheats } from '../registry.ts';
 import type { ActiveEffect, CastInput, ChaosApi, CheatDef } from '../types.ts';
-import { odds, rollOdds, target } from '../cheats/kit.ts';
+import { odds, rollOdds, share, target } from '../cheats/kit.ts';
 import { HEAVE_EVERY, leanOf, SURGE_MS, sideOfTeamIndex, UNDERDOG_GRIP, type Side } from '../../modes/tug-of-war/index.ts';
 
 /*
@@ -14,13 +14,17 @@ import { HEAVE_EVERY, leanOf, SURGE_MS, sideOfTeamIndex, UNDERDOG_GRIP, type Sid
  * transactions (one action, so one player's pull or slip). Cheats aimed at a
  * single puller find out who moved it by watching each puller's distance and
  * slips, which only the mode changes.
+ *
+ * Every cheat that moves the knot itself goes through moveKnot or nudge (or
+ * checks guardAgainst first), so a Knot Guard can stop it: instant cheats are
+ * refused, and lasting ones simply make no move that way while it is up.
  */
 
 const MODE = 'tug-of-war';
 const EPS = 1e-6;
 
 interface Puller {
-  stream: { streak: number; correct: number; answered: number; last: { text?: string } | null };
+  stream: { streak: number; correct: number; answered: number; last: { text?: string; iid?: string } | null };
   side: Side;
   pulls: number;
   slips: number;
@@ -40,9 +44,33 @@ const ropeLength = (api: ChaosApi) => Number(api.ctx.settings.ropeLength);
 const towards = (api: ChaosApi, side: Side) => dirOf(side) * knot(api);
 const setting = (api: ChaosApi, key: string) => Boolean(api.ctx.settings[key]);
 
-/** Move the knot towards a side's end (negative: away from it). Returns how far it actually moved towards that end. */
+const GUARD = 'tug-of-war.knot-guard';
+
+/**
+ * The side whose Knot Guard stops a cheat moving the knot by `delta` (in knot
+ * positions: negative is towards the left end), or null. A guard stops cheats
+ * dragging the knot towards the other side's end; answers, and cheats that bend
+ * how far answers pull, are not cheats moving the knot themselves.
+ */
+function guardAgainst(api: ChaosApi, delta: number): Side | null {
+  if (Math.abs(delta) < EPS) return null;
+  const fx = api.effects().find((e) => e.cheatId === GUARD && dirOf(e.data.side as Side) * delta < 0);
+  return fx ? (fx.data.side as Side) : null;
+}
+
+function guardError(api: ChaosApi, side: Side): { error: string } {
+  const name = sideName(api, side);
+  return { error: `${name[0]!.toUpperCase()}${name.slice(1)} have a knot guard up: cheats cannot drag the knot towards the other end right now.` };
+}
+
+/** A cheat nudges the knot by `delta` knot positions, unless a knot guard stops it. Returns the change made. */
+function nudge(api: ChaosApi, delta: number): number {
+  return guardAgainst(api, delta) ? 0 : api.add('rope', 'game', delta);
+}
+
+/** Move the knot towards a side's end (negative: away from it), unless a knot guard stops it. Returns how far it actually moved towards that end. */
 function moveKnot(api: ChaosApi, side: Side, by: number): number {
-  return round6(dirOf(side) * api.add('rope', 'game', dirOf(side) * by));
+  return round6(dirOf(side) * nudge(api, dirOf(side) * by));
 }
 
 /** "the Comets", or "the left side" without teams. */
@@ -141,6 +169,8 @@ const instant: CheatDef[] = [
     apply: (api, c) => {
       const side = casterSide(api, c);
       if (isErr(side)) return side;
+      const guard = guardAgainst(api, dirOf(side));
+      if (guard) return guardError(api, guard);
       const moved = moveKnot(api, side, Number(c.params.spaces));
       if (moved <= 0) return { error: 'The knot is already as close to your line as chaos can drag it.' };
       api.feed(`${api.name(c.caster)} yanked the knot ${spaces(moved)} towards ${sideName(api, side)}.`, 'info');
@@ -161,6 +191,8 @@ const instant: CheatDef[] = [
       const side = casterSide(api, c);
       if (isErr(side)) return side;
       if (towards(api, side) >= -EPS) return { error: 'The knot is not leaning towards the other side.' };
+      const guard = guardAgainst(api, -knot(api));
+      if (guard) return guardError(api, guard);
       api.set('rope', 'game', 0);
       api.feed('The knot snapped back to the middle of the rope.', 'big');
     },
@@ -181,6 +213,8 @@ const instant: CheatDef[] = [
       if (isErr(side)) return side;
       const lean = towards(api, side);
       if (lean >= -EPS) return { error: 'The knot is not leaning towards the other side.' };
+      const guard = guardAgainst(api, -2 * knot(api));
+      if (guard) return guardError(api, guard);
       api.set('rope', 'game', -knot(api));
       api.feed(`The rope flipped end for end: the knot is now ${spaces(-lean)} towards ${sideName(api, side)}.`, 'big');
     },
@@ -201,6 +235,9 @@ const instant: CheatDef[] = [
       const lean = towards(api, side);
       const L = ropeLength(api);
       if (lean >= L - 1 - EPS || lean <= 1 - L + EPS) return { error: 'The knot is against a stop already. Pull it back into play first.' };
+      // A gamble can go either way, so a knot guard on either side rules it out.
+      const guard = guardAgainst(api, 1) ?? guardAgainst(api, -1);
+      if (guard) return guardError(api, guard);
       const by = rollOdds(api, [[3, 40], [1, 35], [-2, 25]]);
       const moved = moveKnot(api, side, by);
       api.feed(
@@ -708,6 +745,8 @@ const lasting: CheatDef[] = [
       const side = casterSide(api, c);
       if (isErr(side)) return side;
       if (towards(api, side) >= ropeLength(api) - 1 - EPS) return { error: 'The knot is already as close to your line as chaos can drag it.' };
+      const guard = guardAgainst(api, dirOf(side));
+      if (guard) return guardError(api, guard);
       return keepSide(fx, side);
     },
     hooks: { tick: (api, fx) => void moveKnot(api, fxSide(fx), 0.5) },
@@ -725,7 +764,7 @@ const lasting: CheatDef[] = [
     cooldownMs: 40_000,
     durationMs: 12_000,
     tickMs: 2_000,
-    hooks: { tick: (api) => void api.add('rope', 'game', api.rng.chance(0.5) ? -0.5 : 0.5) },
+    hooks: { tick: (api) => void nudge(api, api.rng.chance(0.5) ? -0.5 : 0.5) },
     overlay: () => ({ kind: 'badge', text: 'The knot is wobbling', tone: 'info' }),
   },
   {
@@ -744,4 +783,278 @@ const lasting: CheatDef[] = [
   },
 ];
 
-defineCheats([...instant, ...lasting]);
+/** Correct answers a puller has given (only the mode changes this, unlike pulls in the ranking). */
+const rightAnswers = (api: ChaosApi, id: string) => pullers(api)[id]?.stream.correct ?? 0;
+
+/** How long ago the question a puller just answered appeared on their screen, or null. */
+function answeredInMs(api: ChaosApi, id: string): number | null {
+  const iid = pullers(api)[id]?.stream.last?.iid;
+  if (!iid) return null;
+  try {
+    return api.now() - api.ctx.questions.instance(iid).shownAt;
+  } catch {
+    return null;
+  }
+}
+
+function addNote(api: ChaosApi, id: string, text: string) {
+  const last = pullers(api)[id]?.stream.last;
+  if (last) last.text = `${last.text ?? 'Pulled'} · ${text}`;
+}
+
+/** Snap Pull: answers this quick pull twice as far. */
+export const SNAP_MS = 4_000;
+
+const more: CheatDef[] = [
+  {
+    id: 'tug-of-war.rhythm-thief',
+    name: 'Rope Rhythm Thief',
+    category: 'troll',
+    description: 'Steal an opponent\'s streak towards their next heave: theirs drops to zero and yours grows by as much (a streak is never longer than your own correct answers, so you may keep only part of it). Needs Heave on.',
+    target: 'opponent',
+    modes: [MODE],
+    needs: ['rope', 'heave', 'meter:streak'],
+    cost: 20,
+    cooldownMs: 30_000,
+    apply: (api, c) => {
+      const t = target(c);
+      const theirs = api.get('streak', t);
+      if (theirs === 0) return { error: `${api.name(t)} has no streak to take.` };
+      const room = rightAnswers(api, c.caster) - api.get('streak', c.caster);
+      if (room <= 0) return { error: 'Your streak is already as long as your correct answers, so you could not keep any of theirs.' };
+      api.set('streak', t, 0);
+      const kept = api.add('streak', c.caster, theirs);
+      api.feed(`${api.name(c.caster)} stole ${api.name(t)}'s streak of ${theirs}${kept < theirs ? ` and kept ${kept} of it` : ''}.`, 'bad');
+    },
+  },
+  {
+    id: 'tug-of-war.selfless-heave',
+    name: 'Selfless Heave',
+    category: 'economy',
+    description: 'Give up a quarter of your pulls in the ranking (at least 1) to heave the knot up to 2 spaces towards your side\'s end. It always stops at least one space short of the line.',
+    target: 'self',
+    modes: [MODE],
+    needs: ['rope', 'meter:score'],
+    cost: 15,
+    cooldownMs: 30_000,
+    apply: (api, c) => {
+      const side = casterSide(api, c);
+      if (isErr(side)) return side;
+      const pulls = api.score(c.caster);
+      if (pulls <= 0) return { error: 'You have no pulls to give up yet.' };
+      const guard = guardAgainst(api, dirOf(side));
+      if (guard) return guardError(api, guard);
+      const moved = moveKnot(api, side, 2);
+      if (moved <= 0) return { error: 'The knot is already as close to your line as chaos can drag it.' };
+      const paid = -api.addScore(c.caster, -share(pulls, 25));
+      api.feed(`${api.name(c.caster)} gave up ${paid} ${paid === 1 ? 'pull' : 'pulls'} from the ranking to heave the knot ${spaces(moved)} towards ${sideName(api, side)}.`, 'good');
+    },
+  },
+  {
+    id: 'tug-of-war.tiebreaker',
+    name: 'Knot Tiebreaker',
+    category: 'round',
+    description: 'Only while the knot is within 1 space of the middle: it moves 2 spaces towards the side that has made more pulls this game, whichever side that is. Refused when both sides have made the same number.',
+    target: 'room',
+    modes: [MODE],
+    needs: ROPE,
+    cost: 30,
+    cooldownMs: 60_000,
+    apply: (api) => {
+      if (Math.abs(knot(api)) > 1 + EPS) return { error: 'The knot is more than a space from the middle: there is no tie to break.' };
+      const counts = api.s.pullCounts as Record<Side, number>;
+      if (counts.left === counts.right) return { error: 'Both sides have made the same number of pulls.' };
+      const side: Side = counts.left > counts.right ? 'left' : 'right';
+      const guard = guardAgainst(api, dirOf(side));
+      if (guard) return guardError(api, guard);
+      const moved = moveKnot(api, side, 2);
+      if (moved <= 0) return { error: 'The knot cannot move that way any further.' };
+      api.feed(`Knot Tiebreaker: ${sideName(api, side)} have made more pulls (${counts[side]} to ${counts[otherSide(side)]}), so the knot moved ${spaces(moved)} their way.`, 'big');
+    },
+  },
+  {
+    id: 'tug-of-war.snap-pull',
+    name: 'Tug Snap Pull',
+    category: 'advantage',
+    description: `For 20 seconds, every correct answer you give within ${SNAP_MS / 1000} seconds of its question appearing pulls the knot twice as far.`,
+    target: 'self',
+    modes: [MODE],
+    needs: ROPE,
+    cost: 25,
+    cooldownMs: 45_000,
+    durationMs: 20_000,
+    priority: 20,
+    apply: (api, _c, fx) => watchPullers(api, fx),
+    hooks: {
+      delta: {
+        rope: (api, fx, d) => {
+          const a = ropeActor(api, fx);
+          if (a?.kind !== 'pull' || a.id !== fx.caster) return;
+          const ms = answeredInMs(api, a.id);
+          if (ms === null || ms > SNAP_MS) return;
+          d.game = round6(d.game! * 2);
+          addNote(api, a.id, 'snap pull: twice as far');
+        },
+      },
+    },
+    overlay: () => ({ kind: 'badge', text: `Snap pull: answers within ${SNAP_MS / 1000}s pull ×2`, tone: 'good' }),
+  },
+  {
+    id: 'tug-of-war.pulling-contest',
+    name: 'Tug Pulling Contest',
+    category: 'round',
+    description: 'Challenge an opponent: whoever of you two gives more correct answers in the next 15 seconds wins, and the knot then moves 2 spaces towards the winner\'s end. A tie moves nothing.',
+    target: 'opponent',
+    hostile: false,
+    modes: [MODE],
+    needs: ROPE,
+    cost: 25,
+    cooldownMs: 45_000,
+    durationMs: 15_000,
+    apply: (api, c, fx) => {
+      const mine = casterSide(api, c);
+      if (isErr(mine)) return mine;
+      const t = target(c);
+      const theirs = sideOf(api, t);
+      if (!theirs) return { error: `${api.name(t)} is not on the rope.` };
+      if (theirs === mine) return { error: `${api.name(t)} pulls on your side of the rope. Pick someone on the other side.` };
+      if (fx) fx.data.start = { [c.caster]: rightAnswers(api, c.caster), [t]: rightAnswers(api, t) };
+    },
+    hooks: {
+      end: (api, fx, reason) => {
+        if (reason !== 'expired' || api.s.winner) return;
+        const t = target(fx);
+        const start = fx.data.start as Record<string, number>;
+        const mine = rightAnswers(api, fx.caster) - (start[fx.caster] ?? 0);
+        const theirs = rightAnswers(api, t) - (start[t] ?? 0);
+        if (mine === theirs) {
+          api.feed(`The pulling contest between ${api.name(fx.caster)} and ${api.name(t)} was a tie (${mine} each). The knot stays put.`, 'info');
+          return;
+        }
+        const [winner, loser] = mine > theirs ? [fx.caster, t] : [t, fx.caster];
+        const side = sideOf(api, winner);
+        if (!side) return;
+        const score = `${Math.max(mine, theirs)} to ${Math.min(mine, theirs)}`;
+        const guarded = guardAgainst(api, dirOf(side));
+        const moved = moveKnot(api, side, 2);
+        const won = `${api.name(winner)} beat ${api.name(loser)} in the pulling contest (${score})`;
+        api.feed(
+          moved > 0
+            ? `${won}: the knot moved ${spaces(moved)} towards ${sideName(api, side)}.`
+            : guarded
+              ? `${won}, but ${sideName(api, guarded)} have a knot guard up, so the knot stayed put.`
+              : `${won}, but the knot could not move any further that way.`,
+          'big',
+        );
+      },
+    },
+    overlayFor: 'all',
+    overlay: (fx) => ({ kind: 'countdown', label: 'Pulling contest: most correct answers wins', until: fx.endsAt }),
+  },
+  {
+    id: 'tug-of-war.drumbeat',
+    name: 'Tug Drumbeat',
+    category: 'round',
+    description: 'A drum beats four times, 5 seconds apart. At each beat the knot moves 1 space towards the side that made more pulls since the last beat (or since the cast); it stays put when both made the same number.',
+    target: 'room',
+    modes: [MODE],
+    needs: ROPE,
+    cost: 30,
+    cooldownMs: 60_000,
+    durationMs: 21_000,
+    tickMs: 5_000,
+    apply: (api, _c, fx) => {
+      if (fx) fx.data.counts = { ...(api.s.pullCounts as Record<Side, number>) };
+    },
+    hooks: {
+      tick: (api, fx) => {
+        if (api.s.winner) return;
+        const now = api.s.pullCounts as Record<Side, number>;
+        const was = fx.data.counts as Record<Side, number>;
+        const left = now.left - was.left;
+        const right = now.right - was.right;
+        fx.data.counts = { ...now };
+        if (left === right) return;
+        const side: Side = left > right ? 'left' : 'right';
+        const moved = moveKnot(api, side, 1);
+        if (moved > 0) api.feed(`Drumbeat! ${sideName(api, side)} pulled more (${Math.max(left, right)} to ${Math.min(left, right)}), so the knot moved ${spaces(moved)} their way.`, 'info');
+      },
+    },
+    overlay: () => ({ kind: 'banner', text: 'Drumbeat: out-pull the other side before each beat!', tone: 'info' }),
+  },
+  {
+    id: 'tug-of-war.borrowed-heave',
+    name: 'Borrowed Heave',
+    category: 'round',
+    description: `For 20 seconds the Heave rule is on in a game without it: every ${HEAVE_EVERY === 3 ? 'third' : `${HEAVE_EVERY}th`} correct answer in a row, by anyone, pulls the knot twice as far. Not in a game where Heave is already on.`,
+    target: 'room',
+    modes: [MODE],
+    needs: ROPE,
+    cost: 25,
+    cooldownMs: 50_000,
+    durationMs: 20_000,
+    priority: 20,
+    apply: (api, _c, fx) => {
+      if (setting(api, 'heave')) return { error: 'Heave is already on in this game.' };
+      watchPullers(api, fx);
+    },
+    hooks: {
+      delta: {
+        rope: (api, fx, d) => {
+          const a = ropeActor(api, fx);
+          if (a?.kind !== 'pull') return;
+          const streak = pullers(api)[a.id]?.stream.streak ?? 0;
+          if (streak === 0 || streak % HEAVE_EVERY !== 0) return;
+          d.game = round6(d.game! * 2);
+          addNote(api, a.id, 'borrowed heave: twice as far');
+        },
+      },
+    },
+    overlay: () => ({ kind: 'banner', text: 'Borrowed heave: three in a row pulls ×2', tone: 'info' }),
+  },
+  {
+    id: 'tug-of-war.domino-slip',
+    name: 'Rope Domino Slip',
+    category: 'troll',
+    description: 'For 20 seconds, every wrong answer from the other side breaks the streak of everyone on that side, not just the player who missed, so their heaves have to be built again. Needs Heave on.',
+    target: 'enemy-team',
+    modes: [MODE],
+    needs: ['rope', 'teams', 'heave', 'meter:wrongAnswers', 'meter:streak'],
+    cost: 25,
+    cooldownMs: 45_000,
+    durationMs: 20_000,
+    apply: (api, c, fx) => keepSide(fx, enemySide(api, c)),
+    hooks: {
+      delta: {
+        wrongAnswers: (api, fx, d) => {
+          if (api.s.winner) return;
+          const side = fxSide(fx);
+          for (const [id, n] of Object.entries(d)) {
+            if (n <= 0 || sideOf(api, id) !== side) continue;
+            const broken = api.ids().filter((x) => x !== id && sideOf(api, x) === side && api.get('streak', x) > 0);
+            for (const x of broken) api.set('streak', x, 0);
+            if (broken.length) api.feed(`Domino slip: ${api.name(id)}'s wrong answer broke the streak of ${broken.map((x) => api.name(x)).join(', ')}.`, 'bad', [id, ...broken]);
+          }
+        },
+      },
+    },
+    overlay: () => ({ kind: 'badge', text: 'Domino slip: one miss breaks every streak on your side', tone: 'bad' }),
+  },
+  {
+    id: GUARD,
+    name: 'Knot Guard',
+    category: 'advantage',
+    description:
+      'For 20 seconds, no cheat can drag the knot towards the other side\'s end: yanks, resets, flips, gambles, currents, wobbles, wagers, drumbeats and the like are refused, or their moves that way do not happen. Answers, and cheats that change how far answers pull, still move it as usual.',
+    target: 'my-team',
+    modes: [MODE],
+    needs: TEAM_ROPE,
+    cost: 30,
+    cooldownMs: 60_000,
+    durationMs: 20_000,
+    apply: (api, c, fx) => keepSide(fx, casterSide(api, c)),
+    overlay: () => ({ kind: 'badge', text: 'Knot guard: cheats cannot drag the knot back', tone: 'good' }),
+  },
+];
+
+defineCheats([...instant, ...lasting, ...more]);

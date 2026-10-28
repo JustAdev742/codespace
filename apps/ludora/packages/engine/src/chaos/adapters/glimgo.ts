@@ -16,5 +16,5 @@ export const glimgoAdapter: ChaosAdapter = {
       max: (s, id) => s.progress?.[id]?.marks ?? 0,
     },
   ],
-  features: (settings) => (Number(settings.lockoutSeconds ?? 5) > 0 ? ['lockout'] : []),
+  features: (settings) => [...(Number(settings.lockoutSeconds ?? 5) > 0 ? ['lockout'] : []), ...(settings.luckyStars ? ['lucky-stars'] : [])],
 };

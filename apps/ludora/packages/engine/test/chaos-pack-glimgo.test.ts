@@ -331,10 +331,294 @@ describe('glimgo pack: the caller', () => {
   });
 });
 
+/** Players ordered by how far they are from Glimgo (closest first). */
+const byToGo = (sim: ChaosSim) => sim.ids.slice().sort((a, b) => progress(sim, a).toGo - progress(sim, b).toGo || progress(sim, b).marks - progress(sim, a).marks);
+const frees = (c: Card) => c.cells.filter((x) => x === -1).length;
+const keyOf = (sim: ChaosSim, a: number) => sim.state().answers[a].key as string;
+
+describe('glimgo pack: more card cheats', () => {
+  it('Star Thief turns a rival\'s free square back into an answer they lack and frees one of yours', () => {
+    const sim = openCallSim();
+    const [victim, thief] = byMarks(sim);
+    refused(sim.cast(thief!, { cheatId: 'glimgo.star-thief', target: victim }), /no free square/);
+    ok(sim.cast(victim!, { cheatId: 'glimgo.lucky-star' }));
+    const theirs = card(sim, victim!);
+    const mine = card(sim, thief!);
+    const toGo = progress(sim, victim!).toGo;
+    ok(sim.cast(thief!, { cheatId: 'glimgo.star-thief', target: victim }));
+    const after = card(sim, victim!);
+    const back = after.cells.findIndex((x, i) => theirs.cells[i] === -1 && x !== -1);
+    expect(back).toBeGreaterThanOrEqual(0);
+    expect(after.marks[back]).toBe(0);
+    // The answer put back was not on their card, so the card still has every answer at most once.
+    expect(theirs.cells.some((x) => x >= 0 && keyOf(sim, x) === keyOf(sim, after.cells[back]!))).toBe(false);
+    expect(frees(after)).toBe(frees(theirs) - 1);
+    expect(progress(sim, victim!).toGo).toBeGreaterThanOrEqual(toGo);
+    expect(frees(card(sim, thief!))).toBe(frees(mine) + 1);
+    expect(progress(sim, thief!).toGo).toBeGreaterThanOrEqual(1);
+    consistent(sim);
+  });
+
+  it('Pass the Cards moves every card, with its progress, find and last tap, one seat along', () => {
+    const sim = openCallSim();
+    const s0 = sim.state();
+    const before = sim.ids.map((id) => ({ card: card(sim, id), progress: progress(sim, id), found: Boolean(s0.found[id]), last: s0.lastMark[id] ?? null }));
+    ok(sim.cast('p1', { cheatId: 'glimgo.pass-the-cards' }));
+    const s = sim.state();
+    sim.ids.forEach((id, k) => {
+      const from = before[(k + 1) % sim.ids.length]!;
+      expect(card(sim, id)).toEqual(from.card);
+      expect(progress(sim, id)).toEqual(from.progress);
+      expect(Boolean(s.found[id])).toBe(from.found);
+      expect(s.lastMark[id] ?? null).toEqual(from.last);
+    });
+    consistent(sim);
+  });
+
+  it('Pass the Cards leaves a laminated card where it is, unless its owner casts it', () => {
+    const sim = openCallSim();
+    ok(sim.cast('p2', { cheatId: 'glimgo.laminate' }));
+    const before = Object.fromEntries(sim.ids.map((id) => [id, card(sim, id)]));
+    ok(sim.cast('p1', { cheatId: 'glimgo.pass-the-cards' }));
+    expect(card(sim, 'p2')).toEqual(before.p2);
+    // p1 takes p3's card, p3 takes p4's, and p4 takes p1's: p2 is skipped.
+    expect(card(sim, 'p1')).toEqual(before.p3);
+    expect(card(sim, 'p3')).toEqual(before.p4);
+    expect(card(sim, 'p4')).toEqual(before.p1);
+  });
+
+  it('Laminated Card refuses rivals\' card cheats for 40 seconds, but not your own', () => {
+    const sim = openCallSim();
+    sim.run(20_000);
+    const me = byMarks(sim)[0]!;
+    const rival = sim.ids.find((id) => id !== me)!;
+    ok(sim.cast(me, { cheatId: 'glimgo.laminate' }));
+    const mine = card(sim, me);
+    for (const cheatId of ['glimgo.ink-blot', 'glimgo.mark-snatch', 'glimgo.scramble', 'glimgo.turntable', 'glimgo.smudge', 'glimgo.star-thief']) {
+      refused(sim.cast(rival, { cheatId, target: me }), /laminated/);
+    }
+    expect(card(sim, me)).toEqual(mine);
+    // A rival who is ahead can still be swapped with by the laminated player's own Switcheroo.
+    const r = sim.cast(me, { cheatId: 'glimgo.gamble' });
+    if (!r.ok) expect(r.message).not.toMatch(/laminated/);
+    sim.run(41_000);
+    if (sim.rt.status !== 'running') return;
+    const blot = sim.cast(rival, { cheatId: 'glimgo.ink-blot', target: me });
+    if (!blot.ok) expect(blot.message).not.toMatch(/laminated/);
+  });
+
+  it('Trade-In rubs out two marks and frees one square, ending closer to Glimgo but never at it', () => {
+    const sim = make();
+    // Early on nobody has two marks to spare; play on until someone can trade.
+    let me: string | null = null;
+    let before: Card | null = null;
+    let toGo = 0;
+    for (let t = 0; t < 200_000 && !me && sim.rt.status === 'running'; t += 5000) {
+      sim.run(5000);
+      for (const id of sim.ids) {
+        const c = card(sim, id);
+        const g = progress(sim, id).toGo;
+        const r = sim.cast(id, { cheatId: 'glimgo.trade-in' });
+        if (r.ok) {
+          [me, before, toGo] = [id, c, g];
+          break;
+        }
+        expect(r.message).toMatch(/No trade-in/);
+      }
+    }
+    expect(me).not.toBeNull();
+    const after = card(sim, me!);
+    const rubbed = before!.marks.filter((m, i) => m > 0 && after.marks[i] === 0 && after.cells[i] !== -1).length;
+    expect(rubbed).toBe(2);
+    expect(frees(after)).toBe(frees(before!) + 1);
+    expect(progress(sim, me!).toGo).toBeLessThan(toGo);
+    expect(progress(sim, me!).toGo).toBeGreaterThanOrEqual(1);
+    expect(progress(sim, me!).marks).toBe(cardProgress(before!, sim.state().size, 'line').marks - 2);
+    consistent(sim);
+    const full = openCallSim({ win: 'full' });
+    refused(full.cast('p1', { cheatId: 'glimgo.trade-in' }), /whole-card game/);
+  });
+
+  it('Card Turntable turns a card a quarter turn: the same squares and marks, the same progress', () => {
+    const sim = openCallSim();
+    const victim = byMarks(sim)[0]!;
+    const before = card(sim, victim);
+    const p = progress(sim, victim);
+    const last = sim.state().lastMark[victim];
+    ok(sim.cast('p1' === victim ? 'p2' : 'p1', { cheatId: 'glimgo.turntable', target: victim }));
+    const n = sim.state().size;
+    const after = card(sim, victim);
+    // The top-left square now holds what was bottom-left.
+    expect(after.cells[0]).toBe(before.cells[(n - 1) * n]);
+    expect(after.marks[0]).toBe(before.marks[(n - 1) * n]);
+    expect(after.cells.slice().sort()).toEqual(before.cells.slice().sort());
+    expect(progress(sim, victim)).toEqual(p);
+    if (last) expect(after.cells[sim.state().lastMark[victim].square]).toBe(before.cells[last.square]);
+    consistent(sim);
+  });
+});
+
+describe('glimgo pack: more marks and lockouts', () => {
+  it('Pass the Ink frees you at once and locks the target out for the time you had left', () => {
+    const sim = openCallSim();
+    sim.idle.add('p1');
+    // Wait out any lockout p1's bot earned before going idle.
+    for (let i = 0; i < 80 && (sim.state().lockedUntil.p1 ?? 0) > sim.now; i++) sim.run(250);
+    refused(sim.cast('p1', { cheatId: 'glimgo.pass-the-ink', target: 'p2' }), /not locked out/);
+    tap(sim, 'p1', 'wrong');
+    expect(sim.state().lastMark.p1.ok).toBe(false);
+    const left = sim.state().lockedUntil.p1 - sim.now;
+    expect(left).toBeGreaterThan(0);
+    ok(sim.cast('p1', { cheatId: 'glimgo.pass-the-ink', target: 'p2' }));
+    expect(sim.state().lockedUntil.p1).toBeLessThanOrEqual(sim.now);
+    expect(sim.state().lockedUntil.p2).toBeGreaterThanOrEqual(sim.now + left);
+  });
+
+  it('Smudge rubs out a mark on each wrong square the target taps, and only then', () => {
+    const sim = openCallSim();
+    sim.run(20_000);
+    const victim = byMarks(sim)[0]!;
+    sim.idle.add(victim);
+    const caster = sim.ids.find((id) => id !== victim)!;
+    ok(sim.cast(caster, { cheatId: 'glimgo.smudge', target: victim }));
+    const marks = progress(sim, victim).marks;
+    sim.run(1000);
+    expect(progress(sim, victim).marks).toBe(marks);
+    tap(sim, victim, 'wrong');
+    if (sim.state().lastMark[victim]?.ok !== false) return;
+    sim.run(300);
+    expect(progress(sim, victim).marks).toBe(marks - 1);
+    consistent(sim);
+    sim.run(1000);
+    expect(progress(sim, victim).marks).toBe(marks - 1);
+  });
+
+  it('Late Dab marks the revealed answer for a player who missed it, with that call\'s number', () => {
+    const sim = openCallSim();
+    refused(sim.cast('p1', { cheatId: 'glimgo.late-dab' }), /being revealed/);
+    for (let i = 0; i < 80 && sim.state().phase !== 'reveal'; i++) sim.run(250);
+    const call = sim.state().calls.at(-1);
+    const found = call.found;
+    const missed = sim.ids.find((id) => {
+      const c = card(sim, id);
+      return c.cells.some((a, i) => a >= 0 && keyOf(sim, a) === keyOf(sim, call.answer) && !isMarked(c, i));
+    });
+    if (!missed) return;
+    const before = card(sim, missed);
+    const r = sim.cast(missed, { cheatId: 'glimgo.late-dab' });
+    if (!r.ok) {
+      expect(r.message).toMatch(/complete your card/);
+      return;
+    }
+    const j = before.cells.findIndex((a) => a >= 0 && keyOf(sim, a) === keyOf(sim, call.answer));
+    expect(card(sim, missed).marks[j]).toBe(call.n);
+    expect(sim.state().calls.at(-1).found).toBe(found + 1);
+    consistent(sim);
+    // Anyone who has that answer marked already has nothing to dab.
+    const marked = sim.ids.find((id) => id !== missed && card(sim, id).cells.some((a, i) => a >= 0 && keyOf(sim, a) === keyOf(sim, call.answer) && isMarked(card(sim, id), i)));
+    if (marked) refused(sim.cast(marked, { cheatId: 'glimgo.late-dab' }), /not an unmarked square/);
+  });
+
+  it('Butterfingers does not punish the same wrong tap again after a cheat moves the card', () => {
+    const sim = openCallSim();
+    sim.idle.add('p2');
+    ok(sim.cast('p1', { cheatId: 'glimgo.butterfingers', target: 'p2' }));
+    tap(sim, 'p2', 'wrong');
+    if (sim.state().lastMark.p2?.ok !== false) return;
+    sim.run(300);
+    const locked = sim.state().lockedUntil.p2;
+    ok(sim.cast('p3', { cheatId: 'glimgo.turntable', target: 'p2' }));
+    sim.run(1000);
+    expect(sim.state().lockedUntil.p2).toBe(locked);
+  });
+});
+
+describe('glimgo pack: more of the caller', () => {
+  it('Race to Two refuses a third finder and closes the call once two have found it', () => {
+    const sim = openCallSim();
+    for (const id of sim.ids) sim.idle.add(id);
+    ok(sim.cast('p1', { cheatId: 'glimgo.race-to-two' }));
+    const n = sim.state().calls.at(-1).n;
+    tap(sim, 'p1', 'right');
+    tap(sim, 'p2', 'right');
+    const c = sim.state().calls.at(-1);
+    if (c.n !== n || c.found < 2) return;
+    const sq = card(sim, 'p3').cells.findIndex((a, i) => a >= 0 && keyOf(sim, a) === keyOf(sim, c.answer) && !isMarked(card(sim, 'p3'), i));
+    if (sq >= 0 && !c.closed) refused(sim.rt.act('p3', { type: 'mark', iid: c.iid, square: sq }), /Two players/);
+    sim.run(300);
+    expect(sim.state().calls[n - 1].closed).toBe(true);
+    expect(sim.state().calls[n - 1].found).toBe(2);
+    refused(openCallSim({ finders: 2 }).cast('p1', { cheatId: 'glimgo.race-to-two' }), /already close after two/);
+  });
+
+  it('Long Reveal keeps the answer up 8 seconds longer, and only during a reveal', () => {
+    const sim = openCallSim();
+    refused(sim.cast('p1', { cheatId: 'glimgo.long-reveal' }), /being revealed/);
+    for (let i = 0; i < 80 && sim.state().phase !== 'reveal'; i++) sim.run(250);
+    const ends = sim.state().phaseEndsAt;
+    ok(sim.cast('p1', { cheatId: 'glimgo.long-reveal' }));
+    expect(sim.state().phaseEndsAt).toBe(ends + 8000);
+    sim.run(ends - sim.now + 1000);
+    expect(sim.state().phase).toBe('reveal');
+    sim.run(8000);
+    expect(sim.state().phase).toBe('call');
+  });
+
+  it('Caller\'s Whisper names the square that answers the open call, and ends with the call', () => {
+    const sim = openCallSim();
+    sim.idle.add('p1');
+    const c = sim.state().calls.at(-1);
+    ok(sim.cast('p1', { cheatId: 'glimgo.whisper' }));
+    const j = card(sim, 'p1').cells.findIndex((a) => a >= 0 && keyOf(sim, a) === keyOf(sim, c.answer));
+    const n = sim.state().size;
+    const text = sim.view('p1').overlays.map((o) => String(o.text ?? '')).find((t) => t.startsWith('Caller'));
+    if (j < 0) expect(text).toMatch(/not on your card/);
+    else if (isMarked(card(sim, 'p1'), j)) expect(text).toMatch(/marked/);
+    else expect(text).toBe(`Caller's whisper: row ${Math.floor(j / n) + 1}, square ${(j % n) + 1}`);
+    // Nobody else sees it.
+    expect(sim.view('p2').overlays.some((o) => String(o.text ?? '').startsWith('Caller'))).toBe(false);
+    for (let i = 0; i < 160 && !sim.state().calls[c.n - 1].closed; i++) sim.run(250);
+    sim.run(300);
+    expect(sim.chaos().effects.some((e) => e.cheatId === 'glimgo.whisper')).toBe(false);
+  });
+
+  it('Star Stowaway gives a lucky star to someone who is not furthest behind, and needs Lucky Stars', () => {
+    refused(openCallSim().cast('p1', { cheatId: 'glimgo.star-stowaway' }), /does not work here/);
+    const sim = openCallSim({ luckyStars: true });
+    const me = byToGo(sim)[0]!;
+    const toGo = progress(sim, me).toGo;
+    if (toGo < 3) return;
+    ok(sim.cast(me, { cheatId: 'glimgo.star-stowaway' }));
+    const due = Number(sim.chaos().effects.find((e) => e.cheatId === 'glimgo.star-stowaway')!.data.n);
+    expect(due % 5).toBe(0);
+    const before = frees(card(sim, me));
+    for (let i = 0; i < 480 && sim.rt.status === 'running' && !sim.state().calls[due - 1]?.closed; i++) sim.run(250);
+    sim.run(300);
+    if (sim.rt.status !== 'running' || sim.state().winner) return;
+    expect(sim.chaos().effects.some((e) => e.cheatId === 'glimgo.star-stowaway')).toBe(false);
+    expect(frees(card(sim, me))).toBeGreaterThanOrEqual(before + 1);
+    consistent(sim);
+  });
+});
+
 describe('glimgo pack: invariants', () => {
   it('a storm of card cheats never breaks progress and never calls Glimgo', () => {
     const sim = make();
-    const cheats = ['glimgo.lucky-star', 'glimgo.ink-blot', 'glimgo.mark-snatch', 'glimgo.scramble', 'glimgo.sliding-tile', 'glimgo.gamble', 'glimgo.card-swap', 'glimgo.star-shower'];
+    const cheats = [
+      'glimgo.lucky-star',
+      'glimgo.ink-blot',
+      'glimgo.mark-snatch',
+      'glimgo.scramble',
+      'glimgo.sliding-tile',
+      'glimgo.gamble',
+      'glimgo.card-swap',
+      'glimgo.star-shower',
+      'glimgo.star-thief',
+      'glimgo.pass-the-cards',
+      'glimgo.trade-in',
+      'glimgo.turntable',
+      'glimgo.late-dab',
+    ];
     for (let round = 0; round < 40 && sim.rt.status === 'running'; round++) {
       sim.run(5000);
       for (const id of sim.ids) {

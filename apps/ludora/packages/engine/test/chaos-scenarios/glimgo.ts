@@ -50,8 +50,37 @@ const targetTriesPadlock: Post = (sim, _caster, _def, t) => {
   if (sq !== null) tap(sim, t, sq);
 };
 
+/** The caster taps a wrong square first, so they have a lockout to pass on. */
+const casterLockedOut: Pre = (sim, caster) => tap(sim, caster, 'wrong');
+
+/** Every other player casts a Wishing Star on themselves, so there are free squares to take. */
+const othersStarThemselves: Pre = (sim, caster) => {
+  for (const id of sim.ids) if (id !== caster && sim.rt.hasPlayer(id)) sim.cast(id, { cheatId: 'glimgo.lucky-star' });
+};
+
+/** The caster and then another player find the open call, so two finders have it. */
+const twoFind: Post = (sim, caster) => {
+  tap(sim, caster, 'right');
+  tap(sim, sim.ids.find((id) => id !== caster && sim.rt.hasPlayer(id)) ?? null, 'right');
+};
+
+/** Another player tries to blot out one of the caster's marks, which a laminated card refuses. */
+const blotCaster: Post = (sim, caster) => {
+  const attacker = sim.ids.find((id) => id !== caster && sim.rt.hasPlayer(id));
+  if (attacker) sim.cast(attacker, { cheatId: 'glimgo.ink-blot', target: caster });
+};
+
 export const scenarios: ScenarioSet = {
-  pre: { 'glimgo.encore': untilReveal, 'glimgo.rigged-draw': untilReveal },
+  // Star Stowaway joins the lucky stars, so it needs them on.
+  settings: { glimgo: [{ luckyStars: true }] },
+  pre: {
+    'glimgo.encore': untilReveal,
+    'glimgo.rigged-draw': untilReveal,
+    'glimgo.late-dab': untilReveal,
+    'glimgo.long-reveal': untilReveal,
+    'glimgo.pass-the-ink': casterLockedOut,
+    'glimgo.star-thief': othersStarThemselves,
+  },
   post: {
     'glimgo.butterfingers': targetTaps('wrong'),
     'glimgo.steady-hand': casterTaps('wrong'),
@@ -60,6 +89,13 @@ export const scenarios: ScenarioSet = {
     'glimgo.first-dibs': casterTaps('right'),
     'glimgo.copycat': targetTaps('right'),
     'glimgo.chain-reaction': casterTaps('right'),
+    'glimgo.smudge': targetTaps('wrong'),
+    'glimgo.laminate': blotCaster,
+    'glimgo.race-to-two': twoFind,
   },
-  reactive: ['glimgo.butterfingers', 'glimgo.steady-hand', 'glimgo.first-dibs', 'glimgo.copycat', 'glimgo.chain-reaction'],
+  // A laminate protects marks, a trade-in spends them, and a stowaway helps someone who is not furthest behind.
+  casters: { 'glimgo.laminate': 'richest', 'glimgo.trade-in': 'richest', 'glimgo.star-stowaway': 'richest' },
+  reactive: ['glimgo.butterfingers', 'glimgo.steady-hand', 'glimgo.first-dibs', 'glimgo.copycat', 'glimgo.chain-reaction', 'glimgo.smudge', 'glimgo.race-to-two', 'glimgo.star-stowaway'],
+  screen: ['glimgo.whisper'],
+  effects: ['glimgo.laminate'],
 };
