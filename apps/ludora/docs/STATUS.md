@@ -17,7 +17,7 @@ Last updated: 2026-10-28.
 | M4 Economy and progression | Done | Shop, Lanterns with disclosed odds, collections, locker, quests, achievements, levels, streaks. |
 | M5 Staff tools | Done | Staff API and all 14 staff sections in the web app. An end-to-end test opens every section as a super administrator at phone and desktop widths. |
 | M6 Content, social, classes, analytics | Done | Friends, blocks, profiles, my stats, leaderboards, classes, assignments and their reports, hosted games, game reports, the set editor with image uploads, and AI question drafts. |
-| Chaos (D47) | Done | The secret cheat menu: 805 cheats and 10 combos, each tested in a real game; the unlock sequence; the private menu. See [CHAOS.md](CHAOS.md). |
+| Chaos (D47) | Done | The secret cheat menu: 844 cheats and 10 combos, each tested in a real game; the unlock sequence; the private menu. See [CHAOS.md](CHAOS.md). |
 | M7-8 Polish, CI, deployment | In progress | Production build, Docker image, compose file, CI workflow, docs and end-to-end tests (run in CI) are in. The whole app is restyled for players aged 8 to 17 (D46), and automated accessibility checks pass on every page, game screen and staff section. A design review of the whole app was done and its findings fixed. A playable demo builds for GitHub Pages. A manual screen-reader pass remains. |
 
 ## What works today (verified)
@@ -138,8 +138,8 @@ Last updated: 2026-10-28.
   riddle, a ritual of reactions in a live game, and a lantern to hold. Every
   stage is checked on the server. Unlocked players cast cheats from a
   searchable menu that the server sends only to them.
-  - 805 cheats and 10 combos: 209 work in any mode and 596 belong to one of
-    24 modes (Gold Rush, Big Catch, Code Breakers and Corner Shop included). Seven categories: score, advantage, troll, round, economy,
+  - 844 cheats and 10 combos: 209 work in any mode and 635 belong to one of
+    25 modes (all five 3D modes included). Seven categories: score, advantage, troll, round, economy,
     visual and random. That is short of the 1,000 asked for; no cheat is a
     copy of another.
   - Each cheat was cast into one of two identical bot games, in every mode

@@ -118,36 +118,35 @@ knock, the riddle's answer and the ritual.
 
 ## The catalogue
 
-**805 cheats and 10 combos**, every one tested. That is short of the 1,000 the brief aimed for.
-The count is honest: nothing in it is an alias, a renamed copy or a button that does nothing. It
-grows as each 3D mode gets its pack (Gold Rush, Big Catch, Code Breakers and Corner Shop have
-theirs).
+**844 cheats and 10 combos**, every one tested. That is short of the 1,000 the brief aimed for.
+The count is honest: nothing in it is an alias, a renamed copy or a button that does nothing.
+All five 3D modes have their packs.
 
 | Category | Cheats |
 |---|---|
-| Score | 76 |
-| Advantage | 198 |
-| Troll | 229 |
-| Round | 88 |
-| Economy | 98 |
+| Score | 79 |
+| Advantage | 211 |
+| Troll | 237 |
+| Round | 95 |
+| Economy | 103 |
 | Visual | 61 |
-| Random | 55 |
+| Random | 58 |
 
 | Pack | Cheats | Pack | Cheats |
 |---|---|---|---|
 | Universal | 209 | Comet Dash | 30 |
-| Lantern Trail | 39 | Sky Lanterns | 30 |
-| Night Market | 39 | Glim Duels | 27 |
-| Big Catch | 38 | Gloom Giant | 26 |
-| Festival Workshop | 38 | Tug of War | 26 |
-| Corner Shop | 36 | Glimgo | 21 |
-| Lantern Guard | 35 | Time Attack | 20 |
-| Code Breakers | 34 | Survival Run | 17 |
-| Lantern Lands | 32 | Classic | 14 |
-| Gold Rush | 31 | Lantern Match | 14 |
-| Lantern Out | 14 | Word Scramble | 14 |
-| Confidence | 10 | Quick Draw | 6 |
-| Flashcard Study | 5 | | |
+| Glow Tag Royale | 39 | Sky Lanterns | 30 |
+| Lantern Trail | 39 | Glim Duels | 27 |
+| Night Market | 39 | Gloom Giant | 26 |
+| Big Catch | 38 | Tug of War | 26 |
+| Festival Workshop | 38 | Glimgo | 21 |
+| Corner Shop | 36 | Time Attack | 20 |
+| Lantern Guard | 35 | Survival Run | 17 |
+| Code Breakers | 34 | Classic | 14 |
+| Lantern Lands | 32 | Lantern Match | 14 |
+| Gold Rush | 31 | Lantern Out | 14 |
+| Word Scramble | 14 | Confidence | 10 |
+| Quick Draw | 6 | Flashcard Study | 5 |
 
 ### How every cheat is tested
 

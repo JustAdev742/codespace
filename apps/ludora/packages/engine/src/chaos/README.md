@@ -99,6 +99,8 @@ claims to support, casts the cheat in one, and fails unless they then differ (in
 for purely visual cheats, in what the targets are told to show). It also fails if the cast is
 refused in every situation it tries, or if any error is logged. Some cheats need a situation
 set up first (a shield needs an attacker); describe it in `test/chaos-scenarios/<pack>.ts`.
+That file may import only types from `test/chaos-scenarios.ts`: the folder is loaded from inside
+that file, so a value import back into it leaves the pack's scenarios out.
 
 Run it for one pack while working:
 
