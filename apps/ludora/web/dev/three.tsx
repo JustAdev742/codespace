@@ -15,6 +15,7 @@ import { Glim3D, type GlimAction } from '../src/three/glim3d.ts';
 import { toon } from '../src/three/toon.ts';
 import * as props from '../src/three/props.ts';
 import { storeChoice } from '../src/three/quality.ts';
+import { GoldRushScene, GoldFieldScene, type FindKind } from '../src/features/room/modes/gold-rush-scene.ts';
 
 const params = new URLSearchParams(location.search);
 const q = params.get('quality');
@@ -91,10 +92,38 @@ class Gallery extends World {
   }
 }
 
+// ?scene=gold&depth=6  the Gold Rush mine, digging a find every few seconds. ?scene=field  the big screen's goldfield.
+const sceneName = params.get('scene');
+const depth = Number(params.get('depth') ?? 5);
+const KINDS: FindKind[] = ['nugget', 'dust', 'bonanza', 'vein', 'water', 'relic', 'map', 'cavein'];
+
+function makeGold(env: StageEnv) {
+  const g = GLIMS.find((x) => x.id === (ids?.[0] ?? 'glim-sprig'))!;
+  const w = new GoldRushScene(env, { art: g.art as GlimArt, rarity: g.rarity as Rarity }, 12);
+  (window as unknown as { __world: unknown }).__world = w;
+  w.setState({ depth, cart: 120, find: null, bankedAt: 0, lastBank: 0, event: 'fever' });
+  let seq = 1;
+  let d = depth;
+  setInterval(() => {
+    const kind = KINDS[seq % KINDS.length]!;
+    d = kind === 'cavein' ? 0 : Math.min(12, d + 1);
+    w.setState({ depth: d, cart: 120 + seq * 30, find: { seq: ++seq, kind, level: kind === 'cavein' ? d + 1 : d, gold: 60 + seq * 5, big: kind === 'bonanza' }, bankedAt: 0, lastBank: 0, event: 'fever' });
+  }, 4000);
+  return w;
+}
+
+function makeField(env: StageEnv) {
+  const w = new GoldFieldScene(env, 12);
+  (window as unknown as { __world: unknown }).__world = w;
+  const miners = GLIMS.slice(0, 10).map((g, i) => ({ playerId: g.id, name: g.name, depth: (i * 3) % 11, cart: i * 40, banked: 900 - i * 70, lastKind: null, lastSeq: 0, bankedAt: 0, look: { art: g.art as GlimArt, rarity: g.rarity as Rarity } }));
+  w.setMiners(miners);
+  return w;
+}
+
 function App() {
   return (
     <main style={{ height: '100vh', display: 'grid' }}>
-      <Stage3D label="3D Glim gallery" create={(env) => new Gallery(env)} className="h-full w-full" />
+      <Stage3D label="3D gallery" create={(env) => (sceneName === 'gold' ? makeGold(env) : sceneName === 'field' ? makeField(env) : new Gallery(env))} className="h-full w-full" />
     </main>
   );
 }

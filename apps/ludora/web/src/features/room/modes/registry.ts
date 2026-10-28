@@ -18,6 +18,11 @@ type Screen = LazyExoticComponent<ComponentType<ModeScreenProps>>;
 
 /** Each mode's player and host screens, loaded only when that mode is played. */
 export const MODE_SCREENS: Record<string, { Player: Screen; Host: Screen; /** The host screen lists the room's news itself, so the big screen shows no news toasts over it. */ hostFeed?: boolean }> = {
+  'gold-rush': {
+    Player: lazy(() => import('./gold-rush.tsx').then((m) => ({ default: m.GoldRushPlayer }))),
+    Host: lazy(() => import('./gold-rush.tsx').then((m) => ({ default: m.GoldRushHost }))),
+    hostFeed: true,
+  },
   classic: {
     Player: lazy(() => import('./classic.tsx').then((m) => ({ default: m.ClassicPlayer }))),
     Host: lazy(() => import('./classic.tsx').then((m) => ({ default: m.ClassicHost }))),

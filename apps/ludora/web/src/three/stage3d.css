@@ -1,4 +1,6 @@
 /* The 3D stage: canvas, label layer and the graphics menu. */
+/* In the components layer, so a screen's utility classes (absolute, h-full) win over these defaults. */
+@layer components {
 .s3-stage {
   position: relative;
   overflow: hidden;
@@ -96,3 +98,4 @@
 .s3-menu-note { margin: 0 0 0.35rem; font-size: 0.8rem; color: rgb(255 255 255 / 0.75); max-width: 13rem; }
 .s3-menu-option { display: flex; align-items: center; gap: 0.5rem; padding: 0.35rem 0.4rem; border-radius: 8px; font-weight: 700; font-size: 0.9rem; cursor: pointer; }
 .s3-menu-option:hover { background: rgb(255 255 255 / 0.08); }
+}
