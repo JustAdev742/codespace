@@ -4,6 +4,8 @@ import { errorReports } from '../db/schema.ts';
 import { roomCode } from '../lib/crypto.ts';
 import { Room, type RoomHooks, type RoomInit } from './room.ts';
 import { persistGame } from './persist.ts';
+// The game server is the only place cheat definitions are loaded; the web app never imports them.
+import '@ludora/engine/chaos-cheats';
 
 const SWEEP_MS = 5000;
 export const MAX_ROOMS_PER_HOST = 6;

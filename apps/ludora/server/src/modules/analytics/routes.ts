@@ -36,7 +36,7 @@ export async function analyticsRoutes(app: FastifyInstance, deps: AppDeps) {
     const standings = await db.select().from(gameParticipants).where(eq(gameParticipants.gameId, id)).orderBy(gameParticipants.rank);
     const set = g.setId ? await loadSet(db, g.setId) : null;
     return {
-      game: { id: g.id, mode: modeTitle(g.modeId, g.variantId), modeId: g.modeId, variantId: g.variantId, setTitle: g.setTitle, setId: g.setId, startedAt: g.startedAt.toISOString(), endedAt: g.endedAt.toISOString(), durationMs: g.durationMs, players: g.playerCount, endedBy: g.endedBy, solo: g.isSolo },
+      game: { id: g.id, mode: modeTitle(g.modeId, g.variantId), modeId: g.modeId, variantId: g.variantId, setTitle: g.setTitle, setId: g.setId, startedAt: g.startedAt.toISOString(), endedAt: g.endedAt.toISOString(), durationMs: g.durationMs, players: g.playerCount, endedBy: g.endedBy, solo: g.isSolo, chaos: (g.chaos as { casts: number } | null)?.casts ?? 0 },
       standings: standings.map((s) => ({ rank: s.rank, name: s.displayName, isGuest: s.isGuest, isBot: s.isBot, score: s.score, label: s.label, correct: s.correct, answered: s.answered, avgResponseMs: s.avgResponseMs, bestStreak: s.bestStreak, leftEarly: s.leftEarly })),
       questions: await questionReport(db, [id], set),
     };
@@ -54,7 +54,7 @@ export async function analyticsRoutes(app: FastifyInstance, deps: AppDeps) {
       .orderBy(desc(gameSessions.endedAt))
       .limit(31);
     return {
-      games: rows.slice(0, 30).map((g) => ({ id: g.id, mode: modeTitle(g.modeId, g.variantId), setTitle: g.setTitle, players: g.playerCount, endedAt: g.endedAt.toISOString(), durationMs: g.durationMs })),
+      games: rows.slice(0, 30).map((g) => ({ id: g.id, mode: modeTitle(g.modeId, g.variantId), setTitle: g.setTitle, players: g.playerCount, endedAt: g.endedAt.toISOString(), durationMs: g.durationMs, chaos: Boolean(g.chaos) })),
       nextBefore: rows.length > 30 ? rows[29]!.endedAt.toISOString() : null,
     };
   });

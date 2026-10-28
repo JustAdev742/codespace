@@ -4,6 +4,8 @@ import {
   generateName,
   hashString,
   type AvatarLite,
+  type ChaosRequest,
+  type ChaosRoomView,
   type CommonSettings,
   type FeedItem,
   type HostCommand,
@@ -61,6 +63,8 @@ export interface RoomPlayer {
   recent: Map<string, Ack>;
   lastReactionAt: number;
   skill: number;
+  /** The account behind this slot has unlocked chaos. Set by the server from the database, never by the client. */
+  chaos: boolean;
 }
 
 export interface PersistOutcome {
@@ -323,6 +327,7 @@ export class Room {
       recent: new Map(),
       lastReactionAt: 0,
       skill: 0,
+      chaos: false,
     };
     this.players.set(player.id, player);
     this.roster.set(player.id, { userId: player.userId, name: player.name, isGuest: player.isGuest, isBot: false });
@@ -444,6 +449,7 @@ export class Room {
             recent: new Map(),
             lastReactionAt: 0,
             skill: 0.45 + this.botRng.next() * 0.45,
+            chaos: false,
           });
         }
         this.scheduleBroadcast();
@@ -452,6 +458,11 @@ export class Room {
       case 'removeBots':
         for (const p of [...this.players.values()]) if (p.isBot) this.removePlayer(p, '');
         return { ok: true };
+      case 'chaosCalm': {
+        if (!this.runtime || !this.runtime.chaosEnabled) return fail('invalid_state', 'There is no chaos to calm.');
+        const r = this.runtime.calmChaos();
+        return r.ok ? { ok: true } : fail(r.code, r.message);
+      }
       case 'shuffleTeams': {
         if (!this.teams.length) return fail('invalid_state', 'Teams are off.');
         if (this.status !== 'lobby') return fail('invalid_state', 'Teams are fixed once the game starts.');
@@ -504,6 +515,7 @@ export class Room {
       teams: this.teams.map((t) => ({ id: t.id, name: t.name, hue: t.hue })),
       seed: hashString(`${this.code}:${this.gameId}`),
       clock: { now: () => this.hooks.now() },
+      chaos: this.chaosAllowed(),
       listener: {
         changed: () => this.scheduleBroadcast(),
         feed: (item) => this.pushFeedItem(item),
@@ -557,6 +569,49 @@ export class Room {
     const r = this.runtime.act(playerId, action);
     const ack: Ack = r.ok ? { ok: true } : fail(r.code === 'rejected' ? 'invalid_state' : r.code, r.message);
     p.recent.set(actionId, ack);
+    if (p.recent.size > MAX_RECENT_ACTIONS) p.recent.delete(p.recent.keys().next().value!);
+    this.touch();
+    return ack;
+  }
+
+  /** Chaos runs in this room's games unless the host switched it off or the game is homework. */
+  chaosAllowed(): boolean {
+    return this.options.chaos !== false && !this.assignmentId;
+  }
+
+  /** Record (from the database) whether an account has unlocked chaos, for every slot it holds here. */
+  setChaosUnlocked(userId: string, unlocked: boolean) {
+    let changed = false;
+    for (const p of this.players.values()) {
+      if (p.userId !== userId || p.chaos === unlocked) continue;
+      p.chaos = unlocked;
+      changed = true;
+    }
+    if (changed) this.scheduleBroadcast();
+  }
+
+  /**
+   * A chaos request from a player. The caller has already checked the
+   * account's unlock against the database; this checks the slot as well and
+   * deduplicates by action id like any other move.
+   */
+  chaos(playerId: string, req: ChaosRequest): Ack<{ text?: string; castId?: string; combo?: string | null }> {
+    const p = this.players.get(playerId);
+    if (!p) return fail('forbidden', 'You are not in this room.');
+    if (!p.chaos) return fail('forbidden', 'Nothing happens.');
+    const seen = p.recent.get(req.actionId);
+    if (seen) return seen;
+    let ack: Ack<{ text?: string; castId?: string; combo?: string | null }>;
+    if (!this.runtime || this.status === 'lobby') ack = fail('invalid_state', 'Chaos only works once the game has started.');
+    else if (!this.runtime.chaosEnabled) ack = fail('invalid_state', 'Chaos is switched off in this game.');
+    else if (req.op === 'cast') {
+      const r = this.runtime.cast(playerId, req.casts.map((c) => ({ cheatId: c.cheatId, target: c.target ?? null, ...(c.params ? { params: c.params } : {}) })));
+      ack = r.ok ? { ok: true, text: r.text, castId: r.castId, combo: r.combo } : fail(r.code === 'rejected' ? 'invalid_state' : r.code, r.message);
+    } else {
+      const r = req.op === 'undo' ? this.runtime.undoCast(playerId, req.castId) : this.runtime.stopEffect(playerId, req.eid);
+      ack = r.ok ? { ok: true } : fail(r.code === 'rejected' ? 'invalid_state' : r.code, r.message);
+    }
+    p.recent.set(req.actionId, ack);
     if (p.recent.size > MAX_RECENT_ACTIONS) p.recent.delete(p.recent.keys().next().value!);
     this.touch();
     return ack;
@@ -667,6 +722,12 @@ export class Room {
     const me = playerId ? this.players.get(playerId) : null;
     const results = this.results ? this.resultsView(this.results) : null;
     const game = this.runtime && this.runtime.status !== 'idle' ? this.runtime.view(viewer) : null;
+    let chaos: ChaosRoomView | null = null;
+    if (this.runtime?.chaosEnabled) {
+      const v = this.runtime.chaosView(viewer, Boolean(me?.chaos)) as ChaosRoomView | null;
+      // Players who have not found chaos see nothing of it until someone uses it in their game.
+      if (v && (v.casts > 0 || me?.chaos)) chaos = v;
+    }
     let rewards: RewardSummary | null = null;
     if (me && this.results) {
       rewards = this.rewards.get(me.id) ?? (this.rewardsPending ? { status: 'pending', sparks: 0, xp: 0, quests: [], achievements: [], notes: [] } : null);
@@ -710,6 +771,7 @@ export class Room {
       results,
       rewards,
       feed: this.feed.filter((f) => !f.to || (playerId && f.to.includes(playerId))).slice(-FEED_KEEP),
+      ...(chaos ? { chaos } : {}),
     };
   }
 
@@ -730,6 +792,7 @@ export class Room {
       outcome: r.outcome,
       summary: r.summary,
       durationMs: r.durationMs,
+      ...(r.chaos ? { chaos: true } : {}),
     };
   }
 

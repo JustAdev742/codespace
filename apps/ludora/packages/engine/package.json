@@ -12,7 +12,10 @@
     "./lantern-guard-maps": "./src/modes/lantern-guard/maps.ts",
     "./lantern-trail-board": "./src/modes/lantern-trail/board.ts",
     "./lantern-lands-map": "./src/modes/lantern-lands/map.ts",
-    "./festival-workshop": "./src/modes/festival-workshop/meta.ts"
+    "./festival-workshop": "./src/modes/festival-workshop/meta.ts",
+    "./chaos": "./src/chaos/index.ts",
+    "./chaos-cheats": "./src/chaos/cheats/index.ts",
+    "./chaos-overlays": "./src/chaos/overlays.ts"
   },
   "dependencies": {
     "@ludora/shared": "*",

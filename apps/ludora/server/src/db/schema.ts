@@ -56,6 +56,8 @@ export const users = pgTable(
     level: integer('level').notNull().default(1),
     preferences: jsonb('preferences').notNull().default({}),
     nameChangedAt: ts('name_changed_at'),
+    /** When this account found the secret chaos lantern. Null means locked. Set only by the server-verified sequence. */
+    chaosUnlockedAt: ts('chaos_unlocked_at'),
     createdAt: now('created_at'),
     updatedAt: now('updated_at'),
     lastSeenAt: ts('last_seen_at'),
@@ -175,6 +177,8 @@ export const gameSessions = pgTable(
     classId: uuid('class_id'),
     assignmentId: uuid('assignment_id'),
     isSolo: boolean('is_solo').notNull().default(false),
+    /** Set when chaos cheats were cast in this game: how many, and by which player slots. */
+    chaos: jsonb('chaos'),
     startedAt: ts('started_at').notNull(),
     endedAt: ts('ended_at').notNull(),
     durationMs: integer('duration_ms').notNull(),

@@ -2,13 +2,14 @@ import type { FastifyInstance } from 'fastify';
 import { Server, type Socket } from 'socket.io';
 import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
-import { actionRequestSchema, C2S, hostCommandSchema, joinRequestSchema, reactionSchema } from '@ludora/shared';
+import { actionRequestSchema, C2S, chaosRequestSchema, hostCommandSchema, joinRequestSchema, reactionSchema, S2C } from '@ludora/shared';
 import type { AppDeps } from '../app.ts';
 import type { AuthContext } from '../http/context.ts';
 import { originAllowed } from '../http/origins.ts';
 import { hashIp } from '../lib/crypto.ts';
 import { SESSION_COOKIE, resolveSession } from '../modules/auth/service.ts';
 import { loadAvatar } from '../modules/profiles/avatar.ts';
+import { chaosService } from '../modules/chaos/service.ts';
 import { fail, type Ack, type Room, type RoomSubscriber } from './room.ts';
 
 /*
@@ -94,10 +95,23 @@ export function attachRealtime(app: FastifyInstance, deps: AppDeps) {
     }
   });
 
+  const chaos = chaosService(deps);
+
   io.on('connection', (socket: Socket) => {
     const state = socket.data as SocketState;
     const bucket = new TokenBucket(40, 20);
+    // Casting has its own, tighter budget on top of the general one.
+    const chaosBucket = new TokenBucket(6, 2);
     let current: { room: Room; sub: RoomSubscriber } | null = null;
+    // The account's unlock, read from the database and re-read at most every few seconds.
+    let unlocked: { value: boolean; at: number } | null = null;
+    const isUnlocked = async (): Promise<boolean> => {
+      const userId = state.auth?.user.id;
+      if (!userId) return false;
+      if (unlocked && Date.now() - unlocked.at < 5000) return unlocked.value;
+      unlocked = { value: await chaos.isUnlocked(userId), at: Date.now() };
+      return unlocked.value;
+    };
 
     const reply = (ack: unknown, payload: Ack | object) => {
       if (typeof ack === 'function') ack(payload);
@@ -142,6 +156,7 @@ export function attachRealtime(app: FastifyInstance, deps: AppDeps) {
       if (!joined.ok) return reply(ack, joined);
       const sub: RoomSubscriber = { id: randomUUID(), role: 'player', playerId: joined.player.id, emit: (e, p) => socket.emit(e, p) };
       current = { room, sub };
+      if (auth) room.setChaosUnlocked(auth.user.id, await isUnlocked().catch(() => false));
       room.subscribe(sub);
       // Solo games start as soon as their player arrives.
       if (room.solo && room.status === 'lobby') room.hostCommand({ cmd: 'start' });
@@ -173,7 +188,27 @@ export function attachRealtime(app: FastifyInstance, deps: AppDeps) {
       if (state.auth?.user.mutedUntil && state.auth.user.mutedUntil > new Date()) return reply(ack, fail('forbidden', 'Reactions are turned off for your account for now.'));
       const parsed = reactionSchema.safeParse(payload);
       if (!parsed.success) return reply(ack, fail('bad_request', 'Unknown reaction.'));
-      reply(ack, current.room.react(current.sub.playerId, parsed.data.emote, current.sub.role));
+      const r = current.room.react(current.sub.playerId, parsed.data.emote, current.sub.role);
+      reply(ack, r);
+      // The lantern ritual: reactions sent as a player in a running game, in the right order.
+      const userId = state.auth?.user.id;
+      if (r.ok && userId && current.sub.role === 'player' && chaos.tracker.reaction(userId, parsed.data.emote, current.room.status === 'running')) {
+        socket.emit(S2C.glow, { ok: true });
+      }
+    });
+
+    socket.on(C2S.chaos, async (payload: unknown, ack: unknown) => {
+      if (!guard(ack)) return;
+      if (!chaosBucket.take()) return reply(ack, fail('rate_limited', 'Slow down a little.'));
+      if (!current || current.sub.role !== 'player' || !current.sub.playerId) return reply(ack, fail('forbidden', 'Nothing happens.'));
+      const parsed = chaosRequestSchema.safeParse(payload);
+      if (!parsed.success) return reply(ack, fail('bad_request', 'Nothing happens.'));
+      // Checked against the database every time (with a short cache), whatever the browser claims.
+      const ok = await isUnlocked().catch(() => false);
+      if (!current) return reply(ack, fail('forbidden', 'Nothing happens.'));
+      current.room.setChaosUnlocked(state.auth?.user.id ?? '', ok);
+      if (!ok) return reply(ack, fail('forbidden', 'Nothing happens.'));
+      reply(ack, current.room.chaos(current.sub.playerId!, parsed.data));
     });
 
     socket.on(C2S.leave, (_payload: unknown, ack: unknown) => {

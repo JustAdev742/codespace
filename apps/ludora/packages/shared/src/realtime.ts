@@ -15,6 +15,7 @@ export const C2S = {
   action: 'room:action',
   host: 'room:host',
   react: 'room:react',
+  chaos: 'room:chaos',
 } as const;
 
 export const S2C = {
@@ -23,6 +24,8 @@ export const S2C = {
   reaction: 'room:reaction',
   closed: 'room:closed',
   rewards: 'room:rewards',
+  /** Sent only to an account that has just finished the lantern ritual. */
+  glow: 'room:glow',
 } as const;
 
 export const joinRequestSchema = z.object({
@@ -58,6 +61,8 @@ export const roomOptionsSchema = z.object({
   generatedNames: z.boolean().default(false),
   /** Only signed-in accounts may join. */
   requireAccount: z.boolean().default(false),
+  /** Players who found the secret chaos lantern may cast cheats. Always off for assignments. */
+  chaos: z.boolean().default(true),
 });
 export type RoomOptions = z.infer<typeof roomOptionsSchema>;
 
@@ -72,6 +77,8 @@ export const hostCommandSchema = z.discriminatedUnion('cmd', [
   z.object({ cmd: z.literal('lock'), locked: z.boolean() }),
   z.object({ cmd: z.literal('addBots'), count: z.number().int().min(1).max(20) }),
   z.object({ cmd: z.literal('removeBots') }),
+  /** End every chaos effect and close chaos for the rest of this game. */
+  z.object({ cmd: z.literal('chaosCalm') }),
   z.object({ cmd: z.literal('shuffleTeams') }),
   z.object({ cmd: z.literal('setTeam'), playerId: z.string().min(1).max(40), teamId: z.string().min(1).max(20) }),
   z.object({
@@ -84,6 +91,49 @@ export const hostCommandSchema = z.discriminatedUnion('cmd', [
 export type HostCommand = z.infer<typeof hostCommandSchema>;
 
 export const reactionSchema = z.object({ emote: z.string().min(1).max(20) });
+
+const chaosActionId = z.string().min(8).max(40).regex(/^[A-Za-z0-9_-]+$/);
+const chaosCast = z.object({
+  cheatId: z.string().min(3).max(60).regex(/^[a-z0-9.-]+$/),
+  target: z.string().min(1).max(40).nullable().optional(),
+  params: z.record(z.string().max(30), z.union([z.number(), z.string().max(40)])).optional(),
+});
+
+/** Chaos requests from players. The server checks that the account has unlocked chaos before any of them. */
+export const chaosRequestSchema = z.discriminatedUnion('op', [
+  z.object({ op: z.literal('cast'), actionId: chaosActionId, casts: z.array(chaosCast).min(1).max(5) }),
+  z.object({ op: z.literal('undo'), actionId: chaosActionId, castId: z.string().min(1).max(20) }),
+  z.object({ op: z.literal('stop'), actionId: chaosActionId, eid: z.string().min(1).max(20) }),
+]);
+export type ChaosRequest = z.infer<typeof chaosRequestSchema>;
+
+/** What a viewer sees of the chaos in their game. Mirrors the engine's ChaosView. */
+export interface ChaosRoomView {
+  calmed: boolean;
+  casts: number;
+  effects: {
+    eid: string;
+    cheatId: string;
+    name: string;
+    category: string;
+    caster: string;
+    casterName: string;
+    targets: string[];
+    team: string | null;
+    startedAt: number;
+    endsAt: number;
+    hostile: boolean;
+  }[];
+  overlays: ({ kind: string; eid?: string; endsAt?: number } & Record<string, unknown>)[];
+  me: {
+    energy: number;
+    maxEnergy: number;
+    regenPerSec: number;
+    cooldowns: Record<string, number>;
+    undo: { castId: string; names: string[]; until: number }[];
+    capabilities: string[];
+  } | null;
+}
 
 export type AckOk<T = object> = { ok: true } & T;
 export type AckErr = { ok: false; error: { code: string; message: string } };
@@ -138,6 +188,8 @@ export interface StandingView {
 
 export interface ResultsView {
   gameId: string | null;
+  /** Chaos cheats were cast in this game, so places earn no rewards. */
+  chaos?: boolean;
   standings: StandingView[];
   teamStandings: { teamId: string; name: string; rank: number; score: number; label: string }[];
   outcome: 'competitive' | 'coop-win' | 'coop-loss';
@@ -187,6 +239,8 @@ export interface RoomView<G = unknown> {
   results: ResultsView | null;
   rewards: RewardSummary | null;
   feed: FeedItem[];
+  /** Present once chaos has been used in this game, or for a viewer who has unlocked it. */
+  chaos?: ChaosRoomView | null;
 }
 
 export type EmoteGlyph = (typeof EMOTE_GLYPHS)[number];

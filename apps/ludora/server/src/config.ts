@@ -31,6 +31,10 @@ const schema = z.object({
   UPLOAD_DIR: z.string().default('./uploads'),
   /** Built web app to serve (production). */
   WEB_DIST: z.string().default('../web/dist'),
+  /** Built files served only to signed-in accounts that are allowed them (the chaos menu). Never served statically. */
+  WEB_PRIVATE_DIST: z.string().default('../web/dist-private'),
+  /** Seeds the secret chaos sequence (the knock rhythm). Defaults to one derived from IP_HASH_KEY, so it differs per deployment. */
+  CHAOS_SECRET: z.string().min(16).optional(),
   LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent']).default('info'),
   /** Turns on AI question drafts (with the ai.question_drafts flag). */
   ANTHROPIC_API_KEY: z.string().optional(),

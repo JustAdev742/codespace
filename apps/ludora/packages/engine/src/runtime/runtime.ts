@@ -24,7 +24,6 @@ import type {
 import { ChaosEngine, emptyChaosState } from '../chaos/engine.ts';
 import { chaosAdapterFor } from '../chaos/adapters/index.ts';
 import { getCheat } from '../chaos/registry.ts';
-import '../chaos/cheats/index.ts';
 import type { CastOutcome, CastRequest, ChaosState, ChaosView } from '../chaos/types.ts';
 
 export interface RuntimeClock {

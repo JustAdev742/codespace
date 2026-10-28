@@ -1,4 +1,8 @@
-import './cheats/index.ts';
+/*
+ * The chaos engine without any cheats. Cheat definitions register only when
+ * '@ludora/engine/chaos-cheats' is imported, which the game server does and
+ * the web app never does, so the catalogue is not in any public bundle.
+ */
 
 export * from './types.ts';
 export * from './registry.ts';

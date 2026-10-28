@@ -78,6 +78,7 @@ export async function persistGame(deps: AppDeps, room: Room, results: EngineResu
         classId: room.classId,
         assignmentId: room.assignmentId,
         isSolo: room.solo,
+        chaos: results.chaos,
         startedAt,
         endedAt,
         durationMs: Math.round(results.durationMs),
@@ -129,9 +130,16 @@ export async function persistGame(deps: AppDeps, room: Room, results: EngineResu
   });
 
   const rewards = new Map<string, RewardSummary>();
+  // Chaos games: whoever cast a cheat earns nothing from the game; everyone else keeps
+  // what their answers earned, but places earn nothing because chaos may have decided them.
+  const casters = new Set(results.chaos?.casters ?? []);
   for (const s of results.standings) {
     const who = info(s.playerId);
     if (who.isBot) continue;
+    if (casters.has(s.playerId)) {
+      rewards.set(s.playerId, { status: 'none', sparks: 0, xp: 0, quests: [], achievements: [], notes: ['You used chaos in this game, so it earns no rewards.'] });
+      continue;
+    }
     if (!who.userId) {
       rewards.set(s.playerId, { status: 'none', sparks: 0, xp: 0, quests: [], achievements: [], notes: ['Sign in before you join to earn Sparks, XP and quest progress.'] });
       continue;
@@ -143,7 +151,7 @@ export async function persistGame(deps: AppDeps, room: Room, results: EngineResu
         userId: who.userId,
         gameId,
         modeId: room.mode.meta.id,
-        rank: s.rank,
+        rank: results.chaos ? humans + 1 : s.rank,
         humans,
         ...counts,
         solo: room.solo || humans === 1,
@@ -151,6 +159,7 @@ export async function persistGame(deps: AppDeps, room: Room, results: EngineResu
         outcome: results.outcome,
       });
       if (who.isGuest && summary.status === 'granted') summary.notes.push('Create an account to keep these rewards safe. Your progress comes with you.');
+      if (results.chaos) summary.notes.push('Chaos was used in this game, so places earn no rewards. Your answers still count.');
       rewards.set(s.playerId, summary);
     } catch (err) {
       deps.log?.error({ err, gameId, playerId: s.playerId }, 'reward failed');
