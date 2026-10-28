@@ -228,3 +228,65 @@ describe('Classic scoring and anti-cheat', () => {
     expect(classicPoints({ correct: false, partial: 0, responseMs: 1, limitMs: 20_000, streak: 0 }, opts)).toBe(0);
   });
 });
+
+/** A mode where walking is quiet: it changes the state but only asks for a pulse. */
+const walker = defineMode<{ at: Record<string, number> }, Record<string, never>, { type: 'walk'; x: number } | { type: 'shout' }>({
+  meta: { ...classic.meta, id: 'walker', title: 'Walker' },
+  settings: [],
+  action: z.discriminatedUnion('type', [z.object({ type: z.literal('walk'), x: z.number() }), z.object({ type: z.literal('shout') })]),
+  init: () => ({ at: {} }),
+  onAction(s, pid, a, ctx) {
+    if (a.type === 'shout') {
+      ctx.feed(`${pid} shouts`);
+      return { quiet: true };
+    }
+    s.at[pid] = a.x;
+    return { quiet: true };
+  },
+  view: (s) => ({ at: s.at }),
+  pulse: (s) => Object.entries(s.at).map(([id, x]) => [id, x]),
+  results: (_s, ctx) => ({ standings: ctx.players().map((p) => ({ playerId: p.id, score: 0, label: '' })), summary: 'done' }),
+});
+
+describe('quiet actions and pulses', () => {
+  function walkerRuntime() {
+    const calls = { changed: 0, pulsed: 0 };
+    const rt = new GameRuntime({
+      mode: walker,
+      settings: {},
+      common,
+      questions: MIXED_SET,
+      players: [{ id: 'a', name: 'A', teamId: null, isBot: false }],
+      teams: [],
+      seed: 1,
+      clock: fakeClock(),
+      strict: true,
+      listener: { changed: () => calls.changed++, pulsed: () => calls.pulsed++ },
+    });
+    rt.start();
+    calls.changed = 0;
+    return { rt, calls };
+  }
+
+  it('keeps a quiet change and asks only for a pulse', () => {
+    const { rt, calls } = walkerRuntime();
+    const v = rt.version;
+    expect(rt.act('a', { type: 'walk', x: 3 })).toEqual({ ok: true });
+    expect(calls).toEqual({ changed: 0, pulsed: 1 });
+    expect(rt.version).toBeGreaterThan(v);
+    expect(rt.pulse()).toEqual([['a', 3]]);
+    expect(rt.view({ kind: 'player', playerId: 'a' })).toEqual({ at: { a: 3 } });
+  });
+
+  it('treats a quiet action that also made news as a full change', () => {
+    const { rt, calls } = walkerRuntime();
+    rt.act('a', { type: 'shout' });
+    expect(calls).toEqual({ changed: 1, pulsed: 0 });
+  });
+
+  it('has no pulse for modes without one', () => {
+    const rt = makeRuntime();
+    rt.start();
+    expect(rt.pulse()).toBeNull();
+  });
+});

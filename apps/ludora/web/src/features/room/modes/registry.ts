@@ -1,11 +1,15 @@
 import { lazy, type ComponentType, type LazyExoticComponent } from 'react';
 import type { RoomView } from '@ludora/shared';
-import type { AckResult } from '../../../lib/useRoom.ts';
+import type { AckResult, PulseSource } from '../../../lib/useRoom.ts';
 
 export interface ModeScreenProps<V = any> {
   view: V;
   room: RoomView<V>;
   act: (action: unknown) => Promise<AckResult>;
+  /** A quiet move, not acknowledged or retried (3D modes: walking). */
+  fire: (action: unknown) => void;
+  /** Frequent compact updates between views (3D modes: where everyone is). */
+  pulse: PulseSource;
   gameNow: () => number;
   paused: boolean;
 }

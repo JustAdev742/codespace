@@ -144,8 +144,12 @@ export interface ModeContext<TSettings extends SettingValues = SettingValues> {
   endGame(summary?: string): void;
 }
 
-/** Return `{ error }` to reject an action. Any state changes made before rejecting are discarded. */
-export type ActionResult = void | { error: string };
+/**
+ * Return `{ error }` to reject an action. Any state changes made before rejecting are discarded.
+ * Return `{ quiet: true }` for frequent, small moves (walking about a map): the change is kept,
+ * but instead of a full view for everyone the room sends a compact pulse (see `GameMode.pulse`).
+ */
+export type ActionResult = void | { error: string } | { quiet: true };
 
 export interface ModeResults {
   /** Higher score ranks higher. Ties share a rank. */
@@ -184,6 +188,12 @@ export interface GameMode<S = any, TSettings extends SettingValues = any, A = an
   /** The host pressed "next" (host-paced modes). */
   onHostNext?(state: S, ctx: ModeContext<TSettings>): ActionResult;
   view(state: S, viewer: Viewer, ctx: ModeContext<TSettings>): unknown;
+  /**
+   * Compact data every screen gets several times a second after quiet actions, such as where
+   * everyone is standing. The same for every viewer, so it must hold nothing private and no
+   * answers. Keep it small: rounded numbers in arrays. Must not change state.
+   */
+  pulse?(state: S, ctx: ModeContext<TSettings>): unknown;
   results(state: S, ctx: ModeContext<TSettings>): ModeResults;
   /** Practice bots and the automated full-game tests use this. Return null to wait. */
   bot?(view: any, ctx: BotContext<TSettings>): A | null;

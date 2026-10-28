@@ -156,7 +156,7 @@ export function GameStage({ room, handle, isHost }: { room: RoomView; handle: Ro
       <PauseNews paused={paused} hostConnected={room.room.hostConnected} />
       <ChaosLayer room={room} gameNow={handle.gameNow}>
         <Suspense fallback={<Spinner />}>
-          <Screen view={room.game} room={room} act={handle.act} gameNow={handle.gameNow} paused={paused} />
+          <Screen view={room.game} room={room} act={handle.act} fire={handle.fire} pulse={handle.pulse} gameNow={handle.gameNow} paused={paused} />
         </Suspense>
       </ChaosLayer>
       {paused && isHost ? (

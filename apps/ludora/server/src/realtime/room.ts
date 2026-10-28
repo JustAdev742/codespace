@@ -3,6 +3,7 @@ import {
   displayNameSchema,
   generateName,
   hashString,
+  S2C,
   type AvatarLite,
   type ChaosRequest,
   type ChaosRoomView,
@@ -96,6 +97,8 @@ export interface RoomInit {
 
 const MAX_RECENT_ACTIONS = 100;
 const BROADCAST_MS = 40;
+/** Pulses (positions after quiet moves) go out at most ten times a second. */
+const PULSE_MS = 100;
 const LOBBY_DISCONNECT_DROP_MS = 2 * 60_000;
 const HOST_ABSENT_END_MS = 10 * 60_000;
 const IDLE_CLOSE_MS = 45 * 60_000;
@@ -175,6 +178,7 @@ export class Room {
   private version = 0;
   private timer: ReturnType<typeof setTimeout> | null = null;
   private broadcastTimer: ReturnType<typeof setTimeout> | null = null;
+  private pulseTimer: ReturnType<typeof setTimeout> | null = null;
   private readonly botTimers = new Map<string, ReturnType<typeof setTimeout>>();
   private readonly botRng = createRng(Date.now() & 0xffffffff);
   private playerSeq = 0;
@@ -518,6 +522,7 @@ export class Room {
       chaos: this.chaosAllowed(),
       listener: {
         changed: () => this.scheduleBroadcast(),
+        pulsed: () => this.schedulePulse(),
         feed: (item) => this.pushFeedItem(item),
         timersChanged: () => this.armTimer(),
         error: (err, where) => this.hooks.onError(err, `mode:${this.mode.meta.id}:${where}`, this),
@@ -708,6 +713,19 @@ export class Room {
     }, BROADCAST_MS);
   }
 
+  /** Quiet moves changed the game: send everyone the mode's pulse, not full views. */
+  schedulePulse() {
+    if (this.pulseTimer || this.closed) return;
+    this.pulseTimer = setTimeout(() => {
+      this.pulseTimer = null;
+      if (!this.runtime || this.closed) return;
+      const d = this.runtime.pulse();
+      if (d === null || d === undefined) return;
+      const payload = { gameNow: this.runtime.gameNow(), d };
+      for (const sub of this.subscribers.values()) sub.emit(S2C.pulse, payload);
+    }, PULSE_MS);
+  }
+
   private sendView(sub: RoomSubscriber) {
     try {
       sub.emit('room:view', this.view(sub.role === 'host' ? null : sub.playerId));
@@ -831,6 +849,7 @@ export class Room {
     this.status = 'closed';
     this.clearTimers();
     if (this.broadcastTimer) clearTimeout(this.broadcastTimer);
+    if (this.pulseTimer) clearTimeout(this.pulseTimer);
     for (const sub of this.subscribers.values()) sub.emit('room:closed', { reason: 'closed', message: reason });
     this.subscribers.clear();
     this.hooks.onClosed(this);

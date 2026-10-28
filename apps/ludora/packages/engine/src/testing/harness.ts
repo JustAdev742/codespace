@@ -190,6 +190,7 @@ export function simulateGame(opts: SimulateOptions): SimulateResult {
       for (const leak of findAnswerLeaks(v)) leaks.push(`${p.id}: ${leak}`);
     }
     rt.view({ kind: 'host' });
+    for (const leak of findAnswerLeaks(rt.pulse())) leaks.push(`pulse: ${leak}`);
   }
 
   const stalled = rt.status !== 'ended';

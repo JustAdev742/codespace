@@ -26,7 +26,16 @@ export const S2C = {
   rewards: 'room:rewards',
   /** Sent only to an account that has just finished the lantern ritual. */
   glow: 'room:glow',
+  /** Compact, frequent updates (where everyone is standing) between full views. See `PulseView`. */
+  pulse: 'room:pulse',
 } as const;
+
+/** A pulse: the mode's compact data, sent at most ten times a second after quiet moves. */
+export interface PulseView<D = unknown> {
+  /** Game time the pulse was taken at. */
+  gameNow: number;
+  d: D;
+}
 
 export const joinRequestSchema = z.object({
   code: roomCodeSchema,

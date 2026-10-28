@@ -72,6 +72,11 @@ export interface ModeMeta {
   status: ModeStatus;
   tags?: readonly string[];
   accessibility?: readonly string[];
+  /**
+   * '3d' for modes drawn with the 3D engine (web/src/three). The catalogue marks them, and
+   * each one still plays without WebGL through its plain controls.
+   */
+  stage?: '2d' | '3d';
 }
 
 export interface VariantMeta {

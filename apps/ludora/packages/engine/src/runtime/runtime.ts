@@ -26,6 +26,12 @@ import { chaosAdapterFor } from '../chaos/adapters/index.ts';
 import { getCheat } from '../chaos/registry.ts';
 import type { CastOutcome, CastRequest, ChaosState, ChaosView } from '../chaos/types.ts';
 
+function sameTimers(a: ReadonlyMap<string, number>, b: ReadonlyMap<string, number>): boolean {
+  if (a.size !== b.size) return false;
+  for (const [k, v] of a) if (b.get(k) !== v) return false;
+  return true;
+}
+
 export interface RuntimeClock {
   /** Wall-clock milliseconds. */
   now(): number;
@@ -33,6 +39,8 @@ export interface RuntimeClock {
 
 export interface RuntimeListener {
   changed?(): void;
+  /** Only quiet actions changed the state: send a pulse, not full views. */
+  pulsed?(): void;
   feed?(item: FeedItem): void;
   ended?(results: EngineResults): void;
   error?(err: unknown, where: string): void;
@@ -448,6 +456,17 @@ export class GameRuntime {
     }
   }
 
+  /** The mode's pulse: compact data for every screen after quiet moves. Null for modes without one. */
+  pulse(): unknown {
+    if (this.state === undefined || !this.mode.pulse || this.status === 'idle') return null;
+    try {
+      return this.mode.pulse(this.state, this.makeContext(null));
+    } catch (err) {
+      this.listener.error?.(err, 'pulse');
+      return null;
+    }
+  }
+
   /** The action a practice bot would take now, or null. */
   botAction(playerId: PlayerId, skill: number, rng: Rng): unknown {
     if (this.status !== 'running' || !this.mode.bot || !this.players.has(playerId)) return null;
@@ -539,12 +558,19 @@ export class GameRuntime {
       this.rng = createRng(rngState);
       return { ok: false, code: 'rejected', message: outcome.error };
     }
+    // A quiet move that set no timers, fed no news, recorded no answers and ended nothing is just a pulse.
+    const quiet = Boolean(outcome && typeof outcome === 'object' && 'quiet' in outcome) && !fx.feed.length && !fx.answers.length && !fx.end && !fx.instances.size && sameTimers(this.timers, fx.timers);
     if (!isInit) this.state = result;
     if (cd) this.chaosState = cd;
     if (this.strict) deepFreeze(this.state);
     this.timers = fx.timers;
     for (const [iid, inst] of fx.instances) this.instances.set(iid, inst);
     for (const a of fx.answers) this.applyAnswer(a);
+    if (quiet) {
+      this.version++;
+      this.listener.pulsed?.();
+      return { ok: true };
+    }
     this.bump();
     for (const f of fx.feed) this.emitFeed(f);
     if (fx.end) this.finish('mode', fx.end.summary);

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { io, type Socket } from 'socket.io-client';
-import type { ChaosRequest, HostCommand, RoomView } from '@ludora/shared';
+import type { ChaosRequest, HostCommand, PulseView, RoomView } from '@ludora/shared';
 import { newRequestKey } from './api.ts';
 
 /*
@@ -12,6 +12,35 @@ import { newRequestKey } from './api.ts';
 
 export type RoomError = { code: string; message: string };
 export type AckResult = { ok: true; [k: string]: unknown } | { ok: false; error: RoomError };
+
+/**
+ * Pulses arrive up to ten times a second (where everyone is standing in a 3D mode). They are
+ * not React state, so they never re-render the room: a scene reads `latest()` each frame or
+ * subscribes.
+ */
+export interface PulseSource {
+  latest(): PulseView | null;
+  subscribe(fn: (p: PulseView) => void): () => void;
+}
+
+export function createPulseSource(): PulseSource & { push(p: PulseView): void; clear(): void } {
+  let last: PulseView | null = null;
+  const fns = new Set<(p: PulseView) => void>();
+  return {
+    latest: () => last,
+    subscribe(fn) {
+      fns.add(fn);
+      return () => fns.delete(fn);
+    },
+    push(p) {
+      last = p;
+      for (const fn of fns) fn(p);
+    },
+    clear() {
+      last = null;
+    },
+  };
+}
 
 export interface Reaction {
   key: number;
@@ -76,6 +105,9 @@ export function useRoom(code: string, opts: { name?: string | undefined; as?: 'h
     debug: { transport: '-', views: 0, reconnects: 0, lastAckMs: null },
   });
   const socketRef = useRef<Socket | null>(null);
+  const pulseRef = useRef<ReturnType<typeof createPulseSource> | null>(null);
+  pulseRef.current ??= createPulseSource();
+  const pulse: PulseSource = pulseRef.current;
   const nameRef = useRef(opts.name);
   nameRef.current = opts.name;
   const enabled = opts.enabled !== false;
@@ -123,6 +155,7 @@ export function useRoom(code: string, opts: { name?: string | undefined; as?: 'h
       setTimeout(() => setState((s) => ({ ...s, reactions: s.reactions.filter((x) => x.key !== key) })), 3200);
     });
     socket.on('room:glow', () => setState((s) => ({ ...s, glow: true })));
+    socket.on('room:pulse', (p: PulseView) => pulseRef.current?.push(p));
     socket.on('room:closed', (p: { reason: string; message: string }) => {
       storeToken(code, null);
       setState((s) => ({ ...s, phase: 'closed', closedMessage: p.message }));
@@ -148,6 +181,16 @@ export function useRoom(code: string, opts: { name?: string | undefined; as?: 'h
     const ms = Math.round(performance.now() - sent);
     setState((s) => ({ ...s, debug: { ...s.debug, lastAckMs: ms } }));
     return ack;
+  }, []);
+
+  /**
+   * A quiet move (walking about a map) sent without waiting for an answer and never retried:
+   * the next one supersedes it. Dropped while offline.
+   */
+  const fire = useCallback((action: unknown) => {
+    const socket = socketRef.current;
+    if (!socket?.connected) return;
+    socket.emit('room:action', { actionId: newRequestKey('m').slice(0, 30), action });
   }, []);
 
   const host = useCallback(async (cmd: HostCommand): Promise<AckResult> => {
@@ -186,7 +229,7 @@ export function useRoom(code: string, opts: { name?: string | undefined; as?: 'h
     return v.paused ? v.gameNow : v.gameNow + (Date.now() - state.receivedAt);
   }, [state.view, state.receivedAt]);
 
-  return { ...state, act, host, react, leave, gameNow, chaos, clearGlow };
+  return { ...state, act, fire, pulse, host, react, leave, gameNow, chaos, clearGlow };
 }
 
 type DistributiveOmit<T, K extends PropertyKey> = T extends unknown ? Omit<T, K> : never;

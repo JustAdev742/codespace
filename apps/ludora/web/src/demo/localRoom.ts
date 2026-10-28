@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { roomOptionsSchema, type HostCommand, type Question, type RoomView } from '@ludora/shared';
+import { roomOptionsSchema, type HostCommand, type PulseView, type Question, type RoomView } from '@ludora/shared';
 import { findCatalogMode } from '@ludora/engine/catalog';
 // The room the live server runs, unchanged. It knows nothing about sockets or the database, so it runs here too.
 import { Room } from '../../../server/src/realtime/room.ts';
 import { newRequestKey } from '../lib/api.ts';
-import type { AckResult, Reaction, RoomHandle } from '../lib/useRoom.ts';
+import { createPulseSource, type AckResult, type Reaction, type RoomHandle } from '../lib/useRoom.ts';
 
 /*
  * A game room inside the page, for the playable demo. It is the server's own
@@ -54,6 +54,7 @@ const CLOSED: AckResult = { ok: false, error: { code: 'room_closed', message: 'T
 export function useLocalRoom(setup: DemoSetup): { player: RoomHandle | null; host: RoomHandle | null; error: string | null } {
   const room = useRef<Room | null>(null);
   const playerId = useRef<string | null>(null);
+  const pulse = useRef(createPulseSource());
   const [screens, setScreens] = useState<Screens>({ player: { view: null, receivedAt: 0 }, host: { view: null, receivedAt: 0 }, reactions: [], error: null });
 
   useEffect(() => {
@@ -92,6 +93,9 @@ export function useLocalRoom(setup: DemoSetup): { player: RoomHandle | null; hos
       if (event === 'room:view') {
         const view = copy(payload as RoomView);
         setScreens((s) => ({ ...s, [who]: { view, receivedAt: Date.now() } }));
+      } else if (event === 'room:pulse') {
+        // Both screens hear each pulse; they share one source, so pass it on once.
+        if (who === 'player') pulse.current.push(copy(payload as PulseView));
       } else if (event === 'room:reaction' && who === 'player') {
         // Every screen hears each reaction; keep one copy.
         const key = ++reactionKey;
@@ -132,6 +136,11 @@ export function useLocalRoom(setup: DemoSetup): { player: RoomHandle | null; hos
     if (!r || !id) return CLOSED;
     return r.action(id, newRequestKey('a').slice(0, 30), copy(action));
   }, []);
+  const fire = useCallback((action: unknown) => {
+    const r = room.current;
+    const id = playerId.current;
+    if (r && id) r.action(id, newRequestKey('m').slice(0, 30), copy(action));
+  }, []);
   const host = useCallback(async (cmd: HostCommand): Promise<AckResult> => room.current?.hostCommand(copy(cmd)) ?? CLOSED, []);
   const react = useCallback(async (emote: string) => {
     if (playerId.current) room.current?.react(playerId.current, emote, 'player');
@@ -159,6 +168,8 @@ export function useLocalRoom(setup: DemoSetup): { player: RoomHandle | null; hos
             glow: false,
             debug: { transport: 'in-page', views: 0, reconnects: 0, lastAckMs: null },
             act,
+            fire,
+            pulse: pulse.current,
             host,
             react,
             leave,
@@ -167,7 +178,7 @@ export function useLocalRoom(setup: DemoSetup): { player: RoomHandle | null; hos
             clearGlow,
           }
         : null,
-    [screens.reactions, act, host, react, leave, gameNow, chaos, clearGlow],
+    [screens.reactions, act, fire, host, react, leave, gameNow, chaos, clearGlow],
   );
   const player = useMemo(() => handle('player', screens.player), [handle, screens.player]);
   const hostHandle = useMemo(() => handle('host', screens.host), [handle, screens.host]);
