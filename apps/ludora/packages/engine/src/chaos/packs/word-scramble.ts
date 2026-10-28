@@ -1,19 +1,21 @@
 import type { Answer, Question } from '@ludora/shared';
 import { draw } from '../../questions/deck.ts';
 import { DEADLINE_GRACE_MS } from '../../mechanics/syncRounds.ts';
-import { buildScramble, HINT_COST, matchesAnswer, scrambleSource, type Scramble } from '../../modes/word-scramble/index.ts';
+import { buildScramble, HINT_COST, matchesAnswer, PLAIN_POINTS, scrambleSource, streakMultiplier, wordValue, type Scramble } from '../../modes/word-scramble/index.ts';
+import { meta } from '../../modes/word-scramble/meta.ts';
 import { answerText } from '../../modes/flashcard-study/answer-text.ts';
+import type { Deck } from '../../questions/deck.ts';
 import type { StreamState } from '../../mechanics/selfPaced.ts';
 import type { PlayerId } from '../../sdk/types.ts';
 import { inGame, odds, rollOdds, target, transfer } from '../cheats/kit.ts';
 import { defineCheats } from '../registry.ts';
-import type { ChaosApi, CheatDef } from '../types.ts';
+import type { ActiveEffect, ChaosApi, CheatDef } from '../types.ts';
 
 /*
  * Cheats that only make sense in Word Scramble: they work on the letter
  * tiles (hints, re-scrambles), on each player's pile of words, on the word
- * timer and on the spelling streak. A cheat never spells a word out for
- * anyone: at least two letters of a word always stay hidden.
+ * timer, on the game clock and on the spelling streak. A cheat never spells
+ * a word out for anyone: at least two letters of a word always stay hidden.
  */
 
 const MODE = 'word-scramble';
@@ -21,6 +23,10 @@ const MODE = 'word-scramble';
 const KEEP_HIDDEN = 2;
 /** Cheats that shorten a word timer never leave less than this. */
 const MIN_WORD_LEFT_MS = 4000;
+/** What the typo tax takes for each wrong spelling. */
+const TYPO_FINE = 10;
+/** The most the overtime bell adds to the game clock. */
+const OVERTIME_MS = 20_000;
 
 interface Word {
   iid: string;
@@ -34,8 +40,12 @@ interface Speller {
   points: number;
   done: number;
   solved: number;
+  hintsUsed: number;
   finished: boolean;
   nextAt: number | null;
+  main: number;
+  target: number;
+  again: string[];
   retry: boolean;
   inRow: number;
 }
@@ -116,6 +126,57 @@ function setWordDeadline(api: ChaosApi, id: PlayerId, w: Word, at: number) {
 }
 
 const letters = (n: number) => `${n} ${n === 1 ? 'letter' : 'letters'}`;
+const secs = (ms: number) => `${Math.round(ms / 100) / 10} s`;
+const qidOf = (api: ChaosApi, iid: string) => api.ctx.questions.instance(iid).qid;
+
+/** What a word is worth to this player now, as their screen shows it: streak multiplier, then half for a second chance. */
+function shownValue(api: ChaosApi, p: Speller, w: Word): number {
+  const base = w.scramble ? wordValue(w.scramble) : PLAIN_POINTS;
+  const value = api.ctx.settings.streak ? base * streakMultiplier(p.inRow) : base;
+  return p.retry ? Math.round(value / 2) : value;
+}
+
+/**
+ * Put `incoming` in the place of `current` (the word just drawn) in a player's pile, and `current`
+ * where `incoming` was further on, so the player still meets every word once. False if `current`
+ * is not the word just drawn, or `incoming` is not still to come.
+ */
+function tradeInPile(deck: Deck, current: string, incoming: string): boolean {
+  const later = deck.ids.indexOf(incoming, deck.pos);
+  if (deck.ids[deck.pos - 1] !== current || later < 0) return false;
+  deck.ids[deck.pos - 1] = incoming;
+  deck.ids[later] = current;
+  return true;
+}
+
+/** The full time of the game, as the mode set it. */
+const gameMs = (api: ChaosApi) => (api.ctx.common.timeLimitSec > 0 ? api.ctx.common.timeLimitSec : meta.common.defaults.timeLimitSec!) * 1000;
+
+/** Typo tax: charge the wrong spellings tried on the target's word since the last look. Every new word starts with no tries. */
+function chargeTypos(api: ChaosApi, fx: ActiveEffect) {
+  const t = target(fx);
+  const p = playing(api, t);
+  const iid = p?.word?.iid ?? null;
+  const tries = p?.word?.scramble?.tries ?? 0;
+  const before = iid !== null && iid === fx.data.iid ? Number(fx.data.tries) : 0;
+  fx.data.iid = iid;
+  fx.data.tries = tries;
+  if (!p || tries <= before) return;
+  const fine = -api.add('score', t, -TYPO_FINE * (tries - before));
+  if (fine > 0) api.feed(`${api.name(t)} paid ${fine} points of typo tax.`, 'info');
+}
+
+/** Hint tax: charge the hints the target asked for since the last look. */
+function chargeHints(api: ChaosApi, fx: ActiveEffect) {
+  const t = target(fx);
+  const p = spellerOf(api, t);
+  if (!p || !inGame(api, t)) return;
+  const asked = p.hintsUsed - Number(fx.data.hintsUsed);
+  fx.data.hintsUsed = p.hintsUsed;
+  if (asked <= 0) return;
+  const fine = -api.add('score', t, -HINT_COST * asked);
+  if (fine > 0) api.feed(`${api.name(t)} paid ${fine} points of hint tax.`, 'info');
+}
 
 const cheats: CheatDef[] = [
   /* --------------------------------- tiles -------------------------------- */
@@ -461,6 +522,276 @@ const cheats: CheatDef[] = [
       const to = Math.min(2, p.solved);
       if (to <= p.inRow) return { error: p.inRow >= 2 ? 'Your streak already scores triple.' : 'Solve a word first: a streak needs solved words.' };
       p.inRow = to;
+    },
+  },
+  {
+    id: 'word-scramble.streak-swap',
+    name: 'Spelling Streak Swap',
+    category: 'troll',
+    description: 'You and an opponent swap spelling streaks. A streak is never longer than the words its new owner has solved.',
+    target: 'opponent',
+    modes: [MODE],
+    needs: ['spelling-streak'],
+    cost: 30,
+    cooldownMs: 50_000,
+    undoable: false,
+    apply: (api, c) => {
+      const t = target(c);
+      const me = playing(api, c.caster);
+      if (!me) return { error: 'You have finished every word.' };
+      const them = playing(api, t);
+      if (!them) return { error: `${api.name(t)} has finished every word.` };
+      const [mine, theirs] = [Math.min(them.inRow, me.solved), Math.min(me.inRow, them.solved)];
+      if (mine === me.inRow && theirs === them.inRow) return { error: 'Swapping would leave your streaks as they are.' };
+      [me.inRow, them.inRow] = [mine, theirs];
+      api.feed(`${api.name(c.caster)} swapped spelling streaks with ${api.name(t)}: ${mine} for ${theirs}.`, 'info');
+    },
+  },
+  {
+    id: 'word-scramble.streak-stall',
+    name: 'Spelling Streak Stall',
+    category: 'troll',
+    description: 'For 20 seconds, the words an opponent solves still score as usual, but their spelling streak stays where it is instead of growing.',
+    target: 'opponent',
+    modes: [MODE],
+    needs: ['spelling-streak'],
+    cost: 25,
+    cooldownMs: 45_000,
+    durationMs: 20_000,
+    apply: (api, c, fx) => {
+      const t = target(c);
+      const p = playing(api, t);
+      if (!p) return { error: `${api.name(t)} has finished every word.` };
+      fx!.data.solved = p.solved;
+    },
+    hooks: {
+      delta: {
+        // A solved word is the only thing that adds to the streak, and it always scores.
+        score: (api, fx) => {
+          const p = spellerOf(api, target(fx));
+          if (!p) return;
+          const n = p.solved - Number(fx.data.solved);
+          fx.data.solved = p.solved;
+          if (n > 0) p.inRow = Math.max(0, p.inRow - n);
+        },
+      },
+    },
+    overlay: () => ({ kind: 'badge', text: 'Streak stalled', tone: 'bad' }),
+  },
+
+  /* ------------------------------- more tiles and words ------------------------------- */
+  {
+    id: 'word-scramble.word-swap',
+    name: 'Scramble Word Swap',
+    category: 'troll',
+    description:
+      'Swap the word on your screen with an opponent\'s, tiles, hinted letters and all. Each of you keeps your own word timer, and each word you hand over takes the other one\'s place later in your pile, so everyone still meets every word once. Not for second-chance words.',
+    target: 'opponent',
+    modes: [MODE],
+    cost: 30,
+    cooldownMs: 45_000,
+    undoable: false,
+    apply: (api, c) => {
+      const t = target(c);
+      const me = needWord(api, c.caster, true);
+      if (isErr(me)) return me;
+      const them = needWord(api, t, false);
+      if (isErr(them)) return them;
+      if (me.retry || them.retry) return { error: 'Second-chance words cannot be swapped.' };
+      const [mine, theirs] = [qidOf(api, me.word.iid), qidOf(api, them.word.iid)];
+      if (mine === theirs) return { error: `You and ${api.name(t)} are on the same word.` };
+      // Check both piles before changing either, so a refusal changes nothing.
+      const later = (d: Deck, q: string) => d.ids.indexOf(q, d.pos) >= 0;
+      if (me.stream.deck.ids[me.stream.deck.pos - 1] !== mine || them.stream.deck.ids[them.stream.deck.pos - 1] !== theirs) return { error: 'One of these words did not come from its pile.' };
+      if (!later(me.stream.deck, theirs)) return { error: `You have already had ${api.name(t)}'s word.` };
+      if (!later(them.stream.deck, mine)) return { error: `${api.name(t)} has already had your word.` };
+      tradeInPile(me.stream.deck, mine, theirs);
+      tradeInPile(them.stream.deck, theirs, mine);
+      const [a, b] = [me.word, them.word];
+      me.word = { iid: b.iid, scramble: b.scramble, deadline: a.deadline };
+      them.word = { iid: a.iid, scramble: a.scramble, deadline: b.deadline };
+      // Wrong tries belong to whoever made them.
+      if (me.word.scramble) me.word.scramble.tries = 0;
+      if (them.word.scramble) them.word.scramble.tries = 0;
+      me.stream.iid = me.word.iid;
+      them.stream.iid = them.word.iid;
+      api.feed(`${api.name(c.caster)} swapped words with ${api.name(t)}.`, 'info');
+    },
+  },
+  {
+    id: 'word-scramble.word-boomerang',
+    name: 'Word Boomerang',
+    category: 'advantage',
+    description:
+      'The last word you missed or skipped comes back to you once, after your last word, for half points, the way a second chance does. Only in games without second chances, and not for a word that was a second chance itself.',
+    target: 'self',
+    modes: [MODE],
+    cost: 20,
+    cooldownMs: 40_000,
+    undoable: false,
+    apply: (api, c) => {
+      if (api.ctx.settings.secondChance) return { error: 'Second chances are on: missed words come back already.' };
+      const p = playing(api, c.caster);
+      if (!p) return { error: 'You have finished every word.' };
+      const last = p.stream.last;
+      if (!last || last.correct) return { error: 'Your last word was not a miss.' };
+      // Words after the main ones are second chances.
+      if (p.done > p.main) return { error: 'Your last word was a second chance already.' };
+      const qid = qidOf(api, last.iid);
+      if (p.again.includes(qid)) return { error: 'That word is already coming back.' };
+      p.again.push(qid);
+      p.target++;
+      api.feed('Word Boomerang: your last missed word comes back once after your last word, for half points.', 'good', [c.caster]);
+    },
+  },
+  {
+    id: 'word-scramble.typo-tax',
+    name: 'Spelling Typo Tax',
+    category: 'troll',
+    description: `For 20 seconds, every wrong spelling an opponent tries costs them ${TYPO_FINE} points from their score (as many as they have). Only in games where a wrong spelling can be tried again.`,
+    target: 'opponent',
+    modes: [MODE],
+    needs: ['retries'],
+    cost: 25,
+    cooldownMs: 40_000,
+    durationMs: 20_000,
+    tickMs: 250,
+    apply: (api, c, fx) => {
+      const t = target(c);
+      const p = playing(api, t);
+      if (!p) return { error: `${api.name(t)} has finished every word.` };
+      fx!.data.iid = p.word?.iid ?? null;
+      fx!.data.tries = p.word?.scramble?.tries ?? 0;
+    },
+    hooks: {
+      tick: chargeTypos,
+      end: (api, fx, reason) => {
+        if (reason === 'expired') chargeTypos(api, fx);
+      },
+    },
+    overlay: () => ({ kind: 'badge', text: `Typo tax: ${TYPO_FINE} a try`, tone: 'bad' }),
+  },
+  {
+    id: 'word-scramble.hint-tax',
+    name: 'Letter Hint Tax',
+    category: 'troll',
+    description: `For 20 seconds, every hint an opponent asks for costs them ${HINT_COST} more points, taken from their score straight away (as many as they have), on top of what the hint takes off the word.`,
+    target: 'opponent',
+    modes: [MODE],
+    needs: ['hints'],
+    cost: 25,
+    cooldownMs: 40_000,
+    durationMs: 20_000,
+    tickMs: 250,
+    apply: (api, c, fx) => {
+      const t = target(c);
+      const p = playing(api, t);
+      if (!p) return { error: `${api.name(t)} has finished every word.` };
+      fx!.data.hintsUsed = p.hintsUsed;
+    },
+    hooks: {
+      tick: chargeHints,
+      end: (api, fx, reason) => {
+        if (reason === 'expired') chargeHints(api, fx);
+      },
+    },
+    overlay: () => ({ kind: 'badge', text: 'Hints cost double', tone: 'bad' }),
+  },
+  {
+    id: 'word-scramble.spelling-wager',
+    name: 'Spelling Wager',
+    category: 'score',
+    description:
+      'Bet on the word on your screen. Solve it within 45 seconds and it scores double; miss or skip it and you lose the points it showed when you bet (as many as you have). If the 45 seconds run out first, or the word leaves your screen some other way, the bet is off.',
+    target: 'self',
+    modes: [MODE],
+    cost: 20,
+    cooldownMs: 40_000,
+    durationMs: 45_000,
+    tickMs: 250,
+    stacking: 'reject',
+    apply: (api, c, fx) => {
+      const p = needWord(api, c.caster, true);
+      if (isErr(p)) return p;
+      fx!.data.iid = p.word.iid;
+      fx!.data.stake = shownValue(api, p, p.word);
+    },
+    hooks: {
+      delta: {
+        score: (api, fx, d) => {
+          const p = spellerOf(api, fx.caster);
+          const last = p?.stream.last;
+          if (!p || !last?.correct || last.iid !== fx.data.iid || p.word?.iid === fx.data.iid || !((d[fx.caster] ?? 0) > 0)) return;
+          d[fx.caster]! *= 2;
+          api.feed(`${api.name(fx.caster)} won their spelling wager: the word scored double.`, 'good');
+          api.endEffect(fx.eid, 'used');
+        },
+      },
+      // A miss or a skip ends the word without a score, so it is settled here.
+      tick: (api, fx) => {
+        const p = spellerOf(api, fx.caster);
+        if (!p || !inGame(api, fx.caster) || p.word?.iid === fx.data.iid) return;
+        const last = p.stream.last;
+        if (last && last.iid === fx.data.iid && !last.correct) {
+          const lost = -api.add('score', fx.caster, -Number(fx.data.stake));
+          api.feed(lost > 0 ? `${api.name(fx.caster)} lost their spelling wager: −${lost} points.` : `${api.name(fx.caster)} lost their spelling wager, with no points to pay.`, 'bad');
+        }
+        api.endEffect(fx.eid, 'used');
+      },
+    },
+    overlay: (fx) => ({ kind: 'badge', text: `Wager on this word: ${Number(fx.data.stake)}`, tone: 'info' }),
+    overlayFor: 'caster',
+  },
+
+  /* --------------------------------- more timers -------------------------------- */
+  {
+    id: 'word-scramble.timer-swap',
+    name: 'Word Timer Swap',
+    category: 'troll',
+    description: `You and an opponent swap the time left on your word timers. Nobody is left with less than ${MIN_WORD_LEFT_MS / 1000} seconds, or given more than a word's full time.`,
+    target: 'opponent',
+    modes: [MODE],
+    needs: ['word-timer'],
+    cost: 30,
+    cooldownMs: 45_000,
+    undoable: false,
+    apply: (api, c) => {
+      const t = target(c);
+      const me = needWord(api, c.caster, true);
+      if (isErr(me)) return me;
+      const them = needWord(api, t, false);
+      if (isErr(them)) return them;
+      if (me.word.deadline === null || them.word.deadline === null) return { error: 'Both words need a timer.' };
+      const now = api.now();
+      const [mine, theirs] = [me.word.deadline - now, them.word.deadline - now];
+      if (mine <= 0 || theirs <= 0) return { error: 'Time is already up on one of these words.' };
+      const fit = (ms: number, w: Word) => Math.max(MIN_WORD_LEFT_MS, Math.min(ms, api.ctx.questions.timeLimitMs(w.iid)));
+      const [toMe, toThem] = [fit(theirs, me.word), fit(mine, them.word)];
+      if (Math.abs(toMe - mine) < 500 && Math.abs(toThem - theirs) < 500) return { error: `You and ${api.name(t)} have about the same time left.` };
+      setWordDeadline(api, c.caster, me.word, now + toMe);
+      setWordDeadline(api, t, them.word, now + toThem);
+      api.feed(`${api.name(c.caster)} swapped word timers with ${api.name(t)}: ${secs(toMe)} for ${secs(toThem)}.`, 'info');
+    },
+  },
+
+  /* --------------------------------- the game clock -------------------------------- */
+  {
+    id: 'word-scramble.overtime-bell',
+    name: 'Scramble Overtime Bell',
+    category: 'round',
+    description: `Rings for overtime: the game clock gets up to ${OVERTIME_MS / 1000} more seconds for everyone, never leaving more time than the game started with.`,
+    target: 'room',
+    modes: [MODE],
+    cost: 35,
+    cooldownMs: 60_000,
+    undoable: false,
+    apply: (api) => {
+      const s = api.s as { endsAt: number };
+      const add = Math.min(OVERTIME_MS, gameMs(api) - (s.endsAt - api.now()));
+      if (add < 1000) return { error: 'The game clock still has all the time it started with.' };
+      s.endsAt += add;
+      api.ctx.setTimer('time', s.endsAt);
+      api.feed(`Overtime bell: the game clock gets ${secs(add)} more.`, 'info');
     },
   },
 ];

@@ -1,11 +1,12 @@
+import type { Answer } from '@ludora/shared';
 import { draw } from '../../questions/deck.ts';
 import { DEADLINE_GRACE_MS } from '../../mechanics/syncRounds.ts';
-import { FLOOR_MS } from '../../modes/survival-run/index.ts';
+import { FLOOR_MS, RETURN_AFTER } from '../../modes/survival-run/index.ts';
 import type { StreamState } from '../../mechanics/selfPaced.ts';
 import type { PlayerId } from '../../sdk/types.ts';
 import { inGame, odds, rollOdds, target, transfer } from '../cheats/kit.ts';
 import { defineCheats } from '../registry.ts';
-import type { ChaosApi, CheatDef } from '../types.ts';
+import type { ActiveEffect, ChaosApi, CheatDef } from '../types.ts';
 
 /*
  * Cheats that only make sense in Survival Run: they work on hearts (never the
@@ -13,11 +14,16 @@ import type { ChaosApi, CheatDef } from '../types.ts';
  * each runner's shrinking question timer, and on second-wind questions.
  * Hearts move through the 'hearts' meter, which keeps them between 1 and the
  * most the mode lets a runner hold.
+ *
+ * Lasting cheats that heal as the run goes are tagged 'heal'; the heart seal,
+ * which stops a runner winning hearts back, cannot share a runner with them.
  */
 
 const MODE = 'survival-run';
 /** Cheats that shorten a timer never leave a runner with less than this on the clock. */
 const MIN_LEFT_MS = 3000;
+/** Correct answers a heart is worth in the heart shop, either way. */
+const HEART_PRICE = 3;
 
 interface Runner {
   stream: StreamState;
@@ -60,6 +66,41 @@ function setDeadline(api: ChaosApi, id: PlayerId, r: Runner, at: number) {
 
 const secs = (ms: number) => `${Math.round(ms / 100) / 10} s`;
 const hearts = (n: number) => `${n} ${n === 1 ? 'heart' : 'hearts'}`;
+
+/** The answer action a gate is looking at, if it answers the question on this runner's screen. */
+function answering(r: Runner, action: unknown): { iid: string; answer: Answer } | null {
+  const a = action as { type?: string; iid?: string; answer?: Answer } | null;
+  return r.phase === 'question' && a?.type === 'answer' && a.iid === r.stream.iid && a.answer ? { iid: a.iid, answer: a.answer } : null;
+}
+
+/**
+ * Whether this runner has just answered a question right, in the transaction a score hook is looking
+ * at. Each answer counts once: the effect remembers the last one it saw in `seen:<id>`.
+ */
+function justAnsweredRight(api: ChaosApi, fx: ActiveEffect, id: PlayerId, d: Record<string, number>): boolean {
+  const last = runnerOf(api, id)?.stream.last;
+  if (!(id in d) || !last?.correct || last.iid === fx.data[`seen:${id}`]) return false;
+  fx.data[`seen:${id}`] = last.iid;
+  return true;
+}
+
+/** Remember each runner's last answer when an effect starts, so only answers after it count. */
+function seenNow(api: ChaosApi, fx: ActiveEffect, ids: PlayerId[]) {
+  for (const id of ids) fx.data[`seen:${id}`] = runnerOf(api, id)?.stream.last?.iid ?? null;
+}
+
+/** Heart duel: the winner takes a heart from the other runner, outside any mode move (so no other heart cheat bends it). */
+function settleDuel(api: ChaosApi, fx: ActiveEffect) {
+  const winner = fx.data.winner as PlayerId | undefined;
+  if (!winner || fx.data.settled) return;
+  fx.data.settled = true;
+  const loser = winner === fx.caster ? target(fx) : fx.caster;
+  const lost = running(api, loser) ? -api.add('hearts', loser, -1) : 0;
+  const won = lost > 0 && running(api, winner) ? api.add('hearts', winner, 1) : 0;
+  const head = `${api.name(winner)} won the heart duel against ${api.name(loser)}`;
+  if (!lost) api.feed(`${head}, but ${api.name(loser)} was on their last heart.`, 'info');
+  else api.feed(won ? `${head} and took a heart.` : `${head}: ${api.name(loser)} lost a heart, and ${api.name(winner)} had no room for it.`, 'big');
+}
 
 const cheats: CheatDef[] = [
   /* --------------------------------- hearts -------------------------------- */
@@ -179,6 +220,7 @@ const cheats: CheatDef[] = [
     cost: 40,
     cooldownMs: 75_000,
     durationMs: 25_000,
+    tags: ['heal'],
     apply: (api, c) => {
       const r = needRunning(api, c.caster, true);
       if (isErr(r)) return r;
@@ -289,6 +331,7 @@ const cheats: CheatDef[] = [
     cooldownMs: 60_000,
     durationMs: 40_000,
     stacking: 'reject',
+    tags: ['heal'],
     apply: (api, c) => {
       const r = needRunning(api, c.caster, true);
       if (isErr(r)) return r;
@@ -473,6 +516,327 @@ const cheats: CheatDef[] = [
       for (const x of waiting) x.after = r.stream.answered;
       api.feed(`${waiting.length === 1 ? 'A missed question comes' : `${waiting.length} missed questions come`} back to ${api.name(c.caster)} next.`, 'good', [c.caster]);
     },
+  },
+  {
+    id: 'survival-run.second-wind-swipe',
+    name: 'Survival Second Wind Swipe',
+    category: 'troll',
+    description: `Swipe the missed question due back to an opponent soonest: it comes back to you instead, ${RETURN_AFTER} questions from now, and answering it right wins you a heart if you have room. They lose that chance to win one back.`,
+    target: 'opponent',
+    modes: [MODE],
+    needs: ['second-wind'],
+    cost: 30,
+    cooldownMs: 50_000,
+    undoable: false,
+    apply: (api, c) => {
+      const t = target(c);
+      const them = needRunning(api, t, false);
+      if (isErr(them)) return them;
+      const me = needRunning(api, c.caster, true);
+      if (isErr(me)) return me;
+      if (!them.returns.length) return { error: `${api.name(t)} has no missed question waiting to come back.` };
+      const i = them.returns.reduce((best, x, k) => (x.after < them.returns[best]!.after ? k : best), 0);
+      const qid = them.returns[i]!.qid;
+      if (me.returns.some((x) => x.qid === qid)) return { error: 'That question is already waiting to come back to you.' };
+      them.returns.splice(i, 1);
+      me.returns.push({ qid, after: me.stream.answered + RETURN_AFTER });
+      api.feed(`${api.name(c.caster)} swiped a second-wind question from ${api.name(t)}.`, 'info');
+    },
+  },
+
+  /* ------------------------------- trading hearts ------------------------------- */
+  {
+    id: 'survival-run.heart-bank',
+    name: 'Survival Heart Piggy Bank',
+    category: 'economy',
+    description:
+      'Put one of your hearts in the piggy bank (you need at least two). After 30 seconds it comes back with another one, up to the most you can hold, if your run is still going. Stop it early and you get back just the heart you put in.',
+    target: 'self',
+    modes: [MODE],
+    needs: ['hearts'],
+    cost: 25,
+    cooldownMs: 60_000,
+    durationMs: 30_000,
+    stacking: 'reject',
+    apply: (api, c) => {
+      const r = needRunning(api, c.caster, true);
+      if (isErr(r)) return r;
+      if (r.hearts < 2) return { error: 'You need at least two hearts to put one in the bank.' };
+      api.add('hearts', c.caster, -1);
+    },
+    hooks: {
+      end: (api, fx, reason) => {
+        // An undo has already put the heart back; a runner who left has no run.
+        if (reason === 'undone' || reason === 'left' || !running(api, fx.caster)) return;
+        const back = api.add('hearts', fx.caster, reason === 'expired' ? 2 : 1);
+        if (reason === 'expired') api.feed(`${api.name(fx.caster)}'s piggy bank paid out ${hearts(back)}.`, 'good', [fx.caster]);
+      },
+    },
+    overlay: (fx) => ({ kind: 'countdown', label: 'Heart in the bank', until: fx.endsAt }),
+  },
+  {
+    id: 'survival-run.heart-loan',
+    name: 'Survival Heart Loan',
+    category: 'economy',
+    description: 'Borrow a heart now (you need room for it). After 30 seconds, or sooner if the loan ends early, two hearts are taken back, never your last one.',
+    target: 'self',
+    modes: [MODE],
+    needs: ['hearts'],
+    cost: 30,
+    cooldownMs: 75_000,
+    durationMs: 30_000,
+    stacking: 'reject',
+    apply: (api, c) => {
+      const r = needRunning(api, c.caster, true);
+      if (isErr(r)) return r;
+      if (!api.add('hearts', c.caster, 1)) return { error: 'You have no room to borrow a heart.' };
+    },
+    hooks: {
+      end: (api, fx, reason) => {
+        if (reason === 'undone' || reason === 'left' || !running(api, fx.caster)) return;
+        const paid = -api.add('hearts', fx.caster, -2);
+        api.feed(paid ? `${api.name(fx.caster)}'s heart loan came due: −${hearts(paid)}.` : `${api.name(fx.caster)}'s heart loan came due, but they were on their last heart.`, 'info');
+      },
+    },
+    overlay: (fx) => ({ kind: 'countdown', label: 'Loan due: 2 hearts', until: fx.endsAt }),
+  },
+  {
+    id: 'survival-run.heart-shop',
+    name: 'Survival Heart Shop',
+    category: 'economy',
+    description: `Buy a heart with ${HEART_PRICE} of your correct answers: your score goes down by ${HEART_PRICE} and you win a heart (you need room for it). Your timer and heart restores follow your correct answers, so they move back to match.`,
+    target: 'self',
+    modes: [MODE],
+    needs: ['hearts'],
+    cost: 25,
+    cooldownMs: 50_000,
+    apply: (api, c) => {
+      const r = needRunning(api, c.caster, true);
+      if (isErr(r)) return r;
+      if (r.stream.correct < HEART_PRICE) return { error: `You need ${HEART_PRICE} correct answers to pay with.` };
+      if (r.hearts >= maxHearts(api)) return { error: 'You already have every heart you can hold.' };
+      api.add('score', c.caster, -HEART_PRICE);
+      api.add('hearts', c.caster, 1);
+    },
+  },
+  {
+    id: 'survival-run.heart-sale',
+    name: 'Survival Heart Sale',
+    category: 'economy',
+    description: `Sell one of your hearts (never your last) for ${HEART_PRICE} correct answers on your score. Your timer and heart restores follow your correct answers, so they move on to match, and a sale can jump you past a restore.`,
+    target: 'self',
+    modes: [MODE],
+    needs: ['hearts'],
+    cost: 25,
+    cooldownMs: 50_000,
+    apply: (api, c) => {
+      const r = needRunning(api, c.caster, true);
+      if (isErr(r)) return r;
+      if (r.hearts < 2) return { error: 'You cannot sell your last heart.' };
+      api.add('hearts', c.caster, -1);
+      api.add('score', c.caster, HEART_PRICE);
+    },
+  },
+  {
+    id: 'survival-run.heart-gift',
+    name: 'Survival Heart Gift',
+    category: 'advantage',
+    description: 'Give one of your hearts (never your last) to another runner who has room for it.',
+    target: 'player',
+    modes: [MODE],
+    needs: ['hearts'],
+    cost: 20,
+    cooldownMs: 45_000,
+    apply: (api, c) => {
+      const t = target(c);
+      if (t === c.caster) return { error: 'Pick another runner to give a heart to.' };
+      const me = needRunning(api, c.caster, true);
+      if (isErr(me)) return me;
+      const them = needRunning(api, t, false);
+      if (isErr(them)) return them;
+      if (me.hearts < 2) return { error: 'You cannot give away your last heart.' };
+      if (them.hearts >= maxHearts(api)) return { error: `${api.name(t)} already has every heart they can hold.` };
+      transfer(api, 'hearts', c.caster, t, 1);
+      api.feed(`${api.name(c.caster)} gave ${api.name(t)} a heart.`, 'good');
+    },
+  },
+
+  /* ------------------------------- hearts that move as you play ------------------------------- */
+  {
+    id: 'survival-run.heart-seal',
+    name: 'Survival Heart Seal',
+    category: 'troll',
+    description: 'For 30 seconds, the hearts an opponent\'s run would give back are lost: no restored hearts and no second-wind hearts. Not while a lasting healing cheat is running on them.',
+    target: 'opponent',
+    modes: [MODE],
+    needs: ['hearts'],
+    cost: 30,
+    cooldownMs: 50_000,
+    durationMs: 30_000,
+    tags: ['heart-seal'],
+    conflicts: ['heal'],
+    // A cap. Lasting healers on the same runner are refused (they heal from a score hook, which may run
+    // before or after this one); Heartstrings hearts come later, at 52, and are not the run's to seal.
+    priority: 40,
+    apply: (api, c) => {
+      const r = needRunning(api, target(c), false);
+      if (isErr(r)) return r;
+    },
+    hooks: {
+      delta: {
+        hearts: (api, fx, d) => {
+          const t = target(fx);
+          if ((d[t] ?? 0) <= 0 || !running(api, t)) return;
+          d[t] = 0;
+          api.feed(`The heart seal kept ${api.name(t)} from winning a heart back.`, 'info');
+        },
+      },
+    },
+    overlay: () => ({ kind: 'badge', text: 'Hearts sealed', tone: 'bad' }),
+  },
+  {
+    id: 'survival-run.heartstrings',
+    name: 'Survival Heartstrings',
+    category: 'advantage',
+    description: 'For 25 seconds, every heart an opponent loses, you win one, up to the most you can hold. It costs them nothing extra.',
+    target: 'opponent',
+    hostile: false,
+    modes: [MODE],
+    needs: ['hearts'],
+    cost: 30,
+    cooldownMs: 60_000,
+    durationMs: 25_000,
+    // After glass hearts (which break more) and guardian hearts (which keep one), so it follows what they really lost.
+    priority: 52,
+    apply: (api, c) => {
+      const me = needRunning(api, c.caster, true);
+      if (isErr(me)) return me;
+      const them = needRunning(api, target(c), false);
+      if (isErr(them)) return them;
+      if (me.hearts >= maxHearts(api)) return { error: 'You already have every heart you can hold.' };
+    },
+    hooks: {
+      delta: {
+        hearts: (api, fx, d) => {
+          const lost = -(d[target(fx)] ?? 0);
+          if (lost <= 0 || !running(api, fx.caster)) return;
+          // Only as many as the caster has room for, so the feed says what really happened.
+          const won = Math.min(lost, maxHearts(api) - api.get('hearts', fx.caster) - (d[fx.caster] ?? 0));
+          if (won <= 0) return;
+          d[fx.caster] = (d[fx.caster] ?? 0) + won;
+          api.feed(`Heartstrings: ${api.name(target(fx))} lost ${hearts(lost)}, so ${api.name(fx.caster)} won ${hearts(won)}.`, 'good', [fx.caster]);
+        },
+      },
+    },
+    overlay: () => ({ kind: 'badge', text: 'Heartstrings', tone: 'good' }),
+    overlayFor: 'caster',
+  },
+  {
+    id: 'survival-run.heart-duel',
+    name: 'Survival Heart Duel',
+    category: 'troll',
+    description: 'You and an opponent race to the next right answer. Within 30 seconds, whoever answers one right first takes a heart from the other: the other loses one (never their last) and the winner wins it if they have room.',
+    target: 'opponent',
+    modes: [MODE],
+    needs: ['hearts'],
+    cost: 30,
+    cooldownMs: 60_000,
+    durationMs: 30_000,
+    tickMs: 250,
+    apply: (api, c, fx) => {
+      const me = needRunning(api, c.caster, true);
+      if (isErr(me)) return me;
+      const them = needRunning(api, target(c), false);
+      if (isErr(them)) return them;
+      seenNow(api, fx!, [c.caster, target(c)]);
+    },
+    hooks: {
+      delta: {
+        // The first right answer decides the duel; the heart moves on the next tick, outside the answer.
+        score: (api, fx, d) => {
+          if (fx.data.winner) return;
+          for (const id of [fx.caster, target(fx)]) {
+            if (justAnsweredRight(api, fx, id, d)) {
+              fx.data.winner = id;
+              return;
+            }
+          }
+        },
+      },
+      tick: (api, fx) => {
+        if (!fx.data.winner) return;
+        settleDuel(api, fx);
+        api.endEffect(fx.eid, 'used');
+      },
+      // A right answer in the last moments still counts.
+      end: (api, fx, reason) => {
+        if (reason === 'expired' || reason === 'stopped') settleDuel(api, fx);
+      },
+    },
+    overlay: (fx) => ({ kind: 'countdown', label: 'Heart duel: first right answer wins', until: fx.endsAt }),
+  },
+  {
+    id: 'survival-run.safety-rope',
+    name: 'Survivor\'s Safety Rope',
+    category: 'advantage',
+    description: 'Only on your last heart: within the next 30 seconds, your first wrong answer while you are on your last heart is caught before it counts, so you can answer again. Running out of time is not caught.',
+    target: 'self',
+    modes: [MODE],
+    cost: 35,
+    cooldownMs: 60_000,
+    durationMs: 30_000,
+    stacking: 'reject',
+    apply: (api, c) => {
+      const r = needRunning(api, c.caster, true);
+      if (isErr(r)) return r;
+      if (r.hearts !== 1) return { error: 'The safety rope only works on your last heart.' };
+    },
+    hooks: {
+      gate: (api, fx, id, action) => {
+        const r = running(api, id);
+        const a = r && answering(r, action);
+        if (!a || r.hearts !== 1 || api.ctx.questions.grade(a.iid, a.answer).correct) return;
+        api.endEffect(fx.eid, 'used');
+        return { block: 'Safety rope! That answer is wrong. Try again.' };
+      },
+    },
+    overlay: () => ({ kind: 'badge', text: 'Safety rope', tone: 'good' }),
+  },
+
+  /* ------------------------------- the question timer, again ------------------------------- */
+  {
+    id: 'survival-run.tempo-lock',
+    name: 'Survival Tempo Lock',
+    category: 'advantage',
+    description: 'For 30 seconds, your right answers do not shorten your question timer.',
+    target: 'self',
+    modes: [MODE],
+    cost: 25,
+    cooldownMs: 50_000,
+    durationMs: 30_000,
+    tickMs: 250,
+    apply: (api, c, fx) => {
+      const r = needRunning(api, c.caster, true);
+      if (isErr(r)) return r;
+      fx!.data.timerMs = r.timerMs;
+      seenNow(api, fx!, [c.caster]);
+    },
+    hooks: {
+      // Follow changes other cheats make to the timer between answers.
+      tick: (api, fx) => {
+        const r = running(api, fx.caster);
+        if (r) fx.data.timerMs = r.timerMs;
+      },
+      delta: {
+        score: (api, fx, d) => {
+          const r = running(api, fx.caster);
+          if (!r || !justAnsweredRight(api, fx, fx.caster, d)) return;
+          r.timerMs = Math.max(r.timerMs, Number(fx.data.timerMs));
+          fx.data.timerMs = r.timerMs;
+        },
+      },
+    },
+    overlay: () => ({ kind: 'badge', text: 'Timer locked', tone: 'good' }),
   },
 ];
 

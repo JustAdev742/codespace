@@ -1,6 +1,6 @@
 import { createRng } from '@ludora/shared';
 import type { ChaosSim } from '../../src/testing/chaos.ts';
-import type { Post, ScenarioSet } from '../chaos-scenarios.ts';
+import type { Post, Pre, ScenarioSet } from '../chaos-scenarios.ts';
 
 /* Catalogue-suite scenarios for word-scramble cheats. See chaos-scenarios.ts for what each field does. */
 
@@ -45,13 +45,33 @@ const casterStreakThenSkip: Post = (sim, caster) => {
   const iid = toTiles(sim, caster) ?? you(sim, caster)?.word?.iid;
   if (iid) sim.rt.act(caster, { type: 'skip', iid });
 };
+const targetMisspells: Post = (sim, _caster, _def, target) => {
+  const iid = target ? toTiles(sim, target) : null;
+  if (iid) sim.rt.act(target!, { type: 'solve', iid, text: 'qqqqq' });
+};
+const casterSolves: Post = (sim, caster) => solveWord(sim, caster);
+const targetSolves: Post = (sim, _caster, _def, target) => target && solveWord(sim, target);
+/** The caster skips a word (moving on to one first), so their last word is a miss. */
+const casterSkips: Pre = (sim, caster) => {
+  if (!live(sim, caster) || you(sim, caster)?.finished) return;
+  if (!you(sim, caster)?.word) sim.rt.act(caster, { type: 'next' });
+  const iid = you(sim, caster)?.word?.iid;
+  if (iid) sim.rt.act(caster, { type: 'skip', iid });
+};
 
 export const scenarios: ScenarioSet = {
   // The word timer, the spelling streak and one try per word are game settings.
   settings: { 'word-scramble': [{ wordTimer: true }, { streak: true }, { oneTry: true }] },
+  pre: {
+    'word-scramble.word-boomerang': casterSkips,
+  },
   post: {
     'word-scramble.hint-padlock': targetTriesHint,
     'word-scramble.second-draft': casterMisspells,
     'word-scramble.streak-keeper': casterStreakThenSkip,
+    'word-scramble.typo-tax': targetMisspells,
+    'word-scramble.hint-tax': targetTriesHint,
+    'word-scramble.spelling-wager': casterSolves,
+    'word-scramble.streak-stall': targetSolves,
   },
 };

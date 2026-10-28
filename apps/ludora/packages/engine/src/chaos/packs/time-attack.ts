@@ -1,13 +1,13 @@
 import { draw } from '../../questions/deck.ts';
 import { DEADLINE_GRACE_MS } from '../../mechanics/syncRounds.ts';
-import { BASE_POINTS, multiplierFor, overdriveMultiplier } from '../../modes/time-attack/index.ts';
+import { BASE_POINTS, MAX_MULTIPLIER, multiplierFor, overdriveMultiplier } from '../../modes/time-attack/index.ts';
 import type { StreamState } from '../../mechanics/selfPaced.ts';
 import type { Answer } from '@ludora/shared';
 import type { PlayerId } from '../../sdk/types.ts';
-import { CLOCK_FLOOR_S } from '../adapters/time-attack.ts';
+import { CLOCK_FLOOR_S, OVERDRIVE_CHEAT_CAP } from '../adapters/time-attack.ts';
 import { inGame, odds, rollOdds, share, target, transfer } from '../cheats/kit.ts';
 import { defineCheats } from '../registry.ts';
-import type { ChaosApi, CheatDef } from '../types.ts';
+import type { ActiveEffect, ChaosApi, CheatDef } from '../types.ts';
 
 /*
  * Cheats that only make sense in Time Attack: they work on each run's
@@ -18,6 +18,14 @@ import type { ChaosApi, CheatDef } from '../types.ts';
  */
 
 const MODE = 'time-attack';
+/** Seconds the stopwatch wager is played for. */
+const WAGER_S = 5;
+/** Seconds put in the savings jar, and the interest they come back with. */
+const SAVE_S = 8;
+const INTEREST_S = 4;
+/** The last-second save fires when a clock gets down to this, and puts this much back. */
+const RESCUE_AT_S = 2;
+const RESCUE_S = 6;
 
 interface Run {
   stream: StreamState;
@@ -53,13 +61,54 @@ function answering(r: Run, action: unknown): { iid: string; answer: Answer } | n
   return a?.type === 'answer' && a.iid === r.stream.iid && a.answer ? { iid: a.iid, answer: a.answer } : null;
 }
 
+const topMultiplier = (api: ChaosApi) => (api.ctx.settings.overdrive ? OVERDRIVE_CHEAT_CAP : MAX_MULTIPLIER);
+
+/** Remember each run's last answer when an effect starts, so only answers after it count. */
+function seenNow(api: ChaosApi, fx: ActiveEffect, ids: PlayerId[]) {
+  for (const id of ids) fx.data[`seen:${id}`] = runOf(api, id)?.stream.last?.iid ?? null;
+}
+
+/** Whether this run has just answered a question right, in the transaction a score hook is looking at. Each answer counts once. */
+function justAnsweredRight(api: ChaosApi, fx: ActiveEffect, id: PlayerId, d: Record<string, number>): boolean {
+  const last = runOf(api, id)?.stream.last;
+  if (!(id in d) || !last?.correct || last.iid === fx.data[`seen:${id}`]) return false;
+  fx.data[`seen:${id}`] = last.iid;
+  return true;
+}
+
+/**
+ * Seconds a hook has taken away from (or for) one run, to be moved to another run's clock on the
+ * effect's next tick. Moving them outside the answer that caused them keeps other clock cheats
+ * (penalty boxes, shields) from bending seconds that were never that run's own penalty or bonus.
+ */
+function owe(fx: ActiveEffect, s: number) {
+  fx.data.owed = Number(fx.data.owed ?? 0) + s;
+}
+
+function takeOwed(fx: ActiveEffect): number {
+  const s = Number(fx.data.owed ?? 0);
+  fx.data.owed = 0;
+  return s;
+}
+
+/** Stopwatch wager: the winner takes up to 5 seconds of the other run's clock. */
+function settleWager(api: ChaosApi, fx: ActiveEffect) {
+  const winner = fx.data.winner as PlayerId | undefined;
+  if (!winner || fx.data.settled) return;
+  fx.data.settled = true;
+  const loser = winner === fx.caster ? target(fx) : fx.caster;
+  const got = live(api, winner) && live(api, loser) ? transfer(api, 'clock', loser, winner, WAGER_S) : 0;
+  const head = `${api.name(winner)} won the stopwatch wager against ${api.name(loser)}`;
+  api.feed(got >= 0.05 ? `${head} and took ${secs(got)}.` : `${head}, but there were no seconds to take.`, 'big');
+}
+
 const cheats: CheatDef[] = [
   /* --------------------------------- the clock -------------------------------- */
   {
     id: 'time-attack.borrowed-time',
     name: 'Borrowed Stopwatch Time',
     category: 'economy',
-    description: 'Borrow 10 seconds for your clock now (never above its starting time). After 20 seconds the loan comes due and 12 seconds are taken back, never leaving you under 3 seconds.',
+    description: 'Borrow 10 seconds for your clock now (never above its starting time). After 20 seconds, or sooner if the loan ends early, 12 seconds are taken back, never leaving you under 3 seconds.',
     target: 'self',
     modes: [MODE],
     cost: 20,
@@ -74,7 +123,8 @@ const cheats: CheatDef[] = [
     },
     hooks: {
       end: (api, fx, reason) => {
-        if (reason !== 'expired' || !live(api, fx.caster)) return;
+        // Stopping the loan early must not cancel it; an undo has already taken the borrowed seconds back.
+        if (reason === 'undone' || reason === 'left' || !live(api, fx.caster)) return;
         const paid = -api.add('clock', fx.caster, -12);
         if (paid > 0) api.feed(`${api.name(fx.caster)} paid back ${secs(paid)} of borrowed time.`, 'info');
       },
@@ -510,6 +560,379 @@ const cheats: CheatDef[] = [
       r.stream.iid = api.ctx.questions.present(qid);
     },
   },
+
+  /* ------------------------------- more of the clock ------------------------------- */
+  {
+    id: 'time-attack.stopwatch-flip',
+    name: 'Stopwatch Flip',
+    category: 'advantage',
+    description: 'Turn your stopwatch over: the seconds left swap with the seconds used, out of the clock\'s starting time. On a 60-second clock, 15 left becomes 45, and 50 left becomes 10. Never under 3 seconds.',
+    target: 'self',
+    modes: [MODE],
+    cost: 30,
+    cooldownMs: 60_000,
+    apply: (api, c) => {
+      const r = needLive(api, c.caster, true);
+      if (isErr(r)) return r;
+      const now = left(api, c.caster);
+      const flipped = clockMs(api) / 1000 - now;
+      if (Math.abs(flipped - now) < 1) return { error: 'Your stopwatch reads the same either way up.' };
+      const moved = api.set('clock', c.caster, flipped);
+      api.feed(`${api.name(c.caster)} flipped their stopwatch: ${moved > 0 ? '+' : '−'}${secs(moved)}.`, moved > 0 ? 'good' : 'bad', [c.caster]);
+    },
+  },
+  {
+    id: 'time-attack.time-savings',
+    name: 'Stopwatch Savings Jar',
+    category: 'economy',
+    description: `Put ${SAVE_S} seconds of your clock in the savings jar (you need at least ${SAVE_S + 4} left). After 20 seconds they come back with ${INTEREST_S} more, never above the clock's starting time. Stop it early and you get back just the ${SAVE_S}.`,
+    target: 'self',
+    modes: [MODE],
+    cost: 20,
+    cooldownMs: 45_000,
+    durationMs: 20_000,
+    stacking: 'reject',
+    apply: (api, c) => {
+      const r = needLive(api, c.caster, true);
+      if (isErr(r)) return r;
+      if (left(api, c.caster) < SAVE_S + 4) return { error: `You need at least ${SAVE_S + 4} seconds left to save ${SAVE_S}.` };
+      api.add('clock', c.caster, -SAVE_S);
+    },
+    hooks: {
+      end: (api, fx, reason) => {
+        // An undo has already put the seconds back; a player who left has no run.
+        if (reason === 'undone' || reason === 'left' || !live(api, fx.caster)) return;
+        const back = api.add('clock', fx.caster, reason === 'expired' ? SAVE_S + INTEREST_S : SAVE_S);
+        if (reason === 'expired') api.feed(`${api.name(fx.caster)}'s savings jar paid out ${secs(back)}.`, 'good', [fx.caster]);
+      },
+    },
+    overlay: (fx) => ({ kind: 'countdown', label: `${SAVE_S} s in the savings jar`, until: fx.endsAt }),
+  },
+  {
+    id: 'time-attack.last-second-save',
+    name: 'Last-Second Stopwatch Save',
+    category: 'advantage',
+    description: `Once in the next 60 seconds, when your clock gets down to ${RESCUE_AT_S} seconds, ${RESCUE_S} seconds are put back on it. A wrong answer that takes it straight past zero still ends your run.`,
+    target: 'self',
+    modes: [MODE],
+    cost: 30,
+    cooldownMs: 75_000,
+    durationMs: 60_000,
+    tickMs: 250,
+    stacking: 'reject',
+    apply: (api, c) => {
+      const r = needLive(api, c.caster, true);
+      if (isErr(r)) return r;
+      if (left(api, c.caster) <= RESCUE_AT_S) return { error: 'Too late: your clock is already down to its last seconds.' };
+    },
+    hooks: {
+      tick: (api, fx) => {
+        if (!live(api, fx.caster) || left(api, fx.caster) > RESCUE_AT_S) return;
+        const got = api.add('clock', fx.caster, RESCUE_S);
+        api.feed(`A last-second save put ${secs(got)} back on ${api.name(fx.caster)}'s clock.`, 'good');
+        api.endEffect(fx.eid, 'used');
+      },
+    },
+    overlay: () => ({ kind: 'badge', text: 'Last-second save ready', tone: 'good' }),
+  },
+  {
+    id: 'time-attack.time-gift',
+    name: 'Stopwatch Time Gift',
+    category: 'advantage',
+    description: 'Give 5 seconds of your clock to another player\'s run. You keep at least 3 seconds, and their clock never goes above its starting time.',
+    target: 'player',
+    modes: [MODE],
+    cost: 20,
+    cooldownMs: 40_000,
+    apply: (api, c) => {
+      const t = target(c);
+      if (t === c.caster) return { error: 'Pick another player to give seconds to.' };
+      const me = needLive(api, c.caster, true);
+      if (isErr(me)) return me;
+      const them = needLive(api, t, false);
+      if (isErr(them)) return them;
+      if (room(api, t) < 0.5) return { error: `${api.name(t)}'s clock is already full.` };
+      const got = transfer(api, 'clock', c.caster, t, 5);
+      if (got < 0.5) return { error: 'You have no seconds to spare.' };
+      api.feed(`${api.name(c.caster)} gave ${api.name(t)} ${secs(got)} of their clock.`, 'good');
+    },
+  },
+  {
+    id: 'time-attack.time-wager',
+    name: 'Stopwatch Wager',
+    category: 'troll',
+    description: `You and an opponent race to the next right answer. Within 30 seconds, whoever answers one right first takes ${WAGER_S} seconds from the other's clock. The loser keeps at least 3 seconds, and the winner's clock never goes above its starting time.`,
+    target: 'opponent',
+    modes: [MODE],
+    cost: 25,
+    cooldownMs: 50_000,
+    durationMs: 30_000,
+    tickMs: 250,
+    apply: (api, c, fx) => {
+      const me = needLive(api, c.caster, true);
+      if (isErr(me)) return me;
+      const them = needLive(api, target(c), false);
+      if (isErr(them)) return them;
+      seenNow(api, fx!, [c.caster, target(c)]);
+    },
+    hooks: {
+      delta: {
+        // The first right answer decides the wager; the seconds move on the next tick, outside the answer.
+        score: (api, fx, d) => {
+          if (fx.data.winner) return;
+          for (const id of [fx.caster, target(fx)]) {
+            if (justAnsweredRight(api, fx, id, d)) {
+              fx.data.winner = id;
+              return;
+            }
+          }
+        },
+      },
+      tick: (api, fx) => {
+        if (!fx.data.winner) return;
+        settleWager(api, fx);
+        api.endEffect(fx.eid, 'used');
+      },
+      // A right answer in the last moments still counts.
+      end: (api, fx, reason) => {
+        if (reason === 'expired' || reason === 'stopped') settleWager(api, fx);
+      },
+    },
+    overlay: (fx) => ({ kind: 'countdown', label: `Wager: first right answer wins ${WAGER_S} s`, until: fx.endsAt }),
+  },
+  {
+    id: 'time-attack.penalty-pass',
+    name: 'Stopwatch Penalty Pass',
+    category: 'troll',
+    description: 'For 20 seconds, the seconds your wrong answers cost come off an opponent\'s clock instead of yours (never leaving them under 3 seconds). A wrong answer that would take your clock past zero still ends your run.',
+    target: 'opponent',
+    modes: [MODE],
+    needs: ['penalties'],
+    cost: 30,
+    cooldownMs: 50_000,
+    durationMs: 20_000,
+    tickMs: 250,
+    priority: 10,
+    apply: (api, c) => {
+      const me = needLive(api, c.caster, true);
+      if (isErr(me)) return me;
+      const them = needLive(api, target(c), false);
+      if (isErr(them)) return them;
+    },
+    hooks: {
+      delta: {
+        clock: (api, fx, d) => {
+          const lost = d[fx.caster] ?? 0;
+          if (lost >= 0 || !live(api, fx.caster)) return;
+          d[fx.caster] = 0;
+          owe(fx, -lost);
+        },
+      },
+      tick: (api, fx) => passPenalty(api, fx),
+      end: (api, fx) => passPenalty(api, fx),
+    },
+    overlay: () => ({ kind: 'badge', text: 'Penalties passed on', tone: 'good' }),
+    overlayFor: 'caster',
+  },
+  {
+    id: 'time-attack.bonus-heist',
+    name: 'Stopwatch Bonus Heist',
+    category: 'troll',
+    description: 'For 20 seconds, the bonus seconds an opponent\'s right answers win go onto your clock instead of theirs. Your clock never goes above its starting time; seconds that do not fit are lost.',
+    target: 'opponent',
+    modes: [MODE],
+    needs: ['bonus-time'],
+    cost: 25,
+    cooldownMs: 45_000,
+    durationMs: 20_000,
+    tickMs: 250,
+    priority: 10,
+    apply: (api, c) => {
+      const me = needLive(api, c.caster, true);
+      if (isErr(me)) return me;
+      const them = needLive(api, target(c), false);
+      if (isErr(them)) return them;
+    },
+    hooks: {
+      delta: {
+        clock: (api, fx, d) => {
+          const t = target(fx);
+          const won = d[t] ?? 0;
+          if (won <= 0 || !live(api, t)) return;
+          d[t] = 0;
+          owe(fx, won);
+        },
+      },
+      tick: (api, fx) => pocketBonus(api, fx),
+      end: (api, fx) => pocketBonus(api, fx),
+    },
+    overlay: () => ({ kind: 'badge', text: 'Bonus seconds stolen', tone: 'bad' }),
+  },
+  {
+    id: 'time-attack.clock-pressure',
+    name: 'Stopwatch Pressure',
+    category: 'troll',
+    description: 'For 20 seconds, every right answer you give takes 1 second off an opponent\'s clock. They are never left under 3 seconds.',
+    target: 'opponent',
+    modes: [MODE],
+    cost: 25,
+    cooldownMs: 45_000,
+    durationMs: 20_000,
+    tickMs: 250,
+    apply: (api, c, fx) => {
+      const me = needLive(api, c.caster, true);
+      if (isErr(me)) return me;
+      const t = target(c);
+      const them = needLive(api, t, false);
+      if (isErr(them)) return them;
+      if (left(api, t) <= CLOCK_FLOOR_S + 0.5) return { error: `${api.name(t)} is nearly out of time already.` };
+      seenNow(api, fx!, [c.caster]);
+    },
+    hooks: {
+      delta: {
+        score: (api, fx, d) => {
+          if (justAnsweredRight(api, fx, fx.caster, d)) owe(fx, 1);
+        },
+      },
+      tick: (api, fx) => applyPressure(api, fx),
+      end: (api, fx) => applyPressure(api, fx),
+    },
+    overlay: () => ({ kind: 'badge', text: 'Under pressure: −1 s per rival answer', tone: 'bad' }),
+  },
+
+  /* ------------------------------- more of the multiplier ------------------------------- */
+  {
+    id: 'time-attack.multiplier-pinch',
+    name: 'Stopwatch Multiplier Pinch',
+    category: 'troll',
+    description: 'Pinch one step of an opponent\'s multiplier: theirs goes down a step and yours goes up one (up to ×3, or ×9 in overdrive). Each run\'s count of answers in a row is set to match.',
+    target: 'opponent',
+    modes: [MODE],
+    cost: 35,
+    cooldownMs: 55_000,
+    apply: (api, c) => {
+      const t = target(c);
+      const them = needLive(api, t, false);
+      if (isErr(them)) return them;
+      const me = needLive(api, c.caster, true);
+      if (isErr(me)) return me;
+      if (them.multiplier <= 1) return { error: `${api.name(t)}'s multiplier is ×1: there is no step to pinch.` };
+      if (!transfer(api, 'multiplier', t, c.caster, 1)) return { error: 'Your multiplier is already at its top.' };
+      api.feed(`${api.name(c.caster)} pinched a multiplier step from ${api.name(t)}: ×${me.multiplier} for ×${them.multiplier}.`, 'info');
+    },
+  },
+  {
+    id: 'time-attack.multiplier-dice',
+    name: 'Stopwatch Multiplier Dice',
+    category: 'random',
+    description: `Roll the dice for your multiplier. Odds: ${odds([['up one step', 55], ['down one step', 45]])}. Only when it can go either way: from ×2, and below the top (×3, or ×9 in overdrive).`,
+    target: 'self',
+    modes: [MODE],
+    cost: 20,
+    cooldownMs: 40_000,
+    apply: (api, c) => {
+      const r = needLive(api, c.caster, true);
+      if (isErr(r)) return r;
+      if (r.multiplier < 2) return { error: 'Your multiplier is ×1: it has nowhere to fall.' };
+      if (r.multiplier >= topMultiplier(api)) return { error: 'Your multiplier is at its top: it has nowhere to rise.' };
+      const up = rollOdds(api, [[true, 55], [false, 45]]);
+      api.add('multiplier', c.caster, up ? 1 : -1);
+      api.feed(`Multiplier dice: ${api.name(c.caster)} rolled ${up ? 'up' : 'down'} to ×${r.multiplier}.`, up ? 'good' : 'bad', [c.caster]);
+    },
+  },
+  {
+    id: 'time-attack.multiplier-mute',
+    name: 'Stopwatch Multiplier Mute',
+    category: 'troll',
+    description: 'For 15 seconds, an opponent\'s right answers score as if their multiplier were ×1. They keep their multiplier, and it still builds.',
+    target: 'opponent',
+    modes: [MODE],
+    cost: 30,
+    cooldownMs: 45_000,
+    durationMs: 15_000,
+    // Before other score cheats, so they bend the muted points.
+    priority: 15,
+    apply: (api, c) => {
+      const t = target(c);
+      const r = needLive(api, t, false);
+      if (isErr(r)) return r;
+      if (r.multiplier <= 1) return { error: `${api.name(t)}'s multiplier is ×1: there is nothing to mute.` };
+    },
+    hooks: {
+      delta: {
+        score: (api, fx, d) => {
+          const t = target(fx);
+          const last = runOf(api, t)?.stream.last;
+          // The mode scores a right answer as 100 times the multiplier the run had when it answered.
+          const m = (last?.points ?? BASE_POINTS) / BASE_POINTS;
+          if ((d[t] ?? 0) <= 0 || !last?.correct || m <= 1) return;
+          d[t] = Math.round(d[t]! / m);
+        },
+      },
+    },
+    overlay: () => ({ kind: 'badge', text: 'Multiplier muted', tone: 'bad' }),
+  },
+  {
+    id: 'time-attack.multiplier-echo',
+    name: 'Stopwatch Multiplier Echo',
+    category: 'advantage',
+    description: 'For 25 seconds, every time an opponent\'s multiplier steps up, yours steps up too (up to ×3, or ×9 in overdrive). It costs them nothing.',
+    target: 'opponent',
+    hostile: false,
+    modes: [MODE],
+    cost: 30,
+    cooldownMs: 55_000,
+    durationMs: 25_000,
+    apply: (api, c) => {
+      const t = target(c);
+      const me = needLive(api, c.caster, true);
+      if (isErr(me)) return me;
+      const them = needLive(api, t, false);
+      if (isErr(them)) return them;
+      if (me.multiplier >= topMultiplier(api)) return { error: 'Your multiplier is already at its top.' };
+      if (them.multiplier >= topMultiplier(api)) return { error: `${api.name(t)}'s multiplier is at its top: it has no step left to echo.` };
+    },
+    hooks: {
+      delta: {
+        multiplier: (api, fx, d) => {
+          const r = live(api, fx.caster);
+          // Only as far as the caster's top, so the feed says what really happened.
+          const up = Math.min(d[target(fx)] ?? 0, r ? topMultiplier(api) - r.multiplier - (d[fx.caster] ?? 0) : 0);
+          if (up <= 0) return;
+          d[fx.caster] = (d[fx.caster] ?? 0) + up;
+          api.feed(`Multiplier echo: ${api.name(target(fx))} stepped up, so ${api.name(fx.caster)} did too.`, 'good', [fx.caster]);
+        },
+      },
+    },
+    overlay: () => ({ kind: 'badge', text: 'Multiplier echo', tone: 'good' }),
+    overlayFor: 'caster',
+  },
 ];
+
+/** Penalty pass: the seconds the caster's wrong answers would have cost come off the target's clock. */
+function passPenalty(api: ChaosApi, fx: ActiveEffect) {
+  const s = takeOwed(fx);
+  const t = target(fx);
+  if (s <= 0 || !live(api, t)) return;
+  const taken = -api.add('clock', t, -s);
+  if (taken > 0) api.feed(`${api.name(fx.caster)}'s wrong answer cost ${api.name(t)} ${secs(taken)} instead.`, 'info');
+}
+
+/** Bonus heist: the target's bonus seconds go to the caster's clock, as far as it has room. */
+function pocketBonus(api: ChaosApi, fx: ActiveEffect) {
+  const s = takeOwed(fx);
+  if (s <= 0) return;
+  const got = live(api, fx.caster) ? api.add('clock', fx.caster, s) : 0;
+  api.feed(got > 0 ? `${api.name(fx.caster)} stole ${secs(got)} of bonus time from ${api.name(target(fx))}.` : `${api.name(target(fx))}'s bonus seconds were stolen, but ${api.name(fx.caster)}'s clock had no room for them.`, 'info');
+}
+
+/** Stopwatch pressure: one second off the target's clock for each right answer the caster gave. */
+function applyPressure(api: ChaosApi, fx: ActiveEffect) {
+  const s = takeOwed(fx);
+  const t = target(fx);
+  if (s <= 0 || !live(api, t)) return;
+  const taken = -api.add('clock', t, -s);
+  if (taken > 0) api.feed(`${api.name(fx.caster)}'s right answer took ${secs(taken)} off ${api.name(t)}'s clock.`, 'info');
+}
 
 defineCheats(cheats);

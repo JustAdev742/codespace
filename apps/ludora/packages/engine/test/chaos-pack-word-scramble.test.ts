@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest';
+import { createRng } from '@ludora/shared';
 import { ChaosSim } from '../src/testing/chaos.ts';
 import { MIXED_SET } from '../src/testing/fixtures.ts';
 import { HINT_COST, matchesAnswer, wordValue } from '../src/modes/word-scramble/index.ts';
@@ -203,6 +204,220 @@ describe('word-scramble pack: spelling streak', () => {
     sim.run(300);
     expect(player(sim, 'p1').inRow).toBe(1);
     expect(sim.chaos().effects).toHaveLength(0);
+  });
+
+  it('streak swap trades streaks, each no longer than the words its new owner has solved', () => {
+    const sim = game({ streak: true });
+    solveWord(sim, 'p1');
+    solveWord(sim, 'p1');
+    solveWord(sim, 'p2');
+    expect([player(sim, 'p1').inRow, player(sim, 'p2').inRow]).toEqual([2, 1]);
+    expect(cast(sim, 'p1', 'streak-swap', 'p2').ok).toBe(true);
+    // p2 has solved one word, so the streak of 2 arrives as 1.
+    expect([player(sim, 'p1').inRow, player(sim, 'p2').inRow]).toEqual([1, 1]);
+    expect(cast(sim, 'p3', 'streak-swap', 'p4')).toMatchObject({ ok: false });
+  });
+
+  it('streak stall lets words score with the streak they had, but keeps it from growing', () => {
+    const sim = game({ streak: true });
+    solveWord(sim, 'p2');
+    expect(player(sim, 'p2').inRow).toBe(1);
+    expect(cast(sim, 'p1', 'streak-stall', 'p2').ok).toBe(true);
+    // Move on to a word with tiles without breaking the streak: ordinary questions on the way are answered right.
+    for (let i = 0; i < 12; i++) {
+      const p = player(sim, 'p2');
+      if (!p.word) sim.rt.act('p2', { type: 'next' });
+      else if (!p.word.scramble) sim.rt.act('p2', sim.rt.botAction('p2', 1, createRng(1)));
+      else break;
+    }
+    const iid = player(sim, 'p2').word.iid;
+    const [value, points] = [wordValue(sc(sim, 'p2')), player(sim, 'p2').points];
+    expect(sim.rt.act('p2', { type: 'solve', iid, text: spelt(sc(sim, 'p2')) }).ok).toBe(true);
+    expect([player(sim, 'p2').points, player(sim, 'p2').inRow]).toEqual([points + 2 * value, 1]);
+    sim.run(20_100);
+    solveWord(sim, 'p2');
+    expect(player(sim, 'p2').inRow).toBe(2);
+  });
+});
+
+describe('word-scramble pack: swaps, boomerangs, taxes and wagers', () => {
+  const qid = (sim: ChaosSim, iid: string) => (sim.rt as unknown as { instances: Map<string, { qid: string }> }).instances.get(iid)!.qid;
+  const solveNow = (sim: ChaosSim, id: string) => sim.rt.act(id, { type: 'solve', iid: player(sim, id).word.iid, text: spelt(sc(sim, id)) });
+
+  it('word swap trades the words on screen, hinted letters and all, and keeps every word once in each pile', () => {
+    const sim = game();
+    onTiles(sim, 'p1');
+    const hinted = toTiles(sim, 'p2', true)!;
+    sim.rt.act('p2', { type: 'hint', iid: hinted });
+    const [a, b] = [player(sim, 'p1'), player(sim, 'p2')];
+    const [qa, qb] = [qid(sim, a.word.iid), qid(sim, b.word.iid)];
+    expect(cast(sim, 'p1', 'word-swap', 'p2').ok).toBe(true);
+    const [a2, b2] = [player(sim, 'p1'), player(sim, 'p2')];
+    expect([a2.word.iid, b2.word.iid, a2.stream.iid, b2.stream.iid]).toEqual([b.word.iid, a.word.iid, b.word.iid, a.word.iid]);
+    expect([a2.word.scramble.hints, b2.word.scramble.hints]).toEqual([1, 0]);
+    for (const [p, gave, got] of [
+      [a2, qa, qb],
+      [b2, qb, qa],
+    ] as const) {
+      const ids = p.stream.deck.ids as string[];
+      expect(new Set(ids).size).toBe(ids.length);
+      expect(ids[p.stream.deck.pos - 1]).toBe(got);
+      expect(ids.indexOf(gave)).toBeGreaterThanOrEqual(p.stream.deck.pos);
+    }
+    // The new owner can solve it.
+    expect(solveNow(sim, 'p1').ok).toBe(true);
+    expect(player(sim, 'p1').stream.last).toMatchObject({ iid: b.word.iid, correct: true });
+  });
+
+  it('word swap is refused for a word the caster has already had', () => {
+    const sim = game();
+    onTiles(sim, 'p1');
+    expect(solveNow(sim, 'p1').ok).toBe(true);
+    const done = player(sim, 'p1').stream.last.iid;
+    sim.rt.act('p1', { type: 'next' });
+    // Put p2 on the word p1 has just finished.
+    const s = structuredClone(sim.state());
+    const deck = s.players.p2.stream.deck;
+    const at = deck.ids.indexOf(qid(sim, done));
+    [deck.ids[at], deck.ids[deck.pos - 1]] = [deck.ids[deck.pos - 1], deck.ids[at]];
+    s.players.p2.word.iid = done;
+    s.players.p2.stream.iid = done;
+    (sim.rt as unknown as { state: unknown }).state = s;
+    expect(cast(sim, 'p1', 'word-swap', 'p2')).toMatchObject({ ok: false, message: expect.stringContaining('already had') });
+  });
+
+  it('word boomerang brings the last missed word back once', () => {
+    const sim = game();
+    const iid = player(sim, 'p1').word.iid;
+    sim.rt.act('p1', { type: 'skip', iid });
+    const before = player(sim, 'p1');
+    expect(cast(sim, 'p1', 'word-boomerang').ok).toBe(true);
+    expect([player(sim, 'p1').again, player(sim, 'p1').target]).toEqual([[qid(sim, iid)], before.target + 1]);
+    sim.run(41_000);
+    expect(cast(sim, 'p1', 'word-boomerang')).toMatchObject({ ok: false, message: expect.stringContaining('already coming back') });
+  });
+
+  it('word boomerang needs a missed word and a game without second chances', () => {
+    const sim = game();
+    expect(cast(sim, 'p1', 'word-boomerang')).toMatchObject({ ok: false });
+    solveWord(sim, 'p2');
+    expect(cast(sim, 'p2', 'word-boomerang')).toMatchObject({ ok: false, message: expect.stringContaining('not a miss') });
+    const other = game({ secondChance: true });
+    other.rt.act('p1', { type: 'skip', iid: player(other, 'p1').word.iid });
+    expect(cast(other, 'p1', 'word-boomerang')).toMatchObject({ ok: false, message: expect.stringContaining('Second chances are on') });
+  });
+
+  it('a boomeranged word comes back as a half-point second chance after the main words', () => {
+    const sim = game();
+    const iid = player(sim, 'p1').word.iid;
+    sim.rt.act('p1', { type: 'skip', iid });
+    expect(cast(sim, 'p1', 'word-boomerang').ok).toBe(true);
+    for (let i = 0; i < 80 && player(sim, 'p1').done < player(sim, 'p1').main; i++) {
+      const p = player(sim, 'p1');
+      sim.rt.act('p1', p.word ? { type: 'skip', iid: p.word.iid } : { type: 'next' });
+    }
+    expect(player(sim, 'p1').finished).toBe(false);
+    sim.rt.act('p1', { type: 'next' });
+    const p = player(sim, 'p1');
+    expect([p.retry, qid(sim, p.word.iid)]).toEqual([true, qid(sim, iid)]);
+    // Skipping it again ends the run of words: it does not come back a third time.
+    sim.rt.act('p1', { type: 'skip', iid: p.word.iid });
+    expect(player(sim, 'p1').finished).toBe(true);
+  });
+
+  it('typo tax takes 10 points for each wrong spelling, until it ends', () => {
+    const sim = game();
+    solveWord(sim, 'p2');
+    const points = player(sim, 'p2').points;
+    expect(cast(sim, 'p1', 'typo-tax', 'p2').ok).toBe(true);
+    const iid = toTiles(sim, 'p2')!;
+    sim.rt.act('p2', { type: 'solve', iid, text: 'qqqqq' });
+    sim.rt.act('p2', { type: 'solve', iid, text: 'zzzzz' });
+    sim.run(300);
+    expect(player(sim, 'p2').points).toBe(points - 2 * 10);
+    sim.run(20_000);
+    sim.rt.act('p2', { type: 'solve', iid, text: 'qqqqq' });
+    sim.run(300);
+    expect(player(sim, 'p2').points).toBe(points - 2 * 10);
+  });
+
+  it('typo tax is not offered with one try per word', () => {
+    expect(cast(game({ oneTry: true }), 'p1', 'typo-tax', 'p2')).toMatchObject({ ok: false });
+  });
+
+  it('hint tax takes 10 more points for a hint asked for, but not for letters a cheat shows', () => {
+    const sim = game();
+    solveWord(sim, 'p2');
+    const points = player(sim, 'p2').points;
+    expect(cast(sim, 'p1', 'hint-tax', 'p2').ok).toBe(true);
+    const iid = toTiles(sim, 'p2', true)!;
+    const value = wordValue(sc(sim, 'p2'));
+    sim.rt.act('p2', { type: 'hint', iid });
+    sim.run(300);
+    expect([player(sim, 'p2').points, wordValue(sc(sim, 'p2'))]).toEqual([points - HINT_COST, value - HINT_COST]);
+    expect(cast(sim, 'p2', 'lantern-hint').ok).toBe(true);
+    sim.run(300);
+    // The lantern pays its letter back, and the tax does not charge for it.
+    expect(player(sim, 'p2').points).toBe(points);
+  });
+
+  it('spelling wager doubles a solved word', () => {
+    const sim = game();
+    onTiles(sim, 'p1');
+    const value = wordValue(sc(sim, 'p1'));
+    expect(cast(sim, 'p1', 'spelling-wager').ok).toBe(true);
+    expect(solveNow(sim, 'p1').ok).toBe(true);
+    expect(player(sim, 'p1').points).toBe(2 * value);
+    expect(sim.chaos().effects).toHaveLength(0);
+  });
+
+  it('spelling wager loses the stake on a skipped word, and is off if time runs out', () => {
+    const sim = game();
+    solveWord(sim, 'p1');
+    const points = player(sim, 'p1').points;
+    const iid = toTiles(sim, 'p1')!;
+    const value = wordValue(sc(sim, 'p1'));
+    expect(cast(sim, 'p1', 'spelling-wager').ok).toBe(true);
+    sim.rt.act('p1', { type: 'skip', iid });
+    sim.run(300);
+    expect(player(sim, 'p1').points).toBe(Math.max(0, points - value));
+    sim.run(40_000);
+    const next = toTiles(sim, 'p1')!;
+    expect(cast(sim, 'p1', 'spelling-wager').ok).toBe(true);
+    const before = player(sim, 'p1').points;
+    sim.run(45_100);
+    expect(sim.chaos().effects).toHaveLength(0);
+    expect([player(sim, 'p1').points, player(sim, 'p1').word.iid]).toEqual([before, next]);
+  });
+
+  it('word timer swap trades the time left, never leaving under 4 seconds', () => {
+    const sim = game({ wordTimer: true });
+    sim.run(12_000);
+    // p2 moves on to a new word with its full 20 seconds; p1 has 8 left.
+    sim.rt.act('p2', { type: 'skip', iid: player(sim, 'p2').word.iid });
+    sim.rt.act('p2', { type: 'next' });
+    expect(cast(sim, 'p1', 'timer-swap', 'p2').ok).toBe(true);
+    expect([player(sim, 'p1').word.deadline - sim.now, player(sim, 'p2').word.deadline - sim.now]).toEqual([20_000, 8000]);
+    sim.run(5000);
+    expect(cast(sim, 'p2', 'timer-swap', 'p1').ok).toBe(true);
+    expect([player(sim, 'p1').word.deadline - sim.now, player(sim, 'p2').word.deadline - sim.now]).toEqual([4000, 15_000]);
+  });
+
+  it('overtime bell adds up to 20 seconds, never above the time the game started with', () => {
+    const sim = game();
+    const left = () => sim.state().endsAt - sim.now;
+    expect(cast(sim, 'p1', 'overtime-bell')).toMatchObject({ ok: false });
+    sim.run(30_000);
+    expect(cast(sim, 'p1', 'overtime-bell').ok).toBe(true);
+    expect(left()).toBe(230_000);
+    sim.run(5000);
+    expect(cast(sim, 'p2', 'overtime-bell').ok).toBe(true);
+    expect(left()).toBe(240_000);
+    // The game ends when the moved clock runs out, not before.
+    sim.run(239_000);
+    expect(sim.rt.status).toBe('running');
+    sim.run(2000);
+    expect(sim.rt.status).not.toBe('running');
   });
 });
 
