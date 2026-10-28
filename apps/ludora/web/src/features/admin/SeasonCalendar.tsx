@@ -86,7 +86,7 @@ export function SeasonCalendar() {
               <span className="font-semibold">Today: {now.name}.</span> <span className="text-text-2">{now.tagline}</span>
             </p>
           ) : null}
-          <div className="overflow-x-auto">
+          <div className="relative overflow-x-auto">
             <table className="w-full min-w-[620px] text-left text-sm">
               <thead className="text-text-3">
                 <tr>

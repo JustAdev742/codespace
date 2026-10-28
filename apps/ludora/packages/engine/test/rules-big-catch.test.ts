@@ -650,7 +650,7 @@ describe('Big Catch variants', () => {
     expect(defaults).toEqual({ water: 'rotate', events: true, trophyHunt: false, frenzy: false, deepSea: false });
     expect(variants.map((v) => v.meta.id)).toEqual(['big-catch-trophy-hunt', 'big-catch-frenzy', 'big-catch-deep-sea']);
     for (const v of variants) for (const key of v.locked ?? []) expect(v.settings?.[key]).not.toBe(defaults[key]);
-    expect(meta).toMatchObject({ stage: '3d', status: 'beta' });
+    expect(meta).toMatchObject({ stage: '3d', status: 'playable' });
   });
 
   it('Trophy Hunt: every fish is sold for lure money, and only your 3 heaviest fish count', () => {
