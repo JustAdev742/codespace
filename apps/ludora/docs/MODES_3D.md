@@ -1,16 +1,17 @@
 # The 3D modes
 
-Five modes drawn with Ludora's 3D engine (`web/src/three/`). Like every other mode they are
-games built on the class's own questions: a right answer is what powers everything you do. Each
-one also teaches something beyond the question set, chosen to suit Australian classrooms.
+Five modes drawn with Ludora's 3D engine (`web/src/three/`). They are games, not lessons. As in
+every other mode, the learning comes from the class's own question set: a right answer is what
+powers everything you do. The setting (a goldfield, a jetty, a data city, a shop, a park at night)
+is just where the game happens, and none of them is tied to one subject.
 
-| Mode | id | What you do | What it also teaches |
-|---|---|---|---|
-| Gold Rush | `gold-rush` | Dig down a mine shaft, push your luck, bank your gold before a cave-in. | Probability and risk (every chance is shown), and the 1850s Australian gold rushes. |
-| Glow Tag Royale | `glow-tag` | Run around a glowing park arena tagging other players with light beams while the safe ring shrinks. | Right answers are your beam charge; quick recall under pressure. |
-| Big Catch | `big-catch` | Cast, wait for the bite, reel in Australian fish and keep or release them. | Real Australian species, size limits, protected and pest species. |
-| Code Breakers | `code-breakers` | Mine bits, guess rivals' passwords to hack them, defend with firewalls and 2FA, spot phishing. | Cyber safety: passphrases, two-factor authentication, phishing. |
-| Corner Shop | `corner-shop` | Stock shelves, serve a queue of customers, give the right change, grow your shop. | Money maths with Australian cash rounding, discounts, profit. |
+| Mode | id | What you do |
+|---|---|---|
+| Gold Rush | `gold-rush` | Dig down a mine shaft, push your luck, bank your gold before a cave-in. |
+| Glow Tag Royale | `glow-tag` | Run around a glowing park arena tagging other players with light beams while the safe ring shrinks. |
+| Big Catch | `big-catch` | Cast, wait for the bite, reel in fish big and rare. |
+| Code Breakers | `code-breakers` | Mine bits, guess rivals' passwords to hack them, defend with firewalls and 2FA. |
+| Corner Shop | `corner-shop` | Stock shelves, serve a queue of customers, grow your shop. |
 
 Names, art and words are Ludora's own (D30): no other product's names, characters, layouts or
 copy. "Inspired by" a genre is fine; copying a product is not.
@@ -33,20 +34,19 @@ copy. "Inspired by" a genre is fine; copying a product is not.
 - **School friendly.** No weapons or violence words: Glow Tag has beams, tags and players who are
   "dimmed", never shot or killed. Nobody loses rewards or items for real; everything is inside
   the game.
-- **Facts are true.** Every fact a mode shows is checked and kept short. Where real rules differ
-  by state or change over time (fishing size limits), the game says so instead of quoting a
-  number.
+- **Games, not lessons.** No mode teaches a topic of its own; the questions are the learning.
+  Flavour text is fine, facts to learn are not.
 - **Views stay small.** Under 8 KB for a player with 40 in the room; static map data is fine,
   per-frame data goes in the pulse.
 
 ## Gold Rush (`gold-rush`)
 
-Push your luck down a mine shaft on a cheerful 1850s goldfield.
+Push your luck down a mine shaft on a cheerful goldfield.
 
 - **Digs.** Each right answer gives 1 dig. Every third right answer in a row gives a bonus dig.
 - **Dig** spends a dig: your shaft goes one level deeper and you find something, drawn from that
-  depth's table: gold dust, a nugget, a quartz vein (your next find is doubled), a relic (a true
-  goldfields fact and a little gold), water (nothing), or a **cave-in**. Deeper levels pay more
+  depth's table: gold dust, a nugget, a quartz vein (your next find is doubled), a lucky relic (a
+  little gold and a bonus dig), water (nothing), or a **cave-in**. Deeper levels pay more
   and cave in more often. The chance of each, at your depth, with your gear and the current
   event, is always on screen.
 - **Your cart** holds what you have found on this trip. A cave-in loses the cart and puts you
@@ -59,9 +59,6 @@ Push your luck down a mine shaft on a cheerful 1850s goldfield.
   of the player carrying the most unbanked gold. Banking keeps you safe from it.
 - **Events** every 60 to 90 seconds: Gold Fever (finds doubled for 20 seconds), Steady Ground
   (no cave-ins for 15 seconds), Rich Lead (deep finds half as big again for 20 seconds).
-- **Facts**: relics show short, true facts about the gold rushes (Ballarat and Bendigo from 1851,
-  the Eureka Stockade in 1854, the Welcome Stranger nugget in 1869, diggers' licences) and about
-  gold itself (why it sinks in a pan, how it forms in quartz).
 - **Winning**: the most banked gold when time runs out, or the first to the goal if one is set.
   Teams pool their banks.
 - **Variants**: Deep Lead (deeper levels, bigger nuggets, steeper cave-ins), Race to 1,000 (first
@@ -103,33 +100,30 @@ A light-tag battle royale in a glowing park at night.
 
 ## Big Catch (`big-catch`)
 
-Fishing for real Australian species.
+Fishing off a jetty.
 
 - **Casts.** Each right answer gives 1 cast, plus a bonus every third in a row.
 - **Cast** spends one. The server decides the catch at once, from the water's table and your
   lure, and the bite comes 1.5 to 4 seconds later. Press **Reel** within 3 seconds of the bite
-  to land it (within the first half second for a perfect reel: 10% heavier). Too slow and it gets
-  away.
-- **Keep or release.** A legal fish can be kept (its weight counts) or released (care points).
-  Undersized fish and protected species are always released, and the screen says why. Pest
-  species (common carp, redfin) are kept and never released, as the rules ask, and score extra.
-- **Waters**: river, estuary and reef, each with its own species, chosen by the host or rotating.
-  Every species has a short true fact, a weight range and a rarity, and every chance is shown.
+  to land it (within the first half second for a perfect reel: 10% heavier). Too early and the
+  fish is spooked; too slow and it gets away.
+- **Fish** have a rarity, a weight range and a one-line description for fun. Every chance is
+  shown.
+- **A decision with each catch**: sell it for points now, or keep it in your tank towards a set
+  bonus.
+- **Waters**: river, estuary and reef, each with its own fish, chosen by the host or rotating.
 - **Lures** (bought with points) shift the odds towards bigger, rarer fish.
 - **Events**: Feeding Time (bites come twice as fast), Golden Hour (rarer fish), Passing School
   (common fish half as heavy again).
-- **Score**: kilograms kept times 10, plus care points.
-- **Variants**: Pest Patrol (pests score triple; learn which species harm rivers), Catch and
-  Release (everything goes back; care points only), Deep Sea (reef only, bigger fish, longer
-  waits).
+- **Variants**: Deep Sea (reef only, bigger fish, longer waits) and two more, each a real rule
+  change (for example Trophy Hunt, where only your three heaviest fish count).
 - **3D**: your Glim on a jetty over moving water, a cast arc, a bobber, a splash at the bite, the
   fish lifted up. The big screen shows the whole jetty, the biggest catch and a tank of the
   rarest fish caught.
 
 ## Code Breakers (`code-breakers`)
 
-A hacking game about staying safe online. The guessing happens on a 2D terminal; the world is a
-3D city of data towers.
+A hacking game. The guessing happens on a 2D terminal; the world is a 3D city of data towers.
 
 - **Your password.** At the start each player picks one of 3 passphrases (made from word lists,
   like `Purple-Koala-Rides-42`). The other two, and a third generated one, are its decoys.
@@ -138,17 +132,14 @@ A hacking game about staying safe online. The guessing happens on a 2D terminal;
 - **Hacking**: pick a player and guess their password from 4 options. Right: take 20% of their
   bits. Wrong: they are alerted and earn a few bits, and that option is crossed off for you.
   A **firewall** blocks one hack. **2FA** means a hacker must also answer one more question right
-  before the guess counts, which is what a second factor does. **Change password** gives you
-  new decoys and wipes what hackers have learned.
+  before the guess counts. **Change password** gives you new decoys and wipes what hackers have
+  learned.
 - **Hack back**: someone who was hacked can try one free guess on the hacker within 30 seconds.
-- **Phishing drills** every 75 seconds: everyone sees a short message (a prize email, a
-  "your account is locked" text) and chooses what to do. The safe choice earns bits, and every
-  drill explains the warning signs.
-- **Cyber tips** come with outcomes: long passphrases beat short complex passwords, never reuse a
-  password, turn on 2FA, check who a message is really from.
+- **Room events** shake things up for a few seconds at a time (for example double bits, or a
+  bounty on the leader).
 - **Score**: bits.
-- **Variants**: Safe Surfer (no hacking; phishing drills and packets only), Team Ops (teams; hack
-  only other teams), Lockdown (everyone starts with 2FA; hacks are rarer and pay more).
+- **Variants**: Team Ops (teams; hack only other teams), Lockdown (everyone starts with 2FA; hacks
+  are rarer and pay more), and one more real rule change.
 - **3D**: each player is a tower in a night-time data city, growing with their bits; hacks fly as
   packets between towers. Your Glim sits at a desk of screens. A 2D view works without 3D.
 
@@ -157,21 +148,18 @@ A hacking game about staying safe online. The guessing happens on a 2D terminal;
 Run a little shop. Questions bring the deliveries; customers bring the money.
 
 - **Deliveries.** Each right answer offers 3 deliveries to choose from (12 apples, 4 cakes, a
-  mystery crate), added to your shelves.
+  mystery crate with its odds shown), added to your shelves.
 - **Customers** arrive by themselves, more often as your rating rises. Each wants 1 to 3 items
   and waits a while. **Serve** them if you have the stock: they pay, and tip more the less they
   waited. Someone who waits too long leaves and your rating drops.
-- **Change.** Some customers pay with a note and need change: choose the right amount from 3.
-  Cash is rounded to the nearest 5 cents, as it is in Australia, and the screen explains it.
-  Right: a tip and a better rating.
 - **Upgrades** (bought with cash): more shelves, new product lines (bakery, fruit, books, plants),
   a faster till, cosy decor (customers wait longer), a sign (more customers). Spending lowers
   your cash, so an upgrade has to pay for itself.
-- **Events**: Rush Hour (twice the customers), Sale Day (20% off everything, and half as many
-  customers again: work out the new prices), Delivery Truck (free stock for everyone).
+- **Events**: Rush Hour (twice the customers), Sale Day (cheaper prices, more customers),
+  Delivery Truck (free stock for everyone).
 - **Score**: cash.
 - **Variants**: Market Stall (fewer products, quicker customers), Big Spenders (bigger orders and
-  bigger notes), Co-op (teams share one shop).
+  bigger tips), Co-op (teams share one shop).
 - **3D**: a cosy shop with your Glim behind the counter, shelves that fill and empty, and
   customers (other Glims) queueing at the till. The big screen shows a high street of every
   player's shopfront.
