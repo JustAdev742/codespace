@@ -56,7 +56,9 @@ async function draw(look: GlimLook, size: number, faceless: boolean, expression:
     img.decoding = 'async';
     img.src = url;
     await img.decode();
-    canvas.getContext('2d')!.drawImage(img, 0, 0, size, size);
+    // The 3D builder reads the pixels straight back (getImageData): a canvas kept in memory does that
+    // cheaply, where a GPU canvas stalls to copy them back, for seconds on software renderers.
+    canvas.getContext('2d', { willReadFrequently: true })!.drawImage(img, 0, 0, size, size);
   } finally {
     URL.revokeObjectURL(url);
   }

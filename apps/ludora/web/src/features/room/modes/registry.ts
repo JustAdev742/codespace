@@ -33,6 +33,10 @@ export const MODE_SCREENS: Record<string, { Player: Screen; Host: Screen; /** Th
     Host: lazy(() => import('./big-catch.tsx').then((m) => ({ default: m.BigCatchHost }))),
     hostFeed: true,
   },
+  'corner-shop': {
+    Player: lazy(() => import('./corner-shop.tsx').then((m) => ({ default: m.CornerShopPlayer }))),
+    Host: lazy(() => import('./corner-shop.tsx').then((m) => ({ default: m.CornerShopHost }))),
+  },
   classic: {
     Player: lazy(() => import('./classic.tsx').then((m) => ({ default: m.ClassicPlayer }))),
     Host: lazy(() => import('./classic.tsx').then((m) => ({ default: m.ClassicHost }))),
