@@ -20,6 +20,7 @@ import * as glimDuels from './glim-duels/meta.ts';
 import * as lanternTrail from './lantern-trail/meta.ts';
 import * as lanternLands from './lantern-lands/meta.ts';
 import * as festivalWorkshop from './festival-workshop/meta.ts';
+import * as goldRush from './gold-rush/meta.ts';
 
 /**
  * Metadata only, no game logic, so the browser can import the catalogue
@@ -46,4 +47,5 @@ export const CATALOG_DATA: readonly { meta: ModeMeta; settings: readonly Setting
   lanternTrail,
   lanternLands,
   festivalWorkshop,
+  goldRush,
 ];

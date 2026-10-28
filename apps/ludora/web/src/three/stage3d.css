@@ -1,0 +1,98 @@
+/* The 3D stage: canvas, label layer and the graphics menu. */
+.s3-stage {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  background: #0b0d1f;
+  contain: layout paint;
+}
+.s3-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  touch-action: none;
+}
+.s3-fallback {
+  background: transparent;
+  contain: none;
+}
+
+.s3-labels {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+.s3-label {
+  position: absolute;
+  left: 0;
+  top: 0;
+  padding: 0.15rem 0.5rem 0.2rem;
+  border-radius: 999px;
+  background: rgb(255 255 255 / 0.94);
+  color: #181226;
+  font: 800 0.8rem/1.1 var(--font-display, system-ui, sans-serif);
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+  max-width: 11rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  box-shadow: 0 2px 0 rgb(0 0 0 / 0.25);
+  will-change: transform;
+}
+.s3-label.small { font-size: 0.7rem; padding: 0.1rem 0.4rem; }
+.s3-label.big { font-size: 1.05rem; padding: 0.25rem 0.7rem; }
+.s3-label.me { background: var(--lantern, #ffc233); color: #241804; }
+.s3-label.tone-gold { background: #ffd25a; color: #2a1c02; }
+.s3-label.tone-good { background: #1fd38f; color: #04241a; }
+.s3-label.tone-bad { background: #ff4d6a; color: #fff; }
+.s3-label.tone-dim { background: rgb(20 18 40 / 0.85); color: rgb(255 255 255 / 0.8); }
+.s3-label.pop { animation: s3-pop 900ms ease-out both; }
+@keyframes s3-pop {
+  0% { opacity: 0; margin-top: 8px; }
+  15% { opacity: 1; margin-top: 0; }
+  80% { opacity: 1; margin-top: -10px; }
+  100% { opacity: 0; margin-top: -16px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  :root:not([data-motion='on']) .s3-label.pop { animation: none; }
+}
+:root[data-motion='off'] .s3-label.pop { animation: none; }
+
+.s3-menu {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  z-index: 5;
+}
+.s3-menu-button {
+  display: grid;
+  place-items: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 999px;
+  border: 0;
+  background: rgb(10 10 28 / 0.55);
+  color: #fff;
+  cursor: pointer;
+}
+.s3-menu-button:focus-visible, .s3-menu-option:focus-within { outline: 3px solid var(--lantern, #ffc233); outline-offset: 2px; }
+.s3-menu-panel {
+  position: absolute;
+  right: 0;
+  top: 2.6rem;
+  min-width: 10rem;
+  padding: 0.5rem;
+  border-radius: 12px;
+  background: #17132e;
+  color: #fff;
+  box-shadow: 0 10px 30px rgb(0 0 0 / 0.5);
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+.s3-menu-note { margin: 0 0 0.35rem; font-size: 0.8rem; color: rgb(255 255 255 / 0.75); max-width: 13rem; }
+.s3-menu-option { display: flex; align-items: center; gap: 0.5rem; padding: 0.35rem 0.4rem; border-radius: 8px; font-weight: 700; font-size: 0.9rem; cursor: pointer; }
+.s3-menu-option:hover { background: rgb(255 255 255 / 0.08); }

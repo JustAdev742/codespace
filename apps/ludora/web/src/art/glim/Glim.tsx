@@ -97,6 +97,14 @@ export interface GlimProps {
   bob?: boolean;
   /** Draw as one dark shape (not yet collected). */
   silhouette?: boolean;
+  /** Arms and feet. The 3D Glims leave them out of their texture and build real ones. */
+  limbs?: boolean;
+  /** The soft shadow under the feet. */
+  ground?: boolean;
+  /** No face or accessories: the back of a 3D Glim. */
+  faceless?: boolean;
+  /** The dark outer contour. 3D Glims draw their own outline, so their pictures leave it out. */
+  contour?: boolean;
   title?: string;
   className?: string;
 }
@@ -125,7 +133,7 @@ function fitScale(parts: Part[]): number {
   return s;
 }
 
-function build(art: GlimArt, c: GlimColors, pose: Pose, hideTopper: boolean): Built {
+function build(art: GlimArt, c: GlimColors, pose: Pose, hideTopper: boolean, limbs = true): Built {
   const geo = BODIES[art.body] ?? BODIES.blob;
   const ears = earParts(art.ears ?? 'none', geo, c);
   const backs = backParts(art.back ?? 'none', geo, c);
@@ -138,10 +146,20 @@ function build(art: GlimArt, c: GlimColors, pose: Pose, hideTopper: boolean): Bu
     ...(bigBack ? [] : backs),
     ...(ringed ? [] : ears.behind),
     ...(geo.back?.(c) ?? []),
-    ...feetParts(geo, c),
   ];
-  const front: Part[] = [...armParts(geo, c, pose), ...(geo.front?.(c) ?? []), ...ears.front, ...(hideTopper ? [] : topperParts(art.topper ?? 'none', geo, c))];
-  return { geo, back, front, fit: fitScale([...back, ...front]) };
+  const feet = feetParts(geo, c);
+  const arms = armParts(geo, c, pose);
+  const front: Part[] = [...(geo.front?.(c) ?? []), ...ears.front, ...(hideTopper ? [] : topperParts(art.topper ?? 'none', geo, c))];
+  // The fit always counts the limbs, so a Glim drawn without them sits exactly where it would with them.
+  const fit = fitScale([...back, ...feet, ...arms, ...front]);
+  return limbs ? { geo, back: [...back, ...feet], front: [...arms, ...front], fit } : { geo, back, front, fit };
+}
+
+/** The scale a Glim is drawn at and the point it shrinks towards, for placing 3D limbs on a drawn body. */
+export function glimFrame(art: GlimArt, accessories?: AccessoryArt[]): { geo: BodyGeometry; scale: number; ground: { x: number; y: number } } {
+  const hasHat = Boolean(accessories?.some((a) => a.slot === 'hat'));
+  const { geo, fit } = build(art, glimColors(art), 'idle', hasHat);
+  return { geo, scale: Math.min(fit, hasHat ? 0.84 : 1), ground: GROUND };
 }
 
 function ContourPass({ parts, color, width }: { parts: Part[]; color: string; width: number }) {
@@ -200,13 +218,13 @@ function twoTone(art: GlimArt): string {
   return hsl(art.hue + delta, (pale ? sat + 14 : sat) + 12, pale ? 70 : 52);
 }
 
-export const Glim = memo(function Glim({ art, accessories, size = 96, aura = null, rarity, pose = 'idle', silhouette = false, title, className }: GlimProps) {
+export const Glim = memo(function Glim({ art, accessories, size = 96, aura = null, rarity, pose = 'idle', silhouette = false, limbs = true, ground = true, faceless = false, contour = true, title, className }: GlimProps) {
   const uid = useId().replace(/[^a-zA-Z0-9_-]/g, '');
   const c = useMemo(() => glimColors(art), [art]);
   const hasHat = Boolean(accessories?.some((a) => a.slot === 'hat'));
   const hasEyewear = Boolean(accessories?.some((a) => a.slot === 'eyes'));
   const sc = silhouette ? SILHOUETTE : c;
-  const { geo, back, front, fit } = useMemo(() => build(art, sc, pose, hasHat), [art, sc, pose, hasHat]);
+  const { geo, back, front, fit } = useMemo(() => build(art, sc, pose, hasHat, limbs), [art, sc, pose, hasHat, limbs]);
 
   const tiny = size <= 40;
   const finish: Rarity = silhouette ? 'common' : (rarity ?? aura ?? 'common');
@@ -289,9 +307,9 @@ export const Glim = memo(function Glim({ art, accessories, size = 96, aura = nul
         ) : null}
       </defs>
       {auraColor ? <circle cx="60" cy="64" r="58" fill={`url(#${id('aura')})`} /> : null}
-      <ellipse cx="60" cy="109" rx="27" ry="4.2" fill="var(--ink)" opacity={0.2} />
+      {ground ? <ellipse cx="60" cy="109" rx="27" ry="4.2" fill="var(--ink)" opacity={0.2} /> : null}
       <g transform={shrink}>
-        <ContourPass parts={[...back, { d: geo.path, fill: '' }, ...front]} color={sc.outline} width={contourW} />
+        {contour ? <ContourPass parts={[...back, { d: geo.path, fill: '' }, ...front]} color={sc.outline} width={contourW} /> : null}
         <FillPass parts={back} line={sc.outline} width={innerW} silhouette={silhouette} silhouetteFill={SILHOUETTE.body} />
         <path d={geo.path} fill={silhouette ? SILHOUETTE.body : bodyFill} />
         {silhouette ? null : (
@@ -317,7 +335,7 @@ export const Glim = memo(function Glim({ art, accessories, size = 96, aura = nul
         )}
         {!silhouette ? <path d={geo.path} fill="none" stroke={c.outline} strokeWidth={innerW} strokeLinejoin="round" /> : null}
         <FillPass parts={front} line={sc.outline} width={innerW} silhouette={silhouette} silhouetteFill={SILHOUETTE.body} />
-        {!silhouette ? (
+        {!silhouette && !faceless ? (
           <>
             <FaceUnder kind={art.face} geo={geo} k={k} c={c} />
             {art.face === 'frosty' ? <FrostMarks geo={geo} k={k} /> : null}
