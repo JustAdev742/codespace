@@ -17,6 +17,7 @@ import '../packs/festival-workshop.ts';
 import '../packs/flashcard-study.ts';
 import '../packs/glim-duels.ts';
 import '../packs/glimgo.ts';
+import '../packs/glow-tag.ts';
 import '../packs/gold-rush.ts';
 import '../packs/gloom-giant.ts';
 import '../packs/lantern-guard.ts';
