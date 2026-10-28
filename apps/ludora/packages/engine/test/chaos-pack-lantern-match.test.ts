@@ -225,3 +225,172 @@ describe('lantern-match pack: flipping', () => {
     expect(pl(sim, 'p2')).toMatchObject({ pairs: 4, cleared: 1 });
   });
 });
+
+/** The effect a cast started (for cheats that pick something hidden, like the prickly card). */
+const effectOf = (sim: ChaosSim, cheatId: string) => sim.chaos().effects.find((e) => e.cheatId === `lantern-match.${cheatId}`);
+
+describe('lantern-match pack: peeks, redeals and traps', () => {
+  it('Moonlit Peek names two cards that really are a pair, then goes when they are matched', () => {
+    for (const seed of [1, 2, 3, 4]) {
+      const sim = game({}, seed);
+      expect(cast(sim, 'p1', 'moonlit-peek').ok).toBe(true);
+      const text = String(sim.view('p1').overlays.find((o) => o.kind === 'banner')?.text);
+      const [x, y] = [...text.matchAll(/\d+/g)].map((m) => Number(m[0]) - 1) as [number, number];
+      const b = board(sim, 'p1');
+      expect(b.cards[x]!.qid).toBe(b.cards[y]!.qid);
+      expect(b.cards[x]!.side).not.toBe(b.cards[y]!.side);
+      expect(sim.view('p2').overlays).toEqual([]);
+      flip(sim, 'p1', x);
+      flip(sim, 'p1', y);
+      sim.run(300);
+      expect(effectOf(sim, 'moonlit-peek')).toBeUndefined();
+    }
+  });
+
+  it('Moonlit Peek never shows the last pair on a board', () => {
+    const sim = game();
+    match(sim, 'p1');
+    match(sim, 'p1');
+    match(sim, 'p1');
+    expect(cast(sim, 'p1', 'moonlit-peek')).toMatchObject({ ok: false });
+  });
+
+  it('Memory Board Redeal deals an opponent a fresh board and keeps their pairs', () => {
+    const sim = game();
+    match(sim, 'p2');
+    const before = board(sim, 'p2');
+    expect(cast(sim, 'p1', 'redeal', 'p2').ok).toBe(true);
+    const after = board(sim, 'p2');
+    expect(after.cards).toHaveLength(8);
+    expect(after.cards).not.toEqual(before.cards);
+    expect(after.matched.every((m) => !m)).toBe(true);
+    expect(after.up).toEqual([]);
+    expect(after.no).toBe(before.no);
+    expect(pl(sim, 'p2')).toMatchObject({ pairs: 1, lastPair: null });
+    // Every question on the new board appears exactly twice: once as a question, once as its answer.
+    for (const c of after.cards) expect(after.cards.filter((x) => x.qid === c.qid).map((x) => x.side).sort()).toEqual(['answer', 'question']);
+  });
+
+  it('Memory Board Redeal waits while the opponent is halfway through a pair', () => {
+    const sim = game();
+    const [i] = openPair(sim, 'p2');
+    flip(sim, 'p2', i);
+    const r = cast(sim, 'p1', 'redeal', 'p2');
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.message).toMatch(/halfway/);
+  });
+
+  it('Pass the Boards gives each player the board of the player before them', () => {
+    const sim = game();
+    match(sim, 'p2');
+    const boards = sim.ids.map((id) => board(sim, id));
+    const pairs = sim.ids.map((id) => pl(sim, id).pairs);
+    expect(cast(sim, 'p3', 'pass-the-boards').ok).toBe(true);
+    sim.ids.forEach((id, k) => {
+      expect(board(sim, id)).toEqual(boards[(k + 3) % 4]);
+      expect(pl(sim, id).pairs).toBe(pairs[k]);
+    });
+  });
+
+  it('Early Moonset takes 20 seconds off, never leaving less than 30', () => {
+    const sim = game({}, 41);
+    const end = sim.state().endsAt;
+    expect(cast(sim, 'p1', 'moonset').ok).toBe(true);
+    expect(sim.state().endsAt).toBe(end - 20_000);
+    const other = game({}, 42);
+    other.run(other.state().endsAt - other.now - 40_000);
+    expect(cast(other, 'p1', 'moonset').ok).toBe(true);
+    expect(other.state().endsAt - other.now).toBe(30_000);
+    expect(cast(other, 'p2', 'moonset')).toMatchObject({ ok: false });
+  });
+
+  it('Prickly Card costs a pair the first time its card is turned over, and only once', () => {
+    const sim = game();
+    match(sim, 'p2');
+    expect(cast(sim, 'p1', 'prickly-card', 'p2').ok).toBe(true);
+    const fx = effectOf(sim, 'prickly-card')!;
+    const i = board(sim, 'p2').cards.findIndex((c) => c.qid === fx.data.qid && c.side === fx.data.side);
+    flip(sim, 'p2', i);
+    sim.run(300);
+    expect(pl(sim, 'p2')).toMatchObject({ pairs: 0, lost: 1 });
+    expect(effectOf(sim, 'prickly-card')).toBeUndefined();
+    // Its partner: a match as usual.
+    expect(flip(sim, 'p2', partner(sim, 'p2', i)).ok).toBe(true);
+    expect(pl(sim, 'p2').pairs).toBe(1);
+  });
+
+  it('Prickly Card turned over to complete a match takes back that pair at once', () => {
+    const sim = game();
+    expect(cast(sim, 'p1', 'prickly-card', 'p2').ok).toBe(true);
+    const fx = effectOf(sim, 'prickly-card')!;
+    const i = board(sim, 'p2').cards.findIndex((c) => c.qid === fx.data.qid && c.side === fx.data.side);
+    flip(sim, 'p2', partner(sim, 'p2', i));
+    flip(sim, 'p2', i);
+    expect(pl(sim, 'p2')).toMatchObject({ pairs: 0, lost: 1 });
+    expect(matchedCount(sim, 'p2')).toBe(2);
+    expect(effectOf(sim, 'prickly-card')).toBeUndefined();
+  });
+
+  it('Prickly Card takes nothing from a player with no pairs', () => {
+    const sim = game();
+    expect(cast(sim, 'p1', 'prickly-card', 'p2').ok).toBe(true);
+    const fx = effectOf(sim, 'prickly-card')!;
+    flip(sim, 'p2', board(sim, 'p2').cards.findIndex((c) => c.qid === fx.data.qid && c.side === fx.data.side));
+    sim.run(300);
+    expect(pl(sim, 'p2')).toMatchObject({ pairs: 0, lost: 0 });
+    expect(effectOf(sim, 'prickly-card')).toBeUndefined();
+  });
+});
+
+describe('lantern-match pack: memory and misses', () => {
+  it('Quick Blink turns a missed pair straight back face down, for 20 seconds', () => {
+    const sim = game();
+    expect(cast(sim, 'p1', 'quick-blink', 'p2').ok).toBe(true);
+    miss(sim, 'p2');
+    expect(board(sim, 'p2').up).toEqual([]);
+    expect(pl(sim, 'p2').misses).toBe(1);
+    expect(sim.rt.view({ kind: 'player', playerId: 'p2' })).toMatchObject({ you: { missed: false } });
+    sim.run(20_500);
+    miss(sim, 'p2');
+    expect(board(sim, 'p2').up).toHaveLength(2);
+  });
+
+  it('Pass the Blame writes your misses on an opponent\'s record', () => {
+    const sim = game();
+    expect(cast(sim, 'p1', 'pass-the-blame', 'p2').ok).toBe(true);
+    miss(sim, 'p1');
+    miss(sim, 'p1');
+    expect([pl(sim, 'p1').misses, pl(sim, 'p2').misses]).toEqual([0, 2]);
+    sim.run(20_500);
+    miss(sim, 'p1');
+    expect([pl(sim, 'p1').misses, pl(sim, 'p2').misses]).toEqual([1, 2]);
+  });
+
+  it('Pass the Blame gives back a pair Careful Match took for a passed miss', () => {
+    const sim = game({ missCost: 1 });
+    match(sim, 'p1');
+    expect(cast(sim, 'p1', 'pass-the-blame', 'p2').ok).toBe(true);
+    miss(sim, 'p1');
+    expect(pl(sim, 'p1')).toMatchObject({ pairs: 1, misses: 0, lost: 0 });
+    expect(pl(sim, 'p2').misses).toBe(1);
+  });
+
+  it('Clean Sweep Bonus pays 2 bonus pairs for clearing your board', () => {
+    const sim = game();
+    expect(cast(sim, 'p1', 'clean-sweep').ok).toBe(true);
+    match(sim, 'p1');
+    match(sim, 'p1');
+    match(sim, 'p1');
+    expect(pl(sim, 'p1').pairs).toBe(3);
+    match(sim, 'p1');
+    expect(pl(sim, 'p1')).toMatchObject({ pairs: 6, cleared: 1 });
+    expect(effectOf(sim, 'clean-sweep')).toBeUndefined();
+  });
+
+  it('Clean Sweep Bonus is not offered in Lantern Sprint', () => {
+    const sim = game({ sprint: true });
+    const r = cast(sim, 'p1', 'clean-sweep');
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.message).toMatch(/does not work here/);
+  });
+});

@@ -59,6 +59,9 @@ export const classicAdapter: ChaosAdapter = {
     if (settings.scoring === 'streak' || (settings.streakBonus !== false && settings.scoring !== 'pot')) f.push('streaks');
     if (Number(settings.unisonBonus) > 0) f.push('unison');
     if (settings.scoring === 'pot') f.push('pot');
+    // Answer speed scores points: the speed bonus is on and Split the Pot (which ignores it) is not. Fading Lights
+    // knocks out the lowest score the moment a question closes, so cheats that re-score answers stay out of it.
+    if (settings.speedBonus !== false && settings.scoring !== 'pot' && !settings.knockout) f.push('speed bonus');
     return f;
   },
   isOut: (s, id) => s.out?.[id] !== undefined,

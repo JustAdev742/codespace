@@ -218,3 +218,193 @@ describe('lantern-out pack: revival rounds', () => {
     expect(lit(sim).p1).toBe(3);
   });
 });
+
+function wrong(sim: ChaosSim, id: string) {
+  expect(sim.rt.act(id, { type: 'answer', iid: st(sim).sync.iid, answer: { type: 'short', text: 'nope nope' } }).ok).toBe(true);
+}
+
+describe('lantern-out pack: duels', () => {
+  it('Flame Duel: the faster right answer takes a lantern from the other', () => {
+    const sim = game();
+    question(sim, ['p1']);
+    expect(lit(sim)).toMatchObject({ p1: 2, p2: 3 });
+    untilQuestion(sim);
+    expect(sim.cast('p1', { cheatId: 'lantern-out.flame-duel', target: 'p2' }).ok).toBe(true);
+    right(sim, 'p1');
+    sim.run(500);
+    for (const id of ['p2', 'p3', 'p4']) right(sim, id);
+    untilClosed(sim);
+    expect(lit(sim)).toMatchObject({ p1: 3, p2: 2, p3: 3, p4: 3 });
+    expect(st(sim).last.blown).toEqual(['p2']);
+    expect(sim.chaos().effects).toHaveLength(0);
+  });
+
+  it('Flame Duel: a wrong answer loses to a right one, and two wrong answers are a draw', () => {
+    const sim = game();
+    question(sim, ['p2']);
+    untilQuestion(sim);
+    expect(sim.cast('p1', { cheatId: 'lantern-out.flame-duel', target: 'p2' }).ok).toBe(true);
+    wrong(sim, 'p1');
+    right(sim, 'p2');
+    for (const id of ['p3', 'p4']) right(sim, id);
+    untilClosed(sim);
+    // p1 lost one to the miss and one to the duel; p2 won it back to three.
+    expect(lit(sim)).toMatchObject({ p1: 1, p2: 3 });
+    const draw = game();
+    untilQuestion(draw);
+    expect(draw.cast('p1', { cheatId: 'lantern-out.flame-duel', target: 'p2' }).ok).toBe(true);
+    wrong(draw, 'p1');
+    wrong(draw, 'p2');
+    untilClosed(draw);
+    expect(lit(draw)).toMatchObject({ p1: 2, p2: 2 });
+  });
+
+  it('Flame Duel never takes a last lantern, and needs both duellists still to answer', () => {
+    const sim = game({ settings: { lives: 2 } });
+    question(sim, ['p2']);
+    question(sim, ['p1']);
+    expect(lit(sim)).toMatchObject({ p1: 1, p2: 1 });
+    untilQuestion(sim);
+    right(sim, 'p3');
+    expect(sim.cast('p1', { cheatId: 'lantern-out.flame-duel', target: 'p3' })).toMatchObject({ ok: false });
+    expect(sim.cast('p1', { cheatId: 'lantern-out.flame-duel', target: 'p2' }).ok).toBe(true);
+    right(sim, 'p1');
+    sim.run(500);
+    right(sim, 'p2');
+    right(sim, 'p4');
+    untilClosed(sim);
+    expect(lit(sim)).toMatchObject({ p1: 1, p2: 1 });
+  });
+
+  it('Double Wick relights two lanterns for a player who comes back in a revival round', () => {
+    const sim = game({ settings: { lives: 2, reviveEvery: 3 } });
+    expect(sim.cast('p4', { cheatId: 'lantern-out.double-wick' })).toMatchObject({ ok: false });
+    question(sim, ['p4']);
+    question(sim, ['p4']);
+    expect(lit(sim).p4).toBe(0);
+    expect(sim.cast('p4', { cheatId: 'lantern-out.double-wick' }).ok).toBe(true);
+    question(sim);
+    expect(lit(sim).p4).toBe(2);
+    expect(st(sim).last.relit).toEqual(['p4']);
+    expect(sim.chaos().effects).toHaveLength(0);
+  });
+
+  it('Double Wick is refused with one lantern each', () => {
+    const sim = game({ settings: { lives: 1 } });
+    question(sim, ['p4']);
+    expect(sim.cast('p4', { cheatId: 'lantern-out.double-wick' })).toMatchObject({ ok: false });
+  });
+});
+
+describe('lantern-out pack: kindling', () => {
+  it('Damp Kindling stops an opponent\'s three in a row relighting a lantern', () => {
+    const play = (damp: boolean) => {
+      const sim = game({ settings: { kindling: true } });
+      question(sim, ['p2']);
+      question(sim);
+      question(sim);
+      question(sim, [], () => {
+        if (damp) expect(sim.cast('p1', { cheatId: 'lantern-out.damp-kindling', target: 'p2' }).ok).toBe(true);
+      });
+      return sim;
+    };
+    expect(lit(play(false)).p2).toBe(3);
+    const sim = play(true);
+    expect(st(sim).sync.streaks.p2).toBe(3);
+    expect(lit(sim).p2).toBe(2);
+    expect(st(sim).last.kindled).not.toContain('p2');
+  });
+
+  it('Pocket Tinderbox gives you Kindling\'s rule in a game without it', () => {
+    const sim = game();
+    question(sim, ['p1']);
+    expect(sim.cast('p1', { cheatId: 'lantern-out.tinderbox' }).ok).toBe(true);
+    question(sim);
+    question(sim);
+    expect(lit(sim).p1).toBe(2);
+    question(sim);
+    expect(lit(sim)).toMatchObject({ p1: 3, p2: 3 });
+    expect(st(sim).last.kindled).toEqual(['p1']);
+  });
+
+  it('Pocket Tinderbox is refused when Kindling is on for everyone', () => {
+    const sim = game({ settings: { kindling: true } });
+    const r = sim.cast('p1', { cheatId: 'lantern-out.tinderbox' });
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.message).toMatch(/already on/);
+  });
+});
+
+describe('lantern-out pack: sheltering and sharing', () => {
+  it('Shelter the Flame moves a player\'s lost lanterns to your row, never your last', () => {
+    /** One quick question: p2 answers wrong and everyone else right, so it closes at once. */
+    const p2Wrong = () => {
+      untilQuestion(sim);
+      wrong(sim, 'p2');
+      for (const id of ['p1', 'p3', 'p4']) right(sim, id);
+      untilClosed(sim);
+    };
+    const sim = game();
+    expect(sim.cast('p1', { cheatId: 'lantern-out.shelter', target: 'p1' })).toMatchObject({ ok: false });
+    question(sim, ['p1']);
+    expect(lit(sim).p1).toBe(2);
+    expect(sim.cast('p1', { cheatId: 'lantern-out.shelter', target: 'p2' }).ok).toBe(true);
+    p2Wrong();
+    expect(lit(sim)).toMatchObject({ p1: 1, p2: 3 });
+    expect(st(sim).last.blown).toEqual(['p1']);
+    // Down to their last lantern: the sheltered player loses their own again.
+    p2Wrong();
+    expect(lit(sim)).toMatchObject({ p1: 1, p2: 2 });
+    expect(st(sim).last.blown).toEqual(['p2']);
+  });
+
+  it('Shelter the Flame needs two lanterns and covers one player at a time', () => {
+    const sim = game();
+    expect(sim.cast('p1', { cheatId: 'lantern-out.shelter', target: 'p2' }).ok).toBe(true);
+    const r = sim.cast('p1', { cheatId: 'lantern-out.shelter', target: 'p3' });
+    expect(r.ok).toBe(false);
+    const low = game({ settings: { lives: 1 } });
+    expect(low.cast('p1', { cheatId: 'lantern-out.shelter', target: 'p2' })).toMatchObject({ ok: false });
+  });
+
+  it('Ripple of Wind blows out one opponent\'s lantern for each one you lose', () => {
+    const sim = game();
+    expect(sim.cast('p1', { cheatId: 'lantern-out.ripple' }).ok).toBe(true);
+    question(sim, ['p1']);
+    const after = lit(sim);
+    expect(after.p1).toBe(2);
+    expect(after.p2! + after.p3! + after.p4!).toBe(8);
+    const hit = ['p2', 'p3', 'p4'].find((id) => after[id] === 2)!;
+    expect([...st(sim).last.blown].sort()).toEqual(['p1', hit].sort());
+  });
+
+  it('Ripple of Wind never takes a last lantern, nor one behind a Windbreak', () => {
+    const sim = game({ settings: { lives: 2 } });
+    question(sim, ['p2', 'p3']);
+    expect(sim.cast('p4', { cheatId: 'lantern-out.windbreak', target: 'p4' }).ok).toBe(true);
+    expect(sim.cast('p1', { cheatId: 'lantern-out.ripple' }).ok).toBe(true);
+    question(sim, ['p1']);
+    expect(lit(sim)).toEqual({ p1: 1, p2: 1, p3: 1, p4: 2 });
+  });
+
+  it('Even Glow shares the lit lanterns out evenly and leaves players who are out alone', () => {
+    const sim = game({ settings: { lives: 3 } });
+    expect(sim.cast('p1', { cheatId: 'lantern-out.even-glow' })).toMatchObject({ ok: false });
+    question(sim, ['p2']);
+    question(sim, ['p2']);
+    expect(lit(sim)).toMatchObject({ p1: 3, p2: 1, p3: 3, p4: 3 });
+    expect(sim.cast('p1', { cheatId: 'lantern-out.even-glow' }).ok).toBe(true);
+    const after = Object.values(lit(sim)).sort();
+    expect(after).toEqual([2, 2, 3, 3]);
+    const out = game({ settings: { lives: 3, reviveEvery: 0 } });
+    question(out, ['p4']);
+    question(out, ['p4']);
+    question(out, ['p4']);
+    question(out, ['p2']);
+    question(out, ['p2']);
+    expect(lit(out)).toMatchObject({ p2: 1, p4: 0 });
+    expect(out.cast('p1', { cheatId: 'lantern-out.even-glow' }).ok).toBe(true);
+    expect(lit(out).p4).toBe(0);
+    expect(Object.values(lit(out)).reduce((n, v) => n + v, 0)).toBe(7);
+  });
+});

@@ -263,3 +263,290 @@ describe('classic pack: rule options', () => {
     expect(s.lastGain.p2).toBe(1330);
   });
 });
+
+describe('classic pack: the clock', () => {
+  /** `id` answers right `afterMs` into the open question; returns the points the answer scored. */
+  function answerAfter(sim: ChaosSim, afterMs: number, id = 'p1') {
+    const s = st(sim).sync;
+    sim.run(Math.max(0, s.startedAt + afterMs - sim.now));
+    right(sim, id);
+    return st(sim).sync.answers[id].points as number;
+  }
+
+  it('Stopped Clock gives your answer the whole speed bonus, once, and only before you answer', () => {
+    for (const scale of ['1', '2']) {
+      const a = game({ settings: { scale } });
+      untilQuestion(a);
+      expect(a.cast('p1', { cheatId: 'classic.stopped-clock' }).ok).toBe(true);
+      const b = game({ settings: { scale } });
+      untilQuestion(b);
+      const boosted = answerAfter(a, 6000);
+      const plain = answerAfter(b, 6000);
+      // 500 for being right and all 500 for speed, against 500 + 500 * (1 - 6/20) = 850.
+      expect(boosted).toBe(1000 * Number(scale));
+      expect(plain).toBe(850 * Number(scale));
+      expect(st(a).sync.scores.p1).toBe(1000 * Number(scale));
+      expect(a.chaos().effects).toHaveLength(0);
+    }
+    const sim = game();
+    untilQuestion(sim);
+    right(sim, 'p1');
+    expect(sim.cast('p1', { cheatId: 'classic.stopped-clock' })).toMatchObject({ ok: false });
+  });
+
+  it('Stopped Clock and Tortoise Round are not offered without the speed bonus, in Split the Pot or in Fading Lights', () => {
+    for (const settings of [{ speedBonus: false }, { scoring: 'pot' }, { knockout: true }]) {
+      const sim = game({ settings });
+      untilQuestion(sim);
+      for (const cheatId of ['classic.stopped-clock', 'classic.tortoise-round']) {
+        const r = sim.cast('p1', { cheatId });
+        expect(r.ok).toBe(false);
+        if (!r.ok) expect(r.message).toMatch(/does not work here/);
+      }
+    }
+  });
+
+  it('Tortoise Round runs the speed bonus backwards for everyone on that question only', () => {
+    const sim = game();
+    untilQuestion(sim);
+    expect(sim.cast('p3', { cheatId: 'classic.tortoise-round' }).ok).toBe(true);
+    // Answers 2 and 16 seconds into a 20-second question: the speed share becomes 0.1 and 0.8.
+    expect(answerAfter(sim, 2000, 'p1')).toBe(550);
+    expect(answerAfter(sim, 16_000, 'p2')).toBe(900);
+    untilClosed(sim);
+    // It checks four times a second whether its question is over.
+    sim.run(300);
+    expect(sim.chaos().effects).toHaveLength(0);
+    untilQuestion(sim);
+    // Back to normal: 500 + 500 * (1 - 2/20), plus the 50 streak bonus for a second right answer in a row.
+    expect(answerAfter(sim, 2000, 'p1')).toBe(1000);
+  });
+
+  it('Tortoise Round must be cast before anyone answers the open question', () => {
+    const sim = game();
+    untilQuestion(sim);
+    right(sim, 'p1');
+    const r = sim.cast('p2', { cheatId: 'classic.tortoise-round' });
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.message).toMatch(/already answered/);
+  });
+});
+
+describe('classic pack: Fresh Card Deal and Sneak Preview', () => {
+  it('Fresh Card Deal swaps the open question for an unused one with a fresh clock', () => {
+    const sim = game();
+    untilQuestion(sim);
+    sim.run(4000);
+    const before = st(sim).sync;
+    const old = before.order.slice();
+    expect(sim.cast('p1', { cheatId: 'classic.fresh-deal' }).ok).toBe(true);
+    const after = st(sim).sync;
+    expect(after.order).toHaveLength(old.length);
+    expect(old).not.toContain(after.order[after.round]);
+    expect(after.order.filter((_q: string, i: number) => i !== after.round)).toEqual(old.filter((_q: string, i: number) => i !== before.round));
+    expect(after.iid).not.toBe(before.iid);
+    expect(after.startedAt).toBe(sim.now);
+    expect(after.deadline - after.startedAt).toBe(20_000);
+    right(sim, 'p1');
+    expect(sim.cast('p2', { cheatId: 'classic.fresh-deal' })).toMatchObject({ ok: false });
+  });
+
+  it('Fresh Card Deal refuses once anyone has answered', () => {
+    const sim = game();
+    untilQuestion(sim);
+    wrong(sim, 'p2');
+    const r = sim.cast('p1', { cheatId: 'classic.fresh-deal' });
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.message).toMatch(/already answered/);
+  });
+
+  it('Sneak Preview shows the next question\'s words to the caster until that question opens', () => {
+    const sim = game();
+    untilQuestion(sim);
+    expect(sim.cast('p1', { cheatId: 'classic.sneak-preview' }).ok).toBe(true);
+    const s = st(sim).sync;
+    const banner = sim.view('p1').overlays.find((o) => o.kind === 'banner');
+    expect(banner?.text).toBe(`Coming up next: ${MIXED_SET.find((q) => q.id === s.order[s.round + 1])!.prompt}`);
+    expect(sim.view('p2').overlays).toEqual([]);
+    untilClosed(sim);
+    sim.run(300);
+    expect(sim.chaos().effects).toHaveLength(1);
+    untilQuestion(sim);
+    sim.run(300);
+    expect(sim.chaos().effects).toHaveLength(0);
+  });
+
+  it('Sneak Preview goes away if the next question is scrapped', () => {
+    const sim = game();
+    untilQuestion(sim);
+    expect(sim.cast('p1', { cheatId: 'classic.sneak-preview' }).ok).toBe(true);
+    expect(sim.cast('p2', { cheatId: 'classic.scrap-question' }).ok).toBe(true);
+    sim.run(500);
+    expect(sim.chaos().effects).toHaveLength(0);
+  });
+
+  it('Sneak Preview refuses on the last question', () => {
+    const sim = game({ common: { questionLimit: 3 } });
+    for (let q = 0; q < 3; q++) {
+      untilQuestion(sim);
+      if (q < 2) untilClosed(sim);
+    }
+    expect(sim.cast('p1', { cheatId: 'classic.sneak-preview' })).toMatchObject({ ok: false });
+  });
+});
+
+describe('classic pack: Reprieve Bell and Rollover Pot', () => {
+  it('Reprieve Bell keeps everyone in for one question, then the knockout rule is back', () => {
+    const sim = game({ settings: { suddenDeath: true } });
+    untilQuestion(sim);
+    expect(sim.cast('p1', { cheatId: 'classic.reprieve-bell' }).ok).toBe(true);
+    right(sim, 'p1');
+    wrong(sim, 'p3');
+    untilClosed(sim);
+    expect(st(sim).out).toEqual({});
+    expect(sim.feed.some((f) => /reprieve bell rang: Bot 2, Bot 3, Bot 4 stay in/.test(f))).toBe(true);
+    expect(sim.chaos().effects).toHaveLength(0);
+    untilQuestion(sim);
+    right(sim, 'p1');
+    right(sim, 'p2');
+    untilClosed(sim);
+    expect(Object.keys(st(sim).out).sort()).toEqual(['p3', 'p4']);
+  });
+
+  it('Reprieve Bell needs a knockout rule', () => {
+    const sim = game();
+    expect(sim.cast('p1', { cheatId: 'classic.reprieve-bell' })).toMatchObject({ ok: false });
+  });
+
+  it('Rollover Pot carries an unclaimed pot to the next question\'s winners', () => {
+    const play = (roll: boolean) => {
+      const sim = game({ settings: { scoring: 'pot' } });
+      untilQuestion(sim);
+      if (roll) expect(sim.cast('p1', { cheatId: 'classic.rollover' }).ok).toBe(true);
+      wrong(sim, 'p1');
+      untilClosed(sim);
+      untilQuestion(sim);
+      right(sim, 'p1');
+      right(sim, 'p2');
+      untilClosed(sim);
+      return sim;
+    };
+    expect(st(play(false)).sync.scores).toMatchObject({ p1: 2000, p2: 2000 });
+    const sim = play(true);
+    // The pot of 4,000 nobody won is shared on top of the next pot of 4,000.
+    expect(st(sim).sync.scores).toMatchObject({ p1: 4000, p2: 4000, p3: 0, p4: 0 });
+    expect(st(sim).sync.answers.p1.points).toBe(4000);
+    expect(st(sim).sync.lastGain.p2).toBe(4000);
+    expect(sim.chaos().effects).toHaveLength(0);
+  });
+
+  it('Rollover Pot ends without paying anything when someone wins the first pot', () => {
+    const sim = game({ settings: { scoring: 'pot' } });
+    untilQuestion(sim);
+    expect(sim.cast('p1', { cheatId: 'classic.rollover' }).ok).toBe(true);
+    right(sim, 'p2');
+    untilClosed(sim);
+    expect(st(sim).sync.scores.p2).toBe(4000);
+    expect(sim.chaos().effects).toHaveLength(0);
+  });
+
+  it('Rollover Pot is only offered in Split the Pot', () => {
+    const sim = game();
+    untilQuestion(sim);
+    expect(sim.cast('p1', { cheatId: 'classic.rollover' })).toMatchObject({ ok: false });
+  });
+});
+
+describe('classic pack: wagers', () => {
+  /** p1 answers one question right, then the next question opens. */
+  function withPoints(o: Opts = {}) {
+    const sim = game(o);
+    untilQuestion(sim);
+    right(sim, 'p1');
+    untilClosed(sim);
+    untilQuestion(sim);
+    return sim;
+  }
+
+  it('Back Yourself wins a fifth of your points for a right answer and loses it for a wrong or missing one', () => {
+    for (const outcome of ['right', 'wrong', 'none'] as const) {
+      const sim = withPoints();
+      const before = st(sim).sync.scores.p1;
+      expect(sim.cast('p1', { cheatId: 'classic.back-yourself' }).ok).toBe(true);
+      if (outcome === 'right') right(sim, 'p1');
+      if (outcome === 'wrong') wrong(sim, 'p1');
+      const answered = st(sim).sync.answers.p1?.points ?? 0;
+      untilClosed(sim);
+      const stake = Math.round(before / 5);
+      expect(st(sim).sync.scores.p1).toBe(before + answered + (outcome === 'right' ? stake : -stake));
+      expect(sim.chaos().effects).toHaveLength(0);
+    }
+  });
+
+  it('Back Yourself needs points and must come before your answer', () => {
+    const sim = game();
+    untilQuestion(sim);
+    expect(sim.cast('p1', { cheatId: 'classic.back-yourself' })).toMatchObject({ ok: false });
+    const rich = withPoints();
+    right(rich, 'p1');
+    expect(rich.cast('p1', { cheatId: 'classic.back-yourself' })).toMatchObject({ ok: false });
+  });
+
+  it('Sizzling Answers costs 200 points (times the scale) for each wrong answer, and nothing for no answer', () => {
+    for (const scale of ['1', '2']) {
+      const sim = withPoints({ settings: { scale } });
+      const before = st(sim).sync.scores.p1;
+      expect(sim.cast('p2', { cheatId: 'classic.sizzling-answers', target: 'p1' }).ok).toBe(true);
+      wrong(sim, 'p1');
+      untilClosed(sim);
+      expect(st(sim).sync.scores.p1).toBe(before - 200 * Number(scale));
+      untilQuestion(sim);
+      untilClosed(sim);
+      expect(st(sim).sync.scores.p1).toBe(before - 200 * Number(scale));
+    }
+  });
+
+  it('Sizzling Answers never takes a score below 0, and leaves right answers alone', () => {
+    const sim = game();
+    untilQuestion(sim);
+    expect(sim.cast('p2', { cheatId: 'classic.sizzling-answers', target: 'p1' }).ok).toBe(true);
+    expect(sim.cast('p2', { cheatId: 'classic.sizzling-answers', target: 'p3' })).toMatchObject({ ok: false });
+    expect(sim.cast('p4', { cheatId: 'classic.sizzling-answers', target: 'p3' }).ok).toBe(true);
+    wrong(sim, 'p1');
+    right(sim, 'p3');
+    const p3 = st(sim).sync.scores.p3;
+    untilClosed(sim);
+    expect(st(sim).sync.scores.p1).toBe(0);
+    expect(st(sim).sync.scores.p3).toBe(p3);
+  });
+});
+
+describe('classic pack: Streak Snatch and Harmony Swap', () => {
+  it('Streak Snatch adds an opponent\'s streak to yours, capped at the questions asked so far', () => {
+    const sim = game();
+    for (let q = 0; q < 2; q++) {
+      untilQuestion(sim);
+      right(sim, 'p2');
+      if (q === 1) right(sim, 'p1');
+      untilClosed(sim);
+    }
+    expect(st(sim).sync.streaks).toMatchObject({ p1: 1, p2: 2 });
+    expect(sim.cast('p1', { cheatId: 'classic.streak-snatch', target: 'p3' })).toMatchObject({ ok: false });
+    expect(sim.cast('p1', { cheatId: 'classic.streak-snatch', target: 'p2' }).ok).toBe(true);
+    // Two questions asked: a streak of 1 + 2 is cut to 2.
+    expect(st(sim).sync.streaks).toMatchObject({ p1: 2, p2: 0 });
+  });
+
+  it('Harmony Swap trades the two teams\' unison bonuses, and refuses equal ones', () => {
+    const sim = game({ settings: { unisonBonus: 500 }, common: { teamCount: 2 } });
+    const mine = teamOf(sim, 'p1');
+    const theirs = teamOf(sim, 'p2');
+    untilQuestion(sim);
+    expect(sim.cast('p1', { cheatId: 'classic.harmony-swap', target: theirs })).toMatchObject({ ok: false });
+    for (const id of sim.ids) if (teamOf(sim, id) === theirs) right(sim, id);
+    untilClosed(sim);
+    expect(st(sim).teamBonus).toMatchObject({ [theirs]: 500 });
+    expect(sim.cast('p1', { cheatId: 'classic.harmony-swap', target: theirs }).ok).toBe(true);
+    expect(st(sim).teamBonus).toMatchObject({ [mine]: 500, [theirs]: 0 });
+  });
+});

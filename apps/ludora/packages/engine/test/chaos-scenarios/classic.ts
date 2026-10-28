@@ -51,6 +51,47 @@ const oneVoiceShort: Post = (sim, caster) => {
   sim.rt.act(mate, { type: 'answer', iid: syncOf(sim).iid, answer: { type: 'short', text: 'not the answer' } });
 };
 
+/** A question nobody has answered yet, with plenty of time left. Bots answer the moment they see a question, so they hold back while it opens. */
+const untouchedQuestion: Pre = (sim) => {
+  const held = sim.ids.filter((id) => !sim.idle.has(id));
+  for (const id of held) sim.idle.add(id);
+  until(sim, (s) => Object.keys(s.answers).length === 0, 8000);
+  for (const id of held) sim.idle.delete(id);
+};
+
+/** The caster's bot holds back, so the caster answers by hand a moment into the question (see stoppedClockAnswer). */
+const casterWaits: Pre = (sim, caster) => {
+  sim.idle.add(caster);
+  until(sim, (s) => !s.answers[caster], 8000);
+};
+
+/** The caster answers right a second and a half into the question, so there is speed bonus left to win. */
+const stoppedClockAnswer: Post = (sim, caster) => {
+  sim.run(1500);
+  answerAs(sim, caster, true);
+  sim.idle.delete(caster);
+};
+
+/** A player still in the game stops answering, so the knockout rule has someone to put out. */
+const someoneWillMiss: Post = (sim, caster) => {
+  const out = (sim.state() as { out: Record<string, number> }).out;
+  const victim = sim.ids.find((id) => id !== caster && sim.rt.hasPlayer(id) && out[id] === undefined && !syncOf(sim).answers[id]);
+  if (victim) sim.idle.add(victim);
+};
+
+/** Nobody answers the open question, so its pot goes unclaimed; then everyone plays on. */
+const nobodyAnswers: Post = (sim) => {
+  for (const id of sim.ids) sim.idle.add(id);
+  for (let t = 0; t < 60_000 && syncOf(sim).phase === 'question' && sim.rt.status === 'running'; t += 100) sim.run(100);
+  for (const id of sim.ids) sim.idle.delete(id);
+};
+
+/** Play on until the two teams have different unison bonuses, so there is something to swap. */
+const bonusesDiffer: Pre = (sim) => {
+  const differ = () => new Set(Object.values((sim.state() as { teamBonus: Record<string, number> }).teamBonus).concat(0)).size > 1;
+  for (let t = 0; t < 150_000 && !differ() && sim.rt.status === 'running'; t += 2000) sim.run(2000);
+};
+
 export const scenarios: ScenarioSet = {
   settings: { classic: [{ encore: true }, { comeback: true }, { unisonBonus: 500 }, { scoring: 'pot' }] },
   pre: {
@@ -58,8 +99,21 @@ export const scenarios: ScenarioSet = {
     'classic.underdog-disguise': (sim, caster) => void until(sim, (s) => !s.answers[caster], 8000),
     'classic.revoke-comeback': freshQuestion,
     'classic.double-dip': (sim, caster) => void until(sim, (s) => !s.answers[caster], 8000),
+    'classic.stopped-clock': casterWaits,
+    'classic.tortoise-round': untouchedQuestion,
+    'classic.fresh-deal': untouchedQuestion,
+    'classic.reprieve-bell': freshQuestion,
+    'classic.rollover': untouchedQuestion,
+    'classic.back-yourself': (sim, caster) => void until(sim, (s) => !s.answers[caster], 8000),
+    'classic.sizzling-answers': freshQuestion,
+    'classic.harmony-swap': bonusesDiffer,
   },
+  screen: ['classic.sneak-preview'],
   post: {
+    'classic.stopped-clock': stoppedClockAnswer,
+    'classic.reprieve-bell': someoneWillMiss,
+    'classic.rollover': nobodyAnswers,
+    'classic.sizzling-answers': (sim, _caster, _def, target) => target && answerAs(sim, target, false),
     'classic.stand-in-singer': oneVoiceShort,
     // The caster earns a share of the pot, and the bots usually share it with them.
     'classic.double-dip': (sim, caster) => answerAs(sim, caster, true),

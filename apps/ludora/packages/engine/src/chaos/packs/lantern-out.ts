@@ -1,7 +1,7 @@
 import type { SyncState } from '../../mechanics/syncRounds.ts';
 import { KINDLING_EVERY } from '../../modes/lantern-out/index.ts';
 import type { PlayerId } from '../../sdk/types.ts';
-import { odds, rollOdds, target, transfer } from '../cheats/kit.ts';
+import { odds, rollOdds, splitEvenly, target, transfer } from '../cheats/kit.ts';
 import { defineCheats } from '../registry.ts';
 import type { ChaosApi, CheatDef } from '../types.ts';
 
@@ -453,4 +453,271 @@ const revivals: CheatDef[] = [
   },
 ];
 
-defineCheats([...swaps, ...weather, ...revivals]);
+/* --------------------------- duels and kindling ------------------------- */
+
+/** The record of the question that just closed, when it is that question's. */
+function lastOf(api: ChaosApi): Last | null {
+  const last = api.s.last as Last | null;
+  return last && last.round === sync(api).round ? last : null;
+}
+
+/** Note a lantern a cheat blew out on the record of the question that just closed, so the reveal shows it. */
+function blown(api: ChaosApi, id: PlayerId) {
+  const last = lastOf(api);
+  if (last && !last.blown.includes(id)) last.blown.push(id);
+}
+
+/** Whether `id` may answer the open question (lit in a normal round, out in a revival round) and has not yet. */
+function stillToAnswer(api: ChaosApi, id: PlayerId): boolean {
+  const s = sync(api);
+  return s.phase === 'question' && (isRevival(api) ? lit(api, id) <= 0 : lit(api, id) > 0) && !s.answers[id];
+}
+
+const duels: CheatDef[] = [
+  {
+    id: 'lantern-out.flame-duel',
+    name: 'Flame Duel',
+    category: 'troll',
+    description: 'Challenge an opponent on the open question. When it closes, whoever of you answered it right (the faster one, if you both did) takes one lantern from the other. Nothing happens if neither of you is right or you were exactly as quick, it never takes anyone\'s last lantern, and nobody holds more than they started with. Not in a revival round.',
+    target: 'opponent',
+    modes: M,
+    needs: L,
+    cost: 35,
+    cooldownMs: 60_000,
+    durationMs: 60_000,
+    tickMs: 250,
+    stacking: 'reject',
+    apply: (api, c, fx) => {
+      const t = target(c);
+      if (sync(api).phase !== 'question') return { error: 'No question is open right now.' };
+      if (isRevival(api)) return { error: 'This is a revival round: duels are for players with a lantern lit.' };
+      if (!stillToAnswer(api, c.caster)) return { error: 'You need a lantern lit and the open question still to answer.' };
+      if (!stillToAnswer(api, t)) return { error: `${api.name(t)} needs a lantern lit and the open question still to answer.` };
+      fx!.data.round = sync(api).round;
+    },
+    hooks: {
+      tick: (api, fx) => {
+        const s = sync(api);
+        if (s.phase === 'done' || s.round > Number(fx.data.round)) api.endEffect(fx.eid, 'used');
+      },
+      delta: {
+        closed: (api, fx, d) => {
+          const s = sync(api);
+          if ((d.game ?? 0) <= 0 || s.round !== Number(fx.data.round)) return;
+          api.endEffect(fx.eid, 'used');
+          const me = fx.caster;
+          const t = target(fx);
+          const [a, b] = [s.answers[me], s.answers[t]];
+          const winner = a?.correct && b?.correct ? (a.responseMs < b.responseMs ? me : b.responseMs < a.responseMs ? t : null) : a?.correct ? me : b?.correct ? t : null;
+          const pair = [me, t];
+          if (!winner) return api.feed('The flame duel was a draw: nobody won a lantern.', 'info', pair);
+          const loser = winner === me ? t : me;
+          if (lit(api, loser) < 2) return api.feed(`${api.name(winner)} won the flame duel, but ${api.name(loser)} is down to their last lantern (or none), so there was nothing to take.`, 'info', pair);
+          if (lit(api, winner) <= 0 || lit(api, winner) >= lives(api)) return api.feed(`${api.name(winner)} won the flame duel, but had no room for another lantern.`, 'info', pair);
+          if (transfer(api, 'lanterns', loser, winner, 1) > 0) {
+            blown(api, loser);
+            api.feed(`${api.name(winner)} won the flame duel and took one of ${api.name(loser)}'s lanterns.`, 'big');
+          }
+        },
+      },
+    },
+    overlay: () => ({ kind: 'badge', text: 'Flame duel on this question', tone: 'info' }),
+    overlayFor: 'all',
+  },
+  {
+    id: 'lantern-out.double-wick',
+    name: 'Double Wick',
+    category: 'advantage',
+    description: 'Only while you are out: your next right answer in a revival round (within 2 minutes) relights two of your lanterns instead of one. Not with one lantern each, where nobody can hold two.',
+    target: 'self',
+    modes: M,
+    needs: ['revival', ...L],
+    cost: 30,
+    cooldownMs: 60_000,
+    durationMs: 120_000,
+    priority: 30,
+    apply: (api, c) => {
+      if (lit(api, c.caster) > 0) return { error: 'You still have a lantern lit: Double Wick is for players who are out.' };
+      if (lives(api) < 2) return { error: 'Everyone has one lantern in this game, so nobody can hold two.' };
+    },
+    hooks: {
+      delta: {
+        lanterns: (api, fx, d) => {
+          const me = fx.caster;
+          if ((d[me] ?? 0) <= 0 || !isRevival(api) || !lastOf(api)?.relit.includes(me)) return;
+          d[me]! += 1;
+          api.feed(`Double wick: ${api.name(me)} relit two lanterns.`, 'good');
+          api.endEffect(fx.eid, 'used');
+        },
+      },
+    },
+    overlay: () => ({ kind: 'badge', text: 'Double wick: relight two in a revival round', tone: 'good' }),
+  },
+  {
+    id: 'lantern-out.damp-kindling',
+    name: 'Damp Kindling',
+    category: 'troll',
+    description: 'Kindling only: for 45 seconds, an opponent\'s kindling is damp, so three right answers in a row relight none of their lanterns.',
+    target: 'opponent',
+    modes: M,
+    needs: [...L, 'kindling'],
+    cost: 25,
+    cooldownMs: 45_000,
+    durationMs: 45_000,
+    priority: 40,
+    apply: (api, c) => (lit(api, target(c)) > 0 ? undefined : { error: `${api.name(target(c))} has no lantern lit.` }),
+    hooks: {
+      delta: {
+        lanterns: (api, fx, d) => {
+          const t = target(fx);
+          const last = lastOf(api);
+          if (!last?.kindled.includes(t)) return;
+          d[t] = (d[t] ?? 0) - 1;
+          last.kindled = last.kindled.filter((x) => x !== t);
+          api.feed('Your kindling was damp: three in a row relit nothing.', 'bad', [t]);
+        },
+      },
+    },
+    overlay: () => ({ kind: 'badge', text: 'Damp kindling', tone: 'bad' }),
+  },
+  {
+    id: 'lantern-out.tinderbox',
+    name: 'Pocket Tinderbox',
+    category: 'advantage',
+    description: 'Games without Kindling: for 90 seconds, Kindling\'s rule works for you alone. Every third right answer in a row relights one of your lanterns, up to the number you started with.',
+    target: 'self',
+    modes: M,
+    needs: [...L, 'meter:streak'],
+    cost: 30,
+    cooldownMs: 75_000,
+    durationMs: 90_000,
+    apply: (api, c) => {
+      if ((api.ctx.settings as { kindling?: boolean }).kindling) return { error: 'Kindling is already on for everyone in this game.' };
+      if (lit(api, c.caster) <= 0) return { error: 'Your lanterns are all out.' };
+    },
+    hooks: {
+      delta: {
+        closed: (api, fx, d) => {
+          if ((d.game ?? 0) <= 0 || isRevival(api)) return;
+          const me = fx.caster;
+          const s = sync(api);
+          const streak = s.streaks[me] ?? 0;
+          const joinedAt = api.players().find((p) => p.id === me)?.joinedAt ?? 0;
+          // The players the mode's own Kindling would count: lit, right on this question, and here when it opened.
+          if (!s.answers[me]?.correct || joinedAt > s.startedAt || streak <= 0 || streak % KINDLING_EVERY !== 0) return;
+          if (lit(api, me) <= 0 || lit(api, me) >= lives(api) || api.add('lanterns', me, 1) <= 0) return;
+          lastOf(api)?.kindled.push(me);
+          api.feed(`${api.name(me)}'s pocket tinderbox: three in a row relit a lantern.`, 'good');
+        },
+      },
+    },
+    overlay: () => ({ kind: 'badge', text: 'Pocket tinderbox: three in a row relights a lantern', tone: 'good' }),
+  },
+];
+
+/* ------------------------ sheltering and sharing ------------------------ */
+
+const sharing: CheatDef[] = [
+  {
+    id: 'lantern-out.shelter',
+    name: 'Shelter the Flame',
+    category: 'advantage',
+    description: 'For 30 seconds, every lantern a player you choose would lose is blown out of your row instead, as long as you have more than one: once you are down to your last lantern, they lose their own again. You can shelter one player at a time.',
+    target: 'player',
+    hostile: false,
+    modes: M,
+    needs: L,
+    cost: 30,
+    cooldownMs: 60_000,
+    durationMs: 30_000,
+    // Before other effects bend lantern losses, so the caster's own row is still as the mode left it.
+    priority: 15,
+    apply: (api, c, fx) => {
+      const t = target(c);
+      if (t === c.caster) return { error: 'Pick someone other than yourself.' };
+      if (lit(api, t) <= 0) return { error: `${api.name(t)} has no lantern lit to shelter.` };
+      if (lit(api, c.caster) < 2) return { error: 'You need two or more lanterns to shelter someone.' };
+      // This cast's own effect is already in the list; any other one of yours means a second shelter.
+      if (api.effects().some((e) => e !== fx && e.cheatId === 'lantern-out.shelter' && e.caster === c.caster && !e.targets.includes(t))) return { error: 'You are already sheltering someone.' };
+    },
+    hooks: {
+      delta: {
+        lanterns: (api, fx, d) => {
+          const t = target(fx);
+          const me = fx.caster;
+          if ((d[t] ?? 0) >= 0 || !api.ids().includes(me)) return;
+          // A Windbreak on them keeps the lantern lit for free (when it can), so the shelter leaves it to that.
+          if (api.effectsOn(t).some((e) => e.cheatId === 'lantern-out.windbreak') && !wouldDecide(api, t)) return;
+          // Your row as the mode just left it. Nothing before this hook can have taken more from it (another
+          // Shelter only ever covers your losses), so this never spends your last lantern.
+          const spare = lit(api, me) - 1;
+          const moved = Math.min(-d[t]!, spare);
+          if (moved <= 0) return;
+          d[t]! += moved;
+          d[me] = (d[me] ?? 0) - moved;
+          if (d[t] === 0) unblow(api, t);
+          blown(api, me);
+          api.feed(`${api.name(me)} sheltered ${api.name(t)}'s flame: ${moved === 1 ? 'a lantern' : `${moved} lanterns`} went out of their row instead.`, 'good');
+        },
+      },
+    },
+    overlay: () => ({ kind: 'badge', text: 'Your flame is sheltered', tone: 'good' }),
+  },
+  {
+    id: 'lantern-out.ripple',
+    name: 'Ripple of Wind',
+    category: 'troll',
+    description: 'For 30 seconds, every lantern you lose sends a ripple of wind that blows out a lantern of a random opponent: one who has two or more lit, lost none at that same moment and is not behind a Windbreak, each equally likely. Never anyone\'s last lantern.',
+    target: 'self',
+    modes: M,
+    needs: L,
+    cost: 30,
+    cooldownMs: 60_000,
+    durationMs: 30_000,
+    // After protections (Windbreak 50, Shelter 15), so only lanterns really lost send a ripple.
+    priority: 60,
+    apply: (api, c) => (lit(api, c.caster) > 0 ? undefined : { error: 'Your lanterns are all out.' }),
+    hooks: {
+      delta: {
+        lanterns: (api, fx, d) => {
+          const me = fx.caster;
+          const lost = -(d[me] ?? 0);
+          for (let k = 0; k < lost; k++) {
+            // Opponents whose lanterns did not change in this move, so their count now is what they keep.
+            const sheltered = (id: PlayerId) => api.effectsOn(id).some((e) => e.cheatId === 'lantern-out.windbreak');
+            const pool = api.opponents(me).filter((id) => d[id] === undefined && lit(api, id) >= 2 && !sheltered(id));
+            if (!pool.length) return;
+            const v = api.rng.pick(pool);
+            d[v] = -1;
+            blown(api, v);
+            api.feed(`A ripple of wind from ${api.name(me)} blew out one of ${api.name(v)}'s lanterns.`, 'bad');
+          }
+        },
+      },
+    },
+    overlay: () => ({ kind: 'badge', text: 'Ripple of wind: your losses spread', tone: 'info' }),
+  },
+  {
+    id: 'lantern-out.even-glow',
+    name: 'Even Glow',
+    category: 'round',
+    description: 'Every player with a lantern lit ends up with the same number: all the lit lanterns are shared out evenly between them, and any left over go one each to players picked at random (each equally likely). The total stays the same, and players who are out stay out.',
+    target: 'room',
+    hostile: true,
+    modes: M,
+    needs: L,
+    cost: 45,
+    cooldownMs: 90_000,
+    undoable: false,
+    apply: (api) => {
+      const row = api.ids().filter((id) => lit(api, id) > 0);
+      const counts = row.map((id) => lit(api, id));
+      if (row.length < 2 || Math.max(...counts) - Math.min(...counts) < 2) return { error: 'Every lit row is already as even as it can be.' };
+      const shares = splitEvenly(api, counts.reduce((n, v) => n + v, 0), row.length);
+      row.forEach((id, i) => api.set('lanterns', id, shares[i]!));
+      api.feed('An even glow spread over the room: every lit row now has the same number of lanterns.', 'big');
+    },
+  },
+];
+
+defineCheats([...swaps, ...weather, ...revivals, ...duels, ...sharing]);

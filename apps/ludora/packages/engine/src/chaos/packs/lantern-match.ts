@@ -1,5 +1,8 @@
+import { draw, type Deck } from '../../questions/deck.ts';
+import { normalizeAnswerText } from '../../questions/grade.ts';
+import { answerFace } from '../../modes/flashcard-study/answer-text.ts';
 import { defineCheats } from '../registry.ts';
-import type { ChaosApi, CheatDef } from '../types.ts';
+import type { ActiveEffect, ChaosApi, CheatDef } from '../types.ts';
 import { odds, rollOdds, target } from '../cheats/kit.ts';
 
 /*
@@ -9,8 +12,12 @@ import { odds, rollOdds, target } from '../cheats/kit.ts';
  * starting with 'lantern-match.'.
  *
  * Board rules the mode relies on, which every cheat keeps:
- *  - cards in `up` are face up and unmatched; a cheat never matches, moves or
- *    hides them, so the player's attempt in progress is never broken;
+ *  - cards in `up` are face up and unmatched. A cheat never matches, moves or
+ *    hides the first card of an attempt, so the player's attempt in progress
+ *    is never broken. A missed pair (two cards in `up`) may be turned back
+ *    face down early, which the mode itself does on the player's next flip;
+ *    a cheat that moves whole boards from one player to another moves their
+ *    face-up cards with them, as they lay;
  *  - a board is never left fully matched (the mode deals the next board, or
  *    in Sprint ends the game, the moment a player clears one), so a cheat
  *    never matches the last pair: clearing a board is always the player's own
@@ -33,6 +40,7 @@ interface Board {
 }
 
 interface Player {
+  deck: Deck;
   board: Board;
   pairs: number;
   misses: number;
@@ -418,4 +426,291 @@ const lasting: CheatDef[] = [
   },
 ];
 
-defineCheats([...instant, ...lasting]);
+/* ----------------------- redeals, peeks and traps ----------------------- */
+
+/**
+ * Deal a fresh board from a player's own deck, exactly as the mode deals one
+ * (questions whose answers or prompts read the same as one already on the
+ * board are left out), but with the chaos random stream. It keeps the board's
+ * number: no board was cleared.
+ */
+function dealFresh(api: ChaosApi, p: Player): Board {
+  const want = Number(api.ctx.settings.pairs) || 6;
+  const qids: string[] = [];
+  const answers = new Set<string>();
+  const prompts = new Set<string>();
+  const maxDraws = api.ctx.questions.count() * 2 + want;
+  for (let i = 0; i < maxDraws && qids.length < want; i++) {
+    const qid = draw(p.deck, api.rng);
+    if (qids.includes(qid)) continue;
+    const q = api.ctx.questions.get(qid);
+    const face = answerFace(q);
+    const answerKey = normalizeAnswerText(face.text) || face.media?.url || '';
+    const promptKey = normalizeAnswerText(q.prompt) || q.prompt;
+    if (!answerKey || answers.has(answerKey) || prompts.has(promptKey)) continue;
+    answers.add(answerKey);
+    prompts.add(promptKey);
+    qids.push(qid);
+  }
+  if (qids.length === 0) qids.push(draw(p.deck, api.rng));
+  const cards = api.rng.shuffle(qids.flatMap((qid): Card[] => [
+    { qid, side: 'question' },
+    { qid, side: 'answer' },
+  ]));
+  return { no: p.board.no, cards, matched: cards.map(() => false), up: [], firstAt: 0 };
+}
+
+/** A prickly card pricks: one of the player's pairs goes (if they have one). In a score hook the loss goes through `d`. */
+function prick(api: ChaosApi, fx: ActiveEffect, d?: Record<string, number>) {
+  const t = target(fx);
+  const p = player(api, t);
+  api.endEffect(fx.eid, 'used');
+  if (!p) return;
+  const taken = d ? ((d[t] ?? 0) >= 1 ? ((d[t]! -= 1), 1) : 0) : -api.addScore(t, -1);
+  if (taken > 0) {
+    p.lost++;
+    api.feed('Ouch, a prickly card! It cost you a pair.', 'bad', [t]);
+  } else api.feed('Ouch, a prickly card! Luckily you had no pair for it to take.', 'info', [t]);
+}
+
+const tricks: CheatDef[] = [
+  {
+    id: 'lantern-match.moonlit-peek',
+    name: 'Moonlit Peek',
+    category: 'advantage',
+    description: 'For 10 seconds, moonlight shows you where one pair on your board lies: a banner names its two cards, counting along the rows from the top left. Never the last pair on a board, and the banner goes if either card moves or is matched.',
+    target: 'self',
+    modes: [MODE],
+    needs: CARDS,
+    cost: 25,
+    cooldownMs: 45_000,
+    durationMs: 10_000,
+    tickMs: 250,
+    apply: (api, c, fx) => {
+      const b = player(api, c.caster)?.board;
+      const open = b ? openPairs(b) : [];
+      const pool = b ? open.filter(([i, j]) => !b.up.includes(i) && !b.up.includes(j)) : [];
+      if (!b || open.length < 2 || !pool.length) return { error: 'There is no pair the moonlight can show you: the last pair on a board is yours to find.' };
+      const [i, j] = api.rng.pick(pool);
+      const [x, y] = i < j ? [i, j] : [j, i];
+      fx!.data.qid = b.cards[x]!.qid;
+      fx!.data.cards = [x, y];
+      fx!.data.text = `Moonlight shows a pair: cards ${x + 1} and ${y + 1}.`;
+    },
+    hooks: {
+      // The banner is true only while those two cards still lie there face down.
+      tick: (api, fx) => {
+        const b = player(api, fx.caster)?.board;
+        const [x, y] = fx.data.cards as [number, number];
+        const still = (i: number) => b && b.cards[i]?.qid === fx.data.qid && !b.matched[i];
+        if (!still(x) || !still(y)) api.endEffect(fx.eid, 'used');
+      },
+    },
+    overlay: (fx) => ({ kind: 'banner', text: String(fx.data.text ?? ''), tone: 'info' }),
+  },
+  {
+    id: 'lantern-match.redeal',
+    name: 'Memory Board Redeal',
+    category: 'troll',
+    description: 'An opponent\'s board is swept away and a fresh one is dealt from their own deck, so everything they remembered about it is gone. The pairs they already found stay in their total. Not while they are halfway through turning over a pair.',
+    target: 'opponent',
+    modes: [MODE],
+    needs: CARDS,
+    undoable: false,
+    cost: 40,
+    cooldownMs: 75_000,
+    apply: (api, c) => {
+      const t = target(c);
+      const p = player(api, t);
+      if (!p) return { error: `${api.name(t)} has no board.` };
+      if (p.board.up.length === 1) return { error: `${api.name(t)} is halfway through turning over a pair. Try again in a moment.` };
+      const fresh = dealFresh(api, p);
+      if (JSON.stringify(fresh.cards) === JSON.stringify(p.board.cards) && !p.board.matched.some(Boolean)) return { error: 'The fresh deal came out exactly the same, so nothing changed.' };
+      p.board = fresh;
+      p.lastPair = null;
+      api.feed('Your board was swept away and dealt again!', 'bad', [t]);
+    },
+  },
+  {
+    id: 'lantern-match.pass-the-boards',
+    name: 'Pass the Boards',
+    category: 'troll',
+    description: 'Every board in the game is passed on one place round the circle: each player takes over the board of the player before them, cards, matches and all. Pairs already counted stay with whoever found them.',
+    target: 'room',
+    hostile: true,
+    modes: [MODE],
+    needs: CARDS,
+    undoable: false,
+    cost: 45,
+    cooldownMs: 90_000,
+    apply: (api) => {
+      const ids = api.ids().filter((id) => player(api, id));
+      if (ids.length < 2) return { error: 'There is nobody to pass a board to.' };
+      const boards = ids.map((id) => player(api, id)!.board);
+      ids.forEach((id, k) => {
+        const p = player(api, id)!;
+        p.board = boards[(k - 1 + ids.length) % ids.length]!;
+        p.lastPair = null;
+      });
+      api.feed('Pass the boards! Everyone took over the board of the player before them.', 'big');
+    },
+  },
+  {
+    id: 'lantern-match.moonset',
+    name: 'Early Moonset',
+    category: 'round',
+    description: 'The moon sets early: 20 seconds come off the game clock for everyone. It never brings the end closer than 30 seconds from now.',
+    target: 'room',
+    hostile: true,
+    modes: [MODE],
+    needs: CARDS,
+    undoable: false,
+    cost: 30,
+    cooldownMs: 90_000,
+    apply: (api) => {
+      const left = api.s.endsAt - api.now();
+      if (left <= 30_000) return { error: 'There are 30 seconds or less to go, so the moon stays up.' };
+      api.s.endsAt = Math.max(api.now() + 30_000, api.s.endsAt - 20_000);
+      api.ctx.setTimer('time', api.s.endsAt);
+      api.feed(`The moon is setting early: ${Math.round((left - (api.s.endsAt - api.now())) / 1000)} seconds came off the clock.`, 'bad');
+    },
+  },
+  {
+    id: 'lantern-match.prickly-card',
+    name: 'Prickly Card',
+    category: 'troll',
+    description: 'Hide a prickly card on an opponent\'s board: one of their face-down cards, picked at random (each equally likely). The first time they turn it over in the next 30 seconds, it costs them one of their pairs, if they have one. They are not told which card it is.',
+    target: 'opponent',
+    modes: [MODE],
+    needs: CARDS,
+    cost: 25,
+    cooldownMs: 40_000,
+    durationMs: 30_000,
+    tickMs: 250,
+    apply: (api, c, fx) => {
+      const b = player(api, target(c))?.board;
+      const down = b ? b.cards.map((_, i) => i).filter((i) => !b.matched[i] && !b.up.includes(i)) : [];
+      if (!b || !down.length) return { error: `${api.name(target(c))} has no face-down card to hide it in.` };
+      const card = b.cards[api.rng.pick(down)]!;
+      fx!.data.no = b.no;
+      fx!.data.qid = card.qid;
+      fx!.data.side = card.side;
+    },
+    hooks: {
+      // Turned over as the first card of a pair, or in a miss: it is face up. It goes with its board.
+      tick: (api, fx) => {
+        const b = player(api, target(fx))?.board;
+        if (!b || b.no !== Number(fx.data.no)) return api.endEffect(fx.eid, 'used');
+        const i = b.cards.findIndex((c) => c.qid === fx.data.qid && c.side === fx.data.side);
+        if (i < 0 || b.matched[i]) return api.endEffect(fx.eid, 'used');
+        if (b.up.includes(i)) prick(api, fx);
+      },
+      delta: {
+        // Turned over as the card that completed a match (or cleared the board: then it was one of the last two cards).
+        score: (api, fx, d) => {
+          const t = target(fx);
+          const p = player(api, t);
+          if (!p || (d[t] ?? 0) <= 0 || p.last?.at !== api.now()) return;
+          const no = Number(fx.data.no);
+          const isIt = (i: number) => p.board.cards[i]?.qid === fx.data.qid && p.board.cards[i]?.side === fx.data.side;
+          const matchedIt = p.last.result === 'match' && p.board.no === no && Boolean(p.lastPair?.some(isIt));
+          const clearedIt = p.last.result === 'cleared' && p.board.no === no + 1;
+          if (matchedIt || clearedIt) prick(api, fx, d);
+        },
+      },
+    },
+    overlay: () => ({ kind: 'badge', text: 'One of your cards is prickly', tone: 'bad' }),
+  },
+];
+
+const memory: CheatDef[] = [
+  {
+    id: 'lantern-match.quick-blink',
+    name: 'Quick Blink',
+    category: 'troll',
+    description: 'For 20 seconds, when an opponent turns over two cards that do not match, they flip straight back face down instead of staying showing, so the second card is gone before they can see it.',
+    target: 'opponent',
+    modes: [MODE],
+    needs: ['cards', 'meter:misses'],
+    cost: 25,
+    cooldownMs: 40_000,
+    durationMs: 20_000,
+    priority: 40,
+    hooks: {
+      delta: {
+        misses: (api, fx) => {
+          const p = player(api, target(fx));
+          if (!p || p.last?.result !== 'miss' || p.last.at !== api.now() || p.board.up.length !== 2) return;
+          p.board.up = [];
+        },
+      },
+    },
+    overlay: () => ({ kind: 'badge', text: 'Quick blink: misses flip straight back', tone: 'bad' }),
+  },
+  {
+    id: 'lantern-match.pass-the-blame',
+    name: 'Pass the Blame',
+    category: 'troll',
+    description: 'For 20 seconds, every miss you make is written on an opponent\'s record instead of yours (misses break ties, so it is their tie-breaker that suffers). With Careful Match, a pair the penalty takes from you for one of those misses is given back, and the misses count towards their penalty instead.',
+    target: 'opponent',
+    modes: [MODE],
+    needs: ['cards', 'meter:misses'],
+    cost: 30,
+    cooldownMs: 50_000,
+    durationMs: 20_000,
+    // A redirect: before curses and caps see the miss.
+    priority: 10,
+    apply: (api, c) => (player(api, c.caster) ? undefined : { error: 'You have no board.' }),
+    hooks: {
+      delta: {
+        misses: (api, fx, d) => {
+          const me = fx.caster;
+          const t = target(fx);
+          const n = d[me] ?? 0;
+          if (n <= 0 || !player(api, me) || !player(api, t)) return;
+          d[me] = 0;
+          d[t] = (d[t] ?? 0) + n;
+          api.feed(`${api.name(me)} passed the blame: their miss went on your record.`, 'bad', [t]);
+        },
+        // In a miss the only pair the mode ever takes is Careful Match's. That miss is not on your record, so its cost is not yours either.
+        score: (api, fx, d) => {
+          const me = fx.caster;
+          const p = player(api, me);
+          if (!p || p.last?.result !== 'miss' || p.last.at !== api.now() || (d[me] ?? 0) >= 0 || !player(api, target(fx))) return;
+          d[me]! += 1;
+          p.lost = Math.max(0, p.lost - 1);
+        },
+      },
+    },
+    overlay: () => ({ kind: 'badge', text: 'Someone\'s misses land on your record', tone: 'bad' }),
+  },
+  {
+    id: 'lantern-match.clean-sweep',
+    name: 'Clean Sweep Bonus',
+    category: 'score',
+    description: 'For 60 seconds, clearing your board pays 2 bonus pairs on top of the pair that cleared it. Not in Lantern Sprint, where clearing a board ends the game.',
+    target: 'self',
+    modes: [MODE],
+    needs: ['cards', 'fresh boards'],
+    cost: 30,
+    cooldownMs: 75_000,
+    durationMs: 60_000,
+    // A bonus on the mode's own pair: before multipliers (20) see it.
+    priority: 15,
+    hooks: {
+      delta: {
+        score: (api, fx, d) => {
+          const me = fx.caster;
+          const p = player(api, me);
+          if (!p || (d[me] ?? 0) <= 0 || p.last?.result !== 'cleared' || p.last.at !== api.now()) return;
+          d[me]! += 2;
+          api.feed('Clean sweep! Clearing your board paid 2 bonus pairs.', 'good', [me]);
+          api.endEffect(fx.eid, 'used');
+        },
+      },
+    },
+    overlay: () => ({ kind: 'badge', text: 'Clean sweep: clear your board for 2 bonus pairs', tone: 'good' }),
+  },
+];
+
+defineCheats([...instant, ...lasting, ...tricks, ...memory]);
