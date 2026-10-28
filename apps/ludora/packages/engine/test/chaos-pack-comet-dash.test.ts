@@ -119,7 +119,7 @@ describe('comet-dash pack: moving comets', () => {
     expect([0, 10, 17]).toContain(pos(sim, 'p1'));
   });
 
-  it('space mine throws the target back to two spaces behind it when they reach it', () => {
+  it('Comet Asteroid Patch bumps the target back to two spaces behind it when they reach it', () => {
     const sim = race();
     place(sim, { p2: 4 });
     expect(cast(sim, 'p1', 'space-mine', 'p2').ok).toBe(true);

@@ -72,7 +72,7 @@ describe('survival-run pack: hearts', () => {
     expect([hearts(sim, 'p1'), hearts(sim, 'p2')]).toEqual([3, 2]);
   });
 
-  it('blood pact swaps heart counts', () => {
+  it('Pinky Swap swaps heart counts', () => {
     const sim = run();
     setHearts(sim, { p1: 1 });
     expect(cast(sim, 'p1', 'blood-pact', 'p2').ok).toBe(true);

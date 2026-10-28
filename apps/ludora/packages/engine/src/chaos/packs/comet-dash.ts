@@ -232,9 +232,9 @@ const cheats: CheatDef[] = [
   },
   {
     id: 'comet-dash.space-mine',
-    name: 'Comet Trail Mine',
+    name: 'Comet Asteroid Patch',
     category: 'troll',
-    description: 'Plants a mine on the space just ahead of an opponent for 30 seconds. The first time they reach or pass it, it throws them back to two spaces behind the mine.',
+    description: 'Puts an asteroid patch on the space just ahead of an opponent for 30 seconds. The first time they reach or pass it, it bumps them back to two spaces behind the patch.',
     target: 'opponent',
     modes: [MODE],
     cost: 30,
@@ -247,7 +247,7 @@ const cheats: CheatDef[] = [
       const r = needRacing(api, t, false);
       if (isErr(r)) return r;
       const mine = r.pos + 1;
-      if (mine >= distance(api)) return { error: `${api.name(t)} is right at the line: there is no space ahead to mine.` };
+      if (mine >= distance(api)) return { error: `${api.name(t)} is right at the line: there is no space ahead for an asteroid patch.` };
       fx!.data.mine = mine;
     },
     hooks: {
@@ -262,12 +262,12 @@ const cheats: CheatDef[] = [
           const from = r.pos - move;
           if (from >= mine || r.pos < mine) return;
           d[t] = Math.max(0, mine - 2) - from;
-          api.feed(`${api.name(t)} hit a space mine at space ${mine}.`, 'bad');
+          api.feed(`${api.name(t)} bumped into an asteroid patch at space ${mine}.`, 'bad');
           api.endEffect(fx.eid, 'used');
         },
       },
     },
-    overlay: (fx) => ({ kind: 'badge', text: `Mine at space ${Number(fx.data.mine)}`, tone: 'bad' }),
+    overlay: (fx) => ({ kind: 'badge', text: `Asteroids at space ${Number(fx.data.mine)}`, tone: 'bad' }),
   },
 
   /* ------------------------------ streaks and boosts ----------------------------- */

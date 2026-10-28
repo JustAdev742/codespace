@@ -254,7 +254,7 @@ describe('lantern-guard pack', () => {
     expect(S(b).flare.givers).toContain('p2');
   });
 
-  it('War Chest triples your gold for the next wave held', () => {
+  it('Wave Treasure Chest triples your gold for the next wave held', () => {
     const sim = game();
     freeze(sim);
     sim.cast('p2', { cheatId: ID('lantern-sprout') });

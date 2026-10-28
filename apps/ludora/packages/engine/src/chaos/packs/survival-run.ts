@@ -160,7 +160,7 @@ const cheats: CheatDef[] = [
   },
   {
     id: 'survival-run.blood-pact',
-    name: 'Survivor\'s Blood Pact',
+    name: 'Survivor\'s Pinky Swap',
     category: 'troll',
     description: 'You and an opponent swap how many hearts you each have.',
     target: 'opponent',
@@ -178,7 +178,7 @@ const cheats: CheatDef[] = [
       const [mine, theirs] = [me.hearts, them.hearts];
       api.set('hearts', c.caster, theirs);
       api.set('hearts', t, mine);
-      api.feed(`${api.name(c.caster)} sealed a blood pact with ${api.name(t)}: ${hearts(theirs)} for ${hearts(mine)}.`, 'big');
+      api.feed(`${api.name(c.caster)} made a pinky swap with ${api.name(t)}: ${hearts(theirs)} for ${hearts(mine)}.`, 'big');
     },
   },
   {

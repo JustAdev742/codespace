@@ -91,6 +91,8 @@ changes.
 - Random outcomes use `api.rng` (seeded, rolled back with the cast) and state their odds in the
   description, using `odds()` from the kit.
 - Chaos never touches anything outside the game: accounts, wallets, collections, rewards.
+- Players are 8 to 17. Names, feed lines and overlays stay school friendly: no weapons,
+  violence or cruelty (a sunbeam burst, not a ballista; a pinky swap, not a blood pact).
 
 ## Testing
 

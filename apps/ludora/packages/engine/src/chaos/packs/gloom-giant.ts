@@ -86,9 +86,9 @@ const GIANT = ['giant'] as const;
 const instant: CheatDef[] = [
   {
     id: 'gloom-giant.ballista',
-    name: 'Giant-Slayer Ballista',
+    name: 'Giant Sunbeam Burst',
     category: 'advantage',
-    description: 'Fire a ballista bolt at the giant: it takes 6% of its full health in damage, credited to you. It never lands the final blow.',
+    description: 'Send a sunbeam burst at the giant: it takes 6% of its full health in damage, credited to you. It never lands the final blow.',
     target: 'self',
     modes: [MODE],
     needs: GIANT,
@@ -98,7 +98,7 @@ const instant: CheatDef[] = [
       const no = noFinish(api);
       if (no) return no;
       const dealt = strike(api, c.caster, share(maxHp(api), 6));
-      api.feed(`${api.name(c.caster)}'s ballista bolt hit the Gloom Giant for ${dealt}.`, 'good');
+      api.feed(`${api.name(c.caster)}'s sunbeam burst hit the Gloom Giant for ${dealt}.`, 'good');
     },
   },
   {
@@ -210,9 +210,9 @@ const instant: CheatDef[] = [
   },
   {
     id: 'gloom-giant.war-drums',
-    name: 'Giant War Drums',
+    name: 'Giant Rally Drums',
     category: 'advantage',
-    description: 'Beat the war drums: every player\'s streak rises to at least 2, so their next correct answer gets the streak bonus (+1 damage). A streak never passes a player\'s correct answers.',
+    description: 'Beat the rally drums: every player\'s streak rises to at least 2, so their next correct answer gets the streak bonus (+1 damage). A streak never passes a player\'s correct answers.',
     target: 'everyone',
     modes: [MODE],
     needs: ['giant', 'meter:streak'],
@@ -222,7 +222,7 @@ const instant: CheatDef[] = [
       let raised = 0;
       for (const id of api.ids()) if (api.get('streak', id) < 2 && api.set('streak', id, 2) > 0) raised++;
       if (!raised) return { error: 'Every streak is already long enough (or nobody has answered enough yet).' };
-      api.feed(`The war drums raised ${raised} ${raised === 1 ? 'streak' : 'streaks'}.`, 'good');
+      api.feed(`The rally drums raised ${raised} ${raised === 1 ? 'streak' : 'streaks'}.`, 'good');
     },
   },
   {
@@ -312,9 +312,9 @@ const instant: CheatDef[] = [
 const lasting: CheatDef[] = [
   {
     id: 'gloom-giant.haymaker',
-    name: 'Giant Haymaker',
+    name: 'Giant Mega Bonk',
     category: 'advantage',
-    description: 'Wind up a haymaker: your next hit on the giant (within 30 seconds) deals three times its damage. It never lands the final blow by itself.',
+    description: 'Wind up a mega bonk: your next hit on the giant (within 30 seconds) deals three times its damage. It never lands the final blow by itself.',
     target: 'self',
     modes: [MODE],
     needs: GIANT,
@@ -332,17 +332,17 @@ const lasting: CheatDef[] = [
           d[me]! += extra;
           const b = blowNow(api, me, 'hit');
           if (b) b.amount += extra;
-          note(api, me, `haymaker +${extra}`);
-          api.feed(`${api.name(me)} landed a haymaker on the giant (+${extra}).`, 'good');
+          note(api, me, `mega bonk +${extra}`);
+          api.feed(`${api.name(me)} landed a mega bonk on the giant (+${extra}).`, 'good');
           api.endEffect(fx.eid, 'used');
         },
       },
     },
-    overlay: () => ({ kind: 'badge', text: 'Haymaker ready: next hit ×3', tone: 'good' }),
+    overlay: () => ({ kind: 'badge', text: 'Mega bonk ready: next hit ×3', tone: 'good' }),
   },
   {
     id: 'gloom-giant.giantsbane-edge',
-    name: 'Giantsbane Edge',
+    name: 'Giant Sparkle Charm',
     category: 'advantage',
     description: 'For 20 seconds, every hit you land that is not already a critical hit becomes one (+1 damage).',
     target: 'self',
@@ -365,17 +365,17 @@ const lasting: CheatDef[] = [
           b.kind = 'crit';
           b.amount += extra;
           fighter(api, me)!.crits++;
-          note(api, me, 'Giantsbane Edge: critical hit');
+          note(api, me, 'Sparkle Charm: critical hit');
         },
       },
     },
-    overlay: () => ({ kind: 'badge', text: 'Giantsbane Edge: every hit is critical', tone: 'good' }),
+    overlay: () => ({ kind: 'badge', text: 'Sparkle Charm: every hit is critical', tone: 'good' }),
   },
   {
     id: 'gloom-giant.blunted-blade',
-    name: 'Gloom-Blunted Blade',
+    name: 'Gloom Soft Swing',
     category: 'troll',
-    description: 'For 15 seconds, another fighter\'s blade is blunted: each of their hits deals only 1 damage, so streak and critical bonuses do nothing.',
+    description: 'For 15 seconds, another fighter\'s swings go soft: each of their hits deals only 1 damage, so streak and critical bonuses do nothing.',
     target: 'opponent',
     modes: [MODE],
     needs: GIANT,
@@ -398,11 +398,11 @@ const lasting: CheatDef[] = [
             b.amount = 1;
           }
           const last = fighter(api, t)?.stream.last;
-          if (last) last.text = 'Hit for 1 (blunted blade)';
+          if (last) last.text = 'Hit for 1 (soft swing)';
         },
       },
     },
-    overlay: () => ({ kind: 'badge', text: 'Blunted blade: hits deal 1', tone: 'bad' }),
+    overlay: () => ({ kind: 'badge', text: 'Soft swing: hits deal 1', tone: 'bad' }),
   },
   {
     id: 'gloom-giant.thick-hide',
@@ -623,9 +623,9 @@ const lasting: CheatDef[] = [
   },
   {
     id: 'gloom-giant.poisoned-wounds',
-    name: 'Giantbane Poison',
+    name: 'Giant Healing Freeze',
     category: 'advantage',
-    description: 'For 16 seconds the giant\'s wounds are poisoned: it cannot heal at all. Needs Healing Giant on.',
+    description: 'For 16 seconds the giant\'s healing is frozen: it cannot heal at all. Needs Healing Giant on.',
     target: 'room',
     modes: [MODE],
     needs: ['giant', 'regen'],
@@ -633,17 +633,17 @@ const lasting: CheatDef[] = [
     cooldownMs: 45_000,
     durationMs: 16_000,
     priority: 40,
-    apply: (api) => (hp(api) >= maxHp(api) ? { error: 'The giant has no wounds to poison yet.' } : undefined),
+    apply: (api) => (hp(api) >= maxHp(api) ? { error: 'The giant has no wounds to keep from healing yet.' } : undefined),
     hooks: {
       delta: {
         giantHp: (api, _fx, d) => {
           if (over(api) || (d.game ?? 0) <= 0) return;
           d.game = 0;
-          api.feed('The poison stopped the Gloom Giant from healing.', 'good');
+          api.feed('The healing freeze stopped the Gloom Giant from healing.', 'good');
         },
       },
     },
-    overlay: () => ({ kind: 'banner', text: 'Giantbane poison: the giant cannot heal', tone: 'good' }),
+    overlay: () => ({ kind: 'banner', text: 'Healing freeze: the giant cannot heal', tone: 'good' }),
   },
   {
     id: 'gloom-giant.grudge',
@@ -987,7 +987,7 @@ const more: CheatDef[] = [
     cost: 25,
     cooldownMs: 50_000,
     durationMs: 30_000,
-    // After Giantbane Poison (40), which stops healing altogether.
+    // After Giant Healing Freeze (40), which stops healing altogether.
     priority: 45,
     apply: (api, _c, fx) => {
       if (hp(api) >= maxHp(api)) return { error: 'The giant is at full health, so it has nothing to heal.' };

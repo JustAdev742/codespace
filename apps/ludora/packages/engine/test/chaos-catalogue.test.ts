@@ -25,7 +25,7 @@ import { CASTERS, EFFECTS, META, PRE, POST, REACTIVE, SCREEN, SETTINGS, TARGETS 
  * was something to act on.
  *
  * Scenarios in chaos-scenarios.ts set up situations some cheats need (a
- * shield needs an attacker; a time bomb needs a target who does not score).
+ * shield needs an attacker; a pop timer needs a target who does not score).
  */
 
 const PLAYERS = 4;

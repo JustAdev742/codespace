@@ -643,7 +643,7 @@ const lasting: CheatDef[] = [
   },
   {
     id: 'score.bleed',
-    name: 'Bloodsucker',
+    name: 'Sneaky Straw',
     category: 'score',
     description: 'For 20 seconds, every 2 seconds you take 1% of an opponent\'s score.',
     target: 'opponent',
@@ -991,9 +991,9 @@ const lasting: CheatDef[] = [
   },
   {
     id: 'score.time-bomb',
-    name: 'Time Bomb',
+    name: 'Pop Timer',
     category: 'score',
-    description: 'An opponent has 12 seconds to score something. If they do not, the bomb takes 20% of their score.',
+    description: 'An opponent has 12 seconds to score something. If they do not, the timer pops and takes 20% of their score.',
     target: 'opponent',
     needs: S,
     cost: 25,
@@ -1006,7 +1006,7 @@ const lasting: CheatDef[] = [
         score: (api, fx, d) => {
           if ((d[target(fx)] ?? 0) <= 0) return;
           fx.data.defused = true;
-          api.feed(`${api.name(target(fx))} defused the time bomb.`, 'good');
+          api.feed(`${api.name(target(fx))} stopped the pop timer.`, 'good');
           api.endEffect(fx.eid, 'used');
         },
       },
@@ -1014,10 +1014,10 @@ const lasting: CheatDef[] = [
         if (reason !== 'expired' || fx.data.defused) return;
         const t = target(fx);
         api.addScore(t, -share(api.score(t), 20));
-        api.feed(`Boom! ${api.name(t)}'s time bomb went off.`, 'bad');
+        api.feed(`Pop! ${api.name(t)}'s timer ran out.`, 'bad');
       },
     },
-    overlay: (fx) => ({ kind: 'countdown', label: 'Time bomb: score to defuse it', until: fx.endsAt }),
+    overlay: (fx) => ({ kind: 'countdown', label: 'Pop timer: score to stop it', until: fx.endsAt }),
   },
   {
     id: 'score.hot-potato',

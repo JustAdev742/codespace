@@ -44,7 +44,7 @@ describe('gloom-giant pack: the giant and the shield', () => {
     expect(st(sim).hp).toBe(46);
   });
 
-  it('Ballista Bolt deals 6% of full health, credited to the caster, and never lands the final blow', () => {
+  it('Giant Sunbeam Burst deals 6% of full health, credited to the caster, and never lands the final blow', () => {
     const sim = game({ hpPerPlayer: 4 });
     expect(cast(sim, 'p1', 'ballista').ok).toBe(true);
     expect(st(sim).hp).toBe(15);
@@ -159,7 +159,7 @@ describe('gloom-giant pack: the giant and the shield', () => {
 });
 
 describe('gloom-giant pack: streaks', () => {
-  it('Glim War Drums raises streaks to 2, never past a player\'s correct answers', () => {
+  it('Giant Rally Drums raises streaks to 2, never past a player\'s correct answers', () => {
     const sim = game();
     right(sim, 'p1');
     right(sim, 'p1');
@@ -183,7 +183,7 @@ describe('gloom-giant pack: streaks', () => {
 });
 
 describe('gloom-giant pack: lasting effects on hits', () => {
-  it('Giant Haymaker triples the next hit only', () => {
+  it('Giant Mega Bonk triples the next hit only', () => {
     const sim = game();
     cast(sim, 'p1', 'haymaker');
     right(sim, 'p1');
@@ -193,7 +193,7 @@ describe('gloom-giant pack: lasting effects on hits', () => {
     expect(dmg(sim, 'p1')).toBe(8);
   });
 
-  it('Giantsbane Edge turns every ordinary hit into a critical hit', () => {
+  it('Giant Sparkle Charm turns every ordinary hit into a critical hit', () => {
     const sim = game({ swift: false });
     cast(sim, 'p1', 'giantsbane-edge');
     for (let i = 0; i < 2; i++) right(sim, 'p1');
@@ -202,7 +202,7 @@ describe('gloom-giant pack: lasting effects on hits', () => {
     expect(st(sim).log.every((b: { kind: string }) => b.kind === 'crit')).toBe(true);
   });
 
-  it('Gloom-Blunted Blade caps the target\'s hits at 1 and gives the rest back to the giant', () => {
+  it('Gloom Soft Swing caps the target\'s hits at 1 and gives the rest back to the giant', () => {
     const sim = game();
     cast(sim, 'p1', 'blunted-blade', 'p2');
     right(sim, 'p2');
@@ -314,7 +314,7 @@ describe('gloom-giant pack: lasting effects on strikes', () => {
     expect(st(sim).shield).toBe(16);
   });
 
-  it('Giantbane Poison stops the healing giant from healing', () => {
+  it('Giant Healing Freeze stops the healing giant from healing', () => {
     const sim = game({ regen: true });
     expect(cast(sim, 'p1', 'poisoned-wounds')).toMatchObject({ ok: false });
     for (let i = 0; i < 3; i++) right(sim, 'p2');

@@ -278,7 +278,7 @@ const gold: CheatDef[] = [
   },
   {
     id: id('war-chest'),
-    name: 'War Chest',
+    name: 'Wave Treasure Chest',
     category: 'economy',
     description: `The next wave the class holds (within 90 seconds) pays you three times the usual ${WAVE_GOLD} gold.`,
     target: 'self',
@@ -294,12 +294,12 @@ const gold: CheatDef[] = [
         currency: (api, fx, d) => {
           if (api.s.held <= Number(fx.data.held) || (d[fx.caster] ?? 0) < WAVE_GOLD) return;
           d[fx.caster]! += 2 * WAVE_GOLD;
-          api.feed(`War chest: that wave paid you ${3 * WAVE_GOLD} gold.`, 'good', [fx.caster]);
+          api.feed(`Treasure chest: that wave paid you ${3 * WAVE_GOLD} gold.`, 'good', [fx.caster]);
           api.endEffect(fx.eid, 'used');
         },
       },
     },
-    overlay: () => ({ kind: 'badge', text: 'War chest: ×3 wave gold', tone: 'good' }),
+    overlay: () => ({ kind: 'badge', text: 'Treasure chest: ×3 wave gold', tone: 'good' }),
   },
   {
     id: id('payday-heist'),
