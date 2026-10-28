@@ -17,6 +17,8 @@ import * as props from '../src/three/props.ts';
 import { storeChoice } from '../src/three/quality.ts';
 import { GoldRushScene, GoldFieldScene, type FindKind } from '../src/features/room/modes/gold-rush-scene.ts';
 import { CodeBreakersScene, CitySkylineScene, VAULT_ID, type CityEvent, type CityPacket, type CityState, type CityTower } from '../src/features/room/modes/code-breakers-scene.ts';
+import { BigCatchScene, JettyScene, type CatchState, type Phase } from '../src/features/room/modes/big-catch-scene.ts';
+import { speciesOf, sizeCm, type WaterId } from '@ludora/engine/big-catch';
 
 const params = new URLSearchParams(location.search);
 const q = params.get('quality');
@@ -168,12 +170,64 @@ function makeSkyline(env: StageEnv) {
   return w;
 }
 
+// ?scene=catch&water=river|estuary|reef  Big Catch's jetty, fishing round and round: cast, bite, land, then sell or tank.
+// ?scene=jetty&water=reef  the big screen's long jetty with fourteen anglers in every state.
+const water = (params.get('water') ?? 'river') as WaterId;
+
+function makeCatch(env: StageEnv) {
+  const g = GLIMS.find((x) => x.id === (ids?.[0] ?? 'glim-sprig'))!;
+  const w = new BigCatchScene(env, { art: g.art as GlimArt, rarity: g.rarity as Rarity });
+  (window as unknown as { __world: unknown }).__world = w;
+  const fishes = speciesOf(water);
+  const tank: CatchState['tank'] = [];
+  let seq = 0;
+  let id = 0;
+  const base = (): CatchState => ({ water, event: 'golden', phase: 'idle', seq, fish: null, outcome: null, tank: [...tank] });
+  w.setState(base());
+  const step = (k: number) => {
+    const sp = fishes[seq % fishes.length]!;
+    const grams = Math.round(((sp.kg[0] + sp.kg[1]) / 2) * 1000);
+    const fish = { id: ++id, species: sp.id, grams, cm: sizeCm(sp, grams), perfect: seq % 2 === 0 };
+    if (k === 0) {
+      seq++;
+      w.setState({ ...base(), phase: 'waiting', seq });
+    } else if (k === 1) w.setState({ ...base(), phase: 'biting' });
+    else if (k === 2) w.setState({ ...base(), phase: 'landed', fish });
+    else {
+      const kind = seq % 3 === 0 ? 'escaped' : seq % 2 ? 'sold' : 'tanked';
+      if (kind === 'tanked' && tank.length < 6) tank.push({ id: fish.id, species: fish.species });
+      w.setState({ ...base(), outcome: { seq, at: Date.now(), kind, fish: kind === 'escaped' ? null : fish, points: Math.round(grams / 100) } });
+    }
+  };
+  let k = 0;
+  setInterval(() => step(k++ % 4), 2200);
+  return w;
+}
+
+function makeJetty(env: StageEnv) {
+  const w = new JettyScene(env);
+  (window as unknown as { __world: unknown }).__world = w;
+  w.setWater(water);
+  const phases: Phase[] = ['idle', 'waiting', 'biting', 'landed'];
+  const fishes = speciesOf(water);
+  const anglers = (t: number) =>
+    GLIMS.slice(0, 14).map((g, i) => {
+      const phase = phases[(i + t) % 4]!;
+      const sp = fishes[i % fishes.length]!;
+      return { playerId: g.id, name: g.name, phase, castAt: phase === 'idle' ? null : t, species: phase === 'landed' ? sp.id : null, grams: phase === 'landed' ? Math.round(sp.kg[1] * 600) : null, look: { art: g.art as GlimArt, rarity: g.rarity as Rarity } };
+    });
+  let t = 0;
+  w.setAnglers(anglers(t));
+  setInterval(() => w.setAnglers(anglers(++t)), 8000);
+  return w;
+}
+
 function App() {
   return (
     <main style={{ height: '100vh', display: 'grid' }}>
       <Stage3D
         label="3D gallery"
-        create={(env) => (sceneName === 'gold' ? makeGold(env) : sceneName === 'field' ? makeField(env) : sceneName === 'city' ? makeCity(env) : sceneName === 'skyline' ? makeSkyline(env) : new Gallery(env))}
+        create={(env) => (sceneName === 'gold' ? makeGold(env) : sceneName === 'field' ? makeField(env) : sceneName === 'city' ? makeCity(env) : sceneName === 'skyline' ? makeSkyline(env) : sceneName === 'catch' ? makeCatch(env) : sceneName === 'jetty' ? makeJetty(env) : new Gallery(env))}
         className="h-full w-full"
       />
     </main>
