@@ -48,7 +48,7 @@ export function emptyChaosState(seed: number): ChaosState & { rng: number } {
 type Draft = ChaosState & { rng: number };
 
 export function capabilitiesOf(adapter: ChaosAdapter, teams: readonly EngineTeam[], settings: SettingValues = {}): string[] {
-  const caps = [`mode:${adapter.modeId}`, ...adapter.meters.map((m) => `meter:${m.key}`)];
+  const caps = [`mode:${adapter.modeId}`, ...adapter.meters.filter((m) => m.offered?.(settings) ?? true).map((m) => `meter:${m.key}`)];
   if (adapter.sync) caps.push('sync');
   if (adapter.stream) caps.push('stream');
   if (adapter.question) caps.push('question');

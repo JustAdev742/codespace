@@ -7,6 +7,7 @@ import './economy.ts';
 import './visual.ts';
 import './random.ts';
 import './combos.ts';
+import '../packs/big-catch.ts';
 import '../packs/classic.ts';
 import '../packs/comet-dash.ts';
 import '../packs/confidence.ts';

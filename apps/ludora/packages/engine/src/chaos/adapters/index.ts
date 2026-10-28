@@ -1,4 +1,5 @@
 import type { ChaosAdapter } from '../types.ts';
+import { bigCatchAdapter } from './big-catch.ts';
 import { classicAdapter } from './classic.ts';
 import { cometDashAdapter } from './comet-dash.ts';
 import { confidenceAdapter } from './confidence.ts';
@@ -22,6 +23,7 @@ import { tugOfWarAdapter } from './tug-of-war.ts';
 import { wordScrambleAdapter } from './word-scramble.ts';
 
 export const CHAOS_ADAPTERS: readonly ChaosAdapter[] = [
+  bigCatchAdapter,
   classicAdapter,
   cometDashAdapter,
   confidenceAdapter,

@@ -70,6 +70,12 @@ when you add meters or change state directly: **chaos never ends a game, never k
 player out, and never leaves the state in a shape the mode could not have produced.** If in
 doubt, read the mode's `onAction` and `onTimer` and check what they assume.
 
+When a meter only means something with some settings (Big Catch's score is the wallet plus the
+tank, but in Trophy Hunt it is the three heaviest fish, which no cheat can write), give it
+`offered(settings)`: with settings it returns false for, its `meter:<key>` capability is left out
+and the cheats that need it are not offered. The meter still reads, so rankings stay right; give
+it a min and max equal to its value there too, so nothing can write it by accident.
+
 Scores run on very different scales across modes (a Classic answer is worth about 1,000, a
 Tug of War pull is worth 1). Move shares, not flat amounts: `share(v, p)` in `cheats/kit.ts`
 is p% of v and at least 1 when v is positive; `scaleGain` multiplies a gain so it always

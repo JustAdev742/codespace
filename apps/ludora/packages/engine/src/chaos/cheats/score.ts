@@ -411,7 +411,9 @@ const instant: CheatDef[] = [
       );
       const here = [...culprits].filter((id) => inGame(api, id));
       if (!here.length) return { error: 'Nobody here has cheated against you yet.' };
-      for (const id of here) transfer(api, 'score', id, c.caster, share(api.score(id), 8));
+      let paid = 0;
+      for (const id of here) paid += transfer(api, 'score', id, c.caster, share(api.score(id), 8));
+      if (!paid) return { error: 'Nobody who cheated against you has any points to pay.' };
     },
   },
   {

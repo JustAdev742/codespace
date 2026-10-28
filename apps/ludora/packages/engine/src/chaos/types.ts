@@ -73,6 +73,12 @@ export interface MeterDef<S = any> {
   max?(s: S, id: string, ctx: ModeContext): number;
   /** Round written values (most meters are whole numbers). Defaults to true. */
   integer?: boolean;
+  /**
+   * Whether cheats may rely on this meter with these settings (default: always). A meter that is
+   * not offered still reads (rankings use it), but its 'meter:<key>' capability is left out, so
+   * cheats that need it are not offered. Give it a min and max that stop writes as well.
+   */
+  offered?(settings: SettingValues): boolean;
 }
 
 /** How a mode's state looks to the chaos layer. Every mode has one. */
