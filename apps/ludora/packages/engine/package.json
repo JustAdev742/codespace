@@ -9,6 +9,7 @@
     "./questions": "./src/questions/index.ts",
     "./testing": "./src/testing/index.ts",
     "./night-market-odds": "./src/modes/night-market/odds.ts",
+    "./code-breakers": "./src/modes/code-breakers/odds.ts",
     "./lantern-guard-maps": "./src/modes/lantern-guard/maps.ts",
     "./lantern-trail-board": "./src/modes/lantern-trail/board.ts",
     "./lantern-lands-map": "./src/modes/lantern-lands/map.ts",

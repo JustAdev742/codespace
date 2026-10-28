@@ -136,11 +136,14 @@ A hacking game. The guessing happens on a 2D terminal; the world is a 3D city of
   before the guess counts. **Change password** gives you new decoys and wipes what hackers have
   learned.
 - **Hack back**: someone who was hacked can try one free guess on the hacker within 30 seconds.
-- **Room events** shake things up for a few seconds at a time (for example double bits, or a
-  bounty on the leader).
+- **Room events** every 75 seconds: Data Storm (bits packets pay double), Bounty (hacking the
+  leader takes twice as much) and System Glitch (everyone's decoys change and what hackers had
+  learned is wiped).
 - **Score**: bits.
-- **Variants**: Team Ops (teams; hack only other teams), Lockdown (everyone starts with 2FA; hacks
-  are rarer and pay more), and one more real rule change.
+- **Variants**: Team Ops (teams; hack only other teams; what one teammate learns, all know),
+  Lockdown (everyone starts with 2FA; hacks are rarer and take more), Heist (a vault in the
+  middle fills from everyone's packets; crack it to take the lot, and it locks again with a new
+  password).
 - **3D**: each player is a tower in a night-time data city, growing with their bits; hacks fly as
   packets between towers. Your Glim sits at a desk of screens. A 2D view works without 3D.
 

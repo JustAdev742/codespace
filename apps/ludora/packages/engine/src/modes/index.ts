@@ -47,9 +47,11 @@ import { bigCatch } from './big-catch/index.ts';
 import { variants as bigCatchVariants } from './big-catch/meta.ts';
 import { cornerShop } from './corner-shop/index.ts';
 import { variants as cornerShopVariants } from './corner-shop/meta.ts';
+import { codeBreakers } from './code-breakers/index.ts';
+import { variants as codeBreakersVariants } from './code-breakers/meta.ts';
 
 /** Every mode with logic. Order here is the default catalogue order. */
-export const MODES: readonly GameMode[] = [classic, cometDash, quickDraw, lanternOut, confidence, glimgo, lanternMatch, wordScramble, timeAttack, survivalRun, flashcardStudy, skyLanterns, gloomGiant, tugOfWar, nightMarket, lanternGuard, glimDuels, lanternTrail, lanternLands, festivalWorkshop, goldRush, glowTag, bigCatch, cornerShop];
+export const MODES: readonly GameMode[] = [classic, cometDash, quickDraw, lanternOut, confidence, glimgo, lanternMatch, wordScramble, timeAttack, survivalRun, flashcardStudy, skyLanterns, gloomGiant, tugOfWar, nightMarket, lanternGuard, glimDuels, lanternTrail, lanternLands, festivalWorkshop, goldRush, glowTag, bigCatch, cornerShop, codeBreakers];
 
 export const VARIANTS: readonly ModeVariant[] = [
   ...classicVariants,
@@ -76,4 +78,5 @@ export const VARIANTS: readonly ModeVariant[] = [
   ...glowTagVariants,
   ...bigCatchVariants,
   ...cornerShopVariants,
+  ...codeBreakersVariants,
 ];

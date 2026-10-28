@@ -24,6 +24,7 @@ import * as goldRush from './gold-rush/meta.ts';
 import * as glowTag from './glow-tag/meta.ts';
 import * as bigCatch from './big-catch/meta.ts';
 import * as cornerShop from './corner-shop/meta.ts';
+import * as codeBreakers from './code-breakers/meta.ts';
 
 /**
  * Metadata only, no game logic, so the browser can import the catalogue
@@ -54,4 +55,5 @@ export const CATALOG_DATA: readonly { meta: ModeMeta; settings: readonly Setting
   glowTag,
   bigCatch,
   cornerShop,
+  codeBreakers,
 ];

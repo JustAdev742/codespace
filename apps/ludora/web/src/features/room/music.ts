@@ -28,6 +28,7 @@ export const MODE_MUSIC: Record<string, MusicId> = {
   'sky-lanterns': 'market',
   'night-market': 'market',
   'corner-shop': 'market',
+  'code-breakers': 'battle',
   'festival-workshop': 'market',
   'lantern-trail': 'market',
   'gold-rush': 'market',
