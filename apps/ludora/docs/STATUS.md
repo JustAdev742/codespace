@@ -387,9 +387,12 @@ Last updated: 2026-10-28.
   Share (a link anyone can host from) and Delete. Hosting from a made game
   counts its plays. Checked in a browser: made, saved, listed and hosted a 3D
   Gold Rush game, which opened a real room.
-- **3D modes**: Gold Rush, Code Breakers and Big Catch are playable (out of
-  beta) with their 3D screens; Glow Tag Royale and Corner Shop follow once
-  their screens are merged.
+- **3D modes**: all five are playable (out of beta) with their 3D screens and
+  2D fallbacks: Gold Rush (the mine and the goldfield), Glow Tag Royale (a
+  night park arena), Big Catch (the jetty), Code Breakers (desk, data city and
+  skyline) and Corner Shop (the shop and the high street). Each was played in
+  the demo with bots, on a phone and a desktop, on the big screen and with 3D
+  off.
 - **End-to-end tests** (`e2e/`, Playwright against the production build and a
   fresh database, locally and in CI): a host and a guest play Classic from join code to results;
   a teacher writes a set with a picture and players see it in a game; a teacher

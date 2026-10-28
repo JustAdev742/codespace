@@ -46,7 +46,7 @@ export const meta: ModeMeta = {
     'In a team game you cannot tag teammates, and the highest team total wins.',
   ],
   thumbnail: { glyph: 'spark', hue: 160, accentHue: 290 },
-  status: 'beta',
+  status: 'playable',
   stage: '3d',
   tags: ['3d', 'arcade', 'battle royale', 'tag', 'self-paced', 'projector'],
   accessibility: [
@@ -399,7 +399,7 @@ export const variants: ModeVariant[] = [
       tagline: 'Play in squads. Relight beside a teammate and keep your squad glowing.',
       changes:
         'Players are always split into teams (6 by default: choose fewer for a small group, so each squad has 2 to 4). Nobody can tag a teammate, a dimmed player relights beside a teammate who is still glowing, and the highest team total wins.',
-      status: 'beta',
+      status: 'playable',
       thumbnail: { glyph: 'flag', hue: 200, accentHue: 160 },
     },
     settings: { squads: true },
@@ -413,7 +413,7 @@ export const variants: ModeVariant[] = [
       title: 'One Glow',
       tagline: 'One tag dims you, one right answer relights you. Frantic.',
       changes: 'Everyone has 1 glow instead of 3, so a single tag dims you, and 1 right answer relights you instead of 2.',
-      status: 'beta',
+      status: 'playable',
       thumbnail: { glyph: 'bolt', hue: 50, accentHue: 160 },
     },
     settings: { oneGlow: true },
@@ -427,7 +427,7 @@ export const variants: ModeVariant[] = [
       tagline: 'The park goes dark. You only see players close by, or who just used their beam.',
       changes:
         'The arena is dark. You see your teammates, players within 12 metres of you, and anyone who used their beam in the last 2 seconds. Everyone else is hidden, on phones and on the big screen.',
-      status: 'beta',
+      status: 'playable',
       thumbnail: { glyph: 'eye', hue: 250, accentHue: 160 },
     },
     settings: { lightsOut: true },
