@@ -104,19 +104,20 @@ Fishing off a jetty.
 
 - **Casts.** Each right answer gives 1 cast, plus a bonus every third in a row.
 - **Cast** spends one. The server decides the catch at once, from the water's table and your
-  lure, and the bite comes 1.5 to 4 seconds later. Press **Reel** within 3 seconds of the bite
-  to land it (within the first half second for a perfect reel: 10% heavier). Too early and the
-  fish is spooked; too slow and it gets away.
-- **Fish** have a rarity, a weight range and a one-line description for fun. Every chance is
-  shown.
-- **A decision with each catch**: sell it for points now, or keep it in your tank towards a set
-  bonus.
-- **Waters**: river, estuary and reef, each with its own fish, chosen by the host or rotating.
-- **Lures** (bought with points) shift the odds towards bigger, rarer fish.
+  lure, and the bite comes a few seconds later. Neither is in any view until it happens. Press
+  **Reel** within 3 seconds of the bite to land it (within the first half second for a perfect
+  reel: 10% heavier). Too early and the fish is scared off; too slow and it gets away.
+- **Sell or tank.** Sell a catch for 10 points a kilogram, into the wallet that buys lures, or
+  keep it in your tank of 6. Every 3 fish of one rarity in the tank earn a set bonus. Your score
+  is your wallet plus your tank. An undecided catch is sold after 10 seconds.
+- **Fish** have a rarity, a weight range and a one-line joke. Each water has a legend. Every
+  chance is shown, with your lure and any event worked in.
+- **Waters**: river, estuary and reef, chosen by the host or rotating every 2 minutes.
+- **Lures** (bought from the wallet) shift the odds towards bigger, rarer fish.
 - **Events**: Feeding Time (bites come twice as fast), Golden Hour (rarer fish), Passing School
   (common fish half as heavy again).
-- **Variants**: Deep Sea (reef only, bigger fish, longer waits) and two more, each a real rule
-  change (for example Trophy Hunt, where only your three heaviest fish count).
+- **Variants**: Trophy Hunt (every fish is sold; only your three heaviest count), Fishing Frenzy
+  (an event is always on and bites come fast), Deep Sea (reef only, bigger fish, longer waits).
 - **3D**: your Glim on a jetty over moving water, a cast arc, a bobber, a splash at the bite, the
   fish lifted up. The big screen shows the whole jetty, the biggest catch and a tank of the
   rarest fish caught.

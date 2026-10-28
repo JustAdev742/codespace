@@ -35,6 +35,7 @@ export const MODE_MUSIC: Record<string, MusicId> = {
   'lantern-match': 'calm',
   'word-scramble': 'calm',
   'flashcard-study': 'calm',
+  'big-catch': 'calm',
 };
 
 /** How long before a timed game's end the final-stretch track comes in. */
