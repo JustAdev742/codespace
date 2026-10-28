@@ -16,6 +16,7 @@ import { toon } from '../src/three/toon.ts';
 import * as props from '../src/three/props.ts';
 import { storeChoice } from '../src/three/quality.ts';
 import { GoldRushScene, GoldFieldScene, type FindKind } from '../src/features/room/modes/gold-rush-scene.ts';
+import { CodeBreakersScene, CitySkylineScene, VAULT_ID, type CityEvent, type CityPacket, type CityState, type CityTower } from '../src/features/room/modes/code-breakers-scene.ts';
 
 const params = new URLSearchParams(location.search);
 const q = params.get('quality');
@@ -120,10 +121,61 @@ function makeField(env: StageEnv) {
   return w;
 }
 
+// ?scene=city  Code Breakers' desk and city, with hacks flying every few seconds. ?scene=skyline  the big screen's city.
+// &heist=1 adds the vault; &event=storm|bounty|glitch sets the sky.
+const heist = params.get('heist') === '1';
+const cityEvent = params.get('event') as CityEvent | null;
+
+function fakeCity(n: number, me: string | null): CityState {
+  const towers: CityTower[] = GLIMS.slice(0, n).map((g, i) => ({ playerId: g.id, name: g.name, bits: Math.round(2600 / (1 + i * 0.45)), firewall: i % 4 === 1 ? 1 : i % 7 === 3 ? 2 : 0, twoFactor: i % 3 === 0, hue: (i * 47) % 360, me: g.id === me }));
+  return { towers, vault: heist ? { bits: 640, cracks: 0 } : null, event: cityEvent, bounty: cityEvent === 'bounty' ? [towers[0]!.playerId] : null, packets: [] };
+}
+
+const OUTCOMES: CityPacket['outcome'][] = ['stolen', 'firewall', 'wrong', 'twoFactor'];
+
+function makeCity(env: StageEnv) {
+  const g = GLIMS.find((x) => x.id === (ids?.[0] ?? 'glim-sprig')) ?? GLIMS[0]!;
+  const w = new CodeBreakersScene(env, { art: g.art as GlimArt, rarity: g.rarity as Rarity }, heist);
+  (window as unknown as { __world: unknown }).__world = w;
+  const base = fakeCity(12, GLIMS[3]!.id);
+  w.setState({ ...base, me: GLIMS[3]!.id, hacking: false });
+  let k = 0;
+  setInterval(() => {
+    k++;
+    const towers = base.towers;
+    const mine = k % 2 === 0;
+    const other = towers[(k * 5) % towers.length]!.playerId;
+    const from = mine ? GLIMS[3]!.id : other;
+    const to = mine ? (heist && k % 4 === 0 ? VAULT_ID : towers[(k * 3) % towers.length]!.playerId) : GLIMS[3]!.id;
+    const packets: CityPacket[] = [{ id: String(k), from, to: from === to ? towers[0]!.playerId : to, outcome: OUTCOMES[k % OUTCOMES.length]!, bits: 120 }];
+    w.setState({ ...base, vault: heist ? { bits: 640 + k * 20, cracks: Math.floor(k / 4) } : null, me: GLIMS[3]!.id, hacking: k % 3 === 0, packets });
+  }, 3000);
+  return w;
+}
+
+function makeSkyline(env: StageEnv) {
+  const w = new CitySkylineScene(env);
+  (window as unknown as { __world: unknown }).__world = w;
+  const base = fakeCity(30, null);
+  w.setState(base);
+  let k = 0;
+  setInterval(() => {
+    k++;
+    const t = base.towers;
+    const packets: CityPacket[] = [0, 1].map((j) => ({ id: `${k}-${j}`, from: t[(k * 7 + j) % t.length]!.playerId, to: heist && j === 1 ? VAULT_ID : t[(k * 3 + j + 1) % t.length]!.playerId, outcome: OUTCOMES[(k + j) % OUTCOMES.length]!, bits: 150 }));
+    w.setState({ ...base, vault: heist ? { bits: 900, cracks: Math.floor(k / 3) } : null, packets });
+  }, 2500);
+  return w;
+}
+
 function App() {
   return (
     <main style={{ height: '100vh', display: 'grid' }}>
-      <Stage3D label="3D gallery" create={(env) => (sceneName === 'gold' ? makeGold(env) : sceneName === 'field' ? makeField(env) : new Gallery(env))} className="h-full w-full" />
+      <Stage3D
+        label="3D gallery"
+        create={(env) => (sceneName === 'gold' ? makeGold(env) : sceneName === 'field' ? makeField(env) : sceneName === 'city' ? makeCity(env) : sceneName === 'skyline' ? makeSkyline(env) : new Gallery(env))}
+        className="h-full w-full"
+      />
     </main>
   );
 }
