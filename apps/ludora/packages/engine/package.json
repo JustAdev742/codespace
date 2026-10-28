@@ -13,6 +13,8 @@
     "./lantern-trail-board": "./src/modes/lantern-trail/board.ts",
     "./lantern-lands-map": "./src/modes/lantern-lands/map.ts",
     "./festival-workshop": "./src/modes/festival-workshop/meta.ts",
+    "./glow-tag": "./src/modes/glow-tag/meta.ts",
+    "./glow-tag-arena": "./src/modes/glow-tag/arena.ts",
     "./chaos": "./src/chaos/index.ts",
     "./chaos-cheats": "./src/chaos/cheats/index.ts",
     "./chaos-overlays": "./src/chaos/overlays.ts",

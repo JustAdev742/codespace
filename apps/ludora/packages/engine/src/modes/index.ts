@@ -41,9 +41,11 @@ import { festivalWorkshop } from './festival-workshop/index.ts';
 import { variants as festivalWorkshopVariants } from './festival-workshop/meta.ts';
 import { goldRush } from './gold-rush/index.ts';
 import { variants as goldRushVariants } from './gold-rush/meta.ts';
+import { glowTag } from './glow-tag/index.ts';
+import { variants as glowTagVariants } from './glow-tag/meta.ts';
 
 /** Every mode with logic. Order here is the default catalogue order. */
-export const MODES: readonly GameMode[] = [classic, cometDash, quickDraw, lanternOut, confidence, glimgo, lanternMatch, wordScramble, timeAttack, survivalRun, flashcardStudy, skyLanterns, gloomGiant, tugOfWar, nightMarket, lanternGuard, glimDuels, lanternTrail, lanternLands, festivalWorkshop, goldRush];
+export const MODES: readonly GameMode[] = [classic, cometDash, quickDraw, lanternOut, confidence, glimgo, lanternMatch, wordScramble, timeAttack, survivalRun, flashcardStudy, skyLanterns, gloomGiant, tugOfWar, nightMarket, lanternGuard, glimDuels, lanternTrail, lanternLands, festivalWorkshop, goldRush, glowTag];
 
 export const VARIANTS: readonly ModeVariant[] = [
   ...classicVariants,
@@ -67,4 +69,5 @@ export const VARIANTS: readonly ModeVariant[] = [
   ...lanternLandsVariants,
   ...festivalWorkshopVariants,
   ...goldRushVariants,
+  ...glowTagVariants,
 ];

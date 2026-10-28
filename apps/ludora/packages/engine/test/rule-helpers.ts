@@ -50,6 +50,8 @@ export function drive(mode: GameMode, o: DriveOptions = {}) {
   const clock = { t: 1_000, now: () => clock.t };
   const errors: unknown[] = [];
   const feed: { text: string; to?: string[] }[] = [];
+  /** Full changes (views for everyone) and quiet ones (a pulse only), as the room hears them. */
+  const changes = { changed: 0, pulsed: 0 };
   const teamCount = o.teams ?? o.variant?.common?.teamCount ?? 0;
   const common = commonSettingsSchema.parse({
     ...mode.defaults,
@@ -76,7 +78,12 @@ export function drive(mode: GameMode, o: DriveOptions = {}) {
     seed: o.seed ?? 42,
     clock,
     strict: true,
-    listener: { error: (e) => errors.push(e), feed: (f) => feed.push({ text: f.text, ...(f.to ? { to: f.to } : {}) }) },
+    listener: {
+      error: (e) => errors.push(e),
+      feed: (f) => feed.push({ text: f.text, ...(f.to ? { to: f.to } : {}) }),
+      changed: () => changes.changed++,
+      pulsed: () => changes.pulsed++,
+    },
   });
   expect(rt.start().ok).toBe(true);
 
@@ -101,6 +108,7 @@ export function drive(mode: GameMode, o: DriveOptions = {}) {
     clock,
     errors,
     feed,
+    changes,
     view,
     host,
     state: (): any => rt.debugState(),

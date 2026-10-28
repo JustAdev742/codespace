@@ -21,6 +21,7 @@ import * as lanternTrail from './lantern-trail/meta.ts';
 import * as lanternLands from './lantern-lands/meta.ts';
 import * as festivalWorkshop from './festival-workshop/meta.ts';
 import * as goldRush from './gold-rush/meta.ts';
+import * as glowTag from './glow-tag/meta.ts';
 
 /**
  * Metadata only, no game logic, so the browser can import the catalogue
@@ -48,4 +49,5 @@ export const CATALOG_DATA: readonly { meta: ModeMeta; settings: readonly Setting
   lanternLands,
   festivalWorkshop,
   goldRush,
+  glowTag,
 ];

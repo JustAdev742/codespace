@@ -22,6 +22,7 @@ export const MODE_MUSIC: Record<string, MusicId> = {
   'gloom-giant': 'battle',
   'tug-of-war': 'battle',
   'glim-duels': 'battle',
+  'glow-tag': 'battle',
   'lantern-guard': 'battle',
   glimgo: 'market',
   'sky-lanterns': 'market',
