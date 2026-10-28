@@ -27,5 +27,5 @@ export const lanternOutAdapter: ChaosAdapter = {
     delete s.outAt[id];
     return true;
   },
-  features: ['lanterns'],
+  features: ['lanterns', 'knockouts'],
 };

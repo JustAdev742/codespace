@@ -95,6 +95,14 @@ export function pickedChoice(action: unknown): string | null {
   return a?.answer?.type === 'mcq' && typeof a.answer.choiceId === 'string' ? a.answer.choiceId : null;
 }
 
+/** The token syncRounds records for an answer action (multiple choice or true/false), as in its answer tally. */
+export function answerToken(action: unknown): string | null {
+  const a = action as { answer?: { type?: string; choiceId?: unknown; value?: unknown } } | null;
+  if (a?.answer?.type === 'mcq' && typeof a.answer.choiceId === 'string') return a.answer.choiceId;
+  if (a?.answer?.type === 'truefalse' && typeof a.answer.value === 'boolean') return String(a.answer.value);
+  return null;
+}
+
 export function isAnswer(action: unknown): boolean {
   return Boolean(action && typeof action === 'object' && 'answer' in (action as object));
 }

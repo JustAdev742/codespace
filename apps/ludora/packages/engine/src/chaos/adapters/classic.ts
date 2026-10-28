@@ -5,7 +5,7 @@ export const classicAdapter: ChaosAdapter = {
   modeId: 'classic',
   meters: [syncScoreMeter()],
   ...syncParts(),
-  features: (settings) => (Number(settings.wrongPenalty) > 0 ? ['losses'] : []),
+  features: (settings) => [...(Number(settings.wrongPenalty) > 0 ? ['losses'] : []), ...(settings.suddenDeath || settings.knockout ? ['knockouts'] : [])],
   isOut: (s, id) => s.out?.[id] !== undefined,
   // Knocked-out players come back; late joiners who are only watching (-1) do not.
   revive: (s, id) => {

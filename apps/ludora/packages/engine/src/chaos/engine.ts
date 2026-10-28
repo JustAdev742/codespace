@@ -333,15 +333,15 @@ export class ChaosEngine {
         .sort((a, b) => (a.def!.priority ?? 20) - (b.def!.priority ?? 20) || a.fx.startedAt - b.fx.startedAt);
       for (const { fx, def } of hooked) {
         if (!cd.effects.includes(fx)) continue;
-        const was = JSON.stringify(d);
         def!.hooks!.delta![key]!(api, fx, d);
-        if (JSON.stringify(d) !== was) cd.acted++;
       }
+      let acted = false;
       for (const id of new Set([...Object.keys(raw), ...Object.keys(d)])) {
         if (!prev.has(id)) continue;
         const want = prev.get(id)! + (d[id] ?? 0);
-        if (want !== m.get(s, id, ctx)) api.set(key, id, want);
+        if (want !== m.get(s, id, ctx) && api.set(key, id, want) !== 0) acted = true;
       }
+      if (acted) cd.acted++;
     }
   }
 
@@ -441,9 +441,9 @@ export class ChaosEngine {
     let spent = 0;
     const energyLeft = () => this.energyOf(me, now) - spent;
     const roomTags = new Set(cd.effects.filter((e) => e.targets.length === 0).flatMap((e) => getCheat(e.cheatId)?.tags ?? []));
-    if (cd.effects.some((e) => e.targets.includes(caster) && (getCheat(e.cheatId)?.tags ?? []).includes('fortress'))) {
-      return { ok: false, code: 'rejected', message: 'You cannot cast from inside your fortress.' };
-    }
+    const myTags = new Set(cd.effects.filter((e) => e.targets.includes(caster)).flatMap((e) => getCheat(e.cheatId)?.tags ?? []));
+    if (myTags.has('fortress')) return { ok: false, code: 'rejected', message: 'You cannot cast from inside your fortress.' };
+    if (myTags.has('silenced')) return { ok: false, code: 'rejected', message: 'You have been silenced: no cheats for a little while.' };
     const castId = `c${++cd.seq}`;
     const changes: MeterChange[] = [];
     const api = this.api(s, ctx, cd, changes);
@@ -459,7 +459,7 @@ export class ChaosEngine {
       if (why) return { ok: false, code: 'rejected', message: `${def.name} does not work here: ${why}.` };
       const until = me.cooldowns[def.id] ?? 0;
       if (until > now) return { ok: false, code: 'rejected', message: `${def.name} is cooling down for ${Math.ceil((until - now) / 1000)} more seconds.` };
-      const cost = roomTags.has('mayhem') ? Math.ceil(def.cost / 2) : def.cost;
+      const cost = Math.ceil(def.cost / (roomTags.has('mayhem') ? 2 : 1) / (myTags.has('thrifty') ? 2 : 1));
       if (energyLeft() < cost) return { ok: false, code: 'rejected', message: `Not enough chaos energy for ${def.name} (${Math.floor(energyLeft())} of ${cost}).` };
       const params = clampParam(def, req.params, this.env, caster);
       if ('error' in params) return { ok: false, code: 'rejected', message: `${def.name}: ${params.error}` };
@@ -477,7 +477,25 @@ export class ChaosEngine {
 
       if (hostile && def.target !== 'room') {
         const kept: PlayerId[] = [];
-        for (const t of targets) {
+        for (let t of targets) {
+          // A bodyguard takes the hit for the player they protect.
+          const body = cd.effects.find((e) => e.targets.includes(t) && e.caster !== t && e.caster !== caster && (getCheat(e.cheatId)?.tags ?? []).includes('bodyguard') && this.env.players().some((p) => p.id === e.caster));
+          if (body) {
+            lines.push(`${this.env.name(body.caster)} took it for ${this.env.name(t)}`);
+            t = body.caster;
+          }
+          // A decoy sends the next harmful cheat to someone else at random, then is used up.
+          const decoy = cd.effects.find((e) => e.targets.includes(t) && (getCheat(e.cheatId)?.tags ?? []).includes('decoy'));
+          if (decoy) {
+            const pool = this.env.players().map((p) => p.id).filter((id) => id !== t && id !== caster);
+            this.endEffect(api, cd, decoy.eid, 'used');
+            if (pool.length) {
+              const to = api.rng.pick(pool);
+              lines.push(`${this.env.name(t)}'s decoy sent it to ${this.env.name(to)}`);
+              t = to;
+            }
+          }
+          if (kept.includes(t)) continue;
           const guard = cd.effects.find((e) => e.targets.includes(t) && e.caster !== caster && (getCheat(e.cheatId)?.tags ?? []).some((g) => g === 'shield' || g === 'reflect'));
           if (guard) {
             const kind = (getCheat(guard.cheatId)?.tags ?? []).includes('reflect') ? 'reflect' : 'shield';
@@ -505,7 +523,7 @@ export class ChaosEngine {
           // Shields did their job: the cast is spent, nothing else happens.
           spent += cost;
           me.cooldowns[def.id] = now + def.cooldownMs;
-          lines.push(`${def.name} was blocked by ${blocked.join(', ')}.`);
+          lines.push(`${def.name}, but it was blocked by ${blocked.join(', ')}`);
           this.log(cd, { at: now, kind: 'blocked', text: `${this.env.name(caster)}'s ${def.name} was blocked by ${blocked.join(', ')}.`, caster, cheatId: def.id });
           continue;
         }

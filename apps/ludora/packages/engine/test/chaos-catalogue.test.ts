@@ -8,7 +8,7 @@ import { chaosAdapterFor } from '../src/chaos/adapters/index.ts';
 import { makeTeams } from '../src/teams.ts';
 import { resolveGameConfig } from '../src/registry.ts';
 import type { CastRequest, CheatDef } from '../src/chaos/types.ts';
-import { CASTERS, PRE, POST, REACTIVE, SETTINGS, TARGETS } from './chaos-scenarios.ts';
+import { CASTERS, EFFECTS, META, PRE, POST, REACTIVE, SCREEN, SETTINGS, TARGETS } from './chaos-scenarios.ts';
 
 /*
  * The catalogue suite. For every cheat and every game mode it claims to work
@@ -95,6 +95,9 @@ function requestsFor(sim: ChaosSim, def: CheatDef, caster: string): CastRequest[
 }
 
 const snap = (sim: ChaosSim) => JSON.stringify(sim.state());
+/** Game state plus the other cheats running and on whom, for cheats that act on cheats. Effects from `castId` itself are left out. */
+const snapWithEffects = (sim: ChaosSim, cheatId: string) =>
+  snap(sim) + JSON.stringify(sim.chaos().effects.filter((e) => e.cheatId !== cheatId).map((e) => [e.cheatId, e.caster, e.targets.slice().sort(), e.endsAt]).sort());
 const overlaysNow = (sim: ChaosSim) => sim.ids.filter((id) => sim.rt.hasPlayer(id)).flatMap((id) => sim.view(id, false).overlays);
 
 /** The meter a cheat works on, for picking players with something to work with. */
@@ -158,20 +161,41 @@ describe('chaos catalogue: every cheat does something real', () => {
           const firstTarget = a.chaos().log.filter((l) => l.kind === 'cast').at(-1)?.targets?.[0] ?? null;
           POST[def.id]?.(a, caster!, def, firstTarget);
           POST[def.id]?.(b, caster!, def, firstTarget);
+          if (META.has(def.id)) {
+            // Cheats about chaos itself: some player's energy or cooldowns differ from the untouched game,
+            // beyond what this cast cost and the cooldown it started.
+            const chaosOf = (x: ChaosSim, self: boolean) =>
+              JSON.stringify(
+                x.ids.map((id) => {
+                  const me = x.view(id).me!;
+                  const cooldowns = Object.fromEntries(Object.entries(me.cooldowns).filter(([k]) => k !== def.id));
+                  return { id, e: me.energy + (self && id === caster ? def.cost : 0), cooldowns };
+                }),
+              );
+            expect(chaosOf(a, true), `${def.id} changed no chaos state`).not.toBe(chaosOf(b, false));
+            expect(a.errors).toEqual([]);
+            outcome.passed.push(run.modeId);
+            return;
+          }
+          const compare = EFFECTS.has(def.id) ? (x: ChaosSim) => snapWithEffects(x, def.id) : snap;
           let seen = overlaysNow(a).length > 0;
-          let diverged = snap(a) !== snap(b);
+          let diverged = compare(a) !== compare(b);
           const actedBefore = a.chaos().acted;
           const span = (def.durationMs ?? 0) + 6_000;
           for (let t = 0; t < span && !diverged; t += 1000) {
             a.run(1000);
             b.run(1000);
             if (!seen) seen = overlaysNow(a).length > 0;
-            if (snap(a) !== snap(b)) diverged = true;
+            if (compare(a) !== compare(b)) diverged = true;
           }
           const acted = a.chaos().acted > actedBefore;
           expect(a.errors.map((e) => `${e.where}: ${String(e.error)}`)).toEqual([]);
-          const visualOnly = !def.apply && !def.hooks?.delta && !def.hooks?.tick && !def.hooks?.gate;
+          const visualOnly = SCREEN.has(def.id) || (!EFFECTS.has(def.id) && !def.apply && !def.hooks?.delta && !def.hooks?.tick && !def.hooks?.gate);
           if (visualOnly) {
+            if (!seen && REACTIVE.has(def.id)) {
+              outcome.untriggered.push(run.modeId);
+              return;
+            }
             expect(seen, `${def.id} showed nothing in ${run.modeId}`).toBe(true);
             outcome.passed.push(run.modeId);
             return;

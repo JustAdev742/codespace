@@ -117,6 +117,7 @@ const NEED_LABELS: Record<string, string> = {
   revive: 'nobody can be knocked out here',
   out: 'nobody can be knocked out here',
   losses: 'nothing in this game takes score away, so there is nothing to protect',
+  knockouts: 'nobody can be knocked out with these settings',
 };
 
 /** Null when a cheat works in this game, otherwise the reason it does not. Runs on the server and in the menu. */

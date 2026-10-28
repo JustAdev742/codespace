@@ -1,5 +1,12 @@
 // Importing a pack registers its cheats.
 import './score.ts';
+import './advantage.ts';
+import './troll.ts';
+import './round.ts';
+import './economy.ts';
+import './visual.ts';
+import './random.ts';
+import './combos.ts';
 import '../packs/classic.ts';
 import '../packs/comet-dash.ts';
 import '../packs/confidence.ts';

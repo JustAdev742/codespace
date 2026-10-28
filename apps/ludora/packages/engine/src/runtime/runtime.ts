@@ -343,6 +343,14 @@ export class GameRuntime {
     return this.chaos.view(this.chaosState, viewer, this.gameNow(), unlocked);
   }
 
+  /** The answer to a presented question in its tokens, for tests only. */
+  debugReveal(iid: string): unknown {
+    const inst = this.instances.get(iid);
+    if (!inst) return null;
+    const q = this.questionMap.get(inst.qid)!;
+    return revealToTokens(q, inst.order, revealAnswer(q));
+  }
+
   /** Chaos state, for tests and debugging tools only. */
   debugChaos(): ChaosState | null {
     return this.chaosState;
