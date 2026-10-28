@@ -487,6 +487,18 @@ describe('Code Breakers hacking', () => {
     expect(h2.rt.act('b', { type: 'hackBack' })).toMatchObject({ ok: false });
   });
 
+  it('in the first 15 seconds of a game, a rival you have never tried is open to hack', () => {
+    const h = drive(codeBreakers, { players: ['a', 'b', 'c'], questions: MCQ, teams: 0, seed: 7, common: {}, settings: { events: false } });
+    // The game clock starts near 0, so "never tried" must not read as "tried at time 0".
+    h.clock.t = 0;
+    for (const id of ['a', 'b', 'c']) choose(h, id, 0);
+    pick(h, 'a', offerWith(h, 'a', (p) => p.kind === 'hack' && p.content === 'hack'));
+    expect(h.clock.t).toBeLessThan(TIMING.guardSec * 1000);
+    const rows = you(h, 'a').hack.targets as any[];
+    expect(rows.map((r) => [r.playerId, r.blocked, r.until])).toEqual(expect.arrayContaining([['b', null, null], ['c', null, null]]));
+    expect(target(h, 'a', 'b').ok).toBe(true);
+  });
+
   it('you cannot hack yourself, a teammate, or a target you tried in the last 15 seconds', () => {
     const h = game({ players: [{ id: 'a', team: 1 }, { id: 'b', team: 1 }, { id: 'c', team: 2 }, { id: 'd', team: 2 }], teams: 2 });
     for (const id of ['c', 'd']) earn(h, id, 80, id === 'c' ? 'd' : 'c');

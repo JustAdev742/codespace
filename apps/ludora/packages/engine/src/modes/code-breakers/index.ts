@@ -365,9 +365,15 @@ function inSetup(s: State, id: PlayerId) {
 }
 
 /** Why a rival cannot be hacked right now, or null. */
+/** When you may next try this target, if you tried them in the last few seconds. The game clock starts at 0, so "never tried" is not a time. */
+function triedUntil(h: Hacker, targetId: PlayerId, now: number): number | null {
+  const at = h.tried[targetId];
+  return at !== undefined && at > now - TIMING.guardSec * 1000 ? at + TIMING.guardSec * 1000 : null;
+}
+
 function blockedReason(s: State, h: Hacker, id: PlayerId, targetId: PlayerId, now: number): 'setup' | 'recent' | null {
   if (inSetup(s, targetId)) return 'setup';
-  if ((h.tried[targetId] ?? 0) > now - TIMING.guardSec * 1000) return 'recent';
+  if (triedUntil(h, targetId, now) !== null) return 'recent';
   return null;
 }
 
@@ -377,7 +383,7 @@ function hackable(s: State, ctx: ModeContext<Settings>, id: PlayerId): PlayerId[
   if (!h) return [];
   const all = rivals(s, ctx, id).filter((r) => !inSetup(s, r));
   const now = ctx.now();
-  const fresh = all.filter((r) => (h.tried[r] ?? 0) <= now - TIMING.guardSec * 1000);
+  const fresh = all.filter((r) => triedUntil(h, r, now) === null);
   return fresh.length ? fresh : all;
 }
 
@@ -889,7 +895,7 @@ function targetRows(s: State, ctx: ModeContext<Settings>, id: PlayerId, h: Hacke
         twoFactor: rid === VAULT.id ? true : (target?.twoFactor ?? false),
         vault: rid === VAULT.id,
         blocked: blockedReason(s, h, id, rid, now),
-        until: (h.tried[rid] ?? 0) > now - TIMING.guardSec * 1000 ? (h.tried[rid] ?? 0) + TIMING.guardSec * 1000 : null,
+        until: triedUntil(h, rid, now),
         crossed: note.crossed.length,
         cracked: note.cracked,
       };
