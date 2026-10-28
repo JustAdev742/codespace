@@ -24,11 +24,20 @@ If the school's Wi-Fi blocks `github.dev`, use a phone hotspot for the laptop an
   the join address and a 6-digit code.
 - **Students join** on any phone or laptop at the address on screen (or `/join/<code>`): a name
   and the code, no account needed.
+- **Presenting alone?** In the lobby, **Add 3 practice bots** (as often as you like) fills the
+  game, so the big screen shows a full class. Join from your own phone as well to show both screens.
 - **3D modes** to show: Gold Rush, Glow Tag Royale, Big Catch, Code Breakers, Corner Shop.
 - **Teacher features**: Classes (assignments and reports), Question sets (the editor, import),
   Game Maker (save a configured game), school events on a class.
 - **Lantern tricks (party games)** in the host's Room options are **off by default**. Leave
   them off for a classroom demo; nobody can use chaos in a game unless the host turns this on.
+
+## The season on screen
+
+The site dresses itself for the Sydney calendar: in late October that is **Spooky Week**
+(lanterns and friendly ghosts). If a school would rather not see it, a super administrator can
+change or switch off the season under **Staff → Events → Seasonal calendar** (grant the role
+first with `npm run admin -- grant <username> superadmin --reason "demo"` in `apps/ludora`).
 
 ## Fallback: one screen, no phones
 
