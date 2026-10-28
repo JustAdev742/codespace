@@ -357,6 +357,14 @@ Last updated: 2026-10-28.
   browser and saves the drafted set through the real server, with axe checks
   on both steps. **Not yet done: a real call to the Claude API**, because this
   environment has no API key.
+- **Seasons** (D48): the home pages hang the season's decorations across the
+  top (lanterns and friendly ghosts for Spooky Week, fairy lights and bunting
+  for Summer Christmas, falling leaves in autumn) with a line saying what is on,
+  and every 3D scene gets a light drift of confetti, petals or glowing motes
+  in the season's colours (none on Low graphics or with reduced motion). It
+  turns over by itself at midnight in Sydney; `GET /api/season` serves it, and
+  staff can move or drop a celebration for one year in Staff, Events, with a
+  reason and an audit entry. `web/dev/seasons.html` previews every one.
 - **End-to-end tests** (`e2e/`, Playwright against the production build and a
   fresh database, locally and in CI): a host and a guest play Classic from join code to results;
   a teacher writes a set with a picture and players see it in a game; a teacher
@@ -380,9 +388,9 @@ creates and drops its own database).
 
 | Project | Files | Tests |
 |---|---|---|
-| content | 2 | 112: catalogue integrity and every built-in question set |
+| content | 3 | 123: catalogue integrity, every built-in question set, and the seasonal calendar (11) |
 | engine | 43 | 5968, including the conformance suite for every mode and variant, and the chaos suite: every cheat in every mode it supports (4366 tests), the core rules and each mode's pack |
-| server | 13 | 159: auth and rate limits (15), realtime (7), economy (20), staff (54), social and classes (18), preferences (4), open games (4), sign-in help (3), uploads (6), AI drafts (11), reward counting (4), origin checks (4), chaos (9) |
+| server | 13 | 159: auth and rate limits (15), realtime (7), economy (20), staff (55), social and classes (18), preferences (4), open games (4), sign-in help (3), uploads (6), AI drafts (11), reward counting (4), origin checks (4), chaos (9) |
 | web | 4 | 84: the set editor's checks, import and export (45); the synthesised music, in key and looping cleanly (16); the recorded sounds, every effect with a file and every loop a whole number of bars (16); which music plays when (7) |
 | shared | 0 | no tests of its own; its schemas are exercised by the other projects |
 | **Total** | **62** | **6323 passing** at the last full run (2026-10-28) |

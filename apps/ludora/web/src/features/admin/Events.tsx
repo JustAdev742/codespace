@@ -9,6 +9,7 @@ import { Amount, Badge, EmptyState, ErrorNotice, Skeleton, Switch } from '../../
 import { Button, ButtonLink } from '../../ui/Button.tsx';
 import { ActionDialog, Card, KeyValues, StaffPage, dateTime, useStaffMutation } from './ui.tsx';
 import { DateTimeField, isoToLocalInput, localInputToIso } from './Economy.tsx';
+import { SeasonCalendar } from './SeasonCalendar.tsx';
 
 /*
  * Limited-time events. Each event is a feature flag (the switch), a date
@@ -44,7 +45,9 @@ function stateOf(ev: AdminEvent, now: number): { label: string; tone: 'mint' | '
 export default function Events() {
   const q = useQuery({ queryKey: eventsKey, queryFn: () => api.get<{ events: AdminEvent[] }>('/api/admin/events') });
   return (
-    <StaffPage title="Events" description="Limited-time events. Each has an on and off switch, a date window, its own shop section and an event currency that expires when it ends.">
+    <StaffPage title="Events" description="The seasonal calendar the site dresses itself from, and limited-time events. Each event has an on and off switch, a date window, its own shop section and an event currency that expires when it ends.">
+      <SeasonCalendar />
+      <div className="h-4" />
       {q.isError ? (
         <ErrorNotice message="The events did not load." onRetry={() => void q.refetch()} />
       ) : !q.data ? (

@@ -1,0 +1,63 @@
+/*
+ * The season's decorations move a little: lights twinkle, lanterns sway,
+ * fireworks bloom and the sun turns. app.css stills all of it when the player
+ * asks for less motion.
+ */
+@layer components {
+  .sg-twinkle {
+    animation: sg-twinkle 2.4s ease-in-out infinite;
+  }
+  .sg-sway {
+    transform-box: view-box;
+    animation: sg-sway 4s ease-in-out infinite;
+  }
+  .sg-burst {
+    transform-box: view-box;
+    animation: sg-burst 3.2s ease-out infinite;
+  }
+  .sg-spin {
+    transform-box: view-box;
+    animation: sg-spin 60s linear infinite;
+  }
+
+  @keyframes sg-twinkle {
+    0%,
+    100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.45;
+    }
+  }
+  @keyframes sg-sway {
+    0%,
+    100% {
+      transform: rotate(-4deg);
+    }
+    50% {
+      transform: rotate(4deg);
+    }
+  }
+  @keyframes sg-burst {
+    0% {
+      transform: scale(0.4);
+      opacity: 0;
+    }
+    18% {
+      opacity: 1;
+    }
+    60% {
+      transform: scale(1);
+      opacity: 0.9;
+    }
+    100% {
+      transform: scale(1.08);
+      opacity: 0;
+    }
+  }
+  @keyframes sg-spin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+}

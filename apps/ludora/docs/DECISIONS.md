@@ -403,3 +403,16 @@ stay hidden from people who download the app's files. So:
 - The brief asked for 1,000 cheats. 666 are built and each passes a test that
   shows it changing a real game; the count is reported as it is rather than
   padded with copies (docs/CHAOS.md).
+
+**D48. The site dresses itself by a Sydney calendar, worked out on the server.**
+Seasons are Southern Hemisphere (summer is December to February) and the
+celebrations are school friendly ones most Australian schools mark: New Year,
+Australia Day, Lunar New Year, Harmony Week, Easter, Science Week, Book Week,
+Spooky Week and Summer Christmas. Dates that move are worked out by rule
+(Easter by computus, the August weeks by their usual Saturdays, Lunar New Year
+from a published table to 2035). Where a real event's dates are set by someone
+else, the rule follows recent years and staff can move or drop it for one year;
+nothing has to be switched on. The server answers from its own clock, so a
+changed device clock changes nothing, and the browser only works it out itself
+in the demo, which has no server. A school's own events are not invented: the
+calendar holds no school's dates, crest or branding.

@@ -3,6 +3,8 @@ import { NeutralToneMapping, WebGLRenderer } from 'three';
 import { prefersReducedMotion } from '../lib/prefs.ts';
 import { FrameMonitor, qualityFor, startingQuality, storeChoice, storedChoice, type Quality, type QualityChoice } from './quality.ts';
 import type { StageEnv, World } from './World.ts';
+import { SeasonDrift } from './seasonDrift.ts';
+import { seasonTheme } from '../lib/season.ts';
 import './stage3d.css';
 
 /*
@@ -28,13 +30,15 @@ export interface Stage3DProps<W extends World> {
   fallback?: ReactNode;
   /** The little graphics menu in the corner. */
   controls?: boolean;
+  /** The season's drift of confetti, petals or motes in front of the camera. On by default. */
+  season?: boolean;
 }
 
 type StageState = { kind: 'ready' } | { kind: 'fallback'; reason: 'off' | 'unsupported' | 'lost' };
 
 const LOWER: Record<Quality['tier'], Quality['tier'] | null> = { high: 'medium', medium: 'low', low: null };
 
-export function Stage3D<W extends World>({ create, onWorld, label, className = '', fallback = null, controls = true }: Stage3DProps<W>) {
+export function Stage3D<W extends World>({ create, onWorld, label, className = '', fallback = null, controls = true, season = true }: Stage3DProps<W>) {
   const box = useRef<HTMLDivElement>(null);
   const [state, setState] = useState<StageState>({ kind: 'ready' });
   const [generation, setGeneration] = useState(0);
@@ -42,6 +46,8 @@ export function Stage3D<W extends World>({ create, onWorld, label, className = '
   createRef.current = create;
   const onWorldRef = useRef(onWorld);
   onWorldRef.current = onWorld;
+  const seasonRef = useRef(season);
+  seasonRef.current = season;
 
   // The player changed the graphics setting (here or in another stage): rebuild.
   useEffect(() => {
@@ -92,6 +98,14 @@ export function Stage3D<W extends World>({ create, onWorld, label, className = '
     }
     onWorldRef.current?.(world);
 
+    // The season's drift rides with the camera; none on low graphics or with reduced motion.
+    let drift: SeasonDrift | null = null;
+    if (seasonRef.current && quality.tier !== 'low' && !env.reducedMotion) {
+      drift = new SeasonDrift(seasonTheme(), quality.particles);
+      if (!world.camera.parent) world.scene.add(world.camera);
+      drift.attach(world.camera);
+    }
+
     let scale = 1;
     const size = () => {
       const w = Math.max(1, el.clientWidth);
@@ -114,6 +128,10 @@ export function Stage3D<W extends World>({ create, onWorld, label, className = '
       if (!lower) return;
       quality = qualityFor(lower);
       world.setQuality(quality);
+      if (lower === 'low') {
+        drift?.dispose();
+        drift = null;
+      }
       size();
     });
 
@@ -131,6 +149,7 @@ export function Stage3D<W extends World>({ create, onWorld, label, className = '
       if (!onScreen) return;
       const dt = Math.min(0.05, dtMs / 1000);
       world.frame(dt, (now - start) / 1000);
+      drift?.update(dt, (now - start) / 1000);
       renderer.render(world.scene, world.camera);
       world.afterRender();
       monitor.sample(dtMs, now);
@@ -149,6 +168,7 @@ export function Stage3D<W extends World>({ create, onWorld, label, className = '
       io.disconnect();
       canvas.removeEventListener('webglcontextlost', lost);
       onWorldRef.current?.(null);
+      drift?.dispose();
       world.dispose();
       renderer.dispose();
       renderer.forceContextLoss();

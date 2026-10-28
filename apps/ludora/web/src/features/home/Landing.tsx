@@ -11,6 +11,7 @@ import { Skeleton } from '../../ui/primitives.tsx';
 import { ModeCard } from '../modes/ModeCard.tsx';
 import { GLIMS } from './glims.ts';
 import { BLEED_ROUNDING, Bleed, RarityTag } from './kit.tsx';
+import { SeasonDecor, SeasonLine } from '../season/SeasonBanner.tsx';
 
 /** One Glim of every rarity, from common to mythic. */
 const LADDER: { rarity: Rarity; name: string; art: GlimArt }[] = [
@@ -122,9 +123,11 @@ export default function Landing() {
     <div className="flex flex-col gap-16 pb-12 sm:gap-20">
       <Bleed>
         <section aria-labelledby="hero-title">
-          <Stage className={`px-4 pt-8 pb-10 sm:px-6 lg:pt-14 lg:pb-16 ${BLEED_ROUNDING}`}>
-            <div className="mx-auto grid max-w-[1120px] grid-cols-1 items-center gap-x-10 gap-y-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+          <Stage className={`px-4 pt-[72px] pb-10 sm:px-6 lg:pt-[96px] lg:pb-16 ${BLEED_ROUNDING}`}>
+            <SeasonDecor />
+            <div className="relative z-10 mx-auto grid max-w-[1120px] grid-cols-1 items-center gap-x-10 gap-y-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
               <div className="flex flex-col gap-5">
+                <SeasonLine />
                 <h1 id="hero-title" className="font-display text-[2.75rem] leading-[0.95] font-extrabold min-[400px]:text-[3.25rem] sm:text-[4.25rem] xl:text-[4.75rem]">
                   <span className="block">Answer fast.</span>
                   <span className="block">Climb the board.</span>

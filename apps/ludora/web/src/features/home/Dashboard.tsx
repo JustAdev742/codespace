@@ -17,6 +17,7 @@ import { Button, ButtonLink } from '../../ui/Button.tsx';
 import { ModeCard } from '../modes/ModeCard.tsx';
 import { OpenGames } from '../host/OpenGames.tsx';
 import { BLEED_ROUNDING, Bleed, Meter } from './kit.tsx';
+import { SeasonDecor, SeasonLine } from '../season/SeasonBanner.tsx';
 
 /** Shown until the overview loads, or if a player somehow has no buddy. */
 const PLACEHOLDER_BUDDY: GlimArt = { kind: 'glim', body: 'blob', hue: 30, accentHue: 45, saturation: 25, eyes: 'dot', mouth: 'smile', pattern: 'freckles', topper: 'none', cheeks: true };
@@ -119,8 +120,10 @@ export default function Dashboard() {
   return (
     <div className="flex flex-col gap-8">
       <Bleed>
-        <Stage className={`px-4 pt-7 pb-8 sm:px-6 lg:pt-10 lg:pb-11 ${BLEED_ROUNDING}`}>
-          <div className="mx-auto grid max-w-[1120px] grid-cols-1 items-center gap-7 lg:grid-cols-[minmax(0,1fr)_minmax(0,410px)]">
+        <Stage className={`px-4 pt-[72px] pb-8 sm:px-6 lg:pt-[84px] lg:pb-11 ${BLEED_ROUNDING}`}>
+          <SeasonDecor />
+          <SeasonLine className="relative z-10 mx-auto mb-5 max-w-[1120px]" />
+          <div className="relative z-10 mx-auto grid max-w-[1120px] grid-cols-1 items-center gap-7 lg:grid-cols-[minmax(0,1fr)_minmax(0,410px)]">
             {/* The player card: their buddy, their name, their level. On phones the meter and streak run the full width under it. */}
             <div className="grid min-w-0 grid-cols-[auto_minmax(0,1fr)] items-center gap-x-4 gap-y-5 sm:gap-x-6 sm:gap-y-3">
               <div className="sm:row-span-3 sm:self-center">
