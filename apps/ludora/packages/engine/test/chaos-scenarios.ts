@@ -1,3 +1,4 @@
+import { readdirSync } from 'node:fs';
 import type { ChaosSim } from '../src/testing/chaos.ts';
 import type { CheatDef } from '../src/chaos/types.ts';
 import { cheatAvailability, getCheat } from '../src/chaos/registry.ts';
@@ -213,7 +214,12 @@ const universal: ScenarioSet = {
   ],
 };
 
-const packs = Object.values(import.meta.glob<{ scenarios: ScenarioSet }>('./chaos-scenarios/*.ts', { eager: true })).map((m) => m.scenarios);
+// The folder is read when the tests run, not when this file is transformed: Vitest caches
+// transformed files by their own content, so a glob here would miss a pack's new scenario file
+// until this file changed.
+const dir = new URL('./chaos-scenarios/', import.meta.url);
+const files = readdirSync(dir).filter((f) => f.endsWith('.ts')).sort();
+const packs = (await Promise.all(files.map((f) => import(/* @vite-ignore */ new URL(f, dir).href) as Promise<{ scenarios: ScenarioSet }>))).map((m) => m.scenarios);
 const all = [universal, ...packs];
 
 export const SETTINGS: Record<string, Record<string, unknown>[]> = {};

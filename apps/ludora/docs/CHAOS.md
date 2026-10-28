@@ -118,33 +118,34 @@ knock, the riddle's answer and the ritual.
 
 ## The catalogue
 
-**666 cheats and 10 combos**, every one tested. That is short of the 1,000 the brief aimed for.
+**769 cheats and 10 combos**, every one tested. That is short of the 1,000 the brief aimed for.
 The count is honest: nothing in it is an alias, a renamed copy or a button that does nothing. It
-will grow with the 3D modes.
+grows as each 3D mode gets its pack (Gold Rush, Big Catch and Code Breakers have theirs).
 
 | Category | Cheats |
 |---|---|
-| Score | 64 |
-| Advantage | 159 |
-| Troll | 190 |
-| Round | 65 |
-| Economy | 80 |
+| Score | 73 |
+| Advantage | 188 |
+| Troll | 219 |
+| Round | 83 |
+| Economy | 93 |
 | Visual | 61 |
-| Random | 47 |
+| Random | 52 |
 
 | Pack | Cheats | Pack | Cheats |
 |---|---|---|---|
-| Universal | 209 | Lantern Guard | 35 |
-| Lantern Trail | 39 | Lantern Lands | 32 |
-| Night Market | 39 | Comet Dash | 30 |
-| Festival Workshop | 38 | Sky Lanterns | 30 |
-| Glim Duels | 27 | Gloom Giant | 26 |
-| Tug of War | 26 | Glimgo | 21 |
-| Time Attack | 20 | Survival Run | 17 |
-| Classic | 14 | Lantern Match | 14 |
-| Lantern Out | 14 | Word Scramble | 14 |
-| Confidence | 10 | Quick Draw | 6 |
-| Flashcard Study | 5 | | |
+| Universal | 209 | Comet Dash | 30 |
+| Lantern Trail | 39 | Sky Lanterns | 30 |
+| Night Market | 39 | Glim Duels | 27 |
+| Big Catch | 38 | Gloom Giant | 26 |
+| Festival Workshop | 38 | Tug of War | 26 |
+| Lantern Guard | 35 | Glimgo | 21 |
+| Code Breakers | 34 | Time Attack | 20 |
+| Lantern Lands | 32 | Survival Run | 17 |
+| Gold Rush | 31 | Classic | 14 |
+| Lantern Match | 14 | Lantern Out | 14 |
+| Word Scramble | 14 | Confidence | 10 |
+| Quick Draw | 6 | Flashcard Study | 5 |
 
 ### How every cheat is tested
 

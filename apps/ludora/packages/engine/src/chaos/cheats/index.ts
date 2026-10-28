@@ -9,6 +9,7 @@ import './random.ts';
 import './combos.ts';
 import '../packs/big-catch.ts';
 import '../packs/classic.ts';
+import '../packs/code-breakers.ts';
 import '../packs/comet-dash.ts';
 import '../packs/confidence.ts';
 import '../packs/festival-workshop.ts';
