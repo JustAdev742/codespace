@@ -43,6 +43,7 @@ export default defineConfig({
       PUBLIC_ORIGIN: E2E_BASE,
       EXTRA_ORIGINS: '',
       WEB_DIST: resolve('web/dist'),
+      WEB_PRIVATE_DIST: resolve('web/dist-private'),
       LOG_LEVEL: 'warn',
     },
   },

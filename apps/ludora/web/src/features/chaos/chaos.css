@@ -1,0 +1,251 @@
+/*
+ * Chaos looks on a player's screen. Each look is one class on the chaos root,
+ * set by ChaosLayer from the room view. Rules of the house:
+ *  - nothing flashes (no change faster than three times a second, no strobing);
+ *  - every animation has a still version under .chaos-still (reduced motion);
+ *  - the game stays operable: covers can be tapped away or time out.
+ */
+
+[data-chaos-root] {
+  position: relative;
+  isolation: isolate;
+}
+.chaos-stage {
+  transition: transform 500ms var(--ease-out, ease), filter 500ms ease;
+  transform-origin: 50% 40%;
+}
+
+/* ---------------------------------- transforms --------------------------------- */
+.chaos-look-upside-down .chaos-stage { transform: rotate(180deg); }
+.chaos-look-mirror .chaos-stage { transform: scaleX(-1); }
+.chaos-look-tilt .chaos-stage { transform: rotate(-12deg); }
+.chaos-look-tiny .chaos-stage { transform: scale(0.6); }
+.chaos-look-zoom .chaos-stage { transform: scale(1.4); }
+.chaos-look-squash .chaos-stage { transform: scaleY(0.55); }
+.chaos-look-stretch .chaos-stage { transform: scaleX(0.7) scaleY(1.25); }
+.chaos-look-skew .chaos-stage { transform: skew(-14deg, 4deg); }
+.chaos-look-sideways .chaos-stage { transform: rotate(90deg) scale(0.75); }
+.chaos-look-spin .chaos-stage { animation: chaos-spin 8s linear infinite; }
+.chaos-look-wobble .chaos-stage { animation: chaos-wobble 1.6s ease-in-out infinite; }
+.chaos-look-seasick .chaos-stage { animation: chaos-seasick 4s ease-in-out infinite; }
+.chaos-look-quake .chaos-stage { animation: chaos-quake 0.9s ease-in-out infinite; }
+.chaos-still.chaos-look-spin .chaos-stage { animation: none; transform: rotate(160deg); }
+.chaos-still.chaos-look-wobble .chaos-stage { animation: none; transform: skew(6deg, -2deg); }
+.chaos-still.chaos-look-seasick .chaos-stage { animation: none; transform: rotate(5deg) translateY(10px); }
+.chaos-still.chaos-look-quake .chaos-stage { animation: none; transform: rotate(-2deg); }
+
+@keyframes chaos-spin { to { transform: rotate(360deg); } }
+@keyframes chaos-wobble {
+  0%, 100% { transform: skew(0, 0) scale(1); }
+  25% { transform: skew(5deg, -2deg) scale(1.02, 0.98); }
+  75% { transform: skew(-5deg, 2deg) scale(0.98, 1.02); }
+}
+@keyframes chaos-seasick {
+  0%, 100% { transform: rotate(-5deg) translateY(0); }
+  50% { transform: rotate(5deg) translateY(14px); }
+}
+@keyframes chaos-quake {
+  0%, 100% { transform: translate(0, 0); }
+  25% { transform: translate(-4px, 2px); }
+  50% { transform: translate(3px, -2px); }
+  75% { transform: translate(-2px, -3px); }
+}
+
+/* ----------------------------------- filters ----------------------------------- */
+.chaos-look-blur .chaos-stage { animation: chaos-unblur 10s linear forwards; }
+.chaos-still.chaos-look-blur .chaos-stage { animation: none; filter: blur(4px); }
+@keyframes chaos-unblur { from { filter: blur(9px); } to { filter: blur(0); } }
+.chaos-look-old-movie .chaos-stage { filter: grayscale(1) contrast(1.15); }
+.chaos-look-old-movie::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(transparent 55%, rgb(0 0 0 / 0.5)), repeating-radial-gradient(circle at 30% 40%, rgb(255 255 255 / 0.05) 0 1px, transparent 1px 3px);
+}
+.chaos-look-invert .chaos-stage { filter: invert(1) hue-rotate(180deg); }
+.chaos-look-hue-spin .chaos-stage { animation: chaos-hue 12s linear infinite; }
+.chaos-still.chaos-look-hue-spin .chaos-stage { animation: none; filter: hue-rotate(140deg); }
+@keyframes chaos-hue { to { filter: hue-rotate(360deg); } }
+.chaos-look-night .chaos-stage { filter: brightness(0.22) contrast(1.2); }
+.chaos-look-washed .chaos-stage { filter: brightness(1.6) saturate(0.35) contrast(0.7); }
+.chaos-look-pixelate .chaos-stage { filter: url('#chaos-pixel') contrast(1.05); image-rendering: pixelated; }
+.chaos-look-pixelate .chaos-stage * { font-family: ui-monospace, 'Courier New', monospace !important; letter-spacing: 0.08em; }
+.chaos-look-thermal .chaos-stage { filter: invert(0.85) sepia(1) saturate(6) hue-rotate(-40deg) contrast(1.3); }
+.chaos-look-sepia .chaos-stage { filter: sepia(0.9) contrast(0.92) brightness(1.05); }
+.chaos-look-sepia::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  box-shadow: inset 0 0 0 10px #f3e2c3, inset 0 0 50px rgb(110 70 20 / 0.45);
+  border-radius: var(--radius-m, 12px);
+}
+
+/* ----------------------------------- weather ----------------------------------- */
+.chaos-weather,
+.chaos-fog,
+.chaos-cobwebs,
+.chaos-frost,
+.chaos-ink,
+.chaos-blinds,
+.chaos-curtain,
+.chaos-peephole,
+.chaos-flashlight {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+  z-index: 20;
+  border-radius: inherit;
+}
+.chaos-weather span {
+  position: absolute;
+  left: var(--x);
+  top: -10%;
+  animation: chaos-fall var(--d) linear var(--delay) infinite;
+}
+.chaos-still .chaos-weather span { animation: none; top: var(--y); }
+@keyframes chaos-fall { to { transform: translateY(120vh) rotate(200deg); } }
+@keyframes chaos-rise { from { transform: translateY(110vh); } to { transform: translateY(-20vh) rotate(-30deg); } }
+@keyframes chaos-across { from { transform: translateX(-30vw); } to { transform: translateX(130vw); } }
+@keyframes chaos-drift {
+  0%, 100% { transform: translate(0, 0); opacity: 0.4; }
+  50% { transform: translate(40px, -30px); opacity: 1; }
+}
+
+.chaos-weather-snow span { width: calc(10px * var(--s)); height: calc(10px * var(--s)); border-radius: 50%; background: #fff; box-shadow: 0 0 6px #fff; }
+.chaos-weather-rain span { width: 2px; height: 26px; background: linear-gradient(transparent, #9cc8ff); animation-duration: calc(var(--d) / 4); }
+.chaos-weather-confetti span { width: 10px; height: 16px; background: hsl(var(--h) 85% 60%); border-radius: 2px; }
+.chaos-weather-leaves span { width: calc(26px * var(--s)); height: calc(16px * var(--s)); border-radius: 0 100% 0 100%; background: hsl(calc(20 + var(--h) / 8) 75% 45%); top: var(--y); left: -10%; animation-name: chaos-across; }
+.chaos-weather-bubbles span { width: calc(34px * var(--s)); height: calc(34px * var(--s)); border-radius: 50%; border: 2px solid rgb(255 255 255 / 0.7); background: radial-gradient(circle at 30% 30%, rgb(255 255 255 / 0.6), rgb(140 200 255 / 0.15)); top: auto; animation-name: chaos-rise; }
+.chaos-weather-balloons span { width: calc(46px * var(--s)); height: calc(56px * var(--s)); border-radius: 50% 50% 48% 48%; background: hsl(var(--h) 80% 58%); top: auto; animation-name: chaos-rise; }
+.chaos-weather-fireflies span { width: 9px; height: 9px; border-radius: 50%; background: #fff7a1; box-shadow: 0 0 14px 5px rgb(255 240 120 / 0.8); top: var(--y); animation-name: chaos-drift; }
+.chaos-weather-paper-planes span { width: 0; height: 0; border-left: 34px solid #fff; border-top: 10px solid transparent; border-bottom: 10px solid transparent; top: var(--y); left: -10%; animation-name: chaos-across; filter: drop-shadow(0 4px 4px rgb(0 0 0 / 0.3)); }
+.chaos-weather-glim-parade span { width: 58px; height: 52px; border-radius: 50% 50% 44% 44%; background: hsl(var(--h) 70% 62%); top: calc(55% + var(--y) / 4); left: -10%; animation-name: chaos-across; animation-duration: calc(var(--d) * 1.4); }
+.chaos-weather-glim-parade span::before,
+.chaos-weather-glim-parade span::after { content: ''; position: absolute; top: 18px; width: 9px; height: 11px; border-radius: 50%; background: #102040; }
+.chaos-weather-glim-parade span::before { left: 15px; }
+.chaos-weather-glim-parade span::after { right: 15px; }
+.chaos-weather-disco span { width: 46vw; height: 46vw; border-radius: 50%; top: var(--y); background: radial-gradient(hsl(var(--h) 90% 60% / 0.38), transparent 65%); animation-name: chaos-drift; animation-duration: calc(var(--d) * 1.5); mix-blend-mode: screen; }
+.chaos-still .chaos-weather-leaves span,
+.chaos-still .chaos-weather-paper-planes span,
+.chaos-still .chaos-weather-glim-parade span { left: var(--x); }
+.chaos-still .chaos-weather-bubbles span,
+.chaos-still .chaos-weather-balloons span { top: var(--y); }
+
+/* ----------------------------------- covers ------------------------------------ */
+.chaos-fog {
+  background: radial-gradient(ellipse at 20% 30%, rgb(230 235 245 / 0.92), transparent 45%), radial-gradient(ellipse at 75% 60%, rgb(230 235 245 / 0.88), transparent 45%), radial-gradient(ellipse at 45% 85%, rgb(230 235 245 / 0.8), transparent 40%);
+  animation: chaos-fog 9s ease-in-out infinite alternate;
+}
+.chaos-still .chaos-fog { animation: none; }
+@keyframes chaos-fog { to { transform: translateX(8%); } }
+.chaos-cobwebs {
+  background: repeating-conic-gradient(from 0deg at 0 0, rgb(255 255 255 / 0.35) 0 1deg, transparent 1deg 12deg), repeating-conic-gradient(from 90deg at 100% 0, rgb(255 255 255 / 0.35) 0 1deg, transparent 1deg 12deg);
+  mask: radial-gradient(circle at 0 0, #000 0 32%, transparent 33%), radial-gradient(circle at 100% 0, #000 0 32%, transparent 33%);
+  animation: chaos-grow 15s linear forwards;
+}
+.chaos-frost {
+  box-shadow: inset 0 0 70px 30px rgb(220 240 255 / 0.85);
+  background: radial-gradient(transparent 50%, rgb(210 235 255 / 0.55));
+  animation: chaos-grow 15s ease-out forwards;
+}
+.chaos-ink {
+  background: radial-gradient(circle at 0 100%, #070b1e 0 var(--ink, 0%), transparent calc(var(--ink, 0%) + 2%));
+  animation: chaos-ink 12s ease-in forwards;
+}
+@property --ink { syntax: '<percentage>'; inherits: false; initial-value: 0%; }
+@keyframes chaos-ink { to { --ink: 70%; } }
+@keyframes chaos-grow { from { opacity: 0.2; transform: scale(0.9); } to { opacity: 1; transform: scale(1); } }
+.chaos-still .chaos-cobwebs,
+.chaos-still .chaos-frost { animation: none; }
+.chaos-still .chaos-ink { animation: none; --ink: 45%; }
+.chaos-blinds { background: repeating-linear-gradient(to bottom, rgb(20 26 60 / 0.97) 0 26px, transparent 26px 52px); }
+.chaos-curtain { background: linear-gradient(to right, #8c1d33 0 var(--c, 0%), transparent var(--c, 0%) calc(100% - var(--c, 0%)), #8c1d33 calc(100% - var(--c, 0%))); animation: chaos-curtain 12s ease-in-out forwards; }
+@property --c { syntax: '<percentage>'; inherits: false; initial-value: 0%; }
+@keyframes chaos-curtain { 0% { --c: 0%; } 45%, 60% { --c: 46%; } 100% { --c: 0%; } }
+.chaos-still .chaos-curtain { animation: none; --c: 30%; }
+.chaos-peephole { background: radial-gradient(circle at var(--px, 50%) var(--py, 45%), transparent 0 16vmin, #050816 16.5vmin); animation: chaos-peep 10s ease-in-out infinite alternate; }
+@property --px { syntax: '<percentage>'; inherits: false; initial-value: 50%; }
+@property --py { syntax: '<percentage>'; inherits: false; initial-value: 45%; }
+@keyframes chaos-peep { 0% { --px: 30%; --py: 35%; } 50% { --px: 65%; --py: 60%; } 100% { --px: 45%; --py: 30%; } }
+.chaos-still .chaos-peephole { animation: none; }
+.chaos-flashlight { position: fixed; background: radial-gradient(circle at var(--fx, 50%) var(--fy, 50%), transparent 0 90px, rgb(3 5 15 / 0.97) 140px); }
+
+.chaos-clutter { position: absolute; inset: 0; z-index: 21; pointer-events: none; }
+.chaos-clutter button { pointer-events: auto; position: absolute; cursor: pointer; border: 0; }
+.chaos-sticky-notes { width: clamp(110px, 22%, 190px); aspect-ratio: 1; padding: 0.8rem; background: #ffe86b; color: #3b3000; font: 700 1rem/1.2 'Comic Sans MS', 'Chalkboard SE', cursive; box-shadow: 0 10px 18px -8px rgb(0 0 0 / 0.5); text-align: left; }
+.chaos-mud { width: clamp(120px, 24%, 220px); aspect-ratio: 1.2; background: radial-gradient(circle at 40% 40%, #6b4a2b 0 40%, #4e3420 41% 55%, transparent 56%), radial-gradient(circle at 70% 65%, #5a3c22 0 22%, transparent 23%); background-color: transparent; }
+
+/* ------------------------------------ text ------------------------------------- */
+.chaos-look-comic-font .chaos-stage,
+.chaos-look-comic-font .chaos-stage * { font-family: 'Comic Sans MS', 'Comic Neue', 'Chalkboard SE', cursive !important; }
+.chaos-look-microprint .chaos-stage :is(h1, h2, h3, p, span, button) { font-size: 0.55rem !important; }
+.chaos-look-backwards .chaos-stage :is(h2, [data-choice] span) { display: inline-block; transform: scaleX(-1); }
+.chaos-look-vanishing-question [data-chaos-part='prompt'] { animation: chaos-vanish 2.6s ease-in forwards; }
+@keyframes chaos-vanish { 0%, 75% { opacity: 1; } 100% { opacity: 0; } }
+.chaos-wavy span { display: inline-block; animation: chaos-wave 1.4s ease-in-out infinite; white-space: pre; }
+@keyframes chaos-wave { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-0.25em); } }
+
+/* --------------------------------- answer tiles -------------------------------- */
+[data-chaos-root] [data-choice] { transition: translate 180ms ease-out, scale 400ms ease; }
+.chaos-look-shrink-buttons [data-choice] { animation: chaos-shrink 12s linear forwards; }
+@keyframes chaos-shrink { to { scale: 0.45; } }
+.chaos-look-colour-swap [data-choice] { animation: chaos-colours 8s steps(4) infinite; }
+@keyframes chaos-colours { to { filter: hue-rotate(360deg); } }
+.chaos-look-ghost-buttons [data-choice] { animation: chaos-ghost 3s ease-in-out infinite; }
+@keyframes chaos-ghost { 0%, 100% { opacity: 1; } 50% { opacity: 0.08; } }
+.chaos-still.chaos-look-shrink-buttons [data-choice] { animation: none; scale: 0.7; }
+.chaos-still.chaos-look-colour-swap [data-choice] { animation: none; filter: hue-rotate(120deg); }
+.chaos-still.chaos-look-ghost-buttons [data-choice] { animation: none; opacity: 0.35; }
+
+/* ------------------------------------- HUD ------------------------------------- */
+.chaos-hud {
+  position: absolute;
+  top: 0.5rem;
+  left: 50%;
+  translate: -50% 0;
+  z-index: 30;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.4rem;
+  max-width: min(96%, 46rem);
+  pointer-events: none;
+}
+.chaos-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.3rem 0.7rem;
+  border-radius: 999px;
+  font: 700 0.95rem/1.1 var(--font-sans);
+  color: #fff;
+  box-shadow: 0 6px 16px -8px rgb(0 0 0 / 0.6);
+  animation: chaos-pop 260ms var(--ease-out, ease) both;
+}
+.chaos-chip-bad { background: #b0213c; }
+.chaos-chip-good { background: #0f7a53; }
+.chaos-chip-info { background: #2c3a85; }
+.chaos-banner { font-size: 1.15rem; padding: 0.45rem 1rem; }
+@keyframes chaos-pop { from { scale: 0.6; opacity: 0; } }
+.chaos-still .chaos-chip { animation: none; }
+.chaos-taunt {
+  position: absolute;
+  inset: 0;
+  z-index: 40;
+  display: grid;
+  place-content: center;
+  text-align: center;
+  pointer-events: none;
+  animation: chaos-pop 300ms var(--ease-out, ease) both;
+}
+.chaos-taunt span {
+  font: 800 clamp(2.4rem, 8vw, 6rem) / 1 var(--font-display);
+  color: #fff;
+  -webkit-text-stroke: 3px #1a1440;
+  paint-order: stroke fill;
+  rotate: -4deg;
+}
+.chaos-taunt small { font: 700 1.1rem var(--font-sans); color: #fff; text-shadow: 0 2px 6px rgb(0 0 0 / 0.7); }

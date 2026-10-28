@@ -146,7 +146,7 @@ export function Leaderboard({
             <RankBadge rank={r.rank} big={big} />
             <PlayerGlim avatar={avatarOf(players, r.playerId)} seed={r.playerId} size={64} pose={r.rank === 1 ? 'cheer' : 'idle'} className="size-[var(--lb-glim)] shrink-0" />
             <span className="min-w-0 flex-1 truncate text-[length:var(--lb-name)] leading-tight font-bold">
-              {r.name}
+              <span data-player-name={r.playerId}>{r.name}</span>
               {isYou ? <span className={big ? 'ml-2 text-[0.75em] font-semibold text-text-2' : 'sr-only'}> (you)</span> : null}
             </span>
             {t ? <span className="size-4 shrink-0 rounded-full ring-2 ring-white/50" style={{ background: `hsl(${t.hue} 80% 60%)` }} title={t.name} aria-hidden /> : null}

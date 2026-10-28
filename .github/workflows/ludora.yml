@@ -68,6 +68,9 @@ jobs:
       - name: Production build
         run: npm run build
 
+      - name: The chaos catalogue stays out of the public web app
+        run: npx tsx scripts/check-public-bundle.ts
+
   e2e:
     runs-on: ubuntu-latest
     timeout-minutes: 30

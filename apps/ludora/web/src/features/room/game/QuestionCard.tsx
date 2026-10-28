@@ -2,6 +2,7 @@ import { useEffect, useRef, type ReactNode } from 'react';
 import type { Media, PublicQuestion } from '@ludora/shared';
 import { useAnnounce } from './announce.tsx';
 import { useSfx, useSharedSounds } from '../../../lib/sound/react.tsx';
+import { useChaosPrompt } from '../../chaos/ChaosLayer.tsx';
 
 const IMAGE_HEIGHT = {
   /** Projector: beside the prompt, as tall as the screen comfortably allows. */
@@ -42,6 +43,8 @@ export function QuestionCard({ q, index, total, children, size = 'md' }: { q: Pu
   useAnnounce(index !== undefined && total ? `Question ${index + 1} of ${total}. ${q.prompt}` : q.prompt, key);
   useSfx('question', key, useSharedSounds());
   const heading = useRef<HTMLHeadingElement>(null);
+  // Chaos text looks (jumbled, typed out...) change only how the prompt is drawn, never what is read out.
+  const prompt = useChaosPrompt();
   useEffect(() => {
     if (!document.activeElement || document.activeElement === document.body) heading.current?.focus({ preventScroll: true });
   }, [key]);
@@ -59,8 +62,8 @@ export function QuestionCard({ q, index, total, children, size = 'md' }: { q: Pu
       <div className="paper stage-card flex flex-col gap-3 px-[clamp(1.25rem,2.6vw,3.25rem)] py-[clamp(1rem,2.6vh,2.25rem)]">
         {counter}
         <div className="flex flex-col gap-[clamp(1rem,2vw,2.5rem)] sm:flex-row sm:items-center">
-          <h2 ref={heading} tabIndex={-1} className={`min-w-0 flex-1 font-sans leading-[1.12] font-bold tracking-[-0.01em] text-pretty break-words text-text outline-none ${text} max-sm:text-[1.6rem]`}>
-            {q.prompt}
+          <h2 ref={heading} tabIndex={-1} data-chaos-part="prompt" className={`min-w-0 flex-1 font-sans leading-[1.12] font-bold tracking-[-0.01em] text-pretty break-words text-text outline-none ${text} max-sm:text-[1.6rem]`}>
+            {prompt(q.prompt)}
           </h2>
           {q.media ? <QuestionImage media={q.media} size={many ? 'hostCompact' : 'host'} className="self-start sm:max-w-[42%] sm:self-auto" /> : null}
         </div>
@@ -72,8 +75,8 @@ export function QuestionCard({ q, index, total, children, size = 'md' }: { q: Pu
   return (
     <div className="flex flex-col gap-2.5">
       {counter}
-      <h2 ref={heading} tabIndex={-1} className={`font-sans leading-snug font-bold text-pretty text-text outline-none ${text}`}>
-        {q.prompt}
+      <h2 ref={heading} tabIndex={-1} data-chaos-part="prompt" className={`font-sans leading-snug font-bold text-pretty text-text outline-none ${text}`}>
+        {prompt(q.prompt)}
       </h2>
       {q.media ? <QuestionImage media={q.media} size={many || len > 70 ? 'phoneCompact' : 'phone'} className="self-start" /> : null}
       {children}

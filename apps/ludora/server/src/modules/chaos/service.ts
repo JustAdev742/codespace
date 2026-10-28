@@ -1,6 +1,5 @@
 import { createHmac } from 'node:crypto';
 import { eq } from 'drizzle-orm';
-import { ALLOWED_REACTIONS } from '../../realtime/room.ts';
 import type { AppDeps } from '../../app.ts';
 import { users } from '../../db/schema.ts';
 import type { AuthContext } from '../../http/context.ts';
@@ -22,6 +21,9 @@ export interface ChaosService {
 
 const services = new WeakMap<AppDeps, ChaosService>();
 
+/** The reactions on a player's reaction bar; the ritual only asks for ones a player can actually send. */
+export const RITUAL_REACTIONS = ['wave', 'laugh', 'wow', 'clap', 'heart', 'fire', 'think', 'gg'] as const;
+
 export function chaosService(deps: AppDeps): ChaosService {
   const existing = services.get(deps);
   if (existing) return existing;
@@ -29,7 +31,7 @@ export function chaosService(deps: AppDeps): ChaosService {
   const beats = knockBeats(secret);
   const service: ChaosService = {
     beats,
-    tracker: new SequenceTracker(beats, ALLOWED_REACTIONS),
+    tracker: new SequenceTracker(beats, RITUAL_REACTIONS),
     async isUnlocked(userId) {
       const rows = await deps.db.select({ at: users.chaosUnlockedAt }).from(users).where(eq(users.id, userId)).limit(1);
       return Boolean(rows[0]?.at);

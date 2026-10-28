@@ -75,7 +75,10 @@ export function ChoiceTile({
   tall = false,
   dense = false,
   media,
+  choice,
 }: {
+  /** The choice's token (c0, c1... or true/false), for chaos looks that point at one tile. */
+  choice?: string | undefined;
   index: number;
   text: string;
   selected?: boolean;
@@ -111,6 +114,7 @@ export function ChoiceTile({
       onClick={onClick}
       disabled={disabled}
       data-pressed={selected || undefined}
+      data-choice={choice}
       aria-pressed={selected}
       className={`relative flex w-full text-left [--press:5px] disabled:cursor-default ${layout === 'stack' ? `flex-col items-start justify-between ${s.stack} ${tall ? TALL_STACK : dense ? DENSE_STACK : ''}` : `items-center ${s.tile} ${tall ? TALL : ''}`} ${lit ? 'piece text-on-accent' : 'piece-off'} ${
         correct ? 'ring-[3px] ring-glim ring-offset-[3px] ring-offset-[color:var(--stage-3)]' : ''
@@ -221,7 +225,7 @@ function ChoiceAnswer({ q, onSubmit, disabled, chosen, compact }: AnswerInputPro
   return (
     <div className={grid} role="group" aria-label="Answers">
       {q.choices.map((c, i) => (
-        <ChoiceTile key={c.id} index={i} text={c.text} media={c.media} selected={picked === c.id} dimmed={picked !== null && picked !== c.id} onClick={() => void pick(c.id)} disabled={locked && picked !== c.id} compact={compact} layout={layout} tall={tall && !compact && !q.media} dense={dense} keyHint />
+        <ChoiceTile key={c.id} choice={c.id} index={i} text={c.text} media={c.media} selected={picked === c.id} dimmed={picked !== null && picked !== c.id} onClick={() => void pick(c.id)} disabled={locked && picked !== c.id} compact={compact} layout={layout} tall={tall && !compact && !q.media} dense={dense} keyHint />
       ))}
     </div>
   );
@@ -238,8 +242,8 @@ function TrueFalseAnswer({ q, onSubmit, disabled, compact }: AnswerInputProps) {
   useNumberKeys(2, (i) => void pick(i === 0), !locked);
   return (
     <div className="grid grid-cols-2 gap-3" role="group" aria-label="Answers">
-      <ChoiceTile index={0} text="True" selected={picked === true} dimmed={picked === false} onClick={() => void pick(true)} disabled={locked} compact={compact} layout="stack" tall={!compact && !q.media} keyHint />
-      <ChoiceTile index={1} text="False" selected={picked === false} dimmed={picked === true} onClick={() => void pick(false)} disabled={locked} compact={compact} layout="stack" tall={!compact && !q.media} keyHint />
+      <ChoiceTile choice="true" index={0} text="True" selected={picked === true} dimmed={picked === false} onClick={() => void pick(true)} disabled={locked} compact={compact} layout="stack" tall={!compact && !q.media} keyHint />
+      <ChoiceTile choice="false" index={1} text="False" selected={picked === false} dimmed={picked === true} onClick={() => void pick(false)} disabled={locked} compact={compact} layout="stack" tall={!compact && !q.media} keyHint />
     </div>
   );
 }
@@ -265,7 +269,7 @@ function MultiAnswer({ q, onSubmit, disabled, compact }: AnswerInputProps & { q:
       <p className="font-semibold text-text-2">{q.selectCount ? `Pick ${q.selectCount}.` : 'Pick every correct answer.'}</p>
       <div className={grid} role="group" aria-label="Answers">
         {q.choices.map((c, i) => (
-          <ChoiceTile key={c.id} index={i} text={c.text} media={c.media} selected={sel.includes(c.id)} dimmed={locked && !sel.includes(c.id)} onClick={() => toggle(c.id)} disabled={locked} compact={compact} layout={layout} dense={dense} keyHint />
+          <ChoiceTile key={c.id} choice={c.id} index={i} text={c.text} media={c.media} selected={sel.includes(c.id)} dimmed={locked && !sel.includes(c.id)} onClick={() => toggle(c.id)} disabled={locked} compact={compact} layout={layout} dense={dense} keyHint />
         ))}
       </div>
       <SubmitButton disabled={locked || sel.length === 0} sent={sent} onClick={submit} label={sel.length ? `Submit ${sel.length} ${sel.length === 1 ? 'answer' : 'answers'}` : 'Submit answers'} sticky />

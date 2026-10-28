@@ -1,5 +1,5 @@
 import { Suspense, useEffect, useRef, useState } from 'react';
-import { FastForward, Pause, Play, Square } from 'lucide-react';
+import { FastForward, Pause, Play, Square, Wind } from 'lucide-react';
 import { toast } from 'sonner';
 import type { RoomView } from '@ludora/shared';
 import type { RoomHandle } from '../../lib/useRoom.ts';
@@ -8,6 +8,7 @@ import { Dialog, Spinner } from '../../ui/primitives.tsx';
 import { Button } from '../../ui/Button.tsx';
 import { MODE_SCREENS } from './modes/registry.ts';
 import { useAnnounce } from './game/announce.tsx';
+import { ChaosLayer } from '../chaos/ChaosLayer.tsx';
 
 /*
  * The parts of a game room that do not care where the room runs: the stage,
@@ -68,6 +69,12 @@ export function HostControls({ room, handle }: { room: RoomView; handle: RoomHan
           <span className="max-md:sr-only">Pause</span>
         </Button>
       )}
+      {room.chaos && room.chaos.casts > 0 && !room.chaos.calmed ? (
+        // Shown only once someone has used chaos in this game: ends every effect and stops any more.
+        <Button size="sm" variant="secondary" className={WIDE} icon={<Wind className="size-4" aria-hidden />} onClick={() => run({ cmd: 'chaosCalm' })}>
+          <span className="max-md:sr-only">Calm the room</span>
+        </Button>
+      ) : null}
       <Button size="sm" variant="ghost" className={WIDE} icon={<Square className="size-4" aria-hidden />} onClick={() => setConfirmEnd(true)}>
         <span className="max-md:sr-only">End game</span>
       </Button>
@@ -147,9 +154,11 @@ export function GameStage({ room, handle, isHost }: { room: RoomView; handle: Ro
   return (
     <div className="relative flex flex-1 flex-col">
       <PauseNews paused={paused} hostConnected={room.room.hostConnected} />
-      <Suspense fallback={<Spinner />}>
-        <Screen view={room.game} room={room} act={handle.act} gameNow={handle.gameNow} paused={paused} />
-      </Suspense>
+      <ChaosLayer room={room} gameNow={handle.gameNow}>
+        <Suspense fallback={<Spinner />}>
+          <Screen view={room.game} room={room} act={handle.act} gameNow={handle.gameNow} paused={paused} />
+        </Suspense>
+      </ChaosLayer>
       {paused && isHost ? (
         // The host screen is on the projector: tell the room, but leave the question readable.
         <div className="pointer-events-none absolute inset-x-0 top-0 z-20 flex justify-center">

@@ -10,6 +10,7 @@ import { Stage } from '../../ui/Stage.tsx';
 import { HostLobby, PlayerLobby } from './Lobby.tsx';
 import { Results } from './Results.tsx';
 import { ReactionBar, ReactionLayer } from './game/Reactions.tsx';
+import { ChaosMenuButton, LanternGlow } from '../chaos/ChaosEntry.tsx';
 import { ReportDialog } from '../moderation/ReportDialog.tsx';
 import { DebugOverlay } from './DebugOverlay.tsx';
 import './stage.css';
@@ -165,6 +166,7 @@ export default function RoomPage() {
             </span>
           ) : null}
           <div className="ml-auto flex shrink-0 items-center gap-1.5 sm:gap-2">
+            {!isHost && live ? <ChaosMenuButton room={room} handle={handle} /> : null}
             {isHost && live ? <HostControls room={room} handle={handle} /> : null}
             {!isHost && room.room.solo && live ? (
               <Button size="sm" variant="ghost" onClick={() => void handle.host({ cmd: 'end' })}>
@@ -242,6 +244,7 @@ export default function RoomPage() {
       ) : null}
       <FeedToasts feed={room.feed} quiet={isHost && live && hostListsFeed(room.room.modeId)} />
       <ReactionLayer reactions={handle.reactions} big={isHost} />
+      <LanternGlow handle={handle} />
       {debug ? <DebugOverlay handle={handle} /> : null}
       </Announcer>
       </SoundRoleContext.Provider>

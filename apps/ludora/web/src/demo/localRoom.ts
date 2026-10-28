@@ -138,6 +138,9 @@ export function useLocalRoom(setup: DemoSetup): { player: RoomHandle | null; hos
   }, []);
   // Leaving is going back to the demo's start page, which closes the room.
   const leave = useCallback(async () => {}, []);
+  // Chaos needs the game server (the unlock lives on an account); the demo has none.
+  const chaos = useCallback(async (): Promise<AckResult> => ({ ok: false, error: { code: 'unavailable', message: 'Nothing happens.' } }), []);
+  const clearGlow = useCallback(() => {}, []);
   // The game clock, read from the game itself rather than worked out from the last view.
   const gameNow = useCallback(() => room.current?.runtime?.gameNow() ?? 0, []);
 
@@ -153,15 +156,18 @@ export function useLocalRoom(setup: DemoSetup): { player: RoomHandle | null; hos
             closedMessage: null,
             role,
             reactions: screens.reactions,
+            glow: false,
             debug: { transport: 'in-page', views: 0, reconnects: 0, lastAckMs: null },
             act,
             host,
             react,
             leave,
             gameNow,
+            chaos,
+            clearGlow,
           }
         : null,
-    [screens.reactions, act, host, react, leave, gameNow],
+    [screens.reactions, act, host, react, leave, gameNow, chaos, clearGlow],
   );
   const player = useMemo(() => handle('player', screens.player), [handle, screens.player]);
   const hostHandle = useMemo(() => handle('host', screens.host), [handle, screens.host]);

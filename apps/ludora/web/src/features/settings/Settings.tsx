@@ -7,6 +7,7 @@ import { api, ApiError } from '../../lib/api.ts';
 import { useMe, type Preferences } from '../../lib/session.ts';
 import { applyPreferences, applyTheme, localTheme } from '../../lib/prefs.ts';
 import { AccountError, Field, Input, PageHeader, Panel, Select, Skeleton, Switch } from '../../ui/primitives.tsx';
+import { SecretLantern } from '../chaos/ChaosEntry.tsx';
 import { Button, ButtonLink } from '../../ui/Button.tsx';
 import { RecoveryCodeDialog } from '../auth/RecoveryCodeDialog.tsx';
 
@@ -281,6 +282,13 @@ export default function Settings() {
               </div>
             </>
           )}
+        </Panel>
+        <Panel className="flex items-center gap-4 p-5">
+          <SecretLantern />
+          <div>
+            <h2 className="font-display text-2xl leading-tight font-bold">About Ludora</h2>
+            <p className="text-sm text-text-2">Made for classrooms. Every lantern has a story, if you know how to ask.</p>
+          </div>
         </Panel>
       </div>
       <RecoveryCodeDialog code={code} onDone={() => setCode(null)} />
