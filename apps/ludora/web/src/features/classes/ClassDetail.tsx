@@ -12,6 +12,7 @@ import { Badge, Dialog, EmptyState, ErrorNotice, Field, Input, PageHeader, Panel
 import { Button, ButtonLink, IconButton } from '../../ui/Button.tsx';
 import { BackLink, dateText, dateTimeText, errorText, hasStatus, NoValue, TableBox, Th, usePageTitle } from '../reports/reportUi.tsx';
 import { AssignmentDialog } from './AssignmentDialog.tsx';
+import { EventCard, SchoolEventsPanel } from './SchoolEvents.tsx';
 import { CodeTicket } from '../auth/RecoveryCodeDialog.tsx';
 import {
   classKeys,
@@ -302,8 +303,12 @@ function TeacherView({ data }: { data: TeacherClassDetail }) {
         items={[
           { value: 'assignments', label: 'Assignments', count: data.assignments.length },
           { value: 'students', label: 'Students', count: data.memberCount },
+          { value: 'events', label: 'School and events', count: data.events.length },
         ]}
       >
+        <TabPanel value="events" className="focus-visible:outline-offset-4">
+          <SchoolEventsPanel classId={cls.id} schoolName={cls.schoolName} events={data.events} archived={cls.archived} />
+        </TabPanel>
         <TabPanel value="assignments" className="focus-visible:outline-offset-4">
           <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
             <p className="max-w-[60ch] text-sm text-text-2">Students play each assignment on their own, as often as they like. Open one to see how every student did.</p>
@@ -546,7 +551,7 @@ function StudentView({ data }: { data: StudentClassDetail }) {
       <BackLink to="/classes">All classes</BackLink>
       <PageHeader
         title={<span className="break-words">{cls.name}</span>}
-        description={`Taught by ${cls.teacher}`}
+        description={`${cls.schoolName ? `${cls.schoolName}. ` : ''}Taught by ${cls.teacher}`}
         actions={
           <Button size="sm" variant="ghost" icon={<LogOut className="size-4" />} onClick={() => setLeaving(true)}>
             Leave class
@@ -558,6 +563,16 @@ function StudentView({ data }: { data: StudentClassDetail }) {
           <p className="font-semibold text-text">This class is archived.</p>
           <p>Its assignments cannot be played right now. Your results so far are kept.</p>
         </div>
+      ) : null}
+      {data.events.length ? (
+        <section className="mb-6">
+          <SectionTitle>Events</SectionTitle>
+          <ul className="grid gap-3 md:grid-cols-2">
+            {data.events.map((e) => (
+              <EventCard key={e.id} e={e} school={cls.schoolName} />
+            ))}
+          </ul>
+        </section>
       ) : null}
       <section>
         <SectionTitle>Assignments</SectionTitle>

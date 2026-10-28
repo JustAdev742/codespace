@@ -74,8 +74,20 @@ export interface ClassMember {
 interface ClassInfo {
   id: string;
   name: string;
+  /** As the teacher typed it; text only. */
+  schoolName: string | null;
   teacher: string;
   archived: boolean;
+}
+
+export interface ClassEvent {
+  id: string;
+  title: string;
+  message: string;
+  decor: string;
+  hue: number;
+  startsAt: string;
+  endsAt: string;
 }
 
 export interface TeacherClassDetail {
@@ -84,6 +96,7 @@ export interface TeacherClassDetail {
   memberCount: number;
   members: ClassMember[];
   assignments: TeacherAssignment[];
+  events: ClassEvent[];
 }
 
 export interface StudentClassDetail {
@@ -92,6 +105,7 @@ export interface StudentClassDetail {
   memberCount: number;
   members: null;
   assignments: StudentAssignment[];
+  events: ClassEvent[];
 }
 
 export type ClassDetail = TeacherClassDetail | StudentClassDetail;

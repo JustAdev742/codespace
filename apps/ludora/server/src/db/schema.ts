@@ -553,6 +553,8 @@ export const classes = pgTable(
     ownerId: uuid('owner_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
     name: text('name').notNull(),
     joinCode: text('join_code').notNull(),
+    /** The school's name as the teacher typed it, shown with the class's events. Text only: no crests or logos. */
+    schoolName: text('school_name'),
     createdAt: now('created_at'),
     archivedAt: ts('archived_at'),
   },
@@ -790,4 +792,22 @@ export const customGames = pgTable(
     updatedAt: now('updated_at'),
   },
   (t) => [index('custom_games_owner_idx').on(t.ownerId, t.updatedAt), index('custom_games_public_idx').on(t.visibility, t.plays), check('custom_games_visibility_valid', sql`${t.visibility} in ('private','unlisted','public')`)],
+);
+
+/** A school event a teacher set for their class: shown on students' home pages between its dates. */
+export const classEvents = pgTable(
+  'class_events',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    classId: uuid('class_id').notNull().references(() => classes.id, { onDelete: 'cascade' }),
+    title: text('title').notNull(),
+    message: text('message').notNull().default(''),
+    decor: text('decor').notNull(),
+    hue: integer('hue').notNull(),
+    startsAt: timestamp('starts_at', { withTimezone: true }).notNull(),
+    endsAt: timestamp('ends_at', { withTimezone: true }).notNull(),
+    createdBy: uuid('created_by').references(() => users.id, { onDelete: 'set null' }),
+    createdAt: now('created_at'),
+  },
+  (t) => [index('class_events_class_idx').on(t.classId, t.endsAt)],
 );

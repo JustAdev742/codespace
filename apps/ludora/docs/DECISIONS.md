@@ -453,3 +453,13 @@ Games are private, shared by link, or (for accounts trusted to publish sets)
 listed in Community games; makers show by display name only, and moderators
 can hide a listed game, audited. Making happens on the host page itself (Save
 as a game), so there is one place to set up a game, not two.
+
+**D52. A school's events come from its teacher, never from Ludora.** A
+teacher can type their school's name on a class and schedule events for it
+(a carnival, a Book Week parade, a house day): a name, a line for students,
+dates (a month at most) and decorations from the seasonal set. Students in the
+class see an event on their home page while it is on, in place of the
+season's garland, and on the class page with what is coming. Ludora holds no
+school's dates and shows no crest or logo; the school name is plain text as
+the teacher typed it, so "The Hills Grammar School" appears only where a
+teacher there wrote it.

@@ -393,6 +393,12 @@ Last updated: 2026-10-28.
   skyline) and Corner Shop (the shop and the high street). Each was played in
   the demo with bots, on a phone and a desktop, on the big screen and with 3D
   off.
+- **School events** (D52): a teacher can type their school's name on a class
+  and schedule its own events (name, a line for students, dates, decorations);
+  students see the one that is on across the top of their home page and the
+  list on the class page. Checked in a browser: a teacher set The Hills
+  Grammar School and an Athletics Carnival with bunting, and a student in the
+  class saw it on their home page.
 - **End-to-end tests** (`e2e/`, Playwright against the production build and a
   fresh database, locally and in CI): a host and a guest play Classic from join code to results;
   a teacher writes a set with a picture and players see it in a game; a teacher
@@ -418,7 +424,7 @@ creates and drops its own database).
 |---|---|---|
 | content | 4 | 132: catalogue integrity, every built-in question set, the seasonal calendar (11) and the monthly drops (9) |
 | engine | 43 | 5968, including the conformance suite for every mode and variant, and the chaos suite: every cheat in every mode it supports (4366 tests), the core rules and each mode's pack |
-| server | 13 | 159: auth and rate limits (15), realtime (7), economy (22), staff (55), social and classes (18), preferences (4), open games (4), sign-in help (3), uploads (6), AI drafts (11), reward counting (4), origin checks (4), chaos (9), Creator Studio (6), Game Maker (6) |
+| server | 13 | 159: auth and rate limits (15), realtime (7), economy (22), staff (55), social and classes (18), preferences (4), open games (4), sign-in help (3), uploads (6), AI drafts (11), reward counting (4), origin checks (4), chaos (9), Creator Studio (6), Game Maker (6), school events (4) |
 | web | 4 | 84: the set editor's checks, import and export (45); the synthesised music, in key and looping cleanly (16); the recorded sounds, every effect with a file and every loop a whole number of bars (16); which music plays when (7) |
 | shared | 0 | no tests of its own; its schemas are exercised by the other projects |
 | **Total** | **62** | **6323 passing** at the last full run (2026-10-28) |

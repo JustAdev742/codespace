@@ -3,10 +3,10 @@ import { and, asc, count, desc, eq, inArray, isNull, sql } from 'drizzle-orm';
 import { z } from 'zod';
 import { getMode, getVariant } from '@ludora/engine';
 import { soloBlocker } from '@ludora/engine/catalog';
-import { hasPermission, levelFromXp, questionSchema, roomOptionsSchema, type Question } from '@ludora/shared';
+import { classEventSchema, hasPermission, levelFromXp, questionSchema, roomOptionsSchema, schoolNameSchema, type Question } from '@ludora/shared';
 import type { AppDeps } from '../../app.ts';
 import type { DbOrTx } from '../../db/client.ts';
-import { assignments, classMembers, classes, gameParticipants, gameSessions, moderationActions, questionSets, users } from '../../db/schema.ts';
+import { assignments, classEvents, classMembers, classes, gameParticipants, gameSessions, moderationActions, questionSets, users } from '../../db/schema.ts';
 import { outer } from '../../db/sql.ts';
 import { noStore, requireAccount, type AuthContext } from '../../http/context.ts';
 import { AppError, conflict, forbidden, notFound } from '../../lib/errors.ts';
@@ -57,6 +57,13 @@ async function newJoinCode(db: DbOrTx): Promise<string> {
 }
 
 /** The class and the viewer's place in it, or a 404 that says nothing about classes the viewer is not part of. */
+const MAX_EVENTS = 30;
+const eventParams = z.object({ id: z.string().uuid(), eid: z.string().uuid() });
+
+function eventView(e: typeof classEvents.$inferSelect) {
+  return { id: e.id, title: e.title, message: e.message, decor: e.decor, hue: e.hue, startsAt: e.startsAt.toISOString(), endsAt: e.endsAt.toISOString() };
+}
+
 async function loadClass(db: DbOrTx, id: string, auth: AuthContext): Promise<{ cls: ClassRow; teacher: boolean; member: boolean }> {
   const [cls] = await db.select().from(classes).where(eq(classes.id, id)).limit(1);
   if (!cls) throw notFound('That class does not exist.');
@@ -173,8 +180,15 @@ export async function classRoutes(app: FastifyInstance, deps: AppDeps) {
           : { mine: me ? { plays: me.plays, bestCorrect: me.bestCorrect, bestAnswered: me.bestAnswered, lastPlayedAt: new Date(me.last).toISOString() } : null }),
       };
     });
+    const events = await db
+      .select()
+      .from(classEvents)
+      .where(and(eq(classEvents.classId, id), sql`${classEvents.endsAt} > now()`))
+      .orderBy(asc(classEvents.startsAt))
+      .limit(30);
     return {
-      class: { id: cls.id, name: cls.name, teacher: owner?.displayName ?? 'Teacher', archived: Boolean(cls.archivedAt), ...(teacher ? { joinCode: cls.joinCode } : {}) },
+      class: { id: cls.id, name: cls.name, schoolName: cls.schoolName, teacher: owner?.displayName ?? 'Teacher', archived: Boolean(cls.archivedAt), ...(teacher ? { joinCode: cls.joinCode } : {}) },
+      events: events.map(eventView),
       role: teacher ? 'teacher' : 'student',
       memberCount: memberRows.length,
       members: teacher
@@ -187,12 +201,16 @@ export async function classRoutes(app: FastifyInstance, deps: AppDeps) {
   app.patch('/api/classes/:id', async (req) => {
     const auth = requireAccount(req);
     const { id } = parse(idParam, req.params);
-    const body = parse(z.object({ name: z.string().trim().min(2).max(60).optional(), archived: z.boolean().optional() }), req.body);
+    const body = parse(z.object({ name: z.string().trim().min(2).max(60).optional(), archived: z.boolean().optional(), schoolName: schoolNameSchema.optional() }), req.body);
     const { teacher } = await loadClass(db, id, auth);
     if (!teacher) throw forbidden('Only the teacher can change the class.');
     await db
       .update(classes)
-      .set({ ...(body.name ? { name: body.name } : {}), ...(body.archived !== undefined ? { archivedAt: body.archived ? new Date() : null } : {}) })
+      .set({
+        ...(body.name ? { name: body.name } : {}),
+        ...(body.archived !== undefined ? { archivedAt: body.archived ? new Date() : null } : {}),
+        ...(body.schoolName !== undefined ? { schoolName: body.schoolName || null } : {}),
+      })
       .where(eq(classes.id, id));
     return { ok: true };
   });
@@ -404,5 +422,51 @@ export async function classRoutes(app: FastifyInstance, deps: AppDeps) {
       students,
       questions,
     };
+  });
+
+  /* ---------------------------------- school events ---------------------------------- */
+
+  /** The teacher schedules an event for the class: their own name, dates and words. */
+  app.post('/api/classes/:id/events', { config: { rateLimit: { max: 30, timeWindow: '1 hour' } } }, async (req) => {
+    const auth = requireAccount(req);
+    const { id } = parse(idParam, req.params);
+    const body = parse(classEventSchema, req.body);
+    const { teacher, cls } = await loadClass(db, id, auth);
+    if (!teacher) throw forbidden('Only the teacher can add events.');
+    if (cls.archivedAt) throw conflict('This class is archived.');
+    if (Date.parse(body.endsAt) <= Date.now()) throw new AppError(400, 'validation_failed', 'That event has already ended.', { endsAt: 'Pick an end in the future.' });
+    const [{ n } = { n: 0 }] = await db.select({ n: count() }).from(classEvents).where(and(eq(classEvents.classId, id), sql`${classEvents.endsAt} > now()`));
+    if (n >= MAX_EVENTS) throw conflict(`A class can have ${MAX_EVENTS} upcoming events at most.`);
+    const [row] = await db
+      .insert(classEvents)
+      .values({ classId: id, title: body.title, message: body.message, decor: body.decor, hue: body.hue, startsAt: new Date(body.startsAt), endsAt: new Date(body.endsAt), createdBy: auth.user.id })
+      .returning();
+    return { event: eventView(row!) };
+  });
+
+  app.delete('/api/classes/:id/events/:eid', async (req) => {
+    const auth = requireAccount(req);
+    const { id, eid } = parse(eventParams, req.params);
+    const { teacher } = await loadClass(db, id, auth);
+    if (!teacher) throw forbidden('Only the teacher can remove events.');
+    const gone = await db.delete(classEvents).where(and(eq(classEvents.id, eid), eq(classEvents.classId, id))).returning({ id: classEvents.id });
+    if (!gone.length) throw notFound('No event with that id.');
+    return { ok: true };
+  });
+
+  /** Events on right now in the classes you are in or teach, for the home page. */
+  app.get('/api/me/events', async (req, reply) => {
+    noStore(reply);
+    const auth = req.auth;
+    if (!auth || auth.user.isGuest) return { events: [] };
+    const rows = await db
+      .select({ e: classEvents, className: classes.name, schoolName: classes.schoolName })
+      .from(classEvents)
+      .innerJoin(classes, eq(classes.id, classEvents.classId))
+      .leftJoin(classMembers, and(eq(classMembers.classId, classes.id), eq(classMembers.userId, auth.user.id)))
+      .where(and(isNull(classes.archivedAt), sql`(${classes.ownerId} = ${auth.user.id} or ${classMembers.userId} is not null)`, sql`${classEvents.startsAt} <= now()`, sql`${classEvents.endsAt} > now()`))
+      .orderBy(asc(classEvents.endsAt))
+      .limit(5);
+    return { events: rows.map((r) => ({ ...eventView(r.e), className: r.className, schoolName: r.schoolName })) };
   });
 }

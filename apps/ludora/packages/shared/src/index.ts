@@ -12,3 +12,4 @@ export * from './admin.ts';
 export * from './ai.ts';
 export * from './studio.ts';
 export * from './games.ts';
+export * from './schoolEvents.ts';
