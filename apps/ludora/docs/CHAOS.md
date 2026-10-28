@@ -118,19 +118,20 @@ knock, the riddle's answer and the ritual.
 
 ## The catalogue
 
-**769 cheats and 10 combos**, every one tested. That is short of the 1,000 the brief aimed for.
+**805 cheats and 10 combos**, every one tested. That is short of the 1,000 the brief aimed for.
 The count is honest: nothing in it is an alias, a renamed copy or a button that does nothing. It
-grows as each 3D mode gets its pack (Gold Rush, Big Catch and Code Breakers have theirs).
+grows as each 3D mode gets its pack (Gold Rush, Big Catch, Code Breakers and Corner Shop have
+theirs).
 
 | Category | Cheats |
 |---|---|
-| Score | 73 |
-| Advantage | 188 |
-| Troll | 219 |
-| Round | 83 |
-| Economy | 93 |
+| Score | 76 |
+| Advantage | 198 |
+| Troll | 229 |
+| Round | 88 |
+| Economy | 98 |
 | Visual | 61 |
-| Random | 52 |
+| Random | 55 |
 
 | Pack | Cheats | Pack | Cheats |
 |---|---|---|---|
@@ -139,13 +140,14 @@ grows as each 3D mode gets its pack (Gold Rush, Big Catch and Code Breakers have
 | Night Market | 39 | Glim Duels | 27 |
 | Big Catch | 38 | Gloom Giant | 26 |
 | Festival Workshop | 38 | Tug of War | 26 |
-| Lantern Guard | 35 | Glimgo | 21 |
-| Code Breakers | 34 | Time Attack | 20 |
-| Lantern Lands | 32 | Survival Run | 17 |
-| Gold Rush | 31 | Classic | 14 |
-| Lantern Match | 14 | Lantern Out | 14 |
-| Word Scramble | 14 | Confidence | 10 |
-| Quick Draw | 6 | Flashcard Study | 5 |
+| Corner Shop | 36 | Glimgo | 21 |
+| Lantern Guard | 35 | Time Attack | 20 |
+| Code Breakers | 34 | Survival Run | 17 |
+| Lantern Lands | 32 | Classic | 14 |
+| Gold Rush | 31 | Lantern Match | 14 |
+| Lantern Out | 14 | Word Scramble | 14 |
+| Confidence | 10 | Quick Draw | 6 |
+| Flashcard Study | 5 | | |
 
 ### How every cheat is tested
 
