@@ -26,7 +26,8 @@ Nothing secret is committed; copy `.env.example` to `.env` for compose.
 |---|---|---|
 | `DATABASE_URL` | yes | Postgres connection string. |
 | `PUBLIC_ORIGIN` | yes | The address people open, e.g. `https://play.example.org`. Used for CSRF and WebSocket origin checks; requests from other origins are refused. |
-| `IP_HASH_KEY` | yes in production | At least 16 random characters. IP addresses are only stored as keyed hashes. |
+| `IP_HASH_KEY` | yes in production | At least 16 random characters. IP addresses are only stored as keyed hashes. Production refuses the `change-me` and `dev-only` placeholders. |
+| `CHAOS_SECRET` | no | At least 16 random characters (`openssl rand -hex 32`). Seeds the secret lantern's knock rhythm (see CHAOS.md); without it the rhythm is derived from `IP_HASH_KEY`. Keep it in the host's secret store or `.env`, never in the repository. Changing it changes the rhythm. |
 | `APP_ENV` | no (production in the image) | See above. |
 | `TRUST_PROXY` | behind a proxy | `true` when a reverse proxy sets `X-Forwarded-For`; needed for per-IP rate limits. |
 | `COOKIE_SECURE` | no | Defaults to `true` in production. Only set `false` to try the image over plain http on your own machine. |

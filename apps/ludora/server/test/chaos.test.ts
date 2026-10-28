@@ -183,7 +183,7 @@ describe('over HTTP and sockets', () => {
     const ritual = solved.body.ritual as string[];
 
     // 3. The ritual, in a running game.
-    const code = (await host.client.post('/api/rooms', { setId: set!.id, modeId: 'classic', common: { questionLimit: 5, questionTimeSec: 60 } })).body.code as string;
+    const code = (await host.client.post('/api/rooms', { setId: set!.id, modeId: 'classic', common: { questionLimit: 5, questionTimeSec: 60 }, options: { chaos: true } })).body.code as string;
     const hostSock = socketFor(cookieOf(host.client));
     await emit(hostSock, 'room:join', { code });
     const fSock = socketFor(cookieOf(finder.client));
@@ -231,6 +231,21 @@ describe('over HTTP and sockets', () => {
     expect(await emit(fSock, 'room:chaos', { op: 'cast', actionId: 'bad', casts: [] })).toMatchObject({ ok: false, error: { code: 'bad_request' } });
     // The other player cannot cast, whatever they send.
     expect(await emit(oSock, 'room:chaos', { op: 'cast', actionId: 'cast-other-1', casts: [{ cheatId: 'look.snow', target: joinedOther.playerId }] })).toMatchObject({ ok: false });
+
+    // A room whose host did not turn lantern tricks on has no chaos, even for an unlocked player.
+    const calmCode = (await host.client.post('/api/rooms', { setId: set!.id, modeId: 'classic', common: { questionLimit: 5, questionTimeSec: 60 } })).body.code as string;
+    const calmHost = socketFor(cookieOf(host.client));
+    await emit(calmHost, 'room:join', { code: calmCode });
+    const calmFinder = socketFor(cookieOf(finder.client));
+    const calmView = latestView(calmFinder);
+    expect((await emit(calmFinder, 'room:join', { code: calmCode })).ok).toBe(true);
+    const calmOther = socketFor(cookieOf(other.client));
+    const calmTarget = await emit(calmOther, 'room:join', { code: calmCode });
+    expect(await emit(calmHost, 'room:host', { cmd: 'start' })).toMatchObject({ ok: true });
+    await until(() => calmView.v?.room.status === 'running');
+    expect(calmView.v.chaos).toBeUndefined();
+    expect(await emit(calmFinder, 'room:chaos', { op: 'cast', actionId: 'cast-calm-01', casts: [{ cheatId: 'look.snow', target: calmTarget.playerId }] })).toMatchObject({ ok: false });
+    for (const s of [calmHost, calmFinder, calmOther]) s.disconnect();
 
     // The host calms the room: effects end and nobody can cast for the rest of the game.
     expect(await emit(hostSock, 'room:host', { cmd: 'chaosCalm' })).toMatchObject({ ok: true });

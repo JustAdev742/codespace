@@ -308,7 +308,7 @@ function Setup({ solo, preset, gameId, making }: { solo: boolean; preset: string
   const [choice, setChoice] = useState<Choice | null>(null);
   const [settings, setSettings] = useState<Record<string, unknown>>({});
   const [common, setCommon] = useState<Record<string, number | boolean>>({});
-  const [options, setOptions] = useState({ lateJoin: true, generatedNames: false, requireAccount: false });
+  const [options, setOptions] = useState({ lateJoin: true, generatedNames: false, requireAccount: false, chaos: false });
   const [busy, setBusy] = useState(false);
   const [saving, setSaving] = useState(false);
   const [atLimit, setAtLimit] = useState(false);
@@ -492,6 +492,12 @@ function Setup({ solo, preset, gameId, making }: { solo: boolean; preset: string
                   <Switch checked={options.generatedNames} onCheckedChange={(v) => setOptions((o) => ({ ...o, generatedNames: v }))} label="Generated names only" description="Everyone gets a random friendly name. Good for younger classes." />
                   <Switch checked={options.lateJoin} onCheckedChange={(v) => setOptions((o) => ({ ...o, lateJoin: v }))} label="Allow late joining" description="Players can join after the game has started." />
                   <Switch checked={options.requireAccount} onCheckedChange={(v) => setOptions((o) => ({ ...o, requireAccount: v }))} label="Accounts only" description="Only signed-in players with an account can join." />
+                  <Switch
+                    checked={options.chaos}
+                    onCheckedChange={(v) => setOptions((o) => ({ ...o, chaos: v }))}
+                    label="Lantern tricks (party games)"
+                    description="Players who have found Ludora's secret lantern can play tricks that change the game. Leave this off for lessons; you can calm the room at any time."
+                  />
                 </div>
               </div>
             ) : null}

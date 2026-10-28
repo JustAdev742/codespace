@@ -73,9 +73,10 @@ the bottom.
 - **The host can calm the room.** "Calm the room" in the host controls ends every effect and
   stops new casts for the rest of the game.
 - **Homework is off limits.** Chaos never runs in an assignment.
-- **Rooms without chaos.** The room API's `chaos` option (on by default) turns it off for a
-  room. The host page does not offer it, so as not to give the secret away; calming the room
-  does the same job once a game is running.
+- **Off unless the host turns it on.** The room's `chaos` option is off by default, so an
+  ordinary classroom game never has chaos. The host page offers it as "Lantern tricks (party
+  games)", which says that a secret exists but not how to find it. Calming the room still ends
+  every effect once a game is running.
 - **Rewards.** A player who casts in a game earns nothing from that game. Everyone else is paid
   for their answers, but places earn nothing, because chaos may have decided them. The game's
   record and the teacher's report show that chaos was used.
@@ -102,6 +103,21 @@ addresses. The protection is the server, not the obscurity:
 What a determined person *can* learn from the public app: that the About lantern exists and
 reports taps, and the names of the endpoints. None of that unlocks anything without the right
 knock, the riddle's answer and the ritual.
+
+**Where the secret lives.** The knock rhythm is an HMAC of `CHAOS_SECRET`, or of a key derived
+from `IP_HASH_KEY` when that is unset. Both are runtime settings: put them in the host's secret
+store, or in an `.env` file that is never committed (`.env.example` shows the names, not values).
+Production refuses to start on the `change-me` or `dev-only` placeholders published in this
+repository (`server/src/config.ts`, tested in `server/test/config.test.ts`).
+
+**Limits, plainly.** The flicker shows the rhythm on purpose: watching it is the first clue, so
+the knock is a puzzle step rather than a password. What keeps the menu earned is that the riddle
+and the ritual are drawn fresh for each attempt, checked on the server and the ritual must be
+done in a live game, within time limits, with 30 knocks an hour per account and three riddle
+tries per attempt. Anyone who obtains `CHAOS_SECRET`, `IP_HASH_KEY`, the database or a shell on
+the server can learn or skip the sequence; obfuscating the web app would not change that. An
+unlock grants only chaos: `users.chaos_unlocked_at` is read by the chaos module alone, and no
+role, permission or staff route depends on it.
 
 ## Architecture
 

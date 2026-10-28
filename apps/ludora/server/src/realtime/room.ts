@@ -579,9 +579,9 @@ export class Room {
     return ack;
   }
 
-  /** Chaos runs in this room's games unless the host switched it off or the game is homework. */
+  /** Chaos runs in this room's games only when the host turned it on, and never in homework. */
   chaosAllowed(): boolean {
-    return this.options.chaos !== false && !this.assignmentId;
+    return this.options.chaos === true && !this.assignmentId;
   }
 
   /** Record (from the database) whether an account has unlocked chaos, for every slot it holds here. */

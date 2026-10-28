@@ -72,7 +72,7 @@ test('a player finds the lantern, unlocks chaos and casts on another player', as
     },
   });
   expect(set.ok(), await set.text()).toBe(true);
-  const room = await host.page.request.post('/api/rooms', { headers: CSRF, data: { setId: (await set.json()).set.id, modeId: 'classic', common: { questionTimeSec: 120, shuffleQuestions: false } } });
+  const room = await host.page.request.post('/api/rooms', { headers: CSRF, data: { setId: (await set.json()).set.id, modeId: 'classic', common: { questionTimeSec: 120, shuffleQuestions: false }, options: { chaos: true } } });
   const { code } = await room.json();
   await host.page.goto(`/room/${code}`);
   await joinAs(finder.page, code, 'Finder Fox');

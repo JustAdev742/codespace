@@ -27,6 +27,8 @@ services:
       APP_ENV: ${APP_ENV:-production}
       PUBLIC_ORIGIN: ${PUBLIC_ORIGIN:?set PUBLIC_ORIGIN in .env, e.g. https://play.example.org}
       IP_HASH_KEY: ${IP_HASH_KEY:?set IP_HASH_KEY in .env to a long random value}
+      # Optional: the secret lantern's own key (else derived from IP_HASH_KEY). Keep it out of the repository.
+      CHAOS_SECRET: ${CHAOS_SECRET:-}
       TRUST_PROXY: ${TRUST_PROXY:-true}
       COOKIE_SECURE: ${COOKIE_SECURE:-true}
       LOG_LEVEL: ${LOG_LEVEL:-info}

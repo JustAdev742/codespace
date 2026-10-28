@@ -34,7 +34,7 @@ const schema = z.object({
   /** Built files served only to signed-in accounts that are allowed them (the chaos menu). Never served statically. */
   WEB_PRIVATE_DIST: z.string().default('../web/dist-private'),
   /** Seeds the secret chaos sequence (the knock rhythm). Defaults to one derived from IP_HASH_KEY, so it differs per deployment. */
-  CHAOS_SECRET: z.string().min(16).optional(),
+  CHAOS_SECRET: z.preprocess((v) => (v === '' ? undefined : v), z.string().min(16).optional()),
   LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent']).default('info'),
   /** Turns on AI question drafts (with the ai.question_drafts flag). */
   ANTHROPIC_API_KEY: z.string().optional(),
@@ -62,7 +62,11 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
   }
   const c = parsed.data;
   const isProduction = c.APP_ENV === 'production';
-  if (isProduction && c.IP_HASH_KEY.startsWith('dev-only')) throw new Error('Set IP_HASH_KEY to a long random value in production.');
+  // Production never runs on a value that is published in this repository: the IP hashes and the
+  // chaos knock rhythm are only as private as these keys.
+  const placeholder = (v: string) => /^(dev-only|change-me)/i.test(v);
+  if (isProduction && placeholder(c.IP_HASH_KEY)) throw new Error('Set IP_HASH_KEY to a long random value in production.');
+  if (isProduction && c.CHAOS_SECRET !== undefined && placeholder(c.CHAOS_SECRET)) throw new Error('Set CHAOS_SECRET to a long random value, or leave it unset.');
   const allowedOrigins = [c.PUBLIC_ORIGIN, ...c.EXTRA_ORIGINS.split(',').map((s) => s.trim()).filter(Boolean)];
   return {
     ...c,

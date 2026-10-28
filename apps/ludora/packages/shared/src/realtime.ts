@@ -70,8 +70,11 @@ export const roomOptionsSchema = z.object({
   generatedNames: z.boolean().default(false),
   /** Only signed-in accounts may join. */
   requireAccount: z.boolean().default(false),
-  /** Players who found the secret chaos lantern may cast cheats. Always off for assignments. */
-  chaos: z.boolean().default(true),
+  /**
+   * Players who found the secret chaos lantern may cast cheats. Off unless the host turns it on
+   * (classroom games stay calm by default); always off for assignments.
+   */
+  chaos: z.boolean().default(false),
 });
 export type RoomOptions = z.infer<typeof roomOptionsSchema>;
 
