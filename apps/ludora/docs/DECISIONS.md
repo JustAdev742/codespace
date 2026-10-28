@@ -443,3 +443,13 @@ and Spark prices inside a band for each rarity. Publishing needs a reason and
 is audited. A Studio Lantern publishes its Glims into their own collection,
 on sale only between its dates, with the standard odds shown; Studio Glims,
 like monthly ones, never appear in the Moonlit Lantern.
+
+**D51. A made game is a saved setup, checked like a room.** The Game Maker
+saves a mode (2D or 3D) and variant, its settings, a question set, a name and
+a cover. The server checks it as it would a room: the mode and variant exist
+and the maker may host them, settings are clamped to the mode's own fields
+and a variant's locked settings win, and the set is one the maker may play.
+Games are private, shared by link, or (for accounts trusted to publish sets)
+listed in Community games; makers show by display name only, and moderators
+can hide a listed game, audited. Making happens on the host page itself (Save
+as a game), so there is one place to set up a game, not two.

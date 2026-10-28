@@ -89,6 +89,7 @@ export const router = createBrowserRouter([
           { path: 'locker', lazy: page(() => import('../features/collection/Locker.tsx')) },
           { path: 'quests', lazy: page(() => import('../features/quests/Quests.tsx')) },
           { path: 'studio', lazy: page(() => import('../features/studio/Studio.tsx')) },
+          { path: 'games', lazy: page(() => import('../features/games/Games.tsx')) },
           { path: 'profile/:id', lazy: page(() => import('../features/profile/Profile.tsx')) },
           { path: 'me', lazy: page(() => import('../features/profile/MyStats.tsx')) },
           { path: 'friends', lazy: page(() => import('../features/social/Friends.tsx')) },

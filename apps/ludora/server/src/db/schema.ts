@@ -763,3 +763,31 @@ export const studioDrafts = pgTable(
   },
   (t) => [index('studio_drafts_status_idx').on(t.status, t.updatedAt), check('studio_drafts_status_valid', sql`${t.status} in ('draft','published')`)],
 );
+
+/* -------------------------------- game maker -------------------------------- */
+
+/** Games players made from a mode: its settings, a question set, a name and a cover, to host again or share. */
+export const customGames = pgTable(
+  'custom_games',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    ownerId: uuid('owner_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+    title: text('title').notNull(),
+    description: text('description').notNull().default(''),
+    modeId: text('mode_id').notNull(),
+    variantId: text('variant_id'),
+    setId: uuid('set_id').references(() => questionSets.id, { onDelete: 'set null' }),
+    settings: jsonb('settings').notNull(),
+    common: jsonb('common').notNull(),
+    options: jsonb('options').notNull(),
+    glyph: text('glyph').notNull(),
+    hue: integer('hue').notNull(),
+    visibility: text('visibility').notNull().default('private'),
+    /** Hidden by a moderator: only its maker (and moderators) can see it. */
+    hiddenAt: ts('hidden_at'),
+    plays: integer('plays').notNull().default(0),
+    createdAt: now('created_at'),
+    updatedAt: now('updated_at'),
+  },
+  (t) => [index('custom_games_owner_idx').on(t.ownerId, t.updatedAt), index('custom_games_public_idx').on(t.visibility, t.plays), check('custom_games_visibility_valid', sql`${t.visibility} in ('private','unlisted','public')`)],
+);

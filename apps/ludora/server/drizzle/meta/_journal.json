@@ -57,6 +57,13 @@
       "when": 1793187449576,
       "tag": "0007_studio",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1793188184559,
+      "tag": "0008_custom_games",
+      "breakpoints": true
     }
   ]
 }

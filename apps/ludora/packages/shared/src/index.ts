@@ -11,3 +11,4 @@ export * from './progression.ts';
 export * from './admin.ts';
 export * from './ai.ts';
 export * from './studio.ts';
+export * from './games.ts';

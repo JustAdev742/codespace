@@ -11,6 +11,7 @@ import { loadSetForPlay } from '../sets/access.ts';
 import { MAX_ROOMS_PER_HOST, type RoomManager } from '../../realtime/manager.ts';
 import type { Room } from '../../realtime/room.ts';
 import { isModePlayableBy } from '../modes/service.ts';
+import { countGamePlay } from '../games/routes.ts';
 
 const createSchema = z.object({
   setId: z.string().uuid(),
@@ -20,6 +21,8 @@ const createSchema = z.object({
   common: commonSettingsSchema.partial().optional(),
   options: roomOptionsSchema.partial().optional(),
   solo: z.boolean().optional(),
+  /** The Game Maker game this room was set up from, to count its plays. */
+  gameId: z.string().uuid().optional(),
 });
 
 /**
@@ -80,6 +83,7 @@ export async function roomRoutes(app: FastifyInstance, deps: AppDeps) {
         throw new AppError(400, 'validation_failed', (err as Error).message);
       }
       if (!solo) closeOldestFinished(manager, auth.user.id);
+      if (body.gameId) await countGamePlay(deps.db, body.gameId, auth);
       return { code: room.code, solo };
     });
 

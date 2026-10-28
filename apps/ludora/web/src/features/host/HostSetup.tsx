@@ -12,6 +12,7 @@ import { AccountError, EmptyState, ErrorNotice, Field, Input, PageHeader, Panel,
 import { ToggleChips } from '../../ui/game.tsx';
 import { Button, ButtonLink } from '../../ui/Button.tsx';
 import { OpenGames, openGamesKey, useOpenGames, type OpenGame } from './OpenGames.tsx';
+import { SaveGameDialog, type MadeGame } from '../games/SaveGameDialog.tsx';
 import { ChosenSet, ModeGrid, SetButton, type Choice } from './pickers.tsx';
 
 /*
@@ -280,17 +281,22 @@ function useScrollPadding(bar: RefObject<HTMLElement | null>) {
   }, [bar]);
 }
 
-function Setup({ solo, preset }: { solo: boolean; preset: string | null }) {
+function Setup({ solo, preset, gameId, making }: { solo: boolean; preset: string | null; gameId: string | null; making: boolean }) {
   const navigate = useNavigate();
   const qc = useQueryClient();
   const [set, setSet] = useState<SetSummary | null>(null);
   // Whether the set was just picked or just un-picked, so focus follows the picker folding and unfolding.
   const [setFocus, setSetFocus] = useState<'chosen' | 'picker' | null>(null);
+  // A game from the Game Maker (?game=<id>) brings its mode, settings and set.
+  const madeGame = useQuery({ queryKey: ['game', gameId], queryFn: () => api.get<{ game: MadeGame }>(`/api/games/${gameId}`), enabled: Boolean(gameId) });
+  const game = madeGame.data?.game ?? null;
+  const modes = useModes();
   // The set editor's Host button links here with ?set=<id>; start with that set picked.
+  const presetId = preset ?? game?.set?.id ?? null;
   const presetSet = useQuery({
-    queryKey: ['set', preset],
-    queryFn: () => api.get<{ set: SetSummary }>(`/api/sets/${preset}`),
-    enabled: Boolean(preset),
+    queryKey: ['set', presetId],
+    queryFn: () => api.get<{ set: SetSummary }>(`/api/sets/${presetId}`),
+    enabled: Boolean(presetId),
   });
   const presetData = presetSet.data?.set;
   const presetApplied = useRef(false);
@@ -304,7 +310,19 @@ function Setup({ solo, preset }: { solo: boolean; preset: string | null }) {
   const [common, setCommon] = useState<Record<string, number | boolean>>({});
   const [options, setOptions] = useState({ lateJoin: true, generatedNames: false, requireAccount: false });
   const [busy, setBusy] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [atLimit, setAtLimit] = useState(false);
+  const gameApplied = useRef(false);
+  useEffect(() => {
+    if (!game || gameApplied.current || !modes.data) return;
+    const entry = modes.data.modes.find((m) => m.meta.id === game.mode?.id);
+    if (!entry) return;
+    gameApplied.current = true;
+    setChoice({ mode: entry, variant: entry.variants.find((v) => v.meta.id === game.variant?.id) ?? null });
+    setSettings(game.settings);
+    setCommon(game.common as Record<string, number | boolean>);
+    setOptions((o) => ({ ...o, ...game.options }));
+  }, [game, modes.data]);
   const openGamesHeading = useRef<HTMLHeadingElement>(null);
   const bar = useRef<HTMLDivElement>(null);
   useScrollPadding(bar);
@@ -342,6 +360,7 @@ function Setup({ solo, preset }: { solo: boolean; preset: string | null }) {
         common,
         options,
         solo,
+        ...(game ? { gameId: game.id } : {}),
       });
       void qc.invalidateQueries({ queryKey: openGamesKey });
       navigate(`/room/${res.code}`);
@@ -358,8 +377,20 @@ function Setup({ solo, preset }: { solo: boolean; preset: string | null }) {
   const meta = choice?.mode.meta;
   return (
     <>
-      <PageHeader title={solo ? 'Play solo' : 'Host a game'} description={solo ? 'Practise any self-paced mode on your own. Solo games earn a little less, so playing together stays the best way to earn.' : 'Pick what to play, then share the code with your players.'} />
+      <PageHeader
+        title={game ? game.title : making ? 'Make a game' : solo ? 'Play solo' : 'Host a game'}
+        description={
+          game
+            ? `${game.mine ? 'Your game' : `A game by ${game.owner.name}`}, built on ${game.variant?.title ?? game.mode?.title ?? 'a mode'}. Change anything before you start${game.mine ? ', and save it again if you like' : ''}.`
+            : making
+              ? 'Pick a question set and a mode (2D or 3D), tune the settings, then press Save as a game. You can host it any time, or share its link.'
+              : solo
+                ? 'Practise any self-paced mode on your own. Solo games earn a little less, so playing together stays the best way to earn.'
+                : 'Pick what to play, then share the code with your players.'
+        }
+      />
       <div className="flex flex-col gap-6">
+        {gameId && madeGame.isError ? <ErrorNotice title="That game could not be opened" message="It may be private, or it was deleted. You can still set up a game below." /> : null}
         {!solo ? (
           <OpenGames
             ref={openGamesHeading}
@@ -470,10 +501,26 @@ function Setup({ solo, preset }: { solo: boolean; preset: string | null }) {
           <p className="min-w-0 text-sm text-text-2">
             {!set ? 'Choose a question set.' : !choice ? 'Choose a game mode.' : `${choice.variant?.meta.title ?? choice.mode.meta.title} with “${set.title}”.`}
           </p>
-          <Button variant="primary" size="lg" disabled={!set || !choice} loading={busy} onClick={create}>
-            {solo ? 'Start playing' : 'Create game'}
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            {!solo ? (
+              <Button variant={making ? 'primary' : 'secondary'} size="lg" disabled={!set || !choice} onClick={() => setSaving(true)}>
+                {game?.mine ? 'Save changes' : 'Save as a game'}
+              </Button>
+            ) : null}
+            <Button variant={making ? 'secondary' : 'primary'} size="lg" disabled={!set || !choice} loading={busy} onClick={create}>
+              {solo ? 'Start playing' : 'Create game'}
+            </Button>
+          </div>
         </div>
+        {set && choice && saving ? (
+          <SaveGameDialog
+            open={saving}
+            onOpenChange={setSaving}
+            editing={game?.mine ? game : null}
+            setup={{ setId: set.id, modeId: choice.mode.meta.id, variantId: choice.variant?.meta.id ?? null, settings, common, options, modeTitle: choice.variant?.meta.title ?? choice.mode.meta.title, hue: choice.mode.meta.thumbnail.hue }}
+            onSaved={(g) => navigate(`/host?game=${g.id}`, { replace: true })}
+          />
+        ) : null}
         <p className="text-center text-sm text-text-3">
           Want your own questions?{' '}
           <Link to="/sets/new" className="font-semibold underline underline-offset-2">
@@ -509,5 +556,6 @@ export default function HostSetup() {
     );
   }
   // Hosting and playing solo offer different modes, so switching between them starts afresh.
-  return <Setup key={solo ? 'solo' : 'host'} solo={solo} preset={params.get('set')} />;
+  const gameId = params.get('game');
+  return <Setup key={`${solo ? 'solo' : 'host'}-${gameId ?? ''}`} solo={solo} preset={params.get('set')} gameId={gameId} making={params.get('make') === '1'} />;
 }

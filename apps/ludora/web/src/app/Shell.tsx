@@ -24,6 +24,7 @@ import {
   Trophy,
   User,
   Users,
+  Wand2,
   X,
 } from 'lucide-react';
 import { useMe } from '../lib/session.ts';
@@ -57,6 +58,7 @@ const PRIMARY: NavItem[] = [
   { to: '/play', label: 'Join a game', icon: <Gamepad2 className="size-5" /> },
   { to: '/host', label: 'Host', icon: <Presentation className="size-5" /> },
   { to: '/modes', label: 'Game modes', icon: <LayoutGrid className="size-5" /> },
+  { to: '/games', label: 'Game Maker', icon: <Wand2 className="size-5" /> },
   { to: '/library', label: 'Question sets', icon: <BookOpen className="size-5" /> },
 ];
 const COLLECT: NavItem[] = [
