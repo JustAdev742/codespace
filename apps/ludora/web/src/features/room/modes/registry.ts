@@ -37,6 +37,11 @@ export const MODE_SCREENS: Record<string, { Player: Screen; Host: Screen; /** Th
     Player: lazy(() => import('./corner-shop.tsx').then((m) => ({ default: m.CornerShopPlayer }))),
     Host: lazy(() => import('./corner-shop.tsx').then((m) => ({ default: m.CornerShopHost }))),
   },
+  'glow-tag': {
+    Player: lazy(() => import('./glow-tag.tsx').then((m) => ({ default: m.GlowTagPlayer }))),
+    Host: lazy(() => import('./glow-tag.tsx').then((m) => ({ default: m.GlowTagHost }))),
+    hostFeed: true,
+  },
   classic: {
     Player: lazy(() => import('./classic.tsx').then((m) => ({ default: m.ClassicPlayer }))),
     Host: lazy(() => import('./classic.tsx').then((m) => ({ default: m.ClassicHost }))),

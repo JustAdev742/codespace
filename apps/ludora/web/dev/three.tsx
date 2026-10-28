@@ -7,7 +7,9 @@
 import { createRoot } from 'react-dom/client';
 import { Mesh, CylinderGeometry, Vector3 } from 'three';
 import { GLIMS } from '@ludora/content';
-import type { GlimArt, Rarity } from '@ludora/shared';
+import { createRng, type GlimArt, type PulseView, type Rarity } from '@ludora/shared';
+import { FLAGS, type BeamView, type CrateView, type GlowTagHostView, type GlowTagPlayer, type GlowTagPlayerView, type GlowTagPulse, type GlowTagYou } from '@ludora/engine/glow-tag';
+import { arenaSize, edgeSpots, generateMap, headingTo, pushOut, walk } from '@ludora/engine/glow-tag-arena';
 import '../src/styles/app.css';
 import { Stage3D } from '../src/three/Stage3D.tsx';
 import { World, DAY, type StageEnv } from '../src/three/World.ts';
@@ -19,6 +21,8 @@ import { GoldRushScene, GoldFieldScene, type FindKind } from '../src/features/ro
 import { CodeBreakersScene, CitySkylineScene, VAULT_ID, type CityEvent, type CityPacket, type CityState, type CityTower } from '../src/features/room/modes/code-breakers-scene.ts';
 import { BigCatchScene, JettyScene, type CatchState, type Phase } from '../src/features/room/modes/big-catch-scene.ts';
 import { speciesOf, sizeCm, type WaterId } from '@ludora/engine/big-catch';
+import { Field } from '../src/features/room/modes/glow-tag-field.ts';
+import { GlowTagHostScene, GlowTagScene } from '../src/features/room/modes/glow-tag-scene.ts';
 
 const params = new URLSearchParams(location.search);
 const q = params.get('quality');
@@ -222,14 +226,160 @@ function makeJetty(env: StageEnv) {
   return w;
 }
 
+// ?scene=glowtag  Glow Tag's park behind your Glim, with bots walking and tagging (fake views and pulses, no rules).
+// ?scene=glowtag-host  the big screen's overview. &players=12  &dimmed=1 (you are dimmed)  &walk=1 (you walk in circles)  &lights=out
+function makeGlowTag(env: StageEnv, host: boolean) {
+  const n = Math.max(2, Math.min(40, Number(params.get('players') ?? 12)));
+  const size = arenaSize(n);
+  const half = size / 2;
+  const map = generateMap(size, createRng(`gallery-${n}`));
+  const rnd = createRng('gallery-walk');
+  const t0 = performance.now();
+  const now = () => performance.now() - t0 + 100_000;
+  const dimmed = params.get('dimmed') === '1';
+  const lightsOut = params.get('lights') === 'out';
+  const meId = host ? null : 'me';
+  const field = new Field(map, meId, now);
+  const glims = GLIMS.slice(0, n);
+  const lookOfId = (id: string) => {
+    const g = glims[Math.abs([...id].reduce((a, c) => a * 31 + c.charCodeAt(0), 7)) % glims.length]!;
+    return { art: g.art as GlimArt, rarity: g.rarity as Rarity };
+  };
+  // Everyone starts round the edge; you stand a few steps in, with a few bots ahead of you.
+  const spots = edgeSpots(size, n, 0.07);
+  const bots = spots.map((sp, i) => {
+    const id = i === 0 ? 'me' : `bot-${i}`;
+    let { x, z } = sp;
+    if (i === 0) [x, z] = walk(map, x, z, x * 0.62, z * 0.62);
+    else if (i <= 3) [x, z] = pushOut(map, spots[0]!.x * 0.3 + (i - 2) * 4, spots[0]!.z * 0.3 + (i - 2) * 2.5);
+    return { id, name: i === 0 ? 'You' : (glims[i]?.name ?? `Bot ${i}`), x, z, h: i === 0 ? headingTo(x, z, 0, 0) : sp.h, glow: 1 + (i % 3), tx: x, tz: z };
+  });
+  const ring = { x: 2, z: -3, r: Math.round(half * 0.7 * 10) / 10 };
+  const next = { x: 4, z: -1, r: Math.round(half * 0.45 * 10) / 10, startAt: now() + 40_000, endAt: now() + 55_000 };
+  const crates: CrateView[] = (['charge', 'shield', 'speed'] as const).map((kind, i) => {
+    const [x, z] = pushOut(map, bots[0]!.x * 0.5 + (i - 1) * 3, bots[0]!.z * 0.5 + 2);
+    return { id: i + 1, kind, x, z };
+  });
+  const beams: BeamView[] = [];
+  const flags = (b: (typeof bots)[number]) => (b.id === 'me' && dimmed ? 0 : FLAGS.in) | (b.id === 'bot-2' ? FLAGS.shield : 0);
+  const row = (b: (typeof bots)[number]): GlowTagPlayer => [b.id, b.name, null, b.x, b.z, b.h, b.id === 'me' && dimmed ? 0 : b.glow, flags(b)];
+  const me = bots[0]!;
+  const you = (): GlowTagYou => ({
+    id: 'me',
+    team: null,
+    x: me.x,
+    z: me.z,
+    h: me.h,
+    glow: dimmed ? 0 : 3,
+    maxGlow: 3,
+    charges: 4,
+    maxCharges: 8,
+    cooldownUntil: 0,
+    in: !dimmed,
+    out: false,
+    relight: dimmed ? { have: 1, need: 2 } : null,
+    safeUntil: 0,
+    shield: false,
+    speedUntil: 0,
+    lastTag: null,
+    lastHit: null,
+    score: 300,
+    rank: 2,
+    tags: 3,
+    dims: 1,
+    cheer: 0,
+    streak: 2,
+    question: null,
+    last: null,
+  });
+  const view = (): GlowTagPlayerView & GlowTagHostView => ({
+    at: now(),
+    endsAt: now() + 180_000,
+    map,
+    rules: { glow: 3, relight: 2, lightsOut, squads: false },
+    ring: { ...ring, from: ring, to: ring, startAt: now() - 30_000, endAt: now() - 15_000, next, phase: 1, phases: 3, final: false, finalAt: now() + 120_000, drainEveryMs: 3000 },
+    crates,
+    crateOdds: [
+      { kind: 'charge', percent: 50 },
+      { kind: 'shield', percent: 25 },
+      { kind: 'speed', percent: 25 },
+    ],
+    players: bots.map(row),
+    beams: [...beams],
+    board: [],
+    teams: null,
+    glowing: n,
+    you: host ? null : you(),
+    stats: { tags: 0, dims: 0, relights: 0, crates: 0, ring: 0 },
+  });
+  field.applyView(view());
+  // Bots wander, ten pulses a second; every couple of seconds one of them tags the nearest other player.
+  let beamN = 0;
+  setInterval(() => {
+    for (const b of bots) {
+      if (b.id === 'me') continue;
+      if (Math.hypot(b.tx - b.x, b.tz - b.z) < 0.6 || rnd.next() < 0.01) {
+        b.tx = (rnd.next() - 0.5) * size * 0.85;
+        b.tz = (rnd.next() - 0.5) * size * 0.85;
+      }
+      const d = Math.hypot(b.tx - b.x, b.tz - b.z) || 1;
+      const step = Math.min(d, 0.45);
+      const [nx, nz] = walk(map, b.x, b.z, b.x + ((b.tx - b.x) / d) * step, b.z + ((b.tz - b.z) / d) * step);
+      if (Math.hypot(nx - b.x, nz - b.z) > 0.02) b.h = headingTo(b.x, b.z, nx, nz);
+      else b.tx = b.x;
+      b.x = nx;
+      b.z = nz;
+    }
+    const t = now();
+    const p: PulseView<GlowTagPulse> = {
+      gameNow: t,
+      d: { t, ring: [ring.x * 10, ring.z * 10, ring.r * 10], p: bots.map((b) => [b.id, Math.round(b.x * 10), Math.round(b.z * 10), Math.round(b.h * 100), flags(b), b.glow]) },
+    };
+    field.applyPulse(p);
+  }, 100);
+  setInterval(() => {
+    const by = bots[1 + (beamN % (bots.length - 1))]!;
+    const target = bots.filter((b) => b !== by && !(b.id === 'me' && dimmed)).sort((a, b) => Math.hypot(a.x - by.x, a.z - by.z) - Math.hypot(b.x - by.x, b.z - by.z))[0]!;
+    by.h = headingTo(by.x, by.z, target.x, target.z);
+    beams.push({ n: ++beamN, by: by.id, to: target.id, x1: by.x, z1: by.z, x2: target.x, z2: target.z, at: now(), outcome: target.id === 'bot-2' ? 'shield' : 'hit' });
+    if (beams.length > 6) beams.shift();
+    field.applyView(view());
+  }, 1800);
+  if (params.get('walk') === '1' && !host) {
+    const input = { x: 0.35, y: 1, stick: false };
+    let last = performance.now();
+    const loop = (t: number) => {
+      requestAnimationFrame(loop);
+      field.step(Math.min(0.1, (t - last) / 1000), input, false, () => {});
+      last = t;
+    };
+    requestAnimationFrame(loop);
+  }
+  const w = host ? new GlowTagHostScene(env, field, lookOfId, lightsOut) : new GlowTagScene(env, field, lookOfId, lightsOut);
+  (window as unknown as { __world: unknown }).__world = w;
+  return w;
+}
+
 function App() {
+  const create = (env: StageEnv) =>
+    sceneName === 'gold'
+      ? makeGold(env)
+      : sceneName === 'field'
+        ? makeField(env)
+        : sceneName === 'city'
+          ? makeCity(env)
+          : sceneName === 'skyline'
+            ? makeSkyline(env)
+            : sceneName === 'catch'
+              ? makeCatch(env)
+              : sceneName === 'jetty'
+                ? makeJetty(env)
+                : sceneName === 'glowtag' || sceneName === 'glowtag-host'
+                  ? makeGlowTag(env, sceneName === 'glowtag-host')
+                  : new Gallery(env);
   return (
     <main style={{ height: '100vh', display: 'grid' }}>
-      <Stage3D
-        label="3D gallery"
-        create={(env) => (sceneName === 'gold' ? makeGold(env) : sceneName === 'field' ? makeField(env) : sceneName === 'city' ? makeCity(env) : sceneName === 'skyline' ? makeSkyline(env) : sceneName === 'catch' ? makeCatch(env) : sceneName === 'jetty' ? makeJetty(env) : new Gallery(env))}
-        className="h-full w-full"
-      />
+      <Stage3D label="3D gallery" create={create} className="h-full w-full" />
     </main>
   );
 }
