@@ -18,4 +18,16 @@ export const cometDashAdapter: ChaosAdapter = {
     },
   ],
   ...streamParts((s, id) => s.racers[id]?.stream),
+  // What the race's settings switch on, for the comet-dash pack (and 'losses' for the universal protection cheats).
+  features: (st) => {
+    const f: string[] = [];
+    const starGates = Number(st.starGates ?? 0) > 0;
+    if (st.wrongSetback || starGates) f.push('losses', 'setbacks');
+    if (starGates) f.push('star-gates');
+    if (st.wormholes) f.push('wormholes');
+    if (st.momentum) f.push('momentum');
+    else f.push('boost');
+    if (st.slipstream || st.tailwind) f.push('drafting');
+    return f;
+  },
 };

@@ -25,10 +25,11 @@ export const survivalRunAdapter: ChaosAdapter = {
       },
       // Running out of hearts ends a run, which only a wrong answer can do.
       min: 1,
-      max: () => 9,
+      // The most a runner can hold, as the mode itself caps it: the starting hearts, or the host's higher cap.
+      max: (_s, _id, ctx) => Math.max(Number(ctx.settings.hearts ?? 3), Number(ctx.settings.heartCap ?? 0)),
     },
   ],
   ...streamParts((s, id) => (s.runners[id]?.phase === 'question' ? s.runners[id].stream : null)),
   isOut: (s, id) => s.runners[id]?.phase === 'over',
-  features: ['hearts'],
+  features: (st) => ['hearts', ...(st.secondWind ? ['second-wind'] : [])],
 };
