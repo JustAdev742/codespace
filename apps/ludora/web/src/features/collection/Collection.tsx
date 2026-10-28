@@ -1,3 +1,4 @@
+import { Link } from 'react-router';
 import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
@@ -30,7 +31,7 @@ interface CollectionGlim {
 
 interface CollectionData {
   buddy: string | null;
-  collections: { id: string; name: string; description: string; hue: number; reward: { currency: string; amount: number } | null; rewarded: boolean; total: number; owned: number; glims: CollectionGlim[] }[];
+  collections: { id: string; name: string; description: string; hue: number; reward: { currency: string; amount: number } | null; rewarded: boolean; total: number; owned: number; glims: CollectionGlim[]; monthly?: { month: string; until: string | null; onSale: boolean } | null }[];
 }
 
 type Filter = 'all' | 'owned' | 'missing' | 'spares';
@@ -41,6 +42,13 @@ type GlimShape = Pick<GlimArt, 'body'> & Partial<Pick<GlimArt, 'topper' | 'ears'
 const shadowArt = (shape: GlimShape): GlimArt => ({ kind: 'glim', hue: 0, accentHue: 0, saturation: 0, eyes: 'dot', mouth: 'none', pattern: 'none', topper: 'none', cheeks: false, ...shape });
 
 /** Each collection's Lantern pattern, for the Lantern beside its name: the one you open to fill it. */
+const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+/** `2026-10` as "October 2026". */
+const monthName = (month: string) => {
+  const [y, m] = month.split('-').map(Number);
+  return `${MONTH_NAMES[(m ?? 1) - 1]} ${y}`;
+};
+
 const PATTERN: Record<string, LanternArt['pattern']> = { meadow: 'leaves', tidepool: 'waves', ember: 'flames', frost: 'frost', starfall: 'stars', library: 'books', circuit: 'circuit', nightmarket: 'moons' };
 
 const CURRENCY_NAME: Record<string, string> = { sparks: 'Sparks', moonstones: 'Moonstones', dust: 'Glow Dust' };
@@ -352,6 +360,17 @@ export default function Collection() {
                       {c.name}
                     </h2>
                     <p className="text-sm text-text-2">{c.description}</p>
+                    {c.monthly ? (
+                      <p className="mt-1 text-sm">
+                        {c.monthly.onSale ? (
+                          <Link to="/shop?tab=monthly" className="font-semibold">
+                            {monthName(c.monthly.month)} only: its Lantern is in the shop now
+                          </Link>
+                        ) : (
+                          <span className="text-text-3">{monthName(c.monthly.month)} only. Its Lantern has left the shop; the Glims you found are yours to keep.</span>
+                        )}
+                      </p>
+                    ) : null}
                   </div>
                 </div>
                 <div className="flex w-full items-center gap-3 sm:w-80">

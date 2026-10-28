@@ -2,10 +2,10 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { and, eq, sql } from 'drizzle-orm';
 import { createTestApp, registered, type TestContext } from './helpers.ts';
 import { credit } from '../src/modules/economy/service.ts';
-import { entitlements, inventory, items, ledger, packOpenings, pityCounters, shopListings, users, wallets } from '../src/db/schema.ts';
+import { entitlements, inventory, items, ledger, packOpenings, packs, pityCounters, shopListings, users, wallets } from '../src/db/schema.ts';
 import { rotationPicks } from '../src/modules/shop/service.ts';
-import { openPack } from '../src/modules/packs/service.ts';
-import { GLIMS } from '@ludora/content';
+import { openPack, resolvePool } from '../src/modules/packs/service.ts';
+import { GLIMS, MONTHLY, MONTHLY_GLIMS } from '@ludora/content';
 
 let t: TestContext;
 beforeAll(async () => {
@@ -295,5 +295,61 @@ describe('events', () => {
     const late = await registered(t.app);
     const none = await late.client.get('/api/quests');
     expect(none.body.quests.filter((x: { kind: string }) => x.kind === 'event')).toHaveLength(0);
+  });
+});
+
+describe('monthly drops', () => {
+  /** Put a drop's Lantern and accessory on sale for a window, as the seed does for its own month. */
+  async function setWindow(month: string, from: Date, until: Date) {
+    const d = MONTHLY.find((m) => m.month === month)!;
+    await t.db.update(packs).set({ availableFrom: from, availableUntil: until }).where(eq(packs.id, d.pack.id));
+    await t.db.update(shopListings).set({ startsAt: from, endsAt: until }).where(sql`${shopListings.packId} = ${d.pack.id} or ${shopListings.itemId} = ${d.accessory.id}`);
+    return d;
+  }
+
+  it("sells a month's Lantern and accessory only in that month, and its Glims come from that month alone", async () => {
+    const now = Date.now();
+    const on = await setWindow('2026-11', new Date(now - 3_600_000), new Date(now + 3_600_000));
+    const next = await setWindow('2026-12', new Date(now + 86_400_000), new Date(now + 2 * 86_400_000));
+    const past = await setWindow('2026-10', new Date(now - 2 * 86_400_000), new Date(now - 86_400_000));
+
+    const u = await registered(t.app);
+    await give(u.userId, 'sparks', 1000);
+    const shop = (await u.client.get('/api/shop')).body.listings as { id: string; section: string; endsAt: string | null }[];
+    const ids = new Set(shop.map((l) => l.id));
+    expect(ids.has(`l-${on.pack.id}`)).toBe(true);
+    expect(ids.has(`l-featured-${on.pack.id}`)).toBe(true);
+    expect(ids.has(`l-${on.accessory.id}`)).toBe(true);
+    for (const d of [next, past]) for (const id of [`l-${d.pack.id}`, `l-${d.accessory.id}`]) expect(ids.has(id), id).toBe(false);
+    expect(shop.find((l) => l.id === `l-${on.pack.id}`)?.section).toBe('monthly');
+    expect(shop.find((l) => l.id === `l-${on.pack.id}`)?.endsAt).toBe(new Date(now + 3_600_000).toISOString());
+
+    const bought = await u.client.post('/api/shop/purchase', { listingId: `l-${on.pack.id}`, requestKey: key() });
+    expect(bought.status, JSON.stringify(bought.body)).toBe(200);
+    expect(on.glims.map((g) => g.id)).toContain(bought.body.pack.item.id);
+
+    const early = await u.client.post('/api/shop/purchase', { listingId: `l-${next.pack.id}`, requestKey: key() });
+    expect(early.status).not.toBe(200);
+    const late = await u.client.post('/api/shop/purchase', { listingId: `l-${past.accessory.id}`, requestKey: key() });
+    expect(late.status).not.toBe(200);
+
+    // The book shows this month's and past months' collections, never a month still to come.
+    const book = (await u.client.get('/api/collection')).body.collections as { id: string; monthly: { month: string; onSale: boolean } | null }[];
+    expect(book.find((c) => c.id === on.collection.id)?.monthly).toMatchObject({ month: '2026-11', onSale: true });
+    expect(book.find((c) => c.id === past.collection.id)?.monthly).toMatchObject({ month: '2026-10', onSale: false });
+    expect(book.some((c) => c.id === next.collection.id)).toBe(false);
+    expect(book.find((c) => c.id === 'meadow')?.monthly).toBeNull();
+
+    const acc = await u.client.post('/api/shop/purchase', { listingId: `l-${on.accessory.id}`, requestKey: key() });
+    expect(acc.status).toBe(200);
+    expect((await u.client.post('/api/shop/purchase', { listingId: `l-${on.accessory.id}`, requestKey: key() })).status).not.toBe(200);
+  });
+
+  it('keeps monthly Glims out of the Moonlit Lantern', async () => {
+    const [moonlit] = await t.db.select().from(packs).where(eq(packs.id, 'lantern-moonlit'));
+    const pool = await resolvePool(t.db, moonlit!.dropTable as never);
+    const monthly = new Set(MONTHLY_GLIMS.map((g) => g.id));
+    expect(pool.length).toBeGreaterThan(20);
+    expect(pool.filter((p) => monthly.has(p.id))).toEqual([]);
   });
 });

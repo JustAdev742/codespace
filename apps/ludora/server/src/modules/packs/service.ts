@@ -1,5 +1,6 @@
 import { and, eq, inArray, sql } from 'drizzle-orm';
 import { dropTableSchema, RARITIES, RARITY_INFO, type DropTable, type Rarity } from '@ludora/shared';
+import { MONTHLY_PREFIX } from '@ludora/content';
 import type { DbOrTx } from '../../db/client.ts';
 import { economyOps, inventory, items, packOpenings, packs, pityCounters, userStats } from '../../db/schema.ts';
 import { AppError } from '../../lib/errors.ts';
@@ -35,7 +36,8 @@ export async function resolvePool(db: DbOrTx, table: DropTable): Promise<PoolIte
     ? await db
         .select({ id: items.id, name: items.name, rarity: items.rarity, art: items.art, collectionId: items.collectionId })
         .from(items)
-        .where(and(...conds, all ? sql`${items.collectionId} is not null` : inArray(items.collectionId, table.collectionIds)))
+        // '*' means every permanent collection: monthly Glims come only from their own month's Lantern.
+        .where(and(...conds, all ? sql`${items.collectionId} is not null and ${items.collectionId} not like ${`${MONTHLY_PREFIX}%`}` : inArray(items.collectionId, table.collectionIds)))
     : [];
   const listed = table.itemIds.length
     ? await db

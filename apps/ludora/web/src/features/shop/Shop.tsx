@@ -280,6 +280,7 @@ function ListingCard({ l, onBuy, onOdds, featured }: { l: Listing; onBuy: (l: Li
 
 const TAB_ORDER: { value: string; label: string; sections: ShopSection[] }[] = [
   { value: 'featured', label: 'Featured', sections: ['featured', 'bundles'] },
+  { value: 'monthly', label: 'This month', sections: ['monthly'] },
   { value: 'picks', label: 'Daily and weekly', sections: ['daily', 'weekly'] },
   { value: 'lanterns', label: 'Lanterns', sections: ['lanterns'] },
   { value: 'glims', label: 'Glims', sections: ['glims'] },

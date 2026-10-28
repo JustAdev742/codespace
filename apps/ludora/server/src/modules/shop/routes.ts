@@ -1,7 +1,8 @@
 import type { FastifyInstance } from 'fastify';
-import { and, asc, desc, eq, inArray, lt, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray, like, lt, sql } from 'drizzle-orm';
 import { z } from 'zod';
 import { EQUIP_SLOTS, RARITY_INFO, type Rarity } from '@ludora/shared';
+import { MONTHLY_PREFIX } from '@ludora/content';
 import type { AppDeps } from '../../app.ts';
 import { collections, equipped, inventory, items, ledger, packs, pityCounters } from '../../db/schema.ts';
 import { noStore, requireAuth } from '../../http/context.ts';
@@ -60,13 +61,21 @@ export async function shopRoutes(app: FastifyInstance, deps: AppDeps) {
   app.get('/api/collection', async (req, reply) => {
     noStore(reply);
     const auth = requireAuth(req);
-    const [cols, glims, mine, eq_] = await Promise.all([
+    const [allCols, glims, mine, eq_, monthlyPacks] = await Promise.all([
       deps.db.select().from(collections).where(eq(collections.releaseState, 'live')).orderBy(asc(collections.sort)),
       deps.db.select().from(items).where(and(eq(items.type, 'glim'), eq(items.releaseState, 'live'), eq(items.isTestOnly, false))).orderBy(asc(items.sort)),
       deps.db.select({ itemId: inventory.itemId, q: inventory.quantity, first: inventory.firstAcquiredAt }).from(inventory).where(eq(inventory.userId, auth.user.id)),
       deps.db.select().from(equipped).where(and(eq(equipped.userId, auth.user.id), eq(equipped.slot, 'buddy'))),
+      deps.db.select({ id: packs.id, from: packs.availableFrom, until: packs.availableUntil }).from(packs).where(like(packs.id, `lantern-${MONTHLY_PREFIX}%`)),
     ]);
     const owned = new Map(mine.map((m) => [m.itemId, m]));
+    // A monthly collection joins the book when its month's Lantern goes on sale, and stays after it leaves.
+    const now = new Date();
+    const monthlyWindow = new Map(monthlyPacks.map((p) => [p.id.slice('lantern-'.length), p]));
+    const cols = allCols.filter((c) => {
+      const w = monthlyWindow.get(c.id);
+      return !w || !w.from || w.from <= now || glims.some((g) => g.collectionId === c.id && (owned.get(g.id)?.q ?? 0) > 0);
+    });
     const rewarded = new Set(
       (await deps.db.select({ refId: ledger.refId }).from(ledger).where(and(eq(ledger.userId, auth.user.id), eq(ledger.reason, 'collection_reward')))).map((r) => r.refId),
     );
@@ -81,6 +90,7 @@ export async function shopRoutes(app: FastifyInstance, deps: AppDeps) {
           hue: c.hue,
           reward: c.reward,
           rewarded: rewarded.has(c.id),
+          monthly: monthlyWindow.has(c.id) ? { month: c.id.slice(MONTHLY_PREFIX.length), until: monthlyWindow.get(c.id)!.until?.toISOString() ?? null, onSale: (monthlyWindow.get(c.id)!.from ?? now) <= now && now <= (monthlyWindow.get(c.id)!.until ?? now) } : null,
           total: list.length,
           owned: list.filter((g) => (owned.get(g.id)?.q ?? 0) > 0).length,
           glims: list.map((g) => {

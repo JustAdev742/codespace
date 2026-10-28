@@ -11,7 +11,7 @@
 // Add &theme=light or &theme=dark, or use the toggle.
 import { useState, type ReactNode } from 'react';
 import { createRoot } from 'react-dom/client';
-import { COLLECTIONS, COSMETICS, GLIMS } from '@ludora/content';
+import { ALL_COLLECTIONS as COLLECTIONS, COSMETICS, GLIMS as PERMANENT_GLIMS, MONTHLY_GLIMS } from '@ludora/content';
 import {
   ACCESSORY_SHAPES,
   GLIM_BACKS,
@@ -41,6 +41,7 @@ const section = params.get('section');
 const initialTheme = params.get('theme') === 'light' ? 'light' : 'dark';
 document.documentElement.dataset.theme = initialTheme;
 
+const GLIMS = [...PERMANENT_GLIMS, ...MONTHLY_GLIMS];
 const glims = GLIMS.map((g) => ({ ...g, art: g.art as GlimArt }));
 const byId = new Map(glims.map((g) => [g.id, g]));
 

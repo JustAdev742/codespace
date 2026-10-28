@@ -202,6 +202,7 @@ export const SHOP_SECTIONS = [
   'effects',
   'bundles',
   'event',
+  'monthly',
 ] as const;
 export type ShopSection = (typeof SHOP_SECTIONS)[number];
 
@@ -216,4 +217,5 @@ export const SHOP_SECTION_INFO: Record<ShopSection, { label: string; description
   effects: { label: 'Effects', description: 'Emotes, answer effects, victory effects and themes.' },
   bundles: { label: 'Bundles', description: 'Several items for less than buying them one by one.' },
   event: { label: 'Event', description: 'Limited-time items bought with event tickets.' },
+  monthly: { label: 'This month', description: 'This month\'s Lantern and accessory. They leave the shop when the month ends.' },
 };

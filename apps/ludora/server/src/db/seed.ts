@@ -2,7 +2,7 @@ import { sql } from 'drizzle-orm';
 import {
   ACHIEVEMENTS,
   ALL_ITEMS,
-  COLLECTIONS,
+  ALL_COLLECTIONS,
   CURRENCIES,
   LISTINGS,
   PACKS,
@@ -55,7 +55,7 @@ export async function seedContent(db: Db, opts: SeedOptions = {}): Promise<{ ins
       const q = tx.insert(currencies).values(values);
       count('currencies', await (force ? q.onConflictDoUpdate({ target: currencies.code, set: values }) : q.onConflictDoNothing()).returning({ k: currencies.code }));
     }
-    for (const c of COLLECTIONS) {
+    for (const c of ALL_COLLECTIONS) {
       const q = tx.insert(collections).values(c);
       await (force ? q.onConflictDoUpdate({ target: collections.id, set: c }) : q.onConflictDoNothing());
     }
@@ -102,8 +102,9 @@ export async function seedContent(db: Db, opts: SeedOptions = {}): Promise<{ ins
       if (!force) inserted.itemsRefreshed = (inserted.itemsRefreshed ?? 0) + done.filter((r) => !r.inserted).length;
     }
     for (const p of PACKS) {
-      const q = tx.insert(packs).values(p);
-      await (force ? q.onConflictDoUpdate({ target: packs.id, set: p }) : q.onConflictDoNothing());
+      const values = { ...p, availableFrom: p.availableFrom ? new Date(p.availableFrom) : null, availableUntil: p.availableUntil ? new Date(p.availableUntil) : null };
+      const q = tx.insert(packs).values(values);
+      await (force ? q.onConflictDoUpdate({ target: packs.id, set: values }) : q.onConflictDoNothing());
     }
     for (const l of LISTINGS) {
       const values = {

@@ -61,6 +61,9 @@ export interface SeedPack {
   priceAmount: number;
   dropTable: DropTable;
   releaseState?: ReleaseState;
+  /** ISO instants: the Lantern is on sale only between these (monthly Lanterns). */
+  availableFrom?: string;
+  availableUntil?: string;
   sort: number;
 }
 

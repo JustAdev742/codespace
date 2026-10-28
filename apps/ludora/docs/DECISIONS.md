@@ -416,3 +416,14 @@ nothing has to be switched on. The server answers from its own clock, so a
 changed device clock changes nothing, and the browser only works it out itself
 in the demo, which has no server. A school's own events are not invented: the
 calendar holds no school's dates, crest or branding.
+
+**D49. Monthly Glims are on sale for their month only, and kept forever.** Each
+month has its own collection of seven Glims, sold only in that month's Lantern
+(standard odds rescaled to its rarities, shown on the Lantern, pity at 15), and
+one accessory. Both go on sale at midnight on the 1st in Sydney and leave at
+the last second of the month. Whoever found a Glim keeps it; the collection
+stays in everyone's book after its month with a note that its Lantern has
+gone, and a month still to come is not shown. Monthly Glims never appear in the
+daily picks or the Moonlit Lantern, so the month is the only way to find them.
+The drops run October 2026 to March 2027; later months are added the same way
+(`packages/content/src/monthly.ts`).
