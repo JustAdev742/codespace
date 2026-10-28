@@ -64,6 +64,7 @@ describe('authorisation matrix', () => {
     ['/api/admin/packs', 'catalog.manage'],
     ['/api/admin/shop/listings', 'shop.manage'],
     ['/api/admin/events', 'events.manage'],
+    ['/api/admin/season', 'events.manage'],
     ['/api/admin/reports', 'reports.handle'],
     ['/api/admin/sets', 'content.moderate'],
     ['/api/admin/rooms', 'rooms.manage'],
@@ -97,6 +98,7 @@ describe('authorisation matrix', () => {
     ['POST', '/api/admin/shop/listings', 'shop.manage'],
     ['PATCH', '/api/admin/shop/listings/l-lantern-meadow', 'shop.manage'],
     ['PATCH', '/api/admin/events/frost_festival', 'events.manage'],
+    ['PATCH', '/api/admin/season/book-week', 'events.manage'],
     ['POST', '/api/admin/reports/1/resolve', 'reports.handle'],
     ['POST', '/api/admin/reports/1/reopen', 'reports.handle'],
     ['POST', `/api/admin/sets/${SOME_ID}/visibility`, 'content.moderate'],
@@ -563,6 +565,39 @@ describe('catalogue, shop and live operations', () => {
     expect(cur.expiresAt).toBe('2027-02-14T23:59:59.000Z');
     const off = await as.admin.client.patch('/api/admin/events/frost_festival', { enabled: false, reason: 'end early' });
     expect(off.body.error.code).toBe('confirmation_required');
+  });
+
+  it('serves the season to everyone, and staff can move, drop and restore a celebration for one year', async () => {
+    const pub = await new Client(t.app).get('/api/season');
+    expect(pub.status).toBe(200);
+    expect(['summer', 'autumn', 'winter', 'spring']).toContain(pub.body.season.id);
+    expect(pub.body.theme.decor.length).toBeGreaterThan(0);
+
+    const list = async () => (await as.admin.client.get('/api/admin/season?year=2027')).body.celebrations as { id: string; window: { start: string; end: string } | null; usual: { start: string } | null; changed: string | null }[];
+    const bookWeek = async () => (await list()).find((c) => c.id === 'book-week')!;
+    expect((await bookWeek()).window).toEqual({ start: '2027-08-21', end: '2027-08-27' });
+
+    const moved = await as.admin.client.patch('/api/admin/season/book-week', { year: 2027, start: '2027-08-28', end: '2027-09-03', reason: 'CBCA dates announced' });
+    expect(moved.status, JSON.stringify(moved.body)).toBe(200);
+    expect(await bookWeek()).toMatchObject({ window: { start: '2027-08-28', end: '2027-09-03' }, changed: 'moved', usual: { start: '2027-08-21' } });
+    const entry = await lastAudit('season.update');
+    expect(entry?.targetId).toBe('book-week:2027');
+    expect(entry?.reason).toBe('CBCA dates announced');
+
+    expect((await as.admin.client.patch('/api/admin/season/book-week', { year: 2027, off: true, reason: 'not this year' })).status).toBe(200);
+    expect(await bookWeek()).toMatchObject({ window: null, changed: 'off' });
+    expect((await as.admin.client.patch('/api/admin/season/book-week', { year: 2027, reset: true, reason: 'back to normal' })).status).toBe(200);
+    expect(await bookWeek()).toMatchObject({ window: { start: '2027-08-21', end: '2027-08-27' }, changed: null });
+
+    const bad = [
+      { year: 2027, start: '2027-09-03', end: '2027-08-28', reason: 'backwards' },
+      { year: 2027, start: '2027-02-30', end: '2027-03-02', reason: 'no such day' },
+      { year: 2027, start: '2027-08-01', end: '2027-09-15', reason: 'too long' },
+      { year: 2027, start: '2028-08-01', end: '2028-08-05', reason: 'wrong year' },
+      { year: 2027, off: true, reset: true, reason: 'both' },
+    ];
+    for (const body of bad) expect((await as.admin.client.patch('/api/admin/season/book-week', body)).status, body.reason).toBe(400);
+    expect((await as.admin.client.patch('/api/admin/season/made-up', { year: 2027, off: true, reason: 'nope' })).status).toBe(404);
   });
 
   it('flags change behaviour and are audited', async () => {

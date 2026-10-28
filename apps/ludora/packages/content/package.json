@@ -5,7 +5,8 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
-    "./sets": "./src/sets/index.ts"
+    "./sets": "./src/sets/index.ts",
+    "./seasons": "./src/seasons.ts"
   },
   "dependencies": {
     "@ludora/shared": "*"

@@ -13,6 +13,7 @@ import { analyticsRoutes } from './modules/analytics/routes.ts';
 import { uploadRoutes } from './modules/uploads/routes.ts';
 import { aiRoutes } from './modules/ai/routes.ts';
 import { chaosRoutes } from './modules/chaos/routes.ts';
+import { eventRoutes } from './modules/events/routes.ts';
 
 /** Every HTTP route module, in registration order. Auth and health are registered by buildApp itself. */
-export const allRoutes: RouteModule[] = [roomRoutes, profileRoutes, modeRoutes, setRoutes, progressionRoutes, systemRoutes, shopRoutes, socialRoutes, classRoutes, analyticsRoutes, uploadRoutes, aiRoutes, chaosRoutes, adminRoutes];
+export const allRoutes: RouteModule[] = [roomRoutes, profileRoutes, modeRoutes, setRoutes, progressionRoutes, systemRoutes, shopRoutes, socialRoutes, classRoutes, analyticsRoutes, uploadRoutes, aiRoutes, chaosRoutes, eventRoutes, adminRoutes];
