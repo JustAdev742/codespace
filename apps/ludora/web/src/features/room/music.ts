@@ -27,6 +27,7 @@ export const MODE_MUSIC: Record<string, MusicId> = {
   glimgo: 'market',
   'sky-lanterns': 'market',
   'night-market': 'market',
+  'corner-shop': 'market',
   'festival-workshop': 'market',
   'lantern-trail': 'market',
   'gold-rush': 'market',

@@ -153,14 +153,17 @@ Run a little shop. Questions bring the deliveries; customers bring the money.
 - **Customers** arrive by themselves, more often as your rating rises. Each wants 1 to 3 items
   and waits a while. **Serve** them if you have the stock: they pay, and tip more the less they
   waited. Someone who waits too long leaves and your rating drops.
+- **Special customers**: VIPs want one or two of a single product and tip three times as much
+  (but nothing if you can only serve part of their order); customers in a hurry wait half as
+  long and tip double.
 - **Upgrades** (bought with cash): more shelves, new product lines (bakery, fruit, books, plants),
   a faster till, cosy decor (customers wait longer), a sign (more customers). Spending lowers
   your cash, so an upgrade has to pay for itself.
 - **Events**: Rush Hour (twice the customers), Sale Day (cheaper prices, more customers),
   Delivery Truck (free stock for everyone).
 - **Score**: cash.
-- **Variants**: Market Stall (fewer products, quicker customers), Big Spenders (bigger orders and
-  bigger tips), Co-op (teams share one shop).
+- **Variants**: Market Stall (fewer products, quicker customers), Big Spenders (baskets of 2 to 5
+  items, double tips, more VIPs), Co-op (teams share one shop).
 - **3D**: a cosy shop with your Glim behind the counter, shelves that fill and empty, and
   customers (other Glims) queueing at the till. The big screen shows a high street of every
   player's shopfront.

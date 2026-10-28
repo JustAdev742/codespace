@@ -16,6 +16,7 @@
     "./glow-tag": "./src/modes/glow-tag/meta.ts",
     "./glow-tag-arena": "./src/modes/glow-tag/arena.ts",
     "./big-catch": "./src/modes/big-catch/odds.ts",
+    "./corner-shop": "./src/modes/corner-shop/meta.ts",
     "./chaos": "./src/chaos/index.ts",
     "./chaos-cheats": "./src/chaos/cheats/index.ts",
     "./chaos-overlays": "./src/chaos/overlays.ts",
