@@ -4,6 +4,7 @@ import { classicAdapter } from './classic.ts';
 import { codeBreakersAdapter } from './code-breakers.ts';
 import { cometDashAdapter } from './comet-dash.ts';
 import { confidenceAdapter } from './confidence.ts';
+import { cornerShopAdapter } from './corner-shop.ts';
 import { festivalWorkshopAdapter } from './festival-workshop.ts';
 import { flashcardStudyAdapter } from './flashcard-study.ts';
 import { glimDuelsAdapter } from './glim-duels.ts';
@@ -29,6 +30,7 @@ export const CHAOS_ADAPTERS: readonly ChaosAdapter[] = [
   codeBreakersAdapter,
   cometDashAdapter,
   confidenceAdapter,
+  cornerShopAdapter,
   festivalWorkshopAdapter,
   flashcardStudyAdapter,
   glimDuelsAdapter,

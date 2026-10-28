@@ -413,7 +413,7 @@ const instant: CheatDef[] = [
       if (!here.length) return { error: 'Nobody here has cheated against you yet.' };
       let paid = 0;
       for (const id of here) paid += transfer(api, 'score', id, c.caster, share(api.score(id), 8));
-      if (!paid) return { error: 'Nobody who cheated against you has any points to pay.' };
+      if (paid <= 0) return { error: 'Nobody who cheated against you has anything to pay.' };
     },
   },
   {
