@@ -110,7 +110,7 @@ export const scenarios: ScenarioSet = {
     'confidence.doubt-collector': wagerOpen,
     'confidence.danger-round': wagerOpen,
     'confidence.read-the-room': wagerOpen,
-    'confidence.sneak-preview': wagerOnChoices,
+    'confidence.choice-glimpse': wagerOnChoices,
     'confidence.honest-guess': wagerOpen,
     'confidence.phone-a-friend': wagerOpen,
     'confidence.against-the-crowd': wagerOpen,
@@ -127,5 +127,5 @@ export const scenarios: ScenarioSet = {
   },
   // A wrong call costs something only to a player with points.
   casters: { 'confidence.called-it': 'richest' },
-  screen: ['confidence.read-the-room', 'confidence.sneak-preview', 'confidence.scout-report'],
+  screen: ['confidence.read-the-room', 'confidence.choice-glimpse', 'confidence.scout-report'],
 };

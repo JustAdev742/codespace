@@ -487,8 +487,8 @@ const cheats: CheatDef[] = [
     overlay: (fx) => ({ kind: 'banner', text: String(fx.data.text ?? ''), tone: 'info' }),
   },
   {
-    id: 'confidence.sneak-preview',
-    name: 'Sneak Preview',
+    id: 'confidence.choice-glimpse',
+    name: 'Choice Glimpse',
     category: 'advantage',
     description: 'While the wager window is open, see the choices of the multiple-choice question coming up (in no particular order) before you choose how sure you are. Only for a question with choices to pick from.',
     target: 'self',

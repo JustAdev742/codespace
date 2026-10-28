@@ -212,7 +212,7 @@ describe('confidence pack: seeing more', () => {
     expect(sim.cast('p2', { cheatId: id('read-the-room') })).toMatchObject({ ok: false });
   });
 
-  it('Sneak Preview shows the coming choices during the wager, only for a question with choices', () => {
+  it('Choice Glimpse shows the coming choices during the wager, only for a question with choices', () => {
     const sim = game();
     const tried = new Set<string>();
     for (let i = 0; i < 12 && tried.size < 2; i++) {
@@ -220,10 +220,10 @@ describe('confidence pack: seeing more', () => {
       const q = questionOf(sim);
       const kind = q.type === 'mcq' ? 'mcq' : q.type === 'multi' ? 'multi' : 'none';
       if (kind === 'none' && !tried.has('none')) {
-        expect(sim.cast('p1', { cheatId: id('sneak-preview') })).toMatchObject({ ok: false });
+        expect(sim.cast('p1', { cheatId: id('choice-glimpse') })).toMatchObject({ ok: false });
         tried.add('none');
       } else if (kind === 'mcq' && !tried.has('mcq')) {
-        expect(sim.cast('p1', { cheatId: id('sneak-preview') }).ok).toBe(true);
+        expect(sim.cast('p1', { cheatId: id('choice-glimpse') }).ok).toBe(true);
         const texts = (q as { choices: { text: string }[] }).choices.map((c) => c.text).sort((a, b) => a.localeCompare(b));
         expect(banner(sim, 'p1')).toBe(`Coming up: ${texts.join(' · ')}`);
         until(sim, 'question');
