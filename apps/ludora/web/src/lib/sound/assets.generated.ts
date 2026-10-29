@@ -9,10 +9,17 @@ import musicBattle from '../../assets/audio/music/battle.mp3';
 import musicIntense from '../../assets/audio/music/intense.mp3';
 import musicResults from '../../assets/audio/music/results.mp3';
 import sfxSelect from '../../assets/audio/sfx/select.mp3';
+import sfxSelectV2 from '../../assets/audio/sfx/select.v2.mp3';
+import sfxSelectV3 from '../../assets/audio/sfx/select.v3.mp3';
 import sfxTap from '../../assets/audio/sfx/tap.mp3';
+import sfxTapV2 from '../../assets/audio/sfx/tap.v2.mp3';
+import sfxTapV3 from '../../assets/audio/sfx/tap.v3.mp3';
 import sfxLockIn from '../../assets/audio/sfx/lockIn.mp3';
+import sfxLockInV2 from '../../assets/audio/sfx/lockIn.v2.mp3';
 import sfxCorrect from '../../assets/audio/sfx/correct.mp3';
+import sfxCorrectV2 from '../../assets/audio/sfx/correct.v2.mp3';
 import sfxWrong from '../../assets/audio/sfx/wrong.mp3';
+import sfxWrongV2 from '../../assets/audio/sfx/wrong.v2.mp3';
 import sfxTick from '../../assets/audio/sfx/tick.mp3';
 import sfxTickFinal from '../../assets/audio/sfx/tickFinal.mp3';
 import sfxTimeUp from '../../assets/audio/sfx/timeUp.mp3';
@@ -27,12 +34,17 @@ import sfxJoin5 from '../../assets/audio/sfx/join-5.mp3';
 import sfxJoin6 from '../../assets/audio/sfx/join-6.mp3';
 import sfxJoin7 from '../../assets/audio/sfx/join-7.mp3';
 import sfxReaction0 from '../../assets/audio/sfx/reaction-0.mp3';
+import sfxReaction0V2 from '../../assets/audio/sfx/reaction-0.v2.mp3';
 import sfxReaction1 from '../../assets/audio/sfx/reaction-1.mp3';
+import sfxReaction1V2 from '../../assets/audio/sfx/reaction-1.v2.mp3';
 import sfxReaction2 from '../../assets/audio/sfx/reaction-2.mp3';
+import sfxReaction2V2 from '../../assets/audio/sfx/reaction-2.v2.mp3';
 import sfxReaction3 from '../../assets/audio/sfx/reaction-3.mp3';
+import sfxReaction3V2 from '../../assets/audio/sfx/reaction-3.v2.mp3';
 import sfxRankUp from '../../assets/audio/sfx/rankUp.mp3';
 import sfxFanfare from '../../assets/audio/sfx/fanfare.mp3';
 import sfxPurchase from '../../assets/audio/sfx/purchase.mp3';
+import sfxPurchaseV2 from '../../assets/audio/sfx/purchase.v2.mp3';
 import sfxLevelUp from '../../assets/audio/sfx/levelUp.mp3';
 import sfxLanternRise from '../../assets/audio/sfx/lanternRise.mp3';
 import sfxLanternOpen from '../../assets/audio/sfx/lanternOpen.mp3';
@@ -43,24 +55,37 @@ import sfxLanternRevealEpic from '../../assets/audio/sfx/lanternReveal-epic.mp3'
 import sfxLanternRevealLegendary from '../../assets/audio/sfx/lanternReveal-legendary.mp3';
 import sfxLanternRevealMythic from '../../assets/audio/sfx/lanternReveal-mythic.mp3';
 import sfxCoin from '../../assets/audio/sfx/coin.mp3';
+import sfxCoinV2 from '../../assets/audio/sfx/coin.v2.mp3';
+import sfxCoinV3 from '../../assets/audio/sfx/coin.v3.mp3';
 import sfxJackpot from '../../assets/audio/sfx/jackpot.mp3';
 import sfxSteal from '../../assets/audio/sfx/steal.mp3';
+import sfxStealV2 from '../../assets/audio/sfx/steal.v2.mp3';
 import sfxStolen from '../../assets/audio/sfx/stolen.mp3';
 import sfxSwap from '../../assets/audio/sfx/swap.mp3';
 import sfxShield from '../../assets/audio/sfx/shield.mp3';
 import sfxBust from '../../assets/audio/sfx/bust.mp3';
 import sfxBuild from '../../assets/audio/sfx/build.mp3';
+import sfxBuildV2 from '../../assets/audio/sfx/build.v2.mp3';
+import sfxBuildV3 from '../../assets/audio/sfx/build.v3.mp3';
 import sfxUpgrade from '../../assets/audio/sfx/upgrade.mp3';
+import sfxUpgradeV2 from '../../assets/audio/sfx/upgrade.v2.mp3';
 import sfxHit from '../../assets/audio/sfx/hit.mp3';
+import sfxHitV2 from '../../assets/audio/sfx/hit.v2.mp3';
+import sfxHitV3 from '../../assets/audio/sfx/hit.v3.mp3';
 import sfxHurt from '../../assets/audio/sfx/hurt.mp3';
+import sfxHurtV2 from '../../assets/audio/sfx/hurt.v2.mp3';
+import sfxHurtV3 from '../../assets/audio/sfx/hurt.v3.mp3';
 import sfxPowerUp from '../../assets/audio/sfx/powerUp.mp3';
 import sfxWin from '../../assets/audio/sfx/win.mp3';
 import sfxLose from '../../assets/audio/sfx/lose.mp3';
 import sfxEvent from '../../assets/audio/sfx/event.mp3';
+import sfxEventV2 from '../../assets/audio/sfx/event.v2.mp3';
 import sfxAlarm from '../../assets/audio/sfx/alarm.mp3';
 import sfxCountdown from '../../assets/audio/sfx/countdown.mp3';
 import sfxGo from '../../assets/audio/sfx/go.mp3';
 import sfxDice from '../../assets/audio/sfx/dice.mp3';
+import sfxDiceV2 from '../../assets/audio/sfx/dice.v2.mp3';
+import sfxDiceV3 from '../../assets/audio/sfx/dice.v3.mp3';
 import sfxStep0 from '../../assets/audio/sfx/step-0.mp3';
 import sfxStep1 from '../../assets/audio/sfx/step-1.mp3';
 import sfxStep2 from '../../assets/audio/sfx/step-2.mp3';
@@ -105,66 +130,66 @@ export const MUSIC_ASSETS: Record<MusicId, MusicAsset> = {
 };
 
 export const SFX_ASSETS = {
-  select: { url: sfxSelect, seconds: 1.377, play: 'once' },
-  tap: { url: sfxTap, seconds: 0.49, play: 'once' },
-  lockIn: { url: sfxLockIn, seconds: 1.717, play: 'once' },
-  correct: { url: sfxCorrect, seconds: 2.3, play: 'once' },
-  wrong: { url: sfxWrong, seconds: 1.543, play: 'once' },
-  tick: { url: sfxTick, seconds: 0.46, play: 'once' },
-  tickFinal: { url: sfxTickFinal, seconds: 1.235, play: 'once' },
-  timeUp: { url: sfxTimeUp, seconds: 2.8, play: 'once' },
-  question: { url: sfxQuestion, seconds: 2.128, play: 'once' },
-  reveal: { url: sfxReveal, seconds: 2.6, play: 'once' },
-  'join-0': { url: sfxJoin0, seconds: 1.211, play: 'once' },
-  'join-1': { url: sfxJoin1, seconds: 1.314, play: 'once' },
-  'join-2': { url: sfxJoin2, seconds: 1.187, play: 'once' },
-  'join-3': { url: sfxJoin3, seconds: 1.303, play: 'once' },
-  'join-4': { url: sfxJoin4, seconds: 1.286, play: 'once' },
-  'join-5': { url: sfxJoin5, seconds: 1.183, play: 'once' },
-  'join-6': { url: sfxJoin6, seconds: 1.299, play: 'once' },
-  'join-7': { url: sfxJoin7, seconds: 1.298, play: 'once' },
-  'reaction-0': { url: sfxReaction0, seconds: 0.791, play: 'once' },
-  'reaction-1': { url: sfxReaction1, seconds: 0.806, play: 'once' },
-  'reaction-2': { url: sfxReaction2, seconds: 0.782, play: 'once' },
-  'reaction-3': { url: sfxReaction3, seconds: 0.789, play: 'once' },
-  rankUp: { url: sfxRankUp, seconds: 1.088, play: 'once' },
-  fanfare: { url: sfxFanfare, seconds: 4.0, play: 'once' },
-  purchase: { url: sfxPurchase, seconds: 2.1, play: 'once' },
-  levelUp: { url: sfxLevelUp, seconds: 3.2, play: 'once' },
-  lanternRise: { url: sfxLanternRise, seconds: 3.941, play: 'rise', land: 3.2 },
-  lanternOpen: { url: sfxLanternOpen, seconds: 1.723, play: 'once' },
-  'lanternReveal-common': { url: sfxLanternRevealCommon, seconds: 2.1, play: 'once' },
-  'lanternReveal-uncommon': { url: sfxLanternRevealUncommon, seconds: 2.3, play: 'once' },
-  'lanternReveal-rare': { url: sfxLanternRevealRare, seconds: 2.02, play: 'once' },
-  'lanternReveal-epic': { url: sfxLanternRevealEpic, seconds: 3.4, play: 'once' },
-  'lanternReveal-legendary': { url: sfxLanternRevealLegendary, seconds: 3.325, play: 'once' },
-  'lanternReveal-mythic': { url: sfxLanternRevealMythic, seconds: 3.797, play: 'once' },
-  coin: { url: sfxCoin, seconds: 1.7, play: 'once' },
-  jackpot: { url: sfxJackpot, seconds: 3.0, play: 'once' },
-  steal: { url: sfxSteal, seconds: 1.07, play: 'once' },
-  stolen: { url: sfxStolen, seconds: 1.215, play: 'once' },
-  swap: { url: sfxSwap, seconds: 2.0, play: 'once' },
-  shield: { url: sfxShield, seconds: 2.3, play: 'once' },
-  bust: { url: sfxBust, seconds: 1.529, play: 'once' },
-  build: { url: sfxBuild, seconds: 1.27, play: 'once' },
-  upgrade: { url: sfxUpgrade, seconds: 2.1, play: 'once' },
-  hit: { url: sfxHit, seconds: 1.27, play: 'once' },
-  hurt: { url: sfxHurt, seconds: 0.868, play: 'once' },
-  powerUp: { url: sfxPowerUp, seconds: 2.4, play: 'once' },
-  win: { url: sfxWin, seconds: 2.5, play: 'once' },
-  lose: { url: sfxLose, seconds: 1.782, play: 'once' },
-  event: { url: sfxEvent, seconds: 3.2, play: 'once' },
-  alarm: { url: sfxAlarm, seconds: 1.312, play: 'once' },
-  countdown: { url: sfxCountdown, seconds: 1.232, play: 'once' },
-  go: { url: sfxGo, seconds: 1.687, play: 'once' },
-  dice: { url: sfxDice, seconds: 0.887, play: 'once' },
-  'step-0': { url: sfxStep0, seconds: 0.789, play: 'once' },
-  'step-1': { url: sfxStep1, seconds: 0.826, play: 'once' },
-  'step-2': { url: sfxStep2, seconds: 0.849, play: 'once' },
-  'step-3': { url: sfxStep3, seconds: 0.817, play: 'once' },
-  'step-4': { url: sfxStep4, seconds: 0.712, play: 'once' },
-  'step-5': { url: sfxStep5, seconds: 0.81, play: 'once' },
-  capture: { url: sfxCapture, seconds: 2.2, play: 'once' },
+  select: { url: sfxSelect, seconds: 0.31, play: 'once', alts: [sfxSelectV2, sfxSelectV3], vary: 12 },
+  tap: { url: sfxTap, seconds: 0.174, play: 'once', alts: [sfxTapV2, sfxTapV3], vary: 15 },
+  lockIn: { url: sfxLockIn, seconds: 0.621, play: 'once', alts: [sfxLockInV2], vary: 10 },
+  correct: { url: sfxCorrect, seconds: 1.221, play: 'once', alts: [sfxCorrectV2] },
+  wrong: { url: sfxWrong, seconds: 0.755, play: 'once', alts: [sfxWrongV2], vary: 8 },
+  tick: { url: sfxTick, seconds: 0.184, play: 'once' },
+  tickFinal: { url: sfxTickFinal, seconds: 0.352, play: 'once' },
+  timeUp: { url: sfxTimeUp, seconds: 1.141, play: 'once' },
+  question: { url: sfxQuestion, seconds: 1.221, play: 'once' },
+  reveal: { url: sfxReveal, seconds: 1.299, play: 'once' },
+  'join-0': { url: sfxJoin0, seconds: 0.544, play: 'once' },
+  'join-1': { url: sfxJoin1, seconds: 0.538, play: 'once' },
+  'join-2': { url: sfxJoin2, seconds: 0.545, play: 'once' },
+  'join-3': { url: sfxJoin3, seconds: 0.549, play: 'once' },
+  'join-4': { url: sfxJoin4, seconds: 0.554, play: 'once' },
+  'join-5': { url: sfxJoin5, seconds: 0.533, play: 'once' },
+  'join-6': { url: sfxJoin6, seconds: 0.544, play: 'once' },
+  'join-7': { url: sfxJoin7, seconds: 0.528, play: 'once' },
+  'reaction-0': { url: sfxReaction0, seconds: 0.313, play: 'once', alts: [sfxReaction0V2], vary: 20 },
+  'reaction-1': { url: sfxReaction1, seconds: 0.334, play: 'once', alts: [sfxReaction1V2], vary: 20 },
+  'reaction-2': { url: sfxReaction2, seconds: 0.32, play: 'once', alts: [sfxReaction2V2], vary: 20 },
+  'reaction-3': { url: sfxReaction3, seconds: 0.32, play: 'once', alts: [sfxReaction3V2], vary: 20 },
+  rankUp: { url: sfxRankUp, seconds: 0.733, play: 'once' },
+  fanfare: { url: sfxFanfare, seconds: 2.459, play: 'once' },
+  purchase: { url: sfxPurchase, seconds: 0.974, play: 'once', alts: [sfxPurchaseV2], vary: 10 },
+  levelUp: { url: sfxLevelUp, seconds: 1.65, play: 'once' },
+  lanternRise: { url: sfxLanternRise, seconds: 3.371, play: 'rise', land: 3.2 },
+  lanternOpen: { url: sfxLanternOpen, seconds: 1.006, play: 'once' },
+  'lanternReveal-common': { url: sfxLanternRevealCommon, seconds: 0.915, play: 'once' },
+  'lanternReveal-uncommon': { url: sfxLanternRevealUncommon, seconds: 1.165, play: 'once' },
+  'lanternReveal-rare': { url: sfxLanternRevealRare, seconds: 1.451, play: 'once' },
+  'lanternReveal-epic': { url: sfxLanternRevealEpic, seconds: 1.507, play: 'once' },
+  'lanternReveal-legendary': { url: sfxLanternRevealLegendary, seconds: 1.687, play: 'once' },
+  'lanternReveal-mythic': { url: sfxLanternRevealMythic, seconds: 2.792, play: 'once' },
+  coin: { url: sfxCoin, seconds: 0.518, play: 'once', alts: [sfxCoinV2, sfxCoinV3], vary: 20 },
+  jackpot: { url: sfxJackpot, seconds: 2.011, play: 'once' },
+  steal: { url: sfxSteal, seconds: 0.757, play: 'once', alts: [sfxStealV2], vary: 15 },
+  stolen: { url: sfxStolen, seconds: 0.933, play: 'once' },
+  swap: { url: sfxSwap, seconds: 0.803, play: 'once' },
+  shield: { url: sfxShield, seconds: 0.946, play: 'once' },
+  bust: { url: sfxBust, seconds: 0.962, play: 'once' },
+  build: { url: sfxBuild, seconds: 0.383, play: 'once', alts: [sfxBuildV2, sfxBuildV3], vary: 20 },
+  upgrade: { url: sfxUpgrade, seconds: 1.016, play: 'once', alts: [sfxUpgradeV2], vary: 8 },
+  hit: { url: sfxHit, seconds: 0.351, play: 'once', alts: [sfxHitV2, sfxHitV3], vary: 20 },
+  hurt: { url: sfxHurt, seconds: 0.489, play: 'once', alts: [sfxHurtV2, sfxHurtV3], vary: 15 },
+  powerUp: { url: sfxPowerUp, seconds: 1.351, play: 'once' },
+  win: { url: sfxWin, seconds: 1.798, play: 'once' },
+  lose: { url: sfxLose, seconds: 1.075, play: 'once' },
+  event: { url: sfxEvent, seconds: 2.012, play: 'once', alts: [sfxEventV2], vary: 6 },
+  alarm: { url: sfxAlarm, seconds: 1.054, play: 'once' },
+  countdown: { url: sfxCountdown, seconds: 0.338, play: 'once' },
+  go: { url: sfxGo, seconds: 0.878, play: 'once' },
+  dice: { url: sfxDice, seconds: 0.717, play: 'once', alts: [sfxDiceV2, sfxDiceV3], vary: 15 },
+  'step-0': { url: sfxStep0, seconds: 0.274, play: 'once' },
+  'step-1': { url: sfxStep1, seconds: 0.271, play: 'once' },
+  'step-2': { url: sfxStep2, seconds: 0.266, play: 'once' },
+  'step-3': { url: sfxStep3, seconds: 0.271, play: 'once' },
+  'step-4': { url: sfxStep4, seconds: 0.275, play: 'once' },
+  'step-5': { url: sfxStep5, seconds: 0.282, play: 'once' },
+  capture: { url: sfxCapture, seconds: 1.006, play: 'once' },
 } satisfies Record<string, SfxAsset>;
 
 export type SfxAssetName = keyof typeof SFX_ASSETS;

@@ -185,6 +185,10 @@ def main() -> None:
     MANIFEST.write_text(manifest(tracks, effects))
     for t in tracks:
         print(f"music {t['id']:<9} {t['title']:<20} {t['lufs']:>6} LUFS  peak {t['truePeak']:>5} dBTP  seam {t['seam']:>7} dB  {(ASSETS / 'music' / (t['id'] + '.mp3')).stat().st_size // 1024:>4} KB")
+    for e in effects:
+        takes = f"  {1 + len(e['alts'])} takes" if e.get("alts") else ""
+        vary = f"  vary {e['vary']}" if e.get("vary") else ""
+        print(f"sfx   {e['name']:<24} {e['lufs']:>6} LUFS  peak {e['truePeak']:>5} dBTP{takes}{vary}")
     total = sum((ASSETS / "sfx" / f"{f}.mp3").stat().st_size for e in effects for f in [e["name"], *e.get("alts", [])])
     loudest = max(effects, key=lambda e: e["truePeak"])
     print(f"{len(effects)} effects, {total // 1024} KB, loudest true peak {loudest['truePeak']} dBTP ({loudest['name']})")

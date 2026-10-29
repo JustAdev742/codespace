@@ -33,8 +33,8 @@ files.
 | `ludora_audio/kit.py` | A synthesised drum kit (three settings of it) that plays the `drums({...})` lanes. |
 | `ludora_audio/transitions.py` | Risers, downlifters, impacts, reverse swells and filtered sweeps, placed at bar lines. |
 | `ludora_audio/tracks/*.py` | One file per music track, each a `song()`. |
-| `ludora_audio/sfx.py` | Every sound effect, and the loudness it is made to. |
-| `ludora_audio/synth.py` | Sounds a soundfont lacks, made with numpy: whooshes, impacts, sparkles, coin showers, risers. |
+| `ludora_audio/sfx.py` | Every sound effect, and the loudness it is made to. Each is layered: a transient, a tonal body from patches and kit voices, and air or sparkle, with mono lows. The most repeated have takes (`alts`) and a pitch spread (`vary`). |
+| `ludora_audio/synth.py` | Sounds a soundfont lacks, made with numpy: whooshes, risers and shimmers (on partly shared noise, so they fold to mono), impacts and thumps with harmonics small speakers can play, sparkles and coins on the scale, knocks, snaps, air, glints and chirps. |
 | `ludora_audio/render.py` | Parts to MIDI to audio with FluidSynth (dry: its reverb and chorus off). Cached by the MIDI's hash. Hands patches, the kit and transitions to engine.py. |
 | `ludora_audio/dsp.py` | EQ and compression (Spotify's pedalboard), the generated reverb, echo, ducking, a look-ahead limiter, loudness (pyloudnorm). |
 | `ludora_audio/mixer.py` | A song's parts into a seamless loop. |
