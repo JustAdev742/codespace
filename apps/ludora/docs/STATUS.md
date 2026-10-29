@@ -18,7 +18,7 @@ Last updated: 2026-10-29.
 | M5 Staff tools | Done | Staff API and all 14 staff sections in the web app. An end-to-end test opens every section as a super administrator at phone and desktop widths. |
 | M6 Content, social, classes, analytics | Done | Friends, blocks, profiles, my stats, leaderboards, classes, assignments and their reports, hosted games, game reports, the set editor with image uploads, and AI question drafts. |
 | Chaos (D47) | Done | The secret cheat menu: 1,005 cheats and 10 combos, each tested in a real game; the unlock sequence; the private menu. See [CHAOS.md](CHAOS.md). |
-| M7-8 Polish, CI, deployment | In progress | Production build, Docker image, compose file, CI workflow, docs and end-to-end tests (run in CI) are in. The whole app is restyled for players aged 8 to 17 (D46), and automated accessibility checks pass on every page, game screen and staff section. A design review of the whole app was done and its findings fixed. A playable demo builds for GitHub Pages. 2026-10-29: account download and deletion, a privacy policy and terms, data retention, a measured load test, a deployment kit tested in Docker, a machine screen-reader audit, and WebKit and Firefox runs in CI. Remaining: a person's screen-reader pass, legal review of the policy, the WebKit and Firefox results for this version, and a real deployment, which needs the operator's server and domain. |
+| M7-8 Polish, CI, deployment | In progress | Production build, Docker image, compose file, CI workflow, docs and end-to-end tests (run in CI) are in. The whole app is restyled for players aged 8 to 17 (D46), and automated accessibility checks pass on every page, game screen and staff section. A design review of the whole app was done and its findings fixed. A playable demo builds for GitHub Pages. 2026-10-29: account download and deletion, a privacy policy and terms, data retention, a measured load test, a deployment kit tested in Docker, a machine screen-reader audit, and WebKit and Firefox runs in CI. Remaining: a person's screen-reader pass, legal review of the policy, and a real deployment, which needs the operator's server and domain. |
 
 ## What works today (verified)
 
@@ -438,8 +438,11 @@ Last updated: 2026-10-29.
   player pages and every staff section fit a phone, have one main heading and
   log no errors, and the player pages pass axe. Every Content-Security-Policy
   violation counts as an error. CI runs the suite in Chromium, WebKit and
-  Firefox. WebKit and Firefox first ran on 2026-10-29 and turned up two
-  problems, both fixed; their run on the fixed version is still to come.
+  Firefox. Their first runs on 2026-10-29 turned up three problems, all fixed:
+  - a CSP report on every form in Firefox;
+  - an unhandled audio error when a page is left;
+  - WebKit's wording for cut-off loads.
+  All three engines pass all 10 tests (CI run 99).
 - **A trailer for schools** (`tools/trailer/`): 88 seconds, cut from real games
   filmed with Playwright on a local server (projector and phones, a class of 16
   firing reactions at a reveal, Play again), with an illustrated classroom that
@@ -481,10 +484,9 @@ Left out on purpose:
   operator wants email later.
 
 Not checked yet:
-- **Safari and Firefox on the fixed version.** CI runs every browser test in
-  WebKit and Firefox. The first run found a CSP report in Firefox and a WebKit
-  console quirk, both fixed; the next CI run is the check. Screenshots of the
-  look are still Chromium only.
+- **Real Safari on iPads and iPhones.** Every browser test passes in WebKit,
+  Safari's engine, and in Firefox (CI run 99), but on Linux, not Apple
+  hardware. Screenshots of the look are Chromium only.
 - **A person's screen-reader pass.** The machine audit is in
   [SCREEN_READER_AUDIT.md](SCREEN_READER_AUDIT.md) (with the two fixes it led
   to), but nobody has played a game with NVDA, JAWS, VoiceOver or TalkBack.

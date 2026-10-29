@@ -1,7 +1,8 @@
 # Running a demo
 
 How to show Ludora to a school from a GitHub Codespace, with a fallback that needs no phones.
-Present in Chrome or Edge: the app has only been checked in Chromium-based browsers.
+Any current browser works: every browser test passes in Chrome's, Safari's and Firefox's engines.
+Chrome or Edge on the presenting laptop is the most tested.
 
 ## Before the meeting (allow 15 minutes)
 
