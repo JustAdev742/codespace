@@ -455,3 +455,171 @@ describe('lantern-lands pack: lasting cheats', () => {
     if (!r.ok) expect(r.message).not.toMatch(/trembling/);
   });
 });
+
+/** A team's rival border (lands, not homes, touching a rival land) and the forts on its lands that no rival land touches. */
+function rivalBorderOf(sim: ChaosSim, t: number) {
+  const st = s(sim);
+  const adj = grid(st.map.radius).adj;
+  const front = lands(sim, t).filter((l) => !isHome(sim, l) && adj[l]!.some((n) => st.owner[n] >= 0 && st.owner[n] !== t));
+  const safe = lands(sim, t).filter((l) => !isHome(sim, l) && !front.includes(l));
+  const sum = (ls: number[]) => ls.reduce((n, l) => n + st.fort[l], 0);
+  return { front, safe, frontForts: sum(front), safeForts: sum(safe) };
+}
+
+/** Play until both teams' lands touch, then stop every bot so the map holds still. */
+function untilTheyMeet(sim: ChaosSim) {
+  for (let i = 0; i < 200 && rivalBorderOf(sim, 0).front.length === 0; i++) sim.run(1000);
+  expect(rivalBorderOf(sim, 0).front.length).toBeGreaterThan(0);
+  idleAll(sim);
+}
+
+describe('lantern-lands pack: the rival border, timing and double moves', () => {
+  it('Hex Regroup moves forts from lands no rival touches out to the rival border, creating none', () => {
+    const fresh = make();
+    fresh.run(12_000);
+    refused(fresh.cast('p1', { cheatId: 'lantern-lands.regroup' }), /no forts away from its rival border/);
+
+    const sim = make();
+    untilTheyMeet(sim);
+    ok(sim.cast('p3', { cheatId: 'lantern-lands.palisade' }));
+    const before = rivalBorderOf(sim, 0);
+    expect(before.safeForts).toBeGreaterThan(0);
+    ok(sim.cast('p1', { cheatId: 'lantern-lands.regroup' }));
+    const after = rivalBorderOf(sim, 0);
+    expect(after.frontForts + after.safeForts).toBe(before.frontForts + before.safeForts);
+    expect(after.safeForts).toBeLessThan(before.safeForts);
+    expect(after.frontForts - before.frontForts).toBe(before.safeForts - after.safeForts);
+    for (const l of after.front) expect(s(sim).fort[l]).toBeLessThanOrEqual(3);
+    // Forts stay behind only when the whole rival border is full.
+    if (after.safeForts > 0) for (const l of after.front) expect(s(sim).fort[l]).toBe(3);
+  });
+
+  it('Hexland Salvage turns forts away from the rival border into energy, only as many as fit', () => {
+    const fresh = make();
+    fresh.run(12_000);
+    refused(fresh.cast('p1', { cheatId: 'lantern-lands.salvage' }), /no forts away from its rival border/);
+
+    const sim = make();
+    sim.run(30_000);
+    idleAll(sim);
+    ok(sim.cast('p3', { cheatId: 'lantern-lands.palisade' }));
+    const before = rivalBorderOf(sim, 0);
+    const e = energy(sim, 'p1');
+    ok(sim.cast('p1', { cheatId: 'lantern-lands.salvage' }));
+    const gained = energy(sim, 'p1') - e;
+    expect(gained).toBe(Math.min(4 - e, before.safeForts));
+    expect(rivalBorderOf(sim, 0).safeForts).toBe(before.safeForts - gained);
+    expect(rivalBorderOf(sim, 0).frontForts).toBe(before.frontForts);
+  });
+
+  it('Hexland Snap Tally brings the next scoring forward to now; the mode scores it as usual', () => {
+    const sim = make();
+    sim.run(13_000);
+    idleAll(sim);
+    const before = s(sim).points.slice();
+    const now = sim.now;
+    const gains = [0, 1].map((t) => scoreFor(holdings(sim, t).lands, holdings(sim, t).shrines, { shrinesOnly: false, bloom: s(sim).event?.kind === 'bloom', glow: false }));
+    ok(sim.cast('p1', { cheatId: 'lantern-lands.snap-tally' }));
+    expect(s(sim).nextScoreAt).toBe(now);
+    sim.run(100);
+    expect(s(sim).lastScoreAt).toBe(now);
+    expect(s(sim).points).toEqual([before[0] + gains[0], before[1] + gains[1]]);
+    expect(s(sim).nextScoreAt).toBe(now + 10_000);
+    // Not when the scoring is due in under 2 seconds anyway.
+    sim.run(8_500);
+    refused(sim.cast('p2', { cheatId: 'lantern-lands.snap-tally' }), /about to happen/);
+  });
+
+  it('Hexland Snap Tally never brings forward a scoring that could reach the points goal', () => {
+    const sim = make({ settings: { goalPoints: 250 } });
+    for (let i = 0; i < 300 && sim.rt.status === 'running'; i++) {
+      sim.run(500);
+      const st = s(sim);
+      if (st.nextScoreAt - sim.now < 2500) continue;
+      const near = [0, 1].some((t) => {
+        const h = holdings(sim, t);
+        return st.points[t] + scoreFor(h.lands, h.shrines, { shrinesOnly: false, bloom: st.event?.kind === 'bloom', glow: sim.now >= st.glowAt }) >= 250;
+      });
+      if (!near) continue;
+      refused(sim.cast('p1', { cheatId: 'lantern-lands.snap-tally' }), /win the game/);
+      return;
+    }
+    throw new Error('never got within one scoring of the goal');
+  });
+
+  it('Late Hexland Glow starts the final glow 30 seconds later, keeping at least the last 15 seconds', () => {
+    const sim = make();
+    sim.run(12_000);
+    const { glowAt, endsAt } = s(sim);
+    ok(sim.cast('p1', { cheatId: 'lantern-lands.late-glow' }));
+    expect(s(sim).glowAt).toBe(Math.min(glowAt + 30_000, endsAt - 15_000));
+    refused(sim.cast('p2', { cheatId: 'lantern-lands.late-glow' }), /cannot start any later/);
+    sim.run(glowAt + 1000 - sim.now);
+    expect((sim.rt.view({ kind: 'player', playerId: 'p1' }) as { finalStretch: boolean }).finalStretch).toBe(false);
+    sim.run(s(sim).glowAt + 1000 - sim.now);
+    expect((sim.rt.view({ kind: 'player', playerId: 'p1' }) as { finalStretch: boolean }).finalStretch).toBe(true);
+    refused(sim.cast('p3', { cheatId: 'lantern-lands.late-glow' }), /already begun/);
+  });
+
+  it('Hexland Twin Lanterns: a fort adds 2 and a raid takes 2 off, without capturing', () => {
+    const sim = make();
+    untilTheyMeet(sim);
+    ok(sim.cast('p2', { cheatId: 'lantern-lands.palisade' }));
+    ok(sim.cast('p4', { cheatId: 'lantern-lands.palisade' }));
+    ok(sim.cast('p3', { cheatId: 'lantern-lands.rally' }));
+    ok(sim.cast('p1', { cheatId: 'lantern-lands.twin-lanterns' }));
+    expect(energy(sim, 'p1')).toBeGreaterThanOrEqual(1);
+    const t = team(sim, 'p1');
+    const target = rivalBorder(sim, t).find((l) => !isShrine(sim, l) && s(sim).fort[l] >= 2);
+    if (target !== undefined && s(sim).event?.kind !== 'storm') {
+      const f = s(sim).fort[target];
+      ok(sim.rt.act('p1', { type: 'raid', land: target }));
+      expect(s(sim).fort[target]).toBe(f - 2);
+      expect(s(sim).owner[target]).not.toBe(t);
+    }
+    ok(sim.cast('p1', { cheatId: 'lantern-lands.rally' }));
+    const view = sim.rt.view({ kind: 'player', playerId: 'p1' }) as { you: { options: { fortify: number[] } } };
+    const mine = view.you.options.fortify.find((l) => !isShrine(sim, l) && s(sim).fort[l] <= 1);
+    expect(mine).toBeDefined();
+    const f = s(sim).fort[mine!];
+    ok(sim.rt.act('p1', { type: 'fortify', land: mine! }));
+    expect(s(sim).fort[mine!]).toBe(f + 2);
+    expect(target !== undefined || s(sim).event?.kind === 'storm').toBe(true);
+  });
+
+  it('Hexland Foundations gives each land the team claims a fort while it lasts', () => {
+    const sim = make();
+    sim.run(12_000);
+    idleAll(sim);
+    ok(sim.cast('p1', { cheatId: 'lantern-lands.rally' }));
+    ok(sim.cast('p3', { cheatId: 'lantern-lands.foundations' }));
+    const claimOf = (id: string) => (sim.rt.view({ kind: 'player', playerId: id }) as { you: { options: { claim: number[] } } }).you.options.claim[0]!;
+    const a = claimOf('p1');
+    ok(sim.rt.act('p1', { type: 'claim', land: a }));
+    expect(s(sim).fort[a]).toBe(1);
+    sim.run(20_500);
+    ok(sim.cast('p3', { cheatId: 'lantern-lands.rally' }));
+    const b = claimOf('p1');
+    ok(sim.rt.act('p1', { type: 'claim', land: b }));
+    expect(s(sim).fort[b]).toBe(0);
+  });
+
+  it('Hexland Border Toll takes 1 point for each enemy land touching yours', () => {
+    const fresh = make();
+    fresh.run(12_000);
+    refused(fresh.cast('p1', { cheatId: 'lantern-lands.border-toll', target: teamId(fresh, team(fresh, 'p2')) }), /touches yours/);
+
+    const sim = make();
+    untilTheyMeet(sim);
+    const st = s(sim);
+    const adj = grid(st.map.radius).adj;
+    const enemy = team(sim, 'p2');
+    const mine = team(sim, 'p1');
+    const touching = lands(sim, enemy).filter((l) => adj[l]!.some((n) => st.owner[n] === mine)).length;
+    const pay = Math.min(st.points[enemy], touching * (sim.now >= st.glowAt ? 2 : 1));
+    const before = st.points.slice();
+    ok(sim.cast('p1', { cheatId: 'lantern-lands.border-toll', target: teamId(sim, enemy) }));
+    expect(s(sim).points[enemy]).toBe(before[enemy] - pay);
+    expect(s(sim).points[mine]).toBe(before[mine] + pay);
+  });
+});

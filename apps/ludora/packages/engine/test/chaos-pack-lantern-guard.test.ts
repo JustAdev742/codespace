@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
+import { createRng } from '@ludora/shared';
 import { ChaosSim, type ChaosSimOptions } from '../src/testing/chaos.ts';
+import { chaosAdapterFor } from '../src/chaos/adapters/index.ts';
 import { MIXED_SET } from '../src/testing/fixtures.ts';
 import { MAPS } from '../src/modes/lantern-guard/maps.ts';
 import { TOWERS, towerStats, upgradeCost } from '../src/modes/lantern-guard/units.ts';
@@ -287,5 +289,103 @@ describe('lantern-guard pack', () => {
 
   it('the random cheat states its odds', () => {
     expect(allCheats().find((c) => c.id === ID('will-o-wisp'))!.description).toMatch(/30%.*25%.*25%.*20%/);
+  });
+});
+
+describe('lantern-guard pack: lights, the road and spots', () => {
+  it('the lights meter never puts the last light out and never goes past the lantern’s start', () => {
+    const lights = chaosAdapterFor('lantern-guard')!.meters.find((x) => x.key === 'lights')!;
+    expect(typeof lights.min === 'function' ? lights.min({}, 'game', {} as never) : lights.min).toBe(1);
+    expect(lights.max!({ maxLights: 20 }, 'game', {} as never)).toBe(20);
+  });
+
+  it('Relight the Great Lantern puts back up to 2 lost lights, and can be undone', () => {
+    const sim = game();
+    freeze(sim);
+    expect(cast(sim, 'p1', 'relight').ok).toBe(false);
+    until(sim, () => S(sim).lights <= S(sim).maxLights - 3);
+    const lights = S(sim).lights;
+    const r = cast(sim, 'p1', 'relight');
+    expect(r.ok).toBe(true);
+    expect(S(sim).lights).toBe(lights + 2);
+    expect(sim.rt.undoCast('p1', (r as { castId: string }).castId).ok).toBe(true);
+    expect(S(sim).lights).toBe(lights);
+  });
+
+  it('Relight never lights more than the lantern started with', () => {
+    const sim = game();
+    freeze(sim);
+    // The first Wisp through puts out one light: only that one can be relit.
+    until(sim, () => S(sim).lights < S(sim).maxLights, 200_000, 50);
+    expect(S(sim).lights).toBe(S(sim).maxLights - 1);
+    expect(cast(sim, 'p1', 'relight').ok).toBe(true);
+    expect(S(sim).lights).toBe(S(sim).maxLights);
+    expect(sim.feed.some((line) => /relit 1 light on the Great Lantern/.test(line))).toBe(true);
+  });
+
+  it('Gloom Changeling swaps the front gloomling with the weakest one behind it, and only a weaker one', () => {
+    const quiet = game();
+    freeze(quiet);
+    until(quiet, () => live(quiet).length >= 2);
+    // Wave 1 with no towers: identical Wisps at full health, so none is weaker than the front one.
+    expect(cast(quiet, 'p1', 'changeling').ok).toBe(false);
+
+    const sim = game();
+    const lights = (g: any) => ({ wisp: 1, shade: 1, brute: 2, lord: 6 })[g.kind as 'wisp'];
+    const weaker = (a: any, b: any) => lights(a) < lights(b) || (lights(a) === lights(b) && a.hp < b.hp);
+    const pair = () => {
+      const on = live(sim);
+      if (on.length < 2) return null;
+      const front = on.reduce((a: any, b: any) => (b.p > a.p ? b : a));
+      const weakest = on.reduce((a: any, b: any) => (weaker(b, a) ? b : a));
+      return weaker(weakest, front) ? { front, weakest } : null;
+    };
+    until(sim, () => pair() !== null, 300_000, 50);
+    const { front, weakest } = pair()!;
+    const was = { front: [front.p, front.road], weakest: [weakest.p, weakest.road] };
+    expect(cast(sim, 'p1', 'changeling').ok).toBe(true);
+    const now = (gid: number) => S(sim).gloom.find((g: any) => g.id === gid);
+    expect([now(front.id).p, now(front.id).road]).toEqual(was.weakest);
+    expect([now(weakest.id).p, now(weakest.id).road]).toEqual(was.front);
+  });
+
+  it('Festival Gold Chime adds half again to every guard’s right answers while it lasts', () => {
+    const sim = game();
+    freeze(sim);
+    expect(build(sim, 'p1', 0).ok).toBe(true);
+    expect(cast(sim, 'p2', 'festival-chime').ok).toBe(true);
+    const rng = createRng(1);
+    let checked = false;
+    for (let i = 0; i < 10 && !checked; i++) {
+      const a = sim.rt.botAction('p1', 1, rng) as any;
+      if (a?.type !== 'answer') break;
+      const gold = G(sim, 'p1').gold;
+      const right = G(sim, 'p1').stream.correct;
+      expect(sim.rt.act('p1', a).ok).toBe(true);
+      if (G(sim, 'p1').stream.correct === right) continue;
+      const gain = G(sim, 'p1').stream.streak >= 3 ? 25 : 20;
+      expect(G(sim, 'p1').gold - gold).toBe(gain + Math.round(gain / 2));
+      checked = true;
+    }
+    expect(checked).toBe(true);
+    sim.run(21_000);
+    const a = sim.rt.botAction('p1', 1, rng) as any;
+    const gold = G(sim, 'p1').gold;
+    const right = G(sim, 'p1').stream.correct;
+    if (a?.type === 'answer' && sim.rt.act('p1', a).ok && G(sim, 'p1').stream.correct > right) {
+      expect([20, 25]).toContain(G(sim, 'p1').gold - gold);
+    }
+  });
+
+  it('Tower Spot Swap trades your least successful tower’s spot with a rival’s best-placed tower', () => {
+    const sim = game();
+    freeze(sim);
+    expect(build(sim, 'p1', 0).ok).toBe(true);
+    expect(build(sim, 'p2', 1).ok).toBe(true);
+    expect(cast(sim, 'p3', 'spot-swap', 'p2').ok).toBe(false);
+    expect(cast(sim, 'p1', 'spot-swap', 'p3').ok).toBe(false);
+    expect(cast(sim, 'p1', 'spot-swap', 'p2').ok).toBe(true);
+    const at = (pid: string) => S(sim).towers.find((t: any) => t.by === pid).spot;
+    expect([at('p1'), at('p2')]).toEqual([1, 0]);
   });
 });

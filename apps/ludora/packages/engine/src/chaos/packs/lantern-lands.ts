@@ -999,6 +999,248 @@ function rustTarget(api: ChaosApi, e: number): number | null {
   return options.sort((x, y) => f[y]! - f[x]! || x - y)[0] ?? null;
 }
 
-const cheats: CheatDef[] = [...map, ...energy, ...scoring, ...events, ...lasting];
+/* ----------------- more: the rival border, timing, double moves ----------------- */
+
+/** A team's lands (never homes) that touch a rival team's land: its rival border. */
+function borderLands(api: ChaosApi, t: number): number[] {
+  const o = owner(api);
+  const a = adj(api);
+  return o.flatMap((v, l) => (v === t && !isHome(api, l) && a[l]!.some((n) => o[n]! >= 0 && o[n] !== t) ? [l] : []));
+}
+
+/** A team's lands (never homes) that no rival land touches, with forts on them. */
+function safeForts(api: ChaosApi, t: number): number[] {
+  const front = new Set(borderLands(api, t));
+  return owner(api).flatMap((v, l) => (v === t && !isHome(api, l) && !front.has(l) && forts(api)[l]! > 0 ? [l] : []));
+}
+
+/** The map move a player made in this very transaction, if any (the mode records it on the member). */
+function moveNow(api: ChaosApi, id: string): { kind: string; land: number; at: number; fort: number } | null {
+  const mv = st(api).members[id]?.move;
+  return mv && mv.at === api.now() ? mv : null;
+}
+
+/** Points every team would score if a scoring happened now (teams whose players have all left score nothing, as in the mode). */
+function scoringNow(api: ChaosApi): number[] {
+  return (st(api).teams as unknown[]).map((_, t) => {
+    if (!membersOf(api, t).length) return 0;
+    const { lands, shrines } = holdings(api, t);
+    return scoreFor(lands, shrines, { shrinesOnly: shrinesOnly(api), bloom: bloom(api), glow: inGlow(api) });
+  });
+}
+
+/** How late the final glow may be pushed: it always covers at least this much of the end. */
+const GLOW_KEEP_MS = 15_000;
+const GLOW_PUSH_MS = 30_000;
+
+const more: CheatDef[] = [
+  {
+    id: 'lantern-lands.regroup',
+    name: 'Hex Regroup',
+    category: 'advantage',
+    description: 'Forts on your team\'s lands that no rival land touches move out to its rival border, one at a time, each to the land beside a rival with the fewest forts, up to the most a land can hold (never a home). Forts that do not fit stay where they are.',
+    target: 'self',
+    modes: MODES,
+    needs: NEEDS,
+    cost: 35,
+    cooldownMs: 50_000,
+    undoable: false,
+    apply: (api, c) => {
+      const no = gameOn(api);
+      if (no) return no;
+      const t = castTeam(api, c);
+      const f = forts(api);
+      const max = fortMax(api);
+      const safe = safeForts(api, t);
+      if (!safe.length) return { error: 'Your team has no forts away from its rival border.' };
+      const front = borderLands(api, t);
+      if (!front.length) return { error: 'No rival land touches yours, so there is no rival border to move to.' };
+      let moved = 0;
+      for (const from of safe) {
+        while (f[from]! > 0) {
+          const to = front.filter((l) => f[l]! < max).sort((x, y) => f[x]! - f[y]! || x - y)[0];
+          if (to === undefined) break;
+          f[from] = f[from]! - 1;
+          f[to] = f[to]! + 1;
+          moved++;
+        }
+      }
+      if (!moved) return { error: 'Your team\'s rival border already holds as many forts as it can.' };
+      api.feed(`Hex Regroup: the ${teamName(api, t)} moved ${moved} ${moved === 1 ? 'fort' : 'forts'} out to its rival border.`, 'good');
+    },
+  },
+  {
+    id: 'lantern-lands.salvage',
+    name: 'Hexland Salvage',
+    category: 'economy',
+    description: 'Take forts down off your team\'s lands that no rival land touches (never a home) and gain 1 energy for each, as many as you have room to hold (one more than the room\'s energy cap). The most fortified of those lands goes first.',
+    target: 'self',
+    modes: MODES,
+    needs: NEEDS,
+    cost: 25,
+    cooldownMs: 50_000,
+    undoable: false,
+    apply: (api, c) => {
+      const no = gameOn(api);
+      if (no) return no;
+      const t = teamOfPlayer(api, c.caster);
+      const f = forts(api);
+      if (!safeForts(api, t).length) return { error: 'Your team has no forts away from its rival border.' };
+      const max = api.meter('currency')?.max?.(api.s, c.caster, api.ctx) ?? 0;
+      let room = max - api.get('currency', c.caster);
+      if (room <= 0) return { error: 'Your energy is already full.' };
+      let taken = 0;
+      for (; room > 0; room--) {
+        const l = safeForts(api, t).sort((x, y) => f[y]! - f[x]! || x - y)[0];
+        if (l === undefined) break;
+        f[l] = f[l]! - 1;
+        taken++;
+      }
+      api.add('currency', c.caster, taken);
+      api.feed(`Hexland Salvage: ${api.name(c.caster)} took down ${taken} ${taken === 1 ? 'fort' : 'forts'} away from the rival border for ${taken} energy.`, 'info');
+    },
+  },
+  {
+    id: 'lantern-lands.snap-tally',
+    name: 'Hexland Snap Tally',
+    category: 'round',
+    description: 'The next scoring comes right now for every team, scored by the mode exactly as usual, and the one after it a full interval later. Not when the next scoring is under 2 seconds away anyway, and not when it could reach the points goal (that scoring must come on time).',
+    target: 'room',
+    modes: MODES,
+    needs: NEEDS,
+    cost: 35,
+    cooldownMs: 60_000,
+    undoable: false,
+    apply: (api) => {
+      const no = gameOn(api);
+      if (no) return no;
+      const s = st(api);
+      const now = api.now();
+      if (s.nextScoreAt > s.endsAt) return { error: 'There is no scoring left before time runs out.' };
+      if (s.nextScoreAt - now < 2000) return { error: 'The next scoring is about to happen anyway.' };
+      const goal = Number(api.ctx.settings.goalPoints) || 0;
+      const gains = scoringNow(api);
+      if (goal > 0 && gains.some((g, t) => (s.points[t] ?? 0) + g >= goal)) return { error: 'That scoring could win the game, so it has to come on time.' };
+      s.nextScoreAt = now;
+      api.ctx.setTimer('score', now);
+      api.feed('Hexland Snap Tally: every team scores its lands right now.', 'big');
+    },
+  },
+  {
+    id: 'lantern-lands.late-glow',
+    name: 'Late Hexland Glow',
+    category: 'round',
+    description: `The final glow, when every score counts double, starts ${GLOW_PUSH_MS / 1000} seconds later, but it always covers at least the last ${GLOW_KEEP_MS / 1000} seconds. Not once it has begun.`,
+    target: 'room',
+    modes: MODES,
+    needs: NEEDS,
+    cost: 35,
+    cooldownMs: 120_000,
+    undoable: false,
+    apply: (api) => {
+      const no = gameOn(api);
+      if (no) return no;
+      const s = st(api);
+      if (api.now() >= s.glowAt) return { error: 'The final glow has already begun.' };
+      const at = Math.min(s.glowAt + GLOW_PUSH_MS, s.endsAt - GLOW_KEEP_MS);
+      if (at <= s.glowAt) return { error: 'The final glow cannot start any later.' };
+      const moved = Math.round((at - s.glowAt) / 1000);
+      s.glowAt = at;
+      api.ctx.setTimer('glow', at);
+      api.feed(`Late Hexland Glow: the final glow comes ${moved} seconds later.`, 'big');
+    },
+  },
+  {
+    id: 'lantern-lands.twin-lanterns',
+    name: 'Hexland Twin Lanterns',
+    category: 'advantage',
+    description: 'For 15 seconds each raid you make takes 2 forts off a rival land instead of 1 (a land still needs a raid on no forts to be captured), and each fort you build adds 2, up to the most a land can hold. Raids still wait out a lantern storm.',
+    target: 'self',
+    modes: MODES,
+    needs: NEEDS,
+    cost: 35,
+    cooldownMs: 50_000,
+    durationMs: 15_000,
+    hooks: {
+      delta: {
+        // Energy only goes down in this mode when a map move spends it.
+        currency: (api, fx, d) => {
+          const id = fx.caster;
+          if (!((d[id] ?? 0) < 0) || over(api)) return;
+          const mv = moveNow(api, id);
+          if (!mv) return;
+          const t = teamOfPlayer(api, id);
+          const f = forts(api);
+          const o = owner(api)[mv.land]!;
+          if (mv.kind === 'raid' && o >= 0 && o !== t && f[mv.land]! > 0 && !storm(api)) f[mv.land] = f[mv.land]! - 1;
+          else if (mv.kind === 'fortify' && o === t && f[mv.land]! < fortMax(api)) f[mv.land] = f[mv.land]! + 1;
+          else return;
+          mv.fort = f[mv.land]!;
+        },
+      },
+    },
+    overlay: () => ({ kind: 'badge', text: 'Twin lanterns: raids and forts count twice', tone: 'good' }),
+  },
+  {
+    id: 'lantern-lands.foundations',
+    name: 'Hexland Foundations',
+    category: 'advantage',
+    description: 'For 20 seconds, every land a player on your team claims or captures gets 1 more fort straight away (up to the most a land can hold).',
+    target: 'self',
+    modes: MODES,
+    needs: NEEDS,
+    cost: 35,
+    cooldownMs: 50_000,
+    durationMs: 20_000,
+    apply: (api, c, fx) => {
+      const no = gameOn(api);
+      if (no) return no;
+      if (fx) fx.data.team = teamOfPlayer(api, c.caster);
+    },
+    hooks: {
+      delta: {
+        currency: (api, fx, d) => {
+          if (over(api)) return;
+          const t = Number(fx.data.team);
+          const f = forts(api);
+          for (const [id, change] of Object.entries(d)) {
+            if (!(change < 0) || teamOfPlayer(api, id) !== t) continue;
+            const mv = moveNow(api, id);
+            if (!mv || (mv.kind !== 'claim' && mv.kind !== 'capture') || owner(api)[mv.land] !== t || f[mv.land]! >= fortMax(api)) continue;
+            f[mv.land] = f[mv.land]! + 1;
+            mv.fort = f[mv.land]!;
+          }
+        },
+      },
+    },
+    overlay: () => ({ kind: 'badge', text: 'Foundations: new lands come with a fort', tone: 'good' }),
+  },
+  {
+    id: 'lantern-lands.border-toll',
+    name: 'Hexland Border Toll',
+    category: 'score',
+    description: 'The enemy team pays your team a toll out of its points: 1 point for each of its lands that touches yours (2 in the final glow). Never more than it has, and never up to the points goal.',
+    target: 'enemy-team',
+    modes: MODES,
+    needs: [...TEAM_NEEDS, 'meter:teamScore'],
+    cost: 35,
+    cooldownMs: 60_000,
+    apply: (api, c) => {
+      const no = gameOn(api);
+      if (no) return no;
+      const e = enemyOf(api, c);
+      const t = teamOfPlayer(api, c.caster);
+      const o = owner(api);
+      const a = adj(api);
+      const touching = o.filter((v, l) => v === e && a[l]!.some((n) => o[n] === t)).length;
+      if (!touching) return { error: `No land of the ${teamName(api, e)} touches yours.` };
+      const got = transfer(api, 'teamScore', teamIdOf(api, e), teamIdOf(api, t), touching * (inGlow(api) ? 2 : 1));
+      if (!got) return { error: `The ${teamName(api, e)} have no points to pay, or your team is as close to the goal as chaos can take it.` };
+      api.feed(`Hexland Border Toll: the ${teamName(api, e)} paid the ${teamName(api, t)} ${got} ${got === 1 ? 'point' : 'points'} for ${touching} border ${touching === 1 ? 'land' : 'lands'}.`, 'bad');
+    },
+  },
+];
+
+const cheats: CheatDef[] = [...map, ...energy, ...scoring, ...events, ...lasting, ...more];
 
 defineCheats(cheats);

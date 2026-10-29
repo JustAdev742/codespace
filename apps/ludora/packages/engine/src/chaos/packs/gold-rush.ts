@@ -1,7 +1,7 @@
 import { defineCheats } from '../registry.ts';
 import type { ActiveEffect, ChaosApi, CheatDef } from '../types.ts';
 import { odds, rollOdds, target, transfer } from '../cheats/kit.ts';
-import { EVENT_INFO, GROUND, MAX_DIGS, type GoldEventId, type GroundKind, type RiskLevel } from '../../modes/gold-rush/meta.ts';
+import { EVENT_INFO, GEAR, GEAR_INFO, GROUND, MAX_DIGS, meta, type GearId, type GoldEventId, type GroundKind, type RiskLevel } from '../../modes/gold-rush/meta.ts';
 import { averageFind, type DigMoment } from '../../modes/gold-rush/odds.ts';
 
 /*
@@ -714,6 +714,213 @@ const cheats: CheatDef[] = [
   },
 ];
 
+/* ------------------------- more: bank, gear, shafts, whistle ------------------------- */
+
+/** The bank stays open for everyone this close to the whistle, so no cart is trapped at the end. */
+const BANK_OPEN_MS = 45_000;
+/** A rescue crew only comes for a cave-in this recent. */
+const RESCUE_WINDOW_MS = 20_000;
+/** The whistle moves this much per cast, and chaos may move it this much in a whole game. */
+const WHISTLE_STEP_MS = 20_000;
+const WHISTLE_MAX_MS = 60_000;
+const BORROWED = `${MODE}.borrowed-props`;
+const TERMITES = `${MODE}.termites`;
+
+/** The whistle as the mode first set it: the game starts at game time 0 and runs the time limit (6 minutes when none is set). */
+const firstWhistle = (api: Api) => (api.ctx.common.timeLimitSec > 0 ? api.ctx.common.timeLimitSec : (meta.common.defaults.timeLimitSec ?? 360)) * 1000;
+const gearKey = (m: any) => GEAR.map((g) => m?.gear[g] ?? 0).join('/');
+/** Props that are only lent (Borrowed Props) or taken away for a while (Termites) on this miner. */
+const propsInFlux = (api: Api, id: string) => api.effectsOn(id).some((e) => e.cheatId === BORROWED || e.cheatId === TERMITES);
+
+/** The gear and level a trade-in sells: the one asked for, or the dearest level the miner owns. */
+function tradeInPick(m: any, choice: string): { gear: GearId; price: number } | null {
+  const own = (g: GearId) => (m.gear[g] > 0 ? { gear: g, price: GEAR_INFO[g].levels[m.gear[g] - 1]!.cost } : null);
+  if (choice !== 'best') return own(choice as GearId);
+  return GEAR.map(own).reduce<{ gear: GearId; price: number } | null>((best, x) => (x && (!best || x.price > best.price) ? x : best), null);
+}
+
+const more: CheatDef[] = [
+  {
+    id: 'gold-rush.bank-holiday',
+    name: 'Bank Holiday',
+    category: 'troll',
+    description: `For 15 seconds the bank is closed to an opponent: they cannot bank their cart, though they can still answer and dig. Not in the last ${BANK_OPEN_MS / 1000} seconds before the whistle.`,
+    target: 'opponent',
+    modes: M,
+    needs: ['meter:cart'],
+    cost: 30,
+    cooldownMs: 50_000,
+    durationMs: 15_000,
+    apply: (api) => {
+      if (api.s.endsAt - api.now() < BANK_OPEN_MS) return { error: `The bank stays open for everyone in the last ${BANK_OPEN_MS / 1000} seconds.` };
+    },
+    hooks: {
+      gate: (_api, _fx, _id, action: any) => (action?.type === 'bank' ? { block: 'Bank holiday! The bank opens again in a few seconds.' } : undefined),
+    },
+    overlay: (fx) => ({ kind: 'countdown', label: 'Bank closed', until: fx.endsAt }),
+  },
+  {
+    id: 'gold-rush.rescue-crew',
+    name: 'Mine Rescue Crew',
+    category: 'advantage',
+    description: `Within ${RESCUE_WINDOW_MS / 1000} seconds of a cave-in that cost you gold, a rescue crew digs out half of what it lost and puts it back in your cart. Your shaft stays at the top.`,
+    target: 'self',
+    modes: M,
+    needs: ['cave-ins', 'meter:cart'],
+    cost: 30,
+    // Longer than the window, so one cave-in can only be rescued once.
+    cooldownMs: 60_000,
+    apply: (api, c) => {
+      const last = miner(api, c.caster)?.last;
+      if (!last || last.kind !== 'cavein' || !(last.gold < 0) || api.now() - last.at > RESCUE_WINDOW_MS) {
+        return { error: `You have not had a cave-in that cost you gold in the last ${RESCUE_WINDOW_MS / 1000} seconds.` };
+      }
+      const back = api.add('cart', c.caster, Math.max(1, Math.floor(-last.gold / 2)));
+      note(api, c.caster, `A rescue crew dug ${gold(back)} out of the cave-in for your cart.`, 'good');
+    },
+  },
+  {
+    id: 'gold-rush.late-whistle',
+    name: 'Late Shift Whistle',
+    category: 'round',
+    description: `The whistle blows ${WHISTLE_STEP_MS / 1000} seconds later for everyone. Chaos can add at most ${WHISTLE_MAX_MS / 1000} seconds to a game.`,
+    target: 'room',
+    modes: M,
+    cost: 35,
+    cooldownMs: 90_000,
+    undoable: false,
+    apply: (api) => {
+      const s = api.s;
+      if (s.winner) return { error: 'The game is over.' };
+      if (s.endsAt - firstWhistle(api) + WHISTLE_STEP_MS > WHISTLE_MAX_MS) return { error: `The whistle is already ${WHISTLE_MAX_MS / 1000} seconds late, as late as chaos can make it.` };
+      s.endsAt += WHISTLE_STEP_MS;
+      api.ctx.setTimer('time', s.endsAt);
+      api.feed(`Late shift: the whistle blows ${WHISTLE_STEP_MS / 1000} seconds later.`, 'big');
+    },
+  },
+  {
+    id: 'gold-rush.kit-swap',
+    name: "Miner's Kit Swap",
+    category: 'troll',
+    description: 'Swap all your gear (pick, timber props and gold pan) with an opponent\'s, for good. Not while either of you has borrowed props or termites.',
+    target: 'opponent',
+    modes: M,
+    cost: 40,
+    cooldownMs: 90_000,
+    undoable: false,
+    apply: (api, c) => {
+      const t = target(c);
+      const mine = miner(api, c.caster);
+      const theirs = miner(api, t);
+      if (!mine || !theirs) return { error: 'Only miners in the game can swap kit.' };
+      if (gearKey(mine) === gearKey(theirs)) return { error: `You and ${api.name(t)} have the same gear.` };
+      if (propsInFlux(api, c.caster) || propsInFlux(api, t)) return { error: 'Someone\'s timber props are borrowed or eaten right now. Wait for them to settle.' };
+      const g = { ...mine.gear };
+      mine.gear = { ...theirs.gear };
+      theirs.gear = g;
+      const levels = (x: any) => GEAR.reduce((n, k) => n + (x.gear[k] ?? 0), 0);
+      note(api, t, `${api.name(c.caster)} swapped kit with you: you now have pick level ${theirs.gear.pick}, props level ${theirs.gear.props} and pan level ${theirs.gear.pan}.`, levels(theirs) < levels(mine) ? 'bad' : 'info');
+      api.feed(`${api.name(c.caster)} swapped kit with ${api.name(t)}.`, 'info');
+    },
+  },
+  {
+    id: 'gold-rush.trade-in',
+    name: "Prospector's Trade-In",
+    category: 'economy',
+    description: 'Sell the top level of one of your gear back to a trader for half what it cost: the gold goes straight into your bank. Not props you have only borrowed.',
+    target: 'self',
+    modes: M,
+    needs: ['meter:score'],
+    params: [
+      {
+        key: 'gear',
+        label: 'Gear',
+        kind: 'choice',
+        options: [{ value: 'best', label: 'My dearest gear' }, ...GEAR.map((g) => ({ value: g, label: GEAR_INFO[g].label }))],
+        default: 'best',
+      },
+    ],
+    cost: 25,
+    cooldownMs: 60_000,
+    // It writes the gear itself.
+    undoable: false,
+    apply: (api, c) => {
+      const m = miner(api, c.caster);
+      const pick = m ? tradeInPick(m, String(c.params.gear)) : null;
+      if (!pick) return { error: c.params.gear === 'best' ? 'You have no gear to sell.' : `You have no ${GEAR_INFO[c.params.gear as GearId].label.toLowerCase()} to sell.` };
+      if (pick.gear === 'props' && propsInFlux(api, c.caster)) return { error: 'Your timber props are borrowed or eaten right now.' };
+      const paid = Math.floor(pick.price / 2);
+      // A trade-in that would take the bank to the goal is refused whole; the error rolls the gold back.
+      if (api.add('score', c.caster, paid) < paid) return { error: 'Your bank cannot take that much gold right now.' };
+      m.gear[pick.gear]--;
+      note(api, c.caster, `${GEAR_INFO[pick.gear].label} sold back for ${gold(paid)}.`, 'info');
+    },
+  },
+  {
+    id: 'gold-rush.shaft-swap',
+    name: 'Shaft Swap',
+    category: 'troll',
+    description: 'Trade shaft depths with an opponent: you go to the level they reached and they go to yours. Carts stay where they are.',
+    target: 'opponent',
+    modes: M,
+    needs: ['meter:depth'],
+    cost: 30,
+    cooldownMs: 50_000,
+    apply: (api, c) => {
+      const t = target(c);
+      const mine = api.get('depth', c.caster);
+      const theirs = api.get('depth', t);
+      if (mine === theirs) return { error: `You and ${api.name(t)} are on the same level.` };
+      api.set('depth', c.caster, theirs);
+      api.set('depth', t, mine);
+      note(api, t, `${api.name(c.caster)} swapped shafts with you: you are now on level ${mine}.`, theirs > mine ? 'bad' : 'info');
+    },
+  },
+  {
+    id: 'gold-rush.vein-thief',
+    name: 'Quartz Vein Thief',
+    category: 'troll',
+    description: 'Take the quartz vein waiting in an opponent\'s shaft: their next find is no longer doubled, and yours is. Not when you already have one waiting.',
+    target: 'opponent',
+    modes: M,
+    needs: ['meter:vein'],
+    cost: 25,
+    cooldownMs: 45_000,
+    apply: (api, c) => {
+      const t = target(c);
+      if (api.get('vein', t) <= 0) return { error: `${api.name(t)} has no quartz vein waiting.` };
+      if (api.get('vein', c.caster) > 0) return { error: 'You already have a quartz vein waiting.' };
+      api.set('vein', t, 0);
+      api.set('vein', c.caster, 1);
+      note(api, t, `${api.name(c.caster)} made off with your quartz vein.`, 'bad');
+    },
+  },
+  {
+    id: 'gold-rush.steady-rope',
+    name: 'Steady Shaft Rope',
+    category: 'advantage',
+    description: 'For 25 seconds your shaft stops going deeper: each dig finds what the next level down holds, with its cave-in chance, and leaves you where you are. A cave-in still sends you to the top.',
+    target: 'self',
+    modes: M,
+    needs: ['meter:depth'],
+    cost: 25,
+    cooldownMs: 60_000,
+    durationMs: 25_000,
+    hooks: {
+      delta: {
+        depth: (api, fx, d) => {
+          const id = target(fx);
+          const last = freshDig(api, fx, id);
+          if (!last || last.kind === 'cavein' || !(d[id]! > 0)) return;
+          markSeen(fx, id, last.seq);
+          d[id] = 0;
+        },
+      },
+    },
+    overlay: () => ({ kind: 'badge', text: 'Steady rope', tone: 'good' }),
+  },
+];
+
 /** Timber Charm's work for one meter: put back what a cave-in took, and rewrite the card once. */
 function saveFromCaveIn(api: Api, fx: ActiveEffect, d: Record<string, number>, meter: 'depth' | 'cart') {
   const id = target(fx);
@@ -734,4 +941,4 @@ function saveFromCaveIn(api: Api, fx: ActiveEffect, d: Record<string, number>, m
   }
 }
 
-defineCheats(cheats);
+defineCheats([...cheats, ...more]);

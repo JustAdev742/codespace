@@ -23,9 +23,9 @@ import {
 
 /*
  * Cheats that only make sense in Lantern Guard: they work on towers (build,
- * upgrade, sell, move, retool, reload), on the gloomlings on the road (slow,
- * push back, scorch, shrink, banish, add one), on the waves' clock, on the
- * Great Lantern's flare, and on each guard's own gold.
+ * upgrade, sell, move, retool, reload, swap spots), on the gloomlings on the
+ * road (slow, push back, scorch, shrink, banish, swap, add one), on the waves'
+ * clock, on the Great Lantern's flare and its lights, and on each guard's own gold.
  *
  * Lantern Guard is co-operative, so the trolls hinder one guard (their gold,
  * their towers' reload, their right to build, who gets the credit) rather
@@ -39,6 +39,8 @@ import {
  *    out with it: chaos never puts the last light in reach.
  *  - The wave clock is never pushed so late that time could run out before
  *    the waves do (that would hand the class a win).
+ *  - Lights go through the adapter's lights meter, which never puts the last
+ *    one out and never lights more than the lantern started with.
  *  - Guard points come from gold spent, so gold chaos hands back from a
  *    purchase is taken off what that guard spent.
  */
@@ -1003,6 +1005,109 @@ const flare: CheatDef[] = [
   },
 ];
 
-const cheats: CheatDef[] = [...gold, ...towers, ...gloom, ...flare];
+/* ------------------------ more: lights, the road, spots ------------------------ */
+
+const lightsOf = (g: any) => GLOOMLINGS[g.kind as GloomKind].lights;
+
+const more: CheatDef[] = [
+  {
+    id: id('relight'),
+    name: 'Relight the Great Lantern',
+    category: 'advantage',
+    description: 'Relight up to 2 of the lights the gloom has put out on the Great Lantern (never more than it started with).',
+    target: 'room',
+    modes: M,
+    needs: ['meter:lights'],
+    cost: 45,
+    cooldownMs: 90_000,
+    apply: (api, c) => {
+      if (api.s.result) return { error: 'The battle is over.' };
+      const lit = api.add('lights', 'game', 2);
+      if (lit <= 0) return { error: 'The Great Lantern still has all its lights.' };
+      api.feed(`${api.name(c.caster)} relit ${lit} ${lit === 1 ? 'light' : 'lights'} on the Great Lantern.`, 'good');
+    },
+  },
+  {
+    id: id('changeling'),
+    name: 'Gloom Changeling',
+    category: 'advantage',
+    description: 'The gloomling nearest the Great Lantern trades places (and roads) with the weakest gloomling on the road: the one that would put out the fewest lights, then the one with the least health left. Only when that one is weaker than the gloomling in front.',
+    target: 'room',
+    modes: M,
+    cost: 30,
+    cooldownMs: 50_000,
+    undoable: false,
+    apply: (api) => {
+      const map = mapOf(api);
+      const left = (g: any) => (1 - g.p) * map.paths[g.road]!.length;
+      const on = live(api);
+      if (on.length < 2) return { error: 'There need to be at least two gloomlings on the road.' };
+      const front = on.reduce((a, b) => (left(b) < left(a) ? b : a));
+      const weakerThan = (a: any, b: any) => lightsOf(a) < lightsOf(b) || (lightsOf(a) === lightsOf(b) && a.hp < b.hp);
+      const weakest = on.reduce((a, b) => (weakerThan(b, a) ? b : a));
+      if (!weakerThan(weakest, front)) return { error: 'The gloomling in front is already the weakest on the road.' };
+      [front.p, weakest.p] = [weakest.p, front.p];
+      [front.road, weakest.road] = [weakest.road, front.road];
+      api.feed(`A changeling swapped the ${GLOOMLINGS[front.kind as GloomKind].name} at the front with a weaker ${GLOOMLINGS[weakest.kind as GloomKind].name} further back.`, 'good');
+    },
+  },
+  {
+    id: id('festival-chime'),
+    name: 'Festival Gold Chime',
+    category: 'economy',
+    description: 'For 20 seconds the festival chimes for everyone: every guard’s right answers earn half as much gold again.',
+    target: 'room',
+    modes: M,
+    needs: GOLD,
+    cost: 30,
+    cooldownMs: 60_000,
+    durationMs: 20_000,
+    priority: 20,
+    apply: (api, _c, fx) => remember(fx, { correct: Object.fromEntries(api.ids().map((p) => [p, guardOf(api, p)?.stream.correct ?? 0])) }),
+    hooks: {
+      delta: {
+        currency: (api, fx, d) => {
+          const seen = fx.data.correct as Record<string, number>;
+          for (const [p, gained] of Object.entries(d)) {
+            const g = guardOf(api, p);
+            // Only a right answer raises the count; wave gold and gifts leave it alone.
+            if (!g || !(gained > 0) || g.stream.correct <= (seen[p] ?? 0)) continue;
+            seen[p] = g.stream.correct;
+            d[p] = gained + share(gained, 50);
+          }
+        },
+      },
+    },
+    overlayFor: 'all',
+    overlay: (fx) => ({ kind: 'countdown', label: 'Festival chime: +50% answer gold', until: fx.endsAt }),
+  },
+  {
+    id: id('spot-swap'),
+    name: 'Tower Spot Swap',
+    category: 'troll',
+    description: 'Your tower with the fewest defeats trades spots with the opponent’s tower that sees the most road from where it stands. Both towers keep their kind, level and owner.',
+    target: 'opponent',
+    modes: M,
+    cost: 30,
+    cooldownMs: 60_000,
+    undoable: false,
+    apply: (api, c) => {
+      const t = target(c);
+      const mine = ownTowers(api, c.caster);
+      if (!mine.length) return { error: 'You have no towers.' };
+      const theirs = ownTowers(api, t);
+      if (!theirs.length) return { error: `${api.name(t)} has no towers.` };
+      const sees = (x: any) => reach(api, x.spot, towerStats(x.kind, x.level).range);
+      const a = mine.reduce((p, q) => (q.defeats < p.defeats ? q : p));
+      const b = theirs.reduce((p, q) => (sees(q) > sees(p) ? q : p));
+      [a.spot, b.spot] = [b.spot, a.spot];
+      a.shot = null;
+      b.shot = null;
+      api.feed(`${api.name(c.caster)}’s ${towerName(a)} tower swapped spots with ${api.name(t)}’s ${towerName(b)} tower.`, 'bad');
+    },
+  },
+];
+
+const cheats: CheatDef[] = [...gold, ...towers, ...gloom, ...flare, ...more];
 
 defineCheats(cheats);

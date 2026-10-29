@@ -19,6 +19,20 @@ export const lanternGuardAdapter: ChaosAdapter = {
       },
       max: (s: any) => Number(s.flare?.cost ?? 0),
     },
+    // The lights still burning on the Great Lantern. Chaos never puts the last one out (the gloom
+    // winning is the mode's moment) and never lights more than the lantern started with.
+    {
+      key: 'lights',
+      label: 'Lights on the Great Lantern',
+      scope: 'global',
+      get: (s: any) => Number(s.lights ?? 0),
+      set: (s: any, _id, v) => {
+        if (s.result) return;
+        s.lights = v;
+      },
+      min: () => 1,
+      max: (s: any) => Number(s.maxLights ?? 0),
+    },
   ],
   ...streamParts((s: any, id) => s.guards[id]?.stream),
 };

@@ -229,3 +229,173 @@ describe('gold-rush pack: the goldfield', () => {
     expect(snap()).not.toBe(before);
   });
 });
+
+describe('gold-rush pack: bank, gear, shafts and the whistle', () => {
+  it('Bank Holiday closes the bank to a rival for 15 seconds, but not their digging', () => {
+    const sim = field();
+    until(sim, () => m(sim, 'p2').cart > 0);
+    handDug(sim, 'p2');
+    expect(cast(sim, 'p1', 'bank-holiday', 'p2').ok).toBe(true);
+    const closed = sim.rt.act('p2', { type: 'bank' });
+    expect(closed.ok).toBe(false);
+    if (!closed.ok) expect(closed.message).toMatch(/Bank holiday/);
+    expect(dig(sim, 'p2').ok).toBe(true);
+    sim.run(15_500);
+    if (m(sim, 'p2').cart > 0) expect(sim.rt.act('p2', { type: 'bank' }).ok).toBe(true);
+  });
+
+  it('Bank Holiday is refused in the last 45 seconds, so no cart is trapped at the whistle', () => {
+    const sim = new ChaosSim({ modeId: 'gold-rush', questions: MIXED_SET, players: 4, seed: 11, settings: { events: false }, common: { timeLimitSec: 60 } });
+    sim.run(20_000);
+    const r = cast(sim, 'p1', 'bank-holiday', 'p2');
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.message).toMatch(/last 45 seconds/);
+  });
+
+  it('Mine Rescue Crew digs half of a fresh cave-in back into the cart, and only soon after it', () => {
+    const sim = field({ risk: 'wild' }, 10_000);
+    expect(cast(sim, 'p1', 'rescue-crew').ok).toBe(false);
+    const fresh = (x: ChaosSim, id: string) => () => {
+      const last = m(x, id).last;
+      return last?.kind === 'cavein' && last.gold < 0 && x.now - last.at < 1000;
+    };
+    until(sim, fresh(sim, 'p1'), 300_000);
+    sim.idle.add('p1');
+    const lost = -m(sim, 'p1').last.gold;
+    const cart = m(sim, 'p1').cart;
+    expect(cast(sim, 'p1', 'rescue-crew').ok).toBe(true);
+    expect(m(sim, 'p1').cart).toBe(cart + Math.max(1, Math.floor(lost / 2)));
+    expect(m(sim, 'p1').depth).toBe(0);
+    expect(m(sim, 'p1').notes[0].text).toContain('rescue crew');
+
+    // A cave-in left for more than 20 seconds is too old to rescue.
+    const late = field({ risk: 'wild' }, 10_000);
+    until(late, fresh(late, 'p2'), 300_000);
+    late.idle.add('p2');
+    late.run(21_000);
+    expect(cast(late, 'p2', 'rescue-crew').ok).toBe(false);
+  });
+
+  it('Late Shift Whistle moves the whistle 20 seconds at a time, at most 60 seconds a game', () => {
+    const sim = field({}, 20_000);
+    const first = sim.state().endsAt;
+    expect(cast(sim, 'p1', 'late-whistle').ok).toBe(true);
+    expect(sim.state().endsAt).toBe(first + 20_000);
+    expect((sim.rt.view({ kind: 'player', playerId: 'p2' }) as any).endsAt).toBe(first + 20_000);
+    expect(cast(sim, 'p2', 'late-whistle').ok).toBe(true);
+    expect(cast(sim, 'p3', 'late-whistle').ok).toBe(true);
+    expect(sim.state().endsAt).toBe(first + 60_000);
+    expect(cast(sim, 'p4', 'late-whistle').ok).toBe(false);
+    // The game runs past the old whistle and ends at the new one.
+    sim.run(first + 1000 - sim.now);
+    expect(sim.rt.status).toBe('running');
+    sim.run(first + 61_000 - sim.now);
+    expect(sim.rt.status).toBe('ended');
+  });
+
+  it("Miner's Kit Swap trades every piece of gear, and is refused for equal kits or props in flux", () => {
+    const start = field({}, 100);
+    expect(cast(start, 'p1', 'kit-swap', 'p2').ok).toBe(false);
+    const sim = field({}, 20_000);
+    until(sim, () => m(sim, 'p2').banked >= GEAR_INFO.props.levels[0]!.cost, 300_000);
+    for (const id of sim.ids) sim.idle.add(id);
+    if (m(sim, 'p2').gear.props === m(sim, 'p1').gear.props) expect(sim.rt.act('p2', { type: 'buy', gear: 'props' }).ok).toBe(true);
+    const mine = { ...m(sim, 'p1').gear };
+    const theirs = { ...m(sim, 'p2').gear };
+    expect(cast(sim, 'p1', 'kit-swap', 'p2').ok).toBe(true);
+    expect(m(sim, 'p1').gear).toEqual(theirs);
+    expect(m(sim, 'p2').gear).toEqual(mine);
+    expect(m(sim, 'p2').notes[0].text).toContain('swapped kit');
+    // Borrowed props on either miner hold the swap off.
+    expect(cast(sim, 'p3', 'borrowed-props').ok).toBe(true);
+    expect(m(sim, 'p3').gear).not.toEqual(m(sim, 'p4').gear);
+    const r = cast(sim, 'p4', 'kit-swap', 'p3');
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.message).toMatch(/borrowed or eaten/);
+  });
+
+  it("Prospector's Trade-In sells the dearest level for half its price into the bank", () => {
+    const sim = field({}, 20_000);
+    sim.idle.add('p1');
+    expect(cast(sim, 'p1', 'trade-in').ok).toBe(false);
+    sim.idle.delete('p1');
+    until(sim, () => m(sim, 'p1').banked >= GEAR_INFO.props.levels[0]!.cost + GEAR_INFO.pan.levels[0]!.cost, 300_000);
+    sim.idle.add('p1');
+    if (m(sim, 'p1').gear.props === 0) expect(sim.rt.act('p1', { type: 'buy', gear: 'props' }).ok).toBe(true);
+    if (m(sim, 'p1').gear.pan === 0) expect(sim.rt.act('p1', { type: 'buy', gear: 'pan' }).ok).toBe(true);
+    const before = { ...m(sim, 'p1').gear };
+    const banked = m(sim, 'p1').banked;
+    const price = (g: 'pick' | 'props' | 'pan') => (before[g] > 0 ? GEAR_INFO[g].levels[before[g] - 1]!.cost : 0);
+    const dearest = (['pick', 'props', 'pan'] as const).reduce((a, b) => (price(b) > price(a) ? b : a));
+    expect(cast(sim, 'p1', 'trade-in').ok).toBe(true);
+    expect(m(sim, 'p1').gear[dearest]).toBe(before[dearest] - 1);
+    expect(m(sim, 'p1').banked).toBe(banked + Math.floor(price(dearest) / 2));
+    // Borrowed props cannot be sold.
+    const b = field({}, 20_000);
+    b.idle.add('p2');
+    expect(b.cast('p2', { cheatId: 'gold-rush.borrowed-props' }).ok).toBe(true);
+    expect(b.cast('p2', { cheatId: 'gold-rush.trade-in', params: { gear: 'props' } }).ok).toBe(false);
+  });
+
+  it('Shaft Swap trades depths (undo puts them back) and is refused on the same level', () => {
+    const start = field({}, 100);
+    expect(cast(start, 'p1', 'shaft-swap', 'p2').ok).toBe(false);
+    const sim = field();
+    until(sim, () => m(sim, 'p1').depth !== m(sim, 'p2').depth);
+    sim.idle.add('p1');
+    sim.idle.add('p2');
+    const [a, b] = [m(sim, 'p1').depth, m(sim, 'p2').depth];
+    const r = cast(sim, 'p1', 'shaft-swap', 'p2');
+    expect(r.ok).toBe(true);
+    expect([m(sim, 'p1').depth, m(sim, 'p2').depth]).toEqual([b, a]);
+    expect(sim.rt.undoCast('p1', (r as { castId: string }).castId).ok).toBe(true);
+    expect([m(sim, 'p1').depth, m(sim, 'p2').depth]).toEqual([a, b]);
+  });
+
+  it('Quartz Vein Thief moves a waiting vein to you (undo moves it back); refused without one to take or with your own', () => {
+    const sim = field({}, 20_000);
+    until(sim, () => m(sim, 'p2').vein && !m(sim, 'p1').vein, 300_000);
+    sim.idle.add('p1');
+    sim.idle.add('p2');
+    const r = cast(sim, 'p1', 'vein-thief', 'p2');
+    expect(r.ok).toBe(true);
+    expect([m(sim, 'p1').vein, m(sim, 'p2').vein]).toEqual([true, false]);
+    expect(m(sim, 'p2').notes[0].text).toContain('quartz vein');
+    expect(sim.rt.undoCast('p1', (r as { castId: string }).castId).ok).toBe(true);
+    expect([m(sim, 'p1').vein, m(sim, 'p2').vein]).toEqual([false, true]);
+    // With a vein of your own waiting, there is nothing to gain.
+    sim.idle.add('p3');
+    expect(cast(sim, 'p3', 'vein-finder').ok).toBe(true);
+    const own = cast(sim, 'p3', 'vein-thief', 'p2');
+    expect(own.ok).toBe(false);
+    if (!own.ok) expect(own.message).toMatch(/already have a quartz vein/);
+    // Nothing to take from a miner with no vein waiting.
+    sim.idle.add('p4');
+    if (!m(sim, 'p4').vein) {
+      const none = cast(sim, 'p4', 'vein-thief', 'p1');
+      expect(none.ok).toBe(false);
+      if (!none.ok) expect(none.message).toMatch(/no quartz vein waiting/);
+    }
+  });
+
+  it('Steady Shaft Rope keeps the shaft on its level while it lasts', () => {
+    const sim = field();
+    handDug(sim, 'p1');
+    const depth = m(sim, 'p1').depth;
+    expect(cast(sim, 'p1', 'steady-rope').ok).toBe(true);
+    let held = 0;
+    while (m(sim, 'p1').digs > 1) {
+      dig(sim, 'p1');
+      if (m(sim, 'p1').last.kind === 'cavein') break;
+      expect(m(sim, 'p1').depth).toBe(depth);
+      expect(m(sim, 'p1').last.level).toBe(depth + 1);
+      held++;
+    }
+    expect(held).toBeGreaterThan(0);
+    sim.run(26_000);
+    if (m(sim, 'p1').last.kind !== 'cavein' && m(sim, 'p1').digs > 0) {
+      dig(sim, 'p1');
+      expect(m(sim, 'p1').depth).toBe(m(sim, 'p1').last.kind === 'cavein' ? 0 : depth + 1);
+    }
+  });
+});

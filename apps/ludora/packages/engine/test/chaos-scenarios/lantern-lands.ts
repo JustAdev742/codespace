@@ -35,6 +35,44 @@ const rivalRaids: Post = (sim, caster) => {
   }
 };
 
+/**
+ * A teammate of the caster puts up forts along the team's edge with Hex Palisade (bots rarely build
+ * forts), so cheats that move or take down the team's own forts have some away from its rival border.
+ */
+const teamForts: Pre = (sim, caster) => {
+  const mate = sim.ids.find((x) => x !== caster && sim.rt.hasPlayer(x) && teamOf(sim, x) === teamOf(sim, caster));
+  sim.cast(mate ?? caster, { cheatId: 'lantern-lands.palisade' });
+};
+
+type MapView = { you: { energy: number; options: { claim: number[]; fortify: number[]; raid: number[] } } | null };
+
+/** The caster makes one map move straight after the cast (topping up energy with a Rally if they have none). */
+function casterMoves(pick: (sim: ChaosSim, you: NonNullable<MapView['you']>) => { type: string; land: number } | null): Post {
+  return (sim, caster) => {
+    const you = () => (sim.rt.view({ kind: 'player', playerId: caster }) as MapView).you;
+    if (you() && you()!.energy < 1) sim.cast(caster, { cheatId: 'lantern-lands.rally' });
+    const me = you();
+    const move = me && me.energy >= 1 ? pick(sim, me) : null;
+    if (move) sim.rt.act(caster, move);
+  };
+}
+
+const plain = (sim: ChaosSim, l: number) => !sim.state().map.shrines.includes(l);
+/** Fortify a land of their own, or raid a rival land that still has a fort. */
+const buildsOrRaids = casterMoves((sim, you) => {
+  const fort = you.options.fortify.find((l) => plain(sim, l));
+  if (fort !== undefined) return { type: 'fortify', land: fort };
+  const raid = sim.state().event?.kind === 'storm' ? undefined : you.options.raid.find((l) => plain(sim, l) && sim.state().fort[l] > 0);
+  return raid === undefined ? null : { type: 'raid', land: raid };
+});
+/** Claim an empty land, or capture a rival land with no fort left. */
+const claimsOrCaptures = casterMoves((sim, you) => {
+  const claim = you.options.claim[0];
+  if (claim !== undefined) return { type: 'claim', land: claim };
+  const capture = sim.state().event?.kind === 'storm' ? undefined : you.options.raid.find((l) => plain(sim, l) && sim.state().fort[l] === 0);
+  return capture === undefined ? null : { type: 'raid', land: capture };
+});
+
 export const scenarios: ScenarioSet = {
   pre: {
     'lantern-lands.raze': rivalForts,
@@ -43,6 +81,12 @@ export const scenarios: ScenarioSet = {
     'lantern-lands.fort-plunder': rivalForts,
     'lantern-lands.clear-skies': someEvent,
     'lantern-lands.long-weather': someEvent,
+    'lantern-lands.regroup': teamForts,
+    'lantern-lands.salvage': teamForts,
   },
-  post: { 'lantern-lands.wardstones': rivalRaids },
+  post: {
+    'lantern-lands.wardstones': rivalRaids,
+    'lantern-lands.twin-lanterns': buildsOrRaids,
+    'lantern-lands.foundations': claimsOrCaptures,
+  },
 };
