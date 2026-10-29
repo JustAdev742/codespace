@@ -13,7 +13,7 @@ COPY server/package.json server/
 COPY web/package.json web/
 RUN npm ci
 COPY . .
-RUN npm run build
+RUN npm run build && npm run build:demo
 
 FROM node:22-bookworm-slim AS runtime
 ENV NODE_ENV=production \
@@ -35,6 +35,8 @@ RUN npm ci --omit=dev -w @ludora/server --include-workspace-root=false && npm ca
 COPY --from=build /app/server/dist server/dist
 COPY --from=build /app/server/drizzle server/drizzle
 COPY --from=build /app/web/dist web/dist
+# The one-screen practice game at /demo/, for a class with no devices: no server state, no account.
+COPY --from=build /app/web/dist-demo web/dist-demo
 # The chaos menu: read by the server and sent only to accounts that unlocked it; never served statically.
 COPY --from=build /app/web/dist-private web/dist-private
 RUN mkdir -p /data/uploads && chown -R node:node /data

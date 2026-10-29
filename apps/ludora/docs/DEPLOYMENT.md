@@ -47,7 +47,8 @@ Then:
 8. **Backups.** Add the nightly job from `scripts/backup.sh` to root's crontab, and copy
    `backups/` somewhere off the server (see *Backups and data*).
 9. **Check.** `/privacy` names your school, and Staff → System shows the database, live
-   rooms and recent errors.
+   rooms and recent errors. `/demo/` plays a practice game on one screen against bots, with no
+   account and nothing saved: useful for a class with no devices.
 
 **Updating.** Take a backup, then, outside lesson time (running games end, and their results
 are saved):
