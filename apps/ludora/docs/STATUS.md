@@ -464,7 +464,15 @@ Last updated: 2026-10-29.
   - a CSP report on every form in Firefox;
   - an unhandled audio error when a page is left;
   - WebKit's wording for cut-off loads.
-  All three engines pass all 10 tests (CI run 99).
+  All three engines pass all 10 tests (CI run 99). Later runs turned up three
+  timing faults, also fixed:
+  - WebKit now and then did not move focus to a new question (once in CI) or
+    to the image description after an upload (once here). Focus now checks
+    again on each frame for a second, and moves only if it is still adrift
+    (`web/src/lib/focus.ts`).
+  - The game test raced Classic's own timers. Its room now waits for the host.
+  - The chaos test's knock lost its rhythm on a slow machine. Its taps are now
+    timed in the page.
 - **A trailer for schools** (`tools/trailer/`): 88 seconds, cut from real games
   filmed with Playwright on a local server (projector and phones, a class of 16
   firing reactions at a reveal, Play again), with an illustrated classroom that
@@ -483,14 +491,15 @@ creates and drops its own database).
 | content | 4 | 132: catalogue integrity, every built-in question set, the seasonal calendar (11) and the monthly drops (9) |
 | engine | 53 | 8174, including the conformance suite for every mode and variant, and the chaos suite: every cheat in every mode it supports, the core rules and each mode's pack |
 | server | 18 | 189: auth and rate limits, realtime, economy, staff, social and classes, preferences, open games, sign-in help, uploads, AI drafts, reward counting, origin checks, chaos, Creator Studio, Game Maker, school events, configuration (3), and account download, deletion and data retention (8) |
-| web | 4 | 84: the set editor's checks, import and export (45); the synthesised music, in key and looping cleanly (16); the recorded sounds, every effect with a file and every loop a whole number of bars (16); which music plays when (7) |
+| web | 4 | 89: the set editor's checks, import and export (45); the synthesised music, in key and looping cleanly (16); the recorded sounds, every effect with a file and every loop a whole number of bars (16), and the takes and pitch spread they play with (5); which music plays when (7) |
 | shared | 0 | no tests of its own; its schemas are exercised by the other projects |
-| **Total** | **79** | **8579 passing** (8541 at the full run on 2026-10-29, plus the 38 chaos tests merged after it, run with the engine suite) |
+| **Total** | **79** | **8584 passing** (full run, 2026-10-29) |
 
 End-to-end: `npm run test:e2e` (needs Postgres; builds first, then runs 10
-browser tests against a fresh `ludora_e2e` database). All 10 passed in
-Chromium on 2026-10-29. `E2E_BROWSER=webkit` or `firefox` runs them in those
-engines, as CI does.
+browser tests against a fresh `ludora_e2e` database). `E2E_BROWSER=webkit` or
+`firefox` runs them in those engines, as CI does. On 2026-10-29, after the
+timing fixes above, all 10 passed twice in WebKit and once each in Chromium and
+Firefox.
 `npm run test:demo` builds the playable demo and runs its 4 browser tests with
 no server. All 4 pass.
 

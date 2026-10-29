@@ -1,6 +1,7 @@
 import { useEffect, useRef, type ReactNode } from 'react';
 import type { Media, PublicQuestion } from '@ludora/shared';
 import { useAnnounce } from './announce.tsx';
+import { focusAdrift, focusSettled } from '../../../lib/focus.ts';
 import { useSfx, useSharedSounds } from '../../../lib/sound/react.tsx';
 import { useChaosPrompt } from '../../chaos/ChaosLayer.tsx';
 
@@ -45,9 +46,7 @@ export function QuestionCard({ q, index, total, children, size = 'md' }: { q: Pu
   const heading = useRef<HTMLHeadingElement>(null);
   // Chaos text looks (jumbled, typed out...) change only how the prompt is drawn, never what is read out.
   const prompt = useChaosPrompt();
-  useEffect(() => {
-    if (!document.activeElement || document.activeElement === document.body) heading.current?.focus({ preventScroll: true });
-  }, [key]);
+  useEffect(() => focusSettled(() => heading.current, { preventScroll: true }), [key]);
   // Answering swaps the answer buttons for "locked in" within the same question, and focus goes
   // with them to the page body, which sends a screen reader back to the top. Bring it to the prompt.
   useEffect(() => {
@@ -56,7 +55,7 @@ export function QuestionCard({ q, index, total, children, size = 'md' }: { q: Pu
       last = e.target as Element;
     };
     const lost = new MutationObserver(() => {
-      if (last && !last.isConnected && (!document.activeElement || document.activeElement === document.body)) {
+      if (last && !last.isConnected && focusAdrift()) {
         last = null;
         heading.current?.focus({ preventScroll: true });
       }

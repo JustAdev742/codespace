@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { ImagePlus, RefreshCw, Trash2 } from 'lucide-react';
 import type { Media } from '@ludora/shared';
 import { api, ApiError } from '../../../lib/api.ts';
+import { focusSettled } from '../../../lib/focus.ts';
 import { Button } from '../../../ui/Button.tsx';
 import { Input } from '../../../ui/primitives.tsx';
 import { LIMITS } from './model.ts';
@@ -26,7 +27,8 @@ export function QuestionImage({ media, altId, altError, onChange }: { media: Med
   useEffect(() => {
     if (focusAlt.current && media) {
       focusAlt.current = false;
-      document.getElementById(altId)?.focus();
+      // Left to finish on its own (a second): the next change to `media` must not cut it short.
+      focusSettled(() => document.getElementById(altId), { force: true });
     }
   }, [media, altId]);
 

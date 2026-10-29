@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { CSRF, account, watchErrors } from './helpers.ts';
+import { CSRF, account, expectFocused, watchErrors } from './helpers.ts';
 
 test('a host and a player play Classic from join code to results', async ({ browser }) => {
   const host = await account(browser, { accountType: 'teacher', displayName: 'Ms Rivera' });
@@ -19,7 +19,8 @@ test('a host and a player play Classic from join code to results', async ({ brow
     },
   });
   expect(set.ok(), await set.text()).toBe(true);
-  const room = await host.page.request.post('/api/rooms', { headers: CSRF, data: { setId: (await set.json()).set.id, modeId: 'classic', common: { questionLimit: 3, shuffleQuestions: false } } });
+  // The host moves the game on, so each click below lands on the screen the test expects.
+  const room = await host.page.request.post('/api/rooms', { headers: CSRF, data: { setId: (await set.json()).set.id, modeId: 'classic', common: { questionLimit: 3, shuffleQuestions: false }, settings: { autoAdvance: false } } });
   expect(room.ok(), await room.text()).toBe(true);
   const { code } = await room.json();
   await host.page.goto(`/room/${code}`);
@@ -48,8 +49,8 @@ test('a host and a player play Classic from join code to results', async ({ brow
 
   const next = host.page.getByRole('button', { name: /Next|Skip ahead/ });
   await host.page.getByRole('button', { name: 'Start game' }).click();
+  // "Get ready" moves on by itself after four seconds. A skip click could land after that and skip the first question, so wait.
   await expect(host.page.getByText('Get ready')).toBeVisible();
-  await next.click();
   const rounds = [
     ['The Sun is a star.', 'True'],
     ['Spiders are insects.', 'False'],
@@ -59,7 +60,7 @@ test('a host and a player play Classic from join code to results', async ({ brow
   for (const [i, [prompt, answer]] of rounds.entries()) {
     await expect(player.getByRole('heading', { name: prompt })).toBeVisible();
     // The answer button that had focus went with the last question, so focus moves to the new one.
-    await expect(player.getByRole('heading', { name: prompt })).toBeFocused();
+    await expectFocused(player.getByRole('heading', { name: prompt }));
     await expect(announcer).toContainText(`Question ${i + 1} of 3.`);
     // By keyboard, as a screen reader user would. The answer buttons give way to the result,
     // and focus stays on the question rather than falling back to the top of the page.
@@ -69,7 +70,7 @@ test('a host and a player play Classic from join code to results', async ({ brow
     await expect(player.getByText('Correct', { exact: true })).toBeVisible();
     await expect(announcer).toContainText(`Correct. Plus`);
     await expect(announcer).toContainText(`The answer was ${answer}.`);
-    await expect(player.getByRole('heading', { name: prompt })).toBeFocused();
+    await expectFocused(player.getByRole('heading', { name: prompt }));
     await next.click();
     if (i < rounds.length - 1) {
       await expect(host.page.getByText('Leaderboard')).toBeVisible();

@@ -1,5 +1,5 @@
 import { execFileSync } from 'node:child_process';
-import { expect, type Browser, type BrowserContext, type Page } from '@playwright/test';
+import { expect, type Browser, type BrowserContext, type Locator, type Page } from '@playwright/test';
 import { containsBlockedLanguage } from '@ludora/shared';
 
 export const CSRF = { 'x-ludora-csrf': '1' };
@@ -59,6 +59,18 @@ export function watchErrors(page: Page): string[] {
     if (m.type() === 'error' && !cutOff(m.text())) errors.push(m.text());
   });
   return errors;
+}
+
+/** Like toBeFocused, but a failure says which element has focus instead. */
+export async function expectFocused(target: Locator) {
+  await expect
+    .poll(() =>
+      target.evaluate((el) => {
+        const a = document.activeElement;
+        return a === el ? 'focused' : `focus is on ${a ? a.outerHTML.slice(0, 160) : 'nothing'}`;
+      }),
+    )
+    .toBe('focused');
 }
 
 /**

@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { CSRF, account, watchErrors } from './helpers.ts';
+import { CSRF, account, expectFocused, watchErrors } from './helpers.ts';
 
 // A 3 x 2 PNG drawn by Chromium: amber with a violet stripe.
 const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAMAAAACCAYAAACddGYaAAAAF0lEQVR4AWL6v0Hhv7XSsv8gmokBCQAAAAD//x3OmzEAAAAGSURBVAMAlBkHo5cp4fcAAAAASUVORK5CYII=', 'base64');
@@ -18,7 +18,7 @@ test('a teacher writes a set with a picture in the editor, and players see the p
   await page.getByLabel('Choice A is correct').check();
   // The "Add an image" button opens this input.
   await page.locator('input[type=file]').first().setInputFiles({ name: 'stripes.png', mimeType: 'image/png', buffer: PNG });
-  await expect(page.getByLabel('Image description')).toBeFocused();
+  await expectFocused(page.getByLabel('Image description'));
   await page.getByLabel('Image description').fill('Three stripes: amber, violet, amber');
   // Two more questions, so Classic can be played.
   // The question type cards below the list each add a question of that type.

@@ -21,8 +21,7 @@ Against the production build, in Chromium:
 - **Tests that keep it so.** `e2e/game.spec.ts` answers by keyboard and asserts the
   announcements and where focus is, for each question and after each answer.
   `e2e/account.spec.ts` covers downloading data and deleting an account. Both pass in
-  Chromium here. CI also runs them in WebKit and Firefox, but those engines have not yet run
-  this version.
+  Chromium, WebKit and Firefox here, and CI runs them in all three.
 
 ## What a player hears
 
@@ -50,6 +49,7 @@ From the Classic recording, condensed:
 |---|---|
 | In Classic and Glim Duels, answering replaced the answer buttons with "locked in" and focus fell to the page body. A screen reader went back to the top of the page after every answer. | The question card watches for the focused element disappearing and moves focus to the question (`QuestionCard.tsx`). The game test now answers by keyboard and checks focus after every answer; it fails without the fix. |
 | A player who did not answer in time was told "Incorrect", on screen and aloud. | Classic and Glim Duels now show and say "Time's up, no answer", with the right answer. |
+| In WebKit, focus now and then stayed off a new question (once in CI), or off the image description after an upload (once here). | Focus now checks again on each frame for a second, and moves only if it is still on the page body or on something gone or hidden (`lib/focus.ts`). |
 | Firefox logged a blocked `eval` on every page that checked a form (zod's speed test against the security policy). That was noise for anyone listening to errors, and failed the Firefox tests. | Turned off; every CSP violation is now an error in the browser tests. |
 
 ## Known gaps

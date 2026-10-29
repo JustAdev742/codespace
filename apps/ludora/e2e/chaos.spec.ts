@@ -42,11 +42,15 @@ test('a player finds the lantern, unlocks chaos and casts on another player', as
   await finder.page.goto('/settings');
   const lantern = finder.page.getByRole('button', { name: 'Ludora lantern' });
   await expect(lantern).toBeVisible();
-  await lantern.click();
-  for (const b of beats) {
-    await finder.page.waitForTimeout(b * 280);
-    await lantern.click();
-  }
+  // The page times the gaps between taps, so the taps are timed in the page too: each Playwright
+  // click first waits for the lantern to stop bobbing, which stretches the rhythm on a slow machine.
+  await lantern.evaluate(async (el, gaps) => {
+    (el as HTMLElement).click();
+    for (const b of gaps) {
+      await new Promise((r) => setTimeout(r, b * 280));
+      (el as HTMLElement).click();
+    }
+  }, beats);
   const riddle = finder.page.getByRole('dialog', { name: 'The lantern whispers' });
   await expect(riddle).toBeVisible({ timeout: 10_000 });
   const riddleText = (await riddle.textContent()) ?? '';
