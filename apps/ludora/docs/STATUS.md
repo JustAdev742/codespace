@@ -17,7 +17,7 @@ Last updated: 2026-10-29.
 | M4 Economy and progression | Done | Shop, Lanterns with disclosed odds, collections, locker, quests, achievements, levels, streaks. |
 | M5 Staff tools | Done | Staff API and all 14 staff sections in the web app. An end-to-end test opens every section as a super administrator at phone and desktop widths. |
 | M6 Content, social, classes, analytics | Done | Friends, blocks, profiles, my stats, leaderboards, classes, assignments and their reports, hosted games, game reports, the set editor with image uploads, and AI question drafts. |
-| Chaos (D47) | Done | The secret cheat menu: 958 cheats and 10 combos, each tested in a real game; the unlock sequence; the private menu. See [CHAOS.md](CHAOS.md). |
+| Chaos (D47) | Done | The secret cheat menu: 1,005 cheats and 10 combos, each tested in a real game; the unlock sequence; the private menu. See [CHAOS.md](CHAOS.md). |
 | M7-8 Polish, CI, deployment | In progress | Production build, Docker image, compose file, CI workflow, docs and end-to-end tests (run in CI) are in. The whole app is restyled for players aged 8 to 17 (D46), and automated accessibility checks pass on every page, game screen and staff section. A design review of the whole app was done and its findings fixed. A playable demo builds for GitHub Pages. 2026-10-29: account download and deletion, a privacy policy and terms, data retention, a measured load test, a deployment kit tested in Docker, a machine screen-reader audit, and WebKit and Firefox runs in CI. Remaining: a person's screen-reader pass, legal review of the policy, the WebKit and Firefox results for this version, and a real deployment, which needs the operator's server and domain. |
 
 ## What works today (verified)
@@ -138,10 +138,10 @@ Last updated: 2026-10-29.
   riddle, a ritual of reactions in a live game, and a lantern to hold. Every
   stage is checked on the server. Unlocked players cast cheats from a
   searchable menu that the server sends only to them.
-  - 958 cheats and 10 combos: 209 work in any mode and 749 belong to one of
-    25 modes (all five 3D modes included). Seven categories: score, advantage, troll, round, economy,
-    visual and random. That is short of the 1,000 asked for; no cheat is a
-    copy of another.
+  - 1,005 cheats and 10 combos (counted from the registry): 209 work in any mode and 796
+    belong to one of 25 modes (all five 3D modes included). Seven categories: score,
+    advantage, troll, round, economy, visual and random. No cheat is a copy of another;
+    ideas that only changed a number or a target were turned down.
   - Each cheat was cast into one of two identical bot games, in every mode
     it supports, and the two games differed afterwards. Screen cheats had to
     show on the target's screen.
@@ -456,19 +456,20 @@ creates and drops its own database).
 | Project | Files | Tests |
 |---|---|---|
 | content | 4 | 132: catalogue integrity, every built-in question set, the seasonal calendar (11) and the monthly drops (9) |
-| engine | 43 | 5968, including the conformance suite for every mode and variant, and the chaos suite: every cheat in every mode it supports (4366 tests), the core rules and each mode's pack |
-| server | 13 | 159: auth and rate limits (15), realtime (7), economy (22), staff (55), social and classes (18), preferences (4), open games (4), sign-in help (3), uploads (6), AI drafts (11), reward counting (4), origin checks (4), chaos (9), Creator Studio (6), Game Maker (6), school events (4) |
+| engine | 53 | 8174, including the conformance suite for every mode and variant, and the chaos suite: every cheat in every mode it supports, the core rules and each mode's pack |
+| server | 18 | 189: auth and rate limits, realtime, economy, staff, social and classes, preferences, open games, sign-in help, uploads, AI drafts, reward counting, origin checks, chaos, Creator Studio, Game Maker, school events, configuration (3), and account download, deletion and data retention (8) |
 | web | 4 | 84: the set editor's checks, import and export (45); the synthesised music, in key and looping cleanly (16); the recorded sounds, every effect with a file and every loop a whole number of bars (16); which music plays when (7) |
 | shared | 0 | no tests of its own; its schemas are exercised by the other projects |
-| **Total** | **62** | **6323 passing** at the last full run (2026-10-28) |
+| **Total** | **79** | **8579 passing** (8541 at the full run on 2026-10-29, plus the 38 chaos tests merged after it, run with the engine suite) |
 
-End-to-end: `npm run test:e2e` (needs Postgres; builds first, then runs 9
-browser tests against a fresh `ludora_e2e` database). All 8 passed at their
-last run; the ninth, the chaos test, passed on its own on 2026-10-28.
+End-to-end: `npm run test:e2e` (needs Postgres; builds first, then runs 10
+browser tests against a fresh `ludora_e2e` database). All 10 passed in
+Chromium on 2026-10-29. `E2E_BROWSER=webkit` or `firefox` runs them in those
+engines, as CI does.
 `npm run test:demo` builds the playable demo and runs its 4 browser tests with
 no server. All 4 pass.
 
-`npm run typecheck` is clean. `npm run lint` reports 12 stylistic warnings and
+`npm run typecheck` is clean. `npm run lint` reports 13 stylistic warnings and
 no errors.
 
 ## Open items
