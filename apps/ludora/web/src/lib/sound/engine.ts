@@ -1,4 +1,5 @@
 import { MUSIC_ASSETS, SFX_ASSETS, type MusicId, type SfxAsset, type SfxAssetName } from './assets.generated.ts';
+import { CLIP_RANGE, softClipCurve } from './clip.ts';
 import { LoopPlayer } from './loops.ts';
 import { MusicPlayer, TRACKS, type SynthTrackId } from './music.ts';
 import { CORE_SFX, SampleBank, nextTake, pitchRate, sampleFor, takesOf, type Sample } from './samples.ts';
@@ -37,7 +38,7 @@ function readMuted(): boolean {
 }
 
 /** The mix: effects louder than the music, which sits underneath. */
-const LEVEL = { master: 0.9, sfx: 1, music: 0.4, reverb: 0.22 };
+const LEVEL = { master: 1, sfx: 1, music: 0.4, reverb: 0.22 };
 
 /** Big moments turn the music down for a moment: how far (gain) and for how long (seconds). */
 const DUCK: Partial<Record<SfxAssetName, [depth: number, hold: number]>> = {
@@ -71,19 +72,18 @@ interface Graph extends Mix {
 
 /**
  * The mixer: effects and music buses into a master with a shared reverb (for
- * the synthesised sounds; the recordings have their own) and a gentle
- * compressor at the end, which keeps stacked sounds from clipping.
+ * the synthesised sounds; the recordings have their own) and a safety stage at
+ * the end that rounds off stacked sounds instead of letting them clip, and
+ * leaves a single sound exactly as it was built (see clip.ts).
  */
 export function buildMix(ctx: BaseAudioContext): Mix {
-  const comp = ctx.createDynamicsCompressor();
-  comp.threshold.value = -12;
-  comp.knee.value = 10;
-  comp.ratio.value = 3;
-  comp.attack.value = 0.004;
-  comp.release.value = 0.25;
+  const into = ctx.createGain();
+  into.gain.value = 1 / CLIP_RANGE;
+  const safety = ctx.createWaveShaper();
+  safety.curve = softClipCurve();
   const master = ctx.createGain();
   master.gain.value = LEVEL.master;
-  master.connect(comp).connect(ctx.destination);
+  master.connect(into).connect(safety).connect(ctx.destination);
   const sfx = ctx.createGain();
   sfx.gain.value = LEVEL.sfx;
   sfx.connect(master);

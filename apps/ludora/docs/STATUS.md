@@ -262,6 +262,14 @@ Last updated: 2026-10-29.
   A speaker button in the game header mutes everything on that device and is remembered;
   Settings turns effects and music off for the account.
 
+  The browser plays each sound exactly as it was built. Until 2026-10-29 a compressor at the
+  end of the mix reshaped them: rendered offline in each engine, it lifted every sound 0.2 to
+  2 dB, the quiet ones most, and in Firefox it squashed taps and ticks by up to 7 dB. A
+  soft-clip stage (`web/src/lib/sound/clip.ts`) replaced it. Measured the same way in
+  Chromium, Firefox and WebKit, it leaves every effect and the music unchanged (within 0.1 dB
+  on peaks), and four loud sounds at once come out just under full scale instead of
+  clipping.
+
   Checked on 2026-10-29 with `tools/audio/analyze.py`, against the old files:
   - Music:
     - On loudness target (-15.5 to -18 LUFS), with the true peak at or under -1.2 dBTP measured
@@ -493,9 +501,9 @@ creates and drops its own database).
 | content | 4 | 132: catalogue integrity, every built-in question set, the seasonal calendar (11) and the monthly drops (9) |
 | engine | 53 | 8174, including the conformance suite for every mode and variant, and the chaos suite: every cheat in every mode it supports, the core rules and each mode's pack |
 | server | 18 | 189: auth and rate limits, realtime, economy, staff, social and classes, preferences, open games, sign-in help, uploads, AI drafts, reward counting, origin checks, chaos, Creator Studio, Game Maker, school events, configuration (3), and account download, deletion and data retention (8) |
-| web | 5 | 93: the set editor's checks, import and export (45); the synthesised music, in key and looping cleanly (16); the recorded sounds, every effect with a file and every loop a whole number of bars (16), and the takes and pitch spread they play with (5); which music plays when (7); Glow Tag's park in words for screen readers (4) |
+| web | 6 | 95: the set editor's checks, import and export (45); the synthesised music, in key and looping cleanly (16); the recorded sounds, every effect with a file and every loop a whole number of bars (16), and the takes and pitch spread they play with (5); which music plays when (7); Glow Tag's park in words for screen readers (4); the master's soft-clip stage (2) |
 | shared | 0 | no tests of its own; its schemas are exercised by the other projects |
-| **Total** | **80** | **8588 passing** (8584 at the full run on 2026-10-29, plus the 4 Glow Tag tests added after it, run with the web suite) |
+| **Total** | **81** | **8590 passing** (8584 at the full run on 2026-10-29, plus 6 web tests added after it, run with the web suite) |
 
 End-to-end: `npm run test:e2e` (needs Postgres; builds first, then runs 10
 browser tests against a fresh `ludora_e2e` database). `E2E_BROWSER=webkit` or
