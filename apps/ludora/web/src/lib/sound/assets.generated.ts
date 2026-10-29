@@ -95,13 +95,13 @@ export interface SfxAsset {
 }
 
 export const MUSIC_ASSETS: Record<MusicId, MusicAsset> = {
-  lobby: { url: musicLobby, title: "Lanterns Waking", bpm: 100, beatsPerBar: 4, bars: 16, loopStart: 0.5, loopEnd: 38.9 },
-  game: { url: musicGame, title: "Festival Run", bpm: 116, beatsPerBar: 4, bars: 16, loopStart: 0.5, loopEnd: 33.603447 },
-  calm: { url: musicCalm, title: "Moonlit Study", bpm: 84, beatsPerBar: 4, bars: 16, loopStart: 0.5, loopEnd: 46.214286 },
-  market: { url: musicMarket, title: "Night Market Bounce", bpm: 112, beatsPerBar: 4, bars: 16, loopStart: 0.5, loopEnd: 34.785714 },
-  battle: { url: musicBattle, title: "Spark Duel", bpm: 128, beatsPerBar: 4, bars: 16, loopStart: 0.5, loopEnd: 30.5 },
-  intense: { url: musicIntense, title: "Final Stretch", bpm: 140, beatsPerBar: 4, bars: 16, loopStart: 0.5, loopEnd: 27.928571 },
-  results: { url: musicResults, title: "Lanterns Rise", bpm: 108, beatsPerBar: 4, bars: 16, loopStart: 0.5, loopEnd: 36.055556 },
+  lobby: { url: musicLobby, title: "Lanterns Waking", bpm: 105, beatsPerBar: 4, bars: 36, loopStart: 0.5, loopEnd: 82.785714 },
+  game: { url: musicGame, title: "Festival Run", bpm: 112, beatsPerBar: 4, bars: 32, loopStart: 0.5, loopEnd: 69.071429 },
+  calm: { url: musicCalm, title: "Moonlit Study", bpm: 84, beatsPerBar: 4, bars: 32, loopStart: 0.5, loopEnd: 91.928571 },
+  market: { url: musicMarket, title: "Night Market Bounce", bpm: 112, beatsPerBar: 4, bars: 32, loopStart: 0.5, loopEnd: 69.071429 },
+  battle: { url: musicBattle, title: "Spark Duel", bpm: 125, beatsPerBar: 4, bars: 40, loopStart: 0.5, loopEnd: 77.3 },
+  intense: { url: musicIntense, title: "Final Stretch", bpm: 140, beatsPerBar: 4, bars: 32, loopStart: 0.5, loopEnd: 55.357143 },
+  results: { url: musicResults, title: "Lanterns Rise", bpm: 112, beatsPerBar: 4, bars: 32, loopStart: 0.5, loopEnd: 69.071429 },
 };
 
 export const SFX_ASSETS = {
