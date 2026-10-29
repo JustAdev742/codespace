@@ -16,6 +16,7 @@ import {
   syncShopTimer,
   unownedProducts,
 } from '../adapters/corner-shop.ts';
+import { starsOf } from '../../modes/corner-shop/index.ts';
 import {
   BIG_SPENDER_SIZES,
   CRATE_CASH,
@@ -48,8 +49,8 @@ import {
  * Cash, rating, every shelf and what a shop has spent move through the
  * adapter's meters (score, rating, stock.<product>, spent), so cheats that
  * only move those can be undone. Cheats that add, move or hurry customers,
- * lend upgrades, change a delivery offer or run an event write the mode's
- * state and are not undoable.
+ * lend upgrades, change a delivery offer, hold stock out back or run an
+ * event write the mode's state and are not undoable.
  *
  * Nothing is invented: customers are drawn the way the mode draws them (its
  * customer kinds, basket sizes, popularity and patience tables), stock comes
@@ -910,6 +911,211 @@ const cheats: CheatDef[] = [
     },
     overlay: (fx) => ({ kind: 'countdown', label: 'Shop sign says Closed', until: fx.endsAt }),
   },
+  {
+    id: 'corner-shop.stocktake',
+    name: 'Surprise Stocktake',
+    category: 'troll',
+    description:
+      "Call a surprise stocktake at an opponent's shop: everything on their fullest shelf is carried out back to be counted, so for 12 seconds none of it can be sold. Then it all goes back on the shelf (if deliveries have filled the shelf meanwhile, what does not fit is lost).",
+    target: 'opponent',
+    modes: M,
+    cost: 30,
+    cooldownMs: 50_000,
+    durationMs: 12_000,
+    // The stock comes back by itself when the stocktake ends, so an undo on top would count it twice.
+    undoable: false,
+    apply: (api, c, fx) => {
+      const t = target(c);
+      const sh = shop(api, t);
+      if (!sh) return { error: `${api.name(t)} has no shop.` };
+      const p = fullest(sh);
+      const n = Number(sh.stock[p]);
+      if (n <= 0) return { error: `${shopName(api, t)} has nothing on its shelves.` };
+      api.set(stockKey(p), t, 0);
+      if (fx) {
+        fx.data.shop = sh.id;
+        fx.data.product = p;
+        fx.data.held = n;
+        // The shelf is the shop's: everyone who runs it is under the stocktake.
+        fx.targets = crew(api, sh);
+      }
+      tell(api, sh, `${api.name(c.caster)} called a surprise stocktake: your ${PRODUCTS[p].many} are out back being counted.`, 'bad');
+    },
+    hooks: {
+      end: (api, fx) => {
+        const sh = api.s.shops[String(fx.data.shop)];
+        const p = fx.data.product as ProductId | undefined;
+        if (!sh || !p) return;
+        const held = Number(fx.data.held);
+        const back = Math.max(0, Math.min(held, cap(api, sh) - sh.stock[p]));
+        sh.stock[p] += back;
+        tell(api, sh, `The stocktake is over: ${itemText(p, back)} back on your shelf${back < held ? ` (${held - back} did not fit)` : ''}.`, 'info');
+      },
+    },
+    overlay: (fx) => ({ kind: 'countdown', label: `Stocktake: no ${PRODUCTS[fx.data.product as ProductId]?.many ?? 'stock'} to sell`, until: fx.endsAt }),
+  },
+  {
+    id: 'corner-shop.wrong-address',
+    name: 'Wrong Address',
+    category: 'troll',
+    description:
+      "The stock the next delivery an opponent's shop picks (within 30 seconds) would put on their shelves goes to the wrong address: yours. It goes on your shelves wherever you sell it and have room, and the rest is lost on the way. They get none of it. A mystery crate with stock in it counts; a Thank-you card and the Delivery Truck do not.",
+    target: 'opponent',
+    modes: M,
+    cost: 35,
+    cooldownMs: 60_000,
+    durationMs: 30_000,
+    tickMs: 500,
+    apply: (api, c) => {
+      const t = target(c);
+      if (!shop(api, t) || shop(api, t) === shop(api, c.caster)) return { error: 'You share that shop.' };
+    },
+    hooks: {
+      tick: endWhenUsed,
+      delta: Object.fromEntries(
+        STOCK_KEYS.map((key) => [
+          key,
+          (api: Api, fx: ActiveEffect, d: Record<string, number>) => {
+            const t = fx.targets[0];
+            const sh = t ? shop(api, t) : null;
+            const mine = shop(api, fx.caster);
+            const got = t ? (d[t] ?? 0) : 0;
+            if (!sh || !mine || sh === mine || got <= 0) return;
+            const fresh = freshDelivery(api, sh);
+            if (!fresh) return;
+            // Only the first delivery: every product in it, and nothing from a later one.
+            const mark = `${fresh.by}:${fresh.seq}`;
+            if (fx.data.used && fx.data.used !== mark) return;
+            fx.data.used = mark;
+            const product = key.slice('stock.'.length) as ProductId;
+            setShopDelta(api, sh, d, 0);
+            const fits = mine.lines.includes(PRODUCTS[product].line) ? Math.max(0, Math.min(got, cap(api, mine) - mine.stock[product])) : 0;
+            if (fits > 0) for (const id of crew(api, mine)) d[id] = (d[id] ?? 0) + fits;
+            // The delivery card says what really arrived.
+            const card = clerk(api, fresh.by).delivery;
+            card.added = (card.added as any[]).filter((row) => row.product !== product);
+            tell(api, sh, `Wrong address: ${itemText(product, got)} went to ${shopName(api, fx.caster)} instead.`, 'bad');
+            tell(api, mine, `Wrong Address: ${itemText(product, fits)} from ${shopName(api, t!)}'s delivery${fits < got ? ` (${got - fits} did not fit)` : ''}.`, 'good');
+          },
+        ]),
+      ),
+    },
+    overlay: () => ({ kind: 'badge', text: 'Next delivery goes astray', tone: 'bad' }),
+  },
+  {
+    id: 'corner-shop.review-swap',
+    name: 'Review Swap',
+    category: 'troll',
+    description: "Swap your shop's reviews with an opponent's: you take their rating and they take yours. Only when their shop shows more stars than yours. A better rating brings more customers and bigger tips.",
+    target: 'opponent',
+    modes: M,
+    needs: ['meter:rating'],
+    cost: 40,
+    cooldownMs: 75_000,
+    apply: (api, c) => {
+      const t = target(c);
+      const mine = shop(api, c.caster);
+      const theirs = shop(api, t);
+      if (!theirs || theirs === mine) return { error: 'You share that shop.' };
+      const a = api.get('rating', c.caster);
+      const b = api.get('rating', t);
+      // Stars are shown (and count) in halves, so a swap inside the same half star would change nothing anyone sees.
+      if (starsOf(b) <= starsOf(a)) return { error: `${shopName(api, t)} does not show more stars than yours.` };
+      api.set('rating', c.caster, b);
+      api.set('rating', t, a);
+      tell(api, theirs, `${api.name(c.caster)} swapped reviews with you: your shop shows ${String(starsOf(a))} stars now.`, 'bad');
+      tell(api, mine, `Review Swap: your shop shows ${String(starsOf(b))} stars now.`, 'good');
+    },
+  },
+  {
+    id: 'corner-shop.queue-swap',
+    name: 'Queue Swap',
+    category: 'troll',
+    description:
+      'You and an opponent swap queues: everyone waiting at their till walks over to yours and everyone waiting at yours walks over to theirs, keeping their orders and their patience, even for things the new shop does not sell. If a queue is longer than its new shop has room for, the customers at the back walk away.',
+    target: 'opponent',
+    modes: M,
+    cost: 35,
+    cooldownMs: 60_000,
+    undoable: false,
+    apply: (api, c) => {
+      const t = target(c);
+      const mine = shop(api, c.caster);
+      const theirs = shop(api, t);
+      if (!theirs || theirs === mine) return { error: 'You share that shop.' };
+      if (!mine.active || !theirs.active) return { error: 'One of the two shops is shut.' };
+      const toThem = waiting(api, mine);
+      const toMe = waiting(api, theirs);
+      if (!toThem.length && !toMe.length) return { error: 'Nobody is waiting at either till.' };
+      // Customers whose patience has already run out stay where they are: the mode sees them leave.
+      const leaving = (list: any[]) => new Set(list.map((cu) => cu.id));
+      const fromMine = leaving(toThem);
+      const fromTheirs = leaving(toMe);
+      mine.queue = mine.queue.filter((cu: any) => !fromMine.has(cu.id));
+      theirs.queue = theirs.queue.filter((cu: any) => !fromTheirs.has(cu.id));
+      const arrive = (sh: any, list: any[]) => {
+        const fits = list.slice(0, Math.max(0, room(api, sh)));
+        for (const cu of fits) {
+          sh.nextCustomer++;
+          sh.queue.push({ ...cu, id: sh.nextCustomer });
+        }
+        return fits.length;
+      };
+      const cameToMe = arrive(mine, toMe);
+      const wentToThem = arrive(theirs, toThem);
+      resync(api, mine);
+      resync(api, theirs);
+      const away = toMe.length - cameToMe + toThem.length - wentToThem;
+      tell(api, theirs, `${api.name(c.caster)} swapped queues with you: ${people(wentToThem)} walked over to your till.`, 'bad');
+      tell(api, mine, `Queue Swap: ${people(cameToMe)} walked over to your till${away ? ` (${people(away)} walked away for lack of room)` : ''}.`, 'good');
+    },
+  },
+  {
+    id: 'corner-shop.mystery-shopper',
+    name: 'Mystery Shopper',
+    category: 'troll',
+    description:
+      "Send a mystery shopper to an opponent's shop. They join the queue like any other customer, drawn the same way, and nobody there is told which one they are. Served everything they wanted, and their report is glowing: the shop's rating goes up half a star. Served only part of it or nothing, or kept waiting until they give up, and the rating drops half a star. That is on top of what the visit does to the rating anyway, and never past 1 or 5 stars. If another cheat takes them away first, there is no report. Needs room in the queue.",
+    target: 'opponent',
+    modes: M,
+    needs: ['meter:rating'],
+    cost: 30,
+    cooldownMs: 60_000,
+    // Longer than the most patient customer can wait (30 s, cosy decor's 16 s, and the 15% spread).
+    durationMs: 60_000,
+    tickMs: 250,
+    undoable: false,
+    apply: (api, c, fx) => {
+      const t = target(c);
+      const sh = shop(api, t);
+      if (!sh || sh === shop(api, c.caster)) return { error: 'You share that shop.' };
+      if (!sh.active) return { error: `${shopName(api, t)} is shut.` };
+      const [cu] = walkIn(api, sh, 1);
+      if (!cu) return { error: `${shopName(api, t)} has no room in its queue.` };
+      if (fx) {
+        fx.data.shop = sh.id;
+        fx.data.cid = cu.id;
+        fx.data.name = cu.name;
+        fx.data.leavesAt = cu.leavesAt;
+        fx.data.where = shopName(api, t);
+        fx.targets = crew(api, sh);
+      }
+      api.feed(`Your mystery shopper, ${cu.name}, has joined the queue at ${shopName(api, t)}.`, 'info', [c.caster]);
+      tell(api, sh, 'A mystery shopper is somewhere in your queue.', 'info');
+    },
+    hooks: {
+      // A visit ends in a sale (cash or rating changes) or in the shopper giving up (rating drops): judged in that very move.
+      delta: {
+        score: (api, fx) => judgeShopper(api, fx, null),
+        rating: (api, fx, d) => judgeShopper(api, fx, d),
+      },
+      tick: (api, fx) => judgeShopper(api, fx, null),
+      end: (api, fx, reason) => {
+        if (!fx.data.done && reason === 'expired') api.feed(`Your mystery shopper ${String(fx.data.name)} was still waiting when the visit ran out of time: no report.`, 'info', [fx.caster]);
+      },
+    },
+    overlay: () => ({ kind: 'badge', text: 'Mystery shopper in your queue', tone: 'info' }),
+  },
 
   /* -------------------------------- the high street ------------------------------- */
   {
@@ -1133,6 +1339,47 @@ const cheats: CheatDef[] = [
     },
   },
 ];
+
+/**
+ * Mystery Shopper: once the shopper has left the queue, judge the visit. Served in full is a good report
+ * (+half a star); served partly, not at all, or given up on is a bad one (-half a star). A shopper who left
+ * the queue before their patience ran out without being served was taken by another cheat: no report.
+ * Called from the rating hook with its changes (`d`), so the verdict joins them; from elsewhere it writes
+ * the rating itself.
+ */
+function judgeShopper(api: Api, fx: ActiveEffect, d: Record<string, number> | null) {
+  if (fx.data.done) return;
+  const sh = api.s.shops[String(fx.data.shop)];
+  if (!sh) return;
+  const cid = Number(fx.data.cid);
+  const still = (sh.queue as any[]).find((cu) => cu.id === cid);
+  if (still) {
+    fx.data.leavesAt = still.leavesAt;
+    return;
+  }
+  let sale: any = null;
+  for (const k of Object.values(api.s.clerks) as any[]) if (k.shopId === sh.id) sale = (k.sales as any[]).find((x) => x.customer.id === cid) ?? sale;
+  const gaveUp = !sale && api.now() >= Number(fx.data.leavesAt);
+  fx.data.done = 1;
+  const name = String(fx.data.name);
+  if (!sale && !gaveUp) {
+    api.feed(`Your mystery shopper ${name} was taken away before the visit was over: no report.`, 'info', [fx.caster]);
+    api.endEffect(fx.eid, 'used');
+    return;
+  }
+  const good = sale?.kind === 'full';
+  const v = good ? 5 : -5;
+  const team = crew(api, sh);
+  if (d) {
+    // Rating is one number per shop: every clerk of it gets the same change, so the write-back agrees.
+    const base = team.map((id) => d[id]).find((x) => x !== undefined) ?? 0;
+    for (const id of team) d[id] = base + v;
+  } else if (team.length) api.add('rating', team[0]!, v);
+  const how = good ? 'served everything they wanted' : sale ? 'did not get everything they wanted' : 'gave up waiting';
+  tell(api, sh, `${name} was a mystery shopper and ${how}: a ${good ? 'glowing' : 'poor'} report for your shop.`, good ? 'good' : 'bad');
+  api.feed(`Your mystery shopper ${name} ${how} at ${String(fx.data.where)}: a ${good ? 'glowing' : 'poor'} report.`, 'info', [fx.caster]);
+  api.endEffect(fx.eid, 'used');
+}
 
 /** Keep a shop's next customer outside until `until` (or for good, if the shops shut first). */
 function holdDoor(api: Api, sh: any, until: number) {

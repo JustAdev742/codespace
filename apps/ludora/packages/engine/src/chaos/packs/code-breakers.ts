@@ -1,8 +1,9 @@
 import { defineCheats } from '../registry.ts';
 import type { ActiveEffect, ChaosApi, CheatDef } from '../types.ts';
-import { odds, rollOdds, target } from '../cheats/kit.ts';
+import { odds, rollOdds, target, transfer } from '../cheats/kit.ts';
 import {
   BITS_ODDS,
+  DOUBLE,
   EVENT_INFO,
   EVENT_TIMING,
   FIREWALL_MAX,
@@ -862,6 +863,97 @@ const cheats: CheatDef[] = [
         if (api.add('score', c.caster, 20) <= 0) return { error: 'Your bits cannot go any higher right now.' };
         api.feed('Packet Lottery: 20 bits.', 'good', [c.caster]);
       } else api.feed(`Packet Lottery: ${words}.`, pick === 'lose' ? 'bad' : 'good', [c.caster]);
+    },
+  },
+
+  /* -------------------------- notes, targets and boosts ------------------------- */
+  {
+    id: 'code-breakers.photocopied-notes',
+    name: 'Photocopied Notes',
+    category: 'advantage',
+    description:
+      "Photocopy a rival's hacking notes: every decoy they have crossed off for a player you can hack (or the Vault) is crossed off in your notes too. It always leaves you at least one decoy for each of them, so you still have to guess, and it never says whose password they cracked.",
+    target: 'opponent',
+    // The rival keeps their notes: nothing is taken from them, so this is not a harmful cheat.
+    hostile: false,
+    modes: M,
+    cost: 25,
+    cooldownMs: 50_000,
+    undoable: false,
+    apply: (api, c) => {
+      const t = target(c);
+      const me = hacker(api, c.caster);
+      const them = hacker(api, t);
+      if (!me || !them || t === c.caster) return { error: 'Pick a rival to copy from.' };
+      const hackable = new Set(readyRivals(api, c.caster));
+      let crossed = 0;
+      const about: string[] = [];
+      for (const [rid, note] of Object.entries((them.notes ?? {}) as Record<string, { crossed: string[] }>)) {
+        // Only targets you could hack yourself: never your own password or a teammate's.
+        const decoys: string[] | null = rid === VAULT.id ? (api.s.vault?.decoys ?? null) : hackable.has(rid) ? hacker(api, rid).decoys : null;
+        if (!decoys) continue;
+        const known = knownCrossed(api, c.caster, rid);
+        let open = decoys.filter((d) => !known.has(d)).length;
+        let added = 0;
+        for (const d of note.crossed) {
+          if (open <= 1) break;
+          if (known.has(d) || !decoys.includes(d)) continue;
+          crossOff(me, rid, d);
+          known.add(d);
+          open--;
+          added++;
+        }
+        if (added) {
+          crossed += added;
+          about.push(rid === VAULT.id ? VAULT.name : api.name(rid));
+        }
+      }
+      if (!crossed) return { error: `${api.name(t)}'s notes hold nothing you do not know already.` };
+      api.feed(`Photocopied Notes: ${String(crossed)} ${crossed === 1 ? 'decoy' : 'decoys'} crossed off for ${about.join(', ')}.`, 'good', [c.caster]);
+    },
+  },
+  {
+    id: 'code-breakers.blocklist',
+    name: 'Blocklist',
+    category: 'advantage',
+    description: `Put a rival on your blocklist: for ${String(TIMING.guardSec)} seconds they cannot pick you as a hack target, just as if they had tried to hack you a moment ago. The game still lets them if nobody else is left for them to hack, and a free hack back they hold on you still works.`,
+    target: 'opponent',
+    modes: M,
+    cost: 20,
+    cooldownMs: 45_000,
+    undoable: false,
+    apply: (api, c) => {
+      const t = target(c);
+      const me = hacker(api, c.caster);
+      const them = hacker(api, t);
+      if (!me || !them || t === c.caster) return { error: 'Pick a rival to block.' };
+      if (!me.password) return { error: 'Nobody can hack you until you have chosen a password.' };
+      const now = api.now();
+      if ((them.tried[c.caster] ?? -Infinity) >= now) return { error: `${api.name(t)} cannot pick you right now already.` };
+      // The mode's own guard: a target tried in the last few seconds cannot be picked again until it runs out.
+      them.tried[c.caster] = now;
+      api.feed(`${api.name(c.caster)} put you on their blocklist: you cannot pick them as a target for ${String(TIMING.guardSec)} seconds.`, 'bad', [t]);
+    },
+  },
+  {
+    id: 'code-breakers.boost-swipe',
+    name: 'Boost Swipe',
+    category: 'economy',
+    description: `Swipe a rival's boosts: their Double and Surge charges move over to you, as many as you have room for (you can hold ${String(DOUBLE.max)} Doubles and ${String(SURGE.max)} Surge charges). Whatever does not fit stays with them.`,
+    target: 'opponent',
+    modes: M,
+    needs: ['meter:surge', 'meter:double'],
+    cost: 35,
+    cooldownMs: 60_000,
+    apply: (api, c) => {
+      const t = target(c);
+      if (t === c.caster) return { error: 'Pick a rival to swipe from.' };
+      const doubles = transfer(api, 'double', t, c.caster, api.get('double', t));
+      const surges = transfer(api, 'surge', t, c.caster, api.get('surge', t));
+      if (!doubles && !surges) return { error: api.get('double', t) + api.get('surge', t) > 0 ? 'You have no room for any more boosts.' : `${api.name(t)} has no boosts to swipe.` };
+      const got = [doubles ? `${String(doubles)} ${doubles === 1 ? 'Double' : 'Doubles'}` : null, surges ? `${String(surges)} Surge ${surges === 1 ? 'charge' : 'charges'}` : null].filter(Boolean).join(' and ');
+      api.feed(`${api.name(c.caster)} swiped ${got} from you.`, 'bad', [t]);
+      api.feed(`Boost Swipe: ${got} from ${api.name(t)}.`, 'good', [c.caster]);
     },
   },
 ];

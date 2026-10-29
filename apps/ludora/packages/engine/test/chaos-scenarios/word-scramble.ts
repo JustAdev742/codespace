@@ -49,6 +49,13 @@ const targetMisspells: Post = (sim, _caster, _def, target) => {
   const iid = target ? toTiles(sim, target) : null;
   if (iid) sim.rt.act(target!, { type: 'solve', iid, text: 'qqqqq' });
 };
+/** The target spells the word wrong, then tries again: a one-try curse refuses the second go. */
+const targetMisspellsTwice: Post = (sim, _caster, _def, target) => {
+  const iid = target ? toTiles(sim, target) : null;
+  if (!iid) return;
+  sim.rt.act(target!, { type: 'solve', iid, text: 'qqqqq' });
+  sim.rt.act(target!, { type: 'solve', iid, text: 'zzzzz' });
+};
 const casterSolves: Post = (sim, caster) => solveWord(sim, caster);
 const targetSolves: Post = (sim, _caster, _def, target) => target && solveWord(sim, target);
 /** The caster skips a word (moving on to one first), so their last word is a miss. */
@@ -60,8 +67,8 @@ const casterSkips: Pre = (sim, caster) => {
 };
 
 export const scenarios: ScenarioSet = {
-  // The word timer, the spelling streak and one try per word are game settings.
-  settings: { 'word-scramble': [{ wordTimer: true }, { streak: true }, { oneTry: true }] },
+  // The word timer, the spelling streak, one try per word and second chances are game settings.
+  settings: { 'word-scramble': [{ wordTimer: true }, { streak: true }, { oneTry: true }, { secondChance: true }] },
   pre: {
     'word-scramble.word-boomerang': casterSkips,
   },
@@ -70,6 +77,7 @@ export const scenarios: ScenarioSet = {
     'word-scramble.second-draft': casterMisspells,
     'word-scramble.streak-keeper': casterStreakThenSkip,
     'word-scramble.typo-tax': targetMisspells,
+    'word-scramble.first-spell-curse': targetMisspellsTwice,
     'word-scramble.hint-tax': targetTriesHint,
     'word-scramble.spelling-wager': casterSolves,
     'word-scramble.streak-stall': targetSolves,

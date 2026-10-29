@@ -340,3 +340,82 @@ describe('code-breakers pack: events and the Vault', () => {
     expect(cast(plain, 'p1', 'vault-jackpot').ok).toBe(false);
   });
 });
+
+describe('code-breakers pack: copied notes, blocklists and swiped boosts', () => {
+  /** Edit the game state by hand (a test-only shortcut to a situation). */
+  function edit(sim: ChaosSim, change: (st: any) => void) {
+    const st = structuredClone(sim.state());
+    change(st);
+    (sim.rt as unknown as { state: unknown }).state = st;
+  }
+
+  it('Photocopied Notes copies the decoys a rival crossed off, never about you, always leaving one, and not their cracks', () => {
+    const sim = network();
+    still(sim, ...sim.ids);
+    // p2 crosses off two of p3's decoys and one of p1's; p1 already knows one of p3's.
+    expect(cast(sim, 'p2', 'brute-force', 'p3').ok).toBe(true);
+    expect(cast(sim, 'p1', 'brute-force', 'p3').ok).toBe(true);
+    sim.run(41_000);
+    expect(cast(sim, 'p2', 'brute-force', 'p3').ok).toBe(true);
+    sim.run(41_000);
+    expect(cast(sim, 'p2', 'brute-force', 'p1').ok).toBe(true);
+    edit(sim, (st) => (st.hackers.p2.notes.p3.cracked = true));
+    const mineBefore = structuredClone(h(sim, 'p1').notes);
+    const theirs = structuredClone(h(sim, 'p2').notes);
+    expect(cast(sim, 'p1', 'photocopied-notes', 'p2').ok).toBe(true);
+    const mine = h(sim, 'p1').notes;
+    expect(mine.p1).toBeUndefined();
+    for (const [rid, note] of Object.entries(theirs) as [string, any][]) {
+      if (rid === 'p1') continue;
+      const known = new Set<string>(mineBefore[rid]?.crossed ?? []);
+      const union = new Set<string>([...known, ...note.crossed]);
+      expect(mine[rid]?.crossed.length ?? 0, rid).toBe(Math.max(known.size, Math.min(union.size, h(sim, rid).decoys.length - 1)));
+      expect(mine[rid]?.crossed ?? []).not.toContain(h(sim, rid).password);
+      expect(Boolean(mine[rid]?.cracked)).toBe(Boolean(mineBefore[rid]?.cracked));
+    }
+    // p3 has three decoys: p1 ends up knowing two of them, never all three.
+    expect(mine.p3.crossed).toHaveLength(2);
+    expect(h(sim, 'p2').notes).toEqual(theirs);
+    sim.run(51_000);
+    expect(cast(sim, 'p1', 'photocopied-notes', 'p2')).toMatchObject({ ok: false, message: expect.stringContaining('nothing you do not know') });
+  });
+
+  it('Blocklist stops a rival picking you as a target for 15 seconds, as if they had just tried', () => {
+    const sim = network();
+    still(sim, 'p1', 'p3', 'p4');
+    playUntil(sim, 'p2', () => !h(sim, 'p2').offer && !h(sim, 'p2').hack, () => -1);
+    expect(cast(sim, 'p2', 'zero-day').ok).toBe(true);
+    expect(cast(sim, 'p1', 'blocklist', 'p2').ok).toBe(true);
+    expect(h(sim, 'p2').tried.p1).toBe(sim.now);
+    const row = (sim.rt.view({ kind: 'player', playerId: 'p2' }) as any).you.hack.targets.find((t: any) => t.playerId === 'p1');
+    expect(row).toMatchObject({ blocked: 'recent', until: sim.now + 15_000 });
+    expect(sim.rt.act('p2', { type: 'target', playerId: 'p1' })).toMatchObject({ ok: false });
+    expect(sim.rt.act('p2', { type: 'target', playerId: 'p3' }).ok).toBe(true);
+  });
+
+  it('Blocklist needs a password to protect', () => {
+    const sim = new ChaosSim({ modeId: 'code-breakers', questions: MIXED_SET, players: 4, seed: 11, settings: { events: false } });
+    still(sim, ...sim.ids);
+    // Nobody has chosen a passphrase yet in the first moments of the game.
+    expect(h(sim, 'p1').password).toBeNull();
+    expect(cast(sim, 'p1', 'blocklist', 'p2')).toMatchObject({ ok: false, message: expect.stringContaining('password') });
+  });
+
+  it('Boost Swipe moves a rival\'s Doubles and Surge charges to you, as many as fit, and can be undone', () => {
+    const sim = network();
+    still(sim, ...sim.ids);
+    edit(sim, (st) => {
+      Object.assign(st.hackers.p1, { surge: 4, double: 1 });
+      Object.assign(st.hackers.p2, { surge: 5, double: 2 });
+    });
+    const r = cast(sim, 'p1', 'boost-swipe', 'p2');
+    expect(r.ok).toBe(true);
+    expect([h(sim, 'p1').surge, h(sim, 'p1').double, h(sim, 'p2').surge, h(sim, 'p2').double]).toEqual([6, 2, 3, 1]);
+    if (r.ok) expect(sim.rt.undoCast('p1', r.castId).ok).toBe(true);
+    expect([h(sim, 'p1').surge, h(sim, 'p1').double, h(sim, 'p2').surge, h(sim, 'p2').double]).toEqual([4, 1, 5, 2]);
+    edit(sim, (st) => Object.assign(st.hackers.p4, { surge: 0, double: 0 }));
+    expect(cast(sim, 'p3', 'boost-swipe', 'p4')).toMatchObject({ ok: false, message: expect.stringContaining('no boosts') });
+    edit(sim, (st) => Object.assign(st.hackers.p4, { surge: 6, double: 2 }));
+    expect(cast(sim, 'p4', 'boost-swipe', 'p2')).toMatchObject({ ok: false, message: expect.stringContaining('no room') });
+  });
+});

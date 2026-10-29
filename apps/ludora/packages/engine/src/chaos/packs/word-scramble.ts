@@ -403,6 +403,33 @@ const cheats: CheatDef[] = [
     },
     overlay: () => ({ kind: 'badge', text: 'Second draft', tone: 'good' }),
   },
+  {
+    id: 'word-scramble.first-spell-curse',
+    name: 'First Spell Curse',
+    category: 'troll',
+    description:
+      'For 20 seconds, an opponent gets one try at each word, as in First Spell: once the word on their screen has been spelt wrong, they cannot try it again until the curse lifts. They can still take a hint or skip it. Only in games where a wrong spelling can be tried again.',
+    target: 'opponent',
+    modes: [MODE],
+    needs: ['retries'],
+    cost: 25,
+    cooldownMs: 45_000,
+    durationMs: 20_000,
+    apply: (api, c) => {
+      const t = target(c);
+      if (!playing(api, t)) return { error: `${api.name(t)} has finished every word.` };
+    },
+    hooks: {
+      gate: (api, _fx, id, action) => {
+        const p = playing(api, id);
+        const a = p && attempt(p, action);
+        // Only another go at a scrambled word already spelt wrong is refused: hints, skips and ordinary questions go through.
+        if (!a || (a.type !== 'solve' && a.type !== 'answer') || !p.word?.scramble || p.word.scramble.tries < 1) return;
+        return { block: 'First Spell Curse: you have had your try at this word. Take a hint, skip it, or wait for the curse to lift.' };
+      },
+    },
+    overlay: () => ({ kind: 'badge', text: 'One try per word', tone: 'bad' }),
+  },
 
   /* --------------------------------- the word timer -------------------------------- */
   {
@@ -642,6 +669,31 @@ const cheats: CheatDef[] = [
       p.again.push(qid);
       p.target++;
       api.feed('Word Boomerang: your last missed word comes back once after your last word, for half points.', 'good', [c.caster]);
+    },
+  },
+  {
+    id: 'word-scramble.second-chance-shredder',
+    name: 'Second Chance Shredder',
+    category: 'troll',
+    description:
+      'Shreds the second chance due back to an opponent soonest: that missed word will not come back to them after their last word, so they cannot win back half its points. Only in games with second chances, and never the last word they have left to play.',
+    target: 'opponent',
+    modes: [MODE],
+    needs: ['second-chances'],
+    cost: 25,
+    cooldownMs: 45_000,
+    undoable: false,
+    apply: (api, c) => {
+      const t = target(c);
+      const p = playing(api, t);
+      if (!p) return { error: `${api.name(t)} has finished every word.` };
+      if (!p.again.length) return { error: `${api.name(t)} has no second chance waiting.` };
+      // Words still to play: the one on screen (if any), main words not started yet, and the second chances.
+      if (p.target - p.done <= 1) return { error: `That is the last word ${api.name(t)} has left to play, so it stays.` };
+      // The mode plays second chances in the order they were missed, so the first one waiting is the soonest.
+      p.again.shift();
+      p.target--;
+      api.feed(`${api.name(c.caster)} shredded one of your second chances: that word will not come back.`, 'bad', [t]);
     },
   },
   {

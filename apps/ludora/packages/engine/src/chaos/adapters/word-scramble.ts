@@ -14,6 +14,7 @@ export const wordScrambleAdapter: ChaosAdapter = {
     if (st.oneTry) f.push('one-try');
     // A wrong spelling only leaves the word open for another try without one try per word.
     else f.push('retries');
+    if (st.secondChance) f.push('second-chances');
     return f;
   },
 };

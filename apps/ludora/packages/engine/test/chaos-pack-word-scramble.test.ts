@@ -421,3 +421,79 @@ describe('word-scramble pack: swaps, boomerangs, taxes and wagers', () => {
   });
 });
 
+describe('word-scramble pack: second chances and one-try curses', () => {
+  const qidOf = (sim: ChaosSim, iid: string) => (sim.rt as unknown as { instances: Map<string, { qid: string }> }).instances.get(iid)!.qid;
+  /** Skip the word on screen, or move on to the next one. */
+  const step = (sim: ChaosSim, id: string) => {
+    const p = player(sim, id);
+    sim.rt.act(id, p.word ? { type: 'skip', iid: p.word.iid } : { type: 'next' });
+  };
+
+  it('second chance shredder throws out the second chance due back soonest, and that word never comes back', () => {
+    const sim = game({ secondChance: true });
+    const first = qidOf(sim, player(sim, 'p2').word.iid);
+    step(sim, 'p2');
+    step(sim, 'p2');
+    const second = qidOf(sim, player(sim, 'p2').word.iid);
+    step(sim, 'p2');
+    const before = player(sim, 'p2');
+    expect(before.again).toEqual([first, second]);
+    expect(cast(sim, 'p1', 'second-chance-shredder', 'p2').ok).toBe(true);
+    expect([player(sim, 'p2').again, player(sim, 'p2').target]).toEqual([[second], before.target - 1]);
+    // Play out the main words: the first second chance shown is the one that was not shredded.
+    for (let i = 0; i < 80 && player(sim, 'p2').done < player(sim, 'p2').main; i++) step(sim, 'p2');
+    expect(player(sim, 'p2').again).not.toContain(first);
+    sim.rt.act('p2', { type: 'next' });
+    expect([player(sim, 'p2').retry, qidOf(sim, player(sim, 'p2').word.iid)]).toEqual([true, second]);
+  });
+
+  it('second chance shredder needs a second chance waiting and a game with second chances', () => {
+    const sim = game({ secondChance: true });
+    expect(cast(sim, 'p1', 'second-chance-shredder', 'p2')).toMatchObject({ ok: false, message: expect.stringContaining('no second chance waiting') });
+    const plain = game();
+    step(plain, 'p2');
+    expect(cast(plain, 'p1', 'second-chance-shredder', 'p2')).toMatchObject({ ok: false, message: expect.stringContaining('does not work here') });
+  });
+
+  it('second chance shredder never takes the last word a player has left', () => {
+    const sim = new ChaosSim({ modeId: 'word-scramble', questions: MIXED_SET, players: 5, seed: 5, settings: { secondChance: true }, common: { questionLimit: 4 } });
+    for (const id of sim.ids) sim.idle.add(id);
+    sims.push(sim);
+    // p2 misses all four words: four second chances wait, and nothing is on screen.
+    for (let i = 0; i < 12 && player(sim, 'p2').done < 4; i++) step(sim, 'p2');
+    expect([player(sim, 'p2').done, player(sim, 'p2').again.length, player(sim, 'p2').word]).toEqual([4, 4, null]);
+    for (const by of ['p1', 'p3', 'p4']) expect(cast(sim, by, 'second-chance-shredder', 'p2').ok).toBe(true);
+    expect([player(sim, 'p2').again.length, player(sim, 'p2').target]).toEqual([1, 5]);
+    expect(cast(sim, 'p5', 'second-chance-shredder', 'p2')).toMatchObject({ ok: false, message: expect.stringContaining('last word') });
+    // The one left still comes back; missing it again finishes p2.
+    sim.rt.act('p2', { type: 'next' });
+    expect(player(sim, 'p2').retry).toBe(true);
+    step(sim, 'p2');
+    expect(player(sim, 'p2').finished).toBe(true);
+  });
+
+  it('first spell curse refuses another go at a word spelt wrong, but not hints, until it lifts', () => {
+    const sim = game();
+    const iid = toTiles(sim, 'p2', true)!;
+    expect(cast(sim, 'p1', 'first-spell-curse', 'p2').ok).toBe(true);
+    // A word not yet spelt wrong gets its try.
+    expect(sim.rt.act('p2', { type: 'solve', iid, text: 'qqqqq' }).ok).toBe(true);
+    expect(sim.rt.act('p2', { type: 'solve', iid, text: spelt(sc(sim, 'p2')) })).toMatchObject({ ok: false, message: expect.stringContaining('First Spell Curse') });
+    expect([sc(sim, 'p2').tries, player(sim, 'p2').word.iid]).toEqual([1, iid]);
+    expect(sim.rt.act('p2', { type: 'hint', iid }).ok).toBe(true);
+    sim.run(20_100);
+    expect(sim.rt.act('p2', { type: 'solve', iid, text: spelt(sc(sim, 'p2')) }).ok).toBe(true);
+    expect(player(sim, 'p2').stream.last).toMatchObject({ iid, correct: true });
+  });
+
+  it('first spell curse still lets the word be skipped, and is not offered with one try per word', () => {
+    const sim = game();
+    const iid = toTiles(sim, 'p3')!;
+    expect(cast(sim, 'p1', 'first-spell-curse', 'p3').ok).toBe(true);
+    sim.rt.act('p3', { type: 'solve', iid, text: 'qqqqq' });
+    expect(sim.rt.act('p3', { type: 'skip', iid }).ok).toBe(true);
+    expect(player(sim, 'p3').stream.last).toMatchObject({ iid, correct: false });
+    expect(cast(game({ oneTry: true }), 'p1', 'first-spell-curse', 'p2')).toMatchObject({ ok: false });
+  });
+});
+

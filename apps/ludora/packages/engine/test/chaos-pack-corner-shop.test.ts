@@ -596,6 +596,206 @@ describe('corner-shop pack: other shops', () => {
   });
 });
 
+describe('corner-shop pack: stocktakes, wrong addresses, swaps and mystery shoppers', () => {
+  /** Edit the game state by hand (a test-only shortcut to a situation). */
+  function edit(sim: ChaosSim, change: (st: any) => void) {
+    const st = structuredClone(s(sim));
+    change(st);
+    (sim.rt as unknown as { state: unknown }).state = st;
+  }
+  const effect = (sim: ChaosSim, cheat: string) => sim.chaos().effects.find((e) => e.cheatId === `corner-shop.${cheat}`);
+  const clampRating = (r: number) => Math.max(10, Math.min(50, r));
+
+  it('Surprise Stocktake empties the fullest shelf for 12 seconds, then puts it all back; it cannot be undone', () => {
+    const sim = street();
+    sim.idle.add('p2');
+    const sh = shop(sim, 'p2');
+    const p = owned(sh).reduce((a, b) => (sh.stock[b] > sh.stock[a] ? b : a));
+    const before = stockOf(sim, 'p2');
+    expect(before[p]).toBeGreaterThan(0);
+    const r = cast(sim, 'p1', 'stocktake', 'p2');
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(sim.rt.undoCast('p1', r.castId).ok).toBe(false);
+    expect(shop(sim, 'p2').stock[p]).toBe(0);
+    for (const q of owned(sh)) if (q !== p) expect(shop(sim, 'p2').stock[q]).toBe(before[q]);
+    sim.run(11_900);
+    expect(shop(sim, 'p2').stock[p]).toBe(0);
+    sim.run(200);
+    expect(shop(sim, 'p2').stock[p]).toBe(before[p]);
+    expect(effect(sim, 'stocktake')).toBeUndefined();
+  });
+
+  it('Surprise Stocktake puts back only what still fits, and refuses empty shelves', () => {
+    const sim = street();
+    sim.idle.add('p2');
+    const sh = shop(sim, 'p2');
+    const p = owned(sh).reduce((a, b) => (sh.stock[b] > sh.stock[a] ? b : a));
+    expect(cast(sim, 'p1', 'stocktake', 'p2').ok).toBe(true);
+    // A delivery nearly fills the shelf while its stock is out back.
+    edit(sim, (st) => (st.shops[clerk(sim, 'p2').shopId].stock[p] = capOf(sh) - 1));
+    sim.run(12_100);
+    expect(shop(sim, 'p2').stock[p]).toBe(capOf(sh));
+    edit(sim, (st) => {
+      const shelves = st.shops[clerk(sim, 'p3').shopId].stock;
+      for (const q of Object.keys(shelves)) shelves[q] = 0;
+    });
+    expect(cast(sim, 'p1', 'stocktake', 'p3')).toMatchObject({ ok: false });
+  });
+
+  it('Wrong Address sends the stock of a rival\'s next delivery to your shelves, once, and their card shows it never came', () => {
+    const sim = street({}, 2000);
+    sim.idle.add('p1');
+    let checked = false;
+    for (let tries = 0; tries < 8 && !checked; tries++) {
+      sim.idle.delete('p2');
+      holdOffer(sim, 'p2');
+      const offer = clerk(sim, 'p2').offer;
+      const [mine, theirs] = [shop(sim, 'p1'), shop(sim, 'p2')];
+      const i = offer.options.findIndex(
+        (o: any) => o.kind === 'stock' && mine.lines.includes(PRODUCTS[o.product as ProductId].line) && theirs.stock[o.product] < capOf(theirs) && mine.stock[o.product] < capOf(mine),
+      );
+      if (i < 0) {
+        act(sim, 'p2', { type: 'pickDelivery', offer: offer.seq, index: 0 });
+        continue;
+      }
+      expect(cast(sim, 'p1', 'wrong-address', 'p2').ok).toBe(true);
+      const o = offer.options[i];
+      const [theirsBefore, mineBefore] = [theirs.stock[o.product], mine.stock[o.product]];
+      const got = Math.min(o.qty, capOf(theirs) - theirsBefore);
+      expect(act(sim, 'p2', { type: 'pickDelivery', offer: offer.seq, index: i }).ok).toBe(true);
+      expect(shop(sim, 'p2').stock[o.product]).toBe(theirsBefore);
+      expect(shop(sim, 'p1').stock[o.product]).toBe(Math.min(capOf(mine), mineBefore + got));
+      expect(clerk(sim, 'p2').delivery.added.some((a: any) => a.product === o.product)).toBe(false);
+      // Used up on that delivery: the next one arrives as usual.
+      sim.run(600);
+      expect(effect(sim, 'wrong-address')).toBeUndefined();
+      checked = true;
+    }
+    expect(checked).toBe(true);
+  });
+
+  it('Review Swap trades ratings only when the rival shows more stars, and can be undone', () => {
+    const sim = street();
+    for (const id of sim.ids) sim.idle.add(id);
+    const rate = (a: number, b: number) =>
+      edit(sim, (st) => {
+        st.shops[clerk(sim, 'p1').shopId].rating = a;
+        st.shops[clerk(sim, 'p2').shopId].rating = b;
+      });
+    // 3.0 and 3.2 stars both show as 3 stars.
+    rate(30, 32);
+    expect(cast(sim, 'p1', 'review-swap', 'p2')).toMatchObject({ ok: false, message: expect.stringContaining('more stars') });
+    rate(26, 44);
+    const r = cast(sim, 'p1', 'review-swap', 'p2');
+    expect(r.ok).toBe(true);
+    expect([shop(sim, 'p1').rating, shop(sim, 'p2').rating]).toEqual([44, 26]);
+    if (r.ok) expect(sim.rt.undoCast('p1', r.castId).ok).toBe(true);
+    expect([shop(sim, 'p1').rating, shop(sim, 'p2').rating]).toEqual([26, 44]);
+  });
+
+  it('Queue Swap trades every waiting customer, orders and patience kept', () => {
+    const sim = street();
+    sim.idle.add('p1');
+    sim.idle.add('p2');
+    until(sim, () => waiting(sim, 'p2').length >= 2 && waiting(sim, 'p1').length >= 1);
+    const key = (cu: any) => `${cu.name}|${cu.arrivedAt}|${cu.leavesAt}|${JSON.stringify(cu.items)}`;
+    const [mine, theirs] = [waiting(sim, 'p1').map(key), waiting(sim, 'p2').map(key)];
+    expect(cast(sim, 'p1', 'queue-swap', 'p2').ok).toBe(true);
+    expect(waiting(sim, 'p1').map(key)).toEqual(theirs);
+    expect(waiting(sim, 'p2').map(key)).toEqual(mine);
+    for (const id of ['p1', 'p2']) {
+      const ids = shop(sim, id).queue.map((x: any) => x.id);
+      expect(new Set(ids).size).toBe(ids.length);
+    }
+  });
+
+  it('Queue Swap: the back of a queue too long for its new shop walks away; nobody waiting is refused', () => {
+    const sim = street();
+    sim.idle.add('p1');
+    sim.idle.add('p2');
+    until(sim, () => waiting(sim, 'p2').length >= 2);
+    // Five customers at p1's till have just run out of patience: they still take up room until the shop sees them go.
+    edit(sim, (st) => {
+      const mine = st.shops[clerk(sim, 'p1').shopId];
+      const theirs = st.shops[clerk(sim, 'p2').shopId];
+      mine.queue = [0, 1, 2, 3, 4].map(() => ({ ...theirs.queue[0], id: ++mine.nextCustomer, leavesAt: sim.now - 1 }));
+    });
+    const theirs = waiting(sim, 'p2').map((cu) => cu.name);
+    expect(cast(sim, 'p1', 'queue-swap', 'p2').ok).toBe(true);
+    // Room for one more: the first in p2's line comes over, the rest walk away.
+    expect(waiting(sim, 'p1').map((cu) => cu.name)).toEqual(theirs.slice(0, QUEUE_MAX - 5));
+    expect(shop(sim, 'p1').queue).toHaveLength(QUEUE_MAX);
+    expect(waiting(sim, 'p2')).toHaveLength(0);
+    edit(sim, (st) => {
+      for (const id of ['p3', 'p4']) st.shops[clerk(sim, id).shopId].queue = [];
+    });
+    expect(cast(sim, 'p3', 'queue-swap', 'p4')).toMatchObject({ ok: false, message: expect.stringContaining('Nobody is waiting') });
+  });
+
+  it('Mystery Shopper joins a rival\'s queue; served in full, the report adds half a star on top of the sale', () => {
+    const sim = street();
+    sim.idle.add('p2');
+    const length = shop(sim, 'p2').queue.length;
+    expect(cast(sim, 'p1', 'mystery-shopper', 'p2').ok).toBe(true);
+    expect(shop(sim, 'p2').queue).toHaveLength(length + 1);
+    const cid = Number(effect(sim, 'mystery-shopper')!.data.cid);
+    // Stock every shelf and keep the till ready, then serve the shopper.
+    edit(sim, (st) => {
+      const sh = st.shops[clerk(sim, 'p2').shopId];
+      const cu = sh.queue.find((x: any) => x.id === cid);
+      cu.items = cu.items.filter((it: any) => sh.lines.includes(PRODUCTS[it.product as ProductId].line));
+      if (!cu.items.length) cu.items = [{ product: 'apples', qty: 1 }];
+      for (const p of owned(sh)) sh.stock[p] = capOf(sh);
+      st.clerks.p2.tillReadyAt = sim.now;
+      sh.rating = 30;
+    });
+    expect(act(sim, 'p2', { type: 'serve', customer: cid }).ok).toBe(true);
+    const sale = clerk(sim, 'p2').sales[0];
+    expect([sale.customer.id, sale.kind]).toEqual([cid, 'full']);
+    expect(shop(sim, 'p2').rating).toBe(clampRating(30 + sale.rating + 5));
+    expect(effect(sim, 'mystery-shopper')).toBeUndefined();
+  });
+
+  it('a mystery shopper kept waiting until they give up costs half a star on top; one taken away leaves no report', () => {
+    const sim = street();
+    sim.idle.add('p2');
+    expect(cast(sim, 'p1', 'mystery-shopper', 'p2').ok).toBe(true);
+    const cid = Number(effect(sim, 'mystery-shopper')!.data.cid);
+    const leavesAt = shop(sim, 'p2').queue.find((cu: any) => cu.id === cid).leavesAt;
+    sim.run(leavesAt - sim.now - 50);
+    edit(sim, (st) => (st.shops[clerk(sim, 'p2').shopId].rating = 40));
+    const left = shop(sim, 'p2').left;
+    sim.run(100);
+    expect(shop(sim, 'p2').queue.some((cu: any) => cu.id === cid)).toBe(false);
+    expect(shop(sim, 'p2').rating).toBe(40 - 5 * (shop(sim, 'p2').left - left) - 5);
+    expect(effect(sim, 'mystery-shopper')).toBeUndefined();
+
+    // A shopper swapped into another queue before the visit is over gives no report.
+    sim.run(60_000);
+    sim.idle.add('p3');
+    until(sim, () => shop(sim, 'p2').queue.length < QUEUE_MAX && waiting(sim, 'p3').length > 0);
+    expect(cast(sim, 'p1', 'mystery-shopper', 'p2').ok).toBe(true);
+    edit(sim, (st) => (st.shops[clerk(sim, 'p2').shopId].rating = 40));
+    expect(cast(sim, 'p4', 'queue-swap', 'p2').ok).toBe(true);
+    sim.run(300);
+    expect(effect(sim, 'mystery-shopper')).toBeUndefined();
+    // No report: the rating is where it was.
+    expect(shop(sim, 'p2').rating).toBe(40);
+  });
+
+  it('Mystery Shopper needs room in the queue', () => {
+    const sim = street();
+    sim.idle.add('p2');
+    until(sim, () => waiting(sim, 'p2').length > 0);
+    edit(sim, (st) => {
+      const sh = st.shops[clerk(sim, 'p2').shopId];
+      const cu = sh.queue.find((x: any) => x.leavesAt > sim.now);
+      sh.queue = Array.from({ length: QUEUE_MAX }, () => ({ ...cu, id: ++sh.nextCustomer }));
+    });
+    expect(cast(sim, 'p1', 'mystery-shopper', 'p2')).toMatchObject({ ok: false, message: expect.stringContaining('no room') });
+  });
+});
+
 describe('corner-shop pack: the high street', () => {
   it('starts Rush Hour now, refuses a second event, stretches it, and ends it', () => {
     const sim = street({ events: true });
@@ -639,9 +839,9 @@ describe('corner-shop pack: the high street', () => {
 });
 
 describe('corner-shop pack: catalogue', () => {
-  it('registers 36 Corner Shop cheats; lasting ones have a duration, random ones state odds, money is whole dollars', () => {
+  it('registers 41 Corner Shop cheats; lasting ones have a duration, random ones state odds, money is whole dollars', () => {
     const mine = allCheats().filter((d) => d.id.startsWith('corner-shop.'));
-    expect(mine).toHaveLength(36);
+    expect(mine).toHaveLength(41);
     for (const def of mine) {
       expect(def.modes, def.id).toEqual(['corner-shop']);
       if (def.hooks?.gate || def.hooks?.delta || def.hooks?.tick || def.overlay) expect(def.durationMs, def.id).toBeGreaterThan(0);
