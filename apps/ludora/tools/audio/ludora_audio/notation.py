@@ -15,6 +15,10 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass, field
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .engine import Rendered
 
 NOTE_INDEX = {"c": 0, "d": 2, "e": 4, "f": 5, "g": 7, "a": 9, "b": 11}
 
@@ -55,6 +59,9 @@ DRUM = {
     "block_lo": 77,
     "triangle_mute": 80,
     "triangle": 81,
+    # Past General MIDI, where the GS kits keep them: sleigh bells and a bell tree.
+    "jingle": 83,
+    "chime": 84,
 }
 
 
@@ -108,7 +115,9 @@ class Mix:
 @dataclass
 class Part:
     name: str
-    instrument: Instrument
+    # A soundfont preset, or anything that renders itself: a synth patch (patches.py),
+    # the synthesised kit (kit.py) or a transition (transitions.py).
+    instrument: Instrument | Rendered
     notes: list[Note]
     mix: Mix = field(default_factory=Mix)
 

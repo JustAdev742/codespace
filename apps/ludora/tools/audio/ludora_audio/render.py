@@ -97,6 +97,9 @@ def render_midi(data: bytes, gain: float = 0.6) -> np.ndarray:
 
 
 def render_part(part: Part, bpm: float, length_beats: float, repeats: int = 1, humanize: float = 0.0, seed: int = 0, gain: float = 0.6) -> np.ndarray:
+    # Synth patches, the synthesised drum kit and the transitions render themselves (engine.py).
+    if hasattr(part.instrument, "render"):
+        return part.instrument.render(part.notes, bpm, length_beats, repeats=repeats, humanize=humanize, seed=seed, gain=gain)
     return render_midi(part_midi(part, bpm, length_beats, repeats, humanize, seed), gain)
 
 
