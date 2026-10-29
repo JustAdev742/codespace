@@ -28,6 +28,26 @@ export function sampleFor(name: SfxName, o: SfxOptions = {}): SfxAssetName | nul
 
 export const sfxAsset = (key: SfxAssetName): SfxAsset => SFX_ASSETS[key];
 
+/** Every recording of an effect: the main file, then any variations of it. */
+export function takesOf(asset: SfxAsset): string[] {
+  return [asset.url, ...(asset.alts ?? [])];
+}
+
+/**
+ * Which recording to play, from those that are loaded: chosen at random, but never the one heard
+ * last when there is another, so a sound that repeats all game never repeats exactly. `rand` is in
+ * [0, 1). Returns an index into `loaded`.
+ */
+export function nextTake(loaded: readonly number[], last: number | undefined, rand: number): number {
+  const choices = loaded.length > 1 ? loaded.filter((i) => i !== last) : loaded;
+  return choices[Math.min(choices.length - 1, Math.floor(rand * choices.length))]!;
+}
+
+/** A playback rate within `cents` either way of the recorded pitch, from `rand` in [0, 1). */
+export function pitchRate(cents: number, rand: number): number {
+  return 2 ** (((rand * 2 - 1) * cents) / 1200);
+}
+
 /** Effects heard in nearly every game, fetched first. */
 export const CORE_SFX: SfxAssetName[] = ['tap', 'select', 'lockIn', 'correct', 'wrong', 'tick', 'tickFinal', 'timeUp', 'question', 'reveal', 'rankUp', 'countdown', 'go', 'fanfare'];
 

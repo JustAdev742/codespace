@@ -76,6 +76,11 @@ class Effect:
     room: float = 0.9
     # How the web player treats it: 'once' plays from the start; 'rise' can start part-way so its end lands on time.
     play: str = "once"
+    # Other takes of the same sound (their names and play modes are ignored): the player picks one at
+    # random each time, never the one it played last, so a sound heard all game never repeats exactly.
+    alts: list["Effect"] = field(default_factory=list)
+    # Cents either way the player may shift the pitch of each play, for the same reason. 'once' only.
+    vary: float = 0.0
 
 
 def render(effect: Effect) -> np.ndarray:

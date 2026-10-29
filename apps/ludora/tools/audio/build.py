@@ -80,6 +80,15 @@ def build_effect(name: str) -> dict:
     audio = sfx.render(effect)
     encode(audio, ASSETS / "sfx" / f"{name}.mp3", SFX_QUALITY)
     info = {"name": name, "seconds": round(len(audio) / SR, 3), "play": effect.play, "lufs": round(dsp.lufs(audio), 1), "truePeak": round(dsp.true_peak_db(audio), 1)}
+    if effect.alts:
+        info["alts"] = []
+        for i, alt in enumerate(effect.alts, start=2):
+            take = sfx.render(alt)
+            encode(take, ASSETS / "sfx" / f"{name}.v{i}.mp3", SFX_QUALITY)
+            info["alts"].append(f"{name}.v{i}")
+            info["truePeak"] = max(info["truePeak"], round(dsp.true_peak_db(take), 1))
+    if effect.vary:
+        info["vary"] = effect.vary
     if effect.play == "rise":
         # The moment the effect is written to land on (the end of the build), so the player can line it up.
         info["land"] = effect.seconds
@@ -87,8 +96,8 @@ def build_effect(name: str) -> dict:
 
 
 def ident(prefix: str, name: str) -> str:
-    """`lanternReveal-common` -> `sfxLanternRevealCommon`."""
-    words = name.split("-")
+    """`lanternReveal-common` -> `sfxLanternRevealCommon`; a take `tap.v2` -> `sfxTapV2`."""
+    words = name.replace(".", "-").split("-")
     return prefix + "".join(w[:1].upper() + w[1:] for w in words)
 
 
@@ -101,7 +110,8 @@ def manifest(tracks: list[dict], effects: list[dict]) -> str:
     for t in tracks:
         lines.append(f"import {ident('music', t['id'])} from '../../assets/audio/music/{t['id']}.mp3';")
     for e in effects:
-        lines.append(f"import {ident('sfx', e['name'])} from '../../assets/audio/sfx/{e['name']}.mp3';")
+        for file in [e["name"], *e.get("alts", [])]:
+            lines.append(f"import {ident('sfx', file)} from '../../assets/audio/sfx/{file}.mp3';")
     lines += [
         "",
         "export type MusicId = " + " | ".join(f"'{t['id']}'" for t in tracks) + ";",
@@ -123,6 +133,10 @@ def manifest(tracks: list[dict], effects: list[dict]) -> str:
         "  /** 'once' plays from the start; 'rise' builds up to `land` seconds in, and can start part-way so it lands on time. */",
         "  play: 'once' | 'rise';",
         "  land?: number;",
+        "  /** Other takes of the sound: the player picks one at random, never the one it played last. */",
+        "  alts?: readonly string[];",
+        "  /** Cents either way the player may shift the pitch of each play. */",
+        "  vary?: number;",
         "}",
         "",
         "export const MUSIC_ASSETS: Record<MusicId, MusicAsset> = {",
@@ -135,7 +149,9 @@ def manifest(tracks: list[dict], effects: list[dict]) -> str:
     for e in effects:
         key = e["name"] if e["name"].isidentifier() else f"'{e['name']}'"
         land = f", land: {e['land']}" if "land" in e else ""
-        lines.append(f"  {key}: {{ url: {ident('sfx', e['name'])}, seconds: {e['seconds']}, play: '{e['play']}'{land} }},")
+        alts = f", alts: [{', '.join(ident('sfx', a) for a in e['alts'])}]" if e.get("alts") else ""
+        vary = f", vary: {e['vary']}" if e.get("vary") else ""
+        lines.append(f"  {key}: {{ url: {ident('sfx', e['name'])}, seconds: {e['seconds']}, play: '{e['play']}'{land}{alts}{vary} }},")
     lines += ["} satisfies Record<string, SfxAsset>;", "", "export type SfxAssetName = keyof typeof SFX_ASSETS;", ""]
     return "\n".join(lines)
 
@@ -151,7 +167,7 @@ def main() -> None:
         tracks = [j.result() for j in track_jobs]
         effects = [j.result() for j in effect_jobs]
     # Files from effects or tracks that no longer exist.
-    keep = {ASSETS / "music" / f"{t}.mp3" for t in TRACKS} | {ASSETS / "sfx" / f"{n}.mp3" for n in names}
+    keep = {ASSETS / "music" / f"{t}.mp3" for t in TRACKS} | {ASSETS / "sfx" / f"{f}.mp3" for e in effects for f in [e["name"], *e.get("alts", [])]}
     for old in ASSETS.glob("*/*.mp3"):
         if old not in keep:
             old.unlink()
@@ -162,7 +178,7 @@ def main() -> None:
     MANIFEST.write_text(manifest(tracks, effects))
     for t in tracks:
         print(f"music {t['id']:<9} {t['title']:<20} {t['lufs']:>6} LUFS  peak {t['truePeak']:>5} dBTP  seam {t['seam']:>7} dB  {(ASSETS / 'music' / (t['id'] + '.mp3')).stat().st_size // 1024:>4} KB")
-    total = sum((ASSETS / "sfx" / f"{e['name']}.mp3").stat().st_size for e in effects)
+    total = sum((ASSETS / "sfx" / f"{f}.mp3").stat().st_size for e in effects for f in [e["name"], *e.get("alts", [])])
     loudest = max(effects, key=lambda e: e["truePeak"])
     print(f"{len(effects)} effects, {total // 1024} KB, loudest true peak {loudest['truePeak']} dBTP ({loudest['name']})")
     print(f"wrote {MANIFEST.relative_to(HERE.parent.parent)} in {time.time() - t0:.0f} s")

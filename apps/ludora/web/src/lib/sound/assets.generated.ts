@@ -88,6 +88,10 @@ export interface SfxAsset {
   /** 'once' plays from the start; 'rise' builds up to `land` seconds in, and can start part-way so it lands on time. */
   play: 'once' | 'rise';
   land?: number;
+  /** Other takes of the sound: the player picks one at random, never the one it played last. */
+  alts?: readonly string[];
+  /** Cents either way the player may shift the pitch of each play. */
+  vary?: number;
 }
 
 export const MUSIC_ASSETS: Record<MusicId, MusicAsset> = {

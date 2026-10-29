@@ -1,7 +1,7 @@
-import { MUSIC_ASSETS, SFX_ASSETS, type MusicId, type SfxAssetName } from './assets.generated.ts';
+import { MUSIC_ASSETS, SFX_ASSETS, type MusicId, type SfxAsset, type SfxAssetName } from './assets.generated.ts';
 import { LoopPlayer } from './loops.ts';
 import { MusicPlayer, TRACKS, type SynthTrackId } from './music.ts';
-import { CORE_SFX, SampleBank, sampleFor, type Sample } from './samples.ts';
+import { CORE_SFX, SampleBank, nextTake, pitchRate, sampleFor, takesOf, type Sample } from './samples.ts';
 import { EFFECTS, type SfxName, type SfxOptions } from './sfx.ts';
 import { makeReverb } from './synth.ts';
 
@@ -127,6 +127,8 @@ class SoundEngine {
   private readonly loading = new Set<MusicId>();
   private duckUntil = 0;
   private readonly lastPlayed = new Map<SfxName, number>();
+  /** Which recording of each effect played last. */
+  private readonly lastTake = new Map<SfxAssetName, number>();
   private readonly listeners = new Set<() => void>();
 
   constructor() {
@@ -174,8 +176,9 @@ class SoundEngine {
   /** Loads the effects heard in every game first, then the rest in the background. */
   private warmUp() {
     const core = CORE_SFX.map((k) => SFX_ASSETS[k].url);
+    // The rest, and every variation (the main recording plays until a variation is ready).
     const rest = Object.values(SFX_ASSETS)
-      .map((a) => a.url)
+      .flatMap((a) => takesOf(a))
       .filter((u) => !core.includes(u));
     void this.bank.loadAll(core).then(() => {
       setTimeout(() => void this.bank.loadAll(rest, 2), 1500);
@@ -195,11 +198,21 @@ class SoundEngine {
     const key = sampleFor(name, options);
     const duck = key ? DUCK[key] : undefined;
     if (duck) this.duck(g, g.ctx.currentTime + 0.01, duck[0], duck[1]);
-    const sample = key ? this.bank.get(SFX_ASSETS[key].url) : null;
+    const sample = key ? this.pickTake(key) : null;
     if (key && sample) return this.playSample(g, key, sample, options);
     // Not loaded yet: the synthesised version now, the recording next time.
     if (key) void this.bank.load(SFX_ASSETS[key].url);
     return this.playSynth(g, name, options);
+  }
+
+  /** A loaded recording of the effect, a different one from last time when it has variations. */
+  private pickTake(key: SfxAssetName): Sample | null {
+    const takes = takesOf(SFX_ASSETS[key]).map((url) => this.bank.get(url));
+    const loaded = takes.flatMap((t, i) => (t ? [i] : []));
+    if (!loaded.length) return null;
+    const i = nextTake(loaded, this.lastTake.get(key), Math.random());
+    this.lastTake.set(key, i);
+    return takes[i]!;
   }
 
   private playSample(g: Graph, key: SfxAssetName, sample: Sample, options: SfxOptions): () => void {
@@ -207,6 +220,9 @@ class SoundEngine {
     const ctx = g.ctx;
     const src = ctx.createBufferSource();
     src.buffer = sample.buffer;
+    // A gentle pitch variation, so repeats are not identical. Not for build-ups: they land on time.
+    const vary = (asset as SfxAsset).vary;
+    if (vary && asset.play === 'once') src.playbackRate.value = pitchRate(vary, Math.random());
     const voice = ctx.createGain();
     src.connect(voice).connect(g.sfx);
     let when = ctx.currentTime + 0.005;

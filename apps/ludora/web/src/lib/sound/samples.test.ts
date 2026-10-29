@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { RARITIES } from '@ludora/shared';
 import { MUSIC_ASSETS, SFX_ASSETS, type SfxAssetName } from './assets.generated.ts';
 import { barSeconds, nextBarLine } from './loops.ts';
-import { CORE_SFX, SampleBank, leadingSilence, sampleFor } from './samples.ts';
+import { CORE_SFX, SampleBank, leadingSilence, nextTake, pitchRate, sampleFor, takesOf } from './samples.ts';
 import { EFFECTS, type SfxName } from './sfx.ts';
 
 const names = Object.keys(EFFECTS) as SfxName[];
@@ -32,6 +32,18 @@ describe('the recorded effects', () => {
 
   it('fetch the core set from real files', () => {
     for (const key of CORE_SFX) expect(SFX_ASSETS[key].url).toMatch(/\.mp3$/);
+  });
+
+  it('list real files for every variation, and vary pitch by a small amount at most', () => {
+    for (const [key, asset] of Object.entries(SFX_ASSETS)) {
+      const a = asset as { url: string; alts?: readonly string[]; vary?: number; play: string };
+      for (const url of takesOf(a as never)) expect(url, key).toMatch(/\.mp3$/);
+      if (a.vary !== undefined) {
+        expect(a.vary, key).toBeGreaterThan(0);
+        expect(a.vary, `${key}: more than a third of a semitone stops sounding like the same sound`).toBeLessThanOrEqual(35);
+        expect(a.play, `${key}: a build-up must keep its timing`).toBe('once');
+      }
+    }
   });
 
   it('say when a build-up lands', () => {
@@ -119,5 +131,32 @@ describe('SampleBank', () => {
     await bank.load('bad.mp3');
     expect(fetched.filter((u) => u === 'bad.mp3')).toHaveLength(2);
     vi.unstubAllGlobals();
+  });
+});
+
+describe('variations', () => {
+  it('never pick the take heard last when another is loaded', () => {
+    for (let r = 0; r < 1; r += 0.05) {
+      expect(nextTake([0, 1, 2], 1, r)).not.toBe(1);
+      expect(nextTake([0, 2], 0, r)).toBe(2);
+    }
+  });
+
+  it('use the only loaded take, even if it was the last one', () => {
+    expect(nextTake([0], 0, 0.7)).toBe(0);
+    expect(nextTake([2], undefined, 0.99)).toBe(2);
+  });
+
+  it('reach every other take', () => {
+    const seen = new Set<number>();
+    for (let r = 0; r < 1; r += 0.01) seen.add(nextTake([0, 1, 2, 3], 0, r));
+    expect([...seen].sort()).toEqual([1, 2, 3]);
+  });
+
+  it('shift pitch within the range either way, and not at all with no range', () => {
+    expect(pitchRate(0, 0.9)).toBe(1);
+    expect(pitchRate(20, 0.5)).toBeCloseTo(1, 10);
+    expect(pitchRate(20, 0)).toBeCloseTo(2 ** (-20 / 1200), 10);
+    expect(pitchRate(20, 0.999999)).toBeLessThanOrEqual(2 ** (20 / 1200));
   });
 });
