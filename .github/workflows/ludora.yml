@@ -123,6 +123,59 @@ jobs:
             apps/ludora/test-results
           retention-days: 7
 
+  browsers:
+    # The end-to-end suite again in WebKit (Safari's engine, for iPads and Macs) and Firefox.
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [webkit, firefox]
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    env:
+      E2E_DATABASE_URL: postgres://postgres:postgres@localhost:5432/ludora_e2e
+      E2E_BROWSER: ${{ matrix.browser }}
+    defaults:
+      run:
+        working-directory: apps/ludora
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: apps/ludora/package-lock.json
+
+      - run: npm ci
+
+      - name: Install ${{ matrix.browser }}
+        run: npx playwright install --with-deps ${{ matrix.browser }}
+
+      - name: End-to-end tests (production build, real server, ${{ matrix.browser }})
+        run: npm run test:e2e
+
+      - name: Keep the report and traces
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report-${{ matrix.browser }}
+          path: |
+            apps/ludora/playwright-report
+            apps/ludora/test-results
+          retention-days: 7
+
   docker:
     runs-on: ubuntu-latest
     timeout-minutes: 30

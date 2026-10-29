@@ -14,6 +14,15 @@ export const E2E_DATABASE_URL = process.env.E2E_DATABASE_URL ?? 'postgres://post
 // This development image ships a Chromium build; CI installs Playwright's own.
 const localChromium = '/opt/pw-browsers/chromium';
 
+// Chromium by default; CI also runs the suite in WebKit (Safari's engine) and Firefox with E2E_BROWSER.
+const BROWSERS = {
+  chromium: { ...devices['Desktop Chrome'], ...(existsSync(localChromium) ? { launchOptions: { executablePath: localChromium } } : {}) },
+  firefox: devices['Desktop Firefox'],
+  webkit: devices['Desktop Safari'],
+} as const;
+const browser = (process.env.E2E_BROWSER ?? 'chromium') as keyof typeof BROWSERS;
+if (!(browser in BROWSERS)) throw new Error(`E2E_BROWSER must be one of ${Object.keys(BROWSERS).join(', ')}`);
+
 export default defineConfig({
   testDir: 'e2e',
   // The demo has its own config: a static build with no server (playwright.demo.config.ts).
@@ -27,9 +36,8 @@ export default defineConfig({
     baseURL: E2E_BASE,
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
-    ...(existsSync(localChromium) ? { launchOptions: { executablePath: localChromium } } : {}),
   },
-  projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
+  projects: [{ name: browser, use: BROWSERS[browser] }],
   webServer: {
     command: 'node e2e/reset-db.mjs && node --enable-source-maps server/dist/index.js',
     url: `${E2E_BASE}/api/health`,
