@@ -4,7 +4,7 @@ Live status of the build. Updated with each milestone commit. Everything marked
 **verified** was checked by an automated test or by driving the real app in a
 browser; anything else says what it is.
 
-Last updated: 2026-10-28.
+Last updated: 2026-10-29.
 
 ## Milestones
 
@@ -18,7 +18,7 @@ Last updated: 2026-10-28.
 | M5 Staff tools | Done | Staff API and all 14 staff sections in the web app. An end-to-end test opens every section as a super administrator at phone and desktop widths. |
 | M6 Content, social, classes, analytics | Done | Friends, blocks, profiles, my stats, leaderboards, classes, assignments and their reports, hosted games, game reports, the set editor with image uploads, and AI question drafts. |
 | Chaos (D47) | Done | The secret cheat menu: 958 cheats and 10 combos, each tested in a real game; the unlock sequence; the private menu. See [CHAOS.md](CHAOS.md). |
-| M7-8 Polish, CI, deployment | In progress | Production build, Docker image, compose file, CI workflow, docs and end-to-end tests (run in CI) are in. The whole app is restyled for players aged 8 to 17 (D46), and automated accessibility checks pass on every page, game screen and staff section. A design review of the whole app was done and its findings fixed. A playable demo builds for GitHub Pages. A manual screen-reader pass remains. |
+| M7-8 Polish, CI, deployment | In progress | Production build, Docker image, compose file, CI workflow, docs and end-to-end tests (run in CI) are in. The whole app is restyled for players aged 8 to 17 (D46), and automated accessibility checks pass on every page, game screen and staff section. A design review of the whole app was done and its findings fixed. A playable demo builds for GitHub Pages. 2026-10-29: account download and deletion, a privacy policy and terms, data retention, a measured load test, a deployment kit tested in Docker, a machine screen-reader audit, and WebKit and Firefox runs in CI. Remaining: a person's screen-reader pass, legal review of the policy, the WebKit and Firefox results for this version, and a real deployment, which needs the operator's server and domain. |
 
 ## What works today (verified)
 
@@ -171,8 +171,12 @@ Last updated: 2026-10-28.
   message through a whole game, and the end-to-end game test asserts the focus
   and the messages. Buttons
   whose visible text is terse (Buy 150, collection cards) take their accessible
-  names from their content, so speech users can say what they see. Automated
-  checks cover only part of WCAG; a manual screen-reader pass has not been done.
+  names from their content, so speech users can say what they see. A machine
+  screen-reader audit on 2026-10-29 covered seven modes, the 3D ones included
+  ([SCREEN_READER_AUDIT.md](SCREEN_READER_AUDIT.md)). It led to two fixes:
+  focus stays on the question after answering, and a missed question says
+  "Time's up". Automated checks cover only part of WCAG; a person with a
+  screen reader has not played it yet.
 - **Look and feel** (D30, D46; docs/DESIGN.md): "game night, live", for
   players aged 8 to 17.
   - A midnight stage under a floodlight, with faint arena glows and no
@@ -329,8 +333,33 @@ Last updated: 2026-10-28.
   a real browser at phone and desktop widths, and the end-to-end suite opens
   every one of them at 390 and 1366 pixels.
 - **Docker image**: CI builds it on every change, starts it against Postgres
-  and checks that it answers (the development sandbox cannot build images, as
-  its network goes through a proxy containers cannot use).
+  and checks that it answers.
+- **Deployment kit** (DEPLOYMENT.md, 2026-10-29). `compose.https.yaml` puts Caddy in front
+  for automatic HTTPS. `scripts/new-env.sh` writes `.env` with random secrets.
+  `scripts/backup.sh` and `scripts/restore.sh` handle the database and images. Tested in
+  Docker on the real image behind Caddy's local certificate:
+  - HTTP redirects to HTTPS, and the app's port is not published.
+  - A game played over WebSockets through the proxy.
+  - Backup and restore brought data and an image back.
+  - A failed backup left nothing half-written.
+  A real Let's Encrypt certificate needs a public domain and has not been tested.
+- **Capacity** (measured with `scripts/load-test.mjs`, DEPLOYMENT.md). One core ran:
+  - Classic with 40 players and 20 bots at 3% CPU, with 6 ms answer round trips at p95;
+  - 120 players in one room at 12% (50% peak);
+  - four games at once, 160 participants, at 25%.
+- **Your data and privacy** (2026-10-29). Settings → Your data downloads everything stored
+  about the account as JSON (no password, recovery or session hashes) and deletes the
+  account after the username and password are typed.
+  - Deleting is refused for staff roles. It removes the wallet, collection, friends, classes
+    taught, private sets and images only those sets used.
+  - Game results stay under "Player", public sets lose their owner, and audit entries say
+    "Deleted account". A player in a live game is taken out and the game still saves.
+  - Sign-in records go a week after they end, and unreachable guest accounts once they are
+    30 days old.
+  - `/privacy` and `/terms` describe what the code actually stores, in plain words. They
+    name the operator from `OPERATOR_NAME` and `OPERATOR_CONTACT`, and are linked from
+    sign-up, Settings and every page's footer.
+  - Tested by `server/test/account.test.ts` (8) and `e2e/account.spec.ts`.
 - **Set editor**: all 8 question types, import from JSON, CSV or pasted text
   with a preview that names each bad row, export to JSON and CSV (formula-safe,
   round trips keep question ids), local drafts with restore, a leave warning,
@@ -405,8 +434,12 @@ Last updated: 2026-10-28.
   drafts questions with AI, keeps two and saves the set; a teacher makes a
   student a recovery code and the student gets back in with it; a new
   player buys and opens a Lantern; a staff warning reaches the player and the
-  audit log; thirteen player pages and every staff section fit a phone, have one
-  main heading and log no errors, and the player pages pass axe.
+  audit log; a player downloads their data and deletes their account; fifteen
+  player pages and every staff section fit a phone, have one main heading and
+  log no errors, and the player pages pass axe. Every Content-Security-Policy
+  violation counts as an error. CI runs the suite in Chromium, WebKit and
+  Firefox. WebKit and Firefox first ran on 2026-10-29 and turned up two
+  problems, both fixed; their run on the fixed version is still to come.
 - **A trailer for schools** (`tools/trailer/`): 88 seconds, cut from real games
   filmed with Playwright on a local server (projector and phones, a class of 16
   firing reactions at a reveal, Play again), with an illustrated classroom that
@@ -447,11 +480,22 @@ Left out on purpose:
   operator wants email later.
 
 Not checked yet:
-- **The new look in Safari and Firefox.** Every screenshot and axe check after
-  the restyle ran in Chromium.
-- **A manual screen-reader pass.** Automated axe checks pass wherever they run
-  and the game's announcements were recorded and tested, but nobody has played
-  a game with NVDA, JAWS or VoiceOver.
+- **Safari and Firefox on the fixed version.** CI runs every browser test in
+  WebKit and Firefox. The first run found a CSP report in Firefox and a WebKit
+  console quirk, both fixed; the next CI run is the check. Screenshots of the
+  look are still Chromium only.
+- **A person's screen-reader pass.** The machine audit is in
+  [SCREEN_READER_AUDIT.md](SCREEN_READER_AUDIT.md) (with the two fixes it led
+  to), but nobody has played a game with NVDA, JAWS, VoiceOver or TalkBack.
+  That document says what to ask of someone who uses one.
+- **Legal review.** The privacy policy and terms describe what the software
+  does, but a school should have them checked against the law that applies to
+  it before real use.
+
+Needs the operator:
+- **A real deployment.** The kit is tested in Docker, but going live needs a
+  server, a domain and the operator's settings (DEPLOYMENT.md, *From a blank
+  server*).
 
 ## Running it
 
