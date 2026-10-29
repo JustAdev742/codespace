@@ -468,8 +468,10 @@ Last updated: 2026-10-29.
   timing faults, also fixed:
   - WebKit now and then did not move focus to a new question (once in CI) or
     to the image description after an upload (once here). Focus now checks
-    again on each frame for a second, and moves only if it is still adrift
-    (`web/src/lib/focus.ts`).
+    again on each frame for a second, until the player clicks or presses a
+    key, and moves only if it is still adrift (`web/src/lib/focus.ts`). The
+    first version did not stop at a click, and in Firefox it took focus back
+    mid-click and lost the click (CI run 107).
   - The game test raced Classic's own timers. Its room now waits for the host.
   - The chaos test's knock lost its rhythm on a slow machine. Its taps are now
     timed in the page.
