@@ -5,6 +5,8 @@ import { account, watchErrors } from './helpers.ts';
 const PAGES = ['/', '/play', '/host', '/modes', '/library', '/shop', '/collection', '/locker', '/quests', '/friends', '/leaderboards', '/me', '/settings', '/privacy', '/terms'];
 
 test('main pages fit a 360px phone, have one main heading, pass automated accessibility checks and log no errors', async ({ browser }) => {
+  // Fifteen pages, each scanned by axe: more than the default allows in the slower engines.
+  test.setTimeout(180_000);
   const p = await account(browser);
   await p.page.setViewportSize({ width: 360, height: 780 });
   const errors = watchErrors(p.page);

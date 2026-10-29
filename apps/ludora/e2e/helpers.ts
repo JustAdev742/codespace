@@ -42,16 +42,21 @@ export function watchErrors(page: Page): string[] {
   const errors: string[] = [];
   // Every browser reports Content-Security-Policy violations as events, but only some log them.
   void page.addInitScript(() => document.addEventListener('securitypolicyviolation', (e) => console.error(`CSP violation: ${e.violatedDirective} ${e.blockedURI} in ${e.sourceFile}`)));
+  // WebKit words a same-origin load cut off by a reload or navigation (sound files still
+  // arriving, say) as failing "access control checks", sometimes as a console error and
+  // sometimes as a page error. A same-origin request has no such checks to fail, so neither
+  // is an error in the page.
   const webkit = page.context().browser()?.browserType().name() === 'webkit';
-  page.on('pageerror', (e) => errors.push(String(e)));
+  const cutOff = (text: string) => {
+    const cut = webkit ? /^Fetch API cannot load (.+) due to access control checks\.$/.exec(text) : null;
+    return Boolean(cut && cut[1]!.includes(new URL(page.url()).host));
+  };
+  page.on('pageerror', (e) => {
+    // The stack's first line holds the whole message; the name and message are split at "http:".
+    if (!cutOff((e.stack ?? '').split('\n')[0]!)) errors.push(String(e));
+  });
   page.on('console', (m) => {
-    if (m.type() !== 'error') return;
-    // WebKit words a same-origin load cut off by a reload or navigation (sound files still
-    // arriving, say) as failing "access control checks". A same-origin request has no such
-    // checks to fail, so it is not an error in the page.
-    const cut = webkit ? /^Fetch API cannot load (.+) due to access control checks\.$/.exec(m.text()) : null;
-    if (cut && cut[1]!.includes(new URL(page.url()).host)) return;
-    errors.push(m.text());
+    if (m.type() === 'error' && !cutOff(m.text())) errors.push(m.text());
   });
   return errors;
 }
