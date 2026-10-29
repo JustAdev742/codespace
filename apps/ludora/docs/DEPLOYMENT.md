@@ -109,6 +109,30 @@ A restart (`SIGTERM`) ends every running game, saves the results and pays the
 rewards before the process exits. Schedule deployments outside lesson time where
 you can.
 
+### Measured capacity
+
+`scripts/load-test.mjs` plays real games over WebSockets against a running server:
+players answer every question after 0.8 to 5 seconds, alongside the server's own
+practice bots. Measured on 2026-10-29 against the production build on one 2.8 GHz
+Xeon core, Postgres on the same machine:
+
+| Load | Server CPU (one core) | Answer round trip, p95 | One update reaching every player, p95 | Memory |
+|---|---|---|---|---|
+| Classic, 40 players + 20 bots | mean 3%, max 11% | 6 ms | 14 ms | 206 → 209 MB |
+| Glow Tag Royale (3D), 40 players + 20 bots | mean 10%, max 18% | 6 ms | 16 ms | 210 → 213 MB |
+| Classic, 120 players in one room | mean 12%, max 50% | 41 ms | 64 ms | 221 → 225 MB |
+| Four games at once (Classic, Gold Rush, Glow Tag, Big Catch), 30 players + 10 bots each | mean 25%, max 44% | 6 ms | 12 ms | 193 → 235 MB |
+
+So one small server (1 to 2 vCPUs, 1 GB of memory) comfortably runs several classes
+at once. The numbers leave out the players' own networks, which add their latency
+on top. Run it again before a big rollout:
+
+```bash
+node scripts/load-test.mjs --base https://your-test-server --mode glow-tag --players 40 --bots 20 --seconds 90
+```
+
+It creates a teacher account and a room, so point it at a test server, not a live one.
+
 ## Backups and data
 
 - Back up the Postgres database (for example `pg_dump` nightly, with point-in-time
