@@ -48,6 +48,14 @@ export function Stage3D<W extends World>({ create, onWorld, label, className = '
   onWorldRef.current = onWorld;
   const seasonRef = useRef(season);
   seasonRef.current = season;
+  const labelRef = useRef(label);
+  labelRef.current = label;
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+
+  // The picture's description follows the game (what is in your cart, who is near), without a rebuild.
+  useEffect(() => {
+    canvasRef.current?.setAttribute('aria-label', label);
+  }, [label]);
 
   // The player changed the graphics setting (here or in another stage): rebuild.
   useEffect(() => {
@@ -79,7 +87,8 @@ export function Stage3D<W extends World>({ create, onWorld, label, className = '
     const canvas = renderer.domElement;
     canvas.className = 's3-canvas';
     canvas.setAttribute('role', 'img');
-    canvas.setAttribute('aria-label', label);
+    canvas.setAttribute('aria-label', labelRef.current);
+    canvasRef.current = canvas;
     const overlay = document.createElement('div');
     el.prepend(canvas);
     el.appendChild(overlay);
@@ -173,9 +182,10 @@ export function Stage3D<W extends World>({ create, onWorld, label, className = '
       renderer.dispose();
       renderer.forceContextLoss();
       canvas.remove();
+      canvasRef.current = null;
       overlay.remove();
     };
-    // `label` is applied at mount; a stage that needs a new label remounts.
+    // The label is kept up to date by its own effect above.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.kind, generation]);
 

@@ -31,6 +31,7 @@ import { playSfx } from '../../../lib/sound/react.tsx';
 import type { PulseSource } from '../../../lib/useRoom.ts';
 import { Joystick, Stage3D, lookFor, useMoveInput, type GlimLook, type MoveInput } from '../../../three/index.ts';
 import { Field, type Aim, type AnyView } from './glow-tag-field.ts';
+import { parkWords } from './glow-tag-words.ts';
 import { CRATE_COLOUR, GlowTagHostScene, GlowTagScene } from './glow-tag-scene.ts';
 
 /*
@@ -117,6 +118,27 @@ function RingWords({ view, gameNow }: { view: AnyView; gameNow: () => number }) 
   return <>{ringLine(view, gameNow())}</>;
 }
 
+/** The park in words, for the picture's description: rivals glowing, the nearest one and which way, and the ring. */
+function parkLine(field: Field, view: AnyView, now: number): string {
+  const players = field.players(now);
+  const me = players.find((p) => p.me);
+  const teams = Boolean(view.teams);
+  const rivals = players.filter((p) => !p.me && p.visible && !(teams && me?.team != null && p.team === me.team));
+  return parkWords({ me: me?.in ? me : null, rivals, ring: field.ring(now)?.cur ?? null, size: field.map.size, lightsOut: view.rules.lightsOut, teams });
+}
+
+/** parkLine, read twice a second. The screen redraws only when the words change. */
+function useParkLine(field: Field, view: AnyView, gameNow: () => number): string {
+  const viewRef = useRef(view);
+  viewRef.current = view;
+  const [line, setLine] = useState(() => parkLine(field, view, gameNow()));
+  useEffect(() => {
+    const id = setInterval(() => setLine(parkLine(field, viewRef.current, gameNow())), 500);
+    return () => clearInterval(id);
+  }, [field, gameNow]);
+  return line;
+}
+
 /* ------------------------------ the flat map ------------------------------ */
 
 const COVER_FILL = ['#2b7a41', '#b9783f', '#e5484d', '#c86bff'];
@@ -143,7 +165,7 @@ function ArenaMap2D({ field, view, gameNow, className = '' }: { field: Field; vi
         preserveAspectRatio="xMidYMid meet"
         overflow="hidden"
         role="img"
-        aria-label={`Map of the park from above: ${String(players.length)} players glowing${me ? ', you are the ringed dot' : ''}.`}
+        aria-label={me ? `Map of the park from above, you are the ringed dot. ${parkLine(field, view, now)}` : `Map of the park from above: ${String(players.length)} players glowing.`}
       >
         <defs>
           <clipPath id={clip}>
@@ -456,6 +478,7 @@ export function GlowTagPlayer({ view, act, fire, pulse, gameNow, paused, room }:
   useAnnounce(view.ring.final ? 'Final ring! Nobody relights now.' : null, view.ring.final);
 
   const lightsOut = view.rules.lightsOut;
+  const park = useParkLine(field, view, gameNow);
 
   if (!you) return <p className="font-semibold text-text-2">Watching the park.</p>;
 
@@ -474,7 +497,7 @@ export function GlowTagPlayer({ view, act, fire, pulse, gameNow, paused, room }:
         <div className="relative">
           <Stage3D<GlowTagScene>
             key={mapKey(view.map)}
-            label={`The park at night, seen from behind your Glim. ${lightsOut ? 'Lights out: you only see players close by.' : ''}`}
+            label={`The park at night, seen from behind your Glim${lightsOut ? ', with the lights out' : ''}. ${park}`}
             create={(env) => new GlowTagScene(env, field, looks, lightsOut)}
             className={STAGE_SIZE}
             fallback={<ArenaMap2D field={field} view={view} gameNow={gameNow} className={`${STAGE_SIZE} px-2 pt-12 pb-2`} />}

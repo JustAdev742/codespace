@@ -37,9 +37,11 @@ From the Classic recording, condensed:
   player's place, pauses ("The host lost connection. The game is paused...") and the end.
 - The self-paced 3D modes say the result and the next question together ("Correct. +1 dig.
   How many hearts does an octopus have?").
-- The 3D pictures are images with a text description. Gold Rush and Code Breakers describe the
-  player's state in it ("Your mine: your Glim is at the top of the shaft, with 0 gold in the
-  cart").
+- The 3D pictures are images with a text description that follows the game. Gold Rush and
+  Code Breakers describe the player's state in it ("Your mine: your Glim is at the top of the
+  shaft, with 0 gold in the cart"). Glow Tag Royale says who is near and which way: "1 other
+  player is glowing. Nearest: Basil Newt, behind you on your left, far off. You are inside the
+  ring." Outside the ring it says the way back in.
 - Word Scramble's letter tiles are buttons named "Letter L" and so on, with Back, Clear, Hint
   and a "Type it" alternative. Matching questions mark the chosen item as pressed.
 
@@ -50,13 +52,12 @@ From the Classic recording, condensed:
 | In Classic and Glim Duels, answering replaced the answer buttons with "locked in" and focus fell to the page body. A screen reader went back to the top of the page after every answer. | The question card watches for the focused element disappearing and moves focus to the question (`QuestionCard.tsx`). The game test now answers by keyboard and checks focus after every answer; it fails without the fix. |
 | A player who did not answer in time was told "Incorrect", on screen and aloud. | Classic and Glim Duels now show and say "Time's up, no answer", with the right answer. |
 | In WebKit, focus now and then stayed off a new question (once in CI), or off the image description after an upload (once here). | Focus now checks again on each frame for a second, and moves only if it is still on the page body or on something gone or hidden (`lib/focus.ts`). |
+| Every 3D picture's description was set once, when the picture appeared, and never changed: Gold Rush kept saying "0 gold in the cart" all game. | The description now follows the game (`three/Stage3D.tsx`). Checked in Chromium: Glow Tag's changed as the player walked. |
+| Glow Tag Royale's description never said where the action was. | It counts the rivals glowing (in Lights Out, the ones in sight), names the nearest, which way and how far, and says where you are against the ring (`glow-tag-words.ts`, with unit tests). The 2D map, for devices with 3D off, says the same. |
 | Firefox logged a blocked `eval` on every page that checked a form (zod's speed test against the security policy). That was noise for anyone listening to errors, and failed the Firefox tests. | Turned off; every CSP violation is now an error in the browser tests. |
 
 ## Known gaps
 
-- Glow Tag Royale's picture description never changes ("The park at night, seen from behind
-  your Glim"). Its score and charge are on screen as text, but the description could say where
-  the action is.
 - In a fast room, the locked-in message, the result and the next question can arrive within a
   second of each other. Screen readers queue polite messages, so nothing is lost, but it is a
   lot at once. Only a listener can judge whether to trim it.
