@@ -163,14 +163,16 @@ export function RevealAnswer({ q, reveal, mine, distribution, compact, size }: {
 
 /**
  * The player's own result: "Correct" with the points on a plate as the hero
- * number, "Partly right (60%)", or "Incorrect" with the right answer when the
- * caller passes `answer`. A correct answer bursts with the player's equipped
- * answer effect, or the default mix when they have none; a miss stays calm.
+ * number, "Partly right (60%)", "Incorrect", or "Time's up" when the player
+ * gave no answer (`missed`), with the right answer when the caller passes
+ * `answer`. A correct answer bursts with the player's equipped answer effect,
+ * or the default mix when they have none; a miss stays calm.
  */
-export function ResultBanner({ correct, partial, points, text, answer }: { correct: boolean | null; partial?: number | null; points?: number | null; text?: string | undefined; answer?: string | null | undefined }) {
+export function ResultBanner({ correct, partial, points, text, answer, missed = false }: { correct: boolean | null; partial?: number | null; points?: number | null; text?: string | undefined; answer?: string | null | undefined; missed?: boolean }) {
   const part = !correct && Boolean(partial && partial > 0);
   const percent = Math.round((partial ?? 0) * 100);
-  const said = correct === null ? null : `${correct ? 'Correct.' : part ? `Partly right, ${percent} percent.` : 'Incorrect.'}${points ? ` Plus ${points.toLocaleString('en-GB')} points.` : ''}${text ? ` ${text}` : ''}`;
+  const verdict = correct ? 'Correct' : part ? `Partly right (${percent}%)` : missed ? "Time's up" : 'Incorrect';
+  const said = correct === null ? null : `${correct ? 'Correct.' : part ? `Partly right, ${percent} percent.` : missed ? "Time's up, no answer." : 'Incorrect.'}${points ? ` Plus ${points.toLocaleString('en-GB')} points.` : ''}${text ? ` ${text}` : ''}`;
   useAnnounce(said);
   // Each result is its own component (call sites key it by question), so it plays once as it appears.
   const role = useSoundRole();
@@ -186,7 +188,7 @@ export function ResultBanner({ correct, partial, points, text, answer }: { corre
       <span className="grid size-10 shrink-0 place-items-center rounded-full bg-ink/85 text-white" aria-hidden>
         {correct || part ? <Check className="size-6" strokeWidth={3.2} /> : <X className="size-6" strokeWidth={3.2} />}
       </span>
-      <span className={`min-w-0 flex-1 font-display leading-none font-extrabold italic ${part ? 'text-[1.7rem]' : 'text-[2.1rem]'}`}>{correct ? 'Correct' : part ? `Partly right (${percent}%)` : 'Incorrect'}</span>
+      <span className={`min-w-0 flex-1 font-display leading-none font-extrabold italic ${part ? 'text-[1.7rem]' : 'text-[2.1rem]'}`}>{verdict}</span>
       {points ? (
         <span className="plate text-[2.1rem] tabular">
           <span>+{points.toLocaleString('en-GB')}</span>

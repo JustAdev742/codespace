@@ -61,11 +61,15 @@ test('a host and a player play Classic from join code to results', async ({ brow
     // The answer button that had focus went with the last question, so focus moves to the new one.
     await expect(player.getByRole('heading', { name: prompt })).toBeFocused();
     await expect(announcer).toContainText(`Question ${i + 1} of 3.`);
-    await player.getByRole('button', { name: new RegExp(`^[A-F]? ?${answer}$`) }).first().click();
+    // By keyboard, as a screen reader user would. The answer buttons give way to the result,
+    // and focus stays on the question rather than falling back to the top of the page.
+    await player.getByRole('button', { name: new RegExp(`^[A-F]? ?${answer}$`) }).first().focus();
+    await player.keyboard.press('Enter');
     // Everyone has answered, so the round closes and shows the answer.
     await expect(player.getByText('Correct', { exact: true })).toBeVisible();
     await expect(announcer).toContainText(`Correct. Plus`);
     await expect(announcer).toContainText(`The answer was ${answer}.`);
+    await expect(player.getByRole('heading', { name: prompt })).toBeFocused();
     await next.click();
     if (i < rounds.length - 1) {
       await expect(host.page.getByText('Leaderboard')).toBeVisible();

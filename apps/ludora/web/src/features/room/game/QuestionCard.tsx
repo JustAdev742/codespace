@@ -48,6 +48,26 @@ export function QuestionCard({ q, index, total, children, size = 'md' }: { q: Pu
   useEffect(() => {
     if (!document.activeElement || document.activeElement === document.body) heading.current?.focus({ preventScroll: true });
   }, [key]);
+  // Answering swaps the answer buttons for "locked in" within the same question, and focus goes
+  // with them to the page body, which sends a screen reader back to the top. Bring it to the prompt.
+  useEffect(() => {
+    let last: Element | null = document.activeElement;
+    const onFocus = (e: FocusEvent) => {
+      last = e.target as Element;
+    };
+    const lost = new MutationObserver(() => {
+      if (last && !last.isConnected && (!document.activeElement || document.activeElement === document.body)) {
+        last = null;
+        heading.current?.focus({ preventScroll: true });
+      }
+    });
+    document.addEventListener('focusin', onFocus);
+    lost.observe(heading.current?.closest('main') ?? document.body, { childList: true, subtree: true });
+    return () => {
+      document.removeEventListener('focusin', onFocus);
+      lost.disconnect();
+    };
+  }, []);
   const len = q.prompt.length;
   const many = (q.type === 'mcq' || q.type === 'multi') && q.choices.length > 4;
   const counter =

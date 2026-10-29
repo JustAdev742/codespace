@@ -682,7 +682,7 @@ function PlayerReveal({ view, room, q, last }: { view: GlimDuelsView; room: Room
         <StagePanel className="px-4 py-3 font-semibold text-text">You joined during this question, so it does not count. You play from the next one.</StagePanel>
       ) : (
         <>
-          <ResultBanner key={q.iid} correct={answered ? (s.you?.correct ?? false) : false} partial={s.you?.partial} text={lines ? `${lines.mine}${charge}` : charge.trim() || undefined} answer={s.reveal ? shortAnswer(q.q, s.reveal) : null} />
+          <ResultBanner key={q.iid} correct={answered ? (s.you?.correct ?? false) : false} missed={!answered} partial={s.you?.partial} text={lines ? `${lines.mine}${charge}` : charge.trim() || undefined} answer={s.reveal ? shortAnswer(q.q, s.reveal) : null} />
           {lines ? <p className={`rounded-[var(--radius-m)] px-3 py-2 font-bold ${NIGHT}`}>{lines.theirs}</p> : null}
           {!answered ? <p className="font-semibold text-text-2">You did not answer.</p> : null}
         </>

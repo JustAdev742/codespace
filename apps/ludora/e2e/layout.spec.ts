@@ -2,7 +2,7 @@ import AxeBuilder from '@axe-core/playwright';
 import { expect, test } from '@playwright/test';
 import { account, watchErrors } from './helpers.ts';
 
-const PAGES = ['/', '/play', '/host', '/modes', '/library', '/shop', '/collection', '/locker', '/quests', '/friends', '/leaderboards', '/me', '/settings'];
+const PAGES = ['/', '/play', '/host', '/modes', '/library', '/shop', '/collection', '/locker', '/quests', '/friends', '/leaderboards', '/me', '/settings', '/privacy', '/terms'];
 
 test('main pages fit a 360px phone, have one main heading, pass automated accessibility checks and log no errors', async ({ browser }) => {
   const p = await account(browser);

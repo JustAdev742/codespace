@@ -115,7 +115,7 @@ export function ClassicPlayer({ view, act, gameNow, paused, room }: ModeScreenPr
             <JoinedMidQuestion />
           ) : (
             <>
-              <ResultBanner correct={s.you?.answered ? (s.you.correct ?? false) : false} partial={s.you?.partial} points={s.you?.points} answer={s.reveal ? shortAnswer(q.q, s.reveal) : null} />
+              <ResultBanner correct={s.you?.answered ? (s.you.correct ?? false) : false} missed={!s.you?.answered} partial={s.you?.partial} points={s.you?.points} answer={s.reveal ? shortAnswer(q.q, s.reveal) : null} />
               {!s.you?.answered ? <p className="font-semibold text-text-2">You did not answer.</p> : null}
             </>
           )}
