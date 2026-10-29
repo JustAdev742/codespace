@@ -8,13 +8,16 @@ by `tools/audio/build.py`. No recordings, loops or sound packs from anywhere els
 |---|---|---|
 | Lanterns Waking | `music/lobby.mp3` | The lobby, while players arrive |
 | Festival Run | `music/game.mp3` | Most games |
-| Moonlit Study | `music/calm.mp3` | Thinking games (Confidence, Lantern Match, Word Scramble, Flashcard Study), and after a co-op game is lost |
+| Moonlit Study | `music/calm.mp3` | Thinking games (Confidence, Lantern Match, Word Scramble, Flashcard Study, Big Catch), and after a co-op game is lost |
 | Night Market Bounce | `music/market.mp3` | Trading and party games |
 | Spark Duel | `music/battle.mp3` | Races, duels, the Gloom Giant, tower defence |
 | Final Stretch | `music/intense.mp3` | The last half minute or the last questions of a game |
 | Lanterns Rise | `music/results.mp3` | The results, after the fanfare |
 
-The instruments are samples from the MuseScore General soundfont, played through FluidSynth.
+Most instruments are Ludora's own: the synthesisers (plucks, pads, basses, bells, leads, brass
+stabs), the drum and percussion kit and the transitions are generated in numpy by
+`tools/audio/ludora_audio` (`engine.py`, `patches.py`, `kit.py`, `transitions.py`), with no
+samples. The rest are samples from the MuseScore General soundfont, played through FluidSynth.
 The reverb is generated in code. The soundfont is under the MIT licence, with some parts in
 the public domain or under CC0:
 

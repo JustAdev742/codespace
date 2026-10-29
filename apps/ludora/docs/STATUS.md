@@ -235,36 +235,58 @@ Last updated: 2026-10-29.
     results fit a 1366x768 and a 1920x1080 projector without scrolling.
   - Modes whose big screen lists the room's news show no news toasts over
     it.
-- **Sound and music** (D41, D43): the music and effects are files rendered
-  offline from Ludora's own scores by `tools/audio`: FluidSynth with the MIT
-  MuseScore General soundfont, then mixing and mastering in Python. Seven loops
-  play on the host's screen and in solo games, never on players' phones:
+- **Sound and music** (D41, D43; rebuilt 2026-10-29). The music and effects are files rendered
+  offline from Ludora's own scores by `tools/audio`. Some instruments are from the MIT MuseScore
+  General soundfont (via FluidSynth); others are Ludora's own synthesiser and drum kit, written in
+  numpy. Mixing and mastering are in Python. Seven loops play on the host's screen and in solo
+  games, never on players' phones:
   - the lobby;
   - a track for each kind of game (`MODE_MUSIC`): game, calm, market or battle;
   - a final-stretch track for the last 30 seconds or the last questions;
-  - the results music after the fanfare (a gentler track after a lost co-op
-    game).
+  - the results music after the fanfare (a gentler track after a lost co-op game).
 
-  Music changes land on the bar line, and big moments turn the music down for
-  a moment. Sixty effects cover answering, results, the clock, joins,
-  reactions, purchases and Lantern reveals by rarity, plus coins, steals,
-  shields, hits, dice and events for the new modes. Each effect plays its
-  synthesised version until its file has loaded. A speaker button in the game
-  header mutes everything on that device and is remembered; Settings turns
-  effects and music off for the account. Checked:
-  - Every loop was measured. Loudness is on target (-15.5 to -18 LUFS) and the
-    true peak at or under -1.4 dBTP. The loop seam is at about -130 dB. After
-    MP3 encoding, a decode lines up with the source to the sample, with no
-    click at the loop point.
-  - Every effect is within 0.6 dB of its loudness target, with the true peak at
-    or under -1.0 dBTP.
-  - A Chromium run of the demo decoded all 60 effects, the game track and the
-    results track. It needed no synthesised fallback and had no console errors.
-    The game track started at bar 1 and looped at its loop points; the results
-    music came in 2.4 seconds after the fanfare.
-  - Rebuilding the audio with no changes gives byte-identical files.
+  Each track is 32 to 40 bars with real sections: a theme, its answer, a contrasting part, a
+  breakdown and a build, with fills, risers and impacts between them. The loops run 55 to
+  91 seconds, up from 27 to 46. Music changes land on the bar line, and big moments turn the
+  music down for a moment.
 
-  **Not yet judged by ear**: nobody has listened to it through speakers.
+  Sixty effects cover answering, results, the clock, joins, reactions, purchases and Lantern
+  reveals by rarity, plus coins, steals, shields, hits, dice and events for the new modes.
+  - Each is layered: a transient, a tonal body, air or sparkle, stereo width and mono lows.
+  - The 18 heard most often (taps, coins, hits, reactions and others) have two or three takes
+    and a small pitch spread. The player never plays the same take twice in a row, so a sound
+    heard all game never repeats exactly.
+  - Each effect plays a synthesised version until its file has loaded. That version follows
+    the recording's notes and sits within 3.3 dB of its level.
+
+  A speaker button in the game header mutes everything on that device and is remembered;
+  Settings turns effects and music off for the account.
+
+  Checked on 2026-10-29 with `tools/audio/analyze.py`, against the old files:
+  - Music:
+    - On loudness target (-15.5 to -18 LUFS), with the true peak at or under -1.2 dBTP measured
+      on the MP3s.
+    - Seams at about -130 dB.
+    - Low mids down from up to 65% of the energy to about 20 to 28%, and a real bottom end
+      (sub plus low 36 to 50%).
+    - Loudness range up from 1.3 to 1.9 LU to 3.2 to 5.2.
+    - Stereo width above 300 Hz up from 6 to 10% to 14 to 24%.
+    - game's lows, previously not mono, are now mono.
+  - Effects: the analysis flags fell from 7 to none.
+    - Bare single-band tones from 23 to 0, and mono effects from 27 to 0.
+    - Phasey effects from 4 to 0.
+    - `hit` and `hurt` now lose under 2 dB on a laptop speaker, against 14 dB before.
+    - Long tails only on the 3 big moments.
+    - 1,320 KB for 85 files.
+  - The web tests, all browser tests in Chromium, and the game and shop tests in Firefox and
+    WebKit pass on the new files.
+  - Rebuilding with no changes gives byte-identical files.
+
+  **Not yet judged by ear.** Everything was tuned by measurement and spectrograms. Nobody has
+  listened to it through speakers, which is the next useful check, particularly:
+  - game's quiet vibraphone under questions;
+  - the very high lead in Final Stretch;
+  - the balance of the steel drums in market.
 - **Playable demo** (D42): a static build for GitHub Pages
   (`npm run build:demo`) where a whole game runs in the browser against up to
   19 practice bots: every mode, the 20 built-in sets, the big-screen view with
