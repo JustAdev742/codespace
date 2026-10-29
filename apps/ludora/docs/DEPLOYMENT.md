@@ -4,6 +4,76 @@ Ludora ships as one Node.js process (API, realtime game server and the built web
 app) plus PostgreSQL 16. The Docker image and `compose.yaml` in `apps/ludora`
 are the supported way to run it.
 
+## From a blank server to a school's own copy
+
+About half an hour, most of it waiting for the first build. You need:
+
+- **A Linux server** with Docker: 1 to 2 vCPUs, 2 GB of memory and 20 GB of disk is plenty
+  for several classes at once (see *Measured capacity*). Any provider works. For Australian
+  schools, a Sydney region keeps students' data in Australia and the game quick.
+- **A domain name** you control, such as `play.your-school.org`.
+- **Someone comfortable with a terminal** for the first setup. After that, staff manage
+  everything in the web app.
+
+Then:
+
+1. **DNS.** Add an `A` record (and `AAAA` for IPv6) for the domain, pointing at the server.
+   Carry on once `dig +short play.your-school.org` prints the server's address.
+2. **Firewall.** Allow TCP 22 (SSH), 80 and 443, and UDP 443.
+3. **Docker.** Install Docker Engine with the compose plugin, following Docker's guide for
+   your distribution (docs.docker.com/engine/install).
+4. **The code.** Clone the repository and change into the app:
+   ```bash
+   sudo git clone --depth 1 --branch <branch or tag> https://github.com/JustAdev742/codespace /srv/codespace
+   cd /srv/codespace/apps/ludora
+   ```
+5. **Settings.** Write `.env` with fresh random secrets:
+   ```bash
+   sudo bash scripts/new-env.sh play.your-school.org "Your School" privacy@your-school.org
+   ```
+   It refuses to overwrite an existing `.env`. Keep a copy of the file in your password
+   manager: it holds the database password and the keys.
+6. **Start it.**
+   ```bash
+   sudo docker compose up -d --build
+   ```
+   `.env` names both compose files, so this also starts Caddy, which gets a Let's Encrypt
+   certificate for the domain within a minute or two and renews it by itself. Port 8787 is not
+   published: only Caddy can reach the app.
+7. **The first administrator.** Open `https://play.your-school.org`, sign up, then:
+   ```bash
+   sudo docker compose exec app node dist/admin.js grant <username> superadmin --reason "first admin"
+   ```
+8. **Backups.** Add the nightly job from `scripts/backup.sh` to root's crontab, and copy
+   `backups/` somewhere off the server (see *Backups and data*).
+9. **Check.** `/privacy` names your school, and Staff → System shows the database, live
+   rooms and recent errors.
+
+**Updating.** Take a backup, then, outside lesson time (running games end, and their results
+are saved):
+
+```bash
+sudo bash scripts/backup.sh
+sudo git pull && sudo docker compose up -d --build
+```
+
+Migrations only move forward. To go back to an older version after an update that changed
+the database, check out the old version and restore the backup taken just before the update.
+
+What was tested, on 2026-10-29, with Docker 29 and compose 5.6:
+
+- The stack came up with the HTTPS proxy, using Caddy's local certificate for `localhost`,
+  since the test machine has no public domain. HTTP redirected to HTTPS, and the security
+  headers and CSP named the domain.
+- A game ran over WebSockets through Caddy: `scripts/load-test.mjs --insecure` with 8 players
+  and 3 bots.
+- A backup and restore brought back an account and an uploaded image, and removed an account
+  made after the backup.
+- A backup taken while the app was stopped failed cleanly, with nothing half-written left behind.
+
+Getting a real Let's Encrypt certificate needs a public domain, so that step has not been
+tested here; it is Caddy's standard behaviour.
+
 ## Environments
 
 | `APP_ENV` | For | Differences |
@@ -42,10 +112,13 @@ Nothing secret is committed; copy `.env.example` to `.env` for compose.
 
 ## Running with compose
 
+The quick start above uses `scripts/new-env.sh`. By hand, or behind a proxy you already run:
+
 ```bash
 cd apps/ludora
 cp .env.example .env      # then edit: a strong POSTGRES_PASSWORD, your PUBLIC_ORIGIN, a random IP_HASH_KEY
-docker compose up -d --build
+docker compose up -d --build                                     # the app on port 8787, no HTTPS
+docker compose -f compose.yaml -f compose.https.yaml up -d --build   # with Caddy and HTTPS (needs DOMAIN)
 docker compose exec app node dist/admin.js grant <username> superadmin --reason "first admin"
 ```
 
@@ -80,7 +153,8 @@ in the staff area, and every change is in the audit log.
 
 ## Behind a reverse proxy
 
-Terminate TLS at the proxy and forward to port 8787. The proxy must pass
+`compose.https.yaml` and `deploy/Caddyfile` are the bundled proxy. With a proxy of your own,
+terminate TLS there and forward to port 8787. The proxy must pass
 WebSocket upgrades for `/socket.io/` (long polling is used as a fallback when
 WebSockets are blocked). Set `TRUST_PROXY=true`.
 
@@ -136,9 +210,22 @@ It creates a teacher account and a room, so point it at a test server, not a liv
 
 ## Backups and data
 
-- Back up the Postgres database (for example `pg_dump` nightly, with point-in-time
-  recovery if your host offers it). Everything that matters is in it: accounts,
-  wallets and the ledger, collections, sets, classes, reports and the audit log.
+- Back up the Postgres database and the uploaded images. Everything that matters is in
+  them: accounts, wallets and the ledger, collections, sets, classes, reports, the audit
+  log and question pictures. With compose, `scripts/backup.sh` writes both, keeps the
+  newest 14 (`KEEP=30` for more) and is safe to run from cron:
+  ```bash
+  15 2 * * * cd /srv/codespace/apps/ludora && bash scripts/backup.sh >> backups/backup.log 2>&1
+  ```
+  The files are readable only by root. Copy them off the server as well (to your school's
+  storage, with rclone or your host's snapshot service); a backup on the same disk is lost
+  with it.
+- To restore, outside lesson time: `bash scripts/restore.sh backups/ludora-<time>.dump
+  backups/uploads-<time>.tar.gz`. It asks you to type `yes`, replaces the whole database and
+  the images, and restarts the app. If it stops part-way it says how to start the app again.
+- Restoring onto a new server works the same way, with the old `.env` copied across first.
+  A different `IP_HASH_KEY` or `CHAOS_SECRET` does not break anything: sign-in rate limits
+  and the secret lantern's rhythm simply start afresh.
 - Passwords and recovery codes are stored as Argon2id hashes; session cookies are
   stored as SHA-256 hashes; IP addresses only as keyed hashes.
 - Players download or delete their own account under **Settings → Your data**

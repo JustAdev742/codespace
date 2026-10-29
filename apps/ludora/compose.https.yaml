@@ -1,0 +1,28 @@
+# HTTPS in front of Ludora, with a free certificate that renews itself.
+# Point your domain's DNS at the server, open ports 80 and 443, set DOMAIN and
+# PUBLIC_ORIGIN in .env (scripts/new-env.sh does both), then:
+#   docker compose -f compose.yaml -f compose.https.yaml up -d --build
+services:
+  app:
+    # Only Caddy talks to the app; nothing outside the server can reach port 8787.
+    ports: !reset []
+  caddy:
+    image: caddy:2-alpine
+    depends_on:
+      - app
+    environment:
+      DOMAIN: ${DOMAIN:?set DOMAIN in .env, e.g. play.your-school.org}
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    restart: unless-stopped
+
+volumes:
+  # The certificates. Keep this volume: Let's Encrypt limits how often a domain can ask for new ones.
+  caddy_data:
+  caddy_config:

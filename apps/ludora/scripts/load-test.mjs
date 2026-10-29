@@ -4,14 +4,15 @@
  * the server's own practice bots, against a running Ludora server.
  *
  *   node scripts/load-test.mjs [--base http://localhost:8787] [--mode classic]
- *        [--players 40] [--bots 20] [--seconds 90] [--pid <server pid>]
+ *        [--players 40] [--bots 20] [--seconds 90] [--pid <server pid>] [--insecure]
  *
  * Players answer every question they are shown after a human-like delay
  * (0.8 to 5 seconds), from whatever the question type is. Reports answer
  * round trips, how long one update takes to reach every player, errors, and
  * the server's CPU and memory when --pid is given. It creates a teacher
  * account and a room on the target, so point it at a test server, not a
- * school's live one.
+ * school's live one. --insecure accepts a self-signed certificate, for a
+ * test server behind HTTPS on your own machine.
  */
 import { readFileSync } from 'node:fs';
 import { randomBytes } from 'node:crypto';
@@ -32,6 +33,8 @@ const PLAYERS = Number(args.players ?? 40);
 const BOTS = Number(args.bots ?? 20);
 const SECONDS = Number(args.seconds ?? 90);
 const PID = args.pid ? Number(args.pid) : null;
+const INSECURE = args.insecure === 'true';
+if (INSECURE) process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
 const H = { 'content-type': 'application/json', 'x-ludora-csrf': '1', origin: BASE };
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -45,7 +48,7 @@ async function http(path, body, cookie) {
 }
 
 function connect(cookie) {
-  return io(BASE, { path: '/socket.io', transports: ['websocket'], extraHeaders: { origin: BASE, ...(cookie ? { cookie } : {}) }, forceNew: true, reconnection: false });
+  return io(BASE, { path: '/socket.io', transports: ['websocket'], extraHeaders: { origin: BASE, ...(cookie ? { cookie } : {}) }, forceNew: true, reconnection: false, rejectUnauthorized: !INSECURE });
 }
 
 const emit = (s, ev, payload) =>

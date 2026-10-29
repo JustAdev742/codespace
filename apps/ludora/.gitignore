@@ -20,3 +20,6 @@ playwright-report-demo/
 tools/audio/.cache/
 tools/audio/.venv/
 __pycache__/
+
+# Database and image backups (scripts/backup.sh).
+/backups/

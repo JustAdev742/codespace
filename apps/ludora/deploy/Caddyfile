@@ -1,0 +1,8 @@
+# HTTPS for Ludora (compose.https.yaml). Caddy gets and renews the certificate
+# for $DOMAIN from Let's Encrypt, passes WebSockets through, and sets
+# X-Forwarded-For, which the app trusts (TRUST_PROXY) because nothing else can
+# reach it.
+{$DOMAIN} {
+	encode zstd gzip
+	reverse_proxy app:8787
+}
