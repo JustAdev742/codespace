@@ -61,7 +61,9 @@ each repeat slightly different, which is why each part renders once and is copie
 
 ## Levels
 
-Loudness is measured to ITU-R BS.1770, with the true peak under -1 dBTP. The levels:
+Loudness is measured to ITU-R BS.1770, with the true peak under -1 dBTP. The build reports
+the higher of the true peak before encoding and in the decoded MP3, because the encoder can add
+about half a decibel. The levels:
 
 - Music: -15.5 to -18 LUFS. The calm track is quietest and the final stretch loudest. The web
   mix plays music about 8 dB under the effects.
@@ -275,9 +277,11 @@ them. They go into `ludora-audio-analysis/` in the folder `$LUDORA_AUDIO_OUT` na
 system's temporary directory, unless `--out` says otherwise. Nothing it writes belongs in the
 repository.
 
-A loop only stays bit-exact through the MP3 when its length is a whole number of 576-sample
-MP3 granules. Otherwise the encoder treats the end and the start differently and the waveform
-seam reads about -15 dB. That is codec noise, not a click: the spectra match within a fraction
+A loop stays bit-exact through the MP3 only at some lengths. Being a whole number of 576-sample
+MP3 granules is necessary but not always enough: lobby at 100 BPM and 36 bars (6,615 granules)
+read -22 dB, while at 105 BPM (6,300 granules) it reads -222 dB. Check the seam the build
+reports, and nudge the tempo or bar count when it is high. Otherwise the encoder treats the end
+and the start differently and the waveform seam reads about -15 dB. That is codec noise, not a click: the spectra match within a fraction
 of a dB, and the step at the join is no bigger than the music's own movement. Above about 16 kHz
 every track is silent: LAME's low-pass at the music's quality setting.
 

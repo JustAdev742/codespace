@@ -248,6 +248,11 @@ def normalize_loudness(x: np.ndarray, target_lufs: float, ceiling_db: float = -1
         if tp > ceiling_db:
             # Sample peaks 0.5 dB under the ceiling leave room for the peaks between samples.
             y = limit(y, ceiling_db - 0.5 - max(0.0, tp - ceiling_db) * 0.1)
+    # The passes can end with a peak between samples still over the ceiling (a sharp click limited
+    # at its samples, say): turn the whole thing down by the overshoot, at a small cost in loudness.
+    tp = true_peak_db(y)
+    if tp > ceiling_db:
+        y = (y * db(ceiling_db - tp)).astype(np.float32)
     return y
 
 

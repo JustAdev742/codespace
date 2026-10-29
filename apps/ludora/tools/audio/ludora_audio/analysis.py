@@ -212,9 +212,9 @@ def seam(x: np.ndarray, start: int, end: int) -> dict:
 
     seam_db: the waveform after the loop's end against the waveform after its start
     (build.py's measure). Below about -40 dB the two are the same music. Through an
-    MP3 it is only that low when the loop is a whole number of MP3 granules (576
-    samples), because otherwise the encoder quantises the two stretches differently;
-    the difference is then codec noise, not a click.
+    MP3 it is only that low at some loop lengths: a whole number of MP3 granules (576
+    samples) is needed but not always enough. Otherwise the encoder quantises the two
+    stretches differently; the difference is then codec noise, not a click.
     seam_spectrum_db: the average difference of the two stretches' third-octave band
     levels. Codec noise leaves this near 0; a real mismatch (wrong loop points) does not.
     splice_jump_db: the step at the join when the player jumps, against the music's own
@@ -314,7 +314,7 @@ def flags(m: dict, music: bool = True) -> list[str]:
         if m.get("seam_spectrum_db", 0) > 1.5 or m.get("splice_jump_db", -99) > 10:
             out.append(f"audible loop seam (spectrum {m['seam_spectrum_db']} dB, jump {m['splice_jump_db']} dB)")
         elif m.get("seam_db", -999) > -40:
-            out.append(f"loop not bit-exact through the MP3 (codec noise at {m['seam_db']} dB: the loop is not a whole number of 576-sample MP3 granules)")
+            out.append(f"loop not bit-exact through the MP3 (codec noise at {m['seam_db']} dB): try a tempo or bar count that makes the loop a whole number of 576-sample granules, and check again")
         if m.get("lra_lu", 99) < 2.0:
             out.append(f"flat dynamics (LRA {m['lra_lu']} LU)")
     else:

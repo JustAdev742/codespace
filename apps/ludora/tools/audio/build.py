@@ -56,6 +56,12 @@ def encode(audio: np.ndarray, out: Path, quality: int) -> None:
         )
 
 
+def mp3_true_peak(path: Path) -> float:
+    """True peak of a shipped file, decoded: the encoder can add about half a decibel to the source's."""
+    raw = subprocess.run(["ffmpeg", "-v", "error", "-i", str(path), "-f", "f32le", "-ac", "2", "-ar", str(SR), "-"], check=True, capture_output=True).stdout
+    return dsp.true_peak_db(np.frombuffer(raw, dtype=np.float32).reshape(-1, 2))
+
+
 def build_track(name: str) -> dict:
     song = importlib.import_module(f"ludora_audio.tracks.{name}").song()
     loop = mix_song(song)
@@ -70,7 +76,7 @@ def build_track(name: str) -> dict:
         "loopStart": round(loop.loop_start, 6),
         "loopEnd": round(loop.loop_end, 6),
         "lufs": round(dsp.lufs(loop.audio[start:end]), 1),
-        "truePeak": round(dsp.true_peak_db(loop.audio), 1),
+        "truePeak": round(max(dsp.true_peak_db(loop.audio), mp3_true_peak(ASSETS / "music" / f"{name}.mp3")), 1),
         "seam": round(dsp.seam_error_db(loop.audio, start, end), 1),
     }
 
@@ -79,14 +85,15 @@ def build_effect(name: str) -> dict:
     effect = next(e for e in sfx.effects() if e.name == name)
     audio = sfx.render(effect)
     encode(audio, ASSETS / "sfx" / f"{name}.mp3", SFX_QUALITY)
-    info = {"name": name, "seconds": round(len(audio) / SR, 3), "play": effect.play, "lufs": round(dsp.lufs(audio), 1), "truePeak": round(dsp.true_peak_db(audio), 1)}
+    peak = max(dsp.true_peak_db(audio), mp3_true_peak(ASSETS / "sfx" / f"{name}.mp3"))
+    info = {"name": name, "seconds": round(len(audio) / SR, 3), "play": effect.play, "lufs": round(dsp.lufs(audio), 1), "truePeak": round(peak, 1)}
     if effect.alts:
         info["alts"] = []
         for i, alt in enumerate(effect.alts, start=2):
             take = sfx.render(alt)
             encode(take, ASSETS / "sfx" / f"{name}.v{i}.mp3", SFX_QUALITY)
             info["alts"].append(f"{name}.v{i}")
-            info["truePeak"] = max(info["truePeak"], round(dsp.true_peak_db(take), 1))
+            info["truePeak"] = max(info["truePeak"], round(max(dsp.true_peak_db(take), mp3_true_peak(ASSETS / "sfx" / f"{name}.v{i}.mp3")), 1))
     if effect.vary:
         info["vary"] = effect.vary
     if effect.play == "rise":
