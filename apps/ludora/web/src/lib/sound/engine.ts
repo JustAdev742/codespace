@@ -5,6 +5,15 @@ import { CORE_SFX, SampleBank, sampleFor, type Sample } from './samples.ts';
 import { EFFECTS, type SfxName, type SfxOptions } from './sfx.ts';
 import { makeReverb } from './synth.ts';
 
+/**
+ * Resuming or suspending the audio context can be refused: by autoplay rules, or because the page
+ * is being left (Firefox rejects with "Navigated away from page"). Either way the sound stays as
+ * it was, so the refusal is not an error worth reporting.
+ */
+function quietly(p: Promise<void> | undefined): void {
+  p?.catch(() => {});
+}
+
 /*
  * The one sound engine for the page. Nothing is made until it is needed, and
  * no audio context is created before the person has interacted with the page,
@@ -124,15 +133,15 @@ class SoundEngine {
     if (typeof window === 'undefined') return;
     const unlock = () => {
       this.interacted = true;
-      void this.graph?.ctx.resume();
+      quietly(this.graph?.ctx.resume());
       this.syncMusic();
     };
     for (const type of ['pointerdown', 'keydown', 'touchend'] as const) window.addEventListener(type, unlock, { capture: true, passive: true });
     // Nothing plays in a hidden tab, and the music picks up again when it is shown.
     document.addEventListener('visibilitychange', () => {
       if (!this.graph) return;
-      if (document.hidden) void this.graph.ctx.suspend();
-      else if (this.mayPlay()) void this.graph.ctx.resume();
+      if (document.hidden) quietly(this.graph.ctx.suspend());
+      else if (this.mayPlay()) quietly(this.graph.ctx.resume());
     });
   }
 
@@ -182,7 +191,7 @@ class SoundEngine {
     const at = performance.now();
     if (at - (this.lastPlayed.get(name) ?? -1e9) < 40) return () => {};
     this.lastPlayed.set(name, at);
-    if (g.ctx.state === 'suspended') void g.ctx.resume();
+    if (g.ctx.state === 'suspended') quietly(g.ctx.resume());
     const key = sampleFor(name, options);
     const duck = key ? DUCK[key] : undefined;
     if (duck) this.duck(g, g.ctx.currentTime + 0.01, duck[0], duck[1]);
@@ -294,7 +303,7 @@ class SoundEngine {
     }
     const g = this.ensure();
     if (!g) return;
-    if (g.ctx.state === 'suspended') void g.ctx.resume();
+    if (g.ctx.state === 'suspended') quietly(g.ctx.resume());
     const asset = MUSIC_ASSETS[want];
     const sample = this.bank.get(asset.url);
     if (sample) {
