@@ -28,6 +28,7 @@ export const cometDashAdapter: ChaosAdapter = {
     if (st.momentum) f.push('momentum');
     else f.push('boost');
     if (st.slipstream || st.tailwind) f.push('drafting');
+    if (st.together) f.push('together');
     return f;
   },
 };

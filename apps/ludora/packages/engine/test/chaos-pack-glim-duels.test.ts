@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { ChaosSim } from '../src/testing/chaos.ts';
 import { MIXED_SET } from '../src/testing/fixtures.ts';
 import { scaleGain } from '../src/chaos/cheats/kit.ts';
-import type { Duel } from '../src/modes/glim-duels/index.ts';
+import type { Duel, Pairing } from '../src/modes/glim-duels/index.ts';
 
 /*
  * Exact behaviour of the Glim Duels pack: amounts, limits (chaos never knocks
@@ -351,5 +351,135 @@ describe('glim-duels pack: pairings and the Shadow Glim', () => {
     expect(sh.answered).toBe(true);
     ok(sim.cast(lone, { cheatId: 'glim-duels.shadow-fumble' }));
     expect(seat(sim, lone).d.shadow!.correct).toBe(false);
+  });
+
+  const pairKey = (ps: readonly (readonly [string, string | null])[]) =>
+    ps
+      .map((p) => [p[0], p[1] ?? ''].sort().join('+'))
+      .sort()
+      .join('|');
+
+  it('Duel Pairing Scramble draws the next round again, and the round starts with the new pairs', () => {
+    const sim = make({ players: 6 });
+    // The first round's pairings are planned before it starts.
+    expect(sim.state().next).not.toBeNull();
+    const before = sim.state().next as Pairing[];
+    ok(sim.cast('p1', { cheatId: 'glim-duels.pairing-scramble' }));
+    const after = sim.state().next as Pairing[];
+    expect(pairKey(after)).not.toBe(pairKey(before));
+    expect(after.flat().filter(Boolean).sort()).toEqual(sim.ids.slice().sort());
+    untilPhase(sim, 'question');
+    for (const [x, y] of after) expect(seat(sim, x).rival.id).toBe(y);
+    refused(sim.cast('p2', { cheatId: 'glim-duels.pairing-scramble' }), /not out yet/);
+    expect(sim.errors).toEqual([]);
+  });
+
+  it('Duel Pairing Scramble avoids rematches and keeps Team Clash duels between teams', () => {
+    const sim = make({ players: 6, settings: { teamClash: true }, common: { teamCount: 2 } });
+    const team = (id: string) => sim.rt.playerList().find((p) => p.id === id)!.teamId;
+    // Play the first round, so everyone has a rival to avoid.
+    untilPhase(sim, 'question');
+    for (let i = 0; i < 800 && (sim.state().round < 0 || !sim.state().roundOver); i++) sim.run(250);
+    expect(sim.state().next).not.toBeNull();
+    ok(sim.cast('p1', { cheatId: 'glim-duels.pairing-scramble' }));
+    const fighters = sim.state().fighters;
+    for (const [x, y] of sim.state().next as Pairing[]) {
+      if (!y) continue;
+      expect(team(x)).not.toBe(team(y));
+      expect(fighters[x].faced).not.toContain(y);
+    }
+  });
+});
+
+describe('glim-duels pack: mirrors, sponges, mends, stances and wagers', () => {
+  const rivalOf = (s: ChaosSim, id: string) => seat(s, id).rival.id!;
+
+  it('Duel Mirror Shield needs a raised shield, then bounces the first blocked hit back', () => {
+    const { a, b } = twins();
+    refused(a.cast('p1', { cheatId: 'glim-duels.mirror-shield' }), /Raise a shield/);
+    for (const s of [a, b]) ok(s.cast('p1', { cheatId: 'glim-duels.aegis' }));
+    ok(a.cast('p1', { cheatId: 'glim-duels.mirror-shield' }));
+    expect(untilBent(a, b, (s) => Boolean(hitBy(s, rivalOf(s, 'p1'))?.blocked) && !seat(s, 'p1').d.over)).toBe(true);
+    // The mirror looks at each reveal just after it lands.
+    a.run(300);
+    b.run(300);
+    const raw = hitBy(b, rivalOf(b, 'p1'))!.raw;
+    const r = seat(b, 'p1').rival.health;
+    const back = Math.min(raw, r - 1);
+    expect(seat(a, 'p1').rival.health).toBe(r - back);
+    expect(a.state().fighters.p1.dealt).toBe(b.state().fighters.p1.dealt + back);
+    expect(a.chaos().effects.some((e) => e.cheatId === 'glim-duels.mirror-shield')).toBe(false);
+    expect(a.errors).toEqual([]);
+  });
+
+  it('Duel Spark Sponge turns a hit taken into 1 charge, and is refused on a full charge', () => {
+    const { a, b } = twins();
+    ok(a.cast('p1', { cheatId: 'glim-duels.spark-sponge' }));
+    expect(untilBent(a, b, (s) => (hitBy(s, rivalOf(s, 'p1'))?.dmg ?? 0) > 0 && !seat(s, 'p1').d.over && charge(s, 'p1') < 3)).toBe(true);
+    expect(charge(a, 'p1')).toBe(charge(b, 'p1') + 1);
+    const full = make();
+    full.run(12_000);
+    full.cast('p2', { cheatId: 'glim-duels.overcharge' });
+    refused(full.cast('p2', { cheatId: 'glim-duels.spark-sponge' }), /already full/);
+  });
+
+  it(`Duel Golden Mend makes a mend heal ${2 * 30}, at the usual charge`, () => {
+    const sim = make();
+    sim.idle.add('p1');
+    sim.run(12_000);
+    untilPhase(sim, 'question');
+    for (const o of sim.ids.filter((x) => x !== 'p1')) sim.cast(o, { cheatId: 'glim-duels.hex-bolt', target: 'p1' });
+    expect(health(sim, 'p1')).toBe(25);
+    sim.cast('p1', { cheatId: 'glim-duels.overcharge' });
+    ok(sim.cast('p1', { cheatId: 'glim-duels.golden-mend' }));
+    expect(sim.rt.act('p1', { type: 'power', iid: sim.state().sync.iid, power: 'mend' }).ok).toBe(true);
+    expect(health(sim, 'p1')).toBe(85);
+    expect(charge(sim, 'p1')).toBe(1);
+    expect(sim.errors).toEqual([]);
+  });
+
+  it('Duel Daredevil Stance doubles your hits and the hits on you, never past 1 health', () => {
+    const { a, b } = twins();
+    ok(a.cast('p1', { cheatId: 'glim-duels.daredevil' }));
+    const landed = (s: ChaosSim, id: string) => hitBy(s, id)?.dmg ?? 0;
+    expect(untilBent(a, b, (s) => (landed(s, 'p1') > 0 || landed(s, rivalOf(s, 'p1')) > 0) && !seat(s, 'p1').d.over)).toBe(true);
+    const mine = landed(b, 'p1');
+    const theirs = landed(b, rivalOf(b, 'p1'));
+    const r = seat(b, 'p1').rival.health;
+    expect(seat(a, 'p1').rival.health).toBe(Math.max(1, r - mine));
+    expect(health(a, 'p1')).toBe(Math.max(1, health(b, 'p1') - theirs));
+    expect(a.state().fighters.p1.dealt).toBe(b.state().fighters.p1.dealt + Math.min(mine, r - 1));
+    expect(a.errors).toEqual([]);
+  });
+
+  it('Duel Wager pays the winner 2 and takes 1 from the loser when the duel ends', () => {
+    const a = make();
+    const b = make();
+    // Into the second round, so both duellists have points to lose.
+    for (let i = 0; i < 1200 && !(b.state().round >= 1 && b.state().sync.phase === 'question'); i++) {
+      a.run(250);
+      b.run(250);
+    }
+    const rival = rivalOf(a, 'p1');
+    ok(a.cast('p1', { cheatId: 'glim-duels.wager' }));
+    ok(a.cast(rival, { cheatId: 'glim-duels.wager' }));
+    refused(a.cast('p1', { cheatId: 'glim-duels.wager' }), /cooling|already|running/i);
+    for (let i = 0; i < 800 && !seat(b, 'p1').d.over; i++) {
+      a.run(250);
+      b.run(250);
+    }
+    a.run(600);
+    b.run(600);
+    const d = seat(b, 'p1').d;
+    const gain = (id: string) => a.state().fighters[id].points - b.state().fighters[id].points;
+    const side = seat(b, 'p1').i;
+    if (d.winner === 'draw') expect([gain('p1'), gain(rival)]).toEqual([0, 0]);
+    else {
+      const [winner, loser] = d.winner === side ? ['p1', rival] : [rival, 'p1'];
+      expect(gain(winner)).toBe(2);
+      expect(gain(loser)).toBe(b.state().fighters[loser].points > 0 ? -1 : 0);
+    }
+    expect(a.chaos().effects.some((e) => e.cheatId === 'glim-duels.wager')).toBe(false);
+    expect(a.errors).toEqual([]);
   });
 });

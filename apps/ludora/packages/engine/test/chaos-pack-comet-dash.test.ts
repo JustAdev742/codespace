@@ -382,3 +382,153 @@ describe('comet-dash pack: questions and the clock', () => {
     expect(sim.rt.nextTimerAt()).toBeLessThanOrEqual(sim.state().endsAt);
   });
 });
+
+describe('comet-dash pack: more of the trail', () => {
+  const text = (sim: ChaosSim, id: string) => sim.state().racers[id].stream.last?.text as string;
+
+  it('Comet Star Chart shows the caster, and nobody else, the wormholes still ahead', () => {
+    const sim = race({ wormholes: true });
+    patch(sim, (s) => {
+      s.wormholes = [4, 9, 13];
+      s.racers.p1.pos = 5;
+      s.racers.p2.pos = 15;
+    });
+    expect(cast(sim, 'p1', 'star-chart').ok).toBe(true);
+    expect(sim.view('p1').overlays).toHaveLength(1);
+    expect(sim.view('p1').overlays[0]).toMatchObject({ kind: 'badge', text: 'Star chart: wormholes at spaces 9 and 13', tone: 'info' });
+    expect(sim.view('p2').overlays).toEqual([]);
+    // The chart follows the trail: a wormhole that moves shows up within a second.
+    patch(sim, (s) => (s.wormholes = [12]));
+    sim.run(1_100);
+    expect(sim.view('p1').overlays[0]).toMatchObject({ text: 'Star chart: wormholes at space 12' });
+    expect(cast(sim, 'p2', 'star-chart')).toMatchObject({ ok: false });
+    expect(cast(race(), 'p1', 'star-chart')).toMatchObject({ ok: false });
+  });
+
+  it('Comet Wormhole Magnet pulls in a comet that lands one space before or after a wormhole', () => {
+    const before = race({ wormholes: true });
+    patch(before, (s) => {
+      s.wormholes = [8];
+      s.racers.p1.pos = 6;
+    });
+    expect(cast(before, 'p1', 'wormhole-magnet').ok).toBe(true);
+    answer(before, 'p1', true);
+    expect(pos(before, 'p1')).toBe(11);
+    expect(text(before, 'p1')).toBe('+5 spaces (Wormhole magnet)');
+    // A boosted move of 2 overshoots the wormhole by one: pulled back in, then thrown 3 on from it.
+    const after = race({ wormholes: true });
+    patch(after, (s) => (s.wormholes = [8]));
+    place(after, { p1: 7 }, { p1: 2 });
+    expect(cast(after, 'p1', 'wormhole-magnet').ok).toBe(true);
+    answer(after, 'p1', true);
+    expect(pos(after, 'p1')).toBe(11);
+    expect(text(after, 'p1')).toBe('+4 spaces (Boost, Wormhole magnet)');
+  });
+
+  it('Comet Wormhole Magnet leaves exact landings and far misses to the mode, and needs a wormhole ahead', () => {
+    const sim = race({ wormholes: true });
+    patch(sim, (s) => {
+      s.wormholes = [8, 14];
+      s.racers.p1.pos = 7;
+      s.racers.p2.pos = 15;
+    });
+    expect(cast(sim, 'p1', 'wormhole-magnet').ok).toBe(true);
+    answer(sim, 'p1', true);
+    // The mode's own jump: 8 + 3.
+    expect(pos(sim, 'p1')).toBe(11);
+    answer(sim, 'p1', true);
+    // 12 is two spaces from 14: no pull.
+    expect(pos(sim, 'p1')).toBe(12);
+    expect(cast(sim, 'p2', 'wormhole-magnet')).toMatchObject({ ok: false });
+  });
+
+  it('Comet Wormhole Backfire throws an opponent back instead of ahead, never behind the start', () => {
+    const sim = race({ wormholes: true });
+    patch(sim, (s) => {
+      s.wormholes = [2, 8];
+      s.racers.p2.pos = 7;
+      s.racers.p3.pos = 1;
+      s.racers.p4.pos = 12;
+    });
+    expect(cast(sim, 'p1', 'wormhole-backfire', 'p2').ok).toBe(true);
+    answer(sim, 'p2', true);
+    expect(pos(sim, 'p2')).toBe(5);
+    expect(text(sim, 'p2')).toBe('Back 2 spaces (Wormhole, Backfire)');
+    // Moves that miss the wormholes are left alone.
+    answer(sim, 'p2', true);
+    expect(pos(sim, 'p2')).toBe(6);
+    expect(cast(sim, 'p4', 'wormhole-backfire', 'p3').ok).toBe(true);
+    answer(sim, 'p3', true);
+    expect(pos(sim, 'p3')).toBe(0);
+    expect(cast(sim, 'p3', 'wormhole-backfire', 'p4')).toMatchObject({ ok: false });
+  });
+
+  it('Comet Star Gate Lock holds an opponent in front of the next gate until it ends', () => {
+    const sim = race({ starGates: 5 });
+    place(sim, { p2: 3, p3: 16 });
+    expect(cast(sim, 'p1', 'gate-lock', 'p2').ok).toBe(true);
+    answer(sim, 'p2', true);
+    expect(pos(sim, 'p2')).toBe(4);
+    answer(sim, 'p2', true);
+    expect(pos(sim, 'p2')).toBe(4);
+    expect(text(sim, 'p2')).toBe('No move (Gate locked)');
+    sim.run(20_100);
+    expect(sim.chaos().effects).toHaveLength(0);
+    answer(sim, 'p2', true);
+    // The third right answer in a row is a boost: through the gate and one beyond.
+    expect(pos(sim, 'p2')).toBe(6);
+    // Gate 20 is the finish line.
+    expect(cast(sim, 'p4', 'gate-lock', 'p3')).toMatchObject({ ok: false });
+  });
+
+  it('Comet Bumper Cars bumps back each comet the caster passes, and nobody else', () => {
+    const sim = race();
+    place(sim, { p1: 4, p2: 6, p3: 4, p4: 5 }, { p1: 2 });
+    expect(cast(sim, 'p1', 'bumper-cars').ok).toBe(true);
+    // A boosted move of 2, from 4 to 6: p3 (level) and p4 (ahead) are passed; p2 is drawn level with, not passed.
+    answer(sim, 'p1', true);
+    expect([pos(sim, 'p1'), pos(sim, 'p2'), pos(sim, 'p3'), pos(sim, 'p4')]).toEqual([6, 6, 3, 4]);
+    // Comets on the start line have nowhere to go back to.
+    const start = race();
+    expect(cast(start, 'p1', 'bumper-cars').ok).toBe(true);
+    answer(start, 'p1', true);
+    expect(start.ids.map((id) => pos(start, id))).toEqual([1, 0, 0, 0]);
+  });
+
+  it('Comet Constellation Tow tows every comet in Race Together until someone is home', () => {
+    const sim = race({ together: true });
+    expect(cast(sim, 'p1', 'constellation-tow').ok).toBe(true);
+    answer(sim, 'p2', true);
+    expect(pos(sim, 'p2')).toBe(2);
+    expect(text(sim, 'p2')).toBe('+2 spaces (Towed)');
+    sim.run(25_100);
+    answer(sim, 'p2', true);
+    expect(pos(sim, 'p2')).toBe(3);
+    // Once someone is home, the mode tows everyone itself.
+    patch(sim, (s) => {
+      s.racers.p3.pos = 20;
+      s.racers.p3.place = 1;
+      s.finishOrder = ['p3'];
+    });
+    expect(cast(sim, 'p4', 'constellation-tow')).toMatchObject({ ok: false });
+    expect(cast(race(), 'p1', 'constellation-tow')).toMatchObject({ ok: false });
+  });
+
+  it('Comet Clock Crunch takes 30 seconds off, never leaving less than 30', () => {
+    const sim = race();
+    const start = sim.state().endsAt as number;
+    expect(cast(sim, 'p1', 'clock-crunch').ok).toBe(true);
+    expect(sim.state().endsAt).toBe(start - 30_000);
+    sim.run(start - 30_000 - sim.now - 45_000);
+    expect(cast(sim, 'p2', 'clock-crunch').ok).toBe(true);
+    expect(sim.state().endsAt - sim.now).toBe(30_000);
+    expect(cast(sim, 'p3', 'clock-crunch')).toMatchObject({ ok: false });
+    sim.run(29_000);
+    expect(sim.rt.status).toBe('running');
+    sim.run(1_500);
+    expect(sim.rt.status).not.toBe('running');
+    const open = new ChaosSim({ modeId: 'comet-dash', questions: MIXED_SET, players: 2, seed: 5, common: { timeLimitSec: 0 } });
+    sims.push(open);
+    expect(open.cast('p1', { cheatId: 'comet-dash.clock-crunch' })).toMatchObject({ ok: false });
+  });
+});

@@ -33,6 +33,7 @@ interface RaceSettings {
   starGates: number;
   tailwind: boolean;
   wormholes: boolean;
+  together: boolean;
 }
 
 const settingsOf = (api: ChaosApi) => api.ctx.settings as unknown as RaceSettings;
@@ -94,6 +95,52 @@ function remember(fx: ActiveEffect, r: Racer) {
 function setStreak(r: Racer, streak: number) {
   r.stream.streak = streak;
   r.stream.bestStreak = Math.max(r.stream.bestStreak, streak);
+}
+
+/*
+ * Delta hooks below that bend a racer's move read where the move started as
+ * `r.pos - r.lastMove.gain`: the mode's own gain, which they never rewrite.
+ * They add a note to the move and rewrite the feedback line under the
+ * question, so it shows the move the racer really made.
+ */
+
+/** Where a racer stood before the answer the hook is bending (the mode moved them `lastMove.gain`). */
+const startOfMove = (r: Racer) => r.pos - (r.lastMove?.gain ?? 0);
+
+/** Note a cheat on the racer's last move and rewrite the feedback line to the move as bent so far. */
+function retell(r: Racer, change: number, note: string) {
+  if (r.lastMove && !r.lastMove.notes.includes(note)) r.lastMove.notes.push(note);
+  const notes = r.lastMove?.notes.length ? ` (${r.lastMove.notes.join(', ')})` : '';
+  if (!r.stream.last) return;
+  r.stream.last.text = change > 0 ? `+${plural(change, 'space', 'spaces')}${notes}` : change < 0 ? `Back ${plural(-change, 'space', 'spaces')}${notes}` : `No move${notes}`;
+}
+
+/** Hidden wormholes ahead of a space, nearest first. */
+const wormholesAhead = (api: ChaosApi, pos: number) => (api.s.wormholes as number[]).filter((w) => w > pos);
+
+/** The next star gate strictly ahead of a space. */
+const nextGate = (pos: number, every: number) => gateAtOrBehind(pos, every) + every;
+
+const spaceList = (xs: readonly number[]) => (xs.length === 1 ? `space ${xs[0]}` : `spaces ${xs.slice(0, -1).join(', ')} and ${xs.at(-1)}`);
+
+/** Remember how many answers these racers have given, so a hook can tell their own answer from another cheat moving them. */
+function seeAnswers(fx: ActiveEffect, api: ChaosApi, ids: readonly PlayerId[]) {
+  const seen = (fx.data.seen ??= {}) as Record<string, number>;
+  for (const id of ids) {
+    const r = racerOf(api, id);
+    if (r) seen[id] = r.stream.answered;
+  }
+}
+
+/**
+ * Whether the racer answered since the hook last looked, so their last move is the one being bent now.
+ * (Another cheat can move a racer who did not answer, such as a hijacked boost, and then their last move is old.)
+ */
+function freshAnswer(fx: ActiveEffect, id: PlayerId, r: Racer): boolean {
+  const seen = (fx.data.seen ??= {}) as Record<string, number>;
+  const fresh = seen[id] === undefined || seen[id] !== r.stream.answered;
+  seen[id] = r.stream.answered;
+  return fresh;
 }
 
 const cheats: CheatDef[] = [
@@ -808,6 +855,241 @@ const cheats: CheatDef[] = [
       api.ctx.setTimer('time', to);
       api.feed(`Time dilation: the race clock gained ${Math.round((to - endsAt) / 1000)} seconds.`, 'info');
     },
+  },
+  {
+    id: 'comet-dash.clock-crunch',
+    name: 'Comet Clock Crunch',
+    category: 'round',
+    description: 'Takes 30 seconds off the race clock, never leaving less than 30 seconds to go. Only in races with a time limit.',
+    target: 'room',
+    hostile: false,
+    modes: [MODE],
+    cost: 35,
+    cooldownMs: 90_000,
+    undoable: false,
+    apply: (api) => {
+      const endsAt: number | null = api.s.endsAt;
+      if (endsAt === null) return { error: 'This race has no clock to crunch.' };
+      const to = Math.max(endsAt - 30_000, api.now() + 30_000);
+      if (to >= endsAt) return { error: 'The race clock is already down to its last 30 seconds.' };
+      api.s.endsAt = to;
+      api.ctx.setTimer('time', to);
+      api.feed(`Clock crunch: ${Math.round((endsAt - to) / 1000)} seconds came off the race clock.`, 'info');
+    },
+  },
+
+  /* ------------------------------ more of the trail ----------------------------- */
+  {
+    id: 'comet-dash.star-chart',
+    name: 'Comet Star Chart',
+    category: 'advantage',
+    description: 'For 20 seconds, your screen shows which spaces ahead of you hide a wormhole. Nobody else sees the chart.',
+    target: 'self',
+    modes: [MODE],
+    needs: ['wormholes'],
+    cost: 20,
+    cooldownMs: 45_000,
+    durationMs: 20_000,
+    tickMs: 1000,
+    apply: (api, c, fx) => {
+      const r = needRacing(api, c.caster, true);
+      if (isErr(r)) return r;
+      const ahead = wormholesAhead(api, r.pos);
+      if (!ahead.length) return { error: 'There are no wormholes left ahead of you.' };
+      fx!.data.ahead = ahead;
+    },
+    hooks: {
+      // Wormholes can be planted, collapsed or moved while the chart is open, and the caster moves on.
+      tick: (api, fx) => {
+        const r = racing(api, fx.caster);
+        fx.data.ahead = r ? wormholesAhead(api, r.pos) : [];
+      },
+    },
+    overlay: (fx) => {
+      const ahead = (fx.data.ahead as number[] | undefined) ?? [];
+      return { kind: 'badge', text: ahead.length ? `Star chart: wormholes at ${spaceList(ahead)}` : 'Star chart: no wormholes left ahead', tone: 'info' };
+    },
+  },
+  {
+    id: 'comet-dash.wormhole-magnet',
+    name: 'Comet Wormhole Magnet',
+    category: 'advantage',
+    description: `For 25 seconds, when an answer leaves your comet one space before or after a hidden wormhole, the wormhole pulls you in and throws you ${WORMHOLE_JUMP} spaces on from it, as if you had landed on it (never over the finish line). Only with a wormhole still ahead of you.`,
+    target: 'self',
+    modes: [MODE],
+    needs: ['wormholes'],
+    cost: 30,
+    cooldownMs: 50_000,
+    durationMs: 25_000,
+    priority: 35,
+    apply: (api, c, fx) => {
+      const r = needRacing(api, c.caster, true);
+      if (isErr(r)) return r;
+      if (!wormholesAhead(api, r.pos).length) return { error: 'There are no wormholes left ahead of you.' };
+      seeAnswers(fx!, api, [c.caster]);
+    },
+    hooks: {
+      delta: {
+        score: (api, fx, d) => {
+          const me = fx.caster;
+          const r = racing(api, me);
+          if (!r || !freshAnswer(fx, me, r) || (d[me] ?? 0) <= 0 || !r.lastMove || r.lastMove.gain <= 0 || noted(r, 'Wormhole')) return;
+          const from = startOfMove(r);
+          const landing = from + d[me]!;
+          const holes: number[] = api.s.wormholes;
+          const w = holes.includes(landing + 1) ? landing + 1 : holes.includes(landing - 1) ? landing - 1 : null;
+          if (w === null) return;
+          const to = Math.min(distance(api) - 1, w + WORMHOLE_JUMP);
+          if (to <= landing) return;
+          d[me] = to - from;
+          retell(r, d[me]!, 'Wormhole magnet');
+          api.feed(`${api.name(me)}'s wormhole magnet pulled them into the wormhole at space ${w}.`, 'good');
+        },
+      },
+    },
+    overlay: () => ({ kind: 'badge', text: 'Wormhole magnet: near misses count', tone: 'good' }),
+  },
+  {
+    id: 'comet-dash.wormhole-backfire',
+    name: 'Comet Wormhole Backfire',
+    category: 'troll',
+    description: `For 30 seconds, a wormhole an opponent lands on throws them ${WORMHOLE_JUMP} spaces back instead of ${WORMHOLE_JUMP} ahead (never behind the start). Only on an opponent with a wormhole still ahead of them.`,
+    target: 'opponent',
+    modes: [MODE],
+    needs: ['wormholes'],
+    cost: 30,
+    cooldownMs: 50_000,
+    durationMs: 30_000,
+    priority: 35,
+    apply: (api, c, fx) => {
+      const t = target(c);
+      const r = needRacing(api, t, false);
+      if (isErr(r)) return r;
+      if (!wormholesAhead(api, r.pos).length) return { error: `There is no wormhole left ahead of ${api.name(t)}.` };
+      seeAnswers(fx!, api, [t]);
+    },
+    hooks: {
+      delta: {
+        score: (api, fx, d) => {
+          const t = target(fx);
+          const r = racing(api, t);
+          // Still racing after a jump means the mode threw them the full WORMHOLE_JUMP spaces (a shorter throw would have finished them).
+          if (!r || !freshAnswer(fx, t, r) || d[t] === undefined || !noted(r, 'Wormhole')) return;
+          d[t] = Math.max(-startOfMove(r), d[t]! - 2 * WORMHOLE_JUMP);
+          retell(r, d[t]!, 'Backfire');
+          api.feed(`The wormhole backfired on ${api.name(t)}: thrown back instead of ahead.`, 'bad');
+        },
+      },
+    },
+    overlay: () => ({ kind: 'badge', text: 'Wormholes throw you backwards', tone: 'bad' }),
+  },
+  {
+    id: 'comet-dash.gate-lock',
+    name: 'Comet Star Gate Lock',
+    category: 'troll',
+    description: 'Locks the next star gate ahead of an opponent for 20 seconds: answers cannot carry their comet through it, so it waits on the space in front of the gate (an answer that carries it all the way over the finish line still counts). Not when that gate is the finish line.',
+    target: 'opponent',
+    modes: [MODE],
+    needs: ['star-gates'],
+    cost: 30,
+    cooldownMs: 50_000,
+    durationMs: 20_000,
+    priority: 40,
+    apply: (api, c, fx) => {
+      const t = target(c);
+      const r = needRacing(api, t, false);
+      if (isErr(r)) return r;
+      const gate = nextGate(r.pos, settingsOf(api).starGates);
+      if (gate >= distance(api)) return { error: `The next star gate ahead of ${api.name(t)} is the finish line.` };
+      fx!.data.gate = gate;
+      seeAnswers(fx!, api, [t]);
+    },
+    hooks: {
+      delta: {
+        score: (api, fx, d) => {
+          const t = target(fx);
+          // A racer an answer carried over the finish line is no longer racing: crossing the line is the mode's to decide.
+          const r = racing(api, t);
+          if (!r || !freshAnswer(fx, t, r) || (d[t] ?? 0) <= 0) return;
+          const gate = Number(fx.data.gate);
+          const from = startOfMove(r);
+          if (from >= gate || from + d[t]! < gate) return;
+          d[t] = gate - 1 - from;
+          retell(r, d[t]!, 'Gate locked');
+          api.feed(`The star gate at space ${gate} is locked: your comet waits in front of it.`, 'bad', [t]);
+        },
+      },
+    },
+    overlay: (fx) => ({ kind: 'badge', text: `Star gate at space ${Number(fx.data.gate)} is locked`, tone: 'bad' }),
+  },
+  {
+    id: 'comet-dash.bumper-cars',
+    name: 'Comet Bumper Cars',
+    category: 'troll',
+    description: 'For 20 seconds, every comet your answers carry you past (from level with you or ahead, to behind you) is bumped one space back as you go by. Comets on the start line or over the finish line are left alone.',
+    target: 'self',
+    modes: [MODE],
+    cost: 30,
+    cooldownMs: 50_000,
+    durationMs: 20_000,
+    priority: 45,
+    apply: (api, c, fx) => {
+      const r = needRacing(api, c.caster, true);
+      if (isErr(r)) return r;
+      seeAnswers(fx!, api, [c.caster]);
+    },
+    hooks: {
+      delta: {
+        score: (api, fx, d) => {
+          const me = fx.caster;
+          const r = racing(api, me);
+          if (!r || !freshAnswer(fx, me, r) || (d[me] ?? 0) <= 0 || !r.lastMove || r.lastMove.gain <= 0) return;
+          const from = startOfMove(r);
+          const to = from + d[me]!;
+          const passed = onTrack(api).filter((id) => {
+            if (id === me) return false;
+            const at = racerOf(api, id)!.pos + (d[id] ?? 0);
+            return at > 0 && at >= from && at < to;
+          });
+          if (!passed.length) return;
+          for (const id of passed) d[id] = (d[id] ?? 0) - 1;
+          api.feed(`${api.name(me)} bumped past ${passed.map((id) => api.name(id)).join(', ')}.`, 'info');
+        },
+      },
+    },
+    overlay: () => ({ kind: 'badge', text: 'Bumper cars: comets you pass slip back', tone: 'good' }),
+  },
+  {
+    id: 'comet-dash.constellation-tow',
+    name: 'Comet Constellation Tow',
+    category: 'round',
+    description: 'Race Together only, before anyone is home: for 25 seconds every comet gets the tow the race gives once someone has finished, one extra space for each correct answer.',
+    target: 'room',
+    hostile: false,
+    modes: [MODE],
+    needs: ['together'],
+    cost: 35,
+    cooldownMs: 75_000,
+    durationMs: 25_000,
+    apply: (api, _c, fx) => {
+      if ((api.s.finishOrder as PlayerId[]).length) return { error: 'Someone is already home, so every comet is being towed.' };
+      seeAnswers(fx!, api, onTrack(api));
+    },
+    hooks: {
+      delta: {
+        score: (api, fx, d) => {
+          for (const id of Object.keys(d)) {
+            const r = racing(api, id);
+            // Once someone is home the mode tows everyone itself ('Towed'); never twice for one answer.
+            if (!r || !freshAnswer(fx, id, r) || d[id]! <= 0 || !r.lastMove || r.lastMove.gain <= 0 || noted(r, 'Towed')) continue;
+            d[id]! += 1;
+            retell(r, d[id]!, 'Towed');
+          }
+        },
+      },
+    },
+    overlayFor: 'all',
+    overlay: () => ({ kind: 'badge', text: 'Constellation tow: +1 space per correct answer', tone: 'good' }),
   },
 ];
 

@@ -25,15 +25,35 @@ const casterStreakThenMiss: Post = (sim, caster) => {
 };
 const casterMiss: Post = (sim, caster) => forceAnswer(sim, caster, false);
 
+/**
+ * A racer answers right, one answer at a time, until a move of theirs reaches a wormhole (the mode's or a
+ * magnet's) or no wormhole is left ahead of them, so wormhole cheats have a jump to work on.
+ */
+function untilWormhole(sim: ChaosSim, id: string | null) {
+  if (!id) return;
+  for (let i = 0; i < 15 && sim.rt.status === 'running' && sim.rt.hasPlayer(id); i++) {
+    const r = sim.state().racers[id];
+    if (!r || r.place !== null || !(sim.state().wormholes as number[]).some((w) => w > r.pos)) return;
+    forceAnswer(sim, id, true);
+    const notes: string[] = sim.state().racers[id]?.lastMove?.notes ?? [];
+    if (notes.includes('Wormhole') || notes.includes('Wormhole magnet')) return;
+  }
+}
+
 export const scenarios: ScenarioSet = {
-  // Setbacks, star gates, momentum and wormholes are race settings.
-  settings: { 'comet-dash': [{ wrongSetback: true }, { starGates: 5 }, { momentum: true }, { wormholes: true }] },
+  // Setbacks, star gates, momentum, wormholes and racing together are race settings.
+  settings: { 'comet-dash': [{ wrongSetback: true }, { starGates: 5 }, { momentum: true }, { wormholes: true }, { together: true }] },
   pre: { 'comet-dash.rewind': casterWrong },
   post: {
     'comet-dash.meteor-shower': targetWrong,
     'comet-dash.boost-hijack': targetRightThrice,
     'comet-dash.streak-saver': casterStreakThenMiss,
     'comet-dash.gate-anchor': casterMiss,
+    'comet-dash.wormhole-backfire': (sim, _caster, _def, target) => untilWormhole(sim, target),
+    'comet-dash.wormhole-magnet': (sim, caster) => untilWormhole(sim, caster),
+    'comet-dash.gate-lock': targetRightThrice,
   },
   casters: { 'comet-dash.gate-anchor': 'richest', 'comet-dash.slipstream-lock': 'richest' },
+  // The chart is information on the caster's screen.
+  screen: ['comet-dash.star-chart'],
 };

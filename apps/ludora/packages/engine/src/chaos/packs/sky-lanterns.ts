@@ -1,6 +1,6 @@
 import { defineCheats } from '../registry.ts';
-import type { ChaosApi, CheatDef } from '../types.ts';
-import { odds, rollOdds, target, transfer } from '../cheats/kit.ts';
+import type { ActiveEffect, ChaosApi, CheatDef } from '../types.ts';
+import { inGame, odds, rollOdds, target, transfer } from '../cheats/kit.ts';
 import { STORM_CHANCE_CAP, strongerWind, WINDS, type WindKind } from '../../modes/sky-lanterns/index.ts';
 
 /*
@@ -93,6 +93,34 @@ function launchNow(api: ChaosApi, id: string, d: Record<string, number>) {
 }
 
 const noWaiting = (api: ChaosApi, id: string) => (api.get('ground', id) > 0 ? null : { error: `${api.name(id)} has no lanterns waiting.` });
+
+/*
+ * A player's best launch. The mode raises it as soon as a launch lands, so a
+ * cheat that makes a launch score less (or later) puts back the best from
+ * before: the effect keeps it in fx.data.best, read again every second.
+ */
+function keepBest(api: ChaosApi, fx: ActiveEffect, id: string) {
+  const f = flyer(api, id);
+  if (f) fx.data.best = f.best;
+}
+
+/** After a launch that scored `full` was cut to `scored`, the best launch is what it was before, or `scored` if that is better. */
+function cutBest(api: ChaosApi, fx: ActiveEffect, id: string, full: number, scored: number) {
+  const f = flyer(api, id);
+  if (!f) return;
+  if (f.best === full) f.best = Math.max(Number(fx.data.best ?? 0), scored);
+  fx.data.best = f.best;
+}
+
+/** Record lanterns scoring now (a delayed launch landing), as the mode records a launch. */
+function recordLaunch(api: ChaosApi, id: string, count: number, mult: number, points: number) {
+  const f = flyer(api, id);
+  if (!f) return;
+  const at = api.now();
+  f.best = Math.max(f.best, points);
+  f.lastLaunch = { count, mult, points, at };
+  api.s.launches = [{ playerId: id, count, mult, points, at }, ...api.s.launches].slice(0, 6);
+}
 
 const LANTERNS = ['lanterns'] as const;
 const GROUND = ['lanterns', 'meter:ground'] as const;
@@ -428,6 +456,60 @@ const instant: CheatDef[] = [
       api.feed(`The weather vane spun: the wind is now ${WINDS[next].label.toLowerCase()} (×${WINDS[next].mult}).`, 'info');
     },
   },
+  {
+    id: 'sky-lanterns.rekindle',
+    name: 'Sky Lantern Rekindle',
+    category: 'advantage',
+    description: 'Relight the lanterns you lost most recently (to a storm, lightning, a fuse or any other blow-out), if they went out in the last 30 seconds. They wait on the ground again, lit.',
+    target: 'self',
+    modes: [MODE],
+    needs: GROUND,
+    undoable: false,
+    cost: 30,
+    cooldownMs: 50_000,
+    apply: (api, c) => {
+      const f = flyer(api, c.caster);
+      const loss = f?.lastLoss;
+      if (!f || !loss || loss.count <= 0) return { error: 'You have no lost lanterns to relight.' };
+      if (api.now() - loss.at > 30_000) return { error: 'Your lanterns went out more than 30 seconds ago: the embers are cold.' };
+      const back = api.add('ground', c.caster, loss.count);
+      if (!back) return { error: 'Your lanterns could not be relit.' };
+      // The lanterns are no longer lost: the player's tally, and the storm's if a storm took them, say so.
+      f.lost = Math.max(0, f.lost - back);
+      const storm = wind(api).storm;
+      if (storm && storm.at === loss.at) storm.lost = Math.max(0, storm.lost - back);
+      f.lastLoss = null;
+      api.feed(`${api.name(c.caster)} rekindled ${plural(back, 'lost lantern')}.`, 'good');
+    },
+  },
+  {
+    id: 'sky-lanterns.early-dawn',
+    name: 'Early Sky Lantern Dawn',
+    category: 'round',
+    description: 'Dawn comes early: the night ends 20 seconds sooner, never closer than 30 seconds from now. A wind change that would now come after the end is called off, so the wind blowing then lasts until the end. Not in the festival finale, whose last gale keeps its time.',
+    target: 'room',
+    modes: [MODE],
+    needs: LANTERNS,
+    undoable: false,
+    cost: 35,
+    cooldownMs: 90_000,
+    apply: (api) => {
+      if (isFinale(api)) return { error: 'The festival finale keeps its own time.' };
+      const s = api.s;
+      const to = Math.max(s.endsAt - 20_000, api.now() + 30_000);
+      if (to >= s.endsAt) return { error: 'The night is already down to its last 30 seconds.' };
+      const cut = Math.round((s.endsAt - to) / 1000);
+      s.endsAt = to;
+      api.ctx.setTimer('time', to);
+      // As the mode schedules it: a change only comes if it is due before the end.
+      const w = wind(api);
+      if (w.changeAt !== null && w.changeAt >= to) {
+        w.changeAt = null;
+        api.ctx.clearTimer('wind');
+      }
+      api.feed(`Dawn is coming early: the night is ${cut} seconds shorter.`, 'info');
+    },
+  },
 ];
 
 const lasting: CheatDef[] = [
@@ -738,6 +820,138 @@ const lasting: CheatDef[] = [
     },
     overlay: () => ({ kind: 'badge', text: 'Wind in a bottle', tone: 'good' }),
   },
+  {
+    id: 'sky-lanterns.storm-chaser',
+    name: 'Sky Storm Chaser',
+    category: 'score',
+    description: 'Chase the next storm: if the next wind change (within 60 seconds) brings one, you score 1 point for every lantern of another player\'s that it blows out. Needs Storms on.',
+    target: 'self',
+    modes: [MODE],
+    needs: STORMS,
+    cost: 30,
+    cooldownMs: 60_000,
+    durationMs: 60_000,
+    // After shelters (20): lanterns a shelter brings through the storm were not blown out.
+    priority: 45,
+    apply: (api) => (wind(api).changeAt === null ? { error: 'The wind will not change again this game.' } : undefined),
+    hooks: {
+      delta: {
+        windChanges: (api, fx, d) => {
+          if ((d.game ?? 0) <= 0) return;
+          api.endEffect(fx.eid, 'used');
+          const storm = wind(api).storm;
+          if (!storm || storm.at !== api.now() || !inGame(api, fx.caster)) return;
+          let caught = 0;
+          for (const id of api.others(fx.caster)) {
+            const loss = flyer(api, id)?.lastLoss;
+            if (loss && loss.at === api.now()) caught += loss.count;
+          }
+          const got = caught ? api.addScore(fx.caster, caught) : 0;
+          if (got) api.feed(`${api.name(fx.caster)} chased the storm: +${plural(got, 'point')} for the lanterns it blew out.`, 'good');
+        },
+      },
+    },
+    overlay: () => ({ kind: 'badge', text: 'Storm chaser: the next storm pays you', tone: 'good' }),
+  },
+  {
+    id: 'sky-lanterns.tangled-strings',
+    name: 'Sky Lantern Tangled Strings',
+    category: 'troll',
+    description: 'For 20 seconds, an opponent\'s lantern strings are tangled: each launch sends up only half their lanterns (rounded up) and scores only for those. The rest stay lit on the ground, where a storm can still reach them.',
+    target: 'opponent',
+    modes: [MODE],
+    needs: GROUND,
+    cost: 30,
+    cooldownMs: 45_000,
+    durationMs: 20_000,
+    tickMs: 1000,
+    // Before multipliers (20) and the crosswind (30), so they work on the lanterns that really went up.
+    priority: 15,
+    apply: (api, c, fx) => keepBest(api, fx!, target(c)),
+    hooks: {
+      tick: (api, fx) => keepBest(api, fx, target(fx)),
+      delta: {
+        score: (api, fx, d) => {
+          const t = target(fx);
+          const l = launchNow(api, t, d);
+          const f = flyer(api, t);
+          if (!l || !f || l.count < 2) return;
+          const stay = Math.floor(l.count / 2);
+          const full = l.points;
+          api.add('ground', t, stay);
+          f.launched -= stay;
+          l.count -= stay;
+          d[t] = Math.max(0, d[t]! - stay * l.mult);
+          const top = api.s.launches[0];
+          if (top && top.playerId === t && top.at === api.now()) top.count = l.count;
+          relabelLaunch(api, t, l.mult, l.count * l.mult);
+          cutBest(api, fx, t, full, l.count * l.mult);
+          api.feed(`Tangled strings: ${plural(stay, 'lantern')} stayed on the ground.`, 'bad', [t]);
+        },
+      },
+    },
+    overlay: () => ({ kind: 'badge', text: 'Tangled strings: half your lanterns stay down', tone: 'bad' }),
+  },
+  {
+    id: 'sky-lanterns.high-drift',
+    name: 'Sky Lantern High Drift',
+    category: 'advantage',
+    description: 'For 45 seconds, your launches drift high instead of scoring at once: they score at the next wind change, at the new wind. A storm at that change brings a calm wind (×1) but cannot touch lanterns in the air. Lanterns still drifting when this ends score at the wind blowing then. Not on the last wind of the game.',
+    target: 'self',
+    modes: [MODE],
+    needs: GROUND,
+    cost: 25,
+    cooldownMs: 50_000,
+    durationMs: 45_000,
+    tickMs: 250,
+    // Before everything else that bends a launch: the launch scores nothing now, so there is nothing to bend until it lands.
+    priority: 5,
+    apply: (api, c, fx) => {
+      if (wind(api).changeAt === null) return { error: 'This is the last wind of the game: there is no next wind to drift to.' };
+      fx!.data.held = 0;
+      keepBest(api, fx!, c.caster);
+    },
+    hooks: {
+      delta: {
+        score: (api, fx, d) => {
+          const me = fx.caster;
+          const l = launchNow(api, me, d);
+          // On the last wind there is no change to wait for: the launch scores as usual.
+          if (!l || wind(api).changeAt === null) return;
+          d[me]! -= l.points;
+          fx.data.held = Number(fx.data.held) + l.count;
+          fx.data.changes = wind(api).changes;
+          const f = flyer(api, me)!;
+          cutBest(api, fx, me, l.points, 0);
+          f.lastLaunch = null;
+          const top = api.s.launches[0];
+          if (top && top.playerId === me && top.at === api.now()) api.s.launches = api.s.launches.slice(1);
+          api.feed(`Your ${plural(l.count, 'lantern')} drift high: they score at the next wind change.`, 'info', [me]);
+        },
+      },
+      // Lanterns land just after a change, once cheats that rig the new wind have had their say.
+      tick: (api, fx) => {
+        const held = Number(fx.data.held ?? 0);
+        if (!held) return keepBest(api, fx, fx.caster);
+        if (wind(api).changes <= Number(fx.data.changes)) return;
+        landDrift(api, fx);
+      },
+      end: (api, fx) => landDrift(api, fx),
+    },
+    overlay: (fx) => ({ kind: 'badge', text: Number(fx.data.held ?? 0) ? `${plural(Number(fx.data.held), 'lantern')} drifting high` : 'High drift: launches score at the next wind', tone: 'good' }),
+  },
 ];
+
+/** Drifting lanterns land and score at the wind blowing now. */
+function landDrift(api: ChaosApi, fx: ActiveEffect) {
+  const held = Number(fx.data.held ?? 0);
+  fx.data.held = 0;
+  const me = fx.caster;
+  if (!held || !inGame(api, me)) return;
+  const w = WINDS[wind(api).kind];
+  const got = api.addScore(me, held * w.mult);
+  recordLaunch(api, me, held, w.mult, got);
+  api.feed(`${api.name(me)}'s ${plural(held, 'drifting lantern')} caught the ${w.label.toLowerCase()} wind for ${plural(got, 'point')}.`, held * w.mult >= 10 ? 'big' : 'good');
+}
 
 defineCheats([...instant, ...lasting]);

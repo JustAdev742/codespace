@@ -1,8 +1,8 @@
 import { defineCheats } from '../registry.ts';
 import type { ActiveEffect, ChaosApi, CheatDef } from '../types.ts';
 import { odds, rollOdds, scaleGain, share, target, transfer } from '../cheats/kit.ts';
-import { CHARGE_CAP, HEALTH_OPTIONS, SHADOW_NAME } from '../../modes/glim-duels/meta.ts';
-import { creditOf, hitDamage, type Duel, type Pairing, type Side } from '../../modes/glim-duels/index.ts';
+import { CHARGE_CAP, HEALTH_OPTIONS, MEND_HEAL, SHADOW_NAME } from '../../modes/glim-duels/meta.ts';
+import { creditOf, hitDamage, pairFighters, type Duel, type Pairing, type Side } from '../../modes/glim-duels/index.ts';
 
 /*
  * Cheats that only make sense in Glim Duels: they work the duels themselves
@@ -62,6 +62,8 @@ function liveSeat(api: ChaosApi, id: string): Seat | null {
 function needLive(api: ChaosApi, id: string, other?: 'them'): Seat | { error: string } {
   return liveSeat(api, id) ?? { error: `${other ? `${api.name(id)} is` : 'You are'} not in a duel that is still being fought.` };
 }
+
+const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
 
 const sideName = (api: ChaosApi, side: Side) => (side.id ? api.name(side.id) : `the ${SHADOW_NAME}`);
 
@@ -479,6 +481,42 @@ const pairing: CheatDef[] = [
       api.feed(`Shadow Glim Surge: the Shadow Glim answered at once against ${victims.join(', ')}.`, 'bad');
     },
   },
+  {
+    id: 'glim-duels.pairing-scramble',
+    name: 'Duel Pairing Scramble',
+    category: 'round',
+    description: 'Between duel rounds: the next round\'s pairings are drawn again at random, whatever the standings. Rematches are still avoided where they can be, Team Clash duels stay between two teams, and the Shadow Glim still goes to whoever has met it least.',
+    target: 'room',
+    modes: MODES,
+    needs: ['meter:score'],
+    cost: 35,
+    cooldownMs: 60_000,
+    undoable: false,
+    apply: (api) => {
+      const pairs = nextPairs(api);
+      if ('error' in pairs) return pairs;
+      const ids = pairs.flatMap((p) => (p[1] ? [p[0], p[1]] : [p[0]]));
+      const key = (ps: readonly Pairing[]) =>
+        ps
+          .map((p) => [p[0], p[1] ?? ''].sort().join('+'))
+          .sort()
+          .join('|');
+      const before = key(pairs);
+      // The mode's own pairing, with every player on level terms: only the random tiebreak orders them.
+      for (let i = 0; i < 12; i++) {
+        const entries = ids.map((id) => {
+          const f = api.s.fighters[id];
+          return { id, points: 0, dealt: 0, tie: api.rng.next(), team: api.teamOf(id), shadowDuels: f?.shadowDuels ?? 0, faced: f?.faced ?? [] };
+        });
+        const drawn = pairFighters(entries, clash(api));
+        if (key(drawn) === before) continue;
+        api.s.next = drawn;
+        api.feed('Duel Pairing Scramble: the next round\'s pairings were drawn again at random.', 'big');
+        return;
+      }
+      return { error: 'The pairings came out the same however they were drawn.' };
+    },
+  },
 ];
 
 /* ------------------------------- lasting -------------------------------- */
@@ -783,6 +821,173 @@ const lasting: CheatDef[] = [
       },
     },
     overlay: (fx) => ({ kind: 'countdown', label: 'Your Glim is rotting', until: fx.endsAt }),
+  },
+  {
+    id: 'glim-duels.mirror-shield',
+    name: 'Duel Mirror Shield',
+    category: 'advantage',
+    description: 'Polish your raised shield into a mirror: within 30 seconds, the first hit a shield of yours blocks also bounces back onto the Glim that threw it, for the hit\'s full damage (it stops at 1 health), while your duel goes on. Needs your shield up.',
+    target: 'self',
+    modes: MODES,
+    needs: POWERS,
+    cost: 30,
+    cooldownMs: 50_000,
+    durationMs: 30_000,
+    tickMs: 250,
+    stacking: 'reject',
+    apply: (api, c, fx) => {
+      const seat = needLive(api, c.caster);
+      if ('error' in seat) return seat;
+      if (!seat.me.shield) return { error: 'Raise a shield first: the mirror needs one to polish.' };
+      fx!.data.duel = seat.duel.id;
+      fx!.data.seen = seat.duel.last?.at ?? -1;
+    },
+    hooks: {
+      // Hits land at the reveal; the mirror looks at each new one just after.
+      tick: (api, fx) => {
+        const seat = liveSeat(api, fx.caster);
+        if (!seat || seat.duel.id !== fx.data.duel) return void api.endEffect(fx.eid, 'used');
+        const last = seat.duel.last;
+        if (!last || last.at === fx.data.seen) return;
+        fx.data.seen = last.at;
+        const h = last.hits[(1 - seat.i) as 0 | 1];
+        if (!h?.blocked || h.raw <= 0) return;
+        const back = lower(api, seat.rival, h.raw);
+        if (back) {
+          seat.me.dealt += back;
+          api.add('dealt', fx.caster, back);
+          api.feed(`Duel Mirror Shield: ${api.name(fx.caster)}'s shield bounced ${back} damage back at ${sideName(api, seat.rival)}.`, 'big');
+        }
+        api.endEffect(fx.eid, 'used');
+      },
+    },
+    overlay: () => ({ kind: 'badge', text: 'Mirror shield: a blocked hit bounces back', tone: 'good' }),
+  },
+  {
+    id: 'glim-duels.spark-sponge',
+    name: 'Duel Spark Sponge',
+    category: 'economy',
+    description: `For 25 seconds, every time your Glim takes damage in your duel, you soak up 1 charge (up to the most you can hold, ${CHARGE_CAP}).`,
+    target: 'self',
+    modes: MODES,
+    needs: ['meter:health', 'meter:charge', 'powers'],
+    cost: 25,
+    cooldownMs: 45_000,
+    durationMs: 25_000,
+    // After thorns (25), so damage they add counts too.
+    priority: 35,
+    apply: (api, c) => {
+      const seat = needLive(api, c.caster);
+      if ('error' in seat) return seat;
+      if (api.get('charge', c.caster) >= CHARGE_CAP) return { error: 'Your charge is already full.' };
+    },
+    hooks: {
+      delta: {
+        // Health only goes down in a mode move when a hit lands.
+        health: (api, fx, d) => {
+          if ((d[fx.caster] ?? 0) < 0 && liveSeat(api, fx.caster)) api.add('charge', fx.caster, 1);
+        },
+      },
+    },
+    overlay: () => ({ kind: 'badge', text: 'Spark sponge: hits on you give charge', tone: 'good' }),
+  },
+  {
+    id: 'glim-duels.golden-mend',
+    name: 'Duel Golden Mend',
+    category: 'advantage',
+    description: `For 30 seconds, every mend you use heals twice as much: ${MEND_HEAL * 2} health instead of ${MEND_HEAL} (never above full health). It costs the usual charge.`,
+    target: 'self',
+    modes: MODES,
+    needs: POWERS,
+    cost: 25,
+    cooldownMs: 50_000,
+    durationMs: 30_000,
+    apply: (api, c) => {
+      const seat = needLive(api, c.caster);
+      return 'error' in seat ? seat : undefined;
+    },
+    hooks: {
+      delta: {
+        health: (api, fx, d) => {
+          const me = fx.caster;
+          // A mend is the only mode move that raises health while a question is open (a new duel starts before its powers are used).
+          if ((d[me] ?? 0) <= 0 || api.s.sync.phase !== 'question' || api.s.used[me] !== 'mend' || !liveSeat(api, me)) return;
+          d[me]! += MEND_HEAL;
+        },
+      },
+    },
+    overlay: () => ({ kind: 'badge', text: `Golden mend: mends heal ${MEND_HEAL * 2}`, tone: 'good' }),
+  },
+  {
+    id: 'glim-duels.daredevil',
+    name: 'Duel Daredevil Stance',
+    category: 'advantage',
+    description: 'For 20 seconds, your hits land twice as hard, and so do hits on your Glim. The extra on either side never knocks a Glim out: it stops at 1 health.',
+    target: 'self',
+    modes: MODES,
+    needs: HEALTH,
+    cost: 30,
+    cooldownMs: 50_000,
+    durationMs: 20_000,
+    priority: 20,
+    apply: (api, c) => {
+      const seat = needLive(api, c.caster);
+      return 'error' in seat ? seat : undefined;
+    },
+    hooks: {
+      delta: {
+        dealt: (api, fx, d) => {
+          const dmg = d[fx.caster] ?? 0;
+          if (dmg > 0) boostHit(api, fx, d, dmg);
+        },
+        // The health meter stops at 1 while the duel goes on; a hit that already knocked the Glim out ended the duel and stands.
+        health: (api, fx, d) => {
+          const took = -(d[fx.caster] ?? 0);
+          if (took > 0 && liveSeat(api, fx.caster)) d[fx.caster]! -= took;
+        },
+      },
+    },
+    overlay: () => ({ kind: 'badge', text: 'Daredevil: every hit ×2, yours and theirs', tone: 'info' }),
+  },
+  {
+    id: 'glim-duels.wager',
+    name: 'Duel Wager',
+    category: 'score',
+    description: 'Bet on the duel you are fighting: if you win it, you score 2 extra points; if you lose it, you lose 1 point (if you have one); a draw changes nothing. If the duel is still going after 4 minutes, the bet is off.',
+    target: 'self',
+    modes: MODES,
+    needs: ['meter:score', 'meter:health'],
+    cost: 25,
+    cooldownMs: 60_000,
+    durationMs: 240_000,
+    tickMs: 500,
+    stacking: 'reject',
+    apply: (api, c, fx) => {
+      const seat = needLive(api, c.caster);
+      if ('error' in seat) return seat;
+      fx!.data.duel = seat.duel.id;
+      fx!.data.side = seat.i;
+    },
+    hooks: {
+      // A finished duel stays in the state until the next round starts, long after the half-second this waits.
+      tick: (api, fx) => {
+        const duel = (api.s.duels as Duel[]).find((x) => x.id === fx.data.duel);
+        if (!duel) return void api.endEffect(fx.eid, 'used');
+        if (!duel.over) return;
+        api.endEffect(fx.eid, 'used');
+        const me = fx.caster;
+        if (duel.winner === fx.data.side) {
+          const got = api.addScore(me, 2);
+          api.feed(`Duel Wager: ${api.name(me)} won their duel and the bet, +${plural(got, 'point')}.`, 'good');
+        } else if (duel.winner === 'draw') {
+          api.feed('Duel Wager: your duel was a draw, so the bet changes nothing.', 'info', [me]);
+        } else {
+          const lost = -api.addScore(me, -1);
+          api.feed(lost ? `Duel Wager: ${api.name(me)} lost their duel and the bet, −1 point.` : 'Duel Wager: you lost the duel, but had no point to lose.', lost ? 'bad' : 'info', lost ? undefined : [me]);
+        }
+      },
+    },
+    overlay: () => ({ kind: 'badge', text: 'Duel wager: win +2, lose −1', tone: 'info' }),
   },
 ];
 
