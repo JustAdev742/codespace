@@ -32,6 +32,8 @@ services:
       # Shown on the privacy policy and terms: who runs this copy and how to reach them.
       OPERATOR_NAME: ${OPERATOR_NAME:-}
       OPERATOR_CONTACT: ${OPERATOR_CONTACT:-}
+      # Optional: a school's own colours and typeface, e.g. hills-grammar. Empty keeps Ludora's look.
+      SCHOOL_THEME: ${SCHOOL_THEME:-}
       TRUST_PROXY: ${TRUST_PROXY:-true}
       COOKIE_SECURE: ${COOKIE_SECURE:-true}
       LOG_LEVEL: ${LOG_LEVEL:-info}

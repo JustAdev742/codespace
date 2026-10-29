@@ -52,6 +52,8 @@ export default defineConfig({
       EXTRA_ORIGINS: '',
       WEB_DIST: resolve('web/dist'),
       WEB_PRIVATE_DIST: resolve('web/dist-private'),
+      // E2E_SCHOOL_THEME=hills-grammar runs the suite in a school's look.
+      SCHOOL_THEME: process.env.E2E_SCHOOL_THEME ?? '',
       LOG_LEVEL: 'warn',
     },
   },

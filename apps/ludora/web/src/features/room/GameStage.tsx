@@ -168,7 +168,7 @@ export function GameStage({ room, handle, isHost }: { room: RoomView; handle: Ro
         </div>
       ) : null}
       {paused && !isHost ? (
-        <div className="absolute -inset-2 z-20 grid place-items-center rounded-[var(--radius-l)] bg-[rgb(5_8_24/0.72)] backdrop-blur-sm">
+        <div className="absolute -inset-2 z-20 grid place-items-center rounded-[var(--radius-l)] bg-[color-mix(in_srgb,var(--stage-4)_72%,transparent)] backdrop-blur-sm">
           <div className="paper stage-card mx-4 flex max-w-xs flex-col items-center gap-1 px-6 py-5 text-center">
             <Pause className="mb-1 size-10" aria-hidden />
             <p className="font-display text-[2.25rem] leading-tight font-extrabold">Paused</p>

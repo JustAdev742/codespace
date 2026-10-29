@@ -109,6 +109,12 @@ jobs:
       - name: End-to-end tests (production build, real server, Chromium)
         run: npm run test:e2e
 
+      # The pages (axe on each) and a whole game again, in the school look a copy can switch on.
+      - name: Hills Grammar look (layout, accessibility and a game)
+        run: npx playwright test e2e/layout.spec.ts e2e/game.spec.ts
+        env:
+          E2E_SCHOOL_THEME: hills-grammar
+
       - name: Playable demo (static build under a sub-path, no server)
         run: npm run test:demo
 

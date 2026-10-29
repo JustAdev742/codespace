@@ -295,6 +295,19 @@ Last updated: 2026-10-29.
   - game's quiet vibraphone under questions;
   - the very high lead in Final Stretch;
   - the balance of the steel drums in market.
+- **School looks** (2026-10-29): `SCHOOL_THEME` on the server dresses that copy of Ludora in a
+  school's own colours and typeface, from the first paint, on every page and game screen.
+  - `hills-grammar` was made at the request of The Hills Grammar School's junior principal. It
+    uses the green palette published on the school's website, a pine-green game stage, the
+    school's red and cyan as the floodlight's side glows, and Lato, the school's typeface.
+  - Two colours are tinted a little so dark text on them passes 4.5:1. Rarity colours,
+    collectible art and the 3D worlds stay as they are.
+  - Everywhere else (the demo, any other school) keeps Ludora's look. Its start page is
+    pixel-identical to before.
+  - Checked on 27 screens in Chromium (16 pages in light and dark, and a whole game on a phone
+    and the big screen): no axe violations, no text spilling out with Lato. CI reruns the
+    layout and game tests in this look.
+  - Not done yet: the school's own avatars, which it is emailing.
 - **Playable demo** (D42): a static build for GitHub Pages
   (`npm run build:demo`) where a whole game runs in the browser against up to
   19 practice bots: every mode, the 20 built-in sets, the big-screen view with

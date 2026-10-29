@@ -42,7 +42,7 @@ function Seat({ p, onKick, delay }: { p: RoomPlayerView; onKick?: (() => void) |
       <span className="relative">
         <PlayerGlim avatar={p.avatar} seed={p.id} size={128} className={`size-[var(--seat)] ${p.connected ? '' : 'opacity-45 grayscale'}`} />
         {p.isBot || !p.connected ? (
-          <span className={`absolute -right-1 bottom-0 grid size-[max(1.6rem,calc(var(--seat)*0.3))] place-items-center rounded-full shadow-[0_0_0_3px_#151b40] ${p.connected ? 'bg-dusk text-on-accent' : 'paper'}`} title={p.connected ? 'Practice bot' : 'Away'}>
+          <span className={`absolute -right-1 bottom-0 grid size-[max(1.6rem,calc(var(--seat)*0.3))] place-items-center rounded-full shadow-[0_0_0_3px_var(--stage-2)] ${p.connected ? 'bg-dusk text-on-accent' : 'paper'}`} title={p.connected ? 'Practice bot' : 'Away'}>
             {p.connected ? <Bot className="size-[60%]" aria-hidden /> : <WifiOff className="size-[55%]" aria-hidden />}
             <span className="sr-only">{p.connected ? 'Bot' : 'Away'}</span>
           </span>

@@ -4,6 +4,8 @@
 @import '@fontsource/barlow-condensed/800.css';
 @import '@fontsource/barlow-condensed/800-italic.css';
 @import '@fontsource-variable/atkinson-hyperlegible-next/wght.css';
+/* Schools' own looks, switched on by the server (SCHOOL_THEME). */
+@import './schools.css';
 
 /*
  * Ludora design tokens: "game night, live" (docs/DESIGN.md).
@@ -167,6 +169,12 @@
   --rose: #ff5ca8;
   --floodlight: #3a6bff;
   --on-accent: #0b1020;
+  /* The typefaces, by role. A school's look swaps them (schools.css). */
+  --face-display: 'Barlow Condensed', 'Atkinson Hyperlegible Next Variable', ui-sans-serif, system-ui, sans-serif;
+  --face-sans: 'Atkinson Hyperlegible Next Variable', ui-sans-serif, system-ui, sans-serif;
+  /* The label plate for counters and the HUD bar over the stage. */
+  --plate-blue: #2f5ae8;
+  --hud: rgb(4 8 26 / 0.55);
 
   /* Answer tiles: ink text passes 4.5:1 on each; letters and shapes tell them apart too. */
   --tile-a: #ff8a2a;
@@ -242,8 +250,8 @@
   --color-rose: var(--rose);
   --color-on-accent: var(--on-accent);
   --color-link: var(--link);
-  --font-display: 'Barlow Condensed', 'Atkinson Hyperlegible Next Variable', ui-sans-serif, system-ui, sans-serif;
-  --font-sans: 'Atkinson Hyperlegible Next Variable', ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--face-display);
+  --font-sans: var(--face-sans);
   --radius-s: var(--radius-s);
   --radius-m: var(--radius-m);
   --radius-l: var(--radius-l);
@@ -383,12 +391,12 @@
   }
   /* A shade darker than the floodlight, so white text passes AA at any size (5.6:1). */
   .plate-blue {
-    background: #2f5ae8;
+    background: var(--plate-blue);
     color: #ffffff;
   }
   /* A HUD bar over the stage: smoked glass, a fine edge. */
   .hud {
-    background: rgb(4 8 26 / 0.55);
+    background: var(--hud);
     border: 1px solid rgb(255 255 255 / 0.08);
     backdrop-filter: blur(8px);
   }

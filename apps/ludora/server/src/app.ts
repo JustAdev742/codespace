@@ -4,7 +4,7 @@ import helmet from '@fastify/helmet';
 import rateLimit from '@fastify/rate-limit';
 import multipart from '@fastify/multipart';
 import fastifyStatic from '@fastify/static';
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import type pg from 'pg';
 import type { Config } from './config.ts';
@@ -14,6 +14,7 @@ import { notApi, requestKey } from './http/limits.ts';
 import { authRoutes } from './modules/auth/routes.ts';
 import { RoomManager } from './realtime/manager.ts';
 import { scheduleRetention } from './modules/users/retention.ts';
+import { withSchoolTheme } from './school-theme.ts';
 import type { QuestionDrafter } from './modules/ai/drafter.ts';
 
 export interface AppDeps {
@@ -83,7 +84,8 @@ export async function buildApp(base: Omit<AppDeps, 'serveSpa' | 'rooms' | 'log'>
   const webDist = resolve(process.cwd(), config.WEB_DIST);
   if (existsSync(resolve(webDist, 'index.html'))) {
     await app.register(fastifyStatic, { root: webDist, prefix: '/', wildcard: false, index: false });
-    deps.serveSpa = async (_req, reply) => reply.type('text/html').header('cache-control', 'no-cache').sendFile('index.html');
+    const page = withSchoolTheme(readFileSync(resolve(webDist, 'index.html'), 'utf8'), config.SCHOOL_THEME);
+    deps.serveSpa = async (_req, reply) => reply.type('text/html').header('cache-control', 'no-cache').send(page);
     app.get('/', (req, reply) => deps.serveSpa!(req, reply));
   }
   // The demo runs entirely in the browser (bots, no server calls), so it is just files: handy

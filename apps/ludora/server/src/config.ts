@@ -9,6 +9,10 @@ import { z } from 'zod';
 export const APP_ENVS = ['development', 'test', 'sandbox', 'production'] as const;
 export type AppEnv = (typeof APP_ENVS)[number];
 
+/** School looks a copy of Ludora can switch on: the school's own colours and font (web/src/styles/schools.css). */
+export const SCHOOL_THEMES = ['hills-grammar'] as const;
+export type SchoolTheme = (typeof SCHOOL_THEMES)[number];
+
 const bool = z
   .string()
   .optional()
@@ -46,6 +50,8 @@ const schema = z.object({
   /** Who runs this copy of Ludora and how to reach them, shown on the privacy policy and terms. */
   OPERATOR_NAME: z.preprocess((v) => (v === '' ? undefined : v), z.string().max(120).optional()),
   OPERATOR_CONTACT: z.preprocess((v) => (v === '' ? undefined : v), z.string().max(200).optional()),
+  /** A school's look for this copy, e.g. hills-grammar. Unset: Ludora's own. */
+  SCHOOL_THEME: z.preprocess((v) => (v === '' ? undefined : v), z.enum(SCHOOL_THEMES).optional()),
   SMTP_URL: z.string().optional(),
   MAIL_FROM: z.string().default('Ludora <no-reply@ludora.local>'),
 });

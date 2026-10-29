@@ -300,7 +300,7 @@ export function GlimgoPlayer({ view, act, gameNow, paused, room }: ModeScreenPro
       <div className="relative">
         <Card squares={you.squares} size={view.size} onMark={(i) => void mark(i)} canMark={canMark} wrong={wrongNow} showLines={view.phase === 'finale' && view.winner?.playerId === room.me.playerId} label="Your Glimgo card" />
         {lockLeft ? (
-          <div className="pointer-events-none absolute inset-0 grid place-items-center rounded-[var(--radius-l)] bg-[rgb(5_8_24/0.62)]" aria-hidden>
+          <div className="pointer-events-none absolute inset-0 grid place-items-center rounded-[var(--radius-l)] bg-[color-mix(in_srgb,var(--stage-4)_62%,transparent)]" aria-hidden>
             <span className="flex items-center gap-2 rounded-full bg-ember px-4 py-2 font-display text-[1.75rem] font-extrabold text-on-accent tabular">
               <Lock className="size-6" /> {lockLeft}
             </span>

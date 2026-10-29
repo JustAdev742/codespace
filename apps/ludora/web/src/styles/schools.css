@@ -1,0 +1,133 @@
+/*
+ * Schools' own looks. When SCHOOL_THEME is set, the server adds data-school="<id>" to <html>
+ * (server/src/school-theme.ts), so the school's copy of Ludora wears its colours and typeface
+ * from the first paint. Nothing here applies anywhere else.
+ *
+ * Every selector carries one more attribute than the app.css rule it overrides, so it wins
+ * whichever file comes first.
+ */
+@import '@fontsource/lato/400.css';
+@import '@fontsource/lato/700.css';
+@import '@fontsource/lato/900.css';
+@import '@fontsource/lato/900-italic.css';
+
+/*
+ * The Hills Grammar School, at the school's request: the palette its website publishes
+ * (primary #205A41, secondary #00A766, accent #65BD60, red #C02327 and #EE3350, teal #007366,
+ * cyan #48B9C7, blue #008CCC, mauve #98899A, text #1D2020, paper #FAFCFC) and its typeface, Lato.
+ * Two are tinted so dark text on them passes 4.5:1: the red (#F04B65, 12% lighter) and the blue
+ * (#1495D0, 8%). Rarity colours stay as they are: players learn them across the whole game.
+ */
+:root[data-school='hills-grammar'] {
+  --face-display: 'Lato', ui-sans-serif, system-ui, sans-serif;
+  --face-sans: 'Lato', ui-sans-serif, system-ui, sans-serif;
+  --lantern: #65bd60;
+  --lantern-deep: #3f9a3c;
+  --glim: #00a766;
+  --ember: #f04b65;
+  --dusk: #98899a;
+  --sky: #48b9c7;
+  --floodlight: #00a766;
+  --on-accent: #10201a;
+  /* Answer tiles: dark text passes 4.5:1 on each, and letters and shapes still tell them apart. */
+  --tile-a: #48b9c7;
+  --tile-b: #f04b65;
+  --tile-c: #65bd60;
+  --tile-d: #98899a;
+  --tile-e: #1495d0;
+  --tile-f: #00a766;
+  /* The school's teal: white text passes at 5.8:1. */
+  --plate-blue: #007366;
+  --hud: rgb(3 14 9 / 0.55);
+}
+
+/* Dark: pine green instead of midnight navy. */
+:root[data-school='hills-grammar'],
+:root[data-school='hills-grammar'][data-theme='dark'] {
+  --bg: #0b1f17;
+  --bg-raised: #11291f;
+  --bg-sunken: #07160f;
+  --surface-2: #163327;
+  --surface-3: #1d3f30;
+  --line: #24493a;
+  --line-strong: #3b6b56;
+  --text: #f3faf6;
+  --text-2: #c4dccf;
+  --text-3: #94b5a5;
+  --ink: #07160f;
+  --focus: #65bd60;
+  --link: #7fd07a;
+  --scrim: rgb(4 14 9 / 0.75);
+}
+
+/* Light: the school's paper and ink, with its deep green for links and focus. */
+:root[data-school='hills-grammar'][data-theme='light'] {
+  --bg: #fafcfc;
+  --bg-raised: #ffffff;
+  --bg-sunken: #edf2f0;
+  --surface-2: #f6f9f8;
+  --surface-3: #ebf1ef;
+  --line: #d5e0db;
+  --line-strong: #a9bdb4;
+  --text: #1d2020;
+  --text-2: #3c4a45;
+  --text-3: #5b6b65;
+  --ink: #1d2020;
+  --focus: #205a41;
+  --link: #205a41;
+  --scrim: rgb(29 32 32 / 0.55);
+  --glim-text: #007366;
+  --lantern-text: #205a41;
+  --ember-text: #c02327;
+  --sky-text: #00687a;
+}
+@media (prefers-color-scheme: light) {
+  :root[data-school='hills-grammar']:not([data-theme='dark']) {
+    --bg: #fafcfc;
+    --bg-raised: #ffffff;
+    --bg-sunken: #edf2f0;
+    --surface-2: #f6f9f8;
+    --surface-3: #ebf1ef;
+    --line: #d5e0db;
+    --line-strong: #a9bdb4;
+    --text: #1d2020;
+    --text-2: #3c4a45;
+    --text-3: #5b6b65;
+    --ink: #1d2020;
+    --focus: #205a41;
+    --link: #205a41;
+    --scrim: rgb(29 32 32 / 0.55);
+    --glim-text: #007366;
+    --lantern-text: #205a41;
+    --ember-text: #c02327;
+    --sky-text: #00687a;
+  }
+}
+
+/*
+ * The stage: pine green under a soft green floodlight, with the school's cyan glowing low on one
+ * side and its red on the other. White text passes 12:1 at the top, where it is brightest.
+ */
+[data-school='hills-grammar'] .stage,
+[data-school='hills-grammar'] .on-stage {
+  --stage-1: #0f3a2a;
+  --stage-2: #0a2a1e;
+  --stage-3: #082419;
+  --stage-4: #051710;
+  --stage-sky:
+    radial-gradient(70% 55% at 50% -12%, rgb(101 189 96 / 0.42) 0%, rgb(0 167 102 / 0.14) 45%, transparent 72%),
+    radial-gradient(45% 50% at 0% 100%, rgb(72 185 199 / 0.16) 0%, transparent 70%),
+    radial-gradient(45% 50% at 100% 100%, rgb(192 35 39 / 0.14) 0%, transparent 70%),
+    linear-gradient(180deg, var(--stage-1) 0%, var(--stage-2) 55%, var(--stage-4) 100%);
+  --text-2: #d3e6dc;
+  --text-3: #a6c2b4;
+  --focus: #65bd60;
+}
+[data-school='hills-grammar'] .paper {
+  --link: #205a41;
+  --focus: #205a41;
+}
+/* Lato is wider than the condensed display face: big headings sit a touch tighter. */
+[data-school='hills-grammar'] :is(h1, h2, .font-display) {
+  letter-spacing: -0.01em;
+}

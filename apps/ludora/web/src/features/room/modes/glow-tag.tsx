@@ -158,7 +158,7 @@ function ArenaMap2D({ field, view, gameNow, className = '' }: { field: Field; vi
   const beams = view.beams.filter((b) => now - b.at < 500);
   const me = players.find((p) => p.me);
   return (
-    <div className={`flex items-center justify-center bg-[#0b1020] ${className}`}>
+    <div className={`flex items-center justify-center bg-[var(--stage-4)] ${className}`}>
       <svg
         viewBox={`${-half - 1} ${-half - 1} ${size + 2} ${size + 2}`}
         className="h-full max-h-full w-full max-w-full"

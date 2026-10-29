@@ -165,4 +165,35 @@ describe('serving the built web app', () => {
       await web.close();
     }
   });
+
+  it("switches on a school's look in the page when SCHOOL_THEME is set, and refuses an unknown one", async () => {
+    const { mkdtempSync, writeFileSync } = await import('node:fs');
+    const { tmpdir } = await import('node:os');
+    const { join } = await import('node:path');
+    const dist = mkdtempSync(join(tmpdir(), 'ludora-web-'));
+    const html = [
+      '<!doctype html><html lang="en-GB"><head>',
+      '<meta name="theme-color" content="#0D1230" media="(prefers-color-scheme: dark)" />',
+      '<meta name="theme-color" content="#F3F5FB" media="(prefers-color-scheme: light)" />',
+      '<title>Ludora</title></head></html>',
+    ].join('');
+    writeFileSync(join(dist, 'index.html'), html);
+    const plain = await createTestApp({ WEB_DIST: dist });
+    const school = await createTestApp({ WEB_DIST: dist, SCHOOL_THEME: 'hills-grammar' });
+    try {
+      expect((await plain.app.inject({ method: 'GET', url: '/' })).body).toBe(html);
+      for (const url of ['/', '/play']) {
+        const body = (await school.app.inject({ method: 'GET', url })).body;
+        expect(body).toContain('<html lang="en-GB" data-school="hills-grammar">');
+        expect(body).toContain('content="#0B1F17" media="(prefers-color-scheme: dark)"');
+        expect(body).toContain('content="#FAFCFC" media="(prefers-color-scheme: light)"');
+      }
+    } finally {
+      await plain.close();
+      await school.close();
+    }
+    const { loadConfig } = await import('../src/config.ts');
+    expect(() => loadConfig({ SCHOOL_THEME: 'some-other-school' })).toThrow(/SCHOOL_THEME/);
+    expect(loadConfig({ SCHOOL_THEME: '' }).SCHOOL_THEME).toBeUndefined();
+  });
 });
