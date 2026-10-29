@@ -40,9 +40,18 @@ export function operator(...args: string[]): string {
 /** Collects page errors and console errors, so a test can assert there were none. */
 export function watchErrors(page: Page): string[] {
   const errors: string[] = [];
+  // Every browser reports Content-Security-Policy violations as events, but only some log them.
+  void page.addInitScript(() => document.addEventListener('securitypolicyviolation', (e) => console.error(`CSP violation: ${e.violatedDirective} ${e.blockedURI} in ${e.sourceFile}`)));
+  const webkit = page.context().browser()?.browserType().name() === 'webkit';
   page.on('pageerror', (e) => errors.push(String(e)));
   page.on('console', (m) => {
-    if (m.type() === 'error') errors.push(m.text());
+    if (m.type() !== 'error') return;
+    // WebKit words a same-origin load cut off by a reload or navigation (sound files still
+    // arriving, say) as failing "access control checks". A same-origin request has no such
+    // checks to fail, so it is not an error in the page.
+    const cut = webkit ? /^Fetch API cannot load (.+) due to access control checks\.$/.exec(m.text()) : null;
+    if (cut && cut[1]!.includes(new URL(page.url()).host)) return;
+    errors.push(m.text());
   });
   return errors;
 }
