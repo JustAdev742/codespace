@@ -100,6 +100,8 @@ export const router = createBrowserRouter([
           { path: 'reports', lazy: page(() => import('../features/reports/HostedGames.tsx')) },
           { path: 'reports/:gameId', lazy: page(() => import('../features/reports/GameReport.tsx')) },
           { path: 'settings', lazy: page(() => import('../features/settings/Settings.tsx')) },
+          { path: 'privacy', lazy: page(() => import('../features/legal/Privacy.tsx')) },
+          { path: 'terms', lazy: page(() => import('../features/legal/Terms.tsx')) },
           { path: 'staff/*', lazy: page(() => import('../features/admin/StaffApp.tsx')) },
           { path: '*', lazy: page(() => import('../features/errors/NotFound.tsx')) },
         ],

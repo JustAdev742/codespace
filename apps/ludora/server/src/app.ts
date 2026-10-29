@@ -13,6 +13,7 @@ import { registerAuthHook, registerCsrfGuard, registerErrorHandler } from './htt
 import { notApi, requestKey } from './http/limits.ts';
 import { authRoutes } from './modules/auth/routes.ts';
 import { RoomManager } from './realtime/manager.ts';
+import { scheduleRetention } from './modules/users/retention.ts';
 import type { QuestionDrafter } from './modules/ai/drafter.ts';
 
 export interface AppDeps {
@@ -41,6 +42,8 @@ export async function buildApp(base: Omit<AppDeps, 'serveSpa' | 'rooms' | 'log'>
   const deps = { ...base, log: app.log } as AppDeps;
   deps.rooms = new RoomManager(deps);
   app.addHook('onClose', async () => deps.rooms.shutdown());
+  const stopRetention = scheduleRetention(deps.db, app.log);
+  app.addHook('onClose', async () => stopRetention());
   // First, so every hook, plugin and route reports errors in the same shape.
   registerErrorHandler(app, deps);
 

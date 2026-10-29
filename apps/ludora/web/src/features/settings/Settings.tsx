@@ -10,6 +10,7 @@ import { AccountError, Field, Input, PageHeader, Panel, Select, Skeleton, Switch
 import { SecretLantern } from '../chaos/ChaosEntry.tsx';
 import { Button, ButtonLink } from '../../ui/Button.tsx';
 import { RecoveryCodeDialog } from '../auth/RecoveryCodeDialog.tsx';
+import { YourData } from './YourData.tsx';
 
 type Patch = Partial<Omit<Preferences, 'notifications' | 'privacy'>> & { notifications?: Partial<Preferences['notifications']>; privacy?: Partial<Preferences['privacy']> };
 
@@ -283,6 +284,7 @@ export default function Settings() {
             </>
           )}
         </Panel>
+        <YourData username={user.username} isGuest={user.isGuest} />
         <Panel className="flex items-center gap-4 p-5">
           <SecretLantern />
           <div>

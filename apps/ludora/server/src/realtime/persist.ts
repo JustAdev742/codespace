@@ -94,7 +94,7 @@ export async function persistGame(deps: AppDeps, room: Room, results: EngineResu
             gameId,
             userId: who.userId,
             playerKey: s.playerId,
-            displayName: s.name,
+            displayName: who.forgotten ? who.name : s.name,
             isGuest: who.isGuest,
             isBot: s.isBot,
             teamId: s.teamId,

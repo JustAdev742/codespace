@@ -43,6 +43,9 @@ const schema = z.object({
   ANTHROPIC_MODEL: z.string().default('claude-opus-5-5'),
   /** AI draft requests allowed across the whole site in any 24 hours, to cap spending. */
   AI_DRAFTS_DAILY_LIMIT: z.coerce.number().int().min(0).default(500),
+  /** Who runs this copy of Ludora and how to reach them, shown on the privacy policy and terms. */
+  OPERATOR_NAME: z.preprocess((v) => (v === '' ? undefined : v), z.string().max(120).optional()),
+  OPERATOR_CONTACT: z.preprocess((v) => (v === '' ? undefined : v), z.string().max(200).optional()),
   SMTP_URL: z.string().optional(),
   MAIL_FROM: z.string().default('Ludora <no-reply@ludora.local>'),
 });

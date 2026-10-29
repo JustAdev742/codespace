@@ -278,9 +278,18 @@ export function Shell() {
             <AccountMenu />
           </div>
         </header>
-        <main id="main" key={location.pathname.split('/')[1]} className="mx-auto w-full max-w-[1200px] flex-1 px-4 pt-6 pb-28 sm:px-6 lg:pb-12">
+        <main id="main" key={location.pathname.split('/')[1]} className="mx-auto w-full max-w-[1200px] flex-1 px-4 pt-6 pb-10 sm:px-6">
           <Outlet />
         </main>
+        {/* Clear of the phone's bottom bar. */}
+        <footer className="mx-auto flex w-full max-w-[1200px] flex-wrap gap-x-5 gap-y-2 px-4 pb-28 text-sm text-text-3 sm:px-6 lg:pb-8">
+          <Link to="/privacy" className="hover:text-text">
+            Privacy policy
+          </Link>
+          <Link to="/terms" className="hover:text-text">
+            Terms of use
+          </Link>
+        </footer>
       </div>
 
       <nav aria-label="Quick" className="stage-plain on-stage fixed inset-x-0 bottom-0 z-30 grid grid-cols-5 border-t border-white/10 pb-[env(safe-area-inset-bottom)] lg:hidden">

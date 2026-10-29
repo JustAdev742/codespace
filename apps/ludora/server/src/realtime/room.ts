@@ -157,7 +157,7 @@ export class Room {
   status: RoomStatus = 'lobby';
   readonly players = new Map<string, RoomPlayer>();
   /** Everyone who has ever been in the room, kept after they leave so results can credit them. */
-  readonly roster = new Map<string, { userId: string | null; name: string; isGuest: boolean; isBot: boolean }>();
+  readonly roster = new Map<string, { userId: string | null; name: string; isGuest: boolean; isBot: boolean; forgotten?: true }>();
   teams: TeamView[] = [];
   runtime: GameRuntime | null = null;
   gameId: string | null = null;
@@ -359,6 +359,14 @@ export class Room {
     const p = this.players.get(playerId);
     if (!p) return;
     this.removePlayer(p, `${p.name} left.`);
+  }
+
+  /**
+   * The account is being deleted: its entries in the roster stop naming it, so the game is saved
+   * as if a guest had played those slots (results count them, no account is linked or paid).
+   */
+  forgetUser(userId: string): void {
+    for (const [id, r] of this.roster) if (r.userId === userId) this.roster.set(id, { ...r, userId: null, name: 'Player', isGuest: true, forgotten: true });
   }
 
   /** Staff removal: like a host kick, for every player slot this account holds, and it cannot rejoin. */

@@ -130,6 +130,17 @@ export default function SignUp() {
         <Button type="submit" variant="primary" size="lg" loading={busy} disabled={!form.username || !form.password}>
           {isGuest ? 'Save my progress' : 'Create account'}
         </Button>
+        <p className="text-sm text-text-3">
+          By {isGuest ? 'saving your progress' : 'creating an account'} you agree to the{' '}
+          <Link to="/terms" className="font-semibold text-text-2 underline underline-offset-2">
+            terms of use
+          </Link>
+          . The{' '}
+          <Link to="/privacy" className="font-semibold text-text-2 underline underline-offset-2">
+            privacy policy
+          </Link>{' '}
+          says what Ludora keeps and how to delete it.
+        </p>
       </form>
       <RecoveryCodeDialog
         code={code}

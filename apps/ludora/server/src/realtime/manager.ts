@@ -105,6 +105,15 @@ export class RoomManager {
     return affected;
   }
 
+  /**
+   * An account is being deleted: take it out of every live room (as removeUser does) and out of
+   * every room's roster, so no game saved later points at the account.
+   */
+  forgetUser(userId: string, notice: string): void {
+    this.removeUser(userId, notice);
+    for (const room of this.list()) room.forgetUser(userId);
+  }
+
   sweep() {
     for (const room of [...this.rooms.values()]) {
       try {

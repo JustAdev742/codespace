@@ -28,6 +28,7 @@ Nothing secret is committed; copy `.env.example` to `.env` for compose.
 | `PUBLIC_ORIGIN` | yes | The address people open, e.g. `https://play.example.org`. Used for CSRF and WebSocket origin checks; requests from other origins are refused. |
 | `IP_HASH_KEY` | yes in production | At least 16 random characters. IP addresses are only stored as keyed hashes. Production refuses the `change-me` and `dev-only` placeholders. |
 | `CHAOS_SECRET` | no | At least 16 random characters (`openssl rand -hex 32`). Seeds the secret lantern's knock rhythm (see CHAOS.md); without it the rhythm is derived from `IP_HASH_KEY`. Keep it in the host's secret store or `.env`, never in the repository. Changing it changes the rhythm. |
+| `OPERATOR_NAME`, `OPERATOR_CONTACT` | before real use | Who runs this copy (a school, a trust, a company) and an email or address for privacy questions. The privacy policy and terms at `/privacy` and `/terms` name them; until they are set, those pages say the operator has not added contact details. |
 | `APP_ENV` | no (production in the image) | See above. |
 | `TRUST_PROXY` | behind a proxy | `true` when a reverse proxy sets `X-Forwarded-For`; needed for per-IP rate limits. |
 | `COOKIE_SECURE` | no | Defaults to `true` in production. Only set `false` to try the image over plain http on your own machine. |
@@ -140,10 +141,34 @@ It creates a teacher account and a room, so point it at a test server, not a liv
   wallets and the ledger, collections, sets, classes, reports and the audit log.
 - Passwords and recovery codes are stored as Argon2id hashes; session cookies are
   stored as SHA-256 hashes; IP addresses only as keyed hashes.
-- If an account row is deleted, its wallet, ledger entries, inventory, sessions
-  and memberships go with it; audit rows and other people's ledger entries keep
-  their history with the staff actor set to null. There is no self-service
-  account deletion in the app yet.
+- Players download or delete their own account under **Settings → Your data**
+  (`GET /api/me/export`, `POST /api/me/delete`; see `server/src/modules/users/account.ts`).
+  Deleting needs the username typed out and the password, and is refused for staff
+  roles (remove the roles first). It removes the account with its wallet, ledger,
+  collection, sessions, friendships, the classes it teaches, its private sets and
+  images no remaining set uses. Game results stay with the name replaced by
+  "Player"; public sets stay without an owner; audit entries stay with the name
+  replaced by "Deleted account".
+- Deleted rows remain in database backups until those backups expire. Say how
+  long you keep backups in your privacy policy.
+
+## Privacy policy and terms
+
+`/privacy` and `/terms` (linked from sign-up, Settings and every page's footer) describe
+what this software actually stores and does: checked against the code on 2026-10-29, in
+plain words for students. They are a starting point, not legal advice. Before real
+students use your copy:
+
+- set `OPERATOR_NAME` and `OPERATOR_CONTACT`, so both pages say who runs it and how to
+  reach you (until then they show a notice saying the operator has not);
+- have the text checked against the law that applies to you (in Australia, the Privacy
+  Act 1988 and your state's rules for schools), and add how long you keep backups;
+- edit `web/src/features/legal/Privacy.tsx` and `Terms.tsx` if your copy differs, for
+  example if you switch on AI question drafts or keep logs elsewhere.
+
+Ludora removes sign-in records a week after they end, and guest accounts nobody can get
+back into once they are 30 days old (`server/src/modules/users/retention.ts`, every six
+hours).
 
 ## Health and monitoring
 
