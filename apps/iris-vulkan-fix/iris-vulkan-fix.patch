@@ -1,0 +1,51 @@
+diff --git a/common/src/main/java/net/irisshaders/iris/compat/sodium/mixin/MixinRenderSectionManagerShadow.java b/common/src/main/java/net/irisshaders/iris/compat/sodium/mixin/MixinRenderSectionManagerShadow.java
+index 6c07f59..7887bf0 100644
+--- a/common/src/main/java/net/irisshaders/iris/compat/sodium/mixin/MixinRenderSectionManagerShadow.java
++++ b/common/src/main/java/net/irisshaders/iris/compat/sodium/mixin/MixinRenderSectionManagerShadow.java
+@@ -1,8 +1,10 @@
+ package net.irisshaders.iris.compat.sodium.mixin;
+ 
++import com.llamalad7.mixinextras.injector.v2.WrapWithCondition;
+ import com.llamalad7.mixinextras.injector.wrapmethod.WrapMethod;
+ import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
+ import com.mojang.blaze3d.systems.RenderSystem;
++import net.caffeinemc.mods.sodium.client.render.chunk.ChunkRenderer;
+ import net.caffeinemc.mods.sodium.client.render.chunk.RenderSection;
+ import net.caffeinemc.mods.sodium.client.render.chunk.RenderSectionManager;
+ import net.caffeinemc.mods.sodium.client.render.chunk.UniformBufferManager;
+@@ -186,6 +188,19 @@ public abstract class MixinRenderSectionManagerShadow implements ShadowRenderLis
+ 		return region;
+ 	}
+ 
++	/**
++	 * Sodium's indirect draw path (what GPUs without VK_EXT_multi_draw use, e.g. AMD) keeps the draw commands of
++	 * every region in one slot of a ring buffer per frame, and prepareRender() moves on to the next slot. The main
++	 * pass writes its commands before Iris renders the shadow pass, whose own setupTerrain() would move on again:
++	 * the main pass then read the shadow pass's commands (and stale ones) and drew terrain as stretched, floating
++	 * blocks. Both passes share the frame's slot instead; their commands sit at different offsets.
++	 */
++	@WrapWithCondition(method = "prepareRender", remap = false,
++		at = @At(value = "INVOKE", target = "Lnet/caffeinemc/mods/sodium/client/render/chunk/ChunkRenderer;rotate()V", remap = false))
++	private boolean iris$shareDrawCommandsWithShadowPass(ChunkRenderer chunkRenderer) {
++		return !ShadowRenderingState.areShadowsCurrentlyBeingRendered();
++	}
++
+ 	@Inject(method = "prepareRenderTrees", at = @At("HEAD"), cancellable = true, remap = false)
+ 	private void skipAsyncCullDuringShadow(Viewport viewport, FogParameters fogParameters, boolean useOcclusionCulling, CallbackInfo ci) {
+ 		if (ShadowRenderingState.areShadowsCurrentlyBeingRendered()) {
+diff --git a/common/src/main/java/net/irisshaders/iris/mixin/IrisMixinPlugin.java b/common/src/main/java/net/irisshaders/iris/mixin/IrisMixinPlugin.java
+index 69d73ac..014aadb 100644
+--- a/common/src/main/java/net/irisshaders/iris/mixin/IrisMixinPlugin.java
++++ b/common/src/main/java/net/irisshaders/iris/mixin/IrisMixinPlugin.java
+@@ -121,7 +121,10 @@ public class IrisMixinPlugin implements IMixinConfigPlugin {
+ 
+ 	@Override
+ 	public void postApply(String targetClassName, ClassNode targetClass, String mixinClassName, IMixinInfo mixinInfo) {
+-		if (usingVulkan && targetClassName.equals(VulkanGlGuardTransformer.TARGET)) {
++		// Installed whatever options.txt says: with "preferredGraphicsBackend" at "default" the game can still end up
++		// on Vulkan (for example when OpenGL can't start), and one raw GL call then aborts the JVM. The guard does
++		// nothing unless the Vulkan device is active (see VulkanGlGuard), so on OpenGL it only costs a check.
++		if (targetClassName.equals(VulkanGlGuardTransformer.TARGET)) {
+ 			VulkanGlGuardTransformer.transform(targetClass);
+ 		}
+ 	}
