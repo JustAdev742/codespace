@@ -8,7 +8,7 @@ import { Dialog, Spinner } from '../../ui/primitives.tsx';
 import { Button } from '../../ui/Button.tsx';
 import { MODE_SCREENS } from './modes/registry.ts';
 import { useAnnounce } from './game/announce.tsx';
-import { ChaosLayer } from '../chaos/ChaosLayer.tsx';
+import { ChaosLayer } from '../extras/ExtrasLayer.tsx';
 
 /*
  * The parts of a game room that do not care where the room runs: the stage,

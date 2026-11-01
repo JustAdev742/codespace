@@ -3,7 +3,7 @@ import type { Media, PublicQuestion } from '@ludora/shared';
 import { useAnnounce } from './announce.tsx';
 import { focusAdrift, focusSettled } from '../../../lib/focus.ts';
 import { useSfx, useSharedSounds } from '../../../lib/sound/react.tsx';
-import { useChaosPrompt } from '../../chaos/ChaosLayer.tsx';
+import { useChaosPrompt } from '../../extras/ExtrasLayer.tsx';
 
 const IMAGE_HEIGHT = {
   /** Projector: beside the prompt, as tall as the screen comfortably allows. */

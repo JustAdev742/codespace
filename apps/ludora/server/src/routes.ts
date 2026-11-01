@@ -12,7 +12,7 @@ import { classRoutes } from './modules/classes/routes.ts';
 import { analyticsRoutes } from './modules/analytics/routes.ts';
 import { uploadRoutes } from './modules/uploads/routes.ts';
 import { aiRoutes } from './modules/ai/routes.ts';
-import { chaosRoutes } from './modules/chaos/routes.ts';
+import { chaosRoutes } from './modules/extras/routes.ts';
 import { eventRoutes } from './modules/events/routes.ts';
 import { studioRoutes } from './modules/studio/routes.ts';
 import { gameRoutes } from './modules/games/routes.ts';

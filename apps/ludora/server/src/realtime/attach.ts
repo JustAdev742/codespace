@@ -9,7 +9,7 @@ import { originAllowed } from '../http/origins.ts';
 import { hashIp } from '../lib/crypto.ts';
 import { SESSION_COOKIE, resolveSession } from '../modules/auth/service.ts';
 import { loadAvatar } from '../modules/profiles/avatar.ts';
-import { chaosService } from '../modules/chaos/service.ts';
+import { chaosService } from '../modules/extras/service.ts';
 import { fail, type Ack, type Room, type RoomSubscriber } from './room.ts';
 
 /*

@@ -92,10 +92,10 @@ addresses. The protection is the server, not the obscurity:
 - **The cheat list and the menu's code** come from `GET /api/lantern/book` and
   `GET /api/lantern/book.js`. For a locked account both answer exactly like an address that does
   not exist (404 Not Found).
-- **The menu is a separate build** (`web/vite.chaos.config.ts`, written to `web/dist-private/`).
+- **The menu is a separate build** (`web/vite.extras.config.ts`, written to `web/dist-private/`).
   It is never served as a static file, and the public build does not contain it.
 - **The engine's public entry point does not export the cheats.** They register only through
-  `@ludora/engine/chaos-cheats`, which only the server imports.
+  `@ludora/engine/extras-effects`, which only the server imports.
 - **CI checks the public files.** `scripts/check-public-bundle.ts` searches `web/dist` and
   `web/dist-demo` for every cheat id and description, and fails the build if one turns up.
 - **The demo has no chaos.**
@@ -123,14 +123,14 @@ role, permission or staff route depends on it.
 
 | Path | What it is |
 |---|---|
-| `packages/engine/src/chaos/` | The engine side: types, registry, casting, effects, adapters for every mode. Its README is the guide to writing cheats. |
-| `packages/engine/src/chaos/cheats/` | The 209 universal cheats and the combos. |
-| `packages/engine/src/chaos/packs/` | One pack per mode. |
+| `packages/engine/src/extras/` | The engine side: types, registry, casting, effects, adapters for every mode. Its README is the guide to writing cheats. |
+| `packages/engine/src/extras/effects/` | The 209 universal cheats and the combos. |
+| `packages/engine/src/extras/packs/` | One pack per mode. |
 | `packages/engine/src/runtime/runtime.ts` | Runs casts in transactions; `cast`, `undoCast`, `stopEffect`, `calmChaos`, `chaosView`. |
-| `server/src/modules/chaos/` | The sequence, the unlock and the `/api/lantern/*` routes. |
+| `server/src/modules/extras/` | The sequence, the unlock and the `/api/lantern/*` routes. |
 | `server/src/realtime/room.ts`, `attach.ts` | Casting over the socket, dedupe, rate limits, calm. |
-| `web/src/features/chaos/` | The public end: the About lantern, the glowing lantern, the menu button and the screen effects. |
-| `web/chaos-menu/` | The private menu, built separately. |
+| `web/src/features/extras/` | The public end: the About lantern, the glowing lantern, the menu button and the screen effects. |
+| `web/extras-menu/` | The private menu, built separately. |
 
 ## The catalogue
 
@@ -167,7 +167,7 @@ their packs, and the smaller packs have grown until their modes ran out of disti
 
 ### How every cheat is tested
 
-`packages/engine/test/chaos-catalogue.test.ts` runs two identical bot games for every cheat in
+`packages/engine/test/extras-catalogue.test.ts` runs two identical bot games for every cheat in
 every mode it supports, casts it into one, and requires the two games to differ afterwards:
 
 - a cheat that changes the game must change the mode's state;
@@ -176,9 +176,9 @@ every mode it supports, casts it into one, and requires the two games to differ 
 - a cheat that waits for something to happen counts as untried in a game where it never does,
   but every cheat must work in at least one mode.
 
-Mode-specific setups live in `packages/engine/test/chaos-scenarios/`. The core rules (energy,
-shields, conflicts, undo, calm, dedupe) have their own tests in `chaos-core.test.ts`, the
-sequence and routes in `server/test/chaos.test.ts`, and `e2e/chaos.spec.ts` drives the whole
+Mode-specific setups live in `packages/engine/test/extras-scenarios/`. The core rules (energy,
+shields, conflicts, undo, calm, dedupe) have their own tests in `extras-core.test.ts`, the
+sequence and routes in `server/test/extras.test.ts`, and `e2e/extras.spec.ts` drives the whole
 thing in real browsers: knock, riddle, ritual, light, open the menu, cast Upside Down on another
 player, see their screen turn over, and calm the room.
 

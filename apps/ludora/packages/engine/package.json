@@ -18,9 +18,9 @@
     "./glow-tag-arena": "./src/modes/glow-tag/arena.ts",
     "./big-catch": "./src/modes/big-catch/odds.ts",
     "./corner-shop": "./src/modes/corner-shop/meta.ts",
-    "./chaos": "./src/chaos/index.ts",
-    "./chaos-cheats": "./src/chaos/cheats/index.ts",
-    "./chaos-overlays": "./src/chaos/overlays.ts",
+    "./extras": "./src/extras/index.ts",
+    "./extras-effects": "./src/extras/effects/index.ts",
+    "./extras-overlays": "./src/extras/overlays.ts",
     "./gold-rush": "./src/modes/gold-rush/public.ts"
   },
   "dependencies": {

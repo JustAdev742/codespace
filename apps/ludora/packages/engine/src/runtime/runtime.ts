@@ -21,10 +21,10 @@ import type {
   QuestionApi,
   Viewer,
 } from '../sdk/types.ts';
-import { ChaosEngine, emptyChaosState } from '../chaos/engine.ts';
-import { chaosAdapterFor } from '../chaos/adapters/index.ts';
-import { getCheat } from '../chaos/registry.ts';
-import type { CastOutcome, CastRequest, ChaosState, ChaosView } from '../chaos/types.ts';
+import { ChaosEngine, emptyChaosState } from '../extras/engine.ts';
+import { chaosAdapterFor } from '../extras/adapters/index.ts';
+import { getCheat } from '../extras/registry.ts';
+import type { CastOutcome, CastRequest, ChaosState, ChaosView } from '../extras/types.ts';
 
 function sameTimers(a: ReadonlyMap<string, number>, b: ReadonlyMap<string, number>): boolean {
   if (a.size !== b.size) return false;

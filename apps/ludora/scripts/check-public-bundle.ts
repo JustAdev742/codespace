@@ -5,8 +5,8 @@
  */
 import { readdirSync, readFileSync, statSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
-import '@ludora/engine/chaos-cheats';
-import { allCheats } from '@ludora/engine/chaos';
+import '@ludora/engine/extras-effects';
+import { allCheats } from '@ludora/engine/extras';
 
 const roots = ['web/dist', 'web/dist-demo'].filter((d) => existsSync(d));
 if (!roots.length) {

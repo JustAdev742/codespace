@@ -7,7 +7,7 @@ import { api, ApiError } from '../../lib/api.ts';
 import { useMe, type Preferences } from '../../lib/session.ts';
 import { applyPreferences, applyTheme, localTheme } from '../../lib/prefs.ts';
 import { AccountError, Field, Input, PageHeader, Panel, Select, Skeleton, Switch } from '../../ui/primitives.tsx';
-import { SecretLantern } from '../chaos/ChaosEntry.tsx';
+import { SecretLantern } from '../extras/ExtrasEntry.tsx';
 import { Button, ButtonLink } from '../../ui/Button.tsx';
 import { RecoveryCodeDialog } from '../auth/RecoveryCodeDialog.tsx';
 import { YourData } from './YourData.tsx';

@@ -10,7 +10,7 @@ import { Stage } from '../../ui/Stage.tsx';
 import { HostLobby, PlayerLobby } from './Lobby.tsx';
 import { Results } from './Results.tsx';
 import { ReactionBar, ReactionLayer } from './game/Reactions.tsx';
-import { ChaosMenuButton, LanternGlow } from '../chaos/ChaosEntry.tsx';
+import { ChaosMenuButton, LanternGlow } from '../extras/ExtrasEntry.tsx';
 import { ReportDialog } from '../moderation/ReportDialog.tsx';
 import { DebugOverlay } from './DebugOverlay.tsx';
 import './stage.css';
