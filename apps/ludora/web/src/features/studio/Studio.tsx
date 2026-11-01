@@ -210,7 +210,7 @@ function GlimMaker({ editing, onDone }: { editing: Draft | null; onDone: () => v
       <div className="flex flex-col gap-3 lg:sticky lg:top-4 lg:self-start">
         <div className="stage grid grid-cols-2 items-center gap-2 overflow-hidden rounded-[var(--radius-l)] p-3">
           <div className="grid place-items-center">
-            <Glim art={art} size={200} rarity={rarity} title={name || 'Your Glim'} />
+            <Glim art={art} size={200} rarity={rarity} uniform={false} title={name || 'Your Glim'} />
           </div>
           <GlimTurntable art={art} className="h-56 rounded-[var(--radius-m)]" />
         </div>
@@ -419,7 +419,7 @@ function LanternMaker({ drafts, canPublish, onDone }: { drafts: Draft[]; canPubl
                   <li key={g.id}>
                     <label className={`flex cursor-pointer items-center gap-2 rounded-[var(--radius-m)] border-2 p-2 ${on ? 'border-lantern bg-lantern/10' : 'border-line'}`}>
                       <input type="checkbox" checked={on} onChange={() => setChosen((c) => (on ? c.filter((x) => x !== g.id) : c.length < 14 ? [...c, g.id] : c))} className="size-4" />
-                      <Glim art={g.art as GlimArt} size={44} />
+                      <Glim art={g.art as GlimArt} size={44} uniform={false} />
                       <span className="min-w-0">
                         <span className="block truncate text-sm font-bold">{g.name}</span>
                         <span className="text-xs text-text-2">{RARITY_INFO[g.rarity].label}</span>
@@ -463,7 +463,7 @@ function LanternMaker({ drafts, canPublish, onDone }: { drafts: Draft[]; canPubl
 /* ----------------------------------- drafts ---------------------------------- */
 
 function DraftArt({ d, size = 96 }: { d: Draft; size?: number }) {
-  return d.kind === 'glim' ? <Glim art={d.art as GlimArt} size={size} rarity={d.rarity} /> : <ItemArtView art={d.art} rarity={d.rarity} size={size} />;
+  return d.kind === 'glim' ? <Glim art={d.art as GlimArt} size={size} rarity={d.rarity} uniform={false} /> : <ItemArtView art={d.art} rarity={d.rarity} size={size} />;
 }
 
 function PublishDialog({ draft, open, onOpenChange }: { draft: Draft; open: boolean; onOpenChange: (v: boolean) => void }) {

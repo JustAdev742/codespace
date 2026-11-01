@@ -184,9 +184,7 @@ describe('serving the built web app', () => {
       expect((await plain.app.inject({ method: 'GET', url: '/' })).body).toBe(html);
       for (const url of ['/', '/play']) {
         const body = (await school.app.inject({ method: 'GET', url })).body;
-        expect(body).toContain('<html lang="en-GB" data-school="hills-grammar">');
-        expect(body).toContain('content="#0B1F17" media="(prefers-color-scheme: dark)"');
-        expect(body).toContain('content="#FAFCFC" media="(prefers-color-scheme: light)"');
+        expect(body).toBe(html.replace('<html lang="en-GB">', '<html lang="en-GB" data-school="hills-grammar">'));
       }
     } finally {
       await plain.close();

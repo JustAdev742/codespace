@@ -295,19 +295,21 @@ Last updated: 2026-10-29.
   - game's quiet vibraphone under questions;
   - the very high lead in Final Stretch;
   - the balance of the steel drums in market.
-- **School looks** (2026-10-29): `SCHOOL_THEME` on the server dresses that copy of Ludora in a
-  school's own colours and typeface, from the first paint, on every page and game screen.
-  - `hills-grammar` was made at the request of The Hills Grammar School's junior principal. It
-    uses the green palette published on the school's website, a pine-green game stage, the
-    school's red and cyan as the floodlight's side glows, and Lato, the school's typeface.
-  - Two colours are tinted a little so dark text on them passes 4.5:1. Rarity colours,
-    collectible art and the 3D worlds stay as they are.
-  - Everywhere else (the demo, any other school) keeps Ludora's look. Its start page is
-    pixel-identical to before.
-  - Checked on 27 screens in Chromium (16 pages in light and dark, and a whole game on a phone
-    and the big screen): no axe violations, no text spilling out with Lato. CI reruns the
-    layout and game tests in this look.
-  - Not done yet: the school's own avatars, which it is emailing.
+- **School looks** (2026-10-29, reworked 2026-11-01): `SCHOOL_THEME` on the server gives that
+  copy of Ludora a school's touches, from the first paint. Details in
+  [SCHOOL_LOOKS.md](SCHOOL_LOOKS.md).
+  - `hills-grammar`, at The Hills Grammar School's request: Ludora's own navy and gold, the school's
+    logo beside Ludora's, Lato, the school's green and red for right and wrong answers and two
+    answer tiles, and every Glim in a Hills Grammar uniform (junior bucket hat and red pullover,
+    senior blazer, or sports cap and polo) in 2D and 3D. A first, all-green version looked too much
+    like Shrek, so it was replaced.
+  - Everywhere else (the demo, any other school) keeps Ludora's look.
+  - Checked in Chromium with the real setting: 13 screens (landing, home, shop, collection, the
+    phone home page, and a Classic game in the lobby, question, result, leaderboard and results on
+    a phone and the big screen), no axe violations; Glow Tag Royale's 3D Glims wear the uniform.
+    CI reruns the layout and game tests in this look.
+  - Not done yet: the avatars the school is emailing. Confirm the logo's use with the school before
+    students see it.
 - **Playable demo** (D42): a static build for GitHub Pages
   (`npm run build:demo`) where a whole game runs in the browser against up to
   19 practice bots: every mode, the 20 built-in sets, the big-screen view with
@@ -514,9 +516,9 @@ creates and drops its own database).
 | content | 4 | 132: catalogue integrity, every built-in question set, the seasonal calendar (11) and the monthly drops (9) |
 | engine | 53 | 8174, including the conformance suite for every mode and variant, and the chaos suite: every cheat in every mode it supports, the core rules and each mode's pack |
 | server | 18 | 189: auth and rate limits, realtime, economy, staff, social and classes, preferences, open games, sign-in help, uploads, AI drafts, reward counting, origin checks, chaos, Creator Studio, Game Maker, school events, configuration (3), and account download, deletion and data retention (8) |
-| web | 6 | 95: the set editor's checks, import and export (45); the synthesised music, in key and looping cleanly (16); the recorded sounds, every effect with a file and every loop a whole number of bars (16), and the takes and pitch spread they play with (5); which music plays when (7); Glow Tag's park in words for screen readers (4); the master's soft-clip stage (2) |
+| web | 7 | 98: the set editor's checks, import and export (45); the synthesised music, in key and looping cleanly (16); the recorded sounds, every effect with a file and every loop a whole number of bars (16), and the takes and pitch spread they play with (5); which music plays when (7); Glow Tag's park in words for screen readers (4); the master's soft-clip stage (2); which Hills Grammar uniform each Glim wears (3) |
 | shared | 0 | no tests of its own; its schemas are exercised by the other projects |
-| **Total** | **81** | **8590 passing** (8584 at the full run on 2026-10-29, plus 6 web tests added after it, run with the web suite) |
+| **Total** | **82** | **8593 passing** (8584 at the full run on 2026-10-29, plus 9 web tests added after it, run with the web suite) |
 
 End-to-end: `npm run test:e2e` (needs Postgres; builds first, then runs 10
 browser tests against a fresh `ludora_e2e` database). `E2E_BROWSER=webkit` or

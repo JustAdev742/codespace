@@ -1,4 +1,5 @@
 import type { SVGProps } from 'react';
+import { schoolLook, type SchoolId } from '../lib/school.ts';
 
 /*
  * Ludora's own icons for things specific to the product: currencies, the
@@ -117,13 +118,46 @@ export function LogoMark({ size = 32, className }: { size?: number; className?: 
   );
 }
 
-export function Logo({ size = 28, className }: { size?: number; className?: string }) {
-  return (
-    <span className={`inline-flex items-center gap-2 ${className ?? ''}`}>
+/** A school's own logo, shown with Ludora's on the school's copy (public/schools/<id>, white for the stage). */
+const SCHOOL_LOGO: Record<SchoolId, { lockup: string; crest: string }> = {
+  'hills-grammar': { lockup: '/schools/hills-grammar/logo-white.svg', crest: '/schools/hills-grammar/crest-white.svg' },
+};
+
+export function Logo({ size = 28, stack = false, className }: { size?: number; stack?: boolean; className?: string }) {
+  const school = schoolLook();
+  const ludora = (
+    <span className="inline-flex items-center gap-2">
       <LogoMark size={size + 6} />
       <span className="font-display font-extrabold text-text italic" style={{ fontSize: size * 1.15, lineHeight: 1 }}>
         Ludora
       </span>
     </span>
   );
+  if (!school) return <span className={`inline-flex ${className ?? ''}`}>{ludora}</span>;
+  const lockup = SCHOOL_LOGO[school].lockup;
+  // Stacked where the width is short (the sidebar): the school's logo under Ludora's, big enough to read.
+  if (stack) {
+    const h = Math.round(size * 1.7);
+    return (
+      <span className={`inline-flex flex-col items-start gap-2.5 ${className ?? ''}`}>
+        {ludora}
+        <img src={lockup} alt="" width={Math.round((h * 377) / 153)} height={h} className="shrink-0" />
+      </span>
+    );
+  }
+  const h = size + 10;
+  return (
+    <span className={`inline-flex items-center gap-2.5 ${className ?? ''}`}>
+      {ludora}
+      <span aria-hidden className="w-px self-stretch bg-white/30" />
+      <img src={lockup} alt="" width={Math.round((h * 377) / 153)} height={h} className="shrink-0" />
+    </span>
+  );
+}
+
+/** The school's crest on its own, beside Ludora's mark where there is only room for marks. Nothing on Ludora's own look. */
+export function SchoolCrest({ size = 30, className }: { size?: number; className?: string }) {
+  const school = schoolLook();
+  if (!school) return null;
+  return <img src={SCHOOL_LOGO[school].crest} alt="" width={Math.round((size * 145) / 153)} height={size} className={`shrink-0 ${className ?? ''}`} />;
 }

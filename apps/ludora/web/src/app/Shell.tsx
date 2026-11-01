@@ -30,7 +30,7 @@ import {
 import { useMe } from '../lib/session.ts';
 import { useOverview } from '../lib/queries.ts';
 import { api } from '../lib/api.ts';
-import { Logo, LogoMark } from '../art/icons.tsx';
+import { Logo, LogoMark, SchoolCrest } from '../art/icons.tsx';
 import { Glim } from '../art/glim/Glim.tsx';
 import { Amount, Skeleton } from '../ui/primitives.tsx';
 import { Button, buttonClass } from '../ui/Button.tsx';
@@ -258,7 +258,7 @@ export function Shell() {
       </a>
       <aside className="stage-plain on-stage sticky top-0 hidden h-dvh flex-col gap-6 overflow-y-auto border-r border-white/[0.06] px-3 py-5 lg:flex">
         <Link to="/" className="self-start rounded-[var(--radius-s)] px-2" aria-label="Ludora home">
-          <Logo size={26} />
+          <Logo size={26} stack />
         </Link>
         <NavGroups />
         <div className="mt-auto flex flex-col gap-0.5">
@@ -269,8 +269,9 @@ export function Shell() {
       <div className="flex min-w-0 flex-col">
         {/* On the stage in both themes, the same navy as the top of the sidebar, so the chrome reads as one frame. */}
         <header className="on-stage sticky top-0 z-30 flex h-16 items-center gap-3 border-b border-white/10 bg-[color-mix(in_oklab,var(--stage-1)_96%,transparent)] px-4 backdrop-blur-sm sm:px-6">
-          <Link to="/" className="rounded-[var(--radius-s)] lg:hidden" aria-label="Ludora home">
+          <Link to="/" className="flex items-center gap-2 rounded-[var(--radius-s)] lg:hidden" aria-label="Ludora home">
             <LogoMark size={34} />
+            <SchoolCrest size={34} />
           </Link>
           <EnvironmentBadge />
           <div className="ml-auto flex items-center gap-2 sm:gap-3">

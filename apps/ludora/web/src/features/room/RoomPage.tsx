@@ -3,7 +3,7 @@ import { Link, useLocation, useNavigate, useParams } from 'react-router';
 import { DoorOpen, Flag, WifiOff } from 'lucide-react';
 import { useFlag, useMe } from '../../lib/session.ts';
 import { useRoom } from '../../lib/useRoom.ts';
-import { LogoMark } from '../../art/icons.tsx';
+import { LogoMark, SchoolCrest } from '../../art/icons.tsx';
 import { Button, IconButton, buttonClass } from '../../ui/Button.tsx';
 import { Dialog, Spinner } from '../../ui/primitives.tsx';
 import { Stage } from '../../ui/Stage.tsx';
@@ -133,6 +133,7 @@ export default function RoomPage() {
         <div className="flex h-14 items-center gap-2.5 px-3 sm:h-16 sm:gap-3 sm:px-5 min-[1600px]:h-20 min-[1600px]:px-8">
           {/* On a phone, a host mid-game needs the header's width for the game controls. */}
           <LogoMark size={30} className={`shrink-0 min-[1600px]:size-11 ${isHost && live ? 'max-sm:hidden' : ''}`} />
+          <SchoolCrest size={30} className={`min-[1600px]:h-11 min-[1600px]:w-auto ${isHost && live ? 'max-sm:hidden' : ''}`} />
           <div className={`min-w-0 ${isHost && live ? 'max-sm:sr-only' : ''}`}>
             <Title className="truncate font-display text-lg leading-tight font-bold text-text sm:text-xl min-[1600px]:text-[1.75rem]">{room.room.title}</Title>
             <p className="flex min-w-0 items-center gap-2 text-xs font-semibold text-text-2 sm:text-sm min-[1600px]:text-base">

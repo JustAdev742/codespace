@@ -6,6 +6,9 @@ import { Brows, browFor, Eyes, FaceOver, FaceUnder, FrostMarks, Mouth, type EyeC
 import { FINE_PATTERNS, Pattern } from './patterns.tsx';
 import { armParts, backParts, BIG_BACKS, earParts, feetParts, tailParts, topperParts, type Pose } from './parts.ts';
 import { pathBounds } from './geometry.ts';
+import { UNIFORM_HAT, uniformFor, type Uniform } from './uniform.ts';
+import { UniformCollar, UniformGarment, UniformHat } from './uniform.tsx';
+import { schoolLook } from '../../lib/school.ts';
 
 /*
  * Draws a Glim from its genome. Pure SVG, no images: every Glim in the
@@ -105,6 +108,8 @@ export interface GlimProps {
   faceless?: boolean;
   /** The dark outer contour. 3D Glims draw their own outline, so their pictures leave it out. */
   contour?: boolean;
+  /** On a school's copy, the school uniform (uniform.ts). False where the Glim itself is the subject, as in the Glim Maker. */
+  uniform?: boolean;
   title?: string;
   className?: string;
 }
@@ -155,9 +160,15 @@ function build(art: GlimArt, c: GlimColors, pose: Pose, hideTopper: boolean, lim
   return limbs ? { geo, back: [...back, ...feet], front: [...arms, ...front], fit } : { geo, back, front, fit };
 }
 
+/** The uniform a Glim wears on this copy of Ludora, or null: only on The Hills Grammar School's. */
+function uniformOf(art: GlimArt): Uniform | null {
+  return schoolLook() === 'hills-grammar' ? uniformFor(art) : null;
+}
+
 /** The scale a Glim is drawn at and the point it shrinks towards, for placing 3D limbs on a drawn body. */
 export function glimFrame(art: GlimArt, accessories?: AccessoryArt[]): { geo: BodyGeometry; scale: number; ground: { x: number; y: number } } {
-  const hasHat = Boolean(accessories?.some((a) => a.slot === 'hat'));
+  const dressed = uniformOf(art);
+  const hasHat = Boolean(accessories?.some((a) => a.slot === 'hat')) || Boolean(dressed && UNIFORM_HAT[dressed]);
   const { geo, fit } = build(art, glimColors(art), 'idle', hasHat);
   return { geo, scale: Math.min(fit, hasHat ? 0.84 : 1), ground: GROUND };
 }
@@ -218,10 +229,15 @@ function twoTone(art: GlimArt): string {
   return hsl(art.hue + delta, (pale ? sat + 14 : sat) + 12, pale ? 70 : 52);
 }
 
-export const Glim = memo(function Glim({ art, accessories, size = 96, aura = null, rarity, pose = 'idle', silhouette = false, limbs = true, ground = true, faceless = false, contour = true, title, className }: GlimProps) {
+export const Glim = memo(function Glim({ art, accessories, size = 96, aura = null, rarity, pose = 'idle', silhouette = false, limbs = true, ground = true, faceless = false, contour = true, uniform = true, title, className }: GlimProps) {
   const uid = useId().replace(/[^a-zA-Z0-9_-]/g, '');
   const c = useMemo(() => glimColors(art), [art]);
-  const hasHat = Boolean(accessories?.some((a) => a.slot === 'hat'));
+  // A hat or neckwear the player chose shows instead of the uniform's; the garment always shows.
+  const dressed = uniform && !silhouette ? uniformOf(art) : null;
+  const ownHat = Boolean(accessories?.some((a) => a.slot === 'hat'));
+  const schoolHat = Boolean(dressed && !ownHat && UNIFORM_HAT[dressed]);
+  const hasHat = ownHat || schoolHat;
+  const hasNeckwear = Boolean(accessories?.some((a) => a.slot === 'neck'));
   const hasEyewear = Boolean(accessories?.some((a) => a.slot === 'eyes'));
   const sc = silhouette ? SILHOUETTE : c;
   const { geo, back, front, fit } = useMemo(() => build(art, sc, pose, hasHat, limbs), [art, sc, pose, hasHat, limbs]);
@@ -320,6 +336,7 @@ export const Glim = memo(function Glim({ art, accessories, size = 96, aura = nul
               m.line ? <path key={i} d={m.d} fill="none" stroke={m.fill} strokeWidth={m.line} strokeLinecap="round" opacity={m.opacity} /> : <path key={i} d={m.d} fill={m.fill} opacity={m.opacity} />,
             )}
             {tiny && FINE_PATTERNS.has(art.pattern ?? 'none') ? null : <Pattern kind={art.pattern ?? 'none'} geo={geo} c={c} />}
+            {dressed ? <UniformGarment uniform={dressed} geo={geo} tiny={tiny} /> : null}
             {/* Hard cel shading: one shadow, one light. */}
             <rect x={-10} y={-10} width={140} height={140} fill={shade} opacity={0.34} clipPath={`url(#${id('shade')})`} />
             <rect x={-10} y={-10} width={140} height={140} fill="#fff" opacity={rank >= 2 ? 0.34 : 0.26} clipPath={`url(#${id('hl')})`} />
@@ -343,6 +360,8 @@ export const Glim = memo(function Glim({ art, accessories, size = 96, aura = nul
             <Brows eyes={art.eyes} ctx={eyeCtx} />
             <Mouth kind={art.mouth} x={geo.face.x} y={mouthY} k={k} ink={ink} tiny={tiny} />
             {art.face === 'spectacles' && hasEyewear ? null : <FaceOver kind={art.face} eyes={art.eyes} geo={geo} k={k} c={c} />}
+            {dressed && !hasNeckwear ? <UniformCollar uniform={dressed} geo={geo} /> : null}
+            {dressed && schoolHat ? <UniformHat uniform={dressed} geo={geo} /> : null}
             {accessories?.map((a, i) => <Accessory key={`${a.slot}-${i}`} art={a} geo={geo} />)}
           </>
         ) : null}
