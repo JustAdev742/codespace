@@ -300,13 +300,22 @@ Last updated: 2026-10-29.
   [SCHOOL_LOOKS.md](SCHOOL_LOOKS.md).
   - `hills-grammar`, at The Hills Grammar School's request: Ludora's own navy and gold, the school's
     logo beside Ludora's, Lato, the school's green and red for right and wrong answers and two
-    answer tiles, and every Glim in a Hills Grammar uniform (junior bucket hat and red pullover,
-    senior blazer, or sports cap and polo) in 2D and 3D. A first, all-green version looked too much
-    like Shrek, so it was replaced.
+    answer tiles, and every Glim in one of six Hills Grammar uniforms, in 2D and 3D. A first,
+    all-green version looked too much like Shrek, so it was replaced.
+  - The uniforms (redrawn 2026-11-01 from the school's uniform policy and the photographs on its
+    website): the bottle-green or grey blazer with the school's crest on the breast pocket over the
+    red pullover, a cream shirt and the striped senior tie, the argyle junior tie or the junior
+    girls' rounded collar; the Kindergarten red polo and bucket hat; the green sports polo and cap.
+    The crest, drawn from the school's own logo file, is on every blazer, polo and hat; sleeves
+    match the garment, and 3D Glims wear its back.
   - Everywhere else (the demo, any other school) keeps Ludora's look.
   - Checked in Chromium with the real setting: 13 screens (landing, home, shop, collection, the
     phone home page, and a Classic game in the lobby, question, result, leaderboard and results on
     a phone and the big screen), no axe violations; Glow Tag Royale's 3D Glims wear the uniform.
+    The redrawn uniforms: every body shape in all six, at full size and at 40 px; the home page,
+    a six-player lobby, leaderboard and podium, and Glow Tag in 3D, with no axe violations on the
+    home page and lobby; the front and back pictures of 3D Glims. Glims without the school look
+    are drawn exactly as before (the markup of every Glim in every pose compared before and after).
     CI reruns the layout and game tests in this look.
   - Not done yet: the avatars the school is emailing. Confirm the logo's use with the school before
     students see it.
@@ -516,9 +525,9 @@ creates and drops its own database).
 | content | 4 | 132: catalogue integrity, every built-in question set, the seasonal calendar (11) and the monthly drops (9) |
 | engine | 53 | 8174, including the conformance suite for every mode and variant, and the chaos suite: every cheat in every mode it supports, the core rules and each mode's pack |
 | server | 18 | 189: auth and rate limits, realtime, economy, staff, social and classes, preferences, open games, sign-in help, uploads, AI drafts, reward counting, origin checks, chaos, Creator Studio, Game Maker, school events, configuration (3), and account download, deletion and data retention (8) |
-| web | 7 | 98: the set editor's checks, import and export (45); the synthesised music, in key and looping cleanly (16); the recorded sounds, every effect with a file and every loop a whole number of bars (16), and the takes and pitch spread they play with (5); which music plays when (7); Glow Tag's park in words for screen readers (4); the master's soft-clip stage (2); which Hills Grammar uniform each Glim wears (3) |
+| web | 7 | 99: the set editor's checks, import and export (45); the synthesised music, in key and looping cleanly (16); the recorded sounds, every effect with a file and every loop a whole number of bars (16), and the takes and pitch spread they play with (5); which music plays when (7); Glow Tag's park in words for screen readers (4); the master's soft-clip stage (2); which Hills Grammar uniform each Glim wears, and its sleeves (4) |
 | shared | 0 | no tests of its own; its schemas are exercised by the other projects |
-| **Total** | **82** | **8593 passing** (8584 at the full run on 2026-10-29, plus 9 web tests added after it, run with the web suite) |
+| **Total** | **82** | **8595 passing** (full run on 2026-11-01) |
 
 End-to-end: `npm run test:e2e` (needs Postgres; builds first, then runs 10
 browser tests against a fresh `ludora_e2e` database). `E2E_BROWSER=webkit` or

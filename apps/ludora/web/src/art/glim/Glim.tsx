@@ -4,10 +4,10 @@ import { BODIES, type BodyGeometry, type GlimColors, type Part } from './bodies.
 import { Accessory } from './accessories.tsx';
 import { Brows, browFor, Eyes, FaceOver, FaceUnder, FrostMarks, Mouth, type EyeCtx, type FaceInk } from './face.tsx';
 import { FINE_PATTERNS, Pattern } from './patterns.tsx';
-import { armParts, backParts, BIG_BACKS, earParts, feetParts, tailParts, topperParts, type Pose } from './parts.ts';
+import { armParts, backParts, BIG_BACKS, earParts, feetParts, tailParts, topperParts, type Pose, type Sleeve } from './parts.ts';
 import { pathBounds } from './geometry.ts';
-import { UNIFORM_HAT, uniformFor, type Uniform } from './uniform.ts';
-import { UniformCollar, UniformGarment, UniformHat } from './uniform.tsx';
+import { UNIFORM_HAT, uniformFor, uniformSleeve, type Uniform } from './uniform.ts';
+import { UniformBadge, UniformGarment, UniformHat } from './uniform.tsx';
 import { schoolLook } from '../../lib/school.ts';
 
 /*
@@ -138,7 +138,7 @@ function fitScale(parts: Part[]): number {
   return s;
 }
 
-function build(art: GlimArt, c: GlimColors, pose: Pose, hideTopper: boolean, limbs = true): Built {
+function build(art: GlimArt, c: GlimColors, pose: Pose, hideTopper: boolean, limbs = true, sleeve?: Sleeve): Built {
   const geo = BODIES[art.body] ?? BODIES.blob;
   const ears = earParts(art.ears ?? 'none', geo, c);
   const backs = backParts(art.back ?? 'none', geo, c);
@@ -153,7 +153,7 @@ function build(art: GlimArt, c: GlimColors, pose: Pose, hideTopper: boolean, lim
     ...(geo.back?.(c) ?? []),
   ];
   const feet = feetParts(geo, c);
-  const arms = armParts(geo, c, pose);
+  const arms = armParts(geo, c, pose, sleeve);
   const front: Part[] = [...(geo.front?.(c) ?? []), ...ears.front, ...(hideTopper ? [] : topperParts(art.topper ?? 'none', geo, c))];
   // The fit always counts the limbs, so a Glim drawn without them sits exactly where it would with them.
   const fit = fitScale([...back, ...feet, ...arms, ...front]);
@@ -165,9 +165,15 @@ function uniformOf(art: GlimArt): Uniform | null {
   return schoolLook() === 'hills-grammar' ? uniformFor(art) : null;
 }
 
+/** The colour of a Glim's sleeves on this copy of Ludora, for the 3D arms, or null when it wears no uniform. */
+export function glimSleeve(art: GlimArt, uniform = true): string | null {
+  const dressed = uniform ? uniformOf(art) : null;
+  return dressed ? uniformSleeve(dressed).fill : null;
+}
+
 /** The scale a Glim is drawn at and the point it shrinks towards, for placing 3D limbs on a drawn body. */
-export function glimFrame(art: GlimArt, accessories?: AccessoryArt[]): { geo: BodyGeometry; scale: number; ground: { x: number; y: number } } {
-  const dressed = uniformOf(art);
+export function glimFrame(art: GlimArt, accessories?: AccessoryArt[], uniform = true): { geo: BodyGeometry; scale: number; ground: { x: number; y: number } } {
+  const dressed = uniform ? uniformOf(art) : null;
   const hasHat = Boolean(accessories?.some((a) => a.slot === 'hat')) || Boolean(dressed && UNIFORM_HAT[dressed]);
   const { geo, fit } = build(art, glimColors(art), 'idle', hasHat);
   return { geo, scale: Math.min(fit, hasHat ? 0.84 : 1), ground: GROUND };
@@ -240,7 +246,8 @@ export const Glim = memo(function Glim({ art, accessories, size = 96, aura = nul
   const hasNeckwear = Boolean(accessories?.some((a) => a.slot === 'neck'));
   const hasEyewear = Boolean(accessories?.some((a) => a.slot === 'eyes'));
   const sc = silhouette ? SILHOUETTE : c;
-  const { geo, back, front, fit } = useMemo(() => build(art, sc, pose, hasHat, limbs), [art, sc, pose, hasHat, limbs]);
+  const sleeve = useMemo(() => (dressed ? uniformSleeve(dressed) : undefined), [dressed]);
+  const { geo, back, front, fit } = useMemo(() => build(art, sc, pose, hasHat, limbs, sleeve), [art, sc, pose, hasHat, limbs, sleeve]);
 
   const tiny = size <= 40;
   const finish: Rarity = silhouette ? 'common' : (rarity ?? aura ?? 'common');
@@ -336,7 +343,7 @@ export const Glim = memo(function Glim({ art, accessories, size = 96, aura = nul
               m.line ? <path key={i} d={m.d} fill="none" stroke={m.fill} strokeWidth={m.line} strokeLinecap="round" opacity={m.opacity} /> : <path key={i} d={m.d} fill={m.fill} opacity={m.opacity} />,
             )}
             {tiny && FINE_PATTERNS.has(art.pattern ?? 'none') ? null : <Pattern kind={art.pattern ?? 'none'} geo={geo} c={c} />}
-            {dressed ? <UniformGarment uniform={dressed} geo={geo} tiny={tiny} /> : null}
+            {dressed ? <UniformGarment uniform={dressed} geo={geo} tiny={tiny} neckwear={hasNeckwear} back={faceless} /> : null}
             {/* Hard cel shading: one shadow, one light. */}
             <rect x={-10} y={-10} width={140} height={140} fill={shade} opacity={0.34} clipPath={`url(#${id('shade')})`} />
             <rect x={-10} y={-10} width={140} height={140} fill="#fff" opacity={rank >= 2 ? 0.34 : 0.26} clipPath={`url(#${id('hl')})`} />
@@ -348,10 +355,13 @@ export const Glim = memo(function Glim({ art, accessories, size = 96, aura = nul
                 <circle cx={geo.hl[0] + geo.hl[2] * 1.05} cy={geo.hl[1] + geo.hl[3] * 0.85} r={1.3} fill="#fff" opacity={0.85} />
               </>
             ) : null}
+            {dressed && !faceless ? <UniformBadge uniform={dressed} geo={geo} tiny={tiny} /> : null}
           </g>
         )}
         {!silhouette ? <path d={geo.path} fill="none" stroke={c.outline} strokeWidth={innerW} strokeLinejoin="round" /> : null}
         <FillPass parts={front} line={sc.outline} width={innerW} silhouette={silhouette} silhouetteFill={SILHOUETTE.body} />
+        {/* The back of a 3D Glim still wears its school hat, from behind. */}
+        {!silhouette && faceless && dressed && schoolHat ? <UniformHat uniform={dressed} geo={geo} back /> : null}
         {!silhouette && !faceless ? (
           <>
             <FaceUnder kind={art.face} geo={geo} k={k} c={c} />
@@ -360,7 +370,6 @@ export const Glim = memo(function Glim({ art, accessories, size = 96, aura = nul
             <Brows eyes={art.eyes} ctx={eyeCtx} />
             <Mouth kind={art.mouth} x={geo.face.x} y={mouthY} k={k} ink={ink} tiny={tiny} />
             {art.face === 'spectacles' && hasEyewear ? null : <FaceOver kind={art.face} eyes={art.eyes} geo={geo} k={k} c={c} />}
-            {dressed && !hasNeckwear ? <UniformCollar uniform={dressed} geo={geo} /> : null}
             {dressed && schoolHat ? <UniformHat uniform={dressed} geo={geo} /> : null}
             {accessories?.map((a, i) => <Accessory key={`${a.slot}-${i}`} art={a} geo={geo} />)}
           </>

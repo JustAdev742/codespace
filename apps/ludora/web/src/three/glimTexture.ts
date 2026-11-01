@@ -15,6 +15,8 @@ export interface GlimLook {
   art: GlimArt;
   accessories?: AccessoryArt[] | undefined;
   rarity?: Rarity | undefined;
+  /** On a school's copy, the school uniform (art/glim/uniform.ts). False where the Glim itself is the subject. */
+  uniform?: boolean | undefined;
 }
 
 /** Faces for moments in a game. Each swaps the eyes, mouth and brows for a while. */
@@ -29,7 +31,7 @@ export const EXPRESSIONS = {
 export type Expression = keyof typeof EXPRESSIONS;
 
 export function lookKey(look: GlimLook, extra = ''): string {
-  return `${JSON.stringify(look.art)}|${JSON.stringify(look.accessories ?? [])}|${look.rarity ?? 'common'}|${extra}`;
+  return `${JSON.stringify(look.art)}|${JSON.stringify(look.accessories ?? [])}|${look.rarity ?? 'common'}|${look.uniform === false ? 'plain' : ''}|${extra}`;
 }
 
 const cache = new Map<string, Promise<HTMLCanvasElement>>();
@@ -41,7 +43,7 @@ async function draw(look: GlimLook, size: number, faceless: boolean, expression:
   const host = document.createElement('div');
   const root = createRoot(host);
   flushSync(() => {
-    root.render(createElement(Glim, { art: art as GlimArt, accessories: look.accessories, rarity: look.rarity ?? 'common', size, limbs: false, ground: false, faceless, contour: false }));
+    root.render(createElement(Glim, { art: art as GlimArt, accessories: look.accessories, rarity: look.rarity ?? 'common', size, limbs: false, ground: false, faceless, contour: false, uniform: look.uniform ?? true }));
   });
   const svg = host.querySelector('svg');
   const markup = svg ? new XMLSerializer().serializeToString(svg) : '';

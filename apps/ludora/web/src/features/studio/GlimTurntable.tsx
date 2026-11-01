@@ -28,7 +28,8 @@ class Turntable extends World {
       this.glim.removeFromParent();
       this.glim.dispose();
     }
-    this.glim = new Glim3D({ look: { art }, quality: this.env.quality, reducedMotion: this.env.reducedMotion });
+    // No school uniform here: in the Studio the Glim itself is the subject, as in its 2D preview.
+    this.glim = new Glim3D({ look: { art, uniform: false }, quality: this.env.quality, reducedMotion: this.env.reducedMotion });
     this.glim.play('wave');
     this.scene.add(this.glim);
   }

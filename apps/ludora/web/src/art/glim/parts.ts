@@ -524,20 +524,38 @@ const RAISED = -142;
  * (waving, cheering) start higher, at the edge of the body near eye height,
  * so they read clearly as arms in the air even on a small avatar.
  */
-export function armParts(geo: BodyGeometry, c: GlimColors, pose: Pose): Part[] {
+/** Sleeves for arms that wear a garment: its colour, and whether they stop short of the hand. */
+export interface Sleeve {
+  fill: string;
+  short: boolean;
+}
+
+/** On a sleeved arm, what shows of the Glim itself: the hand below a long sleeve, the arm below a short one. */
+const HAND = 'M-5.6 9.4C-5.6 16 5.6 16 5.6 9.4V8.8H-5.6Z';
+const BARE = 'M-5.6 3.8V9.4C-5.6 16 5.6 16 5.6 9.4V3.8Z';
+
+export function armParts(geo: BodyGeometry, c: GlimColors, pose: Pose, sleeve?: Sleeve): Part[] {
   if (!geo.arm) return [];
-  const shape = geo.armStyle === 'wing' ? WING_ARM : NUB;
-  const fill = geo.armStyle === 'wing' ? c.deep : c.body;
+  const wing = geo.armStyle === 'wing';
+  const shape = wing ? WING_ARM : NUB;
+  // Wings stay wings: only arms wear sleeves.
+  const dressed = sleeve && !wing ? sleeve : undefined;
+  const fill = wing ? c.deep : (dressed?.fill ?? c.body);
   const rest = geo.arm;
   const up = geo.armUp ?? { x: rest.x + 2, y: geo.face.y + 3 };
-  const resting = (side: 1 | -1): Part => ({ d: place(shape, { x: side > 0 ? rest.x : 120 - rest.x, y: rest.y, r: side * RESTING, m: side < 0 }), fill });
-  const raised = (side: 1 | -1): Part => ({ d: place(shape, { x: side > 0 ? up.x : 120 - up.x, y: up.y, r: side * RAISED, s: 1.12, m: side < 0 }), fill });
-  if (pose === 'cheer') return [raised(-1), raised(1)];
+  const arm = (t: Place, anim?: Part['anim']): Part[] => {
+    const parts: Part[] = [{ d: place(shape, t), fill, anim }];
+    if (dressed) parts.push({ d: place(dressed.short ? BARE : HAND, t), fill: c.body, anim });
+    return parts;
+  };
+  const resting = (side: 1 | -1) => arm({ x: side > 0 ? rest.x : 120 - rest.x, y: rest.y, r: side * RESTING, m: side < 0 });
+  const raisedAt = (side: 1 | -1): Place => ({ x: side > 0 ? up.x : 120 - up.x, y: up.y, r: side * RAISED, s: 1.12, m: side < 0 });
+  if (pose === 'cheer') return [...arm(raisedAt(-1)), ...arm(raisedAt(1))];
   if (pose === 'wave') {
-    const wave = { ...raised(1), anim: { cls: 'glim-wave', origin: `${up.x}px ${up.y}px` } };
-    return geo.armIdle === false ? [wave] : [resting(-1), wave];
+    const wave = arm(raisedAt(1), { cls: 'glim-wave', origin: `${up.x}px ${up.y}px` });
+    return geo.armIdle === false ? wave : [...resting(-1), ...wave];
   }
-  return geo.armIdle === false ? [] : [resting(-1), resting(1)];
+  return geo.armIdle === false ? [] : [...resting(-1), ...resting(1)];
 }
 
 export function feetParts(geo: BodyGeometry, c: GlimColors): Part[] {

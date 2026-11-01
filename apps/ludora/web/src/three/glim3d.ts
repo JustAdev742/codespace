@@ -10,7 +10,7 @@ import {
   SRGBColorSpace,
   type Texture,
 } from 'three';
-import { glimColors, glimFrame } from '../art/glim/Glim.tsx';
+import { glimColors, glimFrame, glimSleeve } from '../art/glim/Glim.tsx';
 import { glimCanvas, lookKey, type Expression, type GlimLook } from './glimTexture.ts';
 import { inflate, type Inflated } from './inflate.ts';
 import type { Quality } from './quality.ts';
@@ -64,7 +64,7 @@ function loadBody(look: GlimLook, q: Quality): Promise<Body> {
     const size = q.texture;
     const [frontCanvas, backCanvas] = await Promise.all([glimCanvas(look, size), glimCanvas(look, size, { faceless: true })]);
     const alpha = frontCanvas.getContext('2d')!.getImageData(0, 0, size, size).data;
-    const { scale, ground } = glimFrame(look.art, look.accessories);
+    const { scale, ground } = glimFrame(look.art, look.accessories, look.uniform ?? true);
     const inflated = inflate(alpha, size, { grid: GRID[q.tier], ground });
     return { inflated, front: texture(frontCanvas), back: texture(backCanvas), scale };
   })();
@@ -140,7 +140,7 @@ export class Glim3D extends Group {
     super();
     const { look, quality } = opts;
     this.colors = glimColors(look.art);
-    const { geo } = glimFrame(look.art, look.accessories);
+    const { geo } = glimFrame(look.art, look.accessories, look.uniform ?? true);
     this.floats = !geo.foot;
     this.add(this.body);
 
@@ -154,7 +154,8 @@ export class Glim3D extends Group {
     this.placeholder.position.y = 0.34;
     this.body.add(this.placeholder);
 
-    const limb = toon(geo.armStyle === 'wing' ? this.colors.deep : this.colors.body);
+    // On a school's copy the arms wear the uniform's sleeves, as in the drawing.
+    const limb = toon(geo.armStyle === 'wing' ? this.colors.deep : (glimSleeve(look.art, look.uniform ?? true) ?? this.colors.body));
     for (const arm of this.arms) {
       const m = new Mesh(armGeo, limb);
       m.userData.sharedGeometry = true;
@@ -178,7 +179,7 @@ export class Glim3D extends Group {
   }
 
   private placeLimbs(scale: number, inflated: Inflated | null) {
-    const { geo, ground } = glimFrame(this.opts.look.art, this.opts.look.accessories);
+    const { geo, ground } = glimFrame(this.opts.look.art, this.opts.look.accessories, this.opts.look.uniform ?? true);
     const at = (p: { x: number; y: number }) => ({ x: ground.x + (p.x - ground.x) * scale, y: ground.y + (p.y - ground.y) * scale });
     if (geo.arm) {
       const a = at(geo.arm);
