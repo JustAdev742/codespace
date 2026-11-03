@@ -1,0 +1,22 @@
+{
+  // A Codespace for a playtest at The Hills Grammar School: the same as the main one (Ludora built
+  // and running on port 8787), wearing the school's look (SCHOOL_THEME=hills-grammar). Pick it under
+  // "New with options", Dev container configuration. Playtest guide: apps/ludora/docs/PLAYTEST.md.
+  "name": "Ludora (Hills Grammar playtest)",
+  "dockerComposeFile": "../compose.yaml",
+  "service": "dev",
+  "workspaceFolder": "/workspaces/${localWorkspaceFolderBasename}",
+  "shutdownAction": "stopCompose",
+  "forwardPorts": [8787],
+  "portsAttributes": {
+    "8787": { "label": "Ludora", "onAutoForward": "openBrowser" },
+    "5432": { "label": "Postgres", "onAutoForward": "ignore" }
+  },
+  "remoteEnv": { "SCHOOL_THEME": "hills-grammar" },
+  "postCreateCommand": "bash .devcontainer/setup.sh",
+  "postStartCommand": "bash .devcontainer/start.sh",
+  "hostRequirements": { "cpus": 4 },
+  "customizations": {
+    "codespaces": { "openFiles": ["apps/ludora/docs/PLAYTEST.md"] }
+  }
+}

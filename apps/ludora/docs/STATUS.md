@@ -316,6 +316,13 @@ Last updated: 2026-10-29.
     a join, no year in the room view), and a browser test that sets a year in Settings, joins a
     guest in Kindergarten and finds both in the right uniform in the lobby (axe clean). CI runs it
     in the Hills look.
+  - Playtest kit (2026-11-04): a Codespace configuration in the school's look
+    (`.devcontainer/hills-grammar/`) and [PLAYTEST.md](PLAYTEST.md): setting up the day before,
+    a lesson plan, what to watch, questions to ask, safety, and what to do if something breaks.
+    Checked: the start script on a fresh database serves the Hills look and restarts cleanly; a
+    load test of 30 players and 10 bots on that copy (answers confirmed in 4 ms at p95, an update
+    reaching all 30 players in 10 ms, server CPU 3% on average). Not yet tried: a Codespace on the
+    school's own Wi-Fi, which may block `app.github.dev`.
   - Everywhere else (the demo, any other school) keeps Ludora's look.
   - Checked in Chromium with the real setting: 13 screens (landing, home, shop, collection, the
     phone home page, and a Classic game in the lobby, question, result, leaderboard and results on

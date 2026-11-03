@@ -43,7 +43,7 @@ answering() {
 # against the process's command line, so a stale pid file never stops anything else.
 if [ -s "$state/server.pid" ]; then
   pid="$(cat "$state/server.pid")"
-  if tr '\0' ' ' < "/proc/$pid/cmdline" 2>/dev/null | grep -q "dist/index.js"; then
+  if [ -r "/proc/$pid/cmdline" ] && tr '\0' ' ' < "/proc/$pid/cmdline" | grep -q "dist/index.js"; then
     kill "$pid" 2>/dev/null || true
     for _ in $(seq 1 20); do kill -0 "$pid" 2>/dev/null || break; sleep 0.5; done
   fi
@@ -59,6 +59,7 @@ cd "$app/server"
 DATABASE_URL="${DATABASE_URL:-postgres://postgres:postgres@localhost:5432/ludora}" \
   APP_ENV=production PUBLIC_ORIGIN="$origin" IP_HASH_KEY="$(cat "$state/ip-hash-key")" \
   TRUST_PROXY=true COOKIE_SECURE="$secure" HOST=0.0.0.0 PORT=8787 UPLOAD_DIR="$state/uploads" \
+  SCHOOL_THEME="${SCHOOL_THEME:-}" \
   setsid nohup node --enable-source-maps dist/index.js > "$state/server.log" 2>&1 < /dev/null &
 pid=$!
 echo "$pid" > "$state/server.pid"
@@ -72,7 +73,10 @@ for _ in $(seq 1 90); do
     exit 1
   fi
   if answering; then
-    echo "Ludora is running. Open port 8787 from the Ports tab, or go to $origin"
+    echo "Ludora is running${SCHOOL_THEME:+ in the $SCHOOL_THEME look}. Open port 8787 from the Ports tab, or go to $origin"
+    if [ -n "${CODESPACE_NAME:-}" ]; then
+      echo "For players on their own phones and laptops, make the port Public: Ports tab, right-click 8787, Port visibility, Public."
+    fi
     exit 0
   fi
   sleep 1
