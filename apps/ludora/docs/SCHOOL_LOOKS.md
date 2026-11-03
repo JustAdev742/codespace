@@ -17,16 +17,29 @@ looked too much like Shrek. It keeps Ludora's own look and adds the school to it
 - **Colours.** Ludora's navy stage and gold, with the school's green (#00A766) for right answers and
   good news, its red (#EE3350, tinted to #F04B65 so dark text on it passes 4.5:1) for wrong answers,
   both on answer tiles C and D, and as the stage's two corner glows (`styles/schools.css`).
-- **Glims in uniform** (`art/glim/uniform.ts`, `uniform.tsx`). Every Glim wears one of six, the
-  same one for the same Glim on every screen, 2D and 3D, and a mix across a class:
-  - Senior School, green or grey: the bottle-green (girls') or grey tweed (boys') blazer, the crest
-    on the breast pocket, school pins on the left lapel, the red V-neck pullover, a cream shirt and
-    the striped tie, green and red with a fine white line;
-  - Junior School, green: the bottle-green blazer and red pullover with the junior girls' rounded
-    cream collar, no tie;
+- **Glims in uniform** (`art/glim/uniform.ts`, `uniform.tsx`). Seven uniforms, from the school's
+  Uniform Expectations Policy:
+  - Senior School (Years 7 to 12), green or grey: the bottle-green (girls') or grey tweed (boys')
+    blazer, the crest on the breast pocket, school pins on the left lapel, the red V-neck pullover,
+    a cream shirt and the striped tie, green and red with a fine white line;
+  - Junior School (Years 3 to 6), green: the bottle-green blazer and red pullover with the junior
+    girls' rounded cream collar, no tie;
   - Junior School, grey: the grey blazer and red pullover with the junior boys' argyle tie;
-  - Kindergarten: the red polo with the crest, and the bottle-green bucket hat with the crest;
-  - sport: the bottle-green polo with the crest, and the sports cap with the crest.
+  - Kindergarten to Year 2: the red polo with the crest, and the bottle-green bucket hat;
+  - sport, Years 3 to 6: the bottle-green polo with the crest, and the bucket hat;
+  - sport, Years 7 to 12: the bottle-green polo with the crest, and the sports cap.
+
+- **Year groups** (`packages/shared/src/schoolUniform.ts`). Each player says which year they are
+  in, and from Year 3 which blazer and whether it is a sport day:
+  - accounts choose in Settings, under School uniform (saved in their preferences);
+  - guests choose on the join screen; the choice stays on that device for next time;
+  - Kindergarten to Year 2 wear the polo whatever else is chosen.
+
+  Only the uniform goes out with a player's avatar to everyone else: never the year itself.
+  A player's avatar wears their uniform on every screen, 2D and 3D. Every other Glim they see
+  (their collection, the shop, a Lantern opening) wears their uniform too. A player who has not
+  given a year, or a practice bot, wears one of six picked from their Glim's looks, the same one
+  everywhere.
 
   The crest is drawn from the school's own logo file, measured to its proportions: the banner, the
   three chevrons with their stars, the red target in its laurel and the motto ring, in the school's
@@ -41,7 +54,7 @@ looked too much like Shrek. It keeps Ludora's own look and adds the school to it
 - The logo files in `web/public/schools/hills-grammar/` are the school's own, unchanged from its
   website (hillsgrammar.nsw.edu.au, 2026). The two `crest-*` files are the same files cropped to the
   crest (the first 145 of 377 units).
-- The uniforms follow the school's Uniform Expectations Policy (2025) and the photographs of
+- The uniforms and which years wear them follow the school's Uniform Expectations Policy (2025) and the photographs of
   students in uniform on its website: the bottle-green blazer for girls and the grey tweed blazer
   for boys, crest on the pocket and badges on the left lapel; the red pullover and cream shirt; the
   striped senior tie, the argyle tie for junior boys (Years 3 to 6) and the junior girls' rounded

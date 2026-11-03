@@ -1,5 +1,5 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import type { LevelInfo, Permission } from '@ludora/shared';
+import type { LevelInfo, Permission, SchoolDress } from '@ludora/shared';
 import { api } from './api.ts';
 
 export interface Preferences {
@@ -11,6 +11,8 @@ export interface Preferences {
   highContrast: boolean;
   notifications: { friendRequests: boolean; gameInvites: boolean; rewards: boolean };
   privacy: { profileVisibility: 'public' | 'friends' | 'private'; allowFriendRequests: 'everyone' | 'friend_code' | 'nobody'; showOnLeaderboards: boolean };
+  /** On a school's copy: year group, blazer and kit, for the Glim's uniform. Older servers may leave it out. */
+  school?: SchoolDress;
 }
 
 export interface MeUser {

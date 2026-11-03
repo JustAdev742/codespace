@@ -1,4 +1,4 @@
-import type { GlimArt } from '@ludora/shared';
+import { SCHOOL_UNIFORMS, type GlimArt, type SchoolUniform } from '@ludora/shared';
 
 /*
  * The Hills Grammar School's uniform, worn by every Glim on the school's copy of Ludora
@@ -10,13 +10,18 @@ import type { GlimArt } from '@ludora/shared';
  *   left lapel;
  * - Junior School: the girls' rounded cream collar without a tie, and the boys' argyle tie;
  * - Kindergarten to Year 2: the red polo with the crest, under the bottle-green bucket hat;
- * - sport, Years 3 to 12: the bottle-green polo with the crest, and the sports cap.
+ * - sport, Years 3 to 12: the bottle-green polo with the crest, under the bucket hat in Years 3 to 6
+ *   (sport-junior) and the sports cap in Years 7 to 12 (sport).
+ * A player's year group picks theirs (packages/shared/src/schoolUniform.ts).
  */
 
-export const UNIFORMS = ['senior-green', 'senior-grey', 'junior-green', 'junior-grey', 'kinder', 'sport'] as const;
-export type Uniform = (typeof UNIFORMS)[number];
+export const UNIFORMS = SCHOOL_UNIFORMS;
+export type Uniform = SchoolUniform;
 
-/** Which uniform a Glim wears: always the same for the same Glim, and a mix across a class. */
+/** The uniforms a Glim can be given when nobody has said which year it belongs to. */
+const ANY_YEAR: readonly Uniform[] = ['senior-green', 'senior-grey', 'junior-green', 'junior-grey', 'kinder', 'sport'];
+
+/** Which uniform a Glim wears when no year decides it: always the same for the same Glim, and a mix across a class. */
 export function uniformFor(art: GlimArt): Uniform {
   // FNV-1a over the genome: stable across devices, and every field counts.
   let h = 2166136261;
@@ -31,7 +36,7 @@ export function uniformFor(art: GlimArt): Uniform {
   h ^= h >>> 13;
   h = Math.imul(h, 0xc2b2ae35);
   h ^= h >>> 16;
-  return UNIFORMS[(h >>> 0) % UNIFORMS.length]!;
+  return ANY_YEAR[(h >>> 0) % ANY_YEAR.length]!;
 }
 
 /** The hat that goes with each uniform. Blazers go without. */
@@ -42,6 +47,7 @@ export const UNIFORM_HAT: Record<Uniform, 'bucket' | 'cap' | null> = {
   'junior-grey': null,
   kinder: 'bucket',
   sport: 'cap',
+  'sport-junior': 'bucket',
 };
 
 export const UNIFORM_COLORS = {
@@ -70,6 +76,7 @@ export function uniformSleeve(uniform: Uniform): { fill: string; short: boolean 
     case 'kinder':
       return { fill: UNIFORM_COLORS.poloRed, short: true };
     case 'sport':
+    case 'sport-junior':
       return { fill: UNIFORM_COLORS.poloGreen, short: true };
   }
 }

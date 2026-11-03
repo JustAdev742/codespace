@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { DEFAULT_SCHOOL_DRESS, schoolDressSchema } from '@ludora/shared';
 
 const theme = z.enum(['system', 'light', 'dark']);
 const reducedMotion = z.enum(['system', 'on', 'off']);
@@ -28,6 +29,14 @@ export const preferencesSchema = z.object({
       showOnLeaderboards: z.boolean().default(true),
     })
     .default({ profileVisibility: 'public', allowFriendRequests: 'everyone', showOnLeaderboards: true }),
+  /** On a school's copy: the player's year group, blazer and kit, which decide their Glim's uniform. */
+  school: z
+    .object({
+      year: schoolDressSchema.shape.year.default(null),
+      blazer: schoolDressSchema.shape.blazer.default('green'),
+      kit: schoolDressSchema.shape.kit.default('school'),
+    })
+    .default(DEFAULT_SCHOOL_DRESS),
 });
 export type Preferences = z.infer<typeof preferencesSchema>;
 
@@ -45,6 +54,7 @@ export const preferencesPatchSchema = z.object({
   highContrast: z.boolean().optional(),
   notifications: z.object({ friendRequests: z.boolean(), gameInvites: z.boolean(), rewards: z.boolean() }).partial().optional(),
   privacy: z.object({ profileVisibility, allowFriendRequests, showOnLeaderboards: z.boolean() }).partial().optional(),
+  school: schoolDressSchema.partial().optional(),
 });
 
 /** Parse stored preferences, filling anything missing with defaults. Never throws. */
@@ -67,11 +77,12 @@ export function defaultPreferences(ageBand: string | null): Preferences {
 const defined = <T extends object>(o: T | undefined): Partial<T> => Object.fromEntries(Object.entries(o ?? {}).filter(([, v]) => v !== undefined)) as Partial<T>;
 
 export function mergePreferences(current: Preferences, patch: z.infer<typeof preferencesPatchSchema>): Preferences {
-  const { notifications, privacy, ...top } = patch;
+  const { notifications, privacy, school, ...top } = patch;
   return preferencesSchema.parse({
     ...current,
     ...defined(top),
     notifications: { ...current.notifications, ...defined(notifications) },
     privacy: { ...current.privacy, ...defined(privacy) },
+    school: { ...current.school, ...defined(school) },
   });
 }

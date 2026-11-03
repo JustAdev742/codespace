@@ -1,7 +1,7 @@
 import { createElement } from 'react';
 import { flushSync } from 'react-dom';
 import { createRoot } from 'react-dom/client';
-import type { AccessoryArt, GlimArt, Rarity } from '@ludora/shared';
+import type { AccessoryArt, GlimArt, Rarity, SchoolUniform } from '@ludora/shared';
 import { Glim } from '../art/glim/Glim.tsx';
 
 /*
@@ -17,6 +17,8 @@ export interface GlimLook {
   rarity?: Rarity | undefined;
   /** On a school's copy, the school uniform (art/glim/uniform.ts). False where the Glim itself is the subject. */
   uniform?: boolean | undefined;
+  /** A player's avatar: the uniform for their year, or null when they have not given one. Left out: the viewer's. */
+  dress?: SchoolUniform | null | undefined;
 }
 
 /** Faces for moments in a game. Each swaps the eyes, mouth and brows for a while. */
@@ -31,7 +33,7 @@ export const EXPRESSIONS = {
 export type Expression = keyof typeof EXPRESSIONS;
 
 export function lookKey(look: GlimLook, extra = ''): string {
-  return `${JSON.stringify(look.art)}|${JSON.stringify(look.accessories ?? [])}|${look.rarity ?? 'common'}|${look.uniform === false ? 'plain' : ''}|${extra}`;
+  return `${JSON.stringify(look.art)}|${JSON.stringify(look.accessories ?? [])}|${look.rarity ?? 'common'}|${look.uniform === false ? 'plain' : ''}|${look.dress === undefined ? 'viewer' : (look.dress ?? 'any')}|${extra}`;
 }
 
 const cache = new Map<string, Promise<HTMLCanvasElement>>();
@@ -43,7 +45,7 @@ async function draw(look: GlimLook, size: number, faceless: boolean, expression:
   const host = document.createElement('div');
   const root = createRoot(host);
   flushSync(() => {
-    root.render(createElement(Glim, { art: art as GlimArt, accessories: look.accessories, rarity: look.rarity ?? 'common', size, limbs: false, ground: false, faceless, contour: false, uniform: look.uniform ?? true }));
+    root.render(createElement(Glim, { art: art as GlimArt, accessories: look.accessories, rarity: look.rarity ?? 'common', size, limbs: false, ground: false, faceless, contour: false, uniform: look.uniform ?? true, ...(look.dress !== undefined ? { dress: look.dress } : {}) }));
   });
   const svg = host.querySelector('svg');
   const markup = svg ? new XMLSerializer().serializeToString(svg) : '';

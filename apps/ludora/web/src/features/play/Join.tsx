@@ -2,7 +2,7 @@ import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router';
 import { useQuery } from '@tanstack/react-query';
 import { ArrowLeft, Shuffle } from 'lucide-react';
-import { displayNameSchema, generateName } from '@ludora/shared';
+import { DEFAULT_SCHOOL_DRESS, displayNameSchema, generateName, type GlimArt, type SchoolDress } from '@ludora/shared';
 import { api, ApiError } from '../../lib/api.ts';
 import { useMe } from '../../lib/session.ts';
 import { Logo } from '../../art/icons.tsx';
@@ -10,6 +10,11 @@ import { Button, buttonClass } from '../../ui/Button.tsx';
 import { Field, Input, Spinner } from '../../ui/primitives.tsx';
 import { Stage } from '../../ui/Stage.tsx';
 import { CodeEntry } from './CodeEntry.tsx';
+import { UniformPicker } from '../school/UniformPicker.tsx';
+import { deviceDress, schoolLook, setDeviceDress } from '../../lib/school.ts';
+
+/** Stands in for a guest's Glim in the uniform preview: the server gives each guest their own look. */
+const GUEST_PREVIEW: GlimArt = { kind: 'glim', body: 'blob', hue: 205, accentHue: 45, saturation: 60, eyes: 'happy', mouth: 'smile', pattern: 'none', topper: 'none', cheeks: true };
 
 interface RoomInfo {
   code: string;
@@ -39,6 +44,9 @@ export default function Join() {
   const me = useMe();
   const info = useQuery({ queryKey: ['room-info', code], queryFn: () => api.get<RoomInfo>(`/api/rooms/${code}`), enabled: Boolean(code), retry: false });
   const [name, setName] = useState('');
+  const [dress, setDress] = useState<SchoolDress>(() => deviceDress() ?? DEFAULT_SCHOOL_DRESS);
+  // On a school's copy, players without a year in their account settings say which year they are in.
+  const askYear = schoolLook() === 'hills-grammar' && me.data?.user?.preferences.school?.year == null;
   const [error, setError] = useState<string | null>((location.state as { error?: string } | null)?.error ?? null);
 
   useEffect(() => {
@@ -125,6 +133,18 @@ export default function Join() {
               ) : info.data.generatedNames ? (
                 <>
                   <p className="text-text-2">The host gives everyone a random name in this game.</p>
+                  {askYear ? (
+                    <UniformPicker
+                      value={dress}
+                      onChange={(patch) => {
+                        const next = { ...dress, ...patch };
+                        setDress(next);
+                        setDeviceDress(next);
+                      }}
+                      preview={{ art: GUEST_PREVIEW }}
+                      onStage
+                    />
+                  ) : null}
                   <Button type="submit" variant="primary" size="2xl" className="w-full">
                     Join game
                   </Button>
@@ -134,13 +154,25 @@ export default function Join() {
                   <Field label="Your name" error={error ?? undefined} hint="Use your first name or a nickname. Other players will see it.">
                     {(p) => (
                       <div className="flex gap-2">
-                        <Input {...p} value={name} onChange={(e) => setName(e.target.value)} maxLength={24} autoFocus autoComplete="nickname" className="h-14 bg-white text-xl font-semibold text-on-accent placeholder:text-[#5a638c]" />
+                        <Input {...p} value={name} onChange={(e) => setName(e.target.value)} maxLength={24} autoFocus autoComplete="nickname" className="h-14 bg-white text-xl font-semibold text-on-accent! placeholder:text-[#5a638c]!" />
                         <Button type="button" size="lg" className="h-14" icon={<Shuffle className="size-4" aria-hidden />} onClick={() => setName(generateName())}>
                           Random
                         </Button>
                       </div>
                     )}
                   </Field>
+                  {askYear ? (
+                    <UniformPicker
+                      value={dress}
+                      onChange={(patch) => {
+                        const next = { ...dress, ...patch };
+                        setDress(next);
+                        setDeviceDress(next);
+                      }}
+                      preview={{ art: GUEST_PREVIEW }}
+                      onStage
+                    />
+                  ) : null}
                   <Button type="submit" variant="primary" size="2xl" className="w-full" disabled={!name.trim()}>
                     Join game
                   </Button>

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { deviceDress, schoolLook } from './school.ts';
 import { io, type Socket } from 'socket.io-client';
 import type { ChaosRequest, HostCommand, PulseView, RoomView } from '@ludora/shared';
 import { newRequestKey } from './api.ts';
@@ -120,7 +121,8 @@ export function useRoom(code: string, opts: { name?: string | undefined; as?: 'h
     let closed = false;
 
     const join = async () => {
-      const ack = await emitWithAck(socket, 'room:join', { code, name: nameRef.current, reconnectToken: storedToken(code), as: opts.as });
+      const dress = schoolLook() ? deviceDress() : null;
+      const ack = await emitWithAck(socket, 'room:join', { code, name: nameRef.current, reconnectToken: storedToken(code), as: opts.as, ...(dress ? { dress } : {}) });
       if (closed) return;
       if (!ack.ok) {
         // A stale token (room restarted, or we were removed) should not block a fresh join.

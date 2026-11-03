@@ -1,7 +1,8 @@
 import { inArray } from 'drizzle-orm';
-import { RARITIES, accessoryArtSchema, glimArtSchema, victoryArtSchema, type AvatarLite, type Rarity } from '@ludora/shared';
+import { RARITIES, accessoryArtSchema, glimArtSchema, uniformForDress, victoryArtSchema, type AvatarLite, type Rarity } from '@ludora/shared';
 import type { DbOrTx } from '../../db/client.ts';
-import { equipped, items } from '../../db/schema.ts';
+import { equipped, items, users } from '../../db/schema.ts';
+import { readPreferences } from '../users/preferences.ts';
 
 const AVATAR_SLOTS = ['buddy', 'hat', 'eyes', 'neck', 'victory'];
 
@@ -17,6 +18,9 @@ export async function loadAvatars(db: DbOrTx, userIds: readonly string[]): Promi
   if (!ids.length) return out;
   const slots = (await db.select().from(equipped).where(inArray(equipped.userId, ids))).filter((s) => AVATAR_SLOTS.includes(s.slot));
   const rows = slots.length ? await db.select({ id: items.id, art: items.art, rarity: items.rarity }).from(items).where(inArray(items.id, [...new Set(slots.map((s) => s.itemId))])) : [];
+  // The uniform for each player's year group; the year itself never leaves their settings.
+  const prefs = await db.select({ id: users.id, preferences: users.preferences }).from(users).where(inArray(users.id, ids));
+  const uniformOf = new Map(prefs.map((r) => [r.id, uniformForDress(readPreferences(r.preferences).school)]));
   const artOf = new Map(rows.map((r) => [r.id, r.art]));
   const rarityOf = new Map(rows.map((r) => [r.id, r.rarity]));
   for (const id of ids) {
@@ -40,6 +44,7 @@ export async function loadAvatars(db: DbOrTx, userIds: readonly string[]): Promi
       ...((RARITIES as readonly string[]).includes(rarity ?? '') ? { rarity: rarity as Rarity } : {}),
       ...(accessories.length ? { accessories } : {}),
       ...(victory?.success ? { victory: { style: victory.data.style, hue: victory.data.hue } } : {}),
+      ...(uniformOf.get(id) ? { uniform: uniformOf.get(id)! } : {}),
     });
   }
   return out;

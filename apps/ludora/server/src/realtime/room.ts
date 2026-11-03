@@ -4,12 +4,14 @@ import {
   generateName,
   hashString,
   S2C,
+  uniformForDress,
   type AvatarLite,
   type ChaosRequest,
   type ChaosRoomView,
   type CommonSettings,
   type FeedItem,
   type HostCommand,
+  type SchoolDress,
   type Question,
   type ResultsView,
   type RewardSummary,
@@ -106,6 +108,13 @@ const ENDED_CLOSE_MS = 20 * 60_000;
 const REACTION_GAP_MS = 1500;
 const FEED_KEEP = 12;
 export const ALLOWED_REACTIONS = ['wave', 'laugh', 'wow', 'gg', 'heart', 'fire', 'think', 'clap', 'party', 'cool', 'sleepy', 'star'];
+
+/** A guest's chosen year group dresses their Glim; an account's own settings, already on its avatar, come first. */
+function withDress(avatar: AvatarLite, dress: SchoolDress | undefined): AvatarLite {
+  if (avatar.uniform || !dress) return avatar;
+  const uniform = uniformForDress(dress);
+  return uniform ? { ...avatar, uniform } : avatar;
+}
 
 /** Guests and anonymous players get a look derived from their name. */
 export function defaultAvatar(seed: string): AvatarLite {
@@ -272,7 +281,7 @@ export class Room {
   }
 
   /** Join as a player, or rejoin with a reconnect token. */
-  join(input: { name?: string | undefined; reconnectToken?: string | undefined; userId: string | null; accountName: string | null; isGuestAccount: boolean; avatar: AvatarLite | null }): Ack<{ player: RoomPlayer; resumed: boolean }> {
+  join(input: { name?: string | undefined; reconnectToken?: string | undefined; userId: string | null; accountName: string | null; isGuestAccount: boolean; avatar: AvatarLite | null; dress?: SchoolDress | undefined }): Ack<{ player: RoomPlayer; resumed: boolean }> {
     if (this.closed || this.status === 'closed') return fail('room_closed', 'This room has closed.');
     if (input.reconnectToken) {
       if (this.kickedTokens.has(input.reconnectToken)) return fail('forbidden', 'The host removed you from this room.');
@@ -326,7 +335,7 @@ export class Room {
       teamId: this.smallestTeam(),
       connected: true,
       reconnectToken: crypto.randomUUID().replace(/-/g, ''),
-      avatar: input.avatar ?? defaultAvatar(name),
+      avatar: withDress(input.avatar ?? defaultAvatar(name), input.dress),
       disconnectedAt: null,
       recent: new Map(),
       lastReactionAt: 0,

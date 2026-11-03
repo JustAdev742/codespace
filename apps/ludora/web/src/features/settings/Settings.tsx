@@ -2,7 +2,7 @@ import { useEffect, useState, type FormEvent } from 'react';
 import { useLocation } from 'react-router';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { PASSWORD_RULES } from '@ludora/shared';
+import { DEFAULT_SCHOOL_DRESS, PASSWORD_RULES, type SchoolDress } from '@ludora/shared';
 import { api, ApiError } from '../../lib/api.ts';
 import { useMe, type Preferences } from '../../lib/session.ts';
 import { applyPreferences, applyTheme, localTheme } from '../../lib/prefs.ts';
@@ -11,29 +11,12 @@ import { SecretLantern } from '../extras/ExtrasEntry.tsx';
 import { Button, ButtonLink } from '../../ui/Button.tsx';
 import { RecoveryCodeDialog } from '../auth/RecoveryCodeDialog.tsx';
 import { YourData } from './YourData.tsx';
+import { Segmented } from '../../ui/Segmented.tsx';
+import { UniformPicker } from '../school/UniformPicker.tsx';
+import { schoolLook } from '../../lib/school.ts';
+import { useOverview } from '../../lib/queries.ts';
 
-type Patch = Partial<Omit<Preferences, 'notifications' | 'privacy'>> & { notifications?: Partial<Preferences['notifications']>; privacy?: Partial<Preferences['privacy']> };
-
-function Segmented<T extends string>({ value, onChange, options, label }: { value: T; onChange: (v: T) => void; options: { value: T; label: string }[]; label: string }) {
-  // Thumb-sized on phones, where the control takes the full width under its label; a little smaller on wider screens.
-  // The chosen option is lifted out of the groove (a raised fill and a fine edge), not only coloured.
-  return (
-    <div role="radiogroup" aria-label={label} className="inline-flex rounded-[var(--radius-m)] border border-line bg-sunken p-1 max-sm:w-full">
-      {options.map((o) => (
-        <button
-          key={o.value}
-          type="button"
-          role="radio"
-          aria-checked={value === o.value}
-          onClick={() => onChange(o.value)}
-          className={`h-9 rounded-[var(--radius-s)] px-3.5 text-sm font-semibold transition-colors max-sm:h-11 max-sm:flex-1 ${value === o.value ? 'bg-raised text-text shadow-[0_1px_3px_rgb(2_5_20/0.3)] ring-1 ring-line-strong' : 'text-text-2 hover:text-text'}`}
-        >
-          {o.label}
-        </button>
-      ))}
-    </div>
-  );
-}
+type Patch = Partial<Omit<Preferences, 'notifications' | 'privacy' | 'school'>> & { notifications?: Partial<Preferences['notifications']>; privacy?: Partial<Preferences['privacy']>; school?: Partial<SchoolDress> };
 
 function Row({ label, description, children }: { label: string; description?: string; children: React.ReactNode }) {
   return (
@@ -49,6 +32,7 @@ function Row({ label, description, children }: { label: string; description?: st
 
 export default function Settings() {
   const me = useMe();
+  const overview = useOverview();
   const qc = useQueryClient();
   const user = me.data?.user;
   const [localThemeValue, setLocalThemeValue] = useState(localTheme());
@@ -161,6 +145,15 @@ export default function Settings() {
     <>
       <PageHeader title="Settings" description="Changes save as you make them." />
       <div className="flex flex-col gap-6">
+        {schoolLook() === 'hills-grammar' ? (
+          <Panel id="uniform" className="flex scroll-mt-20 flex-col gap-4 p-5">
+            <div>
+              <h2 className="font-display text-2xl leading-tight font-bold">School uniform</h2>
+              <p className="text-sm text-text-3">Your Glim wears the Hills Grammar uniform for your year. Other players see the uniform, never your year.</p>
+            </div>
+            <UniformPicker value={{ ...DEFAULT_SCHOOL_DRESS, ...p.school }} onChange={(school) => save.mutate({ school })} preview={overview.data?.avatar ?? null} />
+          </Panel>
+        ) : null}
         <Panel className="divide-y divide-line px-5 py-2">
           <h2 className="py-3 font-display text-2xl leading-tight font-bold">Appearance and accessibility</h2>
           <Row label="Theme">

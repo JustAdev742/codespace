@@ -110,8 +110,8 @@ jobs:
         run: npm run test:e2e
 
       # The pages (axe on each) and a whole game again, in the school look a copy can switch on.
-      - name: Hills Grammar look (layout, accessibility and a game)
-        run: npx playwright test e2e/layout.spec.ts e2e/game.spec.ts
+      - name: Hills Grammar look (layout, accessibility, a game and year uniforms)
+        run: npx playwright test e2e/layout.spec.ts e2e/game.spec.ts e2e/school-uniform.spec.ts
         env:
           E2E_SCHOOL_THEME: hills-grammar
 

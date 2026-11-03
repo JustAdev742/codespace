@@ -12,6 +12,7 @@ import {
 } from 'three';
 import { glimColors, glimFrame, glimSleeve } from '../art/glim/Glim.tsx';
 import { glimCanvas, lookKey, type Expression, type GlimLook } from './glimTexture.ts';
+import type { SchoolUniform } from '@ludora/shared';
 import { inflate, type Inflated } from './inflate.ts';
 import type { Quality } from './quality.ts';
 import { inkMaterial, outline, toon } from './toon.ts';
@@ -64,7 +65,7 @@ function loadBody(look: GlimLook, q: Quality): Promise<Body> {
     const size = q.texture;
     const [frontCanvas, backCanvas] = await Promise.all([glimCanvas(look, size), glimCanvas(look, size, { faceless: true })]);
     const alpha = frontCanvas.getContext('2d')!.getImageData(0, 0, size, size).data;
-    const { scale, ground } = glimFrame(look.art, look.accessories, look.uniform ?? true);
+    const { scale, ground } = glimFrame(look.art, look.accessories, look.uniform ?? true, look.dress);
     const inflated = inflate(alpha, size, { grid: GRID[q.tier], ground });
     return { inflated, front: texture(frontCanvas), back: texture(backCanvas), scale };
   })();
@@ -140,7 +141,7 @@ export class Glim3D extends Group {
     super();
     const { look, quality } = opts;
     this.colors = glimColors(look.art);
-    const { geo } = glimFrame(look.art, look.accessories, look.uniform ?? true);
+    const { geo } = glimFrame(look.art, look.accessories, look.uniform ?? true, look.dress);
     this.floats = !geo.foot;
     this.add(this.body);
 
@@ -155,7 +156,7 @@ export class Glim3D extends Group {
     this.body.add(this.placeholder);
 
     // On a school's copy the arms wear the uniform's sleeves, as in the drawing.
-    const limb = toon(geo.armStyle === 'wing' ? this.colors.deep : (glimSleeve(look.art, look.uniform ?? true) ?? this.colors.body));
+    const limb = toon(geo.armStyle === 'wing' ? this.colors.deep : (glimSleeve(look.art, look.uniform ?? true, look.dress) ?? this.colors.body));
     for (const arm of this.arms) {
       const m = new Mesh(armGeo, limb);
       m.userData.sharedGeometry = true;
@@ -179,7 +180,7 @@ export class Glim3D extends Group {
   }
 
   private placeLimbs(scale: number, inflated: Inflated | null) {
-    const { geo, ground } = glimFrame(this.opts.look.art, this.opts.look.accessories, this.opts.look.uniform ?? true);
+    const { geo, ground } = glimFrame(this.opts.look.art, this.opts.look.accessories, this.opts.look.uniform ?? true, this.opts.look.dress);
     const at = (p: { x: number; y: number }) => ({ x: ground.x + (p.x - ground.x) * scale, y: ground.y + (p.y - ground.y) * scale });
     if (geo.arm) {
       const a = at(geo.arm);
@@ -406,7 +407,7 @@ export class Glim3D extends Group {
 }
 
 /** The Glim a player shows: their own buddy, or a stand-in that is always the same for them. */
-export function lookFor(avatar: { art: GlimLook['art']; accessories?: GlimLook['accessories']; rarity?: GlimLook['rarity'] } | null | undefined, fallback: GlimLook['art']): GlimLook {
-  return avatar ? { art: avatar.art, accessories: avatar.accessories, rarity: avatar.rarity } : { art: fallback };
+export function lookFor(avatar: { art: GlimLook['art']; accessories?: GlimLook['accessories']; rarity?: GlimLook['rarity']; uniform?: SchoolUniform } | null | undefined, fallback: GlimLook['art']): GlimLook {
+  return avatar ? { art: avatar.art, accessories: avatar.accessories, rarity: avatar.rarity, dress: avatar.uniform ?? null } : { art: fallback, dress: null };
 }
 

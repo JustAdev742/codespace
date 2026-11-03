@@ -42,6 +42,9 @@ test('a host and a player play Classic from join code to results', async ({ brow
   const playerErrors = watchErrors(player);
   await player.goto(`/join/${code}`);
   await player.getByLabel('Your name').fill('Sunny Otter');
+  // What the player types shows: dark text on the white field, never white on white.
+  const field = await player.getByLabel('Your name').evaluate((el) => [getComputedStyle(el).color, getComputedStyle(el).backgroundColor]);
+  expect(field[0]).not.toBe(field[1]);
   await player.getByRole('button', { name: 'Join game' }).click();
   // Exact: the screen reader announcer also says these words, inside a longer sentence.
   await expect(player.getByText('You are in', { exact: true })).toBeVisible();

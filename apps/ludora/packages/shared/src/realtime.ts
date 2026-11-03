@@ -1,5 +1,7 @@
 import { z } from 'zod';
 import { roomCodeSchema } from './validation.ts';
+import { schoolDressSchema } from './schoolUniformSchema.ts';
+import type { SchoolUniform } from './schoolUniform.ts';
 import type { GlimArt, AccessoryArt, EMOTE_GLYPHS } from './economy.ts';
 import type { Rarity } from './rarity.ts';
 import type { Pacing, SettingValues } from './modes.ts';
@@ -41,6 +43,8 @@ export const joinRequestSchema = z.object({
   code: roomCodeSchema,
   name: z.string().max(40).optional(),
   reconnectToken: z.string().min(16).max(80).optional(),
+  /** A guest's school year, blazer and kit, for their uniform on a school's copy. Accounts use their settings. */
+  dress: schoolDressSchema.optional(),
 });
 export type JoinRequest = z.infer<typeof joinRequestSchema>;
 
@@ -160,6 +164,8 @@ export interface AvatarLite {
   accessories?: AccessoryArt[];
   /** Equipped victory effect, played on the podium when this player wins. */
   victory?: { style: string; hue: number };
+  /** On a school's copy, the uniform for the player's year group (schoolUniform.ts). Never the year itself. */
+  uniform?: SchoolUniform;
 }
 
 export interface TeamView {

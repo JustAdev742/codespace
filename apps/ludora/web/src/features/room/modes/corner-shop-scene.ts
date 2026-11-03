@@ -831,7 +831,7 @@ export class CornerShopScene extends World {
   }
 
   private addShopper(c: SceneCustomer, first: boolean): Shopper {
-    const glim = new Glim3D({ look: { art: customerArt(c.look) }, quality: this.env.quality, reducedMotion: this.env.reducedMotion });
+    const glim = new Glim3D({ look: { art: customerArt(c.look), dress: null }, quality: this.env.quality, reducedMotion: this.env.reducedMotion });
     glim.scale.setScalar(1.0);
     const group = new Group();
     group.add(glim);

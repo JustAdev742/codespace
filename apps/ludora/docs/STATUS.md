@@ -308,6 +308,14 @@ Last updated: 2026-10-29.
     girls' rounded collar; the Kindergarten red polo and bucket hat; the green sports polo and cap.
     The crest, drawn from the school's own logo file, is on every blazer, polo and hat; sleeves
     match the garment, and 3D Glims wear its back.
+  - Year groups (2026-11-04): each player gives their year (Kindergarten to Year 12), blazer and
+    school or sport kit, in Settings or, for guests, on the join screen, and wears that year's
+    uniform: the polo and bucket hat to Year 2, the junior blazers in Years 3 to 6, the senior ones
+    from Year 7, and the junior or senior sport kit. Only the uniform reaches other players.
+    Checked: unit tests for the year rules, server tests (settings, guests, accounts winning over
+    a join, no year in the room view), and a browser test that sets a year in Settings, joins a
+    guest in Kindergarten and finds both in the right uniform in the lobby (axe clean). CI runs it
+    in the Hills look.
   - Everywhere else (the demo, any other school) keeps Ludora's look.
   - Checked in Chromium with the real setting: 13 screens (landing, home, shop, collection, the
     phone home page, and a Classic game in the lobby, question, result, leaderboard and results on
@@ -524,10 +532,10 @@ creates and drops its own database).
 |---|---|---|
 | content | 4 | 132: catalogue integrity, every built-in question set, the seasonal calendar (11) and the monthly drops (9) |
 | engine | 53 | 8174, including the conformance suite for every mode and variant, and the chaos suite: every cheat in every mode it supports, the core rules and each mode's pack |
-| server | 18 | 189: auth and rate limits, realtime, economy, staff, social and classes, preferences, open games, sign-in help, uploads, AI drafts, reward counting, origin checks, chaos, Creator Studio, Game Maker, school events, configuration (3), and account download, deletion and data retention (8) |
-| web | 7 | 99: the set editor's checks, import and export (45); the synthesised music, in key and looping cleanly (16); the recorded sounds, every effect with a file and every loop a whole number of bars (16), and the takes and pitch spread they play with (5); which music plays when (7); Glow Tag's park in words for screen readers (4); the master's soft-clip stage (2); which Hills Grammar uniform each Glim wears, and its sleeves (4) |
-| shared | 0 | no tests of its own; its schemas are exercised by the other projects |
-| **Total** | **82** | **8595 passing** (full run on 2026-11-01) |
+| server | 19 | 192: auth and rate limits, realtime, economy, staff, social and classes, preferences, school year uniforms (3), open games, sign-in help, uploads, AI drafts, reward counting, origin checks, chaos, Creator Studio, Game Maker, school events, configuration (3), and account download, deletion and data retention (8) |
+| web | 7 | 103: the set editor's checks, import and export (45); the synthesised music, in key and looping cleanly (16); the recorded sounds, every effect with a file and every loop a whole number of bars (16), and the takes and pitch spread they play with (5); which music plays when (7); Glow Tag's park in words for screen readers (4); the master's soft-clip stage (2); which Hills Grammar uniform each Glim wears, its sleeves, and who wears whose (8) |
+| shared | 1 | 7: the year-group uniform rules; its other schemas are exercised by the other projects |
+| **Total** | **84** | **8609 passing** (full run on 2026-11-04) |
 
 End-to-end: `npm run test:e2e` (needs Postgres; builds first, then runs 10
 browser tests against a fresh `ludora_e2e` database). `E2E_BROWSER=webkit` or

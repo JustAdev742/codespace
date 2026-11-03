@@ -1183,6 +1183,6 @@ export class JettyScene extends World {
 }
 
 /** A Glim look for a player, with a stand-in for anyone who has no avatar. */
-export function lookOf(avatar: { art: GlimArt; accessories?: GlimLook['accessories']; rarity?: GlimLook['rarity'] } | null | undefined, fallback: GlimArt): GlimLook {
-  return avatar ? { art: avatar.art, accessories: avatar.accessories, rarity: avatar.rarity } : { art: fallback };
+export function lookOf(avatar: { art: GlimArt; accessories?: GlimLook['accessories']; rarity?: GlimLook['rarity']; uniform?: GlimLook['dress'] } | null | undefined, fallback: GlimArt): GlimLook {
+  return avatar ? { art: avatar.art, accessories: avatar.accessories, rarity: avatar.rarity, dress: avatar.uniform ?? null } : { art: fallback, dress: null };
 }

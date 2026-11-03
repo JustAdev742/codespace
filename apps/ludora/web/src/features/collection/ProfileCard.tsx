@@ -20,7 +20,7 @@ export function ProfileCard({ name, level, avatar, equipment, compact = false }:
   const title = equipment.title?.kind === 'title' ? equipment.title.text : null;
   const theme = equipment.theme?.kind === 'theme' ? equipment.theme : null;
   const size = compact ? 104 : 150;
-  const buddy = avatar ? <Glim art={avatar.art} accessories={avatar.accessories} rarity={avatar.rarity} pose="wave" size={Math.round(size * 0.86)} /> : null;
+  const buddy = avatar ? <Glim art={avatar.art} accessories={avatar.accessories} dress={avatar.uniform ?? null} rarity={avatar.rarity} pose="wave" size={Math.round(size * 0.86)} /> : null;
   return (
     <div className="lift overflow-hidden rounded-[var(--radius-l)] border border-line bg-raised" style={theme ? { background: `color-mix(in oklab, hsl(${theme.hue} 60% 50%) 16%, var(--bg-raised))` } : undefined}>
       <div className={`relative ${compact ? 'h-24' : 'h-32'}`}>

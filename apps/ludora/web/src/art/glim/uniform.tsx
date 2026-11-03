@@ -122,7 +122,7 @@ function layout(uniform: Uniform, geo: BodyGeometry) {
   const half = (x1 - x0) / 2;
   const top = geo.neck - 7;
   const room = y1 - top;
-  const isBlazer = uniform !== 'kinder' && uniform !== 'sport';
+  const isBlazer = uniform !== 'kinder' && uniform !== 'sport' && uniform !== 'sport-junior';
   // The crest on the left breast (the right as we look), clear of the lapel, kept inside the body.
   const crestW = Math.max(5.6, Math.min(isBlazer ? 8.4 : 7.6, (room - 3) * 0.55));
   const crestX = cx + Math.max(isBlazer ? 13 : 10.5, Math.min(isBlazer ? 18 : 14, half * 0.46));
@@ -143,8 +143,8 @@ export function UniformGarment({ uniform, geo, tiny, neckwear, back = false }: {
   if (back) {
     // The back, for the far side of a 3D Glim: the garment and its collar, with the blazer's centre seam.
     const grey = uniform === 'senior-grey' || uniform === 'junior-grey';
-    const fill = uniform === 'kinder' ? U.poloRed : uniform === 'sport' ? U.poloGreen : grey ? U.blazerGrey : U.blazerGreen;
-    const deep = uniform === 'kinder' ? U.poloRedDeep : uniform === 'sport' ? U.poloGreenDeep : grey ? U.blazerGreyDeep : U.blazerGreenDeep;
+    const fill = uniform === 'kinder' ? U.poloRed : uniform === 'sport' || uniform === 'sport-junior' ? U.poloGreen : grey ? U.blazerGrey : U.blazerGreen;
+    const deep = uniform === 'kinder' ? U.poloRedDeep : uniform === 'sport' || uniform === 'sport-junior' ? U.poloGreenDeep : grey ? U.blazerGreyDeep : U.blazerGreenDeep;
     return (
       <g>
         <path d={`${neckline(0)}V140H${x0 - 6}Z`} fill={fill} />

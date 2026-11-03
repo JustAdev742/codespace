@@ -94,6 +94,7 @@ export function PlayerGlim({
     <Glim
       art={avatar?.art ?? fallbackArt(seed)}
       accessories={avatar?.accessories}
+      dress={avatar?.uniform ?? null}
       size={size}
       className={className}
       bob={bob}

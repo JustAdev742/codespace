@@ -1,4 +1,4 @@
-import { memo, useId, useMemo } from 'react';
+import { memo, useId, useMemo, useSyncExternalStore } from 'react';
 import type { AccessoryArt, GlimArt, Rarity } from '@ludora/shared';
 import { BODIES, type BodyGeometry, type GlimColors, type Part } from './bodies.ts';
 import { Accessory } from './accessories.tsx';
@@ -8,7 +8,7 @@ import { armParts, backParts, BIG_BACKS, earParts, feetParts, tailParts, topperP
 import { pathBounds } from './geometry.ts';
 import { UNIFORM_HAT, uniformFor, uniformSleeve, type Uniform } from './uniform.ts';
 import { UniformBadge, UniformGarment, UniformHat } from './uniform.tsx';
-import { schoolLook } from '../../lib/school.ts';
+import { schoolLook, subscribeViewerUniform, viewerUniform } from '../../lib/school.ts';
 
 /*
  * Draws a Glim from its genome. Pure SVG, no images: every Glim in the
@@ -110,6 +110,11 @@ export interface GlimProps {
   contour?: boolean;
   /** On a school's copy, the school uniform (uniform.ts). False where the Glim itself is the subject, as in the Glim Maker. */
   uniform?: boolean;
+  /**
+   * Whose uniform: a player's avatar passes the uniform for their year (AvatarLite.uniform), or
+   * null when they have not given one. Left out, the Glim wears the viewer's own uniform.
+   */
+  dress?: Uniform | null;
   title?: string;
   className?: string;
 }
@@ -161,19 +166,22 @@ function build(art: GlimArt, c: GlimColors, pose: Pose, hideTopper: boolean, lim
 }
 
 /** The uniform a Glim wears on this copy of Ludora, or null: only on The Hills Grammar School's. */
-function uniformOf(art: GlimArt): Uniform | null {
-  return schoolLook() === 'hills-grammar' ? uniformFor(art) : null;
+function uniformOf(art: GlimArt, dress?: Uniform | null, viewer: Uniform | null = viewerUniform()): Uniform | null {
+  if (schoolLook() !== 'hills-grammar') return null;
+  // Someone's avatar wears their year's uniform, or one picked from its looks if they have not said.
+  if (dress !== undefined) return dress ?? uniformFor(art);
+  // Any other Glim wears the uniform of whoever is looking, once they have given their year.
+  return viewer ?? uniformFor(art);
 }
 
-/** The colour of a Glim's sleeves on this copy of Ludora, for the 3D arms, or null when it wears no uniform. */
-export function glimSleeve(art: GlimArt, uniform = true): string | null {
-  const dressed = uniform ? uniformOf(art) : null;
+export function glimSleeve(art: GlimArt, uniform = true, dress?: Uniform | null): string | null {
+  const dressed = uniform ? uniformOf(art, dress) : null;
   return dressed ? uniformSleeve(dressed).fill : null;
 }
 
 /** The scale a Glim is drawn at and the point it shrinks towards, for placing 3D limbs on a drawn body. */
-export function glimFrame(art: GlimArt, accessories?: AccessoryArt[], uniform = true): { geo: BodyGeometry; scale: number; ground: { x: number; y: number } } {
-  const dressed = uniform ? uniformOf(art) : null;
+export function glimFrame(art: GlimArt, accessories?: AccessoryArt[], uniform = true, dress?: Uniform | null): { geo: BodyGeometry; scale: number; ground: { x: number; y: number } } {
+  const dressed = uniform ? uniformOf(art, dress) : null;
   const hasHat = Boolean(accessories?.some((a) => a.slot === 'hat')) || Boolean(dressed && UNIFORM_HAT[dressed]);
   const { geo, fit } = build(art, glimColors(art), 'idle', hasHat);
   return { geo, scale: Math.min(fit, hasHat ? 0.84 : 1), ground: GROUND };
@@ -235,11 +243,13 @@ function twoTone(art: GlimArt): string {
   return hsl(art.hue + delta, (pale ? sat + 14 : sat) + 12, pale ? 70 : 52);
 }
 
-export const Glim = memo(function Glim({ art, accessories, size = 96, aura = null, rarity, pose = 'idle', silhouette = false, limbs = true, ground = true, faceless = false, contour = true, uniform = true, title, className }: GlimProps) {
+export const Glim = memo(function Glim({ art, accessories, size = 96, aura = null, rarity, pose = 'idle', silhouette = false, limbs = true, ground = true, faceless = false, contour = true, uniform = true, dress, title, className }: GlimProps) {
   const uid = useId().replace(/[^a-zA-Z0-9_-]/g, '');
   const c = useMemo(() => glimColors(art), [art]);
   // A hat or neckwear the player chose shows instead of the uniform's; the garment always shows.
-  const dressed = uniform && !silhouette ? uniformOf(art) : null;
+  // Re-render when the viewer's year changes in Settings, for the Glims that wear it.
+  const viewer = useSyncExternalStore(subscribeViewerUniform, viewerUniform, viewerUniform);
+  const dressed = uniform && !silhouette ? uniformOf(art, dress, viewer) : null;
   const ownHat = Boolean(accessories?.some((a) => a.slot === 'hat'));
   const schoolHat = Boolean(dressed && !ownHat && UNIFORM_HAT[dressed]);
   const hasHat = ownHat || schoolHat;
@@ -277,7 +287,7 @@ export const Glim = memo(function Glim({ art, accessories, size = 96, aura = nul
   const shade = hsl(deepHue(art.hue), 55, 16);
 
   return (
-    <svg viewBox="0 0 120 120" width={size} height={size} className={className} role={title ? 'img' : 'presentation'} aria-label={title} aria-hidden={title ? undefined : true}>
+    <svg viewBox="0 0 120 120" width={size} height={size} className={className} role={title ? 'img' : 'presentation'} aria-label={title} aria-hidden={title ? undefined : true} data-uniform={dressed ?? undefined}>
       {title ? <title>{title}</title> : null}
       {animated ? <style>{MOTION_CSS}</style> : null}
       <defs>

@@ -152,6 +152,7 @@ export function attachRealtime(app: FastifyInstance, deps: AppDeps) {
         accountName: auth?.user.displayName ?? null,
         isGuestAccount: auth?.user.isGuest ?? true,
         avatar,
+        dress: parsed.data.dress,
       });
       if (!joined.ok) return reply(ack, joined);
       const sub: RoomSubscriber = { id: randomUUID(), role: 'player', playerId: joined.player.id, emit: (e, p) => socket.emit(e, p) };

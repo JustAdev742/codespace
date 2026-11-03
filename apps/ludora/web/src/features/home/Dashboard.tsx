@@ -30,7 +30,7 @@ function Buddy() {
   const buddy = o.data?.equipped.buddy;
   const name = buddy?.name;
   const rarity: Rarity | undefined = avatar?.rarity ?? RARITIES.find((r) => r === buddy?.rarity);
-  const glim = <Glim art={avatar?.art ?? PLACEHOLDER_BUDDY} accessories={avatar?.accessories} size={190} rarity={rarity} silhouette={!avatar} className="h-auto w-full" />;
+  const glim = <Glim art={avatar?.art ?? PLACEHOLDER_BUDDY} accessories={avatar?.accessories} dress={avatar?.uniform ?? null} size={190} rarity={rarity} silhouette={!avatar} className="h-auto w-full" />;
   return (
     <div className="relative w-[104px] shrink-0 sm:w-[168px]">
       {frame?.kind === 'frame' ? (
