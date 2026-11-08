@@ -1,0 +1,149 @@
+{
+ "KA-130K": {
+  "mass": 4.219,
+  "rotor_J": 0.0012077991129703764,
+  "ratio": 14.0,
+  "motor": "KM-130x45",
+  "hd": null,
+  "gear": "planetary",
+  "drive": "HC",
+  "joints": [
+   "knee"
+  ],
+  "T_peak_out": 394.9204246317167,
+  "T_cont_out": 138.90855898787223,
+  "w_noload_out": 11.01599330200381,
+  "w_at_half_peak": 10.432042154712326,
+  "J_reflected": 0.23672862614219378,
+  "OD": 0.14200000000000002,
+  "motor_status": "C",
+  "n_feasible": 2
+ },
+ "KA-130H": {
+  "mass": 3.737,
+  "rotor_J": 0.0010735992115292233,
+  "ratio": 13.0,
+  "motor": "KM-130x40",
+  "hd": null,
+  "gear": "planetary",
+  "drive": "HC",
+  "joints": [
+   "hip_pitch"
+  ],
+  "T_peak_out": 370.3346280571908,
+  "T_cont_out": 114.6546836090374,
+  "w_noload_out": 11.121916314523077,
+  "w_at_half_peak": 10.384551369263088,
+  "J_reflected": 0.18143826674843874,
+  "OD": 0.14200000000000002,
+  "motor_status": "C",
+  "n_feasible": 7
+ },
+ "KA-110P": {
+  "mass": 1.809,
+  "rotor_J": 0.0001375,
+  "ratio": 32.0,
+  "motor": "ILM85x26",
+  "hd": null,
+  "gear": "planetary",
+  "drive": "EV",
+  "joints": [
+   "hip_roll",
+   "waist_pitch"
+  ],
+  "T_peak_out": 275.8528,
+  "T_cont_out": 72.5696,
+  "w_noload_out": 5.899833249045451,
+  "w_at_half_peak": 5.076413886143361,
+  "J_reflected": 0.1408,
+  "OD": 0.097,
+  "motor_status": "V",
+  "n_feasible": 50
+ },
+ "KA-90P": {
+  "mass": 1.354,
+  "rotor_J": 8.470000000000001e-05,
+  "ratio": 23.0,
+  "motor": "RI85-PH",
+  "hd": null,
+  "gear": "planetary",
+  "drive": "EV",
+  "joints": [
+   "hip_yaw",
+   "waist_yaw",
+   "ankle"
+  ],
+  "T_peak_out": 105.80000000000001,
+  "T_cont_out": 35.972,
+  "w_noload_out": 15.974933105107684,
+  "w_at_half_peak": 14.972794566388876,
+  "J_reflected": 0.04480630000000001,
+  "OD": 0.097,
+  "motor_status": "V",
+  "n_feasible": 44
+ },
+ "KH-25": {
+  "mass": 1.378,
+  "rotor_J": 7.810000000000001e-05,
+  "ratio": 50.0,
+  "motor": "ILM85x13",
+  "hd": 25,
+  "gear": "harmonic",
+  "drive": "EV",
+  "joints": [
+   "shoulder_pitch",
+   "shoulder_roll"
+  ],
+  "T_peak_out": 174.75,
+  "T_cont_out": 45.9,
+  "w_noload_out": 7.12911193795104,
+  "w_at_half_peak": 6.486791822112324,
+  "J_reflected": 0.19525000000000003,
+  "OD": 0.097,
+  "motor_status": "V",
+  "n_feasible": 2
+ },
+ "KH-20": {
+  "mass": 1.249,
+  "rotor_J": 8.470000000000001e-05,
+  "ratio": 50.0,
+  "motor": "RI85-PH",
+  "hd": 20,
+  "gear": "harmonic",
+  "drive": "EV",
+  "joints": [
+   "shoulder_yaw",
+   "elbow"
+  ],
+  "T_peak_out": 187.5,
+  "T_cont_out": 63.75,
+  "w_noload_out": 7.3484692283495345,
+  "w_at_half_peak": 6.887485500538883,
+  "J_reflected": 0.21175000000000002,
+  "OD": 0.097,
+  "motor_status": "V",
+  "n_feasible": 1
+ },
+ "KH-14": {
+  "mass": 0.678,
+  "rotor_J": 1.1044909364233777e-05,
+  "ratio": 50.0,
+  "motor": "KM-50x20",
+  "hd": 14,
+  "gear": "harmonic",
+  "drive": "EV",
+  "joints": [
+   "wrist_yaw",
+   "neck_yaw",
+   "neck_pitch"
+  ],
+  "T_peak_out": 33.67630770451253,
+  "T_cont_out": 8.862186238029613,
+  "w_noload_out": 8.973592608350039,
+  "w_at_half_peak": 8.20264000243492,
+  "J_reflected": 0.027612273410584445,
+  "OD": 0.062,
+  "motor_status": "C",
+  "n_feasible": 2
+ }
+}

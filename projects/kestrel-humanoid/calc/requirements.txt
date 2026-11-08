@@ -1,0 +1,6 @@
+# KESTREL K1 engineering calc package (python >= 3.11)
+numpy>=2.0
+scipy>=1.13
+matplotlib>=3.8
+mujoco>=3.2          # multibody inverse dynamics + simulation model
+cadquery>=2.4        # parametric CAD for cad/ (STEP/STL export)
