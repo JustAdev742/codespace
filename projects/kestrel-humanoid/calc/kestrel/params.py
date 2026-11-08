@@ -201,10 +201,10 @@ def build_bodies():
     h_sh = d["shoulder_z"]
     B.append(Body("torso", "waist_link", "waist_pitch", (0, 0, d["waist_pitch_above"]), (0, 1, 0), comps=[
         Comp("spine + ribcage frame (7075-T6 + CF panels)", 2.40, (-0.01, 0, 0.20), "box", (0.18, 0.30, 0.40), "structure"),
-        Comp("battery pack 16S6P (Molicel P50B, 1.68 kWh) incl. BMS, fuse, enclosure", 8.90, (-0.035, 0, 0.125), "box", (0.12, 0.24, 0.24), "battery"),
+        Comp("battery pack 16S6P (Molicel P50B, 1.68 kWh) incl. BMS, fuse, enclosure", 8.90, (-0.020, 0, 0.130), "box", (0.155, 0.20, 0.185), "battery"),
         Comp("AI computer (Jetson AGX Thor module + carrier + cold plate)", 1.45, (0.035, 0, 0.30), "box", (0.04, 0.16, 0.12), "electronics"),
         Comp("real-time control computer + safety MCU board", 0.45, (-0.07, 0, 0.30), "box", (0.03, 0.12, 0.10), "electronics"),
-        Comp("power distribution unit (contactor, fuses, DC-DC)", 1.20, (0.05, 0, 0.12), "box", (0.05, 0.18, 0.12), "electronics"),
+        Comp("power distribution unit (contactor, fuses, DC-DC)", 1.20, (0.075, 0, 0.177), "box", (0.03, 0.17, 0.10), "electronics"),
         Comp("cooling: 2 blowers, ducts, heat pipes", 0.55, (-0.08, 0, 0.32), "box", (0.04, 0.20, 0.08), "electronics"),
         Comp("shoulder-pitch actuator L", _A("KH-25"), (0.0, d["shoulder_half_width"] - 0.065, h_sh), "cyl", (0.050, 0.075, "y"), "actuator"),
         Comp("shoulder-pitch actuator R", _A("KH-25"), (0.0, -d["shoulder_half_width"] + 0.065, h_sh), "cyl", (0.050, 0.075, "y"), "actuator"),
@@ -267,24 +267,24 @@ def build_bodies():
     for side, s in (("l", 1), ("r", -1)):
         B.append(Body(f"{side}_hip_yaw_link", "pelvis", f"{side}_hip_yaw",
                       (0, s * d["hip_half_width"], d["hip_yaw_above"]), (0, 0, 1), comps=[
-            Comp("hip-roll actuator", _A("KA-110P"), (-0.075, 0, -d["hip_yaw_above"]), "cyl", (0.058, 0.085, "x"), "actuator"),
+            Comp("hip-roll actuator (gluteal volume)", _A("KA-110P"), (-0.118, 0, -d["hip_yaw_above"]), "cyl", (0.0485, 0.080, "x"), "actuator"),
             Comp("hip yaw-roll yoke (7075-T6)", 0.48, (-0.03, 0, -0.04), "box", (0.10, 0.08, 0.08), "structure"),
         ]))
         B.append(Body(f"{side}_hip_roll_link", f"{side}_hip_yaw_link", f"{side}_hip_roll",
                       (0, 0, -d["hip_yaw_above"]), (1, 0, 0), comps=[
-            Comp("hip-pitch actuator", _A("KA-130H"), (0, s * 0.075, 0), "cyl", (0.068, 0.090, "y"), "actuator"),
-            Comp("hip roll-pitch bracket (7075-T6)", 0.35, (0, s * 0.02, 0), "box", (0.09, 0.05, 0.10), "structure"),
+            Comp("hip-pitch actuator (coaxial with hip centre)", _A("KA-130H"), (0, 0, 0), "cyl", (0.071, 0.088, "y"), "actuator"),
+            Comp("hip roll-pitch bracket (7075-T6)", 0.35, (-0.072, 0, 0), "box", (0.016, 0.11, 0.15), "structure"),
         ]))
         B.append(Body(f"{side}_thigh", f"{side}_hip_roll_link", f"{side}_hip_pitch", (0, 0, 0), (0, 1, 0), comps=[
-            Comp("knee actuator (in upper thigh)", _A("KA-130K"), (0, -s * 0.02, -0.115), "cyl", (0.068, 0.090, "y"), "actuator"),
+            Comp("knee actuator (in upper thigh)", _A("KA-130K"), (0, 0, -0.160), "cyl", (0.071, 0.095, "y"), "actuator"),
             Comp("thigh frame (7075-T6 twin-plate + CF tube)", 0.95, (0, 0, -0.22), "box", (0.08, 0.07, 0.36), "structure"),
             Comp("knee push-rod (Ti tube, 2 rod ends)", 0.16, (-0.04, 0, -0.26), "cyl", (0.009, 0.30, "z"), "structure"),
             Comp("thigh shells", 0.35, (0, 0, -0.20), "box", (0.15, 0.15, 0.36), "shell"),
             Comp("thigh harness", 0.25, (0, 0, -0.20), "box", (0.03, 0.03, 0.36), "harness"),
         ]))
         B.append(Body(f"{side}_shank", f"{side}_thigh", f"{side}_knee", (0, 0, -d["thigh"]), (0, 1, 0), comps=[
-            Comp("ankle actuator A (upper shank)", _A("KA-90P"), (-0.02, 0.035, -0.10), "cyl", (0.050, 0.075, "y"), "actuator"),
-            Comp("ankle actuator B (upper shank)", _A("KA-90P"), (-0.02, -0.035, -0.17), "cyl", (0.050, 0.075, "y"), "actuator"),
+            Comp("ankle actuator A (calf, upper)", _A("KA-90P"), (-0.015, 0, -0.095), "cyl", (0.0485, 0.070, "y"), "actuator"),
+            Comp("ankle actuator B (calf, lower)", _A("KA-90P"), (-0.025, 0, -0.195), "cyl", (0.0485, 0.070, "y"), "actuator"),
             Comp("shank frame (7075-T6 + CF tube)", 0.75, (0, 0, -0.22), "box", (0.07, 0.06, 0.36), "structure"),
             Comp("ankle push-rods x2 (Ti tube, rod ends)", 0.18, (-0.035, 0, -0.30), "cyl", (0.008, 0.26, "z"), "structure"),
             Comp("shank shells", 0.28, (0, 0, -0.20), "box", (0.12, 0.12, 0.36), "shell"),

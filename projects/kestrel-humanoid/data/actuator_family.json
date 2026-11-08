@@ -1,6 +1,6 @@
 {
  "KA-130K": {
-  "mass": 4.219,
+  "mass": 4.224,
   "rotor_J": 0.0012077991129703764,
   "ratio": 14.0,
   "motor": "KM-130x45",
@@ -20,9 +20,9 @@
   "n_feasible": 2
  },
  "KA-130H": {
-  "mass": 3.737,
+  "mass": 3.78,
   "rotor_J": 0.0010735992115292233,
-  "ratio": 13.0,
+  "ratio": 14.0,
   "motor": "KM-130x40",
   "hd": null,
   "gear": "planetary",
@@ -30,11 +30,11 @@
   "joints": [
    "hip_pitch"
   ],
-  "T_peak_out": 370.3346280571908,
-  "T_cont_out": 114.6546836090374,
-  "w_noload_out": 11.121916314523077,
-  "w_at_half_peak": 10.384551369263088,
-  "J_reflected": 0.18143826674843874,
+  "T_peak_out": 398.82190713851315,
+  "T_cont_out": 123.47427465588643,
+  "w_noload_out": 10.32749372062857,
+  "w_at_half_peak": 9.64279770003001,
+  "J_reflected": 0.21042544545972777,
   "OD": 0.14200000000000002,
   "motor_status": "C",
   "n_feasible": 7
@@ -61,7 +61,7 @@
   "n_feasible": 50
  },
  "KA-90P": {
-  "mass": 1.354,
+  "mass": 1.37,
   "rotor_J": 8.470000000000001e-05,
   "ratio": 23.0,
   "motor": "RI85-PH",

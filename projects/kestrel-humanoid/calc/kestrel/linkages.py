@@ -2,9 +2,9 @@
 
 Knee four-bar
 -------------
-The knee actuator sits in the upper thigh, 0.115 m below the hip axis, and drives the
-shank through a crank-rod-crank four-bar. Moving 2.9 kg from the knee to near the hip
-cuts the leg's inertia about the hip by ~0.47 kg m^2 (~30 %), which directly lowers the
+The knee actuator sits in the upper thigh, 0.160 m below the hip axis, and drives the
+shank through a crank-rod-crank four-bar. Moving the 4.2 kg actuator from the knee to 0.16 m below the hip
+cuts the leg's inertia about the hip by ~0.63 kg m^2, which directly lowers the
 hip-pitch swing torque. A single four-bar cannot sweep 145 deg with good transmission
 angles, so the knee range is 0-130 deg (deep squat needs ~125 deg; hard stop at 132 deg) with
 transmission angles held at 35-145 deg over 20-110 deg (where torque is high) and 20-160 deg
@@ -32,6 +32,7 @@ import numpy as np
 from . import params as P
 
 ROOT = Path(__file__).resolve().parents[2]
+KNEE_ACT_BELOW_HIP = 0.160   # knee actuator axis below hip axis (18 mm running clearance to the hip actuator)
 
 
 def rot(th):
@@ -53,7 +54,7 @@ def circle_intersect(c0, r0, c1, r1, ref):
 
 class KneeFourBar:
     def __init__(self, r1, r2, beta, phi0, A=None):
-        self.A = np.array(A if A is not None else [0.0, P.DIM["thigh"] - 0.115])
+        self.A = np.array(A if A is not None else [0.0, P.DIM["thigh"] - KNEE_ACT_BELOW_HIP])
         self.r1, self.r2, self.beta, self.phi0 = r1, r2, beta, phi0
         self.u0 = np.array([np.cos(beta), np.sin(beta)])
         C0 = self.A + r1 * np.array([np.cos(phi0), np.sin(phi0)])

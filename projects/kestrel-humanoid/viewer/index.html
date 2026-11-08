@@ -1,0 +1,242 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>KESTREL K1 Viewer</title>
+<style>
+  :root {
+    --bg0: #eef0f2; --bg1: #d9dde2; --ink: #16181b; --muted: #5b626b; --panel: rgba(255,255,255,0.82);
+    --line: rgba(20,24,28,0.12); --accent: #e3893b;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) { --bg0: #1a1d21; --bg1: #0d0f11; --ink: #eceef0; --muted: #9aa2ab; --panel: rgba(22,25,29,0.82); --line: rgba(255,255,255,0.12); }
+  }
+  :root[data-theme="dark"] { --bg0: #1a1d21; --bg1: #0d0f11; --ink: #eceef0; --muted: #9aa2ab; --panel: rgba(22,25,29,0.82); --line: rgba(255,255,255,0.12); }
+  html, body { margin: 0; height: 100%; background: radial-gradient(120% 90% at 50% 30%, var(--bg0), var(--bg1)); color: var(--ink);
+    font: 14px/1.4 ui-sans-serif, system-ui, -apple-system, "Segoe UI", Inter, Roboto, sans-serif; overflow: hidden; }
+  canvas { display: block; }
+  #ui { position: absolute; left: 16px; top: 16px; width: min(300px, calc(100vw - 32px)); background: var(--panel); backdrop-filter: blur(10px);
+    border: 1px solid var(--line); border-radius: 14px; padding: 14px 14px 10px; box-shadow: 0 8px 30px rgba(0,0,0,0.12); }
+  #ui h1 { font-size: 15px; letter-spacing: 0.14em; margin: 0 0 2px; font-weight: 700; }
+  #ui .sub { color: var(--muted); font-size: 12px; margin-bottom: 10px; }
+  .row { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; }
+  button { font: inherit; font-size: 12px; padding: 6px 9px; border-radius: 8px; border: 1px solid var(--line); background: transparent; color: var(--ink); cursor: pointer; }
+  button:hover, button[aria-pressed="true"] { border-color: var(--accent); }
+  button[aria-pressed="true"] { background: color-mix(in srgb, var(--accent) 16%, transparent); }
+  label { font-size: 12px; color: var(--muted); display: block; margin-top: 6px; }
+  input[type=range] { width: 100%; accent-color: var(--accent); }
+  #status { position: absolute; right: 16px; bottom: 14px; font-size: 12px; color: var(--muted); }
+  body.bare #ui, body.bare #status { display: none; }
+  @media (max-width: 520px) { #ui { top: auto; bottom: 16px; } }
+</style>
+</head>
+<body>
+<div id="ui" role="region" aria-label="Viewer controls">
+  <h1>KESTREL&nbsp;K1</h1>
+  <div class="sub">Full-size humanoid · 1.75 m · 30 body DOF (26 rotary + 4 linear actuators) · 2 × 10-DOA hands</div>
+  <div class="row" id="views"></div>
+  <label for="explode">Exploded view</label>
+  <input id="explode" type="range" min="0" max="1" step="0.01" value="0">
+  <div class="row" id="modes"></div>
+</div>
+<div id="status">loading…</div>
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.169.0/examples/jsm/"
+} }
+</script>
+<script type="module">
+import * as THREE from "three";
+import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
+import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
+
+const Q = new URLSearchParams(location.search);
+if (Q.get("bare") === "1") document.body.classList.add("bare");
+if (Q.get("theme")) document.documentElement.dataset.theme = Q.get("theme");
+const MODEL = Q.get("model") || "kestrel_k1.glb";
+
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
+renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
+renderer.setSize(innerWidth, innerHeight);
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.05;
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+document.body.appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+const pmrem = new THREE.PMREMGenerator(renderer);
+scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+
+const camera = new THREE.PerspectiveCamera(28, innerWidth / innerHeight, 0.01, 50);
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+
+const key = new THREE.DirectionalLight(0xffffff, 1.6);
+key.position.set(2.2, -2.8, 4.0);
+key.castShadow = true;
+key.shadow.mapSize.set(2048, 2048);
+Object.assign(key.shadow.camera, { left: -1.2, right: 1.2, top: 1.2, bottom: -1.2, near: 0.5, far: 12 });
+key.shadow.bias = -0.0004;
+scene.add(key);
+const rim = new THREE.DirectionalLight(0xdfe8ff, 0.9);
+rim.position.set(-3, 3, 2.5);
+scene.add(rim);
+scene.add(new THREE.HemisphereLight(0xffffff, 0x9aa0a6, 0.35));
+
+const ground = new THREE.Mesh(new THREE.CircleGeometry(3, 64), new THREE.ShadowMaterial({ opacity: 0.22 }));
+ground.receiveShadow = true;
+scene.add(ground);
+
+// The OCC glTF writer already converts CAD Z-up to glTF Y-up: CAD (x, y, z) -> three (x, z, -y).
+const root = new THREE.Group();
+scene.add(root);
+ground.rotation.x = -Math.PI / 2;
+const cad2w = (v) => new THREE.Vector3(v[0], v[2], -v[1]);
+
+const M = {
+  shell: new THREE.MeshPhysicalMaterial({ color: 0xeceae5, roughness: 0.36, metalness: 0.0, clearcoat: 0.55, clearcoatRoughness: 0.28, sheen: 0.2 }),
+  joint: new THREE.MeshPhysicalMaterial({ color: 0x232529, roughness: 0.42, metalness: 0.35, clearcoat: 0.3 }),
+  act: new THREE.MeshPhysicalMaterial({ color: 0x3a3d43, roughness: 0.38, metalness: 0.6 }),
+  frame: new THREE.MeshStandardMaterial({ color: 0xb8bcc2, roughness: 0.32, metalness: 0.9 }),
+  alu: new THREE.MeshStandardMaterial({ color: 0xc9cdd2, roughness: 0.28, metalness: 0.95 }),
+  ti: new THREE.MeshStandardMaterial({ color: 0x8f9297, roughness: 0.3, metalness: 0.85 }),
+  cf: new THREE.MeshPhysicalMaterial({ color: 0x141516, roughness: 0.32, metalness: 0.2, clearcoat: 0.9 }),
+  visor: new THREE.MeshPhysicalMaterial({ color: 0x050608, roughness: 0.04, metalness: 0.3, clearcoat: 1.0, clearcoatRoughness: 0.02 }),
+  accent: new THREE.MeshStandardMaterial({ color: 0xffb070, emissive: 0xff8a33, emissiveIntensity: 2.2, roughness: 0.4 }),
+  sole: new THREE.MeshStandardMaterial({ color: 0x18191b, roughness: 0.92 }),
+  batt: new THREE.MeshStandardMaterial({ color: 0xd8842a, roughness: 0.5, metalness: 0.2 }),
+  pcb: new THREE.MeshStandardMaterial({ color: 0x1d6b45, roughness: 0.55, metalness: 0.2 }),
+  cam: new THREE.MeshPhysicalMaterial({ color: 0x0e0f11, roughness: 0.25, metalness: 0.3, clearcoat: 0.6 }),
+  copper: new THREE.MeshStandardMaterial({ color: 0xc87a45, roughness: 0.35, metalness: 0.9 }),
+  steel: new THREE.MeshStandardMaterial({ color: 0x9ea3a8, roughness: 0.25, metalness: 1.0 }),
+  magnet: new THREE.MeshStandardMaterial({ color: 0x7c8086, roughness: 0.3, metalness: 0.9 }),
+};
+const ghost = {};
+for (const [k, m] of Object.entries(M)) { ghost[k] = m.clone(); ghost[k].transparent = true; ghost[k].opacity = 0.16; ghost[k].depthWrite = false; }
+
+// explode vectors (metres, CAD frame z-up) per group
+const EX = {
+  head: [0, 0, 0.20], neck: [0, 0, 0.11], torso: [0, 0, 0], waist: [0, 0, -0.06], pelvis: [0, 0, -0.13],
+  l_shoulder: [0, 0.13, 0.03], l_upper_arm: [0, 0.20, -0.02], l_forearm: [0, 0.26, -0.08], l_hand: [0, 0.31, -0.16],
+  l_hip: [0, 0.06, -0.19], l_thigh: [0, 0.09, -0.28], l_shank: [0, 0.11, -0.40], l_foot: [0, 0.12, -0.52],
+};
+// actuator cutaway groups (axial explode along the actuator axis = CAD z)
+Object.assign(EX, { housing: [0, 0, 0], pcb: [0, 0, -0.05], enc: [0, 0, 0.02], stator: [0, 0, 0.0], rotor: [0, 0, 0.05],
+  stage1: [0, 0, 0.09], stage2: [0, 0, 0.13], wave: [0, 0, 0.09], bearing: [0, 0, 0.16], torque: [0, 0, 0.18], output: [0, 0, 0.20] });
+for (const k of Object.keys(EX)) if (k.startsWith("l_")) { const v = EX[k]; EX["r_" + k.slice(2)] = [v[0], -v[1], v[2]]; }
+function panelDir(name) {
+  if (/_front$|chest_plate|abdomen_plate|shin_front|knee_cap|visor$/.test(name)) return [0.07, 0, 0];
+  if (/_rear$|back_door|calf_rear/.test(name)) return [-0.07, 0, 0];
+  return [0, 0, 0];
+}
+
+const parts = [];
+let unit = 1;
+const loader = new GLTFLoader();
+const statusEl = document.getElementById("status");
+loader.load(MODEL, (g) => {
+  const box = new THREE.Box3().setFromObject(g.scene);
+  const size = box.getSize(new THREE.Vector3());
+  unit = Math.max(size.x, size.y, size.z) > 50 ? 0.001 : 1;
+  g.scene.scale.setScalar(unit);
+  root.add(g.scene);
+  g.scene.updateMatrixWorld(true);
+  const b2 = new THREE.Box3().setFromObject(g.scene);
+  g.scene.position.y -= b2.min.y;          // soles on the ground plane
+  g.scene.updateMatrixWorld(true);
+  g.scene.traverse((o) => {
+    if (!o.isMesh) return;
+    let n = o.name || (o.parent && o.parent.name) || "";
+    let p = o;
+    while (p && !/__/.test(n)) { p = p.parent; n = p ? p.name || "" : ""; }
+    const [group, rest] = n.split("__");
+    const mat = (rest || "").split("_")[0];
+    o.userData = { group, mat, name: rest || "", base: o.position.clone(), node: p || o };
+    o.material = M[mat] || M.frame;
+    o.castShadow = true; o.receiveShadow = true;
+    parts.push(o);
+  });
+  // move node-level for explode: collect top nodes
+  applyMode(Q.get("mode") || "full");
+  setExplode(parseFloat(Q.get("explode") || "0"));
+  setView(Q.get("view") || "threequarter_front");
+  statusEl.textContent = `${parts.length} parts · drag to orbit · scroll to zoom`;
+  requestAnimationFrame(() => requestAnimationFrame(() => { window.__ready = true; }));
+}, (e) => { statusEl.textContent = e.total ? `loading ${(100 * e.loaded / e.total).toFixed(0)} %` : "loading…"; },
+   (err) => { statusEl.textContent = "failed to load model: " + err; window.__ready = true; });
+
+const nodeBase = new Map();   // node -> world position at load
+function setExplode(t) {
+  document.getElementById("explode").value = t;
+  const done = new Set();
+  for (const o of parts) {
+    const node = o.userData.node;
+    if (done.has(node)) continue;
+    done.add(node);
+    if (!nodeBase.has(node)) { node.updateMatrixWorld(true); nodeBase.set(node, node.getWorldPosition(new THREE.Vector3())); }
+    const v = EX[o.userData.group] || [0, 0, 0];
+    const pd = panelDir(o.userData.name);
+    const off = cad2w([v[0] + pd[0] * 1.4, v[1] + pd[1], v[2] + pd[2]]).multiplyScalar(t);
+    const target = nodeBase.get(node).clone().add(off);
+    node.parent.updateMatrixWorld(true);
+    node.position.copy(node.parent.worldToLocal(target));
+  }
+}
+
+let mode = "full";
+function applyMode(m) {
+  mode = m;
+  for (const o of parts) {
+    const { mat, name } = o.userData;
+    const isSkin = ["shell", "visor", "accent", "sole"].includes(mat) || /_cover$|^waist_ring|lidar_ring|lidar_window|chest_sensor_window/.test(name);
+    if (m === "full") { o.visible = true; o.material = M[mat] || M.frame; }
+    else if (m === "skeleton") { o.visible = !isSkin; o.material = M[mat] || M.frame; }
+    else if (m === "ghost") { o.visible = true; o.material = isSkin ? (ghost[mat] || ghost.shell) : (M[mat] || M.frame); }
+  }
+  document.querySelectorAll("#modes button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.mode === m)));
+}
+
+// camera presets: [azimuth deg (0 = front, +x), elevation deg, distance m, target z m, target y m, fov]
+const VIEWS = {
+  front: [0, 4, 4.6, 0.88, 0, 26], rear: [180, 4, 4.6, 0.88, 0, 26], left: [90, 4, 4.6, 0.88, 0, 26], right: [-90, 4, 4.6, 0.88, 0, 26],
+  threequarter_front: [35, 10, 4.7, 0.88, 0, 26], threequarter_rear: [215, 12, 4.7, 0.88, 0, 26],
+  head: [28, 6, 0.95, 1.66, 0, 26], hands: [70, 2, 0.62, 0.74, 0.21, 26], hip_knee: [65, 8, 1.6, 0.72, 0.10, 26],
+  shoulder: [40, 10, 1.1, 1.36, 0.18, 26], foot: [55, 18, 1.0, 0.12, 0.10, 26], torso: [30, 8, 1.6, 1.26, 0, 26],
+  exploded: [35, 8, 6.2, 0.86, 0, 28],
+  actuator: [35, 22, 0.42, 0.065, 0, 30], actuator_exploded: [35, 18, 0.62, 0.11, 0, 30],
+};
+function setView(v) {
+  const p = VIEWS[v] || VIEWS.threequarter_front;
+  const [az, el, d, tz, ty, fov] = p;
+  camera.fov = fov; camera.updateProjectionMatrix();
+  // CAD frame (x fwd, y left, z up) -> three (x, z, -y) after root rotation: world = (x, z, -y)
+  const a = THREE.MathUtils.degToRad(az), e = THREE.MathUtils.degToRad(el);
+  const tx = 0, tyW = tz, tzW = -ty;
+  camera.position.set(tx + d * Math.cos(e) * Math.cos(a), tyW + d * Math.sin(e), tzW - d * Math.cos(e) * Math.sin(a));
+  controls.target.set(tx, tyW, tzW);
+  controls.update();
+  document.querySelectorAll("#views button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.view === v)));
+}
+
+const vbar = document.getElementById("views");
+for (const v of ["front", "rear", "left", "right", "threequarter_front", "threequarter_rear", "head", "hands", "hip_knee", "foot"]) {
+  const b = document.createElement("button"); b.textContent = v.replace("threequarter_", "¾ ").replace("_", " "); b.dataset.view = v;
+  b.onclick = () => setView(v); vbar.appendChild(b);
+}
+const mbar = document.getElementById("modes");
+for (const m of ["full", "ghost", "skeleton"]) {
+  const b = document.createElement("button"); b.textContent = m; b.dataset.mode = m; b.onclick = () => applyMode(m); mbar.appendChild(b);
+}
+document.getElementById("explode").addEventListener("input", (e) => setExplode(parseFloat(e.target.value)));
+
+addEventListener("resize", () => { camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth, innerHeight); });
+(function loop() { controls.update(); renderer.render(scene, camera); if (!window.__pause) requestAnimationFrame(loop); })();
+window.__renderOnce = () => { controls.update(); renderer.render(scene, camera); };
+window.__setView = setView; window.__setExplode = setExplode; window.__applyMode = applyMode;
+</script>
+</body>
+</html>

@@ -5,9 +5,9 @@ Sizing at minimum loaded bus voltage 52 V (16S). Torques/speeds at the actuator 
 | Class | Joints | Motor (status) | Gear | Ratio | Peak out | Continuous out | No-load speed | Speed @ ½ peak | Reflected inertia | Mass | Drive | Feasible options |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|
 | **KA-130K** | knee | KM-130x45 (custom KM design) | 2-stage planetary (custom) | 14:1 | 395 N·m | 139 N·m | 11.0 rad/s | 10.4 rad/s | 0.237 kg·m² | 4.22 kg | HC | 2 |
-| **KA-130H** | hip_pitch | KM-130x40 (custom KM design) | 2-stage planetary (custom) | 13:1 | 370 N·m | 115 N·m | 11.1 rad/s | 10.4 rad/s | 0.181 kg·m² | 3.74 kg | HC | 7 |
+| **KA-130H** | hip_pitch | KM-130x40 (custom KM design) | 2-stage planetary (custom) | 14:1 | 399 N·m | 123 N·m | 10.3 rad/s | 9.6 rad/s | 0.210 kg·m² | 3.78 kg | HC | 7 |
 | **KA-110P** | hip_roll, waist_pitch | ILM85x26 (datasheet) | 2-stage planetary (custom) | 32:1 | 276 N·m | 73 N·m | 5.9 rad/s | 5.1 rad/s | 0.141 kg·m² | 1.81 kg | EV | 50 |
-| **KA-90P** | hip_yaw, waist_yaw, ankle | RI85-PH (datasheet) | 2-stage planetary (custom) | 23:1 | 106 N·m | 36 N·m | 16.0 rad/s | 15.0 rad/s | 0.045 kg·m² | 1.35 kg | EV | 44 |
+| **KA-90P** | hip_yaw, waist_yaw, ankle | RI85-PH (datasheet) | 2-stage planetary (custom) | 23:1 | 106 N·m | 36 N·m | 16.0 rad/s | 15.0 rad/s | 0.045 kg·m² | 1.37 kg | EV | 44 |
 | **KH-25** | shoulder_pitch, shoulder_roll | ILM85x13 (datasheet) | CSG-25-50 strain-wave | 50:1 | 175 N·m | 46 N·m | 7.1 rad/s | 6.5 rad/s | 0.195 kg·m² | 1.38 kg | EV | 2 |
 | **KH-20** | shoulder_yaw, elbow | RI85-PH (datasheet) | CSG-20-50 strain-wave | 50:1 | 188 N·m | 64 N·m | 7.3 rad/s | 6.9 rad/s | 0.212 kg·m² | 1.25 kg | EV | 1 |
 | **KH-14** | wrist_yaw, neck_yaw, neck_pitch | KM-50x20 (custom KM design) | CSG-14-50 strain-wave | 50:1 | 34 N·m | 9 N·m | 9.0 rad/s | 8.2 rad/s | 0.028 kg·m² | 0.68 kg | EV | 2 |
@@ -27,12 +27,12 @@ Drives: **HC** = high-current 100 V EtherCAT drive (Elmo Platinum Twitter R70/10
 
 ## Knee four-bar
 
-Crank r1 = 70.0 mm (actuator), rod L = 299.2 mm, knee crank r2 = 73.5 mm at 232.0° (shank frame), actuator crank zero at 279.1°, actuator sweep 144°.
+Crank r1 = 70.0 mm (actuator), rod L = 252.9 mm, knee crank r2 = 73.7 mm at 229.4° (shank frame), actuator crank zero at 277.1°, actuator sweep 144°.
 
 | Knee angle | 0° | 20° | 40° | 60° | 80° | 100° | 120° | 130° |
 |---|---|---|---|---|---|---|---|---|
-| G = τ_knee/τ_act | 1.31 | 0.89 | 0.89 | 0.99 | 1.15 | 1.32 | 1.39 | 1.25 |
-| transmission angle μ | 153° | 141° | 126° | 109° | 89° | 64° | 36° | 21° |
+| G = τ_knee/τ_act | 1.33 | 0.86 | 0.87 | 0.98 | 1.17 | 1.38 | 1.43 | 1.18 |
+| transmission angle μ | 152° | 142° | 128° | 112° | 91° | 66° | 36° | 20° |
 
 ## Ankle and wrist parallel linkages
 
