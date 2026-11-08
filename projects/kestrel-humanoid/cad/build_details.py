@@ -27,17 +27,18 @@ OUT = HERE / "out"
 SWEEP = 270.0
 
 
-def rev(profile, sweep=SWEEP):
+def rev(profile, sweep=None):
     """Revolve an (r, z) polyline about Z by `sweep` degrees, leaving the +x/+y quadrant open."""
+    sweep = SWEEP if sweep is None else sweep
     w = cq.Workplane("XZ").polyline(profile).close().revolve(sweep, (0, 0, 0), (0, 1, 0))
     return w.rotate((0, 0, 0), (0, 0, 1), 90)
 
 
-def ring(ri, ro, z0, z1, sweep=SWEEP):
+def ring(ri, ro, z0, z1, sweep=None):
     return rev([(ri, z0), (ro, z0), (ro, z1), (ri, z1)], sweep)
 
 
-def teeth_ring(ri, ro, z0, z1, n, depth, outward=True, sweep=SWEEP):
+def teeth_ring(ri, ro, z0, z1, n, depth, outward=True, sweep=None):
     base = ring(ri, ro, z0, z1, sweep)
     return base
 
@@ -128,6 +129,19 @@ def export(parts, name):
     print(name, len(parts), "parts")
 
 
+def export_step_full():
+    """Full 360-degree solids of the machined / gear parts for manufacturing."""
+    global SWEEP
+    SWEEP = 360.0
+    for prefix, fn in (("ka130k", ka130k), ("kh25", kh25)):
+        for grp, mat, nm, shp in fn():
+            if mat in ("act", "alu", "steel", "ti") and "planet" not in nm and "bearing" not in nm and "laminations" not in nm \
+                    and "magnets" not in nm and "flexspline" not in nm and "wave_generator" not in nm and "circular_spline" not in nm:
+                cq.exporters.export(shp, str(OUT / "step" / f"{prefix}__{nm}.step"))
+    SWEEP = 270.0
+
+
 if __name__ == "__main__":
     export(ka130k(), "ka130k_cutaway")
     export(kh25(), "kh25_cutaway")
+    export_step_full()

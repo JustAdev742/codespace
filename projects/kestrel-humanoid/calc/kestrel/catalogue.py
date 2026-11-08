@@ -161,7 +161,56 @@ def km_sheets():
     (GEN / "km_motor_designs.md").write_text("\n".join(L) + "\n")
 
 
+
+
+
+SCRATCH = [
+    ("KM-130x45", "KA-130K knee", MD.MotorSpec("KM-130x45", D_o=0.130, split=0.74, L=0.045, Qs=36, poles=42, N_c=5, a=2, h_m=0.0030), "custom (no commercial equivalent verified)"),
+    ("KM-130x40", "KA-130H hip pitch", MD.MotorSpec("KM-130x40", D_o=0.130, split=0.74, L=0.040, Qs=36, poles=42, N_c=3, h_m=0.0030), "custom"),
+    ("KM-85x26", "KA-110P (replaces TQ ILM85x26)", MD.MotorSpec("KM-85x26", D_o=0.085, split=0.70, L=0.026, Qs=36, poles=42, N_c=6, h_m=0.0025), "ILM85x26: Kt 0.253, Km 0.365 (calc)"),
+    ("KM-85x17", "KA-90P, KH-20 (replaces CubeMars RI85-PH)", MD.MotorSpec("KM-85x17", D_o=0.085, split=0.70, L=0.017, Qs=36, poles=42, N_c=5, h_m=0.0025), "RI85-PH: Kt 0.13, Km 0.285"),
+    ("KM-85x12", "KH-25 (replaces TQ ILM85x13)", MD.MotorSpec("KM-85x12", D_o=0.085, split=0.70, L=0.012, Qs=36, poles=42, N_c=7, h_m=0.0025), "ILM85x13: Kt 0.134, Km 0.233 (calc)"),
+    ("KM-50x20", "KH-14 wrist yaw, neck", MD.MotorSpec("KM-50x20", D_o=0.050, split=0.62, L=0.020, Qs=12, poles=14, N_c=18, h_m=0.0020, g=0.0004), "custom"),
+]
+
+
+def scratch_sheets():
+    from math import pi
+    L = ["# Scratch-build motor family (generated)", "",
+         "A custom motor for every actuator class, sized to match (or replace) the motor chosen in the baseline. "
+         "Model: calc/kestrel/motor_design.py, calibrated against RI115-PH and ILM115x25; at Ø85 it reproduces ILM85x26 / RI85-PH / ILM85x13 "
+         "Km within ±6 %. Confirm every design in FEMM before cutting laminations (docs/13 §3.1).", "",
+         "| Motor | For | Stator OD × stack | Slots/poles | Turns × paths | Kt (N·m/A) | R LL 20 °C (mΩ) | Km | Cont / peak (N·m) | No-load @52 V (rpm) | Mass (kg) | Baseline equivalent |",
+         "|---|---|---|---|---|---|---|---|---|---|---|---|"]
+    for name, use, s, eq in SCRATCH:
+        d = MD.design(s)
+        L.append(f"| **{name}** | {use} | Ø{s.D_o * 1e3:.0f} × {s.L * 1e3:.0f} | {s.Qs}/{s.poles} | {s.N_c} × {s.a} | {d['Kt']:.3f} | {d['R_LL20'] * 1e3:.0f} | {d['Km']:.3f} | "
+                 f"{d['T_cont']:.2f} / {d['T_pk']:.1f} | {52 / d['Ke_LL_pk'] * 60 / (2 * pi):.0f} | {d['mass']:.2f} | {eq} |")
+    L += ["", "## Lamination and winding geometry", "",
+          "| Motor | Airgap Ø (mm) | Tooth width | Yoke | Slot depth | Slot area | Conductor equiv. Ø | Magnet arc × thickness × length | Rotor OD/ID |", "|---|---|---|---|---|---|---|---|---|"]
+    for name, use, s, eq in SCRATCH:
+        d = MD.design(s)
+        L.append(f"| {name} | {d['D_g'] * 1e3:.1f} | {d['w_t'] * 1e3:.1f} | {d['h_y'] * 1e3:.1f} | {d['h_s'] * 1e3:.1f} | {d['A_slot'] * 1e6:.0f} mm² | {d['wire_d_equiv'] * 1e3:.2f} mm | "
+                 f"{s.alpha_m * 180 * 2 / s.poles:.2f}° × {s.h_m * 1e3:.1f} × {s.L * 1e3:.0f} mm (×{s.poles}) | {d['rotor_OD'] * 1e3:.1f} / {d['rotor_ID'] * 1e3:.1f} |")
+    L += ["", "## Winding layouts (double-layer tooth coils, coil k wound around tooth k; star connection)", ""]
+    done = set()
+    for name, use, s, eq in SCRATCH:
+        key = (s.Qs, s.poles)
+        if key in done:
+            continue
+        done.add(key)
+        coils, kw = MD.winding_layout(*key)
+        L.append(f"**{s.Qs} slots / {s.poles} poles** (kw1 = {kw:.3f}). '+' = wind clockwise seen from the lead end, '−' = counter-clockwise. "
+                 "Connect all coils of one phase in series (or in the stated parallel paths), observing the sign, then join the three phase ends in a star.")
+        L.append("")
+        for i in range(0, len(coils), 12):
+            L.append("`" + "  ".join(f"T{j + 1:02d}:{c}" for j, c in enumerate(coils[i:i + 12], start=i)) + "`  ")
+        L.append("")
+    (GEN / "km_scratch_designs.md").write_text("\n".join(L) + "\n")
+
+
 if __name__ == "__main__":
     joint_sheets()
     km_sheets()
-    print("written joint_catalogue.md, km_motor_designs.md")
+    scratch_sheets()
+    print("written joint_catalogue.md, km_motor_designs.md, km_scratch_designs.md")

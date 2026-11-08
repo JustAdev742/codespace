@@ -94,13 +94,13 @@ Principal dimensions (joint centre to joint centre): ankle height 75 mm, shank 4
   and roll is their difference.
 * Ankle cross: Ti-6Al-4V with 4 drawn-cup needle-roller bearings (HK1212 class) on hardened
   pins Ø12. The cross-pin double-shear SF is 51 at the structural drop.
-* Full-authority requirement 172 N·m pitch / 50 N·m roll (centre of pressure at the toe and at the sole edge, at
+* Full-authority requirement 173 N·m pitch / 50 N·m roll (centre of pressure at the toe and at the sole edge, at
   design mass) maps to **93 N·m per actuator** against 106 N·m available.
 * Ranges: pitch −45/+45°, roll ±25°; elastomer bumpers at the ends.
 
 ### 3.4 Waist
 Yaw: KA-90P in the pelvis top. Pitch: KA-110P on the waist yoke (−15/+75°) gives floor
-reach and the box squat (205 N·m requirement, H1-2 class). Both are surrounded by the TPU
+reach and the box squat (208 N·m requirement, H1-2 class). Both are surrounded by the TPU
 bellows.
 
 ### 3.5 Shoulder, elbow, wrist

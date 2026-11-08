@@ -131,3 +131,33 @@ if __name__ == "__main__":
     d = calibrate()
     for k in ("Kt", "Km", "R_LL", "T_cont", "T_pk", "mass", "J_rotor", "length_total", "wire_d_equiv", "Bg"):
         print(f"{k:14s} {d[k]:.4g}")
+
+
+def winding_layout(Qs, poles):
+    """Double-layer tooth-coil winding by the star of slots. Returns a list of '+A', '-B', ...
+    one entry per tooth coil (coil k wound around tooth k), and the fundamental winding factor."""
+    import cmath
+    import math
+    p = poles // 2
+    phases = {"A": 0.0, "B": -120.0, "C": -240.0}
+    coils = []
+    for k in range(Qs):
+        # tooth-coil EMF ~ difference of the two adjacent slot phasors -> phase angle p * theta_k
+        # tooth-coil EMF angles fall on the 60-degree belt boundaries; a small common offset breaks
+        # the ties without changing the relative phasors (classic 12s/10p: +A -A -C +C +B -B ...)
+        ang = (math.degrees(p * 2 * math.pi * k / Qs) + 7.5) % 360
+        best = None
+        for ph, base in phases.items():
+            for sgn in (+1, -1):
+                ref = (base + (0 if sgn > 0 else 180)) % 360
+                d = abs((ang - ref + 180) % 360 - 180)
+                if best is None or d < best[0]:
+                    best = (d, ("+" if sgn > 0 else "-") + ph)
+        coils.append(best[1])
+    # winding factor from the phasor sum of phase A coils
+    pitch_factor = math.sin(math.pi * p / Qs)
+    sA = sum(cmath.exp(1j * math.radians((math.degrees(p * 2 * math.pi * k / Qs)) % 360)) * (1 if c == "+A" else -1)
+             for k, c in enumerate(coils) if c[1] == "A")
+    nA = sum(1 for c in coils if c[1] == "A")
+    kd = abs(sA) / nA
+    return coils, kd * pitch_factor

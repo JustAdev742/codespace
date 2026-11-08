@@ -11,7 +11,7 @@ Torque-speed envelope plots are `docs/img/envelope_*.png`.
 ## 1. How the actuators were engineered (not chosen)
 
 1. **Loads.** Whole-body inverse dynamics (MuJoCo `mj_inverse` + a contact-wrench solve with
-   centre-of-pressure feasibility checks) over 15 scenarios at 91.9 kg design mass
+   centre-of-pressure feasibility checks) over 15 scenarios at 92.6 kg design mass
    ([generated/joint_requirements.md](generated/joint_requirements.md)). Walking uses a
    dynamically consistent ZMP preview-control gait with Kajita's dynamics filter, so the
    simulated CoP stays inside the sole for 100 % of samples.
@@ -64,15 +64,15 @@ The full table is in [generated/joint_catalogue.md](generated/joint_catalogue.md
 
 | Joint | Repeated req | Continuous req | Speed req | Peak margin | Cont. margin | Speed margin |
 |---|---|---|---|---|---|---|
-| Knee | 352 N·m | 114 N·m | 9.4 rad/s | 1.40 (envelope) | **1.03** | 1.39 |
-| Hip pitch | 337 N·m | 91 N·m | 9.7 rad/s | 1.18 | 1.35 | 1.06 |
+| Knee | 351 N·m | 113 N·m | 9.5 rad/s | 1.41 (envelope) | **1.04** | 1.37 |
+| Hip pitch | 336 N·m | 91 N·m | 9.7 rad/s | 1.19 | 1.35 | 1.06 |
 | Hip roll | 133 N·m | 65 N·m | 4.0 rad/s | 2.08 | 1.11 | 1.47 |
-| Ankle pitch | 172 N·m | 21 N·m | 8.0 rad/s | 1.60 | 4.5 | 1.54 |
-| Waist pitch | 205 N·m | 14 N·m (hold 106) | 1.5 rad/s | 1.35 | — | 3.9 |
+| Ankle pitch | 173 N·m | 21 N·m | 8.0 rad/s | 1.59 | 4.5 | 1.53 |
+| Waist pitch | 208 N·m | 14 N·m (hold 106) | 1.5 rad/s | 1.33 | — | 3.9 |
 | Shoulder pitch | 67 N·m | 18 N·m (hold 54) | 6.2 rad/s | 1.9 (gear-limited 127) | 2.5 | 1.16 |
 | Elbow | 55 N·m | 6 N·m | 7.0 rad/s | 1.33 (gear-limited 73) | 11 | 1.05 |
 
-**The knee's continuous margin (1.03) is the tightest number in the robot.** It assumes the
+**The knee's continuous margin (1.04) is the tightest number in the robot.** It assumes the
 ducted-air thermal design works as calculated, and it is the first thing tested on the dyno (docs/11 §4).
 If it falls short there are three fallbacks:
 1. a liquid-cooled stator jacket (design in docs/13 §6), roughly 1.6× the continuous rating;

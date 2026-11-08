@@ -6,8 +6,8 @@ Joint-side capability after linkages. Peak = actuator peak (motor saturation or 
 
 | Item | Requirement | Delivered | Margin |
 |---|---|---|---|
-| Peak (repeated) torque | 72 N·m (sim 60 in W2) | 106 N·m | 1.47 |
-| Momentary torque (gear/structure must survive) | 72 N·m | flange slip ≥ 2.15× (structure.py) | — |
+| Peak (repeated) torque | 71 N·m (sim 59 in W2) | 106 N·m | 1.50 |
+| Momentary torque (gear/structure must survive) | 71 N·m | flange slip ≥ 2.15× (structure.py) | — |
 | Continuous torque | 14 N·m (RMS W1/W2/ST 9/14/5) | 36 N·m | 2.66 |
 | Static hold | 0 N·m (—) | ≤ 54 N·m for 60 s | — |
 | Speed | 5.0 rad/s (sim 0.2) | 16.0 rad/s no-load | 3.19 |
@@ -30,7 +30,7 @@ Joint-side capability after linkages. Peak = actuator peak (motor saturation or 
 | Peak mechanical power | 45 W | — | — |
 
 * Actuator class **KA-110P** — motor **ILM85x26** (TQ-RoboDrive), 2-stage planetary 32:1 (custom, ground), gear efficiency 0.92 (assumed, to be measured), transmission: direct.
-* Motor: Kt 0.253 N·m/A rms, R(LL) 320 mΩ, continuous 2.90 N·m, peak 9.4 N·m; drive EV; reflected inertia 0.141 kg·m²; actuator mass ≈ 1.81 kg [est].
+* Motor: Kt 0.253 N·m/A rms, R(LL) 320 mΩ, continuous 2.90 N·m, peak 9.4 N·m; drive EV; reflected inertia 0.141 kg·m²; actuator mass ≈ 1.82 kg [est].
 * Thermal: continuous rating at derate 0.85 (conduction to structure); winding NTC limit 130 °C warn / 150 °C trip.
 * Build class: **modify** — buy TQ ILM85x26 frameless kit; custom housing + planetary. Commercial alternative: MyActuator X12-320 / X10-200 [ds R1].
 
@@ -38,12 +38,12 @@ Joint-side capability after linkages. Peak = actuator peak (motor saturation or 
 
 | Item | Requirement | Delivered | Margin |
 |---|---|---|---|
-| Peak (repeated) torque | 337 N·m (sim 281 in W2) | 399 N·m | 1.18 |
-| Momentary torque (gear/structure must survive) | 337 N·m | flange slip ≥ 2.15× (structure.py) | — |
-| Continuous torque | 91 N·m (RMS W1/W2/ST 52/95/16) | 123 N·m | 1.35 |
-| Static hold | 50 N·m (AH) | ≤ 185 N·m for 60 s | — |
-| Speed | 9.7 rad/s (sim 8.5) | 10.3 rad/s no-load | 1.06 |
-| Peak mechanical power | 1120 W | — | — |
+| Peak (repeated) torque | 336 N·m (sim 280 in W2) | 399 N·m | 1.19 |
+| Momentary torque (gear/structure must survive) | 336 N·m | flange slip ≥ 2.15× (structure.py) | — |
+| Continuous torque | 91 N·m (RMS W1/W2/ST 53/95/16) | 123 N·m | 1.35 |
+| Static hold | 51 N·m (AH) | ≤ 185 N·m for 60 s | — |
+| Speed | 9.7 rad/s (sim 8.4) | 10.3 rad/s no-load | 1.06 |
+| Peak mechanical power | 1118 W | — | — |
 
 * Actuator class **KA-130H** — motor **KM-130x40** (motor_design.py (calibrated)), 2-stage planetary 14:1 (custom, ground), gear efficiency 0.92 (assumed, to be measured), transmission: direct.
 * Motor: Kt 0.330 N·m/A rms, R(LL) 60 mΩ, continuous 9.59 N·m, peak 31.0 N·m; drive HC; reflected inertia 0.210 kg·m²; actuator mass ≈ 3.78 kg [est].
@@ -56,12 +56,12 @@ Joint-side capability after linkages. Peak = actuator peak (motor saturation or 
 
 | Item | Requirement | Delivered | Margin |
 |---|---|---|---|
-| Peak (repeated) torque | 352 N·m (sim 294 in ST) | 333 N·m at 20–40° … 576 N·m at 110° (by angle) | 1.40 |
-| Momentary torque (gear/structure must survive) | 428 N·m | flange slip ≥ 2.15× (structure.py) | — |
-| Continuous torque | 114 N·m (RMS W1/W2/ST 95/118/142) | 117 N·m | 1.03 |
-| Static hold | 124 N·m (SL) | ≤ 176 N·m for 60 s | — |
-| Speed | 9.4 rad/s (sim 8.2) | 13.1 rad/s no-load | 1.39 |
-| Peak mechanical power | 546 W | — | — |
+| Peak (repeated) torque | 351 N·m (sim 293 in ST) | 333 N·m at 20–40° … 576 N·m at 110° (by angle) | 1.41 |
+| Momentary torque (gear/structure must survive) | 427 N·m | flange slip ≥ 2.15× (structure.py) | — |
+| Continuous torque | 113 N·m (RMS W1/W2/ST 94/117/141) | 117 N·m | 1.04 |
+| Static hold | 123 N·m (SL) | ≤ 176 N·m for 60 s | — |
+| Speed | 9.5 rad/s (sim 8.3) | 13.1 rad/s no-load | 1.37 |
+| Peak mechanical power | 552 W | — | — |
 
 * Actuator class **KA-130K** — motor **KM-130x45** (motor_design.py (calibrated)), 2-stage planetary 14:1 (custom, ground), gear efficiency 0.92 (assumed, to be measured), transmission: four-bar, G = 0.84–1.46 (see knee_linkage.svg).
 * Motor: Kt 0.310 N·m/A rms, R(LL) 45 mΩ, continuous 10.78 N·m, peak 34.8 N·m; drive HC; reflected inertia 0.237 kg·m²; actuator mass ≈ 4.22 kg [est].
@@ -72,11 +72,11 @@ Joint-side capability after linkages. Peak = actuator peak (motor saturation or 
 
 | Item | Requirement | Delivered | Margin |
 |---|---|---|---|
-| Peak (repeated) torque | 172 N·m (sim 66 in W2) | 275 N·m (pure pitch) | 1.60 |
-| Momentary torque (gear/structure must survive) | 272 N·m | flange slip ≥ 2.15× (structure.py) | — |
+| Peak (repeated) torque | 173 N·m (sim 66 in W2) | 275 N·m (pure pitch) | 1.59 |
+| Momentary torque (gear/structure must survive) | 273 N·m | flange slip ≥ 2.15× (structure.py) | — |
 | Continuous torque | 21 N·m (RMS W1/W2/ST 17/18/17) | 94 N·m | 4.49 |
 | Static hold | 26 N·m (SL) | ≤ 140 N·m for 60 s | — |
-| Speed | 8.0 rad/s (sim 6.9) | 12.3 rad/s no-load | 1.54 |
+| Speed | 8.0 rad/s (sim 7.0) | 12.3 rad/s no-load | 1.53 |
 | Peak mechanical power | 104 W | — | — |
 
 * Actuator class **KA-90P** — motor **RI85-PH** (CubeMars 2026 catalogue), 2-stage planetary 23:1 (custom, ground), gear efficiency 0.92 (assumed, to be measured), transmission: 2 push-rods, r_c 40 / r_p 52 mm (shared with roll).
@@ -90,7 +90,7 @@ Joint-side capability after linkages. Peak = actuator peak (motor saturation or 
 |---|---|---|---|
 | Peak (repeated) torque | 50 N·m (sim 15 in W2) | 190 N·m (pure roll) | 3.81 |
 | Momentary torque (gear/structure must survive) | 50 N·m | flange slip ≥ 2.15× (structure.py) | — |
-| Continuous torque | 4 N·m (RMS W1/W2/ST 4/4/3) | 65 N·m | 14.68 |
+| Continuous torque | 4 N·m (RMS W1/W2/ST 4/4/3) | 65 N·m | 14.69 |
 | Static hold | 0 N·m (SL) | ≤ 97 N·m for 60 s | — |
 | Speed | 4.0 rad/s (sim 0.6) | 17.7 rad/s no-load | 4.44 |
 | Peak mechanical power | 7 W | — | — |
@@ -120,15 +120,15 @@ Joint-side capability after linkages. Peak = actuator peak (motor saturation or 
 
 | Item | Requirement | Delivered | Margin |
 |---|---|---|---|
-| Peak (repeated) torque | 205 N·m (sim 171 in SQ) | 276 N·m | 1.35 |
-| Momentary torque (gear/structure must survive) | 205 N·m | flange slip ≥ 2.15× (structure.py) | — |
-| Continuous torque | 14 N·m (RMS W1/W2/ST 10/14/6) | 73 N·m | 5.32 |
-| Static hold | 106 N·m (AH) | ≤ 109 N·m for 60 s | — |
+| Peak (repeated) torque | 208 N·m (sim 173 in SQ) | 276 N·m | 1.33 |
+| Momentary torque (gear/structure must survive) | 208 N·m | flange slip ≥ 2.15× (structure.py) | — |
+| Continuous torque | 14 N·m (RMS W1/W2/ST 11/15/6) | 73 N·m | 5.21 |
+| Static hold | 108 N·m (AH) | ≤ 109 N·m for 60 s | — |
 | Speed | 1.5 rad/s (sim 1.3) | 5.9 rad/s no-load | 3.92 |
-| Peak mechanical power | 96 W | — | — |
+| Peak mechanical power | 97 W | — | — |
 
 * Actuator class **KA-110P** — motor **ILM85x26** (TQ-RoboDrive), 2-stage planetary 32:1 (custom, ground), gear efficiency 0.92 (assumed, to be measured), transmission: direct.
-* Motor: Kt 0.253 N·m/A rms, R(LL) 320 mΩ, continuous 2.90 N·m, peak 9.4 N·m; drive EV; reflected inertia 0.141 kg·m²; actuator mass ≈ 1.81 kg [est].
+* Motor: Kt 0.253 N·m/A rms, R(LL) 320 mΩ, continuous 2.90 N·m, peak 9.4 N·m; drive EV; reflected inertia 0.141 kg·m²; actuator mass ≈ 1.82 kg [est].
 * Thermal: continuous rating at derate 0.85 (conduction to structure); winding NTC limit 130 °C warn / 150 °C trip.
 * Build class: **modify** — buy TQ ILM85x26 frameless kit; custom housing + planetary. Commercial alternative: MyActuator X12-320 / X10-200 [ds R1].
 
@@ -186,7 +186,7 @@ Joint-side capability after linkages. Peak = actuator peak (motor saturation or 
 |---|---|---|---|
 | Peak (repeated) torque | 55 N·m (sim 46 in SQ) | 188 N·m | 3.43 |
 | Momentary torque (gear/structure must survive) | 55 N·m | gear momentary 127 N·m | — |
-| Continuous torque | 6 N·m (RMS W1/W2/ST 4/6/2) | 64 N·m | 11.08 |
+| Continuous torque | 6 N·m (RMS W1/W2/ST 4/6/2) | 64 N·m | 11.09 |
 | Static hold | 23 N·m (AH) | ≤ 96 N·m for 60 s | — |
 | Speed | 7.0 rad/s (sim 4.3) | 7.3 rad/s no-load | 1.05 |
 | Peak mechanical power | 61 W | — | — |
@@ -243,7 +243,7 @@ Actuation: two parallel ball-screw linear actuators (maxon DCX 16 L + GPX 16 + K
 | Peak (repeated) torque | 12 N·m (sim 5 in NK) | 34 N·m | 2.81 |
 | Momentary torque (gear/structure must survive) | 12 N·m | gear momentary 46 N·m | — |
 | Continuous torque | < 1 N·m | 9 N·m | — |
-| Static hold | 0 N·m (AH) | ≤ 13 N·m for 60 s | — |
+| Static hold | 0 N·m (SL) | ≤ 13 N·m for 60 s | — |
 | Speed | 7.0 rad/s (sim 5.0) | 9.0 rad/s no-load | 1.28 |
 | Peak mechanical power | 16 W | — | — |
 

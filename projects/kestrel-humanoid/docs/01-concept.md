@@ -27,7 +27,7 @@ by calculation; it is **not** proven. Section 7 lists what is most likely to be 
 
 | Capability | Target | Basis |
 |---|---|---|
-| Height / mass | 1.75 m / **84 kg estimated** (92 kg design mass incl. 10 % growth) | [sim] `docs/generated/mass_budget.md` |
+| Height / mass | 1.75 m / **84 kg estimated** (92.6 kg design mass incl. 10 % growth) | [sim] `docs/generated/mass_budget.md` |
 | Walking | 0.8 m/s nominal, 1.2 m/s fast (flat-footed ZMP gait, simulated); 1.5 m/s with a learned heel-toe gait | [sim] / [target] |
 | Stairs | 0.18 m rise, 0.28 m tread, 0.9 s per step, step-over-step | [sim] |
 | Step-up / lunge | single-leg rise onto a 0.30 m platform in 1.2 s | [sim] |
@@ -35,7 +35,7 @@ by calculation; it is **not** proven. Section 7 lists what is most likely to be 
 | Arm payload | 5 kg per hand at full forward reach (static); 3 kg side raise | [sim] |
 | Disturbances | survive an unplanned 0.10 m drop (missed step) without damage; structure survives 0.15 m | [sim] momentary / structural cases |
 | Hands | 10 actuated DOF each; ≥ 10 N fingertip, ≥ 50 N power grasp, close ≤ 1 s, ≥ 5 kg payload | [target], ILDA reference [ds] |
-| Runtime | 3.7 h mixed duty, 3.2 h continuous walking (1.68 kWh pack) | [sim] `docs/generated/power_budget.md` |
+| Runtime | 3.8 h mixed duty, 3.3 h continuous walking (1.68 kWh pack) | [sim] `docs/generated/power_budget.md` |
 | Perception | stereo + wide VIO cameras, 360° LiDAR, downward depth for footholds, mic array | [ds] |
 | Compute | NVIDIA Jetson AGX Thor (T5000) for AI; separate PREEMPT_RT computer for control; independent safety MCU | [ds] |
 | Safety | hard-wired e-stop chain → STO on every drive + bus disconnect; independent safety MCU; tested with a gantry harness | design rule |
@@ -47,7 +47,7 @@ by calculation; it is **not** proven. Section 7 lists what is most likely to be 
    dynamics over 15 design scenarios (walking, stairs, squats, step-ups, drops, arm work),
    not from guesses or copied specifications. `calc/run_all.py` regenerates every table.
 2. **Design to the not-to-exceed mass.** All requirements use the estimated mass +10 %
-   (91.9 kg). Programmes always gain mass; the actuators must not become marginal when they do.
+   (92.6 kg). Programmes always gain mass; the actuators must not become marginal when they do.
 3. **Each joint gets the transmission its job needs.**
    - **Legs and waist** use quasi-direct-drive planetary actuators at 13–32:1. They tolerate impacts, can be back-driven and are torque-controlled from motor current.
    - **Arms** use strain-wave gears at 50:1 for precision and zero backlash, with output torque flexures for collision detection.
@@ -96,7 +96,7 @@ by calculation; it is **not** proven. Section 7 lists what is most likely to be 
 | Unitree H1-2 [ds R1] | ~178 cm / 70 kg | ~360 N·m | ~220 N·m | 2 × 75 N·m | ~220 N·m |
 | Fourier GR-2 [ds R1] | 175 cm / 63 kg | — | max joint 380 N·m | — | — |
 | Tesla Optimus (2022, secondary) | — / 57–73 kg | rotary classes 20/110/180 N·m; linear up to 8 kN | | | |
-| **KESTREL K1 requirement** [sim] | 175 cm / 84 kg (92 design) | **352 N·m** repeated, 428 momentary | **337 N·m** (pitch) | **172 N·m** joint (≈ 2 × 93 N·m actuators) | **205 N·m** |
+| **KESTREL K1 requirement** [sim] | 175 cm / 84 kg (92.6 design) | **351 N·m** repeated, 427 momentary | **336 N·m** (pitch) | **173 N·m** joint (≈ 2 × 93 N·m actuators) | **208 N·m** |
 
 KESTREL K1's requirements sit where they should for its heavier mass. The hip pitch is
 higher than H1-2's because the simulated fast gait is a conservative flat-footed ZMP walk,

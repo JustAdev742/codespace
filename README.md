@@ -30,3 +30,9 @@ Put that line in your Claude Code environment's setup script (cloud environment 
 session's title bar → Edit → Setup script) and it runs before every session. For one
 repository, copy `scripts/session-start-hook.sh` to its `.claude/hooks/session-start.sh` and
 register it as a SessionStart hook; `CLAUDE.md` here has the snippet.
+
+## Projects
+
+- [`projects/kestrel-humanoid/`](projects/kestrel-humanoid/README.md) — KESTREL K1, a full-size humanoid robot
+  engineering design and build package (inverse-dynamics-driven actuator sizing, CAD, renders,
+  construction tutorial, test plan, BOM and cost).

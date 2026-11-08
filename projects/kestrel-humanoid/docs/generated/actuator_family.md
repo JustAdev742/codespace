@@ -6,7 +6,7 @@ Sizing at minimum loaded bus voltage 52 V (16S). Torques/speeds at the actuator 
 |---|---|---|---|---|---|---|---|---|---|---|---|---|
 | **KA-130K** | knee | KM-130x45 (custom KM design) | 2-stage planetary (custom) | 14:1 | 395 N·m | 139 N·m | 11.0 rad/s | 10.4 rad/s | 0.237 kg·m² | 4.22 kg | HC | 2 |
 | **KA-130H** | hip_pitch | KM-130x40 (custom KM design) | 2-stage planetary (custom) | 14:1 | 399 N·m | 123 N·m | 10.3 rad/s | 9.6 rad/s | 0.210 kg·m² | 3.78 kg | HC | 7 |
-| **KA-110P** | hip_roll, waist_pitch | ILM85x26 (datasheet) | 2-stage planetary (custom) | 32:1 | 276 N·m | 73 N·m | 5.9 rad/s | 5.1 rad/s | 0.141 kg·m² | 1.81 kg | EV | 50 |
+| **KA-110P** | hip_roll, waist_pitch | ILM85x26 (datasheet) | 2-stage planetary (custom) | 32:1 | 276 N·m | 73 N·m | 5.9 rad/s | 5.1 rad/s | 0.141 kg·m² | 1.82 kg | EV | 50 |
 | **KA-90P** | hip_yaw, waist_yaw, ankle | RI85-PH (datasheet) | 2-stage planetary (custom) | 23:1 | 106 N·m | 36 N·m | 16.0 rad/s | 15.0 rad/s | 0.045 kg·m² | 1.37 kg | EV | 44 |
 | **KH-25** | shoulder_pitch, shoulder_roll | ILM85x13 (datasheet) | CSG-25-50 strain-wave | 50:1 | 175 N·m | 46 N·m | 7.1 rad/s | 6.5 rad/s | 0.195 kg·m² | 1.38 kg | EV | 2 |
 | **KH-20** | shoulder_yaw, elbow | RI85-PH (datasheet) | CSG-20-50 strain-wave | 50:1 | 188 N·m | 64 N·m | 7.3 rad/s | 6.9 rad/s | 0.212 kg·m² | 1.25 kg | EV | 1 |

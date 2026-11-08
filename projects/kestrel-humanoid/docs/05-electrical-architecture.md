@@ -14,13 +14,13 @@ and 50 % regeneration recovery. Electronics are an itemised list (Thor 75 W typi
 
 | Operating mode | Average power |
 |---|---|
-| Idle standing (perception on) | ≈ 280 W |
-| Normal mixed (40 % stand / 30 % walk 0.8 m/s / 30 % manipulation) | ≈ 400 W |
-| Continuous walking 0.8 m/s | ≈ 455 W |
-| Demanding (1.2 m/s or continuous stairs) | ≈ 640 W |
-| **Simultaneous peak** (electronics peak + worst actuator instant) | **≈ 2.8 kW → ≈ 52 A at 52 V** |
+| Idle standing (perception on) | ≈ 265 W |
+| Normal mixed (40 % stand / 30 % walk 0.8 m/s / 30 % manipulation) | ≈ 385 W |
+| Continuous walking 0.8 m/s | ≈ 440 W |
+| Demanding (1.2 m/s or continuous stairs) | ≈ 625 W |
+| **Simultaneous peak** (electronics peak + worst actuator instant) | **≈ 2.7 kW → ≈ 53 A at 52 V** |
 
-Electronics take ≈ 210 W of the ≈ 400 W normal draw, so compute efficiency matters as much as actuator efficiency.
+Electronics take ≈ 210 W of the ≈ 385 W normal draw, so compute efficiency matters as much as actuator efficiency.
 
 ## 2. Bus voltage: why 16S (59.2 V nominal, 48–67.2 V)
 
@@ -47,8 +47,8 @@ Consequences:
 |---|---|
 | Cells | **Molicel INR-21700-P50B**: 5.0 Ah (4.85 min), 3.6 V, 60 A continuous, DCIR 12.8 mΩ, ≤ 71 g [ds R3] |
 | Configuration | **16S6P** = 96 cells; 59.2 V nominal, 67.2 V full, 48 V cut-off (3.0 V/cell); 29.1 Ah minimum; **1.68 kWh** nominal, 1.46 kWh usable (90 % depth of discharge) |
-| Runtime | 3.7 h normal mixed duty, 3.2 h continuous walking, 2.3 h demanding [sim] |
-| Current | peak ≈ 52 A pack = 8.7 A/cell (15 % of rating). The pack is energy-limited, not power-limited, so 16S5P would also carry the current. 6P is chosen for runtime. |
+| Runtime | 3.8 h normal mixed duty, 3.3 h continuous walking, 2.3 h demanding [sim] |
+| Current | peak ≈ 53 A pack = 8.8 A/cell (15 % of rating). The pack is energy-limited, not power-limited, so 16S5P would also carry the current. 6P is chosen for runtime. |
 | Mass | cells 6.8 kg; pack ≈ 8.9 kg with enclosure, busbars, BMS, fuse and solid-state disconnect [est] |
 | Alternative | **16S7P Molicel P45B** (1.73 kWh, 10.2 kg): an Australian distributor exists (Master Instruments / Batteries Direct), which lowers counterfeit risk [R3] |
 | Layout | two layers of 6 × 8 vertical cells, ≈ 150 × 196 × 185 mm, low in the torso behind the abdomen plate; slides out rearwards on rails |

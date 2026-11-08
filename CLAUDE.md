@@ -17,6 +17,7 @@ slash commands, MCP servers and scripts that make them work.
 | `scripts/install-toolkit.sh` | Installs the whole toolkit at user level (`~/.claude`) so any repo, branch or session has it. `scripts/session-start-hook.sh` is the hook other repos copy to run it. |
 | `requirements.txt` | Python deps, annotated with the skill that needs each. |
 | `apps/ghost-typer/` | Ghost Typer, a desktop app built with these skills. `.github/workflows/build.yml` packages it for Windows, macOS and Linux. |
+| `projects/kestrel-humanoid/` | KESTREL K1 humanoid robot design package. Python calc pipeline in `calc/` (`run_all.py`), CadQuery CAD in `cad/`, three.js viewer in `viewer/`. See its README. |
 
 ## Setup
 

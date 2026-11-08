@@ -136,7 +136,7 @@ def power():
     s.line(715, 490, 715, 560, GREEN, 2, arrow=True)
     s.box(880, 560, 300, 80, "Charge port", lines=["67.2 V 10 A CC/CV charger", "enabled by BMS over CAN"], stroke=AMBER, fill="#fff7ef")
     s.text(30, 700, "Safety: e-stop chain removes SSD enable and asserts STO on all drives (Cat 0/1). BMS opens SSD on cell OV/UV/OT/OC. "
-                    "Peak bus ≈ 2.8 kW / 52 A; normal ≈ 0.4 kW.", 12, MUTED)
+                    "Peak bus ≈ 2.7 kW / 53 A; normal ≈ 0.39 kW.", 12, MUTED)
     s.text(30, 722, "Wire: pack→PDU 8 AWG silicone; zone feeds 12 AWG (legs) / 14 AWG (arms); drive drops 16 AWG; all ≥ 200 °C silicone, tinned fine strand.", 12, MUTED)
     s.save("power_architecture.svg")
 
@@ -357,7 +357,7 @@ def battery():
             s.e.append(f"<rect x='{x0 + 8 + g * 62}' y='{y0 + 4}' width='44' height='{6 * 52}' rx='6' fill='none' stroke='{BLUE}' stroke-width='1.5' stroke-dasharray='4 3'/>")
     s.text(40, 470, "Each dashed column = one parallel group (6P, 30 Ah); series links alternate top/bottom; the 16S path snakes S1→S8 in layer 1, rises, and returns S9→S16 in layer 2.", 12, MUTED)
     items = ["Cells: Molicel P50B — 5.0 Ah (4.85 min), 60 A cont, DCIR 12.8 mΩ, ≤71 g. 96 cells = 6.8 kg; pack ≈ 8.9 kg incl. enclosure.",
-             "Interconnect: 0.15 mm Ni-plated copper/nickel sandwich strip, resistance-welded; ≤ 10 A per cell normal, 60 A cell rating (≥5× margin at 2.8 kW).",
+             "Interconnect: 0.15 mm Ni-plated copper/nickel sandwich strip, resistance-welded; ≤ 10 A per cell normal, 60 A cell rating (≥5× margin at 2.7 kW peak).",
              "Cell fusing: 0.3 mm Al bond wire or 22 AWG fuse link per cell to the collector (isolates an internally shorted cell).",
              "Thermal-runaway mitigation: 1 mm mica between layers and around groups; vent path to rear grille; NTC on 8 cells + busbars; Al enclosure, PC/ABS inner holders.",
              "BMS: Orion BMS 2 (16 taps + 8 thermistors, CAN). Secondary protection: TI BQ77216 OVP on separate taps → SSD fault input.",
