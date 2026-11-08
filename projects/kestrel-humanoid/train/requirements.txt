@@ -1,0 +1,10 @@
+# KESTREL K1 locomotion training (CPU only, python >= 3.11)
+# Install torch from the CPU index first so pip does not pull the multi-GB CUDA build:
+#   pip install torch --index-url https://download.pytorch.org/whl/cpu
+#   pip install -r requirements.txt
+numpy>=2.0
+scipy>=1.13          # calc/kestrel (the design model the training model is built from)
+mujoco>=3.2          # tested with 4.0.0
+torch>=2.4           # tested with 2.15.0+cpu
+pillow>=10           # play.py GIF output
+matplotlib>=3.8      # plot.py

@@ -4,3 +4,5 @@ __pycache__/
 calc/.venv/
 cad/out/*.glb
 *.check.png
+train/runs/*/ckpt_[0-9]*.pt
+train/runs/*/*.tmp
