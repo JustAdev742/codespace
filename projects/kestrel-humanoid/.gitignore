@@ -7,3 +7,4 @@ cad/out/*.glb
 train/runs/*/ckpt_[0-9]*.pt
 train/runs/*/*.tmp
 docs/10-construction-tutorial/handbook/
+train/runs/*/eval.log
