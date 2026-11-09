@@ -6,14 +6,14 @@
 <title>KESTREL K1 Viewer</title>
 <style>
   :root {
-    --bg0: #eef0f2; --bg1: #d9dde2; --ink: #16181b; --muted: #5b626b; --panel: rgba(255,255,255,0.82);
-    --line: rgba(20,24,28,0.12); --accent: #e3893b;
+    --bg0: #f3f2ef; --bg1: #d8d9db; --ink: #16181b; --muted: #5b626b; --panel: rgba(255,255,255,0.82);
+    --line: rgba(20,24,28,0.12); --accent: #e8892c;
   }
   @media (prefers-color-scheme: dark) {
-    :root:not([data-theme="light"]) { --bg0: #1a1d21; --bg1: #0d0f11; --ink: #eceef0; --muted: #9aa2ab; --panel: rgba(22,25,29,0.82); --line: rgba(255,255,255,0.12); }
+    :root:not([data-theme="light"]) { --bg0: #24272b; --bg1: #0f1113; --ink: #eceef0; --muted: #9aa2ab; --panel: rgba(22,25,29,0.82); --line: rgba(255,255,255,0.12); }
   }
-  :root[data-theme="dark"] { --bg0: #1a1d21; --bg1: #0d0f11; --ink: #eceef0; --muted: #9aa2ab; --panel: rgba(22,25,29,0.82); --line: rgba(255,255,255,0.12); }
-  html, body { margin: 0; height: 100%; background: radial-gradient(120% 90% at 50% 30%, var(--bg0), var(--bg1)); color: var(--ink);
+  :root[data-theme="dark"] { --bg0: #24272b; --bg1: #0f1113; --ink: #eceef0; --muted: #9aa2ab; --panel: rgba(22,25,29,0.82); --line: rgba(255,255,255,0.12); }
+  html, body { margin: 0; height: 100%; background: var(--bg1); color: var(--ink);
     font: 14px/1.4 ui-sans-serif, system-ui, -apple-system, "Segoe UI", Inter, Roboto, sans-serif; overflow: hidden; }
   canvas { display: block; }
   #ui { position: absolute; left: 16px; top: 16px; width: min(300px, calc(100vw - 32px)); background: var(--panel); backdrop-filter: blur(10px);
@@ -33,8 +33,8 @@
 </head>
 <body>
 <div id="ui" role="region" aria-label="Viewer controls">
-  <h1>KESTREL&nbsp;K1</h1>
-  <div class="sub">Full-size humanoid · 1.75 m · 30 body DOF (26 rotary + 4 linear actuators) · 2 × 10-DOA hands</div>
+  <h1>KESTREL&nbsp;K1&nbsp;Mk&nbsp;II</h1>
+  <div class="sub">Full-size humanoid · 1.75 m · 30 body DOF · 2 × 13-DOA hands · liquid-cooled legs</div>
   <div class="row" id="views"></div>
   <label for="explode">Exploded view</label>
   <input id="explode" type="range" min="0" max="1" step="0.01" value="0">
@@ -52,71 +52,102 @@ import * as THREE from "three";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
+import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js";
+import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
+import { GTAOPass } from "three/addons/postprocessing/GTAOPass.js";
+import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js";
+import { OutputPass } from "three/addons/postprocessing/OutputPass.js";
+import { HorizontalBlurShader } from "three/addons/shaders/HorizontalBlurShader.js";
+import { VerticalBlurShader } from "three/addons/shaders/VerticalBlurShader.js";
 
 const Q = new URLSearchParams(location.search);
 if (Q.get("bare") === "1") document.body.classList.add("bare");
 if (Q.get("theme")) document.documentElement.dataset.theme = Q.get("theme");
 const MODEL = Q.get("model") || "kestrel_k1.glb";
+const DARK = document.documentElement.dataset.theme === "dark" ||
+  (!document.documentElement.dataset.theme && matchMedia("(prefers-color-scheme: dark)").matches);
 
-const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
+// ------------------------------------------------------------------ renderer: studio look
+const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
 renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
 renderer.setSize(innerWidth, innerHeight);
-renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 1.05;
+renderer.toneMapping = THREE.NeutralToneMapping;      // keeps the warm white white (ACES greys it)
+renderer.toneMappingExposure = parseFloat(Q.get("exposure") || "1.0");
 renderer.shadowMap.enabled = true;
-renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.shadowMap.type = THREE.VSMShadowMap;           // soft, blurred key-light shadows
 document.body.appendChild(renderer.domElement);
 
 const scene = new THREE.Scene();
+// backdrop: vertical studio sweep (light warm grey, darker toward the floor), drawn as the scene background
+function sweep() {
+  const c = document.createElement("canvas"); c.width = 16; c.height = 512;
+  const g = c.getContext("2d"), gr = g.createLinearGradient(0, 0, 0, 512);
+  if (DARK) { gr.addColorStop(0, "#2b2e33"); gr.addColorStop(0.62, "#1d2024"); gr.addColorStop(1, "#141618"); }
+  else { gr.addColorStop(0, "#f4f3f0"); gr.addColorStop(0.55, "#e6e5e2"); gr.addColorStop(1, "#cfd0d1"); }
+  g.fillStyle = gr; g.fillRect(0, 0, 16, 512);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
+}
+scene.background = sweep();
 const pmrem = new THREE.PMREMGenerator(renderer);
-scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+const envScene = new RoomEnvironment();
+scene.environment = pmrem.fromScene(envScene, 0.03).texture;
+scene.environmentIntensity = 0.85;
 
 const camera = new THREE.PerspectiveCamera(28, innerWidth / innerHeight, 0.01, 50);
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
 
-const key = new THREE.DirectionalLight(0xffffff, 1.6);
-key.position.set(2.2, -2.8, 4.0);
+// three-point studio lighting on top of the room environment (CAD frame: x fwd, y left, z up -> three (x, z, -y))
+const key = new THREE.DirectionalLight(0xfff6ec, 2.1);
+key.position.set(1.9, 5.2, 1.7);
 key.castShadow = true;
-key.shadow.mapSize.set(2048, 2048);
-Object.assign(key.shadow.camera, { left: -1.2, right: 1.2, top: 1.2, bottom: -1.2, near: 0.5, far: 12 });
-key.shadow.bias = -0.0004;
+key.shadow.mapSize.set(4096, 4096);
+Object.assign(key.shadow.camera, { left: -2.0, right: 2.0, top: 2.0, bottom: -2.0, near: 0.5, far: 14 });
+key.target.position.set(0, 0.8, 0); scene.add(key.target);
+key.shadow.radius = 6; key.shadow.blurSamples = 16; key.shadow.bias = -0.0006; key.shadow.normalBias = 0.01;
 scene.add(key);
-const rim = new THREE.DirectionalLight(0xdfe8ff, 0.9);
-rim.position.set(-3, 3, 2.5);
+const fill = new THREE.DirectionalLight(0xe9f0ff, 0.55);
+fill.position.set(-3.0, 1.6, 2.8);
+scene.add(fill);
+const rim = new THREE.DirectionalLight(0xffffff, 1.25);
+rim.position.set(-2.2, 3.2, -3.4);
 scene.add(rim);
-scene.add(new THREE.HemisphereLight(0xffffff, 0x9aa0a6, 0.35));
+scene.add(new THREE.HemisphereLight(0xffffff, DARK ? 0x202326 : 0xb8b4ae, 0.25));
 
-const ground = new THREE.Mesh(new THREE.CircleGeometry(3, 64), new THREE.ShadowMaterial({ opacity: 0.22 }));
-ground.receiveShadow = true;
-scene.add(ground);
+// soft floor: receives the blurred key shadow; contact shadow added after the model loads
+const floor = new THREE.Mesh(new THREE.CircleGeometry(1.6, 96), new THREE.ShadowMaterial({ opacity: DARK ? 0.35 : 0.16 }));
+floor.rotation.x = -Math.PI / 2; floor.receiveShadow = true; floor.renderOrder = 1;
+scene.add(floor);
 
-// The OCC glTF writer already converts CAD Z-up to glTF Y-up: CAD (x, y, z) -> three (x, z, -y).
 const root = new THREE.Group();
 scene.add(root);
-ground.rotation.x = -Math.PI / 2;
 const cad2w = (v) => new THREE.Vector3(v[0], v[2], -v[1]);
 
+// ------------------------------------------------------------------ CMF: two-tone satin white + graphite, one amber accent
+const P = (o) => new THREE.MeshPhysicalMaterial(o), S = (o) => new THREE.MeshStandardMaterial(o);
 const M = {
-  shell: new THREE.MeshPhysicalMaterial({ color: 0xeceae5, roughness: 0.36, metalness: 0.0, clearcoat: 0.55, clearcoatRoughness: 0.28, sheen: 0.2 }),
-  joint: new THREE.MeshPhysicalMaterial({ color: 0x232529, roughness: 0.42, metalness: 0.35, clearcoat: 0.3 }),
-  act: new THREE.MeshPhysicalMaterial({ color: 0x3a3d43, roughness: 0.38, metalness: 0.6 }),
-  frame: new THREE.MeshStandardMaterial({ color: 0xb8bcc2, roughness: 0.32, metalness: 0.9 }),
-  alu: new THREE.MeshStandardMaterial({ color: 0xc9cdd2, roughness: 0.28, metalness: 0.95 }),
-  ti: new THREE.MeshStandardMaterial({ color: 0x8f9297, roughness: 0.3, metalness: 0.85 }),
-  cf: new THREE.MeshPhysicalMaterial({ color: 0x141516, roughness: 0.32, metalness: 0.2, clearcoat: 0.9 }),
-  visor: new THREE.MeshPhysicalMaterial({ color: 0x050608, roughness: 0.04, metalness: 0.3, clearcoat: 1.0, clearcoatRoughness: 0.02 }),
-  accent: new THREE.MeshStandardMaterial({ color: 0xffb070, emissive: 0xff8a33, emissiveIntensity: 2.2, roughness: 0.4 }),
-  sole: new THREE.MeshStandardMaterial({ color: 0x18191b, roughness: 0.92 }),
-  batt: new THREE.MeshStandardMaterial({ color: 0xd8842a, roughness: 0.5, metalness: 0.2 }),
-  pcb: new THREE.MeshStandardMaterial({ color: 0x1d6b45, roughness: 0.55, metalness: 0.2 }),
-  cam: new THREE.MeshPhysicalMaterial({ color: 0x0e0f11, roughness: 0.25, metalness: 0.3, clearcoat: 0.6 }),
-  copper: new THREE.MeshStandardMaterial({ color: 0xc87a45, roughness: 0.35, metalness: 0.9 }),
-  steel: new THREE.MeshStandardMaterial({ color: 0x9ea3a8, roughness: 0.25, metalness: 1.0 }),
-  magnet: new THREE.MeshStandardMaterial({ color: 0x7c8086, roughness: 0.3, metalness: 0.9 }),
+  shell: P({ color: 0xf0ede6, roughness: 0.42, metalness: 0.0, clearcoat: 0.35, clearcoatRoughness: 0.35, sheen: 0.25, sheenRoughness: 0.6, sheenColor: 0xffffff }),
+  trim: P({ color: 0x2b2d31, roughness: 0.5, metalness: 0.05, clearcoat: 0.25, clearcoatRoughness: 0.45 }),
+  joint: P({ color: 0x1c1d20, roughness: 0.38, metalness: 0.55, clearcoat: 0.2, clearcoatRoughness: 0.4 }),
+  act: P({ color: 0x4a4e55, roughness: 0.32, metalness: 0.75, clearcoat: 0.15 }),
+  alu: S({ color: 0xd2d5d9, roughness: 0.24, metalness: 1.0 }),
+  frame: S({ color: 0xa9adb3, roughness: 0.34, metalness: 0.9 }),
+  ti: S({ color: 0x8b8e93, roughness: 0.3, metalness: 0.9 }),
+  cf: P({ color: 0x141516, roughness: 0.32, metalness: 0.2, clearcoat: 0.9 }),
+  visor: P({ color: 0x07080a, roughness: 0.06, metalness: 0.25, clearcoat: 1.0, clearcoatRoughness: 0.03 }),
+  accent: S({ color: 0xffb468, emissive: 0xff8a24, emissiveIntensity: 2.4, roughness: 0.35 }),
+  sole: S({ color: 0x17181a, roughness: 0.9 }),
+  boot: P({ color: 0x202124, roughness: 0.72, metalness: 0.0, sheen: 0.3, sheenRoughness: 0.8, sheenColor: 0x5a5d62 }),
+  batt: S({ color: 0xd8842a, roughness: 0.5, metalness: 0.2 }),
+  pcb: S({ color: 0x1d6b45, roughness: 0.55, metalness: 0.2 }),
+  cam: P({ color: 0x0e0f11, roughness: 0.25, metalness: 0.3, clearcoat: 0.6 }),
+  cool: P({ color: 0x263744, roughness: 0.45, metalness: 0.0, clearcoat: 0.4 }),
+  copper: S({ color: 0xc87a45, roughness: 0.35, metalness: 0.9 }),
+  steel: S({ color: 0x9ea3a8, roughness: 0.25, metalness: 1.0 }),
+  magnet: S({ color: 0x7c8086, roughness: 0.3, metalness: 0.9 }),
 };
 const ghost = {};
-for (const [k, m] of Object.entries(M)) { ghost[k] = m.clone(); ghost[k].transparent = true; ghost[k].opacity = 0.16; ghost[k].depthWrite = false; }
+for (const [k, m] of Object.entries(M)) { ghost[k] = m.clone(); ghost[k].transparent = true; ghost[k].opacity = 0.13; ghost[k].depthWrite = false; }
 
 // explode vectors (metres, CAD frame z-up) per group
 const EX = {
@@ -124,18 +155,19 @@ const EX = {
   l_shoulder: [0, 0.13, 0.03], l_upper_arm: [0, 0.20, -0.02], l_forearm: [0, 0.26, -0.08], l_hand: [0, 0.31, -0.16],
   l_hip: [0, 0.06, -0.19], l_thigh: [0, 0.09, -0.28], l_shank: [0, 0.11, -0.40], l_foot: [0, 0.12, -0.52],
 };
-// actuator cutaway groups (axial explode along the actuator axis = CAD z)
-Object.assign(EX, { housing: [0, 0, 0], pcb: [0, 0, -0.05], enc: [0, 0, 0.02], stator: [0, 0, 0.0], rotor: [0, 0, 0.05],
-  stage1: [0, 0, 0.09], stage2: [0, 0, 0.13], wave: [0, 0, 0.09], bearing: [0, 0, 0.16], torque: [0, 0, 0.18], output: [0, 0, 0.20] });
+Object.assign(EX, { housing: [0, 0, 0], pcb: [0, 0, -0.05], enc: [0, 0, 0.02], stator: [0, 0, 0.0], rotor: [0, 0, 0.05], jacket: [0, 0, -0.02],
+  stage1: [0, 0, 0.09], stage2: [0, 0, 0.13], wave: [0, 0, 0.09], cycloid: [0, 0, 0.09], bearing: [0, 0, 0.16], torque: [0, 0, 0.18], output: [0, 0, 0.20] });
 for (const k of Object.keys(EX)) if (k.startsWith("l_")) { const v = EX[k]; EX["r_" + k.slice(2)] = [v[0], -v[1], v[2]]; }
 function panelDir(name) {
-  if (/_front$|chest_plate|abdomen_plate|shin_front|knee_cap|visor$/.test(name)) return [0.07, 0, 0];
-  if (/_rear$|back_door|calf_rear/.test(name)) return [-0.07, 0, 0];
+  if (/_front$|chest_plate|abdomen_plate|shin_front|knee_cap$|visor$|abdomen_sensor_window/.test(name)) return [0.07, 0, 0];
+  if (/_rear$|back_door|back_upper|radiator_pack|calf_rear|heel_counter/.test(name)) return [-0.07, 0, 0];
+  if (/drive_cover|torso_side_L|deltoid/.test(name)) return [0, 0.05, 0];
+  if (/torso_side_R/.test(name)) return [0, -0.05, 0];
   return [0, 0, 0];
 }
 
 const parts = [];
-let unit = 1;
+let unit = 1, contact = null;
 const loader = new GLTFLoader();
 const statusEl = document.getElementById("status");
 loader.load(MODEL, (g) => {
@@ -157,10 +189,12 @@ loader.load(MODEL, (g) => {
     const mat = (rest || "").split("_")[0];
     o.userData = { group, mat, name: rest || "", base: o.position.clone(), node: p || o };
     o.material = M[mat] || M.frame;
-    o.castShadow = true; o.receiveShadow = true;
+    o.castShadow = mat !== "accent"; o.receiveShadow = true;
+    o.geometry.computeVertexNormals && o.geometry.attributes.normal === undefined && o.geometry.computeVertexNormals();
     parts.push(o);
   });
-  // move node-level for explode: collect top nodes
+  const b3 = new THREE.Box3().setFromObject(root);
+  contact = makeContactShadow(b3);
   applyMode(Q.get("mode") || "full");
   setExplode(parseFloat(Q.get("explode") || "0"));
   setView(Q.get("view") || "threequarter_front");
@@ -168,6 +202,51 @@ loader.load(MODEL, (g) => {
   requestAnimationFrame(() => requestAnimationFrame(() => { window.__ready = true; }));
 }, (e) => { statusEl.textContent = e.total ? `loading ${(100 * e.loaded / e.total).toFixed(0)} %` : "loading…"; },
    (err) => { statusEl.textContent = "failed to load model: " + err; window.__ready = true; });
+
+// ------------------------------------------------------------------ contact shadow (depth from below, blurred twice)
+function makeContactShadow(bb) {
+  const w = Math.max(bb.max.x - bb.min.x, bb.max.z - bb.min.z) * 1.6 + 0.4;
+  const RT = 512, rt = new THREE.WebGLRenderTarget(RT, RT), rtb = new THREE.WebGLRenderTarget(RT, RT);
+  rt.texture.generateMipmaps = rtb.texture.generateMipmaps = false;
+  const cx = (bb.min.x + bb.max.x) / 2, cz = (bb.min.z + bb.max.z) / 2;
+  const plane = new THREE.Mesh(new THREE.PlaneGeometry(w, w).rotateX(Math.PI / 2),
+    new THREE.MeshBasicMaterial({ map: rt.texture, transparent: true, opacity: DARK ? 0.8 : 0.62, depthWrite: false }));
+  plane.scale.y = -1; plane.position.set(cx, 0.0015, cz); plane.renderOrder = 2;
+  scene.add(plane);
+  const cam = new THREE.OrthographicCamera(-w / 2, w / 2, w / 2, -w / 2, 0, 0.32);
+  cam.rotation.x = Math.PI / 2; cam.position.set(cx, 0.0, cz);
+  const depthMat = new THREE.MeshDepthMaterial();
+  depthMat.userData.darkness = { value: 1.7 };
+  depthMat.onBeforeCompile = (sh) => {
+    sh.uniforms.darkness = depthMat.userData.darkness;
+    sh.fragmentShader = "uniform float darkness;\n" + sh.fragmentShader.replace("gl_FragColor = vec4( vec3( 1.0 - fragCoordZ ), opacity );",
+      "gl_FragColor = vec4( vec3( 0.0 ), ( 1.0 - fragCoordZ ) * darkness );");
+  };
+  depthMat.depthTest = false; depthMat.depthWrite = false;
+  const hb = new THREE.ShaderMaterial(HorizontalBlurShader); hb.depthTest = false;
+  const vb = new THREE.ShaderMaterial(VerticalBlurShader); vb.depthTest = false;
+  const quad = new THREE.Mesh(new THREE.PlaneGeometry(), hb); quad.visible = false; scene.add(quad);
+  function blur(amount) {
+    quad.visible = true;
+    quad.material = hb; hb.uniforms.tDiffuse.value = rt.texture; hb.uniforms.h.value = amount / 256;
+    renderer.setRenderTarget(rtb); renderer.render(quad, cam);
+    quad.material = vb; vb.uniforms.tDiffuse.value = rtb.texture; vb.uniforms.v.value = amount / 256;
+    renderer.setRenderTarget(rt); renderer.render(quad, cam);
+    quad.visible = false;
+  }
+  function update() {
+    const bg = scene.background; scene.background = null;
+    const hidden = [floor, plane]; hidden.forEach((h) => (h.visible = false));
+    scene.overrideMaterial = depthMat;
+    const cc = renderer.getClearAlpha(); renderer.setClearAlpha(0);
+    renderer.setRenderTarget(rt); renderer.clear(); renderer.render(scene, cam);
+    scene.overrideMaterial = null;
+    blur(1.2); blur(0.5);
+    renderer.setRenderTarget(null); renderer.setClearAlpha(cc);
+    hidden.forEach((h) => (h.visible = true)); scene.background = bg;
+  }
+  return { update, plane };
+}
 
 const nodeBase = new Map();   // node -> world position at load
 function setExplode(t) {
@@ -185,39 +264,41 @@ function setExplode(t) {
     node.parent.updateMatrixWorld(true);
     node.position.copy(node.parent.worldToLocal(target));
   }
+  dirtyShadow = true;
 }
 
-let mode = "full";
+let mode = "full", dirtyShadow = true;
+const SKIN = ["shell", "trim", "visor", "accent", "sole", "boot"];
 function applyMode(m) {
   mode = m;
   for (const o of parts) {
     const { mat, name } = o.userData;
-    const isSkin = ["shell", "visor", "accent", "sole"].includes(mat) || /_cover$|^waist_ring|lidar_ring|lidar_window|chest_sensor_window/.test(name);
-    if (m === "full") { o.visible = true; o.material = M[mat] || M.frame; }
-    else if (m === "skeleton") { o.visible = !isSkin; o.material = M[mat] || M.frame; }
-    else if (m === "ghost") { o.visible = true; o.material = isSkin ? (ghost[mat] || ghost.shell) : (M[mat] || M.frame); }
+    const isSkin = SKIN.includes(mat) || /_cover$|lidar_collar|lidar_window|lidar_cap|^ear_|_cap_cap$|_cap_bezel$|_cap_ring$|_cap_screw|_screw\d+$/.test(name);
+    if (m === "full") { o.visible = true; o.material = M[mat] || M.frame; o.castShadow = mat !== "accent"; }
+    else if (m === "skeleton") { o.visible = !isSkin; o.material = M[mat] || M.frame; o.castShadow = true; }
+    else if (m === "ghost") { o.visible = true; o.material = isSkin ? (ghost[mat] || ghost.shell) : (M[mat] || M.frame); o.castShadow = !isSkin; }
   }
   document.querySelectorAll("#modes button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.mode === m)));
+  dirtyShadow = true;
 }
 
 // camera presets: [azimuth deg (0 = front, +x), elevation deg, distance m, target z m, target y m, fov]
 const VIEWS = {
-  front: [0, 4, 4.6, 0.88, 0, 26], rear: [180, 4, 4.6, 0.88, 0, 26], left: [90, 4, 4.6, 0.88, 0, 26], right: [-90, 4, 4.6, 0.88, 0, 26],
-  threequarter_front: [35, 10, 4.7, 0.88, 0, 26], threequarter_rear: [215, 12, 4.7, 0.88, 0, 26],
-  head: [28, 6, 0.95, 1.66, 0, 26], hands: [70, 2, 0.62, 0.74, 0.21, 26], hip_knee: [65, 8, 1.6, 0.72, 0.10, 26],
-  shoulder: [40, 10, 1.1, 1.36, 0.18, 26], foot: [55, 18, 1.0, 0.12, 0.10, 26], torso: [30, 8, 1.6, 1.26, 0, 26],
-  exploded: [35, 8, 6.2, 0.86, 0, 28],
-  actuator: [35, 22, 0.42, 0.065, 0, 30], actuator_exploded: [35, 18, 0.62, 0.11, 0, 30],
+  front: [0, 3, 4.7, 0.88, 0, 26], rear: [180, 3, 4.7, 0.88, 0, 26], left: [90, 3, 4.7, 0.88, 0, 26], right: [-90, 3, 4.7, 0.88, 0, 26],
+  threequarter_front: [34, 8, 4.75, 0.88, 0, 26], threequarter_rear: [212, 10, 4.75, 0.88, 0, 26],
+  head: [30, 5, 0.95, 1.63, 0, 26], hands: [62, 4, 0.72, 0.78, 0.20, 26], hip_knee: [24, 6, 1.75, 0.70, 0.11, 26],
+  shoulder: [38, 10, 1.15, 1.37, 0.17, 26], foot: [48, 20, 1.05, 0.12, 0.10, 26], torso: [32, 8, 1.75, 1.27, 0, 26],
+  exploded: [35, 8, 6.4, 0.86, 0, 28],
+  actuator: [35, 22, 0.42, 0.065, 0, 30], actuator_exploded: [35, 18, 0.66, 0.12, 0, 30],
 };
 function setView(v) {
   const p = VIEWS[v] || VIEWS.threequarter_front;
   const [az, el, d, tz, ty, fov] = p;
   camera.fov = fov; camera.updateProjectionMatrix();
-  // CAD frame (x fwd, y left, z up) -> three (x, z, -y) after root rotation: world = (x, z, -y)
   const a = THREE.MathUtils.degToRad(az), e = THREE.MathUtils.degToRad(el);
-  const tx = 0, tyW = tz, tzW = -ty;
-  camera.position.set(tx + d * Math.cos(e) * Math.cos(a), tyW + d * Math.sin(e), tzW - d * Math.cos(e) * Math.sin(a));
-  controls.target.set(tx, tyW, tzW);
+  const tyW = tz, tzW = -ty;
+  camera.position.set(d * Math.cos(e) * Math.cos(a), tyW + d * Math.sin(e), tzW - d * Math.cos(e) * Math.sin(a));
+  controls.target.set(0, tyW, tzW);
   controls.update();
   document.querySelectorAll("#views button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.view === v)));
 }
@@ -233,9 +314,33 @@ for (const m of ["full", "ghost", "skeleton"]) {
 }
 document.getElementById("explode").addEventListener("input", (e) => setExplode(parseFloat(e.target.value)));
 
-addEventListener("resize", () => { camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth, innerHeight); });
-(function loop() { controls.update(); renderer.render(scene, camera); if (!window.__pause) requestAnimationFrame(loop); })();
-window.__renderOnce = () => { controls.update(); renderer.render(scene, camera); };
+// ------------------------------------------------------------------ post: GTAO (contact darkening in panel gaps) + faint bloom on the light guides
+const composer = new EffectComposer(renderer, new THREE.WebGLRenderTarget(1, 1, { type: THREE.HalfFloatType, samples: 4 }));
+composer.setPixelRatio(renderer.getPixelRatio());
+composer.setSize(innerWidth, innerHeight);
+composer.addPass(new RenderPass(scene, camera));
+const gtao = new GTAOPass(scene, camera, innerWidth, innerHeight);
+gtao.output = GTAOPass.OUTPUT.Default;
+gtao.blendIntensity = 0.85;
+gtao.updateGtaoMaterial({ radius: 0.06, distanceExponent: 1.4, thickness: 1.2, scale: 1.0, samples: 16 });
+gtao.updatePdMaterial({ lumaPhi: 10, depthPhi: 2, normalPhi: 3, radius: 6, rings: 2, samples: 16 });
+if (Q.get("ao") !== "0") composer.addPass(gtao);
+const bloom = new UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), 0.28, 0.35, 0.92);
+composer.addPass(bloom);
+composer.addPass(new OutputPass());
+
+function frame() {
+  controls.update();
+  if (contact && dirtyShadow) { contact.update(); dirtyShadow = false; }
+  composer.render();
+}
+addEventListener("resize", () => {
+  camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth, innerHeight);
+  composer.setSize(innerWidth, innerHeight); gtao.setSize(innerWidth, innerHeight);
+});
+camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix();
+(function loop() { frame(); if (!window.__pause) requestAnimationFrame(loop); })();
+window.__renderOnce = () => { dirtyShadow = true; frame(); };
 window.__setView = setView; window.__setExplode = setExplode; window.__applyMode = applyMode;
 </script>
 </body>

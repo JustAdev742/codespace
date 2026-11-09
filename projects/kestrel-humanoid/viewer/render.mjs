@@ -1,6 +1,7 @@
-// Headless renders of the KESTREL K1 viewer.
+// Headless renders of the KESTREL K1 Mk II viewer (studio environment, soft + contact shadows, GTAO, neutral tone mapping).
 //   node render.mjs [threeDir] [outDir] [scale] [view1,view2,...]
-// threeDir: a folder containing node_modules/three (CDN imports are routed there, so it renders offline).
+// threeDir: a folder containing node_modules/three (CDN imports, including the post-processing addons,
+// are routed there, so it renders offline with no network assets).
 import { createRequire } from "node:module";
 const require = createRequire(import.meta.url);
 const { chromium } = require("playwright");
@@ -51,23 +52,43 @@ await new Promise((r) => server.listen(0, r));
 const port = server.address().port;
 
 const browser = await chromium.launch({ args: ["--use-gl=angle", "--use-angle=swiftshader", "--enable-unsafe-swiftshader"] });
-for (const [name, q, w, h] of JOBS) {
-  if (only && !only.some((o) => name.includes(o))) continue;
-  const page = await browser.newPage({ viewport: { width: w, height: h }, deviceScaleFactor: scale });
+// one page per model: the GLB is parsed and the shaders compiled once, then every view of that model is
+// set through the viewer's window hooks (mode, explode, view) and the viewport is resized per job
+const parse = (q) => Object.fromEntries(new URLSearchParams(q));
+const byModel = new Map();
+for (const job of JOBS) {
+  if (only && !only.some((o) => job[0].includes(o))) continue;
+  const m = parse(job[1]).model || "kestrel_k1.glb";
+  if (!byModel.has(m)) byModel.set(m, []);
+  byModel.get(m).push(job);
+}
+for (const [model, jobs] of byModel) {
+  const [n0, q0, w0, h0] = jobs[0];
+  const page = await browser.newPage({ viewport: { width: w0, height: h0 }, deviceScaleFactor: scale });
   await page.route(/cdn\.jsdelivr\.net\/npm\/three@[^/]+\/(.*)$/, async (route) => {
     const rel = route.request().url().replace(/^.*three@[^/]+\//, "");
     const f = path.join(threeDir, "three", rel);
     route.fulfill({ status: 200, contentType: "text/javascript", body: fs.readFileSync(f) });
   });
-  page.on("pageerror", (e) => console.log(name, "pageerror", e.message));
-  const model = q.includes("model=") ? "" : "";
-  await page.goto(`http://localhost:${port}/index.html?bare=1&theme=light&${q}${model}`);
-  await page.waitForFunction(() => window.__ready === true, null, { timeout: 180000 });
-  await page.waitForTimeout(600);
-  await page.evaluate(() => { window.__pause = true; window.__renderOnce(); });
-  await page.waitForTimeout(300);
-  await page.screenshot({ path: path.join(outDir, `${name}.png`), timeout: 180000 });
-  console.log("rendered", name);
+  page.on("pageerror", (e) => console.log(model, "pageerror", e.message));
+  const t0 = Date.now();
+  await page.goto(`http://localhost:${port}/index.html?bare=1&theme=light&${q0}`);
+  await page.waitForFunction(() => window.__ready === true, null, { timeout: 600000 });
+  console.log("loaded", model, ((Date.now() - t0) / 1000).toFixed(0), "s");
+  await page.evaluate(() => { window.__pause = true; });
+  for (const [name, q, w, h] of jobs) {
+    const t1 = Date.now();
+    const p = parse(q);
+    await page.setViewportSize({ width: w, height: h });
+    await page.waitForTimeout(300);
+    await page.evaluate(({ mode, explode, view }) => {
+      window.__applyMode(mode || "full"); window.__setExplode(parseFloat(explode || "0")); window.__setView(view || "threequarter_front");
+      window.__renderOnce(); window.__renderOnce();
+    }, p);
+    await page.waitForTimeout(300);
+    await page.screenshot({ path: path.join(outDir, `${name}.png`), timeout: 600000 });
+    console.log("rendered", name, ((Date.now() - t1) / 1000).toFixed(0), "s");
+  }
   await page.close();
 }
 await browser.close();
