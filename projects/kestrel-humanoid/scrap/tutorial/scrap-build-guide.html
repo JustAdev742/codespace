@@ -691,8 +691,39 @@ K1-Scrap's about 39 kg. If you are heavier, re-run the selection with the measur
 </ol>
 <hr />
 <h2>Step 9: Stand, then walk slowly, in the gantry</h2>
-<p>The simulation's slow walk is in <code>scrap/s1/data/gait_W1.csv</code> (K1-Scrap: <code>scrap/k1/data/gait_W1.csv</code>): joint angles in
-degrees, 100 rows per second, one column per joint. The fast walk is <code>gait_W2.csv</code>.</p>
+<p>The simulated motions are in <code>scrap/s1/data/</code> (K1-Scrap: <code>scrap/k1/data/</code>) as <code>gait_*.csv</code>: joint angles in degrees,
+100 rows per second, one column per joint.</p>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>File</th>
+<th>Motion</th>
+<th>Replay slower than real time?</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>gait_W0.csv</code></td>
+<td>Bring-up walk, 0.18 m steps, 0.086 m/s</td>
+<td><strong>Yes, at any speed</strong>: it stays balanced standing still</td>
+</tr>
+<tr>
+<td><code>gait_W1.csv</code>, <code>gait_W2.csv</code></td>
+<td>Walk at 0.25 and 0.36 m/s</td>
+<td><strong>No.</strong> They balance dynamically. At quarter speed the robot tips off the stance foot for half of every step</td>
+</tr>
+<tr>
+<td><code>gait_ST.csv</code></td>
+<td>Stairs up, 15 cm risers, 2 s per step</td>
+<td>Yes, down to quarter speed</td>
+</tr>
+<tr>
+<td><code>gait_SU.csv</code>, <code>gait_SQ.csv</code></td>
+<td>Single-leg step-up 15 cm; squat holding the box</td>
+<td>Yes, at any speed</td>
+</tr>
+</tbody>
+</table></div>
 <div class="tablewrap"><table>
 <thead>
 <tr>
@@ -706,7 +737,7 @@ degrees, 100 rows per second, one column per joint. The fast walk is <code>gait_
 <tr>
 <td>1</td>
 <td>Hanging, feet off the ground</td>
-<td>Move each joint to the CSV's first row, slowly</td>
+<td>Move each joint to the first row of <code>gait_W0.csv</code>, slowly</td>
 <td>Holds the pose, no oscillation</td>
 </tr>
 <tr>
@@ -724,23 +755,25 @@ degrees, 100 rows per second, one column per joint. The fast walk is <code>gait_
 <tr>
 <td>4</td>
 <td>Rope slack</td>
-<td>Play <code>gait_W1.csv</code> at <strong>quarter speed</strong></td>
+<td>Play <code>gait_W0.csv</code> at <strong>quarter speed</strong>, then half, then full speed</td>
 <td>Steps without the rope taking load</td>
 </tr>
 <tr>
 <td>5</td>
 <td>Same</td>
-<td>Half speed, then full speed</td>
+<td><code>gait_W1.csv</code> at <strong>full speed only</strong>, then <code>gait_W2.csv</code></td>
 <td>Repeatable, no falls into the rope</td>
 </tr>
 <tr>
 <td>6</td>
 <td>Rope still on</td>
-<td>A 5 cm board, then 10 cm (S1-Scrap) or 15 cm (K1-Scrap)</td>
+<td><code>gait_SU.csv</code> onto a 5 cm board, then 10 cm (S1-Scrap) or 15 cm (K1-Scrap); then <code>gait_ST.csv</code></td>
 <td>Only after stage 5 is routine</td>
 </tr>
 </tbody>
 </table></div>
+<p>The calculation behind the replay column re-runs the simulation at each replay speed and checks that the centre of
+pressure stays inside the sole (<code>scrap/calc/scrap_templates.py</code> refuses to write <code>gait_W0.csv</code> otherwise).</p>
 <p>Use the pelvis IMU to correct the ankle and hip roll angles a little each step (keep the torso upright). Once the
 scripted walk works, the reinforcement-learning package in <code>train/</code> has policies for both scrap robots
 (<code>python play.py --variant s1scrap --run s1scrap</code>), trained against the same slow actuators.</p>
