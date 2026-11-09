@@ -51,7 +51,9 @@ sizes them, with each actuator option checked against its own reflected inertia.
    clutch is the missed-step fuse. Drills beat hoverboard motors at every joint at the hoverboard board's stock current.
 4. **Parts lists:** [`calc/scrap_bom.py`](calc/scrap_bom.py), two prices per line (buy / scrounge).
 5. **Templates and gait:** [`calc/scrap_templates.py`](calc/scrap_templates.py) writes 1:1 printable capstan sectors
-   (`s1/templates`, `k1/templates`) and the simulated walks as CSV joint angles (`s1/data/gait_W1.csv`, `gait_W2.csv`).
+   (`s1/templates`, `k1/templates`) and the simulated motions as CSV joint angles (`s1/data/gait_*.csv`): walks,
+   stairs, step-up, squat, and a bring-up walk (`gait_W0.csv`, 0.086 m/s). The bring-up walk stays balanced at any
+   replay speed. The 0.25 m/s walk does not: it balances dynamically.
 
 ## Build it
 

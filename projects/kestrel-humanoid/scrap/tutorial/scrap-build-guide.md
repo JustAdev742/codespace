@@ -264,17 +264,27 @@ Each ESP32 runs, at 500 Hz per joint:
 
 ## Step 9: Stand, then walk slowly, in the gantry
 
-The simulation's slow walk is in `scrap/s1/data/gait_W1.csv` (K1-Scrap: `scrap/k1/data/gait_W1.csv`): joint angles in
-degrees, 100 rows per second, one column per joint. The fast walk is `gait_W2.csv`.
+The simulated motions are in `scrap/s1/data/` (K1-Scrap: `scrap/k1/data/`) as `gait_*.csv`: joint angles in degrees,
+100 rows per second, one column per joint.
+
+| File | Motion | Replay slower than real time? |
+|---|---|---|
+| `gait_W0.csv` | Bring-up walk, 0.18 m steps, 0.086 m/s | **Yes, at any speed**: it stays balanced standing still |
+| `gait_W1.csv`, `gait_W2.csv` | Walk at 0.25 and 0.36 m/s | **No.** They balance dynamically. At quarter speed the robot tips off the stance foot for half of every step |
+| `gait_ST.csv` | Stairs up, 15 cm risers, 2 s per step | Yes, down to quarter speed |
+| `gait_SU.csv`, `gait_SQ.csv` | Single-leg step-up 15 cm; squat holding the box | Yes, at any speed |
 
 | Stage | Setup | What to do | Pass |
 |---|---|---|---|
-| 1 | Hanging, feet off the ground | Move each joint to the CSV's first row, slowly | Holds the pose, no oscillation |
+| 1 | Hanging, feet off the ground | Move each joint to the first row of `gait_W0.csv`, slowly | Holds the pose, no oscillation |
 | 2 | Feet on the ground, rope taking most of the weight | Crouch to the first row and stand there | Holds for 5 minutes, motors warm, not hot |
 | 3 | Rope slack | Shift the weight from foot to foot (hip roll and ankle roll only) | Stays balanced |
-| 4 | Rope slack | Play `gait_W1.csv` at **quarter speed** | Steps without the rope taking load |
-| 5 | Same | Half speed, then full speed | Repeatable, no falls into the rope |
-| 6 | Rope still on | A 5 cm board, then 10 cm (S1-Scrap) or 15 cm (K1-Scrap) | Only after stage 5 is routine |
+| 4 | Rope slack | Play `gait_W0.csv` at **quarter speed**, then half, then full speed | Steps without the rope taking load |
+| 5 | Same | `gait_W1.csv` at **full speed only**, then `gait_W2.csv` | Repeatable, no falls into the rope |
+| 6 | Rope still on | `gait_SU.csv` onto a 5 cm board, then 10 cm (S1-Scrap) or 15 cm (K1-Scrap); then `gait_ST.csv` | Only after stage 5 is routine |
+
+The calculation behind the replay column re-runs the simulation at each replay speed and checks that the centre of
+pressure stays inside the sole (`scrap/calc/scrap_templates.py` refuses to write `gait_W0.csv` otherwise).
 
 Use the pelvis IMU to correct the ankle and hip roll angles a little each step (keep the torso upright). Once the
 scripted walk works, the reinforcement-learning package in `train/` has policies for both scrap robots
