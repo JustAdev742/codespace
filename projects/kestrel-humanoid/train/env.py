@@ -10,7 +10,9 @@ Isaac-Lab-style velocity-tracking task, re-implemented on CPU MuJoCo:
   rewards: velocity tracking, posture/smoothness/torque penalties, biped feet air time, foot slip,
       joint and actuator-speed limits, termination, and a gait clock (as in unitree_rl_gym / Humanoid-Gym):
       foot contact should follow a 0.8 s alternating phase while a speed is commanded (both feet down at
-      zero command), and the swing foot should clear the terrain under it by 0.10 m. Without the clock the
+      zero command), the swing foot should clear the terrain under it by 0.08 m, and the legs are drawn
+      towards a clock-driven reference swing pose (Humanoid-Gym), which gives the dense signal that lets a
+      few hundred CPU environments discover stepping. Without the clock the
       policy settles on standing still, which earns the survival and part of the tracking reward.
   curriculum: terrain row (difficulty) up/down by distance walked; randomisation of friction,
       added mass, motor strength, pushes, action latency and sensor noise
@@ -35,10 +37,19 @@ SCAN_Y = np.linspace(-0.3, 0.3, 7)
 # is multiplied by the policy step DT, as Isaac Lab's reward manager does
 W = dict(track_lin=1.0, track_ang=0.5, lin_z=-0.2, ang_xy=-0.05, orient=-1.0, torque=-2e-6, dof_acc=-2.5e-7,
          action_rate=-0.01, air_time=0.25, slide=-0.2, hip_dev=-0.2, limits=-1.0, speed_limit=-0.02, termination=-20.0,
-         alive=0.15, gait_contact=0.18, swing_height=-20.0)
+         alive=0.15, gait_contact=0.3, swing_height=-10.0, ref_gait=1.0)
+# reward schedule (train.py): the reference swing pose teaches stepping, then gives way to velocity tracking
+# so the stride can lengthen: ref_gait 1.0 -> 0.3 and track_lin 1.0 -> 1.5, linearly between these step counts
+SCHEDULE = dict(start=15e6, end=25e6, ref_gait=(1.0, 0.3), track_lin=(1.0, 1.5))
 AIR_T = 0.4                       # biped air-time reward saturates at 0.4 s (Isaac Lab threshold)
 GAIT_PERIOD, STANCE = 0.8, 0.55   # s; fraction of the period each foot should be down (right foot half a period later)
-SWING_CLEAR = 0.10                # m, target sole clearance above the terrain under the swing foot
+# reference swing pose from the gait clock (Humanoid-Gym's joint_pos term): offsets from the default stance at
+# mid-swing for hip pitch, knee, ankle pitch. Hip -a, knee +2a, ankle -a keeps the sole level and lifts it ~8 cm.
+REF_SWING = np.array([-0.25, 0.50, -0.25])
+SWING_CLEAR = 0.08                # m, target sole clearance above the terrain under the swing foot
+# (-10 x 0.08^2 = 0.064 < 0.3: a barely lifted foot already gains reward, so stepping can be found by
+#  small exploratory lifts; with 0.10 m and -20 a small lift cost more than it earned. The contact term is
+#  0.3 per foot instead of unitree_rl_gym's 0.18 so stepping clearly beats standing with few samples)
 
 
 def quat_rotate_inv(q, v):
@@ -101,6 +112,8 @@ class Envs:
         self.prev_qvel = np.zeros((M, ACT_DIM))
         self.ep_ret = np.zeros(M)
         self.done_stats = []
+        self.term_sum, self.term_n = {}, 0     # per-term reward sums (x DT) since the last stats call
+        self.w = dict(W)                       # live weights (train.py anneals some of them)
         for i in range(M):
             self.row[i] = 0 if curriculum else self.rng.integers(0, self.max_row + 1)
             self._reset(i)
@@ -201,14 +214,18 @@ class Envs:
         terr_base = self.hs(qpos[:, 0], qpos[:, 1])
         h_base = qpos[:, 2] - terr_base
         in_contact = touch                                  # MuJoCo contacts of the foot spheres
-        # ---- rewards
+        # ---- rewards: raw terms, then r = DT * sum(W[k] * term[k])
         e_lin = np.sum((self.cmd[:, :2] - lin_v[:, :2]) ** 2, 1)
         e_ang = (self.cmd[:, 2] - ang_v[:, 2]) ** 2
-        r = W["track_lin"] * np.exp(-e_lin / 0.25) + W["track_ang"] * np.exp(-e_ang / 0.25)
-        r += W["lin_z"] * lin_v[:, 2] ** 2 + W["ang_xy"] * np.sum(ang_v[:, :2] ** 2, 1)
-        r += W["orient"] * np.sum(grav[:, :2] ** 2, 1)
-        r += W["torque"] * np.sum(tau ** 2, 1) + W["dof_acc"] * np.sum(qacc ** 2, 1)
-        r += W["action_rate"] * np.sum((self.last_a - self.prev_a) ** 2, 1)
+        rt = {}
+        rt["track_lin"] = np.exp(-e_lin / 0.25)
+        rt["track_ang"] = np.exp(-e_ang / 0.25)
+        rt["lin_z"] = lin_v[:, 2] ** 2
+        rt["ang_xy"] = np.sum(ang_v[:, :2] ** 2, 1)
+        rt["orient"] = np.sum(grav[:, :2] ** 2, 1)
+        rt["torque"] = np.sum(tau ** 2, 1)
+        rt["dof_acc"] = np.sum(qacc ** 2, 1)
+        rt["action_rate"] = np.sum((self.last_a - self.prev_a) ** 2, 1)
         # biped air time (Isaac Lab feet_air_time_positive_biped): in single stance, reward the smaller of the
         # stance foot's contact time and the swing foot's air time, saturated at AIR_T; only when commanded to move
         self.air = np.where(in_contact, 0.0, self.air + DT)
@@ -216,25 +233,29 @@ class Envs:
         mode_t = np.where(in_contact, self.stance, self.air)
         single = in_contact.sum(1) == 1
         moving = (np.linalg.norm(self.cmd[:, :2], axis=1) > 0.1) | (np.abs(self.cmd[:, 2]) > 0.2)
-        air_r = np.clip(np.where(single, mode_t.min(1), 0.0), 0, AIR_T)
-        r += W["air_time"] * air_r * moving
+        rt["air_time"] = np.clip(np.where(single, mode_t.min(1), 0.0), 0, AIR_T) * moving
         self.contact = in_contact
         # gait clock: desired stance per foot from the phase; both feet down when no speed is commanded
-        ph = self.phase()
-        want = np.where(moving[:, None], ph < STANCE, True)
-        r += W["gait_contact"] * np.sum(in_contact == want, 1)
+        want = np.where(moving[:, None], self.phase() < STANCE, True)
+        rt["gait_contact"] = np.sum(in_contact == want, 1).astype(float)
         clear = foot[:, :, 2] - self.hs(foot[:, :, 0].ravel(), foot[:, :, 1].ravel()).reshape(M, 2)
-        r += W["swing_height"] * np.sum((clear - SWING_CLEAR) ** 2 * ~in_contact, 1) * moving
-        slide = np.sum(np.linalg.norm(foot_v[:, :, :2], axis=2) * in_contact, 1)
-        r += W["slide"] * slide
-        r += W["hip_dev"] * np.sum(np.abs(q[:, self.hip_dev_idx] - self.default[self.hip_dev_idx]), 1)
+        rt["swing_height"] = np.sum((clear - SWING_CLEAR) ** 2 * ~in_contact, 1) * moving
+        dq = np.linalg.norm(q - self.default - self.ref_offsets(moving), axis=1)
+        rt["ref_gait"] = np.exp(-2.0 * dq) - 0.2 * np.clip(dq, 0, 0.5)
+        rt["slide"] = np.sum(np.linalg.norm(foot_v[:, :, :2], axis=2) * in_contact, 1)
+        rt["hip_dev"] = np.sum(np.abs(q[:, self.hip_dev_idx] - self.default[self.hip_dev_idx]), 1)
         span = self.hi - self.lo
         over = np.clip(q - (self.hi - 0.05 * span), 0, None) + np.clip((self.lo + 0.05 * span) - q, 0, None)
-        r += W["limits"] * np.sum(over, 1)
-        r += W["speed_limit"] * np.sum(np.clip(np.abs(qd) - 0.9 * self.w_lim, 0, None) ** 2, 1)
-        r += W["alive"]
+        rt["limits"] = np.sum(over, 1)
+        rt["speed_limit"] = np.sum(np.clip(np.abs(qd) - 0.9 * self.w_lim, 0, None) ** 2, 1)
+        rt["alive"] = np.ones(M)
         fell = (h_base < 0.55) | (grav[:, 2] > -0.5)
-        r += W["termination"] * fell
+        rt["termination"] = fell.astype(float)
+        r = np.zeros(M)
+        for k, v in rt.items():
+            r += self.w[k] * v
+            self.term_sum[k] = self.term_sum.get(k, 0.0) + float(self.w[k] * v.sum() * DT)
+        self.term_n += M
         r *= DT
         self.t += 1
         timeout = self.t >= EP_LEN
@@ -270,6 +291,22 @@ class Envs:
             obs, critic = self._obs(qpos, lin_v, qvel[:, 3:6], grav, qpos[:, self.qadr], qvel[:, self.vadr],
                                     self.hs(qpos[:, 0], qpos[:, 1]))
         return obs, critic, r.astype(np.float32), done, timeout & ~fell
+
+    def ref_offsets(self, moving):
+        """Reference joint offsets (M, 12) from the clock: a sin-shaped hip/knee/ankle flexion during each
+        foot's swing (phase >= STANCE), zero in stance and whenever no motion is commanded."""
+        ph = self.phase()
+        s = np.clip((ph - STANCE) / (1.0 - STANCE), 0.0, 1.0)
+        amp = np.where(ph >= STANCE, np.sin(np.pi * s), 0.0) * moving[:, None]     # (M, 2)
+        ref = np.zeros((self.M, ACT_DIM))
+        ref[:, 2:5] = amp[:, 0:1] * REF_SWING
+        ref[:, 8:11] = amp[:, 1:2] * REF_SWING
+        return ref
+
+    @staticmethod
+    def scheduled_weights(steps):
+        a = float(np.clip((steps - SCHEDULE["start"]) / (SCHEDULE["end"] - SCHEDULE["start"]), 0.0, 1.0))
+        return {k: v[0] + a * (v[1] - v[0]) for k, v in SCHEDULE.items() if k not in ("start", "end")}
 
     def phase(self):
         """Gait phase in [0, 1) per foot, (M, 2): left foot, and right foot half a period later."""

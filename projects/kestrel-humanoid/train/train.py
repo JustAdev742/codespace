@@ -34,8 +34,8 @@ sys.path.insert(0, str(HERE))
 
 # ---------------------------------------------------------------------------------------- worker
 def worker(rank, conn, cfg):
-    signal.signal(signal.SIGINT, signal.SIG_IGN)     # Ctrl-C / SIGTERM go to the learner, which saves and
-    signal.signal(signal.SIGTERM, signal.SIG_IGN)    # then closes the workers
+    signal.signal(signal.SIGINT, signal.SIG_IGN)     # Ctrl-C goes to the learner, which saves and then closes
+                                                     # the workers (SIGTERM stays default so they can be killed)
     import env as E
     e = E.Envs(M=cfg["envs"], seed=cfg["seed"] * 1000 + rank, terrain_seed=cfg["terrain_seed"],
                max_row=cfg["max_row"], curriculum=cfg["curriculum"], randomize=cfg["randomize"], cols=cfg["cols"],
@@ -49,9 +49,14 @@ def worker(rank, conn, cfg):
             conn.send(e.observe())
         elif cmd == "stats":
             s, e.done_stats = e.done_stats, []
-            conn.send((s, e.row.copy(), e.col.copy()))
+            terms = {k: v / max(e.term_n, 1) for k, v in e.term_sum.items()}
+            e.term_sum, e.term_n = {}, 0
+            conn.send((s, e.row.copy(), e.col.copy(), terms))
         elif cmd == "rand":
             e.randomize_model()
+            conn.send(None)
+        elif cmd == "weights":
+            e.w.update(data)
             conn.send(None)
         elif cmd == "rows":
             e.row[:] = data
@@ -95,6 +100,8 @@ class Pool:
                 pass
         for p in self.procs:
             p.join(timeout=5)
+            if p.is_alive():
+                p.kill()
 
 
 # ---------------------------------------------------------------------------------------- export
@@ -112,10 +119,10 @@ def export_policy(ac, path):
         def forward(self, obs):
             return self.actor(torch.clamp((obs - self.mean) / self.std, -5.0, 5.0))
 
-    import warnings
-    with warnings.catch_warnings():
-        warnings.simplefilter("ignore")
-        torch.jit.script(Policy(ac).eval()).save(str(path))
+    # trace (not script): scripting re-reads this file's source, which breaks if it was edited mid-run
+    pol = Policy(ac).eval()
+    with torch.no_grad():
+        torch.jit.trace(pol, torch.zeros(1, ac.obs_norm.mean.shape[0])).save(str(path))
 
 
 # ---------------------------------------------------------------------------------------- main
@@ -186,10 +193,20 @@ def main():
 
     log_path = run / "log.csv"
     new_log = not log_path.exists() or not args.resume
-    logf = open(log_path, "w" if new_log else "a", newline="")
     cols_log = ["iter", "steps", "time_s", "fps", "ep_return", "ep_len_s", "fall_rate", "episodes", "row_mean",
                 "row_flat", "row_rough", "row_slope_dn", "row_slope_up", "row_stairs_dn", "row_stairs_up",
-                "vloss", "ploss", "kl", "lr", "action_std"]
+                "vloss", "ploss", "kl", "lr", "action_std"] + [f"r_{k}" for k in E.W]
+    if not new_log:                  # resuming: keep old rows, re-header if the columns changed
+        old_rows = list(csv.reader(open(log_path)))
+        if old_rows and old_rows[0] != cols_log:
+            hdr = old_rows[0]
+            with open(log_path, "w", newline="") as f:
+                w = csv.writer(f)
+                w.writerow(cols_log)
+                for r in old_rows[1:]:
+                    d = dict(zip(hdr, r))
+                    w.writerow([d.get(k, "nan") for k in cols_log])
+    logf = open(log_path, "w" if new_log else "a", newline="")
     wr = csv.writer(logf)
     if new_log:
         wr.writerow(cols_log)
@@ -211,8 +228,13 @@ def main():
     print(f"{'iter':>6} {'Msteps':>7} {'fps':>6} {'return':>7} {'len_s':>6} {'fall':>5} {'row':>4} "
           f"{'stairsDn':>8} {'stairsUp':>8} {'vloss':>7} {'kl':>7} {'lr':>8} {'std':>5}")
     it = it0
+    sent_w = None
     while it < args.iters and not stop["flag"]:
         t_it = time.time()
+        sw = {k: round(v, 3) for k, v in E.Envs.scheduled_weights(steps).items()}
+        if sw != sent_w:
+            pool.call("weights", sw)
+            sent_w = sw
         torch.set_num_threads(1)            # the workers own the cores during the rollout
         for t in range(T_):
             o, c = torch.from_numpy(obs), torch.from_numpy(cobs)
@@ -249,12 +271,13 @@ def main():
         if it % args.rand_every == 0:
             pool.call("rand")
         res = pool.call("stats")
-        for s, _, _ in res:
+        for s, _, _, _ in res:
             hist.extend(s)
         hist = hist[-2000:]
-        rows_now = [rw for _, rw, _ in res]
+        rows_now = [rw for _, rw, _, _ in res]
         row_all = np.concatenate(rows_now)
-        col_all = np.concatenate([cl for _, _, cl in res])
+        col_all = np.concatenate([cl for _, _, cl, _ in res])
+        terms = {k: float(np.mean([tm.get(k, 0.0) for _, _, _, tm in res])) for k in res[0][3]}
         per_col = [float(row_all[col_all == k].mean()) if (col_all == k).any() else float("nan") for k in range(6)]
         recent = np.array(hist[-500:]) if hist else np.zeros((1, 5))
         fps = T_ * N / (time.time() - t_it)
@@ -263,7 +286,8 @@ def main():
                     fall_rate=float(recent[:, 2].mean()), episodes=len(hist), row_mean=float(row_all.mean()),
                     row_flat=per_col[0], row_rough=per_col[1], row_slope_dn=per_col[2], row_slope_up=per_col[3],
                     row_stairs_dn=per_col[4], row_stairs_up=per_col[5], vloss=st["vloss"], ploss=st["ploss"],
-                    kl=st["kl"], lr=st["lr"], action_std=float(ac.log_std.detach().exp().mean()))
+                    kl=st["kl"], lr=st["lr"], action_std=float(ac.log_std.detach().exp().mean()),
+                    **{f"r_{k}": terms.get(k, 0.0) for k in E.W})
         wr.writerow([f"{line[k]:.5g}" if isinstance(line[k], float) else line[k] for k in cols_log])
         if it % 5 == 0 or it == it0 + 1:
             logf.flush()
@@ -285,4 +309,8 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    finally:                         # never leave worker processes behind, whatever happened
+        for ch in mp.active_children():
+            ch.kill()

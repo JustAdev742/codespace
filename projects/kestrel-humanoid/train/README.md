@@ -89,15 +89,24 @@ Options:
 
   | Group | Terms (weight) |
   |---|---|
-  | Task | lin/ang velocity tracking `exp(−e²/0.25)` (1.0 / 0.5) |
+  | Task | lin/ang velocity tracking `exp(−e²/0.25)` (lin 1.0 → 1.5, see the schedule below; ang 0.5) |
   | Posture | vertical velocity (−0.2), roll/pitch rate (−0.05), tilt (−1) |
   | Effort and smoothness | torque² (−2e-6), joint acceleration² (−2.5e-7), action rate (−0.01) |
-  | Gait | Isaac Lab's biped air time (0.25, 0.4 s); gait-clock foot contact (0.18 per foot); swing-foot clearance 0.10 m above the terrain under it (−20 × error²); foot slip (−0.2) |
+  | Gait | Isaac Lab's biped air time (0.25, 0.4 s); gait-clock foot contact (0.3 per foot); swing-foot clearance 0.08 m above the terrain under it (−10 × error²); clock-driven reference swing pose, Humanoid-Gym's `joint_pos` term (1.0 → 0.3); foot slip (−0.2) |
   | Limits and posture | hip yaw/roll deviation (−0.2); joint-limit margin (−1); 90 % of actuator no-load speed (−0.02) |
   | Episode | alive (0.15); fall (−20) |
 
   The gait clock is the unitree_rl_gym / Humanoid-Gym device. Without it, the policy settled on standing
-  still: in two runs it survived but did not walk.
+  still: in two runs it survived but did not walk. The clearance term must not cost more for a barely lifted
+  foot than the contact term pays (−10 × 0.08² = 0.064 < 0.3). With a 0.10 m target and a −20 weight it
+  did, and the policy kept both feet down. Even with that fixed, Gaussian action noise lifted a foot only 4 %
+  of the time: a step needs a sustained hip and knee flexion, which per-step noise does not produce. The
+  reference pose fixes this. It flexes hip/knee/ankle by −0.25/+0.5/−0.25 rad at mid-swing, which keeps
+  the sole level and gives about 8 cm of lift, and rewarding closeness to it gives the dense signal that
+  384 CPU environments need. Isaac Lab gets that signal from 4096 environments instead.
+  Once the robot steps, the reference (it has no fore-aft hip swing) holds the stride back. So
+  `env.SCHEDULE` anneals it from 1.0 to 0.3, and raises linear tracking from 1.0 to 1.5, linearly between
+  15 M and 25 M steps.
 * **Termination:** pelvis lower than 0.55 m above the terrain, or tilt over 60°; 20 s time-out.
 * **Curriculum:** Isaac Lab's terrain-level rule. Move up a row after walking more than 2.4 m without
   falling; move down after covering less than 40 % of the commanded distance.
