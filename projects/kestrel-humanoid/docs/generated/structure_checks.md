@@ -4,19 +4,19 @@ Cases: **N** normal repeated peak (x1.2 margin), **M** momentary (0.10 m unplann
 
 | Item | Case | Load | Value | Allowable | SF | Note |
 |---|---|---|---|---|---|---|
-| Knee push-rod, Ti-6Al-4V tube 16x2 mm, axial stress | N | 5.5 kN | 62.5 MPa | 880.0 MPa | **14.07** |  |
-| Knee push-rod Euler buckling (pinned, L=253 mm) | N | 5.5 kN | 5.5 kN | 38.6 kN | **7.02** | Pcr |
-| Knee push-rod, Ti-6Al-4V tube 16x2 mm, axial stress | X | 7.0 kN | 79.9 MPa | 880.0 MPa | **11.01** |  |
-| Knee push-rod Euler buckling (pinned, L=253 mm) | X | 7.0 kN | 7.0 kN | 38.6 kN | **5.49** | Pcr |
-| Knee rod ends: M12 PTFE-lined spherical (e.g. SKF SIKAC 12 M class, C0 ~ 30 kN, verify) | X | 7.0 kN | 7.0 kN | 30.0 kN | **4.27** | static rating - confirm with chosen part |
-| Thigh twin plates 2x 6x60 mm 7075-T6, bending at knee-reaction moment | X | 491 N m | 68.2 MPa | 503.0 MPa | **7.38** |  |
-| Thigh plates, fatigue at repeated knee torque | N | 351 N m | 48.8 MPa | 159.0 MPa | **3.26** | R=-1 conservative |
-| Shank CFRP tube 40x2 mm, bending at ankle | X | 273 N m | 126.1 MPa | 350.0 MPa | **2.78** |  |
-| Shank CFRP tube axial compression in X drop | X | 2.27 kN | 9.5 MPa | 350.0 MPa | **36.81** |  |
-| KA-130K output flange: 12x M5 12.9 on PCD 105 mm, slip torque (mu 0.15) | M | 427 N m | 426.9 N m | 935.5 N m | **2.19** | plus 2 dowels for location; slip = overload fuse |
-| KA-110P output flange: 10x M4 12.9 on PCD 85 mm, slip torque (mu 0.15) | M | 208 N m | 207.9 N m | 439.9 N m | **2.12** | plus 2 dowels for location; slip = overload fuse |
-| KA-90P output flange: 8x M4 12.9 on PCD 75 mm, slip torque (mu 0.15) | M | 133 N m | 132.6 N m | 310.5 N m | **2.34** | plus 2 dowels for location; slip = overload fuse |
-| Ankle cross pins Ti-6Al-4V D12, double shear (X drop GRF) | X | 2.27 kN | 10.0 MPa | 510.4 MPa | **50.86** |  |
-| Foot plate 7075-T6 10 mm ribbed, toe cantilever at 1.5 g | N | 163 N m | 44.6 MPa | 159.0 MPa | **3.57** |  |
-| KA-130K stage-2 sun teeth, Lewis bending (m 1.25, b 18, 4 planets, 17-4PH/18CrNiMo7-6) | M | 395 N m out | 433.4 MPa | 1170.0 MPa | **2.70** | carburised 18CrNiMo7-6 preferred (sy > 1000 MPa); AGMA check in FEA phase |
-| KA-130K output crossed-roller L10 life at walking load (oscillating, 30 rpm equiv.) | N | P_eq 2.8 kN | 3000.0 h | 1502025.4 h | **500.68** | required >= 3000 h; value = L10 hours |
+| Knee push-rod, Ti-6Al-4V tube 16x2 mm, axial stress | N | 6.8 kN | 77.6 MPa | 880.0 MPa | **11.34** |  |
+| Knee push-rod Euler buckling (pinned, L=253 mm) | N | 6.8 kN | 6.8 kN | 38.6 kN | **5.66** | Pcr |
+| Knee push-rod, Ti-6Al-4V tube 16x2 mm, axial stress | X | 8.8 kN | 100.4 MPa | 880.0 MPa | **8.76** |  |
+| Knee push-rod Euler buckling (pinned, L=253 mm) | X | 8.8 kN | 8.8 kN | 38.6 kN | **4.37** | Pcr |
+| Knee rod ends: M12 PTFE-lined spherical (e.g. SKF SIKAC 12 M class, C0 ~ 30 kN, verify) | X | 8.8 kN | 8.8 kN | 30.0 kN | **3.40** | static rating - confirm with chosen part |
+| Thigh twin plates 2x 6x60 mm 7075-T6, bending at knee-reaction moment | X | 615 N m | 85.5 MPa | 503.0 MPa | **5.89** |  |
+| Thigh plates, fatigue at repeated knee torque | N | 431 N m | 59.8 MPa | 159.0 MPa | **2.66** | R=-1 conservative |
+| Shank CFRP tube 40x2 mm, bending at ankle | X | 300 N m | 139.1 MPa | 350.0 MPa | **2.52** |  |
+| Shank CFRP tube axial compression in X drop | X | 2.76 kN | 11.6 MPa | 350.0 MPa | **30.24** |  |
+| KA-130K output flange: 12x M5 12.9 on PCD 105 mm, slip torque (mu 0.15) | M | 535 N m | 535.0 N m | 935.5 N m | **1.75** | plus 2 dowels for location; slip = overload fuse |
+| KA-110P output flange: 10x M4 12.9 on PCD 85 mm, slip torque (mu 0.15) | M | 379 N m | 379.2 N m | 439.9 N m | **1.16** ⚠ | plus 2 dowels for location; slip = overload fuse |
+| KA-90P output flange: 8x M4 12.9 on PCD 75 mm, slip torque (mu 0.15) | M | 149 N m | 149.4 N m | 310.5 N m | **2.08** | plus 2 dowels for location; slip = overload fuse |
+| Ankle cross pins Ti-6Al-4V D12, double shear (X drop GRF) | X | 2.76 kN | 12.2 MPa | 510.4 MPa | **41.77** |  |
+| Foot plate 7075-T6 10 mm ribbed, toe cantilever at 1.5 g | N | 199 N m | 54.3 MPa | 159.0 MPa | **2.93** |  |
+| KA-130K stage-2 sun teeth, Lewis bending (m 1.25, b 18, 4 planets, 17-4PH/18CrNiMo7-6) | M | 493 N m out | 540.6 MPa | 1170.0 MPa | **2.16** | carburised 18CrNiMo7-6 preferred (sy > 1000 MPa); AGMA check in FEA phase |
+| KA-130K output crossed-roller L10 life at walking load (oscillating, 30 rpm equiv.) | N | P_eq 3.5 kN | 3000.0 h | 734810.8 h | **244.94** | required >= 3000 h; value = L10 hours |

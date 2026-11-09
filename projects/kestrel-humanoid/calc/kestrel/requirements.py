@@ -21,13 +21,14 @@ import numpy as np
 
 from . import params as P
 
-ROOT = Path(__file__).resolve().parents[2]
-DATA = ROOT / "data"
-GEN = ROOT / "docs" / "generated"
+ROOT = P.ROOT
+DATA = P.DATA_DIR
+GEN = P.GEN_DIR
 
-REPEATED = ["W1", "W2", "ST", "SQ", "DS", "SU", "SL", "AH", "AL", "AF", "AS", "TB", "NK"]
-MOMENTARY = ["SD"]
-STATIC = ["SL", "AH"]
+REPEATED = [s for s in ["W1", "W2", "ST", "SQ", "DS", "SU", "SL", "AH", "AL", "AF", "AS", "TB", "NK", "CW", "AO"]
+            if s not in P.SCENARIOS_SKIP]
+MOMENTARY = ["SD", "LM"]
+STATIC = ["SL", "AH", "AO"]
 MARGIN_T = 1.20
 MARGIN_W = 1.15
 MARGIN_MOM = 1.10
@@ -59,10 +60,16 @@ def supplementary(design_mass):
     }
 
 
+def _prune(meta):
+    """Keep only the cases this variant/workload actually ran (Mk II adds CW, AO, LM)."""
+    for lst in (REPEATED, MOMENTARY, STATIC):
+        lst[:] = [s for s in lst if s in meta]
+
+
 def run_all(cache=True):
     from . import scenarios as S
 
-    DATA.mkdir(exist_ok=True)
+    DATA.mkdir(parents=True, exist_ok=True)
     res = S.all_scenarios()
     store = {}
     meta = {}
@@ -75,6 +82,7 @@ def run_all(cache=True):
         meta[r["name"]] = dict(desc=r["desc"], cop_ok=r["cop_ok"], mass=r["mass"], dt=r["dt"],
                                duration=float((c.stop - c.start) * r["dt"]),
                                speed=float(r.get("speed", 0.0)))
+    _prune(meta)
     if cache:
         np.savez_compressed(DATA / "scenario_series.npz", **store)
         (DATA / "scenario_meta.json").write_text(json.dumps(dict(joints=names, scenarios=meta), indent=1))
@@ -84,6 +92,7 @@ def run_all(cache=True):
 def load():
     meta = json.loads((DATA / "scenario_meta.json").read_text())
     z = np.load(DATA / "scenario_series.npz")
+    _prune(meta["scenarios"])
     return {k: z[k] for k in z.files}, meta["scenarios"], meta["joints"]
 
 
@@ -157,13 +166,13 @@ def write_markdown(req, meta, design_mass):
     L += ["", "## Requirements", "",
           "| Joint | Sim peak (case) | **Repeated req** | Momentary req | Hold | RMS W1 / W2 / ST | **Continuous req** | Sim speed (case) | **Speed req** | Peak power |",
           "|---|---|---|---|---|---|---|---|---|---|"]
-    for k in ORDER:
+    for k in [o for o in ORDER if o in req]:
         r = req[k]
         L.append(f"| {k} | {r['peak_rep']:.0f} N·m ({r['peak_rep_case']}) | **{r['T_rep_req']:.0f} N·m** | {r['T_mom_req']:.0f} N·m | "
                  f"{r['hold']:.0f} N·m ({r['hold_case']}) | {r['rms_W1']:.0f} / {r['rms_W2']:.0f} / {r['rms_ST']:.0f} | **{r['T_cont_req']:.0f} N·m** | "
                  f"{r['vmax']:.1f} rad/s ({r['vmax_case']}) | **{r['w_req']:.1f} rad/s** | {r['pmax']:.0f} W |")
     L += ["", "Supplementary minimums applied (where they govern):", ""]
-    for k in ORDER:
+    for k in [o for o in ORDER if o in req]:
         if req[k]["supp_note"]:
             L.append(f"- **{k}**: {req[k]['supp_note']}")
     L += ["", f"Margins: repeated x{MARGIN_T}, momentary x{MARGIN_MOM}, continuous x{MARGIN_CONT}, speed x{MARGIN_W}.", ""]

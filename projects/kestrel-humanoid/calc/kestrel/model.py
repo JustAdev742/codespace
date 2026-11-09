@@ -91,6 +91,7 @@ def build_mjcf(mass_scale=P.DESIGN_MASS_GROWTH, payloads=None, effort=None, floo
             lines.append(f'{pad}  <site name="imu" pos="-0.06 0 0.05" size="0.01"/>')
         else:
             lines.append(f'{pad}<body name="{b.name}" pos="{_f(b.jpos)}">')
+        if b.parent is not None and b.joint is not None:
             j = joints[b.joint]
             cls = P.ACT[j["act"]]
             arm = cls["rotor_J"] * cls["ratio"] ** 2

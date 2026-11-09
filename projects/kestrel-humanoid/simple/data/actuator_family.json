@@ -1,0 +1,144 @@
+{
+ "S-LX": {
+  "mass": 2.82,
+  "rotor_J": 0.0003644112000000001,
+  "ratio": 30.0,
+  "actuator": "MyActuator RMD-X12-P20-320-E",
+  "maker": "MyActuator (Suzhou Micro Actuator)",
+  "price_usd": 1090.0,
+  "reductions": {
+   "hip_pitch": 1.0,
+   "knee": 1.5
+  },
+  "peak_Nm": 320,
+  "rated_Nm": 85,
+  "speed_rads": 13.09,
+  "min_margin": 1.01,
+  "source_url": "https://www.myactuator.com/_files/archives/cab28a_712afb681f434c1394145c69aae60b8e.zip",
+  "verified": true
+ },
+ "S-L": {
+  "mass": 1.76,
+  "rotor_J": 0.00021744,
+  "ratio": 18.0,
+  "actuator": "RobStride RS04",
+  "maker": "RobStride Dynamics (Beijing Lingzu Shidai)",
+  "price_usd": 295.0,
+  "reductions": {
+   "hip_roll": 2.0
+  },
+  "peak_Nm": 120,
+  "rated_Nm": 40,
+  "speed_rads": 20.94,
+  "min_margin": 1.17,
+  "source_url": "https://raw.githubusercontent.com/RobStride/Product_Information/main/%E7%81%B5%E8%B6%B3%E6%97%B6%E4%BB%A3RS%E7%B3%BB%E5%88%97%E4%BA%A7%E5%93%81%E8%A7%84%E6%A0%BC%E4%BB%8B%E7%BB%8D%282026.010.09%29.pdf",
+  "verified": true
+ },
+ "S-M": {
+  "mass": 1.51,
+  "rotor_J": 0.00021744,
+  "ratio": 9.0,
+  "actuator": "RobStride RS04",
+  "maker": "RobStride Dynamics (Beijing Lingzu Shidai)",
+  "price_usd": 295.0,
+  "reductions": {
+   "hip_yaw": 1.0,
+   "waist_yaw": 1.0
+  },
+  "peak_Nm": 120,
+  "rated_Nm": 40,
+  "speed_rads": 20.94,
+  "min_margin": 1.8,
+  "source_url": "https://raw.githubusercontent.com/RobStride/Product_Information/main/%E7%81%B5%E8%B6%B3%E6%97%B6%E4%BB%A3RS%E7%B3%BB%E5%88%97%E4%BA%A7%E5%93%81%E8%A7%84%E6%A0%BC%E4%BB%8B%E7%BB%8D%282026.010.09%29.pdf",
+  "verified": true
+ },
+ "S-A": {
+  "mass": 1.51,
+  "rotor_J": 0.00021744,
+  "ratio": 9.0,
+  "actuator": "RobStride RS04",
+  "maker": "RobStride Dynamics (Beijing Lingzu Shidai)",
+  "price_usd": 295.0,
+  "reductions": {
+   "ankle": 1.0
+  },
+  "peak_Nm": 120,
+  "rated_Nm": 40,
+  "speed_rads": 20.94,
+  "min_margin": 1.03,
+  "source_url": "https://raw.githubusercontent.com/RobStride/Product_Information/main/%E7%81%B5%E8%B6%B3%E6%97%B6%E4%BB%A3RS%E7%B3%BB%E5%88%97%E4%BA%A7%E5%93%81%E8%A7%84%E6%A0%BC%E4%BB%8B%E7%BB%8D%282026.010.09%29.pdf",
+  "verified": true
+ },
+ "S-SH": {
+  "mass": 1.51,
+  "rotor_J": 0.00021744,
+  "ratio": 9.0,
+  "actuator": "RobStride RS04",
+  "maker": "RobStride Dynamics (Beijing Lingzu Shidai)",
+  "price_usd": 295.0,
+  "reductions": {
+   "shoulder_pitch": 1.0,
+   "shoulder_roll": 1.0
+  },
+  "peak_Nm": 120,
+  "rated_Nm": 40,
+  "speed_rads": 20.94,
+  "min_margin": 1.54,
+  "source_url": "https://raw.githubusercontent.com/RobStride/Product_Information/main/%E7%81%B5%E8%B6%B3%E6%97%B6%E4%BB%A3RS%E7%B3%BB%E5%88%97%E4%BA%A7%E5%93%81%E8%A7%84%E6%A0%BC%E4%BB%8B%E7%BB%8D%282026.010.09%29.pdf",
+  "verified": true
+ },
+ "S-EL": {
+  "mass": 0.928,
+  "rotor_J": 8.912512000000002e-05,
+  "ratio": 9.0,
+  "actuator": "RobStride RS03",
+  "maker": "RobStride Dynamics (Beijing Lingzu Shidai)",
+  "price_usd": 245.0,
+  "reductions": {
+   "shoulder_yaw": 1.0,
+   "elbow": 1.0
+  },
+  "peak_Nm": 60,
+  "rated_Nm": 21,
+  "speed_rads": 20.42,
+  "min_margin": 1.04,
+  "source_url": "https://raw.githubusercontent.com/RobStride/Product_Information/main/%E7%81%B5%E8%B6%B3%E6%97%B6%E4%BB%A3RS%E7%B3%BB%E5%88%97%E4%BA%A7%E5%93%81%E8%A7%84%E6%A0%BC%E4%BB%8B%E7%BB%8D%282026.010.09%29.pdf",
+  "verified": true
+ },
+ "S-WR": {
+  "mass": 0.418,
+  "rotor_J": 2.5758205000000007e-05,
+  "ratio": 7.75,
+  "actuator": "RobStride RS02",
+  "maker": "RobStride Dynamics (Beijing Lingzu Shidai)",
+  "price_usd": 195.0,
+  "reductions": {
+   "wrist_yaw": 1.0,
+   "wrist_pitch": 1.0
+  },
+  "peak_Nm": 17,
+  "rated_Nm": 7,
+  "speed_rads": 42.94,
+  "min_margin": 1.21,
+  "source_url": "https://raw.githubusercontent.com/RobStride/Product_Information/main/%E7%81%B5%E8%B6%B3%E6%97%B6%E4%BB%A3RS%E7%B3%BB%E5%88%97%E4%BA%A7%E5%93%81%E8%A7%84%E6%A0%BC%E4%BB%8B%E7%BB%8D%282026.010.09%29.pdf",
+  "verified": true
+ },
+ "S-NK": {
+  "mass": 0.31,
+  "rotor_J": 1.0071900000000001e-05,
+  "ratio": 10.0,
+  "actuator": "RobStride RS00",
+  "maker": "RobStride Dynamics (Beijing Lingzu Shidai)",
+  "price_usd": 185.0,
+  "reductions": {
+   "neck_yaw": 1.0,
+   "neck_pitch": 1.0
+  },
+  "peak_Nm": 14,
+  "rated_Nm": 5,
+  "speed_rads": 32.99,
+  "min_margin": 1.05,
+  "source_url": "https://raw.githubusercontent.com/RobStride/Product_Information/main/%E7%81%B5%E8%B6%B3%E6%97%B6%E4%BB%A3RS%E7%B3%BB%E5%88%97%E4%BA%A7%E5%93%81%E8%A7%84%E6%A0%BC%E4%BB%8B%E7%BB%8D%282026.010.09%29.pdf",
+  "verified": true
+ }
+}

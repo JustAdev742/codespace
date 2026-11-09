@@ -22,11 +22,25 @@ mass growth every real robot programme experiences between concept and hardware.
 """
 from __future__ import annotations
 
+import importlib
+import os
 from dataclasses import dataclass, field
 from math import radians
+from pathlib import Path
 
-NAME = "KESTREL K1"
+# Variant switch: KESTREL_VARIANT=s1 loads calc/kestrel/variant_s1.py, which overrides the geometry, joints,
+# actuator classes and mass budget below and points the outputs at that variant's own folders.
+VARIANT = os.environ.get("KESTREL_VARIANT", "k1").lower()
+ROOT = Path(__file__).resolve().parents[2]
+DATA_DIR = ROOT / "data"
+GEN_DIR = ROOT / "docs" / "generated"
+SCENARIOS_SKIP = set()      # scenario IDs a variant cannot perform (e.g. no waist-pitch joint)
+
+NAME = "KESTREL K1 Mk II"
 HEIGHT = 1.75  # m, standing, top of head shell
+# Load levels of the design-case scenarios (calc/kestrel/scenarios.py): "mk2" = 30 kg sustained / 50 kg momentary
+# payload, 10 kg per hand at full reach, 15 kg in one hand (docs/research/R7 recommendations)
+WORKLOAD = "mk2"
 
 # Requirement model is built at estimated mass x this factor (concept-stage contingency).
 DESIGN_MASS_GROWTH = 1.10
@@ -89,16 +103,15 @@ ACT = {
     "KH-20": dict(mass=0.98, rotor_J=3.4e-5, ratio=100.0),
     "KH-14": dict(mass=0.52, rotor_J=1.0e-5, ratio=100.0),
     # wrist pitch/roll: miniature ball-screw linear actuator pair
-    "KW-L": dict(mass=0.28, rotor_J=2.0e-6, ratio=1.0),
+    "KW-L": dict(mass=0.34, rotor_J=2.0e-6, ratio=1.0),   # Mk II KW-L2: 24 V flat brushless + ball screw (R10 sec. 5.9)
 }
 
 
 def load_actuator_overrides(path=None):  # noqa: D401
     """Replace ACT entries with sizing results if data/actuator_family.json exists."""
     import json
-    from pathlib import Path
 
-    p = Path(path) if path else Path(__file__).resolve().parents[2] / "data" / "actuator_family.json"
+    p = Path(path) if path else DATA_DIR / "actuator_family.json"
     if p.exists():
         fam = json.loads(p.read_text())
         for k, v in fam.items():
@@ -136,7 +149,7 @@ MIRROR_SIGN = {"hip_yaw", "hip_roll", "shoulder_roll", "ankle_roll", "wrist_roll
 
 
 def joint_table():
-    """Return ordered dict name -> dict(act, lo, hi) for all 30 body joints."""
+    """Return ordered dict name -> dict(act, lo, hi) for all body joints (30 on K1)."""
     out = {}
     for n, (a, r, t) in JOINTS_CENTRE.items():
         out[n] = dict(act=a, lo=radians(r[0]), hi=radians(r[1]), trans=t)
@@ -201,11 +214,12 @@ def build_bodies():
     h_sh = d["shoulder_z"]
     B.append(Body("torso", "waist_link", "waist_pitch", (0, 0, d["waist_pitch_above"]), (0, 1, 0), comps=[
         Comp("spine + ribcage frame (7075-T6 + CF panels)", 2.40, (-0.01, 0, 0.20), "box", (0.18, 0.30, 0.40), "structure"),
-        Comp("battery pack 16S6P (Molicel P50B, 1.68 kWh) incl. BMS, fuse, enclosure", 8.90, (-0.020, 0, 0.130), "box", (0.155, 0.20, 0.185), "battery"),
+        Comp("battery pack A, hot-swap 16S4P (64 Molicel P50B, 1.15 kWh) incl. BMS, fuse, enclosure", 5.90, (-0.030, 0.052, 0.130), "box", (0.150, 0.098, 0.185), "battery"),
+        Comp("battery pack B, hot-swap 16S4P (64 Molicel P50B, 1.15 kWh) incl. BMS, fuse, enclosure", 5.90, (-0.030, -0.052, 0.130), "box", (0.150, 0.098, 0.185), "battery"),
         Comp("AI computer (Jetson AGX Thor module + carrier + cold plate)", 1.45, (0.035, 0, 0.30), "box", (0.04, 0.16, 0.12), "electronics"),
         Comp("real-time control computer + safety MCU board", 0.45, (-0.07, 0, 0.30), "box", (0.03, 0.12, 0.10), "electronics"),
         Comp("power distribution unit (contactor, fuses, DC-DC)", 1.20, (0.075, 0, 0.177), "box", (0.03, 0.17, 0.10), "electronics"),
-        Comp("cooling: 2 blowers, ducts, heat pipes", 0.55, (-0.08, 0, 0.32), "box", (0.04, 0.20, 0.08), "electronics"),
+        Comp("cooling: liquid loop (2 pumps, radiator + 2 fans, reservoir, coolant, compute cold plate) + electronics blower", 1.25, (-0.08, 0, 0.32), "box", (0.05, 0.22, 0.10), "electronics"),
         Comp("shoulder-pitch actuator L", _A("KH-25"), (0.0, d["shoulder_half_width"] - 0.065, h_sh), "cyl", (0.050, 0.075, "y"), "actuator"),
         Comp("shoulder-pitch actuator R", _A("KH-25"), (0.0, -d["shoulder_half_width"] + 0.065, h_sh), "cyl", (0.050, 0.075, "y"), "actuator"),
         Comp("neck-yaw actuator", _A("KH-14"), (0.0, 0, d["neck_yaw_z"] - 0.04), "cyl", (0.035, 0.06, "z"), "actuator"),
@@ -261,7 +275,7 @@ def build_bodies():
         ]))
         B.append(Body(f"{side}_hand", f"{side}_wrist", f"{side}_wrist_roll", (0, 0, 0), (1, 0, 0), comps=[
             Comp("wrist 6-axis F/T sensor", 0.10, (0, 0, -0.015), "cyl", (0.024, 0.02, "z"), "sensor"),
-            Comp("hand (10 DOA, linkage-driven)", 0.92, (0, s * 0.0, -0.085), "box", (0.035, 0.085, 0.14), "hand"),
+            Comp("hand Mk II (13 DOA, linkage + tendon, palm camera, >=200 N grasp)", 1.15, (0, s * 0.0, -0.085), "box", (0.038, 0.090, 0.15), "hand"),
         ]))
     # ---------------- legs ----------------------------------------------------------
     for side, s in (("l", 1), ("r", -1)):
@@ -280,7 +294,7 @@ def build_bodies():
             Comp("thigh frame (7075-T6 twin-plate + CF tube)", 0.95, (0, 0, -0.22), "box", (0.08, 0.07, 0.36), "structure"),
             Comp("knee push-rod (Ti tube, 2 rod ends)", 0.16, (-0.04, 0, -0.26), "cyl", (0.009, 0.30, "z"), "structure"),
             Comp("thigh shells", 0.35, (0, 0, -0.20), "box", (0.15, 0.15, 0.36), "shell"),
-            Comp("thigh harness", 0.25, (0, 0, -0.20), "box", (0.03, 0.03, 0.36), "harness"),
+            Comp("thigh harness + coolant lines (dry-break quick-disconnects)", 0.45, (0, 0, -0.20), "box", (0.03, 0.03, 0.36), "harness"),
         ]))
         B.append(Body(f"{side}_shank", f"{side}_thigh", f"{side}_knee", (0, 0, -d["thigh"]), (0, 1, 0), comps=[
             Comp("ankle actuator A (calf, upper)", _A("KA-90P"), (-0.015, 0, -0.095), "cyl", (0.0485, 0.070, "y"), "actuator"),
@@ -314,6 +328,9 @@ def mass_summary(bodies=None):
             by_cat[c.cat] = by_cat.get(c.cat, 0.0) + c.mass
     return total, by_cat, by_body
 
+
+if VARIANT != "k1":
+    importlib.import_module(f".variant_{VARIANT}", __package__).apply(globals())
 
 # Pull sized actuator masses / inertias / ratios in automatically when the family file exists.
 load_actuator_overrides()

@@ -44,10 +44,10 @@ ELECTRONICS = [
     ("2x wrist F/T (Bota SensONE class)", 3.0, 3.0),
     ("26 rotary joint drive logic supplies (standby)", 26 * DRIVE_STANDBY_W, 26 * DRIVE_STANDBY_W),
     ("33 AksIM-2 absolute encoders (~0.7 W) + 19 magnetic motor encoders (~0.1 W)", 25.0, 25.0),
-    ("2x hand controllers + 20 micro-motor drivers (idle)", 6.0, 6.0),
+    ("2x hand controllers + 26 micro-motor drivers (idle) + 2 palm cameras", 9.0, 9.0),
     ("Foot boards, tactile front-ends, ToF sensors", 4.0, 4.0),
     ("Audio: mic array + amplifier", 2.0, 10.0),
-    ("Cooling: 2 torso blowers + 4 leg-duct blowers", 10.0, 24.0),
+    ("Cooling Mk II: 2 coolant pumps + radiator fans + electronics blower", 35.0, 60.0),
     ("Face/status LEDs", 1.5, 4.0),
     ("BMS, PDU, contactor coil economised, DC-DC losses (~8 % of the above)", 17.0, 25.0),
 ]

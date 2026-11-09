@@ -58,7 +58,8 @@ class Robot:
 
     def set_joints(self, q, values):
         for k, v in values.items():
-            q[self.qadr[k]] = v
+            if k in self.qadr:                  # a variant may lack some joints (e.g. waist pitch)
+                q[self.qadr[k]] = v
         return q
 
     def fk(self, q):

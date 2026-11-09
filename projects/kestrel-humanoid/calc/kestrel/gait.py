@@ -213,7 +213,7 @@ def multibody_zmp(robot, out, Q):
     return z
 
 
-def _build(robot, plan, com_ref, hip_h, arm_swing, q_seed, iterations=3):
+def _build(robot, plan, com_ref, hip_h, arm_swing, q_seed, iterations=3, sp_base=(0.0, 0.0)):
     dt = plan["dt"]
     n = len(plan["T"])
     offset = np.zeros((n, 2))
@@ -230,8 +230,8 @@ def _build(robot, plan, com_ref, hip_h, arm_swing, q_seed, iterations=3):
             q[0:2] = com_ref[k] - offset[k]
             q[2] = zp[k]
             q[3:7] = [1, 0, 0, 0]
-            robot.set_joints(q, {"l_shoulder_pitch": -arm_swing * swing_sig[k],
-                                 "r_shoulder_pitch": arm_swing * swing_sig[k]})
+            robot.set_joints(q, {"l_shoulder_pitch": sp_base[0] - arm_swing * swing_sig[k],
+                                 "r_shoulder_pitch": sp_base[1] + arm_swing * swing_sig[k]})
             for s in "lr":
                 robot.ik_leg(q, s, plan["feet"][s][k], roty(plan["foot_pitch"][s][k]))
             c = robot.com(q)
@@ -240,7 +240,7 @@ def _build(robot, plan, com_ref, hip_h, arm_swing, q_seed, iterations=3):
     return Q, zp
 
 
-def walk_trajectory(robot, plan, hip_h=0.86, arm_swing=0.20, filter_passes=3):
+def walk_trajectory(robot, plan, hip_h=0.86, arm_swing=0.20, filter_passes=3, arm_pose=None):
     """Whole-body joint trajectory realising the plan. Returns (Q, info).
 
     Stage 1: LIPM preview control gives a CoM path whose *pendulum* ZMP tracks the plan.
@@ -250,7 +250,8 @@ def walk_trajectory(robot, plan, hip_h=0.86, arm_swing=0.20, filter_passes=3):
     """
     dt = plan["dt"]
     q = robot.q0()
-    arm = {"l_shoulder_roll": 0.10, "r_shoulder_roll": -0.10, "l_elbow": -0.35, "r_elbow": -0.35}
+    arm = arm_pose or {"l_shoulder_roll": 0.10, "r_shoulder_roll": -0.10, "l_elbow": -0.35, "r_elbow": -0.35}
+    sp_base = (arm.get("l_shoulder_pitch", 0.0), arm.get("r_shoulder_pitch", 0.0))
     robot.set_joints(q, arm)
     q[2] = hip_h
     for s in "lr":
@@ -261,7 +262,7 @@ def walk_trajectory(robot, plan, hip_h=0.86, arm_swing=0.20, filter_passes=3):
     com_ref = np.c_[cx[:, 0], cy[:, 0]]
     history = []
     for p in range(filter_passes + 1):
-        Q, zp = _build(robot, plan, com_ref, hip_h, arm_swing, q)
+        Q, zp = _build(robot, plan, com_ref, hip_h, arm_swing, q, sp_base=sp_base)
         if p == filter_passes:
             break
         out = robot.inverse_dynamics(Q, dt=dt, wL=plan["wl"])

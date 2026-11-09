@@ -52,11 +52,21 @@ def _result(name, desc, R, Q, wl, cut=None, extra=None):
 
 
 # ---------------------------------------------------------------------------- walking
-def walk(name, desc, step, t_ss, t_ds, hip_h, rise=0.0, n_steps=8, clearance=0.05):
-    R = D.Robot()
+BOX_ARMS = {"l_shoulder_pitch": -0.35, "r_shoulder_pitch": -0.35, "l_elbow": -1.25, "r_elbow": -1.25}
+
+
+def _box(kg):
+    return {"l_hand": [(kg / 2, (0.0, 0.0, -0.09))], "r_hand": [(kg / 2, (0.0, 0.0, -0.09))]} if kg > 0 else {}
+
+
+def walk(name, desc, step, t_ss, t_ds, hip_h, rise=0.0, n_steps=8, clearance=0.05, box_kg=0.0):
+    R = D.Robot(payloads=_box(box_kg))
     plan = gait.plan_walk(n_steps=n_steps, step_len=step, t_ss=t_ss, t_ds=t_ds, rise=rise,
                           clearance=clearance if rise == 0 else 0.07)
-    Q, info = gait.walk_trajectory(R, plan, hip_h=hip_h, arm_swing=0.3, filter_passes=3)
+    if box_kg > 0:      # carrying: forearms forward, box against the chest, no arm swing
+        Q, info = gait.walk_trajectory(R, plan, hip_h=hip_h, arm_swing=0.0, filter_passes=3, arm_pose=dict(BOX_ARMS))
+    else:
+        Q, info = gait.walk_trajectory(R, plan, hip_h=hip_h, arm_swing=0.3, filter_passes=3)
     n = len(Q)
     cut = slice(int(1.8 / DT), n - int(1.2 / DT))
     return _result(name, desc, R, Q, plan["wl"], cut,
@@ -68,9 +78,8 @@ def squat(name, desc, z_low, waist_pitch, box_kg=0.0, t_down=1.5, t_hold=0.6, t_
     pay = {}
     arm = {}
     if box_kg > 0:
-        pay = {"l_hand": [(box_kg / 2, (0.0, 0.0, -0.09))], "r_hand": [(box_kg / 2, (0.0, 0.0, -0.09))]}
-        # forearms forward and horizontal, box against the chest
-        arm = {"l_shoulder_pitch": -0.35, "r_shoulder_pitch": -0.35, "l_elbow": -1.25, "r_elbow": -1.25}
+        pay = _box(box_kg)
+        arm = dict(BOX_ARMS)        # forearms forward and horizontal, box against the chest
     R = D.Robot(payloads=pay)
     feet = _feet_flat()
     T = np.arange(0, 0.3 + t_down + t_hold + t_up + 0.3, DT)
@@ -174,6 +183,23 @@ def arm_motion(name, desc, kg_per_hand, sp_from, sp_to, el_from, el_to, t_move, 
     return _result(name, desc, R, Q, np.full(len(Q), 0.5), extra=dict(Q=Q))
 
 
+def arm_one(name, desc, kg, t_move=0.8, t_hold=0.8):
+    """One-handed carry: left upper arm hanging, elbow bent to 90 deg (forearm forward), kg in the hand."""
+    R = D.Robot(payloads={"l_hand": [(kg, (0.0, 0.0, -0.09))]})
+    feet = _feet_flat()
+    T = np.arange(0, 0.2 + t_move + t_hold, DT)
+    Q = []
+    q = R.q0()
+    q[2] = 0.86
+    for t in T:
+        s_ = mj(0.2, 0.2 + t_move, t)
+        R.set_joints(q, {"l_elbow": -np.pi / 2 * s_, "l_wrist_pitch": 0.0})
+        R.place_pelvis_for_com(q, np.array([0.04, 0.0]), feet, iters=4)
+        Q.append(q.copy())
+    Q = np.array(Q)
+    return _result(name, desc, R, Q, np.full(len(Q), 0.5), extra=dict(Q=Q))
+
+
 def arm_side(name, desc, kg_per_hand, t_move=0.8, t_hold=0.6):
     pay = {"l_hand": [(kg_per_hand, (0.0, 0.0, -0.09))], "r_hand": [(kg_per_hand, (0.0, 0.0, -0.09))]}
     R = D.Robot(payloads=pay)
@@ -226,20 +252,32 @@ def neck(name, desc):
 
 
 def all_scenarios():
+    """The design-case set. P.WORKLOAD selects the load levels: "base" (K1 Mk I and S1) or "mk2" (K1 Mk II:
+    30 kg sustained / 50 kg momentary payload, 10 kg per hand at reach, 15 kg one-handed - docs/research/R7)."""
+    mk2 = getattr(P, "WORKLOAD", "base") == "mk2"
+    box, hand = (30.0, 10.0) if mk2 else (20.0, 5.0)
     S = []
     S.append(walk("W1", "walk 0.8 m/s (nominal)", 0.40, 0.40, 0.10, 0.83))
-    S.append(walk("W2", "walk 1.2 m/s (fast, 0.45 m steps at 2.67 Hz)", 0.45, 0.30, 0.075, 0.79))
+    fw = getattr(P, "FAST_WALK", None)       # (step, t_ss, t_ds, hip_h); S1 walks fast at 1.0 m/s
+    if fw:
+        S.append(walk("W2", f"walk {fw[0] / (fw[1] + fw[2]):.1f} m/s (fast, {fw[0]:.2f} m steps)", *fw))
+    else:
+        S.append(walk("W2", "walk 1.2 m/s (fast, 0.45 m steps at 2.67 Hz)", 0.45, 0.30, 0.075, 0.79))
     S.append(walk("ST", "stairs up 0.18 m rise, 0.9 s/step", 0.28, 0.70, 0.20, 0.81, rise=0.18, n_steps=6))
-    S.append(squat("SQ", "squat + rise holding 20 kg box at chest", 0.56, 0.45, box_kg=20.0))
+    S.append(squat("SQ", f"squat + rise holding {box:.0f} kg box at chest", 0.56, 0.45, box_kg=box))
     S.append(squat("DS", "deep squat (knee ~125 deg) + rise, no load", 0.46, 0.55))
     S.append(step_up("SU", "single-leg step-up onto 0.30 m platform in 1.2 s"))
     S.append(step_down("SD", "unplanned single-leg drop 0.10 m (missed step), 0.12 m absorption", drop=0.10, stroke=0.12))
     S.append(step_down("SX", "STRUCTURAL CASE ONLY: drop 0.15 m, 0.10 m absorption", drop=0.15, stroke=0.10))
     S.append(single_leg_stance("SL", "single-leg stance, free leg lifted (static)"))
-    S.append(arm_motion("AH", "arms straight forward, 5 kg per hand (static hold)", 5.0, -np.pi / 2, -np.pi / 2, 0, 0, 0.5))
-    S.append(arm_motion("AL", "lift 5 kg per hand, hanging -> forward horizontal in 0.8 s", 5.0, 0.0, -np.pi / 2, 0, 0, 0.8))
+    S.append(arm_motion("AH", f"arms straight forward, {hand:.0f} kg per hand (static hold)", hand, -np.pi / 2, -np.pi / 2, 0, 0, 0.5))
+    S.append(arm_motion("AL", f"lift {hand:.0f} kg per hand, hanging -> forward horizontal in 0.8 s", hand, 0.0, -np.pi / 2, 0, 0, 0.8))
     S.append(arm_motion("AF", "fast unloaded raise: shoulder 2.0 rad, elbow 1.6 rad in 0.70 s", 0.0, 0.0, -2.0, 0.0, -1.6, 0.70))
     S.append(arm_side("AS", "side raise to 90 deg holding 3 kg per hand in 0.8 s", 3.0))
     S.append(torso_bend("TB", "torso bend 60 deg forward, 5 kg per hand"))
     S.append(neck("NK", "neck nod 0.8 rad / 0.3 s, yaw 1.2 rad / 0.4 s"))
-    return S
+    if mk2:
+        S.append(walk("CW", "walk 0.6 m/s carrying a 30 kg box at the chest", 0.33, 0.45, 0.10, 0.80, box_kg=30.0))
+        S.append(arm_one("AO", "one-handed carry: elbow 90 deg, 15 kg in the hand (static)", 15.0))
+        S.append(squat("LM", "MOMENTARY: squat-lift a 50 kg box from thigh height", 0.56, 0.45, box_kg=50.0))
+    return [s for s in S if s["name"] not in P.SCENARIOS_SKIP]

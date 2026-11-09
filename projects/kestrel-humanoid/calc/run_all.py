@@ -76,11 +76,17 @@ def write_actuator_md(fam, rep, req):
          "|---|---|---|---|---|---|---|---|---|---|---|---|---|"]
     for g, a in fam.items():
         st = {"V": "datasheet", "C": "custom KM design"}[a["motor_status"]]
-        gear = f"CSG-{a['hd']}-{int(a['ratio'])} strain-wave" if a["hd"] else "2-stage planetary (custom)"
+        if a.get("gear") == "cycloid":
+            gear = f"{a['hd']} machined two-disc cycloid {int(a['ratio'])}:1"
+        elif a["hd"]:
+            gear = f"CSG-{a['hd']}-{int(a['ratio'])} strain-wave"
+        else:
+            gear = "2-stage planetary (custom)"
         L.append(f"| **{g}** | {', '.join(a['joints'])} | {a['motor']} ({st}) | {gear} | {a['ratio']:.0f}:1 | {a['T_peak_out']:.0f} N·m | "
                  f"{a['T_cont_out']:.0f} N·m | {a['w_noload_out']:.1f} rad/s | {a['w_at_half_peak']:.1f} rad/s | {a['J_reflected']:.3f} kg·m² | "
                  f"{a['mass']:.2f} kg | {a['drive']} | {a['n_feasible']} |")
-    L += ["", "Drives: **HC** = " + A.DRIVES["HC"]["name"] + "; **EV** = " + A.DRIVES["EV"]["name"] + ".", "",
+    used = sorted({a["drive"] for a in fam.values()})
+    L += ["", "Drives: " + "; ".join(f"**{d}** = {A.DRIVES[d]['name']}" for d in used) + ".", "",
           "## Motor data used", "", "| Motor | Kt (N·m/A rms) | R LL (Ω) | Km (N·m/√W) | Cont / peak (N·m) | Mass (kg) | Rotor J (kg·m²) | OD (mm) | Source |",
           "|---|---|---|---|---|---|---|---|---|"]
     from kestrel.power import km

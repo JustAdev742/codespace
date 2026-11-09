@@ -10,7 +10,7 @@
     <body name="pelvis" pos="0 0 0.9150">
       <freejoint name="root"/>
       <site name="imu" pos="-0.06 0 0.05" size="0.01"/>
-      <inertial pos="-0.00459184 0 0.0793805" mass="6.86" fullinertia="0.0636469 0.0259317 0.0622359 0 -0.000820485 0"/>
+      <inertial pos="-0.00450708 0 0.0798533" mass="6.989" fullinertia="0.0648773 0.0262166 0.063348 0 -0.00083538 0"/>
       <geom type="box" size="0.1 0.14 0.055" pos="0 0 0.035" rgba="0.62 0.64 0.67 1" contype="0" conaffinity="0" group="1"/>
       <geom type="cylinder" size="0.05 0.0375" pos="0 0.105 0.12" quat="1 0 0 0" rgba="0.20 0.22 0.25 1" contype="0" conaffinity="0" group="1"/>
       <geom type="cylinder" size="0.05 0.0375" pos="0 -0.105 0.12" quat="1 0 0 0" rgba="0.20 0.22 0.25 1" contype="0" conaffinity="0" group="1"/>
@@ -19,19 +19,20 @@
       <geom type="box" size="0.125 0.18 0.085" pos="0 0 0.04" rgba="0.92 0.92 0.90 0.25" contype="0" conaffinity="0" group="1"/>
       <geom type="box" size="0.05 0.1 0.025" pos="-0.03 0 0.06" rgba="0.1 0.1 0.1 1" contype="0" conaffinity="0" group="1"/>
       <body name="waist_link" pos="0 0 0.1">
-        <joint name="waist_yaw" type="hinge" axis="0 0 1" range="-1.2217 1.2217" armature="0.044806" damping="0.5" limited="true"/>
-        <inertial pos="0 0 0.0630494" mass="2.266" fullinertia="0.00415742 0.00400629 0.00395564 0 0 0"/>
+        <joint name="waist_yaw" type="hinge" axis="0 0 1" range="-1.2217 1.2217" armature="0.066405" damping="0.5" limited="true"/>
+        <inertial pos="0 0 0.0653839" mass="3.412" fullinertia="0.00584796 0.00597063 0.00560941 0 0 0"/>
         <geom type="cylinder" size="0.058 0.0425" pos="0 0 0.07" quat="0.7071068 -0.7071068 0 0" rgba="0.20 0.22 0.25 1" contype="0" conaffinity="0" group="1"/>
         <geom type="box" size="0.05 0.08 0.03" pos="0 0 0.035" rgba="0.62 0.64 0.67 1" contype="0" conaffinity="0" group="1"/>
         <body name="torso" pos="0 0 0.07">
-          <joint name="waist_pitch" type="hinge" axis="0 1 0" range="-0.2618 1.3090" armature="0.1408" damping="0.5" limited="true"/>
-          <inertial pos="-0.00602487 0 0.205679" mass="21.154" fullinertia="0.377343 0.292367 0.195975 0 -0.00879683 0"/>
+          <joint name="waist_pitch" type="hinge" axis="0 1 0" range="-0.2618 1.3090" armature="0.36079" damping="0.5" limited="true"/>
+          <inertial pos="-0.0132131 0 0.2122" mass="27.204" fullinertia="0.514161 0.382076 0.270251 0 -0.0180583 0"/>
           <geom type="box" size="0.09 0.15 0.2" pos="-0.01 0 0.2" rgba="0.62 0.64 0.67 1" contype="0" conaffinity="0" group="1"/>
-          <geom type="box" size="0.0775 0.1 0.0925" pos="-0.02 0 0.13" rgba="0.85 0.55 0.15 1" contype="0" conaffinity="0" group="1"/>
+          <geom type="box" size="0.075 0.049 0.0925" pos="-0.03 0.052 0.13" rgba="0.85 0.55 0.15 1" contype="0" conaffinity="0" group="1"/>
+          <geom type="box" size="0.075 0.049 0.0925" pos="-0.03 -0.052 0.13" rgba="0.85 0.55 0.15 1" contype="0" conaffinity="0" group="1"/>
           <geom type="box" size="0.02 0.08 0.06" pos="0.035 0 0.3" rgba="0.15 0.45 0.30 1" contype="0" conaffinity="0" group="1"/>
           <geom type="box" size="0.015 0.06 0.05" pos="-0.07 0 0.3" rgba="0.15 0.45 0.30 1" contype="0" conaffinity="0" group="1"/>
           <geom type="box" size="0.015 0.085 0.05" pos="0.075 0 0.177" rgba="0.15 0.45 0.30 1" contype="0" conaffinity="0" group="1"/>
-          <geom type="box" size="0.02 0.1 0.04" pos="-0.08 0 0.32" rgba="0.15 0.45 0.30 1" contype="0" conaffinity="0" group="1"/>
+          <geom type="box" size="0.025 0.11 0.05" pos="-0.08 0 0.32" rgba="0.15 0.45 0.30 1" contype="0" conaffinity="0" group="1"/>
           <geom type="cylinder" size="0.05 0.0375" pos="0 0.135 0.335" quat="0.7071068 -0.7071068 0 0" rgba="0.20 0.22 0.25 1" contype="0" conaffinity="0" group="1"/>
           <geom type="cylinder" size="0.05 0.0375" pos="0 -0.135 0.335" quat="0.7071068 -0.7071068 0 0" rgba="0.20 0.22 0.25 1" contype="0" conaffinity="0" group="1"/>
           <geom type="cylinder" size="0.035 0.03" pos="0 0 0.36" quat="1 0 0 0" rgba="0.20 0.22 0.25 1" contype="0" conaffinity="0" group="1"/>
@@ -56,30 +57,30 @@
             </body>
           </body>
           <body name="l_shoulder" pos="0 0.2 0.335">
-            <joint name="l_shoulder_pitch" type="hinge" axis="0 1 0" range="-3.1416 1.0472" armature="0.19525" damping="0.5" limited="true"/>
-            <inertial pos="-0.0396253 0 0" mass="1.628" fullinertia="0.00193083 0.00203308 0.00197474 0 0 0"/>
+            <joint name="l_shoulder_pitch" type="hinge" axis="0 1 0" range="-3.1416 1.0472" armature="0.49401" damping="0.5" limited="true"/>
+            <inertial pos="-0.0419331 0 0" mass="2.853" fullinertia="0.00346208 0.00339311 0.00333478 0 0 0"/>
             <geom type="cylinder" size="0.05 0.0375" pos="-0.045 0 0" quat="0.7071068 0 0.7071068 0" rgba="0.20 0.22 0.25 1" contype="0" conaffinity="0" group="1"/>
             <geom type="box" size="0.04 0.03 0.04" pos="-0.01 0 0" rgba="0.62 0.64 0.67 1" contype="0" conaffinity="0" group="1"/>
             <body name="l_upper_arm_a" pos="0 0 0">
-              <joint name="l_shoulder_roll" type="hinge" axis="1 0 0" range="-0.2618 2.7925" armature="0.19525" damping="0.5" limited="true"/>
-              <inertial pos="0 0.00125962 -0.0687019" mass="1.429" fullinertia="0.00147461 0.00149488 0.00122835 0 0 -7.86634e-05"/>
+              <joint name="l_shoulder_roll" type="hinge" axis="1 0 0" range="-0.2618 2.7925" armature="0.49401" damping="0.5" limited="true"/>
+              <inertial pos="0 0.000994475 -0.0700276" mass="1.81" fullinertia="0.00178918 0.00180897 0.00156487 0 0 -8.10497e-05"/>
               <geom type="cylinder" size="0.042 0.0325" pos="0 0 -0.075" quat="1 0 0 0" rgba="0.20 0.22 0.25 1" contype="0" conaffinity="0" group="1"/>
               <geom type="box" size="0.035 0.025 0.025" pos="0 0.01 -0.025" rgba="0.62 0.64 0.67 1" contype="0" conaffinity="0" group="1"/>
               <body name="l_upper_arm" pos="0 0 0">
-                <joint name="l_shoulder_yaw" type="hinge" axis="0 0 1" range="-1.5708 1.7453" armature="0.21175" damping="0.5" limited="true"/>
-                <inertial pos="0 0 -0.254977" mass="1.999" fullinertia="0.0100205 0.0101316 0.00146656 0 0 0"/>
+                <joint name="l_shoulder_yaw" type="hinge" axis="0 0 1" range="-1.5708 1.7453" armature="0.10692" damping="0.5" limited="true"/>
+                <inertial pos="0 0 -0.262185" mass="2.38" fullinertia="0.0109714 0.0111163 0.00176873 0 0 0"/>
                 <geom type="cylinder" size="0.042 0.0325" pos="0 0 -0.3" quat="0.7071068 -0.7071068 0 0" rgba="0.20 0.22 0.25 1" contype="0" conaffinity="0" group="1"/>
                 <geom type="cylinder" size="0.03 0.08" pos="0 0 -0.18" quat="1 0 0 0" rgba="0.62 0.64 0.67 1" contype="0" conaffinity="0" group="1"/>
                 <geom type="cylinder" size="0.05 0.1" pos="0 0 -0.18" quat="1 0 0 0" rgba="0.92 0.92 0.90 0.25" contype="0" conaffinity="0" group="1"/>
                 <geom type="cylinder" size="0.02 0.1" pos="0 0 -0.18" quat="1 0 0 0" rgba="0.1 0.1 0.1 1" contype="0" conaffinity="0" group="1"/>
                 <body name="l_forearm_a" pos="0 0 -0.3">
-                  <joint name="l_elbow" type="hinge" axis="0 1 0" range="-2.5307 0.0000" armature="0.21175" damping="0.5" limited="true"/>
+                  <joint name="l_elbow" type="hinge" axis="0 1 0" range="-2.5307 0.0000" armature="0.10692" damping="0.5" limited="true"/>
                   <inertial pos="0 0 -0.0307213" mass="0.818" fullinertia="0.000536062 0.000536062 0.000499275 0 0 0"/>
                   <geom type="cylinder" size="0.035 0.03" pos="0 0 -0.035" quat="1 0 0 0" rgba="0.20 0.22 0.25 1" contype="0" conaffinity="0" group="1"/>
                   <geom type="box" size="0.03 0.03 0.015" pos="0 0 -0.01" rgba="0.62 0.64 0.67 1" contype="0" conaffinity="0" group="1"/>
                   <body name="l_forearm" pos="0 0 -0.06">
                     <joint name="l_wrist_yaw" type="hinge" axis="0 0 1" range="-1.5708 1.5708" armature="0.027612" damping="0.5" limited="true"/>
-                    <inertial pos="0 0 -0.0916522" mass="1.15" fullinertia="0.00228055 0.00228522 0.000478712 -8.064e-05 0 0"/>
+                    <inertial pos="0 0 -0.0914961" mass="1.27" fullinertia="0.00240401 0.00240867 0.000525032 -9.792e-05 0 0"/>
                     <geom type="cylinder" size="0.014 0.05" pos="0.012 0.012 -0.09" quat="1 0 0 0" rgba="0.20 0.22 0.25 1" contype="0" conaffinity="0" group="1"/>
                     <geom type="cylinder" size="0.014 0.05" pos="-0.012 -0.012 -0.09" quat="1 0 0 0" rgba="0.20 0.22 0.25 1" contype="0" conaffinity="0" group="1"/>
                     <geom type="box" size="0.02 0.015 0.03" pos="0 0 -0.05" rgba="0.15 0.45 0.30 1" contype="0" conaffinity="0" group="1"/>
@@ -92,9 +93,9 @@
                       <geom type="box" size="0.015 0.015 0.01" pos="0 0 0" rgba="0.62 0.64 0.67 1" contype="0" conaffinity="0" group="1"/>
                       <body name="l_hand" pos="0 0 0">
                         <joint name="l_wrist_roll" type="hinge" axis="1 0 0" range="-0.6109 0.6109" armature="2e-06" damping="0.5" limited="true"/>
-                        <inertial pos="0 0 -0.0781373" mass="1.02" fullinertia="0.00251628 0.00205628 0.000676633 0 0 0"/>
+                        <inertial pos="0 0 -0.0794" mass="1.25" fullinertia="0.00340103 0.00276317 0.000943433 0 0 0"/>
                         <geom type="cylinder" size="0.024 0.01" pos="0 0 -0.015" quat="1 0 0 0" rgba="0.10 0.35 0.70 1" contype="0" conaffinity="0" group="1"/>
-                        <geom type="box" size="0.0175 0.0425 0.07" pos="0 0 -0.085" rgba="0.30 0.30 0.32 1" contype="0" conaffinity="0" group="1"/>
+                        <geom type="box" size="0.019 0.045 0.075" pos="0 0 -0.085" rgba="0.30 0.30 0.32 1" contype="0" conaffinity="0" group="1"/>
                         <site name="l_palm" pos="0 0 -0.09" size="0.01"/>
                       </body>
                     </body>
@@ -104,30 +105,30 @@
             </body>
           </body>
           <body name="r_shoulder" pos="0 -0.2 0.335">
-            <joint name="r_shoulder_pitch" type="hinge" axis="0 1 0" range="-3.1416 1.0472" armature="0.19525" damping="0.5" limited="true"/>
-            <inertial pos="-0.0396253 0 0" mass="1.628" fullinertia="0.00193083 0.00203308 0.00197474 0 0 0"/>
+            <joint name="r_shoulder_pitch" type="hinge" axis="0 1 0" range="-3.1416 1.0472" armature="0.49401" damping="0.5" limited="true"/>
+            <inertial pos="-0.0419331 0 0" mass="2.853" fullinertia="0.00346208 0.00339311 0.00333478 0 0 0"/>
             <geom type="cylinder" size="0.05 0.0375" pos="-0.045 -0 0" quat="0.7071068 0 0.7071068 0" rgba="0.20 0.22 0.25 1" contype="0" conaffinity="0" group="1"/>
             <geom type="box" size="0.04 0.03 0.04" pos="-0.01 0 0" rgba="0.62 0.64 0.67 1" contype="0" conaffinity="0" group="1"/>
             <body name="r_upper_arm_a" pos="0 0 0">
-              <joint name="r_shoulder_roll" type="hinge" axis="1 0 0" range="-2.7925 0.2618" armature="0.19525" damping="0.5" limited="true"/>
-              <inertial pos="0 -0.00125962 -0.0687019" mass="1.429" fullinertia="0.00147461 0.00149488 0.00122835 0 0 7.86634e-05"/>
+              <joint name="r_shoulder_roll" type="hinge" axis="1 0 0" range="-2.7925 0.2618" armature="0.49401" damping="0.5" limited="true"/>
+              <inertial pos="0 -0.000994475 -0.0700276" mass="1.81" fullinertia="0.00178918 0.00180897 0.00156487 0 0 8.10497e-05"/>
               <geom type="cylinder" size="0.042 0.0325" pos="0 0 -0.075" quat="1 0 0 0" rgba="0.20 0.22 0.25 1" contype="0" conaffinity="0" group="1"/>
               <geom type="box" size="0.035 0.025 0.025" pos="0 -0.01 -0.025" rgba="0.62 0.64 0.67 1" contype="0" conaffinity="0" group="1"/>
               <body name="r_upper_arm" pos="0 0 0">
-                <joint name="r_shoulder_yaw" type="hinge" axis="0 0 1" range="-1.5708 1.7453" armature="0.21175" damping="0.5" limited="true"/>
-                <inertial pos="0 0 -0.254977" mass="1.999" fullinertia="0.0100205 0.0101316 0.00146656 0 0 0"/>
+                <joint name="r_shoulder_yaw" type="hinge" axis="0 0 1" range="-1.5708 1.7453" armature="0.10692" damping="0.5" limited="true"/>
+                <inertial pos="0 0 -0.262185" mass="2.38" fullinertia="0.0109714 0.0111163 0.00176873 0 0 0"/>
                 <geom type="cylinder" size="0.042 0.0325" pos="0 0 -0.3" quat="0.7071068 -0.7071068 0 0" rgba="0.20 0.22 0.25 1" contype="0" conaffinity="0" group="1"/>
                 <geom type="cylinder" size="0.03 0.08" pos="0 0 -0.18" quat="1 0 0 0" rgba="0.62 0.64 0.67 1" contype="0" conaffinity="0" group="1"/>
                 <geom type="cylinder" size="0.05 0.1" pos="0 0 -0.18" quat="1 0 0 0" rgba="0.92 0.92 0.90 0.25" contype="0" conaffinity="0" group="1"/>
                 <geom type="cylinder" size="0.02 0.1" pos="0 0 -0.18" quat="1 0 0 0" rgba="0.1 0.1 0.1 1" contype="0" conaffinity="0" group="1"/>
                 <body name="r_forearm_a" pos="0 0 -0.3">
-                  <joint name="r_elbow" type="hinge" axis="0 1 0" range="-2.5307 0.0000" armature="0.21175" damping="0.5" limited="true"/>
+                  <joint name="r_elbow" type="hinge" axis="0 1 0" range="-2.5307 0.0000" armature="0.10692" damping="0.5" limited="true"/>
                   <inertial pos="0 0 -0.0307213" mass="0.818" fullinertia="0.000536062 0.000536062 0.000499275 0 0 0"/>
                   <geom type="cylinder" size="0.035 0.03" pos="0 0 -0.035" quat="1 0 0 0" rgba="0.20 0.22 0.25 1" contype="0" conaffinity="0" group="1"/>
                   <geom type="box" size="0.03 0.03 0.015" pos="0 0 -0.01" rgba="0.62 0.64 0.67 1" contype="0" conaffinity="0" group="1"/>
                   <body name="r_forearm" pos="0 0 -0.06">
                     <joint name="r_wrist_yaw" type="hinge" axis="0 0 1" range="-1.5708 1.5708" armature="0.027612" damping="0.5" limited="true"/>
-                    <inertial pos="0 0 -0.0916522" mass="1.15" fullinertia="0.00228055 0.00228522 0.000478712 -8.064e-05 0 0"/>
+                    <inertial pos="0 0 -0.0914961" mass="1.27" fullinertia="0.00240401 0.00240867 0.000525032 -9.792e-05 0 0"/>
                     <geom type="cylinder" size="0.014 0.05" pos="0.012 0.012 -0.09" quat="1 0 0 0" rgba="0.20 0.22 0.25 1" contype="0" conaffinity="0" group="1"/>
                     <geom type="cylinder" size="0.014 0.05" pos="-0.012 -0.012 -0.09" quat="1 0 0 0" rgba="0.20 0.22 0.25 1" contype="0" conaffinity="0" group="1"/>
                     <geom type="box" size="0.02 0.015 0.03" pos="0 0 -0.05" rgba="0.15 0.45 0.30 1" contype="0" conaffinity="0" group="1"/>
@@ -140,9 +141,9 @@
                       <geom type="box" size="0.015 0.015 0.01" pos="0 0 0" rgba="0.62 0.64 0.67 1" contype="0" conaffinity="0" group="1"/>
                       <body name="r_hand" pos="0 0 0">
                         <joint name="r_wrist_roll" type="hinge" axis="1 0 0" range="-0.6109 0.6109" armature="2e-06" damping="0.5" limited="true"/>
-                        <inertial pos="0 0 -0.0781373" mass="1.02" fullinertia="0.00251628 0.00205628 0.000676633 0 0 0"/>
+                        <inertial pos="0 0 -0.0794" mass="1.25" fullinertia="0.00340103 0.00276317 0.000943433 0 0 0"/>
                         <geom type="cylinder" size="0.024 0.01" pos="0 0 -0.015" quat="1 0 0 0" rgba="0.10 0.35 0.70 1" contype="0" conaffinity="0" group="1"/>
-                        <geom type="box" size="0.0175 0.0425 0.07" pos="0 -0 -0.085" rgba="0.30 0.30 0.32 1" contype="0" conaffinity="0" group="1"/>
+                        <geom type="box" size="0.019 0.045 0.075" pos="0 -0 -0.085" rgba="0.30 0.30 0.32 1" contype="0" conaffinity="0" group="1"/>
                         <site name="r_palm" pos="0 0 -0.09" size="0.01"/>
                       </body>
                     </body>
@@ -154,26 +155,26 @@
         </body>
       </body>
       <body name="l_hip_yaw_link" pos="0 0.105 0.075">
-        <joint name="l_hip_yaw" type="hinge" axis="0 0 1" range="-0.5236 0.7854" armature="0.044806" damping="0.5" limited="true"/>
-        <inertial pos="-0.0996028 0 -0.0676829" mass="2.296" fullinertia="0.00311292 0.00609755 0.00563248 0 -0.00116933 0"/>
+        <joint name="l_hip_yaw" type="hinge" axis="0 0 1" range="-0.5236 0.7854" armature="0.066405" damping="0.5" limited="true"/>
+        <inertial pos="-0.105728 0 -0.0701191" mass="3.442" fullinertia="0.00450168 0.00768233 0.00717633 0 -0.00127223 0"/>
         <geom type="cylinder" size="0.0485 0.04" pos="-0.118 0 -0.075" quat="0.7071068 0 0.7071068 0" rgba="0.20 0.22 0.25 1" contype="0" conaffinity="0" group="1"/>
         <geom type="box" size="0.05 0.04 0.04" pos="-0.03 0 -0.04" rgba="0.62 0.64 0.67 1" contype="0" conaffinity="0" group="1"/>
         <body name="l_hip_roll_link" pos="0 0 -0.075">
-          <joint name="l_hip_roll" type="hinge" axis="1 0 0" range="-0.4363 0.7854" armature="0.1408" damping="0.5" limited="true"/>
-          <inertial pos="-0.00610465 0 0" mass="4.128" fullinertia="0.00820846 0.0118467 0.00922024 0 0 0"/>
+          <joint name="l_hip_roll" type="hinge" axis="1 0 0" range="-0.4363 0.7854" armature="0.36079" damping="0.5" limited="true"/>
+          <inertial pos="-0.00493247 0 0" mass="5.109" fullinertia="0.0100778 0.0143489 0.0111192 0 0 0"/>
           <geom type="cylinder" size="0.071 0.044" pos="0 0 0" quat="0.7071068 -0.7071068 0 0" rgba="0.20 0.22 0.25 1" contype="0" conaffinity="0" group="1"/>
           <geom type="box" size="0.008 0.055 0.075" pos="-0.072 0 0" rgba="0.62 0.64 0.67 1" contype="0" conaffinity="0" group="1"/>
           <body name="l_thigh" pos="0 0 0">
-            <joint name="l_hip_pitch" type="hinge" axis="0 1 0" range="-2.1817 0.5236" armature="0.21043" damping="0.5" limited="true"/>
-            <inertial pos="-0.00107926 0 -0.176358" mass="5.93" fullinertia="0.0318915 0.0344038 0.0109922 0 -0.000535312 0"/>
+            <joint name="l_hip_pitch" type="hinge" axis="0 1 0" range="-2.1817 0.5236" armature="0.27122" damping="0.5" limited="true"/>
+            <inertial pos="-0.000931451 0 -0.175282" mass="6.871" fullinertia="0.0358598 0.0387496 0.0125143 0 -0.000542198 0"/>
             <geom type="cylinder" size="0.071 0.0475" pos="0 0 -0.16" quat="0.7071068 -0.7071068 0 0" rgba="0.20 0.22 0.25 1" contype="0" conaffinity="0" group="1"/>
             <geom type="box" size="0.04 0.035 0.18" pos="0 0 -0.22" rgba="0.62 0.64 0.67 1" contype="0" conaffinity="0" group="1"/>
             <geom type="cylinder" size="0.009 0.15" pos="-0.04 0 -0.26" quat="1 0 0 0" rgba="0.62 0.64 0.67 1" contype="0" conaffinity="0" group="1"/>
             <geom type="box" size="0.075 0.075 0.18" pos="0 0 -0.2" rgba="0.92 0.92 0.90 0.25" contype="0" conaffinity="0" group="1"/>
             <geom type="box" size="0.015 0.015 0.18" pos="0 0 -0.2" rgba="0.1 0.1 0.1 1" contype="0" conaffinity="0" group="1"/>
             <body name="l_shank" pos="0 0 -0.42">
-              <joint name="l_knee" type="hinge" axis="0 1 0" range="0.0000 2.2689" armature="0.23673" damping="0.5" limited="true"/>
-              <inertial pos="-0.0147942 0 -0.17063" mass="4.13" fullinertia="0.0305434 0.0315982 0.00444721 0 -9.55351e-05 0"/>
+              <joint name="l_knee" type="hinge" axis="0 1 0" range="0.0000 2.2689" armature="0.39992" damping="0.5" limited="true"/>
+              <inertial pos="-0.0149004 0 -0.170107" mass="4.216" fullinertia="0.0308994 0.0319741 0.00453733 0 -0.000105795 0"/>
               <geom type="cylinder" size="0.0485 0.035" pos="-0.015 0 -0.095" quat="0.7071068 -0.7071068 0 0" rgba="0.20 0.22 0.25 1" contype="0" conaffinity="0" group="1"/>
               <geom type="cylinder" size="0.0485 0.035" pos="-0.025 0 -0.195" quat="0.7071068 -0.7071068 0 0" rgba="0.20 0.22 0.25 1" contype="0" conaffinity="0" group="1"/>
               <geom type="box" size="0.035 0.03 0.18" pos="0 0 -0.22" rgba="0.62 0.64 0.67 1" contype="0" conaffinity="0" group="1"/>
@@ -181,11 +182,11 @@
               <geom type="box" size="0.06 0.06 0.18" pos="0 0 -0.2" rgba="0.92 0.92 0.90 0.25" contype="0" conaffinity="0" group="1"/>
               <geom type="box" size="0.015 0.015 0.15" pos="0 0 -0.18" rgba="0.1 0.1 0.1 1" contype="0" conaffinity="0" group="1"/>
               <body name="l_ankle_link" pos="0 0 -0.42">
-                <joint name="l_ankle_pitch" type="hinge" axis="0 1 0" range="-0.7854 0.7854" armature="0.044806" damping="0.5" limited="true"/>
+                <joint name="l_ankle_pitch" type="hinge" axis="0 1 0" range="-0.7854 0.7854" armature="0.066405" damping="0.5" limited="true"/>
                 <inertial pos="0 0 0" mass="0.22" fullinertia="7.51667e-05 7.51667e-05 9.16667e-05 0 0 0"/>
                 <geom type="box" size="0.025 0.025 0.02" pos="0 0 0" rgba="0.62 0.64 0.67 1" contype="0" conaffinity="0" group="1"/>
                 <body name="l_foot" pos="0 0 0">
-                  <joint name="l_ankle_roll" type="hinge" axis="1 0 0" range="-0.4363 0.4363" armature="0.044806" damping="0.5" limited="true"/>
+                  <joint name="l_ankle_roll" type="hinge" axis="1 0 0" range="-0.4363 0.4363" armature="0.066405" damping="0.5" limited="true"/>
                   <inertial pos="0.06 0 -0.0564416" mass="0.77" fullinertia="0.000732813 0.00377881 0.00432733 0 0 0"/>
                   <geom type="box" size="0.12 0.05 0.015" pos="0.06 0 -0.05" rgba="0.62 0.64 0.67 1" contype="0" conaffinity="0" group="1"/>
                   <geom type="box" size="0.13 0.055 0.005" pos="0.06 0 -0.07" rgba="0.62 0.64 0.67 1" contype="0" conaffinity="0" group="1"/>
@@ -199,26 +200,26 @@
         </body>
       </body>
       <body name="r_hip_yaw_link" pos="0 -0.105 0.075">
-        <joint name="r_hip_yaw" type="hinge" axis="0 0 1" range="-0.7854 0.5236" armature="0.044806" damping="0.5" limited="true"/>
-        <inertial pos="-0.0996028 0 -0.0676829" mass="2.296" fullinertia="0.00311292 0.00609755 0.00563248 0 -0.00116933 0"/>
+        <joint name="r_hip_yaw" type="hinge" axis="0 0 1" range="-0.7854 0.5236" armature="0.066405" damping="0.5" limited="true"/>
+        <inertial pos="-0.105728 0 -0.0701191" mass="3.442" fullinertia="0.00450168 0.00768233 0.00717633 0 -0.00127223 0"/>
         <geom type="cylinder" size="0.0485 0.04" pos="-0.118 0 -0.075" quat="0.7071068 0 0.7071068 0" rgba="0.20 0.22 0.25 1" contype="0" conaffinity="0" group="1"/>
         <geom type="box" size="0.05 0.04 0.04" pos="-0.03 0 -0.04" rgba="0.62 0.64 0.67 1" contype="0" conaffinity="0" group="1"/>
         <body name="r_hip_roll_link" pos="0 0 -0.075">
-          <joint name="r_hip_roll" type="hinge" axis="1 0 0" range="-0.7854 0.4363" armature="0.1408" damping="0.5" limited="true"/>
-          <inertial pos="-0.00610465 0 0" mass="4.128" fullinertia="0.00820846 0.0118467 0.00922024 0 0 0"/>
+          <joint name="r_hip_roll" type="hinge" axis="1 0 0" range="-0.7854 0.4363" armature="0.36079" damping="0.5" limited="true"/>
+          <inertial pos="-0.00493247 0 0" mass="5.109" fullinertia="0.0100778 0.0143489 0.0111192 0 0 0"/>
           <geom type="cylinder" size="0.071 0.044" pos="0 0 0" quat="0.7071068 -0.7071068 0 0" rgba="0.20 0.22 0.25 1" contype="0" conaffinity="0" group="1"/>
           <geom type="box" size="0.008 0.055 0.075" pos="-0.072 0 0" rgba="0.62 0.64 0.67 1" contype="0" conaffinity="0" group="1"/>
           <body name="r_thigh" pos="0 0 0">
-            <joint name="r_hip_pitch" type="hinge" axis="0 1 0" range="-2.1817 0.5236" armature="0.21043" damping="0.5" limited="true"/>
-            <inertial pos="-0.00107926 0 -0.176358" mass="5.93" fullinertia="0.0318915 0.0344038 0.0109922 0 -0.000535312 0"/>
+            <joint name="r_hip_pitch" type="hinge" axis="0 1 0" range="-2.1817 0.5236" armature="0.27122" damping="0.5" limited="true"/>
+            <inertial pos="-0.000931451 0 -0.175282" mass="6.871" fullinertia="0.0358598 0.0387496 0.0125143 0 -0.000542198 0"/>
             <geom type="cylinder" size="0.071 0.0475" pos="0 0 -0.16" quat="0.7071068 -0.7071068 0 0" rgba="0.20 0.22 0.25 1" contype="0" conaffinity="0" group="1"/>
             <geom type="box" size="0.04 0.035 0.18" pos="0 0 -0.22" rgba="0.62 0.64 0.67 1" contype="0" conaffinity="0" group="1"/>
             <geom type="cylinder" size="0.009 0.15" pos="-0.04 0 -0.26" quat="1 0 0 0" rgba="0.62 0.64 0.67 1" contype="0" conaffinity="0" group="1"/>
             <geom type="box" size="0.075 0.075 0.18" pos="0 0 -0.2" rgba="0.92 0.92 0.90 0.25" contype="0" conaffinity="0" group="1"/>
             <geom type="box" size="0.015 0.015 0.18" pos="0 0 -0.2" rgba="0.1 0.1 0.1 1" contype="0" conaffinity="0" group="1"/>
             <body name="r_shank" pos="0 0 -0.42">
-              <joint name="r_knee" type="hinge" axis="0 1 0" range="0.0000 2.2689" armature="0.23673" damping="0.5" limited="true"/>
-              <inertial pos="-0.0147942 0 -0.17063" mass="4.13" fullinertia="0.0305434 0.0315982 0.00444721 0 -9.55351e-05 0"/>
+              <joint name="r_knee" type="hinge" axis="0 1 0" range="0.0000 2.2689" armature="0.39992" damping="0.5" limited="true"/>
+              <inertial pos="-0.0149004 0 -0.170107" mass="4.216" fullinertia="0.0308994 0.0319741 0.00453733 0 -0.000105795 0"/>
               <geom type="cylinder" size="0.0485 0.035" pos="-0.015 0 -0.095" quat="0.7071068 -0.7071068 0 0" rgba="0.20 0.22 0.25 1" contype="0" conaffinity="0" group="1"/>
               <geom type="cylinder" size="0.0485 0.035" pos="-0.025 0 -0.195" quat="0.7071068 -0.7071068 0 0" rgba="0.20 0.22 0.25 1" contype="0" conaffinity="0" group="1"/>
               <geom type="box" size="0.035 0.03 0.18" pos="0 0 -0.22" rgba="0.62 0.64 0.67 1" contype="0" conaffinity="0" group="1"/>
@@ -226,11 +227,11 @@
               <geom type="box" size="0.06 0.06 0.18" pos="0 0 -0.2" rgba="0.92 0.92 0.90 0.25" contype="0" conaffinity="0" group="1"/>
               <geom type="box" size="0.015 0.015 0.15" pos="0 0 -0.18" rgba="0.1 0.1 0.1 1" contype="0" conaffinity="0" group="1"/>
               <body name="r_ankle_link" pos="0 0 -0.42">
-                <joint name="r_ankle_pitch" type="hinge" axis="0 1 0" range="-0.7854 0.7854" armature="0.044806" damping="0.5" limited="true"/>
+                <joint name="r_ankle_pitch" type="hinge" axis="0 1 0" range="-0.7854 0.7854" armature="0.066405" damping="0.5" limited="true"/>
                 <inertial pos="0 0 0" mass="0.22" fullinertia="7.51667e-05 7.51667e-05 9.16667e-05 0 0 0"/>
                 <geom type="box" size="0.025 0.025 0.02" pos="0 0 0" rgba="0.62 0.64 0.67 1" contype="0" conaffinity="0" group="1"/>
                 <body name="r_foot" pos="0 0 0">
-                  <joint name="r_ankle_roll" type="hinge" axis="1 0 0" range="-0.4363 0.4363" armature="0.044806" damping="0.5" limited="true"/>
+                  <joint name="r_ankle_roll" type="hinge" axis="1 0 0" range="-0.4363 0.4363" armature="0.066405" damping="0.5" limited="true"/>
                   <inertial pos="0.06 0 -0.0564416" mass="0.77" fullinertia="0.000732813 0.00377881 0.00432733 0 0 0"/>
                   <geom type="box" size="0.12 0.05 0.015" pos="0.06 0 -0.05" rgba="0.62 0.64 0.67 1" contype="0" conaffinity="0" group="1"/>
                   <geom type="box" size="0.13 0.055 0.005" pos="0.06 0 -0.07" rgba="0.62 0.64 0.67 1" contype="0" conaffinity="0" group="1"/>
@@ -246,35 +247,35 @@
     </body>
   </worldbody>
   <actuator>
-    <motor name="waist_yaw" joint="waist_yaw" gear="1" ctrlrange="-105.8 105.8" ctrllimited="true"/>
-    <motor name="waist_pitch" joint="waist_pitch" gear="1" ctrlrange="-275.9 275.9" ctrllimited="true"/>
+    <motor name="waist_yaw" joint="waist_yaw" gear="1" ctrlrange="-128.8 128.8" ctrllimited="true"/>
+    <motor name="waist_pitch" joint="waist_pitch" gear="1" ctrlrange="-426.9 426.9" ctrllimited="true"/>
     <motor name="neck_yaw" joint="neck_yaw" gear="1" ctrlrange="-33.7 33.7" ctrllimited="true"/>
     <motor name="neck_pitch" joint="neck_pitch" gear="1" ctrlrange="-33.7 33.7" ctrllimited="true"/>
-    <motor name="l_hip_yaw" joint="l_hip_yaw" gear="1" ctrlrange="-105.8 105.8" ctrllimited="true"/>
-    <motor name="l_hip_roll" joint="l_hip_roll" gear="1" ctrlrange="-275.9 275.9" ctrllimited="true"/>
-    <motor name="l_hip_pitch" joint="l_hip_pitch" gear="1" ctrlrange="-398.8 398.8" ctrllimited="true"/>
-    <motor name="l_knee" joint="l_knee" gear="1" ctrlrange="-473.9 473.9" ctrllimited="true"/>
-    <motor name="l_ankle_pitch" joint="l_ankle_pitch" gear="1" ctrlrange="-275.1 275.1" ctrllimited="true"/>
-    <motor name="l_ankle_roll" joint="l_ankle_roll" gear="1" ctrlrange="-190.4 190.4" ctrllimited="true"/>
-    <motor name="l_shoulder_pitch" joint="l_shoulder_pitch" gear="1" ctrlrange="-174.8 174.8" ctrllimited="true"/>
-    <motor name="l_shoulder_roll" joint="l_shoulder_roll" gear="1" ctrlrange="-174.8 174.8" ctrllimited="true"/>
-    <motor name="l_shoulder_yaw" joint="l_shoulder_yaw" gear="1" ctrlrange="-187.5 187.5" ctrllimited="true"/>
-    <motor name="l_elbow" joint="l_elbow" gear="1" ctrlrange="-187.5 187.5" ctrllimited="true"/>
+    <motor name="l_hip_yaw" joint="l_hip_yaw" gear="1" ctrlrange="-128.8 128.8" ctrllimited="true"/>
+    <motor name="l_hip_roll" joint="l_hip_roll" gear="1" ctrlrange="-426.9 426.9" ctrllimited="true"/>
+    <motor name="l_hip_pitch" joint="l_hip_pitch" gear="1" ctrlrange="-405.7 405.7" ctrllimited="true"/>
+    <motor name="l_knee" joint="l_knee" gear="1" ctrlrange="-591.2 591.2" ctrllimited="true"/>
+    <motor name="l_ankle_pitch" joint="l_ankle_pitch" gear="1" ctrlrange="-334.9 334.9" ctrllimited="true"/>
+    <motor name="l_ankle_roll" joint="l_ankle_roll" gear="1" ctrlrange="-231.8 231.8" ctrllimited="true"/>
+    <motor name="l_shoulder_pitch" joint="l_shoulder_pitch" gear="1" ctrlrange="-362.1 362.1" ctrllimited="true"/>
+    <motor name="l_shoulder_roll" joint="l_shoulder_roll" gear="1" ctrlrange="-362.1 362.1" ctrllimited="true"/>
+    <motor name="l_shoulder_yaw" joint="l_shoulder_yaw" gear="1" ctrlrange="-157.6 157.6" ctrllimited="true"/>
+    <motor name="l_elbow" joint="l_elbow" gear="1" ctrlrange="-157.6 157.6" ctrllimited="true"/>
     <motor name="l_wrist_yaw" joint="l_wrist_yaw" gear="1" ctrlrange="-33.7 33.7" ctrllimited="true"/>
-    <motor name="l_wrist_pitch" joint="l_wrist_pitch" gear="1" ctrlrange="-17.1 17.1" ctrllimited="true"/>
+    <motor name="l_wrist_pitch" joint="l_wrist_pitch" gear="1" ctrlrange="-25.2 25.2" ctrllimited="true"/>
     <motor name="l_wrist_roll" joint="l_wrist_roll" gear="1" ctrlrange="-13.0 13.0" ctrllimited="true"/>
-    <motor name="r_hip_yaw" joint="r_hip_yaw" gear="1" ctrlrange="-105.8 105.8" ctrllimited="true"/>
-    <motor name="r_hip_roll" joint="r_hip_roll" gear="1" ctrlrange="-275.9 275.9" ctrllimited="true"/>
-    <motor name="r_hip_pitch" joint="r_hip_pitch" gear="1" ctrlrange="-398.8 398.8" ctrllimited="true"/>
-    <motor name="r_knee" joint="r_knee" gear="1" ctrlrange="-473.9 473.9" ctrllimited="true"/>
-    <motor name="r_ankle_pitch" joint="r_ankle_pitch" gear="1" ctrlrange="-275.1 275.1" ctrllimited="true"/>
-    <motor name="r_ankle_roll" joint="r_ankle_roll" gear="1" ctrlrange="-190.4 190.4" ctrllimited="true"/>
-    <motor name="r_shoulder_pitch" joint="r_shoulder_pitch" gear="1" ctrlrange="-174.8 174.8" ctrllimited="true"/>
-    <motor name="r_shoulder_roll" joint="r_shoulder_roll" gear="1" ctrlrange="-174.8 174.8" ctrllimited="true"/>
-    <motor name="r_shoulder_yaw" joint="r_shoulder_yaw" gear="1" ctrlrange="-187.5 187.5" ctrllimited="true"/>
-    <motor name="r_elbow" joint="r_elbow" gear="1" ctrlrange="-187.5 187.5" ctrllimited="true"/>
+    <motor name="r_hip_yaw" joint="r_hip_yaw" gear="1" ctrlrange="-128.8 128.8" ctrllimited="true"/>
+    <motor name="r_hip_roll" joint="r_hip_roll" gear="1" ctrlrange="-426.9 426.9" ctrllimited="true"/>
+    <motor name="r_hip_pitch" joint="r_hip_pitch" gear="1" ctrlrange="-405.7 405.7" ctrllimited="true"/>
+    <motor name="r_knee" joint="r_knee" gear="1" ctrlrange="-591.2 591.2" ctrllimited="true"/>
+    <motor name="r_ankle_pitch" joint="r_ankle_pitch" gear="1" ctrlrange="-334.9 334.9" ctrllimited="true"/>
+    <motor name="r_ankle_roll" joint="r_ankle_roll" gear="1" ctrlrange="-231.8 231.8" ctrllimited="true"/>
+    <motor name="r_shoulder_pitch" joint="r_shoulder_pitch" gear="1" ctrlrange="-362.1 362.1" ctrllimited="true"/>
+    <motor name="r_shoulder_roll" joint="r_shoulder_roll" gear="1" ctrlrange="-362.1 362.1" ctrllimited="true"/>
+    <motor name="r_shoulder_yaw" joint="r_shoulder_yaw" gear="1" ctrlrange="-157.6 157.6" ctrllimited="true"/>
+    <motor name="r_elbow" joint="r_elbow" gear="1" ctrlrange="-157.6 157.6" ctrllimited="true"/>
     <motor name="r_wrist_yaw" joint="r_wrist_yaw" gear="1" ctrlrange="-33.7 33.7" ctrllimited="true"/>
-    <motor name="r_wrist_pitch" joint="r_wrist_pitch" gear="1" ctrlrange="-17.1 17.1" ctrllimited="true"/>
+    <motor name="r_wrist_pitch" joint="r_wrist_pitch" gear="1" ctrlrange="-25.2 25.2" ctrllimited="true"/>
     <motor name="r_wrist_roll" joint="r_wrist_roll" gear="1" ctrlrange="-13.0 13.0" ctrllimited="true"/>
   </actuator>
 </mujoco>

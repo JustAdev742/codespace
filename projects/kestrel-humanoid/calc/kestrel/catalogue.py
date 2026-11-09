@@ -109,12 +109,17 @@ def joint_sheets():
             trans = "direct"
             pk_txt = f"{a['T_peak_out']:.0f} N·m"
             pk_margin = a["T_peak_out"] / r["T_rep_req"]
-        gear = f"CSG-{a['hd']}-{int(a['ratio'])} strain-wave (Leaderdrive LHSG equivalent)" if a["hd"] else f"2-stage planetary {a['ratio']:.0f}:1 (custom, ground)"
+        if a.get("gear") == "cycloid":
+            gear = f"{a['hd']} machined two-disc cycloid {int(a['ratio'])}:1 (custom; ratings are dyno-validation targets, R10)"
+        elif a["hd"]:
+            gear = f"CSG-{a['hd']}-{int(a['ratio'])} strain-wave (Leaderdrive LHSG equivalent)"
+        else:
+            gear = f"2-stage planetary {a['ratio']:.0f}:1 (custom, ground)"
         eta = A.ETA[a["gear"]]
         dec = DECISION[g]
         L += ["| Item | Requirement | Delivered | Margin |", "|---|---|---|---|",
               f"| Peak (repeated) torque | {r['T_rep_req']:.0f} N·m (sim {r['peak_rep']:.0f} in {r['peak_rep_case']}) | {pk_txt} | {pk_margin:.2f} |",
-              f"| Momentary torque (gear/structure must survive) | {r['T_mom_req']:.0f} N·m | " + (f"gear momentary {A.HD_CSG[a['hd']]['r'][int(a['ratio'])][3]} N·m" if a['hd'] else "flange slip ≥ 2.15× (structure.py)") + " | — |",
+              f"| Momentary torque (gear/structure must survive) | {r['T_mom_req']:.0f} N·m | " + (f"gear momentary {(A.CYC if a.get('gear') == 'cycloid' else A.HD_CSG)[a['hd']]['r'][int(a['ratio'])][3]} N·m" if a['hd'] else "output-flange slip: see structure_checks.md") + " | — |",
               f"| Continuous torque | {r['T_cont_req']:.0f} N·m (RMS W1/W2/ST {r['rms_W1']:.0f}/{r['rms_W2']:.0f}/{r['rms_ST']:.0f}) | {cap_c:.0f} N·m | {cap_c / max(r['T_cont_req'], 1e-6):.2f} |" if r['T_cont_req'] > 1 else
               f"| Continuous torque | < 1 N·m | {cap_c:.0f} N·m | — |",
               f"| Static hold | {r['hold']:.0f} N·m ({r['hold_case'] or '—'}) | ≤ {1.5 * cap_c:.0f} N·m for 60 s | — |",

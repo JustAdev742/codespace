@@ -66,6 +66,22 @@ CUSTOM = {
     "KM-115x32": MD.MotorSpec("KM-115x32", D_o=0.115, split=0.735, L=0.032, Qs=36, poles=40, N_c=4, h_m=0.0028),
     "KM-50x20": MD.MotorSpec("KM-50x20", D_o=0.050, split=0.62, L=0.020, Qs=12, poles=14, N_c=18, h_m=0.0020, g=0.0004),
 }
+# --- Mk II motors (docs/research/R10 sec. 8: motor_design.py physics, K_R_CAL 1.30, T_pk saturation-corrected at
+#     the intended drive's peak current; T_cont of the jacketed motors already includes liquid cooling -> derate 1.0)
+MOTORS.update({
+    "KM-130x50-LC": dict(Kt=0.2242, R_LL=0.02026, T_cont=18.85, T_pk=31.5, mass=2.615, J=1.258e-3, OD=0.130, len=0.066, bore=0.0855,
+                         status="C", src="R10 Mk II: Ø130 die, 50 mm stack, N50UH, 3t x 2p, liquid jacket; T_pk @150 A"),
+    "KM-150x50-LCS": dict(Kt=0.2300, R_LL=0.00942, T_cont=33.5, T_pk=46.0, mass=3.677, J=2.099e-3, OD=0.150, len=0.068, bore=0.0997,
+                          status="C", src="R10 KA-150X option: segmented Ø150 stator, jacket; T_pk @200 A, needs 20S + HV drive"),
+    "KM-115x32-N50": dict(Kt=0.2522, R_LL=0.0702, T_cont=5.49, T_pk=14.2, mass=1.355, J=4.99e-4, OD=0.115, len=0.047, bore=0.0746,
+                          status="C", src="R10 KA-115R: N50UH, 3t; T_pk @60 A"),
+    "KM-85x26-N50-3t": dict(Kt=0.1392, R_LL=0.0822, T_cont=2.01, T_pk=6.18, mass=0.642, J=1.08e-4, OD=0.085, len=0.038, bore=0.0515,
+                            status="C", src="R10 KA-90P2"),
+    "KM-85x26-N50-4t": dict(Kt=0.1856, R_LL=0.1461, T_cont=2.01, T_pk=6.18, mass=0.642, J=1.08e-4, OD=0.085, len=0.038, bore=0.0515,
+                            status="C", src="R10 KH-C25"),
+    "KM-85x17-N50-5t": dict(Kt=0.1517, R_LL=0.1713, T_cont=1.31, T_pk=4.04, mass=0.434, J=7.04e-5, OD=0.085, len=0.029, bore=0.0515,
+                            status="C", src="R10 KH-C20"),
+})
 for k, spec in CUSTOM.items():
     d = MD.design(spec)
     MOTORS[k] = dict(Kt=d["Kt"], R_LL=d["R_LL"], T_cont=d["T_cont"], T_pk=d["T_pk"], mass=d["mass"], J=d["J_rotor"],
@@ -76,6 +92,8 @@ for k, spec in CUSTOM.items():
 DRIVES = {
     "HC": dict(name="high-current 100 V EtherCAT drive (Elmo Platinum Twitter R70/100 class, or custom GaN per TIDA-010979)", I_pk=99.0, I_cont=49.5),
     "EV": dict(name="Novanta Everest S NET (8-80 V, 45 A cont / 60 A 1 s)", I_pk=60.0, I_cont=45.0),
+    "HC2": dict(name="150 A pk / 75 A cont GaN EtherCAT drive, 100 V class (EPC9186HC-class power stage), 16S - Mk II legs", I_pk=150.0, I_cont=75.0),
+    "HV": dict(name="200 A pk, 150 V class, 20S only (custom) - KA-150X option", I_pk=200.0, I_cont=100.0),
 }
 
 # --------------------------------------------------------------------------- gears
@@ -86,7 +104,15 @@ HD_CSG = {  # size: ratio: (rated, repeated, average, momentary) N m ; mass kg, 
     25: dict(r={50: (51, 127, 72, 242), 80: (82, 178, 113, 332), 100: (87, 204, 140, 369)}, mass=0.42, OD=0.085, n_max=5600),
     32: dict(r={50: (99, 281, 140, 497), 80: (153, 395, 217, 738), 100: (178, 433, 281, 841)}, mass=0.89, OD=0.110, n_max=4800),
 }
-ETA = dict(planetary=0.92, harmonic=0.75, screw=0.88)
+ETA = dict(planetary=0.92, harmonic=0.75, screw=0.88, cycloid=0.85)
+# Machined two-disc cycloid reducers for the Mk II arms (R10 sec. 5.6/5.7): impact tolerant, higher peak than the
+# strain-wave sizes they replace. Ratings are DESIGN TARGETS to be proven on the dyno (R10 sec. 7, item 6);
+# C32 is scaled from C25 by pitch-diameter^3 (estimate). size: ratio: (rated, repeated, average, momentary) N m
+CYC = {
+    "C20": dict(r={30: (52, 105, 65, 160), 40: (52, 105, 65, 160)}, mass=0.43, OD=0.075, n_max=4500),
+    "C25": dict(r={30: (80, 160, 100, 250), 40: (80, 160, 100, 250)}, mass=0.57, OD=0.090, n_max=4000),
+    "C32": dict(r={30: (150, 300, 190, 450), 40: (150, 300, 190, 450)}, mass=0.95, OD=0.115, n_max=3500),
+}
 
 
 def omega_lim(m, T):
@@ -140,15 +166,19 @@ class Group:
 
 
 GROUPS = [
-    Group("KA-130K", ["knee"], "planetary", "HC", ["RI115-PH", "ILM115x25", "KM-115x32", "KM-130x32", "KM-130x40", "KM-130x45", "KM-135x40"], list(range(8, 31)),
-          electronics_kg=0.20, derate=THERMAL_DERATE_COOLED, notes="potted stator, ducted blower"),
-    Group("KA-130H", ["hip_pitch"], "planetary", "HC", ["RI115-PH", "ILM115x25", "KM-115x32", "KM-130x32", "KM-130x40", "KM-130x45"], list(range(8, 31)),
-          electronics_kg=0.20, derate=THERMAL_DERATE_COOLED, notes="same housing as KA-130K, shorter stack"),
-    Group("KA-110P", ["hip_roll", "waist_pitch"], "planetary", "EV", ["RI115-PH", "ILM115x25", "RI100", "ILM85x26"], list(range(8, 41))),
-    Group("KA-90P", ["hip_yaw", "waist_yaw", "ankle"], "planetary", "EV", ["ILM85x26", "RI85-PH", "RI100", "RI115-PH"], list(range(8, 41))),
-    Group("KH-25", ["shoulder_pitch", "shoulder_roll"], "harmonic", "EV", ["ILM85x13", "RI85-PH", "RI80", "ILM85x26"], [50, 80, 100], [25],
-          notes="size 25 fixed: shoulder carries the whole arm's bending moment (gear + output bearing stiffness)"),
-    Group("KH-20", ["shoulder_yaw", "elbow"], "harmonic", "EV", ["RI70", "ILM70x18", "ILM85x13", "RI85-PH"], [50, 80, 100], [17, 20]),
+    # ---- Mk II (docs/research/R10 sec. 5): legs on liquid-cooled KM-130x50 + 150 A GaN drives; arms on cycloids
+    Group("KA-130K", ["knee"], "planetary", "HC2", ["KM-130x50-LC"], list(range(12, 21)),
+          electronics_kg=0.40, derate=THERMAL_DERATE_COOLED, notes="Mk II KA-130K2: liquid jacket, N50UH, 50 mm stack, 150 A GaN drive"),
+    Group("KA-130H", ["hip_pitch"], "planetary", "HC2", ["KM-130x50-LC"], list(range(12, 21)),
+          electronics_kg=0.40, derate=THERMAL_DERATE_COOLED, notes="Mk II: same KA-130K2 hardware as the knee"),
+    Group("KA-110P", ["hip_roll", "waist_pitch"], "planetary", "EV", ["KM-115x32-N50", "ILM115x25", "RI115-PH"], list(range(14, 31)),
+          notes="Mk II KA-115R: KM-115x32 with N50UH magnets"),
+    Group("KA-90P", ["hip_yaw", "waist_yaw", "ankle"], "planetary", "EV", ["KM-85x26-N50-3t", "ILM85x26", "RI85-PH"], list(range(14, 31)),
+          notes="Mk II KA-90P2: KM-85x26 N50UH, 3 turns"),
+    Group("KH-25", ["shoulder_pitch", "shoulder_roll"], "cycloid", "EV", ["KM-85x26-N50-4t", "KM-115x32-N50", "ILM85x26"], [30, 40], ["C25", "C32"],
+          notes="Mk II KH-C25: machined two-disc cycloid (impact tolerant); 10 kg per hand at full reach"),
+    Group("KH-20", ["shoulder_yaw", "elbow"], "cycloid", "EV", ["KM-85x17-N50-5t", "KM-85x26-N50-4t"], [30, 40], ["C20", "C25"],
+          notes="Mk II KH-C20: machined cycloid"),
     Group("KH-14", ["wrist_yaw", "neck_yaw", "neck_pitch"], "harmonic", "EV", ["KM-50x20", "RI70", "ILM70x18"], [50, 80, 100], [14, 17], electronics_kg=0.06),
 ]
 
@@ -156,6 +186,8 @@ GROUPS = [
 def gear_mass(gear, T_rep, hd=None):
     if gear == "planetary":
         return 0.0063 * T_rep**0.85
+    if gear == "cycloid":
+        return CYC[hd]["mass"]
     return HD_CSG[hd]["mass"]
 
 
@@ -193,7 +225,8 @@ def evaluate(group, req, store, names):
         T_avail = min(m["T_pk"], m["Kt"] * drive["I_pk"])
         for N in group.ratios:
             for hd in sizes:
-                if group.gear == "harmonic" and N not in HD_CSG[hd]["r"]:
+                table = CYC if group.gear == "cycloid" else HD_CSG
+                if group.gear in ("harmonic", "cycloid") and N not in table[hd]["r"]:
                     continue
                 eta = ETA[group.gear]
                 ok = True
@@ -226,20 +259,21 @@ def evaluate(group, req, store, names):
                     if c["T_cont"] / (N * eta) > t_cont_eff(m, group.derate) or c["T_hold"] / (N * eta) > HOLD_FACTOR * t_cont_eff(m, group.derate):
                         ok = False
                         break
-                    if group.gear == "harmonic":
-                        rated, rep, avg, momr = HD_CSG[hd]["r"][N]
+                    if group.gear in ("harmonic", "cycloid"):
+                        rated, rep, avg, momr = table[hd]["r"][N]
                         if c["T_rep"] > rep or c["T_mom"] > momr or c["T_cont"] > avg:
                             ok = False
                             break
-                        if w_all.max() * 60 / (2 * np.pi) > HD_CSG[hd]["n_max"]:
+                        if w_all.max() * 60 / (2 * np.pi) > table[hd]["n_max"]:
                             ok = False
                             break
                     worst = max(worst, t_all.max() / T_avail)
                 if not ok:
                     continue
-                T_rep_g = max(corner[j]["T_mom"] for j in group.joints)
+                # planetary gear mass sized on 1.1 x the delivered peak (R10 sec. 8, change 2), not the requirement
+                T_rep_g = max(max(corner[j]["T_mom"] for j in group.joints), 1.1 * T_avail * N * eta)
                 gm = gear_mass(group.gear, T_rep_g, hd)
-                OD = max(m["OD"] + 0.012, HD_CSG[hd]["OD"] + 0.012 if hd else 0)
+                OD = max(m["OD"] + 0.012, table[hd]["OD"] + 0.012 if hd else 0)
                 mass = m["mass"] + gm + housing_mass(OD) + group.electronics_kg
                 J_ref = m["J"] * 1.1 * N**2
                 cands.append(dict(motor=mn, ratio=N, hd=hd, mass=mass, J_reflected=J_ref, rotor_J=m["J"] * 1.1,
