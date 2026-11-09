@@ -1,0 +1,1013 @@
+{
+ "parts": {
+  "pelvis_plate": {
+   "kind": "plate",
+   "material": "6061-T6",
+   "qty": 1,
+   "mass_kg": 0.5052,
+   "dims": "195 x 356 x 5",
+   "process": "laser or waterjet cut, 5 mm 6061-T6",
+   "structure": true
+  },
+  "EXT_4040_pelvis_front": {
+   "kind": "extrusion",
+   "material": "6061-T6",
+   "qty": 1,
+   "mass_kg": 0.338,
+   "dims": "4040 x 260",
+   "process": "4040 T-slot extrusion (20-series 40x40 6 mm slot, ~1.3 kg/m (estimate, check supplier)), cut to 260 mm, ends tapped M5 in the centre bores",
+   "structure": true
+  },
+  "EXT_2040_pelvis_rear": {
+   "kind": "extrusion",
+   "material": "6061-T6",
+   "qty": 1,
+   "mass_kg": 0.2314,
+   "dims": "2040 x 260",
+   "process": "2040 T-slot extrusion (GAP Engineering 20x40 6 mm slot, 0.89 kg/m (R9)), cut to 260 mm, ends tapped M5 in the centre bores",
+   "structure": true
+  },
+  "waist_mount_plate": {
+   "kind": "plate",
+   "material": "6061-T6",
+   "qty": 1,
+   "mass_kg": 0.1983,
+   "dims": "184 x 164 x 5",
+   "process": "laser or waterjet cut, 5 mm 6061-T6",
+   "structure": true
+  },
+  "PELVIS_IMU_CAN_HUB": {
+   "kind": "purchased",
+   "material": "-",
+   "qty": 1,
+   "mass_kg": 0.15,
+   "dims": "60 x 90 x 22",
+   "process": "IMU + CAN hub board in a printed tray",
+   "structure": false
+  },
+  "ACT_RS04": {
+   "kind": "actuator",
+   "material": "-",
+   "qty": 13,
+   "mass_kg": 1.51,
+   "dims": "dia 120.0 x 52.7 overall",
+   "process": "purchased: RobStride RS04",
+   "structure": false
+  },
+  "YAW_BEARING_RING": {
+   "kind": "machined",
+   "material": "6061-T6",
+   "qty": 3,
+   "mass_kg": 0.0903,
+   "dims": "dia 116 x 10.5",
+   "process": "machined 6061-T6 stepped ring: 4 mm flange dia 116 with 5 x dia 4.5 c'bored on PCD 106 (low-head M4, DIN 7984) to the RS04 front face; seat dia 78 H7 x 10.5 with a 1 mm lip for the 61812-2RS outer race",
+   "structure": true
+  },
+  "BRG_61812-2RS": {
+   "kind": "purchased",
+   "material": "steel",
+   "qty": 3,
+   "mass_kg": 0.104,
+   "dims": "60 x 78 x 10",
+   "process": "purchased bearing",
+   "structure": true
+  },
+  "YAW_HUB": {
+   "kind": "machined",
+   "material": "6061-T6",
+   "qty": 3,
+   "mass_kg": 0.0482,
+   "dims": "dia 60 x 13",
+   "process": "machined 6061-T6 cup: seat dia 60 k6 x 13 for the 61812 inner race, 5 mm web with 3 x dia 6 H7 pin holes and 6 x dia 5.5 on PCD 36; the driven plate's 6 x M5x25 pass through into the RS04 output threads",
+   "structure": true
+  },
+  "hip_yaw_top_plate": {
+   "kind": "plate",
+   "material": "6061-T6",
+   "qty": 2,
+   "mass_kg": 0.2365,
+   "dims": "174 x 90 x 6",
+   "process": "laser or waterjet cut, 6 mm 6061-T6",
+   "structure": true
+  },
+  "HSG_6905-2RS_6": {
+   "kind": "machined",
+   "material": "6061-T6",
+   "qty": 4,
+   "mass_kg": 0.0186,
+   "dims": "dia 60 x 9",
+   "process": "machined 6061-T6 (lathe): spigot dia 48 x 6 (fits the plate bore), flange dia 60 x 3, bore 42 H7 for 6905-2RS, 3 x M3 c'bored on PCD 52 into the plate (tapped)",
+   "structure": true
+  },
+  "BRG_6905-2RS": {
+   "kind": "purchased",
+   "material": "steel",
+   "qty": 10,
+   "mass_kg": 0.042,
+   "dims": "25 x 42 x 9",
+   "process": "purchased bearing",
+   "structure": true
+  },
+  "hip_yaw_front_arm": {
+   "kind": "plate",
+   "material": "6061-T6",
+   "qty": 2,
+   "mass_kg": 0.1019,
+   "dims": "80 x 120 x 6",
+   "process": "laser or waterjet cut, 6 mm 6061-T6",
+   "structure": true
+  },
+  "hip_yaw_rear_arm": {
+   "kind": "plate",
+   "material": "6061-T6",
+   "qty": 2,
+   "mass_kg": 0.1805,
+   "dims": "159 x 174 x 6",
+   "process": "laser or waterjet cut, 6 mm 6061-T6",
+   "structure": true
+  },
+  "hip_roll_actuator_plate": {
+   "kind": "plate",
+   "material": "6061-T6",
+   "qty": 2,
+   "mass_kg": 0.1253,
+   "dims": "159 x 124 x 5",
+   "process": "laser or waterjet cut, 5 mm 6061-T6",
+   "structure": true
+  },
+  "STANDOFF_12x72": {
+   "kind": "purchased",
+   "material": "6061-T6",
+   "qty": 6,
+   "mass_kg": 0.018,
+   "dims": "dia 12 x 72",
+   "process": "aluminium standoff dia 12 (or hex), M6 female both ends, length 72",
+   "structure": true
+  },
+  "RS04_OUTPUT_SPACER_6": {
+   "kind": "machined",
+   "material": "6061-T6",
+   "qty": 6,
+   "mass_kg": 0.0257,
+   "dims": "dia 50 x 6.0",
+   "process": "machined 6061-T6 ring: dia 50 x 6, bore 22: 9 x dia 5.5 on PCD 36 + 3 x dia 6 H7 for the RS04 output pins",
+   "structure": true
+  },
+  "hip_roll_crank_35": {
+   "kind": "plate",
+   "material": "6061-T6",
+   "qty": 2,
+   "mass_kg": 0.0405,
+   "dims": "73 x 54 x 6",
+   "process": "laser or waterjet cut, 6 mm 6061-T6",
+   "structure": true
+  },
+  "ACT_X12": {
+   "kind": "actuator",
+   "material": "-",
+   "qty": 4,
+   "mass_kg": 2.37,
+   "dims": "dia 124.0 x 85.0 overall",
+   "process": "purchased: MyActuator RMD-X12-P20-320-E",
+   "structure": false
+  },
+  "hip_cradle_outer_plate": {
+   "kind": "plate",
+   "material": "6061-T6",
+   "qty": 2,
+   "mass_kg": 0.1434,
+   "dims": "152 x 134 x 6",
+   "process": "laser or waterjet cut, 6 mm 6061-T6",
+   "structure": true
+  },
+  "hip_cradle_inner_plate": {
+   "kind": "plate",
+   "material": "6061-T6",
+   "qty": 2,
+   "mass_kg": 0.1879,
+   "dims": "152 x 154 x 5",
+   "process": "laser or waterjet cut, 5 mm 6061-T6",
+   "structure": true
+  },
+  "FAN_40x40x10_12V": {
+   "kind": "purchased",
+   "material": "-",
+   "qty": 2,
+   "mass_kg": 0.009,
+   "dims": "40 x 40 x 10",
+   "process": "Noctua NF-A4x10 FLX 12 V (40 x 40 x 10 mm, 9 g), 12 V from the torso DC-DC, run with the X12 temperature",
+   "structure": false
+  },
+  "hip_fan_bracket": {
+   "kind": "plate",
+   "material": "6061-T6",
+   "qty": 2,
+   "mass_kg": 0.0363,
+   "dims": "96 x 48 x 4",
+   "process": "laser or waterjet cut, 4 mm 6061-T6",
+   "structure": true
+  },
+  "STANDOFF_10x7": {
+   "kind": "purchased",
+   "material": "6061-T6",
+   "qty": 4,
+   "mass_kg": 0.0011,
+   "dims": "dia 10 x 7",
+   "process": "aluminium standoff dia 10 (or hex), M5 female both ends, length 7",
+   "structure": true
+  },
+  "hip_cradle_end_plate": {
+   "kind": "plate",
+   "material": "6061-T6",
+   "qty": 4,
+   "mass_kg": 0.0981,
+   "dims": "78 x 140 x 5",
+   "process": "laser or waterjet cut, 5 mm 6061-T6",
+   "structure": true
+  },
+  "HIP_ROLL_FRONT_STUB": {
+   "kind": "machined",
+   "material": "7075-T6",
+   "qty": 2,
+   "mass_kg": 0.036,
+   "dims": "dia 44 x 26",
+   "process": "turned 7075-T6: spigot dia 25 in the end plate, flange dia 44 x 5 with 4 x dia 4.5 on PCD 34 (M4 into the plate), shaft dia 25 k6 x 16, bore 15, M5 end screw + 20 mm washer retains the 6905",
+   "structure": true
+  },
+  "HIP_ROLL_REAR_SHAFT": {
+   "kind": "machined",
+   "material": "7075-T6",
+   "qty": 2,
+   "mass_kg": 0.0526,
+   "dims": "dia 44 x 46",
+   "process": "turned 7075-T6: as the front stub but shaft 36 long with a 1.5 mm flat for the roll lever (torsion 240 N m: 90 MPa in the dia 25/15 section)",
+   "structure": true
+  },
+  "hip_roll_lever_70": {
+   "kind": "plate",
+   "material": "6061-T6",
+   "qty": 2,
+   "mass_kg": 0.0401,
+   "dims": "101 x 40 x 6",
+   "process": "laser or waterjet cut, 6 mm 6061-T6",
+   "structure": true
+  },
+  "ROD_END_M8": {
+   "kind": "purchased",
+   "material": "steel",
+   "qty": 12,
+   "mass_kg": 0.035,
+   "dims": "eye 24 x 12, M8",
+   "process": "purchased M8 female rod end (PHSA 8 / SIKAC 8 class), RH or LH thread",
+   "structure": true
+  },
+  "PUSHROD_hip_roll": {
+   "kind": "rod",
+   "material": "6061-T6",
+   "qty": 2,
+   "mass_kg": 0.0038,
+   "dims": "dia 12 x 2 x 16",
+   "process": "6061-T6 tube dia 12 x 2, cut to 16 mm, two 12 mm 6061 end plugs pressed + cross-pinned, tapped M8 RH / M8 LH",
+   "structure": true
+  },
+  "HIP_PITCH_SUPPORT_STUB": {
+   "kind": "machined",
+   "material": "7075-T6",
+   "qty": 2,
+   "mass_kg": 0.0961,
+   "dims": "dia 54 x 42",
+   "process": "turned 7075-T6: flange dia 54 x 5 (4 x M5 from inside the cradle), stub dia 40 k6 bore 28 for the 6808, M5 end screw + 20 mm washer",
+   "structure": true
+  },
+  "thigh_outer_cheek": {
+   "kind": "plate",
+   "material": "6061-T6",
+   "qty": 2,
+   "mass_kg": 0.3321,
+   "dims": "154 x 499 x 5",
+   "process": "laser or waterjet cut, 5 mm 6061-T6",
+   "structure": true
+  },
+  "HSG_6808-2RS_5": {
+   "kind": "machined",
+   "material": "6061-T6",
+   "qty": 2,
+   "mass_kg": 0.021,
+   "dims": "dia 70 x 8",
+   "process": "machined 6061-T6 (lathe): spigot dia 58 x 5 (fits the plate bore), flange dia 70 x 3, bore 52 H7 for 6808-2RS, 3 x M3 c'bored on PCD 62 into the plate (tapped)",
+   "structure": true
+  },
+  "BRG_6808-2RS": {
+   "kind": "purchased",
+   "material": "steel",
+   "qty": 2,
+   "mass_kg": 0.026,
+   "dims": "40 x 52 x 7",
+   "process": "purchased bearing",
+   "structure": true
+  },
+  "HSG_6908-2RS_5_SLIDE": {
+   "kind": "machined",
+   "material": "6061-T6",
+   "qty": 2,
+   "mass_kg": 0.061,
+   "dims": "dia 86 x 12",
+   "process": "machined 6061-T6 (lathe): spigot dia 68 x 5 (fits the plate bore), flange dia 86 x 7, bore 62 H7 for 6908-2RS, 3 x M3 c'bored on PCD 78 through slots in the plate, nuts behind (slides +-3 mm for belt take-up)",
+   "structure": true
+  },
+  "BRG_6908-2RS": {
+   "kind": "purchased",
+   "material": "steel",
+   "qty": 2,
+   "mass_kg": 0.11,
+   "dims": "40 x 62 x 12",
+   "process": "purchased bearing",
+   "structure": true
+  },
+  "thigh_inner_cheek": {
+   "kind": "plate",
+   "material": "6061-T6",
+   "qty": 2,
+   "mass_kg": 0.4296,
+   "dims": "154 x 499 x 5",
+   "process": "laser or waterjet cut, 5 mm 6061-T6",
+   "structure": true
+  },
+  "knee_actuator_bulkhead": {
+   "kind": "plate",
+   "material": "6061-T6",
+   "qty": 2,
+   "mass_kg": 0.0838,
+   "dims": "154 x 153 x 5",
+   "process": "laser or waterjet cut, 5 mm 6061-T6",
+   "structure": true
+  },
+  "TIE_16x2_56": {
+   "kind": "tube",
+   "material": "6061-T6",
+   "qty": 6,
+   "mass_kg": 0.0133,
+   "dims": "dia 16 x 2 x 56",
+   "process": "6061 tube dia 16 x 2 spacer, cut to 56 mm, faced square",
+   "structure": true
+  },
+  "TIE_16x2_74": {
+   "kind": "tube",
+   "material": "6061-T6",
+   "qty": 6,
+   "mass_kg": 0.0176,
+   "dims": "dia 16 x 2 x 74",
+   "process": "6061 tube dia 16 x 2 spacer, cut to 74 mm, faced square",
+   "structure": true
+  },
+  "TIE_16x2_135": {
+   "kind": "tube",
+   "material": "6061-T6",
+   "qty": 2,
+   "mass_kg": 0.0321,
+   "dims": "dia 16 x 2 x 135",
+   "process": "6061 tube dia 16 x 2 spacer, cut to 135 mm, faced square",
+   "structure": true
+  },
+  "PULLEY_8MGT_36T": {
+   "kind": "machined",
+   "material": "6061-T6",
+   "qty": 2,
+   "mass_kg": 0.324,
+   "dims": "dia 98 x 61",
+   "process": "lightened 6061 36T 8 mm-pitch pulley for a 36 mm belt (pitch dia 91.67): 6 mm rim, 1 mm flanges; 8MGT (Poly Chain) profile; 6.5 mm mounting web dia 88 c'bored for 6 x DIN 7984 M5x12 low-head screws on PCD 72 (X12 output), dia 62 spigot; dia 40 boss into a 6908 in the inner cheek",
+   "structure": true
+  },
+  "BELT_8MGT_36": {
+   "kind": "belt",
+   "material": "belt",
+   "qty": 2,
+   "mass_kg": 0.1814,
+   "dims": "800 mm pitch length, 100 teeth, 36 wide",
+   "process": "Gates Poly Chain Carbon Volt 8MGTV-800-36 (successor to Poly Chain GT Carbon 8MGT-800-36)",
+   "structure": true
+  },
+  "BELT_TENSION_BLOCK": {
+   "kind": "machined",
+   "material": "6061-T6",
+   "qty": 2,
+   "mass_kg": 0.0088,
+   "dims": "28 x 16 x 8",
+   "process": "6061 block 28 x 16 x 8 on the inner cheek (2 x M5), M6 jack screw pushes the 6908 housing flange up: loosen the 3 housing screws and the 3 bulkhead through-bolts, jack to the Gates sonic-meter tension, re-clamp",
+   "structure": true
+  },
+  "KNEE_SHAFT": {
+   "kind": "machined",
+   "material": "7075-T6",
+   "qty": 2,
+   "mass_kg": 0.123,
+   "dims": "dia 25 x 145",
+   "process": "7075-T6 tube shaft dia 25 h6 bore 15 x 145, M5 end screws + washers, one flat for an anti-rotation screw (bending 94 N m: 70 MPa)",
+   "structure": true
+  },
+  "HSG_6905-2RS_4": {
+   "kind": "machined",
+   "material": "6061-T6",
+   "qty": 2,
+   "mass_kg": 0.024,
+   "dims": "dia 60 x 9",
+   "process": "machined 6061-T6 (lathe): spigot dia 48 x 4 (fits the plate bore), flange dia 60 x 5, bore 42 H7 for 6905-2RS, 3 x M3 c'bored on PCD 52 into the plate (tapped)",
+   "structure": true
+  },
+  "calf_outer_plate": {
+   "kind": "plate",
+   "material": "6061-T6",
+   "qty": 2,
+   "mass_kg": 0.2969,
+   "dims": "145 x 490 x 4",
+   "process": "laser or waterjet cut, 4 mm 6061-T6",
+   "structure": true
+  },
+  "calf_inner_plate": {
+   "kind": "plate",
+   "material": "6061-T6",
+   "qty": 2,
+   "mass_kg": 0.3113,
+   "dims": "145 x 490 x 4",
+   "process": "laser or waterjet cut, 4 mm 6061-T6",
+   "structure": true
+  },
+  "TIE_16x2_53": {
+   "kind": "tube",
+   "material": "6061-T6",
+   "qty": 6,
+   "mass_kg": 0.0126,
+   "dims": "dia 16 x 2 x 53",
+   "process": "6061 tube dia 16 x 2 spacer, cut to 53 mm, faced square",
+   "structure": true
+  },
+  "PULLEY_8MGT_54T": {
+   "kind": "machined",
+   "material": "6061-T6",
+   "qty": 2,
+   "mass_kg": 0.3984,
+   "dims": "dia 144 x 44",
+   "process": "lightened 6061 54T 8 mm-pitch pulley for a 36 mm belt (pitch dia 137.51): 6 mm rim, 1 mm flanges; collar dia 64 with 6 x M5 tapped + 2 x dia 5 dowels on PCD 54 to the inner calf plate; two 6905-2RS in a dia 42 H7 bore; 6 relief windows in the 5 mm web",
+   "structure": true
+  },
+  "KNEE_SPACER": {
+   "kind": "machined",
+   "material": "6061-T6",
+   "qty": 2,
+   "mass_kg": 0.0189,
+   "dims": "dia 32 x 23.5",
+   "process": "6061 tube spacer dia 32 x 25.4 bore",
+   "structure": true
+  },
+  "RS04_OUTPUT_SPACER_4p5": {
+   "kind": "machined",
+   "material": "6061-T6",
+   "qty": 4,
+   "mass_kg": 0.0192,
+   "dims": "dia 50 x 4.5",
+   "process": "machined 6061-T6 ring: dia 50 x 4.5 (through the dia 54 plate bore), bore 22, 9 x dia 5.5 PCD 36, 3 pin holes",
+   "structure": true
+  },
+  "ankle_crank_40": {
+   "kind": "plate",
+   "material": "6061-T6",
+   "qty": 4,
+   "mass_kg": 0.0433,
+   "dims": "78 x 54 x 6",
+   "process": "laser or waterjet cut, 6 mm 6061-T6",
+   "structure": true
+  },
+  "PUSHROD_ankle_A": {
+   "kind": "rod",
+   "material": "6061-T6",
+   "qty": 2,
+   "mass_kg": 0.0582,
+   "dims": "dia 14 x 2 x 261",
+   "process": "6061-T6 tube dia 14 x 2, cut to 261 mm, two 12 mm 6061 end plugs pressed + cross-pinned, tapped M8 RH / M8 LH",
+   "structure": true
+  },
+  "PUSHROD_ankle_B": {
+   "kind": "rod",
+   "material": "6061-T6",
+   "qty": 2,
+   "mass_kg": 0.0255,
+   "dims": "dia 12 x 2 x 131",
+   "process": "6061-T6 tube dia 12 x 2, cut to 131 mm, two 12 mm 6061 end plugs pressed + cross-pinned, tapped M8 RH / M8 LH",
+   "structure": true
+  },
+  "ANKLE_CROSS": {
+   "kind": "machined",
+   "material": "7075-T6",
+   "qty": 2,
+   "mass_kg": 0.1462,
+   "dims": "66 x 66 x 30",
+   "process": "machined 7075-T6, hard anodised: block 40 x 44 x 30 with integral pitch pins dia 16 f7 (iglide bushings in the calf plates) and roll pins dia 12 f7 (iglide GFM-1214-06 in the foot clevis), dia 16 lightening bore",
+   "structure": true
+  },
+  "foot_sole_plate": {
+   "kind": "plate",
+   "material": "6061-T6",
+   "qty": 2,
+   "mass_kg": 0.2106,
+   "dims": "260 x 110 x 5",
+   "process": "laser or waterjet cut, 5 mm 6061-T6",
+   "structure": true
+  },
+  "FOOT_RUBBER_SOLE": {
+   "kind": "purchased",
+   "material": "rubber",
+   "qty": 2,
+   "mass_kg": 0.1304,
+   "dims": "260 x 110 x 4",
+   "process": "4 mm NBR sole sheet, cut to the sole-plate outline, contact-cemented",
+   "structure": true
+  },
+  "foot_roll_clevis": {
+   "kind": "plate",
+   "material": "6061-T6",
+   "qty": 4,
+   "mass_kg": 0.0353,
+   "dims": "48 x 84 x 5",
+   "process": "laser or waterjet cut, 5 mm 6061-T6",
+   "structure": true
+  },
+  "foot_side_rail": {
+   "kind": "plate",
+   "material": "6061-T6",
+   "qty": 4,
+   "mass_kg": 0.1004,
+   "dims": "228 x 79 x 5",
+   "process": "laser or waterjet cut, 5 mm 6061-T6",
+   "structure": true
+  },
+  "torso_base_plate": {
+   "kind": "plate",
+   "material": "6061-T6",
+   "qty": 1,
+   "mass_kg": 0.304,
+   "dims": "204 x 158 x 6",
+   "process": "laser or waterjet cut, 6 mm 6061-T6",
+   "structure": true
+  },
+  "torso_top_plate": {
+   "kind": "plate",
+   "material": "6061-T6",
+   "qty": 1,
+   "mass_kg": 0.2001,
+   "dims": "204 x 158 x 4",
+   "process": "laser or waterjet cut, 4 mm 6061-T6",
+   "structure": true
+  },
+  "EXT_2040_torso_upright": {
+   "kind": "extrusion",
+   "material": "6061-T6",
+   "qty": 4,
+   "mass_kg": 0.2777,
+   "dims": "2040 x 312",
+   "process": "2040 T-slot extrusion (GAP Engineering 20x40 6 mm slot, 0.89 kg/m (R9)), cut to 312 mm, ends tapped M5 in the centre bores",
+   "structure": true
+  },
+  "torso_shoulder_plate": {
+   "kind": "plate",
+   "material": "6061-T6",
+   "qty": 2,
+   "mass_kg": 0.2362,
+   "dims": "204 x 162 x 5",
+   "process": "laser or waterjet cut, 5 mm 6061-T6",
+   "structure": true
+  },
+  "battery_tray": {
+   "kind": "plate",
+   "material": "6061-T6",
+   "qty": 1,
+   "mass_kg": 0.095,
+   "dims": "100 x 138 x 4",
+   "process": "laser or waterjet cut, 4 mm 6061-T6",
+   "structure": true
+  },
+  "BATTERY_13S5P": {
+   "kind": "purchased",
+   "material": "-",
+   "qty": 1,
+   "mass_kg": 5.8,
+   "dims": "100 x 130 x 240",
+   "process": "48 V 13S5P 21700 pack ~1.1 kWh + BMS in its own case, 100 x 130 x 240, 2 webbing straps",
+   "structure": false
+  },
+  "electronics_plate": {
+   "kind": "plate",
+   "material": "6061-T6",
+   "qty": 1,
+   "mass_kg": 0.2312,
+   "dims": "150 x 292 x 4",
+   "process": "laser or waterjet cut, 4 mm 6061-T6",
+   "structure": true
+  },
+  "COMPUTE_JETSON_CARRIER": {
+   "kind": "purchased",
+   "material": "-",
+   "qty": 1,
+   "mass_kg": 0.65,
+   "dims": "50 x 120 x 100",
+   "process": "Jetson Orin NX/AGX + carrier + CAN-FD interfaces",
+   "structure": false
+  },
+  "POWER_DISTRIBUTION": {
+   "kind": "purchased",
+   "material": "-",
+   "qty": 1,
+   "mass_kg": 0.9,
+   "dims": "40 x 150 x 100",
+   "process": "e-stop contactor, fuses, precharge, 48->12/5 V DC-DC",
+   "structure": false
+  },
+  "chest_camera_plate": {
+   "kind": "plate",
+   "material": "6061-T6",
+   "qty": 1,
+   "mass_kg": 0.0544,
+   "dims": "110 x 60 x 4",
+   "process": "laser or waterjet cut, 4 mm 6061-T6",
+   "structure": true
+  },
+  "CHEST_DEPTH_CAMERA": {
+   "kind": "purchased",
+   "material": "-",
+   "qty": 1,
+   "mass_kg": 0.1,
+   "dims": "26 x 90 x 30",
+   "process": "depth camera (RealSense D435i class)",
+   "structure": false
+  },
+  "ESTOP_BUTTON": {
+   "kind": "purchased",
+   "material": "-",
+   "qty": 1,
+   "mass_kg": 0.06,
+   "dims": "dia 40",
+   "process": "22 mm twist-release e-stop (EAO 84 / Eaton M22-PVT), on the top plate",
+   "structure": false
+  },
+  "ACT_RS00": {
+   "kind": "actuator",
+   "material": "-",
+   "qty": 4,
+   "mass_kg": 0.31,
+   "dims": "dia 57.0 x 51.0 overall",
+   "process": "purchased: RobStride RS00",
+   "structure": false
+  },
+  "RS00_OUTPUT_HUB_8": {
+   "kind": "machined",
+   "material": "6061-T6",
+   "qty": 1,
+   "mass_kg": 0.0172,
+   "dims": "dia 34 x 8",
+   "process": "machined 6061-T6 dia 34 x 8: 3 x dia 3.4 c'bored on PCD 27 to the RS00 output; 3 x M4 tapped on PCD 22",
+   "structure": true
+  },
+  "neck_base_plate": {
+   "kind": "plate",
+   "material": "6061-T6",
+   "qty": 1,
+   "mass_kg": 0.0433,
+   "dims": "80 x 75 x 4",
+   "process": "laser or waterjet cut, 4 mm 6061-T6",
+   "structure": true
+  },
+  "neck_side_plate": {
+   "kind": "plate",
+   "material": "6061-T6",
+   "qty": 1,
+   "mass_kg": 0.0712,
+   "dims": "70 x 102 x 4",
+   "process": "laser or waterjet cut, 4 mm 6061-T6",
+   "structure": true
+  },
+  "RS00_OUTPUT_SPACER_3": {
+   "kind": "machined",
+   "material": "6061-T6",
+   "qty": 1,
+   "mass_kg": 0.0064,
+   "dims": "dia 34 x 3",
+   "process": "6061 spacer dia 34 x 3 with the RS00 output pattern",
+   "structure": true
+  },
+  "head_side_plate": {
+   "kind": "plate",
+   "material": "6061-T6",
+   "qty": 1,
+   "mass_kg": 0.1626,
+   "dims": "140 x 221 x 4",
+   "process": "laser or waterjet cut, 4 mm 6061-T6",
+   "structure": true
+  },
+  "head_front_plate": {
+   "kind": "plate",
+   "material": "6061-T6",
+   "qty": 1,
+   "mass_kg": 0.0865,
+   "dims": "95 x 146 x 4",
+   "process": "laser or waterjet cut, 4 mm 6061-T6",
+   "structure": true
+  },
+  "head_top_plate": {
+   "kind": "plate",
+   "material": "6061-T6",
+   "qty": 1,
+   "mass_kg": 0.0936,
+   "dims": "152 x 95 x 4",
+   "process": "laser or waterjet cut, 4 mm 6061-T6",
+   "structure": true
+  },
+  "HEAD_DEPTH_CAMERA": {
+   "kind": "purchased",
+   "material": "-",
+   "qty": 1,
+   "mass_kg": 0.25,
+   "dims": "26 x 90 x 30",
+   "process": "head depth camera + wide camera",
+   "structure": false
+  },
+  "HEAD_AUDIO_LED_BOARD": {
+   "kind": "purchased",
+   "material": "-",
+   "qty": 1,
+   "mass_kg": 0.15,
+   "dims": "48 x 65 x 20",
+   "process": "mic, speaker amp, status LEDs",
+   "structure": false
+  },
+  "shoulder_pitch_plate": {
+   "kind": "plate",
+   "material": "6061-T6",
+   "qty": 2,
+   "mass_kg": 0.1041,
+   "dims": "154 x 104 x 4",
+   "process": "laser or waterjet cut, 4 mm 6061-T6",
+   "structure": true
+  },
+  "shoulder_roll_plate": {
+   "kind": "plate",
+   "material": "6061-T6",
+   "qty": 2,
+   "mass_kg": 0.0645,
+   "dims": "128 x 123 x 4",
+   "process": "laser or waterjet cut, 4 mm 6061-T6",
+   "structure": true
+  },
+  "upper_arm_roll_plate": {
+   "kind": "plate",
+   "material": "6061-T6",
+   "qty": 2,
+   "mass_kg": 0.0431,
+   "dims": "100 x 62 x 4",
+   "process": "laser or waterjet cut, 4 mm 6061-T6",
+   "structure": true
+  },
+  "upper_arm_yaw_plate": {
+   "kind": "plate",
+   "material": "6061-T6",
+   "qty": 2,
+   "mass_kg": 0.0716,
+   "dims": "116 x 104 x 4",
+   "process": "laser or waterjet cut, 4 mm 6061-T6",
+   "structure": true
+  },
+  "ACT_RS03": {
+   "kind": "actuator",
+   "material": "-",
+   "qty": 4,
+   "mass_kg": 0.928,
+   "dims": "dia 93.0 x 56.6 overall",
+   "process": "purchased: RobStride RS03",
+   "structure": false
+  },
+  "upper_arm_top_plate": {
+   "kind": "plate",
+   "material": "6061-T6",
+   "qty": 2,
+   "mass_kg": 0.0409,
+   "dims": "64 x 64 x 4",
+   "process": "laser or waterjet cut, 4 mm 6061-T6",
+   "structure": true
+  },
+  "CLAMP_40_arm": {
+   "kind": "printed",
+   "material": "PA12-CF",
+   "qty": 2,
+   "mass_kg": 0.0656,
+   "dims": "56 x 56 x 32",
+   "process": "printed PA12-CF (MJF/SLS) or PETG-CF (FDM, 6 walls, 60 % gyroid), 2 halves, bore dia 40; or machine from 6061 (same drawing)",
+   "structure": true
+  },
+  "elbow_plate": {
+   "kind": "plate",
+   "material": "6061-T6",
+   "qty": 2,
+   "mass_kg": 0.0782,
+   "dims": "112 x 152 x 4",
+   "process": "laser or waterjet cut, 4 mm 6061-T6",
+   "structure": true
+  },
+  "CLAMP_40_elbow": {
+   "kind": "printed",
+   "material": "PA12-CF",
+   "qty": 2,
+   "mass_kg": 0.0781,
+   "dims": "56 x 58 x 36",
+   "process": "printed PA12-CF (MJF/SLS) or PETG-CF (FDM, 6 walls, 60 % gyroid), 2 halves, bore dia 40; or machine from 6061 (same drawing)",
+   "structure": true
+  },
+  "TUBE_40x3_upper_arm": {
+   "kind": "tube",
+   "material": "6061-T6",
+   "qty": 2,
+   "mass_kg": 0.1403,
+   "dims": "dia 40 x 3 x 149",
+   "process": "6061-T6 round tube dia 40 x 3, cut to 149 mm",
+   "structure": true
+  },
+  "forearm_elbow_plate": {
+   "kind": "plate",
+   "material": "6061-T6",
+   "qty": 2,
+   "mass_kg": 0.0879,
+   "dims": "114 x 152 x 4",
+   "process": "laser or waterjet cut, 4 mm 6061-T6",
+   "structure": true
+  },
+  "wrist_yaw_plate": {
+   "kind": "plate",
+   "material": "6061-T6",
+   "qty": 2,
+   "mass_kg": 0.0763,
+   "dims": "128 x 88 x 4",
+   "process": "laser or waterjet cut, 4 mm 6061-T6",
+   "structure": true
+  },
+  "ACT_RS02": {
+   "kind": "actuator",
+   "material": "-",
+   "qty": 4,
+   "mass_kg": 0.418,
+   "dims": "dia 78.5 x 45.5 overall",
+   "process": "purchased: RobStride RS02",
+   "structure": false
+  },
+  "forearm_top_plate": {
+   "kind": "plate",
+   "material": "6061-T6",
+   "qty": 2,
+   "mass_kg": 0.0401,
+   "dims": "60 x 65 x 4",
+   "process": "laser or waterjet cut, 4 mm 6061-T6",
+   "structure": true
+  },
+  "wrist_pitch_plate": {
+   "kind": "plate",
+   "material": "6061-T6",
+   "qty": 2,
+   "mass_kg": 0.0597,
+   "dims": "88 x 154 x 4",
+   "process": "laser or waterjet cut, 4 mm 6061-T6",
+   "structure": true
+  },
+  "wrist_output_plate": {
+   "kind": "plate",
+   "material": "6061-T6",
+   "qty": 2,
+   "mass_kg": 0.047,
+   "dims": "64 x 82 x 4",
+   "process": "laser or waterjet cut, 4 mm 6061-T6",
+   "structure": true
+  },
+  "tool_flange_plate": {
+   "kind": "plate",
+   "material": "6061-T6",
+   "qty": 2,
+   "mass_kg": 0.0418,
+   "dims": "68 x 60 x 4",
+   "process": "laser or waterjet cut, 4 mm 6061-T6",
+   "structure": true
+  },
+  "ISO9409_50_4_M6_FLANGE": {
+   "kind": "machined",
+   "material": "6061-T6",
+   "qty": 2,
+   "mass_kg": 0.0442,
+   "dims": "dia 60 x 8",
+   "process": "machined 6061-T6 dia 60 x 8, ISO 9409-1-50-4-M6: 4 x M6 on PCD 50, dia 31.5 H7 x 6 recess, 1 x dia 6 H7 dowel on PCD 50; 4 x M4 c'bored on PCD 40 to the flange plate",
+   "structure": true
+  },
+  "gripper_base_plate": {
+   "kind": "plate",
+   "material": "6061-T6",
+   "qty": 2,
+   "mass_kg": 0.0844,
+   "dims": "168 x 56 x 4",
+   "process": "laser or waterjet cut, 4 mm 6061-T6",
+   "structure": false
+  },
+  "ISO9409_TOOL_SPIGOT": {
+   "kind": "machined",
+   "material": "6061-T6",
+   "qty": 2,
+   "mass_kg": 0.0114,
+   "dims": "dia 31.5 x 6",
+   "process": "6061 disc dia 31.5 h7 x 6 locating the gripper in the flange recess, 2 x M3",
+   "structure": false
+  },
+  "GRIPPER_PINION_M1_20T": {
+   "kind": "purchased",
+   "material": "steel",
+   "qty": 2,
+   "mass_kg": 0.03,
+   "dims": "dia 34 x 13",
+   "process": "module 1, 20 teeth spur pinion with a dia 34 flange drilled to the RS00 output (3 x M3 PCD 27)",
+   "structure": false
+  },
+  "GRIPPER_RACK_M1": {
+   "kind": "purchased",
+   "material": "steel",
+   "qty": 4,
+   "mass_kg": 0.04,
+   "dims": "8 x 10 x 70",
+   "process": "module 1 steel rack 8 x 10 x 70",
+   "structure": false
+  },
+  "GRIPPER_JAW": {
+   "kind": "printed",
+   "material": "PA12-CF",
+   "qty": 4,
+   "mass_kg": 0.0632,
+   "dims": "24 x 52 x 83",
+   "process": "printed PA12-CF jaw: 2 x LM8UU pockets, rack screwed on top, 2 mm TPU pad on the finger",
+   "structure": false
+  },
+  "gripper_end_plate": {
+   "kind": "plate",
+   "material": "6061-T6",
+   "qty": 4,
+   "mass_kg": 0.0541,
+   "dims": "56 x 94 x 4",
+   "process": "laser or waterjet cut, 4 mm 6061-T6",
+   "structure": false
+  },
+  "GRIPPER_GUIDE_ROD_8": {
+   "kind": "purchased",
+   "material": "steel",
+   "qty": 4,
+   "mass_kg": 0.06,
+   "dims": "dia 8 x 152",
+   "process": "dia 8 h6 linear rod x 152, M4 tapped ends",
+   "structure": false
+  }
+ },
+ "fasteners": {
+  "M5x12 SHCS": 72,
+  "M5 T-nut": 26,
+  "M4x12 SHCS": 151,
+  "M4x10 SHCS low head": 15,
+  "M5x25 SHCS": 12,
+  "M5x16 SHCS": 44,
+  "M5 square nut": 40,
+  "M3x8 SHCS": 68,
+  "M6x12 SHCS": 12,
+  "M5x20 SHCS": 60,
+  "M5x10 SHCS": 14,
+  "M3x16 SHCS": 8,
+  "M3 Nylock nut": 14,
+  "M5x12 SHCS + 20 mm washer (shaft end)": 10,
+  "ISO 7379 shoulder screw d8 x 16, M6 (rod-end pin)": 12,
+  "M6 Nylock nut": 12,
+  "M8 jam nut": 12,
+  "M4x155 SHCS": 8,
+  "M4 Nylock nut": 14,
+  "M5x12 SHCS low head": 12,
+  "M6x25 set screw + M6 nut (jack)": 2,
+  "M4x10 SHCS": 51,
+  "igus GFM-1618 flange bushing": 4,
+  "M4x70 SHCS": 6,
+  "igus GFM-1214-06 flange bushing": 4,
+  "M4x16 SHCS": 4,
+  "M4 square nut": 34,
+  "M3x12 SHCS": 3,
+  "M3x10 SHCS": 3,
+  "M4x30 SHCS": 8,
+  "M5x30 SHCS (clamp)": 8,
+  "M5 Nylock nut": 8,
+  "M4x25 SHCS": 8,
+  "M6x12 SHCS (gripper)": 8,
+  "M3x8 SHCS (gripper)": 10,
+  "M4x12 SHCS (gripper)": 8,
+  "M4 square nut (gripper)": 8,
+  "LM8UU linear bearing": 8
+ },
+ "structure_cad_kg": 20.928,
+ "structure_estimate_kg": 16.69,
+ "belt": {
+  "pitch_length": 800,
+  "centre": 218.8
+ }
+}
