@@ -33,10 +33,11 @@ def hand_parts(SY, WRZ):
     # palm: lofted, thicker at the heel, rounded knuckle line; split dorsal (white) / palmar (graphite)
     palm = loft([((0, y0, WRZ - 30), 40, 15, 2.4), ((0, y0 - 1, WRZ - 70), 45, 17, 2.8), ((0, y0 - 2, WRZ - 118), 46, 15, 2.8),
                  ((0, y0 - 2, WRZ - 128), 42, 12, 2.4)])
-    palm = palm.cut(loft([((0, y0, WRZ - 33), 37.5, 12.5, 2.4), ((0, y0 - 1, WRZ - 70), 42.5, 14.5, 2.8),
-                          ((0, y0 - 2, WRZ - 118), 43.5, 12.5, 2.8), ((0, y0 - 2, WRZ - 125), 39.5, 9.5, 2.4)]))   # 2.5 mm palm walls
-    back = palm.intersect(cq.Workplane("XY").box(400, 400, 400).translate((0, y0 + 0.5 + 200, 0)))
-    front = palm.intersect(cq.Workplane("XY").box(400, 400, 400).translate((0, y0 - 0.5 - 200, 0)))
+    cavity = loft([((0, y0, WRZ - 33), 37.5, 12.5, 2.4), ((0, y0 - 1, WRZ - 70), 42.5, 14.5, 2.8),
+                   ((0, y0 - 2, WRZ - 118), 43.5, 12.5, 2.8), ((0, y0 - 2, WRZ - 125), 39.5, 9.5, 2.4)])   # 2.5 mm palm walls
+    half = lambda s: cq.Workplane("XY").box(400, 400, 400).translate((0, y0 + s * (0.5 + 200), WRZ))
+    back = palm.intersect(half(1)).cut(cavity)
+    front = palm.intersect(half(-1)).cut(cavity)
     P.append(("shell", "palm_back", back))
     pad = rbox(70, 4, 70, 2, (0, y0 - 16, WRZ - 80))
     cam_c = (0, y0 - 18, WRZ - 62)
@@ -89,5 +90,5 @@ def hand_internals(SY, WRZ):
     P.append(("act", "thumb_mcp_motor", cyl(4.2, 24, "z", (34, y0 - 4, WRZ - 88))))
     P.append(("act", "thumb_ip_motor", cyl(4.2, 22, "z", (30, y0 - 6, WRZ - 104))))
     P.append(("cam", "palm_camera_module", rbox(14, 9, 14, 2, (0, y0 - 9, WRZ - 62))))
-    P.append(("pcb", "hand_controller", rbox(60, 3, 40, 1, (0, y0 + 10, WRZ - 50))))
+    P.append(("pcb", "hand_controller", rbox(48, 2.5, 36, 1, (0, y0 + 7.5, WRZ - 56))))
     return P

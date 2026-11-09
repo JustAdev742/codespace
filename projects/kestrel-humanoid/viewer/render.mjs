@@ -1,4 +1,4 @@
-// Headless renders of the KESTREL K1 Mk II viewer (studio environment, soft + contact shadows, GTAO, neutral tone mapping).
+// Headless renders of the KESTREL K1 Mk II viewer (studio environment, soft + contact shadows, bloom, neutral tone mapping).
 //   node render.mjs [threeDir] [outDir] [scale] [view1,view2,...]
 // threeDir: a folder containing node_modules/three (CDN imports, including the post-processing addons,
 // are routed there, so it renders offline with no network assets).

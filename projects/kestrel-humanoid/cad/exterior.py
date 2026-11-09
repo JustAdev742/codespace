@@ -246,13 +246,14 @@ def head(add, add_many):
 def neck(add, add_many):
     secs = [((0, 0, 1497), 51, 51, 52, 52, 2.2), ((0, 0, 1530), 48, 46, 50, 50, 2.3), ((2, 0, 1566), 46, 44, 47, 47, 2.3)]
     add("neck", "trim", "neck_sleeve", Shell.make(secs, WALL["neck"]), step=True, body="neck_link")
-    add("neck", "alu", "neck_ring", lambda: tube(53.6, 51.6, 2.0, "z", (0, 0, 1504)), body="neck_link")
+    add("neck", "alu", "neck_ring", lambda: tube(54.8, 53.0, 2.0, "z", (0, 0, 1504)), body="neck_link")
 
 
 # ================================================================== TORSO
 TQ = (3.4, 3.4, 4.8, 4.8)     # rounder front, squarer back (the two 175 mm packs fill the rear corners)
-TORSO = [((0, 0, 1150), 124, 134, 126, 126, (3.3, 3.3, 4.6, 4.6)), ((0, 0, 1185), 128, 134, 127, 127, TQ), ((0, 0, 1250), 128, 134, 128, 128, TQ),
-         ((0, 0, 1320), 126, 134, 128, 128, TQ), ((0, 0, 1385), 120, 134, 128, 128, (3.2, 3.2, 4.6, 4.6)), ((0, 0, 1440), 108, 121, 126, 126, 2.9),
+TORSO = [((0, 0, 1150), 124, 134, 126, 126, (3.3, 3.3, 4.8, 4.8)), ((0, 0, 1167), 126, 134, 126.5, 126.5, TQ),
+         ((0, 0, 1185), 128, 134, 127, 127, TQ), ((0, 0, 1250), 128, 134, 128, 128, TQ),
+         ((0, 0, 1320), 126, 134, 128, 128, TQ), ((0, 0, 1385), 120, 134, 128, 128, (3.2, 3.2, 4.8, 4.8)), ((0, 0, 1440), 108, 121, 126, 126, 2.9),
          ((0, 0, 1480), 90, 104, 120, 120, 2.6), ((0, 0, 1505), 68, 76, 90, 90, 2.3), ((0, 0, 1520), 55, 59, 62, 62, 2.1)]
 PACK = [((-92, 0, 1412), 108, 108, 62, 62, 5.0), ((-142, 0, 1412), 108, 108, 62, 62, 5.0), ((-160, 0, 1412), 99, 99, 56, 56, 4.2),
         ((-168, 0, 1412), 82, 82, 45, 45, 3.0), ((-170.6, 0, 1412), 58, 58, 30, 30, 2.3)]
@@ -290,7 +291,7 @@ def torso(add, add_many):
         add("torso", "trim", f"hatch_latch_{nm}", lambda s=s: rbox(10, 44, 12, 3, (-136, s * 53, 1316)))
         add("torso", "accent", f"hatch_led_{nm}", band(TORSO, 0.35, 1.2, box(-BIG, -100, s * 53 - 12, s * 53 + 12, 1298, 1301)))
     add("torso", "shell", "back_upper", back.kz(lo=1346 + G2), step=True)
-    add("torso", "alu", "collar_ring", lambda: tube(59.5, 56.5, 2.0, "z", (0, 0, 1516.2)))
+    add("torso", "alu", "collar_ring", lambda: tube(56.9, 54.5, 3.0, "z", (0, 0, 1513.5)))
     screws(add, "torso", sh.loft, [((-300, s * 53 + d, z), (1, 0, 0)) for s in (1, -1) for d in (-32, 32) for z in (1180,)], "hatch", mirror=False)
     screws(add, "torso", sh.loft, [((300, s * 66, z), (-1, 0, 0)) for s in (1, -1) for z in (1290, 1440)], "chest", mirror=False)
     # radiator back pack (graphite): 2 x 92 mm fans exhaust through the grille
@@ -347,10 +348,10 @@ SOLE = [((-83, HY, 5.5), 13, 13, 5.5, 5.5, 6.0), ((-74, HY, 5.5), 47, 47, 5.5, 5
 def legs(add, add_many):
     # ---------------- hip: KA-130H lateral cap (on the roll-pitch bracket side), gluteal pod around the KA-110P
     add_many("l_hip", joint_cap(60, "y", (0, 157.5, HZ), "hip_cap", bolts=12, accent=True, t=4.0), mirror=True, body="l_hip_roll")
-    gp = [((-89, HY, HZ), 69, 69, 69, 69, 2.3), ((-100, HY, HZ), 69, 69, 69, 69, 2.4), ((-150, HY, HZ), 69, 69, 69, 69, 2.6),
+    gp = [((-89, HY, HZ), 71, 71, 71, 71, 2.3), ((-100, HY, HZ), 71, 71, 71, 71, 2.4), ((-150, HY, HZ), 71, 71, 71, 71, 2.6),
           ((-176, HY, HZ), 60, 60, 60, 60, 2.4), ((-188, HY, HZ), 30, 30, 30, 30, 2.0)]
     pod = Shell.make(gp, WALL["glute"], axis="x", extend=("start",))
-    pod = pod.cut(box(-170, -94, HY - 30, HY + 30, 975, 1000)).cut(box(-184, -170, HY - 40, HY + 40, 960, 1000))
+    pod = pod.cut(box(-170, -94, HY - 30, HY + 30, 975, 1000)).cut(box(-186, -168, HY - 44, HY + 44, 946, 1000))
     add("l_hip", "shell", "glute_pod", pod, mirror=True, step=True, body="l_hip_yaw")
     add_many("l_hip", joint_cap(26, "-x", (-188, HY, HZ), "glute_cap", bolts=6, accent=False), mirror=True, body="l_hip_yaw")
     # ---------------- thigh

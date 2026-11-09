@@ -74,7 +74,7 @@ renderer.setSize(innerWidth, innerHeight);
 renderer.toneMapping = THREE.NeutralToneMapping;      // keeps the warm white white (ACES greys it)
 renderer.toneMappingExposure = parseFloat(Q.get("exposure") || "1.0");
 renderer.shadowMap.enabled = true;
-renderer.shadowMap.type = THREE.VSMShadowMap;           // soft, blurred key-light shadows
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;       // soft key-light shadows (VSM bled outside its frustum)
 document.body.appendChild(renderer.domElement);
 
 const scene = new THREE.Scene();
@@ -101,10 +101,10 @@ controls.enableDamping = true;
 const key = new THREE.DirectionalLight(0xfff6ec, 2.1);
 key.position.set(1.9, 5.2, 1.7);
 key.castShadow = true;
-key.shadow.mapSize.set(4096, 4096);
+key.shadow.mapSize.set(2048, 2048);
 Object.assign(key.shadow.camera, { left: -2.0, right: 2.0, top: 2.0, bottom: -2.0, near: 0.5, far: 14 });
 key.target.position.set(0, 0.8, 0); scene.add(key.target);
-key.shadow.radius = 6; key.shadow.blurSamples = 16; key.shadow.bias = -0.0006; key.shadow.normalBias = 0.01;
+key.shadow.bias = -0.0004; key.shadow.normalBias = 0.02;
 scene.add(key);
 const fill = new THREE.DirectionalLight(0xe9f0ff, 0.55);
 fill.position.set(-3.0, 1.6, 2.8);
@@ -314,7 +314,7 @@ for (const m of ["full", "ghost", "skeleton"]) {
 }
 document.getElementById("explode").addEventListener("input", (e) => setExplode(parseFloat(e.target.value)));
 
-// ------------------------------------------------------------------ post: GTAO (contact darkening in panel gaps) + faint bloom on the light guides
+// ------------------------------------------------------------------ post: faint bloom on the light guides (GTAO available with ?ao=1)
 const composer = new EffectComposer(renderer, new THREE.WebGLRenderTarget(1, 1, { type: THREE.HalfFloatType, samples: 4 }));
 composer.setPixelRatio(renderer.getPixelRatio());
 composer.setSize(innerWidth, innerHeight);
@@ -324,7 +324,7 @@ gtao.output = GTAOPass.OUTPUT.Default;
 gtao.blendIntensity = 0.85;
 gtao.updateGtaoMaterial({ radius: 0.06, distanceExponent: 1.4, thickness: 1.2, scale: 1.0, samples: 16 });
 gtao.updatePdMaterial({ lumaPhi: 10, depthPhi: 2, normalPhi: 3, radius: 6, rings: 2, samples: 16 });
-if (Q.get("ao") !== "0") composer.addPass(gtao);
+if (Q.get("ao") === "1") composer.addPass(gtao);     // opt-in: GTAO darkens the floor behind the model in some rear views
 const bloom = new UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), 0.28, 0.35, 0.92);
 composer.addPass(bloom);
 composer.addPass(new OutputPass());
