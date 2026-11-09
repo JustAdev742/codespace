@@ -2004,3 +2004,12 @@ initialised from /home/user/codespace/projects/kestrel-humanoid/train/runs/s1/ck
   9980   45.99   5338   46.86   19.3  0.11 1.11     1.08     1.27  0.0158  0.0165 1.00e-05  0.36   (rollout 0.43s)
   9985   46.01   5041   46.99   19.4  0.11 1.13     1.20     1.28  0.0129  0.0110 3.38e-05  0.36   (rollout 0.49s)
   9990   46.03   4448   47.17   19.4  0.10 1.10     1.16     1.31  0.0140  0.0179 1.00e-05  0.36   (rollout 0.64s)
+  9995   46.06   5260   47.39   19.5  0.09 1.09     1.21     1.25  0.0215  0.0114 3.38e-05  0.36   (rollout 0.45s)
+ 10000   46.08   4617   47.42   19.5  0.09 1.05     0.87     1.40  0.0031  0.0148 7.59e-05  0.36   (rollout 0.53s)
+ 10005   46.10   4333   47.62   19.6  0.08 1.08     0.83     1.42  0.0070  0.0118 1.00e-05  0.36   (rollout 0.60s)
+ 10010   46.13   4901   47.57   19.5  0.08 1.09     0.85     1.58  0.0153  0.0105 7.59e-05  0.36   (rollout 0.52s)
+ 10015   46.15   5013   47.46   19.5  0.08 1.08     0.85     1.52  0.0206  0.0131 1.00e-05  0.36   (rollout 0.51s)
+ 10020   46.17   5163   47.35   19.5  0.09 1.06     0.88     1.36  0.0068  0.0188 1.00e-05  0.36   (rollout 0.48s)
+ 10025   46.20   4704   47.39   19.5  0.08 1.06     0.92     1.15  0.0083  0.0122 7.59e-05  0.36   (rollout 0.52s)
+time budget reached
+saved /home/user/codespace/projects/kestrel-humanoid/train/runs/s1scrap/ckpt_last.pt and /home/user/codespace/projects/kestrel-humanoid/train/runs/s1scrap/policy.pt at iteration 10029, 46.2 M steps
