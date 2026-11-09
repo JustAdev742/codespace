@@ -51,10 +51,33 @@ def joint_limits_s1():
     return T, W
 
 
+SCRAP_SUB = {"s1scrap": "s1", "k1scrap": "k1"}
+# gait clock and command range per variant: the scrap builds walk slowly (scrap/<sub>/generated/actuator_selection.md)
+GAIT = {"s1scrap": dict(period=1.6, stance=0.62, cmd_scale=0.25), "k1scrap": dict(period=1.2, stance=0.58, cmd_scale=0.35)}.get(
+    VARIANT, dict(period=0.8, stance=0.55, cmd_scale=1.0))
+
+
+def joint_limits_scrap():
+    """Scrap builds: joint peak torque and no-load speed from scrap/calc/scrap_select.py (actuator_family.json),
+    ankle through the parallel push-rods as for K1 / S1 (conservative independent limits)."""
+    fam = json.loads((ROOT / "scrap" / SCRAP_SUB[VARIANT] / "data" / "actuator_family.json").read_text())
+    from kestrel import params as P
+    cls = {j: c for j, (c, _, _) in P.JOINTS_LEFT.items()}
+    r_c, r_p, d = 0.040, 0.052, 0.036
+    T = {j: fam[cls[j]]["T_peak_joint"] for j in ("hip_yaw", "hip_roll", "hip_pitch", "knee")}
+    W = {j: fam[cls[j]]["w_noload_joint"] for j in ("hip_yaw", "hip_roll", "hip_pitch", "knee")}
+    ta, wa = fam[cls["ankle_pitch"]]["T_peak_joint"], fam[cls["ankle_pitch"]]["w_noload_joint"]
+    T["ankle_pitch"], W["ankle_pitch"] = 0.75 * 2 * ta * r_p / r_c, wa * r_c / r_p
+    T["ankle_roll"], W["ankle_roll"] = 0.35 * 2 * ta * d / r_c, wa * r_c / d
+    return T, W
+
+
 def joint_limits():
     """Joint-side peak torque and no-load speed per leg joint, from the sized actuator family."""
     if VARIANT == "s1":
         return joint_limits_s1()
+    if VARIANT in SCRAP_SUB:
+        return joint_limits_scrap()
     fam = json.loads((ROOT / "data" / "actuator_family.json").read_text())
     kf = json.loads((ROOT / "data" / "knee_fourbar.json").read_text())
     gmin = min(kf["G"])

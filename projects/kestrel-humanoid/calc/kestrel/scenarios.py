@@ -256,6 +256,8 @@ def neck(name, desc):
 def all_scenarios():
     """The design-case set. P.WORKLOAD selects the load levels: "base" (K1 Mk I and S1) or "mk2" (K1 Mk II:
     30 kg sustained / 50 kg momentary payload, 10 kg per hand at reach, 15 kg one-handed - docs/research/R7)."""
+    if getattr(P, "WORKLOAD", "base") == "scrap":
+        return scrap_scenarios()
     mk2 = getattr(P, "WORKLOAD", "base") == "mk2"
     box, hand = (30.0, 10.0) if mk2 else (20.0, 5.0)
     S = []
@@ -282,4 +284,28 @@ def all_scenarios():
         S.append(walk("CW", "walk 0.6 m/s carrying a 30 kg box at the chest", 0.33, 0.45, 0.10, 0.80, box_kg=30.0))
         S.append(arm_one("AO", "one-handed carry: elbow 90 deg, 15 kg in the hand (static)", 15.0))
         S.append(squat("LM", "MOMENTARY: squat-lift a 50 kg box from thigh height", 0.56, 0.45, box_kg=50.0))
+    return [s for s in S if s["name"] not in P.SCENARIOS_SKIP]
+
+
+def scrap_scenarios():
+    """Reduced design cases for the salvaged-parts builds (calc/kestrel/variant_s1scrap.py, variant_k1scrap.py):
+    slower walking, low steps, light objects, smaller drops. P.SCRAP holds the load levels."""
+    c = P.SCRAP
+    S = []
+    st, tss, tds = c["walk"]
+    S.append(walk("W1", f"walk {st / (tss + tds):.2f} m/s (nominal, scrap build)", st, tss, tds, 0.83))
+    st, tss, tds = c["walk_fast"]
+    S.append(walk("W2", f"walk {st / (tss + tds):.2f} m/s (fast, scrap build)", st, tss, tds, 0.82))
+    S.append(walk("ST", f"stairs up {c['stair']:.2f} m rise, {c['stair_t']:.1f} s/step", 0.26, 0.78 * c["stair_t"],
+                  0.22 * c["stair_t"], 0.81, rise=c["stair"], n_steps=4))
+    S.append(squat("SQ", f"squat + rise holding a {c['box']:.0f} kg box", 0.60, 0.40, box_kg=c["box"], t_down=2.0, t_up=1.8))
+    S.append(step_up("SU", f"single-leg step-up onto {c['step_up']:.2f} m in {c['step_up_t']:.1f} s", c["step_up"], c["step_up_t"]))
+    S.append(step_down("SD", f"unplanned single-leg drop {c['drop']:.2f} m (missed step)", drop=c["drop"], stroke=0.12))
+    S.append(step_down("SX", "STRUCTURAL CASE ONLY: drop 0.10 m, 0.08 m absorption", drop=0.10, stroke=0.08))
+    S.append(single_leg_stance("SL", "single-leg stance, free leg lifted (static)"))
+    S.append(arm_motion("AH", f"arms straight forward, {c['hand']:.1f} kg per hand (static hold)", c["hand"], -np.pi / 2, -np.pi / 2, 0, 0, 0.5))
+    S.append(arm_motion("AL", f"lift {c['hand']:.1f} kg per hand, hanging -> forward horizontal in 1.2 s", c["hand"], 0.0, -np.pi / 2, 0, 0, 1.2))
+    S.append(arm_motion("AF", "unloaded raise: shoulder 2.0 rad, elbow 1.6 rad in 1.2 s", 0.0, 0.0, -2.0, 0.0, -1.6, 1.2))
+    if c.get("neck"):
+        S.append(neck("NK", "neck nod 0.8 rad / 0.3 s, yaw 1.2 rad / 0.4 s"))
     return [s for s in S if s["name"] not in P.SCENARIOS_SKIP]

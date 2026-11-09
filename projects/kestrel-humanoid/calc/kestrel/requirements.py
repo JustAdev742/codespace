@@ -40,7 +40,7 @@ G = 9.81
 def supplementary(design_mass):
     d = P.DIM
     toe = d["foot_len"] - d["heel"]
-    return {
+    supp = {
         "ankle_pitch": dict(T=design_mass * G * toe, w=7.0,
                             why=f"full authority: CoP at toe tip in single support ({design_mass:.1f} kg x g x {toe:.2f} m)"),
         "ankle_roll": dict(T=design_mass * G * d["foot_w"] / 2, w=4.0,
@@ -58,6 +58,11 @@ def supplementary(design_mass):
         "shoulder_pitch": dict(T=0.0, w=6.0, why="reaching speed target 6 rad/s"),
         "shoulder_roll": dict(T=0.0, w=6.0, why="reaching speed target 6 rad/s"),
     }
+    for j, o in getattr(P, "SUPP_OVERRIDE", {}).items():   # a variant may relax the K1 minimums (scrap builds)
+        base = dict(supp.get(j, dict(T=0.0, w=0.0, why="")))
+        base.update(o)
+        supp[j] = base
+    return supp
 
 
 def _prune(meta):

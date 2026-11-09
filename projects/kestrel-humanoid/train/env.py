@@ -43,7 +43,7 @@ W = dict(track_lin=1.0, track_ang=0.5, lin_z=-0.2, ang_xy=-0.05, orient=-1.0, to
 # so the stride can lengthen: ref_gait 1.0 -> 0.3 and track_lin 1.0 -> 1.5, linearly between these step counts
 SCHEDULE = dict(start=15e6, end=25e6, ref_gait=(1.0, 0.3), track_lin=(1.0, 1.5))
 AIR_T = 0.4                       # biped air-time reward saturates at 0.4 s (Isaac Lab threshold)
-GAIT_PERIOD, STANCE = 0.8, 0.55   # s; fraction of the period each foot should be down (right foot half a period later)
+GAIT_PERIOD, STANCE = KM.GAIT["period"], KM.GAIT["stance"]   # s; fraction of the period each foot is down (K1/S1 0.8 s, 0.55)
 # reference swing pose from the gait clock (Humanoid-Gym's joint_pos term): offsets from the default stance at
 # mid-swing for hip pitch, knee, ankle pitch. Hip -a, knee +2a, ankle -a keeps the sole level and lifts it ~8 cm.
 REF_SWING = np.array([-0.25, 0.50, -0.25])
@@ -67,7 +67,7 @@ def yaw_of(q):
 
 
 class Envs:
-    def __init__(self, M=32, seed=0, terrain_seed=0, max_row=None, cmd_scale=1.0, curriculum=True, randomize=True,
+    def __init__(self, M=32, seed=0, terrain_seed=0, max_row=None, cmd_scale=None, curriculum=True, randomize=True,
                  cols=None, delay_prob=0.0):
         self.rng = np.random.default_rng(seed)
         self.H = T.make(terrain_seed)
@@ -77,7 +77,7 @@ class Envs:
         self.d = [mujoco.MjData(self.m) for _ in range(M)]
         self.curriculum, self.randomize = curriculum, randomize
         self.max_row = T.ROWS - 1 if max_row is None else max_row
-        self.cmd_scale = cmd_scale
+        self.cmd_scale = KM.GAIT["cmd_scale"] if cmd_scale is None else cmd_scale
         self.delay_prob = delay_prob if randomize else 0.0
         self.cols = list(range(T.COLS)) if cols is None else list(cols)
         m = self.m
