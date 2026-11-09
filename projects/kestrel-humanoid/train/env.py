@@ -5,7 +5,7 @@ Isaac-Lab-style velocity-tracking task, re-implemented on CPU MuJoCo:
       gait clock (sin, cos), 12 joint positions (rel. default), 12 joint velocities, last action,
       11x7 height scan
   critic adds: base linear velocity, foot friction, motor-strength scale (privileged, 129)
-  actions (12): leg joint position offsets x 0.25 rad -> PD position servos at 200 Hz whose force
+  actions (12): leg joint position offsets x 0.25 rad (clipped to +-8) -> PD position servos at 200 Hz whose force
       limits are the sized actuator peaks (train/model.py)
   rewards: velocity tracking, posture/smoothness/torque penalties, biped feet air time, foot slip,
       joint and actuator-speed limits, termination, and a gait clock (as in unitree_rl_gym / Humanoid-Gym):
@@ -29,6 +29,7 @@ DT_SIM, DECIM = 0.005, 4
 DT = DT_SIM * DECIM               # 50 Hz policy
 EP_LEN = 1000                     # 20 s
 ACTION_SCALE = 0.25
+ACTION_CLIP = 8.0                 # x 0.25 = +-2 rad offsets (joint limits still apply); +-4 clipped ankle and knee on 18 cm stairs
 OBS_DIM, CRITIC_DIM, ACT_DIM = 124, 129, 12
 SCAN_X = np.linspace(-0.4, 0.8, 11)
 SCAN_Y = np.linspace(-0.3, 0.3, 7)
@@ -171,7 +172,7 @@ class Envs:
     # ------------------------------------------------------------------ step
     def step(self, actions):
         M = self.M
-        actions = np.clip(actions, -4.0, 4.0)
+        actions = np.clip(actions, -ACTION_CLIP, ACTION_CLIP)
         applied = np.where(self.delay[:, None], self.last_a, actions)
         target = self.default + ACTION_SCALE * applied
         m = self.m

@@ -42,8 +42,8 @@ Commanded 0.6 m/s forward from the tile centre, 16 evenly spaced headings per ce
 * Stairs **up** are solved to 12.8 cm. At 15.4 cm half the robots, and at 18 cm all of them, stop in front
   of the first riser. They stop rather than fall.
 
-`policy.pt` is the TorchScript policy. Input: the 124-value actor observation from `env.py`. Output: 12 joint
-offsets × 0.25 rad, added to the default pose. `ckpt_last.pt` resumes training.
+`policy.pt` is the TorchScript policy. Input: the 124-value actor observation from `env.py`. Output: 12 raw
+actions. Clip them to ±8, multiply by 0.25 rad, and add the default pose to get the position targets. `ckpt_last.pt` resumes training.
 
 ## Why not Isaac Lab itself on this machine
 
