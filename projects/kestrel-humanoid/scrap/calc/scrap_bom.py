@@ -142,5 +142,5 @@ def write(sub, name, target):
 
 
 if __name__ == "__main__":
-    write("s1", "KESTREL S1-Scrap", 500)
+    write("s1", "KESTREL S1-Scrap", 1000)
     write("k1", "KESTREL K1-Scrap", 1000)

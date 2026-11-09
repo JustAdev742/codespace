@@ -53,7 +53,7 @@ def joint_limits_s1():
 
 SCRAP_SUB = {"s1scrap": "s1", "k1scrap": "k1"}
 # gait clock and command range per variant: the scrap builds walk slowly (scrap/<sub>/generated/actuator_selection.md)
-GAIT = {"s1scrap": dict(period=1.6, stance=0.62, cmd_scale=0.25), "k1scrap": dict(period=1.2, stance=0.58, cmd_scale=0.35)}.get(
+GAIT = {"s1scrap": dict(period=1.2, stance=0.58, cmd_scale=0.35), "k1scrap": dict(period=1.2, stance=0.58, cmd_scale=0.35)}.get(
     VARIANT, dict(period=0.8, stance=0.55, cmd_scale=1.0))
 
 

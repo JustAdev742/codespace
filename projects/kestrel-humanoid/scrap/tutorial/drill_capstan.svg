@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 300" font-family="Arial, sans-serif" font-size="13">
+  <title>Drill gearmotor with a hand-made capstan drive</title>
+  <rect width="720" height="300" fill="#ffffff"/>
+  <!-- drill motor + gearbox -->
+  <rect x="30" y="118" width="120" height="56" rx="8" fill="#cfd6de" stroke="#1b2129" stroke-width="2"/>
+  <text x="90" y="150" text-anchor="middle">18 V motor</text>
+  <rect x="150" y="122" width="96" height="48" rx="6" fill="#e3e7eb" stroke="#1b2129" stroke-width="2"/>
+  <text x="198" y="143" text-anchor="middle">planetary</text>
+  <text x="198" y="159" text-anchor="middle">low gear 49:1</text>
+  <rect x="246" y="126" width="34" height="40" fill="#f3c48a" stroke="#1b2129" stroke-width="2"/>
+  <text x="263" y="112" text-anchor="middle">clutch</text>
+  <rect x="280" y="130" width="40" height="32" rx="4" fill="#9aa5b1" stroke="#1b2129" stroke-width="2"/>
+  <text x="300" y="186" text-anchor="middle">chuck</text>
+  <!-- input rod -->
+  <rect x="320" y="140" width="150" height="12" fill="#59636f" stroke="#1b2129" stroke-width="1.5"/>
+  <text x="30" y="216">input drum: a 10 mm steel rod held in the drill chuck, 4-5 turns of cord</text>
+  <!-- cord turns on rod -->
+  <g stroke="#a84f06" stroke-width="2.5" fill="none">
+    <path d="M 410 140 L 418 152 M 422 140 L 430 152 M 434 140 L 442 152 M 446 140 L 454 152"/>
+    <path d="M 410 140 C 470 60, 560 40, 600 70"/>
+    <path d="M 454 152 C 500 240, 580 250, 612 222"/>
+  </g>
+  <!-- sector -->
+  <path d="M 610 146 L 560 60 A 100 100 0 0 1 690 110 A 100 100 0 0 1 690 182 A 100 100 0 0 1 560 232 Z" fill="#fbeedd" stroke="#1b2129" stroke-width="2"/>
+  <circle cx="610" cy="146" r="9" fill="#ffffff" stroke="#1b2129" stroke-width="2"/>
+  <text x="640" y="150">joint</text>
+  <text x="590" y="278" text-anchor="middle">plywood sector on the joint (template)</text>
+  <circle cx="600" cy="70" r="4" fill="#a84f06"/>
+  <circle cx="612" cy="222" r="4" fill="#a84f06"/>
+  <text x="300" y="52" fill="#a84f06">Dyneema cord, anchored at both ends</text>
+  <text x="30" y="236">ratio = sector radius / rod radius (e.g. hip roll 42 mm / 6.5 mm = 6.5:1)</text>
+  <text x="30" y="256">no backlash, ~95 % efficient; the clutch slips before a shock reaches the cord</text>
+  <text x="30" y="24">BTS7960 H-bridge drives the motor; an MT6701 magnet sensor reads the joint angle</text>
+</svg>

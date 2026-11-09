@@ -1,9 +1,9 @@
 group,item,qty,buy,scrounge,conf,note
-Actuators,Used 18 V cordless drill with a dead or missing battery (motor + 2-speed planetary + clutch),16,10.0,3.0,E,"R11 §2.1: used A$5-25 (Marketplace / tip shop); new Ozito PXDDS-180 skin A$49.98 (Vs). Scrounge: kerbside, tip shops, friends; the battery is not needed"
-Actuators,BTS7960 43 A H-bridge module (one per drill),16,7.9,7.9,V,R11 §3: AliExpress A$7.6-8.1
-Actuators,MT6701 14-bit magnetic angle sensor board + diametric magnet (one per actuator output),16,2.5,2.5,V,R11 §3: A$2.2-3.8
-Actuators,TCA9548A I2C multiplexer (MT6701 has one fixed I2C address),2,2.5,2.5,E,"AliExpress, not in R11"
-Actuators,"UHMWPE (Dyneema) 3 mm 12-strand cord, 50 m (capstans)",1,25.0,25.0,E,not in R11; 12 cord loops of about 1.5 m. Check the rated break is >= 800 kg
+Actuators,Used 18 V cordless drill with a dead or missing battery (motor + 2-speed planetary + clutch),18,10.0,3.0,E,"R11 §2.1: used A$5-25 (Marketplace / tip shop); new Ozito PXDDS-180 skin A$49.98 (Vs). Scrounge: kerbside, tip shops, friends; the battery is not needed"
+Actuators,BTS7960 43 A H-bridge module (one per drill),18,7.9,7.9,V,R11 §3: AliExpress A$7.6-8.1
+Actuators,MT6701 14-bit magnetic angle sensor board + diametric magnet (one per actuator output),18,2.5,2.5,V,R11 §3: A$2.2-3.8
+Actuators,TCA9548A I2C multiplexer (MT6701 has one fixed I2C address),3,2.5,2.5,E,"AliExpress, not in R11"
+Actuators,"UHMWPE (Dyneema) 3 mm 12-strand cord, 50 m (capstans)",1,25.0,25.0,E,not in R11; 14 cord loops of about 1.5 m. Check the rated break is >= 800 kg
 Actuators,"10 mm bright steel rod, 1 m (capstan input drums, held in the drill chucks)",1,12.0,5.0,E,hardware store; scrounge: old printer/shelving rod
 Actuators,"608 bearings, 100-pack (every pivot, capstan sectors, idlers)",1,35.0,35.0,V,R11 §4.2: US$24 per 100
 Structure,"Aluminium equal angle 25 x 25 x 3 mm, 1 m",8,13.96,2.0,Vs,"R11 §4.3 Bunnings A$13.96/m; scrounge: metal recycler by weight (about 0.4 kg/m, E A$4-6/kg)"

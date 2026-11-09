@@ -1,4 +1,4 @@
-"""KESTREL S1-Scrap - the salvaged-parts S1 (target A$500). Loaded by params.py when KESTREL_VARIANT=s1scrap.
+"""KESTREL S1-Scrap - the salvaged-parts S1 (target A$1000; A$500 at the slower SLOW settings). Loaded by params.py when KESTREL_VARIANT=s1scrap.
 
 Same skeleton as S1 (1.75 m, same leg and arm geometry), built by hand from scrap and AliExpress parts:
   * 16 actuated joints: legs 2 x 6 (hip yaw / roll / pitch, knee, 2-motor parallel ankle), arms 2 x 2 (shoulder
@@ -20,6 +20,7 @@ import json
 from . import scrap_common as SC
 
 NAME = "KESTREL S1-Scrap"
+TARGET_AUD = 1000
 SUB = "s1"
 
 JOINTS_LEFT = {
@@ -34,12 +35,15 @@ JOINTS_LEFT = {
 }
 
 # Load levels of the reduced design cases (calc/kestrel/scenarios.py, scrap_scenarios). High-ratio salvaged gearmotors
-# reflect a large rotor inertia (J x ratio^2), so S1-Scrap walks the slow, always-balanced way: long double support,
-# 0.12 m/s nominal and 0.24 m/s fast, low steps, 2 kg objects, small missed steps.
-SCRAP = dict(walk=(0.15, 0.80, 0.40), walk_fast=(0.20, 0.60, 0.25), stair=0.10, stair_t=2.4, box=2.0, hand=0.5,
-             step_up=0.10, step_up_t=2.0, drop=0.03, neck=False,
+# reflect a large rotor inertia (J x ratio^2), so the scrap builds walk the always-balanced way. With the A$1000 budget
+# S1-Scrap walks like K1-Scrap: 0.25 m/s nominal, 0.36 m/s fast, 15 cm steps, a 3 kg box (two drills where a joint
+# needs them). SLOW holds the A$500 settings (0.12 / 0.24 m/s, 10 cm steps, 2 kg), kept for reference.
+SCRAP = dict(walk=(0.20, 0.55, 0.25), walk_fast=(0.25, 0.50, 0.20), stair=0.15, stair_t=2.0, box=3.0, hand=0.5,
+             step_up=0.15, step_up_t=1.8, drop=0.05, neck=False,
              bus_V={"brushed": 18.0, "bldc": 36.0},           # 5S Li-ion (18 V nominal, as the drills' own packs)
              reduction={"*": "capstan"})                      # hand-made Dyneema capstan drives (scrap guide)
+SLOW = dict(SCRAP, walk=(0.15, 0.80, 0.40), walk_fast=(0.20, 0.60, 0.25), stair=0.10, stair_t=2.4, box=2.0,
+            step_up=0.10, step_up_t=2.0, drop=0.03)
 # actuators each joint class may use in scrap/calc/scrap_select.py: (type in scrap/data/actuators.json, motors per joint)
 ALLOWED = {"*": [("drill18", 1), ("drill18", 2)]}
 # relaxed K1 minimums: a slow, light robot (turning, push-recovery stepping and reaching are slower)

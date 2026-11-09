@@ -18,8 +18,8 @@
   "margins": {
    "peak": 1.1,
    "speed": 7.1,
-   "cont": 6.71,
-   "mom": 1.22,
+   "cont": 3.87,
+   "mom": 1.1,
    "gear_or_clutch": 2.0,
    "chain": 1.43
   }
@@ -38,63 +38,63 @@
   "ratio": 316.88,
   "T_peak_joint": 79.5,
   "w_noload_joint": 6.46,
-  "clutch_Nm": 15.1,
+  "clutch_Nm": 16.1,
   "cost_aud": 24.0,
   "margins": {
-   "peak": 1.53,
-   "speed": 2.87,
-   "cont": 1.04,
-   "mom": 1.69,
+   "peak": 1.43,
+   "speed": 2.85,
+   "cont": 1.02,
+   "mom": 1.4,
    "gear_or_clutch": 2.0,
-   "chain": 1.99
+   "chain": 1.86
   }
  },
  "X-HP": {
   "type": "drill18",
   "label": "salvaged 18 V cordless-drill motor (550 class) + its 2-stage planetary, low gear (about 400 rpm)",
   "n_motors": 1,
-  "chain": 1.75,
+  "chain": 3.5,
   "chain_stages": 1,
-  "sprockets": "capstan, sector radius 11 mm on a 10 mm rod",
+  "sprockets": "capstan, sector radius 23 mm on a 10 mm rod",
   "reduction": "capstan",
   "mass": 0.75,
   "drive_kg": 0.2,
   "rotor_J": 1e-05,
-  "ratio": 85.31,
-  "T_peak_joint": 21.4,
-  "w_noload_joint": 23.98,
-  "clutch_Nm": 21.4,
+  "ratio": 170.62,
+  "T_peak_joint": 42.8,
+  "w_noload_joint": 11.99,
+  "clutch_Nm": 23.1,
   "cost_aud": 24.0,
   "margins": {
-   "peak": 1.08,
-   "speed": 8.63,
-   "cont": 1.12,
-   "mom": 1.2,
+   "peak": 1.0,
+   "speed": 3.06,
+   "cont": 1.26,
+   "mom": 1.04,
    "gear_or_clutch": 2.0,
-   "chain": 1.41
+   "chain": 1.3
   }
  },
  "X-KN": {
   "type": "drill18",
   "label": "salvaged 18 V cordless-drill motor (550 class) + its 2-stage planetary, low gear (about 400 rpm)",
-  "n_motors": 1,
-  "chain": 10.5,
+  "n_motors": 2,
+  "chain": 5.5,
   "chain_stages": 1,
-  "sprockets": "capstan, sector radius 68 mm on a 10 mm rod",
+  "sprockets": "capstan, sector radius 36 mm on a 10 mm rod, 2 cords",
   "reduction": "capstan",
-  "mass": 0.75,
+  "mass": 1.5,
   "drive_kg": 0.2,
-  "rotor_J": 1e-05,
-  "ratio": 511.88,
-  "T_peak_joint": 128.4,
-  "w_noload_joint": 4.0,
+  "rotor_J": 2e-05,
+  "ratio": 268.12,
+  "T_peak_joint": 134.5,
+  "w_noload_joint": 7.63,
   "clutch_Nm": 23.0,
-  "cost_aud": 24.0,
+  "cost_aud": 44.0,
   "margins": {
    "peak": 1.01,
-   "speed": 1.89,
-   "cont": 1.12,
-   "mom": 0.18,
+   "speed": 2.51,
+   "cont": 1.08,
+   "mom": 0.26,
    "gear_or_clutch": 2.0,
    "chain": 1.31
   }
@@ -113,15 +113,15 @@
   "ratio": 158.44,
   "T_peak_joint": 39.7,
   "w_noload_joint": 12.91,
-  "clutch_Nm": 21.6,
+  "clutch_Nm": 22.7,
   "cost_aud": 24.0,
   "margins": {
-   "peak": 1.07,
-   "speed": 2.09,
-   "cont": 4.13,
-   "mom": 1.19,
+   "peak": 1.02,
+   "speed": 2.07,
+   "cont": 3.74,
+   "mom": 1.13,
    "gear_or_clutch": 2.0,
-   "chain": 1.39
+   "chain": 1.33
   }
  },
  "X-SH": {
@@ -138,13 +138,13 @@
   "ratio": 48.75,
   "T_peak_joint": 12.9,
   "w_noload_joint": 41.96,
-  "clutch_Nm": 18.1,
+  "clutch_Nm": 21.8,
   "cost_aud": 19.0,
   "margins": {
-   "peak": 1.28,
+   "peak": 1.06,
    "speed": 10.24,
-   "cont": 4.86,
-   "mom": 1.42,
+   "cont": 4.44,
+   "mom": 1.18,
    "gear_or_clutch": 2.0
   }
  },
@@ -162,13 +162,13 @@
   "ratio": 48.75,
   "T_peak_joint": 12.9,
   "w_noload_joint": 41.96,
-  "clutch_Nm": 10.5,
+  "clutch_Nm": 14.8,
   "cost_aud": 19.0,
   "margins": {
-   "peak": 2.21,
-   "speed": 12.91,
-   "cont": 14.6,
-   "mom": 2.46,
+   "peak": 1.57,
+   "speed": 12.47,
+   "cont": 12.74,
+   "mom": 1.74,
    "gear_or_clutch": 2.0
   }
  }

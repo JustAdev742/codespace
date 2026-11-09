@@ -1,0 +1,807 @@
+<!doctype html><html lang="en" data-theme="light"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1"><title>KESTREL Scrap Build Guide</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&display=swap">
+<style>/* Layout: a workshop binder. Sticky phase index on the left (tabs), one reading column, drawing sheets on white paper cards. */
+:root {
+  --paper: #f3f5f7; --ink: #1b2129; --muted: #59636f; --rule: #d3d9e0; --code-bg: #e7ebef;
+  --accent: #a84f06; --accent-soft: #fbeedd; --link: #1c4d8c; --sheet: #ffffff;
+  --display: "Barlow Condensed", "Arial Narrow", "Roboto Condensed", sans-serif;
+  --body: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #11151a; --ink: #e3e7eb; --muted: #97a3b0; --rule: #28313b; --code-bg: #1b222a;
+    --accent: #f0a23b; --accent-soft: #2a2116; --link: #8fb9ee; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #11151a; --ink: #e3e7eb; --muted: #97a3b0; --rule: #28313b; --code-bg: #1b222a;
+  --accent: #f0a23b; --accent-soft: #2a2116; --link: #8fb9ee; color-scheme: dark;
+}
+body { background: var(--paper); color: var(--ink); font-family: var(--body); font-size: 16px; line-height: 1.6; }
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--paper); }
+
+.layout {
+  display: grid; grid-template-columns: 1fr; gap: 0 48px; max-width: 1240px; margin: 0 auto;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 0 48px;
+}
+@media (min-width: 1000px) { .layout { grid-template-columns: 250px minmax(0, 1fr); } }
+
+/* phase index */
+.toc { min-width: 0; padding-block: 20px 8px; border-bottom: 1px solid var(--rule); }
+@media (min-width: 1000px) {
+  .toc { position: sticky; top: env(safe-area-inset-top, 0px); align-self: start; max-height: 100vh; overflow-y: auto;
+         border-bottom: 0; border-right: 1px solid var(--rule); padding-right: 16px; }
+}
+.toc .brand { display: flex; flex-direction: column; font-family: var(--display); font-weight: 700; font-size: 1.6rem;
+         letter-spacing: 0.04em; color: var(--ink); text-decoration: none; line-height: 1.05; margin-bottom: 14px; }
+.toc .brand span { font-family: var(--mono); font-weight: 400; font-size: 0.72rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
+.toc summary { cursor: pointer; font-family: var(--mono); font-size: 0.75rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); padding-block: 6px; }
+.toc ol { list-style: none; margin: 6px 0 0; padding: 0; display: grid; gap: 1px; }
+.toc a { display: grid; grid-template-columns: 3.6em 1fr; gap: 8px; padding: 5px 6px; border-radius: 4px;
+         color: var(--ink); text-decoration: none; font-size: 0.86rem; line-height: 1.3; }
+.toc a:hover { background: var(--accent-soft); }
+.tcode { font-family: var(--display); font-weight: 600; color: var(--accent); font-size: 0.98rem; }
+
+/* reading column */
+main { min-width: 0; max-width: 46rem; }
+.hero { padding-block: 28px 8px; }
+.eyebrow { font-family: var(--mono); font-size: 0.74rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); margin: 0 0 8px; }
+h1 { font-family: var(--display); font-weight: 700; font-size: clamp(2.4rem, 6vw, 3.6rem); line-height: 1; letter-spacing: 0.01em; margin: 0 0 14px; text-wrap: balance; }
+.lede { font-size: 1.08rem; color: var(--muted); max-width: 40rem; margin: 0 0 18px; }
+
+.chapter { padding-block: 36px 8px; border-top: 2px solid var(--ink); margin-top: 28px; scroll-margin-top: calc(env(safe-area-inset-top, 0px) + 8px); }
+.chapter.intro { border-top-width: 1px; }
+.chap-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 14px; margin-bottom: 10px; }
+.chap-head .code { font-family: var(--display); font-weight: 700; font-size: 2.6rem; line-height: 1; color: var(--accent); font-variant-numeric: tabular-nums; }
+.chap-head h2 { font-family: var(--display); font-weight: 600; font-size: 1.85rem; line-height: 1.1; margin: 0; flex: 1 1 16rem; text-wrap: balance; }
+.gate { font-family: var(--mono); font-size: 0.74rem; letter-spacing: 0.06em; border: 1.5px solid var(--accent); color: var(--accent);
+        border-radius: 999px; padding: 2px 10px; white-space: nowrap; }
+
+h2, h3, h4, h5 { text-wrap: balance; }
+.chapter h2:not(.chap-head h2) { font-family: var(--display); font-weight: 600; font-size: 1.6rem; margin: 28px 0 8px; }
+h3 { font-family: var(--display); font-weight: 600; font-size: 1.35rem; margin: 30px 0 8px; line-height: 1.2; }
+h3.sec { display: flex; align-items: center; gap: 10px; }
+.letter { display: inline-grid; place-items: center; width: 1.6em; height: 1.6em; border-radius: 4px; background: var(--ink); color: var(--paper);
+          font-size: 0.85em; font-weight: 700; flex: none; }
+h4 { font-family: var(--body); font-weight: 600; font-size: 1.02rem; margin: 22px 0 6px; }
+h5 { font-family: var(--body); font-weight: 600; font-size: 0.95rem; margin: 18px 0 4px; color: var(--muted); }
+p, li { max-width: 68ch; }
+ul, ol { padding-left: 1.3em; }
+li { margin-block: 3px; }
+li > ul, li > ol { margin-block: 2px; }
+a { color: var(--link); text-underline-offset: 2px; }
+a:focus-visible, summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 3px; }
+strong { font-weight: 600; }
+code { font-family: var(--mono); font-size: 0.86em; background: var(--code-bg); padding: 0.08em 0.32em; border-radius: 3px; overflow-wrap: anywhere; }
+pre { background: var(--code-bg); padding: 12px 14px; border-radius: 6px; overflow-x: auto; font-size: 0.85rem; line-height: 1.5; }
+pre code { background: none; padding: 0; overflow-wrap: normal; }
+blockquote { margin: 14px 0; padding: 10px 14px; border-left: 3px solid var(--accent); background: var(--accent-soft); border-radius: 0 6px 6px 0; }
+blockquote p { margin: 4px 0; }
+hr { border: 0; border-top: 1px solid var(--rule); margin: 24px 0; }
+
+.tablewrap { overflow-x: auto; margin: 12px 0 16px; border: 1px solid var(--rule); border-radius: 6px; }
+table { border-collapse: collapse; width: 100%; font-size: 0.88rem; font-variant-numeric: tabular-nums; line-height: 1.45; }
+th, td { text-align: left; vertical-align: top; padding: 7px 10px; border-bottom: 1px solid var(--rule); }
+th { background: var(--code-bg); font-weight: 600; white-space: nowrap; }
+tr:last-child td { border-bottom: 0; }
+td code { white-space: nowrap; }
+
+/* figures */
+.gallery { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 220px), 1fr)); gap: 12px; margin: 14px 0 20px; }
+.hero .gallery { grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); }
+.fig { margin: 0; min-width: 0; display: flex; flex-direction: column; gap: 6px; scroll-margin-top: 16px; }
+.fig a { display: block; border-radius: 6px; overflow: hidden; border: 1px solid var(--rule); background: var(--code-bg); }
+.fig.paper a { background: var(--sheet); }
+.fig img { display: block; width: 100%; max-width: 100%; height: auto; }
+.fig.paper img { padding: 6px; box-sizing: border-box; aspect-ratio: 4 / 3; object-fit: contain; }
+figcaption { font-size: 0.8rem; color: var(--muted); line-height: 1.35; }
+.kind { font-family: var(--mono); font-size: 0.68rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--accent); margin-right: 4px; }
+
+.foot { margin-top: 40px; padding-top: 14px; border-top: 1px solid var(--rule); font-size: 0.82rem; color: var(--muted); }
+
+@media print {
+  :root { --paper: #ffffff; --ink: #000000; --muted: #444444; --rule: #bbbbbb; --code-bg: #f1f1f1; --accent: #8a4205; --accent-soft: #f7efe5; --link: #000000; }
+  body { font-size: 10.5pt; }
+  body::before { display: none; }
+  .layout { display: block; max-width: none; padding: 0; }
+  .toc { border: 0; padding: 0; }
+  .toc details > ol { columns: 2; }
+  main { max-width: none; }
+  .chapter { break-before: page; border-top: 0; margin-top: 0; padding-top: 0; }
+  .chapter.intro { break-before: auto; }
+  .fig, tr, .chap-head, h3, h4 { break-inside: avoid; }
+  h3, h4 { break-after: avoid; }
+  .gallery { grid-template-columns: repeat(3, 1fr); }
+  .hero .gallery { grid-template-columns: repeat(2, 1fr); }
+  a { text-decoration: none; }
+  .tablewrap { overflow: visible; }
+}
+
+main { max-width: 46rem; margin: 0 auto; padding: 24px max(16px, env(safe-area-inset-left, 0px)) 48px; }
+main h2 { font-family: var(--display); font-weight: 600; font-size: 1.7rem; margin: 34px 0 10px; border-top: 2px solid var(--ink); padding-top: 18px; }
+main pre { white-space: pre-wrap; overflow-wrap: anywhere; }
+@media print { main h2 { break-before: page; } main h2:first-of-type { break-before: auto; } }
+</style></head><body><main><h1 class="title">KESTREL scrap build guide: S1-Scrap and K1-Scrap</h1>
+<p>This guide builds a full-size, 1.75 m humanoid from salvaged parts and hand tools, with no CNC and no 3D printer.
+Every actuator is a cordless-drill motor and its gearbox, driving the joint through a capstan you make from a steel
+rod, Dyneema cord and a plywood sector. The robot is sized by the same simulation as K1 and S1.</p>
+<p>There are two versions. Build S1-Scrap first; K1-Scrap adds to it.</p>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th></th>
+<th><strong>S1-Scrap</strong></th>
+<th><strong>K1-Scrap</strong></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Target cost</td>
+<td>A$1,000</td>
+<td>A$1,000</td>
+</tr>
+<tr>
+<td>Parts list</td>
+<td><strong>A$917 buying the cheapest</strong>, A$492 scrounging (<a href="../s1/generated/bom.md">../s1/generated/bom.md</a>)</td>
+<td>A$1,280 buying, <strong>A$727 scrounging</strong> (<a href="../k1/generated/bom.md">../k1/generated/bom.md</a>)</td>
+</tr>
+<tr>
+<td>Height / mass</td>
+<td>1.75 m / about 30 kg</td>
+<td>1.75 m / about 39 kg</td>
+</tr>
+<tr>
+<td>Actuated joints</td>
+<td>16: legs 2 × 6, shoulder pitch and elbow per arm</td>
+<td>25: legs 2 × 6, waist yaw, arms 2 × 4, neck 2; plus a one-servo gripper per hand</td>
+</tr>
+<tr>
+<td>Motors</td>
+<td>18 drill gearmotors (two per knee)</td>
+<td>23 drill gearmotors (two per knee), 4 hobby servos</td>
+</tr>
+<tr>
+<td>Walking</td>
+<td><strong>0.25 m/s, always balanced</strong> (0.36 m/s fast)</td>
+<td><strong>0.25 m/s</strong> (0.36 m/s fast)</td>
+</tr>
+<tr>
+<td>Steps, objects</td>
+<td>15 cm steps, 3 kg box, 0.5 kg per hand</td>
+<td>15 cm steps, 5 kg box, 1 kg per hand</td>
+</tr>
+<tr>
+<td>Looks</td>
+<td>bare frame, webcam head</td>
+<td>old-phone face, EVA-foam armour in K1 white / graphite / amber</td>
+</tr>
+</tbody>
+</table></div>
+<p>S1-Scrap fits A$1,000 even if you buy every part. If you scrounge, it costs about half that. <strong>On A$500:</strong> set
+<code>SCRAP = SLOW</code> in <code>calc/kestrel/variant_s1scrap.py</code> and re-run step 11's scripts. That version has one drill per knee
+(16 drills), walks at 0.12 m/s with 10 cm steps, and its parts come to about A$463 scrounged.</p>
+<p><strong>What these robots can and cannot do.</strong> A drill gearmotor is strong for its price, but it reaches its torque
+through a large gear ratio. The motor's spinning rotor, multiplied by the ratio squared, feels like 2–4 kg·m² of
+inertia at the knee, about 20 times the leg's own. So the scrap robots cannot walk the fast, bouncy way
+commercial humanoids do. They walk the slow, always-balanced way early research robots did: shift the weight over
+one foot, step, shift again. Everything in this guide is sized for that. The simulation that sizes them, and the
+torque, speed and missed-step checks, are in <a href="../s1/generated/actuator_selection.md">../s1/generated/actuator_selection.md</a>
+and <a href="../k1/generated/actuator_selection.md">../k1/generated/actuator_selection.md</a>.</p>
+<p><img alt="Drill gearmotor with a hand-made capstan drive" src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA3MjAgMzAwIiBmb250LWZhbWlseT0iQXJpYWwsIHNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iMTMiPgogIDx0aXRsZT5EcmlsbCBnZWFybW90b3Igd2l0aCBhIGhhbmQtbWFkZSBjYXBzdGFuIGRyaXZlPC90aXRsZT4KICA8cmVjdCB3aWR0aD0iNzIwIiBoZWlnaHQ9IjMwMCIgZmlsbD0iI2ZmZmZmZiIvPgogIDwhLS0gZHJpbGwgbW90b3IgKyBnZWFyYm94IC0tPgogIDxyZWN0IHg9IjMwIiB5PSIxMTgiIHdpZHRoPSIxMjAiIGhlaWdodD0iNTYiIHJ4PSI4IiBmaWxsPSIjY2ZkNmRlIiBzdHJva2U9IiMxYjIxMjkiIHN0cm9rZS13aWR0aD0iMiIvPgogIDx0ZXh0IHg9IjkwIiB5PSIxNTAiIHRleHQtYW5jaG9yPSJtaWRkbGUiPjE4IFYgbW90b3I8L3RleHQ+CiAgPHJlY3QgeD0iMTUwIiB5PSIxMjIiIHdpZHRoPSI5NiIgaGVpZ2h0PSI0OCIgcng9IjYiIGZpbGw9IiNlM2U3ZWIiIHN0cm9rZT0iIzFiMjEyOSIgc3Ryb2tlLXdpZHRoPSIyIi8+CiAgPHRleHQgeD0iMTk4IiB5PSIxNDMiIHRleHQtYW5jaG9yPSJtaWRkbGUiPnBsYW5ldGFyeTwvdGV4dD4KICA8dGV4dCB4PSIxOTgiIHk9IjE1OSIgdGV4dC1hbmNob3I9Im1pZGRsZSI+bG93IGdlYXIgNDk6MTwvdGV4dD4KICA8cmVjdCB4PSIyNDYiIHk9IjEyNiIgd2lkdGg9IjM0IiBoZWlnaHQ9IjQwIiBmaWxsPSIjZjNjNDhhIiBzdHJva2U9IiMxYjIxMjkiIHN0cm9rZS13aWR0aD0iMiIvPgogIDx0ZXh0IHg9IjI2MyIgeT0iMTEyIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj5jbHV0Y2g8L3RleHQ+CiAgPHJlY3QgeD0iMjgwIiB5PSIxMzAiIHdpZHRoPSI0MCIgaGVpZ2h0PSIzMiIgcng9IjQiIGZpbGw9IiM5YWE1YjEiIHN0cm9rZT0iIzFiMjEyOSIgc3Ryb2tlLXdpZHRoPSIyIi8+CiAgPHRleHQgeD0iMzAwIiB5PSIxODYiIHRleHQtYW5jaG9yPSJtaWRkbGUiPmNodWNrPC90ZXh0PgogIDwhLS0gaW5wdXQgcm9kIC0tPgogIDxyZWN0IHg9IjMyMCIgeT0iMTQwIiB3aWR0aD0iMTUwIiBoZWlnaHQ9IjEyIiBmaWxsPSIjNTk2MzZmIiBzdHJva2U9IiMxYjIxMjkiIHN0cm9rZS13aWR0aD0iMS41Ii8+CiAgPHRleHQgeD0iMzAiIHk9IjIxNiI+aW5wdXQgZHJ1bTogYSAxMCBtbSBzdGVlbCByb2QgaGVsZCBpbiB0aGUgZHJpbGwgY2h1Y2ssIDQtNSB0dXJucyBvZiBjb3JkPC90ZXh0PgogIDwhLS0gY29yZCB0dXJucyBvbiByb2QgLS0+CiAgPGcgc3Ryb2tlPSIjYTg0ZjA2IiBzdHJva2Utd2lkdGg9IjIuNSIgZmlsbD0ibm9uZSI+CiAgICA8cGF0aCBkPSJNIDQxMCAxNDAgTCA0MTggMTUyIE0gNDIyIDE0MCBMIDQzMCAxNTIgTSA0MzQgMTQwIEwgNDQyIDE1MiBNIDQ0NiAxNDAgTCA0NTQgMTUyIi8+CiAgICA8cGF0aCBkPSJNIDQxMCAxNDAgQyA0NzAgNjAsIDU2MCA0MCwgNjAwIDcwIi8+CiAgICA8cGF0aCBkPSJNIDQ1NCAxNTIgQyA1MDAgMjQwLCA1ODAgMjUwLCA2MTIgMjIyIi8+CiAgPC9nPgogIDwhLS0gc2VjdG9yIC0tPgogIDxwYXRoIGQ9Ik0gNjEwIDE0NiBMIDU2MCA2MCBBIDEwMCAxMDAgMCAwIDEgNjkwIDExMCBBIDEwMCAxMDAgMCAwIDEgNjkwIDE4MiBBIDEwMCAxMDAgMCAwIDEgNTYwIDIzMiBaIiBmaWxsPSIjZmJlZWRkIiBzdHJva2U9IiMxYjIxMjkiIHN0cm9rZS13aWR0aD0iMiIvPgogIDxjaXJjbGUgY3g9IjYxMCIgY3k9IjE0NiIgcj0iOSIgZmlsbD0iI2ZmZmZmZiIgc3Ryb2tlPSIjMWIyMTI5IiBzdHJva2Utd2lkdGg9IjIiLz4KICA8dGV4dCB4PSI2NDAiIHk9IjE1MCI+am9pbnQ8L3RleHQ+CiAgPHRleHQgeD0iNTkwIiB5PSIyNzgiIHRleHQtYW5jaG9yPSJtaWRkbGUiPnBseXdvb2Qgc2VjdG9yIG9uIHRoZSBqb2ludCAodGVtcGxhdGUpPC90ZXh0PgogIDxjaXJjbGUgY3g9IjYwMCIgY3k9IjcwIiByPSI0IiBmaWxsPSIjYTg0ZjA2Ii8+CiAgPGNpcmNsZSBjeD0iNjEyIiBjeT0iMjIyIiByPSI0IiBmaWxsPSIjYTg0ZjA2Ii8+CiAgPHRleHQgeD0iMzAwIiB5PSI1MiIgZmlsbD0iI2E4NGYwNiI+RHluZWVtYSBjb3JkLCBhbmNob3JlZCBhdCBib3RoIGVuZHM8L3RleHQ+CiAgPHRleHQgeD0iMzAiIHk9IjIzNiI+cmF0aW8gPSBzZWN0b3IgcmFkaXVzIC8gcm9kIHJhZGl1cyAoZS5nLiBoaXAgcm9sbCA0MiBtbSAvIDYuNSBtbSA9IDYuNToxKTwvdGV4dD4KICA8dGV4dCB4PSIzMCIgeT0iMjU2Ij5ubyBiYWNrbGFzaCwgfjk1ICUgZWZmaWNpZW50OyB0aGUgY2x1dGNoIHNsaXBzIGJlZm9yZSBhIHNob2NrIHJlYWNoZXMgdGhlIGNvcmQ8L3RleHQ+CiAgPHRleHQgeD0iMzAiIHk9IjI0Ij5CVFM3OTYwIEgtYnJpZGdlIGRyaXZlcyB0aGUgbW90b3I7IGFuIE1UNjcwMSBtYWduZXQgc2Vuc29yIHJlYWRzIHRoZSBqb2ludCBhbmdsZTwvdGV4dD4KPC9zdmc+Cg==" /></p>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th></th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Build time</td>
+<td>about 150–250 hours for S1-Scrap, 250–350 for K1-Scrap, plus the time to collect parts (or 2–4 weeks of delivery if you buy)</td>
+</tr>
+<tr>
+<td>Skills</td>
+<td>hacksaw, drill press, tapping, soldering, crimping, flashing an ESP32</td>
+</tr>
+<tr>
+<td>Tools (you have them)</td>
+<td>drill press with a 22 mm and a 25 mm Forstner bit or hole saw, hacksaw, jigsaw, files, tap set M3–M8, hex keys, a spring or luggage scale, multimeter, soldering iron, bench supply with current limit</td>
+</tr>
+</tbody>
+</table></div>
+<hr />
+<h2>Step 0: Safety</h2>
+<ol>
+<li>
+<p><strong>Salvaged lithium cells are the main hazard.</strong> Test every cell (step 7). Never use a swollen, dented, hot or
+    low-voltage cell. Charge only supervised, on a concrete floor or in a steel box, never overnight.</p>
+</li>
+<li>
+<p><strong>The joints are strong.</strong> The knee can push 134–183 N·m. Keep fingers out of capstans and joints whenever the
+    motors are powered.</p>
+</li>
+<li>
+<p><strong>E-stop first.</strong> The hard-wired e-stop (step 8) works before any motor moves on the robot.</p>
+</li>
+<li>
+<p><strong>Gantry always.</strong> Hang the robot from a garage beam or an A-frame by chest and pelvis straps with the rope just
+    slack, for every powered test.</p>
+</li>
+<li>
+<p><strong>Two people</strong> from the first powered motion: one holds the e-stop and does nothing else.</p>
+</li>
+</ol>
+<hr />
+<h2>Step 1: Collect the parts</h2>
+<p>The parts lists give two prices per line. "Scrounge" assumes you collect the salvageable parts for little or nothing:</p>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>Part</th>
+<th>Where to scrounge it</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>18 V cordless drills with dead batteries (18 or 23)</td>
+<td>council kerbside collections, tip shops, Marketplace "broken drill", friends and family. Ask builders: dead-battery drills are thrown out all the time. The battery is not needed</td>
+</tr>
+<tr>
+<td>18650 cells (25–30 good ones)</td>
+<td>dead laptop packs, power-tool packs, e-bike packs (e-waste days, computer repairers). Expect 30–50 % of cells to pass the test</td>
+</tr>
+<tr>
+<td>Aluminium angle and tube</td>
+<td>metal recyclers, sold by weight at a fraction of the hardware-store price</td>
+</tr>
+<tr>
+<td>12 mm plywood</td>
+<td>offcuts from builders, cabinet makers, the hardware-store offcut bin</td>
+</tr>
+<tr>
+<td>Cables, connectors</td>
+<td>old PC power supplies and appliances</td>
+</tr>
+</tbody>
+</table></div>
+<p>Buy new, from AliExpress (allow 2–4 weeks): BTS7960 H-bridges, MT6701 angle sensors, TCA9548A multiplexers, ESP32-S3
+boards, a BNO085 IMU, 608 bearings, 3 mm Dyneema cord, a 5S BMS, the charger buck module. K1-Scrap adds four 20 kg·cm
+servos and a PCA9685 board.</p>
+<p><strong>Do not mix drill models:</strong> all 18 (or 23) should be the same model if you can. Then one clutch calibration, one
+clamp design and one firmware setting cover all of them.</p>
+<p><strong>Check:</strong> every line of the parts list is in a box, and every drill spins when fed 18 V from the bench supply.</p>
+<hr />
+<h2>Step 2: Test and convert the drills</h2>
+<p>The simulation assumes a 550-size 18 V motor and a two-stage planetary of about 49:1 in low gear (400 rpm). Measure
+yours before you build anything, because the numbers decide the capstan sizes.</p>
+<ol>
+<li>
+<p><strong>Strip each drill.</strong> Remove the housing screws. Keep the motor, the gearbox, the clutch ring, the chuck and the
+    speed-selector slide. Discard the trigger switch and the battery terminals.</p>
+</li>
+<li>
+<p><strong>Lock low gear.</strong> Slide the selector to low (the slow, strong setting) and fix it with a screw or epoxy, so it
+    can never jump to high gear.</p>
+</li>
+<li>
+<p><strong>Make a clamp.</strong> Two 12 mm plywood plates with a hole bored to the gearbox diameter, clamped round the gearbox
+    with 4 × M5 bolts, and a strap over the motor. The clamp bolts to the frame.</p>
+</li>
+<li>
+<p><strong>Lever test</strong> (the same as S1's): bench supply at 18 V with the current limit at 40 A or the highest it has, a
+    0.5 m aluminium bar in the chuck, the bar resting on a luggage scale.</p>
+<ul>
+<li>Record the force at 10, 20, 30 and 40 A. Torque = force (kg) × 9.81 × 0.5 m. At 40 A the model expects about
+    13 N·m at the chuck.</li>
+<li>Record the no-load speed at 18 V: about 400 rpm (42 rad/s).</li>
+<li>Note your numbers in <code>scrap/data/actuators.json</code> (<code>Kt</code>, <code>R</code>, <code>gear</code>) and re-run
+    <code>python scrap/calc/scrap_select.py --variant s1scrap</code>. It re-sizes every capstan from your measurements.</li>
+</ul>
+</li>
+<li>
+<p><strong>Calibrate the clutch.</strong> Each drive has a clutch setting in the table below (N·m at the chuck). With the lever and
+    the scale, find the clutch-ring number that slips at that torque, and fix the ring there with a drop of epoxy.
+    The clutch is the mechanical fuse: it slips before the shock of a missed step can snap a cord.</p>
+</li>
+</ol>
+<p><strong>Check:</strong> every drill gives within 15 % of the model torque and speed, and every clutch slips at its set torque.</p>
+<hr />
+<h2>Step 3: Make the capstan drives</h2>
+<p>A capstan is a cord wrapped 4–5 times around a small drum (the steel rod in the drill chuck), with both ends anchored
+on a large sector bolted to the joint. Turning the rod winds the cord on one side and off the other, and turns the
+sector. The ratio is the sector radius divided by the rod radius. There is no backlash and nothing to machine.</p>
+<p><strong>S1-Scrap drives</strong> (from <a href="../s1/generated/actuator_selection.md">../s1/generated/actuator_selection.md</a>):</p>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>Joint</th>
+<th>Motors</th>
+<th>Ratio</th>
+<th>Sector template</th>
+<th>Joint peak / no-load speed</th>
+<th>Clutch at the chuck</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Hip yaw</td>
+<td>1</td>
+<td>2.0:1</td>
+<td><code>s1/templates/sector_X-HY.svg</code></td>
+<td>24 N·m / 21 rad/s</td>
+<td>21 N·m</td>
+</tr>
+<tr>
+<td>Hip roll</td>
+<td>1</td>
+<td>6.5:1</td>
+<td><code>s1/templates/sector_X-HR.svg</code></td>
+<td>80 N·m / 6.5 rad/s</td>
+<td>16 N·m</td>
+</tr>
+<tr>
+<td>Hip pitch</td>
+<td>1</td>
+<td>3.5:1</td>
+<td><code>s1/templates/sector_X-HP.svg</code></td>
+<td>43 N·m / 12 rad/s</td>
+<td>23 N·m</td>
+</tr>
+<tr>
+<td><strong>Knee</strong></td>
+<td><strong>2</strong></td>
+<td>5.5:1, <strong>2 cords</strong></td>
+<td><code>s1/templates/sector_X-KN.svg</code></td>
+<td>134 N·m / 7.6 rad/s</td>
+<td>23 N·m each</td>
+</tr>
+<tr>
+<td>Ankle (2 per foot)</td>
+<td>1 each</td>
+<td>3.25:1</td>
+<td><code>s1/templates/sector_X-AN.svg</code></td>
+<td>40 N·m at the crank</td>
+<td>23 N·m</td>
+</tr>
+<tr>
+<td>Shoulder pitch, elbow</td>
+<td>1</td>
+<td>direct</td>
+<td>— (chuck holds the joint shaft)</td>
+<td>13 N·m</td>
+<td>22 / 15 N·m</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>K1-Scrap drives</strong> (from <a href="../k1/generated/actuator_selection.md">../k1/generated/actuator_selection.md</a>):</p>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>Joint</th>
+<th>Motors</th>
+<th>Ratio</th>
+<th>Sector template</th>
+<th>Joint peak / no-load speed</th>
+<th>Clutch at the chuck</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Hip yaw</td>
+<td>1</td>
+<td>2.75:1</td>
+<td><code>k1/templates/sector_K-HY.svg</code></td>
+<td>34 N·m / 15 rad/s</td>
+<td>23 N·m</td>
+</tr>
+<tr>
+<td>Hip roll</td>
+<td>1</td>
+<td>8.25:1</td>
+<td><code>k1/templates/sector_K-HR.svg</code></td>
+<td>101 N·m / 5.1 rad/s</td>
+<td>16 N·m</td>
+</tr>
+<tr>
+<td>Hip pitch</td>
+<td>1</td>
+<td>4.5:1</td>
+<td><code>k1/templates/sector_K-HP.svg</code></td>
+<td>55 N·m / 9.3 rad/s</td>
+<td>23 N·m</td>
+</tr>
+<tr>
+<td><strong>Knee</strong></td>
+<td><strong>2</strong></td>
+<td>7.5:1, <strong>2 cords</strong></td>
+<td><code>k1/templates/sector_K-KN.svg</code></td>
+<td>183 N·m / 5.6 rad/s</td>
+<td>22.6 N·m each</td>
+</tr>
+<tr>
+<td>Ankle (2 per foot)</td>
+<td>1 each</td>
+<td>4.25:1</td>
+<td><code>k1/templates/sector_K-AN.svg</code></td>
+<td>52 N·m at the crank</td>
+<td>23 N·m</td>
+</tr>
+<tr>
+<td>Waist yaw</td>
+<td>1</td>
+<td>1.5:1</td>
+<td><code>k1/templates/sector_K-WY.svg</code></td>
+<td>18 N·m</td>
+<td>21 N·m</td>
+</tr>
+<tr>
+<td>Shoulder pitch</td>
+<td>1</td>
+<td>1.75:1</td>
+<td><code>k1/templates/sector_K-SP.svg</code></td>
+<td>21 N·m</td>
+<td>21 N·m</td>
+</tr>
+<tr>
+<td>Shoulder roll, yaw</td>
+<td>1</td>
+<td>direct</td>
+<td>—</td>
+<td>13 N·m</td>
+<td>6 / 10 N·m</td>
+</tr>
+<tr>
+<td>Elbow</td>
+<td>1</td>
+<td>1.5:1</td>
+<td><code>k1/templates/sector_K-EL.svg</code></td>
+<td>18 N·m</td>
+<td>17.5 N·m</td>
+</tr>
+<tr>
+<td>Neck yaw, pitch</td>
+<td>servo</td>
+<td>direct</td>
+<td>—</td>
+<td>1.9 N·m (stall)</td>
+<td>—</td>
+</tr>
+</tbody>
+</table></div>
+<ol>
+<li>
+<p><strong>Print the templates at 100 %</strong> ("actual size", no fit-to-page). Check the 50 mm bar with a ruler.</p>
+</li>
+<li>
+<p><strong>Cut the sectors.</strong> Glue each template to 12 mm plywood with a glue stick. For the knee, glue two layers of
+    plywood together first (24 mm), or use 6 mm aluminium plate. Drill the holes on the drill press, cut the outer
+    contour with a jigsaw, and file or sand to the line.</p>
+</li>
+<li>
+<p><strong>Cut the cord groove.</strong> Clamp the sector on an M8 bolt in the drill press and hold a small round file against
+    the edge while it turns, to make a 3 mm deep groove on the dashed line. Both knees have two grooves 6 mm apart.</p>
+</li>
+<li>
+<p><strong>Input drums.</strong> Cut a 60 mm length of 10 mm steel rod per drive and chuck it, 40 mm out of the chuck. Where the
+    template says "25 mm tube", sleeve a 25 mm aluminium or steel tube over the rod with epoxy and a cross pin. A
+    bigger drum is kinder to the cord.</p>
+</li>
+<li>
+<p><strong>Bearings.</strong> Every joint turns on 608 bearings: bore a 22 mm seat with the Forstner bit 7 mm deep in plywood
+    (a light press fit) and run an M8 bolt through as the axle. Support the free end of each input rod with a 608 in
+    a plywood plate, so the cord tension does not bend the chuck.</p>
+</li>
+<li>
+<p><strong>Wind the cord.</strong></p>
+<ul>
+<li>Tie one end through the first anchor hole.</li>
+<li>Lay the cord along the groove to the rod, wrap it 4–5 turns round the rod, and take it back along the groove to
+    the second anchor.</li>
+<li>Tension it with the M4 anchor screw until the cord is tight enough to "ping" when plucked. Re-tension after the
+    first hour of running.</li>
+<li>For two cords, wind two separate loops, one in each groove, and tension them equally.</li>
+</ul>
+</li>
+<li>
+<p><strong>Ankles.</strong> Each ankle motor drives a 40 mm crank through its capstan. A push-rod (M8 threaded rod with rod ends)
+    runs from the crank to a lever 52 mm behind the ankle axis, as on S1. Two motors per foot give pitch (both rods
+    together) and roll (rods opposite).</p>
+</li>
+</ol>
+<p><strong>Check:</strong> every joint moves through its range by hand (motor unpowered, clutch slipping is fine) with no rub and no
+cord slip on the rod.</p>
+<hr />
+<h2>Step 4: Build the frame</h2>
+<p>The frame follows S1's skeleton, so the simulation applies. Key dimensions (centre to centre, from
+<code>calc/kestrel/params.py</code>):</p>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th></th>
+<th>mm</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Hip joints apart</td>
+<td>210 (105 each side of the centre)</td>
+</tr>
+<tr>
+<td>Hip-yaw axis above the hip centre</td>
+<td>75</td>
+</tr>
+<tr>
+<td>Thigh (hip to knee), shank (knee to ankle)</td>
+<td>420, 420</td>
+</tr>
+<tr>
+<td>Ankle axis above the floor</td>
+<td>75</td>
+</tr>
+<tr>
+<td>Foot</td>
+<td>260 long × 110 wide, ankle 70 mm from the heel</td>
+</tr>
+<tr>
+<td>Waist above the hip centre (fixed on S1-Scrap)</td>
+<td>100 + 70</td>
+</tr>
+<tr>
+<td>Shoulders above the waist, apart</td>
+<td>335, 400 (200 each side)</td>
+</tr>
+<tr>
+<td>Upper arm, forearm</td>
+<td>300, 260</td>
+</tr>
+<tr>
+<td>Neck above the waist</td>
+<td>400</td>
+</tr>
+</tbody>
+</table></div>
+<ol>
+<li>
+<p><strong>Cut the members</strong> from 25 × 25 × 3 mm aluminium angle (pelvis, torso ladder, brackets) and 40 × 40 mm square
+    tube (thighs and shanks) with the hacksaw. Square the ends with a file against a square.</p>
+</li>
+<li>
+<p><strong>Joint plates</strong> are 12 mm plywood: mark them out from the dimensions, drill on the drill press, cut with the jigsaw.
+    Bolt them to the aluminium with M5 bolts and nyloc nuts. Plywood is light, takes a 608 press fit, and is easy to
+    remake if a part is wrong.</p>
+</li>
+<li>
+<p><strong>Hip.</strong> The hip-yaw drive sits upright in the pelvis; the hip-roll drive hangs below it; the hip-pitch drive sits
+    beside the hip-roll bracket, its capstan sector on the thigh. Lay out each joint so its sector clears its
+    neighbours over the full range in the table at the end of this step.</p>
+</li>
+<li>
+<p><strong>Knee.</strong> The two knee drills bolt side by side to the top of the thigh tube. Their rods are joined on one common
+    shaft with a slotted tube, so the motors share the load, and the shaft runs down the side of the thigh to the
+    double-groove sector bolted to the shank at the knee axis.</p>
+</li>
+<li>
+<p><strong>Feet.</strong> 12 mm plywood stiffened with aluminium angle along both edges, a rubber sole from an old tyre tube or door
+    mat, and four microswitches (heel and toe, each side) under the sole as contact sensors.</p>
+</li>
+<li>
+<p><strong>Torso.</strong> An aluminium-angle ladder with plywood back and shoulder plates. The battery and electronics bolt to the
+    back plate; keep them low and central.</p>
+</li>
+</ol>
+<p><strong>Joint ranges</strong> (degrees): hip yaw −25…+35, hip roll −20…+25, hip pitch −100…+30, knee 0…120, ankle pitch −40…+40,
+ankle roll −20…+20, shoulder pitch −180…+60, elbow −130…0. K1-Scrap: shoulder roll −10…+150, shoulder yaw ±90, waist
+yaw ±60, neck yaw ±80, neck pitch −30…+40. Fit a rubber stop at each end of every range.</p>
+<p><strong>Check:</strong> weigh every sub-assembly as you finish it and write it down. S1-Scrap's model expects about 30 kg in all,
+K1-Scrap's about 39 kg. If you are heavier, re-run the selection with the measured masses (step 11).</p>
+<hr />
+<h2>Step 5: Wire every actuator</h2>
+<ol>
+<li>
+<p>Each drill motor goes to one <strong>BTS7960</strong>: motor to M+ and M−, the 18 V bus to B+ and B−, and to the ESP32 RPWM,
+    LPWM, R_EN and L_EN.</p>
+<ul>
+<li>Fit a 1 kΩ resistor from R_IS and L_IS to ground. The IS voltage is the motor current / 8.5 A (R11): the firmware
+    reads it to limit current to 40 A peak and 14 A continuous.</li>
+</ul>
+</li>
+<li>
+<p>Each joint gets an <strong>MT6701</strong> angle sensor facing a diametric magnet glued to the end of the joint axle. Sensors go
+    through <strong>TCA9548A</strong> multiplexers (8 per board), because every MT6701 has the same I²C address.</p>
+</li>
+<li>
+<p><strong>Controllers:</strong> S1-Scrap uses two ESP32-S3 boards (left leg and arm, right leg and arm); K1-Scrap adds a third for
+    the waist, neck and grippers. They talk to each other over one UART bus.</p>
+</li>
+<li>
+<p>Label both ends of every cable.</p>
+</li>
+</ol>
+<hr />
+<h2>Step 6: Build the battery</h2>
+<ol>
+<li>
+<p><strong>Test every salvaged cell.</strong></p>
+<ul>
+<li>Reject any below 2.5 V, or that is swollen, dented, rusty or gets warm.</li>
+<li>Charge each to 4.2 V, wait a week, and reject any that dropped below 4.1 V.</li>
+<li>Measure capacity with a cheap charger-tester if you have one, and keep cells within 10 % of each other.</li>
+</ul>
+</li>
+<li>
+<p><strong>Assemble a 5S pack:</strong> 5 groups in series, 5 cells per group in parallel for S1-Scrap (5S5P, 18 V, about
+    12 Ah) and 6 per group for K1-Scrap (5S6P). Use plastic 18650 holders and 12 AWG wire, or a nickel-strip kit. Put
+    the 5S BMS on the balance taps.</p>
+</li>
+<li>
+<p><strong>Charger:</strong> a CC/CV buck module set to 21.0 V and 2 A, fed from an old 24 V laptop or printer supply. Charge
+    supervised only.</p>
+</li>
+<li>
+<p><strong>Pack box:</strong> plywood with a steel or aluminium liner, low in the torso.</p>
+</li>
+</ol>
+<hr />
+<h2>Step 7: Power and the e-stop</h2>
+<ol>
+<li>
+<p><strong>Power path:</strong> battery → 40 A main fuse → <strong>40 A automotive relay</strong> (the contactor) → 18 V bus → a 15 A fuse per
+    limb.</p>
+</li>
+<li>
+<p><strong>E-stop loop:</strong> the relay coil is fed through the latching mushroom button and a watchdog transistor the ESP32
+    holds on. Press the button, or let the firmware stop, and every motor loses power at once.</p>
+</li>
+<li>
+<p><strong>Logic power:</strong> a 5 V buck straight from the battery side of the relay, so an e-stop does not reset the
+    controllers.</p>
+</li>
+<li>
+<p><strong>First power-up with the bench supply</strong> at 18 V and 2 A, no motors connected: check the e-stop opens the relay
+    and the controllers stay on.</p>
+</li>
+</ol>
+<p><strong>Check:</strong> the e-stop stops everything from every state; insulation from the bus to the frame is over 1 MΩ.</p>
+<hr />
+<h2>Step 8: Firmware</h2>
+<p>Each ESP32 runs, at 500 Hz per joint:</p>
+<ol>
+<li>
+<p>Read the joint angle (MT6701) and the motor current (BTS7960 IS pin).</p>
+</li>
+<li>
+<p><strong>Position control:</strong> duty = kp × (target − angle) − kd × speed, limited so the current never exceeds 40 A peak,
+    and an I²t estimate never exceeds 14 A continuous. Start with kp low and raise it until the joint holds without
+    oscillating.</p>
+</li>
+<li>
+<p><strong>Soft limits</strong> 3° inside the rubber stops.</p>
+</li>
+<li>
+<p><strong>Watchdog:</strong> if a controller stops hearing from the others for 50 ms, it drops the e-stop transistor.</p>
+</li>
+<li>
+<p><strong>Calibration:</strong> hang the robot in the zero pose (legs straight, feet flat, arms down) and record each joint's
+    sensor offset.</p>
+</li>
+</ol>
+<hr />
+<h2>Step 9: Stand, then walk slowly, in the gantry</h2>
+<p>The simulation's slow walk is in <code>scrap/s1/data/gait_W1.csv</code> (K1-Scrap: <code>scrap/k1/data/gait_W1.csv</code>): joint angles in
+degrees, 100 rows per second, one column per joint. The fast walk is <code>gait_W2.csv</code>.</p>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>Stage</th>
+<th>Setup</th>
+<th>What to do</th>
+<th>Pass</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>Hanging, feet off the ground</td>
+<td>Move each joint to the CSV's first row, slowly</td>
+<td>Holds the pose, no oscillation</td>
+</tr>
+<tr>
+<td>2</td>
+<td>Feet on the ground, rope taking most of the weight</td>
+<td>Crouch to the first row and stand there</td>
+<td>Holds for 5 minutes, motors warm, not hot</td>
+</tr>
+<tr>
+<td>3</td>
+<td>Rope slack</td>
+<td>Shift the weight from foot to foot (hip roll and ankle roll only)</td>
+<td>Stays balanced</td>
+</tr>
+<tr>
+<td>4</td>
+<td>Rope slack</td>
+<td>Play <code>gait_W1.csv</code> at <strong>quarter speed</strong></td>
+<td>Steps without the rope taking load</td>
+</tr>
+<tr>
+<td>5</td>
+<td>Same</td>
+<td>Half speed, then full speed</td>
+<td>Repeatable, no falls into the rope</td>
+</tr>
+<tr>
+<td>6</td>
+<td>Rope still on</td>
+<td>A 5 cm board, then 10 cm (S1-Scrap) or 15 cm (K1-Scrap)</td>
+<td>Only after stage 5 is routine</td>
+</tr>
+</tbody>
+</table></div>
+<p>Use the pelvis IMU to correct the ankle and hip roll angles a little each step (keep the torso upright). Once the
+scripted walk works, the reinforcement-learning package in <code>train/</code> has policies for both scrap robots
+(<code>python play.py --variant s1scrap --run s1scrap</code>), trained against the same slow actuators.</p>
+<hr />
+<h2>Step 10: K1-Scrap extras</h2>
+<ol>
+<li>
+<p><strong>Arms:</strong> four drives per arm (shoulder pitch, roll and yaw, then the elbow), from the K1-Scrap table.</p>
+</li>
+<li>
+<p><strong>Waist yaw:</strong> the torso sits on a 150 mm lazy-Susan turntable bearing, turned by a drill through its capstan.</p>
+</li>
+<li>
+<p><strong>Grippers:</strong> three plywood fingers on M3 pivot bolts, closed by fishing-line tendons wound on a servo horn and
+    opened by springs, with rubber finger pads.</p>
+</li>
+<li>
+<p><strong>Head:</strong> an old smartphone in an EVA-foam helmet on the two neck servos. The phone is the camera, a second IMU
+    and the face: show eyes on its screen. It connects to the ESP32s over Wi-Fi or USB.</p>
+</li>
+<li>
+<p><strong>Armour:</strong> cut EVA-foam floor tiles to paper patterns, heat them with a heat gun to curve them, glue the seams
+    with contact cement, seal with primer, and paint K1 white with graphite joints and amber light stripes. Strap the
+    armour on with Velcro so it comes off for maintenance.</p>
+</li>
+</ol>
+<hr />
+<h2>Step 11: Change it</h2>
+<ul>
+<li>
+<p><strong>Measured masses or motors:</strong> put them in <code>calc/kestrel/variant_s1scrap.py</code> (or <code>variant_k1scrap.py</code>) and
+    <code>scrap/data/actuators.json</code>, then run <code>python scrap/calc/scrap_select.py --variant s1scrap</code>,
+    <code>python scrap/calc/scrap_bom.py</code> and <code>python scrap/calc/scrap_templates.py</code>. You get new capstan sizes, clutch
+    settings, templates and a new parts list.</p>
+</li>
+<li>
+<p><strong>Add a component:</strong> add a line to <code>scrap/s1/data/add_ons.json</code> (same format as S1's) and re-run the selection.</p>
+</li>
+<li>
+<p><strong>Free hoverboards?</strong> Each one gives two hub motors, an FOC motor board, a 36 V pack and a charger. The selection
+    already knows the hub motor (<code>hub36</code>, on a bike-chain reduction). At the hoverboard board's stock current, drills
+    win at every joint; with the board's current limit raised and measured, add <code>("hub36", 1)</code> to <code>ALLOWED</code> and try.</p>
+</li>
+<li>
+<p><strong>More speed:</strong> a 6S pack (21.6 V) gives 20 % more speed if your motors tolerate it. Set <code>bus_V</code> and re-run.</p>
+</li>
+</ul>
+<h2>Limits</h2>
+<ul>
+<li>
+<p><strong>Slow walking only.</strong> The drives' reflected inertia rules out dynamic walking and running. A missed step makes
+    the clutches slip and the robot sit down into the gantry harness; that is the design, not a fault.</p>
+</li>
+<li>
+<p><strong>Everything rests on step 2's measurements.</strong> Re-run the selection with your numbers before cutting the sectors.</p>
+</li>
+<li>
+<p><strong>The salvaged parts are estimates.</strong> Prices and motor constants are marked V, Vs or E in
+    <a href="../../docs/research/R11-scrap-build-parts.md"><code>docs/research/R11-scrap-build-parts.md</code></a>.</p>
+</li>
+<li>
+<p><strong>Safety as for K1 and S1:</strong> gantry, e-stop in hand, nobody within reach until the robot has proven itself.</p>
+</li>
+</ul></main></body></html>
