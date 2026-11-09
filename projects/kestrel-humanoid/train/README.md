@@ -11,10 +11,24 @@ task (the H1/G1 rough-terrain setup):
 The robot is the K1 design model; masses, inertias and reflected motor inertia come from `calc/kestrel`, and leg
 torque limits are the sized actuator peaks. It was trained on the VM described below.
 
-**Mk I vs Mk II.** `runs/rough` was trained on the K1 Mk I model (84.1 kg). `calc/kestrel` now describes Mk II
-(103.1 kg, stronger knees and hips), so the model this package builds is Mk II. Fine-tune a Mk II policy from the Mk I
-weights instead of starting again: `python train.py --name mk2 --init rough --terrain rough --hours 2`, then
-`python play.py --run mk2`. S1 has its own run: `--variant s1`.
+**Mk I vs Mk II.** `runs/rough` below was trained on the K1 Mk I model (84.1 kg, 1.75 m). `calc/kestrel` now
+describes Mk II (103.3 kg, 1.806 m, stronger knees and hips), so the model this package builds is Mk II. The Mk II
+policy is `runs/mk2`, fine-tuned from the Mk I weights:
+`python train.py --name mk2 --init rough --terrain mixed --workers 2 --hours 2.5` (45.8 M steps, 2.5 h). The Mk I
+policy walked the heavier, taller Mk II model from the first iteration. Evaluation (`runs/mk2/eval.md`, same protocol
+as below):
+
+| Terrain | 5 cm / 4° / 2 cm | 10.2 cm / 8.4° / 5 cm | 12.8 cm / 10.6° / 7 cm | 15.4 cm / 12.8° / 8 cm | 18 cm / 15° / 10 cm |
+|---|---|---|---|---|---|
+| Flat, slopes up / down | 100 % | 100 % | 100 % | 100 % | 100 % |
+| Rough (amplitude; falls) | 100 % | 100 % | 88 % (12 %) | 94 % (6 %) | 100 % |
+| Stairs down | 100 % | 100 % | 100 % | 100 % | 100 % |
+| Stairs up | 100 % | 100 % | 100 % | 62 % | 0 % (no falls) |
+
+![KESTREL K1 Mk II walking and on stairs](runs/mk2/demo.gif)
+
+18 cm climbs (50 % for Mk I at 233 M steps) need more training on Mk II. S1 has its own run: `--variant s1`
+(`runs/s1`, results in [`simple/README.md`](../simple/README.md)).
 
 ## Results (trained on this VM)
 

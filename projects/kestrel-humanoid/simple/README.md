@@ -126,22 +126,23 @@ The RL training package in `train/` runs S1 directly:
 
 ![S1 walking on flat ground, climbing and descending stairs](../train/runs/s1/demo.gif)
 
-The trained S1 policy is in `train/runs/s1/policy.pt`. It was trained on this VM's CPU: 110.6 M steps in three
-chunks, about 5.8 h; the third chunk ran on stair-heavy terrain with the 356 N·m knee cap. Evaluation
+The trained S1 policy is in `train/runs/s1/policy.pt`. It was trained on this VM's CPU: 156 M steps in four
+chunks, about 8.3 h. The last two chunks ran on stair-heavy terrain with the 356 N·m knee cap. Evaluation
 (`train/runs/s1/eval.md`): commanded 0.6 m/s from 16 headings per cell, success means 2.4 m covered, or 6 stairs,
-without falling.
+without falling. In brackets: falls.
 
 | Terrain | 5 cm / 4° / 2 cm | 10.2 cm / 8.4° / 5 cm | 12.8 cm / 10.6° / 7 cm | 15.4 cm / 12.8° / 8 cm | 18 cm / 15° / 10 cm |
 |---|---|---|---|---|---|
 | Flat | 100 % | 100 % | 100 % | 100 % | 100 % |
-| Rough (amplitude) | 100 % | 100 % | 94 % | 100 % | 100 % |
+| Rough (amplitude) | 100 % | 100 % | 94 % (6 %) | 100 % | 100 % |
 | Slopes up / down | 100 % | 100 % | 100 % | 100 % | 100 % |
 | Stairs down | 100 % | 100 % | 100 % | 100 % | 100 % |
-| Stairs up | 100 % | 100 % | 100 % | 38 % | 0 % |
+| Stairs up | 100 % | 100 % | 88 % | 12 % | 50 % (25 %) |
 
-Walking, slopes, rough ground and stairs down to 18 cm work, with no falls on stairs. Climbing steps above 13 cm is
-not learned yet (no falls: the robot stops at the step). K1 needed 233 M steps for 18 cm climbs; a fourth chunk on
-stairs is training.
+Walking, slopes, rough ground and stairs down to 18 cm work. **Climbing steps above 13 cm is not reliable yet**:
+the policy stops at the step or, at 18 cm, sometimes falls. Earlier checkpoints traded these cells against each
+other (110 M steps: 38 % at 15.4 cm, 0 % at 18 cm). K1 needed 233 M steps for its 18 cm climbs, so this needs more
+training, or a stair curriculum tuned for S1's lighter legs. Bring the real robot up on flat ground and low steps.
 
 ![S1 training curves](../train/runs/s1/curves.png)
 
