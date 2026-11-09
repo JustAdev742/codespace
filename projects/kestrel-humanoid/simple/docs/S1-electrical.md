@@ -687,9 +687,10 @@ Rules:
 
 1. Power: which tap, typical/peak current, fuse ≤ wire rating.
 2. CAN: ID, bus, load still ≤ 60 % worst case.
-3. Mass: add the part to `calc/kestrel/variant_s1.py`, then re-run `python simple/calc/s1_select.py` and
-   `python simple/calc/s1_bom.py`. The knee/hip-pitch class has a lowest margin of **1.01**
-   (`simple/generated/actuator_selection.md`), so even 1-2 kg on the upper body must be re-checked.
+3. Mass: weigh the part with its bracket and add one line to `simple/data/add_ons.json` (build guide step 11),
+   then re-run `python simple/calc/s1_select.py` and `python simple/calc/s1_bom.py`. The tightest classes are the
+   elbow (lowest margin 1.03) and the knee/hip-pitch X12 (1.07) (`simple/generated/actuator_selection.md`), so
+   anything on a hand, or more than a couple of kilograms on the upper body, must be re-checked.
 4. Safety: if it can move, it must stop when the e-stop opens and respect the software limits.
 5. Update this document's tables (power, IDs).
 
