@@ -83,6 +83,10 @@ def apply(ns):
     ns["JOINTS_CENTRE"] = dict(JOINTS_CENTRE_S1)
     ns["MIRROR_SIGN"] = {"hip_yaw", "hip_roll", "shoulder_roll", "ankle_roll"}
     ACT = ns["ACT"]
+    # S1 keeps the K1 waist: K1 Mk II raised waist_pitch_above to 0.126 for its KA-110P / KA-90P housings, S1 stays at 0.070.
+    # Replacing ns["DIM"] also re-points standing_heights(), which reads the module-global DIM.
+    ns["DIM"] = dict(ns["DIM"], waist_pitch_above=0.070)
+    ns["HEIGHT"] = 1.75
     d = ns["DIM"]
 
     def A(cls):

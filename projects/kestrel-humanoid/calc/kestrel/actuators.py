@@ -169,9 +169,10 @@ GROUPS = [
     # ---- Mk II (docs/research/R10 sec. 5): legs on liquid-cooled KM-130x50 + 150 A GaN drives; arms on cycloids
     Group("KA-130K", ["knee"], "planetary", "HC2", ["KM-130x50-LC"], list(range(12, 21)),
           electronics_kg=0.40, derate=THERMAL_DERATE_COOLED, notes="Mk II KA-130K2: liquid jacket, N50UH, 50 mm stack, 150 A GaN drive"),
-    # Hip pitch is fixed at 14:1 (docs/09 sec. 5.1 Plan A, hold H14). 15:1 would clear the 0.90 utilisation
-    # preference (0.84 vs 0.90), but 14:1 keeps the checked tooth plan, gives 7 % more speed (15.2 vs 14.2 rad/s,
-    # the K1 weak point) and 13 % less reflected inertia, and still has 1.2 / 0.903 = 1.33 x on the simulated peak.
+    # Hip pitch is fixed at 14:1 (docs/09 sec. 5.1 Plan A, hold H14). At 1.806 m (raised waist) the fast-walk peak x 1.2
+    # uses 0.97 of the 406 N·m (1.24 x on the simulated peak). 15:1 would restore the 0.90 utilisation preference, but its
+    # stage 1 (3.75:1) needs a z16 m0.8 sun, which bends at ~570 MPa under the 31.5 N·m motor peak (z24 Plan A: ~345 MPa);
+    # 14:1 also keeps 7 % more speed (15.2 vs 14.2 rad/s) and 13 % less reflected inertia.
     Group("KA-130H", ["hip_pitch"], "planetary", "HC2", ["KM-130x50-LC"], [14],
           electronics_kg=0.40, derate=THERMAL_DERATE_COOLED, notes="Mk II: same KA-130K2 hardware as the knee; 14:1 fixed (H14)"),
     Group("KA-110P", ["hip_roll", "waist_pitch"], "planetary", "EV", ["KM-115x32-N50", "ILM115x25", "RI115-PH"], list(range(14, 31)),

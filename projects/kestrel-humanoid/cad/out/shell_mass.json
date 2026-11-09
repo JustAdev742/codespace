@@ -7,11 +7,11 @@
  "allowance_bosses_paint": 0.08,
  "lines": {
   "pelvis shells": {
-   "cad_kg": 0.178,
+   "cad_kg": 0.182,
    "budget_kg": 0.55
   },
   "torso shells (chest, back door, abdomen)": {
-   "cad_kg": 0.731,
+   "cad_kg": 0.735,
    "budget_kg": 1.6
   },
   "head shell + visor": {
@@ -27,32 +27,34 @@
    "budget_kg": 0.36
   },
   "thigh shells x2": {
-   "cad_kg": 0.591,
+   "cad_kg": 0.539,
    "budget_kg": 0.7
   },
   "shank shells x2": {
-   "cad_kg": 0.687,
-   "budget_kg": 0.56
+   "cad_kg": 0.67,
+   "budget_kg": 0.67
   }
  },
  "shells_without_params_line": {
   "foot (no params line)": 0.333,
   "hand (no params line)": 0.309,
-  "hip (no params line)": 0.169,
-  "neck (no params line)": 0.047,
+  "hip (no params line)": 0.15,
+  "neck (no params line)": 0.045,
   "shoulder (no params line)": 0.168
  },
- "cad_total_kg": 3.784,
- "budget_total_kg": 4.66,
+ "cad_total_kg": 3.702,
+ "budget_total_kg": 4.77,
  "moved_from_params_centroid": {
   "shoulder-pitch actuator L/R": "y 135 -> 91 (KH-25 Mk II OD 127 roll actuator would intersect it)",
-  "battery packs A/B": "x -30 -> -37.5, z 1215 -> 1252 (175 mm real pack length; bottoms clear the KA-110P waist-pitch housing)",
+  "battery packs A/B": "x -40 -> -37.5 (175 mm pack incl. rear end cap); z matches params (+167.5 mm above the waist-pitch axis)",
   "hip-pitch actuator": "y 105 -> 109 (Mk II +8 mm grows laterally; output face y 61 clears the waist-yaw housing)",
   "hip-roll actuator": "x -118 -> -132 (room for the PCD 100 output flange and the roll-pitch bracket)",
   "knee actuator": "y 105 -> 88.5 (crank + push-rod plane outside the lateral thigh plate)",
   "shoulder-yaw actuator": "z 1345 -> 1306 (clears the shoulder-roll housing and the deltoid shell)",
   "wrist-yaw actuator": "z 1085 -> 1032 (clears the elbow housing)",
-  "ankle actuator A/B": "z 400/300 -> 390/290 (clear the shank upper fitting)"
+  "ankle actuator A/B": "z 400/300 -> 390/290 (clear the shank upper fitting)",
+  "hip-yaw actuator L/R": "z 1035 -> 1053 (yaw output face 1018: the yaw-roll yoke clears the KA-130H over hip roll -25..+45)",
+  "waist-yaw actuator": "z 990 -> 1036 (output face under the raised waist link; the yaw axis is vertical, its height is free)"
  },
  "pack_envelope_mm": [
   175.0,
@@ -60,29 +62,27 @@
   185.0
  ],
  "parts_kg": {
-  "torso/chest_plate": 0.1609,
-  "l_shank/shin_front": 0.1356,
-  "r_shank/shin_front": 0.1356,
-  "l_shank/calf_rear": 0.1315,
-  "r_shank/calf_rear": 0.1315,
-  "l_thigh/thigh_front": 0.1255,
-  "r_thigh/thigh_front": 0.1255,
+  "torso/chest_plate": 0.1648,
+  "l_shank/shin_front": 0.1357,
+  "r_shank/shin_front": 0.1357,
+  "l_thigh/thigh_front": 0.1261,
+  "r_thigh/thigh_front": 0.1261,
+  "l_shank/calf_rear": 0.1231,
+  "r_shank/calf_rear": 0.1231,
   "head/head_shell": 0.1187,
   "torso/torso_side_L": 0.0995,
   "torso/torso_side_R": 0.0993,
   "torso/back_door": 0.0977,
   "torso/radiator_pack": 0.093,
-  "l_thigh/thigh_drive_cover": 0.0903,
-  "r_thigh/thigh_drive_cover": 0.0903,
   "head/visor": 0.0847,
-  "l_hip/glute_pod": 0.0843,
-  "r_hip/glute_pod": 0.0843,
-  "l_thigh/thigh_rear": 0.0797,
-  "r_thigh/thigh_rear": 0.0797,
-  "pelvis/pelvis_rear": 0.0795,
-  "pelvis/pelvis_front": 0.0779,
+  "pelvis/pelvis_rear": 0.0798,
+  "pelvis/pelvis_front": 0.078,
   "l_shank/knee_cap": 0.0762,
   "r_shank/knee_cap": 0.0762,
+  "l_hip/glute_pod": 0.0752,
+  "r_hip/glute_pod": 0.0752,
+  "l_thigh/thigh_drive_cover": 0.0711,
+  "r_thigh/thigh_drive_cover": 0.0711,
   "l_foot/foot_shell": 0.0685,
   "r_foot/foot_shell": 0.0685,
   "l_shoulder/deltoid_cap": 0.0597,
@@ -92,15 +92,19 @@
   "l_forearm/forearm_front": 0.0563,
   "r_forearm/forearm_front": 0.0563,
   "torso/back_upper": 0.0518,
-  "neck/neck_sleeve": 0.0475,
+  "neck/neck_sleeve": 0.045,
   "l_upper_arm/upper_arm_front": 0.0447,
   "r_upper_arm/upper_arm_front": 0.0447,
+  "l_thigh/thigh_rear": 0.0412,
+  "r_thigh/thigh_rear": 0.0412,
   "torso/abdomen_plate": 0.0393,
   "torso/battery_hatch_A": 0.0365,
   "torso/battery_hatch_B": 0.0365,
   "l_forearm/forearm_rear": 0.033,
   "r_forearm/forearm_rear": 0.033,
   "head/head_jaw": 0.0319,
+  "l_thigh/popliteal_web": 0.0311,
+  "r_thigh/popliteal_web": 0.0311,
   "l_hand/palm_front": 0.0305,
   "r_hand/palm_front": 0.0305,
   "l_upper_arm/upper_arm_rear": 0.0304,
@@ -109,9 +113,9 @@
   "r_hand/palm_back": 0.0287,
   "l_foot/toe_cap": 0.0275,
   "r_foot/toe_cap": 0.0275,
+  "pelvis/pelvis_front_lower": 0.0246,
   "l_shoulder/deltoid_rear": 0.0241,
   "r_shoulder/deltoid_rear": 0.0241,
-  "pelvis/pelvis_front_lower": 0.021,
   "l_hand/thumb_meta": 0.0153,
   "r_hand/thumb_meta": 0.0153,
   "l_foot/heel_counter": 0.0127,

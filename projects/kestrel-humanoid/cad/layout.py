@@ -17,12 +17,24 @@ Mk II envelope, the shift is listed in MOVED (used by docs/02 and the mass repor
 """
 
 # ------------------------------------------------------------------ joint centres
+# Mk II raised the waist-pitch axis by UPPER_DZ (params DIM waist_pitch_above 0.070 -> 0.126) so the KA-110P housing and
+# caps clear the KA-90P hip-yaw housings (tops at z 1088, raised 18 mm so the yaw-roll yoke clears the KA-130H in hip roll)
+# over the whole waist-yaw range, and the waist-yaw actuator clears the thigh hip flanges in hip yaw: every waist-link point
+# more than 56.5 mm from the waist-yaw axis stays above z 1091 (drum: WP - 49.4, caps r 50: WP - 48.4).
+# Everything above the waist-pitch axis (waist link, torso, arms, neck, head) is modelled at the K1 heights below
+# (WP, SZ, EZ, WRZ, NY, NP: "design" frame) and translated by UPPER_DZ in build_robot.add(). The torso cannot absorb
+# the raise (pack height + KH-25 radius fill it to 3 mm), so the robot is 56 mm taller: head top 1,806 mm.
+UPPER_DZ = 56.0
 HY, HZ, KZ, AZ = 105.0, 915.0, 495.0, 75.0      # hip half-width, hip, knee, ankle heights
 HIP_YAW_Z = 990.0
-WY, WP = 1015.0, 1085.0                          # waist yaw joint, waist pitch axis
-SY, SZ, EZ, WRZ = 200.0, 1420.0, 1120.0, 860.0   # shoulder half-width / height, elbow, wrist
-NY, NP = 1485.0, 1555.0                          # neck yaw joint, neck pitch axis
-HEAD_TOP = 1750.0
+WY, WP = 1015.0, 1085.0                          # waist yaw joint, waist pitch axis (design frame; world WP + UPPER_DZ)
+SY, SZ, EZ, WRZ = 200.0, 1420.0, 1120.0, 860.0   # shoulder half-width / height, elbow, wrist (design frame)
+NY, NP = 1485.0, 1555.0                          # neck yaw joint, neck pitch axis (design frame)
+HEAD_TOP = 1750.0                                # design frame; world 1806
+WORLD = dict(WP=WP + UPPER_DZ, SZ=SZ + UPPER_DZ, EZ=EZ + UPPER_DZ, WRZ=WRZ + UPPER_DZ, NY=NY + UPPER_DZ, NP=NP + UPPER_DZ,
+             HEAD_TOP=HEAD_TOP + UPPER_DZ)
+UPPER_GROUPS = ("waist", "torso", "neck", "head")
+UPPER_PREFIX = ("l_shoulder", "l_upper_arm", "l_forearm", "l_hand", "r_shoulder", "r_upper_arm", "r_forearm", "r_hand")
 
 # ------------------------------------------------------------------ actuator envelopes (OD, length)
 ACT = {
@@ -48,27 +60,32 @@ SH_ROLL_X = -45.0          # KH-25 shoulder roll centre (x -86..-4), output forw
 SH_YAW_Z = 1306.0          # KH-20 shoulder yaw (z 1268..1344): 76 mm from the roll axis, clears the deltoid
 WRIST_YAW_Z = 1032.0       # KH-14 wrist yaw (z 1002..1062): clears the elbow actuator (bottom z 1071.5)
 WRIST_LIN_Z = 950.0        # KW-L2 pair (z 900..1000)
-WAIST_YAW_Z = 980.0        # KA-90P waist yaw (z 945..1015): output face at the waist-yaw joint
+HIP_YAW_ACT_Z = 1053.0     # KA-90P hip yaw centre (z 1018..1088): output face 18 mm above K1 so the yaw-roll yoke clears
+                           # the KA-130H and roll-pitch bracket swept about the roll axis (corner radius 84.6 -> z 999.6)
+WAIST_YAW_Z = 1036.0       # KA-90P waist yaw (world z 1001..1071): above the thigh hip bosses (top z 979), under the
+                           # raised waist-pitch housing (bottom z 1077.5); the yaw axis is vertical, its height is free
 ANKLE_A_Z, ANKLE_B_Z = 390.0, 290.0
 BATT_X = (-125.0, 50.0)    # two hot-swap 16S4P packs side by side (2 x 4 x 8 P50B, axes fore-aft, 146 mm of cells in
                            # holders + 25 mm rear end cap: BMS, FET switch, 100 A fuse, cam lever + 4 mm connector face)
 BATT_Z = (1160.0, 1345.0)
 BATT_Y = (4.0, 102.0)
 
-PACK_ENVELOPE = (175.0, 98.0, 185.0)   # x, y, z mm per pack (params.py still has 150 x 98 x 185, hold H12)
+PACK_ENVELOPE = (175.0, 98.0, 185.0)   # x, y, z mm per pack (params.py: 175 x 98 x 185 at z +0.1675 above the waist-pitch axis)
 SPINE_X = 54.0             # front bulkhead (battery connector plate) centre, 6 mm
 KNEE_BRG = (35.0, 72.0, 17.0)   # 7207 BE angular-contact pair (O arrangement) in the thigh-plate bosses, C0 20.8 kN each
 
 # params.py centroid -> CAD position differences (mm), for the record
 MOVED = {
     "shoulder-pitch actuator L/R": "y 135 -> 91 (KH-25 Mk II OD 127 roll actuator would intersect it)",
-    "battery packs A/B": "x -30 -> -37.5, z 1215 -> 1252 (175 mm real pack length; bottoms clear the KA-110P waist-pitch housing)",
+    "battery packs A/B": "x -40 -> -37.5 (175 mm pack incl. rear end cap); z matches params (+167.5 mm above the waist-pitch axis)",
     "hip-pitch actuator": "y 105 -> 109 (Mk II +8 mm grows laterally; output face y 61 clears the waist-yaw housing)",
     "hip-roll actuator": "x -118 -> -132 (room for the PCD 100 output flange and the roll-pitch bracket)",
     "knee actuator": "y 105 -> 88.5 (crank + push-rod plane outside the lateral thigh plate)",
     "shoulder-yaw actuator": "z 1345 -> 1306 (clears the shoulder-roll housing and the deltoid shell)",
     "wrist-yaw actuator": "z 1085 -> 1032 (clears the elbow housing)",
     "ankle actuator A/B": "z 400/300 -> 390/290 (clear the shank upper fitting)",
+    "hip-yaw actuator L/R": "z 1035 -> 1053 (yaw output face 1018: the yaw-roll yoke clears the KA-130H over hip roll -25..+45)",
+    "waist-yaw actuator": "z 990 -> 1036 (output face under the raised waist link; the yaw axis is vertical, its height is free)",
 }
 
 # ------------------------------------------------------------------ materials and shell walls
@@ -83,5 +100,5 @@ GAP = 1.0                    # panel gap
 # params.py shell lines (kg) the CAD shells are checked against
 SHELL_BUDGET = {
     "pelvis shells": 0.55, "torso shells (chest, back door, abdomen)": 1.60, "head shell + visor": 0.45,
-    "upper-arm shells x2": 0.44, "forearm shells x2": 0.36, "thigh shells x2": 0.70, "shank shells x2": 0.56,
+    "upper-arm shells x2": 0.44, "forearm shells x2": 0.36, "thigh shells x2": 0.70, "shank shells x2": 0.67,
 }

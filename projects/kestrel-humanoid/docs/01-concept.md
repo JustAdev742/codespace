@@ -7,7 +7,7 @@ interfaces) are listed in docs/03 §14.*
 
 ## 1. What KESTREL K1 Mk II is, and what it is for
 
-KESTREL K1 Mk II is a 1.75 m, ~102 kg electric humanoid built to do **physical work**: lift and carry loads the size of a
+KESTREL K1 Mk II is a 1.81 m, ~103 kg electric humanoid built to do **physical work**: lift and carry loads the size of a
 person's job, hold tools at arm's length, and keep going for a shift. It is the second revision of K1. K1 proved the
 design method; Mk II raises the work loads to the level of the industrial humanoids in the 2026 benchmark (research
 [R7](research/R7-commercial-humanoids.md)) and is the version the owner intends to build.
@@ -47,7 +47,7 @@ proven. Section 7 lists what is most likely to be wrong.
 
 | Capability | Target | Basis |
 |---|---|---|
-| Height / mass | 1.75 m / **102.5 kg estimated** (112.7 kg design mass, +10 % growth) | [sim] `docs/generated/mass_budget.md` |
+| Height / mass | 1.806 m / **103.3 kg estimated** (113.7 kg design mass, +10 % growth) | [sim] `docs/generated/mass_budget.md` |
 | Walking | 0.8 m/s nominal, 1.2 m/s fast (flat-footed ZMP gait); **0.6 m/s carrying a 30 kg box** | [sim] W1, W2, CW |
 | Stairs | 0.18 m rise, 0.28 m tread, 0.9 s per step (unloaded) | [sim] ST |
 | Step-up | single-leg rise onto a 0.30 m platform in 1.2 s | [sim] SU |
@@ -126,7 +126,7 @@ most publish no continuous rating. Mk II values are [sim] unless marked.
 
 | Metric | **K1 Mk II** | Peers (R7) |
 |---|---|---|
-| Height / mass | 1.75 m / 102.5 kg est. | Atlas 1.9 m / 90 kg [V23]; Digit 5 129 kg [R27]; GR-3 71 kg [V36]; H2 70 kg [V4]; Figure 03 61 kg [V17] |
+| Height / mass | 1.806 m / 103.3 kg est. | Atlas 1.9 m / 90 kg [V23]; Digit 5 129 kg [R27]; GR-3 71 kg [V36]; H2 70 kg [V4]; Figure 03 61 kg [V17] |
 | Whole-body payload | **30 kg sustained / 50 kg momentary** | Atlas 30 / 50 kg [V23]; Kepler K2 30 kg two-arm [R50]; Apollo 25 kg [R30]; Figure 03 20 kg [V17]; Digit 5 23 kg [V26] |
 | One-arm payload | **15 kg** one-handed (elbow 90°); **10 kg** per hand at full reach | Atlas 20 kg one-handed [V23]; Kepler 15 kg per arm [R50]; H2 15 kg peak / 7 kg rated [V4]; NEO 8.2 kg [V32] |
 | Knee peak at the joint | **415 N·m (20–40°) to 719 N·m (110°)** | AgiBot A2 512 [V54]; T800 450 (any joint) [V46]; GR-3 366 [V36]; H1/H2 360 [V1][V4] |

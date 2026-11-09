@@ -2,7 +2,7 @@
 
 ![KESTREL K1](renders/05_threequarter_front.png)
 
-A 1.75 m, ~102 kg electric humanoid, engineered from loads up for physical work: 30 kg carried two-handed, 50 kg
+A 1.81 m, ~103 kg electric humanoid, engineered from loads up for physical work: 30 kg carried two-handed, 50 kg
 lifted momentarily, 10 kg per hand at full reach, 15 kg in one hand. Every joint requirement comes from whole-body
 inverse dynamics over 18 design scenarios at the 112.7 kg design mass. Every actuator is sized against its full
 torque-speed envelope at the minimum battery voltage, and the mass, power and structure close consistently. The
@@ -18,7 +18,7 @@ and how each item gets retired.
 
 | | |
 |---|---|
-| Height / mass | 1.75 m / 102.5 kg estimated (112.7 kg design mass, +10 % growth) |
+| Height / mass | 1.806 m / 103.3 kg estimated (113.7 kg design mass, +10 % growth) |
 | DOF | 30 body (legs 6+6, waist 2, arms 7+7, neck 2) + 2 × 13-DOA hands (palm camera, ≥ 200 N grasp target) |
 | Actuators | 26 rotary in 7 classes + 4 wrist linear (KW-L2, 24 V) + 26 hand micro-actuators |
 | Knee / hip pitch | liquid-cooled custom KM-130x50-LC (N50UH, 50 mm stack) on 150 A GaN drives. Knee 17:1: **493 / 295 N·m** peak / continuous, through a four-bar (0.84–1.46) → 415–719 N·m at the joint. Hip pitch 14:1: **406 / 243 N·m**, 15.2 rad/s |

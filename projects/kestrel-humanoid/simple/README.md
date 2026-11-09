@@ -1,7 +1,8 @@
 # KESTREL S1: the simple build
 
 S1 is a full-size humanoid that one person can build from parts they can order today. It has the same skeleton as
-KESTREL K1: 1.75 m tall, with the same leg and arm geometry. Everything else is chosen to be cheap, quick to put
+KESTREL K1, with the same leg and arm geometry. S1 is 1.75 m tall; K1 Mk II is 1.806 m, because its bigger waist
+actuators need a 56 mm taller waist. Everything else is chosen to be cheap, quick to put
 together, and easy to change:
 
 * it uses off-the-shelf actuator modules on CAN instead of custom motors and gearboxes;
@@ -18,7 +19,7 @@ margins as K1.
 
 | | KESTREL S1 | KESTREL K1 Mk II (for comparison) |
 |---|---|---|
-| Height / estimated mass | 1.75 m / 67.1 kg with the CAD structure (73.9 kg design mass) | 1.75 m / 103.1 kg |
+| Height / estimated mass | 1.75 m / 67.1 kg with the CAD structure (73.9 kg design mass) | 1.806 m / 103.3 kg |
 | Actuated joints | 27 + 2 grippers (legs 2 × 6, waist yaw, arms 2 × 6, neck 2) | 30 + two 13-DOA hands |
 | Actuators | 4 × MyActuator RMD-X12-P20-320, 23 × RobStride (RS04 / RS03 / RS02 / RS00) | custom liquid-cooled and cycloid family |
 | Leg peak torque (joint side) | knee 356 N·m (X12 through a 1.5:1 Poly Chain belt, capped to protect the belt), hip pitch 320 N·m | knee 493 N·m, hip pitch 406 N·m |

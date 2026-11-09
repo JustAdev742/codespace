@@ -64,7 +64,7 @@
   "n_feasible": 2
  },
  "KA-90P": {
-  "mass": 1.415,
+  "mass": 1.438,
   "rotor_J": 8.470000000000001e-05,
   "ratio": 28.0,
   "motor": "RI85-PH",

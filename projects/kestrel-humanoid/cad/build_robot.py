@@ -66,6 +66,8 @@ def add(group, mat, name, fn, step=False, mirror=False, body=None):
         shp = fn() if callable(fn) else fn
         if hasattr(shp, "solid") and hasattr(shp, "ops"):      # exterior.Shell -> evaluate (with fallbacks), labelled
             shp = shp.solid(label=f"{group}/{name}")
+        if L.UPPER_DZ and (group in L.UPPER_GROUPS or group.startswith(L.UPPER_PREFIX)):
+            shp = shp.translate((0, 0, L.UPPER_DZ))             # upper body above the raised waist-pitch axis
         b = body or group
         PARTS.append((group, mat, name, shp, step, b))
         if mirror:
@@ -112,7 +114,7 @@ def fan(center, d=92.0, t=25.0):
 # ================================================================= INTERIOR
 def _roll_pitch_bracket():
     """7075-T6 plate between the KA-110P output flange (12x M5 on PCD 100, counterbored) and the KA-130H."""
-    p = rbox(10, 118, 124, 4, (-79, HY, HZ)).cut(cyl(20, 20, "x", (-79, HY, HZ)))
+    p = rbox(10, 118, 112, 4, (-79, HY, HZ)).cut(cyl(20, 20, "x", (-79, HY, HZ)))
     for k in range(12):
         a = 2 * math.pi * k / 12 + math.pi / 12
         y, z = HY + 50 * math.cos(a), HZ + 50 * math.sin(a)
@@ -126,24 +128,27 @@ def interior():
     # ---------------- pelvis: machined deck carrying both hip-yaw actuators (hung from it) and a
     # cradle for the waist-yaw actuator; front/rear hangers sit outside the waist-pitch sweep (r 75)
     def pelvis_bowl():
-        deck = rbox(156, 240, 12, 0, (0, 0, 1076)).edges("|Z").fillet(40).edges("not |Z").fillet(2)
-        deck = deck.cut(cyl(79, 20, "z", (0, 0, 1076)))                           # waist-link opening (drum + caps sweep r 78)
+        deck = rbox(156, 240, 12, 0, (0, 0, 1094)).edges("|Z").fillet(40).edges("not |Z").fillet(2)
+        deck = deck.cut(cyl(79, 20, "z", (0, 0, 1094)))                           # waist-link opening (drum + caps sweep r 75)
         for s in (1, -1):
-            deck = deck.cut(cyl(16, 30, "z", (0, s * HY, 1076)))                  # hip-yaw cable bores
-        # waist-yaw housing clamped at its upper flange (z 990..1000) and hung from the front/rear bridges: nothing
-        # below z 980, where the roll-pitch brackets and thigh hip bosses sweep in hip yaw / roll
-        hang = rbox(6, 24, 76, 2, (78, 0, 1044)).union(rbox(6, 24, 76, 2, (-78, 0, 1044)))
-        clamp = tube(58, 48.6, 10, "z", (0, 0, 1009)).union(rbox(156, 24, 10, 3, (0, 0, 1009))).cut(cyl(48.6, 20, "z", (0, 0, 1009)))
+            deck = deck.cut(cyl(16, 30, "z", (0, s * HY, 1094)))                  # hip-yaw cable bores
+        # deck z 1088..1100 carries both hip-yaw actuators (z 1018..1088) from their top faces; the waist-yaw housing
+        # (z 1001..1071) is clamped at z 1057..1067 and hung from the front/rear bridges: nothing below z 1001 at the
+        # centre, where the roll-pitch brackets and thigh hip bosses sweep in hip yaw / roll
+        hang = rbox(6, 20, 94, 2, (78, 0, 1053)).union(rbox(6, 20, 94, 2, (-78, 0, 1053)))
+        clamp = tube(58, 48.6, 10, "z", (0, 0, 1062)).union(rbox(156, 24, 10, 3, (0, 0, 1062))).cut(cyl(48.6, 20, "z", (0, 0, 1062)))
         return deck.union(hang).union(clamp)
     add("pelvis", "frame", "pelvis_bowl", pelvis_bowl, step=True)
     add("pelvis", "act", "waist_yaw_KA90P", lambda: actuator(od, ln, "z", (0, 0, WAIST_YAW_Z)))
     add("pelvis", "pcb", "pelvis_io_imu", lambda: rbox(10, 24, 70, 3, (55, 0, 985)))
-    add("pelvis", "alu", "coolant_manifold", lambda: rbox(10, 56, 16, 3, (-92, 0, 1050)))
+    add("pelvis", "alu", "coolant_manifold", lambda: rbox(10, 56, 16, 3, (-92, 0, 1056)))
     # ---------------- waist (KA-110P Mk II envelope: OD 127)
     add("waist", "act", "waist_pitch_KA110P", lambda: actuator(od11, ln11, "y", (0, 0, WP), fins=False), body="waist_link")
-    add("waist", "frame", "waist_yoke", lambda: rbox(84, 100, 6, 2, (0, 0, 1018)).union(rbox(64, 7, 80, 3, (0, -44, 1056))), body="waist_link")
-    add_many("waist", joint_cap(56, "y", (0, 47.5, WP), "waist_cap_L", bolts=8, accent=False), body="waist_link")
-    add_many("waist", joint_cap(56, "-y", (0, -47.5, WP), "waist_cap_R", bolts=8, accent=False), body="waist_link")
+    # waist link inside r 53.5 of the waist-yaw axis wherever it is below z 1091 (hip-yaw housings at r >= 56.5, tops z 1088):
+    # round base disc on the waist-yaw output, side web 48 mm wide, caps r 50
+    add("waist", "frame", "waist_yoke", lambda: cyl(50, 6, "z", (0, 0, 1018)).union(rbox(48, 7, 80, 3, (0, -44, 1056))), body="waist_link")
+    add_many("waist", joint_cap(50, "y", (0, 47.5, WP), "waist_cap_L", bolts=8, accent=False), body="waist_link")
+    add_many("waist", joint_cap(50, "-y", (0, -47.5, WP), "waist_cap_R", bolts=8, accent=False), body="waist_link")
     # ---------------- torso: battery bay (rails, decks, front bulkhead = spine plate), compute, cooling
     def spine():
         p = rbox(6, 220, 192, 3, (SPINE_X, 0, 1254))
@@ -176,12 +181,12 @@ def interior():
     add("torso", "alu", "radiator_core", lambda: rbox(22, 174, 96, 2, (-118, 0, 1410)))
     for s, nm in ((1, "L"), (-1, "R")):
         add("torso", "joint", f"radiator_tank_{nm}", lambda s=s: rbox(26, 7, 100, 3, (-118, s * 90.5, 1410)))
-        fr, hub = fan((-144, s * 46.5, 1410))
+        fr, hub = fan((-142, s * 46.5, 1410))       # 0.5 mm behind the core, corners clear of the pack shell
         add("torso", "cam", f"fan92_{nm}", fr)
         add("torso", "act", f"fan92_rotor_{nm}", hub)
         add("torso", "act", f"coolant_pump_{nm}", lambda s=s: cyl(16, 44, "z", (-96, s * 78, 1380)))
     add("torso", "act", "electronics_blower", lambda: cyl(26, 28, "x", (80, 0, 1395)))
-    add("torso", "cam", "speaker", lambda: rbox(20, 60, 30, 3, (84, 0, 1440)))
+    add("torso", "cam", "speaker", lambda: rbox(20, 60, 30, 3, (74, 0, 1438)))     # behind the collar chamfer
     add("torso", "cam", "abdomen_depth_cam", lambda: rbox(26, 96, 26, 4, (108, 0, 1176)).rotate((108, 0, 1176), (108, 1, 1176), 35))
     od25, ln25 = ACT["KH-25"]
     for s in (1, -1):
@@ -193,7 +198,11 @@ def interior():
     for s in (1, -1):
         add("torso", "cool", f"coolant_trunk_{'L' if s > 0 else 'R'}",
             lambda s=s: hose([(-118, s * 88, 1360), (-104, s * 104, 1352), (-95, s * 107, 1340), (-95, s * 107, 1170),
-                              (-95, s * 62, 1157), (-72, s * 62, 1105), (-72, s * 40, 1070), (-86, s * 16, 1056)]))
+                              (-95, s * 62, 1157)]))
+        # service loop across waist pitch / waist yaw down to the pelvis manifold (world coordinates, pelvis side)
+        add("pelvis", "cool", f"coolant_waist_loop_{'L' if s > 0 else 'R'}",
+            lambda s=s: hose([(-95, s * 62, 1157 + L.UPPER_DZ), (-76, s * 30, 1140), (-66, s * 12, 1094), (-66, s * 20, 1066),
+                              (-86, s * 20, 1058)]))      # behind the waist drum, through the deck opening (r 79)
         add("torso", "cool", f"coldplate_line_{'L' if s > 0 else 'R'}",
             lambda s=s: hose([(-96, s * 78, 1402), (-96, s * 44, 1470), (40, s * 40, 1470), (101, s * 40, 1357)], r=3.0))
     # ---------------- neck + head
@@ -234,9 +243,12 @@ def interior():
     # ---------------- legs (left, mirrored)
     od13h, ln13h = ACT["KA-130H"]
     od13k, ln13k = ACT["KA-130K"]
-    add("l_hip", "act", "hip_yaw_KA90P", lambda: actuator(od, ln, "-z", (0, HY, 1035)), mirror=True, body="pelvis")
+    add("l_hip", "act", "hip_yaw_KA90P", lambda: actuator(od, ln, "-z", (0, HY, HIP_YAW_ACT_Z)), mirror=True, body="pelvis")
+    # yaw-roll yoke: upper plate under the hip-yaw output (z 1004..1018) clears the KA-130H and the roll-pitch bracket swept
+    # about the roll axis (max z 999.6 at +33 deg); behind the bracket (x < -87) it steps down over the KA-110P roll actuator
     add("l_hip", "frame", "yaw_roll_yoke",
-        lambda: rbox(150, 60, 14, 4, (-62, HY, 992)).union(rbox(70, 50, 8, 2, (-132, HY, 981))).union(rbox(10, 70, 80, 3, (-177, HY, 952))),
+        lambda: rbox(111, 60, 14, 4, (-42.5, HY, 1011)).union(rbox(12, 60, 33, 3, (-93, HY, 1001.5)))
+        .union(rbox(50, 60, 14, 4, (-112, HY, 992))).union(rbox(70, 50, 8, 2, (-132, HY, 981))).union(rbox(10, 70, 80, 3, (-177, HY, 952))),
         mirror=True, step=True, body="l_hip_yaw")
     add("l_hip", "act", "hip_roll_KA110P", lambda: actuator(od11, ln11, "x", (HIP_ROLL_X, HY, HZ)), mirror=True, body="l_hip_yaw")
     from detail_parts import hip_roll_flange
@@ -254,26 +266,29 @@ def interior():
     # dry-break quick-disconnect pair per leg on the pelvis (supply / return), hip side through service loops
     for k, x in enumerate((-66, -88)):
         add("l_hip", "alu", f"coolant_qd_{'supply' if k == 0 else 'return'}",
-            lambda x=x: cyl(8.5, 20, "z", (x, 60, 1025)).union(cyl(10, 8, "z", (x, 60, 1039))).union(cyl(6, 10, "z", (x, 60, 1048))),
+            lambda x=x: cyl(8.5, 20, "z", (x, 60, 1031)).union(cyl(10, 8, "z", (x, 60, 1045))).union(cyl(6, 10, "z", (x, 60, 1054))),
             mirror=True, body="pelvis")
-    add("l_hip", "cool", "coolant_pelvis_supply", lambda: hose([(-66, 60, 1052), (-80, 40, 1058), (-92, 14, 1054)]), mirror=True, body="pelvis")
-    add("l_hip", "cool", "coolant_pelvis_return", lambda: hose([(-88, 60, 1052), (-92, 22, 1050)]), mirror=True, body="pelvis")
+    add("l_hip", "cool", "coolant_pelvis_supply", lambda: hose([(-66, 60, 1058), (-80, 40, 1064), (-92, 14, 1060)]), mirror=True, body="pelvis")
+    add("l_hip", "cool", "coolant_pelvis_return", lambda: hose([(-88, 60, 1058), (-92, 22, 1056)]), mirror=True, body="pelvis")
     # hip-pitch ports (y 135.9 / 112.8) point down-rear, knee ports (y 59.7 / 84.4) up-rear: hip -> knee in series
     add("l_hip", "cool", "coolant_qd_to_hip",
-        lambda: hose([(-66, 60, 1015), (-68, 44, 990), (-68, 44, 872), (-60, 85, 857), (-59.4, 112.8, 855.6)]), mirror=True, body="l_hip_roll")
-    add("l_thigh", "cool", "coolant_hip_to_knee", lambda: hose([(-59.4, 135.9, 855.6), (-60, 115, 842), (-42, 84.4, 827.7)]), mirror=True)
+        lambda: hose([(-66, 60, 1021), (-68, 44, 990), (-68, 44, 872), (-60, 85, 857), (-59.4, 112.8, 855.6)]), mirror=True, body="l_hip_roll")
+    # knee ports at 105 deg (up, slightly rear: tips x -21.7, z 836): clear of the roll-pitch bracket at +30 deg hip extension
+    add("l_thigh", "cool", "coolant_hip_to_knee",
+        lambda: hose([(-59.4, 135.9, 855.6), (-50, 110, 846), (-28, 84.4, 841), (-21.7, 84.4, 836.1)]), mirror=True)
     add("l_thigh", "cool", "coolant_knee_return",
-        lambda: hose([(-42, 59.7, 827.7), (-62, 48, 850), (-80, 40, 872), (-80, 40, 990), (-88, 60, 1015)]), mirror=True)
-    add("l_thigh", "act", "knee_KA130K", lambda: actuator_lc(od13k, ln13k, "y", (0, KNEE_ACT_Y, KNEE_ACT_Z), port_angle=240), mirror=True)
+        lambda: hose([(-21.7, 59.7, 836.1), (-40, 50, 848), (-62, 46, 858), (-80, 40, 872), (-80, 40, 990), (-88, 60, 1021)]), mirror=True)
+    add("l_thigh", "act", "knee_KA130K", lambda: actuator_lc(od13k, ln13k, "y", (0, KNEE_ACT_Y, KNEE_ACT_Z), port_angle=255), mirror=True)
     from detail_parts import knee_hub, thigh_plate
     add("l_thigh", "frame", "thigh_plate_medial", lambda: thigh_plate().translate((0, 0, HZ)), mirror=True, step=True)
     def plate_lat():           # lateral plate: knee-bearing boss + ring round the KA-130K output (crank outside it)
-        p = rbox(60, 7, 270, 3, (0, 143.5, 625)).union(cyl(45, 17, "y", (0, 138.5, KZ))).union(cyl(78, 7, "y", (0, 143.5, KNEE_ACT_Z)))
-        return p.cut(cyl(36, 20, "y", (0, 138.5, KZ))).cut(cyl(46, 10, "y", (0, 143.5, KNEE_ACT_Z)))
+        # strip and knee boss stop at y 146: 1 mm running gap to the hub's integral crank (y 147..152)
+        p = rbox(48, 6, 270, 3, (20, 143, 625)).union(cyl(45, 16, "y", (0, 138, KZ))).union(cyl(78, 7, "y", (0, 143.5, KNEE_ACT_Z)))
+        return p.cut(cyl(36, 20, "y", (0, 138, KZ))).cut(cyl(46, 10, "y", (0, 143.5, KNEE_ACT_Z)))
     add("l_thigh", "frame", "thigh_plate_lateral", plate_lat, mirror=True, step=True)
-    for nm, yb in (("med", 38.5), ("lat", 138.5)):
+    for nm, yb in (("med", 38.5), ("lat", 138.0)):
         add("l_thigh", "steel", f"knee_bearing_7207BE_{nm}", lambda yb=yb: tube(36, 17.5, 17, "y", (0, yb, KZ)), mirror=True)
-    add("l_thigh", "cf", "thigh_tube", lambda: tube(20, 18, 116, "z", (15, KNEE_ACT_Y, 622)), mirror=True, step=True)
+    add("l_thigh", "cf", "thigh_tube", lambda: tube(20, 18, 116, "z", (25, KNEE_ACT_Y, 622)), mirror=True, step=True)
     kf = json.loads((HERE.parent / "data" / "knee_fourbar.json").read_text())
     Ax, Az = kf["A"]
     r1, r2, beta, phi0 = kf["r1"] * 1e3, kf["r2"] * 1e3, math.radians(kf["beta_deg"]), math.radians(kf["phi0_deg"])

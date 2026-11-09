@@ -34,7 +34,7 @@
 <body>
 <div id="ui" role="region" aria-label="Viewer controls">
   <h1>KESTREL&nbsp;K1&nbsp;Mk&nbsp;II</h1>
-  <div class="sub">Full-size humanoid · 1.75 m · 30 body DOF · 2 × 13-DOA hands · liquid-cooled legs</div>
+  <div class="sub">Full-size humanoid · 1.81 m · 30 body DOF · 2 × 13-DOA hands · liquid-cooled legs</div>
   <div class="row" id="views"></div>
   <label for="explode">Exploded view</label>
   <input id="explode" type="range" min="0" max="1" step="0.01" value="0">
@@ -284,11 +284,11 @@ function applyMode(m) {
 
 // camera presets: [azimuth deg (0 = front, +x), elevation deg, distance m, target z m, target y m, fov]
 const VIEWS = {
-  front: [0, 3, 4.7, 0.88, 0, 26], rear: [180, 3, 4.7, 0.88, 0, 26], left: [90, 3, 4.7, 0.88, 0, 26], right: [-90, 3, 4.7, 0.88, 0, 26],
-  threequarter_front: [34, 8, 4.75, 0.88, 0, 26], threequarter_rear: [212, 10, 4.75, 0.88, 0, 26],
-  head: [30, 5, 0.95, 1.63, 0, 26], hands: [62, 4, 0.72, 0.78, 0.20, 26], hip_knee: [24, 6, 1.75, 0.70, 0.11, 26],
-  shoulder: [38, 10, 1.15, 1.37, 0.17, 26], foot: [48, 20, 1.05, 0.12, 0.10, 26], torso: [32, 8, 1.75, 1.27, 0, 26],
-  exploded: [35, 8, 6.4, 0.86, 0, 28],
+  front: [0, 3, 4.8, 0.91, 0, 26], rear: [180, 3, 4.8, 0.91, 0, 26], left: [90, 3, 4.8, 0.91, 0, 26], right: [-90, 3, 4.8, 0.91, 0, 26],
+  threequarter_front: [34, 8, 4.85, 0.91, 0, 26], threequarter_rear: [212, 10, 4.85, 0.91, 0, 26],
+  head: [30, 5, 0.95, 1.69, 0, 26], hands: [62, 4, 0.72, 0.84, 0.20, 26], hip_knee: [24, 6, 1.75, 0.70, 0.11, 26],
+  shoulder: [38, 10, 1.15, 1.43, 0.17, 26], foot: [48, 20, 1.05, 0.12, 0.10, 26], torso: [32, 8, 1.75, 1.33, 0, 26],
+  exploded: [35, 8, 6.5, 0.89, 0, 28],
   actuator: [35, 22, 0.42, 0.065, 0, 30], actuator_exploded: [35, 18, 0.66, 0.12, 0, 30],
 };
 function setView(v) {

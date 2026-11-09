@@ -208,6 +208,8 @@ def main():
     mb = (PROJ / "docs" / "generated" / "mass_budget.md").read_text()
     mm = re.search(r"Estimated mass \*\*([\d.]+) kg\*\*.*?\*\*([\d.]+) kg\*\*", mb)
     mass_line = f"{mm.group(1)} kg estimated ({mm.group(2)} kg design mass)" if mm else "see docs/generated/mass_budget.md"
+    hm = re.search(r"^HEIGHT = ([0-9.]+)", (PROJ / "calc" / "kestrel" / "params.py").read_text(), re.M)
+    height_line = f"{float(hm.group(1)):.2f} m" if hm else "see calc/kestrel/params.py"
     page = f"""<title>KESTREL K1 Build Tutorial</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -223,7 +225,7 @@ def main():
   <script>try {{ if (matchMedia("(max-width: 999px)").matches) document.querySelector(".toc-details").removeAttribute("open"); }} catch (e) {{}}</script>
   <main id="top">
     <header class="hero">
-      <p class="eyebrow">Full-size humanoid · 1.75 m · {mass_line} · 16S Li-ion</p>
+      <p class="eyebrow">Full-size humanoid · {height_line} · {mass_line} · 16S Li-ion</p>
       <h1>KESTREL K1 Mk II build tutorial</h1>
       <p class="lede">Every phase from an empty workshop to a commissioned robot. In each phase: visual reference,
       parts with BOM IDs, tools, manufacturing, assembly with torques, electrical work, and the bench test that has

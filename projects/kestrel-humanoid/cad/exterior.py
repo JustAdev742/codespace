@@ -125,8 +125,18 @@ class Shell:
         return self.keep(box(-BIG, BIG, -BIG, BIG, lo, hi))
 
     def plane(self, point, normal, positive=True):
+        """Trim to one side of a plane: the trimmed edge is open (a panel edge or a window)."""
         r = plane_cut(box(-BIG, BIG, -BIG, BIG, -BIG, BIG), point, normal, positive)
         return self.keep(r)
+
+    def facet(self, point, normal, t):
+        """Trim to the side the normal points to and close the cut with a flat wall of thickness t (a chamfer facet):
+        the inner solid is trimmed by the same plane moved t inwards."""
+        n = [c / math.sqrt(sum(v * v for v in normal)) for c in normal]
+        sh = self.plane(point, normal, True)
+        p_in = tuple(point[k] + t * n[k] for k in range(3))
+        inner = self.i.intersect(plane_cut(box(-BIG, BIG, -BIG, BIG, -BIG, BIG), p_in, normal, True))
+        return Shell(sh.o, inner, sh.loft, sh.ops)
 
     def _replay(self, w, tol=None):
         for kind, arg in self.ops:
@@ -245,7 +255,10 @@ def head(add, add_many):
 # ================================================================== NECK
 def neck(add, add_many):
     secs = [((0, 0, 1497), 51, 51, 52, 52, 2.2), ((0, 0, 1530), 48, 46, 50, 50, 2.3), ((2, 0, 1566), 46, 44, 47, 47, 2.3)]
-    add("neck", "trim", "neck_sleeve", Shell.make(secs, WALL["neck"]), step=True, body="neck_link")
+    # chin relief: the front of the sleeve rim is chamfered so the head mounting plate (37 mm above the pitch axis)
+    # passes it to +56 deg neck pitch with 2 mm (plane 0.829 x + 0.559 (z - NP) <= 34.5)
+    sl = Shell.make(secs, WALL["neck"]).plane((41.6, 0, NP), (-0.829, 0, -0.559), True)
+    add("neck", "trim", "neck_sleeve", sl, step=True, body="neck_link")
     add("neck", "alu", "neck_ring", lambda: tube(54.8, 53.0, 2.0, "z", (0, 0, 1504)), body="neck_link")
 
 
@@ -263,6 +276,8 @@ def torso(add, add_many):
     sh = Shell.make(TORSO, WALL["torso"])
     sh = sh.cut(cyl(72, 400, "y", (0, 0, WP)))                             # concentric relief over the waist-pitch drum
     sh = sh.kz(hi=1515).cut(cyl(57, 80, "z", (0, 0, 1517)))                 # collar opening for the neck sleeve
+    sh = sh.facet((52, 0, 1505), (-1.39, 0, -1), WALL["torso"])            # closed collar chamfer z <= 1505 - 1.39 (x - 52):
+                                                                           # the jaw clears the chest by 2 mm to +54 deg neck pitch
     for s in (1, -1):
         sh = sh.cut(cyl(67, 60, "y", (0, s * 128, SZ)))                    # KH-25 shoulder-pitch output through the side wall
     sh = sh.cut(aloft([((-200, 0, 1412), 110.5, 110.5, 64.5, 64.5, 5.0), ((-96, 0, 1412), 110.5, 110.5, 64.5, 64.5, 5.0)], axis="x"))  # pack opening
@@ -275,7 +290,7 @@ def torso(add, add_many):
     add("torso", "shell", "chest_plate", front.kz(lo=1252 + G2), step=True)
     add("torso", "shell", "abdomen_plate", front.kz(hi=1252 - G2).cut(rbox(200, 102, 30, 6, (120, 0, 1177))), step=True)
     add("torso", "visor", "abdomen_sensor_window", band(TORSO, 0.2, 1.4, box(40, BIG, -50, 50, 1163, 1191)))
-    add("torso", "accent", "chest_light", band(TORSO, 0.35, 1.2, box(60, BIG, -1.3, 1.3, 1318, 1428)))
+    add("torso", "accent", "chest_light", band(TORSO, 0.35, 1.2, box(60, BIG, -1.3, 1.3, 1318, 1410)))
     sides = sh.kx(lo=-60 + G2).cut(shield(G2))
     add("torso", "trim", "torso_side_L", sides.ky(lo=G2), step=True)
     add("torso", "trim", "torso_side_R", sides.ky(hi=-G2))
@@ -293,7 +308,7 @@ def torso(add, add_many):
     add("torso", "shell", "back_upper", back.kz(lo=1346 + G2), step=True)
     add("torso", "alu", "collar_ring", lambda: tube(56.9, 54.5, 3.0, "z", (0, 0, 1513.5)))
     screws(add, "torso", sh.loft, [((-300, s * 53 + d, z), (1, 0, 0)) for s in (1, -1) for d in (-32, 32) for z in (1180,)], "hatch", mirror=False)
-    screws(add, "torso", sh.loft, [((300, s * 66, z), (-1, 0, 0)) for s in (1, -1) for z in (1290, 1440)], "chest", mirror=False)
+    screws(add, "torso", sh.loft, [((300, s * 66, z), (-1, 0, 0)) for s in (1, -1) for z in (1290, 1400)], "chest", mirror=False)
     # radiator back pack (graphite): 2 x 92 mm fans exhaust through the grille
     pk = Shell.make(PACK, WALL["pack"], axis="x", extend=("start",)).cut(aloft(offs(TORSO, -WALL["torso"] - 0.5)))
     pk = pk.cuts([rbox(40, 164, 4.2, 1.8, (-172, 0, 1377 + 10 * k)) for k in range(8)])
@@ -303,32 +318,36 @@ def torso(add, add_many):
 
 
 # ================================================================== PELVIS
-PELVIS = [((-4, 0, 996), 98, 104, 152, 152, 3.4), ((-4, 0, 1030), 104, 110, 156, 156, 3.6), ((-4, 0, 1066), 98, 104, 154, 154, 3.6),
-          ((-4, 0, 1080), 92, 96, 146, 146, 3.2), ((-4, 0, 1094), 80, 84, 126, 126, 2.8)]
+# band z 1022..1112 (Mk II clearance pass: +16 mm over the raised hip-yaw stack and deck; the sides stay open over the drums)
+PELVIS = [((-4, 0, 1012), 98, 104, 152, 152, 3.4), ((-4, 0, 1046), 104, 110, 156, 156, 3.6), ((-4, 0, 1084), 98, 104, 156, 156, 3.6),
+          ((-4, 0, 1098), 92, 96, 152, 152, 3.2), ((-4, 0, 1112), 80, 84, 128, 128, 2.8)]
 
 
 def pelvis(add, add_many):
-    sh = Shell.make(PELVIS, WALL["pelvis"], extend=("start",)).kz(lo=1006).ky(-150.5, 150.5)   # open sides show the hip-yaw drums
+    sh = Shell.make(PELVIS, WALL["pelvis"], extend=("start",)).kz(lo=1022).ky(-150.5, 150.5)   # open sides show the hip-yaw drums
     for s in (1, -1):
         sh = sh.cut(cyl(100, 170, "y", (0, s * HY, HZ)))                  # arches over the hips (thigh top sweep r <= 96)
     sh = sh.cut(cyl(82, 200, "z", (0, 0, 1100)))                          # waist-link opening (waist-pitch drum sweeps r 75)
     add("pelvis", "shell", "pelvis_front", sh.kx(lo=-10 + G2), step=True)
     add("pelvis", "shell", "pelvis_rear", sh.kx(hi=-10 - G2), step=True)
-    add("pelvis", "accent", "belt_light", band(PELVIS, 0.35, 1.2, box(60, BIG, -40, 40, 1036, 1039)))
+    add("pelvis", "accent", "belt_light", band(PELVIS, 0.35, 1.2, box(60, BIG, -40, 40, 1054, 1057)))
     low = [((0, 0, 902), 80, 84, 11, 11, 3.0), ((0, 0, 920), 94, 98, 15, 15, 3.2), ((0, 0, 934), 98, 104, 17, 17, 3.4),
-           ((0, 0, 1012), 100, 108, 17, 17, 3.4)]
+           ((0, 0, 1028), 100, 108, 17, 17, 3.4)]
     lo = Shell.make(low, WALL["pelvis"], extend=("end",))
     add("pelvis", "trim", "pelvis_front_lower", lo.kx(lo=62), step=True)          # no rear piece: it would block hip roll
-    screws(add, "pelvis", sh.loft, [((300, s * 120, 1050), (-1, 0, 0)) for s in (1, -1)], "pelvis", mirror=False)
+    screws(add, "pelvis", sh.loft, [((300, s * 120, 1068), (-1, 0, 0)) for s in (1, -1)], "pelvis", mirror=False)
 
 
 # ================================================================== LEGS (left, mirrored)
-TH_N1 = (5.5, 2.8, 3.4, 2.8)
-TH_N1 = (5.5, 3.0, 3.4, 3.6)
-THIGH = [((0, 99, 905), 88, 86, 76, 77, (4.5, 3.0, 3.2, 3.4)), ((0, 99, 840), 95, 89, 77, 79, TH_N1),
-         ((0, 99, 770), 98, 89, 77, 79, TH_N1), ((0, 99, 700), 93, 85, 76, 78, (4.8, 3.0, 3.2, 3.4)),
-         ((0, 99, 630), 80, 75, 74, 76, (3.6, 3.0, 3.0, 3.2)), ((0, 99, 570), 64, 64, 72, 75, (3.0, 3.2, 2.8, 3.2)),
-         ((0, 99, 535), 58, 60, 70, 75, (2.8, 3.2, 2.6, 3.2))]
+# medial face flattened (Mk II hip-roll pass): medial semi-axis 74-76 puts the outer face at y 23-25.5 with the inner face
+# >= 2 mm off the medial thigh plate (y 30, x +-30); front-medial exponents 3.8-4.2 keep it a flat face rather than a bulge
+TH_N1 = (5.5, 3.4, 3.4, 3.9)
+# lateral semi-axis 73-74.5 over z 630-840 (lateral face y 172-173.5, 3 mm round the push-rod sweep): the hanging hand's
+# thumb (y >= 175.5) keeps >= 3.4 mm to the thigh over hip pitch -50..+18 deg
+THIGH = [((0, 99, 905), 88, 86, 76, 77, (4.5, 3.2, 3.2, 3.6)), ((0, 99, 840), 95, 89, 74.5, 76, TH_N1),
+         ((0, 99, 770), 98, 89, 73, 74, (4.4, 3.4, 3.4, 3.9)), ((0, 99, 700), 93, 85, 73, 73.8, (4.0, 3.8, 3.2, 3.8)),
+         ((0, 99, 630), 80, 75, 73, 73.8, (3.6, 3.8, 3.0, 3.6)), ((0, 99, 570), 64, 64, 72, 74.5, (3.0, 4.0, 2.8, 3.4)),
+         ((0, 99, 535), 58, 60, 70, 75, (2.8, 4.2, 2.6, 3.4))]
 SH_N = (3.0, 3.0, 4.2, 4.2)
 SHANK = [((0, 105, 478), 50, 60, 46, 47, (2.6, 2.6, 3.0, 3.0)), ((0, 105, 440), 46, 78, 47, 48, (2.8, 2.8, 3.8, 3.8)),
          ((0, 105, 370), 46, 88, 47, 48, SH_N), ((0, 105, 300), 43, 87, 48, 49, (3.0, 3.0, 4.4, 4.4)),
@@ -351,15 +370,21 @@ def legs(add, add_many):
     gp = [((-89, HY, HZ), 71, 71, 71, 71, 2.3), ((-100, HY, HZ), 71, 71, 71, 71, 2.4), ((-150, HY, HZ), 71, 71, 71, 71, 2.6),
           ((-176, HY, HZ), 60, 60, 60, 60, 2.4), ((-188, HY, HZ), 30, 30, 30, 30, 2.0)]
     pod = Shell.make(gp, WALL["glute"], axis="x", extend=("start",))
-    pod = pod.cut(box(-170, -94, HY - 30, HY + 30, 975, 1000)).cut(box(-186, -168, HY - 44, HY + 44, 946, 1000))
+    pod = pod.cut(box(-170, -86, HY - 32, HY + 32, 975, 1000)).cut(box(-186, -168, HY - 44, HY + 44, 946, 1000))
+    pod = pod.plane((0, 0, HZ), (-1, 0, 1.80), True)        # front-bottom chamfer 61 deg off the hip-pitch axis: the KA-130K
+                                                            # and the lateral thigh plate pass under it to +30 deg extension
     add("l_hip", "shell", "glute_pod", pod, mirror=True, step=True, body="l_hip_yaw")
     add_many("l_hip", joint_cap(26, "-x", (-188, HY, HZ), "glute_cap", bolts=6, accent=False), mirror=True, body="l_hip_yaw")
     # ---------------- thigh
     th = Shell.make(THIGH, WALL["thigh"])
     th = th.cut(cyl(88, 220, "y", (0, 99, HZ)))                              # concentric with the hip-pitch axis
     th = th.plane((0, 0, 839), (0.384, 0, -1), True)                         # top edge: z < 839 + 0.384 x
+    th = th.plane((0, 0, 828), (0.577, 0, -1), True)                         # rear-top edge z < 828 + 0.577 x: clears the
+                                                                             # gluteal pod at +30 deg hip extension
     th = th.cut(cyl(58, 220, "y", (0, 99, KZ)))                              # knee drum (r 55) + patella clearance
-    th = th.cut(cyl(110, 220, "y", (0, 99, KZ)).intersect(box(-BIG, -8, -BIG, BIG, -BIG, BIG)))  # popliteal relief (deep knee flexion)
+    # popliteal window: behind x = -8 the thigh ends on the line z = 617 - 0.85 x (624 at x -8, 689 at the rear face); with
+    # the calf top cut (z = 476 + 0.84 x) the shank folds into it to 130 deg with >= 4 mm (docs/02 §8)
+    th = th.cut(plane_cut(box(-BIG, -8, -BIG, BIG, -BIG, BIG), (0, 0, 617), (-0.85, 0, -1), True))
     th = th.cut(box(-BIG, BIG, -BIG, BIG, 800, 1100).cut(cyl(98, 240, "y", (0, 99, HZ))))       # top within r 98: clears the pelvis arches
     th = th.cuts(knee_rod_cutters("thigh"))
     add("l_thigh", "shell", "thigh_front", th.ky(hi=151 - G2).kx(lo=-25 + G2), mirror=True, step=True)
@@ -370,13 +395,18 @@ def legs(add, add_many):
     # knee: caps on the hub ends (they turn with the shank); the lateral cap stands off outside the push-rod plane
     add("l_shank", "frame", "knee_cap_standoff", lambda: cyl(10, 16.5, "y", (0, 160.25, KZ)), mirror=True)
     add_many("l_shank", joint_cap(36, "y", (0, 168.5, KZ), "knee_cap_lat", bolts=6, accent=True), mirror=True)
-    add_many("l_shank", joint_cap(36, "-y", (0, 29, KZ), "knee_cap_med", bolts=6, accent=False), mirror=True)
+    add_many("l_shank", joint_cap(36, "-y", (0, 29, KZ), "knee_cap_med", bolts=6, accent=False, t=3.5), mirror=True)  # low medial
+    # popliteal web: recessed graphite panel closing the thigh between the plates, behind the knee drum and under the KA-130K
+    # (x -8..-6, outside the shank sweep, which the calf top cut keeps at x < -8 for every knee angle)
+    add("l_thigh", "trim", "popliteal_web", lambda: rbox(2.2, 102, 128, 1.0, (-6.9, KNEE_ACT_Y, 617)), mirror=True, step=True)
     add("l_shank", "joint", "knee_cover", lambda: tube(55, 52.5, 82, "y", (0, KNEE_ACT_Y, KZ)), mirror=True)
     pat = [((62, 99, 458), 9, 4, 26, 26, 2.2), ((65, 99, 490), 13, 7, 34, 34, 2.4), ((62, 99, 526), 9, 4, 28, 28, 2.2)]
     add("l_shank", "shell", "knee_cap", aloft(pat), mirror=True)
     # ---------------- shank
     sk = Shell.make(SHANK, WALL["shank"]).cut(cyl(57, 220, "y", (0, 105, KZ))).kz(hi=478)
-    sk = sk.cut(cyl(80, 220, "y", (0, 105, KZ)).intersect(box(-BIG, -20, -BIG, BIG, -BIG, BIG)))   # calf top relief (knee flexion)
+    # calf top-rear cut: behind x = -20 the calf ends on z = 476 + 0.84 x (459 at x -20, 402 at the rear face), the lower
+    # half of the popliteal window; at 130 deg knee flexion it lies >= 4 mm outside everything the thigh carries
+    sk = sk.cut(plane_cut(box(-BIG, -20, -BIG, BIG, -BIG, BIG), (0, 0, 476), (-0.84, 0, 1), True))
     sk = sk.cuts(knee_rod_cutters("shank"))
     kf = json.loads((HERE.parent / "data" / "knee_fourbar.json").read_text())
     ang = math.degrees(math.radians(kf["beta_deg"]))

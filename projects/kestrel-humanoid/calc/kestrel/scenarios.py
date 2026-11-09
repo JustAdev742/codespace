@@ -100,7 +100,9 @@ def squat(name, desc, z_low, waist_pitch, box_kg=0.0, t_down=1.5, t_hold=0.6, t_
 def step_up(name, desc, height=0.30, t_rise=1.2):
     """Left foot on a platform; robot rises on the left leg only."""
     R = D.Robot()
-    fl = (np.array([0.0, P.DIM["hip_half_width"], height]), np.eye(3))
+    # platform foot 35 mm outboard of the hip (a natural step-up stance): keeps hip adduction inside the shell-limited
+    # -11 deg (cad/check_clearance.py, docs/02 sec. 8) and the tucked foot clear of the stance calf
+    fl = (np.array([0.0, P.DIM["hip_half_width"] + 0.035, height]), np.eye(3))
     tuck = {"r_hip_pitch": -0.5, "r_knee": 1.0, "r_ankle_pitch": -0.3}
     T = np.arange(0, 0.3 + t_rise + 0.4, DT)
     z0, z1 = height + 0.55, height + 0.82

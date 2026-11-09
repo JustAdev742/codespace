@@ -37,7 +37,7 @@ GEN_DIR = ROOT / "docs" / "generated"
 SCENARIOS_SKIP = set()      # scenario IDs a variant cannot perform (e.g. no waist-pitch joint)
 
 NAME = "KESTREL K1 Mk II"
-HEIGHT = 1.75  # m, standing, top of head shell
+HEIGHT = 1.806  # m, standing, top of head shell (Mk II: +56 mm from the raised waist-pitch axis)
 # Load levels of the design-case scenarios (calc/kestrel/scenarios.py): "mk2" = 30 kg sustained / 50 kg momentary
 # payload, 10 kg per hand at full reach, 15 kg in one hand (docs/research/R7 recommendations)
 WORKLOAD = "mk2"
@@ -57,7 +57,9 @@ DIM = dict(
     hip_half_width=0.105,     # hip joint centre lateral offset (human ~0.09)
     hip_yaw_above=0.075,      # hip-yaw joint above hip centre (roll/pitch intersect at centre)
     waist_yaw_above=0.100,    # waist-yaw joint above hip centre
-    waist_pitch_above=0.070,  # waist-pitch joint above waist-yaw joint
+    waist_pitch_above=0.126,  # waist-pitch joint above waist-yaw joint (Mk II: +56 mm so the KA-110P housing clears the
+                              # KA-90P hip-yaw housings (raised 18 mm to clear the KA-130H in hip roll) over +-70 deg waist
+                              # yaw and the waist-yaw actuator clears the thigh hip flanges; cad/layout.py)
     shoulder_z=0.335,         # shoulder centre above waist-pitch axis
     shoulder_half_width=0.200,  # shoulder centre lateral offset (biacromial 0.40 m)
     neck_yaw_z=0.400,         # neck-yaw joint above waist-pitch axis
@@ -198,9 +200,9 @@ def build_bodies():
     # ---------------- pelvis (floating base, origin = midpoint of hip centres) -----
     B.append(Body("pelvis", None, None, comps=[
         Comp("pelvis frame (7075-T6 machined bowl + CF closeout)", 1.50, (0.0, 0, 0.035), "box", (0.20, 0.28, 0.11), "structure"),
-        Comp("hip-yaw actuator L", _A("KA-90P"), (0.0, d["hip_half_width"], 0.120), "cyl", (0.050, 0.075, "z"), "actuator"),
-        Comp("hip-yaw actuator R", _A("KA-90P"), (0.0, -d["hip_half_width"], 0.120), "cyl", (0.050, 0.075, "z"), "actuator"),
-        Comp("waist-yaw actuator", _A("KA-90P"), (0.0, 0, 0.075), "cyl", (0.050, 0.075, "z"), "actuator"),
+        Comp("hip-yaw actuator L", _A("KA-90P"), (0.0, d["hip_half_width"], 0.138), "cyl", (0.050, 0.075, "z"), "actuator"),
+        Comp("hip-yaw actuator R", _A("KA-90P"), (0.0, -d["hip_half_width"], 0.138), "cyl", (0.050, 0.075, "z"), "actuator"),
+        Comp("waist-yaw actuator", _A("KA-90P"), (0.0, 0, 0.121), "cyl", (0.050, 0.075, "z"), "actuator"),
         Comp("pelvis IMU + EtherCAT junction + pelvis I/O board", 0.35, (-0.06, 0, 0.05), "box", (0.06, 0.10, 0.04), "electronics"),
         Comp("pelvis shells (PA12-MJF, painted)", 0.55, (0.0, 0, 0.040), "box", (0.25, 0.36, 0.17), "shell"),
         Comp("pelvis harness", 0.35, (-0.03, 0, 0.06), "box", (0.10, 0.20, 0.05), "harness"),
@@ -214,8 +216,8 @@ def build_bodies():
     h_sh = d["shoulder_z"]
     B.append(Body("torso", "waist_link", "waist_pitch", (0, 0, d["waist_pitch_above"]), (0, 1, 0), comps=[
         Comp("spine + ribcage frame (7075-T6 + CF panels)", 2.40, (-0.01, 0, 0.20), "box", (0.18, 0.30, 0.40), "structure"),
-        Comp("battery pack A, hot-swap 16S4P (64 Molicel P50B, 1.15 kWh) incl. BMS, fuse, end cap + handle", 6.20, (-0.040, 0.052, 0.130), "box", (0.175, 0.098, 0.185), "battery"),
-        Comp("battery pack B, hot-swap 16S4P (64 Molicel P50B, 1.15 kWh) incl. BMS, fuse, end cap + handle", 6.20, (-0.040, -0.052, 0.130), "box", (0.175, 0.098, 0.185), "battery"),
+        Comp("battery pack A, hot-swap 16S4P (64 Molicel P50B, 1.15 kWh) incl. BMS, fuse, end cap + handle", 6.20, (-0.040, 0.052, 0.1675), "box", (0.175, 0.098, 0.185), "battery"),
+        Comp("battery pack B, hot-swap 16S4P (64 Molicel P50B, 1.15 kWh) incl. BMS, fuse, end cap + handle", 6.20, (-0.040, -0.052, 0.1675), "box", (0.175, 0.098, 0.185), "battery"),
         Comp("AI computer (Jetson AGX Thor module + carrier + cold plate)", 1.45, (0.035, 0, 0.30), "box", (0.04, 0.16, 0.12), "electronics"),
         Comp("real-time control computer + safety MCU board", 0.45, (-0.07, 0, 0.30), "box", (0.03, 0.12, 0.10), "electronics"),
         Comp("power distribution unit (contactor, fuses, DC-DC)", 1.20, (0.075, 0, 0.177), "box", (0.03, 0.17, 0.10), "electronics"),
@@ -301,7 +303,7 @@ def build_bodies():
             Comp("ankle actuator B (calf, lower)", _A("KA-90P"), (-0.025, 0, -0.195), "cyl", (0.0485, 0.070, "y"), "actuator"),
             Comp("shank frame (7075-T6 + CF tube)", 0.75, (0, 0, -0.22), "box", (0.07, 0.06, 0.36), "structure"),
             Comp("ankle push-rods x2 (Ti tube, rod ends)", 0.18, (-0.035, 0, -0.30), "cyl", (0.008, 0.26, "z"), "structure"),
-            Comp("shank shells", 0.28, (0, 0, -0.20), "box", (0.12, 0.12, 0.36), "shell"),
+            Comp("shank shells", 0.335, (0, 0, -0.20), "box", (0.12, 0.12, 0.36), "shell"),   # Mk II CAD (cad/out/shell_mass.json)
             Comp("shank harness", 0.18, (0, 0, -0.18), "box", (0.03, 0.03, 0.30), "harness"),
         ]))
         B.append(Body(f"{side}_ankle_link", f"{side}_shank", f"{side}_ankle_pitch", (0, 0, -d["shank"]), (0, 1, 0), comps=[

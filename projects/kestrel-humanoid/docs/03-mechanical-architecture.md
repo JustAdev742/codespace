@@ -449,8 +449,8 @@ signals.
 4. The BMS reports the new pack; firmware updates the torso mass model (pack-present).
 
 One pack alone at the whole-robot simultaneous peak of 3,076 W [gen] draws 3,076 / 52 = 59 A, 14.8 A per cell, inside
-the P50B's 60 A continuous rating (R3 via R7) [E]. Removing one pack moves the centre of mass 6.2 × 0.052 / 103.1 ≈
-3 mm sideways [E, 103.1 kg estimated mass from the gen mass budget]; the controller corrects it from the pack-present signal.
+the P50B's 60 A continuous rating (R3 via R7) [E]. Removing one pack moves the centre of mass 6.2 × 0.052 / 103.3 ≈
+3 mm sideways [E, 103.3 kg estimated mass from the gen mass budget]; the controller corrects it from the pack-present signal.
 
 ## 11. Cable and hose routing through moving joints
 
@@ -568,25 +568,25 @@ pass-through (R7 #7) is not in the Mk II baseline.
 
 ## 14. Mass budget (Mk II)
 
-[generated/mass_budget.md](generated/mass_budget.md): **103.1 kg estimated; 113.4 kg design mass** (× 1.10). K1 for
+[generated/mass_budget.md](generated/mass_budget.md): **103.3 kg estimated; 113.7 kg design mass** (× 1.10). K1 for
 comparison: 84.1 kg estimated, 92.6 kg design (the same file at git commit 96eb3d9).
 
 | Category | Mk II kg [gen] | K1 kg | Change | Main reason |
 |---|---|---|---|---|
-| Actuators | 59.23 | 45.37 | +13.86 | KA-130 jacketed 50 mm stack, KA-110P RI115-PH, cycloid arms with Ø115 shoulder motors |
+| Actuators | 59.38 | 45.37 | +14.01 | KA-130 jacketed 50 mm stack, KA-110P RI115-PH, cycloid arms with Ø115 shoulder motors |
 | Structure | 14.93 | 14.93 | 0 | unchanged in the budget (flange upgrade, interfaces and bay not yet added) |
 | Battery | 12.40 | 8.90 | +3.50 | 2 × 16S4P hot-swap (128 cells, 6.20 kg packs with end cap) instead of 16S6P (96 cells) |
 | Electronics | 5.26 | 4.56 | +0.70 | liquid loop + Thor cold plate |
-| Shells | 4.66 | 4.66 | 0 | |
+| Shells | 4.77 | 4.66 | +0.11 | shank shells to the Mk II CAD (0.335 kg per leg) |
 | Harness | 2.97 | 2.57 | +0.40 | thigh coolant lines + dry-break couplings |
 | Hands | 2.30 | 1.84 | +0.46 | 13 DOA, palm camera |
 | Sensors | 1.31 | 1.31 | 0 | |
-| **Total** | **103.1** | **84.1** | **+19.0** | |
+| **Total** | **103.3** | **84.1** | **+19.2** | |
 
 Heaviest bodies [gen]: torso 27.80 kg (two packs 12.40), thigh 6.87 kg each (knee actuator 4.96), hip-roll link
 5.11 kg each (hip-pitch actuator 4.76).
 
-**Known growth not yet in `params.py`** [E], to be carried inside the 10.3 kg contingency (113.4 − 103.1):
+**Known growth not yet in `params.py`** [E], to be carried inside the 10.4 kg contingency (113.7 − 103.3):
 
 | Item | Estimate |
 |---|---|
