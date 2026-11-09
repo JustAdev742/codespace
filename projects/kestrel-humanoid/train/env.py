@@ -28,6 +28,7 @@ import terrain as T
 DT_SIM, DECIM = 0.005, 4
 DT = DT_SIM * DECIM               # 50 Hz policy
 EP_LEN = 1000                     # 20 s
+PROMOTE_MIN = 1.5                 # m, curriculum promotion floor for slow commands (see step())
 ACTION_SCALE = 0.25
 ACTION_CLIP = 8.0                 # x 0.25 = +-2 rad offsets (joint limits still apply); +-4 clipped ankle and knee on 18 cm stairs
 OBS_DIM, CRITIC_DIM, ACT_DIM = 124, 129, 12
@@ -280,7 +281,9 @@ class Envs:
             dist = np.linalg.norm(qpos[i, :2] - self.start_xy[i])
             want = np.linalg.norm(self.cmd[i, :2]) * self.t[i] * DT
             if self.curriculum:
-                if dist > T.TILE / 2 * 0.8 and not fell[i]:
+                # promote after 2.4 m, or, when the command could not cover that in the episode (slow robots,
+                # small commands), after 80 % of the commanded distance and at least 1.5 m (two stair risers)
+                if dist > min(T.TILE / 2 * 0.8, max(PROMOTE_MIN, 0.8 * want)) and not fell[i]:
                     self.row[i] = min(self.row[i] + 1, self.max_row)
                 elif dist < 0.4 * want:
                     self.row[i] = max(self.row[i] - 1, 0)
