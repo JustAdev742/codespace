@@ -13,8 +13,19 @@ The robot is the K1 design model: 84.1 kg; masses, inertias and reflected motor 
 
 ## Results (trained on this VM)
 
-160 M environment steps in 4.7 h of wall time, ~10k steps/s on 4 vCPUs, in five resumed chunks. The reward
-fixes described under "The task" were made between chunks 1 and 4.
+![KESTREL K1 walking, climbing 18 cm stairs and descending 18 cm stairs](runs/rough/demo.gif)
+
+*Rendered offscreen by `play.py` through OSMesa, no GPU. Flat walking; climbing 18 cm stairs from a start 22° off
+the stair axis (18 cm climbs succeed from half the headings tested, see the table); descending 18 cm stairs.*
+
+233 M environment steps in 6.9 h of wall time, ~10k steps/s on 4 vCPUs, in seven resumed chunks:
+
+| Chunk | What changed |
+|---|---|
+| 1–3 | Rewards fixed until the robot steps: gait clock, clearance barrier, reference swing pose |
+| 4 | Reference annealed and tracking raised; the robot walks and the curriculum climbs |
+| 5 | Stairs get half the environments |
+| 6–7 | One-sided clearance penalty, action clip widened to ±8, 40 % of environments on stairs up |
 
 ![training curves](runs/rough/curves.png)
 
@@ -29,7 +40,7 @@ Commanded 0.6 m/s forward from the tile centre, 16 evenly spaced headings per ce
 | slope_down | 100% (0%) | 100% (0%) | 100% (0%) | 100% (0%) | 100% (0%) | 100% (0%) |
 | slope_up | 100% (0%) | 100% (0%) | 100% (0%) | 100% (0%) | 100% (0%) | 100% (0%) |
 | stairs_down | 100% (0%) | 100% (0%) | 100% (0%) | 100% (0%) | 100% (0%) | 100% (0%) |
-| stairs_up | 100% (0%) | 100% (0%) | 100% (0%) | 100% (0%) | 50% (0%) | 0% (0%) |
+| stairs_up | 100% (0%) | 100% (0%) | 100% (0%) | 100% (0%) | 75% (0%) | 50% (25%) |
 
 | Row | 0 | 1 | 2 | 3 | 4 | 5 |
 |---|---|---|---|---|---|---|
@@ -37,13 +48,20 @@ Commanded 0.6 m/s forward from the tile centre, 16 evenly spaced headings per ce
 | Slope (deg) | 4.0 | 6.2 | 8.4 | 10.6 | 12.8 | 15.0 |
 | Rough amplitude a (cm) | 2 | 4 | 5 | 7 | 8 | 10 |
 
-* Flat, rough and sloped ground to 15° are solved at every difficulty, with no falls.
-* Stairs **down** are solved at every height up to 18 cm.
-* Stairs **up** are solved to 12.8 cm. At 15.4 cm half the robots, and at 18 cm all of them, stop in front
-  of the first riser. They stop rather than fall.
+| Terrain | Result |
+|---|---|
+| Flat ground; rough ground up to the hardest level | 100 %, no falls |
+| Slopes up and down to 15° | 100 %, no falls |
+| Stairs **down** | 100 % at every height up to 18 cm |
+| Stairs **up** | 100 % to 12.8 cm, 75 % at 15.4 cm, 50 % at 18 cm |
+
+At 18 cm, a quarter of the robots stop in front of the riser and a quarter fall. At 160 M steps the climb
+rate at 18 cm was 0 % (`runs/rough/policy_160M.pt`). More training with `--terrain climb` is the next step
+for the tallest stairs.
 
 `policy.pt` is the TorchScript policy. Input: the 124-value actor observation from `env.py`. Output: 12 raw
-actions. Clip them to ±8, multiply by 0.25 rad, and add the default pose to get the position targets. `ckpt_last.pt` resumes training.
+actions. Clip them to ±8, multiply by 0.25 rad, and add the default pose to get the position targets.
+`ckpt_last.pt` resumes training.
 
 ## Why not Isaac Lab itself on this machine
 
