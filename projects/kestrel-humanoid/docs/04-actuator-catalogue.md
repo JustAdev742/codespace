@@ -25,7 +25,7 @@ files, the arithmetic is written next to it and the number is tagged **[E]**.
 
 ## 1. How the actuators were engineered
 
-1. **Loads.** Whole-body inverse dynamics over **18 scenarios** at the **112.7 kg design mass** (102.5 kg estimate ×
+1. **Loads.** Whole-body inverse dynamics over **18 scenarios** at the **113.7 kg design mass** (103.3 kg estimate ×
    1.10). Mk II adds three work cases to the K1 set: CW (walk 0.6 m/s carrying a 30 kg box), AO (15 kg in one hand,
    elbow 90°) and LM (momentary squat-lift of a 50 kg box). The squat box rises from 20 to 30 kg and the arm cases
    from 5 to 10 kg per hand [sim].
@@ -145,7 +145,7 @@ CSG-14-50 23 / 12 = 1.92 [E, from the rating tables]. The generated catalogue re
 
 Momentary loads against gear momentary ratings: shoulder 136 / 250 → 1.84; elbow 115 / 160 → 1.39; wrist yaw and
 neck 12 / 46 [E]. Leg and waist momentary loads are carried through the output-flange friction joints
-([generated/structure_checks.md](generated/structure_checks.md)): KA-130K slip 935.5 N·m (SF **1.73** at 540 N·m),
+([generated/structure_checks.md](generated/structure_checks.md)): KA-130K slip 935.5 N·m (SF **1.73** at 542 N·m),
 KA-110P 891.0 N·m (SF **2.35** at 379 N·m, after the Mk II flange upgrade, docs/03 §5), KA-90P 310.5 N·m (SF **2.08**).
 
 ## 4. Status of the numbers that matter
@@ -208,16 +208,16 @@ Output crossed-roller L10 at walking load: ≈ 990,000 h against 3,000 h require
 ### 5.3 Knee structure versus actuator capability
 
 At the knee joint the actuator's 493 N·m becomes **415 N·m (20–40°) to 719 N·m (110°)**. The structural checks are
-run at the requirement loads (434 repeated, 540 momentary, 621 N·m X-case thigh moment), not at 719 N·m. Until FEA
+run at the requirement loads (433 repeated, 542 momentary, 623 N·m X-case thigh moment), not at 719 N·m. Until FEA
 clears the full capability, the drive limits actuator torque to
 
-**τ_act ≤ min(493 N·m, 540 / G(θ), 12 kN · r2 · |sin μ(θ)| / G(θ))**,
+**τ_act ≤ min(493 N·m, 545 / G(θ), 12 kN · r2 · |sin μ(θ)| / G(θ))**,
 
-so the knee joint never exceeds the momentary structural case and the push-rod never carries more than 12 kN (rod-end
+so the knee joint never exceeds the momentary structural case (545 N·m, fixed just above the 542 N·m requirement) and the push-rod never carries more than 12 kN (rod-end
 C0 ≈ 30 kN / 2.5, buckling SF 3.2) anywhere in 0–130° (hold H7, resolved). `calc/kestrel/structure.py` generates the
 table into `data/knee_torque_limit.json` and checks every simulated sample against it
 ([generated/structure_checks.md](generated/structure_checks.md), "Knee drive torque limit"). The worst sample is the
-missed-step drop (SD) at 1.10, then stairs (ST) at 1.24 with the 1.2 margin; the deep squat at 125° is 1.88. The rod
+missed-step drop (SD) at 1.11, then stairs (ST) at 1.26 with the 1.2 margin; the deep squat at 125° is 1.90. The rod
 limit only bites near full extension (309 N·m actuator at 0°) and past 110°, where the scenarios do not need it.
 
 ## 6. KA-150X: the "strongest" option (documented, not baseline)

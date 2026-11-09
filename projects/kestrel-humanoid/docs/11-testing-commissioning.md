@@ -128,7 +128,7 @@ table under the box path for the lift tests.
 | P2 | **15 kg one-handed** (AO) | elbow at 90°, 15 kg in one hand, 60 s, then walk 5 m at 0.3 m/s | elbow ≤ 105 N·m limit (requirement 79 repeated, 59 hold); KW-L2 holds wrist pitch (14 N·m) within its I²t; balance maintained |
 | P3 | **30 kg squat** (SQ) | squat and rise holding 30 kg at the chest, × 10 | knee within the P07 §F table; waist pitch ≤ 288 N·m repeated; tracking < 3° |
 | P4 | **30 kg sustained carry** (CW) | walk 0.6 m/s for 20 m carrying 30 kg at the chest, × 5; then 10 min of repeated pick–carry–place | knee and hip-pitch windings within the model + 10 %; coolant supply ≤ 55 °C; no single-pack event; CoP inside the sole margin |
-| P5 | **50 kg momentary lift** (LM) | squat-lift a 50 kg box from thigh height, × 3, harness slack-taut, catch table under the box | waist pitch ≤ 379 N·m and knee ≤ 540 N·m (momentary requirements, logged from current); no flange slip (witness marks); no structural noise |
+| P5 | **50 kg momentary lift** (LM) | squat-lift a 50 kg box from thigh height, × 3, harness slack-taut, catch table under the box | waist pitch ≤ 379 N·m and knee ≤ 542 N·m (momentary requirements, logged from current); no flange slip (witness marks); no structural noise |
 | P6 | Post-test inspection | flange torque audit; teardown of one knee and one shoulder actuator | no slip, no gear or cycloid marks, no bearing damage |
 
 **Not in the sized scenarios — do not attempt in this programme:** stairs with a 30 kg load (R7 #1 target), one-handed
@@ -170,7 +170,7 @@ loads above 15 kg, and any payload test without the harness. Add the scenario to
 
 | # | Assumption | Value used | How verified |
 |---|---|---|---|
-| 1 | Mass growth | +10 % (design 112.7 kg on a 102.5 kg estimate) | weigh modules (P12); re-run `run_all.py` |
+| 1 | Mass growth | +10 % (design 113.7 kg on a 103.3 kg estimate) | weigh modules (P12); re-run `run_all.py` |
 | 2 | KM-130x50-LC Kt, saturation | model (R10 §5.1) | FEMM, then dyno (§4.1 items 1, 3) |
 | 3 | Jacket thermal resistance | 0.25 K/W (F_cool 2.4) | P05.1 thermal test (§4.1 item 2) |
 | 4 | HC2 continuous current | 75 A → 263 / 217 N·m usable continuous (below the 295 / 243 N·m motor rating) | HC2 thermal test on the jacket |

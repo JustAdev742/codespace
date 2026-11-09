@@ -50,7 +50,7 @@ Drill press, tap set, hoist, laser level, dial indicators (shaft alignment), tor
 * **Coolant cart:** mount everything on a steel tray with a 20 mm lip so a burst hose stays in the tray.
 
 ## E. Assembly
-1. Install the gantry per its manual. **Load-test it at 1.25 × the 112.7 kg design mass (141 kg)** with sand bags for
+1. Install the gantry per its manual. **Load-test it at 1.25 × the 113.7 kg design mass (142 kg)** with sand bags for
    10 minutes.
 2. Assemble the dyno line. Align the shafts to ≤ 0.05 mm TIR and ≤ 0.1° angular with dial indicators on the coupling
    hubs.

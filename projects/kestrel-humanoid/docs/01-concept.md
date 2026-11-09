@@ -69,7 +69,7 @@ proven. Section 7 lists what is most likely to be wrong.
 1. **Loads first, hardware second.** Joint requirements come from whole-body inverse dynamics over **18 design
    scenarios**: walking, stairs, squats, step-ups, drops, arm work, and the Mk II work cases (CW, AO, LM).
    `calc/run_all.py` regenerates every table.
-2. **Design to the not-to-exceed mass.** All requirements use the estimate + 10 % (112.7 kg). Programmes gain mass;
+2. **Design to the not-to-exceed mass.** All requirements use the estimate + 10 % (113.7 kg). Programmes gain mass;
    the actuators must not become marginal when they do.
 3. **Each joint gets the transmission its job needs.**
    - **Legs and waist:** quasi-direct-drive planetary actuators at 14–29:1. They tolerate impacts, can be back-driven
@@ -131,7 +131,7 @@ most publish no continuous rating. Mk II values are [sim] unless marked.
 | One-arm payload | **15 kg** one-handed (elbow 90°); **10 kg** per hand at full reach | Atlas 20 kg one-handed [V23]; Kepler 15 kg per arm [R50]; H2 15 kg peak / 7 kg rated [V4]; NEO 8.2 kg [V32] |
 | Knee peak at the joint | **415 N·m (20–40°) to 719 N·m (110°)** | AgiBot A2 512 [V54]; T800 450 (any joint) [V46]; GR-3 366 [V36]; H1/H2 360 [V1][V4] |
 | Hip pitch peak / speed | **406 N·m; 15.2 rad/s** no-load at 52 V | GR-2/GR-3 366 N·m [V35][V36]; H1 220 N·m [V1], URDF 23 rad/s [V5] |
-| Knee peak per kg of robot | 4.8 N·m/kg (493 actuator / 102.5); 4.0 at the joint near extension | H1 7.7; A2 7.4; GR-2 5.8; H2 5.1 (R7 §C1, ratio method) |
+| Knee peak per kg of robot | 4.8 N·m/kg (493 actuator / 103.3); 4.0 at the joint near extension | H1 7.7; A2 7.4; GR-2 5.8; H2 5.1 (R7 §C1, ratio method) |
 | Continuous / peak, main leg joints | **60 %** (knee 295 / 493, hip 243 / 406) | MyActuator X12-320 27 % (R1); air-cooled 25–30 % reported [R, R10 S20] |
 | Battery | **2 × 1.15 kWh, hot-swap** | Figure 03 2.3 kWh [R19]; Kepler 2.33 kWh [R51]; GR-3 702 + 234 Wh hot-swap [V36]; Walker S2 dual packs, self-swap ≤ 3 min [V39] |
 | Runtime | **4.9 h mixed, 4.3 h walking** | Figure 03 5 h [V17]; Atlas 4 h, 2 h heavy lifting [V23]; Apollo 4 h per pack [R29]; H2 3 h [V4] |
@@ -140,7 +140,7 @@ most publish no continuous rating. Mk II values are [sim] unless marked.
 | Bus | 16S, 52 V minimum loaded | H2 18S, 75.6 V max [V4]; H1 67.2 V max [V1] |
 
 **Where Mk II stands.** On payload it reaches the Atlas/Kepler class in simulation. On sized continuous torque it leads
-everything that publishes a number. It remains heavy (102.5 kg against 61–90 kg for most peers), so its torque per kg of
+everything that publishes a number. It remains heavy (103.3 kg against 61–90 kg for most peers), so its torque per kg of
 robot is below Unitree's, and its joint speed is below H1's. It is also the only design in the table with every limit
 derived from simulated work cases and published.
 
@@ -158,7 +158,7 @@ derived from simulated work cases and published.
 | 8 | ≥ 2 kW autonomous charging | not in the Mk II mechanical baseline (docs/05) | not met here |
 | 9 | hip ≥ 16 rad/s, knee actuator ≥ 14 rad/s | 15.2 / 12.5 rad/s | not met (hip close) |
 | 10 | continuous ≥ 45 % of peak on knee, hip pitch, hip roll | 60 % / 60 % / 29 % | met on knee and hip pitch; hip roll stays air-cooled |
-| 11 | ≤ 84 kg estimated; knee peak / mass ≥ 5.7 N·m/kg | 102.5 kg; 4.8 N·m/kg | **not met** |
+| 11 | ≤ 84 kg estimated; knee peak / mass ≥ 5.7 N·m/kg | 103.3 kg; 4.8 N·m/kg | **not met** |
 | 12 | waist yaw ±160° | ±70° | not met |
 | 13 | certified functional safety (PL d) | architecture unchanged (docs/05, docs/07) | outside this document |
 | 14 | any leg actuator in ≤ 10 min | leg module off in ≈ 5 min via the V-band interface [target] | designed |

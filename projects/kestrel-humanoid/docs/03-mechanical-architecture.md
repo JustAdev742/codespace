@@ -103,9 +103,9 @@ hand 190. Ranges are in `diagrams/dof_map.svg`.
 
 * Two KA-90P actuators in the calf drive the foot through Ti push-rods to levers 52 mm behind the ankle axis at ±36 mm.
   Pitch is the sum of the rod forces, roll their difference.
-* Full authority at the 112.7 kg design mass: 210 N·m pitch / 61 N·m roll → **115 N·m per actuator** against 129 N·m
+* Full authority at the 113.7 kg design mass: 212 N·m pitch / 61 N·m roll → **116 N·m per actuator** against 129 N·m
   available [gen]. Joint capability 335 N·m pure pitch, 232 N·m pure roll [gen].
-* Ankle cross: Ti-6Al-4V, 4 drawn-cup needle rollers (HK1212 class) on Ø12 hardened pins; double-shear SF **41.8** at
+* Ankle cross: Ti-6Al-4V, 4 drawn-cup needle rollers (HK1212 class) on Ø12 hardened pins; double-shear SF **65.9** at
   the structural drop [gen].
 
 ### 3.4 Waist
@@ -609,20 +609,21 @@ Hand calculations at the Mk II loads ([generated/structure_checks.md](generated/
 
 | Check | Case | Load | SF [gen] |
 |---|---|---|---|
-| Knee push-rod axial | N / X | 6.8 / 8.8 kN | 11.34 / 8.76 |
-| Knee push-rod Euler buckling | N / X | 6.8 / 8.8 kN | **5.66 / 4.37** |
-| Knee rod ends (M12, C0 ≈ 30 kN, confirm) | X | 8.8 kN | 3.40 |
-| Thigh twin plates, bending at the knee reaction | X | 615 N·m | 5.89 |
-| Thigh plates, fatigue at repeated knee torque | N | 431 N·m | **2.66** |
-| Shank CFRP tube bending | X | 300 N·m | **2.52** |
-| Shank CFRP axial | X | 2.76 kN | 30.2 |
-| KA-130K output flange slip | M | 535 N·m | **1.75** |
-| KA-110P output flange slip (12 × M5, PCD 100) | M | 379 N·m | 2.35 |
-| KA-90P output flange slip | M | 149 N·m | 2.08 |
-| Ankle cross pins, double shear | X | 2.76 kN | 41.8 |
-| Foot plate toe cantilever, fatigue | N | 199 N·m | 2.93 |
+| Knee push-rod axial | N / X | 6.9 / 9.0 kN | 11.27 / 8.64 |
+| Knee push-rod Euler buckling | N / X | 6.9 / 9.0 kN | **5.62 / 4.31** |
+| Knee rod ends (M12, C0 ≈ 30 kN, confirm) | X | 9.0 kN | 3.35 |
+| Knee push-rod at the drive limit, whole range (rod end / buckling) | M | 12.0 kN | 2.50 / 3.22 |
+| Thigh twin plates, bending at the knee reaction | X | 623 N·m | 5.81 |
+| Thigh plates, fatigue at repeated knee torque | N | 433 N·m | **2.64** |
+| Shank CFRP tube bending | X | 325 N·m | **2.33** |
+| Shank CFRP axial | X | 2.79 kN | 30.0 |
+| KA-130K output flange slip | M | 542 N·m | **1.73** |
+| KA-110P output flange slip (12 × M5, PCD 100) | M | 381 N·m | 2.34 |
+| KA-90P output flange slip | M | 159 N·m | 1.95 |
+| Ankle cross pins (100Cr6), double shear | X | 2.79 kN | 65.9 |
+| Foot plate toe cantilever, fatigue | N | 201 N·m | 2.90 |
 | KA-130K stage-2 sun, Lewis | M | 493 N·m out | **2.16** |
-| KA-130K output crossed-roller L10 | N | P_eq 3.5 kN | 734,811 h vs 3,000 h |
+| KA-130K output crossed-roller L10 (THK RB9016) | N | P_eq 3.5 kN | ≈ 987,000 h vs 3,000 h |
 | Leg limb interface, separation (§13.1) | X | ≈ 546 N·m | ≈ 1.59 [E] |
 
 The checks use the requirement loads. The knee actuator can produce more (719 N·m at 110°), which is why the drive caps

@@ -55,7 +55,7 @@ printer, paint shop (outsourced) or a spray booth, pressure-test kit and refract
 5. **Final torque audit:** re-torque every actuator flange and apply paint-pen witness marks: KA-130 12 × M5 8.5 N·m;
    **KA-110P 12 × M5 8.5 N·m**; KA-90P, KH-25, **KH-20** 8 × M4 4.5 N·m; KH-14 6 × M3 1.7 N·m; V-band T-bolts 10 N·m
    (legs) with the safety catches closed.
-6. **Weigh:** full robot and each module. **If the mass exceeds 112.7 kg (the design mass; the estimate is 102.5 kg),
+6. **Weigh:** full robot and each module. **If the mass exceeds 113.7 kg (the design mass; the estimate is 103.3 kg),
    update `params.py` and re-run `calc/run_all.py` before commissioning.** Expect the loop (+0.3 kg) and the pack
    enclosures (docs/09 H12) to push it up.
 
@@ -69,7 +69,7 @@ printer, paint shop (outsourced) or a spray booth, pressure-test kit and refract
 | Check | Pass |
 |---|---|
 | Range of motion with shells on, all joints | no contact, gaps maintained, no hose or coax strain |
-| Mass and CoM (two-scale method in the zero pose) | mass ≤ 112.7 kg; CoM within ±20 mm of the `calc` model (re-run with the measured mass) |
+| Mass and CoM (two-scale method in the zero pose) | mass ≤ 113.7 kg; CoM within ±20 mm of the `calc` model (re-run with the measured mass) |
 | Thermal soak: 30 min hanging in the gantry, all systems on, pumps running | all temperatures within limits; coolant supply ≤ 40 °C at 25 °C ambient |
 | Coolant: pressure after the soak and a full range-of-motion run | 0.3 ± 0.05 bar cold; no damp on any leak pad |
 | Pack swap with the shells on (robot in the gantry, drives in STO) | ≤ 3 min; hatches seal |

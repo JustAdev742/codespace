@@ -38,13 +38,14 @@ def tube_I(do, di):
 
 
 F_ROD_MAX = 12e3      # knee push-rod force cap for the drive table: rod-end C0 ~ 30 kN (unverified) / 2.5 (hold H7)
+KNEE_JOINT_CAP = 545.0   # N·m at the knee joint: fixed firmware cap, kept >= the momentary requirement (checked below)
 
 
 def knee_limit_table(fam, req, store, meta, names):
     """Knee actuator torque limit vs knee angle, and the check that every simulated sample sits under it.
 
     tau_act <= min(actuator peak, joint cap / G, F_ROD_MAX r2 |sin mu| / G), with G = joint / actuator torque.
-    The joint cap is the momentary knee requirement (structure and gear sized for it). Written to
+    The joint cap is a fixed design value (KNEE_JOINT_CAP) just above the momentary knee requirement. Written to
     data/knee_torque_limit.json for the HC2 parameter table.
     """
     kf = json.loads((ROOT / "data" / "knee_fourbar.json").read_text())
@@ -53,7 +54,7 @@ def knee_limit_table(fam, req, store, meta, names):
     mu = np.radians(kf["mu_deg"])
     r2 = kf["r2"]
     T_pk = fam["KA-130K"]["T_peak_out"]
-    J_cap = max(535.0, round(req["knee"]["T_mom_req"]))
+    J_cap = KNEE_JOINT_CAP
     act = np.minimum.reduce([np.full_like(G, T_pk), J_cap / G, F_ROD_MAX * r2 * np.abs(np.sin(mu)) / G])
     avail = act * G
     j = names.index("l_knee")
@@ -127,6 +128,9 @@ def checks(store, meta, names, req, fam):
         f"{F_rng.max() / 1e3:.1f} kN max", F_rng.max() / 1e3, 30.0, "kN", "C0 ~ 30 kN, verify with chosen part (H7)")
     add("Knee push-rod at the drive torque limit, whole range 0-130 deg: Euler buckling", "M",
         f"{F_rng.max() / 1e3:.1f} kN max", F_rng.max() / 1e3, Pcr / 1e3, "kN", "Pcr (H7)")
+    add("Knee joint firmware cap vs the momentary requirement", "M", f"{req['knee']['T_mom_req']:.0f} N m",
+        req["knee"]["T_mom_req"], KNEE_JOINT_CAP, "N m", "the cap must stay >= the requirement; raise it (and re-check) if not",
+        req_sf=1.0)
     worst = min(tab["demand"].values(), key=lambda d: d["ratio"])
     add("Knee: joint torque available under the limit table vs every simulated sample (x1.2; SD, LM x1.0)", "N",
         f"{worst['scenario']} at {worst['theta_deg']:.0f} deg", worst["demand_Nm"], worst["avail_Nm"], "N m",

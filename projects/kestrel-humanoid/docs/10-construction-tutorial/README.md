@@ -15,7 +15,7 @@ loads as modelled.
 
 | Item | Mk II value | Replaces (K1) |
 |---|---|---|
-| Design mass / estimate | **112.7 kg** design (102.5 kg estimate × 1.10) | 92.6 kg |
+| Design mass / estimate | **113.7 kg** design (103.3 kg estimate × 1.10) | 92.6 kg |
 | Work loads | **30 kg sustained two-handed, 50 kg momentary lift**, 10 kg per hand at reach, 15 kg one-handed | 20 kg squat, 5 kg per hand |
 | Knee / hip pitch | KA-130K 17:1 (493 / 295 N·m) and KA-130H 14:1 (406 / 243 N·m), **liquid-cooled KM-130x50-LC**, **150 A GaN drives** | KM-130x45/x40, 99 A drive, ducted air |
 | Hip roll, waist pitch | KA-110P: **RI115-PH**, 29:1, 427 / 125 N·m, **output flange 12× M5 12.9 on PCD 100** | ILM85x26, 32:1, 10× M4 on PCD 85 |

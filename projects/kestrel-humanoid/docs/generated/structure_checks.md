@@ -11,7 +11,8 @@ Cases: **N** normal repeated peak (x1.2 margin), **M** momentary (0.10 m unplann
 | Knee rod ends: M12 PTFE-lined spherical (e.g. SKF SIKAC 12 M class, C0 ~ 30 kN, verify) | X | 9.0 kN | 9.0 kN | 30.0 kN | **3.35** | static rating - confirm with chosen part |
 | Knee push-rod at the drive torque limit, whole range 0-130 deg: rod-end static | M | 12.0 kN max | 12.0 kN | 30.0 kN | **2.50** | C0 ~ 30 kN, verify with chosen part (H7) |
 | Knee push-rod at the drive torque limit, whole range 0-130 deg: Euler buckling | M | 12.0 kN max | 12.0 kN | 38.6 kN | **3.22** | Pcr (H7) |
-| Knee: joint torque available under the limit table vs every simulated sample (x1.2; SD, LM x1.0) | N | SD at 77 deg | 492.7 N m | 542.0 N m | **1.10** | required >= 1.0; per-scenario table in data/knee_torque_limit.json (H7) |
+| Knee joint firmware cap vs the momentary requirement | M | 542 N m | 542.0 N m | 545.0 N m | **1.01** | the cap must stay >= the requirement; raise it (and re-check) if not |
+| Knee: joint torque available under the limit table vs every simulated sample (x1.2; SD, LM x1.0) | N | SD at 77 deg | 492.7 N m | 545.0 N m | **1.11** | required >= 1.0; per-scenario table in data/knee_torque_limit.json (H7) |
 | Thigh twin plates 2x 6x60 mm 7075-T6, bending at knee-reaction moment | X | 623 N m | 86.6 MPa | 503.0 MPa | **5.81** |  |
 | Thigh plates, fatigue at repeated knee torque | N | 433 N m | 60.2 MPa | 159.0 MPa | **2.64** | R=-1 conservative |
 | Shank CFRP tube 40x2 mm, bending at ankle | X | 325 N m | 150.4 MPa | 350.0 MPa | **2.33** |  |
@@ -26,29 +27,29 @@ Cases: **N** normal repeated peak (x1.2 margin), **M** momentary (0.10 m unplann
 
 ## Knee drive torque limit (hold H7)
 
-τ_act ≤ min(493 N·m, 542 / G(θ), 12 kN · r2 · |sin μ(θ)| / G(θ)). Full table: `data/knee_torque_limit.json`.
+τ_act ≤ min(493 N·m, 545 / G(θ), 12 kN · r2 · |sin μ(θ)| / G(θ)). Full table: `data/knee_torque_limit.json`.
 
 | Knee angle | 0° | 20° | 40° | 60° | 80° | 100° | 120° | 130° |
 |---|---|---|---|---|---|---|---|---|
 | G(θ) | 1.33 | 0.86 | 0.87 | 0.98 | 1.17 | 1.38 | 1.43 | 1.18 |
 | Transmission angle μ | 152° | 142° | 128° | 112° | 91° | 66° | 36° | 20° |
-| **Actuator limit (N·m)** | 309 | 493 | 493 | 493 | 464 | 393 | 362 | 253 |
-| Joint torque available (N·m) | 410 | 422 | 427 | 484 | 542 | 542 | 517 | 300 |
+| **Actuator limit (N·m)** | 309 | 493 | 493 | 493 | 467 | 395 | 362 | 253 |
+| Joint torque available (N·m) | 410 | 422 | 427 | 484 | 545 | 545 | 517 | 300 |
 
 Worst sample per scenario against that table (demand includes the 1.2 margin; SD and LM 1.0):
 
 | Scenario | Knee angle | Demand | Available | Ratio |
 |---|---|---|---|---|
-| SD | 77° | 493 N·m | 542 N·m | **1.10** |
-| ST | 94° | 433 N·m | 542 N·m | **1.25** |
-| SU | 107° | 410 N·m | 542 N·m | **1.32** |
+| SD | 77° | 493 N·m | 545 N·m | **1.11** |
+| ST | 94° | 433 N·m | 545 N·m | **1.26** |
+| SU | 107° | 410 N·m | 545 N·m | **1.33** |
 | W2 | 62° | 351 N·m | 492 N·m | **1.40** |
 | W1 | 51° | 258 N·m | 453 N·m | **1.76** |
 | DS | 125° | 218 N·m | 413 N·m | **1.90** |
 | CW | 61° | 252 N·m | 486 N·m | **1.93** |
 | SL | 46° | 188 N·m | 439 N·m | **2.34** |
-| SQ | 105° | 191 N·m | 542 N·m | **2.83** |
-| LM | 103° | 159 N·m | 542 N·m | **3.40** |
+| SQ | 105° | 191 N·m | 545 N·m | **2.85** |
+| LM | 103° | 159 N·m | 545 N·m | **3.42** |
 | AO | 42° | 103 N·m | 430 N·m | **4.18** |
 | AF | 42° | 103 N·m | 430 N·m | **4.19** |
 | TB | 41° | 96 N·m | 429 N·m | **4.47** |

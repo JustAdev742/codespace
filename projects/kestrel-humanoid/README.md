@@ -4,7 +4,7 @@
 
 A 1.81 m, ~103 kg electric humanoid, engineered from loads up for physical work: 30 kg carried two-handed, 50 kg
 lifted momentarily, 10 kg per hand at full reach, 15 kg in one hand. Every joint requirement comes from whole-body
-inverse dynamics over 18 design scenarios at the 112.7 kg design mass. Every actuator is sized against its full
+inverse dynamics over 18 design scenarios at the 113.7 kg design mass. Every actuator is sized against its full
 torque-speed envelope at the minimum battery voltage, and the mass, power and structure close consistently. The
 design is backed by CAD, manufacturing drawings, a construction tutorial, a test-and-commissioning plan, a cost
 analysis and cited component research.
@@ -45,7 +45,7 @@ tables (git commit 96eb3d9).
 | Item | K1 | Mk II | Where |
 |---|---|---|---|
 | Design scenarios | 15; 20 kg box, 5 kg per hand | 18; adds 30 kg carry (CW), 15 kg one-handed (AO), 50 kg momentary lift (LM); 30 kg box, 10 kg per hand | docs/04 §1 |
-| Mass estimate / design | 84.1 / 92.6 kg | 102.5 / 112.7 kg (actuators +13.9, battery +2.9, cooling, harness, hands +1.6 kg) | docs/03 §14 |
+| Mass estimate / design | 84.1 / 92.6 kg | 103.3 / 113.7 kg (actuators +14.0, battery +3.5, electronics and cooling +0.7, harness +0.4, hands +0.5, shells +0.1 kg) | docs/03 §14 |
 | Knee | KM-130x45, 14:1, 99 A, ducted air: 395 / 139 N·m | KM-130x50-LC (N50UH, 3 turns × 2 paths, liquid jacket), 17:1, 150 A GaN: 493 / 295 N·m | docs/04 §5 |
 | Hip pitch | KM-130x40, 14:1: 399 / 123 N·m, 10.3 rad/s | same motor as the knee, 14:1: 406 / 243 N·m, 15.2 rad/s | docs/04 §5 |
 | Hip roll, waist pitch | ILM85x26, 32:1: 276 / 73 N·m | RI115-PH, 29:1: 427 / 125 N·m; output flange 10 × M4 PCD 85 → **12 × M5 12.9 PCD 100** | docs/04 §7, docs/03 §5 |
@@ -60,7 +60,7 @@ tables (git commit 96eb3d9).
 | Ingress | IP54 target | IP65 body, IP67 legs and hands, −20 to 40 °C (target) | docs/03 §12 |
 | Limb interface | bolted actuator flanges | V-band clamp + blind-mate service plate with dry-break couplings | docs/03 §13 |
 
-Not achieved against the R7 targets: robot mass (102.5 kg against ≤ 84 kg), joint speed (hip 15.2 against 16 rad/s),
+Not achieved against the R7 targets: robot mass (103.3 kg against ≤ 84 kg), joint speed (hip 15.2 against 16 rad/s),
 waist yaw range, the quick-change wrist and autonomous fast charging. The full scorecard is in
 [docs/01 §5.1](docs/01-concept.md).
 
