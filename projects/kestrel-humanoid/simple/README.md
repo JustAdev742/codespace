@@ -121,6 +121,27 @@ Everything follows five rules, so adding a component never needs a new design:
 The RL training package in `train/` runs S1 directly:
 `python train.py --variant s1 --name s1`, then `python play.py --variant s1 --run s1`.
 
+## Walking in simulation
+
+![S1 walking on flat ground, climbing and descending stairs](../train/runs/s1/demo.gif)
+
+The trained S1 policy is in `train/runs/s1/policy.pt`. It was trained on this VM's CPU: 64 M steps in two chunks,
+about 3.6 h. Evaluation (`train/runs/s1/eval.md`): commanded 0.6 m/s from 16 headings per cell, success means 2.4 m
+covered, or 6 stairs, without falling.
+
+| Terrain | 5 cm / 4° / 2 cm | 10.2 cm / 8.4° / 5 cm | 12.8 cm / 10.6° / 7 cm | 15.4 cm / 12.8° / 8 cm | 18 cm / 15° / 10 cm |
+|---|---|---|---|---|---|
+| Flat | 100 % | 100 % | 100 % | 100 % | 100 % |
+| Rough (amplitude) | 100 % | 100 % | 94 % | 88 % | 100 % |
+| Slopes up / down | 100 % | 100 % | 100 % | 100 % | 100 % |
+| Stairs down | 100 % | 100 % | 100 % | 75 % | 25 % |
+| Stairs up | 100 % | 100 % | 88 % | 38 % | 0 % |
+
+Walking, slopes and stairs up to 13 cm work. 18 cm stairs are not learned yet: K1 needed 233 M steps for that.
+A third chunk on stair-heavy terrain (`--terrain climb`) is training with the 356 N·m knee cap.
+
+![S1 training curves](../train/runs/s1/curves.png)
+
 ## Re-run after a change
 
 ```bash
