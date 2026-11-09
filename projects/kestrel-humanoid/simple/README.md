@@ -95,8 +95,8 @@ Everything follows five rules, so adding a component never needs a new design:
    5 CAN buses has a spare drop. The wrists carry ISO 9409-1-50 tool flanges.
 5. **Add-ons file.** Every component you add gets one line in `data/add_ons.json` (body, measured mass, position).
    The next run of `calc/s1_select.py` puts that mass into the simulation and re-checks every actuator, so you
-   find out at once whether the robot still has margin. Worked example: step 11 of the
-   [build guide](tutorial/S1-build-guide.md).
+   find out at once whether the robot still has margin. The spare budget is about 4 kg on the torso or head and
+   0.3 kg per hand. Worked example and budget table: step 11 of the [build guide](tutorial/S1-build-guide.md).
 
 ## Folder map
 

@@ -297,6 +297,14 @@ S1 is meant to be changed. Each kind of change has a set way to do it:
 **The one rule:** after every change that adds mass, re-run `python simple/calc/s1_select.py`. The knee and hip
 X12s have the least margin.
 
+**Spare mass budget** (tested by re-running the sizing with added mass):
+
+| Where | Budget before an actuator runs out of margin | What runs out |
+|---|---|---|
+| Torso or head | **about 4 kg** in total (3 kg leaves the knee/hip X12 at 1.02) | knee and hip pitch X12. Beyond it no catalogue module passes: the knee belt ratio has to go up |
+| Each hand, on top of the 5 kg payload | **about 0.3 kg** (a heavier gripper or tool) | elbow RS03 (1.03 → 1.00) |
+| Upper or lower leg | as little as possible: leg mass costs the most torque | hip pitch and knee |
+
 **Worked example: add a lidar to the head.**
 
 1. Bolt a Livox Mid-360 to a 3 mm plate bracket on the head plate's 20 mm grid (4 × M5).
