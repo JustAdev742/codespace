@@ -18,15 +18,15 @@ margins as K1.
 
 | | KESTREL S1 | KESTREL K1 Mk II (for comparison) |
 |---|---|---|
-| Height / estimated mass | 1.75 m / 66.9 kg with the CAD structure (73.6 kg design mass) | 1.75 m / 103.1 kg |
+| Height / estimated mass | 1.75 m / 67.1 kg with the CAD structure (73.9 kg design mass) | 1.75 m / 103.1 kg |
 | Actuated joints | 27 + 2 grippers (legs 2 × 6, waist yaw, arms 2 × 6, neck 2) | 30 + two 13-DOA hands |
 | Actuators | 4 × MyActuator RMD-X12-P20-320, 23 × RobStride (RS04 / RS03 / RS02 / RS00) | custom liquid-cooled and cycloid family |
-| Leg peak torque (joint side) | knee 456 N·m (X12 + 1.5:1 belt), hip pitch 320 N·m | knee 493 N·m, hip pitch 406 N·m |
+| Leg peak torque (joint side) | knee 356 N·m (X12 through a 1.5:1 Poly Chain belt, capped to protect the belt), hip pitch 320 N·m | knee 493 N·m, hip pitch 406 N·m |
 | Payload (sized for) | 20 kg box squat, 5 kg per hand at reach | 30 kg sustained / 50 kg momentary |
 | Walking | 0.8 m/s nominal, 1.0 m/s fast, 18 cm stairs | 0.8 / 1.2 m/s, 18 cm stairs |
 | Bus / battery | 13S 48 V, 48 V 20 Ah pack (~0.96 kWh): ~3 h mixed use, ~2 h walking | 16S, 2 × 1.15 kWh hot-swap |
 | Actuator cost | **US$10,325** (≈ A$15,700), 27 units | — |
-| Full parts cost (A$, inc GST) | **A$38,050**, or **A$31,360** with a budget wireless e-stop instead of the FORT ([generated/bom.md](generated/bom.md)) | see docs/12 |
+| Full parts cost (A$, inc GST) | **A$38,990**, or **A$32,300** with a budget wireless e-stop instead of the FORT ([generated/bom.md](generated/bom.md)) | see docs/12 |
 
 ## How it was designed
 
@@ -55,7 +55,7 @@ margins as K1.
 | Joints | Module | Reduction | Peak / rated | Unit price | Qty |
 |---|---|---|---|---|---|
 | Hip pitch | MyActuator RMD-X12-P20-320 | direct, with a 40 mm fan on the open hip cradle | 320 / 85 N·m | US$1,090 | 2 |
-| Knee | MyActuator RMD-X12-P20-320 | 1.5:1 HTD-8M belt from the upper thigh | 456 N·m at the knee | US$1,090 | 2 |
+| Knee | MyActuator RMD-X12-P20-320 | 1.5:1 Gates Poly Chain 8MGT belt (36T / 54T) from the upper thigh | 356 N·m at the knee (X12 capped at 250 N·m) | US$1,090 | 2 |
 | Hip roll | RobStride RS04 | 2:1 crank + push-rod | 228 N·m at the joint | US$295 (A$577 at Pakronics) | 2 |
 | Hip yaw, waist yaw | RobStride RS04 | direct | 120 / 40 N·m | US$295 | 3 |
 | Ankle (2 per ankle) | RobStride RS04 | parallel push-rods: 40 mm cranks, 65 mm foot levers (1.25:1) | ≈ 290 N·m pitch | US$295 | 4 |
@@ -64,13 +64,20 @@ margins as K1.
 | Wrist yaw, pitch | RobStride RS02 | direct | 17 / 7 N·m | US$195 | 4 |
 | Neck yaw, pitch | RobStride RS00 | direct | 14 / 5 N·m | US$185 | 2 |
 
-The tightest margins are elbow (1.03), neck (1.05) and knee/hip X12 (1.07). Every one is at least 1.0 after K1's
+The tightest margins are elbow (1.04), neck (1.05) and knee/hip X12 (1.05). Every one is at least 1.0 after K1's
 1.2 torque and 1.15 speed margins and a 10 % design-mass allowance. The masses come from the S1 CAD after its
-weight-reduction pass: structure 20.5 kg including fasteners, down from 43.8 kg in the first CAD.
+weight-reduction pass: structure 20.7 kg including fasteners, down from 43.8 kg in the first CAD.
 
 The hip-pitch X12's continuous rating assumes a 40 mm fan across its housing (thermal derate 0.9 instead of 0.8).
 Without the fan its continuous margin is 0.96, so fit the fan, and let firmware derate on the actuator temperature.
-If S1's built mass comes in above 66.9 kg, re-run the selection; the knees and hips go first.
+If S1's built mass comes in above 67.1 kg, re-run the selection; the knees and hips go first.
+
+**The knee belt** is a Gates Poly Chain 8MGT, 36 mm wide, on a 36-tooth driver and a 54-tooth knee pulley. Gates'
+published table rates it at 292 N·m on the driver for this 800 mm belt. The simulated running peak times a 1.6 service
+factor is 263 N·m, and the missed-step peak is 217 N·m. The X12 could make 320 N·m, so firmware caps the knee X12 at
+**250 N·m**. That still covers every requirement and keeps the belt below its rating. The check is regenerated in
+[generated/actuator_selection.md](generated/actuator_selection.md). Run the drive once in Gates' free DesignFlex Pro
+before ordering. The fallback is a #50 roller chain in the same space.
 
 The peak ratings of these modules last 3–10 s (R9). Long, heavy holds are covered by the continuous check, not the
 peak.
@@ -95,7 +102,7 @@ Everything follows five rules, so adding a component never needs a new design:
    5 CAN buses has a spare drop. The wrists carry ISO 9409-1-50 tool flanges.
 5. **Add-ons file.** Every component you add gets one line in `data/add_ons.json` (body, measured mass, position).
    The next run of `calc/s1_select.py` puts that mass into the simulation and re-checks every actuator, so you
-   find out at once whether the robot still has margin. The spare budget is about 4 kg on the torso or head and
+   find out at once whether the robot still has margin. The spare budget is about 3 kg on the torso or head and
    0.3 kg per hand. Worked example and budget table: step 11 of the [build guide](tutorial/S1-build-guide.md).
 
 ## Folder map

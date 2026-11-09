@@ -184,8 +184,12 @@ def structure_rows():
         unit="m²")
     add("Structure", "Split clamp blocks for Ø40/Ø30 tube, 6061, cross-dowelled", "2 per limb segment x 8 segments", 16, 30.0,
         "AUD", "estimate", "CNC service (JLCCNC / PCBWay, R6)", "", "", "ASSUMPTION A$30 each machined")
-    add("Structure", "Knee belt drive: HTD-8M 30 mm belt, pulley pair 1.5:1, idler/tensioner", "one set per knee", 2, 180.0,
-        "AUD", "estimate", "power-transmission supplier", "", "", "ASSUMPTION A$180 per set")
+    add("Structure", "Knee belt drive: Gates Poly Chain Carbon Volt 8MGTV-800-36 belt + 8MGT 36T / 54T aluminium pulleys "
+        "(lightened 6061, cut list sec. 6) + 6908 / 6905 bearings + tension block", "one set per knee", 2, 650.0,
+        "AUD", "estimate", "Gates distributor (belt, RS 2118333 class) + 8MGT pulley maker (B&B Manufacturing / Misumi class)",
+        "https://sg.rs-online.com/web/p/timing-belts/2118333",
+        "fallback #50 roller chain 18T / 27T + sprockets, about A$120 per knee, needs grease and a guard",
+        "ASSUMPTION belt ~A$250, two custom 8MGT pulleys ~A$180 each, bearings + block ~A$40")
     add("Structure", "Outboard bearing FAG 61812-2RSR-Y, 60x78x10 thin section", "hip yaw, hip roll, hip pitch, knee yokes (4 per leg)",
         8, 145.59, "AUD_EX", "verified", "RS Components AU (1908409)", "https://au.rs-online.com/web/p/ball-bearings/1908409",
         "Dunlop 61812-2RS £9.72 ex VAT, Bearing Boys UK (R9); SKF 61812-2RS1 A$173.69 ex GST (R9)", "")

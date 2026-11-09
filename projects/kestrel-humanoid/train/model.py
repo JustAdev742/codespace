@@ -39,7 +39,8 @@ def joint_limits_s1():
     def out(cls, joint):
         f = fam[cls]
         r = f["reductions"].get(joint, 1.0)
-        return f["peak_Nm"] * r * (0.95 if r > 1 else 1.0), f["speed_rads"] / r
+        tp = min(f["peak_Nm"], f.get("torque_cap_Nm", {}).get(joint, f["peak_Nm"]))   # knee: firmware cap for the belt
+        return tp * r * (0.95 if r > 1 else 1.0), f["speed_rads"] / r
 
     T, W = {}, {}
     for j, cls in (("hip_yaw", "S-M"), ("hip_roll", "S-L"), ("hip_pitch", "S-LX"), ("knee", "S-LX")):

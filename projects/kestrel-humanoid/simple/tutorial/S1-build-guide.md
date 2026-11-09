@@ -10,7 +10,7 @@ passes.
 | | |
 |---|---|
 | What you get | A 1.75 m humanoid with 27 actuated joints and two grippers. It is sized in simulation to walk at 0.8–1.0 m/s, climb 18 cm stairs and squat with a 20 kg box. |
-| Parts cost | about A$38,000, or about A$31,300 with a budget wireless e-stop ([../generated/bom.md](../generated/bom.md)) |
+| Parts cost | about A$39,000, or about A$32,300 with a budget wireless e-stop ([../generated/bom.md](../generated/bom.md)) |
 | Build time | about 150–250 hours for one person, spread over 2–3 months including lead times |
 | Skills | careful mechanical assembly, basic electronics (crimping, soldering, a multimeter), Linux command line |
 | Tools | metric hex keys and a torque driver (1–10 N·m), tap set M3–M6, drill press, hacksaw or drop saw with an aluminium blade, deburring tool, crimpers (JST-GH, Amass XT, ferrules), soldering iron, multimeter, bench power supply with current limit (60 V / 5 A), a USB-CAN adapter |
@@ -144,13 +144,22 @@ Build the **left leg completely** and test it clamped to the bench before starti
    * **Fit the 40 mm fan** (12 V) on its bracket so it blows across the X12 housing.
    * Its continuous rating depends on that fan. Without it the hip overheats on long walks.
 4. **Thigh and knee belt.**
-   1. Mount the knee X12 (ID 14) in the upper thigh, on the knee-actuator bulkhead, with its 32-tooth HTD-8M
-      pulley and the outboard 6808 bearing.
-   2. Fit the knee shaft with its two 6005-2RS bearings and the 48-tooth knee pulley on the shank side.
-   3. Fit the HTD 752-8M-30 belt.
-   4. **Tension it:** slide the bulkhead along its slotted holes until the belt deflects about 5 mm under a firm
-      thumb press at mid-span (about 40 N), then tighten.
-   5. Re-check after the first hour of running.
+   1. Mount the knee X12 (ID 14) in the upper thigh, on the knee-actuator bulkhead, with its 36-tooth 8MGT
+      driver pulley (6 × M5 low-head screws on the X12 output) and the outboard 6908 bearing in its slotted seat in
+      the inner cheek.
+   2. Fit the fixed knee shaft with its two 6905-2RS bearings and the 54-tooth knee pulley, bolted to the inner calf
+      plate (6 × M5 + 2 dowels).
+   3. Fit the **Gates Poly Chain 8MGTV-800-36** belt. Never lever it over a pulley flange: slacken the jack screw,
+      slide the bulkhead and the 6908 seat towards the knee, and put it on by hand. A kinked carbon cord is a
+      scrapped belt.
+   4. **Tension it:** turn the M6 jack screw on the tension block until a Gates sonic tension meter reads the
+      static tension DesignFlex Pro gives for this drive. Then clamp the four 6908 housing screws and the three
+      bulkhead through-bolts.
+   5. **Set the knee torque limit** on the X12 to **250 N·m** before the knee is ever driven hard (S1-software,
+      safety layer). The X12 can make 320 N·m, more than the belt is rated for.
+   6. Re-check the tension after the first hour of running, then monthly.
+   * No sonic meter? Gates' "force-deflection" method in the drive manual works with a spring scale; or switch to
+     the #50 roller-chain fallback (cut list §6), which only needs 1–2 % sag.
 5. **Shank and ankle.**
    1. Mount the two ankle RS04s (IDs 15 and 16) on the calf plates with their 40 mm cranks.
    2. Fit the ankle cross on its 6003 bearings and igus bushings.
@@ -301,8 +310,8 @@ X12s have the least margin.
 
 | Where | Budget before an actuator runs out of margin | What runs out |
 |---|---|---|
-| Torso or head | **about 4 kg** in total (3 kg leaves the knee/hip X12 at 1.02) | knee and hip pitch X12. Beyond it no catalogue module passes: the knee belt ratio has to go up |
-| Each hand, on top of the 5 kg payload | **about 0.3 kg** (a heavier gripper or tool) | elbow RS03 (1.03 → 1.00) |
+| Torso or head | **about 3 kg** in total (2 kg leaves the knee/hip X12 at 1.02; 3 kg takes it to 1.00) | knee and hip pitch X12. Beyond it no catalogue module passes: the knee drive needs a higher ratio or a stronger belt |
+| Each hand, on top of the 5 kg payload | **about 0.3 kg** (a heavier gripper or tool) | elbow RS03 (1.04 → 1.01) |
 | Upper or lower leg | as little as possible: leg mass costs the most torque | hip pitch and knee |
 
 **Worked example: add a lidar to the head.**

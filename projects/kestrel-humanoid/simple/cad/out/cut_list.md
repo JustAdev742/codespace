@@ -53,14 +53,14 @@ Materials: 6061-T6 yield 276 MPa (fatigue ~96 MPa at 5e8), 7075-T6 yield 500 MPa
 
 **0.1 Knee belt reaction** (1.5:1, 36T 8MGT on the X12, 54T on the shank, 36 mm Poly Chain)
 
-- Joint requirement 281 N·m repeated / 339 N·m momentary (joint_requirements.md) -> actuator side 197 / 238 N·m at eta 0.95.
-- Tight side T1 = tau / r(36T = 45.84 mm) = **4.30 / 5.19 kN**; slack side ~0.3 kN (installation tension) -> 5.5 kN on the pulley shafts.
-- 36T pulley: shared by the X12 crossed-roller (5 kN radial rating) and the 6908 in the inner cheek (C0 10 kN), lever arms ~25 mm each side -> ~2.7 kN each: 6908 static SF 3.6.
+- Joint requirement 281 N·m repeated / 340 N·m momentary (joint_requirements.md) -> actuator side 197 / 239 N·m at eta 0.95.
+- Tight side T1 = tau / r(36T = 45.84 mm) = **4.30 / 5.21 kN**; slack side ~0.3 kN (installation tension) -> 5.5 kN on the pulley shafts.
+- 36T pulley: shared by the X12 crossed-roller (5 kN radial rating) and the 6908 in the inner cheek (C0 10 kN), lever arms ~25 mm each side -> ~2.8 kN each: 6908 static SF 3.6.
 - Thigh cheeks in tension between the knee-X12 axis and the knee shaft: 5.5 kN over 4 edge webs 8 x 5 mm = 160 mm^2 -> **34 MPa** (SF 8 on yield).
-- Knee shaft 7075 tube dia 25/15: 86 N·m at the inner cheek -> 65 MPa (SF 7.7). 54T pulley bearings 2 x 6905 (C0 2 x 4.3 kN).
+- Knee shaft 7075 tube dia 25/15: 87 N·m at the inner cheek -> 65 MPa (SF 7.7). 54T pulley bearings 2 x 6905 (C0 2 x 4.3 kN).
 - 54T pulley to the inner calf plate: knee peak 456 N·m (X12 320 N·m x 1.5 x 0.95); 6 x M5 friction on PCD 54 + 2 x dia 5 dowels in shear = 585 N·m (SF 1.28).
-- 36T pulley to the X12: 6 x M5 low-head on PCD 72 friction 356 N·m vs 238 N·m (SF 1.5).
-- **Belt:** 36 mm Poly Chain 8MGT; allowable to be confirmed in Gates DesignFlex Pro against >= 333 N·m (momentary x SF 1.4) on the 36-groove sprocket - section 6. The 30 mm HTD-8M it replaces (~1.3-1.6 kN working tension) was ~4x over.
+- 36T pulley to the X12: 6 x M5 low-head on PCD 72 friction 356 N·m vs 239 N·m (SF 1.5).
+- **Belt:** 36 mm Poly Chain 8MGT; allowable to be confirmed in Gates DesignFlex Pro against >= 334 N·m (momentary x SF 1.4) on the 36-groove sprocket - section 6. The 30 mm HTD-8M it replaces (~1.3-1.6 kN working tension) was ~4x over.
 
 **0.2 Hip pitch, 320 N·m (X12 peak)**
 
@@ -72,7 +72,7 @@ Materials: 6061-T6 yield 276 MPa (fatigue ~96 MPa at 5e8), 7075-T6 yield 500 MPa
 
 **0.3 Ankle push-rods** (2 x RS04, 40 mm cranks, 65 mm foot levers = 1.25:1)
 
-- Rod force = actuator torque / 40 mm: RS04 peak 120 N·m -> **3.0 kN**; actuator-side requirement 73 N·m repeated / 117 N·m momentary (actuator_selection.md, earlier pass) -> 1.8 / 2.9 kN. Joint side 137 / 268 N·m pitch (both rods pushing on 65 mm levers).
+- Rod force = actuator torque / 40 mm: RS04 peak 120 N·m -> **3.0 kN**; actuator-side requirement 73 N·m repeated / 117 N·m momentary (actuator_selection.md, earlier pass) -> 1.8 / 2.9 kN. Joint side 138 / 273 N·m pitch (both rods pushing on 65 mm levers).
 - Rod A (pin-pin 325 mm), 6061 tube dia 14 x 2: 40 MPa; Euler 9.0 kN -> SF 3.0. Rod B (195 mm) dia 12 x 2: Euler 14.6 kN.
 - M8 rod ends (PHSA 8 class, static radial > 10 kN) on dia 8 ISO 7379 shoulder screws: 3 kN / 50 mm^2 = 60 MPa shear. Pin bearing in the 5 mm foot rail: 3 kN / (8 x 5) = 75 MPa (6061 bearing yield ~390).
 - Crank 6 mm: 3 kN x 13 mm = 39 N·m at the hub edge, section 6 x 30 -> 43 MPa; 6 x M5 + the 3 RS04 pins: 178 N·m friction vs 120 N·m.
@@ -208,13 +208,13 @@ Clamp blocks are only used on the upper arm (2 per arm, M5 clamp screws); the le
 | Driver pulley | 8MGT **36 grooves** (pitch dia 91.67 mm), 36 mm belt, lightened 6061 with a 6.5 mm mounting web: 6 x DIN 7984 M5x12 on the X12's PCD 72, dia 40 boss into a 6908 in a slotted seat in the inner cheek | 2 |
 | Knee pulley | 8MGT **54 grooves** (pitch dia 137.51 mm), lightened 6061, 2 x 6905-2RS on the fixed knee shaft, 6 x M5 + 2 dowels to the inner calf plate | 2 |
 | Belt | **Gates Poly Chain Carbon Volt 8MGTV-800-36** (100 teeth; current successor of Poly Chain GT Carbon 8MGT-800-36; stock length per the Gates Carbon Volt brochure), centre distance 218.8 mm (knee X12 201 mm below the hip) | 2 |
-| Tension | 6908 seat and X12 bulkhead both slotted +-3 mm along the thigh; BELT_TENSION_BLOCK with an M6 jack screw under the 6908 flange. Set the static tension with a Gates Sonic Tension Meter to the value Gates DesignFlex Pro gives for this drive, then clamp the 3 housing screws and the 3 bulkhead through-bolts | - |
+| Tension | 6908 seat and X12 bulkhead both slotted +-3 mm along the thigh; BELT_TENSION_BLOCK with an M6 jack screw under the 6908 flange. Set the static tension with a Gates Sonic Tension Meter to the value Gates DesignFlex Pro gives for this drive, then clamp the 4 housing screws and the 3 bulkhead through-bolts | - |
 
-Ratio 54/36 = 1.50. Joint requirement (joint_requirements.md): knee 281 N·m repeated, 339 N·m momentary -> actuator side 197 / 238 N·m at eta 0.95 -> tight-side tension T1 = tau / 45.8 mm = **4.30 kN repeated / 5.19 kN momentary**; effective pull Te = T1 - T2 ~ 4.0 / 4.9 kN.
+Ratio 54/36 = 1.50. Joint requirement (joint_requirements.md): knee 281 N·m repeated, 340 N·m momentary -> actuator side 197 / 239 N·m at eta 0.95 -> tight-side tension T1 = tau / 45.8 mm = **4.30 kN repeated / 5.21 kN momentary**; effective pull Te = T1 - T2 ~ 4.0 / 4.9 kN.
 
-**Allowable-tension check (VERIFY):** the Gates 8MGT rating tables (Poly Chain design manual / DesignFlex Pro) could not be retrieved in this session, so the belt is not yet verified. What Gates publishes (Carbon Volt brochure): 8MGT in 12/21/36/62 mm widths, tooth 3.4 mm, belt 5.9 mm, stock lengths 8MGTV-640 to 4480, and 'up to 55 % more power at low speed than Poly Chain GT, 30 % more than Poly Chain GT2'. Pass criterion to check in DesignFlex Pro: rated torque of the 8MGT-36 belt on a 36-groove sprocket at <= 125 rpm >= 238 N·m x service factor 1.4 (shock loading) = **333 N·m**, i.e. a rated effective pull >= 7.3 kN, and >= 276 N·m for the repeated case. If the 36 mm belt rates lower, use 62 mm (needs the thigh 26 mm wider) or the chain below.
+**Allowable-load check (Gates published rating):** Poly Chain GT Carbon Drive Design Manual, 'Horsepower Rating for 36mm Wide' (p. 50): a 36-groove sprocket carries 4.72 hp at 100 rpm = 336 N·m (342 N·m at 88 rpm), x 0.87 length correction for the 800 mm belt = **292 N·m at the driver** (Carbon Volt is rated at least as high). Gates sizes low-speed drives on the running load x a service factor, so: simulated running peak without margin 164 N·m x 1.6 = 263 N·m <= 292 (ratio 1.11); missed-step peak 217 N·m <= 292 (tooth-jump, ratio 1.35). The X12 can make 320 N·m, so firmware caps the knee X12 at **250 N·m** (0.86 of the rating; covers the 239 N·m momentary requirement). The same check is regenerated in `simple/generated/actuator_selection.md`. Below 88 rpm Gates' table defers to DesignFlex Pro: run the drive there once before ordering. If it rates the drive lower, use 62 mm (thigh 26 mm wider) or the chain below.
 
-**Fallback: ANSI #50 roller chain** (ISO 10A-1, 5/8 in pitch, roller width 3/8 in): **18T driver / 27T knee sprockets** (pitch dia 91.4 / 136.7 mm, ratio 1.50: the same envelope as the 8MGT pulleys), 52 links (exact length 50.2 pitches at C = 218.8 mm; take up the rest in the same slotted seat). Tension 5.2 kN momentary vs 27.1 kN minimum ultimate (ANSI B29.1, 6,100 lbf) -> SF 5.2. Costs about 0.6 kg more per leg (chain ~1.0 kg/m), needs grease and a guard, and is single-strand 20 mm wide, so it fits inside the current thigh. Sprockets: hardened-tooth steel 18T/27T bored to the same X12 pattern and 6905 seats.
+**Fallback: ANSI #50 roller chain** (ISO 10A-1, 5/8 in pitch, roller width 3/8 in): **18T driver / 27T knee sprockets** (pitch dia 91.4 / 136.7 mm, ratio 1.50: the same envelope as the 8MGT pulleys), 50 links: C = 217.1 mm (-1.7 mm from the belt layout, inside the +-3 mm slotted seat). Tension 5.2 kN momentary vs 27.1 kN minimum ultimate (ANSI B29.1, 6,100 lbf) -> SF 5.2. Costs about 0.6 kg more per leg (chain ~1.0 kg/m), needs grease and a guard, and is single-strand 20 mm wide, so it fits inside the current thigh. Sprockets: hardened-tooth steel 18T/27T bored to the same X12 pattern and 6905 seats.
 
 ## 7. Bearings, bushings, rod ends, standoffs and purchased items
 
@@ -331,13 +331,6 @@ Ranges are read from params.py / variant_s1.py at build time (left side; right s
 | l_ankle_pitch | l_ankle_link | (0, 105, 75) | (0, 1, 0) | -45..45 | 2 x RS04 in the calf, 40 mm cranks, push-rods, 52 mm foot levers |
 | l_ankle_roll | l_foot | (0, 105, 75) | (1, 0, 0) | -25..25 | (same two push-rods, differential) |
 
-## 11. Static interference check (zero pose)
-
-| Volume (mm^3) | Part A | Part B |
-|---|---|---|
-| 7 | r_hip_roll_link/HIP_ROLL_REAR_SHAFT | r_hip_roll_link/hip_roll_lever_70 |
-| 7 | l_hip_roll_link/HIP_ROLL_REAR_SHAFT | l_hip_roll_link/hip_roll_lever_70 |
-
 ## 12. Design notes: problems found
 
 1. **Knee belt (fixed after review).** The specified 30 mm HTD-8M was ~4x overloaded. Now Gates Poly Chain Carbon Volt / GT Carbon 8MGT, 36T:54T, 36 mm, belt 8MGTV-800: T1 5.2 kN momentary. The thigh grew 6 mm (outer cheek at y_rel 59, the hanging arm still ~3 mm clear) and the cradle's X12 plate top dropped to zr 64 so it clears the yaw plate at +30 deg roll. The belt rating still has to be confirmed in Gates DesignFlex Pro (section 6); #50 chain 18T/27T is the fallback. K1's knee four-bar fails the continuous check with an X12 (lead's check: 0.61).
@@ -347,6 +340,6 @@ Ranges are read from params.py / variant_s1.py at build time (left side; right s
 5. **Deep hip flexion.** At -125 deg the knee X12 passes within a few mm of the front yoke arm and the pelvis 4040; the range is now -120 deg in variant_s1.py.
 6. **Ankle linkage.** Foot levers 65 mm (1.25:1 from the current actuator_family.json), cranks 40 mm, roll pins at d = +-36 mm on the foot. The crank pins sit at +-43.5 mm because each RS04 (52.7 mm long) is between the calf plates, so the rods lean in by 1.3 deg (A) and 2.2 deg (B), well inside the rod ends' +-13 deg. Ankle RS04 axes are 25 mm behind the shank line so the rods stay vertical in the side view.
 7. **Foot 110 mm wide** (DIM): the side rails (foot levers) sit just outside the d = 36 mm rod ends.
-8. **Mass.** CAD structure 20.71 kg incl. fasteners vs the original 16.69 kg estimate (+24 %). These per-body masses are now in calc/kestrel/variant_s1.py (CAD_STRUCTURE_KG); the re-run selection gives S1 66.9 kg estimated / 73.6 kg design with every class feasible, which needed the 1.25:1 ankle levers modelled here. The X12 datasheet mass is 2.37 kg vs 2.82 kg in actuator_family.json (1.8 kg of margin if the datasheet is right).
+8. **Mass.** CAD structure 20.71 kg incl. fasteners vs the original 16.69 kg estimate (+24 %). These per-body masses are now in calc/kestrel/variant_s1.py (CAD_STRUCTURE_KG); the re-run selection gives S1 about 67 kg estimated / 73.9 kg design (simple/generated/actuator_selection.md) with every class feasible, which needed the 1.25:1 ankle levers modelled here.
 9. **RS04 outputs are only 0.5 mm proud** of the housing: every driven part sits on a 6 mm spacer ring and uses 6 of the 9 M5 holes with through-screws.
 10. **First weight pass result:** 43.8 kg (6 mm plates everywhere, tubes + cheeks in the legs, solid pulleys) -> the current design. Remaining heavy items per leg: hip yoke + roll drive 1.1 kg (solid 6 mm yaw plate, 61812, 2 x 6905), knee drive 0.9 kg (pulleys, belt, 6908, shaft), M8 rod ends 6 x 35 g.

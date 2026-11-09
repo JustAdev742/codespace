@@ -689,8 +689,8 @@ Rules:
 2. CAN: ID, bus, load still ≤ 60 % worst case.
 3. Mass: weigh the part with its bracket and add one line to `simple/data/add_ons.json` (build guide step 11),
    then re-run `python simple/calc/s1_select.py` and `python simple/calc/s1_bom.py`. The tightest classes are the
-   elbow (lowest margin 1.03) and the knee/hip-pitch X12 (1.07) (`simple/generated/actuator_selection.md`). The
-   spare budget is about 4 kg on the torso or head and 0.3 kg per hand (build guide step 11).
+   elbow (lowest margin 1.04) and the knee/hip-pitch X12 (1.05) (`simple/generated/actuator_selection.md`). The
+   spare budget is about 3 kg on the torso or head and 0.3 kg per hand (build guide step 11).
 4. Safety: if it can move, it must stop when the e-stop opens and respect the software limits.
 5. Update this document's tables (power, IDs).
 

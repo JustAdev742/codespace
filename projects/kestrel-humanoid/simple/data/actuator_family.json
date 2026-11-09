@@ -13,9 +13,12 @@
   "peak_Nm": 320,
   "rated_Nm": 85,
   "speed_rads": 13.09,
-  "min_margin": 1.07,
+  "min_margin": 1.05,
   "source_url": "https://www.myactuator.com/_files/archives/cab28a_712afb681f434c1394145c69aae60b8e.zip",
-  "verified": true
+  "verified": true,
+  "torque_cap_Nm": {
+   "knee": 250.0
+  }
  },
  "S-L": {
   "mass": 1.51,
@@ -32,7 +35,8 @@
   "speed_rads": 20.94,
   "min_margin": 1.14,
   "source_url": "https://raw.githubusercontent.com/RobStride/Product_Information/main/%E7%81%B5%E8%B6%B3%E6%97%B6%E4%BB%A3RS%E7%B3%BB%E5%88%97%E4%BA%A7%E5%93%81%E8%A7%84%E6%A0%BC%E4%BB%8B%E7%BB%8D%282026.010.09%29.pdf",
-  "verified": true
+  "verified": true,
+  "torque_cap_Nm": {}
  },
  "S-M": {
   "mass": 1.51,
@@ -50,7 +54,8 @@
   "speed_rads": 20.94,
   "min_margin": 1.8,
   "source_url": "https://raw.githubusercontent.com/RobStride/Product_Information/main/%E7%81%B5%E8%B6%B3%E6%97%B6%E4%BB%A3RS%E7%B3%BB%E5%88%97%E4%BA%A7%E5%93%81%E8%A7%84%E6%A0%BC%E4%BB%8B%E7%BB%8D%282026.010.09%29.pdf",
-  "verified": true
+  "verified": true,
+  "torque_cap_Nm": {}
  },
  "S-A": {
   "mass": 1.51,
@@ -65,9 +70,10 @@
   "peak_Nm": 120,
   "rated_Nm": 40,
   "speed_rads": 20.94,
-  "min_margin": 1.16,
+  "min_margin": 1.15,
   "source_url": "https://raw.githubusercontent.com/RobStride/Product_Information/main/%E7%81%B5%E8%B6%B3%E6%97%B6%E4%BB%A3RS%E7%B3%BB%E5%88%97%E4%BA%A7%E5%93%81%E8%A7%84%E6%A0%BC%E4%BB%8B%E7%BB%8D%282026.010.09%29.pdf",
-  "verified": true
+  "verified": true,
+  "torque_cap_Nm": {}
  },
  "S-SH": {
   "mass": 1.51,
@@ -83,9 +89,10 @@
   "peak_Nm": 120,
   "rated_Nm": 40,
   "speed_rads": 20.94,
-  "min_margin": 1.53,
+  "min_margin": 1.54,
   "source_url": "https://raw.githubusercontent.com/RobStride/Product_Information/main/%E7%81%B5%E8%B6%B3%E6%97%B6%E4%BB%A3RS%E7%B3%BB%E5%88%97%E4%BA%A7%E5%93%81%E8%A7%84%E6%A0%BC%E4%BB%8B%E7%BB%8D%282026.010.09%29.pdf",
-  "verified": true
+  "verified": true,
+  "torque_cap_Nm": {}
  },
  "S-EL": {
   "mass": 0.928,
@@ -101,9 +108,10 @@
   "peak_Nm": 60,
   "rated_Nm": 21,
   "speed_rads": 20.42,
-  "min_margin": 1.03,
+  "min_margin": 1.04,
   "source_url": "https://raw.githubusercontent.com/RobStride/Product_Information/main/%E7%81%B5%E8%B6%B3%E6%97%B6%E4%BB%A3RS%E7%B3%BB%E5%88%97%E4%BA%A7%E5%93%81%E8%A7%84%E6%A0%BC%E4%BB%8B%E7%BB%8D%282026.010.09%29.pdf",
-  "verified": true
+  "verified": true,
+  "torque_cap_Nm": {}
  },
  "S-WR": {
   "mass": 0.418,
@@ -121,7 +129,8 @@
   "speed_rads": 42.94,
   "min_margin": 1.21,
   "source_url": "https://raw.githubusercontent.com/RobStride/Product_Information/main/%E7%81%B5%E8%B6%B3%E6%97%B6%E4%BB%A3RS%E7%B3%BB%E5%88%97%E4%BA%A7%E5%93%81%E8%A7%84%E6%A0%BC%E4%BB%8B%E7%BB%8D%282026.010.09%29.pdf",
-  "verified": true
+  "verified": true,
+  "torque_cap_Nm": {}
  },
  "S-NK": {
   "mass": 0.31,
@@ -139,6 +148,7 @@
   "speed_rads": 32.99,
   "min_margin": 1.05,
   "source_url": "https://raw.githubusercontent.com/RobStride/Product_Information/main/%E7%81%B5%E8%B6%B3%E6%97%B6%E4%BB%A3RS%E7%B3%BB%E5%88%97%E4%BA%A7%E5%93%81%E8%A7%84%E6%A0%BC%E4%BB%8B%E7%BB%8D%282026.010.09%29.pdf",
-  "verified": true
+  "verified": true,
+  "torque_cap_Nm": {}
  }
 }

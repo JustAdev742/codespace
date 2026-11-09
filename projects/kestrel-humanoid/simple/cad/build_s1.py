@@ -999,6 +999,14 @@ def variant_structure():
     return {b.name: sum(c.mass for c in b.comps if c.cat == "structure") for b in bodies}
 
 
+def _design_mass():
+    """Design mass from the last selection report (simple/generated/actuator_selection.md)."""
+    import re
+    f = HERE.parent / "generated" / "actuator_selection.md"
+    mm = re.search(r"Design mass \*\*([0-9.]+) kg", f.read_text()) if f.exists() else None
+    return float(mm.group(1)) if mm else float("nan")
+
+
 def joint_requirement(name):
     """Repeated and momentary joint-side torque from simple/generated/joint_requirements.md."""
     import re
@@ -1212,9 +1220,9 @@ def design_notes(info, struct_total, est_total):
     w(f"7. **Foot {D['foot_w']:.0f} mm wide** (DIM): the side rails (foot levers) sit just outside the d = 36 mm rod ends.")
     w(f"8. **Mass.** CAD structure {struct_total:.2f} kg incl. fasteners vs the original {est_total:.2f} kg estimate "
       f"(+{(struct_total / est_total - 1) * 100:.0f} %). These per-body masses are now in calc/kestrel/variant_s1.py "
-      "(CAD_STRUCTURE_KG); the re-run selection gives S1 66.9 kg estimated / 73.6 kg design with every class feasible, "
-      "which needed the 1.25:1 ankle levers modelled here. The X12 datasheet mass is 2.37 kg vs 2.82 kg in "
-      "actuator_family.json (1.8 kg of margin if the datasheet is right).")
+      f"(CAD_STRUCTURE_KG); the re-run selection gives S1 about {_design_mass() / 1.1:.0f} kg estimated / {_design_mass():.1f} kg "
+      "design (simple/generated/actuator_selection.md) with every class feasible, which needed the 1.25:1 ankle levers "
+      "modelled here.")
     w("9. **RS04 outputs are only 0.5 mm proud** of the housing: every driven part sits on a 6 mm spacer ring and "
       "uses 6 of the 9 M5 holes with through-screws.")
     w("10. **First weight pass result:** 43.8 kg (6 mm plates everywhere, tubes + cheeks in the legs, solid pulleys) "
@@ -1344,29 +1352,39 @@ def report(info, qty, hits):
       f"{D['thigh'] - C:.0f} mm below the hip) | {qty['BELT_8MGT_36']} |\n| Tension | 6908 seat and X12 bulkhead both "
       "slotted +-3 mm along the thigh; BELT_TENSION_BLOCK with an M6 jack screw under the 6908 flange. Set the static "
       "tension with a Gates Sonic Tension Meter to the value Gates DesignFlex Pro gives for this drive, then clamp the "
-      "3 housing screws and the 3 bulkhead through-bolts | - |\n")
+      "4 housing screws and the 3 bulkhead through-bolts | - |\n")
     w(f"Ratio {KZ2}/{KZ1} = {KZ2 / KZ1:.2f}. Joint requirement (joint_requirements.md): knee {rq[0]:.0f} N·m repeated, "
       f"{rq[1]:.0f} N·m momentary -> actuator side {t_rep:.0f} / {t_mom:.0f} N·m at eta 0.95 -> tight-side tension "
       f"T1 = tau / {r1:.1f} mm = **{T1r:.2f} kN repeated / {T1m:.2f} kN momentary**; effective pull Te = T1 - T2 ~ "
       f"{T1r - 0.3:.1f} / {T1m - 0.3:.1f} kN.\n")
-    w("**Allowable-tension check (VERIFY):** the Gates 8MGT rating tables (Poly Chain design manual / DesignFlex Pro) "
-      "could not be retrieved in this session, so the belt is not yet verified. What Gates publishes (Carbon Volt "
-      "brochure): 8MGT in 12/21/36/62 mm widths, tooth 3.4 mm, belt 5.9 mm, stock lengths 8MGTV-640 to 4480, and 'up to "
-      "55 % more power at low speed than Poly Chain GT, 30 % more than Poly Chain GT2'. Pass criterion to check in "
-      f"DesignFlex Pro: rated torque of the 8MGT-{KBELT_W:.0f} belt on a {KZ1}-groove sprocket at <= 125 rpm "
-      f">= {t_mom:.0f} N·m x service factor 1.4 (shock loading) = **{t_mom * 1.4:.0f} N·m**, i.e. a rated effective pull "
-      f">= {t_mom * 1.4 / r1:.1f} kN, and >= {t_rep * 1.4:.0f} N·m for the repeated case. If the 36 mm belt rates lower, "
-      "use 62 mm (needs the thigh 26 mm wider) or the chain below.\n")
+    w("**Allowable-load check (Gates published rating):** Poly Chain GT Carbon Drive Design Manual, 'Horsepower Rating "
+      f"for 36mm Wide' (p. 50): a {KZ1}-groove sprocket carries 4.72 hp at 100 rpm = 336 N·m (342 N·m at 88 rpm), x 0.87 "
+      f"length correction for the 800 mm belt = **292 N·m at the driver** (Carbon Volt is rated at least as high). Gates "
+      "sizes low-speed drives on the running load x a service factor, so: simulated running peak without margin "
+      f"{t_rep / 1.2:.0f} N·m x 1.6 = {t_rep / 1.2 * 1.6:.0f} N·m <= 292 (ratio {292 / (t_rep / 1.2 * 1.6):.2f}); missed-step peak "
+      f"{t_mom / 1.1:.0f} N·m <= 292 (tooth-jump, ratio {292 / (t_mom / 1.1):.2f}). The X12 can make 320 N·m, so firmware caps "
+      f"the knee X12 at **250 N·m** (0.86 of the rating; covers the {t_mom:.0f} N·m momentary requirement). The same check "
+      "is regenerated in `simple/generated/actuator_selection.md`. Below 88 rpm Gates' table defers to DesignFlex Pro: "
+      "run the drive there once before ordering. If it rates the drive lower, use 62 mm (thigh 26 mm wider) or the chain "
+      "below.\n")
     p50 = 15.875
     n1, n2 = 18, 27
     pd1 = p50 / math.sin(math.pi / n1)
     pd2 = p50 / math.sin(math.pi / n2)
     links = 2 * C / p50 + (n1 + n2) / 2 + p50 * (n2 - n1) ** 2 / (4 * math.pi ** 2 * C)
-    nl = int(2 * math.ceil(links / 2))
+    nl = int(2 * round(links / 2))                    # nearest even link count; the slotted seat takes up the rest
+
+    def chain_len(cc):
+        return 2 * cc / p50 + (n1 + n2) / 2 + p50 * (n2 - n1) ** 2 / (4 * math.pi ** 2 * cc)
+    lo_, hi_ = 100.0, 400.0
+    for _ in range(60):
+        mid = 0.5 * (lo_ + hi_)
+        lo_, hi_ = (mid, hi_) if chain_len(mid) < nl else (lo_, mid)
+    C_ch = 0.5 * (lo_ + hi_)
     T1c = t_mom / (pd1 / 2)
     w(f"**Fallback: ANSI #50 roller chain** (ISO 10A-1, 5/8 in pitch, roller width 3/8 in): **{n1}T driver / {n2}T knee "
       f"sprockets** (pitch dia {pd1:.1f} / {pd2:.1f} mm, ratio {n2 / n1:.2f}: the same envelope as the 8MGT pulleys), "
-      f"{nl} links (exact length {links:.1f} pitches at C = {C:.1f} mm; take up the rest in the same slotted seat). "
+      f"{nl} links: C = {C_ch:.1f} mm ({C_ch - C:+.1f} mm from the belt layout, inside the +-3 mm slotted seat). "
       f"Tension {T1c:.1f} kN momentary vs 27.1 kN minimum ultimate (ANSI B29.1, 6,100 lbf) -> SF {27.1 / T1c:.1f}. Costs "
       "about 0.6 kg more per leg (chain ~1.0 kg/m), needs grease and a guard, and is single-strand 20 mm wide, so it fits "
       "inside the current thigh. Sprockets: hardened-tooth steel 18T/27T bored to the same X12 pattern and 6905 seats.\n")

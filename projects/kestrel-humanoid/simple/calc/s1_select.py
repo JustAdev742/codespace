@@ -43,6 +43,15 @@ DERATE = 0.80
 # Firmware must still derate on the actuator's temperature reading (docs/S1-software.md, safety layer).
 JOINT_DERATE = {"hip_pitch": 0.90}
 HEADROOM = 0.90
+# Knee belt: Gates Poly Chain GT Carbon 8MGT, 36 mm wide, 36T driver / 54T knee pulley, 8MGT-800 belt (simple/cad cut
+# list sec. 6). Gates' published rating (Poly Chain GT Carbon Drive Design Manual, "Horsepower Rating for 36mm Wide",
+# p. 50): 4.72 hp at 100 rpm on a 36-groove sprocket = 336 N·m, x 0.87 length correction for the 800 mm belt
+# = 292 N·m at the driver. Gates sizes on the running load x a service factor: the simulated running peak (no
+# margin) x 1.6 must fit, the missed-step peak must stay under the rating (tooth-jump), and firmware caps the knee
+# X12 at 250 N·m (0.86 of the rating) so the motor's 320 N·m can never reach the belt.
+BELT_RATED_NM = 292.0
+BELT_SERVICE_FACTOR = 1.6
+TRANSMISSION_CAP = {"knee": 250.0}     # actuator-side firmware torque cap where a transmission rates below the module
 ETA_BELT = 0.95
 ETA_LINK = 0.97
 AUD_PER_USD = 1.52
@@ -129,13 +138,14 @@ def w_line(a, t):
     return a["speed_rads"] * (1.0 - 0.6 * np.clip(t / a["peak_Nm"], 0, 1))
 
 
-def check(a, need, smp, r, eta, derate=DERATE):
+def check(a, need, smp, r, eta, derate=DERATE, cap=None):
     """Every simulated sample with the requirement margins must sit under the torque-speed line; peaks,
-    momentary, continuous and hold checked as for K1 (calc/kestrel/actuators.py)."""
+    momentary, continuous and hold checked as for K1 (calc/kestrel/actuators.py). cap: firmware torque cap on
+    the actuator side (a transmission rated below the module); it limits the peak and momentary checks."""
     T_rep, T_mom, T_cont, w_req = need
     t, w, mom = smp
     ta, wa = t / (r * eta), w * r
-    tp = a["peak_Nm"]
+    tp = min(a["peak_Nm"], cap) if cap else a["peak_Nm"]
     nrm = ~mom
     t_need = np.concatenate([ta[nrm] * RQ.MARGIN_T, [T_rep / (r * eta)]])
     w_need = np.concatenate([wa[nrm] * RQ.MARGIN_W, [1.0]])
@@ -161,7 +171,8 @@ def select(req, cat, store, names):
                 eta_ext = ETA_LINK if j == "ankle" else ETA_BELT
                 best = None
                 for r in spec["reductions"][j]:
-                    ok, m = check(a, joint_need(req, j), smp[j], r, 1.0 if r == 1.0 else eta_ext, JOINT_DERATE.get(j, DERATE))
+                    ok, m = check(a, joint_need(req, j), smp[j], r, 1.0 if r == 1.0 else eta_ext, JOINT_DERATE.get(j, DERATE),
+                                  TRANSMISSION_CAP.get(j) if r != 1.0 else None)
                     if ok:
                         best = (r, m)
                         break               # smallest reduction that works (keeps speed and back-drivability)
@@ -189,7 +200,9 @@ def select(req, cat, store, names):
                             reductions={j: r for j, (r, _) in o["per_joint"].items()},
                             peak_Nm=a["peak_Nm"], rated_Nm=a["rated_Nm"], speed_rads=a["speed_rads"],
                             min_margin=round(o["min_margin"], 2), source_url=a.get("source_url"),
-                            verified=a.get("verified"))
+                            verified=a.get("verified"),
+                            torque_cap_Nm={j: TRANSMISSION_CAP[j] for j in spec["joints"]
+                                           if j in TRANSMISSION_CAP and o["per_joint"][j][0] != 1.0})
     return fam, report
 
 
@@ -224,6 +237,25 @@ def write_report(req, fam, report, design_mass, passes):
         for j in spec["joints"]:
             t = joint_need(req, j)
             L.append(f"| {j} | {t[0]:.0f} | {t[1]:.0f} | {t[2]:.0f} | {t[3]:.1f} |")
+    if "knee" in req and "S-LX" in fam:
+        r_k = fam["S-LX"]["reductions"].get("knee", 1.5) if isinstance(fam["S-LX"].get("reductions"), dict) else 1.5
+        g = r_k * ETA_BELT
+        run = req["knee"]["peak_rep"] / g
+        mom = req["knee"]["peak_mom"] / g
+        mom_req = req["knee"]["T_mom_req"] / g
+        cap = TRANSMISSION_CAP["knee"]
+        L += ["", "## Knee belt check (Gates Poly Chain GT Carbon 8MGT, 36 mm, 36T / 54T, 8MGT-800)", "",
+              f"Rating at the 36T driver: **{BELT_RATED_NM:.0f} N·m** (Gates table, 36 mm wide, 36 grooves, 100 rpm: "
+              f"4.72 hp = 336 N·m, x 0.87 length factor for 800 mm).", "",
+              "| Check | Actuator-side torque | Limit | Ratio |", "|---|---|---|---|",
+              f"| Running peak (simulated, no margin) x service factor {BELT_SERVICE_FACTOR} | {run:.0f} x {BELT_SERVICE_FACTOR}"
+              f" = {run * BELT_SERVICE_FACTOR:.0f} N·m | {BELT_RATED_NM:.0f} N·m | **{BELT_RATED_NM / (run * BELT_SERVICE_FACTOR):.2f}** |",
+              f"| Missed-step peak (simulated, tooth-jump check) | {mom:.0f} N·m | {BELT_RATED_NM:.0f} N·m | **{BELT_RATED_NM / mom:.2f}** |",
+              f"| Firmware cap covers the momentary requirement | {mom_req:.0f} N·m needed | {cap:.0f} N·m cap | **{cap / mom_req:.2f}** |",
+              f"| Firmware cap below the belt rating | {cap:.0f} N·m | {BELT_RATED_NM:.0f} N·m | **{BELT_RATED_NM / cap:.2f}** |", "",
+              f"Set the knee X12 torque limit to **{cap:.0f} N·m** in firmware (joint side ≈ {cap * g:.0f} N·m). "
+              "Confirm the drive in Gates DesignFlex Pro before ordering; fallback: #50 roller chain, 18T / 27T, same envelope "
+              "(simple/cad/out/cut_list.md sec. 6)."]
     L += ["", "## Feasible alternatives per class (ranked by price + mass penalty + second-brand penalty, top 5)", ""]
     for cls, opts in report.items():
         L.append(f"**{cls}** ({CLASSES[cls]['note']}):")

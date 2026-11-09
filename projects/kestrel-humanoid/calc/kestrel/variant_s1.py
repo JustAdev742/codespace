@@ -52,13 +52,13 @@ JOINTS_CENTRE_S1 = {
 
 
 # Structure mass per body from the S1 CAD (simple/cad/out/cut_list.md, after the weight-reduction pass), excluding
-# fasteners; the counted fasteners (1.94 kg) are spread pro rata, so each body's structure = CAD x FASTENER_FACTOR.
+# fasteners; the counted fasteners (1.92 kg) are spread pro rata, so each body's structure = CAD x FASTENER_FACTOR.
 CAD_STRUCTURE_KG = {
-    "pelvis": 1.54, "waist_link": 0.15, "torso": 2.48, "neck_link": 0.13, "head": 0.35,
-    "shoulder": 0.19, "upper_arm_a": 0.16, "upper_arm": 0.40, "forearm_a": 0.10, "forearm": 0.24, "wrist": 0.13,
-    "hip_yaw_link": 1.11, "hip_roll_link": 0.74, "thigh": 1.58, "shank": 1.48, "ankle_link": 0.15, "foot": 0.65,
+    "pelvis": 1.54, "waist_link": 0.15, "torso": 2.47, "neck_link": 0.13, "head": 0.35,
+    "shoulder": 0.19, "upper_arm_a": 0.14, "upper_arm": 0.40, "forearm_a": 0.16, "forearm": 0.10, "wrist": 0.13,
+    "hip_yaw_link": 1.11, "hip_roll_link": 0.79, "thigh": 1.73, "shank": 1.54, "ankle_link": 0.15, "foot": 0.61,
 }
-FASTENER_FACTOR = 20.48 / 18.54
+FASTENER_FACTOR = 20.71 / 18.79
 
 # Builder add-ons: {"add_ons": [{"body": "head", "side": "both", "name": "...", "kg": 0.27,
 #                   "xyz": [x, y, z], "cat": "sensor"}, ...]}. "body" is a body name without the l_/r_ prefix
@@ -163,7 +163,7 @@ def apply(ns):
             B.append(Body(f"{side}_thigh", f"{side}_hip_roll_link", f"{side}_hip_pitch", (0, 0, 0), (0, 1, 0), comps=[
                 Comp("knee actuator (upper thigh, drives knee by belt)", A("S-LX"), (0, 0, -0.130), "cyl", (0.065, 0.07, "y"), "actuator"),
                 Comp("thigh: Ø40x3 tube + 2 clamp blocks + 6 mm side plates", 0.80, (0, 0, -0.22), "box", (0.08, 0.07, 0.36), "structure"),
-                Comp("knee belt drive: HTD-8M 30 mm belt, 2 pulleys, idler/tensioner", 0.45, (0, 0, -0.28), "box", (0.04, 0.05, 0.30), "structure"),
+                Comp("knee belt drive: Gates Poly Chain 8MGT 36 mm belt, 36T/54T pulleys, slotted tensioner", 0.45, (0, 0, -0.28), "box", (0.04, 0.05, 0.30), "structure"),
                 Comp("thigh harness", 0.20, (0, 0, -0.20), "box", (0.03, 0.03, 0.36), "harness"),
             ]))
             B.append(Body(f"{side}_shank", f"{side}_thigh", f"{side}_knee", (0, 0, -d["thigh"]), (0, 1, 0), comps=[

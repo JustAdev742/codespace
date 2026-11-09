@@ -268,8 +268,12 @@ clamp covers the rest.
   | Standing / supported stepping | 50 % | 50 % |
   | Validated walking | 90 % (the 10 % control headroom of `s1_select.py`) | 90 % of no-load, RS04 ≤ 15 rad/s at the actuator |
 
-  Joint peaks: hip yaw 120, hip roll 228, hip pitch 320, knee 456, ankle pitch 234 / roll 75.6 (independent
+  Joint peaks: hip yaw 120, hip roll 228, hip pitch 320, knee 356, ankle pitch 278 / roll 89.8 (independent
   conservative limits, as in training), shoulder pitch/roll 120, shoulder yaw/elbow 60, wrist 17, neck 14 N·m.
+- **Knee belt cap (hard limit, every stage):** set the knee X12's own maximum torque current to the value for
+  **250 N·m** at the actuator (356 N·m at the knee) in MyActuator's host tool, and clamp the host command there too.
+  The X12 makes 320 N·m, more than the Gates belt's 292 N·m rating at its driver pulley
+  (`simple/generated/actuator_selection.md`, knee belt check). The stage fractions above apply on top of this cap.
 - **Continuous torque:** a per-joint I²t estimate against 0.8 × rated torque (the selection's derate) warns at
   100 % and forces DAMP at 130 % for > 10 s [E]. RobStride also protects itself (overload table, 145 °C).
 - **Power cap:** the supervisor limits the sum of commanded |τ·ω| + copper loss to 2.0 kW until the BMS
@@ -370,17 +374,20 @@ eff = {}
 for jn, j in P.joint_table().items():
     base = jn[2:] if jn[:2] in ("l_", "r_") else jn
     f = fam[j["act"]]
-    if base == "ankle_pitch":   eff[jn] = 2 * f["peak_Nm"] * LK.ANKLE["r_p"] / LK.ANKLE["r_c"]
-    elif base == "ankle_roll":  eff[jn] = 2 * f["peak_Nm"] * LK.ANKLE["d"] / LK.ANKLE["r_c"]
+    if base in ("ankle_pitch", "ankle_roll"):                       # 2 actuators, 1.25:1 foot levers (eta 0.97)
+        arm = LK.ANKLE["r_p"] if base == "ankle_pitch" else LK.ANKLE["d"]
+        eff[jn] = 2 * f["peak_Nm"] * f["reductions"]["ankle"] * 0.97 * arm / LK.ANKLE["r_c"]
     else:
         r = f["reductions"][base]
-        eff[jn] = f["peak_Nm"] * r * (0.95 if r > 1 else 1.0)       # belt / crank efficiency 0.95
+        tp = min(f["peak_Nm"], f.get("torque_cap_Nm", {}).get(base, f["peak_Nm"]))   # knee: 250 N·m belt cap
+        eff[jn] = tp * r * (0.95 if r > 1 else 1.0)                 # belt / crank efficiency 0.95
 open("sim/kestrel_s1.xml", "w").write(Mo.build_mjcf(mass_scale=1.0, effort=eff, damping=0.5, timestep=0.002))
 EOF
 ```
 
-Checked in this session: 27 actuators, 65.5 kg total. Joint limits: hip pitch 320 N·m, knee 456, hip roll 228,
-ankle pitch 312 / roll 216 (both actuators combined), hip yaw 120 N·m.
+Checked against the current selection: 27 actuators, 67.1 kg total. Joint limits: hip pitch 320 N·m, knee 356
+(X12 capped at 250 N·m for the belt), hip roll 228, ankle pitch 378 / roll 262 (both actuators combined), hip yaw
+120 N·m.
 
 ### 9.2 PD gains and torque limits from the selected actuators
 
@@ -389,15 +396,16 @@ ankle pitch 312 / roll 216 (both actuators combined), hip yaw 120 N·m.
 | hip yaw | RS04, 1:1 | 120 | 120 | 32 | 20.9 → **15** (frame limit) | 150 / 5 | 150 / 5 |
 | hip roll | RS04, 2:1 crank, η 0.95 | 228 | 228 | 61 | 10.5 → **7.5** | 250 / 7 | 62.5 / 1.75 |
 | hip pitch | X12, 1:1 | 320 | 320 | 68 | 13.1 | 300 / 8 | 300 / 8 (kd > 5: see §5.2) |
-| knee | X12, 1.5:1 belt, η 0.95 | 456 | 456 | 97 | 8.7 | 300 / 8 | 133 / 3.6 |
-| ankle pitch | 2 × RS04, linkage | 312 combined | 234 (× 0.75) | 83 combined | 16.1 → **11.5** | 80 / 2.5 | ≈ 24 / 0.75 per actuator |
-| ankle roll | same | 216 combined | 75.6 (× 0.35) | | 23.3 → **16.7** | 50 / 2 → ≈ 38 / 1.2 (see below) | (same actuators) |
+| knee | X12, 1.5:1 Poly Chain belt, η 0.95, **firmware cap 250 N·m** | 356 | 356 | 97 | 8.7 | 300 / 8 | 133 / 3.6 |
+| ankle pitch | 2 × RS04, 1.25:1 foot levers + linkage | 378 combined | 278 (× 0.75) | 101 combined | 12.9 → **9.2** | 80 / 2.5 | ≈ 15 / 0.47 per actuator |
+| ankle roll | same | 262 combined | 89.8 (× 0.35) | | 18.6 → **13.3** | 50 / 2 → ≈ 38 / 1.2 (see below) | (same actuators) |
 
 - Kp/Kd are the values in `train/model.py` (inherited from K1) and are a start, not identified values. An
   actuator behind a reduction r gets kp/r² and kd/r²: hip roll 250/4 = 62.5; knee 300/2.25 = 133.
 - **Ankle gains.** For two equal actuators of stiffness k_a through the linkage,
-  K_pitch = 2·k_a·(r_p/r_c)² = 3.38·k_a and K_roll = 2·k_a·(d/r_c)² = 1.62·k_a. Pitch and roll stiffness
-  cannot be set independently with actuator-level PD. k_a = 24 gives pitch 80 and roll 38.
+  K_pitch = 2·k_a·(1.25·r_p/r_c)² = 5.28·k_a and K_roll = 2·k_a·(1.25·d/r_c)² = 2.53·k_a (1.25 = the foot-lever
+  ratio). Pitch and roll stiffness cannot be set independently with actuator-level PD. k_a = 15.2 gives pitch 80
+  and roll 38.
   **Retrain with roll Kp = 38 / Kd = 1.2** so that sim matches what the hardware can do, or close the loop in
   joint space on the host.
 - "→" values are the RS04 ±15 rad/s frame limit seen from the joint (15/r for the crank, through the linkage
