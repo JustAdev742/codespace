@@ -83,7 +83,7 @@ peak.
 
 ## The S1 modularity standard
 
-Everything follows four rules, so adding a component never needs a new design:
+Everything follows five rules, so adding a component never needs a new design:
 
 1. **Hole grid.** Every plate carries Ø5.5 holes on a 20 mm grid, and every extrusion takes 20-series T-nuts.
    Brackets for new parts bolt on anywhere.
@@ -93,6 +93,10 @@ Everything follows four rules, so adding a component never needs a new design:
    module only needs a different adapter.
 4. **Spare power and bus capacity.** The power board has spare fused 48 V, 24 V, 12 V and 5 V outputs. Each of the
    5 CAN buses has a spare drop. The wrists carry ISO 9409-1-50 tool flanges.
+5. **Add-ons file.** Every component you add gets one line in `data/add_ons.json` (body, measured mass, position).
+   The next run of `calc/s1_select.py` puts that mass into the simulation and re-checks every actuator, so you
+   find out at once whether the robot still has margin. Worked example: step 11 of the
+   [build guide](tutorial/S1-build-guide.md).
 
 ## Folder map
 
@@ -101,7 +105,7 @@ Everything follows four rules, so adding a component never needs a new design:
 | `calc/s1_select.py` | requirement ↔ actuator selection loop |
 | `calc/s1_bom.py` | priced bill of materials → `generated/bom.md`, `data/bom.csv` |
 | `generated/` | requirements, actuator selection, BOM (generated, do not edit) |
-| `data/` | S1 scenario cache, selected family, BOM CSV |
+| `data/` | S1 scenario cache, selected family, BOM CSV, `add_ons.json` (your added components) |
 | `cad/` | CadQuery model, STEP / STL, DXF for laser cutting, cut list |
 | `docs/` | electrical (power, e-stop, CAN, wiring) and software (ROS 2, drivers, safety, RL retargeting) |
 | `renders/` | S1 renders |

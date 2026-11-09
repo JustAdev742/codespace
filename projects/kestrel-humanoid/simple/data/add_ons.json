@@ -1,0 +1,4 @@
+{
+  "_how": "Add one entry per component you bolt onto S1, then re-run: python simple/calc/s1_select.py. body = pelvis, torso, head, neck_link, shoulder, upper_arm, forearm, wrist, hand, hip_yaw_link, hip_roll_link, thigh, shank, foot; side = l, r or both (limbs only); kg = measured mass; xyz = metres from the joint at the top of that body (x forward, z up); cat = sensor, electronics, structure, hand, harness. Example: {\"body\": \"head\", \"name\": \"Livox Mid-360 lidar + bracket\", \"kg\": 0.32, \"xyz\": [0.02, 0, 0.16], \"cat\": \"sensor\"}",
+  "add_ons": []
+}

@@ -3,16 +3,16 @@
 Same skeleton (segment lengths, joint layout of the legs, arm geometry) as K1, so the scenario set,
 the requirement engine and the RL training package apply unchanged. Everything else is simpler:
   * frame (docs/research/R8 lessons): 2040/4040 T-slot extrusion box for torso and pelvis, Ø40 x 3 6061-T6
-    tube in split clamp blocks for thighs, shanks and upper arms, 6 mm 6061-T6 plates (laser cut) with a
-    20 mm M5 hole grid at every joint; every member takes T-nuts, clamps or the grid, so components bolt on
-    anywhere and a limb length changes by cutting a new tube; no shells
+    tube in split clamp blocks for the upper arms, pocketed 6061-T6 plates (laser cut) with a 20 mm M5 hole
+    grid at every joint; every member takes T-nuts, clamps or the grid, so components bolt on anywhere; no shells
   * actuators: off-the-shelf integrated QDD modules on CAN (selected by simple/calc/s1_select.py from
     data/cots_actuators.json against the simulated requirements)
-  * 25 actuated joints (legs 2x6, waist yaw, arms 2x5 + wrist pitch, neck 2) + 2 parallel grippers on a
-    standard tool flange; waist pitch and wrist roll are dropped (no torso-bend scenario)
-  * 48 V e-bike-class battery (13S), Jetson + CAN-FD, a hard-wired e-stop contactor
-Masses are engineering estimates (extrusion/plate masses from geometry x 2700 kg/m^3, purchased parts
-from datasheets via docs/research/R9) until the S1 CAD exists.
+  * 27 actuated joints (legs 2x6, waist yaw, arms 2x6, neck 2) + 2 parallel grippers on ISO 9409-1-50 tool
+    flanges; waist pitch and wrist roll are dropped (no torso-bend scenario)
+  * 48 V e-bike-class battery (13S), Jetson + CAN, a hard-wired e-stop contactor
+Structure masses come from the S1 CAD (CAD_STRUCTURE_KG); purchased parts from datasheets (docs/research/R9).
+Extra components a builder adds go in simple/data/add_ons.json (see ADD_ONS_FILE below): their mass and
+position flow into the requirements and the actuator selection on the next run of simple/calc/s1_select.py.
 """
 from __future__ import annotations
 
@@ -59,6 +59,12 @@ CAD_STRUCTURE_KG = {
     "hip_yaw_link": 1.11, "hip_roll_link": 0.74, "thigh": 1.58, "shank": 1.48, "ankle_link": 0.15, "foot": 0.65,
 }
 FASTENER_FACTOR = 20.48 / 18.54
+
+# Builder add-ons: {"add_ons": [{"body": "head", "side": "both", "name": "...", "kg": 0.27,
+#                   "xyz": [x, y, z], "cat": "sensor"}, ...]}. "body" is a body name without the l_/r_ prefix
+# (pelvis, torso, head, upper_arm, forearm, wrist, hand, thigh, shank, foot, ...); "side" is l, r or both for limb
+# bodies; xyz is metres in the body frame (the joint at the top of that body, z up, x forward).
+ADD_ONS_FILE = "add_ons.json"
 
 
 def apply(ns):
@@ -185,6 +191,19 @@ def apply(ns):
             if cad is not None and est > 0:
                 for c in st:
                     c.mass *= cad * FASTENER_FACTOR / est
+        # builder add-ons (simple/data/add_ons.json)
+        f = ns["DATA_DIR"] / ADD_ONS_FILE
+        if f.exists():
+            import json
+            for a in json.loads(f.read_text()).get("add_ons", []):
+                for b in B:
+                    side, key = (b.name[0], b.name[2:]) if b.name[:2] in ("l_", "r_") else ("c", b.name)
+                    if key != a["body"] or (side != "c" and a.get("side", "both") not in ("both", side)):
+                        continue
+                    x, y, z = a.get("xyz", (0.0, 0.0, 0.0))
+                    y = -y if side == "r" else y
+                    b.comps.append(Comp(f"add-on: {a['name']}", float(a["kg"]), (x, y, z), "box",
+                                        tuple(a.get("box", (0.05, 0.05, 0.05))), a.get("cat", "electronics")))
         return B
 
     ns["build_bodies"] = build_bodies

@@ -288,7 +288,7 @@ S1 is meant to be changed. Each kind of change has a set way to do it:
 
 | You want to | Do this |
 |---|---|
-| **Add a sensor, light, tool or computer** | Bolt a bracket to the 20 mm hole grid or into an extrusion T-slot. Power it from a spare fused output: 48 V, 24 V, 12 V or 5 V (S1-electrical §12.1). Connect it to the spare CAN drop on the nearest bus, or by USB/Ethernet to the computer. |
+| **Add a sensor, light, tool or computer** | Bolt a bracket to the 20 mm hole grid or into an extrusion T-slot. Power it from a spare fused output: 48 V, 24 V, 12 V or 5 V (S1-electrical §12.1). Connect it to the spare CAN drop on the nearest bus, or by USB/Ethernet to the computer. Weigh it with its bracket and add one line to `simple/data/add_ons.json` (body, mass, position), then re-run the selection. |
 | **Change a limb length** | Cut a new tube. Change the length in `calc/kestrel/params.py` (S1 uses the same segment lengths as K1), then re-run `python simple/calc/s1_select.py`. It tells you whether the actuators still fit. |
 | **Swap an actuator for a different module** | Add it to `data/cots_actuators.json` with its datasheet values and source, and re-run the selection. Make an adapter plate with its bolt circle, and update its CAN driver. |
 | **Change the end effector** | Anything with an ISO 9409-1-50 flange bolts on: a different gripper, a tool, a camera. |
@@ -296,3 +296,23 @@ S1 is meant to be changed. Each kind of change has a set way to do it:
 
 **The one rule:** after every change that adds mass, re-run `python simple/calc/s1_select.py`. The knee and hip
 X12s have the least margin.
+
+**Worked example: add a lidar to the head.**
+
+1. Bolt a Livox Mid-360 to a 3 mm plate bracket on the head plate's 20 mm grid (4 × M5).
+2. Power it from the spare fused 12 V output (2 A fuse) and run its Ethernet cable to the computer through the neck
+   service loop.
+3. Weigh the lidar with its bracket and cable: say 0.32 kg. Add it to `simple/data/add_ons.json`:
+
+   ```json
+   "add_ons": [
+     {"body": "head", "name": "Livox Mid-360 lidar + bracket", "kg": 0.32, "xyz": [0.02, 0, 0.16], "cat": "sensor"}
+   ]
+   ```
+
+   `xyz` is in metres from the joint at the top of that body (x forward, z up). For something on both arms or both
+   legs, add `"side": "both"`.
+4. Re-run `python simple/calc/s1_select.py` from `projects/kestrel-humanoid`. The new mass goes into the simulation,
+   the requirements and the actuator check. Compare `generated/actuator_selection.md` with the previous run: if a
+   joint's actuator no longer passes, the selection moves that joint to the next module that does (that is what to
+   buy), and if no catalogue module passes, the report says so at the top.
