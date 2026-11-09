@@ -23,8 +23,18 @@ SIMPLE = HERE.parent
 CSS = SIMPLE.parent / "docs" / "10-construction-tutorial" / "handbook_style.css"
 
 
+def reindent(md):
+    """The guide nests lists with 3-space indents (CommonMark); Python-Markdown needs 4. Map every 3 leading spaces to 4
+    so nested steps, bullets, tables and code inside list items render as nested, not flattened."""
+    out = []
+    for line in md.splitlines():
+        n = len(line) - len(line.lstrip(" "))
+        out.append(" " * ((n // 3) * 4 + n % 3) + line[n:] if n else line)
+    return "\n".join(out) + "\n"
+
+
 def build_html():
-    md = (HERE / "S1-build-guide.md").read_text()
+    md = reindent((HERE / "S1-build-guide.md").read_text())
     body = markdown.markdown(md, extensions=["tables", "sane_lists", "fenced_code"])
     body = body.replace("<table>", '<div class="tablewrap"><table>').replace("</table>", "</table></div>")
     imgs = sorted((SIMPLE / "renders").glob("*.png"))[:6]

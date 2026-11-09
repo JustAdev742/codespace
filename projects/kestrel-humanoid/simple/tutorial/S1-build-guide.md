@@ -158,8 +158,8 @@ Build the **left leg completely** and test it clamped to the bench before starti
    5. **Set the knee torque limit** on the X12 to **250 N·m** before the knee is ever driven hard (S1-software,
       safety layer). The X12 can make 320 N·m, more than the belt is rated for.
    6. Re-check the tension after the first hour of running, then monthly.
-   * No sonic meter? Gates' "force-deflection" method in the drive manual works with a spring scale; or switch to
-     the #50 roller-chain fallback (cut list §6), which only needs 1–2 % sag.
+   7. **No sonic meter?** Gates' force-deflection method in the drive manual works with a spring scale. Or switch
+      to the #50 roller-chain fallback (cut list §6), which only needs 1–2 % sag.
 5. **Shank and ankle.**
    1. Mount the two ankle RS04s (IDs 15 and 16) on the calf plates with their 40 mm cranks.
    2. Fit the ankle cross on its 6003 bearings and igus bushings.
