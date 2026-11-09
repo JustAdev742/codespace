@@ -7,7 +7,7 @@
 Evaluation: for every terrain type and difficulty row, E robots start at tile centres (E evenly spaced
 headings) with no sensor noise and no randomisation, commanded forward at --speed m/s. A run is a
 success if the robot gets 2.4 m from the centre (six steps up or down on a stair tile) before falling,
-within 10 s. Run it between training chunks: it competes with the trainer for the cores.
+within 10 s (longer for slow commands: 1.6 x the time the commanded speed needs, see --seconds). Run it between training chunks: it competes with the trainer for the cores.
 Rendering uses MuJoCo's offscreen renderer through OSMesa (software OpenGL), so it works on a headless CPU
 machine: MUJOCO_GL=osmesa is set automatically when no display is present.
 """
@@ -108,9 +108,9 @@ def evaluate(policy, n_env=16, speed=0.6, seconds=10.0, rows=range(T.ROWS)):
     return table
 
 
-def write_table(table, path, speed, n_env, rows=range(T.ROWS)):
+def write_table(table, path, speed, n_env, rows=range(T.ROWS), seconds=10.0):
     lines = [f"Commanded {speed} m/s forward from the tile centre, {n_env} evenly spaced headings per cell, no noise "
-             f"or randomisation, 10 s limit. Cell = success rate: reached {REACH} m from the centre before falling "
+             f"or randomisation, {seconds:g} s limit. Cell = success rate: reached {REACH} m from the centre before falling "
              f"(on stairs: {int((REACH - T.PLATFORM) / T.TREAD)} or more steps climbed or descended). In brackets: "
              "falls.", "",
              "| Terrain | " + " | ".join(f"row {r}" for r in rows) + " |",
@@ -168,6 +168,8 @@ def main():
     ap.add_argument("--speed", type=float, default=0.6)
     ap.add_argument("--table", default=None, help="write the success table as markdown here")
     ap.add_argument("--gif", default=None)
+    ap.add_argument("--seconds", type=float, default=None, help="time limit per run (default: 10 s, or 1.6 x "
+                                                                 "REACH / speed if that is longer)")
     ap.add_argument("--stairs-row", type=int, default=None, help="difficulty row for the stair clips (default: hardest "
                                                                  "row with >= 50%% success in this evaluation, else 2)")
     args = ap.parse_args()
@@ -175,9 +177,10 @@ def main():
     table = None
     if args.eval_envs > 0:
         print(f"evaluating runs/{args.run}/policy.pt")
-        table = evaluate(policy, args.eval_envs, args.speed)
+        secs = args.seconds or round(max(10.0, 1.6 * REACH / args.speed), 1)
+        table = evaluate(policy, args.eval_envs, args.speed, seconds=secs)
         if args.table:
-            write_table(table, args.table, args.speed, args.eval_envs)
+            write_table(table, args.table, args.speed, args.eval_envs, seconds=secs)
     if args.gif:
         row = args.stairs_row
         if row is None:
@@ -185,8 +188,9 @@ def main():
             if table is not None:
                 okr = [r for r in range(T.ROWS) if min(table[4, r, 0], table[5, r, 0]) >= 0.5]
                 row = max(okr) if okr else 2
-        segments = [("flat walking", 0, 0, 0.0, 6.0), (f"stairs up, row {row}", row, 5, 0.0, 8.0),
-                    (f"stairs down, row {row}", row, 4, 0.0, 8.0)]
+        k = min(2.0, max(1.0, 0.6 / args.speed))     # slow builds: longer clips, so they get somewhere
+        segments = [("flat walking", 0, 0, 0.0, 6.0 * k), (f"stairs up, row {row}", row, 5, 0.0, 8.0 * k),
+                    (f"stairs down, row {row}", row, 4, 0.0, 8.0 * k)]
         render(policy, args.gif, segments, speed=args.speed)
 
 

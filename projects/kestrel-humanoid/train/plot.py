@@ -14,6 +14,8 @@ import matplotlib.pyplot as plt  # noqa: E402
 import numpy as np  # noqa: E402
 
 HERE = Path(__file__).resolve().parent
+LABELS = {"s1": "S1", "s1scrap": "S1-Scrap", "k1scrap": "K1-Scrap", "s1fast": "S1-Fast", "k1fast": "K1-Fast",
+          "mk2": "K1 Mk II"}
 
 
 def smooth(y, k=25):
@@ -28,6 +30,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--run", default="rough")
     ap.add_argument("--out", default=None)
+    ap.add_argument("--label", default=None, help="robot name in the title (default: from the run name, else K1)")
     a = ap.parse_args()
     rows = list(csv.DictReader(open(HERE / "runs" / a.run / "log.csv")))
     rows = [r for r in rows if float(r["episodes"]) >= 50]      # first iterations after a resume have no episodes
@@ -50,7 +53,8 @@ def main():
     ax[1, 1].set(title="Episode return", xlabel="environment steps (M)")
     for x in ax.ravel():
         x.grid(alpha=0.3)
-    fig.suptitle(f"KESTREL K1 locomotion, CPU PPO: {steps[-1]:.0f} M steps in {hours[-1]:.1f} h of wall time "
+    label = a.label or LABELS.get(a.run, "K1")
+    fig.suptitle(f"KESTREL {label} locomotion, CPU PPO: {steps[-1]:.0f} M steps in {hours[-1]:.1f} h of wall time "
                  f"on 4 vCPUs", fontsize=10)
     out = a.out or HERE / "runs" / a.run / "curves.png"
     fig.savefig(out, dpi=110)
