@@ -2,6 +2,7 @@
 
     python train.py --name rough --hours 2            # train (Ctrl-C saves a checkpoint and exits)
     python train.py --name rough --hours 2 --resume   # continue the latest checkpoint of that run
+    python train.py --name mk2 --init rough --hours 1  # fine-tune a new run from another run's weights
 
 Layout of a run: runs/<name>/log.csv, runs/<name>/ckpt_last.pt, runs/<name>/ckpt_<iter>.pt,
 runs/<name>/policy.pt (TorchScript actor + observation normaliser, for play.py or deployment).
@@ -141,6 +142,7 @@ def main():
                          "20 %% stairs down; stairs: flat + stairs")
     ap.add_argument("--seed", type=int, default=1)
     ap.add_argument("--resume", action="store_true")
+    ap.add_argument("--init", default="", help="start a new run from another run's network weights (fine-tune), e.g. --init rough")
     ap.add_argument("--no-randomize", action="store_true")
     ap.add_argument("--delay", type=float, default=0.0, help="fraction of episodes with one step (20 ms) of action latency")
     ap.add_argument("--rand-every", type=int, default=4, help="re-randomise each worker's physics every N iterations")
@@ -179,6 +181,10 @@ def main():
                 c.send(("rows", rw))
                 c.recv()
         print(f"resumed {ck} at iteration {it0}, {steps / 1e6:.1f} M steps")
+    elif args.init:
+        src = HERE / "runs" / args.init / "ckpt_last.pt"
+        ac.load_state_dict(torch.load(src, weights_only=False)["ac"])
+        print(f"initialised from {src} (weights only; new optimiser, curriculum and step count)")
 
     stop = {"flag": False}
 

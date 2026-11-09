@@ -8,8 +8,13 @@ task (the H1/G1 rough-terrain setup):
 * there are 4 worker processes instead of 4096 GPU environments;
 * the PPO is about 150 lines of PyTorch, in the rsl_rl style.
 
-The robot is the K1 design model: 84.1 kg; masses, inertias and reflected motor inertia come from
-`calc/kestrel`, and leg torque limits are the sized actuator peaks. It was trained on the VM described below.
+The robot is the K1 design model; masses, inertias and reflected motor inertia come from `calc/kestrel`, and leg
+torque limits are the sized actuator peaks. It was trained on the VM described below.
+
+**Mk I vs Mk II.** `runs/rough` was trained on the K1 Mk I model (84.1 kg). `calc/kestrel` now describes Mk II
+(103.1 kg, stronger knees and hips), so the model this package builds is Mk II. Fine-tune a Mk II policy from the Mk I
+weights instead of starting again: `python train.py --name mk2 --init rough --terrain rough --hours 2`, then
+`python play.py --run mk2`. S1 has its own run: `--variant s1`.
 
 ## Results (trained on this VM)
 
