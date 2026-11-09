@@ -28,9 +28,9 @@ G10 (a rigid box with handles on two sides and a quick-release strap, filled in 
 1. `config/joints.yaml`: joint order, encoder offsets, directions, soft limits, torque limits:
    - gear-limited classes at their repeated ratings (KH-25 160, KH-20 105, KH-14 23 N·m), duplicated by the drives'
      stored current limits (P04 §F);
-   - the **knee angle-dependent limit table** (P07 §F) and the HC2 continuous limit (75 A ≈ 263 / 217 N·m);
+   - the **knee angle-dependent limit table** (`data/knee_torque_limit.json`, P07 §F) and the HC2 continuous limit (75 A ≈ 263 / 217 N·m);
    - linkage tables (`data/knee_fourbar.json`, ankle/wrist geometry with the 1 mm KW-L2 lead).
-2. `config/ethercat.xml`: slave order (28 slaves; 30 if the KW-L2 boards become slaves, docs/09 H11), PDO maps (CST
+2. `config/ethercat.xml`: slave order (30 slaves: 22 Everest + 4 HC2 + 2 hand controllers + 2 KES-WRIST boards, docs/05 §7), PDO maps (CST
    mode: target torque, position, velocity; actual position × 2, torque/current, temperatures, status), DC settings.
 3. `config/safety.yaml`: tilt limit 35°; winding warn 130 °C / trip 150 °C; **coolant supply warn 55 °C, derate 65 °C,
    trip 75 °C; loop pressure < 0.15 bar → air-only rating**; leak → stop; heartbeat 2 ms; comms timeout 50 ms.

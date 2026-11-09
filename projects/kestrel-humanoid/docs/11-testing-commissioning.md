@@ -93,7 +93,7 @@ restrained → low speed → supported → free → loaded, with independent shu
 | eFuses | electronic-load trip per zone | ±10 % |
 | **HC2 STO validation** | scope STO_A/STO_B → gate-supply removal and PWM disable → phase current, read-back of both channels, 100 trials; fault-inject one channel | phase current zero < 10 ms; read-back detects every injected fault. Only after this may the commissioning contactors be removed (and not before G6) |
 | **E-stop response measurement** | scope from the button contact to phase current zero, for each device; wireless out-of-range timeout; zone eFuse opening at 0.5–1.5 s; logic bus stays up | ≤ 10 ms wired; wireless heartbeat timeout measured and logged (not published by the vendor [R2]) |
-| EtherCAT timing | log DC sync error and cycle jitter over 1 h with all slaves (28, or 30 per docs/09 H11) | jitter < 20 µs, sync error < 1 µs |
+| EtherCAT timing | log DC sync error and cycle jitter over 1 h with all 30 slaves | jitter < 20 µs, sync error < 1 µs |
 | EMC pre-scan | near-field probe + LISN on the bus during walking; ESD ±8 kV air on exposed metal | no resets, no EtherCAT errors |
 | Coolant electrical | leak pads and cable wetted with deionised water; pump stall; flow sensor unplugged | each produces its alarm; HC2 leak trips the chain; pump stall → derate |
 
@@ -128,7 +128,7 @@ table under the box path for the lift tests.
 | P2 | **15 kg one-handed** (AO) | elbow at 90°, 15 kg in one hand, 60 s, then walk 5 m at 0.3 m/s | elbow ≤ 105 N·m limit (requirement 79 repeated, 59 hold); KW-L2 holds wrist pitch (14 N·m) within its I²t; balance maintained |
 | P3 | **30 kg squat** (SQ) | squat and rise holding 30 kg at the chest, × 10 | knee within the P07 §F table; waist pitch ≤ 288 N·m repeated; tracking < 3° |
 | P4 | **30 kg sustained carry** (CW) | walk 0.6 m/s for 20 m carrying 30 kg at the chest, × 5; then 10 min of repeated pick–carry–place | knee and hip-pitch windings within the model + 10 %; coolant supply ≤ 55 °C; no single-pack event; CoP inside the sole margin |
-| P5 | **50 kg momentary lift** (LM) | squat-lift a 50 kg box from thigh height, × 3, harness slack-taut, catch table under the box | waist pitch ≤ 379 N·m and knee ≤ 535 N·m (momentary requirements, logged from current); no flange slip (witness marks); no structural noise |
+| P5 | **50 kg momentary lift** (LM) | squat-lift a 50 kg box from thigh height, × 3, harness slack-taut, catch table under the box | waist pitch ≤ 379 N·m and knee ≤ 540 N·m (momentary requirements, logged from current); no flange slip (witness marks); no structural noise |
 | P6 | Post-test inspection | flange torque audit; teardown of one knee and one shoulder actuator | no slip, no gear or cycloid marks, no bearing damage |
 
 **Not in the sized scenarios — do not attempt in this programme:** stairs with a 30 kg load (R7 #1 target), one-handed

@@ -38,7 +38,7 @@ their PIP through a second four-bar or a short Dyneema tendon.
 | B052 | Contactile 3D force buttons Ø10, 0–20 N | 5 |
 | B053 | Palm magnetic tactile skin (5 × MLX90393 + magnetised Dragon Skin 10 + iron microparticles, AnySkin pattern) | 1 |
 | B116 | Palm camera TechNexion VLS-GM2-AR0234-C-S191-IR (global shutter, GMSL2) behind a sealed PC window, 20° toward the fingertips | 1 |
-| B060 | Hand controller Mk II (F28P65x, 13 H-bridges, EtherCAT, local 12 V buck from the 24 V forearm rail, KW-L2 interface), in the sealed palm | 1 |
+| B060 | Hand controller Mk II (F28P65x, 13 H-bridges, EtherCAT, local 12 V buck from the 24 V forearm rail), in the sealed palm | 1 |
 | B061 | Hand mechanical set: 7075 palm frame, 4-DOF thumb base on a 2-bearing pivot, abduction pivots, Ti-6Al-4V Ø2 pins, 17-4PH bushings, MJF PA12-CF links, Dyneema SK99 tendon (0.5 mm) with crimp terminals, cast Dragon Skin 20 fingertip caps, palm shell with camera window | 1 set |
 | B081 | M1.6/M2 screws, E-clips, 0.2 mm PTFE washers, Loctite 222 | set |
 
@@ -81,8 +81,8 @@ precision weights 1–10 g (tactile threshold).
    cross the wrist, with service loops through the wrist cross.
 
 ## F. Electrical
-* Hand controller fed from the forearm 24 V rail (XT30, 16 AWG) through its local 12 V buck; EtherCAT IN/OUT; it also
-  commands the forearm KES-WRIST board (docs/05 §7). The 24 V rail is disabled in STO (Cat 0 for the hand).
+* Hand controller fed from the forearm 24 V rail (XT30, 16 AWG) through its local 12 V buck; EtherCAT IN/OUT, after the
+  forearm KES-WRIST board in the chain (each is its own slave, docs/05 §7). The 24 V rail is disabled in STO (Cat 0 for the hand).
 * Each micro-motor on an H-bridge with a current limit from the maxon data sheet for the 9 V winding on the 12 V supply:
   continuous current for holds, short-time 2 × for grasps, I²t in firmware; stall protection.
 * I²C buses: 2 for the TMAG5273 sets (address-select via mux), 1 for the Contactile buttons, 1 for the palm skin.

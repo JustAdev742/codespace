@@ -102,7 +102,7 @@ fillets, datum features) to the standard of the four detailed parts, then FEA (d
 | KH-14 output flange | PCD 42, 6× M3 12.9, 2× Ø3 dowels | 68 N·m vs 12 N·m |
 | Planetary stage-2 ring to housing (carries ≈ (i₂ − 1)/i₂ of the output torque) | KA-130: 12× M4 12.9 + 2 dowels; KA-110P: 12× M4 12.9 + 2 dowels; KA-90P: 8× M3 12.9 + 2 dowels, all on the ring flange PCD | KA-130 ≈ 650 N·m vs 375 N·m ring reaction; KA-110P ≈ 690 vs 350; KA-90P ≈ 190 vs 106 |
 | Cycloid ring to housing | 8× M4 12.9 + 2 dowels (C25), 8× M3 12.9 + 2 dowels (C20) | carries the full output torque |
-| Hollow cable bores (maximum the gear trains allow, §5) | Plan A: KA-130H Ø12, KA-130K / KA-110P / KA-90P none. Plan B: KA-130 Ø14, KA-110P Ø10, KA-90P Ø8. KH-C25 Ø12, KH-C20 Ø10, KH-14 Ø12 | the Ø20 / Ø15 bores of docs/03 §11 do not fit inside any of the sun gears (§11 H2) |
+| Hollow bores (maximum the gear trains allow, §5) | Plan A (baseline): KA-130H Ø12, KA-130K / KA-110P / KA-90P none. KH-C25 Ø12, KH-C20 Ø10, KH-14 Ø12 (hollow input shafts) | **no harness passes through any bore**: every joint is crossed by an external service loop (docs/03 §11; H2 resolved) |
 | Coolant ports (KA-130 jacket) | 2× G1/8 (ISO 228-1) with ISO 1179 stud ends and bonded seals, inlet at the bottom when standing | |
 | Shell bosses | M3 heat-set insert, Ø6 boss, 3 mm silicone isolator | |
 | Joint zero pins | Ø4 mm H7 hole through link + actuator housing at the zero position | |
@@ -130,10 +130,11 @@ equally spaced), and its z15 planets left 0.5 mm of steel round a Ø6 pin plus n
 | **KA-110P** (29:1) | m0.6, z15 / 3 × z30 / z75, b 10 (ring PCD 45 inside the Ø74 rotor bore) | m1.0, z24 / **4** × z34 / z92, b 16 | 6.0 × 4.83 = **29.0** | none (z15 sun) |
 | **KA-90P** (28:1) | m0.6, z15 / 3 × z27 / z69, b 8 | m0.8, z18 / 3 × z27 / z72, b 12 | 5.6 × 5.0 = **28.0** | none (z15 sun) |
 
-**Through-bores (hold H2).** docs/03 §11 still routes leg power and EtherCAT through Ø20 / Ø15 actuator bores. No sun
-gear above fits round those bores. If signal cables must pass through the axis, use **Plan B**; it keeps the ratios
-and opens KA-130 Ø14, KA-110P Ø10, KA-90P Ø8 (EtherCAT only; 10 AWG power and coolant still cross in external service
-loops). Decide before ordering gears.
+**Through-bores (hold H2, resolved).** K1 routed leg power and EtherCAT through Ø20 / Ø15 actuator bores; no sun gear
+above fits round those. Decision: **Plan A is the baseline and no cable runs through an actuator bore.** Leg power
+(10 AWG), EtherCAT/STO and the HC2 aux cross every leg and waist joint outside the actuator, alongside the coolant
+hoses, in protected service loops with strain relief at each joint (docs/03 §11, docs/05 §9). Plan B below is kept
+only as a reference tooth plan; it is not needed for routing.
 
 | Plan B (bore-compatible) | Stage 1 | Stage 2 | Ratio |
 |---|---|---|---|
@@ -142,10 +143,10 @@ loops). Decide before ordering gears.
 | KA-110P | m0.7, z22 / 3 × z38 / z98, b 10 | m1.25, z18 / 3 × z30 / z78, b 16 | 5.45 × 5.33 = 29.09 |
 | KA-90P | m0.6, z23 / 3 × z34 / z91, b 8 | m1.0, z17 / 3 × z31 / z79, b 10 | 4.96 × 5.65 = 27.99 |
 
-Stage-2 root-stress screening (Lewis) at the delivered peak: Plan A KA-130 541 MPa (generated, SF 2.16 vs
-1,170 MPa), KA-110P ≈ 423 MPa, KA-90P ≈ 518 MPa (docs/04 §7); Plan B KA-130 z24 ≈ 340 MPa at 1.1 × peak. **Run ISO 6336 (bending
-and pitting) in detail design**; R10 §5.1's m1.5 × 14 mm KA-130 stage 2 (the BOM line B007 quotes it) is the fallback
-if ISO 6336 asks for it. If the as-built ratio differs from the sized value, put it into `calc/kestrel/actuators.py`.
+Stage-2 root-stress screening (Lewis) at the delivered peak: Plan A KA-130 541 MPa (generated, SF 2.16 vs 1,170 MPa),
+KA-110P ≈ 423 MPa, KA-90P ≈ 518 MPa (docs/04 §7); Plan B KA-130 z24 ≈ 340 MPa at 1.1 × peak. **Run ISO 6336 (bending
+and pitting) in detail design**; R10 §5.1's m1.5 × 14 mm KA-130 stage 2 is the fallback if ISO 6336 asks for it (BOM
+B007 now quotes Plan A). If the as-built ratio differs from the sized value, put it into `calc/kestrel/actuators.py`.
 
 | Item | Specification (Plan A) |
 |---|---|
@@ -226,11 +227,11 @@ ILM85x26 / ILM85x13 and the KM-130x45 / KM-130x40 of K1 are no longer used.
 | Ports | G1/8 (1/8 BSPP) ISO 1179 stud ends with bonded seals and barbs for the 6 mm ID hose; **inlet at the bottom, outlet at the top when standing** (air purges upward), docs/13 §3.9 |
 | Drive mounting | the HC2 board bolts to the jacket's rear face, which is its cold plate (docs/05 §6.1); drive above the O-rings when standing, behind a drip lip |
 | Thermal path | copper → potting → laminations → shrink fit → jacket → coolant; target ≤ 0.25 K/W copper-to-coolant-inlet, reject > 0.30 K/W (docs/11 §4.1) |
-| Loop | sealed and fully filled, **no reservoir open to air** (a humanoid tilts and falls; the BOM's 60 mL reservoir B123 is replaced by the compensator): radiator → spring-diaphragm compensator (40 mL, EPDM membrane in a PA12 housing, 0.3 bar) with fill/bleed valve and pressure sensor → Thor cold plate → 2 pumps in parallel, one per leg branch, each with a check valve → per leg **knee jacket first, hip-pitch jacket second** → return manifold → radiator (docs/03 §9.2) |
+| Loop | sealed and fully filled, **no reservoir open to air** (a humanoid tilts and falls; H11 resolved): radiator → spring-diaphragm compensator (B123: 40 mL, EPDM membrane in a PA12 housing, 0.3 bar) with fill/bleed valve and pressure sensor → Thor cold plate → 2 pumps in parallel, one per leg branch, each with a check valve → per leg **knee jacket first, hip-pitch jacket second** (the knee has the higher heat flux and the smaller thermal margin; arithmetic in docs/03 §9.2) → return manifold → radiator |
 | Flow | 0.5 L/min per leg branch, ≈ 1.0 L/min through radiator and cold plate; branch pressure drop ≈ 23 kPa |
-| Pumps / radiator / fans | **component list of docs/03 §9.4**: 2 brushless 12 V pumps (TCS Micropumps M510 or Xylem/Laing DDC class; ≥ 0.5 L/min at ≥ 30 kPa, tach, ≤ 0.15 kg, ≤ 10 W each); one 240 × 120 mm radiator, ≤ 30 mm core, ≈ 20 W/K, aluminium core (or a mixed-metal-safe radiator with the inhibited coolant); 2 × 120 mm IP68 PWM fans (San Ace waterproof class) in the wet duct. The BOM's Koolance PMP-420 / HX-720 (B119/B120) work but weigh ≈ 1.5 kg more (docs/05 §13). Radiator UA is an assumption: measure it on the loop bench (B131) |
-| Coolant | **40 % propylene glycol with an aluminium-safe (mixed-metal) inhibitor**, freezing ≈ −21 °C (docs/03 §9.4). All wetted metal aluminium; **no copper or brass** in the loop. The BOM's insulative PC coolant (B122) is acceptable only if its freeze point and aluminium compatibility are confirmed |
-| Hose | 6 mm ID × 10 mm OD EPDM or Saint-Gobain Norprene (B126), rated ≥ 3 bar at 80 °C, minimum bend radius 30 mm; ≤ 3 kPa EPDM check valve per pump; external service loops at waist yaw, waist pitch, hip yaw, hip roll and hip pitch (docs/03 §11) |
+| Pumps / radiator / fans | **component list of docs/03 §9.4** (B119–B121): 2 brushless 12 V pumps (TCS Micropumps M510 or Xylem/Laing DDC class; ≥ 0.5 L/min at ≥ 30 kPa, tach, ≤ 0.15 kg, ≤ 10 W each); one 240 × 120 mm radiator, ≤ 30 mm core, ≈ 20 W/K, aluminium core (or a mixed-metal-safe radiator with the inhibited coolant); 2 × 120 mm IP68 PWM fans (San Ace waterproof class) in the wet duct. The price-verified Koolance PMP-420 / HX-720 alternatives on B119/B120 work but weigh ≈ 0.85 kg more (docs/05 §13): bench loop only. Radiator UA is an assumption: measure it on the loop bench (B131) |
+| Coolant | **40 % propylene glycol with an aluminium-safe (mixed-metal) inhibitor** (B122), freezing ≈ −21 °C (docs/03 §9.4). All wetted metal aluminium; **no copper or brass** in the loop. **No insulative PC coolant** (H11 resolved): its freeze point is not stated, it turns conductive in service, and the leak pads (B129) need a conductive coolant; electrical safety comes from placement, conformal coat and leak detection (docs/03 §9.4) |
+| Hose | 6 mm ID × 10 mm OD EPDM or Saint-Gobain Norprene (B126), rated ≥ 3 bar at 80 °C, minimum bend radius 30 mm; ≤ 3 kPa EPDM check valve per pump; external service loops at waist yaw, waist pitch, hip yaw, hip roll and hip pitch, shared with the leg power and EtherCAT cables in a separate channel above the hoses (docs/03 §11; guides B136) |
 | Quick-disconnects (B125) | non-spill dry-break pair per leg crossing (CPC LQ / Koolance QD3 class, 1/4 in), in the leg limb-interface service plate (docs/03 §13.1); verify ≥ 3 bar at 70 °C and re-test after 100 mate cycles |
 | Sensing | 2 flow sensors (Sensirion SLF3S-4000B, B127, calibrate on the coolant), NTCs at supply/return of each branch and the jacket outlets (B128), loop pressure 0–2.5 bar (TE M3200 class, B130), pump tach, 8 leak pads + torso leak cable (B129) |
 | Mass | ≈ 1.5 kg for the torso part of the loop with the docs/03 parts (radiator 0.60, 2 IP68 fans 0.30, 2 pumps 0.30, compensator/valves/manifold 0.10, coolant ≈ 0.15, blower 0.08), ≈ 0.3 kg over the 1.25 kg in `params.py`; loop volume ≈ 0.47 L (docs/03 §9.5, §9.7) |
@@ -242,8 +243,8 @@ ILM85x26 / ILM85x13 and the KM-130x45 / KM-130x40 of K1 are no longer used.
   EPC9186HC2 board B109); **PDU KES-PDU2** (B035: logic/actuator bus split, 7 zone eFuses, brake chopper); **pack power
   path KES-PPM** (B030: LM5069 + LM5050-1 OR path and TPS48111-Q1 tie switch per pack, INA228, solenoid-lock driver,
   hardware unlock AND); **pack BMS KES-BMS16** ×2 (B029: BQ76952 + BQ77216 + in-pack FET switch); safety MCU (B042);
-  hand controller Mk II ×2 (B060); **KW-L2 driver KES-WRIST** ×2 (B107: 2 × DRV8353; driven by the hand controller per docs/05
-  §7, or its own F28P65x slave per the BOM, see H11); **forearm 24 V buck** (LM5146-Q1, B114 or on B107); foot board ×2. 4–6 layer FR-4, 2 oz
+  hand controller Mk II ×2 (B060); **KW-L2 forearm driver KES-WRIST** ×2 (B107: its own F28P65x EtherCAT slave, 2 ×
+  DRV8353 and the LM5146-Q1 forearm 24 V buck on one board, docs/05 §6; 30 slaves in total, H11); foot board ×2. 4–6 layer FR-4, 2 oz
   copper on power layers, ENIG, JLCPCB/PCBWay assembly. Every board gets a test pad set and a scripted bring-up test
   (docs/10 P02).
 * **Coolant-adjacent boards** (HC2, PDU, PPM): conformal coat (silicone or dielectric-tolerant acrylic), interdigitated
@@ -254,7 +255,7 @@ ILM85x26 / ILM85x13 and the KM-130x45 / KM-130x40 of K1 are no longer used.
 ## 8. Battery pack manufacture (two hot-swap packs)
 
 Two identical **16S4P** packs, each 64 × Molicel INR-21700-P50B (B028): 59.2 V nominal, 67.2 V full, 48 V cut-off,
-19.4–20 Ah, **1.15 kWh**, 5.9 kg budget. Each pack carries its own BMS and FET switch (B029), a 100 A Class T fuse
+19.4–20 Ah, **1.15 kWh**, 6.2 kg and 175 × 98 × 185 mm (params.py, H12). Each pack carries its own BMS and FET switch (B029), a 100 A Class T fuse
 (B031) and the pack half of the blind-mate connector (B111), so a removed pack has **dead terminals**. OR-ing,
 hand-off and inrush limiting are on the robot side (KES-PPM, docs/05 §4). Build procedure: docs/10 P06; bay: P06.1.
 Build in a cleared area with a sand bin and a Class D (lithium) or large AVD/water-mist extinguisher, never alone.
@@ -278,34 +279,42 @@ Build in a cleared area with a sand bin and a Class D (lithium) or large AVD/wat
 ## 10. BOM cross-reference and BOM issues
 
 `data/bom.csv` / [generated/bom.md](generated/bom.md) now carries the Mk II bill (Mk II additions from B101). The
-tutorial uses those IDs. Items where the BOM and this package differ, to be reconciled by the BOM owner:
+tutorial uses those IDs. Items where the BOM and this package differed, and their status after the 2026-11-09
+reconciliation (baseline now A$226,097, docs/08):
 
-| BOM line | BOM says | This package / reason |
+| BOM line | BOM said | Status |
 |---|---|---|
-| B007 | KA-130 17:1 with "s2 m1.5 × 14 mm" | Plan A stage 2 is m1.25 × 18 mm (docs/04 §5.2, `structure_checks.md`, existing drawing); m1.5 is the ISO 6336 fallback |
-| B013 | crossed roller "~ID90/OD120" | no THK RB size; RB9016 (90 × 130 × 16) and a CAD seat change (H1) |
-| B014 | KA-110 / KA-90 crossed roller ~ID60/OD90 | THK RB6013; confirm the PCD 100 KA-110P output hub overhang in CAD |
-| B031 | 100 A Class T fuse | agreed (docs/05 §4.6); verify ≥ 125 V DC and ≥ 20 kA DC interrupting on the datasheet |
-| B084 | dyno "rated for 500 N·m" | the KA-130K peak is 493 N·m: absorber ≥ 600 N·m and a 1,000 N·m transducer (P01) |
-| B106 | KW-L2 ball screw Ø8 × 2 ("1 mm lead preferred if rated") | **1 mm lead** (H10): KSS Ø8 × 1, or Ø6 × 1 if its Ca ≥ 1.5 kN |
-| B122 | insulative PC coolant | 40 % propylene glycol with aluminium-safe inhibitor (docs/03 §9.4) unless B122's freeze point and Al compatibility are confirmed |
-| B016 | rotor bearings "68xx / 61xx" × 52 | sizes per actuator: 61808 (KA-130, KH-C25), 61806 (KA-90P, KH-C20), per drawing (KA-110P, KH-14); plus cycloid journals 61803 / 61802 |
-| — | not listed | hardened 100Cr6 bearing pins (planets, ankle cross), INA needle cages, cycloid needle cages, ISO 3096 ring-pin rollers, eccentric sleeves (in B010/B011 cost?), HeliCoil Plus inserts, DIN 580 M12 lifting eyes |
+| B007 | KA-130 17:1 with "s2 m1.5 × 14 mm" | **resolved**: B007 quotes Plan A (s1 m0.8 z16 / 4 × z18 / z52; s2 m1.25 z18 / 4 × z18 / z54, 18 mm face; docs/04 §5.2, `structure_checks.md`); m1.5 × 14 stays the ISO 6336 fallback |
+| B013 | crossed roller "~ID90/OD120" | **resolved**: THK RB9016 (90 × 130 × 16), H1 |
+| B014 | KA-110 / KA-90 crossed roller ~ID60/OD90 | **resolved**: THK RB6013. The PCD 100 KA-110P output hub overhang is still to be confirmed in CAD |
+| B016 | rotor bearings "68xx / 61xx" × 52 | **resolved**: 61808 (KA-130, KH-C25), 61806 (KA-90P, KH-C20), per drawing (KA-110P, KH-14); cycloid journals 61803 / 61802 in B010 / B011 |
+| B031 | 100 A Class T fuse | agreed (docs/05 §4.6); verify ≥ 125 V DC and ≥ 20 kA DC interrupting on the datasheet before purchase |
+| B084 | dyno "rated for 500 N·m" | **open (BOM / test rig)**: the KA-130K peak is 493 N·m, so the absorber needs ≥ 600 N·m and the transducer 1,000 N·m (P01); re-quote |
+| B106 | KW-L2 ball screw Ø8 × 2 ("1 mm lead preferred if rated") | **resolved**: KSS Ø8 × 1 (H10); confirm Ca ≥ 1.5 kN in the KSS catalogue at purchase |
+| B122 | insulative PC coolant | **resolved**: 40 % propylene glycol with a mixed-metal inhibitor (H11) |
+| B123 | 60 mL reservoir | **resolved**: 40 mL spring-diaphragm compensator, sealed loop (H11) |
+| — | not listed: hardened bearing pins, needle cages, ring-pin rollers, eccentric sleeves, HeliCoil Plus inserts, DIN 580 M12 lifting eyes | **resolved**: planet pins + INA cages **B138**; ankle HK1212 cups and 100Cr6 pins in B070; ring-pin rollers, eccentric sleeves, eccentric cages and journals in B010 / B011; HeliCoil Plus and lifting eyes in B081 |
+| — | not listed: commissioning DC contactors, keyed main switch, back-cover switch (P02 §F, P08) | **resolved**: **B137** |
+| — | not listed: guides, sleeve and clamps for the external service loops (H2) | **resolved**: **B136** |
 
 ## 11. Design holds: resolve before cutting metal
 
-| # | Hold | Why | Owner |
-|---|---|---|---|
-| H1 | KA-130 crossed-roller seat is ID90/**OD120** in the CAD, docs/03 §5 and B013; no THK RB size matches. Use RB9016 (90 × 130 × 16) and re-rate it for 1.1 × 493 N·m plus the knee push-rod load (radial ≤ 12 kN with the knee torque limit of docs/10 P07 §F) | bearing not purchasable as modelled | CAD + BOM |
-| H2 | Through-bores: docs/03 §11 and docs/05 §9 pass 10 AWG leg power and EtherCAT through Ø20 / Ø15 actuator bores; the Mk II sun gears (§5.1 Plan A, docs/04) leave none, Plan B leaves Ø14 / Ø10 / Ø8 for signal only. Choose the plan and re-route power externally before gears are ordered | geometry impossible as written | docs/03 + docs/04 + docs/05 |
-| H3 | `ka130k__*.step` and the drawings are K1 geometry (finned housing, z20/z50 stage 1). Mk II jacket, two-start helix, HC2 bay and stage-1 parts are not yet modelled | parts not drawn | CAD |
-| H4 | `detail__thigh_plate`: only 3 of the 12 holes of the PCD 105 hip flange lie inside the plate outline → slip ≈ 234 N·m against 364 N·m hip-pitch momentary and 406 N·m actuator peak. Needs a full-circle hip boss or a separate 12-hole adapter ring | joint would slip | CAD |
-| H5 | `detail__knee_hub`: (a) the 6× M5 PCD 52 crank and shank joints slip at ≈ 232 N·m against 535 N·m knee momentary; make crank and hub one piece, or ≥ 12× M6 12.9 on PCD ≥ 90; (b) the Ø42 × 9 bearing seats fit only 71905-size angular-contact bearings, whose static rating is below the X-case knee load (push-rod 8.8 kN + GRF 2.8 kN). Re-select (crossed roller or a 7206-size pair) and resize the hub | joint would slip; bearings overloaded | CAD + calc |
-| H6 | Cycloid disc bore Ø22 in `cycloid_profile.py` (comment: 6802 ball bearing) → Ø26 G6 for the C25 needle cage; C20 keeps Ø22 with a Ø16 cam | eccentric bearing capacity | CAD |
-| H7 | Knee push-rod force near the range ends. At full actuator torque: 18.9 kN at 0°, 23.1 kN at 130°. docs/04 §5.3's limit τ_act ≤ 535 / G(θ) still allows 15.5 kN at 0° and 21.2 kN at 130°, against the rod-end static rating ≈ 30 kN (unverified) and buckling 38.6 kN. Add the rod-force term of docs/10 P07 §F; `structure.py` should check rod force over the whole range at actuator capability | rod-end overload | calc + docs/04 |
-| H8 | HC2: no purchasable 150 A pk, 100 V-class EtherCAT drive; custom (B025). EPC9186HC-class stages are rated ≤ 76 V input: OV trip at 74 V, chopper 70 / 68 V. HC2's 75 A continuous is below the motor's 84 A thermal rating, so the usable continuous is ≈ 263 / 217 N·m (docs/05 §6.1), not 295 / 243. **Its STO is uncertified:** through commissioning the safety function for the knee and hip is the external safety relay plus a DC contactor in each leg-zone feed (P02, docs/11 §2) | key part custom; ratings lower than the generated family; stop function unproven | electrical + calc |
-| H9 | Hip-pitch / thigh twin-plate layout: the KA-130H output is on one side only, and the 124 mm KA-130K does not fit between plates 80 mm apart in the envelope CAD | assembly order cannot be fixed until detailed | CAD |
-| H10 | KW-L2 screw lead: with the K1/R10 **2 mm** lead the ECX FLAT 32 L (98.5 mN·m continuous) gives only 272 N continuous against ≈ 318 N held for the 15 kg one-hand case. **Mk II uses a 1 mm lead** (5.53 N per mN·m): 545 N continuous, 754 N repeated at 136 mN·m, 972 N momentary at 176 mN·m (stall 540 mN·m), ≈ 164 mm/s at the 216 N speed corner (≥ 132 required). docs/13 §4.4 and BOM B106 still say Ø6/Ø8 × 2. Screw: KSS Ø8 × 1 (or Ø6 × 1 if its Ca ≥ 1.5 kN) | wrist would overheat in long holds with 2 mm | docs/04 + docs/13 + BOM |
-| H11 | Owner disagreements: loop order (docs/03 §9.2 knee jacket first; docs/05 §13 hip-pitch jacket first); coolant (docs/03 40 % propylene glycol; BOM B122 insulative PC coolant); reservoir (docs/03 sealed compensator; BOM B123 60 mL reservoir); EtherCAT slaves (docs/05 §7: 28, KW-L2 on the hand controller; docs/08 and BOM B107: 30, KW-L2 board with its own F28P65x slave). This package follows docs/03 and docs/05 | inconsistent instructions | docs/03 / docs/05 / docs/08 |
-| H12 | Pack envelope: 2 × 4 × 8 P50B cells fill the 150 × 98 × 185 mm box in `params.py` with ≈ 2 mm to spare; the BMS, fuse, handle and connector half (docs/03 §10.1: rear end cap) need ≈ 25 mm more (≈ 175 × 98 × 185 mm). docs/05 §3.1 also flags the 1.36 kg left for everything but cells | packs will not close as budgeted | CAD + params |
-| H13 | Bearing-pin hardness: the K1 package put needle rollers on Ti-6Al-4V (ankle cross pins, `structure_checks.md` row) and 17-4PH H900 (planet pins). Needle raceways need ≥ 58 HRC: use 100Cr6 60–64 HRC ground pins (§3). The strength rows stay conservative | raceways would brinell and wear | calc (label only) |
+Status on 2026-11-09. **Resolved**: decided and written into the documents and the BOM. **In progress (CAD)**: being
+fixed in `cad/` now; do not cut metal from the current STEP until the CAD owner releases it. **Open**: not yet decided.
+
+| # | Hold | Why | Status | Owner |
+|---|---|---|---|---|
+| H1 | KA-130 crossed-roller seat was ID90/**OD120** in the K1 CAD, docs/03 §5 and B013; no THK RB size matches | bearing not purchasable as modelled | **Resolved.** THK RB9016 (90 × 130 × 16) in `structure.py` (L10 row in `structure_checks.md`), §2 fits, docs/03 §5, B013. Re-rate against 1.1 × 493 N·m plus the knee push-rod load (radial ≤ 12 kN with the P07 §F limit) when the catalogue is checked. The CAD seat is redrawn with the Mk II KA-130 parts (H3) | calc + BOM (closed); CAD seat under H3 |
+| H2 | Through-bores: K1 passed 10 AWG leg power and EtherCAT through Ø20 / Ø15 actuator bores; the Mk II sun gears (§5.1 Plan A, docs/04) leave none | geometry impossible as written | **Resolved.** No cable passes through any actuator bore; Plan A gears. Leg power (10 AWG), EtherCAT/STO and HC2 aux cross every leg and waist joint outside the actuator, alongside the coolant hoses, in protected service loops (cable channel above the hoses, PET braided sleeve) with strain relief at both fixed points of every loop; arms use the shoulder clock-spring cassettes and service loops. docs/03 §11, docs/05 §5 and §9, §4 and §5.1 here, P07 §F, P08 §F, P08.1; hardware B136 | systems (closed) |
+| H3 | `ka130k__*.step` and the drawings are K1 geometry (finned housing, z20/z50 stage 1). Mk II jacket, two-start helix, HC2 bay, stage-1 parts and the RB9016 seat are not yet modelled | parts not drawn | **In progress (CAD)** | CAD |
+| H4 | `detail__thigh_plate`: only 3 of the 12 holes of the PCD 105 hip flange lie inside the plate outline → slip ≈ 234 N·m against 364 N·m hip-pitch momentary and 406 N·m actuator peak. Needs a full-circle hip boss or a separate 12-hole adapter ring | joint would slip | **In progress (CAD)** | CAD |
+| H5 | `detail__knee_hub`: (a) the 6× M5 PCD 52 crank and shank joints slip at ≈ 232 N·m against 535 N·m knee momentary; make crank and hub one piece, or ≥ 12× M6 12.9 on PCD ≥ 90; (b) the Ø42 × 9 bearing seats fit only 71905-size angular-contact bearings, whose static rating is below the X-case knee load (push-rod 8.8 kN + GRF 2.8 kN). Re-select (crossed roller or a 7206-size pair) and resize the hub | joint would slip; bearings overloaded | **In progress (CAD)**; the re-selected knee bearing needs a static check in `structure.py` | CAD + calc |
+| H6 | Cycloid disc bore Ø22 in `cycloid_profile.py` (comment: 6802 ball bearing) → Ø26 G6 for the C25 needle cage; C20 keeps Ø22 with a Ø16 cam | eccentric bearing capacity | **In progress (CAD)** | CAD |
+| H7 | Knee push-rod force near the range ends. At full actuator torque: 18.9 kN at 0°, 23.1 kN at 130°. docs/04 §5.3's limit τ_act ≤ 535 / G(θ) still allows 15.5 kN at 0° and 21.2 kN at 130°, against the rod-end static rating ≈ 30 kN (unverified) and buckling 38.6 kN | rod-end overload | **Resolved.** `structure.py` now builds the drive table τ_act ≤ min(493, 540 / G, 12 kN · r2 · \|sin μ\| / G) over 0–130° into `data/knee_torque_limit.json`, checks the rod at that limit everywhere (12 kN max: rod-end SF 2.5, buckling SF 3.2) and checks every simulated sample against the table (worst SD 1.10, ST 1.24 with margin). docs/04 §5.3 and P07 §F use it | closed |
+| H8 | HC2: no purchasable 150 A pk, 100 V-class EtherCAT drive; custom (B025). EPC9186HC-class stages are rated ≤ 76 V input: OV trip at 74 V, chopper 70 / 68 V. HC2's 75 A continuous is below the motor's 84 A thermal rating, so the usable continuous is ≈ 263 / 217 N·m (docs/05 §6.1). **Its STO is uncertified** | key part custom; ratings lower than the motor allows; stop function unproven | **Open** until the HC2 passes docs/05 §14 item 1. Through commissioning the stop for the knee and hip is the external safety relay plus a DC contactor in each leg-zone feed (P02, docs/11 §2); the contactors are now in the BOM (B137) | electrical + calc |
+| H9 | Hip-pitch / thigh twin-plate layout: the KA-130H output is on one side only, and the 124 mm KA-130K does not fit between plates 80 mm apart in the envelope CAD | assembly order cannot be fixed until detailed | **In progress (CAD)** | CAD |
+| H10 | KW-L2 screw lead: with the K1/R10 2 mm lead the ECX FLAT 32 L (98.5 mN·m continuous) gives only 272 N continuous against ≈ 318 N held for the 15 kg one-hand case | wrist would overheat in long holds with 2 mm | **Resolved.** 1 mm lead (5.53 N per mN·m): 545 N continuous, 754 N repeated, 972 N momentary, ≈ 164 mm/s at the 216 N speed corner. KSS Ø8 × 1 (Ø6 × 1 only if Ca ≥ 1.5 kN) in docs/05 §6.4, B106, P09.1; confirm the screw rating at purchase. docs/04 §9 and docs/13 §4.4 still print Ø6/Ø8 × 2 | BOM (closed); docs/04 and docs/13 owners for the residual text |
+| H11 | Owner disagreements: loop order, coolant, reservoir, EtherCAT slave count | inconsistent instructions | **Resolved.** (a) **Knee jacket first**: the knee has twice the hip's heat at the continuous requirement and the smaller thermal margin (1.56 vs 2.2); hip first would run the knee winding 1.9 K hotter (docs/03 §9.2; docs/05 §13). (b) **40 % propylene glycol + mixed-metal inhibitor** (B122): −20 °C operation and aluminium protection are hard requirements; an insulative coolant turns conductive in service and would blind the leak pads; electrical safety near the 67 V electronics comes from placement, conformal coat and leak detection (docs/03 §9.4). (c) **Sealed loop with a 40 mL spring-diaphragm compensator, no reservoir** (B123, docs/03 §9.2, §6.2 here). (d) **30 EtherCAT slaves**: 22 Everest + 4 HC2 + 2 hand controllers + 2 KW-L2 boards, each with its own F28P65x (docs/05 §6–§7, docs/07, docs/08, B060 / B107, P08 §F). P02, P09 §F, P10 §F, P13 step 2 and docs/11 now say 30 | closed |
+| H12 | Pack envelope: 2 × 4 × 8 P50B cells filled the old 150 × 98 × 185 mm box with ≈ 2 mm to spare, leaving no room for BMS, fuse, handle and connector half | packs would not close as budgeted | **Resolved.** `params.py`: 175 × 98 × 185 mm, 6.20 kg per pack (`mass_budget.md`); docs/03 §10, docs/05 §3.1, §8 here and B032 follow | params (closed); pack and bay CAD to that box |
+| H13 | Bearing-pin hardness: the K1 package put needle rollers on Ti-6Al-4V (ankle cross pins) and 17-4PH H900 (planet pins) | raceways would brinell and wear | **Resolved.** 100Cr6 60–64 HRC ground ankle pins in `structure.py`; planet pins to §3 and §5.1 (B138); P07 B070 | calc (closed) |
+| H14 | KA-130H ratio: the calc had sized KA-130H at 15:1 while docs/04 §5, docs/05 §2 and §6.1, Plan A in §5.1 here and B105 were 14:1 (z24 / 3 × z18 / z60, 406 N·m) | gears would have been cut to a ratio the controller limits and margins did not assume | **Resolved: 14:1.** The calc now fixes KA-130H at 14:1 (`calc/kestrel/actuators.py`) and `actuator_family.md` shows 406 N·m peak, 15.2 rad/s, 4.76 kg. 15:1 would only have cleared the 0.90 utilisation preference (0.84 vs 0.90); 14:1 keeps the checked Plan A tooth plan, is 7 % faster and has 13 % less reflected inertia, and still has 1.33 × on the simulated hip peak | closed |

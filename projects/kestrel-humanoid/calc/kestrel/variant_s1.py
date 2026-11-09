@@ -32,9 +32,9 @@ ACT_S1 = {
 
 JOINTS_LEFT_S1 = {
     "hip_yaw": ("S-M", (-30, 45), "direct"),
-    "hip_roll": ("S-L", (-25, 45), "direct"),
-    "hip_pitch": ("S-LX", (-125, 30), "direct"),
-    "knee": ("S-LX", (0, 130), "timing belt from actuator in upper thigh"),
+    "hip_roll": ("S-L", (-25, 30), "2:1 crank + push-rod (toggles beyond ~±30°, simple/cad cut list)"),
+    "hip_pitch": ("S-LX", (-120, 30), "direct (hip-roll actuators touch beyond -120°)"),
+    "knee": ("S-LX", (0, 130), "1.5:1 Gates Poly Chain GT Carbon 8MGT belt (36T/54T) from the X12 in the upper thigh"),
     "ankle_pitch": ("S-A", (-45, 45), "2x parallel push-rod (shared with roll)"),
     "ankle_roll": ("S-A", (-25, 25), "2x parallel push-rod (shared with pitch)"),
     "shoulder_pitch": ("S-SH", (-180, 60), "direct"),

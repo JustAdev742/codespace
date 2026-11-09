@@ -30,7 +30,7 @@ and how each item gets retired.
 | Cooling | liquid loop: knee and hip-pitch jackets + AI-computer cold plate, torso radiator, dry-break couplings at the hips |
 | Protection / service | IP65 body, IP67 legs and hands (target); leg module off in ≤ 10 min via a V-band limb interface |
 | Compute | Jetson AGX Thor (T5000) + PREEMPT_RT EtherCAT controller + independent SIL3-class safety MCU |
-| Parts cost | ≈ A$223k Mk II baseline parts + test rig ([generated/cost_summary.md](docs/generated/cost_summary.md); K1 was ≈ A$196k); analysis in [docs/12](docs/12-cost-analysis.md) |
+| Parts cost | ≈ A$226k Mk II baseline parts + test rig ([generated/cost_summary.md](docs/generated/cost_summary.md); K1 was ≈ A$196k); analysis in [docs/12](docs/12-cost-analysis.md) |
 
 Optional, not baseline: **KA-150X** knee/hip actuator (719 / 524 N·m). It needs a 20S bus and 200 A drives, which
 means replacing every other drive in the robot (docs/04 §6).

@@ -37,15 +37,55 @@ def tube_I(do, di):
     return pi * (do**4 - di**4) / 64
 
 
+F_ROD_MAX = 12e3      # knee push-rod force cap for the drive table: rod-end C0 ~ 30 kN (unverified) / 2.5 (hold H7)
+
+
+def knee_limit_table(fam, req, store, meta, names):
+    """Knee actuator torque limit vs knee angle, and the check that every simulated sample sits under it.
+
+    tau_act <= min(actuator peak, joint cap / G, F_ROD_MAX r2 |sin mu| / G), with G = joint / actuator torque.
+    The joint cap is the momentary knee requirement (structure and gear sized for it). Written to
+    data/knee_torque_limit.json for the HC2 parameter table.
+    """
+    kf = json.loads((ROOT / "data" / "knee_fourbar.json").read_text())
+    th = np.array(kf["theta_deg"])
+    G = np.array(kf["G"])
+    mu = np.radians(kf["mu_deg"])
+    r2 = kf["r2"]
+    T_pk = fam["KA-130K"]["T_peak_out"]
+    J_cap = max(535.0, round(req["knee"]["T_mom_req"]))
+    act = np.minimum.reduce([np.full_like(G, T_pk), J_cap / G, F_ROD_MAX * r2 * np.abs(np.sin(mu)) / G])
+    avail = act * G
+    j = names.index("l_knee")
+    demand = {}
+    for s in meta:
+        if s == "SX" or f"{s}/tau" not in store:      # SX: structural drop, actuators may saturate by design
+            continue
+        tau = np.abs(store[f"{s}/tau"][:, j])
+        q = np.degrees(np.abs(store[f"{s}/q"][:, j]))
+        m = 1.0 if s in RQ.MOMENTARY else RQ.MARGIN_T
+        av = np.interp(q, th, avail)
+        r = av / (tau * m + 1e-9)
+        i = int(r.argmin())
+        demand[s] = dict(scenario=s, ratio=float(r[i]), theta_deg=float(q[i]), demand_Nm=float(tau[i] * m),
+                         avail_Nm=float(av[i]), margin=m)
+    tab = dict(note="HC2 knee torque limit table, interpolate linearly in knee angle (docs/09 hold H7, P07 sec. F)",
+               F_rod_max_N=F_ROD_MAX, joint_cap_Nm=J_cap, actuator_peak_Nm=round(T_pk, 1),
+               theta_deg=th.tolist(), G=G.tolist(), mu_deg=np.degrees(mu).tolist(),
+               act_limit_Nm=act.round(1).tolist(), joint_avail_Nm=avail.round(1).tolist(), demand=demand)
+    (ROOT / "data" / "knee_torque_limit.json").write_text(json.dumps(tab, indent=1))
+    return tab
+
+
 def checks(store, meta, names, req, fam):
     jidx = {n: i for i, n in enumerate(names)}
     R = []
     g = 9.81
     m_des = next(iter(meta.values()))["mass"]
 
-    def add(item, case, load, stress, allow, unit="MPa", note=""):
+    def add(item, case, load, stress, allow, unit="MPa", note="", req_sf=None):
         R.append(dict(item=item, case=case, load=load, value=stress, allow=allow, SF=allow / stress if stress else 99,
-                      unit=unit, note=note))
+                      unit=unit, note=note, req_sf=req_sf))
 
     # ---------------- knee push-rod: Ti-6Al-4V tube, rod ends
     kf = json.loads((ROOT / "data" / "knee_fourbar.json").read_text())
@@ -77,6 +117,20 @@ def checks(store, meta, names, req, fam):
             Fmax[case] / 1e3, Pcr / 1e3, "kN", "Pcr")
     add("Knee rod ends: M12 PTFE-lined spherical (e.g. SKF SIKAC 12 M class, C0 ~ 30 kN, verify)", "X",
         f"{Fmax['X'] / 1e3:.1f} kN", Fmax["X"] / 1e3, 30.0, "kN", "static rating - confirm with chosen part")
+
+    # ---------------- knee push-rod over the whole range at actuator capability (docs/09 hold H7)
+    # The drive limits the knee actuator to min(peak, joint cap / G, F_ROD_MAX r2 |sin mu| / G); the table is written
+    # to data/knee_torque_limit.json for the HC2 parameter set (P07 sec. F, P13 step 1).
+    tab = knee_limit_table(fam, req, store, meta, names)
+    F_rng = (np.array(tab["act_limit_Nm"]) * np.array(tab["G"])) / (r2 * np.abs(np.sin(np.radians(tab["mu_deg"]))))
+    add("Knee push-rod at the drive torque limit, whole range 0-130 deg: rod-end static", "M",
+        f"{F_rng.max() / 1e3:.1f} kN max", F_rng.max() / 1e3, 30.0, "kN", "C0 ~ 30 kN, verify with chosen part (H7)")
+    add("Knee push-rod at the drive torque limit, whole range 0-130 deg: Euler buckling", "M",
+        f"{F_rng.max() / 1e3:.1f} kN max", F_rng.max() / 1e3, Pcr / 1e3, "kN", "Pcr (H7)")
+    worst = min(tab["demand"].values(), key=lambda d: d["ratio"])
+    add("Knee: joint torque available under the limit table vs every simulated sample (x1.2; SD, LM x1.0)", "N",
+        f"{worst['scenario']} at {worst['theta_deg']:.0f} deg", worst["demand_Nm"], worst["avail_Nm"], "N m",
+        "required >= 1.0; per-scenario table in data/knee_torque_limit.json (H7)", req_sf=1.0)
 
     # ---------------- thigh: bending at the knee-actuator section from the X drop GRF
     # GRF in X: m (g + a); lever: knee forward offset of the GRF line ~ worst 0.16 m at 60 deg knee flexion
@@ -145,7 +199,27 @@ def write_markdown(R):
          "loading (docs/11) are mandatory before walking trials.", "",
          "| Item | Case | Load | Value | Allowable | SF | Note |", "|---|---|---|---|---|---|---|"]
     for r in R:
-        flag = "" if r["SF"] >= (1.5 if r["case"] in ("X", "M") else 2.0) else " ⚠"
+        need = r.get("req_sf") or (1.5 if r["case"] in ("X", "M") else 2.0)
+        flag = "" if r["SF"] >= need else " ⚠"
         L.append(f"| {r['item']} | {r['case']} | {r['load']} | {r['value']:.1f} {r['unit']} | {r['allow']:.1f} {r['unit']} | "
                  f"**{r['SF']:.2f}**{flag} | {r['note']} |")
+    kt = ROOT / "data" / "knee_torque_limit.json"
+    if kt.exists():
+        tab = json.loads(kt.read_text())
+        th = np.array(tab["theta_deg"])
+        pts = [0, 20, 40, 60, 80, 100, 120, 130]
+        L += ["", "## Knee drive torque limit (hold H7)", "",
+              f"τ_act ≤ min({tab['actuator_peak_Nm']:.0f} N·m, {tab['joint_cap_Nm']:.0f} / G(θ), "
+              f"{tab['F_rod_max_N'] / 1e3:.0f} kN · r2 · |sin μ(θ)| / G(θ)). Full table: `data/knee_torque_limit.json`.", "",
+              "| Knee angle | " + " | ".join(f"{p}°" for p in pts) + " |", "|---|" + "---|" * len(pts)]
+        row = lambda key, fmt: " | ".join(fmt.format(np.interp(p, th, tab[key])) for p in pts)
+        L.append("| G(θ) | " + row("G", "{:.2f}") + " |")
+        L.append("| Transmission angle μ | " + row("mu_deg", "{:.0f}°") + " |")
+        L.append("| **Actuator limit (N·m)** | " + row("act_limit_Nm", "{:.0f}") + " |")
+        L.append("| Joint torque available (N·m) | " + row("joint_avail_Nm", "{:.0f}") + " |")
+        L += ["", "Worst sample per scenario against that table (demand includes the 1.2 margin; SD and LM 1.0):", "",
+              "| Scenario | Knee angle | Demand | Available | Ratio |", "|---|---|---|---|---|"]
+        for d in sorted(tab["demand"].values(), key=lambda d: d["ratio"]):
+            L.append(f"| {d['scenario']} | {d['theta_deg']:.0f}° | {d['demand_Nm']:.0f} N·m | {d['avail_Nm']:.0f} N·m | "
+                     f"**{d['ratio']:.2f}** |")
     (GEN / "structure_checks.md").write_text("\n".join(L) + "\n")

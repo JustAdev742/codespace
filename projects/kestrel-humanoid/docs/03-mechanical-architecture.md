@@ -148,12 +148,12 @@ enough at 52 V (docs/04 §8). The ratings are validation targets until the dyno 
 
 | Location | Bearing | Fit / preload |
 |---|---|---|
-| Actuator outputs (all 26) | crossed-roller (KA-130: ~ID90/OD120; KA-110/90: ~ID60/OD90; KH-25/20: per cycloid output, ~ID50/OD80 and ~ID40/OD65) | housing H6 / shaft k5, preload class C1 |
-| Motor rotors | thin-section deep-groove pair (68xx/61xx), one fixed, one floating with a wave spring | j5 / H6 |
+| Actuator outputs (all 26) | crossed-roller: KA-130 **THK RB9016** (90 × 130 × 16; `structure.py`, docs/09 §11 H1); KA-110P/KA-90P THK RB6013 (60 × 90 × 13); KH-25 RB5013 (50 × 80 × 13); KH-20 RB4010 (40 × 65 × 10) | housing H6 / shaft k5, preload class C1 (exact fits: docs/09 §2) |
+| Motor rotors | thin-section deep-groove pair (61808 on KA-130 and KH-25, 61806 on KA-90P and KH-20), one fixed, one floating with a wave spring | j5 / H6 |
 | Cycloid eccentric | one needle cage per disc on hardened 100Cr6 eccentric sleeves, 180° apart | per docs/09 §5.3 |
 | Knee hub | 2 × angular-contact (back-to-back) | 50 N axial preload |
 | Rod ends | PTFE-lined spherical, M12 (knee), M8 (ankle) | — |
-| Ankle / wrist crosses | drawn-cup needle rollers on hardened pins | pins m6 |
+| Ankle / wrist crosses | drawn-cup needle rollers on hardened pins (100Cr6 60–64 HRC, ground; never Ti: docs/09 §11 H13) | pins h6, Ra ≤ 0.2 |
 
 **Output flanges.** Every actuator output bolts to the next link through a **friction joint** plus 2 dowels. The flange
 slip torque is the mechanical overload fuse: it slips before the gear teeth fail.
@@ -267,15 +267,32 @@ the drives' I²t model derates; the loop is not sized for it.
      └──► radiator inlet
 ```
 
-* **Order in each leg: knee jacket first, hip jacket second.** The knee carries twice the heat, so it gets the coolest
-  coolant. Both lines cross hip pitch anyway, because the knee actuator rotates with the thigh and the hip-pitch stator
-  sits on the roll–pitch bracket.
+* **Order in each leg: knee jacket first, hip jacket second** (decided, docs/09 §11 H11; docs/05 §13 agrees). The
+  coldest coolant goes to the motor with the highest heat flux. Both jackets are the same KM-130x50-LC sleeve with the
+  same wetted area, so flux follows winding heat: knee 71 W against hip 35 W at the continuous requirement (§9.1).
+  The order only moves a winding by the coolant rise across the other jacket, so compare the hottest winding [E,
+  0.25 K/W copper-to-jacket-inlet, 31.8 W/K per branch, iron 20 W and HC2 5 W per jacket]:
+
+  | Duty (copper loss knee / hip) | Knee first: knee / hip winding above supply | Hip first: knee / hip | Result |
+  |---|---|---|---|
+  | Continuous requirement (71 / 35 W) | **17.8** / 11.8 K | **19.6** / 8.8 K | knee first 1.9 K cooler |
+  | W2 walk 1.2 m/s, scenario mean (47 / 30 W) | **11.8** / 9.9 K | **13.6** / 7.6 K | knee first 1.8 K cooler |
+  | CW 30 kg carry, scenario mean (26 / 47 W) | 6.6 / **13.3** K | 8.8 / **11.7** K | hip first 1.6 K cooler |
+
+  Scenario means are copper loss from `data/scenario_series.npz` through the `power.py` loss model with the real knee
+  G(θ) [E]. The knee is the hotter motor at the continuous requirement and in W1, W2, ST, SU and SL; the hip only in
+  CW, SQ, the arm holds AH/AL and the momentary LM lift. The knee also has the smaller thermal margin (1.56 against
+  2.2, HC2-limited, docs/05 §6.1), so it goes first. Both lines cross hip pitch either way, because the knee actuator
+  rotates with the thigh and the hip-pitch stator sits on the roll–pitch bracket.
 * **Two pumps, one per leg branch, in parallel**, each with a check valve so a failed pump cannot short-circuit the
   other branch. The radiator, compensator and Thor cold plate are shared and see the full 1.0 L/min.
-* **No reservoir open to air.** A humanoid tilts, lies down and falls, so the loop is sealed and fully filled. A spring
-  diaphragm compensator holds 0.3 bar (gauge) and takes thermal expansion. Expansion of ≈ 0.47 L of 40 % propylene
-  glycol over −20 → 80 °C is ≈ 0.47 × 100 × 5.5×10⁻⁴ ≈ 26 mL [E, expansion coefficient approximate]; the compensator
-  holds 40 mL.
+* **No reservoir open to air: sealed loop with a spring-diaphragm compensator** (decided, docs/09 §11 H11; BOM B123).
+  A humanoid tilts, lies down and falls; an open reservoir would spill or let the pumps draw air into the jacket
+  helices. The loop is sealed and fully filled, and a spring-diaphragm compensator holds 0.3 bar (gauge) and takes
+  thermal expansion. Expansion of ≈ 0.47 L of 40 % propylene glycol over −20 → 80 °C is ≈ 0.47 × 100 × 5.5×10⁻⁴
+  ≈ 26 mL [E, expansion coefficient approximate]; the compensator holds 40 mL. Filled at 20 °C with the spring at half
+  stroke (P08.1), it has 20 mL each way against +15.5 mL at 80 °C and −10.3 mL at −20 °C [E, same coefficient], plus
+  ≤ 0.5 mL per dry-break re-mate.
 * **Drives above and upstream:** the HC2 boards sit on the rear caps, above the jacket O-rings when standing, behind
   a drip lip, conformally coated (dielectric-tolerant). A jacket leak drains away from them (R10 §5.1 risk list).
 
@@ -303,8 +320,25 @@ drop falls to ≈ 1.4 kPa, with the same wetted area and the same laminar heat-t
 | Compensator | 40 mL spring-diaphragm (EPDM membrane in a PA12 housing), fill/bleed valve | custom (docs/09) |
 | Check valves (2) | ≤ 3 kPa cracking, EPDM | inline PC-cooling or industrial micro check valve |
 | Sensors | 4 NTCs (supply/return per branch), 1 loop pressure (0–2.5 bar, stainless wetted), pump tach | TE M3200-class transducer (te.com) |
-| Coolant | **40 % propylene glycol + mixed-metal inhibitor**; freezes ≈ −21 °C (R7 #6: operate to −20 °C) | Dow DOWFROST (dow.com) or an automotive OAT coolant at 40 % |
-| Thor cold plate | aluminium or nickel-plated copper plate to the module's thermal transfer plate | custom; limit temperatures from NVIDIA's Jetson AGX Thor thermal design guide (not verified here) |
+| Coolant | **40 % propylene glycol + mixed-metal inhibitor**; freezes ≈ −21 °C (R7 #6: operate to −20 °C) | Dow DOWFROST (dow.com) or an automotive OAT coolant at 40 % (BOM B122) |
+| Thor cold plate | aluminium plate to the module's thermal transfer plate (no copper in the loop, docs/09 §6.2) | custom (B124); limit temperatures from NVIDIA's Jetson AGX Thor thermal design guide (not verified here) |
+
+**Coolant decision: 40 % propylene glycol, not an "insulative" PC coolant** (docs/09 §11 H11):
+- **Freeze and corrosion are hard requirements.** The robot must run to −20 °C (R7 #6), and every wetted metal is
+  aluminium (6061 jackets and manifolds, the 7075 bore that closes the helix, aluminium radiator and cold plate).
+  Inhibited 40 % propylene glycol freezes ≈ −21 °C and protects aluminium. The insulative PC coolant once priced for
+  the BOM (Koolance LIQ-705, [koolance.com](https://koolance.com/liquid-coolant-bottles), accessed 2026-11-09) does not
+  state a freeze point.
+- **Electrical safety near the 67 V electronics does not rest on the coolant.** The bus is extra-low voltage with IP2X
+  shrouded conductors (docs/05 §2), so the coolant's risk is a short or corrosion on a board. That risk is handled by
+  placement (drives above and upstream of every fitting, drip lips, no fitting above a board), conformal coat and leak
+  detection that trips the stop chain (docs/05 §8, §9). A coolant sold as insulative stays insulative only while it is
+  ion-free; in an aluminium loop it picks up ions in service, so the design would have to assume it conductive anyway.
+- **The leak pads need a conductive coolant.** The interdigitated leak pads (B129) sense a leak by its conductivity; a
+  dielectric coolant would leave them blind.
+
+The loop bench (B131) runs the same mix, so the flow sensors are calibrated on it and the jackets see one chemistry
+from the first test on.
 
 ### 9.5 Flow, heat and pressure arithmetic [E]
 
@@ -360,7 +394,7 @@ against 98 N·m (≈ 1.6). **A loop failure is a derate, not a fall.**
 `params.py` allows 1.25 kg in the torso for the loop + electronics blower, plus coolant lines in each thigh's 0.45 kg
 harness line. Component estimate for the torso part [E]: radiator 0.60 + 2 IP68 fans 0.30 + 2 pumps 0.30 + compensator,
 check valves and manifold 0.10 + torso coolant ≈ 0.15 + blower 0.08 = **≈ 1.5 kg**, i.e. ≈ 0.3 kg over the allowance
-(the Thor cold plate is carried in the 1.45 kg AI-computer line). Carry it inside the 10.2 kg growth contingency (§14).
+(the Thor cold plate is carried in the 1.45 kg AI-computer line). Carry it inside the 10.3 kg growth contingency (§14).
 The radiator outline (274 × 120 × 30 mm + 25 mm fans) is wider than the 0.22 m box `params.py` uses for the cooling
 item; it fits across the 0.44 m upper back behind the spine.
 
@@ -373,15 +407,16 @@ only the film volume; the compensator absorbs it.
 
 ## 10. Hot-swap battery bay
 
-Two identical packs: **16S4P, 64 × Molicel P50B, 1.15 kWh each, 5.90 kg incl. BMS, fuse and enclosure** [gen mass
+Two identical packs: **16S4P, 64 × Molicel P50B, 1.15 kWh each, 6.20 kg incl. BMS, fuse, end cap and handle** [gen mass
 budget]. Total 128 cells, the energy of the 16S8P row of [generated/power_budget.md](generated/power_budget.md):
 2,235 Wh, 1,951 Wh usable, **4.9 h normal mixed, 4.3 h continuous walking** [gen]. (The 2 × 1.15 kWh label uses 3.6 V
 per cell; the power budget uses 3.49 V, hence 2.24 vs 2.30 kWh.)
 
 ### 10.1 Layout
-* The two bays sit side by side in the torso behind the spine centreline (pack centres x = −30 mm, y = ±52 mm,
-  z = +130 mm above the waist-pitch axis [params.py]); pack envelope ≈ 98 × 150 × 185 mm (mass-model box, final from
-  the pack CAD).
+* The two bays sit side by side in the torso behind the spine centreline (pack centres x = −40 mm, y = ±52 mm,
+  z = +130 mm above the waist-pitch axis [params.py]); pack envelope **175 × 98 × 185 mm** (fore-aft × wide × tall
+  [params.py]): 2 × 4 × 8 cells fill ≈ 150 mm, and the rear end cap with BMS, fuse, handle and connector half takes the
+  other ≈ 25 mm (docs/09 §11 H12).
 * Packs insert **from the back, fore-aft**, each through its own gasketed hatch in the back door.
 * Suggested cell layout: 2 layers × 4 × 8 cells with axes fore-aft; a 4P group is one column of 4 cells, 8 groups per
   layer, 16 groups in series [E]. BMS, fuse and handle in the rear end cap.
@@ -391,8 +426,8 @@ per cell; the power budget uses 3.49 V, hence 2.24 vs 2.30 kWh.)
 | Element | Design | Part example [ex] |
 |---|---|---|
 | Bay | 7075 channel pair tied into the spine and lower rib; PTFE-lined (or POM) guide strips on both walls; a keyed T-rail in the floor so a pack enters one way only. Either pack fits either bay | machined |
-| Retention | **over-centre cam lever** on the pack end cap engages a hardened pin in the bay; the last 8 mm of lever travel draws the pack onto its front stop and the connector, and preloads it against vibration (≈ 300 N) | Southco draw-latch class (southco.com), or machined cam |
-| Lock | a **fail-locked solenoid pin** (unpowered = locked) blocks the cam lever. It retracts only through the hardware AND of docs/05 §4.5 (the other pack present, connected and able to carry the robot; this pack already shed). Release button and 3-colour LED per bay; keyed manual override behind the back cover for a dead robot | docs/05 B112 |
+| Retention | **over-centre cam lever** on the pack end cap engages a hardened pin in the bay; the last 8 mm of lever travel draws the pack onto its front stop and the connector, and preloads it against vibration (≈ 300 N). A spring-loaded **secondary catch** must be pressed before the lever can lift | Southco draw-latch class (southco.com), or machined cam |
+| Lock | a **fail-locked solenoid pin** (unpowered = locked) blocks the secondary catch, and so the lever. It retracts only through the hardware AND of docs/05 §4.5 (the other pack present, connected and able to carry the robot; this pack already shed). Release button and 3-colour LED per bay; keyed manual override behind the back cover for a dead robot | BOM B112 |
 | Power and signal connector | **floating blind-mate** connector on the bay front bulkhead (± 1 mm radial, ± 1° float); pack side fixed. 2 power contacts ≥ 60 A continuous, plus signal pins: CAN-FD (BMS) and the pilot loop (docs/05 B111) | Anderson Power Products SBS series with auxiliary contacts (andersonpower.com), or a Stäubli CombiTac docking frame |
 | Contact sequencing | power contacts make first and break last; the **pilot contact is ≥ 2 mm shorter** (makes last, breaks first), so a forced removal still breaks the power pins at zero current (docs/05 §4.5) | per connector |
 | Latch switches | latch and lock-position micro-switches (docs/05 B112); the latch switch opens in the first 10° of lever travel, a mechanical backup to the electrical shed sequence | Omron D2SW sealed (omron.com) |
@@ -407,40 +442,55 @@ signals.
 ### 10.3 Swap without shutdown (≤ 3 min target, R7 #3)
 1. Press the bay's release button. The robot moves to the swap posture with the 1.5 kW power cap (docs/05 §4.5); the
    power path sheds pack A; when the unlock conditions hold the solenoid retracts and the LED turns green.
-2. Open the hatch (2 quarter-turn fasteners) and lift the lever; pack B carries the robot. The lever ejects pack A
-   ≈ 10 mm.
-3. Pull pack A out (5.9 kg, handle on the end cap). Insert the charged pack until it touches the connector; close the
+2. Open the hatch (2 quarter-turn fasteners), press the secondary catch and lift the lever; pack B carries the
+   robot. The lever ejects pack A ≈ 10 mm.
+3. Pull pack A out (6.2 kg, handle on the end cap). Insert the charged pack until it touches the connector; close the
    lever (draws it home); close the hatch.
 4. The BMS reports the new pack; firmware updates the torso mass model (pack-present).
 
 One pack alone at the whole-robot simultaneous peak of 3,076 W [gen] draws 3,076 / 52 = 59 A, 14.8 A per cell, inside
-the P50B's 60 A continuous rating (R3 via R7) [E]. Removing one pack moves the centre of mass 5.9 × 0.052 / 102.5 ≈
-3 mm sideways [E]; the controller corrects it from the pack-present signal.
+the P50B's 60 A continuous rating (R3 via R7) [E]. Removing one pack moves the centre of mass 6.2 × 0.052 / 103.1 ≈
+3 mm sideways [E, 103.1 kg estimated mass from the gen mass budget]; the controller corrects it from the pack-present signal.
 
 ## 11. Cable and hose routing through moving joints
 
-* **No through-bores in the leg and waist actuators.** K1 routed power and EtherCAT through Ø20 / Ø15 actuator bores.
-  The Mk II planetary tooth plans (docs/04 §5.2, §7; docs/09 §5.1 Plan A) leave no room for them: the KA-130K stage-1
-  sun is z16 × m0.8 (12.8 mm pitch diameter), and the KA-110P and KA-90P suns are z15. Only KA-130H (Ø12) and the arm and
-  neck actuators (KH-C25 Ø12, KH-C20 Ø10, KH-14 Ø12, docs/09) keep a bore, and arm cables still pass through those.
-* **Leg and waist power, EtherCAT and STO therefore cross each joint externally, bundled with the coolant hoses** in
-  the service loops below: one bundle per leg of 2 hoses + the 52 V pair + EtherCAT + STO. Cable: igus chainflex CF Robot
-  (rated for torsion and bending, ±180°/m at 5 M cycles [ds R3]). If through-axis routing is wanted for the legs, docs/09
-  Plan B gives Ø14 (KA-130), Ø10 (KA-110P) and Ø8 (KA-90P) bores at the same ratios; those carry signal cables only.
+**Decision (docs/09 §11 H2): no cable runs through an actuator bore. Every joint is crossed outside the actuator, in a
+protected service loop with strain relief on both sides of the joint.**
+
+* **Why.** K1 routed power and EtherCAT through Ø20 / Ø15 actuator bores. The Mk II planetary tooth plans (docs/04 §5.2,
+  §7; docs/09 §5.1 Plan A, the baseline) leave no room for them: the KA-130K stage-1 sun is z16 × m0.8 (12.8 mm pitch
+  diameter), and the KA-110P and KA-90P suns are z15. The bores that remain (KA-130H Ø12; the KH-C25 Ø12, KH-C20 Ø10
+  and KH-14 Ø12 hollow input shafts, docs/09 §4) cannot take a 10 AWG pair plus a shielded EtherCAT cable, so they carry
+  no harness. Gear Plan B (docs/09 §5.1) is not needed for routing.
+* **Legs and waist: one service bundle per leg, alongside the coolant hoses.** Each leg bundle carries the 10 AWG
+  leg-zone pair (52 V, docs/05 §5), the EtherCAT IN and OUT cables with STO and FAULT (J-LINK, docs/05 §9), the HC2
+  12 V aux pair and the coolant supply and return hoses. EtherCAT cable: igus chainflex CF Robot (rated for torsion and
+  bending, ±180°/m at 5 M cycles [ds R3]); power: 10 AWG silicone.
+* **Protection.** Cables and hoses share each loop but not a channel. The loop guides (waist clock-spring former,
+  hip-yaw partial clock-spring, hip-pitch C-trough, U-loop clips; BOM B136) have a cable channel above the hose channel,
+  so a weeping fitting drains away from the cables (§9.2; docs/05 §9). The cable part of each loop runs in a PET
+  braided abrasion sleeve, with a grommet at every edge.
+* **Strain relief at each joint.** The bundle is clamped to the link at the two fixed points of every loop (saddle clamp
+  or P-clip), so the loop takes the motion and no connector, crimp or hose barb does. Clips every 80 mm between joints;
+  strain relief within 30 mm of every connector (docs/05 §9).
+* **Bend radii.** Hoses ≥ 30 mm; 10 AWG silicone (≈ 5 mm OD) ≥ 50 mm, the docs/05 §9 rule of 10 × diameter [E];
+  EtherCAT cable per its datasheet. The clock-springs and the C-trough have ≥ 60 mm radius; the U-loops are formed to
+  ≥ 50 mm.
 * The service loops (coolant hoses are 10 mm OD and never fit a bore):
 
 | Joint crossed | Range | Loop | Length change [E] |
 |---|---|---|---|
-| Waist yaw | ±70° | 4 hoses as a flat ribbon in a 1.5-turn clock-spring around the waist-yaw housing, inside the bellows | 70 mm × 2.44 rad ≈ 170 mm |
-| Waist pitch | −15/+75° | U-loop beside the KA-110P | 60 mm × 1.57 rad ≈ 95 mm |
-| Hip yaw | −30/+45° | 2 hoses per leg, partial clock-spring inside the pelvis shell, above the limb interface | 60 mm × 1.31 rad ≈ 80 mm |
-| Hip roll | −25/+45° | U-loop behind the roll actuator | ≈ 75 mm |
-| Hip pitch | −125/+30° | **rolling loop** in a C-trough concentric with the axis (radius 85 mm), hoses and the thigh/shank harness together | 85 × 2.71 rad / 2 ≈ 115 mm |
+| Waist yaw | ±70° | 4 hoses and the torso-to-pelvis harness (2 leg bundles, the 14 AWG waist pair, EtherCAT down and back) as a flat ribbon in a 1.5-turn clock-spring around the waist-yaw housing, inside the bellows; cables on the upper face of the ribbon | 70 mm × 2.44 rad ≈ 170 mm |
+| Waist pitch | −15/+75° | U-loop beside the KA-110P, hoses and harness together | 60 mm × 1.57 rad ≈ 95 mm |
+| Hip yaw | −30/+45° | 2 hoses + the leg bundle per leg, partial clock-spring inside the pelvis shell, above the limb interface | 60 mm × 1.31 rad ≈ 80 mm |
+| Hip roll | −25/+45° | U-loop behind the roll actuator, hoses and leg bundle | ≈ 75 mm |
+| Hip pitch | −125/+30° | **rolling loop** in a C-trough concentric with the axis (radius 85 mm), hoses and the thigh/shank harness together, cables in the upper channel | 85 × 2.71 rad / 2 ≈ 115 mm |
 | Knee, ankle | 0–130°; ±45° / ±25° | harness to the shank and foot in a rolling loop at the knee and a short U-loop at the ankle (no coolant below the knee) | ≈ 80 mm at the knee |
 
-* Minimum hose bend radius 30 mm in every loop; loops are tested for 10⁶ cycles over the full range on the leg test rig
-  before the first walk.
-* Joints with > 180° range (shoulder pitch 240°, shoulder roll 175°) keep the K1 clock-spring cable cassette.
+* Loops are tested for 10⁶ cycles over the full range on the leg test rig before the first walk (P07 §G).
+* **Arms and neck follow the same rule.** The arm harness (14 AWG pair, EtherCAT/STO, palm-camera coax) crosses shoulder
+  pitch (240°) and shoulder roll (175°) in the K1 clock-spring cable cassettes, and shoulder yaw, elbow, wrist yaw and
+  the wrist cross in service loops (P09). The neck harness crosses in a twist-capable service loop (P11).
 * Each limb has one power pair + EtherCAT in and out (daisy chain) + STO; legs add two coolant lines. The rolling and
   U-loops are what the limb-interface service plate (§13) and the bellows (§12) are sized around.
 
@@ -518,25 +568,25 @@ pass-through (R7 #7) is not in the Mk II baseline.
 
 ## 14. Mass budget (Mk II)
 
-[generated/mass_budget.md](generated/mass_budget.md): **102.5 kg estimated; 112.7 kg design mass** (× 1.10). K1 for
+[generated/mass_budget.md](generated/mass_budget.md): **103.1 kg estimated; 113.4 kg design mass** (× 1.10). K1 for
 comparison: 84.1 kg estimated, 92.6 kg design (the same file at git commit 96eb3d9).
 
 | Category | Mk II kg [gen] | K1 kg | Change | Main reason |
 |---|---|---|---|---|
-| Actuators | 59.22 | 45.37 | +13.85 | KA-130 jacketed 50 mm stack, KA-110P RI115-PH, cycloid arms with Ø115 shoulder motors |
+| Actuators | 59.23 | 45.37 | +13.86 | KA-130 jacketed 50 mm stack, KA-110P RI115-PH, cycloid arms with Ø115 shoulder motors |
 | Structure | 14.93 | 14.93 | 0 | unchanged in the budget (flange upgrade, interfaces and bay not yet added) |
-| Battery | 11.80 | 8.90 | +2.90 | 2 × 16S4P hot-swap (128 cells) instead of 16S6P (96 cells) |
+| Battery | 12.40 | 8.90 | +3.50 | 2 × 16S4P hot-swap (128 cells, 6.20 kg packs with end cap) instead of 16S6P (96 cells) |
 | Electronics | 5.26 | 4.56 | +0.70 | liquid loop + Thor cold plate |
 | Shells | 4.66 | 4.66 | 0 | |
 | Harness | 2.97 | 2.57 | +0.40 | thigh coolant lines + dry-break couplings |
 | Hands | 2.30 | 1.84 | +0.46 | 13 DOA, palm camera |
 | Sensors | 1.31 | 1.31 | 0 | |
-| **Total** | **102.5** | **84.1** | **+18.4** | |
+| **Total** | **103.1** | **84.1** | **+19.0** | |
 
-Heaviest bodies [gen]: torso 27.20 kg (two packs 11.80), thigh 6.87 kg each (knee actuator 4.96), hip-roll link
+Heaviest bodies [gen]: torso 27.80 kg (two packs 12.40), thigh 6.87 kg each (knee actuator 4.96), hip-roll link
 5.11 kg each (hip-pitch actuator 4.76).
 
-**Known growth not yet in `params.py`** [E], to be carried inside the 10.2 kg contingency (112.7 − 102.5):
+**Known growth not yet in `params.py`** [E], to be carried inside the 10.3 kg contingency (113.4 − 103.1):
 
 | Item | Estimate |
 |---|---|
@@ -546,7 +596,7 @@ Heaviest bodies [gen]: torso 27.20 kg (two packs 11.80), thigh 6.87 kg each (kne
 | IP67 seals, vents, bellows upgrades | +0.3 kg |
 | Brakes, shoulder pitch × 2 + waist pitch | not yet sized for mass |
 | KW-L2 motor (ECX FLAT 32 L mass not found) | unknown |
-| **Sum of the known items** | **≈ +2.0 kg** → ≈ 104.5 kg, inside contingency |
+| **Sum of the known items** | **≈ +2.0 kg** → ≈ 105.2 kg, inside contingency |
 
 **CAD and packaging items for the CAD owner:** hip-pitch housing 10 mm longer (inboard, §3.1); Ø145 jacket sections on
 the KA-130 (§9.3); KA-110P output hub for PCD 100 (§5); KH-25 Ø127 housings in the chest and shoulder (§3.5); the

@@ -82,7 +82,7 @@ active-short-circuit check), the coolant loop bench (B131, P01), the test pack (
 12. **HC2:** thermal pad, then bolt the HC2 to the jacket's rear face; phase busbars to the stator leads; encoders;
     NTCs. Route every coolant hose **below and away from** the board; no fitting above it. Rear cap on (O-ring).
 13. **Output flange:** radial lip seal, 2 × Ø6 dowels, **12 × M5 12.9 at 8.5 N·m**, Loctite 243, witness marks. This joint is
-    also the overload slip fuse (935 N·m vs 535 N·m momentary, SF 1.75); do not over-torque it.
+    also the overload slip fuse (935 N·m vs 540 N·m momentary, SF 1.73); do not over-torque it.
 14. Cap both coolant ports with plugs (or dry-break halves) until P07.
 
 ## F. Electrical
@@ -116,7 +116,7 @@ active-short-circuit check), the coolant loop bench (B131, P01), the test pack (
 | Coolant-loss response: stop the flow at 75 A | drive derates on the interlock / thermal model before the 130 °C warning; log the time |
 | Backlash / stiffness | backlash ≤ 10 arcmin; stiffness recorded |
 | Endurance 2 × 10⁵ walking cycles | backlash growth < 2 arcmin; gear inspection clean |
-| Static overload: rotor locked with the pin, 590 N·m (1.1 × 535 N·m momentary) on the output through the arm, 1 s × 3 | no flange slip (witness marks), no gear damage on teardown of the first article |
+| Static overload: rotor locked with the pin, 595 N·m (1.1 × 540 N·m momentary) on the output through the arm, 1 s × 3 | no flange slip (witness marks), no gear damage on teardown of the first article |
 
 ---
 

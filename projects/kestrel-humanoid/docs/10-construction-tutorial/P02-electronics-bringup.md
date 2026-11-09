@@ -6,8 +6,8 @@
 * Software layers: [`diagrams/software_stack.svg`](../../diagrams/software_stack.svg)
 
 The two diagrams still show the K1 power path. Mk II (docs/05): two packs through the KES-PPM power path (P06.1), a
-logic bus and an actuator bus, and **28 EtherCAT slaves** (22 Everest + 4 HC2 + 2 hand controllers; each hand
-controller drives its wrist's KES-WRIST board, so the KW-L2 adds no slave).
+logic bus and an actuator bus, and **30 EtherCAT slaves** (22 Everest + 4 HC2 + 2 hand controllers + 2 KES-WRIST
+boards; each KES-WRIST board drives its wrist's two KW-L2s from its own F28P65x, docs/05 §7, docs/09 H11).
 
 ## B. Parts list
 

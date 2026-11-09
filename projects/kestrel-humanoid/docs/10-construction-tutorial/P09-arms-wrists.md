@@ -64,8 +64,8 @@ As P07, plus a 0–50 kg spring balance or load cell, a 10 kg and a 15 kg test m
 * Forearm 24 V buck (LM5146-Q1, 24 V 10 A, hiccup limit 12 A) → KES-WRIST (KW-L2) and the hand's local 12 V buck,
   16 AWG, XT30, ≤ 0.2 m. In STO the buck enable and its output load switch both open (2-channel), so the KW-L2s and the
   hand stop (Cat 0); the back-drivable screws let a held object slip, which is accepted.
-* EtherCAT daisy chain: shoulder pitch → roll → yaw → elbow → wrist yaw → hand controller (which drives the KES-WRIST,
-  docs/05 §7). Torque-flexure bridges on the KH-25 and KH-20 carriers.
+* EtherCAT daisy chain: shoulder pitch → roll → yaw → elbow → wrist yaw → KES-WRIST (its own slave, drives the two
+  KW-L2s) → hand controller (docs/05 §7). Torque-flexure bridges on the KH-25 and KH-20 carriers.
 
 ## G. Testing (gate G2: arm on the bench, shoulder clamped)
 | Test | Pass |

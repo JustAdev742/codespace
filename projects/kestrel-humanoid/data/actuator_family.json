@@ -21,9 +21,9 @@
   "n_feasible": 6
  },
  "KA-130H": {
-  "mass": 4.827,
+  "mass": 4.759,
   "rotor_J": 0.0013838000000000001,
-  "ratio": 15.0,
+  "ratio": 14.0,
   "motor": "KM-130x50-LC",
   "hd": null,
   "gear": "planetary",
@@ -31,15 +31,15 @@
   "joints": [
    "hip_pitch"
   ],
-  "T_peak_out": 434.70000000000005,
-  "T_peak_usable": 434.70000000000005,
-  "T_cont_out": 232.04700000000003,
-  "w_noload_out": 14.203107339955983,
-  "w_at_half_peak": 13.726994333138602,
-  "J_reflected": 0.31135500000000005,
+  "T_peak_out": 405.72,
+  "T_peak_usable": 405.72,
+  "T_cont_out": 216.57720000000003,
+  "w_noload_out": 15.217615007095697,
+  "w_at_half_peak": 14.707493928362789,
+  "J_reflected": 0.27122480000000004,
   "OD": 0.14200000000000002,
   "motor_status": "C",
-  "n_feasible": 8
+  "n_feasible": 1
  },
  "KA-110P": {
   "mass": 2.962,

@@ -18,7 +18,7 @@ margins as K1.
 
 | | KESTREL S1 | KESTREL K1 Mk II (for comparison) |
 |---|---|---|
-| Height / estimated mass | 1.75 m / 66.9 kg with the CAD structure (73.6 kg design mass) | 1.75 m / 103.2 kg |
+| Height / estimated mass | 1.75 m / 66.9 kg with the CAD structure (73.6 kg design mass) | 1.75 m / 103.1 kg |
 | Actuated joints | 27 + 2 grippers (legs 2 × 6, waist yaw, arms 2 × 6, neck 2) | 30 + two 13-DOA hands |
 | Actuators | 4 × MyActuator RMD-X12-P20-320, 23 × RobStride (RS04 / RS03 / RS02 / RS00) | custom liquid-cooled and cycloid family |
 | Leg peak torque (joint side) | knee 456 N·m (X12 + 1.5:1 belt), hip pitch 320 N·m | knee 493 N·m, hip pitch 406 N·m |

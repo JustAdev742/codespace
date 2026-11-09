@@ -169,8 +169,11 @@ GROUPS = [
     # ---- Mk II (docs/research/R10 sec. 5): legs on liquid-cooled KM-130x50 + 150 A GaN drives; arms on cycloids
     Group("KA-130K", ["knee"], "planetary", "HC2", ["KM-130x50-LC"], list(range(12, 21)),
           electronics_kg=0.40, derate=THERMAL_DERATE_COOLED, notes="Mk II KA-130K2: liquid jacket, N50UH, 50 mm stack, 150 A GaN drive"),
-    Group("KA-130H", ["hip_pitch"], "planetary", "HC2", ["KM-130x50-LC"], list(range(12, 21)),
-          electronics_kg=0.40, derate=THERMAL_DERATE_COOLED, notes="Mk II: same KA-130K2 hardware as the knee"),
+    # Hip pitch is fixed at 14:1 (docs/09 sec. 5.1 Plan A, hold H14). 15:1 would clear the 0.90 utilisation
+    # preference (0.84 vs 0.90), but 14:1 keeps the checked tooth plan, gives 7 % more speed (15.2 vs 14.2 rad/s,
+    # the K1 weak point) and 13 % less reflected inertia, and still has 1.2 / 0.903 = 1.33 x on the simulated peak.
+    Group("KA-130H", ["hip_pitch"], "planetary", "HC2", ["KM-130x50-LC"], [14],
+          electronics_kg=0.40, derate=THERMAL_DERATE_COOLED, notes="Mk II: same KA-130K2 hardware as the knee; 14:1 fixed (H14)"),
     Group("KA-110P", ["hip_roll", "waist_pitch"], "planetary", "EV", ["KM-115x32-N50", "ILM115x25", "RI115-PH"], list(range(14, 31)),
           notes="Mk II KA-115R: KM-115x32 with N50UH magnets"),
     Group("KA-90P", ["hip_yaw", "waist_yaw", "ankle"], "planetary", "EV", ["KM-85x26-N50-3t", "ILM85x26", "RI85-PH"], list(range(14, 31)),

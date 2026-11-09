@@ -36,7 +36,6 @@ CM_RI85 = "https://www.cubemars.com/product/ri85-ph-kv85-potting-frameless-torqu
 MAXON_ECX32 = "https://www.maxongroup.com/maxon/view/product/motor/ecmotor/ECX-Flat/ECX-Flat-32/ECXA32LZF50E6ILACO1Y330A"
 KOOL_PMP420 = "https://koolance.com/pump-g-1-4-bsp-pmp-420"
 KOOL_HX720 = "https://koolance.com/radiator-2-fan-120mm-18-fpi-aluminum"
-KOOL_LIQ = "https://koolance.com/liquid-coolant-bottles"
 SENSIRION = "https://sensirion.com/products/catalog/SLF3S-4000B"
 TI = "https://www.ti.com/product/"
 
@@ -64,10 +63,10 @@ ITEMS = [
     ("B006", "Actuators - motors", "Custom frameless motor KM-50x20 (12s/14p): wrist yaw x2, neck x2", "builder / vendors", "KM-50x20", 4, 220, "AUD", "custom", "E", "Y",
      "docs/13", "CubeMars RI50 class (verify specs)", "unchanged from Mk I"),
     # ------------------------------------------------------------------ actuators: gears
-    ("B007", "Actuators - gears", "KA-130 2-stage planetary 17:1 (knee): s1 m0.8, s2 m1.5 x 14 mm, 4 planets, carburised + ground", "gear job shop", "KA-130-PG17", 2, 1500, "AUD", "custom", "E", "Y",
-     "R10 sec 5.1 gear table; actuator_family.md", "KHK stock ground gears modified + EDM ring", "sized for 1.1 x 493 N m delivered peak"),
-    ("B105", "Actuators - gears", "KA-130 2-stage planetary 14:1 (hip pitch), same housing family", "gear job shop", "KA-130-PG14", 2, 1450, "AUD", "custom", "E", "Y",
-     "actuator_family.md KA-130H", "", "estimate"),
+    ("B007", "Actuators - gears", "KA-130K 2-stage planetary 17:1 (knee), Plan A: s1 m0.8 z16 / 4 x z18 / z52, b 14 mm; s2 m1.25 z18 / 4 x z18 / z54, b 18 mm (4.25 x 4.0); 18CrNiMo7-6 carburised + ground ISO 1328 grade 6, nitrided 42CrMo4 rings", "gear job shop", "KA-130-PG17", 2, 1500, "AUD", "custom", "E", "Y",
+     "docs/09 sec 5.1 Plan A; docs/04 sec 5.2; structure_checks.md (s2 Lewis SF 2.16)", "KHK stock ground gears modified + EDM ring", "sized for 1.1 x 493 N m delivered peak; R10 sec 5.1 m1.5 x 14 mm stage 2 is the fallback only if ISO 6336 asks for it; pins + needle cages in B138"),
+    ("B105", "Actuators - gears", "KA-130H 2-stage planetary 14:1 (hip pitch), Plan A: s1 m0.8 z24 / 3 x z18 / z60, b 12 mm; s2 shared with the knee (B007)", "gear job shop", "KA-130-PG14", 2, 1450, "AUD", "custom", "E", "Y",
+     "docs/09 sec 5.1 Plan A; docs/04 sec 5.2", "", "estimate; 14:1 fixed in the calc (docs/09 hold H14 resolved)"),
     ("B008", "Actuators - gears", "Custom 2-stage planetary gear set 29:1 (KA-110P)", "gear job shop", "KA-110-PG29", 3, 950, "AUD", "custom", "E", "Y", "actuator_family.md", "KHK stock gears", ""),
     ("B009", "Actuators - gears", "Custom 2-stage planetary gear set 28:1 (KA-90P)", "gear job shop", "KA-90-PG28", 7, 800, "AUD", "custom", "E", "Y", "actuator_family.md", "KHK stock gears", ""),
     ("B010", "Actuators - gears", "C25 machined two-disc cycloid 30:1: 2 wire-EDM 42CrMo4 nitrided discs, Ø84 pin circle Ø5 pins, eccentric shaft + bearings, 8 output pins (replaces strain-wave 25)", "wire-EDM + CNC job shop", "KH-C25-CYC", 4, 980, "AUD", "custom", "E", "Y",
@@ -76,10 +75,12 @@ ITEMS = [
      "R10 sec 5.7", "Leaderdrive LHSG-20-50", "rating targets 105 rep / 160 mom N m"),
     ("B012", "Actuators - gears", "Strain-wave component set size 14, 50:1", "Leaderdrive", "LHSG-14-50", 4, 300, "USD", "buy", "Q", "Y", "leaderdrive.com", "Harmonic Drive CSG-14-50", "wrist yaw, neck (kept)"),
     # ------------------------------------------------------------------ actuators: bearings, encoders, housings
-    ("B013", "Actuators - bearings", "Crossed-roller output bearing ~ID90/OD120 (KA-130), re-rated for 1.1 x 493 N m + four-bar rod load", "THK / IKO", "RU/CRBH class", 4, 420, "AUD", "buy", "Q", "Y", "Statewide Bearings (THK AU)", "Chinese CRB equivalents (~1/3 cost)", ""),
-    ("B014", "Actuators - bearings", "Crossed-roller output bearing ~ID60/OD90 (KA-110, KA-90)", "THK / IKO", "RU/CRBH class", 10, 260, "AUD", "buy", "Q", "Y", "Statewide Bearings / CBC", "Chinese CRB", ""),
+    ("B013", "Actuators - bearings", "Crossed-roller output bearing THK RB9016 (90 x 130 x 16), KA-130 output, checked for 1.1 x 493 N m + four-bar rod load (structure_checks.md)", "THK", "RB9016", 4, 420, "AUD", "buy", "Q", "Y", "Statewide Bearings (THK AU)", "IKO CRBH9016 class; Chinese CRB equivalents (~1/3 cost)", "docs/09 hold H1 (resolved); fits in docs/09 sec 2"),
+    ("B014", "Actuators - bearings", "Crossed-roller output bearing THK RB6013 (60 x 90 x 13), KA-110P and KA-90P outputs", "THK", "RB6013", 10, 260, "AUD", "buy", "Q", "Y", "Statewide Bearings / CBC", "IKO CRBH6013 class; Chinese CRB", "fits in docs/09 sec 2; confirm the PCD 100 KA-110P output hub overhang in CAD"),
     ("B015", "Actuators - bearings", "Crossed-roller output bearing (KH-C25/C20/KH-14)", "THK / IKO", "RA/CRBS class", 12, 190, "AUD", "buy", "Q", "Y", "Statewide Bearings / CBC", "Chinese CRB", ""),
-    ("B016", "Actuators - bearings", "Thin-section deep-groove rotor bearings (2 per actuator)", "NSK / SKF", "68xx / 61xx", 52, 22, "AUD", "buy", "E", "Y", "CBC Australia / BSC", "", ""),
+    ("B016", "Actuators - bearings", "Thin-section deep-groove rotor bearings (2 per actuator): 61808 (KA-130, KH-C25), 61806 (KA-90P, KH-C20), per drawing (KA-110P, KH-14)", "NSK / SKF", "61808 / 61806 / 68xx", 52, 22, "AUD", "buy", "E", "Y", "CBC Australia / BSC", "", "docs/09 sec 2; cycloid input journals 61803 / 61802 are in B010 / B011"),
+    ("B138", "Actuators - bearings", "Planet pins 100Cr6 through-hardened 60-64 HRC, ground h5, Ra <= 0.2 (Ø5 / Ø6 / Ø8 / Ø10 / Ø12) + INA needle roller and cage assemblies K5x8x8, K6x9x8, K8x12x10, K10x14x13, K12x16x13: one pin + cage per planet, 93 planets (KA-130K 2 x 8, KA-130H 2 x 7, KA-110P 3 x 7, KA-90P 7 x 6)", "grinding shop + Schaeffler (INA)", "K-series + pins", 93, 22, "AUD", "buy", "E", "Y",
+     "docs/09 sec 5.1 (planet pin and bearing table) and hold H13", "", "estimate (pin ~A$12 ground in a small batch, cage ~A$10); verify C/C0 against the planet load at 1.1 x peak; gear-shop quotes B007-B009 / B105 exclude them unless stated"),
     ("B017", "Actuators - sensing", "Absolute encoder RLS AksIM-2 readhead + ring, BiSS-C, 19-20 bit", "RLS", "MB049 + MRA049", 33, 300, "USD", "buy", "V", "Y",
      "rls.si; DigiKey marketplace US$199 readhead (R2)", "Netzer DS-58 (output), MT6835 (motor)", "26 output + 7 motor-side (legs/waist)"),
     ("B018", "Actuators - sensing", "Magnetic motor encoder IC MagnTek MT6835 + magnet + PCB", "MagnTek", "MT6835GT", 19, 18, "AUD", "buy", "E", "Y", "lcsc.com C2932578 (R2)", "MA732 / AS5047P", "motor side, arms/neck/ankle/yaw"),
@@ -94,10 +95,10 @@ ITEMS = [
     # ------------------------------------------------------------------ actuators: wrist KW-L2
     ("B024", "Actuators - wrist", "KW-L2 motor: maxon ECX FLAT 32 L high torque, 24 V, Hall sensors (98.5 mN m nom, 540 mN m stall, 10,600 rpm no-load, 71 g)", "maxon", "ECXA32LZF50E6ILACO1Y330A", 5, 140.00, "EUR", "buy", "V", "Y",
      f"{MAXON_ECX32} (EUR 140.00 at 5-19 pcs, {ACC}); maxon motor Australia (Mt Kuring-Gai NSW)", "ECX FLAT 22 L + 3.9:1 (speed 0.94 of req, R10)", "4 + 1 spare; directly on the screw, no gearhead"),
-    ("B106", "Actuators - wrist", "KW-L2 mechanics: KSS Ø8 x 2 ball screw + nut (docs/09 MK2-16; 1 mm lead preferred if rated, docs/05 sec 6.4), miniature linear guide, angular-contact thrust pair, housing, rod ends", "KSS / THK / CNC", "KW-L2-MECH", 4, 380, "AUD", "buy", "E", "Y",
-     "kssballscrew.com (R5); R10 sec 5.9", "", "estimate; screw load rating not yet retrieved - needs >= 1.5 kN dynamic for the 970 N momentary case"),
+    ("B106", "Actuators - wrist", "KW-L2 mechanics: KSS Ø8 x 1 ground ball screw + flange nut (1 mm lead, docs/09 hold H10; Ø6 x 1 only if Ca >= 1.5 kN and C0a >= 3 kN), miniature linear guide, angular-contact thrust pair, housing, rod ends", "KSS / THK / CNC", "KW-L2-MECH", 4, 380, "AUD", "buy", "E", "Y",
+     "kssballscrew.com (R5); R10 sec 5.9; docs/05 sec 6.4; P09.1", "", "estimate; screw load rating not yet retrieved - confirm >= 1.5 kN dynamic (970 N momentary case) in the KSS catalogue"),
     ("B107", "Actuators - wrist", "KW-L2 forearm driver board: TI F28P65x (EtherCAT slave) + 2 x DRV8353 + 100 V FETs (>= 20 A), phase-current sense, Hall + wrist-cross sensor inputs, 52 -> 24 V 15 A pk / 8 A cont buck (TI LM5146-Q1) feeding KW-L2 + hand", "custom (JLCPCB assembly)", "KES-WRIST", 3, 360, "AUD", "custom", "E", "Y",
-     f"ti.com/product/DRV8353 (R2); {TI}LM5146-Q1 ({ACC}); docs/09 MK2-17", "maxon EPOS4 Micro 24/5 + separate 24 V brick", "2 + 1 spare; one per forearm; 2-channel STO disables the buck and the bridges"),
+     f"ti.com/product/DRV8353 (R2); {TI}LM5146-Q1 ({ACC}); docs/09 MK2-17", "maxon EPOS4 Micro 24/5 + separate 24 V brick", "2 + 1 spare; one per forearm, its own EtherCAT slave (30 slaves in total, docs/05 sec 7); 2-channel STO disables the buck and the bridges"),
     # ------------------------------------------------------------------ drives
     ("B025", "Drives", "HC2 150 A pk / 75 A cont GaN EtherCAT drive (custom): EPC9186HC-class 100 V GaN stage, TI F28P65x (on-chip EtherCAT ESC), 2 x BiSS-C, 2-channel hardware STO, ASC braking", "custom (6-layer 2 oz, JLCPCB/PCBWay assembly)", "KES-HC2", 5, 1450, "AUD", "custom", "E", "Y",
      "R10 sec 3.2.7 + S26 (EPC9186HC2/HC3: 150 A rms, <= 76 V, vendor press); ti.com TMS320F28P650DK (R2)", "Elmo Platinum Twitter R70/100 (99 A only - ~30 % less knee peak: 327 vs 464 N m at 16:1, R10 sec 1.2)", "knee x2, hip pitch x2 + 1 spare"),
@@ -114,14 +115,14 @@ ITEMS = [
      "18650batterystore.com US$8.25 @200+ (R3; 200 cells cost less than 144 at the single-cell price)", "Molicel P45B (AU: Master Instruments / Batteries Direct)", "128 in 2 packs + 72 for matching rejects/spares (enough for a 3rd pack, B133)"),
     ("B029", "Battery", "Per-pack BMS KES-BMS16: TI BQ76952 16S AFE + BQ77216 secondary OVP + CAN-FD MCU + in-pack back-to-back 100 V NFET switch + 0.5 mOhm shunt + 8 NTC + pilot/wake + heater switch", "custom (TIDA-010208 pattern)", "KES-BMS16", 3, 450, "AUD", "custom", "E", "Y",
      f"{TI}BQ76952 ({ACC}); ti.com/product/BQ77216, ti.com/tool/TIDA-010208 (R3)", "Orion BMS 2 per pack (too large to live inside a hot-swap pack)", "2 + 1 spare; pack terminals dead unless seated"),
-    ("B030", "Battery", "Pack power-path board KES-PPM, one per bay (robot side): LM5069 hot-swap + LM5050-1 ideal diode (OR path), TPS48111-Q1 back-to-back tie switch, INA228 monitor, removal-interlock AND logic, solenoid driver, CAN-FD MCU", "custom", "KES-PPM", 3, 420, "AUD", "custom", "E", "Y",
+    ("B030", "Battery", "Pack power-path board KES-PPM, one per bay (robot side): TI LM5069 hot-swap controller + LM5050-1 ideal-diode controller (OR path), TPS48111-Q1 back-to-back tie switch, INA228 monitor, 12 x 100 V FETs, removal-interlock hardware AND, solenoid-lock driver, CAN-FD MCU (docs/05 sec 4.2)", "custom", "KES-PPM", 3, 420, "AUD", "custom", "E", "Y",
      f"{TI}LM5069, {TI}LM5050-1, {TI}TPS4811-Q1, {TI}INA228 ({ACC})", "per-pack contactors (Gigavac GX11 class) - heavier, no seamless OR-ing", "2 + 1 spare; 12 x 100 V FETs per board (Nexperia PSMN2R0-100SSF class, R2)"),
     ("B031", "Battery", "Pack fuse 100 A UL Class T + holder (selection rule: >=125 V DC rated, >=20 kA DC interrupting - verify on the datasheet)", "Littelfuse / Eaton Bussmann", "JLLN-100 / JJN-100 class", 4, 60, "AUD", "buy", "E", "Y",
      "element14 AU / RS AU (rating not verified this session)", "", "one per pack + 2 spares"),
-    ("B032", "Battery", "Pack enclosure 16S4P: 6061 machined shell, mica liners, cell holders, Ni-plated Cu busbars, handle + cam lever, IP67 face seal, vent path, 15 W heater film", "CNC + make", "KES-BATT-ENC2", 2, 950, "AUD", "machine", "E", "Y", "docs/09", "", "<= 1.3 kg each for the 5.90 kg pack budget"),
+    ("B032", "Battery", "Pack enclosure 16S4P: 6061 machined shell, mica liners, cell holders, Ni-plated Cu busbars, handle + cam lever, IP67 face seal, vent path, 15 W heater film", "CNC + make", "KES-BATT-ENC2", 2, 950, "AUD", "machine", "E", "Y", "docs/09", "", "<= 1.3 kg each for the 6.20 kg, 175 x 98 x 185 mm pack (params.py, docs/09 hold H12)"),
     ("B111", "Battery", "Hot-swap pack connector pair: floating blind-mate, sequenced (power make-first/break-last, pilot >= 2 mm shorter), CAN-FD + wake aux contacts, >= 60 A cont, >= 100 V", "Anderson Power Products (SBS series with auxiliary contacts) class", "SBS + aux (docs/03 sec 10.2)", 3, 180, "AUD", "buy", "E", "Y",
      "selection rule in docs/05 sec 4.4", "", "2 robot bays + 1 for the bench charger; estimate"),
-    ("B112", "Battery", "Pack bay electrics: fail-locked solenoid pin on the secondary catch, sealed lever micro-switch in the pilot loop (Omron D2SW class), lock-position switch, bay LED, keyed override", "make + buy", "KES-BAY", 2, 240, "AUD", "make", "E", "Y", "docs/05 sec 4.5; docs/03 sec 10.2 (bay mechanics)", "", "estimate; rails, cam lever and catch are in the structure/shell lines"),
+    ("B112", "Battery", "Pack bay electrics (per bay): fail-locked removal-lock solenoid pin on the secondary catch, sealed lever micro-switch in the pilot loop (Omron D2SW class), lock-position switch, release button, 3-colour bay LED, keyed manual override", "make + buy", "KES-BAY", 2, 240, "AUD", "make", "E", "Y", "docs/05 sec 4.5; docs/03 sec 10.2 (bay mechanics)", "", "estimate; rails, cam lever and catch are in the structure/shell lines"),
     ("B113", "Battery", "In-pack thermal-event sensor (vent gas / pressure rise)", "TBD", "TBD", 2, 45, "AUD", "buy", "E", "Y", "docs/06 sec 1", "", "estimate"),
     # ------------------------------------------------------------------ power conversion & distribution
     ("B033", "Power", "DC-DC 36-75 V in -> 24 V 300 W isolated brick (Thor carrier, LiDAR, cameras) - logic bus", "TBD (Vicor / TDK-Lambda / RECOM)", "TBD", 1, 260, "AUD", "buy", "E", "Y",
@@ -141,6 +142,8 @@ ITEMS = [
     ("B042", "Compute", "Safety MCU board (TI TMS570LC4357, dual-channel I/O, CAN, leak + coolant inputs)", "custom (TI LAUNCHXL2-570LC43 for dev)", "KES-SAFE", 1, 220, "AUD", "custom", "E", "Y", "ti.com/product/TMS570LC4357 (R2)", "", ""),
     ("B043", "Safety", "Wireless e-stop FORT Wireless E-Stop Pro (SIL3, RCM)", "FORT Robotics", "WES Pro", 1, 3500, "AUD", "buy", "Q", "Y", "fortrobotics.com/wireless-e-stop-pro (R2)", "Tele Radio Panther (PLd)", "quote required"),
     ("B044", "Safety", "Safety relay dual-channel + delayed-contact expansion (Cat 1 zone cut) (Pilz PNOZ s / Phoenix PSR class) + wired e-stop pendant 5 m + 2 on-robot buttons", "Pilz / Phoenix Contact", "PNOZ s3 + s7.1 class", 1, 800, "AUD", "buy", "E", "Y", "RS AU", "", "estimate"),
+    ("B137", "Safety", "Commissioning stop hardware: 3 DC contactors (Gigavac GX11 class, >= 100 A cont, >= 80 V DC break; one per leg-zone feed + one in the bench-bus feed, opened by the safety relay's instantaneous contacts) + keyed main switch (PPM shed input) + sealed NC back-cover switch", "Gigavac / various", "GX11 class + switches", 1, 930, "AUD", "buy", "E", "Y",
+     "P02 sec F; P08 parts list; docs/05 sec 4.6 and sec 8; docs/09 hold H8", "", "estimate (3 x A$280 contactor + A$90 switches, prices not verified); the contactors stay until the HC2 STO is proven"),
     # ------------------------------------------------------------------ sensors
     ("B045", "Sensors", "Stereo camera Stereolabs ZED X Mini (GMSL2, GS, 2.2 mm)", "Stereolabs", "ZED X Mini", 1, 549, "USD", "buy", "V", "Y", "stereolabs.com (en-au store, R4)", "Orbbec Gemini 336L", "head"),
     ("B046", "Sensors", "Wide mono camera ZED X One GS (AR0234, GMSL2)", "Stereolabs", "ZED X One GS", 2, 399, "EUR", "buy", "V", "Y", "stereolabs.com (R4)", "TechNexion VLS-GM2-AR0234 191° (US$188.50)", "head temples, VIO/SLAM"),
@@ -165,7 +168,7 @@ ITEMS = [
     ("B118", "Hands", "Hand Mk II high-force flexor actuator: maxon DCX 12 L 9 V + GPX 12 + ENX + KSS SR0401K (power grasp >= 200 N)", "maxon / KSS", "DCX12L+GPX12+SR0401K", 10, 520, "AUD", "buy", "E", "Y",
      "DCX12L EUR 142.31 (maxongroup.com, R5)", "", "5 per hand; motors run from the hand's local 12 V buck"),
     ("B059", "Hands", "Hand joint angle sensors TI TMAG5273 + diametric magnets", "TI", "TMAG5273", 32, 4, "AUD", "buy", "E", "Y", "digikey.com.au (R5)", "AS5600", "13 per hand + spares"),
-    ("B060", "Hands", "Hand controller Mk II (F28P65x + 13 H-bridges + EtherCAT + local 12 V buck + KW-L2 driver interface), ref TI TIDA-010992", "custom", "KES-HAND2", 3, 380, "AUD", "custom", "E", "Y", "ti.com/tool/TIDA-010992 (R2)", "", "2 + 1 spare; one EtherCAT slave per arm"),
+    ("B060", "Hands", "Hand controller Mk II (F28P65x + 13 H-bridges + EtherCAT + local 12 V buck, fed 24 V from the KW-L2 forearm board), ref TI TIDA-010992", "custom", "KES-HAND2", 3, 380, "AUD", "custom", "E", "Y", "ti.com/tool/TIDA-010992 (R2)", "", "2 + 1 spare; one EtherCAT slave per hand (the KW-L2 board B107 is a separate slave: 30 in total, docs/05 sec 7)"),
     ("B061", "Hands", "Hand Mk II mechanical set: 7075 palm frame, 4-DOF thumb, abduction, Ti pins, MJF PA12-CF links, ring/little tendons, Dragon Skin 20 caps, palm-camera window", "CNC + MJF + make", "KES-HAND2-MECH", 2, 1200, "AUD", "machine", "E", "Y", "docs/09", "", "estimate"),
     ("B062", "Hands", "Commercial fallback: Inspire RH56DFTP dexterous hand (6 DOA, tactile)", "Inspire Robots", "RH56DFTP", 2, 5181.72, "GBP", "buy", "V", "O", "robosavvy.co.uk (incl. VAT, R5)", "Linker Hand O6 (US$1,499)", "OPTION: replaces the custom hand (misses the Mk II 13-DOA target)"),
     # ------------------------------------------------------------------ structure
@@ -176,7 +179,7 @@ ITEMS = [
     ("B067", "Structure", "Knee push-rods Ti-6Al-4V tube 16x2 + M12 rod ends (2 sets)", "CNC + SKF/igus", "KES-KNE-ROD", 2, 260, "AUD", "machine", "E", "Y", "Specialty Metals (Ti), CBC (rod ends)", "17-4PH H1025 tube", ""),
     ("B068", "Structure", "Knee cranks + knee hubs 7075-T6 / 17-4PH bushings", "CNC", "KES-KNE-01/02", 2, 380, "AUD", "machine", "E", "Y", "estimate, machined/made to cad/out drawings (docs/09)", "", ""),
     ("B069", "Structure", "Shank upper fittings 7075 + CF tubes + ankle push-rods Ti (2 legs)", "CNC + composites", "KES-SHK-01..03", 2, 620, "AUD", "machine", "E", "Y", "estimate, machined/made to cad/out drawings (docs/09)", "", ""),
-    ("B070", "Structure", "Ankle cross Ti-6Al-4V + needle rollers + foot plate 7075 + replaceable NBR sole", "CNC", "KES-FT-01..03", 2, 650, "AUD", "machine", "E", "Y", "estimate, machined/made to cad/out drawings (docs/09)", "", ""),
+    ("B070", "Structure", "Ankle cross Ti-6Al-4V + 4 INA HK1212 drawn cups + 2 Ø12 h6 100Cr6 60-64 HRC ground pins (docs/09 hold H13) + foot plate 7075 + replaceable NBR sole", "CNC", "KES-FT-01..03", 2, 650, "AUD", "machine", "E", "Y", "estimate, machined/made to cad/out drawings (docs/09)", "", ""),
     ("B071", "Structure", "Arm structure: shoulder brackets, upper-arm CF tubes + fittings, forearm frames, wrist cross (Ti)", "CNC", "KES-ARM-01..05", 2, 950, "AUD", "machine", "E", "Y", "estimate, machined/made to cad/out drawings (docs/09)", "", ""),
     ("B072", "Structure", "Neck yoke + head frame 6061/PA12-CF", "CNC + MJF", "KES-HEAD-01", 1, 420, "AUD", "machine", "E", "Y", "estimate, machined/made to cad/out drawings (docs/09)", "", ""),
     # ------------------------------------------------------------------ shells / CMF
@@ -186,8 +189,10 @@ ITEMS = [
     ("B076", "Shells", "Magnetic shell fasteners (N52 disc + steel pads) + captive M3 quarter-turn studs", "various", "-", 1, 220, "AUD", "buy", "E", "Y", "estimate, machined/made to cad/out drawings (docs/09)", "", ""),
     ("B077", "Shells", "Waist + ankle TPU bellows/gaiters (cast or printed TPU 95A)", "print", "KES-BEL-01", 3, 80, "AUD", "print", "E", "Y", "estimate, machined/made to cad/out drawings (docs/09)", "", ""),
     # ------------------------------------------------------------------ harness
-    ("B078", "Harness", "Power wire (silicone 8/10/12/14/16 AWG, tinned; 10 AWG leg feeds), EtherCAT robot cable (igus chainflex CF Robot), signal cable", "igus / various", "CFROBOT8 etc.", 1, 1700, "AUD", "buy", "E", "Y", "Treotham (igus AU)", "", ""),
+    ("B078", "Harness", "Power wire (silicone 8/10/12/14/16 AWG, tinned; 10 AWG leg feeds ~2 m each way through the external service loops), EtherCAT robot cable (igus chainflex CF Robot), signal cable", "igus / various", "CFROBOT8 etc.", 1, 1700, "AUD", "buy", "E", "Y", "Treotham (igus AU)", "", "no cable runs through an actuator bore (docs/03 sec 11)"),
     ("B079", "Harness", "Connectors: Amphenol SurLok Plus (pack-to-PPM), Harwin Gecko-MT (signal), JST GH (sensors), XT60H/XT30 (branches), IP67 sensor connectors", "Amphenol / Harwin / JST", "-", 1, 1250, "AUD", "buy", "E", "Y", "element14 AU / RS AU", "", ""),
+    ("B136", "Harness", "Service-loop hardware for the external leg/waist routing (docs/03 sec 11): PA12-MJF loop guides with a cable channel above the hose channel (waist clock-spring former, 2 hip-yaw partial clock-springs, 2 hip-pitch C-troughs R85, U-loop clips at waist pitch and both hip rolls), PET braided abrasion sleeve, saddle clamps / P-clips for strain relief at both fixed points of every loop, edge grommets", "KAD3D / Formero (MJF) + various", "KES-LOOP", 1, 340, "AUD", "print", "E", "Y",
+     "docs/03 sec 11; docs/09 hold H2", "", "estimate: MJF guides ~A$240, sleeve + clamps + grommets ~A$100"),
     # ------------------------------------------------------------------ cooling (Mk II liquid loop + electronics air)
     ("B080", "Cooling", "Electronics blowers 12 V (torso: RT computer, PDU, DC-DCs), MJF ducts, filters", "Delta / Sunon", "BFB04512 class", 2, 35, "AUD", "buy", "E", "Y", "element14 AU", "", "leg blowers deleted (liquid-cooled knee/hip pitch)"),
     ("B119", "Cooling", "Coolant pump to docs/03 sec 9.4: brushless 12 V, >= 0.8 L/min at >= 60 kPa, tach, glycol-compatible, <= 0.15 kg, <= 10 W", "TCS Micropumps (M510 series) class", "M510 class", 3, 220, "AUD", "buy", "E", "Y",
@@ -195,8 +200,8 @@ ITEMS = [
     ("B120", "Cooling", "Radiator 240 x 120 mm face, <= 30 mm core, ~20 W/K at full fan speed, mixed-metal-safe (docs/03 sec 9.4)", "Alphacool (NexXxoS ST30 240) class", "ST30 240 class", 1, 120, "AUD", "buy", "E", "Y",
      "alphacool.com (price not verified)", f"Koolance HX-720 aluminium US$69.60, 1.18 kg ({KOOL_HX720}, {ACC})", "W/K to be measured on B131"),
     ("B121", "Cooling", "Radiator fans 120 mm, IP68 (wet duct), 12 V PWM + tach (docs/03 sec 9.4)", "Sanyo Denki (San Ace 9WP) class", "9WP class", 2, 85, "AUD", "buy", "E", "Y", "sanyodenki.com (price not verified)", "", "estimate"),
-    ("B122", "Cooling", "Coolant: 40 % propylene glycol + mixed-metal inhibitor, premixed, 2 L (loop 0.47 L + top-up; freezes ~ -21 C)", "Dow (DOWFROST) / automotive OAT class", "-", 1, 60, "AUD", "buy", "E", "Y",
-     "docs/03 sec 9.4 (price not verified)", f"Koolance LIQ-705 insulative US$33.34/700 ml - freeze point not stated ({KOOL_LIQ}, {ACC})", "estimate"),
+    ("B122", "Cooling", "Coolant: 40 % propylene glycol + mixed-metal inhibitor, premixed, 2 L (loop 0.47 L, loop bench B131 and top-up; freezes ~ -21 C)", "Dow (DOWFROST) / automotive OAT class", "-", 1, 60, "AUD", "buy", "E", "Y",
+     "docs/03 sec 9.4 (price not verified)", "any aluminium-safe OAT coolant at 40 % (not an insulative PC coolant: no stated freeze point, and it blinds the B129 leak pads)", "estimate; the loop bench B131 runs the same mix (docs/09 hold H11)"),
     ("B123", "Cooling", "Spring-diaphragm compensator 40 mL (EPDM membrane, PA12 housing) with fill/bleed valve - sealed loop, no reservoir", "custom", "KES-COMP", 1, 140, "AUD", "make", "E", "Y", "docs/03 sec 9.2; docs/09", "", "estimate"),
     ("B124", "Cooling", "Liquid cold plate for the Jetson T5000 module, machined 6061", "CNC job shop", "KES-CP-THOR", 1, 380, "AUD", "machine", "E", "Y", "estimate", "", "replaces Mk I heat pipes"),
     ("B125", "Cooling", "No-spill flat-face dry-break coupling pair, >= 3 mm flow path, EPDM, blind-mate capable (2 per leg)", "CPC (LQ2 / PLQ2) / Koolance QD3 class", "LQ2 class", 4, 75, "AUD", "buy", "E", "Y", "estimate", "", "leg module swap without draining"),
@@ -207,7 +212,7 @@ ITEMS = [
     ("B129", "Cooling", "Leak sensing: 8 interdigitated PCB leak pads (HC2 drives, pumps, manifold, cold plate) + 1 m sensing cable in the torso floor", "custom + buy", "KES-LEAK", 1, 140, "AUD", "custom", "E", "Y", "estimate", "", ""),
     ("B130", "Cooling", "Loop pressure transducer 0-2.5 bar, stainless wetted (leak = pressure < 0.15 bar)", "TE Connectivity (M3200) class", "M3200 class", 1, 90, "AUD", "buy", "E", "Y", "estimate", "", ""),
     # ------------------------------------------------------------------ consumables
-    ("B081", "Consumables", "Fasteners (12.9 alloy, A4 stainless, Ti Gr5 critical), dowels, thread-locker, thermal epoxy, grease", "AIMS / Bremick / Loctite", "-", 1, 900, "AUD", "buy", "E", "Y", "aimsindustrial.com.au", "", ""),
+    ("B081", "Consumables", "Fasteners (12.9 alloy, A4 stainless, Ti Gr5 critical), dowels, HeliCoil Plus inserts, 2 DIN 580 M12 lifting eyes, thread-locker, thermal epoxy, grease", "AIMS / Bremick / Loctite / Boellhoff", "-", 1, 900, "AUD", "buy", "E", "Y", "aimsindustrial.com.au", "", ""),
     ("B082", "Consumables", "Spares allowance (1 of each actuator part, 2 Everest drives, sole, fingertip caps, O-rings)", "-", "-", 1, 8500, "AUD", "buy", "E", "Y", "estimate (~10 % of actuator + drive cost)", "", "~10 % of actuator + drive cost"),
     # ------------------------------------------------------------------ test infrastructure (robot-specific)
     ("B083", "Test rig", "Overhead gantry 2 t + trolley + fall-arrest harness/catch system for humanoid testing", "Hare & Forbes / lifting supplier", "-", 1, 4200, "AUD", "buy", "E", "Y", "docs/11 sec 2", "", ""),
@@ -223,7 +228,8 @@ ITEMS = [
 # Mk II change marker per line ("new" = added in Mk II, "changed" = same slot, different part/qty/price); others unchanged.
 MK2_CHANGE = {i: "new" for i in ("B101", "B102", "B103", "B104", "B105", "B106", "B107", "B108", "B109", "B110", "B111", "B112",
                                  "B113", "B115", "B116", "B117", "B118", "B119", "B120", "B121", "B122", "B123", "B124",
-                                 "B125", "B126", "B127", "B128", "B129", "B130", "B131", "B133", "B134", "B135")}
+                                 "B125", "B126", "B127", "B128", "B129", "B130", "B131", "B133", "B134", "B135", "B136",
+                                 "B137", "B138")}
 MK2_CHANGE.update({i: "changed" for i in ("B001", "B002", "B003", "B004", "B005", "B007", "B008", "B009", "B010", "B011", "B013",
                                           "B019", "B021", "B023", "B024", "B025", "B027", "B028", "B029", "B030", "B031", "B032",
                                           "B033", "B034", "B035", "B036", "B037", "B042", "B044", "B058", "B060", "B061", "B078",

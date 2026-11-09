@@ -2,32 +2,32 @@
 
 | Subsystem | Mk II baseline AUD | Share | Mk I AUD | Delta AUD |
 |---|---|---|---|---|
-| Drives | 33,233 | 14.9 % | 29,083 | +4,150 |
-| Actuators - gears | 23,374 | 10.5 % | 20,016 | +3,358 |
-| Actuators - sensing | 18,272 | 8.2 % | 18,200 | +72 |
-| Actuators - motors | 17,845 | 8.0 % | 18,496 | -651 |
-| Actuators - housings | 17,140 | 7.7 % | 16,540 | +600 |
-| Test rig | 16,300 | 7.3 % | 15,700 | +600 |
-| Hands | 15,748 | 7.1 % | 11,168 | +4,580 |
-| Structure | 11,620 | 5.2 % | 11,620 | +0 |
-| Sensors | 10,626 | 4.8 % | 9,873 | +753 |
-| Compute | 10,037 | 4.5 % | 10,037 | +0 |
+| Drives | 33,233 | 14.7 % | 29,083 | +4,150 |
+| Actuators - gears | 23,374 | 10.3 % | 20,016 | +3,358 |
+| Actuators - sensing | 18,272 | 8.1 % | 18,200 | +72 |
+| Actuators - motors | 17,845 | 7.9 % | 18,496 | -651 |
+| Actuators - housings | 17,140 | 7.6 % | 16,540 | +600 |
+| Test rig | 16,300 | 7.2 % | 15,700 | +600 |
+| Hands | 15,748 | 7.0 % | 11,168 | +4,580 |
+| Structure | 11,620 | 5.1 % | 11,620 | +0 |
+| Sensors | 10,626 | 4.7 % | 9,873 | +753 |
+| Compute | 10,037 | 4.4 % | 10,037 | +0 |
+| Actuators - bearings | 9,750 | 4.3 % | 7,544 | +2,206 |
 | Consumables | 9,400 | 4.2 % | 6,900 | +2,500 |
-| Battery | 8,368 | 3.8 % | 4,301 | +4,067 |
-| Actuators - bearings | 7,704 | 3.5 % | 7,544 | +160 |
-| Shells | 5,710 | 2.6 % | 5,710 | +0 |
-| Safety | 4,300 | 1.9 % | 4,150 | +150 |
+| Battery | 8,368 | 3.7 % | 4,301 | +4,067 |
+| Shells | 5,710 | 2.5 % | 5,710 | +0 |
+| Safety | 5,230 | 2.3 % | 4,150 | +1,080 |
 | Actuators - wrist | 3,755 | 1.7 % | 2,600 | +1,155 |
-| Power | 3,500 | 1.6 % | 1,355 | +2,145 |
-| Harness | 2,950 | 1.3 % | 2,500 | +450 |
+| Power | 3,500 | 1.5 % | 1,355 | +2,145 |
+| Harness | 3,290 | 1.5 % | 2,500 | +790 |
 | Cooling | 2,898 | 1.3 % | 210 | +2,688 |
-| **Baseline robot parts + robot-specific test rig** | **222,781** | 100 % | **196,004** | **+26,777 (+13.7 %)** |
+| **Baseline robot parts + robot-specific test rig** | **226,097** | 100 % | **196,004** | **+30,093 (+15.4 %)** |
 
 By price confidence:
 
 - seen price (V): A$36,036 (16 %)
-- quote-only estimate (Q): A$46,301 (21 %)
-- engineering estimate (E): A$140,444 (63 %)
+- quote-only estimate (Q): A$46,301 (20 %)
+- engineering estimate (E): A$143,760 (64 %)
 
 Options (not in total):
 
