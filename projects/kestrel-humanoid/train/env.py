@@ -10,7 +10,7 @@ Isaac-Lab-style velocity-tracking task, re-implemented on CPU MuJoCo:
   rewards: velocity tracking, posture/smoothness/torque penalties, biped feet air time, foot slip,
       joint and actuator-speed limits, termination, and a gait clock (as in unitree_rl_gym / Humanoid-Gym):
       foot contact should follow a 0.8 s alternating phase while a speed is commanded (both feet down at
-      zero command), the swing foot should clear the terrain under it by 0.08 m, and the legs are drawn
+      zero command), the swing foot should clear the terrain under it by at least 0.08 m, and the legs are drawn
       towards a clock-driven reference swing pose (Humanoid-Gym), which gives the dense signal that lets a
       few hundred CPU environments discover stepping. Without the clock the
       policy settles on standing still, which earns the survival and part of the tracking reward.
@@ -46,7 +46,7 @@ GAIT_PERIOD, STANCE = 0.8, 0.55   # s; fraction of the period each foot should b
 # reference swing pose from the gait clock (Humanoid-Gym's joint_pos term): offsets from the default stance at
 # mid-swing for hip pitch, knee, ankle pitch. Hip -a, knee +2a, ankle -a keeps the sole level and lifts it ~8 cm.
 REF_SWING = np.array([-0.25, 0.50, -0.25])
-SWING_CLEAR = 0.08                # m, target sole clearance above the terrain under the swing foot
+SWING_CLEAR = 0.08                # m, minimum sole clearance above the terrain under the swing foot
 # (-10 x 0.08^2 = 0.064 < 0.3: a barely lifted foot already gains reward, so stepping can be found by
 #  small exploratory lifts; with 0.10 m and -20 a small lift cost more than it earned. The contact term is
 #  0.3 per foot instead of unitree_rl_gym's 0.18 so stepping clearly beats standing with few samples)
@@ -239,7 +239,9 @@ class Envs:
         want = np.where(moving[:, None], self.phase() < STANCE, True)
         rt["gait_contact"] = np.sum(in_contact == want, 1).astype(float)
         clear = foot[:, :, 2] - self.hs(foot[:, :, 0].ravel(), foot[:, :, 1].ravel()).reshape(M, 2)
-        rt["swing_height"] = np.sum((clear - SWING_CLEAR) ** 2 * ~in_contact, 1) * moving
+        # one-sided: only a swing foot LOWER than SWING_CLEAR is penalised. The terrain under the foot is the lower
+        # tread until the foot crosses a riser, so a two-sided term punished the 20+ cm lift an 18 cm step needs
+        rt["swing_height"] = np.sum(np.clip(SWING_CLEAR - clear, 0, None) ** 2 * ~in_contact, 1) * moving
         dq = np.linalg.norm(q - self.default - self.ref_offsets(moving), axis=1)
         rt["ref_gait"] = np.exp(-2.0 * dq) - 0.2 * np.clip(dq, 0, 0.5)
         rt["slide"] = np.sum(np.linalg.norm(foot_v[:, :, :2], axis=2) * in_contact, 1)

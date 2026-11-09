@@ -30,6 +30,7 @@ def main():
     ap.add_argument("--out", default=None)
     a = ap.parse_args()
     rows = list(csv.DictReader(open(HERE / "runs" / a.run / "log.csv")))
+    rows = [r for r in rows if float(r["episodes"]) >= 50]      # first iterations after a resume have no episodes
     col = lambda k: np.array([float(r[k]) for r in rows])  # noqa: E731
     steps = col("steps") / 1e6
     hours = col("time_s") / 3600

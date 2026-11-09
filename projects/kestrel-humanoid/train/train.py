@@ -134,7 +134,9 @@ def main():
     ap.add_argument("--steps", type=int, default=24, help="rollout length per iteration")
     ap.add_argument("--iters", type=int, default=100000)
     ap.add_argument("--hours", type=float, default=1.0, help="wall-clock budget for this invocation")
-    ap.add_argument("--terrain", choices=["rough", "flat", "stairs"], default="rough")
+    ap.add_argument("--terrain", choices=["rough", "flat", "stairs", "mixed", "climb"], default="rough",
+                    help="rough: all 6 types equally; mixed: stairs get half the environments; climb: 40 %% stairs up, "
+                         "20 %% stairs down; stairs: flat + stairs")
     ap.add_argument("--seed", type=int, default=1)
     ap.add_argument("--resume", action="store_true")
     ap.add_argument("--no-randomize", action="store_true")
@@ -144,7 +146,8 @@ def main():
     ap.add_argument("--threads", type=int, default=0, help="torch threads in the learner (0 = all cores)")
     args = ap.parse_args()
 
-    cols = {"rough": None, "flat": [0], "stairs": [0, 4, 5]}[args.terrain]
+    cols = {"rough": None, "flat": [0], "stairs": [0, 4, 5], "mixed": [0, 1, 2, 3, 4, 4, 5, 5],
+            "climb": [0, 1, 2, 3, 4, 4, 5, 5, 5, 5]}[args.terrain]
     cfg = dict(envs=args.envs, seed=args.seed, terrain_seed=0, max_row=None, curriculum=True,
                randomize=not args.no_randomize, cols=cols, delay=args.delay)
     pool = Pool(args.workers, cfg)          # fork before torch starts any threads

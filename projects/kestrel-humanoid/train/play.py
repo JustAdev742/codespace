@@ -4,10 +4,10 @@
     python play.py --run rough --gif demo.gif       # also render flat walking, stairs up and stairs down
     python play.py --run rough --gif demo.gif --eval-envs 0   # render only
 
-Evaluation: for every terrain type and difficulty row, E robots start at tile centres with no sensor noise
-and no randomisation, and are commanded to walk forward at --speed m/s for 10 s. A run counts as a
-success if the robot gets >= 2.4 m from its start (past most of the tile: five or more steps on a stair
-tile) without falling.
+Evaluation: for every terrain type and difficulty row, E robots start at tile centres (E evenly spaced
+headings) with no sensor noise and no randomisation, commanded forward at --speed m/s. A run is a
+success if the robot gets 2.4 m from the centre (six steps up or down on a stair tile) before falling,
+within 10 s. Run it between training chunks: it competes with the trainer for the cores.
 Rendering uses MuJoCo's offscreen renderer through OSMesa (software OpenGL), so it works on a headless CPU
 machine: MUJOCO_GL=osmesa is set automatically when no display is present.
 """
@@ -34,6 +34,7 @@ import model as KM       # noqa: E402
 import terrain as T      # noqa: E402
 
 torch.set_num_threads(1)
+REACH = 2.4                      # m from the tile centre
 
 
 def load_policy(run):
@@ -69,8 +70,11 @@ def hold(e):
 
 
 def evaluate(policy, n_env=16, speed=0.6, seconds=10.0, rows=range(T.ROWS)):
+    """Success = the robot gets REACH m from the tile centre before falling (then its run ends, so walking on
+    into a neighbouring tile, e.g. a 1.26 m stair-bowl wall, does not count); fall = fell first; the rest
+    stopped short of REACH within `seconds`."""
     e = E.Envs(M=n_env, seed=123, randomize=False, curriculum=False)
-    table = np.zeros((T.COLS, len(rows), 3))      # success, fall, distance
+    table = np.zeros((T.COLS, len(rows), 3))      # success, fall, mean reach
     steps = int(seconds / E.DT)
     for c in range(T.COLS):
         for ri, r in enumerate(rows):
@@ -78,39 +82,48 @@ def evaluate(policy, n_env=16, speed=0.6, seconds=10.0, rows=range(T.ROWS)):
             for i in range(n_env):
                 setup(e, i, r, c, yaw=yaws[i], cmd=(speed, 0.0, 0.0))
             obs, _ = e.observe()
-            alive = np.ones(n_env, bool)
+            running = np.ones(n_env, bool)
+            ok = np.zeros(n_env, bool)
+            fell = np.zeros(n_env, bool)
             far = np.zeros(n_env)
+            centre = np.array(T.tile_center(r, c))
             for _ in range(steps):
                 hold(e)
                 obs, _, _, done, trunc = e.step(policy(obs))
-                for i in range(n_env):
-                    if alive[i]:
-                        far[i] = max(far[i], np.linalg.norm(e.d[i].qpos[:2] - np.array(T.tile_center(r, c))))
-                alive &= ~(done & ~trunc)
-                # an env that terminated was reset by Envs: keep it marked dead and ignore it from now on
-            ok = alive & (far >= 2.4)
-            # a robot that fell but had already crossed the tile still fails: the run must end standing
-            table[c, ri] = [ok.mean(), (~alive).mean(), far.mean()]
+                dist = np.linalg.norm(np.array([d.qpos[:2] for d in e.d]) - centre, axis=1)
+                fell |= running & done & ~trunc          # Envs resets a fallen robot: stop tracking it
+                running &= ~fell
+                far = np.where(running, np.maximum(far, dist), far)
+                ok |= running & (far >= REACH)
+                running &= ~ok
+                if not running.any():
+                    break
+            table[c, ri] = [ok.mean(), fell.mean(), far.mean()]
             print(f"  {T.NAMES[c]:12s} row {r} (step {T.params(r)['step'] * 100:4.1f} cm, slope "
                   f"{np.degrees(np.arctan(T.params(r)['slope'])):4.1f} deg): success {ok.mean():4.0%}  "
-                  f"fall {(~alive).mean():4.0%}  mean reach {far.mean():4.2f} m", flush=True)
+                  f"fall {fell.mean():4.0%}  stopped {(~ok & ~fell).mean():4.0%}  mean reach {far.mean():4.2f} m",
+                  flush=True)
     return table
 
 
 def write_table(table, path, speed, n_env, rows=range(T.ROWS)):
-    lines = [f"Commanded {speed} m/s forward for 10 s from the tile centre, {n_env} headings per cell, no noise or "
-             "randomisation. Cell = success rate (reached >= 2.4 m from start and still standing).", "",
+    lines = [f"Commanded {speed} m/s forward from the tile centre, {n_env} evenly spaced headings per cell, no noise "
+             f"or randomisation, 10 s limit. Cell = success rate: reached {REACH} m from the centre before falling "
+             f"(on stairs: {int((REACH - T.PLATFORM) / T.TREAD)} or more steps climbed or descended). In brackets: "
+             "falls.", "",
              "| Terrain | " + " | ".join(f"row {r}" for r in rows) + " |",
              "|---|" + "---|" * len(rows)]
     for c in range(T.COLS):
-        lines.append(f"| {T.NAMES[c]} | " + " | ".join(f"{table[c, i, 0]:.0%}" for i in range(len(rows))) + " |")
-    lines += ["", "Difficulty per row: " + ", ".join(
-        f"row {r}: step {T.params(r)['step'] * 100:.1f} cm / slope {np.degrees(np.arctan(T.params(r)['slope'])):.1f} deg / "
-        f"rough ±{T.params(r)['rough'] * 50:.0f} mm" for r in rows)]
+        lines.append(f"| {T.NAMES[c]} | " + " | ".join(f"{table[c, i, 0]:.0%} ({table[c, i, 1]:.0%})"
+                                                         for i in range(len(rows))) + " |")
+    lines += ["", "| Row | " + " | ".join(str(r) for r in rows) + " |", "|---|" + "---|" * len(rows),
+              "| Stair step (cm) | " + " | ".join(f"{T.params(r)['step'] * 100:.1f}" for r in rows) + " |",
+              "| Slope (deg) | " + " | ".join(f"{np.degrees(np.arctan(T.params(r)['slope'])):.1f}" for r in rows) + " |",
+              "| Rough amplitude a (cm) | " + " | ".join(f"{T.params(r)['rough'] * 100:.0f}" for r in rows) + " |"]
     Path(path).write_text("\n".join(lines) + "\n")
 
 
-def render(policy, path, segments, fps=25, size=(640, 400), speed=0.6):
+def render(policy, path, segments, fps=15, size=(560, 350), speed=0.6):
     from PIL import Image
     e = E.Envs(M=1, seed=7, randomize=False, curriculum=False)
     mv = KM.build_model(e.H, visual=True)
@@ -139,7 +152,7 @@ def render(policy, path, segments, fps=25, size=(640, 400), speed=0.6):
             cam.azimuth = np.degrees(yaw) + 120.0
             r.update_scene(dv, camera=cam)
             img = Image.fromarray(r.render())
-            frames.append(img.quantize(colors=128, method=Image.Quantize.MEDIANCUT))
+            frames.append(img.quantize(colors=64, method=Image.Quantize.MEDIANCUT))
         print(f"  rendered {label}: {len(frames)} frames so far")
     frames[0].save(path, save_all=True, append_images=frames[1:], duration=int(1000 / fps), loop=0, optimize=True)
     print(f"wrote {path} ({len(frames)} frames)")

@@ -11,7 +11,39 @@ task (the H1/G1 rough-terrain setup):
 The robot is the K1 design model: 84.1 kg; masses, inertias and reflected motor inertia come from
 `calc/kestrel`, and leg torque limits are the sized actuator peaks. It was trained on the VM described below.
 
-RESULTS_PLACEHOLDER
+## Results (trained on this VM)
+
+160 M environment steps in 4.7 h of wall time, ~10k steps/s on 4 vCPUs, in five resumed chunks. The reward
+fixes described under "The task" were made between chunks 1 and 4.
+
+![training curves](runs/rough/curves.png)
+
+Evaluation of `runs/rough/policy.pt` with `python play.py --run rough --table runs/rough/eval.md`:
+
+Commanded 0.6 m/s forward from the tile centre, 16 evenly spaced headings per cell, no noise or randomisation, 10 s limit. Cell = success rate: reached 2.4 m from the centre before falling (on stairs: 6 or more steps climbed or descended). In brackets: falls.
+
+| Terrain | row 0 | row 1 | row 2 | row 3 | row 4 | row 5 |
+|---|---|---|---|---|---|---|
+| flat | 100% (0%) | 100% (0%) | 100% (0%) | 100% (0%) | 100% (0%) | 100% (0%) |
+| rough | 100% (0%) | 100% (0%) | 100% (0%) | 100% (0%) | 100% (0%) | 100% (0%) |
+| slope_down | 100% (0%) | 100% (0%) | 100% (0%) | 100% (0%) | 100% (0%) | 100% (0%) |
+| slope_up | 100% (0%) | 100% (0%) | 100% (0%) | 100% (0%) | 100% (0%) | 100% (0%) |
+| stairs_down | 100% (0%) | 100% (0%) | 100% (0%) | 100% (0%) | 100% (0%) | 100% (0%) |
+| stairs_up | 100% (0%) | 100% (0%) | 100% (0%) | 100% (0%) | 50% (0%) | 0% (0%) |
+
+| Row | 0 | 1 | 2 | 3 | 4 | 5 |
+|---|---|---|---|---|---|---|
+| Stair step (cm) | 5.0 | 7.6 | 10.2 | 12.8 | 15.4 | 18.0 |
+| Slope (deg) | 4.0 | 6.2 | 8.4 | 10.6 | 12.8 | 15.0 |
+| Rough amplitude a (cm) | 2 | 4 | 5 | 7 | 8 | 10 |
+
+* Flat, rough and sloped ground to 15° are solved at every difficulty, with no falls.
+* Stairs **down** are solved at every height up to 18 cm.
+* Stairs **up** are solved to 12.8 cm. At 15.4 cm half the robots, and at 18 cm all of them, stop in front
+  of the first riser. They stop rather than fall.
+
+`policy.pt` is the TorchScript policy. Input: the 124-value actor observation from `env.py`. Output: 12 joint
+offsets × 0.25 rad, added to the default pose. `ckpt_last.pt` resumes training.
 
 ## Why not Isaac Lab itself on this machine
 
@@ -92,7 +124,7 @@ Options:
   | Task | lin/ang velocity tracking `exp(−e²/0.25)` (lin 1.0 → 1.5, see the schedule below; ang 0.5) |
   | Posture | vertical velocity (−0.2), roll/pitch rate (−0.05), tilt (−1) |
   | Effort and smoothness | torque² (−2e-6), joint acceleration² (−2.5e-7), action rate (−0.01) |
-  | Gait | Isaac Lab's biped air time (0.25, 0.4 s); gait-clock foot contact (0.3 per foot); swing-foot clearance 0.08 m above the terrain under it (−10 × error²); clock-driven reference swing pose, Humanoid-Gym's `joint_pos` term (1.0 → 0.3); foot slip (−0.2) |
+  | Gait | Isaac Lab's biped air time (0.25, 0.4 s); gait-clock foot contact (0.3 per foot); swing-foot clearance of at least 0.08 m above the terrain under it (−10 × shortfall²; one-sided, so a foot may lift higher for a riser); clock-driven reference swing pose, Humanoid-Gym's `joint_pos` term (1.0 → 0.3); foot slip (−0.2) |
   | Limits and posture | hip yaw/roll deviation (−0.2); joint-limit margin (−1); 90 % of actuator no-load speed (−0.02) |
   | Episode | alive (0.15); fall (−20) |
 

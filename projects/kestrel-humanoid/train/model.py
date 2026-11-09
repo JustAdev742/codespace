@@ -108,12 +108,18 @@ def build_model(H, visual=False):
         k = mujoco.mj_name2id(m, mujoco.mjtObj.mjOBJ_HFIELD, name)
         a = m.hfield_adr[k]
         m.hfield_data[a:a + data.size] = data.ravel()
-    if visual:                       # hide the collision proxies; shade stair treads alternately
-        for g in range(m.ngeom):
+    if visual:                       # hide the collision proxies; shade stair treads alternately; robot in the
+        shell = np.array([0.92, 0.92, 0.90, 0.25], np.float32)        # design colours: warm-white opaque shells,
+        for g in range(m.ngeom):                                       # graphite structure and joints
             n = m.geom(g).name
+            if m.geom_bodyid[g] > 0 and np.allclose(m.geom_rgba[g], shell, atol=0.01):
+                m.geom_rgba[g] = (0.93, 0.91, 0.87, 1.0)
+            elif m.geom_bodyid[g] > 0 and np.allclose(m.geom_rgba[g, :3], (0.62, 0.64, 0.67), atol=0.01):
+                m.geom_rgba[g, :3] = (0.30, 0.31, 0.33)
             if n.endswith("_col") or "_foot_c" in n:
                 m.geom_rgba[g, 3] = 0.0
             elif re.match(r"t\d[45]_", n):
                 k = int(n.split("_")[1])
                 m.geom_rgba[g, :3] = (0.70, 0.71, 0.73) if k % 2 else (0.58, 0.60, 0.63)
+        m.light_castshadow[:] = 0    # shadow acne on the far terrain at software-GL depth precision
     return m
