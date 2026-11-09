@@ -102,12 +102,12 @@ Consequences, unchanged from Mk I:
 | Configuration | **2 × 16S4P**, 64 cells per pack, **128 cells**. Per pack: 59.2 V nominal, 67.2 V full, 48 V cut-off (3.0 V/cell), 19.4 Ah minimum, **1.15 kWh** nominal (1.12 kWh at minimum capacity). Robot: 2.24 kWh, **1,951 Wh usable** (90 % DoD, 3 % losses, `power.py`) |
 | Runtime | 4.9 h normal mixed, 4.3 h walking, 3.1 h demanding [sim]. With a charged spare pair, availability is set by the ≤ 3 min swap, not by runtime |
 | Current | peak 59 A: **7.4 A/cell** with both packs, **14.8 A/cell** on one pack (25 % of the 60 A rating). One-pack sag at peak = 59 A × 51 mΩ = **3.0 V** [E] |
-| Mass | 5.90 kg per pack budget (params.py): cells 4.54 kg, leaving 1.36 kg for BMS, FETs, fuse, enclosure, busbars and connector half. Tight; the enclosure must be ≤ 1.3 kg |
-| Layout | two packs side by side in the torso (each ≈ 98 × 150 × 185 mm), inserted fore-aft from the back through gasketed hatches; cam lever + secondary catch, floating blind-mate connector (bay mechanics: docs/03 §10). A 2 mm aluminium + mica fire wall between the bays keeps an event in one pack from propagating to the other |
+| Mass | 6.20 kg per pack (params.py, docs/09 §11 H12): cells 4.54 kg, leaving 1.66 kg for BMS, FETs, fuse, enclosure, end cap, handle, busbars and connector half. The enclosure must be ≤ 1.3 kg (B032) |
+| Layout | two packs side by side in the torso (each 175 × 98 × 185 mm fore-aft × wide × tall, params.py), inserted fore-aft from the back through gasketed hatches; cam lever + secondary catch, floating blind-mate connector (bay mechanics: docs/03 §10). A 2 mm aluminium + mica fire wall between the bays keeps an event in one pack from propagating to the other |
 | Cold start | 15 W heater film per pack, switched by the BMS from the pack itself; below 0 °C the pack discharges at ≤ C/5 until warm (docs/03 §10.2) |
 | Interconnect, thermal runaway | as Mk I: Ni-plated Cu + Ni sandwich strips with fuse-link bonds, mica between layers and groups, aluminium enclosure with its own vent path, no flammable foam |
 | Spares | B028 buys 200 cells (the 200+ price tier makes 200 cells cheaper than 144 at the single-cell price): 128 in packs, the rest for matching rejects and a third pack (option B133) |
-| Standards | IEC 62619 / UL 2271 design practice; each pack is > 100 Wh, so it is dangerous goods for freight (UN3480) [R6]. A person carries the pack: handle, ≤ 6 kg, IP67 on its own, dead terminals |
+| Standards | IEC 62619 / UL 2271 design practice; each pack is > 100 Wh, so it is dangerous goods for freight (UN3480) [R6]. A person carries the pack: handle, 6.2 kg, IP67 on its own, dead terminals |
 
 ### 3.2 Per-pack BMS (KES-BMS16, inside each pack)
 
@@ -122,7 +122,7 @@ Consequences, unchanged from Mk I:
 | Reference | TI TIDA-010208 (10–16S, high-side N-FET, BQ77216) [R3] |
 
 The BMS acts independently of the robot. It opens its own pack switch on cell OV/UV/OT/OC/SC. Orion BMS 2 (Mk I) is
-no longer used: it is an external box and cannot live inside a 5.9 kg removable pack.
+no longer used: it is an external box and cannot live inside a 6.2 kg removable pack.
 
 ## 4. Hot-swap power path, fusing, precharge, regeneration
 
@@ -232,8 +232,8 @@ The electrical additions (B112):
 
 The lever micro-switch is wired **in series with the pilot loop**. Opening the lever therefore sheds that channel and
 turns the pack's FETs off before any contact moves, as docs/03 intends. The solenoid adds the missing rule that the lever
-cannot be reached while that pack is the only source. **docs/03 §10.2 needs the solenoid pin added to the catch** (open
-item for the mechanical owner).
+cannot be reached while that pack is the only source. docs/03 §10.2 carries the secondary catch and the solenoid pin
+that blocks it.
 
 **Unlock rule.** The solenoid driver for pack X is enabled only through a **hardware AND** on board PPM-X. Its inputs come
 from comparators on PPM-X and from hard-wired status lines from PPM-Y. The firmware request is one input; the other four
@@ -308,9 +308,9 @@ capacitors alone absorb only ½ × 6.5 mF × (70² − 67.2²) ≈ 1.3 J, so the
 
 | Zone (actuator bus) | Loads | Sim peak | eFuse | Feed cable |
 |---|---|---|---|---|
-| Leg L / leg R | HC2 hip pitch + HC2 knee + Everest hip yaw, hip roll, 2 ankle | 1.9 kW / 36 A | 60 A fast, 25 A I²t | **10 AWG** silicone pair through the hip (3.3 mΩ/m; 0.28 V and 10 W at 36 A over a 2.4 m loop) |
+| Leg L / leg R | HC2 hip pitch + HC2 knee + Everest hip yaw, hip roll, 2 ankle | 1.9 kW / 36 A | 60 A fast, 25 A I²t | **10 AWG** silicone pair, outside the joints in the leg service bundle with the coolant hoses (docs/03 §11): waist clock-spring, waist-pitch U-loop, hip-yaw loop, limb-interface service plate, hip-roll U-loop, hip-pitch rolling loop. ≈ 2 m each way, ≈ 4 m loop [E] (3.3 mΩ/m): 0.48 V and 17 W at the 36 A peak |
 | Pelvis / waist | waist yaw + waist pitch | 314 W / 6 A | 20 A | 14 AWG |
-| Arm L / arm R | 5 Everest + forearm driver board (24 V buck) | 381 W + 330 W momentary → 14 A | 20 A | 14 AWG through the shoulder (52 V runs to the forearm; conversion is local) |
+| Arm L / arm R | 5 Everest + forearm driver board (24 V buck) | 381 W + 330 W momentary → 14 A | 20 A | 14 AWG via the shoulder service plate, the shoulder clock-spring cassettes and the arm service loops (docs/03 §11; 52 V runs to the forearm; conversion is local) |
 | Neck | 2 Everest | 23 W | 10 A | 16 AWG |
 
 | Logic bus | Loads | Converter |
@@ -327,7 +327,7 @@ docs/09 MK2-17):
   ([ti.com/product/LM5146-Q1](https://www.ti.com/product/LM5146-Q1)); 100 V FETs;
 - rated **24 V, 15 A peak (< 1 s) / 8 A continuous**;
 - feeds the two KW-L2 bridges and the hand controller, which makes its own 12 V for the micro-motors;
-- local conversion keeps the conductors through elbow and wrist yaw at 52 V and 14 AWG;
+- local conversion keeps the conductors across elbow and wrist yaw at 52 V and 14 AWG;
 - the 100 V rating also survives a 20S bus.
 
 **Per-arm 24 V load** for the Mk II wrist requirement (19 N·m pitch repeated, 29 N·m momentary; §6.4) [E]:
@@ -409,7 +409,8 @@ Motor **maxon ECX FLAT 32 L high torque, 24 V**
 - 4.19 A nominal, 71 g, Hall sensors;
 - €140.00 at 5–19 pieces.
 
-It drives the ball screw directly (Ø8 × 2 mm in docs/09 MK2-16). Force per motor torque at η 0.88:
+It drives the ball screw directly: **KSS Ø8 × 1 (1 mm lead, the Mk II baseline, docs/09 §11 H10)**. Force per motor
+torque at η 0.88:
 - 2 mm lead: 2π × 0.88 / 0.002 m = **2.765 N per mN·m** (R10);
 - 1 mm lead: **5.53 N per mN·m**.
 
@@ -422,7 +423,7 @@ generated catalogue: pitch 19 N·m repeated / 29 N·m momentary, 14 N·m held (A
 754 N combined corner per actuator, ≈ 970 N momentary, 318 N held and 216 N at 132 mm/s (docs/09 §11 H10). R10 sized
 KW-L2 for the K1 wrist (611 N), so it is re-checked here [E from the datasheet values above]:
 
-| Requirement | 2 mm lead (docs/04/09 baseline) | 1 mm lead (recommended if rated) |
+| Requirement | 2 mm lead (K1 / R10) | **1 mm lead (Mk II baseline)** |
 |---|---|---|
 | 754 N repeated corner | 273 mN·m = **2.77 × nominal**; ≈ 12.6 A, ≈ 150 W copper; short-time only | 136 mN·m = 1.39 × nominal; ≈ 6.3 A |
 | ≈ 970 N momentary | 351 mN·m = 3.6 × nominal (65 % of stall); ≈ 16 A, ≈ 250 W for < 1 s | 175 mN·m = 1.8 × nominal |
@@ -431,19 +432,22 @@ KW-L2 for the K1 wrist (611 N), so it is re-checked here [E from the datasheet v
 | Driver current rating | ≥ 20 A per bridge | ≥ 10 A |
 
 **Conclusions:**
-- With the 2 mm lead the motor meets every force and speed point electrically, but the repeated corner needs 2.8 × and the
+- Why not 2 mm: the motor meets every force and speed point electrically, but the repeated corner needs 2.8 × and the
   momentary case 3.6 × nominal torque. That works only if the winding's thermal time constant allows it. The maxon
-  datasheet value has not been read; **read it before ordering and set the I²t limit from it**.
-- A **1 mm lead** (KSS lists Ø6 × 1 [R5]) halves every torque, keeps a 1.24 speed margin, and makes the 15 kg hold
-  continuous. Adopt it if the screw's dynamic rating is ≥ 1.5 kN; that rating is not yet retrieved (R10).
-- Either way the driver is sized for 20 A, and the 24 V rail for the 2 mm case (§5).
+  datasheet value has not been read; **read it before ordering and set the I²t limit from it** (needed with either lead).
+- The **1 mm lead is adopted** (KSS Ø8 × 1; Ø6 × 1 [R5] only if its dynamic rating is ≥ 1.5 kN, which is not yet
+  retrieved). It halves every torque, keeps a 1.24 speed margin, and makes the 15 kg hold continuous. Confirm the screw
+  rating in the KSS catalogue when ordering B106.
+- The driver stays sized for 20 A and the 24 V rail for the 2 mm case (§5), which leaves margin with the 1 mm lead.
 
 ## 7. Communication buses
 
 ![Comms topology](../diagrams/comms_topology.svg)
 
-* **EtherCAT: 30 slaves** (docs/09 §11 H11):
-  - 22 Everest S + 4 HC2 + 2 hand controllers + 2 KW-L2 forearm driver boards;
+* **EtherCAT: 30 slaves** (decided, docs/09 §11 H11):
+  - 22 Everest S + 4 HC2 + 2 hand controllers + 2 KW-L2 forearm driver boards (each KW-L2 board has its own F28P65x
+    slave, §6; the hand controller does not drive the KW-L2). The foot boards are not slaves: they sit on an SPI bridge
+    on the ankle-A carrier (P07 §F);
   - one ring with cable redundancy back to the RT computer's second i226 port; 1 kHz cycle with distributed clocks;
   - IgH EtherLab 1.6 master [R2, R4];
   - process data ≈ 30 × (32 B out + 48 B in) ≈ 2.4 kB, ≈ 0.2 ms per frame at 100 Mbit/s [E]. Jitter must be measured at
@@ -506,12 +510,12 @@ Wireless e-stop response time is **not published** [R2] and must be measured (do
 |---|---|---|---|
 | Pack → PPM (each pack) | 8 AWG (8.4 mm²) tinned silicone, 200 °C, ≤ 0.4 m | hot-swap pack connector (B111) on the pack; Amphenol SurLok Plus 5.7 mm (100–120 A, IP67, IP2X) [ds R3] PPM side | twisted pair |
 | PPM → PDU | busbar | bolted | — |
-| PDU → leg zone | **10 AWG** silicone pair | SurLok 3.6 mm (50–70 A) | through the hip hollow shaft; separated from coolant lines by a divider |
+| PDU → leg zone | **10 AWG** silicone pair | SurLok 3.6 mm (50–70 A) | outside every joint, in the leg service bundle with the coolant hoses (docs/03 §11); in the cable channel of each loop guide, above the hoses; bend radius ≥ 50 mm |
 | Leg zone → HC2 | 12 AWG | XT60H latching | — |
 | PDU → arm / waist / neck | 14 AWG / 14 / 16 AWG pair | XT60H / XT30 | 52 V to the forearm buck |
 | KW-L2 forearm driver board → hand controller (24 V) | 16 AWG | XT30 | ≤ 0.2 m |
 | Zone → each Everest (daisy chain) | 16 AWG | XT30-class 2-pin, IP2X | short drops only |
-| EtherCAT + STO + fault | igus chainflex CF Robot, 4 × 2 × 0.25 mm² shielded, torsion-rated [ds R3] | **J-LINK**: Harwin Gecko-MT 10-pin latching | through every joint bore |
+| EtherCAT + STO + fault | igus chainflex CF Robot, 4 × 2 × 0.25 mm² shielded, torsion-rated [ds R3] | **J-LINK**: Harwin Gecko-MT 10-pin latching | outside the joints, beside the power pair: in the leg service bundles across waist and hips, the shoulder clock-spring cassettes and arm service loops, the neck service loop (docs/03 §11) |
 | HC2 12 V aux | 2 × 20 AWG in the leg harness | Gecko-MT 2-pin | — |
 | Encoder (inside actuator) | 6-core shielded, 0.14 mm² | JST GH 6-pin | 5 V, GND, MA±, SLO± (BiSS-C) |
 | GMSL2 head/torso | 50 Ω mini-coax | FAKRA-Z | ≤ 1.5 m |
@@ -533,12 +537,17 @@ Wireless e-stop response time is **not published** [R2] and must be measured (do
 **Rules:**
 - every connector is IP2X and latching;
 - strain relief within 30 mm of every connector;
-- no conductor bends tighter than 10× its diameter at a joint; cables cross the joint through the hollow axis (twist, not bend);
+- **no cable passes through an actuator bore** (docs/03 §11, docs/09 §11 H2). Every joint is crossed by a service loop
+  (clock-spring, rolling loop or U-loop) in which no conductor bends tighter than 10× its diameter;
+- **strain relief at each joint:** clamp the bundle to the link at both fixed points of every loop, so the loop takes
+  the motion and no connector or crimp does; clip every 80 mm between joints; PET braided abrasion sleeve over the
+  cables in each loop;
 - label both ends (zone-joint-function);
 - crimp with the manufacturer's tool and pull-test 10 % of crimps.
 
 **Liquid and electricity:**
 - drives and connectors sit above and upstream of every coolant joint;
+- in the shared leg service loops the cables ride in their own channel above the hoses;
 - all coolant fittings in the torso sit over the leak-sensing cable;
 - HC2 boards are conformal-coated.
 
@@ -548,9 +557,10 @@ Wireless e-stop response time is **not published** [R2] and must be measured (do
   reference. The robot side of each pack connector is the only BUS− entry. Packs carry no chassis bond of their own, so
   hot-swap cannot create a ground loop.
 * **Bonding.** Motor housings and liquid jackets are bonded to the structure through the flange joints, with a braid across
-  each anodised joint (mask the bonding pads). The coolant (40 % propylene glycol with inhibitor, docs/03 §9.4) is
-  **conductive**: treat every wet surface as connected to the jacket (chassis). Conformal coat the HC2 boards and keep the
-  leak pads under them (docs/06 §1.5).
+  each anodised joint (mask the bonding pads). The coolant (40 % propylene glycol with inhibitor, docs/03 §9.4, chosen
+  over an insulative coolant in docs/09 §11 H11) is **conductive**: treat every wet surface as connected to the jacket
+  (chassis). Conformal coat the HC2 boards and keep the leak pads under them (docs/06 §1.5); the pads detect a leak by
+  that conductivity.
 * **HC2 (GaN).** Switching edges are much faster than on the silicon drives:
   - keep the power loop inside the board (EPC layout practice);
   - DC-link ceramics at the bridge;
@@ -632,10 +642,14 @@ radiator → compensator (+ fill port + pressure transducer) → Thor cold plate
 → return manifold → radiator
 ```
 
-- The loop is **sealed**, with a 0.3 bar spring-diaphragm compensator and no open reservoir, so it survives a fall or
-  lying down.
-- The **knee comes first**: it carries twice the heat of the hip.
-- Coolant is 40 % propylene glycol with a mixed-metal inhibitor (freezes ≈ −21 °C, R7 #6).
+- The loop is **sealed**, with a 0.3 bar spring-diaphragm compensator (B123) and no open reservoir, so it survives a fall
+  or lying down.
+- The **knee comes first**: it carries twice the hip's heat at the continuous requirement and has the smaller thermal
+  margin (arithmetic in docs/03 §9.2).
+- Coolant is 40 % propylene glycol with a mixed-metal inhibitor (B122; freezes ≈ −21 °C, R7 #6). An insulative PC
+  coolant is not used: it has no stated freeze point, turns conductive in service, and would blind the leak pads
+  (docs/03 §9.4).
+- Hoses share the leg service loops with the leg power and EtherCAT cables (docs/03 §11).
 - Two dry-break coupling pairs per leg (docs/03 §9.2–9.4).
 
 | Item | BOM part (requirement from docs/03 §9.4) | Price-verified alternative (checked 2026-11-09) | Electrical interface |

@@ -69,16 +69,19 @@ with both M12 lifting eyes fitted.
 7. Leave the battery bay empty until P08.1 and §G are complete.
 
 ## F. Electrical (docs/05 §5–§9)
-* **Actuator-bus zones (PDU eFuses):** leg L / leg R 60 A fast, 25 A I²t, 10 AWG pair (SurLok Plus 3.6 mm), in the hip
-  service loop (hold H2); pelvis/waist 20 A, 14 AWG; arm L / arm R 20 A, 14 AWG through the shoulder (52 V to the forearm
-  buck); neck 10 A, 16 AWG. Commissioning contactors in both leg-zone feeds (P02 §F).
+* **Actuator-bus zones (PDU eFuses):** leg L / leg R 60 A fast, 25 A I²t, 10 AWG pair (SurLok Plus 3.6 mm), outside the
+  joints in the leg service bundle with the coolant hoses: waist clock-spring, waist-pitch U-loop, hip-yaw loop, then
+  the service plate (docs/03 §11; no cable passes through an actuator bore); pelvis/waist 20 A, 14 AWG; arm L / arm R
+  20 A, 14 AWG via the shoulder service plate and clock-spring cassettes (52 V to the forearm buck); neck 10 A, 16 AWG.
+  Commissioning contactors in both leg-zone feeds (P02 §F).
 * **Logic bus (not cut by the e-stop):** 24 V 300 W → J601 (XT30, 12 AWG), Mid-360, GMSL camera power through the J601;
   12 V 150 W → RT computer, coolant pumps, radiator fans, blowers, foot boards, HC2 aux, LEDs; safety MCU on its own
   12 V → 3.3 V supply with a 200 ms supercap hold-up.
 * **Pack path:** each pack → 8 AWG → KES-PPM channel (SurLok Plus 5.7 mm) → PDU busbar. Keyed main switch to the PPM
   (sheds every path).
-* **EtherCAT:** RT computer port 1 → torso junction → waist → left leg → right leg → arms → neck → back to port 2. 28
-  slaves per docs/05 §7 (30 if the KW-L2 boards are their own slaves, docs/09 §11 H11).
+* **EtherCAT:** RT computer port 1 → torso junction (passive connector board, not a slave) → waist → left leg → right
+  leg → arms → neck → back to port 2, in the same external service loops as the power pairs. **30 slaves** (docs/05 §7):
+  22 Everest + 4 HC2 + 2 hand controllers + 2 KW-L2 forearm boards, each its own slave.
 * **E-stop chain:** FORT receiver + pendant socket + 2 on-robot buttons + back-cover switch → safety relay (back of the
   spine). Instantaneous contacts → STO_A/STO_B to all 26 drives and the forearm-buck disables; delayed contacts
   (0.5–1.5 s) → actuator-zone eFuse enables. Safety MCU inputs: tilt, winding > 150 °C, bus OV/OC, RT heartbeat, comms
@@ -131,15 +134,16 @@ lies down and falls. Loop volume ≈ 0.47 L; torso part ≈ 1.5 kg.
 | B120 / docs/03 §9.4 | Radiator 240 × 120 mm, ≤ 30 mm core, ≈ 20 W/K, aluminium core (Alphacool NexXxoS ST30 240 class or aluminium equivalent; Koolance HX-720 is heavier) | 1 |
 | B121 | 120 mm 12 V PWM fans with tach, **IP68** (San Ace waterproof class) | 2 |
 | B119 / docs/03 §9.4 | 12 V brushless pumps, ≥ 0.5 L/min at ≥ 30 kPa, tach, glycol-compatible (TCS Micropumps M510 or Laing DDC class) | 2 + 1 spare |
-| — | Check valves ≤ 3 kPa cracking, EPDM | 2 |
-| — (docs/09 custom) | Compensator 40 mL: EPDM membrane in a PA12 housing, spring-loaded, fill/bleed valve | 1 |
-| — | Supply and return manifolds (6061) | 2 |
+| B126 | Check valves ≤ 3 kPa cracking, EPDM | 2 |
+| B123 | Compensator 40 mL: EPDM membrane in a PA12 housing, spring-loaded, fill/bleed valve (sealed loop, no reservoir) | 1 |
+| B126 | Supply and return manifolds (6061) | 2 |
 | B124 | Thor liquid cold plate (6061) | 1 |
 | B126 | Hose 6 mm ID × 10 mm OD EPDM or Norprene ≈ 6 m, G1/8 / G1/4 fittings with bonded seals, stepless ear clamps, grommets | 1 set |
 | B125 | Dry-break non-spill coupling pairs on the two leg service plates (supply + return each) | 4 halves × 2 |
 | B127, B128, B130 | 2 flow sensors (one per branch), NTC probes (supply/return per branch), loop pressure sensor 0–2.5 bar | 2 + 4 + 1 |
 | B129 | Leak pads (HC2 ×4, pumps, manifold, cold plate) + 1 m leak-sensing cable on the torso floor under every fitting | 1 set |
-| — | Coolant: 40 % propylene glycol with an aluminium-safe (mixed-metal) inhibitor, premixed with deionised water (DOWFROST or an aluminium-engine OAT coolant at 40 %) | 1 L |
+| B122 | Coolant: 40 % propylene glycol with an aluminium-safe (mixed-metal) inhibitor, premixed with deionised water (DOWFROST or an aluminium-engine OAT coolant at 40 %). Not an insulative PC coolant (docs/03 §9.4) | 1 L (B122 buys 2 L) |
+| B136 | Waist clock-spring former and hip-yaw partial clock-springs (cable channel above the hose channel), waist-pitch U-loop clip, PET braided sleeve, clamps | 1 set |
 
 ## C. Tools & equipment
 Vacuum pump with a gauge reading ≤ 50 mbar and a fill rig (valve, sight tube, coolant container), hand pressure pump
@@ -151,9 +155,11 @@ for pre-testing pumps and radiator, a padded table to lay the robot on.
   in the top; proof-test the housing at 3 bar.
 * **Wet duct and radiator shroud:** MJF PA12 in the upper back, fans pulling air through the radiator to the rear
   grille; the duct drains outward.
-* **Hose guides:** waist clock-spring former (4 hoses as a flat ribbon, 1.5 turns round the waist-yaw housing, inside
-  the bellows); hip-yaw partial clock-spring in the pelvis shell; hip-pitch C-trough concentric with the axis at radius
-  85 mm (PA12-MJF); U-loop clips at waist pitch and hip roll. Bend radius ≥ 30 mm everywhere.
+* **Hose and cable guides (B136):** waist clock-spring former (4 hoses and the two leg cable bundles as a flat ribbon,
+  cables on the upper face, 1.5 turns round the waist-yaw housing, inside the bellows); hip-yaw partial clock-spring in
+  the pelvis shell; hip-pitch C-trough concentric with the axis at radius 85 mm (PA12-MJF); U-loop clips at waist pitch
+  and hip roll. Every guide has a cable channel above the hose channel. Bend radius ≥ 30 mm for hoses and ≥ 50 mm for
+  the 10 AWG pairs everywhere.
 * **Manifolds:** 6061, anodised, ports for the pumps, check valves, sensors and drains.
 
 ## E. Assembly
@@ -163,7 +169,9 @@ for pre-testing pumps and radiator, a padded table to lay the robot on.
    valves and the manifolds below the electronics, over the leak cable.
 3. Connect the Thor cold plate (already on the module, P08 §E step 5).
 4. Route the four hoses through the waist on the clock-spring former, then the waist-pitch U-loop, into the pelvis, and
-   to the pelvis-side couplings of each limb-interface service plate. Clip every 80 mm; grommet every edge.
+   to the pelvis-side couplings of each limb-interface service plate. The two leg cable bundles (10 AWG pair, EtherCAT,
+   STO, HC2 aux; P08 §F) ride the same guides in the channel above the hoses. Clamp the bundle at both fixed points of
+   every loop (strain relief), clip every 80 mm, grommet every edge.
 5. Mate both legs (P08 §E step 6): the service plates close the couplings.
 6. **Dry leak test:** air at 1.5 bar with the pumps isolated, 15 min at stable temperature.
 7. **Vacuum fill (docs/03 §9.8):** pull the loop to ≤ 50 mbar through the compensator valve, hold 10 min (rise
