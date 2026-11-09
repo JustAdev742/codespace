@@ -129,6 +129,8 @@ def export_policy(ac, path):
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--name", default="rough")
+    ap.add_argument("--variant", default=os.environ.get("KESTREL_VARIANT", "k1"), choices=["k1", "s1"],
+                    help="robot: k1 (KESTREL K1, current calc revision) or s1 (the simple off-the-shelf build)")
     ap.add_argument("--workers", type=int, default=max(1, (os.cpu_count() or 2)))
     ap.add_argument("--envs", type=int, default=96, help="environments per worker")
     ap.add_argument("--steps", type=int, default=24, help="rollout length per iteration")
@@ -145,6 +147,7 @@ def main():
     ap.add_argument("--save-every", type=int, default=250)
     ap.add_argument("--threads", type=int, default=0, help="torch threads in the learner (0 = all cores)")
     args = ap.parse_args()
+    os.environ["KESTREL_VARIANT"] = args.variant        # read by model.py / calc before the workers fork
 
     cols = {"rough": None, "flat": [0], "stairs": [0, 4, 5], "mixed": [0, 1, 2, 3, 4, 4, 5, 5],
             "climb": [0, 1, 2, 3, 4, 4, 5, 5, 5, 5]}[args.terrain]

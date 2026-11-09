@@ -1,0 +1,516 @@
+<!doctype html><html lang="en" data-theme="light"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1"><title>KESTREL S1 Build Guide</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&display=swap">
+<style>/* Layout: a workshop binder. Sticky phase index on the left (tabs), one reading column, drawing sheets on white paper cards. */
+:root {
+  --paper: #f3f5f7; --ink: #1b2129; --muted: #59636f; --rule: #d3d9e0; --code-bg: #e7ebef;
+  --accent: #a84f06; --accent-soft: #fbeedd; --link: #1c4d8c; --sheet: #ffffff;
+  --display: "Barlow Condensed", "Arial Narrow", "Roboto Condensed", sans-serif;
+  --body: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #11151a; --ink: #e3e7eb; --muted: #97a3b0; --rule: #28313b; --code-bg: #1b222a;
+    --accent: #f0a23b; --accent-soft: #2a2116; --link: #8fb9ee; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #11151a; --ink: #e3e7eb; --muted: #97a3b0; --rule: #28313b; --code-bg: #1b222a;
+  --accent: #f0a23b; --accent-soft: #2a2116; --link: #8fb9ee; color-scheme: dark;
+}
+body { background: var(--paper); color: var(--ink); font-family: var(--body); font-size: 16px; line-height: 1.6; }
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--paper); }
+
+.layout {
+  display: grid; grid-template-columns: 1fr; gap: 0 48px; max-width: 1240px; margin: 0 auto;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 0 48px;
+}
+@media (min-width: 1000px) { .layout { grid-template-columns: 250px minmax(0, 1fr); } }
+
+/* phase index */
+.toc { min-width: 0; padding-block: 20px 8px; border-bottom: 1px solid var(--rule); }
+@media (min-width: 1000px) {
+  .toc { position: sticky; top: env(safe-area-inset-top, 0px); align-self: start; max-height: 100vh; overflow-y: auto;
+         border-bottom: 0; border-right: 1px solid var(--rule); padding-right: 16px; }
+}
+.toc .brand { display: flex; flex-direction: column; font-family: var(--display); font-weight: 700; font-size: 1.6rem;
+         letter-spacing: 0.04em; color: var(--ink); text-decoration: none; line-height: 1.05; margin-bottom: 14px; }
+.toc .brand span { font-family: var(--mono); font-weight: 400; font-size: 0.72rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
+.toc summary { cursor: pointer; font-family: var(--mono); font-size: 0.75rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); padding-block: 6px; }
+.toc ol { list-style: none; margin: 6px 0 0; padding: 0; display: grid; gap: 1px; }
+.toc a { display: grid; grid-template-columns: 3.6em 1fr; gap: 8px; padding: 5px 6px; border-radius: 4px;
+         color: var(--ink); text-decoration: none; font-size: 0.86rem; line-height: 1.3; }
+.toc a:hover { background: var(--accent-soft); }
+.tcode { font-family: var(--display); font-weight: 600; color: var(--accent); font-size: 0.98rem; }
+
+/* reading column */
+main { min-width: 0; max-width: 46rem; }
+.hero { padding-block: 28px 8px; }
+.eyebrow { font-family: var(--mono); font-size: 0.74rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); margin: 0 0 8px; }
+h1 { font-family: var(--display); font-weight: 700; font-size: clamp(2.4rem, 6vw, 3.6rem); line-height: 1; letter-spacing: 0.01em; margin: 0 0 14px; text-wrap: balance; }
+.lede { font-size: 1.08rem; color: var(--muted); max-width: 40rem; margin: 0 0 18px; }
+
+.chapter { padding-block: 36px 8px; border-top: 2px solid var(--ink); margin-top: 28px; scroll-margin-top: calc(env(safe-area-inset-top, 0px) + 8px); }
+.chapter.intro { border-top-width: 1px; }
+.chap-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 14px; margin-bottom: 10px; }
+.chap-head .code { font-family: var(--display); font-weight: 700; font-size: 2.6rem; line-height: 1; color: var(--accent); font-variant-numeric: tabular-nums; }
+.chap-head h2 { font-family: var(--display); font-weight: 600; font-size: 1.85rem; line-height: 1.1; margin: 0; flex: 1 1 16rem; text-wrap: balance; }
+.gate { font-family: var(--mono); font-size: 0.74rem; letter-spacing: 0.06em; border: 1.5px solid var(--accent); color: var(--accent);
+        border-radius: 999px; padding: 2px 10px; white-space: nowrap; }
+
+h2, h3, h4, h5 { text-wrap: balance; }
+.chapter h2:not(.chap-head h2) { font-family: var(--display); font-weight: 600; font-size: 1.6rem; margin: 28px 0 8px; }
+h3 { font-family: var(--display); font-weight: 600; font-size: 1.35rem; margin: 30px 0 8px; line-height: 1.2; }
+h3.sec { display: flex; align-items: center; gap: 10px; }
+.letter { display: inline-grid; place-items: center; width: 1.6em; height: 1.6em; border-radius: 4px; background: var(--ink); color: var(--paper);
+          font-size: 0.85em; font-weight: 700; flex: none; }
+h4 { font-family: var(--body); font-weight: 600; font-size: 1.02rem; margin: 22px 0 6px; }
+h5 { font-family: var(--body); font-weight: 600; font-size: 0.95rem; margin: 18px 0 4px; color: var(--muted); }
+p, li { max-width: 68ch; }
+ul, ol { padding-left: 1.3em; }
+li { margin-block: 3px; }
+li > ul, li > ol { margin-block: 2px; }
+a { color: var(--link); text-underline-offset: 2px; }
+a:focus-visible, summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 3px; }
+strong { font-weight: 600; }
+code { font-family: var(--mono); font-size: 0.86em; background: var(--code-bg); padding: 0.08em 0.32em; border-radius: 3px; overflow-wrap: anywhere; }
+pre { background: var(--code-bg); padding: 12px 14px; border-radius: 6px; overflow-x: auto; font-size: 0.85rem; line-height: 1.5; }
+pre code { background: none; padding: 0; overflow-wrap: normal; }
+blockquote { margin: 14px 0; padding: 10px 14px; border-left: 3px solid var(--accent); background: var(--accent-soft); border-radius: 0 6px 6px 0; }
+blockquote p { margin: 4px 0; }
+hr { border: 0; border-top: 1px solid var(--rule); margin: 24px 0; }
+
+.tablewrap { overflow-x: auto; margin: 12px 0 16px; border: 1px solid var(--rule); border-radius: 6px; }
+table { border-collapse: collapse; width: 100%; font-size: 0.88rem; font-variant-numeric: tabular-nums; line-height: 1.45; }
+th, td { text-align: left; vertical-align: top; padding: 7px 10px; border-bottom: 1px solid var(--rule); }
+th { background: var(--code-bg); font-weight: 600; white-space: nowrap; }
+tr:last-child td { border-bottom: 0; }
+td code { white-space: nowrap; }
+
+/* figures */
+.gallery { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 220px), 1fr)); gap: 12px; margin: 14px 0 20px; }
+.hero .gallery { grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); }
+.fig { margin: 0; min-width: 0; display: flex; flex-direction: column; gap: 6px; scroll-margin-top: 16px; }
+.fig a { display: block; border-radius: 6px; overflow: hidden; border: 1px solid var(--rule); background: var(--code-bg); }
+.fig.paper a { background: var(--sheet); }
+.fig img { display: block; width: 100%; max-width: 100%; height: auto; }
+.fig.paper img { padding: 6px; box-sizing: border-box; aspect-ratio: 4 / 3; object-fit: contain; }
+figcaption { font-size: 0.8rem; color: var(--muted); line-height: 1.35; }
+.kind { font-family: var(--mono); font-size: 0.68rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--accent); margin-right: 4px; }
+
+.foot { margin-top: 40px; padding-top: 14px; border-top: 1px solid var(--rule); font-size: 0.82rem; color: var(--muted); }
+
+@media print {
+  :root { --paper: #ffffff; --ink: #000000; --muted: #444444; --rule: #bbbbbb; --code-bg: #f1f1f1; --accent: #8a4205; --accent-soft: #f7efe5; --link: #000000; }
+  body { font-size: 10.5pt; }
+  body::before { display: none; }
+  .layout { display: block; max-width: none; padding: 0; }
+  .toc { border: 0; padding: 0; }
+  .toc details > ol { columns: 2; }
+  main { max-width: none; }
+  .chapter { break-before: page; border-top: 0; margin-top: 0; padding-top: 0; }
+  .chapter.intro { break-before: auto; }
+  .fig, tr, .chap-head, h3, h4 { break-inside: avoid; }
+  h3, h4 { break-after: avoid; }
+  .gallery { grid-template-columns: repeat(3, 1fr); }
+  .hero .gallery { grid-template-columns: repeat(2, 1fr); }
+  a { text-decoration: none; }
+  .tablewrap { overflow: visible; }
+}
+
+main { max-width: 46rem; margin: 0 auto; padding: 24px max(16px, env(safe-area-inset-left, 0px)) 48px; }
+main h2 { font-family: var(--display); font-weight: 600; font-size: 1.7rem; margin: 34px 0 10px; border-top: 2px solid var(--ink); padding-top: 18px; }
+@media print { main h2 { break-before: page; } main h2:first-of-type { break-before: auto; } }
+</style></head><body><main><h1 class="title">KESTREL S1 build guide</h1>
+<p>This is the simple guide to building KESTREL S1, from a parts list to a robot taking its first steps in a gantry.
+S1 is built from parts you can order: off-the-shelf actuator modules, aluminium tube and extrusion, laser-cut
+plates, a 48 V e-bike-class battery and a small computer. No shells, no custom motors, no machined housings.</p>
+<p>Work through the steps in order. Every step ends with a <strong>check</strong>. Do not start the next step until the check
+passes.</p>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th></th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>What you get</td>
+<td>A 1.75 m humanoid with 27 actuated joints and two grippers. It is sized in simulation to walk at 0.8–1.0 m/s, climb 18 cm stairs and squat with a 20 kg box.</td>
+</tr>
+<tr>
+<td>Parts cost</td>
+<td>about A$38,000, or about A$31,300 with a budget wireless e-stop (<a href="../generated/bom.md">../generated/bom.md</a>)</td>
+</tr>
+<tr>
+<td>Build time</td>
+<td>about 150–250 hours for one person, spread over 2–3 months including lead times</td>
+</tr>
+<tr>
+<td>Skills</td>
+<td>careful mechanical assembly, basic electronics (crimping, soldering, a multimeter), Linux command line</td>
+</tr>
+<tr>
+<td>Tools</td>
+<td>metric hex keys and a torque driver (1–10 N·m), tap set M3–M6, drill press, hacksaw or drop saw with an aluminium blade, deburring tool, crimpers (JST-GH, Amass XT, ferrules), soldering iron, multimeter, bench power supply with current limit (60 V / 5 A), a USB-CAN adapter</td>
+</tr>
+</tbody>
+</table></div>
+<p>The detail behind each step:</p>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>Topic</th>
+<th>Document</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Parts and prices</td>
+<td><a href="../generated/bom.md">../generated/bom.md</a></td>
+</tr>
+<tr>
+<td>Plate, tube and fastener list</td>
+<td><a href="../cad/out/cut_list.md">../cad/out/cut_list.md</a></td>
+</tr>
+<tr>
+<td>Laser-cut files</td>
+<td><code>../cad/out/dxf/</code></td>
+</tr>
+<tr>
+<td>3D models</td>
+<td><code>../cad/out/step/</code></td>
+</tr>
+<tr>
+<td>Wiring, e-stop, CAN</td>
+<td><a href="../docs/S1-electrical.md">../docs/S1-electrical.md</a></td>
+</tr>
+<tr>
+<td>Software</td>
+<td><a href="../docs/S1-software.md">../docs/S1-software.md</a></td>
+</tr>
+<tr>
+<td>Why each actuator was chosen</td>
+<td><a href="../generated/actuator_selection.md">../generated/actuator_selection.md</a></td>
+</tr>
+</tbody>
+</table></div>
+<hr />
+<h2>Step 0: Safety rules (read them every session)</h2>
+<ol>
+<li><strong>48 V is low voltage but not harmless.</strong> A 13S pack can deliver hundreds of amps into a short, and that
+   welds tools and starts fires. Remove the battery before touching any wiring. Charge only on a non-flammable
+   surface, supervised.</li>
+<li><strong>Joint actuators are powerful.</strong> The knee produces over 400 N·m. Keep hands out of any joint whenever the
+   actuator bus is live, even when the software says "zero torque".</li>
+<li><strong>E-stop first.</strong> The hardware e-stop loop (Step 8) is wired and tested before any actuator moves on the
+   robot.</li>
+<li><strong>Gantry for every walking test.</strong> Hang the robot from an overhead gantry or engine-crane harness with the
+   rope just slack, until it has proven itself many times.</li>
+<li><strong>Two people from the first powered motion.</strong> One holds the e-stop and does nothing else.</li>
+</ol>
+<hr />
+<h2>Step 1: Order the parts</h2>
+<ol>
+<li>Order from the BOM in this order, longest lead time first:</li>
+<li><strong>Actuators:</strong> 4 × MyActuator RMD-X12-P20-320, 13 × RobStride RS04, 4 × RS03, 4 × RS02, 4 × RS00. That is
+      two RS00 for the neck and two for the grippers.</li>
+<li><strong>Battery and power parts:</strong> pack, contactor, fuses, precharge resistor, DC-DCs, e-stop devices.</li>
+<li><strong>Laser-cut plates:</strong> send the whole <code>../cad/out/dxf/</code> folder. Each filename carries the quantity.</li>
+<li><strong>Tube, extrusion, bearings, rod ends, belts and pulleys:</strong> from the cut list.</li>
+<li><strong>Compute, CAN interfaces, IMU, cameras.</strong></li>
+<li><strong>Fasteners:</strong> the cut list gives the counts by size. Buy 20 % extra.</li>
+<li>RobStride modules are stocked in Australia (Pakronics); the MyActuator X12s ship from China. Allow 2–4 weeks.</li>
+<li>While parts arrive, set up the computer and the software (Step 9.1). That can be done without the robot.</li>
+</ol>
+<p><strong>Check:</strong> every BOM line is ticked off and every actuator powers up on the bench (Step 3).</p>
+<hr />
+<h2>Step 2: Make the parts</h2>
+<ol>
+<li><strong>Plates.</strong> Order 6061-T6 laser- or waterjet-cut plates from the DXF files (Cut Fold Direct, Victoria, quotes
+   instantly). Ask for the holes to be cut, not marked.
+   * Deburr every edge and hole.
+   * Tap the holes the cut list marks as threaded.
+   * Drill dowel holes from the actuator itself where the cut list says "drill from the part".</li>
+<li><strong>Tubes and extrusions.</strong>
+   * Cut the Ø40 × 3 and Ø30 × 2 tubes, and the 2040/4040 extrusions, to the lengths in the cut list, square
+     to ±0.2 mm.
+   * Face the ends and deburr them.
+   * Tap the extrusion end holes M5.</li>
+<li><strong>Clamp blocks.</strong> Machine them in 6061, or print them in PA12-CF/PETG-CF (cut list §3). Printed blocks are
+   fine on the arms. On the legs use machined blocks, or printed ones at 100 % infill with steel inserts.</li>
+<li><strong>Machined parts.</strong> The cut list §4 lists the few lathe/mill parts: knee shaft, pulley bosses and actuator
+   hubs. Any local machine shop can make them from the STEP files.</li>
+<li><strong>Printed parts</strong> (cut list §5).</li>
+</ol>
+<p><strong>Check:</strong> lay every part out on a table against the cut list. Check each bearing seat with the bearing itself,
+which must be a light press or push fit as specified.</p>
+<hr />
+<h2>Step 3: Bench-test and set up every actuator <em>before</em> assembly</h2>
+<p>Doing this on the bench saves days later. Never assemble an actuator you have not tested.</p>
+<ol>
+<li>Wire one actuator to the bench supply, set to 48 V with a 3 A current limit, and to the USB-CAN adapter at
+   1 Mbit/s. Pinouts and connector types are in <a href="../docs/S1-electrical.md">S1-electrical §11</a>.</li>
+<li><strong>Update firmware</strong> with the maker's tool. Use the same version on every unit of a type.</li>
+<li><strong>Assign its CAN ID</strong> from the table below, then label the actuator with that ID straight away.</li>
+</ol>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>Bus</th>
+<th>IDs</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Left leg</td>
+<td>hip yaw 11, hip roll 12, hip pitch (X12) 13, knee (X12) 14, ankle A 15, ankle B 16</td>
+</tr>
+<tr>
+<td>Right leg</td>
+<td>21–26, same order</td>
+</tr>
+<tr>
+<td>Left arm</td>
+<td>shoulder pitch 31, shoulder roll 32, shoulder yaw 33, elbow 34, wrist yaw 35, wrist pitch 36</td>
+</tr>
+<tr>
+<td>Right arm</td>
+<td>41–46, same order</td>
+</tr>
+<tr>
+<td>Torso</td>
+<td>waist yaw 51, neck yaw 52, neck pitch 53, left gripper 54, right gripper 55</td>
+</tr>
+</tbody>
+</table></div>
+<ol start="4">
+<li><strong>Set the CAN timeout</strong> (watchdog) on every unit, so it stops when commands stop: S1-electrical §11.4.</li>
+<li><strong>Spin test.</strong> In position mode with low gains, move ±90° and back. Listen for grinding, and check the
+   encoder reading follows.</li>
+<li><strong>Torque test.</strong> Bolt a 0.5 m lever to the output and press on a bathroom or luggage scale, in torque mode at
+   a low command (e.g. 20 N·m for an RS04). The reading must match within about 10 %. This is the only check
+   that the catalogue numbers apply to your units.</li>
+<li>Record the results in a log: ID, serial number, firmware version, torque reading.</li>
+</ol>
+<p><strong>Check:</strong> all 29 actuators pass, are labelled, and are logged. Any unit that fails goes back now.</p>
+<hr />
+<h2>Step 4: Build the pelvis and torso</h2>
+<ol>
+<li>Assemble the <strong>pelvis</strong>: the 2040 box, the 4040 hip cross-member and the pelvis plate (<code>pelvis_plate</code>). Use
+   T-nuts and M5 socket-head screws at 6 N·m with medium threadlocker (Loctite 243).</li>
+<li>Fit the <strong>waist-yaw RS04</strong> (ID 51) through its adapter plate, with the thin-section support bearing
+   (61812-2RS) as drawn. Then fit the waist mount plate.</li>
+<li>Build the <strong>torso box</strong>: 4 × 2040 uprights, the base, shoulder and top plates. Square it diagonally before
+   the final tightening; the two diagonals must agree within 1 mm.</li>
+<li>Fit the <strong>battery tray</strong> and its retaining strap, and the <strong>electronics plate</strong>. Do not fit the battery yet.</li>
+<li>Bolt the torso to the waist mount.</li>
+</ol>
+<p><strong>Check:</strong> the waist turns smoothly by hand over ±70° with no rub, and the torso is square.</p>
+<hr />
+<h2>Step 5: Build one leg, test it, then build the other</h2>
+<p>Build the <strong>left leg completely</strong> and test it clamped to the bench before starting the right one.</p>
+<ol>
+<li><strong>Hip yaw.</strong> Bolt the hip-yaw RS04 (ID 11) to the pelvis through its adapter plate. Fit the yaw top plate and
+   the front and rear arms, and the support bearing.</li>
+<li><strong>Hip roll.</strong>
+   * Mount the hip-roll RS04 (ID 12) on its actuator plate.
+   * Fit the 35 mm crank on its output and the 70 mm lever on the roll trunnion, joined by a push-rod with M8
+     rod ends. Use one left-hand and one right-hand thread so the length adjusts by turning the rod.
+   * Set the length so the leg hangs straight when the actuator reads zero.</li>
+<li><strong>Hip pitch.</strong> Mount the hip-pitch X12 (ID 13) in the hip cradle, coaxial with the hip centre, with the
+   outboard 6808 bearing in the inner cheek. Its output drives the thigh directly.</li>
+<li><strong>Thigh and knee belt.</strong></li>
+<li>Mount the knee X12 (ID 14) in the upper thigh, on the knee-actuator bulkhead, with its 32-tooth HTD-8M
+      pulley and the outboard 6808 bearing.</li>
+<li>Fit the knee shaft with its two 6005-2RS bearings and the 48-tooth knee pulley on the shank side.</li>
+<li>Fit the HTD 752-8M-30 belt.</li>
+<li><strong>Tension it:</strong> slide the bulkhead along its slotted holes until the belt deflects about 5 mm under a firm
+      thumb press at mid-span (about 40 N), then tighten.</li>
+<li>Re-check after the first hour of running.</li>
+<li><strong>Shank and ankle.</strong></li>
+<li>Mount the two ankle RS04s (IDs 15 and 16) on the calf plates with their 40 mm cranks.</li>
+<li>Fit the ankle cross on its 6003 bearings and igus bushings.</li>
+<li>Connect the two push-rods (M8 rod ends) from the cranks to the foot levers.</li>
+<li>Adjust both rods so the foot sits flat and level when both ankle actuators read zero.</li>
+<li><strong>Foot.</strong> Assemble the sole plate, side rails and roll clevises. Contact-cement the rubber sole. Fit the four
+   foot contact sensors.</li>
+<li><strong>Bench test the leg.</strong>
+   * Clamp the hip to the bench and connect only this leg's CAN bus and power.
+   * Run each joint slowly through its full range in position mode. Watch for cable snags and plate rub.
+   * Then hold the foot and command small torques. The hip roll, knee and ankle must feel smooth and free of
+     play.</li>
+</ol>
+<p><strong>Check:</strong> full range on all six joints with no rub; the belt runs centred on its pulleys; no play you can feel
+at the foot. Now build the right leg the same way, as a mirror image.</p>
+<hr />
+<h2>Step 6: Build the arms and grippers</h2>
+<ol>
+<li><strong>Shoulder.</strong> Shoulder pitch RS04 (ID 31) on the torso shoulder plate; shoulder roll RS04 (ID 32) on the
+   shoulder pitch plate; shoulder yaw RS03 (ID 33) below it.</li>
+<li><strong>Upper arm and elbow.</strong> The Ø40 tube goes in its clamp blocks, then the elbow RS03 (ID 34) and the elbow
+   plates.</li>
+<li><strong>Forearm and wrist.</strong> The Ø30 tube, then wrist yaw RS02 (ID 35) and wrist pitch RS02 (ID 36). Fit the
+   ISO 9409-1-50 tool flange plate.</li>
+<li><strong>Gripper.</strong> On the gripper base plate:
+   * the RS00 (IDs 54/55) drives a module-1 20-tooth pinion between two racks on 8 mm guide rods with LM8UU
+     bushings;
+   * the jaws open and close symmetrically.</li>
+</ol>
+<p>Bolt the gripper to the tool flange: 4 × M6.
+5. Repeat for the right arm (IDs 41–46).</p>
+<p><strong>Check:</strong> each arm moves through its range without hitting the torso; the gripper opens and closes fully and
+grips a 1 kg bottle firmly at a low torque setting.</p>
+<hr />
+<h2>Step 7: Neck and head</h2>
+<ol>
+<li>Neck yaw RS00 (ID 52) on the torso top plate; neck pitch RS00 (ID 53) on the neck plates.</li>
+<li>Assemble the head plates and fit the depth camera, the wide camera, the microphone and the status LEDs.</li>
+<li>Route the camera USB/GMSL cable through the neck with a service loop.</li>
+</ol>
+<p><strong>Check:</strong> the head turns ±80° and nods without pulling its cable.</p>
+<hr />
+<h2>Step 8: Wire it</h2>
+<p>Follow <a href="../docs/S1-electrical.md">S1-electrical</a> exactly; this is the summary. <strong>The battery stays out until the
+last check.</strong></p>
+<ol>
+<li><strong>Power path</strong> (S1-electrical §4): battery → main fuse → precharge resistor and contactor (TE EV200 class) →
+   48 V bus bars → a fused branch to each limb.</li>
+<li><strong>Charge limit:</strong> the X12 is rated to 55 V and a full 13S pack is 54.6 V. <strong>Set the charger to stop at
+   53.3 V</strong> until MyActuator confirms a higher limit.</li>
+<li><strong>Regen clamp</strong> (§5): fit the braking/TVS clamp that holds the bus below 54.3 V when the legs brake.</li>
+<li><strong>Compute supply</strong> (§4): a separate DC-DC straight from the battery side of the contactor. Then an e-stop
+   cuts the actuators but does not reboot the computer.</li>
+<li><strong>E-stop loop</strong> (§6): a hard-wired 12 V series loop through the contactor coil, containing:
+   * the robot's mushroom button;
+   * the 5 m tethered pendant;
+   * the wireless e-stop receiver relay;
+   * the watchdog relay, which software can open but never close.</li>
+</ol>
+<p>Reset is a manual button.
+6. <strong>CAN buses</strong> (§7): five buses (left leg, right leg, left arm, right arm, torso), daisy-chained along each
+   limb with 120 Ω termination at both ends. Twisted pair, JST-GH connectors, and a spare drop on every bus.
+7. <strong>Wire gauges and fuses:</strong> use the values in §8. Label both ends of every cable: bus, ID, function.
+8. <strong>First power-up, without actuators connected:</strong>
+   * Use the bench supply at 48 V with a 2 A limit instead of the battery.
+   * Check that the e-stop opens the contactor from every device in the loop.
+   * Check that the computer stays on when it does.
+   * Check the precharge works: the bus voltage rises over about 1 s before the contactor closes.</p>
+<p><strong>Check:</strong> every e-stop device opens the contactor; insulation from the bus to the frame is more than 1 MΩ; every
+CAN bus shows the expected nodes with <code>candump</code> when you connect the actuators one bus at a time.</p>
+<hr />
+<h2>Step 9: Software bring-up</h2>
+<ol>
+<li><strong>Computer setup</strong> (S1-software §2–3): install the OS and the real-time kernel settings, the CAN interfaces
+   (one <code>can_*</code> interface per bus) and ROS 2.</li>
+<li><strong>Drivers</strong> (§5): the RobStride private-protocol driver and the MyActuator V4.4 driver, wrapped in the
+   <code>s1_hardware</code> interface.</li>
+<li><strong>Safety layer</strong> (§6): joint position limits 3° inside the hard stops, torque limits starting at <strong>30 %</strong> of
+   the actuator peak, the watchdog that drops the e-stop relay, and the software e-stop.</li>
+<li><strong>Calibration and zeroing</strong> (§7):
+   * hang the robot in the zero pose with jigs: legs straight, feet flat, arms down;
+   * record each joint's zero offset;
+   * check every joint's direction against the convention in §7.</li>
+<li><strong>IMU</strong> (§8): mount it on the pelvis, calibrate it, and check that roll and pitch read zero when the pelvis is
+   level.</li>
+</ol>
+<p><strong>Check:</strong>
+- every joint reads its true angle within 1°;
+- every joint moves in the right direction for a positive command;
+- the e-stop stops all motion and the watchdog trips when the control program is killed.</p>
+<hr />
+<h2>Step 10: First steps</h2>
+<p>Use the reinforcement-learning package in <code>train/</code>. It already models S1:</p>
+<pre><code class="language-bash">cd projects/kestrel-humanoid/train
+python train.py --variant s1 --name s1 --hours 2          # or use the trained run in train/runs/s1/
+python play.py --variant s1 --run s1 --gif s1_demo.gif     # watch it walk and climb stairs in simulation
+</code></pre>
+<p>Then go from simulation to the real robot one stage at a time. Do not skip stages.</p>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>Stage</th>
+<th>Setup</th>
+<th>What to do</th>
+<th>Pass</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>Hanging in the gantry, feet off the ground, torque limits 30 %</td>
+<td>Command the default standing pose slowly</td>
+<td>Holds the pose, no oscillation</td>
+</tr>
+<tr>
+<td>2</td>
+<td>Feet touching the ground, the gantry carrying most of the weight</td>
+<td>Stand with the PD pose; push the pelvis gently</td>
+<td>Stays balanced in the harness</td>
+</tr>
+<tr>
+<td>3</td>
+<td>Gantry rope slack, torque limits 50 %</td>
+<td>Run the trained policy with a zero velocity command (standing)</td>
+<td>Stands for 2 minutes</td>
+</tr>
+<tr>
+<td>4</td>
+<td>Same</td>
+<td>Small forward commands (0.2 m/s)</td>
+<td>Steps without the rope taking load</td>
+</tr>
+<tr>
+<td>5</td>
+<td>Torque limits raised step by step to 100 %</td>
+<td>Walk at 0.5 → 0.8 m/s, turn, step onto a 5 cm board</td>
+<td>Repeatable, no falls into the rope</td>
+</tr>
+<tr>
+<td>6</td>
+<td>Rope still on</td>
+<td>Stairs from 5 cm upwards</td>
+<td>Only after stage 5 is routine</td>
+</tr>
+</tbody>
+</table></div>
+<p>Keep a log of every session, and stop at the first surprise. A policy that works in simulation needs its actuator
+model checked on the real robot first: S1-software §9.3–9.5 covers the gaps and the sim-to-real steps.</p>
+<hr />
+<h2>Step 11: Modify it</h2>
+<p>S1 is meant to be changed. Each kind of change has a set way to do it:</p>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>You want to</th>
+<th>Do this</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Add a sensor, light, tool or computer</strong></td>
+<td>Bolt a bracket to the 20 mm hole grid or into an extrusion T-slot. Power it from a spare fused output: 48 V, 24 V, 12 V or 5 V (S1-electrical §12.1). Connect it to the spare CAN drop on the nearest bus, or by USB/Ethernet to the computer.</td>
+</tr>
+<tr>
+<td><strong>Change a limb length</strong></td>
+<td>Cut a new tube. Change the length in <code>calc/kestrel/params.py</code> (S1 uses the same segment lengths as K1), then re-run <code>python simple/calc/s1_select.py</code>. It tells you whether the actuators still fit.</td>
+</tr>
+<tr>
+<td><strong>Swap an actuator for a different module</strong></td>
+<td>Add it to <code>data/cots_actuators.json</code> with its datasheet values and source, and re-run the selection. Make an adapter plate with its bolt circle, and update its CAN driver.</td>
+</tr>
+<tr>
+<td><strong>Change the end effector</strong></td>
+<td>Anything with an ISO 9409-1-50 flange bolts on: a different gripper, a tool, a camera.</td>
+</tr>
+<tr>
+<td><strong>Make it stronger</strong></td>
+<td>Look at the "strongest feasible" option per joint in <code>../generated/actuator_selection.md</code>. Every heavier part means re-running the selection, because mass flows down to the knees.</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>The one rule:</strong> after every change that adds mass, re-run <code>python simple/calc/s1_select.py</code>. The knee and hip
+X12s have the least margin.</p></main></body></html>

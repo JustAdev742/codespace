@@ -30,31 +30,31 @@ Actuator electrical power from inverse-dynamics torque/speed through each joint'
 
 | Scenario | Mean W | Peak W |
 |---|---|---|
-| W1 | 216 | 856 |
-| W2 | 400 | 2715 |
-| ST | 333 | 768 |
-| SQ | 338 | 1198 |
-| DS | 125 | 769 |
-| SU | 344 | 691 |
-| SL | 134 | 134 |
-| AH | 250 | 250 |
-| AL | 311 | 973 |
-| AF | 126 | 703 |
-| AS | 120 | 409 |
-| TB | 57 | 119 |
-| NK | 35 | 56 |
-| CW | 439 | 721 |
+| W1 | 217 | 860 |
+| W2 | 399 | 2715 |
+| ST | 337 | 776 |
+| SQ | 332 | 1191 |
+| DS | 126 | 775 |
+| SU | 346 | 697 |
+| SL | 137 | 137 |
+| AH | 241 | 241 |
+| AL | 307 | 969 |
+| AF | 127 | 702 |
+| AS | 121 | 410 |
+| TB | 57 | 118 |
+| NK | 35 | 57 |
+| CW | 425 | 693 |
 | AO | 115 | 267 |
-| SD | -24 | 1064 |
+| SD | -22 | 1066 |
 
 ## Operating modes (whole robot)
 
 | Mode | Average W |
 |---|---|
-| Idle standing (perception on, double support) | **267** |
-| Normal mixed (40 % stand, 30 % walk 0.8 m/s, 30 % manipulation) | **402** |
-| Continuous walking 0.8 m/s | **451** |
-| Demanding (fast walk 1.2 m/s / stairs, continuous) | **635** |
+| Idle standing (perception on, double support) | **268** |
+| Normal mixed (40 % stand, 30 % walk 0.8 m/s, 30 % manipulation) | **400** |
+| Continuous walking 0.8 m/s | **452** |
+| Demanding (fast walk 1.2 m/s / stairs, continuous) | **634** |
 
 Simultaneous peak (electronics peak + worst actuator peak): **3076 W**.
 
@@ -62,13 +62,13 @@ Simultaneous peak (electronics peak + worst actuator peak): **3076 W**.
 
 | Cell | Config | Cells | Energy Wh | Usable Wh | Pack kg (est.) | Runtime normal (h) | Runtime walking (h) | Peak A | A/cell | Sag V |
 |---|---|---|---|---|---|---|---|---|---|---|
-| Molicel P50B | 16S5P | 80 | 1397 | 1219 | 7.4 | 3.0 | 2.7 | 59 | 11.8 | 2.4 |
-| Molicel P50B | 16S6P | 96 | 1676 | 1463 | 8.9 | 3.6 | 3.2 | 59 | 9.9 | 2.0 |
+| Molicel P50B | 16S5P | 80 | 1397 | 1219 | 7.4 | 3.1 | 2.7 | 59 | 11.8 | 2.4 |
+| Molicel P50B | 16S6P | 96 | 1676 | 1463 | 8.9 | 3.7 | 3.2 | 59 | 9.9 | 2.0 |
 | Molicel P50B | 16S7P | 112 | 1956 | 1707 | 10.3 | 4.3 | 3.8 | 59 | 8.5 | 1.7 |
 | Molicel P50B | 16S8P | 128 | 2235 | 1951 | 11.8 | 4.9 | 4.3 | 59 | 7.4 | 1.5 |
 | Molicel P50B | 16S9P | 144 | 2514 | 2195 | 13.3 | 5.5 | 4.9 | 59 | 6.6 | 1.3 |
 | Molicel P45B | 16S5P | 80 | 1238 | 1081 | 7.3 | 2.7 | 2.4 | 59 | 11.8 | 2.6 |
 | Molicel P45B | 16S6P | 96 | 1486 | 1297 | 8.7 | 3.2 | 2.9 | 59 | 9.9 | 2.2 |
-| Molicel P45B | 16S7P | 112 | 1734 | 1514 | 10.2 | 3.8 | 3.4 | 59 | 8.5 | 1.9 |
+| Molicel P45B | 16S7P | 112 | 1734 | 1514 | 10.2 | 3.8 | 3.3 | 59 | 8.5 | 1.9 |
 | Molicel P45B | 16S8P | 128 | 1981 | 1730 | 11.6 | 4.3 | 3.8 | 59 | 7.4 | 1.6 |
-| Molicel P45B | 16S9P | 144 | 2229 | 1946 | 13.1 | 4.8 | 4.3 | 59 | 6.6 | 1.5 |
+| Molicel P45B | 16S9P | 144 | 2229 | 1946 | 13.1 | 4.9 | 4.3 | 59 | 6.6 | 1.5 |

@@ -1,0 +1,126 @@
+# KESTREL S1: the simple build
+
+S1 is a full-size humanoid that one person can build from parts they can order today. It has the same skeleton as
+KESTREL K1: 1.75 m tall, with the same leg and arm geometry. Everything else is chosen to be cheap, quick to put
+together, and easy to change:
+
+* it uses off-the-shelf actuator modules on CAN instead of custom motors and gearboxes;
+* the frame is bolted from aluminium extrusion, tube and laser-cut plate instead of machined and moulded parts;
+* there are no shells.
+
+S1 is not a toy. Its actuators were selected against the same whole-body simulation that sizes K1. That covers
+walking, 18 cm stairs, a 20 kg box squat, a 0.30 m single-leg step-up and a missed-step drop, with the same
+margins as K1.
+
+<!-- S1_RENDERS -->
+
+## At a glance
+
+| | KESTREL S1 | KESTREL K1 Mk II (for comparison) |
+|---|---|---|
+| Height / estimated mass | 1.75 m / 65.5 kg (72.0 kg design mass) | 1.75 m / 102.5 kg |
+| Actuated joints | 27 + 2 grippers (legs 2 × 6, waist yaw, arms 2 × 6, neck 2) | 30 + two 13-DOA hands |
+| Actuators | 4 × MyActuator RMD-X12-P20-320, 23 × RobStride (RS04 / RS03 / RS02 / RS00) | custom liquid-cooled and cycloid family |
+| Leg peak torque (joint side) | knee 456 N·m (X12 + 1.5:1 belt), hip pitch 320 N·m | knee 493 N·m, hip pitch 406 N·m |
+| Payload (sized for) | 20 kg box squat, 5 kg per hand at reach | 30 kg sustained / 50 kg momentary |
+| Walking | 0.8 m/s nominal, 1.0 m/s fast, 18 cm stairs | 0.8 / 1.2 m/s, 18 cm stairs |
+| Bus / battery | 13S 48 V, 48 V 20 Ah pack (~0.96 kWh): ~3 h mixed use, ~2 h walking | 16S, 2 × 1.15 kWh hot-swap |
+| Actuator cost | **US$10,325** (≈ A$15,700), 27 units | — |
+| Full parts cost (A$, inc GST) | **A$37,990**, or **A$31,300** with a budget wireless e-stop instead of the FORT ([generated/bom.md](generated/bom.md)) | see docs/12 |
+
+## How it was designed
+
+1. **Same skeleton, simpler parts.** `calc/kestrel/variant_s1.py` describes S1 to K1's engineering model: bodies,
+   joints, component masses and placements. Run anything in `calc/` with `KESTREL_VARIANT=s1` and you get S1
+   instead of K1.
+2. **Requirements from simulation.** Whole-body inverse dynamics over the scenario set gives each joint's
+   repeated, momentary, continuous and speed requirements: [generated/joint_requirements.md](generated/joint_requirements.md).
+   S1 skips the torso bend, because it has no waist pitch, and its fast walk is 1.0 m/s instead of 1.2.
+3. **Actuators from a sourced catalogue.** `simple/calc/s1_select.py` tests every maker-verified 48 V integrated
+   module in `data/cots_actuators.json` (sources in `docs/research/R9`). It tries each one direct and through the
+   allowed reductions (knee belt, hip-roll crank, ankle lever). The tests are:
+   * every simulated torque-speed sample, with K1's margins, must sit under a conservative torque-speed line;
+   * peak torque with 10 % headroom;
+   * missed-step momentary torque;
+   * continuous torque with a 0.8 thermal derate.
+
+   The choice minimises price + a mass penalty + a "second brand" penalty, so S1 ends up with two protocols, not
+   five. The masses feed back into the model until the selection stops changing:
+   [generated/actuator_selection.md](generated/actuator_selection.md).
+4. **Frame from the open-source lessons** (`docs/research/R8`): a T-slot torso and pelvis, tube limbs in clamps,
+   a hole grid everywhere, an outboard bearing opposite every leg actuator, and a hard-wired e-stop contactor.
+
+## Selected actuators
+
+| Joints | Module | Reduction | Peak / rated | Unit price | Qty |
+|---|---|---|---|---|---|
+| Hip pitch | MyActuator RMD-X12-P20-320 | direct | 320 / 85 N·m | US$1,090 | 2 |
+| Knee | MyActuator RMD-X12-P20-320 | 1.5:1 HTD-8M belt from the upper thigh | 456 N·m at the knee | US$1,090 | 2 |
+| Hip roll | RobStride RS04 | 2:1 crank + push-rod | 228 N·m at the joint | US$295 (A$577 at Pakronics) | 2 |
+| Hip yaw, waist yaw | RobStride RS04 | direct | 120 / 40 N·m | US$295 | 3 |
+| Ankle (2 per ankle) | RobStride RS04 | parallel push-rods, K1 geometry | 234 N·m pitch | US$295 | 4 |
+| Shoulder pitch, roll | RobStride RS04 | direct | 120 / 40 N·m | US$295 | 4 |
+| Shoulder yaw, elbow | RobStride RS03 | direct | 60 / 21 N·m | US$245 | 4 |
+| Wrist yaw, pitch | RobStride RS02 | direct | 17 / 7 N·m | US$195 | 4 |
+| Neck yaw, pitch | RobStride RS00 | direct | 14 / 5 N·m | US$185 | 2 |
+
+The tightest margins are on the knee/hip X12 (1.01), ankle (1.03), elbow (1.04) and neck (1.05). Every one is
+at least 1.0 after K1's 1.2 torque and 1.15 speed margins and a 10 % design-mass allowance. If S1's built mass
+comes in above 65.5 kg, re-run the selection; the knees go first.
+
+The peak ratings of these modules last 3–10 s (R9). Long, heavy holds are covered by the continuous check, not the
+peak.
+
+**Two electrical rules that come from these choices** ([docs/S1-electrical.md](docs/S1-electrical.md)):
+
+* The X12 is rated to 55 V and a full 13S pack is 54.6 V. Charge to 53.3 V at most, and clamp regeneration at
+  54.3 V, until MyActuator confirms a higher limit.
+* Five CAN buses at 1 Mbit/s carry a 250 Hz joint loop at under 48 % load. A 500 Hz loop needs seven buses.
+
+## The S1 modularity standard
+
+Everything follows four rules, so adding a component never needs a new design:
+
+1. **Hole grid.** Every plate carries Ø5.5 holes on a 20 mm grid, and every extrusion takes 20-series T-nuts.
+   Brackets for new parts bolt on anywhere.
+2. **Tube limbs in clamp blocks.** Thigh, shank and upper arm are Ø40 × 3 6061-T6 tube; the forearm is Ø30 × 2.
+   To change a segment length, cut a new tube and re-run the calc with the new length.
+3. **Adapter plates.** Each actuator mounts through an adapter plate that matches its bolt circle. A different
+   module only needs a different adapter.
+4. **Spare power and bus capacity.** The power board has spare fused 48 V, 24 V, 12 V and 5 V outputs. Each of the
+   5 CAN buses has a spare drop. The wrists carry ISO 9409-1-50 tool flanges.
+
+## Folder map
+
+| Path | Contents |
+|---|---|
+| `calc/s1_select.py` | requirement ↔ actuator selection loop |
+| `calc/s1_bom.py` | priced bill of materials → `generated/bom.md`, `data/bom.csv` |
+| `generated/` | requirements, actuator selection, BOM (generated, do not edit) |
+| `data/` | S1 scenario cache, selected family, BOM CSV |
+| `cad/` | CadQuery model, STEP / STL, DXF for laser cutting, cut list |
+| `docs/` | electrical (power, e-stop, CAN, wiring) and software (ROS 2, drivers, safety, RL retargeting) |
+| `renders/` | S1 renders |
+| `tutorial/` | the simple step-by-step build guide |
+
+The RL training package in `train/` runs S1 directly:
+`python train.py --variant s1 --name s1`, then `python play.py --variant s1 --run s1`.
+
+## Re-run after a change
+
+```bash
+cd projects/kestrel-humanoid
+python simple/calc/s1_select.py          # requirements + actuator selection (about 2 min)
+python simple/calc/s1_bom.py             # bill of materials
+python simple/cad/build_s1.py            # CAD, DXF and cut list
+```
+
+## Limits
+
+* The structure masses are estimates until the S1 CAD is weighed. The CAD cut list reports its own mass.
+* The actuator torque-speed line is a conservative straight line, not the makers' curves. Validate each module on
+  a simple lever-and-scale test before trusting the margins.
+* There are no shells and no hand dexterity: the grippers are simple parallel jaws. The tool flange is how you
+  upgrade.
+* Safety is the same as for K1: run it in a gantry, at reduced torque limits, with the e-stop in hand, and nobody
+  within reach until it is proven.

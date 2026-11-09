@@ -21,6 +21,8 @@ from pathlib import Path
 if "MUJOCO_GL" not in os.environ and not os.environ.get("DISPLAY"):
     os.environ["MUJOCO_GL"] = "osmesa"
 os.environ.setdefault("OMP_NUM_THREADS", "1")
+if "--variant" in sys.argv:          # the robot model is chosen at import time (model.py / calc)
+    os.environ["KESTREL_VARIANT"] = sys.argv[sys.argv.index("--variant") + 1]
 
 import numpy as np
 import torch
@@ -161,6 +163,7 @@ def render(policy, path, segments, fps=15, size=(560, 350), speed=0.6):
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--run", default="rough")
+    ap.add_argument("--variant", default=None, choices=["k1", "s1"], help="robot model (default: from the run's checkpoint)")
     ap.add_argument("--eval-envs", type=int, default=16)
     ap.add_argument("--speed", type=float, default=0.6)
     ap.add_argument("--table", default=None, help="write the success table as markdown here")

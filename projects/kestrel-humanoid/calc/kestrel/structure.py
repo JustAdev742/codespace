@@ -28,6 +28,8 @@ MAT = {
     "Ti-6Al-4V": dict(sy=880e6, fat=240e6, E=113.8e9, rho=4430),
     "17-4PH H900": dict(sy=1170e6, fat=500e6, E=196e9, rho=7750),
     "CFRP tube": dict(sy=350e6, fat=200e6, E=90e9, rho=1550),
+    # needle raceways need >= 58 HRC (docs/09 hold H13): through-hardened, ground bearing steel; conservative yield
+    "100Cr6 60-64 HRC": dict(sy=1400e6, fat=600e6, E=210e9, rho=7810),
 }
 
 
@@ -98,7 +100,7 @@ def checks(store, meta, names, req, fam):
     add("Shank CFRP tube axial compression in X drop", "X", f"{F_x / 1e3:.2f} kN", F_x / (pi * (do**2 - di**2) / 4) / 1e6,
         MAT["CFRP tube"]["sy"] / 1e6)
     # ---------------- actuator output flange bolts (friction joint): n bolts on PCD
-    for gname, n_b, d_b, pcd in (("KA-130K", 12, "M5 12.9", 0.105), ("KA-110P", 10, "M4 12.9", 0.085), ("KA-90P", 8, "M4 12.9", 0.075)):
+    for gname, n_b, d_b, pcd in (("KA-130K", 12, "M5 12.9", 0.105), ("KA-110P", 12, "M5 12.9", 0.100), ("KA-90P", 8, "M4 12.9", 0.075)):
         T_mom = max(req[j]["T_mom_req"] if j in req else 0 for j in fam[gname]["joints"] if j != "ankle")
         if gname == "KA-90P":
             T_mom = max(T_mom, LK.ankle_actuator_torque(req["ankle_pitch"]["T_mom_req"], req["ankle_roll"]["T_rep_req"]))
@@ -106,11 +108,11 @@ def checks(store, meta, names, req, fam):
         T_slip = n_b * Fp * 0.15 * pcd / 2
         add(f"{gname} output flange: {n_b}x {d_b} on PCD {pcd * 1e3:.0f} mm, slip torque (mu 0.15)", "M",
             f"{T_mom:.0f} N m", T_mom, T_slip, "N m", "plus 2 dowels for location; slip = overload fuse")
-    # ---------------- ankle cross pins: Ti-6Al-4V 12 mm, double shear
+    # ---------------- ankle cross pins: 100Cr6 12 mm ground (they are needle-roller raceways), double shear
     F_ank = F_x
     tau_pin = F_ank / (2 * pi * 0.012**2 / 4)
-    add("Ankle cross pins Ti-6Al-4V D12, double shear (X drop GRF)", "X", f"{F_ank / 1e3:.2f} kN", tau_pin / 1e6,
-        0.58 * MAT["Ti-6Al-4V"]["sy"] / 1e6)
+    add("Ankle cross pins 100Cr6 60-64 HRC D12 ground, double shear (X drop GRF)", "X", f"{F_ank / 1e3:.2f} kN", tau_pin / 1e6,
+        0.58 * MAT["100Cr6 60-64 HRC"]["sy"] / 1e6)
     # ---------------- foot plate: 7075 8 mm with ribs; cantilever toe load = full authority at toe
     M_toe = m_des * g * 1.5 * 0.12
     Z = 0.10 * 0.010**2 / 6 * 2.2           # ribbed section factor ~2.2 over flat 10 mm plate
@@ -125,11 +127,11 @@ def checks(store, meta, names, req, fam):
     add("KA-130K stage-2 sun teeth, Lewis bending (m 1.25, b 18, 4 planets, 17-4PH/18CrNiMo7-6)", "M",
         f"{T_out:.0f} N m out", sig / 1e6, 1170.0, note="carburised 18CrNiMo7-6 preferred (sy > 1000 MPa); AGMA check in FEA phase")
     # ---------------- output crossed-roller bearing life (KA-130K, KA-130H), walking
-    C_dyn = 30e3      # e.g. 90x130x? CRB class dynamic rating ~30 kN (confirm in THK RB/IKO CRBH catalogue)
+    C_dyn = 33.1e3    # THK RB9016 (90 x 130 x 16) catalogue dynamic rating, docs/09 hold H1 (verify against the current catalogue)
     P_eq = m_des * g * 1.2 + 2 * req["knee"]["rms_W1"] / 0.11     # radial from weight + moment couple / Dpw
     n_rpm = 30.0
     L10_h = (C_dyn / P_eq) ** (10 / 3) * 1e6 / (60 * n_rpm)
-    add("KA-130K output crossed-roller L10 life at walking load (oscillating, 30 rpm equiv.)", "N",
+    add("KA-130K output crossed-roller THK RB9016 L10 life at walking load (oscillating, 30 rpm equiv.)", "N",
         f"P_eq {P_eq / 1e3:.1f} kN", 3000.0, L10_h, "h", "required >= 3000 h; value = L10 hours")
     return R
 

@@ -4,10 +4,10 @@ Sizing at minimum loaded bus voltage 52 V (16S). Torques/speeds at the actuator 
 
 | Class | Joints | Motor (status) | Gear | Ratio | Peak out | Continuous out | No-load speed | Speed @ ½ peak | Reflected inertia | Mass | Drive | Feasible options |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|
-| **KA-130K** | knee | KM-130x50-LC (custom KM design) | 2-stage planetary (custom) | 17:1 | 493 N·m | 295 N·m | 12.5 rad/s | 12.1 rad/s | 0.400 kg·m² | 4.96 kg | HC2 | 6 |
-| **KA-130H** | hip_pitch | KM-130x50-LC (custom KM design) | 2-stage planetary (custom) | 14:1 | 406 N·m | 243 N·m | 15.2 rad/s | 14.7 rad/s | 0.271 kg·m² | 4.76 kg | HC2 | 8 |
+| **KA-130K** | knee | KM-130x50-LC (custom KM design) | 2-stage planetary (custom) | 17:1 | 493 N·m | 263 N·m | 12.5 rad/s | 12.1 rad/s | 0.400 kg·m² | 4.96 kg | HC2 | 6 |
+| **KA-130H** | hip_pitch | KM-130x50-LC (custom KM design) | 2-stage planetary (custom) | 15:1 | 435 N·m | 232 N·m | 14.2 rad/s | 13.7 rad/s | 0.311 kg·m² | 4.83 kg | HC2 | 8 |
 | **KA-110P** | hip_roll, waist_pitch | RI115-PH (datasheet) | 2-stage planetary (custom) | 29:1 | 427 N·m | 125 N·m | 5.7 rad/s | 5.2 rad/s | 0.361 kg·m² | 2.96 kg | EV | 2 |
-| **KA-90P** | hip_yaw, waist_yaw, ankle | RI85-PH (datasheet) | 2-stage planetary (custom) | 28:1 | 129 N·m | 44 N·m | 13.1 rad/s | 12.3 rad/s | 0.066 kg·m² | 1.41 kg | EV | 21 |
+| **KA-90P** | hip_yaw, waist_yaw, ankle | RI85-PH (datasheet) | 2-stage planetary (custom) | 28:1 | 129 N·m | 44 N·m | 13.1 rad/s | 12.3 rad/s | 0.066 kg·m² | 1.42 kg | EV | 20 |
 | **KH-25** | shoulder_pitch, shoulder_roll | KM-115x32-N50 (custom KM design) | C25 machined two-disc cycloid 30:1 | 30:1 | 362 N·m | 119 N·m | 6.3 rad/s | 6.0 rad/s | 0.494 kg·m² | 2.60 kg | EV | 2 |
 | **KH-20** | shoulder_yaw, elbow | KM-85x26-N50-4t (custom KM design) | C20 machined two-disc cycloid 30:1 | 30:1 | 158 N·m | 44 N·m | 8.6 rad/s | 8.1 rad/s | 0.107 kg·m² | 1.63 kg | EV | 2 |
 | **KH-14** | wrist_yaw, neck_yaw, neck_pitch | KM-50x20 (custom KM design) | CSG-14-50 strain-wave | 50:1 | 34 N·m | 9 N·m | 9.0 rad/s | 8.2 rad/s | 0.028 kg·m² | 0.68 kg | EV | 2 |

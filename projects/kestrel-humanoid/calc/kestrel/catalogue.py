@@ -15,23 +15,23 @@ from . import params as P
 ROOT = Path(__file__).resolve().parents[2]
 GEN = ROOT / "docs" / "generated"
 
-DECISION = {
-    "KA-130K": ("build", "custom KM-130x45 motor + custom planetary; no verified commercial kit meets the walking thermal duty at 52 V"),
-    "KA-130H": ("build", "same housing as KA-130K, 40 mm stack"),
-    "KA-110P": ("modify", "buy TQ ILM85x26 frameless kit; custom housing + planetary"),
-    "KA-90P": ("modify", "buy CubeMars RI85-PH frameless kit; custom housing + planetary"),
-    "KH-25": ("modify", "buy TQ ILM85x13 + Leaderdrive size-25 set; custom housing + torque flexure"),
-    "KH-20": ("modify", "buy RI85-PH + size-20 set; custom housing + torque flexure"),
-    "KH-14": ("build", "custom KM-50x20 motor (or a verified 50 mm frameless kit) + size-14 set"),
+DECISION = {   # Mk II (docs/04, docs/research/R10 sec. 5)
+    "KA-130K": ("build", "KA-130K2: custom KM-130x50-LC motor (N50UH, 50 mm stack, liquid jacket) + custom 2-stage planetary + HC2 150 A GaN drive"),
+    "KA-130H": ("build", "same KA-130K2 hardware as the knee (one part number for 4 joints)"),
+    "KA-110P": ("modify", "buy CubeMars RI115-PH frameless kit; custom housing + 2-stage planetary; output flange 12x M5 on PCD 100"),
+    "KA-90P": ("modify", "buy CubeMars RI85-PH frameless kit; custom housing + 2-stage planetary"),
+    "KH-25": ("build", "KH-C25: custom KM-115x32-N50 motor + machined two-disc cycloid C25 (ratings are dyno-validation targets)"),
+    "KH-20": ("build", "KH-C20: custom KM-85x26-N50-4t motor + machined two-disc cycloid C20 (ratings are dyno-validation targets)"),
+    "KH-14": ("build", "custom KM-50x20 motor (or a verified 50 mm frameless kit) + size-14 strain-wave set"),
 }
 COMMERCIAL_ALT = {
-    "KA-130K": "MyActuator X15-450 (450 N·m pk, 3.5 kg, rated at 72 V — ~25 % slower at 59 V); for Phase-0 mules only",
-    "KA-130H": "MyActuator X12-320 (320 N·m pk, 125 rpm no-load, 2.37 kg, EtherCAT) [ds R1]",
-    "KA-110P": "MyActuator X12-320 / X10-200 [ds R1]",
-    "KA-90P": "RobStride RS04 (120 N·m pk, 1.42 kg, CAN only → CAN-FD bridge) or MyActuator X8-120 [ds R1]",
-    "KH-25": "MyActuator RH-25 (157 N·m pk, 2.42 kg) [ds R1]",
+    "KA-130K": "MyActuator X15-450 (450 N·m pk, 3.5 kg, rated at 72 V — ~25 % slower at 59 V); test mules only, below the Mk II continuous duty",
+    "KA-130H": "MyActuator X12-320 (320 N·m pk, 2.37 kg, EtherCAT) [R9]; below the Mk II hip peak",
+    "KA-110P": "MyActuator X12-320 [R9]",
+    "KA-90P": "RobStride RS04 (120 N·m pk, 1.51 kg, CAN → CAN-FD bridge) or MyActuator X8-120 [R9]",
+    "KH-25": "MyActuator RH-25 (157 N·m pk, 2.42 kg) [ds R1]; below the Mk II 10 kg-at-reach hold",
     "KH-20": "MyActuator RH-20 (80 N·m pk, 1.45 kg) [ds R1]",
-    "KH-14": "CubeMars AK45-36 (24 N·m pk, 0.35 kg, 24 V — needs a 24 V branch) [ds R1]",
+    "KH-14": "CubeMars AK45-36 (24 N·m pk, 0.35 kg, 24 V — on the Mk II 24 V rail) [R9]",
 }
 JOINT_RANGE = {k: v[1] for k, v in P.JOINTS_LEFT.items()}
 JOINT_RANGE.update({k: v[1] for k, v in P.JOINTS_CENTRE.items()})
@@ -43,7 +43,8 @@ def joint_sheets():
     kf = json.loads((ROOT / "data" / "knee_fourbar.json").read_text())
     G = np.array(kf["G"])
     L = ["# Joint actuator spec sheets (generated)", "",
-         "Joint-side capability after linkages. Peak = actuator peak (motor saturation or drive current, whichever is lower) × ratio × gear efficiency × linkage. "
+         "Joint-side capability after linkages. Peak = actuator peak (motor saturation or drive current, whichever is lower) × ratio × gear efficiency × linkage, "
+         "capped by the gear's repeated rating for strain-wave and cycloid joints. Continuous = the lower of thermal and the drive's continuous current. "
          "Margin = capability / requirement (requirements already include ×1.2 torque and ×1.15 speed margins). "
          "Continuous = thermal at the stated derate. Speed = no-load at 52 V minimum bus (field weakening not counted).", ""]
     order = ["hip_yaw", "hip_roll", "hip_pitch", "knee", "ankle_pitch", "ankle_roll", "waist_yaw", "waist_pitch", "shoulder_pitch",
@@ -60,11 +61,13 @@ def joint_sheets():
         if j in ("wrist_pitch", "wrist_roll"):
             F = LK.wrist_actuator_force(req["wrist_pitch"]["T_rep_req"], req["wrist_roll"]["T_rep_req"])
             v = LK.wrist_actuator_speed(req["wrist_pitch"]["w_req"], 0)
-            L += [f"Actuation: two parallel ball-screw linear actuators (maxon DCX 16 L + GPX 16 + KSS Ø6 × 2 mm) on lever arms "
-                  f"r_p = {LK.WRIST['r_p'] * 1e3:.0f} mm / d = {LK.WRIST['d'] * 1e3:.0f} mm. Required force per actuator at the combined corner "
-                  f"≈ {F:.0f} N; speed ≈ {v * 1e3:.0f} mm/s. DCX 16 L (10.9 mN·m cont, 37 mN·m stall [ds R5]) × GPX 16 3.9:1 × 2π/2 mm × 0.88 "
-                  f"gives ≈ {10.9e-3 * 3.9 * 0.9 * 2 * pi / 0.002 * 0.88:.0f} N continuous / ≈ {37e-3 * 3.9 * 0.9 * 2 * pi / 0.002 * 0.88:.0f} N stall. "
-                  f"Requirement: {r['T_rep_req']:.0f} N·m repeated, {r['w_req']:.1f} rad/s. Build class: **modify** (buy motor/gearhead/screw, custom housing).", ""]
+            L += [f"Actuation (Mk II **KW-L2**, docs/04 and R10 sec. 5.9): two parallel ball-screw linear actuators, each a flat "
+                  f"brushless motor on the 24 V rail driving a Ø6 × **1 mm-lead** ball screw, on lever arms r_p = {LK.WRIST['r_p'] * 1e3:.0f} mm / "
+                  f"d = {LK.WRIST['d'] * 1e3:.0f} mm. Required force per actuator at the combined corner ≈ {F:.0f} N; speed ≈ {v * 1e3:.0f} mm/s. "
+                  f"The K1 DCX 16 L on the 12 V rail (≈ 359 N stall) does not meet this, and with the Mk II 10 kg-per-hand load a 2 mm lead would "
+                  f"need 2.8–3.6× the motor's rated torque, hence the 1 mm lead (docs/08). "
+                  f"Requirement: {r['T_rep_req']:.0f} N·m repeated, {r['w_req']:.1f} rad/s. Build class: **modify** (buy motor/screw, custom housing). "
+                  f"Validate force and speed on the bench (docs/11).", ""]
             continue
         g = group_of["ankle" if j.startswith("ankle") else j]
         a = fam[g]
@@ -107,8 +110,9 @@ def joint_sheets():
             cap_c = a["T_cont_out"]
             cap_w = a["w_noload_out"]
             trans = "direct"
-            pk_txt = f"{a['T_peak_out']:.0f} N·m"
-            pk_margin = a["T_peak_out"] / r["T_rep_req"]
+            pk = a.get("T_peak_usable", a["T_peak_out"])
+            pk_txt = f"{pk:.0f} N·m" + (f" (gear-limited; motor {a['T_peak_out']:.0f})" if pk < a["T_peak_out"] - 0.5 else "")
+            pk_margin = pk / r["T_rep_req"]
         if a.get("gear") == "cycloid":
             gear = f"{a['hd']} machined two-disc cycloid {int(a['ratio'])}:1 (custom; ratings are dyno-validation targets, R10)"
         elif a["hd"]:
@@ -127,7 +131,7 @@ def joint_sheets():
               f"| Peak mechanical power | {r['pmax']:.0f} W | — | — |", "",
               f"* Actuator class **{g}** — motor **{a['motor']}** ({m['src']}), {gear}, gear efficiency {eta:.2f} (assumed, to be measured), transmission: {trans}.",
               f"* Motor: Kt {m['Kt']:.3f} N·m/A rms, R(LL) {m['R_LL'] * 1e3:.0f} mΩ, continuous {m['T_cont']:.2f} N·m, peak {m['T_pk']:.1f} N·m; drive {a['drive']}; reflected inertia {a['J_reflected']:.3f} kg·m²; actuator mass ≈ {a['mass']:.2f} kg [est].",
-              f"* Thermal: continuous rating at derate {'1.00 (ducted air, potted stator)' if g.startswith('KA-130') else '0.85 (conduction to structure)'}; winding NTC limit 130 °C warn / 150 °C trip.",
+              f"* Thermal: continuous rating at derate {'1.00 (liquid jacket; also capped by the HC2 drive at 75 A continuous)' if g.startswith('KA-130') else '0.85 (conduction to structure)'}; winding NTC limit 130 °C warn / 150 °C trip.",
               f"* Build class: **{dec[0]}** — {dec[1]}. Commercial alternative: {COMMERCIAL_ALT[g]}.", ""]
     (GEN / "joint_catalogue.md").write_text("\n".join(L) + "\n")
 

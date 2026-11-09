@@ -1,61 +1,105 @@
-# P10 — Hands (10 actuated DOF each)
+# P10 — Hands Mk II (13 actuated DOF each, palm camera)
 
-Build **one finger first** (index: 3 actuators) and run its endurance test before building the rest.
+Build **one finger first** (index: 3 actuators, then a 4-DOF thumb) and run the single-finger endurance and force tests
+before building the rest. Architecture: docs/03 §8 (mechanical), docs/05 §6 (electrical); K1 hand CAD `cad/hand.py` is
+the 10-DOA version and is the starting point for the Mk II detailing.
+
+Mk II targets (R7 #4, `mass_budget.md`): **13 DOA**, 4-DOF thumb, finger abduction, **≥ 15 N fingertip**, **≥ 200 N power
+grasp**, **≥ 20 kg hook/handle hold**, tactile threshold ≤ 5 g, palm camera, **1.15 kg** per hand.
 
 ## A. Visual reference
-* Hand detail render: [`renders/08_hand_detail.png`](../../renders/08_hand_detail.png)
-* Actuation map: [`diagrams/hand_architecture.svg`](../../diagrams/hand_architecture.svg)
+* Hand detail render (K1): [`renders/08_hand_detail.png`](../../renders/08_hand_detail.png)
+* Actuation map (K1 10-DOA diagram; Mk II allocation in the table below): [`diagrams/hand_architecture.svg`](../../diagrams/hand_architecture.svg)
 * CAD: `cad/hand.py` (palm, phalanges, joints, internals: `hand_internals()`), STEP `cad/out/step/l_hand__palm_shell.step`
-* Reference design: ILDA hand (Kim et al., Nat. Commun. 2021), the architecture this hand follows [R5].
+* Reference design: ILDA hand (Kim et al., Nat. Commun. 2021) [R5]
+
+**Actuator allocation (docs/03 §8):**
+
+| Finger | DOA | Actuators (gearhead) |
+|---|---|---|
+| Thumb | 4 | CMC opposition rotation (4:1), CMC flexion (high-force), MCP flexion (16:1), IP flexion (16:1, short tendon) |
+| Index | 3 | MCP abduction (4:1), MCP flexion (high-force), PIP + DIP coupled (16:1) |
+| Middle | 2 | MCP flexion (high-force), PIP + DIP coupled (16:1) |
+| Ring | 2 | MCP flexion (high-force), PIP + DIP coupled (16:1, short tendon to DIP) |
+| Little | 1 | coupled flexion (high-force) |
+| Spread | 1 | ring + little abduction, coupled (4:1) |
+
+High-force flexors (5 per hand): maxon DCX 12 L + GPX 12 (B118). Standard units (8 per hand): maxon DCX 10 L + GPX 10
+(B058). All drive KSS SR0401K Ø4 × 1 ball screws on miniature guides into crossed four-bar links; DIP joints follow
+their PIP through a second four-bar or a short Dyneema tendon.
 
 ## B. Parts list (one hand)
 
 | BOM | Item | Qty |
 |---|---|---|
-| B058 | Micro linear actuator: maxon DCX 10 L 9 V + GPX 10 (16:1 for MCP flexors; 4:1 for thumb rotation and index abduction) + ENX 10 encoder + KSS SR0401K Ø4 × 1 mm ball screw + miniature guide (MGN5 class) | 10 |
-| B059 | TMAG5273 3D Hall angle sensors + Ø3 × 1 mm diametric N52 magnets | 16 |
+| B118 | High-force micro linear actuator: DCX 12 L 9 V + GPX 12 + ENX + KSS SR0401K Ø4 × 1 + miniature guide | 5 |
+| B058 | Standard micro linear actuator: DCX 10 L 9 V + GPX 10 (16:1 flexors, 4:1 abduction/rotation) + ENX 10 + KSS SR0401K + MGN5-class guide | 8 |
+| B059 | TMAG5273 3D Hall angle sensors + Ø3 × 1 mm diametric N52 magnets (MCP, PIP, thumb joints) | 16 |
 | B052 | Contactile 3D force buttons Ø10, 0–20 N | 5 |
 | B053 | Palm magnetic tactile skin (5 × MLX90393 + magnetised Dragon Skin 10 + iron microparticles, AnySkin pattern) | 1 |
-| B060 | Hand controller PCB (F28P65x + 10 × DRV8316-class + EtherCAT + 2 wrist-actuator channels), per TIDA-010992 | 1 |
-| B061 | 7075 palm frame, PA12-CF (MJF) phalanx links and four-bar links, Ti-6Al-4V Ø2 pins, 17-4PH bushings, cast Dragon Skin 20 fingertip caps, palm shell | 1 set |
+| B116 | Palm camera TechNexion VLS-GM2-AR0234-C-S191-IR (global shutter, GMSL2) behind a sealed PC window, 20° toward the fingertips | 1 |
+| B060 | Hand controller Mk II (F28P65x, 13 H-bridges, EtherCAT, local 12 V buck from the 24 V forearm rail, KW-L2 interface), in the sealed palm | 1 |
+| B061 | Hand mechanical set: 7075 palm frame, 4-DOF thumb base on a 2-bearing pivot, abduction pivots, Ti-6Al-4V Ø2 pins, 17-4PH bushings, MJF PA12-CF links, Dyneema SK99 tendon (0.5 mm) with crimp terminals, cast Dragon Skin 20 fingertip caps, palm shell with camera window | 1 set |
 | B081 | M1.6/M2 screws, E-clips, 0.2 mm PTFE washers, Loctite 222 | set |
 
 ## C. Tools
-Stereo microscope, fine tweezers, M1.6 drivers, torque screwdriver 0.05–0.5 N·m, reamers Ø2 H7, small press for pins, silicone casting kit (vacuum chamber), printed moulds, force gauge 0–100 N, the finger endurance rig (printed frame + load spring + cycle counter).
+Stereo microscope, fine tweezers, M1.6 drivers, torque screwdriver 0.05–0.5 N·m, reamers Ø2 H7, small press for pins,
+silicone casting kit (vacuum chamber), printed moulds, force gauge 0–100 N, a 50 mm test cylinder on a load cell
+(grasp force), a 20 kg handle hook test mass, the finger endurance rig (printed frame + load spring + cycle counter),
+precision weights 1–10 g (tactile threshold).
 
 ## D. Manufacturing
-* **Palm frame (7075):** CNC; holds the 10 actuators in two rows, guide rails and the MCP pivot bores (Ø2 H7). Hard anodise.
-* **Phalanx and four-bar links:** MJF PA12-CF, reamed to Ø2 H7 after printing. Bushings are pressed in. Link lengths follow the ILDA crossed four-bar for MCP and PIP, with DIP coupled by a second four-bar. Size them in a parametric sketch so DIP ≈ 0.8 × PIP angle.
-* **Fingertip caps:** cast Dragon Skin 20 (Shore 20A) in a two-part printed mould over a PA12-CF distal core with a dovetail. The Contactile button sits under a 1.5 mm silicone layer.
-* **Palm skin:** mix Dragon Skin 10 with iron microparticles, cast 2 mm, magnetise in a pulse magnetiser or with an array of N52 blocks (AnySkin method [R5]).
+* **Palm frame (7075):** CNC; holds 13 actuators in two staggered rows, guide rails, MCP pivot bores (Ø2 H7), the
+  thumb-base pivot bearings, the abduction pivots and the controller/camera bay. Hard anodise.
+* **Phalanx and four-bar links:** MJF PA12-CF, reamed to Ø2 H7 after printing, bushings pressed in. ILDA crossed
+  four-bars for MCP and PIP; DIP ≈ 0.8 × PIP through a second four-bar (index, middle) or a short tendon (ring, thumb
+  IP).
+* **Tendons:** 0.5 mm Dyneema SK99 over Ø4 PTFE pulleys, pre-stretched at 50 N for 1 h, terminated with crimp sleeves;
+  set length with a printed jig.
+* **Fingertip caps:** Dragon Skin 20 (Shore 20A) cast over a PA12-CF distal core with a dovetail; the Contactile button
+  sits under 1.5 mm of silicone.
+* **Palm skin:** Dragon Skin 10 with iron microparticles, cast 2 mm, magnetised (AnySkin method [R5]).
+* **Palm window:** 2 mm PC, AR coated, bonded and O-ring sealed in front of the camera (the palm is a sealed zone, docs/03
+  §12).
 
 ## E. Assembly
-1. **Actuator sub-assembly:** motor + gearhead + ball screw coupling (set screw on a flat, Loctite 222), nut carriage on the MGN5 guide, rod end. Check smooth travel; measure the no-load current over the full stroke (< 60 mA).
-2. **Fingers:** assemble the phalanges with pins + PTFE washers + E-clips. Fit the four-bar links. Fit a magnet in each MCP and PIP pin end, and the TMAG5273 flex PCB in the facing link.
-3. **Mount the actuators** in the palm frame. Connect each nut carriage to its MCP crank (or PIP link through the proximal phalanx for index/middle).
-4. **Thumb:**
-   - CMC rotation actuator (4:1, fast) turns the thumb base on a 2-bearing pivot.
-   - CMC flexion actuator.
-   - MCP+IP coupled flexion through a four-bar.
-5. **Overload breakaway:** the spring-detent in each MCP crank must release at 1.5× the stall force (set with the force gauge) and re-seat by hand.
-6. Fingertip caps (dovetail slide-on, one drop of silicone adhesive), palm skin (4 × M2 screws), palm shell.
-7. **Wiring:** motor leads and encoder flex through the wrist on a 0.5 mm-pitch flat flex with a service loop to the controller in the forearm.
+1. **Actuator sub-assemblies:** motor + gearhead + ball-screw coupling (set screw on a flat, Loctite 222), nut carriage
+   on the guide, rod end. Check smooth travel; no-load current over the full stroke < 60 mA (DCX 10 L) / < 80 mA
+   (DCX 12 L).
+2. **Fingers:** phalanges with pins + PTFE washers + E-clips; four-bar links; magnets in each MCP and PIP pin end and the
+   TMAG5273 flex PCB in the facing link; tendons for ring DIP and thumb IP.
+3. **Thumb base:** opposition-rotation actuator (4:1) turning the thumb base on its 2-bearing pivot; CMC flexion
+   (high-force) and MCP flexion actuators; IP by tendon.
+4. **Abduction:** index abduction actuator; spread actuator driving ring and little abduction through a coupled link.
+5. **Mount the actuators** in the palm frame and connect each nut carriage to its crank or link.
+6. **Overload breakaway:** the spring detent in each MCP crank must release at 1.5 × the stall force (set with the force
+   gauge) and re-seat by hand.
+7. **Palm camera and controller:** camera behind the sealed window, controller board in the palm bay; micro-coax from
+   the camera to the forearm FAKRA-Z break (P09).
+8. Fingertip caps (dovetail slide-on, one drop of silicone adhesive), palm skin (4 × M2), palm shell.
+9. **Wiring:** motor leads and encoder flex to the in-palm controller; only power (24 V), EtherCAT and the camera coax
+   cross the wrist, with service loops through the wrist cross.
 
 ## F. Electrical
-* Hand controller: 12 V from the neck/hands zone; EtherCAT IN/OUT.
-* Each motor on a DRV8316-class channel with a current limit (stall-protect at 0.4 A for the DCX 10 L at 9 V).
-* I²C buses: 2 × for the TMAG5273 sets (address-select via mux), 1 × for the Contactile buttons, 1 × for the palm skin.
-* Wrist linear actuators on two higher-current channels (DCX 16 L).
+* Hand controller fed from the forearm 24 V rail (XT30, 16 AWG) through its local 12 V buck; EtherCAT IN/OUT; it also
+  commands the forearm KES-WRIST board (docs/05 §7). The 24 V rail is disabled in STO (Cat 0 for the hand).
+* Each micro-motor on an H-bridge with a current limit from the maxon data sheet for the 9 V winding on the 12 V supply:
+  continuous current for holds, short-time 2 × for grasps, I²t in firmware; stall protection.
+* I²C buses: 2 for the TMAG5273 sets (address-select via mux), 1 for the Contactile buttons, 1 for the palm skin.
+* Palm camera: GMSL2 power-over-coax from the J601 (ports 4–5, docs/05 §7).
 
 ## G. Testing (gate G2: hand)
 | Test | Pass |
 |---|---|
 | Each joint range and the finger angle sensors vs a protractor | ±1° |
-| Fingertip force, straight and bent (force gauge) | ≥ 10 N (target; ILDA achieved 28–34 N [R5]) |
-| Power grasp on a 50 mm cylinder | ≥ 50 N total |
+| Fingertip force, straight and bent (force gauge), every finger | **≥ 15 N** |
+| Power grasp on the 50 mm instrumented cylinder (short-time) | **≥ 200 N** total; ≥ 150 N held for 60 s |
+| Hook/handle hold: 20 kg on the four fingers for 60 s | no slip; motor temperatures < 60 °C; nut force ≤ 560 N (KSS Ø4 × 1 Ca) by current |
+| Thumb opposition: thumb tip meets each fingertip | all four reached; pinch ≥ 15 N index–thumb |
 | Close time, open → full fist | ≤ 1.0 s |
-| Payload: 5 kg handle hook grasp for 60 s | no slip, motor temperature < 60 °C |
-| Back-drive: push a fingertip 20 N | finger yields (ball screw back-drives) without damage |
+| Back-drive: push a fingertip with 20 N, motors off | finger yields without damage |
 | Breakaway: overload the MCP | detent releases, re-seats |
-| Endurance (first finger): 10⁴ close/open cycles at 50 % load | no loss of force > 10 %; no link wear beyond 0.05 mm at the pins |
-| Tactile: Contactile and palm skin respond to 0.1–20 N | monotonic, calibrated |
+| Endurance (first finger, then first thumb): 10⁴ close/open cycles at 50 % load | force loss < 10 %; pin wear < 0.05 mm; tendon creep within the adjuster range |
+| Tactile: Contactile and palm skin, 5 g weight and 0.1–20 N ramp | 5 g detected; monotonic, calibrated |
+| Palm camera: stream at rate through the wrist with the arm cycling | no drops; image clear through the window |
+| Mass of the finished hand (without F/T sensor) | ≤ 1.15 kg (budget); record the actual |

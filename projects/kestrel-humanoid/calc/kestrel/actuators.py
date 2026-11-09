@@ -223,6 +223,7 @@ def evaluate(group, req, store, names):
     for mn in group.motors:
         m = MOTORS[mn]
         T_avail = min(m["T_pk"], m["Kt"] * drive["I_pk"])
+        T_cmax = min(t_cont_eff(m, group.derate), m["Kt"] * drive["I_cont"])   # thermal OR drive continuous current
         for N in group.ratios:
             for hd in sizes:
                 table = CYC if group.gear == "cycloid" else HD_CSG
@@ -256,7 +257,7 @@ def evaluate(group, req, store, names):
                     if np.any(w_all > np.maximum(omega_lim(m, t_all), 0)):
                         ok = False
                         break
-                    if c["T_cont"] / (N * eta) > t_cont_eff(m, group.derate) or c["T_hold"] / (N * eta) > HOLD_FACTOR * t_cont_eff(m, group.derate):
+                    if c["T_cont"] / (N * eta) > T_cmax or c["T_hold"] / (N * eta) > HOLD_FACTOR * T_cmax:
                         ok = False
                         break
                     if group.gear in ("harmonic", "cycloid"):
@@ -276,8 +277,10 @@ def evaluate(group, req, store, names):
                 OD = max(m["OD"] + 0.012, table[hd]["OD"] + 0.012 if hd else 0)
                 mass = m["mass"] + gm + housing_mass(OD) + group.electronics_kg
                 J_ref = m["J"] * 1.1 * N**2
+                T_pk_out = T_avail * N * eta
+                T_usable = min(T_pk_out, table[hd]["r"][N][1]) if hd else T_pk_out    # gear repeated rating caps it
                 cands.append(dict(motor=mn, ratio=N, hd=hd, mass=mass, J_reflected=J_ref, rotor_J=m["J"] * 1.1,
-                                  T_peak_out=T_avail * N * eta, T_cont_out=t_cont_eff(m, group.derate) * N * eta,
+                                  T_peak_out=T_pk_out, T_peak_usable=T_usable, T_cont_out=T_cmax * N * eta,
                                   w_noload_out=omega_lim(m, 0) / N, w_at_half_peak=omega_lim(m, 0.5 * T_avail) / N,
                                   utilisation=worst, OD=OD, motor_status=m["status"]))
     # prefer <= 90 % peak utilisation (headroom for disturbance rejection), then mass + reflected inertia
@@ -295,7 +298,8 @@ def size_all(store, names, req):
             c = cands[0]
             fam[g.name] = dict(mass=round(c["mass"], 3), rotor_J=c["rotor_J"], ratio=float(c["ratio"]), motor=c["motor"],
                                hd=c["hd"], gear=g.gear, drive=g.drive, joints=g.joints,
-                               T_peak_out=c["T_peak_out"], T_cont_out=c["T_cont_out"], w_noload_out=c["w_noload_out"],
+                               T_peak_out=c["T_peak_out"], T_peak_usable=c["T_peak_usable"], T_cont_out=c["T_cont_out"],
+                               w_noload_out=c["w_noload_out"],
                                w_at_half_peak=c["w_at_half_peak"], J_reflected=c["J_reflected"], OD=c["OD"],
                                motor_status=c["motor_status"], n_feasible=len(cands))
     return fam, report

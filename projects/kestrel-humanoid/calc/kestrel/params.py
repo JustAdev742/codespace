@@ -214,8 +214,8 @@ def build_bodies():
     h_sh = d["shoulder_z"]
     B.append(Body("torso", "waist_link", "waist_pitch", (0, 0, d["waist_pitch_above"]), (0, 1, 0), comps=[
         Comp("spine + ribcage frame (7075-T6 + CF panels)", 2.40, (-0.01, 0, 0.20), "box", (0.18, 0.30, 0.40), "structure"),
-        Comp("battery pack A, hot-swap 16S4P (64 Molicel P50B, 1.15 kWh) incl. BMS, fuse, enclosure", 5.90, (-0.030, 0.052, 0.130), "box", (0.150, 0.098, 0.185), "battery"),
-        Comp("battery pack B, hot-swap 16S4P (64 Molicel P50B, 1.15 kWh) incl. BMS, fuse, enclosure", 5.90, (-0.030, -0.052, 0.130), "box", (0.150, 0.098, 0.185), "battery"),
+        Comp("battery pack A, hot-swap 16S4P (64 Molicel P50B, 1.15 kWh) incl. BMS, fuse, end cap + handle", 6.20, (-0.040, 0.052, 0.130), "box", (0.175, 0.098, 0.185), "battery"),
+        Comp("battery pack B, hot-swap 16S4P (64 Molicel P50B, 1.15 kWh) incl. BMS, fuse, end cap + handle", 6.20, (-0.040, -0.052, 0.130), "box", (0.175, 0.098, 0.185), "battery"),
         Comp("AI computer (Jetson AGX Thor module + carrier + cold plate)", 1.45, (0.035, 0, 0.30), "box", (0.04, 0.16, 0.12), "electronics"),
         Comp("real-time control computer + safety MCU board", 0.45, (-0.07, 0, 0.30), "box", (0.03, 0.12, 0.10), "electronics"),
         Comp("power distribution unit (contactor, fuses, DC-DC)", 1.20, (0.075, 0, 0.177), "box", (0.03, 0.17, 0.10), "electronics"),

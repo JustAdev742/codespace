@@ -5,6 +5,7 @@ primitive-geometry terrain (train/terrain.py). Same masses and inertias as the d
 from __future__ import annotations
 
 import json
+import os
 import re
 import sys
 from pathlib import Path
@@ -25,8 +26,34 @@ KP = {"hip_yaw": 150.0, "hip_roll": 250.0, "hip_pitch": 300.0, "knee": 300.0, "a
 KD = {"hip_yaw": 5.0, "hip_roll": 7.0, "hip_pitch": 8.0, "knee": 8.0, "ankle_pitch": 2.5, "ankle_roll": 2.0}
 
 
+VARIANT = os.environ.get("KESTREL_VARIANT", "k1").lower()    # "s1": the simple off-the-shelf build
+
+
+def joint_limits_s1():
+    """S1: joint-side peak torque and no-load speed from the selected COTS modules (simple/data/actuator_family.json),
+    through the external reductions (belt eta 0.95; ankle via the K1-geometry parallel push-rods, conservative
+    independent limits as for K1)."""
+    fam = json.loads((ROOT / "simple" / "data" / "actuator_family.json").read_text())
+    r_c, r_p, d = 0.040, 0.052, 0.036
+
+    def out(cls, joint):
+        f = fam[cls]
+        r = f["reductions"].get(joint, 1.0)
+        return f["peak_Nm"] * r * (0.95 if r > 1 else 1.0), f["speed_rads"] / r
+
+    T, W = {}, {}
+    for j, cls in (("hip_yaw", "S-M"), ("hip_roll", "S-L"), ("hip_pitch", "S-LX"), ("knee", "S-LX")):
+        T[j], W[j] = out(cls, j)
+    ta, wa = out("S-A", "ankle")
+    T["ankle_pitch"], W["ankle_pitch"] = 0.75 * 2 * ta * r_p / r_c, wa * r_c / r_p
+    T["ankle_roll"], W["ankle_roll"] = 0.35 * 2 * ta * d / r_c, wa * r_c / d
+    return T, W
+
+
 def joint_limits():
     """Joint-side peak torque and no-load speed per leg joint, from the sized actuator family."""
+    if VARIANT == "s1":
+        return joint_limits_s1()
     fam = json.loads((ROOT / "data" / "actuator_family.json").read_text())
     kf = json.loads((ROOT / "data" / "knee_fourbar.json").read_text())
     gmin = min(kf["G"])

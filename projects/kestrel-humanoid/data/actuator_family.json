@@ -11,7 +11,8 @@
    "knee"
   ],
   "T_peak_out": 492.66,
-  "T_cont_out": 294.8140000000001,
+  "T_peak_usable": 492.66,
+  "T_cont_out": 262.9866,
   "w_noload_out": 12.53215353525528,
   "w_at_half_peak": 12.11205382335759,
   "J_reflected": 0.39991820000000006,
@@ -20,9 +21,9 @@
   "n_feasible": 6
  },
  "KA-130H": {
-  "mass": 4.759,
+  "mass": 4.827,
   "rotor_J": 0.0013838000000000001,
-  "ratio": 14.0,
+  "ratio": 15.0,
   "motor": "KM-130x50-LC",
   "hd": null,
   "gear": "planetary",
@@ -30,11 +31,12 @@
   "joints": [
    "hip_pitch"
   ],
-  "T_peak_out": 405.72,
-  "T_cont_out": 242.78800000000004,
-  "w_noload_out": 15.217615007095697,
-  "w_at_half_peak": 14.707493928362789,
-  "J_reflected": 0.27122480000000004,
+  "T_peak_out": 434.70000000000005,
+  "T_peak_usable": 434.70000000000005,
+  "T_cont_out": 232.04700000000003,
+  "w_noload_out": 14.203107339955983,
+  "w_at_half_peak": 13.726994333138602,
+  "J_reflected": 0.31135500000000005,
   "OD": 0.14200000000000002,
   "motor_status": "C",
   "n_feasible": 8
@@ -52,6 +54,7 @@
    "waist_pitch"
   ],
   "T_peak_out": 426.88,
+  "T_peak_usable": 426.88,
   "T_cont_out": 124.729,
   "w_noload_out": 5.6795541003890575,
   "w_at_half_peak": 5.185068881642902,
@@ -61,7 +64,7 @@
   "n_feasible": 2
  },
  "KA-90P": {
-  "mass": 1.413,
+  "mass": 1.415,
   "rotor_J": 8.470000000000001e-05,
   "ratio": 28.0,
   "motor": "RI85-PH",
@@ -74,13 +77,14 @@
    "ankle"
   ],
   "T_peak_out": 128.8,
+  "T_peak_usable": 128.8,
   "T_cont_out": 43.792,
   "w_noload_out": 13.122266479195599,
   "w_at_half_peak": 12.29908125096229,
   "J_reflected": 0.06640480000000001,
   "OD": 0.097,
   "motor_status": "V",
-  "n_feasible": 21
+  "n_feasible": 20
  },
  "KH-25": {
   "mass": 2.603,
@@ -95,6 +99,7 @@
    "shoulder_roll"
   ],
   "T_peak_out": 362.09999999999997,
+  "T_peak_usable": 160,
   "T_cont_out": 118.99575,
   "w_noload_out": 6.313117893771079,
   "w_at_half_peak": 6.019260539519421,
@@ -116,6 +121,7 @@
    "elbow"
   ],
   "T_peak_out": 157.58999999999997,
+  "T_peak_usable": 105,
   "T_cont_out": 43.56674999999999,
   "w_noload_out": 8.57849317246264,
   "w_at_half_peak": 8.087037876614135,
@@ -138,6 +144,7 @@
    "neck_pitch"
   ],
   "T_peak_out": 33.67630770451253,
+  "T_peak_usable": 23,
   "T_cont_out": 8.862186238029613,
   "w_noload_out": 8.973592608350039,
   "w_at_half_peak": 8.20264000243492,

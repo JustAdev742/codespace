@@ -1,39 +1,77 @@
-# KESTREL K1 — full-size humanoid robot: engineering design and build package
+# KESTREL K1 Mk II — full-size work humanoid: engineering design and build package
 
 ![KESTREL K1](renders/05_threequarter_front.png)
 
-A 1.75 m, ~84 kg electric humanoid, engineered from loads up. Every joint requirement comes from
-whole-body inverse dynamics over 15 design scenarios. Every actuator is sized against its full
-torque-speed envelope at the minimum battery voltage, and the mass, power and structure close
-consistently. The design is backed by CAD, manufacturing drawings, a step-by-step construction
-tutorial, a test-and-commissioning plan, a cost analysis and cited component research.
+A 1.75 m, ~102 kg electric humanoid, engineered from loads up for physical work: 30 kg carried two-handed, 50 kg
+lifted momentarily, 10 kg per hand at full reach, 15 kg in one hand. Every joint requirement comes from whole-body
+inverse dynamics over 18 design scenarios at the 112.7 kg design mass. Every actuator is sized against its full
+torque-speed envelope at the minimum battery voltage, and the mass, power and structure close consistently. The
+design is backed by CAD, manufacturing drawings, a construction tutorial, a test-and-commissioning plan, a cost
+analysis and cited component research.
 
-**Status:** complete design package, **not built and not tested.** Calculated margins are
-calculations, not proof. See [docs/01 §7](docs/01-concept.md) and [docs/11 §9](docs/11-testing-commissioning.md)
-for what is uncertain and how each item gets retired.
+**Status:** Mk II design package, **not built and not tested.** Calculated margins are calculations, not proof. The
+Mk II engineering tables in [docs/generated/](docs/generated/) are regenerated. The renders still show K1; regenerate
+them (commands below) once the CAD carries the Mk II parts. See [docs/01 §7](docs/01-concept.md) and [docs/11](docs/11-testing-commissioning.md) for what is uncertain
+and how each item gets retired.
 
-## Key numbers
+## Key numbers (Mk II)
 
 | | |
 |---|---|
-| Height / mass | 1.75 m / 84 kg estimated (92.6 kg design mass, +10 % growth) |
-| DOF | 30 body (legs 6+6, waist 2, arms 7+7, neck 2) + 2 × 10-DOA hands |
-| Actuators | 26 rotary in 7 classes + 4 wrist linear + 20 hand micro-actuators |
-| Knee / hip pitch | custom KM-130 frameless motor + 14:1 planetary: 395–399 N·m peak, 123–139 N·m continuous; knee through a synthesised four-bar (ratio 0.86–1.43) |
-| Bus / battery | 16S Li-ion, 59.2 V nominal, 1.68 kWh (96 × Molicel P50B) |
-| Power / runtime | ≈ 385 W normal, ≈ 440 W walking, 2.7 kW peak · 3.8 h mixed, 3.3 h walking |
-| Walking (simulated) | 0.8 m/s nominal, 1.2 m/s fast, 0.18 m stairs, 0.30 m single-leg step-up, 20 kg box squat |
+| Height / mass | 1.75 m / 102.5 kg estimated (112.7 kg design mass, +10 % growth) |
+| DOF | 30 body (legs 6+6, waist 2, arms 7+7, neck 2) + 2 × 13-DOA hands (palm camera, ≥ 200 N grasp target) |
+| Actuators | 26 rotary in 7 classes + 4 wrist linear (KW-L2, 24 V) + 26 hand micro-actuators |
+| Knee / hip pitch | liquid-cooled custom KM-130x50-LC (N50UH, 50 mm stack) on 150 A GaN drives. Knee 17:1: **493 / 295 N·m** peak / continuous, through a four-bar (0.84–1.46) → 415–719 N·m at the joint. Hip pitch 14:1: **406 / 243 N·m**, 15.2 rad/s |
+| Other joints | hip roll, waist pitch RI115-PH 29:1 (427 N·m); hip yaw, waist yaw, ankles RI85-PH 28:1 (129 N·m); shoulders KM-115x32-N50 + C25 cycloid 30:1; elbow, shoulder yaw KM-85x26-N50-4t + C20 cycloid 30:1; wrist yaw, neck KH-14 |
+| Work loads (simulated) | 30 kg box squat and carry at 0.6 m/s; 50 kg momentary lift from thigh height; 10 kg per hand at full reach; 15 kg one-handed |
+| Walking (simulated) | 0.8 m/s nominal, 1.2 m/s fast, 0.18 m stairs, 0.30 m single-leg step-up |
+| Bus / battery | 16S Li-ion, 59.2 V nominal; **two hot-swap 16S4P packs**, 2 × 1.15 kWh (128 × Molicel P50B); swap one at a time without shutdown |
+| Power / runtime | 267 W idle, 402 W normal, 451 W walking, 3.1 kW simultaneous peak · **4.9 h mixed, 4.3 h walking** |
+| Cooling | liquid loop: knee and hip-pitch jackets + AI-computer cold plate, torso radiator, dry-break couplings at the hips |
+| Protection / service | IP65 body, IP67 legs and hands (target); leg module off in ≤ 10 min via a V-band limb interface |
 | Compute | Jetson AGX Thor (T5000) + PREEMPT_RT EtherCAT controller + independent SIL3-class safety MCU |
-| Baseline parts cost | ≈ A$196k (+25 % contingency → ≈ A$245k planning budget) |
+| Parts cost | ≈ A$223k Mk II baseline parts + test rig ([generated/cost_summary.md](docs/generated/cost_summary.md); K1 was ≈ A$196k); analysis in [docs/12](docs/12-cost-analysis.md) |
+
+Optional, not baseline: **KA-150X** knee/hip actuator (719 / 524 N·m). It needs a 20S bus and 200 A drives, which
+means replacing every other drive in the robot (docs/04 §6).
+
+## What changed in Mk II
+
+K1 proved the method; Mk II raises the work loads to the R7 industrial benchmark
+([research/R7](docs/research/R7-commercial-humanoids.md) §d) using the actuator designs of
+[research/R10](docs/research/R10-actuator-state-of-the-art.md). K1 values from the K1 documents and the K1 generated
+tables (git commit 96eb3d9).
+
+| Item | K1 | Mk II | Where |
+|---|---|---|---|
+| Design scenarios | 15; 20 kg box, 5 kg per hand | 18; adds 30 kg carry (CW), 15 kg one-handed (AO), 50 kg momentary lift (LM); 30 kg box, 10 kg per hand | docs/04 §1 |
+| Mass estimate / design | 84.1 / 92.6 kg | 102.5 / 112.7 kg (actuators +13.9, battery +2.9, cooling, harness, hands +1.6 kg) | docs/03 §14 |
+| Knee | KM-130x45, 14:1, 99 A, ducted air: 395 / 139 N·m | KM-130x50-LC (N50UH, 3 turns × 2 paths, liquid jacket), 17:1, 150 A GaN: 493 / 295 N·m | docs/04 §5 |
+| Hip pitch | KM-130x40, 14:1: 399 / 123 N·m, 10.3 rad/s | same motor as the knee, 14:1: 406 / 243 N·m, 15.2 rad/s | docs/04 §5 |
+| Hip roll, waist pitch | ILM85x26, 32:1: 276 / 73 N·m | RI115-PH, 29:1: 427 / 125 N·m; output flange 10 × M4 PCD 85 → **12 × M5 12.9 PCD 100** | docs/04 §7, docs/03 §5 |
+| Hip yaw, waist yaw, ankles | RI85-PH, 23:1: 106 N·m | RI85-PH, 28:1: 129 N·m | docs/04 §7 |
+| Shoulders | ILM85x13 + strain-wave 50:1 (gear-limited 127 N·m) | KM-115x32-N50 + C25 machined cycloid 30:1 (gear rating 160 N·m, validation target) | docs/04 §8, docs/13 §4.2 |
+| Elbow, shoulder yaw | RI85-PH + strain-wave 50:1 (gear-limited 73 N·m) | KM-85x26-N50-4t + C20 cycloid 30:1 (gear rating 105 N·m, validation target) | docs/04 §8 |
+| Wrist pitch/roll | DCX 16 L on the 12 V hand rail (36 mm/s, 241 N against 132 mm/s, 611 N needed) | KW-L2: flat brushless motor on the screw, 24 V rail, own driver | docs/04 §9, docs/13 §4.4 |
+| Battery | one 16S6P pack, 1.68 kWh, on rails, swapped powered down | two hot-swap 16S4P packs, 2 × 1.15 kWh, blind-mate bay with sequenced contacts | docs/03 §10 |
+| Runtime | 3.8 h mixed, 3.3 h walking | 4.9 h mixed, 4.3 h walking | generated power budget |
+| Cooling | ducted air on knee and hip pitch | liquid loop (2 pumps, radiator + fans, compensator, Thor cold plate, dry-break couplings) | docs/03 §9 |
+| Hands | 10 DOA, ≥ 50 N grasp | 13 DOA, ≥ 200 N grasp, palm camera | docs/03 §8 |
+| Ingress | IP54 target | IP65 body, IP67 legs and hands, −20 to 40 °C (target) | docs/03 §12 |
+| Limb interface | bolted actuator flanges | V-band clamp + blind-mate service plate with dry-break couplings | docs/03 §13 |
+
+Not achieved against the R7 targets: robot mass (102.5 kg against ≤ 84 kg), joint speed (hip 15.2 against 16 rad/s),
+waist yaw range, the quick-change wrist and autonomous fast charging. The full scorecard is in
+[docs/01 §5.1](docs/01-concept.md).
 
 ## Deliverables
 
 | # | Deliverable | Where |
 |---|---|---|
-| 1 | Robot concept | [docs/01-concept.md](docs/01-concept.md) |
+| 1 | Robot concept, Mk II capability targets, R7 benchmark | [docs/01-concept.md](docs/01-concept.md) |
 | 2 | Professional visual design (20 views) | [docs/02-industrial-design.md](docs/02-industrial-design.md) · [renders/](renders/) · interactive [viewer/index.html](viewer/index.html) |
-| 3 | Mechanical architecture | [docs/03-mechanical-architecture.md](docs/03-mechanical-architecture.md) |
-| 4 | Actuator catalogue | [docs/04-actuator-catalogue.md](docs/04-actuator-catalogue.md) · [generated/joint_catalogue.md](docs/generated/joint_catalogue.md) |
+| 3 | Mechanical architecture: liquid cooling loop, hot-swap battery bay, IP65/IP67 sealing, limb interface, mass budget | [docs/03-mechanical-architecture.md](docs/03-mechanical-architecture.md) |
+| 4 | Actuator catalogue (Mk II family, KA-150X option, KW-L2) | [docs/04-actuator-catalogue.md](docs/04-actuator-catalogue.md) · [generated/joint_catalogue.md](docs/generated/joint_catalogue.md) |
 | 5 | Electrical architecture | [docs/05-electrical-architecture.md](docs/05-electrical-architecture.md) |
 | 6 | Sensor architecture | [docs/06-sensor-architecture.md](docs/06-sensor-architecture.md) |
 | 7 | Software architecture | [docs/07-software-architecture.md](docs/07-software-architecture.md) |
@@ -42,9 +80,9 @@ for what is uncertain and how each item gets retired.
 | 10 | Visual construction tutorial (14 phases, A–G each) | [docs/10-construction-tutorial/](docs/10-construction-tutorial/README.md) · everything in one illustrated PDF: [KESTREL-K1-build-tutorial.pdf](docs/10-construction-tutorial/KESTREL-K1-build-tutorial.pdf) |
 | 11 | Testing & commissioning | [docs/11-testing-commissioning.md](docs/11-testing-commissioning.md) |
 | 12 | Cost analysis | [docs/12-cost-analysis.md](docs/12-cost-analysis.md) |
-| 13 | Optional: scratch-build every motor & actuator | [docs/13-scratch-build-motors-actuators.md](docs/13-scratch-build-motors-actuators.md) |
+| 13 | Scratch-build motors & actuators (Mk II: KM-130x50-LC with jacket, KM-115/KM-85 N50UH motors, C20/C25 cycloids, KW-L2) | [docs/13-scratch-build-motors-actuators.md](docs/13-scratch-build-motors-actuators.md) |
 | — | Locomotion training (walk, slopes, stairs up/down) on a CPU; Isaac Lab 3.0 config for GPUs | [train/](train/README.md) |
-| — | Component research with sources | [docs/research/](docs/research/) |
+| — | Component research with sources (R7 commercial benchmark, R10 actuator state of the art) | [docs/research/](docs/research/) |
 | — | Generated engineering tables | [docs/generated/](docs/generated/) |
 
 ## Repository layout
