@@ -21,20 +21,12 @@ import markdown
 HERE = Path(__file__).resolve().parent
 SIMPLE = HERE.parent
 CSS = SIMPLE.parent / "docs" / "10-construction-tutorial" / "handbook_style.css"
-
-
-def reindent(md):
-    """The guide nests lists with 3-space indents (CommonMark); Python-Markdown needs 4. Map every 3 leading spaces to 4
-    so nested steps, bullets, tables and code inside list items render as nested, not flattened."""
-    out = []
-    for line in md.splitlines():
-        n = len(line) - len(line.lstrip(" "))
-        out.append(" " * ((n // 3) * 4 + n % 3) + line[n:] if n else line)
-    return "\n".join(out) + "\n"
+sys.path.insert(0, str(CSS.parent))
+from mdlists import normalize_lists  # noqa: E402
 
 
 def build_html():
-    md = reindent((HERE / "S1-build-guide.md").read_text())
+    md = normalize_lists((HERE / "S1-build-guide.md").read_text())
     body = markdown.markdown(md, extensions=["tables", "sane_lists", "fenced_code"])
     body = body.replace("<table>", '<div class="tablewrap"><table>').replace("</table>", "</table></div>")
     imgs = sorted((SIMPLE / "renders").glob("*.png"))[:6]
@@ -58,6 +50,7 @@ def build_html():
 <style>{style}
 main {{ max-width: 46rem; margin: 0 auto; padding: 24px max(16px, env(safe-area-inset-left, 0px)) 48px; }}
 main h2 {{ font-family: var(--display); font-weight: 600; font-size: 1.7rem; margin: 34px 0 10px; border-top: 2px solid var(--ink); padding-top: 18px; }}
+main pre {{ white-space: pre-wrap; overflow-wrap: anywhere; }}
 @media print {{ main h2 {{ break-before: page; }} main h2:first-of-type {{ break-before: auto; }} }}
 </style></head><body><main>{body}</main></body></html>"""
     out = HERE / "S1-build-guide.html"

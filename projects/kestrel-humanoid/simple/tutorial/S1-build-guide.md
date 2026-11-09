@@ -323,7 +323,8 @@ X12s have the least margin.
 
    ```json
    "add_ons": [
-     {"body": "head", "name": "Livox Mid-360 lidar + bracket", "kg": 0.32, "xyz": [0.02, 0, 0.16], "cat": "sensor"}
+     {"body": "head", "name": "Livox Mid-360 lidar + bracket",
+      "kg": 0.32, "xyz": [0.02, 0, 0.16], "cat": "sensor"}
    ]
    ```
 

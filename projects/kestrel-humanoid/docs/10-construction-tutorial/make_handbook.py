@@ -21,6 +21,9 @@ from pathlib import Path
 import markdown
 from PIL import Image
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from mdlists import normalize_lists  # noqa: E402
+
 HERE = Path(__file__).resolve().parent
 PROJ = HERE.parent.parent                       # projects/kestrel-humanoid
 REPO_URL = "https://github.com/JustAdev742/codespace/blob/claude/dreamy-carson-f16476/projects/kestrel-humanoid/"
@@ -150,7 +153,7 @@ def convert(md_text: str, src_file: Path, figs: Figs, gallery_after_a=True) -> s
         if ia is not None:
             nxt = next((i for i in range(ia + 1, len(out_lines)) if out_lines[i].startswith("#")), len(out_lines))
             out_lines.insert(nxt, "\n[[GALLERY]]\n")
-    body = markdown.markdown("\n".join(out_lines), extensions=["tables", "sane_lists", "fenced_code"])
+    body = markdown.markdown(normalize_lists("\n".join(out_lines)), extensions=["tables", "sane_lists", "fenced_code"])
     if "[[GALLERY]]" in body:
         body = body.replace("<p>[[GALLERY]]</p>", figs.gallery())
     elif figs.items:
