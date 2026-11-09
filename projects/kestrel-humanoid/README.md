@@ -10,9 +10,17 @@ design is backed by CAD, manufacturing drawings, a construction tutorial, a test
 analysis and cited component research.
 
 **Status:** Mk II design package, **not built and not tested.** Calculated margins are calculations, not proof. The
-Mk II engineering tables in [docs/generated/](docs/generated/) are regenerated. The renders still show K1; regenerate
-them (commands below) once the CAD carries the Mk II parts. See [docs/01 §7](docs/01-concept.md) and [docs/11](docs/11-testing-commissioning.md) for what is uncertain
-and how each item gets retired.
+engineering tables in [docs/generated/](docs/generated/), the CAD, drawings and renders are Mk II. See
+[docs/01 §7](docs/01-concept.md) and [docs/11](docs/11-testing-commissioning.md) for what is uncertain and how each item
+gets retired.
+
+## Ways to build one
+
+| Build | Parts | What it is | Folder |
+|---|---|---|---|
+| **K1 Mk II** | ≈ A$226k | the work humanoid: custom liquid-cooled actuators, 13-DOA hands, shells | this package |
+| **S1** | ≈ A$39k | same skeleton, off-the-shelf actuator modules on CAN, bolted aluminium frame | [simple/](simple/README.md) |
+| **S1-Scrap / K1-Scrap** | A$500–1,280 | same skeleton from salvaged drill motors, hand-made capstans and hand tools; slow, always-balanced walking | [scrap/](scrap/README.md) |
 
 ## Key numbers (Mk II)
 

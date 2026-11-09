@@ -15,6 +15,9 @@ margins as K1.
 
 <!-- S1_RENDERS -->
 
+**On a tight budget?** [../scrap/](../scrap/README.md) builds S1 from salvaged drill motors and hand-made capstans
+for A$500–1,000, with hand tools only. It walks slowly, the always-balanced way.
+
 ## At a glance
 
 | | KESTREL S1 | KESTREL K1 Mk II (for comparison) |
