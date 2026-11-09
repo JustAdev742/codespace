@@ -1,342 +1,132 @@
 {
  "static": [
   [
-   "r_foot__boot_ankle_boot",
-   "r_foot__frame_ankle_clevis",
-   14.01
+   "torso__joint_battery_endcap_R",
+   "torso__shell_battery_hatch_B",
+   19.4
   ],
   [
-   "l_foot__boot_ankle_boot",
-   "l_foot__frame_ankle_clevis",
-   14.01
+   "pelvis__frame_pelvis_bowl",
+   "pelvis__shell_pelvis_front",
+   10.84
   ],
   [
    "pelvis__frame_pelvis_bowl",
    "pelvis__trim_pelvis_front_lower",
-   12.66
-  ],
-  [
-   "pelvis__shell_pelvis_rear",
-   "torso__cool_coolant_trunk_R",
-   10.89
-  ],
-  [
-   "torso__joint_battery_endcap_R",
-   "torso__shell_battery_hatch_B",
-   7.14
-  ],
-  [
-   "pelvis__frame_pelvis_bowl",
-   "pelvis__shell_pelvis_front",
-   6.57
+   7.94
   ],
   [
    "torso__joint_battery_endcap_L",
    "torso__shell_battery_hatch_A",
-   6.48
+   7.71
   ],
   [
    "torso__joint_battery_endcap_R",
    "torso__shell_back_door",
-   4.63
+   5.1
   ],
   [
    "torso__joint_battery_endcap_L",
    "torso__shell_back_door",
-   4.63
-  ],
-  [
-   "pelvis__shell_pelvis_rear",
-   "torso__cool_coolant_trunk_L",
-   4.46
-  ],
-  [
-   "r_foot__frame_foot_plate",
-   "r_foot__shell_foot_shell",
-   4.42
-  ],
-  [
-   "r_foot__boot_ankle_boot",
-   "r_foot__frame_ankle_levers",
-   3.43
-  ],
-  [
-   "l_foot__boot_ankle_boot",
-   "l_foot__frame_ankle_levers",
-   3.43
-  ],
-  [
-   "r_hip__act_hip_roll_KA110P",
-   "r_hip__shell_glute_pod",
-   3.21
-  ],
-  [
-   "r_shank__frame_shank_upper_fitting",
-   "r_shank__shell_shin_front",
-   3.15
-  ],
-  [
-   "head__joint_lidar_cap",
-   "head__visor_lidar_window",
-   3.0
-  ],
-  [
-   "neck__alu_neck_ring",
-   "neck__trim_neck_sleeve",
-   2.92
-  ],
-  [
-   "l_foot__frame_foot_plate",
-   "l_foot__shell_foot_shell",
-   2.69
+   4.33
   ],
   [
    "torso__alu_collar_ring",
    "torso__shell_chest_plate",
-   2.57
-  ],
-  [
-   "r_forearm__frame_elbow_clevis",
-   "r_forearm__shell_forearm_front",
-   2.49
-  ],
-  [
-   "head__frame_head_frame",
-   "neck__trim_neck_sleeve",
-   2.43
-  ],
-  [
-   "head__cam_lidar_mid360",
-   "head__visor_lidar_window",
-   2.19
-  ],
-  [
-   "l_shank__frame_shank_upper_fitting",
-   "l_shank__shell_shin_front",
-   2.12
-  ],
-  [
-   "head__ti_jaw_screw0",
-   "head__trim_head_jaw",
-   2.0
-  ],
-  [
-   "head__ti_jaw_screw1",
-   "head__trim_head_jaw",
-   2.0
-  ],
-  [
-   "r_forearm__frame_elbow_clevis",
-   "r_forearm__trim_forearm_rear",
-   1.93
-  ],
-  [
-   "l_forearm__frame_elbow_clevis",
-   "l_forearm__trim_forearm_rear",
-   1.83
-  ],
-  [
-   "torso__ti_pack_screw2",
-   "torso__trim_radiator_pack",
-   1.76
-  ],
-  [
-   "l_forearm__frame_elbow_clevis",
-   "l_forearm__shell_forearm_front",
-   1.62
-  ],
-  [
-   "neck__frame_neck_yoke",
-   "neck__trim_neck_sleeve",
-   1.59
-  ],
-  [
-   "torso__shell_battery_hatch_A",
-   "torso__ti_hatch_screw1",
-   1.38
-  ],
-  [
-   "torso__shell_battery_hatch_B",
-   "torso__ti_hatch_screw2",
-   1.36
-  ],
-  [
-   "torso__ti_pack_screw3",
-   "torso__trim_radiator_pack",
-   1.36
-  ],
-  [
-   "l_hip__act_hip_roll_KA110P",
-   "l_hip__shell_glute_pod",
-   1.35
-  ],
-  [
-   "l_thigh__ti_cover_screw0",
-   "l_thigh__trim_thigh_drive_cover",
-   1.31
-  ],
-  [
-   "torso__ti_pack_screw0",
-   "torso__trim_radiator_pack",
-   1.29
-  ],
-  [
-   "torso__ti_pack_screw1",
-   "torso__trim_radiator_pack",
-   1.26
-  ],
-  [
-   "torso__shell_chest_plate",
-   "torso__ti_chest_screw1",
-   1.14
-  ],
-  [
-   "torso__shell_chest_plate",
-   "torso__ti_chest_screw3",
-   1.1
+   3.38
   ],
   [
    "torso__alu_battery_cam_lever_R",
    "torso__shell_battery_hatch_B",
-   1.07
+   3.12
+  ],
+  [
+   "r_hip__act_hip_roll_KA110P",
+   "r_hip__shell_glute_pod",
+   2.68
+  ],
+  [
+   "pelvis__pcb_pelvis_io_imu",
+   "pelvis__trim_pelvis_front_lower",
+   2.16
+  ],
+  [
+   "neck__alu_neck_ring",
+   "neck__trim_neck_sleeve",
+   1.98
+  ],
+  [
+   "torso__alu_collar_ring",
+   "torso__trim_torso_side_L",
+   1.91
   ],
   [
    "r_hip__frame_yaw_roll_yoke",
    "r_hip__shell_glute_pod",
-   1.01
-  ],
-  [
-   "r_thigh__ti_cover_screw0",
-   "r_thigh__trim_thigh_drive_cover",
-   0.96
-  ],
-  [
-   "torso__alu_battery_cam_lever_L",
-   "torso__shell_battery_hatch_A",
-   0.91
+   1.88
   ],
   [
    "l_hip__frame_yaw_roll_yoke",
    "l_hip__shell_glute_pod",
-   0.84
+   1.81
   ],
   [
-   "l_thigh__ti_cover_screw2",
-   "l_thigh__trim_thigh_drive_cover",
-   0.81
+   "r_forearm__frame_elbow_clevis",
+   "r_forearm__shell_forearm_front",
+   1.46
   ],
   [
-   "l_foot__ti_toe_screw0",
-   "l_foot__trim_toe_cap",
-   0.8
+   "r_forearm__frame_elbow_clevis",
+   "r_forearm__trim_forearm_rear",
+   1.27
   ],
   [
-   "r_foot__ti_heel_screw0",
-   "r_foot__trim_heel_counter",
-   0.8
+   "l_forearm__frame_elbow_clevis",
+   "l_forearm__shell_forearm_front",
+   1.23
   ],
   [
-   "l_shank__ti_calf_screw1",
-   "l_shank__trim_calf_rear",
-   0.8
+   "l_forearm__frame_elbow_clevis",
+   "l_forearm__trim_forearm_rear",
+   1.22
   ],
   [
-   "l_foot__frame_foot_plate",
-   "l_foot__trim_heel_counter",
-   0.79
+   "l_hip__act_hip_roll_KA110P",
+   "l_hip__shell_glute_pod",
+   0.83
   ],
   [
-   "r_foot__frame_foot_plate",
-   "r_foot__trim_heel_counter",
-   0.76
-  ],
-  [
-   "torso__shell_chest_plate",
-   "torso__ti_chest_screw2",
-   0.74
-  ],
-  [
-   "l_foot__ti_toe_screw1",
-   "l_foot__trim_toe_cap",
-   0.73
-  ],
-  [
-   "l_foot__ti_heel_screw1",
-   "l_foot__trim_heel_counter",
-   0.73
-  ],
-  [
-   "torso__shell_chest_plate",
-   "torso__ti_chest_screw0",
-   0.73
-  ],
-  [
-   "r_foot__frame_foot_plate",
-   "r_foot__trim_toe_cap",
-   0.72
-  ],
-  [
-   "l_foot__frame_foot_plate",
-   "l_foot__trim_toe_cap",
-   0.72
-  ],
-  [
-   "r_foot__ti_heel_screw1",
-   "r_foot__trim_heel_counter",
-   0.72
-  ],
-  [
-   "l_foot__ti_heel_screw0",
-   "l_foot__trim_heel_counter",
-   0.71
-  ],
-  [
-   "torso__shell_battery_hatch_B",
-   "torso__ti_hatch_screw3",
-   0.71
-  ],
-  [
+   "torso__alu_battery_cam_lever_L",
    "torso__shell_battery_hatch_A",
-   "torso__ti_hatch_screw0",
    0.71
-  ],
-  [
-   "r_shank__ti_calf_screw0",
-   "r_shank__trim_calf_rear",
-   0.66
-  ],
-  [
-   "pelvis__shell_pelvis_front",
-   "pelvis__ti_pelvis_screw0",
-   0.64
   ]
  ],
  "sweeps": {
   "knee flexion (0..130)": {
    "free_range_deg": [
     0,
-    75
+    90
    ],
    "skin_contacts": {
     "l_shank__trim_calf_rear x l_thigh__shell_thigh_rear": [
-     90,
-     15.6
+     105,
+     15.0
     ],
     "l_shank__trim_calf_rear x l_thigh__frame_thigh_plate_lateral": [
-     90,
-     4.7
+     105,
+     2.5
     ],
     "l_shank__act_ankle_A_KA90P x l_thigh__shell_thigh_rear": [
-     105,
-     6.9
+     120,
+     13.4
     ],
     "l_shank__trim_calf_rear x l_thigh__cf_thigh_tube": [
      120,
-     18.9
+     14.5
     ],
     "l_shank__ti_ankle_rod_lat x l_thigh__shell_thigh_rear": [
      120,
-     26.3
+     11.1
     ]
    },
    "interior_contacts": {
@@ -352,57 +142,57 @@
   },
   "hip pitch (-125 flex .. +30 ext)": {
    "free_range_deg": [
-    -65,
+    -95,
     10
    ],
    "skin_contacts": {
     "l_thigh__shell_thigh_rear x l_hip__shell_glute_pod": [
      25,
-     25.3
-    ],
-    "l_thigh__shell_thigh_rear x l_hip__act_hip_roll_KA110P": [
-     25,
-     1.5
-    ],
-    "l_thigh__shell_thigh_front x pelvis__trim_pelvis_front_lower": [
-     -80,
-     5.8
-    ],
-    "l_thigh__shell_thigh_front x l_hip__act_hip_yaw_KA90P": [
-     -95,
-     8.1
+     11.2
     ],
     "l_thigh__shell_thigh_front x pelvis__shell_pelvis_front": [
-     -95,
-     46.1
+     -110,
+     36.2
     ],
     "l_thigh__shell_thigh_front x pelvis__frame_pelvis_bowl": [
-     -95,
-     2.5
-    ],
-    "l_thigh__trim_thigh_drive_cover x l_forearm__trim_forearm_rear": [
      -110,
-     6.8
+     4.5
     ],
     "l_thigh__shell_thigh_front x pelvis__act_waist_yaw_KA90P": [
      -110,
      4.4
     ],
-    "l_thigh__frame_thigh_plate_medial x pelvis__trim_pelvis_front_lower": [
-     -110,
-     16.6
-    ],
     "l_thigh__shell_thigh_front x pelvis__accent_belt_light": [
      -110,
-     0.6
+     1.4
     ],
-    "l_thigh__shell_thigh_front x waist__frame_waist_yoke": [
+    "l_thigh__shell_thigh_front x l_hip__act_hip_yaw_KA90P": [
      -110,
-     15.8
+     4.6
     ],
     "l_thigh__act_knee_KA130K x pelvis__shell_pelvis_front": [
      -110,
      14.3
+    ],
+    "l_thigh__trim_thigh_drive_cover x l_forearm__trim_forearm_rear": [
+     -110,
+     3.7
+    ],
+    "l_thigh__shell_thigh_front x pelvis__ti_pelvis_screw0": [
+     -110,
+     1.3
+    ],
+    "l_thigh__frame_thigh_plate_medial x pelvis__shell_pelvis_front": [
+     -125,
+     56.3
+    ],
+    "l_thigh__trim_thigh_drive_cover x l_forearm__frame_forearm_frame": [
+     -125,
+     4.5
+    ],
+    "l_thigh__frame_thigh_plate_lateral x pelvis__shell_pelvis_front": [
+     -125,
+     6.3
     ]
    },
    "interior_contacts": {}
@@ -413,53 +203,53 @@
     35
    ],
    "skin_contacts": {
-    "l_shank__shell_shin_front x r_shank__shell_shin_front": [
+    "l_thigh__shell_thigh_front x r_thigh__frame_thigh_plate_medial": [
      -10,
-     33.4
+     7.4
     ],
-    "l_shank__trim_calf_rear x r_shank__trim_calf_rear": [
+    "l_thigh__shell_thigh_front x r_thigh__shell_thigh_front": [
      -10,
-     33.5
-    ],
-    "l_thigh__shell_thigh_rear x r_thigh__frame_thigh_plate_medial": [
-     -10,
-     4.5
+     22.7
     ],
     "l_thigh__shell_thigh_rear x r_thigh__shell_thigh_rear": [
      -10,
-     27.6
+     25.0
     ],
     "l_thigh__frame_thigh_plate_medial x r_thigh__shell_thigh_front": [
      -10,
-     10.5
+     8.8
     ],
     "l_thigh__frame_thigh_plate_medial x r_thigh__shell_thigh_rear": [
      -10,
      4.5
     ],
-    "l_thigh__shell_thigh_front x r_thigh__frame_thigh_plate_medial": [
+    "l_shank__shell_shin_front x r_shank__shell_shin_front": [
      -10,
-     16.2
+     29.3
     ],
-    "l_thigh__shell_thigh_front x r_thigh__shell_thigh_front": [
+    "l_shank__trim_calf_rear x r_shank__trim_calf_rear": [
      -10,
-     27.8
+     29.5
     ],
-    "l_foot__trim_heel_counter x r_foot__frame_ankle_levers": [
+    "l_shank__trim_calf_rear x r_shank__ti_ankle_rod_med": [
      -10,
-     3.8
+     10.1
     ],
-    "l_foot__trim_heel_counter x r_foot__trim_heel_counter": [
+    "l_shank__ti_ankle_rod_med x r_shank__trim_calf_rear": [
      -10,
-     4.3
+     15.9
     ],
-    "l_foot__shell_foot_shell x r_foot__shell_foot_shell": [
+    "l_foot__sole_sole x r_foot__frame_foot_plate": [
      -10,
-     20.9
+     59.0
     ],
-    "l_foot__shell_foot_shell x r_foot__ti_ankle_cross": [
+    "l_foot__sole_sole x r_foot__shell_foot_shell": [
      -10,
-     24.2
+     56.1
+    ],
+    "l_foot__sole_sole x r_foot__frame_ankle_clevis": [
+     -10,
+     6.8
     ]
    },
    "interior_contacts": {
@@ -475,21 +265,25 @@
      5,
      2.6
     ],
-    "l_shank__alu_knee_hub x r_shank__joint_knee_cap_med_cap": [
+    "l_thigh__frame_thigh_plate_medial x r_thigh__frame_thigh_plate_medial": [
      -10,
-     41.1
+     17.0
+    ],
+    "l_shank__alu_knee_hub x r_shank__alu_knee_hub": [
+     -10,
+     5.3
     ],
     "l_shank__alu_knee_hub x r_shank__alu_knee_cap_med_bezel": [
      -10,
      3.0
     ],
+    "l_shank__alu_knee_hub x r_shank__joint_knee_cap_med_cap": [
+     -10,
+     41.1
+    ],
     "l_shank__alu_knee_hub x r_thigh__steel_knee_bearing_7207BE_med": [
      -10,
      11.7
-    ],
-    "l_shank__alu_knee_hub x r_shank__alu_knee_hub": [
-     -10,
-     5.3
     ],
     "l_shank__alu_knee_hub x r_thigh__frame_thigh_plate_medial": [
      -10,
@@ -499,91 +293,75 @@
      -10,
      3.9
     ],
-    "l_thigh__frame_thigh_plate_medial x r_thigh__frame_thigh_plate_medial": [
-     -10,
-     17.0
-    ],
-    "l_shank__ti_knee_cap_med_screw3 x r_shank__alu_knee_hub": [
+    "l_thigh__frame_thigh_plate_medial x r_shank__alu_knee_hub": [
      -10,
      2.6
     ],
-    "l_shank__alu_knee_hub x r_shank__ti_knee_cap_med_screw0": [
+    "l_thigh__frame_thigh_plate_medial x r_shank__alu_knee_cap_med_bezel": [
      -10,
-     3.5
+     2.1
     ]
    }
   },
   "hip yaw (-30 .. +45)": {
    "free_range_deg": [
     -30,
-    0
+    15
    ],
    "skin_contacts": {
-    "l_hip__shell_glute_pod x pelvis__pcb_pelvis_io_imu": [
-     15,
-     9.7
-    ],
     "l_hip__shell_glute_pod x pelvis__act_waist_yaw_KA90P": [
      30,
-     3.5
+     5.2
     ],
     "l_hip__shell_glute_pod x r_thigh__frame_thigh_plate_medial": [
      45,
-     2.6
-    ],
-    "l_hip__shell_glute_pod x r_hip__frame_hip_roll_output_flange": [
-     45,
-     7.5
-    ],
-    "l_hip__shell_glute_pod x r_hip__ti_m5_shcs_06": [
-     45,
-     6.5
-    ],
-    "l_hip__shell_glute_pod x r_hip__act_hip_roll_KA110P": [
-     45,
-     6.6
-    ],
-    "l_hip__ti_glute_cap_screw5 x r_hip__shell_glute_pod": [
-     45,
-     0.7
-    ],
-    "l_hip__joint_glute_cap_cap x r_hip__shell_glute_pod": [
-     45,
-     23.6
+     8.5
     ],
     "l_hip__alu_glute_cap_bezel x r_hip__shell_glute_pod": [
      45,
-     5.2
+     4.3
     ],
-    "l_hip__shell_glute_pod x r_hip__shell_glute_pod": [
+    "l_hip__shell_glute_pod x r_hip__frame_hip_roll_output_flange": [
      45,
-     9.9
+     7.4
     ],
     "l_hip__shell_glute_pod x r_hip__ti_m5_shcs_05": [
      45,
-     5.6
+     5.9
+    ],
+    "l_hip__shell_glute_pod x r_hip__ti_m5_shcs_06": [
+     45,
+     5.1
+    ],
+    "l_hip__shell_glute_pod x r_hip__shell_glute_pod": [
+     45,
+     8.4
+    ],
+    "l_hip__act_hip_roll_KA110P x r_hip__shell_glute_pod": [
+     45,
+     11.0
+    ],
+    "l_hip__ti_glute_cap_screw5 x r_hip__shell_glute_pod": [
+     45,
+     1.1
+    ],
+    "l_hip__joint_glute_cap_cap x r_hip__shell_glute_pod": [
+     45,
+     17.0
+    ],
+    "l_hip__frame_yaw_roll_yoke x r_hip__shell_glute_pod": [
+     45,
+     18.0
     ],
     "l_hip__shell_glute_pod x r_hip__frame_roll_pitch_bracket": [
      45,
-     13.4
+     13.0
     ]
    },
    "interior_contacts": {
     "l_thigh__frame_thigh_plate_medial x pelvis__act_waist_yaw_KA90P": [
      -15,
      1.2
-    ],
-    "l_hip__frame_roll_pitch_bracket x pelvis__pcb_pelvis_io_imu": [
-     15,
-     0.9
-    ],
-    "l_hip__frame_yaw_roll_yoke x pelvis__frame_pelvis_bowl": [
-     30,
-     83.6
-    ],
-    "l_hip__act_hip_roll_KA110P x pelvis__pcb_pelvis_io_imu": [
-     30,
-     18.8
     ],
     "l_hip__frame_roll_pitch_bracket x pelvis__act_waist_yaw_KA90P": [
      30,
@@ -593,19 +371,11 @@
      45,
      4.4
     ],
-    "l_hip__act_hip_roll_KA110P x r_hip__ti_m5_shcs_06": [
+    "l_hip__act_hip_roll_KA110P x r_hip__ti_m5_shcs_05": [
      45,
      3.4
     ],
-    "l_hip__joint_glute_cap_cap x r_hip__act_hip_roll_KA110P": [
-     45,
-     3.5
-    ],
-    "l_hip__alu_glute_cap_bezel x r_hip__act_hip_roll_KA110P": [
-     45,
-     4.0
-    ],
-    "l_hip__act_hip_roll_KA110P x r_hip__ti_m5_shcs_05": [
+    "l_hip__act_hip_roll_KA110P x r_hip__ti_m5_shcs_06": [
      45,
      3.4
     ],
@@ -613,9 +383,29 @@
      45,
      5.0
     ],
+    "l_hip__alu_glute_cap_bezel x r_hip__act_hip_roll_KA110P": [
+     45,
+     4.0
+    ],
+    "l_hip__joint_glute_cap_cap x r_hip__act_hip_roll_KA110P": [
+     45,
+     3.5
+    ],
     "l_hip__act_hip_roll_KA110P x pelvis__act_waist_yaw_KA90P": [
      45,
      5.8
+    ],
+    "l_hip__frame_hip_roll_output_flange x pelvis__act_waist_yaw_KA90P": [
+     45,
+     6.3
+    ],
+    "l_hip__frame_yaw_roll_yoke x pelvis__act_waist_yaw_KA90P": [
+     45,
+     3.4
+    ],
+    "l_hip__ti_m5_shcs_04 x pelvis__act_waist_yaw_KA90P": [
+     45,
+     3.4
     ]
    }
   },
@@ -633,41 +423,41 @@
     0
    ],
    "skin_contacts": {
-    "l_forearm__shell_forearm_front x l_upper_arm__cf_upper_arm_tube": [
-     -130,
-     37.1
-    ],
-    "l_forearm__trim_forearm_rear x l_upper_arm__cf_upper_arm_tube": [
-     -130,
-     31.6
-    ],
     "l_forearm__shell_forearm_front x l_upper_arm__shell_upper_arm_front": [
      -130,
      33.2
+    ],
+    "l_forearm__shell_forearm_front x l_upper_arm__cf_upper_arm_tube": [
+     -130,
+     37.1
     ],
     "l_forearm__trim_forearm_rear x l_upper_arm__trim_upper_arm_rear": [
      -130,
      29.7
     ],
+    "l_forearm__trim_forearm_rear x l_upper_arm__cf_upper_arm_tube": [
+     -130,
+     31.6
+    ],
     "l_forearm__shell_forearm_front x l_upper_arm__trim_upper_arm_rear": [
      -145,
      20.8
-    ],
-    "l_forearm__act_wrist_yaw_KH14 x l_upper_arm__shell_upper_arm_front": [
-     -145,
-     40.5
     ],
     "l_forearm__act_wrist_yaw_KH14 x l_upper_arm__trim_upper_arm_rear": [
      -145,
      16.3
     ],
-    "l_forearm__frame_forearm_frame x l_upper_arm__shell_upper_arm_front": [
+    "l_forearm__act_wrist_yaw_KH14 x l_upper_arm__shell_upper_arm_front": [
      -145,
-     7.1
+     40.5
     ],
     "l_forearm__frame_forearm_frame x l_upper_arm__trim_upper_arm_rear": [
      -145,
      2.8
+    ],
+    "l_forearm__frame_forearm_frame x l_upper_arm__shell_upper_arm_front": [
+     -145,
+     7.1
     ],
     "l_forearm__act_wrist_lin_A x l_upper_arm__shell_upper_arm_front": [
      -145,
@@ -677,7 +467,7 @@
    "interior_contacts": {
     "l_forearm__frame_elbow_clevis x l_upper_arm__cf_upper_arm_tube": [
      -130,
-     20.6
+     36.9
     ],
     "l_forearm__act_wrist_yaw_KH14 x l_upper_arm__cf_upper_arm_tube": [
      -145,
@@ -696,48 +486,32 @@
   "shoulder roll (-15 .. +160 abd)": {
    "free_range_deg": [
     0,
-    15
+    150
    ],
    "skin_contacts": {
-    "l_upper_arm__act_elbow_KH20 x torso__accent_hatch_led_A": [
-     -15,
-     6.0
-    ],
-    "l_upper_arm__alu_yaw_ring x torso__accent_hatch_led_A": [
-     -15,
-     4.9
-    ],
-    "l_upper_arm__act_shoulder_yaw_KH20 x torso__accent_hatch_led_A": [
-     -15,
-     8.2
-    ],
-    "l_upper_arm__cf_upper_arm_tube x torso__accent_hatch_led_A": [
-     -15,
-     20.0
-    ],
-    "l_upper_arm__shell_upper_arm_front x torso__accent_hatch_led_A": [
-     -15,
-     7.6
-    ],
-    "l_upper_arm__trim_upper_arm_rear x torso__accent_hatch_led_A": [
-     -15,
-     35.3
-    ],
     "l_upper_arm__act_elbow_KH20 x torso__trim_torso_side_L": [
      -15,
      8.4
     ],
+    "l_upper_arm__trim_upper_arm_rear x torso__batt_battery_pack_A_16S4P": [
+     -15,
+     7.7
+    ],
+    "l_upper_arm__trim_upper_arm_rear x torso__frame_battery_rail_L": [
+     -15,
+     12.7
+    ],
     "l_upper_arm__alu_yaw_ring x torso__trim_torso_side_L": [
      -15,
-     4.0
+     3.8
     ],
     "l_upper_arm__act_shoulder_yaw_KH20 x torso__trim_torso_side_L": [
      -15,
-     5.7
+     6.3
     ],
     "l_upper_arm__cf_upper_arm_tube x torso__trim_torso_side_L": [
      -15,
-     23.9
+     26.2
     ],
     "l_upper_arm__shell_upper_arm_front x torso__trim_torso_side_L": [
      -15,
@@ -745,22 +519,26 @@
     ],
     "l_upper_arm__trim_upper_arm_rear x torso__trim_torso_side_L": [
      -15,
-     16.4
+     15.1
+    ],
+    "l_upper_arm__act_elbow_KH20 x torso__accent_chest_light": [
+     -15,
+     7.5
+    ],
+    "l_upper_arm__alu_yaw_ring x torso__accent_chest_light": [
+     -15,
+     3.5
+    ],
+    "l_upper_arm__act_shoulder_yaw_KH20 x torso__accent_chest_light": [
+     -15,
+     8.2
+    ],
+    "l_upper_arm__cf_upper_arm_tube x torso__accent_chest_light": [
+     -15,
+     24.2
     ]
    },
    "interior_contacts": {
-    "l_forearm__joint_elbow_cap_med_cap x torso__frame_rib_lower": [
-     -15,
-     28.9
-    ],
-    "l_forearm__alu_elbow_cap_med_bezel x torso__frame_rib_lower": [
-     -15,
-     5.7
-    ],
-    "l_upper_arm__act_elbow_KH20 x torso__frame_rib_lower": [
-     -15,
-     20.9
-    ],
     "l_forearm__joint_elbow_cap_med_cap x torso__batt_battery_pack_A_16S4P": [
      -15,
      18.9
@@ -776,38 +554,46 @@
     "l_upper_arm__act_elbow_KH20 x torso__frame_battery_rail_L": [
      -15,
      13.8
+    ],
+    "l_forearm__joint_elbow_cap_med_cap x torso__frame_rib_lower": [
+     -15,
+     28.9
+    ],
+    "l_forearm__alu_elbow_cap_med_bezel x torso__frame_rib_lower": [
+     -15,
+     5.7
+    ],
+    "l_upper_arm__act_elbow_KH20 x torso__frame_rib_lower": [
+     -15,
+     20.9
     ]
    }
   },
-  "waist pitch (-15 back .. +75 fwd)": {
+  "waist pitch (-15 back .. +75 fwd), arms held clear": {
    "free_range_deg": [
     -15,
-    15
+    45
    ],
    "skin_contacts": {
-    "r_forearm__frame_forearm_frame x r_hip__shell_glute_pod": [
-     30,
-     5.1
-    ],
-    "r_forearm__trim_forearm_rear x r_hip__shell_glute_pod": [
-     30,
-     6.5
-    ],
-    "l_forearm__frame_forearm_frame x l_hip__shell_glute_pod": [
-     30,
-     2.5
-    ],
-    "l_forearm__trim_forearm_rear x l_hip__shell_glute_pod": [
-     30,
-     5.9
+    "torso__frame_spine_plate x pelvis__shell_pelvis_front": [
+     60,
+     3.2
     ],
     "torso__frame_rib_lower x pelvis__shell_pelvis_front": [
      60,
      9.4
     ],
-    "torso__frame_spine_plate x pelvis__shell_pelvis_front": [
-     60,
+    "torso__trim_torso_side_R x pelvis__shell_pelvis_front": [
+     75,
+     12.3
+    ],
+    "torso__trim_torso_side_R x pelvis__ti_pelvis_screw1": [
+     75,
      3.2
+    ],
+    "torso__frame_battery_rail_R x pelvis__shell_pelvis_front": [
+     75,
+     22.4
     ],
     "torso__pcb_pdu_bms x pelvis__shell_pelvis_front": [
      75,
@@ -815,23 +601,27 @@
     ],
     "torso__shell_abdomen_plate x pelvis__trim_pelvis_front_lower": [
      75,
-     11.2
+     8.0
     ],
-    "torso__trim_torso_side_R x pelvis__ti_pelvis_screw1": [
+    "torso__batt_battery_pack_A_16S4P x pelvis__shell_pelvis_front": [
      75,
-     3.2
+     56.4
     ],
-    "torso__trim_torso_side_R x pelvis__shell_pelvis_front": [
+    "torso__frame_battery_rail_L x pelvis__shell_pelvis_front": [
      75,
-     12.1
-    ],
-    "torso__trim_torso_side_R x pelvis__frame_pelvis_bowl": [
-     75,
-     1.1
+     16.6
     ],
     "torso__batt_battery_pack_B_16S4P x pelvis__shell_pelvis_front": [
      75,
      53.2
+    ],
+    "torso__accent_chest_light x pelvis__shell_pelvis_front": [
+     75,
+     11.5
+    ],
+    "torso__accent_chest_light x pelvis__ti_pelvis_screw1": [
+     75,
+     3.0
     ]
    },
    "interior_contacts": {
@@ -841,27 +631,84 @@
     ],
     "torso__frame_rib_lower x pelvis__frame_pelvis_bowl": [
      60,
-     2.1
-    ],
-    "torso__batt_battery_pack_B_16S4P x pelvis__frame_pelvis_bowl": [
-     75,
-     30.7
+     3.5
     ],
     "torso__frame_battery_rail_R x pelvis__frame_pelvis_bowl": [
      75,
-     3.6
-    ],
-    "torso__frame_battery_rail_L x pelvis__frame_pelvis_bowl": [
-     75,
-     3.6
+     3.3
     ],
     "torso__batt_battery_pack_A_16S4P x pelvis__frame_pelvis_bowl": [
      75,
-     30.7
+     80.0
+    ],
+    "torso__frame_battery_rail_L x pelvis__frame_pelvis_bowl": [
+     75,
+     3.3
+    ],
+    "torso__batt_battery_pack_B_16S4P x pelvis__frame_pelvis_bowl": [
+     75,
+     80.0
     ]
    }
   },
-  "waist yaw (-70..70)": {
+  "waist yaw (-70..70), arms held clear": {
+   "free_range_deg": [
+    -70,
+    65
+   ],
+   "skin_contacts": {},
+   "interior_contacts": {
+    "waist__frame_waist_yoke x pelvis__act_waist_yaw_KA90P": [
+     5,
+     0.7
+    ],
+    "waist__joint_waist_cap_R_cap x r_hip__act_hip_yaw_KA90P": [
+     20,
+     5.9
+    ],
+    "waist__alu_waist_cap_R_bezel x r_hip__act_hip_yaw_KA90P": [
+     20,
+     4.4
+    ],
+    "waist__alu_waist_cap_L_bezel x l_hip__act_hip_yaw_KA90P": [
+     20,
+     4.4
+    ],
+    "waist__joint_waist_cap_L_cap x l_hip__act_hip_yaw_KA90P": [
+     20,
+     5.9
+    ],
+    "waist__frame_waist_yoke x pelvis__pcb_pelvis_io_imu": [
+     -25,
+     54.1
+    ],
+    "waist__frame_waist_yoke x r_hip__act_hip_yaw_KA90P": [
+     -25,
+     1.5
+    ],
+    "waist__frame_waist_yoke x l_hip__act_hip_yaw_KA90P": [
+     -25,
+     1.2
+    ],
+    "waist__act_waist_pitch_KA110P x r_hip__act_hip_yaw_KA90P": [
+     35,
+     2.8
+    ],
+    "waist__ti_waist_cap_L_screw0 x l_hip__act_hip_yaw_KA90P": [
+     35,
+     0.8
+    ],
+    "waist__ti_waist_cap_R_screw4 x r_hip__act_hip_yaw_KA90P": [
+     35,
+     0.8
+    ],
+    "waist__ti_waist_cap_L_screw3 x l_hip__act_hip_yaw_KA90P": [
+     -40,
+     0.8
+    ]
+   }
+  },
+  "waist yaw (-70..70), arms hanging": {
    "free_range_deg": [
     0,
     5
@@ -903,13 +750,13 @@
      20,
      7.2
     ],
-    "l_forearm__frame_elbow_clevis x pelvis__shell_pelvis_rear": [
-     20,
-     2.8
-    ],
     "l_forearm__act_wrist_lin_B x l_hip__shell_glute_pod": [
      20,
-     4.5
+     7.5
+    ],
+    "l_forearm__shell_forearm_front x l_hip__shell_glute_pod": [
+     20,
+     15.6
     ],
     "l_forearm__trim_forearm_rear x l_hip__frame_roll_pitch_bracket": [
      20,
@@ -920,30 +767,6 @@
     "waist__frame_waist_yoke x pelvis__act_waist_yaw_KA90P": [
      5,
      0.7
-    ],
-    "waist__alu_waist_cap_R_bezel x pelvis__frame_pelvis_bowl": [
-     5,
-     7.2
-    ],
-    "waist__joint_waist_cap_R_cap x pelvis__frame_pelvis_bowl": [
-     5,
-     15.0
-    ],
-    "waist__alu_waist_cap_L_bezel x pelvis__frame_pelvis_bowl": [
-     5,
-     7.2
-    ],
-    "waist__joint_waist_cap_L_cap x pelvis__frame_pelvis_bowl": [
-     5,
-     15.0
-    ],
-    "waist__frame_waist_yoke x pelvis__frame_pelvis_bowl": [
-     5,
-     38.1
-    ],
-    "waist__act_waist_pitch_KA110P x pelvis__frame_pelvis_bowl": [
-     -10,
-     4.7
     ],
     "waist__alu_waist_cap_R_bezel x r_hip__act_hip_yaw_KA90P": [
      20,
@@ -964,18 +787,42 @@
     "l_hand__joint_wrist_cover x l_hip__frame_roll_pitch_bracket": [
      20,
      1.6
+    ],
+    "l_forearm__act_wrist_lin_B x l_hip__frame_roll_pitch_bracket": [
+     20,
+     17.0
+    ],
+    "l_forearm__act_wrist_lin_B x l_hip__frame_hip_roll_output_flange": [
+     20,
+     1.9
+    ],
+    "r_forearm__act_wrist_lin_B x r_hip__act_hip_roll_KA110P": [
+     -25,
+     7.1
+    ],
+    "waist__frame_waist_yoke x pelvis__pcb_pelvis_io_imu": [
+     -25,
+     54.1
+    ],
+    "waist__frame_waist_yoke x r_hip__act_hip_yaw_KA90P": [
+     -25,
+     1.5
+    ],
+    "waist__frame_waist_yoke x l_hip__act_hip_yaw_KA90P": [
+     -25,
+     1.2
     ]
    }
   },
   "neck pitch (-35 up .. +50 down)": {
    "free_range_deg": [
-    0,
+    -20,
     40
    ],
    "skin_contacts": {
     "head__frame_head_frame x neck__trim_neck_sleeve": [
-     -5,
-     3.6
+     -35,
+     5.3
     ]
    },
    "interior_contacts": {}
