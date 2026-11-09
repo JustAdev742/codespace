@@ -71,7 +71,9 @@ def chain_options(max_ratio=26.0, parallel=False):
                     opts[key] = (ratio, 2, f"{c1}T -> {z1}T, then {c2}T -> {z2}T")
     out = sorted(opts.values())
     if parallel:
-        out += [(r, s, rec + ", 2 chains on the last stage") for r, s, rec in out if s]
+        base = list(out)
+        out += [(r, s, rec + ", 2 chains on the last stage") for r, s, rec in base if s]
+        out += [(r, s, rec + ", 3 chains on the last stage") for r, s, rec in base if s]
     return out
 
 
@@ -223,7 +225,7 @@ def check(a, n, chain, stages, need, smp, sprocket_pd, dJ=0.0, floor=None, kind=
         ok = ok and m["chain"] >= 1.0
     elif stages:    # last (largest) sprocket carries the joint torque: repeated vs working load, missed step vs break / 2
         r = sprocket_pd / 2
-        npar = 2 if "2 chains" in recipe else 1
+        npar = 3 if "3 chains" in recipe else (2 if "2 chains" in recipe else 1)
         m["chain"] = npar * min(CHAIN_WORK_N * r / max(T_rep, 1e-6), (CHAIN_BREAK_N / 2) * r / max(t_chain_mom, 1e-6))
         ok = ok and m["chain"] >= 1.0
     return ok, m
@@ -259,7 +261,7 @@ def select(req, store, names, dm):
                            and pv.get("feasible", True))
                 if all(r[0] for r in res):
                     mm = {k: min(r[1][k] for r in res) for k in res[0][1]}
-                    cost = option_cost(a, n, stages, kind) + (1.0 if "2 cords" in recipe else 0.0) + (CHAIN_STAGE_AUD if "2 chains" in recipe else 0.0)
+                    cost = option_cost(a, n, stages, kind) + (1.0 if "2 cords" in recipe else 0.0) + (CHAIN_STAGE_AUD if "2 chains" in recipe else 0.0) + (2 * CHAIN_STAGE_AUD if "3 chains" in recipe else 0.0)
                     cand = dict(type=typ, n=n, chain=ratio, stages=stages, recipe=recipe, cost=cost, margins=mm, kind=kind)
                     tried.append(cand)
                     if is_prev:                 # hysteresis: last pass's choice still passes -> keep it (convergence)

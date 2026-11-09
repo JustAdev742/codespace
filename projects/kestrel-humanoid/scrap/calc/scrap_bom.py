@@ -41,7 +41,8 @@ def counts(sub):
     hubs = sum(qty[c] * f["n_motors"] for c, f in fam.items() if f["type"] in ("hub36", "hubfoc"))
     odesc = sum(qty[c] * f["n_motors"] for c, f in fam.items() if f["type"] == "hubfoc")
     chain_stages = sum(qty[c] * f["chain_stages"] for c, f in fam.items() if f.get("reduction") == "chain")
-    chain_par = sum(qty[c] for c, f in fam.items() if f.get("reduction") == "chain" and "2 chains" in f["sprockets"])
+    chain_par = sum(qty[c] * (2 if "3 chains" in f["sprockets"] else 1) for c, f in fam.items()
+                    if f.get("reduction") == "chain" and ("2 chains" in f["sprockets"] or "3 chains" in f["sprockets"]))
     capstans = sum(qty[c] for c, f in fam.items() if f.get("reduction") == "capstan" and f["chain_stages"])
     cords = sum(qty[c] * (2 if "2 cords" in f["sprockets"] else 1) for c, f in fam.items()
                 if f.get("reduction") == "capstan" and f["chain_stages"])
@@ -114,7 +115,10 @@ def lines(sub, c):
         add("Power", "5S 20 A BMS + 18650 holders", 1, 9.0, 9.0, "E", "R11 §5: basic 5S/6S BMS A$3-8 (E)")
         add("Power", "Charger: CC/CV buck module set to 21.0 V / 2 A, fed from an old 24 V laptop or printer supply", 1, 8.0, 8.0, "E", "supervised charging only, on a non-flammable surface")
     add("Safety", "Latching e-stop mushroom button", 1, 5.0, 5.0, "E", "")
-    add("Safety", "40 A automotive relay (contactor) + 12 V coil buck + flyback diode", 1, 8.0, 8.0, "E", "")
+    if c["odesc"]:
+        add("Safety", "100 A DC contactor (12 V coil) + coil buck + flyback diode (hub-motor peak currents)", 1, 25.0, 25.0, "E", "AliExpress")
+    else:
+        add("Safety", "40 A automotive relay (contactor) + 12 V coil buck + flyback diode", 1, 8.0, 8.0, "E", "")
     add("Safety", "Blade fuse holders + fuses (40 A main, 15 A per limb)", 1, 8.0, 8.0, "E", "")
     add("Safety", "Gantry: 10 m rope, 2 carabiners, chest and pelvis straps (garage beam or A-frame)", 1, 20.0, 10.0, "E", "")
     if k1:

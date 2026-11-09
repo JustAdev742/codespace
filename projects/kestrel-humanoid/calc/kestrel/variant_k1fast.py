@@ -13,7 +13,9 @@ LEG4 = F.LEG_QDD + [("hubfoc", 4)]      # K1-Fast is heavier (69 kg): up to four
 ALLOWED = {"*": [("drill18", 1), ("drill18", 2)],
            "K-HR": F.LEG_QDD, "K-HP": LEG4, "K-KN": LEG4, "K-AN": F.LEG_QDD,
            "K-NK": [("servo20", 1)]}
-LOADS = dict(box=5.0, hand=1.0, step_up=0.20)   # K1-Scrap's object loads; the walking speeds are the fast build's
+# K1-Scrap's object loads and a slower fast walk than S1-Fast: at 1.0 m/s the hip and knee do not close even with
+# four hub motors per joint (design mass 87 kg); walk 0.6 m/s, fast 0.8 m/s
+LOADS = dict(box=5.0, hand=1.0, step_up=0.20, walk=(0.33, 0.45, 0.10), walk_fast=(0.40, 0.40, 0.10), hip_h=(0.83, 0.83))
 SUPP_OVERRIDE = dict(K.SUPP_OVERRIDE, hip_yaw=dict(T=40.0, w=5.0, why="turning in place, 45 kg robot"),
                      shoulder_pitch=dict(w=6.0), shoulder_roll=dict(w=6.0), elbow=dict(w=6.0))
 

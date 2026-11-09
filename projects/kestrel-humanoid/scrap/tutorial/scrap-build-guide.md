@@ -296,6 +296,102 @@ scripted walk works, the reinforcement-learning package in `train/` has policies
 
 ---
 
+## The fast builds: S1-Fast and K1-Fast
+
+The drill builds walk slowly because a drill motor reaches its torque through a 270–510:1 reduction, and its rotor
+then feels like 2–4 kg·m² at the knee. Fast walking needs **quasi-direct-drive** joints, as Unitree's robots have:
+a high-torque motor, a short reduction, torque control, and a low reflected inertia. The cheapest way to get them
+from salvage is the **hoverboard hub motor**, driven hard (up to 50 A) by an **ODESC V4.2** FOC drive on a 48 V bus,
+through a short bike-chain reduction. MIT measured 22.5 N·m at 50 A on these motors, and used them with chain drives
+in its load-carrying robot legs (R11 §1.4).
+
+| | **S1-Fast** | **K1-Fast** | S1-Scrap (for comparison) |
+|---|---|---|---|
+| Walking (sized for) | **0.8 m/s, 1.0 m/s fast** | **0.6 m/s, 0.8 m/s fast** | 0.25 m/s, 0.36 m/s fast |
+| Stairs, objects | 18 cm stairs, 25 cm step-up, 10 kg box | 18 cm stairs, 20 cm step-up, 5 kg box, 1 kg per hand | 15 cm steps, 3 kg box |
+| Leg actuators | **12 hub motors + 12 ODESC drives**, 8 drill gearmotors (hip yaw and roll) | 12 hub motors + 12 ODESC drives, 8 drills; arms, waist and neck as K1-Scrap | 14 drill gearmotors |
+| Knee | 2 hub motors, 7.7:1 chain: **335 N·m, 12.9 rad/s** | 2 hub motors, 8:1: **347 N·m, 12.5 rad/s** | 2 drills, 5.5:1 capstan: 134 N·m, 7.6 rad/s |
+| Mass | about 52 kg | about 62 kg | about 30 kg |
+| Parts | **A$2,342 buying / A$1,553 scrounging** ([bom](../s1fast/generated/bom.md)) | **A$2,673 / A$1,782** ([bom](../k1fast/generated/bom.md)) | A$917 / A$492 |
+
+Twelve hub motors fit inside your 20, which leaves spares. If you already have the motors, take about A$360 off
+the "buy" totals. The **ODESC drives are the biggest cost** (12 × about A$60). Each used hoverboard also has a free
+two-motor FOC board, but its firmware ships at 15 A per motor and nobody publishes a safe maximum. Test one board at
+higher current on the lever rig before you plan around it.
+
+**Why not 1.4 m/s like Unitree H2?** S1-Fast's fast walk was also tried at 1.2 and 1.4 m/s, and K1-Fast's at 1.0 m/s
+(it did not close even with four hub motors per joint, at 87 kg design mass). The swing leg's acceleration
+times the hub motors' reflected inertia then needs more torque than hub motors can give at the hip. A hub motor's rotor
+is large, so its torque squared over its inertia is about 12 times lower than a commercial QDD module like S1's X12.
+That is the price gap between a A$30 salvaged motor and a A$1,000+ actuator. The trained walking policy is pushed towards
+1.4 m/s in simulation anyway (`train/`, variant `s1fast`).
+
+**S1-Fast drives** ([../s1fast/generated/actuator_selection.md](../s1fast/generated/actuator_selection.md)):
+
+| Joint | Actuator | Reduction | Joint peak / no-load speed |
+|---|---|---|---|
+| Hip yaw | 2 drill gearmotors | 5.5:1 capstan, 2 cords | 134 N·m / 7.6 rad/s |
+| Hip roll | 2 drill gearmotors | 7.0:1 capstan, 2 cords | 171 N·m / 6.0 rad/s |
+| **Hip pitch** | **2 hub motors** | 14T → 32T, then 12T → 42T, **3 chains** on the last stage (8.0:1) | **347 N·m / 12.5 rad/s** |
+| **Knee** | **2 hub motors** | 11T → 26T, then 11T → 36T, **3 chains** on the last stage (7.74:1) | **335 N·m / 12.9 rad/s** |
+| **Ankle (2 per foot)** | **1 hub motor each** | 18T → 26T, then 11T → 34T (4.46:1) | 97 N·m at the crank / 22 rad/s |
+| Shoulder pitch, elbow | 1 drill gearmotor | 3.0:1 / 2.25:1 capstan | 37 / 28 N·m |
+
+**K1-Fast drives** ([../k1fast/generated/actuator_selection.md](../k1fast/generated/actuator_selection.md)): hip yaw and
+hip roll 2 drills each (5.25:1 and 8:1 capstans, 2 cords); **hip pitch 2 hub motors** (18T → 26T, then 11T → 42T, 2
+chains, 5.5:1: 239 N·m, 18 rad/s); **knee 2 hub motors** (14T → 32T, then 12T → 42T, 3 chains, 8:1: 347 N·m, 12.5 rad/s);
+**ankle 1 hub motor per push-rod** (6.2:1, 134 N·m); arms, waist and neck as K1-Scrap (shoulder pitch 1.75:1, elbow and
+waist 1.5:1 capstans; shoulder roll and yaw direct; servo neck).
+
+### F1. Prepare the hub motors
+
+1. **Strip the hoverboards** (or buy hub motors; 6.5–8.5 in 36/48 V 350 W motors behave much the same). Cut off the
+   tyre. Keep the motor, its phase and hall cables, and the hoverboard battery packs: their cells build the 48 V pack.
+2. **Mounting.** The axle does not turn: clamp its flats between two 6 mm aluminium plates with slots, like a scooter
+   fork, and bolt the plates to the frame. The outer shell (the rotor) turns.
+3. **Drive sprocket.** Make a 6 mm aluminium adapter plate drilled to the screw pattern of the rotor's side cover (on
+   the side away from the cable), centre it on the axle, and bolt the small sprocket from the table to it. Use longer
+   screws through the cover.
+4. **Two or three motors per joint** drive one jackshaft: each motor's first chain goes to its own sprocket on the
+   shared jackshaft (608 bearings in plywood or aluminium plates), and the jackshaft's sprocket drives the joint. Give
+   every motor the same first-stage ratio so they share the load.
+5. **Lever test** each motor with its ODESC (F3): 0.5 m bar, luggage scale, 10–50 A. The model expects 0.48 N·m per amp
+   (about 24 N·m at 50 A). Put your figures in `scrap/data/actuators.json` (`hubfoc`) and re-run the selection.
+
+### F2. Chain drives
+
+* **Sprockets:** bike cassette cogs (11–18T) and chainrings (22–42T); the sizes per joint are in the table. Bolt the
+  joint sprocket to the moving link on a plywood or aluminium hub, concentric with the joint's 608 bearings.
+* **"2 chains" or "3 chains" on the last stage:** bolt two (or three) identical sprockets together, 3 mm apart with
+  washers, and run the chains side by side, all tensioned equally. The last stage carries the joint torque, and one
+  bike chain is good for about 1.6 kN of repeated load.
+* **Tension:** slot the jackshaft plates, and keep about 5 mm of slack mid-span. Oil the chains.
+
+### F3. ODESC drives
+
+1. One ODESC V4.2 per hub motor: three phase wires, and the five hall wires (5 V, ground, A, B, C) to its hall input.
+   Fit a 2 Ω 50 W brake resistor per pair of drives; the legs regenerate when they brake.
+2. Configure with `odrivetool` (ODrive 0.5.x firmware): pole pairs 15, motor type high-current, current limit 50 A,
+   calibration current 10 A, hall encoder (90 counts per revolution), control mode torque.
+3. **CAN:** all drives on one CAN bus to the ESP32s (SN65HVD230 transceivers), 500 kbit/s. Each ESP32 runs the joint PD
+   loop at 500 Hz from the MT6701 on the joint, and sends torque commands to its drives.
+
+### F4. The 48 V pack and power
+
+1. **Pack:** 13S4P (48 V, about 10 Ah) from tested hoverboard-pack cells, with a 13S BMS. Charge to 54.6 V at most,
+   supervised.
+2. **Contactor:** hub motors draw large peak currents, so use a **100 A DC contactor** (12 V coil) in the e-stop loop,
+   not the 40 A automotive relay of the drill builds.
+3. **18 V branch:** a 48 → 18 V, 20 A buck feeds the drill-driven joints (hip yaw and roll, arms).
+
+### F5. Walking
+
+The fast builds walk dynamically, so they need the torque-controlled walking policy from `train/`, not the scripted
+CSV gait:
+`python train.py --variant s1fast --name s1fast --init s1`, then `python play.py --variant s1fast --run s1fast`
+(K1-Fast: `--variant k1fast`).
+Bring-up is the same staged gantry sequence as step 9, starting at 30 % current limits.
+
 ## Step 11: Change it
 
 * **Measured masses or motors:** put them in `calc/kestrel/variant_s1scrap.py` (or `variant_k1scrap.py`) and
