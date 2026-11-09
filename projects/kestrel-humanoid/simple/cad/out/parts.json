@@ -312,7 +312,7 @@
    "qty": 2,
    "mass_kg": 0.061,
    "dims": "dia 86 x 12",
-   "process": "machined 6061-T6 (lathe): spigot dia 68 x 5 (fits the plate bore), flange dia 86 x 7, bore 62 H7 for 6908-2RS, 3 x M3 c'bored on PCD 78 through slots in the plate, nuts behind (slides +-3 mm for belt take-up)",
+   "process": "machined 6061-T6 (lathe): spigot dia 68 x 5 (fits the plate bore), flange dia 86 x 7, bore 62 H7 for 6908-2RS, 4 x M3 c'bored on PCD 78 through slots in the plate, nuts behind (slides +-3 mm for belt take-up)",
    "structure": true
   },
   "BRG_6908-2RS": {
@@ -328,7 +328,7 @@
    "kind": "plate",
    "material": "6061-T6",
    "qty": 2,
-   "mass_kg": 0.4296,
+   "mass_kg": 0.3195,
    "dims": "154 x 499 x 5",
    "process": "laser or waterjet cut, 5 mm 6061-T6",
    "structure": true
@@ -972,12 +972,12 @@
   "M5x25 SHCS": 12,
   "M5x16 SHCS": 44,
   "M5 square nut": 40,
-  "M3x8 SHCS": 68,
+  "M3x8 SHCS": 70,
   "M6x12 SHCS": 12,
   "M5x20 SHCS": 60,
   "M5x10 SHCS": 14,
   "M3x16 SHCS": 8,
-  "M3 Nylock nut": 14,
+  "M3 Nylock nut": 16,
   "M5x12 SHCS + 20 mm washer (shaft end)": 10,
   "ISO 7379 shoulder screw d8 x 16, M6 (rod-end pin)": 12,
   "M6 Nylock nut": 12,
@@ -1004,7 +1004,7 @@
   "M4 square nut (gripper)": 8,
   "LM8UU linear bearing": 8
  },
- "structure_cad_kg": 20.928,
+ "structure_cad_kg": 20.71,
  "structure_estimate_kg": 16.69,
  "belt": {
   "pitch_length": 800,

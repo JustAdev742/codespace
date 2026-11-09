@@ -237,7 +237,7 @@ def head(add, add_many):
     # crown: LiDAR collar, window and cap (Mid-360 optical head clear of the shell, -7..+52 deg)
     add("head", "joint", "lidar_collar", lambda: tube(46, 33.5, 8, "z", (0, 0, 1724)))
     add("head", "alu", "lidar_collar_ring", lambda: tube(47, 45.5, 1.4, "z", (0, 0, 1728.6)))
-    add("head", "visor", "lidar_window", lambda: tube(34, 31, 17, "z", (0, 0, 1736.5)))
+    add("head", "visor", "lidar_window", lambda: tube(34.5, 32.8, 14, "z", (0, 0, 1735)))
     add("head", "joint", "lidar_cap", lambda: cyl(35, 8, "z", (0, 0, 1746)).edges(">Z").fillet(3))
     screws(add, "head", sh.loft, [((-40, 150, 1586), (0, -1, 0)), ((-40, -150, 1586), (0, 1, 0))], "jaw", mirror=False)
 
@@ -246,13 +246,13 @@ def head(add, add_many):
 def neck(add, add_many):
     secs = [((0, 0, 1497), 51, 51, 52, 52, 2.2), ((0, 0, 1530), 48, 46, 50, 50, 2.3), ((2, 0, 1566), 46, 44, 47, 47, 2.3)]
     add("neck", "trim", "neck_sleeve", Shell.make(secs, WALL["neck"]), step=True, body="neck_link")
-    add("neck", "alu", "neck_ring", lambda: tube(52.6, 50.6, 2.0, "z", (0, 0, 1504)), body="neck_link")
+    add("neck", "alu", "neck_ring", lambda: tube(53.6, 51.6, 2.0, "z", (0, 0, 1504)), body="neck_link")
 
 
 # ================================================================== TORSO
-TQ = (3.4, 3.4, 4.4, 4.4)     # rounder front, squarer back (the two 175 mm packs fill the rear corners)
-TORSO = [((0, 0, 1150), 124, 132, 126, 126, (3.3, 3.3, 4.0, 4.0)), ((0, 0, 1185), 128, 134, 127, 127, TQ), ((0, 0, 1250), 128, 134, 128, 128, TQ),
-         ((0, 0, 1320), 126, 134, 128, 128, TQ), ((0, 0, 1385), 120, 132, 128, 128, (3.2, 3.2, 4.0, 4.0)), ((0, 0, 1440), 108, 120, 126, 126, 2.9),
+TQ = (3.4, 3.4, 4.8, 4.8)     # rounder front, squarer back (the two 175 mm packs fill the rear corners)
+TORSO = [((0, 0, 1150), 124, 134, 126, 126, (3.3, 3.3, 4.6, 4.6)), ((0, 0, 1185), 128, 134, 127, 127, TQ), ((0, 0, 1250), 128, 134, 128, 128, TQ),
+         ((0, 0, 1320), 126, 134, 128, 128, TQ), ((0, 0, 1385), 120, 134, 128, 128, (3.2, 3.2, 4.6, 4.6)), ((0, 0, 1440), 108, 121, 126, 126, 2.9),
          ((0, 0, 1480), 90, 104, 120, 120, 2.6), ((0, 0, 1505), 68, 76, 90, 90, 2.3), ((0, 0, 1520), 55, 59, 62, 62, 2.1)]
 PACK = [((-92, 0, 1412), 108, 108, 62, 62, 5.0), ((-142, 0, 1412), 108, 108, 62, 62, 5.0), ((-160, 0, 1412), 99, 99, 56, 56, 4.2),
         ((-168, 0, 1412), 82, 82, 45, 45, 3.0), ((-170.6, 0, 1412), 58, 58, 30, 30, 2.3)]
@@ -290,7 +290,7 @@ def torso(add, add_many):
         add("torso", "trim", f"hatch_latch_{nm}", lambda s=s: rbox(10, 44, 12, 3, (-136, s * 53, 1316)))
         add("torso", "accent", f"hatch_led_{nm}", band(TORSO, 0.35, 1.2, box(-BIG, -100, s * 53 - 12, s * 53 + 12, 1298, 1301)))
     add("torso", "shell", "back_upper", back.kz(lo=1346 + G2), step=True)
-    add("torso", "alu", "collar_ring", lambda: tube(59, 56.5, 2.0, "z", (0, 0, 1514)))
+    add("torso", "alu", "collar_ring", lambda: tube(59.5, 56.5, 2.0, "z", (0, 0, 1516.2)))
     screws(add, "torso", sh.loft, [((-300, s * 53 + d, z), (1, 0, 0)) for s in (1, -1) for d in (-32, 32) for z in (1180,)], "hatch", mirror=False)
     screws(add, "torso", sh.loft, [((300, s * 66, z), (-1, 0, 0)) for s in (1, -1) for z in (1290, 1440)], "chest", mirror=False)
     # radiator back pack (graphite): 2 x 92 mm fans exhaust through the grille
@@ -314,8 +314,8 @@ def pelvis(add, add_many):
     add("pelvis", "shell", "pelvis_front", sh.kx(lo=-10 + G2), step=True)
     add("pelvis", "shell", "pelvis_rear", sh.kx(hi=-10 - G2), step=True)
     add("pelvis", "accent", "belt_light", band(PELVIS, 0.35, 1.2, box(60, BIG, -40, 40, 1036, 1039)))
-    low = [((0, 0, 902), 80, 84, 13, 13, 3.0), ((0, 0, 920), 94, 98, 18, 18, 3.2), ((0, 0, 934), 98, 104, 24, 24, 3.4),
-           ((0, 0, 1012), 100, 108, 26, 26, 3.4)]
+    low = [((0, 0, 902), 80, 84, 11, 11, 3.0), ((0, 0, 920), 94, 98, 15, 15, 3.2), ((0, 0, 934), 98, 104, 17, 17, 3.4),
+           ((0, 0, 1012), 100, 108, 17, 17, 3.4)]
     lo = Shell.make(low, WALL["pelvis"], extend=("end",))
     add("pelvis", "trim", "pelvis_front_lower", lo.kx(lo=62), step=True)          # no rear piece: it would block hip roll
     screws(add, "pelvis", sh.loft, [((300, s * 120, 1050), (-1, 0, 0)) for s in (1, -1)], "pelvis", mirror=False)
@@ -334,11 +334,11 @@ SHANK = [((0, 105, 478), 50, 60, 46, 47, (2.6, 2.6, 3.0, 3.0)), ((0, 105, 440), 
          ((0, 105, 230), 38, 78, 49, 49, (2.8, 2.8, 4.5, 4.5)), ((0, 105, 170), 33, 73, 49, 49, (2.6, 2.6, 4.5, 4.5)),
          ((0, 105, 130), 31, 71, 49, 49, (2.5, 2.5, 4.5, 4.5))]
 BOOT_N = (2.5, 2.5, 4.5, 4.5)
-BOOT = [((0, 105, 134), 29, 69, 48, 48, BOOT_N), ((0, 105, 120), 35, 74, 54, 54, BOOT_N), ((0, 105, 108), 33, 72, 52, 52, BOOT_N),
-        ((0, 105, 95), 38, 75, 55, 55, BOOT_N), ((0, 105, 82), 35, 73, 54, 54, BOOT_N), ((0, 105, 66), 44, 73, 54, 54, (2.6, 2.6, 4.5, 4.5))]
-FOOT = [((-82, HY, 28), 12, 12, 6, 14, 2.4), ((-74, HY, 30), 46, 46, 24, 24, 3.4), ((-52, HY, 32), 56, 54, 34, 26, 4.0),
-        ((0, HY, 33), 58, 56, 38, 28, 4.0), ((60, HY, 32), 59, 57, 31, 28, 4.0), ((120, HY, 30), 60, 58, 21, 26, 4.0),
-        ((160, HY, 28), 56, 54, 15, 24, 3.6), ((186, HY, 25), 44, 42, 10, 20, 3.0), ((200, HY, 21), 10, 9, 3, 13, 2.4)]
+BOOT = [((0, 105, 134), 29, 69, 48, 48, BOOT_N), ((0, 105, 120), 37, 74, 54, 54, BOOT_N), ((0, 105, 108), 36, 72, 53, 53, BOOT_N),
+        ((0, 105, 95), 40, 75, 56, 56, BOOT_N), ((0, 105, 82), 39, 74, 56, 56, BOOT_N), ((0, 105, 66), 46, 75, 56, 56, (2.6, 2.6, 4.5, 4.5))]
+FOOT = [((-82, HY, 28), 12, 12, 6, 14, 2.4), ((-74, HY, 30), 47, 47, 24, 24, 3.4), ((-52, HY, 32), 58, 56, 34, 26, 4.0),
+        ((0, HY, 33), 60, 58, 38, 28, 4.0), ((60, HY, 32), 61, 59, 31, 28, 4.0), ((120, HY, 30), 62, 60, 21, 26, 4.0),
+        ((160, HY, 28), 58, 56, 15, 24, 3.6), ((186, HY, 25), 46, 44, 10, 20, 3.0), ((200, HY, 21), 10, 9, 3, 13, 2.4)]
 SOLE = [((-83, HY, 5.5), 13, 13, 5.5, 5.5, 6.0), ((-74, HY, 5.5), 47, 47, 5.5, 5.5, 6.0), ((-52, HY, 5.5), 57, 55, 5.5, 5.5, 6.0),
         ((60, HY, 5.5), 60, 58, 5.5, 5.5, 6.0), ((120, HY, 5.5), 61, 59, 5.5, 5.5, 6.0), ((160, HY, 5.5), 57, 55, 5.5, 5.5, 6.0),
         ((186, HY, 5.5), 45, 43, 5.5, 5.5, 6.0), ((201, HY, 5.5), 11, 10, 5.5, 5.5, 6.0)]
@@ -347,7 +347,7 @@ SOLE = [((-83, HY, 5.5), 13, 13, 5.5, 5.5, 6.0), ((-74, HY, 5.5), 47, 47, 5.5, 5
 def legs(add, add_many):
     # ---------------- hip: KA-130H lateral cap (on the roll-pitch bracket side), gluteal pod around the KA-110P
     add_many("l_hip", joint_cap(60, "y", (0, 157.5, HZ), "hip_cap", bolts=12, accent=True, t=4.0), mirror=True, body="l_hip_roll")
-    gp = [((-89, HY, HZ), 67.5, 67.5, 67.5, 67.5, 2.3), ((-100, HY, HZ), 68, 68, 68, 68, 2.4), ((-150, HY, HZ), 68, 68, 68, 68, 2.6),
+    gp = [((-89, HY, HZ), 69, 69, 69, 69, 2.3), ((-100, HY, HZ), 69, 69, 69, 69, 2.4), ((-150, HY, HZ), 69, 69, 69, 69, 2.6),
           ((-176, HY, HZ), 60, 60, 60, 60, 2.4), ((-188, HY, HZ), 30, 30, 30, 30, 2.0)]
     pod = Shell.make(gp, WALL["glute"], axis="x", extend=("start",))
     pod = pod.cut(box(-170, -94, HY - 30, HY + 30, 975, 1000)).cut(box(-184, -170, HY - 40, HY + 40, 960, 1000))
@@ -358,7 +358,8 @@ def legs(add, add_many):
     th = th.cut(cyl(88, 220, "y", (0, 99, HZ)))                              # concentric with the hip-pitch axis
     th = th.plane((0, 0, 839), (0.384, 0, -1), True)                         # top edge: z < 839 + 0.384 x
     th = th.cut(cyl(58, 220, "y", (0, 99, KZ)))                              # knee drum (r 55) + patella clearance
-    th = th.cut(cyl(92, 220, "y", (0, 99, KZ)).intersect(box(-BIG, -8, -BIG, BIG, -BIG, BIG)))   # popliteal relief
+    th = th.cut(cyl(110, 220, "y", (0, 99, KZ)).intersect(box(-BIG, -8, -BIG, BIG, -BIG, BIG)))  # popliteal relief (deep knee flexion)
+    th = th.cut(box(-BIG, BIG, -BIG, BIG, 800, 1100).cut(cyl(98, 240, "y", (0, 99, HZ))))       # top within r 98: clears the pelvis arches
     th = th.cuts(knee_rod_cutters("thigh"))
     add("l_thigh", "shell", "thigh_front", th.ky(hi=151 - G2).kx(lo=-25 + G2), mirror=True, step=True)
     add("l_thigh", "shell", "thigh_rear", th.ky(hi=151 - G2).kx(hi=-25 - G2), mirror=True, step=True)
@@ -374,6 +375,7 @@ def legs(add, add_many):
     add("l_shank", "shell", "knee_cap", aloft(pat), mirror=True)
     # ---------------- shank
     sk = Shell.make(SHANK, WALL["shank"]).cut(cyl(57, 220, "y", (0, 105, KZ))).kz(hi=478)
+    sk = sk.cut(cyl(80, 220, "y", (0, 105, KZ)).intersect(box(-BIG, -20, -BIG, BIG, -BIG, BIG)))   # calf top relief (knee flexion)
     sk = sk.cuts(knee_rod_cutters("shank"))
     kf = json.loads((HERE.parent / "data" / "knee_fourbar.json").read_text())
     ang = math.degrees(math.radians(kf["beta_deg"]))

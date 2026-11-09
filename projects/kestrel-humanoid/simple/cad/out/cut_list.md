@@ -10,11 +10,11 @@ CAD volume x density (6061-T6 2700, steel 7850, PA12-CF 1100 kg/m^3); extrusions
 
 | | Mass (kg) |
 |---|---|
-| Structure parts from CAD | 19.01 |
-| Fasteners (counted, 759 pcs, gripper excluded) | 1.92 |
-| **Structure total, CAD** | **20.93** |
+| Structure parts from CAD | 18.79 |
+| Fasteners (counted, 763 pcs, gripper excluded) | 1.92 |
+| **Structure total, CAD** | **20.71** |
 | Structure estimate in variant_s1.py | 16.69 |
-| Difference | +4.24 (+25 %) |
+| Difference | +4.02 (+24 %) |
 | Actuators in the model (datasheet masses) | 35.73 |
 
 Per body (CAD structure without fasteners vs the variant_s1.py estimate; targets from the weight review: structure <= 22 kg incl. fasteners, thigh <= 1.6 kg, shank <= 1.5 kg per leg without actuators):
@@ -34,7 +34,7 @@ Per body (CAD structure without fasteners vs the variant_s1.py estimate; targets
 | l_wrist (each side) | 0.13 | 0.12 | +0.01 |  |
 | l_hip_yaw_link (each side) | 1.11 | 0.50 | +0.61 |  |
 | l_hip_roll_link (each side) | 0.79 | 0.42 | +0.37 |  |
-| l_thigh (each side) | 1.84 | 1.25 | +0.59 | <= 1.60 |
+| l_thigh (each side) | 1.73 | 1.25 | +0.48 | <= 1.60 |
 | l_shank (each side) | 1.54 | 1.15 | +0.39 | <= 1.50 |
 | l_ankle_link (each side) | 0.15 | 0.30 | -0.15 |  |
 | l_foot (each side) | 0.61 | 0.75 | -0.14 |  |
@@ -45,7 +45,7 @@ Per body (CAD structure without fasteners vs the variant_s1.py estimate; targets
 | torso | 2.47 | 2.50 |
 | neck + head | 0.48 | 0.60 |
 | one arm (shoulder..wrist) | 1.13 | 1.25 |
-| one leg (hip yaw..foot) | 6.05 | 4.37 |
+| one leg (hip yaw..foot) | 5.94 | 4.37 |
 
 ## 0. Hand calculations (sizing the plates, bolts and bearings)
 
@@ -124,7 +124,7 @@ Materials: 6061-T6 yield 276 MPa (fatigue ~96 MPa at 5e8), 7075-T6 yield 500 MPa
 | pelvis_plate | 1 | 5 | 195 x 356 x 5 | 54 % | 22 | 0.505 | `pelvis_plate_qty1.dxf` |  |
 | shoulder_pitch_plate | 2 | 4 | 154 x 104 x 4 | 70 % | 9 | 0.104 | `shoulder_pitch_plate_qty2.dxf` |  |
 | shoulder_roll_plate | 2 | 4 | 128 x 123 x 4 | 45 % | 0 | 0.064 | `shoulder_roll_plate_qty2.dxf` |  |
-| thigh_inner_cheek | 2 | 5 | 154 x 499 x 5 | 54 % | 20 | 0.430 | `thigh_inner_cheek_qty2.dxf` |  |
+| thigh_inner_cheek | 2 | 5 | 154 x 499 x 5 | 54 % | 20 | 0.320 | `thigh_inner_cheek_qty2.dxf` |  |
 | thigh_outer_cheek | 2 | 5 | 154 x 499 x 5 | 57 % | 24 | 0.332 | `thigh_outer_cheek_qty2.dxf` |  |
 | tool_flange_plate | 2 | 4 | 68 x 60 x 4 | 96 % | 0 | 0.042 | `tool_flange_plate_qty2.dxf` |  |
 | torso_base_plate | 1 | 6 | 204 x 158 x 6 | 58 % | 18 | 0.304 | `torso_base_plate_qty1.dxf` |  |
@@ -138,7 +138,7 @@ Materials: 6061-T6 yield 276 MPa (fatigue ~96 MPa at 5e8), 7075-T6 yield 500 MPa
 | wrist_pitch_plate | 2 | 4 | 88 x 154 x 4 | 50 % | 4 | 0.060 | `wrist_pitch_plate_qty2.dxf` | forearm: length set by this plate |
 | wrist_yaw_plate | 2 | 4 | 128 x 88 x 4 | 63 % | 2 | 0.076 | `wrist_yaw_plate_qty2.dxf` |  |
 
-90 plates, 46 part numbers, 11.04 kg of plate.
+90 plates, 46 part numbers, 10.81 kg of plate.
 
 ## 2. Tubes, extrusions and rods (cut to length)
 
@@ -183,7 +183,7 @@ Clamp blocks are only used on the upper arm (2 per arm, M5 clamp screws); the le
 | HSG_6808-2RS_5 | 2 | dia 70 x 8 | 6061-T6: machined 6061-T6 (lathe): spigot dia 58 x 5 (fits the plate bore), flange dia 70 x 3, bore 52 H7 for 6808-2RS, 3 x M3 c'bored on PCD 62 into the plate (tapped) |
 | HSG_6905-2RS_4 | 2 | dia 60 x 9 | 6061-T6: machined 6061-T6 (lathe): spigot dia 48 x 4 (fits the plate bore), flange dia 60 x 5, bore 42 H7 for 6905-2RS, 3 x M3 c'bored on PCD 52 into the plate (tapped) |
 | HSG_6905-2RS_6 | 4 | dia 60 x 9 | 6061-T6: machined 6061-T6 (lathe): spigot dia 48 x 6 (fits the plate bore), flange dia 60 x 3, bore 42 H7 for 6905-2RS, 3 x M3 c'bored on PCD 52 into the plate (tapped) |
-| HSG_6908-2RS_5_SLIDE | 2 | dia 86 x 12 | 6061-T6: machined 6061-T6 (lathe): spigot dia 68 x 5 (fits the plate bore), flange dia 86 x 7, bore 62 H7 for 6908-2RS, 3 x M3 c'bored on PCD 78 through slots in the plate, nuts behind (slides +-3 mm for belt take-up) |
+| HSG_6908-2RS_5_SLIDE | 2 | dia 86 x 12 | 6061-T6: machined 6061-T6 (lathe): spigot dia 68 x 5 (fits the plate bore), flange dia 86 x 7, bore 62 H7 for 6908-2RS, 4 x M3 c'bored on PCD 78 through slots in the plate, nuts behind (slides +-3 mm for belt take-up) |
 | ISO9409_50_4_M6_FLANGE | 2 | dia 60 x 8 | 6061-T6: machined 6061-T6 dia 60 x 8, ISO 9409-1-50-4-M6: 4 x M6 on PCD 50, dia 31.5 H7 x 6 recess, 1 x dia 6 H7 dowel on PCD 50; 4 x M4 c'bored on PCD 40 to the flange plate |
 | ISO9409_TOOL_SPIGOT | 2 | dia 31.5 x 6 | 6061-T6: 6061 disc dia 31.5 h7 x 6 locating the gripper in the flange recess, 2 x M3 |
 | KNEE_SHAFT | 2 | dia 25 x 145 | 7075-T6: 7075-T6 tube shaft dia 25 h6 bore 15 x 145, M5 end screws + washers, one flat for an anti-rotation screw (bending 94 N m: 70 MPa) |
@@ -270,11 +270,11 @@ Socket-head cap screws ISO 4762 class 12.9 into T-nuts, square nuts (T-slot join
 |---|---|
 | ISO 7379 shoulder screw d8 x 16, M6 (rod-end pin) | 12 |
 | LM8UU linear bearing | 8 |
-| M3 Nylock nut | 14 |
+| M3 Nylock nut | 16 |
 | M3x10 SHCS | 3 |
 | M3x12 SHCS | 3 |
 | M3x16 SHCS | 8 |
-| M3x8 SHCS | 68 |
+| M3x8 SHCS | 70 |
 | M3x8 SHCS (gripper) | 10 |
 | M4 Nylock nut | 14 |
 | M4 square nut | 34 |
@@ -307,7 +307,7 @@ Socket-head cap screws ISO 4762 class 12.9 into T-nuts, square nuts (T-slot join
 | igus GFM-1214-06 flange bushing | 4 |
 | igus GFM-1618 flange bushing | 4 |
 
-By size: ISO: 12, LM8UU: 8, M3: 106, M4: 315, M5: 306, M6: 34, M8: 12, igus: 8.
+By size: ISO: 12, LM8UU: 8, M3: 110, M4: 315, M5: 306, M6: 34, M8: 12, igus: 8.
 
 ## 10. Joint check (positions from params.py, drive as built)
 
@@ -335,14 +335,6 @@ Ranges are read from params.py / variant_s1.py at build time (left side; right s
 
 | Volume (mm^3) | Part A | Part B |
 |---|---|---|
-| 35610 | l_hip_roll_link/HIP_PITCH_SUPPORT_STUB | l_thigh/thigh_inner_cheek |
-| 35610 | r_hip_roll_link/HIP_PITCH_SUPPORT_STUB | r_thigh/thigh_inner_cheek |
-| 8812 | l_thigh/BRG_6908-2RS | l_thigh/thigh_inner_cheek |
-| 8812 | r_thigh/BRG_6908-2RS | r_thigh/thigh_inner_cheek |
-| 3204 | l_thigh/thigh_inner_cheek | l_thigh/PULLEY_8MGT_36T |
-| 3204 | r_thigh/thigh_inner_cheek | r_thigh/PULLEY_8MGT_36T |
-| 3063 | l_thigh/HSG_6908-2RS_5_SLIDE | l_thigh/thigh_inner_cheek |
-| 3063 | r_thigh/HSG_6908-2RS_5_SLIDE | r_thigh/thigh_inner_cheek |
 | 7 | r_hip_roll_link/HIP_ROLL_REAR_SHAFT | r_hip_roll_link/hip_roll_lever_70 |
 | 7 | l_hip_roll_link/HIP_ROLL_REAR_SHAFT | l_hip_roll_link/hip_roll_lever_70 |
 
@@ -355,6 +347,6 @@ Ranges are read from params.py / variant_s1.py at build time (left side; right s
 5. **Deep hip flexion.** At -125 deg the knee X12 passes within a few mm of the front yoke arm and the pelvis 4040; the range is now -120 deg in variant_s1.py.
 6. **Ankle linkage.** Foot levers 65 mm (1.25:1 from the current actuator_family.json), cranks 40 mm, roll pins at d = +-36 mm on the foot. The crank pins sit at +-43.5 mm because each RS04 (52.7 mm long) is between the calf plates, so the rods lean in by 1.3 deg (A) and 2.2 deg (B), well inside the rod ends' +-13 deg. Ankle RS04 axes are 25 mm behind the shank line so the rods stay vertical in the side view.
 7. **Foot 110 mm wide** (DIM): the side rails (foot levers) sit just outside the d = 36 mm rod ends.
-8. **Mass.** CAD structure 20.93 kg incl. fasteners vs the original 16.69 kg estimate (+25 %). These per-body masses are now in calc/kestrel/variant_s1.py (CAD_STRUCTURE_KG); the re-run selection gives S1 66.9 kg estimated / 73.6 kg design with every class feasible, which needed the 1.25:1 ankle levers modelled here. The X12 datasheet mass is 2.37 kg vs 2.82 kg in actuator_family.json (1.8 kg of margin if the datasheet is right).
+8. **Mass.** CAD structure 20.71 kg incl. fasteners vs the original 16.69 kg estimate (+24 %). These per-body masses are now in calc/kestrel/variant_s1.py (CAD_STRUCTURE_KG); the re-run selection gives S1 66.9 kg estimated / 73.6 kg design with every class feasible, which needed the 1.25:1 ankle levers modelled here. The X12 datasheet mass is 2.37 kg vs 2.82 kg in actuator_family.json (1.8 kg of margin if the datasheet is right).
 9. **RS04 outputs are only 0.5 mm proud** of the housing: every driven part sits on a 6 mm spacer ring and uses 6 of the 9 M5 holes with through-screws.
 10. **First weight pass result:** 43.8 kg (6 mm plates everywhere, tubes + cheeks in the legs, solid pulleys) -> the current design. Remaining heavy items per leg: hip yoke + roll drive 1.1 kg (solid 6 mm yaw plate, 61812, 2 x 6905), knee drive 0.9 kg (pulleys, belt, 6908, shaft), M8 rod ends 6 x 35 g.

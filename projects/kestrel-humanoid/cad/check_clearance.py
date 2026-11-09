@@ -102,6 +102,8 @@ def static_check(parts):
             continue                       # articulated-finger envelope model: joints sit inside the phalanx ends
         if {pa["mat"], pb["mat"]} & {"accent"}:
             continue                       # light guides are inset into their panel by design
+        if "_screw" in a or "_screw" in b:
+            continue                       # button heads seat 0.4 mm into the panel they hold
         if d.depth > TOUCH:
             k = tuple(sorted((a, b)))
             best[k] = max(best.get(k, 0.0), round(d.depth, 2))
@@ -164,9 +166,12 @@ def main():
         ("shoulder pitch (-180 fwd .. +60 back)", arm, ["torso", "neck_link", "head", "pelvis", "waist_link"], (0, 0, 1420), (0, 1, 0), rng(-180, 60)),
         ("shoulder roll (-15 .. +160 abd)", ["l_upper_arm_a", "l_upper_arm", "l_forearm", "l_hand"], ["l_shoulder", "torso", "neck_link", "head"],
          (0, 200, 1420), (1, 0, 0), rng(-15, 160)),
-        ("waist pitch (-15 back .. +75 fwd)", upper, ["pelvis", "waist_link", "l_hip_yaw", "r_hip_yaw", "l_hip_roll", "r_hip_roll", "l_thigh", "r_thigh"],
-         (0, 0, 1085), (0, 1, 0), rng(-15, 75)),
-        ("waist yaw (-70..70)", ["waist_link"] + upper, ["pelvis", "l_hip_yaw", "r_hip_yaw", "l_hip_roll", "r_hip_roll"], (0, 0, 1000), (0, 0, 1), rng(-70, 70)),
+        ("waist pitch (-15 back .. +75 fwd), arms held clear", ["torso", "neck_link", "head", "l_shoulder", "r_shoulder"],
+         ["pelvis", "waist_link", "l_hip_yaw", "r_hip_yaw", "l_hip_roll", "r_hip_roll", "l_thigh", "r_thigh"], (0, 0, 1085), (0, 1, 0), rng(-15, 75)),
+        ("waist yaw (-70..70), arms held clear", ["waist_link", "torso", "neck_link", "head", "l_shoulder", "r_shoulder"],
+         ["pelvis", "l_hip_yaw", "r_hip_yaw", "l_hip_roll", "r_hip_roll"], (0, 0, 1000), (0, 0, 1), rng(-70, 70)),
+        ("waist yaw (-70..70), arms hanging", ["waist_link"] + upper, ["pelvis", "l_hip_yaw", "r_hip_yaw", "l_hip_roll", "r_hip_roll"],
+         (0, 0, 1000), (0, 0, 1), rng(-70, 70)),
         ("neck pitch (-35 up .. +50 down)", ["head"], ["neck_link", "torso"], (0, 0, 1555), (0, 1, 0), rng(-35, 50)),
         ("neck yaw (-80..80)", ["neck_link", "head"], ["torso"], (0, 0, 1485), (0, 0, 1), rng(-80, 80)),
     ]

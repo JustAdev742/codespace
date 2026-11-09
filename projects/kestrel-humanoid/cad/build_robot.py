@@ -126,18 +126,18 @@ def interior():
     # ---------------- pelvis: machined deck carrying both hip-yaw actuators (hung from it) and a
     # cradle for the waist-yaw actuator; front/rear hangers sit outside the waist-pitch sweep (r 75)
     def pelvis_bowl():
-        deck = rbox(160, 272, 12, 0, (0, 0, 1076)).edges("|Z").fillet(40).edges("not |Z").fillet(2)
-        deck = deck.cut(rbox(150, 100, 20, 6, (0, 0, 1076)))                      # waist-link slot
+        deck = rbox(172, 248, 12, 0, (0, 0, 1076)).edges("|Z").fillet(40).edges("not |Z").fillet(2)
+        deck = deck.cut(cyl(79, 20, "z", (0, 0, 1076)))                           # waist-link opening (drum + caps sweep r 78)
         for s in (1, -1):
             deck = deck.cut(cyl(16, 30, "z", (0, s * HY, 1076)))                  # hip-yaw cable bores
         # waist-yaw housing clamped at its upper flange (z 990..1000) and hung from the front/rear bridges: nothing
         # below z 980, where the roll-pitch brackets and thigh hip bosses sweep in hip yaw / roll
-        hang = rbox(6, 56, 94, 3, (80, 0, 1027)).union(rbox(6, 56, 94, 3, (-80, 0, 1027)))
-        clamp = tube(58, 48.6, 10, "z", (0, 0, 995)).union(rbox(160, 24, 10, 3, (0, 0, 995))).cut(cyl(48.6, 20, "z", (0, 0, 995)))
+        hang = rbox(6, 36, 76, 3, (80, 0, 1044)).union(rbox(6, 36, 76, 3, (-80, 0, 1044)))
+        clamp = tube(58, 48.6, 10, "z", (0, 0, 1009)).union(rbox(160, 24, 10, 3, (0, 0, 1009))).cut(cyl(48.6, 20, "z", (0, 0, 1009)))
         return deck.union(hang).union(clamp)
     add("pelvis", "frame", "pelvis_bowl", pelvis_bowl, step=True)
     add("pelvis", "act", "waist_yaw_KA90P", lambda: actuator(od, ln, "z", (0, 0, WAIST_YAW_Z)))
-    add("pelvis", "pcb", "pelvis_io_imu", lambda: rbox(14, 56, 90, 3, (-68, 0, 990)))
+    add("pelvis", "pcb", "pelvis_io_imu", lambda: rbox(12, 36, 80, 3, (58, 0, 990)))
     add("pelvis", "alu", "coolant_manifold", lambda: rbox(10, 56, 16, 3, (-92, 0, 1050)))
     # ---------------- waist (KA-110P Mk II envelope: OD 127)
     add("waist", "act", "waist_pitch_KA110P", lambda: actuator(od11, ln11, "y", (0, 0, WP), fins=False), body="waist_link")
@@ -193,13 +193,13 @@ def interior():
     for s in (1, -1):
         add("torso", "cool", f"coolant_trunk_{'L' if s > 0 else 'R'}",
             lambda s=s: hose([(-118, s * 88, 1360), (-104, s * 104, 1352), (-95, s * 107, 1340), (-95, s * 107, 1170),
-                              (-95, s * 62, 1157), (-82, s * 62, 1100), (-82, s * 40, 1070), (-88, s * 16, 1056)]))
+                              (-95, s * 62, 1157), (-72, s * 62, 1105), (-72, s * 40, 1070), (-86, s * 16, 1056)]))
         add("torso", "cool", f"coldplate_line_{'L' if s > 0 else 'R'}",
             lambda s=s: hose([(-96, s * 78, 1402), (-96, s * 44, 1470), (40, s * 40, 1470), (101, s * 40, 1357)], r=3.0))
     # ---------------- neck + head
     add("neck", "act", "neck_pitch_KH14", lambda: actuator(od14, ln14, "y", (0, 0, NP)), body="neck_link")
-    add("neck", "frame", "neck_yoke", lambda: rbox(70, 84, 6, 2, (0, 0, 1489)).union(rbox(56, 6, 76, 3, (0, -36, 1528))), body="neck_link")
-    add("head", "frame", "head_frame", lambda: rbox(120, 130, 10, 4, (5, 0, 1597)).union(rbox(56, 6, 64, 3, (0, 36, 1566))))
+    add("neck", "frame", "neck_yoke", lambda: rbox(70, 84, 6, 2, (0, 0, 1489)).union(rbox(40, 5, 76, 2, (0, -35.5, 1528))), body="neck_link")
+    add("head", "frame", "head_frame", lambda: rbox(120, 130, 10, 4, (5, 0, 1597)).union(rbox(40, 5, 60, 2, (0, 35.5, 1568))))
     add("head", "cam", "zedx_mini_stereo", lambda: rbox(37, 94, 32, 8, (72, 0, 1652)).rotate((72, 0, 1652), (72, 1, 1652), 10))
     for s in (1, -1):
         add("head", "cam", f"slam_cam_{'L' if s > 0 else 'R'}",
@@ -212,13 +212,13 @@ def interior():
         lambda: rbox(100, 8, 112, 6, (-40, 136, SZ)).union(cyl(52, 6, "y", (0, 135, SZ))), mirror=True)
     add("l_shoulder", "act", "shoulder_roll_KH25", lambda: cycloid_actuator(od25, ln25, "x", (SH_ROLL_X, SY, SZ)), mirror=True)
     add("l_upper_arm", "joint", "roll_output_bracket",
-        lambda: cyl(50, 8, "x", (0, SY, SZ)).union(rbox(10, 84, 104, 4, (9, SY, 1396))).union(rbox(60, 84, 8, 3, (20, SY, 1348))),
+        lambda: cyl(50, 8, "x", (0, SY, SZ)).union(rbox(10, 84, 104, 4, (9, SY, 1396))).union(rbox(46, 84, 8, 3, (27, SY, 1348))),
         mirror=True, body="l_upper_arm_a")
     add("l_upper_arm", "act", "shoulder_yaw_KH20", lambda: cycloid_actuator(od20, ln20, "-z", (0, SY, SH_YAW_Z)), mirror=True, body="l_upper_arm_a")
     add("l_upper_arm", "cf", "upper_arm_tube", lambda: tube(25, 23, 100, "z", (0, SY, 1218)), mirror=True, step=True)
     add("l_upper_arm", "act", "elbow_KH20", lambda: cycloid_actuator(od20, ln20, "y", (0, SY, EZ)), mirror=True)
     add("l_forearm", "frame", "elbow_clevis",
-        lambda: rbox(52, 80, 6, 3, (0, SY, 1067)),
+        lambda: rbox(52, 80, 6, 3, (0, SY, 1068.2)),
         mirror=True)
     add("l_forearm", "act", "wrist_yaw_KH14", lambda: actuator(od14, ln14, "-z", (0, SY, WRIST_YAW_Z + 2)), mirror=True)
     add("l_forearm", "act", "wrist_lin_A", lambda: cyl(14, 100, "z", (14, SY + 12, WRIST_LIN_Z)), mirror=True)
@@ -289,7 +289,7 @@ def interior():
     add("l_shank", "act", "ankle_B_KA90P", lambda: actuator(od, ln, "-y", (-25, HY, ANKLE_B_Z)), mirror=True)
     add("l_shank", "cf", "shank_tube", lambda: tube(20, 18, 118, "z", (8, HY, 179)), mirror=True, step=True)
     add("l_shank", "frame", "shank_upper_fitting",
-        lambda: rbox(80, 56, 26, 5, (0, 99, 455)).cut(cyl(26.5, 120, "y", (0, 99, KZ))).cut(cyl(52.5, 11, "y", (0, KNEE_ACT_Y, KZ))),
+        lambda: rbox(66, 56, 26, 5, (0, 99, 455)).cut(cyl(26.5, 120, "y", (0, 99, KZ))).cut(cyl(52.5, 11, "y", (0, KNEE_ACT_Y, KZ))),
         mirror=True, step=True)
     add("l_shank", "ti", "ankle_rod_lat", lambda: rod_between((-55, HY + 36, ANKLE_A_Z), (-52, HY + 36, 92), 5), mirror=True, step=True,
         body="l_ankle_rods")
