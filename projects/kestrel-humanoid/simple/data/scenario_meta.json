@@ -32,7 +32,7 @@
   "W1": {
    "desc": "walk 0.8 m/s (nominal)",
    "cop_ok": 1.0,
-   "mass": 72.02139999999999,
+   "mass": 73.62378000000001,
    "dt": 0.005,
    "duration": 5.3,
    "speed": 0.8
@@ -40,7 +40,7 @@
   "W2": {
    "desc": "walk 1.0 m/s (fast, 0.42 m steps)",
    "cop_ok": 1.0,
-   "mass": 72.02139999999999,
+   "mass": 73.62378000000001,
    "dt": 0.005,
    "duration": 4.68,
    "speed": 0.9999999999999999
@@ -48,7 +48,7 @@
   "ST": {
    "desc": "stairs up 0.18 m rise, 0.9 s/step",
    "cop_ok": 1.0,
-   "mass": 72.02139999999999,
+   "mass": 73.62378000000001,
    "dt": 0.005,
    "duration": 6.6000000000000005,
    "speed": 0.31111111111111117
@@ -56,7 +56,7 @@
   "SQ": {
    "desc": "squat + rise holding 20 kg box at chest",
    "cop_ok": 1.0,
-   "mass": 92.02139999999999,
+   "mass": 93.62378000000001,
    "dt": 0.005,
    "duration": 3.8000000000000003,
    "speed": 0.0
@@ -64,7 +64,7 @@
   "DS": {
    "desc": "deep squat (knee ~125 deg) + rise, no load",
    "cop_ok": 1.0,
-   "mass": 72.02139999999999,
+   "mass": 73.62378000000001,
    "dt": 0.005,
    "duration": 3.8000000000000003,
    "speed": 0.0
@@ -72,7 +72,7 @@
   "SU": {
    "desc": "single-leg step-up onto 0.30 m platform in 1.2 s",
    "cop_ok": 1.0,
-   "mass": 72.02139999999999,
+   "mass": 73.62378000000001,
    "dt": 0.005,
    "duration": 1.8,
    "speed": 0.0
@@ -80,7 +80,7 @@
   "SD": {
    "desc": "unplanned single-leg drop 0.10 m (missed step), 0.12 m absorption",
    "cop_ok": 0.9875,
-   "mass": 72.02139999999999,
+   "mass": 73.62378000000001,
    "dt": 0.005,
    "duration": 0.4,
    "speed": 0.0
@@ -88,7 +88,7 @@
   "SX": {
    "desc": "STRUCTURAL CASE ONLY: drop 0.15 m, 0.10 m absorption",
    "cop_ok": 0.9855072463768116,
-   "mass": 72.02139999999999,
+   "mass": 73.62378000000001,
    "dt": 0.005,
    "duration": 0.34500000000000003,
    "speed": 0.0
@@ -96,7 +96,7 @@
   "SL": {
    "desc": "single-leg stance, free leg lifted (static)",
    "cop_ok": 1.0,
-   "mass": 72.02139999999999,
+   "mass": 73.62378000000001,
    "dt": 0.005,
    "duration": 0.3,
    "speed": 0.0
@@ -104,7 +104,7 @@
   "AH": {
    "desc": "arms straight forward, 5 kg per hand (static hold)",
    "cop_ok": 1.0,
-   "mass": 82.02139999999999,
+   "mass": 83.62378000000001,
    "dt": 0.005,
    "duration": 1.2,
    "speed": 0.0
@@ -112,7 +112,7 @@
   "AL": {
    "desc": "lift 5 kg per hand, hanging -> forward horizontal in 0.8 s",
    "cop_ok": 1.0,
-   "mass": 82.02139999999999,
+   "mass": 83.62378000000001,
    "dt": 0.005,
    "duration": 1.5,
    "speed": 0.0
@@ -120,7 +120,7 @@
   "AF": {
    "desc": "fast unloaded raise: shoulder 2.0 rad, elbow 1.6 rad in 0.70 s",
    "cop_ok": 1.0,
-   "mass": 72.02139999999999,
+   "mass": 73.62378000000001,
    "dt": 0.005,
    "duration": 1.4000000000000001,
    "speed": 0.0
@@ -128,7 +128,7 @@
   "AS": {
    "desc": "side raise to 90 deg holding 3 kg per hand in 0.8 s",
    "cop_ok": 1.0,
-   "mass": 78.02139999999999,
+   "mass": 79.62378000000002,
    "dt": 0.005,
    "duration": 1.5,
    "speed": 0.0
@@ -136,7 +136,7 @@
   "NK": {
    "desc": "neck nod 0.8 rad / 0.3 s, yaw 1.2 rad / 0.4 s",
    "cop_ok": 1.0,
-   "mass": 72.02139999999999,
+   "mass": 73.62378000000001,
    "dt": 0.005,
    "duration": 1.3,
    "speed": 0.0

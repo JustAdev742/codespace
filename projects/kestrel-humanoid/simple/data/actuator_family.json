@@ -1,6 +1,6 @@
 {
  "S-LX": {
-  "mass": 2.82,
+  "mass": 2.37,
   "rotor_J": 0.0003644112000000001,
   "ratio": 30.0,
   "actuator": "MyActuator RMD-X12-P20-320-E",
@@ -13,12 +13,12 @@
   "peak_Nm": 320,
   "rated_Nm": 85,
   "speed_rads": 13.09,
-  "min_margin": 1.01,
+  "min_margin": 1.07,
   "source_url": "https://www.myactuator.com/_files/archives/cab28a_712afb681f434c1394145c69aae60b8e.zip",
   "verified": true
  },
  "S-L": {
-  "mass": 1.76,
+  "mass": 1.51,
   "rotor_J": 0.00021744,
   "ratio": 18.0,
   "actuator": "RobStride RS04",
@@ -30,7 +30,7 @@
   "peak_Nm": 120,
   "rated_Nm": 40,
   "speed_rads": 20.94,
-  "min_margin": 1.17,
+  "min_margin": 1.14,
   "source_url": "https://raw.githubusercontent.com/RobStride/Product_Information/main/%E7%81%B5%E8%B6%B3%E6%97%B6%E4%BB%A3RS%E7%B3%BB%E5%88%97%E4%BA%A7%E5%93%81%E8%A7%84%E6%A0%BC%E4%BB%8B%E7%BB%8D%282026.010.09%29.pdf",
   "verified": true
  },
@@ -55,17 +55,17 @@
  "S-A": {
   "mass": 1.51,
   "rotor_J": 0.00021744,
-  "ratio": 9.0,
+  "ratio": 11.25,
   "actuator": "RobStride RS04",
   "maker": "RobStride Dynamics (Beijing Lingzu Shidai)",
   "price_usd": 295.0,
   "reductions": {
-   "ankle": 1.0
+   "ankle": 1.25
   },
   "peak_Nm": 120,
   "rated_Nm": 40,
   "speed_rads": 20.94,
-  "min_margin": 1.03,
+  "min_margin": 1.16,
   "source_url": "https://raw.githubusercontent.com/RobStride/Product_Information/main/%E7%81%B5%E8%B6%B3%E6%97%B6%E4%BB%A3RS%E7%B3%BB%E5%88%97%E4%BA%A7%E5%93%81%E8%A7%84%E6%A0%BC%E4%BB%8B%E7%BB%8D%282026.010.09%29.pdf",
   "verified": true
  },
@@ -83,7 +83,7 @@
   "peak_Nm": 120,
   "rated_Nm": 40,
   "speed_rads": 20.94,
-  "min_margin": 1.54,
+  "min_margin": 1.53,
   "source_url": "https://raw.githubusercontent.com/RobStride/Product_Information/main/%E7%81%B5%E8%B6%B3%E6%97%B6%E4%BB%A3RS%E7%B3%BB%E5%88%97%E4%BA%A7%E5%93%81%E8%A7%84%E6%A0%BC%E4%BB%8B%E7%BB%8D%282026.010.09%29.pdf",
   "verified": true
  },
@@ -101,7 +101,7 @@
   "peak_Nm": 60,
   "rated_Nm": 21,
   "speed_rads": 20.42,
-  "min_margin": 1.04,
+  "min_margin": 1.03,
   "source_url": "https://raw.githubusercontent.com/RobStride/Product_Information/main/%E7%81%B5%E8%B6%B3%E6%97%B6%E4%BB%A3RS%E7%B3%BB%E5%88%97%E4%BA%A7%E5%93%81%E8%A7%84%E6%A0%BC%E4%BB%8B%E7%BB%8D%282026.010.09%29.pdf",
   "verified": true
  },

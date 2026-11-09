@@ -18,7 +18,7 @@ margins as K1.
 
 | | KESTREL S1 | KESTREL K1 Mk II (for comparison) |
 |---|---|---|
-| Height / estimated mass | 1.75 m / 65.5 kg (72.0 kg design mass) | 1.75 m / 102.5 kg |
+| Height / estimated mass | 1.75 m / 66.9 kg with the CAD structure (73.6 kg design mass) | 1.75 m / 103.2 kg |
 | Actuated joints | 27 + 2 grippers (legs 2 × 6, waist yaw, arms 2 × 6, neck 2) | 30 + two 13-DOA hands |
 | Actuators | 4 × MyActuator RMD-X12-P20-320, 23 × RobStride (RS04 / RS03 / RS02 / RS00) | custom liquid-cooled and cycloid family |
 | Leg peak torque (joint side) | knee 456 N·m (X12 + 1.5:1 belt), hip pitch 320 N·m | knee 493 N·m, hip pitch 406 N·m |
@@ -26,7 +26,7 @@ margins as K1.
 | Walking | 0.8 m/s nominal, 1.0 m/s fast, 18 cm stairs | 0.8 / 1.2 m/s, 18 cm stairs |
 | Bus / battery | 13S 48 V, 48 V 20 Ah pack (~0.96 kWh): ~3 h mixed use, ~2 h walking | 16S, 2 × 1.15 kWh hot-swap |
 | Actuator cost | **US$10,325** (≈ A$15,700), 27 units | — |
-| Full parts cost (A$, inc GST) | **A$37,990**, or **A$31,300** with a budget wireless e-stop instead of the FORT ([generated/bom.md](generated/bom.md)) | see docs/12 |
+| Full parts cost (A$, inc GST) | **A$38,050**, or **A$31,360** with a budget wireless e-stop instead of the FORT ([generated/bom.md](generated/bom.md)) | see docs/12 |
 
 ## How it was designed
 
@@ -54,19 +54,23 @@ margins as K1.
 
 | Joints | Module | Reduction | Peak / rated | Unit price | Qty |
 |---|---|---|---|---|---|
-| Hip pitch | MyActuator RMD-X12-P20-320 | direct | 320 / 85 N·m | US$1,090 | 2 |
+| Hip pitch | MyActuator RMD-X12-P20-320 | direct, with a 40 mm fan on the open hip cradle | 320 / 85 N·m | US$1,090 | 2 |
 | Knee | MyActuator RMD-X12-P20-320 | 1.5:1 HTD-8M belt from the upper thigh | 456 N·m at the knee | US$1,090 | 2 |
 | Hip roll | RobStride RS04 | 2:1 crank + push-rod | 228 N·m at the joint | US$295 (A$577 at Pakronics) | 2 |
 | Hip yaw, waist yaw | RobStride RS04 | direct | 120 / 40 N·m | US$295 | 3 |
-| Ankle (2 per ankle) | RobStride RS04 | parallel push-rods, K1 geometry | 234 N·m pitch | US$295 | 4 |
+| Ankle (2 per ankle) | RobStride RS04 | parallel push-rods: 40 mm cranks, 65 mm foot levers (1.25:1) | ≈ 290 N·m pitch | US$295 | 4 |
 | Shoulder pitch, roll | RobStride RS04 | direct | 120 / 40 N·m | US$295 | 4 |
 | Shoulder yaw, elbow | RobStride RS03 | direct | 60 / 21 N·m | US$245 | 4 |
 | Wrist yaw, pitch | RobStride RS02 | direct | 17 / 7 N·m | US$195 | 4 |
 | Neck yaw, pitch | RobStride RS00 | direct | 14 / 5 N·m | US$185 | 2 |
 
-The tightest margins are on the knee/hip X12 (1.01), ankle (1.03), elbow (1.04) and neck (1.05). Every one is
-at least 1.0 after K1's 1.2 torque and 1.15 speed margins and a 10 % design-mass allowance. If S1's built mass
-comes in above 65.5 kg, re-run the selection; the knees go first.
+The tightest margins are elbow (1.03), neck (1.05) and knee/hip X12 (1.07). Every one is at least 1.0 after K1's
+1.2 torque and 1.15 speed margins and a 10 % design-mass allowance. The masses come from the S1 CAD after its
+weight-reduction pass: structure 20.5 kg including fasteners, down from 43.8 kg in the first CAD.
+
+The hip-pitch X12's continuous rating assumes a 40 mm fan across its housing (thermal derate 0.9 instead of 0.8).
+Without the fan its continuous margin is 0.96, so fit the fan, and let firmware derate on the actuator temperature.
+If S1's built mass comes in above 66.9 kg, re-run the selection; the knees and hips go first.
 
 The peak ratings of these modules last 3–10 s (R9). Long, heavy holds are covered by the continuous check, not the
 peak.
@@ -117,7 +121,7 @@ python simple/cad/build_s1.py            # CAD, DXF and cut list
 
 ## Limits
 
-* The structure masses are estimates until the S1 CAD is weighed. The CAD cut list reports its own mass.
+* The structure masses come from CAD volumes. Weigh every sub-assembly as you build, and re-run the selection if the total grows.
 * The actuator torque-speed line is a conservative straight line, not the makers' curves. Validate each module on
   a simple lever-and-scale test before trusting the margins.
 * There are no shells and no hand dexterity: the grippers are simple parallel jaws. The tool flange is how you

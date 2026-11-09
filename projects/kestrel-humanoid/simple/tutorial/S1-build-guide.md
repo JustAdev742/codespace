@@ -141,6 +141,8 @@ Build the **left leg completely** and test it clamped to the bench before starti
    * Set the length so the leg hangs straight when the actuator reads zero.
 3. **Hip pitch.** Mount the hip-pitch X12 (ID 13) in the hip cradle, coaxial with the hip centre, with the
    outboard 6808 bearing in the inner cheek. Its output drives the thigh directly.
+   * **Fit the 40 mm fan** (12 V) on its bracket so it blows across the X12 housing.
+   * Its continuous rating depends on that fan. Without it the hip overheats on long walks.
 4. **Thigh and knee belt.**
    1. Mount the knee X12 (ID 14) in the upper thigh, on the knee-actuator bulkhead, with its 32-tooth HTD-8M
       pulley and the outboard 6808 bearing.
@@ -152,7 +154,8 @@ Build the **left leg completely** and test it clamped to the bench before starti
 5. **Shank and ankle.**
    1. Mount the two ankle RS04s (IDs 15 and 16) on the calf plates with their 40 mm cranks.
    2. Fit the ankle cross on its 6003 bearings and igus bushings.
-   3. Connect the two push-rods (M8 rod ends) from the cranks to the foot levers.
+   3. Connect the two push-rods (M8 rod ends) from the 40 mm cranks to the **65 mm** foot levers. The 1.25:1 lever
+      ratio is what gives the ankle enough torque.
    4. Adjust both rods so the foot sits flat and level when both ankle actuators read zero.
 6. **Foot.** Assemble the sole plate, side rails and roll clevises. Contact-cement the rubber sole. Fit the four
    foot contact sensors.

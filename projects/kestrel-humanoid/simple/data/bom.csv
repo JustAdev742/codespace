@@ -15,6 +15,7 @@ Structure,"Outboard bearing FAG 61812-2RSR-Y, 60x78x10 thin section","hip yaw, h
 Structure,"Small deep-groove bearings, 6001-2RS class","ankle crosses (2 pairs per ankle), idlers",16,ea,6.0,96.0,estimate,6.00 A$ inc GST,bearing supplier,,,ASSUMPTION A$6 each,no
 Structure,"Rod ends M8 (female, with studs)",ankle push-rods 2 x 2 ends per ankle + hip-roll 2:1 crank rods,12,ea,15.0,180.0,estimate,15.00 A$ inc GST,bearing supplier,,,ASSUMPTION A$15 each; R8: size at >= 3x link force,no
 Structure,Push-rod stock Ø10 6061 rod,ankle + hip-roll rods,1,m,15.0,15.0,estimate,15.00 A$ inc GST,local stockist,,,ASSUMPTION,no
+Structure,Hip-pitch cooling fan 40x40x10 mm 12 V (e.g. Noctua NF-A4x10 FLX) + 20 mm-grid bracket,one per hip-pitch X12: its continuous rating assumes forced air (simple/generated/actuator_selection.md),2,ea,30.0,60.0,estimate,30.00 A$ inc GST,AU PC retailers (Noctua NF-A4x10),,,"required, not optional",no
 Structure,"Fastener kit: M5 SHCS/BHCS, 6 mm-slot M5 T-nuts, M4/M3, nylocs, dowels, threadlocker",whole robot,1,ea,300.0,300.0,estimate,300.00 A$ inc GST,fastener supplier,,,ASSUMPTION A$300,no
 Structure,Extrusion corner brackets / cubes,torso + pelvis boxes,24,ea,4.0,96.0,estimate,4.00 A$ inc GST,GAP Engineering,https://www.gapengineering.com.au/,,ASSUMPTION A$4 each,no
 Structure,"Battery cradle rails + strap, rubber soles, TPU bumpers (printed)",,1,ea,80.0,80.0,estimate,80.00 A$ inc GST,,,,ASSUMPTION,no

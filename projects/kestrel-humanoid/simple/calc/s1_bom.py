@@ -195,6 +195,9 @@ def structure_rows():
         12, 15.0, "AUD", "estimate", "bearing supplier", "", "", "ASSUMPTION A$15 each; R8: size at >= 3x link force")
     add("Structure", "Push-rod stock Ø10 6061 rod", "ankle + hip-roll rods", 1, 15.0, "AUD", "estimate", "local stockist", "", "",
         "ASSUMPTION", unit="m")
+    add("Structure", "Hip-pitch cooling fan 40x40x10 mm 12 V (e.g. Noctua NF-A4x10 FLX) + 20 mm-grid bracket",
+        "one per hip-pitch X12: its continuous rating assumes forced air (simple/generated/actuator_selection.md)", 2, 30.0,
+        "AUD", "estimate", "AU PC retailers (Noctua NF-A4x10)", "", "", note="required, not optional")
     add("Structure", "Fastener kit: M5 SHCS/BHCS, 6 mm-slot M5 T-nuts, M4/M3, nylocs, dowels, threadlocker",
         "whole robot", 1, 300.0, "AUD", "estimate", "fastener supplier", "", "", "ASSUMPTION A$300")
     add("Structure", "Extrusion corner brackets / cubes", "torso + pelvis boxes", 24, 4.0, "AUD", "estimate", "GAP Engineering",

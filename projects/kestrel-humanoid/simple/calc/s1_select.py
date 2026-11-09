@@ -38,6 +38,10 @@ from kestrel import requirements as RQ  # noqa: E402
 
 CAT = PROJ / "data" / "cots_actuators.json"
 DERATE = 0.80
+# Per-joint thermal derate where the mounting is better than "enclosed": the hip-pitch X12 is direct-drive (as built in
+# simple/cad) on an open aluminium cradle plate with a 40 mm 12 V fan blowing across its housing (2 W) -> 0.90.
+# Firmware must still derate on the actuator's temperature reading (docs/S1-software.md, safety layer).
+JOINT_DERATE = {"hip_pitch": 0.90}
 HEADROOM = 0.90
 ETA_BELT = 0.95
 ETA_LINK = 0.97
@@ -51,14 +55,15 @@ PREFERRED_MAKER = "RobStride"
 BRAND_PENALTY = 200.0
 LAMBDA = {"S-LX": 250, "S-L": 250, "S-M": 250, "S-A": 400, "S-SH": 400, "S-EL": 600, "S-WR": 900, "S-NK": 400}
 
-# joint classes: joints served, allowed external reductions, reduction hardware mass per actuator (kg)
+# joint classes: joints served, allowed external reductions, reduction hardware mass per actuator (kg).
+# hw_kg is 0 now: belts, pulleys, cranks and levers are in the CAD structure masses (calc/kestrel/variant_s1.py)
 CLASSES = {
-    "S-LX": dict(joints=["hip_pitch", "knee"], reductions={"hip_pitch": [1.0, 1.5, 2.0], "knee": [1.0, 1.5, 2.0, 2.5, 3.0]},
-                 hw_kg=0.45, note="knee driven by an HTD-8M belt from the upper thigh; hip pitch direct or belt"),
-    "S-L": dict(joints=["hip_roll"], reductions={"hip_roll": [1.0, 1.5, 2.0]}, hw_kg=0.25,
+    "S-LX": dict(joints=["hip_pitch", "knee"], reductions={"hip_pitch": [1.0], "knee": [1.0, 1.5, 2.0, 2.5, 3.0]},
+                 hw_kg=0.0, note="knee driven by an HTD-8M belt from the upper thigh; hip pitch direct or belt"),
+    "S-L": dict(joints=["hip_roll"], reductions={"hip_roll": [1.0, 1.5, 2.0]}, hw_kg=0.0,
                 note="direct, or a crank + push-rod (rod ends) when the continuous pelvis-holding torque needs it"),
     "S-M": dict(joints=["hip_yaw", "waist_yaw"], reductions={"hip_yaw": [1.0], "waist_yaw": [1.0]}, hw_kg=0.0, note="direct"),
-    "S-A": dict(joints=["ankle"], reductions={"ankle": [1.0, 1.25, 1.5]}, hw_kg=0.05,
+    "S-A": dict(joints=["ankle"], reductions={"ankle": [1.0, 1.25, 1.5]}, hw_kg=0.0,
                 note="two actuators per ankle through the K1 parallel push-rod linkage (crank 40 mm, foot levers 52 mm; "
                      "a reduction r > 1 means foot levers of 52 x r mm)"),
     "S-SH": dict(joints=["shoulder_pitch", "shoulder_roll"], reductions={"shoulder_pitch": [1.0], "shoulder_roll": [1.0]}, hw_kg=0.0, note="direct"),
@@ -124,7 +129,7 @@ def w_line(a, t):
     return a["speed_rads"] * (1.0 - 0.6 * np.clip(t / a["peak_Nm"], 0, 1))
 
 
-def check(a, need, smp, r, eta):
+def check(a, need, smp, r, eta, derate=DERATE):
     """Every simulated sample with the requirement margins must sit under the torque-speed line; peaks,
     momentary, continuous and hold checked as for K1 (calc/kestrel/actuators.py)."""
     T_rep, T_mom, T_cont, w_req = need
@@ -141,7 +146,7 @@ def check(a, need, smp, r, eta):
     m = dict(peak=HEADROOM * tp / t_need.max(),
              speed=float(np.min(w_line(a, t_need) / np.maximum(w_need, 1e-6))),
              mom=tp / max(ta[mom].max() if mom.any() else 0.0, T_mom / (r * eta), 1e-6),
-             cont=DERATE * a["rated_Nm"] / (T_cont / (r * eta)) if T_cont > 0.5 else 9.9)
+             cont=derate * a["rated_Nm"] / (T_cont / (r * eta)) if T_cont > 0.5 else 9.9)
     return min(m.values()) >= 1.0, m
 
 
@@ -156,7 +161,7 @@ def select(req, cat, store, names):
                 eta_ext = ETA_LINK if j == "ankle" else ETA_BELT
                 best = None
                 for r in spec["reductions"][j]:
-                    ok, m = check(a, joint_need(req, j), smp[j], r, 1.0 if r == 1.0 else eta_ext)
+                    ok, m = check(a, joint_need(req, j), smp[j], r, 1.0 if r == 1.0 else eta_ext, JOINT_DERATE.get(j, DERATE))
                     if ok:
                         best = (r, m)
                         break               # smallest reduction that works (keeps speed and back-drivability)
@@ -196,7 +201,7 @@ def write_report(req, fam, report, design_mass, passes):
          f"**{design_mass:.1f} kg** (estimate x {P.DESIGN_MASS_GROWTH:.2f}). Catalogue: `data/cots_actuators.json` "
          "(sources in `docs/research/R9-cots-actuators-and-parts.md`). Do not edit by hand.", "",
          f"Checks per joint: repeated peak with {int((1 - HEADROOM) * 100)} % headroom, momentary peak, continuous "
-         f"x {DERATE} thermal derate, every simulated sample x margins under a torque-speed line (no-load speed to 40 % at peak). External reductions: belt eta "
+         f"x {DERATE} thermal derate ({', '.join(f'{k} {v}' for k, v in JOINT_DERATE.items())} with a 40 mm fan on the open hip cradle), every simulated sample x margins under a torque-speed line (no-load speed to 40 % at peak). External reductions: belt eta "
          f"{ETA_BELT}, ankle linkage eta {ETA_LINK}.", "",
          "## Chosen actuators", "",
          "| Class | Joints | Actuator | Reduction | Peak / rated (N·m) | No-load (rad/s) | Mass (kg) | Price (USD) | Qty | Lowest margin |",

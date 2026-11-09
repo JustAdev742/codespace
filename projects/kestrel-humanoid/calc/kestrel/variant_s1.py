@@ -51,6 +51,16 @@ JOINTS_CENTRE_S1 = {
 }
 
 
+# Structure mass per body from the S1 CAD (simple/cad/out/cut_list.md, after the weight-reduction pass), excluding
+# fasteners; the counted fasteners (1.94 kg) are spread pro rata, so each body's structure = CAD x FASTENER_FACTOR.
+CAD_STRUCTURE_KG = {
+    "pelvis": 1.54, "waist_link": 0.15, "torso": 2.48, "neck_link": 0.13, "head": 0.35,
+    "shoulder": 0.19, "upper_arm_a": 0.16, "upper_arm": 0.40, "forearm_a": 0.10, "forearm": 0.24, "wrist": 0.13,
+    "hip_yaw_link": 1.11, "hip_roll_link": 0.74, "thigh": 1.58, "shank": 1.48, "ankle_link": 0.15, "foot": 0.65,
+}
+FASTENER_FACTOR = 20.48 / 18.54
+
+
 def apply(ns):
     """Override params' globals for the S1 variant."""
     Comp, Body = ns["Comp"], ns["Body"]
@@ -59,6 +69,7 @@ def apply(ns):
     ns["DATA_DIR"] = ns["ROOT"] / "simple" / "data"
     ns["GEN_DIR"] = ns["ROOT"] / "simple" / "generated"
     ns["SCENARIOS_SKIP"] = {"TB"}            # no waist pitch
+    ns["WORKLOAD"] = "base"                  # S1 is sized for 20 kg box / 5 kg per hand, not the K1 Mk II work loads
     ns["FAST_WALK"] = (0.42, 0.34, 0.08, 0.80)   # 1.0 m/s fast walk (K1: 1.2 m/s) - keeps COTS legs feasible
     ns["ACT"].clear()
     ns["ACT"].update({k: dict(v) for k, v in ACT_S1.items()})
@@ -165,6 +176,15 @@ def apply(ns):
                 Comp("rubber sole (replaceable)", 0.20, (0.06, 0, -0.070), "box", (0.26, 0.11, 0.01), "structure"),
                 Comp("4x FSR / load-cell foot contacts + board", 0.08, (0.06, 0, -0.058), "box", (0.20, 0.08, 0.01), "sensor"),
             ]))
+        # replace the estimated structure masses by the CAD masses (keeping each component's share and position)
+        for b in B:
+            key = b.name[2:] if b.name[:2] in ("l_", "r_") else b.name
+            cad = CAD_STRUCTURE_KG.get(key)
+            st = [c for c in b.comps if c.cat == "structure"]
+            est = sum(c.mass for c in st)
+            if cad is not None and est > 0:
+                for c in st:
+                    c.mass *= cad * FASTENER_FACTOR / est
         return B
 
     ns["build_bodies"] = build_bodies
