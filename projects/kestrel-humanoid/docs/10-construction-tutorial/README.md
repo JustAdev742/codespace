@@ -2,7 +2,9 @@
 
 ![Exploded assembly](../../renders/12_exploded.png)
 
-This is the step-by-step build guide. Work through the phases **in order**. Each phase ends
+This is the step-by-step build guide. **All phases plus the commissioning, manufacturing and scratch-build
+appendices in one illustrated file: [KESTREL-K1-build-tutorial.pdf](KESTREL-K1-build-tutorial.pdf)**
+(regenerate it with `make_handbook.py`). Work through the phases **in order**. Each phase ends
 in a test gate (docs/11). Do not start a phase until the previous gate has passed and been logged.
 
 ## How each phase is laid out

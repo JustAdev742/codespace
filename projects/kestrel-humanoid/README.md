@@ -39,7 +39,7 @@ for what is uncertain and how each item gets retired.
 | 7 | Software architecture | [docs/07-software-architecture.md](docs/07-software-architecture.md) |
 | 8 | Complete BOM | [docs/08-bom.md](docs/08-bom.md) · [data/bom.csv](data/bom.csv) |
 | 9 | Manufacturing package | [docs/09-manufacturing-package.md](docs/09-manufacturing-package.md) · `cad/out/step/` · `cad/out/drawings/` |
-| 10 | Visual construction tutorial (14 phases, A–G each) | [docs/10-construction-tutorial/](docs/10-construction-tutorial/README.md) |
+| 10 | Visual construction tutorial (14 phases, A–G each) | [docs/10-construction-tutorial/](docs/10-construction-tutorial/README.md) · everything in one illustrated PDF: [KESTREL-K1-build-tutorial.pdf](docs/10-construction-tutorial/KESTREL-K1-build-tutorial.pdf) |
 | 11 | Testing & commissioning | [docs/11-testing-commissioning.md](docs/11-testing-commissioning.md) |
 | 12 | Cost analysis | [docs/12-cost-analysis.md](docs/12-cost-analysis.md) |
 | 13 | Optional: scratch-build every motor & actuator | [docs/13-scratch-build-motors-actuators.md](docs/13-scratch-build-motors-actuators.md) |
