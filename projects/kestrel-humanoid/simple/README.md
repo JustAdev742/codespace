@@ -126,7 +126,7 @@ The RL training package in `train/` runs S1 directly:
 ![S1 walking on flat ground, climbing and descending stairs](../train/runs/s1/demo.gif)
 
 The trained S1 policy is in `train/runs/s1/policy.pt`. It was trained on this VM's CPU: 64 M steps in two chunks,
-about 3.6 h. Evaluation (`train/runs/s1/eval.md`): commanded 0.6 m/s from 16 headings per cell, success means 2.4 m
+about 3.8 h. Evaluation (`train/runs/s1/eval.md`): commanded 0.6 m/s from 16 headings per cell, success means 2.4 m
 covered, or 6 stairs, without falling.
 
 | Terrain | 5 cm / 4° / 2 cm | 10.2 cm / 8.4° / 5 cm | 12.8 cm / 10.6° / 7 cm | 15.4 cm / 12.8° / 8 cm | 18 cm / 15° / 10 cm |
