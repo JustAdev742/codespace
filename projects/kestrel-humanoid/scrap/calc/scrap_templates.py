@@ -94,8 +94,11 @@ def gait_csv(sub, variant, out_dir):
 
 
 def main():
-    for sub, variant in (("s1", "s1scrap"), ("k1", "k1scrap")):
-        fam = json.loads((PROJ / "scrap" / sub / "data" / "actuator_family.json").read_text())
+    for sub, variant in (("s1", "s1scrap"), ("k1", "k1scrap"), ("s1fast", "s1fast"), ("k1fast", "k1fast")):
+        ff = PROJ / "scrap" / sub / "data" / "actuator_family.json"
+        if not ff.exists():
+            continue
+        fam = json.loads(ff.read_text())
         sys.path.insert(0, str(PROJ / "calc"))
         mod = importlib.import_module(f"kestrel.variant_{variant}")
         jl = dict(mod.JOINTS_LEFT)

@@ -62,5 +62,26 @@
   "clutch": false,
   "source": "[estimate] DS3218 class: 20 kg\u00b7cm (1.96 N\u00b7m) stall at 6.8 V, 0.14-0.16 s/60 deg; not in R11 - check the listing",
   "status": "E"
+ },
+ "hubfoc": {
+  "label": "hoverboard 6.5 in hub motor, tyre removed, on a 48 V bus with an ODESC V4.2 FOC drive (quasi-direct drive)",
+  "kind": "bldc_hv",
+  "Kt": 0.48,
+  "R": 0.23,
+  "I_max": 50.0,
+  "I_cont": 14.0,
+  "gear": 1.0,
+  "eta_gear": 1.0,
+  "J_rotor": 0.007,
+  "mass": 1.9,
+  "max_out_Nm": 1000.0,
+  "clutch": false,
+  "needs_chain": true,
+  "price_aud": 30.0,
+  "driver": "ODESC V4.2 single (8-56 V, 70 A cont. claimed, ODrive firmware)",
+  "driver_aud": 60.0,
+  "sensor_aud": 2.5,
+  "source": "R11: Kt 0.45-0.52 N\u00b7m/A, R 0.18-0.28 ohm, 22.5 N\u00b7m at 50 A unsaturated (MIT XRL), 2.2 kg with tyre; ODESC V4.2 US$27-39 (reach.dog, sequremall) to US$74 (Fruugo), 8-56 V, 70 A continuous / 120 A peak (seller claims); I_max 50 A = the MIT XRL measured point (22.5 N\u00b7m, no saturation); I_cont 14 A is an estimate - measure",
+  "status": "E"
  }
 }

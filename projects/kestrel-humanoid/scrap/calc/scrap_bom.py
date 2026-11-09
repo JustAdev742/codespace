@@ -21,6 +21,7 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 PROJ = HERE.parents[1]
 R11 = "docs/research/R11-scrap-build-parts.md"
+VARIANT = {"s1": "s1scrap", "k1": "k1scrap", "s1fast": "s1fast", "k1fast": "k1fast"}
 
 
 def counts(sub):
@@ -28,7 +29,7 @@ def counts(sub):
     import importlib
     import sys
     sys.path.insert(0, str(PROJ / "calc"))
-    mod = importlib.import_module(f"kestrel.variant_{sub}scrap")
+    mod = importlib.import_module(f"kestrel.variant_{VARIANT[sub]}")
     qty = {}
     for j, (c, _, _) in list(mod.JOINTS_LEFT.items()) + list(getattr(mod, "JOINTS_CENTRE", {}).items()):
         if j == "ankle_roll":
@@ -37,16 +38,20 @@ def counts(sub):
         qty[c] = qty.get(c, 0) + (2 * mult if j == "ankle_pitch" else mult)
     drills = sum(qty[c] * f["n_motors"] for c, f in fam.items() if f["type"] == "drill18")
     servos = sum(qty[c] * f["n_motors"] for c, f in fam.items() if f["type"] == "servo20")
-    hubs = sum(qty[c] * f["n_motors"] for c, f in fam.items() if f["type"] == "hub36")
+    hubs = sum(qty[c] * f["n_motors"] for c, f in fam.items() if f["type"] in ("hub36", "hubfoc"))
+    odesc = sum(qty[c] * f["n_motors"] for c, f in fam.items() if f["type"] == "hubfoc")
+    chain_stages = sum(qty[c] * f["chain_stages"] for c, f in fam.items() if f.get("reduction") == "chain")
+    chain_par = sum(qty[c] for c, f in fam.items() if f.get("reduction") == "chain" and "2 chains" in f["sprockets"])
     capstans = sum(qty[c] for c, f in fam.items() if f.get("reduction") == "capstan" and f["chain_stages"])
     cords = sum(qty[c] * (2 if "2 cords" in f["sprockets"] else 1) for c, f in fam.items()
                 if f.get("reduction") == "capstan" and f["chain_stages"])
     joints = sum(qty.values())
-    return dict(drills=drills, servos=servos, hubs=hubs, capstans=capstans, cords=cords, joints=joints, fam=fam, qty=qty)
+    return dict(drills=drills, servos=servos, hubs=hubs, odesc=odesc, chain_stages=chain_stages, chain_par=chain_par,
+                capstans=capstans, cords=cords, joints=joints, fam=fam, qty=qty)
 
 
 def lines(sub, c):
-    k1 = sub == "k1"
+    k1 = sub.startswith("k1")
     sensors = c["drills"] + c["hubs"]
     L = []
 
@@ -66,7 +71,14 @@ def lines(sub, c):
         add("Actuators", "20 kg·cm metal-gear hobby servo (DS3218 class): neck x2, grippers x2", c["servos"] + 2, 12.0, 12.0, "E", "AliExpress, not in R11")
         add("Actuators", "PCA9685 16-channel PWM board + 6 V 5 A buck for the servos", 1, 9.0, 9.0, "E", "AliExpress, not in R11")
     if c["hubs"]:
-        add("Actuators", "Used hoverboard (2 hub motors, FOC mainboard, 36 V pack, charger)", math.ceil(c["hubs"] / 2), 60.0, 35.0, "Vs", "R11 §1.3: A$50-75 working; broken A$20-50 (E)")
+        add("Actuators", "Used hoverboard for its 2 hub motors (the pack and charger are spares)", math.ceil(c["hubs"] / 2), 60.0, 35.0, "Vs", "R11 §1.3: A$50-75 working; broken A$20-50 (E); only the motors are needed")
+    if c["odesc"]:
+        add("Actuators", "ODESC V4.2 FOC drive (8-56 V, 70 A cont. claimed, ODrive firmware), one per hub motor", c["odesc"], 60.0, 60.0, "Vs",
+            "US$27-39 (reach.dog, sequremall) to US$74 (Fruugo); budget A$60 with shipping")
+        add("Actuators", "Brake resistor 2 ohm 50 W per pair of drives (regeneration)", math.ceil(c["odesc"] / 2), 4.0, 4.0, "E", "")
+    if c["chain_stages"]:
+        add("Actuators", "Bike chain and sprockets per stage (11-16T and 26-42T, chain, jackshaft, 2 x 608), plus hub sprocket adapter",
+            c["chain_stages"] + c["chain_par"], 12.0, 4.0, "E", "R11 §4.1: donor bikes A$0-40 (E); new single-speed sprockets A$8-15 (E)")
 
     add("Structure", "Aluminium equal angle 25 x 25 x 3 mm, 1 m", 10 if k1 else 8, 13.96, 2.0, "Vs",
         "R11 §4.3 Bunnings A$13.96/m; scrounge: metal recycler by weight (about 0.4 kg/m, E A$4-6/kg)")
@@ -82,16 +94,25 @@ def lines(sub, c):
 
     add("Electronics", "ESP32-S3 DevKitC N16R8 (leg, arm and body controllers)", 3 if k1 else 2, 9.9, 9.9, "V", "R11 §3: A$8.7-11")
     add("Electronics", "BNO085 IMU (pelvis)", 1, 9.4, 9.4, "V", "R11 §3: A$9.4-35; MPU6050 E A$2-4 works too")
+    if c["odesc"]:
+        add("Electronics", "SN65HVD230 CAN transceiver (ESP32 to the ODESC drives on CAN)", 3, 2.0, 2.0, "E", "AliExpress")
     add("Electronics", "Foot contact microswitches", 8, 0.4, 0.4, "E", "")
     add("Electronics", "5 V 3 A buck module (controllers, sensors)", 1, 3.0, 3.0, "E", "")
     add("Electronics", "Wiring: silicone 12 AWG red/black, 20 AWG multi-colour, XT60 pairs, Dupont, heat-shrink", 1,
         45.0 if k1 else 35.0, 25.0 if k1 else 20.0, "E", "scrounge: cables from old PSUs and appliances")
 
-    cells = 30 if k1 else 25
-    add("Power", f"18650 cells for a 5S{cells // 5}P pack (18 V, like the drills' own packs)", cells, 2.0, 0.0, "E",
-        "R11 §5: salvage from laptop / power-tool / hoverboard packs, 30-50 % usable after testing; buy used A$1.5-3 (E)")
-    add("Power", "5S 20 A BMS + 18650 holders", 1, 9.0, 9.0, "E", "R11 §5: basic 5S/6S BMS A$3-8 (E)")
-    add("Power", "Charger: CC/CV buck module set to 21.0 V / 2 A, fed from an old 24 V laptop or printer supply", 1, 8.0, 8.0, "E", "supervised charging only, on a non-flammable surface")
+    if c["odesc"]:
+        add("Power", "18650 cells for a 13S4P pack (48 V, ~10 Ah): the hoverboards' own packs supply most of them", 52, 2.0, 0.0, "E",
+            "R11 §5: each hoverboard pack is 10S2P (20 cells); test every cell")
+        add("Power", "13S 30 A BMS + holders / nickel strip", 1, 18.0, 18.0, "E", "R11 §5: 10S BMS A$9-13 (V); 13S 30 A estimated")
+        add("Power", "48 -> 18 V 20 A buck converter (drill-driven joints)", 1, 22.0, 22.0, "E", "")
+        add("Power", "Charger: 54.6 V 2 A Li-ion charger (or a CC/CV boost module from a laptop supply)", 1, 25.0, 15.0, "E", "supervised charging only")
+    else:
+        cells = 30 if k1 else 25
+        add("Power", f"18650 cells for a 5S{cells // 5}P pack (18 V, like the drills' own packs)", cells, 2.0, 0.0, "E",
+            "R11 §5: salvage from laptop / power-tool / hoverboard packs, 30-50 % usable after testing; buy used A$1.5-3 (E)")
+        add("Power", "5S 20 A BMS + 18650 holders", 1, 9.0, 9.0, "E", "R11 §5: basic 5S/6S BMS A$3-8 (E)")
+        add("Power", "Charger: CC/CV buck module set to 21.0 V / 2 A, fed from an old 24 V laptop or printer supply", 1, 8.0, 8.0, "E", "supervised charging only, on a non-flammable surface")
     add("Safety", "Latching e-stop mushroom button", 1, 5.0, 5.0, "E", "")
     add("Safety", "40 A automotive relay (contactor) + 12 V coil buck + flyback diode", 1, 8.0, 8.0, "E", "")
     add("Safety", "Blade fuse holders + fuses (40 A main, 15 A per limb)", 1, 8.0, 8.0, "E", "")
@@ -144,3 +165,6 @@ def write(sub, name, target):
 if __name__ == "__main__":
     write("s1", "KESTREL S1-Scrap", 1000)
     write("k1", "KESTREL K1-Scrap", 1000)
+    for sub, name, target in (("s1fast", "KESTREL S1-Fast", 1500), ("k1fast", "KESTREL K1-Fast", 2000)):
+        if (PROJ / "scrap" / sub / "data" / "actuator_family.json").exists():
+            write(sub, name, target)

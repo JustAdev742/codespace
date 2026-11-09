@@ -1,0 +1,110 @@
+{
+ "joints": [
+  "l_shoulder_pitch",
+  "l_elbow",
+  "r_shoulder_pitch",
+  "r_elbow",
+  "l_hip_yaw",
+  "l_hip_roll",
+  "l_hip_pitch",
+  "l_knee",
+  "l_ankle_pitch",
+  "l_ankle_roll",
+  "r_hip_yaw",
+  "r_hip_roll",
+  "r_hip_pitch",
+  "r_knee",
+  "r_ankle_pitch",
+  "r_ankle_roll"
+ ],
+ "scenarios": {
+  "W1": {
+   "desc": "walk 0.80 m/s (nominal)",
+   "cop_ok": 1.0,
+   "mass": 61.525000000000006,
+   "dt": 0.005,
+   "duration": 5.3,
+   "speed": 0.8
+  },
+  "W2": {
+   "desc": "walk 1.00 m/s (fast)",
+   "cop_ok": 1.0,
+   "mass": 61.525000000000006,
+   "dt": 0.005,
+   "duration": 4.68,
+   "speed": 0.9999999999999999
+  },
+  "ST": {
+   "desc": "stairs up 0.18 m rise, 0.9 s/step",
+   "cop_ok": 1.0,
+   "mass": 61.525000000000006,
+   "dt": 0.005,
+   "duration": 4.8,
+   "speed": 0.3111111111111111
+  },
+  "SQ": {
+   "desc": "squat + rise holding a 10 kg box",
+   "cop_ok": 1.0,
+   "mass": 71.52499999999999,
+   "dt": 0.005,
+   "duration": 4.9,
+   "speed": 0.0
+  },
+  "SU": {
+   "desc": "single-leg step-up onto 0.25 m in 1.2 s",
+   "cop_ok": 1.0,
+   "mass": 61.525000000000006,
+   "dt": 0.005,
+   "duration": 1.8,
+   "speed": 0.0
+  },
+  "SD": {
+   "desc": "unplanned single-leg drop 0.10 m (missed step)",
+   "cop_ok": 0.9875,
+   "mass": 61.525000000000006,
+   "dt": 0.005,
+   "duration": 0.4,
+   "speed": 0.0
+  },
+  "SX": {
+   "desc": "STRUCTURAL CASE ONLY: drop 0.10 m, 0.08 m absorption",
+   "cop_ok": 0.9852941176470589,
+   "mass": 61.525000000000006,
+   "dt": 0.005,
+   "duration": 0.34,
+   "speed": 0.0
+  },
+  "SL": {
+   "desc": "single-leg stance, free leg lifted (static)",
+   "cop_ok": 1.0,
+   "mass": 61.525000000000006,
+   "dt": 0.005,
+   "duration": 0.3,
+   "speed": 0.0
+  },
+  "AH": {
+   "desc": "arms straight forward, 2.0 kg per hand (static hold)",
+   "cop_ok": 1.0,
+   "mass": 65.52499999999999,
+   "dt": 0.005,
+   "duration": 1.2,
+   "speed": 0.0
+  },
+  "AL": {
+   "desc": "lift 2.0 kg per hand, hanging -> forward horizontal in 1.2 s",
+   "cop_ok": 1.0,
+   "mass": 65.52499999999999,
+   "dt": 0.005,
+   "duration": 1.9000000000000001,
+   "speed": 0.0
+  },
+  "AF": {
+   "desc": "unloaded raise: shoulder 2.0 rad, elbow 1.6 rad in 1.2 s",
+   "cop_ok": 1.0,
+   "mass": 61.525000000000006,
+   "dt": 0.005,
+   "duration": 1.9000000000000001,
+   "speed": 0.0
+  }
+ }
+}

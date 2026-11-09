@@ -292,11 +292,12 @@ def scrap_scenarios():
     slower walking, low steps, light objects, smaller drops. P.SCRAP holds the load levels."""
     c = P.SCRAP
     S = []
+    h1, h2 = c.get("hip_h", (0.83, 0.82))
     st, tss, tds = c["walk"]
-    S.append(walk("W1", f"walk {st / (tss + tds):.2f} m/s (nominal, scrap build)", st, tss, tds, 0.83))
+    S.append(walk("W1", f"walk {st / (tss + tds):.2f} m/s (nominal)", st, tss, tds, h1))
     st, tss, tds = c["walk_fast"]
-    S.append(walk("W2", f"walk {st / (tss + tds):.2f} m/s (fast, scrap build)", st, tss, tds, 0.82))
-    S.append(walk("ST", f"stairs up {c['stair']:.2f} m rise, {c['stair_t']:.1f} s/step", 0.26, 0.78 * c["stair_t"],
+    S.append(walk("W2", f"walk {st / (tss + tds):.2f} m/s (fast)", st, tss, tds, h2))
+    S.append(walk("ST", f"stairs up {c['stair']:.2f} m rise, {c['stair_t']:.1f} s/step", c.get("tread", 0.26), 0.78 * c["stair_t"],
                   0.22 * c["stair_t"], 0.81, rise=c["stair"], n_steps=4))
     S.append(squat("SQ", f"squat + rise holding a {c['box']:.0f} kg box", 0.60, 0.40, box_kg=c["box"], t_down=2.0, t_up=1.8))
     S.append(step_up("SU", f"single-leg step-up onto {c['step_up']:.2f} m in {c['step_up_t']:.1f} s", c["step_up"], c["step_up_t"]))

@@ -27,7 +27,7 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 PROJ = HERE.parents[1]
 ap = argparse.ArgumentParser()
-ap.add_argument("--variant", default="s1scrap", choices=["s1scrap", "k1scrap"])
+ap.add_argument("--variant", default="s1scrap", choices=["s1scrap", "k1scrap", "s1fast", "k1fast"])
 args, _ = ap.parse_known_args()
 os.environ["KESTREL_VARIANT"] = args.variant
 sys.path.insert(0, str(PROJ / "calc"))
@@ -54,8 +54,9 @@ def pd(z):
     return PITCH / np.sin(np.pi / z)
 
 
-def chain_options(max_ratio=26.0):
-    """(ratio, stages, recipe) for direct, one and two chain stages, smallest-sprocket recipe per ratio step."""
+def chain_options(max_ratio=26.0, parallel=False):
+    """(ratio, stages, recipe) for direct, one and two chain stages, smallest-sprocket recipe per ratio step.
+    parallel=True adds the same set with two chains side by side on the last stage (two sprockets bolted together)."""
     stages1 = sorted({(round(r / c, 3), c, r) for c in COGS for r in RINGS if r / c >= 1.4})
     opts = {1.0: (1.0, 0, "direct")}
     for ratio, c, r in stages1:
@@ -68,10 +69,13 @@ def chain_options(max_ratio=26.0):
                 key = round(ratio, 1)
                 if key not in opts:
                     opts[key] = (ratio, 2, f"{c1}T -> {z1}T, then {c2}T -> {z2}T")
-    return sorted(opts.values())
+    out = sorted(opts.values())
+    if parallel:
+        out += [(r, s, rec + ", 2 chains on the last stage") for r, s, rec in out if s]
+    return out
 
 
-CHAINS = chain_options()
+CHAINS = chain_options(parallel=True)
 
 # Hand-made capstan (cable) drive: Dyneema cord wrapped 4-5 turns on a steel rod held in the drill chuck, both ends
 # anchored on a plywood or aluminium sector at the joint. One stage, any ratio set by the sector radius; no backlash.
@@ -219,7 +223,8 @@ def check(a, n, chain, stages, need, smp, sprocket_pd, dJ=0.0, floor=None, kind=
         ok = ok and m["chain"] >= 1.0
     elif stages:    # last (largest) sprocket carries the joint torque: repeated vs working load, missed step vs break / 2
         r = sprocket_pd / 2
-        m["chain"] = min(CHAIN_WORK_N * r / max(T_rep, 1e-6), (CHAIN_BREAK_N / 2) * r / max(t_chain_mom, 1e-6))
+        npar = 2 if "2 chains" in recipe else 1
+        m["chain"] = npar * min(CHAIN_WORK_N * r / max(T_rep, 1e-6), (CHAIN_BREAK_N / 2) * r / max(t_chain_mom, 1e-6))
         ok = ok and m["chain"] >= 1.0
     return ok, m
 
@@ -230,27 +235,43 @@ def option_cost(a, n, stages, kind="chain"):
 
 def select(req, store, names, dm):
     fam, report = {}, {}
+    fprev = P.DATA_DIR / "actuator_family.json"
+    prev = json.loads(fprev.read_text()) if fprev.exists() else {}
     for cls, joints in classes().items():
         smp = {j: samples(store, names, j) for j in joints}
         J_model = P.ACT[cls]["rotor_J"] * P.ACT[cls]["ratio"] ** 2
-        best, tried = None, []
+        best, tried, closest = None, [], None
         for typ, n in allowed(cls):
             a = ACTS[typ]
             kind, opts = reductions(cls, typ)
             for ratio, stages, recipe in opts:
-                zbig = int(recipe.split("->")[-1].strip().rstrip("T")) if (stages and kind == "chain") else 0
+                zbig = int(recipe.split("->")[-1].split(",")[0].strip().rstrip("T")) if (stages and kind == "chain") else 0
                 dJ = n * a["J_rotor"] * (a["gear"] * ratio) ** 2 - J_model
                 res = [check(a, n, ratio, stages, joint_need(req, j), smp[j], pd(zbig) if zbig else 0.0, dJ,
                              supp_floor(dm, j), kind, recipe) for j in joints]
+                mm_all = {k: min(r[1][k] for r in res) for k in res[0][1]}
+                score = min(mm_all[k] for k in ("peak", "speed", "cont", "chain") if k in mm_all)
+                if closest is None or score > closest["score"]:
+                    closest = dict(type=typ, n=n, chain=ratio, stages=stages, recipe=recipe, kind=kind, margins=mm_all,
+                                   cost=option_cost(a, n, stages, kind), score=score)
+                pv = prev.get(cls, {})
+                is_prev = (pv.get("type") == typ and pv.get("n_motors") == n and pv.get("sprockets") == recipe
+                           and pv.get("feasible", True))
                 if all(r[0] for r in res):
                     mm = {k: min(r[1][k] for r in res) for k in res[0][1]}
-                    cost = option_cost(a, n, stages, kind) + (1.0 if "2 cords" in recipe else 0.0)
+                    cost = option_cost(a, n, stages, kind) + (1.0 if "2 cords" in recipe else 0.0) + (CHAIN_STAGE_AUD if "2 chains" in recipe else 0.0)
                     cand = dict(type=typ, n=n, chain=ratio, stages=stages, recipe=recipe, cost=cost, margins=mm, kind=kind)
                     tried.append(cand)
-                    if best is None or (cost, ratio) < (best["cost"], best["chain"]):
+                    if is_prev:                 # hysteresis: last pass's choice still passes -> keep it (convergence)
+                        best = dict(cand, sticky=True)
+                    elif best is None or (not best.get("sticky") and (cost, ratio) < (best["cost"], best["chain"])):
                         best = cand
-                    break                       # smallest feasible ratio for this (type, n): more is only slower
-        report[cls] = dict(joints=joints, best=best, tried=tried, need={j: joint_need(req, j) for j in joints})
+                    if not is_prev and (pv.get("type") != typ or pv.get("n_motors") != n):
+                        break                   # smallest feasible ratio for this (type, n): more is only slower
+        report[cls] = dict(joints=joints, best=best, tried=tried, need={j: joint_need(req, j) for j in joints}, closest=closest)
+        feasible = best is not None
+        if not feasible and closest is not None:      # keep realistic physics in the model: use the closest option
+            best = closest
         if best:
             a = ACTS[best["type"]]
             N = a["gear"] * best["chain"]
@@ -262,7 +283,7 @@ def select(req, store, names, dm):
                             rotor_J=best["n"] * a["J_rotor"], ratio=round(N, 2),
                             T_peak_joint=round(a["I_max"] * a["Kt"] * N * eta * best["n"], 1),
                             w_noload_joint=round((a["w_noload"] if a["kind"] == "servo" else bus_v(a) / a["Kt"]) / N, 2),
-                            clutch_Nm=round(best["margins"].get("clutch_Nm", 0.0), 1),
+                            clutch_Nm=round(best["margins"].get("clutch_Nm", 0.0), 1), feasible=feasible,
                             cost_aud=best["cost"], margins={k: round(v, 2) for k, v in best["margins"].items() if k != "clutch_Nm"})
     return fam, report
 
@@ -304,7 +325,8 @@ def write_report(req, fam, report, design_mass, passes):
             L.append(f"| {cls} | {', '.join(rep['joints'])} | **no feasible option** | | | | | | | |")
             continue
         m = f["margins"]
-        L.append(f"| {cls} | {', '.join(rep['joints'])} | {f['label']} | {f['n_motors']} | {f['sprockets']} "
+        flag = "" if f.get("feasible", True) else "**NOT FEASIBLE, closest option:** "
+        L.append(f"| {cls} | {', '.join(rep['joints'])} | {flag}{f['label']} | {f['n_motors']} | {f['sprockets']} "
                  f"({f['chain']:.2f}:1) | {f['T_peak_joint']:.0f} N·m / {f['w_noload_joint']:.1f} rad/s | "
                  f"{m['peak']:.2f}, {m['speed']:.2f}, {m['cont']:.2f} | {m['mom']:.2f} | "
                  f"{(str(f['clutch_Nm']) + ' N·m') if f['clutch_Nm'] else 'none'} | {f['cost_aud']:.0f} |")
@@ -330,8 +352,9 @@ def main():
         P.DATA_DIR.mkdir(parents=True, exist_ok=True)
         (P.DATA_DIR / "actuator_family.json").write_text(json.dumps(fam, indent=1, default=float))
         sig = {k: (v["type"], v["n_motors"], v["chain"]) for k, v in fam.items()}
+        bad = [c for c, v in fam.items() if not v.get("feasible", True)]
         print(f"pass {p}: design mass {dm:.1f} kg; " + ", ".join(f"{k} {v[0]}x{v[1]} {v[2]:.2f}" for k, v in sig.items())
-              + ("" if len(fam) == len(report) else f"  INFEASIBLE: {[c for c in report if c not in fam]}"), flush=True)
+              + (f"  INFEASIBLE (closest kept): {bad}" if bad else ""), flush=True)
         if sig == prev:
             break
         if sig in seen:                   # cycling between near-equal options: keep the heavier set and stop

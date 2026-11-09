@@ -1,0 +1,33 @@
+group,item,qty,buy,scrounge,conf,note
+Actuators,Used 18 V cordless drill with a dead or missing battery (motor + 2-speed planetary + clutch),10,10.0,3.0,E,"R11 §2.1: used A$5-25 (Marketplace / tip shop); new Ozito PXDDS-180 skin A$49.98 (Vs). Scrounge: kerbside, tip shops, friends; the battery is not needed"
+Actuators,BTS7960 43 A H-bridge module (one per drill),10,7.9,7.9,V,R11 §3: AliExpress A$7.6-8.1
+Actuators,MT6701 14-bit magnetic angle sensor board + diametric magnet (one per actuator output),24,2.5,2.5,V,R11 §3: A$2.2-3.8
+Actuators,TCA9548A I2C multiplexer (MT6701 has one fixed I2C address),3,2.5,2.5,E,"AliExpress, not in R11"
+Actuators,"UHMWPE (Dyneema) 3 mm 12-strand cord, 50 m (capstans)",1,25.0,25.0,E,not in R11; 8 cord loops of about 1.5 m. Check the rated break is >= 800 kg
+Actuators,"10 mm bright steel rod, 1 m (capstan input drums, held in the drill chucks)",1,12.0,5.0,E,hardware store; scrounge: old printer/shelving rod
+Actuators,"608 bearings, 100-pack (every pivot, capstan sectors, idlers)",1,35.0,35.0,V,R11 §4.2: US$24 per 100
+Actuators,Used hoverboard for its 2 hub motors (the pack and charger are spares),7,60.0,35.0,Vs,R11 §1.3: A$50-75 working; broken A$20-50 (E); only the motors are needed
+Actuators,"ODESC V4.2 FOC drive (8-56 V, 70 A cont. claimed, ODrive firmware), one per hub motor",14,60.0,60.0,Vs,"US$27-39 (reach.dog, sequremall) to US$74 (Fruugo); budget A$60 with shipping"
+Actuators,Brake resistor 2 ohm 50 W per pair of drives (regeneration),7,4.0,4.0,E,
+Actuators,"Bike chain and sprockets per stage (11-16T and 26-42T, chain, jackshaft, 2 x 608), plus hub sprocket adapter",18,12.0,4.0,E,R11 §4.1: donor bikes A$0-40 (E); new single-speed sprockets A$8-15 (E)
+Structure,"Aluminium equal angle 25 x 25 x 3 mm, 1 m",8,13.96,2.0,Vs,"R11 §4.3 Bunnings A$13.96/m; scrounge: metal recycler by weight (about 0.4 kg/m, E A$4-6/kg)"
+Structure,"Aluminium square tube 40 x 40 x 1.9 mm, 1 m (thighs, shanks)",2,30.0,4.0,E,"R11 §4.3: Bunnings stocks it, price not seen; scrounge: recycler offcuts"
+Structure,"12 mm plywood sheet (capstan sectors, plates, feet, gripper fingers)",1,45.5,5.0,Vs,R11 §4.3 Ecoply A$45.50; scrounge: offcuts
+Structure,"Fasteners: M3 / M5 / M6 / M8 bolts, nyloc nuts, washers, 1 m M8 threaded rod",1,45.0,30.0,E,hardware store assortment
+Structure,M8 rod ends (ankle push-rods),4,4.0,4.0,E,AliExpress
+Structure,Rubber soles (old tyre tube / door mat),2,2.0,0.0,E,
+Electronics,"ESP32-S3 DevKitC N16R8 (leg, arm and body controllers)",2,9.9,9.9,V,R11 §3: A$8.7-11
+Electronics,BNO085 IMU (pelvis),1,9.4,9.4,V,R11 §3: A$9.4-35; MPU6050 E A$2-4 works too
+Electronics,SN65HVD230 CAN transceiver (ESP32 to the ODESC drives on CAN),3,2.0,2.0,E,AliExpress
+Electronics,Foot contact microswitches,8,0.4,0.4,E,
+Electronics,"5 V 3 A buck module (controllers, sensors)",1,3.0,3.0,E,
+Electronics,"Wiring: silicone 12 AWG red/black, 20 AWG multi-colour, XT60 pairs, Dupont, heat-shrink",1,35.0,20.0,E,scrounge: cables from old PSUs and appliances
+Power,"18650 cells for a 13S4P pack (48 V, ~10 Ah): the hoverboards' own packs supply most of them",52,2.0,0.0,E,R11 §5: each hoverboard pack is 10S2P (20 cells); test every cell
+Power,13S 30 A BMS + holders / nickel strip,1,18.0,18.0,E,R11 §5: 10S BMS A$9-13 (V); 13S 30 A estimated
+Power,48 -> 18 V 20 A buck converter (drill-driven joints),1,22.0,22.0,E,
+Power,Charger: 54.6 V 2 A Li-ion charger (or a CC/CV boost module from a laptop supply),1,25.0,15.0,E,supervised charging only
+Safety,Latching e-stop mushroom button,1,5.0,5.0,E,
+Safety,40 A automotive relay (contactor) + 12 V coil buck + flyback diode,1,8.0,8.0,E,
+Safety,"Blade fuse holders + fuses (40 A main, 15 A per limb)",1,8.0,8.0,E,
+Safety,"Gantry: 10 m rope, 2 carabiners, chest and pelvis straps (garage beam or A-frame)",1,20.0,10.0,E,
+Head,USB webcam on a plywood head (or an old phone),1,10.0,0.0,E,
