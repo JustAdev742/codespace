@@ -71,14 +71,14 @@ def hold(e):
     e.push_t[:] = 10 ** 6
 
 
-def evaluate(policy, n_env=16, speed=0.6, seconds=10.0, rows=range(T.ROWS)):
+def evaluate(policy, n_env=16, speed=0.6, seconds=10.0, rows=range(T.ROWS), cols=range(T.COLS)):
     """Success = the robot gets REACH m from the tile centre before falling (then its run ends, so walking on
     into a neighbouring tile, e.g. a 1.26 m stair-bowl wall, does not count); fall = fell first; the rest
     stopped short of REACH within `seconds`."""
     e = E.Envs(M=n_env, seed=123, randomize=False, curriculum=False)
-    table = np.zeros((T.COLS, len(rows), 3))      # success, fall, mean reach
+    table = np.full((T.COLS, len(rows), 3), np.nan)      # success, fall, mean reach (NaN: not evaluated)
     steps = int(seconds / E.DT)
-    for c in range(T.COLS):
+    for c in cols:
         for ri, r in enumerate(rows):
             yaws = np.linspace(-np.pi, np.pi, n_env, endpoint=False)
             for i in range(n_env):
@@ -116,6 +116,8 @@ def write_table(table, path, speed, n_env, rows=range(T.ROWS), seconds=10.0):
              "| Terrain | " + " | ".join(f"row {r}" for r in rows) + " |",
              "|---|" + "---|" * len(rows)]
     for c in range(T.COLS):
+        if np.isnan(table[c, 0, 0]):
+            continue
         lines.append(f"| {T.NAMES[c]} | " + " | ".join(f"{table[c, i, 0]:.0%} ({table[c, i, 1]:.0%})"
                                                          for i in range(len(rows))) + " |")
     lines += ["", "| Row | " + " | ".join(str(r) for r in rows) + " |", "|---|" + "---|" * len(rows),
@@ -168,6 +170,8 @@ def main():
     ap.add_argument("--speed", type=float, default=0.6)
     ap.add_argument("--table", default=None, help="write the success table as markdown here")
     ap.add_argument("--gif", default=None)
+    ap.add_argument("--terrains", default=None, help="comma-separated subset, e.g. stairs_up,stairs_down "
+                                                     f"(default: all of {','.join(T.NAMES)})")
     ap.add_argument("--seconds", type=float, default=None, help="time limit per run (default: 10 s, or 1.6 x "
                                                                  "REACH / speed if that is longer)")
     ap.add_argument("--stairs-row", type=int, default=None, help="difficulty row for the stair clips (default: hardest "
@@ -178,7 +182,8 @@ def main():
     if args.eval_envs > 0:
         print(f"evaluating runs/{args.run}/policy.pt")
         secs = args.seconds or round(max(10.0, 1.6 * REACH / args.speed), 1)
-        table = evaluate(policy, args.eval_envs, args.speed, seconds=secs)
+        cols = [T.NAMES.index(t) for t in args.terrains.split(",")] if args.terrains else range(T.COLS)
+        table = evaluate(policy, args.eval_envs, args.speed, seconds=secs, cols=cols)
         if args.table:
             write_table(table, args.table, args.speed, args.eval_envs, seconds=secs)
     if args.gif:
@@ -186,7 +191,8 @@ def main():
         if row is None:
             row = 2
             if table is not None:
-                okr = [r for r in range(T.ROWS) if min(table[4, r, 0], table[5, r, 0]) >= 0.5]
+                st = table[4:6, :, 0]                        # stairs down, stairs up
+                okr = [r for r in range(T.ROWS) if not np.isnan(st[:, r]).all() and np.nanmin(st[:, r]) >= 0.5]
                 row = max(okr) if okr else 2
         k = min(2.0, max(1.0, 0.6 / args.speed))     # slow builds: longer clips, so they get somewhere
         segments = [("flat walking", 0, 0, 0.0, 6.0 * k), (f"stairs up, row {row}", row, 5, 0.0, 8.0 * k),
