@@ -24,6 +24,9 @@ import { speciesOf, sizeCm, type WaterId } from '@ludora/engine/big-catch';
 import { Field } from '../src/features/room/modes/glow-tag-field.ts';
 import { GlowTagHostScene, GlowTagScene } from '../src/features/room/modes/glow-tag-scene.ts';
 import { SummitHostScene, SummitScene, type MoveKind, type SceneClimber } from '../src/features/room/modes/summit-scene.ts';
+import { RallyField } from '../src/features/room/modes/lantern-rally-field.ts';
+import { RallyHostScene, RallyScene } from '../src/features/room/modes/lantern-rally-scene.ts';
+import { CIRCUIT_IDS, lapLength, type CircuitId } from '@ludora/engine/lantern-rally';
 import { SpotKickReelScene, SpotKickScene, type Aim, type KickShot, type Outcome, type ShotHow } from '../src/features/room/modes/spot-kick-scene.ts';
 
 const params = new URLSearchParams(location.search);
@@ -430,6 +433,56 @@ function makeSpotKickHost(env: StageEnv) {
   return w;
 }
 
+
+// ?scene=rally  Lantern Rally from one driver's kart (&circuit=harbour|forest|rooftops, &players=10, &trial=1).
+// ?scene=rally-host  the big screen. &manual=1 holds the clock still: step it with window.__step(ms) to check whole sequences.
+function makeRally(env: StageEnv, host: boolean) {
+  const circuit = (CIRCUIT_IDS as string[]).includes(params.get('circuit') ?? '') ? (params.get('circuit') as CircuitId) : 'harbour';
+  const n = Number(params.get('players') ?? 10);
+  const trial = params.get('trial') === '1';
+  const manual = params.get('manual') === '1';
+  let clock = 0;
+  const field = new RallyField(host ? null : GLIMS[0]!.id, () => clock);
+  const len = lapLength(circuit);
+  const rng = createRng(7);
+  const items: { at: number; lane: number; kind: 0 | 1 | 2 }[] = [];
+  for (let at = 45; at < len - 25; at += 22 + rng.int(0, 12)) {
+    const r = rng.next();
+    const lanes = rng.shuffle([0, 1, 2]);
+    if (r < 0.35) items.push({ at, lane: lanes[0]!, kind: rng.next() < 0.5 ? 0 : 1 });
+    else if (r < 0.55) items.push({ at, lane: lanes[0]!, kind: 0 }, { at, lane: lanes[1]!, kind: 1 });
+    else if (r < 0.8) items.push({ at, lane: lanes[0]!, kind: 2 });
+    else items.push({ at, lane: lanes[0]!, kind: 1 }, { at, lane: lanes[1]!, kind: 2 });
+  }
+  const bots = GLIMS.slice(0, n).map((g, i) => ({ id: g.id, name: g.name, d: -1 - Math.floor(i / 3) * 5, lane: [1, 0, 2][i % 3]!, v: 10, boostUntil: 0, slowUntil: 0 }));
+  const looks = new Map(GLIMS.map((g) => [g.id, { art: g.art as GlimArt, rarity: g.rarity as Rarity }]));
+  const opts = { circuit, trial, looks: (id: string) => looks.get(id) ?? { art: GLIMS[0]!.art as GlimArt }, hueOf: (id: string) => (id.length * 47) % 360 };
+  const w = host ? new RallyHostScene(env, field, opts) : new RallyScene(env, field, { ...opts, me: GLIMS[0]!.id });
+  w.setItems(items);
+  w.setStart(3000);
+  field.applyView({ length: len, at: 0, karts: bots.map((b, i) => ({ playerId: b.id, name: b.name, teamId: null, d: b.d, lane: b.lane, v: 0, flags: 0, place: i + 1, lap: 1, finished: null, isYou: !host && i === 0 })) });
+  const sim = (ms: number) => {
+    for (let t = 0; t < ms; t += 50) {
+      clock += 50;
+      if (clock < 3000) continue;
+      for (const b of bots) {
+        if (rng.next() < 0.004) b.boostUntil = clock + 3000;
+        if (rng.next() < 0.006) b.lane = Math.max(0, Math.min(2, b.lane + (rng.next() < 0.5 ? -1 : 1)));
+        const pos = ((b.d % len) + len) % len;
+        if (b.slowUntil < clock && items.some((it) => it.kind !== 2 && it.lane === b.lane && pos < it.at && pos + b.v * 0.05 >= it.at)) b.slowUntil = clock + 1300;
+        b.v = 10 + (b.boostUntil > clock ? 8 : 0) - (b.slowUntil > clock ? 5 : 0) + (b.id.length % 3) * 0.4;
+        b.d += b.v * 0.05;
+      }
+    }
+    const order = [...bots].sort((a, b) => b.d - a.d);
+    field.applyView({ length: len, at: clock, karts: bots.map((b, i) => ({ playerId: b.id, name: b.name, teamId: null, d: b.d, lane: b.lane, v: b.v, flags: (b.boostUntil > clock ? 1 : 0) | (b.slowUntil > clock ? 2 : 0) | (i === 2 ? 4 : 0), place: order.indexOf(b) + 1, lap: Math.max(1, Math.floor(b.d / len) + 1), finished: null, isYou: !host && i === 0 })) });
+  };
+  (window as unknown as { __step: (ms: number) => void }).__step = sim;
+  if (!manual) setInterval(() => sim(100), 100);
+  (window as unknown as { __world: unknown }).__world = w;
+  return w;
+}
+
 function App() {
   const create = (env: StageEnv) =>
     sceneName === 'gold'
@@ -452,7 +505,9 @@ function App() {
                       ? makeSpotKick(env)
                       : sceneName === 'spotkick-host'
                         ? makeSpotKickHost(env)
-                        : new Gallery(env);
+                        : sceneName === 'rally' || sceneName === 'rally-host'
+                          ? makeRally(env, sceneName === 'rally-host')
+                          : new Gallery(env);
   return (
     <main style={{ height: '100vh', display: 'grid' }}>
       <Stage3D label="3D gallery" create={create} className="h-full w-full" />

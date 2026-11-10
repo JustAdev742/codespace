@@ -27,6 +27,7 @@ import * as bigCatch from './big-catch/meta.ts';
 import * as cornerShop from './corner-shop/meta.ts';
 import * as codeBreakers from './code-breakers/meta.ts';
 import * as summitScramble from './summit-scramble/meta.ts';
+import * as lanternRally from './lantern-rally/meta.ts';
 
 /**
  * Metadata only, no game logic, so the browser can import the catalogue
@@ -60,4 +61,5 @@ export const CATALOG_DATA: readonly { meta: ModeMeta; settings: readonly Setting
   codeBreakers,
   summitScramble,
   spotKick,
+  lanternRally,
 ];

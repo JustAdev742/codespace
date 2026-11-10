@@ -1,8 +1,8 @@
 # The 3D modes
 
-Seven modes drawn with Ludora's 3D engine (`web/src/three/`). They are games, not lessons. As in
+Eight modes drawn with Ludora's 3D engine (`web/src/three/`). They are games, not lessons. As in
 every other mode, the learning comes from the class's own question set: a right answer is what
-powers everything you do. The setting (a goldfield, a jetty, a data city, a shop, a park at night, a mountain, a floodlit stadium)
+powers everything you do. The setting (a goldfield, a jetty, a data city, a shop, a park at night, a mountain, a floodlit stadium, a lantern-lit circuit)
 is just where the game happens, and none of them is tied to one subject.
 
 | Mode | id | What you do |
@@ -14,6 +14,7 @@ is just where the game happens, and none of them is tied to one subject.
 | Corner Shop | `corner-shop` | Stock shelves, serve a queue of customers, grow your shop. |
 | Summit Scramble | `summit-scramble` | Climb a mountain at night with the whole class: climb or leap ledge by ledge, reach the camps first, throw ropes to the climbers below. |
 | Spot Kick | `spot-kick` | Take penalties under floodlights: pick a place and a strength, and beat a keeper who learns your habits. |
+| Lantern Rally | `lantern-rally` | Race karts round a lantern-lit circuit at night: right answers are boost charges; steer for lanterns and round puddles and cones. |
 
 Names, art and words are Ludora's own (D30): no other product's names, characters, layouts or
 copy. "Inspired by" a genre is fine; copying a product is not.
@@ -271,3 +272,73 @@ A penalty shoot-out under floodlights. Right answers earn footballs; where you p
   without outlines); low drops the beams, roof lamps and real Glims (about 80 draw calls). Reduced
   motion holds the cameras still and calms the crowd; resets and highlights run on the scene's own
   clock, so a slow laptop slows the picture rather than cutting shots short.
+
+## Lantern Rally (`lantern-rally`)
+
+A night rally round a circuit strung with lanterns. The karts drive themselves; right answers are the fuel.
+
+- **Charges.** Each right answer gives a boost charge; a driver holds 3. A right answer while holding 3
+  fires a boost at once, so none is wasted. A wrong answer makes the engine cough: 5 m/s slower for
+  1.5 seconds, and the next question waits until it clears. Questions are self-paced and always open.
+- **Boost** spends a charge: 8 m/s faster than the 10 m/s cruise for 3 seconds (a boost on a boost
+  extends it, up to 6 seconds ahead). A guess is a fair gamble, as it should be: a boost is worth about
+  24 metres and a cough costs about 7.5, so guessing between four choices is roughly even, between two
+  it pays, and with no idea it does not (`rules-lantern-rally.test.ts` checks the sums).
+- **Lanes.** Three lanes; Steer left and Steer right move one lane (at most every 0.22 s). Steering is
+  a quiet action: the room sends the pulse instead of full views. Steering by hand turns auto-steer off.
+- **The track.** Rows of puddles (5 m/s slower for 1.2 s), cones (6 m/s slower for 1.6 s) and lanterns
+  lie round every lap, the same each lap of a race and never blocking all three lanes. Every kart
+  collects each lantern once a lap (nobody takes one from anyone else); it gives a glow (4 m/s faster
+  for 2 s) 60 times in 100, a shield (drive through the next puddle or cones untouched) 25, or a spare
+  charge 15. The prize is drawn on the server from `odds.ts` (`drawPrize`), the same weights every
+  screen prints. Going for a lantern is worth about 10 metres on average.
+- **Slipstream.** A kart 2 to 14 metres ahead in your lane gives you 2.5 m/s.
+- **Auto-steer** (a switch on each player's screen) steers round hazards it notices (8 in 10, decided
+  once per hazard from the seeded random source, so it is as good as an average driver, not perfect),
+  goes for some lanterns in the next lane, and spends charges on clear road. With it the race plays
+  fully by keyboard, switch, screen reader or answers alone. Nobody else can tell: it is in no other
+  player's view, the big screen or the pulse.
+- **Server-owned race.** Devices send only intents (boost, steer, auto-steer). The race is a fixed-step
+  simulation (50 ms steps) in the mode, advanced to the game clock by every hook; a 500 ms tick keeps
+  every screen up to date while racing. Effects are windows of game time, so the same inputs replay to
+  the same race.
+- **Finishing.** A race is 1 to 6 laps (3 by default) of a circuit of about half a kilometre. It ends when
+  everyone has finished, 30 seconds after the winner crosses the line, or when time runs out (5 minutes by
+  default); the rest are placed where they are at the whistle.
+- **Points**: 200 for every driver you beat (and once for yourself), 100 more for finishing, and 10 for
+  each right answer (the first 15 in a race). One place is worth more than every answer point, so the
+  finishing order (then the order at the whistle) decides the table: a finisher never ranks below someone
+  still racing, an earlier finisher never below a later one (a seeded test drives late finishers who
+  answer far more questions right). The big screen's table moves at most every 2 seconds.
+- **Circuits**: Harbour Lights (the quay, moored boats, boat sheds and a lighthouse beyond the pier
+  hairpin), Lantern Wood (winding bends through tall pines and fireflies) and Rooftop Run (square corners
+  and chicanes across a city roof, towers with lit windows, water tanks and blinking masts).
+  `track.ts` holds their shapes and is shared by the mode (lap lengths), the 3D scene and the 2D map.
+- **Variants**: Team Relay (teams race the clock with no finish line; every metre a teammate drives adds
+  to the team's distance, scaled up for smaller teams), Grand Prix (three one-lap races, one on each
+  circuit, with a 12-second break between; points carry over, and each new grid starts in reverse order
+  of the points so far), Time Trial (everyone drives alone, with no slipstreams, against a ghost of their
+  own best lap; the best lap is the score).
+- **3D**: toon karts of a few simple shapes in each driver's colour, the driver's own Glim at the wheel
+  (wearing the school's uniform on a school's copy, with no special case) and a little lantern on a mast
+  behind; a road with kerbs and dashed lanes, lantern strings on poles both sides, a start gantry whose
+  five lights count down. Boosts leave a streak, puddles splash, cones knock sparks, a shield is a bubble,
+  a glow a golden halo, a cough a puff of smoke; finishers celebrate. Each device has a chase camera
+  behind its own kart (karts just behind you are hidden so they never block the view); the big screen
+  shows the whole circuit from above and cuts to the trackside for the front of the race and each
+  overtake or new leader, with a small map in the corner, the race order, race news and the fastest lap.
+  Karts close together share one stacked name tag.
+- **Without 3D**: `lantern-rally-map.tsx` draws the circuit from above: scenery, kerbs, lanes, lantern
+  strings, items, every kart (yours in gold, with boost streaks and shields) and, in a time trial, your
+  ghost. The Stage3D label (and the map's) says your place, lap and lane, who is just ahead and behind,
+  and what lies ahead in each lane, in words (`lantern-rally-words.ts`, unit tested); a live region says
+  each boost, lantern, hit, lap, place change and finish.
+- **Budgets**: one mesh for the road, kerbs and lines; poles, lanterns, items, trees, towers, boats and
+  crates are instanced and their glows are one Points cloud each. A player's device draws its own kart and
+  the 15 nearest: about 50 to 110 draw calls (Gold Rush's shaft: 177 to 262). The big screen draws the top
+  40 karts, 24 of them with Glims (without outlines there): about 430 draw calls at every tier (Gold
+  Rush's goldfield: 1,100 to 1,300). Shadows only on high, no point lights, fewer lanterns and trees on
+  low. Under reduced motion the cameras do not cut, drift or kick on a boost, lanterns stop bobbing, and
+  karts do not wobble.
+- **Checking it**: `/dev/three.html?scene=rally` and `?scene=rally-host` (`&circuit=harbour|forest|rooftops`,
+  `&players=30`, `&trial=1`); `&manual=1` holds the clock so `window.__step(ms)` steps whole sequences.
