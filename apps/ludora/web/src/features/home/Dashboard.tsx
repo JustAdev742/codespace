@@ -17,6 +17,7 @@ import { Button, ButtonLink } from '../../ui/Button.tsx';
 import { ModeCard } from '../modes/ModeCard.tsx';
 import { OpenGames } from '../host/OpenGames.tsx';
 import { NextUp } from './NextUp.tsx';
+import { StudentMore, StudentToday } from './StudentHome.tsx';
 import { BLEED_ROUNDING, Bleed, Meter } from './kit.tsx';
 import { SeasonDecor, SeasonLine } from '../season/SeasonBanner.tsx';
 
@@ -187,6 +188,9 @@ export default function Dashboard() {
       {/* A teacher's classes and last game, or a student's assignments: the first thing to do today. */}
       <NextUp />
 
+      {/* First steps, today's challenge, mistakes to fix and the weekly goal. */}
+      <StudentToday />
+
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)]">
         <Panel className="p-5 sm:p-6" aria-labelledby="quests-title">
           <div className="mb-2 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
@@ -303,6 +307,9 @@ export default function Dashboard() {
           </Panel>
         </div>
       </div>
+
+      {/* Last week's recap, favourites and recently played. */}
+      <StudentMore />
 
       <section aria-labelledby="play-title">
         <div className="mb-4 flex items-end justify-between gap-3">

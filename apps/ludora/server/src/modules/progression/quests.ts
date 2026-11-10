@@ -1,7 +1,7 @@
 import { and, eq, gte, inArray, sql } from 'drizzle-orm';
 import { createRng, hashString } from '@ludora/shared';
 import type { Db, DbOrTx } from '../../db/client.ts';
-import { gameParticipants, gameSessions, quests, userQuests } from '../../db/schema.ts';
+import { gameParticipants, gameSessions, questSwaps, quests, userQuests } from '../../db/schema.ts';
 import { isoWeek, nextDailyReset, nextWeeklyReset, utcDay } from '../../lib/time.ts';
 import { AppError, notFound } from '../../lib/errors.ts';
 import { credit, withOperation } from '../economy/service.ts';
@@ -144,3 +144,68 @@ export async function claimQuest(db: Db, userId: string, questId: string, period
   });
 }
 
+
+/**
+ * Swap one of today's daily quests for another, once a day and free. The server picks the new
+ * quest from the daily pool, leaving out quests you already have today and any that measure the
+ * same thing as your other quests, so two never complete together. The new quest starts at zero.
+ */
+export async function swapQuest(db: Db, userId: string, questId: string, now = new Date()) {
+  const { daily } = periodsFor(now);
+  await ensureQuests(db, userId, now);
+  return db.transaction(async (tx) => {
+    const mine = await tx
+      .select({ uq: userQuests, q: quests })
+      .from(userQuests)
+      .innerJoin(quests, eq(quests.id, userQuests.questId))
+      .where(and(eq(userQuests.userId, userId), eq(userQuests.period, daily)))
+      .for('update', { of: userQuests });
+    const old = mine.find((m) => m.q.id === questId);
+    if (!old || old.q.kind !== 'daily') throw notFound('That is not one of today\'s quests.');
+    if (old.uq.completedAt) throw new AppError(409, 'invalid_state', 'That quest is already done. Swap one you have not finished.');
+    const pool = (await tx.select().from(quests).where(and(eq(quests.active, true), eq(quests.kind, 'daily')))).filter(
+      (q) => !mine.some((m) => m.q.id === q.id) && !mine.some((m) => m.q.id !== questId && m.q.metric === q.metric),
+    );
+    const [next] = pickWeighted(pool, 1, `${userId}:${daily}:swap`);
+    if (!next) throw new AppError(409, 'conflict', 'There is no other quest to swap to today.');
+    const swapped = await tx.insert(questSwaps).values({ userId, day: daily, oldQuestId: questId, newQuestId: next.id }).onConflictDoNothing().returning();
+    if (!swapped.length) throw new AppError(409, 'conflict', 'You have already swapped a quest today. You get another swap tomorrow.');
+    await tx.delete(userQuests).where(and(eq(userQuests.userId, userId), eq(userQuests.questId, questId), eq(userQuests.period, daily)));
+    await tx.insert(userQuests).values({ userId, questId: next.id, period: daily, target: next.target, progress: 0 });
+    return { from: { id: old.q.id, title: old.q.title }, to: { id: next.id, title: next.title, description: next.description, target: next.target, reward: next.reward } };
+  });
+}
+
+/** Whether today's swap is still free. */
+export async function swapUsed(db: DbOrTx, userId: string, now = new Date()): Promise<boolean> {
+  const rows = await db.select({ day: questSwaps.day }).from(questSwaps).where(and(eq(questSwaps.userId, userId), eq(questSwaps.day, utcDay(now)))).limit(1);
+  return rows.length > 0;
+}
+
+/** A period label's start date, for sorting days, weeks and event weeks together. */
+export function periodStart(period: string): string {
+  const p = period.includes(':') ? period.split(':')[1]! : period;
+  const week = /^(\d{4})-W(\d{2})$/.exec(p);
+  if (!week) return p;
+  const year = Number(week[1]);
+  const jan4 = new Date(Date.UTC(year, 0, 4));
+  const monday = new Date(jan4.getTime() - ((jan4.getUTCDay() || 7) - 1) * 86_400_000 + (Number(week[2]) - 1) * 7 * 86_400_000);
+  return utcDay(monday);
+}
+
+/** Quests from before this period, newest first: what you finished, claimed or missed. */
+export async function questHistory(db: DbOrTx, userId: string, now = new Date()) {
+  const { daily, weekly } = periodsFor(now);
+  const rows = await db
+    .select({ uq: userQuests, q: quests })
+    .from(userQuests)
+    .innerJoin(quests, eq(quests.id, userQuests.questId))
+    .where(and(eq(userQuests.userId, userId), sql`${userQuests.period} <> ${daily}`, sql`${userQuests.period} not like ${`%${weekly}`}`))
+    .limit(400);
+  const swaps = await db.select().from(questSwaps).where(eq(questSwaps.userId, userId));
+  const swappedIn = new Set(swaps.map((s) => `${s.newQuestId}|${s.day}`));
+  return rows
+    .map(({ uq, q }) => ({ id: q.id, kind: q.kind, title: q.title, period: uq.period, start: periodStart(uq.period), progress: uq.progress, target: uq.target, completed: Boolean(uq.completedAt), claimed: Boolean(uq.claimedAt), swappedIn: swappedIn.has(`${q.id}|${uq.period}`), reward: q.reward }))
+    .sort((a, b) => b.start.localeCompare(a.start) || a.kind.localeCompare(b.kind))
+    .slice(0, 120);
+}

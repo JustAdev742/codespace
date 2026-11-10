@@ -5,6 +5,7 @@ import type { AppDeps } from '../app.ts';
 import { answerEvents, gameParticipants, gameSessions, questionSets } from '../db/schema.ts';
 import type { PersistOutcome, Room } from './room.ts';
 import { applyGameResult, applyHostResult } from '../modules/progression/rewards.ts';
+import { recordStudy } from '../modules/study/service.ts';
 
 const MAX_ANSWER_ROWS = 10_000;
 const QUICK_MS = 5000;
@@ -58,6 +59,7 @@ export async function persistGame(deps: AppDeps, room: Room, results: EngineResu
   const endedAt = new Date();
   const startedAt = new Date(endedAt.getTime() - results.durationMs);
 
+  let fresh = false;
   await deps.db.transaction(async (tx) => {
     const inserted = await tx
       .insert(gameSessions)
@@ -86,6 +88,7 @@ export async function persistGame(deps: AppDeps, room: Room, results: EngineResu
       .onConflictDoNothing()
       .returning({ id: gameSessions.id });
     if (!inserted.length) return;
+    fresh = true;
     if (results.standings.length) {
       await tx.insert(gameParticipants).values(
         results.standings.map((s) => {
@@ -129,6 +132,11 @@ export async function persistGame(deps: AppDeps, room: Room, results: EngineResu
     if (room.set.id && humans > 0) await tx.update(questionSets).set({ plays: sql`${questionSets.plays} + 1` }).where(eq(questionSets.id, room.set.id));
   });
 
+  // Mistakes lists and practice rounds (modules/study); a failure here never holds up rewards.
+  const study = !fresh ? new Map<string, string[]>() : await recordStudy(deps, { gameId, roomCode: room.code, hostUserId: room.hostUserId }).catch((err) => {
+    deps.log?.error({ err, gameId }, 'study record failed');
+    return new Map<string, string[]>();
+  });
   const rewards = new Map<string, RewardSummary>();
   // Chaos games: whoever cast a cheat earns nothing from the game; everyone else keeps
   // what their answers earned, but places earn nothing because chaos may have decided them.
@@ -160,6 +168,7 @@ export async function persistGame(deps: AppDeps, room: Room, results: EngineResu
       });
       if (who.isGuest && summary.status === 'granted') summary.notes.push('Create an account to keep these rewards safe. Your progress comes with you.');
       if (results.chaos) summary.notes.push('Chaos was used in this game, so places earn no rewards. Your answers still count.');
+      summary.notes.push(...(study.get(who.userId) ?? []));
       rewards.set(s.playerId, summary);
     } catch (err) {
       deps.log?.error({ err, gameId, playerId: s.playerId }, 'reward failed');

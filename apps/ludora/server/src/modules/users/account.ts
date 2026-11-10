@@ -69,6 +69,11 @@ const OWN_ROWS: readonly [table: string, column: string][] = [
   ['reports', 'reporter_id'],
   ['moderation_actions', 'target_user_id'],
   ['ai_draft_requests', 'user_id'],
+  ['mistakes', 'user_id'],
+  ['practice_runs', 'user_id'],
+  ['player_extras', 'user_id'],
+  ['notifications', 'user_id'],
+  ['quest_swaps', 'user_id'],
 ];
 const ROW_LIMIT = 5000;
 const DELETED = 'Deleted account';

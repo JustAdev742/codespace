@@ -2,7 +2,7 @@ import { Link } from 'react-router';
 import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { Check, Minus, Plus, Search } from 'lucide-react';
+import { Check, ChevronRight, Minus, Plus, Search, Star } from 'lucide-react';
 import { RARITIES, RARITY_INFO, type GlimArt, type LanternArt, type Rarity } from '@ludora/shared';
 import { api, ApiError, newRequestKey } from '../../lib/api.ts';
 import { useMe } from '../../lib/session.ts';
@@ -16,6 +16,8 @@ import { AccountError, Amount, Dialog, EmptyState, ErrorNotice, Input, PageHeade
 import { Button, ButtonLink } from '../../ui/Button.tsx';
 import { Meter, RarityTag, ToggleChips } from '../../ui/game.tsx';
 import { RarityLabel, RarityPanel, frameProps } from './rarity.tsx';
+import { useExtras } from '../profile/extras.ts';
+import { FavouriteStar } from '../profile/parts.tsx';
 
 interface CollectionGlim {
   id: string;
@@ -26,6 +28,7 @@ interface CollectionGlim {
   /** Shape only for Glims you have not found: body, plus topper, ears, tail and back when it has them. */
   silhouette: GlimShape | null;
   owned: number;
+  acquiredAt: string | null;
   dustValue: number;
   craftCost: number;
 }
@@ -35,7 +38,8 @@ interface CollectionData {
   collections: { id: string; name: string; description: string; hue: number; reward: { currency: string; amount: number } | null; rewarded: boolean; total: number; owned: number; glims: CollectionGlim[]; monthly?: { month: string; until: string | null; onSale: boolean } | null }[];
 }
 
-type Filter = 'all' | 'owned' | 'missing' | 'spares';
+type Filter = 'all' | 'owned' | 'missing' | 'spares' | 'starred';
+type Sort = 'book' | 'rarity' | 'name' | 'newest';
 
 type GlimShape = Pick<GlimArt, 'body'> & Partial<Pick<GlimArt, 'topper' | 'ears' | 'tail' | 'back'>>;
 
@@ -56,7 +60,7 @@ const CURRENCY_NAME: Record<string, string> = { sparks: 'Sparks', moonstones: 'M
 
 const stepper = 'press-soft grid size-11 place-items-center rounded-[var(--radius-m)] bg-raised text-text disabled:opacity-50';
 
-function GlimDetail({ glim, collection, dust, isBuddy, onClose }: { glim: CollectionGlim; collection: string; dust: number | null; isBuddy: boolean; onClose: () => void }) {
+function GlimDetail({ glim, collection, dust, isBuddy, nickname, onClose }: { glim: CollectionGlim; collection: string; dust: number | null; isBuddy: boolean; nickname?: string; onClose: () => void }) {
   const qc = useQueryClient();
   const [qty, setQty] = useState(1);
   const refresh = async () => {
@@ -105,7 +109,14 @@ function GlimDetail({ glim, collection, dust, isBuddy, onClose }: { glim: Collec
             </p>
           ) : null}
         </div>
+        {owned && nickname ? <p className="text-center text-text-2">You call it <span className="font-semibold text-text">{nickname}</span></p> : null}
         <p className="text-center text-text-2">{glim.description ?? 'Find it in a Lantern, pick it from the daily shop, or craft it with Glow Dust.'}</p>
+        <div className="flex items-center gap-2">
+          {owned ? <FavouriteStar kind="glims" id={glim.id} label={glim.name!} /> : null}
+          <ButtonLink to={`/collection/${glim.id}`} size="sm" icon={<ChevronRight className="size-4" />}>
+            {owned ? 'Its story, nickname and where it comes from' : 'Where to find it'}
+          </ButtonLink>
+        </div>
         {owned ? (
           <p className="font-display text-xl font-bold">
             You have <span className="tabular">{glim.owned}</span>
@@ -152,7 +163,7 @@ function GlimDetail({ glim, collection, dust, isBuddy, onClose }: { glim: Collec
   );
 }
 
-function GlimCard({ g, isBuddy, onOpen }: { g: CollectionGlim; isBuddy: boolean; onOpen: () => void }) {
+function GlimCard({ g, isBuddy, starred, nickname, onOpen }: { g: CollectionGlim; isBuddy: boolean; starred: boolean; nickname?: string; onOpen: () => void }) {
   const owned = g.owned > 0;
   const f = frameProps(g.rarity, { missing: !owned });
   // The card's own text names the button (WCAG 2.5.3), with hidden words where the visible ones are terse.
@@ -162,7 +173,8 @@ function GlimCard({ g, isBuddy, onOpen }: { g: CollectionGlim; isBuddy: boolean;
         <RarityPanel rarity={g.rarity} missing={!owned} tag={false} className="aspect-square w-full">
           {g.art ? <Glim art={g.art} size={120} rarity={g.rarity} className="h-auto w-[86%]" /> : <Glim art={shadowArt(g.silhouette!)} size={120} silhouette className="h-auto w-[78%] opacity-80" />}
         </RarityPanel>
-        {owned ? <span className="mt-1.5 w-full truncate px-1 font-display text-[1.05rem] leading-tight font-bold">{g.name}</span> : <span className="sr-only">Not found yet,</span>}
+        {owned ? <span className="mt-1.5 w-full truncate px-1 font-display text-[1.05rem] leading-tight font-bold">{nickname ?? g.name}</span> : <span className="sr-only">Not found yet,</span>}
+        {owned && nickname ? <span className="sr-only">, your name for {g.name}</span> : null}
         <RarityLabel rarity={g.rarity} className={`text-text-2 ${owned ? 'mt-0.5 text-[11px]' : 'mt-1.5 text-xs'}`} />
         {g.owned > 1 ? (
           <>
@@ -173,6 +185,12 @@ function GlimCard({ g, isBuddy, onOpen }: { g: CollectionGlim; isBuddy: boolean;
           </>
         ) : null}
         {isBuddy ? <span className="absolute top-2 left-2 z-[2] rounded-full bg-lantern px-1.5 text-[11px] leading-5 font-bold text-on-accent">Buddy</span> : null}
+        {starred ? (
+          <>
+            <Star className={`absolute left-2 z-[2] size-5 fill-lantern text-lantern drop-shadow-[0_1px_2px_rgb(0_0_0/0.6)] ${isBuddy ? 'top-8' : 'top-2'}`} aria-hidden />
+            <span className="sr-only">, starred</span>
+          </>
+        ) : null}
       </button>
     </li>
   );
@@ -185,6 +203,11 @@ export default function Collection() {
   const [filter, setFilter] = useState<Filter>('all');
   const [rarity, setRarity] = useState<'' | Rarity>('');
   const [q, setQ] = useState('');
+  const [sort, setSort] = useState<Sort>('book');
+  const [month, setMonth] = useState('');
+  const extras = useExtras();
+  const starredIds = new Set(extras.data?.favourites.glims ?? []);
+  const nicknames = extras.data?.nicknames ?? {};
   const [selected, setSelected] = useState<{ glim: CollectionGlim; collection: string } | null>(null);
   const totals = useMemo(() => {
     const cols = data.data?.collections ?? [];
@@ -236,12 +259,23 @@ export default function Collection() {
     if (filter === 'owned' && g.owned === 0) return false;
     if (filter === 'missing' && g.owned > 0) return false;
     if (filter === 'spares' && g.owned < 2) return false;
+    if (filter === 'starred' && !starredIds.has(g.id)) return false;
     if (rarity && g.rarity !== rarity) return false;
-    if (q && !(g.name ?? '').toLowerCase().includes(q.trim().toLowerCase())) return false;
+    const needle = q.trim().toLowerCase();
+    if (needle && !(g.name ?? '').toLowerCase().includes(needle) && !(nicknames[g.id] ?? '').toLowerCase().includes(needle)) return false;
     return true;
   };
-  const visible = (data.data?.collections ?? []).map((c) => ({ c, list: c.glims.filter(keep) })).filter((x) => x.list.length > 0);
-  const filtered = filter !== 'all' || rarity !== '' || q.trim() !== '';
+  const months = (data.data?.collections ?? []).filter((c) => c.monthly).map((c) => ({ id: c.id, month: c.monthly!.month })).sort((a, b) => b.month.localeCompare(a.month));
+  const inMonth = (c: CollectionData['collections'][number]) => !month || (month === 'regular' ? !c.monthly : c.id === month);
+  const visible = (data.data?.collections ?? []).filter(inMonth).map((c) => ({ c, list: c.glims.filter(keep) })).filter((x) => x.list.length > 0);
+  const filtered = filter !== 'all' || rarity !== '' || q.trim() !== '' || month !== '';
+  // Any order other than the book's lays every matching Glim out in one grid.
+  const rankOf = (r: Rarity) => RARITY_INFO[r].rank;
+  const flat = sort === 'book' ? [] : visible.flatMap(({ c, list }) => list.map((g) => ({ g, collection: c.name }))).sort((a, b) => {
+    if (sort === 'rarity') return rankOf(b.g.rarity) - rankOf(a.g.rarity) || (a.g.name ?? '\uffff').localeCompare(b.g.name ?? '\uffff');
+    if (sort === 'name') return (a.g.name ?? '\uffff').localeCompare(b.g.name ?? '\uffff');
+    return (b.g.acquiredAt ?? '').localeCompare(a.g.acquiredAt ?? '');
+  });
   // Unknown until the account's balances load; never shown as a zero.
   const dust = overview.data ? (overview.data.balances.dust ?? 0) : null;
   const loading = me.isLoading || data.isLoading;
@@ -314,23 +348,47 @@ export default function Collection() {
             { value: 'owned', label: 'Found' },
             { value: 'missing', label: 'Not found yet' },
             { value: 'spares', label: 'Spares' },
+            { value: 'starred', label: 'Starred' },
           ]}
         />
-        <div className="flex w-full gap-2 md:ml-auto md:w-auto">
-          <label className="relative min-w-0 flex-1 md:w-56">
+        <div className="grid w-full grid-cols-2 gap-2 sm:flex md:ml-auto md:w-auto">
+          <label className="relative col-span-2 min-w-0 flex-1 md:w-56">
             <span className="sr-only">Search by name</span>
             <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-text-3" aria-hidden />
             <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search names" className="h-11 pl-9" />
           </label>
           <label className="shrink-0">
             <span className="sr-only">Rarity</span>
-            <Select value={rarity} onChange={(e) => setRarity(e.target.value as Rarity | '')} className="h-11 w-36">
+            <Select value={rarity} onChange={(e) => setRarity(e.target.value as Rarity | '')} className="h-11 w-36 max-sm:w-full">
               <option value="">All rarities</option>
               {RARITIES.map((r) => (
                 <option key={r} value={r}>
                   {RARITY_INFO[r].label}
                 </option>
               ))}
+            </Select>
+          </label>
+          {months.length ? (
+            <label className="shrink-0">
+              <span className="sr-only">Month</span>
+              <Select value={month} onChange={(e) => setMonth(e.target.value)} className="h-11 w-44 max-sm:w-full">
+                <option value="">Every collection</option>
+                <option value="regular">All year round</option>
+                {months.map((m) => (
+                  <option key={m.id} value={m.id}>
+                    {monthName(m.month)}
+                  </option>
+                ))}
+              </Select>
+            </label>
+          ) : null}
+          <label className="shrink-0">
+            <span className="sr-only">Sort</span>
+            <Select value={sort} onChange={(e) => setSort(e.target.value as Sort)} className="h-11 w-44 max-sm:w-full">
+              <option value="book">Sort: by collection</option>
+              <option value="rarity">Sort: rarest first</option>
+              <option value="name">Sort: by name</option>
+              <option value="newest">Sort: newest found</option>
             </Select>
           </label>
         </div>
@@ -348,25 +406,35 @@ export default function Collection() {
       {data.data && visible.length === 0 ? (
         <EmptyState
           icon={<Glim art={shadowArt({ body: 'blob' })} size={88} silhouette />}
-          title={filter === 'spares' && !rarity && !q ? 'No spares yet' : 'No Glims match'}
+          title={filter === 'spares' && !rarity && !q ? 'No spares yet' : filter === 'starred' && !rarity && !q ? 'No starred Glims yet' : 'No Glims match'}
           action={
             <Button
               onClick={() => {
                 setFilter('all');
                 setRarity('');
                 setQ('');
+                setMonth('');
               }}
             >
               Show every Glim
             </Button>
           }
         >
-          {filter === 'spares' && !rarity && !q ? 'When a Lantern gives you a Glim you already have, the extra one shows up here. Recycle spares into Glow Dust.' : 'Try a different name or rarity.'}
+          {filter === 'starred' && !rarity && !q ? 'Open a Glim you have found and press its star to keep your favourites together.' : filter === 'spares' && !rarity && !q ? 'When a Lantern gives you a Glim you already have, the extra one shows up here. Recycle spares into Glow Dust.' : 'Try a different name or rarity.'}
         </EmptyState>
       ) : null}
 
+      {flat.length ? (
+        <section aria-label="Matching Glims">
+          <ul className="grid grid-cols-3 gap-2.5 sm:grid-cols-4 sm:gap-3 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7">
+            {flat.map(({ g, collection }) => (
+              <GlimCard key={g.id} g={g} isBuddy={data.data?.buddy === g.id} starred={starredIds.has(g.id)} nickname={nicknames[g.id]} onOpen={() => setSelected({ glim: g, collection })} />
+            ))}
+          </ul>
+        </section>
+      ) : null}
       <div className="flex flex-col gap-10">
-        {visible.map(({ c, list }) => {
+        {(sort === 'book' ? visible : []).map(({ c, list }) => {
           const complete = c.owned >= c.total && c.total > 0;
           return (
             <section key={c.id} aria-labelledby={`col-${c.id}`}>
@@ -412,14 +480,14 @@ export default function Collection() {
               </div>
               <ul className="grid grid-cols-3 gap-2.5 sm:grid-cols-4 sm:gap-3 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7">
                 {list.map((g) => (
-                  <GlimCard key={g.id} g={g} isBuddy={data.data?.buddy === g.id} onOpen={() => setSelected({ glim: g, collection: c.name })} />
+                  <GlimCard key={g.id} g={g} isBuddy={data.data?.buddy === g.id} starred={starredIds.has(g.id)} nickname={nicknames[g.id]} onOpen={() => setSelected({ glim: g, collection: c.name })} />
                 ))}
               </ul>
             </section>
           );
         })}
       </div>
-      {selected ? <GlimDetail glim={selected.glim} collection={selected.collection} dust={dust} isBuddy={data.data?.buddy === selected.glim.id} onClose={() => setSelected(null)} /> : null}
+      {selected ? <GlimDetail glim={selected.glim} collection={selected.collection} dust={dust} isBuddy={data.data?.buddy === selected.glim.id} nickname={nicknames[selected.glim.id]} onClose={() => setSelected(null)} /> : null}
       <p className="sr-only" role="status">
         {filtered && data.data ? `${visible.reduce((n, x) => n + x.list.length, 0)} Glims shown` : ''}
       </p>

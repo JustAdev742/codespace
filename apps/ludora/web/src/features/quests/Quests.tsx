@@ -1,7 +1,9 @@
 import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { Check, Clock, Target } from 'lucide-react';
+import { Award, Check, Clock, Repeat, Target } from 'lucide-react';
+import { errorMessage, extrasKey, useExtras } from '../profile/extras.ts';
+import { LevelTrack, QuestHistory, achievementCategory, ACHIEVEMENT_CATEGORIES, nearlyThere, type AchievementCategory } from './progress.tsx';
 import { api, ApiError } from '../../lib/api.ts';
 import { formatNumber, untilText } from '../../lib/format.ts';
 import { useMe } from '../../lib/session.ts';
@@ -12,12 +14,14 @@ import { Meter, ToggleChips } from '../home/kit.tsx';
 
 interface QuestsResponse {
   resets: { daily: string; weekly: string };
+  swapAvailable: boolean;
   events: { key: string; name: string; period: string }[];
   quests: QuestView[];
 }
 
-interface Achievement {
+export interface Achievement {
   id: string;
+  metric: string;
   title: string;
   description: string;
   target: number;
@@ -46,7 +50,7 @@ function RewardChips({ reward }: { reward: QuestView['reward'] | Achievement['re
   );
 }
 
-function QuestCard({ q, fill }: { q: QuestView; fill: string }) {
+function QuestCard({ q, fill, canSwap }: { q: QuestView; fill: string; canSwap: boolean }) {
   const qc = useQueryClient();
   const claim = useMutation({
     mutationFn: () => api.post<{ levelUp: { from: number; to: number } | null }>(`/api/quests/${q.id}/claim`, { period: q.period }),
@@ -55,6 +59,14 @@ function QuestCard({ q, fill }: { q: QuestView; fill: string }) {
       await Promise.all([qc.invalidateQueries({ queryKey: ['quests'] }), qc.invalidateQueries({ queryKey: ['overview'] }), qc.invalidateQueries({ queryKey: ['me'] })]);
     },
     onError: (err) => toast.error(err instanceof ApiError ? err.message : 'Could not claim the reward.'),
+  });
+  const swap = useMutation({
+    mutationFn: () => api.post<{ to: { title: string } }>(`/api/quests/${q.id}/swap`),
+    onSuccess: async (res) => {
+      toast.success(`Swapped for ${res.to.title}`);
+      await Promise.all([qc.invalidateQueries({ queryKey: ['quests'] }), qc.invalidateQueries({ queryKey: ['overview'] })]);
+    },
+    onError: (err) => toast.error(errorMessage(err, 'That quest did not swap. Try again.')),
   });
   const ready = q.completed && !q.claimed;
   return (
@@ -83,13 +95,17 @@ function QuestCard({ q, fill }: { q: QuestView; fill: string }) {
           <Button size="sm" variant="success" loading={claim.isPending} onClick={() => claim.mutate()}>
             Claim reward
           </Button>
+        ) : canSwap && !q.completed ? (
+          <Button size="sm" variant="ghost" icon={<Repeat className="size-4" aria-hidden />} loading={swap.isPending} onClick={() => swap.mutate()} aria-label={`Swap ${q.title} for another quest`}>
+            Swap
+          </Button>
         ) : null}
       </div>
     </li>
   );
 }
 
-function QuestGroup({ title, reset, note, quests, tone, fill }: { title: string; reset?: string; note?: string; quests: QuestView[]; tone: string; fill: string }) {
+function QuestGroup({ title, reset, note, quests, tone, fill, canSwap = false }: { title: string; reset?: string; note?: string; quests: QuestView[]; tone: string; fill: string; canSwap?: boolean }) {
   if (!quests.length) return null;
   const done = quests.filter((q) => q.completed).length;
   return (
@@ -113,7 +129,7 @@ function QuestGroup({ title, reset, note, quests, tone, fill }: { title: string;
       {note ? <p className="-mt-1 text-sm text-text-2">{note}</p> : null}
       <ul className="grid grid-cols-1 gap-3 md:grid-cols-3">
         {quests.map((q) => (
-          <QuestCard key={`${q.id}:${q.period}`} q={q} fill={fill} />
+          <QuestCard key={`${q.id}:${q.period}`} q={q} fill={fill} canSwap={canSwap} />
         ))}
       </ul>
     </section>
@@ -150,12 +166,23 @@ export default function Quests() {
   const quests = useQuery({ queryKey: ['quests'], queryFn: () => api.get<QuestsResponse>('/api/quests'), enabled: signedIn });
   const achievements = useQuery({ queryKey: ['achievements'], queryFn: () => api.get<{ achievements: Achievement[]; secretLeft: number }>('/api/achievements'), enabled: signedIn });
   const [filter, setFilter] = useState<AchievementFilter>('all');
+  const [category, setCategory] = useState<AchievementCategory | 'all'>('all');
+  const qc = useQueryClient();
+  const extras = useExtras();
+  const showTitle = useMutation({
+    mutationFn: (a: Achievement) => api.put('/api/me/title', { achievementId: a.id }),
+    onSuccess: async (_r, a) => {
+      await qc.invalidateQueries({ queryKey: extrasKey });
+      toast.success(`${a.title} now shows under your name`);
+    },
+    onError: (err) => toast.error(errorMessage(err, 'That title did not change. Try again.')),
+  });
   const list = useMemo(() => {
-    const all = achievements.data?.achievements ?? [];
+    const all = (achievements.data?.achievements ?? []).filter((a) => category === 'all' || achievementCategory(a.metric) === category);
     if (filter === 'earned') return all.filter((a) => a.unlockedAt);
     if (filter === 'progress') return all.filter((a) => !a.unlockedAt).sort((x, y) => y.progress / y.target - x.progress / x.target);
     return all;
-  }, [achievements.data, filter]);
+  }, [achievements.data, filter, category]);
 
   if (me.isError && !me.data) {
     return (
@@ -198,7 +225,15 @@ export default function Quests() {
         {quests.error ? <ErrorNotice message="Your quests did not load." onRetry={() => void quests.refetch()} /> : null}
         {q ? (
           <>
-            <QuestGroup title="Today" reset={q.resets.daily} quests={q.quests.filter((x) => x.kind === 'daily')} tone="bg-lantern" fill="var(--lantern)" />
+            <QuestGroup
+              title="Today"
+              reset={q.resets.daily}
+              note={q.swapAvailable ? 'Not keen on one? Swap one daily quest a day for another, free.' : 'You have used today\'s swap. You get another tomorrow.'}
+              quests={q.quests.filter((x) => x.kind === 'daily')}
+              tone="bg-lantern"
+              fill="var(--lantern)"
+              canSwap={q.swapAvailable}
+            />
             <QuestGroup title="This week" reset={q.resets.weekly} quests={q.quests.filter((x) => x.kind === 'weekly')} tone="bg-dusk" fill="var(--dusk)" />
             {q.events.map((ev) => (
               <QuestGroup key={ev.key} title={ev.name} note="Event quests change each week while the festival runs. They are the only way to earn its tickets." quests={q.quests.filter((x) => x.kind === 'event' && x.period === ev.period)} tone="bg-sky" fill="var(--sky)" />
@@ -206,7 +241,11 @@ export default function Quests() {
           </>
         ) : null}
 
-        <section className="flex flex-col gap-4" aria-labelledby="achievements-title">
+        {q ? <QuestHistory /> : null}
+
+        <LevelTrack />
+
+        <section className="flex flex-col gap-4" aria-labelledby="achievements-title" id="achievements">
           <div className="flex flex-wrap items-end justify-between gap-3">
             <div>
               <h2 id="achievements-title" className="font-display text-[1.75rem] leading-tight font-bold">
@@ -229,6 +268,33 @@ export default function Quests() {
               ]}
             />
           </div>
+          {achievements.data ? (
+            <ToggleChips<AchievementCategory | 'all'>
+              value={category}
+              onChange={setCategory}
+              label="Kind of achievement"
+              options={[{ value: 'all', label: 'Every kind' }, ...ACHIEVEMENT_CATEGORIES.map((c) => ({ value: c.value, label: c.label }))]}
+            />
+          ) : null}
+          {achievements.data && nearlyThere(achievements.data.achievements).length ? (
+            <section className="rounded-[var(--radius-l)] border border-lantern/50 bg-lantern/10 p-4" aria-labelledby="nearly-title">
+              <h3 id="nearly-title" className="mb-2 font-display text-xl font-bold">
+                Nearly there
+              </h3>
+              <ul className="grid grid-cols-1 gap-3 md:grid-cols-3">
+                {nearlyThere(achievements.data.achievements).map((a) => (
+                  <li key={a.id} className="flex flex-col gap-1.5">
+                    <p className="font-bold">{a.title}</p>
+                    <div className="flex items-center gap-2">
+                      <Meter value={a.progress} max={a.target} size="sm" tone="amber" label={`${a.title}: ${a.progress} of ${a.target}`} />
+                      <span className="shrink-0 text-xs font-bold text-text-2 tabular">{formatNumber(a.target - a.progress)} to go</span>
+                    </div>
+                    <p className="text-sm text-text-2">{a.description}</p>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          ) : null}
           {achievements.isLoading ? <Skeleton className="h-60 rounded-[var(--radius-l)]" /> : null}
           {achievements.error ? <ErrorNotice message="Achievements did not load." onRetry={() => void achievements.refetch()} /> : null}
           {achievements.data && !list.length ? (
@@ -257,6 +323,17 @@ export default function Quests() {
                     </div>
                   )}
                   <RewardChips reward={a.reward} />
+                  {a.unlockedAt ? (
+                    extras.data?.earnedTitle?.id === a.id ? (
+                      <span className="inline-flex items-center gap-1 self-start text-sm font-semibold text-text-2">
+                        <Award className="size-4" aria-hidden /> Your title
+                      </span>
+                    ) : (
+                      <Button size="sm" variant="ghost" className="self-start" icon={<Award className="size-4" aria-hidden />} loading={showTitle.isPending && showTitle.variables?.id === a.id} onClick={() => showTitle.mutate(a)} aria-label={`Show ${a.title} as your title`}>
+                        Show as title
+                      </Button>
+                    )
+                  ) : null}
                 </div>
               </li>
             ))}

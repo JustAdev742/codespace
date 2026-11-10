@@ -1,5 +1,5 @@
-import type { AvatarLite, ItemArt } from '@ludora/shared';
-import { Glim } from '../../art/glim/Glim.tsx';
+import type { AvatarLite, GlimArt, ItemArt } from '@ludora/shared';
+import { Glim, type GlimPose } from '../../art/glim/Glim.tsx';
 import { BannerArt, FrameRing } from '../../art/cosmetics.tsx';
 
 export interface CardEquipment {
@@ -14,13 +14,14 @@ export interface CardEquipment {
  * locker and on profiles. Without a banner the card shows the stage; a theme
  * tints the card and the area behind the buddy.
  */
-export function ProfileCard({ name, level, avatar, equipment, compact = false }: { name: string; level?: number; avatar: AvatarLite | null; equipment: CardEquipment; compact?: boolean }) {
+export function ProfileCard({ name, level, avatar, equipment, compact = false, earnedTitle, pose = 'wave', face }: { name: string; level?: number; avatar: AvatarLite | null; equipment: CardEquipment; compact?: boolean; earnedTitle?: string | null | undefined; pose?: GlimPose; face?: Partial<Pick<GlimArt, 'eyes' | 'mouth'>> }) {
   const frame = equipment.frame?.kind === 'frame' ? equipment.frame : null;
   const banner = equipment.banner?.kind === 'banner' ? equipment.banner : null;
-  const title = equipment.title?.kind === 'title' ? equipment.title.text : null;
+  // A title earned from an achievement, or else one from the shop: one title under the name.
+  const title = earnedTitle ?? (equipment.title?.kind === 'title' ? equipment.title.text : null);
   const theme = equipment.theme?.kind === 'theme' ? equipment.theme : null;
   const size = compact ? 104 : 150;
-  const buddy = avatar ? <Glim art={avatar.art} accessories={avatar.accessories} dress={avatar.uniform ?? null} rarity={avatar.rarity} pose="wave" size={Math.round(size * 0.86)} /> : null;
+  const buddy = avatar ? <Glim art={face ? { ...avatar.art, ...face } : avatar.art} accessories={avatar.accessories} dress={avatar.uniform ?? null} rarity={avatar.rarity} pose={pose} size={Math.round(size * 0.86)} /> : null;
   return (
     <div className="lift overflow-hidden rounded-[var(--radius-l)] border border-line bg-raised" style={theme ? { background: `color-mix(in oklab, hsl(${theme.hue} 60% 50%) 16%, var(--bg-raised))` } : undefined}>
       <div className={`relative ${compact ? 'h-24' : 'h-32'}`}>

@@ -35,6 +35,8 @@ import { Glim } from '../art/glim/Glim.tsx';
 import { Amount, Skeleton } from '../ui/primitives.tsx';
 import { Button, buttonClass } from '../ui/Button.tsx';
 import { toast } from 'sonner';
+import { NotificationBell } from '../features/social/NotificationBell.tsx';
+import { SearchLauncher } from '../features/search/SearchLauncher.tsx';
 
 /*
  * The frame around every page: the sidebar, the header and the phone's bottom
@@ -279,7 +281,9 @@ export function Shell() {
           </Link>
           <EnvironmentBadge />
           <div className="ml-auto flex items-center gap-2 sm:gap-3">
+            <SearchLauncher />
             <Balances />
+            <NotificationBell />
             <AccountMenu />
           </div>
         </header>

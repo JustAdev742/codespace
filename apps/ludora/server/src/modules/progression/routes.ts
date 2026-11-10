@@ -5,16 +5,19 @@ import type { AppDeps } from '../../app.ts';
 import { achievements, userAchievements } from '../../db/schema.ts';
 import { noStore, requireAuth } from '../../http/context.ts';
 import { parse } from '../../lib/validate.ts';
-import { claimQuest, ensureQuests } from './quests.ts';
+import { claimQuest, ensureQuests, questHistory, swapQuest, swapUsed } from './quests.ts';
+import { levelFromXp, MAX_LEVEL } from '@ludora/shared';
+import { getRules } from '../economy/config.ts';
 import { metricValues } from './achievements.ts';
 
 export async function progressionRoutes(app: FastifyInstance, deps: AppDeps) {
   app.get('/api/quests', async (req, reply) => {
     noStore(reply);
     const auth = requireAuth(req);
-    const q = await ensureQuests(deps.db, auth.user.id);
+    const [q, swapped] = await Promise.all([ensureQuests(deps.db, auth.user.id), swapUsed(deps.db, auth.user.id)]);
     return {
       resets: q.resets,
+      swapAvailable: !swapped,
       events: q.events,
       quests: q.rows.map(({ uq, q: quest }) => ({ id: quest.id, kind: quest.kind, title: quest.title, description: quest.description, progress: uq.progress, target: uq.target, period: uq.period, completed: Boolean(uq.completedAt), claimed: Boolean(uq.claimedAt), reward: quest.reward })),
     };
@@ -44,5 +47,38 @@ export async function progressionRoutes(app: FastifyInstance, deps: AppDeps) {
         .map((a) => ({ id: a.id, title: a.title, description: a.description, metric: a.metric, target: a.target, progress: Math.min(a.target, values[a.metric] ?? 0), reward: a.reward, tier: a.tier, hue: a.hue, unlockedAt: unlocked.get(a.id) ?? null })),
       secretLeft,
     };
+  });
+
+  /** Swap one of today's daily quests for another chosen by the server. Free, once a day. */
+  app.post('/api/quests/:id/swap', { config: { rateLimit: { max: 20, timeWindow: '1 minute' } } }, async (req) => {
+    const auth = requireAuth(req);
+    const { id } = parse(z.object({ id: z.string().min(1).max(60) }), req.params);
+    return swapQuest(deps.db, auth.user.id, id);
+  });
+
+  app.get('/api/quests/history', async (req, reply) => {
+    noStore(reply);
+    const auth = requireAuth(req);
+    return { quests: await questHistory(deps.db, auth.user.id) };
+  });
+
+  /**
+   * The level track: what each level gives, from the same rules that pay it. Rewards are paid
+   * the moment a level is reached, once (the payment is part of the XP operation), so the track
+   * shows them as received rather than asking for a claim.
+   */
+  app.get('/api/levels/track', async (req, reply) => {
+    noStore(reply);
+    const auth = requireAuth(req);
+    const rules = await getRules(deps.db);
+    const info = levelFromXp(auth.user.xp);
+    const from = Math.max(2, info.level - 2);
+    const to = Math.min(MAX_LEVEL, info.level + 5);
+    const levels = [];
+    for (let lvl = from; lvl <= to; lvl++) {
+      levels.push({ level: lvl, sparks: rules.levelUp.sparks, moonstones: lvl % rules.levelUp.moonstonesEvery === 0 ? rules.levelUp.moonstones : 0, reached: lvl <= info.level });
+    }
+    const nextMoonstones = Math.ceil((info.level + 1) / rules.levelUp.moonstonesEvery) * rules.levelUp.moonstonesEvery;
+    return { level: info, max: MAX_LEVEL, levels, nextMoonstones: nextMoonstones <= MAX_LEVEL ? nextMoonstones : null };
   });
 }

@@ -9,6 +9,7 @@ import { formatNumber, timeAgo } from '../../lib/format.ts';
 import { AccountError, Dialog, EmptyState, ErrorNotice, Input, PageHeader, Panel, Skeleton } from '../../ui/primitives.tsx';
 import { Button, ButtonLink } from '../../ui/Button.tsx';
 import { Dot, PlayerAvatar } from './parts.tsx';
+import { InviteButton, RecentPlayers, useOpenRooms } from './RecentPlayers.tsx';
 import { blocksKey, errorText, friendsKey, getBlocks, getFriends, shortDate, useFocusAfterUpdate, useReturnFocus, useSocialRefresh, usePageTitle, type BlockedPlayer, type Friend } from './data.ts';
 
 type Privacy = Preferences['privacy'];
@@ -234,6 +235,8 @@ export default function Friends() {
   const friends = useQuery({ queryKey: friendsKey, queryFn: getFriends, enabled: isAccount });
   const blocks = useQuery({ queryKey: blocksKey, queryFn: getBlocks, enabled: isAccount });
   const refresh = useSocialRefresh();
+  const openRooms = useOpenRooms(isAccount);
+  const rooms = (openRooms.data?.rooms ?? []).filter((r) => r.status === 'lobby' || r.status === 'running' || r.status === 'paused');
   const [removing, setRemoving] = useState<Friend | null>(null);
   const requestsHeading = useRef<HTMLHeadingElement>(null);
   const friendsHeading = useRef<HTMLHeadingElement>(null);
@@ -354,6 +357,7 @@ export default function Friends() {
             <SectionHeading id="friends-heading" headingRef={friendsHeading} action={data ? <span className="text-sm text-text-3 tabular">{formatNumber(data.friends.length)} of {formatNumber(data.max)}</span> : null}>
               Your friends
             </SectionHeading>
+            {rooms.length && data?.friends.length ? <p className="text-sm text-text-3">You have {rooms.length === 1 ? 'a game' : 'games'} open: invite friends and they get the join link.</p> : null}
             {friends.isLoading ? (
               <div className="mt-3 flex flex-col gap-3">
                 <Skeleton className="h-14" />
@@ -374,6 +378,7 @@ export default function Friends() {
               <ul className="divide-y divide-line">
                 {(data?.friends ?? []).map((p) => (
                   <PersonRow key={p.id} person={p} detail={`Friends since ${shortDate(p.since)}`}>
+                    <InviteButton friend={p} rooms={rooms} />
                     <Button
                       size="sm"
                       variant="ghost"
@@ -394,6 +399,7 @@ export default function Friends() {
         </div>
 
         <div className="flex min-w-0 flex-col gap-6">
+          <RecentPlayers />
           <PrivacyPanel privacy={user.preferences.privacy} />
 
           <Panel className="p-5" aria-labelledby="blocked-heading">

@@ -2,7 +2,7 @@ import { useMemo, useState, type CSSProperties } from 'react';
 import { useSearchParams } from 'react-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { Check, Clock, HelpCircle, Info, ShieldCheck, ShoppingBag } from 'lucide-react';
+import { Check, Clock, Eye, Heart, HelpCircle, Info, ShieldCheck, ShoppingBag } from 'lucide-react';
 import { ITEM_TYPE_INFO, RARITY_INFO, SHOP_SECTION_INFO, type GlimArt, type ItemArt, type ItemType, type LanternArt, type Rarity, type ShopSection } from '@ludora/shared';
 import { api, ApiError, newRequestKey } from '../../lib/api.ts';
 import { useMe } from '../../lib/session.ts';
@@ -19,6 +19,10 @@ import { RarityLabel, RarityPanel, frameProps } from '../collection/rarity.tsx';
 import { PackOpening, type OpenedGlim } from './PackOpening.tsx';
 import { OddsBar, usePackDetail } from './odds.tsx';
 import { playSfx } from '../../lib/sound/react.tsx';
+import { ToggleChips } from '../../ui/game.tsx';
+import { ProfileCard } from '../collection/ProfileCard.tsx';
+import { errorMessage, extrasKey, useExtras, type Extras } from '../profile/extras.ts';
+import type { AccessoryArt } from '@ludora/shared';
 
 interface ShopItem {
   id: string;
@@ -127,6 +131,30 @@ function OddsDialog({ packId, onClose }: { packId: string | null; onClose: () =>
 
 /* ----------------------------------- Cards ----------------------------------- */
 
+interface CardExtras {
+  wished: boolean;
+  onWish: (l: Listing, on: boolean) => void;
+  onTry?: (l: Listing) => void;
+}
+
+/** A heart in a card's corner that adds the listing to your wishlist (a toggle button). */
+function WishButton({ l, wished, onWish }: { l: Listing } & CardExtras) {
+  return (
+    <button
+      type="button"
+      aria-pressed={wished}
+      aria-label={`Wishlist: ${l.title}`}
+      onClick={() => onWish(l, !wished)}
+      className="press-soft absolute top-2.5 right-2.5 z-[3] grid size-11 place-items-center rounded-full bg-[rgb(6_10_28/0.72)] text-white hover:bg-[rgb(6_10_28/0.9)]"
+    >
+      <Heart className={`size-5 ${wished ? 'fill-rose text-rose' : ''}`} aria-hidden />
+    </button>
+  );
+}
+
+/** Item types you can see on your own buddy or card before buying. */
+const TRY_ON_TYPES: ItemType[] = ['accessory', 'frame', 'banner', 'title', 'theme'];
+
 function PriceButton({ l, onBuy, wide = false }: { l: Listing; onBuy: (l: Listing) => void; wide?: boolean }) {
   if (l.blocked) {
     return (
@@ -175,10 +203,11 @@ function CardOdds({ packId, onOdds }: { packId: string; onOdds: (packId: string)
 }
 
 /** A Lantern for sale: a premium pack in a display case of its own colour, its odds on the card. */
-function LanternCard({ l, onBuy, onOdds, featured = false }: { l: Listing; onBuy: (l: Listing) => void; onOdds: (packId: string) => void; featured?: boolean }) {
+function LanternCard({ l, onBuy, onOdds, featured = false, ...wish }: { l: Listing; onBuy: (l: Listing) => void; onOdds: (packId: string) => void; featured?: boolean } & CardExtras) {
   const pack = l.pack!;
   return (
-    <article className={`panel flex overflow-hidden rounded-[var(--radius-l)] ${featured ? 'flex-col sm:flex-row' : 'flex-col'}`}>
+    <article className={`panel relative flex overflow-hidden rounded-[var(--radius-l)] ${featured ? 'flex-col sm:flex-row' : 'flex-col'}`}>
+      <WishButton l={l} {...wish} />
       <div className={`relative grid shrink-0 place-items-center ${featured ? 'h-56 sm:h-auto sm:w-[46%]' : 'h-48'}`} style={caseStyle(pack.art.hue)}>
         {featured ? (
           <span className="plate plate-gold absolute top-3 left-3 text-sm uppercase">
@@ -201,12 +230,13 @@ function LanternCard({ l, onBuy, onOdds, featured = false }: { l: Listing; onBuy
   );
 }
 
-function ItemCard({ l, onBuy }: { l: Listing; onBuy: (l: Listing) => void }) {
+function ItemCard({ l, onBuy, ...wish }: { l: Listing; onBuy: (l: Listing) => void } & CardExtras) {
   const item = l.item!;
   const f = frameProps(item.rarity);
   const info = ITEM_TYPE_INFO[item.type];
   return (
     <article className={`flex flex-col overflow-hidden ${f.className}`} style={f.style}>
+      <WishButton l={l} {...wish} />
       <RarityPanel rarity={item.rarity} className="m-1.5 h-40">
         <ItemArtView art={item.art} rarity={item.rarity} size={item.type === 'banner' ? 150 : 124} />
       </RarityPanel>
@@ -215,7 +245,12 @@ function ItemCard({ l, onBuy }: { l: Listing; onBuy: (l: Listing) => void }) {
         <p className="text-xs font-bold text-text-2">{info.label}</p>
         <p className="line-clamp-2 text-sm text-text-2">{l.description}</p>
         {item.owned && info.stackable ? <p className="text-sm text-text-2">You have {item.owned}</p> : null}
-        <div className="mt-auto flex justify-end pt-2">
+        <div className="mt-auto flex flex-wrap items-center justify-end gap-2 pt-2">
+          {wish.onTry && TRY_ON_TYPES.includes(item.type) ? (
+            <Button size="sm" variant="ghost" icon={<Eye className="size-4" aria-hidden />} onClick={() => wish.onTry!(l)} aria-label={`Try on: ${l.title}`}>
+              Try on
+            </Button>
+          ) : null}
           <PriceButton l={l} onBuy={onBuy} />
         </div>
       </div>
@@ -223,11 +258,12 @@ function ItemCard({ l, onBuy }: { l: Listing; onBuy: (l: Listing) => void }) {
   );
 }
 
-function BundleCard({ l, onBuy }: { l: Listing; onBuy: (l: Listing) => void }) {
+function BundleCard({ l, onBuy, ...wish }: { l: Listing; onBuy: (l: Listing) => void } & CardExtras) {
   const items = l.bundle ?? [];
   const save = l.worth && l.worth > l.price.amount ? Math.round((1 - l.price.amount / l.worth) * 100) : 0;
   return (
-    <article className="panel flex flex-col overflow-hidden rounded-[var(--radius-l)]">
+    <article className="panel relative flex flex-col overflow-hidden rounded-[var(--radius-l)]">
+      <WishButton l={l} {...wish} />
       <div className="relative flex h-44 items-center justify-center gap-2 bg-sunken px-3 pt-8">
         {items.slice(0, 3).map((b) => {
           const f = frameProps(b.rarity);
@@ -269,11 +305,64 @@ function BundleCard({ l, onBuy }: { l: Listing; onBuy: (l: Listing) => void }) {
   );
 }
 
-function ListingCard({ l, onBuy, onOdds, featured }: { l: Listing; onBuy: (l: Listing) => void; onOdds: (packId: string) => void; featured?: boolean }) {
-  if (l.kind === 'pack' && l.pack) return <LanternCard l={l} onBuy={onBuy} onOdds={onOdds} featured={featured} />;
-  if (l.kind === 'bundle') return <BundleCard l={l} onBuy={onBuy} />;
-  if (l.item) return <ItemCard l={l} onBuy={onBuy} />;
+function ListingCard({ l, onBuy, onOdds, featured, ...wish }: { l: Listing; onBuy: (l: Listing) => void; onOdds: (packId: string) => void; featured?: boolean } & CardExtras) {
+  if (l.kind === 'pack' && l.pack) return <LanternCard l={l} onBuy={onBuy} onOdds={onOdds} featured={featured} {...wish} />;
+  if (l.kind === 'bundle') return <BundleCard l={l} onBuy={onBuy} {...wish} />;
+  if (l.item) return <ItemCard l={l} onBuy={onBuy} {...wish} />;
   return null;
+}
+
+/** Your own buddy and card wearing the item, before you buy it. Nothing changes until you buy and put it on. */
+function TryOnDialog({ listing, onClose, onBuy }: { listing: Listing | null; onClose: () => void; onBuy: (l: Listing) => void }) {
+  const me = useMe();
+  const overview = useOverview();
+  const extras = useExtras();
+  const item = listing?.item;
+  const o = overview.data;
+  const avatar = o?.avatar ?? null;
+  let preview = avatar;
+  const equipment = { frame: o?.equipped.frame?.art, banner: o?.equipped.banner?.art, title: o?.equipped.title?.art, theme: o?.equipped.theme?.art };
+  let earnedTitle: string | null | undefined = extras.data?.earnedTitle?.text;
+  if (item && avatar) {
+    if (item.art.kind === 'accessory') {
+      const acc = item.art as AccessoryArt;
+      preview = { ...avatar, accessories: [...(avatar.accessories ?? []).filter((a) => a.slot !== acc.slot), acc] };
+    } else if (item.type === 'frame' || item.type === 'banner' || item.type === 'theme') equipment[item.type] = item.art;
+    else if (item.type === 'title') {
+      equipment.title = item.art;
+      earnedTitle = null;
+    }
+  }
+  return (
+    <Dialog
+      open={Boolean(listing)}
+      onOpenChange={(v) => !v && onClose()}
+      title={listing ? `Try on ${listing.title}` : ''}
+      description="This is how it looks on your buddy and your card. Nothing changes until you buy it and put it on."
+      footer={
+        listing ? (
+          <>
+            <Button onClick={onClose}>Close</Button>
+            <PriceButton
+              l={listing}
+              onBuy={(l) => {
+                onClose();
+                onBuy(l);
+              }}
+            />
+          </>
+        ) : null
+      }
+    >
+      {o && me.data?.user ? (
+        <div className="mx-auto max-w-[340px]">
+          <ProfileCard name={me.data.user.displayName} level={me.data.user.level.level} avatar={preview} equipment={equipment} earnedTitle={earnedTitle} compact />
+        </div>
+      ) : (
+        <Skeleton className="h-80" />
+      )}
+    </Dialog>
+  );
 }
 
 /* ------------------------------------ Page ------------------------------------ */
@@ -312,6 +401,26 @@ export default function Shop() {
   const [oddsFor, setOddsFor] = useState<string | null>(null);
   const [opening, setOpening] = useState<{ result: OpenedGlim; listing: Listing; key: string } | null>(null);
   const [currenciesOpen, setCurrenciesOpen] = useState(false);
+  const [show, setShow] = useState<'all' | 'afford' | 'wishlist'>('all');
+  const [trying, setTrying] = useState<Listing | null>(null);
+  const extras = useExtras();
+  const wishlist = extras.data?.wishlist ?? [];
+  const wish = useMutation({
+    mutationFn: ({ l, on }: { l: Listing; on: boolean }) => (on ? api.put(`/api/me/wishlist/${encodeURIComponent(l.id)}`) : api.delete(`/api/me/wishlist/${encodeURIComponent(l.id)}`)),
+    onMutate: async ({ l, on }) => {
+      await qc.cancelQueries({ queryKey: extrasKey });
+      const before = qc.getQueryData<Extras>(extrasKey);
+      if (before) qc.setQueryData<Extras>(extrasKey, { ...before, wishlist: on ? [l.id, ...before.wishlist.filter((x) => x !== l.id)] : before.wishlist.filter((x) => x !== l.id) });
+      return { before };
+    },
+    onSuccess: (_r, { l, on }) => toast.success(on ? `${l.title} added to your wishlist` : `${l.title} taken off your wishlist`),
+    onError: (err, _v, ctx) => {
+      if (ctx?.before) qc.setQueryData(extrasKey, ctx.before);
+      toast.error(errorMessage(err, 'Your wishlist did not change. Try again.'));
+    },
+    onSettled: () => qc.invalidateQueries({ queryKey: extrasKey }),
+  });
+  const cardExtras = (l: Listing): CardExtras => ({ wished: wishlist.includes(l.id), onWish: (x, on) => wish.mutate({ l: x, on }), onTry: setTrying });
   const shop = useQuery({ queryKey: ['shop'], queryFn: () => api.get<ShopData>('/api/shop'), enabled: Boolean(me.data?.user) });
 
   const buy = useMutation({
@@ -385,6 +494,9 @@ export default function Shop() {
   const afford = (l: Listing) => (balances?.[l.price.currency] ?? 0) >= l.price.amount;
   const shortBy = (l: Listing) => l.price.amount - (balances?.[l.price.currency] ?? 0);
   const activeTab = tabs.find((t) => t.value === tab) ?? tabs[0];
+  const keep = (l: Listing) => show !== 'afford' || (!l.blocked && afford(l));
+  const wished = (shop.data?.listings ?? []).filter((l) => wishlist.includes(l.id));
+  const wishedAway = wishlist.length - wished.length;
   const wallet = ['sparks', 'moonstones', 'dust', ...(balances?.frost_tickets || tabs.some((t) => t.value === 'event') ? ['frost_tickets'] : [])];
 
   return (
@@ -422,6 +534,38 @@ export default function Shop() {
         }
       />
       {shop.isError ? <ErrorNotice message="The shop could not be loaded." onRetry={() => shop.refetch()} /> : null}
+      {shop.data ? (
+        <ToggleChips<'all' | 'afford' | 'wishlist'>
+          className="mb-5"
+          value={show}
+          onChange={setShow}
+          label="Show"
+          options={[
+            { value: 'all', label: 'Everything' },
+            { value: 'afford', label: 'What I can afford' },
+            { value: 'wishlist', label: `My wishlist${wishlist.length ? ` ${wishlist.length}` : ''}` },
+          ]}
+        />
+      ) : null}
+      {show === 'wishlist' && shop.data ? (
+        <section className="mb-10" aria-labelledby="shop-wishlist">
+          <h2 id="shop-wishlist" className="font-display text-[1.75rem] leading-tight font-bold">
+            Your wishlist
+          </h2>
+          <p className="mb-4 text-text-2">{wishedAway > 0 ? `${wishedAway} of the things you wished for ${wishedAway === 1 ? 'is' : 'are'} not in the shop today. Daily and weekly picks come round again.` : 'Press the heart on anything in the shop to keep it here.'}</p>
+          {wished.length ? (
+            <div className="grid grid-cols-1 gap-4 min-[480px]:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+              {wished.map((l) => (
+                <div key={l.id} className="flex flex-col [&>*]:flex-1">
+                  <ListingCard l={l} onBuy={(x) => setConfirm({ listing: x, key: newRequestKey('buy') })} onOdds={setOddsFor} {...cardExtras(l)} />
+                </div>
+              ))}
+            </div>
+          ) : (
+            <EmptyState icon={<Heart />} title={wishlist.length ? 'Nothing from your wishlist today' : 'Your wishlist is empty'} />
+          )}
+        </section>
+      ) : null}
       {loading ? (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4" aria-busy="true">
           <span role="status" className="sr-only">
@@ -433,12 +577,17 @@ export default function Shop() {
         </div>
       ) : shop.data && !activeTab ? (
         <EmptyState title="Nothing on sale right now">New picks arrive every day.</EmptyState>
-      ) : activeTab ? (
+      ) : activeTab && show !== 'wishlist' ? (
         <StickerTabs value={activeTab.value} onValueChange={setTab} label="Shop sections" items={tabs.map((t) => ({ value: t.value, label: t.label }))}>
           <StickerTabPanel value={activeTab.value} className="focus-visible:outline-offset-8">
+            {show === 'afford' && !activeTab.sections.some((sec) => (bySection.get(sec) ?? []).some(keep)) ? (
+              <EmptyState icon={<ShoppingBag />} title="Nothing here you can afford yet">
+                Play a game or two to earn more, or look in another part of the shop.
+              </EmptyState>
+            ) : null}
             {activeTab.sections.map((s) => {
               // On the Featured tab the featured Lantern leads, on its wide card.
-              const list = s === 'featured' ? [...(bySection.get(s) ?? [])].sort((a, b) => Number(b.kind === 'pack') - Number(a.kind === 'pack')) : (bySection.get(s) ?? []);
+              const list = (s === 'featured' ? [...(bySection.get(s) ?? [])].sort((a, b) => Number(b.kind === 'pack') - Number(a.kind === 'pack')) : (bySection.get(s) ?? [])).filter(keep);
               if (!list.length) return null;
               const reset = s === 'daily' ? shop.data?.resets.daily : s === 'weekly' ? shop.data?.resets.weekly : null;
               const ends = s === 'event' ? list.find((l) => l.endsAt)?.endsAt : null;
@@ -462,7 +611,7 @@ export default function Shop() {
                       const featured = s === 'featured' && i === 0 && l.kind === 'pack';
                       return (
                         <div key={l.id} className={`flex flex-col [&>*]:flex-1 ${featured ? 'min-[480px]:col-span-2' : ''}`}>
-                          <ListingCard l={l} onBuy={(x) => setConfirm({ listing: x, key: newRequestKey('buy') })} onOdds={setOddsFor} featured={featured} />
+                          <ListingCard l={l} onBuy={(x) => setConfirm({ listing: x, key: newRequestKey('buy') })} onOdds={setOddsFor} featured={featured} {...cardExtras(l)} />
                         </div>
                       );
                     })}
@@ -496,6 +645,8 @@ export default function Shop() {
       </Dialog>
 
       <OddsDialog packId={oddsFor} onClose={() => setOddsFor(null)} />
+
+      <TryOnDialog listing={trying} onClose={() => setTrying(null)} onBuy={(x) => setConfirm({ listing: x, key: newRequestKey('buy') })} />
 
       <PackOpening
         lantern={opening?.listing.pack?.art ?? null}

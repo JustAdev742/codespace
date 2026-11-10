@@ -6,6 +6,8 @@ import { useModes, thumbFor } from '../../lib/queries.ts';
 import { ModeArt } from '../../art/ModeArt.tsx';
 import { Badge, EmptyState, Panel, Spinner } from '../../ui/primitives.tsx';
 import { ButtonLink } from '../../ui/Button.tsx';
+import { FavouriteStar } from '../profile/parts.tsx';
+import { ModeBests } from './ModeBests.tsx';
 
 const DIFFICULTY = ['', 'Easy to learn', 'Some strategy', 'Deep strategy'] as const;
 
@@ -56,7 +58,10 @@ export default function ModeDetail() {
               <span className="rounded-full bg-surface-3 px-3 py-0.5 text-sm font-semibold text-text-2">In the works, not playable yet</span>
             ) : null}
           </div>
-          <h1 className="font-display text-[3.5rem] leading-[0.92] font-extrabold sm:text-[4.5rem]">{meta.title}</h1>
+          <div className="flex items-start justify-between gap-3">
+            <h1 className="font-display text-[3.5rem] leading-[0.92] font-extrabold break-words sm:text-[4.5rem]">{meta.title}</h1>
+            <FavouriteStar kind="modes" id={meta.id} label={meta.title} className="mt-2" />
+          </div>
           <p className="font-display text-2xl leading-tight font-bold text-text-2 sm:text-[1.7rem]">{meta.tagline}</p>
           <p className="max-w-[60ch] text-lg text-text-2">{meta.description}</p>
           <div className="grid grid-cols-1 gap-2.5 min-[420px]:grid-cols-3">
@@ -79,6 +84,7 @@ export default function ModeDetail() {
             </div>
           ) : null}
           <p className="text-sm text-text-2">{PACING_INFO[meta.pacing]}</p>
+          <ModeBests modeId={meta.id} title={meta.title} />
         </div>
         <div className="stage-card mx-auto w-full max-w-[560px] overflow-hidden">
           <ModeArt thumb={thumbFor(meta)} className="block aspect-[16/10] w-full" label={`${meta.title} artwork`} />

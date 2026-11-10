@@ -3,12 +3,18 @@ import { Link, useParams } from 'react-router';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { Ban, BarChart3, Check, Flag, Lock, Shirt, UserMinus, UserPlus, UserX, Users } from 'lucide-react';
-import type { AvatarLite } from '@ludora/shared';
+import { CARD_EXPRESSIONS, CARD_POSES, type AvatarLite, type CardExpression, type CardPose } from '@ludora/shared';
+import { useQueryClient } from '@tanstack/react-query';
+import { Download } from 'lucide-react';
+import { Segmented } from '../../ui/Segmented.tsx';
+import { EXPRESSION_FACE, EXPRESSION_LABEL, POSE_LABEL, errorMessage, extrasKey, glimPose } from './extras.ts';
+import { PersonalBests } from './StudyPanels.tsx';
+import { drawCard, saveBlob } from './cardImage.ts';
 import { api, ApiError } from '../../lib/api.ts';
 import { useMe } from '../../lib/session.ts';
 import type { EquippedSlot } from '../../lib/queries.ts';
 import { formatNumber, plural } from '../../lib/format.ts';
-import { Badge, Dialog, EmptyState, ErrorNotice, PageHeader, Panel, Skeleton } from '../../ui/primitives.tsx';
+import { Badge, Dialog, EmptyState, ErrorNotice, PageHeader, Panel, Select, Skeleton } from '../../ui/primitives.tsx';
 import { Button, ButtonLink } from '../../ui/Button.tsx';
 import { ProfileCard } from '../collection/ProfileCard.tsx';
 import { ReportDialog } from '../moderation/ReportDialog.tsx';
@@ -28,8 +34,73 @@ interface PublicProfile {
   blockedByMe: boolean;
   isGuest: boolean;
   restricted: boolean;
+  earnedTitle: string | null;
+  card: { pose: CardPose; expression: CardExpression };
   joinedAt?: string;
   stats?: { gamesPlayed: number; gamesWon: number; podiums: number; bestStreak: number; longestDailyStreak: number; glims: number };
+}
+
+/** Your own card: choose your Glim's pose and face, and save the card as a picture. */
+function CardStudio({ p, cardRef }: { p: PublicProfile; cardRef: React.RefObject<HTMLDivElement | null> }) {
+  const qc = useQueryClient();
+  const [saving, setSaving] = useState(false);
+  const change = useMutation({
+    mutationFn: (card: PublicProfile['card']) => api.put('/api/me/card', card),
+    onMutate: (card) => {
+      qc.setQueryData<PublicProfile>(['profile', p.id], (d) => (d ? { ...d, card } : d));
+    },
+    onError: (err) => {
+      toast.error(errorMessage(err, 'Your card did not change. Try again.'));
+      void qc.invalidateQueries({ queryKey: ['profile', p.id] });
+    },
+    onSettled: () => qc.invalidateQueries({ queryKey: extrasKey }),
+  });
+  const download = async () => {
+    setSaving(true);
+    try {
+      const theme = p.equipped.theme?.art;
+      const blob = await drawCard({
+        glim: cardRef.current?.querySelector('svg') ?? null,
+        name: p.displayName,
+        title: p.earnedTitle ?? (p.equipped.title?.art.kind === 'title' ? p.equipped.title.art.text : null),
+        level: p.level,
+        hue: theme?.kind === 'theme' ? theme.hue : null,
+      });
+      saveBlob(blob, `${p.displayName.replace(/[^\p{L}\p{N}]+/gu, '-').replace(/^-|-$/g, '') || 'my'}-ludora-card.png`);
+      toast.success('Card saved as a picture');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'The picture could not be made.');
+    } finally {
+      setSaving(false);
+    }
+  };
+  return (
+    <Panel className="rounded-[var(--radius-l)] p-5" aria-labelledby="card-studio">
+      <h2 id="card-studio" className="font-display text-[1.6rem] font-bold">
+        Your card
+      </h2>
+      <p className="mb-3 text-sm text-text-2">Everyone who can see your profile sees your buddy like this.</p>
+      <div className="flex flex-col gap-3">
+        <div>
+          <p className="mb-1.5 text-sm font-semibold">Pose</p>
+          <Segmented<CardPose> label="Pose" value={p.card.pose} onChange={(pose) => change.mutate({ ...p.card, pose })} options={CARD_POSES.map((v) => ({ value: v, label: POSE_LABEL[v] }))} />
+        </div>
+        <label className="flex flex-col gap-1.5">
+          <span className="text-sm font-semibold">Face</span>
+          <Select value={p.card.expression} onChange={(e) => change.mutate({ ...p.card, expression: e.target.value as CardExpression })} className="h-11 w-56 max-w-full">
+            {CARD_EXPRESSIONS.map((v) => (
+              <option key={v} value={v}>
+                {EXPRESSION_LABEL[v]}
+              </option>
+            ))}
+          </Select>
+        </label>
+        <Button className="self-start" icon={<Download className="size-4" aria-hidden />} loading={saving} onClick={() => void download()}>
+          Download my card
+        </Button>
+      </div>
+    </Panel>
+  );
 }
 
 const OWN_VISIBILITY = {
@@ -77,6 +148,7 @@ export default function Profile() {
   usePageTitle(p ? p.displayName : 'Profile');
   const socialRefresh = useSocialRefresh();
   const actionsRef = useRef<HTMLDivElement>(null);
+  const cardRef = useRef<HTMLDivElement>(null);
   const focusAfter = useFocusAfterUpdate(profile.data);
   // Every action replaces the button that was pressed, so afterwards focus the panel that says what changed.
   const refresh = async () => {
@@ -304,7 +376,14 @@ export default function Profile() {
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[360px_minmax(0,1fr)] lg:items-start">
         <div className="min-w-0">
           <h1 className="sr-only">{p.displayName}</h1>
-          <ProfileCard name={p.displayName} level={p.level} avatar={p.avatar} equipment={{ frame: p.equipped.frame?.art, banner: p.equipped.banner?.art, title: p.equipped.title?.art, theme: p.equipped.theme?.art }} />
+          <div ref={cardRef}>
+            <ProfileCard name={p.displayName} level={p.level} avatar={p.avatar} earnedTitle={p.earnedTitle} pose={glimPose(p.card?.pose ?? 'wave')} face={EXPRESSION_FACE[p.card?.expression ?? 'own']} equipment={{ frame: p.equipped.frame?.art, banner: p.equipped.banner?.art, title: p.equipped.title?.art, theme: p.equipped.theme?.art }} />
+          </div>
+          {p.isSelf && p.card ? (
+            <div className="mt-6">
+              <CardStudio p={p} cardRef={cardRef} />
+            </div>
+          ) : null}
         </div>
         <div className="flex min-w-0 flex-col gap-6">
           <Panel className="rounded-[var(--radius-l)] p-5" aria-label={p.isSelf ? 'Your profile' : `You and ${p.displayName}`}>
@@ -340,6 +419,7 @@ export default function Profile() {
               </div>
             ) : null}
           </Panel>
+          {p.isSelf ? <PersonalBests limit={6} /> : null}
           {p.stats ? (
             <StatsPanel stats={p.stats} joinedAt={p.joinedAt} />
           ) : p.restricted && !p.blockedByMe ? (

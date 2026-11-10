@@ -3,6 +3,7 @@ import type { DbOrTx } from '../../db/client.ts';
 import { achievements, collections, inventory, items, questionSets, userAchievements, userStats, users } from '../../db/schema.ts';
 import { credit } from '../economy/service.ts';
 import { grantItem } from '../inventory/service.ts';
+import { notify } from '../notifications/service.ts';
 
 export interface UnlockNote {
   id: string;
@@ -64,6 +65,7 @@ export async function checkAchievements(tx: DbOrTx, userId: string, opId: number
     if (reward.sparks) await credit(tx, { userId, currency: 'sparks', amount: reward.sparks, reason: 'achievement_reward', refType: 'achievement', refId: a.id, opId });
     if (reward.moonstones) await credit(tx, { userId, currency: 'moonstones', amount: reward.moonstones, reason: 'achievement_reward', refType: 'achievement', refId: a.id, opId });
     if (reward.itemId) await grantItem(tx, { userId, itemId: reward.itemId, source: `achievement:${a.id}` });
+    await notify(tx, { userId, kind: 'achievement', title: `Achievement unlocked: ${a.title}`, body: a.description, link: '/quests#achievements', dedupeKey: `achievement:${a.id}` });
     notes.push({ id: a.id, title: a.title });
   }
   return notes;

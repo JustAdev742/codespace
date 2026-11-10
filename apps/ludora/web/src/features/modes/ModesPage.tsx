@@ -7,6 +7,7 @@ import { EmptyState, ErrorNotice, Input, PageHeader } from '../../ui/primitives.
 import { Button } from '../../ui/Button.tsx';
 import { ToggleChips } from '../home/kit.tsx';
 import { ModeCard, ModeCardSkeleton } from './ModeCard.tsx';
+import { FavouriteStar } from '../profile/parts.tsx';
 
 const isCategory = (v: string | null): v is ModeCategory => MODE_CATEGORIES.includes(v as ModeCategory);
 
@@ -89,7 +90,11 @@ export default function ModesPage() {
       ) : (
         <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
           {list.map((m) => (
-            <ModeCard key={m.meta.id} mode={m} heading="h2" facts />
+            // The star sits beside the card's link, not inside it, so each control stays its own.
+            <div key={m.meta.id} className="relative flex [&>a]:flex-1">
+              <ModeCard mode={m} heading="h2" facts />
+              <FavouriteStar kind="modes" id={m.meta.id} label={m.meta.title} onStage className="absolute top-2 right-2 sm:top-2.5 sm:right-2.5" />
+            </div>
           ))}
         </div>
       )}

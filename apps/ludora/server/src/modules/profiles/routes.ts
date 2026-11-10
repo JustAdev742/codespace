@@ -16,6 +16,8 @@ import { ensureQuests } from '../progression/quests.ts';
 import { loadAvatar } from './avatar.ts';
 import { blockedEitherWay, pairOf } from '../social/service.ts';
 import { mergePreferences, preferencesPatchSchema, readPreferences } from '../users/preferences.ts';
+import { earnedTitleOf } from '../player/routes.ts';
+import { readExtras } from '../player/service.ts';
 
 const NAME_CHANGE_GAP_MS = 24 * 3600_000;
 
@@ -180,10 +182,11 @@ export async function profileRoutes(app: FastifyInstance, deps: AppDeps) {
     const isFriend = friendship === 'friends';
     const visibility = prefs.privacy.profileVisibility;
     const full = !blockedByMe && (isSelf || staff || visibility === 'public' || (visibility === 'friends' && isFriend));
-    const [avatar, slots] = await Promise.all([loadAvatar(deps.db, u.id), equippedArt(deps, u.id)]);
+    const [avatar, slots, extras] = await Promise.all([loadAvatar(deps.db, u.id), equippedArt(deps, u.id), readExtras(deps.db, u.id)]);
+    const earnedTitle = await earnedTitleOf(deps, u.id, extras);
     const friendsOn = viewer ? await isFlagOn(deps.db, 'social.friends', viewer) : false;
     const canRequest = Boolean(friendsOn && viewer && !viewer.user.isGuest && !isSelf && !u.isGuest && !blockedByMe && friendship === 'none' && prefs.privacy.allowFriendRequests === 'everyone');
-    const base = { id: u.id, displayName: u.displayName, avatar, equipped: slots, level: levelFromXp(u.xp).level, isFriend, isSelf, friendship, canRequest, blockedByMe, isGuest: u.isGuest, restricted: !full };
+    const base = { id: u.id, displayName: u.displayName, avatar, equipped: slots, earnedTitle: earnedTitle?.text ?? null, card: extras.card, level: levelFromXp(u.xp).level, isFriend, isSelf, friendship, canRequest, blockedByMe, isGuest: u.isGuest, restricted: !full };
     if (!full) return base;
     const [s] = await deps.db.select().from(userStats).where(eq(userStats.userId, u.id)).limit(1);
     const glimCount = await deps.db.execute<{ n: number }>(sql`select count(*)::int as n from inventory inv join items i on i.id = inv.item_id where inv.user_id = ${u.id} and i.type = 'glim' and inv.quantity > 0`);

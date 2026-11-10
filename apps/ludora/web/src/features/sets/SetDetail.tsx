@@ -10,6 +10,7 @@ import type { SetSummary } from '../../lib/queries.ts';
 import { formatNumber, plural } from '../../lib/format.ts';
 import { Badge, EmptyState, ErrorNotice, PageHeader, Panel, Spinner } from '../../ui/primitives.tsx';
 import { Button, ButtonLink } from '../../ui/Button.tsx';
+import { FavouriteStar } from '../profile/parts.tsx';
 import { SetCover } from './SetCover.tsx';
 import { ReportDialog } from '../moderation/ReportDialog.tsx';
 
@@ -90,6 +91,7 @@ export default function SetDetail() {
       <div className="flex flex-wrap items-start gap-5">
         <SetCover cover={set.cover} subject={set.subject} size={88} />
         <div className="min-w-0 flex-1">
+          <FavouriteStar kind="sets" id={set.id} label={set.title} className="float-right ml-3" />
           <h1 className="font-display text-[2.25rem] leading-[1.02] font-bold break-words sm:text-[2.9rem]">{set.title}</h1>
           {set.description ? <p className="mt-2 max-w-[62ch] break-words text-text-2">{set.description}</p> : null}
           <div className="mt-3 flex flex-wrap gap-1.5">

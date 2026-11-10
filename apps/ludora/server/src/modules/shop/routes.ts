@@ -4,7 +4,7 @@ import { z } from 'zod';
 import { EQUIP_SLOTS, RARITY_INFO, type Rarity } from '@ludora/shared';
 import { MONTHLY_PREFIX } from '@ludora/content';
 import type { AppDeps } from '../../app.ts';
-import { collections, equipped, inventory, items, ledger, packs, pityCounters } from '../../db/schema.ts';
+import { collections, equipped, inventory, items, ledger, packs, pityCounters, shopListings } from '../../db/schema.ts';
 import { noStore, requireAuth } from '../../http/context.ts';
 import { AppError, notFound } from '../../lib/errors.ts';
 import { parse } from '../../lib/validate.ts';
@@ -13,6 +13,7 @@ import { equipItem, grantItem, ownedQuantity, takeItem, unequipSlot } from '../i
 import { computeOdds, parseDropTable, payCollectionRewards, resolvePool } from '../packs/service.ts';
 import { checkAchievements } from '../progression/achievements.ts';
 import { purchase, shopView } from './service.ts';
+import { updateExtras } from '../player/service.ts';
 
 const SHAPE_FIELDS = ['body', 'topper', 'ears', 'tail', 'back'] as const;
 function silhouetteOf(art: Record<string, unknown>): Record<string, unknown> {
@@ -115,6 +116,54 @@ export async function shopRoutes(app: FastifyInstance, deps: AppDeps) {
     };
   });
 
+  /**
+   * One Glim's page: its story and where it comes from (the Lanterns that can drop it, with the
+   * chance from the same table the server rolls against, shop listings, and crafting). A Glim you
+   * have not found keeps its secrets, as in the collection: shape, rarity and where to find it only.
+   */
+  app.get('/api/collection/:id', async (req, reply) => {
+    noStore(reply);
+    const auth = requireAuth(req);
+    const { id } = parse(z.object({ id: z.string().min(1).max(80) }), req.params);
+    const [g] = await deps.db.select().from(items).where(and(eq(items.id, id), eq(items.type, 'glim'), eq(items.releaseState, 'live'), eq(items.isTestOnly, false))).limit(1);
+    if (!g) throw notFound('That Glim does not exist.');
+    const [[mine], [col], livePacks, listings] = await Promise.all([
+      deps.db.select().from(inventory).where(and(eq(inventory.userId, auth.user.id), eq(inventory.itemId, id))).limit(1),
+      g.collectionId ? deps.db.select().from(collections).where(eq(collections.id, g.collectionId)).limit(1) : Promise.resolve([undefined]),
+      deps.db.select().from(packs).where(eq(packs.releaseState, 'live')),
+      deps.db.select().from(shopListings).where(and(eq(shopListings.itemId, id), eq(shopListings.active, true))),
+    ]);
+    const now = new Date();
+    const lanterns = [];
+    for (const p of livePacks) {
+      const table = parseDropTable(p.dropTable);
+      const pool = await resolvePool(deps.db, table);
+      if (!pool.some((x) => x.id === id)) continue;
+      const row = computeOdds(table, pool).find((o) => o.rarity === g.rarity);
+      if (!row) continue;
+      const onSale = (!p.availableFrom || p.availableFrom <= now) && (!p.availableUntil || now <= p.availableUntil);
+      lanterns.push({ id: p.id, name: p.name, art: p.art, percent: row.perItemPercent, onSale, until: p.availableUntil?.toISOString() ?? null });
+    }
+    const q = mine?.quantity ?? 0;
+    const owned = q > 0;
+    const info = RARITY_INFO[g.rarity as Rarity];
+    return {
+      id: g.id,
+      rarity: g.rarity,
+      name: owned ? g.name : null,
+      description: owned ? g.description : null,
+      art: owned ? g.art : null,
+      silhouette: owned ? null : silhouetteOf(g.art as Record<string, unknown>),
+      owned: q,
+      firstFound: mine && owned ? mine.firstAcquiredAt.toISOString() : null,
+      collection: col ? { id: col.id, name: col.name, description: col.description, hue: col.hue } : null,
+      lanterns: lanterns.sort((a, b) => Number(b.onSale) - Number(a.onSale) || b.percent - a.percent),
+      shop: listings.map((l) => ({ id: l.id, section: l.section, price: { currency: l.priceCurrency, amount: l.priceAmount }, rotation: l.rotation })),
+      craftCost: info.craftCost,
+      dustValue: info.dustValue,
+    };
+  });
+
   /** Owned cosmetics and what is equipped in each slot. */
   app.get('/api/locker', async (req, reply) => {
     noStore(reply);
@@ -133,6 +182,8 @@ export async function shopRoutes(app: FastifyInstance, deps: AppDeps) {
     const auth = requireAuth(req);
     const { itemId } = parse(z.object({ itemId: z.string().min(1).max(80) }), req.body);
     const slot = await equipItem(deps.db, auth.user.id, itemId);
+    // One title under your name: a title from the shop takes the place of one earned from an achievement.
+    if (slot === 'title') await updateExtras(deps.db, auth.user.id, (cur) => ({ next: { ...cur, title: null }, result: null }));
     return { ok: true, slot };
   });
 

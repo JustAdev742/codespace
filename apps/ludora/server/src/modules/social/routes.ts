@@ -11,8 +11,10 @@ import { AppError, conflict, notFound } from '../../lib/errors.ts';
 import { parse } from '../../lib/validate.ts';
 import { isoWeek, weekStart } from '../../lib/time.ts';
 import { loadAvatars } from '../profiles/avatar.ts';
+import { modeTitle } from '../profiles/routes.ts';
 import { readPreferences } from '../users/preferences.ts';
 import { MAX_FRIENDS, blockedEitherWay, pairOf } from './service.ts';
+import { notify } from '../notifications/service.ts';
 
 /*
  * Friends, blocks and leaderboards.
@@ -106,9 +108,11 @@ export async function socialRoutes(app: FastifyInstance, deps: AppDeps) {
       if (existing?.status === 'pending') {
         if ((await friendCount(tx, target.id)) >= MAX_FRIENDS) throw new AppError(403, 'forbidden', NOT_ACCEPTING);
         await tx.update(friendships).set({ status: 'accepted', acceptedAt: new Date() }).where(and(eq(friendships.userA, a), eq(friendships.userB, b)));
+        await notify(tx, { userId: target.id, kind: 'friend_accepted', title: `${auth.user.displayName} is your friend now`, link: `/profile/${me}`, actorId: me });
         return { ok: true, status: 'accepted' as const, displayName: target.displayName };
       }
       await tx.insert(friendships).values({ userA: a, userB: b, status: 'pending', requestedBy: me });
+      await notify(tx, { userId: target.id, kind: 'friend_request', title: `${auth.user.displayName} wants to be friends`, body: 'Accept or decline on your friends page.', link: '/friends', actorId: me });
       return { ok: true, status: 'pending' as const, displayName: target.displayName };
     });
   });
@@ -123,8 +127,54 @@ export async function socialRoutes(app: FastifyInstance, deps: AppDeps) {
       if (!row || row.status !== 'pending' || row.requestedBy === auth.user.id) throw notFound('That friend request is no longer there.');
       if ((await friendCount(tx, auth.user.id)) >= MAX_FRIENDS) throw conflict(`You can have up to ${MAX_FRIENDS} friends.`);
       await tx.update(friendships).set({ status: 'accepted', acceptedAt: new Date() }).where(and(eq(friendships.userA, a), eq(friendships.userB, b)));
+      await notify(tx, { userId: id, kind: 'friend_accepted', title: `${auth.user.displayName} accepted your friend request`, link: `/profile/${auth.user.id}`, actorId: auth.user.id });
       return { ok: true };
     });
+  });
+
+  /**
+   * People you played with in the last 30 days, to add as friends. Only accounts that accept
+   * requests from everyone are listed (so nobody's settings are revealed, and under-13 accounts,
+   * which default to friend codes only, never appear), never guests, bots, test accounts,
+   * friends already asked, or anyone blocked either way.
+   */
+  app.get('/api/friends/recent', async (req, reply) => {
+    noStore(reply);
+    const auth = requireAccount(req);
+    await requireFriendsOn(auth);
+    const me = auth.user.id;
+    const since = new Date(Date.now() - 30 * 86_400_000);
+    const rows = await db.execute<{ user_id: string; last_at: string; games: number; mode_id: string; variant_id: string | null }>(sql`
+      select other.user_id, max(gs.ended_at) as last_at, count(distinct gs.id)::int as games,
+        (array_agg(gs.mode_id order by gs.ended_at desc))[1] as mode_id, (array_agg(gs.variant_id order by gs.ended_at desc))[1] as variant_id
+      from game_participants mine
+      join game_sessions gs on gs.id = mine.game_id and gs.ended_at > ${since.toISOString()}
+      join game_participants other on other.game_id = mine.game_id and other.user_id is not null and other.user_id <> mine.user_id and not other.is_bot
+      where mine.user_id = ${me}
+      group by other.user_id
+      order by max(gs.ended_at) desc
+      limit 60`);
+    const ids = rows.rows.map((r) => r.user_id);
+    if (!ids.length) return { players: [] };
+    const [people, links, blockRows] = await Promise.all([
+      db.select().from(users).where(inArray(users.id, ids)),
+      db.select().from(friendships).where(or(and(eq(friendships.userA, me), inArray(friendships.userB, ids)), and(eq(friendships.userB, me), inArray(friendships.userA, ids)))),
+      db.select().from(blocks).where(or(and(eq(blocks.blockerId, me), inArray(blocks.blockedId, ids)), and(eq(blocks.blockedId, me), inArray(blocks.blockerId, ids)))),
+    ]);
+    const linked = new Set(links.map((l) => (l.userA === me ? l.userB : l.userA)));
+    const blocked = new Set(blockRows.map((b) => (b.blockerId === me ? b.blockedId : b.blockerId)));
+    const byId = new Map(people.map((p) => [p.id, p]));
+    const shown = rows.rows.filter((r) => {
+      const u = byId.get(r.user_id);
+      return u && !u.isGuest && !u.isTestAccount && u.status === 'active' && !linked.has(u.id) && !blocked.has(u.id) && readPreferences(u.preferences).privacy.allowFriendRequests === 'everyone';
+    }).slice(0, 12);
+    const avatars = await loadAvatars(db, shown.map((r) => r.user_id));
+    return {
+      players: shown.map((r) => {
+        const u = byId.get(r.user_id)!;
+        return { ...person(u, avatars.get(u.id) ?? null), lastPlayed: new Date(r.last_at).toISOString(), games: r.games, lastMode: modeTitle(r.mode_id, r.variant_id) };
+      }),
+    };
   });
 
   /** Remove a friend, cancel your request or decline theirs. */

@@ -886,3 +886,86 @@ export const classLogins = pgTable(
   },
   (t) => [index('class_logins_class_idx').on(t.classId)],
 );
+
+/* ------------------------------ students: study ----------------------------- */
+
+/**
+ * Questions a signed-in player got wrong, to play again in "Fix my mistakes". A question
+ * leaves the list after two right answers on different days; a wrong answer starts the count again.
+ */
+export const mistakes = pgTable(
+  'mistakes',
+  {
+    userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+    setId: uuid('set_id').notNull().references(() => questionSets.id, { onDelete: 'cascade' }),
+    questionId: text('question_id').notNull(),
+    misses: integer('misses').notNull().default(1),
+    rightDays: integer('right_days').notNull().default(0),
+    lastRightDay: date('last_right_day', { mode: 'string' }),
+    firstMissedAt: now('first_missed_at'),
+    lastMissedAt: now('last_missed_at'),
+  },
+  (t) => [primaryKey({ columns: [t.userId, t.setId, t.questionId] }), index('mistakes_user_idx').on(t.userId, t.lastMissedAt), check('mistakes_right_days_valid', sql`${t.rightDays} >= 0 and ${t.rightDays} < 2`)],
+);
+
+/**
+ * A solo game the server set up for practice: today's daily challenge or a round of mistakes.
+ * Matched to the saved game by room code once it ends. `questions` maps a mistakes room's
+ * question ids back to the set and question each came from.
+ */
+export const practiceRuns = pgTable(
+  'practice_runs',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+    kind: text('kind').notNull(),
+    day: date('day', { mode: 'string' }).notNull(),
+    roomCode: text('room_code').notNull(),
+    setId: uuid('set_id').references(() => questionSets.id, { onDelete: 'set null' }),
+    modeId: text('mode_id').notNull(),
+    questions: jsonb('questions'),
+    gameId: uuid('game_id'),
+    createdAt: now('created_at'),
+    completedAt: ts('completed_at'),
+  },
+  (t) => [index('practice_runs_room_idx').on(t.roomCode, t.createdAt), index('practice_runs_user_idx').on(t.userId, t.kind, t.day), check('practice_runs_kind_valid', sql`${t.kind} in ('mistakes','daily')`)],
+);
+
+/** A player's own choices outside games: favourites, weekly goal, wishlist, outfits, nicknames, earned title, card pose, help seen. Validated by modules/player. */
+export const playerExtras = pgTable('player_extras', {
+  userId: uuid('user_id').primaryKey().references(() => users.id, { onDelete: 'cascade' }),
+  data: jsonb('data').notNull().default({}),
+  updatedAt: now('updated_at'),
+});
+
+/** Things to tell a player: friend requests, invites, rewards. Work due is worked out when the list is read. */
+export const notifications = pgTable(
+  'notifications',
+  {
+    id: bigserial('id', { mode: 'number' }).primaryKey(),
+    userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+    kind: text('kind').notNull(),
+    title: text('title').notNull(),
+    body: text('body').notNull().default(''),
+    link: text('link'),
+    actorId: uuid('actor_id').references(() => users.id, { onDelete: 'set null' }),
+    /** One notification per key and player, so a repeated event never notifies twice. */
+    dedupeKey: text('dedupe_key'),
+    createdAt: now('created_at'),
+    readAt: ts('read_at'),
+  },
+  (t) => [index('notifications_user_idx').on(t.userId, t.createdAt), uniqueIndex('notifications_dedupe_uq').on(t.userId, t.dedupeKey)],
+);
+
+/** The one daily quest a player swapped for another, at most one a day. */
+export const questSwaps = pgTable(
+  'quest_swaps',
+  {
+    userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+    day: date('day', { mode: 'string' }).notNull(),
+    oldQuestId: text('old_quest_id').notNull(),
+    newQuestId: text('new_quest_id').notNull(),
+    createdAt: now('created_at'),
+  },
+  (t) => [primaryKey({ columns: [t.userId, t.day] })],
+);

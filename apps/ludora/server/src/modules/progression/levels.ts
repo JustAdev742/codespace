@@ -4,6 +4,7 @@ import type { DbOrTx } from '../../db/client.ts';
 import { users } from '../../db/schema.ts';
 import type { EconomyRules } from '../economy/config.ts';
 import { credit } from '../economy/service.ts';
+import { notify } from '../notifications/service.ts';
 
 export interface XpResult {
   xp: number;
@@ -31,6 +32,8 @@ export async function addXp(tx: DbOrTx, userId: string, amount: number, rules: E
     }
     if (rewards.sparks) await credit(tx, { userId, currency: 'sparks', amount: rewards.sparks, reason: 'level_reward', refType: 'level', refId: String(to), opId });
     if (rewards.moonstones) await credit(tx, { userId, currency: 'moonstones', amount: rewards.moonstones, reason: 'level_reward', refType: 'level', refId: String(to), opId });
+    const paid = [rewards.sparks ? `${rewards.sparks} Sparks` : '', rewards.moonstones ? `${rewards.moonstones} Moonstones` : ''].filter(Boolean).join(' and ');
+    await notify(tx, { userId, kind: 'level', title: `You reached level ${to}`, body: paid ? `${paid} added to your wallet.` : '', link: '/quests#levels', dedupeKey: `level:${to}` });
   }
   return { xp: row.xp, from, to, rewards };
 }

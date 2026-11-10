@@ -8,6 +8,8 @@ import { credit, withOperation } from '../economy/service.ts';
 import { checkAchievements } from './achievements.ts';
 import { addXp } from './levels.ts';
 import { bumpQuests } from './quests.ts';
+import { personalBestNote } from './bests.ts';
+import { getMode } from '@ludora/engine';
 
 /*
  * Turning a finished game into Sparks, XP, stats, quest progress and
@@ -154,6 +156,8 @@ export async function applyGameResult(db: Db, r: PlayerGameRecord): Promise<Rewa
         })
       : [];
     const unlocked = await checkAchievements(tx, r.userId, opId);
+    const best = await personalBestNote(tx, r.userId, r.gameId, getMode(r.modeId)?.meta.title ?? r.modeId);
+    if (best) notes.unshift(best);
     const summary: RewardSummary = {
       status: reward.eligible ? 'granted' : 'none',
       sparks: reward.sparks + streakBonus + (xp?.rewards.sparks ?? 0),

@@ -15,3 +15,4 @@ export * from './games.ts';
 export * from './schoolEvents.ts';
 export * from './schoolUniform.ts';
 export * from './schoolUniformSchema.ts';
+export * from './students.ts';

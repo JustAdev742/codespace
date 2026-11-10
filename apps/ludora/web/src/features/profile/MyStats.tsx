@@ -12,6 +12,7 @@ import { Button, ButtonLink } from '../../ui/Button.tsx';
 import { Stage } from '../../ui/Stage.tsx';
 import { Dot } from '../social/parts.tsx';
 import { errorText, usePageTitle } from '../social/data.ts';
+import { InsightPanels, PersonalBests, StudyCalendar } from './StudyPanels.tsx';
 
 /** GET /api/me/stats. */
 interface StatsData {
@@ -522,6 +523,11 @@ export default function MyStats() {
           <Skeleton className="h-[236px] rounded-[var(--radius-l)] sm:h-[164px] xl:h-[116px]" />
         )}
 
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)] lg:items-start">
+          <StudyCalendar />
+          <PersonalBests />
+        </div>
+
         {stats.isError ? (
           <ErrorNotice message={errorText(stats.error, 'Your detailed stats could not be loaded.')} onRetry={() => void stats.refetch()} />
         ) : (
@@ -607,7 +613,12 @@ export default function MyStats() {
                 {!s ? (
                   <Skeleton className="h-48" />
                 ) : s.practise.length ? (
-                  <PractiseList items={s.practise} />
+                  <>
+                    <PractiseList items={s.practise} />
+                    <ButtonLink to="/mistakes" variant="primary" size="sm" icon={<Target className="size-4" />} className="mt-3">
+                      Fix my mistakes
+                    </ButtonLink>
+                  </>
                 ) : (
                   <div className="flex items-start gap-3 py-2 text-sm text-text-2">
                     <Target className="mt-0.5 size-5 shrink-0 text-text-3" aria-hidden />
@@ -618,6 +629,8 @@ export default function MyStats() {
             </div>
           </>
         )}
+
+        <InsightPanels />
 
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 lg:items-start">
           <PlayedPanel />
