@@ -2,8 +2,8 @@ Flat ground, 8 robots per speed (heading spread +-0.3 rad), no noise or randomis
 
 | Commanded (m/s) | Achieved (m/s) | Slowest robot (m/s) | Falls | Peak joint speed | RMS torque | Within limits |
 |---|---|---|---|---|---|---|
-| 0.60 | 0.68 | 0.68 | 0% | 45% | 43% | yes |
-| 0.80 | 0.90 | 0.89 | 0% | 58% | 51% | yes |
-| 1.00 | 1.10 | 1.07 | 0% | 69% | 58% | yes |
-| 1.20 | 1.31 | 1.29 | 0% | 75% | 65% | yes |
-| 1.40 | 1.59 | 1.57 | 0% | 105% | 80% | **no** |
+| 0.60 | 0.65 | 0.65 | 0% | 46% | 49% | yes |
+| 0.80 | 0.91 | 0.91 | 0% | 51% | 57% | yes |
+| 1.00 | 1.12 | 1.11 | 0% | 57% | 67% | yes |
+| 1.20 | 0.71 | 0.66 | 0% | 76% | 84% | yes |
+| 1.40 | 0.57 | 0.28 | 12% | 117% | 84% | **no** |

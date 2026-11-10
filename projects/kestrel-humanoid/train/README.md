@@ -56,19 +56,24 @@ A speed counts only if both stay under 100 % with no falls.
 | Build | Trained | Top speed within motor limits | At that speed: fastest joint / no-load, RMS / continuous | Terrain table |
 |---|---|---|---|---|
 | **S1-Fast** (hub-motor legs) | 47 M steps, commands to 1.4 m/s | **1.44 m/s** (commanded 1.6) | 70 %, 91 % | [`runs/s1fast`](runs/s1fast) |
-| **K1-Fast** (hub-motor legs) | 47 M steps, commands to 1.0 m/s | **1.31 m/s** (commanded 1.2) | 75 %, 65 % | [`runs/k1fast`](runs/k1fast) |
+| **K1-Fast**, fast-walk policy | 47 M steps, commands to 1.0 m/s | **1.31 m/s** (commanded 1.2) | 75 %, 65 % | [`runs/k1fast_walk`](runs/k1fast_walk) |
+| K1-Fast, all-terrain policy (the default) | + 1.5 h on stairs-heavy terrain | 1.12 m/s (commanded 1.0) | 57 %, 67 % | [`runs/k1fast`](runs/k1fast) |
 | S1-Scrap (drills) | 72 M steps (the last 26 M on stairs-heavy terrain), commands to 0.35 m/s | 0.41 m/s (commanded 0.45) | 54 %, 66 % | [`runs/s1scrap/eval.md`](runs/s1scrap/eval.md) |
 | K1-Scrap (drills) | 47 M steps, commands to 0.35 m/s | 0.39 m/s (commanded 0.45) | 59 %, 75 % | [`runs/k1scrap/eval.md`](runs/k1scrap/eval.md) |
 
-K1-Fast commanded 1.4 m/s walks 1.59 m/s, but its ankle motors then turn at 105 % of no-load speed, so that
-figure is not counted. The torque-speed line never limits these policies: the fastest joints stay below the
+K1-Fast's fast-walk policy commanded 1.4 m/s walks 1.59 m/s, but its ankle motors then turn at 105 % of no-load
+speed, so that figure is not counted. The torque-speed line never limits these policies: the fastest joints stay below the
 knee of the line (76 % of no-load for the hub motors, 62 % for the drills). Both fast builds clear the speeds
 their actuators were sized for (1.0 and 0.8 m/s) by a wide margin. The sizing replays a prescribed ZMP walk with
 torque and speed margins; the learned gait swings the legs with lower peak accelerations.
 
-On terrain at 1.0 m/s both fast builds walk flat ground, slopes to 15° and stairs down to 18 cm (100 %). They climb
-stairs to 10.2 cm (100 %). Taller stairs are not yet reliable: S1-Fast 88 / 69 / 50 % at 12.8 / 15.4 / 18 cm,
-K1-Fast 75 / 25 / 25 %. The scrap builds at 0.25 m/s walk flat ground, rough ground and slopes, and climb 7.6 cm stairs (S1-Scrap 94 %, K1-Scrap 100 %); S1-Scrap descends 10.2 cm stairs 94 % of the time. A stairs fine-tune (`--resume --terrain climb`, 1.5 h) gave S1-Scrap that descent, and 38 % on 10.2 cm stairs up. It made K1-Scrap slower and worse on stairs, so K1-Scrap keeps its earlier policy (logs: `runs/k1scrap/console_*_climb_rejected.log`).
+On terrain at 1.0 m/s both fast builds walk flat ground, slopes to 15° and stairs down to 18 cm (100 %), and climb
+stairs to 10.2 cm (100 %). Taller stairs up, at 12.8 / 15.4 / 18 cm: S1-Fast 88 / 69 / 50 %; K1-Fast's all-terrain
+policy 100 / 88 / 38 % (its fast-walk policy 75 / 25 / 25 %). The all-terrain policy is the fast-walk one
+fine-tuned for 1.5 h with `--resume --terrain climb`; it is trained to 1.0 m/s and slows down when commanded more
+(0.71 m/s at 1.2), so use the fast-walk policy for speed. The same fine-tune on S1-Fast made it worse on 15–18 cm
+stairs and slower (1.38 m/s), so S1-Fast keeps its earlier policy (`runs/s1fast/console_3_climb_rejected.log`).
+`runs/s1fast/sprint.gif` shows it on the flat column commanded 1.6 m/s (1.44 m/s achieved). The scrap builds at 0.25 m/s walk flat ground, rough ground and slopes, and climb 7.6 cm stairs (S1-Scrap 94 %, K1-Scrap 100 %); S1-Scrap descends 10.2 cm stairs 94 % of the time. A stairs fine-tune (`--resume --terrain climb`, 1.5 h) gave S1-Scrap that descent, and 38 % on 10.2 cm stairs up. It made K1-Scrap slower and worse on stairs, so K1-Scrap keeps its earlier policy (logs: `runs/k1scrap/console_*_climb_rejected.log`).
 
 **Curriculum promotion for slow robots.** A robot was promoted to harder terrain only after walking 2.4 m in one
 20 s episode. Many of the 0.1–0.35 m/s commands the scrap builds train on cannot cover that. Promotion now also comes

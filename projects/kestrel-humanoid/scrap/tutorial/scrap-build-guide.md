@@ -321,7 +321,7 @@ in its load-carrying robot legs (R11 §1.4).
 | | **S1-Fast** | **K1-Fast** | S1-Scrap (for comparison) |
 |---|---|---|---|
 | Walking (sized for) | 0.8 m/s, 1.0 m/s fast | 0.6 m/s, 0.8 m/s fast | 0.25 m/s, 0.36 m/s fast |
-| **Top speed, simulated** (trained policy, within the motors' limits) | **1.44 m/s** | **1.31 m/s** | 0.41 m/s |
+| **Top speed, simulated** (trained policy, within the motors' limits) | **1.44 m/s** | **1.31 m/s** (fast-walk policy) | 0.41 m/s |
 | Stairs, objects | 18 cm stairs, 25 cm step-up, 10 kg box | 18 cm stairs, 20 cm step-up, 5 kg box, 1 kg per hand | 15 cm steps, 3 kg box |
 | Leg actuators | **12 hub motors + 12 ODESC drives**, 8 drill gearmotors (hip yaw and roll) | 12 hub motors + 12 ODESC drives, 8 drills; arms, waist and neck as K1-Scrap | 14 drill gearmotors |
 | Knee | 2 hub motors, 7.7:1 chain: **335 N·m, 12.9 rad/s** | 2 hub motors, 8:1: **347 N·m, 12.5 rad/s** | 2 drills, 5.5:1 capstan: 134 N·m, 7.6 rad/s |
@@ -403,13 +403,14 @@ waist 1.5:1 capstans; shoulder roll and yaw direct; servo neck).
 ### F5. Walking
 
 The fast builds walk dynamically, so they need the walking policy from `train/`, not the scripted CSV gait. Trained
-policies are included: `train/runs/s1fast/policy.pt` and `train/runs/k1fast/policy.pt`. The policy outputs joint
+policies are included: `train/runs/s1fast/policy.pt`, and for K1-Fast `train/runs/k1fast/policy.pt` (all-terrain:
+1.12 m/s, 15 cm stairs 88 %) and `train/runs/k1fast_walk/policy.pt` (fast walking: 1.31 m/s). The policy outputs joint
 position targets 50 times a second; each ODESC holds its joint on them with the PD gains in `train/model.py` and its
 current limit.
 
 * Check a policy: `python play.py --variant s1fast --run s1fast --speed 1.0` (terrain table) and
   `python play.py --variant s1fast --run s1fast --speed-test 0.6,0.8,1.0,1.2,1.4,1.6` (top speed against the motor
-  limits). K1-Fast: `--variant k1fast --run k1fast`.
+  limits). K1-Fast: `--variant k1fast --run k1fast` (fast-walk policy: `--run k1fast_walk`).
 * Retrain after you change anything (measured masses, motor constants, a different chain ratio):
   `python train.py --variant s1fast --name s1fast --init s1 --terrain rough --workers 2 --threads 1 --hours 2.5`.
 * Bring-up is the staged gantry sequence of step 9 (`gait_W0.csv` first), then the policy at 30 % current limits

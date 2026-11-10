@@ -15,7 +15,7 @@ import numpy as np  # noqa: E402
 
 HERE = Path(__file__).resolve().parent
 LABELS = {"s1": "S1", "s1scrap": "S1-Scrap", "k1scrap": "K1-Scrap", "s1fast": "S1-Fast", "k1fast": "K1-Fast",
-          "mk2": "K1 Mk II"}
+          "mk2": "K1 Mk II", "k1fast_walk": "K1-Fast (fast-walk policy)"}
 
 
 def smooth(y, k=25):
