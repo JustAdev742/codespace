@@ -4,7 +4,9 @@ Live status of the build. Updated with each milestone commit. Everything marked
 **verified** was checked by an automated test or by driving the real app in a
 browser; anything else says what it is.
 
-Last updated: 2026-10-29.
+Last updated: 2026-11-10. The November improvement programme is still running: what it has added so far
+is counted, with how each item was checked, in [features/README.md](features/README.md). The sections
+below describe the app before that programme and are brought up to date when it finishes.
 
 ## Milestones
 
@@ -18,6 +20,7 @@ Last updated: 2026-10-29.
 | M5 Staff tools | Done | Staff API and all 14 staff sections in the web app. An end-to-end test opens every section as a super administrator at phone and desktop widths. |
 | M6 Content, social, classes, analytics | Done | Friends, blocks, profiles, my stats, leaderboards, classes, assignments and their reports, hosted games, game reports, the set editor with image uploads, and AI question drafts. |
 | Chaos (D47) | Done | The secret cheat menu: 1,005 cheats and 10 combos, each tested in a real game; the unlock sequence; the private menu. See [CHAOS.md](CHAOS.md). |
+| November programme | In progress | 105 features (class tools, the student's side, question sets and three new question types, hosting), 3 new 3D modes (28 modes, 8 in 3D), 44 bugs fixed and 9 visual improvements so far. Each is a row with its check in [features/](features/README.md). Still to come: school features, accessibility, reports, lessons, two more 3D modes, mode cover art and the live screens' look. |
 | M7-8 Polish, CI, deployment | In progress | Production build, Docker image, compose file, CI workflow, docs and end-to-end tests (run in CI) are in. The whole app is restyled for players aged 8 to 17 (D46), and automated accessibility checks pass on every page, game screen and staff section. A design review of the whole app was done and its findings fixed. A playable demo builds for GitHub Pages. 2026-10-29: account download and deletion, a privacy policy and terms, data retention, a measured load test, a deployment kit tested in Docker, a machine screen-reader audit, and WebKit and Firefox runs in CI. Remaining: a person's screen-reader pass, legal review of the policy, and a real deployment, which needs the operator's server and domain. |
 
 ## What works today (verified)
