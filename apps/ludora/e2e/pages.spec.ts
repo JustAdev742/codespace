@@ -176,6 +176,28 @@ test('the library keeps its filters when you open a set and come back, and offer
   await expect(g.getByRole('button', { name: 'Everything' })).toHaveAttribute('aria-pressed', 'true');
 });
 
+// The search writes to the address a moment after typing. It used to start from a stale copy of the
+// address, so a filter chosen just before typing was dropped (seen on CI, where the machine is slower).
+test('a filter chosen just before typing a search is kept', async ({ browser }) => {
+  const p = await account(browser, { accountType: 'teacher' });
+  await p.page.goto('/library');
+  await expect(p.page.getByRole('button', { name: 'By Ludora' })).toBeVisible();
+  const cdp = await p.page.context().newCDPSession(p.page);
+  await cdp.send('Emulation.setCPUThrottlingRate', { rate: 20 });
+  // Click and type in the same tick, as a fast hand (or a slow laptop) would.
+  await p.page.evaluate(() => {
+    (Array.from(document.querySelectorAll('button')).find((b) => b.textContent?.trim() === 'By Ludora') as HTMLButtonElement).click();
+    const input = document.querySelector('input[placeholder="Search sets"]') as HTMLInputElement;
+    const set = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!;
+    set.call(input, 'capitals');
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+  });
+  await expect(p.page).toHaveURL(/q=capitals/);
+  await cdp.send('Emulation.setCPUThrottlingRate', { rate: 1 });
+  await expect(p.page).toHaveURL(/scope=official/);
+  await expect(p.page.getByRole('button', { name: 'By Ludora' })).toHaveAttribute('aria-pressed', 'true');
+});
+
 test('when the home overview cannot load, it says so once instead of leaving placeholders pulsing', async ({ browser }) => {
   const p = await account(browser);
   await p.page.route('**/api/me/overview', (r) => r.fulfill({ status: 500, contentType: 'application/json', body: '{"error":{"code":"internal","message":"Something went wrong."}}' }));

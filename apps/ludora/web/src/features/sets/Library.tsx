@@ -23,18 +23,16 @@ export default function Library() {
   const subject = params.get('subject') ?? '';
   const page = Math.max(1, Number(params.get('page')) || 1);
   const q = params.get('q') ?? '';
-  const update = (patch: Record<string, string>) =>
-    setParams(
-      (prev) => {
-        const next = new URLSearchParams(prev);
-        for (const [k, v] of Object.entries(patch)) {
-          if (!v || (k === 'scope' && v === 'public') || (k === 'page' && v === '1')) next.delete(k);
-          else next.set(k, v);
-        }
-        return next;
-      },
-      { replace: true },
-    );
+  const update = (patch: Record<string, string>) => {
+    // Start from the address as it is now, not as it was at the render this function came from:
+    // the search writes a quarter of a second after typing, and a filter chosen just before must not be lost.
+    const next = new URLSearchParams(window.location.search);
+    for (const [k, v] of Object.entries(patch)) {
+      if (!v || (k === 'scope' && v === 'public') || (k === 'page' && v === '1')) next.delete(k);
+      else next.set(k, v);
+    }
+    setParams(next, { replace: true });
+  };
   // Typing searches after a short pause, not on every key.
   const [typed, setTyped] = useState(q);
   // Back and forward change the address: show its search in the box.
