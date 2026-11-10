@@ -6,7 +6,7 @@ import { Box, Link2, Play, Trash2, Wand2 } from 'lucide-react';
 import { api, ApiError } from '../../lib/api.ts';
 import { useMe } from '../../lib/session.ts';
 import { ModeArt } from '../../art/ModeArt.tsx';
-import { Badge, Dialog, EmptyState, ErrorNotice, PageHeader, Skeleton, Tabs } from '../../ui/primitives.tsx';
+import { Badge, Dialog, EmptyState, ErrorNotice, PageHeader, Skeleton, TabPanel, Tabs } from '../../ui/primitives.tsx';
 import { Button, ButtonLink } from '../../ui/Button.tsx';
 import type { MadeGame } from './SaveGameDialog.tsx';
 
@@ -108,6 +108,38 @@ export default function Games() {
     document.title = 'Game Maker | Ludora';
   }, []);
   const games = q.data?.games ?? [];
+  const tab = scope === 'public' ? 'community' : 'mine';
+  const list = (
+    <div>
+      {q.isError ? (
+        <ErrorNotice message="The games did not load." onRetry={() => void q.refetch()} />
+      ) : q.isPending ? (
+        <Skeleton className="h-72" />
+      ) : !games.length ? (
+        scope === 'mine' ? (
+          <EmptyState
+            icon={<Wand2 className="size-8" />}
+            title="You have not made a game yet"
+            action={
+              <ButtonLink to="/host?make=1" variant="primary">
+                Make a game
+              </ButtonLink>
+            }
+          >
+            Set up any mode with your own questions and rules, then press Save as a game.
+          </EmptyState>
+        ) : (
+          <EmptyState title="No community games yet">Trusted players and teachers can list their games here.</EmptyState>
+        )
+      ) : (
+        <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {games.map((g) => (
+            <GameCard key={g.id} g={g} />
+          ))}
+        </ul>
+      )}
+    </div>
+  );
 
   return (
     <>
@@ -124,44 +156,20 @@ export default function Games() {
       />
       {signedIn ? (
         <Tabs
-          value={scope === 'public' ? 'community' : 'mine'}
+          value={tab}
           onValueChange={(v) => setParams({ tab: v }, { replace: true })}
           items={[
             { value: 'mine', label: 'Your games' },
             { value: 'community', label: 'Community games' },
           ]}
           label="Which games"
-        />
-      ) : null}
-      <div className="mt-5">
-        {q.isError ? (
-          <ErrorNotice message="The games did not load." onRetry={() => void q.refetch()} />
-        ) : q.isPending ? (
-          <Skeleton className="h-72" />
-        ) : !games.length ? (
-          scope === 'mine' ? (
-            <EmptyState
-              icon={<Wand2 className="size-8" />}
-              title="You have not made a game yet"
-              action={
-                <ButtonLink to="/host?make=1" variant="primary">
-                  Make a game
-                </ButtonLink>
-              }
-            >
-              Set up any mode with your own questions and rules, then press Save as a game.
-            </EmptyState>
-          ) : (
-            <EmptyState title="No community games yet">Trusted players and teachers can list their games here.</EmptyState>
-          )
-        ) : (
-          <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {games.map((g) => (
-              <GameCard key={g.id} g={g} />
-            ))}
-          </ul>
-        )}
-      </div>
+        >
+          {/* The list is the tab's panel, so each tab points at what it shows. */}
+          <TabPanel value={tab}>{list}</TabPanel>
+        </Tabs>
+      ) : (
+        list
+      )}
     </>
   );
 }

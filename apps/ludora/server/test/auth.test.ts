@@ -85,6 +85,19 @@ describe('registration and sessions', () => {
     expect((await new Client(t.app).post('/api/auth/login', { username, password: 'brand new password' })).status).toBe(200);
     expect((await new Client(t.app).post('/api/auth/recover', { username, recoveryCode, newPassword: 'another password' })).status).toBe(401);
   });
+
+  it('says in plain words which sign-in and recovery fields are missing', async () => {
+    const c = new Client(t.app);
+    const recover = await c.post('/api/auth/recover', { username: '', recoveryCode: '', newPassword: '' });
+    expect(recover.status).toBe(400);
+    expect(recover.body.error.fields.username).toBe('Enter your username.');
+    expect(recover.body.error.fields.recoveryCode).toMatch(/^Enter the recovery code you saved/);
+    const login = await c.post('/api/auth/login', { username: ' ', password: '' });
+    expect(login.status).toBe(400);
+    expect(login.body.error.fields).toMatchObject({ username: 'Enter your username.', password: 'Enter your password.' });
+    // None of the validator's own wording reaches a person.
+    expect(JSON.stringify([recover.body, login.body])).not.toMatch(/expected string/);
+  });
 });
 
 describe('guests', () => {

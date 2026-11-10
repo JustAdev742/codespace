@@ -2,7 +2,7 @@ import { useMemo, useState, type CSSProperties } from 'react';
 import { useSearchParams } from 'react-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { Check, Clock, HelpCircle, Info, ShieldCheck } from 'lucide-react';
+import { Check, Clock, HelpCircle, Info, ShieldCheck, ShoppingBag } from 'lucide-react';
 import { ITEM_TYPE_INFO, RARITY_INFO, SHOP_SECTION_INFO, type GlimArt, type ItemArt, type ItemType, type LanternArt, type Rarity, type ShopSection } from '@ludora/shared';
 import { api, ApiError, newRequestKey } from '../../lib/api.ts';
 import { useMe } from '../../lib/session.ts';
@@ -361,8 +361,19 @@ export default function Shop() {
     return (
       <>
         <PageHeader title="Shop" />
-        <EmptyState title="Sign in to shop" action={<ButtonLink to="/signin?next=/shop" variant="primary">Sign in</ButtonLink>}>
-          Everything in the shop is bought with Sparks and Moonstones you earn by playing.
+        <EmptyState
+          icon={<ShoppingBag />}
+          title="Sign in to shop"
+          action={
+            <>
+              <ButtonLink to="/signin?next=/shop" variant="primary">
+                Sign in
+              </ButtonLink>
+              <ButtonLink to="/signup?next=/shop">Create a free account</ButtonLink>
+            </>
+          }
+        >
+          Everything in the shop is bought with Sparks and Moonstones you earn by playing. Nothing costs real money.
         </EmptyState>
       </>
     );
@@ -450,7 +461,7 @@ export default function Shop() {
                     {list.map((l, i) => {
                       const featured = s === 'featured' && i === 0 && l.kind === 'pack';
                       return (
-                        <div key={l.id} className={featured ? 'min-[480px]:col-span-2' : 'flex flex-col [&>*]:flex-1'}>
+                        <div key={l.id} className={`flex flex-col [&>*]:flex-1 ${featured ? 'min-[480px]:col-span-2' : ''}`}>
                           <ListingCard l={l} onBuy={(x) => setConfirm({ listing: x, key: newRequestKey('buy') })} onOdds={setOddsFor} featured={featured} />
                         </div>
                       );

@@ -675,7 +675,8 @@ export function Editor({ userId, setId, initial, baseUpdatedAt, canPublish, save
             </>
           ) : null}
         </p>
-        <Button variant="primary" loading={saving} icon={<Save className="size-4" />} onClick={() => void save()} aria-keyshortcuts="Control+S Meta+S">
+        {/* Gold while there is something to save; quiet once everything is saved, so the bar does not ask for a click it does not need. */}
+        <Button variant={setId && !dirty && !saving ? 'secondary' : 'primary'} loading={saving} icon={<Save className="size-4" />} onClick={() => void save()} aria-keyshortcuts="Control+S Meta+S">
           {saving ? (
             'Saving'
           ) : (

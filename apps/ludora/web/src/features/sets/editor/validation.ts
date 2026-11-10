@@ -270,6 +270,24 @@ export function issueFromServerMessage(path: PropertyKey[], message: string): Is
   const type = /^Invalid input: expected (\w+)/.exec(message);
   if (type) return { code: 'invalid_type', path, message, expected: type[1] };
   if (/^Invalid (option|discriminator)/.test(message)) return { code: 'invalid_value', path, message };
+  // The same limits as the server now words them (server/src/lib/validate.ts, plainMessage).
+  const num = (s: string) => Number(s.replace(/,/g, ''));
+  if (message === 'This cannot be empty.') return { code: 'too_small', path, message, origin: 'string', minimum: 1 };
+  const minChars = /^Use at least ([\d,]+) characters\.$/.exec(message);
+  if (minChars) return { code: 'too_small', path, message, origin: 'string', minimum: num(minChars[1]!) };
+  const maxChars = /^Use at most ([\d,]+) characters\.$/.exec(message);
+  if (maxChars) return { code: 'too_big', path, message, origin: 'string', maximum: num(maxChars[1]!) };
+  if (message === 'Add at least one.') return { code: 'too_small', path, message, origin: 'array', minimum: 1 };
+  const minItems = /^Add at least ([\d,]+)\.$/.exec(message);
+  if (minItems) return { code: 'too_small', path, message, origin: 'array', minimum: num(minItems[1]!) };
+  const maxItems = /^At most ([\d,]+) are allowed\.$/.exec(message);
+  if (maxItems) return { code: 'too_big', path, message, origin: 'array', maximum: num(maxItems[1]!) };
+  const minNum = /^Use (-?[\d,.]+) or more\.$/.exec(message);
+  if (minNum) return { code: 'too_small', path, message, origin: 'number', minimum: num(minNum[1]!) };
+  const maxNum = /^Use (-?[\d,.]+) or less\.$/.exec(message);
+  if (maxNum) return { code: 'too_big', path, message, origin: 'number', maximum: num(maxNum[1]!) };
+  if (message === 'This is needed.' || message === 'This is not the right kind of value.') return { code: 'invalid_type', path, message };
+  if (message === 'Choose one of the options offered.') return { code: 'invalid_value', path, message };
   return { code: 'custom', path, message };
 }
 

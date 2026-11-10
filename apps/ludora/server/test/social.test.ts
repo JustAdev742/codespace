@@ -203,6 +203,16 @@ describe('classes and assignments', () => {
     expect(mine).toMatchObject({ members: 1, assignments: 1 });
   });
 
+  it('refuses an assignment no student could start, because the set has too few questions for the mode', async () => {
+    const tiny = await teacher.client.post('/api/sets', { title: 'One question', subject: 'science', visibility: 'private', questions: [{ id: 'q1', type: 'truefalse', prompt: 'The Sun is a star.', correct: true }] });
+    expect(tiny.status, JSON.stringify(tiny.body)).toBe(200);
+    const a = await teacher.client.post(`/api/classes/${classId}/assignments`, { setId: tiny.body.set.id, modeId: 'classic', title: 'Too short' });
+    expect(a.status).toBe(409);
+    expect(a.body.error.message).toMatch(/^Classic needs at least \d+ questions it can show\. This set has 1\..*Choose another set or game mode\.$/);
+    const mine = (await teacher.client.get('/api/classes')).body.teaching.find((c: { id: string }) => c.id === classId);
+    expect(mine.assignments).toBe(1);
+  });
+
   it('reports to the teacher only, judging each question on the first try', async () => {
     const list = await teacher.client.get(`/api/classes/${classId}`);
     const aid = list.body.assignments[0].id;

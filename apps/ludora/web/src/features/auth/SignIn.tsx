@@ -1,24 +1,31 @@
 import { useState, type FormEvent } from 'react';
-import { Link, useNavigate, useSearchParams } from 'react-router';
+import { Link, Navigate, useNavigate, useSearchParams } from 'react-router';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { api, ApiError } from '../../lib/api.ts';
+import { useMe } from '../../lib/session.ts';
+import { safeNext } from './next.ts';
 import { Button } from '../../ui/Button.tsx';
 import { Field, Input } from '../../ui/primitives.tsx';
 import { AuthLayout } from './AuthLayout.tsx';
 
 export default function SignIn() {
   const navigate = useNavigate();
+  const me = useMe();
   const [params] = useSearchParams();
   const qc = useQueryClient();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState<'signin' | 'guest' | null>(null);
-  const next = params.get('next')?.startsWith('/') ? params.get('next')! : '/';
+  const next = safeNext(params.get('next'));
 
   const submit = async (e: FormEvent) => {
     e.preventDefault();
+    if (!username.trim() || !password) {
+      setError(!username.trim() ? 'Enter your username.' : 'Enter your password.');
+      return;
+    }
     setBusy('signin');
     setError(null);
     try {
@@ -46,6 +53,9 @@ export default function SignIn() {
     }
   };
 
+  // Already signed in to an account: nothing to do here. A guest may still sign in to an account.
+  if (me.data?.user && !me.data.user.isGuest && !busy) return <Navigate to={next} replace />;
+
   return (
     <AuthLayout
       title="Welcome back"
@@ -53,7 +63,7 @@ export default function SignIn() {
       footer={
         <>
           New here?{' '}
-          <Link to="/signup" className="font-semibold">
+          <Link to={next === '/' ? '/signup' : `/signup?next=${encodeURIComponent(next)}`} className="font-semibold">
             Create a free account
           </Link>
         </>
@@ -67,7 +77,7 @@ export default function SignIn() {
             {error}
           </p>
         ) : null}
-        <Button type="submit" variant="primary" size="lg" loading={busy === 'signin'} disabled={!username || !password}>
+        <Button type="submit" variant="primary" size="lg" loading={busy === 'signin'}>
           Sign in
         </Button>
         <Link to="/recover" className="text-center text-sm font-semibold">

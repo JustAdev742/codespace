@@ -417,7 +417,8 @@ function AssignmentForm({ classId, editing, onDone }: { classId: string; editing
 
       {formError ? <ErrorNotice title="Not saved" message={formError} /> : null}
 
-      <div className="flex flex-wrap justify-end gap-2 border-t border-line pt-4">
+      {/* The form is long (sets, modes, details): its buttons stay in view at the foot of the dialog, as in every other dialog. */}
+      <div className="sticky -bottom-5 z-10 -mx-5 -mb-5 flex flex-wrap justify-end gap-2 border-t border-line bg-raised px-5 py-4 sm:-bottom-6 sm:-mx-6 sm:-mb-6 sm:px-6">
         <Button onClick={onDone} disabled={pending}>
           Cancel
         </Button>

@@ -50,13 +50,26 @@ export function SectionTitle({ children, action }: { children: ReactNode; action
   );
 }
 
-export function EmptyState({ icon, title, children, action }: { icon?: ReactNode; title: string; children?: ReactNode; action?: ReactNode }) {
+/**
+ * What an empty list is for and the next step. A flat panel with the icon on a
+ * tile (or `art`, such as a Glim, where a collectible belongs), a heading, a
+ * sentence and the action. Never a dashed outline: that reads as a drop zone.
+ */
+export function EmptyState({ icon, art, title, children, action }: { icon?: ReactNode; art?: ReactNode; title: string; children?: ReactNode; action?: ReactNode }) {
   return (
-    <div className="flex flex-col items-center gap-3 rounded-[var(--radius-m)] border border-dashed border-line-strong px-6 py-10 text-center">
-      {icon ? <div className="text-text-3">{icon}</div> : null}
-      <h3 className="font-display text-xl leading-tight font-bold text-text">{title}</h3>
-      {children ? <p className="max-w-[46ch] text-sm text-text-2">{children}</p> : null}
-      {action}
+    <div className="flex flex-col items-center gap-3 rounded-[var(--radius-l)] border border-line bg-raised px-6 py-10 text-center sm:py-12">
+      {art ? (
+        <div className="mb-1" aria-hidden>
+          {art}
+        </div>
+      ) : icon ? (
+        <div className="mb-1 grid size-16 place-items-center rounded-[var(--radius-l)] bg-surface-3 text-lantern [&_svg]:size-8" aria-hidden>
+          {icon}
+        </div>
+      ) : null}
+      <h3 className="font-display text-2xl leading-tight font-bold text-balance text-text">{title}</h3>
+      {children ? <p className="max-w-[48ch] text-text-2">{children}</p> : null}
+      {action ? <div className="mt-2 flex flex-wrap justify-center gap-2">{action}</div> : null}
     </div>
   );
 }
@@ -173,6 +186,15 @@ export function Field({ label, hint, error, children, id }: { label: string; hin
       ) : null}
     </div>
   );
+}
+
+/**
+ * After a form comes back with errors, put focus on the first field marked
+ * invalid, so keyboard and screen reader users land on what needs fixing
+ * (its error is read out with it). Waits a frame for the errors to render.
+ */
+export function focusFirstInvalid(root: HTMLElement | null) {
+  requestAnimationFrame(() => root?.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus());
 }
 
 /* A dark well on dark surfaces and plain white on light ones (`.input-well` in app.css), a strong edge, and a ring in the focus colour. */

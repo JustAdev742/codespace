@@ -1,7 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import { and, asc, count, desc, eq, inArray, isNull, sql } from 'drizzle-orm';
 import { z } from 'zod';
-import { getMode, getVariant } from '@ludora/engine';
+import { getMode, getVariant, prepareQuestions } from '@ludora/engine';
 import { soloBlocker } from '@ludora/engine/catalog';
 import { classEventSchema, hasPermission, levelFromXp, questionSchema, roomOptionsSchema, schoolNameSchema, type Question } from '@ludora/shared';
 import type { AppDeps } from '../../app.ts';
@@ -295,6 +295,13 @@ export async function classRoutes(app: FastifyInstance, deps: AppDeps) {
     if (set.hiddenAt) throw conflict('That set has been hidden by moderators.');
     const mode = assertAssignable(body.modeId, body.variantId);
     await isModePlayableBy(deps, auth, mode.meta.id, body.variantId);
+    // Refuse now an assignment no student could ever start: too few questions this mode can show.
+    const playable = ((set.questions as unknown[]) ?? []).flatMap((raw) => {
+      const r = questionSchema.safeParse(raw);
+      return r.success ? [r.data] : [];
+    });
+    const { problem } = prepareQuestions(mode, playable, 0);
+    if (problem) throw conflict(`${problem} Choose another set or game mode.`);
     const [n] = await db.select({ n: count() }).from(assignments).where(eq(assignments.classId, id));
     if ((n?.n ?? 0) >= MAX_ASSIGNMENTS) throw conflict('This class has too many assignments. Delete some old ones first.');
     const [a] = await db

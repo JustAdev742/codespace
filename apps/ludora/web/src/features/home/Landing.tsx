@@ -1,14 +1,13 @@
 import { Link } from 'react-router';
-import { ArrowUp, Check, PencilLine, Presentation, ShieldCheck, Timer } from 'lucide-react';
-import type { GlimArt, Rarity } from '@ludora/shared';
+import { ArrowUp, BarChart3, BookOpen, Check, ClipboardList, PencilLine, Presentation, ShieldCheck, Smartphone, Timer } from 'lucide-react';
+import { MODE_CATEGORIES, MODE_CATEGORY_INFO, type GlimArt, type Rarity } from '@ludora/shared';
 import { useModes } from '../../lib/queries.ts';
 import { CodeEntry } from '../play/CodeEntry.tsx';
 import { Glim } from '../../art/glim/Glim.tsx';
 import { AnswerShape, ANSWER_LETTERS } from '../../art/icons.tsx';
 import { Stage } from '../../ui/Stage.tsx';
 import { ButtonLink } from '../../ui/Button.tsx';
-import { Skeleton } from '../../ui/primitives.tsx';
-import { ModeCard } from '../modes/ModeCard.tsx';
+import { ModeCard, ModeCardSkeleton } from '../modes/ModeCard.tsx';
 import { GLIMS } from './glims.ts';
 import { BLEED_ROUNDING, Bleed, RarityTag } from './kit.tsx';
 import { SeasonDecor, SeasonLine } from '../season/SeasonBanner.tsx';
@@ -27,6 +26,13 @@ const TEACHERS = [
   { icon: Presentation, title: 'Run it from the front', text: 'Put the game on the projector, students join with a 6-digit code, and afterwards you see which questions tripped people up.' },
   { icon: ShieldCheck, title: 'Safe by design', text: 'Generated nicknames, no free-text chat, and privacy settings that start strict for younger players.' },
   { icon: PencilLine, title: 'Your questions', text: 'Write sets with 8 question types, import them from a spreadsheet, or start from the free library.' },
+];
+
+/** How a lesson runs, in the order a teacher does it. Every step is something Ludora does today (docs/STATUS.md). */
+const STEPS = [
+  { icon: BookOpen, title: 'Pick questions and a game', text: 'Start from the free library, write your own set, or import one from a spreadsheet. Then choose any mode: every mode plays any set.' },
+  { icon: Smartphone, title: 'Students join with a code', text: 'Put the 6-digit code on the board. Students type it on a phone, tablet or Chromebook. No accounts and no email addresses needed.' },
+  { icon: BarChart3, title: 'Play live, then see the report', text: 'You run the game from the front. Afterwards the report shows every score and the questions that tripped the class up.' },
 ];
 
 /* ------------------------------ the game preview ------------------------------ */
@@ -118,7 +124,9 @@ function GamePreview({ className = '' }: { className?: string }) {
 
 export default function Landing() {
   const modes = useModes();
-  const featured = (modes.data?.modes ?? []).filter((m) => m.meta.status === 'playable').slice(0, 4);
+  const playable = (modes.data?.modes ?? []).filter((m) => m.meta.status === 'playable');
+  // One of each kind first, so the four cards show the range rather than four quizzes.
+  const featured = [...MODE_CATEGORIES.map((c) => playable.find((m) => m.meta.category === c)), ...playable].filter((m, i, all): m is NonNullable<typeof m> => Boolean(m) && all.indexOf(m) === i).slice(0, 8);
   return (
     <div className="flex flex-col gap-16 pb-12 sm:gap-20">
       <Bleed>
@@ -154,20 +162,71 @@ export default function Landing() {
         </section>
       </Bleed>
 
+      {/* How a lesson runs: the three things a teacher does, with the parts of the game they will see. */}
+      <section aria-labelledby="lesson-title">
+        <div className="mb-6 max-w-[62ch]">
+          <h2 id="lesson-title" className="font-display text-[2.1rem] leading-none font-bold sm:text-[2.6rem]">
+            A lesson in three steps
+          </h2>
+          <p className="mt-3 text-lg text-text-2">From opening Ludora to the class playing takes about two minutes.</p>
+        </div>
+        <ol className="grid grid-cols-1 gap-4 md:grid-cols-3">
+          {STEPS.map(({ icon: Icon, title, text }, i) => (
+            <li key={title} className="panel flex flex-col gap-3 p-5 sm:p-6">
+              <div className="flex items-center justify-between gap-3">
+                <span className="plate plate-gold text-2xl" aria-hidden>
+                  <span className="tabular">{i + 1}</span>
+                </span>
+                <Icon className="size-7 text-text-3" aria-hidden />
+              </div>
+              <h3 className="font-display text-2xl leading-tight font-bold">
+                <span className="sr-only">Step {i + 1}: </span>
+                {title}
+              </h3>
+              <p className="text-text-2">{text}</p>
+            </li>
+          ))}
+        </ol>
+        <p className="mt-4 flex items-start gap-2 text-text-2">
+          <ClipboardList className="mt-0.5 size-5 shrink-0 text-text-3" aria-hidden />
+          <span>
+            Or set a game as homework: make a class, and students play the assignment on their own, as often as they like. You see who has played and how they did.
+          </span>
+        </p>
+      </section>
+
       <section aria-labelledby="modes-title">
         <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
           <div>
             <h2 id="modes-title" className="font-display text-[2.1rem] leading-none font-bold sm:text-[2.6rem]">
               One question set, many games
             </h2>
-            <p className="mt-3 max-w-[60ch] text-lg text-text-2">Write your questions once, then play them as a classic quiz, a comet race, a co-op fight against a giant and more. Every mode works on phones, tablets and old school laptops.</p>
+            <p className="mt-3 max-w-[60ch] text-lg text-text-2">
+              Write your questions once, then play them as a classic quiz, a comet race, a co-op fight against a giant and more{playable.length ? `: ${playable.length} modes in all` : ''}. Every mode works on phones, tablets and old school laptops.
+            </p>
           </div>
           <ButtonLink to="/modes" variant="secondary">
             See every game mode
           </ButtonLink>
         </div>
+        {/* Every kind of game, each a way into the catalogue already filtered to it. */}
+        {playable.length ? (
+          <ul className="mb-5 flex flex-wrap gap-2" aria-label="Kinds of game">
+            {MODE_CATEGORIES.filter((c) => playable.some((m) => m.meta.category === c)).map((c) => (
+              <li key={c}>
+                <Link
+                  to={`/modes?kind=${c}`}
+                  className="inline-flex min-h-11 items-center gap-2 rounded-full border border-line bg-raised px-4 text-sm font-semibold text-text no-underline transition-colors hover:border-line-strong hover:bg-surface-2 sm:min-h-9"
+                  title={MODE_CATEGORY_INFO[c].description}
+                >
+                  {MODE_CATEGORY_INFO[c].label} <span className="text-text-3 tabular">{playable.filter((m) => m.meta.category === c).length}</span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        ) : null}
         <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
-          {modes.isLoading ? [0, 1, 2, 3].map((i) => <Skeleton key={i} className="h-72 rounded-[var(--radius-l)]" />) : featured.map((m) => <ModeCard key={m.meta.id} mode={m} />)}
+          {modes.isLoading ? [0, 1, 2, 3].map((i) => <ModeCardSkeleton key={i} />) : featured.map((m) => <ModeCard key={m.meta.id} mode={m} />)}
         </div>
       </section>
 
@@ -229,6 +288,26 @@ export default function Landing() {
         <p className="mt-6 border-t border-line pt-4 text-sm text-text-2">
           Looking for questions? <Link to="/library" className="font-semibold">Browse the question library</Link>.
         </p>
+      </section>
+
+      {/* The last word: the two ways in, for the teacher and for the student. */}
+      <section aria-labelledby="start-title">
+        <Stage className="flex flex-col items-start gap-5 rounded-[var(--radius-l)] px-5 py-8 sm:px-10 sm:py-10 md:flex-row md:items-center md:justify-between">
+          <div>
+            <h2 id="start-title" className="font-display text-[2.1rem] leading-none font-bold sm:text-[2.6rem]">
+              Ready for your next lesson?
+            </h2>
+            <p className="mt-3 max-w-[52ch] text-lg text-text-2">Host a game for free, or join one with the code on the board.</p>
+          </div>
+          <div className="flex flex-wrap gap-3">
+            <ButtonLink to="/host" variant="primary" size="lg" icon={<Presentation className="size-5" aria-hidden />}>
+              Host a game
+            </ButtonLink>
+            <ButtonLink to="/play" variant="secondary" size="lg">
+              Join a game
+            </ButtonLink>
+          </div>
+        </Stage>
       </section>
     </div>
   );

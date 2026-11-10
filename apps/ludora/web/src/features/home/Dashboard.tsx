@@ -16,6 +16,7 @@ import { Amount, Badge, ErrorNotice, Panel, Skeleton } from '../../ui/primitives
 import { Button, ButtonLink } from '../../ui/Button.tsx';
 import { ModeCard } from '../modes/ModeCard.tsx';
 import { OpenGames } from '../host/OpenGames.tsx';
+import { NextUp } from './NextUp.tsx';
 import { BLEED_ROUNDING, Bleed, Meter } from './kit.tsx';
 import { SeasonDecor, SeasonLine } from '../season/SeasonBanner.tsx';
 
@@ -183,6 +184,9 @@ export default function Dashboard() {
       {/* Only there when this player is hosting games: a way back into them, or to close them. */}
       <OpenGames />
 
+      {/* A teacher's classes and last game, or a student's assignments: the first thing to do today. */}
+      <NextUp />
+
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)]">
         <Panel className="p-5 sm:p-6" aria-labelledby="quests-title">
           <div className="mb-2 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
@@ -192,11 +196,16 @@ export default function Dashboard() {
             {o ? <span className="text-sm text-text-2">New ones in {untilText(o.quests.resets.daily)}</span> : null}
           </div>
           {!o ? (
-            <div className="flex flex-col gap-3">
-              <Skeleton className="h-16" />
-              <Skeleton className="h-16" />
-              <Skeleton className="h-16" />
-            </div>
+            // While it loads, rows shaped like quests; if it failed, the notice above says so, so nothing pulses for ever.
+            overview.isError ? (
+              <p className="py-3 text-sm text-text-2">Your quests will show here once your overview loads.</p>
+            ) : (
+              <div className="flex flex-col gap-3">
+                <Skeleton className="h-16" />
+                <Skeleton className="h-16" />
+                <Skeleton className="h-16" />
+              </div>
+            )
           ) : (
             <ul className="-mx-3 flex flex-col">
               {today.map((q) => (
@@ -249,6 +258,8 @@ export default function Dashboard() {
                   </ButtonLink>
                 </div>
               </>
+            ) : overview.isError ? (
+              <p className="mt-2 text-sm text-text-2">Your balance will show here once your overview loads.</p>
             ) : (
               <Skeleton className="mt-3 h-40" />
             )}

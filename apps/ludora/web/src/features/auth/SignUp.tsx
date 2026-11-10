@@ -1,5 +1,5 @@
-import { useState, type FormEvent } from 'react';
-import { Link, useNavigate } from 'react-router';
+import { useRef, useState, type FormEvent } from 'react';
+import { Link, Navigate, useNavigate, useSearchParams } from 'react-router';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { Check, Gamepad2, GraduationCap, Presentation } from 'lucide-react';
@@ -7,7 +7,8 @@ import { PASSWORD_RULES, USERNAME_RULES } from '@ludora/shared';
 import { api, ApiError } from '../../lib/api.ts';
 import { useMe } from '../../lib/session.ts';
 import { Button } from '../../ui/Button.tsx';
-import { Field, Input, Select } from '../../ui/primitives.tsx';
+import { Field, Input, Select, focusFirstInvalid } from '../../ui/primitives.tsx';
+import { safeNext } from './next.ts';
 import { AuthLayout } from './AuthLayout.tsx';
 import { RecoveryCodeDialog } from './RecoveryCodeDialog.tsx';
 
@@ -25,6 +26,9 @@ export default function SignUp() {
   const navigate = useNavigate();
   const qc = useQueryClient();
   const isGuest = Boolean(me.data?.user?.isGuest);
+  const [params] = useSearchParams();
+  const next = safeNext(params.get('next'));
+  const formRef = useRef<HTMLFormElement>(null);
   const [form, setForm] = useState({ username: '', displayName: '', password: '', accountType: 'student' as (typeof TYPES)[number]['value'], birthYear: '' });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [error, setError] = useState<string | null>(null);
@@ -34,9 +38,19 @@ export default function SignUp() {
 
   const submit = async (e: FormEvent) => {
     e.preventDefault();
+    if (busy) return;
+    setError(null);
+    // The two fields every account needs, checked here so the message sits under the field.
+    const missing: Record<string, string> = {};
+    if (!form.username.trim()) missing.username = 'Choose a username.';
+    if (!form.password) missing.password = 'Choose a password.';
+    if (Object.keys(missing).length) {
+      setErrors(missing);
+      focusFirstInvalid(formRef.current);
+      return;
+    }
     setBusy(true);
     setErrors({});
-    setError(null);
     const body = {
       username: form.username,
       password: form.password,
@@ -50,12 +64,18 @@ export default function SignUp() {
     } catch (err) {
       if (err instanceof ApiError) {
         setErrors(err.fields);
-        if (!Object.keys(err.fields).length) setError(err.message);
-      } else setError('Could not create the account.');
+        // A problem with no field of its own on this form is said above the button.
+        const shown = ['username', 'displayName', 'password', 'birthYear'];
+        if (!Object.keys(err.fields).some((k) => shown.includes(k))) setError(err.message);
+        focusFirstInvalid(formRef.current);
+      } else setError('Could not create the account. Check your connection and try again.');
     } finally {
       setBusy(false);
     }
   };
+
+  // Already signed in to a full account: making another one here would sign this one out.
+  if (me.data?.user && !isGuest && !code) return <Navigate to={next} replace />;
 
   return (
     <AuthLayout
@@ -64,13 +84,13 @@ export default function SignUp() {
       footer={
         <>
           Already have an account?{' '}
-          <Link to="/signin" className="font-semibold">
+          <Link to={next === '/' ? '/signin' : `/signin?next=${encodeURIComponent(next)}`} className="font-semibold">
             Sign in
           </Link>
         </>
       }
     >
-      <form onSubmit={submit} className="flex flex-col gap-4" noValidate>
+      <form ref={formRef} onSubmit={submit} className="flex flex-col gap-4" noValidate>
         <fieldset aria-describedby="account-type-hint">
           <legend className="mb-2 text-sm font-semibold">I am</legend>
           <div className="grid grid-cols-3 gap-2">
@@ -127,7 +147,7 @@ export default function SignUp() {
             {error}
           </p>
         ) : null}
-        <Button type="submit" variant="primary" size="lg" loading={busy} disabled={!form.username || !form.password}>
+        <Button type="submit" variant="primary" size="lg" loading={busy}>
           {isGuest ? 'Save my progress' : 'Create account'}
         </Button>
         <p className="text-sm text-text-3">
@@ -148,7 +168,7 @@ export default function SignUp() {
           setCode(null);
           await qc.invalidateQueries();
           toast.success(isGuest ? 'Your progress is saved to your new account.' : 'Account created. Welcome to Ludora.');
-          navigate('/');
+          navigate(next);
         }}
       />
     </AuthLayout>

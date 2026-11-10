@@ -149,8 +149,12 @@ function AccountMenu() {
   const me = useMe();
   const overview = useOverview();
   const navigate = useNavigate();
+  const location = useLocation();
   const qc = useQueryClient();
   const user = me.data?.user;
+  // Signing in or up from the header comes back to this page, not to home.
+  const here = `${location.pathname}${location.search}`;
+  const back = here === '/' ? '' : `?next=${encodeURIComponent(here)}`;
   // Until the account check answers, the header stays neutral: a signed-in player never sees the signed-out buttons.
   if (!me.data) {
     if (me.isError) {
@@ -168,10 +172,10 @@ function AccountMenu() {
   if (!user) {
     return (
       <div className="flex items-center gap-2">
-        <Link to="/signin" className={buttonClass('ghost', 'sm')}>
+        <Link to={`/signin${back}`} className={buttonClass('ghost', 'sm')}>
           Sign in
         </Link>
-        <Link to="/signup" className={buttonClass('primary', 'sm')}>
+        <Link to={`/signup${back}`} className={buttonClass('primary', 'sm')}>
           Create account
         </Link>
       </div>

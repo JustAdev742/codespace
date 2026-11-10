@@ -430,6 +430,14 @@ test('model: server field errors map to questions', () => {
   assert.deepEqual(p.general, ['Odd.']);
   assert.deepEqual(p.questions, { q1: { correct: 'Mark the correct choice.' }, q2: { choices: 'Use no more than 8 choices.' } });
 });
+test('model: server field errors in plain words map to questions the same way', () => {
+  const qs = SAMPLE.slice(0, 2).map(fromQuestion);
+  const p = problemsFromServer({ title: 'This cannot be empty.', 'questions.1.choices': 'At most 8 are allowed.' }, qs);
+  assert.deepEqual(p.details, { title: 'Give the set a title.' });
+  assert.deepEqual(p.questions, { q2: { choices: 'Use no more than 8 choices.' } });
+  const long = problemsFromServer({ title: 'Use at most 80 characters.' }, qs);
+  assert.equal(long.details.title, problemsFromServer({ title: 'Too big: expected string to have <=80 characters' }, qs).details.title);
+});
 test('model: duplicate question ids reported', () => {
   const a = fromQuestion(SAMPLE[2]!);
   const v = validateSet(details, [a, { ...a }]);

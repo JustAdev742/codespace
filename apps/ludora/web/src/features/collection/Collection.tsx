@@ -9,6 +9,7 @@ import { useMe } from '../../lib/session.ts';
 import { useOverview } from '../../lib/queries.ts';
 import { formatNumber } from '../../lib/format.ts';
 import { Glim } from '../../art/glim/Glim.tsx';
+import { GLIMS } from '../home/glims.ts';
 import { Lantern } from '../../art/Lantern.tsx';
 import { CurrencyIcon } from '../../art/icons.tsx';
 import { AccountError, Amount, Dialog, EmptyState, ErrorNotice, Input, PageHeader, Select, Skeleton } from '../../ui/primitives.tsx';
@@ -207,8 +208,25 @@ export default function Collection() {
     return (
       <>
         <PageHeader title="Collection" />
-        <EmptyState title="Sign in to collect Glims" action={<ButtonLink to="/signin?next=/collection" variant="primary">Sign in</ButtonLink>}>
-          Glims live in Lanterns. Play games to earn Sparks, then open Lanterns to fill your collection.
+        <EmptyState
+          art={
+            <span className="flex items-end justify-center -space-x-3">
+              <Glim art={GLIMS.pebblet} rarity="common" size={84} />
+              <Glim art={GLIMS.briarcat} rarity="rare" size={104} className="relative z-10" />
+              <Glim art={GLIMS.novabelle} rarity="mythic" size={84} />
+            </span>
+          }
+          title="Sign in to collect Glims"
+          action={
+            <>
+              <ButtonLink to="/signin?next=/collection" variant="primary">
+                Sign in
+              </ButtonLink>
+              <ButtonLink to="/signup?next=/collection">Create a free account</ButtonLink>
+            </>
+          }
+        >
+          Glims live in Lanterns. Play games to earn Sparks, then open Lanterns to fill your collection, from common all the way to mythic.
         </EmptyState>
       </>
     );

@@ -50,3 +50,17 @@ export function ModeCard({ mode, heading: H = 'h3', facts = false, className = '
     </Link>
   );
 }
+
+/** A mode card while the catalogue loads: the same shape, so nothing jumps when the cards arrive. */
+export function ModeCardSkeleton() {
+  return (
+    <div className="flex overflow-hidden rounded-[var(--radius-l)] border border-line bg-raised sm:flex-col" aria-hidden>
+      <div className="skeleton min-h-28 w-28 shrink-0 rounded-none sm:aspect-[16/9] sm:min-h-0 sm:w-auto" />
+      <div className="flex flex-1 flex-col gap-2 p-3.5 sm:p-4">
+        <div className="skeleton h-6 w-2/3" />
+        <div className="skeleton h-4 w-full" />
+        <div className="skeleton h-4 w-4/5" />
+      </div>
+    </div>
+  );
+}

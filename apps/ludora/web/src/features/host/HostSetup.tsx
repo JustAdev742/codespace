@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type RefObject } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate, useSearchParams } from 'react-router';
-import { Search, Users } from 'lucide-react';
+import { Presentation, Search, Users } from 'lucide-react';
 import { toast } from 'sonner';
 import type { CommonField, SettingField } from '@ludora/shared';
 import { soloBlocker } from '@ludora/engine/catalog';
@@ -551,17 +551,51 @@ export default function HostSetup() {
       </>
     );
   }
-  if (!me.isLoading && !me.data?.user) {
-    return (
-      <>
-        <PageHeader title={solo ? 'Play solo' : 'Host a game'} />
-        <EmptyState title="Sign in to host" action={<ButtonLink to={`/signin?next=${encodeURIComponent(`/host${solo ? '?solo=1' : ''}`)}`} variant="primary">Sign in</ButtonLink>}>
-          Hosting needs an account (a guest account is fine). Players joining your game do not need one.
-        </EmptyState>
-      </>
-    );
-  }
+  if (!me.isLoading && !me.data?.user) return <SignedOutHost solo={solo} />;
   // Hosting and playing solo offer different modes, so switching between them starts afresh.
   const gameId = params.get('game');
   return <Setup key={`${solo ? 'solo' : 'host'}-${gameId ?? ''}`} solo={solo} preset={params.get('set')} gameId={gameId} making={params.get('make') === '1'} />;
+}
+
+/**
+ * Hosting needs an account, but a guest one is enough: a teacher trying Ludora
+ * for the first time can start straight away, and keep the guest's games by
+ * making an account later. Before this page offered only "Sign in".
+ */
+function SignedOutHost({ solo }: { solo: boolean }) {
+  const qc = useQueryClient();
+  const [busy, setBusy] = useState(false);
+  const here = `/host${solo ? '?solo=1' : ''}`;
+  const asGuest = async () => {
+    setBusy(true);
+    try {
+      await api.post('/api/auth/guest', {});
+      await qc.invalidateQueries();
+    } catch (err) {
+      setBusy(false);
+      toast.error(err instanceof ApiError ? err.message : 'Could not start a guest session. Check your connection and try again.');
+    }
+  };
+  return (
+    <>
+      <PageHeader title={solo ? 'Play solo' : 'Host a game'} />
+      <EmptyState
+        icon={<Presentation />}
+        title={solo ? 'Sign in to play solo' : 'Sign in to host'}
+        action={
+          <>
+            <Button variant="primary" loading={busy} onClick={() => void asGuest()}>
+              {solo ? 'Play as a guest' : 'Host as a guest'}
+            </Button>
+            <ButtonLink to={`/signin?next=${encodeURIComponent(here)}`}>Sign in</ButtonLink>
+            <ButtonLink to={`/signup?next=${encodeURIComponent(here)}`} variant="ghost">
+              Create a free account
+            </ButtonLink>
+          </>
+        }
+      >
+        {solo ? 'Solo games need an account so your rewards have somewhere to go. A guest account takes one tap.' : 'Hosting needs an account, and a guest account takes one tap. Players joining your game need no account at all.'}
+      </EmptyState>
+    </>
+  );
 }

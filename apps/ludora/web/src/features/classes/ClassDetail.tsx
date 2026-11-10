@@ -125,59 +125,95 @@ function Roster({ members, onRemove, onHelp }: { members: ClassMember[]; onRemov
           <Input type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Find a student" className="h-10 pl-9" />
         </label>
       ) : null}
-      <TableBox caption="Students in this class" minWidth={720}>
-        <thead className="bg-surface-2">
-          <tr>
-            <Th>Student</Th>
-            <Th align="right">Level</Th>
-            <Th>Joined</Th>
-            <Th>Last seen</Th>
-            <Th align="right">
-              <span className="sr-only">Actions</span>
-            </Th>
-          </tr>
-        </thead>
-        <tbody>
-          {shown.map((m) => (
-            <tr key={m.id} className="border-t border-line">
-              <td className="px-3 py-2.5">
+      {/* On a phone a five-column table would hide the actions off to the side, so each student is a card there. */}
+      <ul className="flex flex-col gap-2 sm:hidden" aria-label="Students in this class">
+        {shown.map((m) => (
+          <li key={m.id} className="rounded-[var(--radius-m)] border border-line bg-raised p-3">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
                 <div className="font-semibold break-words text-text">{m.displayName}</div>
-                {m.username ? <div className="text-xs text-text-3">@{m.username}</div> : null}
-              </td>
-              <td className="px-3 py-2.5 text-right text-text tabular">{m.level}</td>
-              <td className="px-3 py-2.5 whitespace-nowrap text-text-2">
-                <time dateTime={m.joinedAt}>{dateText(m.joinedAt)}</time>
-              </td>
-              <td className="px-3 py-2.5 whitespace-nowrap text-text-2">
-                {m.lastSeenAt ? (
-                  <time dateTime={m.lastSeenAt} title={dateTimeText(m.lastSeenAt)}>
-                    {timeAgo(m.lastSeenAt)}
-                  </time>
-                ) : (
-                  <NoValue label="Not seen yet" />
-                )}
-              </td>
-              <td className="px-3 py-2">
-                <div className="flex justify-end gap-1">
-                  <Button size="sm" variant="ghost" icon={<KeyRound className="size-4" aria-hidden />} onClick={() => onHelp(m)}>
-                    Sign-in help<span className="sr-only"> for {m.displayName}</span>
-                  </Button>
-                  <Button size="sm" variant="ghost" icon={<UserMinus className="size-4" />} onClick={() => onRemove(m)} aria-label={`Remove ${m.displayName} from the class`}>
-                    Remove
-                  </Button>
-                </div>
-              </td>
-            </tr>
-          ))}
-          {shown.length === 0 ? (
+                {m.username ? <div className="text-xs break-words text-text-3">@{m.username}</div> : null}
+              </div>
+              <span className="shrink-0 rounded-[var(--radius-s)] bg-surface-3 px-1.5 font-display text-sm leading-6 font-bold text-text-2 tabular">Lv {m.level}</span>
+            </div>
+            <p className="mt-1 text-sm text-text-2">
+              Joined <time dateTime={m.joinedAt}>{dateText(m.joinedAt)}</time>
+              {', '}
+              {m.lastSeenAt ? (
+                <>
+                  seen <time dateTime={m.lastSeenAt}>{timeAgo(m.lastSeenAt)}</time>
+                </>
+              ) : (
+                'not seen yet'
+              )}
+            </p>
+            <div className="mt-2 flex flex-wrap gap-1 border-t border-line pt-2">
+              <Button size="sm" variant="ghost" icon={<KeyRound className="size-4" aria-hidden />} onClick={() => onHelp(m)}>
+                Sign-in help<span className="sr-only"> for {m.displayName}</span>
+              </Button>
+              <Button size="sm" variant="ghost" icon={<UserMinus className="size-4" />} onClick={() => onRemove(m)} aria-label={`Remove ${m.displayName} from the class`}>
+                Remove
+              </Button>
+            </div>
+          </li>
+        ))}
+        {shown.length === 0 ? <li className="px-3 py-6 text-center text-text-3">No students match “{q.trim()}”.</li> : null}
+      </ul>
+      <div className="hidden sm:block">
+        <TableBox caption="Students in this class" minWidth={720}>
+          <thead className="bg-surface-2">
             <tr>
-              <td colSpan={5} className="px-3 py-8 text-center text-text-3">
-                No students match “{q.trim()}”.
-              </td>
+              <Th>Student</Th>
+              <Th align="right">Level</Th>
+              <Th>Joined</Th>
+              <Th>Last seen</Th>
+              <Th align="right">
+                <span className="sr-only">Actions</span>
+              </Th>
             </tr>
-          ) : null}
-        </tbody>
-      </TableBox>
+          </thead>
+          <tbody>
+            {shown.map((m) => (
+              <tr key={m.id} className="border-t border-line">
+                <td className="px-3 py-2.5">
+                  <div className="font-semibold break-words text-text">{m.displayName}</div>
+                  {m.username ? <div className="text-xs text-text-3">@{m.username}</div> : null}
+                </td>
+                <td className="px-3 py-2.5 text-right text-text tabular">{m.level}</td>
+                <td className="px-3 py-2.5 whitespace-nowrap text-text-2">
+                  <time dateTime={m.joinedAt}>{dateText(m.joinedAt)}</time>
+                </td>
+                <td className="px-3 py-2.5 whitespace-nowrap text-text-2">
+                  {m.lastSeenAt ? (
+                    <time dateTime={m.lastSeenAt} title={dateTimeText(m.lastSeenAt)}>
+                      {timeAgo(m.lastSeenAt)}
+                    </time>
+                  ) : (
+                    <NoValue label="Not seen yet" />
+                  )}
+                </td>
+                <td className="px-3 py-2">
+                  <div className="flex justify-end gap-1">
+                    <Button size="sm" variant="ghost" icon={<KeyRound className="size-4" aria-hidden />} onClick={() => onHelp(m)}>
+                      Sign-in help<span className="sr-only"> for {m.displayName}</span>
+                    </Button>
+                    <Button size="sm" variant="ghost" icon={<UserMinus className="size-4" />} onClick={() => onRemove(m)} aria-label={`Remove ${m.displayName} from the class`}>
+                      Remove
+                    </Button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+            {shown.length === 0 ? (
+              <tr>
+                <td colSpan={5} className="px-3 py-8 text-center text-text-3">
+                  No students match “{q.trim()}”.
+                </td>
+              </tr>
+            ) : null}
+          </tbody>
+        </TableBox>
+      </div>
     </div>
   );
 }

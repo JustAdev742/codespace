@@ -33,11 +33,14 @@ const registerSchema = z.object({
   accountType,
   birthYear,
 });
-const loginSchema = z.object({ username: z.string().trim().toLowerCase().min(1).max(40), password: z.string().min(1).max(200) });
+// Plain words for empty or overlong fields, rather than the validator's defaults.
+const signInUsername = z.string().trim().toLowerCase().min(1, 'Enter your username.').max(40, 'Usernames are at most 40 characters.');
+const loginSchema = z.object({ username: signInUsername, password: z.string().min(1, 'Enter your password.').max(200, 'Passwords are at most 200 characters.') });
 const guestSchema = z.object({ displayName: displayNameSchema.optional() });
 const claimSchema = z.object({ username: usernameSchema, password: passwordSchema, accountType, birthYear });
-const recoverSchema = z.object({ username: z.string().trim().toLowerCase().min(1).max(40), recoveryCode: z.string().trim().min(8).max(40), newPassword: passwordSchema });
-const passwordChangeSchema = z.object({ currentPassword: z.string().min(1).max(200), newPassword: passwordSchema });
+const recoveryCodeField = z.string().trim().min(8, 'Enter the recovery code you saved. It looks like ABCD-EFGH-JKLM-NPQR.').max(40, 'Recovery codes look like ABCD-EFGH-JKLM-NPQR.');
+const recoverSchema = z.object({ username: signInUsername, recoveryCode: recoveryCodeField, newPassword: passwordSchema });
+const passwordChangeSchema = z.object({ currentPassword: z.string().min(1, 'Enter your current password.').max(200, 'Passwords are at most 200 characters.'), newPassword: passwordSchema });
 
 /** The bootstrap payload the web app loads on every page: who you are and what you may do. */
 export function meResponse(auth: AuthContext, deps: AppDeps) {

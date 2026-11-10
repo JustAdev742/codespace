@@ -1,10 +1,10 @@
-import { useState, type FormEvent } from 'react';
+import { useRef, useState, type FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router';
 import { useQueryClient } from '@tanstack/react-query';
 import { PASSWORD_RULES } from '@ludora/shared';
 import { api, ApiError } from '../../lib/api.ts';
 import { Button } from '../../ui/Button.tsx';
-import { Field, Input } from '../../ui/primitives.tsx';
+import { Field, Input, focusFirstInvalid } from '../../ui/primitives.tsx';
 import { AuthLayout } from './AuthLayout.tsx';
 import { RecoveryCodeDialog } from './RecoveryCodeDialog.tsx';
 
@@ -16,13 +16,24 @@ export default function Recover() {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [code, setCode] = useState<string | null>(null);
+  const formRef = useRef<HTMLFormElement>(null);
   const set = (k: keyof typeof form) => (e: { target: { value: string } }) => setForm((f) => ({ ...f, [k]: e.target.value }));
 
   const submit = async (e: FormEvent) => {
     e.preventDefault();
+    if (busy) return;
+    setError(null);
+    const missing: Record<string, string> = {};
+    if (!form.username.trim()) missing.username = 'Enter your username.';
+    if (!form.recoveryCode.trim()) missing.recoveryCode = 'Enter the recovery code you saved.';
+    if (!form.newPassword) missing.newPassword = 'Choose a new password.';
+    if (Object.keys(missing).length) {
+      setErrors(missing);
+      focusFirstInvalid(formRef.current);
+      return;
+    }
     setBusy(true);
     setErrors({});
-    setError(null);
     try {
       const res = await api.post<{ recoveryCode: string }>('/api/auth/recover', form);
       setCode(res.recoveryCode);
@@ -30,7 +41,8 @@ export default function Recover() {
       if (err instanceof ApiError) {
         setErrors(err.fields);
         if (!Object.keys(err.fields).length) setError(err.message);
-      } else setError('Could not recover the account.');
+        else focusFirstInvalid(formRef.current);
+      } else setError('Could not recover the account. Check your connection and try again.');
     } finally {
       setBusy(false);
     }
@@ -46,7 +58,7 @@ export default function Recover() {
         </Link>
       }
     >
-      <form onSubmit={submit} className="flex flex-col gap-4" noValidate>
+      <form ref={formRef} onSubmit={submit} className="flex flex-col gap-4" noValidate>
         <Field label="Username" error={errors.username}>
           {(p) => <Input {...p} autoComplete="username" value={form.username} onChange={set('username')} required />}
         </Field>

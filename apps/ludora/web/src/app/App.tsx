@@ -1,5 +1,5 @@
 import type { CSSProperties } from 'react';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { MutationCache, QueryCache, QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { RouterProvider } from 'react-router';
 import { Toaster } from 'sonner';
 import { X } from 'lucide-react';
@@ -8,8 +8,11 @@ import { router } from './routes.tsx';
 import { ApiError } from '../lib/api.ts';
 import { NoticeGate } from '../features/moderation/NoticeGate.tsx';
 import { SoundSettingsSync } from '../lib/sound/react.tsx';
+import { onSessionError } from './sessionExpiry.ts';
 
-const queryClient = new QueryClient({
+const queryClient: QueryClient = new QueryClient({
+  queryCache: new QueryCache({ onError: (err) => onSessionError(queryClient, err) }),
+  mutationCache: new MutationCache({ onError: (err) => onSessionError(queryClient, err) }),
   defaultOptions: {
     queries: {
       retry: (count, err) => !(err instanceof ApiError && err.status >= 400 && err.status < 500) && count < 2,

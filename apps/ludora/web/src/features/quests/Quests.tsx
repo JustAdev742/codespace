@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { Check, Clock } from 'lucide-react';
+import { Check, Clock, Target } from 'lucide-react';
 import { api, ApiError } from '../../lib/api.ts';
 import { formatNumber, untilText } from '../../lib/format.ts';
 import { useMe } from '../../lib/session.ts';
@@ -169,7 +169,18 @@ export default function Quests() {
     return (
       <>
         <PageHeader title="Quests and achievements" />
-        <EmptyState title="Sign in to take on quests" action={<ButtonLink to="/signin?next=/quests" variant="primary">Sign in</ButtonLink>}>
+        <EmptyState
+          icon={<Target />}
+          title="Sign in to take on quests"
+          action={
+            <>
+              <ButtonLink to="/signin?next=/quests" variant="primary">
+                Sign in
+              </ButtonLink>
+              <ButtonLink to="/signup?next=/quests">Create a free account</ButtonLink>
+            </>
+          }
+        >
           Quests give you something new to aim for every day. A guest account works too.
         </EmptyState>
       </>

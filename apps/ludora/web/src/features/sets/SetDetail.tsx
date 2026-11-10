@@ -91,7 +91,7 @@ export default function SetDetail() {
         <SetCover cover={set.cover} subject={set.subject} size={88} />
         <div className="min-w-0 flex-1">
           <h1 className="font-display text-[2.25rem] leading-[1.02] font-bold break-words sm:text-[2.9rem]">{set.title}</h1>
-          {set.description ? <p className="mt-2 max-w-[62ch] text-text-2">{set.description}</p> : null}
+          {set.description ? <p className="mt-2 max-w-[62ch] break-words text-text-2">{set.description}</p> : null}
           <div className="mt-3 flex flex-wrap gap-1.5">
             <Badge>{plural(set.questionCount, 'question')}</Badge>
             <Badge>{SUBJECT_LABELS[set.subject as keyof typeof SUBJECT_LABELS] ?? set.subject}</Badge>

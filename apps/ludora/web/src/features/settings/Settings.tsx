@@ -216,7 +216,7 @@ export default function Settings() {
         <Panel id="account" className="flex scroll-mt-20 flex-col gap-5 p-5">
           <h2 className="font-display text-2xl leading-tight font-bold">Account</h2>
           <form
-            className="flex flex-wrap items-end gap-2"
+            className="flex flex-wrap items-start gap-2"
             onSubmit={(e: FormEvent) => {
               e.preventDefault();
               if (name.trim()) rename.mutate();
@@ -227,7 +227,8 @@ export default function Settings() {
                 {(fp) => <Input {...fp} value={name} onChange={(e) => setName(e.target.value)} maxLength={24} placeholder={user.displayName} />}
               </Field>
             </div>
-            <Button type="submit" loading={rename.isPending} disabled={!name.trim()}>
+            {/* Lined up with the field, not with its hint (the label above the field is 1.625rem). */}
+            <Button type="submit" loading={rename.isPending} disabled={!name.trim()} className="sm:mt-[1.625rem]">
               Change name
             </Button>
           </form>
@@ -252,7 +253,7 @@ export default function Settings() {
                 </Field>
               </div>
               <form
-                className="grid grid-cols-1 gap-3 sm:grid-cols-[1fr_1fr_auto] sm:items-end"
+                className="grid grid-cols-1 gap-3 sm:grid-cols-[1fr_1fr_auto] sm:items-start"
                 onSubmit={(e: FormEvent) => {
                   e.preventDefault();
                   changePw.mutate();
@@ -264,7 +265,7 @@ export default function Settings() {
                 <Field label="New password" hint={PASSWORD_RULES} error={pwErrors.newPassword}>
                   {(fp) => <Input {...fp} type="password" autoComplete="new-password" value={pw.newPassword} onChange={(e) => setPw((s) => ({ ...s, newPassword: e.target.value }))} />}
                 </Field>
-                <Button type="submit" loading={changePw.isPending} disabled={!pw.currentPassword || !pw.newPassword}>
+                <Button type="submit" loading={changePw.isPending} disabled={!pw.currentPassword || !pw.newPassword} className="sm:mt-[1.625rem]">
                   Change password
                 </Button>
               </form>

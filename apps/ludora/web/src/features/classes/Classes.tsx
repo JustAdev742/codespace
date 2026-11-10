@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react';
-import { Link, useNavigate } from 'react-router';
+import { Link, useNavigate, useSearchParams } from 'react-router';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { ChevronRight, Copy, Info, Plus, School } from 'lucide-react';
@@ -98,7 +98,7 @@ function TeachingSection({ classes, canTeach, onNew }: { classes: TeachingClass[
   );
 }
 
-function JoinPanel() {
+export function JoinPanel() {
   const navigate = useNavigate();
   const qc = useQueryClient();
   const [code, setCode] = useState('');
@@ -125,7 +125,7 @@ function JoinPanel() {
     <Panel className="p-5">
       <h2 className="font-display text-2xl font-bold">Join a class</h2>
       <p className="mt-1 mb-4 text-sm text-text-2">Your teacher gives you a code of 6 letters and numbers.</p>
-      <form onSubmit={submit} noValidate>
+      <form onSubmit={submit} noValidate className="max-w-lg">
         <Field label="Class code" error={error ?? undefined}>
           {(p) => (
             <div className="flex gap-2">
@@ -266,7 +266,13 @@ export default function Classes() {
   usePageTitle('Classes');
   const account = useAccountState();
   const list = useClassList(account === 'account');
-  const [creating, setCreating] = useState(false);
+  // /classes?new=1 (from the home page's "Make a class") opens the new class form.
+  const [params, setParams] = useSearchParams();
+  const [creating, setCreatingState] = useState(params.get('new') === '1');
+  const setCreating = (open: boolean) => {
+    setCreatingState(open);
+    if (!open && params.has('new')) setParams({}, { replace: true });
+  };
 
   if (account === 'loading' || (account === 'account' && list.isPending)) {
     return (

@@ -35,7 +35,7 @@ import { useCan, useMe } from '../../lib/session.ts';
 import { Glim } from '../../art/glim/Glim.tsx';
 import { ItemArtView } from '../../art/cosmetics.tsx';
 import { Lantern } from '../../art/Lantern.tsx';
-import { Badge, Dialog, EmptyState, ErrorNotice, Field, Input, PageHeader, Panel, RarityBadge, Select, Skeleton, Spinner, Switch, Tabs, Textarea } from '../../ui/primitives.tsx';
+import { Badge, Dialog, EmptyState, ErrorNotice, Field, Input, PageHeader, Panel, RarityBadge, Select, Skeleton, Spinner, Switch, TabPanel, Tabs, Textarea } from '../../ui/primitives.tsx';
 import { Button } from '../../ui/Button.tsx';
 import { ActionDialog } from '../admin/ui.tsx';
 import { DateTimeField, isoToLocalInput, localInputToIso } from '../admin/Economy.tsx';
@@ -625,8 +625,9 @@ export default function Studio() {
   return (
     <>
       <PageHeader title="Creator Studio" description="Make Glims, items and limited Lanterns for the shop. Everything is built from Ludora’s own shapes and colours, so it fits right in." />
-      <Tabs value={tab} onValueChange={(t) => setTab(t)} items={TABS.map((t) => (t.value === 'drafts' ? { ...t, count: drafts.filter((d) => d.status === 'draft').length } : t))} label="Studio sections" />
-      <div className="mt-5">{body}</div>
+      <Tabs value={tab} onValueChange={(t) => setTab(t)} items={TABS.map((t) => (t.value === 'drafts' ? { ...t, count: drafts.filter((d) => d.status === 'draft').length } : t))} label="Studio sections">
+        <TabPanel value={tab}>{body}</TabPanel>
+      </Tabs>
     </>
   );
 }

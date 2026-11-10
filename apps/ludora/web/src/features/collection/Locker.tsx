@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { Check } from 'lucide-react';
+import { Check, Shirt } from 'lucide-react';
 import { ITEM_TYPE_INFO, type AccessoryArt, type GlimArt, type ItemArt, type ItemType, type Rarity } from '@ludora/shared';
 import { api, ApiError } from '../../lib/api.ts';
 import { useMe } from '../../lib/session.ts';
@@ -79,7 +79,20 @@ export default function Locker() {
     return (
       <>
         <PageHeader title="Locker" />
-        <EmptyState title="Sign in to dress up your buddy" action={<ButtonLink to="/signin?next=/locker" variant="primary">Sign in</ButtonLink>} />
+        <EmptyState
+          icon={<Shirt />}
+          title="Sign in to dress up your buddy"
+          action={
+            <>
+              <ButtonLink to="/signin?next=/locker" variant="primary">
+                Sign in
+              </ButtonLink>
+              <ButtonLink to="/signup?next=/locker">Create a free account</ButtonLink>
+            </>
+          }
+        >
+          Your buddy is the Glim other players see in games and on your profile. Pick one, then give it hats, frames and more from the shop.
+        </EmptyState>
       </>
     );
   }
