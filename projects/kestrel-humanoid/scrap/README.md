@@ -22,14 +22,21 @@ bike-chain reductions at the hips, knees and ankles: 2 per hip pitch, 2 per knee
 
 | | **S1-Fast** | **K1-Fast** | S1-Scrap |
 |---|---|---|---|
-| Walking (sized for) | **0.8 m/s, 1.0 m/s fast** | **0.6 m/s, 0.8 m/s fast** | 0.25 / 0.36 m/s |
+| Walking (sized for) | 0.8 m/s, 1.0 m/s fast | 0.6 m/s, 0.8 m/s fast | 0.25 / 0.36 m/s |
+| **Top speed, simulated** | **1.44 m/s** | **1.31 m/s** | 0.42 m/s |
 | Stairs, objects | 18 cm stairs, 10 kg box | 18 cm stairs, 5 kg box | 15 cm steps, 3 kg |
 | Knee | 335 N·m, 12.9 rad/s | 347 N·m, 12.5 rad/s | 134 N·m, 7.6 rad/s |
 | Mass | about 52 kg | about 62 kg | about 30 kg |
 | Parts | A$2,342 buying / A$1,553 scrounging ([bom](s1fast/generated/bom.md)) | A$2,673 / A$1,782 ([bom](k1fast/generated/bom.md)) | A$917 / A$492 |
 
-1.2–1.4 m/s (Unitree H2's quoted walking pace) does not close: a hub motor's large rotor gives about 12 times less
-torque-squared per unit inertia than a commercial QDD module, and the swing accelerations at that cadence need it.
+**Unitree H2's walking pace, in simulation.** The sizing calculation replays a prescribed walk with torque and
+speed margins. By that measure, hub motors close only at 1.0 and 0.8 m/s, because their large rotors feel like
+0.8–0.9 kg·m² at the knee and hip. The walking policies trained in `train/` face the same motors: reflected
+inertia, current limits, and the 48 V torque-speed line applied every physics step. They walk faster. S1-Fast
+walks **1.44 m/s** on flat ground with its fastest joint at 70 % of no-load speed and its hottest motor at 91 % of
+its continuous rating. K1-Fast walks **1.31 m/s**. That is Unitree H2's quoted ~1.4 m/s walk. It is a
+simulation result: the chains are modelled as rigid, and the motor constants are one published measurement. See
+"Simulated walking" below.
 Guide chapter: "The fast builds" in [tutorial/scrap-build-guide.md](tutorial/scrap-build-guide.md).
 
 On A$500, set `SCRAP = SLOW` in `calc/kestrel/variant_s1scrap.py`: one drill per knee (16 drills), 0.12 m/s, 10 cm
@@ -39,6 +46,27 @@ steps, about A$463 scrounged.
 multiplied by the ratio squared, feels like 2–4 kg·m² of inertia at the joint, about 20 times the leg's own. So
 these robots walk the always-balanced way, not the dynamic way. The same whole-body simulation that sizes K1 and S1
 sizes them, with each actuator option checked against its own reflected inertia.
+
+## Simulated walking
+
+Each build has a walking policy trained in [`train/`](../train/README.md) against its own actuators (2.5 h each on 4
+CPU cores, started from the S1 policy). Speeds come from `play.py --speed-test` on flat ground. A speed counts only
+if no robot falls, every leg joint stays under its motor's no-load speed, and every motor stays under its continuous
+rating. Terrain success rates are from `play.py` on six terrain types, 16 headings per cell.
+
+| | S1-Fast | K1-Fast | S1-Scrap | K1-Scrap |
+|---|---|---|---|---|
+| Top speed within motor limits | **1.44 m/s** | **1.31 m/s** | 0.42 m/s | 0.42 m/s |
+| Flat, slopes to 15°, stairs down to 18 cm | 100 % at 1.0 m/s | 100 % at 1.0 m/s | flat 100 %, slopes 75–100 % at 0.25 m/s | flat 100 %, slopes 75–100 % at 0.25 m/s |
+| Stairs up: 10.2 / 12.8 / 15.4 / 18 cm | 100 / 88 / 69 / 50 % | 100 / 75 / 25 / 25 % | to 5 cm (100 %) | to 7.6 cm (100 %) |
+| Tables | [speed](../train/runs/s1fast/speed.md), [terrain](../train/runs/s1fast/eval_1.0.md) | [speed](../train/runs/k1fast/speed.md), [terrain](../train/runs/k1fast/eval_1.0.md) | [speed](../train/runs/s1scrap/speed.md), [terrain](../train/runs/s1scrap/eval.md) | [speed](../train/runs/k1scrap/speed.md), [terrain](../train/runs/k1scrap/eval.md) |
+
+![S1-Fast walking at 1.0 m/s and on 18 cm stairs](../train/runs/s1fast/demo.gif)
+
+The scrap builds' tall stairs are a training problem, not a motor limit. Their curriculum stalled at the easy terrain
+rows until a fix to its promotion rule (see `train/README.md`), and stairs fine-tunes are under way. On the real
+robot, step-ups start from the scripted motions in `s1/data/gait_SU.csv` and `gait_ST.csv`, which the
+simulation checks for balance.
 
 ## How it was designed
 

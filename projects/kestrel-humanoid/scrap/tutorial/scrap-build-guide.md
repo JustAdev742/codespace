@@ -288,7 +288,10 @@ pressure stays inside the sole (`scrap/calc/scrap_templates.py` refuses to write
 
 Use the pelvis IMU to correct the ankle and hip roll angles a little each step (keep the torso upright). Once the
 scripted walk works, the reinforcement-learning package in `train/` has policies for both scrap robots
-(`python play.py --variant s1scrap --run s1scrap`), trained against the same slow actuators.
+(`python play.py --variant s1scrap --run s1scrap`), trained against the same slow actuators and their torque-speed
+lines. In simulation they walk flat ground, rough ground and 15° slopes, up to 0.42 m/s
+(`train/runs/s1scrap/speed.md`), but climb only low stairs so far (`train/runs/s1scrap/eval.md`). Use the
+scripted `gait_SU.csv` and `gait_ST.csv` for steps.
 
 ---
 
@@ -317,7 +320,8 @@ in its load-carrying robot legs (R11 §1.4).
 
 | | **S1-Fast** | **K1-Fast** | S1-Scrap (for comparison) |
 |---|---|---|---|
-| Walking (sized for) | **0.8 m/s, 1.0 m/s fast** | **0.6 m/s, 0.8 m/s fast** | 0.25 m/s, 0.36 m/s fast |
+| Walking (sized for) | 0.8 m/s, 1.0 m/s fast | 0.6 m/s, 0.8 m/s fast | 0.25 m/s, 0.36 m/s fast |
+| **Top speed, simulated** (trained policy, within the motors' limits) | **1.44 m/s** | **1.31 m/s** | 0.42 m/s |
 | Stairs, objects | 18 cm stairs, 25 cm step-up, 10 kg box | 18 cm stairs, 20 cm step-up, 5 kg box, 1 kg per hand | 15 cm steps, 3 kg box |
 | Leg actuators | **12 hub motors + 12 ODESC drives**, 8 drill gearmotors (hip yaw and roll) | 12 hub motors + 12 ODESC drives, 8 drills; arms, waist and neck as K1-Scrap | 14 drill gearmotors |
 | Knee | 2 hub motors, 7.7:1 chain: **335 N·m, 12.9 rad/s** | 2 hub motors, 8:1: **347 N·m, 12.5 rad/s** | 2 drills, 5.5:1 capstan: 134 N·m, 7.6 rad/s |
@@ -329,12 +333,14 @@ the "buy" totals. The **ODESC drives are the biggest cost** (12 × about A$60). 
 two-motor FOC board, but its firmware ships at 15 A per motor and nobody publishes a safe maximum. Test one board at
 higher current on the lever rig before you plan around it.
 
-**Why not 1.4 m/s like Unitree H2?** S1-Fast's fast walk was also tried at 1.2 and 1.4 m/s, and K1-Fast's at 1.0 m/s
-(it did not close even with four hub motors per joint, at 87 kg design mass). The swing leg's acceleration
-times the hub motors' reflected inertia then needs more torque than hub motors can give at the hip. A hub motor's rotor
-is large, so its torque squared over its inertia is about 12 times lower than a commercial QDD module like S1's X12.
-That is the price gap between a A$30 salvaged motor and a A$1,000+ actuator. The trained walking policy is pushed towards
-1.4 m/s in simulation anyway (`train/`, variant `s1fast`).
+**Unitree H2's pace, in simulation.** The actuators were sized by replaying a prescribed walk with torque and speed
+margins. By that measure, hub motors close only at 1.0 m/s (S1-Fast) and 0.8 m/s (K1-Fast; four motors per joint
+did not close 1.0 m/s). The reason is the hub motor's large rotor: it feels like 0.8–0.9 kg·m² at the knee and hip.
+The walking policies in `train/` face the same motors: reflected inertia, current limits and the 48 V torque-speed
+line every physics step. They find a gentler leg swing. **S1-Fast walks 1.44 m/s** on flat ground with its fastest
+joint at 70 % of no-load speed and its hottest motor at 91 % of continuous. **K1-Fast walks 1.31 m/s.** That is
+Unitree H2's quoted ~1.4 m/s. It is a simulation result: the chains are modelled as rigid, and the motor constants
+are one published measurement. Measure yours (step F1) and re-run the selection and the training.
 
 **S1-Fast drives** ([../s1fast/generated/actuator_selection.md](../s1fast/generated/actuator_selection.md)):
 
@@ -396,11 +402,19 @@ waist 1.5:1 capstans; shoulder roll and yaw direct; servo neck).
 
 ### F5. Walking
 
-The fast builds walk dynamically, so they need the torque-controlled walking policy from `train/`, not the scripted
-CSV gait:
-`python train.py --variant s1fast --name s1fast --init s1`, then `python play.py --variant s1fast --run s1fast`
-(K1-Fast: `--variant k1fast`).
-Bring-up is the same staged gantry sequence as step 9, starting at 30 % current limits.
+The fast builds walk dynamically, so they need the walking policy from `train/`, not the scripted CSV gait. Trained
+policies are included: `train/runs/s1fast/policy.pt` and `train/runs/k1fast/policy.pt`. The policy outputs joint
+position targets 50 times a second; each ODESC holds its joint on them with the PD gains in `train/model.py` and its
+current limit.
+
+* Check a policy: `python play.py --variant s1fast --run s1fast --speed 1.0` (terrain table) and
+  `python play.py --variant s1fast --run s1fast --speed-test 0.6,0.8,1.0,1.2,1.4,1.6` (top speed against the motor
+  limits). K1-Fast: `--variant k1fast --run k1fast`.
+* Retrain after you change anything (measured masses, motor constants, a different chain ratio):
+  `python train.py --variant s1fast --name s1fast --init s1 --terrain rough --workers 2 --threads 1 --hours 2.5`.
+* Bring-up is the staged gantry sequence of step 9 (`gait_W0.csv` first), then the policy at 30 % current limits
+  and 0.3 m/s commands. Raise the speed in 0.2 m/s steps only while the rope stays slack. Go past the 1.0 m/s the
+  joints were sized for only with the e-stop in hand: the faster speeds in the table are a simulation result.
 
 ## Step 11: Change it
 
@@ -416,8 +430,11 @@ Bring-up is the same staged gantry sequence as step 9, starting at 30 % current 
 
 ## Limits
 
-* **Slow walking only.** The drives' reflected inertia rules out dynamic walking and running. A missed step makes
-  the clutches slip and the robot sit down into the gantry harness; that is the design, not a fault.
+* **Drill builds: slow walking only.** The drives' reflected inertia rules out dynamic walking and running. A missed
+  step makes the clutches slip and the robot sit down into the gantry harness; that is the design, not a fault.
+* **Fast builds: above 1.0 m/s is simulation only.** The joints were sized for 1.0 m/s (S1-Fast) and 0.8 m/s
+  (K1-Fast). The 1.3–1.44 m/s of the trained policies assume rigid chains and the published hub-motor constants.
+  Hub motors have no clutch, so a missed step sends its full shock through the chains (sized for it: break load / 2).
 * **Everything rests on step 2's measurements.** Re-run the selection with your numbers before cutting the sectors.
 * **The salvaged parts are estimates.** Prices and motor constants are marked V, Vs or E in
   [`docs/research/R11-scrap-build-parts.md`](../../docs/research/R11-scrap-build-parts.md).

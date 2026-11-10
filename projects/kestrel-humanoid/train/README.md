@@ -30,6 +30,51 @@ as below):
 18 cm climbs (50 % for Mk I at 233 M steps) need more training on Mk II. S1 has its own run: `--variant s1`
 (`runs/s1`, results in [`simple/README.md`](../simple/README.md)).
 
+### The scrap and fast builds (`--variant s1scrap | k1scrap | s1fast | k1fast`)
+
+Each of the four salvaged-parts builds ([`scrap/README.md`](../scrap/README.md)) trains against its own actuators.
+Peak torques, no-load speeds and reflected motor inertia come from `scrap/calc/scrap_select.py`. Every physics
+step also applies each motor's torque-speed line, the same line the selection sizes with: torque available =
+Kt (V − Kt ω) / R per motor, capped at the current limit (`model.torque_speed`). The K1 and S1 runs above keep a
+constant ±peak force limit. Gait clock and command range are per build (`model.GAIT`). All four start from the S1
+policy (`--init s1`):
+
+```bash
+python train.py --variant s1fast --name s1fast --init s1 --terrain rough --workers 2 --threads 1 --hours 2.5
+python play.py --variant s1fast --run s1fast --speed-test 0.6,0.8,1.0,1.2,1.4,1.6 --table runs/s1fast/speed.md
+```
+
+`--speed-test` walks 8 robots down the 36 m flat column at each commanded speed. It reports:
+
+* the speed achieved (4 to 10 s);
+* the fastest leg joint as a fraction of its motor's no-load speed (above 100 %, the motor's back-EMF exceeds the
+  bus and the drive loses torque control);
+* the highest RMS joint torque as a fraction of the motor's continuous rating.
+
+A speed counts only if both stay under 100 % with no falls.
+
+| Build | Trained | Top speed within motor limits | At that speed: fastest joint / no-load, RMS / continuous | Terrain table |
+|---|---|---|---|---|
+| **S1-Fast** (hub-motor legs) | 47 M steps, commands to 1.4 m/s | **1.44 m/s** (commanded 1.6) | 70 %, 91 % | [`runs/s1fast`](runs/s1fast) |
+| **K1-Fast** (hub-motor legs) | 47 M steps, commands to 1.0 m/s | **1.31 m/s** (commanded 1.2) | 75 %, 65 % | [`runs/k1fast`](runs/k1fast) |
+| S1-Scrap (drills) | 46 M steps, commands to 0.35 m/s | 0.42 m/s (commanded 0.45) | 52 %, 79 % | [`runs/s1scrap/eval.md`](runs/s1scrap/eval.md) |
+| K1-Scrap (drills) | 47 M steps, commands to 0.35 m/s | 0.42 m/s (commanded 0.45) | 70 %, 97 % | [`runs/k1scrap/eval.md`](runs/k1scrap/eval.md) |
+
+K1-Fast commanded 1.4 m/s walks 1.59 m/s, but its ankle motors then turn at 105 % of no-load speed, so that
+figure is not counted. The torque-speed line never limits these policies: the fastest joints stay below the
+knee of the line (76 % of no-load for the hub motors, 62 % for the drills). Both fast builds clear the speeds
+their actuators were sized for (1.0 and 0.8 m/s) by a wide margin. The sizing replays a prescribed ZMP walk with
+torque and speed margins; the learned gait swings the legs with lower peak accelerations.
+
+On terrain at 1.0 m/s both fast builds walk flat ground, slopes to 15° and stairs down to 18 cm (100 %). They climb
+stairs to 10.2 cm (100 %). Taller stairs are not yet reliable: S1-Fast 88 / 69 / 50 % at 12.8 / 15.4 / 18 cm,
+K1-Fast 75 / 25 / 25 %. The scrap builds at 0.25 m/s walk flat ground, rough ground and slopes, but climb only 5–7.6 cm stairs.
+
+**The curriculum fix the scrap runs needed.** A robot was promoted to harder terrain only after walking 2.4 m in
+one 20 s episode. Many of the 0.1–0.35 m/s commands the scrap builds train on cannot cover that, so their curricula
+stalled near level 1. Promotion now also comes after 80 % of the commanded distance, at least 1.5 m (two stair
+risers; `env.PROMOTE_MIN`).
+
 ## Results (trained on this VM)
 
 ![KESTREL K1 walking, climbing 18 cm stairs and descending 18 cm stairs](runs/rough/demo.gif)
@@ -213,6 +258,9 @@ These choices made it light:
   ratio. Neither is the real transmission.
 * The PD gains are set for simulation, not identified on hardware, and there is no actuator network.
   Contact uses 4 spheres per foot.
+* Scrap and fast builds: the bike chains and Dyneema cords are modelled as rigid, with no backlash or stretch, and
+  the hub motors' constants are one published measurement (scrap/data/actuators.json). Measure your motors and
+  re-run the selection and the training before trusting a speed from the table above on hardware.
 * Before a trained policy goes near the real robot, it must pass the commissioning sequence in
   [`docs/11-testing-commissioning.md`](../docs/11-testing-commissioning.md): gantry first, torque limits
   reduced, safety monitor and e-stop live, nobody inside the test cell. Re-train with `--delay 0.5`, with
