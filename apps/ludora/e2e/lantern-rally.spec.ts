@@ -124,11 +124,11 @@ async function play(browser: Browser, threeD: boolean) {
 
 test('a host and two players race Lantern Rally to the results with 3D on', async ({ browser, browserName }) => {
   test.skip(browserName !== 'chromium', 'Headless Firefox and WebKit have no WebGL; the 3D picture is checked in Chromium.');
-  test.setTimeout(180_000);
+  test.setTimeout(300_000);
   await play(browser, true);
 });
 
 test('the same race plays with 3D off, on the circuit drawn from above', async ({ browser }) => {
-  test.setTimeout(180_000);
+  test.setTimeout(300_000);
   await play(browser, false);
 });

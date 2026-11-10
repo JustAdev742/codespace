@@ -31,10 +31,14 @@ export default defineConfig({
   workers: 1,
   timeout: 90_000,
   expect: { timeout: 15_000 },
+  // CI's shared machines stall now and then (a browser that takes a minute to start): a test gets
+  // one more try there, and the report says "flaky" when it needed it. Never locally.
+  retries: process.env.CI ? 1 : 0,
   reporter: process.env.CI ? [['github'], ['html', { open: 'never' }]] : 'list',
   use: {
     baseURL: E2E_BASE,
-    trace: 'retain-on-failure',
+    // Recording every test costs about a third of the run; on CI only the second try is recorded.
+    trace: process.env.CI ? 'on-first-retry' : 'retain-on-failure',
     screenshot: 'only-on-failure',
   },
   projects: [{ name: browser, use: BROWSERS[browser] }],
