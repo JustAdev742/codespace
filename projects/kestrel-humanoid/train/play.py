@@ -242,6 +242,10 @@ def main():
         res = speed_test(policy, [float(v) for v in args.speed_test.split(",")])
         if args.table:
             write_speed_table(res, args.table, 8)
+        if args.gif:        # clip of the fastest commanded speed that stays within the motor limits, along the flat column
+            ok = [v for v, m, lo, f, w, r in res if f == 0 and w < 1.0 and (np.isnan(r) or r < 1.0)]
+            v = max(ok) if ok else min(r[0] for r in res)
+            render(policy, args.gif, [(f"flat, commanded {v:.1f} m/s", 0, 0, np.pi / 2, 10.0)], speed=v)
         return
     if args.eval_envs > 0:
         print(f"evaluating runs/{args.run}/policy.pt")
