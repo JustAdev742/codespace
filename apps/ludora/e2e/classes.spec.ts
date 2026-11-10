@@ -26,6 +26,8 @@ const QUESTIONS = [
 
 async function check(page: Page, name: string) {
   await page.waitForLoadState('networkidle');
+  // A toast part-way through fading has faint text for a moment; the page is what is being checked.
+  await expect(page.locator('[data-sonner-toast]')).toHaveCount(0, { timeout: 15_000 });
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
   expect(overflow, `${name} scrolls sideways`).toBeLessThanOrEqual(0);
   const axe = await new AxeBuilder({ page }).withTags(AXE_TAGS).analyze();

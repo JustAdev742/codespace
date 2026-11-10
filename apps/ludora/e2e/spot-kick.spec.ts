@@ -73,7 +73,7 @@ async function play(browser: Browser, graphics: 'auto' | 'off') {
   const { host, players } = await setUp(browser, graphics);
   const hostErrors = watchErrors(host.page);
   await host.page.getByRole('button', { name: 'Start game' }).click();
-  await expect(host.page.getByRole('heading', { name: 'Spot Kick' })).toBeVisible();
+  await expect(host.page.getByRole('heading', { name: 'Spot Kick', level: 1 })).toBeVisible();
   const [a, b] = players;
 
   // The places are laid out like a goal, with their chances written on them.
