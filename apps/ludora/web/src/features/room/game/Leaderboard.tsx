@@ -124,12 +124,23 @@ export function Leaderboard({
   const all = you && !rows.some((r) => r.playerId === you.playerId) ? [...rows, you] : rows;
   useRankSlide(listRef, rows, all.map((r) => r.playerId).join('|'), big ? 'projector' : 'phone');
   const roomy = all.length <= 5 && !dense;
+  // A board of six to eight on its own screen (the usual top eight) fills the projector's height rather than leave its lower half empty.
+  const middling = !roomy && !dense && all.length <= 8;
   // Projector sizes scale with the screen, and shrink when the board is long so ten rows still fit.
   const vars = (
     big
       ? roomy
         ? { '--lb-row': 'clamp(3.5rem, min(12vh, 16vw), 8.5rem)', '--lb-glim': 'clamp(2.5rem, min(10vh, 12vw), 7.25rem)', '--lb-rank': 'clamp(2.25rem, min(7.5vh, 9vw), 5rem)', '--lb-name': 'clamp(1.15rem, 2.7vw, 3.25rem)', '--lb-score': 'clamp(1.25rem, 3vw, 3.75rem)' }
-        : { '--lb-row': 'clamp(3rem, 6.2vh, 4.75rem)', '--lb-glim': 'clamp(2.5rem, 5.4vh, 4rem)', '--lb-rank': 'clamp(2.25rem, 5vh, 3.5rem)', '--lb-name': 'clamp(1.1rem, 1.8vw, 2.1rem)', '--lb-score': 'clamp(1.25rem, 2vw, 2.4rem)' }
+        : middling
+          ? {
+              // The rows share what the screen has under the board's title: six get more each than eight.
+              '--lb-row': `clamp(3rem, min(${(56 / all.length).toFixed(2)}vh, 11vw), 6.25rem)`,
+              '--lb-glim': 'calc(var(--lb-row) * 0.84)',
+              '--lb-rank': 'calc(var(--lb-row) * 0.7)',
+              '--lb-name': 'clamp(1.1rem, min(2.4vw, calc(var(--lb-row) * 0.4)), 2.75rem)',
+              '--lb-score': 'clamp(1.25rem, min(2.7vw, calc(var(--lb-row) * 0.46)), 3.1rem)',
+            }
+          : { '--lb-row': 'clamp(3rem, 6.2vh, 4.75rem)', '--lb-glim': 'clamp(2.5rem, 5.4vh, 4rem)', '--lb-rank': 'clamp(2.25rem, 5vh, 3.5rem)', '--lb-name': 'clamp(1.1rem, 1.8vw, 2.1rem)', '--lb-score': 'clamp(1.25rem, 2vw, 2.4rem)' }
       : { '--lb-row': '3.75rem', '--lb-glim': '2.75rem', '--lb-rank': '2.75rem', '--lb-name': '1.125rem', '--lb-score': '1.25rem' }
   ) as CSSProperties;
   return (

@@ -11,6 +11,9 @@ import { useAnnounce } from './game/announce.tsx';
 import { plural } from '../../lib/format.ts';
 import { playSfx } from '../../lib/sound/react.tsx';
 
+/** The most practice bots a room takes (the server's limit). */
+const MAX_BOTS = 20;
+
 /** One column per team on a wide screen, up to what fits. */
 const TEAM_COLS: Record<number, string> = { 1: '', 2: 'md:grid-cols-2', 3: 'md:grid-cols-3', 4: 'md:grid-cols-2 xl:grid-cols-4', 5: 'md:grid-cols-3', 6: 'md:grid-cols-3' };
 
@@ -22,12 +25,13 @@ function seatSize(n: number, inTeam: boolean): string {
   if (inTeam) return n <= 6 ? 'clamp(3.5rem, min(5.6vw, 9vh), 6.5rem)' : n <= 12 ? 'clamp(3rem, min(4.6vw, 7vh), 5.5rem)' : 'clamp(2.75rem, min(3.6vw, 5.5vh), 4.25rem)';
   if (n <= 6) return 'clamp(5.5rem, min(9.5vw, 17vh), 11rem)';
   if (n <= 12) return 'clamp(4.25rem, min(7vw, 12vh), 8.5rem)';
-  if (n <= 24) return 'clamp(3.5rem, min(5.4vw, 8.5vh), 6.5rem)';
-  return 'clamp(3rem, min(4vw, 6.5vh), 5rem)';
+  // Two rows of a dozen still fit under the join code on a 1366 by 768 projector.
+  if (n <= 24) return 'clamp(3rem, min(4.6vw, 6.6vh), 6.5rem)';
+  return 'clamp(2.75rem, min(3.8vw, 5.6vh), 5rem)';
 }
 
-/** A seat card grows to fit its name, up to about twice its Glim's width, before the name is shortened. */
-const CARD = 'min-w-[max(calc(var(--seat)*1.35),7rem)] max-w-[max(calc(var(--seat)*2.1),10rem)]';
+/** A seat card grows to fit its name, up to about twice its Glim's width, before the name is shortened. A big crowd's cards start narrower. */
+const CARD = 'min-w-[max(calc(var(--seat)*1.35),var(--card-min,7rem))] max-w-[max(calc(var(--seat)*2.1),10rem)]';
 /** An empty seat: the width of a card with a short name. */
 const EMPTY_CARD = 'w-[max(calc(var(--seat)*1.35),7rem)]';
 
@@ -70,7 +74,7 @@ function Crowd({ players, onKick, inTeam = false }: { players: RoomPlayerView[];
   firstSeen.current ??= new Set(players.map((p) => p.id));
   const initial = firstSeen.current;
   return (
-    <ul className="flex flex-wrap items-start justify-center gap-[clamp(0.5rem,calc(var(--seat)*0.14),1.25rem)]" style={{ '--seat': seatSize(players.length, inTeam) } as CSSProperties}>
+    <ul className="flex flex-wrap items-start justify-center gap-[clamp(0.5rem,calc(var(--seat)*0.14),1.25rem)]" style={{ '--seat': seatSize(players.length, inTeam), ...(players.length > 12 ? { '--card-min': '5.75rem' } : {}) } as CSSProperties}>
       {players.map((p, i) => (
         <Seat key={p.id} p={p} onKick={onKick ? () => onKick(p) : undefined} delay={initial.has(p.id) ? Math.min(i, 16) * 40 : 0} />
       ))}
@@ -214,8 +218,9 @@ export function HostLobby({ room, handle }: { room: RoomView; handle: RoomHandle
                 Shuffle teams
               </Button>
             ) : null}
-            <Button icon={<Bot className="size-4" aria-hidden />} onClick={() => run('bots', { cmd: 'addBots', count: 3 })} loading={busy === 'bots'}>
-              Add 3 practice bots
+            {/* A room holds up to 20 practice bots (the server's limit): past that the button would only fail. */}
+            <Button icon={<Bot className="size-4" aria-hidden />} onClick={() => run('bots', { cmd: 'addBots', count: 3 })} loading={busy === 'bots'} disabled={bots >= MAX_BOTS}>
+              {bots >= MAX_BOTS ? `${MAX_BOTS} bots is the most` : 'Add 3 practice bots'}
             </Button>
             {bots ? <Button onClick={() => run('nobots', { cmd: 'removeBots' })}>Remove bots</Button> : null}
           </div>

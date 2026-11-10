@@ -327,12 +327,23 @@ export function GoldRushPlayer({ view, act, gameNow, paused, room }: ModeScreenP
           ) : null}
         </div>
         <div className="grid grid-cols-2 gap-2">
-          <Button size="lg" variant="primary" onClick={dig} disabled={busy || paused || you.digs <= 0} aria-label={`Dig to level ${you.next.level}. You have ${you.digs} digs.`}>
+          {/* Named by what they show, with the rest for screen readers, so speech users can say the words they see. */}
+          <Button size="lg" variant="primary" onClick={dig} disabled={busy || paused || you.digs <= 0}>
             <Pickaxe className="size-5" aria-hidden /> Dig
-            <span className="ml-1 rounded-full bg-black/20 px-2 font-display tabular">{you.digs}</span>
+            <span className="ml-1 rounded-full bg-black/20 px-2 font-display tabular" aria-hidden>
+              {you.digs}
+            </span>
+            <span className="sr-only">
+              {' '}
+              to level {you.next.level}. You have {you.digs} {you.digs === 1 ? 'dig' : 'digs'}.
+            </span>
           </Button>
-          <Button size="lg" variant="secondary" onClick={bank} disabled={busy || paused || you.cart <= 0} aria-label={`Bank your cart: ${gold(you.cart)}${you.panBonus ? ' plus 10 percent' : ''}`}>
-            <Landmark className="size-5" aria-hidden /> Bank {you.cart > 0 ? formatNumber(you.cart) : ''}
+          <Button size="lg" variant="secondary" onClick={bank} disabled={busy || paused || you.cart <= 0}>
+            <Landmark className="size-5" aria-hidden /> Bank<span className="sr-only"> your cart:</span> {you.cart > 0 ? formatNumber(you.cart) : ''}
+            <span className="sr-only">
+              {' '}
+              gold{you.panBonus ? ' plus 10 percent' : ''}
+            </span>
           </Button>
         </div>
         <div className="flex flex-wrap items-center gap-2 text-sm">

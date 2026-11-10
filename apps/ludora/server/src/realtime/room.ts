@@ -176,6 +176,8 @@ export class Room {
   lastActivity: number;
   endedAt: number | null = null;
   hostDisconnectedAt: number | null = null;
+  /** The game was paused because the host's connection went, not by the host: it carries on when they are back. */
+  pausedForHost = false;
   gamesPlayed = 0;
 
   private readonly hooks: RoomHooks;
@@ -247,7 +249,16 @@ export class Room {
 
   subscribe(sub: RoomSubscriber) {
     this.subscribers.set(sub.id, sub);
-    if (sub.role === 'host') this.hostDisconnectedAt = null;
+    if (sub.role === 'host') {
+      this.hostDisconnectedAt = null;
+      // A host who reloads the page or drops off the wifi for a moment should not come back to a game stuck on pause.
+      if (this.pausedForHost && this.status === 'paused' && this.runtime?.resume()) {
+        this.status = 'running';
+        this.startBots();
+        this.pushFeed('The host is back. The game carries on.', 'info');
+      }
+      this.pausedForHost = false;
+    }
     this.touch();
     this.sendView(sub);
   }
@@ -261,6 +272,8 @@ export class Room {
       if (this.status === 'running' && this.mode.meta.pacing === 'host' && !this.solo) {
         this.runtime?.pause();
         this.status = 'paused';
+        this.pausedForHost = true;
+        this.stopBots();
         this.pushFeed('The host lost connection. The game is paused until they are back.', 'info');
       }
     }
@@ -286,29 +299,13 @@ export class Room {
     if (input.reconnectToken) {
       if (this.kickedTokens.has(input.reconnectToken)) return fail('forbidden', 'The host removed you from this room.');
       const existing = [...this.players.values()].find((p) => p.reconnectToken === input.reconnectToken);
-      if (existing) {
-        existing.connected = true;
-        existing.disconnectedAt = null;
-        if (this.runtime && !this.runtime.hasPlayer(existing.id) && this.status !== 'ended') {
-          this.runtime.addPlayer({ id: existing.id, name: existing.name, teamId: existing.teamId, isBot: false });
-        }
-        this.runtime?.setConnected(existing.id, true);
-        this.touch();
-        this.scheduleBroadcast();
-        return { ok: true, player: existing, resumed: true };
-      }
+      if (existing) return { ok: true, player: this.resume(existing), resumed: true };
     }
     if (input.userId && this.kickedUsers.has(input.userId)) return fail('forbidden', 'The host removed you from this room.');
     // A signed-in player who is already in the room (another tab or device) takes over their own slot.
     if (input.userId) {
       const same = [...this.players.values()].find((p) => p.userId === input.userId);
-      if (same) {
-        same.connected = true;
-        same.disconnectedAt = null;
-        this.runtime?.setConnected(same.id, true);
-        this.scheduleBroadcast();
-        return { ok: true, player: same, resumed: true };
-      }
+      if (same) return { ok: true, player: this.resume(same), resumed: true };
     }
     if (this.solo && input.userId !== this.hostUserId) return fail('room_locked', 'This is a solo game.');
     if (this.locked && !this.solo) return fail('room_locked', 'The host has locked this room.');
@@ -352,6 +349,33 @@ export class Room {
     this.touch();
     this.scheduleBroadcast();
     return { ok: true, player, resumed: false };
+  }
+
+  /**
+   * A player back in their own slot, by reconnect token or by account. Someone who was away when
+   * the game started is not in it yet, so they are added now, whichever way they came back.
+   */
+  private resume(p: RoomPlayer): RoomPlayer {
+    p.connected = true;
+    p.disconnectedAt = null;
+    if (this.runtime && !this.runtime.hasPlayer(p.id) && this.status !== 'ended') {
+      this.runtime.addPlayer({ id: p.id, name: p.name, teamId: p.teamId, isBot: false });
+    }
+    this.runtime?.setConnected(p.id, true);
+    this.touch();
+    this.scheduleBroadcast();
+    return p;
+  }
+
+  /** A bot's name, a different animal from the bots already here while there are animals to spare ("Bot Nova 3" is hard to find on a board). */
+  private botName(): string {
+    const taken = new Set([...this.players.values()].map((p) => p.name.toLowerCase()));
+    let name = '';
+    for (let i = 0; i < 30; i++) {
+      name = `Bot ${generateName(() => this.botRng.next()).split(' ')[1]}`;
+      if (!taken.has(name.toLowerCase())) break;
+    }
+    return name;
   }
 
   private uniqueName(base: string): string {
@@ -453,7 +477,7 @@ export class Room {
         const count = Math.min(cmd.count, room, 20 - [...this.players.values()].filter((p) => p.isBot).length);
         if (count <= 0) return fail('room_full', 'No space for more bots.');
         for (let i = 0; i < count; i++) {
-          const name = this.uniqueName(`Bot ${generateName(() => this.botRng.next()).split(' ')[1]}`);
+          const name = this.uniqueName(this.botName());
           const id = `b${++this.playerSeq}`;
           this.roster.set(id, { userId: null, name, isGuest: true, isBot: true });
           this.players.set(id, {

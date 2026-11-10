@@ -127,7 +127,7 @@ export function ChoiceTile({
         <span>{ANSWER_LETTERS[index]}</span>
       </span>{' '}
       {media ? <QuestionImage media={media} size="tile" className={layout === 'stack' ? 'self-start' : ''} /> : null}
-      {text ? <span className={`min-w-0 flex-1 leading-tight font-bold break-words ${long ? s.long : s.text} ${layout === 'stack' ? 'flex w-full items-end' : ''}`}>{text}</span> : <span className="flex-1" />}
+      {text ? <span className={`min-w-0 flex-1 leading-tight font-bold break-words hyphens-auto ${long ? s.long : s.text} ${layout === 'stack' ? 'flex w-full items-end' : ''}`}>{text}</span> : <span className="flex-1" />}
       {keyHint && !selected ? (
         <span className="hidden self-start font-display text-base font-bold opacity-70 sm:block" aria-hidden>
           {index + 1}
@@ -184,7 +184,16 @@ export function choiceGrid(texts: string[], host = false): { grid: string; layou
     const threeUp = (n === 3 || n === 6) && texts.every((t) => t.length <= 32);
     // A host screen opened on a phone gets one column, so the projector-sized text never has to break a word.
     const gap = 'gap-[clamp(0.75rem,1.4vw,1.5rem)]';
-    return { grid: threeUp ? `grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 ${gap} sm:max-lg:[&>*:last-child:nth-child(odd)]:col-span-2` : `grid grid-cols-1 sm:grid-cols-2 ${gap} ${oddWide}`, layout: 'row', tall, dense };
+    // Three across only when the tiles have the room (measured on the grid's own box, see HostChoices): beside a side
+    // panel three tiles would be too narrow for a word.
+    return {
+      grid: threeUp
+        ? `grid grid-cols-1 sm:grid-cols-2 @min-[56rem]:grid-cols-3! ${gap} sm:[&>*:last-child:nth-child(odd)]:col-span-2 @min-[56rem]:[&>*:last-child:nth-child(odd)]:col-span-1!`
+        : `grid grid-cols-1 sm:grid-cols-2 ${gap} ${oddWide}`,
+      layout: 'row',
+      tall,
+      dense,
+    };
   }
   if (n <= 2 || short) return { grid: `grid grid-cols-2 gap-3 ${odd}`, layout: 'stack', tall, dense };
   return { grid: 'grid grid-cols-1 gap-3 sm:grid-cols-2', layout: 'row', tall: false, dense };

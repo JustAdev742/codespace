@@ -317,14 +317,17 @@ function TagButton({ aim, busy, onTag }: { aim: Aim; busy: boolean; onTag: () =>
       type="button"
       onClick={onTag}
       disabled={!ready}
-      aria-label={name ? `Tag ${name}` : `Tag: ${aim.reason ?? 'not ready'}`}
+      // Named by its own words ("Tag Priya", "Tag Nobody in reach"), so speech users can say what they see.
       className={`pointer-events-auto flex size-28 flex-col items-center justify-center gap-0.5 rounded-full border-4 px-2 text-center shadow-[0_6px_0_rgb(0_0_0/0.35)] transition-transform select-none active:translate-y-1 sm:size-32 ${
         ready ? 'border-white/80 bg-lantern text-on-accent' : 'border-white/20 bg-black/60 text-white/70'
       }`}
     >
       <Zap className="size-6" aria-hidden />
       <span className="font-display text-2xl leading-none font-extrabold">Tag</span>
-      <span className="line-clamp-2 max-w-full text-xs leading-tight font-bold">{name ?? aim.reason}</span>
+      <span className="line-clamp-2 max-w-full text-xs leading-tight font-bold">
+        <span className="sr-only"> </span>
+        {name ?? aim.reason ?? 'Not ready'}
+      </span>
     </button>
   );
 }

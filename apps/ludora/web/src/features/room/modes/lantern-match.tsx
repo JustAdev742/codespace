@@ -124,7 +124,7 @@ function MemoryCard({ card, total, missed, disabled, onFlip }: { card: CardFace;
           </span>
           {matched ? <Check className="absolute right-1 bottom-1 size-5 rounded-full bg-ink p-0.5 text-white" strokeWidth={3} /> : null}
           {card.media ? <img src={card.media.url} alt="" className="max-h-[45%] w-full rounded-[8px] object-contain" /> : null}
-          {text ? <span className={`${matched ? 'line-clamp-3' : 'line-clamp-4'} leading-snug font-bold break-words ${textSize(text)}`}>{text}</span> : null}
+          {text ? <span className={`${matched ? 'line-clamp-3' : 'line-clamp-4'} leading-snug font-bold break-words hyphens-auto ${textSize(text)}`}>{text}</span> : null}
         </span>
       </span>
     </button>

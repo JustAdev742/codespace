@@ -54,7 +54,7 @@ function Track({ lanes, distance, players, big = false, together = false }: { la
         // What the title, caption and header leave of the screen (about 8rem + 22vh), shared out between the rows.
         '--g': `clamp(1.5rem, calc((78dvh - 8rem) / var(--rows) - 0.9rem), ${rows <= 5 ? '7rem' : '5rem'})`,
         // Names keep enough room to tell 'Bot Badger' from 'Bot Badger 2'; the track takes the rest.
-        '--name': cols === 1 ? 'clamp(8rem, 15vw, 17rem)' : cols === 2 ? 'clamp(8rem, 13vw, 16rem)' : cols === 3 ? 'clamp(7rem, 11vw, 13rem)' : 'clamp(6rem, 8.5vw, 10rem)',
+        '--name': cols === 1 ? 'clamp(8rem, 20vw, 19rem)' : cols === 2 ? 'clamp(8rem, 13vw, 16rem)' : cols === 3 ? 'clamp(7rem, 11vw, 13rem)' : 'clamp(6rem, 8.5vw, 10rem)',
       }
     : { '--g': '1.75rem', '--name': '5.75rem' };
   const name = big ? (cols === 1 ? 'text-[clamp(1rem,1.6vw,1.75rem)]' : 'text-[clamp(0.95rem,min(1.25vw,2.6vh),1.5rem)]') : 'text-sm';

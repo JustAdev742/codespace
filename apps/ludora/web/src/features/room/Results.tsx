@@ -81,7 +81,8 @@ function Podium({ room, big }: { room: RoomView; big: boolean }) {
 /** Co-op endings: the whole room together, cheering a win or standing still after a loss. */
 function TeamPhoto({ room, won, big }: { room: RoomView; won: boolean; big: boolean }) {
   const people = room.players.slice(0, 12);
-  const size = people.length <= 6 ? (big ? 'size-[clamp(5.5rem,15vh,10rem)]' : 'size-20') : big ? 'size-[clamp(4rem,10vh,7rem)]' : 'size-14';
+  // Six fit one row beside the standings on a 1366-pixel projector, so nobody is left alone on a second row.
+  const size = people.length <= 6 ? (big ? 'size-[clamp(4.5rem,min(15vh,6.8vw),10rem)]' : 'size-20') : big ? 'size-[clamp(3.5rem,min(10vh,5vw),7rem)]' : 'size-14';
   return (
     <div className="relative flex flex-wrap items-end justify-center gap-[clamp(0.25rem,1.2vw,1.25rem)] py-4" aria-hidden>
       {people.map((p, i) => (

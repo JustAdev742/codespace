@@ -24,7 +24,10 @@ export function BigCountdown({ until, gameNow, big = false, label = 'Starting in
       role="timer"
       aria-label={`${label} ${secs} seconds`}
     >
-      {secs}
+      {/* Each second lands with a small pop, the beat of the count; held still under reduced motion. */}
+      <span key={secs} className="inline-block" style={{ animation: 'count-pop 200ms var(--ease-out)' }}>
+        {secs}
+      </span>
     </span>
   );
 }

@@ -73,6 +73,18 @@ describe('Lantern Out rule options', () => {
   }
   const next = (h: Driven) => h.tick(5000);
 
+  it('the reveal counts who could answer the round, not who is still lit after it', () => {
+    const h = start({ lives: 1 }, ['a', 'b', 'c']);
+    h.answer('a', 'wrong');
+    h.answer('b', 'right');
+    h.answer('c', 'right');
+    // a's last lantern went out with that answer, but a still answered this round.
+    expect(h.host().sync).toMatchObject({ phase: 'reveal', answered: 3, eligible: 3 });
+    next(h);
+    next(h);
+    expect(h.host().sync).toMatchObject({ phase: 'question', answered: 0, eligible: 2 });
+  });
+
   it('Kindling: three correct answers in a row relight a lantern, up to the start', () => {
     const h = start(pick(lanternVariants, 'lantern-out-kindling').settings!);
     h.answer('a', 'wrong');

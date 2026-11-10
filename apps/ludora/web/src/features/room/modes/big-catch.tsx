@@ -177,7 +177,7 @@ function landedSound(id: SpeciesId) {
 function Stars({ rarity }: { rarity: Rarity }) {
   const n = RARITY_INFO[rarity].stars;
   return (
-    <span className="inline-flex items-center gap-0.5" aria-label={RARITY_INFO[rarity].label}>
+    <span className="inline-flex items-center gap-0.5" role="img" aria-label={RARITY_INFO[rarity].label}>
       {Array.from({ length: 4 }, (_, i) => (
         <Star key={i} className={`size-3.5 ${i < n ? 'fill-lantern text-lantern' : 'text-white/25'}`} aria-hidden />
       ))}
@@ -528,9 +528,14 @@ export function BigCatchPlayer({ view, act, gameNow, paused, room }: ModeScreenP
         </div>
 
         <div className="grid grid-cols-2 gap-2">
-          <Button data-bc="cast" size="lg" variant="secondary" onClick={cast} disabled={busy || paused || you.casts <= 0 || line.phase !== 'idle'} aria-label={`Cast. You have ${you.casts} ${you.casts === 1 ? 'cast' : 'casts'}.`}>
+          <Button data-bc="cast" size="lg" variant="secondary" onClick={cast} disabled={busy || paused || you.casts <= 0 || line.phase !== 'idle'}>
             <Anchor className="size-5" aria-hidden /> Cast
-            <span className="ml-1 rounded-full bg-black/20 px-2 font-display tabular">{you.casts}</span>
+            <span className="ml-1 rounded-full bg-black/20 px-2 font-display tabular" aria-hidden>
+              {you.casts}
+            </span>
+            <span className="sr-only">
+              . You have {you.casts} {you.casts === 1 ? 'cast' : 'casts'}.
+            </span>
           </Button>
           <Button
             data-bc="reel"

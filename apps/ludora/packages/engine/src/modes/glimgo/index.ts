@@ -178,7 +178,15 @@ function dealCard(s: State, ctx: ModeContext): Card {
     // Free squares go in the middle first, then anywhere.
     const middle = s.size === 3 ? [4] : ctx.rng.shuffle([5, 6, 9, 10]);
     const rest = ctx.rng.shuffle(Array.from({ length: count }, (_, i) => i).filter((i) => !middle.includes(i)));
-    for (const i of [...middle, ...rest]) if (freeAt.size < free) freeAt.add(i);
+    if (free === 1) freeAt.add(middle[0]!);
+    else {
+      // Several free squares never share a line while they can help it: two free squares in a row of three
+      // would leave one mark to win, and a small set would be over on the first call.
+      const lines = cardLines(s.size);
+      const clashes = (i: number) => lines.some((line) => line.includes(i) && line.some((j) => freeAt.has(j)));
+      for (const i of [...rest, ...middle]) if (freeAt.size < free && !clashes(i)) freeAt.add(i);
+      for (const i of [...middle, ...rest]) if (freeAt.size < free) freeAt.add(i);
+    }
   }
   const cells: number[] = [];
   let k = 0;

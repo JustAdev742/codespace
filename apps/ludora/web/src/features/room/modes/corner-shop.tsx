@@ -455,9 +455,12 @@ function TillButtons({ you, busy, paused, gameNow, onServe, onUpgrades }: { you:
   const canBuy = you.upgrades.some((u) => u.cost !== null && u.cost <= you.cash) || (you.lines.length < you.slots && you.lineShop.some((l) => !l.owned && l.cost <= you.cash));
   return (
     <div className="flex items-center gap-2">
-      <Button size="lg" variant="primary" className="flex-1" disabled={!canServe} onClick={onServe} aria-label={front ? `Serve the next customer, ${front.name}: ${listItems(front.items)}. Shortcut: Space.` : 'Serve the next customer. Nobody is waiting.'} aria-keyshortcuts="Space">
+      <Button size="lg" variant="primary" className="flex-1" disabled={!canServe} onClick={onServe} aria-keyshortcuts="Space">
         <Store className="size-5" aria-hidden /> {tillBusy ? 'Till busy' : 'Serve next'}
-        <kbd className="ml-1 hidden rounded bg-black/20 px-1.5 text-xs font-bold sm:inline">Space</kbd>
+        <span className="sr-only">{front ? `: ${front.name}, ${listItems(front.items)}.` : '. Nobody is waiting.'}</span>
+        <kbd className="ml-1 hidden rounded bg-black/20 px-1.5 text-xs font-bold sm:inline" aria-hidden>
+          Space
+        </kbd>
       </Button>
       <Button size="lg" variant="secondary" onClick={onUpgrades} aria-label={`Upgrades${canBuy ? ': you can buy something' : ''}`}>
         <Package className="size-5" aria-hidden /> Upgrades{canBuy ? <span className="ml-1 size-2.5 rounded-full bg-lantern" aria-hidden /> : null}

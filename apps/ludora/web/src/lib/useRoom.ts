@@ -58,6 +58,8 @@ export interface RoomState {
   receivedAt: number;
   error: RoomError | null;
   closedMessage: string | null;
+  /** Why the room closed for this device: 'removed' when the host (or staff) took this player out. */
+  closedReason?: string | null;
   role: 'host' | 'player' | null;
   reactions: Reaction[];
   /** The server says this account just finished the lantern ritual: the lantern can be lit. */
@@ -83,6 +85,32 @@ function storeToken(code: string, token: string | null) {
   }
 }
 
+/*
+ * The tab's token is kept for the session, so a reload keeps your place. A player who closes the
+ * tab and opens the game again in a new one comes back under the same name: the device remembers
+ * which name holds which seat, so coming back as "Sam" on the same browser takes up Sam's seat
+ * (and score) again instead of making a second "Sam 2". A different name is a different player.
+ */
+const seatKey = (code: string) => `ludora.seat.${code}`;
+const sameName = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase();
+function deviceToken(code: string, name: string | undefined): string | undefined {
+  if (!name?.trim()) return undefined;
+  try {
+    const seat = JSON.parse(localStorage.getItem(seatKey(code)) ?? 'null') as { name?: unknown; token?: unknown } | null;
+    return seat && typeof seat.name === 'string' && typeof seat.token === 'string' && sameName(seat.name, name) ? seat.token : undefined;
+  } catch {
+    return undefined;
+  }
+}
+function storeDeviceSeat(code: string, name: string | undefined, token: string | null) {
+  try {
+    if (!token) localStorage.removeItem(seatKey(code));
+    else if (name?.trim()) localStorage.setItem(seatKey(code), JSON.stringify({ name: name.trim(), token }));
+  } catch {
+    /* private mode: a reload in this tab still keeps the seat */
+  }
+}
+
 function emitWithAck(socket: Socket, event: string, payload: unknown, timeoutMs = 6000): Promise<AckResult> {
   return new Promise((resolve) => {
     socket.timeout(timeoutMs).emit(event, payload, (err: Error | null, ack: AckResult) => {
@@ -100,6 +128,7 @@ export function useRoom(code: string, opts: { name?: string | undefined; as?: 'h
     receivedAt: 0,
     error: null,
     closedMessage: null,
+    closedReason: null,
     role: null,
     reactions: [],
     glow: false,
@@ -122,15 +151,23 @@ export function useRoom(code: string, opts: { name?: string | undefined; as?: 'h
 
     const join = async () => {
       const dress = schoolLook() ? deviceDress() : null;
-      const ack = await emitWithAck(socket, 'room:join', { code, name: nameRef.current, reconnectToken: storedToken(code), as: opts.as, ...(dress ? { dress } : {}) });
+      const reconnectToken = storedToken(code) ?? deviceToken(code, nameRef.current);
+      const ack = await emitWithAck(socket, 'room:join', { code, name: nameRef.current, reconnectToken, as: opts.as, ...(dress ? { dress } : {}) });
       if (closed) return;
       if (!ack.ok) {
-        // A stale token (room restarted, or we were removed) should not block a fresh join.
-        if (ack.error.code === 'forbidden' || ack.error.code === 'room_not_found') storeToken(code, null);
+        // A token for a room that is gone should not get in the way of the next game with that code. A player the host
+        // removed keeps theirs, so joining again from this browser is refused rather than slipping back in as someone new.
+        if (ack.error.code === 'room_not_found') {
+          storeToken(code, null);
+          storeDeviceSeat(code, undefined, null);
+        }
         setState((s) => ({ ...s, phase: 'error', error: ack.error }));
         return;
       }
-      if (typeof ack.reconnectToken === 'string') storeToken(code, ack.reconnectToken);
+      if (typeof ack.reconnectToken === 'string') {
+        storeToken(code, ack.reconnectToken);
+        storeDeviceSeat(code, nameRef.current, ack.reconnectToken);
+      }
       setState((s) => ({ ...s, phase: 'joined', error: null, role: (ack.role as 'host' | 'player') ?? 'player' }));
     };
 
@@ -159,8 +196,11 @@ export function useRoom(code: string, opts: { name?: string | undefined; as?: 'h
     socket.on('room:glow', () => setState((s) => ({ ...s, glow: true })));
     socket.on('room:pulse', (p: PulseView) => pulseRef.current?.push(p));
     socket.on('room:closed', (p: { reason: string; message: string }) => {
-      storeToken(code, null);
-      setState((s) => ({ ...s, phase: 'closed', closedMessage: p.message }));
+      if (p.reason !== 'removed') {
+        storeToken(code, null);
+        storeDeviceSeat(code, undefined, null);
+      }
+      setState((s) => ({ ...s, phase: 'closed', closedMessage: p.message, closedReason: p.reason }));
       socket.disconnect();
     });
 
@@ -221,6 +261,7 @@ export function useRoom(code: string, opts: { name?: string | undefined; as?: 'h
   const leave = useCallback(async () => {
     const socket = socketRef.current;
     storeToken(code, null);
+    storeDeviceSeat(code, undefined, null);
     if (socket) await emitWithAck(socket, 'room:leave', {}, 2000);
   }, [code]);
 

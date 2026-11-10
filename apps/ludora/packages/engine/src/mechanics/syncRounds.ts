@@ -37,6 +37,12 @@ export interface SyncState {
   /** Points each player gained in the last closed round, for the leaderboard animation. */
   lastGain: Record<PlayerId, number>;
   roundsPlayed: number;
+  /**
+   * How many could answer the round that just closed, counted as it closed. The reveal keeps
+   * showing it: by then the round's results may have knocked players out (or relit them), and
+   * "4 of 3 answered" is not what happened.
+   */
+  closedEligible?: number;
 }
 
 export interface SyncConfig<S extends { sync: SyncState }> {
@@ -106,6 +112,11 @@ function eligible<S extends { sync: SyncState }>(s: S, cfg: SyncConfig<S>, ctx: 
     .map((p) => p.id);
 }
 
+/** Who the open round is waiting on: everyone who may answer, plus anyone who already has (and has since dropped out). */
+function roundPool<S extends { sync: SyncState }>(s: S, cfg: SyncConfig<S>, ctx: ModeContext): number {
+  return new Set([...eligible(s, cfg, ctx), ...Object.keys(s.sync.answers)]).size;
+}
+
 function startRound<S extends { sync: SyncState }>(s: S, cfg: SyncConfig<S>, ctx: ModeContext) {
   const sync = s.sync;
   sync.round++;
@@ -125,6 +136,7 @@ function closeRound<S extends { sync: SyncState }>(s: S, cfg: SyncConfig<S>, ctx
   for (const [pid, a] of Object.entries(sync.answers)) sync.lastGain[pid] = a.points;
   // Players who could answer and did not lose their streak.
   for (const pid of eligible(s, cfg, ctx)) if (!sync.answers[pid]) sync.streaks[pid] = 0;
+  sync.closedEligible = roundPool(s, cfg, ctx);
   sync.roundsPlayed++;
   cfg.onClosed?.(s, ctx);
   sync.phase = 'reveal';
@@ -258,7 +270,7 @@ export function syncView<S extends { sync: SyncState }>(s: S, cfg: SyncConfig<S>
     reveal: revealed && sync.iid ? ctx.questions.reveal(sync.iid) : null,
     explanation: revealed && sync.iid ? (ctx.questions.explanation(sync.iid) ?? null) : null,
     answered: Object.keys(sync.answers).length,
-    eligible: eligible(s, cfg, ctx).length,
+    eligible: sync.phase !== 'question' && sync.closedEligible !== undefined ? sync.closedEligible : roundPool(s, cfg, ctx),
     distribution,
     you,
   };

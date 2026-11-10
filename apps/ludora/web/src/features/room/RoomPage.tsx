@@ -77,13 +77,20 @@ export default function RoomPage() {
     document.title = room ? `${room.room.title} | Ludora` : 'Joining… | Ludora';
   }, [room]);
 
+  // A new stage of the room (the game starting, the results, Play again) opens at its top: a player scrolled down
+  // to a tall game board would otherwise land in the middle of the results, under the title and the podium.
+  const stage = room ? (room.room.status === 'paused' ? 'running' : room.room.status) : null;
+  useEffect(() => {
+    if (stage) window.scrollTo({ top: 0 });
+  }, [stage]);
+
   if (handle.phase === 'error' || handle.phase === 'closed') {
     const msg = handle.phase === 'closed' ? handle.closedMessage : handle.error?.message;
     return (
       <Stage as="main" className={`${STAGE} items-center justify-center px-4 py-10`}>
         <div className="paper stage-card flex w-full max-w-md flex-col items-center gap-4 px-6 py-7 text-center">
           <LogoMark size={56} />
-          <h1 className="font-display text-[2.25rem] font-bold">{handle.phase === 'closed' ? 'This room has closed' : 'Could not join'}</h1>
+          <h1 className="font-display text-[2.25rem] font-bold">{handle.phase !== 'closed' ? 'Could not join' : handle.closedReason === 'removed' ? 'Removed from the game' : 'This room has closed'}</h1>
           <p className="text-text-2">{msg}</p>
           <div className="flex flex-wrap justify-center gap-2">
             <Link to="/play" className={buttonClass('primary', 'lg')}>
@@ -143,7 +150,8 @@ export default function RoomPage() {
                   'Solo game'
                 ) : (
                   <>
-                    {isHost ? 'Hosting game ' : 'Game '}
+                    {/* On a phone the code alone is enough, so it is never cut short beside a school crest and the LIVE tag. */}
+                    {isHost ? 'Hosting game ' : <span className="max-sm:sr-only">Game </span>}
                     <span className="font-display text-[1.15em] font-bold text-text tabular">{spaced(room.room.code)}</span>
                   </>
                 )}
@@ -243,7 +251,8 @@ export default function RoomPage() {
           <ReactionBar onReact={(e) => void handle.react(e)} />
         </footer>
       ) : null}
-      <FeedToasts feed={room.feed} quiet={isHost && live && hostListsFeed(room.room.modeId)} />
+      {/* In the host's lobby each arrival already slides in as a card, and toasts in the corner would sit over the crowd. */}
+      <FeedToasts feed={room.feed} quiet={isHost && (status === 'lobby' || (live && hostListsFeed(room.room.modeId)))} overHeader={isHost ? null : room.room.solo ? 'solo' : 'player'} />
       <ReactionLayer reactions={handle.reactions} big={isHost} />
       <LanternGlow handle={handle} />
       {debug ? <DebugOverlay handle={handle} /> : null}

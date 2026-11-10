@@ -147,7 +147,15 @@ export function ClassicHost({ view, gameNow, paused, room }: ModeScreenProps<Cla
     return (
       <div className={`mx-auto grid w-full grid-cols-1 gap-[clamp(1rem,2.5vw,2.5rem)] ${view.teams ? 'max-w-[100rem] lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]' : 'max-w-[76rem]'}`}>
         <div className="flex flex-col gap-[clamp(0.75rem,2vh,1.5rem)]">
-          <h2 className="font-display text-[clamp(2.75rem,5vw,6rem)] leading-none font-extrabold">Leaderboard</h2>
+          <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-2">
+            <h2 className="font-display text-[clamp(2.75rem,5vw,6rem)] leading-none font-extrabold">Leaderboard</h2>
+            {/* Where the game stands, so the room knows how many chances are left to climb. */}
+            {s.phase === 'leaderboard' && s.total - s.round - 1 > 0 ? (
+              <p className="plate plate-blue text-[clamp(1.25rem,1.9vw,2.2rem)] tabular">
+                <span>{s.total - s.round - 1 === 1 ? 'Final question next' : `${s.total - s.round - 1} questions to go`}</span>
+              </p>
+            ) : null}
+          </div>
           <Leaderboard rows={view.board.rows} players={room.players} teams={room.room.teams} big />
         </div>
         {view.teams ? (

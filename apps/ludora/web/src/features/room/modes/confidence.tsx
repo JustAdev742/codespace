@@ -374,7 +374,7 @@ export function ConfidenceHost({ view, gameNow, paused, room }: ModeScreenProps<
       {view.phase === 'question' ? (
         <ChoicesDisplay q={q.q} />
       ) : (
-        <div className="grid grid-cols-1 gap-[clamp(1rem,2vw,2rem)] lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
+        <div className="grid grid-cols-1 gap-[clamp(1rem,2vw,2rem)] lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
           <div className="flex flex-col gap-[clamp(0.75rem,2vh,1.25rem)]">
             {view.reveal ? <RevealAnswer q={q.q} reveal={view.reveal} distribution={view.distribution} size="lg" /> : null}
             <Explanation text={view.explanation} big />

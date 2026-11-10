@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { Check, X } from 'lucide-react';
 import type { AnswerReveal, PublicQuestion } from '@ludora/shared';
 import { ChoiceTile, HOST_PAIR, choiceGrid, type TileSize } from './AnswerInput.tsx';
@@ -6,6 +7,11 @@ import { useOverview } from '../../../lib/queries.ts';
 import { useAnnounce } from './announce.tsx';
 import { myAnswerWords, useMyAnswer } from './answerMemory.tsx';
 import { useSfx, useSoundRole } from '../../../lib/sound/react.tsx';
+
+/** The big screen's choice grid measures its own box, so it lays out for the room it has (full width, or beside a side panel). */
+function HostChoices({ host, children }: { host: boolean; children: ReactNode }) {
+  return host ? <div className="@container">{children}</div> : <>{children}</>;
+}
 
 /** The choices of a live question with nothing marked: the host screen while answers are open. */
 export function ChoicesDisplay({ q, size = 'lg' }: { q: PublicQuestion; size?: TileSize }) {
@@ -16,11 +22,13 @@ export function ChoicesDisplay({ q, size = 'lg' }: { q: PublicQuestion; size?: T
       host,
     );
     return (
-      <div className={grid}>
-        {q.choices.map((c, i) => (
-          <ChoiceTile key={c.id} index={i} text={c.text} media={c.media} disabled size={size} layout={layout} tall={host && q.choices.length <= 4 && !q.media} dense={dense} />
-        ))}
-      </div>
+      <HostChoices host={host}>
+        <div className={grid}>
+          {q.choices.map((c, i) => (
+            <ChoiceTile key={c.id} index={i} text={c.text} media={c.media} disabled size={size} layout={layout} tall={host && q.choices.length <= 4 && !q.media} dense={dense} />
+          ))}
+        </div>
+      </HostChoices>
     );
   }
   if (q.type === 'truefalse') {
@@ -107,11 +115,13 @@ export function RevealAnswer({ q, reveal, mine, distribution, compact, size }: {
       host,
     );
     return (
-      <div className={grid}>
-        {q.choices.map((c, i) => (
-          <ChoiceTile key={c.id} index={i} text={c.text} media={c.media} dense={dense} correct={correct.has(c.id)} dimmed={!correct.has(c.id)} wrong={picked.has(c.id) && !correct.has(c.id)} mine={picked.has(c.id)} disabled size={sz} layout={layout} count={count(c.id)} max={max} tall={host && q.choices.length <= 4 && !q.media} />
-        ))}
-      </div>
+      <HostChoices host={host}>
+        <div className={grid}>
+          {q.choices.map((c, i) => (
+            <ChoiceTile key={c.id} index={i} text={c.text} media={c.media} dense={dense} correct={correct.has(c.id)} dimmed={!correct.has(c.id)} wrong={picked.has(c.id) && !correct.has(c.id)} mine={picked.has(c.id)} disabled size={sz} layout={layout} count={count(c.id)} max={max} tall={host && q.choices.length <= 4 && !q.media} />
+          ))}
+        </div>
+      </HostChoices>
     );
   }
   if (q.type === 'truefalse' && reveal.type === 'truefalse') {

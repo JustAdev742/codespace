@@ -88,3 +88,38 @@ test('a host and a player play Classic from join code to results', async ({ brow
   expect(hostErrors).toEqual([]);
   expect(playerErrors).toEqual([]);
 });
+
+test('a player who closes the tab comes back to their own seat, and a removed player stays out', async ({ browser }) => {
+  const host = await account(browser, { accountType: 'teacher' });
+  const set = await host.page.request.post('/api/sets', {
+    headers: CSRF,
+    data: { title: 'Seats', description: 'x', subject: 'science', visibility: 'private', questions: [1, 2, 3].map((i) => ({ id: `q${i}`, type: 'truefalse', prompt: `Statement ${i} is true.`, correct: true })) },
+  });
+  const room = await host.page.request.post('/api/rooms', { headers: CSRF, data: { setId: (await set.json()).set.id, modeId: 'classic', settings: { autoAdvance: false } } });
+  const { code } = await room.json();
+  await host.page.goto(`/room/${code}`);
+  const join = async (page: import('@playwright/test').Page, name: string) => {
+    await page.goto(`/join/${code}`);
+    await page.getByLabel('Your name').fill(name);
+    await page.getByRole('button', { name: 'Join game' }).click();
+  };
+  const phone = await browser.newContext({ viewport: { width: 390, height: 844 } });
+  const first = await phone.newPage();
+  await join(first, 'Sunny Otter');
+  await expect(first.getByText('You are in', { exact: true })).toBeVisible();
+  // The tab closes; the same browser opens the game again in a new tab under the same name.
+  await first.close();
+  const again = await phone.newPage();
+  await join(again, 'sunny otter');
+  await expect(again.getByText('Playing as Sunny Otter')).toBeVisible();
+  await expect(host.page.getByRole('heading', { name: /^1 player$/ })).toBeVisible();
+  await expect(host.page.getByText('Sunny Otter 2')).toHaveCount(0);
+
+  // Removed by the host: joining again from this browser is refused, whatever the name.
+  await host.page.getByRole('button', { name: 'Remove Sunny Otter' }).click();
+  await expect(again.getByRole('heading', { level: 1, name: 'Removed from the game' })).toBeVisible();
+  await expect(again.getByText('The host removed you from the room.')).toBeVisible();
+  await join(again, 'Someone Else');
+  await expect(again.getByText('The host removed you from this room.')).toBeVisible();
+  await expect(host.page.getByRole('heading', { name: 'Nobody here yet' })).toBeVisible();
+});

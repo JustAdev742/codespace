@@ -651,6 +651,20 @@ describe('Glimgo rules', () => {
     expect(h.view('a').callCount).toBe(2);
   });
 
+  it('spreads several free squares so no line starts one mark from Glimgo', () => {
+    // Six answers on a 3 by 3 card leave three free squares. Two of them in one line would let the
+    // first mark on that line win, and the game would be over on the first call.
+    for (let seed = 1; seed <= 40; seed++) {
+      const h = drive(glimgo, { players: ['a', 'b', 'c'], questions: WORDS.slice(0, 6), seed, shuffle: true });
+      for (const id of ['a', 'b', 'c']) {
+        const free = (h.view(id).you.squares as { free: boolean }[]).map((sq, i) => (sq.free ? i : -1)).filter((i) => i >= 0);
+        expect(free).toHaveLength(3);
+        for (const line of cardLines(3)) expect(line.filter((i) => free.includes(i)).length).toBeLessThanOrEqual(1);
+      }
+      expect(h.view('a').oneToGo).toBe(0);
+    }
+  });
+
   it('refuses marks between calls and for free or marked squares', () => {
     const h = start({}, FLASHCARD_SET, ['a']);
     const iid = h.view('a').call.iid;

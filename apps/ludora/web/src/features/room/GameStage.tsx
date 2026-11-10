@@ -109,7 +109,20 @@ export function hostListsFeed(modeId: string): boolean {
 }
 
 /** Recent game events (finishes, eliminations) as short-lived toasts: a solid fill in the colour of their news, like the app's own toasts. */
-export function FeedToasts({ feed, quiet = false }: { feed: RoomView['feed']; /** The screen lists the news itself. */ quiet?: boolean }) {
+export function FeedToasts({
+  feed,
+  quiet = false,
+  overHeader = null,
+}: {
+  feed: RoomView['feed'];
+  /** The screen lists the news itself. */
+  quiet?: boolean;
+  /**
+   * On a phone, lay the news over the left of the HUD bar, where the room's name is, so it never covers the
+   * game's own status row (the question number, lanterns, score). The value clears the header's buttons on the right.
+   */
+  overHeader?: 'player' | 'solo' | null;
+}) {
   const seen = useRef(new Map<number, number>());
   const now = useNow(1000, feed.length > 0);
   for (const f of feed) if (!seen.current.has(f.id)) seen.current.set(f.id, Date.now());
@@ -118,11 +131,16 @@ export function FeedToasts({ feed, quiet = false }: { feed: RoomView['feed']; /*
   return (
     // On a phone the news drops in under the header, clear of the answers in the thumb zone; on the projector it sits bottom right.
     // A phone shows only the newest line, two lines at most, so busy rooms never bury the game's own status row.
-    <div className="pointer-events-none fixed inset-x-3 top-[4.25rem] z-30 flex flex-col items-center gap-1.5 sm:top-[4.75rem] max-lg:[&>*:not(:last-child)]:hidden lg:inset-x-auto lg:top-auto lg:right-6 lg:bottom-6 lg:max-w-[24rem] lg:items-end" aria-live="polite">
+    <div
+      className={`pointer-events-none fixed z-40 flex flex-col gap-1.5 max-lg:[&>*:not(:last-child)]:hidden lg:inset-x-auto lg:top-auto lg:right-6 lg:bottom-6 lg:max-w-[24rem] lg:items-end ${
+        overHeader ? `top-1.5 left-2 items-start sm:top-2 sm:left-3 ${overHeader === 'solo' ? 'right-[13rem]' : 'right-[10rem] sm:right-[13rem]'}` : 'inset-x-3 top-[4.25rem] items-center sm:top-[4.75rem]'
+      }`}
+      aria-live="polite"
+    >
       {visible.map((f) => (
         <div
           key={f.id}
-          className={`max-w-[22rem] rounded-[var(--radius-m)] px-3.5 py-2 text-sm leading-snug font-bold shadow-[0_12px_30px_-10px_rgb(2_5_20/0.7)] max-lg:line-clamp-2 lg:max-w-none lg:px-4 lg:py-2.5 lg:text-lg ${f.tone === 'big' ? 'bg-lantern text-on-accent' : f.tone === 'good' ? 'bg-glim text-on-accent' : f.tone === 'bad' ? 'bg-ember text-on-accent' : 'paper'}`}
+          className={`max-w-[22rem] rounded-[var(--radius-m)] text-sm leading-snug font-bold shadow-[0_12px_30px_-10px_rgb(2_5_20/0.7)] max-lg:line-clamp-2 lg:max-w-none lg:px-4 lg:py-2.5 lg:text-lg ${overHeader ? 'max-lg:px-3 max-lg:py-1.5 max-lg:text-[0.8125rem] max-lg:leading-tight' : 'px-3.5 py-2'} ${f.tone === 'big' ? 'bg-lantern text-on-accent' : f.tone === 'good' ? 'bg-glim text-on-accent' : f.tone === 'bad' ? 'bg-ember text-on-accent' : 'paper'}`}
           style={{ animation: 'rise-fade 200ms var(--ease-out)' }}
         >
           {f.text}
