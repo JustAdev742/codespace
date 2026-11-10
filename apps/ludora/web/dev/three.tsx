@@ -23,6 +23,7 @@ import { BigCatchScene, JettyScene, type CatchState, type Phase } from '../src/f
 import { speciesOf, sizeCm, type WaterId } from '@ludora/engine/big-catch';
 import { Field } from '../src/features/room/modes/glow-tag-field.ts';
 import { GlowTagHostScene, GlowTagScene } from '../src/features/room/modes/glow-tag-scene.ts';
+import { SummitHostScene, SummitScene, type MoveKind, type SceneClimber } from '../src/features/room/modes/summit-scene.ts';
 
 const params = new URLSearchParams(location.search);
 const q = params.get('quality');
@@ -360,6 +361,34 @@ function makeGlowTag(env: StageEnv, host: boolean) {
   return w;
 }
 
+// ?scene=summit  Summit Scramble from one climber's device (&ledge=12 where they start, &players=8, &wind=1, &night=1).
+// ?scene=summit-host  the big screen's whole mountain.
+function makeSummit(env: StageEnv, host: boolean) {
+  const summit = Number(params.get('summit') ?? 30);
+  const n = Number(params.get('players') ?? 10);
+  const night = params.get('night') === '1';
+  const climbers: SceneClimber[] = GLIMS.slice(0, n).map((g, i) => ({ playerId: g.id, name: g.name, ledge: i === 0 ? Number(params.get('ledge') ?? 8) : Math.max(0, Math.min(summit, (i * 7) % (summit + 1))), seq: 0, kind: null, finished: null, isYou: !host && i === 0, look: { art: g.art as GlimArt, rarity: g.rarity as Rarity } }));
+  const ropes = [3, 7, 12, 16, 24, 27].filter((l) => l < summit);
+  const wind = params.get('wind') === '1' ? true : null;
+  const w = host ? new SummitHostScene(env, { night, summit }) : new SummitScene(env, { night, summit, me: climbers[0]!.playerId });
+  (window as unknown as { __world: unknown }).__world = w;
+  w.setState({ summit, climbers, ropes, wind, reached: [10] });
+  if (params.get('still') !== '1') {
+    const kinds: MoveKind[] = ['climb', 'climb', 'leap', 'climb', 'slip', 'climb', 'pulled'];
+    let k = 0;
+    setInterval(() => {
+      k++;
+      const i = host ? k % climbers.length : 0;
+      const c = climbers[i]!;
+      const kind = kinds[k % kinds.length]!;
+      const to = kind === 'leap' ? c.ledge + 3 : kind === 'slip' ? c.ledge - 1 : kind === 'pulled' ? c.ledge + 2 : c.ledge + 1;
+      climbers[i] = { ...c, ledge: Math.max(0, Math.min(summit, to)), seq: c.seq + 1, kind, finished: to >= summit ? 1 : null };
+      w.setState({ summit, climbers: [...climbers], ropes, wind, reached: [10] });
+    }, 2200);
+  }
+  return w;
+}
+
 function App() {
   const create = (env: StageEnv) =>
     sceneName === 'gold'
@@ -376,7 +405,9 @@ function App() {
                 ? makeJetty(env)
                 : sceneName === 'glowtag' || sceneName === 'glowtag-host'
                   ? makeGlowTag(env, sceneName === 'glowtag-host')
-                  : new Gallery(env);
+                  : sceneName === 'summit' || sceneName === 'summit-host'
+                    ? makeSummit(env, sceneName === 'summit-host')
+                    : new Gallery(env);
   return (
     <main style={{ height: '100vh', display: 'grid' }}>
       <Stage3D label="3D gallery" create={create} className="h-full w-full" />

@@ -1,8 +1,8 @@
 # The 3D modes
 
-Five modes drawn with Ludora's 3D engine (`web/src/three/`). They are games, not lessons. As in
+Six modes drawn with Ludora's 3D engine (`web/src/three/`). They are games, not lessons. As in
 every other mode, the learning comes from the class's own question set: a right answer is what
-powers everything you do. The setting (a goldfield, a jetty, a data city, a shop, a park at night)
+powers everything you do. The setting (a goldfield, a jetty, a data city, a shop, a park at night, a mountain)
 is just where the game happens, and none of them is tied to one subject.
 
 | Mode | id | What you do |
@@ -12,6 +12,7 @@ is just where the game happens, and none of them is tied to one subject.
 | Big Catch | `big-catch` | Cast, wait for the bite, reel in fish big and rare. |
 | Code Breakers | `code-breakers` | Mine bits, guess rivals' passwords to hack them, defend with firewalls and 2FA. |
 | Corner Shop | `corner-shop` | Stock shelves, serve a queue of customers, grow your shop. |
+| Summit Scramble | `summit-scramble` | Climb a mountain at night with the whole class: climb or leap ledge by ledge, reach the camps first, throw ropes to the climbers below. |
 
 Names, art and words are Ludora's own (D30): no other product's names, characters, layouts or
 copy. "Inspired by" a genre is fine; copying a product is not.
@@ -170,3 +171,60 @@ Run a little shop. Questions bring the deliveries; customers bring the money.
 - **3D**: a cosy shop with your Glim behind the counter, shelves that fill and empty, and
   customers (other Glims) queueing at the till. The big screen shows a high street of every
   player's shopfront.
+
+## Summit Scramble (`summit-scramble`)
+
+Everyone climbs the same mountain at night, lanterns in hand. Right answers are how you climb.
+
+- **Grip.** Each right answer gives 1 grip, with a bonus grip on every third right answer in a
+  row; a climber holds up to 6. A wrong answer costs nothing but a 2-second pause before the next
+  question while your Glim catches its balance (you can still spend grip meanwhile).
+- **Climb** (1 grip) goes up one ledge and always works. **Leap** (2 grip) goes up four ledges
+  7 times in 10; when it fails you slide back one ledge. The chance is drawn on the server from
+  the game's seeded random source (`drawLeap`), from the same number the Leap button prints
+  (`odds.ts`). Against two climbs (2 ledges for the same 2 grip), a leap averages 2.5 ledges in
+  calm air (2.8 from a camp, where a slip costs nothing) and 1.5 in the wind, so reading the
+  wind matters. The screen prints the average next to the odds.
+- **Camps.** Every tenth ledge is a camp. Nobody slides below the highest camp they have reached
+  (leaping past a camp counts), and the first three climbers to each camp score 40, 25 and 15.
+- **Wind** (setting, on by default) blows for 10 seconds about once a minute. Every screen is
+  warned 5 seconds before it starts; while it blows, leaps work 5 times in 10 (two climbs are then
+  the better bet), and the Leap button says so.
+- **Ropes** (setting, on by default) hang on two ledges of every stretch between camps, visible
+  from below. Land on one to pick up its rope (you hold one at a time); **Throw rope** pulls the
+  nearest climber below you up two ledges (never past you). You score 15 for each of your first 5
+  ropes, and they score the height.
+- **The end.** The climb ends when time runs out (7 minutes by default) or when enough climbers
+  reach the summit (3 by default, or everyone if fewer are climbing). The mountain is 30 ledges by
+  default (20 to 60).
+- **Points**: 10 a ledge of height, the camp bonuses, ropes thrown, and a summit bonus by
+  finishing order: 400 for the last place that ends the climb and 300 more for each place
+  earlier (with the default 3 finishers: 1,000, 700, 400). The step is bigger than everything
+  else one climber can score beyond height (5 camps first at 40 and 5 ropes at 15: 275), and the
+  climb ends once that many have finished, so a summiter always ranks above everyone still
+  climbing and an earlier summiter above a later one. Below the summit the most points wins; on
+  the live boards ties in points go to the higher climber, then to whoever reached that ledge
+  first. The big screen's board moves at most every 2.5 seconds, so each reorder slides once
+  and then reads in order.
+- **Variants**: Roped Teams (teams of the class climb as one: every right answer adds to the
+  team's grip, anyone can spend it, and the team shares one height and score), Night Climb
+  (climbers see ropes only 3 ledges ahead, and the wind comes with no warning), Steady Climb (no
+  leaps and no wind: right answers alone, for younger classes).
+- **3D**: a broad mountain at night with a path of ledges in switchbacks up its front face, a
+  camp with a tent, a flag and a lantern at every turn, two bands of cloud, snow above the second
+  and falling near the top, distant ranges and a moon. Wind shows as streaks racing across the
+  face, flags that flap harder and snow driven sideways. Every climber is their own Glim with a
+  lantern: a hop for a climb, a crouch and a jump for a leap, a scramble back down and a dizzy face
+  for a slip, a rope and a rise for a pull, a cheer and confetti at a camp, a celebration at the
+  summit. Each player's device follows their own Glim; the big screen shows the whole mountain,
+  every climber with their name (a crowd on one ledge shares one stacked list of names), the camps, the wind warning, the race for the next camp and the
+  mountain news.
+- **Without 3D**: `summit-side.tsx` draws the same mountain flat (both read `summit-layout.ts`):
+  the path, ledges, camps, ropes and every climber, yourself in gold. The Stage3D label (and the
+  side view's) says in words where you are, your last camp, the next camp, who is just above and
+  below you, the next rope and the wind, and changes as you climb.
+- **Budgets**: the mountain is one mesh; ledges, rocks, trees, cloud puffs and wind streaks are
+  instanced, so the scene is a few dozen draw calls before the Glims. No point lights (lantern
+  light is additive glow sprites); snow only above the low tier; shadows only on high. Under
+  reduced motion the camera moves straight to its place without sweeping or drifting, snow and
+  clouds hold still, and moves are drawn with small hops.
