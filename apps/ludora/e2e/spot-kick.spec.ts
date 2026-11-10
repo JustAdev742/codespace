@@ -129,7 +129,8 @@ async function play(browser: Browser, graphics: 'auto' | 'off') {
   }
 }
 
-test('a host and two players play Spot Kick to the results with 3D on', async ({ browser }) => {
+test('a host and two players play Spot Kick to the results with 3D on', async ({ browser, browserName }) => {
+  test.skip(browserName !== 'chromium', 'Headless Firefox and WebKit have no WebGL; the 3D picture is checked in Chromium.');
   test.setTimeout(150_000);
   await play(browser, 'auto');
 });

@@ -10,8 +10,11 @@ import { CSRF, account, watchErrors } from './helpers.ts';
  * keyboard or screen reader user would, and axe checks the player's and the host's screens.
  */
 
+// The 3D run needs WebGL. Chromium gets it from SwiftShader with these flags; headless Firefox and
+// WebKit have none (the game falls back to the drawn view there, which the second test covers).
+const chromiumRun = (process.env.E2E_BROWSER ?? 'chromium') === 'chromium';
 const localChromium = '/opt/pw-browsers/chromium';
-test.use({ launchOptions: { ...(existsSync(localChromium) ? { executablePath: localChromium } : {}), args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] } });
+if (chromiumRun) test.use({ launchOptions: { ...(existsSync(localChromium) ? { executablePath: localChromium } : {}), args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] } });
 
 const AXE_TAGS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa'];
 const axe = async (page: Page) => (await new AxeBuilder({ page }).withTags(AXE_TAGS).analyze()).violations.map((v) => `${v.id}: ${v.nodes.map((n) => n.target.join(' ')).join(', ')}`);
@@ -107,6 +110,7 @@ async function play(browser: Browser, threeD: boolean) {
 }
 
 test('a host and two players climb Summit Scramble to the results with 3D on', async ({ browser }) => {
+  test.skip(!chromiumRun, 'Headless Firefox and WebKit have no WebGL; the 3D picture is checked in Chromium.');
   test.setTimeout(150_000);
   await play(browser, true);
 });
