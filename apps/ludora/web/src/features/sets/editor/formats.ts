@@ -26,11 +26,11 @@ export const CSV_COLUMNS = [
 export type CsvColumn = (typeof CSV_COLUMNS)[number];
 
 export const CSV_COLUMN_HELP: Record<CsvColumn, string> = {
-  type: 'mcq, multi, truefalse, short, numeric, order, match or flashcard. Leave it empty and Ludora works it out: choices make multiple choice (select all that apply when several are correct), items make put in order (match pairs when they contain =), True or False makes true or false, a number makes a number question, and any other answer makes a typed answer.',
+  type: 'mcq, multi, truefalse, short, numeric, order, match, flashcard, poll, blanks or sort. Leave it empty and Ludora works it out: choices make multiple choice (select all that apply when several are correct), items make put in order (match pairs when they contain =), True or False makes true or false, a number makes a number question, and any other answer makes a typed answer.',
   prompt: 'The question, the statement, or the front of a flashcard. Required.',
-  answer: 'True or false: True or False (yes and no work too). Typed answer: the answer, with other accepted answers separated by |. Number: the number. Flashcard: the back of the card. Multiple choice: the correct choice, if you leave correct empty.',
-  choices: 'Multiple choice and select all: the choices, separated by |.',
-  items: 'Put in order: the items in the correct order, separated by |. Match pairs: each pair as left = right, separated by |.',
+  answer: 'True or false: True or False (yes and no work too). Typed answer: the answer, with other accepted answers separated by |. Number: the number. Flashcard: the back of the card. Fill in the blanks: the sentence with each missing word in [square brackets]. Multiple choice: the correct choice, if you leave correct empty.',
+  choices: 'Multiple choice, select all and poll: the choices, separated by |. Fill in the blanks: extra wrong words for a word bank (leave empty for typed answers).',
+  items: 'Put in order: the items in the correct order, separated by |. Match pairs: each pair as left = right, separated by |. Sort into groups: each item as item = group, separated by |.',
   correct: 'The correct choice, by its text or its letter (A is the first choice). For select all, several separated by |.',
   explanation: 'Optional. Shown after the answer is revealed.',
   time_limit: 'Optional. Seconds to answer, from 5 to 300.',
@@ -123,6 +123,9 @@ export const CSV_TEMPLATE_ROWS: Partial<Record<CsvColumn, string>>[] = [
   { type: 'order', prompt: 'Put these planets in order, starting nearest the Sun.', items: 'Mercury|Venus|Earth|Mars' },
   { type: 'match', prompt: 'Match each animal to its young.', items: 'Cat = kitten|Dog = puppy|Cow = calf' },
   { type: 'flashcard', prompt: 'le chien', answer: 'the dog' },
+  { type: 'poll', prompt: 'Which planet would you most like to visit?', choices: 'Mars|Saturn|Neptune' },
+  { type: 'blanks', prompt: 'Fill in the blanks.', answer: 'Plants need [sunlight|light] and [water] to grow.' },
+  { type: 'sort', prompt: 'Sort these animals.', items: 'Dog = Mammals|Owl = Birds|Cat = Mammals|Hen = Birds' },
 ];
 
 export const PASTE_RULES: string[] = [

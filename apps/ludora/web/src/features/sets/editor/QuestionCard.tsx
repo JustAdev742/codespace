@@ -1,11 +1,13 @@
 import { memo, useCallback, useState, type Dispatch } from 'react';
-import { ArrowDown, ArrowUp, ChevronDown, Copy, SlidersHorizontal, Trash2 } from 'lucide-react';
+import { ArrowDown, ArrowUp, ChevronDown, Copy, GripVertical, SlidersHorizontal, Smartphone, Trash2 } from 'lucide-react';
 import { DIFFICULTIES, QUESTION_TYPE_LABELS, QUESTION_TYPES, type QuestionType } from '@ludora/shared';
 import { IconButton } from '../../../ui/Button.tsx';
-import { Badge, Input, Select, Textarea } from '../../../ui/primitives.tsx';
+import { Badge, Input, Select, Switch, Textarea } from '../../../ui/primitives.tsx';
 import { answerSummary, LIMITS, splitTags, type DraftQuestion } from './model.ts';
 import { domIds, EditorField, ERROR_BORDER, promptLabel, TYPE_ICONS, type TypeEditorProps } from './parts.tsx';
 import { QuestionImage } from './QuestionImage.tsx';
+import { MathText } from '../math/MathText.tsx';
+import { hasMath } from '../math/parse.ts';
 import type { EditorAction } from './state.ts';
 import type { FieldErrors } from './validation.ts';
 import { ChoicesEditor } from './types/ChoicesEditor.tsx';
@@ -15,6 +17,8 @@ import { NumericEditor } from './types/NumericEditor.tsx';
 import { OrderEditor } from './types/OrderEditor.tsx';
 import { ShortEditor } from './types/ShortEditor.tsx';
 import { TrueFalseEditor } from './types/TrueFalseEditor.tsx';
+import { BlanksEditor } from './types/BlanksEditor.tsx';
+import { SortEditor } from './types/SortEditor.tsx';
 
 const NO_ERRORS: FieldErrors = {};
 const OPTION_KEYS = ['explanation', 'timeLimit', 'points', 'difficulty', 'tags'] as const;
@@ -24,7 +28,12 @@ function TypeEditor(props: TypeEditorProps) {
   switch (props.q.type) {
     case 'mcq':
     case 'multi':
+    case 'poll':
       return <ChoicesEditor {...props} />;
+    case 'blanks':
+      return <BlanksEditor {...props} />;
+    case 'sort':
+      return <SortEditor {...props} />;
     case 'truefalse':
       return <TrueFalseEditor {...props} />;
     case 'short':
@@ -44,6 +53,7 @@ function optionSummary(q: DraftQuestion): string {
   const parts: string[] = [];
   if (q.explanation.trim()) parts.push('Explanation');
   if (q.timeLimit.trim()) parts.push(`${q.timeLimit.trim()} seconds`);
+  if (q.doublePoints) parts.push('Double points');
   if (q.points.trim()) parts.push(`${q.points.trim()} points`);
   if (q.difficulty) parts.push(DIFFICULTY_LABELS[q.difficulty]);
   const tags = splitTags(q.tags).length;
@@ -70,7 +80,7 @@ function MoreOptions({ q, errors, edit }: TypeEditorProps) {
       >
         <SlidersHorizontal className="size-4 shrink-0 text-text-3" aria-hidden />
         <span className="shrink-0 font-semibold text-text">More options</span>
-        <span className="min-w-0 flex-1 truncate text-sm text-text-3">{summary || 'Explanation, time limit, points, difficulty, tags'}</span>
+        <span className="min-w-0 flex-1 truncate text-sm text-text-3">{summary || 'Explanation, time limit, double points, difficulty, tags'}</span>
         <ChevronDown className={`size-4 shrink-0 text-text-3 transition-transform ${open ? 'rotate-180' : ''}`} aria-hidden />
       </button>
       {open ? (
@@ -84,6 +94,9 @@ function MoreOptions({ q, errors, edit }: TypeEditorProps) {
           <EditorField id={domIds.field(q.id, 'points')} label="Points" optional hint="Empty uses the game mode's scoring." error={errors.points}>
             {(p) => <Input {...p} inputMode="numeric" autoComplete="off" value={q.points} onChange={(e) => set({ points: e.target.value })} />}
           </EditorField>
+          <div className="rounded-[var(--radius-m)] border border-line px-3 sm:col-span-3">
+            <Switch checked={q.doublePoints} onCheckedChange={(v) => set({ doublePoints: v })} label="Double points" description="Points for this question count twice in quiz rounds, whatever the game's scoring. Players see a Double points badge." />
+          </div>
           <EditorField id={domIds.field(q.id, 'difficulty')} label="Difficulty" optional error={errors.difficulty}>
             {(p) => (
               <Select {...p} value={q.difficulty} onChange={(e) => set({ difficulty: e.target.value as DraftQuestion['difficulty'] })}>
@@ -116,10 +129,16 @@ export interface QuestionCardProps {
   onMove: (id: string, by: -1 | 1) => void;
   onDuplicate: (id: string) => void;
   onRemove: (id: string) => void;
+  selected: boolean;
+  onSelect: (id: string, on: boolean) => void;
+  onTry: (id: string) => void;
+  /** A question dragged by its handle was dropped on this one. */
+  onDropOn: (dragged: string, target: string) => void;
 }
 
 /** One question: a header that collapses it, move, duplicate and delete buttons, and its editor. */
-export const QuestionCard = memo(function QuestionCard({ question: q, index, total, open, errors = NO_ERRORS, canDuplicate, dispatch, onMove, onDuplicate, onRemove }: QuestionCardProps) {
+export const QuestionCard = memo(function QuestionCard({ question: q, index, total, open, errors = NO_ERRORS, canDuplicate, dispatch, onMove, onDuplicate, onRemove, selected, onSelect, onTry, onDropOn }: QuestionCardProps) {
+  const [dropping, setDropping] = useState(false);
   const edit = useCallback((change: (d: DraftQuestion) => DraftQuestion) => dispatch({ type: 'edit', id: q.id, change }), [dispatch, q.id]);
   const problems = Object.keys(errors).length;
   const Icon = TYPE_ICONS[q.type];
@@ -128,8 +147,40 @@ export const QuestionCard = memo(function QuestionCard({ question: q, index, tot
   const summary = open ? '' : answerSummary(q);
 
   return (
-    <li id={domIds.card(q.id)} className={`min-w-0 scroll-mt-24 rounded-[var(--radius-l)] border bg-raised ${problems ? ERROR_BORDER : 'border-line'}`}>
+    <li
+      id={domIds.card(q.id)}
+      onDragOver={(e) => {
+        if (!e.dataTransfer.types.includes('application/x-ludora-question')) return;
+        e.preventDefault();
+        setDropping(true);
+      }}
+      onDragLeave={() => setDropping(false)}
+      onDrop={(e) => {
+        const dragged = e.dataTransfer.getData('application/x-ludora-question');
+        setDropping(false);
+        if (dragged) {
+          e.preventDefault();
+          onDropOn(dragged, q.id);
+        }
+      }}
+      className={`min-w-0 scroll-mt-24 rounded-[var(--radius-l)] border bg-raised ${problems ? ERROR_BORDER : selected ? 'border-lantern' : 'border-line'} ${dropping ? 'ring-[3px] ring-lantern' : ''}`}
+    >
       <div className="flex flex-wrap items-start gap-x-1 gap-y-0 p-2 sm:gap-x-2 sm:p-3">
+        <div className="flex shrink-0 flex-col items-center gap-1 pt-1.5">
+          <span
+            draggable
+            onDragStart={(e) => {
+              e.dataTransfer.setData('application/x-ludora-question', q.id);
+              e.dataTransfer.effectAllowed = 'move';
+            }}
+            className="hidden cursor-grab touch-none rounded-[var(--radius-s)] p-1 text-text-3 hover:bg-surface-2 hover:text-text sm:block"
+            title="Drag to move. Or use the arrow buttons."
+            aria-hidden
+          >
+            <GripVertical className="size-5" />
+          </span>
+          <input type="checkbox" checked={selected} onChange={(e) => onSelect(q.id, e.target.checked)} aria-label={`Tick question ${n} to change several at once`} className="size-5 cursor-pointer accent-[var(--lantern)]" />
+        </div>
         <button
           type="button"
           id={domIds.header(q.id)}
@@ -149,7 +200,7 @@ export const QuestionCard = memo(function QuestionCard({ question: q, index, tot
             </span>
             {!open ? (
               <>
-                <span className={`mt-1 block font-semibold [overflow-wrap:anywhere] ${prompt ? 'text-text' : 'text-text-3'}`}>{prompt || `No ${promptLabel(q.type).toLowerCase()} yet`}</span>
+                <span className={`mt-1 block font-semibold [overflow-wrap:anywhere] ${prompt ? 'text-text' : 'text-text-3'}`}>{prompt ? <MathText text={prompt} /> : `No ${promptLabel(q.type).toLowerCase()} yet`}</span>
                 {summary ? <span className="mt-0.5 block truncate text-sm text-text-2">Answer: {summary}</span> : null}
               </>
             ) : null}
@@ -164,6 +215,9 @@ export const QuestionCard = memo(function QuestionCard({ question: q, index, tot
           <IconButton id={domIds.field(q.id, 'down')} size="sm" className="max-sm:size-11" label={`Move question ${n} down`} disabled={index === total - 1} onClick={() => onMove(q.id, 1)}>
             <ArrowDown className="size-4" />
           </IconButton>
+          <IconButton size="sm" className="max-sm:size-11" label={`Try question ${n} as a player`} onClick={() => onTry(q.id)}>
+            <Smartphone className="size-4" />
+          </IconButton>
           <IconButton size="sm" className="max-sm:size-11" label={`Duplicate question ${n}`} disabled={!canDuplicate} onClick={() => onDuplicate(q.id)}>
             <Copy className="size-4" />
           </IconButton>
@@ -176,7 +230,20 @@ export const QuestionCard = memo(function QuestionCard({ question: q, index, tot
       {open ? (
         <div id={domIds.panel(q.id)} className="flex min-w-0 flex-col gap-4 border-t border-line p-3 sm:p-4">
           <div className="grid min-w-0 gap-4 sm:grid-cols-[minmax(0,1fr)_13rem]">
-            <EditorField id={domIds.field(q.id, 'prompt')} label={promptLabel(q.type)} error={errors.prompt}>
+            <EditorField
+              id={domIds.field(q.id, 'prompt')}
+              label={promptLabel(q.type)}
+              error={errors.prompt}
+              hint={
+                hasMath(q.prompt) ? (
+                  <span className="text-sm text-text-2">
+                    Players see: <MathText text={q.prompt} />
+                  </span>
+                ) : (
+                  'Maths: write it between dollar signs, such as $3/4$, $x^2$, $H_2O$ or $sqrt(16)$.'
+                )
+              }
+            >
               {(p) => (
                 <Textarea
                   {...p}

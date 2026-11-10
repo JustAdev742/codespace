@@ -183,7 +183,8 @@ describe('lantern-guard pack', () => {
   });
 
   it('Banish never takes the last gloomling of the night', () => {
-    const sim = game({ settings: { waves: 5, bossEvery: '0' } });
+    // A seed whose last wave ends with one gloomling left on its own (in some games the last two fall together).
+    const sim = game({ seed: 6, settings: { waves: 5, bossEvery: '0' } });
     until(sim, () => S(sim).nextWaveAt === null && S(sim).spawns.length === 0 && live(sim).length === 1, 400_000, 50);
     const r = cast(sim, 'p1', 'banish');
     expect(r.ok).toBe(false);

@@ -35,3 +35,15 @@ export const FLASHCARD_SET: Question[] = [
   ['Producer', 'A living thing that makes its own food'],
   ['Decomposer', 'A living thing that breaks down dead matter'],
 ].map(([front, back], i) => ({ id: `f${i + 1}`, type: 'flashcard' as const, prompt: front!, back: back! }));
+
+/** The newer question types (poll, fill in the blanks, sort into groups) with a few classics, for tests of those types. */
+export const NEW_TYPES_SET: Question[] = [
+  { id: 'n1', type: 'poll', prompt: 'Which planet would you most like to visit?', choices: [{ id: 'a', text: 'Mars' }, { id: 'b', text: 'Saturn' }, { id: 'c', text: 'Neptune' }] },
+  { id: 'n2', type: 'blanks', prompt: 'Fill in the blanks.', text: 'Plants need [sunlight|light] and [water] to grow.' },
+  { id: 'n3', type: 'blanks', prompt: 'Choose the missing word.', text: 'The Sun is a [star].', bank: true, distractors: ['planet', 'moon', 'comet'] },
+  { id: 'n4', type: 'sort', prompt: 'Sort these animals.', groups: [{ id: 'm', label: 'Mammals' }, { id: 'b', label: 'Birds' }], items: [{ id: 'dog', text: 'Dog', group: 'm' }, { id: 'owl', text: 'Owl', group: 'b' }, { id: 'cat', text: 'Cat', group: 'm' }, { id: 'hen', text: 'Hen', group: 'b' }, { id: 'bat', text: 'Bat', group: 'm' }] },
+  { id: 'n5', type: 'mcq', prompt: 'Which planet is closest to the Sun?', choices: [{ id: 'a', text: 'Mercury' }, { id: 'b', text: 'Venus' }, { id: 'c', text: 'Mars' }], correct: 'a' },
+  { id: 'n6', type: 'sort', prompt: 'Odd or even?', groups: [{ id: 'odd', label: 'Odd' }, { id: 'even', label: 'Even' }, { id: 'zero', label: 'Neither' }], items: [{ id: 'i1', text: '3', group: 'odd' }, { id: 'i2', text: '8', group: 'even' }, { id: 'i3', text: '0', group: 'zero' }, { id: 'i4', text: '11', group: 'odd' }] },
+  { id: 'n7', type: 'blanks', prompt: 'Complete the sentence.', text: 'Water freezes at [0] degrees Celsius.' },
+  { id: 'n8', type: 'truefalse', prompt: 'Bats are birds.', correct: false },
+];

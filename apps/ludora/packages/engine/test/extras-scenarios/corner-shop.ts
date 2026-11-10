@@ -34,6 +34,14 @@ function until(sim: ChaosSim, pred: () => boolean, maxMs = 150_000, stepMs = 250
 
 const waiting = (sim: ChaosSim, sh: any, leftMs = 0) => (sh?.queue ?? []).filter((cu: any) => cu.leavesAt - sim.now > leftMs);
 
+/** The customer the shop serves next (the one who would leave soonest) wants something on its shelves. */
+const sellsNext = (sim: ChaosSim, sh: any) => {
+  const queue = waiting(sim, sh, 2500);
+  if (!queue.length) return false;
+  const next = queue.reduce((a: any, b: any) => (b.leavesAt < a.leavesAt ? b : a));
+  return next.items.some((it: any) => (sh.stock[it.product] ?? 0) > 0);
+};
+
 const callerHas = (what: (sh: any, sim: ChaosSim, id: string) => boolean): Pre => (sim, caster) => void until(sim, () => what(shopOf(sim, caster), sim, caster));
 const rivalHas = (what: (sh: any, sim: ChaosSim, id: string) => boolean): Pre => (sim, caster) =>
   void until(sim, () => rivals(sim, caster).some((id) => what(shopOf(sim, id), sim, id)));
@@ -89,7 +97,8 @@ export const scenarios: ScenarioSet = {
     'corner-shop.free-samples': rivalHas((sh, sim) => waiting(sim, sh).length > 0),
     'corner-shop.stray-cat': rivalHas((sh, sim) => waiting(sim, sh).length > 0),
     'corner-shop.jammed-till': rivalHas((sh, sim) => waiting(sim, sh).length > 0),
-    'corner-shop.fake-sale': rivalHas((sh, sim) => waiting(sim, sh).length > 0),
+    // The sign goes on whichever rival the suite picks first, so wait until every rival has a customer they can sell something to.
+    'corner-shop.fake-sale': (sim, caster) => void until(sim, () => rivals(sim, caster).every((id) => sellsNext(sim, shopOf(sim, id)))),
     'corner-shop.shelf-swap': rivalFullerShelf,
     'corner-shop.lost-delivery': rivalOffer,
     'corner-shop.start-rush': quietStreet,

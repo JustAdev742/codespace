@@ -15,7 +15,7 @@ import {
   type SetCoverGlyph,
   type Subject,
 } from '@ludora/shared';
-import { detectDelimiter, parseCsv, splitList, splitPair, unescapeCell, unguardCell } from './csv.ts';
+import { detectDelimiter, escapeListPart, parseCsv, splitList, splitPair, unescapeCell, unguardCell } from './csv.ts';
 import { CSV_HEADER_ALIASES, EXPORT_FORMAT_ID, normaliseHeader, type CsvColumn } from './formats.ts';
 import { ID_PATTERN, LIMITS, newId, parseNumberText, splitTags, type CoverChoice } from './model.ts';
 import { questionIssues, type IssueLike } from './validation.ts';
@@ -69,11 +69,14 @@ const TYPE_ALIASES: Record<string, QuestionType> = (() => {
   add('mcq', 'multiple choice', 'mc', 'choice', 'single choice', 'quiz');
   add('multi', 'select all', 'select all that apply', 'multiple answers', 'multiple answer', 'multiple select', 'multiselect', 'multiple response', 'checkbox', 'checkboxes');
   add('truefalse', 'true false', 'true or false', 'tf', 't f', 'boolean', 'yes no');
-  add('short', 'short answer', 'type answer', 'typed answer', 'typed', 'text', 'open', 'fill in', 'fill in the blank', 'free text');
+  add('short', 'short answer', 'type answer', 'typed answer', 'typed', 'text', 'open', 'free text');
   add('numeric', 'number', 'numerical', 'num', 'integer', 'decimal');
-  add('order', 'ordering', 'sequence', 'sort', 'sorting', 'rank', 'ranking');
+  add('order', 'ordering', 'sequence', 'rank', 'ranking', 'put in order');
   add('match', 'matching', 'pairs', 'pair');
   add('flashcard', 'flash card', 'flashcards', 'card', 'cards');
+  add('poll', 'survey', 'vote', 'opinion', 'word cloud');
+  add('blanks', 'fill in', 'fill in the blank', 'fill in blanks', 'fill the blanks', 'fill the gaps', 'gap fill', 'gapfill', 'cloze', 'blank');
+  add('sort', 'sorting', 'categorise', 'categorize', 'categories', 'classify', 'group', 'groups', 'grouping', 'sort into groups');
   return map;
 })();
 
@@ -203,11 +206,13 @@ export function detectFormat(text: string, fileName?: string): ImportFormat {
   if (name.endsWith('.csv') || name.endsWith('.tsv')) return 'csv';
   const t = text.replace(/^﻿/, '').trimStart();
   if (t.startsWith('{') || t.startsWith('[')) return 'json';
-  const firstLine = t.split('\n', 1)[0] ?? '';
-  const delimiter = detectDelimiter(firstLine);
-  const headers = firstLine.split(delimiter).map((h) => normaliseHeader(h.replace(/"/g, '')));
-  const known = headers.map((h) => CSV_HEADER_ALIASES[h]).filter(Boolean);
-  if (headers.length > 1 && (known.includes('prompt') || known.length >= 2)) return 'csv';
+  // The column names may come after a title row or two.
+  for (const line of t.split('\n', 4)) {
+    const delimiter = detectDelimiter(line);
+    const headers = line.split(delimiter).map((h) => h.replace(/"/g, ''));
+    const known = headers.map((h) => headerColumn(h) ?? (numberedChoice(h) !== null ? 'choices' : null)).filter(Boolean);
+    if (headers.length > 1 && (known.includes('prompt') || known.length >= 2)) return 'csv';
+  }
   return 'text';
 }
 
@@ -236,7 +241,7 @@ function csvRowToQuestion(get: (c: CsvColumn) => string, ids: Set<string>): Buil
   const prompt = get('prompt');
   const rawType = get('type');
   let type: QuestionType | null = rawType ? normaliseType(rawType) : null;
-  if (rawType && !type) return { error: `“${rawType}” is not a question type. Use mcq, multi, truefalse, short, numeric, order, match or flashcard.` };
+  if (rawType && !type) return { error: `“${rawType}” is not a question type. Use mcq, multi, truefalse, short, numeric, order, match, flashcard, poll, blanks or sort.` };
   const answer = get('answer');
   const correct = get('correct');
   const choicesCell = get('choices');
@@ -244,7 +249,9 @@ function csvRowToQuestion(get: (c: CsvColumn) => string, ids: Set<string>): Buil
   const given = answer || correct;
 
   if (!type) {
-    if (choicesCell) {
+    if (/\[[^\]]+\]/.test(answer) && !itemsCell) {
+      type = 'blanks';
+    } else if (choicesCell) {
       const stars = splitList(choicesCell, true).filter((p) => p.startsWith('*')).length;
       type = splitList(correct || answer).length > 1 || (!given && stars > 1) ? 'multi' : 'mcq';
     } else if (itemsCell) {
@@ -368,6 +375,46 @@ function csvRowToQuestion(get: (c: CsvColumn) => string, ids: Set<string>): Buil
       q.back = given;
       break;
     }
+    case 'poll': {
+      const texts = splitList(choicesCell || itemsCell);
+      if (!texts.length) return { error: 'Add the poll choices in the choices column, separated by |.' };
+      q.choices = withIds(
+        texts.map((text) => ({ text })),
+        'c',
+      );
+      break;
+    }
+    case 'blanks': {
+      // The sentence goes in the answer column (or the prompt, when that is where the brackets are).
+      const sentence = /\[[^\]]+\]/.test(answer) ? answer : /\[[^\]]+\]/.test(prompt) ? prompt : '';
+      if (!sentence) return { error: 'Write the sentence in the answer column, with each missing word in [square brackets].' };
+      q.text = sentence;
+      if (sentence === prompt) q.prompt = 'Fill in the blanks.';
+      const extra = splitList(choicesCell);
+      if (extra.length) {
+        q.bank = true;
+        q.distractors = extra;
+      }
+      break;
+    }
+    case 'sort': {
+      // Items as "item = group", in the items column.
+      const parts = splitList(itemsCell, true).map(splitPair);
+      if (!parts.length || parts.some((p) => p === null)) return { error: 'Write each item as item = group in the items column, for example Dog = Mammals|Owl = Birds.' };
+      const labels: string[] = [];
+      for (const [, group] of parts as [string, string][]) if (!labels.some((l) => l.toLowerCase() === group.toLowerCase())) labels.push(group);
+      const groups = withIds(
+        labels.map((label) => ({ label })),
+        'g',
+      );
+      const groupOf = (label: string) => groups.find((g) => g.label.toLowerCase() === label.toLowerCase())!.id;
+      q.groups = groups;
+      q.items = withIds(
+        (parts as [string, string][]).map(([text, group]) => ({ text, group: groupOf(group) })),
+        'i',
+      );
+      break;
+    }
   }
 
   const explanation = get('explanation');
@@ -396,25 +443,56 @@ function csvRowToQuestion(get: (c: CsvColumn) => string, ids: Set<string>): Buil
   return { value: q };
 }
 
+/** A header cell to our column: by name, by the usual wording in quiz spreadsheets ("Question - max 120 characters", "Time limit (sec)"), or null. */
+export function headerColumn(raw: string): CsvColumn | null {
+  const h = normaliseHeader(raw);
+  if (CSV_HEADER_ALIASES[h]) return CSV_HEADER_ALIASES[h]!;
+  if (/^question(_text)?(_|$)/.test(h) && !h.includes('type') && !h.includes('id')) return 'prompt';
+  if (/^(correct|right)_?(answer|answers|option|options|choice|choices)?(_|$)/.test(h)) return 'correct';
+  if (/^time(_limit)?(_in)?(_sec|_secs|_seconds)?(_|$)/.test(h)) return 'time_limit';
+  if (/^(answer_)?explanation|^feedback/.test(h)) return 'explanation';
+  if (/^(question_)?type(_|$)/.test(h)) return 'type';
+  return null;
+}
+
+/** "Answer 1", "Option B", "Choice 3": one choice each, in the order of their number or letter. */
+export function numberedChoice(raw: string): number | null {
+  const m = /^(?:answer|option|choice|answer_option|incorrect_answer|wrong_answer)_?([1-8]|[a-h])$/.exec(normaliseHeader(raw));
+  if (!m) return null;
+  return /\d/.test(m[1]!) ? Number(m[1]) - 1 : m[1]!.charCodeAt(0) - 97;
+}
+
 function importCsv(text: string): ImportResult {
   const out = emptyResult('csv');
   const { records, unterminated } = parseCsv(text);
-  const headerIndex = records.findIndex((r) => r.cells.some((c) => c.trim()));
-  if (headerIndex < 0) {
+  // The header is the first row that names a question column; title rows above it are skipped.
+  const firstFilled = records.findIndex((r) => r.cells.some((c) => c.trim()));
+  if (firstFilled < 0) {
     out.problems.push({ where: 'File', message: 'There is nothing to import.' });
     return out;
   }
+  let headerIndex = firstFilled;
+  for (let r = firstFilled; r < Math.min(records.length, firstFilled + 8); r++) {
+    if (records[r]!.cells.some((c) => headerColumn(c) === 'prompt')) {
+      headerIndex = r;
+      break;
+    }
+  }
   const header = records[headerIndex]!;
-  const columns = header.cells.map((h) => CSV_HEADER_ALIASES[normaliseHeader(h)] ?? null);
+  const choiceCols = header.cells.map((h) => numberedChoice(h));
+  const numbered = choiceCols.some((c) => c !== null);
+  const columns = header.cells.map((h, i) => (choiceCols[i] !== null ? null : headerColumn(h)));
   if (!columns.includes('prompt')) {
     out.problems.push({ where: `Row ${headerIndex + 1}`, message: 'The first row must name the columns, including prompt. Download the template to see them.' });
     return out;
   }
+  if (headerIndex > firstFilled) out.notes.push(`Skipped ${headerIndex - firstFilled === 1 ? 'a title row' : `${headerIndex - firstFilled} title rows`} above the column names.`);
+  if (numbered) out.notes.push('Read the numbered answer columns as the choices.');
   const index = new Map<CsvColumn, number>();
   columns.forEach((c, i) => {
     if (c && !index.has(c)) index.set(c, i);
   });
-  const ignored = header.cells.filter((h, i) => h.trim() && (!columns[i] || index.get(columns[i]!) !== i)).map((h) => h.trim());
+  const ignored = header.cells.filter((h, i) => h.trim() && choiceCols[i] === null && (!columns[i] || index.get(columns[i]!) !== i)).map((h) => h.trim());
   if (ignored.length) out.notes.push(`Ignored ${ignored.length === 1 ? 'a column' : 'columns'} Ludora does not use: ${ignored.join(', ')}.`);
 
   const ids = new Set<string>();
@@ -425,9 +503,18 @@ function importCsv(text: string): ImportResult {
       out.notes.push(`Only the first ${MAX_ENTRIES} rows were read. A set can hold up to ${LIMITS.questions} questions.`);
       break;
     }
+    const cell = (i: number) => unguardCell((record.cells[i] ?? '').trim());
     const get = (c: CsvColumn) => {
+      if (numbered && c === 'choices' && !index.has('choices')) {
+        // Numbered columns in their own order; empty ones (a question with three of four) are left out.
+        const parts = choiceCols.map((n, i) => (n === null ? null : { n, text: cell(i) })).filter((x): x is { n: number; text: string } => Boolean(x && x.text));
+        return parts.sort((a, b) => a.n - b.n).map((p) => escapeListPart(p.text)).join('|');
+      }
       const i = index.get(c);
-      return i === undefined ? '' : unguardCell((record.cells[i] ?? '').trim());
+      const v = i === undefined ? '' : cell(i);
+      // "1, 3" or "A and C" for several right answers.
+      if (numbered && c === 'correct') return v.split(/\s*(?:[,;|]|\band\b)\s*/i).filter(Boolean).join('|');
+      return v;
     };
     accept(out, csvRowToQuestion(get, ids), `Row ${r + 1}`, (key) => CSV_FIELD[key]);
   }
@@ -533,9 +620,34 @@ function choiceQuestion(prompt: string, lines: string[]): Built {
     : { value: { type: 'mcq', prompt, choices: withId, correct: withId[picked[0]!]!.id } };
 }
 
+/** A term-and-definition list: every line one term and its definition, split by a tab (copied from a spreadsheet), " - " or " = ". */
+function termList(lines: string[]): [string, string][] | null {
+  const filled = lines.map((l) => l.trim()).filter(Boolean);
+  if (filled.length < 2) return null;
+  const tab = filled.every((l) => l.split('\t').filter((x) => x.trim()).length === 2);
+  const pairs = filled.map((l) => {
+    const m = tab ? /^([^\t]+)\t+([^\t]+)$/.exec(l) : /^(.+?)\s+[-–=]\s+(.+)$/.exec(l);
+    return m ? ([m[1]!.trim(), m[2]!.trim()] as [string, string]) : null;
+  });
+  // Only when every line is a pair, and none looks like a question with an answer line or choices.
+  if (pairs.some((p) => !p) || filled.some((l) => QUESTION_MARK.test(l) || l.startsWith('*'))) return null;
+  return pairs as [string, string][];
+}
+
 function importText(text: string): ImportResult {
   const out = emptyResult('text');
   const lines = text.replace(/^﻿/, '').replace(/\r\n?/g, '\n').split('\n');
+  const terms = termList(lines);
+  if (terms) {
+    const ids = new Set<string>();
+    out.notes.push('Read each line as a term and its definition, made into flashcards.');
+    terms.slice(0, MAX_ENTRIES).forEach(([front, back], k) => {
+      const built: Built = { value: { type: 'flashcard', prompt: front, back } };
+      assignId(built.value!, '', ids);
+      accept(out, built, `Line ${k + 1}`, () => undefined);
+    });
+    return out;
+  }
   const blocks: { line: number; text: string }[][] = [];
   let current: { line: number; text: string }[] = [];
   lines.forEach((raw, i) => {

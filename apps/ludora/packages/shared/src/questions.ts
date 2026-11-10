@@ -15,6 +15,9 @@ export const QUESTION_TYPES = [
   'order',
   'match',
   'flashcard',
+  'poll',
+  'blanks',
+  'sort',
 ] as const;
 export type QuestionType = (typeof QUESTION_TYPES)[number];
 
@@ -27,6 +30,9 @@ export const QUESTION_TYPE_LABELS: Record<QuestionType, string> = {
   order: 'Put in order',
   match: 'Match pairs',
   flashcard: 'Flashcard',
+  poll: 'Poll',
+  blanks: 'Fill in the blanks',
+  sort: 'Sort into groups',
 };
 
 export const DIFFICULTIES = ['easy', 'medium', 'hard'] as const;
@@ -80,6 +86,8 @@ const choiceSchema = z.object({
   id: idSchema,
   text: z.string().trim().max(200),
   media: mediaSchema.optional(),
+  /** A "why" note for a wrong choice, shown at the reveal to the players who picked it. */
+  why: z.string().trim().min(1).max(200).optional(),
 });
 
 const base = {
@@ -91,6 +99,8 @@ const base = {
   points: z.number().int().min(0).max(10_000).optional(),
   difficulty: z.enum(DIFFICULTIES).optional(),
   tags: z.array(z.string().trim().min(1).max(30)).max(10).optional(),
+  /** Points for this question count double, whatever the mode's scoring. */
+  doublePoints: z.boolean().optional(),
 };
 
 export const mcqSchema = z.object({
@@ -132,6 +142,62 @@ export const matchSchema = z.object({
   pairs: z.array(z.object({ id: idSchema, left: text(120), right: text(120) })).min(2).max(8),
 });
 export const flashcardSchema = z.object({ ...base, type: z.literal('flashcard'), back: text(300) });
+/** A poll has no right answer and scores nothing: the reveal shows how the room split. */
+export const pollSchema = z.object({
+  ...base,
+  type: z.literal('poll'),
+  choices: z.array(choiceSchema).min(2).max(6),
+});
+
+/**
+ * Gaps in a fill-in-the-blanks sentence are written in square brackets, with
+ * other accepted answers after a bar: "Plants need [sunlight|light] and [water]."
+ */
+export const BLANK_PATTERN = /\[([^[\]]*)\]/g;
+export const BLANKS_MIN = 1;
+export const BLANKS_MAX = 3;
+
+export interface BlankGap {
+  /** Accepted answers, the first being the one shown at the reveal and put in a word bank. */
+  accepted: string[];
+}
+
+/** The sentence split into its text pieces (one more than the gaps) and its gaps. */
+export function parseBlanks(text: string): { pieces: string[]; gaps: BlankGap[] } {
+  const pieces: string[] = [];
+  const gaps: BlankGap[] = [];
+  let last = 0;
+  for (const m of text.matchAll(BLANK_PATTERN)) {
+    pieces.push(text.slice(last, m.index));
+    gaps.push({ accepted: m[1]!.split('|').map((a) => a.trim()).filter(Boolean) });
+    last = m.index! + m[0].length;
+  }
+  pieces.push(text.slice(last));
+  return { pieces, gaps };
+}
+
+export const blanksSchema = z
+  .object({
+    ...base,
+    type: z.literal('blanks'),
+    /** The sentence, gaps in [square brackets]. */
+    text: text(300),
+    /** Players pick from a word bank (the right words plus `distractors`) instead of typing. */
+    bank: z.boolean().optional(),
+    distractors: z.array(text(60)).max(6).optional(),
+    caseSensitive: z.boolean().optional(),
+  });
+
+export const SORT_GROUPS = { min: 2, max: 3 } as const;
+export const SORT_ITEMS = { min: 4, max: 8 } as const;
+
+export const sortSchema = z.object({
+  ...base,
+  type: z.literal('sort'),
+  groups: z.array(z.object({ id: idSchema, label: text(40) })).min(SORT_GROUPS.min).max(SORT_GROUPS.max),
+  /** Each item names the group it belongs in. Players see the items shuffled. */
+  items: z.array(z.object({ id: idSchema, text: text(80), group: idSchema })).min(SORT_ITEMS.min).max(SORT_ITEMS.max),
+});
 
 export const questionSchema = z
   .discriminatedUnion('type', [
@@ -143,9 +209,33 @@ export const questionSchema = z
     orderSchema,
     matchSchema,
     flashcardSchema,
+    pollSchema,
+    blanksSchema,
+    sortSchema,
   ])
   .superRefine((q, ctx) => {
     const dupes = (ids: string[]) => new Set(ids).size !== ids.length;
+    if (q.type === 'poll') {
+      if (dupes(q.choices.map((c) => c.id))) ctx.addIssue({ code: 'custom', message: 'Choice ids must be unique', path: ['choices'] });
+      if (q.choices.some((c) => !c.text && !c.media)) ctx.addIssue({ code: 'custom', message: 'Every choice needs text or an image', path: ['choices'] });
+    }
+    if (q.type === 'blanks') {
+      const { gaps } = parseBlanks(q.text);
+      if (gaps.length < BLANKS_MIN || gaps.length > BLANKS_MAX)
+        ctx.addIssue({ code: 'custom', message: `Put ${BLANKS_MIN} to ${BLANKS_MAX} gaps in the sentence, each in [square brackets]`, path: ['text'] });
+      if (gaps.some((g) => g.accepted.length === 0)) ctx.addIssue({ code: 'custom', message: 'Every gap needs its answer inside the brackets', path: ['text'] });
+      if (gaps.some((g) => g.accepted.some((a) => a.length > 60))) ctx.addIssue({ code: 'custom', message: 'Keep each answer in a gap to 60 characters', path: ['text'] });
+      if (/[[\]]/.test(q.text.replace(BLANK_PATTERN, ''))) ctx.addIssue({ code: 'custom', message: 'A bracket is not closed', path: ['text'] });
+      const right = new Set(gaps.flatMap((g) => g.accepted.map((a) => a.toLowerCase())));
+      if ((q.distractors ?? []).some((d) => right.has(d.trim().toLowerCase()))) ctx.addIssue({ code: 'custom', message: 'An extra word for the bank is also a right answer', path: ['distractors'] });
+    }
+    if (q.type === 'sort') {
+      const groups = q.groups.map((g) => g.id);
+      if (dupes(groups)) ctx.addIssue({ code: 'custom', message: 'Group ids must be unique', path: ['groups'] });
+      if (dupes(q.items.map((i) => i.id))) ctx.addIssue({ code: 'custom', message: 'Item ids must be unique', path: ['items'] });
+      if (q.items.some((i) => !groups.includes(i.group))) ctx.addIssue({ code: 'custom', message: 'Every item must go in one of the groups', path: ['items'] });
+      else if (groups.some((g) => !q.items.some((i) => i.group === g))) ctx.addIssue({ code: 'custom', message: 'Every group needs at least one item', path: ['groups'] });
+    }
     if (q.type === 'mcq' || q.type === 'multi') {
       const ids = q.choices.map((c) => c.id);
       if (dupes(ids)) ctx.addIssue({ code: 'custom', message: 'Choice ids must be unique', path: ['choices'] });
@@ -175,11 +265,14 @@ export const answerSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('order'), itemIds: z.array(idSchema).max(8) }),
   z.object({ type: z.literal('match'), pairs: z.record(idSchema, idSchema) }),
   z.object({ type: z.literal('flashcard'), knew: z.boolean() }),
+  z.object({ type: z.literal('poll'), choiceId: idSchema }),
+  z.object({ type: z.literal('blanks'), values: z.array(z.string().max(80)).max(BLANKS_MAX) }),
+  z.object({ type: z.literal('sort'), placement: z.record(idSchema, idSchema) }),
 ]);
 export type Answer = z.infer<typeof answerSchema>;
 
-/** A question as a player sees it: no answers, choices in presentation order. */
-export type PublicQuestion =
+/** A question as a player sees it: no answers, choices in presentation order. `double`: its points count double. */
+export type PublicQuestion = { double?: true } & (
   | { type: 'mcq'; prompt: string; media?: Media; choices: { id: string; text: string; media?: Media }[] }
   | { type: 'multi'; prompt: string; media?: Media; choices: { id: string; text: string; media?: Media }[]; selectCount?: number }
   | { type: 'truefalse'; prompt: string; media?: Media }
@@ -187,24 +280,41 @@ export type PublicQuestion =
   | { type: 'numeric'; prompt: string; media?: Media; unit?: string }
   | { type: 'order'; prompt: string; media?: Media; items: { id: string; text: string }[] }
   | { type: 'match'; prompt: string; media?: Media; left: { id: string; text: string }[]; right: { id: string; text: string }[] }
-  | { type: 'flashcard'; prompt: string; media?: Media };
+  | { type: 'flashcard'; prompt: string; media?: Media }
+  | { type: 'poll'; prompt: string; media?: Media; choices: { id: string; text: string; media?: Media }[] }
+  /** `pieces` are the sentence around the gaps (one more than the gaps); `bank` is shuffled, when players pick words. */
+  | { type: 'blanks'; prompt: string; media?: Media; pieces: string[]; bank?: string[] }
+  | { type: 'sort'; prompt: string; media?: Media; groups: { id: string; label: string }[]; items: { id: string; text: string }[] });
 
 /** The correct answer, revealed after a question closes. */
 export type AnswerReveal =
-  | { type: 'mcq'; correct: string }
-  | { type: 'multi'; correct: string[] }
+  /** `whys`: the author's note on why a wrong choice is wrong, by choice, for the players who picked it. */
+  | { type: 'mcq'; correct: string; whys?: Record<string, string> }
+  | { type: 'multi'; correct: string[]; whys?: Record<string, string> }
   | { type: 'truefalse'; correct: boolean }
   | { type: 'short'; accepted: string[] }
   | { type: 'numeric'; answer: number; tolerance: number; unit?: string }
   | { type: 'order'; itemIds: string[] }
   | { type: 'match'; pairs: Record<string, string> }
-  | { type: 'flashcard'; back: string };
+  | { type: 'flashcard'; back: string }
+  | { type: 'poll' }
+  | { type: 'blanks'; answers: string[] }
+  | { type: 'sort'; placement: Record<string, string> };
 
 export const VISIBILITIES = ['private', 'unlisted', 'public'] as const;
 export type Visibility = (typeof VISIBILITIES)[number];
 
 export const SET_COVER_GLYPHS = ['atom', 'globe', 'book', 'calculator', 'palette', 'music', 'leaf', 'flask', 'landmark', 'languages', 'cpu', 'heart', 'star', 'puzzle'] as const;
 export type SetCoverGlyph = (typeof SET_COVER_GLYPHS)[number];
+
+export const setDefaultsSchema = z.object({
+  randomCount: z.number().int().min(1).max(250).optional(),
+  shuffleAnswers: z.boolean().optional(),
+});
+export type SetDefaults = z.infer<typeof setDefaultsSchema>;
+
+/** Year levels offered for a set (stored in gradeBand); a set saved with other text keeps it. */
+export const YEAR_LEVELS = ['Reception', 'Year 1', 'Year 2', 'Year 3', 'Year 4', 'Year 5', 'Year 6', 'Year 7', 'Year 8', 'Year 9', 'Year 10', 'Year 11', 'Year 12', 'Year 13', 'Adult'] as const;
 
 export const questionSetInputSchema = z.object({
   title: text(80),
@@ -215,6 +325,9 @@ export const questionSetInputSchema = z.object({
   tags: z.array(z.string().trim().min(1).max(30)).max(10).default([]),
   visibility: z.enum(VISIBILITIES).default('private'),
   cover: z.object({ glyph: z.enum(SET_COVER_GLYPHS), hue: z.number().int().min(0).max(359) }).optional(),
+  topic: z.string().trim().max(60).optional(),
+  /** What a game of this set does unless the host changes it: ask a random number of the questions, shuffle the answers. */
+  defaults: setDefaultsSchema.optional(),
   questions: z
     .array(questionSchema)
     .min(1, 'Add at least one question')

@@ -101,9 +101,17 @@ export interface SetSummary {
   ownerId: string | null;
   ownerName: string | null;
   updatedAt: string;
+  topic?: string | null;
+  defaults?: { randomCount?: number; shuffleAnswers?: boolean } | null;
+  /** Signed-in viewers: whether they starred it. */
+  favourite?: boolean;
+  /** The owner's own folder, on their own sets. */
+  folder?: string | null;
+  /** The owner only: the private share link's token, when there is one. */
+  shareToken?: string | null;
 }
 
-export function useSets(params: { scope?: string; q?: string; subject?: string; page?: number }) {
+export function useSets(params: { scope?: string; q?: string; subject?: string; page?: number; year?: string; topic?: string; folder?: string; favourites?: string; tag?: string; sort?: string; pageSize?: number }) {
   const search = new URLSearchParams(Object.entries(params).filter(([, v]) => v !== undefined && v !== '').map(([k, v]) => [k, String(v)]));
   return useQuery({
     queryKey: ['sets', params],

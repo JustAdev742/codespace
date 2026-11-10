@@ -38,6 +38,24 @@ describe('turning drafts into questions', () => {
     expect(num).not.toHaveProperty('tolerance');
   });
 
+  it('drafts fill-in-the-blanks and sorting questions, with a word bank only when there are wrong words for it', () => {
+    const drafts = [
+      { type: 'blanks', prompt: 'Fill in the blanks.', sentence: 'Water [evaporates] when the Sun [heats|warms] it.', distractors: [], explanation: '' },
+      { type: 'blanks', prompt: 'Pick the word.', sentence: 'Rain is a kind of [precipitation].', distractors: ['condensation', 'Precipitation', 'erosion', 'erosion'], explanation: '' },
+      { type: 'sort', prompt: 'Solid, liquid or gas?', groups: ['Solid', 'Liquid', 'Gas'], items: [{ text: 'Ice', group: 'solid' }, { text: 'Rain', group: 'Liquid' }, { text: 'Steam', group: 'Gas' }, { text: 'Snow', group: 'Solid' }], explanation: 'States of water.' },
+      { type: 'sort', prompt: 'Bad', groups: ['A', 'B'], items: [{ text: 'x', group: 'A' }, { text: 'y', group: 'C' }, { text: 'z', group: 'A' }, { text: 'w', group: 'B' }], explanation: '' },
+      { type: 'blanks', prompt: 'No gaps', sentence: 'There is nothing to fill.', distractors: [], explanation: '' },
+    ];
+    const { questions, dropped } = toQuestions({ questions: drafts }, { count: 10, types: ['blanks', 'sort'] });
+    expect(dropped).toBe(2);
+    expect(questions[0]).toMatchObject({ type: 'blanks', text: 'Water [evaporates] when the Sun [heats|warms] it.' });
+    expect(questions[0]).not.toHaveProperty('bank');
+    expect(questions[1]).toMatchObject({ type: 'blanks', bank: true, distractors: ['condensation', 'erosion'] });
+    expect(questions[2]).toMatchObject({ type: 'sort', groups: [{ id: 'g1', label: 'Solid' }, { id: 'g2', label: 'Liquid' }, { id: 'g3', label: 'Gas' }], items: [{ text: 'Ice', group: 'g1' }, { text: 'Rain', group: 'g2' }, { text: 'Steam', group: 'g3' }, { text: 'Snow', group: 'g1' }] });
+    for (const q of questions) expect(questionSchema.safeParse(q).success).toBe(true);
+    expect(userMessage({ ...REQUEST, types: ['blanks', 'sort'] })).toContain('fill in the blanks (blanks), sort into groups (sort)');
+  });
+
   it('drops drafts that break a rule, and stops at the number asked for', () => {
     const bad = [
       { ...GOOD[0], choices: [{ text: 'A', correct: true }, { text: 'B', correct: true }] },

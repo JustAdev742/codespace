@@ -25,7 +25,7 @@ export const meta: ModeMeta = {
   duration: { min: 4, max: 10 },
   difficulty: 2,
   teams: 'optional',
-  questionTypes: ['mcq', 'multi', 'truefalse', 'short', 'numeric', 'order', 'match'],
+  questionTypes: ['mcq', 'multi', 'truefalse', 'short', 'numeric', 'order', 'match', 'blanks', 'sort'],
   minQuestions: 5,
   common: {
     fields: ['timeLimitSec'],

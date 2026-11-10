@@ -232,7 +232,9 @@ describe('night-market pack: tricks', () => {
   it('Moonlight Stall Swipe takes 15% (at least 5), and the stall is then watched', () => {
     const sim = market({}, 40_000);
     // A moment when p2 may be tricked by p1: not watched, not p1's last target, no shield, some coins.
-    until(sim, () => st(sim, 'p2').guardUntil <= sim.now && st(sim, 'p1').lastTarget !== 'p2' && st(sim, 'p2').coins > 0 && !st(sim, 'p1').pending && sim.state().event?.id !== 'calm');
+    // p4 must have another stall it could pick, or market rules would let it pick a watched one.
+    const p4HasAnother = () => ['p1', 'p3'].some((o) => st(sim, o).guardUntil <= sim.now && st(sim, 'p4').lastTarget !== o);
+    until(sim, () => st(sim, 'p2').guardUntil <= sim.now && st(sim, 'p1').lastTarget !== 'p2' && st(sim, 'p2').coins > 0 && !st(sim, 'p1').pending && sim.state().event?.id !== 'calm' && p4HasAnother());
     sim.idle.add('p2');
     if (st(sim, 'p2').shield) expect(cast(sim, 'p3', 'shield-smash', 'p2').ok).toBe(true);
     const theirs = st(sim, 'p2').coins;
@@ -245,6 +247,7 @@ describe('night-market pack: tricks', () => {
     // Watched now: nobody else may pick that stall for a swipe.
     const r = cast(sim, 'p4', 'moonlight-swipe', 'p2');
     expect(r.ok).toBe(false);
+    expect(r.ok ? '' : r.message).toContain('being watched');
   });
 
   it('Moonlight Stall Swipe breaks on a shield, but Calm Night keeps the shield whole', () => {
@@ -277,8 +280,9 @@ describe('night-market pack: tricks', () => {
 
   it('Market Payback takes back the latest reported swipe once', () => {
     const sim = market({}, 40_000);
-    if (st(sim, 'p1').shield) cast(sim, 'p3', 'shield-smash', 'p1');
-    until(sim, () => st(sim, 'p1').coins >= 100);
+    // A moment when p2 may swipe from p1: p1 has coins, is not watched and was not p2's last target.
+    until(sim, () => st(sim, 'p1').coins >= 100 && st(sim, 'p1').guardUntil <= sim.now && st(sim, 'p2').lastTarget !== 'p1' && sim.state().event?.id !== 'calm');
+    if (st(sim, 'p1').shield) expect(cast(sim, 'p3', 'shield-smash', 'p1').ok).toBe(true);
     expect(cast(sim, 'p2', 'moonlight-swipe', 'p1').ok).toBe(true);
     const swipe = sim.state().news.find((n: any) => n.kind === 'swipe' && n.to === 'p1');
     expect(swipe).toBeDefined();

@@ -337,7 +337,10 @@ describe('glow-tag pack: you', () => {
     const [c] = twins();
     idleAll(c);
     until(c, () => c.state().phase >= 1);
-    expect(cast(c, 'p3', 'blink').ok).toBe(true);
+    // Blink makes sure p3 stands inside; it may already be in the safest spot.
+    const blink = cast(c, 'p3', 'blink');
+    if (!blink.ok) expect(blink.message).toContain('already as safe');
+    expect(outsideRing(ringAt(c.state().ring, c.now), G(c, 'p3').x, G(c, 'p3').z)).toBe(false);
     expect(cast(c, 'p3', 'ring-tether')).toMatchObject({ ok: false, message: expect.stringContaining('safely inside') });
   });
 

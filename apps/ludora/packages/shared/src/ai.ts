@@ -7,8 +7,11 @@ import type { Question } from './questions.ts';
  * and edits every one before saving; nothing is saved or played straight away.
  */
 
-/** Question types drafts can use: the ones a teacher can check at a glance. */
-export const AI_DRAFT_TYPES = ['mcq', 'truefalse', 'short', 'numeric'] as const;
+/**
+ * Question types drafts can use: the ones a teacher can check at a glance. Polls are left out:
+ * a poll asks for opinions, and drafts never ask players about themselves.
+ */
+export const AI_DRAFT_TYPES = ['mcq', 'truefalse', 'short', 'numeric', 'blanks', 'sort'] as const;
 export type AiDraftType = (typeof AI_DRAFT_TYPES)[number];
 
 /** Age bands; the wording and difficulty of drafts follow the band. */

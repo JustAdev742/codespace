@@ -36,6 +36,11 @@ export const LIMITS = {
   explanation: 600,
   choice: 200,
   item: 120,
+  sortItem: 80,
+  groupLabel: 40,
+  sentence: 300,
+  bankWord: 60,
+  bankWords: 6,
   accepted: 120,
   back: 300,
   unit: 20,
@@ -51,6 +56,9 @@ export const LIST_LIMITS = {
   short: { min: 1, max: 10 },
   order: { min: 2, max: 8 },
   match: { min: 2, max: 8 },
+  poll: { min: 2, max: 6 },
+  groups: { min: 2, max: 3 },
+  sort: { min: 4, max: 8 },
 } as const;
 
 /* ----------------------------------- Ids ----------------------------------- */
@@ -74,12 +82,16 @@ export function newId(prefix: string, taken?: { has(id: string): boolean }): str
 export interface DraftChoice {
   id: string;
   text: string;
+  /** Why a wrong choice is wrong, shown to players who pick it. Not saved for a correct choice. */
+  why?: string;
   /** Kept exactly as loaded. There is no upload yet, so the editor never adds one. */
   media?: Media;
 }
 export interface DraftItem {
   id: string;
   text: string;
+  /** sort: the id of the group this item belongs in ('' until chosen). */
+  group?: string;
 }
 export interface DraftPair {
   id: string;
@@ -99,6 +111,8 @@ export interface DraftQuestion {
   difficulty: Difficulty | '';
   /** Comma separated, as typed. */
   tags: string;
+  /** Points count double in quiz rounds. */
+  doublePoints: boolean;
   /** mcq and multi. */
   choices: DraftChoice[];
   /** Ids of the correct choices: one for mcq, one or more for multi. */
@@ -119,6 +133,14 @@ export interface DraftQuestion {
   pairs: DraftPair[];
   /** flashcard. */
   back: string;
+  /** blanks: the sentence, gaps in [square brackets]. */
+  sentence: string;
+  /** blanks: players pick from a word bank instead of typing. */
+  bank: boolean;
+  /** blanks: extra words for the bank, comma separated as typed. */
+  distractors: string;
+  /** sort: the groups (their label in `text`). Items are in `items`, each with a `group`. */
+  groups: DraftItem[];
 }
 
 function blankFields(): Omit<DraftQuestion, 'id' | 'type'> {
@@ -129,6 +151,7 @@ function blankFields(): Omit<DraftQuestion, 'id' | 'type'> {
     points: '',
     difficulty: '',
     tags: '',
+    doublePoints: false,
     choices: [],
     correct: [],
     truth: null,
@@ -141,6 +164,10 @@ function blankFields(): Omit<DraftQuestion, 'id' | 'type'> {
     items: [],
     pairs: [],
     back: '',
+    sentence: '',
+    bank: false,
+    distractors: '',
+    groups: [],
   };
 }
 
@@ -168,7 +195,7 @@ function withFreshIds(texts: string[], prefix: string): DraftItem[] {
 }
 
 /** How many empty rows a brand new question of each type starts with. */
-const STARTING_ROWS: Partial<Record<QuestionType, number>> = { mcq: 4, multi: 4, order: 3, match: 3, short: 1 };
+const STARTING_ROWS: Partial<Record<QuestionType, number>> = { mcq: 4, multi: 4, order: 3, match: 3, short: 1, poll: 3, sort: 4 };
 
 /**
  * Makes sure a draft has what its type needs: enough rows to fill in, and a
@@ -219,6 +246,27 @@ export function withShape(d: DraftQuestion): DraftQuestion {
       }
       break;
     }
+    case 'poll': {
+      const limits = LIST_LIMITS.poll;
+      if (!q.choices.some(choiceFilled)) {
+        const carried = q.items.map((i) => i.text).filter(hasText);
+        if (carried.length) q.choices = withFreshIds(carried.slice(0, limits.max), 'c');
+      }
+      const blank = !q.choices.some(choiceFilled);
+      q.choices = padList(q.choices.slice(0, limits.max), Math.max(limits.min, blank ? start : 0), (id) => ({ id, text: '' }), 'c');
+      break;
+    }
+    case 'blanks': {
+      if (!hasText(q.prompt)) q.prompt = 'Fill in the blanks.';
+      break;
+    }
+    case 'sort': {
+      q.groups = padList(q.groups, LIST_LIMITS.groups.min, (id) => ({ id, text: '' }), 'g');
+      const blank = !q.items.some((i) => hasText(i.text));
+      const groupIds = new Set(q.groups.map((g) => g.id));
+      q.items = padList(q.items, Math.max(LIST_LIMITS.sort.min, blank ? start : 0), (id) => ({ id, text: '', group: '' }), 'i').map((i) => ({ ...i, group: i.group && groupIds.has(i.group) ? i.group : '' }));
+      break;
+    }
     default:
       break;
   }
@@ -243,6 +291,7 @@ export function cloneQuestion(d: DraftQuestion, id: string): DraftQuestion {
     accepted: d.accepted.map((a) => ({ ...a })),
     items: d.items.map((i) => ({ ...i })),
     pairs: d.pairs.map((p) => ({ ...p })),
+    groups: d.groups.map((g) => ({ ...g })),
   };
 }
 
@@ -257,6 +306,7 @@ export function fromQuestion(q: Question): DraftQuestion {
     points: q.points === undefined ? '' : String(q.points),
     difficulty: q.difficulty ?? '',
     tags: (q.tags ?? []).join(', '),
+    doublePoints: q.doublePoints === true,
   };
   if (q.media) d.media = q.media;
   switch (q.type) {
@@ -296,6 +346,19 @@ export function fromQuestion(q: Question): DraftQuestion {
     case 'flashcard':
       d.back = q.back;
       break;
+    case 'poll':
+      d.choices = q.choices.map((c) => ({ ...c }));
+      break;
+    case 'blanks':
+      d.sentence = q.text;
+      d.bank = q.bank ?? false;
+      d.distractors = (q.distractors ?? []).join(', ');
+      d.caseSensitive = q.caseSensitive ?? false;
+      break;
+    case 'sort':
+      d.groups = q.groups.map((g) => ({ id: g.id, text: g.label }));
+      d.items = q.items.map((i) => ({ id: i.id, text: i.text, group: i.group }));
+      break;
   }
   return d;
 }
@@ -334,6 +397,7 @@ export interface IndexMaps {
   accepted: number[];
   items: number[];
   pairs: number[];
+  groups: number[];
 }
 
 /**
@@ -342,7 +406,7 @@ export interface IndexMaps {
  * only has to fill in what they need.
  */
 export function toCandidate(d: DraftQuestion): { question: Record<string, unknown>; maps: IndexMaps } {
-  const maps: IndexMaps = { choices: [], accepted: [], items: [], pairs: [] };
+  const maps: IndexMaps = { choices: [], accepted: [], items: [], pairs: [], groups: [] };
   const q: Record<string, unknown> = { id: d.id, type: d.type, prompt: d.prompt };
   if (d.media) q.media = d.media;
   if (hasText(d.explanation)) q.explanation = d.explanation;
@@ -351,6 +415,7 @@ export function toCandidate(d: DraftQuestion): { question: Record<string, unknow
   if (d.difficulty) q.difficulty = d.difficulty;
   const tags = splitTags(d.tags);
   if (tags.length) q.tags = tags;
+  if (d.doublePoints) q.doublePoints = true;
 
   switch (d.type) {
     case 'mcq':
@@ -361,9 +426,9 @@ export function toCandidate(d: DraftQuestion): { question: Record<string, unknow
         kept.push(c);
         maps.choices.push(i);
       });
-      q.choices = kept.map((c) => (c.media ? { id: c.id, text: c.text, media: c.media } : { id: c.id, text: c.text }));
       const ids = new Set(kept.map((c) => c.id));
       const correct = d.correct.filter((id) => ids.has(id));
+      q.choices = kept.map((c) => ({ id: c.id, text: c.text, ...(c.media ? { media: c.media } : {}), ...(c.why?.trim() && !correct.includes(c.id) ? { why: c.why } : {}) }));
       q.correct = d.type === 'mcq' ? (correct[0] ?? '') : correct;
       break;
     }
@@ -410,6 +475,41 @@ export function toCandidate(d: DraftQuestion): { question: Record<string, unknow
     case 'flashcard':
       q.back = d.back;
       break;
+    case 'poll': {
+      const kept: DraftChoice[] = [];
+      d.choices.forEach((c, i) => {
+        if (!choiceFilled(c)) return;
+        kept.push(c);
+        maps.choices.push(i);
+      });
+      q.choices = kept.map((c) => (c.media ? { id: c.id, text: c.text, media: c.media } : { id: c.id, text: c.text }));
+      break;
+    }
+    case 'blanks': {
+      q.text = d.sentence;
+      if (d.bank) q.bank = true;
+      const words = splitTags(d.distractors);
+      if (d.bank && words.length) q.distractors = words;
+      if (d.caseSensitive && !d.bank) q.caseSensitive = true;
+      break;
+    }
+    case 'sort': {
+      const groups: DraftItem[] = [];
+      d.groups.forEach((g, i) => {
+        if (!hasText(g.text)) return;
+        groups.push(g);
+        maps.groups.push(i);
+      });
+      q.groups = groups.map((g) => ({ id: g.id, label: g.text }));
+      const kept: DraftItem[] = [];
+      d.items.forEach((item, i) => {
+        if (!hasText(item.text)) return;
+        kept.push(item);
+        maps.items.push(i);
+      });
+      q.items = kept.map((item) => ({ id: item.id, text: item.text, group: item.group ?? '' }));
+      break;
+    }
   }
   return { question: q, maps };
 }
@@ -417,7 +517,7 @@ export function toCandidate(d: DraftQuestion): { question: Record<string, unknow
 /** True for a question nobody has typed into yet. */
 export function isBlankQuestion(d: DraftQuestion): boolean {
   return (
-    !hasText(d.prompt) &&
+    (!hasText(d.prompt) || (d.type === 'blanks' && d.prompt === 'Fill in the blanks.')) &&
     !d.media &&
     !hasText(d.explanation) &&
     !d.choices.some(choiceFilled) &&
@@ -426,7 +526,9 @@ export function isBlankQuestion(d: DraftQuestion): boolean {
     !hasText(d.answer) &&
     !d.items.some((i) => hasText(i.text)) &&
     !d.pairs.some((p) => hasText(p.left) || hasText(p.right)) &&
-    !hasText(d.back)
+    !hasText(d.back) &&
+    !hasText(d.sentence) &&
+    !d.groups.some((g) => hasText(g.text))
   );
 }
 
@@ -454,6 +556,15 @@ export function answerSummary(d: DraftQuestion): string {
         .join('; ');
     case 'flashcard':
       return d.back.trim();
+    case 'poll':
+      return d.choices.some(choiceFilled) ? 'No right answer (a poll)' : '';
+    case 'blanks':
+      return [...d.sentence.matchAll(/\[([^[\]]*)\]/g)].map((m) => m[1]!.split('|')[0]!.trim()).filter(Boolean).join(', ');
+    case 'sort':
+      return d.groups
+        .filter((g) => hasText(g.text))
+        .map((g) => `${g.text.trim()}: ${d.items.filter((i) => i.group === g.id && hasText(i.text)).map((i) => i.text.trim()).join(', ') || 'nothing yet'}`)
+        .join('; ');
   }
 }
 
@@ -475,10 +586,14 @@ export interface SetDetails {
   visibility: Visibility;
   /** Null shows the subject's own cover. */
   cover: CoverChoice | null;
+  topic: string;
+  /** Game defaults: ask this many questions, chosen at random (as typed; empty asks them all). */
+  randomCount: string;
+  shuffleAnswers: boolean;
 }
 
 export function blankDetails(): SetDetails {
-  return { title: '', description: '', subject: '', gradeBand: '', language: 'en', tags: '', visibility: 'private', cover: null };
+  return { title: '', description: '', subject: '', gradeBand: '', language: 'en', tags: '', visibility: 'private', cover: null, topic: '', randomCount: '', shuffleAnswers: false };
 }
 
 export interface LoadedSet {
@@ -491,6 +606,8 @@ export interface LoadedSet {
   cover: { glyph: string; hue: number } | null;
   /** Not in the set summary yet; read when the server sends it. */
   language?: string;
+  topic?: string | null;
+  defaults?: { randomCount?: number; shuffleAnswers?: boolean } | null;
 }
 
 export function detailsFromSet(set: LoadedSet): SetDetails {
@@ -503,6 +620,9 @@ export function detailsFromSet(set: LoadedSet): SetDetails {
     tags: (set.tags ?? []).join(', '),
     visibility: set.visibility,
     cover: set.cover && (SET_COVER_GLYPHS as readonly string[]).includes(set.cover.glyph) ? { glyph: set.cover.glyph as SetCoverGlyph, hue: set.cover.hue } : null,
+    topic: set.topic ?? '',
+    randomCount: set.defaults?.randomCount ? String(set.defaults.randomCount) : '',
+    shuffleAnswers: set.defaults?.shuffleAnswers === true,
   };
 }
 
@@ -517,6 +637,10 @@ export function buildSetCandidate(details: SetDetails, questions: Record<string,
     tags: splitTags(details.tags),
     visibility: details.visibility,
     ...(details.cover ? { cover: details.cover } : {}),
+    ...(hasText(details.topic) ? { topic: details.topic } : {}),
+    ...(hasText(details.randomCount) || details.shuffleAnswers
+      ? { defaults: { ...(hasText(details.randomCount) ? { randomCount: parseNumberText(details.randomCount) } : {}), ...(details.shuffleAnswers ? { shuffleAnswers: true } : {}) } }
+      : {}),
     questions,
   };
 }
@@ -609,9 +733,10 @@ export function reviveQuestion(raw: unknown): DraftQuestion | null {
     points: str(raw.points),
     difficulty: (DIFFICULTIES as readonly unknown[]).includes(raw.difficulty) ? (raw.difficulty as Difficulty) : '',
     tags: str(raw.tags),
+    doublePoints: raw.doublePoints === true,
     choices: reviveList(raw.choices, 'c', (o, id) => {
       const media = reviveMedia(o.media);
-      return media ? { id, text: str(o.text), media } : { id, text: str(o.text) };
+      return { id, text: str(o.text), ...(media ? { media } : {}), ...(typeof o.why === 'string' && o.why ? { why: o.why } : {}) };
     }),
     correct: Array.isArray(raw.correct) ? raw.correct.filter(validId) : [],
     truth: typeof raw.truth === 'boolean' ? raw.truth : null,
@@ -621,9 +746,13 @@ export function reviveQuestion(raw: unknown): DraftQuestion | null {
     answer: str(raw.answer),
     tolerance: str(raw.tolerance),
     unit: str(raw.unit),
-    items: reviveList(raw.items, 'i', (o, id) => ({ id, text: str(o.text) })),
+    items: reviveList(raw.items, 'i', (o, id) => (typeof o.group === 'string' && ID_PATTERN.test(o.group) ? { id, text: str(o.text), group: o.group } : { id, text: str(o.text) })),
     pairs: reviveList(raw.pairs, 'p', (o, id) => ({ id, left: str(o.left), right: str(o.right) })),
     back: str(raw.back),
+    sentence: str(raw.sentence),
+    bank: raw.bank === true,
+    distractors: str(raw.distractors),
+    groups: reviveList(raw.groups, 'g', (o, id) => ({ id, text: str(o.text) })),
   };
   const media = reviveMedia(raw.media);
   if (media) d.media = media;
@@ -642,5 +771,8 @@ export function reviveDetails(raw: unknown): SetDetails | null {
     tags: str(raw.tags),
     visibility: (VISIBILITIES as readonly unknown[]).includes(raw.visibility) ? (raw.visibility as Visibility) : 'private',
     cover,
+    topic: str(raw.topic),
+    randomCount: str(raw.randomCount),
+    shuffleAnswers: raw.shuffleAnswers === true,
   };
 }

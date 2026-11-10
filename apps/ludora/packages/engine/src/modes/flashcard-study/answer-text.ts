@@ -1,4 +1,4 @@
-import type { Media, Question } from '@ludora/shared';
+import { parseBlanks, type Media, type Question } from '@ludora/shared';
 
 /*
  * "The correct answer as text" for any authored question. Shared by the
@@ -37,6 +37,12 @@ export function answerText(q: Question): string {
       return q.items.map((i) => i.text).join(', ');
     case 'match':
       return q.pairs.map((p) => `${p.left} → ${p.right}`).join(', ');
+    case 'blanks':
+      return parseBlanks(q.text).gaps.map((g) => g.accepted[0] ?? '').join(', ');
+    case 'sort':
+      return q.groups.map((g) => `${g.label}: ${q.items.filter((i) => i.group === g.id).map((i) => i.text).join(', ')}`).join('; ');
+    case 'poll':
+      return '';
   }
 }
 

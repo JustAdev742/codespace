@@ -47,6 +47,12 @@ const callerLock: Pre = (sim, caster) => {
   if (!workshops(sim)[caster]?.lock) sim.cast(caster, { cheatId: 'festival-workshop.spare-lock' });
 };
 
+/** A rival takes a spare lock (if none holds one), so there is a lock to pick. */
+const rivalLock: Pre = (sim, caster) => {
+  if (rivals(sim, caster).some((id) => workshops(sim)[id]?.lock)) return;
+  for (const id of rivals(sim, caster)) if (sim.cast(id, { cheatId: 'festival-workshop.spare-lock' }).ok) return;
+};
+
 const eventOn: Pre = (sim) => void until(sim, () => Boolean(sim.state().event));
 
 /** A parade order with goods already made: wait for a quiet moment, have another player call one, and let it run a little. */
@@ -65,6 +71,7 @@ export const scenarios: ScenarioSet = {
     'festival-workshop.untangle': callerStopped,
     'festival-workshop.boost-heist': rivalBoost,
     'festival-workshop.pass-lock': callerLock,
+    'festival-workshop.lock-pick': rivalLock,
     'festival-workshop.reshuffle-favours': callerOffer,
     'festival-workshop.torn-cards': rivalOffer,
     'festival-workshop.card-snatch': rivalOfferCallerFree,

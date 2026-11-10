@@ -113,13 +113,15 @@ export function ClassicPlayer({ view, act, gameNow, paused, room }: ModeScreenPr
         <div className="flex flex-col gap-4">
           {lateJoiner ? (
             <JoinedMidQuestion />
+          ) : q.q.type === 'poll' ? (
+            <p className="font-semibold text-text-2">{s.you?.answered ? 'Thanks for voting. Polls score no points.' : 'You did not vote this time.'}</p>
           ) : (
             <>
               <ResultBanner correct={s.you?.answered ? (s.you.correct ?? false) : false} missed={!s.you?.answered} partial={s.you?.partial} points={s.you?.points} answer={s.reveal ? shortAnswer(q.q, s.reveal) : null} />
               {!s.you?.answered ? <p className="font-semibold text-text-2">You did not answer.</p> : null}
             </>
           )}
-          {s.reveal ? <RevealAnswer q={q.q} reveal={s.reveal} compact /> : null}
+          {s.reveal ? <RevealAnswer q={q.q} reveal={s.reveal} compact distribution={q.q.type === 'poll' ? s.distribution : undefined} size={q.q.type === 'poll' ? 'sm' : undefined} /> : null}
           <Explanation text={s.explanation} />
         </div>
       )}

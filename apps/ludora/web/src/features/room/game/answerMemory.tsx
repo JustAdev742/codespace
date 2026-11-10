@@ -48,7 +48,7 @@ const summaries = new WeakMap<Answer, string>();
 /** The answer in words: "B, Mars", "True", "Paris". */
 export function myAnswerWords(q: PublicQuestion, a: Answer): string {
   const choice = (id: string) => {
-    if (q.type !== 'mcq' && q.type !== 'multi') return id;
+    if (q.type !== 'mcq' && q.type !== 'multi' && q.type !== 'poll') return id;
     const i = q.choices.findIndex((c) => c.id === id);
     return i < 0 ? id : `${ANSWER_LETTERS[i]}, ${q.choices[i]!.text || q.choices[i]!.media?.alt || 'a picture'}`;
   };
@@ -65,6 +65,12 @@ export function myAnswerWords(q: PublicQuestion, a: Answer): string {
       return `${a.value}${q.type === 'numeric' && q.unit ? ` ${q.unit}` : ''}`;
     case 'order':
       return q.type === 'order' ? a.itemIds.map((id) => q.items.find((i) => i.id === id)?.text ?? id).join(', ') : '';
+    case 'poll':
+      return choice(a.choiceId);
+    case 'blanks':
+      return a.values.join(', ');
+    case 'sort':
+      return q.type === 'sort' ? q.groups.map((g) => `${g.label}: ${q.items.filter((i) => a.placement[i.id] === g.id).map((i) => i.text).join(', ') || 'nothing'}`).join('; ') : '';
     default:
       return '';
   }

@@ -92,17 +92,21 @@ describe('gold-rush pack: your own mine', () => {
 
   it('Gear Sale gives back half the price of the next gear, once', () => {
     const sim = field({}, 20_000);
-    until(sim, () => m(sim, 'p1').banked >= GEAR_INFO.props.levels[0]!.cost + GEAR_INFO.pan.levels[0]!.cost);
-    sim.idle.add('p1');
-    expect(cast(sim, 'p1', 'gear-sale').ok).toBe(true);
-    const before = m(sim, 'p1').banked;
-    expect(sim.rt.act('p1', { type: 'buy', gear: 'props' }).ok).toBe(true);
-    const cost = GEAR_INFO.props.levels[m(sim, 'p1').gear.props - 1]!.cost;
-    expect(m(sim, 'p1').banked).toBe(before - cost + Math.floor(cost / 2));
-    const second = m(sim, 'p1').banked;
+    // Whoever first banks enough for both buys tries the sale.
+    const need = GEAR_INFO.props.levels[0]!.cost + GEAR_INFO.pan.levels[0]!.cost;
+    const rich = () => sim.ids.find((id) => m(sim, id).banked >= need && m(sim, id).gear.props === 0 && m(sim, id).gear.pan === 0);
+    until(sim, () => rich() !== undefined);
+    const p1 = rich()!;
+    sim.idle.add(p1);
+    expect(cast(sim, p1, 'gear-sale').ok).toBe(true);
+    const before = m(sim, p1).banked;
+    expect(sim.rt.act(p1, { type: 'buy', gear: 'props' }).ok).toBe(true);
+    const cost = GEAR_INFO.props.levels[m(sim, p1).gear.props - 1]!.cost;
+    expect(m(sim, p1).banked).toBe(before - cost + Math.floor(cost / 2));
+    const second = m(sim, p1).banked;
     sim.run(1000);
-    expect(sim.rt.act('p1', { type: 'buy', gear: 'pan' }).ok).toBe(true);
-    expect(m(sim, 'p1').banked).toBe(second - GEAR_INFO.pan.levels[0]!.cost);
+    expect(sim.rt.act(p1, { type: 'buy', gear: 'pan' }).ok).toBe(true);
+    expect(m(sim, p1).banked).toBe(second - GEAR_INFO.pan.levels[0]!.cost);
   });
 
   it('Timber Charm turns a cave-in into a puddle: the cart and the level are kept', () => {

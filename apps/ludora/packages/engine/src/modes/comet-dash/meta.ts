@@ -13,7 +13,7 @@ export const meta: ModeMeta = {
   duration: { min: 3, max: 10 },
   difficulty: 1,
   teams: 'optional',
-  questionTypes: ['mcq', 'multi', 'truefalse', 'short', 'numeric', 'order', 'match'],
+  questionTypes: ['mcq', 'multi', 'truefalse', 'short', 'numeric', 'order', 'match', 'blanks', 'sort'],
   minQuestions: 5,
   common: { fields: ['timeLimitSec'], defaults: { timeLimitSec: 300 } },
   rules: [

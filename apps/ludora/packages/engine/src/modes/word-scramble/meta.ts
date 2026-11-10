@@ -13,7 +13,7 @@ export const meta: ModeMeta = {
   duration: { min: 3, max: 8 },
   difficulty: 2,
   teams: 'optional',
-  questionTypes: ['short', 'mcq', 'truefalse', 'numeric', 'multi', 'order', 'match'],
+  questionTypes: ['short', 'mcq', 'truefalse', 'numeric', 'multi', 'order', 'match', 'blanks', 'sort'],
   minQuestions: 4,
   common: { fields: ['timeLimitSec', 'questionLimit', 'questionTimeSec'], defaults: { timeLimitSec: 240 }, help: { questionTimeSec: 'Only used when the word timer is on.' } },
   rules: [

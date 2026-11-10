@@ -210,6 +210,8 @@ const cfg: SyncConfig<State> = {
   },
   onClosed: (s, ctx) => {
     const st = opts(ctx);
+    // A poll has no right answer: no pot, bonus, encore or knock-out rides on it.
+    if (s.sync.iid && !ctx.questions.isGraded(s.sync.iid)) return;
     if (scoringOf(ctx) === 'pot') sharePot(s, ctx);
     for (const [pid, lost] of Object.entries(s.penalties)) if (!((s.sync.lastGain[pid] ?? 0) > 0)) s.sync.lastGain[pid] = -lost;
     if (st.unisonBonus > 0) awardUnison(s, ctx);

@@ -117,10 +117,10 @@ test('detect format', () => {
 });
 
 /* --------------------------------- Template -------------------------------- */
-test('template imports cleanly with all 8 types', () => {
+test('template imports cleanly with all 11 types', () => {
   const r = parseImport(csvTemplate(), 'csv');
   assert.deepEqual(r.problems, []);
-  assert.deepEqual(r.questions.map((q) => q.type), ['mcq', 'multi', 'truefalse', 'short', 'numeric', 'order', 'match', 'flashcard']);
+  assert.deepEqual(r.questions.map((q) => q.type), ['mcq', 'multi', 'truefalse', 'short', 'numeric', 'order', 'match', 'flashcard', 'poll', 'blanks', 'sort']);
   const mcq = r.questions[0]!;
   assert.ok(mcq.type === 'mcq' && mcq.choices.find((c) => c.id === mcq.correct)?.text === 'Mars');
   assert.equal(mcq.timeLimitSec, 20);
@@ -132,7 +132,7 @@ test('template imports cleanly with all 8 types', () => {
   const match = r.questions[6]!;
   assert.ok(match.type === 'match' && match.pairs[1]!.left === 'Dog' && match.pairs[1]!.right === 'puppy');
   for (const q of r.questions) assert.ok(ID_PATTERN.test(q.id));
-  assert.equal(new Set(r.questions.map((q) => q.id)).size, 8);
+  assert.equal(new Set(r.questions.map((q) => q.id)).size, 11);
 });
 
 /* --------------------------------- Forgiving -------------------------------- */
@@ -163,7 +163,7 @@ test('csv problems are specific and numbered by spreadsheet row', () => {
   const r = parseImport(csv, 'csv');
   const text = r.problems.map((p) => `${p.where}${p.field ? `, ${p.field}` : ''}: ${p.message}`);
   assert.deepEqual(text, [
-    'Row 2: “mutli” is not a question type. Use mcq, multi, truefalse, short, numeric, order, match or flashcard.',
+    'Row 2: “mutli” is not a question type. Use mcq, multi, truefalse, short, numeric, order, match, flashcard, poll, blanks or sort.',
     'Row 3: “Pariss” is not one of the choices.',
     'Row 4, prompt: Write the question.',
     'Row 5: “maybe” is not True or False.',
@@ -486,4 +486,93 @@ test('ids and slugs', () => {
   assert.equal(fileSlug('Rivers & Mountains!'), 'rivers-mountains');
   assert.equal(fileSlug('Café crème'), 'cafe-creme');
   assert.equal(fileSlug('!!!'), 'question-set');
+});
+
+/* ------------------------- Poll, blanks and sort ------------------------- */
+const NEW_TYPES: Question[] = [
+  { id: 'p1', type: 'poll', prompt: 'Favourite season?', choices: [{ id: 'a', text: 'Spring' }, { id: 'b', text: 'Summer, of course' }] },
+  { id: 'b1', type: 'blanks', prompt: 'Fill in the blanks.', text: 'Plants need [sunlight|light] and [water].' },
+  { id: 'b2', type: 'blanks', prompt: 'Pick the word.', text: 'The Sun is a [star].', bank: true, distractors: ['planet', 'moon'] },
+  { id: 's1', type: 'sort', prompt: 'Sort these.', groups: [{ id: 'm', label: 'Mammals' }, { id: 'b', label: 'Birds' }], items: [{ id: 'd', text: 'Dog', group: 'm' }, { id: 'o', text: 'Owl', group: 'b' }, { id: 'c', text: 'Cat', group: 'm' }, { id: 'h', text: 'Hen = chicken', group: 'b' }] },
+];
+
+test('new types survive the draft model and validate as saved', () => {
+  for (const q of NEW_TYPES) {
+    const back = toCandidate(fromQuestion(q)).question;
+    assert.deepEqual(questionSchema.parse(back), q, q.id);
+    const revived = reviveQuestion(JSON.parse(JSON.stringify(fromQuestion(q))));
+    assert.deepEqual(questionSchema.parse(toCandidate(revived!).question), q, `${q.id} revived`);
+  }
+  assert.equal(answerSummary(fromQuestion(NEW_TYPES[1]!)), 'sunlight, water');
+  assert.equal(answerSummary(fromQuestion(NEW_TYPES[3]!)), 'Mammals: Dog, Cat; Birds: Owl, Hen = chicken');
+  assert.equal(blankQuestion('blanks', 'x').prompt, 'Fill in the blanks.');
+  assert.ok(isBlankQuestion(blankQuestion('blanks', 'x')));
+  assert.equal(blankQuestion('sort', 'y').groups.length, 2);
+  assert.equal(blankQuestion('sort', 'y').items.length, 4);
+});
+
+test('new types: plain messages on the right fields', () => {
+  const blanks = { ...blankQuestion('blanks', 'b'), sentence: 'No gaps at all.' };
+  const sort = blankQuestion('sort', 's');
+  sort.groups = sort.groups.map((g, i) => ({ ...g, text: i ? 'Birds' : 'Mammals' }));
+  sort.items = sort.items.map((it, i) => ({ ...it, text: `Item ${i}`, group: i === 3 ? '' : sort.groups[i % 2]!.id }));
+  const r = validateSet({ ...blankDetails(), title: 'T', subject: 'science' }, [blanks, sort]);
+  assert.equal(r.ok, false);
+  assert.match(r.problems.questions.b!.sentence!, /1 to 3 gaps/);
+  assert.equal(r.problems.questions.s!.items, 'Choose a group for every item.');
+});
+
+test('new types round-trip through CSV and JSON exports', () => {
+  const csv = exportCsv(NEW_TYPES);
+  const back = parseImport(csv, 'csv');
+  assert.deepEqual(back.problems, []);
+  assert.deepEqual(back.questions, NEW_TYPES.map((q) => questionSchema.parse(q)).map((q) => (q.type === 'sort' ? { ...q, groups: back.questions[3]!.type === 'sort' ? back.questions[3]!.groups : [], items: q.items.map((it, i) => ({ ...it, id: (back.questions[3] as Extract<Question, { type: 'sort' }>).items[i]!.id, group: (back.questions[3] as Extract<Question, { type: 'sort' }>).groups[it.group === 'm' ? 0 : 1]!.id })) } : q.type === 'poll' ? { ...q, choices: q.choices.map((c, i) => ({ ...c, id: (back.questions[0] as Extract<Question, { type: 'poll' }>).choices[i]!.id })) } : q)));
+  const json = parseImport(exportJson({ ...blankDetails(), title: 'T', subject: 'science' }, NEW_TYPES), 'json');
+  assert.deepEqual(json.questions, NEW_TYPES);
+});
+
+test('csv: new types by name, alias or shape', () => {
+  assert.equal(normaliseType('Fill in the blanks'), 'blanks');
+  assert.equal(normaliseType('cloze'), 'blanks');
+  assert.equal(normaliseType('Sort into groups'), 'sort');
+  assert.equal(normaliseType('categorise'), 'sort');
+  assert.equal(normaliseType('survey'), 'poll');
+  assert.equal(normaliseType('sequence'), 'order');
+  const r = parseImport('prompt,answer,items,type\nComplete it.,The sky is [blue].,,\nSort,,"Dog = Mammals|Owl = Birds|Cat = Mammals|Hen = Birds",sort\nSort,,Dog|Owl,sort', 'csv');
+  assert.deepEqual(r.questions.map((q) => q.type), ['blanks', 'sort']);
+  assert.match(r.problems[0]!.message, /item = group/);
+});
+
+/* ------------------------- Usual spreadsheet layouts ------------------------ */
+test('csv: numbered answer columns, a title row and quiz-style headers', () => {
+  const csv = [
+    'My science quiz,,,,,,',
+    'Question - max 120 characters,Answer 1,Answer 2,Answer 3,Answer 4,Time limit (sec),Correct answer(s)',
+    'Which planet is red?,Venus,Mars,Earth,,20,2',
+    'Which are mammals?,Dolphin,Shark,Bat,Cod,30,"1,3"',
+    'Which is a gas?,Iron,Wood,,,20,C',
+  ].join('\n');
+  assert.equal(detectFormat(csv), 'csv');
+  const r = parseImport(csv, 'csv');
+  assert.deepEqual(r.questions.map((q) => q.type), ['mcq', 'multi']);
+  const [red, mammals] = r.questions;
+  assert.ok(red!.type === 'mcq' && red!.choices.length === 3 && red!.choices.find((c) => c.id === red!.correct)?.text === 'Mars');
+  assert.equal(red!.timeLimitSec, 20);
+  assert.ok(mammals!.type === 'multi' && mammals!.correct.map((id) => mammals!.choices.find((c) => c.id === id)?.text).join() === 'Dolphin,Bat');
+  assert.equal(r.problems.length, 1);
+  assert.match(r.problems[0]!.where, /Row 5/);
+  assert.match(r.problems[0]!.message, /not one of the choices/);
+  assert.ok(r.notes.some((n) => /title row/.test(n)));
+  assert.ok(r.notes.some((n) => /numbered answer columns/.test(n)));
+});
+
+test('text: a pasted term and definition list becomes flashcards', () => {
+  const tsv = 'Herbivore\tEats only plants\nCarnivore\tEats only meat\n\nOmnivore\tEats both';
+  assert.equal(detectFormat(tsv), 'text');
+  const r = parseImport(tsv, 'text');
+  assert.deepEqual(r.questions.map((q) => (q.type === 'flashcard' ? `${q.prompt}=${q.back}` : q.type)), ['Herbivore=Eats only plants', 'Carnivore=Eats only meat', 'Omnivore=Eats both']);
+  const dashed = parseImport('photosynthesis - how plants make food\nrespiration - releasing energy from food', 'text');
+  assert.equal(dashed.questions.length, 2);
+  // The usual paste rules still win when the text is not a plain list.
+  assert.equal(parseImport(PASTE_EXAMPLE, 'text').questions.length >= 5, true);
 });

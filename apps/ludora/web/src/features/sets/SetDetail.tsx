@@ -1,46 +1,29 @@
 import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router';
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { Check, Copy, Flag, Pencil, Play, Presentation } from 'lucide-react';
+import { Check, Copy, Flag, Folder, History, Pencil, Play, Presentation, Printer, Share2, Star } from 'lucide-react';
 import { QUESTION_TYPE_LABELS, SUBJECT_LABELS, type Question, type QuestionType } from '@ludora/shared';
 import { api, ApiError } from '../../lib/api.ts';
 import { useMe } from '../../lib/session.ts';
 import type { SetSummary } from '../../lib/queries.ts';
 import { formatNumber, plural } from '../../lib/format.ts';
 import { Badge, EmptyState, ErrorNotice, PageHeader, Panel, Spinner } from '../../ui/primitives.tsx';
-import { Button, ButtonLink } from '../../ui/Button.tsx';
+import { Button, ButtonLink, IconButton } from '../../ui/Button.tsx';
 import { FavouriteStar } from '../profile/parts.tsx';
 import { SetCover } from './SetCover.tsx';
+import { FolderDialog, ShareDialog, StatsPanel, VersionsDialog } from './SetTools.tsx';
+import { answerText } from './answers.ts';
+import { MathText } from './math/MathText.tsx';
 import { ReportDialog } from '../moderation/ReportDialog.tsx';
 
 interface SetResponse {
   set: SetSummary;
   editable: boolean;
+  owner?: boolean;
   questions: Question[] | null;
   preview: { id: string; type: QuestionType; prompt: string; choices?: string[] }[] | null;
   typeCounts: Record<string, number>;
-}
-
-function answerText(q: Question): string {
-  switch (q.type) {
-    case 'mcq':
-      return q.choices.find((c) => c.id === q.correct)?.text ?? '';
-    case 'multi':
-      return q.choices.filter((c) => q.correct.includes(c.id)).map((c) => c.text).join(', ');
-    case 'truefalse':
-      return q.correct ? 'True' : 'False';
-    case 'short':
-      return q.accepted.join(' or ');
-    case 'numeric':
-      return `${q.answer}${q.unit ? ` ${q.unit}` : ''}`;
-    case 'order':
-      return q.items.map((i) => i.text).join(', then ');
-    case 'match':
-      return q.pairs.map((p) => `${p.left} to ${p.right}`).join('; ');
-    case 'flashcard':
-      return q.back;
-  }
 }
 
 export default function SetDetail() {
@@ -49,6 +32,20 @@ export default function SetDetail() {
   const navigate = useNavigate();
   const data = useQuery({ queryKey: ['set', id], queryFn: () => api.get<SetResponse>(`/api/sets/${id}`) });
   const [reporting, setReporting] = useState(false);
+  const [sharing, setSharing] = useState(false);
+  const [versions, setVersions] = useState(false);
+  const [filing, setFiling] = useState(false);
+  const qc = useQueryClient();
+  const star = useMutation({
+    mutationFn: (favourite: boolean) => api.patch(`/api/sets/${id}/organise`, { favourite }),
+    onSuccess: (_r, favourite) => {
+      void qc.invalidateQueries({ queryKey: ['set', id] });
+      void qc.invalidateQueries({ queryKey: ['sets'] });
+      void qc.invalidateQueries({ queryKey: ['sets-organise'] });
+      toast.success(favourite ? 'Added to your favourites' : 'Taken out of your favourites');
+    },
+    onError: (err) => toast.error(err instanceof ApiError ? err.message : 'That did not save. Try again.'),
+  });
   const copy = useMutation({
     mutationFn: () => api.post<{ set: SetSummary }>(`/api/sets/${id}/copy`),
     onSuccess: (r) => {
@@ -82,7 +79,9 @@ export default function SetDetail() {
     );
   }
   const { set, editable, questions, preview, typeCounts } = data.data!;
+  const owner = Boolean(data.data!.owner);
   const signedIn = Boolean(me.data?.user);
+  const account = signedIn && !me.data?.user?.isGuest;
   return (
     <div className="flex flex-col gap-6">
       <Link to="/library" className="text-sm font-semibold">
@@ -98,26 +97,40 @@ export default function SetDetail() {
             <Badge>{plural(set.questionCount, 'question')}</Badge>
             <Badge>{SUBJECT_LABELS[set.subject as keyof typeof SUBJECT_LABELS] ?? set.subject}</Badge>
             {set.gradeBand ? <Badge>{set.gradeBand}</Badge> : null}
+            {set.topic ? <Badge>{set.topic}</Badge> : null}
+            {owner && set.folder ? (
+              <Badge>
+                <Folder className="mr-1 inline size-3.5" aria-hidden />
+                {set.folder}
+              </Badge>
+            ) : null}
+            {editable && !owner ? <Badge tone="amber">You are a co-editor</Badge> : null}
             {set.isOfficial ? <Badge tone="amber">By Ludora</Badge> : set.ownerName ? <Badge>By {set.ownerName}</Badge> : null}
             {set.visibility !== 'public' ? <Badge>{set.visibility === 'private' ? 'Private' : 'Unlisted'}</Badge> : null}
             {set.plays ? <Badge>{set.plays === 1 ? 'Played once' : `Played ${formatNumber(set.plays)} times`}</Badge> : null}
           </div>
         </div>
         <div className="flex flex-wrap gap-2">
-          <ButtonLink to="/host" variant="primary" icon={<Presentation className="size-4" />}>
-            Host
+          <ButtonLink to={`/host?set=${set.id}`} variant="primary" icon={<Presentation className="size-4" />}>
+            Host this
           </ButtonLink>
-          <ButtonLink to="/host?solo=1" icon={<Play className="size-4" />}>
+          <ButtonLink to={`/host?solo=1&set=${set.id}`} icon={<Play className="size-4" />}>
             Solo
           </ButtonLink>
           {editable ? (
             <ButtonLink to={`/sets/${set.id}/edit`} icon={<Pencil className="size-4" />}>
               Edit
             </ButtonLink>
-          ) : signedIn && !me.data?.user?.isGuest ? (
+          ) : null}
+          {account ? (
             <Button icon={<Copy className="size-4" />} loading={copy.isPending} onClick={() => copy.mutate()}>
-              Copy and edit
+              {editable ? 'Make a copy' : 'Copy and edit'}
             </Button>
+          ) : null}
+          {account ? (
+            <IconButton label={set.favourite ? 'Take out of favourites' : 'Add to favourites'} aria-pressed={Boolean(set.favourite)} onClick={() => star.mutate(!set.favourite)}>
+              <Star className={`size-5 ${set.favourite ? 'fill-lantern text-lantern' : ''}`} />
+            </IconButton>
           ) : null}
           {signedIn && !editable ? (
             <Button variant="ghost" icon={<Flag className="size-4" />} onClick={() => setReporting(true)}>
@@ -127,6 +140,30 @@ export default function SetDetail() {
         </div>
       </div>
       <ReportDialog open={reporting} onOpenChange={setReporting} target={{ type: 'set', id: set.id, label: 'this question set' }} />
+      {editable ? (
+        <div className="flex flex-wrap gap-2" role="group" aria-label="Set tools">
+          {owner ? (
+            <Button size="sm" icon={<Share2 className="size-4" />} onClick={() => setSharing(true)}>
+              Share
+            </Button>
+          ) : null}
+          <Button size="sm" icon={<History className="size-4" />} onClick={() => setVersions(true)}>
+            Version history
+          </Button>
+          <ButtonLink size="sm" to={`/sets/${set.id}/print`} icon={<Printer className="size-4" />}>
+            Print
+          </ButtonLink>
+          {owner ? (
+            <Button size="sm" icon={<Folder className="size-4" />} onClick={() => setFiling(true)}>
+              {set.folder ? 'Change folder' : 'Put in a folder'}
+            </Button>
+          ) : null}
+        </div>
+      ) : null}
+      {owner ? <ShareDialog setId={set.id} token={set.shareToken ?? null} open={sharing} onOpenChange={setSharing} /> : null}
+      {editable ? <VersionsDialog setId={set.id} open={versions} onOpenChange={setVersions} /> : null}
+      {owner ? <FolderDialog key={set.folder ?? ''} setId={set.id} folder={set.folder ?? null} open={filing} onOpenChange={setFiling} /> : null}
+      {editable ? <StatsPanel setId={set.id} /> : null}
       <Panel className="p-5">
         <div className="mb-4 flex flex-wrap gap-1.5">
           {Object.entries(typeCounts).map(([t, n]) => (
@@ -141,13 +178,15 @@ export default function SetDetail() {
               <li key={q.id} className="flex gap-3 py-3">
                 <span className="w-8 shrink-0 font-display text-xl leading-6 font-bold text-text-3 tabular">{i + 1}</span>
                 <div className="min-w-0">
-                  <p className="font-semibold [overflow-wrap:anywhere]">{q.prompt}</p>
+                  <p className="font-semibold [overflow-wrap:anywhere]">
+                    <MathText text={q.prompt} />
+                  </p>
                   {/* The answer is marked by a tick and its label, not only by its colour. */}
                   <p className="mt-0.5 flex items-start gap-1.5 text-sm font-semibold text-glim [overflow-wrap:anywhere]">
                     <Check className="mt-0.5 size-4 shrink-0" strokeWidth={3} aria-hidden />
                     <span>
                       <span className="sr-only">Answer: </span>
-                      {answerText(q)}
+                      <MathText text={answerText(q)} />
                     </span>
                   </p>
                   {q.explanation ? <p className="mt-0.5 text-sm text-text-3">{q.explanation}</p> : null}
@@ -163,7 +202,9 @@ export default function SetDetail() {
                 <li key={q.id} className="flex gap-3 py-3">
                   <span className="w-8 shrink-0 font-display text-xl leading-6 font-bold text-text-3 tabular">{i + 1}</span>
                   <div className="min-w-0">
-                    <p className="font-semibold [overflow-wrap:anywhere]">{q.prompt}</p>
+                    <p className="font-semibold [overflow-wrap:anywhere]">
+                      <MathText text={q.prompt} />
+                    </p>
                     {q.choices ? <p className="text-sm text-text-3">{q.choices.join(', ')}</p> : null}
                   </div>
                 </li>

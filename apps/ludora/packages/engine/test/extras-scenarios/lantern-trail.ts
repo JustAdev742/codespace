@@ -18,8 +18,14 @@ const toTheStall =
     if (id) sim.cast(id, { cheatId: 'lantern-trail.stall-sniffer' });
   };
 
+/** Every rival is between moves (Stall Sniffer is refused mid-move), so whoever is targeted can be sent to a stall. */
+const rivalsBetweenMoves: Pre = (sim, caster) => {
+  const free = () => sim.ids.filter((id) => id !== caster && sim.rt.hasPlayer(id)).every((id) => !(sim.state().walkers as Record<string, { pending: unknown }>)[id]?.pending);
+  for (let t = 0; t < 30_000 && !free() && sim.rt.status === 'running'; t += 250) sim.run(250);
+};
+
 export const scenarios: ScenarioSet = {
-  pre: { 'lantern-trail.ticket-snatch': rivalHasTicket },
+  pre: { 'lantern-trail.ticket-snatch': rivalHasTicket, 'lantern-trail.shutters-down': rivalsBetweenMoves },
   post: {
     // These act when someone buys a Golden Lantern (or tries to).
     'lantern-trail.haggler': toTheStall('caster'),

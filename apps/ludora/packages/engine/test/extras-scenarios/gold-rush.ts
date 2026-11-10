@@ -38,6 +38,12 @@ const rivalKit: Pre = (sim, caster) => void until(sim, () => rivals(sim, caster)
 const rivalLevel: Pre = (sim, caster) => void until(sim, () => rivals(sim, caster).some((id) => miners(sim)[id]?.depth !== miners(sim)[caster]?.depth));
 /** The target goes to bank their cart straight after the cast (a closed bank turns them away). */
 const targetBanks: Post = (sim, _caster, _def, target) => void (target && sim.rt.act(target, { type: 'bank' }));
+/** The caster holds two digs to spend at a level where cave-ins happen, so a cave-in can come while the charm lasts. */
+const callerAtRisk: Pre = (sim, caster) =>
+  void until(sim, () => {
+    const you = (sim.rt.view({ kind: 'player', playerId: caster }) as any)?.you;
+    return Boolean(you && you.digs > 1 && you.next?.caveIn >= 4);
+  });
 /** The caster owns some gear to sell. */
 const callerGear = callerHas((m) => m && m.gear.pick + m.gear.props + m.gear.pan > 0);
 
@@ -63,6 +69,7 @@ export const scenarios: ScenarioSet = {
     'gold-rush.start-rich-lead': noEvent,
     'gold-rush.bank-holiday': rivalCart,
     'gold-rush.rescue-crew': freshCaveIn,
+    'gold-rush.timber-charm': callerAtRisk,
     'gold-rush.kit-swap': rivalKit,
     'gold-rush.shaft-swap': rivalLevel,
     'gold-rush.trade-in': callerGear,

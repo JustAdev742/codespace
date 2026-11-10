@@ -1,8 +1,8 @@
 import { memo } from 'react';
 import { Check, Globe2, Link2, Lock, type LucideIcon } from 'lucide-react';
-import { SET_COVER_GLYPHS, SUBJECT_LABELS, SUBJECTS, type Subject, type Visibility } from '@ludora/shared';
+import { SET_COVER_GLYPHS, SUBJECT_LABELS, SUBJECTS, YEAR_LEVELS, type Subject, type Visibility } from '@ludora/shared';
 import { Button } from '../../../ui/Button.tsx';
-import { Input, Panel, Select, Textarea } from '../../../ui/primitives.tsx';
+import { Input, Panel, Select, Switch, Textarea } from '../../../ui/primitives.tsx';
 import { SetCover } from '../SetCover.tsx';
 import { coverFor, GLYPH_LABELS, LANGUAGES, LIMITS, type SetDetails } from './model.ts';
 import { domIds, EditorField, ErrorText, errorIdFor } from './parts.tsx';
@@ -14,7 +14,7 @@ const VISIBILITY_INFO: Record<Visibility, { label: string; help: string; icon: L
   public: { label: 'Public', help: 'Anyone can find it in the library and play it.', icon: Globe2 },
 };
 
-const GRADE_SUGGESTIONS = ['Ages 5-7', 'Ages 7-9', 'Ages 9-11', 'Ages 11-14', 'Ages 14-16', 'Ages 16+', 'All ages'];
+const GRADE_SUGGESTIONS = [...YEAR_LEVELS, 'Ages 5-7', 'Ages 7-9', 'Ages 9-11', 'Ages 11-14', 'Ages 14-16', 'Ages 16+', 'All ages'];
 
 /** A colour name for screen readers, so the slider says "Blue" rather than "215". */
 function hueName(hue: number): string {
@@ -74,7 +74,7 @@ export const DetailsPanel = memo(function DetailsPanel({ details, errors, canPub
             </Select>
           )}
         </EditorField>
-        <EditorField id={domIds.detail('gradeBand')} label="Age or year group" optional hint="For example Ages 9-11 or Year 5." error={errors.gradeBand}>
+        <EditorField id={domIds.detail('gradeBand')} label="Year level" optional hint="For example Year 5 or Ages 9-11. The library can filter by it." error={errors.gradeBand}>
           {(p) => (
             <>
               <Input {...p} list="set-grade-suggestions" autoComplete="off" value={details.gradeBand} maxLength={LIMITS.gradeBand} onChange={(e) => onChange({ gradeBand: e.target.value })} />
@@ -96,6 +96,9 @@ export const DetailsPanel = memo(function DetailsPanel({ details, errors, canPub
               ))}
             </Select>
           )}
+        </EditorField>
+        <EditorField id={domIds.detail('topic')} label="Topic" optional hint="For example Fractions or The water cycle. The library can filter by it." error={errors.topic} className="md:col-span-3">
+          {(p) => <Input {...p} autoComplete="off" value={details.topic} maxLength={60} onChange={(e) => onChange({ topic: e.target.value })} />}
         </EditorField>
         <EditorField id={domIds.detail('tags')} label="Tags" optional hint={`Help people find the set. Separate tags with commas, up to ${LIMITS.tags}.`} error={errors.tags} className="md:col-span-3">
           {(p) => <Input {...p} autoComplete="off" value={details.tags} onChange={(e) => onChange({ tags: e.target.value })} />}
@@ -132,6 +135,16 @@ export const DetailsPanel = memo(function DetailsPanel({ details, errors, canPub
         </div>
         {!visibilities.includes('public') ? <p className="mt-2 text-xs text-text-3">Publishing to the public library needs a trusted account. Unlisted sets can still be shared with a link.</p> : null}
         {visibilityErrId ? <ErrorText id={visibilityErrId}>{errors.visibility}</ErrorText> : null}
+      </fieldset>
+
+      <fieldset className="mt-5 min-w-0">
+        <legend className="mb-2 text-sm font-semibold text-text">Game defaults</legend>
+        <div className="grid min-w-0 gap-4 rounded-[var(--radius-m)] border border-line p-3 md:grid-cols-2">
+          <EditorField id={domIds.detail('defaults')} label="Questions to ask" optional hint="A random selection each game, kept in set order. Empty asks them all." error={errors.defaults}>
+            {(p) => <Input {...p} inputMode="numeric" autoComplete="off" placeholder="All of them" value={details.randomCount} onChange={(e) => onChange({ randomCount: e.target.value })} />}
+          </EditorField>
+          <Switch checked={details.shuffleAnswers} onCheckedChange={(v) => onChange({ shuffleAnswers: v })} label="Shuffle the answers" description="Choices come in a different order each game." />
+        </div>
       </fieldset>
 
       <fieldset className="mt-5 min-w-0" aria-describedby={coverErrId}>

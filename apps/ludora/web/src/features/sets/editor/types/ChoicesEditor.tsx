@@ -4,10 +4,11 @@ import { Input } from '../../../../ui/primitives.tsx';
 import { LIMITS, LIST_LIMITS, newId } from '../model.ts';
 import { domIds, ErrorText, errorIdFor, focusSoon, joinIds, letter, MediaNote, RowMarker, type TypeEditorProps } from '../parts.tsx';
 
-/** Multiple choice (one correct) and select all that apply (one or more correct). */
+/** Multiple choice (one correct), select all that apply (one or more correct), and polls (none correct). */
 export function ChoicesEditor({ q, errors, edit }: TypeEditorProps) {
   const multi = q.type === 'multi';
-  const { min, max } = multi ? LIST_LIMITS.multi : LIST_LIMITS.mcq;
+  const poll = q.type === 'poll';
+  const { min, max } = multi ? LIST_LIMITS.multi : poll ? LIST_LIMITS.poll : LIST_LIMITS.mcq;
   const listId = domIds.field(q.id, 'choices');
   const hintId = `${listId}-hint`;
   const listErrId = errors.choices ? errorIdFor(listId) : undefined;
@@ -26,6 +27,7 @@ export function ChoicesEditor({ q, errors, edit }: TypeEditorProps) {
     if (next) focusSoon(domIds.row(q.id, 'choice', next.id));
   };
   const setText = (id: string, text: string) => edit((d) => ({ ...d, choices: d.choices.map((c) => (c.id === id ? { ...c, text } : c)) }));
+  const setWhy = (id: string, why: string) => edit((d) => ({ ...d, choices: d.choices.map((c) => (c.id === id ? { ...c, why } : c)) }));
   const setAlt = (id: string, alt: string) => edit((d) => ({ ...d, choices: d.choices.map((c) => (c.id === id && c.media ? { ...c, media: { ...c.media, alt } } : c)) }));
   const mark = (id: string, on: boolean) =>
     edit((d) => ({
@@ -37,7 +39,7 @@ export function ChoicesEditor({ q, errors, edit }: TypeEditorProps) {
     <fieldset className="flex min-w-0 flex-col gap-2" aria-describedby={joinIds(hintId, listErrId, correctErrId)}>
       <legend className="text-sm font-semibold text-text">Choices</legend>
       <p id={hintId} className="text-xs text-text-3">
-        {multi ? 'Tick every correct choice. Players are told how many to pick.' : 'Select the correct choice.'} Empty choices are left out when you save.
+        {poll ? 'A poll has no right answer and scores no points: the reveal shows how many picked each choice. Polls play in Classic.' : multi ? 'Tick every correct choice. Players are told how many to pick.' : 'Select the correct choice.'} Empty choices are left out when you save.
       </p>
       <ol className="flex flex-col gap-2">
         {q.choices.map((c, i) => {
@@ -49,6 +51,7 @@ export function ChoicesEditor({ q, errors, edit }: TypeEditorProps) {
             <li key={c.id} className="flex min-w-0 flex-col gap-1.5">
               <div className="flex min-w-0 items-center gap-1.5 sm:gap-2">
                 <RowMarker>{letter(i)}</RowMarker>
+                {poll ? null : (
                 <label
                   className={`relative grid size-11 shrink-0 cursor-pointer place-items-center border transition-colors has-[:focus-visible]:ring-[3px] has-[:focus-visible]:ring-[var(--focus)] ${multi ? 'rounded-[var(--radius-m)]' : 'rounded-full'} ${checked ? 'border-transparent bg-glim text-on-accent shadow-[inset_0_-3px_0_rgb(0_0_0/0.2)]' : 'input-well border-line-strong text-transparent hover:border-text-3'}`}
                 >
@@ -64,6 +67,7 @@ export function ChoicesEditor({ q, errors, edit }: TypeEditorProps) {
                   <Check className="size-5" strokeWidth={3} aria-hidden />
                   <span className="sr-only">Choice {letter(i)} is correct</span>
                 </label>
+                )}
                 <Input
                   id={inputId}
                   value={c.text}
@@ -87,8 +91,21 @@ export function ChoicesEditor({ q, errors, edit }: TypeEditorProps) {
                 </IconButton>
               </div>
               {rowError && rowErrId ? (
-                <div className="pl-[5.25rem] sm:pl-[5.5rem]">
+                <div className={poll ? 'pl-9' : 'pl-[5.25rem] sm:pl-[5.5rem]'}>
                   <ErrorText id={rowErrId}>{rowError}</ErrorText>
+                </div>
+              ) : null}
+              {!poll && !checked && (c.text.trim() || c.media) ? (
+                <div className="pl-[5.25rem] sm:pl-[5.5rem]">
+                  <Input
+                    id={domIds.row(q.id, 'choice', c.id, 'why')}
+                    value={c.why ?? ''}
+                    maxLength={200}
+                    aria-label={`Why choice ${letter(i)} is wrong (optional)`}
+                    placeholder="Why it is wrong (optional): shown to players who pick it"
+                    onChange={(e) => setWhy(c.id, e.target.value)}
+                    className="h-9 min-w-0 text-sm"
+                  />
                 </div>
               ) : null}
               {c.media ? (

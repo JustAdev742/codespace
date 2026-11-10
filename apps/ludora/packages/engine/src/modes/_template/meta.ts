@@ -17,7 +17,7 @@ export const meta: ModeMeta = {
   duration: { min: 3, max: 8 },
   difficulty: 1, // 1 easy to learn, 2 some strategy, 3 deep strategy
   teams: 'optional', // none | optional | required
-  questionTypes: ['mcq', 'multi', 'truefalse', 'short', 'numeric', 'order', 'match'], // others get converted when possible
+  questionTypes: ['mcq', 'multi', 'truefalse', 'short', 'numeric', 'order', 'match', 'blanks', 'sort'], // others get converted when possible
   minQuestions: 5,
   common: { fields: ['timeLimitSec'], defaults: { timeLimitSec: 300 } },
   rules: ['Short sentences, one rule each.', 'Players read these before playing.'],

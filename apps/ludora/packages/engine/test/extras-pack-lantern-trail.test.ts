@@ -270,7 +270,8 @@ describe('lantern-trail pack', () => {
   });
 
   it('Shutters Down refuses a purchase and holds the offer until 5 seconds after it lifts', () => {
-    const sim = game();
+    // A seed where the target's walk reaches a stall while the shutters are still down.
+    const sim = game({ seed: 8 });
     sim.run(20_000);
     const t = sim.ids.find((id) => id !== 'p1')!;
     sim.cast(t, { cheatId: ID('coin-shower') });

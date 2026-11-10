@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
-import { ArrowDown, ArrowUp, Check, Send, Users, WifiOff, X } from 'lucide-react';
+import { ArrowDown, ArrowUp, Check, Send, Undo2, Users, WifiOff, X } from 'lucide-react';
 import type { Answer, Media, PublicQuestion } from '@ludora/shared';
 import { AnswerShape, ANSWER_LETTERS } from '../../../art/icons.tsx';
 import { QuestionImage } from './QuestionCard.tsx';
+import { MathText } from '../../sets/math/MathText.tsx';
 import { useAnswerMemory, useRememberingSubmit } from './answerMemory.tsx';
 import { useOnline } from './online.tsx';
 import { playSfx, useSoundPacing, useSoundRole } from '../../../lib/sound/react.tsx';
@@ -127,7 +128,15 @@ export function ChoiceTile({
         <span>{ANSWER_LETTERS[index]}</span>
       </span>{' '}
       {media ? <QuestionImage media={media} size="tile" className={layout === 'stack' ? 'self-start' : ''} /> : null}
-      {text ? <span className={`min-w-0 flex-1 leading-tight font-bold break-words hyphens-auto ${long ? s.long : s.text} ${layout === 'stack' ? 'flex w-full items-end' : ''}`}>{text}</span> : <span className="flex-1" />}
+      {text ? (
+        <span className={`min-w-0 flex-1 leading-tight font-bold break-words hyphens-auto ${long ? s.long : s.text} ${layout === 'stack' ? 'flex w-full items-end' : ''}`}>
+          <span>
+            <MathText text={text} />
+          </span>
+        </span>
+      ) : (
+        <span className="flex-1" />
+      )}
       {keyHint && !selected ? (
         <span className="hidden self-start font-display text-base font-bold opacity-70 sm:block" aria-hidden>
           {index + 1}
@@ -388,7 +397,9 @@ function OrderAnswer({ q, onSubmit, disabled }: AnswerInputProps & { q: Extract<
         {items.map((item, i) => (
           <li key={item.id} className="paper flex items-center gap-2 rounded-[var(--radius-m)] p-2 pl-3 shadow-[0_8px_20px_-10px_rgb(2_5_20/0.7)]">
             <span className="grid size-9 shrink-0 place-items-center rounded-full bg-lantern font-display text-lg font-extrabold text-on-accent tabular">{i + 1}</span>
-            <span className="min-w-0 flex-1 font-bold">{item.text}</span>
+            <span className="min-w-0 flex-1 font-bold">
+              <MathText text={item.text} />
+            </span>
             <button type="button" className="grid size-11 place-items-center rounded-[var(--radius-s)] bg-surface-3 text-text hover:bg-surface-2 disabled:opacity-30" onClick={() => move(i, -1)} disabled={locked || i === 0} aria-label={`Move ${item.text} up`}>
               <ArrowUp className="size-5" aria-hidden />
             </button>
@@ -457,7 +468,9 @@ function MatchAnswer({ q, onSubmit, disabled }: AnswerInputProps & { q: Extract<
               className={`paper flex min-h-14 items-center gap-2 rounded-[var(--radius-m)] px-2.5 py-2 text-left font-bold transition-shadow ${active === l.id ? 'ring-4 ring-lantern' : ''}`}
             >
               <PairNumber n={numberOf[l.id]!} color={colorOf[l.id]!} />
-              <span className="min-w-0 flex-1 break-words">{l.text}</span>
+              <span className="min-w-0 flex-1 break-words">
+                <MathText text={l.text} />
+              </span>
             </button>
           ))}
         </div>
@@ -474,7 +487,7 @@ function MatchAnswer({ q, onSubmit, disabled }: AnswerInputProps & { q: Extract<
               >
                 {/* The name starts with the words on the button, then says the pair (the number chip is for sighted players). */}
                 <span className="min-w-0 flex-1 break-words">
-                  {r.text}
+                  <MathText text={r.text} />
                   {owner ? <span className="sr-only">, matched with {q.left.find((l) => l.id === owner)?.text}</span> : null}
                 </span>
                 {owner ? <PairNumber n={numberOf[owner]!} color={colorOf[owner]!} /> : <span className="size-7 shrink-0 rounded-full border-2 border-dashed border-line-strong" aria-hidden />}
@@ -484,6 +497,256 @@ function MatchAnswer({ q, onSubmit, disabled }: AnswerInputProps & { q: Extract<
         </div>
       </div>
       <SubmitButton disabled={locked || !complete} sent={sent} onClick={submit} label="Lock in matches" />
+    </div>
+  );
+}
+
+/** A poll: choices like a multiple-choice question, with nothing right or wrong about any of them. */
+function PollAnswer({ q, onSubmit, disabled, chosen, compact }: AnswerInputProps & { q: Extract<PublicQuestion, { type: 'poll' }> }) {
+  const [picked, setPicked] = useState<string | null>(chosen ?? null);
+  const [busy, setBusy] = useState(false);
+  const locked = disabled || busy || picked !== null;
+  const pick = async (id: string) => {
+    if (locked) return;
+    setPicked(id);
+    setBusy(true);
+    const ok = await onSubmit({ type: 'poll', choiceId: id });
+    setBusy(false);
+    if (!ok) setPicked(null);
+  };
+  useNumberKeys(q.choices.length, (i) => void pick(q.choices[i]!.id), !locked);
+  const { grid, layout, tall, dense } = choiceGrid(q.choices.map((c) => c.text));
+  return (
+    <div className="flex flex-col gap-3">
+      <p className="font-semibold text-text-2">{picked ? 'Your vote is in. The class split shows at the reveal.' : 'A poll: there is no right answer. Pick yours.'}</p>
+      <div className={grid} role="group" aria-label="Poll choices">
+        {q.choices.map((c, i) => (
+          <ChoiceTile key={c.id} choice={c.id} index={i} text={c.text} media={c.media} selected={picked === c.id} dimmed={picked !== null && picked !== c.id} onClick={() => void pick(c.id)} disabled={locked && picked !== c.id} compact={compact} layout={layout} tall={tall && !compact && !q.media} dense={dense} keyHint />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/** A gap in a sentence as a pill: dashed while empty, filled with the word chosen for it. */
+const GAP = 'inline-flex min-h-11 min-w-[6.5rem] items-center justify-center rounded-[var(--radius-s)] px-2.5 align-middle font-bold';
+
+/**
+ * Fill in the blanks. Typed: a box in each gap, read out as "Gap 1 of 2". With a word bank: tap a
+ * word to put it in the next empty gap (or the gap picked first), tap a filled gap to take it out.
+ */
+function BlanksAnswer({ q, onSubmit, disabled }: AnswerInputProps & { q: Extract<PublicQuestion, { type: 'blanks' }> }) {
+  const gaps = q.pieces.length - 1;
+  const [values, setValues] = useState<string[]>(() => Array.from({ length: gaps }, () => ''));
+  /** Bank only: which bank word fills each gap (by position in the bank), so a word used twice stays distinct. */
+  const [usedBy, setUsedBy] = useState<(number | null)[]>(() => Array.from({ length: gaps }, () => null));
+  const [target, setTarget] = useState<number | null>(null);
+  const [sent, setSent] = useState(false);
+  const first = useRef<HTMLInputElement>(null);
+  useEffect(() => first.current?.focus(), []);
+  const locked = disabled || sent;
+  const bank = q.bank ?? null;
+  const complete = values.every((v) => v.trim());
+  const place = (wordIndex: number) => {
+    if (locked || !bank) return;
+    const slot = target !== null && usedBy[target] === null ? target : usedBy.findIndex((u) => u === null);
+    if (slot < 0) return;
+    playSfx('select');
+    setUsedBy((u) => u.map((x, i) => (i === slot ? wordIndex : x)));
+    setValues((v) => v.map((x, i) => (i === slot ? bank[wordIndex]! : x)));
+    setTarget(null);
+  };
+  const clearGap = (i: number) => {
+    if (locked) return;
+    playSfx('tap');
+    if (usedBy[i] === null) return setTarget(i);
+    setUsedBy((u) => u.map((x, k) => (k === i ? null : x)));
+    setValues((v) => v.map((x, k) => (k === i ? '' : x)));
+    setTarget(i);
+  };
+  const submit = async (e?: FormEvent) => {
+    e?.preventDefault();
+    if (locked || !complete) return;
+    setSent(true);
+    if (!(await onSubmit({ type: 'blanks', values: values.map((v) => v.slice(0, 80)) }))) setSent(false);
+  };
+  return (
+    <form onSubmit={submit} className="flex flex-col gap-3">
+      <p className="font-semibold text-text-2">{bank ? 'Tap a word to put it in the next gap. Tap a filled gap to take its word out.' : gaps === 1 ? 'Type the missing word.' : 'Type the missing words.'}</p>
+      <p className="paper rounded-[var(--radius-l)] px-4 py-3 text-xl leading-[2.4] font-semibold break-words text-text sm:text-2xl">
+        {q.pieces.map((piece, i) => (
+          <span key={i}>
+            {piece}
+            {i < gaps ? (
+              bank ? (
+                <button
+                  type="button"
+                  onClick={() => clearGap(i)}
+                  disabled={locked}
+                  aria-label={values[i] ? `Gap ${i + 1} of ${gaps}: ${values[i]}. Take it out` : `Gap ${i + 1} of ${gaps}, empty${target === i ? ', chosen' : ''}`}
+                  className={`${GAP} mx-1 ${values[i] ? 'bg-lantern text-on-accent' : 'border-2 border-dashed border-line-strong bg-surface-2 text-text-3'} ${target === i ? 'ring-4 ring-lantern' : ''}`}
+                >
+                  {values[i] || <span aria-hidden>{i + 1}</span>}
+                </button>
+              ) : (
+                <>
+                  <label htmlFor={`blank-${i}`} className="sr-only">
+                    Gap {i + 1} of {gaps}
+                  </label>
+                  <input
+                    ref={i === 0 ? first : undefined}
+                    id={`blank-${i}`}
+                    value={values[i]}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      setValues((list) => list.map((x, k) => (k === i ? v : x)));
+                    }}
+                    disabled={locked}
+                    autoComplete="off"
+                    autoCapitalize="off"
+                    spellCheck={false}
+                    maxLength={80}
+                    size={Math.max(6, values[i]!.length + 1)}
+                    className="mx-1 h-11 max-w-full rounded-[var(--radius-s)] border-2 border-line-strong bg-surface px-2 align-middle text-xl font-bold text-text focus:outline-none focus-visible:ring-4 focus-visible:ring-lantern disabled:opacity-80"
+                  />
+                </>
+              )
+            ) : null}
+          </span>
+        ))}
+      </p>
+      {bank ? (
+        <div role="group" aria-label="Word bank" className="flex flex-wrap gap-2">
+          {bank.map((word, w) => {
+            const used = usedBy.includes(w);
+            return (
+              <button key={w} type="button" onClick={() => place(w)} disabled={locked || used} aria-pressed={used} className={`piece min-h-12 rounded-[var(--radius-m)] px-4 text-lg font-bold text-on-accent [--press:4px] disabled:cursor-default ${used ? 'piece-off' : ''}`} style={used ? undefined : { background: TILE_BG[w % TILE_BG.length] }}>
+                {word}
+                {used ? <span className="sr-only">, used</span> : null}
+              </button>
+            );
+          })}
+        </div>
+      ) : null}
+      <div className="flex flex-wrap items-center gap-3">
+        <SubmitButton disabled={locked || !complete} sent={sent} label={gaps === 1 ? 'Submit answer' : 'Submit answers'} />
+        {bank && usedBy.some((u) => u !== null) && !locked ? (
+          <button
+            type="button"
+            onClick={() => {
+              setUsedBy((u) => u.map(() => null));
+              setValues((v) => v.map(() => ''));
+              setTarget(null);
+            }}
+            className="inline-flex min-h-11 items-center gap-1.5 rounded-[var(--radius-m)] px-3 font-semibold text-text-2 hover:bg-white/[0.08]"
+          >
+            <Undo2 className="size-4" aria-hidden />
+            Start again
+          </button>
+        ) : null}
+      </div>
+    </form>
+  );
+}
+
+/**
+ * Sort into groups. Pick an item (tap, or Enter/Space), then the group it goes in; items can also
+ * be dragged onto a group with a mouse. Number keys pick the group for the chosen item.
+ */
+function SortAnswer({ q, onSubmit, disabled }: AnswerInputProps & { q: Extract<PublicQuestion, { type: 'sort' }> }) {
+  const [placement, setPlacement] = useState<Record<string, string>>({});
+  const [active, setActive] = useState<string | null>(q.items[0]?.id ?? null);
+  const [sent, setSent] = useState(false);
+  const locked = disabled || sent;
+  const put = (item: string, group: string) => {
+    if (locked) return;
+    playSfx('select');
+    const next = { ...placement, [item]: group };
+    setPlacement(next);
+    setActive(q.items.find((i) => !next[i.id])?.id ?? null);
+  };
+  useNumberKeys(q.groups.length, (g) => (active ? put(active, q.groups[g]!.id) : undefined), !locked && active !== null);
+  const loose = q.items.filter((i) => !placement[i.id]);
+  const done = loose.length === 0;
+  const submit = async () => {
+    setSent(true);
+    if (!(await onSubmit({ type: 'sort', placement }))) setSent(false);
+  };
+  const activeText = q.items.find((i) => i.id === active)?.text;
+  const itemButton = (item: { id: string; text: string }, inGroup: boolean) => (
+    <button
+      key={item.id}
+      type="button"
+      draggable={!locked}
+      onDragStart={(e) => {
+        e.dataTransfer.setData('text/plain', item.id);
+        setActive(item.id);
+      }}
+      onClick={() => {
+        if (locked) return;
+        playSfx('tap');
+        setActive(item.id);
+      }}
+      disabled={locked}
+      aria-pressed={active === item.id}
+      className={`paper inline-flex min-h-12 max-w-full items-center rounded-[var(--radius-m)] px-3 py-1.5 text-left font-bold break-words shadow-[0_6px_16px_-10px_rgb(2_5_20/0.7)] ${active === item.id ? 'ring-4 ring-lantern' : ''} ${inGroup ? 'text-base' : 'text-lg'}`}
+    >
+      <MathText text={item.text} />
+    </button>
+  );
+  return (
+    <div className="flex flex-col gap-3">
+      <p className="font-semibold text-text-2" aria-live="polite">
+        {done ? 'Every item has a group. Change any by picking it again.' : activeText ? `Where does "${activeText}" go? Pick its group.` : 'Pick an item, then the group it belongs in.'}
+      </p>
+      {loose.length ? (
+        <div role="group" aria-label="Items to sort" className="flex flex-wrap gap-2">
+          {loose.map((i) => itemButton(i, false))}
+        </div>
+      ) : null}
+      <div className={`grid gap-2.5 ${q.groups.length === 3 ? 'sm:grid-cols-3' : 'grid-cols-2'}`}>
+        {q.groups.map((g, gi) => {
+          const inside = q.items.filter((i) => placement[i.id] === g.id);
+          return (
+            <div
+              key={g.id}
+              onDragOver={(e) => {
+                if (!locked) e.preventDefault();
+              }}
+              onDrop={(e) => {
+                e.preventDefault();
+                const id = e.dataTransfer.getData('text/plain');
+                if (q.items.some((i) => i.id === id)) put(id, g.id);
+              }}
+              className="flex min-w-0 flex-col gap-2 rounded-[var(--radius-l)] border-2 border-white/15 bg-white/[0.06] p-2"
+            >
+              <button
+                type="button"
+                onClick={() => (active ? put(active, g.id) : undefined)}
+                disabled={locked || !active}
+                className="flex min-h-12 items-center justify-between gap-2 rounded-[var(--radius-m)] px-3 text-left font-display text-lg font-extrabold text-on-accent disabled:cursor-default"
+                style={{ background: TILE_BG[gi % TILE_BG.length] }}
+              >
+                <span className="min-w-0 break-words">
+                  {activeText && !locked ? <span className="sr-only">Put {activeText} in </span> : null}
+                  {g.label}
+                </span>
+                <span className="hidden font-display text-base font-bold opacity-70 sm:block" aria-hidden>
+                  {gi + 1}
+                </span>
+              </button>
+              <ul className="flex min-h-12 flex-wrap gap-1.5" aria-label={`In ${g.label}`}>
+                {inside.map((i) => (
+                  <li key={i.id} className="max-w-full">
+                    {itemButton(i, true)}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          );
+        })}
+      </div>
+      <SubmitButton disabled={locked || !done} sent={sent} onClick={submit} label="Lock in groups" />
     </div>
   );
 }
@@ -546,5 +809,11 @@ function AnswerControls(p: AnswerInputProps) {
       return <MatchAnswer {...p} q={q} />;
     case 'flashcard':
       return <p className="text-text-2">This question needs a study mode.</p>;
+    case 'poll':
+      return <PollAnswer {...p} q={q} />;
+    case 'blanks':
+      return <BlanksAnswer {...p} q={q} />;
+    case 'sort':
+      return <SortAnswer {...p} q={q} />;
   }
 }

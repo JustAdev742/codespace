@@ -94,6 +94,8 @@ export interface QuestionApi {
   /** The correct answer, in the tokens of this instance. */
   reveal(iid: string): AnswerReveal;
   explanation(iid: string): string | undefined;
+  /** False for a poll, which has no right answer and scores nothing. */
+  isGraded(iid: string): boolean;
   /** Time allowed for this question in ms: its own limit, or the game's. */
   timeLimitMs(iid: string): number;
 }

@@ -23,7 +23,7 @@ export const meta: ModeMeta = {
   duration: { min: 5, max: 10 },
   difficulty: 2,
   teams: 'none',
-  questionTypes: ['mcq', 'multi', 'truefalse', 'short', 'numeric', 'order', 'match'],
+  questionTypes: ['mcq', 'multi', 'truefalse', 'short', 'numeric', 'order', 'match', 'blanks', 'sort'],
   minQuestions: 5,
   common: { fields: ['timeLimitSec'], defaults: { timeLimitSec: 480 }, help: { timeLimitSec: 'Ten waves take about five and a half minutes. When time runs out with the lantern still lit, the class wins.' } },
   rules: [

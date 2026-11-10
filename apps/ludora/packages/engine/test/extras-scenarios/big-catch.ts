@@ -58,6 +58,11 @@ const twoLines: Pre = (sim) =>
 const reelTooSoon: Post = (sim, caster) => void sim.rt.act(caster, { type: 'reel' });
 /** The caster looks away and does not reel at all, so the fish would get away. */
 const looksAway: Post = (sim, caster) => void sim.idle.add(caster);
+/** The target reels in on their next bite (bots sometimes let a fish get away, which Rusty Reel has nothing to stick). */
+const targetReelsOnBite: Post = (sim, _caster, _def, target) => {
+  if (!target) return;
+  if (until(sim, () => fishers(sim)[target]?.line.phase === 'biting', 20_000)) sim.rt.act(target, { type: 'reel' });
+};
 /** The caster buys the next lure, which they can afford. */
 const buysLure: Post = (sim, caster) => {
   const f = fishers(sim)[caster];
@@ -112,6 +117,7 @@ export const scenarios: ScenarioSet = {
     'big-catch.strong-line': looksAway,
     'big-catch.landing-net': looksAway,
     'big-catch.tackle-sale': buysLure,
+    'big-catch.rusty-reel': targetReelsOnBite,
   },
   casters: { 'big-catch.tackle-sale': 'richest' },
   screen: ['big-catch.fish-finder'],

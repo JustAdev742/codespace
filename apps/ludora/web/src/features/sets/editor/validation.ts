@@ -62,6 +62,14 @@ export function questionFieldKey(rest: PropertyKey[], maps?: IndexMaps): string 
       if (i === undefined || sub === 'id' || (sub !== 'left' && sub !== 'right')) return 'pairs';
       return `pairs.${i}.${sub}`;
     }
+    case 'groups': {
+      const i = at('groups');
+      return i === undefined || sub === 'id' ? 'groups' : `groups.${i}`;
+    }
+    case 'text':
+      return 'sentence';
+    case 'distractors':
+      return 'distractors';
     case 'timeLimitSec':
       return 'timeLimit';
     case 'tags':
@@ -110,11 +118,11 @@ export function questionMessage(key: string, issue: IssueLike, type: QuestionTyp
   const isList = !key.includes('.');
   switch (field) {
     case 'prompt':
-      if (small || issue.code === 'invalid_type') return type === 'flashcard' ? 'Write the front of the card.' : type === 'truefalse' ? 'Write the statement.' : 'Write the question.';
+      if (small || issue.code === 'invalid_type') return type === 'flashcard' ? 'Write the front of the card.' : type === 'truefalse' ? 'Write the statement.' : type === 'blanks' ? 'Write an instruction, such as "Fill in the blanks."' : 'Write the question.';
       if (big) return `Use up to ${fmt(max)} characters.`;
       break;
     case 'choices': {
-      const limits = type === 'multi' ? LIST_LIMITS.multi : LIST_LIMITS.mcq;
+      const limits = type === 'multi' ? LIST_LIMITS.multi : type === 'poll' ? LIST_LIMITS.poll : LIST_LIMITS.mcq;
       if (isList && (small || issue.code === 'invalid_type')) return `Fill in at least ${limits.min} choices.`;
       if (isList && big) return `Use no more than ${limits.max} choices.`;
       if (key.endsWith('.media')) return 'This image cannot be used. Remove the choice and add it again.';
@@ -139,11 +147,30 @@ export function questionMessage(key: string, issue: IssueLike, type: QuestionTyp
       return 'Enter the margin as a number, or leave it empty.';
     case 'unit':
       return `Use up to ${LIMITS.unit} characters for the unit.`;
-    case 'items':
-      if (isList && (small || issue.code === 'invalid_type')) return `Fill in at least ${LIST_LIMITS.order.min} items.`;
-      if (isList && big) return `Use no more than ${LIST_LIMITS.order.max} items.`;
+    case 'items': {
+      const limits = type === 'sort' ? LIST_LIMITS.sort : LIST_LIMITS.order;
+      if (isList && (small || issue.code === 'invalid_type')) return `Fill in at least ${limits.min} items.`;
+      if (isList && big) return `Use no more than ${limits.max} items.`;
       if (big) return `Use up to ${fmt(max)} characters for each item.`;
+      if (issue.code === 'custom' && /groups/.test(issue.message)) return 'Choose a group for every item.';
       if (issue.code === 'custom') return 'Two items share an id. Remove one and add it again.';
+      if (type === 'sort' && !isList && issue.code !== 'too_small') return 'Choose a group for this item.';
+      break;
+    }
+    case 'groups':
+      if (isList && (small || issue.code === 'invalid_type')) return `Name at least ${LIST_LIMITS.groups.min} groups.`;
+      if (isList && big) return `Use no more than ${LIST_LIMITS.groups.max} groups.`;
+      if (issue.code === 'custom' && /at least one item/.test(issue.message)) return 'Every group needs at least one item in it.';
+      if (big) return `Use up to ${fmt(max)} characters for each group name.`;
+      break;
+    case 'sentence':
+      if (small || issue.code === 'invalid_type') return 'Write the sentence, with each gap in [square brackets].';
+      if (big) return `Use up to ${fmt(max)} characters.`;
+      break;
+    case 'distractors':
+      if (issue.code === 'custom') return 'One of the extra words is also a right answer. Take it out of the extra words.';
+      if (big && issue.origin === 'array') return `Use up to ${LIMITS.bankWords} extra words.`;
+      if (big) return `Keep each extra word to ${LIMITS.bankWord} characters.`;
       break;
     case 'pairs':
       if (isList && (small || issue.code === 'invalid_type')) return `Fill in at least ${LIST_LIMITS.match.min} pairs.`;
@@ -201,6 +228,10 @@ export function detailMessage(field: string, issue: IssueLike): string {
       return 'Choose who can see the set.';
     case 'cover':
       return 'Choose a picture and a colour for the cover.';
+    case 'topic':
+      return 'Use up to 60 characters for the topic.';
+    case 'defaults':
+      return `Ask a whole number of questions from 1 to ${LIMITS.questions}, or leave it empty to ask them all.`;
     case 'questions':
       if (issue.code === 'too_small') return 'Add at least one question.';
       if (issue.code === 'too_big') return `A set can hold up to ${LIMITS.questions} questions.`;
@@ -211,7 +242,7 @@ export function detailMessage(field: string, issue: IssueLike): string {
 }
 
 /** Set fields the details form shows; anything else goes in the general list. */
-const DETAIL_FIELDS = new Set(['title', 'description', 'subject', 'gradeBand', 'language', 'tags', 'visibility', 'cover']);
+const DETAIL_FIELDS = new Set(['title', 'description', 'subject', 'gradeBand', 'language', 'tags', 'visibility', 'cover', 'topic', 'defaults']);
 
 function emptyProblems(): Problems {
   return { details: {}, questions: {}, general: [], count: 0 };

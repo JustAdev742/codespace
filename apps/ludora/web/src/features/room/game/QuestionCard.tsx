@@ -1,9 +1,12 @@
 import { useEffect, useRef, type ReactNode } from 'react';
+import { Zap } from 'lucide-react';
 import type { Media, PublicQuestion } from '@ludora/shared';
 import { useAnnounce } from './announce.tsx';
 import { focusAdrift, focusSettled } from '../../../lib/focus.ts';
 import { useSfx, useSharedSounds } from '../../../lib/sound/react.tsx';
 import { useChaosPrompt } from '../../extras/ExtrasLayer.tsx';
+import { MathText } from '../../sets/math/MathText.tsx';
+import { mathToWords } from '../../sets/math/parse.ts';
 
 const IMAGE_HEIGHT = {
   /** Projector: beside the prompt, as tall as the screen comfortably allows. */
@@ -41,11 +44,16 @@ export function QuestionCard({ q, index, total, children, size = 'md' }: { q: Pu
   // A new question is read out. If the answer button that had focus went away with the last one,
   // focus moves to the new prompt, so keyboard and screen reader users keep their place.
   const key = `${index ?? ''}|${q.prompt}`;
-  useAnnounce(index !== undefined && total ? `Question ${index + 1} of ${total}. ${q.prompt}` : q.prompt, key);
+  useAnnounce(`${index !== undefined && total ? `Question ${index + 1} of ${total}. ` : ''}${q.double ? 'Double points. ' : ''}${mathToWords(q.prompt)}`, key);
   useSfx('question', key, useSharedSounds());
   const heading = useRef<HTMLHeadingElement>(null);
   // Chaos text looks (jumbled, typed out...) change only how the prompt is drawn, never what is read out.
-  const prompt = useChaosPrompt();
+  const chaosPrompt = useChaosPrompt();
+  // Maths is drawn unless a chaos text look is changing how the prompt looks.
+  const prompt = (text: string) => {
+    const shown = chaosPrompt(text);
+    return shown === text ? <MathText text={text} /> : shown;
+  };
   useEffect(() => focusSettled(() => heading.current, { preventScroll: true }), [key]);
   // Answering swaps the answer buttons for "locked in" within the same question, and focus goes
   // with them to the page body, which sends a screen reader back to the top. Bring it to the prompt.
@@ -69,12 +77,23 @@ export function QuestionCard({ q, index, total, children, size = 'md' }: { q: Pu
   }, []);
   const len = q.prompt.length;
   const many = (q.type === 'mcq' || q.type === 'multi') && q.choices.length > 4;
+  const double = q.double ? (
+    <span className={`inline-flex items-center gap-1.5 self-start rounded-full bg-lantern px-3 py-0.5 font-display font-extrabold text-on-accent ${size === 'lg' ? 'text-[clamp(1.1rem,1.6vw,1.8rem)]' : 'text-base'}`}>
+      <Zap className="size-[1em]" aria-hidden />
+      Double points
+    </span>
+  ) : null;
   const counter =
     index !== undefined && total ? (
-      <p className={`font-display font-bold tabular ${size === 'lg' ? 'text-[clamp(1.25rem,1.9vw,2.1rem)] text-text-2' : 'text-lg text-text-2'}`}>
-        Question {index + 1} of {total}
-      </p>
-    ) : null;
+      <div className="flex flex-wrap items-center gap-3">
+        <p className={`font-display font-bold tabular ${size === 'lg' ? 'text-[clamp(1.25rem,1.9vw,2.1rem)] text-text-2' : 'text-lg text-text-2'}`}>
+          Question {index + 1} of {total}
+        </p>
+        {double}
+      </div>
+    ) : (
+      double
+    );
   if (size === 'lg') {
     const text = len > 160 ? 'text-[clamp(1.5rem,2.3vw,2.75rem)]' : len > 90 ? 'text-[clamp(1.85rem,2.9vw,3.5rem)]' : 'text-[clamp(2.25rem,3.8vw,4.75rem)]';
     return (

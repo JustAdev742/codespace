@@ -6,7 +6,7 @@ import {
   type Rng,
   type SettingValues,
 } from '@ludora/shared';
-import { gradeAnswer, revealAnswer, correctAnswerFor, wrongAnswerFor } from '../questions/grade.ts';
+import { gradeAnswer, isGraded, revealAnswer, correctAnswerFor, wrongAnswerFor } from '../questions/grade.ts';
 import { answerFromTokens, answerToTokens, presentationOrder, revealToTokens, toPublicQuestion } from '../questions/present.ts';
 import type {
   ActionResult,
@@ -760,6 +760,7 @@ export class GameRuntime {
         return revealToTokens(q, inst.order, revealAnswer(q));
       },
       explanation: (iid) => question(instance(iid).qid).explanation,
+      isGraded: (iid) => isGraded(question(instance(iid).qid)),
       timeLimitMs: (iid) => (question(instance(iid).qid).timeLimitSec ?? this.common.questionTimeSec) * 1000,
     };
   }

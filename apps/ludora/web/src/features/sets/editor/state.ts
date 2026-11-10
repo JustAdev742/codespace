@@ -21,6 +21,9 @@ export type EditorAction =
   | { type: 'remove'; id: string }
   | { type: 'restore'; question: DraftQuestion; at: number }
   | { type: 'move'; id: string; by: number }
+  | { type: 'moveTo'; id: string; to: number }
+  | { type: 'editMany'; ids: string[]; change: (q: DraftQuestion) => DraftQuestion }
+  | { type: 'removeMany'; ids: string[] }
   | { type: 'toggle'; id: string; open?: boolean }
   | { type: 'openMany'; ids: string[] }
   | { type: 'setAllOpen'; open: boolean }
@@ -77,6 +80,25 @@ export function editorReducer(state: EditorState, action: EditorAction): EditorS
       questions.splice(to, 0, moved!);
       return { ...state, questions };
     }
+    case 'moveTo': {
+      const from = state.questions.findIndex((q) => q.id === action.id);
+      const to = Math.max(0, Math.min(state.questions.length - 1, action.to));
+      if (from < 0 || from === to) return state;
+      const questions = [...state.questions];
+      const [moved] = questions.splice(from, 1);
+      questions.splice(to, 0, moved!);
+      return { ...state, questions };
+    }
+    case 'editMany': {
+      const ids = new Set(action.ids);
+      return { ...state, questions: state.questions.map((q) => (ids.has(q.id) ? action.change(q) : q)) };
+    }
+    case 'removeMany': {
+      const ids = new Set(action.ids);
+      const questions = state.questions.filter((q) => !ids.has(q.id));
+      if (questions.length === state.questions.length) return state;
+      return { ...state, questions, open: Object.fromEntries(Object.entries(state.open).filter(([id]) => !ids.has(id))) };
+    }
     case 'toggle': {
       const open = action.open ?? !state.open[action.id];
       if (Boolean(state.open[action.id]) === open) return state;
@@ -98,5 +120,72 @@ export function editorReducer(state: EditorState, action: EditorAction): EditorS
     }
     case 'reset':
       return action.state;
+  }
+}
+
+/* --------------------------------- Undo ---------------------------------- */
+
+/** What undo puts back: the set's details and questions (which cards are open is not a change). */
+type Doc = Pick<EditorState, 'details' | 'questions'>;
+
+export interface HistoryState {
+  present: EditorState;
+  past: Doc[];
+  future: Doc[];
+  /** The last change's kind and time, so a run of typing in one field undoes as one step. */
+  lastKey: string | null;
+  lastAt: number;
+}
+
+export type HistoryAction = EditorAction | { type: 'undo' } | { type: 'redo' } | { type: 'clearHistory' };
+
+const UNDO_LIMIT = 100;
+const VIEW_ONLY = new Set(['toggle', 'openMany', 'setAllOpen']);
+
+export function startHistory(state: EditorState): HistoryState {
+  return { present: state, past: [], future: [], lastKey: null, lastAt: 0 };
+}
+
+const docOf = (s: EditorState): Doc => ({ details: s.details, questions: s.questions });
+
+/** Puts a document back, keeping which cards are open and opening any question that comes back. */
+function withDoc(state: EditorState, doc: Doc): EditorState {
+  const open = { ...state.open };
+  const had = new Set(state.questions.map((q) => q.id));
+  for (const q of doc.questions) if (!had.has(q.id)) open[q.id] = true;
+  return { ...state, details: doc.details, questions: doc.questions, open };
+}
+
+/** The editor's reducer with undo and redo. `now` is passed in so the reducer stays pure. */
+export function historyReducer(h: HistoryState, action: HistoryAction, now: number = Date.now()): HistoryState {
+  switch (action.type) {
+    case 'undo': {
+      const prev = h.past[h.past.length - 1];
+      if (!prev) return h;
+      return { present: withDoc(h.present, prev), past: h.past.slice(0, -1), future: [docOf(h.present), ...h.future], lastKey: null, lastAt: 0 };
+    }
+    case 'redo': {
+      const next = h.future[0];
+      if (!next) return h;
+      return { present: withDoc(h.present, next), past: [...h.past, docOf(h.present)].slice(-UNDO_LIMIT), future: h.future.slice(1), lastKey: null, lastAt: 0 };
+    }
+    case 'clearHistory':
+      return startHistory(h.present);
+    default: {
+      const present = editorReducer(h.present, action);
+      if (present === h.present) return h;
+      if (VIEW_ONLY.has(action.type) || action.type === 'reset') return action.type === 'reset' ? { ...h, present, lastKey: null } : { ...h, present };
+      if (present.details === h.present.details && present.questions === h.present.questions) return { ...h, present };
+      // Typing in the same field within a second and a half is one step.
+      const key = action.type === 'edit' ? `edit:${action.id}` : action.type === 'details' ? `details:${Object.keys(action.patch).join(',')}` : null;
+      const merge = key !== null && key === h.lastKey && now - h.lastAt < 1500;
+      return {
+        present,
+        past: merge ? h.past : [...h.past, docOf(h.present)].slice(-UNDO_LIMIT),
+        future: [],
+        lastKey: key,
+        lastAt: now,
+      };
+    }
   }
 }

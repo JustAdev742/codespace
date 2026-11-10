@@ -98,6 +98,30 @@ function FrontDetails({ q }: { q: PublicQuestion }) {
           </ul>
         </div>
       );
+    case 'blanks':
+      return (
+        <p className="text-lg font-semibold">
+          {q.pieces.map((piece, i) => (
+            <span key={i}>
+              {piece}
+              {i < q.pieces.length - 1 ? <span className="mx-1 inline-block min-w-[3.5em] border-b-2 border-dotted border-text-3 align-baseline" role="img" aria-label={`gap ${i + 1}`} /> : null}
+            </span>
+          ))}
+        </p>
+      );
+    case 'sort':
+      return (
+        <div className="flex flex-col gap-1.5">
+          <p className="text-sm font-semibold text-text-2">Which goes in {q.groups.map((g) => g.label).join(', ')}?</p>
+          <ul className="flex flex-wrap gap-1.5">
+            {q.items.map((item) => (
+              <li key={item.id} className="rounded-[var(--radius-s)] bg-surface-3 px-3 py-1.5 font-semibold">
+                {item.text}
+              </li>
+            ))}
+          </ul>
+        </div>
+      );
     default:
       return null;
   }

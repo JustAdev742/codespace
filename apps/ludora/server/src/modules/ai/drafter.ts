@@ -2,7 +2,7 @@ import { randomBytes } from 'node:crypto';
 import Anthropic from '@anthropic-ai/sdk';
 import { betaZodOutputFormat } from '@anthropic-ai/sdk/helpers/beta/zod';
 import { z } from 'zod';
-import { AI_DRAFT_LEVEL_LABELS, questionSchema, type AiDraftRequest, type Question } from '@ludora/shared';
+import { AI_DRAFT_LEVEL_LABELS, parseBlanks, questionSchema, type AiDraftRequest, type Question } from '@ludora/shared';
 
 /*
  * Drafts quiz questions with Claude. The model answers in a fixed JSON shape;
@@ -51,6 +51,8 @@ const wireQuestion = z.discriminatedUnion('type', [
   z.object({ type: z.literal('truefalse'), prompt, answer: z.boolean(), explanation }),
   z.object({ type: z.literal('short'), prompt, accepted: z.array(z.string().max(120)).min(1).max(10), explanation }),
   z.object({ type: z.literal('numeric'), prompt, answer: z.number(), tolerance: z.number().min(0), unit: z.string().max(20), explanation }),
+  z.object({ type: z.literal('blanks'), prompt, sentence: z.string().max(300), distractors: z.array(z.string().max(60)).max(6), explanation }),
+  z.object({ type: z.literal('sort'), prompt, groups: z.array(z.string().max(40)).min(2).max(3), items: z.array(z.object({ text: z.string().max(80), group: z.string().max(40) })).min(4).max(8), explanation }),
 ]);
 const wireDrafts = z.object({ questions: z.array(wireQuestion) });
 type WireQuestion = z.infer<typeof wireQuestion>;
@@ -86,6 +88,25 @@ function fromWire(w: WireQuestion, id: string): unknown {
     }
     case 'numeric':
       return { ...base, type: 'numeric', answer: w.answer, ...(w.tolerance > 0 ? { tolerance: w.tolerance } : {}), ...(w.unit.trim() ? { unit: w.unit.trim() } : {}) };
+    case 'blanks': {
+      // Extra words make a word bank; none means players type. An extra word that is also a right answer is dropped.
+      const answers = new Set(parseBlanks(w.sentence).gaps.flatMap((g) => g.accepted.map(key)));
+      const distractors: string[] = [];
+      for (const d of w.distractors.map((s) => s.trim())) if (d && !answers.has(key(d)) && !distractors.some((x) => key(x) === key(d))) distractors.push(d);
+      return { ...base, type: 'blanks', text: w.sentence.trim(), ...(distractors.length >= 2 ? { bank: true, distractors } : {}) };
+    }
+    case 'sort': {
+      const labels = w.groups.map((g) => g.trim());
+      if (labels.some((l) => !l) || new Set(labels.map(key)).size !== labels.length) return null;
+      const groups = labels.map((label, i) => ({ id: `g${i + 1}`, label }));
+      const items: { id: string; text: string; group: string }[] = [];
+      for (const [i, item] of w.items.entries()) {
+        const group = groups.find((g) => key(g.label) === key(item.group));
+        if (!group || !item.text.trim()) return null;
+        items.push({ id: `i${i + 1}`, text: item.text.trim(), group: group.id });
+      }
+      return { ...base, type: 'sort', groups, items };
+    }
   }
 }
 
@@ -124,6 +145,8 @@ The kinds:
 - "truefalse": a statement that is clearly true or clearly false.
 - "short": an answer of one to three words. List the accepted answers, including common alternative spellings or forms.
 - "numeric": a number. Use tolerance 0 unless rounding is expected, and give the unit, or an empty string if there is none.
+- "blanks" (fill in the blanks): one sentence with one to three missing words, each written in square brackets, with other accepted answers after a bar, for example "Plants need [sunlight|light] and [water] to grow." The prompt is a short instruction such as "Fill in the blanks." Give two to four plausible wrong words in distractors for a word bank, or an empty list for typed answers.
+- "sort" (sort into groups): two or three group names, and four to eight short items, each naming exactly one of the groups it belongs in. Every group gets at least one item.
 
 Keep each prompt to one question, ideally one sentence, and choices short. Write a one or two sentence explanation for every question that teaches why the answer is right.
 
@@ -137,7 +160,7 @@ const languageName = (code: string): string => {
   }
 };
 
-const TYPE_NAMES = { mcq: 'multiple choice (mcq)', truefalse: 'true or false (truefalse)', short: 'short answer (short)', numeric: 'number (numeric)' } as const;
+const TYPE_NAMES = { mcq: 'multiple choice (mcq)', truefalse: 'true or false (truefalse)', short: 'short answer (short)', numeric: 'number (numeric)', blanks: 'fill in the blanks (blanks)', sort: 'sort into groups (sort)' } as const;
 
 export function userMessage(r: AiDraftRequest): string {
   return [

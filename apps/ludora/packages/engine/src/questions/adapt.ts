@@ -1,4 +1,4 @@
-import type { Question, QuestionType, Rng } from '@ludora/shared';
+import { parseBlanks, type Question, type QuestionType, type Rng } from '@ludora/shared';
 import { normalizeAnswerText } from './grade.ts';
 
 /**
@@ -29,19 +29,46 @@ function answerText(q: Question): string | null {
   }
 }
 
+/**
+ * The kind of thing an answer is, so a wrong option never stands out from the
+ * right one: a number or amount ("34%", "120 min", "3/4"), a word or short name
+ * (up to three words), or a phrase such as a definition.
+ */
+export type AnswerShape = 'number' | 'word' | 'phrase';
+
+const NUMBER_LIKE = /^[-\u2212+]?[£$€]?\d[\d,.\s/:]*(%|°\s?[cfk]?|[a-z]{1,5}\.?|[a-z]{1,5}\s?[²³])?$/i;
+
+export function answerShape(text: string): AnswerShape {
+  const t = text.trim();
+  if (NUMBER_LIKE.test(t)) return 'number';
+  return t.split(/\s+/).length <= 3 ? 'word' : 'phrase';
+}
+
+/**
+ * Wrong options for a question that has none of its own, taken from the other
+ * answers in the set. Answers to questions of the same type come first and only
+ * need to agree on being a number or not (a set of definitions mixes long and
+ * short ones); answers borrowed from other types must be the same shape, so a
+ * definition is never offered beside "34%" or a one-word name.
+ */
 function distractorsFor(q: Question, correct: string, all: readonly Question[], rng: Rng, want: number): string[] {
   const seen = new Set([normalizeAnswerText(correct)]);
+  const shape = answerShape(correct);
+  const isNumber = shape === 'number';
   const sameType: string[] = [];
   const otherType: string[] = [];
   for (const other of all) {
     if (other.id === q.id) continue;
+    const same = other.type === q.type;
     const texts = other.type === 'mcq' ? other.choices.map((c) => c.text) : [answerText(other)];
     for (const t of texts) {
       if (!t) continue;
       const key = normalizeAnswerText(t);
       if (!key || seen.has(key)) continue;
+      const s = answerShape(t);
+      if (same ? (s === 'number') !== isNumber : s !== shape) continue;
       seen.add(key);
-      (other.type === q.type ? sameType : otherType).push(t);
+      (same ? sameType : otherType).push(t);
     }
   }
   return [...rng.shuffle(sameType), ...rng.shuffle(otherType)].slice(0, want);
@@ -75,6 +102,7 @@ function asMcq(q: Question, correct: string, wrong: string[], rng: Rng): Questio
     ...(q.timeLimitSec ? { timeLimitSec: q.timeLimitSec } : {}),
     ...(q.points !== undefined ? { points: q.points } : {}),
     ...(q.difficulty ? { difficulty: q.difficulty } : {}),
+    ...(q.doublePoints ? { doublePoints: true } : {}),
   };
 }
 
@@ -110,6 +138,8 @@ function convert(q: Question, supported: ReadonlySet<QuestionType>, all: readonl
           correct: q.correct ? 't' : 'f',
           ...(q.media ? { media: q.media } : {}),
           ...(q.explanation ? { explanation: q.explanation } : {}),
+          ...(q.timeLimitSec ? { timeLimitSec: q.timeLimitSec } : {}),
+          ...(q.doublePoints ? { doublePoints: true } : {}),
         };
       }
       return 'This mode cannot show true-or-false questions.';
@@ -132,6 +162,24 @@ function convert(q: Question, supported: ReadonlySet<QuestionType>, all: readonl
       return 'This mode cannot show ordering questions.';
     case 'match':
       return 'This mode cannot show matching questions.';
+    case 'poll':
+      return 'This mode cannot show polls: they have no right answer to play for.';
+    case 'sort':
+      return 'This mode cannot show sorting questions.';
+    case 'blanks': {
+      // A sentence with one gap reads as a question with the gap as a line: typed, or a choice from its word bank.
+      const { pieces, gaps } = parseBlanks(q.text);
+      if (gaps.length === 1) {
+        const prompt = `${q.prompt.trim()} ${pieces[0]}_____${pieces[1]}`.trim().slice(0, 500);
+        const accepted = gaps[0]!.accepted;
+        const keep = { ...(q.media ? { media: q.media } : {}), ...(q.explanation ? { explanation: q.explanation } : {}), ...(q.timeLimitSec ? { timeLimitSec: q.timeLimitSec } : {}), ...(q.points !== undefined ? { points: q.points } : {}), ...(q.doublePoints ? { doublePoints: true } : {}) };
+        const words = (q.distractors ?? []).filter((w) => !accepted.some((a) => normalizeAnswerText(a) === normalizeAnswerText(w)));
+        if (mcq && (q.bank || !short) && words.length >= 2) return asMcq({ ...q, prompt }, accepted[0]!, rng.shuffle(words).slice(0, 3), rng);
+        if (short) return { id: q.id, type: 'short', prompt, accepted: accepted.slice(0, 10), fuzzy: !q.bank, ...(q.caseSensitive ? { caseSensitive: true } : {}), ...keep };
+        if (mcq && words.length >= 2) return asMcq({ ...q, prompt }, accepted[0]!, rng.shuffle(words).slice(0, 3), rng);
+      }
+      return gaps.length > 1 ? 'This mode cannot show fill-in-the-blanks questions with more than one gap.' : 'This mode cannot show fill-in-the-blanks questions.';
+    }
   }
 }
 

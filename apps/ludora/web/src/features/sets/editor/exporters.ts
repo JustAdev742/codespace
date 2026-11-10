@@ -94,6 +94,25 @@ export function questionToCsvRow(q: Loose): Record<CsvColumn, string> {
     case 'flashcard':
       row.answer = text(q.back);
       break;
+    case 'poll':
+      row.choices = list(q.choices)
+        .filter(isObj)
+        .map((c) => escapeListPart(text(c.text)))
+        .join('|');
+      break;
+    case 'blanks':
+      row.answer = text(q.text);
+      if (q.bank === true) row.choices = list(q.distractors).map((w) => escapeListPart(text(w))).join('|');
+      if (q.caseSensitive === true) row.case_sensitive = 'yes';
+      break;
+    case 'sort': {
+      const groups = new Map(list(q.groups).filter(isObj).map((g) => [text(g.id), text(g.label)]));
+      row.items = list(q.items)
+        .filter(isObj)
+        .map((i) => `${escapeListPart(text(i.text), '=')} = ${escapeListPart(groups.get(text(i.group)) ?? '', '=')}`)
+        .join('|');
+      break;
+    }
     default:
       break;
   }

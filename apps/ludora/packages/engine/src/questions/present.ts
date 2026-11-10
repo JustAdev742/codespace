@@ -1,4 +1,4 @@
-import type { Answer, AnswerReveal, PublicQuestion, Question } from '@ludora/shared';
+import { parseBlanks, type Answer, type AnswerReveal, type PublicQuestion, type Question } from '@ludora/shared';
 import type { Rng } from '@ludora/shared';
 
 /*
@@ -9,20 +9,33 @@ import type { Rng } from '@ludora/shared';
  * of a match question would leak the answer to anyone reading the payload.
  */
 
+/** The words in a fill-in-the-blanks word bank, in authored order: each gap's answer, then the extra words. */
+export function bankWords(q: Extract<Question, { type: 'blanks' }>): string[] {
+  if (!q.bank) return [];
+  return [...parseBlanks(q.text).gaps.map((g) => g.accepted[0] ?? ''), ...(q.distractors ?? [])];
+}
+
 /** Ids of the parts a question shows in a shuffled order, if any. */
 export function shuffleableIds(q: Question): string[] | null {
   switch (q.type) {
     case 'mcq':
     case 'multi':
+    case 'poll':
       return q.choices.map((c) => c.id);
     case 'order':
+    case 'sort':
       return q.items.map((i) => i.id);
     case 'match':
       return q.pairs.map((p) => p.id);
+    case 'blanks':
+      return q.bank ? bankWords(q).map((_, i) => `w${i}`) : null;
     default:
       return null;
   }
 }
+
+/** Parts that are always shuffled, since stored order would give the answer away. */
+const mustShuffleType = (q: Question) => q.type === 'order' || q.type === 'match' || q.type === 'sort' || q.type === 'blanks';
 
 /**
  * Presentation order for a question: authored ids in the order shown.
@@ -32,7 +45,7 @@ export function shuffleableIds(q: Question): string[] | null {
 export function presentationOrder(q: Question, rng: Rng, shuffleChoices: boolean): string[] | null {
   const ids = shuffleableIds(q);
   if (!ids) return null;
-  const mustShuffle = q.type === 'order' || q.type === 'match';
+  const mustShuffle = mustShuffleType(q);
   if (!mustShuffle && !shuffleChoices) return ids;
   let order = rng.shuffle(ids);
   const solved = (o: string[]) => o.every((id, k) => id === ids[k]);
@@ -41,7 +54,14 @@ export function presentationOrder(q: Question, rng: Rng, shuffleChoices: boolean
   return order;
 }
 
-const prefix = (q: Question) => (q.type === 'order' ? 'i' : q.type === 'match' ? 'r' : 'c');
+const prefix = (q: Question) => (q.type === 'order' || q.type === 'sort' ? 'i' : q.type === 'match' ? 'r' : q.type === 'blanks' ? 'w' : 'c');
+
+/** Groups of a sort question get positional tokens g0, g1...: their order gives nothing away. */
+function groupMaps(q: Extract<Question, { type: 'sort' }>) {
+  const toToken = new Map(q.groups.map((g, i) => [g.id, `g${i}`]));
+  const fromToken = new Map(q.groups.map((g, i) => [`g${i}`, g.id]));
+  return { toToken, fromToken };
+}
 
 function tokenMaps(q: Question, order: string[] | null) {
   const ids = order ?? shuffleableIds(q) ?? [];
@@ -65,12 +85,13 @@ function arrange<T extends { id: string }>(items: readonly T[], order: string[] 
 
 /** The question as a player sees it: tokens instead of ids, and nothing that reveals the answer. */
 export function toPublicQuestion(q: Question, order: string[] | null): PublicQuestion {
-  const common = { prompt: q.prompt, ...(q.media ? { media: q.media } : {}) };
+  const common = { prompt: q.prompt, ...(q.media ? { media: q.media } : {}), ...(q.doublePoints ? { double: true as const } : {}) };
   const { toToken } = tokenMaps(q, order);
   const tok = (id: string) => toToken.get(id) ?? id;
   switch (q.type) {
     case 'mcq':
     case 'multi': {
+      // The "why" notes stay on the server until the reveal.
       const choices = arrange(q.choices, order).map(({ id, text, media }) => ({ id: tok(id), text, ...(media ? { media } : {}) }));
       return q.type === 'mcq' ? { type: 'mcq', ...common, choices } : { type: 'multi', ...common, choices, selectCount: q.correct.length };
     }
@@ -93,6 +114,24 @@ export function toPublicQuestion(q: Question, order: string[] | null): PublicQue
     }
     case 'flashcard':
       return { type: 'flashcard', ...common };
+    case 'poll':
+      return { type: 'poll', ...common, choices: arrange(q.choices, order).map(({ id, text, media }) => ({ id: tok(id), text, ...(media ? { media } : {}) })) };
+    case 'blanks': {
+      const pieces = parseBlanks(q.text).pieces;
+      if (!q.bank) return { type: 'blanks', ...common, pieces };
+      const words = bankWords(q);
+      const byToken = (order ?? words.map((_, i) => `w${i}`)).map((id) => words[Number(id.slice(1))] ?? '');
+      return { type: 'blanks', ...common, pieces, bank: byToken };
+    }
+    case 'sort': {
+      const groups = groupMaps(q).toToken;
+      return {
+        type: 'sort',
+        ...common,
+        groups: q.groups.map((g) => ({ id: groups.get(g.id)!, label: g.label })),
+        items: arrange(q.items, order).map(({ id, text }) => ({ id: tok(id), text })),
+      };
+    }
   }
 }
 
@@ -105,8 +144,20 @@ export function answerFromTokens(q: Question, order: string[] | null, a: Answer)
   switch (a.type) {
     case 'mcq':
       return { type: 'mcq', choiceId: id(a.choiceId) };
+    case 'poll':
+      return { type: 'poll', choiceId: id(a.choiceId) };
     case 'multi':
       return { type: 'multi', choiceIds: a.choiceIds.map(id) };
+    case 'sort': {
+      if (q.type !== 'sort') return a;
+      const groups = groupMaps(q).fromToken;
+      const placement: Record<string, string> = {};
+      for (const [item, group] of Object.entries(a.placement)) {
+        const itemId = fromToken.get(item);
+        if (itemId) placement[itemId] = groups.get(group) ?? UNKNOWN;
+      }
+      return { type: 'sort', placement };
+    }
     case 'order':
       return { type: 'order', itemIds: a.itemIds.map(id) };
     case 'match': {
@@ -131,6 +182,8 @@ export function answerToTokens(q: Question, order: string[] | null, a: Answer): 
   switch (a.type) {
     case 'mcq':
       return { type: 'mcq', choiceId: tok(a.choiceId) };
+    case 'poll':
+      return { type: 'poll', choiceId: tok(a.choiceId) };
     case 'multi':
       return { type: 'multi', choiceIds: a.choiceIds.map(tok) };
     case 'order':
@@ -139,6 +192,11 @@ export function answerToTokens(q: Question, order: string[] | null, a: Answer): 
       if (q.type !== 'match') return a;
       const left = matchLeftMaps(q).toToken;
       return { type: 'match', pairs: Object.fromEntries(Object.entries(a.pairs).map(([l, r]) => [left.get(l) ?? l, tok(r)])) };
+    }
+    case 'sort': {
+      if (q.type !== 'sort') return a;
+      const groups = groupMaps(q).toToken;
+      return { type: 'sort', placement: Object.fromEntries(Object.entries(a.placement).map(([i, g]) => [tok(i), groups.get(g) ?? g])) };
     }
     default:
       return a;
@@ -151,15 +209,20 @@ export function revealToTokens(q: Question, order: string[] | null, r: AnswerRev
   const tok = (i: string) => toToken.get(i) ?? i;
   switch (r.type) {
     case 'mcq':
-      return { type: 'mcq', correct: tok(r.correct) };
+      return { type: 'mcq', correct: tok(r.correct), ...(r.whys ? { whys: Object.fromEntries(Object.entries(r.whys).map(([k, v]) => [tok(k), v])) } : {}) };
     case 'multi':
-      return { type: 'multi', correct: r.correct.map(tok) };
+      return { type: 'multi', correct: r.correct.map(tok), ...(r.whys ? { whys: Object.fromEntries(Object.entries(r.whys).map(([k, v]) => [tok(k), v])) } : {}) };
     case 'order':
       return { type: 'order', itemIds: r.itemIds.map(tok) };
     case 'match': {
       if (q.type !== 'match') return r;
       const left = matchLeftMaps(q).toToken;
       return { type: 'match', pairs: Object.fromEntries(Object.entries(r.pairs).map(([l, rr]) => [left.get(l) ?? l, tok(rr)])) };
+    }
+    case 'sort': {
+      if (q.type !== 'sort') return r;
+      const groups = groupMaps(q).toToken;
+      return { type: 'sort', placement: Object.fromEntries(Object.entries(r.placement).map(([i, g]) => [tok(i), groups.get(g) ?? g])) };
     }
     default:
       return r;

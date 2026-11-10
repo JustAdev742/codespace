@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { ArrowLeftRight, CircleAlert, CircleDot, Hash, ImageIcon, Layers, ListChecks, ListOrdered, ToggleLeft, Type, type LucideIcon } from 'lucide-react';
+import { ArrowLeftRight, ChartColumn, CircleAlert, CircleDot, Hash, ImageIcon, Layers, LayoutGrid, ListChecks, ListOrdered, TextCursorInput, ToggleLeft, Type, type LucideIcon } from 'lucide-react';
 import type { Media, QuestionType } from '@ludora/shared';
 import { Input } from '../../../ui/primitives.tsx';
 import { LIMITS, type DraftQuestion } from './model.ts';
@@ -45,6 +45,9 @@ export const TYPE_ICONS: Record<QuestionType, LucideIcon> = {
   order: ListOrdered,
   match: ArrowLeftRight,
   flashcard: Layers,
+  poll: ChartColumn,
+  blanks: TextCursorInput,
+  sort: LayoutGrid,
 };
 
 export const TYPE_HINTS: Record<QuestionType, string> = {
@@ -56,10 +59,13 @@ export const TYPE_HINTS: Record<QuestionType, string> = {
   order: 'Put items in the right order',
   match: 'Match each item to its partner',
   flashcard: 'A front and a back to learn',
+  poll: 'No right answer: see how the class splits',
+  blanks: 'A sentence with gaps to fill',
+  sort: 'Sort items into two or three groups',
 };
 
 export function promptLabel(type: QuestionType): string {
-  return type === 'flashcard' ? 'Front' : type === 'truefalse' ? 'Statement' : 'Question';
+  return type === 'flashcard' ? 'Front' : type === 'truefalse' ? 'Statement' : type === 'blanks' ? 'Instruction' : 'Question';
 }
 
 export function ErrorText({ id, children }: { id: string; children: ReactNode }) {

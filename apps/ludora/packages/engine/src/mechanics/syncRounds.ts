@@ -21,6 +21,8 @@ export interface SyncAnswer {
   points: number;
   /** The choice token picked, for the answer distribution chart. */
   token: string | null;
+  /** A poll vote: no right answer, no points, and the streak is left as it was. */
+  ungraded?: boolean;
 }
 
 export interface SyncState {
@@ -134,8 +136,9 @@ function closeRound<S extends { sync: SyncState }>(s: S, cfg: SyncConfig<S>, ctx
   const sync = s.sync;
   sync.lastGain = {};
   for (const [pid, a] of Object.entries(sync.answers)) sync.lastGain[pid] = a.points;
-  // Players who could answer and did not lose their streak.
-  for (const pid of eligible(s, cfg, ctx)) if (!sync.answers[pid]) sync.streaks[pid] = 0;
+  // Players who could answer and did not lose their streak (a poll left unanswered costs nothing).
+  const poll = sync.iid !== null && !ctx.questions.isGraded(sync.iid);
+  if (!poll) for (const pid of eligible(s, cfg, ctx)) if (!sync.answers[pid]) sync.streaks[pid] = 0;
   sync.closedEligible = roundPool(s, cfg, ctx);
   sync.roundsPlayed++;
   cfg.onClosed?.(s, ctx);
@@ -202,10 +205,12 @@ export function syncAnswer<S extends { sync: SyncState }>(
   if (now > sync.deadline + DEADLINE_GRACE_MS) return { error: 'Time is up.' };
   const grade = ctx.questions.grade(sync.iid, answer);
   const responseMs = Math.min(now - sync.startedAt, sync.deadline - sync.startedAt);
-  const streak = grade.correct ? (sync.streaks[playerId] ?? 0) + 1 : 0;
+  const streak = grade.ungraded ? (sync.streaks[playerId] ?? 0) : grade.correct ? (sync.streaks[playerId] ?? 0) + 1 : 0;
   sync.streaks[playerId] = streak;
   const limitMs = sync.deadline - sync.startedAt;
-  const points = Math.max(0, Math.round(cfg.score(s, playerId, { correct: grade.correct, partial: grade.partial, responseMs, limitMs, streak }, ctx)));
+  // A question the author marked "double points" counts twice, whatever the mode's scoring.
+  const double = ctx.questions.get(ctx.questions.instance(sync.iid).qid).doublePoints ? 2 : 1;
+  const points = grade.ungraded ? 0 : Math.max(0, Math.round(cfg.score(s, playerId, { correct: grade.correct, partial: grade.partial, responseMs, limitMs, streak }, ctx) * double));
   sync.scores[playerId] = (sync.scores[playerId] ?? 0) + points;
   sync.answers[playerId] = {
     at: now,
@@ -213,9 +218,11 @@ export function syncAnswer<S extends { sync: SyncState }>(
     correct: grade.correct,
     partial: grade.partial,
     points,
-    token: answer.type === 'mcq' ? answer.choiceId : answer.type === 'truefalse' ? String(answer.value) : null,
+    token: answer.type === 'mcq' || answer.type === 'poll' ? answer.choiceId : answer.type === 'truefalse' ? String(answer.value) : null,
+    ...(grade.ungraded ? { ungraded: true } : {}),
   };
-  ctx.recordAnswer({ playerId, qid: ctx.questions.instance(sync.iid).qid, correct: grade.correct, partial: grade.partial, responseMs });
+  // A poll vote is not right or wrong, so it stays out of accuracy and reports.
+  if (!grade.ungraded) ctx.recordAnswer({ playerId, qid: ctx.questions.instance(sync.iid).qid, correct: grade.correct, partial: grade.partial, responseMs });
   const everyone = eligible(s, cfg, ctx);
   if ((cfg.closeOnFirstCorrect && grade.correct) || everyone.every((pid) => sync.answers[pid])) closeRound(s, cfg, ctx);
 }
@@ -255,7 +262,7 @@ export function syncView<S extends { sync: SyncState }>(s: S, cfg: SyncConfig<S>
       answered: Boolean(a),
       joinedLate: live && joinedAt > sync.startedAt,
       // Correctness stays hidden until the reveal so nobody can signal answers to friends.
-      correct: revealed && a ? a.correct : null,
+      correct: revealed && a && !a.ungraded ? a.correct : null,
       points: revealed && a ? a.points : null,
       partial: revealed && a ? a.partial : null,
       streak: sync.streaks[viewer.playerId] ?? 0,

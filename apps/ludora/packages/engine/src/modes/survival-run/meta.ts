@@ -13,7 +13,7 @@ export const meta: ModeMeta = {
   duration: { min: 2, max: 10 },
   difficulty: 2,
   teams: 'none',
-  questionTypes: ['mcq', 'multi', 'truefalse', 'short', 'numeric', 'order', 'match'],
+  questionTypes: ['mcq', 'multi', 'truefalse', 'short', 'numeric', 'order', 'match', 'blanks', 'sort'],
   minQuestions: 5,
   common: { fields: ['timeLimitSec'], defaults: { timeLimitSec: 0 }, help: { timeLimitSec: 'No limit means the run lasts until the last heart is gone.' } },
   rules: [

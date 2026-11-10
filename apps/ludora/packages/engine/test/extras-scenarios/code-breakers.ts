@@ -34,6 +34,13 @@ const richestTakesBits: Pre = (sim, caster) =>
     return kinds.includes('bits') && !kinds.includes('hack');
   });
 
+/** Lag Spike goes to the richest rival first and only blocks opening a packet: wait until that rival has packets on offer. */
+const richestHasOffer: Pre = (sim, caster) =>
+  void until(sim, () => {
+    const richest = rivals(sim, caster).sort((a, b) => hackers(sim)[b].bits - hackers(sim)[a].bits)[0];
+    return Boolean(richest && hackers(sim)[richest]?.offer);
+  });
+
 export const scenarios: ScenarioSet = {
   // The Vault cheats need a Heist.
   settings: { 'code-breakers': [{ heist: true }] },
@@ -51,6 +58,7 @@ export const scenarios: ScenarioSet = {
     'code-breakers.packet-reroll': offerOpen,
     'code-breakers.packet-x-ray': offerOpen,
     'code-breakers.packet-loss': richestTakesBits,
+    'code-breakers.lag-spike': richestHasOffer,
     'code-breakers.system-restore': eventOn,
     'code-breakers.event-overtime': eventOn,
     'code-breakers.start-storm': noEvent,

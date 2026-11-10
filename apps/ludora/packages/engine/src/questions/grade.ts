@@ -1,9 +1,28 @@
-import type { Answer, AnswerReveal, Question } from '@ludora/shared';
+import { parseBlanks, type Answer, type AnswerReveal, type Question } from '@ludora/shared';
 
 export interface GradeResult {
   correct: boolean;
   /** 0..1 credit for partially right answers (multi, order, match). Equals 1 when correct. */
   partial: number;
+  /** A poll: there is no right answer, so the answer scores nothing and counts neither way. */
+  ungraded?: boolean;
+}
+
+/** Whether a question has a right answer at all (a poll does not). */
+export function isGraded(q: Question): boolean {
+  return q.type !== 'poll';
+}
+
+/** Whether one filled-in gap matches: typed answers forgive small typos (never in numbers), picked words must match. */
+export function blankMatches(accepted: readonly string[], given: string, opts: { caseSensitive?: boolean | undefined; exact?: boolean }): boolean {
+  const g = normalizeAnswerText(given, opts.caseSensitive);
+  if (!g) return false;
+  return accepted.some((acc) => {
+    const want = normalizeAnswerText(acc, opts.caseSensitive);
+    if (want === g) return true;
+    if (opts.exact || /\d/.test(want)) return false;
+    return editDistance(want, g) <= typoAllowance(want.length);
+  });
 }
 
 /** Lowercase, strip accents and punctuation, collapse spaces. "Paris!" and " paris " match. */
@@ -115,15 +134,34 @@ export function gradeAnswer(q: Question, a: Answer): GradeResult {
       const ok = a.type === 'flashcard' && a.knew;
       return { correct: ok, partial: ok ? 1 : 0 };
     }
+    case 'poll':
+      return { correct: false, partial: 0, ungraded: true };
+    case 'blanks': {
+      if (a.type !== 'blanks') return wrong;
+      const { gaps } = parseBlanks(q.text);
+      const right = gaps.filter((g, i) => blankMatches(g.accepted, a.values[i] ?? '', { caseSensitive: q.caseSensitive, exact: Boolean(q.bank) })).length;
+      return { correct: right === gaps.length, partial: gaps.length ? right / gaps.length : 0 };
+    }
+    case 'sort': {
+      if (a.type !== 'sort') return wrong;
+      const right = q.items.filter((i) => a.placement[i.id] === i.group).length;
+      return { correct: right === q.items.length, partial: right / q.items.length };
+    }
   }
+}
+
+/** The "why" notes on wrong choices, when the author wrote any. */
+function whysOf(choices: readonly { id: string; why?: string | undefined }[], correct: readonly string[]): { whys?: Record<string, string> } {
+  const notes = choices.filter((c) => c.why && !correct.includes(c.id)).map((c) => [c.id, c.why!] as const);
+  return notes.length ? { whys: Object.fromEntries(notes) } : {};
 }
 
 export function revealAnswer(q: Question): AnswerReveal {
   switch (q.type) {
     case 'mcq':
-      return { type: 'mcq', correct: q.correct };
+      return { type: 'mcq', correct: q.correct, ...whysOf(q.choices, [q.correct]) };
     case 'multi':
-      return { type: 'multi', correct: [...q.correct] };
+      return { type: 'multi', correct: [...q.correct], ...whysOf(q.choices, q.correct) };
     case 'truefalse':
       return { type: 'truefalse', correct: q.correct };
     case 'short':
@@ -136,6 +174,12 @@ export function revealAnswer(q: Question): AnswerReveal {
       return { type: 'match', pairs: Object.fromEntries(q.pairs.map((p) => [p.id, p.id])) };
     case 'flashcard':
       return { type: 'flashcard', back: q.back };
+    case 'poll':
+      return { type: 'poll' };
+    case 'blanks':
+      return { type: 'blanks', answers: parseBlanks(q.text).gaps.map((g) => g.accepted[0] ?? '') };
+    case 'sort':
+      return { type: 'sort', placement: Object.fromEntries(q.items.map((i) => [i.id, i.group])) };
   }
 }
 
@@ -158,6 +202,12 @@ export function correctAnswerFor(q: Question): Answer {
       return { type: 'match', pairs: Object.fromEntries(q.pairs.map((p) => [p.id, p.id])) };
     case 'flashcard':
       return { type: 'flashcard', knew: true };
+    case 'poll':
+      return { type: 'poll', choiceId: q.choices[0]!.id };
+    case 'blanks':
+      return { type: 'blanks', values: parseBlanks(q.text).gaps.map((g) => g.accepted[0] ?? '') };
+    case 'sort':
+      return { type: 'sort', placement: Object.fromEntries(q.items.map((i) => [i.id, i.group])) };
   }
 }
 
@@ -188,5 +238,18 @@ export function wrongAnswerFor(q: Question, random: () => number): Answer {
     }
     case 'flashcard':
       return { type: 'flashcard', knew: false };
+    case 'poll':
+      return { type: 'poll', choiceId: q.choices[Math.floor(random() * q.choices.length)]!.id };
+    case 'blanks': {
+      // One gap wrong, the rest right, so part marks come into play.
+      const gaps = parseBlanks(q.text).gaps;
+      const miss = Math.floor(random() * gaps.length);
+      return { type: 'blanks', values: gaps.map((g, i) => (i === miss ? (q.distractors?.[0] ?? 'not sure') : (g.accepted[0] ?? ''))) };
+    }
+    case 'sort': {
+      // Every item one group along: all wrong.
+      const ids = q.groups.map((g) => g.id);
+      return { type: 'sort', placement: Object.fromEntries(q.items.map((i) => [i.id, ids[(ids.indexOf(i.group) + 1) % ids.length]!])) };
+    }
   }
 }

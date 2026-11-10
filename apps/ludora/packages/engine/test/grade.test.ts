@@ -4,7 +4,7 @@ import { createRng } from '@ludora/shared';
 import { editDistance, gradeAnswer, normalizeAnswerText, shortAnswerMatches } from '../src/questions/grade.ts';
 import { answerFromTokens, presentationOrder, revealToTokens, toPublicQuestion } from '../src/questions/present.ts';
 import { revealAnswer } from '../src/questions/grade.ts';
-import { adaptQuestions } from '../src/questions/adapt.ts';
+import { adaptQuestions, answerShape } from '../src/questions/adapt.ts';
 import { MIXED_SET, FLASHCARD_SET } from '../src/testing/fixtures.ts';
 
 const byId = (id: string) => MIXED_SET.find((q) => q.id === id)!;
@@ -153,5 +153,29 @@ describe('adaptQuestions', () => {
     const q = r.questions.find((x) => x.id === 'q4');
     expect(q?.type).toBe('mcq');
     if (q?.type === 'mcq') expect(q.choices.find((c) => c.id === q.correct)?.text).toBe('56');
+  });
+  it('never offers a flashcard options of another kind, such as a percentage beside a definition', () => {
+    for (let seed = 1; seed <= 40; seed++) {
+      const r = adaptQuestions(MIXED_SET, ['mcq'], createRng(seed));
+      for (const id of ['q8', 'q15', 'q16', 'q3', 'q12', 'q18']) {
+        const q = r.questions.find((x) => x.id === id);
+        if (q?.type !== 'mcq') continue;
+        const right = q.choices.find((c) => c.id === q.correct)!.text;
+        for (const c of q.choices) {
+          expect(answerShape(c.text) === 'number', `${id}: "${c.text}" beside "${right}"`).toBe(answerShape(right) === 'number');
+        }
+        if (['q8', 'q15', 'q16'].includes(id)) expect(q.choices.every((c) => answerShape(c.text) === 'phrase')).toBe(true);
+        if (['q3', 'q12', 'q18'].includes(id)) expect(q.choices.every((c) => answerShape(c.text) === 'word')).toBe(true);
+      }
+    }
+  });
+  it('tells numbers, short names and phrases apart', () => {
+    expect(answerShape('34%')).toBe('number');
+    expect(answerShape('120 min')).toBe('number');
+    expect(answerShape('3/4')).toBe('number');
+    expect(answerShape('-5')).toBe('number');
+    expect(answerShape('Paris')).toBe('word');
+    expect(answerShape('Carbon dioxide')).toBe('word');
+    expect(answerShape('How plants turn light into food')).toBe('phrase');
   });
 });

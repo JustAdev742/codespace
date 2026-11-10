@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'r
 import { Link, useBlocker, useNavigate, type BlockerFunction } from 'react-router';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { ChevronsDownUp, ChevronsUpDown, Eye, History, Presentation, Save, Sparkles, Trash2, Upload } from 'lucide-react';
+import { BookMarked, ChevronsDownUp, ChevronsUpDown, Eye, History, Keyboard, Presentation, Redo2, Save, Sparkles, Stethoscope, Trash2, Undo2, Upload, Wand2 } from 'lucide-react';
 import { questionSchema, type AiDraftStatus, type Question, type QuestionType, type Visibility } from '@ludora/shared';
 import { api, ApiError } from '../../../lib/api.ts';
 import { plural, timeAgo } from '../../../lib/format.ts';
@@ -23,7 +23,9 @@ import { ImportDialog, type ImportChoice } from './ImportDialog.tsx';
 import { blankQuestion, buildSetCandidate, fromQuestion, isBlankQuestion, LIMITS, newId, toCandidate, type DraftQuestion, type SetDetails } from './model.ts';
 import { domIds, focusSoon } from './parts.tsx';
 import { QuestionCard } from './QuestionCard.tsx';
-import { editorReducer, type EditorState } from './state.ts';
+import { editorReducer, historyReducer, startHistory, type EditorAction, type EditorState, type HistoryAction } from './state.ts';
+import { BankDialog, BulkBar, HealthDialog, ShortcutsDialog, StartersDialog, TryDialog } from './EditorTools.tsx';
+import { useSets } from '../../../lib/queries.ts';
 import { NO_PROBLEMS, problemsFromServer, validateSet, type FieldErrors, type Problems } from './validation.ts';
 
 /** GET /api/sets/:id. */
@@ -157,7 +159,17 @@ const DETAIL_LABELS: Record<string, string> = {
 export function Editor({ userId, setId, initial, baseUpdatedAt, canPublish, savedVisibility, onCreated }: EditorProps) {
   const qc = useQueryClient();
   const navigate = useNavigate();
-  const [state, dispatch] = useReducer(editorReducer, initial);
+  const [hist, dispatchHistory] = useReducer((h: ReturnType<typeof startHistory>, a: HistoryAction) => historyReducer(h, a), initial, startHistory);
+  const state = hist.present;
+  const dispatch = dispatchHistory as (a: EditorAction) => void;
+  const [selected, setSelected] = useState<ReadonlySet<string>>(() => new Set());
+  const [trying, setTrying] = useState<string | null>(null);
+  const [healthOpen, setHealthOpen] = useState(false);
+  const [bankOpen, setBankOpen] = useState(false);
+  const [startersOpen, setStartersOpen] = useState(false);
+  const [shortcutsOpen, setShortcutsOpen] = useState(false);
+  const [offline, setOffline] = useState(false);
+  const mySets = useSets({ scope: 'mine', sort: 'title', pageSize: 48 });
   const [savedSnapshot, setSavedSnapshot] = useState(() => snapshotOf(initial));
   const [savedVis, setSavedVis] = useState<Visibility | null>(savedVisibility);
   /** The set's updatedAt as of the last load or save, to tell whether a stored draft is older than the saved set. */
@@ -314,6 +326,18 @@ export function Editor({ userId, setId, initial, baseUpdatedAt, canPublish, save
     focusSoon(next ? domIds.header(next.id) : 'add-mcq');
   }, []);
 
+  /** Drag and drop: the dragged question goes where it was dropped. */
+  const onDropOn = useCallback(
+    (dragged: string, target: string) => {
+      const qs = stateRef.current.questions;
+      const to = qs.findIndex((q) => q.id === target);
+      if (to < 0 || dragged === target) return;
+      dispatch({ type: 'moveTo', id: dragged, to });
+      announce(`Question moved to position ${to + 1} of ${qs.length}.`);
+    },
+    [announce, dispatch],
+  );
+
   const onDetails = useCallback((patch: Partial<SetDetails>) => dispatch({ type: 'details', patch }), []);
 
   /* --------------------------------- Import -------------------------------- */
@@ -384,10 +408,12 @@ export function Editor({ userId, setId, initial, baseUpdatedAt, canPublish, save
 
   /* ---------------------------------- Save --------------------------------- */
 
-  const save = useCallback(async () => {
+  const save = useCallback(async (opts?: { quiet?: boolean }) => {
     if (savingRef.current) return;
     const current = stateRef.current;
     const result = validateSet(current.details, current.questions);
+    // An autosave only goes ahead when the set is ready to save, and says nothing when it is not.
+    if (opts?.quiet && !result.ok) return;
     setShowErrors(true);
     setChecked(new Set(current.questions.map((q) => q.id)));
     setServerError(null);
@@ -413,7 +439,8 @@ export function Editor({ userId, setId, initial, baseUpdatedAt, canPublish, save
         setPendingDraft(null);
         qc.setQueryData<SetResponse>(['set', setId], (old) => (old ? { ...old, set: res.set, questions: body.questions, typeCounts: typeCounts(body.questions) } : old));
         void qc.invalidateQueries({ queryKey: ['sets'] });
-        toast.success('Changes saved');
+        setOffline(false);
+        if (!opts?.quiet) toast.success('Changes saved');
       } else {
         const res = await api.post<{ set: SetSummary }>('/api/sets', body);
         clearDraft(key);
@@ -444,12 +471,17 @@ export function Editor({ userId, setId, initial, baseUpdatedAt, canPublish, save
           dispatch({ type: 'openMany', ids: Object.keys(fields.questions) });
           // The server's own wording for field errors is zod's; the list below says it plainly.
           setServerError('Fix the problems below, then save again.');
+        } else if (err.status === 0 && opts?.quiet) {
+          // Offline: say so in the bar, keep the changes on this device, and try again later.
+          setOffline(true);
+          return;
         } else {
           setServerError(err.status === 0 ? `${err.message} Your changes are still here and kept on this device.` : err.message);
         }
       } else {
         setServerError('Something went wrong while saving. Your changes are still here; try again.');
       }
+      if (opts?.quiet) return;
       requestAnimationFrame(() => requestAnimationFrame(() => summaryRef.current?.focus()));
     } finally {
       savingRef.current = false;
@@ -472,6 +504,143 @@ export function Editor({ userId, setId, initial, baseUpdatedAt, canPublish, save
     return () => window.removeEventListener('keydown', onKey);
   }, []);
 
+  /* ------------------------ Autosave, undo, shortcuts ----------------------- */
+
+  // A saved set saves itself a few seconds after each change, once it is ready to save.
+  useEffect(() => {
+    if (!setId || !dirty || saving || pendingDraft) return;
+    const t = window.setTimeout(() => void saveRef.current({ quiet: true }), offline ? 15_000 : 3000);
+    return () => window.clearTimeout(t);
+  }, [setId, dirty, saving, snapshot, offline, pendingDraft]);
+  useEffect(() => {
+    const back = () => setOffline(false);
+    window.addEventListener('online', back);
+    return () => window.removeEventListener('online', back);
+  }, []);
+
+  const undo = useCallback(() => {
+    dispatchHistory({ type: 'undo' });
+    announce('Undone.');
+  }, [announce]);
+  const redo = useCallback(() => {
+    dispatchHistory({ type: 'redo' });
+    announce('Redone.');
+  }, [announce]);
+
+  useEffect(() => {
+    const typing = (el: EventTarget | null) => el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement || el instanceof HTMLSelectElement || (el instanceof HTMLElement && el.isContentEditable);
+    const currentQuestion = () => {
+      const card = (document.activeElement as HTMLElement | null)?.closest<HTMLElement>('li[id^="q-"]');
+      return card ? stateRef.current.questions.find((q) => domIds.card(q.id) === card.id) ?? null : null;
+    };
+    const onKey = (e: KeyboardEvent) => {
+      const mod = e.ctrlKey || e.metaKey;
+      if (mod && !e.altKey && e.key.toLowerCase() === 'z' && !typing(e.target)) {
+        e.preventDefault();
+        if (e.shiftKey) redo();
+        else undo();
+        return;
+      }
+      if (mod && !e.altKey && e.key.toLowerCase() === 'y' && !typing(e.target)) {
+        e.preventDefault();
+        redo();
+        return;
+      }
+      if (e.key === '?' && !mod && !e.altKey && !typing(e.target)) {
+        e.preventDefault();
+        setShortcutsOpen(true);
+        return;
+      }
+      if (!e.altKey || mod) return;
+      if (e.code === 'KeyN') {
+        e.preventDefault();
+        addQuestion('mcq');
+        return;
+      }
+      if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+        const qs = stateRef.current.questions;
+        if (!qs.length) return;
+        e.preventDefault();
+        const here = currentQuestion();
+        const at = here ? qs.indexOf(here) : -1;
+        const next = qs[Math.max(0, Math.min(qs.length - 1, at + (e.key === 'ArrowDown' ? 1 : -1)))] ?? qs[0]!;
+        focusSoon(domIds.header(next.id), 'center');
+        announce(`Question ${qs.indexOf(next) + 1} of ${qs.length}.`);
+        return;
+      }
+      const digit = /^Digit([1-8])$/.exec(e.code);
+      if (digit) {
+        const q = currentQuestion();
+        const choice = q && (q.type === 'mcq' || q.type === 'multi') ? q.choices[Number(digit[1]) - 1] : undefined;
+        if (!q || !choice) return;
+        e.preventDefault();
+        dispatch({ type: 'edit', id: q.id, change: (d) => ({ ...d, correct: d.type === 'multi' ? (d.correct.includes(choice.id) ? d.correct.filter((c) => c !== choice.id) : [...d.correct, choice.id]) : [choice.id] }) });
+        announce(`Choice ${String.fromCharCode(64 + Number(digit[1]))} ${q.type === 'multi' && q.correct.includes(choice.id) ? 'is no longer marked right' : 'marked as the right answer'} in question ${stateRef.current.questions.indexOf(q) + 1}.`);
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [addQuestion, announce, dispatch, redo, undo]);
+
+  /* ------------------------------- Bulk edit ------------------------------- */
+
+  const onSelect = useCallback((id: string, on: boolean) => setSelected((s) => {
+    const n = new Set(s);
+    if (on) n.add(id);
+    else n.delete(id);
+    return n;
+  }), []);
+  const ticked = state.questions.filter((q) => selected.has(q.id)).map((q) => q.id);
+  const bulkTime = (seconds: number | null) => {
+    dispatch({ type: 'editMany', ids: ticked, change: (d) => ({ ...d, timeLimit: seconds === null ? '' : String(seconds) }) });
+    toast.success(seconds === null ? `${plural(ticked.length, 'question')} now use the game's time limit` : `${plural(ticked.length, 'question')} now have ${seconds} seconds`);
+  };
+  const bulkShuffle = () => {
+    dispatch({
+      type: 'editMany',
+      ids: ticked,
+      change: (d) => {
+        if (d.type !== 'mcq' && d.type !== 'multi' && d.type !== 'poll') return d;
+        const choices = d.choices.slice();
+        for (let i = choices.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [choices[i], choices[j]] = [choices[j]!, choices[i]!];
+        }
+        return { ...d, choices };
+      },
+    });
+    toast.success('Answers shuffled');
+  };
+  const bulkDelete = () => {
+    const n = ticked.length;
+    dispatch({ type: 'removeMany', ids: ticked });
+    setSelected(new Set());
+    toast(`${plural(n, 'question')} deleted`, { duration: 10_000, action: { label: 'Undo', onClick: () => dispatchHistory({ type: 'undo' }) } });
+  };
+  const bulkTransfer = async (to: string, mode: 'copy' | 'move') => {
+    if (!setId) return;
+    try {
+      const r = await api.post<{ count: number; to: { title: string } }>(`/api/sets/${setId}/questions/transfer`, { to, questionIds: ticked, mode });
+      toast.success(`${mode === 'copy' ? 'Copied' : 'Moved'} ${plural(r.count, 'question')} to ${r.to.title}`);
+      void qc.invalidateQueries({ queryKey: ['set', to] });
+      if (mode === 'move') {
+        const removed = stateRef.current.questions.filter((q) => ticked.includes(q.id));
+        dispatch({ type: 'removeMany', ids: removed.map((q) => q.id) });
+        // The server already saved this set without them.
+        setSavedSnapshot(snapshotOf({ details: stateRef.current.details, questions: stateRef.current.questions.filter((q) => !ticked.includes(q.id)) }));
+        dispatchHistory({ type: 'clearHistory' });
+      }
+      setSelected(new Set());
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : 'That did not work. Try again.');
+    }
+  };
+
+  const addCopies = useCallback((questions: Question[], from: string) => {
+    applyImport({ questions, mode: stateRef.current.questions.every(isBlankQuestion) ? 'replace' : 'add', details: null });
+    toast.message(`Added from ${from}.`);
+  }, [applyImport]);
+
   const deleteSet = async () => {
     if (!setId) return;
     setDeleting(true);
@@ -479,7 +648,7 @@ export function Editor({ userId, setId, initial, baseUpdatedAt, canPublish, save
       await api.delete(`/api/sets/${setId}`);
       leaving.current = true;
       clearDraft(key);
-      toast.success('Set deleted');
+      toast.success('Moved to the bin. You can restore it for 30 days.', { action: { label: 'Open the bin', onClick: () => void navigate('/sets/bin') } });
       void qc.invalidateQueries({ queryKey: ['sets'] });
       await navigate('/library', { replace: true });
       qc.removeQueries({ queryKey: ['set', setId] });
@@ -524,6 +693,7 @@ export function Editor({ userId, setId, initial, baseUpdatedAt, canPublish, save
     focusSoon(item.target, 'center');
   }, []);
 
+  const readyToSave = useMemo(() => Boolean(setId) && dirty && validateSet(state.details, state.questions).ok, [setId, dirty, state.details, state.questions]);
   const count = state.questions.length;
   const allBlank = state.questions.every(isBlankQuestion);
   const full = count >= LIMITS.questions;
@@ -532,15 +702,19 @@ export function Editor({ userId, setId, initial, baseUpdatedAt, canPublish, save
 
   const status = saving
     ? 'Saving'
+    : offline && dirty
+      ? 'Offline: your changes are kept on this device and save when the connection is back'
     : !setId
       ? dirty
         ? 'Not saved yet'
         : 'Give the set a title and add questions, then save.'
       : dirty
-        ? 'Unsaved changes'
+        ? readyToSave
+          ? 'Unsaved changes: saving soon'
+          : 'Unsaved changes: finish the marked questions to save'
         : savedAt
           ? `Saved at ${savedAt.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}`
-          : 'All changes saved';
+          : 'Saved';
 
   const staleDraft = pendingDraft && base && pendingDraft.baseUpdatedAt && pendingDraft.baseUpdatedAt !== base;
 
@@ -610,6 +784,26 @@ export function Editor({ userId, setId, initial, baseUpdatedAt, canPublish, save
           <h2 id="questions-heading" className="flex items-center gap-2 font-display text-2xl font-bold text-text">
             Questions <Badge className="tabular">{count}</Badge>
           </h2>
+          <div className="flex flex-wrap gap-1" role="toolbar" aria-label="Question tools">
+            <Button size="sm" variant="ghost" icon={<Undo2 className="size-4" />} disabled={!hist.past.length} onClick={undo} aria-keyshortcuts="Control+Z">
+              Undo
+            </Button>
+            <Button size="sm" variant="ghost" icon={<Redo2 className="size-4" />} disabled={!hist.future.length} onClick={redo} aria-keyshortcuts="Control+Shift+Z Control+Y">
+              Redo
+            </Button>
+            <Button size="sm" variant="ghost" icon={<Stethoscope className="size-4" />} onClick={() => setHealthOpen(true)}>
+              Health check
+            </Button>
+            <Button size="sm" variant="ghost" icon={<BookMarked className="size-4" />} onClick={() => setBankOpen(true)}>
+              Question bank
+            </Button>
+            <Button size="sm" variant="ghost" icon={<Wand2 className="size-4" />} onClick={() => setStartersOpen(true)}>
+              Starters
+            </Button>
+            <Button size="sm" variant="ghost" icon={<Keyboard className="size-4" />} onClick={() => setShortcutsOpen(true)} aria-keyshortcuts="Shift+?">
+              Shortcuts
+            </Button>
+          </div>
           {count > 1 ? (
             <div className="flex flex-wrap gap-1">
               <Button size="sm" variant="ghost" icon={<ChevronsUpDown className="size-4" />} disabled={openCount === count} onClick={() => dispatch({ type: 'setAllOpen', open: true })}>
@@ -621,6 +815,18 @@ export function Editor({ userId, setId, initial, baseUpdatedAt, canPublish, save
             </div>
           ) : null}
         </div>
+        {ticked.length ? (
+          <BulkBar
+            count={ticked.length}
+            onClear={() => setSelected(new Set())}
+            onTimeLimit={bulkTime}
+            onShuffle={bulkShuffle}
+            onDelete={bulkDelete}
+            onTransfer={(to, mode) => void bulkTransfer(to, mode)}
+            canTransfer={Boolean(setId) && !dirty}
+            sets={(mySets.data?.sets ?? []).filter((x) => x.id !== setId).map((x) => ({ id: x.id, title: x.title }))}
+          />
+        ) : null}
         {count === 0 ? (
           <EmptyState title="No questions yet">Add one below, or import questions from typed text, a spreadsheet or a Ludora file.</EmptyState>
         ) : (
@@ -638,6 +844,10 @@ export function Editor({ userId, setId, initial, baseUpdatedAt, canPublish, save
                 onMove={onMove}
                 onDuplicate={onDuplicate}
                 onRemove={onRemove}
+                selected={selected.has(q.id)}
+                onSelect={onSelect}
+                onTry={setTrying}
+                onDropOn={onDropOn}
               />
             ))}
           </ol>
@@ -651,7 +861,7 @@ export function Editor({ userId, setId, initial, baseUpdatedAt, canPublish, save
             <h2 id="delete-set-heading" className="font-display text-xl font-bold text-text">
               Delete this set
             </h2>
-            <p className="text-sm text-text-2">Removes it for everyone, along with any class assignments that use it.</p>
+            <p className="text-sm text-text-2">It goes to your bin for 30 days, where you can restore it. Sets a class assignment uses cannot be deleted.</p>
           </div>
           <Button variant="danger" size="sm" icon={<Trash2 className="size-4" />} onClick={() => setDeleteOpen(true)}>
             Delete set
@@ -688,6 +898,28 @@ export function Editor({ userId, setId, initial, baseUpdatedAt, canPublish, save
         </Button>
       </div>
 
+      <HealthDialog open={healthOpen} onOpenChange={setHealthOpen} questions={state.questions} onGo={(id) => goTo({ key: id, label: '', message: '', target: domIds.header(id), questionId: id })} />
+      <TryDialog draft={trying ? (state.questions.find((q) => q.id === trying) ?? null) : null} onOpenChange={(o) => !o && setTrying(null)} />
+      <BankDialog
+        open={bankOpen}
+        onOpenChange={setBankOpen}
+        setId={setId}
+        room={LIMITS.questions - (allBlank ? 0 : count)}
+        onAdd={(qs) => {
+          addCopies(qs, 'your question bank');
+          setBankOpen(false);
+        }}
+      />
+      <StartersDialog
+        open={startersOpen}
+        onOpenChange={setStartersOpen}
+        room={LIMITS.questions - (allBlank ? 0 : count)}
+        onAdd={(qs) => {
+          addCopies(qs, 'a starter');
+          setStartersOpen(false);
+        }}
+      />
+      <ShortcutsDialog open={shortcutsOpen} onOpenChange={setShortcutsOpen} />
       <ImportDialog open={importOpen} onOpenChange={setImportOpen} currentCount={count} allBlank={allBlank} hasTitle={state.details.title.trim() !== ''} onImport={applyImport} />
       {aiStatus.data?.available ? (
         <AiDraftDialog
@@ -736,13 +968,13 @@ export function Editor({ userId, setId, initial, baseUpdatedAt, canPublish, save
         open={deleteOpen}
         onOpenChange={setDeleteOpen}
         size="sm"
-        title="Delete this set?"
-        description="It is removed for everyone you shared it with, and class assignments that use it are removed too. Reports of games already played stay. This cannot be undone."
+        title="Move this set to the bin?"
+        description="Nobody can see or play it while it is in the bin, and it is removed for good after 30 days. You can restore it from the bin until then. Reports of games already played stay."
         footer={
           <>
             <Button onClick={() => setDeleteOpen(false)}>Keep it</Button>
             <Button variant="danger" loading={deleting} onClick={() => void deleteSet()}>
-              Delete set
+              Move to the bin
             </Button>
           </>
         }

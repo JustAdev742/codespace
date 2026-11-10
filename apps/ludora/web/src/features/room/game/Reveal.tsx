@@ -7,6 +7,8 @@ import { useOverview } from '../../../lib/queries.ts';
 import { useAnnounce } from './announce.tsx';
 import { myAnswerWords, useMyAnswer } from './answerMemory.tsx';
 import { useSfx, useSoundRole } from '../../../lib/sound/react.tsx';
+import { MathText } from '../../sets/math/MathText.tsx';
+import { mathToWords } from '../../sets/math/parse.ts';
 
 /** The big screen's choice grid measures its own box, so it lays out for the room it has (full width, or beside a side panel). */
 function HostChoices({ host, children }: { host: boolean; children: ReactNode }) {
@@ -16,7 +18,7 @@ function HostChoices({ host, children }: { host: boolean; children: ReactNode })
 /** The choices of a live question with nothing marked: the host screen while answers are open. */
 export function ChoicesDisplay({ q, size = 'lg' }: { q: PublicQuestion; size?: TileSize }) {
   const host = size === 'lg';
-  if (q.type === 'mcq' || q.type === 'multi') {
+  if (q.type === 'mcq' || q.type === 'multi' || q.type === 'poll') {
     const { grid, layout, dense } = choiceGrid(
       q.choices.map((c) => c.text),
       host,
@@ -39,8 +41,40 @@ export function ChoicesDisplay({ q, size = 'lg' }: { q: PublicQuestion; size?: T
       </div>
     );
   }
-  const line = q.type === 'order' ? `Players are putting ${q.items.length} items in order.` : q.type === 'match' ? `Players are matching ${q.left.length} pairs.` : 'Players are typing their answers.';
+  if (q.type === 'blanks') return <BlanksSentence q={q} host={host} />;
+  const line =
+    q.type === 'order'
+      ? `Players are putting ${q.items.length} items in order.`
+      : q.type === 'match'
+        ? `Players are matching ${q.left.length} pairs.`
+        : q.type === 'sort'
+          ? `Players are sorting ${q.items.length} items into ${q.groups.map((g) => g.label).join(', ')}.`
+          : 'Players are typing their answers.';
   return <p className={`font-semibold text-text-2 ${host ? 'text-[clamp(1.4rem,2.2vw,2.5rem)]' : 'text-xl'}`}>{line}</p>;
+}
+
+/** A fill-in-the-blanks sentence on its card: empty gaps while players answer, the right words once revealed. */
+function BlanksSentence({ q, host, answers }: { q: Extract<PublicQuestion, { type: 'blanks' }>; host: boolean; answers?: string[] }) {
+  const gaps = q.pieces.length - 1;
+  return (
+    <div className="flex flex-col gap-3">
+      <p className={`paper rounded-[var(--radius-l)] font-semibold break-words text-text ${host ? 'px-6 py-4 text-[clamp(1.5rem,2.6vw,3rem)] leading-[1.7]' : 'px-4 py-3 text-xl leading-[1.9]'}`}>
+        {q.pieces.map((piece, i) => (
+          <span key={i}>
+            {piece}
+            {i < gaps ? (
+              answers ? (
+                <mark className="mx-1 rounded-[var(--radius-s)] bg-glim px-2 font-bold text-on-accent">{answers[i]}</mark>
+              ) : (
+                <span className="mx-1 inline-block min-w-[4em] border-b-4 border-dotted border-text-3 align-baseline" role="img" aria-label={`gap ${i + 1}`} />
+              )
+            ) : null}
+          </span>
+        ))}
+      </p>
+      {!answers && q.bank ? <p className={`font-semibold text-text-2 ${host ? 'text-[clamp(1.1rem,1.6vw,1.8rem)]' : ''}`}>Word bank: {q.bank.join(', ')}</p> : null}
+    </div>
+  );
 }
 
 /** The right answer in words, for screen readers; null when the question has no short way to say it. */
@@ -65,6 +99,12 @@ export function answerWords(q: PublicQuestion, reveal: AnswerReveal): string | n
       return q.type === 'order' ? `The right order: ${reveal.itemIds.map((id) => q.items.find((i) => i.id === id)?.text ?? id).join(', ')}.` : null;
     case 'flashcard':
       return `The answer: ${reveal.back}.`;
+    case 'blanks':
+      return `The missing ${reveal.answers.length === 1 ? 'word was' : 'words were'} ${reveal.answers.join(', then ')}.`;
+    case 'sort':
+      return q.type === 'sort' ? q.groups.map((g) => `${g.label}: ${q.items.filter((i) => reveal.placement[i.id] === g.id).map((i) => i.text).join(', ')}`).join('. ') + '.' : null;
+    case 'poll':
+      return 'A poll: there was no right answer.';
     default:
       return null;
   }
@@ -96,11 +136,13 @@ export function shortAnswer(q: PublicQuestion, reveal: AnswerReveal): string | n
 export function RevealAnswer({ q, reveal, mine, distribution, compact, size }: { q: PublicQuestion; reveal: AnswerReveal; mine?: string | null; distribution?: Record<string, number> | null; compact?: boolean; size?: TileSize }) {
   // What this player sent, so their pick is marked and, if it was wrong, read out too.
   const sent = useMyAnswer(q);
-  const picked = new Set<string>(mine ? [mine] : sent?.type === 'mcq' ? [sent.choiceId] : sent?.type === 'multi' ? sent.choiceIds : sent?.type === 'truefalse' ? [String(sent.value)] : []);
+  const picked = new Set<string>(mine ? [mine] : sent?.type === 'mcq' || sent?.type === 'poll' ? [sent.choiceId] : sent?.type === 'multi' ? sent.choiceIds : sent?.type === 'truefalse' ? [String(sent.value)] : []);
   const missed =
     (reveal.type === 'mcq' && sent?.type === 'mcq' && sent.choiceId !== reveal.correct) || (reveal.type === 'truefalse' && sent?.type === 'truefalse' && sent.value !== reveal.correct);
-  const said = answerWords(q, reveal);
-  useAnnounce(said && missed && sent ? `${said} You answered ${myAnswerWords(q, sent)}.` : said, `${q.prompt}|${JSON.stringify(reveal)}`);
+  const plainSaid = answerWords(q, reveal);
+  const said = plainSaid === null ? null : mathToWords(plainSaid);
+  const whyMine = sent?.type === 'mcq' && (reveal.type === 'mcq' || reveal.type === 'multi') ? reveal.whys?.[sent.choiceId] : undefined;
+  useAnnounce(said && missed && sent ? `${said} You answered ${myAnswerWords(q, sent)}.${whyMine ? ` ${whyMine}` : ''}` : said, `${q.prompt}|${JSON.stringify(reveal)}`);
   // The big screen chimes as the answer appears; players hear their own result instead (ResultBanner).
   const role = useSoundRole();
   useSfx('reveal', `${q.prompt}|${JSON.stringify(reveal)}`, role === 'host');
@@ -114,14 +156,24 @@ export function RevealAnswer({ q, reveal, mine, distribution, compact, size }: {
       q.choices.map((c) => c.text),
       host,
     );
+    // The author's "why" note for each wrong choice this player picked (never on the big screen).
+    const whys = host ? [] : q.choices.filter((c) => picked.has(c.id) && !correct.has(c.id) && reveal.whys?.[c.id]).map((c) => ({ c, why: reveal.whys![c.id]! }));
     return (
-      <HostChoices host={host}>
-        <div className={grid}>
-          {q.choices.map((c, i) => (
-            <ChoiceTile key={c.id} index={i} text={c.text} media={c.media} dense={dense} correct={correct.has(c.id)} dimmed={!correct.has(c.id)} wrong={picked.has(c.id) && !correct.has(c.id)} mine={picked.has(c.id)} disabled size={sz} layout={layout} count={count(c.id)} max={max} tall={host && q.choices.length <= 4 && !q.media} />
-          ))}
-        </div>
-      </HostChoices>
+      <div className="flex flex-col gap-3">
+        <HostChoices host={host}>
+          <div className={grid}>
+            {q.choices.map((c, i) => (
+              <ChoiceTile key={c.id} index={i} text={c.text} media={c.media} dense={dense} correct={correct.has(c.id)} dimmed={!correct.has(c.id)} wrong={picked.has(c.id) && !correct.has(c.id)} mine={picked.has(c.id)} disabled size={sz} layout={layout} count={count(c.id)} max={max} tall={host && q.choices.length <= 4 && !q.media} />
+            ))}
+          </div>
+        </HostChoices>
+        {whys.map(({ c, why }) => (
+          <p key={c.id} className="paper rounded-[var(--radius-m)] px-4 py-3 font-semibold text-text">
+            <span className="font-bold">Why not {c.text || 'that one'}? </span>
+            {why}
+          </p>
+        ))}
+      </div>
     );
   }
   if (q.type === 'truefalse' && reveal.type === 'truefalse') {
@@ -132,7 +184,48 @@ export function RevealAnswer({ q, reveal, mine, distribution, compact, size }: {
       </div>
     );
   }
+  if (q.type === 'poll') {
+    // No right answer: every choice stays lit, with how many picked it and the player's own vote tagged.
+    const { grid, layout, dense } = choiceGrid(
+      q.choices.map((c) => c.text),
+      host,
+    );
+    const total = Object.values(distribution ?? {}).reduce((a, b) => a + b, 0);
+    return (
+      <div className="flex flex-col gap-3">
+        <p className={`font-semibold text-text-2 ${host ? 'text-[clamp(1.1rem,1.6vw,1.8rem)]' : ''}`}>{distribution ? `How the class voted: ${total} ${total === 1 ? 'vote' : 'votes'}.` : 'A poll: there was no right answer.'}</p>
+        <HostChoices host={host}>
+          <div className={grid}>
+            {q.choices.map((c, i) => (
+              <ChoiceTile key={c.id} index={i} text={c.text} media={c.media} dense={dense} mine={picked.has(c.id)} selected={false} disabled size={sz} layout={layout} count={count(c.id)} max={max} tall={host && q.choices.length <= 4 && !q.media} />
+            ))}
+          </div>
+        </HostChoices>
+      </div>
+    );
+  }
+  if (q.type === 'blanks' && reveal.type === 'blanks') return <BlanksSentence q={q} host={host} answers={reveal.answers} />;
   const rowText = host ? 'text-[clamp(1.2rem,1.9vw,2.2rem)] px-5 py-3' : 'text-lg px-3.5 py-2.5';
+  if (q.type === 'sort' && reveal.type === 'sort') {
+    return (
+      <div className={`grid gap-2.5 ${q.groups.length === 3 ? 'sm:grid-cols-3' : 'sm:grid-cols-2'}`} aria-label="The right groups" role="group">
+        {q.groups.map((g) => (
+          <section key={g.id} className="flex min-w-0 flex-col gap-2 rounded-[var(--radius-l)] bg-glim p-2.5 text-on-accent">
+            <h3 className={`font-display font-extrabold break-words ${host ? 'text-[clamp(1.3rem,2vw,2.3rem)]' : 'text-lg'}`}>{g.label}</h3>
+            <ul className="flex flex-wrap gap-1.5">
+              {q.items
+                .filter((i) => reveal.placement[i.id] === g.id)
+                .map((i) => (
+                  <li key={i.id} className={`paper rounded-[var(--radius-m)] font-bold break-words ${host ? 'px-4 py-2 text-[clamp(1.1rem,1.6vw,1.9rem)]' : 'px-3 py-1.5'}`}>
+                    {i.text}
+                  </li>
+                ))}
+            </ul>
+          </section>
+        ))}
+      </div>
+    );
+  }
   if (q.type === 'order' && reveal.type === 'order') {
     const byId = new Map(q.items.map((i) => [i.id, i.text]));
     return (
@@ -140,7 +233,7 @@ export function RevealAnswer({ q, reveal, mine, distribution, compact, size }: {
         {reveal.itemIds.map((id, i) => (
           <li key={id} className={`flex items-center gap-3 rounded-[var(--radius-m)] bg-glim font-bold text-on-accent ${rowText}`}>
             <span className="grid size-[1.8em] shrink-0 place-items-center rounded-full bg-ink font-display font-extrabold text-white tabular">{i + 1}</span>
-            {byId.get(id)}
+            <MathText text={byId.get(id) ?? ''} />
           </li>
         ))}
       </ol>
@@ -152,8 +245,12 @@ export function RevealAnswer({ q, reveal, mine, distribution, compact, size }: {
       <ul className="flex flex-col gap-2" aria-label="The right pairs">
         {q.left.map((l) => (
           <li key={l.id} className={`grid grid-cols-2 gap-3 rounded-[var(--radius-m)] bg-glim font-bold text-on-accent ${rowText}`}>
-            <span>{l.text}</span>
-            <span>{right.get(reveal.pairs[l.id] ?? '')}</span>
+            <span>
+              <MathText text={l.text} />
+            </span>
+            <span>
+              <MathText text={right.get(reveal.pairs[l.id] ?? '') ?? ''} />
+            </span>
           </li>
         ))}
       </ul>
@@ -166,7 +263,9 @@ export function RevealAnswer({ q, reveal, mine, distribution, compact, size }: {
   return (
     <div className={`lift rounded-[var(--radius-l)] bg-glim text-on-accent ${host ? 'px-7 py-5' : 'px-5 py-4'}`}>
       <div className={`font-bold ${host ? 'text-[clamp(1rem,1.4vw,1.5rem)]' : 'text-sm'}`}>Answer</div>
-      <div className={`font-display font-extrabold break-words ${host ? 'text-[clamp(2.25rem,4vw,4.75rem)] leading-[1.02]' : 'text-[2rem] leading-tight'}`}>{text}</div>
+      <div className={`font-display font-extrabold break-words ${host ? 'text-[clamp(2.25rem,4vw,4.75rem)] leading-[1.02]' : 'text-[2rem] leading-tight'}`}>
+        <MathText text={text} />
+      </div>
     </div>
   );
 }

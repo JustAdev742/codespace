@@ -141,6 +141,15 @@ export const questionSets = pgTable(
     plays: integer('plays').notNull().default(0),
     /** Stable key for built-in sets so seeding can update them in place. */
     seedKey: text('seed_key'),
+    /** In the bin since this moment; restorable for 30 days, then removed for good. */
+    deletedAt: ts('deleted_at'),
+    /** The owner's own folder name for the set, in their library. */
+    folder: text('folder'),
+    topic: text('topic'),
+    /** A private link that lets another teacher view and copy the set. Null when there is none. */
+    shareToken: text('share_token'),
+    /** Game defaults the set asks for: { randomCount?: number, shuffleAnswers?: boolean }. */
+    defaults: jsonb('defaults'),
     search: tsvector('search').generatedAlwaysAs(
       sql`to_tsvector('simple', coalesce(title,'') || ' ' || coalesce(description,'') || ' ' || coalesce(subject,''))`,
     ),
@@ -151,6 +160,8 @@ export const questionSets = pgTable(
     index('sets_owner_idx').on(t.ownerId),
     index('sets_public_idx').on(t.visibility, t.subject),
     index('sets_search_idx').using('gin', t.search),
+    uniqueIndex('sets_share_token_idx').on(t.shareToken),
+    index('sets_deleted_idx').on(t.ownerId, t.deletedAt),
     uniqueIndex('sets_seed_key_uq').on(t.seedKey),
     check('sets_visibility_valid', sql`${t.visibility} in ('private','unlisted','public')`),
   ],
@@ -968,4 +979,43 @@ export const questSwaps = pgTable(
     createdAt: now('created_at'),
   },
   (t) => [primaryKey({ columns: [t.userId, t.day] })],
+);
+
+/* ------------------------------ sets library ------------------------------ */
+
+/** Earlier saves of a set (the last 20), to look at and restore. `snapshot` holds the set as it was. */
+export const setVersions = pgTable(
+  'set_versions',
+  {
+    id: bigserial('id', { mode: 'number' }).primaryKey(),
+    setId: uuid('set_id').notNull().references(() => questionSets.id, { onDelete: 'cascade' }),
+    savedBy: uuid('saved_by').references(() => users.id, { onDelete: 'set null' }),
+    title: text('title').notNull(),
+    questionCount: integer('question_count').notNull(),
+    snapshot: jsonb('snapshot').notNull(),
+    createdAt: now('created_at'),
+  },
+  (t) => [index('set_versions_set_idx').on(t.setId, t.createdAt)],
+);
+
+export const setFavourites = pgTable(
+  'set_favourites',
+  {
+    userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+    setId: uuid('set_id').notNull().references(() => questionSets.id, { onDelete: 'cascade' }),
+    createdAt: now('created_at'),
+  },
+  (t) => [primaryKey({ columns: [t.userId, t.setId] })],
+);
+
+/** Teachers the owner lets edit a set. Checked on the server for every save. */
+export const setEditors = pgTable(
+  'set_editors',
+  {
+    setId: uuid('set_id').notNull().references(() => questionSets.id, { onDelete: 'cascade' }),
+    userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+    addedBy: uuid('added_by').references(() => users.id, { onDelete: 'set null' }),
+    createdAt: now('created_at'),
+  },
+  (t) => [primaryKey({ columns: [t.setId, t.userId] }), index('set_editors_user_idx').on(t.userId)],
 );
