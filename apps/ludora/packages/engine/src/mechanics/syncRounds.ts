@@ -208,8 +208,9 @@ export function syncAnswer<S extends { sync: SyncState }>(
   const streak = grade.ungraded ? (sync.streaks[playerId] ?? 0) : grade.correct ? (sync.streaks[playerId] ?? 0) + 1 : 0;
   sync.streaks[playerId] = streak;
   const limitMs = sync.deadline - sync.startedAt;
-  // A question the author marked "double points" counts twice, whatever the mode's scoring.
-  const double = ctx.questions.get(ctx.questions.instance(sync.iid).qid).doublePoints ? 2 : 1;
+  // Double points: a question its author marked, or the final question when the host chose that
+  // (players were told before it). The two do not stack: double is double.
+  const double = ctx.questions.get(ctx.questions.instance(sync.iid).qid).doublePoints || isDoubleRound(s, ctx) ? 2 : 1;
   const points = grade.ungraded ? 0 : Math.max(0, Math.round(cfg.score(s, playerId, { correct: grade.correct, partial: grade.partial, responseMs, limitMs, streak }, ctx) * double));
   sync.scores[playerId] = (sync.scores[playerId] ?? 0) + points;
   sync.answers[playerId] = {
@@ -227,6 +228,34 @@ export function syncAnswer<S extends { sync: SyncState }>(
   if ((cfg.closeOnFirstCorrect && grade.correct) || everyone.every((pid) => sync.answers[pid])) closeRound(s, cfg, ctx);
 }
 
+/** The open (or just closed) round is the last one and the host chose double points for it. */
+export function isDoubleRound(s: { sync: SyncState }, ctx: ModeContext): boolean {
+  return Boolean(ctx.common.doubleFinal) && s.sync.round >= 0 && s.sync.round === s.sync.order.length - 1;
+}
+
+/** Who the open question still waits for: connected players who may answer and have not. Null between questions. */
+export function syncWaitingOn<S extends { sync: SyncState }>(s: S, cfg: SyncConfig<S>, ctx: ModeContext): PlayerId[] | null {
+  if (s.sync.phase !== 'question' || !s.sync.iid) return null;
+  return eligible(s, cfg, ctx).filter((pid) => !s.sync.answers[pid]);
+}
+
+/** The host gives everyone more time on the open question. Speed points are measured against the longer time. */
+export function syncAddTime(s: { sync: SyncState }, ms: number, ctx: ModeContext): ActionResult {
+  const sync = s.sync;
+  if (sync.phase !== 'question' || !sync.iid) return { error: 'There is no question open to add time to.' };
+  if (ctx.now() > sync.deadline) return { error: 'Time is already up on this question.' };
+  sync.deadline += ms;
+  sync.phaseEndsAt = sync.deadline;
+  ctx.setTimer(TIMER, sync.deadline + DEADLINE_GRACE_MS);
+}
+
+/** A late joiner starts level with the lowest score of the players already in the game. */
+export function syncCatchUp(s: { sync: SyncState }, playerId: PlayerId, ctx: ModeContext): ActionResult {
+  const others = ctx.players().filter((p) => p.id !== playerId).map((p) => s.sync.scores[p.id] ?? 0);
+  if (!others.length) return;
+  s.sync.scores[playerId] = Math.max(s.sync.scores[playerId] ?? 0, Math.min(...others));
+}
+
 export interface SyncView {
   phase: SyncPhase;
   round: number;
@@ -239,6 +268,8 @@ export interface SyncView {
   eligible: number;
   /** How many picked each choice. Only after the reveal. */
   distribution: Record<string, number> | null;
+  /** The last question is worth double (the host chose it). */
+  doubleFinal: boolean;
   /** `joinedLate`: joined after the open question started, so a missed answer is not held against them. */
   you: { eligible: boolean; answered: boolean; joinedLate: boolean; correct: boolean | null; points: number | null; partial: number | null; streak: number } | null;
 }
@@ -279,6 +310,7 @@ export function syncView<S extends { sync: SyncState }>(s: S, cfg: SyncConfig<S>
     answered: Object.keys(sync.answers).length,
     eligible: sync.phase !== 'question' && sync.closedEligible !== undefined ? sync.closedEligible : roundPool(s, cfg, ctx),
     distribution,
+    doubleFinal: Boolean(ctx.common.doubleFinal),
     you,
   };
 }

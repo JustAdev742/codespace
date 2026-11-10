@@ -81,6 +81,7 @@ export async function persistGame(deps: AppDeps, room: Room, results: EngineResu
         assignmentId: room.assignmentId,
         isSolo: room.solo,
         chaos: results.chaos,
+        options: room.options,
         startedAt,
         endedAt,
         durationMs: Math.round(results.durationMs),

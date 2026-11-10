@@ -120,6 +120,11 @@ export interface AnswerRecord {
   responseMs: number;
   at: number;
   kind?: AnswerKind;
+  /**
+   * The answer as the player gave it, in words (filled in by the runtime from the last answer graded
+   * for this question). Only the host's end-of-game report reads it; it never reaches a player.
+   */
+  given?: string | null;
 }
 
 export interface ModeContext<TSettings extends SettingValues = SettingValues> {
@@ -189,6 +194,16 @@ export interface GameMode<S = any, TSettings extends SettingValues = any, A = an
   onTimer?(state: S, timerId: string, ctx: ModeContext<TSettings>): void;
   /** The host pressed "next" (host-paced modes). */
   onHostNext?(state: S, ctx: ModeContext<TSettings>): ActionResult;
+  /**
+   * Who the open question is still waiting for (connected players who may answer and have not).
+   * Null when there is no single question open for everyone. Host-paced modes provide it; the host's
+   * "Still answering" list reads it. Must not change state.
+   */
+  waitingOn?(state: S, ctx: ModeContext<TSettings>): PlayerId[] | null;
+  /** The host adds time to the open question. Return `{ error }` when no timed question is open. */
+  addTime?(state: S, ms: number, ctx: ModeContext<TSettings>): ActionResult;
+  /** A player who joined after the start begins level with the lowest score in the game (the room's catch-up rule). */
+  catchUp?(state: S, playerId: PlayerId, ctx: ModeContext<TSettings>): ActionResult;
   view(state: S, viewer: Viewer, ctx: ModeContext<TSettings>): unknown;
   /**
    * Compact data every screen gets several times a second after quiet actions, such as where

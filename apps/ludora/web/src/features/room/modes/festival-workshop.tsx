@@ -1346,7 +1346,8 @@ function HostBoard({ rows, players, gameNow }: { rows: Row[]; players: RoomPlaye
           <li key={r.playerId} className={`flex min-w-0 items-center gap-[clamp(0.4rem,0.8vw,0.75rem)] rounded-[var(--radius-m)] px-2.5 py-1 ${NIGHT}`}>
             <RankBadge rank={r.rank} big />
             <PlayerGlim avatar={avatarOf(players, r.playerId)} seed={r.playerId} size={56} className={`${ROW_GLIM} shrink-0`} />
-            <span className="min-w-0 flex-1 truncate font-bold">
+            {/* A long name takes two shorter lines rather than losing its end in the narrow column. */}
+            <span className={`line-clamp-2 min-w-0 flex-1 leading-[1.05] font-bold [overflow-wrap:anywhere] ${r.name.length > 14 ? 'text-[0.82em]' : ''}`}>
               {r.name}
               {r.lock ? <Lock className="ml-1 inline size-[0.8em] align-[-1px]" aria-label="Holds a lock" /> : null}
             </span>

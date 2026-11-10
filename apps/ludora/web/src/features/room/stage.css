@@ -57,3 +57,20 @@
     transform: none;
   }
 }
+
+/* Lobby play: a player tapped their Glim on their own device, and it hops on the big screen. */
+@keyframes seat-hop {
+  0%,
+  100% {
+    transform: none;
+  }
+  35% {
+    transform: translateY(-38%) scale(1.04, 0.97);
+  }
+  60% {
+    transform: translateY(0) scale(1.06, 0.92);
+  }
+  80% {
+    transform: translateY(-8%);
+  }
+}

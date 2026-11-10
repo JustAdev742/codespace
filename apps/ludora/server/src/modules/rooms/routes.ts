@@ -1,5 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
+import { eq } from 'drizzle-orm';
 import { commonSettingsSchema, roomCodeSchema, roomOptionsSchema } from '@ludora/shared';
 import { getMode, getVariant } from '@ludora/engine';
 import { soloBlocker } from '@ludora/engine/catalog';
@@ -12,6 +13,8 @@ import { MAX_ROOMS_PER_HOST, type RoomManager } from '../../realtime/manager.ts'
 import type { Room } from '../../realtime/room.ts';
 import { isModePlayableBy } from '../modes/service.ts';
 import { countGamePlay } from '../games/routes.ts';
+import { teacherClass } from '../classes/access.ts';
+import { classMembers } from '../../db/schema.ts';
 
 const createSchema = z.object({
   setId: z.string().uuid(),
@@ -23,6 +26,8 @@ const createSchema = z.object({
   solo: z.boolean().optional(),
   /** The Game Maker game this room was set up from, to count its plays. */
   gameId: z.string().uuid().optional(),
+  /** Host for a class: only its members can join, and the game counts as the class's. The caller must teach it. */
+  classId: z.string().uuid().optional(),
 });
 
 /**
@@ -65,6 +70,13 @@ export async function roomRoutes(app: FastifyInstance, deps: AppDeps) {
       if (!solo && openGames(manager, auth.user.id).length >= MAX_ROOMS_PER_HOST) {
         throw new AppError(409, 'conflict', `You already have ${MAX_ROOMS_PER_HOST} games open, the most you can have at once. Close one in Your open games, then try again.`);
       }
+      // A class game: checked on the server that the host teaches the class; its members are the only ones let in.
+      let cls: { id: string; name: string; members: string[] } | null = null;
+      if (body.classId && !solo) {
+        const row = await teacherClass(deps.db, body.classId, auth, 'Only the class teacher can host a game for this class.', { active: true });
+        const members = await deps.db.select({ u: classMembers.userId }).from(classMembers).where(eq(classMembers.classId, row.id));
+        cls = { id: row.id, name: row.name, members: members.map((m) => m.u) };
+      }
       const { set, questions } = await loadSetForPlay(deps.db, body.setId, auth);
       let room;
       try {
@@ -78,6 +90,7 @@ export async function roomRoutes(app: FastifyInstance, deps: AppDeps) {
           options: roomOptionsSchema.parse(solo ? { ...body.options, maxPlayers: 1, lateJoin: false } : (body.options ?? {})),
           set: { id: set.id, title: set.title, questions },
           solo,
+          ...(cls ? { classId: cls.id, classMembers: cls.members, classTitle: cls.name } : {}),
         });
       } catch (err) {
         throw new AppError(400, 'validation_failed', (err as Error).message);
@@ -105,6 +118,91 @@ export async function roomRoutes(app: FastifyInstance, deps: AppDeps) {
         joinable,
         isHost: req.auth?.user.id === room.hostUserId,
       };
+    });
+
+    /**
+     * "Play the missed questions again": a new room for the same host, with the same mode, settings and
+     * room options, and only the questions most players got wrong in the game that just ended.
+     */
+    app.post('/api/rooms/:code/missed', { config: { rateLimit: { max: 20, timeWindow: '10 minutes' } } }, async (req) => {
+      const auth = requirePermission(req, 'rooms.host');
+      const code = parse(roomCodeSchema, (req.params as { code: string }).code);
+      const room = manager.get(code);
+      if (!room || room.hostUserId !== auth.user.id || room.solo) throw new AppError(404, 'room_not_found', 'That game has already closed.');
+      if (room.status !== 'ended') throw new AppError(409, 'conflict', 'Finish the game first.');
+      const missed = room.missedQuestions();
+      if (!missed.length) throw new AppError(409, 'conflict', 'Nobody missed a question in that game, so there is nothing to play again.');
+      if (openGames(manager, auth.user.id).length >= MAX_ROOMS_PER_HOST) {
+        throw new AppError(409, 'conflict', `You already have ${MAX_ROOMS_PER_HOST} games open, the most you can have at once. Close one in Your open games, then try again.`);
+      }
+      // A mode needs a few questions to make a game: top up with the set's other questions, said in the reply.
+      const need = Math.max(room.mode.meta.minQuestions, 1);
+      const chosen = [...missed];
+      for (const q of room.set.questions) {
+        if (chosen.length >= need) break;
+        if (!chosen.some((c) => c.id === q.id)) chosen.push(q);
+      }
+      const init = {
+        hostUserId: auth.user.id,
+        hostName: auth.user.displayName,
+        variantId: room.variant?.meta.id ?? null,
+        settings: room.settings,
+        common: { ...room.common, questionLimit: 0 },
+        options: room.options,
+        set: { id: room.set.id, title: `${room.set.title}: missed questions`, questions: chosen },
+        solo: false,
+        ...(room.classId && room.classMembers ? { classId: room.classId, classMembers: [...room.classMembers], classTitle: room.classTitle } : {}),
+      };
+      let next;
+      try {
+        next = manager.create({ ...init, modeId: room.mode.meta.id });
+      } catch {
+        // Too few questions for this mode (some need a full deck): play them as Classic instead, which takes any number.
+        try {
+          next = manager.create({ ...init, modeId: 'classic', variantId: null, settings: {} });
+        } catch (err) {
+          throw new AppError(400, 'validation_failed', (err as Error).message);
+        }
+      }
+      closeOldestFinished(manager, auth.user.id);
+      return { code: next.code, questions: missed.length, extra: chosen.length - missed.length, modeId: next.mode.meta.id };
+    });
+
+    /**
+     * "Practise these questions on your own": a player who was in a game starts a solo game with the
+     * same questions. Proven by the reconnect token the room gave their device, so guests can use it
+     * too (on a guest account); someone who was never in the room cannot.
+     */
+    app.post('/api/rooms/:code/practice', { config: { rateLimit: { max: 20, timeWindow: '10 minutes' } } }, async (req) => {
+      const auth = requirePermission(req, 'rooms.host');
+      const code = parse(roomCodeSchema, (req.params as { code: string }).code);
+      const body = parse(z.object({ reconnectToken: z.string().min(16).max(80) }), req.body);
+      const room = manager.get(code);
+      const player = room ? [...room.players.values()].find((p) => p.reconnectToken === body.reconnectToken && !p.isBot) : undefined;
+      if (!room || room.solo || !player) throw new AppError(404, 'room_not_found', 'That game has closed, so its questions cannot be practised from here.');
+      // Time Attack plays the set at your own pace; a set too short for it is studied as flashcards.
+      let practice: Room | null = null;
+      let problem = 'These questions cannot be practised on their own.';
+      for (const modeId of ['time-attack', 'flashcard-study']) {
+        try {
+          practice = manager.create({
+            hostUserId: auth.user.id,
+            hostName: auth.user.displayName,
+            modeId,
+            variantId: null,
+            settings: {},
+            common: {},
+            options: roomOptionsSchema.parse({ maxPlayers: 1, lateJoin: false }),
+            set: { id: room.set.id, title: room.set.title, questions: room.set.questions },
+            solo: true,
+          });
+          break;
+        } catch (err) {
+          problem = (err as Error).message;
+        }
+      }
+      if (!practice) throw new AppError(400, 'validation_failed', problem);
+      return { code: practice.code };
     });
 
     /** The signed-in host's open games, newest first, and how many they may have open at once. */

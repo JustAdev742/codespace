@@ -1,10 +1,16 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
-import { Bot, Copy, Lock, LockOpen, Shuffle, UserMinus, UserRound, WifiOff } from 'lucide-react';
+import { DropdownMenu } from 'radix-ui';
+import { Bot, Check, Copy, Eye, Hand, Lock, LockOpen, MoreHorizontal, Pencil, Pin, Settings2, Share2, Shuffle, UserCheck, UserMinus, UserRound, UserX, Users, WifiOff } from 'lucide-react';
 import { toast } from 'sonner';
-import type { RoomPlayerView, RoomView, TeamView } from '@ludora/shared';
+import type { HostCommand, RoomPlayerView, RoomView, TeamView } from '@ludora/shared';
 import type { RoomHandle } from '../../lib/useRoom.ts';
 import type { GlimPose } from '../../art/glim/Glim.tsx';
 import { Button } from '../../ui/Button.tsx';
+import { Dialog, Field, Input } from '../../ui/primitives.tsx';
+import { QrCode } from './host/QrCode.tsx';
+import { useHostTools } from './host/HostTools.tsx';
+import { POINTS_MODES } from './host/RoomSettings.tsx';
+import { estimateMinutes, withKey } from './host/tools.ts';
 import { ReactionBar } from './game/Reactions.tsx';
 import { Pill, PlayerGlim, StagePanel, motionOK } from './game/stage.tsx';
 import { useAnnounce } from './game/announce.tsx';
@@ -40,11 +46,65 @@ const EMPTY_CARD = 'w-[max(calc(var(--seat)*1.35),7rem)]';
  * A card slides in as its player arrives (the lobby's one moment). Bots and players who dropped out wear a
  * small chip on their Glim rather than an extra line, so a full class keeps to one screen.
  */
-function Seat({ p, onKick, delay }: { p: RoomPlayerView; onKick?: (() => void) | undefined; delay: number }) {
+const SEAT_ITEM = 'flex min-h-11 cursor-pointer items-center gap-2.5 rounded-[var(--radius-m)] px-3 text-sm font-semibold text-text-2 outline-none data-[highlighted]:bg-surface-2 data-[highlighted]:text-text';
+
+/** What the host can do with one player in the lobby. */
+export interface SeatActions {
+  kick: (p: RoomPlayerView) => void;
+  rename: (p: RoomPlayerView) => void;
+  move: (p: RoomPlayerView, teamId: string) => void;
+  teams: TeamView[];
+}
+
+/** The host's menu on a seat card: rename, move to another team, remove. */
+function SeatMenu({ p, actions }: { p: RoomPlayerView; actions: SeatActions }) {
+  return (
+    <DropdownMenu.Root modal={false}>
+      <DropdownMenu.Trigger
+        aria-label={`Options for ${p.name}`}
+        title={`Options for ${p.name}`}
+        className="paper absolute -top-2 -right-2 grid size-9 place-items-center rounded-full opacity-0 shadow-[0_6px_14px_-6px_rgb(2_5_20/0.8)] transition-opacity group-hover:opacity-100 focus-visible:opacity-100 data-[state=open]:opacity-100 pointer-coarse:opacity-100"
+      >
+        <MoreHorizontal className="size-4" aria-hidden />
+      </DropdownMenu.Trigger>
+      <DropdownMenu.Portal>
+        <DropdownMenu.Content align="end" sideOffset={6} className="z-50 min-w-52 rounded-[var(--radius-l)] border border-line bg-raised p-1.5 shadow-[0_18px_40px_-12px_rgb(2_5_20/0.6)]">
+          {!p.isBot ? (
+            <DropdownMenu.Item className={SEAT_ITEM} onSelect={() => actions.rename(p)}>
+              <Pencil className="size-4" aria-hidden /> Rename
+            </DropdownMenu.Item>
+          ) : null}
+          {actions.teams
+            .filter((t) => t.id !== p.teamId)
+            .map((t) => (
+              <DropdownMenu.Item key={t.id} className={SEAT_ITEM} onSelect={() => actions.move(p, t.id)}>
+                <span className="size-3 shrink-0 rounded-full" style={{ background: `hsl(${t.hue} 80% 64%)` }} aria-hidden />
+                Move to {t.name}
+              </DropdownMenu.Item>
+            ))}
+          <DropdownMenu.Item className={`${SEAT_ITEM} text-ember data-[highlighted]:text-ember`} onSelect={() => actions.kick(p)}>
+            <UserMinus className="size-4" aria-hidden /> Remove
+          </DropdownMenu.Item>
+        </DropdownMenu.Content>
+      </DropdownMenu.Portal>
+    </DropdownMenu.Root>
+  );
+}
+
+function Seat({ p, actions, delay, hop }: { p: RoomPlayerView; actions?: SeatActions | undefined; delay: number; hop?: number | undefined }) {
   return (
     <li className={`group relative flex flex-col items-center gap-1.5 rounded-[var(--radius-l)] bg-white/[0.07] px-2 pt-2.5 pb-2 ${CARD}`} style={motionOK() ? { animation: `stage-arrive 220ms var(--ease-out) ${delay}ms both` } : undefined}>
       <span className="relative">
-        <PlayerGlim avatar={p.avatar} seed={p.id} size={128} className={`size-[var(--seat)] ${p.connected ? '' : 'opacity-45 grayscale'}`} />
+        {/* Lobby play: the Glim hops when its player taps it on their own device. Still under reduced motion. */}
+        <span key={hop ?? 0} className="block" style={hop && motionOK() ? { animation: 'seat-hop 520ms var(--ease-out)' } : undefined}>
+          <PlayerGlim avatar={p.avatar} seed={p.id} size={128} className={`size-[var(--seat)] ${p.connected ? '' : 'opacity-45 grayscale'}`} />
+        </span>
+        {p.ready && !p.isBot ? (
+          <span className="absolute -left-1 bottom-0 grid size-[max(1.6rem,calc(var(--seat)*0.3))] place-items-center rounded-full bg-glim text-on-accent shadow-[0_0_0_3px_var(--stage-2)]" title="Ready">
+            <Check className="size-[60%]" strokeWidth={3} aria-hidden />
+            <span className="sr-only">Ready</span>
+          </span>
+        ) : null}
         {p.isBot || !p.connected ? (
           <span className={`absolute -right-1 bottom-0 grid size-[max(1.6rem,calc(var(--seat)*0.3))] place-items-center rounded-full shadow-[0_0_0_3px_var(--stage-2)] ${p.connected ? 'bg-dusk text-on-accent' : 'paper'}`} title={p.connected ? 'Practice bot' : 'Away'}>
             {p.connected ? <Bot className="size-[60%]" aria-hidden /> : <WifiOff className="size-[55%]" aria-hidden />}
@@ -53,30 +113,20 @@ function Seat({ p, onKick, delay }: { p: RoomPlayerView; onKick?: (() => void) |
         ) : null}
       </span>
       <span className="max-w-full truncate text-center text-[length:clamp(0.95rem,calc(var(--seat)*0.16),1.5rem)] leading-tight font-bold">{p.name}</span>
-      {onKick ? (
-        <button
-          type="button"
-          onClick={onKick}
-          aria-label={`Remove ${p.name}`}
-          title={`Remove ${p.name}`}
-          className="paper absolute -top-2 -right-2 grid size-9 place-items-center rounded-full opacity-0 shadow-[0_6px_14px_-6px_rgb(2_5_20/0.8)] transition-opacity group-hover:opacity-100 focus-visible:opacity-100 pointer-coarse:opacity-100"
-        >
-          <UserMinus className="size-4" aria-hidden />
-        </button>
-      ) : null}
+      {actions ? <SeatMenu p={p} actions={actions} /> : null}
     </li>
   );
 }
 
 /** Players' cards, together. Cards already here when the screen opens come in one after another; newcomers slide in as they join. */
-function Crowd({ players, onKick, inTeam = false }: { players: RoomPlayerView[]; onKick?: (p: RoomPlayerView) => void; inTeam?: boolean }) {
+function Crowd({ players, actions, hops, inTeam = false }: { players: RoomPlayerView[]; actions?: SeatActions; hops?: Map<string, number>; inTeam?: boolean }) {
   const firstSeen = useRef<Set<string> | null>(null);
   firstSeen.current ??= new Set(players.map((p) => p.id));
   const initial = firstSeen.current;
   return (
     <ul className="flex flex-wrap items-start justify-center gap-[clamp(0.5rem,calc(var(--seat)*0.14),1.25rem)]" style={{ '--seat': seatSize(players.length, inTeam), ...(players.length > 12 ? { '--card-min': '5.75rem' } : {}) } as CSSProperties}>
       {players.map((p, i) => (
-        <Seat key={p.id} p={p} onKick={onKick ? () => onKick(p) : undefined} delay={initial.has(p.id) ? Math.min(i, 16) * 40 : 0} />
+        <Seat key={p.id} p={p} actions={actions} hop={hops?.get(p.id)} delay={initial.has(p.id) ? Math.min(i, 16) * 40 : 0} />
       ))}
     </ul>
   );
@@ -98,28 +148,176 @@ function EmptySeats() {
   );
 }
 
-function TeamCrowd({ team, players, onKick }: { team: TeamView; players: RoomPlayerView[]; onKick: (p: RoomPlayerView) => void }) {
+function TeamCrowd({ team, players, actions, hops, onRename }: { team: TeamView; players: RoomPlayerView[]; actions: SeatActions; hops: Map<string, number>; onRename: () => void }) {
   return (
     <StagePanel as="section" className="overflow-hidden" label={team.name}>
-      <div className="flex items-center gap-3 px-4 py-2.5 text-on-accent" style={{ background: `hsl(${team.hue} 80% 64%)` }}>
+      <div className="flex items-center gap-2 px-4 py-2.5 text-on-accent" style={{ background: `hsl(${team.hue} 80% 64%)` }}>
         <h3 className="min-w-0 flex-1 truncate font-display text-[clamp(1.4rem,2vw,2.25rem)] font-bold">{team.name}</h3>
+        <button type="button" onClick={onRename} className="grid size-9 shrink-0 place-items-center rounded-[var(--radius-m)] hover:bg-black/10" aria-label={`Rename ${team.name}`} title={`Rename ${team.name}`}>
+          <Pencil className="size-4" aria-hidden />
+        </button>
         <span className="font-display text-[clamp(1.25rem,1.7vw,1.85rem)] font-extrabold tabular">{players.length}</span>
       </div>
-      <div className="p-4">{players.length ? <Crowd players={players} onKick={onKick} inTeam /> : <p className="py-4 text-center font-semibold text-text-2">Nobody yet</p>}</div>
+      <div className="p-4">{players.length ? <Crowd players={players} actions={actions} hops={hops} inTeam /> : <p className="py-4 text-center font-semibold text-text-2">Nobody yet</p>}</div>
     </StagePanel>
+  );
+}
+
+/** Rename a player or a team: the name goes through the server's name filter. */
+function RenameDialog({ target, onClose, onSave }: { target: { kind: 'player' | 'team'; id: string; name: string } | null; onClose: () => void; onSave: (name: string) => Promise<string | null> }) {
+  const [name, setName] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  useEffect(() => {
+    if (target) {
+      setName(target.name);
+      setError(null);
+    }
+  }, [target]);
+  return (
+    <Dialog
+      open={Boolean(target)}
+      onOpenChange={(v) => (v ? null : onClose())}
+      size="sm"
+      title={target?.kind === 'team' ? `Rename ${target.name}` : `Rename ${target?.name ?? ''}`}
+      description="2 to 24 letters, numbers or spaces. It goes through the name filter."
+    >
+      <form
+        className="flex flex-col gap-3"
+        onSubmit={async (e) => {
+          e.preventDefault();
+          setBusy(true);
+          const problem = await onSave(name);
+          setBusy(false);
+          if (problem) setError(problem);
+          else onClose();
+        }}
+      >
+        <Field label="New name" error={error ?? undefined}>
+          {(p) => <Input {...p} value={name} maxLength={24} onChange={(e) => setName(e.target.value)} autoComplete="off" />}
+        </Field>
+        <div className="flex justify-end gap-2">
+          <Button type="button" variant="ghost" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button type="submit" variant="primary" loading={busy}>
+            Save
+          </Button>
+        </div>
+      </form>
+    </Dialog>
+  );
+}
+
+/** The newest hop from each player, from the room's reactions. */
+function useHops(reactions: RoomHandle['reactions']): Map<string, number> {
+  const map = new Map<string, number>();
+  for (const r of reactions) if (r.emote === 'hop' && r.playerId) map.set(r.playerId, r.key);
+  return map;
+}
+
+/** Share the invite: the system share sheet where the browser has one, otherwise copy it, and say so on the button. */
+function ShareButton({ url, code }: { url: string; code: string }) {
+  const [copied, setCopied] = useState(false);
+  useEffect(() => {
+    if (!copied) return;
+    const t = setTimeout(() => setCopied(false), 2500);
+    return () => clearTimeout(t);
+  }, [copied]);
+  const canShare = typeof navigator !== 'undefined' && typeof navigator.share === 'function' && window.matchMedia?.('(pointer: coarse)').matches;
+  return (
+    <Button
+      icon={copied ? <Check className="size-4" aria-hidden /> : canShare ? <Share2 className="size-4" aria-hidden /> : <Copy className="size-4" aria-hidden />}
+      variant={copied ? 'success' : 'secondary'}
+      onClick={async () => {
+        if (canShare) {
+          try {
+            await navigator.share({ title: 'Join my Ludora game', text: `Join with code ${code}`, url });
+            return;
+          } catch (err) {
+            // Closing the share sheet is not an error; anything else falls back to copying.
+            if ((err as Error)?.name === 'AbortError') return;
+          }
+        }
+        try {
+          await navigator.clipboard.writeText(url);
+          setCopied(true);
+        } catch {
+          toast.error(`Copying did not work here. The link is ${url}`);
+        }
+      }}
+    >
+      <span aria-live="polite">{copied ? 'Copied' : canShare ? 'Share invite' : 'Copy invite link'}</span>
+    </Button>
+  );
+}
+
+/** The waiting room: players asking to come in, for the host to let in or turn away. */
+function WaitingRoom({ room, run }: { room: RoomView; run: (label: string, cmd: HostCommand) => Promise<void> }) {
+  const pending = room.host?.pending ?? [];
+  if (!pending.length) return null;
+  return (
+    <StagePanel as="section" className="flex flex-col gap-2 p-4" label="Waiting to come in">
+      <div className="flex flex-wrap items-center gap-3">
+        <h2 className="flex items-center gap-2 font-display text-[clamp(1.4rem,2vw,2.25rem)] font-bold">
+          <Hand className="size-[0.9em] text-lantern" aria-hidden /> Waiting to come in: <span className="tabular">{pending.length}</span>
+        </h2>
+        {pending.length > 1 ? (
+          <Button size="sm" variant="success" className="ml-auto" onClick={() => void Promise.all(pending.map((p) => run('admit', { cmd: 'admit', playerId: p.id, allow: true })))}>
+            Let everyone in
+          </Button>
+        ) : null}
+      </div>
+      <ul className="flex flex-wrap gap-2">
+        {pending.map((p) => (
+          <li key={p.id} className="flex items-center gap-1.5 rounded-[var(--radius-m)] bg-white/[0.08] py-1 pr-1 pl-3">
+            <span className="max-w-[14rem] truncate font-semibold">{p.name}</span>
+            <Button size="sm" variant="success" icon={<UserCheck className="size-4" aria-hidden />} aria-label={`Let ${p.name} in`} onClick={() => void run('admit', { cmd: 'admit', playerId: p.id, allow: true })}>
+              Let in
+            </Button>
+            <Button size="sm" variant="ghost" icon={<UserX className="size-4" aria-hidden />} aria-label={`Turn ${p.name} away`} onClick={() => void run('admit', { cmd: 'admit', playerId: p.id, allow: false })}>
+              <span className="max-sm:sr-only">Turn away</span>
+            </Button>
+          </li>
+        ))}
+      </ul>
+    </StagePanel>
+  );
+}
+
+/** The host's pinned message, on every lobby screen. */
+function PinnedMessage({ text, big }: { text: string; big: boolean }) {
+  return (
+    <p className={`flex items-start gap-2.5 rounded-[var(--radius-m)] bg-lantern/[0.14] px-4 py-2.5 font-semibold ring-2 ring-lantern ring-inset ${big ? 'text-[clamp(1.1rem,1.6vw,1.8rem)]' : 'text-lg'}`}>
+      <Pin className="mt-[0.2em] size-[1em] shrink-0 text-lantern" aria-hidden />
+      <span className="min-w-0 break-words">
+        <span className="sr-only">Message from the host: </span>
+        {text}
+      </span>
+    </p>
   );
 }
 
 export function HostLobby({ room, handle }: { room: RoomView; handle: RoomHandle }) {
   const [busy, setBusy] = useState<string | null>(null);
   const joinUrl = `${location.origin}/join/${room.room.code}`;
-  const run = async (label: string, cmd: Parameters<RoomHandle['host']>[0]) => {
+  const tools = useHostTools();
+  const run = async (label: string, cmd: HostCommand) => {
     setBusy(label);
     const ack = await handle.host(cmd);
     setBusy(null);
     if (!ack.ok) toast.error(ack.error.message);
   };
-  const kick = (p: RoomPlayerView) => void run('kick', { cmd: 'kick', playerId: p.id });
+  const [renaming, setRenaming] = useState<{ kind: 'player' | 'team'; id: string; name: string } | null>(null);
+  const actions: SeatActions = {
+    kick: (p) => void run('kick', { cmd: 'kick', playerId: p.id }),
+    rename: (p) => setRenaming({ kind: 'player', id: p.id, name: p.name }),
+    move: (p, teamId) => void run('move', { cmd: 'setTeam', playerId: p.id, teamId }),
+    teams: room.room.teams,
+  };
+  const hops = useHops(handle.reactions);
+  const minutes = estimateMinutes(room.room);
+  const o = room.room.options;
   const humans = room.players.filter((p) => !p.isBot).length;
   const bots = room.players.length - humans;
   // A pop as each player arrives, a step up the scale each time, so a crowd joining plays a little tune.
@@ -135,35 +333,37 @@ export function HostLobby({ room, handle }: { room: RoomView; handle: RoomHandle
     <div className="mx-auto flex w-full max-w-[112rem] flex-1 flex-col gap-[clamp(1rem,3vh,2.25rem)]">
       <section className="grid grid-cols-1 gap-[clamp(1rem,2vw,2.25rem)] lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]">
         {/* The join code is the hero of the lobby: ink on white, readable from the back of the room. */}
-        <div className="paper stage-card flex flex-col justify-center gap-[clamp(0.25rem,1vh,0.75rem)] px-[clamp(1.25rem,3vw,3.5rem)] py-[clamp(1rem,3vh,2.5rem)]">
-          <p className="text-[clamp(1.1rem,1.7vw,2rem)] font-semibold text-text-2">
-            Go to <span className="font-bold text-text">{location.host}/play</span> and enter
-          </p>
-          <p className="font-display text-[clamp(4.5rem,11vw,13.5rem)] leading-[0.9] font-extrabold tracking-[0.02em] text-text tabular">
-            <span className="sr-only">Game code {code.split('').join(' ')}</span>
-            <span aria-hidden>
-              {code.slice(0, 3)}
-              <span className="inline-block w-[0.28em]" />
-              {code.slice(3)}
-            </span>
-          </p>
-          <div className="mt-1 flex flex-wrap gap-2">
-            <Button
-              icon={<Copy className="size-4" aria-hidden />}
-              onClick={async () => {
-                try {
-                  await navigator.clipboard.writeText(joinUrl);
-                  toast.success('Invite link copied');
-                } catch {
-                  toast.error(joinUrl);
-                }
-              }}
-            >
-              Copy invite link
-            </Button>
-            <Button icon={room.room.locked ? <Lock className="size-4" aria-hidden /> : <LockOpen className="size-4" aria-hidden />} onClick={() => run('lock', { cmd: 'lock', locked: !room.room.locked })} loading={busy === 'lock'}>
+        <div className="paper stage-card flex flex-col gap-[clamp(0.6rem,1.6vh,1.1rem)] px-[clamp(1.25rem,3vw,3.5rem)] py-[clamp(1rem,3vh,2.5rem)]">
+          <div className="flex items-center gap-[clamp(1rem,2vw,2rem)]">
+            <div className="flex min-w-0 flex-1 flex-col justify-center gap-[clamp(0.25rem,1vh,0.75rem)]">
+              <p className="text-[clamp(1.1rem,1.7vw,2rem)] font-semibold text-text-2">
+                Go to <span className="font-bold text-text">{location.host}/play</span> and enter
+              </p>
+              <p className="font-display text-[clamp(4.5rem,8.6vw,12rem)] leading-[0.9] font-extrabold tracking-[0.02em] whitespace-nowrap text-text tabular">
+                <span className="sr-only">Game code {code.split('').join(' ')}</span>
+                <span aria-hidden>
+                  {code.slice(0, 3)}
+                  <span className="inline-block w-[0.28em]" />
+                  {code.slice(3)}
+                </span>
+              </p>
+            </div>
+            {/* Scanning opens the join page with the code filled in. Drawn in the browser; the link goes nowhere else. */}
+            <figure className="hidden shrink-0 flex-col items-center gap-1 sm:flex">
+              <QrCode text={joinUrl} label={`QR code: scan to join game ${code.split('').join(' ')}`} className="w-[clamp(7rem,11vw,12rem)] ring-1 ring-black/10" />
+              <figcaption className="text-sm font-semibold text-text-2">Scan to join</figcaption>
+            </figure>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <ShareButton url={joinUrl} code={code} />
+            <Button icon={room.room.locked ? <Lock className="size-4" aria-hidden /> : <LockOpen className="size-4" aria-hidden />} onClick={() => run('lock', { cmd: 'lock', locked: !room.room.locked })} loading={busy === 'lock'} title={withKey(room.room.locked ? 'Unlock the room' : 'Lock the room', 'L')} aria-keyshortcuts="L">
               {room.room.locked ? 'Room locked' : 'Lock room'}
             </Button>
+            {tools ? (
+              <Button icon={<Settings2 className="size-4" aria-hidden />} onClick={() => tools.open('settings')}>
+                Room settings
+              </Button>
+            ) : null}
           </div>
         </div>
         <div className="flex flex-col justify-between gap-5">
@@ -172,8 +372,13 @@ export function HostLobby({ room, handle }: { room: RoomView; handle: RoomHandle
             <p className="text-[clamp(1.15rem,1.6vw,1.8rem)] font-semibold text-text-2">{room.room.setTitle}</p>
             <ul className="mt-2 flex flex-wrap gap-2 text-[clamp(0.95rem,1.15vw,1.3rem)]" aria-label="Game settings">
               <li>
-                <Pill>{plural(room.room.questionCount, 'question')}</Pill>
+                <Pill>{plural(room.room.common.questionLimit ? Math.min(room.room.common.questionLimit, room.room.questionCount) : room.room.questionCount, 'question')}</Pill>
               </li>
+              {minutes ? (
+                <li>
+                  <Pill>About {plural(minutes, 'minute')}</Pill>
+                </li>
+              ) : null}
               <li>
                 <Pill>{room.room.common.questionTimeSec} s per question</Pill>
               </li>
@@ -192,7 +397,50 @@ export function HostLobby({ room, handle }: { room: RoomView; handle: RoomHandle
                   <Pill>Generated names</Pill>
                 </li>
               ) : null}
+              {room.room.classTitle ? (
+                <li>
+                  <Pill tone="dusk">
+                    <Users className="size-[1em]" aria-hidden /> {room.room.classTitle} only
+                  </Pill>
+                </li>
+              ) : null}
+              {o.catchUp && POINTS_MODES.has(room.room.modeId) ? (
+                <li>
+                  <Pill>Late joiners start level with the lowest score</Pill>
+                </li>
+              ) : null}
+              {room.room.common.doubleFinal && POINTS_MODES.has(room.room.modeId) ? (
+                <li>
+                  <Pill tone="lantern">Double points on the final question</Pill>
+                </li>
+              ) : null}
+              {o.hideNames ? (
+                <li>
+                  <Pill>Names hidden on this screen</Pill>
+                </li>
+              ) : null}
+              {o.quiet ? (
+                <li>
+                  <Pill>Quiet room</Pill>
+                </li>
+              ) : null}
+              {o.admit ? (
+                <li>
+                  <Pill>Waiting room</Pill>
+                </li>
+              ) : null}
+              {o.autoStartAt ? (
+                <li>
+                  <Pill>Starts at {plural(o.autoStartAt, 'player')}</Pill>
+                </li>
+              ) : null}
             </ul>
+            {tools ? (
+              <Button size="sm" variant="ghost" className="mt-1 -ml-3" icon={<Eye className="size-4" aria-hidden />} onClick={() => tools.open('preview')}>
+                Preview the questions
+              </Button>
+            ) : null}
+            {room.room.pinned ? <PinnedMessage text={room.room.pinned} big /> : null}
           </div>
           <Button variant="primary" size="2xl" className="h-[clamp(4.5rem,11vh,7rem)]! w-full text-[clamp(1.85rem,2.9vw,3.5rem)]!" disabled={room.players.length === 0} loading={busy === 'start'} onClick={() => run('start', { cmd: 'start' })}>
             Start game
@@ -200,6 +448,7 @@ export function HostLobby({ room, handle }: { room: RoomView; handle: RoomHandle
         </div>
       </section>
 
+      <WaitingRoom room={room} run={run} />
       <section className="flex flex-1 flex-col gap-[clamp(0.75rem,2vh,1.5rem)]" aria-labelledby="lobby-crowd">
         <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
           <h2 id="lobby-crowd" className="font-display text-[clamp(1.75rem,2.6vw,3rem)] font-bold">
@@ -212,6 +461,11 @@ export function HostLobby({ room, handle }: { room: RoomView; handle: RoomHandle
               </>
             )}
           </h2>
+          {room.room.readyCount ? (
+            <Pill tone="glim" className="text-[clamp(0.95rem,1.15vw,1.3rem)]">
+              <Check className="size-[1em]" strokeWidth={3} aria-hidden /> {room.room.readyCount} ready
+            </Pill>
+          ) : null}
           <div className="flex flex-wrap gap-2">
             {teams.length ? (
               <Button icon={<Shuffle className="size-4" aria-hidden />} onClick={() => run('shuffle', { cmd: 'shuffleTeams' })}>
@@ -230,13 +484,22 @@ export function HostLobby({ room, handle }: { room: RoomView; handle: RoomHandle
         ) : teams.length ? (
           <div className={`grid grid-cols-1 gap-4 ${TEAM_COLS[Math.min(teams.length, 6)] ?? 'md:grid-cols-3'}`}>
             {teams.map((t) => (
-              <TeamCrowd key={t.id} team={t} players={room.players.filter((p) => p.teamId === t.id)} onKick={kick} />
+              <TeamCrowd key={t.id} team={t} players={room.players.filter((p) => p.teamId === t.id)} actions={actions} hops={hops} onRename={() => setRenaming({ kind: 'team', id: t.id, name: t.name })} />
             ))}
           </div>
         ) : (
-          <Crowd players={room.players} onKick={kick} />
+          <Crowd players={room.players} actions={actions} hops={hops} />
         )}
       </section>
+      <RenameDialog
+        target={renaming}
+        onClose={() => setRenaming(null)}
+        onSave={async (name) => {
+          if (!renaming) return null;
+          const ack = await handle.host(renaming.kind === 'team' ? { cmd: 'renameTeam', teamId: renaming.id, name } : { cmd: 'renamePlayer', playerId: renaming.id, name });
+          return ack.ok ? null : ack.error.message;
+        }}
+      />
     </div>
   );
 }
@@ -259,22 +522,72 @@ export function PlayerLobby({ room, handle }: { room: RoomView; handle: RoomHand
   const shown = others.slice(0, 7);
   const [pose, cheer] = useOwnPose();
   useAnnounce(`You are in. Waiting for ${room.room.hostName} to start.`, 'joined');
+  const reactions = room.room.options.reactions;
+  const [hopCool, setHopCool] = useState(false);
+  const hop = async () => {
+    if (hopCool || !reactions) return;
+    setHopCool(true);
+    cheer();
+    setTimeout(() => setHopCool(false), 1500);
+    await handle.react('hop');
+  };
+  const ready = Boolean(room.me.ready);
+  const pickTeam = room.room.options.teamPick && room.room.teams.length > 0;
+  const send = async (req: Parameters<RoomHandle['player']>[0]) => {
+    const ack = await handle.player(req);
+    if (!ack.ok) toast.error(ack.error.message);
+  };
   return (
     <div className="mx-auto flex w-full max-w-md flex-1 flex-col items-center justify-center gap-5 text-center">
       <h1 className="plate plate-gold text-[2.5rem]">
         <span>You are in</span>
       </h1>
       {/* The player's card: their Glim under the stage light, their name and their team. */}
+      {room.room.pinned ? <PinnedMessage text={room.room.pinned} big={false} /> : null}
       <div className="stage-card flex w-full flex-col items-center gap-2 bg-white/[0.07] bg-[radial-gradient(90%_70%_at_50%_0%,rgb(58_107_255/0.35)_0%,transparent_70%)] px-5 pt-5 pb-4">
-        <PlayerGlim avatar={me?.avatar} seed={room.me.playerId ?? room.me.name ?? 'you'} size={160} pose={pose} />
+        {reactions ? (
+          // Lobby play: tap your Glim and it hops on the big screen too.
+          <button type="button" onClick={() => void hop()} disabled={hopCool} className="rounded-full disabled:cursor-default" aria-label="Make your Glim hop on the big screen" title="Tap to make your Glim hop on the big screen">
+            <PlayerGlim avatar={me?.avatar} seed={room.me.playerId ?? room.me.name ?? 'you'} size={160} pose={pose} />
+          </button>
+        ) : (
+          <PlayerGlim avatar={me?.avatar} seed={room.me.playerId ?? room.me.name ?? 'you'} size={160} pose={pose} />
+        )}
         <p className="text-lg text-text-2">
           Playing as <span className="font-bold text-text">{room.me.name}</span>
         </p>
-        {team ? (
+        {team && !pickTeam ? (
           <span className="rounded-full px-3 py-0.5 font-bold text-on-accent" style={{ background: `hsl(${team.hue} 80% 65%)` }}>
             {team.name}
           </span>
         ) : null}
+        {pickTeam ? (
+          <div className="flex w-full flex-col gap-1.5" role="radiogroup" aria-label="Pick your team">
+            <p className="text-sm font-semibold text-text-2">Pick your team</p>
+            <div className="flex flex-wrap justify-center gap-1.5">
+              {room.room.teams.map((t) => {
+                const mine = t.id === room.me.teamId;
+                return (
+                  <button
+                    key={t.id}
+                    type="button"
+                    role="radio"
+                    aria-checked={mine}
+                    onClick={() => (mine ? null : void send({ op: 'team', teamId: t.id }))}
+                    className={`min-h-11 rounded-full px-4 font-bold text-on-accent transition-transform ${mine ? 'ring-4 ring-white ring-offset-2 ring-offset-[var(--stage-2)]' : 'opacity-80 hover:opacity-100'}`}
+                    style={{ background: `hsl(${t.hue} 80% 65%)` }}
+                  >
+                    {mine ? <Check className="mr-1 inline size-4" strokeWidth={3} aria-hidden /> : null}
+                    {t.name}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        ) : null}
+        <Button size="lg" variant={ready ? 'success' : 'primary'} className="mt-1 w-full" icon={ready ? <Check className="size-5" strokeWidth={3} aria-hidden /> : undefined} aria-pressed={ready} onClick={() => void send({ op: 'ready', ready: !ready })}>
+          {ready ? 'Ready' : 'Tap when you are ready'}
+        </Button>
       </div>
       <div className="paper stage-card w-full px-5 pt-4 pb-5">
         <p className="font-display text-[1.75rem] leading-tight font-bold">{room.room.title}</p>
@@ -290,15 +603,23 @@ export function PlayerLobby({ room, handle }: { room: RoomView; handle: RoomHand
           </div>
         ) : null}
         <p className="mt-3 font-semibold text-text-2">
-          Waiting for {room.room.hostName} to start. <span className="tabular">{room.players.length}</span> in the room.
+          Waiting for {room.room.hostName} to start. <span className="tabular">{room.players.length}</span> in the room
+          {room.room.readyCount ? (
+            <>
+              , <span className="tabular">{room.room.readyCount}</span> ready
+            </>
+          ) : null}
+          .
         </p>
       </div>
-      <ReactionBar
-        onReact={(e) => {
-          void handle.react(e);
-          cheer();
-        }}
-      />
+      {reactions ? (
+        <ReactionBar
+          onReact={(e) => {
+            void handle.react(e);
+            cheer();
+          }}
+        />
+      ) : null}
     </div>
   );
 }

@@ -18,6 +18,7 @@ import { PlayerAvatar } from '../social/parts.tsx';
 import { GoalCard, MyBadges, Notices, WeeklyBoard } from './Board.tsx';
 import { ClassCalendar } from './Calendar.tsx';
 import { ClassLoginsDialog, ResetPasscodeDialog } from './ClassLogins.tsx';
+import { LiveGames } from './LiveGames.tsx';
 import { GradebookPanel } from './Gradebook.tsx';
 import { InsightsPanel } from './Insights.tsx';
 import { studentWork, type StudentWork } from './classLogic.ts';
@@ -560,6 +561,7 @@ function TeacherView({ data }: { data: TeacherClassDetail }) {
           { value: 'insights', label: 'Insights' },
           { value: 'board', label: 'Noticeboard', count: data.notices.length },
           { value: 'calendar', label: 'Calendar' },
+          { value: 'live', label: 'Live games' },
           {
             value: 'events',
             label: 'School and events',
@@ -581,6 +583,9 @@ function TeacherView({ data }: { data: TeacherClassDetail }) {
               <WeeklyBoard classId={cls.id} on={cls.leaderboardOn} teacher />
             </div>
           </div>
+        </TabPanel>
+        <TabPanel value="live" className="focus-visible:outline-offset-4">
+          <LiveGames classId={cls.id} archived={cls.archived} defaults={cls.hostDefaults ?? { generatedNames: false, quiet: false }} />
         </TabPanel>
         <TabPanel value="calendar" className="focus-visible:outline-offset-4">
           <ClassCalendar items={data.assignments} now={now} />

@@ -91,7 +91,9 @@ export function stakeMultiplier(round: number, rising: boolean): number {
 /** The change for a level in this round, with rising stakes applied. */
 function changeFor(s: State, ctx: ModeContext, level: Level, correct: boolean): number {
   const st = opts(ctx);
-  return confidenceChange(level, correct, st.highStakes) * stakeMultiplier(s.round, st.risingStakes);
+  // Double points on the final question, when the host chose it.
+  const double = ctx.common.doubleFinal && s.round >= 0 && s.round === s.order.length - 1 ? 2 : 1;
+  return confidenceChange(level, correct, st.highStakes) * stakeMultiplier(s.round, st.risingStakes) * double;
 }
 
 function setPhase(s: State, ctx: ModeContext, phase: Phase, endsAt: number | null, timerAt: number | null = endsAt) {
@@ -286,6 +288,21 @@ export const confidence = defineMode<State, Settings, Action>({
   onTimer(s, id, ctx) {
     if (id === TIMER) advance(s, ctx);
   },
+  // Shared hosting features: who is still answering, add time, catch-up for late joiners.
+  waitingOn(s, ctx) {
+    if (s.phase !== 'question' || !s.iid) return null;
+    return ctx.players().filter((p) => p.connected && !s.answers[p.id]).map((p) => p.id);
+  },
+  addTime(s, ms, ctx) {
+    if (s.phase !== 'question' || !s.iid) return { error: 'There is no question open to add time to.' };
+    if (ctx.now() > s.deadline) return { error: 'Time is already up on this question.' };
+    s.deadline += ms;
+    setPhase(s, ctx, 'question', s.deadline, s.deadline + DEADLINE_GRACE_MS);
+  },
+  catchUp(s, id, ctx) {
+    const others = ctx.players().filter((p) => p.id !== id).map((p) => s.scores[p.id] ?? 0);
+    if (others.length) s.scores[id] = Math.max(s.scores[id] ?? 0, Math.min(...others));
+  },
   onHostNext(s, ctx) {
     if (s.phase === 'done') return { error: 'The game is over.' };
     advance(s, ctx);
@@ -320,7 +337,7 @@ export const confidence = defineMode<State, Settings, Action>({
     const here = ctx.players().filter((p) => p.connected);
     return {
       // Read by the host controls to label the Next button.
-      sync: { phase: s.phase, phaseEndsAt: s.phaseEndsAt },
+      sync: { phase: s.phase, phaseEndsAt: s.phaseEndsAt, round: s.round, total: s.order.length, doubleFinal: Boolean(ctx.common.doubleFinal) },
       phase: s.phase,
       round: s.round,
       total: s.order.length,

@@ -6,6 +6,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { COLLECTIONS, GLIMS } from '@ludora/content';
 import { MIXED_SET } from '@ludora/engine/testing';
+import { roomOptionsSchema } from '@ludora/shared';
 import { createTestApp, registered, Client, type TestContext } from './helpers.ts';
 import { attachRealtime } from '../src/realtime/attach.ts';
 import { auditLog, gameSessions, questionSets, users } from '../src/db/schema.ts';
@@ -276,7 +277,7 @@ describe('over HTTP and sockets', () => {
       variantId: null,
       settings: {},
       common: {},
-      options: { lateJoin: true, maxPlayers: 30, generatedNames: false, requireAccount: false, chaos: true },
+      options: roomOptionsSchema.parse({ lateJoin: true, maxPlayers: 30, generatedNames: false, requireAccount: false, chaos: true }),
       set: { id: set!.id, title: 'Mixed', questions: MIXED_SET },
       solo: false,
       assignmentId: '00000000-0000-0000-0000-000000000001',

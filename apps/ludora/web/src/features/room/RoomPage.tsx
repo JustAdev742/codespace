@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from 'react';
-import { Link, useLocation, useNavigate, useParams } from 'react-router';
-import { DoorOpen, Flag, WifiOff } from 'lucide-react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router';
+import { DoorOpen, Flag, Hourglass, WifiOff } from 'lucide-react';
 import { useFlag, useMe } from '../../lib/session.ts';
 import { useRoom } from '../../lib/useRoom.ts';
 import { LogoMark, SchoolCrest } from '../../art/icons.tsx';
@@ -21,6 +21,10 @@ import { SoundRoleContext, type SoundRole } from '../../lib/sound/react.tsx';
 import { useRoomMusic } from './music.ts';
 import { Online } from './game/online.tsx';
 import { AnswerMemory } from './game/answerMemory.tsx';
+import { FullscreenButton, HostTools } from './host/HostTools.tsx';
+import { BrainBreak, StartCountdown } from './host/overlays.tsx';
+import { RemoteControls } from './host/RemoteControls.tsx';
+import { sound } from '../../lib/sound/engine.ts';
 
 const nameKey = (code: string) => `ludora.name.${code}`;
 const spaced = (code: string) => `${code.slice(0, 3)} ${code.slice(3)}`;
@@ -56,7 +60,10 @@ export default function RoomPage() {
       return undefined;
     }
   }, [code, stateName]);
-  const handle = useRoom(code, { name, enabled: !me.isLoading });
+  // ?remote=1: the host's phone, as a controls-only remote beside the big screen.
+  const [params] = useSearchParams();
+  const remote = params.get('remote') === '1';
+  const handle = useRoom(code, { name, enabled: !me.isLoading, ...(remote ? { as: 'remote' as const } : {}) });
   const room = handle.view;
   const [reporting, setReporting] = useState(false);
   const [confirmLeave, setConfirmLeave] = useState(false);
@@ -77,6 +84,13 @@ export default function RoomPage() {
     document.title = room ? `${room.room.title} | Ludora` : 'Joining… | Ludora';
   }, [room]);
 
+  // A quiet room: the host silenced every device. This device's own mute setting is left as it was.
+  const quiet = Boolean(room?.room.options.quiet);
+  useEffect(() => {
+    sound.setSilenced(quiet);
+    return () => sound.setSilenced(false);
+  }, [quiet]);
+
   // A new stage of the room (the game starting, the results, Play again) opens at its top: a player scrolled down
   // to a tall game board would otherwise land in the middle of the results, under the title and the podium.
   const stage = room ? (room.room.status === 'paused' ? 'running' : room.room.status) : null;
@@ -90,7 +104,7 @@ export default function RoomPage() {
       <Stage as="main" className={`${STAGE} items-center justify-center px-4 py-10`}>
         <div className="paper stage-card flex w-full max-w-md flex-col items-center gap-4 px-6 py-7 text-center">
           <LogoMark size={56} />
-          <h1 className="font-display text-[2.25rem] font-bold">{handle.phase !== 'closed' ? 'Could not join' : handle.closedReason === 'removed' ? 'Removed from the game' : 'This room has closed'}</h1>
+          <h1 className="font-display text-[2.25rem] font-bold">{handle.phase !== 'closed' ? 'Could not join' : handle.closedReason === 'removed' ? 'Removed from the game' : handle.closedReason === 'declined' ? 'Not let in' : 'This room has closed'}</h1>
           <p className="text-text-2">{msg}</p>
           <div className="flex flex-wrap justify-center gap-2">
             <Link to="/play" className={buttonClass('primary', 'lg')}>
@@ -100,6 +114,20 @@ export default function RoomPage() {
               Home
             </Link>
           </div>
+        </div>
+      </Stage>
+    );
+  }
+  if (handle.phase === 'waiting') {
+    return (
+      <Stage as="main" className={`${STAGE} items-center justify-center px-4 py-10`}>
+        <div className="paper stage-card flex w-full max-w-md flex-col items-center gap-3 px-6 py-7 text-center" role="status">
+          <Hourglass className="size-10 text-lantern" aria-hidden />
+          <h1 className="font-display text-[2.25rem] leading-tight font-bold">Waiting to be let in</h1>
+          <p className="text-text-2">The host lets each player in. Keep this page open; you will join as soon as they do.</p>
+          <Link to="/" className={buttonClass('ghost', 'lg')}>
+            Cancel
+          </Link>
         </div>
       </Stage>
     );
@@ -118,6 +146,7 @@ export default function RoomPage() {
   }
 
   const isHost = room.me.role === 'host';
+  if (isHost && remote) return <RemoteControls room={room} handle={handle} />;
   const status = room.room.status;
   const live = status === 'running' || status === 'paused';
   const leave = async () => {
@@ -135,6 +164,7 @@ export default function RoomPage() {
     <Stage className={STAGE}>
       <SoundRoleContext.Provider value={soundScene}>
       <Announcer>
+      <HostToolsIf on={isHost && !room.room.solo} room={room} handle={handle}>
       {/* The game's HUD bar: what is on and where to join, then the controls. */}
       <header className={HUD_BAR}>
         <div className="flex h-14 items-center gap-2.5 px-3 sm:h-16 sm:gap-3 sm:px-5 min-[1600px]:h-20 min-[1600px]:px-8">
@@ -182,6 +212,7 @@ export default function RoomPage() {
                 Finish now
               </Button>
             ) : null}
+            {isHost && !room.room.solo ? <FullscreenButton className={`max-sm:size-11 min-[1600px]:size-12 ${live ? 'max-sm:hidden' : ''}`} /> : null}
             <MuteButton className="max-sm:size-11 min-[1600px]:size-12" />
             {!room.room.solo ? (
               // A host running a live game from a phone needs the header for the game controls; Report is there in the lobby and on bigger screens.
@@ -246,7 +277,7 @@ export default function RoomPage() {
         ) : null}
         {status === 'ended' && room.results ? <Results room={room} handle={handle} isHost={isHost} guest={!me.data?.user || me.data.user.isGuest} /> : null}
       </main>
-      {!isHost && !room.room.solo && live ? (
+      {!isHost && !room.room.solo && live && room.room.options.reactions ? (
         <footer className={`${HUD_FOOT} px-3 py-2`}>
           <ReactionBar onReact={(e) => void handle.react(e)} />
         </footer>
@@ -256,8 +287,22 @@ export default function RoomPage() {
       <ReactionLayer reactions={handle.reactions} big={isHost} />
       <LanternGlow handle={handle} />
       {debug ? <DebugOverlay handle={handle} /> : null}
+      {status === 'lobby' && !room.room.solo ? <StartCountdown handle={handle} isHost={isHost} /> : null}
+      {live ? <BrainBreak handle={handle} isHost={isHost} /> : null}
+      </HostToolsIf>
       </Announcer>
       </SoundRoleContext.Provider>
     </Stage>
+  );
+}
+
+/** The host's panels, menu and shortcuts around the page; players and solo games go without. */
+function HostToolsIf({ on, room, handle, children }: { on: boolean; room: Parameters<typeof HostTools>[0]['room']; handle: Parameters<typeof HostTools>[0]['handle']; children: ReactNode }) {
+  return on ? (
+    <HostTools room={room} handle={handle} enabled>
+      {children}
+    </HostTools>
+  ) : (
+    <>{children}</>
   );
 }

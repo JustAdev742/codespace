@@ -1,8 +1,12 @@
 import { useState, type CSSProperties } from 'react';
-import { Link } from 'react-router';
-import { Download, Home, RotateCcw, Trophy } from 'lucide-react';
+import { Link, useNavigate } from 'react-router';
+import { BookOpen, ClipboardList, Download, Flame, Home, Rocket, RotateCcw, TrendingUp, Trophy, Zap } from 'lucide-react';
+import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import type { RewardSummary, RoomView, StandingView } from '@ludora/shared';
+import type { AwardView, Feeling, RewardSummary, RoomView, StandingView } from '@ludora/shared';
+import { api, ApiError } from '../../lib/api.ts';
+import { meKey, useMe } from '../../lib/session.ts';
+import { ClassSummaryDialog, FEELING_INFO, Feelings } from './host/ClassSummary.tsx';
 import type { RoomHandle } from '../../lib/useRoom.ts';
 import { Amount, Badge } from '../../ui/primitives.tsx';
 import { Button, buttonClass } from '../../ui/Button.tsx';
@@ -183,6 +187,114 @@ function Rewards({ rewards, guest }: { rewards: RewardSummary | null; guest: boo
   );
 }
 
+const AWARD_INFO: Record<AwardView['kind'], { title: string; Icon: typeof Flame }> = {
+  streak: { title: 'Longest streak', Icon: Flame },
+  fastest: { title: 'Fastest right answer', Icon: Zap },
+  improved: { title: 'Most improved', Icon: TrendingUp },
+  comeback: { title: 'Best comeback', Icon: Rocket },
+};
+
+/** Awards beyond the podium, worked out on the server from the answers. */
+function Awards({ awards, big, me }: { awards: AwardView[]; big: boolean; me: string | null }) {
+  if (!awards.length) return null;
+  return (
+    <section aria-labelledby="awards-title" style={motionOK() ? { animation: `rise-fade 260ms var(--ease-out) ${big ? AFTER_PODIUM_MS : 0}ms both` } : undefined}>
+      <h2 id="awards-title" className={`mb-2 font-display font-bold ${big ? 'text-[clamp(1.5rem,2vw,2.25rem)]' : 'text-2xl'}`}>
+        Awards
+      </h2>
+      <ul className={`grid gap-2 ${big ? 'grid-cols-2' : 'grid-cols-1 min-[420px]:grid-cols-2'}`}>
+        {awards.map((a) => {
+          const { title, Icon } = AWARD_INFO[a.kind];
+          const mine = a.playerId === me;
+          return (
+            <li key={a.kind} className={`flex min-w-0 items-center gap-3 rounded-[var(--radius-m)] px-3 py-2 ${mine ? 'bg-lantern/[0.14] ring-2 ring-lantern ring-inset' : 'bg-white/[0.07]'}`}>
+              <span className="grid size-10 shrink-0 place-items-center rounded-full bg-lantern text-on-accent">
+                <Icon className="size-5" aria-hidden />
+              </span>
+              <span className="min-w-0">
+                <span className="block text-sm font-semibold text-text-2">{title}</span>
+                <span className={`block truncate font-bold ${big ? 'text-[clamp(1.05rem,1.3vw,1.4rem)]' : ''}`}>
+                  {a.name}
+                  {mine ? <span className="font-semibold text-text-2"> (you)</span> : null}
+                </span>
+                <span className="block text-sm text-text-2">{a.detail}</span>
+              </span>
+            </li>
+          );
+        })}
+      </ul>
+    </section>
+  );
+}
+
+/** The exit ticket on a player's device: one tap, three faces. The teacher sees only the counts. */
+function ExitTicket({ room, handle }: { room: RoomView; handle: RoomHandle }) {
+  const chosen = room.me.feeling ?? null;
+  const choose = async (feeling: Feeling) => {
+    const ack = await handle.player({ op: 'feeling', feeling });
+    if (!ack.ok) toast.error(ack.error.message);
+  };
+  return (
+    <section className="paper stage-card flex flex-col gap-3 px-5 py-4" aria-labelledby="exit-title">
+      <h2 id="exit-title" className="font-display text-[1.75rem] leading-tight font-bold">
+        How did that feel?
+      </h2>
+      <div className="grid grid-cols-3 gap-2" role="radiogroup" aria-labelledby="exit-title">
+        {(Object.keys(FEELING_INFO) as Feeling[]).map((f) => {
+          const { label, Icon } = FEELING_INFO[f];
+          const on = chosen === f;
+          return (
+            <button
+              key={f}
+              type="button"
+              role="radio"
+              aria-checked={on}
+              onClick={() => void choose(f)}
+              className={`flex min-h-20 flex-col items-center justify-center gap-1 rounded-[var(--radius-l)] font-bold ${on ? 'sticker bg-lantern text-on-accent' : 'press-soft bg-surface-2 text-text hover:bg-surface-3'}`}
+            >
+              <Icon className="size-8" aria-hidden />
+              {label}
+            </button>
+          );
+        })}
+      </div>
+      <p className="text-sm text-text-2" aria-live="polite">
+        {chosen ? 'Thanks. Your teacher sees how many chose each face, never who chose what.' : 'One tap. Your teacher sees only how many chose each face.'}
+      </p>
+    </section>
+  );
+}
+
+/** After the game on a player's device: practise the same questions alone, in a solo game. */
+function PracticeButton({ room }: { room: RoomView }) {
+  const [busy, setBusy] = useState(false);
+  const signedIn = Boolean(useMe().data?.user);
+  const navigate = useNavigate();
+  const qc = useQueryClient();
+  const token = room.me.reconnectToken;
+  if (!token || room.room.solo) return null;
+  const start = async () => {
+    setBusy(true);
+    try {
+      // Not signed in: a guest account (one tap, no email) holds the solo game.
+      if (!signedIn) {
+        await api.post('/api/auth/guest', {});
+        await qc.invalidateQueries({ queryKey: meKey });
+      }
+      const res = await api.post<{ code: string }>(`/api/rooms/${room.room.code}/practice`, { reconnectToken: token });
+      navigate(`/room/${res.code}`);
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : 'Could not start a practice game. Try again.');
+      setBusy(false);
+    }
+  };
+  return (
+    <Button size="lg" variant="primary" icon={<BookOpen className="size-5" aria-hidden />} loading={busy} onClick={() => void start()}>
+      Practise these questions on your own
+    </Button>
+  );
+}
+
 function downloadCsv(room: RoomView) {
   const r = room.results!;
   const team = (id: string | null) => room.room.teams.find((t) => t.id === id)?.name ?? '';
@@ -221,6 +333,8 @@ export function Results({ room, handle, isHost, guest }: { room: RoomView; handl
     if (!ack.ok) toast.error(ack.error.message);
   };
   const big = isHost;
+  const [summary, setSummary] = useState(false);
+  const feelings = room.host?.feelings ?? null;
   return (
     <div className={`mx-auto flex w-full flex-1 flex-col ${big ? 'max-w-[112rem] gap-[clamp(1rem,3vh,2rem)]' : 'max-w-3xl gap-6'}`}>
       <div className="flex flex-col items-center text-center">
@@ -247,16 +361,32 @@ export function Results({ room, handle, isHost, guest }: { room: RoomView; handl
               <Button variant="primary" size="lg" className="grow" icon={<RotateCcw className="size-5" aria-hidden />} loading={busy} onClick={restart}>
                 Play again with the same players
               </Button>
+              {r.report ? (
+                <Button size="lg" className="grow" icon={<ClipboardList className="size-5" aria-hidden />} onClick={() => setSummary(true)}>
+                  Class summary
+                </Button>
+              ) : null}
               <Button size="lg" className="grow" icon={<Download className="size-5" aria-hidden />} onClick={() => downloadCsv(room)}>
                 Download results (CSV)
               </Button>
               <Link to="/host" className={buttonClass('ghost', 'lg', 'grow')}>
                 Host something else
               </Link>
+              {feelings ? (
+                <div className="flex w-full flex-wrap items-center gap-2 border-t border-line pt-2">
+                  <span className="text-sm font-semibold text-text-2">How it felt so far:</span>
+                  <Feelings counts={feelings} />
+                </div>
+              ) : null}
+              <ClassSummaryDialog room={room} open={summary} onOpenChange={setSummary} />
             </div>
           ) : (
-            <Rewards rewards={room.rewards} guest={guest} />
+            <>
+              <Rewards rewards={room.rewards} guest={guest} />
+              {room.room.options.exitTicket && !room.room.solo ? <ExitTicket room={room} handle={handle} /> : null}
+            </>
           )}
+          {r.awards?.length ? <Awards awards={r.awards} big={big} me={room.me.playerId} /> : null}
           {r.teamStandings.length ? (
             <StagePanel as="section" className="p-4" label="Teams">
               <h2 className="mb-3 font-display text-2xl font-bold">Teams</h2>
@@ -280,6 +410,7 @@ export function Results({ room, handle, isHost, guest }: { room: RoomView; handl
             </div>
           ) : (
             <div className="flex flex-col gap-2">
+              <PracticeButton room={room} />
               <Link to="/" className={buttonClass('secondary', 'lg')}>
                 <Home className="size-5" aria-hidden /> Back to home
               </Link>

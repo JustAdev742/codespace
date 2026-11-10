@@ -1349,7 +1349,8 @@ export function LanternTrailHost({ view, gameNow, room }: ModeScreenProps<Lanter
                 <li key={r.id} className={`flex items-center gap-[clamp(0.4rem,0.8vw,0.75rem)] rounded-[var(--radius-m)] px-2.5 py-0.5 ${ROW} ${NIGHT} ${i >= 6 ? '[@media(max-height:820px)]:hidden' : ''}`}>
                   <RankBadge rank={r.rank} big />
                   <PlayerGlim avatar={avatarOf(room.players, r.id)} seed={r.id} size={48} className="size-[clamp(1.9rem,4.2vh,3.2rem)] shrink-0" />
-                  <span className="min-w-0 flex-1 truncate font-bold">{name(r.id)}</span>
+                  {/* A long name takes two shorter lines rather than losing its end beside the lanterns and coins. */}
+                  <span className={`line-clamp-2 min-w-0 flex-1 leading-[1.05] font-bold [overflow-wrap:anywhere] ${name(r.id).length > 14 ? 'text-[0.82em]' : ''}`}>{name(r.id)}</span>
                   <span className="flex shrink-0 items-center gap-1 font-display text-[1.2em] font-extrabold tabular">
                     <Lantern art={GOLD} size={22} lit className="h-auto w-[0.95em]" />
                     {r.l}

@@ -2,7 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import { Server, type Socket } from 'socket.io';
 import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
-import { actionRequestSchema, C2S, chaosRequestSchema, hostCommandSchema, joinRequestSchema, reactionSchema, S2C } from '@ludora/shared';
+import { actionRequestSchema, C2S, chaosRequestSchema, hostCommandSchema, joinRequestSchema, playerRequestSchema, reactionSchema, S2C } from '@ludora/shared';
 import type { AppDeps } from '../app.ts';
 import type { AuthContext } from '../http/context.ts';
 import { originAllowed } from '../http/origins.ts';
@@ -51,7 +51,8 @@ function parseCookies(header: string | undefined): Record<string, string> {
 
 // Per IP. A school often puts every class behind one public IP, so this has to fit a few classes joining at once.
 const JOINS_PER_MINUTE = 150;
-const joinAsSchema = joinRequestSchema.extend({ as: z.enum(['host', 'player']).optional() });
+// 'remote': the host's controls-only view on a phone, beside the big screen.
+const joinAsSchema = joinRequestSchema.extend({ as: z.enum(['host', 'player', 'remote']).optional() });
 
 export function attachRealtime(app: FastifyInstance, deps: AppDeps) {
   const manager = deps.rooms;
@@ -103,6 +104,12 @@ export function attachRealtime(app: FastifyInstance, deps: AppDeps) {
     // Casting has its own, tighter budget on top of the general one.
     const chaosBucket = new TokenBucket(6, 2);
     let current: { room: Room; sub: RoomSubscriber } | null = null;
+    // A request waiting in a room's waiting room, so it can be withdrawn if this socket goes.
+    let waiting: { room: Room; id: string } | null = null;
+    const withdraw = () => {
+      if (waiting) waiting.room.cancelPending(waiting.id);
+      waiting = null;
+    };
     // The account's unlock, read from the database and re-read at most every few seconds.
     let unlocked: { value: boolean; at: number } | null = null;
     const isUnlocked = async (): Promise<boolean> => {
@@ -122,6 +129,7 @@ export function attachRealtime(app: FastifyInstance, deps: AppDeps) {
       return false;
     };
     const detach = () => {
+      withdraw();
       if (!current) return;
       current.room.unsubscribe(current.sub.id);
       current = null;
@@ -139,12 +147,16 @@ export function attachRealtime(app: FastifyInstance, deps: AppDeps) {
       const isHost = Boolean(auth && auth.user.id === room.hostUserId);
       const asHost = isHost && !room.solo && parsed.data.as !== 'player';
       if (asHost) {
-        const sub: RoomSubscriber = { id: randomUUID(), role: 'host', playerId: null, emit: (e, p) => socket.emit(e, p) };
+        const sub: RoomSubscriber = { id: randomUUID(), role: 'host', playerId: null, remote: parsed.data.as === 'remote', emit: (e, p) => socket.emit(e, p) };
         current = { room, sub };
         room.subscribe(sub);
         return reply(ack, { ok: true, role: 'host', playerId: null });
       }
       const avatar = auth ? await loadAvatar(deps.db, auth.user.id).catch(() => null) : null;
+      // A class game: someone added to the class after the room opened is let in, checked against the database.
+      if (room.classMembers && room.classId && auth && !room.classMembers.has(auth.user.id) && (await manager.isClassMember(room.classId, auth.user.id).catch(() => false))) {
+        room.classMembers.add(auth.user.id);
+      }
       const joined = room.join({
         name: parsed.data.name,
         reconnectToken: parsed.data.reconnectToken,
@@ -153,8 +165,21 @@ export function attachRealtime(app: FastifyInstance, deps: AppDeps) {
         isGuestAccount: auth?.user.isGuest ?? true,
         avatar,
         dress: parsed.data.dress,
+        // Waiting room: the host's answer arrives later, on this socket.
+        onAdmitted: (reconnectToken) => {
+          waiting = null;
+          socket.emit(S2C.admitted, { reconnectToken });
+        },
+        onDeclined: (message) => {
+          waiting = null;
+          socket.emit(S2C.closed, { reason: 'declined', message });
+        },
       });
-      if (!joined.ok) return reply(ack, joined);
+      if (!joined.ok) {
+        const pendingId = (joined as { pendingId?: string }).pendingId;
+        if (pendingId) waiting = { room, id: pendingId };
+        return reply(ack, joined);
+      }
       const sub: RoomSubscriber = { id: randomUUID(), role: 'player', playerId: joined.player.id, emit: (e, p) => socket.emit(e, p) };
       current = { room, sub };
       if (auth) room.setChaosUnlocked(auth.user.id, await isUnlocked().catch(() => false));
@@ -181,6 +206,14 @@ export function attachRealtime(app: FastifyInstance, deps: AppDeps) {
       const parsed = hostCommandSchema.safeParse(payload);
       if (!parsed.success) return reply(ack, fail('bad_request', 'That command was not understood.'));
       reply(ack, current.room.hostCommand(parsed.data));
+    });
+
+    socket.on(C2S.player, (payload: unknown, ack: unknown) => {
+      if (!guard(ack)) return;
+      if (!current || current.sub.role !== 'player' || !current.sub.playerId) return reply(ack, fail('forbidden', 'Join the game first.'));
+      const parsed = playerRequestSchema.safeParse(payload);
+      if (!parsed.success) return reply(ack, fail('bad_request', 'That was not understood.'));
+      reply(ack, current.room.playerRequest(current.sub.playerId, parsed.data));
     });
 
     socket.on(C2S.react, (payload: unknown, ack: unknown) => {

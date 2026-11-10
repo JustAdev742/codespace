@@ -22,6 +22,8 @@ import {
   syncView,
   type SyncConfig,
   type SyncState,
+  syncAddTime,
+  syncWaitingOn,
 } from '../../mechanics/syncRounds.ts';
 import { listNames } from '../rules.ts';
 import { meta, settings } from './meta.ts';
@@ -275,6 +277,9 @@ export const lanternOut = defineMode<State, Settings, Action>({
   onTimer(s, id, ctx) {
     step(s, ctx, () => syncOnTimer(s, cfg, id, ctx));
   },
+  // Shared hosting features: who is still answering, add time.
+  waitingOn: (s, ctx) => syncWaitingOn(s, cfg, ctx),
+  addTime: (s, ms, ctx) => syncAddTime(s, ms, ctx),
   onHostNext(s, ctx) {
     return step(s, ctx, () => syncHostNext(s, cfg, ctx));
   },

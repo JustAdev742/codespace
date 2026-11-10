@@ -92,6 +92,8 @@ interface ClassInfo {
   teacher: string;
   archived: boolean;
   leaderboardOn: boolean;
+  /** The teacher's hosting defaults for live class games (teacher only). */
+  hostDefaults?: { generatedNames: boolean; quiet: boolean };
 }
 
 export interface ClassNotice {

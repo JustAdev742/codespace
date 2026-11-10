@@ -27,4 +27,13 @@ describe('secret settings', () => {
   it('lets development run on its defaults', () => {
     expect(loadConfig({ APP_ENV: 'development' }).isProduction).toBe(false);
   });
+
+  it('always limits sign-ups and guests from one address: the limit can be raised, never switched off', () => {
+    const base = loadConfig({});
+    expect(base.SIGNUPS_PER_10_MIN).toBe(40);
+    expect(base.GUESTS_PER_10_MIN).toBe(60);
+    expect(loadConfig({ SIGNUPS_PER_10_MIN: '600', GUESTS_PER_10_MIN: '600' }).SIGNUPS_PER_10_MIN).toBe(600);
+    expect(() => loadConfig({ SIGNUPS_PER_10_MIN: '0' })).toThrow(/SIGNUPS_PER_10_MIN/);
+    expect(() => loadConfig({ GUESTS_PER_10_MIN: '1000000' })).toThrow(/GUESTS_PER_10_MIN/);
+  });
 });

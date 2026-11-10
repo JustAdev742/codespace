@@ -92,6 +92,13 @@
       "when": 1793550000000,
       "tag": "0011_sets_library",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1793560000000,
+      "tag": "0010_hosting",
+      "breakpoints": true
     }
   ]
 }

@@ -18,6 +18,8 @@ export const C2S = {
   host: 'room:host',
   react: 'room:react',
   chaos: 'room:chaos',
+  /** A player's own lobby and end-of-game choices: ready, their team, the exit ticket. */
+  player: 'room:player',
 } as const;
 
 export const S2C = {
@@ -30,6 +32,10 @@ export const S2C = {
   glow: 'room:glow',
   /** Compact, frequent updates (where everyone is standing) between full views. See `PulseView`. */
   pulse: 'room:pulse',
+  /** The host is waiting for this player's answer. Sent only to that player. */
+  nudge: 'room:nudge',
+  /** The host let a player in from the waiting room: rejoin with this reconnect token. */
+  admitted: 'room:admitted',
 } as const;
 
 /** A pulse: the mode's compact data, sent at most ten times a second after quiet moves. */
@@ -64,6 +70,8 @@ export const commonSettingsSchema = z.object({
   shuffleQuestions: z.boolean().default(true),
   shuffleChoices: z.boolean().default(true),
   teamCount: z.number().int().min(0).max(6).default(0),
+  /** The last question is worth double, and players are told before it. Modes that score points read it. */
+  doubleFinal: z.boolean().default(false),
 });
 export type CommonSettings = z.infer<typeof commonSettingsSchema>;
 
@@ -79,11 +87,41 @@ export const roomOptionsSchema = z.object({
    * (classroom games stay calm by default); always off for assignments.
    */
   chaos: z.boolean().default(false),
+  /** Seconds of "Starting in" on every screen after the host presses Start. 0 starts at once. */
+  startCountdownSec: z.number().int().min(0).max(10).default(0),
+  /** Start (with the countdown) by itself once this many players are in. 0 is off. */
+  autoStartAt: z.number().int().min(0).max(200).default(0),
+  /** Players pick their own team in the lobby. */
+  teamPick: z.boolean().default(false),
+  /** The big screen shows no names; each player still sees their own. */
+  hideNames: z.boolean().default(false),
+  /** A one-tap "How did that feel?" on players' devices at the end. The host sees only the counts. */
+  exitTicket: z.boolean().default(false),
+  /** Waiting room: the host lets each new player in. */
+  admit: z.boolean().default(false),
+  /** Every device in the room stays silent. */
+  quiet: z.boolean().default(false),
+  /** Players may send reactions. */
+  reactions: z.boolean().default(true),
+  /** Players who join after the start begin level with the lowest score in the game (host-paced modes that keep points). */
+  catchUp: z.boolean().default(false),
 });
 export type RoomOptions = z.infer<typeof roomOptionsSchema>;
 
+/**
+ * A change to some settings: only the keys sent. (`.partial()` on a schema with defaults would fill
+ * every missing key with its default, so changing one switch would reset all the others.)
+ */
+function patchOf<T extends z.ZodRawShape>(shape: T) {
+  return z.object(Object.fromEntries(Object.entries(shape).map(([k, v]) => [k, (v instanceof z.ZodDefault ? (v.unwrap() as z.ZodType) : (v as unknown as z.ZodType)).optional()])));
+}
+const commonPatchSchema = patchOf(commonSettingsSchema.shape) as unknown as z.ZodType<Partial<CommonSettings>>;
+const optionsPatchSchema = patchOf(roomOptionsSchema.shape) as unknown as z.ZodType<Partial<RoomOptions>>;
+
 export const hostCommandSchema = z.discriminatedUnion('cmd', [
-  z.object({ cmd: z.literal('start') }),
+  /** `now` skips the room's countdown. */
+  z.object({ cmd: z.literal('start'), now: z.boolean().optional() }),
+  z.object({ cmd: z.literal('cancelStart') }),
   z.object({ cmd: z.literal('pause') }),
   z.object({ cmd: z.literal('resume') }),
   z.object({ cmd: z.literal('end') }),
@@ -97,14 +135,36 @@ export const hostCommandSchema = z.discriminatedUnion('cmd', [
   z.object({ cmd: z.literal('chaosCalm') }),
   z.object({ cmd: z.literal('shuffleTeams') }),
   z.object({ cmd: z.literal('setTeam'), playerId: z.string().min(1).max(40), teamId: z.string().min(1).max(20) }),
+  z.object({ cmd: z.literal('renameTeam'), teamId: z.string().min(1).max(20), name: z.string().max(40) }),
+  z.object({ cmd: z.literal('renamePlayer'), playerId: z.string().min(1).max(40), name: z.string().max(40) }),
+  /** A gentle "Your teacher is waiting for your answer" on one player's device. */
+  z.object({ cmd: z.literal('nudge'), playerId: z.string().min(1).max(40) }),
+  z.object({ cmd: z.literal('addTime'), seconds: z.number().int().min(5).max(60) }),
+  z.object({ cmd: z.literal('break'), seconds: z.union([z.literal(30), z.literal(60)]) }),
+  z.object({ cmd: z.literal('endBreak') }),
+  /** A short message pinned in the lobby, or null to take it down. */
+  z.object({ cmd: z.literal('pin'), text: z.string().max(120).nullable() }),
+  z.object({ cmd: z.literal('admit'), playerId: z.string().min(1).max(40), allow: z.boolean() }),
+  /** The questions, for the host to look over before starting. Answered in the acknowledgement. */
+  z.object({ cmd: z.literal('preview') }),
   z.object({
     cmd: z.literal('configure'),
     settings: z.record(z.string(), z.union([z.number(), z.string(), z.boolean()])).optional(),
-    common: commonSettingsSchema.partial().optional(),
-    options: roomOptionsSchema.partial().optional(),
+    common: commonPatchSchema.optional(),
+    options: optionsPatchSchema.optional(),
   }),
 ]);
 export type HostCommand = z.infer<typeof hostCommandSchema>;
+
+export const FEELINGS = ['great', 'okay', 'tough'] as const;
+export type Feeling = (typeof FEELINGS)[number];
+
+export const playerRequestSchema = z.discriminatedUnion('op', [
+  z.object({ op: z.literal('ready'), ready: z.boolean() }),
+  z.object({ op: z.literal('team'), teamId: z.string().min(1).max(20) }),
+  z.object({ op: z.literal('feeling'), feeling: z.enum(FEELINGS) }),
+]);
+export type PlayerRequest = z.infer<typeof playerRequestSchema>;
 
 export const reactionSchema = z.object({ emote: z.string().min(1).max(20) });
 
@@ -182,6 +242,8 @@ export interface RoomPlayerView {
   isBot: boolean;
   isGuest: boolean;
   avatar: AvatarLite | null;
+  /** Tapped Ready in the lobby. */
+  ready?: boolean;
 }
 
 export interface FeedItem {
@@ -204,8 +266,43 @@ export interface StandingView {
   answered: number;
 }
 
+/** A podium award, worked out on the server from the answers. */
+export interface AwardView {
+  kind: 'streak' | 'fastest' | 'improved' | 'comeback';
+  playerId: string;
+  name: string;
+  /** What earned it, e.g. "7 right in a row". */
+  detail: string;
+}
+
+/** One question of a finished game, for the host's breakdown. */
+export interface QuestionReportView {
+  qid: string;
+  prompt: string;
+  answered: number;
+  right: number;
+  /** The most common wrong answer and how many gave it, when answers can be told apart. */
+  commonWrong: { text: string; count: number } | null;
+  avgMs: number;
+}
+
+/** What only the host sees at the end: how the class did. */
+export interface HostReportView {
+  answered: number;
+  right: number;
+  questions: QuestionReportView[];
+  /** Players under the threshold, lowest first. */
+  needHelp: { playerId: string; name: string; right: number; answered: number }[];
+  threshold: number;
+  /** Exit ticket counts, never who chose what. Null when the exit ticket was off. */
+  feelings: Record<Feeling, number> | null;
+}
+
 export interface ResultsView {
   gameId: string | null;
+  awards?: AwardView[];
+  /** Only in the host's view. */
+  report?: HostReportView;
   /** Chaos cheats were cast in this game, so places earn no rewards. */
   chaos?: boolean;
   standings: StandingView[];
@@ -250,8 +347,31 @@ export interface RoomView<G = unknown> {
     settings: SettingValues;
     teams: TeamView[];
     hostConnected: boolean;
+    /** Server time the countdown ends and the game starts, while one is running. */
+    startsAt?: number | null;
+    /** Server time a brain break ends, while one is on. */
+    breakEndsAt?: number | null;
+    /** The host's pinned lobby message. */
+    pinned?: string | null;
+    /** How many players have tapped Ready. */
+    readyCount?: number;
+    /** A class game: only that class's members can join. */
+    classTitle?: string | null;
+    /** The last question is worth double and is the next or current one. */
+    doubleNow?: boolean;
   };
-  me: { playerId: string | null; role: 'host' | 'player'; name: string | null; teamId: string | null; reconnectToken: string | null };
+  me: {
+    playerId: string | null;
+    role: 'host' | 'player';
+    name: string | null;
+    teamId: string | null;
+    reconnectToken: string | null;
+    ready?: boolean;
+    /** The exit ticket choice this player made. */
+    feeling?: Feeling | null;
+  };
+  /** Only in the host's view. */
+  host?: HostExtras;
   players: RoomPlayerView[];
   game: G | null;
   results: ResultsView | null;
@@ -259,6 +379,17 @@ export interface RoomView<G = unknown> {
   feed: FeedItem[];
   /** Present once chaos has been used in this game, or for a viewer who has unlocked it. */
   chaos?: ChaosRoomView | null;
+}
+
+export interface HostExtras {
+  /** Who the open question is waiting for. Null when this mode or moment has no single question to wait on. */
+  waiting: { id: string; name: string; nudged: boolean }[] | null;
+  /** "Add time" works now: a timed question is open in a host-paced game. */
+  canAddTime: boolean;
+  /** Players asking to come in (waiting room). */
+  pending: { id: string; name: string }[];
+  /** Exit ticket counts while players answer it. */
+  feelings: Record<Feeling, number> | null;
 }
 
 export type EmoteGlyph = (typeof EMOTE_GLYPHS)[number];

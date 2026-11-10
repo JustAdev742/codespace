@@ -60,6 +60,7 @@ DATABASE_URL="${DATABASE_URL:-postgres://postgres:postgres@localhost:5432/ludora
   APP_ENV=production PUBLIC_ORIGIN="$origin" IP_HASH_KEY="$(cat "$state/ip-hash-key")" \
   TRUST_PROXY=true COOKIE_SECURE="$secure" HOST=0.0.0.0 PORT=8787 UPLOAD_DIR="$state/uploads" \
   SCHOOL_THEME="${SCHOOL_THEME:-}" \
+  SIGNUPS_PER_10_MIN="${SIGNUPS_PER_10_MIN:-40}" GUESTS_PER_10_MIN="${GUESTS_PER_10_MIN:-60}" \
   setsid nohup node --enable-source-maps dist/index.js > "$state/server.log" 2>&1 < /dev/null &
 pid=$!
 echo "$pid" > "$state/server.pid"

@@ -40,6 +40,8 @@ import {
   syncView,
   type SyncConfig,
   type SyncState,
+  syncAddTime,
+  syncWaitingOn,
 } from '../../mechanics/syncRounds.ts';
 import { listNames, nameOf, recordingAs } from '../rules.ts';
 import {
@@ -819,6 +821,9 @@ export const glimDuels = defineMode<State, Settings, Action>({
     if (id === SHADOW_TIMER) return shadowTick(s, ctx);
     step(s, ctx, () => syncOnTimer(s, cfg, id, ctx));
   },
+  // Shared hosting features: who is still answering, add time.
+  waitingOn: (s, ctx) => syncWaitingOn(s, cfg, ctx),
+  addTime: (s, ms, ctx) => syncAddTime(s, ms, ctx),
   onHostNext(s, ctx) {
     return step(s, ctx, () => syncHostNext(s, cfg, ctx));
   },

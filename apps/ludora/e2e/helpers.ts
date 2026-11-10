@@ -48,9 +48,16 @@ export function watchErrors(page: Page): string[] {
   // sometimes as a page error. A same-origin request has no such checks to fail, so neither
   // is an error in the page.
   const webkit = page.context().browser()?.browserType().name() === 'webkit';
+  // Firefox says the same of a font still arriving when the page moves on: "download failed" with
+  // the status for "stopped" (2152398850, NS_BINDING_ABORTED). A font that is missing or broken
+  // has a different status and still counts.
+  const firefox = page.context().browser()?.browserType().name() === 'firefox';
   const cutOff = (text: string) => {
+    const host = new URL(page.url()).host;
     const cut = webkit ? /^(?:Fetch API|XMLHttpRequest) cannot load (.+) due to access control checks\.$/.exec(text) : null;
-    return Boolean(cut && cut[1]!.includes(new URL(page.url()).host));
+    if (cut && cut[1]!.includes(host)) return true;
+    const font = firefox ? /downloadable font: download failed .*status=2152398850 source: (\S+)/.exec(text) : null;
+    return Boolean(font && font[1]!.includes(host));
   };
   page.on('pageerror', (e) => {
     // The stack's first line holds the whole message; the name and message are split at "http:".

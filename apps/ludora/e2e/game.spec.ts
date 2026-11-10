@@ -116,10 +116,15 @@ test('a player who closes the tab comes back to their own seat, and a removed pl
   await expect(host.page.getByText('Sunny Otter 2')).toHaveCount(0);
 
   // Removed by the host: joining again from this browser is refused, whatever the name.
-  await host.page.getByRole('button', { name: 'Remove Sunny Otter' }).click();
+  await host.page.getByRole('button', { name: 'Options for Sunny Otter' }).click();
+  await host.page.getByRole('menuitem', { name: 'Remove' }).click();
   await expect(again.getByRole('heading', { level: 1, name: 'Removed from the game' })).toBeVisible();
   await expect(again.getByText('The host removed you from the room.')).toBeVisible();
   await join(again, 'Someone Else');
   await expect(again.getByText('The host removed you from this room.')).toBeVisible();
+  // Nor in a new tab of the same browser under yet another name: the device stays out.
+  const fresh = await phone.newPage();
+  await join(fresh, 'Brand New Name');
+  await expect(fresh.getByText('The host removed you from this room.')).toBeVisible();
   await expect(host.page.getByRole('heading', { name: 'Nobody here yet' })).toBeVisible();
 });

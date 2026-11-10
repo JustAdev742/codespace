@@ -1,6 +1,6 @@
 import { Link } from 'react-router';
 import { useInfiniteQuery } from '@tanstack/react-query';
-import { ChevronRight, Clock, Presentation, Users } from 'lucide-react';
+import { ChevronRight, Clock, RotateCcw, Presentation, Users } from 'lucide-react';
 import { api } from '../../lib/api.ts';
 import { useMe } from '../../lib/session.ts';
 import { duration, plural } from '../../lib/format.ts';
@@ -26,8 +26,8 @@ interface HostedPage {
 
 function GameRow({ g }: { g: HostedGame }) {
   return (
-    <li>
-      <Link to={`/reports/${g.id}`} className="flex items-center gap-3 rounded-[var(--radius-l)] border border-line bg-raised px-4 py-3 text-text no-underline transition-colors hover:border-line-strong hover:bg-surface-2">
+    <li className="flex items-stretch gap-2">
+      <Link to={`/reports/${g.id}`} className="flex min-w-0 flex-1 items-center gap-3 rounded-[var(--radius-l)] border border-line bg-raised px-4 py-3 text-text no-underline transition-colors hover:border-line-strong hover:bg-surface-2">
         <span className="flex min-w-0 flex-1 flex-col gap-1 sm:flex-row sm:items-center sm:gap-4">
           <span className="min-w-0 flex-1">
             <span className="block font-display text-xl leading-tight font-bold break-words">{g.mode}</span>
@@ -49,6 +49,10 @@ function GameRow({ g }: { g: HostedGame }) {
         </span>
         <ChevronRight className="size-5 shrink-0 text-text-3" aria-hidden />
       </Link>
+      {/* The same set, mode and settings again. The Host page says so if the set has gone. */}
+      <ButtonLink to={`/host?again=${g.id}`} className="h-auto! self-stretch" icon={<RotateCcw className="size-4" aria-hidden />} aria-label={`Host again: ${g.mode} with ${g.setTitle}`}>
+        <span className="max-sm:sr-only">Host again</span>
+      </ButtonLink>
     </li>
   );
 }

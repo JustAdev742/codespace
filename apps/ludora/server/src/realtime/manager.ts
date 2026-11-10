@@ -1,6 +1,7 @@
 import type { EngineResults } from '@ludora/engine';
 import type { AppDeps } from '../app.ts';
-import { errorReports } from '../db/schema.ts';
+import { and, eq } from 'drizzle-orm';
+import { classMembers, errorReports } from '../db/schema.ts';
 import { roomCode } from '../lib/crypto.ts';
 import { Room, type RoomHooks, type RoomInit } from './room.ts';
 import { persistGame } from './persist.ts';
@@ -62,6 +63,12 @@ export class RoomManager {
       .insert(errorReports)
       .values({ source: 'realtime', message: `${where}: ${String(e?.message ?? err)}`.slice(0, 500), stack: String(e?.stack ?? '').slice(0, 4000), context: { room: room?.code ?? null, mode: room?.mode.meta.id ?? null } })
       .catch(() => {});
+  }
+
+  /** Whether an account is in a class now (a class game re-checks someone added after the room opened). */
+  async isClassMember(classId: string, userId: string): Promise<boolean> {
+    const [m] = await this.deps.db.select({ u: classMembers.userId }).from(classMembers).where(and(eq(classMembers.classId, classId), eq(classMembers.userId, userId))).limit(1);
+    return Boolean(m);
   }
 
   create(init: Omit<RoomInit, 'code'>): Room {

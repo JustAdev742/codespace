@@ -208,3 +208,25 @@ describe('serving the built web app', () => {
     expect(loadConfig({ SCHOOL_THEME: '' }).SCHOOL_THEME).toBeUndefined();
   });
 });
+
+describe('how many accounts one address may make', () => {
+  let small: TestContext;
+  beforeAll(async () => {
+    small = await createTestApp({ SIGNUPS_PER_10_MIN: '5', GUESTS_PER_10_MIN: '6' });
+  });
+  afterAll(async () => {
+    await small?.close();
+  });
+
+  it('refuses the sign-up after the limit, in plain words', async () => {
+    for (let i = 0; i < 5; i++) await registered(small.app);
+    const over = await new Client(small.app).post('/api/auth/register', { username: uniqueName('over'), password: 'correct horse battery', accountType: 'player' });
+    expect(over.status).toBe(429);
+    expect(over.body.error.code).toBe('rate_limited');
+  });
+
+  it('refuses the guest after the limit', async () => {
+    for (let i = 0; i < 6; i++) expect((await new Client(small.app).post('/api/auth/guest', { displayName: 'Swift Otter' })).status).toBe(200);
+    expect((await new Client(small.app).post('/api/auth/guest', { displayName: 'Swift Otter' })).status).toBe(429);
+  });
+});

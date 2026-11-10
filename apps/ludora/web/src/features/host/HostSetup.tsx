@@ -281,7 +281,10 @@ function useScrollPadding(bar: RefObject<HTMLElement | null>) {
   }, [bar]);
 }
 
-function Setup({ solo, preset, gameId, making }: { solo: boolean; preset: string | null; gameId: string | null; making: boolean }) {
+type PastSetup = { setId: string; modeId: string; variantId: string | null; settings: Record<string, unknown>; common: Record<string, number | boolean>; options: Record<string, unknown> | null; classId: string | null };
+type ClassInfo = { class: { id: string; name: string; hostDefaults?: { generatedNames: boolean; quiet: boolean } }; role: string };
+
+function Setup({ solo, preset, gameId, making, again, classId }: { solo: boolean; preset: string | null; gameId: string | null; making: boolean; again: string | null; classId: string | null }) {
   const navigate = useNavigate();
   const qc = useQueryClient();
   const [set, setSet] = useState<SetSummary | null>(null);
@@ -290,9 +293,16 @@ function Setup({ solo, preset, gameId, making }: { solo: boolean; preset: string
   // A game from the Game Maker (?game=<id>) brings its mode, settings and set.
   const madeGame = useQuery({ queryKey: ['game', gameId], queryFn: () => api.get<{ game: MadeGame }>(`/api/games/${gameId}`), enabled: Boolean(gameId) });
   const game = madeGame.data?.game ?? null;
+  // "Host again" from a past game (?again=<game id>) brings its set, mode, settings and room options.
+  const past = useQuery({ queryKey: ['game-setup', again], queryFn: () => api.get<{ setup?: PastSetup }>(`/api/games/${again}/report`), enabled: Boolean(again) });
+  const pastSetup = past.data?.setup ?? null;
+  // Hosting for a class (?class=<id>, from the class page): only its members can join; its hosting defaults apply.
+  const forClassId = classId ?? pastSetup?.classId ?? null;
+  const cls = useQuery({ queryKey: ['class', forClassId], queryFn: () => api.get<ClassInfo>(`/api/classes/${forClassId}`), enabled: Boolean(forClassId) && !solo });
+  const forClass = cls.data?.role === 'teacher' ? cls.data.class : null;
   const modes = useModes();
   // The set editor's Host button links here with ?set=<id>; start with that set picked.
-  const presetId = preset ?? game?.set?.id ?? null;
+  const presetId = preset ?? game?.set?.id ?? pastSetup?.setId ?? null;
   const presetSet = useQuery({
     queryKey: ['set', presetId],
     queryFn: () => api.get<{ set: SetSummary }>(`/api/sets/${presetId}`),
@@ -308,7 +318,7 @@ function Setup({ solo, preset, gameId, making }: { solo: boolean; preset: string
   const [choice, setChoice] = useState<Choice | null>(null);
   const [settings, setSettings] = useState<Record<string, unknown>>({});
   const [common, setCommon] = useState<Record<string, number | boolean>>({});
-  const [options, setOptions] = useState({ lateJoin: true, generatedNames: false, requireAccount: false, chaos: false });
+  const [options, setOptions] = useState<Record<string, unknown> & { lateJoin: boolean; generatedNames: boolean; requireAccount: boolean; chaos: boolean; quiet: boolean }>({ lateJoin: true, generatedNames: false, requireAccount: false, chaos: false, quiet: false });
   const [busy, setBusy] = useState(false);
   const [saving, setSaving] = useState(false);
   const [atLimit, setAtLimit] = useState(false);
@@ -323,6 +333,24 @@ function Setup({ solo, preset, gameId, making }: { solo: boolean; preset: string
     setCommon(game.common as Record<string, number | boolean>);
     setOptions((o) => ({ ...o, ...game.options }));
   }, [game, modes.data]);
+  const pastApplied = useRef(false);
+  useEffect(() => {
+    if (!pastSetup || pastApplied.current || !modes.data) return;
+    const entry = modes.data.modes.find((m) => m.meta.id === pastSetup.modeId);
+    if (!entry) return;
+    pastApplied.current = true;
+    setChoice({ mode: entry, variant: entry.variants.find((v) => v.meta.id === pastSetup.variantId) ?? null });
+    setSettings(pastSetup.settings ?? {});
+    setCommon(pastSetup.common ?? {});
+    // Chaos never comes back by itself: a host turns it on again on purpose if they want it.
+    if (pastSetup.options) setOptions((o) => ({ ...o, ...pastSetup.options, chaos: false }));
+  }, [pastSetup, modes.data]);
+  const classApplied = useRef(false);
+  useEffect(() => {
+    if (!forClass?.hostDefaults || classApplied.current) return;
+    classApplied.current = true;
+    setOptions((o) => ({ ...o, generatedNames: forClass.hostDefaults!.generatedNames || o.generatedNames, quiet: forClass.hostDefaults!.quiet || o.quiet }));
+  }, [forClass]);
   const openGamesHeading = useRef<HTMLHeadingElement>(null);
   const bar = useRef<HTMLDivElement>(null);
   useScrollPadding(bar);
@@ -361,6 +389,7 @@ function Setup({ solo, preset, gameId, making }: { solo: boolean; preset: string
         options,
         solo,
         ...(game ? { gameId: game.id } : {}),
+        ...(forClass && !solo ? { classId: forClass.id } : {}),
       });
       void qc.invalidateQueries({ queryKey: openGamesKey });
       navigate(`/room/${res.code}`);
@@ -391,6 +420,18 @@ function Setup({ solo, preset, gameId, making }: { solo: boolean; preset: string
       />
       <div className="flex flex-col gap-6">
         {gameId && madeGame.isError ? <ErrorNotice title="That game could not be opened" message="It may be private, or it was deleted. You can still set up a game below." /> : null}
+        {again && (past.isError || (past.data && !pastSetup)) ? <ErrorNotice title="That game cannot be hosted again" message="Its question set may have been deleted, or it was not a game you hosted. You can still set up a game below." /> : null}
+        {again && pastSetup ? (
+          <p role="status" className="rounded-[var(--radius-m)] border border-line bg-surface-2 px-3.5 py-2.5 font-semibold">
+            Hosting again: the same set, mode and settings as last time. Change anything before you start.
+          </p>
+        ) : null}
+        {forClass ? (
+          <p role="status" className="flex items-center gap-2 rounded-[var(--radius-m)] border border-sky/60 bg-sky/10 px-3.5 py-2.5 font-semibold">
+            <Users className="size-5 shrink-0" aria-hidden />
+            For {forClass.name}: only its members can join, and who took part shows on the class page.
+          </p>
+        ) : null}
         {!solo ? (
           <OpenGames
             ref={openGamesHeading}
@@ -491,7 +532,8 @@ function Setup({ solo, preset, gameId, making }: { solo: boolean; preset: string
                 <div className="grid grid-cols-1 gap-x-8 md:grid-cols-2">
                   <Switch checked={options.generatedNames} onCheckedChange={(v) => setOptions((o) => ({ ...o, generatedNames: v }))} label="Generated names only" description="Everyone gets a random friendly name. Good for younger classes." />
                   <Switch checked={options.lateJoin} onCheckedChange={(v) => setOptions((o) => ({ ...o, lateJoin: v }))} label="Allow late joining" description="Players can join after the game has started." />
-                  <Switch checked={options.requireAccount} onCheckedChange={(v) => setOptions((o) => ({ ...o, requireAccount: v }))} label="Accounts only" description="Only signed-in players with an account can join." />
+                  {forClass ? null : <Switch checked={options.requireAccount} onCheckedChange={(v) => setOptions((o) => ({ ...o, requireAccount: v }))} label="Accounts only" description="Only signed-in players with an account can join." />}
+                  <Switch checked={options.quiet} onCheckedChange={(v) => setOptions((o) => ({ ...o, quiet: v }))} label="Quiet room" description="Every device in the room stays silent. You can change it in the room." />
                   <Switch
                     checked={options.chaos}
                     onCheckedChange={(v) => setOptions((o) => ({ ...o, chaos: v }))}
@@ -523,7 +565,7 @@ function Setup({ solo, preset, gameId, making }: { solo: boolean; preset: string
             open={saving}
             onOpenChange={setSaving}
             editing={game?.mine ? game : null}
-            setup={{ setId: set.id, modeId: choice.mode.meta.id, variantId: choice.variant?.meta.id ?? null, settings, common, options, modeTitle: choice.variant?.meta.title ?? choice.mode.meta.title, hue: choice.mode.meta.thumbnail.hue }}
+            setup={{ setId: set.id, modeId: choice.mode.meta.id, variantId: choice.variant?.meta.id ?? null, settings, common, options: Object.fromEntries(Object.entries(options).filter(([, v]) => typeof v === 'boolean')) as Record<string, boolean>, modeTitle: choice.variant?.meta.title ?? choice.mode.meta.title, hue: choice.mode.meta.thumbnail.hue }}
             onSaved={(g) => navigate(`/host?game=${g.id}`, { replace: true })}
           />
         ) : null}
@@ -554,7 +596,8 @@ export default function HostSetup() {
   if (!me.isLoading && !me.data?.user) return <SignedOutHost solo={solo} />;
   // Hosting and playing solo offer different modes, so switching between them starts afresh.
   const gameId = params.get('game');
-  return <Setup key={`${solo ? 'solo' : 'host'}-${gameId ?? ''}`} solo={solo} preset={params.get('set')} gameId={gameId} making={params.get('make') === '1'} />;
+  const again = params.get('again');
+  return <Setup key={`${solo ? 'solo' : 'host'}-${gameId ?? ''}-${again ?? ''}`} solo={solo} preset={params.get('set')} gameId={gameId} making={params.get('make') === '1'} again={again} classId={params.get('class')} />;
 }
 
 /**

@@ -87,7 +87,7 @@ export async function authRoutes(app: FastifyInstance, deps: AppDeps) {
 
   // A classroom often shares one public IP, so these limits are per IP but generous;
   // brute force against a single account is stopped by the per-account lockout instead.
-  app.post('/api/auth/register', limited(40, 10), async (req, reply) => {
+  app.post('/api/auth/register', limited(deps.config.SIGNUPS_PER_10_MIN, 10), async (req, reply) => {
     const body = parse(registerSchema, req.body);
     const { user, recoveryCode } = await registerUser(deps.db, body);
     await afterAccountCreated(deps, user.id);
@@ -102,7 +102,7 @@ export async function authRoutes(app: FastifyInstance, deps: AppDeps) {
     return { ok: true };
   });
 
-  app.post('/api/auth/guest', limited(60, 10), async (req, reply) => {
+  app.post('/api/auth/guest', limited(deps.config.GUESTS_PER_10_MIN, 10), async (req, reply) => {
     if (req.auth) return { ok: true };
     const body = parse(guestSchema, req.body ?? {});
     const user = await createGuest(deps.db, body.displayName);

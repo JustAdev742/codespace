@@ -14,6 +14,9 @@ import {
   syncView,
   type SyncConfig,
   type SyncState,
+  syncAddTime,
+  syncWaitingOn,
+  syncCatchUp,
 } from '../../mechanics/syncRounds.ts';
 import { bottomHalf, listNames, recordingAs, roundTo10 } from '../rules.ts';
 import { meta, settings } from './meta.ts';
@@ -326,6 +329,10 @@ export const classic = defineMode<State, Settings, Action>({
   onTimer(s, id, ctx) {
     step(s, ctx, () => syncOnTimer(s, cfg, id, ctx));
   },
+  // Shared hosting features: who is still answering, add time, catch-up for late joiners.
+  waitingOn: (s, ctx) => syncWaitingOn(s, cfg, ctx),
+  addTime: (s, ms, ctx) => syncAddTime(s, ms, ctx),
+  catchUp: (s, id, ctx) => syncCatchUp(s, id, ctx),
   onHostNext(s, ctx) {
     return step(s, ctx, () => syncHostNext(s, cfg, ctx));
   },

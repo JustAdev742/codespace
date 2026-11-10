@@ -8,6 +8,7 @@ import {
 } from '@ludora/shared';
 import { gradeAnswer, isGraded, revealAnswer, correctAnswerFor, wrongAnswerFor } from '../questions/grade.ts';
 import { answerFromTokens, answerToTokens, presentationOrder, revealToTokens, toPublicQuestion } from '../questions/present.ts';
+import { answerText } from './answerText.ts';
 import type {
   ActionResult,
   AnswerRecord,
@@ -117,6 +118,8 @@ interface Effects {
   feed: { text: string; tone?: FeedItem['tone']; to?: string[] }[];
   answers: AnswerRecord[];
   end: { summary?: string } | null;
+  /** The last answer graded for each question in this transaction, in words, for the host's report. */
+  graded?: Map<string, string | null>;
 }
 
 const MAX_TIMER_FIRES_PER_TICK = 500;
@@ -391,6 +394,35 @@ export class GameRuntime {
       this.bump();
     }
     return blocked;
+  }
+
+  /** Who the open question is waiting for, or null when this mode or moment has none. */
+  waitingOn(): PlayerId[] | null {
+    if ((this.status !== 'running' && this.status !== 'paused') || this.state === undefined || !this.mode.waitingOn) return null;
+    try {
+      return this.mode.waitingOn(this.state, this.makeContext(null));
+    } catch (err) {
+      this.listener.error?.(err, 'waitingOn');
+      return null;
+    }
+  }
+
+  /** The host adds time to the open question. */
+  addTime(ms: number): DispatchResult {
+    if (this.status !== 'running') return { ok: false, code: 'invalid_state', message: this.status === 'paused' ? 'Resume the game first.' : 'The game is not running.' };
+    if (!this.mode.addTime) return { ok: false, code: 'rejected', message: 'This mode has no question clock to add time to.' };
+    return this.transact('add-time', (draft, ctx) => this.mode.addTime!(draft, ms, ctx));
+  }
+
+  /** A late joiner starts level with the lowest score, in modes that keep points this way. */
+  catchUp(playerId: PlayerId): DispatchResult {
+    if ((this.status !== 'running' && this.status !== 'paused') || !this.mode.catchUp || !this.players.has(playerId)) return { ok: true };
+    return this.transact('catch-up', (draft, ctx) => this.mode.catchUp!(draft, playerId, ctx));
+  }
+
+  /** Whether this mode supports the catch-up rule for late joiners. */
+  get supportsCatchUp(): boolean {
+    return Boolean(this.mode.catchUp);
   }
 
   hostNext(): DispatchResult {
@@ -709,7 +741,7 @@ export class GameRuntime {
       clearTimer: (id) => (fx ? void fx.timers.delete(id) : readOnly('clearTimer')),
       hasTimer: (id) => timers().has(id),
       feed: (text, opts) => (fx ? void fx.feed.push({ text, ...opts }) : readOnly('feed')),
-      recordAnswer: (rec) => (fx ? void fx.answers.push({ ...rec, at: this.gameNow() }) : readOnly('recordAnswer')),
+      recordAnswer: (rec) => (fx ? void fx.answers.push({ ...rec, ...(rec.given === undefined && fx.graded?.has(rec.qid) ? { given: fx.graded.get(rec.qid) ?? null } : {}), at: this.gameNow() }) : readOnly('recordAnswer')),
       endGame: (summary) => (fx ? void (fx.end = summary === undefined ? {} : { summary }) : readOnly('endGame')),
     };
   }
@@ -752,7 +784,9 @@ export class GameRuntime {
       grade: (iid, answer) => {
         const inst = instance(iid);
         const q = question(inst.qid);
-        return gradeAnswer(q, answerFromTokens(q, inst.order, answer));
+        const authored = answerFromTokens(q, inst.order, answer);
+        if (fx) (fx.graded ??= new Map()).set(inst.qid, answerText(q, authored));
+        return gradeAnswer(q, authored);
       },
       reveal: (iid) => {
         const inst = instance(iid);

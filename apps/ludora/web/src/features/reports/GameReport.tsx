@@ -1,6 +1,6 @@
 import { useParams } from 'react-router';
 import { useQuery } from '@tanstack/react-query';
-import { Download, FileSearch } from 'lucide-react';
+import { Download, FileSearch, RotateCcw } from 'lucide-react';
 import { api } from '../../lib/api.ts';
 import { useMe } from '../../lib/session.ts';
 import { duration, formatNumber, ordinal, plural } from '../../lib/format.ts';
@@ -65,6 +65,8 @@ interface GameReportData {
   };
   standings: Standing[];
   questions: QuestionStat[];
+  /** For the host only: what "Host again" brings back. */
+  setup?: { setId: string };
 }
 
 function endingText(endedBy: string, solo: boolean): string {
@@ -235,9 +237,16 @@ export default function GameReport() {
         title={<span className="break-words">{game.mode}</span>}
         description={game.setTitle}
         actions={
-          <Button icon={<Download className="size-4" />} onClick={download}>
-            Download CSV
-          </Button>
+          <>
+            {report.data.setup ? (
+              <ButtonLink to={`/host?again=${game.id}`} variant="primary" icon={<RotateCcw className="size-4" aria-hidden />}>
+                Host again
+              </ButtonLink>
+            ) : null}
+            <Button icon={<Download className="size-4" />} onClick={download}>
+              Download CSV
+            </Button>
+          </>
         }
       />
 

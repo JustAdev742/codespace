@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { deviceDress, schoolLook } from './school.ts';
 import { io, type Socket } from 'socket.io-client';
-import type { ChaosRequest, HostCommand, PulseView, RoomView } from '@ludora/shared';
+import type { ChaosRequest, HostCommand, PlayerRequest, PulseView, RoomView } from '@ludora/shared';
 import { newRequestKey } from './api.ts';
 
 /*
@@ -51,7 +51,8 @@ export interface Reaction {
 }
 
 export interface RoomState {
-  phase: 'connecting' | 'joined' | 'error' | 'closed';
+  /** 'waiting': in the room's waiting room, until the host lets this player in. */
+  phase: 'connecting' | 'waiting' | 'joined' | 'error' | 'closed';
   online: boolean;
   view: RoomView<any> | null;
   /** Local time when the current view arrived, for extrapolating the game clock. */
@@ -64,6 +65,8 @@ export interface RoomState {
   reactions: Reaction[];
   /** The server says this account just finished the lantern ritual: the lantern can be lit. */
   glow: boolean;
+  /** When the host last nudged this player ("Your teacher is waiting for your answer"). */
+  nudgedAt: number | null;
   /** Connection numbers for the staff debug overlay. */
   debug: { transport: string; views: number; reconnects: number; lastAckMs: number | null };
 }
@@ -92,14 +95,34 @@ function storeToken(code: string, token: string | null) {
  * (and score) again instead of making a second "Sam 2". A different name is a different player.
  */
 const seatKey = (code: string) => `ludora.seat.${code}`;
+function deviceRemovedToken(code: string): string | undefined {
+  try {
+    return localStorage.getItem(`ludora.removed.${code}`) ?? undefined;
+  } catch {
+    return undefined;
+  }
+}
+/** A seat the host removed this device from. Kept so the same device cannot come straight back under another name. */
+const removedKey = (code: string) => `ludora.removed.${code}`;
 const sameName = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase();
 function deviceToken(code: string, name: string | undefined): string | undefined {
-  if (!name?.trim()) return undefined;
   try {
+    // Removed by the host: join with the removed seat's token, whatever the name, so the server refuses it.
+    const removed = localStorage.getItem(removedKey(code));
+    if (removed) return removed;
+    if (!name?.trim()) return undefined;
     const seat = JSON.parse(localStorage.getItem(seatKey(code)) ?? 'null') as { name?: unknown; token?: unknown } | null;
     return seat && typeof seat.name === 'string' && typeof seat.token === 'string' && sameName(seat.name, name) ? seat.token : undefined;
   } catch {
     return undefined;
+  }
+}
+function storeRemoved(code: string, token: string | null | undefined) {
+  try {
+    if (token) localStorage.setItem(removedKey(code), token);
+    else localStorage.removeItem(removedKey(code));
+  } catch {
+    /* private mode: the tab's own token still keeps them out */
   }
 }
 function storeDeviceSeat(code: string, name: string | undefined, token: string | null) {
@@ -120,7 +143,7 @@ function emitWithAck(socket: Socket, event: string, payload: unknown, timeoutMs 
   });
 }
 
-export function useRoom(code: string, opts: { name?: string | undefined; as?: 'host' | 'player'; enabled?: boolean }) {
+export function useRoom(code: string, opts: { name?: string | undefined; as?: 'host' | 'player' | 'remote'; enabled?: boolean }) {
   const [state, setState] = useState<RoomState>({
     phase: 'connecting',
     online: false,
@@ -132,6 +155,7 @@ export function useRoom(code: string, opts: { name?: string | undefined; as?: 'h
     role: null,
     reactions: [],
     glow: false,
+    nudgedAt: null,
     debug: { transport: '-', views: 0, reconnects: 0, lastAckMs: null },
   });
   const socketRef = useRef<Socket | null>(null);
@@ -151,7 +175,7 @@ export function useRoom(code: string, opts: { name?: string | undefined; as?: 'h
 
     const join = async () => {
       const dress = schoolLook() ? deviceDress() : null;
-      const reconnectToken = storedToken(code) ?? deviceToken(code, nameRef.current);
+      const reconnectToken = deviceRemovedToken(code) ?? storedToken(code) ?? deviceToken(code, nameRef.current);
       const ack = await emitWithAck(socket, 'room:join', { code, name: nameRef.current, reconnectToken, as: opts.as, ...(dress ? { dress } : {}) });
       if (closed) return;
       if (!ack.ok) {
@@ -160,6 +184,12 @@ export function useRoom(code: string, opts: { name?: string | undefined; as?: 'h
         if (ack.error.code === 'room_not_found') {
           storeToken(code, null);
           storeDeviceSeat(code, undefined, null);
+          storeRemoved(code, null);
+        }
+        // The waiting room: stay connected until the host lets this player in (room:admitted) or not (room:closed).
+        if (ack.error.code === 'waiting_room') {
+          setState((s) => ({ ...s, phase: 'waiting', error: null }));
+          return;
         }
         setState((s) => ({ ...s, phase: 'error', error: ack.error }));
         return;
@@ -194,11 +224,22 @@ export function useRoom(code: string, opts: { name?: string | undefined; as?: 'h
       setTimeout(() => setState((s) => ({ ...s, reactions: s.reactions.filter((x) => x.key !== key) })), 3200);
     });
     socket.on('room:glow', () => setState((s) => ({ ...s, glow: true })));
+    socket.on('room:nudge', () => setState((s) => ({ ...s, nudgedAt: Date.now() })));
+    // Let in from the waiting room: the seat is ready, so join again with its token.
+    socket.on('room:admitted', (p: { reconnectToken?: string }) => {
+      if (typeof p?.reconnectToken !== 'string') return;
+      storeToken(code, p.reconnectToken);
+      storeDeviceSeat(code, nameRef.current, p.reconnectToken);
+      void join();
+    });
     socket.on('room:pulse', (p: PulseView) => pulseRef.current?.push(p));
     socket.on('room:closed', (p: { reason: string; message: string }) => {
       if (p.reason !== 'removed') {
         storeToken(code, null);
         storeDeviceSeat(code, undefined, null);
+      } else {
+        // Removed by the host: this device stays out, under any name, for as long as the room is open.
+        storeRemoved(code, storedToken(code) ?? null);
       }
       setState((s) => ({ ...s, phase: 'closed', closedMessage: p.message, closedReason: p.reason }));
       socket.disconnect();
@@ -241,9 +282,16 @@ export function useRoom(code: string, opts: { name?: string | undefined; as?: 'h
     return emitWithAck(socket, 'room:host', cmd);
   }, []);
 
-  const react = useCallback(async (emote: string) => {
+  const react = useCallback(async (emote: string): Promise<AckResult | null> => {
     const socket = socketRef.current;
-    if (socket) await emitWithAck(socket, 'room:react', { emote }, 3000);
+    return socket ? emitWithAck(socket, 'room:react', { emote }, 3000) : null;
+  }, []);
+
+  /** A player's own lobby and end-of-game choices: Ready, their team, the exit ticket. */
+  const player = useCallback(async (req: PlayerRequest): Promise<AckResult> => {
+    const socket = socketRef.current;
+    if (!socket?.connected) return { ok: false, error: { code: 'offline', message: 'You are offline. Try again when the connection is back.' } };
+    return emitWithAck(socket, 'room:player', req);
   }, []);
 
   /** A chaos request. The server checks the account's unlock; a locked account is told nothing. */
@@ -272,7 +320,7 @@ export function useRoom(code: string, opts: { name?: string | undefined; as?: 'h
     return v.paused ? v.gameNow : v.gameNow + (Date.now() - state.receivedAt);
   }, [state.view, state.receivedAt]);
 
-  return { ...state, act, fire, pulse, host, react, leave, gameNow, chaos, clearGlow };
+  return { ...state, act, fire, pulse, host, react, player, leave, gameNow, chaos, clearGlow };
 }
 
 type DistributiveOmit<T, K extends PropertyKey> = T extends unknown ? Omit<T, K> : never;

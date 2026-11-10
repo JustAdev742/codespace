@@ -58,6 +58,10 @@ export default defineConfig({
       WEB_PRIVATE_DIST: resolve('web/dist-private'),
       // E2E_SCHOOL_THEME=hills-grammar runs the suite in a school's look.
       SCHOOL_THEME: process.env.E2E_SCHOOL_THEME ?? '',
+      // Every test makes its own accounts, all from this one machine: more than one address may
+      // normally make in ten minutes. (The limit itself is tested in server/test/auth.test.ts.)
+      SIGNUPS_PER_10_MIN: '1000',
+      GUESTS_PER_10_MIN: '1000',
       LOG_LEVEL: 'warn',
     },
   },

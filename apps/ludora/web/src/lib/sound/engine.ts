@@ -107,6 +107,8 @@ export interface MusicEntry {
 export interface SoundState {
   /** Muted on this device. */
   muted: boolean;
+  /** The room's host made it a quiet room: nothing plays, whatever this device's own setting. Not remembered. */
+  silenced?: boolean;
   effects: boolean;
   music: boolean;
 }
@@ -187,7 +189,7 @@ class SoundEngine {
 
   /** Plays an effect now, unless effects are off or the device is muted. Returns a stop function for long effects. */
   play(name: SfxName, options: SfxOptions = {}): () => void {
-    if (this.state.muted || !this.state.effects) return () => {};
+    if (this.state.muted || this.state.silenced || !this.state.effects) return () => {};
     const g = this.ensure();
     if (!g) return () => {};
     // The same effect asked for twice at once (two screens reacting to one change) plays once.
@@ -306,12 +308,12 @@ class SoundEngine {
 
   /** Fetches music files ahead of need (no audio context required), so a track can start the moment it is wanted. */
   prefetchMusic(tracks: MusicId[]) {
-    if (this.state.muted || !this.state.music) return;
+    if (this.state.muted || this.state.silenced || !this.state.music) return;
     for (const t of tracks) void this.bank.prefetch(MUSIC_ASSETS[t].url);
   }
 
   private syncMusic() {
-    const want = this.state.muted || !this.state.music ? null : this.wanted;
+    const want = this.state.muted || this.state.silenced || !this.state.music ? null : this.wanted;
     if (this.playing?.id === want) return;
     if (!want) {
       this.stopPlaying(0.8);
@@ -391,6 +393,14 @@ class SoundEngine {
     } catch {
       // The choice still holds for this visit.
     }
+    this.syncMusic();
+    this.emit();
+  }
+
+  /** A quiet room: silence this device while the room says so, without changing its own mute setting. */
+  setSilenced(silenced: boolean) {
+    if (silenced === Boolean(this.state.silenced)) return;
+    this.state = { ...this.state, silenced };
     this.syncMusic();
     this.emit();
   }

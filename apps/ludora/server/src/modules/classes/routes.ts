@@ -21,6 +21,7 @@ import { loadAvatars } from '../profiles/avatar.ts';
 import { assignmentBlocker, loadClass, requireTeacherAccount } from './access.ts';
 import { activeGoal, classToolRoutes, goalView } from './tools.ts';
 import { classLoginRoutes } from './logins.ts';
+import { classLiveRoutes } from './live.ts';
 
 /*
  * Classes and assignments. A teacher account creates a class and shares its
@@ -201,7 +202,7 @@ export async function classRoutes(app: FastifyInstance, deps: AppDeps) {
       .orderBy(asc(classEvents.startsAt))
       .limit(30);
     return {
-      class: { id: cls.id, name: cls.name, schoolName: cls.schoolName, teacher: owner?.displayName ?? 'Teacher', archived: Boolean(cls.archivedAt), leaderboardOn: cls.leaderboardOn, ...(teacher ? { joinCode: cls.joinCode } : {}) },
+      class: { id: cls.id, name: cls.name, schoolName: cls.schoolName, teacher: owner?.displayName ?? 'Teacher', archived: Boolean(cls.archivedAt), leaderboardOn: cls.leaderboardOn, ...(teacher ? { joinCode: cls.joinCode, hostDefaults: { generatedNames: cls.hostGeneratedNames, quiet: cls.hostQuiet } } : {}) },
       notices: notices.map((n) => ({ id: n.id, body: n.body, createdAt: n.createdAt.toISOString() })),
       goal: goal ? goalView(goal) : null,
       events: events.map(eventView),
@@ -228,7 +229,16 @@ export async function classRoutes(app: FastifyInstance, deps: AppDeps) {
   app.patch('/api/classes/:id', async (req) => {
     const auth = requireAccount(req);
     const { id } = parse(idParam, req.params);
-    const body = parse(z.object({ name: z.string().trim().min(2).max(60).optional(), archived: z.boolean().optional(), schoolName: schoolNameSchema.optional(), leaderboardOn: z.boolean().optional() }), req.body);
+    const body = parse(
+      z.object({
+        name: z.string().trim().min(2).max(60).optional(),
+        archived: z.boolean().optional(),
+        schoolName: schoolNameSchema.optional(),
+        leaderboardOn: z.boolean().optional(),
+        hostDefaults: z.object({ generatedNames: z.boolean().optional(), quiet: z.boolean().optional() }).optional(),
+      }),
+      req.body,
+    );
     const { teacher } = await loadClass(db, id, auth);
     if (!teacher) throw forbidden('Only the teacher can change the class.');
     await db
@@ -238,6 +248,8 @@ export async function classRoutes(app: FastifyInstance, deps: AppDeps) {
         ...(body.archived !== undefined ? { archivedAt: body.archived ? new Date() : null } : {}),
         ...(body.schoolName !== undefined ? { schoolName: body.schoolName || null } : {}),
         ...(body.leaderboardOn !== undefined ? { leaderboardOn: body.leaderboardOn } : {}),
+        ...(body.hostDefaults?.generatedNames !== undefined ? { hostGeneratedNames: body.hostDefaults.generatedNames } : {}),
+        ...(body.hostDefaults?.quiet !== undefined ? { hostQuiet: body.hostDefaults.quiet } : {}),
       })
       .where(eq(classes.id, id));
     return { ok: true };
@@ -498,6 +510,7 @@ export async function classRoutes(app: FastifyInstance, deps: AppDeps) {
 
   await classToolRoutes(app, deps);
   await classLoginRoutes(app, deps);
+  await classLiveRoutes(app, deps);
 
   /* ---------------------------------- school events ---------------------------------- */
 

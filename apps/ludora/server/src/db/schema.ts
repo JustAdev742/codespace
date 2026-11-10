@@ -190,6 +190,8 @@ export const gameSessions = pgTable(
     isSolo: boolean('is_solo').notNull().default(false),
     /** Set when chaos cheats were cast in this game: how many, and by which player slots. */
     chaos: jsonb('chaos'),
+    /** The room's options when it was played (hosting: "Host again" brings them back). */
+    options: jsonb('options'),
     startedAt: ts('started_at').notNull(),
     endedAt: ts('ended_at').notNull(),
     durationMs: integer('duration_ms').notNull(),
@@ -568,6 +570,9 @@ export const classes = pgTable(
     schoolName: text('school_name'),
     /** Whether the class's weekly leaderboard is shown. The teacher can turn it off. */
     leaderboardOn: boolean('leaderboard_on').notNull().default(true),
+    /** Hosting defaults for this class's live games: generated names only, and a quiet room. */
+    hostGeneratedNames: boolean('host_generated_names').notNull().default(false),
+    hostQuiet: boolean('host_quiet').notNull().default(false),
     createdAt: now('created_at'),
     archivedAt: ts('archived_at'),
   },

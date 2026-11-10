@@ -9,6 +9,9 @@ import { Button } from '../../ui/Button.tsx';
 import { MODE_SCREENS } from './modes/registry.ts';
 import { useAnnounce } from './game/announce.tsx';
 import { ChaosLayer } from '../extras/ExtrasLayer.tsx';
+import { HostMenu } from './host/HostTools.tsx';
+import { DoubleBanner, NudgeBanner } from './host/overlays.tsx';
+import { withKey } from './host/tools.ts';
 
 /*
  * The parts of a game room that do not care where the room runs: the stage,
@@ -55,17 +58,17 @@ export function HostControls({ room, handle }: { room: RoomView; handle: RoomHan
     <div className="flex items-center gap-1.5 sm:gap-2">
       {game?.sync ? (
         // The one button that moves a host-paced game on: big and gold when the room is waiting for it.
-        <Button variant={waitingForHost ? 'primary' : 'secondary'} size={waitingForHost ? 'lg' : 'sm'} className={waitingForHost ? '' : WIDE} icon={<FastForward className="size-4" aria-hidden />} onClick={() => run({ cmd: 'next' })} disabled={status !== 'running'}>
+        <Button variant={waitingForHost ? 'primary' : 'secondary'} size={waitingForHost ? 'lg' : 'sm'} className={waitingForHost ? '' : WIDE} icon={<FastForward className="size-4" aria-hidden />} onClick={() => run({ cmd: 'next' })} disabled={status !== 'running'} title={withKey(waitingForHost ? 'Next' : 'Skip ahead', 'N')} aria-keyshortcuts="N">
           {/* On a phone the host's header is full: Skip ahead keeps its label for screen readers, like Pause and End game. */}
           {waitingForHost ? 'Next' : <span className="max-sm:sr-only">Skip ahead</span>}
         </Button>
       ) : null}
       {status === 'paused' ? (
-        <Button size="sm" variant="success" className={WIDE} icon={<Play className="size-4" aria-hidden />} onClick={() => run({ cmd: 'resume' })}>
+        <Button size="sm" variant="success" className={WIDE} icon={<Play className="size-4" aria-hidden />} onClick={() => run({ cmd: 'resume' })} title={withKey('Resume', 'P')} aria-keyshortcuts="P">
           Resume
         </Button>
       ) : (
-        <Button size="sm" className={WIDE} icon={<Pause className="size-4" aria-hidden />} onClick={() => run({ cmd: 'pause' })} disabled={status !== 'running'}>
+        <Button size="sm" className={WIDE} icon={<Pause className="size-4" aria-hidden />} onClick={() => run({ cmd: 'pause' })} disabled={status !== 'running'} title={withKey('Pause', 'P')} aria-keyshortcuts="P">
           <span className="max-md:sr-only">Pause</span>
         </Button>
       )}
@@ -75,9 +78,10 @@ export function HostControls({ room, handle }: { room: RoomView; handle: RoomHan
           <span className="max-md:sr-only">Calm the room</span>
         </Button>
       ) : null}
-      <Button size="sm" variant="ghost" className={WIDE} icon={<Square className="size-4" aria-hidden />} onClick={() => setConfirmEnd(true)}>
+      <Button size="sm" variant="ghost" className={WIDE} icon={<Square className="size-4" aria-hidden />} onClick={() => setConfirmEnd(true)} title="End game">
         <span className="max-md:sr-only">End game</span>
       </Button>
+      <HostMenu room={room} handle={handle} className="max-sm:size-11 min-[1600px]:size-12" />
       <Dialog
         open={confirmEnd}
         onOpenChange={setConfirmEnd}
@@ -171,13 +175,15 @@ export function GameStage({ room, handle, isHost }: { room: RoomView; handle: Ro
   const Screen = isHost ? screens.Host : screens.Player;
   return (
     <div className="relative flex flex-1 flex-col">
-      <PauseNews paused={paused} hostConnected={room.room.hostConnected} />
+      <PauseNews paused={paused && !room.room.breakEndsAt} hostConnected={room.room.hostConnected} />
+      <DoubleBanner room={room} big={isHost} />
+      {isHost ? null : <NudgeBanner nudgedAt={handle.nudgedAt} />}
       <ChaosLayer room={room} gameNow={handle.gameNow}>
         <Suspense fallback={<Spinner />}>
           <Screen view={room.game} room={room} act={handle.act} fire={handle.fire} pulse={handle.pulse} gameNow={handle.gameNow} paused={paused} />
         </Suspense>
       </ChaosLayer>
-      {paused && isHost ? (
+      {paused && isHost && !room.room.breakEndsAt ? (
         // The host screen is on the projector: tell the room, but leave the question readable.
         <div className="pointer-events-none absolute inset-x-0 top-0 z-20 flex justify-center">
           <span className="paper stage-card flex items-center gap-2 px-5 py-2 font-display text-[clamp(1.5rem,2.3vw,2.4rem)] font-extrabold">
@@ -185,7 +191,7 @@ export function GameStage({ room, handle, isHost }: { room: RoomView; handle: Ro
           </span>
         </div>
       ) : null}
-      {paused && !isHost ? (
+      {paused && !isHost && !room.room.breakEndsAt ? (
         <div className="absolute -inset-2 z-20 grid place-items-center rounded-[var(--radius-l)] bg-[color-mix(in_srgb,var(--stage-4)_72%,transparent)] backdrop-blur-sm">
           <div className="paper stage-card mx-4 flex max-w-xs flex-col items-center gap-1 px-6 py-5 text-center">
             <Pause className="mb-1 size-10" aria-hidden />

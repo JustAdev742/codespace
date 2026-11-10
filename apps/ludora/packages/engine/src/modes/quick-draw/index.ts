@@ -20,6 +20,8 @@ import {
   syncView,
   type SyncConfig,
   type SyncState,
+  syncAddTime,
+  syncWaitingOn,
 } from '../../mechanics/syncRounds.ts';
 import { meta, settings } from './meta.ts';
 
@@ -151,6 +153,9 @@ export const quickDraw = defineMode<State, Settings, Action>({
   onTimer(s, id, ctx) {
     syncOnTimer(s, cfg, id, ctx);
   },
+  // Shared hosting features: who is still answering, add time.
+  waitingOn: (s, ctx) => syncWaitingOn(s, cfg, ctx),
+  addTime: (s, ms, ctx) => syncAddTime(s, ms, ctx),
   onHostNext(s, ctx) {
     return syncHostNext(s, cfg, ctx);
   },

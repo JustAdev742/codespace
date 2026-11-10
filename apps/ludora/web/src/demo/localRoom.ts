@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { roomOptionsSchema, type HostCommand, type PulseView, type Question, type RoomView } from '@ludora/shared';
+import { roomOptionsSchema, type HostCommand, type PlayerRequest, type PulseView, type Question, type RoomView } from '@ludora/shared';
 import { findCatalogMode } from '@ludora/engine/catalog';
 // The room the live server runs, unchanged. It knows nothing about sockets or the database, so it runs here too.
 import { Room } from '../../../server/src/realtime/room.ts';
@@ -142,9 +142,8 @@ export function useLocalRoom(setup: DemoSetup): { player: RoomHandle | null; hos
     if (r && id) r.action(id, newRequestKey('m').slice(0, 30), copy(action));
   }, []);
   const host = useCallback(async (cmd: HostCommand): Promise<AckResult> => room.current?.hostCommand(copy(cmd)) ?? CLOSED, []);
-  const react = useCallback(async (emote: string) => {
-    if (playerId.current) room.current?.react(playerId.current, emote, 'player');
-  }, []);
+  const react = useCallback(async (emote: string): Promise<AckResult | null> => (playerId.current ? (room.current?.react(playerId.current, emote, 'player') ?? null) : null), []);
+  const playerRequest = useCallback(async (req: PlayerRequest): Promise<AckResult> => (room.current && playerId.current ? room.current.playerRequest(playerId.current, copy(req)) : CLOSED), []);
   // Leaving is going back to the demo's start page, which closes the room.
   const leave = useCallback(async () => {}, []);
   // Chaos needs the game server (the unlock lives on an account); the demo has none.
@@ -166,19 +165,21 @@ export function useLocalRoom(setup: DemoSetup): { player: RoomHandle | null; hos
             role,
             reactions: screens.reactions,
             glow: false,
+            nudgedAt: null,
             debug: { transport: 'in-page', views: 0, reconnects: 0, lastAckMs: null },
             act,
             fire,
             pulse: pulse.current,
             host,
             react,
+            player: playerRequest,
             leave,
             gameNow,
             chaos,
             clearGlow,
           }
         : null,
-    [screens.reactions, act, fire, host, react, leave, gameNow, chaos, clearGlow],
+    [screens.reactions, act, fire, host, react, playerRequest, leave, gameNow, chaos, clearGlow],
   );
   const player = useMemo(() => handle('player', screens.player), [handle, screens.player]);
   const hostHandle = useMemo(() => handle('host', screens.host), [handle, screens.host]);

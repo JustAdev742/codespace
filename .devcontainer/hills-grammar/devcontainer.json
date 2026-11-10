@@ -12,7 +12,9 @@
     "8787": { "label": "Ludora", "onAutoForward": "openBrowser" },
     "5432": { "label": "Postgres", "onAutoForward": "ignore" }
   },
-  "remoteEnv": { "SCHOOL_THEME": "hills-grammar" },
+  // A school reaches the internet from one address, so the limits on new accounts and guests from
+  // one address are raised for several classes joining at once (docs/DEPLOYMENT.md).
+  "remoteEnv": { "SCHOOL_THEME": "hills-grammar", "SIGNUPS_PER_10_MIN": "600", "GUESTS_PER_10_MIN": "600" },
   "postCreateCommand": "bash .devcontainer/setup.sh",
   "postStartCommand": "bash .devcontainer/start.sh",
   "hostRequirements": { "cpus": 4 },

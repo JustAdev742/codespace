@@ -32,6 +32,13 @@ const schema = z.object({
   TRUST_PROXY: bool,
   /** Key for hashing IP addresses before they are stored. */
   IP_HASH_KEY: z.string().min(16).default('dev-only-ip-hash-key-change-me'),
+  /**
+   * How many new accounts, and how many guests, one address may make in ten minutes. A whole school
+   * usually reaches the internet from one address, so a school's own copy needs more than the
+   * defaults when several classes join at once. There is always a limit: it cannot be switched off.
+   */
+  SIGNUPS_PER_10_MIN: z.coerce.number().int().min(5).max(5000).default(40),
+  GUESTS_PER_10_MIN: z.coerce.number().int().min(5).max(5000).default(60),
   UPLOAD_DIR: z.string().default('./uploads'),
   /** Built web app to serve (production). */
   WEB_DIST: z.string().default('../web/dist'),
