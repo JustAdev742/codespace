@@ -326,7 +326,7 @@ in its load-carrying robot legs (R11 §1.4).
 | Leg actuators | **12 hub motors + 12 ODESC drives**, 8 drill gearmotors (hip yaw and roll) | 12 hub motors + 12 ODESC drives, 8 drills; arms, waist and neck as K1-Scrap | 14 drill gearmotors |
 | Knee | 2 hub motors, 7.7:1 chain: **335 N·m, 12.9 rad/s** | 2 hub motors, 8:1: **347 N·m, 12.5 rad/s** | 2 drills, 5.5:1 capstan: 134 N·m, 7.6 rad/s |
 | Mass | about 52 kg | about 62 kg | about 30 kg |
-| Parts | **A$2,342 buying / A$1,553 scrounging** ([bom](../s1fast/generated/bom.md)) | **A$2,673 / A$1,782** ([bom](../k1fast/generated/bom.md)) | A$917 / A$492 |
+| Parts | **A$2,366 buying / A$1,577 scrounging** ([bom](../s1fast/generated/bom.md)) | **A$2,697 / A$1,806** ([bom](../k1fast/generated/bom.md)) | A$917 / A$492 |
 
 Twelve hub motors fit inside your 20, which leaves spares. If you already have the motors, take about A$360 off
 the "buy" totals. The **ODESC drives are the biggest cost** (12 × about A$60). Each used hoverboard also has a free
@@ -389,13 +389,15 @@ waist 1.5:1 capstans; shoulder roll and yaw direct; servo neck).
    Fit a 2 Ω 50 W brake resistor per pair of drives; the legs regenerate when they brake.
 2. Configure with `odrivetool` (ODrive 0.5.x firmware): pole pairs 15, motor type high-current, current limit 50 A,
    calibration current 10 A, hall encoder (90 counts per revolution), control mode torque.
-3. **CAN:** all drives on one CAN bus to the ESP32s (SN65HVD230 transceivers), 500 kbit/s. Each ESP32 runs the joint PD
-   loop at 500 Hz from the MT6701 on the joint, and sends torque commands to its drives.
+3. **CAN:** one CAN bus per leg at 1 Mbit/s: the leg's 6 drives and its ESP32 (SN65HVD230 transceiver). Each ESP32
+   runs the joint PD loop at 500 Hz from the MT6701 on the joint, and sends torque commands to its drives. Six drives
+   at 500 Hz plus their status messages load a 1 Mbit/s bus to about half; all 12 on one 500 kbit/s bus would not fit.
 
 ### F4. The 48 V pack and power
 
-1. **Pack:** 13S4P (48 V, about 10 Ah) from tested hoverboard-pack cells, with a 13S BMS. Charge to 54.6 V at most,
-   supervised.
+1. **Pack:** 13S4P (48 V, about 10 Ah) from tested hoverboard-pack cells, with a **13S 60 A BMS**. Charge to 54.6 V at
+   most, supervised. In simulation the legs draw 6 A on average walking at 1.0 m/s, with 36 A peaks (71 A peaks at
+   1.44 m/s), so a 30 A BMS would cut out. Main fuse: 60 A. About 1.3 hours of walking per charge at 1.0 m/s.
 2. **Contactor:** hub motors draw large peak currents, so use a **100 A DC contactor** (12 V coil) in the e-stop loop,
    not the 40 A automotive relay of the drill builds.
 3. **18 V branch:** a 48 → 18 V, 20 A buck feeds the drill-driven joints (hip yaw and roll, arms).
@@ -405,8 +407,8 @@ waist 1.5:1 capstans; shoulder roll and yaw direct; servo neck).
 The fast builds walk dynamically, so they need the walking policy from `train/`, not the scripted CSV gait. Trained
 policies are included: `train/runs/s1fast/policy.pt`, and for K1-Fast `train/runs/k1fast/policy.pt` (all-terrain:
 1.12 m/s, 15 cm stairs 88 %) and `train/runs/k1fast_walk/policy.pt` (fast walking: 1.31 m/s). The policy outputs joint
-position targets 50 times a second; each ODESC holds its joint on them with the PD gains in `train/model.py` and its
-current limit.
+position targets 50 times a second. The leg ESP32 holds each joint on its target with the PD gains in `train/model.py`
+(500 Hz, F3) and sends the torque to the ODESC, which limits the current.
 
 * Check a policy: `python play.py --variant s1fast --run s1fast --speed 1.0` (terrain table) and
   `python play.py --variant s1fast --run s1fast --speed-test 0.6,0.8,1.0,1.2,1.4,1.6` (top speed against the motor

@@ -21,7 +21,7 @@ gets retired.
 | **K1 Mk II** | ≈ A$226k | the work humanoid: custom liquid-cooled actuators, 13-DOA hands, shells | this package |
 | **S1** | ≈ A$39k | same skeleton, off-the-shelf actuator modules on CAN, bolted aluminium frame | [simple/](simple/README.md) |
 | **S1-Scrap / K1-Scrap** | A$500–1,280 | same skeleton from salvaged drill motors, hand-made capstans and hand tools; slow, always-balanced walking | [scrap/](scrap/README.md) |
-| **S1-Fast / K1-Fast** | A$1,550–2,670 | the scrap builds with quasi-direct-drive hoverboard hub-motor legs on ODESC drives: sized for 0.8–1.0 m/s; the trained policies walk 1.44 / 1.31 m/s in simulation within the motors' limits | [scrap/](scrap/README.md) |
+| **S1-Fast / K1-Fast** | A$1,580–2,700 | the scrap builds with quasi-direct-drive hoverboard hub-motor legs on ODESC drives: sized for 0.8–1.0 m/s; the trained policies walk 1.44 / 1.31 m/s in simulation within the motors' limits | [scrap/](scrap/README.md) |
 
 ## Key numbers (Mk II)
 

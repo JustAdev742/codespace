@@ -27,7 +27,7 @@ bike-chain reductions at the hips, knees and ankles: 2 per hip pitch, 2 per knee
 | Stairs, objects | 18 cm stairs, 10 kg box | 18 cm stairs, 5 kg box | 15 cm steps, 3 kg |
 | Knee | 335 N·m, 12.9 rad/s | 347 N·m, 12.5 rad/s | 134 N·m, 7.6 rad/s |
 | Mass | about 52 kg | about 62 kg | about 30 kg |
-| Parts | A$2,342 buying / A$1,553 scrounging ([bom](s1fast/generated/bom.md)) | A$2,673 / A$1,782 ([bom](k1fast/generated/bom.md)) | A$917 / A$492 |
+| Parts | A$2,366 buying / A$1,577 scrounging ([bom](s1fast/generated/bom.md)) | A$2,697 / A$1,806 ([bom](k1fast/generated/bom.md)) | A$917 / A$492 |
 
 **Unitree H2's walking pace, in simulation.** The sizing calculation replays a prescribed walk with torque and
 speed margins. By that measure, hub motors close only at 1.0 and 0.8 m/s, because their large rotors feel like

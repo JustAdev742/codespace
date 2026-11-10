@@ -105,7 +105,9 @@ def lines(sub, c):
     if c["odesc"]:
         add("Power", "18650 cells for a 13S4P pack (48 V, ~10 Ah): the hoverboards' own packs supply most of them", 52, 2.0, 0.0, "E",
             "R11 §5: each hoverboard pack is 10S2P (20 cells); test every cell")
-        add("Power", "13S 30 A BMS + holders / nickel strip", 1, 18.0, 18.0, "E", "R11 §5: 10S BMS A$9-13 (V); 13S 30 A estimated")
+        add("Power", "13S 60 A BMS + holders / nickel strip", 1, 35.0, 35.0, "E",
+            "the legs draw 6 A mean, 36 A peaks walking at 1.0 m/s and 71 A peaks at 1.44 m/s (train/ simulation): a 30 A "
+            "BMS would cut out; 10S BMS A$9-13 (V, R11 §5), 13S 60 A estimated")
         add("Power", "48 -> 18 V 20 A buck converter (drill-driven joints)", 1, 22.0, 22.0, "E", "")
         add("Power", "Charger: 54.6 V 2 A Li-ion charger (or a CC/CV boost module from a laptop supply)", 1, 25.0, 15.0, "E", "supervised charging only")
     else:
@@ -119,7 +121,11 @@ def lines(sub, c):
         add("Safety", "100 A DC contactor (12 V coil) + coil buck + flyback diode (hub-motor peak currents)", 1, 25.0, 25.0, "E", "AliExpress")
     else:
         add("Safety", "40 A automotive relay (contactor) + 12 V coil buck + flyback diode", 1, 8.0, 8.0, "E", "")
-    add("Safety", "Blade fuse holders + fuses (40 A main, 15 A per limb)", 1, 8.0, 8.0, "E", "")
+    if c["odesc"]:
+        add("Safety", "Fuses: 60 A MIDI main fuse + holder, 15 A blade fuse per drive pair and per limb", 1, 15.0, 15.0, "E",
+            "the main fuse carries the 71 A walking peaks (milliseconds) and opens on a short")
+    else:
+        add("Safety", "Blade fuse holders + fuses (40 A main, 15 A per limb)", 1, 8.0, 8.0, "E", "")
     add("Safety", "Gantry: 10 m rope, 2 carabiners, chest and pelvis straps (garage beam or A-frame)", 1, 20.0, 10.0, "E", "")
     if k1:
         add("Head and shell", "Old smartphone (camera, IMU, screen face, Wi-Fi)", 1, 40.0, 0.0, "E", "your old phone; used A$30-60")
