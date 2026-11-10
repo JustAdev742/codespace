@@ -22,7 +22,8 @@
     "./extras-effects": "./src/extras/effects/index.ts",
     "./extras-overlays": "./src/extras/overlays.ts",
     "./gold-rush": "./src/modes/gold-rush/public.ts",
-    "./summit-scramble": "./src/modes/summit-scramble/public.ts"
+    "./summit-scramble": "./src/modes/summit-scramble/public.ts",
+    "./spot-kick": "./src/modes/spot-kick/public.ts"
   },
   "dependencies": {
     "@ludora/shared": "*",

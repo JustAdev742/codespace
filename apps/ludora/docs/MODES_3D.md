@@ -1,8 +1,8 @@
 # The 3D modes
 
-Six modes drawn with Ludora's 3D engine (`web/src/three/`). They are games, not lessons. As in
+Seven modes drawn with Ludora's 3D engine (`web/src/three/`). They are games, not lessons. As in
 every other mode, the learning comes from the class's own question set: a right answer is what
-powers everything you do. The setting (a goldfield, a jetty, a data city, a shop, a park at night, a mountain)
+powers everything you do. The setting (a goldfield, a jetty, a data city, a shop, a park at night, a mountain, a floodlit stadium)
 is just where the game happens, and none of them is tied to one subject.
 
 | Mode | id | What you do |
@@ -13,6 +13,7 @@ is just where the game happens, and none of them is tied to one subject.
 | Code Breakers | `code-breakers` | Mine bits, guess rivals' passwords to hack them, defend with firewalls and 2FA. |
 | Corner Shop | `corner-shop` | Stock shelves, serve a queue of customers, grow your shop. |
 | Summit Scramble | `summit-scramble` | Climb a mountain at night with the whole class: climb or leap ledge by ledge, reach the camps first, throw ropes to the climbers below. |
+| Spot Kick | `spot-kick` | Take penalties under floodlights: pick a place and a strength, and beat a keeper who learns your habits. |
 
 Names, art and words are Ludora's own (D30): no other product's names, characters, layouts or
 copy. "Inspired by" a genre is fine; copying a product is not.
@@ -228,3 +229,45 @@ Everyone climbs the same mountain at night, lanterns in hand. Right answers are 
   light is additive glow sprites); snow only above the low tier; shadows only on high. Under
   reduced motion the camera moves straight to its place without sweeping or drifting, snow and
   clouds hold still, and moves are drawn with small hops.
+
+## Spot Kick (`spot-kick`)
+
+A penalty shoot-out under floodlights. Right answers earn footballs; where you put them is up to you.
+
+- **Footballs.** Each right answer earns one football; you hold up to 3. A wrong answer earns none.
+  Questions are self-paced and always open beside the shooting.
+- **A penalty** spends a football. Choose one of five places (the four corners or the middle) and a
+  strength. A **placed** shot is always on target but easier to save; a **blasted** one is harder to
+  save but can fly wide (top corners most often). The server draws the outcome, the keeper's dive
+  and how a save or miss looked from the game's seeded random source, from exactly the chances on
+  the buttons (`odds.ts` is shared by the mode and the screens).
+- **The keeper learns.** Every shot at a place makes the keeper save it 8 in 100 more often there
+  (up to 4 steps), and every other place one step less: mix your shots up and it forgets. What it has
+  learned is on every button (the chances, and pips), and the 3D keeper stands a little towards it.
+- **On fire.** Three goals in a row and your next goal counts double. A miss or a save puts the fire
+  out.
+- **Score**: goals are points; the most at the final whistle wins (6 minutes by default; the last ten
+  seconds count down on every screen).
+- **Variants**: House Match (two teams, goals add up for your team, the big screen shows the
+  scoreline, and the keeper learns the whole team's habits), Keeper Duty (every shot is at a rival's
+  goal, in turn; each player sets the two places their own keeper guards, and can change them at any
+  time; a guarded place is saved 25 in 100 more often, and the rival's plan is on your buttons),
+  Golden Goal (level at the top when time runs out: only the leaders can shoot, the first to score
+  wins, and it ends level after 90 seconds).
+- **Buttons, not the picture.** Two strength toggles and five place buttons laid out like a goal, each
+  naming its place and chances ("Shoot top left, placed: 70% goal, saved 30%, wide 0%"). What
+  happened to each shot is said through the screen reader announcer once the picture has shown it.
+- **3D**: a small stadium at night: four floodlight pylons, a stand of Glims behind the goal (the
+  class's own in the front row, instanced fans behind), glowing boards, a striped pitch, and a goal
+  whose back net bulges. The keeper, Mitts, is Ludora's own: round, violet, with huge gold gloves.
+  Your Glim runs up and strikes; placed shots curl, blasts fly flat; the keeper dives, catches,
+  parries or tips it over; the crowd jumps; after a goal your Glim turns round to celebrate. On the
+  big screen the same stadium plays a highlights reel of shots from around the class, from three
+  broadcast cameras, with each kicker's Glim and name; a busy class skips to the newest shots, and
+  the table and "Latest shots" hold each result back until its highlight has played.
+- **2D**: with 3D off, a drawn goal mouth from behind the spot: the ball flies along its dashed path,
+  the keeper dives, a plate says what happened, and the keeper's learned places glow.
+- **Budgets**: on high about 165 draw calls and 62k triangles (fans' Glims use the low-tier body
+  without outlines); low drops the beams, roof lamps and real Glims (about 80 draw calls). Reduced
+  motion holds the cameras still and calms the crowd; resets and highlights run on the scene's own
+  clock, so a slow laptop slows the picture rather than cutting shots short.

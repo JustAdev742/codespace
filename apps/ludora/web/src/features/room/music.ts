@@ -33,6 +33,7 @@ export const MODE_MUSIC: Record<string, MusicId> = {
   'lantern-trail': 'market',
   'gold-rush': 'market',
   'summit-scramble': 'game',
+  'spot-kick': 'battle',
   'lantern-lands': 'game',
   confidence: 'calm',
   'lantern-match': 'calm',

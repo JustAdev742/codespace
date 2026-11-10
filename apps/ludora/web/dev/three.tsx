@@ -24,6 +24,7 @@ import { speciesOf, sizeCm, type WaterId } from '@ludora/engine/big-catch';
 import { Field } from '../src/features/room/modes/glow-tag-field.ts';
 import { GlowTagHostScene, GlowTagScene } from '../src/features/room/modes/glow-tag-scene.ts';
 import { SummitHostScene, SummitScene, type MoveKind, type SceneClimber } from '../src/features/room/modes/summit-scene.ts';
+import { SpotKickReelScene, SpotKickScene, type Aim, type KickShot, type Outcome, type ShotHow } from '../src/features/room/modes/spot-kick-scene.ts';
 
 const params = new URLSearchParams(location.search);
 const q = params.get('quality');
@@ -389,6 +390,46 @@ function makeSummit(env: StageEnv, host: boolean) {
   return w;
 }
 
+// ?scene=spotkick  a player's penalties, one every few seconds (&shot=goal|saved|wide to fix the outcome, &fire=1, &guard=1).
+// ?scene=spotkick-host  the big screen's highlights reel.
+const SK_AIMS: Aim[] = ['tl', 'br', 'mid', 'tr', 'bl'];
+const SK_OUT: [Outcome, ShotHow][] = [['goal', 'net'], ['saved', 'catch'], ['goal', 'net'], ['wide', 'over'], ['saved', 'parry'], ['wide', 'post']];
+function skShot(seq: number): KickShot {
+  const fixed = params.get('shot') as Outcome | null;
+  const pick = fixed ? (SK_OUT.find((o) => o[0] === fixed) ?? SK_OUT[0]!) : SK_OUT[seq % SK_OUT.length]!;
+  const aim = SK_AIMS[seq % SK_AIMS.length]!;
+  const dive = pick[0] === 'saved' ? aim : SK_AIMS[(seq + 2) % SK_AIMS.length]!;
+  return { seq, aim, power: seq % 2 ? 'blasted' : 'placed', outcome: pick[0], how: pick[1], dive: dive === aim && pick[0] === 'goal' ? (aim === 'tl' ? 'br' : 'tl') : dive, points: pick[0] === 'goal' ? 1 : 0, fire: params.get('fire') === '1' };
+}
+const skLooks = () => GLIMS.slice(0, 16).map((g) => ({ art: g.art as GlimArt, rarity: g.rarity as Rarity }));
+function makeSpotKick(env: StageEnv) {
+  const looks = skLooks();
+  const w = new SpotKickScene(env, looks[0]!, looks);
+  (window as unknown as { __world: unknown }).__world = w;
+  const reads = { tl: 2, tr: 0, mid: 0, bl: 0, br: 1 };
+  const guard: Aim[] | null = params.get('guard') === '1' ? ['tl', 'mid'] : null;
+  w.setState({ balls: 2, reads, guard, onFire: params.get('fire') === '1', shot: null });
+  if (params.get('still') === '1') return w;
+  let seq = 1;
+  setTimeout(function go() {
+    w.setState({ balls: 2, reads, guard, onFire: params.get('fire') === '1', shot: skShot(++seq) });
+    setTimeout(go, 5600);
+  }, 1200);
+  return w;
+}
+function makeSpotKickHost(env: StageEnv) {
+  const looks = skLooks();
+  const w = new SpotKickReelScene(env, looks);
+  (window as unknown as { __world: unknown }).__world = w;
+  w.setShots([]);
+  let id = 1;
+  setInterval(() => {
+    const s = skShot(++id);
+    w.setShots([{ ...s, id, name: GLIMS[id % 16]!.name, look: looks[id % 16]! }]);
+  }, 5000);
+  return w;
+}
+
 function App() {
   const create = (env: StageEnv) =>
     sceneName === 'gold'
@@ -407,7 +448,11 @@ function App() {
                   ? makeGlowTag(env, sceneName === 'glowtag-host')
                   : sceneName === 'summit' || sceneName === 'summit-host'
                     ? makeSummit(env, sceneName === 'summit-host')
-                    : new Gallery(env);
+                    : sceneName === 'spotkick'
+                      ? makeSpotKick(env)
+                      : sceneName === 'spotkick-host'
+                        ? makeSpotKickHost(env)
+                        : new Gallery(env);
   return (
     <main style={{ height: '100vh', display: 'grid' }}>
       <Stage3D label="3D gallery" create={create} className="h-full w-full" />

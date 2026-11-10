@@ -41,6 +41,8 @@ import { festivalWorkshop } from './festival-workshop/index.ts';
 import { variants as festivalWorkshopVariants } from './festival-workshop/meta.ts';
 import { goldRush } from './gold-rush/index.ts';
 import { variants as goldRushVariants } from './gold-rush/meta.ts';
+import { spotKick } from './spot-kick/index.ts';
+import { variants as spotKickVariants } from './spot-kick/meta.ts';
 import { glowTag } from './glow-tag/index.ts';
 import { variants as glowTagVariants } from './glow-tag/meta.ts';
 import { bigCatch } from './big-catch/index.ts';
@@ -53,7 +55,7 @@ import { summitScramble } from './summit-scramble/index.ts';
 import { variants as summitScrambleVariants } from './summit-scramble/meta.ts';
 
 /** Every mode with logic. Order here is the default catalogue order. */
-export const MODES: readonly GameMode[] = [classic, cometDash, quickDraw, lanternOut, confidence, glimgo, lanternMatch, wordScramble, timeAttack, survivalRun, flashcardStudy, skyLanterns, gloomGiant, tugOfWar, nightMarket, lanternGuard, glimDuels, lanternTrail, lanternLands, festivalWorkshop, goldRush, glowTag, bigCatch, cornerShop, codeBreakers, summitScramble];
+export const MODES: readonly GameMode[] = [classic, cometDash, quickDraw, lanternOut, confidence, glimgo, lanternMatch, wordScramble, timeAttack, survivalRun, flashcardStudy, skyLanterns, gloomGiant, tugOfWar, nightMarket, lanternGuard, glimDuels, lanternTrail, lanternLands, festivalWorkshop, goldRush, glowTag, bigCatch, cornerShop, codeBreakers, summitScramble, spotKick];
 
 export const VARIANTS: readonly ModeVariant[] = [
   ...classicVariants,
@@ -77,6 +79,7 @@ export const VARIANTS: readonly ModeVariant[] = [
   ...lanternLandsVariants,
   ...festivalWorkshopVariants,
   ...goldRushVariants,
+  ...spotKickVariants,
   ...glowTagVariants,
   ...bigCatchVariants,
   ...cornerShopVariants,
