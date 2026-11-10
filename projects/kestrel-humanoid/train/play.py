@@ -108,6 +108,62 @@ def evaluate(policy, n_env=16, speed=0.6, seconds=10.0, rows=range(T.ROWS), cols
     return table
 
 
+def speed_test(policy, speeds, n_env=8, secs=10.0, t0=4.0):
+    """Top speed on flat ground: robots start at the first flat tile heading along the flat column (36 m of flat),
+    yaw spread +-0.3 rad, commanded forward at each speed. Speed = distance along the heading from t0 to secs,
+    divided by the time; robots that fall are left out of the mean and counted. Also from t0 on: the highest leg-joint
+    speed as a fraction of its no-load speed (above 1 the motor is driven faster than its back-EMF matches the bus:
+    the drive loses torque control) and, for the scrap and fast builds, the highest RMS torque as a fraction of the
+    motor's continuous rating."""
+    e = E.Envs(M=n_env, seed=123, randomize=False, curriculum=False)
+    w_lim = e.w_lim if e.ts is None else e.ts[2]
+    yaws = np.pi / 2 + np.linspace(-0.3, 0.3, n_env)
+    out = []
+    for v in speeds:
+        for i in range(n_env):
+            setup(e, i, 0, 0, yaw=yaws[i], cmd=(v, 0.0, 0.0))
+        obs, _ = e.observe()
+        fell = np.zeros(n_env, bool)
+        p0 = None
+        wpk, sq, n = 0.0, np.zeros(len(w_lim)), 0
+        for k in range(int(secs / E.DT)):
+            hold(e)
+            obs, _, _, done, trunc = e.step(policy(obs))
+            fell |= done & ~trunc
+            if p0 is None and (k + 1) * E.DT >= t0:
+                p0 = np.array([d.qpos[:2] for d in e.d])
+            if p0 is not None and (~fell).any():
+                ok = ~fell
+                qd = np.array([d.qvel[e.vadr] for d in e.d])[ok]
+                tau = np.array([d.actuator_force[:E.ACT_DIM] for d in e.d])[ok]
+                wpk = max(wpk, float((np.abs(qd) / w_lim).max()))
+                sq += (tau ** 2).sum(0)
+                n += int(ok.sum())
+        p1 = np.array([d.qpos[:2] for d in e.d])
+        hd = np.stack([np.cos(yaws), np.sin(yaws)], 1)
+        sp = np.sum((p1 - p0) * hd, 1) / (secs - t0)
+        mean = float(sp[~fell].mean()) if (~fell).any() else float("nan")
+        rms = float((np.sqrt(sq / max(n, 1)) / e.ts[3]).max()) if e.ts is not None else float("nan")
+        out.append((v, mean, float(sp[~fell].min()) if (~fell).any() else float("nan"), fell.mean(), wpk, rms))
+        print(f"  command {v:.2f} m/s: achieved {mean:.2f} m/s (slowest {out[-1][2]:.2f}), falls {fell.mean():.0%}, "
+              f"peak joint speed {wpk:.0%} of no-load, RMS torque {rms:.0%} of continuous", flush=True)
+    return out
+
+
+def write_speed_table(res, path, n_env, secs=10.0, t0=4.0):
+    lines = [f"Flat ground, {n_env} robots per speed (heading spread +-0.3 rad), no noise or randomisation. Achieved = "
+             f"distance along the heading from {t0:g} s to {secs:g} s / time, mean over the robots that did not fall. "
+             "Joint speed: the fastest leg joint, as a fraction of its motor's no-load speed (over 100 %: driven faster "
+             "than the motor's back-EMF matches the bus, so the drive loses torque control). RMS torque: the highest leg "
+             "joint, as a fraction of its motor's continuous rating. **Within limits** needs both under 100 %.", "",
+             "| Commanded (m/s) | Achieved (m/s) | Slowest robot (m/s) | Falls | Peak joint speed | RMS torque | Within limits |",
+             "|---|---|---|---|---|---|---|"]
+    lines += [f"| {v:.2f} | {m:.2f} | {lo:.2f} | {f:.0%} | {w:.0%} | " + ("–" if np.isnan(r) else f"{r:.0%}") + " | "
+              + ("yes" if f == 0 and w < 1.0 and (np.isnan(r) or r < 1.0) else "**no**") + " |"
+              for v, m, lo, f, w, r in res]
+    Path(path).write_text("\n".join(lines) + "\n")
+
+
 def write_table(table, path, speed, n_env, rows=range(T.ROWS), seconds=10.0):
     lines = [f"Commanded {speed} m/s forward from the tile centre, {n_env} evenly spaced headings per cell, no noise "
              f"or randomisation, {seconds:g} s limit. Cell = success rate: reached {REACH} m from the centre before falling "
@@ -172,6 +228,8 @@ def main():
     ap.add_argument("--gif", default=None)
     ap.add_argument("--terrains", default=None, help="comma-separated subset, e.g. stairs_up,stairs_down "
                                                      f"(default: all of {','.join(T.NAMES)})")
+    ap.add_argument("--speed-test", default=None, help="comma-separated commanded speeds for the flat-ground top-speed "
+                                                       "test, e.g. 0.6,0.8,1.0,1.2,1.4; table goes to --table")
     ap.add_argument("--seconds", type=float, default=None, help="time limit per run (default: 10 s, or 1.6 x "
                                                                  "REACH / speed if that is longer)")
     ap.add_argument("--stairs-row", type=int, default=None, help="difficulty row for the stair clips (default: hardest "
@@ -179,6 +237,12 @@ def main():
     args = ap.parse_args()
     policy = load_policy(args.run)
     table = None
+    if args.speed_test:
+        print(f"top-speed test, runs/{args.run}/policy.pt")
+        res = speed_test(policy, [float(v) for v in args.speed_test.split(",")])
+        if args.table:
+            write_speed_table(res, args.table, 8)
+        return
     if args.eval_envs > 0:
         print(f"evaluating runs/{args.run}/policy.pt")
         secs = args.seconds or round(max(10.0, 1.6 * REACH / args.speed), 1)

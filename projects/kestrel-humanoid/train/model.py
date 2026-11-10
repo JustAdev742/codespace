@@ -73,6 +73,29 @@ def joint_limits_scrap():
     return T, W
 
 
+def torque_speed():
+    """Scrap and fast builds: each leg joint's motor torque-speed line, as scrap/calc/scrap_select.py sizes it:
+    torque available = Kt (V - Kt w) / R per motor, capped at the current limit. At the joint, driving in the
+    direction of motion: min(T_peak, T_V (1 - |w| / w0)), with T_V = T_peak (V / R) / I_max the voltage-limited stall
+    torque and w0 the no-load speed; braking: T_peak. Returns {joint: (T_peak, T_V, w0, T_cont)}, T_cont the
+    continuous torque (I_cont / I_max x T_peak), or None for K1 and S1 (their policies keep a constant +-T_peak force
+    limit)."""
+    if VARIANT not in SCRAP_SUB:
+        return None
+    acts = json.loads((ROOT / "scrap" / "data" / "actuators.json").read_text())
+    fam = json.loads((ROOT / "scrap" / SCRAP_SUB[VARIANT] / "data" / "actuator_family.json").read_text())
+    from kestrel import params as P
+    cls = {j: c for j, (c, _, _) in P.JOINTS_LEFT.items()}
+    T, W = joint_limits_scrap()
+    out = {}
+    for j in T:
+        a = acts[fam[cls["ankle_pitch" if j.startswith("ankle") else j]]["type"]]
+        V = P.SCRAP["bus_V"].get(a["kind"], 6.8)
+        k = (V / a["R"]) / a["I_max"] if a.get("R") else 1.0      # hobby servo: straight line from T_peak
+        out[j] = (T[j], max(k, 1.0) * T[j], W[j], a["I_cont"] / a["I_max"] * T[j])
+    return out
+
+
 def joint_limits():
     """Joint-side peak torque and no-load speed per leg joint, from the sized actuator family."""
     if VARIANT == "s1":
@@ -131,7 +154,7 @@ def build_xml(H, visual=False):
     for jn in LEG_JOINTS:
         base = jn[2:]
         acts.append(f'    <position name="{jn}" joint="{jn}" kp="{KP[base]}" kv="{KD[base]}" forcerange="{-T[base]:.1f} {T[base]:.1f}" '
-                    f'ctrlrange="-3 3"/>')
+                    f'ctrlrange="-6 6"/>')
     sens = "".join(f'\n    <touch name="{s}_touch" site="{s}_touch"/>' for s in "lr")
     sens += "".join(f'\n    <framepos name="{s}_sole_pos" objtype="site" objname="{s}_sole"/>' for s in "lr")
     sens += "".join(f'\n    <framelinvel name="{s}_sole_vel" objtype="site" objname="{s}_sole"/>' for s in "lr")

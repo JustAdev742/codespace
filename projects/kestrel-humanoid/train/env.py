@@ -89,6 +89,8 @@ class Envs:
         self.hi = np.array([m.joint(j).range[1] for j in KM.LEG_JOINTS])
         _, Wn = KM.joint_limits()
         self.w_lim = np.array([Wn[j[2:]] for j in KM.LEG_JOINTS])
+        ts = KM.torque_speed()          # motor torque-speed lines (scrap and fast builds), applied every physics step
+        self.ts = None if ts is None else np.array([ts[j[2:]] for j in KM.LEG_JOINTS]).T     # 4 x 12: T, T_V, w0, T_cont
         self.foot_geoms = [[mujoco.mj_name2id(m, mujoco.mjtObj.mjOBJ_GEOM, f"{s}_foot_c{i}") for i in range(4)] for s in "lr"]
         self.sole_site = [mujoco.mj_name2id(m, mujoco.mjtObj.mjOBJ_SITE, f"{s}_sole") for s in "lr"]
         self.hip_dev_idx = np.array([0, 1, 6, 7])
@@ -177,12 +179,32 @@ class Envs:
         applied = np.where(self.delay[:, None], self.last_a, actions)
         target = self.default + ACTION_SCALE * applied
         m = self.m
-        for i, d in enumerate(self.d):
-            d.ctrl[:] = target[i]
-            mujoco.mj_step(m, d, DECIM)
+        if self.ts is None:
+            for i, d in enumerate(self.d):
+                d.ctrl[:] = target[i]
+                mujoco.mj_step(m, d, DECIM)
+        else:
+            self._step_torque_speed(target)
         self.prev_a = self.last_a.copy()
         self.last_a = actions.copy()
         return self._post()
+
+    def _step_torque_speed(self, target):
+        """PD servo force capped every physics step by the motor's torque-speed line (KM.torque_speed): the position
+        target is moved so MuJoCo's servo force kp (ctrl - q) - kv qd equals the capped force."""
+        m = self.m
+        T, TV, w0 = self.ts[:3]
+        kp, kv = m.actuator_gainprm[:ACT_DIM, 0], -m.actuator_biasprm[:ACT_DIM, 2]
+        for _ in range(DECIM):
+            q = np.array([d.qpos[self.qadr] for d in self.d])
+            qd = np.array([d.qvel[self.vadr] for d in self.d])
+            F = kp * (target - q) - kv * qd
+            lim = np.minimum(T, np.clip(TV * (1.0 - np.abs(qd) / w0), 0.0, None))
+            F = np.clip(F, -np.where(qd < 0, lim, T), np.where(qd > 0, lim, T))
+            ctrl = q + (F + kv * qd) / kp
+            for i, d in enumerate(self.d):
+                d.ctrl[:] = ctrl[i]
+                mujoco.mj_step(m, d, 1)
 
     def _gather(self):
         """State of all M envs. Foot contact, position and velocity come from MuJoCo sensors (model.py):

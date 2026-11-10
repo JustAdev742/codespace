@@ -1,0 +1,24 @@
+resumed /home/user/codespace/projects/kestrel-humanoid/train/runs/s1scrap/ckpt_last.pt at iteration 10330, 47.6 M steps
+2 workers x 96 envs = 192 environments, 24-step rollouts, terrain 'climb'
+  iter  Msteps    fps  return  len_s  fall  row stairsDn stairsUp   vloss      kl       lr   std
+ 10331   47.61   4707    0.00    0.0  0.00 1.05     0.93     1.16  0.0009  0.0087 7.59e-05  0.35   (rollout 0.55s)
+ 10335   47.62   3954    0.00    0.0  0.00 1.05     0.93     1.16  0.0008  0.0150 1.71e-04  0.35   (rollout 0.65s)
+ 10340   47.65   4157    0.00    0.0  0.00 1.05     0.93     1.16  0.0011  0.0138 7.59e-05  0.35   (rollout 0.65s)
+/tmp/claude-0/-home-user-codespace/21c59a1b-2112-5f15-9603-d14dc838548b/scratchpad/venv/lib/python3.13/site-packages/torch/jit/_trace.py:1006: FutureWarning: `torch.jit.trace` is deprecated. Please switch to `torch.compile` or `torch.export`.
+  warnings.warn(
+/tmp/claude-0/-home-user-codespace/21c59a1b-2112-5f15-9603-d14dc838548b/scratchpad/venv/lib/python3.13/site-packages/torch/jit/_trace.py:1145: FutureWarning: `torch.jit.trace_method` is deprecated. Please switch to `torch.compile` or `torch.export`.
+  warnings.warn(
+ 10345   47.67   4463    0.00    0.0  0.00 1.05     0.93     1.16  0.0155  0.0091 7.59e-05  0.35   (rollout 0.60s)
+ 10350   47.69   4518   16.21    8.2  1.00 1.05     0.97     1.14  0.0310  0.0131 1.00e-05  0.35   (rollout 0.61s)
+ 10355   47.72   3781   19.99    9.6  1.00 1.05     1.06     1.11  0.0041  0.0132 1.14e-04  0.35   (rollout 0.76s)
+ 10360   47.74   4072   20.62   10.0  1.00 1.05     1.16     1.07  0.0213  0.0124 3.38e-05  0.35   (rollout 0.64s)
+ 10365   47.76   4140   24.15   11.3  1.00 1.05     1.19     1.06  0.0128  0.0117 3.38e-05  0.35   (rollout 0.62s)
+ 10370   47.78   4486   27.92   12.8  1.00 1.04     1.18     1.05  0.0076  0.0147 1.00e-05  0.35   (rollout 0.58s)
+ 10375   47.81   4192   47.54   19.5  0.07 1.19     1.26     1.08  0.0014  0.0131 1.71e-04  0.35   (rollout 0.59s)
+ 10380   47.83   4242   47.32   19.4  0.08 1.19     1.26     1.07  0.0035  0.0207 1.00e-05  0.35   (rollout 0.60s)
+ 10385   47.85   3231   47.32   19.4  0.08 1.19     1.26     1.07  0.0149  0.0097 1.14e-04  0.35   (rollout 0.93s)
+ 10390   47.88   3436   47.05   19.3  0.09 1.17     1.22     1.07  0.0378  0.0125 1.00e-05  0.35   (rollout 0.83s)
+ 10395   47.90   2810   46.42   19.1  0.11 1.16     1.10     1.13  0.0235  0.0109 7.59e-05  0.35   (rollout 1.17s)
+ 10400   47.92   2809   46.23   19.0  0.12 1.16     1.04     1.11  0.0148  0.0147 1.00e-05  0.35   (rollout 1.09s)
+ 10405   47.95   3854   45.97   19.0  0.14 1.15     1.07     1.09  0.0862  0.0132 1.00e-05  0.35   (rollout 0.70s)
+ 10410   47.97   3532   45.75   18.9  0.16 1.12     1.12     1.01  0.0541  0.0126 2.25e-05  0.35   (rollout 0.79s)
