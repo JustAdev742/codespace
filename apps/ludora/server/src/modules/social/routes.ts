@@ -192,6 +192,8 @@ export async function socialRoutes(app: FastifyInstance, deps: AppDeps) {
       const [cls] = await db.select().from(classes).where(eq(classes.id, q.classId)).limit(1);
       const members = cls ? await db.select({ userId: classMembers.userId }).from(classMembers).where(eq(classMembers.classId, cls.id)) : [];
       if (!cls || (cls.ownerId !== me && !members.some((m) => m.userId === me))) throw notFound('That class does not exist.');
+      // The teacher can turn the class board off; they still see it themselves.
+      if (!cls.leaderboardOn && cls.ownerId !== me) throw conflict('Your teacher has turned off this class leaderboard.');
       pool = members.map((m) => m.userId);
     }
     const since = weekStart(new Date());

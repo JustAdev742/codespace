@@ -555,6 +555,8 @@ export const classes = pgTable(
     joinCode: text('join_code').notNull(),
     /** The school's name as the teacher typed it, shown with the class's events. Text only: no crests or logos. */
     schoolName: text('school_name'),
+    /** Whether the class's weekly leaderboard is shown. The teacher can turn it off. */
+    leaderboardOn: boolean('leaderboard_on').notNull().default(true),
     createdAt: now('created_at'),
     archivedAt: ts('archived_at'),
   },
@@ -583,6 +585,12 @@ export const assignments = pgTable(
     title: text('title').notNull(),
     instructions: text('instructions').notNull().default(''),
     dueAt: ts('due_at'),
+    /** Students can start it from this time (null: straight away). */
+    opensAt: ts('opens_at'),
+    /** After this time it can no longer be started (null: never closes). Different from the due date, after which play is late. */
+    closesAt: ts('closes_at'),
+    /** Plays each student may start (null: as many as they like). */
+    maxAttempts: integer('max_attempts'),
     createdBy: uuid('created_by').notNull().references(() => users.id, { onDelete: 'cascade' }),
     createdAt: now('created_at'),
   },
@@ -810,4 +818,71 @@ export const classEvents = pgTable(
     createdAt: now('created_at'),
   },
   (t) => [index('class_events_class_idx').on(t.classId, t.endsAt)],
+);
+
+/* ------------------------- classes: teacher tools (0012) ------------------------ */
+
+/** A short notice the teacher pins to the class. Students read it; nobody can reply. */
+export const classNotices = pgTable(
+  'class_notices',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    classId: uuid('class_id').notNull().references(() => classes.id, { onDelete: 'cascade' }),
+    body: text('body').notNull(),
+    createdBy: uuid('created_by').references(() => users.id, { onDelete: 'set null' }),
+    createdAt: now('created_at'),
+  },
+  (t) => [index('class_notices_class_idx').on(t.classId, t.createdAt)],
+);
+
+/** The teacher's private note on a student in one class. Never shown to students; deleted with the class. */
+export const classStudentNotes = pgTable(
+  'class_student_notes',
+  {
+    classId: uuid('class_id').notNull().references(() => classes.id, { onDelete: 'cascade' }),
+    userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+    authorId: uuid('author_id').references(() => users.id, { onDelete: 'set null' }),
+    body: text('body').notNull(),
+    updatedAt: now('updated_at'),
+  },
+  (t) => [primaryKey({ columns: [t.classId, t.userId] })],
+);
+
+/** A shared class target, such as 500 right answers this week. Reaching it gives each member a badge, never currency. */
+export const classGoals = pgTable(
+  'class_goals',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    classId: uuid('class_id').notNull().references(() => classes.id, { onDelete: 'cascade' }),
+    title: text('title').notNull(),
+    target: integer('target').notNull(),
+    startsAt: ts('starts_at').notNull(),
+    endsAt: ts('ends_at').notNull(),
+    reachedAt: ts('reached_at'),
+    createdBy: uuid('created_by').references(() => users.id, { onDelete: 'set null' }),
+    createdAt: now('created_at'),
+  },
+  (t) => [index('class_goals_class_idx').on(t.classId, t.endsAt), check('class_goals_target_positive', sql`${t.target} > 0`)],
+);
+
+export const classGoalBadges = pgTable(
+  'class_goal_badges',
+  {
+    goalId: uuid('goal_id').notNull().references(() => classGoals.id, { onDelete: 'cascade' }),
+    userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+    awardedAt: now('awarded_at'),
+  },
+  (t) => [primaryKey({ columns: [t.goalId, t.userId] })],
+);
+
+/** Student accounts a teacher made for a class (class logins). Only that class's teacher can reset their passcodes. */
+export const classLogins = pgTable(
+  'class_logins',
+  {
+    userId: uuid('user_id').primaryKey().references(() => users.id, { onDelete: 'cascade' }),
+    classId: uuid('class_id').notNull().references(() => classes.id, { onDelete: 'cascade' }),
+    createdBy: uuid('created_by').references(() => users.id, { onDelete: 'set null' }),
+    createdAt: now('created_at'),
+  },
+  (t) => [index('class_logins_class_idx').on(t.classId)],
 );

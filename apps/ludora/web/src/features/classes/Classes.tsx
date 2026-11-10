@@ -1,16 +1,34 @@
-import { useState, type FormEvent } from 'react';
-import { Link, useNavigate, useSearchParams } from 'react-router';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { toast } from 'sonner';
-import { ChevronRight, Copy, Info, Plus, School } from 'lucide-react';
-import { api, ApiError } from '../../lib/api.ts';
-import { plural } from '../../lib/format.ts';
-import { Badge, Dialog, EmptyState, ErrorNotice, Field, Input, PageHeader, Panel, SectionTitle, Skeleton } from '../../ui/primitives.tsx';
-import { Button } from '../../ui/Button.tsx';
-import { ToggleChips } from '../../ui/game.tsx';
-import { errorText, hasStatus, usePageTitle } from '../reports/reportUi.tsx';
-import { classKeys, copyText, useAccountState, useClassList, type MemberClass, type TeachingClass } from './classData.ts';
-import { ClassAccountGate, ClassIcon, JoinCode } from './classUi.tsx';
+import { useState, type FormEvent } from "react";
+import { Link, useNavigate, useSearchParams } from "react-router";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
+import { ChevronRight, Copy, Info, Plus, School } from "lucide-react";
+import { api, ApiError } from "../../lib/api.ts";
+import { plural } from "../../lib/format.ts";
+import {
+  Badge,
+  Dialog,
+  EmptyState,
+  ErrorNotice,
+  Field,
+  Input,
+  PageHeader,
+  Panel,
+  SectionTitle,
+  Skeleton,
+} from "../../ui/primitives.tsx";
+import { Button } from "../../ui/Button.tsx";
+import { ToggleChips } from "../../ui/game.tsx";
+import { errorText, hasStatus, usePageTitle } from "../reports/reportUi.tsx";
+import {
+  classKeys,
+  copyText,
+  useAccountState,
+  useClassList,
+  type MemberClass,
+  type TeachingClass,
+} from "./classData.ts";
+import { ClassAccountGate, ClassIcon, JoinCode } from "./classUi.tsx";
 
 /*
  * /classes. Teachers see the classes they run and make new ones; everyone
@@ -24,23 +42,36 @@ function ClassCard({ c }: { c: TeachingClass }) {
         <ClassIcon />
         <div className="min-w-0 flex-1">
           <h3 className="font-display text-xl leading-tight font-bold break-words">
-            <Link to={`/classes/${c.id}`} className="text-text no-underline after:absolute after:inset-0 after:rounded-[var(--radius-l)]">
+            <Link
+              to={`/classes/${c.id}`}
+              className="text-text no-underline after:absolute after:inset-0 after:rounded-[var(--radius-l)]"
+            >
               {c.name}
             </Link>
           </h3>
           <p className="mt-0.5 text-sm text-text-2">
-            {plural(c.members, 'student')}, {plural(c.assignments, 'assignment')}
+            {plural(c.members, "student")},{" "}
+            {plural(c.assignments, "assignment")}
           </p>
         </div>
         {c.archived ? <Badge>Archived</Badge> : null}
       </div>
       {c.archived ? (
-        <p className="mt-auto text-sm text-text-3">Students cannot join it or play its assignments while it is archived.</p>
+        <p className="mt-auto text-sm text-text-3">
+          Students cannot join it or play its assignments while it is archived.
+        </p>
       ) : (
         <div className="relative z-10 mt-auto flex flex-wrap items-center gap-x-3 gap-y-1 rounded-[var(--radius-m)] bg-sunken py-1.5 pr-1.5 pl-3">
           <span className="text-xs text-text-3">Join code</span>
           <JoinCode code={c.joinCode} className="text-lg" />
-          <Button size="sm" variant="ghost" className="ml-auto" icon={<Copy className="size-4" />} onClick={() => void copyText(c.joinCode, 'Join code copied')} aria-label={`Copy the join code for ${c.name}`}>
+          <Button
+            size="sm"
+            variant="ghost"
+            className="ml-auto"
+            icon={<Copy className="size-4" />}
+            onClick={() => void copyText(c.joinCode, "Join code copied")}
+            aria-label={`Copy the join code for ${c.name}`}
+          >
             Copy
           </Button>
         </div>
@@ -49,23 +80,36 @@ function ClassCard({ c }: { c: TeachingClass }) {
   );
 }
 
-function TeachingSection({ classes, canTeach, onNew }: { classes: TeachingClass[]; canTeach: boolean; onNew: () => void }) {
+function TeachingSection({
+  classes,
+  canTeach,
+  onNew,
+}: {
+  classes: TeachingClass[];
+  canTeach: boolean;
+  onNew: () => void;
+}) {
   const archivedCount = classes.filter((c) => c.archived).length;
-  const [view, setView] = useState<'active' | 'archived'>('active');
-  const shownView = archivedCount === 0 ? 'active' : view;
-  const shown = classes.filter((c) => c.archived === (shownView === 'archived'));
+  const [view, setView] = useState<"active" | "archived">("active");
+  const shownView = archivedCount === 0 ? "active" : view;
+  const shown = classes.filter(
+    (c) => c.archived === (shownView === "archived"),
+  );
   return (
     <section>
       <SectionTitle>Your classes</SectionTitle>
       {archivedCount > 0 ? (
-        <ToggleChips<'active' | 'archived'>
+        <ToggleChips<"active" | "archived">
           value={shownView}
           onChange={setView}
           label="Show classes"
           className="mb-4"
           options={[
-            { value: 'active', label: `Active (${classes.length - archivedCount})` },
-            { value: 'archived', label: `Archived (${archivedCount})` },
+            {
+              value: "active",
+              label: `Active (${classes.length - archivedCount})`,
+            },
+            { value: "archived", label: `Archived (${archivedCount})` },
           ]}
         />
       ) : null}
@@ -75,17 +119,26 @@ function TeachingSection({ classes, canTeach, onNew }: { classes: TeachingClass[
           title="No classes yet"
           action={
             canTeach ? (
-              <Button variant="primary" icon={<Plus className="size-4" />} onClick={onNew}>
+              <Button
+                variant="primary"
+                icon={<Plus className="size-4" />}
+                onClick={onNew}
+              >
                 New class
               </Button>
             ) : undefined
           }
         >
-          Make a class for each group you teach. Students join with its code, then you set assignments from any question set.
+          Make a class for each group you teach. Students join with its code,
+          then you set assignments from any question set.
         </EmptyState>
       ) : shown.length === 0 ? (
-        <EmptyState icon={<School className="size-8" />} title="No active classes">
-          Every class you run is archived. Open one to unarchive it, or make a new class.
+        <EmptyState
+          icon={<School className="size-8" />}
+          title="No active classes"
+        >
+          Every class you run is archived. Open one to unarchive it, or make a
+          new class.
         </EmptyState>
       ) : (
         <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
@@ -101,21 +154,39 @@ function TeachingSection({ classes, canTeach, onNew }: { classes: TeachingClass[
 export function JoinPanel() {
   const navigate = useNavigate();
   const qc = useQueryClient();
-  const [code, setCode] = useState('');
+  const [code, setCode] = useState("");
   const [error, setError] = useState<string | null>(null);
   const join = useMutation({
-    mutationFn: (value: string) => api.post<{ ok: true; class: { id: string; name: string }; alreadyMember: boolean }>('/api/classes/join', { code: value }),
+    mutationFn: (value: string) =>
+      api.post<{
+        ok: true;
+        class: { id: string; name: string };
+        alreadyMember: boolean;
+      }>("/api/classes/join", { code: value }),
     onSuccess: async (res) => {
-      toast.success(res.alreadyMember ? `You are already in ${res.class.name}` : `You joined ${res.class.name}`);
+      toast.success(
+        res.alreadyMember
+          ? `You are already in ${res.class.name}`
+          : `You joined ${res.class.name}`,
+      );
       await qc.invalidateQueries({ queryKey: classKeys.all });
       navigate(`/classes/${res.class.id}`);
     },
-    onError: (err) => setError(err instanceof ApiError ? (err.fields.code ?? err.message) : 'Could not join the class. Check your connection and try again.'),
+    onError: (err) =>
+      setError(
+        err instanceof ApiError
+          ? (err.fields.code ?? err.message)
+          : "Could not join the class. Check your connection and try again.",
+      ),
   });
   const submit = (e: FormEvent) => {
     e.preventDefault();
     if (code.length !== 6) {
-      setError(code.length ? `Class codes have 6 letters and numbers. You typed ${code.length}.` : 'Type the 6-character code from your teacher.');
+      setError(
+        code.length
+          ? `Class codes have 6 letters and numbers. You typed ${code.length}.`
+          : "Type the 6-character code from your teacher.",
+      );
       return;
     }
     setError(null);
@@ -124,7 +195,9 @@ export function JoinPanel() {
   return (
     <Panel className="p-5">
       <h2 className="font-display text-2xl font-bold">Join a class</h2>
-      <p className="mt-1 mb-4 text-sm text-text-2">Your teacher gives you a code of 6 letters and numbers.</p>
+      <p className="mt-1 mb-4 text-sm text-text-2">
+        Your teacher gives you a code of 6 letters and numbers.
+      </p>
       <form onSubmit={submit} noValidate className="max-w-lg">
         <Field label="Class code" error={error ?? undefined}>
           {(p) => (
@@ -134,7 +207,12 @@ export function JoinPanel() {
                 value={code}
                 onChange={(e) => {
                   // Accept pasted codes with spaces or dashes, in any case.
-                  setCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6));
+                  setCode(
+                    e.target.value
+                      .toUpperCase()
+                      .replace(/[^A-Z0-9]/g, "")
+                      .slice(0, 6),
+                  );
                   setError(null);
                 }}
                 autoComplete="off"
@@ -143,7 +221,12 @@ export function JoinPanel() {
                 placeholder="ABC234"
                 className="h-12 min-w-0 flex-1 font-display text-xl font-bold tracking-[0.18em] placeholder:font-sans placeholder:text-base placeholder:font-normal placeholder:tracking-normal"
               />
-              <Button type="submit" variant="primary" size="lg" loading={join.isPending}>
+              <Button
+                type="submit"
+                variant="primary"
+                size="lg"
+                loading={join.isPending}
+              >
                 Join
               </Button>
             </div>
@@ -159,18 +242,31 @@ function MemberPanel({ classes }: { classes: MemberClass[] }) {
     <Panel className="p-5">
       <SectionTitle>Classes you are in</SectionTitle>
       {classes.length === 0 ? (
-        <p className="text-sm text-text-2">You are not in any classes yet. When you join one with its code, it shows up here.</p>
+        <p className="text-sm text-text-2">
+          You are not in any classes yet. When you join one with its code, it
+          shows up here.
+        </p>
       ) : (
         <ul className="flex flex-col gap-2">
           {classes.map((c) => (
             <li key={c.id}>
-              <Link to={`/classes/${c.id}`} className="flex items-center gap-3 rounded-[var(--radius-m)] bg-surface-2 p-2.5 text-text no-underline transition-colors hover:bg-surface-3">
+              <Link
+                to={`/classes/${c.id}`}
+                className="flex items-center gap-3 rounded-[var(--radius-m)] bg-surface-2 p-2.5 text-text no-underline transition-colors hover:bg-surface-3"
+              >
                 <ClassIcon />
                 <span className="min-w-0 flex-1">
-                  <span className="block font-semibold break-words">{c.name}</span>
-                  <span className="block text-sm text-text-3 break-words">Taught by {c.teacher}</span>
+                  <span className="block font-semibold break-words">
+                    {c.name}
+                  </span>
+                  <span className="block text-sm text-text-3 break-words">
+                    Taught by {c.teacher}
+                  </span>
                 </span>
-                <ChevronRight className="size-5 shrink-0 text-text-3" aria-hidden />
+                <ChevronRight
+                  className="size-5 shrink-0 text-text-3"
+                  aria-hidden
+                />
               </Link>
             </li>
           ))}
@@ -185,7 +281,8 @@ function TeacherAccountNote() {
     <p className="flex gap-2 text-sm text-text-3">
       <Info className="mt-0.5 size-4 shrink-0" aria-hidden />
       <span>
-        Teaching a class? Classes are made with a teacher account. You can switch to one in{' '}
+        Teaching a class? Classes are made with a teacher account. You can
+        switch to one in{" "}
         <Link to="/settings#account" className="underline underline-offset-2">
           Settings
         </Link>
@@ -198,30 +295,43 @@ function TeacherAccountNote() {
 function NewClassForm({ onDone }: { onDone: () => void }) {
   const navigate = useNavigate();
   const qc = useQueryClient();
-  const [name, setName] = useState('');
+  const [name, setName] = useState("");
   const [error, setError] = useState<string | null>(null);
   const create = useMutation({
-    mutationFn: (value: string) => api.post<{ ok: true; class: { id: string; name: string; joinCode: string } }>('/api/classes', { name: value }),
+    mutationFn: (value: string) =>
+      api.post<{
+        ok: true;
+        class: { id: string; name: string; joinCode: string };
+      }>("/api/classes", { name: value }),
     onSuccess: async (res) => {
-      toast.success('Class created');
+      toast.success("Class created");
       await qc.invalidateQueries({ queryKey: classKeys.all });
       onDone();
       navigate(`/classes/${res.class.id}`);
     },
-    onError: (err) => setError(err instanceof ApiError ? (err.fields.name ?? err.message) : 'Could not make the class. Check your connection and try again.'),
+    onError: (err) =>
+      setError(
+        err instanceof ApiError
+          ? (err.fields.name ?? err.message)
+          : "Could not make the class. Check your connection and try again.",
+      ),
   });
   const submit = (e: FormEvent) => {
     e.preventDefault();
     const value = name.trim();
     if (value.length < 2) {
-      setError('Class names need at least 2 characters.');
+      setError("Class names need at least 2 characters.");
       return;
     }
     create.mutate(value);
   };
   return (
     <form onSubmit={submit} noValidate className="flex flex-col gap-6">
-      <Field label="Class name" hint="Students see this name. For example, 7B Science." error={error ?? undefined}>
+      <Field
+        label="Class name"
+        hint="Students see this name. For example, 7B Science."
+        error={error ?? undefined}
+      >
         {(p) => (
           <Input
             {...p}
@@ -263,18 +373,18 @@ function ClassesSkeleton() {
 }
 
 export default function Classes() {
-  usePageTitle('Classes');
+  usePageTitle("Classes");
   const account = useAccountState();
-  const list = useClassList(account === 'account');
+  const list = useClassList(account === "account");
   // /classes?new=1 (from the home page's "Make a class") opens the new class form.
   const [params, setParams] = useSearchParams();
-  const [creating, setCreatingState] = useState(params.get('new') === '1');
+  const [creating, setCreatingState] = useState(params.get("new") === "1");
   const setCreating = (open: boolean) => {
     setCreatingState(open);
-    if (!open && params.has('new')) setParams({}, { replace: true });
+    if (!open && params.has("new")) setParams({}, { replace: true });
   };
 
-  if (account === 'loading' || (account === 'account' && list.isPending)) {
+  if (account === "loading" || (account === "account" && list.isPending)) {
     return (
       <>
         <PageHeader title="Classes" />
@@ -282,7 +392,7 @@ export default function Classes() {
       </>
     );
   }
-  if (account === 'signedOut' || hasStatus(list.error, 401)) {
+  if (account === "signedOut" || hasStatus(list.error, 401)) {
     return (
       <>
         <PageHeader title="Classes" />
@@ -290,11 +400,17 @@ export default function Classes() {
       </>
     );
   }
-  if (account === 'guest' || hasStatus(list.error, 403)) {
+  if (account === "guest" || hasStatus(list.error, 403)) {
     return (
       <>
         <PageHeader title="Classes" />
-        <ClassAccountGate state="guest" next="/classes" message={hasStatus(list.error, 403) ? errorText(list.error, '') : undefined} />
+        <ClassAccountGate
+          state="guest"
+          next="/classes"
+          message={
+            hasStatus(list.error, 403) ? errorText(list.error, "") : undefined
+          }
+        />
       </>
     );
   }
@@ -302,7 +418,13 @@ export default function Classes() {
     return (
       <>
         <PageHeader title="Classes" />
-        <ErrorNotice message={errorText(list.error, 'Your classes could not be loaded. Check your connection and try again.')} onRetry={() => void list.refetch()} />
+        <ErrorNotice
+          message={errorText(
+            list.error,
+            "Your classes could not be loaded. Check your connection and try again.",
+          )}
+          onRetry={() => void list.refetch()}
+        />
       </>
     );
   }
@@ -319,21 +441,29 @@ export default function Classes() {
           actions={
             // With no classes yet, the empty state below carries the same button.
             data.canTeach && data.teaching.length > 0 ? (
-              <Button variant="primary" icon={<Plus className="size-4" />} onClick={() => setCreating(true)}>
+              <Button
+                variant="primary"
+                icon={<Plus className="size-4" />}
+                onClick={() => setCreating(true)}
+              >
                 New class
               </Button>
             ) : null
           }
         />
         <div className="flex flex-col gap-8">
-          <TeachingSection classes={data.teaching} canTeach={data.canTeach} onNew={() => setCreating(true)} />
+          <TeachingSection
+            classes={data.teaching}
+            canTeach={data.canTeach}
+            onNew={() => setCreating(true)}
+          />
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 lg:items-start">
             <JoinPanel />
             <MemberPanel classes={data.member} />
           </div>
           {data.canTeach ? (
             <p className="text-sm text-text-3">
-              Reports on games you host for a group are in{' '}
+              Reports on games you host for a group are in{" "}
               <Link to="/reports" className="underline underline-offset-2">
                 Games you hosted
               </Link>
@@ -343,7 +473,12 @@ export default function Classes() {
             <TeacherAccountNote />
           )}
         </div>
-        <Dialog open={creating} onOpenChange={setCreating} title="New class" description="Each class gets its own join code. You can rename it later.">
+        <Dialog
+          open={creating}
+          onOpenChange={setCreating}
+          title="New class"
+          description="Each class gets its own join code. You can rename it later."
+        >
           <NewClassForm onDone={() => setCreating(false)} />
         </Dialog>
       </>
@@ -352,7 +487,10 @@ export default function Classes() {
 
   return (
     <>
-      <PageHeader title="Classes" description="Join your teacher's class with its code. The assignments they set show up in the class." />
+      <PageHeader
+        title="Classes"
+        description="Join your teacher's class with its code. The assignments they set show up in the class."
+      />
       {data.member.length === 0 ? (
         <div className="flex max-w-xl flex-col gap-6">
           <JoinPanel />

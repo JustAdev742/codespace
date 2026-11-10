@@ -1,7 +1,7 @@
 import { useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import type { ModeThumbnail } from '@ludora/shared';
+import type { AvatarLite, ModeThumbnail } from '@ludora/shared';
 import { api } from '../../lib/api.ts';
 import { useMe } from '../../lib/session.ts';
 import { useModes, thumbFor, type CatalogEntry, type CatalogVariant } from '../../lib/queries.ts';
@@ -40,6 +40,12 @@ interface AssignmentBase {
   modeId: string;
   variantId: string | null;
   dueAt: string | null;
+  /** Students see and can start it from this time; null means straight away. */
+  opensAt: string | null;
+  /** After this it cannot be started; null means it never closes. */
+  closesAt: string | null;
+  /** Plays each student may start; null means any number. */
+  maxAttempts: number | null;
   createdAt: string;
 }
 
@@ -60,6 +66,8 @@ export interface MyResult {
 
 export interface StudentAssignment extends AssignmentBase {
   mine: MyResult | null;
+  /** Why it cannot be started right now (closed, attempts used), from the server; null when it can. */
+  blocked: string | null;
 }
 
 export interface ClassMember {
@@ -69,6 +77,11 @@ export interface ClassMember {
   level: number;
   joinedAt: string;
   lastSeenAt: string | null;
+  avatar: AvatarLite | null;
+  /** Made by the teacher with a class login, so the teacher resets its passcode. */
+  classLogin: boolean;
+  /** The teacher has a private note on this student. */
+  hasNote: boolean;
 }
 
 interface ClassInfo {
@@ -78,6 +91,25 @@ interface ClassInfo {
   schoolName: string | null;
   teacher: string;
   archived: boolean;
+  leaderboardOn: boolean;
+}
+
+export interface ClassNotice {
+  id: string;
+  body: string;
+  createdAt: string;
+}
+
+export interface ClassGoal {
+  id: string;
+  title: string;
+  target: number;
+  progress: number;
+  startsAt: string;
+  endsAt: string;
+  reachedAt: string | null;
+  /** The viewing student's badge for this goal; null for the teacher. */
+  badge: boolean | null;
 }
 
 export interface ClassEvent {
@@ -97,6 +129,8 @@ export interface TeacherClassDetail {
   members: ClassMember[];
   assignments: TeacherAssignment[];
   events: ClassEvent[];
+  notices: ClassNotice[];
+  goal: ClassGoal | null;
 }
 
 export interface StudentClassDetail {
@@ -106,6 +140,8 @@ export interface StudentClassDetail {
   members: null;
   assignments: StudentAssignment[];
   events: ClassEvent[];
+  notices: ClassNotice[];
+  goal: ClassGoal | null;
 }
 
 export type ClassDetail = TeacherClassDetail | StudentClassDetail;
@@ -115,7 +151,12 @@ export interface ReportStudent {
   displayName: string;
   username: string | null;
   attempts: number;
-  best: { correct: number; answered: number; score: number; accuracy: number | null } | null;
+  best: {
+    correct: number;
+    answered: number;
+    score: number;
+    accuracy: number | null;
+  } | null;
   firstPlayedAt: string | null;
   lastPlayedAt: string | null;
   /** Every attempt finished after the due date. */
@@ -123,8 +164,22 @@ export interface ReportStudent {
 }
 
 export interface AssignmentReportData {
-  assignment: { id: string; title: string; modeId: string; variantId: string | null; dueAt: string | null; setTitle: string };
-  summary: { students: number; started: number; averageAccuracy: number | null };
+  assignment: {
+    id: string;
+    title: string;
+    modeId: string;
+    variantId: string | null;
+    dueAt: string | null;
+    opensAt: string | null;
+    closesAt: string | null;
+    maxAttempts: number | null;
+    setTitle: string;
+  };
+  summary: {
+    students: number;
+    started: number;
+    averageAccuracy: number | null;
+  };
   students: ReportStudent[];
   questions: QuestionStat[];
 }
@@ -135,7 +190,161 @@ export const classKeys = {
   list: ['classes', 'list'] as const,
   detail: (id: string) => ['classes', 'detail', id] as const,
   report: (id: string, aid: string) => ['classes', 'detail', id, 'report', aid] as const,
+  attempts: (id: string, aid: string) => ['classes', 'detail', id, 'attempts', aid] as const,
+  insights: (id: string) => ['classes', 'detail', id, 'insights'] as const,
+  student: (id: string, uid: string) => ['classes', 'detail', id, 'student', uid] as const,
 };
+
+/* ------------------------------ Gradebook and insights ------------------------------ */
+
+export interface GradeCell {
+  attempts: number;
+  best: {
+    correct: number;
+    answered: number;
+    score: number;
+    accuracy: number | null;
+  } | null;
+  late: boolean;
+  lastPlayedAt: string | null;
+}
+
+export interface InsightsData {
+  assignments: {
+    id: string;
+    title: string;
+    dueAt: string | null;
+    maxAttempts: number | null;
+    setTitle: string;
+    subject: string | null;
+  }[];
+  gradebook: {
+    id: string;
+    displayName: string;
+    username: string | null;
+    cells: Record<string, GradeCell>;
+  }[];
+  timeOnTask: {
+    assignmentId: string;
+    totalMs: number;
+    students: number;
+    medianMs: number | null;
+  }[];
+  byType: { type: string; answers: number; rate: number }[];
+  needsAHand: {
+    threshold: number;
+    days: number;
+    students: {
+      id: string;
+      displayName: string;
+      rate: number;
+      answers: number;
+      overdue: number;
+      missed: { setId: string | null; questionId: string; prompt: string }[];
+    }[];
+    notStarted: { id: string; displayName: string; overdue: number }[];
+  };
+  mostMissed: {
+    setId: string | null;
+    questionId: string;
+    prompt: string;
+    type: string;
+    setTitle: string | null;
+    tries: number;
+    wrong: number;
+    rate: number;
+  }[];
+}
+
+export function useInsights(id: string, enabled = true) {
+  return useQuery({
+    queryKey: classKeys.insights(id),
+    queryFn: () => api.get<InsightsData>(`/api/classes/${encodeURIComponent(id)}/insights`),
+    enabled: enabled && Boolean(id),
+  });
+}
+
+export type QuestionResult = 'right' | 'wrong';
+
+export interface Attempt {
+  gameId: string;
+  endedAt: string;
+  correct: number;
+  answered: number;
+  score: number;
+  durationMs: number;
+  late: boolean;
+  results: Record<string, QuestionResult>;
+}
+
+export interface AttemptsData {
+  assignment: { id: string; title: string; dueAt: string | null };
+  questions: { id: string; prompt: string; type: string }[];
+  students: { id: string; displayName: string; attempts: Attempt[] }[];
+}
+
+export function useAttempts(id: string, aid: string, enabled = true) {
+  return useQuery({
+    queryKey: classKeys.attempts(id, aid),
+    queryFn: () => api.get<AttemptsData>(`/api/classes/${encodeURIComponent(id)}/assignments/${encodeURIComponent(aid)}/attempts`),
+    enabled: enabled && Boolean(id && aid),
+  });
+}
+
+export type WorkStatus = 'done' | 'late' | 'overdue' | 'todo';
+
+export interface StudentReportData {
+  class: {
+    id: string;
+    name: string;
+    teacher: string;
+    schoolName: string | null;
+  };
+  student: { id: string; displayName: string; username?: string | null };
+  summary: {
+    assignments: number;
+    done: number;
+    late: number;
+    accuracy: number | null;
+    timeMs: number;
+  };
+  assignments: (GradeCell & {
+    id: string;
+    title: string;
+    setTitle: string;
+    dueAt: string | null;
+    status: WorkStatus;
+    firstAccuracy: number | null;
+    lastAccuracy: number | null;
+    timeMs: number;
+  })[];
+  bySubject: {
+    subject: string;
+    correct: number;
+    answered: number;
+    rate: number | null;
+  }[];
+  byType: { type: string; answers: number; rate: number }[];
+  weekly: { weekOf: string; games: number; rate: number | null }[];
+  /** Teacher only. */
+  note?: { body: string; updatedAt: string } | null;
+}
+
+export function useStudentReport(id: string, uid: string, enabled = true) {
+  return useQuery({
+    queryKey: classKeys.student(id, uid),
+    queryFn: () => api.get<StudentReportData>(`/api/classes/${encodeURIComponent(id)}/students/${encodeURIComponent(uid)}/report`),
+    enabled: enabled && Boolean(id && uid),
+  });
+}
+
+/** A class login as the server returns it once: the passcode is never shown again. */
+export interface LoginCard {
+  userId: string;
+  displayName: string;
+  username: string;
+  passcode: string;
+}
 
 /** Who is looking: classes need a full account, so guests and signed-out visitors get a prompt instead. */
 export function useAccountState(): 'loading' | 'signedOut' | 'guest' | 'account' {
@@ -147,16 +356,28 @@ export function useAccountState(): 'loading' | 'signedOut' | 'guest' | 'account'
 }
 
 export function useClassList(enabled: boolean) {
-  return useQuery({ queryKey: classKeys.list, queryFn: () => api.get<ClassesResponse>('/api/classes'), enabled });
+  return useQuery({
+    queryKey: classKeys.list,
+    queryFn: () => api.get<ClassesResponse>('/api/classes'),
+    enabled,
+  });
 }
 
 export function useClassDetail(id: string, enabled: boolean) {
-  return useQuery({ queryKey: classKeys.detail(id), queryFn: () => api.get<ClassDetail>(`/api/classes/${encodeURIComponent(id)}`), enabled: enabled && Boolean(id) });
+  return useQuery({
+    queryKey: classKeys.detail(id),
+    queryFn: () => api.get<ClassDetail>(`/api/classes/${encodeURIComponent(id)}`),
+    enabled: enabled && Boolean(id),
+  });
 }
 
 /* ---------------------------------- Modes ----------------------------------- */
 
-const FALLBACK_THUMB: ModeThumbnail = { glyph: 'spark', hue: 255, accentHue: 42 };
+const FALLBACK_THUMB: ModeThumbnail = {
+  glyph: 'spark',
+  hue: 255,
+  accentHue: 42,
+};
 
 export interface ModeInfo {
   title: string;

@@ -1,0 +1,46 @@
+/*
+ * Printing from the class pages: login cards, a student's report and certificates.
+ * The sheet is rendered into <body> only while printing; everything else is hidden
+ * on paper. Paper is always white with black ink, whatever the screen theme.
+ */
+.print-sheet {
+  display: none;
+}
+
+@media print {
+  body.has-print-sheet > *:not(.print-sheet) {
+    display: none !important;
+  }
+  body.has-print-sheet {
+    background: #fff !important;
+  }
+  .print-sheet {
+    display: block;
+    color: #000;
+    background: #fff;
+    font-family: var(--face-sans);
+    --text: #000;
+    --text-2: #222;
+    --text-3: #444;
+    --line: #999;
+    --bg-raised: #fff;
+    --bg-sunken: #eee;
+  }
+  .print-sheet * {
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+  .print-avoid-break {
+    break-inside: avoid;
+  }
+  .print-page {
+    break-after: page;
+  }
+  .print-page:last-child {
+    break-after: auto;
+  }
+}
+
+@page {
+  margin: 12mm;
+}

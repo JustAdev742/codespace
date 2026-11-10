@@ -7,7 +7,7 @@ import { soloBlocker } from '@ludora/engine/catalog';
 import { api, ApiError } from '../../lib/api.ts';
 import { useModes, useSets, thumbFor, type CatalogEntry, type CatalogVariant, type SetSummary } from '../../lib/queries.ts';
 import { ModeArt } from '../../art/ModeArt.tsx';
-import { Badge, Dialog, EmptyState, ErrorNotice, Field, Input, Skeleton, Textarea } from '../../ui/primitives.tsx';
+import { Badge, Dialog, EmptyState, ErrorNotice, Field, Input, Select, Skeleton, Textarea } from '../../ui/primitives.tsx';
 import { Button, ButtonLink } from '../../ui/Button.tsx';
 import { ToggleChips } from '../../ui/game.tsx';
 import { SetCover } from '../sets/SetCover.tsx';
@@ -18,8 +18,10 @@ import { plural } from '../../lib/format.ts';
  * New and edit assignment. A new assignment needs a question set (the
  * teacher's own or one from the library) and a mode or variant that works
  * with one player. Once a set or mode is chosen its picker folds away into
- * a one-line summary, so the form stays short. Only the title, instructions
- * and due date can be changed later; the API does not change the set or mode.
+ * a one-line summary, so the form stays short. A set too short for the chosen
+ * mode (or a mode that needs more questions than the chosen set has) is shown
+ * but cannot be picked, with the reason. Everything but the set and mode can be
+ * changed later: title, instructions, dates and tries.
  */
 
 type Choice = { mode: CatalogEntry; variant: CatalogVariant | null };
@@ -35,7 +37,7 @@ function useDebounced<T>(value: T, ms: number): T {
   return v;
 }
 
-function SetPicker({ onPick }: { onPick: (s: SetSummary) => void }) {
+function SetPicker({ onPick, need }: { onPick: (s: SetSummary) => void; need: { min: number; mode: string } | null }) {
   // Start on the teacher's own sets, or on the library when they have none.
   const mine = useSets({ scope: 'mine', page: 1 });
   const [scope, setScope] = useState<'mine' | 'public' | null>(null);
@@ -120,6 +122,17 @@ function SetPicker({ onPick }: { onPick: (s: SetSummary) => void }) {
                       <Badge tone="coral">Hidden by moderators</Badge>
                     </span>
                   </div>
+                ) : need && s.questionCount < need.min ? (
+                  // Too short for the chosen mode: the server would refuse it, so it is shown with the reason and cannot be picked.
+                  <div className="flex items-center gap-3 rounded-[var(--radius-m)] border border-line bg-sunken p-2.5">
+                    <SetCover cover={s.cover} subject={s.subject} size={40} />
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate font-semibold text-text-2">{s.title}</span>
+                      <span className="block text-xs text-text-2">
+                        Too short for {need.mode}: {plural(s.questionCount, 'question')}, needs {need.min}
+                      </span>
+                    </span>
+                  </div>
                 ) : (
                   <button type="button" onClick={() => onPick(s)} className="flex w-full items-center gap-3 rounded-[var(--radius-m)] border border-line bg-raised p-2.5 text-left transition-colors hover:border-line-strong hover:bg-surface-2">
                     <SetCover cover={s.cover} subject={s.subject} size={40} />
@@ -167,7 +180,7 @@ function assignableChoices(modes: CatalogEntry[]): Choice[] {
     .filter((c) => !soloBlocker(c.mode.meta.id, c.variant?.meta.id ?? null));
 }
 
-function ModePicker({ onPick }: { onPick: (c: Choice) => void }) {
+function ModePicker({ onPick, questions }: { onPick: (c: Choice) => void; questions: number | null }) {
   const modes = useModes();
   const choices = useMemo(() => assignableChoices(modes.data?.modes ?? []), [modes.data]);
   if (modes.isError && !modes.data) return <ErrorNotice message="Game modes could not be loaded." onRetry={() => void modes.refetch()} />;
@@ -185,6 +198,23 @@ function ModePicker({ onPick }: { onPick: (c: Choice) => void }) {
     <ul className="grid max-h-[22rem] grid-cols-1 gap-2 overflow-y-auto p-1 sm:grid-cols-2">
       {choices.map(({ mode, variant }) => {
         const meta = variant?.meta ?? mode.meta;
+        const min = mode.meta.minQuestions ?? 0;
+        if (questions !== null && questions < min) {
+          // The chosen set is too short for this mode: shown, with why, but not offered.
+          return (
+            <li key={meta.id}>
+              <div className="flex h-full w-full overflow-hidden rounded-[var(--radius-m)] border border-line">
+                <ModeArt thumb={thumbFor(mode.meta, variant?.meta)} className="w-20 shrink-0 self-stretch grayscale" />
+                <span className="min-w-0 flex-1 bg-sunken p-2.5">
+                  <span className="block font-display text-lg leading-tight font-bold text-text-2">{meta.title}</span>
+                  <span className="mt-0.5 block text-sm text-text-2">
+                    Needs at least {min} questions. The chosen set has {questions}.
+                  </span>
+                </span>
+              </div>
+            </li>
+          );
+        }
         return (
           <li key={meta.id}>
             <button type="button" onClick={() => onPick({ mode, variant })} className="group flex h-full w-full overflow-hidden rounded-[var(--radius-m)] border border-line text-left transition-colors hover:border-line-strong">
@@ -244,11 +274,17 @@ function AssignmentForm({ classId, editing, onDone }: { classId: string; editing
   const [set, setSet] = useState<SetSummary | null>(null);
   const [choice, setChoice] = useState<Choice | null>(null);
   // Whether a picker was just used, so focus moves to its summary rather than the top of the dialog.
-  const [picked, setPicked] = useState<{ set: boolean; mode: boolean }>({ set: false, mode: false });
+  const [picked, setPicked] = useState<{ set: boolean; mode: boolean }>({
+    set: false,
+    mode: false,
+  });
   const [title, setTitle] = useState(editing?.title ?? '');
   const [titleEdited, setTitleEdited] = useState(Boolean(editing));
   const [instructions, setInstructions] = useState(editing?.instructions ?? '');
   const [due, setDue] = useState(editing?.dueAt ? toLocalInput(editing.dueAt) : '');
+  const [opens, setOpens] = useState(editing?.opensAt ? toLocalInput(editing.opensAt) : '');
+  const [closes, setCloses] = useState(editing?.closesAt ? toLocalInput(editing.closesAt) : '');
+  const [tries, setTries] = useState<string>(editing?.maxAttempts ? String(editing.maxAttempts) : '');
   const [submitted, setSubmitted] = useState(false);
   const [serverFields, setServerFields] = useState<Record<string, string>>({});
   const [formError, setFormError] = useState<string | null>(null);
@@ -257,6 +293,9 @@ function AssignmentForm({ classId, editing, onDone }: { classId: string; editing
   const dueIso = due ? fromLocalInput(due) : null;
   const dueInvalid = Boolean(due) && !dueIso;
   const duePassed = dueIso ? new Date(dueIso).getTime() < Date.now() : false;
+  const opensIso = opens ? fromLocalInput(opens) : null;
+  const closesIso = closes ? fromLocalInput(closes) : null;
+  const t = (v: string | null) => (v ? Date.parse(v) : null);
   const minQuestions = choice?.mode.meta.minQuestions ?? 0;
   const tooSmall = Boolean(set && choice && set.questionCount < minQuestions);
   const problems = {
@@ -264,7 +303,15 @@ function AssignmentForm({ classId, editing, onDone }: { classId: string; editing
     mode: !editing && !choice ? 'Choose a game mode.' : null,
     size: tooSmall && choice && set ? `${choice.variant?.meta.title ?? choice.mode.meta.title} needs at least ${minQuestions} questions, and this set has ${set.questionCount}. Choose a bigger set or another mode.` : null,
     title: title.trim().length < 2 ? 'Give the assignment a title of at least 2 characters.' : null,
-    due: dueInvalid ? 'Enter a full date and time, or clear the due date.' : null,
+    due: dueInvalid
+      ? 'Enter a full date and time, or clear the due date.'
+      : t(dueIso) !== null && t(opensIso) !== null && t(dueIso)! <= t(opensIso)!
+        ? 'Pick a due date after it opens.'
+        : t(dueIso) !== null && t(closesIso) !== null && t(dueIso)! > t(closesIso)!
+          ? 'Pick a due date on or before it closes.'
+          : null,
+    opens: opens && !opensIso ? 'Enter a full date and time, or clear it.' : null,
+    closes: closes && !closesIso ? 'Enter a full date and time, or clear it.' : t(opensIso) !== null && t(closesIso) !== null && t(closesIso)! <= t(opensIso)! ? 'Pick a closing time after it opens.' : null,
   };
   const show = (key: keyof typeof problems) => (submitted || key === 'size' ? problems[key] : null);
 
@@ -282,21 +329,40 @@ function AssignmentForm({ classId, editing, onDone }: { classId: string; editing
     setServerFields({});
     setFormError(null);
     try {
-      const common = { title: title.trim(), instructions: instructions.trim(), dueAt: dueIso };
+      const common = {
+        title: title.trim(),
+        instructions: instructions.trim(),
+        dueAt: dueIso,
+        opensAt: opensIso,
+        closesAt: closesIso,
+        maxAttempts: tries ? Number(tries) : null,
+      };
       if (editing) {
         await api.patch(`/api/classes/${classId}/assignments/${editing.id}`, common);
         toast.success('Assignment saved');
       } else {
-        await api.post(`/api/classes/${classId}/assignments`, { setId: set!.id, modeId: choice!.mode.meta.id, variantId: choice!.variant?.meta.id ?? null, ...common });
+        await api.post(`/api/classes/${classId}/assignments`, {
+          setId: set!.id,
+          modeId: choice!.mode.meta.id,
+          variantId: choice!.variant?.meta.id ?? null,
+          ...common,
+        });
         toast.success('Assignment created');
       }
       await qc.invalidateQueries({ queryKey: classKeys.all });
       onDone();
     } catch (err) {
       if (err instanceof ApiError) {
-        const { title: t, instructions: i, dueAt: d } = err.fields;
-        setServerFields({ ...(t ? { title: t } : {}), ...(i ? { instructions: i } : {}), ...(d ? { due: d } : {}) });
-        if (!t && !i && !d) setFormError(err.message);
+        const { title: ti, instructions: i, dueAt: d, opensAt: o, closesAt: c, maxAttempts: m } = err.fields;
+        setServerFields({
+          ...(ti ? { title: ti } : {}),
+          ...(i ? { instructions: i } : {}),
+          ...(d ? { due: d } : {}),
+          ...(o ? { opens: o } : {}),
+          ...(c ? { closes: c } : {}),
+          ...(m ? { tries: m } : {}),
+        });
+        if (!ti && !i && !d && !o && !c && !m) setFormError(err.message);
       } else {
         setFormError('The assignment was not saved. Check your connection and try again.');
       }
@@ -330,7 +396,17 @@ function AssignmentForm({ classId, editing, onDone }: { classId: string; editing
                 focusOnMount={picked.set}
               />
             ) : (
-              <SetPicker onPick={pickSet} />
+              <SetPicker
+                onPick={pickSet}
+                need={
+                  choice && choice.mode.meta.minQuestions
+                    ? {
+                        min: choice.mode.meta.minQuestions,
+                        mode: choice.variant?.meta.title ?? choice.mode.meta.title,
+                      }
+                    : null
+                }
+              />
             )}
             {show('set') ? (
               <p className="mt-2 text-sm font-semibold text-ember" role="alert">
@@ -354,6 +430,7 @@ function AssignmentForm({ classId, editing, onDone }: { classId: string; editing
               />
             ) : (
               <ModePicker
+                questions={set ? set.questionCount : null}
                 onPick={(c) => {
                   setChoice(c);
                   setPicked((p) => ({ ...p, mode: true }));
@@ -415,6 +492,32 @@ function AssignmentForm({ classId, editing, onDone }: { classId: string; editing
         </Field>
       </section>
 
+      <section aria-labelledby="assign-options" className="flex flex-col gap-4">
+        <SectionHeading id="assign-options" className="-mb-1" note="Optional. Leave them empty to open it now, never close it and allow any number of tries.">
+          When and how often
+        </SectionHeading>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <Field label="Opens" hint="Students do not see it until then." error={serverFields.opens ?? show('opens') ?? undefined}>
+            {(p) => <Input {...p} type="datetime-local" value={opens} onChange={(e) => setOpens(e.target.value)} />}
+          </Field>
+          <Field label="Closes" hint="After this it cannot be started." error={serverFields.closes ?? show('closes') ?? undefined}>
+            {(p) => <Input {...p} type="datetime-local" value={closes} onChange={(e) => setCloses(e.target.value)} />}
+          </Field>
+        </div>
+        <Field label="Tries each" hint="Each finished game counts as one try. You can allow more later." error={serverFields.tries}>
+          {(p) => (
+            <Select {...p} value={tries} onChange={(e) => setTries(e.target.value)} className="sm:max-w-xs">
+              <option value="">Any number</option>
+              {[1, 2, 3, 5, 10].map((n) => (
+                <option key={n} value={n}>
+                  {n === 1 ? 'One try' : `${n} tries`}
+                </option>
+              ))}
+            </Select>
+          )}
+        </Field>
+      </section>
+
       {formError ? <ErrorNotice title="Not saved" message={formError} /> : null}
 
       {/* The form is long (sets, modes, details): its buttons stay in view at the foot of the dialog, as in every other dialog. */}
@@ -436,7 +539,7 @@ export function AssignmentDialog({ classId, open, onOpenChange, editing }: { cla
       open={open}
       onOpenChange={onOpenChange}
       title={editing ? 'Edit assignment' : 'New assignment'}
-      description={editing ? `Changes show for students straight away.` : 'Students play it on their own, any time, as often as they like. Each result goes into your report.'}
+      description={editing ? `Changes show for students straight away.` : 'Students play it on their own, in their own time. Each result goes into your report.'}
       size="lg"
     >
       {/* The form unmounts when the dialog closes, so it always opens fresh. */}

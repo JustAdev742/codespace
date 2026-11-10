@@ -6,9 +6,9 @@ import { soloBlocker } from '@ludora/engine/catalog';
 import { classEventSchema, hasPermission, levelFromXp, questionSchema, roomOptionsSchema, schoolNameSchema, type Question } from '@ludora/shared';
 import type { AppDeps } from '../../app.ts';
 import type { DbOrTx } from '../../db/client.ts';
-import { assignments, classEvents, classMembers, classes, gameParticipants, gameSessions, moderationActions, questionSets, users } from '../../db/schema.ts';
+import { assignments, classEvents, classLogins, classMembers, classNotices, classStudentNotes, classes, gameParticipants, gameSessions, moderationActions, questionSets, users } from '../../db/schema.ts';
 import { outer } from '../../db/sql.ts';
-import { noStore, requireAccount, type AuthContext } from '../../http/context.ts';
+import { noStore, requireAccount } from '../../http/context.ts';
 import { AppError, conflict, forbidden, notFound } from '../../lib/errors.ts';
 import { CLEAR_ALPHABET, randomCode, recoveryCode } from '../../lib/crypto.ts';
 import { parse } from '../../lib/validate.ts';
@@ -17,6 +17,10 @@ import { canView, loadSet } from '../sets/access.ts';
 import { questionReport } from '../analytics/report.ts';
 import { audit } from '../admin/common.ts';
 import { hashSecret, normalizeRecovery, rolesOf } from '../auth/service.ts';
+import { loadAvatars } from '../profiles/avatar.ts';
+import { assignmentBlocker, loadClass, requireTeacherAccount } from './access.ts';
+import { activeGoal, classToolRoutes, goalView } from './tools.ts';
+import { classLoginRoutes } from './logins.ts';
 
 /*
  * Classes and assignments. A teacher account creates a class and shares its
@@ -43,9 +47,19 @@ const assignmentSchema = z.object({
   title: z.string().trim().min(2).max(80),
   instructions: z.string().trim().max(500).default(''),
   dueAt: isoDate.nullable().default(null),
+  opensAt: isoDate.nullable().default(null),
+  closesAt: isoDate.nullable().default(null),
+  maxAttempts: z.number().int().min(1, 'Allow at least 1 attempt.').max(20, 'Allow at most 20 attempts, or any number.').nullable().default(null),
 });
 
-type ClassRow = typeof classes.$inferSelect;
+/** Opening after closing, or a due date outside the open window, would confuse students: refuse it with a message on the field. */
+function checkWindow(w: { opensAt: string | null; closesAt: string | null; dueAt: string | null }) {
+  const t = (v: string | null) => (v ? Date.parse(v) : null);
+  const [opens, closes, due] = [t(w.opensAt), t(w.closesAt), t(w.dueAt)];
+  if (opens !== null && closes !== null && closes <= opens) throw new AppError(400, 'validation_failed', 'It would close before it opens.', { closesAt: 'Pick a closing time after it opens.' });
+  if (due !== null && opens !== null && due <= opens) throw new AppError(400, 'validation_failed', 'It would be due before it opens.', { dueAt: 'Pick a due date after it opens.' });
+  if (due !== null && closes !== null && due > closes) throw new AppError(400, 'validation_failed', 'It would close before it is due, so nobody could hand it in on time after closing.', { dueAt: 'Pick a due date on or before it closes.' });
+}
 
 async function newJoinCode(db: DbOrTx): Promise<string> {
   for (let i = 0; i < 8; i++) {
@@ -56,25 +70,11 @@ async function newJoinCode(db: DbOrTx): Promise<string> {
   throw new Error('Could not allocate a class code');
 }
 
-/** The class and the viewer's place in it, or a 404 that says nothing about classes the viewer is not part of. */
 const MAX_EVENTS = 30;
 const eventParams = z.object({ id: z.string().uuid(), eid: z.string().uuid() });
 
 function eventView(e: typeof classEvents.$inferSelect) {
   return { id: e.id, title: e.title, message: e.message, decor: e.decor, hue: e.hue, startsAt: e.startsAt.toISOString(), endsAt: e.endsAt.toISOString() };
-}
-
-async function loadClass(db: DbOrTx, id: string, auth: AuthContext): Promise<{ cls: ClassRow; teacher: boolean; member: boolean }> {
-  const [cls] = await db.select().from(classes).where(eq(classes.id, id)).limit(1);
-  if (!cls) throw notFound('That class does not exist.');
-  const teacher = cls.ownerId === auth.user.id;
-  const [m] = teacher ? [] : await db.select().from(classMembers).where(and(eq(classMembers.classId, id), eq(classMembers.userId, auth.user.id))).limit(1);
-  if (!teacher && !m) throw notFound('That class does not exist.');
-  return { cls, teacher, member: Boolean(m) };
-}
-
-function requireTeacherAccount(auth: AuthContext) {
-  if (auth.user.accountType !== 'teacher') throw forbidden('Classes are made with a teacher account. You can switch to one in Settings.');
 }
 
 /** Solo-playable modes only: assignments are played by each student on their own. */
@@ -157,11 +157,13 @@ export async function classRoutes(app: FastifyInstance, deps: AppDeps) {
           .groupBy(gameSessions.assignmentId, gameParticipants.userId)
       : [];
     const memberRows = await db
-      .select({ id: users.id, displayName: users.displayName, username: users.username, xp: users.xp, lastSeenAt: users.lastSeenAt, joinedAt: classMembers.joinedAt })
+      .select({ id: users.id, displayName: users.displayName, username: users.username, xp: users.xp, lastSeenAt: users.lastSeenAt, joinedAt: classMembers.joinedAt, classLogin: classLogins.classId })
       .from(classMembers)
       .innerJoin(users, eq(users.id, classMembers.userId))
+      .leftJoin(classLogins, eq(classLogins.userId, users.id))
       .where(eq(classMembers.classId, id))
       .orderBy(asc(users.displayName));
+    const now = new Date();
     const assignmentViews = tasks.map(({ a, setTitle }) => {
       const mine = attempts.filter((x) => x.assignmentId === a.id);
       const me = mine.find((x) => x.userId === auth.user.id);
@@ -174,12 +176,24 @@ export async function classRoutes(app: FastifyInstance, deps: AppDeps) {
         modeId: a.modeId,
         variantId: a.variantId,
         dueAt: a.dueAt?.toISOString() ?? null,
+        opensAt: a.opensAt?.toISOString() ?? null,
+        closesAt: a.closesAt?.toISOString() ?? null,
+        maxAttempts: a.maxAttempts,
         createdAt: a.createdAt.toISOString(),
         ...(teacher
           ? { started: new Set(mine.map((x) => x.userId)).size, of: memberRows.length }
-          : { mine: me ? { plays: me.plays, bestCorrect: me.bestCorrect, bestAnswered: me.bestAnswered, lastPlayedAt: new Date(me.last).toISOString() } : null }),
+          : {
+              mine: me ? { plays: me.plays, bestCorrect: me.bestCorrect, bestAnswered: me.bestAnswered, lastPlayedAt: new Date(me.last).toISOString() } : null,
+              blocked: assignmentBlocker(a, me?.plays ?? 0, now),
+            }),
       };
     });
+    // Students who are not open yet do not see an assignment until it opens, so a teacher can schedule work ahead.
+    const visibleAssignments = teacher ? assignmentViews : assignmentViews.filter((v) => !v.opensAt || Date.parse(v.opensAt) <= now.getTime());
+    const notices = await db.select().from(classNotices).where(eq(classNotices.classId, id)).orderBy(desc(classNotices.createdAt)).limit(20);
+    const goal = await activeGoal(db, cls, memberRows.map((m) => m.id), teacher ? null : auth.user.id);
+    const avatars = teacher ? await loadAvatars(db, memberRows.map((m) => m.id)) : new Map();
+    const noted = teacher ? new Set((await db.select({ userId: classStudentNotes.userId }).from(classStudentNotes).where(eq(classStudentNotes.classId, id))).map((r) => r.userId)) : new Set<string>();
     const events = await db
       .select()
       .from(classEvents)
@@ -187,21 +201,34 @@ export async function classRoutes(app: FastifyInstance, deps: AppDeps) {
       .orderBy(asc(classEvents.startsAt))
       .limit(30);
     return {
-      class: { id: cls.id, name: cls.name, schoolName: cls.schoolName, teacher: owner?.displayName ?? 'Teacher', archived: Boolean(cls.archivedAt), ...(teacher ? { joinCode: cls.joinCode } : {}) },
+      class: { id: cls.id, name: cls.name, schoolName: cls.schoolName, teacher: owner?.displayName ?? 'Teacher', archived: Boolean(cls.archivedAt), leaderboardOn: cls.leaderboardOn, ...(teacher ? { joinCode: cls.joinCode } : {}) },
+      notices: notices.map((n) => ({ id: n.id, body: n.body, createdAt: n.createdAt.toISOString() })),
+      goal: goal ? goalView(goal) : null,
       events: events.map(eventView),
       role: teacher ? 'teacher' : 'student',
       memberCount: memberRows.length,
       members: teacher
-        ? memberRows.map((m) => ({ id: m.id, displayName: m.displayName, username: m.username, level: levelFromXp(m.xp).level, joinedAt: m.joinedAt.toISOString(), lastSeenAt: m.lastSeenAt?.toISOString() ?? null }))
+        ? memberRows.map((m) => ({
+            id: m.id,
+            displayName: m.displayName,
+            username: m.username,
+            level: levelFromXp(m.xp).level,
+            joinedAt: m.joinedAt.toISOString(),
+            lastSeenAt: m.lastSeenAt?.toISOString() ?? null,
+            avatar: avatars.get(m.id) ?? null,
+            /** Made by this class's teacher with a class login: the teacher resets its passcode. */
+            classLogin: m.classLogin === id,
+            hasNote: noted.has(m.id),
+          }))
         : null,
-      assignments: assignmentViews,
+      assignments: visibleAssignments,
     };
   });
 
   app.patch('/api/classes/:id', async (req) => {
     const auth = requireAccount(req);
     const { id } = parse(idParam, req.params);
-    const body = parse(z.object({ name: z.string().trim().min(2).max(60).optional(), archived: z.boolean().optional(), schoolName: schoolNameSchema.optional() }), req.body);
+    const body = parse(z.object({ name: z.string().trim().min(2).max(60).optional(), archived: z.boolean().optional(), schoolName: schoolNameSchema.optional(), leaderboardOn: z.boolean().optional() }), req.body);
     const { teacher } = await loadClass(db, id, auth);
     if (!teacher) throw forbidden('Only the teacher can change the class.');
     await db
@@ -210,6 +237,7 @@ export async function classRoutes(app: FastifyInstance, deps: AppDeps) {
         ...(body.name ? { name: body.name } : {}),
         ...(body.archived !== undefined ? { archivedAt: body.archived ? new Date() : null } : {}),
         ...(body.schoolName !== undefined ? { schoolName: body.schoolName || null } : {}),
+        ...(body.leaderboardOn !== undefined ? { leaderboardOn: body.leaderboardOn } : {}),
       })
       .where(eq(classes.id, id));
     return { ok: true };
@@ -243,7 +271,11 @@ export async function classRoutes(app: FastifyInstance, deps: AppDeps) {
     const { id, userId } = parse(z.object({ id: z.string().uuid(), userId: z.string().uuid() }), req.params);
     const { teacher } = await loadClass(db, id, auth);
     if (!teacher && userId !== auth.user.id) throw forbidden('Only the teacher can remove other students.');
-    await db.delete(classMembers).where(and(eq(classMembers.classId, id), eq(classMembers.userId, userId)));
+    await db.transaction(async (tx) => {
+      await tx.delete(classMembers).where(and(eq(classMembers.classId, id), eq(classMembers.userId, userId)));
+      // The teacher's private note goes with the student.
+      await tx.delete(classStudentNotes).where(and(eq(classStudentNotes.classId, id), eq(classStudentNotes.userId, userId)));
+    });
     return { ok: true };
   });
 
@@ -287,6 +319,7 @@ export async function classRoutes(app: FastifyInstance, deps: AppDeps) {
     const auth = requireAccount(req);
     const { id } = parse(idParam, req.params);
     const body = parse(assignmentSchema, req.body);
+    checkWindow(body);
     const { cls, teacher } = await loadClass(db, id, auth);
     if (!teacher) throw forbidden('Only the teacher can set assignments.');
     if (cls.archivedAt) throw conflict('This class is archived.');
@@ -306,7 +339,7 @@ export async function classRoutes(app: FastifyInstance, deps: AppDeps) {
     if ((n?.n ?? 0) >= MAX_ASSIGNMENTS) throw conflict('This class has too many assignments. Delete some old ones first.');
     const [a] = await db
       .insert(assignments)
-      .values({ classId: id, setId: set.id, modeId: mode.meta.id, variantId: body.variantId, title: body.title, instructions: body.instructions, dueAt: body.dueAt ? new Date(body.dueAt) : null, createdBy: auth.user.id })
+      .values({ classId: id, setId: set.id, modeId: mode.meta.id, variantId: body.variantId, title: body.title, instructions: body.instructions, dueAt: body.dueAt ? new Date(body.dueAt) : null, opensAt: body.opensAt ? new Date(body.opensAt) : null, closesAt: body.closesAt ? new Date(body.closesAt) : null, maxAttempts: body.maxAttempts, createdBy: auth.user.id })
       .returning();
     return { ok: true, assignment: { id: a!.id } };
   });
@@ -314,12 +347,34 @@ export async function classRoutes(app: FastifyInstance, deps: AppDeps) {
   app.patch('/api/classes/:id/assignments/:aid', async (req) => {
     const auth = requireAccount(req);
     const { id, aid } = parse(assignmentParams, req.params);
-    const body = parse(z.object({ title: z.string().trim().min(2).max(80).optional(), instructions: z.string().trim().max(500).optional(), dueAt: isoDate.nullable().optional() }), req.body);
+    const body = parse(
+      z.object({
+        title: z.string().trim().min(2).max(80).optional(),
+        instructions: z.string().trim().max(500).optional(),
+        dueAt: isoDate.nullable().optional(),
+        opensAt: isoDate.nullable().optional(),
+        closesAt: isoDate.nullable().optional(),
+        maxAttempts: assignmentSchema.shape.maxAttempts.removeDefault().optional(),
+      }),
+      req.body,
+    );
     const { teacher } = await loadClass(db, id, auth);
     if (!teacher) throw forbidden('Only the teacher can change assignments.');
+    const [current] = await db.select().from(assignments).where(and(eq(assignments.id, aid), eq(assignments.classId, id))).limit(1);
+    if (!current) throw notFound('That assignment does not exist.');
+    const iso = (d: Date | null) => d?.toISOString() ?? null;
+    checkWindow({ opensAt: body.opensAt !== undefined ? body.opensAt : iso(current.opensAt), closesAt: body.closesAt !== undefined ? body.closesAt : iso(current.closesAt), dueAt: body.dueAt !== undefined ? body.dueAt : iso(current.dueAt) });
+    const date = (v: string | null) => (v ? new Date(v) : null);
     const done = await db
       .update(assignments)
-      .set({ ...(body.title ? { title: body.title } : {}), ...(body.instructions !== undefined ? { instructions: body.instructions } : {}), ...(body.dueAt !== undefined ? { dueAt: body.dueAt ? new Date(body.dueAt) : null } : {}) })
+      .set({
+        ...(body.title ? { title: body.title } : {}),
+        ...(body.instructions !== undefined ? { instructions: body.instructions } : {}),
+        ...(body.dueAt !== undefined ? { dueAt: date(body.dueAt) } : {}),
+        ...(body.opensAt !== undefined ? { opensAt: date(body.opensAt) } : {}),
+        ...(body.closesAt !== undefined ? { closesAt: date(body.closesAt) } : {}),
+        ...(body.maxAttempts !== undefined ? { maxAttempts: body.maxAttempts } : {}),
+      })
       .where(and(eq(assignments.id, aid), eq(assignments.classId, id)))
       .returning({ id: assignments.id });
     if (!done.length) throw notFound('That assignment does not exist.');
@@ -345,8 +400,18 @@ export async function classRoutes(app: FastifyInstance, deps: AppDeps) {
     const { aid } = parse(z.object({ aid: z.string().uuid() }), req.params);
     const [a] = await db.select().from(assignments).where(eq(assignments.id, aid)).limit(1);
     if (!a) throw notFound('That assignment does not exist.');
-    const { cls } = await loadClass(db, a.classId, auth);
+    const { cls, teacher } = await loadClass(db, a.classId, auth);
     if (cls.archivedAt) throw conflict('This class is archived.');
+    // The teacher can always try their own assignment; students are held to its dates and attempts.
+    if (!teacher) {
+      const [played] = await db
+        .select({ n: count() })
+        .from(gameParticipants)
+        .innerJoin(gameSessions, eq(gameSessions.id, gameParticipants.gameId))
+        .where(and(eq(gameSessions.assignmentId, a.id), eq(gameParticipants.userId, auth.user.id)));
+      const blocked = assignmentBlocker(a, played?.n ?? 0);
+      if (blocked) throw conflict(blocked);
+    }
     const set = await loadSet(db, a.setId);
     if (!set) throw notFound('The question set for this assignment was deleted. Tell your teacher.');
     if (set.hiddenAt) throw conflict('The question set for this assignment is not available right now.');
@@ -420,7 +485,7 @@ export async function classRoutes(app: FastifyInstance, deps: AppDeps) {
     });
     const started = students.filter((s) => s.attempts > 0);
     return {
-      assignment: { id: a.id, title: a.title, modeId: a.modeId, variantId: a.variantId, dueAt: a.dueAt?.toISOString() ?? null, setTitle: set?.title ?? 'Deleted set' },
+      assignment: { id: a.id, title: a.title, modeId: a.modeId, variantId: a.variantId, dueAt: a.dueAt?.toISOString() ?? null, opensAt: a.opensAt?.toISOString() ?? null, closesAt: a.closesAt?.toISOString() ?? null, maxAttempts: a.maxAttempts, setTitle: set?.title ?? 'Deleted set' },
       summary: {
         students: students.length,
         started: started.length,
@@ -430,6 +495,9 @@ export async function classRoutes(app: FastifyInstance, deps: AppDeps) {
       questions,
     };
   });
+
+  await classToolRoutes(app, deps);
+  await classLoginRoutes(app, deps);
 
   /* ---------------------------------- school events ---------------------------------- */
 

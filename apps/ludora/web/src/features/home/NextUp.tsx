@@ -2,17 +2,18 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router';
 import { useQueries, useQuery } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { BarChart3, ChevronRight, ClipboardList, PencilLine, Play, Plus, Presentation } from 'lucide-react';
+import { AlarmClock, BarChart3, ChevronRight, ClipboardList, PencilLine, Play, Plus, Presentation } from 'lucide-react';
 import { api } from '../../lib/api.ts';
 import { useMe } from '../../lib/session.ts';
 import { plural, timeAgo } from '../../lib/format.ts';
 import { useNow } from '../../lib/useNow.ts';
-import { ErrorNotice, Panel, Skeleton } from '../../ui/primitives.tsx';
+import { Badge, ErrorNotice, Panel, Skeleton } from '../../ui/primitives.tsx';
 import { Button } from '../../ui/Button.tsx';
 import { classKeys, useClassList, type ClassDetail, type StudentAssignment } from '../classes/classData.ts';
 import { ClassIcon, DueLabel, JoinCode } from '../classes/classUi.tsx';
 import { JoinPanel } from '../classes/Classes.tsx';
 import { errorText } from '../reports/reportUi.tsx';
+import { studentWork } from '../classes/classLogic.ts';
 
 /*
  * The first thing to do, for whoever is signed in. A teacher gets their classes,
@@ -46,7 +47,10 @@ function ActionTile({ to, icon, title, text, tone }: { to: string; icon: React.R
 
 function TeacherNextUp() {
   const classes = useClassList(true);
-  const hosted = useQuery({ queryKey: ['reports', 'hosted', 'latest'], queryFn: () => api.get<{ games: HostedGame[] }>('/api/me/hosted') });
+  const hosted = useQuery({
+    queryKey: ['reports', 'hosted', 'latest'],
+    queryFn: () => api.get<{ games: HostedGame[] }>('/api/me/hosted'),
+  });
   const active = (classes.data?.teaching ?? []).filter((c) => !c.archived);
   const last = hosted.data?.games[0];
   return (
@@ -146,7 +150,10 @@ function StudentNextUp() {
   const list = useClassList(true);
   const member = list.data?.member ?? [];
   const details = useQueries({
-    queries: member.slice(0, 6).map((c) => ({ queryKey: classKeys.detail(c.id), queryFn: () => api.get<ClassDetail>(`/api/classes/${encodeURIComponent(c.id)}`) })),
+    queries: member.slice(0, 6).map((c) => ({
+      queryKey: classKeys.detail(c.id),
+      queryFn: () => api.get<ClassDetail>(`/api/classes/${encodeURIComponent(c.id)}`),
+    })),
   });
   const [starting, setStarting] = useState<string | null>(null);
   if (list.isError) return <ErrorNotice message="Your classes did not load." onRetry={() => void list.refetch()} />;
@@ -154,15 +161,27 @@ function StudentNextUp() {
   // Not in a class yet: joining one is the first thing a student does.
   if (member.length === 0) return <JoinPanel />;
 
-  const waiting: (StudentAssignment & { className: string; archived: boolean })[] = [];
+  const waiting: (StudentAssignment & {
+    className: string;
+    archived: boolean;
+  })[] = [];
   for (const d of details) {
     const data = d.data;
     if (!data || data.role !== 'student' || data.class.archived) continue;
-    for (const a of data.assignments) if (!a.mine) waiting.push({ ...a, className: data.class.name, archived: data.class.archived });
+    // Closed work, or work with no tries left, is not waiting for anyone.
+    for (const a of data.assignments)
+      if (!a.mine && !a.blocked)
+        waiting.push({
+          ...a,
+          className: data.class.name,
+          archived: data.class.archived,
+        });
   }
   // Soonest due first; no due date last.
   waiting.sort((a, b) => (a.dueAt ? new Date(a.dueAt).getTime() : Infinity) - (b.dueAt ? new Date(b.dueAt).getTime() : Infinity));
   const loading = details.some((d) => d.isPending);
+  const soon = waiting.filter((a) => studentWork(a, now) === 'dueSoon');
+  const late = waiting.filter((a) => studentWork(a, now) === 'overdue');
 
   const play = async (id: string) => {
     setStarting(id);
@@ -198,29 +217,52 @@ function StudentNextUp() {
           </p>
         </div>
       ) : (
-        <ul className="flex flex-col gap-2">
-          {waiting.slice(0, 3).map((a) => (
-            <li key={a.id} className="flex flex-col gap-3 rounded-[var(--radius-m)] bg-surface-2 p-3.5 sm:flex-row sm:items-center">
-              <div className="min-w-0 flex-1">
-                <p className="font-bold break-words">{a.title}</p>
-                <p className="text-sm break-words text-text-2">
-                  {a.className}, {a.setTitle}
-                </p>
-                <p className="mt-1 text-sm">
-                  <DueLabel dueAt={a.dueAt} now={now} />
-                </p>
-              </div>
-              <Button variant="primary" icon={<Play className="size-4" aria-hidden />} loading={starting === a.id} disabled={starting !== null && starting !== a.id} onClick={() => void play(a.id)} aria-label={`Play: ${a.title}`} className="self-start sm:self-center">
-                Play
-              </Button>
-            </li>
-          ))}
-          {waiting.length > 3 ? (
-            <li className="px-1 text-sm text-text-3">
-              And {plural(waiting.length - 3, 'more')}. <Link to="/classes">See your classes</Link>
-            </li>
+        <>
+          {soon.length || late.length ? (
+            <p className="mb-3 flex items-start gap-2 rounded-[var(--radius-m)] border-l-4 border-lantern bg-surface-2 p-3 text-sm text-text" role="status">
+              <AlarmClock className="mt-0.5 size-4 shrink-0" aria-hidden />
+              <span>
+                {soon.length ? `${plural(soon.length, 'assignment')} due in the next two days.` : ''}
+                {soon.length && late.length ? ' ' : ''}
+                {late.length ? `${plural(late.length, 'assignment')} past due: you can still play ${late.length === 1 ? 'it' : 'them'}.` : ''}
+              </span>
+            </p>
           ) : null}
-        </ul>
+          <ul className="flex flex-col gap-2">
+            {waiting.slice(0, 3).map((a) => (
+              <li key={a.id} className="flex flex-col gap-3 rounded-[var(--radius-m)] bg-surface-2 p-3.5 sm:flex-row sm:items-center">
+                <div className="min-w-0 flex-1">
+                  <p className="flex flex-wrap items-center gap-x-2 gap-y-1 font-bold break-words">
+                    {a.title}
+                    {studentWork(a, now) === 'dueSoon' ? <Badge tone="amber">Due soon</Badge> : null}
+                  </p>
+                  <p className="text-sm break-words text-text-2">
+                    {a.className}, {a.setTitle}
+                  </p>
+                  <p className="mt-1 text-sm">
+                    <DueLabel dueAt={a.dueAt} now={now} />
+                  </p>
+                </div>
+                <Button
+                  variant="primary"
+                  icon={<Play className="size-4" aria-hidden />}
+                  loading={starting === a.id}
+                  disabled={starting !== null && starting !== a.id}
+                  onClick={() => void play(a.id)}
+                  aria-label={`Play: ${a.title}`}
+                  className="self-start sm:self-center"
+                >
+                  Play
+                </Button>
+              </li>
+            ))}
+            {waiting.length > 3 ? (
+              <li className="px-1 text-sm text-text-3">
+                And {plural(waiting.length - 3, 'more')}. <Link to="/classes">See your classes</Link>
+              </li>
+            ) : null}
+          </ul>
+        </>
       )}
     </Panel>
   );

@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { useParams } from 'react-router';
+import { Link, useParams } from 'react-router';
 import { useQuery } from '@tanstack/react-query';
 import { ClipboardList, Download, Lock, Users } from 'lucide-react';
 import { api } from '../../lib/api.ts';
@@ -28,6 +28,7 @@ import {
 } from '../reports/reportUi.tsx';
 import { classKeys, useAccountState, useClassDetail, useModeInfo, type AssignmentReportData, type ReportStudent } from './classData.ts';
 import { ClassAccountGate, ClassPageSkeleton } from './classUi.tsx';
+import { MasteryGrid } from './Mastery.tsx';
 
 /*
  * /classes/:id/assignments/:aid, for the class teacher only. Who has played,
@@ -63,8 +64,46 @@ function sortValue(s: ReportStudent, key: SortKey): string | number | null {
   }
 }
 
-function StudentsTable({ students, dueAt }: { students: ReportStudent[]; dueAt: string | null }) {
-  const [sort, setSort] = useState<SortState<SortKey>>({ key: 'name', dir: 'asc' });
+/** On a phone each student is a card: name, status, best result and when, with nothing off the side of the screen. */
+function StudentCards({ students, dueAt, classId }: { students: ReportStudent[]; dueAt: string | null; classId: string }) {
+  const rows = useMemo(() => [...students].sort((a, b) => a.displayName.localeCompare(b.displayName, 'en-GB')), [students]);
+  return (
+    <ul className="flex flex-col gap-2" aria-label="Each student's results">
+      {rows.map((s) => (
+        <li key={s.id} className="rounded-[var(--radius-m)] border border-line bg-raised p-3">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <Link to={`/classes/${classId}/students/${s.id}`} className="font-semibold break-words text-text">
+                {s.displayName}
+              </Link>
+              {s.username ? <div className="text-xs break-words text-text-3">@{s.username}</div> : null}
+            </div>
+            <StatusBadge status={statusOf(s, dueAt)} />
+          </div>
+          {s.best ? (
+            <div className="mt-2 flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
+              {s.best.accuracy !== null ? <RateBar rate={s.best.accuracy} /> : null}
+              <span className="text-sm text-text-2 tabular">
+                {s.best.correct} of {s.best.answered} right, best score {formatNumber(s.best.score)}
+              </span>
+            </div>
+          ) : null}
+          {s.lastPlayedAt ? (
+            <p className="mt-1 text-xs text-text-3">
+              {s.attempts === 1 ? 'Played' : `${s.attempts} tries, last`} <time dateTime={s.lastPlayedAt}>{dateTimeText(s.lastPlayedAt)}</time>
+            </p>
+          ) : null}
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function StudentsTable({ students, dueAt, classId }: { students: ReportStudent[]; dueAt: string | null; classId: string }) {
+  const [sort, setSort] = useState<SortState<SortKey>>({
+    key: 'name',
+    dir: 'asc',
+  });
   const onSort = (key: SortKey) => setSort((s) => (s.key === key ? { key, dir: s.dir === 'asc' ? 'desc' : 'asc' } : { key, dir: key === 'name' ? 'asc' : 'desc' }));
   const rows = useMemo(() => {
     const byName = (a: ReportStudent, b: ReportStudent) => a.displayName.localeCompare(b.displayName, 'en-GB');
@@ -95,7 +134,9 @@ function StudentsTable({ students, dueAt }: { students: ReportStudent[]; dueAt: 
         {rows.map((s) => (
           <tr key={s.id} className="border-t border-line">
             <td className="px-3 py-2.5">
-              <div className="font-semibold break-words text-text">{s.displayName}</div>
+              <Link to={`/classes/${classId}/students/${s.id}`} className="font-semibold break-words text-text">
+                {s.displayName}
+              </Link>
               {s.username ? <div className="text-xs text-text-3">@{s.username}</div> : null}
             </td>
             <td className="px-3 py-2.5 text-right text-text tabular">{formatNumber(s.attempts)}</td>
@@ -198,6 +239,9 @@ export default function AssignmentReport() {
       ['Question set', a.setTitle],
       ['Game mode', info.title],
       ['Due', a.dueAt ? csvDateTime(a.dueAt) : 'No due date'],
+      ['Opens', a.opensAt ? csvDateTime(a.opensAt) : 'Straight away'],
+      ['Closes', a.closesAt ? csvDateTime(a.closesAt) : 'Never'],
+      ['Tries allowed', a.maxAttempts ?? 'Any number'],
       ['Students who started', summary.started],
       ['Students in the class', summary.students],
       ['Average accuracy (%)', csvPercent(summary.averageAccuracy)],
@@ -230,6 +274,19 @@ export default function AssignmentReport() {
             ) : (
               'No due date.'
             )}
+            {a.opensAt ? (
+              <>
+                {' '}
+                Opens <time dateTime={a.opensAt}>{dateTimeText(a.opensAt)}</time>.
+              </>
+            ) : null}
+            {a.closesAt ? (
+              <>
+                {' '}
+                Closes <time dateTime={a.closesAt}>{dateTimeText(a.closesAt)}</time>.
+              </>
+            ) : null}
+            {a.maxAttempts !== null ? ` ${a.maxAttempts === 1 ? 'One try' : `Up to ${a.maxAttempts} tries`} each.` : ''}
           </>
         }
         actions={
@@ -267,8 +324,21 @@ export default function AssignmentReport() {
             Share the join code from the class page. Students who join can play this assignment straight away.
           </EmptyState>
         ) : (
-          <StudentsTable students={students} dueAt={a.dueAt} />
+          <>
+            <div className="sm:hidden">
+              <StudentCards students={students} dueAt={a.dueAt} classId={id} />
+            </div>
+            <div className="hidden sm:block">
+              <StudentsTable students={students} dueAt={a.dueAt} classId={id} />
+            </div>
+          </>
         )}
+      </section>
+
+      <section className="mb-8">
+        <SectionTitle>Mastery grid</SectionTitle>
+        <p className="-mt-1 mb-3 max-w-[70ch] text-sm text-text-2">Every student against every question, right or wrong first time. Compare a student’s tries to see what they have since got right.</p>
+        <MasteryGrid classId={id} aid={aid} />
       </section>
 
       <section>

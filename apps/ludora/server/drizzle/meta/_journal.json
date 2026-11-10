@@ -71,6 +71,13 @@
       "when": 1793189091465,
       "tag": "0009_school_events",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1793400000000,
+      "tag": "0012_class_tools",
+      "breakpoints": true
     }
   ]
 }

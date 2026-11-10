@@ -1,24 +1,32 @@
 import { useMemo, useState, type FormEvent } from 'react';
-import { Link, useNavigate, useParams } from 'react-router';
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { Archive, ArchiveRestore, ClipboardList, Copy, KeyRound, LogOut, Pencil, Play, Plus, RefreshCw, School, Search, Trash2, UserMinus, Users } from 'lucide-react';
+import { Archive, ArchiveRestore, ArrowRightLeft, BarChart3, ClipboardList, Copy, KeyRound, LogOut, NotebookPen, Pencil, Play, Plus, RefreshCw, School, Search, Trash2, UserMinus, UserPlus, Users, Wrench } from 'lucide-react';
 import { api, ApiError } from '../../lib/api.ts';
 import { useMe } from '../../lib/session.ts';
 import { useNow } from '../../lib/useNow.ts';
 import { plural, timeAgo } from '../../lib/format.ts';
 import { ModeArt } from '../../art/ModeArt.tsx';
-import { Badge, Dialog, EmptyState, ErrorNotice, Field, Input, PageHeader, Panel, ProgressBar, SectionTitle, TabPanel, Tabs } from '../../ui/primitives.tsx';
+import { Badge, Dialog, EmptyState, ErrorNotice, Field, Input, PageHeader, Panel, ProgressBar, SectionTitle, Select, TabPanel, Tabs } from '../../ui/primitives.tsx';
 import { Button, ButtonLink, IconButton } from '../../ui/Button.tsx';
 import { BackLink, dateText, dateTimeText, errorText, hasStatus, NoValue, TableBox, Th, usePageTitle } from '../reports/reportUi.tsx';
 import { AssignmentDialog } from './AssignmentDialog.tsx';
 import { EventCard, SchoolEventsPanel } from './SchoolEvents.tsx';
 import { CodeTicket } from '../auth/RecoveryCodeDialog.tsx';
+import { PlayerAvatar } from '../social/parts.tsx';
+import { GoalCard, MyBadges, Notices, WeeklyBoard } from './Board.tsx';
+import { ClassCalendar } from './Calendar.tsx';
+import { ClassLoginsDialog, ResetPasscodeDialog } from './ClassLogins.tsx';
+import { GradebookPanel } from './Gradebook.tsx';
+import { InsightsPanel } from './Insights.tsx';
+import { studentWork, type StudentWork } from './classLogic.ts';
 import {
   classKeys,
   copyText,
   useAccountState,
   useClassDetail,
+  useClassList,
   useModeInfo,
   type ClassMember,
   type MyResult,
@@ -30,10 +38,32 @@ import {
 import { ClassAccountGate, ClassPageSkeleton, ConfirmDialog, DueLabel, JoinCode } from './classUi.tsx';
 
 /*
- * /classes/:id. The teacher manages the class: join code, roster and
- * assignments. A student sees the assignments, their own results and a
- * Play button; never anyone else's results (the API only returns theirs).
+ * /classes/:id. The teacher manages the class: join code, roster (with class
+ * logins, bulk moves and private notes), assignments, the gradebook, insights,
+ * the noticeboard and goal, and a calendar. A student sees the notices, the goal,
+ * their assignments with where each stands, their own results and a Play button;
+ * never anyone else's results (the API only returns theirs).
  */
+
+/** The options a teacher set on an assignment, in a short line. */
+function OptionsText({
+  a,
+  now,
+}: {
+  a: {
+    opensAt: string | null;
+    closesAt: string | null;
+    maxAttempts: number | null;
+  };
+  now: number;
+}) {
+  const parts: string[] = [];
+  if (a.opensAt) parts.push(Date.parse(a.opensAt) > now ? `Opens ${dateTimeText(a.opensAt)}` : `Opened ${dateText(a.opensAt)}`);
+  if (a.closesAt) parts.push(Date.parse(a.closesAt) > now ? `Closes ${dateTimeText(a.closesAt)}` : 'Closed');
+  if (a.maxAttempts !== null) parts.push(a.maxAttempts === 1 ? 'One try' : `${a.maxAttempts} tries each`);
+  if (!parts.length) return null;
+  return <p className="mt-1 text-sm text-text-2">{parts.join('. ')}.</p>;
+}
 
 const artClass = 'h-14 w-20 shrink-0 overflow-hidden rounded-[var(--radius-m)]';
 
@@ -78,6 +108,12 @@ function TeacherAssignmentRow({ a, classId, now, onEdit, onDelete }: { a: Teache
           <p className="mt-1.5 text-sm">
             <DueLabel dueAt={a.dueAt} now={now} />
           </p>
+          <OptionsText a={a} now={now} />
+          {a.opensAt && Date.parse(a.opensAt) > now ? (
+            <p className="mt-1.5">
+              <Badge tone="sky">Scheduled: students cannot see it yet</Badge>
+            </p>
+          ) : null}
         </div>
       </div>
       <div className="flex items-center gap-3 md:w-80">
@@ -103,36 +139,203 @@ function TeacherAssignmentRow({ a, classId, now, onEdit, onDelete }: { a: Teache
   );
 }
 
-function Roster({ members, onRemove, onHelp }: { members: ClassMember[]; onRemove: (m: ClassMember) => void; onHelp: (m: ClassMember) => void }) {
+function MemberName({ m, classId }: { m: ClassMember; classId: string }) {
+  return (
+    <div className="flex min-w-0 items-center gap-2.5">
+      <PlayerAvatar avatar={m.avatar} size={36} />
+      <div className="min-w-0">
+        <Link to={`/classes/${classId}/students/${m.id}`} className="font-semibold break-words text-text">
+          {m.displayName}
+          <span className="sr-only">, open their report</span>
+        </Link>
+        <div className="flex flex-wrap items-center gap-x-2 text-xs text-text-3">
+          {m.username ? <span className="break-all">@{m.username}</span> : null}
+          {m.classLogin ? <span>Class login</span> : null}
+          {m.hasNote ? (
+            <span className="inline-flex items-center gap-1">
+              <NotebookPen className="size-3" aria-hidden />
+              Has your note
+            </span>
+          ) : null}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function MemberActions({ m, onRemove, onHelp, onReset }: { m: ClassMember; onRemove: (m: ClassMember) => void; onHelp: (m: ClassMember) => void; onReset: (m: ClassMember) => void }) {
+  return (
+    <>
+      {m.classLogin ? (
+        <Button size="sm" variant="ghost" icon={<KeyRound className="size-4" aria-hidden />} onClick={() => onReset(m)}>
+          Reset passcode<span className="sr-only"> for {m.displayName}</span>
+        </Button>
+      ) : (
+        <Button size="sm" variant="ghost" icon={<KeyRound className="size-4" aria-hidden />} onClick={() => onHelp(m)}>
+          Sign-in help<span className="sr-only"> for {m.displayName}</span>
+        </Button>
+      )}
+      <Button size="sm" variant="ghost" icon={<UserMinus className="size-4" />} onClick={() => onRemove(m)} aria-label={`Remove ${m.displayName} from the class`}>
+        Remove
+      </Button>
+    </>
+  );
+}
+
+function Roster({
+  classId,
+  className,
+  archived,
+  members,
+  onRemove,
+  onHelp,
+  onReset,
+}: {
+  classId: string;
+  className: string;
+  archived: boolean;
+  members: ClassMember[];
+  onRemove: (m: ClassMember) => void;
+  onHelp: (m: ClassMember) => void;
+  onReset: (m: ClassMember) => void;
+}) {
+  const qc = useQueryClient();
+  const list = useClassList(true);
   const [q, setQ] = useState('');
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [logins, setLogins] = useState(false);
+  const [bulk, setBulk] = useState<'remove' | 'move' | null>(null);
+  const [target, setTarget] = useState('');
+  const others = (list.data?.teaching ?? []).filter((c) => c.id !== classId && !c.archived);
   const shown = useMemo(() => {
     const t = q.trim().toLowerCase();
     return t ? members.filter((m) => m.displayName.toLowerCase().includes(t) || (m.username ?? '').toLowerCase().includes(t)) : members;
   }, [members, q]);
+  const chosen = members.filter((m) => selected.has(m.id));
+  const toggle = (id: string) =>
+    setSelected((cur) => {
+      const next = new Set(cur);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  const allShown = shown.length > 0 && shown.every((m) => selected.has(m.id));
+  const toggleAll = () => setSelected(allShown ? new Set([...selected].filter((id) => !shown.some((m) => m.id === id))) : new Set([...selected, ...shown.map((m) => m.id)]));
+  const targetClass = others.find((c) => c.id === target);
+
+  const toolbar = (
+    <div className="flex flex-wrap items-center justify-between gap-3">
+      <p className="max-w-[60ch] text-sm text-text-2">Open a student for their report and your private note. Students with no email can have a class login.</p>
+      {!archived ? (
+        <Button variant="primary" icon={<UserPlus className="size-4" aria-hidden />} onClick={() => setLogins(true)}>
+          Make class logins
+        </Button>
+      ) : null}
+    </div>
+  );
+  const dialogs = (
+    <>
+      <ClassLoginsDialog classId={classId} className={className} open={logins} onOpenChange={setLogins} />
+      <ConfirmDialog
+        open={bulk === 'remove'}
+        onOpenChange={(o) => !o && setBulk(null)}
+        title={`Remove ${plural(chosen.length, 'student')}?`}
+        description={`${chosen.map((m) => m.displayName).join(', ')} will no longer see ${className} or its assignments, and drop out of its reports. Your notes on them are deleted. They can join again with the join code.`}
+        confirmLabel={`Remove ${plural(chosen.length, 'student')}`}
+        onConfirm={async () => {
+          const res = await api.post<{ done: number }>(`/api/classes/${classId}/members/bulk`, { action: 'remove', userIds: chosen.map((m) => m.id) });
+          toast.success(`${plural(res.done, 'student')} removed`);
+          setSelected(new Set());
+          await qc.invalidateQueries({ queryKey: classKeys.all });
+        }}
+      />
+      <ConfirmDialog
+        open={bulk === 'move' && Boolean(targetClass)}
+        onOpenChange={(o) => !o && setBulk(null)}
+        title={`Move ${plural(chosen.length, 'student')} to ${targetClass?.name ?? ''}?`}
+        description={`They leave ${className} and join ${targetClass?.name ?? 'the other class'}, with your notes and class logins. Their results here stay in this class's reports.`}
+        confirmLabel="Move students"
+        variant="primary"
+        onConfirm={async () => {
+          const res = await api.post<{ done: number; to: { name: string } }>(`/api/classes/${classId}/members/bulk`, {
+            action: 'move',
+            userIds: chosen.map((m) => m.id),
+            toClassId: target,
+          });
+          toast.success(`${plural(res.done, 'student')} moved to ${res.to.name}`);
+          setSelected(new Set());
+          await qc.invalidateQueries({ queryKey: classKeys.all });
+        }}
+      />
+    </>
+  );
+
   if (!members.length) {
     return (
-      <EmptyState icon={<Users className="size-8" />} title="No students yet">
-        Share the join code. Students choose Join a class on their Classes page and type it in.
-      </EmptyState>
+      // The dialogs come first in both layouts, so the class logins dialog keeps its cards when the first students arrive.
+      <div className="flex flex-col gap-4">
+        {dialogs}
+        {toolbar}
+        <EmptyState icon={<Users className="size-8" />} title="No students yet">
+          Share the join code: students choose Join a class on their Classes page and type it in. Or make class logins for students with no email.
+        </EmptyState>
+      </div>
     );
   }
+  const check = (m: ClassMember) => <input type="checkbox" className="size-5 shrink-0 accent-[var(--lantern-deep)]" checked={selected.has(m.id)} onChange={() => toggle(m.id)} aria-label={`Select ${m.displayName}`} />;
   return (
     <div className="flex flex-col gap-3">
-      {members.length > 8 ? (
-        <label className="relative block sm:max-w-xs">
-          <span className="sr-only">Find a student</span>
-          <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-text-3" aria-hidden />
-          <Input type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Find a student" className="h-10 pl-9" />
+      {dialogs}
+      {toolbar}
+      <div className="flex flex-wrap items-center gap-3">
+        {members.length > 8 ? (
+          <label className="relative block min-w-0 flex-1 sm:max-w-xs">
+            <span className="sr-only">Find a student</span>
+            <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-text-3" aria-hidden />
+            <Input type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Find a student" className="h-10 pl-9" />
+          </label>
+        ) : null}
+        <label className="flex min-h-11 items-center gap-2 text-sm font-semibold text-text">
+          <input type="checkbox" className="size-5 accent-[var(--lantern-deep)]" checked={allShown} onChange={toggleAll} />
+          Select all{q.trim() ? ' shown' : ''}
         </label>
+      </div>
+      {chosen.length ? (
+        <div className="flex flex-wrap items-center gap-2 rounded-[var(--radius-m)] border border-lantern bg-lantern/[0.08] p-2.5" role="region" aria-label="Selected students">
+          <span className="px-1 text-sm font-semibold text-text" aria-live="polite">
+            {plural(chosen.length, 'student')} selected
+          </span>
+          <Button size="sm" icon={<UserMinus className="size-4" aria-hidden />} onClick={() => setBulk('remove')}>
+            Remove
+          </Button>
+          {others.length ? (
+            <span className="flex flex-wrap items-center gap-2">
+              <Select value={target} onChange={(e) => setTarget(e.target.value)} aria-label="Class to move them to" className="h-10 w-auto max-w-[14rem]">
+                <option value="">Move to a class…</option>
+                {others.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                  </option>
+                ))}
+              </Select>
+              <Button size="sm" icon={<ArrowRightLeft className="size-4" aria-hidden />} disabled={!target} onClick={() => setBulk('move')}>
+                Move
+              </Button>
+            </span>
+          ) : null}
+          <Button size="sm" variant="ghost" onClick={() => setSelected(new Set())}>
+            Clear
+          </Button>
+        </div>
       ) : null}
-      {/* On a phone a five-column table would hide the actions off to the side, so each student is a card there. */}
+      {/* On a phone a wide table would hide the actions off to the side, so each student is a card there. */}
       <ul className="flex flex-col gap-2 sm:hidden" aria-label="Students in this class">
         {shown.map((m) => (
           <li key={m.id} className="rounded-[var(--radius-m)] border border-line bg-raised p-3">
             <div className="flex items-start justify-between gap-3">
-              <div className="min-w-0">
-                <div className="font-semibold break-words text-text">{m.displayName}</div>
-                {m.username ? <div className="text-xs break-words text-text-3">@{m.username}</div> : null}
+              <div className="flex min-w-0 items-start gap-2">
+                <span className="mt-2">{check(m)}</span>
+                <MemberName m={m} classId={classId} />
               </div>
               <span className="shrink-0 rounded-[var(--radius-s)] bg-surface-3 px-1.5 font-display text-sm leading-6 font-bold text-text-2 tabular">Lv {m.level}</span>
             </div>
@@ -148,21 +351,19 @@ function Roster({ members, onRemove, onHelp }: { members: ClassMember[]; onRemov
               )}
             </p>
             <div className="mt-2 flex flex-wrap gap-1 border-t border-line pt-2">
-              <Button size="sm" variant="ghost" icon={<KeyRound className="size-4" aria-hidden />} onClick={() => onHelp(m)}>
-                Sign-in help<span className="sr-only"> for {m.displayName}</span>
-              </Button>
-              <Button size="sm" variant="ghost" icon={<UserMinus className="size-4" />} onClick={() => onRemove(m)} aria-label={`Remove ${m.displayName} from the class`}>
-                Remove
-              </Button>
+              <MemberActions m={m} onRemove={onRemove} onHelp={onHelp} onReset={onReset} />
             </div>
           </li>
         ))}
         {shown.length === 0 ? <li className="px-3 py-6 text-center text-text-3">No students match “{q.trim()}”.</li> : null}
       </ul>
       <div className="hidden sm:block">
-        <TableBox caption="Students in this class" minWidth={720}>
+        <TableBox caption="Students in this class" minWidth={760}>
           <thead className="bg-surface-2">
             <tr>
+              <Th className="w-10">
+                <span className="sr-only">Select</span>
+              </Th>
               <Th>Student</Th>
               <Th align="right">Level</Th>
               <Th>Joined</Th>
@@ -174,10 +375,10 @@ function Roster({ members, onRemove, onHelp }: { members: ClassMember[]; onRemov
           </thead>
           <tbody>
             {shown.map((m) => (
-              <tr key={m.id} className="border-t border-line">
+              <tr key={m.id} className={`border-t border-line ${selected.has(m.id) ? 'bg-lantern/[0.06]' : ''}`}>
+                <td className="py-2.5 pl-3">{check(m)}</td>
                 <td className="px-3 py-2.5">
-                  <div className="font-semibold break-words text-text">{m.displayName}</div>
-                  {m.username ? <div className="text-xs text-text-3">@{m.username}</div> : null}
+                  <MemberName m={m} classId={classId} />
                 </td>
                 <td className="px-3 py-2.5 text-right text-text tabular">{m.level}</td>
                 <td className="px-3 py-2.5 whitespace-nowrap text-text-2">
@@ -194,19 +395,14 @@ function Roster({ members, onRemove, onHelp }: { members: ClassMember[]; onRemov
                 </td>
                 <td className="px-3 py-2">
                   <div className="flex justify-end gap-1">
-                    <Button size="sm" variant="ghost" icon={<KeyRound className="size-4" aria-hidden />} onClick={() => onHelp(m)}>
-                      Sign-in help<span className="sr-only"> for {m.displayName}</span>
-                    </Button>
-                    <Button size="sm" variant="ghost" icon={<UserMinus className="size-4" />} onClick={() => onRemove(m)} aria-label={`Remove ${m.displayName} from the class`}>
-                      Remove
-                    </Button>
+                    <MemberActions m={m} onRemove={onRemove} onHelp={onHelp} onReset={onReset} />
                   </div>
                 </td>
               </tr>
             ))}
             {shown.length === 0 ? (
               <tr>
-                <td colSpan={5} className="px-3 py-8 text-center text-text-3">
+                <td colSpan={6} className="px-3 py-8 text-center text-text-3">
                   No students match “{q.trim()}”.
                 </td>
               </tr>
@@ -275,11 +471,25 @@ function TeacherView({ data }: { data: TeacherClassDetail }) {
   const qc = useQueryClient();
   const now = useNow(60_000);
   const cls = data.class;
-  const [tab, setTab] = useState('assignments');
+  const [params, setParams] = useSearchParams();
+  const tab = params.get('tab') ?? 'assignments';
+  // The tab lives in the address, so Back from a report or a student returns to it.
+  const setTab = (next: string) =>
+    setParams(
+      (p) => {
+        if (next === 'assignments') p.delete('tab');
+        else p.set('tab', next);
+        return p;
+      },
+      { replace: true },
+    );
+  const [resetting, setResetting] = useState<ClassMember | null>(null);
   const [renaming, setRenaming] = useState(false);
   const [archiving, setArchiving] = useState(false);
   const [newCode, setNewCode] = useState(false);
-  const [editor, setEditor] = useState<{ editing: TeacherAssignment | null } | null>(null);
+  const [editor, setEditor] = useState<{
+    editing: TeacherAssignment | null;
+  } | null>(null);
   const [deleting, setDeleting] = useState<TeacherAssignment | null>(null);
   const [removing, setRemoving] = useState<ClassMember | null>(null);
   const [helping, setHelping] = useState<ClassMember | null>(null);
@@ -307,6 +517,9 @@ function TeacherView({ data }: { data: TeacherClassDetail }) {
         }
         actions={
           <>
+            <ButtonLink to={`/classes/${cls.id}/tools`} size="sm" icon={<Wrench className="size-4" aria-hidden />}>
+              Class tools
+            </ButtonLink>
             <Button size="sm" icon={<Pencil className="size-4" />} onClick={() => setRenaming(true)}>
               Rename
             </Button>
@@ -337,11 +550,41 @@ function TeacherView({ data }: { data: TeacherClassDetail }) {
         onValueChange={setTab}
         label="Class sections"
         items={[
-          { value: 'assignments', label: 'Assignments', count: data.assignments.length },
+          {
+            value: 'assignments',
+            label: 'Assignments',
+            count: data.assignments.length,
+          },
           { value: 'students', label: 'Students', count: data.memberCount },
-          { value: 'events', label: 'School and events', count: data.events.length },
+          { value: 'gradebook', label: 'Gradebook' },
+          { value: 'insights', label: 'Insights' },
+          { value: 'board', label: 'Noticeboard', count: data.notices.length },
+          { value: 'calendar', label: 'Calendar' },
+          {
+            value: 'events',
+            label: 'School and events',
+            count: data.events.length,
+          },
         ]}
       >
+        <TabPanel value="gradebook" className="focus-visible:outline-offset-4">
+          <GradebookPanel classId={cls.id} className={cls.name} members={data.members} />
+        </TabPanel>
+        <TabPanel value="insights" className="focus-visible:outline-offset-4">
+          <InsightsPanel classId={cls.id} />
+        </TabPanel>
+        <TabPanel value="board" className="focus-visible:outline-offset-4">
+          <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)]">
+            <Notices classId={cls.id} notices={data.notices} teacher archived={cls.archived} />
+            <div className="flex flex-col gap-4">
+              <GoalCard classId={cls.id} goal={data.goal} teacher archived={cls.archived} />
+              <WeeklyBoard classId={cls.id} on={cls.leaderboardOn} teacher />
+            </div>
+          </div>
+        </TabPanel>
+        <TabPanel value="calendar" className="focus-visible:outline-offset-4">
+          <ClassCalendar items={data.assignments} now={now} />
+        </TabPanel>
         <TabPanel value="events" className="focus-visible:outline-offset-4">
           <SchoolEventsPanel classId={cls.id} schoolName={cls.schoolName} events={data.events} archived={cls.archived} />
         </TabPanel>
@@ -371,7 +614,7 @@ function TeacherView({ data }: { data: TeacherClassDetail }) {
           )}
         </TabPanel>
         <TabPanel value="students" className="focus-visible:outline-offset-4">
-          <Roster members={data.members} onRemove={setRemoving} onHelp={setHelping} />
+          <Roster classId={cls.id} className={cls.name} archived={cls.archived} members={data.members} onRemove={setRemoving} onHelp={setHelping} onReset={setResetting} />
         </TabPanel>
       </Tabs>
 
@@ -424,12 +667,13 @@ function TeacherView({ data }: { data: TeacherClassDetail }) {
       />
 
       <SignInHelpDialog classId={cls.id} student={helping} onClose={() => setHelping(null)} />
+      <ResetPasscodeDialog classId={cls.id} className={cls.name} student={resetting} onClose={() => setResetting(null)} />
 
       <ConfirmDialog
         open={removing !== null}
         onOpenChange={(open) => !open && setRemoving(null)}
         title={`Remove ${removing?.displayName ?? 'this student'}?`}
-        description={`They will no longer see ${cls.name} or its assignments, and they drop out of its reports. They can join again with the join code.`}
+        description={`They will no longer see ${cls.name} or its assignments, and they drop out of its reports. Your note on them is deleted. They can join again with the join code.`}
         confirmLabel="Remove student"
         onConfirm={async () => {
           if (!removing) return;
@@ -447,7 +691,10 @@ function TeacherView({ data }: { data: TeacherClassDetail }) {
  * Shown once. The student uses it on the recovery page, like their own code.
  */
 function SignInHelpDialog({ classId, student, onClose }: { classId: string; student: ClassMember | null; onClose: () => void }) {
-  const [result, setResult] = useState<{ code: string; username: string } | null>(null);
+  const [result, setResult] = useState<{
+    code: string;
+    username: string;
+  } | null>(null);
   const [busy, setBusy] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
   const name = student?.displayName ?? 'this student';
@@ -527,15 +774,29 @@ function MyResultText({ mine }: { mine: MyResult | null }) {
   );
 }
 
+export const WORK_LABEL: Record<StudentWork, { label: string; tone: 'mint' | 'coral' | 'amber' | 'neutral' | 'sky' }> = {
+  todo: { label: 'To do', tone: 'sky' },
+  dueSoon: { label: 'Due soon', tone: 'amber' },
+  overdue: { label: 'Past due', tone: 'coral' },
+  done: { label: 'Done', tone: 'mint' },
+  used: { label: 'All tries used', tone: 'neutral' },
+  closed: { label: 'Closed', tone: 'neutral' },
+};
+
 function StudentAssignmentRow({ a, now, archived, starting, onPlay }: { a: StudentAssignment; now: number; archived: boolean; starting: string | null; onPlay: () => void }) {
   const info = useModeInfo()(a.modeId, a.variantId);
   const label = a.mine ? 'Play again' : 'Play';
+  const work = studentWork(a, now);
+  const triesLeft = a.maxAttempts !== null ? Math.max(0, a.maxAttempts - (a.mine?.plays ?? 0)) : null;
   return (
     <li className="flex flex-col gap-4 rounded-[var(--radius-l)] border border-line bg-raised p-4 sm:flex-row sm:items-center">
       <div className="flex min-w-0 flex-1 items-start gap-3">
         <ModeArt thumb={info.thumb} className={artClass} />
         <div className="min-w-0 flex-1">
-          <h3 className="font-display text-xl leading-tight font-bold break-words">{a.title}</h3>
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+            <h3 className="font-display text-xl leading-tight font-bold break-words">{a.title}</h3>
+            <Badge tone={WORK_LABEL[work].tone}>{WORK_LABEL[work].label}</Badge>
+          </div>
           <p className="mt-0.5 text-sm break-words text-text-2">
             {a.setTitle}, {info.title}
           </p>
@@ -543,6 +804,9 @@ function StudentAssignmentRow({ a, now, archived, starting, onPlay }: { a: Stude
           <p className="mt-2 text-sm">
             <DueLabel dueAt={a.dueAt} now={now} quietWhenPast={Boolean(a.mine)} />
           </p>
+          {a.closesAt && Date.parse(a.closesAt) > now ? <p className="mt-1 text-sm text-text-2">Closes {dateTimeText(a.closesAt)}. After that it cannot be played.</p> : null}
+          {triesLeft !== null && !a.blocked ? <p className="mt-1 text-sm text-text-2">{triesLeft === 1 ? 'One try left.' : `${triesLeft} tries left.`}</p> : null}
+          {a.blocked ? <p className="mt-1 text-sm font-semibold text-text">{a.blocked}</p> : null}
         </div>
       </div>
       <div className="flex items-center justify-between gap-4 border-t border-line pt-3 sm:flex-col sm:items-end sm:justify-center sm:border-0 sm:pt-0">
@@ -551,7 +815,7 @@ function StudentAssignmentRow({ a, now, archived, starting, onPlay }: { a: Stude
           variant={a.mine ? 'secondary' : 'primary'}
           icon={<Play className="size-4" />}
           loading={starting === a.id}
-          disabled={archived || (starting !== null && starting !== a.id)}
+          disabled={archived || Boolean(a.blocked) || (starting !== null && starting !== a.id)}
           onClick={onPlay}
           aria-label={`${label}: ${a.title}`}
         >
@@ -560,6 +824,20 @@ function StudentAssignmentRow({ a, now, archived, starting, onPlay }: { a: Stude
       </div>
     </li>
   );
+}
+
+/** Work still to do first (past due, then soonest due), then what is done or closed. */
+function orderForStudent(list: StudentAssignment[], now: number): StudentAssignment[] {
+  const rank: Record<StudentWork, number> = {
+    overdue: 0,
+    dueSoon: 1,
+    todo: 2,
+    done: 3,
+    used: 4,
+    closed: 5,
+  };
+  const due = (a: StudentAssignment) => (a.dueAt ? Date.parse(a.dueAt) : Infinity);
+  return [...list].sort((a, b) => rank[studentWork(a, now)] - rank[studentWork(b, now)] || due(a) - due(b));
 }
 
 function StudentView({ data }: { data: StudentClassDetail }) {
@@ -600,6 +878,18 @@ function StudentView({ data }: { data: StudentClassDetail }) {
           <p>Its assignments cannot be played right now. Your results so far are kept.</p>
         </div>
       ) : null}
+      {data.notices.length || data.goal || cls.leaderboardOn ? (
+        <div className="mb-6 grid grid-cols-1 gap-4 lg:grid-cols-2">
+          {data.notices.length ? <Notices classId={cls.id} notices={data.notices} teacher={false} /> : null}
+          <div className="flex flex-col gap-4">
+            <GoalCard classId={cls.id} goal={data.goal} teacher={false} />
+            <WeeklyBoard classId={cls.id} on={cls.leaderboardOn} teacher={false} />
+          </div>
+        </div>
+      ) : null}
+      <div className="mb-6">
+        <MyBadges classId={cls.id} />
+      </div>
       {data.events.length ? (
         <section className="mb-6">
           <SectionTitle>Events</SectionTitle>
@@ -611,14 +901,24 @@ function StudentView({ data }: { data: StudentClassDetail }) {
         </section>
       ) : null}
       <section>
-        <SectionTitle>Assignments</SectionTitle>
+        <SectionTitle
+          action={
+            me.data?.user ? (
+              <ButtonLink to={`/classes/${cls.id}/students/${me.data.user.id}`} size="sm" variant="ghost" icon={<BarChart3 className="size-4" aria-hidden />}>
+                Your progress
+              </ButtonLink>
+            ) : null
+          }
+        >
+          Assignments
+        </SectionTitle>
         {data.assignments.length === 0 ? (
           <EmptyState icon={<ClipboardList className="size-8" />} title="No assignments yet">
             When {cls.teacher} sets one, it shows up here.
           </EmptyState>
         ) : (
           <ul className="flex flex-col gap-3">
-            {data.assignments.map((a) => (
+            {orderForStudent(data.assignments, now).map((a) => (
               <StudentAssignmentRow key={a.id} a={a} now={now} archived={cls.archived} starting={starting} onPlay={() => void play(a)} />
             ))}
           </ul>
