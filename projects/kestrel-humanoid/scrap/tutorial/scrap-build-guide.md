@@ -289,9 +289,9 @@ pressure stays inside the sole (`scrap/calc/scrap_templates.py` refuses to write
 Use the pelvis IMU to correct the ankle and hip roll angles a little each step (keep the torso upright). Once the
 scripted walk works, the reinforcement-learning package in `train/` has policies for both scrap robots
 (`python play.py --variant s1scrap --run s1scrap`), trained against the same slow actuators and their torque-speed
-lines. In simulation they walk flat ground, rough ground and 15° slopes, up to 0.42 m/s
-(`train/runs/s1scrap/speed.md`), but climb only low stairs so far (`train/runs/s1scrap/eval.md`). Use the
-scripted `gait_SU.csv` and `gait_ST.csv` for steps.
+lines. In simulation they walk flat ground, rough ground and 15° slopes, up to 0.41 m/s (S1-Scrap) and 0.39 m/s
+(K1-Scrap) (`train/runs/s1scrap/speed.md`). They climb 7.6 cm stairs but not taller ones (`train/runs/s1scrap/eval.md`),
+so use the scripted `gait_SU.csv` and `gait_ST.csv` for steps.
 
 ---
 
@@ -321,7 +321,7 @@ in its load-carrying robot legs (R11 §1.4).
 | | **S1-Fast** | **K1-Fast** | S1-Scrap (for comparison) |
 |---|---|---|---|
 | Walking (sized for) | 0.8 m/s, 1.0 m/s fast | 0.6 m/s, 0.8 m/s fast | 0.25 m/s, 0.36 m/s fast |
-| **Top speed, simulated** (trained policy, within the motors' limits) | **1.44 m/s** | **1.31 m/s** | 0.42 m/s |
+| **Top speed, simulated** (trained policy, within the motors' limits) | **1.44 m/s** | **1.31 m/s** | 0.41 m/s |
 | Stairs, objects | 18 cm stairs, 25 cm step-up, 10 kg box | 18 cm stairs, 20 cm step-up, 5 kg box, 1 kg per hand | 15 cm steps, 3 kg box |
 | Leg actuators | **12 hub motors + 12 ODESC drives**, 8 drill gearmotors (hip yaw and roll) | 12 hub motors + 12 ODESC drives, 8 drills; arms, waist and neck as K1-Scrap | 14 drill gearmotors |
 | Knee | 2 hub motors, 7.7:1 chain: **335 N·m, 12.9 rad/s** | 2 hub motors, 8:1: **347 N·m, 12.5 rad/s** | 2 drills, 5.5:1 capstan: 134 N·m, 7.6 rad/s |

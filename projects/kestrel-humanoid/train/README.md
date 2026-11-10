@@ -57,8 +57,8 @@ A speed counts only if both stay under 100 % with no falls.
 |---|---|---|---|---|
 | **S1-Fast** (hub-motor legs) | 47 M steps, commands to 1.4 m/s | **1.44 m/s** (commanded 1.6) | 70 %, 91 % | [`runs/s1fast`](runs/s1fast) |
 | **K1-Fast** (hub-motor legs) | 47 M steps, commands to 1.0 m/s | **1.31 m/s** (commanded 1.2) | 75 %, 65 % | [`runs/k1fast`](runs/k1fast) |
-| S1-Scrap (drills) | 46 M steps, commands to 0.35 m/s | 0.42 m/s (commanded 0.45) | 52 %, 79 % | [`runs/s1scrap/eval.md`](runs/s1scrap/eval.md) |
-| K1-Scrap (drills) | 47 M steps, commands to 0.35 m/s | 0.42 m/s (commanded 0.45) | 70 %, 97 % | [`runs/k1scrap/eval.md`](runs/k1scrap/eval.md) |
+| S1-Scrap (drills) | 72 M steps (the last 26 M on stairs-heavy terrain), commands to 0.35 m/s | 0.41 m/s (commanded 0.45) | 54 %, 66 % | [`runs/s1scrap/eval.md`](runs/s1scrap/eval.md) |
+| K1-Scrap (drills) | 47 M steps, commands to 0.35 m/s | 0.39 m/s (commanded 0.45) | 59 %, 75 % | [`runs/k1scrap/eval.md`](runs/k1scrap/eval.md) |
 
 K1-Fast commanded 1.4 m/s walks 1.59 m/s, but its ankle motors then turn at 105 % of no-load speed, so that
 figure is not counted. The torque-speed line never limits these policies: the fastest joints stay below the
@@ -68,12 +68,14 @@ torque and speed margins; the learned gait swings the legs with lower peak accel
 
 On terrain at 1.0 m/s both fast builds walk flat ground, slopes to 15° and stairs down to 18 cm (100 %). They climb
 stairs to 10.2 cm (100 %). Taller stairs are not yet reliable: S1-Fast 88 / 69 / 50 % at 12.8 / 15.4 / 18 cm,
-K1-Fast 75 / 25 / 25 %. The scrap builds at 0.25 m/s walk flat ground, rough ground and slopes, but climb only 5–7.6 cm stairs.
+K1-Fast 75 / 25 / 25 %. The scrap builds at 0.25 m/s walk flat ground, rough ground and slopes, and climb 7.6 cm stairs (S1-Scrap 94 %, K1-Scrap 100 %); S1-Scrap descends 10.2 cm stairs 94 % of the time. A stairs fine-tune (`--resume --terrain climb`, 1.5 h) gave S1-Scrap that descent, and 38 % on 10.2 cm stairs up. It made K1-Scrap slower and worse on stairs, so K1-Scrap keeps its earlier policy (logs: `runs/k1scrap/console_*_climb_rejected.log`).
 
-**The curriculum fix the scrap runs needed.** A robot was promoted to harder terrain only after walking 2.4 m in
-one 20 s episode. Many of the 0.1–0.35 m/s commands the scrap builds train on cannot cover that, so their curricula
-stalled near level 1. Promotion now also comes after 80 % of the commanded distance, at least 1.5 m (two stair
-risers; `env.PROMOTE_MIN`).
+**Curriculum promotion for slow robots.** A robot was promoted to harder terrain only after walking 2.4 m in one
+20 s episode. Many of the 0.1–0.35 m/s commands the scrap builds train on cannot cover that. Promotion now also comes
+after 80 % of the commanded distance, at least 1.5 m (two stair risers; `env.PROMOTE_MIN`). The scrap curricula still
+level off near row 1.3 with it. The likelier limit is the drill builds' slow joints (knee no-load 7.6 rad/s), not
+the curriculum. For steps they use the scripted, balance-checked motions in `scrap/<s1|k1>/data/gait_SU.csv` and
+`gait_ST.csv`.
 
 ## Results (trained on this VM)
 

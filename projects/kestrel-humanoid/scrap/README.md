@@ -23,7 +23,7 @@ bike-chain reductions at the hips, knees and ankles: 2 per hip pitch, 2 per knee
 | | **S1-Fast** | **K1-Fast** | S1-Scrap |
 |---|---|---|---|
 | Walking (sized for) | 0.8 m/s, 1.0 m/s fast | 0.6 m/s, 0.8 m/s fast | 0.25 / 0.36 m/s |
-| **Top speed, simulated** | **1.44 m/s** | **1.31 m/s** | 0.42 m/s |
+| **Top speed, simulated** | **1.44 m/s** | **1.31 m/s** | 0.41 m/s |
 | Stairs, objects | 18 cm stairs, 10 kg box | 18 cm stairs, 5 kg box | 15 cm steps, 3 kg |
 | Knee | 335 N·m, 12.9 rad/s | 347 N·m, 12.5 rad/s | 134 N·m, 7.6 rad/s |
 | Mass | about 52 kg | about 62 kg | about 30 kg |
@@ -56,17 +56,18 @@ rating. Terrain success rates are from `play.py` on six terrain types, 16 headin
 
 | | S1-Fast | K1-Fast | S1-Scrap | K1-Scrap |
 |---|---|---|---|---|
-| Top speed within motor limits | **1.44 m/s** | **1.31 m/s** | 0.42 m/s | 0.42 m/s |
-| Flat, slopes to 15°, stairs down to 18 cm | 100 % at 1.0 m/s | 100 % at 1.0 m/s | flat 100 %, slopes 75–100 % at 0.25 m/s | flat 100 %, slopes 75–100 % at 0.25 m/s |
-| Stairs up: 10.2 / 12.8 / 15.4 / 18 cm | 100 / 88 / 69 / 50 % | 100 / 75 / 25 / 25 % | to 5 cm (100 %) | to 7.6 cm (100 %) |
+| Top speed within motor limits | **1.44 m/s** | **1.31 m/s** | 0.41 m/s | 0.39 m/s |
+| Flat, slopes to 15° | 100 % at 1.0 m/s | 100 % at 1.0 m/s | flat 100 %, slopes 75–100 % at 0.25 m/s | flat 100 %, slopes 75–100 % at 0.25 m/s |
+| Stairs down: 7.6 / 10.2 / 12.8 / 18 cm | 100 % to 18 cm | 100 % to 18 cm | 94 / 94 / 75 / 75 % | 50 / 12 / 0 / 0 % |
+| Stairs up: 7.6 / 10.2 / 12.8 / 18 cm | 100 / 100 / 88 / 50 % | 100 / 100 / 75 / 25 % | 94 / 38 / 0 / 0 % | 100 / 0 / 0 / 0 % |
 | Tables | [speed](../train/runs/s1fast/speed.md), [terrain](../train/runs/s1fast/eval_1.0.md) | [speed](../train/runs/k1fast/speed.md), [terrain](../train/runs/k1fast/eval_1.0.md) | [speed](../train/runs/s1scrap/speed.md), [terrain](../train/runs/s1scrap/eval.md) | [speed](../train/runs/k1scrap/speed.md), [terrain](../train/runs/k1scrap/eval.md) |
 
 ![S1-Fast walking at 1.0 m/s and on 18 cm stairs](../train/runs/s1fast/demo.gif)
 
-The scrap builds' tall stairs are a training problem, not a motor limit. Their curriculum stalled at the easy terrain
-rows until a fix to its promotion rule (see `train/README.md`), and stairs fine-tunes are under way. On the real
-robot, step-ups start from the scripted motions in `s1/data/gait_SU.csv` and `gait_ST.csv`, which the
-simulation checks for balance.
+The drill builds' learned policies climb only low stairs, most likely because their joints are slow (knee no-load
+7.6 rad/s) for the policy's 1.2 s gait clock. For steps, use the scripted motions in
+`s1/data/gait_SU.csv` (15 cm step-up) and `gait_ST.csv` (15 cm stairs, 2 s per step). The simulation checks both for
+balance and for every joint's torque.
 
 ## How it was designed
 
