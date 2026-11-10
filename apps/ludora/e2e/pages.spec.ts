@@ -178,12 +178,14 @@ test('the library keeps its filters when you open a set and come back, and offer
 
 // The search writes to the address a moment after typing. It used to start from a stale copy of the
 // address, so a filter chosen just before typing was dropped (seen on CI, where the machine is slower).
-test('a filter chosen just before typing a search is kept', async ({ browser }) => {
+test('a filter chosen just before typing a search is kept', async ({ browser, browserName }) => {
   const p = await account(browser, { accountType: 'teacher' });
   await p.page.goto('/library');
   await expect(p.page.getByRole('button', { name: 'By Ludora' })).toBeVisible();
-  const cdp = await p.page.context().newCDPSession(p.page);
-  await cdp.send('Emulation.setCPUThrottlingRate', { rate: 20 });
+  // Slowing the processor is what made the old bug show every time; only Chromium can do it.
+  // The other browsers run the same steps at their own speed.
+  const cdp = browserName === 'chromium' ? await p.page.context().newCDPSession(p.page) : null;
+  await cdp?.send('Emulation.setCPUThrottlingRate', { rate: 20 });
   // Click and type in the same tick, as a fast hand (or a slow laptop) would.
   await p.page.evaluate(() => {
     (Array.from(document.querySelectorAll('button')).find((b) => b.textContent?.trim() === 'By Ludora') as HTMLButtonElement).click();
@@ -193,7 +195,7 @@ test('a filter chosen just before typing a search is kept', async ({ browser }) 
     input.dispatchEvent(new Event('input', { bubbles: true }));
   });
   await expect(p.page).toHaveURL(/q=capitals/);
-  await cdp.send('Emulation.setCPUThrottlingRate', { rate: 1 });
+  await cdp?.send('Emulation.setCPUThrottlingRate', { rate: 1 });
   await expect(p.page).toHaveURL(/scope=official/);
   await expect(p.page.getByRole('button', { name: 'By Ludora' })).toHaveAttribute('aria-pressed', 'true');
 });
