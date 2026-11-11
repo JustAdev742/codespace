@@ -59,7 +59,8 @@ function shape(style: string, i: number, color: string, heading: number) {
  * back, in milliseconds, so it can land on a beat of a longer reveal.
  */
 export function Burst({ style = 'festival', hue = 42, size = 220, rise = false, delay = 0, count = COUNT }: { style?: string; hue?: number; size?: number; rise?: boolean; delay?: number; count?: number }) {
-  if (prefersReducedMotion()) return null;
+  // Nothing for less motion, nor in calm mode (Settings), which leaves celebrations out.
+  if (prefersReducedMotion() || document.documentElement.dataset.calm === 'on') return null;
   const colors = style === 'festival' ? FESTIVAL : [`hsl(${hue} 95% 64%)`, `hsl(${(hue + 40) % 360} 95% 68%)`, '#ffffff'];
   const piece = Math.round(Math.max(14, Math.min(26, size / 12)));
   return (

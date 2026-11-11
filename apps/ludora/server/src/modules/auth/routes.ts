@@ -35,7 +35,12 @@ const registerSchema = z.object({
 });
 // Plain words for empty or overlong fields, rather than the validator's defaults.
 const signInUsername = z.string().trim().toLowerCase().min(1, 'Enter your username.').max(40, 'Usernames are at most 40 characters.');
-const loginSchema = z.object({ username: signInUsername, password: z.string().min(1, 'Enter your password.').max(200, 'Passwords are at most 200 characters.') });
+const loginSchema = z.object({
+  username: signInUsername,
+  password: z.string().min(1, 'Enter your password.').max(200, 'Passwords are at most 200 characters.'),
+  /** "This is a shared device": signed out when the browser closes, and after a short time with no activity. */
+  shared: z.boolean().optional(),
+});
 const guestSchema = z.object({ displayName: displayNameSchema.optional() });
 const claimSchema = z.object({ username: usernameSchema, password: passwordSchema, accountType, birthYear });
 const recoveryCodeField = z.string().trim().min(8, 'Enter the recovery code you saved. It looks like ABCD-EFGH-JKLM-NPQR.').max(40, 'Recovery codes look like ABCD-EFGH-JKLM-NPQR.');
@@ -67,9 +72,14 @@ export function meResponse(auth: AuthContext, deps: AppDeps) {
 
 const meta = (req: FastifyRequest) => ({ ip: req.ip, userAgent: req.headers['user-agent'] });
 
-async function startSession(deps: AppDeps, req: FastifyRequest, reply: FastifyReply, userId: string) {
-  const s = await createSession(deps.db, deps.config, userId, meta(req));
-  reply.setCookie(SESSION_COOKIE, s.token, sessionCookieOptions(deps, SESSION_DAYS * 86_400));
+async function startSession(deps: AppDeps, req: FastifyRequest, reply: FastifyReply, userId: string, opts: { shared?: boolean } = {}) {
+  const s = await createSession(deps.db, deps.config, userId, meta(req), opts);
+  const cookie = sessionCookieOptions(deps, SESSION_DAYS * 86_400);
+  if (opts.shared) {
+    // No max-age: the browser forgets the cookie when it closes.
+    const { maxAge: _maxAge, ...browserSession } = cookie;
+    reply.setCookie(SESSION_COOKIE, s.token, browserSession);
+  } else reply.setCookie(SESSION_COOKIE, s.token, cookie);
   return s;
 }
 
@@ -98,7 +108,7 @@ export async function authRoutes(app: FastifyInstance, deps: AppDeps) {
   app.post('/api/auth/login', limited(60, 1), async (req, reply) => {
     const body = parse(loginSchema, req.body);
     const user = await login(deps.db, body.username, body.password);
-    await startSession(deps, req, reply, user.id);
+    await startSession(deps, req, reply, user.id, { shared: Boolean(body.shared) });
     return { ok: true };
   });
 

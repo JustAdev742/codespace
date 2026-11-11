@@ -31,7 +31,14 @@ export interface SyncState {
   order: string[];
   iid: string | null;
   startedAt: number;
+  /** The question's shared deadline: what everyone without extra time (and the big screen) sees. */
   deadline: number;
+  /** The open question's own time limit, before any time the host added. */
+  limit?: number;
+  /** Time the host added to the open question for everyone. */
+  added?: number;
+  /** Players with extra time on the open question (a share of its limit), fixed as it opened. */
+  extra?: Record<PlayerId, number>;
   phaseEndsAt: number | null;
   answers: Record<PlayerId, SyncAnswer>;
   scores: Record<PlayerId, number>;
@@ -126,10 +133,38 @@ function startRound<S extends { sync: SyncState }>(s: S, cfg: SyncConfig<S>, ctx
   sync.iid = ctx.questions.present(sync.order[sync.round]!);
   sync.answers = {};
   sync.startedAt = ctx.now();
-  sync.deadline = sync.startedAt + ctx.questions.timeLimitMs(sync.iid);
+  sync.limit = ctx.questions.timeLimitMs(sync.iid);
+  sync.added = 0;
+  sync.extra = {};
+  for (const p of ctx.players()) {
+    const e = p.extraTime ?? 0;
+    if (e > 0 && e <= 1) sync.extra[p.id] = e;
+  }
+  sync.deadline = sync.startedAt + sync.limit;
   sync.phase = 'question';
   sync.phaseEndsAt = sync.deadline;
-  ctx.setTimer(TIMER, sync.deadline + DEADLINE_GRACE_MS);
+  ctx.setTimer(TIMER, closeAt(s, cfg, ctx) + DEADLINE_GRACE_MS);
+}
+
+/** The open question's limit for everyone, before added time. */
+function baseLimit(sync: SyncState): number {
+  return sync.limit ?? sync.deadline - sync.startedAt - (sync.added ?? 0);
+}
+
+/** When the open question closes for one player: the shared deadline, plus their extra time if the host gave them some. */
+export function syncPlayerDeadline(s: { sync: SyncState }, playerId: PlayerId): number {
+  const extra = s.sync.extra?.[playerId] ?? 0;
+  return extra ? s.sync.deadline + Math.round(baseLimit(s.sync) * extra) : s.sync.deadline;
+}
+
+/**
+ * When the open round closes: the shared deadline, or later while a player with extra time who
+ * has not answered is still within theirs. With no extra time in the room this is the deadline.
+ */
+function closeAt<S extends { sync: SyncState }>(s: S, cfg: SyncConfig<S>, ctx: ModeContext): number {
+  let at = s.sync.deadline;
+  for (const pid of eligible(s, cfg, ctx)) if (!s.sync.answers[pid]) at = Math.max(at, syncPlayerDeadline(s, pid));
+  return at;
 }
 
 function closeRound<S extends { sync: SyncState }>(s: S, cfg: SyncConfig<S>, ctx: ModeContext) {
@@ -202,9 +237,14 @@ export function syncAnswer<S extends { sync: SyncState }>(
   if (cfg.canAnswer && !cfg.canAnswer(s, playerId, ctx)) return { error: 'You are out of this round.' };
   if (sync.answers[playerId]) return { error: 'You already answered.' };
   const now = ctx.now();
-  if (now > sync.deadline + DEADLINE_GRACE_MS) return { error: 'Time is up.' };
+  const mine = syncPlayerDeadline(s, playerId);
+  if (now > mine + DEADLINE_GRACE_MS) return { error: 'Time is up.' };
   const grade = ctx.questions.grade(sync.iid, answer);
-  const responseMs = Math.min(now - sync.startedAt, sync.deadline - sync.startedAt);
+  // With extra time, speed counts against the player's own longer limit, given in the shared limit's terms
+  // so every mode's speed scoring stays the same: half their time used scores as half the time used.
+  const ownLimit = mine - sync.startedAt;
+  const sharedLimit = sync.deadline - sync.startedAt;
+  const responseMs = Math.round((Math.min(now - sync.startedAt, ownLimit) * sharedLimit) / Math.max(1, ownLimit));
   const streak = grade.ungraded ? (sync.streaks[playerId] ?? 0) : grade.correct ? (sync.streaks[playerId] ?? 0) + 1 : 0;
   sync.streaks[playerId] = streak;
   const limitMs = sync.deadline - sync.startedAt;
@@ -225,8 +265,13 @@ export function syncAnswer<S extends { sync: SyncState }>(
   // A poll vote is not right or wrong, so it stays out of accuracy and reports.
   if (!grade.ungraded) ctx.recordAnswer({ playerId, qid: ctx.questions.instance(sync.iid).qid, correct: grade.correct, partial: grade.partial, responseMs });
   const everyone = eligible(s, cfg, ctx);
-  if ((cfg.closeOnFirstCorrect && grade.correct) || everyone.every((pid) => sync.answers[pid])) closeRound(s, cfg, ctx);
+  if ((cfg.closeOnFirstCorrect && grade.correct) || everyone.every((pid) => sync.answers[pid])) return closeRound(s, cfg, ctx);
+  // Someone with extra time answered: the round may now close sooner (straight away if only players whose time is up are left).
+  const at = closeAt(s, cfg, ctx);
+  if (now > at + DEADLINE_GRACE_MS) closeRound(s, cfg, ctx);
+  else ctx.setTimer(TIMER, at + DEADLINE_GRACE_MS);
 }
+
 
 /** The open (or just closed) round is the last one and the host chose double points for it. */
 export function isDoubleRound(s: { sync: SyncState }, ctx: ModeContext): boolean {
@@ -244,9 +289,14 @@ export function syncAddTime(s: { sync: SyncState }, ms: number, ctx: ModeContext
   const sync = s.sync;
   if (sync.phase !== 'question' || !sync.iid) return { error: 'There is no question open to add time to.' };
   if (ctx.now() > sync.deadline) return { error: 'Time is already up on this question.' };
+  sync.limit = baseLimit(sync);
+  sync.added = (sync.added ?? 0) + ms;
   sync.deadline += ms;
   sync.phaseEndsAt = sync.deadline;
-  ctx.setTimer(TIMER, sync.deadline + DEADLINE_GRACE_MS);
+  // Everyone's time moves on together, extra time included.
+  let at = sync.deadline;
+  for (const p of ctx.players()) if (!sync.answers[p.id]) at = Math.max(at, syncPlayerDeadline(s, p.id));
+  ctx.setTimer(TIMER, at + DEADLINE_GRACE_MS);
 }
 
 /** A late joiner starts level with the lowest score of the players already in the game. */
@@ -278,7 +328,9 @@ export function syncView<S extends { sync: SyncState }>(s: S, cfg: SyncConfig<S>
   const sync = s.sync;
   const live = sync.phase === 'question' || sync.phase === 'reveal';
   const revealed = sync.phase === 'reveal';
-  const question = live && sync.iid ? ctx.questions.view(sync.iid, { deadline: sync.deadline, index: sync.round, total: sync.order.length }) : null;
+  // A player with extra time sees their own longer clock; everyone else, and the big screen, the shared one.
+  const deadline = viewer.kind === 'player' ? syncPlayerDeadline(s, viewer.playerId) : sync.deadline;
+  const question = live && sync.iid ? ctx.questions.view(sync.iid, { deadline, index: sync.round, total: sync.order.length }) : null;
   let distribution: Record<string, number> | null = null;
   if (revealed) {
     distribution = {};

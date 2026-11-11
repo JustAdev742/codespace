@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useRef, useSyncExternalStore } from 'react';
 import type { Pacing } from '@ludora/shared';
-import { useMe } from '../session.ts';
+import { useAccess, useDevicePrefs, usePrefs } from '../usePrefs.ts';
+import { dataSaverOn } from '../prefs.ts';
 import { sound, type MusicEntry } from './engine.ts';
 import type { SfxName, SfxOptions } from './sfx.ts';
 import type { MusicId } from './assets.generated.ts';
@@ -32,12 +33,17 @@ export function useSoundState() {
   return useSyncExternalStore(sound.subscribe, sound.getState, sound.getState);
 }
 
-/** Keeps the engine in step with the account's Settings. Signed out, both stay on. */
+/** Keeps the engine in step with Settings: the account's (or this device's, signed out) and this device's volumes. */
 export function SoundSettingsSync() {
-  const prefs = useMe().data?.user?.preferences;
-  const effects = prefs?.sound ?? true;
-  const music = prefs?.music ?? true;
+  const { prefs } = usePrefs();
+  const effects = prefs.sound;
+  const music = prefs.music;
   useEffect(() => sound.setPrefs({ effects, music }), [effects, music]);
+  const [device] = useDevicePrefs();
+  useEffect(() => sound.setVolume({ effects: device.effectsVolume / 100, music: device.musicVolume / 100 }), [device.effectsVolume, device.musicVolume]);
+  const access = useAccess();
+  const saveData = dataSaverOn(access);
+  useEffect(() => sound.setComfort({ calm: access.calm, saveData }), [access.calm, saveData]);
   return null;
 }
 

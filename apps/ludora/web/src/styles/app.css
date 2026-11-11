@@ -926,3 +926,168 @@
     color: var(--text);
   }
 }
+
+/*
+ * Accessibility and comfort settings (Settings, lib/prefs.ts). Each is a data attribute on <html>,
+ * restored before the first paint by public/theme.js. `html:root` outranks a school's look
+ * (schools.css), so a player's own choice wins over the school's typeface.
+ */
+
+/* Easier to read: Atkinson Hyperlegible for headings and numbers too, not only body text. */
+html:root[data-font='easy'] {
+  --face-display: 'Atkinson Hyperlegible Next Variable', ui-sans-serif, system-ui, sans-serif;
+  --face-sans: 'Atkinson Hyperlegible Next Variable', ui-sans-serif, system-ui, sans-serif;
+}
+/* Wider letter and word spacing (WCAG 1.4.12 values at "wider"), for what is read: pages, dialogs and
+   game screens. The slim header and tab bar keep theirs, so their buttons still fit a phone. */
+:root[data-letters='wide'] :is(main, [role='dialog']) {
+  letter-spacing: 0.06em;
+  word-spacing: 0.1em;
+}
+:root[data-letters='wider'] :is(main, [role='dialog']) {
+  letter-spacing: 0.12em;
+  word-spacing: 0.16em;
+}
+:root[data-lines='wide'] body,
+:root[data-lines='wide'] :is(p, li, dd, label, td) {
+  line-height: 1.75;
+}
+:root[data-lines='wider'] body,
+:root[data-lines='wider'] :is(p, li, dd, label, td) {
+  line-height: 2;
+}
+:root[data-lines='wider'] p + p {
+  margin-top: 1em;
+}
+
+/* The highest contrast: on top of high contrast, every line and quiet text at full strength. */
+:root[data-contrast='max'] {
+  --line: var(--text-3);
+  --line-strong: var(--text-2);
+  --text-2: var(--text);
+  --text-3: var(--text);
+}
+:root[data-contrast='max'] .stage,
+:root[data-contrast='max'] .on-stage {
+  --text-2: #ffffff;
+  --text-3: #ffffff;
+  --line: rgb(255 255 255 / 0.45);
+  --line-strong: rgb(255 255 255 / 0.7);
+}
+:root[data-contrast='max'] .paper {
+  --text-2: #0e1430;
+  --text-3: #0e1430;
+  --line: #5a638c;
+  --line-strong: #3b4470;
+}
+
+/* Less transparency: solid panels and scrims, no frosted glass. */
+:root[data-transparency='less'] {
+  --scrim: rgb(5 8 24 / 0.94);
+  --hud: #0a0f2c;
+}
+:root[data-transparency='less'] * {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+:root[data-transparency='less'] :is(.stage, .on-stage) :is([class*='bg-white/[0.0'], [class*='bg-white/[0.1']) {
+  background-color: #1d2659 !important;
+}
+
+/* Links always underlined (not links made to look like buttons). */
+:root[data-links='underline'] a:not([class*='rounded']) {
+  text-decoration-line: underline !important;
+  text-underline-offset: 0.2em;
+  text-decoration-thickness: 0.08em;
+}
+
+/* A focus ring that always shows, mouse included, thicker and with a halo that parts it from any colour. */
+:root[data-focus='strong'] :focus:not(:focus-visible),
+:root[data-focus='strong'] :focus-visible {
+  outline: 4px solid var(--focus) !important;
+  outline-offset: 3px !important;
+  box-shadow: 0 0 0 7px var(--bg) !important;
+}
+:root[data-focus='strong'] :is(.stage, .on-stage) :focus:not(:focus-visible),
+:root[data-focus='strong'] :is(.stage, .on-stage) :focus-visible {
+  box-shadow: 0 0 0 7px var(--stage-3) !important;
+}
+/* A heading given focus so a screen reader keeps its place is not something the player pressed. */
+:root[data-focus='strong'] [tabindex='-1']:focus:not(:focus-visible) {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+/*
+ * Colour-safe answer tiles: the Okabe-Ito palette, chosen to stay apart for the common
+ * colour-vision differences, ink text above 4.5:1 on each, and a pattern on every tile
+ * (light marks only, so the ink text gains contrast rather than losing it).
+ */
+:root[data-tiles='safe'] {
+  --tile-a: #e69f00;
+  --tile-b: #56b4e9;
+  --tile-c: #009e73;
+  --tile-d: #f0e442;
+  --tile-e: #d55e00;
+  --tile-f: #cc79a7;
+}
+:root[data-tiles='safe'] [data-tile]:not(.piece-off) {
+  background-size: 18px 18px;
+}
+:root[data-tiles='safe'] [data-tile='0']:not(.piece-off) {
+  background-image: repeating-linear-gradient(45deg, rgb(255 255 255 / 0.28) 0 4px, transparent 4px 12px);
+  background-size: auto;
+}
+:root[data-tiles='safe'] [data-tile='1']:not(.piece-off) {
+  background-image: radial-gradient(circle, rgb(255 255 255 / 0.4) 2.5px, transparent 3px);
+}
+:root[data-tiles='safe'] [data-tile='2']:not(.piece-off) {
+  background-image: repeating-linear-gradient(0deg, rgb(255 255 255 / 0.28) 0 3px, transparent 3px 11px);
+  background-size: auto;
+}
+:root[data-tiles='safe'] [data-tile='3']:not(.piece-off) {
+  background-image: linear-gradient(rgb(255 255 255 / 0.3) 2px, transparent 2px), linear-gradient(90deg, rgb(255 255 255 / 0.3) 2px, transparent 2px);
+}
+:root[data-tiles='safe'] [data-tile='4']:not(.piece-off) {
+  background-image: repeating-linear-gradient(-45deg, rgb(255 255 255 / 0.28) 0 4px, transparent 4px 12px);
+  background-size: auto;
+}
+:root[data-tiles='safe'] [data-tile='5']:not(.piece-off) {
+  background-image: repeating-linear-gradient(90deg, rgb(255 255 255 / 0.28) 0 3px, transparent 3px 11px);
+  background-size: auto;
+}
+
+/* Little hands: bigger buttons and text on game screens (the room sets data-game while it is open). */
+:root[data-game][data-little='on'] {
+  font-size: 118.75%;
+}
+:root[data-game][data-little='on'][data-text='large'] {
+  font-size: 131.25%;
+}
+:root[data-game][data-little='on'][data-text='larger'] {
+  font-size: 143.75%;
+}
+
+/* Calm: no reactions or celebrations flying about. */
+:root[data-calm='on'] [data-celebration] {
+  display: none !important;
+}
+
+/* Data saver: backgrounds hold still. */
+:root[data-saver='on'] .skeleton {
+  animation: none;
+}
+
+/* Phones with a notch or rounded corners: game screens keep clear of them. */
+.safe-x {
+  padding-left: max(var(--safe-pad, 0px), env(safe-area-inset-left));
+  padding-right: max(var(--safe-pad, 0px), env(safe-area-inset-right));
+}
+
+/* The key that picks an answer, shown on tiles once the player has used the keyboard (AnswerInput). */
+.key-hint {
+  display: none;
+}
+:root[data-keys='on'] .key-hint {
+  display: block;
+}

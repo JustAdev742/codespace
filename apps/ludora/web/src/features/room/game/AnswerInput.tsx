@@ -10,8 +10,29 @@ import { playSfx, useSoundPacing, useSoundRole } from '../../../lib/sound/react.
 
 /*
  * Answer controls for every question type. Choices always carry a shape and
- * a letter as well as a colour, and number keys 1 to 6 pick them.
+ * a letter as well as a colour. Number keys 1 to 6 pick them, and so do the
+ * letter keys A to F (not beside a game board, where the letters walk).
+ * The key appears on each tile once the player has used the keyboard.
  */
+
+/** Shows the key hints on tiles from the first key press, and hides them again at the first touch. */
+function useKeyboardHints() {
+  useEffect(() => {
+    const root = document.documentElement;
+    const key = (e: KeyboardEvent) => {
+      if (e.key.length === 1 || e.key === 'Tab' || e.key.startsWith('Arrow')) root.dataset.keys = 'on';
+    };
+    const touch = (e: PointerEvent) => {
+      if (e.pointerType === 'touch') delete root.dataset.keys;
+    };
+    window.addEventListener('keydown', key, true);
+    window.addEventListener('pointerdown', touch, true);
+    return () => {
+      window.removeEventListener('keydown', key, true);
+      window.removeEventListener('pointerdown', touch, true);
+    };
+  }, []);
+}
 
 export const TILE_BG = ['var(--tile-a)', 'var(--tile-b)', 'var(--tile-c)', 'var(--tile-d)', 'var(--tile-e)', 'var(--tile-f)'];
 
@@ -120,7 +141,9 @@ export function ChoiceTile({
       className={`relative flex w-full text-left [--press:5px] disabled:cursor-default ${layout === 'stack' ? `flex-col items-start justify-between ${s.stack} ${tall ? TALL_STACK : dense ? DENSE_STACK : ''}` : `items-center ${s.tile} ${tall ? TALL : ''}`} ${lit ? 'piece text-on-accent' : 'piece-off'} ${
         correct ? 'ring-[3px] ring-glim ring-offset-[3px] ring-offset-[color:var(--stage-3)]' : ''
       }`}
-      style={lit ? { background: bg } : undefined}
+      style={lit ? { backgroundColor: bg } : undefined}
+      data-tile={index % TILE_BG.length}
+      aria-keyshortcuts={keyHint ? `${index + 1} ${ANSWER_LETTERS[index] ?? ''}`.trim() : undefined}
     >
       {/* On a lit tile the letter and shape sit straight on its colour; on a smoked one they keep a chip of it. */}
       <span className={`flex shrink-0 items-center rounded-[var(--radius-s)] font-display leading-none font-extrabold text-on-accent ${s.badge} ${lit ? 'bg-black/[0.07]' : ''}`} style={lit ? undefined : { background: bg }}>
@@ -138,7 +161,7 @@ export function ChoiceTile({
         <span className="flex-1" />
       )}
       {keyHint && !selected ? (
-        <span className="hidden self-start font-display text-base font-bold opacity-70 sm:block" aria-hidden>
+        <span className="key-hint self-start rounded-[var(--radius-s)] bg-black/[0.12] px-1.5 font-display text-base font-bold" aria-hidden>
           {index + 1}
         </span>
       ) : null}
@@ -208,22 +231,36 @@ export function choiceGrid(texts: string[], host = false): { grid: string; layou
   return { grid: 'grid grid-cols-1 gap-3 sm:grid-cols-2', layout: 'row', tall: false, dense };
 }
 
-function useNumberKeys(count: number, onPick: (i: number) => void, enabled: boolean) {
+/** The choice a key picks: 1 to 6, or A to F when `letters` (case-insensitive). Null for any other key. Exported for tests. */
+export function keyToChoice(key: string, count: number, letters: boolean): number | null {
+  const n = Number(key);
+  if (Number.isInteger(n) && n >= 1 && n <= count) return n - 1;
+  if (letters && key.length === 1) {
+    const i = ANSWER_LETTERS.indexOf(key.toUpperCase() as (typeof ANSWER_LETTERS)[number]);
+    if (i >= 0 && i < count) return i;
+  }
+  return null;
+}
+
+function useNumberKeys(count: number, onPick: (i: number) => void, enabled: boolean, letters = false) {
   const ref = useRef(onPick);
   ref.current = onPick;
+  useKeyboardHints();
   useEffect(() => {
     if (!enabled) return;
     const h = (e: KeyboardEvent) => {
-      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement || e.metaKey || e.ctrlKey || e.altKey) return;
-      const n = Number(e.key);
-      if (n >= 1 && n <= count) {
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement || e.target instanceof HTMLSelectElement || e.metaKey || e.ctrlKey || e.altKey) return;
+      // Not while a dialog (the comfort settings, a report) is open over the game.
+      if (e.target instanceof Element && e.target.closest('[role="dialog"]')) return;
+      const i = keyToChoice(e.key, count, letters);
+      if (i !== null) {
         e.preventDefault();
-        ref.current(n - 1);
+        ref.current(i);
       }
     };
     window.addEventListener('keydown', h);
     return () => window.removeEventListener('keydown', h);
-  }, [count, enabled]);
+  }, [count, enabled, letters]);
 }
 
 function ChoiceAnswer({ q, onSubmit, disabled, chosen, compact }: AnswerInputProps & { q: Extract<PublicQuestion, { type: 'mcq' }> }) {
@@ -238,7 +275,7 @@ function ChoiceAnswer({ q, onSubmit, disabled, chosen, compact }: AnswerInputPro
     setBusy(false);
     if (!ok) setPicked(null);
   };
-  useNumberKeys(q.choices.length, (i) => void pick(q.choices[i]!.id), !locked);
+  useNumberKeys(q.choices.length, (i) => void pick(q.choices[i]!.id), !locked, !compact);
   const { grid, layout, tall, dense } = choiceGrid(q.choices.map((c) => c.text));
   return (
     <div className={grid} role="group" aria-label="Answers">
@@ -257,7 +294,7 @@ function TrueFalseAnswer({ q, onSubmit, disabled, compact }: AnswerInputProps) {
     setPicked(v);
     if (!(await onSubmit({ type: 'truefalse', value: v }))) setPicked(null);
   };
-  useNumberKeys(2, (i) => void pick(i === 0), !locked);
+  useNumberKeys(2, (i) => void pick(i === 0), !locked, !compact);
   return (
     <div className="grid grid-cols-2 gap-3" role="group" aria-label="Answers">
       <ChoiceTile choice="true" index={0} text="True" selected={picked === true} dimmed={picked === false} onClick={() => void pick(true)} disabled={locked} compact={compact} layout="stack" tall={!compact && !q.media} keyHint />
@@ -275,7 +312,7 @@ function MultiAnswer({ q, onSubmit, disabled, compact }: AnswerInputProps & { q:
     playSfx('select');
     setSel((s) => (s.includes(id) ? s.filter((x) => x !== id) : [...s, id]));
   };
-  useNumberKeys(q.choices.length, (i) => toggle(q.choices[i]!.id), !locked);
+  useNumberKeys(q.choices.length, (i) => toggle(q.choices[i]!.id), !locked, !compact);
   const submit = async () => {
     if (locked || sel.length === 0) return;
     setSent(true);
@@ -514,7 +551,7 @@ function PollAnswer({ q, onSubmit, disabled, chosen, compact }: AnswerInputProps
     setBusy(false);
     if (!ok) setPicked(null);
   };
-  useNumberKeys(q.choices.length, (i) => void pick(q.choices[i]!.id), !locked);
+  useNumberKeys(q.choices.length, (i) => void pick(q.choices[i]!.id), !locked, !compact);
   const { grid, layout, tall, dense } = choiceGrid(q.choices.map((c) => c.text));
   return (
     <div className="flex flex-col gap-3">
@@ -620,7 +657,7 @@ function BlanksAnswer({ q, onSubmit, disabled }: AnswerInputProps & { q: Extract
           {bank.map((word, w) => {
             const used = usedBy.includes(w);
             return (
-              <button key={w} type="button" onClick={() => place(w)} disabled={locked || used} aria-pressed={used} className={`piece min-h-12 rounded-[var(--radius-m)] px-4 text-lg font-bold text-on-accent [--press:4px] disabled:cursor-default ${used ? 'piece-off' : ''}`} style={used ? undefined : { background: TILE_BG[w % TILE_BG.length] }}>
+              <button key={w} type="button" onClick={() => place(w)} disabled={locked || used} aria-pressed={used} className={`piece min-h-12 rounded-[var(--radius-m)] px-4 text-lg font-bold text-on-accent [--press:4px] disabled:cursor-default ${used ? 'piece-off' : ''}`} style={used ? undefined : { backgroundColor: TILE_BG[w % TILE_BG.length] }} data-tile={w % TILE_BG.length}>
                 {word}
                 {used ? <span className="sr-only">, used</span> : null}
               </button>
@@ -725,7 +762,8 @@ function SortAnswer({ q, onSubmit, disabled }: AnswerInputProps & { q: Extract<P
                 onClick={() => (active ? put(active, g.id) : undefined)}
                 disabled={locked || !active}
                 className="flex min-h-12 items-center justify-between gap-2 rounded-[var(--radius-m)] px-3 text-left font-display text-lg font-extrabold text-on-accent disabled:cursor-default"
-                style={{ background: TILE_BG[gi % TILE_BG.length] }}
+                style={{ backgroundColor: TILE_BG[gi % TILE_BG.length] }}
+                data-tile={gi % TILE_BG.length}
               >
                 <span className="min-w-0 break-words">
                   {activeText && !locked ? <span className="sr-only">Put {activeText} in </span> : null}

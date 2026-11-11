@@ -56,6 +56,9 @@ export function watchErrors(page: Page): string[] {
     const host = new URL(page.url()).host;
     const cut = webkit ? /^(?:Fetch API|XMLHttpRequest) cannot load (.+) due to access control checks\.$/.exec(text) : null;
     if (cut && cut[1]!.includes(host)) return true;
+    // Leaving a room's page while its connection is still being made: WebKit logs the closing as a failure.
+    const socket = webkit ? /^WebSocket connection to '(.+)' failed: WebSocket is closed before the connection is established\.$/.exec(text) : null;
+    if (socket && socket[1]!.includes(host)) return true;
     const font = firefox ? /downloadable font: download failed .*status=2152398850 source: (\S+)/.exec(text) : null;
     return Boolean(font && font[1]!.includes(host));
   };
@@ -109,4 +112,20 @@ export async function answerAnyQuestion(page: Page) {
     const submit = main.getByRole('button', { name: /^Submit \d+ answers?$/ });
     if (await submit.count()) await submit.click();
   }
+}
+
+/**
+ * Waits until the page has stopped changing: the news toasts gone, and anything fading or sliding
+ * in (a dialog, a menu, buttons changing theme) finished. An accessibility check that measures
+ * contrast part-way through a fade reports text that is fine a moment later. Things that move for
+ * ever, like a spinner, are left alone.
+ */
+export async function settled(page: Page) {
+  await expect(page.locator('[data-sonner-toast]')).toHaveCount(0, { timeout: 15_000 });
+  // Two frames, so a change made just before this (a theme switch, a resize) has been styled, then
+  // longer than the app's quick colour fades: WebKit does not always list those as running.
+  await page.evaluate(() => new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(() => setTimeout(done, 250)))));
+  await page
+    .waitForFunction(() => document.getAnimations().every((a) => a.playState !== 'running' || !Number.isFinite(Number(a.effect?.getComputedTiming().endTime))), undefined, { timeout: 5000 })
+    .catch(() => {});
 }

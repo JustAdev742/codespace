@@ -54,6 +54,8 @@ export interface RuntimePlayerInit {
   teamId: string | null;
   isBot: boolean;
   connected?: boolean;
+  /** Extra time on timed questions, as a share of the limit (see EnginePlayer.extraTime). */
+  extraTime?: number;
 }
 
 export interface RuntimeOptions {
@@ -278,6 +280,15 @@ export class GameRuntime {
     const p = this.players.get(id);
     if (!p || p.connected === connected) return;
     p.connected = connected;
+    this.bump();
+  }
+
+  /** The host changed a player's extra time. It applies from the next question that opens. */
+  setExtraTime(id: PlayerId, share: number): void {
+    const p = this.players.get(id);
+    if (!p) return;
+    if (share > 0) p.extraTime = share;
+    else delete p.extraTime;
     this.bump();
   }
 

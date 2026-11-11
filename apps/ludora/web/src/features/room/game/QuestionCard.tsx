@@ -7,6 +7,9 @@ import { useSfx, useSharedSounds } from '../../../lib/sound/react.tsx';
 import { useChaosPrompt } from '../../extras/ExtrasLayer.tsx';
 import { MathText } from '../../sets/math/MathText.tsx';
 import { mathToWords } from '../../sets/math/parse.ts';
+import { ReadAloud, useBigScreenReads } from './comfort.tsx';
+import { useAccess } from '../../../lib/usePrefs.ts';
+import { speechSupported } from '../../../lib/speech.ts';
 
 const IMAGE_HEIGHT = {
   /** Projector: beside the prompt, as tall as the screen comfortably allows. */
@@ -75,6 +78,10 @@ export function QuestionCard({ q, index, total, children, size = 'md' }: { q: Pu
       lost.disconnect();
     };
   }, []);
+  const bigScreenReads = useBigScreenReads();
+  const { readAloud } = useAccess();
+  const autoRead = size === 'lg' && bigScreenReads;
+  const reader = speechSupported() && (readAloud || autoRead) ? <ReadAloud q={q} index={index} total={total} auto={autoRead} big={size === 'lg'} /> : null;
   const len = q.prompt.length;
   const many = (q.type === 'mcq' || q.type === 'multi') && q.choices.length > 4;
   const double = q.double ? (
@@ -90,10 +97,14 @@ export function QuestionCard({ q, index, total, children, size = 'md' }: { q: Pu
           Question {index + 1} of {total}
         </p>
         {double}
+        {reader ? <span className="ml-auto">{reader}</span> : null}
       </div>
-    ) : (
-      double
-    );
+    ) : double || reader ? (
+      <div className="flex flex-wrap items-center gap-3">
+        {double}
+        {reader ? <span className="ml-auto">{reader}</span> : null}
+      </div>
+    ) : null;
   if (size === 'lg') {
     const text = len > 160 ? 'text-[clamp(1.5rem,2.3vw,2.75rem)]' : len > 90 ? 'text-[clamp(1.85rem,2.9vw,3.5rem)]' : 'text-[clamp(2.25rem,3.8vw,4.75rem)]';
     return (

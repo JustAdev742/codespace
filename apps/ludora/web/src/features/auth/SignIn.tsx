@@ -8,6 +8,7 @@ import { safeNext } from './next.ts';
 import { Button } from '../../ui/Button.tsx';
 import { Field, Input } from '../../ui/primitives.tsx';
 import { AuthLayout } from './AuthLayout.tsx';
+import { markSharedDevice } from '../../app/SharedDevice.tsx';
 
 export default function SignIn() {
   const navigate = useNavigate();
@@ -16,6 +17,7 @@ export default function SignIn() {
   const qc = useQueryClient();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [shared, setShared] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState<'signin' | 'guest' | null>(null);
   const next = safeNext(params.get('next'));
@@ -29,7 +31,8 @@ export default function SignIn() {
     setBusy('signin');
     setError(null);
     try {
-      await api.post('/api/auth/login', { username, password });
+      await api.post('/api/auth/login', { username, password, ...(shared ? { shared: true } : {}) });
+      markSharedDevice(shared);
       await qc.invalidateQueries();
       navigate(next);
     } catch (err) {
@@ -72,6 +75,15 @@ export default function SignIn() {
       <form onSubmit={submit} className="flex flex-col gap-4" noValidate>
         <Field label="Username">{(p) => <Input {...p} autoComplete="username" value={username} onChange={(e) => setUsername(e.target.value)} required autoFocus />}</Field>
         <Field label="Password">{(p) => <Input {...p} type="password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} required />}</Field>
+        <label className="flex min-h-11 cursor-pointer items-start gap-3 rounded-[var(--radius-m)] border border-line px-3 py-2.5">
+          <input type="checkbox" checked={shared} onChange={(e) => setShared(e.target.checked)} className="mt-1 size-5 shrink-0 cursor-pointer accent-[var(--lantern-deep)]" aria-describedby="shared-hint" />
+          <span>
+            <span className="block font-semibold">This is a shared device</span>
+            <span id="shared-hint" className="block text-sm text-text-3">
+              You are signed out when you close this tab, and after 20 minutes with nothing pressed. Best for school computers.
+            </span>
+          </span>
+        </label>
         {error ? (
           <p role="alert" className="text-sm font-semibold text-ember">
             {error}

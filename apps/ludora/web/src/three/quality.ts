@@ -8,6 +8,8 @@
  * frames get slow. It never raises the tier above what was picked.
  */
 
+import { dataSaverOn } from '../lib/prefs.ts';
+
 export type QualityTier = 'low' | 'medium' | 'high';
 export type QualityChoice = 'auto' | QualityTier | 'off';
 
@@ -103,7 +105,8 @@ export function qualityFor(tier: QualityTier): Quality {
 export function startingQuality(): Quality | null {
   const choice = storedChoice();
   if (choice === 'off' || !webglSupported()) return null;
-  return qualityFor(choice === 'auto' ? detectTier() : choice);
+  // Data saver (Settings, or the browser asking to save data) starts automatic quality at low.
+  return qualityFor(choice === 'auto' ? (dataSaverOn() ? 'low' : detectTier()) : choice);
 }
 
 /**

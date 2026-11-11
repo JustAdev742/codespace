@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import type { AvatarLite, ModeThumbnail } from '@ludora/shared';
 import { api } from '../../lib/api.ts';
+import { appTimeZone, instantFromWallClock, zonedParts, zoneOffsetMinutes } from '../../lib/format.ts';
 import { useMe } from '../../lib/session.ts';
 import { useModes, thumbFor, type CatalogEntry, type CatalogVariant } from '../../lib/queries.ts';
 import type { QuestionStat } from '../reports/reportUi.tsx';
@@ -416,23 +417,25 @@ export function useModeInfo(): (modeId: string, variantId: string | null) => Mod
 
 const pad = (n: number) => String(n).padStart(2, '0');
 
-/** An ISO time as the value a datetime-local input expects, in this device's time zone. */
+/** An ISO time as the value a datetime-local input expects. */
 export function toLocalInput(iso: string): string {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return '';
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  // In the time zone the player chose in Settings (the device's when none).
+  const p = zonedParts(d, appTimeZone());
+  return `${p.y}-${pad(p.mo)}-${pad(p.d)}T${pad(p.h)}:${pad(p.mi)}`;
 }
 
-/** A datetime-local value (local time, no zone) as ISO 8601 with this device's offset, for example 2026-10-24T15:00:00+01:00. */
+/** A datetime-local value (wall-clock time in the player's chosen zone, else this device's) as ISO 8601 with that zone's offset, for example 2026-10-24T15:00:00+01:00. */
 export function fromLocalInput(value: string): string | null {
-  if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(value)) return null;
-  // Date-time strings without an offset are read as local time.
-  const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return null;
-  const offset = -d.getTimezoneOffset();
+  const tz = appTimeZone();
+  const d = instantFromWallClock(value, tz);
+  if (!d || Number.isNaN(d.getTime())) return null;
+  const p = zonedParts(d, tz);
+  const offset = zoneOffsetMinutes(d, tz);
   const sign = offset >= 0 ? '+' : '-';
   const abs = Math.abs(offset);
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}:00${sign}${pad(Math.floor(abs / 60))}:${pad(abs % 60)}`;
+  return `${p.y}-${pad(p.mo)}-${pad(p.d)}T${pad(p.h)}:${pad(p.mi)}:00${sign}${pad(Math.floor(abs / 60))}:${pad(abs % 60)}`;
 }
 
 export function isPast(iso: string | null, now: number): boolean {

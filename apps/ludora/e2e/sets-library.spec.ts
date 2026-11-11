@@ -1,6 +1,6 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
-import { CSRF, account, watchErrors } from './helpers.ts';
+import { account, CSRF, settled, watchErrors } from './helpers.ts';
 
 /* The set editor's tools and the library around a set, driven as a teacher would. */
 
@@ -9,6 +9,7 @@ const shot = async (page: Page, name: string) => {
   if (SHOTS) await page.screenshot({ path: `${SHOTS}/${name}.png`, fullPage: true });
 };
 const axe = async (page: Page, include = 'main') => {
+  await settled(page);
   const r = await new AxeBuilder({ page }).include(include).withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa']).analyze();
   expect(r.violations.map((v) => `${v.id}: ${v.nodes.map((n) => n.target.join(' ')).join(', ')}`)).toEqual([]);
 };

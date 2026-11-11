@@ -2,7 +2,7 @@ import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
 import pg from 'pg';
 import { mkdirSync, readFileSync } from 'node:fs';
-import { CSRF, account, watchErrors } from './helpers.ts';
+import { account, CSRF, settled, watchErrors } from './helpers.ts';
 
 /*
  * The teacher's class tools (docs/features/classes.md): class logins and their
@@ -30,6 +30,7 @@ async function check(page: Page, name: string) {
   await expect(page.locator('[data-sonner-toast]')).toHaveCount(0, { timeout: 15_000 });
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
   expect(overflow, `${name} scrolls sideways`).toBeLessThanOrEqual(0);
+  await settled(page);
   const axe = await new AxeBuilder({ page }).withTags(AXE_TAGS).analyze();
   expect(axe.violations.map((v) => `${v.id}: ${v.nodes.map((n) => n.target.join(' ')).join(', ')}`), name).toEqual([]);
   if (SHOTS) {

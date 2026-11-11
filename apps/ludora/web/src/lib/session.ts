@@ -13,6 +13,8 @@ export interface Preferences {
   privacy: { profileVisibility: 'public' | 'friends' | 'private'; allowFriendRequests: 'everyone' | 'friend_code' | 'nobody'; showOnLeaderboards: boolean };
   /** On a school's copy: year group, blazer and kit, for the Glim's uniform. Older servers may leave it out. */
   school?: SchoolDress;
+  /** Accessibility and comfort (lib/prefs.ts). Older servers may leave it out. */
+  access?: Partial<import('./prefs.ts').AccessPrefs>;
 }
 
 export interface MeUser {

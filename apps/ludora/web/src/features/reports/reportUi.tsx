@@ -4,7 +4,7 @@ import { ArrowDown, ArrowUp, ArrowUpDown, ChevronLeft, ListChecks, LogIn } from 
 import { QUESTION_TYPE_LABELS, type QuestionType } from '@ludora/shared';
 import { EmptyState } from '../../ui/primitives.tsx';
 import { ButtonLink } from '../../ui/Button.tsx';
-import { formatNumber } from '../../lib/format.ts';
+import { formatDate, formatNumber } from '../../lib/format.ts';
 import { ApiError } from '../../lib/api.ts';
 
 /*
@@ -67,13 +67,13 @@ const sameYear = (d: Date) => d.getFullYear() === new Date().getFullYear();
 /** "Sat 24 Oct, 15:05", with the year when it is not this year. */
 export function dateTimeText(iso: string): string {
   const d = new Date(iso);
-  return d.toLocaleString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', ...(sameYear(d) ? {} : { year: 'numeric' }), hour: '2-digit', minute: '2-digit' });
+  return formatDate(d, { weekday: 'short', day: 'numeric', month: 'short', ...(sameYear(d) ? {} : { year: 'numeric' }), hour: '2-digit', minute: '2-digit' });
 }
 
 /** "24 Oct", with the year when it is not this year. */
 export function dateText(iso: string): string {
   const d = new Date(iso);
-  return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', ...(sameYear(d) ? {} : { year: 'numeric' }) });
+  return formatDate(d, { day: 'numeric', month: 'short', ...(sameYear(d) ? {} : { year: 'numeric' }) });
 }
 
 export function questionTypeLabel(type: string): string | null {

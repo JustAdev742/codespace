@@ -112,6 +112,8 @@ export interface RoomInit {
   /** A live game for a class: only these accounts may join (checked here, and refreshed from the database by the caller). */
   classMembers?: readonly string[] | null;
   classTitle?: string | null;
+  /** Extra time the class teacher set for members (user id to a share of the limit), applied as each one joins. */
+  classExtraTime?: Readonly<Record<string, number>> | null;
 }
 
 /** Fixed teams for a room, and which team each account belongs to. Everyone else joins the smallest team. */
@@ -160,7 +162,7 @@ const NUDGE_GAP_MS = 10_000;
 const PENDING_KEEP_MS = 10 * 60_000;
 const MAX_PENDING = 60;
 /** Room options the host can change while a game is on. */
-const LIVE_OPTIONS = ['quiet', 'reactions', 'hideNames', 'admit', 'lateJoin', 'exitTicket'] as const;
+const LIVE_OPTIONS = ['quiet', 'reactions', 'hideNames', 'admit', 'lateJoin', 'exitTicket', 'littleHands', 'readAloud'] as const;
 /** Players under this share of right answers are listed for the teacher as maybe needing a hand. */
 export const NEED_HELP_BELOW = 0.5;
 export const ALLOWED_REACTIONS = ['wave', 'laugh', 'wow', 'gg', 'heart', 'fire', 'think', 'clap', 'party', 'cool', 'sleepy', 'star'];
@@ -243,6 +245,9 @@ export class Room {
   pinned: string | null = null;
   readonly classMembers: Set<string> | null;
   readonly classTitle: string | null;
+  readonly classExtraTime: Readonly<Record<string, number>> | null;
+  /** Extra time on timed questions, by player id. Only the host sees it. */
+  private readonly extraTime = new Map<string, number>();
   private startTimer: ReturnType<typeof setTimeout> | null = null;
   private breakTimer: ReturnType<typeof setTimeout> | null = null;
   /** The break paused a running game, so the game carries on when it ends. */
@@ -281,6 +286,7 @@ export class Room {
     this.set = init.set;
     this.classMembers = init.classMembers ? new Set(init.classMembers) : null;
     this.classTitle = init.classTitle ?? null;
+    this.classExtraTime = init.classExtraTime ?? null;
     this.hooks = hooks;
     this.createdAt = hooks.now();
     this.lastActivity = this.createdAt;
@@ -436,8 +442,10 @@ export class Room {
     };
     this.players.set(player.id, player);
     this.roster.set(player.id, { userId: player.userId, name: player.name, isGuest: player.isGuest, isBot: false });
+    const classExtra = player.userId ? (this.classExtraTime?.[player.userId] ?? 0) : 0;
+    if (classExtra > 0) this.extraTime.set(player.id, classExtra);
     if (this.runtime) {
-      const r = this.runtime.addPlayer({ id: player.id, name: player.name, teamId: player.teamId, isBot: false });
+      const r = this.runtime.addPlayer({ id: player.id, name: player.name, teamId: player.teamId, isBot: false, ...this.extraOf(player.id) });
       if (!r.ok) this.hooks.onError(new Error(r.message), 'late-join', this);
       // Catch-up: a late joiner starts level with the lowest score, in modes that keep points (the rule is on screen).
       else if (this.options.catchUp) this.runtime.catchUp(player.id);
@@ -553,7 +561,7 @@ export class Room {
     p.connected = true;
     p.disconnectedAt = null;
     if (this.runtime && !this.runtime.hasPlayer(p.id) && this.status !== 'ended') {
-      this.runtime.addPlayer({ id: p.id, name: p.name, teamId: p.teamId, isBot: false });
+      this.runtime.addPlayer({ id: p.id, name: p.name, teamId: p.teamId, isBot: false, ...this.extraOf(p.id) });
     }
     this.runtime?.setConnected(p.id, true);
     this.touch();
@@ -757,6 +765,16 @@ export class Room {
         this.scheduleBroadcast();
         return { ok: true };
       }
+      case 'extraTime': {
+        const p = this.players.get(cmd.playerId);
+        if (!p || p.isBot) return fail('not_found', 'That player is not in the room.');
+        // Quietly: no news line, nothing on anyone else's screen. It applies from the next question.
+        if (cmd.share > 0) this.extraTime.set(p.id, cmd.share);
+        else this.extraTime.delete(p.id);
+        this.runtime?.setExtraTime(p.id, cmd.share);
+        this.scheduleBroadcast();
+        return { ok: true };
+      }
       case 'addTime': {
         if (!this.runtime || this.mode.meta.pacing !== 'host') return fail('invalid_state', 'Add time works in host-paced games, while a question is open.');
         const r = this.runtime.addTime(cmd.seconds * 1000);
@@ -853,7 +871,7 @@ export class Room {
       settings: this.settings,
       common: this.common,
       questions: this.prepared,
-      players: active.map((p) => ({ id: p.id, name: p.name, teamId: p.teamId, isBot: p.isBot, connected: p.connected })),
+      players: active.map((p) => ({ id: p.id, name: p.name, teamId: p.teamId, isBot: p.isBot, connected: p.connected, ...this.extraOf(p.id) })),
       teams: this.teams.map((t) => ({ id: t.id, name: t.name, hue: t.hue })),
       seed: hashString(`${this.code}:${this.gameId}`),
       clock: { now: () => this.hooks.now() },
@@ -1205,7 +1223,14 @@ export class Room {
       canAddTime: Boolean(waitingIds && this.status === 'running' && this.mode.meta.pacing === 'host' && this.runtime && 'addTime' in this.mode && this.mode.addTime),
       pending: [...this.pending.values()].map((e) => ({ id: e.id, name: e.name })),
       feelings: this.options.exitTicket ? this.feelingCounts() : null,
+      extraTime: Object.fromEntries(this.extraTime),
     };
+  }
+
+  /** The extra time to hand the game for a player, if they have any. */
+  private extraOf(playerId: string): { extraTime?: number } {
+    const e = this.extraTime.get(playerId);
+    return e ? { extraTime: e } : {};
   }
 
   private feelingCounts(): Record<Feeling, number> {

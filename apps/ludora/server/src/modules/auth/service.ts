@@ -15,6 +15,10 @@ const SESSION_MS = SESSION_DAYS * 86_400_000;
 /** Extend a session at most once a day, so active players never get signed out but we do not write on every request. */
 const SESSION_REFRESH_MS = 86_400_000;
 const LAST_SEEN_WRITE_MS = 5 * 60_000;
+/** A session on a shared device ends after this long with no activity. */
+export const SHARED_IDLE_MS = 30 * 60_000;
+/** How often a shared session's activity is written (well inside its idle time). */
+const SHARED_SEEN_WRITE_MS = 60_000;
 
 // Argon2id (algorithm 2) with OWASP's recommended minimum cost. The library ships its enum as a const enum, hence the number.
 const ARGON = { algorithm: 2, memoryCost: 19_456, timeCost: 2, parallelism: 1 } as const;
@@ -97,14 +101,15 @@ export interface SessionMeta {
   userAgent?: string | undefined;
 }
 
-export async function createSession(db: DbOrTx, config: Config, userId: string, meta: SessionMeta): Promise<{ token: string; id: string; expiresAt: Date }> {
+export async function createSession(db: DbOrTx, config: Config, userId: string, meta: SessionMeta, opts: { shared?: boolean } = {}): Promise<{ token: string; id: string; expiresAt: Date }> {
   const token = randomToken(32);
   const id = sha256(token);
-  const expiresAt = new Date(Date.now() + SESSION_MS);
+  const expiresAt = new Date(Date.now() + (opts.shared ? SHARED_IDLE_MS : SESSION_MS));
   await db.insert(sessions).values({
     id,
     userId,
     expiresAt,
+    shared: Boolean(opts.shared),
     ipHash: hashIp(meta.ip, config.IP_HASH_KEY),
     userAgent: meta.userAgent?.slice(0, 200) ?? null,
   });
@@ -127,7 +132,10 @@ export async function resolveSession(db: Db, token: string): Promise<AuthContext
   if (accountBlock(row.u, now)) return null;
   const roles = await rolesOf(db, row.u.id);
   const nowMs = now.getTime();
-  if (nowMs - row.s.lastSeenAt.getTime() > LAST_SEEN_WRITE_MS) {
+  if (row.s.shared) {
+    // A shared device's session lives only while it is used: each use pushes its end back a little.
+    if (nowMs - row.s.lastSeenAt.getTime() > SHARED_SEEN_WRITE_MS) await db.update(sessions).set({ lastSeenAt: now, expiresAt: new Date(nowMs + SHARED_IDLE_MS) }).where(eq(sessions.id, id));
+  } else if (nowMs - row.s.lastSeenAt.getTime() > LAST_SEEN_WRITE_MS) {
     const extend = row.s.expiresAt.getTime() - nowMs < SESSION_MS - SESSION_REFRESH_MS;
     await db
       .update(sessions)

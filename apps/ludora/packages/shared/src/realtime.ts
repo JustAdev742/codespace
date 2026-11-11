@@ -105,6 +105,10 @@ export const roomOptionsSchema = z.object({
   reactions: z.boolean().default(true),
   /** Players who join after the start begin level with the lowest score in the game (host-paced modes that keep points). */
   catchUp: z.boolean().default(false),
+  /** Little hands: bigger buttons and text on every player's game screen. */
+  littleHands: z.boolean().default(false),
+  /** The big screen reads each question and its answers aloud (the browser's own speech). */
+  readAloud: z.boolean().default(false),
 });
 export type RoomOptions = z.infer<typeof roomOptionsSchema>;
 
@@ -140,6 +144,8 @@ export const hostCommandSchema = z.discriminatedUnion('cmd', [
   /** A gentle "Your teacher is waiting for your answer" on one player's device. */
   z.object({ cmd: z.literal('nudge'), playerId: z.string().min(1).max(40) }),
   z.object({ cmd: z.literal('addTime'), seconds: z.number().int().min(5).max(60) }),
+  /** Extra time for one player on timed questions: a share of the limit. Nobody else is told. */
+  z.object({ cmd: z.literal('extraTime'), playerId: z.string().min(1).max(40), share: z.union([z.literal(0), z.literal(0.25), z.literal(0.5), z.literal(1)]) }),
   z.object({ cmd: z.literal('break'), seconds: z.union([z.literal(30), z.literal(60)]) }),
   z.object({ cmd: z.literal('endBreak') }),
   /** A short message pinned in the lobby, or null to take it down. */
@@ -392,6 +398,8 @@ export interface HostExtras {
   pending: { id: string; name: string }[];
   /** Exit ticket counts while players answer it. */
   feelings: Record<Feeling, number> | null;
+  /** Players with extra time on timed questions (player id to a share of the limit). The host's view only. */
+  extraTime?: Record<string, number>;
 }
 
 export type EmoteGlyph = (typeof EMOTE_GLYPHS)[number];

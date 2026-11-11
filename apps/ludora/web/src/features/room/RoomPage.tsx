@@ -25,6 +25,11 @@ import { FullscreenButton, HostTools } from './host/HostTools.tsx';
 import { BrainBreak, StartCountdown } from './host/overlays.tsx';
 import { RemoteControls } from './host/RemoteControls.tsx';
 import { sound } from '../../lib/sound/engine.ts';
+import { BigScreenReads, ConnectionBanner, RotateHint, SoundCues, useWakeLock } from './game/comfort.tsx';
+import { ComfortButton } from './game/ComfortDialog.tsx';
+import { useAccess } from '../../lib/usePrefs.ts';
+import { useModes } from '../../lib/queries.ts';
+import { SectionBoundary } from '../../ui/SectionBoundary.tsx';
 
 const nameKey = (code: string) => `ludora.name.${code}`;
 const spaced = (code: string) => `${code.slice(0, 3)} ${code.slice(3)}`;
@@ -90,6 +95,24 @@ export default function RoomPage() {
     sound.setSilenced(quiet);
     return () => sound.setSilenced(false);
   }, [quiet]);
+
+  // Game screens: little hands (the player's own setting, or the host's for the whole room) makes everything bigger.
+  const roomLittle = Boolean(room?.room.options.littleHands) && room?.me.role !== 'host';
+  useEffect(() => {
+    const root = document.documentElement;
+    root.dataset.game = '1';
+    const had = root.dataset.little;
+    if (roomLittle) root.dataset.little = 'on';
+    return () => {
+      delete root.dataset.game;
+      if (roomLittle && had !== 'on') delete root.dataset.little;
+    };
+  }, [roomLittle]);
+  const live0 = room?.room.status === 'running' || room?.room.status === 'paused';
+  useWakeLock(Boolean(live0));
+  const { calm } = useAccess();
+  const modes = useModes();
+  const threeD = modes.data?.modes.find((m) => m.meta.id === room?.room.modeId)?.meta.stage === '3d';
 
   // A new stage of the room (the game starting, the results, Play again) opens at its top: a player scrolled down
   // to a tall game board would otherwise land in the middle of the results, under the title and the podium.
@@ -165,9 +188,12 @@ export default function RoomPage() {
       <SoundRoleContext.Provider value={soundScene}>
       <Announcer>
       <HostToolsIf on={isHost && !room.room.solo} room={room} handle={handle}>
+      <a href="#game" className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-50 focus:rounded-[var(--radius-s)] focus:bg-lantern focus:px-3 focus:py-2 focus:font-semibold focus:text-on-accent">
+        Skip to the game
+      </a>
       {/* The game's HUD bar: what is on and where to join, then the controls. */}
       <header className={HUD_BAR}>
-        <div className="flex h-14 items-center gap-2.5 px-3 sm:h-16 sm:gap-3 sm:px-5 min-[1600px]:h-20 min-[1600px]:px-8">
+        <div className="safe-x flex h-14 [--safe-pad:0.75rem] sm:[--safe-pad:1.25rem] min-[1600px]:[--safe-pad:2rem] items-center gap-2.5 px-3 sm:h-16 sm:gap-3 sm:px-5 min-[1600px]:h-20 min-[1600px]:px-8">
           {/* On a phone, a host mid-game needs the header's width for the game controls. */}
           <LogoMark size={30} className={`shrink-0 min-[1600px]:size-11 ${isHost && live ? 'max-sm:hidden' : ''}`} />
           <SchoolCrest size={30} className={`min-[1600px]:h-11 min-[1600px]:w-auto ${isHost && live ? 'max-sm:hidden' : ''}`} />
@@ -197,6 +223,7 @@ export default function RoomPage() {
             </p>
           ) : null}
           <ConnectionNews online={handle.online} />
+          {!isHost ? <ComfortButton className="max-sm:size-11 min-[1600px]:size-12" /> : null}
           {!handle.online ? (
             // Icon only on a phone, so the room's name keeps its room.
             <span className="flex shrink-0 items-center gap-1.5 rounded-full bg-ember px-2 py-1 text-xs font-bold text-on-accent sm:px-2.5" title="Reconnecting">
@@ -230,15 +257,16 @@ export default function RoomPage() {
               ) : room.room.solo && live ? (
                 <span className="max-sm:sr-only">Leave game</span>
               ) : (
-                // On the narrowest phones "game" is left to screen readers, so the room code keeps its room.
-                <>
-                  Leave<span className="max-[399px]:sr-only"> game</span>
-                </>
+                // On a phone a player's header also holds the comfort settings, sound and report buttons: the
+                // door alone stands for leaving there (its name is read out), so the game's title is not cut to a letter.
+                <span className="max-sm:sr-only">Leave game</span>
               )}
             </Button>
           </div>
         </div>
       </header>
+      <ConnectionBanner online={handle.online} />
+      <SoundCues />
       <Dialog
         open={confirmLeave}
         onOpenChange={setConfirmLeave}
@@ -266,25 +294,30 @@ export default function RoomPage() {
         target={{ type: 'room', id: room.room.code, label: 'a problem in this room' }}
         people={[...new Set([...(isHost ? [] : [room.room.hostName]), ...room.players.filter((p) => !p.isBot && p.id !== room.me.playerId).map((p) => p.name)])]}
       />
-      <main className="flex flex-1 flex-col px-3 pt-4 pb-6 sm:px-6 lg:px-10 lg:pt-6">
+      <main id="game" className="safe-x flex flex-1 flex-col px-3 pt-4 pb-[max(1.5rem,env(safe-area-inset-bottom))] [--safe-pad:0.75rem] sm:px-6 sm:[--safe-pad:1.5rem] lg:px-10 lg:pt-6 lg:[--safe-pad:2.5rem]">
+        <SectionBoundary name="the game screen" resetKey={status}>
         {status === 'lobby' ? isHost ? <HostLobby room={room} handle={handle} /> : <PlayerLobby room={room} handle={handle} /> : null}
+        {live && !isHost ? <RotateHint on={threeD} /> : null}
         {live ? (
           <Online.Provider value={handle.online}>
-            <AnswerMemory>
-              <GameStage room={room} handle={handle} isHost={isHost} />
-            </AnswerMemory>
+            <BigScreenReads.Provider value={isHost && Boolean(room.room.options.readAloud)}>
+              <AnswerMemory>
+                <GameStage room={room} handle={handle} isHost={isHost} />
+              </AnswerMemory>
+            </BigScreenReads.Provider>
           </Online.Provider>
         ) : null}
         {status === 'ended' && room.results ? <Results room={room} handle={handle} isHost={isHost} guest={!me.data?.user || me.data.user.isGuest} /> : null}
+        </SectionBoundary>
       </main>
-      {!isHost && !room.room.solo && live && room.room.options.reactions ? (
+      {!isHost && !room.room.solo && live && room.room.options.reactions && !calm ? (
         <footer className={`${HUD_FOOT} px-3 py-2`}>
           <ReactionBar onReact={(e) => void handle.react(e)} />
         </footer>
       ) : null}
       {/* In the host's lobby each arrival already slides in as a card, and toasts in the corner would sit over the crowd. */}
       <FeedToasts feed={room.feed} quiet={isHost && (status === 'lobby' || (live && hostListsFeed(room.room.modeId)))} overHeader={isHost ? null : room.room.solo ? 'solo' : 'player'} />
-      <ReactionLayer reactions={handle.reactions} big={isHost} />
+      {calm ? null : <ReactionLayer reactions={handle.reactions} big={isHost} />}
       <LanternGlow handle={handle} />
       {debug ? <DebugOverlay handle={handle} /> : null}
       {status === 'lobby' && !room.room.solo ? <StartCountdown handle={handle} isHost={isHost} /> : null}

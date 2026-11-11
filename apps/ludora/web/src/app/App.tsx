@@ -9,6 +9,7 @@ import { ApiError } from '../lib/api.ts';
 import { NoticeGate } from '../features/moderation/NoticeGate.tsx';
 import { SoundSettingsSync } from '../lib/sound/react.tsx';
 import { onSessionError } from './sessionExpiry.ts';
+import { SharedDevice } from './SharedDevice.tsx';
 
 const queryClient: QueryClient = new QueryClient({
   queryCache: new QueryCache({ onError: (err) => onSessionError(queryClient, err) }),
@@ -28,6 +29,7 @@ export function App() {
         <RouterProvider router={router} />
         <NoticeGate />
         <SoundSettingsSync />
+        <SharedDevice />
         {/* Styled in app.css: a solid fill by kind (white, mint, coral, gold or blue) with ink text, floating on a soft shadow. */}
         <Toaster position="top-center" closeButton icons={{ close: <X className="size-[18px]" strokeWidth={2.5} aria-hidden /> }} toastOptions={{ closeButtonAriaLabel: 'Close notification' }} style={{ '--width': '380px' } as CSSProperties} />
       </TooltipProvider>

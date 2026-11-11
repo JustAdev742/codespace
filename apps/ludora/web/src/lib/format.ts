@@ -1,12 +1,97 @@
-const nf = new Intl.NumberFormat('en-GB');
+import { currentAccess } from './prefs.ts';
+
+/*
+ * Numbers, dates and times. British English unless the player chose their device's own style
+ * (Settings); dates and times in the player's chosen time zone, or the device's.
+ */
+
+/** The locale numbers and dates are written in: en-GB, or the device's own. */
+export function appLocale(): string {
+  if (currentAccess().locale !== 'device') return 'en-GB';
+  return (typeof navigator !== 'undefined' && navigator.language) || 'en-GB';
+}
+
+/** The chosen time zone, or undefined for the device's own. */
+export function appTimeZone(): string | undefined {
+  return currentAccess().timeZone ?? undefined;
+}
+
+export function deviceTimeZone(): string {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+  } catch {
+    return 'UTC';
+  }
+}
+
+const FALLBACK_ZONES = ['Europe/London', 'Europe/Dublin', 'Europe/Paris', 'Europe/Berlin', 'America/New_York', 'America/Chicago', 'America/Denver', 'America/Los_Angeles', 'Asia/Dubai', 'Asia/Kolkata', 'Asia/Singapore', 'Asia/Tokyo', 'Australia/Perth', 'Australia/Sydney', 'Pacific/Auckland', 'UTC'];
+
+/** Every time zone this browser knows. */
+export function timeZones(): string[] {
+  try {
+    const list = (Intl as typeof Intl & { supportedValuesOf?: (k: string) => string[] }).supportedValuesOf?.('timeZone');
+    if (list?.length) return list;
+  } catch {
+    /* older browsers */
+  }
+  return FALLBACK_ZONES;
+}
+
+const numberFormats = new Map<string, Intl.NumberFormat>();
+function numberFormat(key: string, opts: Intl.NumberFormatOptions): Intl.NumberFormat {
+  const locale = appLocale();
+  const k = `${locale}|${key}`;
+  let f = numberFormats.get(k);
+  if (!f) {
+    f = new Intl.NumberFormat(locale, opts);
+    numberFormats.set(k, f);
+  }
+  return f;
+}
 
 export function formatNumber(n: number): string {
-  return nf.format(Math.round(n));
+  return numberFormat('int', {}).format(Math.round(n));
 }
 
 export function compactNumber(n: number): string {
   if (Math.abs(n) < 10_000) return formatNumber(n);
-  return new Intl.NumberFormat('en-GB', { notation: 'compact', maximumFractionDigits: 1 }).format(n);
+  return numberFormat('compact', { notation: 'compact', maximumFractionDigits: 1 }).format(n);
+}
+
+/** A date or time in the player's locale and time zone. */
+export function formatDate(d: Date | string | number, opts: Intl.DateTimeFormatOptions): string {
+  const date = d instanceof Date ? d : new Date(d);
+  const tz = appTimeZone();
+  return date.toLocaleString(appLocale(), { ...(tz ? { timeZone: tz } : {}), ...opts });
+}
+
+/** The wall-clock parts of an instant in a time zone (the device's when none is given). */
+export function zonedParts(date: Date, tz: string | undefined): { y: number; mo: number; d: number; h: number; mi: number } {
+  if (!tz) return { y: date.getFullYear(), mo: date.getMonth() + 1, d: date.getDate(), h: date.getHours(), mi: date.getMinutes() };
+  const parts = Object.fromEntries(new Intl.DateTimeFormat('en-GB', { timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).formatToParts(date).map((p) => [p.type, p.value]));
+  return { y: Number(parts.year), mo: Number(parts.month), d: Number(parts.day), h: Number(parts.hour) % 24, mi: Number(parts.minute) };
+}
+
+/** Minutes a time zone is ahead of UTC at an instant. */
+export function zoneOffsetMinutes(date: Date, tz: string | undefined): number {
+  if (!tz) return -date.getTimezoneOffset();
+  const p = zonedParts(date, tz);
+  return Math.round((Date.UTC(p.y, p.mo - 1, p.d, p.h, p.mi) - Math.floor(date.getTime() / 60_000) * 60_000) / 60_000);
+}
+
+/** The instant a wall-clock time (as a datetime-local value) names in a time zone. Null when it is not a date. */
+export function instantFromWallClock(value: string, tz: string | undefined): Date | null {
+  const m = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/.exec(value);
+  if (!m) return null;
+  const asUtc = Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3]), Number(m[4]), Number(m[5]));
+  if (!tz) {
+    const d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]), Number(m[4]), Number(m[5]));
+    return Number.isNaN(d.getTime()) ? null : d;
+  }
+  // Guess with the zone's offset at that moment, then correct once for a change of offset in between.
+  let t = asUtc - zoneOffsetMinutes(new Date(asUtc), tz) * 60_000;
+  t = asUtc - zoneOffsetMinutes(new Date(t), tz) * 60_000;
+  return new Date(t);
 }
 
 export function ordinal(n: number): string {
@@ -35,7 +120,7 @@ export function timeAgo(iso: string | Date): string {
   if (hours < 24) return `${hours} h ago`;
   const days = Math.round(hours / 24);
   if (days < 7) return `${days} day${days === 1 ? '' : 's'} ago`;
-  return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: d.getFullYear() === new Date().getFullYear() ? undefined : 'numeric' });
+  return formatDate(d, { day: 'numeric', month: 'short', year: d.getFullYear() === new Date().getFullYear() ? undefined : 'numeric' });
 }
 
 export function untilText(iso: string): string {

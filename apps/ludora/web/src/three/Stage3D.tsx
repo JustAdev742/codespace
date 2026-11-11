@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { NeutralToneMapping, WebGLRenderer } from 'three';
-import { prefersReducedMotion } from '../lib/prefs.ts';
+import { currentAccess, dataSaverOn, devicePrefs, prefersReducedMotion, setDevicePrefs } from '../lib/prefs.ts';
 import { FrameMonitor, qualityFor, startingQuality, storeChoice, storedChoice, type Quality, type QualityChoice } from './quality.ts';
 import type { StageEnv, World } from './World.ts';
 import { SeasonDrift } from './seasonDrift.ts';
@@ -51,6 +51,8 @@ export function Stage3D<W extends World>({ create, onWorld, label, className = '
   const labelRef = useRef(label);
   labelRef.current = label;
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  /** The one-time offer of "3D off" when frames stay slow even at the lowest quality. */
+  const [tip, setTip] = useState(false);
 
   // The picture's description follows the game (what is in your cart, who is near), without a rebuild.
   useEffect(() => {
@@ -109,7 +111,7 @@ export function Stage3D<W extends World>({ create, onWorld, label, className = '
 
     // The season's drift rides with the camera; none on low graphics or with reduced motion.
     let drift: SeasonDrift | null = null;
-    if (seasonRef.current && quality.tier !== 'low' && !env.reducedMotion) {
+    if (seasonRef.current && quality.tier !== 'low' && !env.reducedMotion && !dataSaverOn()) {
       drift = new SeasonDrift(seasonTheme(), quality.particles);
       if (!world.camera.parent) world.scene.add(world.camera);
       drift.attach(world.camera);
@@ -134,7 +136,11 @@ export function Stage3D<W extends World>({ create, onWorld, label, className = '
         return;
       }
       const lower = LOWER[quality!.tier];
-      if (!lower) return;
+      if (!lower) {
+        // Already as light as it goes and still slow: offer to turn 3D off, once per device.
+        if (!devicePrefs().tip3d) setTip(true);
+        return;
+      }
       quality = qualityFor(lower);
       world.setQuality(quality);
       if (lower === 'low') {
@@ -153,6 +159,10 @@ export function Stage3D<W extends World>({ create, onWorld, label, className = '
     const start = last;
     const loop = (now: number) => {
       raf = requestAnimationFrame(loop);
+      // Battery saver (Settings): at most 30 frames a second. The frame monitor rests meanwhile,
+      // since a capped frame is slow on purpose.
+      const capped = currentAccess().batterySaver;
+      if (capped && now - last < 1000 / 30 - 2) return;
       const dtMs = now - last;
       last = now;
       if (!onScreen) return;
@@ -161,7 +171,7 @@ export function Stage3D<W extends World>({ create, onWorld, label, className = '
       drift?.update(dt, (now - start) / 1000);
       renderer.render(world.scene, world.camera);
       world.afterRender();
-      monitor.sample(dtMs, now);
+      if (!capped) monitor.sample(dtMs, now);
     };
     raf = requestAnimationFrame(loop);
 
@@ -200,6 +210,34 @@ export function Stage3D<W extends World>({ create, onWorld, label, className = '
   return (
     <div ref={box} className={`s3-stage ${className}`}>
       {controls ? <GraphicsMenu /> : null}
+      {tip ? (
+        <div className="s3-tip" role="group" aria-label="3D is running slowly">
+          <p>This device is finding the 3D picture hard. Turn 3D off for a smoother game? The game plays the same.</p>
+          <div className="s3-tip-actions">
+            <button
+              type="button"
+              className="s3-tip-primary"
+              onClick={() => {
+                setDevicePrefs({ tip3d: true });
+                setTip(false);
+                storeChoice('off');
+              }}
+            >
+              Turn 3D off
+            </button>
+            <button
+              type="button"
+              className="s3-tip-secondary"
+              onClick={() => {
+                setDevicePrefs({ tip3d: true });
+                setTip(false);
+              }}
+            >
+              Keep 3D
+            </button>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

@@ -37,6 +37,7 @@ import {
   type TeacherClassDetail,
 } from './classData.ts';
 import { ClassAccountGate, ClassPageSkeleton, ConfirmDialog, DueLabel, JoinCode } from './classUi.tsx';
+import { ExtraTimePanel } from './ExtraTimePanel.tsx';
 
 /*
  * /classes/:id. The teacher manages the class: join code, roster (with class
@@ -620,6 +621,7 @@ function TeacherView({ data }: { data: TeacherClassDetail }) {
         </TabPanel>
         <TabPanel value="students" className="focus-visible:outline-offset-4">
           <Roster classId={cls.id} className={cls.name} archived={cls.archived} members={data.members} onRemove={setRemoving} onHelp={setHelping} onReset={setResetting} />
+          <ExtraTimePanel classId={cls.id} members={data.members} archived={cls.archived} />
         </TabPanel>
       </Tabs>
 

@@ -1,7 +1,7 @@
 import AxeBuilder from '@axe-core/playwright';
 import { mkdirSync } from 'node:fs';
 import { expect, test, type Page } from '@playwright/test';
-import { CSRF, account, watchErrors } from './helpers.ts';
+import { account, CSRF, settled, watchErrors } from './helpers.ts';
 
 /*
  * Hosting a live game, end to end: the lobby's QR code and invite, room settings (a countdown, the
@@ -28,6 +28,7 @@ async function check(page: Page, name: string, include?: string) {
     mkdirSync(SHOTS, { recursive: true });
     await page.screenshot({ path: `${SHOTS}/${name}.png` });
   }
+  await settled(page);
   let builder = new AxeBuilder({ page }).withTags(AXE_TAGS);
   if (include) builder = builder.include(include);
   const axe = await builder.analyze();
@@ -149,10 +150,11 @@ test('hosting: lobby tools, waiting room, countdown, nudges, add time, a break, 
   const waiting = host.page.getByRole('dialog', { name: /Still answering/ });
   await waiting.getByRole('button', { name: 'Nudge Sunny Otter' }).click();
   await expect(waiting.getByRole('button', { name: 'Sunny Otter was nudged' })).toBeVisible();
-  await check(host.page, 'host-still-answering', '[role="dialog"]');
-  await host.page.keyboard.press('Escape');
+  // The nudge shows on the phone for a few seconds: look there first, then check the host's dialog.
   await expect(phone.locator('.stage-card', { hasText: 'Your teacher is waiting for your answer.' })).toBeVisible();
   await check(phone, 'player-nudged');
+  await check(host.page, 'host-still-answering', '[role="dialog"]');
+  await host.page.keyboard.press('Escape');
 
   // Add time with the keyboard (+): the phone hears it in the news.
   await host.page.locator('body').press('+');
@@ -307,7 +309,8 @@ test('hosting for a class: members only, attendance on the class page, class def
   await teacher.page.getByRole('button', { name: 'Start game' }).click();
   await expect(student.page.getByRole('group', { name: 'Answers' })).toBeVisible({ timeout: 20_000 });
   // Answer right, whichever question came up first.
-  const prompt = (await student.page.locator('main h2').first().textContent()) ?? '';
+  // The question's own heading, not whichever second-level heading comes first on the page.
+  const prompt = (await student.page.locator('main [data-chaos-part="prompt"]').first().textContent()) ?? '';
   const right = /Sun is a star|Moon orbits|Owls hunt/.test(prompt) ? 'True' : 'False';
   await student.page.getByRole('group', { name: 'Answers' }).getByRole('button', { name: new RegExp(`${right}$`) }).click();
   await expect(teacher.page.getByText(/1 of 1 answered|Correct/).first()).toBeVisible();

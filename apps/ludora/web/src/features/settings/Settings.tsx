@@ -1,17 +1,20 @@
 import { useEffect, useState, type FormEvent } from 'react';
+import { RotateCcw, Search } from 'lucide-react';
 import { useLocation } from 'react-router';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { DEFAULT_SCHOOL_DRESS, PASSWORD_RULES, type SchoolDress } from '@ludora/shared';
 import { api, ApiError } from '../../lib/api.ts';
 import { useMe, type Preferences } from '../../lib/session.ts';
-import { applyPreferences, applyTheme, localTheme } from '../../lib/prefs.ts';
-import { AccountError, Field, Input, PageHeader, Panel, Select, Skeleton, Switch } from '../../ui/primitives.tsx';
+import { ACCESS_DEFAULTS, clearLocalPrefs, localPrefs, applyPreferences, resetDevicePrefs } from '../../lib/prefs.ts';
+import { localPrefsChanged, usePrefs } from '../../lib/usePrefs.ts';
+import { AccountError, Dialog, Field, Input, PageHeader, Panel, Select, Skeleton, Switch } from '../../ui/primitives.tsx';
+import { matches, SETTINGS, SettingsList } from './AccessSettings.tsx';
+import { WhatsNewLink } from '../whatsnew/WhatsNew.tsx';
 import { SecretLantern } from '../extras/ExtrasEntry.tsx';
 import { Button, ButtonLink } from '../../ui/Button.tsx';
 import { RecoveryCodeDialog } from '../auth/RecoveryCodeDialog.tsx';
 import { YourData } from './YourData.tsx';
-import { Segmented } from '../../ui/Segmented.tsx';
 import { UniformPicker } from '../school/UniformPicker.tsx';
 import { schoolLook } from '../../lib/school.ts';
 import { useOverview } from '../../lib/queries.ts';
@@ -35,7 +38,9 @@ export default function Settings() {
   const overview = useOverview();
   const qc = useQueryClient();
   const user = me.data?.user;
-  const [localThemeValue, setLocalThemeValue] = useState(localTheme());
+  const [query, setQuery] = useState('');
+  const [confirmReset, setConfirmReset] = useState(false);
+  const prefsApi = usePrefs();
   const [name, setName] = useState('');
   const [pw, setPw] = useState({ currentPassword: '', newPassword: '' });
   const [pwErrors, setPwErrors] = useState<Record<string, string>>({});
@@ -47,14 +52,18 @@ export default function Settings() {
     if (signedIn && hash) document.getElementById(decodeURIComponent(hash.slice(1)))?.scrollIntoView();
   }, [signedIn, hash]);
 
-  const save = useMutation({
-    mutationFn: (patch: Patch) => api.patch<{ preferences: Preferences }>('/api/me/preferences', patch),
-    onMutate: (patch) => {
-      if (user) applyPreferences({ ...user.preferences, ...patch } as Preferences);
-    },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['me'] }),
-    onError: (err) => toast.error(err instanceof ApiError ? err.message : 'Could not save that setting.'),
-  });
+  const save = { mutate: (patch: Patch) => prefsApi.save(patch) };
+  const resetAll = () => {
+    if (user) prefsApi.save({ theme: 'system', reducedMotion: 'system', textSize: 'normal', highContrast: false, sound: true, music: true, access: ACCESS_DEFAULTS });
+    else {
+      clearLocalPrefs();
+      localPrefsChanged();
+      applyPreferences(localPrefs());
+    }
+    resetDevicePrefs();
+    setConfirmReset(false);
+    toast.success('Settings are back to their defaults');
+  };
   const rename = useMutation({
     mutationFn: () => api.patch('/api/me', { displayName: name }),
     onSuccess: async () => {
@@ -110,33 +119,66 @@ export default function Settings() {
       </>
     );
   }
+  const shown = SETTINGS.filter((d) => matches(d, query));
+  const searchAndList = (
+    <>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+        <div className="relative flex-1">
+          <Search className="pointer-events-none absolute top-1/2 left-3.5 size-4 -translate-y-1/2 text-text-3" aria-hidden />
+          <Input type="search" aria-label="Search settings" placeholder="Search settings, like “timer” or “colour”" value={query} onChange={(e) => setQuery(e.target.value)} className="pl-10" />
+        </div>
+        <Button icon={<RotateCcw className="size-4" aria-hidden />} onClick={() => setConfirmReset(true)}>
+          Back to defaults
+        </Button>
+      </div>
+      <p className="sr-only" role="status">
+        {query.trim() ? `${shown.length} ${shown.length === 1 ? 'setting matches' : 'settings match'}` : ''}
+      </p>
+      {shown.length ? <SettingsList defs={shown} /> : <p className="rounded-[var(--radius-l)] border border-line bg-raised p-5 text-text-2">No settings match “{query.trim()}”. Try another word, like “sound” or “text”.</p>}
+      <Panel className="p-5 text-sm text-text-2">
+        <h2 className="mb-2 font-display text-xl leading-tight font-bold text-text">Where settings are kept</h2>
+        {user ? (
+          <p>
+            Saved to your account, so they follow you to any device you sign in on: everything here except the volumes, the voice and installing, which stay with this device (marked “This device”). Graphics quality for 3D games is also kept on each device.
+          </p>
+        ) : (
+          <p>You are not signed in, so these settings are kept in this browser on this device only. Sign in and they are saved to your account instead.</p>
+        )}
+        <div className="mt-3">
+          <WhatsNewLink />
+        </div>
+      </Panel>
+      <Dialog
+        open={confirmReset}
+        onOpenChange={setConfirmReset}
+        size="sm"
+        title="Put settings back to their defaults?"
+        description="Look and text, read aloud, game, sound and device settings go back to how Ludora starts. Privacy, notifications and your account are not changed."
+        footer={
+          <>
+            <Button onClick={() => setConfirmReset(false)}>Cancel</Button>
+            <Button variant="primary" onClick={resetAll}>
+              Back to defaults
+            </Button>
+          </>
+        }
+      />
+    </>
+  );
+  const searching = Boolean(query.trim());
   if (!user) {
     return (
       <>
-        <PageHeader title="Settings" />
-        <Panel className="p-5">
-          <Row label="Theme" description="Saved in this browser.">
-            <Segmented
-              label="Theme"
-              value={localThemeValue}
-              onChange={(v) => {
-                setLocalThemeValue(v);
-                applyTheme(v);
-              }}
-              options={[
-                { value: 'system', label: 'Auto' },
-                { value: 'light', label: 'Day' },
-                { value: 'dark', label: 'Night' },
-              ]}
-            />
-          </Row>
-          <p className="mt-2 text-sm text-text-3">
+        <PageHeader title="Settings" description="Changes save as you make them, in this browser." />
+        <div className="flex flex-col gap-6">
+          <p className="text-sm text-text-2">
             <ButtonLink to="/signin" size="sm" variant="secondary">
               Sign in
             </ButtonLink>{' '}
             to save settings to your account.
           </p>
-        </Panel>
+          {searchAndList}
+        </div>
       </>
     );
   }
@@ -154,28 +196,9 @@ export default function Settings() {
             <UniformPicker value={{ ...DEFAULT_SCHOOL_DRESS, ...p.school }} onChange={(school) => save.mutate({ school })} preview={overview.data?.avatar ?? null} />
           </Panel>
         ) : null}
-        <Panel className="divide-y divide-line px-5 py-2">
-          <h2 className="py-3 font-display text-2xl leading-tight font-bold">Appearance and accessibility</h2>
-          <Row label="Theme">
-            <Segmented label="Theme" value={p.theme} onChange={(v) => save.mutate({ theme: v })} options={[{ value: 'system', label: 'Auto' }, { value: 'light', label: 'Day' }, { value: 'dark', label: 'Night' }]} />
-          </Row>
-          <Row label="Motion" description="Less motion turns off animations and slides, pack openings included.">
-            <Segmented label="Motion" value={p.reducedMotion} onChange={(v) => save.mutate({ reducedMotion: v })} options={[{ value: 'system', label: 'Auto' }, { value: 'on', label: 'Less' }, { value: 'off', label: 'Full' }]} />
-          </Row>
-          <Row label="Text size">
-            <Segmented label="Text size" value={p.textSize} onChange={(v) => save.mutate({ textSize: v })} options={[{ value: 'normal', label: 'Normal' }, { value: 'large', label: 'Large' }, { value: 'larger', label: 'Larger' }]} />
-          </Row>
-          <div>
-            <Switch checked={p.highContrast} onCheckedChange={(v) => save.mutate({ highContrast: v })} label="High contrast" description="Stronger borders and text." />
-          </div>
-          <div>
-            <Switch checked={p.sound} onCheckedChange={(v) => save.mutate({ sound: v })} label="Sound effects" description="Answers, the timer, results and opening Lanterns." />
-          </div>
-          <div>
-            <Switch checked={p.music} onCheckedChange={(v) => save.mutate({ music: v })} label="Music" description="Plays on the host's screen and in solo games, never on players' phones." />
-          </div>
-        </Panel>
-
+        {searchAndList}
+        {searching ? null : (
+        <>
         <Panel id="privacy" className="scroll-mt-20 divide-y divide-line px-5 py-2">
           <h2 className="py-3 font-display text-2xl leading-tight font-bold">Privacy</h2>
           <Row label="Who can see my profile">
@@ -286,6 +309,8 @@ export default function Settings() {
             <p className="text-sm text-text-2">Made for classrooms. Every lantern has a story, if you know how to ask.</p>
           </div>
         </Panel>
+        </>
+        )}
       </div>
       <RecoveryCodeDialog code={code} onDone={() => setCode(null)} />
     </>

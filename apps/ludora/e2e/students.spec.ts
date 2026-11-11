@@ -1,6 +1,6 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
-import { CSRF, account, answerAnyQuestion, watchErrors } from './helpers.ts';
+import { account, answerAnyQuestion, CSRF, settled, watchErrors } from './helpers.ts';
 
 /*
  * What a player gets outside a live game (docs/features/students.md): the daily challenge
@@ -13,6 +13,7 @@ const AXE_TAGS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22a', 'wcag22
 const SHOTS = process.env.STUDENTS_SHOTS;
 
 async function axe(page: Page, label: string) {
+  await settled(page);
   const r = await new AxeBuilder({ page }).withTags(AXE_TAGS).analyze();
   expect(r.violations.map((v) => `${label}: ${v.id} ${v.nodes.map((n) => n.target.join(' ')).join(', ')}`)).toEqual([]);
 }

@@ -39,6 +39,12 @@ export interface EnginePlayer {
   connected: boolean;
   /** Game time at which the player joined; 0 for everyone present at the start. */
   joinedAt: number;
+  /**
+   * Extra time on timed questions the host gave this player, as a share of the time limit
+   * (0.25, 0.5 or 1 for double). Host-paced rounds keep their question open that much longer
+   * for them alone; nobody else is told. Missing or 0 for everyone else.
+   */
+  extraTime?: number;
 }
 
 export interface EngineTeam {

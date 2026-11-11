@@ -74,11 +74,12 @@ export async function roomRoutes(app: FastifyInstance, deps: AppDeps) {
         throw new AppError(409, 'conflict', `You already have ${MAX_ROOMS_PER_HOST} games open, the most you can have at once. Close one in Your open games, then try again.`);
       }
       // A class game: checked on the server that the host teaches the class; its members are the only ones let in.
-      let cls: { id: string; name: string; members: string[] } | null = null;
+      let cls: { id: string; name: string; members: string[]; extra: Record<string, number> } | null = null;
       if (body.classId && !solo) {
         const row = await teacherClass(deps.db, body.classId, auth, 'Only the class teacher can host a game for this class.', { active: true });
-        const members = await deps.db.select({ u: classMembers.userId }).from(classMembers).where(eq(classMembers.classId, row.id));
-        cls = { id: row.id, name: row.name, members: members.map((m) => m.u) };
+        const members = await deps.db.select({ u: classMembers.userId, extra: classMembers.extraTime }).from(classMembers).where(eq(classMembers.classId, row.id));
+        // Extra time the teacher set for students follows them into the class's live games.
+        cls = { id: row.id, name: row.name, members: members.map((m) => m.u), extra: Object.fromEntries(members.filter((m) => m.extra > 0).map((m) => [m.u, m.extra / 100])) };
       }
       const { set, questions } = await loadSetForPlay(deps.db, body.setId, auth);
       const teamPlan = body.school && !solo ? await schoolTeamPlan(deps, auth, body.school) : null;
@@ -95,7 +96,7 @@ export async function roomRoutes(app: FastifyInstance, deps: AppDeps) {
           set: { id: set.id, title: set.title, questions },
           solo,
           teamPlan,
-          ...(cls ? { classId: cls.id, classMembers: cls.members, classTitle: cls.name } : {}),
+          ...(cls ? { classId: cls.id, classMembers: cls.members, classTitle: cls.name, classExtraTime: cls.extra } : {}),
         });
       } catch (err) {
         throw new AppError(400, 'validation_failed', (err as Error).message);
@@ -156,7 +157,7 @@ export async function roomRoutes(app: FastifyInstance, deps: AppDeps) {
         options: room.options,
         set: { id: room.set.id, title: `${room.set.title}: missed questions`, questions: chosen },
         solo: false,
-        ...(room.classId && room.classMembers ? { classId: room.classId, classMembers: [...room.classMembers], classTitle: room.classTitle } : {}),
+        ...(room.classId && room.classMembers ? { classId: room.classId, classMembers: [...room.classMembers], classTitle: room.classTitle, classExtraTime: room.classExtraTime } : {}),
       };
       let next;
       try {

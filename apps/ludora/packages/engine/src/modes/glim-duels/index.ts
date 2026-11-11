@@ -42,6 +42,7 @@ import {
   type SyncState,
   syncAddTime,
   syncWaitingOn,
+  syncPlayerDeadline,
 } from '../../mechanics/syncRounds.ts';
 import { listNames, nameOf, recordingAs } from '../rules.ts';
 import {
@@ -543,7 +544,7 @@ function step(s: State, ctx: ModeContext, fn: () => ActionResult): ActionResult 
 function usePower(s: State, playerId: PlayerId, power: Power, iid: string, ctx: ModeContext): ActionResult {
   if (!opts(ctx).powers) return { error: 'Powers are off in this game.' };
   if (s.sync.phase !== 'question' || iid !== s.sync.iid) return { error: 'Powers can only be used while a question is open.' };
-  if (ctx.now() > s.sync.deadline + DEADLINE_GRACE_MS) return { error: 'Time is up.' };
+  if (ctx.now() > syncPlayerDeadline(s, playerId) + DEADLINE_GRACE_MS) return { error: 'Time is up.' };
   const f = s.fighters[playerId];
   const d = duelOf(s, playerId);
   const i = d ? sideOf(d, playerId) : null;

@@ -64,6 +64,8 @@ export function RoomSettings({ room, handle, open, onOpenChange }: { room: RoomV
           <Switch checked={o.reactions} onCheckedChange={(v) => set({ reactions: v })} label="Reactions" description="Players can send emoji reactions and make their Glim hop in the lobby." />
           <Switch checked={o.hideNames} onCheckedChange={(v) => set({ hideNames: v })} label="Hide names on the big screen" description="The big screen shows “Player 1”, “Player 2”. Each player still sees their own name and place." />
           <Switch checked={o.exitTicket} onCheckedChange={(v) => set({ exitTicket: v })} label="Exit ticket" description="At the end, players tap how the game felt. You see the counts, never who chose what." />
+          <Switch checked={o.littleHands} onCheckedChange={(v) => set({ littleHands: v })} label="Little hands" description="Bigger buttons and text on every player's game screen, for young players." />
+          <Switch checked={o.readAloud} onCheckedChange={(v) => set({ readAloud: v })} label="Read questions aloud on the big screen" description="This screen reads each question and its answers with the browser's own voice." />
         </section>
 
         <section aria-labelledby="rs-join" className="flex flex-col">

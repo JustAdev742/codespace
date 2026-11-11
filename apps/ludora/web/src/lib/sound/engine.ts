@@ -132,6 +132,14 @@ class SoundEngine {
   /** Which recording of each effect played last. */
   private readonly lastTake = new Map<SfxAssetName, number>();
   private readonly listeners = new Set<() => void>();
+  /** Told of every effect the game asks for, sound or not: captions and buzzes for players who cannot hear it. */
+  private readonly cueListeners = new Set<(name: SfxName) => void>();
+  /** This device's volume sliders, 0 to 1. */
+  private volume = { effects: 1, music: 1 };
+  /** Calm mode: no countdown tick or crowd sounds. */
+  private calm = false;
+  /** Data saver: music is never downloaded; the synthesised stand-ins play instead. */
+  private saveData = false;
 
   constructor() {
     if (typeof window === 'undefined') return;
@@ -166,6 +174,7 @@ class SoundEngine {
     try {
       const ctx = new Ctor({ latencyHint: 'interactive' });
       this.graph = { ctx, ...buildMix(ctx) };
+      this.applyVolume();
       this.bank.attach(ctx);
       this.warmUp();
       return this.graph;
@@ -189,6 +198,8 @@ class SoundEngine {
 
   /** Plays an effect now, unless effects are off or the device is muted. Returns a stop function for long effects. */
   play(name: SfxName, options: SfxOptions = {}): () => void {
+    for (const l of this.cueListeners) l(name);
+    if (this.calm && (name === 'tick' || name === 'tickFinal' || name === 'reaction')) return () => {};
     if (this.state.muted || this.state.silenced || !this.state.effects) return () => {};
     const g = this.ensure();
     if (!g) return () => {};
@@ -308,6 +319,7 @@ class SoundEngine {
 
   /** Fetches music files ahead of need (no audio context required), so a track can start the moment it is wanted. */
   prefetchMusic(tracks: MusicId[]) {
+    if (this.saveData) return;
     if (this.state.muted || this.state.silenced || !this.state.music) return;
     for (const t of tracks) void this.bank.prefetch(MUSIC_ASSETS[t].url);
   }
@@ -328,7 +340,7 @@ class SoundEngine {
       this.startLoop(g, want, sample);
       return;
     }
-    if (this.unavailable.has(want)) {
+    if (this.unavailable.has(want) || this.saveData) {
       this.stopPlaying(0.8);
       const synth = new MusicPlayer(g.ctx, g.music, g.reverb, TRACKS[SYNTH_FALLBACK[want]]);
       synth.play();
@@ -403,6 +415,31 @@ class SoundEngine {
     this.state = { ...this.state, silenced };
     this.syncMusic();
     this.emit();
+  }
+
+  private applyVolume() {
+    const g = this.graph;
+    if (!g) return;
+    g.sfx.gain.value = LEVEL.sfx * this.volume.effects;
+    g.music.gain.value = LEVEL.music * this.volume.music;
+  }
+
+  /** This device's volume sliders, each 0 to 1. */
+  setVolume(volume: { effects: number; music: number }) {
+    this.volume = { effects: Math.max(0, Math.min(1, volume.effects)), music: Math.max(0, Math.min(1, volume.music)) };
+    this.applyVolume();
+  }
+
+  /** Calm mode and data saver. A recording already downloaded may carry on under data saver; nothing new is fetched. */
+  setComfort(opts: { calm: boolean; saveData: boolean }) {
+    this.calm = opts.calm;
+    this.saveData = opts.saveData;
+  }
+
+  /** Hears every effect the game asks for, even muted. Returns an unsubscribe function. */
+  onCue(fn: (name: SfxName) => void) {
+    this.cueListeners.add(fn);
+    return () => this.cueListeners.delete(fn);
   }
 
   getState = (): SoundState => this.state;

@@ -1,0 +1,27 @@
+{
+  "_note": "Newest first. Each entry: a unique id (date and a word), a date, a title and a sentence or two in plain words for players and teachers. The app shows entries a device has not seen yet.",
+  "entries": [
+    {
+      "id": "2026-11-access",
+      "date": "2026-11-11",
+      "title": "Ludora for everyone",
+      "items": [
+        "Read aloud: a speaker button reads each question and its answers, and teachers can have the big screen read them too.",
+        "Teachers can give chosen students extra time, in any room or once for a whole class. Nobody else can tell.",
+        "Comfort settings in every game: hide the timer, calm mode, colour-safe answer tiles, bigger buttons, captions for sounds and a buzz when your answer goes in.",
+        "Answer with the keyboard: 1 to 4 or A to D.",
+        "An easier-to-read typeface, wider spacing, the highest contrast and less transparency in Settings, which now has a search.",
+        "Install Ludora as an app, and sign in on a shared computer without staying signed in."
+      ]
+    },
+    {
+      "id": "2026-11-hosting",
+      "date": "2026-11-10",
+      "title": "Hosting a live game",
+      "items": [
+        "Room settings, a QR code to join, a brain break, add time, a quiet room and your phone as a remote control.",
+        "Three new question types: polls, fill in the blanks, and sort into groups."
+      ]
+    }
+  ]
+}

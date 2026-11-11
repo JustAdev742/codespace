@@ -7,6 +7,62 @@ const textSize = z.enum(['normal', 'large', 'larger']);
 const profileVisibility = z.enum(['public', 'friends', 'private']);
 const allowFriendRequests = z.enum(['everyone', 'friend_code', 'nobody']);
 
+/** A time zone name the runtime knows (Europe/London), or null for the device's own. */
+const timeZone = z
+  .string()
+  .max(64)
+  .refine((tz) => {
+    try {
+      new Intl.DateTimeFormat('en-GB', { timeZone: tz });
+      return true;
+    } catch {
+      return false;
+    }
+  }, 'That is not a time zone.')
+  .nullable();
+
+/**
+ * Accessibility and comfort. Every default is how the app behaved before the setting
+ * existed. The web keeps the same defaults in web/src/lib/prefs.ts (ACCESS_DEFAULTS).
+ */
+const accessShape = {
+  /** A speaker button reads the question and answers aloud with the browser's own speech. */
+  readAloud: z.boolean().default(false),
+  /** Read each new question aloud by itself (needs readAloud). */
+  readAuto: z.boolean().default(false),
+  readRate: z.number().min(0.5).max(2).default(1),
+  /** Atkinson Hyperlegible everywhere, headings and numbers included. */
+  font: z.enum(['standard', 'easy']).default('standard'),
+  letterSpacing: z.enum(['normal', 'wide', 'wider']).default('normal'),
+  lineSpacing: z.enum(['normal', 'wide', 'wider']).default('normal'),
+  /** The highest contrast level, on top of high contrast. */
+  maxContrast: z.boolean().default(false),
+  lessTransparency: z.boolean().default(false),
+  underlineLinks: z.boolean().default(false),
+  strongFocus: z.boolean().default(false),
+  /** Answer tiles in a palette checked for colour-vision differences, each with a pattern. */
+  tiles: z.enum(['standard', 'safe']).default('standard'),
+  /** No reactions, confetti, countdown tick or flashing. */
+  calm: z.boolean().default(false),
+  timer: z.enum(['both', 'bar', 'number', 'hidden']).default('both'),
+  /** Bigger buttons and text on game screens. */
+  littleHands: z.boolean().default(false),
+  /** A visible cue and caption for sounds that carry meaning. */
+  captions: z.boolean().default(false),
+  vibrate: z.boolean().default(false),
+  wakeLock: z.boolean().default(false),
+  dataSaver: z.enum(['auto', 'on', 'off']).default('auto'),
+  /** Caps 3D scenes at 30 frames a second. */
+  batterySaver: z.boolean().default(false),
+  /** Dates and times show in this zone (due dates included); null for the device's. */
+  timeZone: timeZone.default(null),
+  /** Numbers and dates in British English, or the device's own language. */
+  locale: z.enum(['en-GB', 'device']).default('en-GB'),
+};
+const accessSchema = z.object(accessShape);
+const ACCESS_DEFAULTS = accessSchema.parse({});
+const accessPatchSchema = z.object(Object.fromEntries(Object.entries(accessShape).map(([k, v]) => [k, v.unwrap().optional()])) as { [K in keyof typeof accessShape]: z.ZodOptional<ReturnType<(typeof accessShape)[K]['unwrap']>> });
+
 export const preferencesSchema = z.object({
   theme: theme.default('system'),
   reducedMotion: reducedMotion.default('system'),
@@ -37,6 +93,7 @@ export const preferencesSchema = z.object({
       kit: schoolDressSchema.shape.kit.default('school'),
     })
     .default(DEFAULT_SCHOOL_DRESS),
+  access: accessSchema.default(ACCESS_DEFAULTS),
 });
 export type Preferences = z.infer<typeof preferencesSchema>;
 
@@ -55,12 +112,16 @@ export const preferencesPatchSchema = z.object({
   notifications: z.object({ friendRequests: z.boolean(), gameInvites: z.boolean(), rewards: z.boolean() }).partial().optional(),
   privacy: z.object({ profileVisibility, allowFriendRequests, showOnLeaderboards: z.boolean() }).partial().optional(),
   school: schoolDressSchema.partial().optional(),
+  access: accessPatchSchema.optional(),
 });
 
 /** Parse stored preferences, filling anything missing with defaults. Never throws. */
 export function readPreferences(raw: unknown): Preferences {
   const r = preferencesSchema.safeParse(raw ?? {});
-  return r.success ? r.data : preferencesSchema.parse({});
+  if (r.success) return r.data;
+  // One unreadable accessibility choice must not cost the player every other setting.
+  const rest = preferencesSchema.safeParse({ ...(raw as object), access: undefined });
+  return rest.success ? rest.data : preferencesSchema.parse({});
 }
 
 /** Safer defaults for players under 13: private-ish profile, friend requests by code only. */
@@ -77,12 +138,13 @@ export function defaultPreferences(ageBand: string | null): Preferences {
 const defined = <T extends object>(o: T | undefined): Partial<T> => Object.fromEntries(Object.entries(o ?? {}).filter(([, v]) => v !== undefined)) as Partial<T>;
 
 export function mergePreferences(current: Preferences, patch: z.infer<typeof preferencesPatchSchema>): Preferences {
-  const { notifications, privacy, school, ...top } = patch;
+  const { notifications, privacy, school, access, ...top } = patch;
   return preferencesSchema.parse({
     ...current,
     ...defined(top),
     notifications: { ...current.notifications, ...defined(notifications) },
     privacy: { ...current.privacy, ...defined(privacy) },
     school: { ...current.school, ...defined(school) },
+    access: { ...current.access, ...defined(access) },
   });
 }

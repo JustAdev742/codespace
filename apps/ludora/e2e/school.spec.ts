@@ -1,7 +1,7 @@
 import AxeBuilder from '@axe-core/playwright';
 import { mkdirSync } from 'node:fs';
 import { expect, test, type Page } from '@playwright/test';
-import { CSRF, account, operator, watchErrors } from './helpers.ts';
+import { account, CSRF, operator, settled, watchErrors } from './helpers.ts';
 
 /*
  * A school's own copy, end to end: school staff (granted with the operator CLI, the way every role
@@ -25,6 +25,7 @@ async function check(page: Page, name: string, include?: string) {
     mkdirSync(SHOTS, { recursive: true });
     await page.screenshot({ path: `${SHOTS}/${name}.png`, fullPage: true });
   }
+  await settled(page);
   let builder = new AxeBuilder({ page }).withTags(AXE_TAGS);
   if (include) builder = builder.include(include);
   const axe = await builder.analyze();

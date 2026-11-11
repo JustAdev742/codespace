@@ -18,6 +18,7 @@ import { Pill, PlayerGlim, StagePanel, motionOK } from './game/stage.tsx';
 import { useAnnounce } from './game/announce.tsx';
 import { plural } from '../../lib/format.ts';
 import { playSfx } from '../../lib/sound/react.tsx';
+import { EXTRA_SHARES, extraOf, setExtraTime, type ExtraShare } from './host/ExtraTime.tsx';
 
 /** The most practice bots a room takes (the server's limit). */
 const MAX_BOTS = 20;
@@ -56,6 +57,8 @@ export interface SeatActions {
   rename: (p: RoomPlayerView) => void;
   move: (p: RoomPlayerView, teamId: string) => void;
   teams: TeamView[];
+  /** Extra time on timed questions (only the host sees it). */
+  extra?: { of: (p: RoomPlayerView) => number; set: (p: RoomPlayerView, share: ExtraShare) => void };
 }
 
 /** The host's menu on a seat card: rename, move to another team, remove. */
@@ -84,6 +87,25 @@ function SeatMenu({ p, actions }: { p: RoomPlayerView; actions: SeatActions }) {
                 Move to {t.name}
               </DropdownMenu.Item>
             ))}
+          {!p.isBot && actions.extra ? (
+            <>
+              <DropdownMenu.Separator className="my-1 h-px bg-line" />
+              <DropdownMenu.Label className="px-3 pt-1 pb-0.5 text-xs font-semibold text-text-3">Extra time (only you see this)</DropdownMenu.Label>
+              <DropdownMenu.RadioGroup value={String(actions.extra.of(p))} onValueChange={(v) => actions.extra?.set(p, Number(v) as ExtraShare)}>
+                {EXTRA_SHARES.map((s) => (
+                  <DropdownMenu.RadioItem key={s.share} value={String(s.share)} className={SEAT_ITEM}>
+                    <span className="grid size-4 place-items-center" aria-hidden>
+                      <DropdownMenu.ItemIndicator>
+                        <Check className="size-4" />
+                      </DropdownMenu.ItemIndicator>
+                    </span>
+                    {s.label}
+                  </DropdownMenu.RadioItem>
+                ))}
+              </DropdownMenu.RadioGroup>
+              <DropdownMenu.Separator className="my-1 h-px bg-line" />
+            </>
+          ) : null}
           <DropdownMenu.Item className={`${SEAT_ITEM} text-ember data-[highlighted]:text-ember`} onSelect={() => actions.kick(p)}>
             <UserMinus className="size-4" aria-hidden /> Remove
           </DropdownMenu.Item>
@@ -317,6 +339,7 @@ export function HostLobby({ room, handle }: { room: RoomView; handle: RoomHandle
     rename: (p) => setRenaming({ kind: 'player', id: p.id, name: p.name }),
     move: (p, teamId) => void run('move', { cmd: 'setTeam', playerId: p.id, teamId }),
     teams: room.room.teams,
+    extra: { of: (p) => extraOf(room, p.id), set: (p, share) => void setExtraTime(handle, p, share) },
   };
   const hops = useHops(handle.reactions);
   const minutes = estimateMinutes(room.room);

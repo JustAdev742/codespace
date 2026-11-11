@@ -4,16 +4,17 @@ import { useQuery } from '@tanstack/react-query';
 import { deviceDress, schoolLook, setViewerUniform } from '../lib/school.ts';
 import { api } from '../lib/api.ts';
 import { useMe } from '../lib/session.ts';
-import { applyPreferences, applyTheme, localTheme } from '../lib/prefs.ts';
+import { applyPreferences, localPrefs } from '../lib/prefs.ts';
 
-/** Keeps the page's theme, motion and text-size settings in step with the account (or this browser, when signed out). */
+/** Keeps the page's look (theme, motion, text, accessibility settings) in step with the account, or this device when signed out. */
 export function PrefsSync() {
-  const { data } = useMe();
+  const { data, isLoading } = useMe();
   const prefs = data?.user?.preferences;
   useEffect(() => {
     if (prefs) applyPreferences(prefs);
-    else applyTheme(localTheme());
-  }, [prefs]);
+    // Signed out: this device's own choices. While the account loads, the look restored at first paint stays.
+    else if (!isLoading) applyPreferences(localPrefs());
+  }, [prefs, isLoading]);
   // The uniform this viewer's own Glims wear: their account's year group, or this device's for a guest.
   const school = prefs?.school;
   // On a sport day (the player's own timetable, or their class's) the server says so, and the kit is sport.

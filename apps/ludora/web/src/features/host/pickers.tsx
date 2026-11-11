@@ -187,7 +187,8 @@ export function ModeGrid({ modes, value, onChange, labelledBy }: { modes: Catalo
             // A real space, not a margin, so the chip's name reads "Party 4" rather than "Party4".
             label: (
               <>
-                {MODE_CATEGORY_INFO[c].label} <span className="opacity-70 tabular">{count(c)}</span>
+                {/* The count is set lighter by weight, not by fading it: a faded count fell below the contrast floor on some chips. */}
+                {MODE_CATEGORY_INFO[c].label} <span className="font-medium tabular">{count(c)}</span>
               </>
             ),
           })),

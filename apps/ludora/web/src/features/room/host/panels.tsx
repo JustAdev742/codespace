@@ -8,6 +8,7 @@ import { Dialog, Spinner } from '../../../ui/primitives.tsx';
 import { PlayerGlim } from '../game/stage.tsx';
 import { QrCode } from './QrCode.tsx';
 import type { Shortcut } from './tools.ts';
+import { ExtraTimeSelect } from './ExtraTime.tsx';
 
 /*
  * The host's panels, opened from the host menu or the lobby: who is still answering, the players
@@ -64,7 +65,7 @@ export function StillAnsweringDialog({ room, handle, open, onOpenChange }: { roo
   );
 }
 
-/** Everyone in the room, with who is reconnecting, and Remove. */
+/** Everyone in the room, with who is reconnecting, extra time, and Remove. */
 export function PlayersList({ room, handle }: { room: RoomView; handle: RoomHandle }) {
   const [confirm, setConfirm] = useState<string | null>(null);
   const away = room.players.filter((p) => !p.connected && !p.isBot);
@@ -89,6 +90,7 @@ export function PlayersList({ room, handle }: { room: RoomView; handle: RoomHand
                 </span>
               ) : null}
             </span>
+            <ExtraTimeSelect room={room} handle={handle} p={p} />
             {confirm === p.id ? (
               <span className="flex gap-1.5">
                 <Button size="sm" variant="ghost" onClick={() => setConfirm(null)}>

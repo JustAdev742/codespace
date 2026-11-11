@@ -98,6 +98,8 @@ export const sessions = pgTable(
     ipHash: text('ip_hash'),
     userAgent: text('user_agent'),
     revokedAt: ts('revoked_at'),
+    /** Access (0015): started on a shared device; ends after a short time with no activity. */
+    shared: boolean('shared').notNull().default(false),
   },
   (t) => [index('sessions_user_idx').on(t.userId), index('sessions_expires_idx').on(t.expiresAt)],
 );
@@ -586,6 +588,8 @@ export const classMembers = pgTable(
     userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
     role: text('role').notNull().default('student'),
     joinedAt: now('joined_at'),
+    /** Access (0015): extra time on timed questions in the class's live games, as a percentage (0, 25, 50, 100). Teacher only. */
+    extraTime: integer('extra_time').notNull().default(0),
   },
   (t) => [primaryKey({ columns: [t.classId, t.userId] }), index('class_members_user_idx').on(t.userId)],
 );

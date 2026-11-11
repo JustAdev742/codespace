@@ -39,6 +39,9 @@ import { toast } from 'sonner';
 import { NotificationBell } from '../features/social/NotificationBell.tsx';
 import { SearchLauncher } from '../features/search/SearchLauncher.tsx';
 import { useSchool } from '../features/school/schoolData.ts';
+import { SectionBoundary } from '../ui/SectionBoundary.tsx';
+import { WhatsNewButton } from '../features/whatsnew/WhatsNew.tsx';
+import { OfflineBanner } from './OfflineBanner.tsx';
 
 /*
  * The frame around every page: the sidebar, the header and the phone's bottom
@@ -144,8 +147,11 @@ function EnvironmentBadge() {
   const me = useMe();
   const env = me.data?.environment;
   if (!env || env === 'production') return null;
+  // Signed out on a phone the header already holds the logo, a school's crest, search, Sign in and
+  // Create account; the badge is about test balances, which a signed-out visitor does not have.
+  const tight = me.data?.user ? '' : 'max-sm:hidden';
   return (
-    <span className="rounded-[var(--radius-s)] border border-dashed border-lantern/80 px-2 py-0.5 text-xs font-bold text-lantern" title="Test environment: balances and test tools here do not affect the live game.">
+    <span className={`rounded-[var(--radius-s)] border border-dashed border-lantern/80 px-2 py-0.5 text-xs font-bold text-lantern ${tight}`} title="Test environment: balances and test tools here do not affect the live game.">
       {env === 'sandbox' ? 'Sandbox' : env === 'development' ? 'Dev' : env}
     </span>
   );
@@ -288,13 +294,17 @@ export function Shell() {
           <EnvironmentBadge />
           <div className="ml-auto flex items-center gap-2 sm:gap-3">
             <SearchLauncher />
+            <WhatsNewButton />
             <Balances />
             <NotificationBell />
             <AccountMenu />
           </div>
         </header>
+        <OfflineBanner />
         <main id="main" key={location.pathname.split('/')[1]} className="mx-auto w-full max-w-[1200px] flex-1 px-4 pt-6 pb-10 sm:px-6">
-          <Outlet />
+          <SectionBoundary name="this page" resetKey={location.pathname}>
+            <Outlet />
+          </SectionBoundary>
         </main>
         {/* Clear of the phone's bottom bar. */}
         <footer className="mx-auto flex w-full max-w-[1200px] flex-wrap gap-x-5 gap-y-2 px-4 pb-28 text-sm text-text-3 sm:px-6 lg:pb-8">

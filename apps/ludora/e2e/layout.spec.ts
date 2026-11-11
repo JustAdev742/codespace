@@ -1,6 +1,6 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test } from '@playwright/test';
-import { account, watchErrors } from './helpers.ts';
+import { account, settled, watchErrors } from './helpers.ts';
 
 const PAGES = ['/', '/play', '/host', '/modes', '/library', '/shop', '/collection', '/locker', '/quests', '/friends', '/leaderboards', '/me', '/settings', '/privacy', '/terms'];
 
@@ -17,6 +17,7 @@ test('main pages fit a 360px phone, have one main heading, pass automated access
     expect(overflow, `${path} scrolls sideways`).toBeLessThanOrEqual(0);
     await expect(p.page.locator('h1'), `${path} needs exactly one h1`).toHaveCount(1);
     // WCAG 2.2 A and AA rules that a machine can check: contrast, names, labels, structure.
+    await settled(p.page);
     const axe = await new AxeBuilder({ page: p.page }).withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa']).analyze();
     expect(axe.violations.map((v) => `${v.id}: ${v.nodes.map((n) => n.target.join(' ')).slice(0, 3).join(', ')}`), `${path} accessibility`).toEqual([]);
   }
