@@ -169,8 +169,19 @@ jobs:
       - name: Install ${{ matrix.browser }}
         run: npx playwright install --with-deps ${{ matrix.browser }}
 
+      # In three parts, each with a fresh browser and server: one long WebKit run used enough memory
+      # for the machine to be shut down part-way (51 tests, no failures, then no runner).
       - name: End-to-end tests (production build, real server, ${{ matrix.browser }})
-        run: npm run test:e2e
+        run: |
+          npm run build
+          status=0
+          for part in 1 2 3; do
+            echo "::group::Part $part of 3"
+            PLAYWRIGHT_HTML_OUTPUT_DIR=playwright-report/part-$part PLAYWRIGHT_HTML_REPORT=playwright-report/part-$part \
+              npx playwright test --shard=$part/3 --output=test-results/part-$part || status=1
+            echo "::endgroup::"
+          done
+          exit $status
 
       - name: Keep the report and traces
         if: failure()
