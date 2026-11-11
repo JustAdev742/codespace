@@ -24,6 +24,7 @@ import { speciesOf, sizeCm, type WaterId } from '@ludora/engine/big-catch';
 import { Field } from '../src/features/room/modes/glow-tag-field.ts';
 import { GlowTagHostScene, GlowTagScene } from '../src/features/room/modes/glow-tag-scene.ts';
 import { SummitHostScene, SummitScene, type MoveKind, type SceneClimber } from '../src/features/room/modes/summit-scene.ts';
+import { TowerHostScene, TowerScene, type SceneState as TowerState } from '../src/features/room/modes/tower-scene.ts';
 import { RallyField } from '../src/features/room/modes/lantern-rally-field.ts';
 import { RallyHostScene, RallyScene } from '../src/features/room/modes/lantern-rally-scene.ts';
 import { CIRCUIT_IDS, lapLength, type CircuitId } from '@ludora/engine/lantern-rally';
@@ -433,6 +434,52 @@ function makeSpotKickHost(env: StageEnv) {
   return w;
 }
 
+// ?scene=tower  Tower Together from one builder's device (&players=12, &crew=30 for the class size, &share=0.7 of the target built,
+// &sway=40, &gust=breeze|gust|gale, &dawn=0.8, &fall=1 to topple it every few seconds). ?scene=tower-host the big screen (&two=1).
+function makeTower(env: StageEnv, host: boolean) {
+  const n = Number(params.get('players') ?? 12);
+  const crew = Number(params.get('crew') ?? 30);
+  const target = Math.round(crew * 36 - 4);
+  const two = host && params.get('two') === '1';
+  const ids = two ? ['team:a', 'team:b'] : ['class'];
+  const share = Number(params.get('share') ?? 0.7);
+  const kindsFor = (floors: number) => {
+    let s = '';
+    let h = 0;
+    let since = 0;
+    for (let i = 0; h < floors; i++) {
+      const k = since >= target * 0.25 ? 'L' : i % 5 === 1 || i % 5 === 3 ? 'S' : 'T';
+      s += k;
+      h += k === 'T' ? 2 : k === 'S' ? 1 : 0;
+      since = k === 'L' ? 0 : since + (k === 'T' ? 2 : 1);
+    }
+    return s;
+  };
+  const gust = params.get('gust');
+  const now = Date.now();
+  const dawn = Number(params.get('dawn') ?? 0.3);
+  const state = (seq: number, fell: boolean): TowerState => ({
+    towers: ids.map((id, i) => {
+      const kinds = kindsFor(target * share * (i ? 0.8 : 1)).slice(-900);
+      let height = 0;
+      for (const k of kinds) height += k === 'T' ? 2 : k === 'S' ? 1 : 0;
+      return { id, height, base: 0, kinds, brace: kinds.lastIndexOf('L'), target, sway: Number(params.get('sway') ?? 40), hue: i ? 350 : 200, last: { seq, kind: 'timber' }, gust: fell ? { seq, held: false, from: height + 40, to: height, kinds: 'TTSTTSTTSTTSTTSTTSTTS' } : null };
+    }),
+    builders: GLIMS.slice(0, n).map((g, i) => ({ playerId: g.id, name: i === 3 ? 'Maximilian Featherstonehaugh-Smythe' : g.name, tower: ids[i % ids.length]!, seq: seq + (i % 3 === seq % 3 ? 1 : 0), kind: (['timber', 'stone', 'lantern'] as const)[i % 3]!, isYou: !host && i === 0, look: { art: g.art as GlimArt, rarity: g.rarity as Rarity } })),
+    wind: gust ? { strength: gust === 'gale' ? 1 : gust === 'gust' ? 0.6 : 0.25, announced: true, landsAt: now + 6000 } : null,
+    startedAt: now - dawn * 360_000,
+    endsAt: now + (1 - dawn) * 360_000,
+  });
+  const gameNow = () => Date.now();
+  const w = host ? new TowerHostScene(env, { towers: ids, gameNow }) : new TowerScene(env, { me: GLIMS[0]!.id, tower: 'class', towers: ids, gameNow });
+  (window as unknown as { __world: unknown }).__world = w;
+  w.setState(state(1, false));
+  if (params.get('still') !== '1') {
+    let seq = 1;
+    setInterval(() => w.setState(state(++seq, params.get('fall') === '1' && seq % 3 === 0)), 2500);
+  }
+  return w;
+}
 
 // ?scene=rally  Lantern Rally from one driver's kart (&circuit=harbour|forest|rooftops, &players=10, &trial=1).
 // ?scene=rally-host  the big screen. &manual=1 holds the clock still: step it with window.__step(ms) to check whole sequences.
@@ -505,6 +552,8 @@ function App() {
                       ? makeSpotKick(env)
                       : sceneName === 'spotkick-host'
                         ? makeSpotKickHost(env)
+                        : sceneName === 'tower' || sceneName === 'tower-host'
+                          ? makeTower(env, sceneName === 'tower-host')
                         : sceneName === 'rally' || sceneName === 'rally-host'
                           ? makeRally(env, sceneName === 'rally-host')
                           : new Gallery(env);

@@ -71,7 +71,7 @@ afford; respect it.
 - `/dev/three.html` (Vite dev server) shows Glims, props, Gold Rush's and Glow Tag's scenes with fake states:
   `?scene=gold&depth=6`, `?scene=field`, `?scene=glowtag` (add `&walk=1`, `&dimmed=1`, `&lights=out`,
   `&players=30`), `?scene=glowtag-host`, `?scene=spotkick` (`&shot=goal|saved|wide`, `&fire=1`, `&guard=1`,
-  `&still=1`), `?scene=spotkick-host`, `?ids=glim-a,glim-b&action=dig`, `?quality=high`.
+  `&still=1`), `?scene=spotkick-host`, `?scene=tower` and `?scene=tower-host` (`&crew=30`, `&share=0.7`, `&sway=40`, `&gust=gale`, `&dawn=0.8`, `&fall=1`, `&two=1`), `?ids=glim-a,glim-b&action=dig`, `?quality=high`.
 - Playwright can render WebGL with SwiftShader:
   `chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] })`.
   Set `localStorage['ludora.graphics'] = 'high'` first to see the high tier (SwiftShader would

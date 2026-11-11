@@ -55,9 +55,11 @@ import { summitScramble } from './summit-scramble/index.ts';
 import { variants as summitScrambleVariants } from './summit-scramble/meta.ts';
 import { lanternRally } from './lantern-rally/index.ts';
 import { variants as lanternRallyVariants } from './lantern-rally/meta.ts';
+import { towerTogether } from './tower-together/index.ts';
+import { variants as towerTogetherVariants } from './tower-together/meta.ts';
 
 /** Every mode with logic. Order here is the default catalogue order. */
-export const MODES: readonly GameMode[] = [classic, cometDash, quickDraw, lanternOut, confidence, glimgo, lanternMatch, wordScramble, timeAttack, survivalRun, flashcardStudy, skyLanterns, gloomGiant, tugOfWar, nightMarket, lanternGuard, glimDuels, lanternTrail, lanternLands, festivalWorkshop, goldRush, glowTag, bigCatch, cornerShop, codeBreakers, summitScramble, spotKick, lanternRally];
+export const MODES: readonly GameMode[] = [classic, cometDash, quickDraw, lanternOut, confidence, glimgo, lanternMatch, wordScramble, timeAttack, survivalRun, flashcardStudy, skyLanterns, gloomGiant, tugOfWar, nightMarket, lanternGuard, glimDuels, lanternTrail, lanternLands, festivalWorkshop, goldRush, glowTag, bigCatch, cornerShop, codeBreakers, summitScramble, spotKick, lanternRally, towerTogether];
 
 export const VARIANTS: readonly ModeVariant[] = [
   ...classicVariants,
@@ -88,4 +90,5 @@ export const VARIANTS: readonly ModeVariant[] = [
   ...codeBreakersVariants,
   ...summitScrambleVariants,
   ...lanternRallyVariants,
+  ...towerTogetherVariants,
 ];

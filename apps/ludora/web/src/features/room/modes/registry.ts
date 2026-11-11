@@ -27,6 +27,11 @@ export const MODE_SCREENS: Record<string, { Player: Screen; Host: Screen; /** Th
     Player: lazy(() => import('./summit-scramble.tsx').then((m) => ({ default: m.SummitScramblePlayer }))),
     Host: lazy(() => import('./summit-scramble.tsx').then((m) => ({ default: m.SummitScrambleHost }))),
   },
+  'tower-together': {
+    Player: lazy(() => import('./tower-together.tsx').then((m) => ({ default: m.TowerTogetherPlayer }))),
+    Host: lazy(() => import('./tower-together.tsx').then((m) => ({ default: m.TowerTogetherHost }))),
+    hostFeed: true,
+  },
   'lantern-rally': {
     Player: lazy(() => import('./lantern-rally.tsx').then((m) => ({ default: m.LanternRallyPlayer }))),
     Host: lazy(() => import('./lantern-rally.tsx').then((m) => ({ default: m.LanternRallyHost }))),

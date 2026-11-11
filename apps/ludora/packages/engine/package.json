@@ -24,7 +24,8 @@
     "./gold-rush": "./src/modes/gold-rush/public.ts",
     "./summit-scramble": "./src/modes/summit-scramble/public.ts",
     "./spot-kick": "./src/modes/spot-kick/public.ts",
-    "./lantern-rally": "./src/modes/lantern-rally/public.ts"
+    "./lantern-rally": "./src/modes/lantern-rally/public.ts",
+    "./tower-together": "./src/modes/tower-together/public.ts"
   },
   "dependencies": {
     "@ludora/shared": "*",

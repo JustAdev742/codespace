@@ -1,8 +1,8 @@
 # The 3D modes
 
-Eight modes drawn with Ludora's 3D engine (`web/src/three/`). They are games, not lessons. As in
+Nine modes drawn with Ludora's 3D engine (`web/src/three/`). They are games, not lessons. As in
 every other mode, the learning comes from the class's own question set: a right answer is what
-powers everything you do. The setting (a goldfield, a jetty, a data city, a shop, a park at night, a mountain, a floodlit stadium, a lantern-lit circuit)
+powers everything you do. The setting (a goldfield, a jetty, a data city, a shop, a park at night, a mountain, a floodlit stadium, a lantern-lit circuit, a hill at night)
 is just where the game happens, and none of them is tied to one subject.
 
 | Mode | id | What you do |
@@ -15,6 +15,7 @@ is just where the game happens, and none of them is tied to one subject.
 | Summit Scramble | `summit-scramble` | Climb a mountain at night with the whole class: climb or leap ledge by ledge, reach the camps first, throw ropes to the climbers below. |
 | Spot Kick | `spot-kick` | Take penalties under floodlights: pick a place and a strength, and beat a keeper who learns your habits. |
 | Lantern Rally | `lantern-rally` | Race karts round a lantern-lit circuit at night: right answers are boost charges; steer for lanterns and round puddles and cones. |
+| Tower Together | `tower-together` | The whole class builds one lantern tower before dawn, steadying it against announced gusts: win or lose together. |
 
 Names, art and words are Ludora's own (D30): no other product's names, characters, layouts or
 copy. "Inspired by" a genre is fine; copying a product is not.
@@ -342,3 +343,51 @@ A night rally round a circuit strung with lanterns. The karts drive themselves; 
   karts do not wobble.
 - **Checking it**: `/dev/three.html?scene=rally` and `?scene=rally-host` (`&circuit=harbour|forest|rooftops`,
   `&players=30`, `&trial=1`); `&manual=1` holds the clock so `window.__step(ms)` steps whole sequences.
+
+## Tower Together (`tower-together`)
+
+The whole class builds one lantern tower on a hill before dawn. The first 3D mode the class wins or
+loses together (`coop-win` / `coop-loss`).
+
+- **Pieces.** Each right answer earns a piece (hold up to 3). A wrong answer costs a 2-second pause
+  and nothing else; nobody is knocked out. The builder picks the kind when placing it:
+  **Timber** (2 floors, +18 sway), **Stone** (1 floor, −9 sway) or a **Lantern brace** (no height;
+  nothing below it can ever fall). A piece's sway is divided by the crew size (`swayFor`), so the
+  gauge moves at the same pace for 1 builder or 60.
+- **Sway** (0 to 100) is the pieces' own sway plus **leverage**: the floors standing above the highest
+  brace add 80 for a stretch as tall as the target. A brace takes leverage back to 0. At 100 no more
+  timber fits. Every button prints what it would do ("Place Timber: +2 floors, sway +3.1 to 41.").
+- **Braces** need a quarter of the target in new floors above the last brace (at least 4),
+  so a fall always costs something and a brace has to be chosen.
+- **Gusts** land on a fixed schedule (every 40 s from 40 s; Storm Night every 30 s), none in the last
+  15 seconds. Each one's strength is drawn from the game's seeded random source when it is announced,
+  8 seconds ahead, with the chances every screen prints (`odds.ts`: Breeze 50%, Strong gust 35%,
+  Gale 15%; Storm Night 20/40/40). A breeze knocks down a tower swaying more than 70, a strong gust
+  45, a gale 25: every floor above the highest brace falls, the brace's placer is credited with the
+  floors it saved, and what is left settles to 40% of its pieces' sway.
+- **Target**: 36 floors a builder, less 4 (32 alone, 176 for 5, 1,076 for 30, 2,156 for 60), scaled
+  for the night's length, the host's Lower/Higher setting and Storm Night (90%); late joiners raise it by their share of
+  the night left. Stars at the target, 125% and 150%. Measured by simulation (`scripts/tower-sim.ts`,
+  `docs/features/tower.md`): a class that reads the gauge reaches it about 9 nights in 10, one that
+  ignores it about 1 in 6, and no single piece played alone ever does.
+- **Points** (the results table): 10 a piece placed, 5 a floor of yours standing at dawn (a brace
+  counts 1), 3 a floor your braces saved. The headline is what the class built.
+- **Variants**: Two Towers (each team its own tower, target and sway; the same gusts hit both; the team
+  nearer its target wins), Storm Night (stronger, more frequent gusts, a 90% target: the hard one), Calm Build (no gusts and no
+  falls; at full sway timber waits for stone).
+- **3D**: a toon tower of planked timber, coursed blue-grey stone and glowing gold brace bands on a
+  grassy hill, with lit windows on every braced floor and lantern glow at the braces. Glims stand on a
+  scaffold round the top and throw each piece up; the tower leans and wobbles with the gauge, streaks
+  of wind thicken as a gust nears, and toppled floors tumble off downwind and fade. The sky warms
+  from night through blue to first light as time runs out. Each phone looks at the top from its own
+  Glim's side; the big screen frames the whole tower (pulling back as it grows), with the target as a
+  ring and, when out of frame, a marker ("Target 716: 571 floors to go"). Builders near one place share
+  a stacked name tag (one per side on the big screen, one in all on a phone).
+- **2D**: `tower-side.tsx` draws the same tower flat from the same view (`tower-layout.ts`): blocks,
+  braces, the lean, target and star lines (or a marker above), builders, wind streaks and the dawn sky.
+- **Words**: the Stage3D label and the 2D picture's say the height, the target, the sway, the highest
+  brace and the coming gust; your own pieces and every gust's result are announced once drawn.
+- **Budgets**: blocks are three instanced meshes (runs of thin pieces merge into timber and stone
+  bands, so a 2,000-floor tower stays under 200 instances); windows are one instanced mesh; no point
+  lights; shadows only on high. Reduced motion: no swaying, no camera drift, falls fade in place.
+

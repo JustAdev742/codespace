@@ -61,6 +61,7 @@ const G: Record<string, string> = {
   layers: 'M24 6L44 16L24 26L4 16ZM4 24L24 34L44 24M4 32L24 42L44 32',
   spark: 'M24 2C26 14 34 22 46 24C34 26 26 34 24 46C22 34 14 26 2 24C14 22 22 14 24 2Z',
   ball: 'M24 4A20 20 0 1 1 23.9 4Z',
+  tower: 'M15 44V30H17V20H19V10H29V20H31V30H33V44ZM22 3H26L27 7H21Z',
 };
 
 /** Ink detail drawn over a filled glyph: lantern ribs, the lid of a chest. */
@@ -69,9 +70,10 @@ const DETAIL: Record<string, string> = {
   chest: 'M6 26H42',
   potion: 'M12 28H36',
   ball: 'M24 15L32 21L29 30H19L16 21ZM24 15V5M32 21L42 18M29 30L35 39M19 30L13 39M16 21L6 18',
+  tower: 'M17 30H31M19 20H29M19 15H29M24 7V10',
 };
 
-const FILLED = new Set(['bolt', 'heart', 'crown', 'castle', 'shield', 'chest', 'mountain', 'tree', 'spark', 'puzzle', 'ghost', 'potion', 'trophy', 'lantern', 'rocket', 'mask', 'fish', 'flag', 'ball']);
+const FILLED = new Set(['bolt', 'heart', 'crown', 'castle', 'shield', 'chest', 'mountain', 'tree', 'spark', 'puzzle', 'ghost', 'potion', 'trophy', 'lantern', 'rocket', 'mask', 'fish', 'flag', 'ball', 'tower']);
 
 export const MODE_GLYPHS = Object.keys(G);
 
