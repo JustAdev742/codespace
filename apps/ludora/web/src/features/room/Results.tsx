@@ -1,6 +1,7 @@
 import { Suspense, useState, type CSSProperties } from 'react';
 import { MODE_SCREENS } from './modes/registry.ts';
 import { GameHouses } from '../school/GameHouses.tsx';
+import { LessonResults, NextStepButton } from '../lessons/room.tsx';
 import { Link, useNavigate } from 'react-router';
 import { BookOpen, ClipboardList, Download, Flame, Home, Rocket, RotateCcw, TrendingUp, Trophy, Zap } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
@@ -372,7 +373,9 @@ export function Results({ room, handle, isHost, guest }: { room: RoomView; handl
           {isHost ? (
             // The host's next steps come first, so they stay on screen however long the standings are.
             <div className="paper stage-card flex flex-wrap items-center gap-2 p-3" role="group" aria-label="What next">
-              <Button variant="primary" size="lg" className="grow" icon={<RotateCcw className="size-5" aria-hidden />} loading={busy} onClick={restart}>
+              {/* Lessons: the next step with the same players comes first. */}
+              {room.lesson ? <NextStepButton room={room} className="grow" /> : null}
+              <Button variant={room.lesson ? 'secondary' : 'primary'} size="lg" className="grow" icon={<RotateCcw className="size-5" aria-hidden />} loading={busy} onClick={restart}>
                 Play again with the same players
               </Button>
               {r.report ? (
@@ -409,6 +412,8 @@ export function Results({ room, handle, isHost, guest }: { room: RoomView; handl
           ) : null}
           {/* School: house points this game earned, by house (features/school). */}
           {room.room.solo ? null : <GameHouses gameId={r.gameId} />}
+          {/* Lessons: points across the whole lesson so far. */}
+          <LessonResults room={room} isHost={isHost} />
           {tableHidden ? null : <Standings room={room} big={big} hold={big && podium} />}
           <p className="text-sm font-semibold text-text-2">Played for {duration(r.durationMs)}.</p>
           {isHost ? null : room.room.solo ? (

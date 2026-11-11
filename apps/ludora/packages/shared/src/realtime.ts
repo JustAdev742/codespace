@@ -5,6 +5,7 @@ import type { SchoolUniform } from './schoolUniform.ts';
 import type { GlimArt, AccessoryArt, EMOTE_GLYPHS } from './economy.ts';
 import type { Rarity } from './rarity.ts';
 import type { Pacing, SettingValues } from './modes.ts';
+import type { LessonRoomView } from './lessons.ts';
 
 /**
  * The Socket.IO protocol between browsers and the game server.
@@ -387,6 +388,8 @@ export interface RoomView<G = unknown> {
   feed: FeedItem[];
   /** Present once chaos has been used in this game, or for a viewer who has unlocked it. */
   chaos?: ChaosRoomView | null;
+  /** A lesson running in this room (lessons.ts). */
+  lesson?: LessonRoomView | null;
 }
 
 export interface HostExtras {

@@ -1248,3 +1248,49 @@ export const reportSettings = pgTable(
   },
   (t) => [check('report_settings_retention_valid', sql`${t.retentionMonths} is null or ${t.retentionMonths} in (3, 6, 12, 24)`)],
 );
+
+/* ---------------------------------- lessons --------------------------------- */
+
+/**
+ * A teacher's lesson: ordered steps (games, info slides, discussions) run in one room. Steps are
+ * stored as checked JSON (`lessonBodySchema` in shared). A plan note on a step stays on the teacher's
+ * own pages. `classId` and `startsAt` are a schedule: shown on the class page, they never open a room.
+ */
+export const lessons = pgTable(
+  'lessons',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    ownerId: uuid('owner_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+    title: text('title').notNull(),
+    goals: jsonb('goals').notNull().default([]),
+    standings: boolean('standings').notNull().default(true),
+    steps: jsonb('steps').notNull().default([]),
+    classId: uuid('class_id').references(() => classes.id, { onDelete: 'set null' }),
+    startsAt: ts('starts_at'),
+    createdAt: now('created_at'),
+    updatedAt: now('updated_at'),
+  },
+  (t) => [index('lessons_owner_idx').on(t.ownerId), index('lessons_class_idx').on(t.classId, t.startsAt)],
+);
+
+/**
+ * One time a lesson was run, possibly over several rooms ("carry on next time"): the step reached,
+ * the lesson points so far (by account or, for guests, by name; only names are ever sent out) and
+ * each game played, for the lesson's report.
+ */
+export const lessonRuns = pgTable(
+  'lesson_runs',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    lessonId: uuid('lesson_id').notNull().references(() => lessons.id, { onDelete: 'cascade' }),
+    hostUserId: uuid('host_user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+    classId: uuid('class_id').references(() => classes.id, { onDelete: 'set null' }),
+    stepIndex: integer('step_index').notNull().default(0),
+    standings: jsonb('standings').notNull().default([]),
+    games: jsonb('games').notNull().default([]),
+    startedAt: now('started_at'),
+    updatedAt: now('updated_at'),
+    finishedAt: ts('finished_at'),
+  },
+  (t) => [index('lesson_runs_lesson_idx').on(t.lessonId, t.startedAt)],
+);

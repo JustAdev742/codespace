@@ -16,6 +16,7 @@ import {
   type Feeling,
   type HostCommand,
   type HostExtras,
+  type LessonRoomView,
   type PlayerRequest,
   type SchoolDress,
   type Question,
@@ -114,6 +115,17 @@ export interface RoomInit {
   classTitle?: string | null;
   /** Extra time the class teacher set for members (user id to a share of the limit), applied as each one joins. */
   classExtraTime?: Readonly<Record<string, number>> | null;
+}
+
+/**
+ * A lesson running in this room (modules/lessons/run.ts). It hears about each finished game, adds its
+ * part to every view, and holds the room on a step that is not a game. It never holds plan notes.
+ */
+export interface RoomLesson {
+  gameEnded(room: Room, results: EngineResults): void;
+  view(room: Room, playerId: string | null, aliases: Map<string, string> | null): LessonRoomView;
+  /** A slide, discussion or the end is showing, so there is no game to start. */
+  onScreen(): boolean;
 }
 
 /** Fixed teams for a room, and which team each account belongs to. Everyone else joins the smallest team. */
@@ -219,7 +231,10 @@ export class Room {
   common!: CommonSettings;
   options: RoomOptions;
   locked = false;
-  readonly set: { id: string | null; title: string; questions: Question[] };
+  /** Changes only when a lesson moves on to its next game. */
+  set: { id: string | null; title: string; questions: Question[] };
+  /** Lessons: the lesson running in this room, if any. */
+  lesson: RoomLesson | null = null;
   prepared: Question[] = [];
   skippedCount = 0;
   status: RoomStatus = 'lobby';
@@ -850,8 +865,41 @@ export class Room {
     }
   }
 
+  /**
+   * Lessons: move the room on to the lesson's next step. Everyone stays in the room. A game brings its
+   * set, mode and settings and the room goes back to the lobby for the host to start it; a step that is
+   * not a game (the lesson shows it) also leaves the room in the lobby, so late arrivals can still join.
+   */
+  goToLessonStep(game: { set: Room['set']; modeId: string; variantId: string | null; settings: Record<string, unknown>; common: Partial<CommonSettings> } | null): Ack {
+    if (this.closed) return fail('room_closed', 'This room has closed.');
+    if (this.status === 'running' || this.status === 'paused') return fail('invalid_state', 'Finish this game first.');
+    if (game) {
+      const before = this.set;
+      this.set = game.set;
+      const problem = this.configure(game.modeId, game.variantId, game.settings, game.common);
+      if (problem) {
+        this.set = before;
+        return fail('validation_failed', problem);
+      }
+    }
+    this.clearRoomTimers();
+    this.ready.clear();
+    this.feelings.clear();
+    this.nudgedAt.clear();
+    this.runtime = null;
+    this.results = null;
+    this.rewards.clear();
+    this.endedAt = null;
+    this.feed = [];
+    this.status = 'lobby';
+    this.touch();
+    this.scheduleBroadcast();
+    return { ok: true };
+  }
+
   private start(restart = false): Ack {
     if (this.status !== 'lobby' && !(restart && this.status === 'ended')) return fail('invalid_state', 'The game has already started.');
+    if (this.lesson?.onScreen()) return fail('invalid_state', 'This step of the lesson is not a game. Press Next to move on.');
     const active = [...this.players.values()].filter((p) => p.isBot || p.connected);
     const problem = this.startProblem();
     if (problem) return fail('invalid_state', problem);
@@ -915,6 +963,8 @@ export class Room {
       .catch((err) => this.hooks.onError(err, 'persist', this))
       .finally(() => {
         this.rewardsPending = false;
+        // Lessons: the game's points join the lesson's standings (once its id is known).
+        if (this.lesson) this.lesson.gameEnded(this, results);
         this.scheduleBroadcast();
       });
   }
@@ -1194,6 +1244,7 @@ export class Room {
       feed: this.feed.filter((f) => !f.to || (playerId && f.to.includes(playerId))).slice(-FEED_KEEP),
       ...(chaos ? { chaos } : {}),
       ...(playerId ? {} : { host: this.hostExtras() }),
+      ...(this.lesson ? { lesson: this.lesson.view(this, playerId, !playerId && !remote && this.options.hideNames ? this.nameAliases() : null) } : {}),
     };
     // Names hidden on the big screen: the projector shows "Player 3" for each person; the host's phone remote keeps real names.
     if (!playerId && !remote && this.options.hideNames) return hideNames(view, this.nameAliases());

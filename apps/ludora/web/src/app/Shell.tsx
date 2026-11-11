@@ -27,6 +27,7 @@ import {
   Users,
   Wand2,
   X,
+  ListOrdered,
 } from 'lucide-react';
 import { useMe } from '../lib/session.ts';
 import { useOverview } from '../lib/queries.ts';
@@ -56,7 +57,7 @@ interface NavItem {
   icon: ReactNode;
   end?: boolean;
   /** 'school' shows once this copy has houses, and before that to the people who can set them up. */
-  show?: 'signedIn' | 'staff' | 'studio' | 'school';
+  show?: 'signedIn' | 'staff' | 'studio' | 'school' | 'teacher';
   /** Hidden while this feature flag is off for the viewer. */
   flag?: string;
 }
@@ -65,6 +66,7 @@ const PRIMARY: NavItem[] = [
   { to: '/', label: 'Home', icon: <Home className="size-5" />, end: true },
   { to: '/play', label: 'Join a game', icon: <Gamepad2 className="size-5" /> },
   { to: '/host', label: 'Host', icon: <Presentation className="size-5" /> },
+  { to: '/lessons', label: 'Lessons', icon: <ListOrdered className="size-5" />, show: 'teacher' },
   { to: '/modes', label: 'Game modes', icon: <LayoutGrid className="size-5" /> },
   { to: '/games', label: 'Game Maker', icon: <Wand2 className="size-5" /> },
   { to: '/library', label: 'Question sets', icon: <BookOpen className="size-5" /> },
@@ -121,7 +123,7 @@ function NavGroups({ onNavigate }: { onNavigate?: () => void }) {
   const school = useSchool();
   const hasSchool = Boolean(school.data && (school.data.houses.length > 0 || school.data.can.manage || school.data.can.viewUsage));
   const flagOn = (key?: string) => !key || me.data?.flags?.[key] !== false;
-  const visible = (i: NavItem) => flagOn(i.flag) && (!i.show || (i.show === 'signedIn' ? signedIn : i.show === 'studio' ? studio : i.show === 'school' ? hasSchool : staff));
+  const visible = (i: NavItem) => flagOn(i.flag) && (!i.show || (i.show === 'signedIn' ? signedIn : i.show === 'teacher' ? me.data?.user?.accountType === 'teacher' : i.show === 'studio' ? studio : i.show === 'school' ? hasSchool : staff));
   const groups: [string | null, NavItem[]][] = [
     [null, PRIMARY],
     ['Collect', COLLECT.filter(visible)],

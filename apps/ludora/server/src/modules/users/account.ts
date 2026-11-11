@@ -83,6 +83,8 @@ const OWN_ROWS: readonly [table: string, column: string][] = [
   ['class_challenges', 'created_by'],
   ['report_notes', 'author_id'],
   ['report_settings', 'user_id'],
+  ['lessons', 'owner_id'],
+  ['lesson_runs', 'host_user_id'],
 ];
 const ROW_LIMIT = 5000;
 const DELETED = 'Deleted account';

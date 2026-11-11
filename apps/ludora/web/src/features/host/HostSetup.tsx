@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type RefObject } from 'react';
+import { lazy, Suspense, useEffect, useMemo, useRef, useState, type RefObject } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate, useSearchParams } from 'react-router';
 import { Presentation, Search, Users } from 'lucide-react';
@@ -14,6 +14,9 @@ import { Button, ButtonLink } from '../../ui/Button.tsx';
 import { OpenGames, openGamesKey, useOpenGames, type OpenGame } from './OpenGames.tsx';
 import { SaveGameDialog, type MadeGame } from '../games/SaveGameDialog.tsx';
 import { ChosenSet, ModeGrid, SetButton, type Choice } from './pickers.tsx';
+
+// Lessons: "Add to a lesson instead" (features/lessons), loaded when opened.
+const AddToLessonDialog = lazy(() => import('../lessons/AddToLesson.tsx'));
 
 /*
  * Setting up a game: a question set, a mode (then one of its variants), the
@@ -287,6 +290,7 @@ type ClassInfo = { class: { id: string; name: string; hostDefaults?: { generated
 function Setup({ solo, preset, gameId, making, again, classId }: { solo: boolean; preset: string | null; gameId: string | null; making: boolean; again: string | null; classId: string | null }) {
   const navigate = useNavigate();
   const qc = useQueryClient();
+  const me0 = useMe();
   const [set, setSet] = useState<SetSummary | null>(null);
   // Whether the set was just picked or just un-picked, so focus follows the picker folding and unfolding.
   const [setFocus, setSetFocus] = useState<'chosen' | 'picker' | null>(null);
@@ -321,6 +325,8 @@ function Setup({ solo, preset, gameId, making, again, classId }: { solo: boolean
   const [options, setOptions] = useState<Record<string, unknown> & { lateJoin: boolean; generatedNames: boolean; requireAccount: boolean; chaos: boolean; quiet: boolean }>({ lateJoin: true, generatedNames: false, requireAccount: false, chaos: false, quiet: false });
   const [busy, setBusy] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [lessoning, setLessoning] = useState(false);
+  const isTeacher = me0.data?.user?.accountType === 'teacher';
   const [atLimit, setAtLimit] = useState(false);
   const gameApplied = useRef(false);
   useEffect(() => {
@@ -550,6 +556,11 @@ function Setup({ solo, preset, gameId, making, again, classId }: { solo: boolean
             {!set ? 'Choose a question set.' : !choice ? 'Choose a game mode.' : `${choice.variant?.meta.title ?? choice.mode.meta.title} with “${set.title}”.`}
           </p>
           <div className="flex flex-wrap gap-2">
+            {!solo && !making && isTeacher ? (
+              <Button variant="ghost" size="lg" disabled={!set || !choice || choice.mode.meta.pacing === 'solo'} onClick={() => setLessoning(true)}>
+                Add to a lesson instead
+              </Button>
+            ) : null}
             {!solo ? (
               <Button variant={making ? 'primary' : 'secondary'} size="lg" disabled={!set || !choice} onClick={() => setSaving(true)}>
                 {game?.mine ? 'Save changes' : 'Save as a game'}
@@ -560,6 +571,11 @@ function Setup({ solo, preset, gameId, making, again, classId }: { solo: boolean
             </Button>
           </div>
         </div>
+        {set && choice && lessoning ? (
+          <Suspense fallback={null}>
+            <AddToLessonDialog open={lessoning} onOpenChange={setLessoning} game={{ setId: set.id, modeId: choice.mode.meta.id, variantId: choice.variant?.meta.id ?? null, settings, common }} what={`${choice.variant?.meta.title ?? choice.mode.meta.title} with “${set.title}”`} />
+          </Suspense>
+        ) : null}
         {set && choice && saving ? (
           <SaveGameDialog
             open={saving}

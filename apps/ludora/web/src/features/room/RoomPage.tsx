@@ -30,6 +30,7 @@ import { ComfortButton } from './game/ComfortDialog.tsx';
 import { useAccess } from '../../lib/usePrefs.ts';
 import { useModes } from '../../lib/queries.ts';
 import { SectionBoundary } from '../../ui/SectionBoundary.tsx';
+import { LessonScreen } from '../lessons/room.tsx';
 
 const nameKey = (code: string) => `ludora.name.${code}`;
 const spaced = (code: string) => `${code.slice(0, 3)} ${code.slice(3)}`;
@@ -198,7 +199,7 @@ export default function RoomPage() {
           <LogoMark size={30} className={`shrink-0 min-[1600px]:size-11 ${isHost && live ? 'max-sm:hidden' : ''}`} />
           <SchoolCrest size={30} className={`min-[1600px]:h-11 min-[1600px]:w-auto ${isHost && live ? 'max-sm:hidden' : ''}`} />
           <div className={`min-w-0 ${isHost && live ? 'max-sm:sr-only' : ''}`}>
-            <Title className="truncate font-display text-lg leading-tight font-bold text-text sm:text-xl min-[1600px]:text-[1.75rem]">{room.room.title}</Title>
+            <Title className="truncate font-display text-lg leading-tight font-bold text-text sm:text-xl min-[1600px]:text-[1.75rem]">{room.lesson?.screen ? room.lesson.title : room.room.title}</Title>
             <p className="flex min-w-0 items-center gap-2 text-xs font-semibold text-text-2 sm:text-sm min-[1600px]:text-base">
               {status === 'running' ? <LiveTag /> : null}
               <span className="truncate">
@@ -296,7 +297,9 @@ export default function RoomPage() {
       />
       <main id="game" className="safe-x flex flex-1 flex-col px-3 pt-4 pb-[max(1.5rem,env(safe-area-inset-bottom))] [--safe-pad:0.75rem] sm:px-6 sm:[--safe-pad:1.5rem] lg:px-10 lg:pt-6 lg:[--safe-pad:2.5rem]">
         <SectionBoundary name="the game screen" resetKey={status}>
-        {status === 'lobby' ? isHost ? <HostLobby room={room} handle={handle} /> : <PlayerLobby room={room} handle={handle} /> : null}
+        {/* Lessons: a step that is not a game (an info slide, a discussion, the end) shows instead of the lobby. */}
+        {status === 'lobby' && room.lesson?.screen ? <LessonScreen room={room} handle={handle} isHost={isHost} /> : null}
+        {status === 'lobby' && !room.lesson?.screen ? isHost ? <HostLobby room={room} handle={handle} /> : <PlayerLobby room={room} handle={handle} /> : null}
         {live && !isHost ? <RotateHint on={threeD} /> : null}
         {live ? (
           <Online.Provider value={handle.online}>

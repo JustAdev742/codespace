@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { HouseChip } from '../school/emblems.tsx';
 import { SchoolLobbyTheme } from '../school/LobbyTheme.tsx';
+import { LessonLobbyLine } from '../lessons/room.tsx';
 import { DropdownMenu } from 'radix-ui';
 import { Bot, Check, Copy, Eye, Hand, Lock, LockOpen, MoreHorizontal, Pencil, Pin, Settings2, Share2, Shuffle, UserCheck, UserMinus, UserRound, UserX, Users, WifiOff } from 'lucide-react';
 import { toast } from 'sonner';
@@ -395,6 +396,7 @@ export function HostLobby({ room, handle }: { room: RoomView; handle: RoomHandle
         <div className="flex flex-col justify-between gap-5">
           <div className="flex flex-col items-start gap-2">
             <SchoolLobbyTheme />
+            <LessonLobbyLine room={room} big />
             <h1 className="font-display text-[clamp(2.75rem,4.6vw,5.5rem)] leading-[0.95] font-extrabold">{room.room.title}</h1>
             <p className="text-[clamp(1.15rem,1.6vw,1.8rem)] font-semibold text-text-2">{room.room.setTitle}</p>
             <ul className="mt-2 flex flex-wrap gap-2 text-[clamp(0.95rem,1.15vw,1.3rem)]" aria-label="Game settings">
@@ -571,6 +573,7 @@ export function PlayerLobby({ room, handle }: { room: RoomView; handle: RoomHand
       </h1>
       {/* The player's card: their Glim under the stage light, their name and their team. */}
       {room.room.pinned ? <PinnedMessage text={room.room.pinned} big={false} /> : null}
+      <LessonLobbyLine room={room} big={false} />
       <div className="stage-card flex w-full flex-col items-center gap-2 bg-white/[0.07] bg-[radial-gradient(90%_70%_at_50%_0%,rgb(58_107_255/0.35)_0%,transparent_70%)] px-5 pt-5 pb-4">
         {reactions ? (
           // Lobby play: tap your Glim and it hops on the big screen too.

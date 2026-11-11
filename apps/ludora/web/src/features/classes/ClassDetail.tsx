@@ -19,6 +19,7 @@ import { GoalCard, MyBadges, Notices, WeeklyBoard } from './Board.tsx';
 import { ClassCalendar } from './Calendar.tsx';
 import { ClassLoginsDialog, ResetPasscodeDialog } from './ClassLogins.tsx';
 import { LiveGames } from './LiveGames.tsx';
+import { ClassLessons } from '../lessons/ClassLessons.tsx';
 import { GradebookPanel } from './Gradebook.tsx';
 import { InsightsPanel } from './Insights.tsx';
 import { studentWork, type StudentWork } from './classLogic.ts';
@@ -546,6 +547,8 @@ function TeacherView({ data }: { data: TeacherClassDetail }) {
       ) : (
         <JoinCodePanel code={cls.joinCode} onNewCode={() => setNewCode(true)} />
       )}
+      {/* Lessons: scheduled lessons for this class (features/lessons). */}
+      <ClassLessons classId={cls.id} teacher />
 
       <Tabs
         value={tab}
@@ -885,6 +888,7 @@ function StudentView({ data }: { data: StudentClassDetail }) {
           <p>Its assignments cannot be played right now. Your results so far are kept.</p>
         </div>
       ) : null}
+      {cls.archived ? null : <ClassLessons classId={cls.id} teacher={false} />}
       {data.notices.length || data.goal || cls.leaderboardOn ? (
         <div className="mb-6 grid grid-cols-1 gap-4 lg:grid-cols-2">
           {data.notices.length ? <Notices classId={cls.id} notices={data.notices} teacher={false} /> : null}

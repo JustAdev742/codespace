@@ -1,8 +1,8 @@
-import { useState } from 'react';
+import { lazy, Suspense, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { Check, Copy, Flag, Folder, History, Pencil, Play, Presentation, Printer, Share2, Star } from 'lucide-react';
+import { Check, Copy, Flag, Folder, History, ListPlus, Pencil, Play, Presentation, Printer, Share2, Star } from 'lucide-react';
 import { QUESTION_TYPE_LABELS, SUBJECT_LABELS, type Question, type QuestionType } from '@ludora/shared';
 import { api, ApiError } from '../../lib/api.ts';
 import { useMe } from '../../lib/session.ts';
@@ -16,6 +16,9 @@ import { FolderDialog, ShareDialog, StatsPanel, VersionsDialog } from './SetTool
 import { answerText } from './answers.ts';
 import { MathText } from './math/MathText.tsx';
 import { ReportDialog } from '../moderation/ReportDialog.tsx';
+
+// Lessons: "Add to a lesson" (features/lessons), loaded when opened.
+const AddToLessonDialog = lazy(() => import('../lessons/AddToLesson.tsx'));
 
 interface SetResponse {
   set: SetSummary;
@@ -35,6 +38,7 @@ export default function SetDetail() {
   const [sharing, setSharing] = useState(false);
   const [versions, setVersions] = useState(false);
   const [filing, setFiling] = useState(false);
+  const [lessoning, setLessoning] = useState(false);
   const qc = useQueryClient();
   const star = useMutation({
     mutationFn: (favourite: boolean) => api.patch(`/api/sets/${id}/organise`, { favourite }),
@@ -117,6 +121,11 @@ export default function SetDetail() {
           <ButtonLink to={`/host?solo=1&set=${set.id}`} icon={<Play className="size-4" />}>
             Solo
           </ButtonLink>
+          {me.data?.user?.accountType === 'teacher' ? (
+            <Button icon={<ListPlus className="size-4" />} onClick={() => setLessoning(true)}>
+              Add to a lesson
+            </Button>
+          ) : null}
           {editable ? (
             <ButtonLink to={`/sets/${set.id}/edit`} icon={<Pencil className="size-4" />}>
               Edit
@@ -140,6 +149,11 @@ export default function SetDetail() {
         </div>
       </div>
       <ReportDialog open={reporting} onOpenChange={setReporting} target={{ type: 'set', id: set.id, label: 'this question set' }} />
+      {lessoning ? (
+        <Suspense fallback={null}>
+          <AddToLessonDialog open={lessoning} onOpenChange={setLessoning} game={{ setId: set.id, modeId: 'classic', variantId: null }} what={`“${set.title}” as a Classic game`} />
+        </Suspense>
+      ) : null}
       {editable ? (
         <div className="flex flex-wrap gap-2" role="group" aria-label="Set tools">
           {owner ? (
