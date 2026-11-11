@@ -1,8 +1,8 @@
 # The 3D modes
 
-Nine modes drawn with Ludora's 3D engine (`web/src/three/`). They are games, not lessons. As in
+Ten modes drawn with Ludora's 3D engine (`web/src/three/`). They are games, not lessons. As in
 every other mode, the learning comes from the class's own question set: a right answer is what
-powers everything you do. The setting (a goldfield, a jetty, a data city, a shop, a park at night, a mountain, a floodlit stadium, a lantern-lit circuit, a hill at night)
+powers everything you do. The setting (a goldfield, a jetty, a data city, a shop, a park at night, a mountain, a floodlit stadium, a lantern-lit circuit, a hill at night, a night garden)
 is just where the game happens, and none of them is tied to one subject.
 
 | Mode | id | What you do |
@@ -16,6 +16,7 @@ is just where the game happens, and none of them is tied to one subject.
 | Spot Kick | `spot-kick` | Take penalties under floodlights: pick a place and a strength, and beat a keeper who learns your habits. |
 | Lantern Rally | `lantern-rally` | Race karts round a lantern-lit circuit at night: right answers are boost charges; steer for lanterns and round puddles and cones. |
 | Tower Together | `tower-together` | The whole class builds one lantern tower before dawn, steadying it against announced gusts: win or lose together. |
+| Glim Garden | `glim-garden` | The calm one: the class grows a night garden together. Right answers are drops of water; plant, water and give drops to neighbours until the garden glows with fireflies. Nobody loses anything. |
 
 Names, art and words are Ludora's own (D30): no other product's names, characters, layouts or
 copy. "Inspired by" a genre is fine; copying a product is not.
@@ -391,3 +392,63 @@ loses together (`coop-win` / `coop-loss`).
   bands, so a 2,000-floor tower stays under 200 instances); windows are one instanced mesh; no point
   lights; shadows only on high. Reduced motion: no swaying, no camera drift, falls fade in place.
 
+## Glim Garden (`glim-garden`)
+
+The calm, co-operative one, playable from age 5. The class grows a night garden together; there is no race,
+nothing is ever lost and there is no chance in it at all.
+
+- **Drops.** Each right answer puts a drop of water in your can; it holds 3. A wrong answer costs nothing:
+  the right answer is shown and the next question comes. A right answer with a full can waters your own
+  plant, so it is never wasted. Questions are self-paced.
+- **Your plot.** Every player has a plot in one class garden (a grid of up to 12 columns, `layout.ts`).
+  A drop plants a seed, or waters what is growing. Three plants: a **flower** blooms after 2 drops and
+  brings 1 firefly; a **bush** after 4 drops, 3 fireflies; a **lantern tree** after 6 drops, 4 fireflies,
+  and once grown it lights the plots next to it: their plants never droop and grow a step on their own
+  every 30 seconds. A bloom stays until its owner plants again (then it joins the ring of earlier blooms
+  round the bed), so keeping a lantern tree is a choice.
+- **Gifts.** A drop can go to a neighbour's plant instead (the plots beside, in front and behind): it
+  grows a step, a firefly comes to their plot straight away, the giver scores 2 and the neighbour 1. The
+  screen puts the neighbour who needs it most first: a plot not glowing yet, then a drooping plant, then
+  the bloom nearest to opening.
+- **Drooping.** A growing plant left 60 seconds without a drop droops. It never dies: the next drop
+  perks it up instead of growing it, so it blooms a little later.
+- **The goal.** Fireflies stay at the plot that brought them; a plot with 6 (the host can pick 4 or 8)
+  glows. The garden is full when 8 in 10 of its plots glow (1 of 1, 4 of 5, 24 of 30, 48 of 60), so the
+  numbers stay as small as the class and one absent player never holds it back. When morning comes
+  (6 minutes by default) the game ends; a full garden keeps growing until then.
+- **Points**: blooms (their fireflies) and gifts (2 to the giver, 1 to the neighbour). The results open
+  on the garden the class grew, drawn; the host can hide the table altogether ("Show the table at the end").
+- **Variants**: Calm Garden (no clock and no drooping; ends as soon as the garden is full, or when the
+  teacher ends it; 4 fireflies a plot), Team Gardens (each team grows its own garden with its own goal;
+  neighbours are teammates; team standings are the share of their goal), Night Bloom (night for 70 seconds
+  and day for 40 take turns: flowers grow only in the dark and cannot be watered by day, lantern trees
+  shine only at night, bushes grow any time).
+- **Numbers, measured.** `packages/engine/test/glim-garden-sim.ts` plays seeded classes of bot gardeners
+  at the pace of real pupils (young: right 6 in 10, 12 to 26 seconds a question; older: 8 in 10, 5 to 13
+  seconds). With the usual 6 fireflies a sensible young class of 5, 30 or 60 fills the garden in most
+  games at 4 to 6 minutes, an older class in about 2 (then keeps growing); a young class that never gives
+  a drop lights only about 4 plots in 10, so giving matters, while a class that only gives fills fewer plots
+  than one that also tends its own. A flower is best with few drops left, a bush gives the most for each
+  drop alone, and a lantern tree among growing neighbours helps the class most. Details in
+  `docs/features/garden.md`.
+- **3D**: a toon garden at night: raised beds in a lawn, each plant at its stage (seed, sprout, bud,
+  bloom), drooping and dull when thirsty; lantern trees hung with glowing lanterns and a warm pool of
+  light on the beds next to them; a ring of earlier blooms round each bed; fireflies drifting over the
+  plots that brought them and a gold glow under a plot that glows; a round pond with lily pads, hedges,
+  trees, lamp posts and a moon. Every gardener is their own Glim with a watering can beside their bed:
+  it tips the can for a drop, a gift arcs over to the neighbour's bed, and it cheers when a plant opens.
+  Each device looks at its own plot and its neighbours; the big screen frames every garden whole (the
+  garden fills the picture, with no empty sky) with the goal, the fireflies and garden news beside it.
+  Name tags that would overlap on the big screen stack into one (five names, then "and N more"); long
+  names are cut short.
+- **Without 3D**: `glim-garden-map.tsx` draws the same garden from above: beds, plants at their stage,
+  drooping, lantern light, the ring of blooms, fireflies and glowing plots, your plot outlined in gold,
+  centred on your plot on a phone and whole on the big screen. The Stage3D label (and the map's) says your
+  plot, each neighbour's plot and the garden's progress in words (`glim-garden-words.ts`); a live region
+  says each gift you get, each bloom, droop and glowing plot, and what your own drop did.
+- **Budgets**: beds, soil and the bloom rings are instanced; fireflies are one Points cloud (up to 10 a
+  plot, 5 on low); plants are two to six shared-geometry meshes each. A phone draws the 14 Glims nearest
+  its plot; the big screen the first 30 (16 on low). Shadows only on high, no point lights (lantern light
+  is additive glows), and under reduced motion nothing sways, drifts or bobs and the camera holds still.
+- **Checking it**: `/dev/three.html?scene=garden` and `?scene=garden-host` (`&players=30`, `&teams=1`,
+  `&day=1`, `&names=long`, `&still=1`).

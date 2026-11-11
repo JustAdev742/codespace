@@ -1,4 +1,5 @@
-import { useState, type CSSProperties } from 'react';
+import { Suspense, useState, type CSSProperties } from 'react';
+import { MODE_SCREENS } from './modes/registry.ts';
 import { GameHouses } from '../school/GameHouses.tsx';
 import { Link, useNavigate } from 'react-router';
 import { BookOpen, ClipboardList, Download, Flame, Home, Rocket, RotateCcw, TrendingUp, Trophy, Zap } from 'lucide-react';
@@ -319,14 +320,18 @@ export function Results({ room, handle, isHost, guest }: { room: RoomView; handl
   const r = room.results!;
   const mine = r.standings.find((s) => s.playerId === room.me.playerId);
   const competitive = r.outcome === 'competitive';
-  const podium = competitive && r.standings.length > 1;
+  // A mode may open its results on a picture of its own (Glim Garden: the garden the class grew), and may hide the table.
+  const Ending = MODE_SCREENS[room.room.modeId]?.Ending ?? null;
+  const tableHidden = MODE_SCREENS[room.room.modeId]?.tableHidden?.(room) ?? false;
+  const podium = competitive && r.standings.length > 1 && !Ending;
   // Something stands beside the standings: the podium, or the team photo of a co-op game. A lone player has neither.
-  const side = podium || !competitive;
-  const title = r.outcome === 'coop-win' ? 'Victory' : r.outcome === 'coop-loss' ? 'Defeat' : 'Game over';
+  const side = podium || !competitive || Boolean(Ending);
+  // A mode with its own ending is never "lost": nobody loses anything in it.
+  const title = r.outcome === 'coop-win' ? 'Victory' : r.outcome === 'coop-loss' && !Ending ? 'Defeat' : 'Game over';
   useAnnounce(`${title}. ${mine && podium ? `You came ${ordinal(mine.rank)}. ` : ''}${r.summary}`, 'results');
   const shared = useSharedSounds();
   // The big screen celebrates, unless the class lost a co-op game: then a gentle sting, not a fanfare.
-  useSfx(shared ? (r.outcome === 'coop-loss' ? 'lose' : 'fanfare') : 'reveal', 'results');
+  useSfx(shared ? (r.outcome === 'coop-loss' ? (Ending ? 'reveal' : 'lose') : 'fanfare') : 'reveal', 'results');
   const restart = async () => {
     setBusy(true);
     const ack = await handle.host({ cmd: 'restart' });
@@ -352,7 +357,15 @@ export function Results({ room, handle, isHost, guest }: { room: RoomView; handl
         {/* On the projector the podium stays in view, standing on the bottom of the screen, however long the standings get. */}
         {side ? (
           <div className={`flex flex-col ${podium ? 'justify-end' : 'justify-center'} ${big ? 'lg:sticky lg:top-[5.5rem] lg:h-[calc(100dvh-19.5rem)] lg:min-h-[22rem]' : ''}`}>
-            {podium ? <Podium room={room} big={big} /> : <TeamPhoto room={room} won={r.outcome === 'coop-win'} big={big} />}
+            {Ending ? (
+              <Suspense fallback={null}>
+                <Ending room={room} big={big} />
+              </Suspense>
+            ) : podium ? (
+              <Podium room={room} big={big} />
+            ) : (
+              <TeamPhoto room={room} won={r.outcome === 'coop-win'} big={big} />
+            )}
           </div>
         ) : null}
         <div className="flex flex-col gap-4">
@@ -388,7 +401,7 @@ export function Results({ room, handle, isHost, guest }: { room: RoomView; handl
             </>
           )}
           {r.awards?.length ? <Awards awards={r.awards} big={big} me={room.me.playerId} /> : null}
-          {r.teamStandings.length ? (
+          {r.teamStandings.length && !tableHidden ? (
             <StagePanel as="section" className="p-4" label="Teams">
               <h2 className="mb-3 font-display text-2xl font-bold">Teams</h2>
               <TeamScores teams={r.teamStandings.map((t) => ({ teamId: t.teamId, name: t.name, score: t.score, hue: room.room.teams.find((x) => x.id === t.teamId)?.hue ?? 42 }))} />
@@ -396,7 +409,7 @@ export function Results({ room, handle, isHost, guest }: { room: RoomView; handl
           ) : null}
           {/* School: house points this game earned, by house (features/school). */}
           {room.room.solo ? null : <GameHouses gameId={r.gameId} />}
-          <Standings room={room} big={big} hold={big && podium} />
+          {tableHidden ? null : <Standings room={room} big={big} hold={big && podium} />}
           <p className="text-sm font-semibold text-text-2">Played for {duration(r.durationMs)}.</p>
           {isHost ? null : room.room.solo ? (
             // A solo player is their own host: they can go again straight away.

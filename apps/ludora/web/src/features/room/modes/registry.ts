@@ -17,7 +17,21 @@ export interface ModeScreenProps<V = any> {
 type Screen = LazyExoticComponent<ComponentType<ModeScreenProps>>;
 
 /** Each mode's player and host screens, loaded only when that mode is played. */
-export const MODE_SCREENS: Record<string, { Player: Screen; Host: Screen; /** The host screen lists the room's news itself, so the big screen shows no news toasts over it. */ hostFeed?: boolean }> = {
+/** A mode's own opening for the results screen, in place of the podium (Glim Garden: the garden the class grew). */
+type Ending = LazyExoticComponent<ComponentType<{ room: RoomView; big: boolean }>>;
+
+export const MODE_SCREENS: Record<
+  string,
+  {
+    Player: Screen;
+    Host: Screen;
+    /** The host screen lists the room's news itself, so the big screen shows no news toasts over it. */
+    hostFeed?: boolean;
+    Ending?: Ending;
+    /** The host chose to show no table of scores at the end. */
+    tableHidden?: (room: RoomView) => boolean;
+  }
+> = {
   'gold-rush': {
     Player: lazy(() => import('./gold-rush.tsx').then((m) => ({ default: m.GoldRushPlayer }))),
     Host: lazy(() => import('./gold-rush.tsx').then((m) => ({ default: m.GoldRushHost }))),
@@ -35,6 +49,13 @@ export const MODE_SCREENS: Record<string, { Player: Screen; Host: Screen; /** Th
   'lantern-rally': {
     Player: lazy(() => import('./lantern-rally.tsx').then((m) => ({ default: m.LanternRallyPlayer }))),
     Host: lazy(() => import('./lantern-rally.tsx').then((m) => ({ default: m.LanternRallyHost }))),
+    hostFeed: true,
+  },
+  'glim-garden': {
+    Player: lazy(() => import('./glim-garden.tsx').then((m) => ({ default: m.GlimGardenPlayer }))),
+    Host: lazy(() => import('./glim-garden.tsx').then((m) => ({ default: m.GlimGardenHost }))),
+    Ending: lazy(() => import('./glim-garden.tsx').then((m) => ({ default: m.GlimGardenEnding }))),
+    tableHidden: (room) => room.room.settings.showTable === false,
     hostFeed: true,
   },
   'spot-kick': {

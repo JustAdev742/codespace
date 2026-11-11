@@ -29,6 +29,8 @@ import { RallyField } from '../src/features/room/modes/lantern-rally-field.ts';
 import { RallyHostScene, RallyScene } from '../src/features/room/modes/lantern-rally-scene.ts';
 import { CIRCUIT_IDS, lapLength, type CircuitId } from '@ludora/engine/lantern-rally';
 import { SpotKickReelScene, SpotKickScene, type Aim, type KickShot, type Outcome, type ShotHow } from '../src/features/room/modes/spot-kick-scene.ts';
+import { GardenHostScene, GardenScene } from '../src/features/room/modes/glim-garden-scene.ts';
+import { KINDS as PLANT_KINDS, PLANTS, type PlotView } from '@ludora/engine/glim-garden';
 
 const params = new URLSearchParams(location.search);
 const q = params.get('quality');
@@ -530,6 +532,48 @@ function makeRally(env: StageEnv, host: boolean) {
   return w;
 }
 
+// ?scene=garden  Glim Garden from one player's plot (&players=12, &day=1 for Night Bloom's day, &teams=1).
+// ?scene=garden-host  the big screen's whole garden (&players=30, &names=long for long names).
+function makeGarden(env: StageEnv, host: boolean) {
+  const n = Number(params.get('players') ?? (host ? 30 : 12));
+  const rnd = props.seeded(11);
+  const ids = Array.from({ length: n }, (_, i) => `p${i}`);
+  const long = params.get('names') === 'long';
+  const names = new Map(ids.map((id, i) => [id, long ? `${GLIMS[i % GLIMS.length]!.name} the Magnificent Gardener` : (GLIMS[i % GLIMS.length]?.name ?? `Gardener ${i}`)]));
+  const looks = new Map(ids.map((id, i) => [id, { art: GLIMS[i % GLIMS.length]!.art as GlimArt, rarity: GLIMS[i % GLIMS.length]!.rarity as Rarity }]));
+  const plots: PlotView[] = ids.map((id, i) => {
+    const k = i % 5 === 4 ? null : PLANT_KINDS[Math.floor(rnd() * 3)]!;
+    const need = k ? PLANTS[k].need : 0;
+    const g = k ? Math.floor(rnd() * (need + 1)) : 0;
+    const v: PlotView = { id, k, g: Math.min(g, need), r: [Math.floor(rnd() * 3), Math.floor(rnd() * 2), rnd() < 0.15 ? 1 : 0], j: Math.floor(rnd() * 9), s: 0, e: null };
+    if (k && g >= need) v.b = 1;
+    if (k && !v.b && rnd() < 0.15) v.d = 1;
+    return v;
+  });
+  const teams = params.get('teams') === '1';
+  const gardens = teams ? [{ teamId: 't1', name: 'Owls', plots: plots.filter((_, i) => i % 2 === 0) }, { teamId: 't2', name: 'Foxes', plots: plots.filter((_, i) => i % 2 === 1) }] : [{ teamId: null, name: null, plots }];
+  const w = host ? new GardenHostScene(env) : new GardenScene(env, 'p0');
+  const day = params.get('day') === '1';
+  const state = () => ({ gardens, need: 6, dark: !day, nightBloom: day, looks, names });
+  w.setState(state());
+  (window as unknown as { __world: unknown }).__world = w;
+  if (params.get('still') === '1') return w;
+  setInterval(() => {
+    // Something happens somewhere: a drop, a gift or a bloom.
+    const i = Math.floor(rnd() * plots.length);
+    const p = plots[i]!;
+    if (!p.k) return;
+    if (!p.b) p.g++;
+    if (p.k && p.g >= PLANTS[p.k].need) p.b = 1;
+    p.s++;
+    p.e = p.b ? 'bloom' : rnd() < 0.5 ? 'gift' : 'water';
+    if (p.e === 'gift') p.by = plots[(i + 1) % plots.length]!.id;
+    p.j++;
+    w.setState(state());
+  }, 1400);
+  return w;
+}
+
 function App() {
   const create = (env: StageEnv) =>
     sceneName === 'gold'
@@ -556,7 +600,9 @@ function App() {
                           ? makeTower(env, sceneName === 'tower-host')
                         : sceneName === 'rally' || sceneName === 'rally-host'
                           ? makeRally(env, sceneName === 'rally-host')
-                          : new Gallery(env);
+                          : sceneName === 'garden' || sceneName === 'garden-host'
+                            ? makeGarden(env, sceneName === 'garden-host')
+                            : new Gallery(env);
   return (
     <main style={{ height: '100vh', display: 'grid' }}>
       <Stage3D label="3D gallery" create={create} className="h-full w-full" />
