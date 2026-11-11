@@ -1,0 +1,23 @@
+/*
+ * Mode covers: the subject lifts a little when the card it sits on is pointed
+ * at or focused. Nothing moves with reduced motion or in calm mode.
+ */
+.mode-cover .cover-lift {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+  transition: transform 200ms var(--ease-out, ease-out);
+}
+:is(a, label, button, [role='radio']):is(:hover, :focus-visible, :focus-within) .mode-cover .cover-lift {
+  transform: translateY(-2.5%) scale(1.03);
+}
+@media (prefers-reduced-motion: reduce) {
+  :root:not([data-motion='on']) .mode-cover .cover-lift {
+    transition: none;
+    transform: none !important;
+  }
+}
+:root[data-motion='off'] .mode-cover .cover-lift,
+:root[data-calm='on'] .mode-cover .cover-lift {
+  transition: none;
+  transform: none !important;
+}

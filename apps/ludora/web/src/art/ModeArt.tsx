@@ -1,5 +1,9 @@
-import { memo } from 'react';
+import { memo, useEffect, useReducer } from 'react';
 import type { ModeThumbnail } from '@ludora/shared';
+import { hasCover, loadCover, loadedCover } from './covers/index.ts';
+import { variantMark } from './covers/marks.ts';
+import { INK as COVER_INK, palette, Ridge, Sky } from './covers/kit.tsx';
+import './covers/cover.css';
 
 /*
  * Mode thumbnails, like the covers in a game catalogue: each mode stands on its
@@ -62,6 +66,10 @@ const G: Record<string, string> = {
   spark: 'M24 2C26 14 34 22 46 24C34 26 26 34 24 46C22 34 14 26 2 24C14 22 22 14 24 2Z',
   ball: 'M24 4A20 20 0 1 1 23.9 4Z',
   tower: 'M15 44V30H17V20H19V10H29V20H31V30H33V44ZM22 3H26L27 7H21Z',
+  flame: 'M24 3C26 11 35 15 36 25C37 35 32 44 24 44C16 44 11 38 11 31C11 25 15 22 17 17C18 21 20 23 22 24C20 17 21 10 24 3Z',
+  moon: 'M31 5A19 19 0 1 0 43 31A15 15 0 1 1 31 5Z',
+  drop: 'M24 4C28 12 38 20 38 30A14 14 0 0 1 10 30C10 20 20 12 24 4Z',
+  repeat: 'M8 22A16 16 0 0 1 38 14M40 26A16 16 0 0 1 10 34M38 4V14H28M10 44V34H20',
 };
 
 /** Ink detail drawn over a filled glyph: lantern ribs, the lid of a chest. */
@@ -73,7 +81,7 @@ const DETAIL: Record<string, string> = {
   tower: 'M17 30H31M19 20H29M19 15H29M24 7V10',
 };
 
-const FILLED = new Set(['bolt', 'heart', 'crown', 'castle', 'shield', 'chest', 'mountain', 'tree', 'spark', 'puzzle', 'ghost', 'potion', 'trophy', 'lantern', 'rocket', 'mask', 'fish', 'flag', 'ball', 'tower']);
+const FILLED = new Set(['flame', 'moon', 'drop', 'bolt', 'heart', 'crown', 'castle', 'shield', 'chest', 'mountain', 'tree', 'spark', 'puzzle', 'ghost', 'potion', 'trophy', 'lantern', 'rocket', 'mask', 'fish', 'flag', 'ball', 'tower']);
 
 export const MODE_GLYPHS = Object.keys(G);
 
@@ -90,7 +98,8 @@ export function ModeGlyph({ glyph, size = 48, color = 'currentColor', className 
 
 /** The ink of the contour: the same navy as text on bright fills. */
 const INK = '#0b1020';
-export const ModeArt = memo(function ModeArt({ thumb, className, label }: { thumb: ModeThumbnail; className?: string; label?: string }) {
+/** A glyph on the mode's colour: the card of a game someone saved (they chose its glyph and colour), and the fallback for a mode with no cover. */
+export const GlyphArt = memo(function GlyphArt({ thumb, className, label }: { thumb: ModeThumbnail; className?: string; label?: string }) {
   const base = `hsl(${thumb.hue} 68% 50%)`;
   const floor = `hsl(${thumb.hue} 72% 36%)`;
   const glyphFill = `hsl(${thumb.accentHue} 96% 66%)`;
@@ -120,5 +129,78 @@ export const ModeArt = memo(function ModeArt({ thumb, className, label }: { thum
         )}
       </g>
     </svg>
+  );
+});
+
+/**
+ * A mode's cover: an illustrated night scene of what you do in the game
+ * (art/covers). Pass `mode` (the mode id) for the cover; a variant also passes
+ * `variant` and shows its parent's cover with a small mark of what it changes.
+ * Without a cover it falls back to the glyph art. Decoration beside the mode's
+ * name, hidden from screen readers, unless `label` names it because it stands
+ * alone. While its few kilobytes load, the sky and hills hold its place.
+ */
+interface CoverMode {
+  id: string;
+  thumbnail: ModeThumbnail;
+}
+interface CoverVariant {
+  id: string;
+  thumbnail?: Partial<ModeThumbnail> | undefined;
+}
+
+export const ModeArt = memo(function ModeArt({
+  thumb,
+  mode,
+  variant,
+  mark: own,
+  className = '',
+  label,
+}: {
+  thumb: ModeThumbnail;
+  mode?: CoverMode | undefined;
+  variant?: CoverVariant | null | undefined;
+  /** A mark chosen by someone: the glyph and colour a player gave a game they made. */
+  mark?: { glyph: string; hue: number } | undefined;
+  className?: string;
+  label?: string;
+}) {
+  const [, loaded] = useReducer((n: number) => n + 1, 0);
+  const id = mode && hasCover(mode.id) ? mode.id : undefined;
+  const Cover = id ? loadedCover(id) : undefined;
+  useEffect(() => {
+    if (!id || Cover) return;
+    let live = true;
+    void loadCover(id).then(() => {
+      if (live) loaded();
+    });
+    return () => {
+      live = false;
+    };
+  }, [id, Cover]);
+  if (!id || !mode) return <GlyphArt thumb={thumb} className={className} label={label} />;
+  // The cover keeps the parent mode's colours; a variant's own colour goes on its mark.
+  const mark = own?.glyph ?? (variant ? variantMark(variant.id, variant.thumbnail?.glyph) : undefined);
+  const markHue = own?.hue ?? variant?.thumbnail?.hue ?? mode.thumbnail.hue;
+  const p = palette(mode.thumbnail.hue, mode.thumbnail.accentHue);
+  return (
+    <span className={`mode-cover relative block overflow-hidden ${className}`} data-cover={Cover ? 'ready' : 'loading'} role={label ? 'img' : undefined} aria-label={label} aria-hidden={label ? undefined : true}>
+      <svg viewBox="0 0 160 100" className="block h-full w-full" preserveAspectRatio="xMidYMid slice" focusable={false} aria-hidden>
+        {Cover ? (
+          <Cover p={p} />
+        ) : (
+          <g>
+            <Sky p={p} />
+            <Ridge y={74} amp={4} seed={2} fill={p.mid} />
+            <Ridge y={88} amp={3} seed={5} fill={p.near} />
+          </g>
+        )}
+      </svg>
+      {mark ? (
+        <span className="mode-cover-mark absolute right-[6%] bottom-[8%] grid aspect-square w-[clamp(1.25rem,30%,2.25rem)] place-items-center rounded-full" style={{ background: `hsl(${markHue} 88% 62%)`, boxShadow: `0 0 0 2px ${COVER_INK}, inset 0 -3px 0 rgb(0 0 0 / 0.22)` }}>
+          <ModeGlyph glyph={mark} color={COVER_INK} className="h-[62%] w-[62%]" />
+        </span>
+      ) : null}
+    </span>
   );
 });

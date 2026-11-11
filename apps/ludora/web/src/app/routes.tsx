@@ -2,10 +2,10 @@ import { Suspense, useEffect } from 'react';
 import { createBrowserRouter, Outlet, ScrollRestoration, useRouteError, isRouteErrorResponse, Link } from 'react-router';
 import { Shell } from './Shell.tsx';
 import { PrefsSync } from './PrefsSync.tsx';
-import { Spinner } from '../ui/primitives.tsx';
 import { buttonClass } from '../ui/Button.tsx';
 import { Stage } from '../ui/Stage.tsx';
 import { LogoMark } from '../art/icons.tsx';
+import { LoadingMark } from '../art/LoadingMark.tsx';
 
 const page = (load: () => Promise<{ default: React.ComponentType }>) => async () => ({ Component: (await load()).default });
 
@@ -14,7 +14,7 @@ function Root() {
     <>
       <PrefsSync />
       <ScrollRestoration />
-      <Suspense fallback={<Spinner />}>
+      <Suspense fallback={<LoadingMark />}>
         <Outlet />
       </Suspense>
     </>
@@ -65,7 +65,7 @@ export const router = createBrowserRouter([
     element: <Root />,
     errorElement: <RouteError />,
     // Shown while the first page's code loads; without it the router warns on every visit.
-    hydrateFallbackElement: <Spinner label="Loading Ludora" />,
+    hydrateFallbackElement: <LoadingMark label="Loading Ludora" />,
     children: [
       { path: 'signin', lazy: page(() => import('../features/auth/SignIn.tsx')) },
       { path: 'signup', lazy: page(() => import('../features/auth/SignUp.tsx')) },

@@ -469,7 +469,7 @@ function FavouritesPanel() {
           {favModes.slice(0, 4).map((m) => (
             <li key={m.meta.id}>
               <Link to={`/modes/${m.meta.id}`} className="flex items-center gap-3 rounded-[var(--radius-m)] bg-surface-2 p-2 pr-3 text-text no-underline transition-colors hover:bg-surface-3">
-                <ModeArt thumb={thumbFor(m.meta)} className="h-12 w-[4.5rem] shrink-0 overflow-hidden rounded-[var(--radius-s)]" />
+                <ModeArt thumb={thumbFor(m.meta)} mode={m.meta} className="h-12 w-[4.5rem] shrink-0 overflow-hidden rounded-[var(--radius-s)]" />
                 <span className="min-w-0 flex-1">
                   <span className="block truncate font-bold">{m.meta.title}</span>
                   <span className="block truncate text-sm text-text-2">{m.meta.tagline}</span>

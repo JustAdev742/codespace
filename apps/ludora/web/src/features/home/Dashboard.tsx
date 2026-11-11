@@ -5,7 +5,8 @@ import { toast } from 'sonner';
 import { Flame, Presentation, Swords, Trophy } from 'lucide-react';
 import { RARITIES, type GlimArt, type Rarity } from '@ludora/shared';
 import { useMe } from '../../lib/session.ts';
-import { useModes, useOverview, type QuestView } from '../../lib/queries.ts';
+import { thumbFor, useModes, useOverview, type QuestView } from '../../lib/queries.ts';
+import { ModeArt } from '../../art/ModeArt.tsx';
 import { api, ApiError } from '../../lib/api.ts';
 import { formatNumber, ordinal, timeAgo, untilText } from '../../lib/format.ts';
 import { CodeEntry } from '../play/CodeEntry.tsx';
@@ -294,18 +295,22 @@ export default function Dashboard() {
               </div>
             ) : (
               <ul className="flex flex-col gap-2">
-                {(o?.recentGames ?? []).slice(0, 4).map((g) => (
-                  <li key={g.gameId} className="flex items-center justify-between gap-3 rounded-[var(--radius-m)] bg-surface-2 px-3.5 py-2.5">
-                    <div className="min-w-0">
-                      <div className="truncate font-bold">{g.title}</div>
-                      <div className="truncate text-sm text-text-2">{g.setTitle}</div>
-                    </div>
-                    <div className="shrink-0 text-right">
-                      <div className="font-display text-2xl leading-none font-extrabold tabular">{g.players > 1 ? ordinal(g.rank) : `${g.correct}/${g.answered}`}</div>
-                      <div className="mt-0.5 text-xs text-text-2">{g.players > 1 ? timeAgo(g.endedAt) : `right, ${timeAgo(g.endedAt)}`}</div>
-                    </div>
-                  </li>
-                ))}
+                {(o?.recentGames ?? []).slice(0, 4).map((g) => {
+                  const played = modes.data?.modes.find((m) => m.meta.id === g.modeId)?.meta;
+                  return (
+                    <li key={g.gameId} className="flex items-center justify-between gap-3 rounded-[var(--radius-m)] bg-surface-2 px-3.5 py-2.5">
+                      {played ? <ModeArt thumb={thumbFor(played)} mode={played} className="h-10 w-14 shrink-0 rounded-[var(--radius-s)]" /> : null}
+                      <div className="min-w-0 flex-1">
+                        <div className="truncate font-bold">{g.title}</div>
+                        <div className="truncate text-sm text-text-2">{g.setTitle}</div>
+                      </div>
+                      <div className="shrink-0 text-right">
+                        <div className="font-display text-2xl leading-none font-extrabold tabular">{g.players > 1 ? ordinal(g.rank) : `${g.correct}/${g.answered}`}</div>
+                        <div className="mt-0.5 text-xs text-text-2">{g.players > 1 ? timeAgo(g.endedAt) : `right, ${timeAgo(g.endedAt)}`}</div>
+                      </div>
+                    </li>
+                  );
+                })}
               </ul>
             )}
           </Panel>

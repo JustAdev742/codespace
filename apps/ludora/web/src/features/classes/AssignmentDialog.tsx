@@ -204,7 +204,7 @@ function ModePicker({ onPick, questions }: { onPick: (c: Choice) => void; questi
           return (
             <li key={meta.id}>
               <div className="flex h-full w-full overflow-hidden rounded-[var(--radius-m)] border border-line">
-                <ModeArt thumb={thumbFor(mode.meta, variant?.meta)} className="w-20 shrink-0 self-stretch grayscale" />
+                <ModeArt thumb={thumbFor(mode.meta, variant?.meta)} mode={mode.meta} variant={variant?.meta} className="w-20 shrink-0 self-stretch grayscale" />
                 <span className="min-w-0 flex-1 bg-sunken p-2.5">
                   <span className="block font-display text-lg leading-tight font-bold text-text-2">{meta.title}</span>
                   <span className="mt-0.5 block text-sm text-text-2">
@@ -218,7 +218,7 @@ function ModePicker({ onPick, questions }: { onPick: (c: Choice) => void; questi
         return (
           <li key={meta.id}>
             <button type="button" onClick={() => onPick({ mode, variant })} className="group flex h-full w-full overflow-hidden rounded-[var(--radius-m)] border border-line text-left transition-colors hover:border-line-strong">
-              <ModeArt thumb={thumbFor(mode.meta, variant?.meta)} className="w-20 shrink-0 self-stretch" />
+              <ModeArt thumb={thumbFor(mode.meta, variant?.meta)} mode={mode.meta} variant={variant?.meta} className="w-20 shrink-0 self-stretch" />
               <span className="min-w-0 flex-1 bg-raised p-2.5 transition-colors group-hover:bg-surface-2">
                 <span className="flex flex-wrap items-center gap-x-2 gap-y-0.5 font-display text-lg leading-tight font-bold">
                   {meta.title}
@@ -377,7 +377,7 @@ function AssignmentForm({ classId, editing, onDone }: { classId: string; editing
     <form onSubmit={submit} noValidate className="flex flex-col gap-6">
       {editing && editingMode ? (
         <div className="flex items-center gap-3 rounded-[var(--radius-m)] bg-surface-2 p-3 text-sm">
-          <ModeArt thumb={editingMode.thumb} className="h-12 w-16 shrink-0 overflow-hidden rounded-[var(--radius-s)]" />
+          <ModeArt thumb={editingMode.thumb} mode={editingMode.mode?.meta} variant={editingMode.variant?.meta} className="h-12 w-16 shrink-0 overflow-hidden rounded-[var(--radius-s)]" />
           <p className="min-w-0 flex-1 text-text-2">
             <span className="font-semibold break-words text-text">{editing.setTitle}</span>, played as {editingMode.title}. To use a different set or mode, make a new assignment.
           </p>
@@ -421,7 +421,7 @@ function AssignmentForm({ classId, editing, onDone }: { classId: string; editing
             </SectionHeading>
             {choice ? (
               <Chosen
-                art={<ModeArt thumb={thumbFor(choice.mode.meta, choice.variant?.meta)} className="h-10 w-14 shrink-0 overflow-hidden rounded-[var(--radius-s)]" />}
+                art={<ModeArt thumb={thumbFor(choice.mode.meta, choice.variant?.meta)} mode={choice.mode.meta} variant={choice.variant?.meta} className="h-10 w-14 shrink-0 overflow-hidden rounded-[var(--radius-s)]" />}
                 title={choice.variant?.meta.title ?? choice.mode.meta.title}
                 detail={choice.variant ? `A twist on ${choice.mode.meta.title}` : choice.mode.meta.tagline}
                 changeLabel={`Change the game mode, ${choice.variant?.meta.title ?? choice.mode.meta.title}`}

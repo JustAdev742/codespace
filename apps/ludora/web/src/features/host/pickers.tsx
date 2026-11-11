@@ -114,6 +114,7 @@ function VariantPicker({ choice, onChange }: { choice: Choice; onChange: (c: Cho
             const meta = v?.meta;
             return (
               <RadioCard key={meta?.id ?? 'standard'} name="host-variant" checked={(choice.variant?.meta.id ?? null) === (meta?.id ?? null)} onSelect={() => onChange({ mode, variant: v })}>
+                <ModeArt thumb={thumbFor(mode.meta, meta)} mode={mode.meta} variant={meta} className="w-16 shrink-0 self-stretch" />
                 <span className="min-w-0 flex-1 py-2 pr-9 pl-3">
                   <span className="flex flex-wrap items-center gap-x-2 font-bold">
                     {meta?.title ?? 'Standard rules'}
@@ -200,7 +201,7 @@ export function ModeGrid({ modes, value, onChange, labelledBy }: { modes: Catalo
             const variants = m.variants.length;
             return [
               <RadioCard key={m.meta.id} name="host-mode" checked={value?.mode.meta.id === m.meta.id} onSelect={() => onChange({ mode: m, variant: null })}>
-                <ModeArt thumb={thumbFor(m.meta)} className="w-20 shrink-0 self-stretch sm:w-24" />
+                <ModeArt thumb={thumbFor(m.meta)} mode={m.meta} className="w-20 shrink-0 self-stretch sm:w-24" />
                 <span className="min-w-0 flex-1 py-2.5 pr-9 pl-3">
                   <span className="flex flex-wrap items-center gap-x-2 font-display text-xl leading-tight font-bold">
                     {m.meta.title}

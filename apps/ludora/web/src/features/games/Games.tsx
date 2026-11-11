@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 import { Box, Link2, Play, Trash2, Wand2 } from 'lucide-react';
 import { api, ApiError } from '../../lib/api.ts';
 import { useMe } from '../../lib/session.ts';
+import { useModes } from '../../lib/queries.ts';
 import { ModeArt } from '../../art/ModeArt.tsx';
 import { Badge, Dialog, EmptyState, ErrorNotice, PageHeader, Skeleton, TabPanel, Tabs } from '../../ui/primitives.tsx';
 import { Button, ButtonLink } from '../../ui/Button.tsx';
@@ -24,6 +25,8 @@ const VISIBILITY: Record<MadeGame['visibility'], string> = { private: 'Only you'
 function GameCard({ g }: { g: ListedGame }) {
   const qc = useQueryClient();
   const [deleting, setDeleting] = useState(false);
+  // The game's cover is its mode's, with the glyph and colour its maker chose as the mark.
+  const base = useModes().data?.modes.find((m) => m.meta.id === g.mode?.id)?.meta;
   const remove = useMutation({
     mutationFn: () => api.delete(`/api/games/${g.id}`),
     onSuccess: async () => {
@@ -45,7 +48,7 @@ function GameCard({ g }: { g: ListedGame }) {
   return (
     <li className="flex flex-col overflow-hidden rounded-[var(--radius-l)] border border-line bg-raised">
       <div className="relative">
-        <ModeArt thumb={{ glyph: g.glyph, hue: g.hue, accentHue: (g.hue + 40) % 360 }} className="block aspect-[16/9] w-full" label={g.title} />
+        <ModeArt thumb={{ glyph: g.glyph, hue: g.hue, accentHue: (g.hue + 40) % 360 }} mode={base} mark={{ glyph: g.glyph, hue: g.hue }} className="block aspect-[16/9] w-full" label={g.title} />
         {g.mode?.stage === '3d' ? (
           <Badge tone="violet" className="absolute top-2 left-2">
             <Box className="size-3.5" aria-hidden /> 3D

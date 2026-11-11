@@ -27,7 +27,7 @@ export function ModeCard({ mode, heading: H = 'h3', facts = false, className = '
       className={`group flex overflow-hidden rounded-[var(--radius-l)] border border-line bg-raised text-text no-underline transition-[translate,box-shadow,border-color] duration-150 ease-[var(--ease-out)] hover:-translate-y-0.5 hover:border-line-strong hover:shadow-[0_14px_36px_-12px_rgb(2_5_20/0.55)] active:translate-y-0 motion-reduce:hover:translate-y-0 sm:flex-col ${className}`}
     >
       <div className="relative w-28 shrink-0 self-stretch sm:w-auto">
-        <ModeArt thumb={thumbFor(meta)} className="block h-full min-h-28 w-full sm:aspect-[16/9] sm:h-auto sm:min-h-0" />
+        <ModeArt thumb={thumbFor(meta)} mode={meta} className="block h-full min-h-28 w-full sm:aspect-[16/9] sm:h-auto sm:min-h-0" />
         {meta.status !== 'playable' ? (
           <Badge tone="amber" className="absolute top-2 left-2 sm:top-2.5 sm:right-2.5 sm:left-auto">
             {meta.status === 'beta' ? 'Beta' : 'In the works'}

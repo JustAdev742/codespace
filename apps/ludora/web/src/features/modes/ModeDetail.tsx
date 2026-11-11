@@ -87,7 +87,7 @@ export default function ModeDetail() {
           <ModeBests modeId={meta.id} title={meta.title} />
         </div>
         <div className="stage-card mx-auto w-full max-w-[560px] overflow-hidden">
-          <ModeArt thumb={thumbFor(meta)} className="block aspect-[16/10] w-full" label={`${meta.title} artwork`} />
+          <ModeArt thumb={thumbFor(meta)} mode={meta} className="block aspect-[16/10] w-full" label={`${meta.title} artwork`} />
         </div>
       </section>
 
@@ -136,7 +136,7 @@ export default function ModeDetail() {
             <ul className="flex flex-col gap-2.5">
               {m.variants.map((v) => (
                 <li key={v.meta.id} className="flex gap-3.5 rounded-[var(--radius-m)] bg-surface-2 p-3">
-                  <ModeArt thumb={thumbFor(meta, v.meta)} className="h-[68px] w-[104px] shrink-0 overflow-hidden rounded-[var(--radius-s)]" />
+                  <ModeArt thumb={thumbFor(meta, v.meta)} mode={meta} variant={v.meta} className="h-[68px] w-[104px] shrink-0 overflow-hidden rounded-[var(--radius-s)]" />
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-2 font-display text-xl leading-tight font-bold">
                       {v.meta.title}

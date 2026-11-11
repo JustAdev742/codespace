@@ -4,6 +4,7 @@ import { X } from 'lucide-react';
 import type { Rarity } from '@ludora/shared';
 import { RARITY_INFO } from '@ludora/shared';
 import { CurrencyIcon } from '../art/icons.tsx';
+import { EmptyArt } from '../art/EmptyArt.tsx';
 import { formatNumber } from '../lib/format.ts';
 
 /* ---------------------------------- Layout ---------------------------------- */
@@ -63,8 +64,8 @@ export function EmptyState({ icon, art, title, children, action }: { icon?: Reac
           {art}
         </div>
       ) : icon ? (
-        <div className="mb-1 grid size-16 place-items-center rounded-[var(--radius-l)] bg-surface-3 text-lantern [&_svg]:size-8" aria-hidden>
-          {icon}
+        <div className="mb-1" aria-hidden>
+          <EmptyArt icon={icon} seed={title} />
         </div>
       ) : null}
       <h3 className="font-display text-2xl leading-tight font-bold text-balance text-text">{title}</h3>

@@ -72,7 +72,7 @@ function GameRow({ game, onClose }: { game: OpenGame; onClose: () => void }) {
   return (
     <li className="flex flex-wrap items-center gap-x-4 gap-y-3 rounded-[var(--radius-m)] border border-line bg-surface-2 p-3 sm:flex-nowrap">
       <div className="flex min-w-0 flex-1 items-center gap-3">
-        {mode ? <ModeArt thumb={thumbFor(mode.meta, variant?.meta)} className="h-14 w-20 shrink-0 overflow-hidden rounded-[var(--radius-s)]" /> : null}
+        {mode ? <ModeArt thumb={thumbFor(mode.meta, variant?.meta)} mode={mode.meta} variant={variant?.meta} className="h-14 w-20 shrink-0 overflow-hidden rounded-[var(--radius-s)]" /> : null}
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
             <span className="font-display text-xl leading-tight font-bold break-words">{game.title}</span>

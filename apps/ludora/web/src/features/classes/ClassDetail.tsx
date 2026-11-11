@@ -96,7 +96,7 @@ function TeacherAssignmentRow({ a, classId, now, onEdit, onDelete }: { a: Teache
   return (
     <li className="relative flex flex-col gap-4 rounded-[var(--radius-l)] border border-line bg-raised p-4 transition-colors hover:border-line-strong hover:bg-surface-2 md:flex-row md:items-center">
       <div className="flex min-w-0 flex-1 items-start gap-3">
-        <ModeArt thumb={info.thumb} className={artClass} />
+        <ModeArt thumb={info.thumb} mode={info.mode?.meta} variant={info.variant?.meta} className={artClass} />
         <div className="min-w-0 flex-1">
           <h3 className="font-display text-xl leading-tight font-bold break-words">
             <Link to={`/classes/${classId}/assignments/${a.id}`} className="text-text no-underline after:absolute after:inset-0 after:rounded-[var(--radius-l)]">
@@ -798,7 +798,7 @@ function StudentAssignmentRow({ a, now, archived, starting, onPlay }: { a: Stude
   return (
     <li className="flex flex-col gap-4 rounded-[var(--radius-l)] border border-line bg-raised p-4 sm:flex-row sm:items-center">
       <div className="flex min-w-0 flex-1 items-start gap-3">
-        <ModeArt thumb={info.thumb} className={artClass} />
+        <ModeArt thumb={info.thumb} mode={info.mode?.meta} variant={info.variant?.meta} className={artClass} />
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
             <h3 className="font-display text-xl leading-tight font-bold break-words">{a.title}</h3>
