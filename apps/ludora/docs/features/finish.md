@@ -4,7 +4,8 @@ Workstream `finish`. Migration `0018_finish` (journal idx 18): column `game_sess
 `assignments.group_id`, tables `class_teachers`, `class_groups`, `class_group_members` (at the end of
 `server/src/db/schema.ts`; no snapshot file). No new dependency.
 
-Each item was checked against the code first; none already existed. 19 of the 20 items are built.
+Each item was checked against the code first; none already existed. All 20 items are built (item 14,
+How to play, was added last, once the live-screen restyle it was waiting on had merged).
 
 Tests: `server/test/class-groups.test.ts` (6), `server/test/challenge.test.ts` (3), new cases in
 `hosting-room.test.ts` (4), `reports.test.ts` (1), `rooms.test.ts` (3), `students.test.ts` (1),
@@ -32,6 +33,7 @@ sideways scroll at 390x844 and 1366x768), passed in Chromium, Firefox and WebKit
 | 11 | **Achievement and quest badges, one drawn set in the Glims' style** (the covers' kit: dark contour, flat fills, cel shading): achievements are medals in their tier's metal, quests six-sided tokens in their kind's colour, each with an emblem for what it counts (trophy, flame, lantern, Glim, podium, stopwatch...). Not earned yet: the same badge in grey with a dashed rim. On Quests, Nearly there, the history and the home quest list. | `web/src/art/badges.tsx`, `features/quests/Quests.tsx`, `quests/progress.tsx`, `home/Dashboard.tsx`; `metric` added to the quest responses | `art/badges.test.ts`; screenshots of the Quests page (e2e at 390 and 1366) looked at |
 | 12 | **Quest history: Claim** on "Done, not claimed" rows, with the reward in its name; the server pays it once and only to its owner. | `web/src/features/quests/progress.tsx` (`ClaimPast`) | `students.test.ts` "pays an earlier finished quest once"; e2e "an earlier finished quest is claimed from the history" |
 | 13 | **The Save game preview is the Game Maker card**: the mode's cover with the maker's glyph and colour as its mark, the name, the mode and set, the line about it, and the 3D badge, updating as you type. | `web/src/features/games/SaveGameDialog.tsx`, `host/HostSetup.tsx` | Typecheck; not covered by a browser test (see below) |
+| 14 | **How to play in the lobby**: a How to play button on every player's lobby screen and on the big screen opens the game's own rules (the list on its page) and, when a version of the game is on, what that version changes. On the big screen the words are larger, for a teacher to talk through before pressing Start. A player with only a name sees it too: the rules come from the public catalogue the room already loads. | `web/src/features/room/HowToPlay.tsx`, `Lobby.tsx` | e2e `stage.spec.ts` (a guest on a 390x844 phone and the host at 1366x768 each open it: Classic's five rules, axe-clean, no sideways scroll, big-screen rule text at least 18 px, closes with Escape), passing in Chromium, Firefox and WebKit and in the Hills Grammar look; looked at in screenshots with 57 players on the big screen (the lobby still fits 1366x768 without scrolling) and on a phone, in the plain game and in a version of it (Lightning Round shows its "In this version" line) |
 | 15 | **Solo play against practice bots at a chosen skill**: on Play solo, "Practice bots" (none to 5) and Easy, Medium or Hard. The server turns the level into each bot's accuracy (about 40%, 65%, 88%) and pace (slower to quicker); they never change what the player earns. | `server/src/realtime/room.ts` (`addPracticeBots`, `PRACTICE_LEVELS`), `modules/rooms/routes.ts`; `host/HostSetup.tsx` | `rooms.test.ts` "solo practice bots at a chosen skill" and "practice levels play as they say" (easy under 60% right, hard over 75% over whole games); e2e "a player picks practice bots" |
 | 16 | **Choose your reactions**: everyone has the free eight; reactions from the shop or Lanterns can go on the bar once owned, up to eight, in Settings ("Reactions") and in the room ("Choose your reactions" under the bar). The room checks on the server that a reaction is the player's own: a device can no longer send a bought reaction its player does not own. A player who joined with just a name keeps the free eight and nothing asks for an account. | `shared/realtime.ts` (`FREE_REACTIONS`), `server/src/realtime/room.ts`, `attach.ts` (`loadReactions`), `users/preferences.ts`; `room/game/Reactions.tsx`, `settings/ReactionsPanel.tsx` | `hosting-room.test.ts` "choosing reactions for the bar"; `rooms.test.ts` "a player's own reactions in a room" (over a real socket); e2e settings check |
 | 17 | **Invite a friend from inside the lobby** (host and signed-in players): a list of your friends with Invite, using the existing invite. Not shown to a name-only player; a class game or a challenge refuses an invite its friend could not use. | `web/src/features/social/InviteFriends.tsx`, `room/Lobby.tsx`; `notifications/routes.ts` | `challenge.test.ts` (refused in a challenge); e2e "a host invites a friend from the lobby" |
@@ -41,9 +43,8 @@ sideways scroll at 390x844 and 1366x768), passed in Chromium, Firefox and WebKit
 
 ## Not built
 
-- **14. How to play card before the first question.** Not built: it needs a new moment in the room
-  between the lobby and the first question on every screen, which is exactly the live-screen
-  restyle still in flight (lobby, question, results). The mode page's rules list remains.
+Nothing: all 20 items are built. Item 14 is a button and a dialog in the lobby, not a new moment between the
+lobby and the first question, so nothing was added to the room's phases.
 
 ## Notes and not verified
 
@@ -52,4 +53,6 @@ sideways scroll at 390x844 and 1366x768), passed in Chromium, Firefox and WebKit
 - In the 3D tower scene only the target tag reads in floors; floor lines are drawn in the 2D view.
 - Classic's "pot" scoring shares points out when the question closes and does not apply the Points field.
 - School competitions and house teams still belong to the class's owner, not co-teachers.
+- With How to play added, a player's lobby with other players in it is 22 px taller than a 390x844 screen and
+  scrolls that far (it fitted before). The How to play dialog was looked at in Chromium only.
 - Not tried on a real device or with a screen reader; the checks are automated.

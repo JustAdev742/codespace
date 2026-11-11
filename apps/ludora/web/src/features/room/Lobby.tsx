@@ -13,6 +13,7 @@ import { Dialog, Field, Input } from '../../ui/primitives.tsx';
 import { QrCode } from './host/QrCode.tsx';
 import { useHostTools } from './host/HostTools.tsx';
 import { POINTS_MODES } from './host/RoomSettings.tsx';
+import { HowToPlay } from './HowToPlay.tsx';
 import { estimateMinutes, withKey } from './host/tools.ts';
 import { ReactionBar, useChooseReactions } from './game/Reactions.tsx';
 import { Pill, PlayerGlim, StagePanel, motionOK } from './game/stage.tsx';
@@ -419,6 +420,7 @@ export function HostLobby({ room, handle }: { room: RoomView; handle: RoomHandle
               </Button>
             ) : null}
             <BackdropPicker />
+            <HowToPlay room={room} big />
           </div>
         </div>
         <div className="flex flex-col justify-between gap-5">
@@ -660,6 +662,8 @@ export function PlayerLobby({ room, handle }: { room: RoomView; handle: RoomHand
       <div className="paper stage-card w-full px-5 pt-4 pb-5">
         <p className="font-display text-[1.75rem] leading-tight font-bold">{room.room.title}</p>
         <p className="text-text-2">{room.room.setTitle}</p>
+        {/* The game's rules, for anyone who has not played it before. */}
+        <HowToPlay room={room} className="mt-3" />
         {shown.length ? (
           <div className="mt-3 flex items-end justify-center" aria-hidden>
             {shown.map((p, i) => (

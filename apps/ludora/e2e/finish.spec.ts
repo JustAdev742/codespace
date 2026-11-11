@@ -27,6 +27,10 @@ async function check(page: Page, name: string) {
   await page.waitForLoadState('networkidle');
   for (const width of [390, 1366]) {
     await page.setViewportSize({ width, height: width === 390 ? 844 : 768 });
+    // Checked from the top of the page. Left wherever a resize put it, a phone-width page can have a switch
+    // half under the sticky top bar, and axe then counts the bar's buttons as covering it ("target-size":
+    // partially obscured). That is a matter of where the page is scrolled, not of the control.
+    await page.evaluate(() => window.scrollTo(0, 0));
     await settled(page);
     const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
     expect(overflow, `${name} scrolls sideways at ${width}`).toBeLessThanOrEqual(0);

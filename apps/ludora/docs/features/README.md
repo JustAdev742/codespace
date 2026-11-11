@@ -19,8 +19,8 @@ Counts are of the main branch as it stands (last updated 11 November 2026).
 | Accessibility, comfort and devices | [access.md](access.md) | 25 |
 | Reports that tell a teacher what to teach next | [reports.md](reports.md) | 20 |
 | Lessons: several games and teaching steps in one room | [lessons.md](lessons.md) | 16 |
-| Loose ends the pieces above left (co-teachers, class groups, challenge a friend and more) | [finish.md](finish.md) | 19 |
-| **Total** | | **206** |
+| Loose ends the pieces above left (co-teachers, class groups, challenge a friend, how to play and more) | [finish.md](finish.md) | 20 |
+| **Total** | | **207** |
 
 ## New 3D game modes
 
@@ -61,7 +61,6 @@ device at the end of every game). Those are described in the commit that merged 
 
 ## Left out on purpose or not done
 
-- A how-to-play card before the first question (the mode's page still has its rules).
 - Big-screen question text steps between three sizes rather than fitting its box.
 - The modes' own screens were not restyled in the visual pass.
 - Room options apply to a whole lesson, not to each step.

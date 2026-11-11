@@ -20,7 +20,9 @@ async function check(page: Page, name: string) {
 }
 
 test('the stage: a backdrop the teacher keeps, every phase accessible, podium skip, end card and class photo', async ({ browser }) => {
-  test.setTimeout(150_000);
+  // Every phase is checked for accessibility on two screens (about 25 checks); WebKit late in a long run needs
+  // close to three minutes for that.
+  test.setTimeout(300_000);
   const host = await account(browser, { accountType: 'teacher', displayName: 'Ms Rivera' });
   await host.page.setViewportSize({ width: 1366, height: 768 });
   const hostErrors = watchErrors(host.page);
@@ -39,8 +41,10 @@ test('the stage: a backdrop the teacher keeps, every phase accessible, podium sk
     },
   });
   expect(set.ok(), await set.text()).toBe(true);
-  const room = await host.page.request.post('/api/rooms', { headers: CSRF, data: { setId: (await set.json()).set.id, modeId: 'classic', common: { questionLimit: 3, shuffleQuestions: false }, settings: { autoAdvance: false } } });
+  const room = await host.page.request.post('/api/rooms', { headers: CSRF, data: { setId: (await set.json()).set.id, modeId: 'classic', common: { questionLimit: 3, shuffleQuestions: false, questionTimeSec: 90 }, settings: { autoAdvance: false } } });
   expect(room.ok(), await room.text()).toBe(true);
+  // 90 seconds a question: each screen is checked for accessibility while its question is open, and on a
+  // slow browser two of those checks can outlast the usual 20 seconds, closing the question under the test.
   const { code } = await room.json();
   await host.page.goto(`/room/${code}`);
   await expect(host.page.getByRole('button', { name: 'Start game' })).toBeVisible();
@@ -70,6 +74,23 @@ test('the stage: a backdrop the teacher keeps, every phase accessible, podium sk
   await expect(host.page.getByText('Sunny Otter', { exact: true })).toBeVisible();
   await check(host.page, 'lobby with a player');
   await check(phone, 'player lobby');
+
+  // How to play: the game's own rules, for a player with only a name on a phone and on the big screen for the class.
+  await phone.getByRole('button', { name: 'How to play' }).click();
+  const phoneRules = phone.getByRole('dialog', { name: 'How to play Classic' });
+  await expect(phoneRules.getByRole('listitem')).toHaveCount(5);
+  await expect(phoneRules.getByText('Everyone gets the same question at the same time.')).toBeVisible();
+  await check(phone, 'how to play on a phone');
+  await phone.keyboard.press('Escape');
+  await expect(phoneRules).toHaveCount(0);
+  await host.page.getByRole('button', { name: 'How to play' }).click();
+  const hostRules = host.page.getByRole('dialog', { name: 'How to play Classic' });
+  await expect(hostRules.getByText('A correct answer is worth 500 points plus up to 500 for speed.')).toBeVisible();
+  // Read from the back of a classroom: the rules on the big screen are set larger than body text.
+  expect(await hostRules.getByRole('listitem').first().locator('span').last().evaluate((el) => parseFloat(getComputedStyle(el).fontSize))).toBeGreaterThanOrEqual(18);
+  await check(host.page, 'how to play on the big screen');
+  await host.page.keyboard.press('Escape');
+  await expect(hostRules).toHaveCount(0);
 
   const next = host.page.getByRole('button', { name: /Next|Skip ahead/ });
   await host.page.getByRole('button', { name: 'Start game' }).click();
