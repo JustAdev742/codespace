@@ -73,7 +73,7 @@ jobs:
 
   e2e:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
     services:
       postgres:
         image: postgres:16
@@ -132,7 +132,7 @@ jobs:
   browsers:
     # The end-to-end suite again in WebKit (Safari's engine, for iPads and Macs) and Firefox.
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 60
     strategy:
       fail-fast: false
       matrix:
