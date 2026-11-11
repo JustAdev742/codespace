@@ -1,5 +1,6 @@
 import { useLayoutEffect, useRef, type CSSProperties, type RefObject } from 'react';
 import type { RoomPlayerView, TeamView } from '@ludora/shared';
+import { ArrowUp } from 'lucide-react';
 import { formatNumber, ordinal } from '../../../lib/format.ts';
 import { PlayerGlim, avatarOf, motionOK } from './stage.tsx';
 
@@ -123,6 +124,9 @@ export function Leaderboard({
   const team = (id: string | null) => teams?.find((t) => t.id === id);
   const all = you && !rows.some((r) => r.playerId === you.playerId) ? [...rows, you] : rows;
   useRankSlide(listRef, rows, all.map((r) => r.playerId).join('|'), big ? 'projector' : 'phone');
+  // Places climbed this round, worked out from last round's scores (score less this round's gain), for the "up 3" arrows.
+  const before = (r: LeaderRow) => r.score - (r.gain ?? 0);
+  const climbed = (r: LeaderRow) => (r.gain ? 1 + all.filter((o) => before(o) > before(r)).length - r.rank : 0);
   const roomy = all.length <= 5 && !dense;
   // A board of six to eight on its own screen (the usual top eight) fills the projector's height rather than leave its lower half empty.
   const middling = !roomy && !dense && all.length <= 8;
@@ -152,7 +156,7 @@ export function Leaderboard({
           <li
             key={r.playerId}
             data-row={r.playerId}
-            className={`relative flex min-h-[var(--lb-row)] items-center rounded-[var(--radius-m)] ${big ? 'gap-[clamp(0.75rem,1.4vw,1.5rem)] px-[clamp(0.75rem,1.2vw,1.25rem)] py-1' : 'gap-3 px-2.5 py-1.5'} ${isYou ? 'bg-lantern/[0.14] ring-2 ring-lantern ring-inset' : 'bg-white/[0.07]'}`}
+            className={`relative flex min-h-[var(--lb-row)] items-center rounded-[var(--radius-m)] ${big ? 'gap-[clamp(0.75rem,1.4vw,1.5rem)] px-[clamp(0.75rem,1.2vw,1.25rem)] py-1' : 'gap-3 px-2.5 py-1.5'} ${isYou ? 'bg-[color-mix(in_srgb,var(--stage-1)_84%,var(--lantern))] ring-2 ring-lantern ring-inset' : 'bg-[color-mix(in_srgb,var(--stage-1)_90%,#ffffff)]'}`}
           >
             <RankBadge rank={r.rank} big={big} />
             <PlayerGlim avatar={avatarOf(players, r.playerId)} seed={r.playerId} size={64} pose={r.rank === 1 ? 'cheer' : 'idle'} className="size-[var(--lb-glim)] shrink-0" />
@@ -162,6 +166,8 @@ export function Leaderboard({
             </span>
             {t ? <span className="size-4 shrink-0 rounded-full ring-2 ring-white/50" style={{ background: `hsl(${t.hue} 80% 60%)` }} title={t.name} aria-hidden /> : null}
             {t ? <span className="sr-only">{t.name}</span> : null}
+            {/* On a phone the row is narrow: only your own climb is called out, so names keep their room. */}
+            {climbed(r) > 0 && (big || isYou) ? <Climb n={climbed(r)} big={big} /> : null}
             {r.gain ? (
               // The points just gained, on a slanted plate: the moment of this row.
               <span className={`plate shrink-0 text-on-accent tabular ${r.gain > 0 ? 'bg-glim' : 'bg-ember'} ${big ? 'text-[length:calc(var(--lb-score)*0.66)] max-sm:hidden' : 'px-2 text-base'}`}>
@@ -184,6 +190,23 @@ export function Leaderboard({
   );
 }
 
+/** A team's colour as a fill that ink text reads on (4.5:1 for every hue). */
+export const teamFill = (hue: number) => `hsl(${hue} 85% 70%)`;
+
+/** "Up 3": a climber's arrow, landing just after the rows have moved. */
+function Climb({ n, big }: { n: number; big: boolean }) {
+  return (
+    <span
+      className={`inline-flex shrink-0 items-center gap-0.5 rounded-full bg-glim/[0.16] font-display font-extrabold text-glim tabular ${big ? 'px-[0.5em] py-[0.1em] text-[length:calc(var(--lb-score)*0.6)] max-sm:hidden' : 'px-2 py-0.5 text-sm'}`}
+      style={motionOK() ? { animation: 'climb-in 240ms var(--ease-out) 1150ms both' } : undefined}
+    >
+      <ArrowUp className="size-[1em]" strokeWidth={3} aria-hidden />
+      {n}
+      <span className="sr-only"> {n === 1 ? 'place' : 'places'} up,</span>
+    </span>
+  );
+}
+
 /** Team totals as bars in each team's colour, longest first. */
 export function TeamScores({
   teams,
@@ -197,6 +220,32 @@ export function TeamScores({
   big?: boolean;
 }) {
   const max = Math.max(1, ...teams.map((t) => t.score));
+  // Two teams on the big screen: a broadcast scoreline, each team's name on a plate in its colour and the score as the hero.
+  if (big && teams.length === 2) {
+    const total = teams[0]!.score + teams[1]!.score;
+    const leftShare = total > 0 ? Math.min(0.92, Math.max(0.08, teams[0]!.score / total)) : 0.5;
+    return (
+      <div className="flex flex-col gap-[clamp(0.5rem,1.4vh,1rem)]" role="group" aria-label="Team scores">
+        <ul className="grid grid-cols-2 gap-[clamp(0.5rem,1.2vw,1.25rem)]">
+          {teams.map((t, i) => (
+            <li key={t.teamId} className={`flex min-w-0 flex-col gap-1 ${i ? 'items-end text-right' : 'items-start'}`}>
+              <span className="plate max-w-full text-[clamp(1.2rem,1.9vw,2.2rem)] text-on-accent" style={{ background: teamFill(t.hue) }}>
+                <span className="truncate">{t.name}</span>
+              </span>
+              <span className="font-display text-[clamp(2.75rem,5vw,6rem)] leading-none font-extrabold tabular">
+                {format(t.score)}
+                {t.bonus ? <span className="block text-[0.3em] font-bold text-text-2">+{formatNumber(t.bonus)} bonus</span> : null}
+              </span>
+            </li>
+          ))}
+        </ul>
+        <span className="flex h-[clamp(0.9rem,2vh,1.4rem)] gap-1 overflow-hidden rounded-full" aria-hidden>
+          <span className="h-full rounded-l-full transition-[flex-grow] duration-500 ease-[var(--ease-out)]" style={{ flexGrow: leftShare, background: teamFill(teams[0]!.hue) }} />
+          <span className="h-full rounded-r-full transition-[flex-grow] duration-500 ease-[var(--ease-out)]" style={{ flexGrow: 1 - leftShare, background: teamFill(teams[1]!.hue) }} />
+        </span>
+      </div>
+    );
+  }
   return (
     <ul className="flex flex-col gap-2.5" aria-label="Team scores">
       {[...teams]

@@ -31,6 +31,10 @@ import { useAccess } from '../../lib/usePrefs.ts';
 import { useModes } from '../../lib/queries.ts';
 import { SectionBoundary } from '../../ui/SectionBoundary.tsx';
 import { LessonScreen } from '../lessons/room.tsx';
+import { Glim } from '../../art/glim/Glim.tsx';
+import { GREETERS } from './game/stage.tsx';
+import { Backdrop, useBackdrop } from './game/Backdrop.tsx';
+import { PhaseFade } from './game/PhaseFade.tsx';
 
 const nameKey = (code: string) => `ludora.name.${code}`;
 const spaced = (code: string) => `${code.slice(0, 3)} ${code.slice(3)}`;
@@ -114,6 +118,7 @@ export default function RoomPage() {
   const { calm } = useAccess();
   const modes = useModes();
   const threeD = modes.data?.modes.find((m) => m.meta.id === room?.room.modeId)?.meta.stage === '3d';
+  const [backdrop] = useBackdrop();
 
   // A new stage of the room (the game starting, the results, Play again) opens at its top: a player scrolled down
   // to a tall game board would otherwise land in the middle of the results, under the title and the podium.
@@ -127,7 +132,8 @@ export default function RoomPage() {
     return (
       <Stage as="main" className={`${STAGE} items-center justify-center px-4 py-10`}>
         <div className="paper stage-card flex w-full max-w-md flex-col items-center gap-4 px-6 py-7 text-center">
-          <LogoMark size={56} />
+          {/* A Glim says it, not an error icon: these are moments in a game, each with a way on. */}
+          <Glim art={handle.closedReason === 'removed' || handle.phase === 'error' ? GREETERS[1]! : GREETERS[0]!} size={112} />
           <h1 className="font-display text-[2.25rem] font-bold">{handle.phase !== 'closed' ? 'Could not join' : handle.closedReason === 'removed' ? 'Removed from the game' : handle.closedReason === 'declined' ? 'Not let in' : 'This room has closed'}</h1>
           <p className="text-text-2">{msg}</p>
           <div className="flex flex-wrap justify-center gap-2">
@@ -146,7 +152,10 @@ export default function RoomPage() {
     return (
       <Stage as="main" className={`${STAGE} items-center justify-center px-4 py-10`}>
         <div className="paper stage-card flex w-full max-w-md flex-col items-center gap-3 px-6 py-7 text-center" role="status">
-          <Hourglass className="size-10 text-lantern" aria-hidden />
+          <span className="relative">
+            <Glim art={GREETERS[2]!} size={112} pose="wave" />
+            <Hourglass className="absolute -right-1 bottom-1 size-9 rounded-full bg-lantern p-1.5 text-on-accent" aria-hidden />
+          </span>
           <h1 className="font-display text-[2.25rem] leading-tight font-bold">Waiting to be let in</h1>
           <p className="text-text-2">The host lets each player in. Keep this page open; you will join as soon as they do.</p>
           <Link to="/" className={buttonClass('ghost', 'lg')}>
@@ -183,9 +192,13 @@ export default function RoomPage() {
   const askFirst = isHost ? (live || othersHere) && !room.room.solo : live && !room.room.solo;
   // The lobby and results screens carry their own main heading; during play the room's title is the page's one heading.
   const Title = live ? 'h1' : 'p';
+  // The big screen's backdrop shows in the lobby and between questions; while a question is up the picture belongs to the game.
+  const syncPhase = (room.game as { sync?: { phase?: string } } | null)?.sync?.phase;
+  const between = status === 'lobby' || (live && (syncPhase === 'intro' || syncPhase === 'leaderboard'));
 
   return (
     <Stage className={STAGE}>
+      {isHost && !room.room.solo ? <Backdrop id={backdrop} on={between} /> : null}
       <SoundRoleContext.Provider value={soundScene}>
       <Announcer>
       <HostToolsIf on={isHost && !room.room.solo} room={room} handle={handle}>
@@ -297,6 +310,7 @@ export default function RoomPage() {
       />
       <main id="game" className="safe-x flex flex-1 flex-col px-3 pt-4 pb-[max(1.5rem,env(safe-area-inset-bottom))] [--safe-pad:0.75rem] sm:px-6 sm:[--safe-pad:1.5rem] lg:px-10 lg:pt-6 lg:[--safe-pad:2.5rem]">
         <SectionBoundary name="the game screen" resetKey={status}>
+        <PhaseFade phase={stage ?? 'none'}>
         {/* Lessons: a step that is not a game (an info slide, a discussion, the end) shows instead of the lobby. */}
         {status === 'lobby' && room.lesson?.screen ? <LessonScreen room={room} handle={handle} isHost={isHost} /> : null}
         {status === 'lobby' && !room.lesson?.screen ? isHost ? <HostLobby room={room} handle={handle} /> : <PlayerLobby room={room} handle={handle} /> : null}
@@ -311,6 +325,7 @@ export default function RoomPage() {
           </Online.Provider>
         ) : null}
         {status === 'ended' && room.results ? <Results room={room} handle={handle} isHost={isHost} guest={!me.data?.user || me.data.user.isGuest} /> : null}
+        </PhaseFade>
         </SectionBoundary>
       </main>
       {!isHost && !room.room.solo && live && room.room.options.reactions && !calm ? (

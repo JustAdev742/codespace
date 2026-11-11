@@ -9,6 +9,8 @@ import { myAnswerWords, useMyAnswer } from './answerMemory.tsx';
 import { useSfx, useSoundRole } from '../../../lib/sound/react.tsx';
 import { MathText } from '../../sets/math/MathText.tsx';
 import { mathToWords } from '../../sets/math/parse.ts';
+import { useCountUp } from './countUp.ts';
+import { motionOK } from './stage.tsx';
 
 /** The big screen's choice grid measures its own box, so it lays out for the room it has (full width, or beside a side panel). */
 function HostChoices({ host, children }: { host: boolean; children: ReactNode }) {
@@ -270,6 +272,16 @@ export function RevealAnswer({ q, reveal, mine, distribution, compact, size }: {
   );
 }
 
+/** The points just won, on a slanted plate, counting up as they land. Screen readers hear the result line instead. */
+function PointsPlate({ points }: { points: number }) {
+  const shown = useCountUp(points, 700, 0);
+  return (
+    <span className="plate text-[2.1rem] tabular" aria-hidden>
+      <span>+{shown.toLocaleString('en-GB')}</span>
+    </span>
+  );
+}
+
 /**
  * The player's own result: "Correct" with the points on a plate as the hero
  * number, "Partly right (60%)", "Incorrect", or "Time's up" when the player
@@ -292,19 +304,25 @@ export function ResultBanner({ correct, partial, points, text, answer, missed = 
   const own = correct && effect && effect.kind === 'effect' ? effect : null;
   const showAnswer = !correct && answer;
   return (
-    <div className={`lift relative isolate flex flex-wrap items-center gap-x-3 gap-y-1.5 rounded-[var(--radius-l)] px-4 py-3 text-on-accent ${correct ? 'bg-glim' : part ? 'bg-lantern' : 'bg-ember'}`} style={{ animation: 'pop-in 200ms var(--ease-out)' }}>
+    <div className={`lift relative isolate flex flex-col overflow-visible rounded-[var(--radius-l)] text-on-accent ${correct ? 'bg-glim' : part ? 'bg-lantern' : 'bg-ember'}`} style={motionOK() ? { animation: 'pop-in 200ms var(--ease-out)' } : undefined}>
       {correct ? <Burst style={own?.style ?? 'festival'} hue={own?.hue ?? 42} size={300} /> : null}
-      <span className="grid size-10 shrink-0 place-items-center rounded-full bg-ink/85 text-white" aria-hidden>
-        {correct || part ? <Check className="size-6" strokeWidth={3.2} /> : <X className="size-6" strokeWidth={3.2} />}
-      </span>
-      <span className={`min-w-0 flex-1 font-display leading-none font-extrabold italic ${part ? 'text-[1.7rem]' : 'text-[2.1rem]'}`}>{verdict}</span>
-      {points ? (
-        <span className="plate text-[2.1rem] tabular">
-          <span>+{points.toLocaleString('en-GB')}</span>
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 px-4 py-3">
+        <span className="grid size-10 shrink-0 place-items-center rounded-full bg-ink/85 text-white" aria-hidden>
+          {correct || part ? <Check className="size-6" strokeWidth={3.2} /> : <X className="size-6" strokeWidth={3.2} />}
         </span>
+        <span className={`min-w-0 flex-1 font-display leading-none font-extrabold italic ${part ? 'text-[1.7rem]' : 'text-[2.1rem]'}`}>{verdict}</span>
+        {points ? <PointsPlate points={points} /> : null}
+        {text ? <span className="basis-full pl-[3.25rem] text-base leading-snug font-bold">{text}</span> : null}
+      </div>
+      {/* A miss is told kindly: the right answer is the biggest thing in it, on white, with a check. */}
+      {showAnswer ? (
+        <p className="paper m-1.5 mt-0 flex items-center gap-2.5 rounded-[calc(var(--radius-l)-4px)] px-3.5 py-2.5 text-lg leading-snug font-bold break-words">
+          <span className="grid size-7 shrink-0 place-items-center rounded-full bg-glim text-on-accent" aria-hidden>
+            <Check className="size-4" strokeWidth={3.2} />
+          </span>
+          <span className="min-w-0">Answer: {answer}</span>
+        </p>
       ) : null}
-      {showAnswer ? <span className="basis-full pl-[3.25rem] text-lg leading-snug font-bold break-words">Answer: {answer}</span> : null}
-      {text ? <span className="basis-full pl-[3.25rem] text-base leading-snug font-bold">{text}</span> : null}
     </div>
   );
 }

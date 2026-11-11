@@ -77,7 +77,8 @@ async function playToResults(page: Page) {
 /** The host moves a host-paced game on whenever there is a Next to press, until the results. */
 async function hostToResults(page: Page) {
   const results = page.getByRole('heading', { name: /^(Game over|Victory|Defeat)$/, level: 1 });
-  const next = page.getByRole('button', { name: /^Next( question)?( \(N\))?$/ });
+  // The host's button reads Next, Next question or, after the last question, Next: results.
+  const next = page.getByRole('button', { name: /^Next( question|: results)?( \(N\))?$/ });
   page.setDefaultTimeout(6_000);
   try {
     for (let i = 0; i < 120; i++) {

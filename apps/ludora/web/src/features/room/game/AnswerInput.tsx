@@ -7,6 +7,7 @@ import { MathText } from '../../sets/math/MathText.tsx';
 import { useAnswerMemory, useRememberingSubmit } from './answerMemory.tsx';
 import { useOnline } from './online.tsx';
 import { playSfx, useSoundPacing, useSoundRole } from '../../../lib/sound/react.tsx';
+import { motionOK } from './stage.tsx';
 
 /*
  * Answer controls for every question type. Choices always carry a shape and
@@ -64,7 +65,7 @@ const SIZE: Record<TileSize, { tile: string; stack: string; text: string; long: 
 };
 
 /** Taller projector tiles when there are only two rows of them, so they fill the screen (not on a host screen opened on a phone). */
-const TALL = 'min-h-[clamp(5.5rem,15.5vh,11.5rem)]! max-sm:min-h-[4.5rem]!';
+const TALL = 'min-h-[clamp(5.5rem,19vh,13rem)]! max-sm:min-h-[4.5rem]!';
 /** Taller two-up phone tiles when there are four or fewer: bigger targets that still fit above the fold. */
 const TALL_STACK = 'min-h-[clamp(7rem,18vh,10rem)]!';
 /** Shorter two-up phone tiles for five or six answers, so the last row stays above the fold. */
@@ -141,12 +142,13 @@ export function ChoiceTile({
       className={`relative flex w-full text-left [--press:5px] disabled:cursor-default ${layout === 'stack' ? `flex-col items-start justify-between ${s.stack} ${tall ? TALL_STACK : dense ? DENSE_STACK : ''}` : `items-center ${s.tile} ${tall ? TALL : ''}`} ${lit ? 'piece text-on-accent' : 'piece-off'} ${
         correct ? 'ring-[3px] ring-glim ring-offset-[3px] ring-offset-[color:var(--stage-3)]' : ''
       }`}
-      style={lit ? { backgroundColor: bg } : undefined}
+      // A chosen tile locks in with a firm press and a small rebound (still with reduced motion).
+      style={lit ? { backgroundColor: bg, ...(selected && onClick && motionOK() ? { animation: 'tile-lock 260ms var(--ease-out)' } : {}) } : undefined}
       data-tile={index % TILE_BG.length}
       aria-keyshortcuts={keyHint ? `${index + 1} ${ANSWER_LETTERS[index] ?? ''}`.trim() : undefined}
     >
       {/* On a lit tile the letter and shape sit straight on its colour; on a smoked one they keep a chip of it. */}
-      <span className={`flex shrink-0 items-center rounded-[var(--radius-s)] font-display leading-none font-extrabold text-on-accent ${s.badge} ${lit ? 'bg-black/[0.07]' : ''}`} style={lit ? undefined : { background: bg }}>
+      <span className={`flex shrink-0 items-center rounded-[var(--radius-s)] font-display leading-none font-extrabold text-on-accent ${s.badge} ${lit ? 'bg-white/30 shadow-[inset_0_-2px_0_rgb(0_0_0/0.12)]' : ''}`} style={lit ? undefined : { background: bg }}>
         <AnswerShape index={index} size={s.shape} />
         <span>{ANSWER_LETTERS[index]}</span>
       </span>{' '}

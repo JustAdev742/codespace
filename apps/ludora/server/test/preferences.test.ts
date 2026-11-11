@@ -54,3 +54,15 @@ describe('PATCH /api/me/preferences', () => {
     expect((await client.patch('/api/me/preferences', { theme: 'neon' })).status).toBe(400);
   });
 });
+
+describe('the big-screen backdrop', () => {
+  it('follows the teacher: saved to the account, kept by other changes, and only a known scene', async () => {
+    expect(readPreferences({}).stageBackdrop).toBe('floodlights');
+    const { client } = await registered(t.app);
+    expect((await client.patch('/api/me/preferences', { stageBackdrop: 'harbour' })).status).toBe(200);
+    expect((await client.patch('/api/me/preferences', { sound: false })).status).toBe(200);
+    expect((await client.get('/api/auth/me')).body.user.preferences.stageBackdrop).toBe('harbour');
+    expect((await client.patch('/api/me/preferences', { stageBackdrop: 'https://example.com/picture.png' })).status).toBe(400);
+    expect((await client.get('/api/auth/me')).body.user.preferences.stageBackdrop).toBe('harbour');
+  });
+});

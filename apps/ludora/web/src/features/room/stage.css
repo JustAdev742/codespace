@@ -74,3 +74,159 @@
     transform: translateY(-8%);
   }
 }
+
+/*
+ * Phase changes on a game screen: the new screen settles in from just below,
+ * the one transition every phase uses (GameStage's PhaseFade). Opacity starts
+ * at 0.01 short of nothing for a single frame, so a contrast check never
+ * catches text half-faded once the 200 ms are over.
+ */
+@keyframes stage-enter {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* "Question 3": the plate sweeps in from the left, holds, and leaves to the right (QuestionSting). */
+@keyframes sting-sweep {
+  0% {
+    transform: translateX(-60vw) skewX(-10deg);
+  }
+  22%,
+  72% {
+    transform: translateX(0) skewX(-10deg);
+  }
+  100% {
+    transform: translateX(60vw) skewX(-10deg);
+    visibility: hidden;
+  }
+}
+
+/* An answer tile locking in: a firm press and a small rebound. */
+@keyframes tile-lock {
+  0% {
+    transform: translateY(2px) scale(0.97);
+  }
+  55% {
+    transform: translateY(2px) scale(1.015);
+  }
+  100% {
+    transform: translateY(2px);
+  }
+}
+
+/* The last seconds of a timer: each second lands on the disc. */
+@keyframes timer-beat {
+  from {
+    transform: scale(1.22);
+  }
+  to {
+    transform: none;
+  }
+}
+
+/* A climber's arrow on the leaderboard lifts into place once the rows have moved. */
+@keyframes climb-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* Backdrops (game/Backdrop.tsx): one slow layer per scene, transform and opacity only. */
+@keyframes bd-sweep {
+  from {
+    transform: rotate(-4deg);
+  }
+  to {
+    transform: rotate(5deg);
+  }
+}
+@keyframes bd-sweep-back {
+  from {
+    transform: rotate(4deg);
+  }
+  to {
+    transform: rotate(-5deg);
+  }
+}
+@keyframes bd-drift {
+  from {
+    transform: translateX(-70px);
+  }
+  to {
+    transform: translateX(90px);
+  }
+}
+@keyframes bd-beam-turn {
+  from {
+    transform: rotate(-7deg);
+  }
+  to {
+    transform: rotate(9deg);
+  }
+}
+@keyframes bd-shimmer {
+  from {
+    opacity: 0.55;
+    transform: translateX(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(8px);
+  }
+}
+@keyframes bd-ribbon-sway {
+  from {
+    transform: translateX(-50px) skewX(-4deg);
+  }
+  to {
+    transform: translateX(50px) skewX(4deg);
+  }
+}
+@keyframes bd-window {
+  0% {
+    opacity: 0.34;
+  }
+  60% {
+    opacity: 0.06;
+  }
+}
+/* Still with reduced motion, data saver or calm mode: the scene stays, the movement goes. */
+@media (prefers-reduced-motion: reduce) {
+  :root:not([data-motion='on']) .backdrop * {
+    animation: none !important;
+  }
+}
+:root[data-motion='off'] .backdrop *,
+:root[data-saver='on'] .backdrop *,
+:root[data-calm='on'] .backdrop * {
+  animation: none !important;
+}
+/* Less transparency: the scene's soft light falls away and the plain stage shows. */
+:root[data-transparency='less'] [data-backdrop],
+:root[data-contrast='max'] [data-backdrop] {
+  display: none;
+}
+@keyframes sting-band {
+  0% {
+    opacity: 0;
+  }
+  16%,
+  76% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    visibility: hidden;
+  }
+}

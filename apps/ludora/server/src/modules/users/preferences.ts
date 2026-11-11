@@ -3,6 +3,7 @@ import { DEFAULT_SCHOOL_DRESS, schoolDressSchema } from '@ludora/shared';
 
 const theme = z.enum(['system', 'light', 'dark']);
 const reducedMotion = z.enum(['system', 'on', 'off']);
+const stageBackdrop = z.enum(['floodlights', 'hills', 'harbour', 'aurora', 'rooftops', 'forest', 'plain']);
 const textSize = z.enum(['normal', 'large', 'larger']);
 const profileVisibility = z.enum(['public', 'friends', 'private']);
 const allowFriendRequests = z.enum(['everyone', 'friend_code', 'nobody']);
@@ -94,6 +95,8 @@ export const preferencesSchema = z.object({
     })
     .default(DEFAULT_SCHOOL_DRESS),
   access: accessSchema.default(ACCESS_DEFAULTS),
+  /** The host's big-screen backdrop for the lobby and between questions (web/src/features/room/game/Backdrop.tsx). */
+  stageBackdrop: stageBackdrop.default('floodlights'),
 });
 export type Preferences = z.infer<typeof preferencesSchema>;
 
@@ -113,6 +116,7 @@ export const preferencesPatchSchema = z.object({
   privacy: z.object({ profileVisibility, allowFriendRequests, showOnLeaderboards: z.boolean() }).partial().optional(),
   school: schoolDressSchema.partial().optional(),
   access: accessPatchSchema.optional(),
+  stageBackdrop: stageBackdrop.optional(),
 });
 
 /** Parse stored preferences, filling anything missing with defaults. Never throws. */

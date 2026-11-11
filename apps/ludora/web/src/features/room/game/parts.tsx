@@ -1,11 +1,15 @@
 import type { ReactNode } from 'react';
-import { Flame } from 'lucide-react';
+import { Flame, Lock } from 'lucide-react';
+import { AnswerShape, ANSWER_LETTERS } from '../../../art/icons.tsx';
+import { TILE_BG } from './AnswerInput.tsx';
 import type { RoomPlayerView, RoomView } from '@ludora/shared';
 import { useNow } from '../../../lib/useNow.ts';
 import { formatNumber } from '../../../lib/format.ts';
-import { PlayerGlim, StagePanel } from './stage.tsx';
+import { PlayerGlim, StagePanel, motionOK } from './stage.tsx';
 import { useAnnounce } from './announce.tsx';
 import { useLastAnswerWords } from './answerMemory.tsx';
+import { useModeFill } from './modeFill.ts';
+import { useCountUp } from './countUp.ts';
 
 /*
  * Pieces shared by the round-based screens: the intro, the HUD row with the
@@ -14,13 +18,14 @@ import { useLastAnswerWords } from './answerMemory.tsx';
  */
 
 /** Seconds until a moment on the game clock, as one big italic number on a gold disc. */
-export function BigCountdown({ until, gameNow, big = false, label = 'Starting in' }: { until: number | null; gameNow: () => number; big?: boolean; label?: string }) {
+export function BigCountdown({ until, gameNow, big = false, label = 'Starting in', fill }: { until: number | null; gameNow: () => number; big?: boolean; label?: string; fill?: string }) {
   useNow(250, until !== null);
   if (until === null) return null;
   const secs = Math.max(0, Math.ceil((until - gameNow()) / 1000));
   return (
     <span
       className={`lift grid place-items-center rounded-full bg-lantern font-display leading-none font-extrabold text-on-accent italic tabular ${big ? 'size-[clamp(6rem,15vh,10rem)] text-[clamp(3.5rem,9vh,6.25rem)]' : 'size-24 text-[3.5rem]'}`}
+      style={fill ? { background: fill } : undefined}
       role="timer"
       aria-label={`${label} ${secs} seconds`}
     >
@@ -54,19 +59,21 @@ export function LineUp({ players, big = false }: { players: RoomPlayerView[]; bi
  */
 export function IntroScreen({ kicker, title, children, until, gameNow, big = false, art, room, lineUp = big }: { kicker?: ReactNode; title: ReactNode; children?: ReactNode; until: number | null; gameNow: () => number; big?: boolean; art?: ReactNode; room: RoomView; lineUp?: boolean }) {
   useAnnounce(`The game is starting: ${typeof title === 'string' ? title : room.room.title}. The first question is coming up.`, 'intro');
+  // The mode's own colour carries the moment: on the "Get ready" plate and the countdown.
+  const fill = useModeFill(room.room.modeId);
   return (
     <div className="flex flex-1 flex-col items-center justify-center gap-[clamp(1rem,3vh,2rem)] text-center" style={{ animation: 'rise-fade 220ms var(--ease-out)' }}>
       {art}
       <div className="flex flex-col items-center gap-[clamp(0.6rem,1.6vh,1rem)]">
         {kicker ? (
-          <p className={`plate plate-gold ${big ? 'text-[clamp(1.5rem,2.6vw,3rem)]' : 'text-2xl'}`}>
+          <p className={`plate text-on-accent ${big ? 'text-[clamp(1.5rem,2.6vw,3rem)]' : 'text-2xl'}`} style={{ background: fill }}>
             <span>{kicker}</span>
           </p>
         ) : null}
         <h2 className={`font-display leading-[0.95] font-extrabold ${big ? 'text-[clamp(3.75rem,8vw,9.5rem)]' : 'text-[3.25rem]'}`}>{title}</h2>
       </div>
       {children ? <div className={`max-w-[46ch] font-semibold text-text-2 ${big ? 'text-[clamp(1.2rem,1.9vw,2.2rem)]' : 'text-lg'}`}>{children}</div> : null}
-      <BigCountdown until={until} gameNow={gameNow} big={big} label="First question in" />
+      <BigCountdown until={until} gameNow={gameNow} big={big} label="First question in" fill={fill} />
       {lineUp ? <LineUp players={room.players} big={big} /> : null}
     </div>
   );
@@ -109,10 +116,16 @@ export function RoundHeader({ round, total, children, big = false, label = 'Ques
  * beside it. The number is the hero; `label` is what a screen reader hears first.
  */
 export function HudScore({ value, unit = 'pts', big = false, label = 'Score', className = '' }: { value: number; unit?: string; big?: boolean; label?: string; className?: string }) {
+  const shown = useCountUp(value);
   return (
     <span className={`inline-flex items-baseline gap-1 leading-none whitespace-nowrap ${className}`}>
-      <span className="sr-only">{label}: </span>
-      <span className={`font-display font-extrabold tabular ${big ? 'text-[clamp(1.75rem,2.8vw,3.25rem)]' : 'text-[1.75rem]'}`}>{formatNumber(value)}</span>
+      <span className="sr-only">
+        {label}: {formatNumber(value)}
+      </span>
+      {/* The score counts up as points land; screen readers get the final number above. */}
+      <span className={`font-display font-extrabold tabular ${big ? 'text-[clamp(1.75rem,2.8vw,3.25rem)]' : 'text-[1.75rem]'}`} aria-hidden>
+        {formatNumber(shown)}
+      </span>
       <span className={`font-bold text-text-2 ${big ? 'text-[0.9em]' : 'text-sm'}`}>{unit}</span>
     </span>
   );
@@ -145,22 +158,54 @@ export function StreakChip({ streak, children, className = '' }: { streak: numbe
   );
 }
 
-/** The wait after answering: the player's Glim and how many are still thinking. */
+/** Which tile an answer in words ("B, Mars", "True") was, so the locked-in panel can show it in its colour and shape. */
+export function tileOfWords(words: string | null): { index: number; text: string } | null {
+  if (!words) return null;
+  if (words === 'True') return { index: 0, text: 'True' };
+  if (words === 'False') return { index: 1, text: 'False' };
+  const m = /^([A-F]), (.+)$/.exec(words);
+  return m ? { index: ANSWER_LETTERS.indexOf(m[1] as (typeof ANSWER_LETTERS)[number]), text: m[2]! } : null;
+}
+
+/**
+ * The wait after answering: unmistakably locked in. A choice shows as its own tile (colour, shape and
+ * letter) under a lock, a typed answer as its words; then the player's Glim and how many are still thinking.
+ */
 export function LockedIn({ answered, eligible, avatar, seed, title = 'Answer locked in' }: { answered: number; eligible: number; avatar: RoomPlayerView['avatar'] | undefined; seed: string; title?: string }) {
   // Said once; the count is there to read, but re-reading it on every answer would drown a big class.
   const mine = useLastAnswerWords();
   useAnnounce(`${title}.${mine ? ` Your answer: ${mine}.` : ''}`, title);
+  const tile = tileOfWords(mine);
+  const share = eligible ? Math.min(1, answered / eligible) : 0;
   return (
-    <StagePanel className="flex items-center gap-4 px-4 py-3.5" as="div">
-      <PlayerGlim avatar={avatar} seed={seed} size={72} className="shrink-0" />
-      <div className="min-w-0">
-        <p className="font-display text-[1.75rem] leading-tight font-extrabold">{title}</p>
-        {mine ? <p className="font-bold break-words text-text">Your answer: {mine}</p> : null}
-        <p className="font-semibold text-text-2 tabular">
-          {answered} of {eligible} have answered.
-        </p>
-      </div>
-    </StagePanel>
+    <div className="flex flex-col gap-3" style={motionOK() ? { animation: 'pop-in 200ms var(--ease-out)' } : undefined}>
+      {tile ? (
+        <div className="piece relative flex items-center gap-3 rounded-[14px] px-4 py-3.5 text-on-accent [--press:5px]" style={{ backgroundColor: TILE_BG[tile.index % TILE_BG.length] }} data-tile={tile.index % TILE_BG.length} data-pressed="true" aria-hidden>
+          <span className="flex shrink-0 items-center gap-1.5 rounded-[var(--radius-s)] bg-white/30 px-1.5 py-1 font-display text-[1.35rem] leading-none font-extrabold shadow-[inset_0_-2px_0_rgb(0_0_0/0.12)]">
+            <AnswerShape index={tile.index} size={22} />
+            {ANSWER_LETTERS[tile.index]}
+          </span>
+          <span className="min-w-0 flex-1 text-xl leading-tight font-bold break-words">{tile.text}</span>
+          <span className="grid size-10 shrink-0 place-items-center rounded-full bg-ink text-white">
+            <Lock className="size-5" strokeWidth={2.6} />
+          </span>
+        </div>
+      ) : null}
+      <StagePanel className="flex items-center gap-4 px-4 py-3.5" as="div">
+        <PlayerGlim avatar={avatar} seed={seed} size={72} className="shrink-0" />
+        <div className="min-w-0 flex-1">
+          <p className="font-display text-[1.75rem] leading-tight font-extrabold">{title}</p>
+          {mine && !tile ? <p className="font-bold break-words text-text">Your answer: {mine}</p> : null}
+          {mine && tile ? <p className="sr-only">Your answer: {mine}</p> : null}
+          <p className="font-semibold text-text-2 tabular">
+            {answered} of {eligible} have answered.
+          </p>
+          <span className="progress-groove mt-1.5 block h-2 overflow-hidden rounded-full" aria-hidden>
+            <span className="progress-fill block h-full origin-left rounded-full bg-glim transition-transform duration-300 ease-[var(--ease-out)]" style={{ transform: `scaleX(${share})` }} />
+          </span>
+        </div>
+      </StagePanel>
+    </div>
   );
 }
 

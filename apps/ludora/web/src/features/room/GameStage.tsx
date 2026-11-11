@@ -12,6 +12,10 @@ import { ChaosLayer } from '../extras/ExtrasLayer.tsx';
 import { HostMenu } from './host/HostTools.tsx';
 import { DoubleBanner, NudgeBanner } from './host/overlays.tsx';
 import { withKey } from './host/tools.ts';
+import { PhaseFade } from './game/PhaseFade.tsx';
+import { PlayerGlim, motionOK } from './game/stage.tsx';
+import { useModeFill } from './game/modeFill.ts';
+import { useAccess } from '../../lib/usePrefs.ts';
 
 /*
  * The parts of a game room that do not care where the room runs: the stage,
@@ -50,6 +54,9 @@ export function HostControls({ room, handle }: { room: RoomView; handle: RoomHan
   const status = room.room.status;
   const game = room.game as { sync?: { phaseEndsAt: number | null; phase: string } } | null;
   const waitingForHost = Boolean(game?.sync && game.sync.phaseEndsAt === null && game.sync.phase !== 'done');
+  // The one next action says where it goes: from the standings, the next question or the results.
+  const sync = game?.sync as { phase: string; round?: number; total?: number } | undefined;
+  const nextLabel = sync?.phase === 'leaderboard' && sync.total !== undefined && sync.round !== undefined ? (sync.round + 1 < sync.total ? 'Next question' : 'Next: results') : 'Next';
   const run = async (cmd: Parameters<RoomHandle['host']>[0]) => {
     const ack = await handle.host(cmd);
     if (!ack.ok) toast.error(ack.error.message);
@@ -60,7 +67,7 @@ export function HostControls({ room, handle }: { room: RoomView; handle: RoomHan
         // The one button that moves a host-paced game on: big and gold when the room is waiting for it.
         <Button variant={waitingForHost ? 'primary' : 'secondary'} size={waitingForHost ? 'lg' : 'sm'} className={waitingForHost ? '' : WIDE} icon={<FastForward className="size-4" aria-hidden />} onClick={() => run({ cmd: 'next' })} disabled={status !== 'running'} title={withKey(waitingForHost ? 'Next' : 'Skip ahead', 'N')} aria-keyshortcuts="N">
           {/* On a phone the host's header is full: Skip ahead keeps its label for screen readers, like Pause and End game. */}
-          {waitingForHost ? 'Next' : <span className="max-sm:sr-only">Skip ahead</span>}
+          {waitingForHost ? nextLabel : <span className="max-sm:sr-only">Skip ahead</span>}
         </Button>
       ) : null}
       {status === 'paused' ? (
@@ -164,6 +171,35 @@ function PauseNews({ paused, hostConnected }: { paused: boolean; hostConnected: 
   return null;
 }
 
+/**
+ * The beat before each question in round-based modes: "Question 3 of 10" sweeps across a dark band in the
+ * mode's colour, holds for a moment and is gone, like a broadcast's caption. Decoration only (the round's own
+ * header says the same and is read out); left out with reduced motion or calm mode, and for anyone who arrives
+ * mid-question.
+ */
+function QuestionSting({ room, gameNow, big }: { room: RoomView; gameNow: () => number; big: boolean }) {
+  const sync = (room.game as { sync?: { phase?: string; round?: number; total?: number; question?: { shownAt?: number } | null } } | null)?.sync;
+  const fill = useModeFill(room.room.modeId);
+  const { calm } = useAccess();
+  const fresh = sync?.phase === 'question' && sync.question?.shownAt !== undefined && gameNow() - sync.question.shownAt < 1200;
+  // Decided once per question, so a later update during the question never brings it back.
+  const shown = useRef(new Set<number>());
+  if (!sync || sync.phase !== 'question' || calm || !motionOK()) return null;
+  const round = sync.round ?? 0;
+  if (!fresh && !shown.current.has(round)) return null;
+  shown.current.add(round);
+  return (
+    <div key={round} className="pointer-events-none fixed inset-x-0 top-1/2 z-30 flex -translate-y-1/2 justify-center overflow-hidden bg-[color-mix(in_srgb,var(--stage-4)_88%,transparent)] py-[clamp(1rem,4vh,2.5rem)]" style={{ animation: 'sting-band 1100ms linear both' }} aria-hidden>
+      <p className={`plate text-on-accent tabular ${big ? 'text-[clamp(3rem,7vw,7.5rem)]' : 'text-[2.75rem]'}`} style={{ background: fill, animation: 'sting-sweep 1100ms cubic-bezier(0.22, 1, 0.36, 1) both' }}>
+        <span>
+          Question {round + 1}
+          <span className="font-bold opacity-80"> of {sync.total}</span>
+        </span>
+      </p>
+    </div>
+  );
+}
+
 /** The mode's screen for the host or a player. Put it inside an AnswerMemory for the device it shows on. */
 export function GameStage({ room, handle, isHost }: { room: RoomView; handle: RoomHandle; isHost: boolean }) {
   const screens = MODE_SCREENS[room.room.modeId];
@@ -173,14 +209,20 @@ export function GameStage({ room, handle, isHost }: { room: RoomView; handle: Ro
     return <p className="text-text-2">This screen could not be drawn. The game is still running; it will catch up on the next update.</p>;
   }
   const Screen = isHost ? screens.Host : screens.Player;
+  // Round-based modes fade each new phase in; the reveal is left alone, since it lands on the question already showing.
+  const sync = (room.game as { sync?: { phase?: string; round?: number } } | null)?.sync;
+  const phase = sync ? `${sync.phase === 'reveal' ? 'question' : sync.phase}|${sync.round ?? 0}` : 'play';
   return (
     <div className="relative flex flex-1 flex-col">
       <PauseNews paused={paused && !room.room.breakEndsAt} hostConnected={room.room.hostConnected} />
       <DoubleBanner room={room} big={isHost} />
+      <QuestionSting room={room} gameNow={handle.gameNow} big={isHost} />
       {isHost ? null : <NudgeBanner nudgedAt={handle.nudgedAt} />}
       <ChaosLayer room={room} gameNow={handle.gameNow}>
         <Suspense fallback={<Spinner />}>
-          <Screen view={room.game} room={room} act={handle.act} fire={handle.fire} pulse={handle.pulse} gameNow={handle.gameNow} paused={paused} />
+          <PhaseFade phase={phase}>
+            <Screen view={room.game} room={room} act={handle.act} fire={handle.fire} pulse={handle.pulse} gameNow={handle.gameNow} paused={paused} />
+          </PhaseFade>
         </Suspense>
       </ChaosLayer>
       {paused && isHost && !room.room.breakEndsAt ? (
@@ -194,7 +236,11 @@ export function GameStage({ room, handle, isHost }: { room: RoomView; handle: Ro
       {paused && !isHost && !room.room.breakEndsAt ? (
         <div className="absolute -inset-2 z-20 grid place-items-center rounded-[var(--radius-l)] bg-[color-mix(in_srgb,var(--stage-4)_72%,transparent)] backdrop-blur-sm">
           <div className="paper stage-card mx-4 flex max-w-xs flex-col items-center gap-1 px-6 py-5 text-center">
-            <Pause className="mb-1 size-10" aria-hidden />
+            {/* The player's own Glim waits with them. */}
+            <span className="relative mb-1">
+              <PlayerGlim avatar={room.players.find((p) => p.id === room.me.playerId)?.avatar} seed={room.me.playerId ?? 'you'} size={96} />
+              <Pause className="absolute -right-2 bottom-0 size-9 rounded-full bg-ink p-2 text-white" aria-hidden />
+            </span>
             <p className="font-display text-[2.25rem] leading-tight font-extrabold">Paused</p>
             <p className="text-text-2">{room.room.hostConnected ? 'The host will be back in a moment.' : 'Waiting for the host to reconnect.'}</p>
           </div>

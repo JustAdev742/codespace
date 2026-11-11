@@ -73,7 +73,8 @@ async function playToEnd(host: Page, phones: Page[]) {
           if (await tf.isEnabled().catch(() => false)) await tf.click().catch(() => {});
         }
       }
-      const next = host.getByRole('button', { name: 'Next', exact: true });
+      // The host's next action names where it goes: Next, Next question or Next: results (docs/features/stage.md).
+      const next = host.getByRole('button', { name: /^Next( question|: results)?$/ });
       if (await next.isVisible().catch(() => false)) await next.click().catch(() => {});
       await host.waitForTimeout(400);
     }

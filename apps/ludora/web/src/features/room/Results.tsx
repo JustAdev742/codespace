@@ -1,9 +1,10 @@
-import { Suspense, useState, type CSSProperties } from 'react';
+import { Suspense, useEffect, useState, type CSSProperties } from 'react';
+import { ClassPhotoButton } from './ClassPhoto.tsx';
 import { MODE_SCREENS } from './modes/registry.ts';
 import { GameHouses } from '../school/GameHouses.tsx';
 import { LessonResults, NextStepButton } from '../lessons/room.tsx';
 import { Link, useNavigate } from 'react-router';
-import { BookOpen, ClipboardList, Download, Flame, Home, Rocket, RotateCcw, TrendingUp, Trophy, Zap } from 'lucide-react';
+import { BookOpen, ClipboardList, Download, FastForward, Flame, Home, Rocket, RotateCcw, TrendingUp, Trophy, Zap } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import type { AwardView, Feeling, RewardSummary, RoomView, StandingView } from '@ludora/shared';
@@ -34,9 +35,10 @@ const ORDER = ['order-2', 'order-1', 'order-3'];
  * victory effect bursts as they land. Then everything holds still while the
  * teacher talks. With reduced motion everything is simply there.
  */
-function Podium({ room, big }: { room: RoomView; big: boolean }) {
+function Podium({ room, big, still = false }: { room: RoomView; big: boolean; still?: boolean }) {
   const top = room.results!.standings.slice(0, 3);
-  const moving = motionOK();
+  // `still`: the host skipped the reveal, so every place is simply there.
+  const moving = motionOK() && !still;
   const vars = { '--podium': big ? 'clamp(8.5rem, 27vh, 19rem)' : '8.5rem' } as CSSProperties;
   return (
     <div className="flex w-full flex-col items-center" style={vars}>
@@ -50,7 +52,7 @@ function Podium({ room, big }: { room: RoomView; big: boolean }) {
             <li key={s.playerId} className={`flex min-w-0 flex-col items-center ${ORDER[place]} ${big ? 'w-[clamp(7rem,13vw,16rem)]' : 'w-[6.75rem]'}`}>
               <div className="relative flex w-full flex-col items-center" style={moving ? { animation: `stage-land 220ms var(--ease-out) ${land}ms both` } : undefined}>
                 <PlayerGlim avatar={a} seed={s.playerId} size={first ? 120 : 92} aura={first ? 'legendary' : null} pose={first ? 'cheer' : 'idle'} className={first ? (big ? 'size-[clamp(6rem,17vh,11.5rem)]' : 'size-[6rem]') : big ? 'size-[clamp(4.75rem,12.5vh,8.5rem)]' : 'size-[4.5rem]'} />
-                {first ? <Burst style={a?.victory?.style ?? 'festival'} hue={a?.victory?.hue ?? 42} size={big ? 380 : 250} rise delay={land + 120} count={20} /> : null}
+                {first ? <Burst style={a?.victory?.style ?? 'festival'} hue={a?.victory?.hue ?? 42} size={big ? 380 : 250} rise delay={moving ? land + 120 : 0} count={20} /> : null}
                 {/* The winner's name is on gold; the runners-up on white. */}
                 {big ? (
                   <NameTag tone={first ? 'lantern' : 'paper'} className="mt-1 text-[clamp(1rem,1.6vw,1.75rem)]">
@@ -198,10 +200,10 @@ const AWARD_INFO: Record<AwardView['kind'], { title: string; Icon: typeof Flame 
 };
 
 /** Awards beyond the podium, worked out on the server from the answers. */
-function Awards({ awards, big, me }: { awards: AwardView[]; big: boolean; me: string | null }) {
+function Awards({ awards, big, me, hold = big }: { awards: AwardView[]; big: boolean; me: string | null; hold?: boolean }) {
   if (!awards.length) return null;
   return (
-    <section aria-labelledby="awards-title" style={motionOK() ? { animation: `rise-fade 260ms var(--ease-out) ${big ? AFTER_PODIUM_MS : 0}ms both` } : undefined}>
+    <section aria-labelledby="awards-title" style={motionOK() ? { animation: `rise-fade 260ms var(--ease-out) ${hold ? AFTER_PODIUM_MS : 0}ms both` } : undefined}>
       <h2 id="awards-title" className={`mb-2 font-display font-bold ${big ? 'text-[clamp(1.5rem,2vw,2.25rem)]' : 'text-2xl'}`}>
         Awards
       </h2>
@@ -226,6 +228,56 @@ function Awards({ awards, big, me }: { awards: AwardView[]; big: boolean; me: st
           );
         })}
       </ul>
+    </section>
+  );
+}
+
+/**
+ * The player's own end-of-game card, worth a screenshot: their Glim on a lit spot, their place on the gold
+ * plate, then the numbers that matter (score, accuracy, right answers) and any award they took.
+ */
+function EndCard({ room, mine, awards }: { room: RoomView; mine: StandingView; awards: AwardView[] }) {
+  const accuracy = mine.answered ? Math.round((mine.correct / mine.answered) * 100) : 0;
+  const podiumPlace = mine.rank <= 3;
+  const stats = [
+    { label: 'Result', value: mine.label },
+    { label: 'Accuracy', value: `${accuracy}%` },
+    { label: 'Right', value: `${mine.correct} of ${mine.answered}` },
+  ];
+  return (
+    <section aria-labelledby="end-card-title" className="relative isolate overflow-hidden rounded-[var(--radius-l)] bg-[color-mix(in_srgb,var(--stage-1)_90%,#ffffff)] px-5 pt-5 pb-4 shadow-[0_14px_36px_-12px_rgb(2_5_20/0.7)]" style={motionOK() ? { animation: 'pop-in 220ms var(--ease-out)' } : undefined}>
+      <div className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-40 bg-[radial-gradient(60%_90%_at_50%_0%,rgb(255_194_51/0.28),transparent_70%)]" aria-hidden />
+      <div className="flex items-center gap-4">
+        <PlayerGlim avatar={avatarOf(room.players, mine.playerId)} seed={mine.playerId} size={104} pose={podiumPlace ? 'cheer' : 'idle'} aura={mine.rank === 1 ? 'legendary' : null} className="shrink-0" />
+        <div className="flex min-w-0 flex-col items-start gap-1.5">
+          <h2 id="end-card-title" className="plate plate-gold text-[1.8rem] whitespace-nowrap">
+            <span>You came {ordinal(mine.rank)}</span>
+          </h2>
+          <p className="truncate font-semibold text-text-2">
+            {mine.name}, of {room.results!.standings.length}
+          </p>
+        </div>
+      </div>
+      <dl className="mt-4 grid grid-cols-3 gap-2">
+        {stats.map((st) => (
+          <div key={st.label} className="flex min-w-0 flex-col rounded-[var(--radius-m)] bg-[var(--stage-3)] px-2.5 py-2">
+            <dt className="text-sm font-semibold text-text-2">{st.label}</dt>
+            <dd className="font-display text-[1.6rem] leading-tight font-extrabold break-words tabular">{st.value}</dd>
+          </div>
+        ))}
+      </dl>
+      {awards.length ? (
+        <ul className="mt-3 flex flex-wrap gap-1.5">
+          {awards.map((a) => {
+            const { title, Icon } = AWARD_INFO[a.kind];
+            return (
+              <li key={a.kind} className="inline-flex items-center gap-1.5 rounded-full bg-lantern px-3 py-1 text-sm font-bold text-on-accent">
+                <Icon className="size-4" aria-hidden /> {title}
+              </li>
+            );
+          })}
+        </ul>
+      ) : null}
     </section>
   );
 }
@@ -341,13 +393,21 @@ export function Results({ room, handle, isHost, guest }: { room: RoomView; handl
   };
   const big = isHost;
   const [summary, setSummary] = useState(false);
+  // The podium reveal takes about a second and a half; the host can skip straight to the winner.
+  const [skipped, setSkipped] = useState(false);
+  const [revealing, setRevealing] = useState(() => big && podium && motionOK());
+  useEffect(() => {
+    if (!revealing) return;
+    const t = setTimeout(() => setRevealing(false), AFTER_PODIUM_MS);
+    return () => clearTimeout(t);
+  }, [revealing]);
   const feelings = room.host?.feelings ?? null;
   return (
     <div className={`mx-auto flex w-full flex-1 flex-col ${big ? 'max-w-[112rem] gap-[clamp(1rem,3vh,2rem)]' : 'max-w-3xl gap-6'}`}>
       <div className="flex flex-col items-center text-center">
         <h1 className={`font-display leading-[0.92] font-extrabold ${big ? 'text-[clamp(3.5rem,6.2vw,7.5rem)]' : 'text-[3.5rem]'}`}>{title}</h1>
         <p className={`mt-2 font-semibold text-text-2 ${big ? 'text-[clamp(1.1rem,1.6vw,1.8rem)]' : 'text-lg'}`}>{r.summary}</p>
-        {mine && r.standings.length > 1 && competitive ? (
+        {mine && r.standings.length > 1 && competitive && big ? (
           <p className={`plate plate-gold mt-3 ${big ? 'text-[clamp(1.75rem,2.6vw,3rem)]' : 'text-[2rem]'}`}>
             <span>You came {ordinal(mine.rank)}</span>
           </p>
@@ -357,16 +417,21 @@ export function Results({ room, handle, isHost, guest }: { room: RoomView; handl
       <div className={`grid grid-cols-1 gap-[clamp(1rem,2.5vw,2.5rem)] ${big ? (side ? 'lg:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)] lg:items-start' : 'mx-auto w-full max-w-[48rem]') : ''}`}>
         {/* On the projector the podium stays in view, standing on the bottom of the screen, however long the standings get. */}
         {side ? (
-          <div className={`flex flex-col ${podium ? 'justify-end' : 'justify-center'} ${big ? 'lg:sticky lg:top-[5.5rem] lg:h-[calc(100dvh-19.5rem)] lg:min-h-[22rem]' : ''}`}>
+          <div className={`relative flex flex-col ${podium ? 'justify-end' : 'justify-center'} ${big ? 'lg:sticky lg:top-[5.5rem] lg:h-[calc(100dvh-19.5rem)] lg:min-h-[22rem]' : ''}`}>
             {Ending ? (
               <Suspense fallback={null}>
                 <Ending room={room} big={big} />
               </Suspense>
             ) : podium ? (
-              <Podium room={room} big={big} />
+              <Podium key={skipped ? 'still' : 'reveal'} room={room} big={big} still={skipped} />
             ) : (
               <TeamPhoto room={room} won={r.outcome === 'coop-win'} big={big} />
             )}
+            {revealing && !skipped && !Ending ? (
+              <Button size="sm" variant="ghost" className="absolute top-0 right-0" icon={<FastForward className="size-4" aria-hidden />} onClick={() => setSkipped(true)}>
+                Skip to the winner
+              </Button>
+            ) : null}
           </div>
         ) : null}
         <div className="flex flex-col gap-4">
@@ -386,6 +451,7 @@ export function Results({ room, handle, isHost, guest }: { room: RoomView; handl
               <Button size="lg" className="grow" icon={<Download className="size-5" aria-hidden />} onClick={() => downloadCsv(room)}>
                 Download results (CSV)
               </Button>
+              <ClassPhotoButton room={room} />
               <Link to="/host" className={buttonClass('ghost', 'lg', 'grow')}>
                 Host something else
               </Link>
@@ -399,11 +465,12 @@ export function Results({ room, handle, isHost, guest }: { room: RoomView; handl
             </div>
           ) : (
             <>
+              {mine && r.standings.length > 1 && competitive ? <EndCard room={room} mine={mine} awards={(r.awards ?? []).filter((a) => a.playerId === room.me.playerId)} /> : null}
               <Rewards rewards={room.rewards} guest={guest} />
               {room.room.options.exitTicket && !room.room.solo ? <ExitTicket room={room} handle={handle} /> : null}
             </>
           )}
-          {r.awards?.length ? <Awards awards={r.awards} big={big} me={room.me.playerId} /> : null}
+          {r.awards?.length ? <Awards awards={r.awards} big={big} me={room.me.playerId} hold={big && !skipped} /> : null}
           {r.teamStandings.length && !tableHidden ? (
             <StagePanel as="section" className="p-4" label="Teams">
               <h2 className="mb-3 font-display text-2xl font-bold">Teams</h2>
@@ -414,7 +481,7 @@ export function Results({ room, handle, isHost, guest }: { room: RoomView; handl
           {room.room.solo ? null : <GameHouses gameId={r.gameId} />}
           {/* Lessons: points across the whole lesson so far. */}
           <LessonResults room={room} isHost={isHost} />
-          {tableHidden ? null : <Standings room={room} big={big} hold={big && podium} />}
+          {tableHidden ? null : <Standings room={room} big={big} hold={big && podium && !skipped} />}
           <p className="text-sm font-semibold text-text-2">Played for {duration(r.durationMs)}.</p>
           {isHost ? null : room.room.solo ? (
             // A solo player is their own host: they can go again straight away.
