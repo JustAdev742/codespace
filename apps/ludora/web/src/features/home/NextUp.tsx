@@ -1,11 +1,11 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router';
-import { useQueries, useQuery } from '@tanstack/react-query';
+import { useQueries } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { AlarmClock, BarChart3, ChevronRight, ClipboardList, PencilLine, Play, Plus, Presentation } from 'lucide-react';
+import { AlarmClock, ChevronRight, ClipboardList, PencilLine, Play, Plus, Presentation } from 'lucide-react';
 import { api } from '../../lib/api.ts';
 import { useMe } from '../../lib/session.ts';
-import { plural, timeAgo } from '../../lib/format.ts';
+import { plural } from '../../lib/format.ts';
 import { useNow } from '../../lib/useNow.ts';
 import { Badge, ErrorNotice, Panel, Skeleton } from '../../ui/primitives.tsx';
 import { Button } from '../../ui/Button.tsx';
@@ -13,6 +13,7 @@ import { classKeys, useClassList, type ClassDetail, type StudentAssignment } fro
 import { ClassIcon, DueLabel, JoinCode } from '../classes/classUi.tsx';
 import { JoinPanel } from '../classes/Classes.tsx';
 import { errorText } from '../reports/reportUi.tsx';
+import { ThisWeek } from '../reports/ThisWeek.tsx';
 import { studentWork } from '../classes/classLogic.ts';
 
 /*
@@ -21,14 +22,6 @@ import { studentWork } from '../classes/classLogic.ts';
  * gets the assignments waiting for them, or a way to join their class. Players
  * who are neither keep the plain dashboard.
  */
-
-interface HostedGame {
-  id: string;
-  mode: string;
-  setTitle: string;
-  players: number;
-  endedAt: string;
-}
 
 function ActionTile({ to, icon, title, text, tone }: { to: string; icon: React.ReactNode; title: string; text: string; tone: string }) {
   return (
@@ -47,12 +40,7 @@ function ActionTile({ to, icon, title, text, tone }: { to: string; icon: React.R
 
 function TeacherNextUp() {
   const classes = useClassList(true);
-  const hosted = useQuery({
-    queryKey: ['reports', 'hosted', 'latest'],
-    queryFn: () => api.get<{ games: HostedGame[] }>('/api/me/hosted'),
-  });
   const active = (classes.data?.teaching ?? []).filter((c) => !c.archived);
-  const last = hosted.data?.games[0];
   return (
     <Panel className="p-5 sm:p-6" aria-labelledby="teaching-title">
       <div className="mb-4 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
@@ -115,29 +103,9 @@ function TeacherNextUp() {
         </section>
         <section aria-labelledby="teaching-last">
           <h3 id="teaching-last" className="mb-2 text-sm font-semibold text-text-2">
-            Your last game
+            This week
           </h3>
-          {hosted.isPending ? (
-            <Skeleton className="h-28" />
-          ) : last ? (
-            <Link to={`/reports/${last.id}`} className="flex min-h-28 flex-col justify-between gap-3 rounded-[var(--radius-m)] bg-surface-2 p-4 text-text no-underline transition-colors hover:bg-surface-3">
-              <span>
-                <span className="block font-display text-xl leading-tight font-bold break-words">{last.mode}</span>
-                <span className="block text-sm break-words text-text-2">
-                  {last.setTitle}, {plural(last.players, 'player')}, {timeAgo(last.endedAt)}
-                </span>
-              </span>
-              <span className="inline-flex items-center gap-1.5 text-sm font-semibold text-link">
-                <BarChart3 className="size-4" aria-hidden />
-                See which questions were hard
-              </span>
-            </Link>
-          ) : (
-            <div className="rounded-[var(--radius-m)] bg-surface-2 p-4 text-sm text-text-2">
-              <span className="block font-bold text-text">No games hosted yet</span>
-              After a game you see every player&apos;s score and the questions that tripped people up.
-            </div>
-          )}
+          <ThisWeek />
         </section>
       </div>
     </Panel>

@@ -61,7 +61,12 @@ test('a session that ends shows the signed-out page and says so, rather than a r
   await expect(p.page.getByRole('heading', { level: 1, name: 'Settings' })).toBeVisible();
   // Signed out somewhere else: the cookie no longer works.
   await p.page.request.post('/api/auth/logout', { headers: CSRF });
-  await p.page.getByRole('link', { name: 'Shop' }).first().click();
+  // Go to the shop inside the app, as a click on its link would. Not by clicking the link itself: a
+  // refresh in the background can notice the dead session first, and the signed-out menu has no Shop.
+  await p.page.evaluate(() => {
+    history.pushState(null, '', '/shop');
+    window.dispatchEvent(new PopStateEvent('popstate'));
+  });
   await expect(p.page.getByText('You have been signed out. Sign in again to carry on.')).toBeVisible();
   await expect(p.page.getByRole('heading', { name: 'Sign in to shop' })).toBeVisible();
   await expect(p.page.locator('header').first().getByRole('link', { name: 'Sign in' })).toBeVisible();

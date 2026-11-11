@@ -37,6 +37,9 @@ export default defineConfig({
   reporter: process.env.CI ? [['github'], ['html', { open: 'never' }]] : 'list',
   use: {
     baseURL: E2E_BASE,
+    // The app's service worker (installed-app support) keeps tests from standing in for the server's
+    // answers in Firefox and WebKit, so tests run without it; e2e/access.spec.ts turns it back on to test it.
+    serviceWorkers: 'block',
     // Recording every test costs about a third of the run; on CI only the second try is recorded.
     trace: process.env.CI ? 'on-first-retry' : 'retain-on-failure',
     screenshot: 'only-on-failure',

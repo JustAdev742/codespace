@@ -194,6 +194,8 @@ export const gameSessions = pgTable(
     chaos: jsonb('chaos'),
     /** The room's options when it was played (hosting: "Host again" brings them back). */
     options: jsonb('options'),
+    /** Team results when teams played (reports): [{ teamId, name, rank, score, label }]. */
+    teams: jsonb('teams'),
     startedAt: ts('started_at').notNull(),
     endedAt: ts('ended_at').notNull(),
     durationMs: integer('duration_ms').notNull(),
@@ -239,6 +241,8 @@ export const answerEvents = pgTable(
     responseMs: integer('response_ms').notNull(),
     /** 'answer', 'attempt' (one of several tries in a puzzle) or 'self' (self-graded). Reports weigh them differently. */
     kind: text('kind').notNull().default('answer'),
+    /** The answer in words, at most 80 characters, when it reduces to a few (reports: the most common wrong answer). */
+    given: text('given'),
     createdAt: now('created_at'),
   },
   (t) => [
@@ -1218,4 +1222,29 @@ export const classChallenges = pgTable(
     createdAt: now('created_at'),
   },
   (t) => [index('class_challenges_a_idx').on(t.classA), index('class_challenges_b_idx').on(t.classB)],
+);
+
+/* ---------------------------------- reports --------------------------------- */
+
+/** A host's or teacher's private note on a game report ("retaught fractions on Tuesday"). Only its author sees it. */
+export const reportNotes = pgTable(
+  'report_notes',
+  {
+    gameId: uuid('game_id').notNull().references(() => gameSessions.id, { onDelete: 'cascade' }),
+    authorId: uuid('author_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+    body: text('body').notNull(),
+    updatedAt: now('updated_at'),
+  },
+  (t) => [primaryKey({ columns: [t.gameId, t.authorId] }), index('report_notes_author_idx').on(t.authorId)],
+);
+
+/** How long the games a person hosts are kept. Null keeps them; the server removes older games every few hours. */
+export const reportSettings = pgTable(
+  'report_settings',
+  {
+    userId: uuid('user_id').primaryKey().references(() => users.id, { onDelete: 'cascade' }),
+    retentionMonths: integer('retention_months'),
+    updatedAt: now('updated_at'),
+  },
+  (t) => [check('report_settings_retention_valid', sql`${t.retentionMonths} is null or ${t.retentionMonths} in (3, 6, 12, 24)`)],
 );

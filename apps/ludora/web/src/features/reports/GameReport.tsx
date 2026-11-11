@@ -1,73 +1,27 @@
-import { useParams } from 'react-router';
+import { useState } from 'react';
+import { Link, useParams } from 'react-router';
 import { useQuery } from '@tanstack/react-query';
-import { Download, FileSearch, RotateCcw } from 'lucide-react';
+import { toast } from 'sonner';
+import { FileSearch, RotateCcw } from 'lucide-react';
 import { api } from '../../lib/api.ts';
 import { useMe } from '../../lib/session.ts';
-import { duration, formatNumber, ordinal, plural } from '../../lib/format.ts';
-import { AccountError, Badge, EmptyState, ErrorNotice, PageHeader, SectionTitle, Skeleton } from '../../ui/primitives.tsx';
-import { Button, ButtonLink } from '../../ui/Button.tsx';
-import { csvDateTime, csvPercent, downloadCsv, fileDate, slug, type CsvCell } from './csv.ts';
-import {
-  BackLink,
-  dateTimeText,
-  errorText,
-  hardestFirst,
-  hasStatus,
-  NoValue,
-  percent,
-  QuestionTable,
-  questionTypeLabel,
-  seconds,
-  SignInPrompt,
-  StatRow,
-  StatTile,
-  TableBox,
-  Th,
-  usePageTitle,
-  type QuestionStat,
-} from './reportUi.tsx';
+import { duration, formatNumber, plural, formatDate } from '../../lib/format.ts';
+import { AccountError, EmptyState, ErrorNotice, PageHeader, SectionTitle, Skeleton, Switch } from '../../ui/primitives.tsx';
+import { ButtonLink } from '../../ui/Button.tsx';
+import { PrintSheet, usePrinting } from '../classes/PrintSheet.tsx';
+import { BackLink, dateTimeText, errorText, hasStatus, NoValue, percent, SignInPrompt, StatRow, StatTile, usePageTitle } from './reportUi.tsx';
+import { CheckIn, Pace, PlayerDialog, QuestionAnalysis, Standings, TeachNext, Teams, usePlayerDialog } from './GameSections.tsx';
+import { loadAnswers, NextSteps, NoteEditor } from './GameActions.tsx';
+import { ClassSheet, StudentSlips } from './GamePrint.tsx';
+import type { AnswerLine } from './logic.ts';
+import type { GameReportData } from './gameTypes.ts';
 
 /*
- * /reports/:gameId (GET /api/games/:id/report): one finished game for its
- * host, the teacher of the class it was played in, or staff. The API answers
- * 404 for anyone else, the same as for a game that does not exist.
+ * /reports/:gameId (GET /api/games/:id/report): one finished game for its host, the teacher of
+ * the class it was played in, or staff. The API answers 404 for anyone else, the same as for a
+ * game that does not exist. Leads with what to teach next, then who to check in with, then the
+ * numbers; ends with the next steps (reteach, assign, compare, print, download, delete).
  */
-
-interface Standing {
-  rank: number;
-  name: string;
-  isGuest: boolean;
-  isBot: boolean;
-  score: number;
-  label: string;
-  correct: number;
-  answered: number;
-  avgResponseMs: number;
-  bestStreak: number;
-  leftEarly: boolean;
-}
-
-interface GameReportData {
-  game: {
-    id: string;
-    mode: string;
-    modeId: string;
-    variantId: string | null;
-    setTitle: string;
-    setId: string | null;
-    startedAt: string;
-    endedAt: string;
-    durationMs: number;
-    /** People, not counting practice bots. */
-    players: number;
-    endedBy: string;
-    solo: boolean;
-  };
-  standings: Standing[];
-  questions: QuestionStat[];
-  /** For the host only: what "Host again" brings back. */
-  setup?: { setId: string };
-}
 
 function endingText(endedBy: string, solo: boolean): string {
   if (endedBy === 'mode') return 'Played to the end';
@@ -76,48 +30,10 @@ function endingText(endedBy: string, solo: boolean): string {
   return 'Ended';
 }
 
-const timeOnly = (iso: string) => new Date(iso).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
-
-function Standings({ standings }: { standings: Standing[] }) {
-  return (
-    <TableBox caption="Standings" minWidth={860}>
-      <thead className="bg-surface-2">
-        <tr>
-          <Th>Rank</Th>
-          <Th>Player</Th>
-          <Th align="right">Score</Th>
-          <Th>Result</Th>
-          <Th align="right">Correct</Th>
-          <Th align="right">Average time</Th>
-          <Th align="right">Best streak</Th>
-          <Th>Left early</Th>
-        </tr>
-      </thead>
-      <tbody>
-        {standings.map((s, i) => (
-          <tr key={`${s.rank}-${s.name}-${i}`} className="border-t border-line">
-            <td className="px-3 py-2.5 font-display text-lg leading-none font-bold whitespace-nowrap text-text tabular">{ordinal(s.rank)}</td>
-            <td className="px-3 py-2.5">
-              <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                <span className="font-semibold break-words text-text">{s.name}</span>
-                {s.isBot ? <Badge>Bot</Badge> : s.isGuest ? <Badge tone="sky">Guest</Badge> : null}
-              </span>
-            </td>
-            <td className="px-3 py-2.5 text-right text-text tabular">{formatNumber(s.score)}</td>
-            <td className="px-3 py-2.5 break-words text-text-2">{s.label}</td>
-            <td className="px-3 py-2.5 text-right whitespace-nowrap text-text tabular">
-              {s.correct} of {s.answered}
-              {s.answered ? <span className="text-text-3"> ({percent(s.correct / s.answered)})</span> : null}
-            </td>
-            <td className="px-3 py-2.5 text-right whitespace-nowrap text-text tabular">{s.answered && s.avgResponseMs > 0 ? seconds(s.avgResponseMs) : <NoValue />}</td>
-            <td className="px-3 py-2.5 text-right text-text tabular">{formatNumber(s.bestStreak)}</td>
-            <td className="px-3 py-2.5">{s.leftEarly ? <Badge tone="coral">Yes</Badge> : <span className="text-text-3">No</span>}</td>
-          </tr>
-        ))}
-      </tbody>
-    </TableBox>
-  );
-}
+const PACING_NOTE: Record<string, string> = {
+  self: 'Everyone answered at their own pace.',
+  solo: 'Played alone.',
+};
 
 export default function GameReport() {
   const { gameId = '' } = useParams();
@@ -129,6 +45,11 @@ export default function GameReport() {
     enabled: signedIn && Boolean(gameId),
   });
   usePageTitle(report.data ? `${report.data.game.mode} report` : 'Game report');
+  const [withGuests, setWithGuests] = useState(true);
+  const player = usePlayerDialog();
+  const printClass = usePrinting();
+  const [slips, setSlips] = useState<AnswerLine[] | null>(null);
+  const [loadingSlips, setLoadingSlips] = useState(false);
 
   if (me.isLoading || (signedIn && report.isPending)) {
     return (
@@ -169,8 +90,8 @@ export default function GameReport() {
     return (
       <>
         <PageHeader title="Game report" />
-        <EmptyState icon={<FileSearch className="size-8" />} title="Report not found" action={<ButtonLink to="/reports">Games you hosted</ButtonLink>}>
-          This game does not exist, or its report is not yours to see. Reports are for the host, and for the teacher when a game was played in their class.
+        <EmptyState icon={<FileSearch className="size-8" />} title="Report not found" action={<ButtonLink to="/reports">Your reports</ButtonLink>}>
+          This game does not exist, its report was deleted, or it is not yours to see. Reports are for the host, and for the teacher when a game was played in their class.
         </EmptyState>
       </>
     );
@@ -178,56 +99,37 @@ export default function GameReport() {
   if (!report.data) {
     return (
       <>
-        <BackLink to="/reports">Games you hosted</BackLink>
+        <BackLink to="/reports">Your reports</BackLink>
         <PageHeader title="Game report" />
         <ErrorNotice message={errorText(report.error, 'The report could not be loaded. Check your connection and try again.')} onRetry={() => void report.refetch()} />
       </>
     );
   }
 
-  const { game, standings, questions } = report.data;
+  const data = report.data;
+  const { game, standings } = data;
+  const view = !withGuests && data.viewAccounts ? data.viewAccounts : data.view;
   const people = standings.filter((s) => !s.isBot);
   const bots = standings.length - people.length;
-  const answered = people.reduce((n, s) => n + s.answered, 0);
-  const correct = people.reduce((n, s) => n + s.correct, 0);
+  const guests = people.filter((s) => s.membership === 'guest').length;
+  const showTeam = data.teams.length > 0;
+  // The time by itself, in the viewer's chosen time zone and style (lib/format.ts), not cut out of a longer text.
+  const timeOnly = (iso: string) => formatDate(new Date(iso), { hour: '2-digit', minute: '2-digit' });
 
-  const download = () => {
-    const rows: CsvCell[][] = [
-      ['Game mode', game.mode],
-      ['Question set', game.setTitle],
-      ['Started', csvDateTime(game.startedAt)],
-      ['Ended', csvDateTime(game.endedAt)],
-      ['Length (minutes)', Math.round(game.durationMs / 6000) / 10],
-      ['Players', game.players],
-      ['How it ended', endingText(game.endedBy, game.solo)],
-      [],
-      ['Standings'],
-      ['Rank', 'Name', 'Guest', 'Bot', 'Score', 'Result', 'Correct', 'Answered', 'Accuracy (%)', 'Average time (s)', 'Best streak', 'Left early'],
-      ...standings.map((s) => [
-        s.rank,
-        s.name,
-        s.isGuest && !s.isBot ? 'Yes' : 'No',
-        s.isBot ? 'Yes' : 'No',
-        s.score,
-        s.label,
-        s.correct,
-        s.answered,
-        s.answered ? csvPercent(s.correct / s.answered) : null,
-        s.answered && s.avgResponseMs > 0 ? Math.round(s.avgResponseMs / 100) / 10 : null,
-        s.bestStreak,
-        s.leftEarly ? 'Yes' : 'No',
-      ]),
-      [],
-      ['Questions, hardest first'],
-      ['Question', 'Type', 'Right first time (%)', 'Players', 'Attempts', 'Average time (s)'],
-      ...hardestFirst(questions).map((q) => [q.prompt, questionTypeLabel(q.type) ?? '', csvPercent(q.firstTryRate), q.players, q.attempts, q.avgResponseMs > 0 ? Math.round(q.avgResponseMs / 100) / 10 : null]),
-    ];
-    downloadCsv(`ludora-${slug(game.mode, 30)}-${slug(game.setTitle, 30)}-${fileDate(new Date(game.startedAt))}.csv`, rows);
+  const printSlips = async () => {
+    setLoadingSlips(true);
+    try {
+      setSlips((await loadAnswers(game.id)).answers);
+    } catch (err) {
+      toast.error(errorText(err, 'The slips could not be made. Check your connection and try again.'));
+    } finally {
+      setLoadingSlips(false);
+    }
   };
 
   return (
     <>
-      <BackLink to="/reports">Games you hosted</BackLink>
+      <BackLink to="/reports">Your reports</BackLink>
       <PageHeader
         eyebrow={
           <>
@@ -235,50 +137,89 @@ export default function GameReport() {
           </>
         }
         title={<span className="break-words">{game.mode}</span>}
-        description={game.setTitle}
-        actions={
+        description={
           <>
-            {report.data.setup ? (
-              <ButtonLink to={`/host?again=${game.id}`} variant="primary" icon={<RotateCcw className="size-4" aria-hidden />}>
-                Host again
-              </ButtonLink>
+            <span className="break-words">{game.setTitle}</span>
+            {game.className && game.classId ? (
+              <>
+                {' '}
+                in <Link to={`/classes/${game.classId}`} className="underline underline-offset-2">{game.className}</Link>
+              </>
             ) : null}
-            <Button icon={<Download className="size-4" />} onClick={download}>
-              Download CSV
-            </Button>
+            {PACING_NOTE[game.pacing] ? ` ${PACING_NOTE[game.pacing]}` : ''}
           </>
+        }
+        actions={
+          data.setup ? (
+            <ButtonLink to={`/host?again=${game.id}`} variant="primary" icon={<RotateCcw className="size-4" aria-hidden />}>
+              Host again
+            </ButtonLink>
+          ) : null
         }
       />
 
+      {data.viewAccounts ? (
+        <div className="mb-4 max-w-xl rounded-[var(--radius-l)] border border-line bg-raised px-4 py-2">
+          <Switch
+            checked={withGuests}
+            onCheckedChange={setWithGuests}
+            label="Count guests in the totals"
+            description={`${plural(guests, 'player')} joined as a guest without signing in. Turn this off to see the class's numbers without them.`}
+          />
+        </div>
+      ) : null}
+
       <StatRow label="Game summary">
         <StatTile label="Players" value={formatNumber(game.players)}>
-          {bots ? `Plus ${plural(bots, 'practice bot')}.` : game.solo ? 'Played solo.' : 'No practice bots.'}
+          {bots ? `Plus ${plural(bots, 'practice bot')}.` : guests ? `${plural(guests, 'guest')}.` : game.solo ? 'Played solo.' : 'No practice bots.'}
         </StatTile>
         <StatTile label="Length" value={duration(game.durationMs)}>
           {timeOnly(game.startedAt)} to {timeOnly(game.endedAt)}. {endingText(game.endedBy, game.solo)}.
         </StatTile>
-        <StatTile label="Answers right" value={answered ? percent(correct / answered) : <NoValue label="No answers" />}>
-          {answered ? `${formatNumber(correct)} of ${plural(answered, 'answer')}${bots ? ', not counting bots' : ''}.` : 'Nobody answered a question.'}
+        <StatTile label="Right first time" value={view.totals.answered ? percent(view.totals.right / view.totals.answered) : <NoValue label="No answers" />}>
+          {view.totals.answered ? `${formatNumber(view.totals.right)} of ${plural(view.totals.answered, 'first try', 'first tries')}${!withGuests ? ', guests left out' : ''}.` : 'Nobody answered a graded question.'}
         </StatTile>
-        <StatTile label="Questions answered" value={formatNumber(questions.length)}>
+        <StatTile label="Questions answered" value={formatNumber(view.questions.length)}>
           Different questions that at least one player answered.
         </StatTile>
       </StatRow>
 
-      <section className="mb-8">
-        <SectionTitle>Standings</SectionTitle>
-        {standings.length === 0 ? (
-          <EmptyState title="Nobody played">There are no players in the results for this game.</EmptyState>
-        ) : (
-          <Standings standings={standings} />
-        )}
+      <TeachNext view={view} pacing={game.pacing} />
+      <CheckIn data={data} onOpen={player.show} />
+      {data.pace ? <Pace pace={data.pace} onOpen={player.show} /> : null}
+      <Teams teams={data.teams} />
+
+      <section className="mb-10" aria-labelledby="standings-title">
+        <SectionTitle>
+          <span id="standings-title">Standings</span>
+        </SectionTitle>
+        <p className="-mt-1 mb-3 max-w-[70ch] text-sm text-text-2">Choose a name to see that player's answers, question by question.</p>
+        <Standings standings={standings} onOpen={player.show} showTeam={showTeam} />
       </section>
 
-      <section>
-        <SectionTitle>Questions, hardest first</SectionTitle>
-        <p className="-mt-1 mb-3 max-w-[70ch] text-sm text-text-2">Each player counts once per question, judged on their first try. Practice bots are not counted.</p>
-        <QuestionTable questions={questions} caption="Questions, hardest first" empty="Nobody answered a question in this game." />
+      <section className="mb-10" aria-labelledby="questions-title">
+        <SectionTitle>
+          <span id="questions-title">Every question, hardest first</span>
+        </SectionTitle>
+        <p className="-mt-1 mb-3 max-w-[70ch] text-sm text-text-2">Each player counts once per question, judged on their first try. Practice bots and poll votes are not counted.</p>
+        <QuestionAnalysis questions={view.questions} />
       </section>
+
+      <NextSteps data={data} view={view} onPrintClass={printClass.print} onPrintSlips={() => void printSlips()} printingSlips={loadingSlips} />
+
+      <NoteEditor key={data.note?.updatedAt ?? 'none'} gameId={game.id} note={data.note} />
+
+      <PlayerDialog gameId={game.id} playerKey={player.open} onClose={player.close} />
+      {printClass.printing ? (
+        <PrintSheet onDone={printClass.done} label="Class report">
+          <ClassSheet data={data} view={view} />
+        </PrintSheet>
+      ) : null}
+      {slips ? (
+        <PrintSheet onDone={() => setSlips(null)} label="Student slips">
+          <StudentSlips data={data} answers={slips} />
+        </PrintSheet>
+      ) : null}
     </>
   );
 }

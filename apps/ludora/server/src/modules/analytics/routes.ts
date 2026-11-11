@@ -5,10 +5,10 @@ import { getMode, getVariant } from '@ludora/engine';
 import type { AppDeps } from '../../app.ts';
 import { answerEvents, classes, gameParticipants, gameSessions, questionSets } from '../../db/schema.ts';
 import { noStore, requireAuth } from '../../http/context.ts';
-import { notFound } from '../../lib/errors.ts';
 import { parse } from '../../lib/validate.ts';
-import { loadSet } from '../sets/access.ts';
-import { questionReport, questionsById } from './report.ts';
+import { questionsById } from './report.ts';
+import { buildReport, gameAccess } from './gameData.ts';
+import { reportRoutes } from './reports.ts';
 
 const modeTitle = (modeId: string, variantId: string | null) => (variantId ? getVariant(variantId)?.meta.title : null) ?? getMode(modeId)?.meta.title ?? modeId;
 
@@ -20,27 +20,30 @@ const modeTitle = (modeId: string, variantId: string | null) => (variantId ? get
  */
 export async function analyticsRoutes(app: FastifyInstance, deps: AppDeps) {
   const { db } = deps;
+  await reportRoutes(app, deps);
 
   app.get('/api/games/:id/report', async (req, reply) => {
     noStore(reply);
     const auth = requireAuth(req);
     const { id } = parse(z.object({ id: z.string().uuid() }), req.params);
-    const [g] = await db.select().from(gameSessions).where(eq(gameSessions.id, id)).limit(1);
-    if (!g) throw notFound('That game does not exist.');
-    let allowed = g.hostUserId === auth.user.id || auth.permissions.has('users.read');
-    if (!allowed && g.classId) {
-      const [cls] = await db.select({ ownerId: classes.ownerId }).from(classes).where(eq(classes.id, g.classId)).limit(1);
-      allowed = cls?.ownerId === auth.user.id;
-    }
-    if (!allowed) throw notFound('That game does not exist.');
-    const standings = await db.select().from(gameParticipants).where(eq(gameParticipants.gameId, id)).orderBy(gameParticipants.rank);
-    const set = g.setId ? await loadSet(db, g.setId) : null;
+    const { game: g, host, teacher } = await gameAccess(db, auth, id);
+    const r = await buildReport(db, g, auth);
+    const [cls] = g.classId ? await db.select({ name: classes.name }).from(classes).where(eq(classes.id, g.classId)).limit(1) : [];
     return {
-      game: { id: g.id, mode: modeTitle(g.modeId, g.variantId), modeId: g.modeId, variantId: g.variantId, setTitle: g.setTitle, setId: g.setId, startedAt: g.startedAt.toISOString(), endedAt: g.endedAt.toISOString(), durationMs: g.durationMs, players: g.playerCount, endedBy: g.endedBy, solo: g.isSolo, chaos: (g.chaos as { casts: number } | null)?.casts ?? 0 },
-      standings: standings.map((s) => ({ rank: s.rank, name: s.displayName, isGuest: s.isGuest, isBot: s.isBot, score: s.score, label: s.label, correct: s.correct, answered: s.answered, avgResponseMs: s.avgResponseMs, bestStreak: s.bestStreak, leftEarly: s.leftEarly })),
-      questions: await questionReport(db, [id], set),
+      game: { id: g.id, mode: modeTitle(g.modeId, g.variantId), modeId: g.modeId, variantId: g.variantId, setTitle: g.setTitle, setId: g.setId, startedAt: g.startedAt.toISOString(), endedAt: g.endedAt.toISOString(), durationMs: g.durationMs, players: g.playerCount, endedBy: g.endedBy, solo: g.isSolo, chaos: (g.chaos as { casts: number } | null)?.casts ?? 0, pacing: r.data.pacing, classId: g.classId, className: cls?.name ?? null },
+      // Display names only: never an account id, username or email. Player keys ("p3") are per game.
+      standings: r.data.players.map((s) => ({ rank: s.rank, playerKey: s.playerKey, name: s.name, isGuest: s.isGuest, isBot: s.isBot, membership: s.membership, team: s.team, score: s.score, label: s.label, correct: s.correct, answered: s.answered, avgResponseMs: s.avgResponseMs, bestStreak: s.bestStreak, leftEarly: s.leftEarly })),
+      questions: r.view.questions,
+      view: r.view,
+      viewAccounts: r.viewAccounts,
+      participation: r.participation,
+      guessing: r.guessing,
+      teams: r.teams,
+      pace: r.pace,
+      note: r.note,
+      can: { delete: host && !g.isSolo, reteach: (host || teacher) && Boolean(g.setId) && auth.permissions.has('sets.create') && !auth.user.isGuest },
       // "Host again": the same set, mode and settings, for the person who hosted it.
-      ...(g.hostUserId === auth.user.id && g.setId && !g.isSolo && !g.assignmentId
+      ...(host && g.setId && !g.isSolo && !g.assignmentId
         ? { setup: { setId: g.setId, modeId: g.modeId, variantId: g.variantId, settings: g.settings, common: g.common, options: g.options ?? null, classId: g.classId } }
         : {}),
     };

@@ -35,6 +35,9 @@ async function check(page: Page, name: string, include?: string) {
 
 const attr = (page: Page, name: string) => page.evaluate((n) => document.documentElement.dataset[n] ?? null, name);
 
+// This file tests the service worker itself (the rest of the suite runs without one: playwright.config.ts).
+test.use({ serviceWorkers: 'allow' });
+
 test('settings: search, accessibility choices kept on this device, restored before the first paint, and back to defaults', async ({ browser }) => {
   const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
   const page = await context.newPage();

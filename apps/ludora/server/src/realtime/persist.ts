@@ -83,6 +83,7 @@ export async function persistGame(deps: AppDeps, room: Room, results: EngineResu
         isSolo: room.solo,
         chaos: results.chaos,
         options: room.options,
+        teams: results.teamStandings.length ? results.teamStandings : null,
         startedAt,
         endedAt,
         durationMs: Math.round(results.durationMs),
@@ -128,6 +129,7 @@ export async function persistGame(deps: AppDeps, room: Room, results: EngineResu
           partial: a.partial,
           responseMs: Math.max(0, Math.round(a.responseMs)),
           kind: a.kind ?? 'answer',
+          given: a.given ? a.given.slice(0, 80) : null,
         })),
       );
     }
