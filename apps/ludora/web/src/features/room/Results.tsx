@@ -1,4 +1,5 @@
 import { useState, type CSSProperties } from 'react';
+import { GameHouses } from '../school/GameHouses.tsx';
 import { Link, useNavigate } from 'react-router';
 import { BookOpen, ClipboardList, Download, Flame, Home, Rocket, RotateCcw, TrendingUp, Trophy, Zap } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
@@ -393,6 +394,8 @@ export function Results({ room, handle, isHost, guest }: { room: RoomView; handl
               <TeamScores teams={r.teamStandings.map((t) => ({ teamId: t.teamId, name: t.name, score: t.score, hue: room.room.teams.find((x) => x.id === t.teamId)?.hue ?? 42 }))} />
             </StagePanel>
           ) : null}
+          {/* School: house points this game earned, by house (features/school). */}
+          {room.room.solo ? null : <GameHouses gameId={r.gameId} />}
           <Standings room={room} big={big} hold={big && podium} />
           <p className="text-sm font-semibold text-text-2">Played for {duration(r.durationMs)}.</p>
           {isHost ? null : room.room.solo ? (

@@ -5,6 +5,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import {
   BarChart3,
   BookOpen,
+  Castle,
   Gamepad2,
   Home,
   LayoutGrid,
@@ -37,6 +38,7 @@ import { Button, buttonClass } from '../ui/Button.tsx';
 import { toast } from 'sonner';
 import { NotificationBell } from '../features/social/NotificationBell.tsx';
 import { SearchLauncher } from '../features/search/SearchLauncher.tsx';
+import { useSchool } from '../features/school/schoolData.ts';
 
 /*
  * The frame around every page: the sidebar, the header and the phone's bottom
@@ -50,7 +52,8 @@ interface NavItem {
   label: string;
   icon: ReactNode;
   end?: boolean;
-  show?: 'signedIn' | 'staff' | 'studio';
+  /** 'school' shows once this copy has houses, and before that to the people who can set them up. */
+  show?: 'signedIn' | 'staff' | 'studio' | 'school';
   /** Hidden while this feature flag is off for the viewer. */
   flag?: string;
 }
@@ -72,6 +75,7 @@ const COLLECT: NavItem[] = [
 const SOCIAL: NavItem[] = [
   { to: '/friends', label: 'Friends', icon: <Users className="size-5" />, show: 'signedIn', flag: 'social.friends' },
   { to: '/classes', label: 'Classes', icon: <School className="size-5" />, show: 'signedIn' },
+  { to: '/school', label: 'School', icon: <Castle className="size-5" />, show: 'school' },
   { to: '/leaderboards', label: 'Leaderboards', icon: <Trophy className="size-5" />, show: 'signedIn' },
   { to: '/studio', label: 'Studio', icon: <Palette className="size-5" />, show: 'studio' },
   { to: '/staff', label: 'Staff', icon: <Shield className="size-5" />, show: 'staff' },
@@ -111,8 +115,10 @@ function NavGroups({ onNavigate }: { onNavigate?: () => void }) {
   const signedIn = Boolean(me.data?.user);
   const staff = Boolean(me.data?.permissions.includes('staff.access'));
   const studio = Boolean(me.data?.permissions.includes('studio.use'));
+  const school = useSchool();
+  const hasSchool = Boolean(school.data && (school.data.houses.length > 0 || school.data.can.manage || school.data.can.viewUsage));
   const flagOn = (key?: string) => !key || me.data?.flags?.[key] !== false;
-  const visible = (i: NavItem) => flagOn(i.flag) && (!i.show || (i.show === 'signedIn' ? signedIn : i.show === 'studio' ? studio : staff));
+  const visible = (i: NavItem) => flagOn(i.flag) && (!i.show || (i.show === 'signedIn' ? signedIn : i.show === 'studio' ? studio : i.show === 'school' ? hasSchool : staff));
   const groups: [string | null, NavItem[]][] = [
     [null, PRIMARY],
     ['Collect', COLLECT.filter(visible)],

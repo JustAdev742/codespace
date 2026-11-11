@@ -189,6 +189,27 @@ export function attachRealtime(app: FastifyInstance, deps: AppDeps) {
       reply(ack, { ok: true, role: 'player', playerId: joined.player.id, reconnectToken: joined.player.reconnectToken, resumed: joined.resumed });
     });
 
+    // School: a read-only second screen. It sees what the projector shows every player (the host's
+    // view: display names, no answers before the reveal, no reconnect tokens) and can send nothing.
+    socket.on('room:watch', (payload: unknown, ack: unknown) => {
+      if (!guard(ack)) return;
+      if (!joinAllowed(state.ipHash)) return reply(ack, fail('rate_limited', 'Too many join attempts. Wait a minute and try again.'));
+      if (!state.auth || state.auth.user.isGuest) return reply(ack, fail('forbidden', 'Sign in with an account to show a game on another screen.'));
+      const parsed = z.object({ code: joinRequestSchema.shape.code }).safeParse(payload);
+      if (!parsed.success) return reply(ack, fail('validation_failed', 'Room codes are 6 digits.'));
+      const room = manager.get(parsed.data.code);
+      if (!room || room.solo) return reply(ack, fail('room_not_found', 'No game with that code. Check the code on the host screen.'));
+      // Not a way round a class-only game, a locked room or a waiting room: see Room.watchAllowed.
+      if (!room.watchAllowed(state.auth.user.id, state.auth.permissions.has('school.view'))) {
+        return reply(ack, fail('forbidden', 'Only the host and school staff can show this game on another screen.'));
+      }
+      detach();
+      const sub: RoomSubscriber = { id: randomUUID(), role: 'spectator', playerId: null, emit: (e, p) => socket.emit(e, p) };
+      current = { room, sub };
+      room.subscribe(sub);
+      reply(ack, { ok: true, role: 'spectator', playerId: null });
+    });
+
     socket.on(C2S.action, (payload: unknown, ack: unknown) => {
       if (!guard(ack)) return;
       if (!current || current.sub.role !== 'player' || !current.sub.playerId) return reply(ack, fail('forbidden', 'Join the game first.'));
@@ -218,7 +239,7 @@ export function attachRealtime(app: FastifyInstance, deps: AppDeps) {
 
     socket.on(C2S.react, (payload: unknown, ack: unknown) => {
       if (!guard(ack)) return;
-      if (!current) return reply(ack, fail('forbidden', 'Join the room first.'));
+      if (!current || current.sub.role === 'spectator') return reply(ack, fail('forbidden', 'Join the room first.'));
       if (state.auth?.user.mutedUntil && state.auth.user.mutedUntil > new Date()) return reply(ack, fail('forbidden', 'Reactions are turned off for your account for now.'));
       const parsed = reactionSchema.safeParse(payload);
       if (!parsed.success) return reply(ack, fail('bad_request', 'Unknown reaction.'));

@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { LockerUniform } from '../school/LockerUniform.tsx';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { Award, Check, Shirt, Shuffle, Trash2 } from 'lucide-react';
@@ -310,6 +311,7 @@ export default function Locker() {
             <Skeleton className="h-96 rounded-[var(--radius-l)]" />
           )}
           {data ? <Outfits outfits={extras.data?.outfits ?? []} byId={byId} onChanged={refresh} /> : null}
+          {data ? <LockerUniform preview={buddy ? { art: buddy.art as GlimArt, accessories } : null} /> : null}
           {emotesPanel('hidden lg:block')}
         </div>
         <div className="min-w-0">

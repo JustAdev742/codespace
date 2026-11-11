@@ -9,7 +9,7 @@ import { assignments, classMembers, classes, gameParticipants, gameSessions, not
  * never out of date. Only the player can read their own.
  */
 
-export const NOTIFICATION_KINDS = ['friend_request', 'friend_accepted', 'invite', 'achievement', 'level', 'collection', 'due'] as const;
+export const NOTIFICATION_KINDS = ['friend_request', 'friend_accepted', 'invite', 'achievement', 'level', 'collection', 'due', 'school'] as const;
 export type NotificationKind = (typeof NOTIFICATION_KINDS)[number];
 
 /** How long notifications are kept. */

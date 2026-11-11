@@ -1,4 +1,5 @@
 import { useRef, useState, type ReactNode } from 'react';
+import { MeritsPanel } from '../school/MeritsPanel.tsx';
 import { Link, useParams } from 'react-router';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { toast } from 'sonner';
@@ -420,6 +421,7 @@ export default function Profile() {
             ) : null}
           </Panel>
           {p.isSelf ? <PersonalBests limit={6} /> : null}
+          {!p.blockedByMe ? <MeritsPanel userId={id} /> : null}
           {p.stats ? (
             <StatsPanel stats={p.stats} joinedAt={p.joinedAt} />
           ) : p.restricted && !p.blockedByMe ? (

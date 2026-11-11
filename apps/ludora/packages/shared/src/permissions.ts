@@ -11,6 +11,7 @@ export const ROLES = [
   'trusted',
   'creator',
   'designer',
+  'school_staff',
   'tester',
   'moderator',
   'support',
@@ -45,6 +46,8 @@ export const PERMISSIONS = [
   'testing.entitlements',
   'studio.use',
   'studio.publish',
+  'school.manage',
+  'school.view',
 ] as const;
 export type Permission = (typeof PERMISSIONS)[number];
 
@@ -53,6 +56,7 @@ export const ROLE_INFO: Record<Role, { label: string; description: string; rank:
   trusted: { label: 'Trusted player', description: 'Can publish sets to the public library.', rank: 1 },
   creator: { label: 'Content creator', description: 'Publishes sets and can be featured.', rank: 2 },
   designer: { label: 'Studio designer', description: 'Makes Glims, items and Lanterns in the Creator Studio and puts them in the shop.', rank: 2 },
+  school_staff: { label: 'School staff', description: 'Runs houses, house cups, school events and notices, and sees school-wide totals.', rank: 2 },
   tester: { label: 'Tester', description: 'Uses staff testing tools on test accounts.', rank: 2 },
   moderator: { label: 'Moderator', description: 'Handles reports and moderates players and content.', rank: 3 },
   support: { label: 'Support', description: 'Looks up accounts, resets passwords, reads economy history.', rank: 3 },
@@ -68,6 +72,8 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
   creator: [...PLAYER, 'sets.publish_public'],
   // The Creator Studio is its own page, not the staff panel: a designer has no other staff rights.
   designer: [...PLAYER, 'studio.use', 'studio.publish'],
+  // School staff run their school's houses, events and notices on their own School pages, not the staff panel.
+  school_staff: [...PLAYER, 'school.manage', 'school.view'],
   tester: [...PLAYER, 'staff.access', 'testing.tools'],
   moderator: [
     ...PLAYER,

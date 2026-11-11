@@ -74,6 +74,13 @@ const OWN_ROWS: readonly [table: string, column: string][] = [
   ['player_extras', 'user_id'],
   ['notifications', 'user_id'],
   ['quest_swaps', 'user_id'],
+  ['house_members', 'user_id'],
+  ['house_points', 'user_id'],
+  ['merits', 'student_id'],
+  ['merits', 'teacher_id'],
+  ['student_sport_days', 'user_id'],
+  ['tournaments', 'owner_id'],
+  ['class_challenges', 'created_by'],
 ];
 const ROW_LIMIT = 5000;
 const DELETED = 'Deleted account';

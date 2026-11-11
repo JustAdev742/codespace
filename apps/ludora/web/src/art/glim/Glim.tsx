@@ -115,6 +115,8 @@ export interface GlimProps {
    * null when they have not given one. Left out, the Glim wears the viewer's own uniform.
    */
   dress?: Uniform | null;
+  /** On a school's copy with houses: the hue of the player's house, for the pin on the blazer lapel. */
+  housePin?: number | null;
   title?: string;
   className?: string;
 }
@@ -243,7 +245,7 @@ function twoTone(art: GlimArt): string {
   return hsl(art.hue + delta, (pale ? sat + 14 : sat) + 12, pale ? 70 : 52);
 }
 
-export const Glim = memo(function Glim({ art, accessories, size = 96, aura = null, rarity, pose = 'idle', silhouette = false, limbs = true, ground = true, faceless = false, contour = true, uniform = true, dress, title, className }: GlimProps) {
+export const Glim = memo(function Glim({ art, accessories, size = 96, aura = null, rarity, pose = 'idle', silhouette = false, limbs = true, ground = true, faceless = false, contour = true, uniform = true, dress, housePin = null, title, className }: GlimProps) {
   const uid = useId().replace(/[^a-zA-Z0-9_-]/g, '');
   const c = useMemo(() => glimColors(art), [art]);
   // A hat or neckwear the player chose shows instead of the uniform's; the garment always shows.
@@ -353,7 +355,7 @@ export const Glim = memo(function Glim({ art, accessories, size = 96, aura = nul
               m.line ? <path key={i} d={m.d} fill="none" stroke={m.fill} strokeWidth={m.line} strokeLinecap="round" opacity={m.opacity} /> : <path key={i} d={m.d} fill={m.fill} opacity={m.opacity} />,
             )}
             {tiny && FINE_PATTERNS.has(art.pattern ?? 'none') ? null : <Pattern kind={art.pattern ?? 'none'} geo={geo} c={c} />}
-            {dressed ? <UniformGarment uniform={dressed} geo={geo} tiny={tiny} neckwear={hasNeckwear} back={faceless} /> : null}
+            {dressed ? <UniformGarment uniform={dressed} geo={geo} tiny={tiny} neckwear={hasNeckwear} back={faceless} housePin={housePin} /> : null}
             {/* Hard cel shading: one shadow, one light. */}
             <rect x={-10} y={-10} width={140} height={140} fill={shade} opacity={0.34} clipPath={`url(#${id('shade')})`} />
             <rect x={-10} y={-10} width={140} height={140} fill="#fff" opacity={rank >= 2 ? 0.34 : 0.26} clipPath={`url(#${id('hl')})`} />

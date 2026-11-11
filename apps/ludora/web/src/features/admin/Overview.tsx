@@ -52,6 +52,8 @@ const PERMISSION_TEXT: Record<Permission, string> = {
   'testing.entitlements': 'Grant test entitlements in production and convert accounts',
   'studio.use': 'Make Glims, items and Lanterns in the Creator Studio',
   'studio.publish': 'Publish Studio work to the catalogue and the shop',
+  'school.manage': 'Run the school’s houses, cups, events and notices',
+  'school.view': 'See school-wide usage totals',
 };
 
 export default function Overview() {

@@ -6,6 +6,7 @@ import { answerEvents, gameParticipants, gameSessions, questionSets } from '../d
 import type { PersistOutcome, Room } from './room.ts';
 import { applyGameResult, applyHostResult } from '../modules/progression/rewards.ts';
 import { recordStudy } from '../modules/study/service.ts';
+import { recordSchoolGame } from '../modules/school/teams.ts';
 
 const MAX_ANSWER_ROWS = 10_000;
 const QUICK_MS = 5000;
@@ -138,6 +139,8 @@ export async function persistGame(deps: AppDeps, room: Room, results: EngineResu
     deps.log?.error({ err, gameId }, 'study record failed');
     return new Map<string, string[]>();
   });
+  // House points and tournament results (modules/school); notes go on each player's results.
+  const school = !fresh ? new Map<string, string>() : await recordSchoolGame(deps, room, results, gameId);
   const rewards = new Map<string, RewardSummary>();
   // Chaos games: whoever cast a cheat earns nothing from the game; everyone else keeps
   // what their answers earned, but places earn nothing because chaos may have decided them.
@@ -170,6 +173,7 @@ export async function persistGame(deps: AppDeps, room: Room, results: EngineResu
       if (who.isGuest && summary.status === 'granted') summary.notes.push('Create an account to keep these rewards safe. Your progress comes with you.');
       if (results.chaos) summary.notes.push('Chaos was used in this game, so places earn no rewards. Your answers still count.');
       summary.notes.push(...(study.get(who.userId) ?? []));
+      if (school.has(who.userId)) summary.notes.push(school.get(who.userId)!);
       rewards.set(s.playerId, summary);
     } catch (err) {
       deps.log?.error({ err, gameId, playerId: s.playerId }, 'reward failed');

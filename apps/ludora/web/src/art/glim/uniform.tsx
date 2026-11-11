@@ -130,7 +130,7 @@ function layout(uniform: Uniform, geo: BodyGeometry) {
   return { cx, x0, x1, top, room, isBlazer, crestW, crestX, crestY };
 }
 
-export function UniformGarment({ uniform, geo, tiny, neckwear, back = false }: { uniform: Uniform; geo: BodyGeometry; tiny: boolean; neckwear: boolean; back?: boolean }) {
+export function UniformGarment({ uniform, geo, tiny, neckwear, back = false, housePin = null }: { uniform: Uniform; geo: BodyGeometry; tiny: boolean; neckwear: boolean; back?: boolean; housePin?: number | null }) {
   const { cx, x0, x1, top, room, isBlazer } = layout(uniform, geo);
   const side = Math.max(geo.face.y + 8, top - 8);
   const k = Math.max(0.85, Math.min(1.2, room / 17));
@@ -232,6 +232,8 @@ export function UniformGarment({ uniform, geo, tiny, neckwear, back = false }: {
             <path d="M-12 2.8L-1.6 16.6M12 2.8L1.6 16.6" stroke={blazer} strokeWidth={0.7} opacity={0.55} />
           )}
           {tiny ? null : <circle cx={0} cy={21} r={1.3} fill={grey ? '#2b3550' : '#0f2219'} stroke={OUT} strokeWidth={0.5} />}
+          {/* The house pin on the left lapel, in the house's colour (school.ts houseFill), a small shield. */}
+          {housePin !== null && !tiny ? <path d="M5.6 9.2h3.6v2.1c0 1.4-0.9 2.3-1.8 2.8c-0.9-0.5-1.8-1.4-1.8-2.8Z" fill={`hsl(${housePin} 80% 64%)`} stroke={OUT} strokeWidth={0.5} /> : null}
           {/* School pins on the left lapel. */}
           {senior && !tiny ? (
             <>

@@ -1,7 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { eq } from 'drizzle-orm';
-import { commonSettingsSchema, roomCodeSchema, roomOptionsSchema } from '@ludora/shared';
+import { commonSettingsSchema, roomCodeSchema, roomOptionsSchema, schoolTeamsSchema } from '@ludora/shared';
 import { getMode, getVariant } from '@ludora/engine';
 import { soloBlocker } from '@ludora/engine/catalog';
 import type { AppDeps } from '../../app.ts';
@@ -13,6 +13,7 @@ import { MAX_ROOMS_PER_HOST, type RoomManager } from '../../realtime/manager.ts'
 import type { Room } from '../../realtime/room.ts';
 import { isModePlayableBy } from '../modes/service.ts';
 import { countGamePlay } from '../games/routes.ts';
+import { schoolTeamPlan } from '../school/teams.ts';
 import { teacherClass } from '../classes/access.ts';
 import { classMembers } from '../../db/schema.ts';
 
@@ -26,6 +27,8 @@ const createSchema = z.object({
   solo: z.boolean().optional(),
   /** The Game Maker game this room was set up from, to count its plays. */
   gameId: z.string().uuid().optional(),
+  /** School: teams by house, two classes, or a tournament match (modules/school/teams.ts). */
+  school: schoolTeamsSchema.optional(),
   /** Host for a class: only its members can join, and the game counts as the class's. The caller must teach it. */
   classId: z.string().uuid().optional(),
 });
@@ -78,6 +81,7 @@ export async function roomRoutes(app: FastifyInstance, deps: AppDeps) {
         cls = { id: row.id, name: row.name, members: members.map((m) => m.u) };
       }
       const { set, questions } = await loadSetForPlay(deps.db, body.setId, auth);
+      const teamPlan = body.school && !solo ? await schoolTeamPlan(deps, auth, body.school) : null;
       let room;
       try {
         room = manager.create({
@@ -86,10 +90,11 @@ export async function roomRoutes(app: FastifyInstance, deps: AppDeps) {
           modeId: mode.meta.id,
           variantId: body.variantId ?? null,
           settings: body.settings ?? {},
-          common: body.common ?? {},
+          common: teamPlan ? { ...body.common, teamCount: teamPlan.teams.length } : (body.common ?? {}),
           options: roomOptionsSchema.parse(solo ? { ...body.options, maxPlayers: 1, lateJoin: false } : (body.options ?? {})),
           set: { id: set.id, title: set.title, questions },
           solo,
+          teamPlan,
           ...(cls ? { classId: cls.id, classMembers: cls.members, classTitle: cls.name } : {}),
         });
       } catch (err) {

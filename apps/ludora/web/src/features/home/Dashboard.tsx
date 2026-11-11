@@ -1,4 +1,5 @@
 import { Link } from 'react-router';
+import { SchoolStrip } from '../school/SchoolStrip.tsx';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { Flame, Presentation, Swords, Trophy } from 'lucide-react';
@@ -184,6 +185,9 @@ export default function Dashboard() {
 
       {/* Only there when this player is hosting games: a way back into them, or to close them. */}
       <OpenGames />
+
+      {/* The school: a countdown to its next event, notices, and the player's house. */}
+      <SchoolStrip />
 
       {/* A teacher's classes and last game, or a student's assignments: the first thing to do today. */}
       <NextUp />

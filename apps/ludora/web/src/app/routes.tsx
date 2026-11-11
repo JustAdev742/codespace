@@ -73,6 +73,7 @@ export const router = createBrowserRouter([
       { path: 'play', lazy: page(() => import('../features/play/Join.tsx')) },
       { path: 'join/:code', lazy: page(() => import('../features/play/Join.tsx')) },
       { path: 'room/:code', lazy: page(() => import('../features/room/RoomPage.tsx')) },
+      { path: 'school/watch/:code', lazy: page(() => import('../features/school/Watch.tsx')) },
       {
         element: <Shell />,
         children: [
@@ -107,6 +108,11 @@ export const router = createBrowserRouter([
           { path: 'leaderboards', lazy: page(() => import('../features/social/Leaderboards.tsx')) },
           { path: 'reports', lazy: page(() => import('../features/reports/HostedGames.tsx')) },
           { path: 'reports/:gameId', lazy: page(() => import('../features/reports/GameReport.tsx')) },
+          { path: 'school', lazy: page(() => import('../features/school/SchoolPage.tsx')) },
+          { path: 'school/manage', lazy: page(() => import('../features/school/Manage.tsx')) },
+          { path: 'school/classes', lazy: page(() => import('../features/school/TeachClasses.tsx')) },
+          { path: 'school/classes/:id', lazy: page(() => import('../features/school/ClassHouses.tsx')) },
+          { path: 'school/tournaments/:id', lazy: page(() => import('../features/school/TournamentPage.tsx')) },
           { path: 'settings', lazy: page(() => import('../features/settings/Settings.tsx')) },
           { path: 'privacy', lazy: page(() => import('../features/legal/Privacy.tsx')) },
           { path: 'terms', lazy: page(() => import('../features/legal/Terms.tsx')) },

@@ -29,6 +29,7 @@ import {
 } from '@ludora/shared';
 import { computeAwards, hostReport, missedQuestionIds } from './report.ts';
 import { hideNames } from './hideNames.ts';
+import { spectatorView } from '../modules/school/spectator.ts';
 import {
   GameRuntime,
   makeTeams,
@@ -55,7 +56,8 @@ export function fail(code: string, message: string): { ok: false; error: { code:
 
 export interface RoomSubscriber {
   id: string;
-  role: 'host' | 'player';
+  /** A spectator (school: a second screen) sees the big screen's view and can do nothing. */
+  role: 'host' | 'player' | 'spectator';
   playerId: string | null;
   /** The host's controls-only remote (a phone): sees real names even when the big screen hides them. */
   remote?: boolean;
@@ -105,9 +107,18 @@ export interface RoomInit {
   solo: boolean;
   classId?: string | null;
   assignmentId?: string | null;
+  /** School: fixed teams (houses, two classes, a tournament match's sides), built by modules/school/teams.ts. */
+  teamPlan?: TeamPlan | null;
   /** A live game for a class: only these accounts may join (checked here, and refreshed from the database by the caller). */
   classMembers?: readonly string[] | null;
   classTitle?: string | null;
+}
+
+/** Fixed teams for a room, and which team each account belongs to. Everyone else joins the smallest team. */
+export interface TeamPlan {
+  teams: TeamView[];
+  teamOf: Record<string, string>;
+  matchId?: string;
 }
 
 /** Someone in the waiting room: their request, kept until the host lets them in or not. */
@@ -198,6 +209,7 @@ export class Room {
   readonly solo: boolean;
   readonly classId: string | null;
   readonly assignmentId: string | null;
+  readonly teamPlan: TeamPlan | null;
   readonly createdAt: number;
   mode!: GameMode;
   variant: ModeVariant | null = null;
@@ -264,6 +276,7 @@ export class Room {
     this.solo = init.solo;
     this.classId = init.classId ?? null;
     this.assignmentId = init.assignmentId ?? null;
+    this.teamPlan = init.teamPlan ?? null;
     this.options = init.options;
     this.set = init.set;
     this.classMembers = init.classMembers ? new Set(init.classMembers) : null;
@@ -297,9 +310,15 @@ export class Room {
 
   private setupTeams() {
     const count = this.common.teamCount;
-    this.teams = makeTeams(count).map((t) => ({ id: t.id, name: t.name, hue: t.hue }));
+    this.teams = this.teamPlan && count ? this.teamPlan.teams : makeTeams(count).map((t) => ({ id: t.id, name: t.name, hue: t.hue }));
     const players = [...this.players.values()];
-    players.forEach((p, i) => (p.teamId = count ? this.teams[i % count]!.id : null));
+    players.forEach((p, i) => (p.teamId = count ? this.planTeam(p.userId) ?? this.teams[i % this.teams.length]!.id : null));
+  }
+
+  /** The team a school team plan puts this account in, if it is still one of the room's teams. */
+  private planTeam(userId: string | null): string | null {
+    const t = userId ? this.teamPlan?.teamOf[userId] : undefined;
+    return t && this.teams.some((x) => x.id === t) ? t : null;
   }
 
   private smallestTeam(): string | null {
@@ -405,7 +424,7 @@ export class Room {
       name,
       isGuest: !input.userId || input.isGuestAccount,
       isBot: false,
-      teamId: this.smallestTeam(),
+      teamId: this.planTeam(input.userId) ?? this.smallestTeam(),
       connected: true,
       reconnectToken: crypto.randomUUID().replace(/-/g, ''),
       avatar: withDress(input.avatar ?? defaultAvatar(name), input.dress),
@@ -1081,7 +1100,8 @@ export class Room {
 
   private sendView(sub: RoomSubscriber) {
     try {
-      sub.emit('room:view', this.view(sub.role === 'host' ? null : sub.playerId, sub.remote === true));
+      // A spectator sees the big screen and nothing only the host sees (modules/school/spectator.ts).
+      sub.emit('room:view', sub.role === 'spectator' ? spectatorView(this.view(null)) : this.view(sub.role === 'host' ? null : sub.playerId, sub.remote === true));
     } catch (err) {
       this.hooks.onError(err, 'view', this);
     }
@@ -1240,6 +1260,19 @@ export class Room {
 
   private touch() {
     this.lastActivity = this.hooks.now();
+  }
+
+  /**
+   * Who may show this game on a second screen (school: the hall or a spare display). The host's own
+   * account and school staff always. Anyone else only where they could have joined and seen the
+   * same names anyway: a member of the class in a class game, any account in an open room. A locked
+   * room or one with a waiting room is closed to onlookers as it is to new players.
+   */
+  watchAllowed(userId: string, staff: boolean): boolean {
+    if (this.solo) return false;
+    if (userId === this.hostUserId || staff) return true;
+    if (this.classMembers) return this.classMembers.has(userId);
+    return !this.locked && !this.options.admit;
   }
 
   /** Housekeeping, called by the manager every few seconds. Returns false once the room should go. */

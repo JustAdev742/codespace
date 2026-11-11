@@ -70,3 +70,21 @@ describe('who wears which uniform', () => {
     else delete doc.document;
   });
 });
+
+describe('the house pin', () => {
+  it('sits on a blazer lapel in the house colour, and never on a polo', () => {
+    const doc = globalThis as unknown as { document?: unknown };
+    const had = 'document' in doc;
+    const saved = doc.document;
+    doc.document = { documentElement: { dataset: { school: 'hills-grammar' } } };
+    const art = arts[0]!;
+    const blazer = renderToStaticMarkup(createElement(Glim, { art, dress: 'senior-green', housePin: 120, size: 160 }));
+    expect(blazer).toContain('hsl(120 80% 64%)');
+    const polo = renderToStaticMarkup(createElement(Glim, { art, dress: 'sport', housePin: 120, size: 160 }));
+    expect(polo).not.toContain('hsl(120 80% 64%)');
+    const none = renderToStaticMarkup(createElement(Glim, { art, dress: 'senior-green', size: 160 }));
+    expect(none).not.toContain('hsl(120 80% 64%)');
+    if (had) doc.document = saved;
+    else delete doc.document;
+  });
+});

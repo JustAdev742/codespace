@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
+import { HouseChip } from '../school/emblems.tsx';
+import { SchoolLobbyTheme } from '../school/LobbyTheme.tsx';
 import { DropdownMenu } from 'radix-ui';
 import { Bot, Check, Copy, Eye, Hand, Lock, LockOpen, MoreHorizontal, Pencil, Pin, Settings2, Share2, Shuffle, UserCheck, UserMinus, UserRound, UserX, Users, WifiOff } from 'lucide-react';
 import { toast } from 'sonner';
@@ -113,6 +115,7 @@ function Seat({ p, actions, delay, hop }: { p: RoomPlayerView; actions?: SeatAct
         ) : null}
       </span>
       <span className="max-w-full truncate text-center text-[length:clamp(0.95rem,calc(var(--seat)*0.16),1.5rem)] leading-tight font-bold">{p.name}</span>
+      {p.avatar?.house ? <HouseChip house={p.avatar.house} /> : null}
       {actions ? <SeatMenu p={p} actions={actions} /> : null}
     </li>
   );
@@ -368,6 +371,7 @@ export function HostLobby({ room, handle }: { room: RoomView; handle: RoomHandle
         </div>
         <div className="flex flex-col justify-between gap-5">
           <div className="flex flex-col items-start gap-2">
+            <SchoolLobbyTheme />
             <h1 className="font-display text-[clamp(2.75rem,4.6vw,5.5rem)] leading-[0.95] font-extrabold">{room.room.title}</h1>
             <p className="text-[clamp(1.15rem,1.6vw,1.8rem)] font-semibold text-text-2">{room.room.setTitle}</p>
             <ul className="mt-2 flex flex-wrap gap-2 text-[clamp(0.95rem,1.15vw,1.3rem)]" aria-label="Game settings">

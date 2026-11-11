@@ -10,7 +10,7 @@ import { Glim } from '../../art/glim/Glim.tsx';
 export function PlayerAvatar({ avatar, size = 40 }: { avatar: AvatarLite | null; size?: number }) {
   return (
     <span aria-hidden className="grid shrink-0 place-items-center overflow-hidden rounded-full bg-surface-3" style={{ width: size, height: size }}>
-      {avatar ? <Glim art={avatar.art} accessories={avatar.accessories} dress={avatar.uniform ?? null} size={Math.round(size * 1.06)} /> : <User className="text-text-3" style={{ width: size / 2, height: size / 2 }} />}
+      {avatar ? <Glim art={avatar.art} accessories={avatar.accessories} dress={avatar.uniform ?? null} housePin={avatar.house?.hue ?? null} size={Math.round(size * 1.06)} /> : <User className="text-text-3" style={{ width: size / 2, height: size / 2 }} />}
     </span>
   );
 }

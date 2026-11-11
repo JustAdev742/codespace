@@ -1024,3 +1024,194 @@ export const setEditors = pgTable(
   },
   (t) => [primaryKey({ columns: [t.setId, t.userId] }), index('set_editors_user_idx').on(t.userId)],
 );
+
+/* ---------------------------------- school ---------------------------------- */
+/*
+ * A school's own copy: houses, house points, house cups, merits, notices, school-wide events,
+ * sport days, tournaments and class challenges. School settings live in economy_config
+ * under 'school:settings' (modules/school/settings.ts).
+ */
+
+export const houses = pgTable(
+  'houses',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    name: text('name').notNull(),
+    hue: integer('hue').notNull(),
+    emblem: text('emblem').notNull(),
+    sort: integer('sort').notNull().default(0),
+    createdAt: now('created_at'),
+    archivedAt: ts('archived_at'),
+  },
+  (t) => [check('houses_hue_valid', sql`${t.hue} >= 0 and ${t.hue} < 360`)],
+);
+
+/** Which house a student is in. Set by a teacher or school staff, or chosen once by the student when the school allows it. */
+export const houseMembers = pgTable('house_members', {
+  userId: uuid('user_id').primaryKey().references(() => users.id, { onDelete: 'cascade' }),
+  houseId: uuid('house_id').notNull().references(() => houses.id, { onDelete: 'cascade' }),
+  setBy: uuid('set_by').references(() => users.id, { onDelete: 'set null' }),
+  chosen: boolean('chosen').notNull().default(false),
+  createdAt: now('created_at'),
+  /** When the student saw the welcome to their house. Null until then. */
+  welcomedAt: ts('welcomed_at'),
+});
+
+/** Every house point, with where it came from. One row per player and source, so a game or merit never counts twice. */
+export const housePoints = pgTable(
+  'house_points',
+  {
+    id: bigserial('id', { mode: 'number' }).primaryKey(),
+    houseId: uuid('house_id').notNull().references(() => houses.id, { onDelete: 'cascade' }),
+    userId: uuid('user_id').references(() => users.id, { onDelete: 'set null' }),
+    points: integer('points').notNull(),
+    reason: text('reason').notNull(),
+    sourceId: text('source_id').notNull(),
+    /** The player's school year when they earned it, for year group totals. Never shown per player. */
+    yearGroup: integer('year_group'),
+    day: date('day', { mode: 'string' }).notNull(),
+    createdAt: now('created_at'),
+  },
+  (t) => [
+    uniqueIndex('house_points_source_uq').on(t.userId, t.reason, t.sourceId),
+    index('house_points_day_idx').on(t.day),
+    index('house_points_user_day_idx').on(t.userId, t.day),
+    check('house_points_reason_valid', sql`${t.reason} in ('game','assignment','merit')`),
+    check('house_points_positive', sql`${t.points} > 0`),
+  ],
+);
+
+/** A house cup: a competition between two dates; when it is over the winner and totals are kept. */
+export const houseCups = pgTable(
+  'house_cups',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    name: text('name').notNull(),
+    startsOn: date('starts_on', { mode: 'string' }).notNull(),
+    endsOn: date('ends_on', { mode: 'string' }).notNull(),
+    /** Frozen when the cup closes: [{ houseId, name, hue, emblem, points }], highest first. */
+    totals: jsonb('totals'),
+    winnerName: text('winner_name'),
+    createdBy: uuid('created_by').references(() => users.id, { onDelete: 'set null' }),
+    createdAt: now('created_at'),
+    closedAt: ts('closed_at'),
+  },
+  (t) => [index('house_cups_dates_idx').on(t.endsOn), check('house_cups_dates_valid', sql`${t.startsOn} <= ${t.endsOn}`)],
+);
+
+/** A merit a teacher gave a student for one of the school's values. Earns house points, never currency or items. */
+export const merits = pgTable(
+  'merits',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    studentId: uuid('student_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+    teacherId: uuid('teacher_id').references(() => users.id, { onDelete: 'set null' }),
+    teacherName: text('teacher_name').notNull(),
+    value: text('value').notNull(),
+    note: text('note').notNull().default(''),
+    day: date('day', { mode: 'string' }).notNull(),
+    createdAt: now('created_at'),
+  },
+  (t) => [index('merits_student_idx').on(t.studentId, t.createdAt), index('merits_teacher_day_idx').on(t.teacherId, t.day)],
+);
+
+export const schoolNotices = pgTable(
+  'school_notices',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    title: text('title').notNull(),
+    body: text('body').notNull().default(''),
+    audience: text('audience').notNull(),
+    startsAt: ts('starts_at').notNull(),
+    endsAt: ts('ends_at').notNull(),
+    createdBy: uuid('created_by').references(() => users.id, { onDelete: 'set null' }),
+    createdAt: now('created_at'),
+  },
+  (t) => [index('school_notices_ends_idx').on(t.endsAt), check('school_notices_audience_valid', sql`${t.audience} in ('students','teachers','everyone')`)],
+);
+
+/** A school-wide event: a countdown on everyone's home page before it, and a themed lobby on the day. */
+export const schoolEvents = pgTable(
+  'school_events',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    title: text('title').notNull(),
+    message: text('message').notNull().default(''),
+    decor: text('decor').notNull(),
+    hue: integer('hue').notNull(),
+    startsAt: ts('starts_at').notNull(),
+    endsAt: ts('ends_at').notNull(),
+    createdBy: uuid('created_by').references(() => users.id, { onDelete: 'set null' }),
+    createdAt: now('created_at'),
+  },
+  (t) => [index('school_events_ends_idx').on(t.endsAt)],
+);
+
+/** Weekdays (1 Monday to 5 Friday) a student wears sport uniform, set by the student. */
+export const studentSportDays = pgTable('student_sport_days', {
+  userId: uuid('user_id').primaryKey().references(() => users.id, { onDelete: 'cascade' }),
+  days: integer('days').array().notNull(),
+  updatedAt: now('updated_at'),
+});
+
+/** Weekdays a class wears sport uniform, set by its teacher. A student's own timetable comes first. */
+export const classSportDays = pgTable('class_sport_days', {
+  classId: uuid('class_id').primaryKey().references(() => classes.id, { onDelete: 'cascade' }),
+  days: integer('days').array().notNull(),
+  updatedAt: now('updated_at'),
+});
+
+/** A knockout or round robin among classes or named teams. Entrants: [{ name, classId }]. */
+export const tournaments = pgTable(
+  'tournaments',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    ownerId: uuid('owner_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+    name: text('name').notNull(),
+    format: text('format').notNull(),
+    entrants: jsonb('entrants').notNull(),
+    winnerName: text('winner_name'),
+    createdAt: now('created_at'),
+    finishedAt: ts('finished_at'),
+  },
+  (t) => [index('tournaments_owner_idx').on(t.ownerId), check('tournaments_format_valid', sql`${t.format} in ('knockout','round_robin')`)],
+);
+
+/** One match: entrants by their index in the tournament's list; filled in when its game ends. */
+export const tournamentMatches = pgTable(
+  'tournament_matches',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    tournamentId: uuid('tournament_id').notNull().references(() => tournaments.id, { onDelete: 'cascade' }),
+    round: integer('round').notNull(),
+    slot: integer('slot').notNull(),
+    a: integer('a'),
+    b: integer('b'),
+    winner: integer('winner'),
+    aScore: integer('a_score'),
+    bScore: integer('b_score'),
+    gameId: uuid('game_id'),
+    playedAt: ts('played_at'),
+  },
+  (t) => [uniqueIndex('tournament_matches_slot_uq').on(t.tournamentId, t.round, t.slot)],
+);
+
+/** Two classes play the same set in their own time over a week; average accuracy per student decides it. */
+export const classChallenges = pgTable(
+  'class_challenges',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    createdBy: uuid('created_by').notNull().references(() => users.id, { onDelete: 'cascade' }),
+    classA: uuid('class_a').notNull().references(() => classes.id, { onDelete: 'cascade' }),
+    classB: uuid('class_b').notNull().references(() => classes.id, { onDelete: 'cascade' }),
+    setId: uuid('set_id').notNull().references(() => questionSets.id, { onDelete: 'cascade' }),
+    modeId: text('mode_id').notNull(),
+    startsAt: ts('starts_at').notNull(),
+    endsAt: ts('ends_at').notNull(),
+    assignmentA: uuid('assignment_a'),
+    assignmentB: uuid('assignment_b'),
+    acceptedAt: ts('accepted_at'),
+    createdAt: now('created_at'),
+  },
+  (t) => [index('class_challenges_a_idx').on(t.classA), index('class_challenges_b_idx').on(t.classB)],
+);

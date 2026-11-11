@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react';
 import { Link } from 'react-router';
 import { useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { Award, Bell, CalendarClock, Gamepad2, Mail, MailOpen, TrendingUp, UserPlus, Users } from 'lucide-react';
+import { Award, Bell, CalendarClock, Castle, Gamepad2, Mail, MailOpen, TrendingUp, UserPlus, Users } from 'lucide-react';
 import { api } from '../../lib/api.ts';
 import { useMe } from '../../lib/session.ts';
 import { timeAgo } from '../../lib/format.ts';
@@ -18,7 +18,7 @@ import { usePageTitle } from './data.ts';
 
 export interface NotificationItem {
   id: string;
-  kind: 'friend_request' | 'friend_accepted' | 'invite' | 'achievement' | 'level' | 'collection' | 'due';
+  kind: 'friend_request' | 'friend_accepted' | 'invite' | 'achievement' | 'level' | 'collection' | 'due' | 'school';
   title: string;
   body: string;
   link: string | null;
@@ -40,6 +40,7 @@ const ICON: Record<NotificationItem['kind'], { icon: React.ReactNode; tone: stri
   level: { icon: <TrendingUp className="size-5" />, tone: 'bg-glim', label: 'Reward' },
   collection: { icon: <Award className="size-5" />, tone: 'bg-glim', label: 'Reward' },
   due: { icon: <CalendarClock className="size-5" />, tone: 'bg-ember', label: 'Work due' },
+  school: { icon: <Castle className="size-5" />, tone: 'bg-lantern', label: 'School' },
 };
 
 function Row({ n, onRead, onUnread }: { n: NotificationItem; onRead: (id: string) => void; onUnread: (id: string) => void }) {

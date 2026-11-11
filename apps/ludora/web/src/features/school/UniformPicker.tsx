@@ -20,9 +20,11 @@ export const UNIFORM_NAMES: Record<SchoolUniform, string> = {
  */
 export function UniformPicker({ value, onChange, preview, onStage = false }: { value: SchoolDress; onChange: (patch: Partial<SchoolDress>) => void; preview?: { art: GlimArt; accessories?: AccessoryArt[] | undefined } | null; onStage?: boolean }) {
   const uniform = uniformForDress(value);
-  const field = onStage ? 'h-12 bg-white text-lg font-semibold text-on-accent!' : 'w-full sm:w-48';
+  const field = onStage ? 'h-12 bg-white text-lg font-semibold text-on-accent!' : 'w-full @min-[30rem]:w-48';
   return (
-    <div className="flex flex-col gap-4 min-[420px]:flex-row min-[420px]:items-center min-[420px]:gap-6">
+    // Sized by its own box, not the window: it sits in a narrow Locker column as well as in Settings.
+    <div className="@container">
+    <div className="flex flex-col gap-4 @min-[26rem]:flex-row @min-[26rem]:items-center @min-[26rem]:gap-6">
       {preview ? (
         <div className={`grid size-28 shrink-0 place-items-center rounded-[var(--radius-l)] ${onStage ? 'bg-white/10' : 'bg-sunken'}`}>
           <Glim art={preview.art} accessories={preview.accessories} dress={uniform} size={104} pose="wave" />
@@ -41,7 +43,7 @@ export function UniformPicker({ value, onChange, preview, onStage = false }: { v
           </Select>
         </label>
         {yearHasBlazer(value.year) ? (
-          <div className="flex flex-wrap gap-3 max-sm:flex-col">
+          <div className="flex flex-wrap gap-3 @max-[30rem]:flex-col">
             <Segmented label="Blazer" value={value.blazer} onChange={(blazer) => onChange({ blazer })} options={[{ value: 'green', label: 'Green blazer' }, { value: 'grey', label: 'Grey blazer' }]} />
             <Segmented label="Uniform" value={value.kit} onChange={(kit) => onChange({ kit })} options={[{ value: 'school', label: 'School' }, { value: 'sport', label: 'Sport' }]} />
           </div>
@@ -50,6 +52,7 @@ export function UniformPicker({ value, onChange, preview, onStage = false }: { v
           {uniform ? UNIFORM_NAMES[uniform] : 'Your Glim wears the uniform for your year.'}
         </p>
       </div>
+    </div>
     </div>
   );
 }

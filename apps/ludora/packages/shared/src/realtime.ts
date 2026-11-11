@@ -226,6 +226,8 @@ export interface AvatarLite {
   victory?: { style: string; hue: number };
   /** On a school's copy, the uniform for the player's year group (schoolUniform.ts). Never the year itself. */
   uniform?: SchoolUniform;
+  /** On a school's copy with houses, the player's house: its name, colour and emblem (school.ts). */
+  house?: { id: string; name: string; hue: number; emblem: string };
 }
 
 export interface TeamView {

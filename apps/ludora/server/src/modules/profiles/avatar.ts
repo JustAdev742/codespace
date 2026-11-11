@@ -3,6 +3,7 @@ import { RARITIES, accessoryArtSchema, glimArtSchema, uniformForDress, victoryAr
 import type { DbOrTx } from '../../db/client.ts';
 import { equipped, items, users } from '../../db/schema.ts';
 import { readPreferences } from '../users/preferences.ts';
+import { housesOf, sportToday } from '../school/service.ts';
 
 const AVATAR_SLOTS = ['buddy', 'hat', 'eyes', 'neck', 'victory'];
 
@@ -20,7 +21,12 @@ export async function loadAvatars(db: DbOrTx, userIds: readonly string[]): Promi
   const rows = slots.length ? await db.select({ id: items.id, art: items.art, rarity: items.rarity }).from(items).where(inArray(items.id, [...new Set(slots.map((s) => s.itemId))])) : [];
   // The uniform for each player's year group; the year itself never leaves their settings.
   const prefs = await db.select({ id: users.id, preferences: users.preferences }).from(users).where(inArray(users.id, ids));
-  const uniformOf = new Map(prefs.map((r) => [r.id, uniformForDress(readPreferences(r.preferences).school)]));
+  // School: a player's sport days put them in sport uniform without asking; their house goes on the lapel.
+  const [sport, houseOf] = await Promise.all([sportToday(db, ids), housesOf(db, ids)]);
+  const uniformOf = new Map(prefs.map((r) => {
+    const dress = readPreferences(r.preferences).school;
+    return [r.id, uniformForDress(sport.has(r.id) ? { ...dress, kit: 'sport' } : dress)];
+  }));
   const artOf = new Map(rows.map((r) => [r.id, r.art]));
   const rarityOf = new Map(rows.map((r) => [r.id, r.rarity]));
   for (const id of ids) {
@@ -45,6 +51,7 @@ export async function loadAvatars(db: DbOrTx, userIds: readonly string[]): Promi
       ...(accessories.length ? { accessories } : {}),
       ...(victory?.success ? { victory: { style: victory.data.style, hue: victory.data.hue } } : {}),
       ...(uniformOf.get(id) ? { uniform: uniformOf.get(id)! } : {}),
+      ...(houseOf.get(id) ? { house: { id: houseOf.get(id)!.id, name: houseOf.get(id)!.name, hue: houseOf.get(id)!.hue, emblem: houseOf.get(id)!.emblem } } : {}),
     });
   }
   return out;

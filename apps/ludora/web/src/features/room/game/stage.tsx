@@ -95,6 +95,7 @@ export function PlayerGlim({
       art={avatar?.art ?? fallbackArt(seed)}
       accessories={avatar?.accessories}
       dress={avatar?.uniform ?? null}
+      housePin={avatar?.house?.hue ?? null}
       size={size}
       className={className}
       bob={bob}
