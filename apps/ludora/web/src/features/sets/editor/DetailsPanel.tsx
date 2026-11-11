@@ -4,6 +4,7 @@ import { SET_COVER_GLYPHS, SUBJECT_LABELS, SUBJECTS, YEAR_LEVELS, type Subject, 
 import { Button } from '../../../ui/Button.tsx';
 import { Input, Panel, Select, Switch, Textarea } from '../../../ui/primitives.tsx';
 import { SetCover } from '../SetCover.tsx';
+import { QuestionImage } from './QuestionImage.tsx';
 import { coverFor, GLYPH_LABELS, LANGUAGES, LIMITS, type SetDetails } from './model.ts';
 import { domIds, EditorField, ErrorText, errorIdFor } from './parts.tsx';
 import type { FieldErrors } from './validation.ts';
@@ -156,11 +157,11 @@ export const DetailsPanel = memo(function DetailsPanel({ details, errors, canPub
           </div>
           <div className="flex min-w-0 flex-1 basis-60 flex-col gap-3">
             <fieldset className="min-w-0">
-              <legend className="mb-1.5 text-sm text-text-2">Picture</legend>
+              <legend className="mb-1.5 text-sm text-text-2">Icon</legend>
               <div className="flex flex-wrap gap-1.5">
                 {SET_COVER_GLYPHS.map((g) => (
                   <label key={g} className={`relative cursor-pointer rounded-[var(--radius-l)] border-2 p-0.5 transition-colors has-[:focus-visible]:ring-[3px] has-[:focus-visible]:ring-[var(--focus)] ${cover.glyph === g ? 'border-lantern' : 'border-transparent hover:border-line-strong'}`}>
-                    <input id={domIds.detail(`cover-${g}`)} type="radio" name="set-cover-glyph" value={g} checked={cover.glyph === g} onChange={() => onChange({ cover: { glyph: g, hue: cover.hue } })} className="sr-only" />
+                    <input id={domIds.detail(`cover-${g}`)} type="radio" name="set-cover-glyph" value={g} checked={cover.glyph === g} onChange={() => onChange({ cover: { ...cover, glyph: g } })} className="sr-only" />
                     <SetCover cover={{ glyph: g, hue: cover.hue }} subject="general" size={40} />
                     <span className="sr-only">{GLYPH_LABELS[g]}</span>
                   </label>
@@ -177,12 +178,22 @@ export const DetailsPanel = memo(function DetailsPanel({ details, errors, canPub
                   step={1}
                   value={cover.hue}
                   aria-valuetext={hueName(cover.hue)}
-                  onChange={(e) => onChange({ cover: { glyph: cover.glyph, hue: Number(e.target.value) } })}
+                  onChange={(e) => onChange({ cover: { ...cover, hue: Number(e.target.value) } })}
                   className={`h-3 w-full cursor-pointer appearance-none rounded-full border border-line-strong ${THUMB}`}
                   style={{ background: HUE_TRACK }}
                 />
               )}
             </EditorField>
+            <fieldset className="min-w-0">
+              <legend className="mb-1 text-sm text-text-2">Your own picture</legend>
+              <p className="mb-2 text-xs text-text-3">A photo or drawing shown instead of the icon, wherever the set appears. The colour shows if the picture cannot.</p>
+              <QuestionImage
+                media={details.cover?.image}
+                altId={domIds.detail('coverImage')}
+                altError={errors.coverImage}
+                onChange={(image) => onChange({ cover: { glyph: cover.glyph, hue: cover.hue, ...(image ? { image } : {}) } })}
+              />
+            </fieldset>
             {details.cover ? (
               <div>
                 <Button size="sm" variant="ghost" onClick={() => onChange({ cover: null })}>
@@ -190,7 +201,7 @@ export const DetailsPanel = memo(function DetailsPanel({ details, errors, canPub
                 </Button>
               </div>
             ) : (
-              <p className="text-xs text-text-3">The cover follows the subject until you choose a picture or colour.</p>
+              <p className="text-xs text-text-3">The cover follows the subject until you choose an icon, a colour or your own picture.</p>
             )}
           </div>
         </div>

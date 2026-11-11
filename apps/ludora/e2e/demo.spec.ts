@@ -21,6 +21,12 @@ function watchRequests(page: Page, base: string): string[] {
 
 const startPage = (page: Page) => page.getByRole('heading', { level: 1, name: 'Play Ludora in your browser' });
 
+/**
+ * The round's own "Question 1 of N" line. The caption that sweeps across before a question says the same
+ * words, but it is decoration and hidden from assistive technology, so it is not what a player reads.
+ */
+const firstQuestion = (page: Page) => page.getByText(/^Question 1 of \d+$/).and(page.locator(':not([aria-hidden="true"] *)'));
+
 test('plays a game against practice bots with nothing but static files', async ({ page, baseURL }) => {
   const errors = watchErrors(page);
   const outside = watchRequests(page, baseURL!);
@@ -33,7 +39,7 @@ test('plays a game against practice bots with nothing but static files', async (
   await expect(page).toHaveURL(/#\/play\?set=official-general-knowledge&mode=classic&bots=5$/);
   await expect(page.getByText('Demo, with 5 practice bots', { exact: true })).toBeVisible();
   // The first question, of whatever type the shuffle dealt: answer it, and the game takes the answer.
-  await expect(page.getByText(/^Question 1 of \d+$/)).toBeVisible();
+  await expect(firstQuestion(page)).toBeVisible();
   await answerAnyQuestion(page);
   await expect(page.getByText(/^(Answer locked in|Correct|Partly right \(\d+%\)|Incorrect)$/).first()).toBeVisible();
   await expect(page.getByText('You did not answer.')).toHaveCount(0);
@@ -48,7 +54,7 @@ test('plays a game against practice bots with nothing but static files', async (
   // A choice you picked is tagged Your answer on your own screen, never here.
   const revealed = page.getByRole('img', { name: 'Correct answer' }).or(page.getByRole('list', { name: /^The right (order|pairs)$/ })).or(page.getByText('Answer', { exact: true }));
   await expect(revealed.first()).toBeVisible({ timeout: 30_000 });
-  await expect(page.getByText(/^Question 1 of \d+$/)).toBeVisible();
+  await expect(firstQuestion(page)).toBeVisible();
   await expect(page.getByText('Your answer', { exact: true })).toHaveCount(0);
   await page.getByRole('button', { name: 'Pause' }).click();
   await expect(page.getByText('Paused', { exact: true })).toBeVisible();
@@ -116,7 +122,7 @@ test('fits a 360px phone', async ({ page }) => {
   await expect(startPage(page)).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth), 'start page scrolls sideways').toBeLessThanOrEqual(0);
   await page.getByRole('button', { name: 'Start game' }).click();
-  await expect(page.getByText(/^Question 1 of \d+$/)).toBeVisible();
+  await expect(firstQuestion(page)).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth), 'game scrolls sideways').toBeLessThanOrEqual(0);
   await page.getByRole('button', { name: 'Big screen' }).click();
   await expect(page.getByText(/This is the big screen/)).toBeVisible();

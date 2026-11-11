@@ -1,7 +1,7 @@
 import { lazy, Suspense, useEffect, useMemo, useRef, useState, type RefObject } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate, useSearchParams } from 'react-router';
-import { Presentation, Search, Users } from 'lucide-react';
+import { Bot, Presentation, Search, Users } from 'lucide-react';
 import { toast } from 'sonner';
 import type { CommonField, SettingField } from '@ludora/shared';
 import { soloBlocker } from '@ludora/engine/catalog';
@@ -10,6 +10,7 @@ import { useMe } from '../../lib/session.ts';
 import { useModes, type CatalogEntry, type SetSummary } from '../../lib/queries.ts';
 import { AccountError, EmptyState, ErrorNotice, Field, Input, PageHeader, Panel, Select, Skeleton, Switch } from '../../ui/primitives.tsx';
 import { ToggleChips } from '../../ui/game.tsx';
+import { Segmented } from '../../ui/Segmented.tsx';
 import { Button, ButtonLink } from '../../ui/Button.tsx';
 import { OpenGames, openGamesKey, useOpenGames, type OpenGame } from './OpenGames.tsx';
 import { SaveGameDialog, type MadeGame } from '../games/SaveGameDialog.tsx';
@@ -322,6 +323,9 @@ function Setup({ solo, preset, gameId, making, again, classId }: { solo: boolean
   const [choice, setChoice] = useState<Choice | null>(null);
   const [settings, setSettings] = useState<Record<string, unknown>>({});
   const [common, setCommon] = useState<Record<string, number | boolean>>({});
+  // Solo: practice bots to play against, and how good they are (the server decides what each level means).
+  const [bots, setBots] = useState(0);
+  const [botLevel, setBotLevel] = useState<'easy' | 'medium' | 'hard'>('medium');
   const [options, setOptions] = useState<Record<string, unknown> & { lateJoin: boolean; generatedNames: boolean; requireAccount: boolean; chaos: boolean; quiet: boolean }>({ lateJoin: true, generatedNames: false, requireAccount: false, chaos: false, quiet: false });
   const [busy, setBusy] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -380,6 +384,7 @@ function Setup({ solo, preset, gameId, making, again, classId }: { solo: boolean
     return true;
   };
 
+  const canHaveBots = Boolean(choice && choice.mode.meta.players.max >= 2);
   const create = async () => {
     if (!set || !choice) return;
     setBusy(true);
@@ -394,6 +399,7 @@ function Setup({ solo, preset, gameId, making, again, classId }: { solo: boolean
         common,
         options,
         solo,
+        ...(solo && bots > 0 && canHaveBots ? { practiceBots: { count: bots, level: botLevel } } : {}),
         ...(game ? { gameId: game.id } : {}),
         ...(forClass && !solo ? { classId: forClass.id } : {}),
       });
@@ -530,6 +536,46 @@ function Setup({ solo, preset, gameId, making, again, classId }: { solo: boolean
                 <SettingInput key={f.key} field={f} value={effective(f.key, f.default)} onChange={(v) => setSettings((s) => ({ ...s, [f.key]: v }))} locked={locked.has(f.key)} />
               ))}
             </div>
+            {solo && canHaveBots ? (
+              <fieldset className="mt-6 min-w-0 border-t border-line pt-4">
+                <legend className="sr-only">Practice bots</legend>
+                <h3 className="mb-1 flex items-center gap-2 font-display text-xl font-bold" aria-hidden>
+                  <Bot className="size-5 text-text-3" aria-hidden /> Practice bots
+                </h3>
+                <p className="mb-3 max-w-[60ch] text-sm text-text-2">Play against bots instead of on your own. Easy bots are slow and often wrong; hard ones are quick and nearly always right. They never change what you earn.</p>
+                <div className="flex flex-wrap items-end gap-4">
+                  <Field label="How many">
+                    {(p) => (
+                      <Select {...p} value={String(bots)} onChange={(e) => setBots(Number(e.target.value))} className="w-40">
+                        <option value="0">None</option>
+                        {[1, 2, 3, 4, 5].filter((n) => n < choice.mode.meta.players.max).map((n) => (
+                          <option key={n} value={n}>
+                            {n === 1 ? '1 bot' : `${n} bots`}
+                          </option>
+                        ))}
+                      </Select>
+                    )}
+                  </Field>
+                  {bots > 0 ? (
+                    <div className="flex flex-col gap-1.5 max-sm:w-full">
+                      <span className="text-sm font-semibold text-text" aria-hidden>
+                        How good
+                      </span>
+                    <Segmented<'easy' | 'medium' | 'hard'>
+                      label="How good"
+                      value={botLevel}
+                      onChange={setBotLevel}
+                      options={[
+                        { value: 'easy', label: 'Easy' },
+                        { value: 'medium', label: 'Medium' },
+                        { value: 'hard', label: 'Hard' },
+                      ]}
+                    />
+                    </div>
+                  ) : null}
+                </div>
+              </fieldset>
+            ) : null}
             {!solo ? (
               <div className="mt-6 border-t border-line pt-4">
                 <h3 className="mb-1 flex items-center gap-2 font-display text-xl font-bold">
@@ -540,6 +586,7 @@ function Setup({ solo, preset, gameId, making, again, classId }: { solo: boolean
                   <Switch checked={options.lateJoin} onCheckedChange={(v) => setOptions((o) => ({ ...o, lateJoin: v }))} label="Allow late joining" description="Players can join after the game has started." />
                   {forClass ? null : <Switch checked={options.requireAccount} onCheckedChange={(v) => setOptions((o) => ({ ...o, requireAccount: v }))} label="Accounts only" description="Only signed-in players with an account can join." />}
                   <Switch checked={options.quiet} onCheckedChange={(v) => setOptions((o) => ({ ...o, quiet: v }))} label="Quiet room" description="Every device in the room stays silent. You can change it in the room." />
+                  <Switch checked={Boolean(options.sharedDevices)} onCheckedChange={(v) => setOptions((o) => ({ ...o, sharedDevices: v }))} label="Shared devices" description="After the game, a device where someone joined with just a name goes back to the join page for the next player, after a short countdown." />
                   <Switch
                     checked={options.chaos}
                     onCheckedChange={(v) => setOptions((o) => ({ ...o, chaos: v }))}
@@ -581,7 +628,7 @@ function Setup({ solo, preset, gameId, making, again, classId }: { solo: boolean
             open={saving}
             onOpenChange={setSaving}
             editing={game?.mine ? game : null}
-            setup={{ setId: set.id, modeId: choice.mode.meta.id, variantId: choice.variant?.meta.id ?? null, settings, common, options: Object.fromEntries(Object.entries(options).filter(([, v]) => typeof v === 'boolean')) as Record<string, boolean>, modeTitle: choice.variant?.meta.title ?? choice.mode.meta.title, hue: choice.mode.meta.thumbnail.hue }}
+            setup={{ setId: set.id, modeId: choice.mode.meta.id, variantId: choice.variant?.meta.id ?? null, settings, common, options: Object.fromEntries(Object.entries(options).filter(([, v]) => typeof v === 'boolean')) as Record<string, boolean>, modeTitle: choice.variant?.meta.title ?? choice.mode.meta.title, hue: choice.mode.meta.thumbnail.hue, setTitle: set.title }}
             onSaved={(g) => navigate(`/host?game=${g.id}`, { replace: true })}
           />
         ) : null}

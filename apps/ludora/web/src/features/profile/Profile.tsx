@@ -14,7 +14,7 @@ import { drawCard, saveBlob } from './cardImage.ts';
 import { api, ApiError } from '../../lib/api.ts';
 import { useMe } from '../../lib/session.ts';
 import type { EquippedSlot } from '../../lib/queries.ts';
-import { formatNumber, plural } from '../../lib/format.ts';
+import { formatDate, formatNumber, plural } from '../../lib/format.ts';
 import { Badge, Dialog, EmptyState, ErrorNotice, PageHeader, Panel, Select, Skeleton } from '../../ui/primitives.tsx';
 import { Button, ButtonLink } from '../../ui/Button.tsx';
 import { ProfileCard } from '../collection/ProfileCard.tsx';
@@ -125,7 +125,7 @@ function StatsPanel({ stats, joinedAt }: { stats: NonNullable<PublicProfile['sta
         <h2 id="profile-stats" className="font-display text-[1.6rem] font-bold">
           Stats
         </h2>
-        {joinedAt ? <span className="text-sm text-text-3">Playing since {new Date(joinedAt).toLocaleDateString('en-GB', { month: 'long', year: 'numeric' })}</span> : null}
+        {joinedAt ? <span className="text-sm text-text-3">Playing since {formatDate(joinedAt, { month: 'long', year: 'numeric' })}</span> : null}
       </div>
       <dl className="grid grid-cols-2 gap-3 sm:grid-cols-3">
         {tiles.map((t) => (

@@ -19,7 +19,7 @@ export async function progressionRoutes(app: FastifyInstance, deps: AppDeps) {
       resets: q.resets,
       swapAvailable: !swapped,
       events: q.events,
-      quests: q.rows.map(({ uq, q: quest }) => ({ id: quest.id, kind: quest.kind, title: quest.title, description: quest.description, progress: uq.progress, target: uq.target, period: uq.period, completed: Boolean(uq.completedAt), claimed: Boolean(uq.claimedAt), reward: quest.reward })),
+      quests: q.rows.map(({ uq, q: quest }) => ({ id: quest.id, kind: quest.kind, title: quest.title, description: quest.description, progress: uq.progress, target: uq.target, period: uq.period, completed: Boolean(uq.completedAt), claimed: Boolean(uq.claimedAt), reward: quest.reward, metric: quest.metric })),
     };
   });
 

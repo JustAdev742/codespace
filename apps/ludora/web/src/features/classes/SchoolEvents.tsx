@@ -16,6 +16,7 @@ import {
 import { Button } from "../../ui/Button.tsx";
 import { SeasonGarland } from "../season/SeasonGarland.tsx";
 import { classKeys, type ClassEvent } from "./classData.ts";
+import { formatDate } from '../../lib/format.ts';
 
 /*
  * A school's own events, set by the teacher for their class. The teacher
@@ -48,7 +49,7 @@ const toLocal = (d: Date) =>
     .slice(0, 16);
 const fromLocal = (v: string) => (v ? new Date(v).toISOString() : "");
 const when = (iso: string) =>
-  new Date(iso).toLocaleString(undefined, {
+  formatDate(iso, {
     weekday: "short",
     day: "numeric",
     month: "short",

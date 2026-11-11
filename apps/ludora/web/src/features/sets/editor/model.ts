@@ -573,6 +573,8 @@ export function answerSummary(d: DraftQuestion): string {
 export interface CoverChoice {
   glyph: SetCoverGlyph;
   hue: number;
+  /** A picture the author uploaded, shown instead of the glyph; its description is required. */
+  image?: Media;
 }
 
 export interface SetDetails {
@@ -603,7 +605,7 @@ export interface LoadedSet {
   gradeBand: string | null;
   tags: string[];
   visibility: Visibility;
-  cover: { glyph: string; hue: number } | null;
+  cover: { glyph: string; hue: number; image?: Media } | null;
   /** Not in the set summary yet; read when the server sends it. */
   language?: string;
   topic?: string | null;
@@ -619,7 +621,7 @@ export function detailsFromSet(set: LoadedSet): SetDetails {
     language: set.language || 'en',
     tags: (set.tags ?? []).join(', '),
     visibility: set.visibility,
-    cover: set.cover && (SET_COVER_GLYPHS as readonly string[]).includes(set.cover.glyph) ? { glyph: set.cover.glyph as SetCoverGlyph, hue: set.cover.hue } : null,
+    cover: set.cover && (SET_COVER_GLYPHS as readonly string[]).includes(set.cover.glyph) ? { glyph: set.cover.glyph as SetCoverGlyph, hue: set.cover.hue, ...(reviveMedia(set.cover.image) ? { image: reviveMedia(set.cover.image)! } : {}) } : null,
     topic: set.topic ?? '',
     randomCount: set.defaults?.randomCount ? String(set.defaults.randomCount) : '',
     shuffleAnswers: set.defaults?.shuffleAnswers === true,
@@ -761,7 +763,8 @@ export function reviveQuestion(raw: unknown): DraftQuestion | null {
 
 export function reviveDetails(raw: unknown): SetDetails | null {
   if (!isObj(raw)) return null;
-  const cover = isObj(raw.cover) && (SET_COVER_GLYPHS as readonly unknown[]).includes(raw.cover.glyph) && typeof raw.cover.hue === 'number' ? { glyph: raw.cover.glyph as SetCoverGlyph, hue: Math.round(Math.min(359, Math.max(0, raw.cover.hue))) } : null;
+  const coverImage = isObj(raw.cover) ? reviveMedia(raw.cover.image) : undefined;
+  const cover = isObj(raw.cover) && (SET_COVER_GLYPHS as readonly unknown[]).includes(raw.cover.glyph) && typeof raw.cover.hue === 'number' ? { glyph: raw.cover.glyph as SetCoverGlyph, hue: Math.round(Math.min(359, Math.max(0, raw.cover.hue))), ...(coverImage ? { image: coverImage } : {}) } : null;
   return {
     title: str(raw.title),
     description: str(raw.description),

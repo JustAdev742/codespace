@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import type { AvatarLite, HouseEmblem } from '@ludora/shared';
 import { api } from '../../lib/api.ts';
 import { useMe } from '../../lib/session.ts';
+import { formatDay } from '../../lib/format.ts';
 
 /* The School pages' data, from /api/school. Every rule is the server's; these are only shapes. */
 
@@ -123,7 +124,7 @@ export const WEEKDAYS = [
 
 /** "3 March" from "2027-03-03". */
 export function dayText(day: string): string {
-  return new Date(`${day}T12:00:00Z`).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', timeZone: 'UTC' });
+  return formatDay(day, { day: 'numeric', month: 'long' });
 }
 
 /** "Kindergarten", "Year 7", or "Year not given". */

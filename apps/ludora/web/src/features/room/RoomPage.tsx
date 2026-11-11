@@ -9,7 +9,7 @@ import { Dialog, Spinner } from '../../ui/primitives.tsx';
 import { Stage } from '../../ui/Stage.tsx';
 import { HostLobby, PlayerLobby } from './Lobby.tsx';
 import { Results } from './Results.tsx';
-import { ReactionBar, ReactionLayer } from './game/Reactions.tsx';
+import { ReactionBar, ReactionLayer, useChooseReactions } from './game/Reactions.tsx';
 import { ChaosMenuButton, LanternGlow } from '../extras/ExtrasEntry.tsx';
 import { ReportDialog } from '../moderation/ReportDialog.tsx';
 import { DebugOverlay } from './DebugOverlay.tsx';
@@ -30,6 +30,7 @@ import { ComfortButton } from './game/ComfortDialog.tsx';
 import { useAccess } from '../../lib/usePrefs.ts';
 import { useModes } from '../../lib/queries.ts';
 import { SectionBoundary } from '../../ui/SectionBoundary.tsx';
+import { NextPlayerCountdown } from './NextPlayer.tsx';
 import { LessonScreen } from '../lessons/room.tsx';
 import { Glim } from '../../art/glim/Glim.tsx';
 import { GREETERS } from './game/stage.tsx';
@@ -73,7 +74,10 @@ export default function RoomPage() {
   // ?remote=1: the host's phone, as a controls-only remote beside the big screen.
   const [params] = useSearchParams();
   const remote = params.get('remote') === '1';
-  const handle = useRoom(code, { name, enabled: !me.isLoading, ...(remote ? { as: 'remote' as const } : {}) });
+  // ?as=player: the host of their own room plays in it (a friend challenge has no host screen).
+  const asPlayer = params.get('as') === 'player';
+  const handle = useRoom(code, { name, enabled: !me.isLoading, ...(remote ? { as: 'remote' as const } : asPlayer ? { as: 'player' as const } : {}) });
+  const chooseReactions = useChooseReactions(handle);
   const room = handle.view;
   const [reporting, setReporting] = useState(false);
   const [confirmLeave, setConfirmLeave] = useState(false);
@@ -325,12 +329,13 @@ export default function RoomPage() {
           </Online.Provider>
         ) : null}
         {status === 'ended' && room.results ? <Results room={room} handle={handle} isHost={isHost} guest={!me.data?.user || me.data.user.isGuest} /> : null}
+        {status === 'ended' && room.results && !isHost && !room.room.solo && !room.lesson && room.room.options.sharedDevices && !me.data?.user ? <NextPlayerCountdown code={room.room.code} handle={handle} /> : null}
         </PhaseFade>
         </SectionBoundary>
       </main>
       {!isHost && !room.room.solo && live && room.room.options.reactions && !calm ? (
         <footer className={`${HUD_FOOT} px-3 py-2`}>
-          <ReactionBar onReact={(e) => void handle.react(e)} />
+          <ReactionBar onReact={(e) => void handle.react(e)} emotes={room.me.reactions} canReact={room.me.canReact} onChoose={chooseReactions} />
         </footer>
       ) : null}
       {/* In the host's lobby each arrival already slides in as a card, and toasts in the corner would sit over the crowd. */}

@@ -1,6 +1,7 @@
 import { sql } from 'drizzle-orm';
 import {
   bigint,
+  type AnyPgColumn,
   bigserial,
   boolean,
   check,
@@ -196,6 +197,8 @@ export const gameSessions = pgTable(
     options: jsonb('options'),
     /** Team results when teams played (reports): [{ teamId, name, rank, score, label }]. */
     teams: jsonb('teams'),
+    /** What the class said that is not an answer (finish, 0018): exit ticket counts and poll votes. */
+    voice: jsonb('voice'),
     startedAt: ts('started_at').notNull(),
     endedAt: ts('ended_at').notNull(),
     durationMs: integer('duration_ms').notNull(),
@@ -615,6 +618,8 @@ export const assignments = pgTable(
     closesAt: ts('closes_at'),
     /** Plays each student may start (null: as many as they like). */
     maxAttempts: integer('max_attempts'),
+    /** Set for one group of the class only (finish, 0018); null is the whole class. A group with work cannot be deleted. */
+    groupId: uuid('group_id').references((): AnyPgColumn => classGroups.id, { onDelete: 'restrict' }),
     createdBy: uuid('created_by').notNull().references(() => users.id, { onDelete: 'cascade' }),
     createdAt: now('created_at'),
   },
@@ -1293,4 +1298,40 @@ export const lessonRuns = pgTable(
     finishedAt: ts('finished_at'),
   },
   (t) => [index('lesson_runs_lesson_idx').on(t.lessonId, t.startedAt)],
+);
+/* ------------------------ class groups and co-teachers (finish) ------------------------ */
+
+/** A teacher the class's owner added by username. They can run the class as the owner can, except archive it or change its teachers. */
+export const classTeachers = pgTable(
+  'class_teachers',
+  {
+    classId: uuid('class_id').notNull().references(() => classes.id, { onDelete: 'cascade' }),
+    userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+    addedBy: uuid('added_by').references(() => users.id, { onDelete: 'set null' }),
+    addedAt: now('added_at'),
+  },
+  (t) => [primaryKey({ columns: [t.classId, t.userId] }), index('class_teachers_user_idx').on(t.userId)],
+);
+
+/** A named group inside a class (a reading group, a table). Work can be set for one group. */
+export const classGroups = pgTable(
+  'class_groups',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    classId: uuid('class_id').notNull().references(() => classes.id, { onDelete: 'cascade' }),
+    name: text('name').notNull(),
+    createdAt: now('created_at'),
+  },
+  (t) => [index('class_groups_class_idx').on(t.classId)],
+);
+
+/** Who is in each group. A student can be in several groups of a class (a reading group and a table). */
+export const classGroupMembers = pgTable(
+  'class_group_members',
+  {
+    groupId: uuid('group_id').notNull().references(() => classGroups.id, { onDelete: 'cascade' }),
+    classId: uuid('class_id').notNull().references(() => classes.id, { onDelete: 'cascade' }),
+    userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  },
+  (t) => [primaryKey({ columns: [t.groupId, t.userId] }), index('class_group_members_class_user_idx').on(t.classId, t.userId)],
 );

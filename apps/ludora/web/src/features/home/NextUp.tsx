@@ -1,14 +1,15 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router';
-import { useQueries } from '@tanstack/react-query';
+import { useQueries, useQuery } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { AlarmClock, ChevronRight, ClipboardList, PencilLine, Play, Plus, Presentation } from 'lucide-react';
+import { AlarmClock, ChevronRight, ClipboardList, PencilLine, Play, Plus, Presentation, RotateCcw } from 'lucide-react';
 import { api } from '../../lib/api.ts';
 import { useMe } from '../../lib/session.ts';
-import { plural } from '../../lib/format.ts';
+import { plural, timeAgo } from '../../lib/format.ts';
 import { useNow } from '../../lib/useNow.ts';
 import { Badge, ErrorNotice, Panel, Skeleton } from '../../ui/primitives.tsx';
-import { Button } from '../../ui/Button.tsx';
+import { Button, ButtonLink } from '../../ui/Button.tsx';
+import type { ReportListGame } from '../reports/HostedGames.tsx';
 import { classKeys, useClassList, type ClassDetail, type StudentAssignment } from '../classes/classData.ts';
 import { ClassIcon, DueLabel, JoinCode } from '../classes/classUi.tsx';
 import { JoinPanel } from '../classes/Classes.tsx';
@@ -35,6 +36,53 @@ function ActionTile({ to, icon, title, text, tone }: { to: string; icon: React.R
       </span>
       <ChevronRight className="size-5 shrink-0 text-text-3 transition-transform duration-150 group-hover:translate-x-0.5" aria-hidden />
     </Link>
+  );
+}
+
+/**
+ * The last few games this teacher hosted, each with Host again: the same set, mode, settings and
+ * room options (the host page reads them from the game, and says so if the set has gone).
+ * Only the teacher's own games come back (GET /api/reports/games reads games they hosted).
+ */
+function HostAgain() {
+  const games = useQuery({ queryKey: ['reports', 'games', 'home'], queryFn: () => api.get<{ games: ReportListGame[] }>('/api/reports/games?sort=newest'), staleTime: 60_000 });
+  const list = (games.data?.games ?? []).slice(0, 3);
+  if (games.isPending) return <Skeleton className="mt-5 h-24" />;
+  if (games.isError)
+    return (
+      <div className="mt-5">
+        <ErrorNotice message={errorText(games.error, 'Your recent games did not load.')} onRetry={() => void games.refetch()} />
+      </div>
+    );
+  if (!list.length) return null;
+  return (
+    <section aria-labelledby="host-again-title" className="mt-5">
+      <div className="mb-2 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+        <h3 id="host-again-title" className="text-sm font-semibold text-text-2">
+          Host again
+        </h3>
+        <Link to="/reports" className="text-sm font-semibold">
+          All hosted games
+        </Link>
+      </div>
+      <ul className="grid grid-cols-1 gap-2 md:grid-cols-3">
+        {list.map((g) => (
+          <li key={g.id} className="flex items-center gap-3 rounded-[var(--radius-m)] bg-surface-2 p-2.5">
+            <Link to={`/reports/${g.id}`} className="min-w-0 flex-1 text-text no-underline">
+              <span className="block font-bold break-words">{g.mode}</span>
+              <span className="block text-sm break-words text-text-2">{g.setTitle}</span>
+              <span className="block text-xs text-text-3">
+                {g.className ? `${g.className}, ` : ''}
+                {plural(g.players, 'player')}, {timeAgo(g.endedAt)}
+              </span>
+            </Link>
+            <ButtonLink to={`/host?again=${g.id}`} size="sm" icon={<RotateCcw className="size-4" aria-hidden />} aria-label={`Host again: ${g.mode} with ${g.setTitle}`}>
+              Again
+            </ButtonLink>
+          </li>
+        ))}
+      </ul>
+    </section>
   );
 }
 
@@ -108,6 +156,7 @@ function TeacherNextUp() {
           <ThisWeek />
         </section>
       </div>
+      <HostAgain />
     </Panel>
   );
 }

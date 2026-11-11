@@ -49,7 +49,9 @@ export function BandLegend({ extra }: { extra?: React.ReactNode }) {
 }
 
 /** A gradebook cell: best accuracy with its band, right of answered, attempts, and a late mark. */
-export function GradeCellView({ cell, maxAttempts }: { cell: GradeCell | undefined; maxAttempts: number | null }) {
+export function GradeCellView({ cell, maxAttempts, notSet = false }: { cell: GradeCell | undefined; maxAttempts: number | null; notSet?: boolean }) {
+  // Work set for another group of the class: not this student's.
+  if (notSet) return <span className="block text-center text-xs text-text-3">Not set</span>;
   if (!cell || !cell.best) {
     return (
       <span className="flex items-center justify-center text-text-3">

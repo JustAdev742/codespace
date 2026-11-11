@@ -91,3 +91,39 @@ describe('extra time in host-paced rounds', () => {
   });
 
 });
+
+describe('extra time on a clock of the player’s own', () => {
+  it('Time Attack: their own game clock runs longer by their share, nobody else’s', async () => {
+    const { timeAttack } = await import('../src/modes/time-attack/index.ts');
+    const h = drive(timeAttack, { players: ['a', { id: 'b', extra: 0.5 }] });
+    const runs = h.state().runs;
+    const a = runs.a.endsAt - runs.a.startedAt;
+    const b = runs.b.endsAt - runs.b.startedAt;
+    expect(a).toBeGreaterThan(0);
+    expect(b).toBe(Math.round(a * 1.5));
+    expect(h.errors).toEqual([]);
+  });
+  it('Survival Run: their own question timer is longer', async () => {
+    const { survivalRun } = await import('../src/modes/survival-run/index.ts');
+    const h = drive(survivalRun, { players: ['a', { id: 'b', extra: 1 }] });
+    const r = h.state().runners;
+    const start = h.rt.gameNow();
+    expect(r.b.deadline - start).toBe(2 * (r.a.deadline - start));
+  });
+  it('Word Scramble with word timers: their own word timer is longer', async () => {
+    const { wordScramble } = await import('../src/modes/word-scramble/index.ts');
+    const h = drive(wordScramble, { players: ['a', { id: 'b', extra: 0.25 }], settings: { wordTimer: true } });
+    const p = h.state().players;
+    const start = h.rt.gameNow();
+    expect(p.b.word.deadline - start).toBe(Math.round((p.a.word.deadline - start) * 1.25));
+  });
+  it('says where it applies, and where one shared clock means it does not', async () => {
+    const { extraTimeFor } = await import('../src/catalog.ts');
+    expect(extraTimeFor('classic').kind).toBe('rounds');
+    expect(extraTimeFor('time-attack')).toEqual({ kind: 'own', what: 'their own game clock' });
+    expect(extraTimeFor('word-scramble', null, { wordTimer: false }).kind).toBe('none');
+    expect(extraTimeFor('word-scramble', null, { wordTimer: true }).kind).toBe('own');
+    expect(extraTimeFor('gold-rush').kind).toBe('none');
+    expect(extraTimeFor('tower-together').kind).toBe('none');
+  });
+});

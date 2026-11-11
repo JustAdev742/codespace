@@ -1,5 +1,5 @@
 import { useId } from 'react';
-import { spotOf, stackNames, towerBlocks, type Block } from './tower-layout.ts';
+import { floorScale, floorsAt, floorsText, heightText, spotOf, stackNames, towerBlocks, type Block } from './tower-layout.ts';
 import type { TowerView, TowerTogetherView } from './tower-together.tsx';
 
 /*
@@ -43,7 +43,7 @@ function TowerDrawing({ t, cx, scale, lean, id, host, builders }: { t: TowerView
     spots.set(s, [...(spots.get(s) ?? []), b]);
   }
   const lines = [
-    { floors: t.target, label: `Target ${t.target.toLocaleString('en-GB')}`, strong: true },
+    { floors: t.target, label: `Target ${heightText(t.target, t.target)}`, strong: true },
     { floors: t.steps[1] ?? 0, label: '2 stars', strong: false },
     { floors: t.steps[2] ?? 0, label: '3 stars', strong: false },
   ];
@@ -73,12 +73,20 @@ function TowerDrawing({ t, cx, scale, lean, id, host, builders }: { t: TowerView
           </g>
         );
       })}
+      {/* Floor lines: the tower is measured in floors a child can count (each a fixed number of blocks). */}
+      {floorScale(t.target).per > 1.05
+        ? Array.from({ length: Math.min(floorsAt(top, t.target), 200) }, (_, i) => {
+            const f = (i + 1) * floorScale(t.target).per;
+            const yy = y(f);
+            return yy < GROUND - 0.3 && floorScale(t.target).per * scale > 0.25 ? <line key={`f${i}`} x1={cx + dx(f) - 1.9} y1={yy} x2={cx + dx(f) + 1.9} y2={yy} stroke="#0b1020" strokeWidth={0.06} opacity={0.55} /> : null;
+          })
+        : null}
       {/* The scaffold at the top. */}
       <rect x={cx + dx(top) - 2.9} y={y(top) - 0.12} width={5.8} height={0.24} rx={0.08} fill="#8a6038" />
       {/* Target and star lines. */}
       {t.target * scale > TALL + 0.6 ? (
         <text x={cx} y={GROUND - TALL - 1.4} textAnchor="middle" fontSize={0.85} fontWeight={700} fill="#ffc233" stroke="#0b1020" strokeWidth={0.14} paintOrder="stroke">
-          ↑ Target {t.target.toLocaleString('en-GB')}: {Math.max(0, t.target - t.height).toLocaleString('en-GB')} to go
+          ↑ Target {heightText(t.target, t.target)}: {floorsText(Math.max(0, t.target - t.height), t.target)} to go
         </text>
       ) : null}
       {lines.map((l) =>

@@ -38,7 +38,7 @@ import { Burst } from '../../../art/bursts.tsx';
 import { Button, buttonClass } from '../../../ui/Button.tsx';
 import { Dialog } from '../../../ui/primitives.tsx';
 import { useNow } from '../../../lib/useNow.ts';
-import { formatNumber, ordinal, plural } from '../../../lib/format.ts';
+import { formatDecimal, formatNumber, ordinal, plural } from '../../../lib/format.ts';
 import { playSfx, useSfx, useSharedSounds, useSoundRole } from '../../../lib/sound/react.tsx';
 
 /* Festival Workshop: right answers bring paydays, coins build stations, and one market the class shares sets the prices. */
@@ -170,7 +170,7 @@ type You = NonNullable<FestivalWorkshopView['you']>;
 /* ------------------------------- small helpers ------------------------------ */
 
 const price = (p: number) => `×${p.toFixed(1)}`;
-const rateText = (r: number) => (r < 10 ? (Math.round(r * 10) / 10).toLocaleString('en-GB') : formatNumber(r));
+const rateText = (r: number) => (r < 10 ? formatDecimal(r, 1) : formatNumber(r));
 /** Incomes on the projector's board stay short, so the names beside them keep their room: 3,244 a second shows as 3.2k. */
 const shortRate = (r: number) => (r >= 10_000 ? `${Math.round(r / 1000)}k` : r >= 1000 ? `${(Math.floor(r / 100) / 10).toFixed(1)}k` : rateText(r));
 /** "a Kite Loom", "Glim Helpers". */

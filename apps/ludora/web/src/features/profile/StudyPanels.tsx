@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { ChevronLeft, ChevronRight, Flame, Heart, Medal, Star } from 'lucide-react';
 import { QUESTION_TYPE_LABELS, type QuestionType } from '@ludora/shared';
 import { api } from '../../lib/api.ts';
-import { formatNumber, ordinal, plural } from '../../lib/format.ts';
+import { formatDay, formatNumber, ordinal, plural } from '../../lib/format.ts';
 import { ErrorNotice, Panel, Skeleton } from '../../ui/primitives.tsx';
 import { IconButton } from '../../ui/Button.tsx';
 import { Meter } from '../../ui/game.tsx';
@@ -48,8 +48,8 @@ function shiftMonth(month: string, n: number): string {
   return d.toISOString().slice(0, 7);
 }
 
-const monthTitle = (month: string) => new Date(`${month}-15T12:00:00Z`).toLocaleDateString('en-GB', { month: 'long', year: 'numeric', timeZone: 'UTC' });
-const dayTitle = (day: string) => new Date(`${day}T12:00:00Z`).toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' });
+const monthTitle = (month: string) => formatDay(`${month}-15`, { month: 'long', year: 'numeric' });
+const dayTitle = (day: string) => formatDay(day, { weekday: 'long', day: 'numeric', month: 'long' });
 
 /** How strongly a day is filled in: none, one game, two or three, four or more. */
 function shade(games: number): string {

@@ -291,3 +291,26 @@ describe('the reports home and your report data', () => {
     expect((await anon.get('/api/reports/export')).status).toBe(401);
   });
 });
+
+describe('exit ticket and poll answers saved with the game', () => {
+  it('shows the class its votes and how it felt, after exit ticket answers arrive late, for the host only', async () => {
+    const gameId = await savedGame({ classId: null, players: [{ key: 'p1', name: 'Ada Lovelace', userId: student.userId, answers: [['q1', true]] }] });
+    await t.db
+      .update(gameSessions)
+      .set({ voice: { feelings: { great: 0, okay: 0, tough: 0 }, polls: [{ questionId: 'v1', prompt: 'Which topic next?', choices: [{ id: 'a', text: 'Volcanoes', votes: 3 }, { id: 'b', text: 'Rivers', votes: 1 }] }] } })
+      .where(eq(gameSessions.id, gameId));
+    // The live room writes exit ticket answers onto the saved game when they come in after it.
+    const hooks = (t.deps.rooms as unknown as { hooks: () => { saveFeelings: (id: string, c: Record<string, number>) => Promise<void> } }).hooks();
+    await hooks.saveFeelings(gameId, { great: 2, okay: 1, tough: 1 });
+    const r = await host.client.get(`/api/games/${gameId}/report`);
+    expect(r.status).toBe(200);
+    expect(r.body.voice.feelings).toEqual({ great: 2, okay: 1, tough: 1 });
+    expect(r.body.voice.polls[0].choices.map((c: { votes: number }) => c.votes)).toEqual([3, 1]);
+    expect((await otherTeacher.client.get(`/api/games/${gameId}/report`)).status).toBe(404);
+    expect([403, 404]).toContain((await student.client.get(`/api/games/${gameId}/report`)).status);
+    // A game saved with no voice at all gets its feelings anyway.
+    const bare = await savedGame({ classId: null, players: [{ key: 'p1', name: 'Bo', answers: [['q1', true]] }] });
+    await hooks.saveFeelings(bare, { great: 1, okay: 0, tough: 0 });
+    expect((await host.client.get(`/api/games/${bare}/report`)).body.voice).toEqual({ feelings: { great: 1, okay: 0, tough: 0 }, polls: [] });
+  });
+});

@@ -29,7 +29,7 @@ const TF: Question[] = [
   { id: 't3', type: 'truefalse', prompt: 'The Sun is a star.', correct: true },
 ];
 
-function makeRoom(opts: { modeId?: string; options?: Partial<RoomOptions>; common?: Record<string, unknown>; questions?: Question[]; classMembers?: string[] } = {}) {
+function makeRoom(opts: { modeId?: string; options?: Partial<RoomOptions>; common?: Record<string, unknown>; questions?: Question[]; classMembers?: string[]; hooks?: Partial<ConstructorParameters<typeof Room>[1]> } = {}) {
   const r = new Room(
     {
       code: '654321',
@@ -44,7 +44,7 @@ function makeRoom(opts: { modeId?: string; options?: Partial<RoomOptions>; commo
       solo: false,
       ...(opts.classMembers ? { classId: 'class-1', classMembers: opts.classMembers, classTitle: 'Year 5 Oak' } : {}),
     },
-    { now: () => Date.now(), persist: async () => null, onError: () => {}, onClosed: () => {} },
+    { now: () => Date.now(), persist: async () => null, onError: () => {}, onClosed: () => {}, ...opts.hooks },
   );
   rooms.push(r);
   return r;
@@ -392,6 +392,46 @@ describe('exit ticket, awards and the class summary', () => {
     expect(a.sub.last().host).toBeUndefined();
   });
 
+  it('saves the exit ticket counts and each poll\'s votes with the game, in words, never who chose what', async () => {
+    const saved: { results: EngineResults; voice: unknown }[] = [];
+    const feelings: { gameId: string; counts: unknown }[] = [];
+    const POLL: Question[] = [{ id: 'p1', type: 'poll', prompt: 'Which topic next?', choices: [{ id: 'a', text: 'Volcanoes' }, { id: 'b', text: 'Rivers' }] }, ...TF];
+    let room!: Room;
+    room = makeRoom({
+      options: { exitTicket: true },
+      questions: POLL,
+      common: { questionLimit: 4 },
+      hooks: {
+        persist: async (r, results) => {
+          saved.push({ results, voice: r.voiceFor(results) });
+          return null;
+        },
+        saveFeelings: async (gameId, counts) => void feelings.push({ gameId, counts }),
+      },
+    });
+    const a = join(room, 'Ana');
+    const b = join(room, 'Ben');
+    toFirstQuestion(room);
+    const sync = (room.runtime!.debugState() as { sync: { iid: string } }).sync;
+    expect(room.action(a.id, 'vote-a', { type: 'answer', iid: sync.iid, answer: { type: 'poll', choiceId: 'c0' } }).ok).toBe(true);
+    expect(room.action(b.id, 'vote-b', { type: 'answer', iid: sync.iid, answer: { type: 'poll', choiceId: 'c0' } }).ok).toBe(true);
+    vi.advanceTimersByTime(100);
+    room.hostCommand({ cmd: 'end' });
+    await vi.advanceTimersByTimeAsync(10);
+    const voice = saved[0]!.voice as { polls: { prompt: string; choices: { text: string; votes: number }[] }[]; feelings: Record<string, number> };
+    expect(voice.polls).toHaveLength(1);
+    expect(voice.polls[0]!.prompt).toBe('Which topic next?');
+    expect(voice.polls[0]!.choices.reduce((n, c) => n + c.votes, 0)).toBe(2);
+    expect(voice.polls[0]!.choices.map((c) => c.text)).toEqual(['Volcanoes', 'Rivers']);
+    expect(voice.feelings).toEqual({ great: 0, okay: 0, tough: 0 });
+    expect(JSON.stringify(voice)).not.toContain('Ana');
+    // Exit ticket answers come after the save: they are written onto the same game, once, a moment after the last tap.
+    expect(room.playerRequest(a.id, { op: 'feeling', feeling: 'great' }).ok).toBe(true);
+    expect(room.playerRequest(b.id, { op: 'feeling', feeling: 'tough' }).ok).toBe(true);
+    await vi.advanceTimersByTimeAsync(2000);
+    expect(feelings).toEqual([{ gameId: room.gameId, counts: { great: 1, okay: 0, tough: 1 } }]);
+  });
+
   it('works out awards, the report and the missed questions from the answers', () => {
     const ans = (playerId: string, qid: string, correct: boolean, at: number, responseMs = 3000, given: string | null = null) => ({ playerId, qid, correct, partial: correct ? 1 : 0, responseMs, at, given });
     const answers = [
@@ -488,5 +528,66 @@ describe('shared hosting features in every mode', () => {
       expect(JSON.stringify(end.results), `${mode.meta.id} results show a name`).not.toMatch(/Zelda Quartermaine|Yusuf Okonkwo/);
       room.close('done');
     }
+  });
+});
+
+describe('extra time where a mode has no clock of each player', () => {
+  it('is refused, saying why, where the only clock is shared, and offered where it means something', () => {
+    const shared = makeRoom({ modeId: 'gold-rush', questions: MIXED_SET, common: { questionLimit: 0 } });
+    const host = sub('host', null);
+    shared.subscribe(host);
+    const a = join(shared, 'Ana');
+    vi.advanceTimersByTime(50);
+    expect(host.last().host.extraTimeKind).toEqual({ kind: 'none', what: '' });
+    const r = shared.hostCommand({ cmd: 'extraTime', playerId: a.id, share: 0.5 });
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.error.message).toMatch(/does not apply in Gold Rush/);
+    // Taking it away is always allowed.
+    expect(shared.hostCommand({ cmd: 'extraTime', playerId: a.id, share: 0 }).ok).toBe(true);
+    const rounds = makeRoom();
+    const h2 = sub('host', null);
+    rounds.subscribe(h2);
+    const b = join(rounds, 'Ben');
+    expect(rounds.hostCommand({ cmd: 'extraTime', playerId: b.id, share: 0.5 }).ok).toBe(true);
+    vi.advanceTimersByTime(50);
+    expect(h2.last().host.extraTimeKind.kind).toBe('rounds');
+  });
+});
+
+describe('shared classroom devices', () => {
+  it('is off by default, and the host can turn it on between games', () => {
+    const room = makeRoom();
+    expect(room.options.sharedDevices).toBe(false);
+    expect(room.hostCommand({ cmd: 'configure', options: { sharedDevices: true } }).ok).toBe(true);
+    expect(room.options.sharedDevices).toBe(true);
+  });
+});
+
+describe('choosing reactions for the bar', () => {
+  it('lets a player send only free reactions and those their account owns, on the bar they chose', () => {
+    const room = makeRoom();
+    const owner = room.join({ name: 'Ana', userId: 'u-ana', accountName: 'Ana', isGuestAccount: false, avatar: null, ownedReactions: ['party', 'not-a-reaction'], reactionBar: ['party', 'wave', 'star'] });
+    const guest = room.join({ name: 'Ben', userId: null, accountName: null, isGuestAccount: true, avatar: null });
+    if (!owner.ok || !guest.ok) throw new Error('join failed');
+    const a = sub('player', owner.player.id);
+    const b = sub('player', guest.player.id);
+    room.subscribe(a);
+    room.subscribe(b);
+    vi.advanceTimersByTime(50);
+    // Star is not owned, so it is dropped from the bar; party is owned.
+    expect(a.last().me.reactions).toEqual(['party', 'wave']);
+    expect(a.last().me.canReact).toContain('party');
+    expect(b.last().me.reactions).toEqual(['wave', 'laugh', 'wow', 'clap', 'heart', 'fire', 'think', 'gg']);
+    expect(room.react(owner.player.id, 'party', 'player').ok).toBe(true);
+    vi.advanceTimersByTime(2000);
+    const r = room.react(guest.player.id, 'party', 'player');
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.error.message).toMatch(/not one of yours/);
+    expect(room.react(guest.player.id, 'wave', 'player').ok).toBe(true);
+    // In the room: a new bar, with anything not theirs left out.
+    expect(room.playerRequest(guest.player.id, { op: 'reactionBar', emotes: ['gg', 'party', 'heart'] }).ok).toBe(true);
+    vi.advanceTimersByTime(50);
+    expect(b.last().me.reactions).toEqual(['gg', 'heart']);
+    expect(room.playerRequest(guest.player.id, { op: 'reactionBar', emotes: ['party'] }).ok).toBe(false);
   });
 });

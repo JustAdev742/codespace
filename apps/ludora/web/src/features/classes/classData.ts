@@ -18,6 +18,8 @@ export interface TeachingClass {
   assignments: number;
   archived: boolean;
   createdAt: string;
+  /** Taught by the viewer as a co-teacher (another teacher made it). */
+  coTeacher?: boolean;
 }
 
 export interface MemberClass {
@@ -48,6 +50,23 @@ interface AssignmentBase {
   /** Plays each student may start; null means any number. */
   maxAttempts: number | null;
   createdAt: string;
+  /** Set for one group of the class only; null for the whole class. */
+  groupId?: string | null;
+  groupName?: string | null;
+}
+
+/** A named group inside a class, with its members (teacher only). */
+export interface ClassGroup {
+  id: string;
+  name: string;
+  memberIds: string[];
+}
+
+/** The class's teachers: the owner, then co-teachers. Display names only. */
+export interface ClassTeacher {
+  id: string;
+  displayName: string;
+  owner: boolean;
 }
 
 export interface TeacherAssignment extends AssignmentBase {
@@ -128,6 +147,10 @@ export interface ClassEvent {
 export interface TeacherClassDetail {
   class: ClassInfo & { joinCode: string };
   role: 'teacher';
+  /** The viewer made the class: they add and remove teachers and archive it. */
+  owner: boolean;
+  teachers: ClassTeacher[];
+  groups: ClassGroup[];
   memberCount: number;
   members: ClassMember[];
   assignments: TeacherAssignment[];
@@ -139,6 +162,8 @@ export interface TeacherClassDetail {
 export interface StudentClassDetail {
   class: ClassInfo;
   role: 'student';
+  /** The groups the student is in (names only). */
+  myGroups: { id: string; name: string }[];
   memberCount: number;
   members: null;
   assignments: StudentAssignment[];
@@ -220,6 +245,8 @@ export interface InsightsData {
     maxAttempts: number | null;
     setTitle: string;
     subject: string | null;
+    /** Set for one group only: students outside it have no cell for it. */
+    groupName?: string | null;
   }[];
   gradebook: {
     id: string;

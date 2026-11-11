@@ -32,6 +32,7 @@ import { DAY, EaseCamera, Glim3D, World, css, props, toon, type GlimLook, type S
 import { toonRamp } from '../../../three/toon.ts';
 import type { Label } from '../../../three/labels.ts';
 import { GLIMS } from '../../home/glims.ts';
+import { formatNumber } from '../../../lib/format.ts';
 
 /*
  * Corner Shop in 3D. The player's scene is a little shop seen from the front
@@ -1296,7 +1297,7 @@ export class HighStreetScene extends World {
         this.scene.add(group);
       }
       f.group.position.set(x, row * ROW_DY, -row * ROW_DZ);
-      f.label.set(`★ ${s.stars.toFixed(1)} · $${s.cash.toLocaleString('en-GB')}`);
+      f.label.set(`★ ${s.stars.toFixed(1)} · $${formatNumber(s.cash)}`);
       if (f.name !== s.name) {
         f.group.remove(f.sign);
         this.disposeTree(f.sign);

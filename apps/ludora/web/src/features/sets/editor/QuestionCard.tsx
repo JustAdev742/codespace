@@ -91,7 +91,7 @@ function MoreOptions({ q, errors, edit }: TypeEditorProps) {
           <EditorField id={domIds.field(q.id, 'timeLimit')} label="Time limit in seconds" optional hint={`${LIMITS.timeMin} to ${LIMITS.timeMax}. Empty uses the game's setting.`} error={errors.timeLimit}>
             {(p) => <Input {...p} inputMode="numeric" autoComplete="off" value={q.timeLimit} onChange={(e) => set({ timeLimit: e.target.value })} />}
           </EditorField>
-          <EditorField id={domIds.field(q.id, 'points')} label="Points" optional hint="Empty uses the game mode's scoring." error={errors.points}>
+          <EditorField id={domIds.field(q.id, 'points')} label="Points" optional hint="What this question is worth, where 1,000 is a usual question: 2,000 counts twice, 500 half, 0 scores nothing but still counts for accuracy. Players are told before they answer. Used by the modes with quiz rounds (Classic, Confidence, Glim Duels and others); modes that score in coins, floors or laps ignore it. Empty is 1,000." error={errors.points}>
             {(p) => <Input {...p} inputMode="numeric" autoComplete="off" value={q.points} onChange={(e) => set({ points: e.target.value })} />}
           </EditorField>
           <div className="rounded-[var(--radius-m)] border border-line px-3 sm:col-span-3">

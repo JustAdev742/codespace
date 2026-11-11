@@ -34,6 +34,7 @@ import {
 } from 'three';
 import { EaseCamera, Glim3D, OrbitCamera, World, hsl, props, toon, type GlimLook, type Lighting, type StageEnv } from '../../../three/index.ts';
 import type { Label } from '../../../three/labels.ts';
+import { formatNumber } from '../../../lib/format.ts';
 
 /*
  * Code Breakers in 3D: a night-time data city. Every player is a tower whose
@@ -101,7 +102,7 @@ const OUTCOME_COLOUR: Record<PacketOutcome, string[]> = {
   wrong: ['#ff4d6a', '#ffb3c0'],
 };
 
-const fmt = (n: number) => Math.round(n).toLocaleString('en-GB');
+const fmt = (n: number) => formatNumber(n);
 
 /* --------------------------------- shared bits -------------------------------- */
 

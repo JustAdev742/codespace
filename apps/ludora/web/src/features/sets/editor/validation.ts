@@ -228,6 +228,8 @@ export function detailMessage(field: string, issue: IssueLike): string {
       return 'Choose who can see the set.';
     case 'cover':
       return 'Choose a picture and a colour for the cover.';
+    case 'coverImage':
+      return issue.path[2] === 'alt' ? 'Describe the cover picture for players who cannot see it.' : 'The cover picture is missing or was removed. Upload it again or remove it.';
     case 'topic':
       return 'Use up to 60 characters for the topic.';
     case 'defaults':
@@ -242,7 +244,7 @@ export function detailMessage(field: string, issue: IssueLike): string {
 }
 
 /** Set fields the details form shows; anything else goes in the general list. */
-const DETAIL_FIELDS = new Set(['title', 'description', 'subject', 'gradeBand', 'language', 'tags', 'visibility', 'cover', 'topic', 'defaults']);
+const DETAIL_FIELDS = new Set(['title', 'description', 'subject', 'gradeBand', 'language', 'tags', 'visibility', 'cover', 'coverImage', 'topic', 'defaults']);
 
 function emptyProblems(): Problems {
   return { details: {}, questions: {}, general: [], count: 0 };
@@ -264,7 +266,7 @@ function addIssue(p: Problems, issue: IssueLike, questions: readonly { id: strin
     }
     return;
   }
-  const field = head === undefined ? '_' : String(head);
+  const field = head === undefined ? '_' : head === 'cover' && index === 'image' ? 'coverImage' : String(head);
   if (!DETAIL_FIELDS.has(field)) {
     const msg = detailMessage(field, issue);
     if (!p.general.includes(msg)) {

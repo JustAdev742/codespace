@@ -7,7 +7,7 @@ import { RARITY_INFO, type GlimArt, type LanternArt, type Rarity } from '@ludora
 import { api, newRequestKey } from '../../lib/api.ts';
 import { useMe } from '../../lib/session.ts';
 import { useOverview } from '../../lib/queries.ts';
-import { formatNumber } from '../../lib/format.ts';
+import { formatDate, formatNumber } from '../../lib/format.ts';
 import { Glim } from '../../art/glim/Glim.tsx';
 import { Lantern } from '../../art/Lantern.tsx';
 import { AccountError, Amount, EmptyState, ErrorNotice, Input, Panel, Skeleton } from '../../ui/primitives.tsx';
@@ -180,7 +180,7 @@ export default function GlimPage() {
             {owned ? (
               <p className="mt-2 text-sm text-text-2">
                 You have <span className="font-semibold text-text tabular">{g.owned}</span>
-                {g.firstFound ? `, first found ${new Date(g.firstFound).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}` : ''}.
+                {g.firstFound ? `, first found ${formatDate(g.firstFound, { day: 'numeric', month: 'long', year: 'numeric' })}` : ''}.
               </p>
             ) : null}
             {owned ? (

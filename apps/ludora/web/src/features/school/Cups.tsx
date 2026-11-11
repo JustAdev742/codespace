@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { Award, CalendarRange, Crown, Trophy } from 'lucide-react';
 import { api } from '../../lib/api.ts';
-import { formatNumber } from '../../lib/format.ts';
+import { formatDate, formatNumber } from '../../lib/format.ts';
 import { EmptyState, ErrorNotice, Panel, Skeleton } from '../../ui/primitives.tsx';
 import { errorText } from '../reports/reportUi.tsx';
 import { HouseCrest } from './emblems.tsx';
@@ -97,7 +97,7 @@ export function CupsPanel() {
                 <div className="min-w-0">
                   <h3 className="truncate font-display text-xl font-bold text-text">{t.name}</h3>
                   <p className="text-sm text-text-2">
-                    {t.format === 'knockout' ? 'Knockout' : 'Round robin'} won by {t.winnerName}, {new Date(t.finishedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}
+                    {t.format === 'knockout' ? 'Knockout' : 'Round robin'} won by {t.winnerName}, {formatDate(t.finishedAt, { day: 'numeric', month: 'long', year: 'numeric' })}
                   </p>
                 </div>
               </Panel>

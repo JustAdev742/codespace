@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import type { LessonBody, LessonStep } from '@ludora/shared';
 import { api } from '../../lib/api.ts';
+import { formatDate } from '../../lib/format.ts';
 
 /* Shapes returned by server/src/modules/lessons/routes.ts. */
 
@@ -101,8 +102,10 @@ export function toLocalInput(iso: string | null): string {
 /** "Starts at 10:15" today, or with the day when it is another day. */
 export function startsText(iso: string, now = new Date()): string {
   const d = new Date(iso);
-  const time = d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
-  const sameDay = d.toDateString() === now.toDateString();
+  const time = formatDate(d, { hour: '2-digit', minute: '2-digit' });
+  // The same day in the viewer's chosen time zone, not the device's.
+  const dayOf = (x: Date) => formatDate(x, { year: 'numeric', month: 'numeric', day: 'numeric' });
+  const sameDay = dayOf(d) === dayOf(now);
   if (sameDay) return d.getTime() < now.getTime() ? `Started at ${time}` : `Starts at ${time}`;
-  return `Starts ${d.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' })} at ${time}`;
+  return `Starts ${formatDate(d, { weekday: 'long', day: 'numeric', month: 'long' })} at ${time}`;
 }

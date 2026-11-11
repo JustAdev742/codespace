@@ -110,6 +110,8 @@ export const roomOptionsSchema = z.object({
   littleHands: z.boolean().default(false),
   /** The big screen reads each question and its answers aloud (the browser's own speech). */
   readAloud: z.boolean().default(false),
+  /** Shared classroom devices: after a game, a device that joined with only a name goes back to the join page for the next player after a short countdown. */
+  sharedDevices: z.boolean().default(false),
 });
 export type RoomOptions = z.infer<typeof roomOptionsSchema>;
 
@@ -170,8 +172,15 @@ export const playerRequestSchema = z.discriminatedUnion('op', [
   z.object({ op: z.literal('ready'), ready: z.boolean() }),
   z.object({ op: z.literal('team'), teamId: z.string().min(1).max(20) }),
   z.object({ op: z.literal('feeling'), feeling: z.enum(FEELINGS) }),
+  /** The reactions on the player's bar for this room (checked against what they may send). */
+  z.object({ op: z.literal('reactionBar'), emotes: z.array(z.string().min(1).max(20)).min(1).max(8) }),
 ]);
 export type PlayerRequest = z.infer<typeof playerRequestSchema>;
+
+/** The reactions everyone has, signed in or not, and the bar they make unless a player chooses another. */
+export const FREE_REACTIONS = ['wave', 'laugh', 'wow', 'clap', 'heart', 'fire', 'think', 'gg'] as const;
+/** At most this many reactions on a bar. */
+export const MAX_BAR_REACTIONS = 8;
 
 export const reactionSchema = z.object({ emote: z.string().min(1).max(20) });
 
@@ -378,6 +387,10 @@ export interface RoomView<G = unknown> {
     ready?: boolean;
     /** The exit ticket choice this player made. */
     feeling?: Feeling | null;
+    /** The reactions on this player's bar, in order: the free ones and any they own, as they chose them. */
+    reactions?: string[];
+    /** Every reaction this player may send (the free ones and those they own), for choosing their bar. */
+    canReact?: string[];
   };
   /** Only in the host's view. */
   host?: HostExtras;
@@ -403,6 +416,8 @@ export interface HostExtras {
   feelings: Record<Feeling, number> | null;
   /** Players with extra time on timed questions (player id to a share of the limit). The host's view only. */
   extraTime?: Record<string, number>;
+  /** What extra time does in this game: 'rounds' (timed questions stay open longer), 'own' (the player's own clock runs longer), 'none' (one shared clock: it does not apply). */
+  extraTimeKind?: { kind: 'rounds' | 'own' | 'none'; what: string };
 }
 
 export type EmoteGlyph = (typeof EMOTE_GLYPHS)[number];

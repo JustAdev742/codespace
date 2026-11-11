@@ -29,6 +29,8 @@ const createSchema = z.object({
   gameId: z.string().uuid().optional(),
   /** School: teams by house, two classes, or a tournament match (modules/school/teams.ts). */
   school: schoolTeamsSchema.optional(),
+  /** Solo only: practice bots to play against, at a skill the server turns into their accuracy and speed. */
+  practiceBots: z.object({ count: z.number().int().min(1).max(5), level: z.enum(['easy', 'medium', 'hard']) }).optional(),
   /** Host for a class: only its members can join, and the game counts as the class's. The caller must teach it. */
   classId: z.string().uuid().optional(),
 });
@@ -101,6 +103,7 @@ export async function roomRoutes(app: FastifyInstance, deps: AppDeps) {
       } catch (err) {
         throw new AppError(400, 'validation_failed', (err as Error).message);
       }
+      if (solo && body.practiceBots) room.addPracticeBots(body.practiceBots.count, body.practiceBots.level);
       if (!solo) closeOldestFinished(manager, auth.user.id);
       if (body.gameId) await countGamePlay(deps.db, body.gameId, auth);
       return { code: room.code, solo };

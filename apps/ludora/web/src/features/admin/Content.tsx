@@ -4,7 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Check, ChevronLeft, ChevronRight, Circle, Search, TriangleAlert } from 'lucide-react';
 import { QUESTION_TYPE_LABELS, REPORT_REASON_INFO, SUBJECT_LABELS, questionSchema, type Media, type Question, type QuestionType, type ReportReason } from '@ludora/shared';
 import { api, ApiError } from '../../lib/api.ts';
-import { formatNumber, plural, timeAgo } from '../../lib/format.ts';
+import { formatDecimal, formatNumber, plural, timeAgo } from '../../lib/format.ts';
 import { Badge, Dialog, EmptyState, ErrorNotice, Input, Skeleton, TabPanel, Tabs } from '../../ui/primitives.tsx';
 import { Button, IconButton } from '../../ui/Button.tsx';
 import { ActionDialog, DataTable, KeyValues, StaffPage, StatusPill, dateTime, useDebounced, useStaffMutation, type Column } from './ui.tsx';
@@ -425,7 +425,7 @@ function SetReviewBody({ detail: d, onAction }: { detail: StaffSetDetail; onActi
 /* ------------------------------ answer display ------------------------------ */
 
 function num(n: number): string {
-  return n.toLocaleString('en-GB', { maximumFractionDigits: 10 });
+  return formatDecimal(n, 10);
 }
 
 const UPLOAD_ID = /^\/uploads\/([a-f0-9]{32})\.(?:png|jpg|gif|webp)$/;

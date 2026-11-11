@@ -6,7 +6,7 @@ import { MODE_CATEGORY_INFO, SUBJECT_LABELS, type Subject } from '@ludora/shared
 import { api } from '../../lib/api.ts';
 import { useMe } from '../../lib/session.ts';
 import { useModes, useOverview, type Overview } from '../../lib/queries.ts';
-import { formatNumber, ordinal, plural, timeAgo } from '../../lib/format.ts';
+import { formatDay, formatNumber, ordinal, plural, timeAgo } from '../../lib/format.ts';
 import { AccountError, Badge, EmptyState, ErrorNotice, PageHeader, Panel, Skeleton } from '../../ui/primitives.tsx';
 import { Button, ButtonLink } from '../../ui/Button.tsx';
 import { Stage } from '../../ui/Stage.tsx';
@@ -80,7 +80,7 @@ function niceStep(x: number): number {
   return (f <= 1 ? 1 : f <= 2 ? 2 : f <= 5 ? 5 : 10) * p;
 }
 
-const weekDay = (d: Date, month: 'short' | 'long' = 'short') => d.toLocaleDateString('en-GB', { day: 'numeric', month, timeZone: 'UTC' });
+const weekDay = (d: Date, month: 'short' | 'long' = 'short') => formatDay(d, { day: 'numeric', month });
 
 const percent = (correct: number, answered: number) => (answered ? Math.round((correct / answered) * 100) : null);
 
@@ -199,7 +199,7 @@ function WeeklyChart({ weeks }: { weeks: Week[] }) {
           <span key={w.key} className={`flex-1 text-center text-[11px] leading-tight ${i === last ? 'font-bold text-text' : 'text-text-3'}`}>
             {w.start.getUTCDate()}
             <br />
-            {w.start.toLocaleDateString('en-GB', { month: 'short', timeZone: 'UTC' })}
+            {formatDay(w.start, { month: 'short' })}
           </span>
         ))}
       </div>

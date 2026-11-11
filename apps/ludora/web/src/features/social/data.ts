@@ -2,6 +2,7 @@ import { useEffect, useRef, type RefObject } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import type { AvatarLite } from '@ludora/shared';
 import { api, ApiError } from '../../lib/api.ts';
+import { formatDate } from '../../lib/format.ts';
 
 /*
  * Data shared by the friends, profile, stats and leaderboard pages. Shapes
@@ -46,7 +47,7 @@ export function useSocialRefresh() {
 /** "12 Oct", with the year only when it is not this year. */
 export function shortDate(iso: string): string {
   const d = new Date(iso);
-  return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: d.getFullYear() === new Date().getFullYear() ? undefined : 'numeric' });
+  return formatDate(d, { day: 'numeric', month: 'short', year: d.getFullYear() === new Date().getFullYear() ? undefined : 'numeric' });
 }
 
 /** The server's message when there is one (it is written for players), otherwise the fallback. */

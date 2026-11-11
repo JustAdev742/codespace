@@ -185,7 +185,7 @@ export async function setRoutes(app: FastifyInstance, deps: AppDeps) {
     const body = parse(questionSetInputSchema, req.body);
     checkVisibility(body.visibility, auth);
     checkDescriptions(body.visibility, body.questions);
-    await assertUploadsUsable(deps.db, body.questions);
+    await assertUploadsUsable(deps.db, body.questions, body.cover?.image ? [{ field: 'cover.image', url: body.cover.image.url }] : []);
     const [owned] = (await deps.db.select({ n: sql<number>`count(*)::int` }).from(questionSets).where(eq(questionSets.ownerId, auth.user.id))) as [{ n: number }];
     if (owned.n >= 500) throw new AppError(409, 'conflict', 'You have reached the limit of 500 sets. Delete some you no longer use, and empty the bin.');
     const [row] = await deps.db
@@ -212,7 +212,7 @@ export async function setRoutes(app: FastifyInstance, deps: AppDeps) {
     const visibility = access.owner ? body.visibility : set.visibility;
     if (visibility !== set.visibility) checkVisibility(visibility, auth);
     checkDescriptions(visibility, body.questions);
-    await assertUploadsUsable(deps.db, body.questions);
+    await assertUploadsUsable(deps.db, body.questions, body.cover?.image ? [{ field: 'cover.image', url: body.cover.image.url }] : []);
     const row = await deps.db.transaction(async (tx) => {
       await recordVersion(tx, set, auth.user.id);
       const [updated] = await tx

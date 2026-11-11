@@ -18,6 +18,7 @@ import { YourData } from './YourData.tsx';
 import { UniformPicker } from '../school/UniformPicker.tsx';
 import { schoolLook } from '../../lib/school.ts';
 import { useOverview } from '../../lib/queries.ts';
+import { ReactionsPanel } from './ReactionsPanel.tsx';
 
 type Patch = Partial<Omit<Preferences, 'notifications' | 'privacy' | 'school'>> & { notifications?: Partial<Preferences['notifications']>; privacy?: Partial<Preferences['privacy']>; school?: Partial<SchoolDress> };
 
@@ -222,6 +223,8 @@ export default function Settings() {
             <code className="font-display text-2xl font-bold tracking-wider tabular">{user.friendCode}</code>
           </Row>
         </Panel>
+
+        <ReactionsPanel value={p.reactionBar ?? []} onSave={(reactionBar) => save.mutate({ reactionBar })} />
 
         <Panel className="divide-y divide-line px-5 py-2">
           <h2 className="py-3 font-display text-2xl leading-tight font-bold">Notifications</h2>

@@ -16,8 +16,8 @@ test('a teacher writes a set with a picture in the editor, and players see the p
   for (const [i, text] of ['Violet', 'Amber', 'Mint', 'Coral'].entries()) await choices.nth(i).fill(text);
   // The checkbox is see-through but covers its round button, so it can be checked like any other.
   await page.getByLabel('Choice A is correct').check();
-  // The "Add an image" button opens this input.
-  await page.locator('input[type=file]').first().setInputFiles({ name: 'stripes.png', mimeType: 'image/png', buffer: PNG });
+  // The question's "Add an image" button opens this input (the set's cover picture has its own, first).
+  await page.locator('input[type=file]').nth(1).setInputFiles({ name: 'stripes.png', mimeType: 'image/png', buffer: PNG });
   await expectFocused(page.getByLabel('Image description'));
   await page.getByLabel('Image description').fill('Three stripes: amber, violet, amber');
   // Two more questions, so Classic can be played.

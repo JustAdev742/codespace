@@ -1,11 +1,12 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { io as connect, type Socket } from 'socket.io-client';
 import { eq } from 'drizzle-orm';
-import { MIXED_SET } from '@ludora/engine/testing';
+import { ChaosSim, MIXED_SET } from '@ludora/engine/testing';
+import { PRACTICE_LEVELS } from '../src/realtime/room.ts';
 import { Client, createTestApp, registered, type TestContext } from './helpers.ts';
 import { attachRealtime } from '../src/realtime/attach.ts';
 import { MAX_ROOMS_PER_HOST } from '../src/realtime/manager.ts';
-import { gameSessions, questionSets } from '../src/db/schema.ts';
+import { gameSessions, inventory, questionSets } from '../src/db/schema.ts';
 
 /*
  * A host's open games outside the room: listing them, closing one for everyone,
@@ -199,5 +200,78 @@ describe('team games are not played alone', () => {
     expect((await teacher.client.post(`/api/classes/${cls}/assignments`, { setId, modeId: 'quick-draw', variantId: 'quick-draw-steady', title: 'Steady' })).status).toBe(200);
     // Hosting a team game for a room of players is still fine.
     expect((await teacher.client.post('/api/rooms', { setId, modeId: 'classic', variantId: 'classic-teams' })).status).toBe(200);
+  });
+});
+
+describe('solo practice bots at a chosen skill', () => {
+  it('adds the bots on the server with the accuracy and pace of the level, and nothing for a game with others', async () => {
+    const player = await registered(t.app, { accountType: 'student' });
+    const [set] = await t.db.insert(questionSets).values({ ownerId: player.userId, title: 'Mixed', subject: 'general', visibility: 'private', questions: MIXED_SET, questionCount: MIXED_SET.length }).returning({ id: questionSets.id });
+    const make = async (level: 'easy' | 'medium' | 'hard', count = 3) => {
+      const r = await player.client.post('/api/rooms', { setId: set!.id, modeId: 'gold-rush', solo: true, practiceBots: { count, level } });
+      expect(r.status, JSON.stringify(r.body)).toBe(200);
+      return t.deps.rooms.get(r.body.code)!;
+    };
+    const easy = [...(await make('easy')).players.values()].filter((p) => p.isBot);
+    const hard = [...(await make('hard')).players.values()].filter((p) => p.isBot);
+    expect(easy).toHaveLength(3);
+    expect(Math.max(...easy.map((b) => b.skill))).toBeLessThan(0.5);
+    expect(Math.min(...hard.map((b) => b.skill))).toBeGreaterThan(0.8);
+    expect(Math.min(...easy.map((b) => b.pace!))).toBeGreaterThan(Math.max(...hard.map((b) => b.pace!)));
+    // At most five, and a level that does not exist is refused.
+    expect([...(await make('medium', 5)).players.values()].filter((p) => p.isBot)).toHaveLength(5);
+    expect((await player.client.post('/api/rooms', { setId: set!.id, modeId: 'gold-rush', solo: true, practiceBots: { count: 9, level: 'hard' } })).status).toBe(400);
+    expect((await player.client.post('/api/rooms', { setId: set!.id, modeId: 'gold-rush', solo: true, practiceBots: { count: 2, level: 'impossible' } })).status).toBe(400);
+    // Practice bots are a solo thing: a hosted room ignores the request.
+    const hosted = await player.client.post('/api/rooms', { setId: set!.id, modeId: 'gold-rush', practiceBots: { count: 3, level: 'hard' } });
+    expect([...t.deps.rooms.get(hosted.body.code)!.players.values()].filter((p) => p.isBot)).toHaveLength(0);
+  });
+});
+
+describe('practice levels play as they say', () => {
+  it('easy bots are right far less often than hard ones over whole games', () => {
+    const TF = Array.from({ length: 12 }, (_, i) => ({ id: `t${i}`, type: 'truefalse' as const, prompt: `Statement ${i + 1}.`, correct: i % 2 === 0 }));
+    const accuracy = (skill: number) => {
+      let right = 0;
+      let answered = 0;
+      for (const seed of [1, 2, 3]) {
+        const sim = new ChaosSim({ modeId: 'classic', questions: TF, players: 4, seed, skill, settings: {}, common: { shuffleQuestions: false } });
+        for (let t = 0; t < 600_000 && sim.rt.status === 'running'; t += 1000) sim.run(1000);
+        for (const a of sim.rt.results!.answers) {
+          answered++;
+          if (a.correct) right++;
+        }
+      }
+      return right / answered;
+    };
+    const easy = accuracy(PRACTICE_LEVELS.easy.skill);
+    const hard = accuracy(PRACTICE_LEVELS.hard.skill);
+    expect(easy).toBeLessThan(0.6);
+    expect(hard).toBeGreaterThan(0.75);
+    expect(PRACTICE_LEVELS.easy.pace).toBeGreaterThan(PRACTICE_LEVELS.medium.pace);
+    expect(PRACTICE_LEVELS.medium.pace).toBeGreaterThan(PRACTICE_LEVELS.hard.pace);
+  });
+});
+
+describe('a player’s own reactions in a room', () => {
+  it('brings the reactions the account owns and the bar chosen in Settings, and refuses one not owned', async () => {
+    const host = await registered(t.app, { accountType: 'teacher' });
+    const owner = await registered(t.app, { accountType: 'student' });
+    const setId = await createSet(host.userId);
+    await t.db.insert(inventory).values({ userId: owner.userId, itemId: 'emote-party', quantity: 1, source: 'test' }).onConflictDoNothing();
+    // Settings: only real reactions, at most eight.
+    expect((await owner.client.patch('/api/me/preferences', { reactionBar: ['party', 'wave', 'star'] })).status).toBe(200);
+    expect((await owner.client.patch('/api/me/preferences', { reactionBar: ['nope'] })).status).toBe(400);
+    const { code } = (await host.client.post('/api/rooms', { setId, modeId: 'classic' })).body;
+    const sock = socketFor(cookieOf(owner.client));
+    const views = watch(sock, 'room:view');
+    expect(await emit(sock, 'room:join', { code, name: 'Owner' })).toMatchObject({ ok: true });
+    const v = await views((x) => Array.isArray(x?.me?.reactions));
+    // Star is not owned, so the bar keeps party and wave.
+    expect(v.me.reactions).toEqual(['party', 'wave']);
+    expect((await emit(sock, 'room:react', { emote: 'party' })).ok).toBe(true);
+    const guest = socketFor();
+    expect(await emit(guest, 'room:join', { code, name: 'Name Only' })).toMatchObject({ ok: true });
+    expect((await emit(guest, 'room:react', { emote: 'party' })).ok).toBe(false);
   });
 });

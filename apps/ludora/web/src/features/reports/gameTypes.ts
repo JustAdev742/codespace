@@ -56,6 +56,8 @@ export interface GameReportData {
   teams: { teamId: string; name: string; rank: number | null; score: number | null; label: string | null; members: number; answered: number; correct: number; rate: number | null }[];
   pace: { playerKey: string; name: string; answered: number; correct: number; perMinute: number }[] | null;
   note: { body: string; updatedAt: string } | null;
+  /** Exit ticket counts and poll votes, saved with the game. Older games have none. */
+  voice?: GameVoice | null;
   can: { delete: boolean; reteach: boolean };
   /** For the host only: what "Host again" brings back. */
   setup?: { setId: string };
@@ -64,4 +66,9 @@ export interface GameReportData {
 export interface PlayerAnswers {
   player: { name: string; membership: Membership; team: string | null; rank: number; score: number; leftEarly: boolean };
   answers: { questionId: string; prompt: string; type: string; given: string | null; correct: boolean; responseMs: number; tries: number }[];
+}
+
+export interface GameVoice {
+  feelings: Record<'great' | 'okay' | 'tough', number> | null;
+  polls: { questionId: string; prompt: string; choices: { id: string; text: string; votes: number }[] }[];
 }

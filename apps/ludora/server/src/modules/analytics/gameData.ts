@@ -1,5 +1,6 @@
 import { and, asc, eq, inArray } from 'drizzle-orm';
 import type { Question } from '@ludora/shared';
+import { teachesClass } from '../classes/access.ts';
 import { getMode } from '@ludora/engine';
 import type { DbOrTx } from '../../db/client.ts';
 import { answerEvents, classMembers, classes, gameParticipants, gameSessions, reportNotes } from '../../db/schema.ts';
@@ -35,8 +36,8 @@ export async function gameAccess(db: DbOrTx, auth: AuthContext, id: string): Pro
   const host = g.hostUserId === auth.user.id;
   let teacher = false;
   if (!host && g.classId) {
-    const [cls] = await db.select({ ownerId: classes.ownerId }).from(classes).where(eq(classes.id, g.classId)).limit(1);
-    teacher = cls?.ownerId === auth.user.id;
+    // The class's owner or one of its co-teachers.
+    teacher = await teachesClass(db, g.classId, auth.user.id);
   }
   if (!host && !teacher && !auth.permissions.has('users.read')) throw notFound('That game does not exist.');
   return { game: g, host, teacher };

@@ -15,7 +15,7 @@ import {
   type Rarity,
 } from '@ludora/shared';
 import { api, newRequestKey } from '../../lib/api.ts';
-import { formatNumber, ordinal, plural } from '../../lib/format.ts';
+import { formatDate, formatNumber, ordinal, plural } from '../../lib/format.ts';
 import { useCan } from '../../lib/session.ts';
 import { useOverview } from '../../lib/queries.ts';
 import { CurrencyIcon } from '../../art/icons.tsx';
@@ -143,8 +143,8 @@ export function TimeCell({ iso }: { iso: string }) {
   const d = new Date(iso);
   return (
     <time dateTime={iso} className="block whitespace-nowrap text-text-2" title={dateTime(iso)}>
-      <span className="block">{d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
-      <span className="block text-xs text-text-3">{d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}</span>
+      <span className="block">{formatDate(d, { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+      <span className="block text-xs text-text-3">{formatDate(d, { hour: '2-digit', minute: '2-digit' })}</span>
     </time>
   );
 }

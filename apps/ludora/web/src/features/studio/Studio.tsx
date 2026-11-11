@@ -41,6 +41,7 @@ import { ActionDialog } from '../admin/ui.tsx';
 import { DateTimeField, isoToLocalInput, localInputToIso } from '../admin/Economy.tsx';
 import NotFound from '../errors/NotFound.tsx';
 import { GlimTurntable } from './GlimTurntable.tsx';
+import { formatDate } from '../../lib/format.ts';
 
 /*
  * The Creator Studio, for accounts with the designer role. Everyone else gets
@@ -450,7 +451,7 @@ function LanternMaker({ drafts, canPublish, onDone }: { drafts: Draft[]; canPubl
         open={confirm}
         onOpenChange={setConfirm}
         title={`Schedule ${name.trim()} Lantern`}
-        description={`${picked.length} Glims are published into their own collection, sold only in this Lantern for ${price} Sparks, from ${startIso ? new Date(startIso).toLocaleString() : '?'} until ${endIso ? new Date(endIso).toLocaleString() : '?'}. Published Glims cannot be edited here afterwards.`}
+        description={`${picked.length} Glims are published into their own collection, sold only in this Lantern for ${price} Sparks, from ${startIso ? formatDate(startIso, { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '?'} until ${endIso ? formatDate(endIso, { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '?'}. Published Glims cannot be edited here afterwards.`}
         confirmLabel="Schedule it"
         onSubmit={async ({ reason }) => {
           await publish.mutateAsync(reason);

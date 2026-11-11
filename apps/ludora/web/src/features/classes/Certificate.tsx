@@ -5,6 +5,7 @@ import { Glim } from '../../art/glim/Glim.tsx';
 import { Dialog, Field, Input, Textarea } from '../../ui/primitives.tsx';
 import { Button } from '../../ui/Button.tsx';
 import { PrintSheet, usePrinting } from './PrintSheet.tsx';
+import { formatDate } from '../../lib/format.ts';
 
 /*
  * A printable certificate for one student, with their Glim (the collectible they
@@ -67,11 +68,7 @@ export function CertificateDialog({
     heading: 'Star of the week',
     reason: PRESETS[0]!,
     signed: teacher,
-    date: new Date().toLocaleDateString('en-GB', {
-      day: 'numeric',
-      month: 'long',
-      year: 'numeric',
-    }),
+    date: formatDate(new Date(), { day: 'numeric', month: 'long', year: 'numeric' }),
   });
   const p = usePrinting();
   const set = (k: keyof Wording) => (v: string) => setW((cur) => ({ ...cur, [k]: v }));

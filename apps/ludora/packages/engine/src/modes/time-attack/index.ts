@@ -53,11 +53,17 @@ const clockMs = (ctx: ModeContext<Settings>) => (Number(ctx.settings.clock) || 6
 const endTimer = (playerId: PlayerId) => `end:${playerId}`;
 const plural = (n: number, one: string, many: string) => `${n.toLocaleString('en-GB')} ${n === 1 ? one : many}`;
 
+/** The player's own clock: the game's, longer by any extra time they have. */
+function ownClockMs(playerId: PlayerId, ctx: ModeContext<Settings>): number {
+  return Math.round(clockMs(ctx) * (1 + (ctx.player(playerId)?.extraTime ?? 0)));
+}
+
 function newRun(playerId: PlayerId, ctx: ModeContext<Settings>): Run {
   const run: Run = {
     stream: streamInit(ctx),
     startedAt: ctx.now(),
-    endsAt: ctx.now() + clockMs(ctx),
+    // Extra time (access): this player's own clock runs longer by their share. Nobody else's changes.
+    endsAt: ctx.now() + ownClockMs(playerId, ctx),
     score: 0,
     multiplier: 1,
     inRow: 0,
@@ -119,7 +125,7 @@ export const timeAttack = defineMode<State, Settings, Action>({
       const bonusMs = ctx.settings.bonusSeconds * 1000;
       if (bonusMs > 0) {
         // The fuse can be topped up, never beyond the time it started with.
-        const endsAt = Math.min(r.endsAt + bonusMs, ctx.now() + clockMs(ctx));
+        const endsAt = Math.min(r.endsAt + bonusMs, ctx.now() + ownClockMs(playerId, ctx));
         if (endsAt > r.endsAt) {
           notes.push(`+${Math.round((endsAt - r.endsAt) / 100) / 10} s`);
           r.endsAt = endsAt;

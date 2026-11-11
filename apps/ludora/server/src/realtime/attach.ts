@@ -11,6 +11,9 @@ import { SESSION_COOKIE, resolveSession } from '../modules/auth/service.ts';
 import { loadAvatar } from '../modules/profiles/avatar.ts';
 import { chaosService } from '../modules/extras/service.ts';
 import { fail, type Ack, type Room, type RoomSubscriber } from './room.ts';
+import { and, eq, gt } from 'drizzle-orm';
+import { inventory, items, users } from '../db/schema.ts';
+import { readPreferences } from '../modules/users/preferences.ts';
 
 /*
  * Socket.IO transport. Long-polling stays enabled as a fallback because some
@@ -153,6 +156,8 @@ export function attachRealtime(app: FastifyInstance, deps: AppDeps) {
         return reply(ack, { ok: true, role: 'host', playerId: null });
       }
       const avatar = auth ? await loadAvatar(deps.db, auth.user.id).catch(() => null) : null;
+      // Reactions the account owns and the bar it chose: bought reactions are only ever sendable by their owners.
+      const reacts = auth ? await loadReactions(deps.db, auth.user.id).catch(() => null) : null;
       // A class game: someone added to the class after the room opened is let in, checked against the database.
       if (room.classMembers && room.classId && auth && !room.classMembers.has(auth.user.id) && (await manager.isClassMember(room.classId, auth.user.id).catch(() => false))) {
         room.classMembers.add(auth.user.id);
@@ -165,6 +170,7 @@ export function attachRealtime(app: FastifyInstance, deps: AppDeps) {
         isGuestAccount: auth?.user.isGuest ?? true,
         avatar,
         dress: parsed.data.dress,
+        ...(reacts ? { ownedReactions: reacts.owned, reactionBar: reacts.bar } : {}),
         // Waiting room: the host's answer arrives later, on this socket.
         onAdmitted: (reconnectToken) => {
           waiting = null;
@@ -302,4 +308,16 @@ export function attachRealtime(app: FastifyInstance, deps: AppDeps) {
       io.close();
     },
   };
+}
+
+/** The reaction glyphs an account owns (emote items in its inventory) and the bar it chose in Settings. */
+async function loadReactions(db: AppDeps['db'], userId: string): Promise<{ owned: string[]; bar: string[] }> {
+  const rows = await db
+    .select({ art: items.art })
+    .from(inventory)
+    .innerJoin(items, eq(items.id, inventory.itemId))
+    .where(and(eq(inventory.userId, userId), eq(items.type, 'emote'), gt(inventory.quantity, 0)));
+  const owned = [...new Set(rows.map((r) => (r.art as { glyph?: unknown })?.glyph).filter((g): g is string => typeof g === 'string'))];
+  const [u] = await db.select({ preferences: users.preferences }).from(users).where(eq(users.id, userId)).limit(1);
+  return { owned, bar: readPreferences(u?.preferences).reactionBar };
 }

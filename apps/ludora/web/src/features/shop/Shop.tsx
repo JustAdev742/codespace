@@ -7,7 +7,7 @@ import { ITEM_TYPE_INFO, RARITY_INFO, SHOP_SECTION_INFO, type GlimArt, type Item
 import { api, ApiError, newRequestKey } from '../../lib/api.ts';
 import { useMe } from '../../lib/session.ts';
 import { useOverview } from '../../lib/queries.ts';
-import { formatNumber, untilText } from '../../lib/format.ts';
+import { formatDate, formatNumber, untilText } from '../../lib/format.ts';
 import { ItemArtView } from '../../art/cosmetics.tsx';
 import { Lantern } from '../../art/Lantern.tsx';
 import { Glim } from '../../art/glim/Glim.tsx';
@@ -687,7 +687,7 @@ export default function Shop() {
                 <p className="text-text-2">
                   <span className="font-semibold text-text">Spend:</span> {c.howToSpend}
                 </p>
-                {c.expiresAt ? <p className="text-text-2">Disappears {new Date(c.expiresAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'long' })}.</p> : null}
+                {c.expiresAt ? <p className="text-text-2">Disappears {formatDate(c.expiresAt, { day: 'numeric', month: 'long' })}.</p> : null}
               </div>
             </li>
           ))}

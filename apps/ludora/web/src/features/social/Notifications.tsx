@@ -5,7 +5,7 @@ import { toast } from 'sonner';
 import { Award, Bell, CalendarClock, Castle, Gamepad2, Mail, MailOpen, TrendingUp, UserPlus, Users } from 'lucide-react';
 import { api } from '../../lib/api.ts';
 import { useMe } from '../../lib/session.ts';
-import { timeAgo } from '../../lib/format.ts';
+import { formatDate, timeAgo } from '../../lib/format.ts';
 import { AccountError, EmptyState, ErrorNotice, PageHeader, Skeleton } from '../../ui/primitives.tsx';
 import { Button, ButtonLink, IconButton } from '../../ui/Button.tsx';
 import { usePageTitle } from './data.ts';
@@ -64,8 +64,14 @@ function Row({ n, onRead, onUnread }: { n: NotificationItem; onRead: (id: string
           <p className="font-bold break-words">{n.title}</p>
         )}
         {n.body ? <p className="text-sm break-words text-text-2">{n.body}</p> : null}
-        <p className="mt-0.5 text-xs text-text-3">{n.kind === 'due' ? `Due ${new Date(n.createdAt).toLocaleString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}` : timeAgo(n.createdAt)}</p>
+        <p className="mt-0.5 text-xs text-text-3">{n.kind === 'due' ? `Due ${formatDate(n.createdAt, { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}` : timeAgo(n.createdAt)}</p>
       </div>
+      {/* An invite or a challenge: join straight from here. */}
+      {n.kind === 'invite' && n.link?.startsWith('/join/') ? (
+        <ButtonLink to={n.link} size="sm" variant="primary" onClick={() => !n.read && onRead(n.id)} aria-label={`Join: ${n.title}`} className="self-center">
+          Join
+        </ButtonLink>
+      ) : null}
       {live ? (
         <IconButton label={n.read ? `Mark as unread: ${n.title}` : `Mark as read: ${n.title}`} onClick={() => (n.read ? onUnread(n.id) : onRead(n.id))}>
           {n.read ? <Mail className="size-5" aria-hidden /> : <MailOpen className="size-5" aria-hidden />}

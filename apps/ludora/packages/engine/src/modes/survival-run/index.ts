@@ -71,7 +71,8 @@ function ask(r: Runner, playerId: PlayerId, ctx: ModeContext<Settings>) {
   if (r.returning) r.stream.iid = ctx.questions.present(r.returns.splice(due, 1)[0]!.qid);
   else streamNext(r.stream, ctx);
   r.phase = 'question';
-  r.deadline = ctx.now() + r.timerMs;
+  // Extra time (access): this runner's own question timer is longer by their share.
+  r.deadline = ctx.now() + Math.round(r.timerMs * (1 + (ctx.player(playerId)?.extraTime ?? 0)));
   r.nextAt = null;
   ctx.clearTimer(`next:${playerId}`);
   ctx.setTimer(`q:${playerId}`, r.deadline + DEADLINE_GRACE_MS);

@@ -5,7 +5,7 @@ import { toast } from 'sonner';
 import { EVENT_DECOR, HOUSE_EMBLEMS, MAX_HOUSES, houseFill, type HouseEmblem, type SchoolSettings } from '@ludora/shared';
 import { api, ApiError } from '../../lib/api.ts';
 import { useMe } from '../../lib/session.ts';
-import { formatNumber } from '../../lib/format.ts';
+import { formatDate, formatNumber } from '../../lib/format.ts';
 import { Badge, EmptyState, ErrorNotice, Field, Input, PageHeader, Panel, Select, Skeleton, Switch, TabPanel, Tabs, Textarea } from '../../ui/primitives.tsx';
 import { Button } from '../../ui/Button.tsx';
 import { BackLink, errorText, usePageTitle } from '../reports/reportUi.tsx';
@@ -343,7 +343,7 @@ function DatedList({ kind }: { kind: 'notice' | 'event' }) {
     onSuccess: () => void qc.invalidateQueries({ queryKey: ['school'] }),
   });
   const rows = (kind === 'notice' ? list.data?.notices : list.data?.events) ?? [];
-  const when = (iso: string) => new Date(iso).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+  const when = (iso: string) => formatDate(iso, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
   return (
     <Panel className="flex flex-col gap-3 p-4 sm:p-5" aria-labelledby={`${kind}-list`}>
       <h2 id={`${kind}-list`} className="font-display text-2xl font-bold text-text">
@@ -492,7 +492,10 @@ export default function Manage() {
   const manage = Boolean(me.data?.permissions.includes('school.manage'));
   const usage = Boolean(me.data?.permissions.includes('school.view'));
   const data = useQuery({ queryKey: ['school', 'settings'], queryFn: () => api.get<ManageData>('/api/school/settings'), enabled: manage });
-  const [tab, setTab] = useState(manage ? 'houses' : 'usage');
+  // The first tab depends on the account, which may still be loading when this page first draws:
+  // only a tab the person picked is kept, so staff opening the page directly still land on Houses.
+  const [picked, setTab] = useState<string | null>(null);
+  const tab = picked ?? (manage ? 'houses' : 'usage');
   if (!me.data) return <Skeleton className="h-96" />;
   if (!manage && !usage) {
     return (

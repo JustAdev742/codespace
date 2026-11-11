@@ -4,6 +4,7 @@ import { api } from '../../lib/api.ts';
 import { useMe } from '../../lib/session.ts';
 import { Button } from '../../ui/Button.tsx';
 import { Dialog } from '../../ui/primitives.tsx';
+import { formatDate } from '../../lib/format.ts';
 
 interface Notice {
   id: number;
@@ -22,7 +23,7 @@ const TITLES: Record<Notice['action'], string> = {
 };
 
 function body(n: Notice): string {
-  const until = n.until ? new Date(n.until).toLocaleString('en-GB', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' }) : null;
+  const until = n.until ? formatDate(n.until, { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' }) : null;
   switch (n.action) {
     case 'mute':
       return `You cannot send reactions in games or change your name${until ? ` until ${until}` : ''}. You can still play.`;

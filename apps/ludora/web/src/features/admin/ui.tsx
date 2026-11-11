@@ -5,6 +5,7 @@ import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { ApiError } from '../../lib/api.ts';
 import { Badge, Dialog, ErrorNotice, Field, Input, Skeleton, Textarea } from '../../ui/primitives.tsx';
 import { Button, IconButton, type ButtonVariant } from '../../ui/Button.tsx';
+import { formatDate, formatNumber } from '../../lib/format.ts';
 
 /*
  * Building blocks for staff pages. Staff screens are dense and plain on
@@ -126,7 +127,7 @@ export function Pager({ offset, pageSize, total, onChange }: { offset: number; p
   return (
     <div className="mt-3 flex items-center justify-end gap-2 text-sm text-text-2">
       <span className="tabular">
-        {from}-{to} of {total.toLocaleString('en-GB')}
+        {from}-{to} of {formatNumber(total)}
       </span>
       <IconButton label="Previous page" size="sm" variant="secondary" disabled={offset === 0} onClick={() => onChange(Math.max(0, offset - pageSize))}>
         <ChevronLeft className="size-4" />
@@ -200,7 +201,7 @@ export function KeyValues({ items }: { items: [string, ReactNode][] }) {
 
 export function dateTime(iso: string | null | undefined): string {
   if (!iso) return '-';
-  return new Date(iso).toLocaleString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+  return formatDate(iso, { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 }
 
 export function errorText(err: unknown, fallback = 'That did not work.'): string {

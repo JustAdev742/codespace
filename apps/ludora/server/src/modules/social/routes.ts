@@ -15,6 +15,8 @@ import { modeTitle } from '../profiles/routes.ts';
 import { readPreferences } from '../users/preferences.ts';
 import { MAX_FRIENDS, blockedEitherWay, pairOf } from './service.ts';
 import { notify } from '../notifications/service.ts';
+import { teachesClass } from '../classes/access.ts';
+import { challengeRoutes } from './challenge.ts';
 
 /*
  * Friends, blocks and leaderboards.
@@ -45,6 +47,7 @@ function person(u: { id: string; displayName: string; xp: number }, avatar: unkn
 
 export async function socialRoutes(app: FastifyInstance, deps: AppDeps) {
   const { db } = deps;
+  await challengeRoutes(app, deps);
   // Staff can switch friends off with the social.friends flag, for example while
   // dealing with abuse. Blocks keep working whatever the flag says: they are a safety tool.
   const requireFriendsOn = async (auth: AuthContext) => {
@@ -241,9 +244,10 @@ export async function socialRoutes(app: FastifyInstance, deps: AppDeps) {
       if (!q.classId) throw new AppError(400, 'validation_failed', 'Choose a class.');
       const [cls] = await db.select().from(classes).where(eq(classes.id, q.classId)).limit(1);
       const members = cls ? await db.select({ userId: classMembers.userId }).from(classMembers).where(eq(classMembers.classId, cls.id)) : [];
-      if (!cls || (cls.ownerId !== me && !members.some((m) => m.userId === me))) throw notFound('That class does not exist.');
-      // The teacher can turn the class board off; they still see it themselves.
-      if (!cls.leaderboardOn && cls.ownerId !== me) throw conflict('Your teacher has turned off this class leaderboard.');
+      const teaches = cls ? await teachesClass(db, cls.id, me) : false;
+      if (!cls || (!teaches && !members.some((m) => m.userId === me))) throw notFound('That class does not exist.');
+      // The teacher can turn the class board off; they (and co-teachers) still see it themselves.
+      if (!cls.leaderboardOn && !teaches) throw conflict('Your teacher has turned off this class leaderboard.');
       pool = members.map((m) => m.userId);
     }
     const since = weekStart(new Date());

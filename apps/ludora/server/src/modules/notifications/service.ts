@@ -1,6 +1,6 @@
 import { and, desc, eq, inArray, isNull, lt, sql } from 'drizzle-orm';
 import type { DbOrTx } from '../../db/client.ts';
-import { assignments, classMembers, classes, gameParticipants, gameSessions, notifications } from '../../db/schema.ts';
+import { assignments, classMembers, classes, gameParticipants, gameSessions, notifications, classGroupMembers } from '../../db/schema.ts';
 
 /*
  * Notifications: things that happened while a player was elsewhere. Friend
@@ -53,7 +53,7 @@ export async function workDue(db: DbOrTx, userId: string, now = new Date()): Pro
     .from(assignments)
     .innerJoin(classes, eq(classes.id, assignments.classId))
     .innerJoin(classMembers, and(eq(classMembers.classId, classes.id), eq(classMembers.userId, userId)))
-    .where(and(isNull(classes.archivedAt), sql`${assignments.dueAt} is not null`, sql`${assignments.dueAt} > ${now.toISOString()}`, sql`${assignments.dueAt} <= ${soon.toISOString()}`))
+    .where(and(isNull(classes.archivedAt), sql`(${assignments.groupId} is null or exists (select 1 from ${classGroupMembers} where ${classGroupMembers.groupId} = ${assignments.groupId} and ${classGroupMembers.userId} = ${userId}))`, sql`${assignments.dueAt} is not null`, sql`${assignments.dueAt} > ${now.toISOString()}`, sql`${assignments.dueAt} <= ${soon.toISOString()}`))
     .orderBy(assignments.dueAt)
     .limit(10);
   if (!rows.length) return [];

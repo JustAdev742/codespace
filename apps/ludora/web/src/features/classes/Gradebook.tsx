@@ -37,6 +37,7 @@ function gradebookRows(data: InsightsData): CsvCell[][] {
       csvPercent(average(r)),
       ...data.assignments.flatMap((a) => {
         const c = r.cells[a.id];
+        if (!(a.id in r.cells)) return [null, null, null, null, 'Not set for this student'];
         return [csvPercent(c?.best?.accuracy), c?.best?.correct ?? null, c?.best?.answered ?? null, c?.attempts ?? 0, cellStatus(c)];
       }),
     ]),
@@ -123,6 +124,7 @@ export function GradebookPanel({ classId, className, members }: { classId: strin
             {data.assignments.map((a) => (
               <option key={a.id} value={a.id}>
                 {a.title}
+                {a.groupName ? ` (for ${a.groupName})` : ''}
               </option>
             ))}
           </Select>
@@ -133,7 +135,7 @@ export function GradebookPanel({ classId, className, members }: { classId: strin
               <Link to={`/classes/${classId}/students/${r.id}`} className="min-w-0 font-semibold break-words text-text">
                 {r.displayName}
               </Link>
-              <GradeCellView cell={r.cells[task.id]} maxAttempts={task.maxAttempts} />
+              <GradeCellView cell={r.cells[task.id]} maxAttempts={task.maxAttempts} notSet={!(task.id in r.cells)} />
             </li>
           ))}
         </ul>
@@ -150,6 +152,7 @@ export function GradebookPanel({ classId, className, members }: { classId: strin
                   <button type="button" onClick={() => onSort(a.id)} className={`flex w-[6.5rem] flex-col items-center gap-0.5 text-center hover:text-text ${sort.key === a.id ? 'text-text' : ''}`}>
                     <span className="line-clamp-2 break-words">{a.title}</span>
                     <span className="font-normal text-text-3">{a.dueAt ? `Due ${dateText(a.dueAt)}` : 'No due date'}</span>
+                    {a.groupName ? <span className="font-normal text-text-3">For {a.groupName}</span> : null}
                     <span className="sr-only">, sort by this assignment</span>
                   </button>
                 </th>
@@ -170,7 +173,7 @@ export function GradebookPanel({ classId, className, members }: { classId: strin
                   <td className="px-3 py-2 font-display text-lg font-bold text-text tabular">{avg === null ? <NoValue label="No games yet" /> : percent(avg)}</td>
                   {data.assignments.map((a) => (
                     <td key={a.id} className="px-2 py-1.5 text-center">
-                      <GradeCellView cell={r.cells[a.id]} maxAttempts={a.maxAttempts} />
+                      <GradeCellView cell={r.cells[a.id]} maxAttempts={a.maxAttempts} notSet={!(a.id in r.cells)} />
                     </td>
                   ))}
                 </tr>

@@ -1,7 +1,7 @@
 import type { EngineResults } from '@ludora/engine';
 import type { AppDeps } from '../app.ts';
-import { and, eq } from 'drizzle-orm';
-import { classMembers, errorReports } from '../db/schema.ts';
+import { and, eq, sql } from 'drizzle-orm';
+import { classMembers, errorReports, gameSessions } from '../db/schema.ts';
 import { roomCode } from '../lib/crypto.ts';
 import { Room, type RoomHooks, type RoomInit } from './room.ts';
 import { persistGame } from './persist.ts';
@@ -30,6 +30,14 @@ export class RoomManager {
     return {
       now: this.now,
       persist: (room, results) => this.track(this.persist(room, results)),
+      saveFeelings: (gameId, feelings) =>
+        this.track(
+          this.deps.db
+            .update(gameSessions)
+            .set({ voice: sql`jsonb_set(coalesce(${gameSessions.voice}, '{"polls":[]}'::jsonb), '{feelings}', ${JSON.stringify(feelings)}::jsonb)` })
+            .where(eq(gameSessions.id, gameId))
+            .then(() => undefined),
+        ),
       onError: (err, where, room) => this.reportError(err, where, room),
       onClosed: (room) => {
         if (this.rooms.get(room.code) === room) this.rooms.delete(room.code);

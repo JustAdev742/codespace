@@ -205,7 +205,7 @@ export async function questHistory(db: DbOrTx, userId: string, now = new Date())
   const swaps = await db.select().from(questSwaps).where(eq(questSwaps.userId, userId));
   const swappedIn = new Set(swaps.map((s) => `${s.newQuestId}|${s.day}`));
   return rows
-    .map(({ uq, q }) => ({ id: q.id, kind: q.kind, title: q.title, period: uq.period, start: periodStart(uq.period), progress: uq.progress, target: uq.target, completed: Boolean(uq.completedAt), claimed: Boolean(uq.claimedAt), swappedIn: swappedIn.has(`${q.id}|${uq.period}`), reward: q.reward }))
+    .map(({ uq, q }) => ({ id: q.id, kind: q.kind, title: q.title, period: uq.period, start: periodStart(uq.period), progress: uq.progress, target: uq.target, completed: Boolean(uq.completedAt), claimed: Boolean(uq.claimedAt), swappedIn: swappedIn.has(`${q.id}|${uq.period}`), reward: q.reward, metric: q.metric }))
     .sort((a, b) => b.start.localeCompare(a.start) || a.kind.localeCompare(b.kind))
     .slice(0, 120);
 }

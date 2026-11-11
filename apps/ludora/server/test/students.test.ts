@@ -5,7 +5,7 @@ import type { EngineResults } from '@ludora/engine';
 import { getMode } from '@ludora/engine';
 import { streakEnding } from '@ludora/shared';
 import { Client, createTestApp, registered, type TestContext } from './helpers.ts';
-import { achievements, inventory, items, mistakes, practiceRuns, questSwaps, questionSets, userAchievements, userQuests, users } from '../src/db/schema.ts';
+import { achievements, inventory, ledger, items, mistakes, practiceRuns, questSwaps, questionSets, userAchievements, userQuests, users } from '../src/db/schema.ts';
 import { persistGame } from '../src/realtime/persist.ts';
 import type { Room } from '../src/realtime/room.ts';
 import { dailyPick, mistakeStep, monthDays, mostImproved, questionOutcome } from '../src/modules/study/logic.ts';
@@ -426,6 +426,26 @@ describe('quests: swap and history', () => {
     const h = (await a.client.get('/api/quests/history')).body.quests;
     expect(h.map((x: { period: string }) => x.period)).toEqual(['2026-01-07', '2026-01-05']);
     expect(h[0]).toMatchObject({ completed: true, claimed: false });
+  });
+
+  it('pays an earlier finished quest once, from the history, and only to its owner', async () => {
+    const a = await registered(t.app);
+    await a.client.get('/api/quests');
+    const [mine] = await t.db.select().from(userQuests).where(eq(userQuests.userId, a.userId)).limit(1);
+    await t.db.insert(userQuests).values({ userId: a.userId, questId: mine!.questId, period: '2026-01-07', target: mine!.target, progress: mine!.target, completedAt: new Date() });
+    const past = (await a.client.get('/api/quests/history')).body.quests.find((x: { period: string }) => x.period === '2026-01-07');
+    expect(past.reward).toBeTruthy();
+    const b = await registered(t.app);
+    expect((await b.client.post(`/api/quests/${past.id}/claim`, { period: past.period })).status).toBe(404);
+    const ok = await a.client.post(`/api/quests/${past.id}/claim`, { period: past.period });
+    expect(ok.status, JSON.stringify(ok.body)).toBe(200);
+    const paid = async () => (await t.db.select().from(ledger).where(and(eq(ledger.userId, a.userId), eq(ledger.refId, `${past.id}:${past.period}`)))).length;
+    const once = await paid();
+    // A second press replays the same answer and pays nothing more.
+    await a.client.post(`/api/quests/${past.id}/claim`, { period: past.period });
+    expect(await paid()).toBe(once);
+    const after = (await a.client.get('/api/quests/history')).body.quests.find((x: { period: string }) => x.period === '2026-01-07');
+    expect(after).toMatchObject({ completed: true, claimed: true });
   });
 
   it('shows the level track from the rules that pay it', async () => {

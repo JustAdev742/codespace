@@ -39,6 +39,7 @@ import {
 } from './classData.ts';
 import { ClassAccountGate, ClassPageSkeleton, ConfirmDialog, DueLabel, JoinCode } from './classUi.tsx';
 import { ExtraTimePanel } from './ExtraTimePanel.tsx';
+import { GroupsPanel, TeachersPanel } from './GroupsAndTeachers.tsx';
 
 /*
  * /classes/:id. The teacher manages the class: join code, roster (with class
@@ -111,6 +112,13 @@ function TeacherAssignmentRow({ a, classId, now, onEdit, onDelete }: { a: Teache
           <p className="mt-1.5 text-sm">
             <DueLabel dueAt={a.dueAt} now={now} />
           </p>
+          {a.groupName ? (
+            <p className="mt-1.5">
+              <Badge tone="mint">
+                <Users className="size-3.5" aria-hidden /> For {a.groupName} only
+              </Badge>
+            </p>
+          ) : null}
           <OptionsText a={a} now={now} />
           {a.opensAt && Date.parse(a.opensAt) > now ? (
             <p className="mt-1.5">
@@ -472,6 +480,7 @@ function RenameForm({ classId, name, onDone }: { classId: string; name: string; 
 
 function TeacherView({ data }: { data: TeacherClassDetail }) {
   const qc = useQueryClient();
+  const me = useMe();
   const now = useNow(60_000);
   const cls = data.class;
   const [params, setParams] = useSearchParams();
@@ -526,7 +535,8 @@ function TeacherView({ data }: { data: TeacherClassDetail }) {
             <Button size="sm" icon={<Pencil className="size-4" />} onClick={() => setRenaming(true)}>
               Rename
             </Button>
-            {cls.archived ? (
+            {/* Archiving is for the teacher who made the class (the server says so too). */}
+            {!data.owner ? null : cls.archived ? (
               <Button size="sm" icon={<ArchiveRestore className="size-4" />} loading={unarchive.isPending} onClick={() => unarchive.mutate()}>
                 Unarchive
               </Button>
@@ -561,6 +571,7 @@ function TeacherView({ data }: { data: TeacherClassDetail }) {
             count: data.assignments.length,
           },
           { value: 'students', label: 'Students', count: data.memberCount },
+          { value: 'groups', label: 'Groups', count: data.groups.length },
           { value: 'gradebook', label: 'Gradebook' },
           { value: 'insights', label: 'Insights' },
           { value: 'board', label: 'Noticeboard', count: data.notices.length },
@@ -625,6 +636,10 @@ function TeacherView({ data }: { data: TeacherClassDetail }) {
         <TabPanel value="students" className="focus-visible:outline-offset-4">
           <Roster classId={cls.id} className={cls.name} archived={cls.archived} members={data.members} onRemove={setRemoving} onHelp={setHelping} onReset={setResetting} />
           <ExtraTimePanel classId={cls.id} members={data.members} archived={cls.archived} />
+          <TeachersPanel classId={cls.id} className={cls.name} teachers={data.teachers} owner={data.owner} myId={me.data?.user?.id} archived={cls.archived} />
+        </TabPanel>
+        <TabPanel value="groups" className="focus-visible:outline-offset-4">
+          <GroupsPanel classId={cls.id} groups={data.groups} members={data.members} assignments={data.assignments} archived={cls.archived} />
         </TabPanel>
       </Tabs>
 
@@ -632,7 +647,7 @@ function TeacherView({ data }: { data: TeacherClassDetail }) {
         <RenameForm classId={cls.id} name={cls.name} onDone={() => setRenaming(false)} />
       </Dialog>
 
-      <AssignmentDialog classId={cls.id} open={editor !== null} onOpenChange={(open) => !open && setEditor(null)} editing={editor?.editing ?? null} />
+      <AssignmentDialog classId={cls.id} open={editor !== null} onOpenChange={(open) => !open && setEditor(null)} editing={editor?.editing ?? null} groups={data.groups} />
 
       <ConfirmDialog
         open={archiving}
@@ -806,6 +821,7 @@ function StudentAssignmentRow({ a, now, archived, starting, onPlay }: { a: Stude
           <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
             <h3 className="font-display text-xl leading-tight font-bold break-words">{a.title}</h3>
             <Badge tone={WORK_LABEL[work].tone}>{WORK_LABEL[work].label}</Badge>
+            {a.groupName ? <Badge tone="mint">For {a.groupName}</Badge> : null}
           </div>
           <p className="mt-0.5 text-sm break-words text-text-2">
             {a.setTitle}, {info.title}
@@ -875,7 +891,7 @@ function StudentView({ data }: { data: StudentClassDetail }) {
       <BackLink to="/classes">All classes</BackLink>
       <PageHeader
         title={<span className="break-words">{cls.name}</span>}
-        description={`${cls.schoolName ? `${cls.schoolName}. ` : ''}Taught by ${cls.teacher}`}
+        description={`${cls.schoolName ? `${cls.schoolName}. ` : ''}Taught by ${cls.teacher}${data.myGroups?.length ? `. Your ${data.myGroups.length === 1 ? 'group' : 'groups'}: ${data.myGroups.map((g) => g.name).join(', ')}` : ''}`}
         actions={
           <Button size="sm" variant="ghost" icon={<LogOut className="size-4" />} onClick={() => setLeaving(true)}>
             Leave class

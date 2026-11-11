@@ -11,7 +11,7 @@ import { Badge, Dialog, EmptyState, ErrorNotice, Field, Input, Select, Skeleton,
 import { Button, ButtonLink } from '../../ui/Button.tsx';
 import { ToggleChips } from '../../ui/game.tsx';
 import { SetCover } from '../sets/SetCover.tsx';
-import { classKeys, fromLocalInput, toLocalInput, useModeInfo, type TeacherAssignment } from './classData.ts';
+import { classKeys, fromLocalInput, toLocalInput, useModeInfo, type ClassGroup, type TeacherAssignment } from './classData.ts';
 import { plural } from '../../lib/format.ts';
 
 /*
@@ -268,7 +268,7 @@ function SectionHeading({ id, children, note, className = 'mb-2' }: { id: string
   );
 }
 
-function AssignmentForm({ classId, editing, onDone }: { classId: string; editing: TeacherAssignment | null; onDone: () => void }) {
+function AssignmentForm({ classId, editing, groups, onDone }: { classId: string; editing: TeacherAssignment | null; groups: readonly ClassGroup[]; onDone: () => void }) {
   const qc = useQueryClient();
   const modeInfo = useModeInfo();
   const [set, setSet] = useState<SetSummary | null>(null);
@@ -285,6 +285,7 @@ function AssignmentForm({ classId, editing, onDone }: { classId: string; editing
   const [opens, setOpens] = useState(editing?.opensAt ? toLocalInput(editing.opensAt) : '');
   const [closes, setCloses] = useState(editing?.closesAt ? toLocalInput(editing.closesAt) : '');
   const [tries, setTries] = useState<string>(editing?.maxAttempts ? String(editing.maxAttempts) : '');
+  const [groupId, setGroupId] = useState<string>(editing?.groupId ?? '');
   const [submitted, setSubmitted] = useState(false);
   const [serverFields, setServerFields] = useState<Record<string, string>>({});
   const [formError, setFormError] = useState<string | null>(null);
@@ -336,6 +337,7 @@ function AssignmentForm({ classId, editing, onDone }: { classId: string; editing
         opensAt: opensIso,
         closesAt: closesIso,
         maxAttempts: tries ? Number(tries) : null,
+        groupId: groupId || null,
       };
       if (editing) {
         await api.patch(`/api/classes/${classId}/assignments/${editing.id}`, common);
@@ -353,7 +355,7 @@ function AssignmentForm({ classId, editing, onDone }: { classId: string; editing
       onDone();
     } catch (err) {
       if (err instanceof ApiError) {
-        const { title: ti, instructions: i, dueAt: d, opensAt: o, closesAt: c, maxAttempts: m } = err.fields;
+        const { title: ti, instructions: i, dueAt: d, opensAt: o, closesAt: c, maxAttempts: m, groupId: g } = err.fields;
         setServerFields({
           ...(ti ? { title: ti } : {}),
           ...(i ? { instructions: i } : {}),
@@ -361,8 +363,9 @@ function AssignmentForm({ classId, editing, onDone }: { classId: string; editing
           ...(o ? { opens: o } : {}),
           ...(c ? { closes: c } : {}),
           ...(m ? { tries: m } : {}),
+          ...(g ? { group: g } : {}),
         });
-        if (!ti && !i && !d && !o && !c && !m) setFormError(err.message);
+        if (!ti && !i && !d && !o && !c && !m && !g) setFormError(err.message);
       } else {
         setFormError('The assignment was not saved. Check your connection and try again.');
       }
@@ -504,6 +507,20 @@ function AssignmentForm({ classId, editing, onDone }: { classId: string; editing
             {(p) => <Input {...p} type="datetime-local" value={closes} onChange={(e) => setCloses(e.target.value)} />}
           </Field>
         </div>
+        {groups.length ? (
+          <Field label="Who it is for" hint="Work for one group is seen and played only by the students in it." error={serverFields.group}>
+            {(p) => (
+              <Select {...p} value={groupId} onChange={(e) => setGroupId(e.target.value)} className="sm:max-w-xs">
+                <option value="">The whole class</option>
+                {groups.map((g) => (
+                  <option key={g.id} value={g.id}>
+                    {g.name} ({g.memberIds.length === 1 ? '1 student' : `${g.memberIds.length} students`})
+                  </option>
+                ))}
+              </Select>
+            )}
+          </Field>
+        ) : null}
         <Field label="Tries each" hint="Each finished game counts as one try. You can allow more later." error={serverFields.tries}>
           {(p) => (
             <Select {...p} value={tries} onChange={(e) => setTries(e.target.value)} className="sm:max-w-xs">
@@ -533,7 +550,7 @@ function AssignmentForm({ classId, editing, onDone }: { classId: string; editing
   );
 }
 
-export function AssignmentDialog({ classId, open, onOpenChange, editing }: { classId: string; open: boolean; onOpenChange: (open: boolean) => void; editing: TeacherAssignment | null }) {
+export function AssignmentDialog({ classId, open, onOpenChange, editing, groups = [] }: { classId: string; open: boolean; onOpenChange: (open: boolean) => void; editing: TeacherAssignment | null; groups?: readonly ClassGroup[] }) {
   return (
     <Dialog
       open={open}
@@ -543,7 +560,7 @@ export function AssignmentDialog({ classId, open, onOpenChange, editing }: { cla
       size="lg"
     >
       {/* The form unmounts when the dialog closes, so it always opens fresh. */}
-      <AssignmentForm classId={classId} editing={editing} onDone={() => onOpenChange(false)} />
+      <AssignmentForm classId={classId} editing={editing} groups={groups} onDone={() => onOpenChange(false)} />
     </Dialog>
   );
 }

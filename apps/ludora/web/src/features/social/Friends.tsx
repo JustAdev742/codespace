@@ -10,6 +10,7 @@ import { AccountError, Dialog, EmptyState, ErrorNotice, Input, PageHeader, Panel
 import { Button, ButtonLink } from '../../ui/Button.tsx';
 import { Dot, PlayerAvatar } from './parts.tsx';
 import { InviteButton, RecentPlayers, useOpenRooms } from './RecentPlayers.tsx';
+import { ChallengeButton } from './Challenge.tsx';
 import { blocksKey, errorText, friendsKey, getBlocks, getFriends, shortDate, useFocusAfterUpdate, useReturnFocus, useSocialRefresh, usePageTitle, type BlockedPlayer, type Friend } from './data.ts';
 
 type Privacy = Preferences['privacy'];
@@ -379,6 +380,7 @@ export default function Friends() {
                 {(data?.friends ?? []).map((p) => (
                   <PersonRow key={p.id} person={p} detail={`Friends since ${shortDate(p.since)}`}>
                     <InviteButton friend={p} rooms={rooms} />
+                    <ChallengeButton friend={p} />
                     <Button
                       size="sm"
                       variant="ghost"

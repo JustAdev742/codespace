@@ -63,6 +63,8 @@ export async function notificationRoutes(app: FastifyInstance, deps: AppDeps) {
     if (!room || !mine) throw new AppError(404, 'room_not_found', 'That game has closed, so there is nothing to invite them to.');
     const open = !room.locked && (room.status === 'lobby' || ((room.status === 'running' || room.status === 'paused') && room.options.lateJoin));
     if (!open) throw new AppError(409, 'conflict', 'This game is not taking new players right now.');
+    // A class game or a friend challenge lets in only its own players: an invite they could not use is not sent.
+    if (room.classMembers && !room.classMembers.has(body.userId)) throw new AppError(409, 'conflict', room.classId ? 'This game is for the class only, so they cannot join it.' : 'This game is just for the two of you, so they cannot join it.');
     const block = await blockedEitherWay(db, auth.user.id, body.userId);
     if (block.byMe || block.byThem || !(await areFriends(db, auth.user.id, body.userId))) throw new AppError(403, 'forbidden', 'You can invite your friends only.');
     const title = room.variant?.meta.title ?? room.mode.meta.title;

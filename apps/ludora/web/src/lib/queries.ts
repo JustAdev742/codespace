@@ -22,6 +22,8 @@ export interface QuestView {
   completed: boolean;
   claimed: boolean;
   reward: { sparks?: number; moonstones?: number; xp?: number; frost_tickets?: number };
+  /** What it counts (games_played, games_won...), for its badge. */
+  metric?: string;
 }
 
 export interface Overview {

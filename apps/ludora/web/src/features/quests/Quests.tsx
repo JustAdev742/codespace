@@ -5,12 +5,13 @@ import { Award, Check, Clock, Repeat, Target } from 'lucide-react';
 import { errorMessage, extrasKey, useExtras } from '../profile/extras.ts';
 import { LevelTrack, QuestHistory, achievementCategory, ACHIEVEMENT_CATEGORIES, nearlyThere, type AchievementCategory } from './progress.tsx';
 import { api, ApiError } from '../../lib/api.ts';
-import { formatNumber, untilText } from '../../lib/format.ts';
+import { formatDate, formatNumber, untilText } from '../../lib/format.ts';
 import { useMe } from '../../lib/session.ts';
 import type { QuestView } from '../../lib/queries.ts';
 import { AccountError, Amount, EmptyState, ErrorNotice, PageHeader, Skeleton } from '../../ui/primitives.tsx';
 import { Button, ButtonLink } from '../../ui/Button.tsx';
 import { Meter, ToggleChips } from '../home/kit.tsx';
+import { AchievementBadge, QuestBadge } from '../../art/badges.tsx';
 
 interface QuestsResponse {
   resets: { daily: string; weekly: string };
@@ -73,9 +74,12 @@ function QuestCard({ q, fill, canSwap }: { q: QuestView; fill: string; canSwap: 
     <li className={`relative flex flex-col gap-3 overflow-hidden rounded-[var(--radius-l)] border p-4 pt-5 ${ready ? 'border-glim bg-glim/10' : q.claimed ? 'border-line bg-raised opacity-80' : 'border-line bg-raised'}`}>
       {/* The group's colour along the top edge; mint once it is ready to claim. */}
       <span className="absolute inset-x-0 top-0 h-1" style={{ background: ready ? 'var(--glim)' : fill }} aria-hidden />
-      <div className="min-w-0">
-        <h3 className="font-display text-xl leading-tight font-bold">{q.title}</h3>
-        <p className="mt-0.5 text-sm text-text-2">{q.description}</p>
+      <div className="flex min-w-0 items-start gap-3">
+        <QuestBadge metric={q.metric} kind={q.kind} done={q.completed} size={48} />
+        <div className="min-w-0">
+          <h3 className="font-display text-xl leading-tight font-bold">{q.title}</h3>
+          <p className="mt-0.5 text-sm text-text-2">{q.description}</p>
+        </div>
       </div>
       {!q.completed ? (
         <div className="flex items-center gap-3">
@@ -137,25 +141,7 @@ function QuestGroup({ title, reset, note, quests, tone, fill, canSwap = false }:
 }
 
 function Medal({ a }: { a: Achievement }) {
-  const earned = Boolean(a.unlockedAt);
-  const ring = TIER[a.tier].ring;
-  return (
-    <svg viewBox="0 0 56 64" className="h-16 w-14 shrink-0" aria-hidden focusable={false}>
-      {/* Ribbon */}
-      <path d="M17 2H27L31 22H21Z" fill={earned ? `hsl(${a.hue} 70% 46%)` : 'var(--surface-3)'} stroke={earned ? 'var(--ink)' : 'var(--line-strong)'} strokeWidth="2" strokeLinejoin="round" />
-      <path d="M39 2H29L25 22H35Z" fill={earned ? `hsl(${(a.hue + 30) % 360} 75% 58%)` : 'var(--surface-3)'} stroke={earned ? 'var(--ink)' : 'var(--line-strong)'} strokeWidth="2" strokeLinejoin="round" />
-      <circle cx="28" cy="40" r="20" fill={earned ? ring : 'var(--surface-3)'} stroke={earned ? 'var(--ink)' : 'var(--line-strong)'} strokeWidth="2.5" />
-      <circle cx="28" cy="40" r="14" fill={earned ? `hsl(${a.hue} 75% 60%)` : 'var(--surface-2)'} stroke={earned ? 'var(--ink)' : 'var(--line-strong)'} strokeWidth="2" strokeDasharray={earned ? undefined : '3 3'} />
-      {earned ? (
-        <path d="M28 31l2.7 5.6 6.1.8-4.4 4.2 1.1 6.1L28 44.8l-5.5 2.9 1.1-6.1-4.4-4.2 6.1-.8z" fill="#fff" stroke="var(--ink)" strokeWidth="1.5" strokeLinejoin="round" />
-      ) : (
-        <g stroke="var(--text-3)" strokeWidth="2.4" fill="none" strokeLinecap="round">
-          <rect x="22" y="39" width="12" height="9" rx="2" />
-          <path d="M24.5 39v-2.5a3.5 3.5 0 0 1 7 0V39" />
-        </g>
-      )}
-    </svg>
-  );
+  return <AchievementBadge metric={a.metric} tier={a.tier} hue={a.hue} earned={Boolean(a.unlockedAt)} size={60} />;
 }
 
 type AchievementFilter = 'all' | 'progress' | 'earned';
@@ -284,7 +270,10 @@ export default function Quests() {
               <ul className="grid grid-cols-1 gap-3 md:grid-cols-3">
                 {nearlyThere(achievements.data.achievements).map((a) => (
                   <li key={a.id} className="flex flex-col gap-1.5">
-                    <p className="font-bold">{a.title}</p>
+                    <p className="flex items-center gap-2 font-bold">
+                      <AchievementBadge metric={a.metric} tier={a.tier} hue={a.hue} earned={false} size={36} />
+                      {a.title}
+                    </p>
                     <div className="flex items-center gap-2">
                       <Meter value={a.progress} max={a.target} size="sm" tone="amber" label={`${a.title}: ${a.progress} of ${a.target}`} />
                       <span className="shrink-0 text-xs font-bold text-text-2 tabular">{formatNumber(a.target - a.progress)} to go</span>
@@ -313,7 +302,7 @@ export default function Quests() {
                   </div>
                   <p className="text-sm text-text-2">{a.description}</p>
                   {a.unlockedAt ? (
-                    <p className="text-sm font-semibold text-glim">Earned {new Date(a.unlockedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</p>
+                    <p className="text-sm font-semibold text-glim">Earned {formatDate(a.unlockedAt, { day: 'numeric', month: 'short', year: 'numeric' })}</p>
                   ) : (
                     <div className="flex items-center gap-2">
                       <Meter value={a.progress} max={a.target} size="sm" tone="amber" label={`${a.title}: ${a.progress} of ${a.target}`} />

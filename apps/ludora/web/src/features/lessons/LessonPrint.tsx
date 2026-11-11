@@ -1,6 +1,6 @@
 import { useParams } from 'react-router';
 import { Printer } from 'lucide-react';
-import { plural } from '../../lib/format.ts';
+import { formatDate, plural } from '../../lib/format.ts';
 import { EmptyState, ErrorNotice, PageHeader, Skeleton } from '../../ui/primitives.tsx';
 import { Button, ButtonLink } from '../../ui/Button.tsx';
 import { BackLink, hasStatus, usePageTitle } from '../reports/reportUi.tsx';
@@ -46,7 +46,7 @@ export default function LessonPrint() {
       <article data-print-sheet className="rounded-[var(--radius-l)] border border-line bg-white p-6 text-[#0b1020]">
         <h2 className="font-display text-3xl font-bold break-words">{l.title}</h2>
         <p className="mt-1 text-sm">
-          {plural(l.steps.length, 'step')}, {minutesText(totalMinutes).toLowerCase()}.{l.className && l.startsAt ? ` ${l.className}, ${new Date(l.startsAt).toLocaleString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })}.` : ''}
+          {plural(l.steps.length, 'step')}, {minutesText(totalMinutes).toLowerCase()}.{l.className && l.startsAt ? ` ${l.className}, ${formatDate(l.startsAt, { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })}.` : ''}
           {l.standings ? ' Lesson standings on.' : ''}
         </p>
         {l.goals.length ? (

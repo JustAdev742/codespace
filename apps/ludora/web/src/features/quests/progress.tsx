@@ -1,12 +1,14 @@
 import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
 import { Check, ChevronDown, Lock, Repeat } from 'lucide-react';
 import type { LevelInfo } from '@ludora/shared';
 import { api } from '../../lib/api.ts';
-import { formatNumber } from '../../lib/format.ts';
+import { formatDay, formatNumber } from '../../lib/format.ts';
 import { Amount, ErrorNotice, Panel, Skeleton } from '../../ui/primitives.tsx';
 import { Button } from '../../ui/Button.tsx';
 import { Meter } from '../../ui/game.tsx';
+import { QuestBadge } from '../../art/badges.tsx';
 
 export { ACHIEVEMENT_CATEGORIES, achievementCategory, nearlyThere, type AchievementCategory } from './groups.ts';
 
@@ -80,10 +82,40 @@ interface PastQuest {
   completed: boolean;
   claimed: boolean;
   swappedIn: boolean;
+  reward: { sparks?: number; moonstones?: number; xp?: number; frost_tickets?: number };
+  metric?: string;
+}
+
+/** What a reward is, in words, for the Claim button's name. */
+function rewardWords(r: PastQuest['reward']): string {
+  const parts = [r.sparks ? `${formatNumber(r.sparks)} Sparks` : '', r.moonstones ? `${formatNumber(r.moonstones)} Moonstones` : '', r.frost_tickets ? `${formatNumber(r.frost_tickets)} Frost tickets` : '', r.xp ? `${formatNumber(r.xp)} XP` : ''].filter(Boolean);
+  return parts.join(', ');
+}
+
+/** A finished quest from an earlier day or week whose reward was never collected. The server checks it is yours and pays it once. */
+function ClaimPast({ q }: { q: PastQuest }) {
+  const qc = useQueryClient();
+  const claim = useMutation({
+    mutationFn: () => api.post<{ levelUp: { from: number; to: number } | null }>(`/api/quests/${encodeURIComponent(q.id)}/claim`, { period: q.period }),
+    onSuccess: async (res) => {
+      toast.success(res.levelUp ? `Reward claimed. You reached level ${res.levelUp.to}.` : 'Reward claimed');
+      await Promise.all([qc.invalidateQueries({ queryKey: ['quests'] }), qc.invalidateQueries({ queryKey: ['overview'] }), qc.invalidateQueries({ queryKey: ['me'] })]);
+    },
+    onError: async (err) => {
+      toast.error(err instanceof Error && err.message ? err.message : 'The reward was not claimed. Try again.');
+      await qc.invalidateQueries({ queryKey: ['quests', 'history'] });
+    },
+  });
+  const words = rewardWords(q.reward);
+  return (
+    <Button size="sm" variant="success" loading={claim.isPending} onClick={() => claim.mutate()} aria-label={`Claim ${q.title}${words ? `: ${words}` : ''}`}>
+      Claim
+    </Button>
+  );
 }
 
 const when = (q: PastQuest) => {
-  const d = new Date(`${q.start}T12:00:00Z`).toLocaleDateString('en-GB', { weekday: q.kind === 'daily' ? 'short' : undefined, day: 'numeric', month: 'short', timeZone: 'UTC' });
+  const d = formatDay(q.start, { weekday: q.kind === 'daily' ? 'short' : undefined, day: 'numeric', month: 'short' });
   return q.kind === 'daily' ? d : `Week of ${d}`;
 };
 
@@ -113,6 +145,7 @@ export function QuestHistory() {
           <ul className="mt-3 divide-y divide-line rounded-[var(--radius-l)] border border-line bg-raised">
             {list.map((q) => (
               <li key={`${q.id}:${q.period}`} className="flex flex-wrap items-center gap-x-4 gap-y-1 px-4 py-2.5">
+                <QuestBadge metric={q.metric} kind={q.kind} done={q.completed} size={32} />
                 <span className="w-28 shrink-0 text-sm text-text-2">{when(q)}</span>
                 <span className="min-w-0 flex-1 font-semibold">
                   {q.title}
@@ -122,7 +155,14 @@ export function QuestHistory() {
                     </span>
                   ) : null}
                 </span>
-                <span className={`shrink-0 text-sm font-semibold ${q.completed ? 'text-glim' : 'text-text-2'}`}>{q.claimed ? 'Done, claimed' : q.completed ? 'Done, not claimed' : `Missed, ${formatNumber(q.progress)} of ${formatNumber(q.target)}`}</span>
+                {q.completed && !q.claimed ? (
+                  <span className="flex shrink-0 items-center gap-3">
+                    <span className="text-sm font-semibold text-glim">Done, not claimed</span>
+                    <ClaimPast q={q} />
+                  </span>
+                ) : (
+                  <span className={`shrink-0 text-sm font-semibold ${q.completed ? 'text-glim' : 'text-text-2'}`}>{q.claimed ? 'Done, claimed' : `Missed, ${formatNumber(q.progress)} of ${formatNumber(q.target)}`}</span>
+                )}
               </li>
             ))}
           </ul>

@@ -98,7 +98,7 @@ export async function profileRoutes(app: FastifyInstance, deps: AppDeps) {
       quests: {
         resets: quests.resets,
         list: quests.rows
-          .map(({ uq, q }) => ({ id: q.id, kind: q.kind, title: q.title, description: q.description, progress: uq.progress, target: uq.target, period: uq.period, completed: Boolean(uq.completedAt), claimed: Boolean(uq.claimedAt), reward: q.reward }))
+          .map(({ uq, q }) => ({ id: q.id, kind: q.kind, title: q.title, description: q.description, progress: uq.progress, target: uq.target, period: uq.period, completed: Boolean(uq.completedAt), claimed: Boolean(uq.claimedAt), reward: q.reward, metric: q.metric }))
           .sort((a, b) => QUEST_ORDER.indexOf(a.kind) - QUEST_ORDER.indexOf(b.kind)),
       },
       recentGames: recent.map((g) => ({ ...g, title: modeTitle(g.modeId, g.variantId) })),

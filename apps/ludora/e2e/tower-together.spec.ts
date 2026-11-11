@@ -88,8 +88,8 @@ async function play(browser: Browser, graphics: 'auto' | 'off') {
   const [a, b] = players;
 
   // The three pieces, each saying what it would do to the height and the sway.
-  const timber = /^Place\s*Timber\s*:\s*\+2 floors\s*,\s*sway \+[\d.]+\s+to [\d.]+\./;
-  const stone = /^Place\s*Stone\s*:\s*\+1 floor\s*,\s*sway [+−±][\d.]+\s+to [\d.]+\./;
+  const timber = /^Place\s*Timber\s*:\s*\+2 blocks\s*,\s*sway \+[\d.]+\s+to [\d.]+\./;
+  const stone = /^Place\s*Stone\s*:\s*\+1 block\s*,\s*sway [+−±][\d.]+\s+to [\d.]+\./;
   const brace = /^Place\s*Brace\s*:\s*locks below\s*,\s*nothing below it can fall/;
   await expect(a!.page.getByRole('button', { name: timber })).toBeVisible();
   await expect(a!.page.getByRole('button', { name: stone })).toBeVisible();
@@ -119,7 +119,7 @@ async function play(browser: Browser, graphics: 'auto' | 'off') {
     if (!checked && placedA > 0) {
       // What the piece did, in words, once the picture has shown it.
       await expect(announcer(a!.page)).toContainText(/You placed (timber|stone|a lantern brace)\. The tower is \d+ floors? tall/, { timeout: 8000 });
-      await expect(a!.page.getByRole('meter', { name: 'Height' })).toHaveAttribute('aria-valuetext', /^[1-9]\d* floors? of a \d+-floor target/);
+      await expect(a!.page.getByRole('meter', { name: 'Height' })).toHaveAttribute('aria-valuetext', /^\d+ floors? of a \d+-floor target/);
       await a!.page.evaluate(() => window.scrollTo(0, 0));
       await noToasts(a!.page);
       const playerAxe = await new AxeBuilder({ page: a!.page }).include('main').withTags(AXE_TAGS).analyze();

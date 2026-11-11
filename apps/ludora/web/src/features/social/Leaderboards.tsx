@@ -6,7 +6,7 @@ import { School, Trophy, Users } from 'lucide-react';
 import type { AvatarLite } from '@ludora/shared';
 import { api } from '../../lib/api.ts';
 import { useMe, type MeUser } from '../../lib/session.ts';
-import { formatNumber, ordinal, plural } from '../../lib/format.ts';
+import { formatDay, formatNumber, ordinal, plural } from '../../lib/format.ts';
 import { AccountError, EmptyState, ErrorNotice, PageHeader, Select, Skeleton, TabPanel, Tabs } from '../../ui/primitives.tsx';
 import { ButtonLink } from '../../ui/Button.tsx';
 import { Stage } from '../../ui/Stage.tsx';
@@ -334,7 +334,7 @@ export default function Leaderboards() {
     );
   }
 
-  const since = weekStart().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' });
+  const since = formatDay(weekStart(), { weekday: 'long', day: 'numeric', month: 'long' });
   let content: ReactNode;
   if (scope !== 'global' && user.isGuest) {
     content = (

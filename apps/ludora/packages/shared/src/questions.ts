@@ -255,6 +255,14 @@ export const questionSchema = z
 export type Question = z.infer<typeof questionSchema>;
 export type QuestionOf<T extends QuestionType> = Extract<Question, { type: T }>;
 
+/** A question's Points field is measured against this: 2,000 counts twice a usual question, 500 half, 0 nothing. */
+export const POINTS_USUAL = 1000;
+
+/** What a question's Points field does to the mode's own score for it. */
+export function pointsWeight(points: number | undefined): number {
+  return points === undefined ? 1 : Math.max(0, points) / POINTS_USUAL;
+}
+
 /** What a player submits. Validated against the question type by the grader. */
 export const answerSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('mcq'), choiceId: idSchema }),
@@ -271,8 +279,11 @@ export const answerSchema = z.discriminatedUnion('type', [
 ]);
 export type Answer = z.infer<typeof answerSchema>;
 
-/** A question as a player sees it: no answers, choices in presentation order. `double`: its points count double. */
-export type PublicQuestion = { double?: true } & (
+/**
+ * A question as a player sees it: no answers, choices in presentation order. `double`: its points count double.
+ * `points`: what its author made it worth, where 1,000 is a usual question (only in modes that score it, see POINTS_USUAL).
+ */
+export type PublicQuestion = { double?: true; points?: number } & (
   | { type: 'mcq'; prompt: string; media?: Media; choices: { id: string; text: string; media?: Media }[] }
   | { type: 'multi'; prompt: string; media?: Media; choices: { id: string; text: string; media?: Media }[]; selectCount?: number }
   | { type: 'truefalse'; prompt: string; media?: Media }
@@ -316,6 +327,23 @@ export type SetDefaults = z.infer<typeof setDefaultsSchema>;
 /** Year levels offered for a set (stored in gradeBand); a set saved with other text keeps it. */
 export const YEAR_LEVELS = ['Reception', 'Year 1', 'Year 2', 'Year 3', 'Year 4', 'Year 5', 'Year 6', 'Year 7', 'Year 8', 'Year 9', 'Year 10', 'Year 11', 'Year 12', 'Year 13', 'Adult'] as const;
 
+/**
+ * A set's cover: a glyph on a colour, and optionally a picture the author uploaded, with a
+ * description for players who cannot see it. The glyph and colour stay as the fallback.
+ */
+export const setCoverSchema = z.object({
+  glyph: z.enum(SET_COVER_GLYPHS),
+  hue: z.number().int().min(0).max(359),
+  image: z
+    .object({
+      kind: z.literal('image'),
+      url: z.string().regex(MEDIA_URL_PATTERN, 'Images must be uploaded to Ludora'),
+      alt: z.string().trim().min(1, 'Describe the cover picture for players who cannot see it.').max(300),
+    })
+    .optional(),
+});
+export type SetCoverValue = z.infer<typeof setCoverSchema>;
+
 export const questionSetInputSchema = z.object({
   title: text(80),
   description: z.string().trim().max(500).default(''),
@@ -324,7 +352,7 @@ export const questionSetInputSchema = z.object({
   language: z.string().trim().min(2).max(10).default('en'),
   tags: z.array(z.string().trim().min(1).max(30)).max(10).default([]),
   visibility: z.enum(VISIBILITIES).default('private'),
-  cover: z.object({ glyph: z.enum(SET_COVER_GLYPHS), hue: z.number().int().min(0).max(359) }).optional(),
+  cover: setCoverSchema.optional(),
   topic: z.string().trim().max(60).optional(),
   /** What a game of this set does unless the host changes it: ask a random number of the questions, shuffle the answers. */
   defaults: setDefaultsSchema.optional(),

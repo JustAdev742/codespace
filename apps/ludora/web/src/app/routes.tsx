@@ -6,6 +6,12 @@ import { buttonClass } from '../ui/Button.tsx';
 import { Stage } from '../ui/Stage.tsx';
 import { LogoMark } from '../art/icons.tsx';
 import { LoadingMark } from '../art/LoadingMark.tsx';
+import { Glim } from '../art/glim/Glim.tsx';
+import type { GlimArt } from '@ludora/shared';
+
+/* The error page's Glims: one out looking for a missing page, one holding a spanner after a fault. */
+const SEARCHER: GlimArt = { kind: 'glim', body: 'lantern', hue: 32, accentHue: 270, saturation: 84, eyes: 'curious', mouth: 'o', pattern: 'belly', topper: 'flame', cheeks: true, brows: 'surprised', tail: 'tassel' };
+const MENDER: GlimArt = { kind: 'glim', body: 'box', hue: 212, accentHue: 44, saturation: 62, eyes: 'half', mouth: 'wobble', pattern: 'circuit', topper: 'bolt', cheeks: false, brows: 'soft' };
 
 const page = (load: () => Promise<{ default: React.ComponentType }>) => async () => ({ Component: (await load()).default });
 
@@ -36,10 +42,17 @@ function RouteError() {
   const notFound = isRouteErrorResponse(err) && err.status === 404;
   // On the stage, which needs no theme: this page replaces everything, the theme sync included.
   return (
-    <Stage as="main" className="flex min-h-dvh flex-col items-center justify-center gap-4 px-4 text-center">
-      <LogoMark size={56} />
+    <Stage as="main" className="flex min-h-dvh flex-col items-center justify-center gap-4 px-4 py-10 text-center">
+      <div className="flex items-end gap-1" aria-hidden>
+        <LogoMark size={44} />
+        <Glim art={notFound ? SEARCHER : MENDER} size={120} pose={notFound ? 'wave' : 'idle'} uniform={false} className="shrink-0" />
+      </div>
       <h1 className="font-display text-[2.6rem] leading-none font-bold sm:text-5xl">{notFound ? 'Page not found' : 'Something went wrong'}</h1>
-      <p className="max-w-md text-lg text-text-2">{notFound ? 'The link may be old, or the page has moved.' : 'Ludora hit an error while showing this page. Reloading usually fixes it.'}</p>
+      <p className="max-w-[46ch] text-lg text-text-2">
+        {notFound
+          ? 'The link may be old, or the page may have moved. Everything else is where you left it.'
+          : 'Ludora hit a problem showing this page, and it has been reported. Your games, Glims and sets are safe. Reloading usually fixes it; if not, go back or start again from home.'}
+      </p>
       <div className="mt-2 flex flex-wrap justify-center gap-3">
         {notFound ? (
           <Link to="/" className={buttonClass('primary', 'lg')}>
@@ -48,14 +61,24 @@ function RouteError() {
         ) : (
           <>
             <button type="button" className={buttonClass('primary', 'lg')} onClick={() => location.reload()}>
-              Reload
+              Reload the page
             </button>
+            {history.length > 1 ? (
+              <button type="button" className={buttonClass('secondary', 'lg')} onClick={() => history.back()}>
+                Go back
+              </button>
+            ) : null}
             <Link to="/" className={buttonClass('secondary', 'lg')}>
               Go home
             </Link>
           </>
         )}
       </div>
+      {notFound ? null : (
+        <p className="max-w-[46ch] text-sm text-text-3">
+          In a game? Reload the page to get back in while the game is still running.
+        </p>
+      )}
     </Stage>
   );
 }

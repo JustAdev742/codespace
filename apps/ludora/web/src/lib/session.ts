@@ -15,6 +15,8 @@ export interface Preferences {
   school?: SchoolDress;
   /** Accessibility and comfort (lib/prefs.ts). Older servers may leave it out. */
   access?: Partial<import('./prefs.ts').AccessPrefs>;
+  /** The reactions on the bar in games (empty: the free set). Only owned ones are used: the room checks. */
+  reactionBar?: string[];
   /** The host's big-screen backdrop (room/game/Backdrop.tsx). Older servers may leave it out. */
   stageBackdrop?: string;
 }

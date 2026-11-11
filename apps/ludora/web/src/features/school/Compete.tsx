@@ -8,6 +8,7 @@ import { Badge, Dialog, EmptyState, ErrorNotice, Field, Input, Panel, Select, Sk
 import { Button } from '../../ui/Button.tsx';
 import { Segmented } from '../../ui/Segmented.tsx';
 import { errorText, percent } from '../reports/reportUi.tsx';
+import { formatDate } from '../../lib/format.ts';
 
 /*
  * Tournaments (knockout or round robin among a teacher's classes or named teams) and class
@@ -343,7 +344,7 @@ export function CompetePanel({ teacher }: { teacher: boolean }) {
                       {c.a.name} v {c.b.name}
                     </h3>
                     <p className="text-sm text-text-2">
-                      {c.setTitle}, {c.mode}. {new Date(c.startsAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })} to {new Date(c.endsAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}
+                      {c.setTitle}, {c.mode}. {formatDate(c.startsAt, { day: 'numeric', month: 'short' })} to {formatDate(c.endsAt, { day: 'numeric', month: 'short' })}
                     </p>
                   </div>
                   {!c.accepted ? <Badge tone="amber">Waiting to be accepted</Badge> : c.over ? <Badge tone="mint">{c.winner === 'draw' ? 'A draw' : c.winner ? `${c[c.winner].name} won` : 'Nobody played'}</Badge> : <Badge tone="sky">On now</Badge>}

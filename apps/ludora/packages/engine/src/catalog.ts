@@ -66,3 +66,32 @@ export function soloBlocker(modeId: string, variantId: string | null, settings: 
   }
   return null;
 }
+
+/** Modes where each player has a clock of their own, which extra time lengthens for that player alone. */
+const OWN_CLOCK_MODES: Readonly<Record<string, string>> = {
+  'time-attack': 'their own game clock',
+  'survival-run': 'their own question timer',
+  'word-scramble': 'their own word timer',
+};
+
+/**
+ * What extra time (access) does in a game: 'rounds' where everyone answers the same timed
+ * question (host-paced quiz rounds keep the question open longer for that player), 'own' where
+ * each player has their own clock (it runs longer for them), and 'none' where the only clock is
+ * the game's shared one (more time for one player would be more time for everybody).
+ * `what` names the clock in words for the host's menu.
+ */
+export function extraTimeFor(modeId: string, variantId: string | null = null, settings: Readonly<Record<string, unknown>> = {}): { kind: 'rounds' | 'own' | 'none'; what: string } {
+  const found = variantId ? findCatalogVariant(variantId) : undefined;
+  const mode = found?.mode ?? findCatalogMode(modeId);
+  if (!mode) return { kind: 'none', what: '' };
+  if (mode.meta.pacing === 'host') return { kind: 'rounds', what: 'each timed question' };
+  const own = OWN_CLOCK_MODES[mode.meta.id];
+  if (mode.meta.id === 'word-scramble') {
+    const field = mode.settings.find((f) => f.key === 'wordTimer');
+    const v = found?.variant;
+    const timer = v?.locked?.includes('wordTimer') ? v.settings?.wordTimer : (settings.wordTimer ?? v?.settings?.wordTimer ?? field?.default);
+    return timer ? { kind: 'own', what: own! } : { kind: 'none', what: '' };
+  }
+  return own ? { kind: 'own', what: own } : { kind: 'none', what: '' };
+}

@@ -3,7 +3,7 @@ import { Link } from 'react-router';
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import { Check, X } from 'lucide-react';
 import { api } from '../../lib/api.ts';
-import { formatNumber, timeAgo } from '../../lib/format.ts';
+import { formatDate, formatNumber, timeAgo } from '../../lib/format.ts';
 import { useCan } from '../../lib/session.ts';
 import { Badge, EmptyState, ErrorNotice, Skeleton, TabPanel, Tabs } from '../../ui/primitives.tsx';
 import { Button } from '../../ui/Button.tsx';
@@ -61,7 +61,7 @@ function uptimeText(s: number): string {
 }
 
 function clock(ms: number): string {
-  return new Date(ms).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  return formatDate(ms, { hour: '2-digit', minute: '2-digit', second: '2-digit' });
 }
 
 function Section({ title, children }: { title: string; children: ReactNode }) {

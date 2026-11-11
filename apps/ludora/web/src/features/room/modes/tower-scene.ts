@@ -30,7 +30,7 @@ import {
 import { EaseCamera, Glim3D, NIGHT, World, css, props, toon, type GlimLook, type StageEnv } from '../../../three/index.ts';
 import { toonRamp } from '../../../three/toon.ts';
 import type { Label } from '../../../three/labels.ts';
-import { spotAngle, spotOf, stackNames, towerBlocks, type Block, type BlockKind, type TowerShape } from './tower-layout.ts';
+import { heightText, spotAngle, spotOf, stackNames, towerBlocks, type Block, type BlockKind, type TowerShape } from './tower-layout.ts';
 
 /*
  * Tower Together in 3D. A grassy hill at night under a sky that warms towards
@@ -459,7 +459,7 @@ export abstract class TowerWorld extends World {
         rig.lastSeq = t.last?.seq ?? rig.lastSeq;
       }
       const label = rig.targetTag;
-      if (label) label.set(`Target ${t.target.toLocaleString('en-GB')}`);
+      if (label) label.set(`Target ${heightText(t.target, t.target)}`);
     }
     // Builders on the scaffolds.
     const ids = new Set(s.builders.map((b) => b.playerId));

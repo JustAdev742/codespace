@@ -84,6 +84,8 @@ export async function persistGame(deps: AppDeps, room: Room, results: EngineResu
         chaos: results.chaos,
         options: room.options,
         teams: results.teamStandings.length ? results.teamStandings : null,
+        // Test doubles of a room may not have it; a real room always does.
+        voice: room.voiceFor?.(results) ?? null,
         startedAt,
         endedAt,
         durationMs: Math.round(results.durationMs),

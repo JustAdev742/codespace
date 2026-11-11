@@ -1,12 +1,12 @@
 import { useState, type ReactNode } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Check, Gauge, HandHelping, Lightbulb, ListChecks, LogOut, TrendingDown, TrendingUp, Users, X } from 'lucide-react';
+import { Check, Frown, Gauge, HandHelping, Lightbulb, ListChecks, LogOut, Meh, MessageCircleHeart, Smile, TrendingDown, TrendingUp, Users, Vote, X } from 'lucide-react';
 import { api } from '../../lib/api.ts';
 import { formatNumber, ordinal, plural } from '../../lib/format.ts';
 import { Badge, Dialog, EmptyState, ErrorNotice, Skeleton } from '../../ui/primitives.tsx';
 import { errorText, NoValue, percent, questionTypeLabel, RateBar, seconds, TableBox, Th } from './reportUi.tsx';
 import { MEMBERSHIP_LABEL, type Membership, type QuestionRow } from './logic.ts';
-import type { GameReportData, PlayerAnswers, QuestionView, Standing } from './gameTypes.ts';
+import type { GameReportData, GameVoice, PlayerAnswers, QuestionView, Standing } from './gameTypes.ts';
 
 /*
  * The sections of a game report that say what to do next: misconceptions, the hardest and
@@ -39,6 +39,9 @@ function Section({ id, title, icon, intro, children }: { id: string; title: stri
     </section>
   );
 }
+
+/** Question types whose wrong answer is named by its first mistake ("Mars put 2nd, not 4th") rather than quoted whole. */
+const MISTAKE_TYPES = new Set(['order', 'match', 'sort', 'blanks']);
 
 const byId = (view: QuestionView) => new Map(view.questions.map((q) => [q.questionId, q]));
 
@@ -85,7 +88,7 @@ export function TeachNext({ view, pacing }: { view: QuestionView; pacing: string
             <Card key={q.questionId}>
               <QuestionLine q={q}>
                 <p className="mt-2 rounded-[var(--radius-m)] bg-surface-2 px-3 py-2 text-sm text-text">
-                  <span className="font-bold">{plural(q.commonWrong!.count, 'player')}</span> answered <q className="font-bold [overflow-wrap:anywhere]">{q.commonWrong!.text}</q>
+                  <span className="font-bold">{plural(q.commonWrong!.count, 'player')}</span> {MISTAKE_TYPES.has(q.type ?? '') ? 'made the same mistake:' : 'answered'} <q className="font-bold [overflow-wrap:anywhere]">{q.commonWrong!.text}</q>
                   {q.wrong > q.commonWrong!.count ? `, out of ${plural(q.wrong, 'wrong answer')}.` : q.commonWrong!.count === 1 ? '.' : ': every wrong answer was this one.'}
                 </p>
               </QuestionLine>
@@ -228,6 +231,72 @@ export function Teams({ teams }: { teams: GameReportData['teams'] }) {
         ))}
       </ul>
     </Section>
+  );
+}
+
+/* ------------------------------- exit ticket and polls ------------------------------- */
+
+const FEELINGS = [
+  { id: 'great', label: 'Great', Icon: Smile },
+  { id: 'okay', label: 'Okay', Icon: Meh },
+  { id: 'tough', label: 'Tough', Icon: Frown },
+] as const;
+
+/** A count with a bar, the share written out as well as drawn. */
+function ShareRow({ label, icon, n, total }: { label: ReactNode; icon?: ReactNode; n: number; total: number }) {
+  return (
+    <li className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
+      <span className="flex min-w-0 items-center gap-2 font-semibold text-text [overflow-wrap:anywhere]">
+        {icon}
+        {label}
+      </span>
+      <span className="flex items-center gap-3">
+        <span className="text-sm text-text-2 tabular">{plural(n, 'vote')}</span>
+        <RateBar rate={total ? n / total : 0} />
+      </span>
+    </li>
+  );
+}
+
+/** How the class said it felt at the end (the exit ticket), and how it voted in each poll. Counts only, never who said what. */
+export function ClassVoice({ voice }: { voice: GameVoice | null | undefined }) {
+  if (!voice) return null;
+  const felt = voice.feelings;
+  const feltTotal = felt ? felt.great + felt.okay + felt.tough : 0;
+  return (
+    <>
+      {felt ? (
+        <Section id="exit-ticket" title="How it felt" icon={<MessageCircleHeart />} intro={feltTotal ? `The exit ticket at the end: ${plural(feltTotal, 'player')} said how the game felt. Nobody's own answer is kept.` : 'The exit ticket was on, but nobody answered it.'}>
+          {feltTotal ? (
+            <ul className="flex max-w-xl flex-col gap-2 rounded-[var(--radius-l)] border border-line bg-raised p-4" aria-label="How it felt">
+              {FEELINGS.map(({ id, label, Icon }) => (
+                <ShareRow key={id} label={label} icon={<Icon className="size-5 text-text-2" aria-hidden />} n={felt[id]} total={feltTotal} />
+              ))}
+            </ul>
+          ) : null}
+        </Section>
+      ) : null}
+      {voice.polls.length ? (
+        <Section id="polls" title={voice.polls.length === 1 ? 'Poll' : 'Polls'} icon={<Vote />} intro="How the room voted. A poll has no right answer, so it is not in the scores or the accuracy above.">
+          <ul className="flex flex-col gap-3" aria-label="Polls">
+            {voice.polls.map((p) => {
+              const total = p.choices.reduce((n, c) => n + c.votes, 0);
+              return (
+                <Card key={p.questionId}>
+                  <p className="font-semibold text-text [overflow-wrap:anywhere]">{p.prompt}</p>
+                  <p className="mt-0.5 mb-3 text-sm text-text-2">{total ? plural(total, 'vote') : 'Nobody voted.'}</p>
+                  <ul className="flex flex-col gap-2" aria-label={`Votes: ${p.prompt}`}>
+                    {p.choices.map((c) => (
+                      <ShareRow key={c.id} label={c.text} n={c.votes} total={total} />
+                    ))}
+                  </ul>
+                </Card>
+              );
+            })}
+          </ul>
+        </Section>
+      ) : null}
+    </>
   );
 }
 

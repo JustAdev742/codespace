@@ -54,7 +54,7 @@ function ClassCard({ c }: { c: TeachingClass }) {
             {plural(c.assignments, "assignment")}
           </p>
         </div>
-        {c.archived ? <Badge>Archived</Badge> : null}
+        {c.archived ? <Badge>Archived</Badge> : c.coTeacher ? <Badge tone="sky">Co-teacher</Badge> : null}
       </div>
       {c.archived ? (
         <p className="mt-auto text-sm text-text-3">

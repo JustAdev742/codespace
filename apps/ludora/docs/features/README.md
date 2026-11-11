@@ -18,7 +18,9 @@ Counts are of the main branch as it stands (last updated 11 November 2026).
 | A school's own copy: houses, cups, tournaments, assembly | [school.md](school.md) | 21 |
 | Accessibility, comfort and devices | [access.md](access.md) | 25 |
 | Reports that tell a teacher what to teach next | [reports.md](reports.md) | 20 |
-| **Total** | | **171** |
+| Lessons: several games and teaching steps in one room | [lessons.md](lessons.md) | 16 |
+| Loose ends the pieces above left (co-teachers, class groups, challenge a friend and more) | [finish.md](finish.md) | 19 |
+| **Total** | | **206** |
 
 ## New 3D game modes
 
@@ -30,26 +32,40 @@ Counts are of the main branch as it stands (last updated 11 November 2026).
 | Tower Together | [tower.md](tower.md) | The whole class builds one tower before dawn and wins or loses together. |
 | Glim Garden | [garden.md](garden.md) | The calm one: a class grows a night garden, and nobody loses anything. |
 
-That makes 30 modes, 10 of them with a 3D screen (and a drawn 2D screen for devices with 3D off).
-Each new mode has three variants that change the rules. See [../MODES_3D.md](../MODES_3D.md).
+That makes 30 modes with 130 variants, 10 of the modes with a 3D screen (and a drawn 2D screen for
+devices with 3D off). Each new mode has three variants that change the rules. See
+[../MODES_3D.md](../MODES_3D.md).
 
-## Bugs fixed and visual improvements
+## How it looks
 
-| Area | File | Bugs fixed | Visual improvements |
-|---|---|---|---|
-| App pages | [pages-polish.md](pages-polish.md) | 20 | 6 |
-| The live game | [live-polish.md](live-polish.md) | 21 | 3 |
-| Found while building features | [sets.md](sets.md), [hosting.md](hosting.md), [reports.md](reports.md) | 4 | |
-| **Total** | | **45** | **9** |
+| Area | File | Rows |
+|---|---|---|
+| An illustrated cover for every one of the 30 modes, and where covers show | [art.md](art.md) | 39 (30 covers, 9 other) |
+| The live game screens: backdrops, lobby, question, reveal, leaderboard, podium | [stage.md](stage.md) | 18 |
+| App pages | [pages-polish.md](pages-polish.md) | 6 |
+| The live game, first pass | [live-polish.md](live-polish.md) | 3 |
+| **Total** | | **66** |
+
+## Bugs fixed
+
+| Area | File | Bugs fixed |
+|---|---|---|
+| App pages | [pages-polish.md](pages-polish.md) | 20 |
+| The live game | [live-polish.md](live-polish.md) | 21 |
+| Found while building features | [sets.md](sets.md), [hosting.md](hosting.md), [reports.md](reports.md), [finish.md](finish.md) | 7 |
+| **Total** | | **48** |
 
 Not in these counts: what was found and fixed while merging each piece (for example the second
 screen that could be used to watch a class-only game, and a request refused on every guest's
 device at the end of every game). Those are described in the commit that merged each piece.
 
-## Still to come in this programme
+## Left out on purpose or not done
 
-Not merged yet, so not counted above: lessons (several games and teaching steps in one room),
-illustrated covers for every mode, and a visual lift of the live game screens.
+- A how-to-play card before the first question (the mode's page still has its rules).
+- Big-screen question text steps between three sizes rather than fitting its box.
+- The modes' own screens were not restyled in the visual pass.
+- Room options apply to a whole lesson, not to each step.
+- Each file lists the rest under "Not done".
 
 ## What has not been checked
 

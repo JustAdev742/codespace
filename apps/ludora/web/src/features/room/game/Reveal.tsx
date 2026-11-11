@@ -9,6 +9,7 @@ import { myAnswerWords, useMyAnswer } from './answerMemory.tsx';
 import { useSfx, useSoundRole } from '../../../lib/sound/react.tsx';
 import { MathText } from '../../sets/math/MathText.tsx';
 import { mathToWords } from '../../sets/math/parse.ts';
+import { formatNumber } from '../../../lib/format.ts';
 import { useCountUp } from './countUp.ts';
 import { motionOK } from './stage.tsx';
 
@@ -277,7 +278,7 @@ function PointsPlate({ points }: { points: number }) {
   const shown = useCountUp(points, 700, 0);
   return (
     <span className="plate text-[2.1rem] tabular" aria-hidden>
-      <span>+{shown.toLocaleString('en-GB')}</span>
+      <span>+{formatNumber(shown)}</span>
     </span>
   );
 }
@@ -293,7 +294,7 @@ export function ResultBanner({ correct, partial, points, text, answer, missed = 
   const part = !correct && Boolean(partial && partial > 0);
   const percent = Math.round((partial ?? 0) * 100);
   const verdict = correct ? 'Correct' : part ? `Partly right (${percent}%)` : missed ? "Time's up" : 'Incorrect';
-  const said = correct === null ? null : `${correct ? 'Correct.' : part ? `Partly right, ${percent} percent.` : missed ? "Time's up, no answer." : 'Incorrect.'}${points ? ` Plus ${points.toLocaleString('en-GB')} points.` : ''}${text ? ` ${text}` : ''}`;
+  const said = correct === null ? null : `${correct ? 'Correct.' : part ? `Partly right, ${percent} percent.` : missed ? "Time's up, no answer." : 'Incorrect.'}${points ? ` Plus ${formatNumber(points)} points.` : ''}${text ? ` ${text}` : ''}`;
   useAnnounce(said);
   // Each result is its own component (call sites key it by question), so it plays once as it appears.
   const role = useSoundRole();

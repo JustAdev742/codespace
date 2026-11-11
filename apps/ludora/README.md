@@ -5,12 +5,20 @@ live game, play together with a 6-digit code or on their own, collect Glims and
 cosmetics with what they earn, and teachers run classes with assignments and
 reports. Nothing costs real money.
 
-- 20 playable game modes with 100 variants, each variant a real rule change, and
-  every one passing an automated full-game test suite.
-- Questions in 8 types (multiple choice, select all, true or false, short
-  answer, number, ordering, matching, flashcards), 20 built-in sets, picture
-  uploads, and optional AI drafts (with an Anthropic API key) that teachers
-  review before saving.
+- 30 playable game modes with 130 variants, each variant a real rule change, and
+  every one passing an automated full-game test suite. Ten of the modes have a
+  3D screen, with a drawn 2D screen for devices with 3D off.
+- Questions in 11 types (multiple choice, select all, true or false, short
+  answer, number, ordering, matching, flashcards, poll, fill in the blanks, sort
+  into groups), 20 built-in sets, picture uploads, and optional AI drafts (with
+  an Anthropic API key) that teachers review before saving.
+- For teachers: hosting tools, lessons that run several games in one room,
+  classes with logins for students with no email, assignments, and reports that
+  say what to teach next. For a school's own copy: houses, cups and tournaments.
+- For every student: read aloud, extra time, keyboard answers, colour-safe
+  tiles, calm mode and more, each off until someone turns it on.
+- What the November 2026 programme added, item by item with how each was
+  checked, is in [docs/features/README.md](docs/features/README.md).
 - Server-authoritative realtime games with reconnection and host controls.
 - An economy with disclosed Lantern odds, a ledger and idempotent purchases.
 - Staff tools with server-enforced roles, an audit log and safe test accounts.

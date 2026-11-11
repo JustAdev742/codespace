@@ -14,8 +14,8 @@ import { makeTeams } from '../src/teams.ts';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-/** A player id, or a player on a team (1-based team number). */
-export type Seat = string | { id: string; team: number };
+/** A player id, or a player on a team (1-based team number), optionally with extra time (a share of their clock). */
+export type Seat = string | { id: string; team?: number; extra?: number };
 
 export interface DriveOptions {
   players?: Seat[];
@@ -72,7 +72,7 @@ export function drive(mode: GameMode, o: DriveOptions = {}) {
     questions,
     players: seats.map((s) => {
       const id = typeof s === 'string' ? s : s.id;
-      return { id, name: id.toUpperCase(), teamId: typeof s === 'string' ? null : `t${s.team}`, isBot: false };
+      return { id, name: id.toUpperCase(), teamId: typeof s === 'string' || s.team === undefined ? null : `t${s.team}`, isBot: false, ...(typeof s !== 'string' && s.extra ? { extraTime: s.extra } : {}) };
     }),
     teams,
     seed: o.seed ?? 42,

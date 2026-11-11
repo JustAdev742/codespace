@@ -42,7 +42,9 @@ export default function Join() {
   const navigate = useNavigate();
   const location = useLocation();
   const me = useMe();
-  const info = useQuery({ queryKey: ['room-info', code], queryFn: () => api.get<RoomInfo>(`/api/rooms/${code}`), enabled: Boolean(code), retry: false });
+  // A game that has finished or not opened yet is looked up again every few seconds, so a shared classroom
+  // device left on this page lets the next player in as soon as the host starts another game.
+  const info = useQuery({ queryKey: ['room-info', code], queryFn: () => api.get<RoomInfo>(`/api/rooms/${code}`), enabled: Boolean(code), retry: false, refetchInterval: (q) => (q.state.data && !q.state.data.joinable ? 5000 : false) });
   const [name, setName] = useState('');
   const [dress, setDress] = useState<SchoolDress>(() => deviceDress() ?? DEFAULT_SCHOOL_DRESS);
   // On a school's copy, players without a year in their account settings say which year they are in.
@@ -121,7 +123,7 @@ export default function Join() {
               </div>
               {!info.data.joinable ? (
                 <p className="rounded-[var(--radius-m)] border border-ember/60 bg-ember/15 px-4 py-3 font-semibold">
-                  {info.data.status === 'ended' ? 'This game has finished. Ask the host to start another.' : 'The host has locked this room, or the game has already started.'}
+                  {info.data.status === 'ended' ? 'This game has finished. This page lets you in as soon as the host starts another.' : 'The host has locked this room, or the game has already started.'}
                 </p>
               ) : info.data.requireAccount && (!me.data?.user || me.data.user.isGuest) ? (
                 <div className="flex flex-col gap-3">

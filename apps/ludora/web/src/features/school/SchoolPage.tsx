@@ -15,6 +15,7 @@ import { CupsPanel } from './Cups.tsx';
 import { CompetePanel } from './Compete.tsx';
 import { HouseWelcome } from './Welcome.tsx';
 import { dayText, schoolKeys, useNotices, useSchool, useSchoolMe, useStandings, type House } from './schoolData.ts';
+import { formatDate } from '../../lib/format.ts';
 
 /*
  * /school: the whole school in one place. House standings (this week, the current cup, all time)
@@ -142,7 +143,7 @@ function NoticesTab() {
           <Panel as="article" className="p-4 sm:p-5">
             <h3 className="font-display text-xl font-bold text-text">{n.title}</h3>
             {n.body ? <p className="mt-1 whitespace-pre-line text-text-2">{n.body}</p> : null}
-            <p className="mt-2 text-xs text-text-3">Until {new Date(n.endsAt).toLocaleString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })}</p>
+            <p className="mt-2 text-xs text-text-3">Until {formatDate(n.endsAt, { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })}</p>
           </Panel>
         </li>
       ))}

@@ -1,7 +1,8 @@
 import { useMemo, useState } from 'react';
 import { ChevronLeft, ChevronRight, CalendarClock, DoorOpen, Lock } from 'lucide-react';
 import { IconButton } from '../../ui/Button.tsx';
-import { dayKey, monthGrid } from './classLogic.ts';
+import { monthGrid } from './classLogic.ts';
+import { appTimeZone, formatDate, formatDay, zonedParts } from '../../lib/format.ts';
 
 /*
  * A month calendar of the class's assignments: when each opens, is due and closes.
@@ -32,14 +33,17 @@ interface Entry {
   at: Date;
 }
 
+/** The day an instant falls on in the viewer's chosen time zone, as the grid's 'yyyy-mm-dd' key. */
+function zonedDay(d: Date): { key: string; y: number; m: number } {
+  const p = zonedParts(d, appTimeZone());
+  return { key: `${p.y}-${String(p.mo).padStart(2, '0')}-${String(p.d).padStart(2, '0')}`, y: p.y, m: p.mo - 1 };
+}
+
 const WEEKDAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
 export function ClassCalendar({ items, now }: { items: CalendarItem[]; now: number }) {
-  const today = new Date(now);
-  const [month, setMonth] = useState({
-    y: today.getFullYear(),
-    m: today.getMonth(),
-  });
+  const today = zonedDay(new Date(now));
+  const [month, setMonth] = useState({ y: today.y, m: today.m });
   const entries = useMemo(() => {
     const out: Entry[] = [];
     for (const a of items) {
@@ -69,11 +73,11 @@ export function ClassCalendar({ items, now }: { items: CalendarItem[]; now: numb
   }, [items]);
   const byDay = useMemo(() => {
     const m = new Map<string, Entry[]>();
-    for (const e of entries) m.set(dayKey(e.at), [...(m.get(dayKey(e.at)) ?? []), e]);
+    for (const e of entries) m.set(zonedDay(e.at).key, [...(m.get(zonedDay(e.at).key) ?? []), e]);
     return m;
   }, [entries]);
   const weeks = monthGrid(month.y, month.m);
-  const title = new Date(month.y, month.m, 1).toLocaleDateString('en-GB', {
+  const title = formatDay(`${month.y}-${String(month.m + 1).padStart(2, '0')}-01`, {
     month: 'long',
     year: 'numeric',
   });
@@ -82,8 +86,11 @@ export function ClassCalendar({ items, now }: { items: CalendarItem[]; now: numb
       y: m + d < 0 ? y - 1 : m + d > 11 ? y + 1 : y,
       m: (m + d + 12) % 12,
     }));
-  const inMonth = entries.filter((e) => e.at.getFullYear() === month.y && e.at.getMonth() === month.m);
-  const todayKey = dayKey(today);
+  const inMonth = entries.filter((e) => {
+    const z = zonedDay(e.at);
+    return z.y === month.y && z.m === month.m;
+  });
+  const todayKey = today.key;
 
   return (
     <div className="flex flex-col gap-4">
@@ -169,7 +176,7 @@ export function ClassCalendar({ items, now }: { items: CalendarItem[]; now: numb
                     <span className="block text-sm text-text-2">
                       {KIND[e.kind].label}{' '}
                       <time dateTime={e.at.toISOString()}>
-                        {e.at.toLocaleString('en-GB', {
+                        {formatDate(e.at, {
                           weekday: 'long',
                           day: 'numeric',
                           month: 'long',

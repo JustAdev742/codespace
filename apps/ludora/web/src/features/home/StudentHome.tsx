@@ -7,7 +7,7 @@ import { GOAL_LIMITS, SUBJECT_LABELS, type GoalMetric, type Subject } from '@lud
 import { api } from '../../lib/api.ts';
 import { useMe } from '../../lib/session.ts';
 import { thumbFor, useModes, useOverview } from '../../lib/queries.ts';
-import { formatNumber, plural, timeAgo, untilText } from '../../lib/format.ts';
+import { formatDay, formatNumber, plural, timeAgo, untilText } from '../../lib/format.ts';
 import { ModeArt } from '../../art/ModeArt.tsx';
 import { Amount, Dialog, ErrorNotice, Input, Panel, Skeleton } from '../../ui/primitives.tsx';
 import { Button, ButtonLink, IconButton } from '../../ui/Button.tsx';
@@ -70,7 +70,7 @@ interface Recap {
 }
 
 const pct = (n: number) => `${Math.round(n * 100)}%`;
-const dayLabel = (iso: string, opts: Intl.DateTimeFormatOptions) => new Date(`${iso}T12:00:00Z`).toLocaleDateString('en-GB', { timeZone: 'UTC', ...opts });
+const dayLabel = (iso: string, opts: Intl.DateTimeFormatOptions) => formatDay(iso, opts);
 
 /** Start a solo practice room on the server and go to it. */
 function useStart(path: string, failure: string) {

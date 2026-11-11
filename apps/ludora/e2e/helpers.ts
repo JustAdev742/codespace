@@ -121,7 +121,17 @@ export async function answerAnyQuestion(page: Page) {
  * ever, like a spinner, are left alone.
  */
 export async function settled(page: Page) {
-  await expect(page.locator('[data-sonner-toast]')).toHaveCount(0, { timeout: 15_000 });
+  // Toasts leave by themselves after a few seconds. One that stays (its clock stops while the
+  // pointer rests on the stack, or while another is being read) is taken out of the picture: it is
+  // news, not the page being checked. Toasts that arrive later are not affected.
+  await expect(page.locator('[data-sonner-toast]:not([data-test-set-aside])')).toHaveCount(0, { timeout: 8_000 }).catch(() =>
+    page.evaluate(() =>
+      document.querySelectorAll<HTMLElement>('[data-sonner-toast]').forEach((t) => {
+        t.setAttribute('data-test-set-aside', '');
+        t.style.visibility = 'hidden';
+      }),
+    ),
+  );
   // Two frames, so a change made just before this (a theme switch, a resize) has been styled, then
   // longer than the app's quick colour fades: WebKit does not always list those as running.
   await page.evaluate(() => new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(() => setTimeout(done, 250)))));

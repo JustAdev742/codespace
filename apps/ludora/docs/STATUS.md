@@ -4,9 +4,9 @@ Live status of the build. Updated with each milestone commit. Everything marked
 **verified** was checked by an automated test or by driving the real app in a
 browser; anything else says what it is.
 
-Last updated: 2026-11-11. The November improvement programme is still running: what it has added so far
-is counted, with how each item was checked, in [features/README.md](features/README.md). The sections
-below describe the app before that programme and are brought up to date when it finishes.
+Last updated: 2026-11-11. What the November 2026 improvement programme added is counted, item by
+item with how each was checked, in [features/README.md](features/README.md). The sections under
+"What works today" describe the app before that programme; the summary just below is current.
 
 ## Milestones
 
@@ -20,8 +20,43 @@ below describe the app before that programme and are brought up to date when it 
 | M5 Staff tools | Done | Staff API and all 14 staff sections in the web app. An end-to-end test opens every section as a super administrator at phone and desktop widths. |
 | M6 Content, social, classes, analytics | Done | Friends, blocks, profiles, my stats, leaderboards, classes, assignments and their reports, hosted games, game reports, the set editor with image uploads, and AI question drafts. |
 | Chaos (D47) | Done | The secret cheat menu: 1,005 cheats and 10 combos, each tested in a real game; the unlock sequence; the private menu. See [CHAOS.md](CHAOS.md). |
-| November programme | In progress | 171 features (class tools, the student's side, question sets and three new question types, hosting, a school's own copy, accessibility, reports), 5 new 3D modes (30 modes, 10 in 3D), 45 bugs fixed and 9 visual improvements so far. Each is a row with its check in [features/](features/README.md). Still to come: lessons, mode cover art and the live screens' look. |
+| November programme | Done | 206 features, 5 new 3D modes (30 modes and 130 variants, 10 modes in 3D), 3 new question types (11 in all), an illustrated cover for every mode, a visual lift of the live game screens, and 48 bugs fixed. Each is a row with its check in [features/](features/README.md). |
 | M7-8 Polish, CI, deployment | In progress | Production build, Docker image, compose file, CI workflow, docs and end-to-end tests (run in CI) are in. The whole app is restyled for players aged 8 to 17 (D46), and automated accessibility checks pass on every page, game screen and staff section. A design review of the whole app was done and its findings fixed. A playable demo builds for GitHub Pages. 2026-10-29: account download and deletion, a privacy policy and terms, data retention, a measured load test, a deployment kit tested in Docker, a machine screen-reader audit, and WebKit and Firefox runs in CI. Remaining: a person's screen-reader pass, legal review of the policy, and a real deployment, which needs the operator's server and domain. |
+
+## Added in November 2026 (verified; details in [features/](features/README.md))
+
+- **Games**: five new 3D modes (Summit Scramble, Spot Kick, Lantern Rally, Tower Together, Glim
+  Garden), each with three rule-changing variants and a drawn 2D screen for devices with 3D off.
+  30 modes and 130 variants in all, 10 modes in 3D ([MODES_3D.md](MODES_3D.md)).
+- **Questions**: poll, fill in the blanks and sort into groups (11 types in all); double points
+  and a Points value per question; maths notation; a question bank; a health check; version
+  history and a 30-day bin; folders, tags and co-editors; print worksheets.
+- **Hosting**: QR code and share sheet, a start countdown, a waiting room, teams in the lobby,
+  who is still answering, add time, a brain break, names hidden on the big screen, a quiet room,
+  a phone as a remote control, awards, a class summary, an exit ticket, hosting for a class.
+- **Lessons**: an ordered run of games, info slides and discussion steps in one room, with
+  standings, learning goals, scheduling for a class, sharing and one report.
+- **Classes and reports**: class logins for students with no email, a gradebook, a mastery grid,
+  groups, co-teachers, reteach sets, and reports with shared wrong answers, participation, one
+  student or one set over time, before-and-after comparison, print and CSV, and a retention
+  setting.
+- **Students**: My mistakes, a daily challenge, a study calendar, a weekly goal, personal bests,
+  a page for every Glim with its odds, saved outfits, a wishlist, notifications, search
+  everywhere, challenge a friend, and solo play against practice bots at a chosen skill.
+- **A school's own copy**: houses, house points and cups, house match, an assembly preset with a
+  hall screen, tournaments, class against class, merits, sport days, a school staff role.
+- **Accessibility and devices**: read aloud, extra time, keyboard answers, an easier-to-read
+  typeface, colour-safe tiles, calm mode, captions for sounds, timer display, little hands,
+  stronger contrast, install as an app, a shared-device sign-in, data and battery savers.
+- **Looks**: an illustrated cover for each of the 30 modes; six backdrops, the lobby as a crowd
+  of Glims, larger projector tiles, a podium reveal with skip, a player's end card and a class
+  photo; drawn badges; a Glim on the empty, not-found and error pages.
+- **Operating it**: how many new accounts and guests one address may make in ten minutes are
+  settings (`SIGNUPS_PER_10_MIN`, `GUESTS_PER_10_MIN`: a whole school usually shares one
+  address); the app's service worker stores only the app shell.
+
+Not checked in this programme: any real Chromebook, iPad, phone or projector, and use by a
+person with a screen reader. Every check was automated.
 
 ## What works today (verified)
 
@@ -538,22 +573,22 @@ below describe the app before that programme and are brought up to date when it 
 Run `npm test` from `apps/ludora` (needs a local Postgres; each server test file
 creates and drops its own database).
 
-| Project | Files | Tests |
-|---|---|---|
-| content | 4 | 132: catalogue integrity, every built-in question set, the seasonal calendar (11) and the monthly drops (9) |
-| engine | 53 | 8174, including the conformance suite for every mode and variant, and the chaos suite: every cheat in every mode it supports, the core rules and each mode's pack |
-| server | 19 | 192: auth and rate limits, realtime, economy, staff, social and classes, preferences, school year uniforms (3), open games, sign-in help, uploads, AI drafts, reward counting, origin checks, chaos, Creator Studio, Game Maker, school events, configuration (3), and account download, deletion and data retention (8) |
-| web | 7 | 103: the set editor's checks, import and export (45); the synthesised music, in key and looping cleanly (16); the recorded sounds, every effect with a file and every loop a whole number of bars (16), and the takes and pitch spread they play with (5); which music plays when (7); Glow Tag's park in words for screen readers (4); the master's soft-clip stage (2); which Hills Grammar uniform each Glim wears, its sleeves, and who wears whose (8) |
-| shared | 1 | 7: the year-group uniform rules; its other schemas are exercised by the other projects |
-| **Total** | **84** | **8609 passing** (full run on 2026-11-04) |
+| Project | Files |
+|---|---|
+| content | 4 |
+| engine | 60 |
+| server | 36 |
+| web | 23 |
+| shared | 1 |
+| **Total** | **124 files, 9212 tests passing** (full run on 2026-11-11) |
 
-End-to-end: `npm run test:e2e` (needs Postgres; builds first, then runs 10
-browser tests against a fresh `ludora_e2e` database). `E2E_BROWSER=webkit` or
-`firefox` runs them in those engines, as CI does. On 2026-10-29, after the
-timing fixes above, all 10 passed twice in WebKit and once each in Chromium and
-Firefox.
-`npm run test:demo` builds the playable demo and runs its 4 browser tests with
-no server. All 4 pass.
+End-to-end: `npm run test:e2e` (needs Postgres; builds first, then runs 65 browser tests in 28
+files against a fresh `ludora_e2e` database). `E2E_BROWSER=webkit` or `firefox` runs them in those
+engines; CI runs each of those two in three parts (`--shard`), because one long WebKit run used
+more memory than a CI machine has. Tests that need the 3D picture run in Chromium only (headless
+Firefox and WebKit have no WebGL) and skip elsewhere with the reason. On CI a failed browser test
+gets one more try and is reported as flaky if it needed it; locally there are no second tries.
+`npm run test:demo` builds the playable demo and runs its 4 browser tests with no server.
 
 `npm run typecheck` is clean. `npm run lint` reports 13 stylistic warnings and
 no errors.

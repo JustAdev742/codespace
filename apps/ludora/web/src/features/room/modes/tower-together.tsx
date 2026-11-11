@@ -19,7 +19,7 @@ import { useNow } from '../../../lib/useNow.ts';
 import { Stage3D, lookFor } from '../../../three/index.ts';
 import { TowerHostScene, TowerScene, type SceneBuilder, type SceneState } from './tower-scene.ts';
 import { SideView } from './tower-side.tsx';
-import { floorsText } from './tower-layout.ts';
+import { blocksText, floorScale, floorsAt, floorsText, heightText, perFloorText } from './tower-layout.ts';
 
 /*
  * Tower Together screens. The 3D tower is the picture; everything you do is
@@ -151,7 +151,7 @@ function whose(view: TowerTogetherView, t: TowerView) {
 
 function gustLine(view: TowerTogetherView, t: TowerView, g: GustResult): string {
   if (g.held) return `${g.name}! ${whose(view, t)} held: it was swaying ${Math.round(g.sway)}, and a ${g.name.toLowerCase()} can stand ${g.limit}.`;
-  return `${g.name}! ${whose(view, t)} was swaying ${Math.round(g.sway)}, more than ${g.limit}: ${floorsText(g.fell)} fell${g.saved > 0 ? `, and ${g.savedBy ?? 'a'}'s brace saved ${floorsText(g.saved)}` : ''}.`;
+  return `${g.name}! ${whose(view, t)} was swaying ${Math.round(g.sway)}, more than ${g.limit}: ${floorsText(g.fell, t.target)} fell${g.saved > 0 ? `, and ${g.savedBy ?? 'a'}'s brace saved ${floorsText(g.saved, t.target)}` : ''}.`;
 }
 
 function warnLine(view: TowerTogetherView): string | null {
@@ -179,12 +179,13 @@ function sceneState(view: TowerTogetherView, looks: (id: string) => SceneBuilder
 /** The words that stand for the picture, for screen readers. */
 function describe(view: TowerTogetherView, t: TowerView, you: You | null): string {
   const own = you ? (view.twoTowers ? `Your team's tower` : 'The class tower') : view.twoTowers ? `${t.name}'s tower` : 'The class tower';
-  const stars = t.stars ? ` ${t.stars} ${t.stars === 1 ? 'star' : 'stars'} so far.` : ` ${floorsText(Math.max(0, t.target - t.height))} to the target.`;
-  const brace = t.braceAt > 0 ? ` The highest lantern brace is at floor ${t.braceAt}: nothing below it can fall.` : ' There is no lantern brace yet, so a fall would take the whole tower.';
+  const stars = t.stars ? ` ${t.stars} ${t.stars === 1 ? 'star' : 'stars'} so far.` : ` ${floorsText(Math.max(0, t.target - t.height), t.target)} to the target.`;
+  const brace = t.braceAt > 0 ? ` The highest lantern brace is at floor ${floorsAt(t.braceAt, t.target)}: nothing below it can fall.` : ' There is no lantern brace yet, so a fall would take the whole tower.';
   const g = view.gust;
   const gust = !g ? '' : g.announced && g.name ? ` A ${g.name.toLowerCase()} is coming: it knocks the top off if the tower sways more than ${g.limit}.` : ' The next gust is on its way; its strength is not known yet.';
   const last = t.last ? ` Last piece: ${t.last.by === (you ? 'You' : '') ? 'yours' : t.last.by}, ${PIECE[t.last.kind].name.toLowerCase()}.` : '';
-  return `${own} is ${floorsText(t.height)} tall; the target is ${floorsText(t.target)}.${stars} Sway ${Math.round(t.sway)} of 100.${brace}${gust}${last}`;
+  const per = perFloorText(t.target);
+  return `${own} is ${heightText(t.height, t.target)} tall; the target is ${heightText(t.target, t.target)}.${per ? ` ${per}` : ''}${stars} Sway ${Math.round(t.sway)} of 100.${brace}${gust}${last}`;
 }
 
 /** A value that changes at most once every `ms`, keeping the latest. */
@@ -339,10 +340,10 @@ function HeightBar({ tower, big = false, title }: { tower: TowerView; big?: bool
       <div className={`flex items-baseline justify-between gap-2 ${big ? 'text-[clamp(1rem,1.4vw,1.5rem)]' : 'text-sm'}`}>
         <span className="min-w-0 truncate font-bold">{title ?? 'Height'}</span>
         <span className="shrink-0 font-display font-extrabold tabular">
-          <span className={big ? 'text-[1.6em]' : 'text-xl'}>{formatNumber(tower.height)}</span> / {formatNumber(tower.target)}
+          <span className={big ? 'text-[1.6em]' : 'text-xl'}>{formatNumber(floorsAt(tower.height, tower.target))}</span> / {formatNumber(floorScale(tower.target).target)} floors
         </span>
       </div>
-      <div role="meter" aria-label={title ?? 'Height'} aria-valuemin={0} aria-valuemax={tower.target} aria-valuenow={Math.min(tower.height, tower.target)} aria-valuetext={`${floorsText(tower.height)} of a ${formatNumber(tower.target)}-floor target. ${tower.stars} ${tower.stars === 1 ? 'star' : 'stars'}.`} className={`relative w-full rounded-full bg-white/[0.12] ${big ? 'h-6' : 'h-4'}`}>
+      <div role="meter" aria-label={title ?? 'Height'} aria-valuemin={0} aria-valuemax={tower.target} aria-valuenow={Math.min(tower.height, tower.target)} aria-valuetext={`${heightText(tower.height, tower.target)} of a ${formatNumber(floorScale(tower.target).target)}-floor target. ${tower.stars} ${tower.stars === 1 ? 'star' : 'stars'}.`} className={`relative w-full rounded-full bg-white/[0.12] ${big ? 'h-6' : 'h-4'}`}>
         <div className="absolute inset-y-0 left-0 rounded-full bg-lantern transition-[width] duration-300 ease-[var(--ease-out)]" style={{ width: pct(tower.height) }} />
         {tower.steps.map((s, i) => (
           <span key={i} aria-hidden className="absolute -top-1.5 -translate-x-1/2" style={{ left: pct(s) }}>
@@ -368,7 +369,7 @@ function PieceButton({ effect, onPlace, disabled }: { effect: Effect; onPlace: (
   const p = PIECE[effect.kind];
   const Icon = p.icon;
   // The name is the visible words with a few more for screen readers, so it reads as a sentence:
-  // "Place Timber: +2 floors, sway +18 to 41."
+  // "Place Timber: +2 blocks, sway +18 to 41."
   return (
     <Button size="lg" variant="secondary" className="h-auto min-h-[5rem] min-w-0 flex-col !items-start !justify-start gap-0.5 px-2.5 py-2 text-left" onClick={onPlace} disabled={disabled}>
       <span className="flex min-w-0 items-center gap-1.5 text-base leading-tight font-bold">
@@ -380,7 +381,7 @@ function PieceButton({ effect, onPlace, disabled }: { effect: Effect; onPlace: (
         <span className="sr-only">: </span>
       </span>
       <span className="text-sm font-semibold tabular">
-        {effect.floors ? `+${effect.floors} ${effect.floors === 1 ? 'floor' : 'floors'}` : 'locks below'}
+        {effect.floors ? `+${blocksText(effect.floors)}` : 'locks below'}
         <span className="sr-only">{effect.floors ? ', ' : ', nothing below it can fall, '}</span>
       </span>
       <span className={`text-sm font-bold tabular ${effect.sway > 0 ? 'text-ember' : effect.sway < 0 ? 'text-glim' : 'text-text-2'}`}>
@@ -436,7 +437,7 @@ export function TowerTogetherPlayer({ view, act, gameNow, paused, room }: ModeSc
   useEffect(() => {
     if (!you || you.seq === placedSeq.current || !you.lastKind) return;
     placedSeq.current = you.seq;
-    const line = `You placed ${you.lastKind === 'lantern' ? 'a lantern brace' : you.lastKind}. The tower is ${floorsText(tower.height)} tall and sways ${Math.round(tower.sway)}.`;
+    const line = `You placed ${you.lastKind === 'lantern' ? 'a lantern brace' : you.lastKind}. The tower is ${heightText(tower.height, tower.target)} tall and sways ${Math.round(tower.sway)}.`;
     later(() => setPlaced(line), threeD ? 450 : 0);
   }, [you, tower.height, tower.sway, threeD, later]);
   useAnnounce(placed, placed);
@@ -600,7 +601,7 @@ export function TowerTogetherHost({ view, gameNow, room }: ModeScreenProps<Tower
             {view.towers.map((t) => (
               <li key={t.id} className={`rounded-[var(--radius-m)] px-3 py-1.5 text-[clamp(0.95rem,1.3vw,1.35rem)] font-bold backdrop-blur-sm ${t.height >= t.target ? 'bg-lantern text-on-accent' : 'bg-black/60 text-white'}`}>
                 {view.twoTowers ? `${t.name}: ` : ''}
-                {t.height >= t.target ? `Past the target: ${t.stars} ${t.stars === 1 ? 'star' : 'stars'}` : `Target ${formatNumber(t.target)}: ${floorsText(t.target - t.height)} to go`}
+                {t.height >= t.target ? `Past the target: ${t.stars} ${t.stars === 1 ? 'star' : 'stars'}` : `Target ${heightText(t.target, t.target)}: ${floorsText(t.target - t.height, t.target)} to go`}
               </li>
             ))}
           </ul>
@@ -627,8 +628,8 @@ export function TowerTogetherHost({ view, gameNow, room }: ModeScreenProps<Tower
               <HeightBar tower={t} big={!view.twoTowers} title="Height" />
               <SwayGauge tower={t} view={view} big={!view.twoTowers} />
               <p className="text-sm text-text-2">
-                {t.braceAt > 0 ? `Braced to floor ${formatNumber(t.braceAt)}.` : 'No brace yet.'} {t.braceNeeds > 0 ? `Next brace in ${floorsText(t.braceNeeds)}.` : 'A brace fits now.'}
-                {t.falls ? ` ${t.falls} ${t.falls === 1 ? 'fall' : 'falls'}, ${floorsText(t.fallen)} lost${t.saved ? `, ${floorsText(t.saved)} saved` : ''}.` : ''}
+                {t.braceAt > 0 ? `Braced to floor ${formatNumber(floorsAt(t.braceAt, t.target))}.` : 'No brace yet.'} {t.braceNeeds > 0 ? `Next brace after ${blocksText(t.braceNeeds)}.` : 'A brace fits now.'}
+                {t.falls ? ` ${t.falls} ${t.falls === 1 ? 'fall' : 'falls'}, ${floorsText(t.fallen, t.target)} lost${t.saved ? `, ${floorsText(t.saved, t.target)} saved` : ''}.` : ''} {perFloorText(t.target) ?? ''}
               </p>
             </StagePanel>
           ))}

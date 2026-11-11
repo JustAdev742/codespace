@@ -9,7 +9,8 @@ import { noStore, requireAccount } from '../../http/context.ts';
 import { AppError, conflict, forbidden, notFound } from '../../lib/errors.ts';
 import { parse } from '../../lib/validate.ts';
 import { assertUploadsUsable } from '../uploads/service.ts';
-import { loadClass, teacherClass, type ClassRow } from './access.ts';
+import { teachesClass, loadClass, teacherClass, type ClassRow } from './access.ts';
+import { groupsOf, leaveGroups, membersFor, myGroups, setForGroups } from './groups.ts';
 import { gradeCell, mostMissed, needsAHand, studentStatus, weekOf, type FirstTry } from './insights.ts';
 
 /*
@@ -180,12 +181,17 @@ export async function classToolRoutes(app: FastifyInstance, deps: AppDeps) {
     const tries = await firstTries(db, [...new Set(plays.map((p) => p.gameId))]);
     const sets = await loadSets(db, tasks.map((t) => t.setId));
     const now = new Date();
+    // Work for one group has a cell only for that group's students; the rest show it is not theirs.
+    const groups = await groupsOf(db, id);
+    const everyone = members.map((m) => m.id);
+    const setFor = new Map(tasks.map((t) => [t.id, membersFor(t, groups, everyone)]));
+    const isFor = (taskId: string, userId: string) => setFor.get(taskId)?.has(userId) ?? false;
 
     const gradebook = members.map((m) => ({
       id: m.id,
       displayName: m.displayName,
       username: m.username,
-      cells: Object.fromEntries(tasks.map((t) => [t.id, gradeCell(plays.filter((p) => p.userId === m.id && p.assignmentId === t.id), t.dueAt)])),
+      cells: Object.fromEntries(tasks.filter((t) => isFor(t.id, m.id)).map((t) => [t.id, gradeCell(plays.filter((p) => p.userId === m.id && p.assignmentId === t.id), t.dueAt)])),
     }));
 
     const timeOnTask = tasks.map((t) => {
@@ -222,12 +228,12 @@ export async function classToolRoutes(app: FastifyInstance, deps: AppDeps) {
     ).map((h) => ({
       ...h,
       missed: h.missed.map((m) => ({ ...m, prompt: promptOf(m.setId, m.questionId) })).filter((m) => m.prompt !== null).slice(0, 5),
-      overdue: tasks.filter((t) => t.dueAt && t.dueAt < now && !plays.some((p) => p.assignmentId === t.id && p.userId === h.id)).length,
+      overdue: tasks.filter((t) => isFor(t.id, h.id) && t.dueAt && t.dueAt < now && !plays.some((p) => p.assignmentId === t.id && p.userId === h.id)).length,
     }));
     // Students who have not started work that is already due, even with no answers to judge.
     const notStarted = members
       .filter((m) => !help.some((h) => h.id === m.id))
-      .map((m) => ({ id: m.id, displayName: m.displayName, overdue: tasks.filter((t) => t.dueAt && t.dueAt < now && !plays.some((p) => p.assignmentId === t.id && p.userId === m.id)).length }))
+      .map((m) => ({ id: m.id, displayName: m.displayName, overdue: tasks.filter((t) => isFor(t.id, m.id) && t.dueAt && t.dueAt < now && !plays.some((p) => p.assignmentId === t.id && p.userId === m.id)).length }))
       .filter((m) => m.overdue > 0);
 
     const missed = mostMissed(tries)
@@ -236,7 +242,7 @@ export async function classToolRoutes(app: FastifyInstance, deps: AppDeps) {
       .slice(0, 10);
 
     return {
-      assignments: tasks.map((t) => ({ id: t.id, title: t.title, dueAt: t.dueAt?.toISOString() ?? null, maxAttempts: t.maxAttempts, setTitle: sets.get(t.setId)?.title ?? 'Deleted set', subject: sets.get(t.setId)?.subject ?? null })),
+      assignments: tasks.map((t) => ({ id: t.id, title: t.title, dueAt: t.dueAt?.toISOString() ?? null, maxAttempts: t.maxAttempts, setTitle: sets.get(t.setId)?.title ?? 'Deleted set', subject: sets.get(t.setId)?.subject ?? null, groupName: t.groupId ? (groups.find((g) => g.id === t.groupId)?.name ?? null) : null })),
       gradebook,
       timeOnTask,
       byType,
@@ -297,8 +303,9 @@ export async function classToolRoutes(app: FastifyInstance, deps: AppDeps) {
     const [student] = await db.select({ id: users.id, displayName: users.displayName, username: users.username }).from(users).where(eq(users.id, uid)).limit(1);
     const tasks = await db.select().from(assignments).where(eq(assignments.classId, id)).orderBy(asc(assignments.createdAt));
     const now = new Date();
-    // Work that has not opened yet is not part of anyone's progress.
-    const visible = tasks.filter((t) => !t.opensAt || t.opensAt <= now);
+    // Work that has not opened yet is not part of anyone's progress, nor is another group's work.
+    const theirGroups = new Set((await myGroups(db, id, uid)).map((g) => g.id));
+    const visible = tasks.filter((t) => (!t.opensAt || t.opensAt <= now) && setForGroups(t, theirGroups));
     const plays = await classPlays(db, id, visible.map((t) => t.id), [uid]);
     const tries = await firstTries(db, plays.map((p) => p.gameId));
     const sets = await loadSets(db, visible.map((t) => t.setId));
@@ -529,14 +536,15 @@ export async function classToolRoutes(app: FastifyInstance, deps: AppDeps) {
     if (body.action === 'remove') {
       await db.transaction(async (tx) => {
         await tx.delete(classMembers).where(and(eq(classMembers.classId, id), inArray(classMembers.userId, ids)));
+        await leaveGroups(tx, id, ids);
         await tx.delete(classStudentNotes).where(and(eq(classStudentNotes.classId, id), inArray(classStudentNotes.userId, ids)));
       });
       return { ok: true, done: ids.length };
     }
     if (body.toClassId === id) throw new AppError(400, 'validation_failed', 'They are already in this class.', { toClassId: 'Choose a different class.' });
-    // The class they move to must also be the caller's own, and open.
+    // The class they move to must also be one the caller teaches, and open.
     const [target] = await db.select().from(classes).where(eq(classes.id, body.toClassId)).limit(1);
-    if (!target || target.ownerId !== auth.user.id) throw notFound('That class does not exist.');
+    if (!target || !(await teachesClass(db, target.id, auth.user.id))) throw notFound('That class does not exist.');
     if (target.archivedAt) throw conflict(`${target.name} is archived. Unarchive it first.`);
     const done = await db.transaction(async (tx) => {
       const [n] = await tx.select({ n: count() }).from(classMembers).where(eq(classMembers.classId, target.id));
@@ -544,6 +552,7 @@ export async function classToolRoutes(app: FastifyInstance, deps: AppDeps) {
       if ((n?.n ?? 0) + ids.length - already.length > MAX_MEMBERS) throw conflict(`${target.name} would have more than ${MAX_MEMBERS} students.`);
       await tx.insert(classMembers).values(ids.map((userId) => ({ classId: target.id, userId }))).onConflictDoNothing();
       await tx.delete(classMembers).where(and(eq(classMembers.classId, id), inArray(classMembers.userId, ids)));
+      await leaveGroups(tx, id, ids);
       // Notes and class logins follow the student to the new class.
       await tx.delete(classStudentNotes).where(and(eq(classStudentNotes.classId, target.id), inArray(classStudentNotes.userId, ids)));
       await tx.update(classStudentNotes).set({ classId: target.id }).where(and(eq(classStudentNotes.classId, id), inArray(classStudentNotes.userId, ids)));

@@ -110,6 +110,11 @@ export interface EngineResults {
   answers: AnswerRecord[];
   /** Set when anyone cast a chaos cheat in this game. */
   chaos: { casts: number; casters: PlayerId[] } | null;
+  /**
+   * How the room voted on each poll question: votes per authored choice id. Polls have no right
+   * answer, so they never appear in `answers`; this is what the host's saved report shows instead.
+   */
+  polls?: { qid: string; votes: Record<string, number> }[];
 }
 
 export type DispatchResult = { ok: true } | { ok: false; code: 'invalid_state' | 'rejected' | 'internal'; message: string };
@@ -122,6 +127,10 @@ interface Effects {
   end: { summary?: string } | null;
   /** The last answer graded for each question in this transaction, in words, for the host's report. */
   graded?: Map<string, string | null>;
+  /** The player whose action this is, when it is one: a poll vote graded in it is theirs. */
+  actor?: PlayerId;
+  /** Poll votes graded in this transaction. */
+  votes?: { playerId: PlayerId; qid: string; choiceId: string }[];
 }
 
 const MAX_TIMER_FIRES_PER_TICK = 500;
@@ -161,6 +170,8 @@ export class GameRuntime {
   private readonly departed = new Map<PlayerId, EnginePlayer>();
   private readonly stats = new Map<PlayerId, PlayerStats>();
   private readonly answers: AnswerRecord[] = [];
+  /** Poll votes: question id, then each player's latest choice (authored id). */
+  private readonly votes = new Map<string, Map<PlayerId, string>>();
   private readonly teams: readonly EngineTeam[];
   private readonly questionMap: Map<string, Question>;
   private readonly questionIds: string[];
@@ -313,7 +324,7 @@ export class GameRuntime {
       const blocked = this.chaosGate(playerId, parsed.data);
       if (blocked) return { ok: false, code: 'rejected', message: blocked };
     }
-    return this.transact('action', (draft, ctx) => this.mode.onAction(draft, playerId, parsed.data, ctx));
+    return this.transact('action', (draft, ctx) => this.mode.onAction(draft, playerId, parsed.data, ctx), false, playerId);
   }
 
   /* -------------------------------- chaos -------------------------------- */
@@ -566,10 +577,10 @@ export class GameRuntime {
    * normally; discard everything (state, timers, feed, randomness) if it
    * rejects or throws. A thrown error counts towards stopping the game.
    */
-  private transact(where: string, fn: TxFn, isInit = false): DispatchResult {
+  private transact(where: string, fn: TxFn, isInit = false, actor?: PlayerId): DispatchResult {
     const draft = isInit ? undefined : structuredClone(this.state);
     const rngState = this.rng.state();
-    const fx: Effects = { timers: new Map(this.timers), instances: new Map(), feed: [], answers: [], end: null };
+    const fx: Effects = { timers: new Map(this.timers), instances: new Map(), feed: [], answers: [], end: null, ...(actor ? { actor } : {}) };
     const ctx = this.makeContext(fx);
     const cd = this.chaosState && !isInit ? structuredClone(this.chaosState) : null;
     // Lasting cheats bend what the mode itself does (points, coins), never what other cheats do.
@@ -609,6 +620,11 @@ export class GameRuntime {
     this.timers = fx.timers;
     for (const [iid, inst] of fx.instances) this.instances.set(iid, inst);
     for (const a of fx.answers) this.applyAnswer(a);
+    for (const v of fx.votes ?? []) {
+      const byPlayer = this.votes.get(v.qid) ?? new Map<PlayerId, string>();
+      byPlayer.set(v.playerId, v.choiceId);
+      this.votes.set(v.qid, byPlayer);
+    }
     if (quiet) {
       this.version++;
       this.listener.pulsed?.();
@@ -717,7 +733,18 @@ export class GameRuntime {
       label: item.label,
     }));
     const chaos = this.chaosState && this.chaosState.totalCasts > 0 ? { casts: this.chaosState.totalCasts, casters: this.chaosState.usedBy.slice() } : null;
-    return { standings, teamStandings, outcome: r.outcome ?? 'competitive', summary, endedBy, durationMs, answers: this.answers.slice(), chaos };
+    return { standings, teamStandings, outcome: r.outcome ?? 'competitive', summary, endedBy, durationMs, answers: this.answers.slice(), chaos, ...this.pollResults() };
+  }
+
+  /** Votes per choice for each poll, counting each player's latest vote once. Bots' votes are left out. */
+  private pollResults(): Pick<EngineResults, 'polls'> {
+    if (!this.votes.size) return {};
+    const polls = [...this.votes].map(([qid, byPlayer]) => {
+      const votes: Record<string, number> = {};
+      for (const [pid, choice] of byPlayer) if (!this.players.get(pid)?.isBot && !this.departed.get(pid)?.isBot) votes[choice] = (votes[choice] ?? 0) + 1;
+      return { qid, votes };
+    });
+    return { polls };
   }
 
   private fallbackResults(endedBy: EngineResults['endedBy'], summary: string): EngineResults {
@@ -797,6 +824,7 @@ export class GameRuntime {
         const q = question(inst.qid);
         const authored = answerFromTokens(q, inst.order, answer);
         if (fx) (fx.graded ??= new Map()).set(inst.qid, answerText(q, authored));
+        if (fx?.actor && q.type === 'poll' && authored.type === 'poll') (fx.votes ??= []).push({ playerId: fx.actor, qid: inst.qid, choiceId: authored.choiceId });
         return gradeAnswer(q, authored);
       },
       reveal: (iid) => {

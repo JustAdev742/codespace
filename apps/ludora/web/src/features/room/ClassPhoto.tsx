@@ -4,7 +4,7 @@ import type { RoomView } from '@ludora/shared';
 import { Button } from '../../ui/Button.tsx';
 import { Dialog } from '../../ui/primitives.tsx';
 import { PlayerGlim } from './game/stage.tsx';
-import { plural } from '../../lib/format.ts';
+import { formatDate, plural } from '../../lib/format.ts';
 
 /*
  * The class photo: every Glim in the room on the stage, in rows like a school
@@ -95,7 +95,7 @@ async function drawPhoto(canvas: HTMLCanvasElement, svgs: SVGSVGElement[], names
   ctx.fillText(title, 64, 48);
   ctx.font = "700 30px 'Atkinson Hyperlegible Next Variable', sans-serif";
   ctx.fillStyle = '#c9d4f5';
-  ctx.fillText(new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }), 64, 120);
+  ctx.fillText(formatDate(new Date(), { day: 'numeric', month: 'long', year: 'numeric' }), 64, 120);
   const spots = photoLayout(svgs.length);
   const images = await Promise.all(svgs.map((s) => svgImage(s).catch(() => null)));
   spots.forEach((spot, i) => {

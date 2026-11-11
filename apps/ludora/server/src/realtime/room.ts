@@ -4,6 +4,8 @@ import {
   createRng,
   displayNameSchema,
   FEELINGS,
+  FREE_REACTIONS,
+  MAX_BAR_REACTIONS,
   generateName,
   hashString,
   S2C,
@@ -28,6 +30,7 @@ import {
   type SettingValues,
   type TeamView,
 } from '@ludora/shared';
+import { extraTimeFor } from '@ludora/engine/catalog';
 import { computeAwards, hostReport, missedQuestionIds } from './report.ts';
 import { hideNames } from './hideNames.ts';
 import { spectatorView } from '../modules/school/spectator.ts';
@@ -79,9 +82,23 @@ export interface RoomPlayer {
   recent: Map<string, Ack>;
   lastReactionAt: number;
   skill: number;
+  /** Reactions this player may send (the free ones, and those their account owns) and the bar they chose. */
+  canReact?: Set<string>;
+  bar?: string[];
+  /** Practice bots in a solo game: how much slower (over 1) or quicker (under 1) than the mode's own pace it plays. */
+  pace?: number;
   /** The account behind this slot has unlocked chaos. Set by the server from the database, never by the client. */
   chaos: boolean;
 }
+
+export type PracticeLevel = 'easy' | 'medium' | 'hard';
+export const MAX_PRACTICE_BOTS = 5;
+/** Practice bots' accuracy (the chance each answer is right) and pace (times the mode's own bot speed). */
+export const PRACTICE_LEVELS: Record<PracticeLevel, { skill: number; pace: number }> = {
+  easy: { skill: 0.4, pace: 1.6 },
+  medium: { skill: 0.65, pace: 1 },
+  hard: { skill: 0.88, pace: 0.6 },
+};
 
 export interface PersistOutcome {
   gameId: string;
@@ -91,6 +108,8 @@ export interface PersistOutcome {
 export interface RoomHooks {
   now(): number;
   persist(room: Room, results: EngineResults): Promise<PersistOutcome | null>;
+  /** Exit ticket answers that came in after the game was saved, written onto the saved game. */
+  saveFeelings?(gameId: string, feelings: Record<Feeling, number>): Promise<void>;
   onError(err: unknown, where: string, room: Room): void;
   onClosed(room: Room): void;
 }
@@ -153,12 +172,23 @@ export interface JoinInput {
   isGuestAccount: boolean;
   avatar: AvatarLite | null;
   dress?: SchoolDress | undefined;
+  /** Reactions this account owns beyond the free ones (from the database), and the bar it chose in Settings. */
+  ownedReactions?: readonly string[] | undefined;
+  reactionBar?: readonly string[] | undefined;
   /** Waiting room: called when the host lets this request in, or turns it away. Without them the request is refused. */
   onAdmitted?: (reconnectToken: string) => void;
   onDeclined?: (message: string) => void;
 }
 
 const MAX_RECENT_ACTIONS = 100;
+const FREE_SET: ReadonlySet<string> = new Set(FREE_REACTIONS);
+
+/** What a joining player may send and their bar: the free reactions and those their account owns, in the order they chose. */
+function reactionsFor(input: JoinInput): { canReact: Set<string>; bar: string[] } {
+  const canReact = new Set<string>([...FREE_REACTIONS, ...(input.ownedReactions ?? []).filter((e) => ALLOWED_REACTIONS.includes(e))]);
+  const chosen = [...new Set(input.reactionBar ?? [])].filter((e) => canReact.has(e)).slice(0, MAX_BAR_REACTIONS);
+  return { canReact, bar: chosen.length ? chosen : [...FREE_REACTIONS] };
+}
 const BROADCAST_MS = 40;
 /** Pulses (positions after quiet moves) go out at most ten times a second. */
 const PULSE_MS = 100;
@@ -174,7 +204,7 @@ const NUDGE_GAP_MS = 10_000;
 const PENDING_KEEP_MS = 10 * 60_000;
 const MAX_PENDING = 60;
 /** Room options the host can change while a game is on. */
-const LIVE_OPTIONS = ['quiet', 'reactions', 'hideNames', 'admit', 'lateJoin', 'exitTicket', 'littleHands', 'readAloud'] as const;
+const LIVE_OPTIONS = ['quiet', 'reactions', 'hideNames', 'admit', 'lateJoin', 'exitTicket', 'littleHands', 'readAloud', 'sharedDevices'] as const;
 /** Players under this share of right answers are listed for the teacher as maybe needing a hand. */
 export const NEED_HELP_BELOW = 0.5;
 export const ALLOWED_REACTIONS = ['wave', 'laugh', 'wow', 'gg', 'heart', 'fire', 'think', 'clap', 'party', 'cool', 'sleepy', 'star'];
@@ -271,6 +301,11 @@ export class Room {
   private autoStartSpent = false;
   private readonly ready = new Set<string>();
   private readonly feelings = new Map<string, Feeling>();
+  /** The skill chosen for a solo game's practice bots, shown in the room. */
+  practice: PracticeLevel | null = null;
+  /** The save of the game that just ended, so exit ticket answers are written after it. */
+  private persisting: Promise<unknown> = Promise.resolve();
+  private feelingsTimer: ReturnType<typeof setTimeout> | null = null;
   private readonly nudgedAt = new Map<string, number>();
   private readonly pending = new Map<string, PendingEntry>();
 
@@ -413,6 +448,8 @@ export class Room {
     }
     if (this.solo && input.userId !== this.hostUserId) return fail('room_locked', 'This is a solo game.');
     if (this.classMembers && !(input.userId && this.classMembers.has(input.userId))) {
+      // A friend challenge (no class): only the two friends in it.
+      if (!this.classId) return fail('class_only', 'This game is just for the friends who were invited to it. Sign in with your own account to join.');
       return fail('class_only', `This game is for ${this.classTitle ?? 'a class'}. Sign in with the account you use in that class, then join again.`);
     }
     if (this.locked && !this.solo) return fail('room_locked', 'The host has locked this room.');
@@ -454,6 +491,7 @@ export class Room {
       lastReactionAt: 0,
       skill: 0,
       chaos: false,
+      ...reactionsFor(input),
     };
     this.players.set(player.id, player);
     this.roster.set(player.id, { userId: player.userId, name: player.name, isGuest: player.isGuest, isBot: false });
@@ -559,10 +597,19 @@ export class Room {
         p.teamId = req.teamId;
         this.scheduleBroadcast();
         return { ok: true };
+      case 'reactionBar': {
+        const can = p.canReact ?? FREE_SET;
+        const bar = [...new Set(req.emotes)].filter((e) => can.has(e)).slice(0, MAX_BAR_REACTIONS);
+        if (!bar.length) return fail('bad_request', 'Choose at least one of your reactions.');
+        p.bar = bar;
+        this.scheduleBroadcast();
+        return { ok: true };
+      }
       case 'feeling':
         if (!this.options.exitTicket) return fail('forbidden', 'There is no exit ticket in this game.');
         if (this.status !== 'ended' || !this.results) return fail('invalid_state', 'The exit ticket opens when the game ends.');
         this.feelings.set(p.id, req.feeling);
+        this.scheduleFeelingsSave();
         this.scheduleBroadcast();
         return { ok: true };
     }
@@ -582,6 +629,44 @@ export class Room {
     this.touch();
     this.scheduleBroadcast();
     return p;
+  }
+
+  /**
+   * Practice bots for a solo game at a chosen skill, decided here on the server: how often they
+   * answer right and how quickly they move. They never count towards rewards (the player is still
+   * playing solo), and nothing a player sends can change them once the game is made.
+   */
+  addPracticeBots(count: number, level: PracticeLevel): number {
+    if (!this.solo || this.status !== 'lobby') return 0;
+    const space = Math.max(0, this.mode.meta.players.max - this.players.size);
+    const n = Math.max(0, Math.min(count, space, MAX_PRACTICE_BOTS));
+    const { skill, pace } = PRACTICE_LEVELS[level];
+    for (let i = 0; i < n; i++) {
+      const name = this.uniqueName(this.botName());
+      const id = `b${++this.playerSeq}`;
+      this.roster.set(id, { userId: null, name, isGuest: true, isBot: true });
+      this.players.set(id, {
+        id,
+        userId: null,
+        name,
+        isGuest: true,
+        isBot: true,
+        teamId: this.smallestTeam(),
+        connected: true,
+        reconnectToken: crypto.randomUUID(),
+        avatar: defaultAvatar(name),
+        disconnectedAt: null,
+        recent: new Map(),
+        lastReactionAt: 0,
+        // A little spread, so three bots on one level do not tie on every question.
+        skill: Math.min(0.97, Math.max(0.05, skill + (this.botRng.next() - 0.5) * 0.08)),
+        pace: pace * (0.92 + this.botRng.next() * 0.16),
+        chaos: false,
+      });
+    }
+    this.practice = n ? level : null;
+    this.scheduleBroadcast();
+    return n;
   }
 
   /** A bot's name, a different animal from the bots already here while there are animals to spare ("Bot Nova 3" is hard to find on a board). */
@@ -783,6 +868,8 @@ export class Room {
       case 'extraTime': {
         const p = this.players.get(cmd.playerId);
         if (!p || p.isBot) return fail('not_found', 'That player is not in the room.');
+        const kind = this.extraTimeKind();
+        if (cmd.share > 0 && kind.kind === 'none') return fail('invalid_state', `Extra time does not apply in ${this.variant?.meta.title ?? this.mode.meta.title}: its only clock is the game's, shared by everyone.`);
         // Quietly: no news line, nothing on anyone else's screen. It applies from the next question.
         if (cmd.share > 0) this.extraTime.set(p.id, cmd.share);
         else this.extraTime.delete(p.id);
@@ -906,6 +993,7 @@ export class Room {
     this.clearCountdown();
     this.clearBreak();
     this.ready.clear();
+    this.flushFeelings();
     this.feelings.clear();
     this.nudgedAt.clear();
     this.clearTimers();
@@ -952,7 +1040,7 @@ export class Room {
     this.clearTimers();
     this.rewardsPending = true;
     this.scheduleBroadcast();
-    this.hooks
+    this.persisting = this.hooks
       .persist(this, results)
       .then((outcome) => {
         if (outcome) {
@@ -1039,6 +1127,8 @@ export class Room {
     if (from === 'player') {
       const p = playerId ? this.players.get(playerId) : null;
       if (!p) return fail('forbidden', 'You are not in this room.');
+      // Bought reactions are for the accounts that own them, whatever a device sends.
+      if (!hop && !(p.canReact ?? FREE_SET).has(emote)) return fail('forbidden', 'That reaction is not one of yours.');
       if (now - p.lastReactionAt < REACTION_GAP_MS) return fail('rate_limited', 'Slow down a little.');
       p.lastReactionAt = now;
       name = p.name;
@@ -1106,7 +1196,7 @@ export class Room {
   private scheduleBot(p: RoomPlayer) {
     if (!this.runtime || this.status !== 'running') return;
     this.clearBot(p.id);
-    const delay = this.runtime.botDelay(p.id, this.botRng);
+    const delay = Math.round(this.runtime.botDelay(p.id, this.botRng) * (p.pace ?? 1));
     this.botTimers.set(
       p.id,
       setTimeout(() => {
@@ -1226,7 +1316,7 @@ export class Room {
         doubleNow,
       },
       me: me
-        ? { playerId: me.id, role: 'player', name: me.name, teamId: me.teamId, reconnectToken: me.reconnectToken, ready: this.ready.has(me.id), feeling: this.feelings.get(me.id) ?? null }
+        ? { playerId: me.id, role: 'player', name: me.name, teamId: me.teamId, reconnectToken: me.reconnectToken, ready: this.ready.has(me.id), feeling: this.feelings.get(me.id) ?? null, reactions: me.bar ?? [...FREE_REACTIONS], canReact: [...(me.canReact ?? FREE_SET)] }
         : { playerId: null, role: 'host', name: this.hostName, teamId: null, reconnectToken: null },
       players: [...this.players.values()].slice(0, 200).map((p) => ({
         id: p.id,
@@ -1275,13 +1365,52 @@ export class Room {
       pending: [...this.pending.values()].map((e) => ({ id: e.id, name: e.name })),
       feelings: this.options.exitTicket ? this.feelingCounts() : null,
       extraTime: Object.fromEntries(this.extraTime),
+      extraTimeKind: this.extraTimeKind(),
     };
+  }
+
+  /** What extra time does in this game: longer timed questions, a longer clock of their own, or nothing (one shared clock). */
+  extraTimeKind(): { kind: 'rounds' | 'own' | 'none'; what: string } {
+    return extraTimeFor(this.mode.meta.id, this.variant?.meta.id ?? null, this.settings);
   }
 
   /** The extra time to hand the game for a player, if they have any. */
   private extraOf(playerId: string): { extraTime?: number } {
     const e = this.extraTime.get(playerId);
     return e ? { extraTime: e } : {};
+  }
+
+  /** Exit ticket answers are saved with the game a moment after the last one, so a class's taps make one write. */
+  private scheduleFeelingsSave() {
+    if (!this.hooks.saveFeelings || this.feelingsTimer) return;
+    this.feelingsTimer = setTimeout(() => this.flushFeelings(), 1500);
+    this.feelingsTimer.unref?.();
+  }
+
+  /** Write the exit ticket counts now, onto the game they belong to (after that game's own save). */
+  flushFeelings() {
+    if (!this.feelingsTimer) return;
+    clearTimeout(this.feelingsTimer);
+    this.feelingsTimer = null;
+    const gameId = this.gameId;
+    const save = this.hooks.saveFeelings;
+    if (!gameId || !save || !this.options.exitTicket) return;
+    const counts = this.feelingCounts();
+    void this.persisting
+      .then(() => save(gameId, counts))
+      .catch((err) => this.hooks.onError(err, 'feelings', this));
+  }
+
+  /** What the class said that is not an answer, for the saved game: exit ticket counts and each poll's votes in words. */
+  voiceFor(results: EngineResults): { feelings: Record<Feeling, number> | null; polls: { questionId: string; prompt: string; choices: { id: string; text: string; votes: number }[] }[] } | null {
+    const questions = new Map([...this.set.questions, ...this.prepared].map((q) => [q.id, q] as const));
+    const polls = (results.polls ?? []).flatMap((p) => {
+      const q = questions.get(p.qid);
+      if (!q || q.type !== 'poll') return [];
+      return [{ questionId: p.qid, prompt: q.prompt.slice(0, 300), choices: q.choices.map((c) => ({ id: c.id, text: c.text.slice(0, 120), votes: p.votes[c.id] ?? 0 })) }];
+    });
+    const feelings = this.options.exitTicket ? this.feelingCounts() : null;
+    return feelings || polls.length ? { feelings, polls } : null;
   }
 
   private feelingCounts(): Record<Feeling, number> {
@@ -1391,6 +1520,7 @@ export class Room {
     this.pending.clear();
     if (this.broadcastTimer) clearTimeout(this.broadcastTimer);
     if (this.pulseTimer) clearTimeout(this.pulseTimer);
+    this.flushFeelings();
     for (const sub of this.subscribers.values()) sub.emit('room:closed', { reason: 'closed', message: reason });
     this.subscribers.clear();
     this.hooks.onClosed(this);

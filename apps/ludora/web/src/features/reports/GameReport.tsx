@@ -10,7 +10,7 @@ import { AccountError, EmptyState, ErrorNotice, PageHeader, SectionTitle, Skelet
 import { ButtonLink } from '../../ui/Button.tsx';
 import { PrintSheet, usePrinting } from '../classes/PrintSheet.tsx';
 import { BackLink, dateTimeText, errorText, hasStatus, NoValue, percent, SignInPrompt, StatRow, StatTile, usePageTitle } from './reportUi.tsx';
-import { CheckIn, Pace, PlayerDialog, QuestionAnalysis, Standings, TeachNext, Teams, usePlayerDialog } from './GameSections.tsx';
+import { CheckIn, ClassVoice, Pace, PlayerDialog, QuestionAnalysis, Standings, TeachNext, Teams, usePlayerDialog } from './GameSections.tsx';
 import { loadAnswers, NextSteps, NoteEditor } from './GameActions.tsx';
 import { ClassSheet, StudentSlips } from './GamePrint.tsx';
 import type { AnswerLine } from './logic.ts';
@@ -188,6 +188,7 @@ export default function GameReport() {
       <CheckIn data={data} onOpen={player.show} />
       {data.pace ? <Pace pace={data.pace} onOpen={player.show} /> : null}
       <Teams teams={data.teams} />
+      <ClassVoice voice={data.voice} />
 
       <section className="mb-10" aria-labelledby="standings-title">
         <SectionTitle>

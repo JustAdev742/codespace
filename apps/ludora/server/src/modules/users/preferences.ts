@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { DEFAULT_SCHOOL_DRESS, schoolDressSchema } from '@ludora/shared';
+import { DEFAULT_SCHOOL_DRESS, EMOTE_GLYPHS, schoolDressSchema } from '@ludora/shared';
 
 const theme = z.enum(['system', 'light', 'dark']);
 const reducedMotion = z.enum(['system', 'on', 'off']);
@@ -95,6 +95,8 @@ export const preferencesSchema = z.object({
     })
     .default(DEFAULT_SCHOOL_DRESS),
   access: accessSchema.default(ACCESS_DEFAULTS),
+  /** The reactions on the player's bar in games, in order. Empty: the free set. Only reactions they own are ever used (the room checks). */
+  reactionBar: z.array(z.enum(EMOTE_GLYPHS)).max(8).default([]),
   /** The host's big-screen backdrop for the lobby and between questions (web/src/features/room/game/Backdrop.tsx). */
   stageBackdrop: stageBackdrop.default('floodlights'),
 });
@@ -116,6 +118,7 @@ export const preferencesPatchSchema = z.object({
   privacy: z.object({ profileVisibility, allowFriendRequests, showOnLeaderboards: z.boolean() }).partial().optional(),
   school: schoolDressSchema.partial().optional(),
   access: accessPatchSchema.optional(),
+  reactionBar: z.array(z.enum(EMOTE_GLYPHS)).max(8, 'Choose up to 8 reactions.').optional(),
   stageBackdrop: stageBackdrop.optional(),
 });
 

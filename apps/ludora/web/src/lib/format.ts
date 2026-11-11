@@ -65,6 +65,20 @@ export function formatDate(d: Date | string | number, opts: Intl.DateTimeFormatO
   return date.toLocaleString(appLocale(), { ...(tz ? { timeZone: tz } : {}), ...opts });
 }
 
+/**
+ * A calendar day with no time of day (a '2026-11-11' string, or a Date standing for a day in UTC) in the
+ * player's date style. A day is the same day everywhere, so no time zone moves it.
+ */
+export function formatDay(day: string | Date, opts: Intl.DateTimeFormatOptions): string {
+  const date = typeof day === 'string' ? new Date(`${day.slice(0, 10)}T12:00:00Z`) : day;
+  return date.toLocaleDateString(appLocale(), { ...opts, timeZone: 'UTC' });
+}
+
+/** A number with up to `digits` decimal places, in the player's style. */
+export function formatDecimal(n: number, digits = 1): string {
+  return numberFormat(`dec${digits}`, { maximumFractionDigits: digits }).format(n);
+}
+
 /** The wall-clock parts of an instant in a time zone (the device's when none is given). */
 export function zonedParts(date: Date, tz: string | undefined): { y: number; mo: number; d: number; h: number; mi: number } {
   if (!tz) return { y: date.getFullYear(), mo: date.getMonth() + 1, d: date.getDate(), h: date.getHours(), mi: date.getMinutes() };

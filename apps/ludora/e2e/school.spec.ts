@@ -53,9 +53,16 @@ test('school staff set up houses, a teacher sorts and rewards, a student sees th
   const teacherErrors = watchErrors(teacher.page);
   const studentErrors = watchErrors(student.page);
 
-  // School staff: houses, through the form.
+  // School staff: houses, through the form. The account answers late here, as it can on a slow
+  // connection: the page must still open on Houses, not on the tab for people who cannot manage.
+  await staff.page.route('**/api/auth/me', async (route) => {
+    await new Promise((done) => setTimeout(done, 1500));
+    await route.continue();
+  });
   await staff.page.goto('/school/manage');
   await expect(staff.page.getByRole('heading', { name: 'Run the school', level: 1 })).toBeVisible();
+  await staff.page.unroute('**/api/auth/me');
+  await expect(staff.page.getByRole('tab', { name: 'Houses' })).toHaveAttribute('aria-selected', 'true');
   for (const [name, colour, emblem] of [['Banksia', 3, 'Leaf'], ['Waratah', 1, 'Flame']] as const) {
     await staff.page.getByLabel('Name', { exact: true }).fill(name);
     await staff.page.getByLabel(`Colour ${colour} of 13`).check({ force: true });

@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Award } from 'lucide-react';
 import { api } from '../../lib/api.ts';
 import { Panel } from '../../ui/primitives.tsx';
+import { formatDate } from '../../lib/format.ts';
 
 /*
  * A student's merits on their profile: how many for each of the school's values. The notes and who
@@ -42,7 +43,7 @@ export function MeritsPanel({ userId }: { userId: string }) {
                 {r.value}, from {r.teacherName}
               </p>
               {r.note ? <p className="text-text-2">{r.note}</p> : null}
-              <p className="text-xs text-text-3">{new Date(r.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
+              <p className="text-xs text-text-3">{formatDate(r.createdAt, { day: 'numeric', month: 'long', year: 'numeric' })}</p>
             </li>
           ))}
         </ul>

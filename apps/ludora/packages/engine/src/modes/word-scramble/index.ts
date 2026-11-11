@@ -178,7 +178,8 @@ function startWord(p: Player, playerId: PlayerId, ctx: ModeContext<Settings>) {
   const id = p.stream.iid!;
   const q = ctx.questions.get(ctx.questions.instance(id).qid);
   const source = scrambleSource(q);
-  const deadline = ctx.settings.wordTimer ? ctx.now() + ctx.questions.timeLimitMs(id) : null;
+  // Extra time (access): this player's own word timer is longer by their share.
+  const deadline = ctx.settings.wordTimer ? ctx.now() + Math.round(ctx.questions.timeLimitMs(id) * (1 + (ctx.player(playerId)?.extraTime ?? 0))) : null;
   p.word = { iid: id, scramble: source ? buildScramble(source, acceptedFor(q), ctx.settings.hints, ctx.rng) : null, deadline };
   p.nextAt = null;
   p.answerText = null;

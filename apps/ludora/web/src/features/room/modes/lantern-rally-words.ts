@@ -1,4 +1,5 @@
 import { CIRCUITS, PRIZE_INFO, lapPos, type CircuitId, type Prize } from '@ludora/engine/lantern-rally';
+import { formatNumber } from '../../../lib/format.ts';
 
 /*
  * Lantern Rally in words: the picture's description for screen readers (your
@@ -121,7 +122,7 @@ export function raceWords(w: WordsInput): string {
     where = `Lap ${y.lap}, in the ${laneName(y.lane)}.${y.bestLap !== null ? ` Best lap ${timeText(y.bestLap)}.` : ''}${gap !== null ? ` ${Math.abs(gap) < 0.05 ? 'Level with your best lap.' : `${Math.abs(gap).toFixed(1)} seconds ${gap > 0 ? 'ahead of' : 'behind'} your best lap.`}` : ''}`;
   } else {
     const lap = w.laps ? `lap ${y.lap} of ${w.laps}` : `lap ${y.lap}`;
-    where = w.kind === 'relay' ? `Lap ${y.lap}, in the ${laneName(y.lane)}.${w.teamMetres ? ` Your team has driven ${w.teamMetres.toLocaleString('en-GB')} metres.` : ''}` : `You are ${ordinal(y.place)} of ${w.racers}, ${lap}, in the ${laneName(y.lane)}.`;
+    where = w.kind === 'relay' ? `Lap ${y.lap}, in the ${laneName(y.lane)}.${w.teamMetres ? ` Your team has driven ${formatNumber(w.teamMetres)} metres.` : ''}` : `You are ${ordinal(y.place)} of ${w.racers}, ${lap}, in the ${laneName(y.lane)}.`;
     const others = w.karts.filter((k) => !k.me && k.finished === null);
     const front = others.filter((k) => k.d > y.d).sort((a, b) => a.d - b.d)[0];
     const back = others.filter((k) => k.d <= y.d).sort((a, b) => b.d - a.d)[0];

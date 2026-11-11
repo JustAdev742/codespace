@@ -92,7 +92,7 @@ export default function SetDetail() {
         All question sets
       </Link>
       <div className="flex flex-wrap items-start gap-5">
-        <SetCover cover={set.cover} subject={set.subject} size={88} />
+        <SetCover cover={set.cover} subject={set.subject} size={88} described />
         <div className="min-w-0 flex-1">
           <FavouriteStar kind="sets" id={set.id} label={set.title} className="float-right ml-3" />
           <h1 className="font-display text-[2.25rem] leading-[1.02] font-bold break-words sm:text-[2.9rem]">{set.title}</h1>

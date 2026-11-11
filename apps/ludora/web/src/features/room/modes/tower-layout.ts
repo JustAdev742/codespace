@@ -9,6 +9,7 @@
  */
 
 export type BlockKind = 'timber' | 'stone' | 'lantern';
+import { formatNumber } from '../../../lib/format.ts';
 
 export interface Block {
   kind: BlockKind;
@@ -94,5 +95,45 @@ export function stackNames(names: string[], max = 5): string[] {
   return sorted.length > max ? [...sorted.slice(0, max - 1), `and ${sorted.length - (max - 1)} more`] : sorted;
 }
 
-/** "1,234 floors". */
-export const floorsText = (n: number) => `${Math.round(n).toLocaleString('en-GB')} ${Math.round(n) === 1 ? 'floor' : 'floors'}`;
+/*
+ * Floors a child can picture. The game counts in blocks (a timber piece is 2, stone 1), and a big
+ * class aims for over a thousand of them. On screen the tower is measured in floors, each a fixed
+ * number of blocks, chosen so the class's target is 20 to 40 floors whatever its size. Display only:
+ * the game, its balance and its results are counted in blocks exactly as before.
+ */
+
+/** Blocks in one floor for a target, and the target in floors. Reaching the target in blocks is exactly reaching it in floors. */
+export function floorScale(targetBlocks: number): { per: number; target: number } {
+  const t = Math.max(1, targetBlocks);
+  const target = Math.max(1, Math.round(t / Math.max(1, Math.ceil(t / 40))));
+  return { per: t / target, target };
+}
+
+/** Whole floors finished at a height (never shows the target before it is reached). */
+export function floorsAt(blocks: number, targetBlocks: number): number {
+  return Math.floor(Math.max(0, blocks) / floorScale(targetBlocks).per + 1e-9);
+}
+
+/** An amount of tower in floors: "3 floors", "1 floor", "less than a floor". */
+export function floorsText(blocks: number, targetBlocks: number): string {
+  if (blocks <= 0) return '0 floors';
+  const n = Math.round(blocks / floorScale(targetBlocks).per);
+  if (n === 0) return 'less than a floor';
+  return `${formatNumber(n)} ${n === 1 ? 'floor' : 'floors'}`;
+}
+
+/** A height in whole floors: "12 floors". */
+export function heightText(blocks: number, targetBlocks: number): string {
+  const n = floorsAt(blocks, targetBlocks);
+  return `${formatNumber(n)} ${n === 1 ? 'floor' : 'floors'}`;
+}
+
+/** Pieces in blocks: "2 blocks". */
+export const blocksText = (n: number) => `${formatNumber(n)} ${n === 1 ? 'block' : 'blocks'}`;
+
+/** "Each floor takes about 27 blocks." (nothing when a floor is a single block). */
+export function perFloorText(targetBlocks: number): string | null {
+  const per = floorScale(targetBlocks).per;
+  return per > 1.05 ? `Each floor takes about ${formatNumber(Math.round(per))} blocks.` : null;
+}
+

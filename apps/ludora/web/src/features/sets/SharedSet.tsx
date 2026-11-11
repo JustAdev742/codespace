@@ -59,7 +59,7 @@ export default function SharedSet() {
         All question sets
       </Link>
       <div className="flex flex-wrap items-start gap-5">
-        <SetCover cover={set.cover} subject={set.subject} size={88} />
+        <SetCover cover={set.cover} subject={set.subject} size={88} described />
         <div className="min-w-0 flex-1">
           <p className="text-sm font-semibold text-text-2">Shared with you{set.ownerName ? ` by ${set.ownerName}` : ''}</p>
           <h1 className="font-display text-[2.25rem] leading-[1.02] font-bold break-words sm:text-[2.9rem]">{set.title}</h1>

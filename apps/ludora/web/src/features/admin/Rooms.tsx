@@ -3,7 +3,7 @@ import { Link, useSearchParams } from 'react-router';
 import { useQuery } from '@tanstack/react-query';
 import { Lock } from 'lucide-react';
 import { api, ApiError } from '../../lib/api.ts';
-import { formatNumber, plural, timeAgo } from '../../lib/format.ts';
+import { formatDate, formatNumber, plural, timeAgo } from '../../lib/format.ts';
 import { useCan } from '../../lib/session.ts';
 import { Badge, Dialog, EmptyState, ErrorNotice, Skeleton } from '../../ui/primitives.tsx';
 import { Button } from '../../ui/Button.tsx';
@@ -64,7 +64,7 @@ const REFRESH_MS = 5000;
 const ROOM_STATUS: Record<RoomStatus, string> = { lobby: 'In lobby', running: 'Playing', paused: 'Paused', ended: 'Finished', closed: 'Closed' };
 
 function clock(ms: number): string {
-  return new Date(ms).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  return formatDate(ms, { hour: '2-digit', minute: '2-digit', second: '2-digit' });
 }
 
 function playerKind(p: RoomPlayer): string {

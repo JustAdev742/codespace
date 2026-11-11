@@ -5,7 +5,7 @@ import { toast } from 'sonner';
 import { BookMarked, ChevronsDownUp, ChevronsUpDown, Eye, History, Keyboard, Presentation, Redo2, Save, Sparkles, Stethoscope, Trash2, Undo2, Upload, Wand2 } from 'lucide-react';
 import { questionSchema, type AiDraftStatus, type Question, type QuestionType, type Visibility } from '@ludora/shared';
 import { api, ApiError } from '../../../lib/api.ts';
-import { plural, timeAgo } from '../../../lib/format.ts';
+import { formatDate, plural, timeAgo } from '../../../lib/format.ts';
 import type { SetSummary } from '../../../lib/queries.ts';
 import { useMe } from '../../../lib/session.ts';
 import { Button, ButtonLink } from '../../../ui/Button.tsx';
@@ -713,7 +713,7 @@ export function Editor({ userId, setId, initial, baseUpdatedAt, canPublish, save
           ? 'Unsaved changes: saving soon'
           : 'Unsaved changes: finish the marked questions to save'
         : savedAt
-          ? `Saved at ${savedAt.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}`
+          ? `Saved at ${formatDate(savedAt, { hour: '2-digit', minute: '2-digit' })}`
           : 'Saved';
 
   const staleDraft = pendingDraft && base && pendingDraft.baseUpdatedAt && pendingDraft.baseUpdatedAt !== base;

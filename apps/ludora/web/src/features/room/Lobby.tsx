@@ -14,7 +14,7 @@ import { QrCode } from './host/QrCode.tsx';
 import { useHostTools } from './host/HostTools.tsx';
 import { POINTS_MODES } from './host/RoomSettings.tsx';
 import { estimateMinutes, withKey } from './host/tools.ts';
-import { ReactionBar } from './game/Reactions.tsx';
+import { ReactionBar, useChooseReactions } from './game/Reactions.tsx';
 import { Pill, PlayerGlim, StagePanel, motionOK } from './game/stage.tsx';
 import { useAnnounce } from './game/announce.tsx';
 import { BackdropPicker } from './game/Backdrop.tsx';
@@ -22,6 +22,7 @@ import { teamFill } from './game/Leaderboard.tsx';
 import { plural } from '../../lib/format.ts';
 import { playSfx } from '../../lib/sound/react.tsx';
 import { EXTRA_SHARES, extraOf, setExtraTime, type ExtraShare } from './host/ExtraTime.tsx';
+import { InviteFriendsButton } from '../social/InviteFriends.tsx';
 
 /** The most practice bots a room takes (the server's limit). */
 const MAX_BOTS = 20;
@@ -64,7 +65,7 @@ export interface SeatActions {
   move: (p: RoomPlayerView, teamId: string) => void;
   teams: TeamView[];
   /** Extra time on timed questions (only the host sees it). */
-  extra?: { of: (p: RoomPlayerView) => number; set: (p: RoomPlayerView, share: ExtraShare) => void };
+  extra?: { of: (p: RoomPlayerView) => number; set: (p: RoomPlayerView, share: ExtraShare) => void; kind?: { kind: 'rounds' | 'own' | 'none'; what: string } | undefined };
 }
 
 /** The host's menu on a seat card: rename, move to another team, remove. */
@@ -93,10 +94,16 @@ function SeatMenu({ p, actions }: { p: RoomPlayerView; actions: SeatActions }) {
                 Move to {t.name}
               </DropdownMenu.Item>
             ))}
-          {!p.isBot && actions.extra ? (
+          {!p.isBot && actions.extra?.kind?.kind === 'none' ? (
             <>
               <DropdownMenu.Separator className="my-1 h-px bg-line" />
-              <DropdownMenu.Label className="px-3 pt-1 pb-0.5 text-xs font-semibold text-text-3">Extra time (only you see this)</DropdownMenu.Label>
+              <p className="max-w-60 px-3 py-1.5 text-xs text-text-2">Extra time does not apply in this game: its only clock is shared by everyone.</p>
+              <DropdownMenu.Separator className="my-1 h-px bg-line" />
+            </>
+          ) : !p.isBot && actions.extra ? (
+            <>
+              <DropdownMenu.Separator className="my-1 h-px bg-line" />
+              <DropdownMenu.Label className="px-3 pt-1 pb-0.5 text-xs font-semibold text-text-3">{actions.extra.kind?.kind === 'own' ? `Extra time on ${actions.extra.kind.what} (only you see this)` : 'Extra time (only you see this)'}</DropdownMenu.Label>
               <DropdownMenu.RadioGroup value={String(actions.extra.of(p))} onValueChange={(v) => actions.extra?.set(p, Number(v) as ExtraShare)}>
                 {EXTRA_SHARES.map((s) => (
                   <DropdownMenu.RadioItem key={s.share} value={String(s.share)} className={SEAT_ITEM}>
@@ -356,7 +363,7 @@ export function HostLobby({ room, handle }: { room: RoomView; handle: RoomHandle
     rename: (p) => setRenaming({ kind: 'player', id: p.id, name: p.name }),
     move: (p, teamId) => void run('move', { cmd: 'setTeam', playerId: p.id, teamId }),
     teams: room.room.teams,
-    extra: { of: (p) => extraOf(room, p.id), set: (p, share) => void setExtraTime(handle, p, share) },
+    extra: { of: (p) => extraOf(room, p.id), set: (p, share) => void setExtraTime(handle, p, share), kind: room.host?.extraTimeKind },
   };
   const hops = useHops(handle.reactions);
   const cheers = new Set(handle.reactions.flatMap((r) => (r.emote !== 'hop' && r.playerId ? [r.playerId] : [])));
@@ -402,6 +409,7 @@ export function HostLobby({ room, handle }: { room: RoomView; handle: RoomHandle
           </div>
           <div className="flex flex-wrap gap-2">
             <ShareButton url={joinUrl} code={code} />
+            <InviteFriendsButton code={code} />
             <Button icon={room.room.locked ? <Lock className="size-4" aria-hidden /> : <LockOpen className="size-4" aria-hidden />} onClick={() => run('lock', { cmd: 'lock', locked: !room.room.locked })} loading={busy === 'lock'} title={withKey(room.room.locked ? 'Unlock the room' : 'Lock the room', 'L')} aria-keyshortcuts="L">
               {room.room.locked ? 'Room locked' : 'Lock room'}
             </Button>
@@ -576,8 +584,12 @@ export function PlayerLobby({ room, handle }: { room: RoomView; handle: RoomHand
   const others = room.players.filter((p) => p.id !== room.me.playerId);
   const shown = others.slice(0, 7);
   const [pose, cheer] = useOwnPose();
-  useAnnounce(`You are in. Waiting for ${room.room.hostName} to start.`, 'joined');
+  // A room that starts by itself (a friend challenge has nobody to press Start) says so instead.
+  const autoAt = room.room.options.autoStartAt;
+  const waitingFor = autoAt ? `It starts by itself when ${plural(autoAt, 'player')} are in.` : `Waiting for ${room.room.hostName} to start.`;
+  useAnnounce(`You are in. ${waitingFor}`, 'joined');
   const reactions = room.room.options.reactions;
+  const chooseReactions = useChooseReactions(handle);
   const [hopCool, setHopCool] = useState(false);
   const hop = async () => {
     if (hopCool || !reactions) return;
@@ -659,7 +671,7 @@ export function PlayerLobby({ room, handle }: { room: RoomView; handle: RoomHand
           </div>
         ) : null}
         <p className="mt-3 font-semibold text-text-2">
-          Waiting for {room.room.hostName} to start. <span className="tabular">{room.players.length}</span> in the room
+          {waitingFor} <span className="tabular">{room.players.length}</span> in the room
           {room.room.readyCount ? (
             <>
               , <span className="tabular">{room.room.readyCount}</span> ready
@@ -667,6 +679,8 @@ export function PlayerLobby({ room, handle }: { room: RoomView; handle: RoomHand
           ) : null}
           .
         </p>
+        {/* A signed-in player can bring a friend into this room (the server checks they are friends and the room is open). */}
+        {!room.room.locked && room.players.length < room.room.options.maxPlayers ? <InviteFriendsButton code={room.room.code} className="mt-3" /> : null}
       </div>
       {reactions ? (
         <ReactionBar
@@ -674,6 +688,9 @@ export function PlayerLobby({ room, handle }: { room: RoomView; handle: RoomHand
             void handle.react(e);
             cheer();
           }}
+          emotes={room.me.reactions}
+          canReact={room.me.canReact}
+          onChoose={chooseReactions}
         />
       ) : null}
     </div>

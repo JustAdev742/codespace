@@ -4,7 +4,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { Award, Lock, NotebookPen, Printer, UserRound } from 'lucide-react';
 import { api, ApiError } from '../../lib/api.ts';
-import { duration, plural } from '../../lib/format.ts';
+import { duration, formatDate, plural } from '../../lib/format.ts';
 import { Badge, EmptyState, ErrorNotice, Field, PageHeader, Panel, SectionTitle, Textarea } from '../../ui/primitives.tsx';
 import { Button, ButtonLink } from '../../ui/Button.tsx';
 import { BackLink, dateText, dateTimeText, errorText, hasStatus, NoValue, percent, questionTypeLabel, RateBar, StatRow, StatTile, usePageTitle } from '../reports/reportUi.tsx';
@@ -127,11 +127,7 @@ function ReportBody({ data, paper = false }: { data: StudentReportData; paper?: 
           <h1 className="font-display text-4xl font-bold">{data.student.displayName}: progress report</h1>
           <p className="text-sm">
             Printed{' '}
-            {new Date().toLocaleDateString('en-GB', {
-              day: 'numeric',
-              month: 'long',
-              year: 'numeric',
-            })}{' '}
+            {formatDate(new Date(), { day: 'numeric', month: 'long', year: 'numeric' })}{' '}
             from Ludora.
           </p>
         </header>

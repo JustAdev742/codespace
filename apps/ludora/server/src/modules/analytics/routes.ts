@@ -10,6 +10,11 @@ import { questionsById } from './report.ts';
 import { buildReport, gameAccess } from './gameData.ts';
 import { reportRoutes } from './reports.ts';
 
+interface GameVoice {
+  feelings: Record<'great' | 'okay' | 'tough', number> | null;
+  polls: { questionId: string; prompt: string; choices: { id: string; text: string; votes: number }[] }[];
+}
+
 const modeTitle = (modeId: string, variantId: string | null) => (variantId ? getVariant(variantId)?.meta.title : null) ?? getMode(modeId)?.meta.title ?? modeId;
 
 /*
@@ -41,6 +46,8 @@ export async function analyticsRoutes(app: FastifyInstance, deps: AppDeps) {
       teams: r.teams,
       pace: r.pace,
       note: r.note,
+      // Exit ticket counts and poll votes (finish, 0018): counts and choice words only, never who said what.
+      voice: (g.voice as GameVoice | null) ?? null,
       can: { delete: host && !g.isSolo, reteach: (host || teacher) && Boolean(g.setId) && auth.permissions.has('sets.create') && !auth.user.isGuest },
       // "Host again": the same set, mode and settings, for the person who hosted it.
       ...(host && g.setId && !g.isSolo && !g.assignmentId

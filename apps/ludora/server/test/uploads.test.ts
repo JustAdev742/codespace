@@ -181,3 +181,23 @@ describe('uploads', () => {
     expect((await t.app.inject({ method: 'GET', url: img })).statusCode).toBe(200);
   });
 });
+
+describe('a set cover picture', () => {
+  it('takes an uploaded picture with a description, and refuses one with none or one that is not an upload', async () => {
+    const ok = await upload(author.client, 'cover.png', 'image/png', PNG);
+    expect(ok.status).toBe(200);
+    const base = { title: 'With a cover', description: 'Cover test', subject: 'general', visibility: 'private', questions: [{ id: 'q1', type: 'truefalse', prompt: 'One', correct: true }] };
+    const made = await author.client.post('/api/sets', { ...base, cover: { glyph: 'star', hue: 200, image: { kind: 'image', url: ok.body.url, alt: 'A volcano at night' } } });
+    expect(made.status, JSON.stringify(made.body)).toBe(200);
+    const id = made.body.set?.id ?? made.body.id;
+    const read = await author.client.get(`/api/sets/${id}`);
+    expect(read.body.set.cover).toEqual({ glyph: 'star', hue: 200, image: { kind: 'image', url: ok.body.url, alt: 'A volcano at night' } });
+    const noAlt = await author.client.post('/api/sets', { ...base, cover: { glyph: 'star', hue: 200, image: { kind: 'image', url: ok.body.url, alt: '  ' } } });
+    expect(noAlt.status).toBe(400);
+    const notOurs = await author.client.post('/api/sets', { ...base, cover: { glyph: 'star', hue: 200, image: { kind: 'image', url: 'https://example.com/a.png', alt: 'Elsewhere' } } });
+    expect(notOurs.status).toBe(400);
+    const missing = await author.client.post('/api/sets', { ...base, cover: { glyph: 'star', hue: 200, image: { kind: 'image', url: `/uploads/${'1'.repeat(32)}.png`, alt: 'Gone' } } });
+    expect(missing.status).toBe(400);
+    expect(missing.body.fields?.['cover.image'] ?? missing.body.details?.['cover.image'] ?? JSON.stringify(missing.body)).toMatch(/missing or was removed/);
+  });
+});

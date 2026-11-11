@@ -1,4 +1,4 @@
-import type { Answer, AnswerReveal } from '@ludora/shared';
+import { POINTS_USUAL, pointsWeight, type Answer, type AnswerReveal } from '@ludora/shared';
 import type { ActionResult, ModeContext, PlayerId, QuestionView, Viewer } from '../sdk/types.ts';
 
 /*
@@ -250,8 +250,11 @@ export function syncAnswer<S extends { sync: SyncState }>(
   const limitMs = sync.deadline - sync.startedAt;
   // Double points: a question its author marked, or the final question when the host chose that
   // (players were told before it). The two do not stack: double is double.
-  const double = ctx.questions.get(ctx.questions.instance(sync.iid).qid).doublePoints || isDoubleRound(s, ctx) ? 2 : 1;
-  const points = grade.ungraded ? 0 : Math.max(0, Math.round(cfg.score(s, playerId, { correct: grade.correct, partial: grade.partial, responseMs, limitMs, streak }, ctx) * double));
+  const authored = ctx.questions.get(ctx.questions.instance(sync.iid).qid);
+  const double = authored.doublePoints || isDoubleRound(s, ctx) ? 2 : 1;
+  // The author's Points field scales the mode's own score: 2,000 is twice a usual question, 0 scores nothing.
+  const weight = pointsWeight(authored.points);
+  const points = grade.ungraded ? 0 : Math.max(0, Math.round(cfg.score(s, playerId, { correct: grade.correct, partial: grade.partial, responseMs, limitMs, streak }, ctx) * double * weight));
   sync.scores[playerId] = (sync.scores[playerId] ?? 0) + points;
   sync.answers[playerId] = {
     at: now,
@@ -330,7 +333,10 @@ export function syncView<S extends { sync: SyncState }>(s: S, cfg: SyncConfig<S>
   const revealed = sync.phase === 'reveal';
   // A player with extra time sees their own longer clock; everyone else, and the big screen, the shared one.
   const deadline = viewer.kind === 'player' ? syncPlayerDeadline(s, viewer.playerId) : sync.deadline;
-  const question = live && sync.iid ? ctx.questions.view(sync.iid, { deadline, index: sync.round, total: sync.order.length }) : null;
+  let question = live && sync.iid ? ctx.questions.view(sync.iid, { deadline, index: sync.round, total: sync.order.length }) : null;
+  // Players are told what the author made the question worth before they answer (these rounds score it).
+  const worth = sync.iid ? ctx.questions.get(ctx.questions.instance(sync.iid).qid).points : undefined;
+  if (question && worth !== undefined && worth !== POINTS_USUAL) question = { ...question, q: { ...question.q, points: worth } };
   let distribution: Record<string, number> | null = null;
   if (revealed) {
     distribution = {};

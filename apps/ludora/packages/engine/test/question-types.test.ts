@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { answerText as runtimeAnswerText } from '../src/runtime/answerText.ts';
 import { createRng, parseBlanks, questionSchema, type Question } from '@ludora/shared';
 import { MODES } from '../src/modes/index.ts';
 import { adaptQuestions } from '../src/questions/adapt.ts';
@@ -205,6 +206,27 @@ describe('a poll in Classic', () => {
   });
 });
 
+describe('poll votes in the results', () => {
+  it('counts each person\'s vote once per poll, by authored choice, and leaves bots out', () => {
+    const sim = new ChaosSim({ modeId: 'classic', questions: [byId('n1'), byId('n5'), byId('n8'), byId('n2')], players: 2, seed: 5, settings: {}, common: { shuffleQuestions: false } });
+    expect(sim.rt.addPlayer({ id: 'h1', name: 'Ada', teamId: null, isBot: false }).ok).toBe(true);
+    for (let t = 0; t < 60_000 && !(sim.state().sync.phase === 'question' && sim.state().sync.iid); t += 50) sim.run(50);
+    const iid = sim.state().sync.iid as string;
+    const poll = byId('n1') as Extract<Question, { type: 'poll' }>;
+    const pub = sim.rt.view({ kind: 'player', playerId: 'h1' }) as { sync: { question: { q: { choices: { id: string }[] } } } };
+    const token = pub.sync.question.q.choices[1]!.id;
+    expect(sim.rt.act('h1', { type: 'answer', iid, answer: { type: 'poll', choiceId: token } }).ok).toBe(true);
+    for (let t = 0; t < 300_000 && sim.rt.status === 'running'; t += 1000) sim.run(1000);
+    const polls = sim.rt.results!.polls!;
+    expect(polls).toHaveLength(1);
+    expect(polls[0]!.qid).toBe('n1');
+    const total = Object.values(polls[0]!.votes).reduce((a, b) => a + b, 0);
+    expect(total).toBe(1);
+    expect(poll.choices.map((c) => c.id)).toContain(Object.keys(polls[0]!.votes)[0]);
+    expect(sim.rt.results!.answers.some((a) => a.qid === 'n1')).toBe(false);
+  });
+});
+
 describe('double points and why notes', () => {
   const base: Question[] = [
     { id: 'd1', type: 'mcq', prompt: 'Which gas do plants take in?', choices: [{ id: 'o', text: 'Oxygen', why: 'Plants give oxygen out.' }, { id: 'c', text: 'Carbon dioxide' }, { id: 'n', text: 'Neon' }], correct: 'c', doublePoints: true },
@@ -230,5 +252,47 @@ describe('double points and why notes', () => {
     const plain = play([{ ...base[0]!, doublePoints: undefined } as Question, base[1]!, base[2]!]);
     expect(doubled.length).toBeGreaterThan(0);
     expect(doubled).toEqual(plain.map((p) => p * 2));
+  });
+});
+
+describe('wrong answers in words for ordering, matching, sorting and gaps', () => {
+  const order: Question = { id: 'o', type: 'order', prompt: 'Planets from the Sun', items: [{ id: 'me', text: 'Mercury' }, { id: 've', text: 'Venus' }, { id: 'ea', text: 'Earth' }, { id: 'ma', text: 'Mars' }] };
+  const match: Question = { id: 'm', type: 'match', prompt: 'Capitals', pairs: [{ id: 'fr', left: 'France', right: 'Paris' }, { id: 'de', left: 'Germany', right: 'Berlin' }] };
+  const sort: Question = { id: 's', type: 'sort', prompt: 'Sort the animals', groups: [{ id: 'f', label: 'Fish' }, { id: 'm', label: 'Mammals' }], items: [{ id: 'w', text: 'Whale', group: 'm' }, { id: 't', text: 'Trout', group: 'f' }] } as Question;
+  const blanks: Question = { id: 'b', type: 'blanks', prompt: 'Fill the gaps', text: 'Water [evaporates] and falls as [rain].' } as Question;
+  it('names the first mistake so the same mistake is counted together', () => {
+    expect(runtimeAnswerText(order, { type: 'order', itemIds: ['me', 'ma', 'ea', 've'] })).toBe('Mars put 2nd, not 4th');
+    expect(runtimeAnswerText(order, { type: 'order', itemIds: ['me', 've', 'ea', 'ma'] })).toBeNull();
+    expect(runtimeAnswerText(match, { type: 'match', pairs: { fr: 'de', de: 'fr' } })).toBe('France matched with Berlin');
+    expect(runtimeAnswerText(sort, { type: 'sort', placement: { w: 'f', t: 'f' } })).toBe('Whale sorted into Fish');
+    expect(runtimeAnswerText(blanks, { type: 'blanks', values: ['evaporates', 'snow'] })).toBe('Gap 2: snow');
+    expect(runtimeAnswerText(blanks, { type: 'blanks', values: ['', 'rain'] })).toBe('Gap 1: left empty');
+    expect(runtimeAnswerText(blanks, { type: 'blanks', values: ['evaporates', 'rain'] })).toBeNull();
+  });
+});
+
+describe("a question's Points field in quiz rounds", () => {
+  const base: Question[] = [
+    { id: 'w1', type: 'truefalse', prompt: 'Ice floats.', correct: true },
+    { id: 'w2', type: 'truefalse', prompt: 'Fish fly.', correct: false },
+    { id: 'w3', type: 'truefalse', prompt: 'The Sun is a star.', correct: true },
+  ];
+  const firstRound = (questions: Question[], modeId = 'classic') => {
+    const sim = new ChaosSim({ modeId, questions, players: 3, seed: 4, skill: 1, settings: {}, common: { shuffleQuestions: false } });
+    for (let t = 0; t < 60_000 && sim.state().sync.phase !== 'reveal'; t += 250) sim.run(250);
+    return sim;
+  };
+  const points = (sim: ChaosSim) => Object.values(sim.state().sync.answers as Record<string, { points: number }>).map((a) => a.points);
+  it('scales the mode\'s own score: 2,000 is twice a usual question, 0 scores nothing', () => {
+    const plain = points(firstRound(base));
+    expect(plain.some((p) => p > 0)).toBe(true);
+    expect(points(firstRound([{ ...base[0]!, points: 2000 }, base[1]!, base[2]!]))).toEqual(plain.map((p) => p * 2));
+    expect(points(firstRound([{ ...base[0]!, points: 0 }, base[1]!, base[2]!])).every((p) => p === 0)).toBe(true);
+  });
+  it('tells players what the question is worth before they answer, and says nothing for a usual one', () => {
+    const view = (sim: ChaosSim) => (sim.rt.view({ kind: 'player', playerId: 'p1' }) as { sync: { question: { q: { points?: number } } } }).sync.question.q;
+    expect(view(firstRound([{ ...base[0]!, points: 500 }, base[1]!, base[2]!])).points).toBe(500);
+    expect(view(firstRound(base)).points).toBeUndefined();
+    expect(view(firstRound([{ ...base[0]!, points: 1000 }, base[1]!, base[2]!])).points).toBeUndefined();
   });
 });

@@ -1,6 +1,7 @@
 import { useEffect, useRef, type ReactNode } from 'react';
 import { Zap } from 'lucide-react';
-import type { Media, PublicQuestion } from '@ludora/shared';
+import { POINTS_USUAL, type Media, type PublicQuestion } from '@ludora/shared';
+import { formatDecimal } from '../../../lib/format.ts';
 import { useAnnounce } from './announce.tsx';
 import { focusAdrift, focusSettled } from '../../../lib/focus.ts';
 import { useSfx, useSharedSounds } from '../../../lib/sound/react.tsx';
@@ -10,6 +11,15 @@ import { mathToWords } from '../../sets/math/parse.ts';
 import { ReadAloud, useBigScreenReads } from './comfort.tsx';
 import { useAccess } from '../../../lib/usePrefs.ts';
 import { speechSupported } from '../../../lib/speech.ts';
+
+/** A question's Points field in words: "Worth twice the points", "No points". */
+export function worthWords(points: number): string {
+  const x = points / POINTS_USUAL;
+  if (x === 0) return 'No points';
+  if (x === 2) return 'Worth twice the points';
+  if (x === 0.5) return 'Worth half the points';
+  return `Worth ${formatDecimal(x, 2)}× the points`;
+}
 
 const IMAGE_HEIGHT = {
   /** Projector: beside the prompt, as tall as the screen comfortably allows. */
@@ -47,7 +57,7 @@ export function QuestionCard({ q, index, total, children, size = 'md' }: { q: Pu
   // A new question is read out. If the answer button that had focus went away with the last one,
   // focus moves to the new prompt, so keyboard and screen reader users keep their place.
   const key = `${index ?? ''}|${q.prompt}`;
-  useAnnounce(`${index !== undefined && total ? `Question ${index + 1} of ${total}. ` : ''}${q.double ? 'Double points. ' : ''}${mathToWords(q.prompt)}`, key);
+  useAnnounce(`${index !== undefined && total ? `Question ${index + 1} of ${total}. ` : ''}${q.double ? 'Double points. ' : ''}${q.points !== undefined ? `${worthWords(q.points)}. ` : ''}${mathToWords(q.prompt)}`, key);
   useSfx('question', key, useSharedSounds());
   const heading = useRef<HTMLHeadingElement>(null);
   // Chaos text looks (jumbled, typed out...) change only how the prompt is drawn, never what is read out.
@@ -84,12 +94,20 @@ export function QuestionCard({ q, index, total, children, size = 'md' }: { q: Pu
   const reader = speechSupported() && (readAloud || autoRead) ? <ReadAloud q={q} index={index} total={total} auto={autoRead} big={size === 'lg'} /> : null;
   const len = q.prompt.length;
   const many = (q.type === 'mcq' || q.type === 'multi') && q.choices.length > 4;
-  const double = q.double ? (
-    <span className={`inline-flex items-center gap-1.5 self-start rounded-full bg-lantern px-3 py-0.5 font-display font-extrabold text-on-accent ${size === 'lg' ? 'text-[clamp(1.1rem,1.6vw,1.8rem)]' : 'text-base'}`}>
-      <Zap className="size-[1em]" aria-hidden />
-      Double points
-    </span>
-  ) : null;
+  const pill = `inline-flex items-center gap-1.5 self-start rounded-full bg-lantern px-3 py-0.5 font-display font-extrabold text-on-accent ${size === 'lg' ? 'text-[clamp(1.1rem,1.6vw,1.8rem)]' : 'text-base'}`;
+  const double =
+    q.double || q.points !== undefined ? (
+      <>
+        {q.double ? (
+          <span className={pill}>
+            <Zap className="size-[1em]" aria-hidden />
+            Double points
+          </span>
+        ) : null}
+        {/* What the question's author made it worth, where 1,000 is a usual question. */}
+        {q.points !== undefined ? <span className={pill}>{worthWords(q.points)}</span> : null}
+      </>
+    ) : null;
   const counter =
     index !== undefined && total ? (
       <div className="flex flex-wrap items-center gap-3">

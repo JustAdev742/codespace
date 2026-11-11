@@ -24,8 +24,8 @@ function mediaRefs(questions: readonly Question[]): { url: string; field: string
  * A set may only show images that were uploaded to Ludora and that staff have
  * not hidden. Built-in art (/art/...) needs no check.
  */
-export async function assertUploadsUsable(db: DbOrTx, questions: readonly Question[]): Promise<void> {
-  const refs = mediaRefs(questions);
+export async function assertUploadsUsable(db: DbOrTx, questions: readonly Question[], extra: readonly { field: string; url: string }[] = []): Promise<void> {
+  const refs = [...mediaRefs(questions), ...extra.filter((r) => r.url.startsWith('/uploads/'))];
   if (!refs.length) return;
   const fields: Record<string, string> = {};
   const ids = new Map<string, string[]>();

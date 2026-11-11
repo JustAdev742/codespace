@@ -29,6 +29,8 @@ export async function setExtraTime(handle: RoomHandle, p: RoomPlayerView, share:
 /** A compact picker for a row in the players list. */
 export function ExtraTimeSelect({ room, handle, p }: { room: RoomView; handle: RoomHandle; p: RoomPlayerView }) {
   if (p.isBot) return null;
+  // One clock shared by everyone: more time for one player would be more for all, so it is not offered.
+  if (room.host?.extraTimeKind?.kind === 'none') return <span className="text-xs text-text-3">Extra time does not apply</span>;
   const value = extraOf(room, p.id);
   return (
     <select

@@ -22,6 +22,7 @@ import { NextUp } from './NextUp.tsx';
 import { StudentMore, StudentToday } from './StudentHome.tsx';
 import { BLEED_ROUNDING, Bleed, Meter } from './kit.tsx';
 import { SeasonDecor, SeasonLine } from '../season/SeasonBanner.tsx';
+import { QuestBadge } from '../../art/badges.tsx';
 
 /** Shown until the overview loads, or if a player somehow has no buddy. */
 const PLACEHOLDER_BUDDY: GlimArt = { kind: 'glim', body: 'blob', hue: 30, accentHue: 45, saturation: 25, eyes: 'dot', mouth: 'smile', pattern: 'freckles', topper: 'none', cheeks: true };
@@ -75,6 +76,7 @@ function QuestRow({ q }: { q: QuestView }) {
   const ready = q.completed && !q.claimed;
   return (
     <li className={`flex items-center gap-4 rounded-[var(--radius-m)] px-3 py-3 ${ready ? 'bg-glim/15' : ''}`}>
+      <QuestBadge metric={q.metric} kind={q.kind} done={q.completed} size={44} />
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
           <span className="font-bold">{q.title}</span>

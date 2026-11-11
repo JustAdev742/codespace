@@ -4,8 +4,10 @@ import { toast } from 'sonner';
 import { GAME_GLYPHS, customGameInputSchema, type GameVisibility } from '@ludora/shared';
 import { api, ApiError } from '../../lib/api.ts';
 import { useCan } from '../../lib/session.ts';
+import { Box } from 'lucide-react';
 import { ModeArt } from '../../art/ModeArt.tsx';
-import { Dialog, Field, Input, Select, Textarea } from '../../ui/primitives.tsx';
+import { useModes } from '../../lib/queries.ts';
+import { Badge, Dialog, Field, Input, Select, Textarea } from '../../ui/primitives.tsx';
 import { Button } from '../../ui/Button.tsx';
 
 /*
@@ -43,6 +45,8 @@ export interface GameSetup {
   options: Record<string, boolean>;
   modeTitle: string;
   hue: number;
+  /** For the card preview: the set's title. */
+  setTitle?: string;
 }
 
 const VISIBILITY_TEXT: Record<GameVisibility, string> = {
@@ -60,6 +64,8 @@ export function SaveGameDialog({ open, onOpenChange, setup, editing, onSaved }: 
   const [hue, setHue] = useState(editing?.hue ?? setup.hue);
   const [visibility, setVisibility] = useState<GameVisibility>(editing?.visibility ?? 'private');
   const [busy, setBusy] = useState(false);
+  // The preview is the Game Maker card itself: the mode's cover with the maker's mark, the name and what it is.
+  const base = useModes().data?.modes.find((m) => m.meta.id === setup.modeId)?.meta;
   const body = { title, description, glyph, hue, visibility, setId: setup.setId, modeId: setup.modeId, variantId: setup.variantId, settings: setup.settings, common: setup.common, options: setup.options };
   const parsed = customGameInputSchema.safeParse(body);
   const fieldError = (k: string) => (parsed.success ? undefined : parsed.error.issues.find((i) => i.path[0] === k)?.message);
@@ -98,10 +104,27 @@ export function SaveGameDialog({ open, onOpenChange, setup, editing, onSaved }: 
       }
     >
       <div className="flex flex-col gap-3">
-        <div className="flex items-center gap-3">
-          <ModeArt thumb={{ glyph, hue, accentHue: (hue + 40) % 360 }} className="h-20 w-32 shrink-0 rounded-[var(--radius-m)]" />
-          <p className="text-sm text-text-2">Your game's card, as players see it.</p>
-        </div>
+        <figure className="flex flex-col gap-1.5">
+          <div className="w-full max-w-[17rem] self-center overflow-hidden rounded-[var(--radius-l)] border border-line bg-raised" aria-hidden>
+            <div className="relative">
+              <ModeArt thumb={{ glyph, hue, accentHue: (hue + 40) % 360 }} mode={base} mark={{ glyph, hue }} className="block aspect-[16/9] w-full" />
+              {base?.stage === '3d' ? (
+                <Badge tone="violet" className="absolute top-2 left-2">
+                  <Box className="size-3.5" aria-hidden /> 3D
+                </Badge>
+              ) : null}
+            </div>
+            <div className="p-3">
+              <p className="font-display text-xl leading-tight font-bold break-words">{title.trim() || 'Your game'}</p>
+              <p className="text-sm break-words text-text-2">
+                {setup.modeTitle}
+                {setup.setTitle ? ` with “${setup.setTitle}”` : ''}
+              </p>
+              {description.trim() ? <p className="mt-1 text-sm break-words">{description.trim()}</p> : null}
+            </div>
+          </div>
+          <figcaption className="text-center text-sm text-text-2">Your game's card in the Game Maker, as players see it.</figcaption>
+        </figure>
         <Field label="Name" error={title ? fieldError('title') : undefined}>
           {(p) => <Input value={title} onChange={(e) => setTitle(e.target.value)} maxLength={40} {...p} />}
         </Field>

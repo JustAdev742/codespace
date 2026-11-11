@@ -2,6 +2,37 @@
   "_note": "Newest first. Each entry: a unique id (date and a word), a date, a title and a sentence or two in plain words for players and teachers. The app shows entries a device has not seen yet.",
   "entries": [
     {
+      "id": "2026-11-games",
+      "date": "2026-11-11",
+      "title": "Five new games and a new look",
+      "items": [
+        "Five new 3D games: Summit Scramble, Spot Kick, Lantern Rally, Tower Together and Glim Garden. Each also plays with 3D off.",
+        "Every game has its own picture now, and the lobby, questions and podium have been redrawn. Teachers can choose a backdrop for the big screen.",
+        "Three new kinds of question: polls, fill in the blanks and sort into groups."
+      ]
+    },
+    {
+      "id": "2026-11-teaching",
+      "date": "2026-11-11",
+      "title": "For teachers and schools",
+      "items": [
+        "Lessons: run several games, slides and discussion questions in one room, with the same players.",
+        "Reports that show the wrong answer a class shared, who may need a hand, and how a set or a student is doing over time.",
+        "Classes: logins for students with no email, groups, co-teachers and a gradebook.",
+        "For a school's own copy: houses, house points, cups and tournaments."
+      ]
+    },
+    {
+      "id": "2026-11-students",
+      "date": "2026-11-11",
+      "title": "For players",
+      "items": [
+        "My mistakes keeps the questions you got wrong so you can fix them, and there is a new challenge every day.",
+        "Challenge a friend, play on your own against practice bots, and choose which reactions are on your bar.",
+        "A page for every Glim, saved outfits, a wishlist and badges for what you have earned."
+      ]
+    },
+    {
       "id": "2026-11-access",
       "date": "2026-11-11",
       "title": "Ludora for everyone",

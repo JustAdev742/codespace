@@ -4,7 +4,7 @@ import { ClipboardCopy, Frown, Meh, Printer, RotateCcw, Smile } from 'lucide-rea
 import { toast } from 'sonner';
 import type { Feeling, HostReportView, RoomView } from '@ludora/shared';
 import { api, ApiError } from '../../../lib/api.ts';
-import { duration, plural } from '../../../lib/format.ts';
+import { duration, formatDate, plural } from '../../../lib/format.ts';
 import { Button } from '../../../ui/Button.tsx';
 import { Dialog } from '../../../ui/primitives.tsx';
 import { PrintSheet, usePrinting } from '../../classes/PrintSheet.tsx';
@@ -82,7 +82,7 @@ function ResultsSheet({ room, report }: { room: RoomView; report: HostReportView
           {room.room.title}: {room.room.setTitle}
         </h1>
         <p>
-          {new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })} · {plural(r.standings.length, 'player')} · {duration(r.durationMs)} · class accuracy {percent(report.right, report.answered)}
+          {formatDate(new Date(), { day: 'numeric', month: 'long', year: 'numeric' })} · {plural(r.standings.length, 'player')} · {duration(r.durationMs)} · class accuracy {percent(report.right, report.answered)}
         </p>
       </header>
       <section className="print-avoid-break">
