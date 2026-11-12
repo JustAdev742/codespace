@@ -1,6 +1,6 @@
 // Bars 6 to 11: how a game plays. The big screen, the phones, an answer, the board, the podium.
 import { Group } from 'three';
-import { BigScreen, Clip, Confetti, Phone, bar, ease, glow, lerp, seg } from '../engine.ts';
+import { BigScreen, Clip, Confetti, Phone, bar, ease, glow, lerp, ring, seg } from '../engine.ts';
 import { arrive, caption, punch, roll } from './kit.ts';
 import { MARK } from './marks.ts';
 import type { Film, Shot } from '../film.ts';
@@ -54,6 +54,14 @@ export async function play(film: Film): Promise<Shot[]> {
   const back2 = glow(2000, '#1f9a78', 0.45);
   back2.position.set(300, 0, -600);
   C2.add(back2, board, hero);
+  // The touch: a ring of light where the thumb lands on the glass.
+  const touch = ring('#ffffff');
+  const dot = glow(90, '#ffffff', 0.9);
+  const tx = ((q1p.marks.tapX ?? 0.74) - 0.5) * hero.screen.w, ty = (0.5 - (q1p.marks.tapY ?? 0.53)) * hero.screen.h;
+  touch.position.set(tx, ty, 4);
+  dot.position.set(tx, ty, 3);
+  dot.renderOrder = 24;
+  hero.add(touch, dot);
   const beats = [caption('Answer.', -880, -250, { align: 'left', size: 150 }), caption('Streak.', -880, -250, { align: 'left', size: 150, color: '#ffc233' }), caption('Climb.', -880, -250, { align: 'left', size: 150 })];
   beats[1]!.group.position.x = -880 + beats[0]!.width + 50;
   beats[2]!.group.position.x = beats[1]!.group.position.x + beats[1]!.width + 50;
@@ -68,6 +76,13 @@ export async function play(film: Film): Promise<Shot[]> {
       hero.rotation.z = 0.03;
       hero.screen.u.uSheen!.value = lerp(-0.4, 1.8, seg(t, 0.2, 1.3));
       beats.forEach((c, i) => c.show(t - i * 0.5 - 0.02));
+      const since = t - 18 / 30; // the clip starts 18 frames before the tap
+      dot.material.opacity = seg(since, -0.3, -0.05) * (1 - seg(since, 0, 0.18));
+      dot.scale.setScalar(lerp(150, 70, seg(since, -0.3, 0)));
+      touch.visible = since >= 0 && since < 0.6;
+      touch.scale.setScalar(lerp(60, 520, ease.outCubic(seg(since, 0, 0.55))));
+      touch.material.uniforms.uP!.value = 1;
+      touch.material.uniforms.uOpacity!.value = (1 - seg(since, 0.05, 0.55)) * 0.8;
       stage.view({ x: 40, dolly: lerp(0, 90, ease.outCubic(seg(t, 0, 2))) + k * 70, orbitY: lerp(-0.06, 0.03, seg(t, 0, 2)) });
       stage.fx.uAberration.value = 0.0012 + k * 0.004;
       return [roll(q1p, hero.screen, t, { from: TAP - 18, speed: 1.0 }), roll(q1h, board.screen, t, { from: TAP - 18, speed: 1.0 })];

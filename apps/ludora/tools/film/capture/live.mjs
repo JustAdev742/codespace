@@ -80,6 +80,9 @@ async function game(browser) {
   await rec.frames(24);
   await classAnswers(0, rec);
   await rec.frames(8);
+  // Where on the phone the thumb lands (as fractions of the screen), so the film can show the touch.
+  const marsBox = await answers(hero.page).getByRole('button', { name: /Mars/ }).boundingBox();
+  if (marsBox) { rec.marks.tapX = (marsBox.x + marsBox.width / 2) / 390; rec.marks.tapY = (marsBox.y + marsBox.height / 2) / 844; }
   rec.mark('tap');
   await rec.during(() => answers(hero.page).getByRole('button', { name: /Mars/ }).click());
   await rec.until(() => hero.page.getByText('Correct', { exact: true }).isVisible(), { max: 200, extra: 80 });

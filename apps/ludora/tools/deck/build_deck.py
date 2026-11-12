@@ -337,8 +337,8 @@ def s_questions(slide, s):
         text(slide, x, y, w, 0.42, q, 13.5, bold=True, align='center', anchor='middle')
         x += w + 0.14
     bullets(slide, MX, y + 0.9, 5.9, 3.4, s['points'], size=16, gap=9)
-    pic(slide, s['image'], 6.95, 1.7, 5.78, 5.78 * 9 / 16)
-    text(slide, 6.95, 1.7 + 5.78 * 9 / 16 + 0.12, 5.78, 0.8, 'The set editor: autosave, undo, drag to reorder, and "Try this question" before a class ever sees it.', 13, color=MUTE, italic=True)
+    pic(slide, s['image'], 6.75, 1.7, 5.98, 5.98 * 9 / 16)
+    text(slide, 6.75, 1.7 + 5.98 * 9 / 16 + 0.12, 5.98, 0.8, 'The set editor: autosave, undo, drag to reorder, and "Try this question" before a class ever sees it.', 13, color=MUTE, italic=True)
 
 
 def s_flow3(slide, s):
@@ -454,6 +454,7 @@ AREAS = [
 
 
 def feature_rows(name):
+    """One short line a feature: its name in bold and a few words, with nothing cut mid-word."""
     path = os.path.join(DOCS, name + '.md')
     if not os.path.exists(path):
         return []
@@ -466,13 +467,25 @@ def feature_rows(name):
         m = re.match(r'\*\*(.+?)\*\*[:.]?\s*(.*)', cell)
         lead, rest = (m.group(1).strip(' :.'), m.group(2)) if m else (None, cell)
         rest = re.sub(r'\*\*', '', rest)
-        first = re.split(r'(?<=[a-z\)])[.;:] ', rest)[0].strip()
-        limit = 62 if lead else 92
-        if len(first) > limit:
-            first = first[:limit].rsplit(' ', 1)[0] + '…'
-        rows.append((lead, first.rstrip('.')))
+        rest = re.sub(r'\s*\([^)]*\)', '', rest)           # asides in brackets
+        rest = re.split(r'[.;:](\s|$)', rest)[0].strip(' ,')   # the first clause
+        if re.search(r'[=_/]|[A-Z]{3,}', rest):               # settings and file names are not for a slide
+            rest = ''
+        room = LINE_CHARS - (len(lead) + 2 if lead else 0)
+        if len(rest) > room:
+            # Keep whole phrases only: cut at a comma if one fits, otherwise say nothing more than the name.
+            head = rest[:room + 1]
+            rest = head[:head.rfind(',')].strip() if ',' in head and len(head[:head.rfind(',')].split()) >= 3 else ''
+        if lead and len(lead) > LINE_CHARS:
+            lead = lead[:LINE_CHARS + 1].rsplit(' ', 1)[0]
+        if not lead:
+            lead, rest = rest[:1].upper() + rest[1:], ''
+        if lead:
+            rows.append((lead, rest if room >= 12 else ''))
     return rows
 
+
+LINE_CHARS = 60
 
 FOUNDATIONS = [
     ('Accounts and guests', 'usernames, no email needed; recovery codes'), ('Join with a code', 'six digits, a QR code or a link'), ('30 game modes, 130 variants', 'every variant a rule change'),
@@ -493,21 +506,33 @@ def appendix(make_slide):
         if rows:
             items.append((name, rows))
     items.append(('The foundations', FOUNDATIONS))
-    # Fill slides column by column: 3 columns, about 17 lines each.
-    COLS, LINES = 3, 17
+    # Fill slides column by column: 3 columns, 25 one-line items each.
+    COLS, LINES = 3, 25
     pages, col, used = [[]], [], 0
+
+    def close_column():
+        nonlocal col, used
+        if col:
+            pages[-1].append(col)
+            col, used = [], 0
+            if len(pages[-1]) == COLS:
+                pages.append([])
+
     for name, rows in items:
-        chunks = [rows[i:i + LINES - 1] for i in range(0, len(rows), LINES - 1)]
-        for k, chunk in enumerate(chunks):
-            need = len(chunk) + 1
-            if used + need > LINES and col:
-                pages[-1].append(col); col, used = [], 0
-                if len(pages[-1]) == COLS:
-                    pages.append([])
-            col.append((name + (' (continued)' if k else ''), chunk))
-            used += need + 0.6
-    if col:
-        pages[-1].append(col)
+        k = 0
+        while rows:
+            room = LINES - used - 1.4          # a heading takes a line and a bit
+            if room < 4:
+                close_column()
+                room = LINES - 1.4
+            take = rows[:int(room)]
+            rows = rows[int(room):]
+            col.append((name + (' (continued)' if k else ''), take))
+            used += len(take) + 1.9
+            k += 1
+            if rows:
+                close_column()
+    close_column()
     pages = [p for p in pages if p]
     for pi, page in enumerate(pages):
         slide = make_slide({'say': 'Appendix: every feature, by area. For questions, not for reading out.', 'do': 'Only show these if someone asks "does it do X?"'})
@@ -516,11 +541,13 @@ def appendix(make_slide):
         for ci, column in enumerate(page):
             x = MX + ci * (cw + 0.25)
             paras = []
-            for name, chunk in column:
+            for gi, (name, chunk) in enumerate(column):
+                if gi:
+                    paras.append([(' ', {'size': 5})])
                 paras.append([(name, {'bold': True, 'color': GOLD, 'size': 12.5, 'font': HEAD})])
                 for lead, rest in chunk:
-                    paras.append(([(lead + ('. ' if rest else ''), {'bold': True, 'color': INK})] if lead else []) + [(rest, {})])
-            text(slide, x, 1.3, cw, 5.6, paras, 10, color=SOFT, spacing=1.4)
+                    paras.append([(lead + ('  ' if rest else ''), {'bold': True, 'color': INK})] + ([(rest, {})] if rest else []))
+            text(slide, x, 1.25, cw, 5.7, paras, 10.5, color=SOFT, spacing=1.2)
     return len(pages)
 
 
