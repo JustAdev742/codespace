@@ -101,7 +101,8 @@ export function modeTitle(modeId: string, variantId: string | null): string {
  * lobby's "About N minutes"), a slide two minutes, a discussion its timer and a minute to settle.
  */
 export function stepMinutes(step: LessonStep, questionCount: number | null): number {
-  if (step.kind === 'slide') return 2;
+  // A slide with a classroom tool takes the time planned for the tool (making).
+  if (step.kind === 'slide') return step.tool ? Math.max(1, Math.ceil(step.tool.seconds / 60)) : 2;
   if (step.kind === 'discussion') return Math.ceil(step.seconds / 60) + 1;
   const variant = step.variantId ? getVariant(step.variantId) : undefined;
   const mode = getMode(variant?.meta.modeId ?? step.modeId);

@@ -10,6 +10,7 @@ import type { SetSummary } from '../../lib/queries.ts';
 import { formatNumber, plural } from '../../lib/format.ts';
 import { Badge, EmptyState, ErrorNotice, PageHeader, Panel, Spinner } from '../../ui/primitives.tsx';
 import { Button, ButtonLink, IconButton } from '../../ui/Button.tsx';
+import { SetNextSteps } from '../making/NextSteps.tsx';
 import { FavouriteStar } from '../profile/parts.tsx';
 import { SetCover } from './SetCover.tsx';
 import { FolderDialog, ShareDialog, StatsPanel, VersionsDialog } from './SetTools.tsx';
@@ -129,6 +130,7 @@ export default function SetDetail() {
               Add to a lesson
             </Button>
           ) : null}
+          {me.data?.user?.accountType === 'teacher' ? <SetNextSteps setId={set.id} title={set.title} /> : null}
           {editable ? (
             <ButtonLink to={`/sets/${set.id}/edit`} icon={<Pencil className="size-4" />}>
               Edit

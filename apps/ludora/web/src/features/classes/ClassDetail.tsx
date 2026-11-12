@@ -40,6 +40,7 @@ import {
 import { ClassAccountGate, ClassPageSkeleton, ConfirmDialog, DueLabel, JoinCode } from './classUi.tsx';
 import { ExtraTimePanel } from './ExtraTimePanel.tsx';
 import { GroupsPanel, TeachersPanel } from './GroupsAndTeachers.tsx';
+import { ClassNextUp } from '../making/ClassNextUp.tsx';
 
 /*
  * /classes/:id. The teacher manages the class: join code, roster (with class
@@ -548,6 +549,8 @@ function TeacherView({ data }: { data: TeacherClassDetail }) {
           </>
         }
       />
+      {/* Making: the next thing due, one press from its report. */}
+      {cls.archived ? null : <ClassNextUp classId={cls.id} assignments={data.assignments} />}
 
       {cls.archived ? (
         <div className="mb-6 rounded-[var(--radius-l)] border border-line bg-surface-2 px-4 py-3 text-sm text-text-2">

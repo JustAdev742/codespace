@@ -102,6 +102,8 @@ export const router = createBrowserRouter([
         children: [
           { index: true, lazy: page(() => import('../features/home/Home.tsx')) },
           { path: 'host', lazy: page(() => import('../features/host/HostSetup.tsx')) },
+          { path: 'make/*', lazy: page(() => import('../features/making/MakeApp.tsx')) },
+          { path: 'today', lazy: page(() => import('../features/making/Today.tsx')) },
           { path: 'lessons', lazy: page(() => import('../features/lessons/LessonsPage.tsx')) },
           { path: 'lessons/runs/:runId', lazy: page(() => import('../features/lessons/LessonReport.tsx')) },
           { path: 'lessons/:id', lazy: page(() => import('../features/lessons/LessonEditor.tsx')) },

@@ -40,7 +40,7 @@ export interface LessonRunInit {
 
 /** What every screen shows for a step that is not a game. Null for a game. */
 export function screenFor(step: LessonStep, now: number): LessonScreenView | null {
-  if (step.kind === 'slide') return { kind: 'slide', title: step.title, lines: step.lines.filter(Boolean), image: step.image ? { url: step.image.url, alt: step.image.alt } : null };
+  if (step.kind === 'slide') return { kind: 'slide', title: step.title, lines: step.lines.filter(Boolean), image: step.image ? { url: step.image.url, alt: step.image.alt } : null, ...(step.tool ? { tool: step.tool } : {}) };
   if (step.kind === 'discussion') return { kind: 'discussion', prompt: step.prompt, seconds: step.seconds, endsAt: now + step.seconds * 1000 };
   return null;
 }

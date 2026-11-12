@@ -162,6 +162,13 @@
       "when": 1794400000000,
       "tag": "0022_designs",
       "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1794500000000,
+      "tag": "0023_making",
+      "breakpoints": true
     }
   ]
 }

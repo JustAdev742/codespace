@@ -38,12 +38,25 @@ export const lessonGameStepSchema = z.object({
   note,
 });
 
+/** Classroom tools a slide can carry (making): the tool runs on the big screen; devices show the slide. */
+export const LESSON_TOOLS = ['timer', 'stopwatch', 'picker', 'groups', 'checkin', 'scoreboard'] as const;
+export type LessonTool = (typeof LESSON_TOOLS)[number];
+export const LESSON_TOOL_TITLES: Record<LessonTool, string> = { timer: 'Countdown', stopwatch: 'Stopwatch', picker: 'Random picker', groups: 'Team maker', checkin: 'Check-in', scoreboard: 'Scoreboard' };
+export const lessonSlideToolSchema = z.object({
+  kind: z.enum(LESSON_TOOLS),
+  /** The countdown's length, and how long the step is planned for. */
+  seconds: z.number().int().min(10).max(3600).default(180),
+});
+export type LessonSlideTool = z.infer<typeof lessonSlideToolSchema>;
+
 export const lessonSlideStepSchema = z.object({
   id: stepId,
   kind: z.literal('slide'),
   title: z.string().trim().min(1, 'Give the slide a title.').max(LESSON_LIMITS.title),
   lines: z.array(z.string().trim().max(LESSON_LIMITS.line, `Keep each line to ${LESSON_LIMITS.line} characters.`)).max(LESSON_LIMITS.lines, `A slide has up to ${LESSON_LIMITS.lines} lines.`).default([]),
   image: mediaSchema.nullable().default(null),
+  /** A classroom tool on the big screen with this slide (a timer, a picker, a check-in...). */
+  tool: lessonSlideToolSchema.optional(),
   note,
 });
 
@@ -73,7 +86,7 @@ export type LessonBody = z.infer<typeof lessonBodySchema>;
 
 /** What every screen in the room shows of a step that is not a game. */
 export type LessonScreenView =
-  | { kind: 'slide'; title: string; lines: string[]; image: { url: string; alt: string } | null }
+  | { kind: 'slide'; title: string; lines: string[]; image: { url: string; alt: string } | null; tool?: LessonSlideTool }
   | { kind: 'discussion'; prompt: string; seconds: number; endsAt: number }
   | { kind: 'end' };
 

@@ -290,7 +290,7 @@ function useScrollPadding(bar: RefObject<HTMLElement | null>) {
 type PastSetup = { setId: string; modeId: string; variantId: string | null; settings: Record<string, unknown>; common: Record<string, number | boolean>; options: Record<string, unknown> | null; classId: string | null };
 type ClassInfo = { class: { id: string; name: string; hostDefaults?: { generatedNames: boolean; quiet: boolean } }; role: string };
 
-function Setup({ solo, preset, gameId, making, again, classId }: { solo: boolean; preset: string | null; gameId: string | null; making: boolean; again: string | null; classId: string | null }) {
+function Setup({ solo, preset, presetMode = null, gameId, making, again, classId }: { solo: boolean; preset: string | null; presetMode?: string | null; gameId: string | null; making: boolean; again: string | null; classId: string | null }) {
   const navigate = useNavigate();
   const qc = useQueryClient();
   const me0 = useMe();
@@ -366,6 +366,14 @@ function Setup({ solo, preset, gameId, making, again, classId }: { solo: boolean
     setCommon(pastSetup.common ?? {});
     if (pastSetup.options) setOptions((o) => ({ ...o, ...pastSetup.options }));
   }, [pastSetup, modes.data]);
+  // A suggested game from the Make page (?mode=<id>) starts with that mode picked; the host can change it.
+  const modeApplied = useRef(false);
+  useEffect(() => {
+    if (!presetMode || modeApplied.current || !modes.data) return;
+    const entry = modes.data.modes.find((m) => m.meta.id === presetMode);
+    modeApplied.current = true;
+    if (entry) setChoice((c) => c ?? { mode: entry, variant: null });
+  }, [presetMode, modes.data]);
   const classApplied = useRef(false);
   useEffect(() => {
     if (!forClass?.hostDefaults || classApplied.current) return;
@@ -691,7 +699,7 @@ export default function HostSetup() {
   // Hosting and playing solo offer different modes, so switching between them starts afresh.
   const gameId = params.get('game');
   const again = params.get('again');
-  return <Setup key={`${solo ? 'solo' : 'host'}-${gameId ?? ''}-${again ?? ''}`} solo={solo} preset={params.get('set')} gameId={gameId} making={params.get('make') === '1'} again={again} classId={params.get('class')} />;
+  return <Setup key={`${solo ? 'solo' : 'host'}-${gameId ?? ''}-${again ?? ''}`} solo={solo} preset={params.get('set')} presetMode={params.get('mode')} gameId={gameId} making={params.get('make') === '1'} again={again} classId={params.get('class')} />;
 }
 
 /**

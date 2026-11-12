@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type DragEvent, type KeyboardEvent } from 
 import { Link, useNavigate, useParams } from 'react-router';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { ArrowDown, ArrowUp, CalendarClock, Copy, GripVertical, MessagesSquare, NotebookPen, Pencil, Play, Plus, Presentation, Printer, Share2, StepForward, Trash2, TriangleAlert, Trophy, X } from 'lucide-react';
+import { ArrowDown, ArrowUp, CalendarClock, Copy, GripVertical, MessagesSquare, NotebookPen, Pencil, Play, Plus, Presentation, Printer, Share2, StepForward, Timer, Trash2, TriangleAlert, Trophy, X } from 'lucide-react';
 import { LESSON_LIMITS, type LessonBody, type LessonStep } from '@ludora/shared';
 import { api } from '../../lib/api.ts';
 import { plural } from '../../lib/format.ts';
@@ -562,6 +562,9 @@ function Editor({ detail }: { detail: LessonDetail }) {
               </Button>
               <Button icon={<MessagesSquare className="size-4" aria-hidden />} onClick={() => setEditing({ step: newStep('discussion'), index: null })}>
                 Add a discussion
+              </Button>
+              <Button icon={<Timer className="size-4" aria-hidden />} onClick={() => setEditing({ step: { id: newStepId(), kind: 'slide', title: 'How are we doing?', lines: ['Hold up a colour without a word', 'Green: got it. Amber: nearly. Red: stuck.'], image: null, tool: { kind: 'checkin', seconds: 120 }, note: '' }, index: null })}>
+                Add a classroom tool
               </Button>
             </div>
           ) : (

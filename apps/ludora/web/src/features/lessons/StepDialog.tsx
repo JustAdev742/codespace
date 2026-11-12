@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Search } from 'lucide-react';
-import { LESSON_LIMITS, type LessonStep } from '@ludora/shared';
+import { LESSON_LIMITS, LESSON_TOOL_TITLES, LESSON_TOOLS, type LessonStep, type LessonTool } from '@ludora/shared';
 import { useModes, useSets, type CatalogEntry } from '../../lib/queries.ts';
 import { Dialog, Field, Input, Select, Textarea } from '../../ui/primitives.tsx';
 import { Button } from '../../ui/Button.tsx';
@@ -11,7 +11,8 @@ import { DiscussionHelper, SlideHelper } from '../ai/AiLessonTools.tsx';
 
 /*
  * Editing one step of a lesson: a game (a set, a mode and the two settings teachers change most),
- * an info slide (a title, a few lines, an optional picture with its description) or a discussion
+ * an info slide (a title, a few lines, an optional picture with its description, and optionally a
+ * classroom tool for the big screen: making) or a discussion
  * (a question and a timer). Every step can carry a private plan note.
  */
 
@@ -177,6 +178,33 @@ export function StepDialog({ open, step, setTitle, onOpenChange, onSave }: { ope
               <QuestionImage media={draft.image ?? undefined} altId="slide-image-alt" onChange={(m) => setDraft({ ...draft, image: m ?? null })} />
             </div>
             <SlideHelper title={draft.title} lines={draft.lines} onAccept={(o) => setDraft({ ...draft, title: o.title, lines: o.lines })} />
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <Field label="Classroom tool on the big screen" hint="Runs on your screen beside the slide. Devices show the slide.">
+                {(p) => (
+                  <Select {...p} value={draft.tool?.kind ?? ''} onChange={(e) => setDraft({ ...draft, tool: e.target.value ? { kind: e.target.value as LessonTool, seconds: draft.tool?.seconds ?? 180 } : undefined })}>
+                    <option value="">None</option>
+                    {LESSON_TOOLS.map((t) => (
+                      <option key={t} value={t}>
+                        {LESSON_TOOL_TITLES[t]}
+                      </option>
+                    ))}
+                  </Select>
+                )}
+              </Field>
+              {draft.tool ? (
+                <Field label={draft.tool.kind === 'timer' ? 'Countdown length' : 'Time planned for it'}>
+                  {(p) => (
+                    <Select {...p} value={String(draft.tool!.seconds)} onChange={(e) => setDraft({ ...draft, tool: { ...draft.tool!, seconds: Number(e.target.value) } })}>
+                      {[30, 60, 120, 180, 300, 600, 900].map((s) => (
+                        <option key={s} value={s}>
+                          {s < 60 ? `${s} seconds` : s === 60 ? '1 minute' : `${s / 60} minutes`}
+                        </option>
+                      ))}
+                    </Select>
+                  )}
+                </Field>
+              ) : null}
+            </div>
           </>
         ) : (
           <>

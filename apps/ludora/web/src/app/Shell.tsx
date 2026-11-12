@@ -31,6 +31,7 @@ import {
   ListOrdered,
   Hammer,
 } from 'lucide-react';
+import { PencilRuler } from 'lucide-react';
 import { useMe } from '../lib/session.ts';
 import { useOverview } from '../lib/queries.ts';
 import { api } from '../lib/api.ts';
@@ -68,6 +69,7 @@ const PRIMARY: NavItem[] = [
   { to: '/', label: 'Home', icon: <Home className="size-5" />, end: true },
   { to: '/play', label: 'Join a game', icon: <Gamepad2 className="size-5" /> },
   { to: '/host', label: 'Host', icon: <Presentation className="size-5" /> },
+  { to: '/make', label: 'Make', icon: <PencilRuler className="size-5" />, show: 'signedIn' },
   { to: '/lessons', label: 'Lessons', icon: <ListOrdered className="size-5" />, show: 'teacher' },
   { to: '/modes', label: 'Game modes', icon: <LayoutGrid className="size-5" /> },
   { to: '/games', label: 'Game Maker', icon: <Wand2 className="size-5" /> },

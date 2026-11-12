@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { lazy, Suspense, useState } from 'react';
 import { Link } from 'react-router';
 import { toast } from 'sonner';
 import { CheckCircle2, ClipboardList, Flag, ListOrdered, MessagesSquare, StepForward } from 'lucide-react';
@@ -11,6 +11,10 @@ import { Button, buttonClass } from '../../ui/Button.tsx';
 import { serverClock } from '../room/host/tools.ts';
 import { useAnnounce } from '../room/game/announce.tsx';
 import { HomeworkDialog } from './Homework.tsx';
+import { TOOL_TITLES } from '../making/tools/titles.ts';
+
+/** A classroom tool on the big screen (making), loaded only when a lesson step has one. */
+const BoardTool = lazy(() => import('../making/tools/BoardTool.tsx'));
 
 /*
  * A lesson in the room: where the class is (a line in the lobby), the lesson standings and the host's
@@ -204,7 +208,17 @@ export function LessonScreen({ room, handle, isHost }: { room: RoomView; handle:
             </figure>
           ) : null}
         </article>
-      ) : screen.kind === 'discussion' ? (
+      ) : null}
+      {screen.kind === 'slide' && screen.tool ? (
+        isHost ? (
+          <Suspense fallback={null}>
+            <BoardTool tool={screen.tool} people={room.players.filter((p) => !p.isBot).map((p) => ({ id: p.id, name: p.name, avatar: p.avatar }))} />
+          </Suspense>
+        ) : (
+          <p className="text-center text-lg font-semibold text-text-2">Look at the big screen: {TOOL_TITLES[screen.tool.kind].toLowerCase()}.</p>
+        )
+      ) : null}
+      {screen.kind === 'slide' ? null : screen.kind === 'discussion' ? (
         <section aria-labelledby="discussion-title" className={`stage-card flex flex-col items-center gap-[clamp(1rem,3vh,2rem)] bg-white/[0.06] text-center ${big ? 'p-[clamp(1.5rem,3vw,3.5rem)]' : 'p-5'}`}>
           <h1 id="discussion-title" className="sr-only">
             Discussion

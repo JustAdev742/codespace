@@ -20,6 +20,7 @@ import { NameTag, PlayerGlim, StagePanel, avatarOf, motionOK } from './game/stag
 import { Burst } from '../../art/bursts.tsx';
 import { useAnnounce } from './game/announce.tsx';
 import { useSfx, useSharedSounds } from '../../lib/sound/react.tsx';
+import { GameNextSteps } from '../making/GameNextSteps.tsx';
 
 /** Block heights as a share of the tallest, and when each block starts to rise (ms): third, then second, then first. */
 const HEIGHT = [1, 0.72, 0.5];
@@ -448,6 +449,7 @@ export function Results({ room, handle, isHost, guest }: { room: RoomView; handl
                   Class summary
                 </Button>
               ) : null}
+              {r.gameId && !room.room.solo ? <GameNextSteps gameId={r.gameId} /> : null}
               <Button size="lg" className="grow" icon={<Download className="size-5" aria-hidden />} onClick={() => downloadCsv(room)}>
                 Download results (CSV)
               </Button>

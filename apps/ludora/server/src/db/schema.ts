@@ -1473,3 +1473,50 @@ export const wornDesigns = pgTable(
   },
   (t) => [primaryKey({ columns: [t.userId, t.slot] })],
 );
+
+/* ---------------------------------- Making (making) ---------------------------------- */
+
+/**
+ * Work in progress on the Make page (the quick maker: pasted notes and the questions kept from
+ * them), saved on the server so it carries on from any device. Owner only; at most 20 each.
+ */
+export const makingDrafts = pgTable(
+  'making_drafts',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    ownerId: uuid('owner_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    kind: text('kind').notNull(),
+    title: text('title').notNull().default(''),
+    body: jsonb('body').notNull(),
+    createdAt: now('created_at'),
+    updatedAt: now('updated_at'),
+  },
+  (t) => [index('making_drafts_owner_idx').on(t.ownerId, t.updatedAt), check('making_drafts_kind_valid', sql`${t.kind} in ('quick')`)],
+);
+
+/** A teacher's classroom tools for one class: who the picker has already chosen, and the scoreboard. */
+export const makingToolState = pgTable(
+  'making_tool_state',
+  {
+    ownerId: uuid('owner_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    classId: uuid('class_id')
+      .notNull()
+      .references(() => classes.id, { onDelete: 'cascade' }),
+    state: jsonb('state').notNull(),
+    updatedAt: now('updated_at'),
+  },
+  (t) => [primaryKey({ columns: [t.ownerId, t.classId] })],
+);
+
+/** Help on the Make page that an account closed for good. */
+export const makingPrefs = pgTable('making_prefs', {
+  userId: uuid('user_id')
+    .primaryKey()
+    .references(() => users.id, { onDelete: 'cascade' }),
+  dismissed: jsonb('dismissed').$type<string[]>().notNull().default([]),
+  updatedAt: now('updated_at'),
+});
