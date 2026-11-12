@@ -627,9 +627,12 @@ Not checked yet:
   it before real use.
 
 Needs the operator:
-- **A real deployment.** The kit is tested in Docker, but going live needs a
-  server, a domain and the operator's settings (DEPLOYMENT.md, *From a blank
-  server*).
+- **A school's own server.** A copy runs on Render's free plan at
+  ludora-yja3.onrender.com (DEPLOYMENT.md, "Free hosting"; last deployed
+  2026-11-12 from 02dfdc9, with Game Maker's code and solo's settings stage).
+  The free plan sleeps when idle and has one small instance; a school using it
+  every day needs a paid plan or its own server (DEPLOYMENT.md, *From a blank
+  server*) and a domain.
 
 ## Running it
 
