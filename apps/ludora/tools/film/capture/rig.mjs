@@ -101,12 +101,31 @@ export const FAKE_CLOCK = `(() => {
 })();`;
 
 /** The "Dev" badge marks this private copy; the real site does not show it. */
+export const SITE = process.env.FILM_SITE ?? 'ludora-yja3.onrender.com';
+/**
+ * Two things differ between this private copy and the real site, and the film shows the real site:
+ * the "Dev" badge (hidden), and the address a lobby tells players to go to (the private copy says
+ * 127.0.0.1:8980; the words are swapped for the real site's address as they are drawn).
+ */
 export const NO_ENV_BADGE = `(() => {
-  const css = 'span[title^="Test environment"] { display: none !important; }';
+  // Also hidden: the tip that offers to turn 3D off when frames are slow (they always are on this machine's software renderer).
+  const css = 'span[title^="Test environment"], .s3-tip { display: none !important; }';
   const add = () => { if (!document.head || document.getElementById('film-style')) return; const st = document.createElement('style'); st.id = 'film-style'; st.textContent = css; document.head.appendChild(st); };
   add();
   document.addEventListener('DOMContentLoaded', add);
-  new MutationObserver(add).observe(document.documentElement, { childList: true });
+  const here = location.host, site = ${JSON.stringify(process.env.FILM_SITE ?? 'ludora-yja3.onrender.com')};
+  const fix = (root) => {
+    if (!root || here === site) return;
+    const walk = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+    for (let n = walk.nextNode(); n; n = walk.nextNode()) if (n.nodeValue && n.nodeValue.includes(here)) n.nodeValue = n.nodeValue.split(here).join(site);
+  };
+  new MutationObserver((list) => {
+    add();
+    for (const m of list) {
+      if (m.type === 'characterData') { const n = m.target; if (n.nodeValue && n.nodeValue.includes(here) && here !== site) n.nodeValue = n.nodeValue.split(here).join(site); }
+      else for (const n of m.addedNodes) fix(n.nodeType === 3 ? n.parentNode : n);
+    }
+  }).observe(document.documentElement, { childList: true, subtree: true, characterData: true });
 })();`;
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));

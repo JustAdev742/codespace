@@ -79,38 +79,64 @@ export async function making(film: Film): Promise<Shot[]> {
 
   /* ---- bars 20 and 21: notes become questions ---- */
   const s1 = windowScene(bar(20), bar(22), notes, [['Paste your notes.', 0.3, 1.55], ['Get a game.', 2.05, 9, '#ffc233']], { from: MARK.notes, speed: 2.05 });
-  /* ---- bars 22 and 23: write your own game mode ---- */
-  const s2 = windowScene(bar(22), bar(24), code, [['Write your own game mode.', 0.3, 1.55], ['In plain words.', 2.05, 9, '#ffc233']], { speed: 1.4, glowColor: '#22b8a0' });
-
-  /* ---- bars 24 and 25: your own Glim ---- */
-  const E3 = new Group(), hud3 = new Group();
-  const glimCard = new Card({ w: 760, h: 760 * ((CROP.designGlim[3] - CROP.designGlim[1]) * 2250) / ((CROP.designGlim[2] - CROP.designGlim[0]) * 1920), radius: 30, rim: 2, rimColor: '#7f8be0', glow: '#8a5cff', shadow: 0.7 });
-  glimCard.position.set(-470, 90, 0);
-  const paintCard = new Card({ w: 760, h: 760 * ((CROP.designPaint[3] - CROP.designPaint[1]) * 2250) / ((CROP.designPaint[2] - CROP.designPaint[0]) * 1920), radius: 30, rim: 2, rimColor: '#7f8be0', glow: '#ff5d9a', shadow: 0.7 });
-  paintCard.position.set(470, 90, 0);
-  E3.add(glimCard, paintCard);
-  const cap3 = caption('Design your own Glim.', 0, -462, { size: 96 });
-  const cap3b = caption('Shape it. Paint it. Wear it.', 0, -462, { size: 96, color: '#ffc233' });
-  hud3.add(cap3.group, cap3b.group);
-  const s3: Shot = {
-    a: bar(24), b: bar(26), group: E3, hud: hud3,
-    update(t) {
-      film.energy = 0.5; film.warm = 0.25;
-      const a1 = ease.outBack(seg(t, 0, 0.5), 1.2), a2 = ease.outBack(seg(t, 0.12, 0.62), 1.2);
-      glimCard.position.x = -470 - (1 - a1) * 1700;
-      paintCard.position.x = 470 + (1 - a2) * 1700;
-      glimCard.rotation.y = lerp(0.5, 0.1, a1);
-      paintCard.rotation.y = lerp(-0.5, -0.1, a2);
-      cap3.show(t - 0.3, 1.55);
-      cap3b.show(t - 2.05);
-      stage.view({ dolly: lerp(-80, 60, ease.outCubic(seg(t, 0, 4))) + punch(t - 2) * 40, orbitY: lerp(-0.04, 0.04, seg(t, 0, 4)) });
-      // First half: the Glim changing. Second half: the paint going on, and the Glim wearing it.
-      return [
-        roll(t < 2 ? shuffle : paint, glimCard, t < 2 ? t : t - 2, { from: 12, speed: t < 2 ? 1.6 : 1.5, crop: CROP.designGlim, hold: true }),
-        roll(paint, paintCard, Math.max(0, t - 1.4), { from: 4, speed: 1.2, crop: CROP.designPaint, hold: true }),
-      ];
-    },
+  /** Two cards side by side, cut from one filmed page: `left` and `right` are the parts of the picture to show. */
+  type Box = [number, number, number, number];
+  const pairScene = (a: number, b: number, o: {
+    clipL: (t: number) => { clip: Clip; t: number; from: number; speed: number }; clipR: (t: number) => { clip: Clip; t: number; from: number; speed: number };
+    left: Box; right: Box; picture: [number, number]; lines: [string, number, number, string?][]; glowL: string; glowR: string; height?: number;
+  }): Shot => {
+    const g = new Group(), hud = new Group();
+    const H0 = o.height ?? 640;
+    const size = (box: Box) => { const asp = ((box[2] - box[0]) * o.picture[0]) / ((box[3] - box[1]) * o.picture[1]); const w = Math.min(880, H0 * asp); return { w, h: w / asp }; };
+    const sl = size(o.left), sr = size(o.right);
+    const gap = 70, total = sl.w + sr.w + gap;
+    const L = new Card({ w: sl.w, h: sl.h, radius: 28, rim: 2, rimColor: '#7f8be0', glow: o.glowL, shadow: 0.7 });
+    const R = new Card({ w: sr.w, h: sr.h, radius: 28, rim: 2, rimColor: '#7f8be0', glow: o.glowR, shadow: 0.7 });
+    const lx = -total / 2 + sl.w / 2, rx = total / 2 - sr.w / 2;
+    L.position.set(lx, 80, 0);
+    R.position.set(rx, 80, 0);
+    g.add(L, R);
+    const caps = o.lines.map(([str, , , color]) => { const c = caption(str, 0, -462, { size: 96, color: color ?? '#ffffff' }); hud.add(c.group); return c; });
+    return {
+      a, b, group: g, hud,
+      update(t) {
+        film.energy = 0.5; film.warm = 0.25;
+        const a1 = ease.outBack(seg(t, 0, 0.5), 1.2), a2 = ease.outBack(seg(t, 0.12, 0.62), 1.2);
+        L.position.x = lx - (1 - a1) * 1800;
+        R.position.x = rx + (1 - a2) * 1800;
+        L.rotation.y = lerp(0.5, 0.07, a1);
+        R.rotation.y = lerp(-0.5, -0.07, a2);
+        L.u.uSheen!.value = lerp(-0.5, 1.9, seg(t, 0.4, 1.5));
+        caps.forEach((c, i) => c.show(t - o.lines[i]![1], o.lines[i]![2]));
+        stage.view({ dolly: lerp(-80, 60, ease.outCubic(seg(t, 0, b - a))) + punch(t - 2) * 40, orbitY: lerp(-0.04, 0.04, seg(t, 0, b - a)) });
+        const l = o.clipL(t), r = o.clipR(t);
+        return [roll(l.clip, L, l.t, { from: l.from, speed: l.speed, crop: o.left, hold: true }), roll(r.clip, R, r.t, { from: r.from, speed: r.speed, crop: o.right, hold: true })];
+      },
+    };
   };
+  const pad = (b: Box | undefined, fallback: Box, px = 0.008, py = 0.008): Box => { const v = b ?? fallback; return [Math.max(0, v[0] - px), Math.max(0, v[1] - py), Math.min(1, v[2] + px), Math.min(1, v[3] + py)]; };
+  const mk = (c: Clip) => c.marks as unknown as Record<string, Box | undefined> & Record<string, number>;
+
+  /* ---- bars 22 and 23: write your own game mode. The code on the left, the test game it drives on the right ---- */
+  const codeBox = pad(mk(code).code, [0.21, 0.27, 0.6, 0.62]);
+  const liveBox = pad(mk(code).live, [0.21, 0.63, 0.6, 1.0]);
+  const s2 = pairScene(bar(22), bar(24), {
+    clipL: (t) => ({ clip: code, t, from: Math.max(1, ((mk(code).edit as unknown as number) ?? 34) - 14), speed: 1.55 }),
+    clipR: (t) => ({ clip: code, t, from: Math.max(1, ((mk(code).edit as unknown as number) ?? 34) - 14), speed: 1.55 }),
+    left: codeBox, right: liveBox, picture: [1920, 1770], glowL: '#22b8a0', glowR: '#3f6bff',
+    lines: [['Write your own game mode.', 0.3, 1.55], ['Simple code. A real game.', 2.05, 9, '#ffc233']],
+  });
+
+  /* ---- bars 24 and 25: your own Glim. The Glim on the left, the paint going on at the right ---- */
+  const prev = mk(shuffle).preview ?? [0.4, 0.14, 0.57, 0.31];
+  const glimBox: Box = [Math.max(0, prev[0] - (prev[2] - prev[0]) * 1.06), prev[1], prev[2], prev[3]];
+  const paintBox = pad(mk(paint).painter ?? mk(shuffle).painter, [0.6, 0.52, 0.94, 0.76], 0.012, 0.012);
+  const s3 = pairScene(bar(24), bar(26), {
+    clipL: (t) => (t < 2 ? { clip: shuffle, t, from: 12, speed: 1.6 } : { clip: paint, t: t - 2, from: 6, speed: 1.5 }),
+    clipR: (t) => ({ clip: paint, t: Math.max(0, t - 1.4), from: 4, speed: 1.25 }),
+    left: glimBox, right: paintBox, picture: [1920, 3000], glowL: '#8a5cff', glowR: '#ff5d9a', height: 560,
+    lines: [['Design your own Glim.', 0.3, 1.55], ['Shape it. Paint it. Wear it.', 2.05, 9, '#ffc233']],
+  });
 
   /* ---- bar 26: the collection ---- */
   const E4 = new Group(), hud4 = new Group();

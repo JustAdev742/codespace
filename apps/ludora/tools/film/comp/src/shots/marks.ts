@@ -14,5 +14,5 @@ export const CROP = {
   designGlim: [0.19, 0.10, 0.60, 0.33] as [number, number, number, number],
   designPaint: [0.58, 0.60, 1.0, 0.95] as [number, number, number, number],
   /** An app page without its side menu and top bar. */
-  page: [0.195, 0.062, 1.0, 1.0] as [number, number, number, number],
+  page: [0.195, 0.09, 1.0, 1.0] as [number, number, number, number],
 };

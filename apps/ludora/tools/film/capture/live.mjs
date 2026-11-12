@@ -1,6 +1,6 @@
 // The live shots: a real game from lobby to podium on the big screen and a phone, and the making
 // tools, filmed frame by frame from the private filming copy (every page on the film clock).
-// usage: node live.mjs [game] [make] [gallery] [designs] [tools]   (no names: all)
+// usage: node live.mjs [game] [make] [gallery] [designs] [tools] [gamemaker]   (no names: all)
 import { launch, Recorder, pump, open, still, account, visitor, post } from './rig.mjs';
 
 const want = new Set(process.argv.slice(2));
@@ -201,15 +201,20 @@ async function gallery(browser) {
 }
 
 async function designs(browser) {
-  // Tall, so the Glim and the painter are both in the picture; the film crops what it needs.
-  const s = await account(browser, { accountType: 'student', displayName: 'Robin Park', viewport: { width: 1280, height: 1500 }, deviceScaleFactor: 1.5 });
+  // Very tall, so the Glim and the painter are both in the picture without scrolling; the film crops what it needs.
+  const s = await account(browser, { accountType: 'student', displayName: 'Robin Park', viewport: { width: 1280, height: 2000 }, deviceScaleFactor: 1.5 });
   const page = s.page;
   await open(page, '/designs', page.getByRole('heading', { name: 'My designs' }));
   await pump([page], page.getByRole('button', { name: 'New Glim' }).click());
   await pump([page], page.getByRole('button', { name: 'Randomise' }).waitFor());
   await pump([page], page.waitForTimeout(2500));
   await still(page, 'designs-new');
+  const painter = page.getByRole('grid', { name: /Markings painter/ });
+  // Where things are, as fractions of the picture: the 3D preview (the drawn Glim sits just left of it) and the painter.
+  const frac = async (loc) => { const b = await loc.boundingBox(); return b ? [b.x / 1280, b.y / 2000, (b.x + b.width) / 1280, (b.y + b.height) / 2000] : null; };
+  const boxes = { preview: await frac(page.locator('canvas').first()), painter: await frac(painter) };
   let rec = new Recorder('designs-shuffle', { main: page });
+  Object.assign(rec.marks, boxes);
   await rec.frames(10);
   for (let i = 0; i < 8; i++) {
     await rec.during(() => page.getByRole('button', { name: 'Randomise' }).click());
@@ -217,19 +222,49 @@ async function designs(browser) {
   }
   await rec.frames(20);
   rec.done();
-  const painter = page.getByRole('grid', { name: /Markings painter/ });
   await pump([page], page.getByRole('button', { name: 'Clear the grid' }).click().catch(() => {}));
   await pump([page], page.getByRole('radio', { name: 'Left and right' }).click().catch(() => {}));
+  await page.evaluate(() => window.scrollTo(0, 0));
   const cells = [[4, 4], [4, 5], [4, 6], [5, 3], [5, 4], [5, 5], [5, 6], [6, 3], [6, 4], [6, 5], [6, 6], [7, 4], [7, 5], [7, 6], [8, 5], [8, 6], [9, 6]];
   rec = new Recorder('designs-paint', { main: page });
+  Object.assign(rec.marks, { preview: await frac(page.locator('canvas').first()), painter: await frac(painter) });
   await rec.frames(10);
   for (const [r, c] of cells) {
     await painter.getByRole('gridcell', { name: new RegExp(`^Row ${r}, column ${c}:`) }).click({ timeout: 5000 }).catch(() => {});
+    await page.evaluate(() => window.scrollTo(0, 0));
     await rec.frames(4);
   }
   await rec.frames(40);
   rec.done();
   await still(page, 'designs-painted');
+  await s.context.close();
+}
+
+async function gamemaker(browser) {
+  // Tall enough for the code and the test game under it; the film crops to that column.
+  const s = await account(browser, { accountType: 'student', displayName: 'Robin Park', viewport: { width: 1280, height: 1180 }, deviceScaleFactor: 1.5 });
+  const page = s.page;
+  const code = page.getByRole('textbox', { name: 'Game code' });
+  await open(page, '/game-maker/new?from=coin-keeper', code, { settleFrames: 90 });
+  const frac = async (loc) => { const b = await loc.boundingBox(); return b ? [b.x / 1280, b.y / 1180, (b.x + b.width) / 1280, (b.y + b.height) / 1180] : null; };
+  await still(page, 'gamemaker');
+  const rec = new Recorder('gamemaker-code', { main: page });
+  Object.assign(rec.marks, { code: await frac(code), live: await frac(page.getByRole('region', { name: 'Live test' })) });
+  await rec.frames(24);
+  // Change one number: a race to 30 steps becomes a race to 12.
+  await code.click();
+  await code.evaluate((el) => { const i = el.value.indexOf('race to 30'); if (i >= 0) el.setSelectionRange(i + 8, i + 10); });
+  await rec.frames(10);
+  rec.mark('edit');
+  for (const ch of '12') { await page.keyboard.insertText(ch); await rec.frames(5); }
+  await rec.frames(45);
+  // Then a rule of their own, typed at the end.
+  await code.evaluate((el) => { el.setSelectionRange(el.value.length, el.value.length); el.scrollTop = el.scrollHeight; });
+  rec.mark('rule');
+  await rec.type(page, '\nwhen a player gets 3 right in a row: say "Nice one!"', 2);
+  await rec.frames(75);
+  rec.done();
+  await still(page, 'gamemaker-after');
   await s.context.close();
 }
 
@@ -259,7 +294,7 @@ async function tools(browser) {
 }
 
 const browser = await launch();
-for (const [name, fn] of [['game', game], ['make', make], ['gallery', gallery], ['designs', designs], ['tools', tools]]) {
+for (const [name, fn] of [['game', game], ['make', make], ['gallery', gallery], ['designs', designs], ['tools', tools], ['gamemaker', gamemaker]]) {
   if (!on(name)) continue;
   try {
     await fn(browser);

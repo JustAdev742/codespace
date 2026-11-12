@@ -72,14 +72,11 @@ await shoot('quests', () => go('/quests', page.getByRole('heading', { level: 1 }
 await shoot('locker', () => go('/locker', page.getByRole('heading', { level: 1 })));
 await shoot('settings', () => go('/settings', page.getByRole('heading', { level: 1 })));
 await shoot('mode-detail', () => go('/modes/summit-scramble', page.getByRole('heading', { level: 1 })));
-// The Game Maker (the address is /mode-studio until the code view is merged, and that address keeps working after).
-await shoot('gamemaker-home', () => go('/mode-studio', page.getByRole('heading', { level: 1 })));
-await shoot('gamemaker', async () => {
-  await go('/mode-studio', page.getByRole('heading', { level: 1 }));
-  const start = page.getByRole('button', { name: /Meadow dash|Start from|Use this/ }).first();
-  await start.click({ timeout: 8000 });
-  await page.waitForURL(/mode-studio\/|game-maker\//, { timeout: 15000 });
-  await page.waitForTimeout(3500);
+await shoot('gamemaker-home', () => go('/game-maker', page.getByRole('heading', { name: 'Game Maker', level: 1 })));
+await shoot('gamemaker-builder', async () => {
+  await go('/game-maker/new?from=coin-keeper', page.getByRole('textbox', { name: 'Game code' }));
+  await page.waitForTimeout(4000);
 });
+await shoot('collection', () => go('/collection', page.getByRole('heading', { level: 1 })));
 await t.context.close();
 await browser.close();
