@@ -15,7 +15,7 @@ const REEL: [string, string, string | null, number][] = [
   ['3d-glowtag', 'Glow Tag Royale', '3D', 10],
   ['3d-catch', 'Big Catch', '3D', 10],
   ['3d-city', 'Code Breakers', '3D', 10],
-  ['3d-made', 'The one you make', 'YOURS', 10],
+  ['3d-made-climb', 'The one you make', 'YOURS', 10],
 ];
 
 /** A number that counts up, redrawn each frame on one small canvas. */

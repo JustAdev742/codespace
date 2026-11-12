@@ -18,7 +18,7 @@ from lxml import etree
 from PIL import Image
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from content import SLIDES, MODES_2D, MODES_3D, QUESTION_TYPES, SITE  # noqa: E402
+from content import SLIDES, MODES_2D, MODES_3D, QUESTION_TYPES, SITE, FEATURE_LINES  # noqa: E402
 
 MEDIA = os.environ.get('FILM_OUT', '/tmp/claude-0/-home-user/97a5c84e-6d10-5253-ab94-c316a24e49f4/scratchpad/film')
 WORK = os.path.join(MEDIA, 'deck')
@@ -457,6 +457,8 @@ AREAS = [
 
 def feature_rows(name):
     """One short line a feature: its name in bold and a few words, with nothing cut mid-word."""
+    if name in FEATURE_LINES:
+        return list(FEATURE_LINES[name])
     path = os.path.join(DOCS, name + '.md')
     if not os.path.exists(path):
         return []
@@ -508,8 +510,8 @@ def appendix(make_slide):
         if rows:
             items.append((name, rows))
     items.append(('The foundations', FOUNDATIONS))
-    # Fill slides column by column: 3 columns, 25 one-line items each.
-    COLS, LINES = 3, 25
+    # Fill slides column by column: 3 columns, 28 one-line items each.
+    COLS, LINES = 3, 28
     pages, col, used = [[]], [], 0
 
     def close_column():
