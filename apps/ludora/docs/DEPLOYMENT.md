@@ -75,6 +75,69 @@ What was tested, on 2026-10-29, with Docker 29 and compose 5.6:
 Getting a real Let's Encrypt certificate needs a public domain, so that step has not been
 tested here; it is Caddy's standard behaviour.
 
+## Free hosting: Render and Neon
+
+A way to put Ludora at a real `https://` address at no cost, for trying it with real devices.
+It is not a school's day-to-day copy: read the limits first. Render runs the app on its free
+plan and Neon keeps the database (Postgres 16) on its free plan. Render's own free database is
+deleted 30 days after it is made, which is why the database is at Neon.
+
+**Limits** (from each company's documentation in November 2026; they change, so check):
+
+- **It sleeps.** After 15 minutes with no visitors Render stops the app, and the next visitor
+  waits about a minute while it starts. Open the address a few minutes before a lesson. A game
+  in play keeps it awake.
+- **It can restart.** Render may restart a free service at any time, and a restart ends any
+  game in play. Finished games are safe: their results are in the database.
+- **It is small.** A tenth of a CPU and 512 MB of memory. In *Measured capacity* below, Classic
+  with 40 players used 3% of a core on average and 11% at most, and a 3D game with 40 players
+  10% and 18%. So one class on a quiz game should be comfortable, and several classes at once
+  or the busy 3D games may lag. This has not been measured on Render.
+- **Uploaded pictures do not last.** A free service has no disk that survives a restart or a
+  sleep, so pictures people upload (a set's cover, a lesson slide) disappear. Everything else
+  is in the database and stays.
+- **Monthly allowances.** Render: 750 hours of running time, enough for one service all month.
+  Neon: 1 GB of storage and 100 compute-hours for the project; its database also sleeps after
+  5 minutes idle and wakes on the next request. Reaching a limit pauses the service until the
+  next month; Neon says it does not delete your data.
+- **Where the data is.** Two companies hold it, and neither has an Australian region on these
+  plans as set up here (Singapore). Before real students' names go in, the school should agree.
+  For a trial, the host option *Generated names* keeps names out altogether.
+- **Backups are yours to take**: see *Backups and data*, using the Neon connection string.
+
+**Steps** (about fifteen minutes, most of it the first build):
+
+1. **The database.** Sign up at neon.com and make a project: Postgres **16**, region
+   **AWS Asia Pacific (Singapore)** to sit beside the app. Copy its connection string with
+   *Connection pooling* switched off (the app runs its migrations on start, and Neon recommends
+   a direct connection for those). It looks like
+   `postgresql://user:password@ep-example.ap-southeast-1.aws.neon.tech/neondb?sslmode=require`.
+   Treat it as a password.
+2. **The app.** Sign up at render.com with your GitHub account. New, then Blueprint, then this
+   repository and the branch to run. Render reads `render.yaml` at the top of the repository
+   and asks for one value, `DATABASE_URL`: paste the Neon string. Apply, and wait for the
+   build.
+3. **Open it.** Render shows the address, `https://ludora-something.onrender.com`. The server
+   takes its own address from Render (`RENDER_EXTERNAL_URL`), so there is no `PUBLIC_ORIGIN` to
+   set unless you add a domain of your own. Sign up.
+4. **The first administrator.** The free plan has no shell, so run the operator CLI from any
+   computer that has this repository built (the Codespace does), pointing it at the database:
+   ```bash
+   cd apps/ludora
+   DATABASE_URL='<the Neon string>' node server/dist/admin.js grant <username> superadmin --reason "first admin"
+   ```
+5. **Updates.** Nothing deploys by itself, because a deploy restarts the server. In Render,
+   Manual Deploy, then Deploy latest commit, when no class is playing.
+
+If your players are not in Australia or Asia, change `region` in `render.yaml` before the first
+deploy (it cannot be changed afterwards) and make the Neon project in the same part of the world.
+
+What has been checked: `render.yaml` against Render's published schema; the production server
+run with Render's own variables (its port and its address variable), where a sign-up from the
+`onrender.com` address is accepted with a secure cookie and one from another origin is refused;
+and the database client connecting over TLS with a connection string of Neon's form. What has
+not: an actual deploy. Nobody has run this on Render or Neon yet.
+
 ## Environments
 
 | `APP_ENV` | For | Differences |
@@ -96,7 +159,7 @@ Nothing secret is committed; copy `.env.example` to `.env` for compose.
 | Variable | Required | Meaning |
 |---|---|---|
 | `DATABASE_URL` | yes | Postgres connection string. |
-| `PUBLIC_ORIGIN` | yes | The address people open, e.g. `https://play.example.org`. Used for CSRF and WebSocket origin checks; requests from other origins are refused. |
+| `PUBLIC_ORIGIN` | yes | The address people open, e.g. `https://play.example.org`. Used for CSRF and WebSocket origin checks; requests from other origins are refused. On Render it is taken from `RENDER_EXTERNAL_URL` when not set. |
 | `IP_HASH_KEY` | yes in production | At least 16 random characters. IP addresses are only stored as keyed hashes. Production refuses the `change-me` and `dev-only` placeholders. |
 | `CHAOS_SECRET` | no | At least 16 random characters (`openssl rand -hex 32`). Seeds the secret lantern's knock rhythm (see CHAOS.md); without it the rhythm is derived from `IP_HASH_KEY`. Keep it in the host's secret store or `.env`, never in the repository. Changing it changes the rhythm. |
 | `SIGNUPS_PER_10_MIN`, `GUESTS_PER_10_MIN` | no | How many new accounts (default 40) and guests (default 60) one address may make in ten minutes; 5 to 5000. Everyone at a school usually shares one address, and so does everyone behind a tunnel or forwarded port, so raise these (for example to 600) on a school's own copy before several classes join at once. |

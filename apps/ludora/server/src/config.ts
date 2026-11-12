@@ -73,7 +73,11 @@ export type Config = z.infer<typeof schema> & {
 };
 
 export function loadConfig(env: Record<string, string | undefined> = process.env): Config {
-  const parsed = schema.safeParse(env);
+  // Render tells a web service its own address. Use it when PUBLIC_ORIGIN is not set, so a first deploy
+  // there answers at its onrender.com address without a second step; a PUBLIC_ORIGIN that is set (a
+  // custom domain) always wins.
+  const onRender = !env.PUBLIC_ORIGIN && env.RENDER_EXTERNAL_URL ? { ...env, PUBLIC_ORIGIN: env.RENDER_EXTERNAL_URL } : env;
+  const parsed = schema.safeParse(onRender);
   if (!parsed.success) {
     const issues = parsed.error.issues.map((i) => `${i.path.join('.')}: ${i.message}`).join('\n');
     throw new Error(`Invalid configuration:\n${issues}`);

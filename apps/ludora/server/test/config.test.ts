@@ -37,3 +37,25 @@ describe('secret settings', () => {
     expect(() => loadConfig({ GUESTS_PER_10_MIN: '1000000' })).toThrow(/GUESTS_PER_10_MIN/);
   });
 });
+
+describe('the address people open', () => {
+  const key = { APP_ENV: 'production', IP_HASH_KEY: 'a-long-random-value-for-this-test' };
+
+  it('comes from Render when PUBLIC_ORIGIN is not set, and only that origin is allowed in production', () => {
+    const c = loadConfig({ ...key, RENDER_EXTERNAL_URL: 'https://ludora-abcd.onrender.com' });
+    expect(c.PUBLIC_ORIGIN).toBe('https://ludora-abcd.onrender.com');
+    expect(c.allowedOrigins).toEqual(['https://ludora-abcd.onrender.com']);
+    // An empty value (a field left blank in a dashboard) counts as not set.
+    expect(loadConfig({ ...key, PUBLIC_ORIGIN: '', RENDER_EXTERNAL_URL: 'https://ludora-abcd.onrender.com' }).PUBLIC_ORIGIN).toBe('https://ludora-abcd.onrender.com');
+  });
+
+  it('is PUBLIC_ORIGIN when that is set, whatever Render says (a custom domain)', () => {
+    const c = loadConfig({ ...key, PUBLIC_ORIGIN: 'https://play.example.org', RENDER_EXTERNAL_URL: 'https://ludora-abcd.onrender.com' });
+    expect(c.allowedOrigins).toEqual(['https://play.example.org']);
+  });
+
+  it('is unchanged away from Render', () => {
+    expect(loadConfig({ APP_ENV: 'development' }).PUBLIC_ORIGIN).toBe('http://localhost:5173');
+    expect(() => loadConfig({ ...key, RENDER_EXTERNAL_URL: 'not a url' })).toThrow(/PUBLIC_ORIGIN/);
+  });
+});

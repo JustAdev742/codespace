@@ -1,0 +1,34 @@
+# Ludora on Render's free plan, with the database at Neon (also free).
+# How to use this file, and what the free plan cannot do:
+# apps/ludora/docs/DEPLOYMENT.md, "Free hosting: Render and Neon".
+#
+# In Render: New, Blueprint, choose this repository and branch. Render asks for DATABASE_URL
+# (the connection string Neon gives you) and makes the rest itself.
+
+services:
+  - type: web
+    name: ludora
+    runtime: docker
+    plan: free
+    # The nearest Render region to eastern Australia. A region cannot be changed later: pick the
+    # one nearest your players (oregon, ohio, virginia, frankfurt or singapore) and make the Neon
+    # database in the same part of the world.
+    region: singapore
+    dockerfilePath: ./apps/ludora/Dockerfile
+    dockerContext: ./apps/ludora
+    healthCheckPath: /api/health
+    # A deploy restarts the server, which ends any game in play. Nothing deploys by itself:
+    # press Manual Deploy in Render when no class is playing.
+    autoDeployTrigger: "off"
+    envVars:
+      # Postgres 16 at Neon. Never written in this file: Render asks for it once.
+      - key: DATABASE_URL
+        sync: false
+      # Hashes IP addresses before they are stored. Render makes a random one and keeps it.
+      - key: IP_HASH_KEY
+        generateValue: true
+      # Render's proxy is in front of the server, so visitors' addresses come from its header.
+      - key: TRUST_PROXY
+        value: "true"
+      # PUBLIC_ORIGIN is not needed here: the server uses the onrender.com address Render gives
+      # it. Set PUBLIC_ORIGIN only if you add a domain of your own.
