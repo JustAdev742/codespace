@@ -9,10 +9,10 @@ import { ButtonLink } from '../../ui/Button.tsx';
 import { RadioCard } from './pickers.tsx';
 
 /*
- * Playing solo: games made in Mode Studio, chosen like any built-in mode (a card in step 2), so a
+ * Playing solo: games made in Game Maker, chosen like any built-in mode (a card in step 2), so a
  * made game goes through "Your settings" too (bots and their level, only the hard questions)
  * before it starts. The server still checks the player may play it when the room is created.
- * Hosting a class keeps Mode Studio's own section (modestudio/HostMadeGames.tsx).
+ * Hosting a class keeps Game Maker's own section (modestudio/HostMadeGames.tsx).
  */
 
 /** What this list reads of a made game, as GET /api/blueprints sends it. */
@@ -31,7 +31,7 @@ export interface SoloMadeGame {
 const SHOWN = 6;
 
 export function SoloMadeGames({ value, onChange }: { value: SoloMadeGame | null; onChange: (g: SoloMadeGame) => void }) {
-  // ?blueprint= from Mode Studio's Play solo.
+  // ?blueprint= from Game Maker's Play solo.
   const preselect = useSearchParams()[0].get('blueprint');
   const chosen = useQuery({ queryKey: ['blueprint', preselect], queryFn: () => api.get<{ game: SoloMadeGame }>(`/api/blueprints/${preselect}`), enabled: Boolean(preselect) });
   const mine = useQuery({ queryKey: ['blueprints', 'mine', ''], queryFn: () => api.get<{ games: SoloMadeGame[] }>('/api/blueprints?scope=mine') });
@@ -39,7 +39,7 @@ export function SoloMadeGames({ value, onChange }: { value: SoloMadeGame | null;
   const applied = useRef(false);
   const top = chosen.data?.game ?? null;
   useEffect(() => {
-    // Arriving from Mode Studio's Play solo: that game is chosen, and only the set is left to pick.
+    // Arriving from Game Maker's Play solo: that game is chosen, and only the set is left to pick.
     if (!top || applied.current || !top.playable) return;
     applied.current = true;
     onChange(top);
@@ -57,7 +57,7 @@ export function SoloMadeGames({ value, onChange }: { value: SoloMadeGame | null;
   return (
     <section aria-labelledby="solo-made-games" className="mt-6 border-t border-line pt-4">
       <h3 id="solo-made-games" className="mb-1 flex items-center gap-2 font-display text-xl font-bold">
-        <Hammer className="size-5 text-text-3" aria-hidden /> Games made in Mode Studio
+        <Hammer className="size-5 text-text-3" aria-hidden /> Games made in Game Maker
       </h3>
       {preselect && chosen.isError ? <p className="mb-2 font-semibold">That made game could not be opened. It may be private or deleted.</p> : null}
       {shown.length ? (
@@ -77,10 +77,10 @@ export function SoloMadeGames({ value, onChange }: { value: SoloMadeGame | null;
           ))}
         </div>
       ) : (
-        <p className="text-sm text-text-2">Games you or others make in Mode Studio show here, to play with any set.</p>
+        <p className="text-sm text-text-2">Games you or others make in Game Maker show here, to play with any set.</p>
       )}
-      <ButtonLink to="/mode-studio" size="sm" variant="secondary" className="mt-3">
-        Open Mode Studio
+      <ButtonLink to="/game-maker" size="sm" variant="secondary" className="mt-3">
+        Open Game Maker
       </ButtonLink>
     </section>
   );

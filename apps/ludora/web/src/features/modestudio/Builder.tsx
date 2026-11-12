@@ -1,4 +1,4 @@
-import { useId, type ReactNode } from 'react';
+import { useId, useState, type ReactNode } from 'react';
 import { Plus, Trash2, Users } from 'lucide-react';
 import {
   ANSWER_RULES,
@@ -20,9 +20,31 @@ import {
   SCENE_TIMES,
   outcomeOdds,
   withKind,
+  ACTION_N,
+  ACTION_VAR,
+  CONDITION_N,
+  CONDITION_VAR,
+  HARMFUL_ACTIONS,
+  MAX_RULES,
+  MAX_VARS,
+  RULE_ACTIONS,
+  RULE_CONDITIONS,
+  RULE_MESSAGES,
+  RULE_TRIGGERS,
+  ROOM_TRIGGERS,
+  ROUNDS_TRIGGERS,
+  TRIGGER_N,
+  TRIGGER_VAR,
+  VAR_MAX,
+  describeRule,
+  describeVar,
+  ruleCode,
+  type GameRule,
+  type GameVar,
   type Blueprint,
   type BlueprintProblem,
 } from '@ludora/shared';
+import { CodeLine } from './CodeHelp.tsx';
 import { Field, Input, Select, Switch, Textarea } from '../../ui/primitives.tsx';
 import { Button } from '../../ui/Button.tsx';
 
@@ -301,6 +323,8 @@ export function Builder({ bp, change, problems }: { bp: Blueprint; change: Chang
         />
       </Section>
 
+      <RulesSection bp={bp} change={change} problems={problems} />
+
       <Section id="b-end" title="How it ends and who wins">
         <Choices
           id="f-end.type"
@@ -403,5 +427,262 @@ export function Builder({ bp, change, problems }: { bp: Blueprint; change: Chang
         </div>
       </Section>
     </div>
+  );
+}
+
+/* ------------------------------------------------------------------------------------------------ */
+/* Numbers and rules: the same list the code's "each player has" and "when ..." lines make.         */
+/* ------------------------------------------------------------------------------------------------ */
+
+const TRIGGER_LABEL: Record<GameRule['when']['type'], string> = {
+  start: 'The game starts',
+  right: 'A player answers right',
+  wrong: 'A player answers wrong',
+  quick: 'A player answers right quickly',
+  streak: 'A player gets N right in a row',
+  'miss-streak': 'A player gets N wrong in a row',
+  every: 'Every N questions a player answers',
+  reach: 'A player reaches N',
+  'runs-out': 'A player runs out of a number',
+  halfway: 'A player gets halfway',
+  lead: 'A player takes the lead',
+  power: 'A player uses a power-up',
+  'round-start': 'A round starts',
+  'round-end': 'A round ends',
+  'minutes-left': 'N minutes are left',
+};
+const CONDITION_LABEL: Record<GameRule['if'][number]['type'], string> = {
+  'at-least': 'A number is at least N',
+  'at-most': 'A number is at most N',
+  first: 'They are in first place',
+  last: 'They are in last place',
+  team: 'They are on team N',
+  chance: 'A chance of N%',
+  'minutes-left': 'In the last N minutes',
+};
+const ACTION_LABEL: Record<GameRule['do'][number]['type'], string> = {
+  gain: 'Gain N (score)',
+  lose: 'Lose N (score)',
+  add: 'Add N to a number',
+  take: 'Take N from a number',
+  set: 'Set a number to N',
+  'everyone-gain': 'Everyone gains N',
+  'behind-gain': 'Everyone behind gains N',
+  'ahead-lose': 'Everyone ahead loses N',
+  'leader-lose': 'The leader loses N',
+  power: 'Get a power-up',
+  shield: 'Get a shield',
+  'freeze-leader': 'Freeze the leader',
+  golden: 'Golden round',
+  rally: 'Rally',
+  double: 'Double points from now on',
+  life: 'Gain a life',
+  'lose-life': 'Lose a life',
+  'swap-leader': 'Swap with the leader',
+  win: 'Win the game',
+  end: 'End the game',
+  say: 'Say a message',
+};
+
+interface Part {
+  type: string;
+  n: number;
+  var: string;
+  power: string;
+  message: string;
+}
+const blankPart = (type: string, n: number): Part => ({ type, n, var: '', power: 'shield', message: RULE_MESSAGES[0] });
+
+/** One part of a rule being built: its kind, and the number, number name, power-up or message it needs. */
+function PartPicker({ legend, part, setPart, options, labels, nRange, needsVar, vars, idBase, allowScore, extra }: { legend: string; part: Part; setPart: (p: Part) => void; options: readonly string[]; labels: Record<string, string>; nRange: [number, number] | null; needsVar: 'none' | 'optional' | 'required'; vars: GameVar[]; idBase: string; allowScore: boolean; extra?: ReactNode }) {
+  return (
+    <fieldset className="flex flex-wrap items-end gap-2">
+      <legend className="mb-1 text-sm font-semibold">{legend}</legend>
+      <label className="flex flex-col gap-1 text-xs font-semibold">
+        <span className="sr-only">{legend}</span>
+        <Select id={`${idBase}-type`} value={part.type} onChange={(e) => setPart({ ...part, type: e.target.value })} className="w-[15rem] max-w-full">
+          {options.map((o) => (
+            <option key={o} value={o}>
+              {labels[o]}
+            </option>
+          ))}
+        </Select>
+      </label>
+      {nRange ? (
+        <label className="flex flex-col gap-1 text-xs font-semibold">
+          N ({nRange[0]} to {nRange[1]})
+          <Input type="number" inputMode="numeric" min={nRange[0]} max={nRange[1]} value={Number.isFinite(part.n) ? part.n : ''} onChange={(e) => setPart({ ...part, n: e.target.value === '' ? Number.NaN : Number(e.target.value) })} className="w-[6rem]" />
+        </label>
+      ) : null}
+      {needsVar !== 'none' ? (
+        <label className="flex flex-col gap-1 text-xs font-semibold">
+          Number
+          <Select value={part.var} onChange={(e) => setPart({ ...part, var: e.target.value })} className="w-[9rem]">
+            {allowScore && needsVar === 'optional' ? <option value="">score</option> : null}
+            {needsVar === 'required' && !part.var ? <option value="">Choose…</option> : null}
+            {vars.map((v) => (
+              <option key={v.name} value={v.name}>
+                {v.name}
+              </option>
+            ))}
+          </Select>
+        </label>
+      ) : null}
+      {extra}
+    </fieldset>
+  );
+}
+
+function buildRule(when: Part, cond: Part | null, act: Part): GameRule {
+  const w: GameRule['when'] = { type: when.type as GameRule['when']['type'] };
+  if (TRIGGER_N[w.type]) w.n = when.n;
+  if (TRIGGER_VAR[w.type] !== 'none' && when.var) w.var = when.var;
+  const ifs: GameRule['if'] = [];
+  if (cond) {
+    const c: GameRule['if'][number] = { type: cond.type as GameRule['if'][number]['type'] };
+    if (CONDITION_N[c.type]) c.n = cond.n;
+    if (CONDITION_VAR[c.type] !== 'none' && cond.var) c.var = cond.var;
+    ifs.push(c);
+  }
+  const d: GameRule['do'][number] = { type: act.type as GameRule['do'][number]['type'] };
+  if (ACTION_N[d.type]) d.n = act.n;
+  if (ACTION_VAR[d.type]) d.var = act.var;
+  if (d.type === 'power') d.power = act.power as GameRule['do'][number]['power'];
+  if (d.type === 'say') d.message = act.message as GameRule['do'][number]['message'];
+  return { when: w, if: ifs, do: [d] };
+}
+
+function RulesSection({ bp, change, problems }: { bp: Blueprint; change: Change; problems: BlueprintProblem[] }) {
+  const vars = bp.vars ?? [];
+  const rules = bp.rules ?? [];
+  const [newVar, setNewVar] = useState<GameVar>({ name: 'coins', scope: 'player', start: 0, max: VAR_MAX });
+  const [when, setWhen] = useState<Part>(blankPart('right', 3));
+  const [useCond, setUseCond] = useState(false);
+  const [cond, setCond] = useState<Part>(blankPart('last', 5));
+  const [act, setAct] = useState<Part>(blankPart('gain', 1));
+  const cooperative = bp.kind.type === 'build' || bp.end.type === 'together';
+  const triggers = RULE_TRIGGERS.filter((t) => bp.pacing === 'rounds' || !ROUNDS_TRIGGERS.includes(t));
+  const actions = RULE_ACTIONS.filter((a) => !(cooperative && HARMFUL_ACTIONS.includes(a)) && ((a !== 'life' && a !== 'lose-life') || bp.kind.type === 'survive'));
+  const draft = buildRule(when, useCond ? cond : null, act);
+  const setVars = (next: GameVar[]) => change((b) => ({ ...b, vars: next }));
+  const nameTaken = vars.some((v) => v.name === newVar.name.trim().toLowerCase());
+  return (
+    <Section id="b-rules" title="Numbers and rules" hint="Give the game numbers of its own (coins, health, keys) and rules: when something happens, if something is true, do something. The code shows each one as a line.">
+      <div id="f-vars" tabIndex={-1} className="flex flex-col gap-2">
+        <h3 className="font-semibold">Numbers the game keeps ({vars.length} of {MAX_VARS})</h3>
+        {vars.length ? (
+          <ul className="flex flex-col gap-1.5">
+            {vars.map((v, i) => (
+              <li key={v.name + i} className="flex flex-wrap items-center gap-2 rounded-[var(--radius-m)] border border-line bg-surface-2 px-3 py-2 text-sm">
+                <span className="min-w-0 flex-1">{describeVar(v)}</span>
+                <Button size="sm" variant="ghost" aria-label={`Remove the number ${v.name}`} icon={<Trash2 className="size-4" aria-hidden />} onClick={() => setVars(vars.filter((_, j) => j !== i))} />
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="text-sm text-text-2">None yet.</p>
+        )}
+        {problemAt(problems, 'vars') ? <p className="text-xs font-semibold text-ember">{problemAt(problems, 'vars')}</p> : null}
+        {vars.length < MAX_VARS ? (
+          <div className="flex flex-wrap items-end gap-2">
+            <label className="flex flex-col gap-1 text-xs font-semibold">
+              Name (one word)
+              <Input value={newVar.name} maxLength={16} onChange={(e) => setNewVar({ ...newVar, name: e.target.value })} className="w-[9rem]" />
+            </label>
+            <label className="flex flex-col gap-1 text-xs font-semibold">
+              Kept for
+              <Select value={newVar.scope} onChange={(e) => setNewVar({ ...newVar, scope: e.target.value as GameVar['scope'] })} className="w-[10rem]">
+                <option value="player">Each player</option>
+                <option value="team">Each team</option>
+                <option value="game">The whole game</option>
+              </Select>
+            </label>
+            <label className="flex flex-col gap-1 text-xs font-semibold">
+              Starts at
+              <Input type="number" min={0} max={VAR_MAX} value={newVar.start} onChange={(e) => setNewVar({ ...newVar, start: Number(e.target.value) })} className="w-[6rem]" />
+            </label>
+            <Button size="sm" variant="secondary" icon={<Plus className="size-4" aria-hidden />} disabled={!newVar.name.trim() || nameTaken} onClick={() => setVars([...vars, { ...newVar, name: newVar.name.trim().toLowerCase() }])}>
+              Add the number
+            </Button>
+          </div>
+        ) : null}
+      </div>
+      <div id="f-rules" tabIndex={-1} className="flex flex-col gap-2 border-t border-line pt-3">
+        <h3 className="font-semibold">Rules ({rules.length} of {MAX_RULES})</h3>
+        {rules.length ? (
+          <ol className="flex flex-col gap-1.5">
+            {rules.map((r, i) => {
+              const err = problemAt(problems, `rules.${i}`);
+              return (
+                <li key={i} className={`flex flex-wrap items-start gap-2 rounded-[var(--radius-m)] border bg-surface-2 px-3 py-2 text-sm ${err ? 'border-ember' : 'border-line'}`}>
+                  <span className="min-w-0 flex-1">
+                    <span className="block">{describeRule(r, bp)}</span>
+                    <span className="block font-sans text-xs [overflow-wrap:anywhere]">
+                      <CodeLine line={ruleCode(r, bp)} />
+                    </span>
+                    {err ? <span className="block text-xs font-semibold text-ember">{err}</span> : null}
+                  </span>
+                  <Button size="sm" variant="ghost" aria-label={`Remove rule ${i + 1}`} icon={<Trash2 className="size-4" aria-hidden />} onClick={() => change((b) => ({ ...b, rules: (b.rules ?? []).filter((_, j) => j !== i) }))} />
+                </li>
+              );
+            })}
+          </ol>
+        ) : (
+          <p className="text-sm text-text-2">None yet. Build one below, or write a line starting with “when” in the code.</p>
+        )}
+        {rules.length < MAX_RULES ? (
+          <div className="flex flex-col gap-3 rounded-[var(--radius-m)] border border-dashed border-line-strong p-3">
+            <PartPicker legend="When" idBase="rule-when" part={when} setPart={setWhen} options={triggers} labels={TRIGGER_LABEL} nRange={TRIGGER_N[when.type as GameRule['when']['type']]} needsVar={TRIGGER_VAR[when.type as GameRule['when']['type']]} vars={vars.filter((v) => v.scope === 'player')} allowScore />
+            <Switch checked={useCond} onCheckedChange={setUseCond} label="Only if…" description="Add a condition that must be true." />
+            {useCond ? <PartPicker legend="If" idBase="rule-if" part={cond} setPart={setCond} options={RULE_CONDITIONS} labels={CONDITION_LABEL} nRange={CONDITION_N[cond.type as GameRule['if'][number]['type']]} needsVar={CONDITION_VAR[cond.type as GameRule['if'][number]['type']]} vars={vars} allowScore /> : null}
+            <PartPicker
+              legend="Do"
+              idBase="rule-do"
+              part={act}
+              setPart={setAct}
+              options={actions}
+              labels={ACTION_LABEL}
+              nRange={ACTION_N[act.type as GameRule['do'][number]['type']]}
+              needsVar={ACTION_VAR[act.type as GameRule['do'][number]['type']] ? 'required' : 'none'}
+              vars={vars}
+              allowScore={false}
+              extra={
+                act.type === 'power' ? (
+                  <label className="flex flex-col gap-1 text-xs font-semibold">
+                    Power-up
+                    <Select value={act.power} onChange={(e) => setAct({ ...act, power: e.target.value })} className="w-[9rem]">
+                      {POWER_UPS.filter((p) => !(cooperative && POWER_INFO[p].others)).map((p) => (
+                        <option key={p} value={p}>
+                          {POWER_INFO[p].label}
+                        </option>
+                      ))}
+                    </Select>
+                  </label>
+                ) : act.type === 'say' ? (
+                  <label className="flex flex-col gap-1 text-xs font-semibold">
+                    Message
+                    <Select value={act.message} onChange={(e) => setAct({ ...act, message: e.target.value })} className="w-[11rem]">
+                      {RULE_MESSAGES.map((m) => (
+                        <option key={m} value={m}>
+                          {m}
+                        </option>
+                      ))}
+                    </Select>
+                  </label>
+                ) : null
+              }
+            />
+            <p className="text-sm">
+              <span className="font-semibold">The rule: </span>
+              {describeRule(draft, bp)}
+              {ROOM_TRIGGERS.includes(draft.when.type) ? ' (for each player)' : ''}
+            </p>
+            <Button className="self-start" size="sm" variant="secondary" icon={<Plus className="size-4" aria-hidden />} onClick={() => change((b) => ({ ...b, rules: [...(b.rules ?? []), draft] }))}>
+              Add the rule
+            </Button>
+          </div>
+        ) : null}
+      </div>
+    </Section>
   );
 }

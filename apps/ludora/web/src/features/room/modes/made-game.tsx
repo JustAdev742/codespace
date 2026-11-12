@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, useRef, useState } from 'react';
-import { Sparkles, Zap } from 'lucide-react';
+import { Coins, Flag, Gem, Hash, Heart, KeyRound, RotateCw, Sparkles, Star, Zap, type LucideIcon } from 'lucide-react';
 import { amountOf, EVENT_INFO, POWER_INFO, describeBlueprint, KINDS_3D, type Answer } from '@ludora/shared';
 import type { MadeLast, MadeView } from '@ludora/engine';
 import type { ModeScreenProps } from './registry.ts';
@@ -16,7 +16,7 @@ import { ordinal } from '../../../lib/format.ts';
 import { GemGrid, MadeBoard } from './made-game-board.tsx';
 
 /*
- * Screens for made games (Mode Studio): one player screen and one big-screen board for every
+ * Screens for made games (Game Maker): one player screen and one big-screen board for every
  * blueprint, built from the shared question parts, so sound, hints and every question type work
  * as in the built-in modes. Races and climbs made in 3D draw their scene above the board; the
  * board is the drawn 2D picture when 3D is off.
@@ -73,6 +73,41 @@ function PowerBar({ view, act, disabled }: { view: MadeView; act: ModeScreenProp
   );
 }
 
+/** A picture for a number the maker named, so "coins" looks like coins and "health" like hearts. */
+const VAR_ICONS: [RegExp, LucideIcon][] = [
+  [/^(coins?|gold|money|cash|pennies)$/, Coins],
+  [/^(health|hearts?|hp|lives)$/, Heart],
+  [/^keys?$/, KeyRound],
+  [/^stars?$/, Star],
+  [/^(gems?|jewels?|crystals?)$/, Gem],
+  [/^(energy|power|zaps?)$/, Zap],
+  [/^flags?$/, Flag],
+  [/^(rounds?|turns?|laps?)$/, RotateCw],
+];
+const varIcon = (name: string) => VAR_ICONS.find(([re]) => re.test(name))?.[1] ?? Hash;
+
+/** The game's own numbers: yours, your team's and the whole game's, each with its picture. */
+function VarPills({ view }: { view: MadeView }) {
+  const all = [...(view.you?.vars ?? []).map((v) => ({ ...v, label: v.scope === 'team' ? `Team ${v.name}` : v.name })), ...(view.vars ?? []).map((v) => ({ ...v, label: v.name }))];
+  if (!all.length && !view.doubled) return null;
+  return (
+    <>
+      {all.map((v) => {
+        const Icon = varIcon(v.name);
+        return (
+          <Pill key={v.label}>
+            <Icon className="size-4" aria-hidden />
+            <span>
+              {v.value} <span className="font-semibold">{v.label}</span>
+            </span>
+          </Pill>
+        );
+      })}
+      {view.doubled ? <Pill tone="lantern">Double points</Pill> : null}
+    </>
+  );
+}
+
 /** The HUD row every player sees: your total, lives, streak, the event and the clock. */
 function PlayerHud({ view, gameNow }: { view: MadeView; gameNow: () => number }) {
   const you = view.you!;
@@ -89,6 +124,7 @@ function PlayerHud({ view, gameNow }: { view: MadeView; gameNow: () => number })
       <div className="flex flex-wrap items-center gap-2">
         {you.lives !== null ? <Pill tone={you.lives > 0 ? 'ember' : 'calm'}>{you.out ? 'Out' : `${you.lives} ${you.lives === 1 ? 'life' : 'lives'}`}</Pill> : null}
         <StreakChip streak={you.streak} />
+        <VarPills view={view} />
         <EventPill view={view} gameNow={gameNow} />
         <Pill>
           <Countdown until={view.endsAt} gameNow={gameNow} label="Time left" />

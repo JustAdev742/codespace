@@ -28,10 +28,10 @@ const PAGES: { title: string; to: string; icon: ReactNode; words: string; accoun
   { title: 'Home', to: '/', icon: <Home className="size-4" />, words: 'start dashboard' },
   { title: 'Join a game', to: '/play', icon: <Gamepad2 className="size-4" />, words: 'code play enter' },
   { title: 'Host a game', to: '/host', icon: <Presentation className="size-4" />, words: 'start teacher' },
-  { title: 'Mode Studio', to: '/mode-studio', icon: <Hammer className="size-4" />, words: 'make game mode design build 3d 2d' },
   { title: 'Play solo', to: '/host?solo=1', icon: <Gamepad2 className="size-4" />, words: 'alone practice single' },
   { title: 'Game modes', to: '/modes', icon: <LayoutGrid className="size-4" />, words: 'catalogue games' },
-  { title: 'Game Maker', to: '/games', icon: <Wand2 className="size-4" />, words: 'make custom' },
+  { title: 'Game Maker', to: '/game-maker', icon: <Wand2 className="size-4" />, words: 'make game mode code design build rules 3d 2d custom mode studio' },
+  { title: 'Saved games', to: '/game-maker?tab=saved', icon: <Wand2 className="size-4" />, words: 'saved game settings set host again' },
   { title: 'Question sets', to: '/library', icon: <BookOpen className="size-4" />, words: 'library quiz questions' },
   { title: 'My mistakes', to: '/mistakes', icon: <Target className="size-4" />, words: 'wrong practise fix revise', account: true },
   { title: 'My stats', to: '/me', icon: <BarChart3 className="size-4" />, words: 'calendar bests accuracy history', account: true },
@@ -88,7 +88,7 @@ export default function SearchPalette({ open, onOpenChange }: { open: boolean; o
       if (matches(query, m.meta.title, m.meta.tagline, m.meta.category, ...m.variants.map((v) => v.meta.title))) out.push({ id: `mode:${m.meta.id}`, group: 'Game modes', title: m.meta.title, detail: m.meta.tagline, to: `/modes/${m.meta.id}`, icon: <LayoutGrid className="size-4" /> });
     }
     if (query.length >= 2 && setQuery === query) {
-      for (const g of (made.data?.games ?? []).slice(0, 4)) out.push({ id: `made:${g.id}`, group: 'Made games', title: g.name, detail: `${g.kindLabel ?? 'Made game'}, by ${g.owner.name}`, to: `/mode-studio/${g.id}`, icon: <Hammer className="size-4" /> });
+      for (const g of (made.data?.games ?? []).slice(0, 4)) out.push({ id: `made:${g.id}`, group: 'Made games', title: g.name, detail: `${g.kindLabel ?? 'Made game'}, by ${g.owner.name}`, to: `/game-maker/${g.id}`, icon: <Hammer className="size-4" /> });
       for (const s of (sets.data?.sets ?? []).slice(0, 6)) out.push({ id: `set:${s.id}`, group: 'Question sets', title: s.title, detail: `${s.questionCount} questions${s.ownerName ? `, by ${s.ownerName}` : ''}`, to: `/sets/${s.id}`, icon: <BookOpen className="size-4" /> });
     }
     const c = classes.data;

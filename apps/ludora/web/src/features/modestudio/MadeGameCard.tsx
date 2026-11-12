@@ -55,16 +55,16 @@ export function MadeGameCard({ g, actions }: { g: MadeGameCardData; actions?: Re
 }
 
 /**
- * A small link into Mode Studio, for other pages (the Make page, Games) to place where they list
- * things to make. Self-contained: no data loading.
+ * A small link into Game Maker, for other pages to place where they list things to make.
+ * Self-contained: no data loading.
  */
 export function ModeStudioLink({ className = '' }: { className?: string }) {
   return (
-    <Link to="/mode-studio" className={`flex items-start gap-3 rounded-[var(--radius-l)] border border-line bg-raised p-4 hover:bg-surface-2 ${className}`}>
+    <Link to="/game-maker" className={`flex items-start gap-3 rounded-[var(--radius-l)] border border-line bg-raised p-4 hover:bg-surface-2 ${className}`}>
       <Hammer className="mt-0.5 size-6 shrink-0 text-lantern-deep" aria-hidden />
       <span>
-        <span className="block font-display text-xl font-bold">Mode Studio</span>
-        <span className="block text-sm text-text-2">Design how a game works and how it looks, in 2D or 3D. Test it against bots as you build, then host it.</span>
+        <span className="block font-display text-xl font-bold">Game Maker</span>
+        <span className="block text-sm text-text-2">Make a game of your own by writing simple code: what it is about, your own rules and numbers, how it looks in 2D or 3D. A test game follows every line.</span>
       </span>
     </Link>
   );
@@ -80,7 +80,7 @@ export function MadeGameActions({ g }: { g: MadeGameCardData }) {
         </ButtonLink>
       ) : null}
       <ButtonLink to={studioLink(g.id)} size="sm" variant="secondary">
-        {g.mine ? 'Open in studio' : 'See how it works'}
+        {g.mine ? 'Open in Game Maker' : 'See its code'}
       </ButtonLink>
     </>
   );

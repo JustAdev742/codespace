@@ -88,7 +88,7 @@ function Checklist({ data, teacher }: { data: MakingOverview; teacher: boolean }
     : [
         { done: played, title: 'Join a game, or play one on your own', to: '/play', action: 'Join a game' },
         { done: c.sets > 0, title: 'Make a set of your own', to: '/make/quick', action: 'Make a set' },
-        { done: c.games > 0, title: 'Save a game to play again', to: '/games', action: 'Save a game' },
+        { done: c.games > 0, title: 'Save a game to play again', to: '/game-maker?tab=saved', action: 'Save a game' },
       ];
   const done = steps.filter((s) => s.done).length;
   if (done === steps.length) return null;

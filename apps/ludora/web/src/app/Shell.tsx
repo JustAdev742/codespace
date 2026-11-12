@@ -29,7 +29,6 @@ import {
   Wand2,
   X,
   ListOrdered,
-  Hammer,
 } from 'lucide-react';
 import { PencilRuler } from 'lucide-react';
 import { useMe } from '../lib/session.ts';
@@ -72,8 +71,7 @@ const PRIMARY: NavItem[] = [
   { to: '/make', label: 'Make', icon: <PencilRuler className="size-5" />, show: 'signedIn' },
   { to: '/lessons', label: 'Lessons', icon: <ListOrdered className="size-5" />, show: 'teacher' },
   { to: '/modes', label: 'Game modes', icon: <LayoutGrid className="size-5" /> },
-  { to: '/games', label: 'Game Maker', icon: <Wand2 className="size-5" /> },
-  { to: '/mode-studio', label: 'Mode Studio', icon: <Hammer className="size-5" /> },
+  { to: '/game-maker', label: 'Game Maker', icon: <Wand2 className="size-5" /> },
   { to: '/library', label: 'Question sets', icon: <BookOpen className="size-5" /> },
 ];
 const COLLECT: NavItem[] = [

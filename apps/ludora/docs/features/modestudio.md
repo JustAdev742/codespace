@@ -1,5 +1,9 @@
 # Mode Studio: people make their own game modes (`modestudio`)
 
+> Mode Studio is now **Game Maker** (`/game-maker`; `/mode-studio` links redirect there), with game
+> code and rules on top of what is described here: see [gamecode.md](gamecode.md). The page names
+> below are as they were when this was written.
+
 A made game is a **blueprint**: data built only from parts Ludora provides, never code. One
 interpreter runs every blueprint that passes the check. Migration **0021** (`0021_blueprints.sql`)
 adds the `blueprints` table.

@@ -8,8 +8,11 @@ import {
   KIND_INFO,
   POWER_UPS,
   SCENE_PLACES,
+  CODE_CATALOGUE,
   blankBlueprint,
+  fromCode,
   parseBlueprint,
+  toCode,
   withKind,
   type Blueprint,
 } from '@ludora/shared';
@@ -23,11 +26,13 @@ import { registerAiTask, TaskReject } from '../tasks.ts';
  */
 
 const draftSchema = z.object({
-  name: z.string().max(80),
+  /** The game in game code, the Game Maker's own language. Preferred: the maker reads and edits it. */
+  code: z.string().max(4000).optional(),
+  name: z.string().max(80).optional(),
   unit: z.string().max(40).optional(),
   goal: z.string().max(200).optional(),
   howTo: z.array(z.string().max(200)).max(6).optional(),
-  kind: z.enum(BLUEPRINT_KINDS),
+  kind: z.enum(BLUEPRINT_KINDS).optional(),
   size: z.number().optional(),
   twist: z.boolean().optional(),
   pacing: z.enum(BLUEPRINT_PACINGS).optional(),
@@ -51,7 +56,8 @@ export type ModeDraft = z.infer<typeof draftSchema>;
 const clamp = (n: number | undefined, min: number, max: number, fallback: number) => (n === undefined || !Number.isFinite(n) ? fallback : Math.min(max, Math.max(min, Math.round(n))));
 
 /** Build a blueprint from a model's draft, keeping within every limit. The check still runs after. */
-export function blueprintFromDraft(d: ModeDraft): Blueprint {
+export function blueprintFromDraft(input: ModeDraft): Blueprint {
+  const d = { ...input, name: input.name ?? 'My game', kind: input.kind ?? 'race' };
   const info = KIND_INFO[d.kind];
   let bp = withKind(blankBlueprint(), d.kind);
   const size = clamp(d.size, info.size.min, info.size.max, info.size.default);
@@ -90,6 +96,10 @@ registerAiTask({
   prompt: (i) => ({
     system: [
       'You design classroom quiz games for Ludora from parts it already has. Players answer quiz questions; the parts decide what an answer does.',
+      'Answer with {"code": "..."}: the game written in Ludora game code, one statement a line, which the person will read and edit. Use only lines shaped like these examples:',
+      ...[...new Set(CODE_CATALOGUE.map((e) => e.code))].slice(0, 70),
+      'Rules are "when <something happens>[, if <condition>]: <action> [and <action>]". Numbers of the game’s own must be declared first ("each player has 0 coins"). A game can only say these messages: Nice one!, Watch out!, Halfway there!, Keep going!, So close!, Bonus time!, Sudden death!, Last chance!, New leader!, Big moment!, Power up!, Ouch!',
+      'If you cannot write code, you may instead answer with the flat fields below.',
       `kind: one of ${BLUEPRINT_KINDS.join(', ')} (race along a track, climb, collect gems on a grid, build one tower together, territory on a shared map, survive with lives, team tug of war).`,
       `size: the goal number (race track 10-60, climb height 10-60, gems 5-60, tower bricks 10-400, map side 4-8, lives 1-5, rope 5-40). twist: true or false.`,
       `pacing: rounds (everyone together) or own-pace. rule: points (right, speed, streak bonuses), steady, or chance (2-4 outcomes with label, weight 1-10, amount 0-10).`,
@@ -100,10 +110,16 @@ registerAiTask({
     user: `Describe the game:\n${i.description}`,
   }),
   output: draftSchema,
-  example: '{"name":"Comet climb","unit":"metres","goal":"Climb to the top first.","howTo":["Right answers climb."],"kind":"climb","size":30,"twist":true,"pacing":"rounds","rule":"points","right":2,"wrong":1,"speed":1,"streak":1,"powers":["shield"],"events":[],"ending":"first","minutes":8,"questions":20,"place":"canyon","threeD":true,"hue":25}',
+  example: '{"code":"game \\"Comet climb\\"\\nclimb to 30 metres\\ntwist: ledges\\nquestions: together, 20 questions, 20 seconds each\\nright answer: climb 2 metres\\nwrong answer: lose 1 metre\\neach player has 0 ropes\\nwhen a player gets 3 right in a row: add 1 ropes\\nwhen a player answers wrong, if ropes is at least 1: take 1 ropes and gain 1\\nwins: first to the goal\\nstops after 8 minutes\\nlooks: 3D canyon, zigzag track, dusk"}',
   validate: (w) => {
+    if (w.code) {
+      const c = fromCode(w.code);
+      if (!c.ok) throw new TaskReject(c.problems[0]!.message);
+      return { output: { blueprint: c.blueprint, code: toCode(c.blueprint) } };
+    }
+    if (!w.name || !w.kind) throw new TaskReject('Write the game as {"code": "..."} in game code.');
     const r = parseBlueprint(blueprintFromDraft(w));
     if (!r.ok) throw new TaskReject(r.problems[0]!.message);
-    return { output: { blueprint: r.blueprint } };
+    return { output: { blueprint: r.blueprint, code: toCode(r.blueprint) } };
   },
 });

@@ -4,7 +4,7 @@ import { existsSync, mkdirSync } from 'node:fs';
 import { account, answerAnyQuestion, CSRF, operator, settled, watchErrors } from './helpers.ts';
 
 /*
- * Mode Studio (docs/features/modestudio.md): build a game from a starting point, change three
+ * Game Maker, built from the forms (docs/features/modestudio.md; game code has e2e/gamecode.spec.ts): build a game from a starting point, change three
  * things and see the live test and the rules react, save it, host it with two players to the end,
  * and find its own name on the results and in the report; copy someone's public game; the 3D
  * scene draws in Chromium. Every screen is checked with axe at phone and laptop widths.
@@ -57,8 +57,8 @@ test('build a game from a starting point, change it, save it, host it to the end
   const errors = watchErrors(page);
   const setId = await makeSet(page, 'Facts for a made game');
 
-  await page.goto('/mode-studio');
-  await expect(page.getByRole('heading', { name: 'Mode Studio', level: 1 })).toBeVisible();
+  await page.goto('/game-maker');
+  await expect(page.getByRole('heading', { name: 'Game Maker', level: 1 })).toBeVisible();
   await check(page, 'studio-home');
 
   await page.getByRole('link', { name: /Three lives/ }).click();
@@ -91,12 +91,12 @@ test('build a game from a starting point, change it, save it, host it to the end
   await page.getByLabel('Seconds per question').fill('60');
   await expect(rules).toContainText('60 seconds each');
   await page.getByRole('button', { name: 'Save game' }).click();
-  await expect(page).toHaveURL(/\/mode-studio\/[0-9a-f-]{36}$/);
+  await expect(page).toHaveURL(/\/game-maker\/[0-9a-f-]{36}$/);
   const blueprintId = page.url().split('/').pop()!;
 
   // Host it: the host page opens with this game, and the set is picked in step 1.
   await page.goto(`/host?blueprint=${blueprintId}&set=${setId}`);
-  const section = page.getByRole('region', { name: 'Games made in Mode Studio' });
+  const section = page.getByRole('region', { name: 'Games made in Game Maker' });
   await expect(section.getByRole('heading', { name: 'Lives of the class' })).toBeVisible();
   await check(page, 'host-made-game');
   await section.getByRole('button', { name: 'Host with these questions: Lives of the class' }).click();
@@ -150,15 +150,15 @@ test('copy someone’s public game to change it', async ({ browser }) => {
   const starter = await (await maker.page.request.get('/api/blueprints?scope=public')).json();
   expect(Array.isArray(starter.games)).toBe(true);
   // The maker builds from the island starting point and lists it for everyone.
-  await maker.page.goto('/mode-studio/new?from=island-claim');
+  await maker.page.goto('/game-maker/new?from=island-claim');
   await maker.page.getByLabel('Name', { exact: true }).fill('Island of the week');
   await maker.page.getByLabel('Who can see it').selectOption('public');
   await maker.page.getByRole('button', { name: 'Save game' }).click();
-  await expect(maker.page).toHaveURL(/\/mode-studio\/[0-9a-f-]{36}$/);
+  await expect(maker.page).toHaveURL(/\/game-maker\/[0-9a-f-]{36}$/);
 
   const other = await account(browser);
   const errors = watchErrors(other.page);
-  await other.page.goto('/mode-studio');
+  await other.page.goto('/game-maker');
   await other.page.getByRole('searchbox', { name: 'Search made games' }).fill('Island of the week');
   const card = other.page.getByRole('listitem').filter({ has: other.page.getByRole('heading', { name: 'Island of the week' }) });
   // The card says plainly what acts on other players, and who made it.
@@ -166,7 +166,7 @@ test('copy someone’s public game to change it', async ({ browser }) => {
   await expect(card).toContainText('Gust power-up');
   await expect(card).toContainText(`Made by ${maker.username}`);
   await check(other.page, 'studio-community');
-  await card.getByRole('link', { name: 'See how it works' }).click();
+  await card.getByRole('link', { name: 'See its code' }).click();
   await expect(other.page.getByRole('heading', { name: 'Island of the week', level: 1 })).toBeVisible();
   await other.page.getByRole('button', { name: 'Copy to change it' }).click();
   await expect(other.page.getByRole('heading', { name: 'Island of the week (copy)', level: 1 })).toBeVisible();
@@ -186,7 +186,7 @@ test('a 3D race draws its scene in the live test, with you and 20 bots on the bi
   const page = host.page;
   await host.context.addInitScript(() => localStorage.setItem('ludora.graphics', 'high'));
   const errors = watchErrors(page);
-  await page.goto('/mode-studio/new?from=meadow-dash');
+  await page.goto('/game-maker/new?from=meadow-dash');
   await expect(page.getByRole('heading', { name: 'Meadow dash', level: 1 })).toBeVisible();
   const live = page.getByRole('region', { name: 'Live test' });
   const canvas = live.locator('canvas.s3-canvas');

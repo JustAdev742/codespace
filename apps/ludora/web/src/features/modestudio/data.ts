@@ -30,4 +30,4 @@ export const VISIBILITY_WORDS: Record<GameVisibility, string> = { private: 'Only
 
 /** Where a made game is hosted or played from: the host page, with its question set still to choose. */
 export const hostLink = (id: string, solo = false) => `/host?${solo ? 'solo=1&' : ''}blueprint=${id}`;
-export const studioLink = (id: string) => `/mode-studio/${id}`;
+export const studioLink = (id: string) => `/game-maker/${id}`;

@@ -21,4 +21,6 @@ export * from './lessons.ts';
 export * from './setProfile.ts';
 export * from './practice.ts';
 export * from './blueprint.ts';
+export * from './gamerules.ts';
+export * from './gamecode.ts';
 export * from './designs.ts';

@@ -28,8 +28,8 @@ const icon = (node: ReactNode) => node;
 export const MAKE_REGISTRY: MakeEntry[] = [
   { id: 'quick', title: 'A set from your notes', text: 'Paste notes, a word list or a table. Questions come back for you to keep or change.', icon: icon(<Sparkles className="size-6" />), to: '/make/quick', who: 'signedIn', group: 'play' },
   { id: 'set', title: 'A question set', text: 'Write questions one by one, use quick add, or import a spreadsheet.', icon: icon(<BookOpen className="size-6" />), to: '/sets/new', who: 'signedIn', group: 'play' },
-  { id: 'game', title: 'A saved game', text: 'A mode, its settings and a set, ready to host again or share.', icon: icon(<Wand2 className="size-6" />), to: '/games', who: 'signedIn', group: 'play' },
-  { id: 'mode', title: 'A game mode', text: 'Design how a game works and looks, in 2D or 3D, and test it against bots as you build.', icon: icon(<Hammer className="size-6" />), to: '/mode-studio', who: 'signedIn', group: 'play' },
+  { id: 'mode', title: 'A game of your own', text: 'Game Maker: write your game as simple code, with your own rules and numbers, and watch a test game follow every line.', icon: icon(<Hammer className="size-6" />), to: '/game-maker', who: 'signedIn', group: 'play' },
+  { id: 'game', title: 'A saved game', text: 'A mode, its settings and a set, ready to host again or share. In Game Maker, under Saved games.', icon: icon(<Wand2 className="size-6" />), to: '/game-maker?tab=saved', who: 'signedIn', group: 'play' },
   { id: 'design', title: 'Your own Glim', text: 'Shape, colour and paint a Glim and things for it to wear. Free, and yours alone.', icon: icon(<Brush className="size-6" />), to: '/designs', who: 'signedIn', group: 'play' },
   { id: 'glim', title: 'A Glim for the shop', text: 'Design characters and items for everyone, in the Creator Studio.', icon: icon(<Palette className="size-6" />), to: '/studio', who: { permission: 'studio.use' }, group: 'play' },
   { id: 'lesson', title: 'A lesson', text: 'Games, slides, discussions and classroom tools in order, in one room.', icon: icon(<ListOrdered className="size-6" />), to: '/lessons', who: 'teacher', group: 'class' },

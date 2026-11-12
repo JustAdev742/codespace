@@ -50,7 +50,7 @@ export function HostMadeGames({ setId, setTitle, solo }: { setId: string | null;
   return (
     <Panel className="p-5" aria-labelledby="host-made-games">
       <h2 id="host-made-games" className="mb-1 flex items-center gap-2 font-display text-2xl font-bold">
-        <Hammer className="size-5" aria-hidden /> Games made in Mode Studio
+        <Hammer className="size-5" aria-hidden /> Games made in Game Maker
       </h2>
       <p className="mb-3 text-sm text-text-2">{setId ? `They play with “${setTitle}”.` : 'Pick questions in step 1 first, then choose a made game here.'}</p>
       {chosenId && chosen.isError ? <p className="mb-3 font-semibold">That made game could not be opened. It may be private or deleted.</p> : null}
@@ -79,8 +79,8 @@ export function HostMadeGames({ setId, setTitle, solo }: { setId: string | null;
           </ul>
         </>
       ) : null}
-      <ButtonLink to="/mode-studio" size="sm" variant="secondary">
-        Open Mode Studio
+      <ButtonLink to="/game-maker" size="sm" variant="secondary">
+        Open Game Maker
       </ButtonLink>
     </Panel>
   );

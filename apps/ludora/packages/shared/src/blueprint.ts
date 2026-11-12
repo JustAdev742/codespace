@@ -1,6 +1,26 @@
 import { z } from 'zod';
 import { cleanText, containsBlockedLanguage } from './validation.ts';
 import { GAME_GLYPHS } from './games.ts';
+import {
+  ACTION_N,
+  ACTION_VAR,
+  CONDITION_N,
+  CONDITION_VAR,
+  HARMFUL_ACTIONS,
+  OTHERS_ACTIONS,
+  ROOM_TRIGGERS,
+  ROUNDS_TRIGGERS,
+  TRIGGER_N,
+  TRIGGER_VAR,
+  VAR_MAX,
+  rulesSchema,
+  varsSchema,
+  type GameRule,
+  type GameVar,
+  type RuleDo,
+  type RuleIf,
+  type RuleWhen,
+} from './gamerules.ts';
 
 /*
  * Mode Studio: a game someone makes is a blueprint, data and never code.
@@ -17,7 +37,7 @@ export const MADE_GAME_MODE_ID = 'made-game';
 /** Most blueprints one account can keep. */
 export const MAX_BLUEPRINTS_PER_MAKER = 40;
 /** Largest blueprint the server stores, as JSON. */
-export const MAX_BLUEPRINT_BYTES = 6000;
+export const MAX_BLUEPRINT_BYTES = 10000;
 
 export const BLUEPRINT_KINDS = ['race', 'climb', 'collect', 'build', 'territory', 'survive', 'tug'] as const;
 export type BlueprintKind = (typeof BLUEPRINT_KINDS)[number];
@@ -281,6 +301,10 @@ export const blueprintSchema = z.object({
     }),
   }),
   cover: z.object({ glyph: z.enum(GAME_GLYPHS), hue: int(0, 359, 'Cover colour') }),
+  /** The game's own numbers (Game Maker). Absent in games made before rules existed. */
+  vars: varsSchema.optional(),
+  /** "When ..., if ...: do ..." rules (Game Maker). Absent in games made before rules existed. */
+  rules: rulesSchema.optional(),
 }).strict();
 export type Blueprint = z.infer<typeof blueprintSchema>;
 export type BlueprintInput = z.input<typeof blueprintSchema>;
@@ -335,6 +359,266 @@ export function blueprintRuleProblems(bp: Blueprint): BlueprintProblem[] {
   if (bp.look.dimension === '3d' && !KINDS_3D.includes(bp.kind.type)) {
     out.push({ path: 'look.dimension', message: `3D scenes are ready for races and climbs. Choose 2D for a ${info.noun}.` });
   }
+  out.push(...logicProblems(bp));
+  return out;
+}
+
+/** Kinds where a player's score is a plain number that can be swapped. */
+const UNIT_KINDS: readonly BlueprintKind[] = ['race', 'climb', 'collect', 'survive'];
+/** Kinds with a goal a player can be halfway to. */
+const GOAL_KINDS: readonly BlueprintKind[] = ['race', 'climb', 'collect'];
+
+/** Problems with the game's own numbers and rules. Paths are "vars.0" and "rules.3". */
+export function logicProblems(bp: Blueprint): BlueprintProblem[] {
+  const out: BlueprintProblem[] = [];
+  const vars = bp.vars ?? [];
+  const names = new Map<string, GameVar>();
+  vars.forEach((v, i) => {
+    const path = `vars.${i}`;
+    if (names.has(v.name)) out.push({ path, message: `There are two numbers called ${v.name}. Give one of them another name.` });
+    names.set(v.name, v);
+    if (v.start > v.max) out.push({ path, message: `${cap(v.name)} starts at ${v.start} but can only go up to ${v.max}. Start it lower or raise its top.` });
+    if (v.name === bp.unit.toLowerCase() || v.name === singular(bp.unit.toLowerCase())) out.push({ path, message: `${cap(bp.unit)} is already the game’s score. Call the number something else.` });
+  });
+  const info = KIND_INFO[bp.kind.type];
+  const cooperative = bp.kind.type === 'build' || bp.end.type === 'together';
+  const minutesLong = bp.end.timeLimitSec / 60;
+  const rangeProblem = (what: string, got: number | undefined, range: [number, number] | null): string | null => {
+    if (range === null) return got === undefined ? null : `${what} does not take a number. Take the number out.`;
+    if (got === undefined) return `${what} needs a number.`;
+    if (got < range[0] || got > range[1]) return `${what} takes a number from ${range[0]} to ${range[1]}.`;
+    return null;
+  };
+  const varProblem = (what: string, name: string | undefined, need: 'none' | 'optional' | 'required' | boolean): string | null => {
+    const required = need === 'required' || need === true;
+    const allowed = need !== 'none' && need !== false;
+    if (name === undefined) return required ? `${what} needs one of the game’s numbers.` : null;
+    if (!allowed) return `${what} does not use a number like ${name}. Take it out.`;
+    if (!names.has(name)) return `The game has no number called ${name}. Add it first, such as “each player has 0 ${name}”.`;
+    return null;
+  };
+  (bp.rules ?? []).forEach((r, i) => {
+    const path = `rules.${i}`;
+    const add = (message: string | null) => {
+      if (message) out.push({ path, message });
+    };
+    const w = r.when;
+    const tw = TRIGGER_WORDS[w.type];
+    add(rangeProblem(`“When ${tw}”`, w.n, TRIGGER_N[w.type]));
+    add(varProblem(`“When ${tw}”`, w.var, TRIGGER_VAR[w.type]));
+    if (w.var && names.get(w.var) && names.get(w.var)!.scope !== 'player') add(`“When a player reaches” works with numbers each player has. ${cap(w.var)} belongs to the ${names.get(w.var)!.scope}.`);
+    if (ROUNDS_TRIGGERS.includes(w.type) && bp.pacing !== 'rounds') add('Rounds start and end only when everyone answers together. Change “questions” to together, or use “every 5 questions”.');
+    if (w.type === 'minutes-left' && w.n !== undefined && w.n >= minutesLong) add(`The game lasts ${minutesLong} minutes, so ${w.n} minutes left comes at the very start. Choose fewer minutes.`);
+    if (w.type === 'halfway' && !GOAL_KINDS.includes(bp.kind.type)) add(`A ${info.noun} has no halfway point. Halfway works in races, climbs and collecting games.`);
+    for (const c of r.if) {
+      const cw = CONDITION_WORDS[c.type];
+      add(rangeProblem(`“If ${cw}”`, c.n, CONDITION_N[c.type]));
+      add(varProblem(`“If ${cw}”`, c.var, CONDITION_VAR[c.type]));
+      if (c.type === 'minutes-left' && c.n !== undefined && c.n >= minutesLong) add(`The game lasts ${minutesLong} minutes, so “${c.n} minutes left” is always true. Choose fewer minutes.`);
+    }
+    for (const d of r.do) {
+      const dw = ACTION_WORDS[d.type];
+      add(rangeProblem(`“${cap(dw)}”`, d.n, ACTION_N[d.type]));
+      add(varProblem(`“${cap(dw)}”`, d.var, ACTION_VAR[d.type]));
+      if (d.type === 'power' ? !d.power : d.power) add(d.power ? `“${cap(dw)}” does not give a power-up. Take “${d.power}” out.` : 'Say which power-up to give: double, shield, leap, freeze or gust.');
+      if (d.type === 'say' ? !d.message : d.message) add(d.message ? `Only “say” shows a message. Take “${d.message}” out.` : 'Say which message to show.');
+      if (d.type === 'power' && d.power && cooperative && ACTS_ON_OTHERS_POWERS.includes(d.power)) add(`${POWER_INFO[d.power].label} works against other players, which does not fit a game everyone plays together. Give another power-up.`);
+      if (HARMFUL_ACTIONS.includes(d.type) && cooperative) add(`“${cap(dw)}” works against other players, which does not fit a game everyone plays together. Take it out.`);
+      if ((d.type === 'life' || d.type === 'lose-life') && bp.kind.type !== 'survive') add(`Only a lives game has lives. Choose “3 lives” as the kind of game, or take “${dw}” out.`);
+      if (d.type === 'swap-leader' && !UNIT_KINDS.includes(bp.kind.type)) add(`Swapping places works in races, climbs, collecting and lives games, not a ${info.noun}.`);
+      if (d.type === 'win' && cooperative) add('In a game everyone plays together nobody wins alone. Use “end the game” instead.');
+      if (d.type === 'win' && ROOM_TRIGGERS.includes(w.type)) add(`“Win” needs one player to win, and “when ${tw}” is about everyone. Use a rule about a player, such as “when a player reaches 10 coins: win”.`);
+    }
+  });
+  return out;
+}
+
+const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+
+/** Short words for each part, for messages. The game code has the full sentences. */
+export const TRIGGER_WORDS: Record<RuleWhen['type'], string> = {
+  start: 'the game starts',
+  right: 'a player answers right',
+  wrong: 'a player answers wrong',
+  quick: 'a player answers quickly',
+  streak: 'a player gets some right in a row',
+  'miss-streak': 'a player gets some wrong in a row',
+  every: 'every few questions',
+  reach: 'a player reaches',
+  'runs-out': 'a player runs out',
+  halfway: 'a player gets halfway',
+  lead: 'a player takes the lead',
+  power: 'a player uses a power-up',
+  'round-start': 'a round starts',
+  'round-end': 'a round ends',
+  'minutes-left': 'minutes are left',
+};
+export const CONDITION_WORDS: Record<RuleIf['type'], string> = {
+  'at-least': 'at least',
+  'at-most': 'at most',
+  first: 'in first place',
+  last: 'in last place',
+  team: 'on team',
+  chance: 'chance',
+  'minutes-left': 'minutes left',
+};
+export const ACTION_WORDS: Record<RuleDo['type'], string> = {
+  gain: 'gain',
+  lose: 'lose',
+  add: 'add',
+  take: 'take',
+  set: 'set',
+  'everyone-gain': 'everyone gains',
+  'behind-gain': 'everyone behind gains',
+  'ahead-lose': 'everyone ahead loses',
+  'leader-lose': 'the leader loses',
+  power: 'get a power-up',
+  shield: 'get a shield',
+  'freeze-leader': 'freeze the leader',
+  golden: 'golden round',
+  rally: 'rally',
+  double: 'double points',
+  life: 'gain a life',
+  'lose-life': 'lose a life',
+  'swap-leader': 'swap with the leader',
+  win: 'win',
+  end: 'end the game',
+  say: 'say',
+};
+
+/* Rules in plain words, for the rules summary and the game's card. */
+
+function amountWords(n: number, unit: string) {
+  return plural(n, unit);
+}
+
+function scoreOrVar(name: string | undefined, bp: Blueprint) {
+  return name ?? bp.unit;
+}
+
+export function describeWhen(w: RuleWhen, bp: Blueprint): string {
+  switch (w.type) {
+    case 'start':
+      return 'When the game starts';
+    case 'right':
+      return 'When a player answers right';
+    case 'wrong':
+      return 'When a player answers wrong';
+    case 'quick':
+      return 'When a player answers right quickly';
+    case 'streak':
+      return `When a player gets ${w.n} right in a row`;
+    case 'miss-streak':
+      return `When a player gets ${w.n} wrong in a row`;
+    case 'every':
+      return `Every ${w.n} questions a player answers`;
+    case 'reach':
+      return `When a player reaches ${amountWords(w.n ?? 0, scoreOrVar(w.var, bp))}`;
+    case 'runs-out':
+      return `When a player runs out of ${w.var}`;
+    case 'halfway':
+      return 'When a player gets halfway';
+    case 'lead':
+      return 'When a player takes the lead';
+    case 'power':
+      return 'When a player uses a power-up';
+    case 'round-start':
+      return 'When a round starts';
+    case 'round-end':
+      return 'When a round ends';
+    case 'minutes-left':
+      return `When ${w.n === 1 ? '1 minute is' : `${w.n} minutes are`} left`;
+  }
+}
+
+export function describeIf(c: RuleIf, bp: Blueprint): string {
+  switch (c.type) {
+    case 'at-least':
+      return `${c.var ? `their ${c.var}` : `their ${bp.unit}`} ${c.var ? 'is' : 'are'} at least ${c.n}`;
+    case 'at-most':
+      return `${c.var ? `their ${c.var}` : `their ${bp.unit}`} ${c.var ? 'is' : 'are'} at most ${c.n}`;
+    case 'first':
+      return 'they are in first place';
+    case 'last':
+      return 'they are in last place';
+    case 'team':
+      return `they are on team ${c.n}`;
+    case 'chance':
+      return `a ${c.n}% chance comes up`;
+    case 'minutes-left':
+      return `${c.n === 1 ? '1 minute or less is' : `${c.n} minutes or less are`} left`;
+  }
+}
+
+export function describeDo(d: RuleDo, bp: Blueprint, roomTrigger: boolean): string {
+  const who = roomTrigger ? 'each player' : 'they';
+  const s = roomTrigger ? 's' : '';
+  switch (d.type) {
+    case 'gain':
+      return `${who} gain${s} ${amountWords(d.n ?? 0, bp.unit)}`;
+    case 'lose':
+      return `${who} lose${roomTrigger ? 's' : ''} ${amountWords(d.n ?? 0, bp.unit)}`;
+    case 'add':
+      return `${plural(d.n ?? 0, d.var ?? '')} ${d.n === 1 ? 'is' : 'are'} added`;
+    case 'take':
+      return `${plural(d.n ?? 0, d.var ?? '')} ${d.n === 1 ? 'is' : 'are'} taken away`;
+    case 'set':
+      return `${d.var} goes to ${d.n}`;
+    case 'everyone-gain':
+      return `everyone gains ${amountWords(d.n ?? 0, bp.unit)}`;
+    case 'behind-gain':
+      return `everyone behind ${roomTrigger ? 'them' : 'them'} gains ${amountWords(d.n ?? 0, bp.unit)}`;
+    case 'ahead-lose':
+      return `everyone ahead of them loses ${amountWords(d.n ?? 0, bp.unit)}`;
+    case 'leader-lose':
+      return `the leader loses ${amountWords(d.n ?? 0, bp.unit)}`;
+    case 'power':
+      return `${who} get${s} a ${POWER_INFO[d.power ?? 'double'].label.toLowerCase()} power-up`;
+    case 'shield':
+      return `${who} get${s} a shield against the next wrong answer`;
+    case 'freeze-leader':
+      return 'the leader gains nothing from their next right answer';
+    case 'golden':
+      return 'a golden round starts (every gain counts double)';
+    case 'rally':
+      return 'a rally starts (players in the back half get 1 extra)';
+    case 'double':
+      return 'every gain counts double from then on';
+    case 'life':
+      return `${who} gain${s} a life`;
+    case 'lose-life':
+      return `${who} lose${roomTrigger ? 's' : ''} a life`;
+    case 'swap-leader':
+      return `${who} swap${s} ${bp.unit} with the leader`;
+    case 'win':
+      return 'they win and the game ends';
+    case 'end':
+      return 'the game ends';
+    case 'say':
+      return `the screen says “${d.message}”`;
+  }
+}
+
+/** One rule as a sentence: "When a player gets 3 right in a row, if their coins is at least 2: they gain 5 steps." */
+export function describeRule(r: GameRule, bp: Blueprint): string {
+  const room = ROOM_TRIGGERS.includes(r.when.type);
+  const ifs = r.if.length ? `, if ${r.if.map((c) => describeIf(c, bp)).join(' and ')}` : '';
+  const dos = r.do.map((d) => describeDo(d, bp, room));
+  const text = `${describeWhen(r.when, bp)}${ifs}: ${dos.join(', and ')}`;
+  // A message already ends with its own mark (“Nice one!”).
+  return /[!?]”$/.test(text) ? text : `${text}.`;
+}
+
+/** The game's own numbers in words: "Each player has coins, starting at 0 (up to 99)." */
+export function describeVar(v: GameVar): string {
+  const who = v.scope === 'player' ? 'Each player has' : v.scope === 'team' ? 'Each team has' : 'The game keeps';
+  return `${who} ${v.name}, starting at ${v.start}${v.max < VAR_MAX ? ` (up to ${v.max})` : ''}.`;
+}
+
+/** Rule actions that act on other players, for the card. */
+export function rulesActingOnOthers(bp: Blueprint): string[] {
+  const out: string[] = [];
+  for (const r of bp.rules ?? []) if (r.do.some((d) => OTHERS_ACTIONS.includes(d.type))) out.push(`Rule: ${describeRule(r, bp)}`);
   return out;
 }
 
@@ -429,6 +713,7 @@ export function actsOnOthers(bp: Blueprint): string[] {
   const out: string[] = [];
   for (const p of bp.extras.powers) if (POWER_INFO[p].others) out.push(`${POWER_INFO[p].label} power-up: ${POWER_INFO[p].help.charAt(0).toLowerCase()}${POWER_INFO[p].help.slice(1)}`);
   if (bp.kind.type === 'territory' && bp.kind.twist) out.push('Steal: when the map is full, a claim takes a square from the leader.');
+  out.push(...rulesActingOnOthers(bp));
   return out;
 }
 
@@ -511,6 +796,8 @@ export function describeBlueprint(bp: Blueprint): string[] {
   );
   lines.push(`The game lasts at most ${minutes(bp.end.timeLimitSec)}.`);
   if (bp.kind.type === 'tug') lines.push('Played in teams.');
+  for (const v of bp.vars ?? []) lines.push(describeVar(v));
+  for (const r of bp.rules ?? []) lines.push(describeRule(r, bp));
   return lines;
 }
 
@@ -647,6 +934,50 @@ export const STARTER_BLUEPRINTS: readonly { id: string; blueprint: Blueprint }[]
       cover: { glyph: 'shield', hue: 10 },
     }),
   },
+  {
+    id: 'coin-keeper',
+    blueprint: bp({
+      name: 'Coin keeper',
+      unit: 'steps',
+      goal: 'Race to the end, saving coins for a leap.',
+      howTo: ['Right answers move you and earn a coin.', 'Five coins buy a leap.'],
+      pacing: 'own-pace',
+      kind: { type: 'race', length: 30, twist: false },
+      answer: { ...ANSWER, rule: 'steady', right: 1 },
+      extras: { ...EXTRAS },
+      end: { ...END, type: 'first', timeLimitSec: 300, questions: 40 },
+      look: { dimension: '3d', hue: 45, accent: 210, scene: { place: 'harbour', shape: 'loop', props: ['crates', 'lamps'], camera: 'follow', time: 'day' } },
+      cover: { glyph: 'chest', hue: 45 },
+      vars: [{ name: 'coins', scope: 'player', start: 0, max: 999 }],
+      rules: [
+        { when: { type: 'right' }, if: [], do: [{ type: 'add', n: 1, var: 'coins' }] },
+        { when: { type: 'reach', n: 5, var: 'coins' }, if: [], do: [{ type: 'power', power: 'leap' }, { type: 'set', n: 0, var: 'coins' }] },
+        { when: { type: 'halfway' }, if: [], do: [{ type: 'say', message: 'Halfway there!' }] },
+        { when: { type: 'miss-streak', n: 2 }, if: [], do: [{ type: 'say', message: 'Keep going!' }] },
+      ],
+    }),
+  },
+  {
+    id: 'sudden-death',
+    blueprint: bp({
+      name: 'Sudden death',
+      unit: 'points',
+      goal: 'Keep your lives. In the last two minutes, a wrong answer costs two.',
+      howTo: ['A wrong answer costs a life, and two in the last two minutes.', 'The player in last place gets a boost each round.'],
+      pacing: 'rounds',
+      kind: { type: 'survive', lives: 5, twist: false },
+      answer: { ...ANSWER, rule: 'points', right: 2, speed: 2, streak: 0 },
+      extras: { ...EXTRAS },
+      end: { ...END, type: 'most', questions: 20, questionTimeSec: 20, timeLimitSec: 480 },
+      look: { style: 'bold', hue: 0, accent: 45 },
+      cover: { glyph: 'ghost', hue: 0 },
+      rules: [
+        { when: { type: 'minutes-left', n: 2 }, if: [], do: [{ type: 'say', message: 'Sudden death!' }] },
+        { when: { type: 'wrong' }, if: [{ type: 'minutes-left', n: 2 }], do: [{ type: 'lose-life' }] },
+        { when: { type: 'round-end' }, if: [{ type: 'last' }], do: [{ type: 'gain', n: 2 }] },
+      ],
+    }),
+  },
 ];
 
 /** A blank game: the smallest complete blueprint, for "start from nothing". */
@@ -675,4 +1006,25 @@ export function withKind(prev: Blueprint, type: BlueprintKind): Blueprint {
   if (next.look.dimension === '3d' && !KINDS_3D.includes(type)) next.look = { ...next.look, dimension: '2d' };
   if (type === 'build' || next.end.type === 'together') next.extras = { ...next.extras, powers: next.extras.powers.filter((p) => !POWER_INFO[p].others) };
   return next;
+}
+
+/**
+ * The same game with every unused setting at its plain value: speed and streak bonuses only when
+ * answers score points, surprises only when answers open one, the power-up count only when there
+ * are power-ups, the 3D scene only in 3D, and no empty lists of numbers or rules. The interpreter
+ * never reads what this resets, so a game plays exactly the same after it (tested). Game code
+ * writes only what a game uses, so reading code back gives this form.
+ */
+export function normaliseBlueprint(input: Blueprint): Blueprint {
+  const bp: Blueprint = JSON.parse(JSON.stringify(input)) as Blueprint;
+  const a = bp.answer;
+  if (a.rule === 'points' && a.speed === 0 && a.streak === 0) a.rule = 'steady';
+  if (a.rule === 'steady') bp.answer = { ...a, speed: 0, streak: 0, outcomes: [] };
+  else if (a.rule === 'points') bp.answer = { ...a, outcomes: [] };
+  else bp.answer = { ...a, right: 1, speed: 0, streak: 0 };
+  if (!bp.extras.powers.length) bp.extras.powerEvery = 4;
+  if (bp.look.dimension === '2d') bp.look.scene = JSON.parse(JSON.stringify(LOOK.scene)) as Blueprint['look']['scene'];
+  if (bp.vars && !bp.vars.length) delete bp.vars;
+  if (bp.rules && !bp.rules.length) delete bp.rules;
+  return bp;
 }

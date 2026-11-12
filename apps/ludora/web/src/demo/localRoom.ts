@@ -25,7 +25,7 @@ export interface DemoSetup {
   /** Practice bots to add, besides you. */
   bots: number;
   name: string;
-  /** Mode Studio's live test: the made game to play (modeId is then 'made-game'). */
+  /** Game Maker's live test: the made game to play (modeId is then 'made-game'). */
   madeGame?: MadeGame | null;
 }
 

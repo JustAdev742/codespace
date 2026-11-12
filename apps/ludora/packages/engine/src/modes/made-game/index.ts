@@ -18,7 +18,13 @@ import {
   describeBlueprint,
   blueprintTagline,
   amountOf,
+  RULE_FIRES_PER_PLAYER,
+  RULE_FIRES_ROOM,
+  ROOM_ACTIONS,
+  ROOM_TRIGGERS,
   type Blueprint,
+  type GameRule,
+  type RuleTrigger,
   type BlueprintEvent,
   type ModeMeta,
   type PowerUp,
@@ -55,6 +61,10 @@ export const EVENT_MS = 20_000;
 export const EVENT_ROUND_EVERY = 4;
 /** Race shortcuts jump this far. */
 export const SHORTCUT_JUMP = 3;
+/** Most lives a rule can bring a player up to. */
+export const RULE_LIVES_CAP = 9;
+/** Triggers worked out from what changed, once after each answer, power-up or square. */
+const DERIVED: readonly RuleTrigger[] = ['reach', 'runs-out', 'halfway', 'lead'];
 
 const QUESTION_TYPES: readonly QuestionType[] = ['mcq', 'multi', 'truefalse', 'short', 'numeric', 'order', 'match', 'blanks', 'sort'];
 
@@ -92,6 +102,9 @@ interface Pl {
   stream: StreamState | null;
   last: MadeLast | null;
   seq: number;
+  /** Rules: wrong answers in a row, and questions answered (both pacings). */
+  misses?: number;
+  asked?: number;
 }
 
 interface State {
@@ -109,6 +122,24 @@ interface State {
   eventCount: number;
   coopWon: boolean;
   winnerTeam: string | null;
+  /** Rules (Game Maker). Present only in games with numbers or rules. */
+  logic?: Logic;
+  over?: boolean;
+}
+
+/** What rules keep: the game's own numbers, how often each rule has worked, and their effects. */
+interface Logic {
+  player: Record<PlayerId, Record<string, number>>;
+  team: Record<string, Record<string, number>>;
+  game: Record<string, number>;
+  /** Rule index, then player id (or "room"), to times it worked. */
+  fires: Record<number, Record<string, number>>;
+  doubled: boolean;
+  event: { type: BlueprintEvent; until: number | null; round: number | null } | null;
+  lead: PlayerId | null;
+  halfway: Record<PlayerId, true>;
+  lastRound: number;
+  winner: PlayerId | null;
 }
 
 const action = z.discriminatedUnion('type', [
@@ -130,6 +161,8 @@ export interface MadeRow {
 }
 
 export interface MadeYou {
+  /** Your numbers and your team's, in games that keep them. */
+  vars?: { name: string; scope: 'player' | 'team'; value: number }[];
   score: number;
   lives: number | null;
   out: boolean;
@@ -162,6 +195,9 @@ export interface MadeView {
   pulls: { teamId: string; pulls: number }[] | null;
   shortcuts: number[];
   ledgeEvery: number | null;
+  /** The game's own numbers for everyone, and whether a rule doubled every gain (games with rules only). */
+  vars?: { name: string; value: number }[];
+  doubled?: boolean;
   rows: MadeRow[];
   players: number;
   finished: number;
@@ -287,6 +323,11 @@ export function blueprintMode(bp: Blueprint): GameMode<State, Record<string, nev
   }
 
   function eventNow(s: State, ctx: ModeContext): BlueprintEvent | null {
+    const re = s.logic?.event;
+    if (re) {
+      if (re.round !== null && s.sync && s.sync.round === re.round) return re.type;
+      if (re.until !== null && re.until > ctx.now()) return re.type;
+    }
     if (!bp.extras.events.length) return null;
     if (rounds) {
       const r = s.sync?.round ?? -1;
@@ -490,6 +531,10 @@ export function blueprintMode(bp: Blueprint): GameMode<State, Record<string, nev
         p.double = false;
         notes.push('Double');
       }
+      if (s.logic?.doubled && n > 0) {
+        n *= 2;
+        notes.push('Double points');
+      }
       if (p.frozen) {
         n = 0;
         p.frozen = false;
@@ -502,6 +547,14 @@ export function blueprintMode(bp: Blueprint): GameMode<State, Record<string, nev
       const got = gain(s, id, n, ctx, notes);
       earnPower(p, id, ctx, notes);
       setLast(p, true, got, notes);
+      if (s.logic) {
+        p.misses = 0;
+        p.asked = (p.asked ?? 0) + 1;
+        runRules(s, ctx, 'right', id, { streak: r.streak });
+        if (r.limitMs > 0 && r.responseMs <= r.limitMs / 3) runRules(s, ctx, 'quick', id, {});
+        if (r.streak > 0) runRules(s, ctx, 'streak', id, { streak: r.streak });
+        runRules(s, ctx, 'every', id, { asked: p.asked });
+      }
     } else {
       let lost = 0;
       if (p.shield) {
@@ -520,7 +573,300 @@ export function blueprintMode(bp: Blueprint): GameMode<State, Record<string, nev
         }
       }
       setLast(p, false, -lost, notes);
+      if (s.logic) {
+        p.misses = (p.misses ?? 0) + 1;
+        p.asked = (p.asked ?? 0) + 1;
+        runRules(s, ctx, 'wrong', id, {});
+        runRules(s, ctx, 'miss-streak', id, { misses: p.misses });
+        runRules(s, ctx, 'every', id, { asked: p.asked });
+      }
     }
+  }
+
+  /* ------------------------------------- rules ------------------------------------- */
+
+  const rules: readonly GameRule[] = bp.rules ?? [];
+  const varDefs = new Map((bp.vars ?? []).map((v) => [v.name, v]));
+  const hasLogic = rules.length > 0 || varDefs.size > 0;
+  const derivedRules = rules.some((r) => DERIVED.includes(r.when.type));
+
+  function getVar(s: State, id: PlayerId | null, name: string): number {
+    const def = varDefs.get(name);
+    const L = s.logic;
+    if (!def || !L) return 0;
+    if (def.scope === 'game') return L.game[name] ?? def.start;
+    if (id === null) return def.start;
+    if (def.scope === 'team') return L.team[teamOf(ctx0(), id) ?? 'solo']?.[name] ?? def.start;
+    return L.player[id]?.[name] ?? def.start;
+  }
+  function setVar(s: State, id: PlayerId, name: string, value: number) {
+    const def = varDefs.get(name);
+    const L = s.logic;
+    if (!def || !L) return;
+    const v = Math.max(0, Math.min(def.max, Math.round(value)));
+    if (def.scope === 'game') L.game[name] = v;
+    else if (def.scope === 'team') (L.team[teamOf(ctx0(), id) ?? 'solo'] ??= {})[name] = v;
+    else (L.player[id] ??= {})[name] = v;
+  }
+  // teamOf needs a context; the one in use is kept for the length of a call.
+  let ctxNow: ModeContext | null = null;
+  const ctx0 = () => ctxNow!;
+
+  function leaderOf(s: State, ctx: ModeContext, except: PlayerId): PlayerId | null {
+    const others = active(s, ctx).filter((o) => !friendly(ctx, except, o.id) && !s.players[o.id]!.out);
+    const top = others.sort((a, b) => score(s, b.id) - score(s, a.id) || a.name.localeCompare(b.name))[0];
+    return top ? top.id : null;
+  }
+
+  function conditionsHold(s: State, ctx: ModeContext, r: GameRule, id: PlayerId): boolean {
+    for (const c of r.if) {
+      const n = c.n ?? 0;
+      switch (c.type) {
+        case 'at-least':
+          if ((c.var ? getVar(s, id, c.var) : score(s, id)) < n) return false;
+          break;
+        case 'at-most':
+          if ((c.var ? getVar(s, id, c.var) : score(s, id)) > n) return false;
+          break;
+        case 'first': {
+          const mine = score(s, id);
+          if (active(s, ctx).some((o) => o.id !== id && score(s, o.id) > mine)) return false;
+          break;
+        }
+        case 'last': {
+          const ids = active(s, ctx).map((o) => o.id);
+          const mine = score(s, id);
+          if (ids.length < 2 || ids.some((o) => o !== id && score(s, o) < mine)) return false;
+          break;
+        }
+        case 'team': {
+          const teams = ctx.teams();
+          if (teams[n - 1]?.id !== teamOf(ctx, id)) return false;
+          break;
+        }
+        case 'chance':
+          if (ctx.rng.int(1, 100) > n) return false;
+          break;
+        case 'minutes-left':
+          if (s.endsAt - ctx.now() > n * 60_000) return false;
+          break;
+      }
+    }
+    return true;
+  }
+
+  function startEvent(s: State, ctx: ModeContext, type: BlueprintEvent) {
+    const L = s.logic!;
+    if (rounds && s.sync) L.event = { type, until: null, round: s.sync.phase === 'question' || s.sync.phase === 'intro' ? Math.max(0, s.sync.round) : s.sync.round + 1 };
+    else L.event = { type, until: ctx.now() + EVENT_MS, round: null };
+    ctx.feed(`${type === 'golden' ? 'Golden round' : 'Rally'}!`, { tone: 'big' });
+  }
+
+  function win(s: State, ctx: ModeContext, id: PlayerId) {
+    const L = s.logic!;
+    L.winner = id;
+    if (k.type === 'tug') s.winnerTeam = teamOf(ctx, id);
+    if (s.players[id]!.place === null) {
+      s.finishOrder.unshift(id);
+      s.finishOrder.forEach((pid, i) => (s.players[pid]!.place = i + 1));
+    }
+    finish(s, ctx, `${name(ctx, id)} won by the game’s own rule.`);
+  }
+
+  function act(s: State, ctx: ModeContext, d: GameRule['do'][number], id: PlayerId, room: boolean) {
+    const p = s.players[id];
+    if (!p || s.over) return;
+    const n = d.n ?? 0;
+    const notes: string[] = [];
+    switch (d.type) {
+      case 'gain':
+        gain(s, id, n, ctx, notes);
+        break;
+      case 'lose':
+        cost(s, id, n, ctx);
+        break;
+      case 'add':
+        setVar(s, id, d.var!, getVar(s, id, d.var!) + n);
+        break;
+      case 'take':
+        setVar(s, id, d.var!, getVar(s, id, d.var!) - n);
+        break;
+      case 'set':
+        setVar(s, id, d.var!, n);
+        break;
+      case 'everyone-gain':
+        for (const o of active(s, ctx)) if (!s.players[o.id]!.out) gain(s, o.id, n, ctx, []);
+        break;
+      case 'behind-gain': {
+        const mine = score(s, id);
+        for (const o of active(s, ctx)) if (o.id !== id && !s.players[o.id]!.out && score(s, o.id) < mine) gain(s, o.id, n, ctx, []);
+        break;
+      }
+      case 'ahead-lose': {
+        const mine = score(s, id);
+        for (const o of active(s, ctx)) if (!friendly(ctx, id, o.id) && score(s, o.id) > mine) cost(s, o.id, n, ctx);
+        break;
+      }
+      case 'leader-lose': {
+        const l = leaderOf(s, ctx, id);
+        if (l) cost(s, l, n, ctx);
+        break;
+      }
+      case 'power':
+        if (!p.power && d.power) {
+          p.power = d.power;
+          ctx.feed(`You got ${POWER_INFO[d.power].label}. Use it when you like.`, { to: [id] });
+        }
+        break;
+      case 'shield':
+        p.shield = true;
+        break;
+      case 'freeze-leader': {
+        const l = leaderOf(s, ctx, id);
+        if (l) s.players[l]!.frozen = true;
+        break;
+      }
+      case 'golden':
+      case 'rally':
+        startEvent(s, ctx, d.type);
+        break;
+      case 'double':
+        if (!s.logic!.doubled) ctx.feed('Double points from now on!', { tone: 'big' });
+        s.logic!.doubled = true;
+        break;
+      case 'life':
+        if (k.type === 'survive' && !p.out) p.lives = Math.min(RULE_LIVES_CAP, p.lives + 1);
+        break;
+      case 'lose-life':
+        if (k.type === 'survive' && !p.out) {
+          p.lives = Math.max(0, p.lives - 1);
+          if (p.lives === 0) knockOut(s, id, ctx);
+        }
+        break;
+      case 'swap-leader': {
+        const l = leaderOf(s, ctx, id);
+        if (l && (k.type === 'race' || k.type === 'climb' || k.type === 'collect' || k.type === 'survive')) {
+          const q = s.players[l]!;
+          if (q.units > p.units) {
+            [p.units, q.units] = [q.units, p.units];
+            if (k.type === 'climb') q.ledge = Math.min(q.ledge, q.units);
+          }
+        }
+        break;
+      }
+      case 'win':
+        win(s, ctx, id);
+        break;
+      case 'end':
+        finish(s, ctx, 'The game’s own rule ended it.');
+        break;
+      case 'say':
+        if (d.message) ctx.feed(d.message, room ? { tone: 'big' } : { to: [id] });
+        break;
+    }
+  }
+
+  /** Run every rule for one thing that happened. Player triggers act for that player; room triggers for each player. */
+  function runRules(s: State, ctx: ModeContext, trigger: RuleTrigger, id: PlayerId | null, info: { streak?: number; misses?: number; asked?: number; minutes?: number }) {
+    const L = s.logic;
+    if (!L || s.over) return;
+    ctxNow = ctx;
+    rules.forEach((r, i) => {
+      if (r.when.type !== trigger || s.over) return;
+      const n = r.when.n ?? 0;
+      if (trigger === 'streak' && !(info.streak && info.streak % n === 0)) return;
+      if (trigger === 'miss-streak' && !(info.misses && info.misses % n === 0)) return;
+      if (trigger === 'every' && !(info.asked && info.asked % n === 0)) return;
+      if (trigger === 'minutes-left' && info.minutes !== n) return;
+      const room = ROOM_TRIGGERS.includes(trigger);
+      const targets = room ? active(s, ctx).filter((o) => !s.players[o.id]!.out).map((o) => o.id) : id ? [id] : [];
+      const fires = (L.fires[i] ??= {});
+      let roomDone = false;
+      for (const t of targets) {
+        if (s.over) return;
+        if ((fires[t] ?? 0) >= RULE_FIRES_PER_PLAYER) continue;
+        if (!conditionsHold(s, ctx, r, t)) continue;
+        fires[t] = (fires[t] ?? 0) + 1;
+        for (const d of r.do) {
+          const roomAction = ROOM_ACTIONS.includes(d.type) || (room && d.type === 'say');
+          if (roomAction) {
+            if (roomDone || (fires.room ?? 0) >= RULE_FIRES_ROOM) continue;
+            act(s, ctx, d, t, room);
+          } else act(s, ctx, d, t, room);
+        }
+        if (r.do.some((d) => ROOM_ACTIONS.includes(d.type) || (room && d.type === 'say')) && !roomDone) {
+          roomDone = true;
+          fires.room = (fires.room ?? 0) + 1;
+        }
+      }
+    });
+  }
+
+  type Snap = Record<PlayerId, { score: number; vars: Record<string, number> }>;
+  function snapshot(s: State, ctx: ModeContext): Snap | null {
+    if (!s.logic || !derivedRules) return null;
+    ctxNow = ctx;
+    const out: Snap = {};
+    for (const p of active(s, ctx)) {
+      const vars: Record<string, number> = {};
+      for (const name of varDefs.keys()) vars[name] = getVar(s, p.id, name);
+      out[p.id] = { score: score(s, p.id), vars };
+    }
+    return out;
+  }
+
+  /** Reach, run out, halfway and the lead: worked out from what changed, once. */
+  function derived(s: State, ctx: ModeContext, before: Snap | null) {
+    const L = s.logic;
+    if (!L || !before || s.over) return;
+    ctxNow = ctx;
+    const now = snapshot(s, ctx)!;
+    rules.forEach((r, i) => {
+      if (s.over) return;
+      const w = r.when;
+      if (w.type !== 'reach' && w.type !== 'runs-out' && w.type !== 'halfway') return;
+      for (const pid of Object.keys(now)) {
+        const b = before[pid];
+        const a = now[pid]!;
+        if (!b) continue;
+        let hit = false;
+        if (w.type === 'reach') {
+          const was = w.var ? (b.vars[w.var] ?? 0) : b.score;
+          const is = w.var ? (a.vars[w.var] ?? 0) : a.score;
+          hit = was < (w.n ?? 0) && is >= (w.n ?? 0);
+        } else if (w.type === 'runs-out') hit = (b.vars[w.var!] ?? 0) > 0 && (a.vars[w.var!] ?? 0) === 0;
+        else hit = !L.halfway[pid] && a.score >= Math.ceil(size / 2);
+        if (!hit) continue;
+        if (w.type === 'halfway') L.halfway[pid] = true;
+        fireOne(s, ctx, r, i, pid);
+      }
+    });
+    // The lead: one player strictly ahead of everyone, with something on the board.
+    const scores = Object.keys(now).map((pid) => [pid, score(s, pid)] as const);
+    const top = Math.max(0, ...scores.map(([, v]) => v));
+    const leaders = scores.filter(([, v]) => v === top && top > 0);
+    const leader = leaders.length === 1 ? leaders[0]![0] : null;
+    if (leader && leader !== L.lead) {
+      L.lead = leader;
+      rules.forEach((r, i) => {
+        if (r.when.type === 'lead' && !s.over) fireOne(s, ctx, r, i, leader);
+      });
+    }
+  }
+
+  function fireOne(s: State, ctx: ModeContext, r: GameRule, i: number, pid: PlayerId) {
+    const L = s.logic!;
+    const fires = (L.fires[i] ??= {});
+    if ((fires[pid] ?? 0) >= RULE_FIRES_PER_PLAYER || !s.players[pid] || s.players[pid]!.out) return;
+    if (!conditionsHold(s, ctx, r, pid)) return;
+    fires[pid] = (fires[pid] ?? 0) + 1;
+    const hasRoom = r.do.some((d) => ROOM_ACTIONS.includes(d.type));
+    const roomOk = (fires.room ?? 0) < RULE_FIRES_ROOM;
+    for (const d of r.do) {
+      if (ROOM_ACTIONS.includes(d.type) && !roomOk) continue;
+      act(s, ctx, d, pid, false);
+    }
+    if (hasRoom && roomOk) fires.room = (fires.room ?? 0) + 1;
   }
 
   function knockOut(s: State, id: PlayerId, ctx: ModeContext) {
@@ -539,7 +885,9 @@ export function blueprintMode(bp: Blueprint): GameMode<State, Record<string, nev
     return false;
   }
 
-  function finish(ctx: ModeContext, summary: string) {
+  function finish(s: State, ctx: ModeContext, summary: string) {
+    if (s.over) return;
+    s.over = true;
     ctx.clearTimer('time');
     ctx.clearTimer('event');
     ctx.endGame(summary);
@@ -547,10 +895,11 @@ export function blueprintMode(bp: Blueprint): GameMode<State, Record<string, nev
 
   /** Check every way the game can end. Called after anything that changes scores or players. */
   function checkEnd(s: State, ctx: ModeContext): boolean {
+    if (s.over) return true;
     const players = active(s, ctx);
     if (bp.end.type === 'together' && k.type === 'build' && s.tower >= k.target) {
       s.coopWon = true;
-      finish(ctx, `The tower is built: ${amountOf(s.tower, unit)}. Everyone wins together.`);
+      finish(s, ctx, `The tower is built: ${amountOf(s.tower, unit)}. Everyone wins together.`);
       return true;
     }
     if (bp.end.type === 'first') {
@@ -565,8 +914,8 @@ export function blueprintMode(bp: Blueprint): GameMode<State, Record<string, nev
         if (k.type === 'tug') {
           s.winnerTeam = teamOf(ctx, done[0]!.id);
           const team = ctx.teams().find((t) => t.id === s.winnerTeam);
-          finish(ctx, `${team?.name ?? 'A team'} pulled the marker home.`);
-        } else finish(ctx, `${name(ctx, s.finishOrder[0]!)} got there first.`);
+          finish(s, ctx, `${team?.name ?? 'A team'} pulled the marker home.`);
+        } else finish(s, ctx, `${name(ctx, s.finishOrder[0]!)} got there first.`);
         return true;
       }
     }
@@ -574,12 +923,12 @@ export function blueprintMode(bp: Blueprint): GameMode<State, Record<string, nev
       const alive = players.filter((p) => !s.players[p.id]!.out);
       const started = Object.keys(s.players).length;
       if (alive.length === 0 || (bp.end.type === 'last' && started > 1 && alive.length <= 1)) {
-        finish(ctx, alive.length === 1 ? `${alive[0]!.name} is the last one standing.` : 'Everyone is out.');
+        finish(s, ctx, alive.length === 1 ? `${alive[0]!.name} is the last one standing.` : 'Everyone is out.');
         return true;
       }
     }
     if (!rounds && players.length > 0 && players.every((p) => s.players[p.id]!.done || s.players[p.id]!.out)) {
-      finish(ctx, 'Everyone has answered all their questions.');
+      finish(s, ctx, 'Everyone has answered all their questions.');
       return true;
     }
     return false;
@@ -599,10 +948,12 @@ export function blueprintMode(bp: Blueprint): GameMode<State, Record<string, nev
     score: () => 0,
     onClosed(s, ctx) {
       const sync = s.sync!;
+      const before = snapshot(s, ctx);
       const authored = sync.iid ? ctx.questions.get(ctx.questions.instance(sync.iid).qid) : null;
       const poll = sync.iid !== null && !ctx.questions.isGraded(sync.iid);
       const limitMs = sync.deadline - sync.startedAt;
       for (const p of ctx.players()) {
+        if (s.over) break;
         const me = s.players[p.id];
         if (!me || me.out) continue;
         const ans = sync.answers[p.id];
@@ -615,13 +966,28 @@ export function blueprintMode(bp: Blueprint): GameMode<State, Record<string, nev
         }
         resolveAnswer(s, p.id, { correct: ans.correct, responseMs: ans.responseMs, limitMs, streak: sync.streaks[p.id] ?? 0, double: Boolean(authored?.doublePoints) }, ctx);
       }
+      if (s.logic) {
+        runRules(s, ctx, 'round-end', null, {});
+        derived(s, ctx, before);
+      }
       checkEnd(s, ctx);
     },
     isOver: () => false,
-    onFinished(_s, ctx) {
-      finish(ctx, 'That was the last question.');
+    onFinished(s, ctx) {
+      finish(s, ctx, 'That was the last question.');
     },
   };
+
+  /** Rounds: run "when a round starts" once each time a new question opens. */
+  function roundStarted(s: State, ctx: ModeContext) {
+    const L = s.logic;
+    if (!L || !s.sync || s.over || s.sync.phase !== 'question' || s.sync.round === L.lastRound) return;
+    L.lastRound = s.sync.round;
+    const before = snapshot(s, ctx);
+    runRules(s, ctx, 'round-start', null, {});
+    derived(s, ctx, before);
+    checkEnd(s, ctx);
+  }
 
   /* ------------------------------------- the mode ------------------------------------- */
 
@@ -648,6 +1014,7 @@ export function blueprintMode(bp: Blueprint): GameMode<State, Record<string, nev
     if (p.out) return { error: 'You are out of this game.' };
     const power = p.power;
     p.power = null;
+    const before = snapshot(s, ctx);
     const notes = [POWER_INFO[power].label];
     switch (power) {
       case 'double':
@@ -682,6 +1049,10 @@ export function blueprintMode(bp: Blueprint): GameMode<State, Record<string, nev
         break;
       }
     }
+    if (s.logic) {
+      runRules(s, ctx, 'power', id, {});
+      derived(s, ctx, before);
+    }
     if (!(rounds && s.sync?.phase === 'done')) checkEnd(s, ctx);
   }
 
@@ -691,6 +1062,7 @@ export function blueprintMode(bp: Blueprint): GameMode<State, Record<string, nev
     if (p.out) return { error: 'You are out of this game.' };
     if (p.picks <= 0) return { error: 'Answer a question right to open a square.' };
     if (p.opened[cell]) return { error: 'That square is already open.' };
+    const before = snapshot(s, ctx);
     p.picks--;
     p.opened[cell] = true;
     const v = p.grid[cell]!;
@@ -710,6 +1082,7 @@ export function blueprintMode(bp: Blueprint): GameMode<State, Record<string, nev
       notes.push('New grid');
     }
     setLast(p, null, amount, notes);
+    derived(s, ctx, before);
     checkEnd(s, ctx);
   }
 
@@ -741,10 +1114,18 @@ export function blueprintMode(bp: Blueprint): GameMode<State, Record<string, nev
       };
       if (k.type === 'tug') for (const t of ctx.teams()) s.pulls[t.id] = 0;
       if (k.type === 'tug' && !ctx.teams().length) s.pulls.solo = 0;
+      if (hasLogic) {
+        s.logic = { player: {}, team: {}, game: {}, fires: {}, doubled: false, event: null, lead: null, halfway: {}, lastRound: -1, winner: null };
+        for (const m of new Set(rules.filter((r) => r.when.type === 'minutes-left').map((r) => r.when.n ?? 0))) {
+          const at = endsAt - m * 60_000;
+          if (at > ctx.now()) ctx.setTimer(`rule-min-${m}`, at);
+        }
+      }
       if (rounds) {
         s.sync = syncInit(ctx, bp.end.questions);
         syncBegin(s as SState, syncCfg, ctx);
       } else if (bp.extras.events.length) ctx.setTimer('event', ctx.now() + EVENT_EVERY_MS);
+      if (s.logic) runRules(s, ctx, 'start', null, {});
       return s;
     },
     onPlayerJoin(s, p, ctx) {
@@ -768,8 +1149,10 @@ export function blueprintMode(bp: Blueprint): GameMode<State, Record<string, nev
       if ('error' in res) return res;
       p.answered++;
       const authored = ctx.questions.get(ctx.questions.instance(a.iid).qid);
+      const before = snapshot(s, ctx);
       // Own pace has no shared clock: the speed bonus counts against the game's time per question.
       resolveAnswer(s, id, { correct: res.correct, responseMs: res.responseMs, limitMs: bp.end.questionTimeSec * 1000, streak: res.streak, double: Boolean(authored.doublePoints) }, ctx);
+      derived(s, ctx, before);
       if (p.stream.last) {
         const l = p.last;
         if (l && l.amount !== 0) p.stream.last.text = `${l.amount > 0 ? '+' : ''}${amountOf(l.amount, unit)}${l.notes.length ? ` (${l.notes.join(', ')})` : ''}`;
@@ -781,7 +1164,14 @@ export function blueprintMode(bp: Blueprint): GameMode<State, Record<string, nev
     },
     onTimer(s, id, ctx) {
       if (id === 'time') {
-        finish(ctx, 'Time is up.');
+        finish(s, ctx, 'Time is up.');
+        return;
+      }
+      if (id.startsWith('rule-min-')) {
+        const before = snapshot(s, ctx);
+        runRules(s, ctx, 'minutes-left', null, { minutes: Number(id.slice(9)) });
+        derived(s, ctx, before);
+        checkEnd(s, ctx);
         return;
       }
       if (id === 'event' && !rounds && bp.extras.events.length) {
@@ -792,11 +1182,16 @@ export function blueprintMode(bp: Blueprint): GameMode<State, Record<string, nev
         ctx.setTimer('event', ctx.now() + EVENT_EVERY_MS);
         return;
       }
-      if (s.sync) syncOnTimer(s as SState, syncCfg, id, ctx);
+      if (s.sync) {
+        syncOnTimer(s as SState, syncCfg, id, ctx);
+        roundStarted(s, ctx);
+      }
     },
     onHostNext(s, ctx) {
       if (!s.sync) return { error: 'Players answer at their own pace in this game.' };
-      return syncHostNext(s as SState, syncCfg, ctx);
+      const r = syncHostNext(s as SState, syncCfg, ctx);
+      roundStarted(s, ctx);
+      return r;
     },
     waitingOn(s, ctx) {
       return s.sync ? syncWaitingOn(s as SState, syncCfg, ctx) : null;
@@ -829,6 +1224,11 @@ export function blueprintMode(bp: Blueprint): GameMode<State, Record<string, nev
             feedback: me.stream?.last ?? null,
           }
         : null;
+      if (you && s.logic && varDefs.size) {
+        ctxNow = ctx;
+        const pid = (viewer as { playerId: string }).playerId;
+        you.vars = [...varDefs.values()].filter((v) => v.scope !== 'game').map((v) => ({ name: v.name, scope: v.scope as 'player' | 'team', value: getVar(s, pid, v.name) }));
+      }
       return {
         game: bp,
         endsAt: s.endsAt,
@@ -839,6 +1239,7 @@ export function blueprintMode(bp: Blueprint): GameMode<State, Record<string, nev
         pulls: k.type === 'tug' ? Object.entries(s.pulls).map(([teamId, pulls]) => ({ teamId, pulls })) : null,
         shortcuts: s.shortcuts,
         ledgeEvery: k.type === 'climb' && k.twist ? 5 : null,
+        ...(s.logic ? { vars: [...varDefs.values()].filter((v) => v.scope === 'game').map((v) => ({ name: v.name, value: getVar(s, null, v.name) })), doubled: s.logic.doubled } : {}),
         rows: rowsFor(s, ctx, viewer),
         players: active(s, ctx).length,
         finished: s.finishOrder.length,
@@ -852,7 +1253,10 @@ export function blueprintMode(bp: Blueprint): GameMode<State, Record<string, nev
         const sc = me ? score(s, p.id) : 0;
         let rank = sc;
         let label = amountOf(sc, unit);
-        if (me && bp.end.type === 'first' && me.place !== null && k.type !== 'tug') {
+        if (me && s.logic?.winner === p.id && k.type !== 'tug') {
+          rank = 1_000_000 + sc;
+          label = `Won, ${amountOf(sc, unit)}`;
+        } else if (me && bp.end.type === 'first' && me.place !== null && k.type !== 'tug') {
           rank = size * 2 + (everyone.length - me.place + 1);
           label = `${ordinal(me.place)} home, ${amountOf(sc, unit)}`;
         } else if (me && k.type === 'survive' && bp.end.type === 'last') {

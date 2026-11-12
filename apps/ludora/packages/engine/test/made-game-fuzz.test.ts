@@ -42,12 +42,23 @@ function privateLeaks(view: MadeView, viewer: Viewer, state: { players: Record<s
   return out;
 }
 
-function checked(bp: Blueprint, problems: string[]): GameMode {
+interface Seen {
+  fires: number;
+}
+
+function checked(bp: Blueprint, problems: string[], seen: Seen = { fires: 0 }): GameMode {
   const mode = blueprintMode(bp);
+  const maxOf = new Map((bp.vars ?? []).map((v) => [v.name, v.max]));
   return {
     ...mode,
     view(s, viewer, ctx) {
       const v = mode.view(s, viewer, ctx) as MadeView;
+      const logic = (s as { logic?: { fires: Record<number, Record<string, number>> } }).logic;
+      if (logic) seen.fires = Object.values(logic.fires).reduce((n, f) => n + Object.entries(f).reduce((m, [k, c]) => m + (k === 'room' ? 0 : c), 0), 0);
+      for (const x of [...(v.vars ?? []), ...(v.you?.vars ?? [])]) {
+        if (!Number.isInteger(x.value) || x.value < 0 || x.value > (maxOf.get(x.name) ?? 0)) problems.push(`number ${x.name} = ${x.value}`);
+      }
+      if (viewer.kind === 'host' && v.you?.vars) problems.push('host sees a player’s numbers');
       for (const p of privateLeaks(v, viewer, s)) problems.push(p);
       for (const r of v.rows) if (!Number.isFinite(r.score)) problems.push(`row score ${r.score}`);
       if (v.you && !Number.isFinite(v.you.score)) problems.push('your score not finite');
@@ -65,6 +76,9 @@ describe('made games: random blueprints played to the end', () => {
     const kinds = new Map<string, number>();
     let played = 0;
     let actions = 0;
+    let withRules = 0;
+    let rulesWorked = 0;
+    let ruleCount = 0;
     for (let i = 0; i < GAMES; i++) {
       const raw = randomBlueprint(rng);
       const parsed = parseBlueprint(raw);
@@ -74,11 +88,12 @@ describe('made games: random blueprints played to the end', () => {
       }
       const bp = parsed.blueprint;
       const problems: string[] = [];
+      const seen: Seen = { fires: 0 };
       const players = rng.pick([1, 2, 3, 5, 8, 12]);
       const teams = bp.kind.type !== 'build' && rng.chance(0.3) ? rng.int(2, 3) : 0;
       const r = simulateGame({
         modeId: 'made-game',
-        mode: checked(bp, problems),
+        mode: checked(bp, problems, seen),
         questions: rng.chance(0.15) ? FLASHCARD_SET : MIXED_SET,
         players,
         skill: rng.next(),
@@ -90,6 +105,11 @@ describe('made games: random blueprints played to the end', () => {
       });
       played++;
       actions += r.actions;
+      if (bp.rules?.length) {
+        withRules++;
+        ruleCount += bp.rules.length;
+        rulesWorked += seen.fires;
+      }
       kinds.set(`${bp.kind.type}/${bp.pacing}`, (kinds.get(`${bp.kind.type}/${bp.pacing}`) ?? 0) + 1);
       const label = `#${i} ${bp.kind.type} ${bp.pacing} ${bp.end.type} (${players} players)`;
       if (r.errors.length) failures.push(`${label}: error ${String((r.errors[0]!.error as Error)?.message ?? r.errors[0]!.error)}`);
@@ -105,6 +125,10 @@ describe('made games: random blueprints played to the end', () => {
     // Every kind was played in both pacings, and the bots really played.
     expect(kinds.size).toBe(14);
     expect(actions).toBeGreaterThan(GAMES * 5);
+    // Most games had rules of their own, and the rules really worked during play.
+    expect(withRules).toBeGreaterThan(GAMES * 0.5);
+    expect(rulesWorked).toBeGreaterThan(withRules * 3);
+    console.info(`Played ${played} random made games: ${withRules} with ${ruleCount} rules of their own, which worked ${rulesWorked} times.`);
   }, 600_000);
 
   it('plays every starting point with 1, 4 and 12 players, the same way twice from one seed', () => {

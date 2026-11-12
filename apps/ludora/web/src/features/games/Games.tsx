@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useSearchParams } from 'react-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
@@ -7,16 +7,15 @@ import { api, ApiError } from '../../lib/api.ts';
 import { useMe } from '../../lib/session.ts';
 import { useModes } from '../../lib/queries.ts';
 import { ModeArt } from '../../art/ModeArt.tsx';
-import { Badge, Dialog, EmptyState, ErrorNotice, PageHeader, Skeleton, TabPanel, Tabs } from '../../ui/primitives.tsx';
+import { Badge, Dialog, EmptyState, ErrorNotice, Skeleton } from '../../ui/primitives.tsx';
+import { Segmented } from '../../ui/Segmented.tsx';
 import { Button, ButtonLink } from '../../ui/Button.tsx';
 import type { MadeGame } from './SaveGameDialog.tsx';
-import { ModeStudioLink } from '../modestudio/MadeGameCard.tsx';
 
 /*
- * The Game Maker: games players made from any mode, 2D or 3D. Making one
- * happens on the host page (pick a set and a mode, tune it, Save as a game);
- * this page lists your games and the community's, to host in one tap or
- * share by link.
+ * Saved games: a mode with its settings and a set, saved from the host page (Save as a game) to
+ * host again in one tap or share by link. Shown as the "Saved games" tab of Game Maker; the old
+ * address (/games) lands there.
  */
 
 type ListedGame = Omit<MadeGame, 'settings' | 'common' | 'options'>;
@@ -102,15 +101,12 @@ function GameCard({ g }: { g: ListedGame }) {
   );
 }
 
-export default function Games() {
+export function SavedGames() {
   const me = useMe();
   const signedIn = Boolean(me.data?.user);
   const [params, setParams] = useSearchParams();
-  const scope = params.get('tab') === 'community' || !signedIn ? 'public' : 'mine';
+  const scope = params.get('saved') === 'community' || !signedIn ? 'public' : 'mine';
   const q = useQuery({ queryKey: ['games', scope], queryFn: () => api.get<{ games: ListedGame[] }>(`/api/games?scope=${scope}`) });
-  useEffect(() => {
-    document.title = 'Game Maker | Ludora';
-  }, []);
   const games = q.data?.games ?? [];
   const tab = scope === 'public' ? 'community' : 'mine';
   const list = (
@@ -123,17 +119,17 @@ export default function Games() {
         scope === 'mine' ? (
           <EmptyState
             icon={<Wand2 className="size-8" />}
-            title="You have not made a game yet"
+            title="You have not saved a game yet"
             action={
               <ButtonLink to="/host?make=1" variant="primary">
-                Make a game
+                Save a game
               </ButtonLink>
             }
           >
-            Set up any mode with your own questions and rules, then press Save as a game.
+            On the host page, pick a mode and a question set, tune the settings, then press Save as a game.
           </EmptyState>
         ) : (
-          <EmptyState title="No community games yet">Trusted players and teachers can list their games here.</EmptyState>
+          <EmptyState title="No saved games shared yet">Trusted players and teachers can list their saved games here.</EmptyState>
         )
       ) : (
         <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -146,35 +142,37 @@ export default function Games() {
   );
 
   return (
-    <>
-      <PageHeader
-        title="Game Maker"
-        description="Make your own game from any mode, 2D or 3D: pick the questions, tune the rules, give it a name and a cover. Host it again in one tap, or share the link."
-        actions={
-          signedIn ? (
-            <ButtonLink to="/host?make=1" variant="primary" icon={<Wand2 className="size-5" aria-hidden />}>
-              Make a game
-            </ButtonLink>
-          ) : null
-        }
-      />
-      <ModeStudioLink className="mb-5" />
+    <section aria-labelledby="saved-title" className="flex flex-col gap-3">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h2 id="saved-title" className="font-display text-2xl font-bold">
+            Saved games
+          </h2>
+          <p className="max-w-2xl text-text-2">A saved game is one of Ludora’s modes with the settings and question set you chose, ready to host again in one tap or share by link. You save one from the host page.</p>
+        </div>
+        {signedIn ? (
+          <ButtonLink to="/host?make=1" variant="secondary" icon={<Wand2 className="size-5" aria-hidden />}>
+            Save a game
+          </ButtonLink>
+        ) : null}
+      </div>
       {signedIn ? (
-        <Tabs
+        <Segmented
+          label="Whose saved games"
           value={tab}
-          onValueChange={(v) => setParams({ tab: v }, { replace: true })}
-          items={[
-            { value: 'mine', label: 'Your games' },
-            { value: 'community', label: 'Community games' },
+          onChange={(v) => {
+            const next = new URLSearchParams(params);
+            if (v === 'community') next.set('saved', 'community');
+            else next.delete('saved');
+            setParams(next, { replace: true });
+          }}
+          options={[
+            { value: 'mine', label: 'Yours' },
+            { value: 'community', label: 'Shared by others' },
           ]}
-          label="Which games"
-        >
-          {/* The list is the tab's panel, so each tab points at what it shows. */}
-          <TabPanel value={tab}>{list}</TabPanel>
-        </Tabs>
-      ) : (
-        list
-      )}
-    </>
+        />
+      ) : null}
+      {list}
+    </section>
   );
 }

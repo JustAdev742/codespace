@@ -61,6 +61,19 @@ describe('saving a made game', () => {
     expect(rude.status).toBe(400);
   });
 
+  it('saves a game with numbers and rules of its own, lists rules acting on others, and refuses a rule outside the catalogue', async () => {
+    const withRules = { ...starter(), vars: [{ name: 'coins', scope: 'player', start: 0, max: 99 }], rules: [{ when: { type: 'right' }, if: [], do: [{ type: 'add', n: 1, var: 'coins' }] }, { when: { type: 'reach', n: 5, var: 'coins' }, if: [], do: [{ type: 'ahead-lose', n: 1 }] }] };
+    const ok = await maker.client.post('/api/blueprints', { blueprint: withRules });
+    expect(ok.status, JSON.stringify(ok.body)).toBe(200);
+    expect(ok.body.game.actsOnOthers.some((s: string) => s.startsWith('Rule: When a player reaches 5 coins'))).toBe(true);
+    const back = await maker.client.get(`/api/blueprints/${ok.body.game.id}`);
+    expect(back.body.game.blueprint.rules).toEqual(withRules.rules);
+    const code = await maker.client.post('/api/blueprints', { blueprint: { ...withRules, rules: [{ when: { type: 'right' }, if: [], do: [{ type: 'gain', n: 1, run: 'fetch()' }] }] } });
+    expect(code.status).toBe(400);
+    const message = await maker.client.post('/api/blueprints', { blueprint: { ...withRules, rules: [{ when: { type: 'right' }, if: [], do: [{ type: 'say', message: 'Anything I like' }] }] } });
+    expect(message.status).toBe(400);
+  });
+
   it('needs an account: guests and signed-out visitors cannot save', async () => {
     const guest = new Client(t.app);
     await guest.post('/api/auth/guest', {});
@@ -217,5 +230,19 @@ describe('the “describe your game” AI task', () => {
     expect(out.output.blueprint).toMatchObject({ name: 'Snowy slide', kind: { type: 'climb', height: 60, twist: true }, answer: { right: 10 }, end: { type: 'first', timeLimitSec: 900 }, look: { dimension: '3d' } });
     // A draft the word filter stops is refused with the reason, so the model gets one more try.
     expect(() => task.validate(task.output.parse({ ...draft, name: 'Shit climb' }), { description: 'x' }, {} as never)).toThrow(TaskReject);
+  });
+
+  it('answers as game code the maker can read, checked like code they typed', async () => {
+    await import('../src/modules/ai/tasks/index.ts');
+    const { getAiTask, TaskReject } = await import('../src/modules/ai/tasks.ts');
+    const task = getAiTask('mode.draft')!;
+    const code = 'game "Coin climb"\nclimb to 30 metres\neach player has 0 coins\nwhen a player gets 3 right in a row: add 1 coins\nwhen a player reaches 5 coins: win\nwins: first to the goal';
+    const out = task.validate(task.output.parse({ code }), { description: 'A climb with coins' }, {} as never) as { output: { blueprint: Blueprint; code: string } };
+    expect(out.output.blueprint).toMatchObject({ name: 'Coin climb', kind: { type: 'climb', height: 30 }, vars: [{ name: 'coins' }] });
+    expect(out.output.code).toContain('when a player reaches 5 coins: win');
+    // Code with a mistake, or words the filter stops, is sent back to the model with the problem.
+    expect(() => task.validate(task.output.parse({ code: 'game "Coin climb"\nclimb to 300 metres' }), { description: 'x' }, {} as never)).toThrow(/Line 2: Height must be at most 60/);
+    expect(() => task.validate(task.output.parse({ code: 'game "Shit climb"' }), { description: 'x' }, {} as never)).toThrow(TaskReject);
+    expect(() => task.validate(task.output.parse({ code: 'game "Hi there"\nwhen a player answers right: say "You smell"' }), { description: 'x' }, {} as never)).toThrow(TaskReject);
   });
 });

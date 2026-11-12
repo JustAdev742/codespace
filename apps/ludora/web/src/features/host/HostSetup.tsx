@@ -346,7 +346,7 @@ function Setup({ solo, preset, presetMode = null, gameId, making, again, classId
   const [lessoning, setLessoning] = useState(false);
   const isTeacher = me0.data?.user?.accountType === 'teacher';
   const [atLimit, setAtLimit] = useState(false);
-  // Solo: a game made in Mode Studio, chosen in step 2 in place of a built-in mode.
+  // Solo: a game made in Game Maker, chosen in step 2 in place of a built-in mode.
   const [made, setMade] = useState<SoloMadeGame | null>(null);
   /** Start a game's settings afresh; solo starts from what this player changed for that game last time, on this device. */
   const startFrom = useCallback(
@@ -667,7 +667,7 @@ function Setup({ solo, preset, presetMode = null, gameId, making, again, classId
               </>
             ) : made ? (
               <>
-                <p className="mb-4 text-sm text-text-2">{made.tagline || `${made.name}, made in Mode Studio.`} Its maker set its rules and timing; you choose the questions and who you play against.</p>
+                <p className="mb-4 text-sm text-text-2">{made.tagline || `${made.name}, made in Game Maker.`} Its maker set its rules and timing; you choose the questions and who you play against.</p>
                 {whichQuestions ? <div className="grid grid-cols-1 gap-x-8 gap-y-4 md:grid-cols-2">{whichQuestions}</div> : null}
               </>
             ) : (

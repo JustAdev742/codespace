@@ -255,7 +255,7 @@ function ReportCard({ r, can, onResolve, onReopen, onReviewSet }: { r: ReportRow
           </Button>
         ) : null}
         {r.targetType === 'blueprint' && can.sets && exists ? (
-          <ButtonLink size="sm" variant={r.status === 'open' ? 'primary' : 'secondary'} to={`/mode-studio/${r.targetId}`}>
+          <ButtonLink size="sm" variant={r.status === 'open' ? 'primary' : 'secondary'} to={`/game-maker/${r.targetId}`}>
             Open made game
           </ButtonLink>
         ) : null}

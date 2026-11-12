@@ -23,8 +23,8 @@ export function MakerGames({ userId, name, self }: { userId: string; name: strin
         ))}
       </ul>
       {self ? (
-        <Link to="/mode-studio" className="mt-3 inline-block font-semibold text-link underline underline-offset-2">
-          Open Mode Studio
+        <Link to="/game-maker" className="mt-3 inline-block font-semibold text-link underline underline-offset-2">
+          Open Game Maker
         </Link>
       ) : null}
     </Panel>

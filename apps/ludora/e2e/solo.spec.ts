@@ -7,7 +7,7 @@ import { account, CSRF, settled, watchErrors } from './helpers.ts';
 /*
  * Playing solo in stages (docs/features/solo.md): the set, the game, then "Your settings", then
  * Start playing. The settings a player chooses reach the game the server makes, are remembered on
- * the device for that game, and a game made in Mode Studio has a settings stage too.
+ * the device for that game, and a game made in Game Maker has a settings stage too.
  */
 
 const AXE_TAGS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22a', 'wcag22aa'];
@@ -158,7 +158,7 @@ test('arriving with a set or a game already chosen goes straight to what is left
   await expect(page.getByRole('button', { name: 'Start playing' })).toBeEnabled();
 });
 
-test('a game made in Mode Studio is chosen in step 2 and has its own settings stage', async ({ browser }) => {
+test('a game made in Game Maker is chosen in step 2 and has its own settings stage', async ({ browser }) => {
   test.setTimeout(180_000);
   const player = await account(browser, { accountType: 'student' });
   const page = player.page;
@@ -167,7 +167,7 @@ test('a game made in Mode Studio is chosen in step 2 and has its own settings st
   const saved = await page.request.post('/api/blueprints', { headers: CSRF, data: { blueprint: { ...STARTER_BLUEPRINTS[0]!.blueprint, name: 'My solo island' }, visibility: 'private' } });
   expect(saved.ok(), await saved.text()).toBe(true);
   const id = (await saved.json()).game.id as string;
-  // Mode Studio's Play solo link: the made game is chosen, and only the set is left.
+  // Game Maker's Play solo link: the made game is chosen, and only the set is left.
   await page.goto(`/host?solo=1&blueprint=${id}`);
   await expect(page.getByRole('radio', { name: /^My solo island/ })).toBeChecked({ timeout: 15_000 });
   await page.getByRole('button', { name: /Made words/ }).first().click();
