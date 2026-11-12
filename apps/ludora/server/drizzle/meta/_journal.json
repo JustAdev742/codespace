@@ -155,6 +155,13 @@
       "when": 1794300000000,
       "tag": "0021_blueprints",
       "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1794400000000,
+      "tag": "0022_designs",
+      "breakpoints": true
     }
   ]
 }

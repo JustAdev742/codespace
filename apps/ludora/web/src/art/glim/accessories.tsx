@@ -1,4 +1,6 @@
 import type { AccessoryArt } from '@ludora/shared';
+import { useId } from 'react';
+import { PaintLayer } from './paint.tsx';
 import { BODIES, type BodyGeometry } from './bodies.ts';
 
 /*
@@ -288,6 +290,7 @@ export function Accessory({ art, geo }: { art: AccessoryArt; geo: BodyGeometry }
     return (
       <g transform={`translate(${geo.top.x} ${geo.top.y + 4}) scale(${s.toFixed(3)})`}>
         <Hat shape={art.shape} c={c} />
+        {art.emblem ? <Emblem paint={art.emblem} x={0} y={-7} r={6.4} art={art} /> : null}
       </g>
     );
   }
@@ -301,6 +304,25 @@ export function Accessory({ art, geo }: { art: AccessoryArt; geo: BodyGeometry }
   return (
     <g transform={`translate(${geo.face.x} ${geo.neck})`}>
       <Neckwear shape={art.shape} c={c} />
+      {art.emblem ? <Emblem paint={art.emblem} x={0} y={6} r={6} art={art} /> : null}
+    </g>
+  );
+}
+
+/** A painted emblem on a round badge pinned to a hat or neckwear: the painter grid in the item's own colours. */
+function Emblem({ paint, x, y, r, art }: { paint: string; x: number; y: number; r: number; art: AccessoryArt }) {
+  const uid = useId().replace(/[^a-zA-Z0-9_-]/g, '');
+  const a = art.accentHue ?? (art.hue + 180) % 360;
+  const palette = [`hsl(${art.hue} 70% 34%)`, `hsl(${a} 85% 60%)`, `hsl(${(a + 120) % 360} 80% 62%)`, 'hsl(48 60% 96%)', 'hsl(240 30% 12%)'] as const;
+  return (
+    <g>
+      <clipPath id={`emb-${uid}`}>
+        <circle cx={x} cy={y} r={r} />
+      </clipPath>
+      <circle cx={x} cy={y} r={r + 1.2} fill="hsl(48 60% 96%)" stroke="hsl(240 30% 12%)" strokeWidth={1.4} />
+      <g clipPath={`url(#emb-${uid})`}>
+        <PaintLayer paint={paint} box={[x - r, y - r, x + r, y + r]} palette={palette} />
+      </g>
     </g>
   );
 }

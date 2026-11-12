@@ -1432,3 +1432,44 @@ export const blueprints = pgTable(
   },
   (t) => [index('blueprints_owner_idx').on(t.ownerId, t.updatedAt), index('blueprints_public_idx').on(t.visibility, t.plays), check('blueprints_visibility_valid', sql`${t.visibility} in ('private','unlisted','public')`)],
 );
+
+/* ---------------------------------- Personal designs (studio2) ---------------------------------- */
+
+/**
+ * "My designs": Glims and items an account designs for itself to wear. Personal, free, never sold or
+ * traded, no rarity. `art` is validated against the shared schema on every write; staff can hide one.
+ */
+export const designs = pgTable(
+  'designs',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    ownerId: uuid('owner_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    kind: text('kind').notNull(),
+    name: text('name').notNull(),
+    art: jsonb('art').notNull(),
+    hiddenAt: ts('hidden_at'),
+    hiddenReason: text('hidden_reason'),
+    hiddenBy: uuid('hidden_by').references(() => users.id, { onDelete: 'set null' }),
+    createdAt: now('created_at'),
+    updatedAt: now('updated_at'),
+  },
+  (t) => [index('designs_owner_idx').on(t.ownerId, t.updatedAt), index('designs_hidden_idx').on(t.hiddenAt), check('designs_kind_valid', sql`${t.kind} in ('glim','accessory')`)],
+);
+
+/** Which of their own designs an account wears, by slot ('buddy', 'hat', 'eyes', 'neck'). Overrides the equipped item there. */
+export const wornDesigns = pgTable(
+  'worn_designs',
+  {
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    slot: text('slot').notNull(),
+    designId: uuid('design_id')
+      .notNull()
+      .references(() => designs.id, { onDelete: 'cascade' }),
+    createdAt: now('created_at'),
+  },
+  (t) => [primaryKey({ columns: [t.userId, t.slot] })],
+);

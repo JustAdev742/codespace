@@ -6,6 +6,8 @@ import { Brows, browFor, Eyes, FaceOver, FaceUnder, FrostMarks, Mouth, type EyeC
 import { FINE_PATTERNS, Pattern } from './patterns.tsx';
 import { armParts, backParts, BIG_BACKS, earParts, feetParts, tailParts, topperParts, type Pose, type Sleeve } from './parts.ts';
 import { pathBounds } from './geometry.ts';
+import { shapedGeometry } from './shape.ts';
+import { PaintLayer, type PaintPalette } from './paint.tsx';
 import { UNIFORM_HAT, uniformFor, uniformSleeve, type Uniform } from './uniform.ts';
 import { UniformBadge, UniformGarment, UniformHat } from './uniform.tsx';
 import { schoolLook, subscribeViewerUniform, viewerUniform } from '../../lib/school.ts';
@@ -54,7 +56,7 @@ export function glimColors(art: GlimArt): GlimColors {
     ink: hsl(h, 42, 9),
     // No blush in this look; kept as a deeper tone for anything that still asks for it.
     blush: hsl(deepHue(h), s + 4, L - 15),
-    second: hsl(ah + 120, Math.max(sat, 62), 66),
+    second: art.thirdHue !== undefined ? hsl(art.thirdHue, Math.max(sat, 62), 62) : hsl(ah + 120, Math.max(sat, 62), 66),
   };
 }
 
@@ -146,7 +148,7 @@ function fitScale(parts: Part[]): number {
 }
 
 function build(art: GlimArt, c: GlimColors, pose: Pose, hideTopper: boolean, limbs = true, sleeve?: Sleeve): Built {
-  const geo = BODIES[art.body] ?? BODIES.blob;
+  const geo = shapedGeometry(BODIES[art.body] ?? BODIES.blob, art);
   const ears = earParts(art.ears ?? 'none', geo, c);
   const backs = backParts(art.back ?? 'none', geo, c);
   const bigBack = BIG_BACKS.includes(art.back ?? 'none');
@@ -159,7 +161,7 @@ function build(art: GlimArt, c: GlimColors, pose: Pose, hideTopper: boolean, lim
     ...(ringed ? [] : ears.behind),
     ...(geo.back?.(c) ?? []),
   ];
-  const feet = feetParts(geo, c);
+  const feet = feetParts(geo, c, art.feet);
   const arms = armParts(geo, c, pose, sleeve);
   const front: Part[] = [...(geo.front?.(c) ?? []), ...ears.front, ...(hideTopper ? [] : topperParts(art.topper ?? 'none', geo, c))];
   // The fit always counts the limbs, so a Glim drawn without them sits exactly where it would with them.
@@ -236,6 +238,32 @@ function FillPass({ parts, line, width, silhouette, silhouetteFill }: { parts: P
   );
 }
 
+/** The painter's five colours in a design's palette: deep body, second, third, light, ink. */
+export function paintPalette(c: GlimColors): PaintPalette {
+  return [c.deep, c.accent, c.second, c.belly, c.ink];
+}
+
+/** A soft wash of the second (or third) colour over the body, from one side. */
+function Wash({ id, kind, geo, c }: { id: string; kind: NonNullable<GlimArt['gradient']>; geo: BodyGeometry; c: GlimColors }) {
+  const [x0, y0, x1, y1] = geo.box;
+  if (kind === 'glow') {
+    return (
+      <radialGradient id={id} gradientUnits="userSpaceOnUse" cx={geo.face.x} cy={(y0 + y1) / 2 + 6} r={Math.max(x1 - x0, y1 - y0) * 0.55}>
+        <stop offset="0" stopColor={c.glow} stopOpacity={0.75} />
+        <stop offset="1" stopColor={c.glow} stopOpacity={0} />
+      </radialGradient>
+    );
+  }
+  const [ax, ay, bx, by] = kind === 'top' ? [0, y0, 0, y1] : kind === 'bottom' ? [0, y1, 0, y0] : [x0, 0, x1, 0];
+  const color = kind === 'side' ? c.second : c.accent;
+  return (
+    <linearGradient id={id} gradientUnits="userSpaceOnUse" x1={kind === 'side' ? ax : 60} y1={kind === 'side' ? 60 : ay} x2={kind === 'side' ? bx : 60} y2={kind === 'side' ? 60 : by}>
+      <stop offset="0" stopColor={color} stopOpacity={0.85} />
+      <stop offset="0.6" stopColor={color} stopOpacity={0} />
+    </linearGradient>
+  );
+}
+
 /** Second colour of a two-tone body: the hue leans towards the accent, at most 50 degrees. */
 function twoTone(art: GlimArt): string {
   const sat = art.saturation ?? 70;
@@ -266,7 +294,7 @@ export const Glim = memo(function Glim({ art, accessories, size = 96, aura = nul
   const rank = RANK[finish];
   const contourW = silhouette ? 7.6 : tiny ? 7.6 : 5.4;
   const innerW = tiny ? 2.8 : 2.1;
-  const k = geo.eyeScale * (tiny ? 1.2 : 1);
+  const k = geo.eyeScale * (tiny ? 1.2 : 1) * ((art.eyeSize ?? 100) / 100);
   const auraColor = aura && !silhouette ? AURA[aura] : undefined;
   const legendary = rank >= 4;
   const mythic = rank >= 5;
@@ -333,6 +361,7 @@ export const Glim = memo(function Glim({ art, accessories, size = 96, aura = nul
             </linearGradient>
           </>
         ) : null}
+        {art.gradient && art.gradient !== 'none' && !silhouette ? <Wash id={id('wash')} kind={art.gradient} geo={geo} c={c} /> : null}
         {auraColor ? (
           <radialGradient id={id('aura')}>
             <stop offset="0%" stopColor={auraColor} stopOpacity={legendary ? 0.55 : rank >= 2 ? 0.42 : 0.3} />
@@ -355,6 +384,8 @@ export const Glim = memo(function Glim({ art, accessories, size = 96, aura = nul
               m.line ? <path key={i} d={m.d} fill="none" stroke={m.fill} strokeWidth={m.line} strokeLinecap="round" opacity={m.opacity} /> : <path key={i} d={m.d} fill={m.fill} opacity={m.opacity} />,
             )}
             {tiny && FINE_PATTERNS.has(art.pattern ?? 'none') ? null : <Pattern kind={art.pattern ?? 'none'} geo={geo} c={c} />}
+            {art.gradient && art.gradient !== 'none' ? <rect x={-10} y={-10} width={140} height={140} fill={`url(#${id('wash')})`} /> : null}
+            {art.paint ? <PaintLayer paint={art.paint} box={geo.box} palette={paintPalette(c)} clear={faceless ? undefined : { x: geo.face.x, y: geo.face.y + 3 * k, rx: geo.eyeGap + 13 * k, ry: 13 * k }} /> : null}
             {dressed ? <UniformGarment uniform={dressed} geo={geo} tiny={tiny} neckwear={hasNeckwear} back={faceless} housePin={housePin} /> : null}
             {/* Hard cel shading: one shadow, one light. */}
             <rect x={-10} y={-10} width={140} height={140} fill={shade} opacity={0.34} clipPath={`url(#${id('shade')})`} />

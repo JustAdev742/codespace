@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useSearchParams } from 'react-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { Dices, Pencil, Store, Trash2 } from 'lucide-react';
+import { Dices, Pencil, Redo2, Store, Trash2, Undo2 } from 'lucide-react';
 import {
   ACCESSORY_SHAPES,
   ACCESSORY_SLOTS,
@@ -41,6 +41,8 @@ import { ActionDialog } from '../admin/ui.tsx';
 import { DateTimeField, isoToLocalInput, localInputToIso } from '../admin/Economy.tsx';
 import NotFound from '../errors/NotFound.tsx';
 import { GlimTurntable } from './GlimTurntable.tsx';
+import { GlimControls } from '../designs/GlimControls.tsx';
+import { useHistory } from '../designs/history.ts';
 import { formatDate } from '../../lib/format.ts';
 
 /*
@@ -195,11 +197,12 @@ function useSaveDraft(editing: Draft | null, onSaved: () => void) {
 
 function GlimMaker({ editing, onDone }: { editing: Draft | null; onDone: () => void }) {
   const start = editing?.kind === 'glim' ? (editing.art as GlimArt) : null;
-  const [art, setArt] = useState<GlimArt>(() => start ?? randomGlim());
+  const h = useHistory<GlimArt>(() => start ?? randomGlim());
+  const art = h.value;
+  const setArt = (next: GlimArt) => h.set(next);
   const [name, setName] = useState(editing?.kind === 'glim' ? editing.name : '');
   const [description, setDescription] = useState(editing?.kind === 'glim' ? editing.description : '');
   const [rarity, setRarity] = useState<Rarity>(editing?.kind === 'glim' ? editing.rarity : 'common');
-  const set = <K extends keyof GlimArt>(k: K, v: GlimArt[K]) => setArt((a) => ({ ...a, [k]: v }));
   const draft = { kind: 'glim' as const, name: name.trim(), description: description.trim(), rarity, art };
   const errors = problems(draft);
   const clash = useClash(draft, editing?.id ?? null);
@@ -219,6 +222,12 @@ function GlimMaker({ editing, onDone }: { editing: Draft | null; onDone: () => v
           <Button variant="secondary" onClick={() => setArt(randomGlim())} icon={<Dices className="size-4" aria-hidden />}>
             Surprise me
           </Button>
+          <Button variant="secondary" disabled={!h.canUndo} onClick={h.undo} icon={<Undo2 className="size-4" aria-hidden />}>
+            Undo
+          </Button>
+          <Button variant="secondary" disabled={!h.canRedo} onClick={h.redo} icon={<Redo2 className="size-4" aria-hidden />}>
+            Redo
+          </Button>
           {editing ? (
             <Button variant="ghost" onClick={onDone}>
               Stop editing
@@ -233,24 +242,8 @@ function GlimMaker({ editing, onDone }: { editing: Draft | null; onDone: () => v
       </div>
       <Panel className="flex flex-col gap-4 p-4">
         <DetailsFields kind="glim" name={name} setName={setName} description={description} setDescription={setDescription} rarity={rarity} setRarity={setRarity} errors={errors} clash={clash} />
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-          <Choice label="Body" value={art.body} options={GLIM_BODIES} onChange={(v) => set('body', v)} />
-          <Choice label="Eyes" value={art.eyes} options={GLIM_EYES} onChange={(v) => set('eyes', v)} />
-          <Choice label="Mouth" value={art.mouth} options={GLIM_MOUTHS} onChange={(v) => set('mouth', v)} />
-          <Choice label="Pattern" value={art.pattern} options={GLIM_PATTERNS} onChange={(v) => set('pattern', v)} />
-          <Choice label="On top" value={art.topper} options={GLIM_TOPPERS} onChange={(v) => set('topper', v)} />
-          <Choice label="Eyebrows" value={art.brows ?? 'none'} options={GLIM_BROWS} onChange={(v) => set('brows', v)} />
-          <Choice label="Ears" value={art.ears ?? 'none'} options={GLIM_EARS} onChange={(v) => set('ears', v)} />
-          <Choice label="Tail" value={art.tail ?? 'none'} options={GLIM_TAILS} onChange={(v) => set('tail', v)} />
-          <Choice label="Back" value={art.back ?? 'none'} options={GLIM_BACKS} onChange={(v) => set('back', v)} />
-          <Choice label="Face" value={art.face ?? 'none'} options={GLIM_FACES} onChange={(v) => set('face', v)} />
-        </div>
-        <div className="grid gap-3 sm:grid-cols-3">
-          <HueSlider label="Colour" value={art.hue} onChange={(v) => set('hue', v)} />
-          <HueSlider label="Second colour" value={art.accentHue} onChange={(v) => set('accentHue', v)} />
-          <HueSlider label="Brightness of colour" value={art.saturation} max={100} onChange={(v) => set('saturation', v)} />
-        </div>
-        <Switch checked={art.cheeks} onCheckedChange={(v) => set('cheeks', v)} label="Rosy cheeks" />
+        <GlimControls art={art} onChange={(next, group) => h.set(next, group)} onCommit={h.endGroup} />
+        <Switch checked={art.cheeks} onCheckedChange={(v) => setArt({ ...art, cheeks: v })} label="Rosy cheeks" />
         <Button variant="primary" size="lg" disabled={!ready || save.isPending} onClick={() => save.mutate(draft)}>
           {editing ? 'Save changes' : 'Save draft'}
         </Button>

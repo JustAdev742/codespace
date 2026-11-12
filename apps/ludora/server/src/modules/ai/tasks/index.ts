@@ -7,3 +7,4 @@ import './lessons.ts';
 import './games.ts';
 import './generic.ts';
 import './modestudio.ts';
+import './glims.ts';

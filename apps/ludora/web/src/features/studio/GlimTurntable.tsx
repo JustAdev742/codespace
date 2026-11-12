@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { CylinderGeometry, Mesh } from 'three';
-import type { GlimArt } from '@ludora/shared';
+import type { AccessoryArt, GlimArt } from '@ludora/shared';
 import { DAY, Glim3D, Stage3D, World, toon, type StageEnv } from '../../three/index.ts';
 
 /*
@@ -23,13 +23,13 @@ class Turntable extends World {
     this.camera.lookAt(0, 0.62, 0);
   }
 
-  setArt(art: GlimArt) {
+  setArt(art: GlimArt, accessories?: AccessoryArt[]) {
     if (this.glim) {
       this.glim.removeFromParent();
       this.glim.dispose();
     }
     // No school uniform here: in the Studio the Glim itself is the subject, as in its 2D preview.
-    this.glim = new Glim3D({ look: { art, uniform: false }, quality: this.env.quality, reducedMotion: this.env.reducedMotion });
+    this.glim = new Glim3D({ look: { art, accessories, uniform: false }, quality: this.env.quality, reducedMotion: this.env.reducedMotion });
     this.glim.play('wave');
     this.scene.add(this.glim);
   }
@@ -47,13 +47,13 @@ class Turntable extends World {
   }
 }
 
-export function GlimTurntable({ art, className = '' }: { art: GlimArt; className?: string }) {
+export function GlimTurntable({ art, accessories, className = '' }: { art: GlimArt; accessories?: AccessoryArt[]; className?: string }) {
   const world = useRef<Turntable | null>(null);
-  const latest = useRef(art);
-  latest.current = art;
-  const key = JSON.stringify(art);
+  const latest = useRef({ art, accessories });
+  latest.current = { art, accessories };
+  const key = JSON.stringify([art, accessories]);
   useEffect(() => {
-    const t = setTimeout(() => world.current?.setArt(latest.current), 250);
+    const t = setTimeout(() => world.current?.setArt(latest.current.art, latest.current.accessories), 250);
     return () => clearTimeout(t);
   }, [key]);
   return (
@@ -62,7 +62,7 @@ export function GlimTurntable({ art, className = '' }: { art: GlimArt; className
       create={(env) => new Turntable(env)}
       onWorld={(w) => {
         world.current = w;
-        w?.setArt(latest.current);
+        w?.setArt(latest.current.art, latest.current.accessories);
       }}
       className={className}
       season={false}

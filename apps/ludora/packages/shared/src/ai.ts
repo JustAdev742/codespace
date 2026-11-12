@@ -89,6 +89,7 @@ export const AI_TASK_IDS = [
   'game.suggest_mode',
   'any.name_describe',
   'mode.draft',
+  'glim.describe',
 ] as const;
 export type AiTaskId = (typeof AI_TASK_IDS)[number];
 

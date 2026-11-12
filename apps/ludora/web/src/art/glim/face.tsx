@@ -310,6 +310,42 @@ function EyePair({ kind, ctx }: { kind: GlimArt['eyes']; ctx: EyeCtx }): ReactNo
           {pixelEye(R, y, ctx, 1)}
         </>
       );
+    case 'button':
+      return (
+        <>
+          {[L, R].map((cx) => (
+            <g key={cx}>
+              <circle cx={cx} cy={y} r={5.4 * k} fill={WHITE} stroke={ink.outline} strokeWidth={1.8 * k} />
+              <circle cx={cx + 0.6 * k} cy={y + 0.8 * k} r={3 * k} fill={ink.ink} />
+            </g>
+          ))}
+        </>
+      );
+    case 'lash':
+      return (
+        <>
+          {bead(L, y, 4.9, 6.2, ctx, -1)}
+          {bead(R, y, 4.9, 6.2, ctx, 1)}
+          <path d={`M${f(L - 4 * k)} ${f(y - 4.4 * k)}l${f(-2.6 * k)} ${f(-2.2 * k)}M${f(L - 1.4 * k)} ${f(y - 6 * k)}l${f(-1.2 * k)} ${f(-2.8 * k)}M${f(R + 4 * k)} ${f(y - 4.4 * k)}l${f(2.6 * k)} ${f(-2.2 * k)}M${f(R + 1.4 * k)} ${f(y - 6 * k)}l${f(1.2 * k)} ${f(-2.8 * k)}`} stroke={ink.ink} strokeWidth={(tiny ? 2.2 : 1.7) * k} strokeLinecap="round" />
+        </>
+      );
+    case 'sly':
+      return (
+        <>
+          {[-1, 1].map((side) => {
+            const cx = side < 0 ? L : R;
+            return <path key={side} d={`M${f(cx - 5.6 * k)} ${f(y + side * -0.6 * k)}Q${f(cx)} ${f(y - 4.6 * k)} ${f(cx + 5.6 * k)} ${f(y + side * 0.6 * k)}Q${f(cx)} ${f(y + 3.4 * k)} ${f(cx - 5.6 * k)} ${f(y + side * -0.6 * k)}Z`} fill={ink.ink} />;
+          })}
+        </>
+      );
+    case 'heart':
+      return (
+        <>
+          {[L, R].map((cx) => (
+            <path key={cx} d={`M${f(cx)} ${f(y + 5.2 * k)}C${f(cx - 7.4 * k)} ${f(y)} ${f(cx - 5.2 * k)} ${f(y - 6.4 * k)} ${f(cx)} ${f(y - 2.6 * k)}C${f(cx + 5.2 * k)} ${f(y - 6.4 * k)} ${f(cx + 7.4 * k)} ${f(y)} ${f(cx)} ${f(y + 5.2 * k)}Z`} fill={ink.ink} />
+          ))}
+        </>
+      );
   }
 }
 
@@ -339,6 +375,10 @@ function eyeTop(kind: GlimArt['eyes']): number {
       return 4.9;
     case 'star':
       return 7;
+    case 'button':
+      return 5.6;
+    case 'sly':
+      return 3.4;
     default:
       return 6.2;
   }
@@ -501,6 +541,17 @@ export function Mouth({ kind, x, y, k, ink, tiny = false }: { kind: GlimArt['mou
       );
     case 'wobble':
       return <path d={`M${X(-6)} ${Y(1)}q${f(1.5 * k)} ${f(-2.1 * k)} ${f(3 * k)} 0t${f(3 * k)} 0t${f(3 * k)} 0t${f(3 * k)} 0`} {...line} strokeWidth={w * 0.92} />;
+    case 'bean':
+      return <path d={`M${X(-4.2)} ${Y(0)}H${X(4.2)}Q${X(4)} ${Y(5.4)} ${X(0)} ${Y(5.4)}Q${X(-4)} ${Y(5.4)} ${X(-4.2)} ${Y(0)}Z`} fill={ink.ink} stroke={ink.ink} strokeWidth={1.2 * k} strokeLinejoin="round" />;
+    case 'zigzag':
+      return <path d={`M${X(-6.4)} ${Y(1)}L${X(-3.2)} ${Y(-1)}L${X(0)} ${Y(1.6)}L${X(3.2)} ${Y(-1)}L${X(6.4)} ${Y(1)}`} {...line} />;
+    case 'grit':
+      return (
+        <>
+          <rect x={x - 6.2 * k} y={m - 1 * k} width={12.4 * k} height={5.6 * k} rx={1.6 * k} fill={WHITE} stroke={ink.ink} strokeWidth={1.6 * k} />
+          {tiny ? null : <path d={`M${X(-2.1)} ${Y(-0.8)}V${Y(4.4)}M${X(2.1)} ${Y(-0.8)}V${Y(4.4)}M${X(-6)} ${Y(1.8)}H${X(6)}`} stroke={ink.ink} strokeWidth={1 * k} />}
+        </>
+      );
     case 'none':
       return null;
   }

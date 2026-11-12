@@ -5,6 +5,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import {
   BarChart3,
   BookOpen,
+  Brush,
   Castle,
   Gamepad2,
   Home,
@@ -77,6 +78,7 @@ const COLLECT: NavItem[] = [
   { to: '/collection', label: 'Collection', icon: <Sparkles className="size-5" />, show: 'signedIn' },
   { to: '/shop', label: 'Shop', icon: <ShoppingBag className="size-5" />, show: 'signedIn' },
   { to: '/locker', label: 'Locker', icon: <Shirt className="size-5" />, show: 'signedIn' },
+  { to: '/designs', label: 'My designs', icon: <Brush className="size-5" />, show: 'signedIn' },
   { to: '/quests', label: 'Quests', icon: <Target className="size-5" />, show: 'signedIn' },
 ];
 const SOCIAL: NavItem[] = [

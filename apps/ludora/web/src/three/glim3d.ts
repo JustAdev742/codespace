@@ -100,6 +100,15 @@ function blobShadowTexture(): Texture {
   return shadowTex;
 }
 
+/** How each kind of foot in the drawing is shaped in 3D: a scale of the round foot (x, y, z). */
+const FOOT_SHAPE: Partial<Record<NonNullable<GlimLook['art']['feet']>, readonly [number, number, number]>> = {
+  paws: [1.12, 1, 1.1],
+  boots: [1, 1.7, 1.05],
+  claws: [1, 0.9, 1.15],
+  flippers: [1.5, 0.55, 1.5],
+  tiptoes: [0.68, 0.8, 0.7],
+};
+
 const shadowGeo = new CircleGeometry(0.5, 24).rotateX(-Math.PI / 2);
 const armGeo = new CapsuleGeometry(0.05, 0.07, 4, 10).translate(0, -0.06, 0);
 const footGeo = new SphereGeometry(0.07, 14, 10).scale(1, 0.62, 1.2);
@@ -136,13 +145,14 @@ export class Glim3D extends Group {
   private clock = 0;
   private disposed = false;
   private mythicInk: MeshBasicMaterial | null = null;
+  private footShape: readonly [number, number, number] = [1, 1, 1];
 
   constructor(private readonly opts: Glim3DOptions) {
     super();
     const { look, quality } = opts;
     this.colors = glimColors(look.art);
     const { geo } = glimFrame(look.art, look.accessories, look.uniform ?? true, look.dress);
-    this.floats = !geo.foot;
+    this.floats = !geo.foot || look.art.feet === 'none';
     this.add(this.body);
 
     this.shadow = new Mesh(shadowGeo, new MeshBasicMaterial({ map: blobShadowTexture(), transparent: true, depthWrite: false }));
@@ -165,8 +175,10 @@ export class Glim3D extends Group {
       arm.visible = Boolean(geo.arm);
       this.body.add(arm);
     }
-    const footMat = toon(this.colors.deep);
+    const feet = look.art.feet ?? 'nub';
+    const footMat = toon(feet === 'boots' || feet === 'flippers' ? this.colors.accent : this.colors.deep);
     this.feet = [new Mesh(footGeo, footMat), new Mesh(footGeo, footMat)];
+    this.footShape = FOOT_SHAPE[feet] ?? [1, 1, 1];
     for (const f of this.feet) {
       f.userData.sharedGeometry = true;
       f.visible = !this.floats;
@@ -193,7 +205,8 @@ export class Glim3D extends Group {
       const f = at(geo.foot);
       this.feet[0].position.set((f.x - ground.x) * M, 0.035, 0.03);
       this.feet[1].position.set((BOX - f.x - ground.x) * M, 0.035, 0.03);
-      for (const foot of this.feet) foot.scale.setScalar(Math.max(0.75, scale));
+      const k = Math.max(0.75, scale);
+      for (const foot of this.feet) foot.scale.set(k * this.footShape[0], k * this.footShape[1], k * this.footShape[2]);
     }
     this.shadow.scale.setScalar(this.floats ? 0.55 : 0.8);
   }
@@ -317,6 +330,8 @@ export class Glim3D extends Group {
       }
       if (!calm && this.action === 'idle') body.scale.y = 1 + Math.sin(this.clock * 2) * 0.012;
     }
+    // The idle the design chose. Nothing extra under reduced motion, and never while moving or acting.
+    if (!calm && !moving && this.action === 'idle') idleMove(this.opts.look.art.idle, this.clock, body);
 
     switch (this.action) {
       case 'wave':
@@ -403,6 +418,31 @@ export class Glim3D extends Group {
     (this.shadow.material as MeshBasicMaterial).dispose();
     this.removeFromParent();
     super.dispose();
+  }
+}
+
+/** A design's own idle movement, on top of the breathing every Glim does. Small, so a crowd stays calm. */
+function idleMove(kind: GlimLook['art']['idle'], t: number, body: Group) {
+  switch (kind) {
+    case 'bob':
+      body.position.y += (Math.sin(t * 2.4) + 1) * 0.018;
+      break;
+    case 'sway':
+      body.rotation.z = Math.sin(t * 1.6) * 0.07;
+      break;
+    case 'bounce': {
+      const h = Math.abs(Math.sin(t * 3));
+      body.position.y += h * 0.045;
+      body.scale.set(1 + (1 - h) * 0.03, 1 - (1 - h) * 0.03, 1);
+      break;
+    }
+    case 'hover':
+      body.position.y += 0.05 + Math.sin(t * 2) * 0.02;
+      break;
+    case 'wiggle':
+      body.rotation.y = Math.sin(t * 3.2) * 0.16;
+      break;
+    default:
   }
 }
 

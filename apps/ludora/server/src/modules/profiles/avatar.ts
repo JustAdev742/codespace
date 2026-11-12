@@ -4,6 +4,7 @@ import type { DbOrTx } from '../../db/client.ts';
 import { equipped, items, users } from '../../db/schema.ts';
 import { readPreferences } from '../users/preferences.ts';
 import { housesOf, sportToday } from '../school/service.ts';
+import { wornDesignsOf } from '../designs/routes.ts';
 
 const AVATAR_SLOTS = ['buddy', 'hat', 'eyes', 'neck', 'victory'];
 
@@ -22,7 +23,7 @@ export async function loadAvatars(db: DbOrTx, userIds: readonly string[]): Promi
   // The uniform for each player's year group; the year itself never leaves their settings.
   const prefs = await db.select({ id: users.id, preferences: users.preferences }).from(users).where(inArray(users.id, ids));
   // School: a player's sport days put them in sport uniform without asking; their house goes on the lapel.
-  const [sport, houseOf] = await Promise.all([sportToday(db, ids), housesOf(db, ids)]);
+  const [sport, houseOf, worn] = await Promise.all([sportToday(db, ids), housesOf(db, ids), wornDesignsOf(db, ids)]);
   const uniformOf = new Map(prefs.map((r) => {
     const dress = readPreferences(r.preferences).school;
     return [r.id, uniformForDress(sport.has(r.id) ? { ...dress, kit: 'sport' } : dress)];
@@ -32,25 +33,36 @@ export async function loadAvatars(db: DbOrTx, userIds: readonly string[]): Promi
   for (const id of ids) {
     const mine = slots.filter((s) => s.userId === id);
     const buddy = mine.find((s) => s.slot === 'buddy');
-    const art = glimArtSchema.safeParse(buddy ? artOf.get(buddy.itemId) : null);
+    // Personal designs a player wears take the place of the equipped item in that slot (studio2).
+    const ownDesigns = worn.get(id) ?? [];
+    const ownGlim = ownDesigns.find((d) => d.slot === 'buddy' && d.kind === 'glim');
+    const ownGlimArt = ownGlim ? glimArtSchema.safeParse(ownGlim.art) : null;
+    const art = ownGlimArt?.success ? ownGlimArt : glimArtSchema.safeParse(buddy ? artOf.get(buddy.itemId) : null);
     if (!art.success) {
       out.set(id, null);
       continue;
     }
-    const accessories = mine
-      .filter((s) => s.slot === 'hat' || s.slot === 'eyes' || s.slot === 'neck')
-      .map((s) => accessoryArtSchema.safeParse(artOf.get(s.itemId)))
-      .filter((r) => r.success)
-      .map((r) => r.data!);
+    const accessories = (['hat', 'eyes', 'neck'] as const)
+      .map((slot) => {
+        const own = ownDesigns.find((d) => d.slot === slot && d.kind === 'accessory');
+        const ownArt = own ? accessoryArtSchema.safeParse(own.art) : null;
+        if (ownArt?.success && ownArt.data.slot === slot) return ownArt;
+        const s = mine.find((m) => m.slot === slot);
+        return s ? accessoryArtSchema.safeParse(artOf.get(s.itemId)) : null;
+      })
+      .filter((r) => r?.success)
+      .map((r) => r!.data!);
     const victorySlot = mine.find((s) => s.slot === 'victory');
     const victory = victorySlot ? victoryArtSchema.safeParse(artOf.get(victorySlot.itemId)) : null;
-    const rarity = buddy ? rarityOf.get(buddy.itemId) : undefined;
+    // A personal design has no rarity, so no rarity finish.
+    const rarity = buddy && !ownGlimArt?.success ? rarityOf.get(buddy.itemId) : undefined;
     out.set(id, {
       art: art.data,
       ...((RARITIES as readonly string[]).includes(rarity ?? '') ? { rarity: rarity as Rarity } : {}),
       ...(accessories.length ? { accessories } : {}),
       ...(victory?.success ? { victory: { style: victory.data.style, hue: victory.data.hue } } : {}),
       ...(uniformOf.get(id) ? { uniform: uniformOf.get(id)! } : {}),
+      ...(ownGlim && ownGlimArt?.success ? { design: { id: ownGlim.id, name: ownGlim.name } } : {}),
       ...(houseOf.get(id) ? { house: { id: houseOf.get(id)!.id, name: houseOf.get(id)!.name, hue: houseOf.get(id)!.hue, emblem: houseOf.get(id)!.emblem } } : {}),
     });
   }

@@ -15,6 +15,7 @@ import { aiRoutes } from './modules/ai/routes.ts';
 import { chaosRoutes } from './modules/extras/routes.ts';
 import { eventRoutes } from './modules/events/routes.ts';
 import { studioRoutes } from './modules/studio/routes.ts';
+import { designRoutes } from './modules/designs/routes.ts';
 import { gameRoutes } from './modules/games/routes.ts';
 import { modeStudioRoutes } from './modules/modestudio/routes.ts';
 import { accountRoutes } from './modules/users/account.ts';
@@ -25,4 +26,4 @@ import { accessRoutes } from './modules/access/routes.ts';
 import { lessonRoutes } from './modules/lessons/routes.ts';
 
 /** Every HTTP route module, in registration order. Auth and health are registered by buildApp itself. */
-export const allRoutes: RouteModule[] = [roomRoutes, profileRoutes, modeRoutes, setRoutes, progressionRoutes, systemRoutes, shopRoutes, socialRoutes, classRoutes, analyticsRoutes, uploadRoutes, aiRoutes, chaosRoutes, eventRoutes, studioRoutes, gameRoutes, accountRoutes, studyRoutes, playerRoutes, notificationRoutes, accessRoutes, lessonRoutes, adminRoutes, modeStudioRoutes];
+export const allRoutes: RouteModule[] = [roomRoutes, profileRoutes, modeRoutes, setRoutes, progressionRoutes, systemRoutes, shopRoutes, socialRoutes, classRoutes, analyticsRoutes, uploadRoutes, aiRoutes, chaosRoutes, eventRoutes, studioRoutes, designRoutes, gameRoutes, accountRoutes, studyRoutes, playerRoutes, notificationRoutes, accessRoutes, lessonRoutes, adminRoutes, modeStudioRoutes];

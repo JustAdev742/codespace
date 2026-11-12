@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { DESIGN_ONLY_PARTS } from '@ludora/shared';
 import {
   ACCESSORY_SHAPES,
   ACCESSORY_SLOTS,
@@ -84,7 +85,8 @@ function canonical(value: object): string {
 
 function expectEveryValueUsed(label: string, allowed: readonly string[], used: readonly string[]) {
   expect(
-    allowed.filter((value) => !used.includes(value)),
+    // Parts made for personal designs (DESIGN_ONLY_PARTS) need not appear in the catalogue.
+    allowed.filter((value) => !used.includes(value) && !DESIGN_ONLY_PARTS.includes(value)),
     `${label} never used`,
   ).toEqual([]);
 }

@@ -19,6 +19,7 @@ import { Badge, Dialog, EmptyState, ErrorNotice, PageHeader, Panel, Select, Skel
 import { Button, ButtonLink } from '../../ui/Button.tsx';
 import { ProfileCard } from '../collection/ProfileCard.tsx';
 import { ReportDialog } from '../moderation/ReportDialog.tsx';
+import { WornDesignNote } from '../designs/WornDesign.tsx';
 import { errorText, useFocusAfterUpdate, useReturnFocus, useSocialRefresh, usePageTitle } from '../social/data.ts';
 import { MakerGames } from '../modestudio/MakerGames.tsx';
 
@@ -381,6 +382,7 @@ export default function Profile() {
           <div ref={cardRef}>
             <ProfileCard name={p.displayName} level={p.level} avatar={p.avatar} earnedTitle={p.earnedTitle} pose={glimPose(p.card?.pose ?? 'wave')} face={EXPRESSION_FACE[p.card?.expression ?? 'own']} equipment={{ frame: p.equipped.frame?.art, banner: p.equipped.banner?.art, title: p.equipped.title?.art, theme: p.equipped.theme?.art }} />
           </div>
+          {p.avatar?.design ? <WornDesignNote design={p.avatar.design} canReport={Boolean(viewer && !p.isSelf)} /> : null}
           {p.isSelf && p.card ? (
             <div className="mt-6">
               <CardStudio p={p} cardRef={cardRef} />

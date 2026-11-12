@@ -67,8 +67,8 @@ export const GLIM_BODIES = [
   'owl', 'jelly', 'flame', 'sprout', 'crystal', 'moth', 'orb', 'mushroom',
   'fluff', 'lantern', 'book', 'box', 'dumpling', 'bulb', 'toast',
 ] as const;
-export const GLIM_EYES = ['dot', 'big', 'sleepy', 'happy', 'wink', 'star', 'cyclops', 'visor', 'sparkle', 'curious', 'half', 'pixel'] as const;
-export const GLIM_MOUTHS = ['smile', 'grin', 'o', 'cat', 'tooth', 'tongue', 'none', 'smirk', 'fang', 'toothy', 'beak', 'yawn', 'wobble'] as const;
+export const GLIM_EYES = ['dot', 'big', 'sleepy', 'happy', 'wink', 'star', 'cyclops', 'visor', 'sparkle', 'curious', 'half', 'pixel', 'button', 'lash', 'sly', 'heart'] as const;
+export const GLIM_MOUTHS = ['smile', 'grin', 'o', 'cat', 'tooth', 'tongue', 'none', 'smirk', 'fang', 'toothy', 'beak', 'yawn', 'wobble', 'bean', 'zigzag', 'grit'] as const;
 export const GLIM_PATTERNS = [
   'none', 'spots', 'stripes', 'belly', 'freckles', 'stars', 'patch',
   'bands', 'drip', 'tabby', 'split', 'circuit', 'bubbles', 'constellation', 'sprinkles', 'snowcap',
@@ -77,12 +77,43 @@ export const GLIM_TOPPERS = [
   'none', 'antenna', 'leaf', 'horns', 'flame', 'halo', 'tuft', 'spikes', 'bolt', 'bud',
   'sprout', 'clover', 'fern', 'kelp', 'shell', 'coral', 'lure', 'steam', 'snowflake',
   'icicles', 'berries', 'quill', 'moon', 'star', 'unihorn', 'book', 'stem', 'crown', 'rose', 'tendrils',
+  'twin-antennae', 'spring', 'dish', 'bobble',
 ] as const;
 /** Eyebrows, for attitude. */
 export const GLIM_BROWS = ['none', 'soft', 'determined', 'worried', 'smug', 'surprised', 'grumpy', 'bushy'] as const;
 /** Ears, fins and other shapes on the sides of the head. 'mane' and 'petals' ring the whole head. */
-export const GLIM_EARS = ['none', 'cat', 'fox', 'bunny', 'bear', 'mouse', 'droopy', 'dogear', 'fin', 'leaf', 'feelers', 'crystal', 'bolts', 'mane', 'petals'] as const;
-export const GLIM_TAILS = ['none', 'curl', 'fox', 'flame', 'comet', 'fish', 'dragon', 'tassel', 'plug', 'ribbon'] as const;
+export const GLIM_EARS = ['none', 'cat', 'fox', 'bunny', 'bear', 'mouse', 'droopy', 'dogear', 'fin', 'leaf', 'feelers', 'crystal', 'bolts', 'mane', 'petals', 'round', 'antlers', 'tufts'] as const;
+export const GLIM_TAILS = ['none', 'curl', 'fox', 'flame', 'comet', 'fish', 'dragon', 'tassel', 'plug', 'ribbon', 'pom', 'zigzag', 'spiral'] as const;
+/** Feet. 'nub' is the round foot every Glim had before there was a choice; 'none' floats. */
+export const GLIM_FEET = ['nub', 'none', 'paws', 'boots', 'claws', 'flippers', 'tiptoes'] as const;
+/** A soft second colour washed over the body. */
+export const GLIM_GRADIENTS = ['none', 'top', 'bottom', 'side', 'glow'] as const;
+/** How a Glim moves while it waits, in 3D scenes and in the maker's preview. Lobbies and game screens hold still. */
+export const GLIM_IDLES = ['calm', 'bob', 'sway', 'bounce', 'hover', 'wiggle'] as const;
+/** Shape sliders (percent of the body's own size) and their safe ranges: every value still reads as a Glim. */
+export const GLIM_SHAPE_RANGES = { width: [85, 118], height: [88, 115], eyeSize: [80, 125] } as const;
+/** The painter's grid for markings on a Glim: 12 by 12 cells, each empty or one of five palette colours. */
+export const PAINT_SIZE = 12;
+/** Longest painter string accepted (a full noisy grid needs 144 characters). */
+export const PAINT_MAX_LENGTH = 300;
+/** Painter data: one digit per run of cells (0 empty, 1 to 5 a colour), followed by a letter when the run is longer than one (a = 2 ... Z = 53). */
+export function paintRunLength(s: string): number | null {
+  if (!/^(?:[0-5][a-zA-Z]?)*$/.test(s)) return null;
+  let n = 0;
+  for (const m of s.matchAll(/[0-5]([a-zA-Z]?)/g)) n += runOf(m[1] ?? '');
+  return n;
+}
+function runOf(letter: string): number {
+  if (!letter) return 1;
+  const c = letter.charCodeAt(0);
+  return c >= 97 ? c - 95 : c - 65 + 28;
+}
+const paintString = z
+  .string()
+  .max(PAINT_MAX_LENGTH)
+  .regex(/^(?:[0-5][a-zA-Z]?)*$/, 'Painter data is made of the digits 0 to 5 and run letters.')
+  .refine((s) => paintRunLength(s) === PAINT_SIZE * PAINT_SIZE, 'Painter data must fill the grid exactly.');
+export { paintString as paintStringSchema };
 /** Wings, shells and capes behind the body. */
 export const GLIM_BACKS = ['none', 'feather', 'fairy', 'bat', 'paper', 'cape', 'snail', 'scallop', 'burst'] as const;
 /** Something worn or grown on the face. */
@@ -112,6 +143,21 @@ export const glimArtSchema = z.object({
   tail: z.enum(GLIM_TAILS).optional(),
   back: z.enum(GLIM_BACKS).optional(),
   face: z.enum(GLIM_FACES).optional(),
+  /*
+   * Personal designs (and Studio drafts) can shape a Glim further. All optional, so every Glim made
+   * before these existed parses and draws exactly as it did; leaving one out means today's look.
+   */
+  /** Body width and height, and eye size, as a percent of the body's own (see GLIM_SHAPE_RANGES). */
+  width: z.number().int().min(GLIM_SHAPE_RANGES.width[0]).max(GLIM_SHAPE_RANGES.width[1]).optional(),
+  height: z.number().int().min(GLIM_SHAPE_RANGES.height[0]).max(GLIM_SHAPE_RANGES.height[1]).optional(),
+  eyeSize: z.number().int().min(GLIM_SHAPE_RANGES.eyeSize[0]).max(GLIM_SHAPE_RANGES.eyeSize[1]).optional(),
+  feet: z.enum(GLIM_FEET).optional(),
+  /** A third colour, for a three-colour scheme (markings, painted cells, two-colour parts). */
+  thirdHue: hue.optional(),
+  gradient: z.enum(GLIM_GRADIENTS).optional(),
+  idle: z.enum(GLIM_IDLES).optional(),
+  /** Painted markings: PAINT_SIZE x PAINT_SIZE cells, run-length encoded (paint.ts in the web app draws them). */
+  paint: paintString.optional(),
 });
 export type GlimArt = z.infer<typeof glimArtSchema>;
 
@@ -127,6 +173,8 @@ export const accessoryArtSchema = z.object({
   shape: z.string().min(1).max(30),
   hue,
   accentHue: hue.optional(),
+  /** A painted emblem on the item (same painter grid as Glim markings), for personal designs. */
+  emblem: paintString.optional(),
 });
 export type AccessoryArt = z.infer<typeof accessoryArtSchema>;
 

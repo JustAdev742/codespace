@@ -246,6 +246,8 @@ export interface AvatarLite {
   uniform?: SchoolUniform;
   /** On a school's copy with houses, the player's house: its name, colour and emblem (school.ts). */
   house?: { id: string; name: string; hue: number; emblem: string };
+  /** The player's own Glim design, when they wear one (studio2): its id (for reporting) and its name (filtered like display names). */
+  design?: { id: string; name: string };
 }
 
 export interface TeamView {

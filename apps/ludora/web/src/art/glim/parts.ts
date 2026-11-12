@@ -113,6 +113,21 @@ export function earParts(kind: GlimArt['ears'], geo: BodyGeometry, c: GlimColors
       behind.push(...both(EAR.leaf, c.accent, t), ...both(EAR.leafRib, c.accentDeep, t, { line: 1.6, flat: true, opacity: 0.6 }));
       break;
     }
+    case 'round': {
+      const t = { ...at, x: x + 2, y: y + 3 };
+      behind.push(...both(ellipse(0, -4, 8.5, 9.5), c.body, t), ...both(ellipse(0, -4.5, 4.6, 5.4), c.accent, t, { flat: true, opacity: 0.85 }));
+      break;
+    }
+    case 'antlers': {
+      const t = { ...at, r: a * 0.5, s: s * 0.95 };
+      behind.push(...both('M0 4C0 -6 2 -14 7 -22M2 -9C6 -10 9 -13 10 -17M4 -16C1 -19 0 -22 1 -26', 'hsl(30 45% 52%)', t, { line: 4.2 }));
+      break;
+    }
+    case 'tufts': {
+      const t = { ...at, r: a * 0.6 };
+      behind.push(...both('M-7 5C-6 -4 -1 -12 6 -18C5 -12 7 -7 11 -4C8 -1 8 3 9 5Z', c.deep, t));
+      break;
+    }
     case 'feelers': {
       const t = { ...at, r: a * 0.4 };
       behind.push(...both('M0 4C1 -8 6 -18 12 -24', c.outline, t, { line: 3.2, stalk: true }), ...both(circle(13, -25.5, 4.4), c.accent, t));
@@ -229,6 +244,12 @@ export function tailParts(kind: GlimArt['tail'], geo: BodyGeometry, c: GlimColor
         { d: P('M-6 -2C4 -8 6 -18 12 -26C17 -33 23 -32 27 -40C28 -32 26 -26 21 -21C15 -15 14 -6 6 2C2 5 -4 5 -6 3Z'), fill: c.accent },
         { d: P('M-4 6C8 4 14 -4 20 -10C24 -14 28 -13 31 -18C31 -11 28 -7 24 -4C18 1 14 8 4 11C0 12 -4 10 -4 6Z'), fill: c.second },
       ];
+    case 'pom':
+      return [{ d: P(`${circle(5, -2, 9)}`), fill: c.belly }, { d: P(circle(2.5, -5, 3)), fill: '#fff', flat: true, opacity: 0.55 }];
+    case 'zigzag':
+      return [{ d: P('M-6 0L6 -4L2 -12L15 -16L11 -26L24 -30'), fill: c.accent, line: 5.6 }];
+    case 'spiral':
+      return [{ d: P('M-6 0C6 2 16 -2 18 -12C20 -22 10 -26 6 -20C3 -15 8 -12 11 -15'), fill: c.accent, line: 4.6 }, { d: P(circle(11, -15.5, 2.4)), fill: c.second }];
     default:
       return [];
   }
@@ -492,6 +513,31 @@ export function topperParts(kind: GlimArt['topper'], geo: BodyGeometry, c: GlimC
         { d: place('M-3.6 -5C-3.6 -9.5 3.4 -9.6 3.4 -5.6C3.4 -2.4 -1.2 -2.2 -1.2 -5.4', t), fill: c.accentDeep, line: 1.5, flat: true, opacity: 0.7 },
       ];
     }
+    case 'twin-antennae':
+      return [-1, 1].flatMap((side) => {
+        const t = { x: geo.top.x + side * 9 * s, y: geo.top.y + 4, r: side * 18, s };
+        return [
+          { d: place('M0 2C0 -6 1 -11 0 -16', t), fill: c.outline, line: 2.8, stalk: true },
+          { d: place(circle(0, -19, 4), t), fill: side < 0 ? c.glow : c.second },
+        ] as Part[];
+      });
+    case 'spring':
+      return [
+        { d: P('M0 4C-6 2 -6 -2 0 -3C6 -4 6 -8 0 -9C-6 -10 -6 -14 0 -15C6 -16 6 -20 0 -21'), fill: c.outline, line: 2.4, stalk: true },
+        { d: P(circle(0, -25, 5)), fill: c.accent },
+      ];
+    case 'dish':
+      return [
+        { d: P('M0 4V-8'), fill: c.outline, line: 2.8, stalk: true },
+        { d: P('M-12 -12C-10 -4 10 -4 12 -12C6 -9 -6 -9 -12 -12Z'), fill: c.accent },
+        { d: P(circle(0, -15, 2.4)), fill: c.glow },
+      ];
+    case 'bobble':
+      return [
+        { d: P('M0 4C-1 -2 1 -6 0 -9'), fill: c.outline, line: 2.6, stalk: true },
+        { d: P(circle(0, -14, 7)), fill: c.second },
+        { d: P(circle(-2.2, -16.2, 2)), fill: '#fff', flat: true, opacity: 0.7 },
+      ];
     case 'tendrils': {
       // A crown of waving tentacles, each with a glowing tip.
       let tips = '';
@@ -558,8 +604,22 @@ export function armParts(geo: BodyGeometry, c: GlimColors, pose: Pose, sleeve?: 
   return geo.armIdle === false ? [] : [...resting(-1), ...resting(1)];
 }
 
-export function feetParts(geo: BodyGeometry, c: GlimColors): Part[] {
-  if (!geo.foot) return [];
+export function feetParts(geo: BodyGeometry, c: GlimColors, kind: GlimArt['feet'] = 'nub'): Part[] {
+  if (!geo.foot || kind === 'none') return [];
   const { x, y } = geo.foot;
-  return pair(ellipse(0, 0, 8.6, 5.8), { x, y, r: 8 }).map((d) => ({ d, fill: c.deep }));
+  const two = (d: string, fill: string, extra: Partial<Part> = {}, t: Place = { x, y, r: 8 }) => pair(d, t).map((p) => ({ d: p, fill, ...extra }) as Part);
+  switch (kind) {
+    case 'paws':
+      return [...two(ellipse(0, 0, 9.4, 6.2), c.deep), ...two('M-4 -1.5V2M0 -2V2.5M4 -1.5V2', c.outline, { line: 1.3, flat: true, opacity: 0.55 })];
+    case 'boots':
+      return [...two(roundPoly([[-8, -9], [5, -9], [6, -2], [10, -1], [10, 5], [-8, 5]], 3), c.accent), ...two('M-8 2.5H10', c.accentDeep, { line: 2, flat: true, opacity: 0.8 })];
+    case 'claws':
+      return [...two(ellipse(0, 0, 8.8, 5.8), c.deep), ...two('M-5 3.6L-4 7L-2.6 3.8ZM-1 4L0 7.6L1.2 4ZM3 3.6L4.2 7L5.2 3.4Z', '#fff', { flat: true })];
+    case 'flippers':
+      return two('M-6 -3C2 -5 12 -3 14 2C12 6 2 6 -6 4C-9 2 -9 -1 -6 -3Z', c.accent, {}, { x, y, r: 14 });
+    case 'tiptoes':
+      return two(ellipse(0, 0, 5.6, 4.4), c.deep);
+    default:
+      return two(ellipse(0, 0, 8.6, 5.8), c.deep);
+  }
 }

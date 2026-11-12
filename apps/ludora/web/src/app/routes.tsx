@@ -120,6 +120,7 @@ export const router = createBrowserRouter([
           { path: 'locker', lazy: page(() => import('../features/collection/Locker.tsx')) },
           { path: 'quests', lazy: page(() => import('../features/quests/Quests.tsx')) },
           { path: 'studio', lazy: page(() => import('../features/studio/Studio.tsx')) },
+          { path: 'designs', lazy: page(() => import('../features/designs/DesignStudio.tsx')) },
           { path: 'games', lazy: page(() => import('../features/games/Games.tsx')) },
           { path: 'mode-studio', lazy: page(() => import('../features/modestudio/ModeStudioHome.tsx')) },
           { path: 'mode-studio/:id', lazy: page(() => import('../features/modestudio/ModeStudio.tsx')) },
