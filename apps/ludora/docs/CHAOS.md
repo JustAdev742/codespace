@@ -5,6 +5,15 @@ live games: score swings, shields, pranks on rivals, round twists and screen eff
 unlock it, the owner included, and only by finding it. There is no admin grant, no request form
 and no role that turns it on.
 
+One exception has been made by hand, and it is recorded here so that the paragraph above stays
+honest. On 12 November 2026 the owner asked for their own account (`justadev`) on the copy at
+`ludora-yja3.onrender.com` to be unlocked without the sequence. The operator set
+`users.chaos_unlocked_at` for that one account directly in the database and wrote a
+`chaos.unlocked` entry in the audit log saying so. Nothing was added to the app for it: there is
+still no screen, command, role or setting that unlocks chaos for anyone, and every other account
+unlocks it only by finding it. The rest of this page is unchanged, including that chaos does
+nothing in a room unless its host has switched it on.
+
 This page gives the secret away. It is for people who maintain Ludora, not for players.
 
 ## How a player unlocks it
