@@ -83,12 +83,13 @@ export async function making(film: Film): Promise<Shot[]> {
   type Box = [number, number, number, number];
   const pairScene = (a: number, b: number, o: {
     clipL: (t: number) => { clip: Clip; t: number; from: number; speed: number }; clipR: (t: number) => { clip: Clip; t: number; from: number; speed: number };
-    left: Box; right: Box; picture: [number, number]; lines: [string, number, number, string?][]; glowL: string; glowR: string; height?: number;
+    left: Box | ((t: number) => Box); right: Box; picture: [number, number]; lines: [string, number, number, string?][]; glowL: string; glowR: string; height?: number;
   }): Shot => {
     const g = new Group(), hud = new Group();
     const H0 = o.height ?? 640;
     const size = (box: Box) => { const asp = ((box[2] - box[0]) * o.picture[0]) / ((box[3] - box[1]) * o.picture[1]); const w = Math.min(880, H0 * asp); return { w, h: w / asp }; };
-    const sl = size(o.left), sr = size(o.right);
+    const leftAt = (t: number) => (typeof o.left === 'function' ? o.left(t) : o.left);
+    const sl = size(leftAt(0)), sr = size(o.right);
     const gap = 70, total = sl.w + sr.w + gap;
     const L = new Card({ w: sl.w, h: sl.h, radius: 28, rim: 2, rimColor: '#7f8be0', glow: o.glowL, shadow: 0.7 });
     const R = new Card({ w: sr.w, h: sr.h, radius: 28, rim: 2, rimColor: '#7f8be0', glow: o.glowR, shadow: 0.7 });
@@ -110,7 +111,7 @@ export async function making(film: Film): Promise<Shot[]> {
         caps.forEach((c, i) => c.show(t - o.lines[i]![1], o.lines[i]![2]));
         stage.view({ dolly: lerp(-80, 60, ease.outCubic(seg(t, 0, b - a))) + punch(t - 2) * 40, orbitY: lerp(-0.04, 0.04, seg(t, 0, b - a)) });
         const l = o.clipL(t), r = o.clipR(t);
-        return [roll(l.clip, L, l.t, { from: l.from, speed: l.speed, crop: o.left, hold: true }), roll(r.clip, R, r.t, { from: r.from, speed: r.speed, crop: o.right, hold: true })];
+        return [roll(l.clip, L, l.t, { from: l.from, speed: l.speed, crop: leftAt(t), hold: true }), roll(r.clip, R, r.t, { from: r.from, speed: r.speed, crop: o.right, hold: true })];
       },
     };
   };
@@ -120,20 +121,31 @@ export async function making(film: Film): Promise<Shot[]> {
   /* ---- bars 22 and 23: write your own game mode. The code on the left, the test game it drives on the right ---- */
   // The code box as the camera noted it runs under the test game (the page clips it); stop it just above.
   const cm = mk(code).code ?? [0.213, 0.18, 0.594, 0.45], lm = mk(code).live ?? [0.213, 0.47, 0.594, 0.96];
-  const codeBox: Box = [cm[0] - 0.006, cm[1] - 0.012, cm[2] + 0.006, Math.min(cm[3], lm[1] - 0.012)];
+  // Ten lines of the code at a time, big enough to read: first the top (one number changes), then
+  // the bottom (a rule is typed). A line of code is 28 px tall on the page.
+  const picH = ((mk(code).size as unknown as [number, number] | undefined) ?? [1920, 2670])[1];
+  const lineF = (28 * 1.5) / picH, padF = (14 * 1.5) / picH;
+  const boxBottom = Math.min(cm[3], lm[1] - 0.012);
+  // Once the line is chosen the editor has scrolled it to the top, so the first ten lines shown are the ones to read.
+  const topLines: Box = [cm[0] - 0.004, cm[1] + 0.001, cm[2] + 0.004, cm[1] + padF * 1.2 + lineF * 10];
+  const lastLines: Box = [cm[0] - 0.004, boxBottom - padF * 1.2 - lineF * 10, cm[2] + 0.004, boxBottom - padF * 1.2];
+  const codeBox = (t: number): Box => (t < 1.0 ? topLines : lastLines);
   const liveBox: Box = [lm[0] - 0.006, lm[1], lm[2] + 0.006, Math.min(1, lm[3])];
   const sizeOf = (c: Clip, fallback: [number, number]) => (mk(c).size as unknown as [number, number] | undefined) ?? fallback;
+  const editAt = Math.max(10, (mk(code).edit as unknown as number) ?? 35);
   const s2 = pairScene(bar(22), bar(24), {
-    clipL: (t) => ({ clip: code, t, from: Math.max(1, ((mk(code).edit as unknown as number) ?? 34) - 14), speed: 1.55 }),
-    clipR: (t) => ({ clip: code, t, from: Math.max(1, ((mk(code).edit as unknown as number) ?? 34) - 14), speed: 1.55 }),
-    left: codeBox, right: liveBox, picture: sizeOf(code, [1920, 2670]), glowL: '#22b8a0', glowR: '#3f6bff', height: 690,
+    // Half a second on "30" with the number picked out, so the change to 12 is seen happening.
+    clipL: (t) => (t < 0.5 ? { clip: code, t, from: editAt - 9, speed: 0.6 } : { clip: code, t: t - 0.5, from: editAt, speed: 1.5 }),
+    clipR: (t) => (t < 0.5 ? { clip: code, t, from: editAt - 9, speed: 0.6 } : { clip: code, t: t - 0.5, from: editAt, speed: 1.5 }),
+    left: codeBox, right: liveBox, picture: sizeOf(code, [1920, 2670]), glowL: '#22b8a0', glowR: '#3f6bff', height: 700,
     lines: [['Write your own game mode.', 0.3, 1.55], ['Simple code. A real game.', 2.05, 9, '#ffc233']],
   });
 
   /* ---- bars 24 and 25: your own Glim. The Glim on the left, the paint going on at the right ---- */
   const prev = mk(shuffle).preview ?? [0.4, 0.14, 0.57, 0.31];
   const glimBox: Box = [Math.max(0, prev[0] - (prev[2] - prev[0]) * 1.06), prev[1], prev[2], prev[3]];
-  const paintBox = pad(mk(paint).painter ?? mk(shuffle).painter, [0.6, 0.52, 0.94, 0.76], 0.012, 0.012);
+  const pb = mk(paint).painter ?? mk(shuffle).painter ?? [0.6, 0.52, 0.94, 0.76];
+  const paintBox: Box = [pb[0] - 0.004, pb[1] - 0.003, pb[2] + 0.004, pb[3] - 0.014];
   const s3 = pairScene(bar(24), bar(26), {
     clipL: (t) => (t < 2 ? { clip: shuffle, t, from: 12, speed: 1.6 } : { clip: paint, t: t - 2, from: 6, speed: 1.5 }),
     clipR: (t) => ({ clip: paint, t: Math.max(0, t - 1.4), from: 4, speed: 1.25 }),

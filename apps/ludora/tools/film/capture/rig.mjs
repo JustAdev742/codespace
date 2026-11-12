@@ -125,7 +125,8 @@ export const NO_ENV_BADGE = `(() => {
       if (m.type === 'characterData') { const n = m.target; if (n.nodeValue && n.nodeValue.includes(here) && here !== site) n.nodeValue = n.nodeValue.split(here).join(site); }
       else for (const n of m.addedNodes) fix(n.nodeType === 3 ? n.parentNode : n);
     }
-  }).observe(document.documentElement, { childList: true, subtree: true, characterData: true });
+  }).observe(document, { childList: true, subtree: true, characterData: true });
+  document.addEventListener('DOMContentLoaded', () => fix(document.body));
 })();`;
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
