@@ -233,7 +233,8 @@ describe('over HTTP and sockets', () => {
     // The other player cannot cast, whatever they send.
     expect(await emit(oSock, 'room:chaos', { op: 'cast', actionId: 'cast-other-1', casts: [{ cheatId: 'look.snow', target: joinedOther.playerId }] })).toMatchObject({ ok: false });
 
-    // A room whose host did not turn lantern tricks on has no chaos, even for an unlocked player.
+    // There is no room option for chaos: in a room made with no options at all, an unlocked player
+    // can cast and a locked one still cannot.
     const calmCode = (await host.client.post('/api/rooms', { setId: set!.id, modeId: 'classic', common: { questionLimit: 5, questionTimeSec: 60 } })).body.code as string;
     const calmHost = socketFor(cookieOf(host.client));
     await emit(calmHost, 'room:join', { code: calmCode });
@@ -244,8 +245,15 @@ describe('over HTTP and sockets', () => {
     const calmTarget = await emit(calmOther, 'room:join', { code: calmCode });
     expect(await emit(calmHost, 'room:host', { cmd: 'start' })).toMatchObject({ ok: true });
     await until(() => calmView.v?.room.status === 'running');
-    expect(calmView.v.chaos).toBeUndefined();
-    expect(await emit(calmFinder, 'room:chaos', { op: 'cast', actionId: 'cast-calm-01', casts: [{ cheatId: 'look.snow', target: calmTarget.playerId }] })).toMatchObject({ ok: false });
+    await until(() => calmView.v?.chaos !== undefined);
+    expect(await emit(calmOther, 'room:chaos', { op: 'cast', actionId: 'cast-calm-00', casts: [{ cheatId: 'look.snow', target: calmTarget.playerId }] })).toMatchObject({ ok: false });
+    // (Their first cast in a game may still be warming up, as in the room above: wait it out.)
+    let plain: { ok: boolean } = { ok: false };
+    for (let i = 0; i < 40 && !plain.ok; i++) {
+      plain = await emit(calmFinder, 'room:chaos', { op: 'cast', actionId: `cast-calm-${String(i).padStart(2, '0')}`, casts: [{ cheatId: 'look.snow', target: calmTarget.playerId }] });
+      if (!plain.ok) await new Promise((r) => setTimeout(r, 250));
+    }
+    expect(plain).toMatchObject({ ok: true });
     for (const s of [calmHost, calmFinder, calmOther]) s.disconnect();
 
     // The host calms the room: effects end and nobody can cast for the rest of the game.
@@ -284,5 +292,19 @@ describe('over HTTP and sockets', () => {
     });
     expect(room.chaosAllowed()).toBe(false);
     room.close('test');
+    // The same room without an assignment allows it, whatever its options say.
+    const live = t.deps.rooms.create({
+      hostUserId: host.userId,
+      hostName: 'Teacher',
+      modeId: 'classic',
+      variantId: null,
+      settings: {},
+      common: {},
+      options: roomOptionsSchema.parse({ lateJoin: true, maxPlayers: 30, generatedNames: false, requireAccount: false, chaos: false }),
+      set: { id: set!.id, title: 'Mixed', questions: MIXED_SET },
+      solo: false,
+    });
+    expect(live.chaosAllowed()).toBe(true);
+    live.close('test');
   });
 });

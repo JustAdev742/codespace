@@ -11,8 +11,10 @@ honest. On 12 November 2026 the owner asked for their own account (`justadev`) o
 `users.chaos_unlocked_at` for that one account directly in the database and wrote a
 `chaos.unlocked` entry in the audit log saying so. Nothing was added to the app for it: there is
 still no screen, command, role or setting that unlocks chaos for anyone, and every other account
-unlocks it only by finding it. The rest of this page is unchanged, including that chaos does
-nothing in a room unless its host has switched it on.
+unlocks it only by finding it.
+
+The same day the owner also had the room option removed (see *Guardrails*): chaos is no longer
+something a host switches on. An account that has it can use it in any live game.
 
 This page gives the secret away. It is for people who maintain Ludora, not for players.
 
@@ -82,10 +84,12 @@ the bottom.
 - **The host can calm the room.** "Calm the room" in the host controls ends every effect and
   stops new casts for the rest of the game.
 - **Homework is off limits.** Chaos never runs in an assignment.
-- **Off unless the host turns it on.** The room's `chaos` option is off by default, so an
-  ordinary classroom game never has chaos. The host page offers it as "Lantern tricks (party
-  games)", which says that a secret exists but not how to find it. Calming the room still ends
-  every effect once a game is running.
+- **No room option.** Until 12 November 2026 chaos ran only in rooms whose host had switched on
+  "Lantern tricks (party games)", so an ordinary classroom game never had it. The owner had that
+  option removed: an account that has unlocked chaos can now cast in any live game, a class's
+  game included, and a host cannot rule it out beforehand. What a host has is *Calm the room*,
+  which appears once a trick has been played and ends every effect and all casting for the rest
+  of that game. A school that adopts Ludora should know this before using it in lessons.
 - **Rewards.** A player who casts in a game earns nothing from that game. Everyone else is paid
   for their answers, but places earn nothing, because chaos may have decided them. The game's
   record and the teacher's report show that chaos was used.

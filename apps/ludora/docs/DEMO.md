@@ -30,8 +30,9 @@ If the school's Wi-Fi blocks `github.dev`, use a phone hotspot for the laptop an
 - **3D modes** to show: Gold Rush, Glow Tag Royale, Big Catch, Code Breakers, Corner Shop.
 - **Teacher features**: Classes (assignments and reports), Question sets (the editor, import),
   Game Maker (save a configured game), school events on a class.
-- **Lantern tricks (party games)** in the host's Room options are **off by default**. Leave
-  them off for a classroom demo; nobody can use chaos in a game unless the host turns this on.
+- **Lantern tricks** are no longer a Room option. An account that has unlocked chaos
+  (docs/CHAOS.md) can play tricks in any live game; if one is played, the host's **Calm the
+  room** button appears and stops them for the rest of that game.
 
 ## The season on screen
 

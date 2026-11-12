@@ -1073,9 +1073,13 @@ export class Room {
     return ack;
   }
 
-  /** Chaos runs in this room's games only when the host turned it on, and never in homework. */
+  /**
+   * Chaos runs in every live game, for the accounts that have unlocked it, and never in homework.
+   * There is no room option for it (the owner's decision, 12 November 2026): the host's control is
+   * "Calm the room", which ends every effect and stops casting for the rest of that game.
+   */
   chaosAllowed(): boolean {
-    return this.options.chaos === true && !this.assignmentId;
+    return !this.assignmentId;
   }
 
   /** Record (from the database) whether an account has unlocked chaos, for every slot it holds here. */

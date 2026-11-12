@@ -36,7 +36,7 @@ browser and nothing else: no app to install, no accounts, no email addresses.
 the projector. Under **Room**:
 
 - **Generated names only** gives everyone a random friendly name: good for younger classes.
-- **Lantern tricks (party games)**: leave this off for lessons.
+- **Lantern tricks**: there is no switch for these any more. If a trick is played in your game, **Calm the room** appears in the host controls and ends them for that game (docs/CHAOS.md).
 - **Lock room** in the lobby stops anyone else joining. A player's card in the lobby can remove
   them.
 

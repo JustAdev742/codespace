@@ -326,7 +326,7 @@ function Setup({ solo, preset, gameId, making, again, classId }: { solo: boolean
   // Solo: practice bots to play against, and how good they are (the server decides what each level means).
   const [bots, setBots] = useState(0);
   const [botLevel, setBotLevel] = useState<'easy' | 'medium' | 'hard'>('medium');
-  const [options, setOptions] = useState<Record<string, unknown> & { lateJoin: boolean; generatedNames: boolean; requireAccount: boolean; chaos: boolean; quiet: boolean }>({ lateJoin: true, generatedNames: false, requireAccount: false, chaos: false, quiet: false });
+  const [options, setOptions] = useState<Record<string, unknown> & { lateJoin: boolean; generatedNames: boolean; requireAccount: boolean; quiet: boolean }>({ lateJoin: true, generatedNames: false, requireAccount: false, quiet: false });
   const [busy, setBusy] = useState(false);
   const [saving, setSaving] = useState(false);
   const [lessoning, setLessoning] = useState(false);
@@ -352,8 +352,7 @@ function Setup({ solo, preset, gameId, making, again, classId }: { solo: boolean
     setChoice({ mode: entry, variant: entry.variants.find((v) => v.meta.id === pastSetup.variantId) ?? null });
     setSettings(pastSetup.settings ?? {});
     setCommon(pastSetup.common ?? {});
-    // Chaos never comes back by itself: a host turns it on again on purpose if they want it.
-    if (pastSetup.options) setOptions((o) => ({ ...o, ...pastSetup.options, chaos: false }));
+    if (pastSetup.options) setOptions((o) => ({ ...o, ...pastSetup.options }));
   }, [pastSetup, modes.data]);
   const classApplied = useRef(false);
   useEffect(() => {
@@ -587,12 +586,6 @@ function Setup({ solo, preset, gameId, making, again, classId }: { solo: boolean
                   {forClass ? null : <Switch checked={options.requireAccount} onCheckedChange={(v) => setOptions((o) => ({ ...o, requireAccount: v }))} label="Accounts only" description="Only signed-in players with an account can join." />}
                   <Switch checked={options.quiet} onCheckedChange={(v) => setOptions((o) => ({ ...o, quiet: v }))} label="Quiet room" description="Every device in the room stays silent. You can change it in the room." />
                   <Switch checked={Boolean(options.sharedDevices)} onCheckedChange={(v) => setOptions((o) => ({ ...o, sharedDevices: v }))} label="Shared devices" description="After the game, a device where someone joined with just a name goes back to the join page for the next player, after a short countdown." />
-                  <Switch
-                    checked={options.chaos}
-                    onCheckedChange={(v) => setOptions((o) => ({ ...o, chaos: v }))}
-                    label="Lantern tricks (party games)"
-                    description="Players who have found Ludora's secret lantern can play tricks that change the game. Leave this off for lessons; you can calm the room at any time."
-                  />
                 </div>
               </div>
             ) : null}
