@@ -2,8 +2,8 @@
 # How to use this file, and what the free plan cannot do:
 # apps/ludora/docs/DEPLOYMENT.md, "Free hosting: Render and Neon".
 #
-# In Render: New, Blueprint, choose this repository and branch. Render asks for DATABASE_URL
-# (the connection string Neon gives you) and makes the rest itself.
+# In Render: New, Blueprint, choose this repository and branch. Render asks for the database's
+# two addresses (Neon shows them as DATABASE_URL and DATABASE_URL_POOLED) and makes the rest itself.
 
 services:
   - type: web
@@ -21,8 +21,12 @@ services:
     # press Manual Deploy in Render when no class is playing.
     autoDeployTrigger: "off"
     envVars:
-      # Postgres 16 at Neon. Never written in this file: Render asks for it once.
+      # The database at Neon. Never written in this file: Render asks for both once.
+      # The direct address: migrations run over it when the server starts.
       - key: DATABASE_URL
+        sync: false
+      # The pooled address (its host name has -pooler in it): the server's everyday queries.
+      - key: DATABASE_URL_POOLED
         sync: false
       # Hashes IP addresses before they are stored. Render makes a random one and keeps it.
       - key: IP_HASH_KEY

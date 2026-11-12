@@ -104,7 +104,7 @@ npm run db:seed
 npm run dev              # API on http://localhost:8787, web on http://localhost:5173
 ```
 
-`DATABASE_URL` defaults to `postgres://postgres:postgres@localhost:5432/ludora`.
+`DATABASE_URL` defaults to `postgres://postgres:postgres@localhost:5432/ludora`. To use a hosted database instead (Neon, say), put its addresses in `apps/ludora/.env.local`: see *Settings from a file* in [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
 Create an account in the app, then make it the first super administrator:
 
 ```bash

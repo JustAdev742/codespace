@@ -23,6 +23,15 @@ const schema = z.object({
   PORT: z.coerce.number().int().min(1).max(65535).default(8787),
   HOST: z.string().default('0.0.0.0'),
   DATABASE_URL: z.string().default('postgres://postgres:postgres@localhost:5432/ludora'),
+  /**
+   * Some hosts give one database two addresses: one through a connection pooler, for an app's
+   * everyday queries, and a direct one, for migrations and admin work (a pooler in transaction
+   * mode cannot do those). Neon's console names them DATABASE_URL (direct) and DATABASE_URL_POOLED;
+   * `neon env pull` names them DATABASE_URL (pooled) and DATABASE_URL_UNPOOLED. Either pair works
+   * here, and DATABASE_URL alone works as it always has. See `databaseUrl` and `directDatabaseUrl`.
+   */
+  DATABASE_URL_POOLED: z.preprocess((v) => (v === '' ? undefined : v), z.string().optional()),
+  DATABASE_URL_UNPOOLED: z.preprocess((v) => (v === '' ? undefined : v), z.string().optional()),
   /** The address people open in a browser, e.g. https://play.example.com. Used for CSRF and socket origin checks. */
   PUBLIC_ORIGIN: z.string().url().default('http://localhost:5173'),
   /** Extra allowed origins, comma separated (e.g. the Vite dev server and the API port). */
@@ -64,6 +73,10 @@ const schema = z.object({
 });
 
 export type Config = z.infer<typeof schema> & {
+  /** Where the running server sends its queries: the pooled address when the host gives one. */
+  databaseUrl: string;
+  /** Where migrations, the content seed and the operator CLI connect: always a direct connection. */
+  directDatabaseUrl: string;
   allowedOrigins: string[];
   cookieSecure: boolean;
   trustProxy: boolean;
@@ -71,6 +84,15 @@ export type Config = z.infer<typeof schema> & {
   isSandbox: boolean;
   isProduction: boolean;
 };
+
+/** The database a connection string names, or null when it is not a URL (a socket path, say). Never the password. */
+function databaseName(url: string): string | null {
+  try {
+    return decodeURIComponent(new URL(url).pathname.replace(/^\//, '')) || null;
+  } catch {
+    return null;
+  }
+}
 
 export function loadConfig(env: Record<string, string | undefined> = process.env): Config {
   // Render tells a web service its own address. Use it when PUBLIC_ORIGIN is not set, so a first deploy
@@ -90,8 +112,18 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
   if (isProduction && placeholder(c.IP_HASH_KEY)) throw new Error('Set IP_HASH_KEY to a long random value in production.');
   if (isProduction && c.CHAOS_SECRET !== undefined && placeholder(c.CHAOS_SECRET)) throw new Error('Set CHAOS_SECRET to a long random value, or leave it unset.');
   const allowedOrigins = [c.PUBLIC_ORIGIN, ...c.EXTRA_ORIGINS.split(',').map((s) => s.trim()).filter(Boolean)];
+  const databaseUrl = c.DATABASE_URL_POOLED ?? c.DATABASE_URL;
+  const directDatabaseUrl = c.DATABASE_URL_UNPOOLED ?? c.DATABASE_URL;
+  // The two addresses must be one database. Settings gathered from two places (a file for one, the
+  // environment for the other) could otherwise migrate one database and then run on another.
+  const [named, direct] = [databaseName(databaseUrl), databaseName(directDatabaseUrl)];
+  if (named && direct && named !== direct) {
+    throw new Error(`The database addresses name different databases ("${direct}" and "${named}"). Set DATABASE_URL, DATABASE_URL_POOLED and DATABASE_URL_UNPOOLED from the same place.`);
+  }
   return {
     ...c,
+    databaseUrl,
+    directDatabaseUrl,
     allowedOrigins: isProduction ? [c.PUBLIC_ORIGIN] : [...new Set(allowedOrigins)],
     cookieSecure: c.COOKIE_SECURE ?? isProduction,
     trustProxy: c.TRUST_PROXY ?? false,

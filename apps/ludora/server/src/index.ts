@@ -1,4 +1,5 @@
 import { loadConfig } from './config.ts';
+import { loadEnvFiles } from './env-files.ts';
 import { createDb } from './db/client.ts';
 import { runMigrations } from './db/migrate.ts';
 import { seedContent } from './db/seed.ts';
@@ -7,15 +8,22 @@ import { allRoutes } from './routes.ts';
 import { attachRealtime } from './realtime/attach.ts';
 import { anthropicDrafter } from './modules/ai/drafter.ts';
 
+const envFiles = loadEnvFiles();
 const config = loadConfig();
-const { db, pool } = createDb(config.DATABASE_URL, 20);
-await runMigrations(db);
-await seedContent(db);
+// Migrations and the content seed go over a direct connection, which is closed again; the server's own
+// queries then use the pooled address when the host gives one (with one address, both are the same).
+const setup = createDb(config.directDatabaseUrl, 2);
+await runMigrations(setup.db);
+await seedContent(setup.db);
+await setup.pool.end();
+const { db, pool } = createDb(config.databaseUrl, 20);
 const drafter = config.ANTHROPIC_API_KEY ? anthropicDrafter({ apiKey: config.ANTHROPIC_API_KEY, model: config.ANTHROPIC_MODEL }) : undefined;
 const { app, deps } = await buildApp({ config, db, pool, ...(drafter ? { drafter } : {}) }, allRoutes);
 const realtime = attachRealtime(app, deps);
 await app.listen({ port: config.PORT, host: config.HOST });
 app.log.info(`Ludora (${config.APP_ENV}) listening on ${config.HOST}:${config.PORT}`);
+if (envFiles.length) app.log.info(`Settings read from ${envFiles.join(' and ')} (the environment's own values win)`);
+if (config.databaseUrl !== config.directDatabaseUrl) app.log.info('Database: queries through the pooled address, migrations through the direct one');
 
 let closing = false;
 async function shutdown(signal: string) {

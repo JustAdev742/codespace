@@ -1,6 +1,7 @@
 import { and, eq, inArray } from 'drizzle-orm';
 import { ROLE_INFO, isRole, type Role } from '@ludora/shared';
 import { loadConfig } from '../config.ts';
+import { loadEnvFiles } from '../env-files.ts';
 import { createDb, type Db } from '../db/client.ts';
 import { runMigrations } from '../db/migrate.ts';
 import { userRoles, users } from '../db/schema.ts';
@@ -84,8 +85,9 @@ if (isMain) {
   const positional = reasonAt >= 0 ? args.filter((_, i) => i !== reasonAt && i !== reasonAt + 1) : args;
   const [command, username, role] = positional;
   if (!command) usage();
+  loadEnvFiles();
   const config = loadConfig();
-  const { db, pool } = createDb(config.DATABASE_URL, 1);
+  const { db, pool } = createDb(config.directDatabaseUrl, 1);
   await runMigrations(db);
   try {
     if (command === 'list-staff') {

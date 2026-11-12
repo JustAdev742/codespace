@@ -79,8 +79,9 @@ tested here; it is Caddy's standard behaviour.
 
 A way to put Ludora at a real `https://` address at no cost, for trying it with real devices.
 It is not a school's day-to-day copy: read the limits first. Render runs the app on its free
-plan and Neon keeps the database (Postgres 16) on its free plan. Render's own free database is
-deleted 30 days after it is made, which is why the database is at Neon.
+plan and Neon keeps the database on its free plan (Postgres 16 or newer; Ludora has been run on
+16 and on 18). Render's own free database is deleted 30 days after it is made, which is why the
+database is at Neon.
 
 **Limits** (from each company's documentation in November 2026; they change, so check):
 
@@ -100,23 +101,27 @@ deleted 30 days after it is made, which is why the database is at Neon.
   Neon: 1 GB of storage and 100 compute-hours for the project; its database also sleeps after
   5 minutes idle and wakes on the next request. Reaching a limit pauses the service until the
   next month; Neon says it does not delete your data.
-- **Where the data is.** Two companies hold it, and neither has an Australian region on these
-  plans as set up here (Singapore). Before real students' names go in, the school should agree.
-  For a trial, the host option *Generated names* keeps names out altogether.
+- **Where the data is.** Two companies hold it. Render has no Australian region (Singapore is
+  its nearest). Neon has one, Sydney: a database there stays in Australia, but every query then
+  travels between Singapore and Sydney, which slows each page a little; a database in Singapore
+  sits beside the app. Before real students' names go in, the school should agree to wherever
+  it is. For a trial, the host option *Generated names* keeps names out altogether.
 - **Backups are yours to take**: see *Backups and data*, using the Neon connection string.
 
 **Steps** (about fifteen minutes, most of it the first build):
 
-1. **The database.** Sign up at neon.com and make a project: Postgres **16**, region
-   **AWS Asia Pacific (Singapore)** to sit beside the app. Copy its connection string with
-   *Connection pooling* switched off (the app runs its migrations on start, and Neon recommends
-   a direct connection for those). It looks like
+1. **The database.** Sign up at neon.com and make a project, in **AWS Asia Pacific (Singapore)**
+   to sit beside the app or **(Sydney)** to keep it in Australia. Neon gives the database two
+   addresses, and Ludora uses both: the direct one for its migrations, and the pooled one (its
+   host name has `-pooler` in it) for everyday queries. Neon's console shows them as
+   `DATABASE_URL` and `DATABASE_URL_POOLED`. They look like
    `postgresql://user:password@ep-example.ap-southeast-1.aws.neon.tech/neondb?sslmode=require`.
-   Treat it as a password.
+   Treat both as passwords.
 2. **The app.** Sign up at render.com with your GitHub account. New, then Blueprint, then this
    repository and the branch to run. Render reads `render.yaml` at the top of the repository
-   and asks for one value, `DATABASE_URL`: paste the Neon string. Apply, and wait for the
-   build.
+   and asks for two values, `DATABASE_URL` and `DATABASE_URL_POOLED`: paste the two Neon
+   strings. (With only the first, everything goes over the direct address, which also works.)
+   Apply, and wait for the build.
 3. **Open it.** Render shows the address, `https://ludora-something.onrender.com`. The server
    takes its own address from Render (`RENDER_EXTERNAL_URL`), so there is no `PUBLIC_ORIGIN` to
    set unless you add a domain of your own. Sign up.
@@ -124,8 +129,10 @@ deleted 30 days after it is made, which is why the database is at Neon.
    computer that has this repository built (the Codespace does), pointing it at the database:
    ```bash
    cd apps/ludora
-   DATABASE_URL='<the Neon string>' node server/dist/admin.js grant <username> superadmin --reason "first admin"
+   DATABASE_URL='<the direct Neon string>' node server/dist/admin.js grant <username> superadmin --reason "first admin"
    ```
+   If that checkout has the addresses in `.env.local` (see *Settings from a file* below), leave
+   `DATABASE_URL=...` off: the command reads the file.
 5. **Updates.** Nothing deploys by itself, because a deploy restarts the server. In Render,
    Manual Deploy, then Deploy latest commit, when no class is playing.
 
@@ -135,8 +142,14 @@ deploy (it cannot be changed afterwards) and make the Neon project in the same p
 What has been checked: `render.yaml` against Render's published schema; the production server
 run with Render's own variables (its port and its address variable), where a sign-up from the
 `onrender.com` address is accepted with a secure cookie and one from another origin is refused;
-and the database client connecting over TLS with a connection string of Neon's form. What has
-not: an actual deploy. Nobody has run this on Render or Neon yet.
+and Ludora running on a real Neon database (Postgres 18.6, Sydney): all 19 migrations and the
+content seed, an account, a question set, and a whole Classic game with a host and three
+players over WebSockets, with the results then read back from Neon itself; queries went through
+the pooled address and migrations through the direct one. That run was made from a machine
+where the Postgres port is closed, so the connections were carried over Neon's WebSocket
+endpoint; a plain encrypted connection to port 5432, which is what a host makes, has been
+checked against a local Postgres only. What has not been checked: a deploy on Render. Nobody
+has run this there yet.
 
 ## Environments
 
@@ -159,6 +172,7 @@ Nothing secret is committed; copy `.env.example` to `.env` for compose.
 | Variable | Required | Meaning |
 |---|---|---|
 | `DATABASE_URL` | yes | Postgres connection string. |
+| `DATABASE_URL_POOLED`, `DATABASE_URL_UNPOOLED` | no | For a host that gives one database two addresses (Neon does). The server sends its everyday queries to the pooled one and runs migrations, the seed and the operator CLI over the direct one. Either naming works: `DATABASE_URL` (direct) with `DATABASE_URL_POOLED`, as Neon's console shows them, or `DATABASE_URL` (pooled) with `DATABASE_URL_UNPOOLED`, as `neon env pull` writes them. All must name the same database, or the server refuses to start. |
 | `PUBLIC_ORIGIN` | yes | The address people open, e.g. `https://play.example.org`. Used for CSRF and WebSocket origin checks; requests from other origins are refused. On Render it is taken from `RENDER_EXTERNAL_URL` when not set. |
 | `IP_HASH_KEY` | yes in production | At least 16 random characters. IP addresses are only stored as keyed hashes. Production refuses the `change-me` and `dev-only` placeholders. |
 | `CHAOS_SECRET` | no | At least 16 random characters (`openssl rand -hex 32`). Seeds the secret lantern's knock rhythm (see CHAOS.md); without it the rhythm is derived from `IP_HASH_KEY`. Keep it in the host's secret store or `.env`, never in the repository. Changing it changes the rhythm. |
@@ -175,6 +189,19 @@ Nothing secret is committed; copy `.env.example` to `.env` for compose.
 | `ANTHROPIC_MODEL` | no | The Claude model that drafts questions. Default `claude-opus-5-5`. |
 | `AI_DRAFTS_DAILY_LIMIT` | no | Draft requests allowed across the whole site in any 24 hours, to cap spending. Default 500. Each account also has its own allowance of 30 a day. |
 | `SMTP_URL` | no | Unused: Ludora does not send email (D38). |
+
+### Settings from a file
+
+Run straight from a checkout (`npm run dev`, `npm start`, the operator CLI), the server also
+reads `apps/ludora/.env.local` and then `apps/ludora/.env`, if they exist. A value already in
+the environment always wins, `.env.local` wins over `.env`, and the database addresses are only
+ever taken together from one place, so a file left on a machine cannot send a server that was
+given its own `DATABASE_URL` to a second database. Both files are git-ignored and are kept out
+of the Docker image.
+
+This is where the Neon CLI puts a database's addresses. The project is linked in `neon.ts`
+(what the Neon project should have: Postgres only) and `.neon` (which project and branch;
+git-ignored). After `neon login`, `neon env pull` writes the addresses into `.env.local`.
 
 ## Running with compose
 
