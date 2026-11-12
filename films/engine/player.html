@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Film player</title>
+    <style>
+      html, body { margin: 0; height: 100%; background: #000; overflow: hidden; }
+      svg { display: block; width: 100vw; height: 100vh; }
+      #bar { position: fixed; left: 0; right: 0; bottom: 0; padding: 8px 12px; font: 13px/1.2 Inter, system-ui, sans-serif;
+             color: #fff; background: rgba(0, 0, 0, 0.6); display: none; gap: 12px; align-items: center; }
+      #bar input { flex: 1; }
+    </style>
+  </head>
+  <body>
+    <svg id="stage" viewBox="0 0 1920 1080" preserveAspectRatio="xMidYMid meet"></svg>
+    <div id="bar"><button id="pp">Play</button><input id="seek" type="range" min="0" step="0.01" value="0" /><span id="clock"></span></div>
+    <script type="module">
+      // ?film=<slug>            render target: window.__render(t) is driven by render.mjs
+      // ?film=<slug>&play=1     live preview with the mixed soundtrack
+      import { Film } from "./engine.js";
+      const q = new URLSearchParams(location.search);
+      const slug = q.get("film");
+      const tl = await (await fetch(`../${slug}/build/timeline.json`)).json();
+      const film = new Film(tl);
+      const scene = await import(`../${slug}/scene.js`);
+      const render = scene.default(document.getElementById("stage"), film);
+      window.__film = { duration: film.duration, fps: film.fps, frames: tl.frames };
+      window.__render = render;
+      render(Number(q.get("t") ?? 0));
+      window.__ready = true;
+
+      if (q.has("play")) {
+        const bar = document.getElementById("bar"), seek = document.getElementById("seek");
+        const pp = document.getElementById("pp"), clock = document.getElementById("clock");
+        const audio = new Audio(`../${slug}/build/mix.wav`);
+        bar.style.display = "flex";
+        seek.max = film.duration;
+        const tick = () => {
+          render(audio.currentTime);
+          seek.value = audio.currentTime;
+          clock.textContent = `${audio.currentTime.toFixed(1)} / ${film.duration.toFixed(1)}s`;
+          if (!audio.paused) requestAnimationFrame(tick);
+        };
+        pp.onclick = () => (audio.paused ? (audio.play(), (pp.textContent = "Pause"), tick()) : (audio.pause(), (pp.textContent = "Play")));
+        seek.oninput = () => { audio.currentTime = Number(seek.value); tick(); };
+      }
+    </script>
+  </body>
+</html>

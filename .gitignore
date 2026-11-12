@@ -6,3 +6,7 @@ __pycache__/
 .vercel/
 audit-output/
 .claude/settings.local.json
+# Local secrets written by `elevenlabs onboard`
+/.env.local
+# Film build intermediates (mix.py / render.mjs regenerate them)
+films/*/build/mix*.wav
