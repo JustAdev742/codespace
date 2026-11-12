@@ -54,9 +54,6 @@ export default function Join() {
   useEffect(() => {
     if (me.data?.user && !name) setName(me.data.user.displayName);
   }, [me.data, name]);
-  useEffect(() => {
-    if (info.data?.isHost) navigate(`/room/${info.data.code}`, { replace: true });
-  }, [info.data, navigate]);
 
   const submit = (e: FormEvent) => {
     e.preventDefault();
@@ -68,7 +65,8 @@ export default function Join() {
         return;
       }
     }
-    navigate(`/room/${info.data.code}`, { state: { name: name.trim() } });
+    // The host joining their own game from here plays in it (their host screen stays the host screen).
+    navigate(`/room/${info.data.code}${info.data.isHost ? '?as=player' : ''}`, { state: { name: name.trim() } });
   };
 
   return (
@@ -112,7 +110,17 @@ export default function Join() {
           ) : info.data ? (
             <Card as="form" onSubmit={submit}>
               <div>
-                <p className="font-semibold text-text-2">Joining {info.data.hostName}&apos;s game</p>
+                {info.data.isHost ? (
+                  <p className="font-semibold text-text-2">
+                    This is your game. Join here to play in it too, or{' '}
+                    <Link to={`/room/${info.data.code}`} className="font-bold underline underline-offset-2">
+                      open the host screen
+                    </Link>
+                    .
+                  </p>
+                ) : (
+                  <p className="font-semibold text-text-2">Joining {info.data.hostName}&apos;s game</p>
+                )}
                 {/* The game's name on the slanted plate: the moment before you walk in. */}
                 <h1 className="mt-3 mb-2 font-display text-[2rem] leading-none">
                   <span className="plate plate-gold max-w-full">

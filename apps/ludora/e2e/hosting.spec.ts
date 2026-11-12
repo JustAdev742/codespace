@@ -422,3 +422,38 @@ test('long names fit the Lantern Trail and Festival Workshop host boards', async
     await ctx.close();
   }
 });
+
+test('the host joins their own game as a player from a second tab, and the first tab stays the host', async ({ browser }) => {
+  const host = await account(browser, { accountType: 'teacher', displayName: 'Ms Rivera' });
+  const setId = await makeSet(host.page);
+  const room = await host.page.request.post('/api/rooms', { headers: CSRF, data: { setId, modeId: 'classic', common: { questionLimit: 2, questionTimeSec: 90 } } });
+  expect(room.ok(), await room.text()).toBe(true);
+  const { code } = await room.json();
+  await host.page.goto(`/room/${code}`);
+  await expect(host.page.getByRole('button', { name: 'Start game' })).toBeVisible();
+
+  // A second tab on the same account. The join page offers to play; it does not become another host screen.
+  const tab = await host.page.context().newPage();
+  await tab.goto(`/join/${code}`);
+  await expect(tab.getByText(/This is your game\./)).toBeVisible();
+  await expect(tab.getByRole('link', { name: 'open the host screen' })).toHaveAttribute('href', `/room/${code}`);
+  await tab.getByRole('button', { name: 'Join game' }).click();
+  await expect(tab.getByText('You are in', { exact: true })).toBeVisible();
+  await expect(tab).toHaveURL(new RegExp(`/room/${code}\\?as=player$`));
+  await expect(tab.getByRole('button', { name: 'Start game' })).toHaveCount(0);
+
+  // The first tab is still the host, with its own account now among the players.
+  await expect(host.page.getByRole('heading', { name: /^1 player$/ })).toBeVisible();
+  await expect(host.page.getByRole('button', { name: 'Start game' })).toBeVisible();
+  // Reloading the player's tab keeps it a player.
+  await tab.reload();
+  await expect(tab.getByText('You are in', { exact: true })).toBeVisible();
+  await expect(host.page.getByRole('heading', { name: /^1 player$/ })).toBeVisible();
+
+  // The host starts from the first tab and answers from the second.
+  await host.page.getByRole('button', { name: 'Start game' }).click();
+  await expect(tab.getByRole('group', { name: 'Answers' })).toBeVisible({ timeout: 20_000 });
+  await tab.getByRole('group', { name: 'Answers' }).getByRole('button').first().click({ timeout: 6_000 });
+  await expect(tab.getByText(/^(Answer locked in|Correct|Incorrect)$/).first()).toBeVisible();
+  await expect(host.page.getByRole('button', { name: /Next|Skip ahead/ })).toBeVisible();
+});
