@@ -32,12 +32,14 @@ Making things (sets, lessons, games, Glims, game modes) easier, richer and less 
 | Practice bots that play like people | [bots.md](bots.md) | 9 |
 | AI helpers in the making tools, on any free provider, with an allowance per account | [ai.md](ai.md) | 18 |
 | Sets with sound, a feel of their own, and games that adapt to the set | [sets2.md](sets2.md) | 23 |
-| Mode Studio: people make their own game modes, in 2D and 3D | [modestudio.md](modestudio.md) | 12 |
+| Game Maker (first built as Mode Studio): people make their own game modes, in 2D and 3D | [modestudio.md](modestudio.md) | 12 |
+| Game Maker: a game written in simple code, with the maker's own numbers and rules | [gamecode.md](gamecode.md) | 11 |
+| Solo play: a "Your settings" stage | [solo.md](solo.md) | 5 |
 | A richer Studio, a painter, and "My designs" for every account | [studio2.md](studio2.md) | 15 |
 | One place to make things, notes to a game with no AI, classroom tools, the teacher's day | [making.md](making.md) | 28 |
-| **Total** | | **105** |
+| **Total** | | **121** |
 
-With the 207 above, that is 312 features. What each piece left undone is under "Not done" in its
+With the 207 above, that is 328 features. What each piece left undone is under "Not done" in its
 file. The main ones: no AI helper has ever been run against a live AI service (they are tested
 against a stand-in); a made game has a 3D scene only for races and climbs; capes, held items,
 trails and name plates cannot be designed yet; the host page and the lesson dialog still use

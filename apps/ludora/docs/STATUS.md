@@ -21,7 +21,7 @@ item with how each was checked, in [features/README.md](features/README.md). The
 | M6 Content, social, classes, analytics | Done | Friends, blocks, profiles, my stats, leaderboards, classes, assignments and their reports, hosted games, game reports, the set editor with image uploads, and AI question drafts. |
 | Chaos (D47) | Done | The secret cheat menu: 1,005 cheats and 10 combos, each tested in a real game; the unlock sequence; the private menu. See [CHAOS.md](CHAOS.md). |
 | November programme | Done | 207 features, 5 new 3D modes (30 modes and 130 variants, 10 modes in 3D), 3 new question types (11 in all), an illustrated cover for every mode, a visual lift of the live game screens, and 48 bugs fixed. Each is a row with its check in [features/](features/README.md). |
-| Making programme | Done | 105 features: practice bots with personalities, AI helpers on any free provider with an allowance per account, sets with sound and a feel of their own, Mode Studio (people make game modes in 2D and 3D), My designs for every account with a painter, and one place to make things with classroom tools and the teacher's day. Counted in [features/](features/README.md). |
+| Making programme | Done | 121 features: practice bots with personalities, AI helpers on any free provider with an allowance per account, sets with sound and a feel of their own, Game Maker (people make game modes in 2D and 3D), My designs for every account with a painter, and one place to make things with classroom tools and the teacher's day. Counted in [features/](features/README.md). |
 | M7-8 Polish, CI, deployment | In progress | Production build, Docker image, compose file, CI workflow, docs and end-to-end tests (run in CI) are in. The whole app is restyled for players aged 8 to 17 (D46), and automated accessibility checks pass on every page, game screen and staff section. A design review of the whole app was done and its findings fixed. A playable demo builds for GitHub Pages. 2026-10-29: account download and deletion, a privacy policy and terms, data retention, a measured load test, a deployment kit tested in Docker, a machine screen-reader audit, and WebKit and Firefox runs in CI. Remaining: a person's screen-reader pass, legal review of the policy, and a real deployment, which needs the operator's server and domain. |
 
 ## Added in November 2026 (verified; details in [features/](features/README.md))
@@ -29,7 +29,7 @@ item with how each was checked, in [features/README.md](features/README.md). The
 - **Making things** (12 November): one Make page with guided starts and drafts that follow you
   between devices; pasted notes turned into questions in code, with no AI needed; sets with
   sound (spoken words, a bank of 36 sounds made in code, or your own short clip), their own
-  sounds, backdrop and colour, and hosting that ranks every mode for the set; Mode Studio, where
+  sounds, backdrop and colour, and hosting that ranks every mode for the set; Game Maker, where
   anyone designs a game from Ludora's parts (seven kinds, 2D boards, 3D scenes for races and
   climbs) with a live test against bots, as data that is checked, never code; My designs, where
   every account shapes and paints Glims of its own; AI helpers in each making tool on any

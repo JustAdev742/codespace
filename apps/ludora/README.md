@@ -18,12 +18,12 @@ reports. Nothing costs real money.
 - For every student: read aloud, extra time, keyboard answers, colour-safe
   tiles, calm mode and more, each off until someone turns it on.
 - For making things: one Make page; pasted notes turned into questions with no
-  AI needed; sound in questions; Mode Studio, where anyone designs their own
+  AI needed; sound in questions; Game Maker, where anyone writes their own
   game mode in 2D or 3D from Ludora's parts and tests it against bots; My
   designs, where every account shapes and paints its own Glims; and optional AI
   helpers on any provider that speaks the OpenAI API (a free tier will do), with
   an allowance per account.
-- What the November 2026 programmes added (312 features), item by item with how
+- What the November 2026 programmes added (328 features), item by item with how
   each was checked, is in [docs/features/README.md](docs/features/README.md).
 - Server-authoritative realtime games with reconnection and host controls.
 - An economy with disclosed Lantern odds, a ledger and idempotent purchases.

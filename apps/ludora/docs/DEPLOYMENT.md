@@ -251,7 +251,7 @@ System page in the staff area shows whether drafting is configured.
 ### AI helpers, on a free AI service
 
 The helpers in the making tools (drafting questions, wording, wrong answers, a lesson outline, a
-mode for this set, "describe your game" in Mode Studio, "describe a Glim" in My designs) work
+mode for this set, "describe your game" in Game Maker, "describe a Glim" in My designs) work
 with any service that speaks the OpenAI chat-completions API. Several have a free tier with no
 card (Groq and OpenRouter, for example): you make one account there, players never see or sign
 in to it, and the key stays on the server.
