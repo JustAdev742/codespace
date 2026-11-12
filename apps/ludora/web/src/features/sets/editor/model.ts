@@ -8,6 +8,13 @@
  * Pure: no React, no DOM.
  */
 import {
+  CLIP_URL_PATTERN,
+  READING_TIMES,
+  setFeelSchema,
+  SOUND_BANK_IDS,
+  SPEECH_LANGS,
+  type SoundBankId,
+  type SpeechLang,
   DIFFICULTIES,
   MEDIA_URL_PATTERN,
   QUESTION_TYPES,
@@ -17,6 +24,10 @@ import {
   type Difficulty,
   type Media,
   type Question,
+  type ReadingTime,
+  type SetDefaults,
+  type SetFeel,
+  type Sound,
   type QuestionType,
   type SetCoverGlyph,
   type Subject,
@@ -86,6 +97,8 @@ export interface DraftChoice {
   why?: string;
   /** Kept exactly as loaded. There is no upload yet, so the editor never adds one. */
   media?: Media;
+  /** A sound on the choice (a note to compare, a word to hear). */
+  sound?: Sound;
 }
 export interface DraftItem {
   id: string;
@@ -104,6 +117,10 @@ export interface DraftQuestion {
   type: QuestionType;
   prompt: string;
   media?: Media;
+  /** Something players hear before they answer. */
+  sound?: Sound;
+  /** A hint players can open, as typed. */
+  hint: string;
   explanation: string;
   /** As typed; empty means "use the game's setting". */
   timeLimit: string;
@@ -146,6 +163,7 @@ export interface DraftQuestion {
 function blankFields(): Omit<DraftQuestion, 'id' | 'type'> {
   return {
     prompt: '',
+    hint: '',
     explanation: '',
     timeLimit: '',
     points: '',
@@ -172,7 +190,7 @@ function blankFields(): Omit<DraftQuestion, 'id' | 'type'> {
 }
 
 const hasText = (s: string) => s.trim() !== '';
-const choiceFilled = (c: DraftChoice) => hasText(c.text) || Boolean(c.media);
+const choiceFilled = (c: DraftChoice) => hasText(c.text) || Boolean(c.media) || Boolean(c.sound);
 
 function padList<T extends { id: string }>(list: T[], to: number, make: (id: string) => T, prefix: string): T[] {
   const out = [...list];
@@ -301,6 +319,7 @@ export function fromQuestion(q: Question): DraftQuestion {
     type: q.type,
     ...blankFields(),
     prompt: q.prompt,
+    hint: q.hint ?? '',
     explanation: q.explanation ?? '',
     timeLimit: q.timeLimitSec === undefined ? '' : String(q.timeLimitSec),
     points: q.points === undefined ? '' : String(q.points),
@@ -309,6 +328,7 @@ export function fromQuestion(q: Question): DraftQuestion {
     doublePoints: q.doublePoints === true,
   };
   if (q.media) d.media = q.media;
+  if (q.sound) d.sound = q.sound;
   switch (q.type) {
     case 'mcq':
       d.choices = q.choices.map((c) => ({ ...c }));
@@ -409,6 +429,8 @@ export function toCandidate(d: DraftQuestion): { question: Record<string, unknow
   const maps: IndexMaps = { choices: [], accepted: [], items: [], pairs: [], groups: [] };
   const q: Record<string, unknown> = { id: d.id, type: d.type, prompt: d.prompt };
   if (d.media) q.media = d.media;
+  if (d.sound) q.sound = d.sound;
+  if (hasText(d.hint)) q.hint = d.hint;
   if (hasText(d.explanation)) q.explanation = d.explanation;
   if (hasText(d.timeLimit)) q.timeLimitSec = parseNumberText(d.timeLimit);
   if (hasText(d.points)) q.points = parseNumberText(d.points);
@@ -428,7 +450,7 @@ export function toCandidate(d: DraftQuestion): { question: Record<string, unknow
       });
       const ids = new Set(kept.map((c) => c.id));
       const correct = d.correct.filter((id) => ids.has(id));
-      q.choices = kept.map((c) => ({ id: c.id, text: c.text, ...(c.media ? { media: c.media } : {}), ...(c.why?.trim() && !correct.includes(c.id) ? { why: c.why } : {}) }));
+      q.choices = kept.map((c) => ({ id: c.id, text: c.text, ...(c.media ? { media: c.media } : {}), ...(c.sound ? { sound: c.sound } : {}), ...(c.why?.trim() && !correct.includes(c.id) ? { why: c.why } : {}) }));
       q.correct = d.type === 'mcq' ? (correct[0] ?? '') : correct;
       break;
     }
@@ -482,7 +504,7 @@ export function toCandidate(d: DraftQuestion): { question: Record<string, unknow
         kept.push(c);
         maps.choices.push(i);
       });
-      q.choices = kept.map((c) => (c.media ? { id: c.id, text: c.text, media: c.media } : { id: c.id, text: c.text }));
+      q.choices = kept.map((c) => ({ id: c.id, text: c.text, ...(c.media ? { media: c.media } : {}), ...(c.sound ? { sound: c.sound } : {}) }));
       break;
     }
     case 'blanks': {
@@ -519,6 +541,8 @@ export function isBlankQuestion(d: DraftQuestion): boolean {
   return (
     (!hasText(d.prompt) || (d.type === 'blanks' && d.prompt === 'Fill in the blanks.')) &&
     !d.media &&
+    !d.sound &&
+    !hasText(d.hint) &&
     !hasText(d.explanation) &&
     !d.choices.some(choiceFilled) &&
     d.truth === null &&
@@ -592,10 +616,16 @@ export interface SetDetails {
   /** Game defaults: ask this many questions, chosen at random (as typed; empty asks them all). */
   randomCount: string;
   shuffleAnswers: boolean;
+  /** How long players get to read; empty leaves it to the host. */
+  readingTime: ReadingTime | '';
+  /** One or two modes the set was made for. */
+  madeFor: string[];
+  /** Sounds, backdrop and accent in games played from the set. */
+  feel: SetFeel;
 }
 
 export function blankDetails(): SetDetails {
-  return { title: '', description: '', subject: '', gradeBand: '', language: 'en', tags: '', visibility: 'private', cover: null, topic: '', randomCount: '', shuffleAnswers: false };
+  return { title: '', description: '', subject: '', gradeBand: '', language: 'en', tags: '', visibility: 'private', cover: null, topic: '', randomCount: '', shuffleAnswers: false, readingTime: '', madeFor: [], feel: {} };
 }
 
 export interface LoadedSet {
@@ -609,7 +639,7 @@ export interface LoadedSet {
   /** Not in the set summary yet; read when the server sends it. */
   language?: string;
   topic?: string | null;
-  defaults?: { randomCount?: number; shuffleAnswers?: boolean } | null;
+  defaults?: SetDefaults | null;
 }
 
 export function detailsFromSet(set: LoadedSet): SetDetails {
@@ -625,7 +655,23 @@ export function detailsFromSet(set: LoadedSet): SetDetails {
     topic: set.topic ?? '',
     randomCount: set.defaults?.randomCount ? String(set.defaults.randomCount) : '',
     shuffleAnswers: set.defaults?.shuffleAnswers === true,
+    readingTime: set.defaults?.readingTime ?? '',
+    madeFor: set.defaults?.modes ?? [],
+    feel: set.defaults?.feel ?? {},
   };
+}
+
+/** The set's game defaults, feel and play choices, or nothing when none are set. */
+function defaultsOf(details: SetDetails): { defaults?: Record<string, unknown> } {
+  const feel = Object.fromEntries(Object.entries(details.feel ?? {}).filter(([, v]) => v !== undefined));
+  const d: Record<string, unknown> = {
+    ...(hasText(details.randomCount) ? { randomCount: parseNumberText(details.randomCount) } : {}),
+    ...(details.shuffleAnswers ? { shuffleAnswers: true } : {}),
+    ...(details.readingTime ? { readingTime: details.readingTime } : {}),
+    ...(details.madeFor?.length ? { modes: details.madeFor.slice(0, 2) } : {}),
+    ...(Object.keys(feel).length ? { feel } : {}),
+  };
+  return Object.keys(d).length ? { defaults: d } : {};
 }
 
 /** The whole set as questionSetInputSchema should see it. */
@@ -640,9 +686,7 @@ export function buildSetCandidate(details: SetDetails, questions: Record<string,
     visibility: details.visibility,
     ...(details.cover ? { cover: details.cover } : {}),
     ...(hasText(details.topic) ? { topic: details.topic } : {}),
-    ...(hasText(details.randomCount) || details.shuffleAnswers
-      ? { defaults: { ...(hasText(details.randomCount) ? { randomCount: parseNumberText(details.randomCount) } : {}), ...(details.shuffleAnswers ? { shuffleAnswers: true } : {}) } }
-      : {}),
+    ...defaultsOf(details),
     questions,
   };
 }
@@ -723,6 +767,16 @@ function reviveList<T extends { id: string }>(v: unknown, prefix: string, make: 
 }
 
 /** Turns a draft read from storage back into a well-formed one, or null if it is not one. */
+/** A sound from a saved draft: kept if it is one of the three kinds, even half-finished (a caption still to write). */
+export function reviveSound(raw: unknown): Sound | undefined {
+  if (!isObj(raw)) return undefined;
+  const caption = str(raw.caption);
+  if (raw.kind === 'speech' && (SPEECH_LANGS as readonly unknown[]).includes(raw.lang)) return { kind: 'speech', text: str(raw.text), lang: raw.lang as SpeechLang, caption };
+  if (raw.kind === 'bank' && (SOUND_BANK_IDS as readonly unknown[]).includes(raw.id)) return { kind: 'bank', id: raw.id as SoundBankId, caption };
+  if (raw.kind === 'clip' && typeof raw.url === 'string' && CLIP_URL_PATTERN.test(raw.url) && typeof raw.seconds === 'number') return { kind: 'clip', url: raw.url, seconds: raw.seconds, caption };
+  return undefined;
+}
+
 export function reviveQuestion(raw: unknown): DraftQuestion | null {
   if (!isObj(raw) || !validId(raw.id) || !(QUESTION_TYPES as readonly unknown[]).includes(raw.type)) return null;
   const d: DraftQuestion = {
@@ -730,6 +784,7 @@ export function reviveQuestion(raw: unknown): DraftQuestion | null {
     type: raw.type as QuestionType,
     ...blankFields(),
     prompt: str(raw.prompt),
+    hint: str(raw.hint),
     explanation: str(raw.explanation),
     timeLimit: str(raw.timeLimit),
     points: str(raw.points),
@@ -738,7 +793,8 @@ export function reviveQuestion(raw: unknown): DraftQuestion | null {
     doublePoints: raw.doublePoints === true,
     choices: reviveList(raw.choices, 'c', (o, id) => {
       const media = reviveMedia(o.media);
-      return { id, text: str(o.text), ...(media ? { media } : {}), ...(typeof o.why === 'string' && o.why ? { why: o.why } : {}) };
+      const sound = reviveSound(o.sound);
+      return { id, text: str(o.text), ...(media ? { media } : {}), ...(sound ? { sound } : {}), ...(typeof o.why === 'string' && o.why ? { why: o.why } : {}) };
     }),
     correct: Array.isArray(raw.correct) ? raw.correct.filter(validId) : [],
     truth: typeof raw.truth === 'boolean' ? raw.truth : null,
@@ -758,6 +814,8 @@ export function reviveQuestion(raw: unknown): DraftQuestion | null {
   };
   const media = reviveMedia(raw.media);
   if (media) d.media = media;
+  const sound = reviveSound(raw.sound);
+  if (sound) d.sound = sound;
   return withShape(d);
 }
 
@@ -777,5 +835,8 @@ export function reviveDetails(raw: unknown): SetDetails | null {
     topic: str(raw.topic),
     randomCount: str(raw.randomCount),
     shuffleAnswers: raw.shuffleAnswers === true,
+    readingTime: (READING_TIMES as readonly unknown[]).includes(raw.readingTime) ? (raw.readingTime as ReadingTime) : '',
+    madeFor: Array.isArray(raw.madeFor) ? raw.madeFor.filter((m): m is string => typeof m === 'string' && /^[a-z0-9-]{1,40}$/.test(m)).slice(0, 2) : [],
+    feel: setFeelSchema.safeParse(raw.feel).data ?? {},
   };
 }

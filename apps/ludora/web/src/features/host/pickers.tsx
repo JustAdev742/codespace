@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type ReactNode, type RefObject } from 'rea
 import { Check } from 'lucide-react';
 import { MODE_CATEGORIES, MODE_CATEGORY_INFO, SUBJECT_LABELS, type ModeCategory } from '@ludora/shared';
 import { thumbFor, type CatalogEntry, type CatalogVariant, type SetSummary } from '../../lib/queries.ts';
+import type { RankedMode } from './fit.ts';
 import { ModeArt } from '../../art/ModeArt.tsx';
 import { Badge } from '../../ui/primitives.tsx';
 import { ToggleChips } from '../../ui/game.tsx';
@@ -165,11 +166,13 @@ type Kind = ModeCategory | 'all';
  * same filter. The chosen mode's variants open in a row of their own straight
  * under the row of the chosen mode.
  */
-export function ModeGrid({ modes, value, onChange, labelledBy }: { modes: CatalogEntry[]; value: Choice | null; onChange: (c: Choice) => void; /** The id of the heading that names the mode list. */ labelledBy: string }) {
+export function ModeGrid({ modes, value, onChange, labelledBy, fit }: { modes: CatalogEntry[]; value: Choice | null; onChange: (c: Choice) => void; /** The id of the heading that names the mode list. */ labelledBy: string; /** How well each mode fits the chosen set (host/fit.ts): best first, with reasons. */ fit?: ReadonlyMap<string, RankedMode> | undefined }) {
   const [kind, setKind] = useState<Kind>('all');
   const grid = useRef<HTMLDivElement>(null);
   const columns = useColumns(grid);
-  const ordered = MODE_CATEGORIES.flatMap((c) => modes.filter((m) => m.meta.category === c));
+  const byCategory = MODE_CATEGORIES.flatMap((c) => modes.filter((m) => m.meta.category === c));
+  const ordered = fit ? [...byCategory].sort((a, b) => (fit.get(b.meta.id)?.score ?? -1e9) - (fit.get(a.meta.id)?.score ?? -1e9)) : byCategory;
+  const best = fit ? ordered.find((m) => fit.get(m.meta.id)?.playable)?.meta.id : undefined;
   const shown = ordered.filter((m) => kind === 'all' || m.meta.category === kind);
   const count = (c: ModeCategory) => modes.filter((m) => m.meta.category === c).length;
   const at = shown.findIndex((m) => m.meta.id === value?.mode.meta.id);
@@ -212,6 +215,12 @@ export function ModeGrid({ modes, value, onChange, labelledBy }: { modes: Catalo
                     {MODE_CATEGORY_INFO[m.meta.category].label}
                     {variants ? `, ${variants} ${variants === 1 ? 'variant' : 'variants'}` : ''}
                   </span>
+                  {fit?.get(m.meta.id) ? (
+                    <span className="mt-1 flex flex-wrap items-center gap-1.5 text-xs font-semibold text-text" data-fit={m.meta.id}>
+                      {best === m.meta.id ? <Badge tone="mint">Best fit</Badge> : null}
+                      <span className="min-w-0">{fit.get(m.meta.id)!.reasons.slice(0, 2).join('. ')}.</span>
+                    </span>
+                  ) : null}
                 </span>
               </RadioCard>,
               i === rowEnd && value ? (

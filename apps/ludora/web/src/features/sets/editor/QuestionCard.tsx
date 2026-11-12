@@ -6,6 +6,7 @@ import { Badge, Input, Select, Switch, Textarea } from '../../../ui/primitives.t
 import { answerSummary, LIMITS, splitTags, type DraftQuestion } from './model.ts';
 import { domIds, EditorField, ERROR_BORDER, promptLabel, TYPE_ICONS, type TypeEditorProps } from './parts.tsx';
 import { QuestionImage } from './QuestionImage.tsx';
+import { QuestionSound } from './QuestionSound.tsx';
 import { MathText } from '../math/MathText.tsx';
 import { hasMath } from '../math/parse.ts';
 import type { EditorAction } from './state.ts';
@@ -22,7 +23,7 @@ import { SortEditor } from './types/SortEditor.tsx';
 import { AiQuestionTools } from '../../ai/AiQuestionTools.tsx';
 
 const NO_ERRORS: FieldErrors = {};
-const OPTION_KEYS = ['explanation', 'timeLimit', 'points', 'difficulty', 'tags'] as const;
+const OPTION_KEYS = ['explanation', 'hint', 'timeLimit', 'points', 'difficulty', 'tags'] as const;
 const DIFFICULTY_LABELS = { easy: 'Easy', medium: 'Medium', hard: 'Hard' } as const;
 
 function TypeEditor(props: TypeEditorProps) {
@@ -53,6 +54,7 @@ function TypeEditor(props: TypeEditorProps) {
 function optionSummary(q: DraftQuestion): string {
   const parts: string[] = [];
   if (q.explanation.trim()) parts.push('Explanation');
+  if (q.hint.trim()) parts.push('Hint');
   if (q.timeLimit.trim()) parts.push(`${q.timeLimit.trim()} seconds`);
   if (q.doublePoints) parts.push('Double points');
   if (q.points.trim()) parts.push(`${q.points.trim()} points`);
@@ -81,13 +83,16 @@ function MoreOptions({ q, errors, edit }: TypeEditorProps) {
       >
         <SlidersHorizontal className="size-4 shrink-0 text-text-3" aria-hidden />
         <span className="shrink-0 font-semibold text-text">More options</span>
-        <span className="min-w-0 flex-1 truncate text-sm text-text-3">{summary || 'Explanation, time limit, double points, difficulty, tags'}</span>
+        <span className="min-w-0 flex-1 truncate text-sm text-text-3">{summary || 'Explanation, hint, time limit, double points, difficulty, tags'}</span>
         <ChevronDown className={`size-4 shrink-0 text-text-3 transition-transform ${open ? 'rotate-180' : ''}`} aria-hidden />
       </button>
       {open ? (
         <div id={panelId} className="grid min-w-0 gap-4 border-t border-line p-3 sm:grid-cols-3">
           <EditorField id={domIds.field(q.id, 'explanation')} label="Explanation" optional hint="Shown after the answer is revealed." error={errors.explanation} className="sm:col-span-3">
             {(p) => <Textarea {...p} rows={2} maxLength={LIMITS.explanation} value={q.explanation} onChange={(e) => set({ explanation: e.target.value })} className="h-auto min-h-[64px]" />}
+          </EditorField>
+          <EditorField id={domIds.field(q.id, 'hint')} label="Hint" optional hint="Players can open it while the question is up, on their own screen. Opening it costs nothing." error={errors.hint} className="sm:col-span-3">
+            {(p) => <Input {...p} maxLength={200} autoComplete="off" value={q.hint} onChange={(e) => set({ hint: e.target.value })} />}
           </EditorField>
           <EditorField id={domIds.field(q.id, 'timeLimit')} label="Time limit in seconds" optional hint={`${LIMITS.timeMin} to ${LIMITS.timeMax}. Empty uses the game's setting.`} error={errors.timeLimit}>
             {(p) => <Input {...p} inputMode="numeric" autoComplete="off" value={q.timeLimit} onChange={(e) => set({ timeLimit: e.target.value })} />}
@@ -279,6 +284,17 @@ export const QuestionCard = memo(function QuestionCard({ question: q, index, tot
               edit((d) => {
                 const { media: _old, ...rest } = d;
                 return media ? { ...rest, media } : rest;
+              })
+            }
+          />
+          <QuestionSound
+            sound={q.sound}
+            idBase={domIds.field(q.id, 'sound')}
+            error={errors.sound}
+            onChange={(sound) =>
+              edit((d) => {
+                const { sound: _old, ...rest } = d;
+                return sound ? { ...rest, sound } : rest;
               })
             }
           />

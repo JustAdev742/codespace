@@ -24,6 +24,7 @@ import {
   type PlayerRequest,
   type SchoolDress,
   type Question,
+  type SetFeel,
   type ResultsView,
   type RewardSummary,
   type RoomOptions,
@@ -136,7 +137,7 @@ export interface RoomInit {
   settings: Record<string, unknown>;
   common: Partial<CommonSettings>;
   options: RoomOptions;
-  set: { id: string | null; title: string; questions: Question[] };
+  set: { id: string | null; title: string; questions: Question[]; feel?: SetFeel | null };
   solo: boolean;
   classId?: string | null;
   assignmentId?: string | null;
@@ -275,7 +276,7 @@ export class Room {
   options: RoomOptions;
   locked = false;
   /** Changes only when a lesson moves on to its next game. */
-  set: { id: string | null; title: string; questions: Question[] };
+  set: { id: string | null; title: string; questions: Question[]; feel?: SetFeel | null };
   /** Lessons: the lesson running in this room, if any. */
   lesson: RoomLesson | null = null;
   prepared: Question[] = [];
@@ -1345,6 +1346,7 @@ export class Room {
         variantId: this.variant?.meta.id ?? null,
         title: this.variant?.meta.title ?? this.mode.meta.title,
         setTitle: this.set.title,
+        setFeel: this.set.feel ?? null,
         questionCount: this.prepared.length,
         hostName: this.hostName,
         locked: this.locked,

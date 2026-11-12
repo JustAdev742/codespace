@@ -34,7 +34,8 @@ import { NextPlayerCountdown } from './NextPlayer.tsx';
 import { LessonScreen } from '../lessons/room.tsx';
 import { Glim } from '../../art/glim/Glim.tsx';
 import { GREETERS } from './game/stage.tsx';
-import { Backdrop, useBackdrop } from './game/Backdrop.tsx';
+import { Backdrop } from './game/Backdrop.tsx';
+import { SetFeelContext, useApplySetFeel, useRoomBackdrop } from './game/setFeel.tsx';
 import { PhaseFade } from './game/PhaseFade.tsx';
 
 const nameKey = (code: string) => `ludora.name.${code}`;
@@ -122,7 +123,10 @@ export default function RoomPage() {
   const { calm } = useAccess();
   const modes = useModes();
   const threeD = modes.data?.modes.find((m) => m.meta.id === room?.room.modeId)?.meta.stage === '3d';
-  const [backdrop] = useBackdrop();
+  // The set's own feel: its sounds, its backdrop (until the host picks one) and its accent colour.
+  const setFeel = room?.room.setFeel ?? null;
+  useApplySetFeel(setFeel);
+  const backdrop = useRoomBackdrop(setFeel);
 
   // A new stage of the room (the game starting, the results, Play again) opens at its top: a player scrolled down
   // to a tall game board would otherwise land in the middle of the results, under the title and the podium.
@@ -203,6 +207,7 @@ export default function RoomPage() {
   return (
     <Stage className={STAGE}>
       {isHost && !room.room.solo ? <Backdrop id={backdrop} on={between} /> : null}
+      <SetFeelContext.Provider value={setFeel}>
       <SoundRoleContext.Provider value={soundScene}>
       <Announcer>
       <HostToolsIf on={isHost && !room.room.solo} room={room} handle={handle}>
@@ -348,6 +353,7 @@ export default function RoomPage() {
       </HostToolsIf>
       </Announcer>
       </SoundRoleContext.Provider>
+      </SetFeelContext.Provider>
     </Stage>
   );
 }

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
-import { ArrowDown, ArrowUp, Check, Send, Undo2, Users, WifiOff, X } from 'lucide-react';
+import { ArrowDown, ArrowUp, Check, Delete, Send, Undo2, Users, WifiOff, X } from 'lucide-react';
 import type { Answer, Media, PublicQuestion } from '@ludora/shared';
 import { AnswerShape, ANSWER_LETTERS } from '../../../art/icons.tsx';
 import { QuestionImage } from './QuestionCard.tsx';
@@ -8,6 +8,7 @@ import { useAnswerMemory, useRememberingSubmit } from './answerMemory.tsx';
 import { useOnline } from './online.tsx';
 import { playSfx, useSoundPacing, useSoundRole } from '../../../lib/sound/react.tsx';
 import { motionOK } from './stage.tsx';
+import { SoundPlay } from '../../sets/sound/SoundPlay.tsx';
 
 /*
  * Answer controls for every question type. Choices always carry a shape and
@@ -354,12 +355,54 @@ function SubmitButton({ disabled, sent, onClick, label = 'Submit answer', sticky
   );
 }
 
+/** Phones and tablets held by touch get the game's own number pad for number answers, instead of the system keyboard. */
+function usePad(numeric: boolean): boolean {
+  const query = '(pointer: coarse) and (max-width: 820px)';
+  const [on, setOn] = useState(() => numeric && typeof window !== 'undefined' && typeof window.matchMedia === 'function' && window.matchMedia(query).matches);
+  useEffect(() => {
+    if (!numeric || typeof window.matchMedia !== 'function') return;
+    const m = window.matchMedia(query);
+    const update = () => setOn(m.matches);
+    m.addEventListener?.('change', update);
+    return () => m.removeEventListener?.('change', update);
+  }, [numeric]);
+  return on;
+}
+
+const PAD_KEYS = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '-', '0', '.'] as const;
+
+/** A big number pad: digits, a minus sign, a decimal point and delete. Typing on a keyboard still works. */
+export function NumberPad({ value, onChange, disabled }: { value: string; onChange: (v: string) => void; disabled?: boolean | undefined }) {
+  const press = (k: string) => {
+    if (k === '-') onChange(value.startsWith('-') ? value.slice(1) : `-${value}`);
+    else if (k === '.') onChange(value.includes('.') ? value : `${value || '0'}.`);
+    else if (value.replace(/[-.]/g, '').length < 15) onChange(value + k);
+  };
+  return (
+    <div role="group" aria-label="Number pad" className="grid grid-cols-3 gap-2" data-number-pad>
+      {PAD_KEYS.map((k) => (
+        <button key={k} type="button" disabled={disabled} onClick={() => press(k)} aria-label={k === '-' ? 'Minus' : k === '.' ? 'Decimal point' : k} className="paper min-h-14 rounded-[var(--radius-m)] border border-line-strong font-display text-[1.6rem] font-bold text-text disabled:opacity-60">
+          {k === '-' ? '−' : k}
+        </button>
+      ))}
+      <button type="button" disabled={disabled || !value} onClick={() => onChange(value.slice(0, -1))} className="paper col-span-3 inline-flex min-h-12 items-center justify-center gap-2 rounded-[var(--radius-m)] border border-line-strong text-lg font-semibold text-text disabled:opacity-60">
+        <Delete className="size-5" aria-hidden />
+        Delete
+      </button>
+    </div>
+  );
+}
+
 function TextAnswer({ numeric, unit, onSubmit, disabled }: { numeric: boolean; unit?: string | undefined; onSubmit: AnswerInputProps['onSubmit']; disabled?: boolean | undefined }) {
   const [value, setValue] = useState('');
   const [sent, setSent] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const ref = useRef<HTMLInputElement>(null);
-  useEffect(() => ref.current?.focus(), []);
+  const pad = usePad(numeric);
+  // With the number pad on screen the system keyboard stays away, so focusing the field first is no use.
+  useEffect(() => {
+    if (!pad) ref.current?.focus();
+  }, [pad]);
   const locked = disabled || sent;
   const submit = async (e: FormEvent) => {
     e.preventDefault();
@@ -389,7 +432,7 @@ function TextAnswer({ numeric, unit, onSubmit, disabled }: { numeric: boolean; u
           value={value}
           onChange={(e) => setValue(e.target.value)}
           disabled={locked}
-          inputMode={numeric ? 'decimal' : 'text'}
+          inputMode={pad ? 'none' : numeric ? 'decimal' : 'text'}
           autoComplete="off"
           autoCapitalize="off"
           spellCheck={false}
@@ -406,6 +449,7 @@ function TextAnswer({ numeric, unit, onSubmit, disabled }: { numeric: boolean; u
           {error}
         </p>
       ) : null}
+      {pad ? <NumberPad value={value} onChange={setValue} disabled={locked} /> : null}
       <SubmitButton disabled={locked || !value.trim()} sent={sent} />
     </form>
   );
@@ -830,7 +874,30 @@ export function AnswerInput(props: AnswerInputProps) {
   return <AnswerControls {...p} />;
 }
 
+/** Choices that carry a sound get a Play button each, above the tiles (a tile is already a button). */
+function ChoiceSounds({ q }: { q: PublicQuestion }) {
+  if (q.type !== 'mcq' && q.type !== 'multi' && q.type !== 'poll') return null;
+  const withSound = q.choices.map((c, i) => ({ c, i })).filter(({ c }) => c.sound);
+  if (!withSound.length) return null;
+  return (
+    <div role="group" aria-label="Hear the answers" className="flex flex-wrap gap-2">
+      {withSound.map(({ c, i }) => (
+        <SoundPlay key={c.id} sound={c.sound!} size="sm" label={`Hear ${ANSWER_LETTERS[i] ?? i + 1}`} />
+      ))}
+    </div>
+  );
+}
+
 function AnswerControls(p: AnswerInputProps) {
+  return (
+    <>
+      <ChoiceSounds q={p.q} />
+      <AnswerControlsFor {...p} />
+    </>
+  );
+}
+
+function AnswerControlsFor(p: AnswerInputProps) {
   const { q, onSubmit } = p;
   switch (q.type) {
     case 'mcq':

@@ -1,4 +1,4 @@
-import { POINTS_USUAL, pointsWeight, type Answer, type AnswerReveal } from '@ludora/shared';
+import { POINTS_USUAL, pointsWeight, readingGraceMs, type Answer, type AnswerReveal, type Question } from '@ludora/shared';
 import type { ActionResult, ModeContext, PlayerId, QuestionView, Viewer } from '../sdk/types.ts';
 
 /*
@@ -146,6 +146,20 @@ function startRound<S extends { sync: SyncState }>(s: S, cfg: SyncConfig<S>, ctx
   ctx.setTimer(TIMER, closeAt(s, cfg, ctx) + DEADLINE_GRACE_MS);
 }
 
+/** Reading time is at most this share of a question's limit, so a short limit still leaves time to race. */
+export const READING_SHARE_MAX = 0.4;
+
+/**
+ * The clock speed scoring sees for an answer: the question's reading time (see readingGraceMs in
+ * @ludora/shared) comes off the start, so an answer given while still reading scores as instant
+ * and the rest of the limit is what counts.
+ */
+export function speedClock(q: Question, responseMs: number, limitMs: number): { responseMs: number; limitMs: number } {
+  const grace = Math.min(readingGraceMs(q), Math.floor(limitMs * READING_SHARE_MAX));
+  if (grace <= 0) return { responseMs, limitMs };
+  return { responseMs: Math.max(0, responseMs - grace), limitMs: Math.max(1, limitMs - grace) };
+}
+
 /** The open question's limit for everyone, before added time. */
 function baseLimit(sync: SyncState): number {
   return sync.limit ?? sync.deadline - sync.startedAt - (sync.added ?? 0);
@@ -254,7 +268,10 @@ export function syncAnswer<S extends { sync: SyncState }>(
   const double = authored.doublePoints || isDoubleRound(s, ctx) ? 2 : 1;
   // The author's Points field scales the mode's own score: 2,000 is twice a usual question, 0 scores nothing.
   const weight = pointsWeight(authored.points);
-  const points = grade.ungraded ? 0 : Math.max(0, Math.round(cfg.score(s, playerId, { correct: grade.correct, partial: grade.partial, responseMs, limitMs, streak }, ctx) * double * weight));
+  // Reading time: a long question (or one with a sound to hear) gives everyone time to read it before
+  // speed starts to count. Scoring sees the clock from then on; the recorded response time stays as it was.
+  const speed = speedClock(authored, responseMs, limitMs);
+  const points = grade.ungraded ? 0 : Math.max(0, Math.round(cfg.score(s, playerId, { correct: grade.correct, partial: grade.partial, responseMs: speed.responseMs, limitMs: speed.limitMs, streak }, ctx) * double * weight));
   sync.scores[playerId] = (sync.scores[playerId] ?? 0) + points;
   sync.answers[playerId] = {
     at: now,

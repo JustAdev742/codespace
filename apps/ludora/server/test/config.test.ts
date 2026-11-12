@@ -58,6 +58,17 @@ describe('the address people open', () => {
     expect(loadConfig({ APP_ENV: 'development' }).PUBLIC_ORIGIN).toBe('http://localhost:5173');
     expect(() => loadConfig({ ...key, RENDER_EXTERNAL_URL: 'not a url' })).toThrow(/PUBLIC_ORIGIN/);
   });
+
+  it('keeps uploads on disk unless told to keep them in the database, with an allowance per account and a cap per file', () => {
+    const base = loadConfig({});
+    expect(base.UPLOAD_STORE).toBe('disk');
+    expect(base.UPLOAD_DB_ACCOUNT_BYTES).toBe(25_000_000);
+    expect(base.UPLOAD_DB_FILE_BYTES).toBe(700_000);
+    const db = loadConfig({ UPLOAD_STORE: 'db', UPLOAD_DB_ACCOUNT_BYTES: '5000000', UPLOAD_DB_FILE_BYTES: '300000' });
+    expect([db.UPLOAD_STORE, db.UPLOAD_DB_ACCOUNT_BYTES, db.UPLOAD_DB_FILE_BYTES]).toEqual(['db', 5_000_000, 300_000]);
+    expect(() => loadConfig({ UPLOAD_STORE: 's3' })).toThrow(/UPLOAD_STORE/);
+    expect(() => loadConfig({ UPLOAD_DB_FILE_BYTES: '5000000' })).toThrow(/UPLOAD_DB_FILE_BYTES/);
+  });
 });
 
 describe('AI providers', () => {

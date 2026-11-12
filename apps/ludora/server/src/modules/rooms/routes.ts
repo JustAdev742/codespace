@@ -1,7 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { eq } from 'drizzle-orm';
-import { commonSettingsSchema, PRACTICE_LEVEL_IDS, roomCodeSchema, roomOptionsSchema, schoolTeamsSchema } from '@ludora/shared';
+import { commonSettingsSchema, DIFFICULTIES, PRACTICE_LEVEL_IDS, roomCodeSchema, roomOptionsSchema, schoolTeamsSchema, setFeelSchema, type Difficulty, type Question, type SetFeel } from '@ludora/shared';
 import { getMode, getVariant } from '@ludora/engine';
 import { soloBlocker } from '@ludora/engine/catalog';
 import type { AppDeps } from '../../app.ts';
@@ -33,6 +33,8 @@ const createSchema = z.object({
   practiceBots: z.object({ count: z.number().int().min(1).max(5), level: z.enum(PRACTICE_LEVEL_IDS) }).optional(),
   /** Host for a class: only its members can join, and the game counts as the class's. The caller must teach it. */
   classId: z.string().uuid().optional(),
+  /** Play only the questions their author marked this hard (and those marked harder). */
+  difficulty: z.enum(DIFFICULTIES).optional(),
 });
 
 /**
@@ -56,6 +58,19 @@ function closeOldestFinished(manager: RoomManager, userId: string) {
   for (const room of finished.slice(0, Math.max(0, hosted.length - MAX_ROOMS_PER_HOST))) {
     room.close('The host started a new game, so this room closed. Your results were saved.');
   }
+}
+
+const DIFFICULTY_RANK = { easy: 0, medium: 1, hard: 2 } as const;
+
+/** The questions marked at least this hard ("only the hard ones"). Unmarked questions are left out. */
+export function atLeast(questions: Question[], level: Difficulty): Question[] {
+  return questions.filter((q) => q.difficulty !== undefined && DIFFICULTY_RANK[q.difficulty] >= DIFFICULTY_RANK[level]);
+}
+
+/** The set's own feel, if it has a valid one. */
+function setFeelOf(defaults: unknown): SetFeel | null {
+  const r = setFeelSchema.safeParse((defaults as { feel?: unknown } | null)?.feel);
+  return r.success && Object.keys(r.data).length ? r.data : null;
 }
 
 export async function roomRoutes(app: FastifyInstance, deps: AppDeps) {
@@ -83,7 +98,9 @@ export async function roomRoutes(app: FastifyInstance, deps: AppDeps) {
         // Extra time the teacher set for students follows them into the class's live games.
         cls = { id: row.id, name: row.name, members: members.map((m) => m.u), extra: Object.fromEntries(members.filter((m) => m.extra > 0).map((m) => [m.u, m.extra / 100])) };
       }
-      const { set, questions } = await loadSetForPlay(deps.db, body.setId, auth);
+      const { set, questions: all } = await loadSetForPlay(deps.db, body.setId, auth);
+      const questions = body.difficulty ? atLeast(all, body.difficulty) : all;
+      if (!questions.length) throw new AppError(409, 'conflict', `None of this set's questions are marked ${body.difficulty}. Mark some in the editor, or play them all.`);
       const teamPlan = body.school && !solo ? await schoolTeamPlan(deps, auth, body.school) : null;
       let room;
       try {
@@ -95,7 +112,7 @@ export async function roomRoutes(app: FastifyInstance, deps: AppDeps) {
           settings: body.settings ?? {},
           common: teamPlan ? { ...body.common, teamCount: teamPlan.teams.length } : (body.common ?? {}),
           options: roomOptionsSchema.parse(solo ? { ...body.options, maxPlayers: 1, lateJoin: false } : (body.options ?? {})),
-          set: { id: set.id, title: set.title, questions },
+          set: { id: set.id, title: set.title, questions, feel: setFeelOf(set.defaults) },
           solo,
           teamPlan,
           ...(cls ? { classId: cls.id, classMembers: cls.members, classTitle: cls.name, classExtraTime: cls.extra } : {}),

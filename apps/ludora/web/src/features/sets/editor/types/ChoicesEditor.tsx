@@ -3,6 +3,7 @@ import { Button, IconButton } from '../../../../ui/Button.tsx';
 import { Input } from '../../../../ui/primitives.tsx';
 import { LIMITS, LIST_LIMITS, newId } from '../model.ts';
 import { domIds, ErrorText, errorIdFor, focusSoon, joinIds, letter, MediaNote, RowMarker, type TypeEditorProps } from '../parts.tsx';
+import { QuestionSound } from '../QuestionSound.tsx';
 
 /** Multiple choice (one correct), select all that apply (one or more correct), and polls (none correct). */
 export function ChoicesEditor({ q, errors, edit }: TypeEditorProps) {
@@ -75,7 +76,7 @@ export function ChoicesEditor({ q, errors, edit }: TypeEditorProps) {
                   aria-label={`Choice ${letter(i)}`}
                   aria-invalid={Boolean(rowError)}
                   aria-describedby={joinIds(rowErrId, listErrId)}
-                  placeholder={c.media ? 'Image only' : undefined}
+                  placeholder={c.media ? 'Image only' : c.sound ? 'Sound only' : undefined}
                   onChange={(e) => setText(c.id, e.target.value)}
                   onKeyDown={(e) => {
                     // Enter on the last choice adds the next one, so a list can be typed without the mouse.
@@ -95,7 +96,7 @@ export function ChoicesEditor({ q, errors, edit }: TypeEditorProps) {
                   <ErrorText id={rowErrId}>{rowError}</ErrorText>
                 </div>
               ) : null}
-              {!poll && !checked && (c.text.trim() || c.media) ? (
+              {!poll && !checked && (c.text.trim() || c.media || c.sound) ? (
                 <div className="pl-[5.25rem] sm:pl-[5.5rem]">
                   <Input
                     id={domIds.row(q.id, 'choice', c.id, 'why')}
@@ -113,6 +114,17 @@ export function ChoicesEditor({ q, errors, edit }: TypeEditorProps) {
                   <MediaNote media={c.media} id={domIds.row(q.id, 'choice', c.id, 'alt')} label={`Image description for choice ${letter(i)}`} error={errors[`choices.${i}.media`]} onAltChange={(alt) => setAlt(c.id, alt)} />
                 </div>
               ) : null}
+              <div className={poll ? 'pl-9' : 'pl-[5.25rem] sm:pl-[5.5rem]'}>
+                <QuestionSound
+                  what="choice"
+                  compact
+                  label={`Add a sound to choice ${letter(i)}`}
+                  sound={c.sound}
+                  idBase={domIds.row(q.id, 'choice', c.id, 'sound')}
+                  error={errors[`choices.${i}.sound`]}
+                  onChange={(sound) => edit((d) => ({ ...d, choices: d.choices.map((x) => (x.id === c.id ? (sound ? { ...x, sound } : (({ sound: _s, ...rest }) => rest)(x)) : x)) }))}
+                />
+              </div>
             </li>
           );
         })}

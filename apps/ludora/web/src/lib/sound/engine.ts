@@ -5,6 +5,8 @@ import { MusicPlayer, TRACKS, type SynthTrackId } from './music.ts';
 import { CORE_SFX, SampleBank, nextTake, pitchRate, sampleFor, takesOf, type Sample } from './samples.ts';
 import { EFFECTS, type SfxName, type SfxOptions } from './sfx.ts';
 import { makeReverb } from './synth.ts';
+import { SOUND_BANK } from './bank.ts';
+import type { SoundBankId } from '@ludora/shared';
 
 /**
  * Resuming or suspending the audio context can be refused: by autoplay rules, or because the page
@@ -140,6 +142,10 @@ class SoundEngine {
   private calm = false;
   /** Data saver: music is never downloaded; the synthesised stand-ins play instead. */
   private saveData = false;
+  /** The set's own sounds for some effects, while a game from it is on. */
+  private feel: Partial<Record<SfxName, SoundBankId>> = {};
+  /** Uploaded clips already decoded this visit. */
+  private readonly clips = new Map<string, AudioBuffer>();
 
   constructor() {
     if (typeof window === 'undefined') return;
@@ -201,6 +207,90 @@ class SoundEngine {
     for (const l of this.cueListeners) l(name);
     if (this.calm && (name === 'tick' || name === 'tickFinal' || name === 'reaction')) return () => {};
     if (this.state.muted || this.state.silenced || !this.state.effects) return () => {};
+    // A set's own sound for this moment (its feel), when a game is played from a set that has one.
+    const swap = this.feel[name];
+    if (swap && SOUND_BANK[swap]) return this.playBank(swap, { explicit: true });
+    return this.playNamed(name, options);
+  }
+
+  /** A set's feel: its own bank sounds for some effects (right, wrong, winning) while its game is on. */
+  setFeel(map: Partial<Record<SfxName, SoundBankId>>) {
+    this.feel = map;
+  }
+
+  /**
+   * Plays a sound from the bank. `explicit`: the person pressed Play (or the game already checked
+   * the settings), so it plays even with effects off; otherwise it follows them like any effect.
+   */
+  playBank(id: SoundBankId, opts: { explicit?: boolean } = {}): () => void {
+    const entry = SOUND_BANK[id];
+    if (!entry) return () => {};
+    if (!opts.explicit && (this.state.muted || this.state.silenced || !this.state.effects)) return () => {};
+    if (entry.sfx) return this.playNamed(entry.sfx, {});
+    const g = this.ensure();
+    if (!g || !entry.voice) return () => {};
+    if (g.ctx.state === 'suspended') quietly(g.ctx.resume());
+    return this.playVoice(g, entry.voice);
+  }
+
+  /**
+   * Plays an uploaded clip. Only ever on a person's own tap or the big screen's own turn, never
+   * as a surprise on a phone. Resolves to a stop function, or null when it cannot play.
+   */
+  async playClip(url: string, opts: { explicit?: boolean } = {}): Promise<(() => void) | null> {
+    if (!opts.explicit && (this.state.muted || this.state.silenced || !this.state.effects)) return null;
+    const g = this.ensure();
+    if (!g) return null;
+    if (g.ctx.state === 'suspended') quietly(g.ctx.resume());
+    let buffer = this.clips.get(url);
+    if (!buffer) {
+      try {
+        const res = await fetch(url, { credentials: 'same-origin' });
+        if (!res.ok) return null;
+        buffer = await g.ctx.decodeAudioData(await res.arrayBuffer());
+        this.clips.set(url, buffer);
+      } catch {
+        return null;
+      }
+    }
+    const src = g.ctx.createBufferSource();
+    src.buffer = buffer;
+    const voice = g.ctx.createGain();
+    src.connect(voice).connect(g.sfx);
+    src.start(g.ctx.currentTime + 0.02);
+    src.onended = () => voice.disconnect();
+    return () => {
+      try {
+        src.stop();
+      } catch {
+        // Already finished.
+      }
+    };
+  }
+
+  private playVoice(g: Graph, build: (ctx: BaseAudioContext, out: { dry: AudioNode; wet?: AudioNode }, t: number) => number): () => void {
+    const voice = g.ctx.createGain();
+    const wet = g.ctx.createGain();
+    voice.connect(g.sfx);
+    wet.connect(g.reverb);
+    let seconds = 1;
+    try {
+      seconds = build(g.ctx, { dry: voice, wet }, g.ctx.currentTime + 0.02);
+    } catch {
+      // A sound that fails to build is skipped.
+    }
+    const done = setTimeout(() => {
+      voice.disconnect();
+      wet.disconnect();
+    }, (seconds + 2.5) * 1000);
+    return () => {
+      clearTimeout(done);
+      voice.gain.setValueAtTime(0, g.ctx.currentTime);
+      wet.gain.setValueAtTime(0, g.ctx.currentTime);
+    };
+  }
+
+  private playNamed(name: SfxName, options: SfxOptions): () => void {
     const g = this.ensure();
     if (!g) return () => {};
     // The same effect asked for twice at once (two screens reacting to one change) plays once.

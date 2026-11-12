@@ -38,16 +38,20 @@ export function useVoices(): SpeechSynthesisVoice[] {
 }
 
 /** Says `text`, stopping anything already being said. Returns false when this browser cannot speak. */
-export function speak(text: string, opts: { rate?: number; voice?: string | null; onEnd?: () => void } = {}): boolean {
+export function speak(text: string, opts: { rate?: number; voice?: string | null; lang?: string; onEnd?: () => void } = {}): boolean {
   if (!speechSupported() || !text.trim()) return false;
   try {
     const synth = window.speechSynthesis;
     synth.cancel();
     const u = new SpeechSynthesisUtterance(text);
     const name = opts.voice ?? devicePrefs().voice;
-    const voice = name ? allVoices().find((v) => v.name === name) : undefined;
+    // A language asked for (a "Say it" sound in French, say) picks a voice for it over the chosen one.
+    const want = opts.lang?.toLowerCase();
+    const forLang = want ? (allVoices().find((v) => v.lang.toLowerCase() === want) ?? allVoices().find((v) => v.lang.toLowerCase().startsWith(want.slice(0, 2)))) : undefined;
+    const chosen = name ? allVoices().find((v) => v.name === name) : undefined;
+    const voice = want ? (chosen && chosen.lang.toLowerCase().startsWith(want.slice(0, 2)) ? chosen : forLang) : chosen;
     if (voice) u.voice = voice;
-    u.lang = voice?.lang ?? document.documentElement.lang ?? 'en-GB';
+    u.lang = voice?.lang ?? opts.lang ?? document.documentElement.lang ?? 'en-GB';
     u.rate = opts.rate ?? 1;
     if (opts.onEnd) {
       u.onend = opts.onEnd;

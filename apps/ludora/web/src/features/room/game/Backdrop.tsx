@@ -259,6 +259,12 @@ export function useBackdrop(): [BackdropId, (id: BackdropId) => void] {
   });
   const chosen = signedIn ? (prefs as { stageBackdrop?: string }).stageBackdrop : local;
   const set = (id: BackdropId) => {
+    // The host picked one: it wins over a set's own backdrop for the rest of this visit (setFeel.tsx).
+    try {
+      sessionStorage.setItem('ludora.backdrop.chosen', '1');
+    } catch {
+      /* private mode: the set's backdrop may come back next game */
+    }
     if (signedIn) save({ stageBackdrop: id });
     else {
       setLocal(id);

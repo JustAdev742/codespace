@@ -47,7 +47,7 @@ export function questionFieldKey(rest: PropertyKey[], maps?: IndexMaps): string 
     case 'choices': {
       const i = at('choices');
       if (i === undefined || sub === 'id') return 'choices';
-      return sub === 'media' ? `choices.${i}.media` : `choices.${i}`;
+      return sub === 'media' ? `choices.${i}.media` : sub === 'sound' ? `choices.${i}.sound` : `choices.${i}`;
     }
     case 'accepted': {
       const i = at('accepted');
@@ -198,6 +198,14 @@ export function questionMessage(key: string, issue: IssueLike, type: QuestionTyp
     case 'media':
       if (big) return `Use up to ${fmt(LIMITS.alt)} characters for the image description.`;
       return 'This image is not a Ludora upload, so it cannot be used.';
+    case 'sound':
+      // The sound's own rules say what is missing in words (a caption, the words to say).
+      if (issue.code === 'custom' || (issue.code === 'too_small' && issue.message && !/^too small/i.test(issue.message))) return sentence(issue.message);
+      if (issue.code === 'invalid_format') return 'This sound clip is not a Ludora upload. Record or upload it again.';
+      if (big) return 'This sound is too long. Keep captions to 200 characters, words to say to 300, and clips to 20 seconds.';
+      return 'Finish the sound, or remove it.';
+    case 'hint':
+      return big ? 'Keep the hint to 200 characters.' : 'Write the hint, or leave it empty.';
     case 'type':
       return `Choose a question type: ${QUESTION_TYPES.join(', ')}.`;
     case 'id':

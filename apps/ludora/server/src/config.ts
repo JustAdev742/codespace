@@ -63,6 +63,16 @@ const schema = z.object({
   SIGNUPS_PER_10_MIN: z.coerce.number().int().min(5).max(5000).default(40),
   GUESTS_PER_10_MIN: z.coerce.number().int().min(5).max(5000).default(60),
   UPLOAD_DIR: z.string().default('./uploads'),
+  /**
+   * Where uploaded pictures and sound clips are kept: `disk` (UPLOAD_DIR, the default) or `db` (in
+   * the database, for hosts whose disk is wiped at every restart, such as a free web service).
+   * Files already on disk keep being served either way, from the same addresses.
+   */
+  UPLOAD_STORE: z.enum(['disk', 'db']).default('disk'),
+  /** With UPLOAD_STORE=db: how many bytes of uploads one account may keep in the database (25 MB). */
+  UPLOAD_DB_ACCOUNT_BYTES: z.coerce.number().int().min(100_000).max(1_000_000_000).default(25_000_000),
+  /** With UPLOAD_STORE=db: the largest single file kept in the database (the editor shrinks pictures to fit). */
+  UPLOAD_DB_FILE_BYTES: z.coerce.number().int().min(50_000).max(2_000_000).default(700_000),
   /** Built web app to serve (production). */
   WEB_DIST: z.string().default('../web/dist'),
   /** The playable demo (one browser, bots, no accounts), served at /demo/ when it has been built (`npm run build:demo`). */

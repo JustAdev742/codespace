@@ -85,14 +85,14 @@ function arrange<T extends { id: string }>(items: readonly T[], order: string[] 
 
 /** The question as a player sees it: tokens instead of ids, and nothing that reveals the answer. */
 export function toPublicQuestion(q: Question, order: string[] | null): PublicQuestion {
-  const common = { prompt: q.prompt, ...(q.media ? { media: q.media } : {}), ...(q.doublePoints ? { double: true as const } : {}) };
+  const common = { prompt: q.prompt, ...(q.media ? { media: q.media } : {}), ...(q.sound ? { sound: q.sound } : {}), ...(q.hint ? { hint: q.hint } : {}), ...(q.doublePoints ? { double: true as const } : {}) };
   const { toToken } = tokenMaps(q, order);
   const tok = (id: string) => toToken.get(id) ?? id;
   switch (q.type) {
     case 'mcq':
     case 'multi': {
       // The "why" notes stay on the server until the reveal.
-      const choices = arrange(q.choices, order).map(({ id, text, media }) => ({ id: tok(id), text, ...(media ? { media } : {}) }));
+      const choices = arrange(q.choices, order).map(({ id, text, media, sound }) => ({ id: tok(id), text, ...(media ? { media } : {}), ...(sound ? { sound } : {}) }));
       return q.type === 'mcq' ? { type: 'mcq', ...common, choices } : { type: 'multi', ...common, choices, selectCount: q.correct.length };
     }
     case 'truefalse':
@@ -115,7 +115,7 @@ export function toPublicQuestion(q: Question, order: string[] | null): PublicQue
     case 'flashcard':
       return { type: 'flashcard', ...common };
     case 'poll':
-      return { type: 'poll', ...common, choices: arrange(q.choices, order).map(({ id, text, media }) => ({ id: tok(id), text, ...(media ? { media } : {}) })) };
+      return { type: 'poll', ...common, choices: arrange(q.choices, order).map(({ id, text, media, sound }) => ({ id: tok(id), text, ...(media ? { media } : {}), ...(sound ? { sound } : {}) })) };
     case 'blanks': {
       const pieces = parseBlanks(q.text).pieces;
       if (!q.bank) return { type: 'blanks', ...common, pieces };

@@ -176,7 +176,7 @@ export async function accountRoutes(app: FastifyInstance, deps: AppDeps) {
     });
 
     const dir = resolve(process.cwd(), deps.config.UPLOAD_DIR);
-    const ext: Record<string, string> = { 'image/png': 'png', 'image/jpeg': 'jpg', 'image/gif': 'gif', 'image/webp': 'webp' };
+    const ext: Record<string, string> = { 'image/png': 'png', 'image/jpeg': 'jpg', 'image/gif': 'gif', 'image/webp': 'webp', 'audio/wav': 'wav' };
     await Promise.all(orphans.map((o) => unlink(join(dir, `${o.id}.${ext[o.mime] ?? 'bin'}`)).catch(() => {})));
 
     reply.clearCookie(SESSION_COOKIE, { path: '/' });

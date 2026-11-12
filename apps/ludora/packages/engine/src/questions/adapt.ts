@@ -196,7 +196,9 @@ export function adaptQuestions(questions: readonly Question[], supported: readon
     const result = convert(q, allowed, questions, rng);
     if (typeof result === 'string') skipped.push({ id: q.id, type: q.type, reason: result });
     else {
-      out.push(result);
+      // What players hear and the hint stay with the question when it changes type: a listening
+      // question is still a listening question as a choice or typed question.
+      out.push({ ...result, ...(q.sound && !result.sound ? { sound: q.sound } : {}), ...(q.hint && !result.hint ? { hint: q.hint } : {}) });
       converted++;
     }
   }

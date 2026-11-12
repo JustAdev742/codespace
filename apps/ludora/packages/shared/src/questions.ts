@@ -79,6 +79,73 @@ export const mediaSchema = z.object({
 });
 export type Media = z.infer<typeof mediaSchema>;
 
+/*
+ * Sound on a question or a choice. Three sources, none of which lets a player send a free
+ * voice message to another: words the device speaks (only the text is stored), a sound from
+ * the app's own bank (made in code, web/src/lib/sound/bank.ts), or a short clip uploaded to
+ * Ludora (a cleaned WAV file, see server/src/modules/uploads/audio.ts). Each needs a caption:
+ * the text players see when they cannot hear it, as a picture needs its description.
+ */
+
+/** The app's own sounds a question or a set's feel can use. Built in code, no samples. */
+export const SOUND_BANK_IDS = [
+  'fx-correct',
+  'fx-wrong',
+  'fx-fanfare',
+  'fx-win',
+  'fx-coin',
+  'fx-level-up',
+  'fx-reveal',
+  'fx-go',
+  'fx-power-up',
+  'fx-lose',
+  'fx-alarm',
+  'fx-dice',
+  'note-c4',
+  'note-d4',
+  'note-e4',
+  'note-f4',
+  'note-g4',
+  'note-a4',
+  'note-b4',
+  'note-c5',
+  'interval-minor-third',
+  'interval-major-third',
+  'interval-fourth',
+  'interval-fifth',
+  'interval-octave',
+  'chord-major',
+  'chord-minor',
+  'rhythm-four-beats',
+  'rhythm-waltz',
+  'rhythm-gallop',
+  'rhythm-offbeat',
+  'tone-high',
+  'tone-low',
+  'tone-rising',
+  'tone-falling',
+  'tone-three-beeps',
+] as const;
+export type SoundBankId = (typeof SOUND_BANK_IDS)[number];
+
+/** Languages "Say it" can speak in, as BCP 47 tags the browser's voices use. */
+export const SPEECH_LANGS = ['en-GB', 'en-US', 'fr-FR', 'es-ES', 'de-DE', 'it-IT', 'pt-PT', 'nl-NL', 'pl-PL', 'cy-GB', 'ga-IE', 'zh-CN', 'ja-JP', 'ko-KR', 'ar-SA', 'hi-IN', 'ru-RU', 'tr-TR'] as const;
+export type SpeechLang = (typeof SPEECH_LANGS)[number];
+
+/** A clip players hear: an upload that the server cleaned into a WAV file. */
+export const CLIP_URL_PATTERN = /^\/uploads\/[a-f0-9]{32}\.wav$/;
+/** The longest clip a question can carry. Listening questions want a word, a phrase, a few bars. */
+export const CLIP_MAX_SECONDS = 20;
+
+const caption = z.string().trim().min(1, 'Write a caption: what players who cannot hear it read instead.').max(200);
+
+export const soundSchema = z.discriminatedUnion('kind', [
+  z.object({ kind: z.literal('speech'), text: z.string().trim().min(1, 'Type what the device should say.').max(300), lang: z.enum(SPEECH_LANGS), caption }),
+  z.object({ kind: z.literal('bank'), id: z.enum(SOUND_BANK_IDS), caption }),
+  z.object({ kind: z.literal('clip'), url: z.string().regex(CLIP_URL_PATTERN, 'Sound clips must be uploaded to Ludora'), seconds: z.number().min(0.1).max(CLIP_MAX_SECONDS), caption }),
+]);
+export type Sound = z.infer<typeof soundSchema>;
+
 const idSchema = z.string().trim().min(1).max(40).regex(/^[A-Za-z0-9_-]+$/);
 const text = (max: number) => z.string().trim().min(1).max(max);
 
@@ -86,6 +153,7 @@ const choiceSchema = z.object({
   id: idSchema,
   text: z.string().trim().max(200),
   media: mediaSchema.optional(),
+  sound: soundSchema.optional(),
   /** A "why" note for a wrong choice, shown at the reveal to the players who picked it. */
   why: z.string().trim().min(1).max(200).optional(),
 });
@@ -94,7 +162,11 @@ const base = {
   id: idSchema,
   prompt: text(500),
   media: mediaSchema.optional(),
+  /** Something players hear: a listening question plays it before they answer. */
+  sound: soundSchema.optional(),
   explanation: z.string().trim().max(600).optional(),
+  /** A hint a player can open while the question is up. What opening it costs, if anything, is the mode's to decide. */
+  hint: z.string().trim().min(1).max(200).optional(),
   timeLimitSec: z.number().int().min(5).max(300).optional(),
   points: z.number().int().min(0).max(10_000).optional(),
   difficulty: z.enum(DIFFICULTIES).optional(),
@@ -217,7 +289,7 @@ export const questionSchema = z
     const dupes = (ids: string[]) => new Set(ids).size !== ids.length;
     if (q.type === 'poll') {
       if (dupes(q.choices.map((c) => c.id))) ctx.addIssue({ code: 'custom', message: 'Choice ids must be unique', path: ['choices'] });
-      if (q.choices.some((c) => !c.text && !c.media)) ctx.addIssue({ code: 'custom', message: 'Every choice needs text or an image', path: ['choices'] });
+      if (q.choices.some((c) => !c.text && !c.media && !c.sound)) ctx.addIssue({ code: 'custom', message: 'Every choice needs text, an image or a sound', path: ['choices'] });
     }
     if (q.type === 'blanks') {
       const { gaps } = parseBlanks(q.text);
@@ -242,8 +314,8 @@ export const questionSchema = z
       const correct = q.type === 'mcq' ? [q.correct] : q.correct;
       if (!correct.every((c) => ids.includes(c)))
         ctx.addIssue({ code: 'custom', message: 'The correct answer must be one of the choices', path: ['correct'] });
-      if (q.choices.some((c) => !c.text && !c.media))
-        ctx.addIssue({ code: 'custom', message: 'Every choice needs text or an image', path: ['choices'] });
+      if (q.choices.some((c) => !c.text && !c.media && !c.sound))
+        ctx.addIssue({ code: 'custom', message: 'Every choice needs text, an image or a sound', path: ['choices'] });
       if (q.type === 'multi' && dupes(q.correct))
         ctx.addIssue({ code: 'custom', message: 'Correct choices are listed twice', path: ['correct'] });
     }
@@ -279,20 +351,23 @@ export const answerSchema = z.discriminatedUnion('type', [
 ]);
 export type Answer = z.infer<typeof answerSchema>;
 
+/** A choice as a player sees it: a token for an id, and what the author put on it. */
+export type PublicChoice = { id: string; text: string; media?: Media; sound?: Sound };
+
 /**
  * A question as a player sees it: no answers, choices in presentation order. `double`: its points count double.
  * `points`: what its author made it worth, where 1,000 is a usual question (only in modes that score it, see POINTS_USUAL).
  */
-export type PublicQuestion = { double?: true; points?: number } & (
-  | { type: 'mcq'; prompt: string; media?: Media; choices: { id: string; text: string; media?: Media }[] }
-  | { type: 'multi'; prompt: string; media?: Media; choices: { id: string; text: string; media?: Media }[]; selectCount?: number }
+export type PublicQuestion = { double?: true; points?: number; sound?: Sound; hint?: string } & (
+  | { type: 'mcq'; prompt: string; media?: Media; choices: PublicChoice[] }
+  | { type: 'multi'; prompt: string; media?: Media; choices: PublicChoice[]; selectCount?: number }
   | { type: 'truefalse'; prompt: string; media?: Media }
   | { type: 'short'; prompt: string; media?: Media }
   | { type: 'numeric'; prompt: string; media?: Media; unit?: string }
   | { type: 'order'; prompt: string; media?: Media; items: { id: string; text: string }[] }
   | { type: 'match'; prompt: string; media?: Media; left: { id: string; text: string }[]; right: { id: string; text: string }[] }
   | { type: 'flashcard'; prompt: string; media?: Media }
-  | { type: 'poll'; prompt: string; media?: Media; choices: { id: string; text: string; media?: Media }[] }
+  | { type: 'poll'; prompt: string; media?: Media; choices: PublicChoice[] }
   /** `pieces` are the sentence around the gaps (one more than the gaps); `bank` is shuffled, when players pick words. */
   | { type: 'blanks'; prompt: string; media?: Media; pieces: string[]; bank?: string[] }
   | { type: 'sort'; prompt: string; media?: Media; groups: { id: string; label: string }[]; items: { id: string; text: string }[] });
@@ -318,9 +393,36 @@ export type Visibility = (typeof VISIBILITIES)[number];
 export const SET_COVER_GLYPHS = ['atom', 'globe', 'book', 'calculator', 'palette', 'music', 'leaf', 'flask', 'landmark', 'languages', 'cpu', 'heart', 'star', 'puzzle'] as const;
 export type SetCoverGlyph = (typeof SET_COVER_GLYPHS)[number];
 
+/** Backdrops the big screen can show (web/src/features/room/game/Backdrop.tsx draws them). */
+export const SET_BACKDROPS = ['floodlights', 'hills', 'harbour', 'aurora', 'rooftops', 'forest', 'plain'] as const;
+export type SetBackdrop = (typeof SET_BACKDROPS)[number];
+
+/** How long players get to read: a fixed pace, or worked out from the questions themselves. */
+export const READING_TIMES = ['short', 'normal', 'long', 'auto'] as const;
+export type ReadingTime = (typeof READING_TIMES)[number];
+
+/**
+ * The set's own feel in games played from it: sounds for right, wrong and winning (from the
+ * bank), a backdrop for the big screen, and an accent colour. A player's comfort settings and a
+ * school's look still win, and the host can change any of it in the room.
+ */
+export const setFeelSchema = z.object({
+  right: z.enum(SOUND_BANK_IDS).optional(),
+  wrong: z.enum(SOUND_BANK_IDS).optional(),
+  win: z.enum(SOUND_BANK_IDS).optional(),
+  backdrop: z.enum(SET_BACKDROPS).optional(),
+  accent: z.number().int().min(0).max(359).optional(),
+});
+export type SetFeel = z.infer<typeof setFeelSchema>;
+
 export const setDefaultsSchema = z.object({
   randomCount: z.number().int().min(1).max(250).optional(),
   shuffleAnswers: z.boolean().optional(),
+  /** How long players get to read each question; hosting fills in its time from this. */
+  readingTime: z.enum(READING_TIMES).optional(),
+  /** One or two modes the author made the set for. Hosting lists them first. */
+  modes: z.array(z.string().regex(/^[a-z0-9-]{1,40}$/)).max(2).optional(),
+  feel: setFeelSchema.optional(),
 });
 export type SetDefaults = z.infer<typeof setDefaultsSchema>;
 

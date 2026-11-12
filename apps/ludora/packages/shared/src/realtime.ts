@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { roomCodeSchema } from './validation.ts';
 import { schoolDressSchema } from './schoolUniformSchema.ts';
+import type { SetFeel } from './questions.ts';
 import type { SchoolUniform } from './schoolUniform.ts';
 import type { GlimArt, AccessoryArt, EMOTE_GLYPHS } from './economy.ts';
 import type { Rarity } from './rarity.ts';
@@ -359,6 +360,8 @@ export interface RoomView<G = unknown> {
     variantId: string | null;
     title: string;
     setTitle: string;
+    /** The set's own feel (sounds, backdrop, accent), when its author chose one. Comfort settings and a school's look still win. */
+    setFeel?: SetFeel | null;
     questionCount: number;
     hostName: string;
     locked: boolean;

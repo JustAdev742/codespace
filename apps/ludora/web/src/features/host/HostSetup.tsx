@@ -3,7 +3,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate, useSearchParams } from 'react-router';
 import { Bot, Presentation, Search, Users } from 'lucide-react';
 import { toast } from 'sonner';
-import { PERSONA_INFO, PRACTICE_LEVEL_IDS, PRACTICE_LEVEL_INFO, PRACTICE_LEVEL_PERSONAS, type CommonField, type PracticeLevel, type SettingField } from '@ludora/shared';
+import { PERSONA_INFO, PRACTICE_LEVEL_IDS, PRACTICE_LEVEL_INFO, PRACTICE_LEVEL_PERSONAS, type CommonField, type PracticeLevel, type SetProfile, type SettingField } from '@ludora/shared';
 import { soloBlocker } from '@ludora/engine/catalog';
 import { api, ApiError } from '../../lib/api.ts';
 import { useMe } from '../../lib/session.ts';
@@ -15,6 +15,7 @@ import { OpenGames, openGamesKey, useOpenGames, type OpenGame } from './OpenGame
 import { SaveGameDialog, type MadeGame } from '../games/SaveGameDialog.tsx';
 import { ChosenSet, ModeGrid, SetButton, type Choice } from './pickers.tsx';
 import { ModeSuggestHelper } from '../ai/AiModeHelper.tsx';
+import { rankModes, suggestedSettings, type ModeFit, type RankedMode } from './fit.ts';
 
 // Lessons: "Add to a lesson instead" (features/lessons), loaded when opened.
 const AddToLessonDialog = lazy(() => import('../lessons/AddToLesson.tsx'));
@@ -158,7 +159,7 @@ function offered(modes: CatalogEntry[], solo: boolean): CatalogEntry[] {
     .map((m) => ({ ...m, variants: m.variants.filter((v) => v.meta.status !== 'planned' && (!solo || !soloBlocker(m.meta.id, v.meta.id))) }));
 }
 
-function ModePicker({ value, onChange, solo }: { value: Choice | null; onChange: (c: Choice) => void; solo: boolean }) {
+function ModePicker({ value, onChange, solo, fit }: { value: Choice | null; onChange: (c: Choice) => void; solo: boolean; fit?: ReadonlyMap<string, RankedMode> | undefined }) {
   const modes = useModes();
   const list = useMemo(() => offered(modes.data?.modes ?? [], solo), [modes.data, solo]);
   if (modes.isError && !modes.data) return <ErrorNotice message="Game modes could not be loaded." onRetry={() => void modes.refetch()} />;
@@ -171,7 +172,7 @@ function ModePicker({ value, onChange, solo }: { value: Choice | null; onChange:
       </div>
     );
   }
-  return <ModeGrid modes={list} value={value} onChange={onChange} labelledBy="host-step-mode" />;
+  return <ModeGrid modes={list} value={value} onChange={onChange} labelledBy="host-step-mode" fit={fit} />;
 }
 
 /* ----------------------------------- settings ------------------------------------ */
@@ -321,6 +322,16 @@ function Setup({ solo, preset, gameId, making, again, classId }: { solo: boolean
     setSet((current) => current ?? presetData);
   }, [presetData]);
   const [choice, setChoice] = useState<Choice | null>(null);
+  // How each mode fits the chosen set, and the settings that suit it (host/fit.ts).
+  const setFit = useQuery({ queryKey: ['set-fit', set?.id], queryFn: ({ signal }) => api.get<{ profile: SetProfile; fit: ModeFit[] }>(`/api/sets/${set!.id}`, signal), enabled: Boolean(set), staleTime: 60_000 });
+  const profile = setFit.data?.profile ?? null;
+  const ranking = useMemo(() => {
+    if (!setFit.data) return undefined;
+    const selfPaced = new Set((modes.data?.modes ?? []).filter((m) => m.meta.pacing !== 'host').map((m) => m.meta.id));
+    return new Map(rankModes(setFit.data.profile, setFit.data.fit, selfPaced).map((r) => [r.id, r]));
+  }, [setFit.data, modes.data]);
+  const suggested = profile ? suggestedSettings(profile) : null;
+  const [onlyLevel, setOnlyLevel] = useState<'' | 'medium' | 'hard'>('');
   const [settings, setSettings] = useState<Record<string, unknown>>({});
   const [common, setCommon] = useState<Record<string, number | boolean>>({});
   // Solo: practice bots to play against, and how good they are (the server decides what each level means).
@@ -366,7 +377,9 @@ function Setup({ solo, preset, gameId, making, again, classId }: { solo: boolean
   const locked = useMemo(() => new Set(choice?.variant?.locked ?? []), [choice]);
   const effective = (k: string, fallback: unknown) => (k in settings ? settings[k] : (choice?.variant?.settings?.[k] ?? fallback));
   // Host choice, then the variant's preset, then the mode's own default.
-  const commonValue = (k: CommonField): number => Number(common[k] ?? choice?.variant?.common?.[k] ?? choice?.mode.meta.common.defaults[k] ?? COMMON_FALLBACK[k]);
+  // Then, for time per question and how many questions, what suits the set (filled in, and the host can change it).
+  const fromSet = (k: CommonField): number | undefined => (k === 'questionTimeSec' ? suggested?.questionTimeSec : k === 'questionLimit' && suggested?.questionLimit ? suggested.questionLimit : undefined);
+  const commonValue = (k: CommonField): number => Number(common[k] ?? choice?.variant?.common?.[k] ?? fromSet(k) ?? choice?.mode.meta.common.defaults[k] ?? COMMON_FALLBACK[k]);
   const open = useOpenGames(!solo).data;
 
   /** Take the host to their open games to close one, if they have as many open as they may. */
@@ -390,12 +403,19 @@ function Setup({ solo, preset, gameId, making, again, classId }: { solo: boolean
     try {
       // The list already says there is no room: check it is current rather than asking for a game the server will refuse.
       if (!solo && open && open.rooms.length >= open.limit && (await showLimit())) return;
+      // The set's suggestions go in as if the host had typed them, for the fields this mode reads.
+      const filled: Record<string, number | boolean> = { ...common };
+      for (const k of choice.mode.meta.common.fields) {
+        const v = fromSet(k);
+        if (!(k in filled) && choice.variant?.common?.[k] === undefined && !locked.has(k) && v !== undefined) filled[k] = v;
+      }
       const res = await api.post<{ code: string }>('/api/rooms', {
         setId: set.id,
         modeId: choice.mode.meta.id,
         variantId: choice.variant?.meta.id ?? null,
         settings,
-        common,
+        common: filled,
+        ...(onlyLevel ? { difficulty: onlyLevel } : {}),
         options,
         solo,
         ...(solo && bots > 0 && canHaveBots ? { practiceBots: { count: bots, level: botLevel } } : {}),
@@ -507,9 +527,15 @@ function Setup({ solo, preset, gameId, making, again, classId }: { solo: boolean
               }}
             />
           ) : null}
+          {profile && ranking ? (
+            <p className="mb-3 text-sm text-text-2" role="status">
+              Sorted by how well each mode fits “{set?.title}”, best first.
+            </p>
+          ) : null}
           <ModePicker
             value={choice}
             solo={solo}
+            fit={ranking}
             onChange={(c) => {
               setChoice(c);
               setSettings({});
@@ -523,6 +549,11 @@ function Setup({ solo, preset, gameId, making, again, classId }: { solo: boolean
               Settings
             </StepTitle>
             <p className="mb-4 text-sm text-text-2">{choice.variant ? choice.variant.meta.changes : meta.description}</p>
+            {suggested && meta.common.fields.includes('questionTimeSec') && common.questionTimeSec === undefined && !locked.has('questionTimeSec') ? (
+              <p className="mb-4 rounded-[var(--radius-m)] border border-line bg-surface-2 px-3 py-2 text-sm text-text" data-suggested>
+                Filled in from the set: {suggested.questionTimeSec} seconds per question ({suggested.why}). Change it below if you like.
+              </p>
+            ) : null}
             <div className="grid grid-cols-1 gap-x-8 gap-y-4 md:grid-cols-2">
               {meta.common.fields.map((k) => (
                 <CommonInput key={k} field={k} meta={meta} value={commonValue(k)} locked={locked.has(k)} onChange={(v) => setCommon((c) => ({ ...c, [k]: v }))} />
@@ -537,6 +568,17 @@ function Setup({ solo, preset, gameId, making, again, classId }: { solo: boolean
                           {n} teams
                         </option>
                       ))}
+                    </Select>
+                  )}
+                </Field>
+              ) : null}
+              {profile && profile.difficulty.hard + profile.difficulty.medium > 0 ? (
+                <Field label="Which questions" hint={`Questions are marked in the editor: ${profile.difficulty.hard} hard, ${profile.difficulty.medium} medium, ${profile.difficulty.easy} easy, ${profile.difficulty.unset} not marked.`}>
+                  {(p) => (
+                    <Select {...p} value={onlyLevel} onChange={(e) => setOnlyLevel(e.target.value as '' | 'medium' | 'hard')}>
+                      <option value="">All of them</option>
+                      <option value="medium">Only medium and hard ones</option>
+                      {profile.difficulty.hard > 0 ? <option value="hard">Only the hard ones</option> : null}
                     </Select>
                   )}
                 </Field>

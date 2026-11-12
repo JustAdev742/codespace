@@ -9,6 +9,7 @@ import { AppError, conflict, forbidden, notFound } from '../../lib/errors.ts';
 import { parse } from '../../lib/validate.ts';
 import { loadSet, setAccess, validQuestions, type SetRow } from './access.ts';
 import { assertUploadsUsable } from '../uploads/service.ts';
+import { setFit } from './fit.ts';
 import { withOperation } from '../economy/service.ts';
 import { checkAchievements } from '../progression/achievements.ts';
 import { libraryRoutes, purgeExpired, recordVersion } from './library.ts';
@@ -163,6 +164,8 @@ export async function setRoutes(app: FastifyInstance, deps: AppDeps) {
       questions: access.edit ? questions : null,
       preview: access.edit ? null : preview(questions, 6),
       typeCounts: questions.reduce<Record<string, number>>((acc, q) => ((acc[q.type] = (acc[q.type] ?? 0) + 1), acc), {}),
+      // What the set is like and how each mode fits it (counts and reasons only), for hosting.
+      ...setFit(questions, set.defaults),
     };
   });
 

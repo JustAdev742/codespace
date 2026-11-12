@@ -25,6 +25,8 @@ import { domIds, focusSoon } from './parts.tsx';
 import { QuestionCard } from './QuestionCard.tsx';
 import { editorReducer, historyReducer, startHistory, type EditorAction, type EditorState, type HistoryAction } from './state.ts';
 import { BankDialog, BulkBar, HealthDialog, ShortcutsDialog, StartersDialog, TryDialog } from './EditorTools.tsx';
+import { FindReplaceDialog, MissingDialog, PreviewDialog, QuickAddDialog, SetBuilderButtons, TemplatesDialog } from './SetBuilder.tsx';
+import { UploadsDialog } from './uploads.tsx';
 import { useSets } from '../../../lib/queries.ts';
 import { NO_PROBLEMS, problemsFromServer, validateSet, type FieldErrors, type Problems } from './validation.ts';
 
@@ -168,6 +170,8 @@ export function Editor({ userId, setId, initial, baseUpdatedAt, canPublish, save
   const [bankOpen, setBankOpen] = useState(false);
   const [startersOpen, setStartersOpen] = useState(false);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
+  // sets2 tools: quick add, find and replace, templates, missing things, preview, your uploads.
+  const [tool, setTool] = useState<'quick' | 'find' | 'templates' | 'missing' | 'preview' | 'uploads' | null>(null);
   const [offline, setOffline] = useState(false);
   const mySets = useSets({ scope: 'mine', sort: 'title', pageSize: 48 });
   const [savedSnapshot, setSavedSnapshot] = useState(() => snapshotOf(initial));
@@ -800,6 +804,7 @@ export function Editor({ userId, setId, initial, baseUpdatedAt, canPublish, save
             <Button size="sm" variant="ghost" icon={<Wand2 className="size-4" />} onClick={() => setStartersOpen(true)}>
               Starters
             </Button>
+            <SetBuilderButtons onOpen={setTool} />
             <Button size="sm" variant="ghost" icon={<Keyboard className="size-4" />} onClick={() => setShortcutsOpen(true)} aria-keyshortcuts="Shift+?">
               Shortcuts
             </Button>
@@ -920,6 +925,22 @@ export function Editor({ userId, setId, initial, baseUpdatedAt, canPublish, save
         }}
       />
       <ShortcutsDialog open={shortcutsOpen} onOpenChange={setShortcutsOpen} />
+      <QuickAddDialog open={tool === 'quick'} onOpenChange={(o) => setTool(o ? 'quick' : null)} room={LIMITS.questions - (allBlank ? 0 : count)} onAdd={(qs) => (addCopies(qs, 'quick add'), setTool(null))} />
+      <TemplatesDialog open={tool === 'templates'} onOpenChange={(o) => setTool(o ? 'templates' : null)} room={LIMITS.questions - (allBlank ? 0 : count)} onAdd={(qs) => (addCopies(qs, 'a template'), setTool(null))} />
+      <FindReplaceDialog
+        open={tool === 'find'}
+        onOpenChange={(o) => setTool(o ? 'find' : null)}
+        questions={state.questions}
+        onReplace={(next, n) => {
+          const changed = new Map(next.filter((q, i) => q !== state.questions[i]).map((q) => [q.id, q]));
+          dispatch({ type: 'editMany', ids: [...changed.keys()], change: (q) => changed.get(q.id) ?? q });
+          setTool(null);
+          toast.message(`Replaced ${n === 1 ? '1 match' : `${n} matches`}. Undo puts them back.`);
+        }}
+      />
+      <MissingDialog open={tool === 'missing'} onOpenChange={(o) => setTool(o ? 'missing' : null)} questions={state.questions} shuffleAnswers={state.details.shuffleAnswers} onGo={(id) => goTo({ key: id, label: '', message: '', target: domIds.header(id), questionId: id })} />
+      <PreviewDialog open={tool === 'preview'} onOpenChange={(o) => setTool(o ? 'preview' : null)} questions={state.questions} startAt={null} />
+      <UploadsDialog open={tool === 'uploads'} onOpenChange={(o) => setTool(o ? 'uploads' : null)} />
       <ImportDialog open={importOpen} onOpenChange={setImportOpen} currentCount={count} allBlank={allBlank} hasTitle={state.details.title.trim() !== ''} onImport={applyImport} />
       {aiStatus.data?.available ? (
         <AiDraftDialog

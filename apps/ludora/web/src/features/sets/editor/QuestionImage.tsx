@@ -1,3 +1,4 @@
+import { formatDecimal } from '../../../lib/format.ts';
 import { useEffect, useRef, useState } from 'react';
 import { ImagePlus, RefreshCw, Trash2 } from 'lucide-react';
 import type { Media } from '@ludora/shared';
@@ -6,10 +7,11 @@ import { focusSettled } from '../../../lib/focus.ts';
 import { Button } from '../../../ui/Button.tsx';
 import { Input } from '../../../ui/primitives.tsx';
 import { LIMITS } from './model.ts';
+import { shrinkImage } from '../sound/encode.ts';
+import { useUploadCap } from './uploads.tsx';
 import { EditorField, ERROR_TEXT } from './parts.tsx';
 
 const ACCEPT = 'image/png,image/jpeg,image/gif,image/webp';
-const MAX_BYTES = 2_000_000;
 
 /**
  * A question's picture: upload one (PNG, JPEG, GIF or WebP up to 2 MB), see
@@ -33,13 +35,19 @@ export function QuestionImage({ media, altId, altError, onChange }: { media: Med
   }, [media, altId]);
 
   const pick = () => input.current?.click();
-  const upload = async (file: File | undefined) => {
-    if (!file) return;
+  const cap = useUploadCap();
+  const upload = async (picked: File | undefined) => {
+    if (!picked) return;
     setProblem(null);
-    if (!ACCEPT.split(',').includes(file.type)) return setProblem('Use a PNG, JPEG, GIF or WebP image.');
-    if (file.size > MAX_BYTES) return setProblem('Images can be up to 2 MB. Try a smaller copy of this one.');
+    if (!ACCEPT.split(',').includes(picked.type)) return setProblem('Use a PNG, JPEG, GIF or WebP image.');
     setBusy(true);
     try {
+      // Shrunk here first when it is bigger than the server keeps, so a phone photo still fits.
+      const file = await shrinkImage(picked, cap).catch(() => picked);
+      if (file.size > cap) {
+        setProblem(`Images can be up to ${formatDecimal(cap / 1_000_000)} MB. Try a smaller copy of this one.`);
+        return;
+      }
       const res = await api.upload<{ url: string }>('/api/uploads', file);
       focusAlt.current = true;
       onChange({ kind: 'image', url: res.url, alt: media?.alt ?? '' });

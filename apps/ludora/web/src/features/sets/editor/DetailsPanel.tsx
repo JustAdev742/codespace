@@ -5,6 +5,7 @@ import { Button } from '../../../ui/Button.tsx';
 import { Input, Panel, Select, Switch, Textarea } from '../../../ui/primitives.tsx';
 import { SetCover } from '../SetCover.tsx';
 import { QuestionImage } from './QuestionImage.tsx';
+import { FeelPanel } from './FeelPanel.tsx';
 import { coverFor, GLYPH_LABELS, LANGUAGES, LIMITS, type SetDetails } from './model.ts';
 import { domIds, EditorField, ErrorText, errorIdFor } from './parts.tsx';
 import type { FieldErrors } from './validation.ts';
@@ -147,6 +148,8 @@ export const DetailsPanel = memo(function DetailsPanel({ details, errors, canPub
           <Switch checked={details.shuffleAnswers} onCheckedChange={(v) => onChange({ shuffleAnswers: v })} label="Shuffle the answers" description="Choices come in a different order each game." />
         </div>
       </fieldset>
+
+      <FeelPanel details={details} onChange={onChange} />
 
       <fieldset className="mt-5 min-w-0" aria-describedby={coverErrId}>
         <legend className="mb-2 text-sm font-semibold text-text">Cover</legend>

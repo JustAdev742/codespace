@@ -704,7 +704,7 @@ export const uploads = pgTable(
     hiddenAt: ts('hidden_at'),
     hiddenBy: uuid('hidden_by').references(() => users.id, { onDelete: 'set null' }),
   },
-  (t) => [index('uploads_owner_idx').on(t.ownerId, t.createdAt), check('uploads_mime_valid', sql`${t.mime} in ('image/png','image/jpeg','image/gif','image/webp')`)],
+  (t) => [index('uploads_owner_idx').on(t.ownerId, t.createdAt), check('uploads_mime_valid', sql`${t.mime} in ('image/png','image/jpeg','image/gif','image/webp','audio/wav')`)],
 );
 
 export const auditLog = pgTable(
@@ -1391,3 +1391,19 @@ export const aiSettings = pgTable(
   },
   (t) => [check('ai_settings_single_row', sql`${t.id} = 'site'`)],
 );
+
+/* ---------------------------------- Set media (sets2) ---------------------------------- */
+
+const bytea = customType<{ data: Buffer }>({ dataType: () => 'bytea' });
+
+/**
+ * Uploaded files kept in the database, for hosts whose disk is wiped at every restart
+ * (UPLOAD_STORE=db). One row per upload; its details (owner, type, size, hidden) stay in `uploads`.
+ */
+export const uploadFiles = pgTable('upload_files', {
+  uploadId: text('upload_id')
+    .primaryKey()
+    .references(() => uploads.id, { onDelete: 'cascade' }),
+  data: bytea('data').notNull(),
+  createdAt: now('created_at'),
+});
