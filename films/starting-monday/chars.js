@@ -60,12 +60,12 @@ export function makeBrad(parent) {
     neck: 0, neckW: 40, headRx: 46, headRy: 50, shoeL: 44, shoeH: 18, nod: 3.5,
     face: { eyeDX: 18, eyeY: -10, eyeRx: 12, eyeRy: 13, pupilR: 5, browW: 26, browLW: 7, browColor: "#c9a13a",
             mouthY: 22, mouthW: 56, mouthOpen: 18, nose: "line", seed: 5 },
-    torsoArt: (g) => {
+    torsoArt: (g, c) => {
       // tank top cut-outs: bare shoulders and chest
       el("path", { d: "M -100 -160 Q -62 -150 -52 -84 L -98 -70 Z M 100 -160 Q 62 -150 52 -84 L 98 -70 Z", fill: "#e39a55" }, g);
       el("path", { d: "M -34 -178 Q 0 -128 34 -178 Z", fill: "#e39a55", ...ink }, g);
       el("path", { d: "M -30 -108 Q 0 -96 30 -108", fill: "none", stroke: "#a9cc20", "stroke-width": 4, "stroke-linecap": "round" }, g); // pec line
-      el("text", { x: 0, y: -52, "text-anchor": "middle", "font-family": "Inter, sans-serif", "font-weight": 900, "font-size": 30, fill: INK, text: "FLEX" }, g);
+      c.flexText = el("text", { x: 0, y: -52, "text-anchor": "middle", "font-family": "Inter, sans-serif", "font-weight": 900, "font-size": 30, fill: INK, text: "FLEX" }, g); // scene un-mirrors it
       el("path", { d: "M -24 -176 L 6 -112", stroke: INK, "stroke-width": 3 }, g);                 // whistle cord
       el("rect", { x: -2, y: -116, width: 22, height: 14, rx: 5, fill: "#c7c9d6", ...ink, "stroke-width": 3 }, g); // whistle
     },

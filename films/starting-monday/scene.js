@@ -31,7 +31,8 @@ export default function (stage, film) {
   zeth.frontItem.appendChild(props.nachos);
   dale.frontItem.appendChild(props.remote);
   brad.frontItem.appendChild(props.bradPhone);
-  props.nachos.setAttribute("transform", "translate(10 -6) rotate(90)");
+  props.nachos.setAttribute("transform", "translate(0 -16)");
+  zeth.c.itemsHang = true; // the plate stays level whatever the forearm does
   props.remote.setAttribute("transform", "translate(0 6)");
 
   const night = el("rect", { width: 1920, height: 1080, fill: "#0a0830", style: "mix-blend-mode:multiply" }, stage);
@@ -50,7 +51,7 @@ export default function (stage, film) {
     aliensLow: { x: 1330, y: 400, z: 1.7 },
     zethM: { x: 1380, y: 400, z: 1.7 },
     zethC: { x: 1400, y: 250, z: 2.7 },
-    nachoC: { x: 1300, y: 330, z: 2.0 },
+    nachoC: { x: 1310, y: 400, z: 2.3 },
     quibC: { x: 1190, y: 470, z: 2.7 },
     holoS: { x: 1090, y: 400, z: 1.95 },
     thighs: { x: 690, y: 812, z: 3.6 },
@@ -102,7 +103,7 @@ export default function (stage, film) {
     zChest: { ...zS, x: 1400, y: FLOOR - 330, flip: -1, lh: [-12, 232], rh: [-30, 70], ht: 8 },
     zSweep: { ...zS, x: 1400, y: FLOOR - 330, flip: -1, lh: [-60, 190], rh: [200, 40] },
     zRobe: { ...zS, x: 1400, y: FLOOR - 330, flip: -1, lh: [-12, 232], rh: [-46, 150], tilt: -2 },
-    zOffer: { ...zS, x: 1400, y: FLOOR - 330, flip: -1, tilt: 6, lh: [150, 96], rh: [170, 90], ht: 6 },
+    zOffer: { ...zS, x: 1400, y: FLOOR - 330, flip: -1, tilt: 4, lh: [-12, 232], rh: [96, 118], ht: 8 },
     zPray: { ...zS, x: 1400, y: FLOOR - 330, flip: -1, lh: [44, 64], rh: [-36, 64], ht: 10 },
     bDoor: { ...bS, x: 1790, y: FLOOR - 125, flip: -1, lh: [-70, -80], rh: [70, -84] },
     bIn: { ...bS, x: 1610, y: FLOOR - 125, flip: -1, lh: [-70, -80], rh: [70, -84] },
@@ -116,7 +117,7 @@ export default function (stage, film) {
     bPanic: { ...bS, x: 1235, y: FLOOR - 125, flip: -1, lh: [-30, -150], rh: [40, -150], ht: -8 },
     sDoor: { ...sS, x: 1800, y: FLOOR - 165, flip: -1 },
     sIn: { ...sS, x: 1700, y: FLOOR - 165, flip: -1 },
-    sGone: { ...sS, x: -160, y: FLOOR - 165, flip: -1 },
+    sGone: { ...sS, x: -480, y: FLOOR - 165, flip: -1 },
   };
   const Q0 = { x: 1190, y: 470, s: 1, flip: -1, floor: FLOOR, hands: 0, typing: 0, rot: 0, sq: 1, a: 1 };
   const QP = {
@@ -218,13 +219,13 @@ export default function (stage, film) {
   at(T("b38"), { cam: "bradK", B: w(P.bHeart, 0.3), Be: ex("happy", { px: 0.4 }) });
   at(Fr("b38", 0.45), { Be: w(ex("moved", { px: 0.4, sm: 0.4 }), 0.3) });
   at(T("d39"), { cam: "daleC", De: ex("sly", { px: 0.95 }) });
-  at(T("nachos"), { cam: "zethM", Z: w(P.zRobe, 1.5, "io"), Ze: ex("solemn", { px: 0.3, py: 0.5 }) });
+  at(T("nachos"), { cam: "zethM", Z: w(P.zRobe, 1.5, "io"), Ze: ex("solemn", { px: 0.3, py: 0.5 }), Q: w({ ...QP.home, x: 1040, y: 440 }, 0.8) });
   at(T("nachos", 0.2), { cam: w({ x: 1370, y: 380, z: 1.95 }, film.D("nachos"), "lin") });
   at(T("nachos.reveal"), { Z: w(P.zOffer, 0.7, "out3"), nachos: 1, Ze: w(ex("solemn", R), 0.3) });
   at(T("z40"), { cam: "nachoC" });
   at(T("d41"), { cam: "daleC", De: ex("think", { px: 0.9, py: 0 }) });
-  at(T("z42"), { cam: "aliens", Ze: ex("fear", { px: 0.8, py: 0.7, mo: 0 }), Q: w(QP.toZeth, 0.15), Qe: ex("shock", { px: 0.6, py: -0.7, mo: 0 }) });
-  at(T("q43"), { Qe: ex("fear", { px: 0.6, py: -0.6 }), Q: w({ ...QP.toZeth, hands: 1 }, 0.2) });
+  at(T("z42"), { cam: "aliens", Ze: ex("fear", { px: 0.8, py: 0.7, mo: 0 }), Q: w({ ...QP.toZeth, x: 1040, y: 440 }, 0.15), Qe: ex("shock", { px: 0.6, py: -0.7, mo: 0 }) });
+  at(T("q43"), { Qe: ex("fear", { px: 0.6, py: -0.6 }), Q: w({ ...QP.toZeth, x: 1040, y: 440, hands: 1 }, 0.2) });
   at(T("waver"), { cam: "daleM", B: w(P.bBack, 0.9), Be: ex("happy", R), D: w(P.sit, 0.4), De: ex("think", { px: 0.9, py: 0 }), Q: w(QP.home, 0.4), Qe: ex("neutral", R), Ze: ex("solemn", R) });
   at(T("waver", 0.7), { De: w(ex("sad", { px: 0.2, py: 0.9 }), 0.4) });
   at(T("waver", 1.1), { D: w(P.stand, 0.9, "io"), cam: w("standM", 0.9) });
@@ -285,7 +286,7 @@ export default function (stage, film) {
   at(T("black"), { ins: "black", holo: null });
   at(T("endcard"), { ins: "end" });
   at(T("stinger"), { ins: null, cam: "bike", remote: 0 });
-  at(T("stinger", 0.1), { cam: w({ x: 310, y: 660, z: 2.3 }, 5, "lin") });
+  at(T("stinger", 0.1), { cam: w({ x: 310, y: 660, z: 2.3 }, film.T("out") - film.T("stinger"), "lin") });
   at(T("out"), { ins: "black" });
 
   const TR = Object.fromEntries(Object.entries(K).map(([k, v]) => [k, track(v)]));
@@ -390,6 +391,7 @@ export default function (stage, film) {
     const suited = t < T("repo.zip") && t >= T("doorbell.burst");
     b.a = suited ? 1 : 0;
     brad.set(gest("BRAD", b, 1.3), talk("BRAD"), t);
+    brad.c.flexText.setAttribute("transform", `scale(${b.flip} 1)`);
     props.bradPhone.setAttribute("opacity", TR.bphone(t));
     const beamOn = tr >= 0 ? prog(t, T("repo.beam"), T("repo.beam", 0.35)) * (1 - prog(t, T("repo.yank", 0.5), T("repo.yank", 1.1))) : 0;
     props.beam.setAttribute("d", `M ${1235 - 60} -500 L ${1235 + 60} -500 L ${1235 + 170} ${FLOOR + 10} L ${1235 - 170} ${FLOOR + 10} Z`);
@@ -410,8 +412,8 @@ export default function (stage, film) {
     if (t >= T("sharon.sees") && t < tBlack) sl.e = ex("fear", { mo: 0, px: -0.8 });
     if (onBike) {
       const ph = (t - T("stinger")) * 2.2;
-      Object.assign(sl, { x: 262, y: 612 + Math.sin(ph * 2) * 3, a: 1, floor: undefined, hands: 1, item: t >= T("stinger.toot", -0.3) ? 1 : 0, flip: 1,
-        e: ex("strain", { mo: t >= T("stinger.toot") && t < T("stinger.toot", 1.3) ? 0.6 : 0.15 }) });
+      Object.assign(sl, { x: 262, y: 612 + Math.sin(ph * 2) * 3, a: 1, floor: undefined, hands: 1, item: t >= T("stinger2.toot", -0.3) ? 1 : 0, flip: 1,
+        e: ex("strain", { mo: t >= T("stinger2.toot") && t < T("stinger2.toot", 1.3) ? 0.6 : 0.15 }) });
       room.crank.setAttribute("transform", `translate(40 790) rotate(${(ph * 57.3) % 360})`);
       room.jackets.setAttribute("transform", `rotate(${(Math.sin(ph) * 2.5).toFixed(2)} 60 590)`);
     }
@@ -419,7 +421,7 @@ export default function (stage, film) {
 
     // Sharon
     let s = { ...TR.S(t), e: TR.Se(t) };
-    const walking = (t >= T("sharon.open", 0.5) && t < T("sharon.open", 1.5)) || (t >= Fr("s60", 0.35) && s.x > -150);
+    const walking = (t >= T("sharon.open", 0.5) && t < T("sharon.open", 1.5)) || (t >= Fr("s60", 0.35) && s.x > -470);
     if (walking) {
       const wk = Toon.walk(sharon.c, t * 1.7, 0.34, 0.12);
       s = { ...s, lf: wk.lf, rf: wk.rf, y: s.y + wk.bob };

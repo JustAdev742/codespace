@@ -101,7 +101,7 @@ try {
     args.push("-map", "0:v");
     if (existsSync(mixWav)) args.push("-map", "1:a", "-c:a", "aac", "-b:a", "192k");
     if (whole && existsSync(srt)) args.push("-map", "2:s", "-c:s", "mov_text", "-metadata:s:s:0", "language=eng");
-    args.push("-c:v", "libx264", "-preset", "slow", "-crf", opt("crf", "20"), "-pix_fmt", "yuv420p", "-movflags", "+faststart", "-shortest", out);
+    args.push("-c:v", "libx264", "-preset", "slow", "-crf", opt("crf", "20"), "-pix_fmt", "yuv420p", "-movflags", "+faststart", "-t", String((f1 - f0) / fps), out); // not -shortest: it would stop at the last caption
     await run("ffmpeg", args);
     console.log(`${out}  (${f1 - f0} frames, ${((Date.now() - started) / 1000).toFixed(0)}s)`);
   }

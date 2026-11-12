@@ -203,7 +203,9 @@ export default {
     { id: "z62", who: "ZETH", text: "[slow, hungry] Open... a second fund.", gap: 0.12 },
     { id: "black", wait: 2.4 },
     { id: "endcard", wait: 5.0 },
-    { id: "stinger", wait: 5.5, marks: { toot: 3.4 } },
+    { id: "stinger", wait: 1.6 },
+    { id: "k63", who: "KAYLA", clip: "k1b", text: "Did you know? FlexZone members who visit live longer.", gap: 0.4 },
+    { id: "stinger2", wait: 3.0, marks: { toot: 0.5 } },
     { id: "out", wait: 1.2 },
   ],
 };

@@ -31,3 +31,6 @@ pyyaml>=6.0
 
 # webapp-testing (browser binaries are preinstalled in Claude Code web sessions)
 playwright>=1.49.0
+
+# films/scripts/mix.py (soundtrack mixing; numpy is listed above)
+scipy>=1.11.0
