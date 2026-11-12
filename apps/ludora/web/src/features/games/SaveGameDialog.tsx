@@ -9,6 +9,7 @@ import { ModeArt } from '../../art/ModeArt.tsx';
 import { useModes } from '../../lib/queries.ts';
 import { Badge, Dialog, Field, Input, Select, Textarea } from '../../ui/primitives.tsx';
 import { Button } from '../../ui/Button.tsx';
+import { AiHelper } from '../ai/AiHelper.tsx';
 
 /*
  * Saving a game from the host page: a name, a line about it, a cover and who
@@ -131,6 +132,28 @@ export function SaveGameDialog({ open, onOpenChange, setup, editing, onSaved }: 
         <Field label="About it (optional)" error={fieldError('description')}>
           {(p) => <Textarea value={description} onChange={(e) => setDescription(e.target.value)} maxLength={200} rows={2} {...p} />}
         </Field>
+        <AiHelper<{ name: string; description: string }>
+          task="any.name_describe"
+          label="Suggest a name with AI"
+          input={() => ({ kind: 'game', content: `A ${setup.modeTitle} game${setup.setTitle ? ` with the question set "${setup.setTitle}"` : ''}.${description.trim() ? ` About it: ${description.trim()}` : ''}`, nameMax: 40, descriptionMax: 200 })}
+          current={
+            <>
+              <p className="font-semibold">{title || 'No name yet'}</p>
+              <p>{description || 'Nothing about it yet'}</p>
+            </>
+          }
+          renderSuggestion={(o) => (
+            <>
+              <p className="font-semibold">{o.name}</p>
+              <p>{o.description}</p>
+            </>
+          )}
+          acceptLabel="Use these"
+          onAccept={(o) => {
+            setTitle(o.name);
+            setDescription(o.description);
+          }}
+        />
         <div className="grid grid-cols-2 gap-3">
           <Field label="Picture">
             {(p) => (

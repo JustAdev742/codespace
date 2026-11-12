@@ -29,7 +29,9 @@ export const DEFAULT_FLAGS = [
   { key: 'social.reactions', description: 'Preset emote reactions in game rooms. There is no free-text chat.', enabled: true },
   { key: 'shop.rotations', description: 'Daily and weekly shop picks.', enabled: true },
   { key: 'events.frost_festival', description: 'The Frost Festival event shop and quests.', enabled: true },
-  { key: 'ai.question_drafts', description: 'Draft questions with AI (needs ANTHROPIC_API_KEY). Drafts are always reviewed before saving.', enabled: false },
+  { key: 'ai.question_drafts', description: 'Draft questions with AI in the set editor, for teachers (needs an AI provider). Drafts are always reviewed before saving.', enabled: false },
+  { key: 'ai.helpers_teachers', description: 'AI helpers in the making tools for teachers, content creators and staff (needs an AI provider). Nothing is used until they accept it.', enabled: false },
+  { key: 'ai.helpers_students', description: 'AI helpers in the making tools for student and player accounts (needs an AI provider). Answers pass the word filter; nothing is used until they accept it.', enabled: false },
   { key: 'modes.beta', description: 'Show beta game modes in the mode picker.', enabled: false, roles: ['tester', 'admin', 'superadmin'] },
   { key: 'debug.overlay', description: 'Developer overlay showing room state, versions and timings.', enabled: false, roles: ['tester', 'admin', 'superadmin'] },
 ];

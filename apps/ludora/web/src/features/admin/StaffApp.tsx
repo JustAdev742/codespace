@@ -14,6 +14,7 @@ import {
   ScrollText,
   ShieldAlert,
   ShoppingBag,
+  Sparkles,
   Users,
 } from 'lucide-react';
 import type { Permission } from '@ludora/shared';
@@ -53,6 +54,7 @@ export const SECTIONS: Section[] = [
   { path: 'events', label: 'Events', icon: <CalendarRange className="size-4" />, permission: 'events.manage', page: page(() => import('./Events.tsx')) },
   { path: 'flags', label: 'Feature flags', icon: <Flag className="size-4" />, permission: 'flags.manage', page: page(() => import('./Flags.tsx')) },
   { path: 'testing', label: 'Testing', icon: <FlaskConical className="size-4" />, permission: 'testing.tools', page: page(() => import('./Testing.tsx')) },
+  { path: 'ai', label: 'AI helpers', icon: <Sparkles className="size-4" />, permission: 'system.view', page: page(() => import('./Ai.tsx')) },
   { path: 'system', label: 'System health', icon: <Activity className="size-4" />, permission: 'system.view', page: page(() => import('./System.tsx')) },
   { path: 'audit', label: 'Audit log', icon: <ScrollText className="size-4" />, permission: 'audit.read', page: page(() => import('./Audit.tsx')) },
 ];

@@ -72,6 +72,7 @@ const OWN_ROWS: readonly [table: string, column: string][] = [
   ['reports', 'reporter_id'],
   ['moderation_actions', 'target_user_id'],
   ['ai_draft_requests', 'user_id'],
+  ['ai_requests', 'user_id'],
   ['mistakes', 'user_id'],
   ['practice_runs', 'user_id'],
   ['player_extras', 'user_id'],

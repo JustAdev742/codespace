@@ -15,7 +15,7 @@ import { authRoutes } from './modules/auth/routes.ts';
 import { RoomManager } from './realtime/manager.ts';
 import { scheduleRetention } from './modules/users/retention.ts';
 import { withSchoolTheme } from './school-theme.ts';
-import type { QuestionDrafter } from './modules/ai/drafter.ts';
+import { providersFromConfig, type AiProviderInfo } from './modules/ai/providers.ts';
 
 export interface AppDeps {
   config: Config;
@@ -27,8 +27,8 @@ export interface AppDeps {
   realtime?: { disconnectUser(userId: string, message: string): number; connectedSockets(): number };
   /** Serves the single-page app for non-API routes in production. */
   serveSpa?: (req: FastifyRequest, reply: FastifyReply) => Promise<unknown>;
-  /** Drafts questions with Claude. Present only when ANTHROPIC_API_KEY is set; tests pass a stand-in. */
-  drafter?: QuestionDrafter;
+  /** The AI providers the environment configures (AI_PROVIDERS, ANTHROPIC_API_KEY). Built from the config unless given; tests pass their own. */
+  ai?: AiProviderInfo[];
 }
 
 export type RouteModule = (app: FastifyInstance, deps: AppDeps) => Promise<void>;
@@ -40,7 +40,7 @@ export async function buildApp(base: Omit<AppDeps, 'serveSpa' | 'rooms' | 'log'>
     trustProxy: config.trustProxy,
     bodyLimit: 1_000_000,
   });
-  const deps = { ...base, log: app.log } as AppDeps;
+  const deps = { ...base, ai: base.ai ?? providersFromConfig(config), log: app.log } as AppDeps;
   deps.rooms = new RoomManager(deps);
   app.addHook('onClose', async () => deps.rooms.shutdown());
   const stopRetention = scheduleRetention(deps.db, app.log);

@@ -1,9 +1,15 @@
 import { Link } from 'react-router';
+import { useQuery } from '@tanstack/react-query';
+import type { AiAbout } from '@ludora/shared';
+import { api } from '../../lib/api.ts';
 import { H2, LegalPage, List, OperatorNote, P, useOperator, ContactLink } from './legal.tsx';
 
 /** What Ludora keeps, why, who sees it, for how long, and how to get it deleted. */
 export default function Privacy() {
   const op = useOperator().data;
+  // Whether AI helpers are on here, and which providers get the text: from the server's own settings.
+  const ai = useQuery({ queryKey: ['ai-about'], queryFn: () => api.get<AiAbout>('/api/ai/about'), staleTime: 300_000, retry: false }).data;
+  const providers = ai?.on ? new Intl.ListFormat('en-GB', { style: 'long', type: 'disjunction' }).format(ai.providers) : null;
   const ask = op?.operatorContact ? (
     <>
       the people who run this copy (<ContactLink contact={op.operatorContact} />)
@@ -62,7 +68,13 @@ export default function Privacy() {
           <strong className="text-text">Staff who run this copy</strong> (moderators, support and administrators): what they need to help you and keep people safe. Every change staff make is recorded.
         </li>
         <li>
-          <strong className="text-text">Other companies:</strong> the hosting company that stores Ludora's database for the people running it. If AI question drafts are switched on, a teacher's topic and notes are sent to Anthropic to write draft questions; nothing about players is sent.
+          <strong className="text-text">Other companies:</strong> the hosting company that stores Ludora's database for the people running it.
+          {providers ? (
+            <>
+              {' '}
+              AI helpers are switched on here: when you ask a helper for a suggestion (in the set editor, the lesson editor or when setting up a game), the text you ask about is sent to {providers} to get the suggestion. Email addresses and phone numbers in it are taken out first, and your name, your class and other players are never sent. Ludora keeps that a request was made and which model answered, not what was asked.
+            </>
+          ) : null}
         </li>
       </List>
 

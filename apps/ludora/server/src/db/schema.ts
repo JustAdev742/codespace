@@ -1335,3 +1335,59 @@ export const classGroupMembers = pgTable(
   },
   (t) => [primaryKey({ columns: [t.groupId, t.userId] }), index('class_group_members_class_user_idx').on(t.classId, t.userId)],
 );
+
+/* ------------------------------- AI helpers (0019) ------------------------------- */
+
+/** One AI helper request: who asked, which task, which model answered and how it went. What was asked is not kept. */
+export const aiRequests = pgTable(
+  'ai_requests',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    task: text('task').notNull(),
+    provider: text('provider'),
+    model: text('model'),
+    outcome: text('outcome').notNull().default('pending'),
+    ipHash: text('ip_hash'),
+    inputTokens: integer('input_tokens'),
+    outputTokens: integer('output_tokens'),
+    createdAt: now('created_at'),
+  },
+  (t) => [
+    index('ai_requests_user_idx').on(t.userId, t.createdAt),
+    index('ai_requests_created_idx').on(t.createdAt),
+    check('ai_requests_outcome_valid', sql`${t.outcome} in ('pending','ok','refused','filtered','failed')`),
+  ],
+);
+
+/** A provider that failed to answer (busy, too slow, down), for the staff page. Nothing about the person or the request. */
+export const aiFailures = pgTable(
+  'ai_failures',
+  {
+    id: bigserial('id', { mode: 'number' }).primaryKey(),
+    provider: text('provider').notNull(),
+    model: text('model').notNull(),
+    kind: text('kind').notNull(),
+    createdAt: now('created_at'),
+  },
+  (t) => [index('ai_failures_created_idx').on(t.createdAt)],
+);
+
+/** The site's AI settings, changed by staff without a redeploy. One row. */
+export const aiSettings = pgTable(
+  'ai_settings',
+  {
+    id: text('id').primaryKey().default('site'),
+    perAccount: integer('per_account').notNull().default(20),
+    windowHours: integer('window_hours').notNull().default(5),
+    /** Requests across the site in any 24 hours; null uses AI_DRAFTS_DAILY_LIMIT. */
+    siteDailyCap: integer('site_daily_cap'),
+    /** Model ids ("provider/model") staff switched off. */
+    disabledModels: jsonb('disabled_models').$type<string[]>().notNull().default([]),
+    updatedAt: now('updated_at'),
+    updatedBy: uuid('updated_by').references(() => users.id, { onDelete: 'set null' }),
+  },
+  (t) => [check('ai_settings_single_row', sql`${t.id} = 'site'`)],
+);

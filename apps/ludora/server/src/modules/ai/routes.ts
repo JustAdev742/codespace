@@ -1,108 +1,179 @@
-import type { FastifyInstance } from 'fastify';
-import { eq, sql } from 'drizzle-orm';
-import { aiDraftRequestSchema, type AiDraftResponse, type AiDraftStatus, type AiDraftUnavailable } from '@ludora/shared';
+import type { FastifyInstance, FastifyRequest } from 'fastify';
+import { z } from 'zod';
+import { aiDraftRequestSchema, aiRunRequestSchema, type AiAbout, type AiDraftResponse, type AiDraftStatus, type AiRunResponse, type AiStatus, type AiUnavailable, type Question } from '@ludora/shared';
 import type { AppDeps } from '../../app.ts';
-import type { DbOrTx } from '../../db/client.ts';
-import { aiDraftRequests } from '../../db/schema.ts';
-import { requireAccount, type AuthContext } from '../../http/context.ts';
-import { AppError, conflict, forbidden, tooMany } from '../../lib/errors.ts';
+import { noStore, requireAccount, type AuthContext } from '../../http/context.ts';
+import { ipKey } from '../../http/limits.ts';
+import { hashIp } from '../../lib/crypto.ts';
+import { AppError, badRequest, forbidden, notFound } from '../../lib/errors.ts';
 import { parse } from '../../lib/validate.ts';
-import { isFlagOn } from '../flags/service.ts';
-import { DraftError, type DraftFailure, type DraftUsage } from './drafter.ts';
+import { allFlags, isFlagOn } from '../flags/service.ts';
+import { aiAdminRoutes } from './admin.ts';
+import { allowanceFor, enabledModels, finishRequest, loadAiSettings, reserveRequest } from './allowance.ts';
+import { modelOrder, RunError, runTask, type RunFailure } from './runner.ts';
+import { getAiTask, listAiTasks, TaskInputError, TaskReject, type AiAudience } from './tasks.ts';
+import './tasks/index.ts';
 
 /*
- * AI question drafts (D37). Teachers, creators and staff describe a topic and
- * get draft questions back for the set editor, where they review every one
- * before saving. Off unless the ai.question_drafts flag is on for the person
- * and the server has an Anthropic API key. Each account gets a daily allowance
- * and the site a daily cap, both counted over a rolling 24 hours.
+ * AI helpers (D37, widened). Every request is one registered task, run on the
+ * providers the server's environment configures. Who may use them: teacher
+ * accounts, creators and staff when ai.helpers_teachers is on (drafting alone
+ * also with the older ai.question_drafts flag), and student and player
+ * accounts when ai.helpers_students is on. Never guests. Each account has an
+ * allowance over a rolling window and the site a daily cap (allowance.ts);
+ * addresses are rate limited as well.
  */
 
-export const AI_DRAFTS_PER_ACCOUNT_DAILY = 30;
+export const TEACHER_FLAG = 'ai.helpers_teachers';
+export const STUDENT_FLAG = 'ai.helpers_students';
+export const DRAFTS_FLAG = 'ai.question_drafts';
+export const AI_FLAGS = [TEACHER_FLAG, STUDENT_FLAG, DRAFTS_FLAG] as const;
 
-/** Teachers, creators who publish public sets, and staff. Never guests or under-13s. */
-function mayDraft(auth: AuthContext): boolean {
-  if (auth.user.isGuest || auth.user.ageBand === 'under13') return false;
-  return auth.user.accountType === 'teacher' || auth.permissions.has('sets.publish_public') || auth.permissions.has('staff.access');
+/** Teacher accounts, creators who publish public sets, and staff; everyone else signed in is a student or player. */
+export function audienceOf(auth: AuthContext): AiAudience | null {
+  if (auth.user.isGuest) return null;
+  if (auth.user.accountType === 'teacher' || auth.permissions.has('sets.publish_public') || auth.permissions.has('staff.access')) return 'teacher';
+  return 'student';
 }
 
-async function unavailable(deps: AppDeps, auth: AuthContext): Promise<AiDraftUnavailable | null> {
-  if (!mayDraft(auth)) return 'not_allowed';
-  if (!(await isFlagOn(deps.db, 'ai.question_drafts', auth))) return 'not_enabled';
-  if (!deps.drafter) return 'not_configured';
-  return null;
+/** The tasks this person may use, or why none. */
+export async function aiAccess(deps: AppDeps, auth: AuthContext): Promise<{ tasks: string[]; reason?: AiUnavailable }> {
+  if (!(deps.ai ?? []).some((p) => p.models.length)) return { tasks: [], reason: 'not_configured' };
+  const audience = audienceOf(auth);
+  if (!audience) return { tasks: [], reason: 'not_allowed' };
+  const on = audience === 'teacher' ? await isFlagOn(deps.db, TEACHER_FLAG, auth) : await isFlagOn(deps.db, STUDENT_FLAG, auth);
+  const drafts = audience === 'teacher' && (await isFlagOn(deps.db, DRAFTS_FLAG, auth));
+  const tasks = listAiTasks()
+    .filter((t) => t.audience.includes(audience) && (on || (drafts && t.id === 'set.draft_questions')))
+    .map((t) => t.id);
+  if (tasks.length) return { tasks };
+  // Teachers' helpers are on but none is for this person's kind of account.
+  if (audience === 'student' && ((await isFlagOn(deps.db, TEACHER_FLAG, auth)) || (await isFlagOn(deps.db, DRAFTS_FLAG, auth)))) return { tasks: [], reason: 'not_allowed' };
+  return { tasks: [], reason: 'not_enabled' };
 }
 
-/** Requests in the last 24 hours: this account's, everyone's, and this account's still running. */
-async function usage(db: DbOrTx, userId: string) {
-  const mine = sql`${aiDraftRequests.userId} = ${userId}`;
-  const [row] = await db
-    .select({
-      mine: sql<number>`count(*) filter (where ${mine})::int`,
-      all: sql<number>`count(*)::int`,
-      running: sql<number>`count(*) filter (where ${mine} and ${aiDraftRequests.outcome} = 'pending' and ${aiDraftRequests.createdAt} > now() - interval '3 minutes')::int`,
-    })
-    .from(aiDraftRequests)
-    .where(sql`${aiDraftRequests.createdAt} > now() - interval '24 hours'`);
-  return row ?? { mine: 0, all: 0, running: 0 };
-}
+const NOT_SET_UP = 'AI helpers are not set up on this server.';
 
-const FAILURES: Record<DraftFailure, { status: number; message: string }> = {
-  refused: { status: 422, message: 'Claude would not draft questions for that. Try a different topic or wording.' },
-  incomplete: { status: 502, message: 'The drafts were cut short. Ask for fewer questions.' },
-  invalid: { status: 502, message: 'The drafts came back in a form Ludora could not use. Try again.' },
-  busy: { status: 503, message: 'Drafting is busy right now. Try again in a minute.' },
-  timeout: { status: 504, message: 'Drafting took too long. Try again, or ask for fewer questions.' },
-  unavailable: { status: 503, message: 'AI drafts are not working right now. Try again later.' },
+const FAILURES: Record<RunFailure, { status: number; message: string }> = {
+  refused: { status: 422, message: 'The AI would not help with that. Try different wording.' },
+  filtered: { status: 422, message: "The suggestion did not pass Ludora's word filter, so it is not shown. Try again or change the wording." },
+  incomplete: { status: 502, message: 'The suggestion was cut short. Try again, or ask for less.' },
+  invalid: { status: 502, message: 'The suggestion came back in a form Ludora could not use. Try again.' },
+  busy: { status: 503, message: 'The AI is busy right now. Try again in a minute, or pick another model.' },
+  timeout: { status: 504, message: 'The AI took too long. Try again, or pick another model.' },
+  unavailable: { status: 503, message: 'AI helpers are not working right now. Try again later.' },
 };
 
-export async function aiRoutes(app: FastifyInstance, deps: AppDeps) {
-  app.get('/api/ai/drafts/status', async (req): Promise<AiDraftStatus> => {
-    const auth = requireAccount(req);
-    const reason = await unavailable(deps, auth);
-    const used = await usage(deps.db, auth.user.id);
-    return { available: reason === null, ...(reason ? { reason } : {}), remainingToday: Math.max(0, AI_DRAFTS_PER_ACCOUNT_DAILY - used.mine), limitToday: AI_DRAFTS_PER_ACCOUNT_DAILY };
-  });
+const OUTCOME: Record<RunFailure, 'refused' | 'filtered' | 'failed'> = { refused: 'refused', filtered: 'filtered', incomplete: 'failed', invalid: 'failed', busy: 'failed', timeout: 'failed', unavailable: 'failed' };
 
-  app.post('/api/ai/drafts', { config: { rateLimit: { max: 10, timeWindow: '1 hour' } } }, async (req): Promise<AiDraftResponse> => {
-    const auth = requireAccount(req);
-    const reason = await unavailable(deps, auth);
-    if (reason === 'not_allowed') throw forbidden('AI drafts are for teacher accounts.');
-    if (reason === 'not_enabled') throw new AppError(403, 'not_available', 'AI drafts are not switched on here.');
-    const drafter = deps.drafter;
-    if (!drafter) throw new AppError(503, 'not_available', 'AI drafts are not set up on this server.');
-    const body = parse(aiDraftRequestSchema, req.body);
-
-    // Reserve the request under a lock, so parallel requests cannot slip past the limits together.
-    const { id, mine } = await deps.db.transaction(async (tx) => {
-      await tx.execute(sql`select pg_advisory_xact_lock(hashtext('ludora.ai_drafts'))`);
-      const used = await usage(tx, auth.user.id);
-      if (used.running) throw conflict('Your last request is still drafting. Wait for it to finish.');
-      if (used.mine >= AI_DRAFTS_PER_ACCOUNT_DAILY) throw tooMany(`You can ask for drafts ${AI_DRAFTS_PER_ACCOUNT_DAILY} times a day. Try again tomorrow.`);
-      if (used.all >= deps.config.AI_DRAFTS_DAILY_LIMIT) throw new AppError(503, 'not_available', 'Drafting has reached its daily limit on this site. Try again tomorrow.');
-      const [row] = await tx.insert(aiDraftRequests).values({ userId: auth.user.id, model: drafter.model, requested: body.count }).returning({ id: aiDraftRequests.id });
-      return { id: row!.id, mine: used.mine + 1 };
-    });
-
-    const record = (outcome: 'ok' | 'refused' | 'failed', returned: number, used?: DraftUsage) =>
-      deps.db
-        .update(aiDraftRequests)
-        .set({ outcome, returned, inputTokens: used?.inputTokens ?? null, outputTokens: used?.outputTokens ?? null })
-        .where(eq(aiDraftRequests.id, id));
-
-    try {
-      const result = await drafter.draft(body);
-      await record('ok', result.questions.length, result.usage);
-      req.log.info({ userId: auth.user.id, requested: body.count, returned: result.questions.length, dropped: result.dropped, ...result.usage }, 'ai drafts');
-      return { questions: result.questions, dropped: result.dropped, remainingToday: Math.max(0, AI_DRAFTS_PER_ACCOUNT_DAILY - mine) };
-    } catch (err) {
-      const draftError = err instanceof DraftError ? err : null;
-      await record(draftError?.kind === 'refused' ? 'refused' : 'failed', 0, draftError?.usage);
-      if (!draftError) throw err;
-      // A key or model problem needs the operator, not the teacher: log the detail, show the plain message.
-      req.log[draftError.kind === 'unavailable' ? 'error' : 'warn']({ userId: auth.user.id, kind: draftError.kind, detail: draftError.message }, 'ai drafts failed');
-      const failure = FAILURES[draftError.kind];
-      throw new AppError(failure.status, draftError.kind === 'refused' ? 'validation_failed' : 'not_available', failure.message);
-    }
-  });
+/** Turns a run failure into the plain message for the person; the detail goes to the log only. */
+function failure(err: RunError): AppError {
+  const f = FAILURES[err.kind];
+  const wait = err.kind === 'busy' && err.retryAfterSec ? ` Try again in ${err.retryAfterSec < 90 ? `${err.retryAfterSec} seconds` : `${Math.ceil(err.retryAfterSec / 60)} minutes`}, or pick another model.` : null;
+  return new AppError(f.status, err.kind === 'refused' || err.kind === 'filtered' ? 'validation_failed' : 'not_available', wait ? f.message.replace(/ Try again.*$/, wait) : f.message);
 }
+
+interface RunOutcome {
+  output: unknown;
+  response: Omit<AiRunResponse, 'output'>;
+}
+
+/** The whole of one helper request: who may, the allowance, the run, and the record of it. */
+async function run(deps: AppDeps, req: FastifyRequest, auth: AuthContext, taskId: string, rawInput: unknown, choice: { model?: string; fallback: boolean }): Promise<RunOutcome> {
+  const task = getAiTask(taskId);
+  const access = await aiAccess(deps, auth);
+  if (access.reason === 'not_configured') throw new AppError(503, 'not_available', NOT_SET_UP);
+  if (!task) throw notFound('There is no AI helper with that name.');
+  if (access.reason === 'not_allowed') throw forbidden('AI helpers are not available to your account.');
+  if (access.reason === 'not_enabled') throw new AppError(403, 'not_available', 'AI helpers are not switched on here.');
+  if (!access.tasks.includes(taskId)) throw forbidden('This AI helper is not available to your account.');
+  const input = parse(task.input, rawInput);
+  const settings = await loadAiSettings(deps.db, deps);
+  const enabled = enabledModels(deps, settings);
+  if (choice.model && !enabled.some((m) => m.id === choice.model)) throw badRequest('That model is not available. Pick another.');
+  const models = modelOrder(enabled, choice.model, choice.fallback);
+  if (!models.length) throw new AppError(503, 'not_available', 'No AI model is switched on. Ask the people who run Ludora here.');
+
+  const ctx = { deps, auth };
+  let prepared: unknown;
+  try {
+    prepared = task.prepare ? await task.prepare(input, ctx) : input;
+  } catch (err) {
+    if (err instanceof TaskInputError) throw new AppError(err.status, err.status === 403 ? 'forbidden' : err.status === 404 ? 'not_found' : 'bad_request', err.message);
+    if (err instanceof TaskReject) throw badRequest(err.message);
+    throw err;
+  }
+
+  const { id } = await reserveRequest(deps, auth.user.id, task.id, hashIp(req.ip, deps.config.IP_HASH_KEY));
+  try {
+    const result = await runTask(task, prepared, models, ctx);
+    await finishRequest(deps.db, id, { outcome: 'ok', provider: result.provider, model: result.model.id, ...result.usage });
+    req.log.info({ userId: auth.user.id, task: task.id, model: result.model.id, dropped: result.dropped, removed: result.removed, ...result.usage }, 'ai helper');
+    const allowance = await allowanceFor(deps.db, auth.user.id, settings);
+    const { running: _running, ...left } = allowance;
+    return { output: result.output, response: { model: result.model, removed: result.removed, dropped: result.dropped, allowance: left } };
+  } catch (err) {
+    const runError = err instanceof RunError ? err : null;
+    await finishRequest(deps.db, id, { outcome: runError ? OUTCOME[runError.kind] : 'failed', ...(runError?.model ? { provider: runError.model.provider, model: runError.model.id } : {}), ...runError?.usage });
+    if (!runError) throw err;
+    req.log[runError.kind === 'unavailable' ? 'error' : 'warn']({ userId: auth.user.id, task: task.id, kind: runError.kind, detail: runError.message }, 'ai helper failed');
+    throw failure(runError);
+  }
+}
+
+export async function aiRoutes(app: FastifyInstance, deps: AppDeps) {
+  // By address as well as by account: one address cannot run through many accounts' allowances.
+  const addressLimit = { config: { rateLimit: { max: deps.config.AI_PER_ADDRESS_10_MIN, timeWindow: '10 minutes', keyGenerator: ipKey } } };
+
+  app.get('/api/ai/status', async (req, reply): Promise<AiStatus> => {
+    noStore(reply);
+    const auth = requireAccount(req);
+    const access = await aiAccess(deps, auth);
+    const settings = await loadAiSettings(deps.db, deps);
+    const { running: _running, ...allowance } = await allowanceFor(deps.db, auth.user.id, settings);
+    const models = access.reason ? [] : enabledModels(deps, settings).map(({ id, label, provider }) => ({ id, label, provider }));
+    const available = !access.reason && models.length > 0;
+    return { available, ...(access.reason ? { reason: access.reason } : !models.length ? { reason: 'not_configured' as const } : {}), tasks: available ? access.tasks : [], models, allowance };
+  });
+
+  /** For the privacy page: whether helpers are on for anyone, and which providers receive the text. No sign-in needed. */
+  app.get('/api/ai/about', async (): Promise<AiAbout> => {
+    const settings = await loadAiSettings(deps.db, deps);
+    const providers = [...new Set(enabledModels(deps, settings).map((m) => m.provider))];
+    const flags = (await allFlags(deps.db)).filter((f) => (AI_FLAGS as readonly string[]).includes(f.key));
+    const on = providers.length > 0 && flags.some((f) => f.enabled || f.rolloutPercent > 0 || f.roles.length > 0 || f.userIds.length > 0);
+    return { on, providers: on ? providers : [] };
+  });
+
+  app.post('/api/ai/tasks/:task', addressLimit, async (req): Promise<AiRunResponse> => {
+    const auth = requireAccount(req);
+    const { task } = parse(z.object({ task: z.string().max(80) }), req.params);
+    const body = parse(aiRunRequestSchema, req.body ?? {});
+    const { output, response } = await run(deps, req, auth, task, body.input, { ...(body.model ? { model: body.model } : {}), fallback: body.fallback });
+    return { output, ...response };
+  });
+
+  /* The set editor's draft dialog: the same task under its original addresses and shapes. */
+
+  app.get('/api/ai/drafts/status', async (req, reply): Promise<AiDraftStatus> => {
+    noStore(reply);
+    const auth = requireAccount(req);
+    const access = await aiAccess(deps, auth);
+    const settings = await loadAiSettings(deps.db, deps);
+    const left = await allowanceFor(deps.db, auth.user.id, settings);
+    const ok = access.tasks.includes('set.draft_questions') && enabledModels(deps, settings).length > 0;
+    return { available: ok, ...(ok ? {} : { reason: access.reason ?? 'not_configured' }), remainingToday: left.remaining, limitToday: left.limit };
+  });
+
+  app.post('/api/ai/drafts', addressLimit, async (req): Promise<AiDraftResponse> => {
+    const auth = requireAccount(req);
+    const extra = parse(z.object({ model: z.string().max(200).optional(), fallback: z.boolean().default(true) }), { model: (req.body as { model?: unknown } | null)?.model, fallback: (req.body as { fallback?: unknown } | null)?.fallback });
+    const body = parse(aiDraftRequestSchema, req.body);
+    if (audienceOf(auth) === 'student' && !(await aiAccess(deps, auth)).tasks.includes('set.draft_questions')) throw forbidden('AI drafts are for teacher accounts.');
+    const { output, response } = await run(deps, req, auth, 'set.draft_questions', body, { ...(extra.model ? { model: extra.model } : {}), fallback: extra.fallback });
+    return { questions: output as Question[], dropped: response.dropped, remainingToday: response.allowance.remaining, model: response.model, removed: response.removed };
+  });
+
+  await aiAdminRoutes(app, deps);
+}
+

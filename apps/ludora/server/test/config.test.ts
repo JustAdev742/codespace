@@ -59,3 +59,36 @@ describe('the address people open', () => {
     expect(() => loadConfig({ ...key, RENDER_EXTERNAL_URL: 'not a url' })).toThrow(/PUBLIC_ORIGIN/);
   });
 });
+
+describe('AI providers', () => {
+  it('has none unless AI_PROVIDERS is set, and keeps the default limits', () => {
+    const c = loadConfig({ APP_ENV: 'development' });
+    expect(c.AI_PROVIDERS).toEqual([]);
+    expect(c.AI_TIMEOUT_SEC).toBe(60);
+    expect(c.AI_PER_ADDRESS_10_MIN).toBe(60);
+    expect(loadConfig({ APP_ENV: 'development', AI_PROVIDERS: '' }).AI_PROVIDERS).toEqual([]);
+  });
+
+  it('reads a JSON list of providers, with plain or labelled models', () => {
+    const c = loadConfig({ APP_ENV: 'development', AI_PROVIDERS: JSON.stringify([{ name: 'Groq', baseUrl: 'https://api.groq.com/openai/v1', apiKey: 'k', models: ['m1', { id: 'm2', label: 'Model two' }] }]) });
+    expect(c.AI_PROVIDERS).toEqual([{ name: 'Groq', baseUrl: 'https://api.groq.com/openai/v1', apiKey: 'k', models: ['m1', { id: 'm2', label: 'Model two' }], jsonMode: true }]);
+  });
+
+  it('refuses a broken AI_PROVIDERS without repeating it, since it holds keys', () => {
+    const secret = 'sk-secret-value-0123456789';
+    const broken = (value: string) => {
+      try {
+        loadConfig({ APP_ENV: 'development', AI_PROVIDERS: value });
+        return '';
+      } catch (err) {
+        return (err as Error).message;
+      }
+    };
+    expect(broken(`[{"name":"Groq","apiKey":"${secret}"`)).toMatch(/AI_PROVIDERS must be a JSON list/);
+    const missing = broken(JSON.stringify([{ name: 'Groq', apiKey: secret, models: [] }]));
+    expect(missing).toMatch(/AI_PROVIDERS: .*baseUrl/);
+    expect(missing).not.toContain(secret);
+    expect(broken(JSON.stringify([{ name: 'X', baseUrl: 'ftp://x.example', models: ['m'] }]))).toMatch(/AI_PROVIDERS/);
+    expect(() => loadConfig({ APP_ENV: 'development', AI_TIMEOUT_SEC: '0' })).toThrow(/AI_TIMEOUT_SEC/);
+  });
+});

@@ -189,9 +189,12 @@ Nothing secret is committed; copy `.env.example` to `.env` for compose.
 | `PORT`, `HOST` | no | Default `8787`, `0.0.0.0`. |
 | `LOG_LEVEL` | no | `info` by default. Cookies and authorisation headers are redacted from logs. |
 | `UPLOAD_DIR` | no | Where uploaded question images are kept. The image uses `/data/uploads`, which compose mounts as the `uploads` volume so images survive upgrades. |
-| `ANTHROPIC_API_KEY` | no | Turns on AI question drafts in the set editor, once staff also switch on the `ai.question_drafts` flag. It stays on the server and is never sent to browsers. |
-| `ANTHROPIC_MODEL` | no | The Claude model that drafts questions. Default `claude-opus-5-5`. |
-| `AI_DRAFTS_DAILY_LIMIT` | no | Draft requests allowed across the whole site in any 24 hours, to cap spending. Default 500. Each account also has its own allowance of 30 a day. |
+| `AI_PROVIDERS` | no | AI providers for the AI helpers, as a JSON list of services that speak the OpenAI chat-completions API (Groq, OpenRouter, Cerebras, Mistral and others): `[{"name":"Groq","baseUrl":"https://api.groq.com/openai/v1","apiKey":"...","models":[{"id":"llama-3.3-70b-versatile","label":"Llama 3.3 70B"}]}]`. Add `"jsonMode": false` for a provider that rejects JSON mode. Unset: no helpers. Keys stay on the server and are never shown, logged or sent to browsers. Staff then switch on `ai.helpers_teachers` and/or `ai.helpers_students` (`docs/features/ai.md`). |
+| `ANTHROPIC_API_KEY` | no | Adds Anthropic as one more AI provider, alongside any in `AI_PROVIDERS`. It stays on the server and is never sent to browsers. |
+| `ANTHROPIC_MODEL` | no | The Claude model used when `ANTHROPIC_API_KEY` is set. Default `claude-opus-5-5`. |
+| `AI_DRAFTS_DAILY_LIMIT` | no | AI helper requests allowed across the whole site in any 24 hours, to cap use of a provider's own limit. Default 500. Staff can change it on the AI staff page without a redeploy; each account's own allowance (default 20 in any 5 hours) is set there too. |
+| `AI_TIMEOUT_SEC` | no | How long one AI provider may take before Ludora gives up on it and tries the next model. Default 60. |
+| `AI_PER_ADDRESS_10_MIN` | no | AI helper requests one address may make in ten minutes, across all its accounts. Default 60. |
 | `SMTP_URL` | no | Unused: Ludora does not send email (D38). |
 
 ### Settings from a file

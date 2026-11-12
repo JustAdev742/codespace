@@ -59,4 +59,86 @@ export interface AiDraftResponse {
   /** Drafts that broke Ludora's question rules and were left out. */
   dropped: number;
   remainingToday: number;
+  /** The model that wrote the drafts, when the server says. */
+  model?: AiModelOption;
+  /** Email addresses and phone numbers taken out before sending. */
+  removed?: number;
 }
+
+/* ------------------------------- AI helpers ------------------------------- */
+
+/*
+ * AI helpers: small, fixed jobs inside the making tools (improve a question's
+ * wording, outline a lesson, suggest a game mode). Each job is a registered
+ * task on the server with its own input and output rules; the browser only
+ * ever sends a task's own fields, never instructions for the model.
+ */
+
+/** The tasks Ludora itself registers. Other areas may register more on the server. */
+export const AI_TASK_IDS = [
+  'set.draft_questions',
+  'question.improve',
+  'question.wrong_answers',
+  'question.explain',
+  'question.difficulty',
+  'set.age_version',
+  'set.describe',
+  'lesson.outline',
+  'lesson.slide',
+  'lesson.discussion',
+  'game.suggest_mode',
+  'any.name_describe',
+] as const;
+export type AiTaskId = (typeof AI_TASK_IDS)[number];
+
+/** A model the owner configured and staff left switched on, by its plain name. */
+export interface AiModelOption {
+  /** Stable id, "provider/model". */
+  id: string;
+  label: string;
+  provider: string;
+}
+
+/** Helper requests a person may make in a rolling window, and when the next one comes back. */
+export interface AiAllowance {
+  limit: number;
+  remaining: number;
+  windowHours: number;
+  /** When one more request becomes available again; null while some are left or none are used. */
+  nextAt: string | null;
+}
+
+export type AiUnavailable = 'not_configured' | 'not_allowed' | 'not_enabled';
+
+export interface AiStatus {
+  available: boolean;
+  reason?: AiUnavailable;
+  /** The tasks this person may use. */
+  tasks: string[];
+  models: AiModelOption[];
+  allowance: AiAllowance;
+}
+
+export interface AiRunResponse<T = unknown> {
+  output: T;
+  /** The model that answered. */
+  model: AiModelOption;
+  /** Email addresses and phone numbers taken out of the text before it was sent. */
+  removed: number;
+  /** Parts of the answer left out for breaking Ludora's rules. */
+  dropped: number;
+  allowance: AiAllowance;
+}
+
+/** What the privacy page says: whether helpers are on and which providers receive the text. */
+export interface AiAbout {
+  on: boolean;
+  providers: string[];
+}
+
+/** The body of a helper request: the task's own fields, the model the person picked, and whether another may stand in. */
+export const aiRunRequestSchema = z.object({
+  input: z.unknown(),
+  model: z.string().max(200).optional(),
+  fallback: z.boolean().default(true),
+});

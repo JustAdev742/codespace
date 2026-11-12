@@ -12,6 +12,7 @@ import { BackLink, dateTimeText, errorText, hasStatus, usePageTitle } from '../r
 import { useClassList } from '../classes/classData.ts';
 import { KIND_LABEL, lessonKeys, minutesText, moveItem, newStepId, startsText, toLocalInput, useLesson, type LessonDetail, type StepInfo } from './data.ts';
 import { StepDialog } from './StepDialog.tsx';
+import { LessonOutlineHelper } from '../ai/AiLessonTools.tsx';
 
 /*
  * /lessons/:id: one lesson. Its title, goals and standings switch; its steps in order (drag a step
@@ -566,6 +567,18 @@ function Editor({ detail }: { detail: LessonDetail }) {
           ) : (
             <p className="mt-4 text-sm text-text-2">This lesson has {LESSON_LIMITS.steps} steps, the most a lesson can have.</p>
           )}
+          {/* Takes no room at all when AI helpers are off (the helper then draws nothing). */}
+          <div className="mt-3 empty:hidden">
+            <LessonOutlineHelper
+              stepCount={steps.length}
+              onAccept={(o) => {
+                const added = o.steps.slice(0, LESSON_LIMITS.steps - steps.length);
+                // A title or goals the teacher already wrote stay theirs.
+                change({ ...draft, title: !draft.title.trim() || draft.title === 'New lesson' ? o.title : draft.title, goals: draft.goals.some((g) => g.trim()) ? draft.goals : o.goals, steps: [...steps, ...added] });
+                setAnnounce(`Added ${plural(added.length, 'step')} from the outline.`);
+              }}
+            />
+          </div>
         </Panel>
         <Schedule detail={detail} />
         <Runs id={id} />

@@ -23,6 +23,9 @@ async function check(page: Page, name: string) {
     mkdirSync(SHOTS, { recursive: true });
     await page.screenshot({ path: `${SHOTS}/${name}.png`, fullPage: true });
   }
+  // From the top of the page: left scrolled, a control can sit half under the sticky top bar, which axe
+  // reports as a touch target covered by the bar's buttons. That is where the page is, not the control.
+  await page.evaluate(() => window.scrollTo(0, 0));
   const axe = await new AxeBuilder({ page }).withTags(AXE_TAGS).analyze();
   expect(axe.violations.map((v) => `${v.id}: ${v.nodes.map((n) => n.target.join(' ')).join(', ')}`), name).toEqual([]);
   const sideways = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);

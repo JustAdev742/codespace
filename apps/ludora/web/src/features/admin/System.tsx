@@ -157,7 +157,7 @@ export default function System() {
             <Stat label="Errors reported" value={formatNumber(errorsTotal)} hint={errorsBySource || undefined} />
           </Section>
           <Section title="Optional features">
-            <FeatureStat label="AI question drafts" on={s.features.aiQuestionDrafts} needs="ANTHROPIC_API_KEY" />
+            <FeatureStat label="AI helpers" on={s.features.aiQuestionDrafts} needs="AI_PROVIDERS" />
             <FeatureStat label="Email" on={s.features.email} needs="SMTP_URL" />
           </Section>
         </div>

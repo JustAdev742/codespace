@@ -19,6 +19,7 @@ import { ShortEditor } from './types/ShortEditor.tsx';
 import { TrueFalseEditor } from './types/TrueFalseEditor.tsx';
 import { BlanksEditor } from './types/BlanksEditor.tsx';
 import { SortEditor } from './types/SortEditor.tsx';
+import { AiQuestionTools } from '../../ai/AiQuestionTools.tsx';
 
 const NO_ERRORS: FieldErrors = {};
 const OPTION_KEYS = ['explanation', 'timeLimit', 'points', 'difficulty', 'tags'] as const;
@@ -283,6 +284,7 @@ export const QuestionCard = memo(function QuestionCard({ question: q, index, tot
           />
           <TypeEditor q={q} errors={errors} edit={edit} />
           <MoreOptions q={q} errors={errors} edit={edit} />
+          <AiQuestionTools q={q} n={n} edit={edit} />
         </div>
       ) : null}
     </li>

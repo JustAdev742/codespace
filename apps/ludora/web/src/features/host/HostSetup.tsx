@@ -14,6 +14,7 @@ import { Button, ButtonLink } from '../../ui/Button.tsx';
 import { OpenGames, openGamesKey, useOpenGames, type OpenGame } from './OpenGames.tsx';
 import { SaveGameDialog, type MadeGame } from '../games/SaveGameDialog.tsx';
 import { ChosenSet, ModeGrid, SetButton, type Choice } from './pickers.tsx';
+import { ModeSuggestHelper } from '../ai/AiModeHelper.tsx';
 
 // Lessons: "Add to a lesson instead" (features/lessons), loaded when opened.
 const AddToLessonDialog = lazy(() => import('../lessons/AddToLesson.tsx'));
@@ -496,6 +497,16 @@ function Setup({ solo, preset, gameId, making, again, classId }: { solo: boolean
           <StepTitle id="host-step-mode" n={2}>
             Game mode
           </StepTitle>
+          {set && !solo ? (
+            <ModeSuggestHelper
+              setId={set.id}
+              onAccept={(mode, variant, s) => {
+                setChoice({ mode, variant });
+                setSettings(s.settings);
+                setCommon(s.common);
+              }}
+            />
+          ) : null}
           <ModePicker
             value={choice}
             solo={solo}

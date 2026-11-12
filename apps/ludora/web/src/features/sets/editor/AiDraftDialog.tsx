@@ -1,7 +1,10 @@
 import { useEffect, useId, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { Check, Sparkles } from 'lucide-react';
 import { AI_DRAFT_LEVEL_LABELS, AI_DRAFT_LEVELS, AI_DRAFT_TYPES, QUESTION_TYPE_LABELS, type AiDraftLevel, type AiDraftResponse, type AiDraftType, type Question } from '@ludora/shared';
 import { api, ApiError } from '../../../lib/api.ts';
+import { ModelPicker } from '../../ai/AiHelper.tsx';
+import { AI_STATUS_KEY, allowanceText, chosenModel, readModelChoice, saveModelChoice, useAiStatus, type ModelChoice } from '../../ai/aiData.ts';
 import { plural } from '../../../lib/format.ts';
 import { Button } from '../../../ui/Button.tsx';
 import { Dialog, Field, Input, Select, Textarea } from '../../../ui/primitives.tsx';
@@ -98,6 +101,13 @@ export function AiDraftDialog({
   const [result, setResult] = useState<AiDraftResponse | null>(null);
   const [picked, setPicked] = useState<Set<string>>(new Set());
   const typesId = useId();
+  // The helpers' status, when the server has it: models to pick from and the shared allowance.
+  const qc = useQueryClient();
+  const status = useAiStatus().data;
+  const helpers = status?.available ? status : null;
+  const [choice, setChoice] = useState<ModelChoice>(readModelChoice);
+  const providers = [...new Set(helpers?.models.map((m) => m.provider) ?? [])];
+  const left = helpers ? helpers.allowance.remaining : remaining;
 
   // Drafts not added yet, and what was typed, survive closing the dialog: asking again would use up a request.
   useEffect(() => {
@@ -116,7 +126,9 @@ export function AiDraftDialog({
     if (!form.types.length) return setFieldErrors({ types: 'Choose at least one kind of question.' });
     setBusy(true);
     try {
-      const res = await api.post<AiDraftResponse>('/api/ai/drafts', { topic: form.topic, level: form.level, count: form.count, types: form.types, language, ...(form.notes.trim() ? { notes: form.notes } : {}) });
+      const pick = helpers && helpers.models.length > 1;
+      const model = pick ? chosenModel(helpers, choice) : undefined;
+      const res = await api.post<AiDraftResponse>('/api/ai/drafts', { topic: form.topic, level: form.level, count: form.count, types: form.types, language, ...(form.notes.trim() ? { notes: form.notes } : {}), ...(model ? { model } : {}), ...(pick ? { fallback: choice.fallback } : {}) });
       setResult(res);
       setPicked(new Set(res.questions.slice(0, Math.max(0, room)).map((q) => q.id)));
     } catch (err) {
@@ -127,6 +139,7 @@ export function AiDraftDialog({
     } finally {
       setBusy(false);
       onSettled();
+      void qc.invalidateQueries({ queryKey: AI_STATUS_KEY });
     }
   };
 
@@ -146,7 +159,7 @@ export function AiDraftDialog({
       onOpenChange={(v) => !busy && onOpenChange(v)}
       size="lg"
       title="Draft questions with AI"
-      description="Claude drafts questions from your topic. Check each one before you use it: AI can get facts wrong."
+      description="AI drafts questions from your topic. Check each one before you use it: AI can get facts wrong."
       footer={
         result ? (
           <>
@@ -167,7 +180,7 @@ export function AiDraftDialog({
             <Button onClick={() => onOpenChange(false)} disabled={busy}>
               Cancel
             </Button>
-            <Button variant="primary" icon={<Sparkles className="size-4" aria-hidden />} loading={busy} disabled={remaining <= 0} onClick={() => void draft()}>
+            <Button variant="primary" icon={<Sparkles className="size-4" aria-hidden />} loading={busy} disabled={left <= 0} onClick={() => void draft()}>
               Draft questions
             </Button>
           </>
@@ -179,7 +192,13 @@ export function AiDraftDialog({
           <p className="text-sm text-text-2" aria-live="polite">
             {plural(result.questions.length, 'draft')} ready. Untick any you do not want; you can edit the rest in the set.
             {result.dropped ? ` ${plural(result.dropped, 'draft')} broke Ludora's question rules and ${result.dropped === 1 ? 'was' : 'were'} left out.` : ''}
+            {result.removed ? ` We took out ${result.removed === 1 ? 'an email address or phone number' : `${result.removed} email addresses or phone numbers`} before sending.` : ''}
           </p>
+          {result.model ? (
+            <p className="text-xs text-text-3">
+              Drafted by {result.model.label} ({result.model.provider}).
+            </p>
+          ) : null}
           {tooMany ? (
             <p role="alert" className={`text-sm font-semibold ${ERROR_TEXT}`}>
               The set has room for {plural(Math.max(0, room), 'more question')}. Untick some drafts first.
@@ -237,14 +256,25 @@ export function AiDraftDialog({
             ) : null}
           </fieldset>
           <Field
-            label="Notes for Claude (optional)"
-            hint="Anything to include or avoid. Your topic and notes are sent to Anthropic to write the drafts, so leave out pupils' names and personal details."
+            label="Notes for the AI (optional)"
+            hint={`Anything to include or avoid. Your topic and notes are sent to ${providers.length ? providers.join(' or ') : 'an AI provider'} to write the drafts, so leave out pupils' names and personal details.`}
             error={fieldErrors.notes}
           >
             {(p) => <Textarea {...p} value={form.notes} maxLength={500} rows={3} onChange={(e) => set('notes', e.target.value)} disabled={busy} />}
           </Field>
+          {helpers ? (
+            <ModelPicker
+              status={helpers}
+              choice={choice}
+              disabled={busy}
+              onChange={(c) => {
+                setChoice(c);
+                saveModelChoice(c);
+              }}
+            />
+          ) : null}
           <p className="text-sm text-text-2" aria-live="polite">
-            {busy ? 'Drafting. This can take up to a minute.' : remaining > 0 ? `You can ask for drafts ${plural(remaining, 'more time')} today (${limit} a day).` : `You have used today's ${limit} requests. Try again tomorrow.`}
+            {busy ? 'Drafting. This can take up to a minute.' : helpers ? allowanceText(helpers.allowance) : remaining > 0 ? `You can ask for drafts ${plural(remaining, 'more time')} today (${limit} a day).` : `You have used today's ${limit} requests. Try again tomorrow.`}
           </p>
           {problem ? (
             <p role="alert" className={`text-sm font-semibold ${ERROR_TEXT}`}>

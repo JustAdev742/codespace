@@ -16,6 +16,7 @@ import { FolderDialog, ShareDialog, StatsPanel, VersionsDialog } from './SetTool
 import { answerText } from './answers.ts';
 import { MathText } from './math/MathText.tsx';
 import { ReportDialog } from '../moderation/ReportDialog.tsx';
+import { AiSetTools } from '../ai/AiSetTools.tsx';
 
 // Lessons: "Add to a lesson" (features/lessons), loaded when opened.
 const AddToLessonDialog = lazy(() => import('../lessons/AddToLesson.tsx'));
@@ -178,6 +179,7 @@ export default function SetDetail() {
       {editable ? <VersionsDialog setId={set.id} open={versions} onOpenChange={setVersions} /> : null}
       {owner ? <FolderDialog key={set.folder ?? ''} setId={set.id} folder={set.folder ?? null} open={filing} onOpenChange={setFiling} /> : null}
       {editable ? <StatsPanel setId={set.id} /> : null}
+      {editable && questions ? <AiSetTools set={set} questions={questions} /> : null}
       <Panel className="p-5">
         <div className="mb-4 flex flex-wrap gap-1.5">
           {Object.entries(typeCounts).map(([t, n]) => (

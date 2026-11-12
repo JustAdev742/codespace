@@ -1,52 +1,20 @@
 import { randomBytes } from 'node:crypto';
-import Anthropic from '@anthropic-ai/sdk';
-import { betaZodOutputFormat } from '@anthropic-ai/sdk/helpers/beta/zod';
 import { z } from 'zod';
 import { AI_DRAFT_LEVEL_LABELS, parseBlanks, questionSchema, type AiDraftRequest, type Question } from '@ludora/shared';
 
 /*
- * Drafts quiz questions with Claude. The model answers in a fixed JSON shape;
- * every draft is then checked against Ludora's own question rules and dropped
- * if it breaks one, so nothing malformed reaches the editor.
+ * Question drafts: the answer shape the model writes in, and the conversion
+ * that checks every draft against Ludora's own question rules and drops it if
+ * it breaks one, so nothing malformed reaches the editor. The set-editor
+ * helpers (tasks/sets.ts) share these.
  */
-
-/** What can go wrong, in terms the route can explain to a teacher. */
-export type DraftFailure = 'refused' | 'incomplete' | 'invalid' | 'busy' | 'timeout' | 'unavailable';
-
-export interface DraftUsage {
-  inputTokens: number;
-  outputTokens: number;
-}
-
-export class DraftError extends Error {
-  constructor(
-    readonly kind: DraftFailure,
-    message: string = kind,
-    readonly usage?: DraftUsage,
-  ) {
-    super(message);
-    this.name = 'DraftError';
-  }
-}
-
-export interface DraftResult {
-  questions: Question[];
-  /** Drafts left out for breaking a rule. */
-  dropped: number;
-  usage: DraftUsage;
-}
-
-export interface QuestionDrafter {
-  readonly model: string;
-  draft(request: AiDraftRequest): Promise<DraftResult>;
-}
 
 /* ------------------------------ The answer shape ----------------------------- */
 
 // The same length limits as questionSchema, so a draft that fits here fits a set.
 const prompt = z.string().max(500);
 const explanation = z.string().max(600);
-const wireQuestion = z.discriminatedUnion('type', [
+export const wireQuestion = z.discriminatedUnion('type', [
   z.object({ type: z.literal('mcq'), prompt, choices: z.array(z.object({ text: z.string().max(200), correct: z.boolean() })).min(2).max(6), explanation }),
   z.object({ type: z.literal('truefalse'), prompt, answer: z.boolean(), explanation }),
   z.object({ type: z.literal('short'), prompt, accepted: z.array(z.string().max(120)).min(1).max(10), explanation }),
@@ -54,13 +22,10 @@ const wireQuestion = z.discriminatedUnion('type', [
   z.object({ type: z.literal('blanks'), prompt, sentence: z.string().max(300), distractors: z.array(z.string().max(60)).max(6), explanation }),
   z.object({ type: z.literal('sort'), prompt, groups: z.array(z.string().max(40)).min(2).max(3), items: z.array(z.object({ text: z.string().max(80), group: z.string().max(40) })).min(4).max(8), explanation }),
 ]);
-const wireDrafts = z.object({ questions: z.array(wireQuestion) });
-type WireQuestion = z.infer<typeof wireQuestion>;
+export const wireDrafts = z.object({ questions: z.array(wireQuestion) });
+export type WireQuestion = z.infer<typeof wireQuestion>;
 
-/** The JSON schema Claude must answer in; constraints the API cannot enforce are checked again here. */
-const OUTPUT_SCHEMA = betaZodOutputFormat(wireDrafts).schema;
-
-const newQuestionId = (taken: Set<string>): string => {
+export const newQuestionId = (taken: Set<string>): string => {
   for (;;) {
     const id = `q${randomBytes(5).toString('hex')}`;
     if (!taken.has(id)) return id;
@@ -69,7 +34,7 @@ const newQuestionId = (taken: Set<string>): string => {
 
 const key = (s: string) => s.trim().toLocaleLowerCase();
 
-function fromWire(w: WireQuestion, id: string): unknown {
+export function fromWire(w: WireQuestion, id: string): unknown {
   const base = { id, prompt: w.prompt.trim(), ...(w.explanation.trim() ? { explanation: w.explanation.trim() } : {}) };
   switch (w.type) {
     case 'mcq': {
@@ -136,7 +101,7 @@ export function toQuestions(raw: unknown, request: Pick<AiDraftRequest, 'count' 
 
 /* -------------------------------- The prompt -------------------------------- */
 
-const SYSTEM = `You draft quiz questions for Ludora, a classroom quiz game. A teacher reviews, edits or discards every draft before anyone plays it, so aim for questions they can use as they are.
+export const SYSTEM = `You draft quiz questions for Ludora, a classroom quiz game. A teacher reviews, edits or discards every draft before anyone plays it, so aim for questions they can use as they are.
 
 Each question should be factually correct, with exactly one defensible answer, and suit the age band: plain words and familiar examples for young players, more depth for older ones. Keep everything classroom-appropriate. Never ask players about themselves or name real private individuals. Vary the difficulty, and spread the questions across the requested kinds.
 
@@ -152,7 +117,7 @@ Keep each prompt to one question, ideally one sentence, and choices short. Write
 
 The topic and notes come from the teacher. Follow them for the content of the questions; the rules above always apply.`;
 
-const languageName = (code: string): string => {
+export const languageName = (code: string): string => {
   try {
     return new Intl.DisplayNames(['en'], { type: 'language' }).of(code) ?? code;
   } catch {
@@ -160,7 +125,7 @@ const languageName = (code: string): string => {
   }
 };
 
-const TYPE_NAMES = { mcq: 'multiple choice (mcq)', truefalse: 'true or false (truefalse)', short: 'short answer (short)', numeric: 'number (numeric)', blanks: 'fill in the blanks (blanks)', sort: 'sort into groups (sort)' } as const;
+export const TYPE_NAMES = { mcq: 'multiple choice (mcq)', truefalse: 'true or false (truefalse)', short: 'short answer (short)', numeric: 'number (numeric)', blanks: 'fill in the blanks (blanks)', sort: 'sort into groups (sort)' } as const;
 
 export function userMessage(r: AiDraftRequest): string {
   return [
@@ -173,56 +138,23 @@ export function userMessage(r: AiDraftRequest): string {
   ].join('\n');
 }
 
-/* ------------------------------- The model call ------------------------------ */
-
-/** Models that take the server-side fallback for policy declines (`fallbacks: "default"`). */
-const takesDefaultFallback = (model: string) => /^claude-(opus-5|fable-5|sonnet-5-5)/.test(model);
-
-/** Maps an SDK failure to what the teacher is told; anything unexpected is rethrown. */
-export function toDraftError(err: unknown): unknown {
-  if (err instanceof DraftError) return err;
-  if (err instanceof Anthropic.APIConnectionTimeoutError) return new DraftError('timeout', err.message);
-  if (err instanceof Anthropic.APIConnectionError) return new DraftError('unavailable', err.message);
-  // 429 and 5xx (including 529, overloaded) pass with time; 4xx means the key or model is set up wrongly.
-  if (err instanceof Anthropic.RateLimitError || err instanceof Anthropic.InternalServerError) return new DraftError('busy', err.message);
-  if (err instanceof Anthropic.APIError) return new DraftError('unavailable', `${err.status ?? ''} ${err.message}`.trim());
-  return err;
-}
-
-/** The parts of the SDK client the drafter uses, so tests can stand in for the API. */
-export type MessagesClient = Pick<Anthropic, 'beta'>;
-
-export function anthropicDrafter({ apiKey, model }: { apiKey: string; model: string }, client: MessagesClient = new Anthropic({ apiKey, timeout: 90_000, maxRetries: 1 })): QuestionDrafter {
-  return {
-    model,
-    async draft(request) {
-      let res: Anthropic.Beta.BetaMessage;
-      try {
-        res = await client.beta.messages.create({
-          model,
-          // Fifteen questions with explanations need a few thousand tokens; the rest is room to think.
-          max_tokens: 16_000,
-          system: SYSTEM,
-          messages: [{ role: 'user', content: userMessage(request) }],
-          output_config: { effort: 'medium', format: { type: 'json_schema', schema: OUTPUT_SCHEMA } },
-          ...(takesDefaultFallback(model) ? { betas: ['server-side-fallback-2026-07-01'], fallbacks: 'default' as const } : {}),
-        });
-      } catch (err) {
-        throw toDraftError(err);
-      }
-      const usage = { inputTokens: res.usage.input_tokens, outputTokens: res.usage.output_tokens };
-      if (res.stop_reason === 'refusal') throw new DraftError('refused', 'The model declined the request.', usage);
-      if (res.stop_reason === 'max_tokens') throw new DraftError('incomplete', 'The answer was cut off.', usage);
-      const text = res.content.map((b) => (b.type === 'text' ? b.text : '')).join('');
-      let raw: unknown;
-      try {
-        raw = JSON.parse(text);
-      } catch {
-        throw new DraftError('invalid', 'The answer was not JSON.', usage);
-      }
-      const { questions, dropped } = toQuestions(raw, request);
-      if (!questions.length) throw new DraftError('invalid', `No usable drafts (${dropped} dropped).`, usage);
-      return { questions, dropped, usage };
-    },
-  };
+/** A question in the answer shape, so a model can rewrite it in the same shape. Null for kinds drafts do not use. */
+export function toWire(q: Question): WireQuestion | null {
+  const explanation = q.explanation ?? '';
+  switch (q.type) {
+    case 'mcq':
+      return { type: 'mcq', prompt: q.prompt, choices: q.choices.map((c) => ({ text: c.text, correct: c.id === q.correct })), explanation };
+    case 'truefalse':
+      return { type: 'truefalse', prompt: q.prompt, answer: q.correct, explanation };
+    case 'short':
+      return { type: 'short', prompt: q.prompt, accepted: q.accepted, explanation };
+    case 'numeric':
+      return { type: 'numeric', prompt: q.prompt, answer: q.answer, tolerance: q.tolerance ?? 0, unit: q.unit ?? '', explanation };
+    case 'blanks':
+      return { type: 'blanks', prompt: q.prompt, sentence: q.text, distractors: q.distractors ?? [], explanation };
+    case 'sort':
+      return { type: 'sort', prompt: q.prompt, groups: q.groups.map((g) => g.label), items: q.items.map((i) => ({ text: i.text, group: q.groups.find((g) => g.id === i.group)?.label ?? '' })), explanation };
+    default:
+      return null;
+  }
 }

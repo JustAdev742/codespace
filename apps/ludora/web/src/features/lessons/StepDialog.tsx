@@ -7,6 +7,7 @@ import { Button } from '../../ui/Button.tsx';
 import { ToggleChips } from '../../ui/game.tsx';
 import { QuestionImage } from '../sets/editor/QuestionImage.tsx';
 import { ERROR_TEXT } from '../sets/editor/parts.tsx';
+import { DiscussionHelper, SlideHelper } from '../ai/AiLessonTools.tsx';
 
 /*
  * Editing one step of a lesson: a game (a set, a mode and the two settings teachers change most),
@@ -175,10 +176,12 @@ export function StepDialog({ open, step, setTitle, onOpenChange, onSave }: { ope
               <p className="mb-1.5 text-sm font-semibold">Picture (optional)</p>
               <QuestionImage media={draft.image ?? undefined} altId="slide-image-alt" onChange={(m) => setDraft({ ...draft, image: m ?? null })} />
             </div>
+            <SlideHelper title={draft.title} lines={draft.lines} onAccept={(o) => setDraft({ ...draft, title: o.title, lines: o.lines })} />
           </>
         ) : (
           <>
             <Field label="Question to talk about">{(p) => <Textarea {...p} rows={3} value={draft.prompt} maxLength={LESSON_LIMITS.prompt} onChange={(e) => setDraft({ ...draft, prompt: e.target.value })} />}</Field>
+            <DiscussionHelper prompt={draft.prompt} onAccept={(prompt) => setDraft({ ...draft, prompt })} />
             <Field label="Timer">
               {(p) => (
                 <Select {...p} value={String(draft.seconds)} onChange={(e) => setDraft({ ...draft, seconds: Number(e.target.value) })}>

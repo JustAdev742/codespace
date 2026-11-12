@@ -6,7 +6,6 @@ import { seedContent } from './db/seed.ts';
 import { buildApp } from './app.ts';
 import { allRoutes } from './routes.ts';
 import { attachRealtime } from './realtime/attach.ts';
-import { anthropicDrafter } from './modules/ai/drafter.ts';
 
 const envFiles = loadEnvFiles();
 const config = loadConfig();
@@ -17,8 +16,7 @@ await runMigrations(setup.db);
 await seedContent(setup.db);
 await setup.pool.end();
 const { db, pool } = createDb(config.databaseUrl, 20);
-const drafter = config.ANTHROPIC_API_KEY ? anthropicDrafter({ apiKey: config.ANTHROPIC_API_KEY, model: config.ANTHROPIC_MODEL }) : undefined;
-const { app, deps } = await buildApp({ config, db, pool, ...(drafter ? { drafter } : {}) }, allRoutes);
+const { app, deps } = await buildApp({ config, db, pool }, allRoutes);
 const realtime = attachRealtime(app, deps);
 await app.listen({ port: config.PORT, host: config.HOST });
 app.log.info(`Ludora (${config.APP_ENV}) listening on ${config.HOST}:${config.PORT}`);
