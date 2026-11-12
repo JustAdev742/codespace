@@ -22,7 +22,7 @@
 import { z } from 'zod';
 import { answerSchema } from '@ludora/shared';
 import { defineMode } from '../../sdk/define.ts';
-import type { EnginePlayer, EngineTeam, ModeContext, PlayerId } from '../../sdk/types.ts';
+import type { BotContext, BotMind, EnginePlayer, EngineTeam, ModeContext, PlayerId } from '../../sdk/types.ts';
 import { streamInit, streamNext, streamQuestionView, streamSubmit, type StreamState } from '../../mechanics/selfPaced.ts';
 import { makeTeams } from '../../teams.ts';
 import { nameOf } from '../rules.ts';
@@ -584,6 +584,55 @@ export function botMove(view: BotView, playerId: string, now: number, coin = fal
 
 /* --------------------------------- mode --------------------------------- */
 
+/**
+ * A practice bot with a mind looks over the moves its map offers and weighs them: claiming land
+ * that opens up ground or reaches a shrine, raiding an unguarded or weak rival land (more for a
+ * bold bot), shoring up a border it shares with a rival (more for a careful one), or saving energy
+ * for later. A little personal noise means teammates do not all move as one.
+ */
+function mindedMove(view: BotView, mind: BotMind): Action | null {
+  const you = view.you;
+  if (!you || view.winners || you.energy < 1) return null;
+  const { map, owner, fort } = view;
+  const g = grid(map.radius);
+  const blocked = blockedOf(map);
+  const shrine = (l: number) => map.shrines.includes(l);
+  const storm = view.event?.kind === 'storm';
+  const bold = mind.boldness();
+  type Move = { kind: 'claim' | 'raid' | 'fortify' | 'wait'; land: number; v: number };
+  const moves: Move[] = [];
+  const room = (l: number) => g.adj[l]!.filter((n) => owner[n] === NOBODY && !blocked.has(n)).length;
+  const nearShrine = (l: number) => g.adj[l]!.some((n) => shrine(n) && owner[n] === NOBODY);
+  for (const l of you.options.claim) moves.push({ kind: 'claim', land: l, v: 1.1 + room(l) * 0.2 + (shrine(l) ? 1.5 : nearShrine(l) ? 0.6 : 0) });
+  if (!storm) {
+    for (const l of you.options.raid) {
+      const cost = shrine(l) ? SHRINE_RAID_COST : 1;
+      if (cost > you.energy) continue;
+      const known = fort[l]! < 0 ? 1 : fort[l]!;
+      moves.push({ kind: 'raid', land: l, v: (known === 0 ? 1.4 : 1 - known * 0.25) * (0.5 + bold) + (shrine(l) ? 1 : 0) });
+    }
+  }
+  for (const l of you.options.fortify) {
+    if ((shrine(l) ? SHRINE_FORT_COST : 1) > you.energy) continue;
+    const border = shrine(l) || g.adj[l]!.some((n) => owner[n]! >= 0 && owner[n] !== you.team);
+    if (!border) continue;
+    moves.push({ kind: 'fortify', land: l, v: 0.4 + (1 - bold) * 0.7 + (shrine(l) ? 0.5 : 0) - Math.max(0, fort[l]!) * 0.25 });
+  }
+  if (you.energy < you.cap) moves.push({ kind: 'wait', land: -1, v: 0.2 + (1 - bold) * 0.5 - you.energy / Math.max(1, you.cap) * 0.6 });
+  const pick = mind.choose(moves, (m) => m.v, 0.8);
+  if (!pick || pick.kind === 'wait') return null;
+  return { type: pick.kind, land: pick.land };
+}
+
+function mindedBot(view: any, ctx: BotContext, mind: BotMind): Action | null {
+  const v = view as BotView | null;
+  if (!v?.you || v.winners) return null;
+  const move = mindedMove(v, mind);
+  if (move) return move;
+  const q = v.you.question;
+  return q ? { type: 'answer', iid: q.iid, answer: ctx.answer(q.iid) } : null;
+}
+
 export const lanternLands = defineMode<State, Settings, Action>({
   meta,
   settings,
@@ -814,6 +863,7 @@ export const lanternLands = defineMode<State, Settings, Action>({
     return { standings, teamStandings, outcome: 'competitive', summary };
   },
   bot(view, ctx) {
+    if (ctx.mind) return mindedBot(view, ctx, ctx.mind);
     const v = view as BotView | null;
     if (!v?.you || v.winners) return null;
     const move = botMove(v, ctx.playerId, ctx.now, ctx.rng.next() < 0.5);

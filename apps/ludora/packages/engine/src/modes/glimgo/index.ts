@@ -19,7 +19,7 @@
 import { z } from 'zod';
 import type { Media, Question } from '@ludora/shared';
 import { defineMode } from '../../sdk/define.ts';
-import type { ModeContext, PlayerId } from '../../sdk/types.ts';
+import type { BotContext, BotMind, ModeContext, PlayerId } from '../../sdk/types.ts';
 import { DEADLINE_GRACE_MS } from '../../mechanics/syncRounds.ts';
 import { normalizeAnswerText } from '../../questions/grade.ts';
 import { meta, settings } from './meta.ts';
@@ -332,6 +332,38 @@ function promptOf(ctx: ModeContext, qid: string): { prompt: string; media?: Medi
   return { prompt: q.prompt, ...(q.media ? { media: q.media } : {}) };
 }
 
+/* eslint-disable @typescript-eslint/no-explicit-any */
+/**
+ * A practice bot with a mind marks what it believes answers the call, once it has thought about it.
+ * When its answer is not on its card it usually waits; when it cannot put the answer into words it
+ * takes a chance only if it feels bold, because a wrong mark locks it out for a while.
+ */
+function mindedBot(view: any, ctx: BotContext, mind: BotMind): Action | null {
+  const call = view?.call;
+  const you = view?.you;
+  if (view?.phase !== 'call' || !call || !you || you.found) return null;
+  if (you.lockedUntil !== null && you.lockedUntil > ctx.now) return null;
+  const open: { text: string; i: number }[] = [];
+  (you.squares as { text: string; free: boolean; marked: boolean }[]).forEach((sq, i) => {
+    if (!sq.free && !sq.marked) open.push({ text: normalizeAnswerText(sq.text), i });
+  });
+  if (!open.length) return null;
+  const a = ctx.answer(call.iid);
+  const said = a.type === 'short' ? a.text : a.type === 'numeric' ? String(a.value) : null;
+  const sure = mind.sure(call.iid) ?? 0.3;
+  if (said !== null) {
+    const want = normalizeAnswerText(said);
+    const hit = want ? open.find((o) => o.text === want || o.text.startsWith(`${want} `)) : undefined;
+    if (hit) return { type: 'mark', iid: call.iid, square: hit.i };
+  }
+  // Nothing it can name on the card: a bold or desperate bot has a go, the rest wait for the reveal.
+  const urge = (said === null ? 0.35 : 0.12) * mind.boldness() * (1.2 - sure);
+  if (!mind.chance(urge)) return null;
+  const heard = new Set(((view.recent ?? []) as { text: string }[]).map((c) => normalizeAnswerText(c.text)));
+  const pick = mind.choose(open, (o) => (heard.has(o.text) ? -1 : 0), 1);
+  return pick ? { type: 'mark', iid: call.iid, square: pick.i } : null;
+}
+
 export const glimgo = defineMode<State, Settings, Action>({
   meta,
   settings,
@@ -508,6 +540,7 @@ export const glimgo = defineMode<State, Settings, Action>({
     };
   },
   bot(view, ctx) {
+    if (ctx.mind) return mindedBot(view, ctx, ctx.mind);
     const call = view?.call;
     const you = view?.you;
     if (view?.phase !== 'call' || !call || !you || you.found) return null;

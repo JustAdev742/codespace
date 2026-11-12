@@ -263,6 +263,8 @@ export interface RoomPlayerView {
   avatar: AvatarLite | null;
   /** Tapped Ready in the lobby. */
   ready?: boolean;
+  /** A practice bot's personality in a word or two ("Careful", "Quick"). */
+  persona?: string;
 }
 
 export interface FeedItem {

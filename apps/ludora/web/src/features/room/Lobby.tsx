@@ -155,6 +155,7 @@ function Seat({ p, actions, delay, hop, cheering = false }: { p: RoomPlayerView;
         ) : null}
       </span>
       <span className="max-w-full truncate rounded-[var(--radius-s)] bg-[color-mix(in_srgb,var(--stage-4)_82%,transparent)] px-2 py-0.5 text-center text-[length:clamp(var(--name-min,0.95rem),calc(var(--seat)*0.16),1.5rem)] leading-tight font-bold">{p.name}</span>
+      {p.isBot && p.persona ? <span className="max-w-full truncate rounded-full bg-[color-mix(in_srgb,var(--stage-4)_82%,transparent)] px-2 text-xs font-semibold text-text-2">{p.persona}</span> : null}
       {p.avatar?.house ? <HouseChip house={p.avatar.house} /> : null}
       {actions ? <SeatMenu p={p} actions={actions} /> : null}
     </li>

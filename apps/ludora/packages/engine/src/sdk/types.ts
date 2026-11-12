@@ -181,6 +181,52 @@ export interface BotContext<TSettings extends SettingValues = SettingValues> {
   settings: TSettings;
   /** An answer to a shown question in tokens: right with probability `skill`. */
   answer(iid: string): Answer;
+  /**
+   * The bot's mind: only the server's practice bots have one (the test harness's bots do not, and
+   * must keep playing exactly as before). With a mind, `answer` is the mind's answer, the action is
+   * held back until it has finished thinking, and the mode's bot should make its other choices
+   * through the mind (see packages/engine/src/bots). Policies act only on the player's own view.
+   */
+  mind?: BotMind;
+}
+
+/** The traits a practice bot plays with, each 0..1. */
+export interface BotTraits {
+  /** How much it knows. */
+  ability: number;
+  /** How quickly it reads, thinks and taps. */
+  speed: number;
+  /** How alike its moves and times are from one moment to the next. */
+  consistency: number;
+  /** Appetite for risk, and how well it shrugs off a mistake. */
+  nerve: number;
+  /** How rarely it drifts off or slips. */
+  attention: number;
+}
+
+/** What a mode's bot policy can ask a practice bot's mind. All randomness comes from the bot's own seeded stream. */
+export interface BotMind {
+  readonly persona: string;
+  readonly traits: Readonly<BotTraits>;
+  /** -1 rattled .. 1 on a roll. */
+  readonly mood: number;
+  /** Willingness to take a risk right now, 0..1: nerve, nudged by mood. */
+  boldness(): number;
+  random(): number;
+  chance(p: number): boolean;
+  /** Integer in [min, max]. */
+  int(min: number, max: number): number;
+  /**
+   * The option with the best score once personal noise is added (scores are on a scale where 1 is a
+   * clear preference). Wilder for careless or unsteady bots, now and then a slip to any option.
+   */
+  choose<T>(options: readonly T[], score: (o: T) => number, spread?: number): T | undefined;
+  /** How likely it feels it is to get a typical question right just now (0..1), before seeing one. */
+  selfBelief(): number;
+  /** How sure it feels about a question it has read (0..1), or null before it has read it. */
+  sure(iid: string): number | null;
+  /** A scratch object kept for the whole game, for things the bot remembers (cards it has seen). */
+  memory<T extends object>(key: string, init: () => T): T;
 }
 
 // The SDK is deliberately loose about state and action types at the

@@ -16,7 +16,7 @@
 import { z } from 'zod';
 import { answerSchema, type Rng } from '@ludora/shared';
 import { defineMode } from '../../sdk/define.ts';
-import type { ModeContext, PlayerId } from '../../sdk/types.ts';
+import type { BotContext, BotMind, ModeContext, PlayerId } from '../../sdk/types.ts';
 import { streamInit, streamNext, streamQuestionView, streamSubmit, type StreamState } from '../../mechanics/selfPaced.ts';
 import { AIMS, AIM_INFO, FIRE_STREAK, GOLDEN_SEC, GUARD_COUNT, MAX_BALLS, POWERS, READ_MAX, meta, settings, type Aim, type Outcome, type Power } from './meta.ts';
 import { allOdds, expectedPoints, learn, noReads, outcomeOf, shotOdds, type Reads, type ShotOdds } from './odds.ts';
@@ -333,6 +333,30 @@ function shoot(s: State, ctx: ModeContext<Settings>, id: PlayerId, aim: Aim, pow
 
 /* ----------------------------------- mode ----------------------------------- */
 
+/* eslint-disable @typescript-eslint/no-explicit-any */
+/**
+ * A practice bot with a mind reads the shot chances on screen and aims for a good one; a steady bot
+ * nearly always takes the best, a careless one wanders, and a bold one likes to blast it. On keeper
+ * duty it now and then moves its keeper, more often when it is paying attention.
+ */
+function mindedBot(view: any, ctx: BotContext, mind: BotMind): Action | null {
+  const you = view?.you;
+  if (!you) return null;
+  if (view.keeperDuty && you.balls === 0 && mind.chance(0.03 + mind.traits.attention * 0.06)) {
+    const pool = [...AIMS];
+    const a = pool.splice(mind.int(0, pool.length - 1), 1)[0]!;
+    const b = pool[mind.int(0, pool.length - 1)]!;
+    return { type: 'guard', places: [a, b] };
+  }
+  if (you.balls > 0 && you.canShoot) {
+    const bold = mind.boldness();
+    const pick = mind.choose(you.odds as ShotOdds[], (o) => expectedPoints(o, you.onFire) * 3 + (o.power === 'blasted' ? (bold - 0.5) * 0.5 : 0));
+    if (pick) return { type: 'shoot', aim: pick.aim, power: pick.power };
+  }
+  const q = you.question;
+  return q ? { type: 'answer', iid: q.iid, answer: ctx.answer(q.iid) } : null;
+}
+
 export const spotKick = defineMode<State, Settings, Action>({
   meta,
   settings,
@@ -480,6 +504,7 @@ export const spotKick = defineMode<State, Settings, Action>({
     };
   },
   bot(view, ctx) {
+    if (ctx.mind) return mindedBot(view, ctx, ctx.mind);
     const you = view?.you;
     if (!you) return null;
     // Keeper duty: now and then, move the keeper to cover something else.

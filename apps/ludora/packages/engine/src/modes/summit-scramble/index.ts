@@ -12,7 +12,7 @@
 import { z } from 'zod';
 import { answerSchema, type Rng } from '@ludora/shared';
 import { defineMode } from '../../sdk/define.ts';
-import type { ModeContext, PlayerId } from '../../sdk/types.ts';
+import type { BotContext, BotMind, ModeContext, PlayerId } from '../../sdk/types.ts';
 import { streamInit, streamNext, streamQuestionView, streamSubmit, type StreamState } from '../../mechanics/selfPaced.ts';
 import { BONUS_EVERY, CAMP_EVERY, CLIMB, LEAP, MAX_GRIP, NIGHT_SIGHT, POINTS, ROPE_PULL, ROPES_PER_STRETCH, STEADY_MS, WIND, campBonus, campsBelow, meta, settings, summitBonus } from './meta.ts';
 import { leapOdds } from './odds.ts';
@@ -344,6 +344,28 @@ function race(s: State, ctx: ModeContext<Settings>) {
 
 /* ----------------------------------- mode ---------------------------------- */
 
+/* eslint-disable @typescript-eslint/no-explicit-any */
+/**
+ * A practice bot with a mind reads the leap chance on screen and goes for it when it feels lucky
+ * enough: a bold bot leaps on worse odds than a careful one, and a bot on a roll a little sooner.
+ * It throws a rope to a teammate whenever one is in reach.
+ */
+function mindedBot(view: any, ctx: BotContext, mind: BotMind): Action | null {
+  const you = view?.you;
+  if (!you) return null;
+  if (you.finished === null) {
+    if (you.rope && you.ropeTarget) return { type: 'rope' };
+    const leap = you.leap as { chance: number; cost: number } | null;
+    if (leap && you.grip >= leap.cost) {
+      const need = 88 - mind.boldness() * 35;
+      if (leap.chance >= need + (mind.random() - 0.5) * 10) return { type: 'leap' };
+    }
+    if (you.grip >= 1) return { type: 'climb' };
+  }
+  const q = you.question;
+  return q ? { type: 'answer', iid: q.iid, answer: ctx.answer(q.iid) } : null;
+}
+
 export const summitScramble = defineMode<State, Settings, Action>({
   meta,
   settings,
@@ -563,6 +585,7 @@ export const summitScramble = defineMode<State, Settings, Action>({
     };
   },
   bot(view, ctx) {
+    if (ctx.mind) return mindedBot(view, ctx, ctx.mind);
     const you = view?.you;
     if (!you) return null;
     if (you.finished === null) {

@@ -34,7 +34,7 @@
 import { z } from 'zod';
 import { answerSchema, hashString, type Answer, type Rng } from '@ludora/shared';
 import { defineMode } from '../../sdk/define.ts';
-import type { EnginePlayer, ModeContext, PlayerId } from '../../sdk/types.ts';
+import type { BotContext, BotMind, EnginePlayer, ModeContext, PlayerId } from '../../sdk/types.ts';
 import { streamInit, streamNext, streamQuestionView, streamSubmit, type StreamState } from '../../mechanics/selfPaced.ts';
 import {
   ARENA,
@@ -755,6 +755,28 @@ function youView(s: State, ctx: ModeContext<Settings>, id: PlayerId, rows: Board
 
 /* ----------------------------------- mode ----------------------------------- */
 
+/**
+ * A practice bot with a mind runs the same tactics as the plain bot, but with its own reflexes: a
+ * slow or dreamy bot reacts a beat late (it skips a step now and then), a quick one keeps up, and
+ * its answers come when its mind has thought them through.
+ */
+function mindedBot(view: any, ctx: BotContext, mind: BotMind): GlowTagAction | null {
+  const v = view as GlowTagPlayerView;
+  const you = v?.you;
+  if (!you) return null;
+  const late = (1 - mind.traits.speed) * 0.25 + (1 - mind.traits.attention) * 0.2;
+  if (you.in && mind.chance(late)) return null;
+  const rng: Rng = {
+    next: () => mind.random(),
+    int: (a, b) => mind.int(a, b),
+    pick: (items) => items[mind.int(0, items.length - 1)]!,
+    shuffle: (items) => [...items].sort(() => mind.random() - 0.5),
+    chance: (p) => mind.chance(p),
+    state: () => 0,
+  };
+  return botAction(v, ctx.playerId, ctx.now, rng, (iid) => ctx.answer(iid));
+}
+
 export const glowTag = defineMode<State, Settings, Action>({
   meta,
   settings,
@@ -885,6 +907,7 @@ export const glowTag = defineMode<State, Settings, Action>({
     };
   },
   bot(view, ctx) {
+    if (ctx.mind) return mindedBot(view, ctx, ctx.mind);
     return botAction(view as GlowTagPlayerView, ctx.playerId, ctx.now, ctx.rng, (iid) => ctx.answer(iid));
   },
   botDelay(view, _rng) {

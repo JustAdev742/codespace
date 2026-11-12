@@ -19,7 +19,7 @@
 import { z } from 'zod';
 import { answerSchema, createRng, hashString, type Rng } from '@ludora/shared';
 import { defineMode } from '../../sdk/define.ts';
-import type { ModeContext, PlayerId } from '../../sdk/types.ts';
+import type { BotContext, BotMind, ModeContext, PlayerId } from '../../sdk/types.ts';
 import { streamInit, streamNext, streamQuestionView, streamSubmit, type StreamState } from '../../mechanics/selfPaced.ts';
 import {
   BACKUP_MAX,
@@ -1005,6 +1005,59 @@ function baseView(s: State, ctx: ModeContext<Settings>, board: BoardRow[]) {
 
 /* ---------------------------------- mode ---------------------------------- */
 
+/**
+ * A practice bot with a mind hacks the target worth most to it (rich, lightly defended, or one whose
+ * password it already knows), picks packets by need (a hack when a rival is well ahead, a defence
+ * when it is exposed or leading, a careful bot defends more), buys defences when it feels at risk,
+ * and takes a free hack back more often when bold.
+ */
+function mindedBot(view: any, ctx: BotContext, mind: BotMind): Action | null {
+  const v = view as CodeBreakersPlayerView;
+  const you = v?.you;
+  if (!you) return null;
+  const bold = mind.boldness();
+  if (you.choosing) return { type: 'choosePassword', index: mind.int(0, you.choosing.options.length - 1) };
+  if (you.hack?.stage === 'verify') {
+    const q = you.question;
+    return q ? { type: 'answer', iid: q.iid, answer: ctx.answer(q.iid) } : null;
+  }
+  if (you.hack?.stage === 'target') {
+    const open = you.hack.targets.filter((t) => !t.blocked);
+    const rich = Math.max(1, ...open.map((t) => t.bits));
+    const t = mind.choose(open, (r) => (r.bits / rich) * 2 - r.firewall * 0.3 - (r.twoFactor ? 0.6 : 0) - (r.vault ? 0.8 : 0) + (r.cracked ? 1.5 : 0));
+    return t ? { type: 'target', playerId: t.playerId } : null;
+  }
+  if (you.hack?.stage === 'guess') {
+    const n = you.hack.options.length;
+    return n > 0 ? { type: 'guess', seq: you.hack.seq, index: mind.int(0, n - 1) } : null;
+  }
+  if (you.offer) {
+    const packets = you.offer.packets;
+    const rival = Math.max(0, ...v.board.filter((r) => !r.isYou && !(you.teamId && r.teamId === you.teamId)).map((r) => r.bits));
+    const pick = mind.choose(packets.map((p, i) => ({ p, i })), ({ p }) => {
+      switch (p.kind) {
+        case 'hack':
+          return you.hackable ? (rival / Math.max(40, you.bits)) * 0.8 + (bold - 0.5) : -1;
+        case 'defence':
+          return (you.defences.exposed > 0 ? 1 : 0) + (you.rank !== null && you.rank <= 2 && you.bits > 150 ? 0.6 : 0) + (0.5 - bold);
+        case 'boost':
+          return 0.6;
+        default:
+          return 0.7;
+      }
+    });
+    return { type: 'pick', offer: you.offer.seq, index: pick?.i ?? 0 };
+  }
+  if (you.hackBack && mind.chance(0.3 + bold * 0.6)) return { type: 'hackBack' };
+  const can = (item: ShopItem) => you.shop.find((s) => s.item === item)?.can;
+  const worry = 1 - bold;
+  if (you.defences.exposed > 0 && can('password') && mind.chance(0.15 + worry * 0.35)) return { type: 'buy', item: 'password' };
+  if (!you.defences.twoFactor && can('twoFactor') && you.bits > 250 + bold * 200 && mind.chance(0.1 + worry * 0.3)) return { type: 'buy', item: 'twoFactor' };
+  if (can('firewall') && you.incidents.some((i) => i.kind === 'hacked') && you.bits > 160 && mind.chance(0.1 + worry * 0.35)) return { type: 'buy', item: 'firewall' };
+  const q = you.question;
+  return q ? { type: 'answer', iid: q.iid, answer: ctx.answer(q.iid) } : null;
+}
+
 export const codeBreakers = defineMode<State, Settings, Action>({
   meta,
   settings,
@@ -1241,6 +1294,7 @@ export const codeBreakers = defineMode<State, Settings, Action>({
     };
   },
   bot(view, ctx) {
+    if (ctx.mind) return mindedBot(view, ctx, ctx.mind);
     const v = view as CodeBreakersPlayerView;
     const you = v?.you;
     if (!you) return null;

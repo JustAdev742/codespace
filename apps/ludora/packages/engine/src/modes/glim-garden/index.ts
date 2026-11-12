@@ -21,7 +21,7 @@
 import { z } from 'zod';
 import { answerSchema } from '@ludora/shared';
 import { defineMode } from '../../sdk/define.ts';
-import type { ModeContext, PlayerId } from '../../sdk/types.ts';
+import type { BotContext, BotMind, ModeContext, PlayerId } from '../../sdk/types.ts';
 import { streamInit, streamNext, streamQuestionView, streamSubmit, type StreamState } from '../../mechanics/selfPaced.ts';
 import { DAY_SEC, DROOP_SEC, GIFT_FIREFLIES, GIFT_POINTS, GIFT_POINTS_TO, KINDS, LIGHT_SEC, MAX_DROPS, NIGHT_SEC, PLANTS, PLOT_FIREFLIES, goalFor, meta, settings, type GardenSize, type Kind } from './meta.ts';
 import { neighboursOf } from './layout.ts';
@@ -423,6 +423,32 @@ function teamRows(s: State, ctx: Ctx) {
 
 /* ------------------------------------ mode ------------------------------------ */
 
+/* eslint-disable @typescript-eslint/no-explicit-any */
+/**
+ * A practice bot with a mind gardens with a temperament: it weighs a gift to a drooping or nearly
+ * grown neighbour against planting or watering its own, and some bots are more giving than others
+ * (steady, careful bots share more; bold ones look after their own plot first).
+ */
+function mindedBot(view: any, ctx: BotContext, mind: BotMind): Action | null {
+  const you = view?.you;
+  if (!you) return null;
+  if (you.drops > 0) {
+    const giftTo = you.giftTo as { id: string; why: string }[];
+    const giving = mind.traits.consistency * 0.5 + (1 - mind.boldness()) * 0.5;
+    const mine = (view.gardens[you.garden].plots as PlotView[]).find((pl) => pl.id === ctx.playerId);
+    const keepTree = mine?.k === 'tree' && mine.b === 1 && you.neighbours.length >= 2 && giftTo.length > 0;
+    type Move = { a: Action | null; v: number };
+    const moves: Move[] = giftTo.map((g) => ({ a: { type: 'give', to: g.id }, v: (g.why === 'drooping' ? 1.5 : g.why === 'nearly' ? 1.2 : 0.4) * (0.5 + giving) }));
+    if (you.canPlant && !keepTree) moves.push({ a: { type: 'plant', kind: chooseKind(view, you, mine, { rng: { next: () => mind.random() }, now: ctx.now }) }, v: 1.1 });
+    if (you.canWater) moves.push({ a: { type: 'water' }, v: 0.9 });
+    if (you.drops < you.maxDrops) moves.push({ a: null, v: 0.1 });
+    const pick = mind.choose(moves, (m) => m.v, 0.7);
+    if (pick?.a) return pick.a;
+  }
+  const q = you.question;
+  return q ? { type: 'answer', iid: q.iid, answer: ctx.answer(q.iid) } : null;
+}
+
 export const glimGarden = defineMode<State, Settings, Action>({
   meta,
   settings,
@@ -579,6 +605,7 @@ export const glimGarden = defineMode<State, Settings, Action>({
     };
   },
   bot(view, ctx) {
+    if (ctx.mind) return mindedBot(view, ctx, ctx.mind);
     const you = view?.you;
     if (!you) return null;
     const giftTo = you.giftTo as { id: string; why: string }[];

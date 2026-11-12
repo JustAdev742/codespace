@@ -13,7 +13,7 @@
 import { z } from 'zod';
 import { answerSchema } from '@ludora/shared';
 import { defineMode } from '../../sdk/define.ts';
-import type { ModeContext, PlayerId } from '../../sdk/types.ts';
+import type { BotContext, BotMind, ModeContext, PlayerId } from '../../sdk/types.ts';
 import { streamInit, streamNext, streamQuestionView, streamSubmit, type StreamState } from '../../mechanics/selfPaced.ts';
 import {
   GUST_TIMING,
@@ -403,6 +403,32 @@ function teamRows(s: State, ctx: ModeContext<Settings>) {
 
 /* ----------------------------------- mode ---------------------------------- */
 
+/* eslint-disable @typescript-eslint/no-explicit-any */
+/**
+ * A practice bot with a mind places pieces with an eye on the wind gauge: a careful bot keeps well
+ * under the line with stone, a bold one gambles on timber closer to it, and a lantern goes on top
+ * whenever it fits.
+ */
+function mindedBot(view: any, ctx: BotContext, mind: BotMind): Action | null {
+  const you = view?.you;
+  if (!you) return null;
+  if (you.held > 0) {
+    const ok = (k: PieceKind) => you.effects.find((e: any) => e.kind === k)?.ok === true;
+    const after = (k: PieceKind) => you.effects.find((e: any) => e.kind === k)?.after ?? 0;
+    const line = view.gust?.announced ? (view.gust.limit as number) : CALM_LINE;
+    const margin = 1 + (1 - mind.boldness()) * 5;
+    const kinds = (['lantern', 'timber', 'stone'] as PieceKind[]).filter(ok);
+    const kind = mind.choose(kinds, (k) => {
+      if (k === 'lantern') return 3;
+      if (k === 'timber') return view.wind === 'calm' || after('timber') <= line - margin ? 1.2 : -1;
+      return 0.6;
+    }, 0.6);
+    if (kind) return { type: 'place', kind };
+  }
+  const q = you.question;
+  return q ? { type: 'answer', iid: q.iid, answer: ctx.answer(q.iid) } : null;
+}
+
 export const towerTogether = defineMode<State, Settings, Action>({
   meta,
   settings,
@@ -599,6 +625,7 @@ export const towerTogether = defineMode<State, Settings, Action>({
     };
   },
   bot(view, ctx) {
+    if (ctx.mind) return mindedBot(view, ctx, ctx.mind);
     const you = view?.you;
     if (!you) return null;
     if (you.held > 0) {

@@ -7,7 +7,7 @@
 import { z } from 'zod';
 import type { Media } from '@ludora/shared';
 import { defineMode } from '../../sdk/define.ts';
-import type { ModeContext, PlayerId } from '../../sdk/types.ts';
+import type { BotContext, BotMind, ModeContext, PlayerId } from '../../sdk/types.ts';
 import { createDeck, draw, type Deck } from '../../questions/deck.ts';
 import { normalizeAnswerText } from '../../questions/grade.ts';
 import { answerFace } from '../flashcard-study/answer-text.ts';
@@ -148,6 +148,45 @@ function teamRows(s: State, ctx: ModeContext) {
   });
 }
 
+/**
+ * A practice bot with a mind plays a memory game like a person: it turns over cards it has not seen
+ * yet, remembers which two cards it has already tried together (and does not try them again), and
+ * forgets now and then, more if its attention wanders.
+ */
+function mindedBot(view: { you?: { board: number; cards: { i: number; side: CardSide; state: 'down' | 'up' | 'matched' }[] } | null } | null, _ctx: BotContext, mind: BotMind): Action | null {
+  const you = view?.you;
+  if (!you?.cards?.length) return null;
+  const mem = mind.memory('lantern-match', () => ({ board: -1, seen: [] as number[], tried: [] as string[] }));
+  if (mem.board !== you.board) {
+    mem.board = you.board;
+    mem.seen = [];
+    mem.tried = [];
+  }
+  const up = you.cards.filter((c) => c.state === 'up');
+  for (const c of up) if (!mem.seen.includes(c.i)) mem.seen.push(c.i);
+  if (up.length === 2) {
+    const key = [up[0]!.i, up[1]!.i].sort((a, b) => a - b).join('-');
+    if (!mem.tried.includes(key)) mem.tried.push(key);
+  }
+  // Memory fades a little with every look.
+  const fade = (1 - mind.traits.attention) * 0.06;
+  mem.seen = mem.seen.filter(() => !mind.chance(fade));
+  mem.tried = mem.tried.filter(() => !mind.chance(fade));
+  let options = you.cards.filter((c) => c.state === 'down');
+  // Two up is a miss on show: the next flip turns them back and starts a fresh pair.
+  const first = up.length === 1 ? up[0] : undefined;
+  if (first) {
+    const other = options.filter((c) => c.side !== first.side);
+    if (other.length) options = other;
+  }
+  const pick = mind.choose(options, (c) => {
+    let v = mem.seen.includes(c.i) ? 0 : 0.8;
+    if (first && mem.tried.includes([first.i, c.i].sort((a, b) => a - b).join('-'))) v -= 3;
+    return v;
+  }, 0.7);
+  return pick ? { type: 'flip', index: pick.i } : null;
+}
+
 export const lanternMatch = defineMode<State, Settings, Action>({
   meta,
   settings,
@@ -271,6 +310,7 @@ export const lanternMatch = defineMode<State, Settings, Action>({
    * random face-down card, then a random face-down card of the other kind.
    */
   bot(view, ctx) {
+    if (ctx.mind) return mindedBot(view, ctx, ctx.mind);
     const you = view?.you;
     if (!you?.cards?.length) return null;
     const cards = you.cards as { i: number; side: CardSide; state: 'down' | 'up' | 'matched' }[];

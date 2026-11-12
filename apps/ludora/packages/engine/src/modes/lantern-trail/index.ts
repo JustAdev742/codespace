@@ -17,7 +17,7 @@
 import { z } from 'zod';
 import { answerSchema } from '@ludora/shared';
 import { defineMode } from '../../sdk/define.ts';
-import type { ModeContext, PlayerId } from '../../sdk/types.ts';
+import type { BotContext, BotMind, ModeContext, PlayerId } from '../../sdk/types.ts';
 import { streamInit, streamNext, streamQuestionView, streamSubmit, type StreamState } from '../../mechanics/selfPaced.ts';
 import { listNames, nameOf } from '../rules.ts';
 import {
@@ -778,6 +778,37 @@ function pendingView(s: State, id: PlayerId, w: Walker, ctx: Ctx) {
 
 /* ---------------------------------- mode ----------------------------------- */
 
+/* eslint-disable @typescript-eslint/no-explicit-any */
+/**
+ * A practice bot with a mind reads the board as a player does: it mostly takes the shortcut when a
+ * stall sits on it, sometimes the long way for luck; it buys a lantern when it can afford it and
+ * keep a little back (a careful bot holds more back); it pickpockets someone rich and trades
+ * places with someone near a stall, not always the very best target.
+ */
+function mindedBot(view: any, ctx: BotContext, mind: BotMind): Action | null {
+  const you = view?.you;
+  if (!you) return null;
+  const p = you.pending;
+  if (p?.kind === 'fork') {
+    const pays = shortcutPays(view.stalls.map((x: { pos: number }) => x.pos));
+    const short = mind.choose([true, false], (s) => (s === pays ? 1 : 0) + (s ? 0 : (mind.boldness() - 0.5) * 0.5), 0.8);
+    return { type: 'fork', route: short ? 'short' : 'long' };
+  }
+  if (p?.kind === 'buy') {
+    const coins = typeof you.coins === 'number' ? you.coins : p.price;
+    const spare = coins - p.price;
+    return { type: 'buy', buy: spare >= 0 && (p.ticket || spare >= (1 - mind.boldness()) * p.price * 0.3 || mind.chance(0.5)) };
+  }
+  if (p?.kind === 'target') {
+    const targets: { id: string; coins: number; stallSteps: number | null }[] = p.targets;
+    const richest = Math.max(1, ...targets.map((t) => t.coins));
+    const pick = mind.choose(targets, (t) => (p.card === 'pickpocket' ? (t.coins / richest) * 2 : (12 - Math.min(12, t.stallSteps ?? 12)) / 6));
+    return pick ? { type: 'target', playerId: pick.id } : null;
+  }
+  const q = you.question;
+  return q ? { type: 'answer', iid: q.iid, answer: ctx.answer(q.iid) } : null;
+}
+
 export const lanternTrail = defineMode<State, Settings, Action>({
   meta,
   settings,
@@ -953,6 +984,7 @@ export const lanternTrail = defineMode<State, Settings, Action>({
     };
   },
   bot(view, ctx) {
+    if (ctx.mind) return mindedBot(view, ctx, ctx.mind);
     const you = view?.you;
     if (!you) return null;
     const p = you.pending;

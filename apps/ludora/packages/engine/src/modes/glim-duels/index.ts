@@ -27,7 +27,7 @@
 import { z } from 'zod';
 import { answerSchema } from '@ludora/shared';
 import { defineMode } from '../../sdk/define.ts';
-import type { ActionResult, ModeContext, PlayerId, Viewer } from '../../sdk/types.ts';
+import type { ActionResult, BotContext, BotMind, ModeContext, PlayerId, Viewer } from '../../sdk/types.ts';
 import { createDeck, draw } from '../../questions/deck.ts';
 import {
   DEADLINE_GRACE_MS,
@@ -770,6 +770,35 @@ function botPowerFromView(view: BotView | null | undefined, ready: boolean): Pow
 
 /* -------------------------------- mode --------------------------------- */
 
+/**
+ * A practice bot with a mind duels at its own pace (its mind decides when it has the answer) and
+ * uses powers by feel: a careful bot mends early and shields when a strike is coming, a bold one
+ * strikes when it is sure of the answer; an inattentive one sometimes misses the moment.
+ */
+function mindedBot(view: any, ctx: BotContext, mind: BotMind): Action | null {
+  const sync = view?.sync;
+  const q = sync?.question;
+  if (sync?.phase !== 'question' || !q || sync.you?.answered) return null;
+  const d = (view as BotView).duel;
+  const you = (view as BotView).you;
+  const mem = mind.memory('glim-duels', () => ({ tried: '' }));
+  if (view?.rules?.powers && d && d.result === null && you && !you.used && mem.tried !== q.iid && mind.chance(0.4 + mind.traits.attention * 0.5)) {
+    const max = view.rules.health as number;
+    const bold = mind.boldness();
+    const sure = mind.sure(q.iid);
+    let power: Power | null = null;
+    if (you.charge >= POWER_COST.mend && d.me.health < max && d.me.health <= max * (0.25 + (1 - bold) * 0.3)) power = 'mend';
+    else if (you.charge >= POWER_COST.shield && d.rival.strike && !d.me.shield) power = 'shield';
+    else if (sure !== null && sure > 0.75 - bold * 0.2 && you.charge >= POWER_COST.strike && !d.me.strike && !d.rival.shield && d.rival.health > max * 0.3) power = 'strike';
+    if (power) {
+      // One go per question, so a refused power never holds up the answer.
+      mem.tried = q.iid;
+      return { type: 'power', iid: q.iid, power };
+    }
+  }
+  return { type: 'answer', iid: q.iid, answer: ctx.answer(q.iid) };
+}
+
 export const glimDuels = defineMode<State, Settings, Action>({
   meta,
   settings,
@@ -910,6 +939,7 @@ export const glimDuels = defineMode<State, Settings, Action>({
     return { standings: standingsOut, ...(teams ? { teamStandings: teams } : {}), summary: summaryOf(s, ctx) };
   },
   bot(view, ctx) {
+    if (ctx.mind) return mindedBot(view, ctx, ctx.mind);
     const sync = view?.sync;
     const q = sync?.question;
     if (sync?.phase !== 'question' || !q || sync.you?.answered) return null;

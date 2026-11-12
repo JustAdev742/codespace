@@ -13,7 +13,7 @@
 import { z } from 'zod';
 import { answerSchema, type Media } from '@ludora/shared';
 import { defineMode } from '../../sdk/define.ts';
-import type { ModeContext, PlayerId } from '../../sdk/types.ts';
+import type { BotContext, BotMind, ModeContext, PlayerId } from '../../sdk/types.ts';
 import { DEADLINE_GRACE_MS, leaderboard } from '../../mechanics/syncRounds.ts';
 import { meta, settings } from './meta.ts';
 
@@ -74,6 +74,26 @@ const INTRO_MS = 4000;
 const REVEAL_MS = 6000;
 const LEADERBOARD_MS = 5000;
 export const LEVELS: readonly Level[] = [1, 2, 3];
+
+/* eslint-disable @typescript-eslint/no-explicit-any */
+/**
+ * A practice bot with a mind stakes what it expects to be worth it: it sees only the prompt, so it
+ * weighs how it has been doing (and how bold it feels) against what each level wins or loses.
+ */
+function mindedBot(view: any, ctx: BotContext, mind: BotMind): Action | null {
+  if (view?.phase === 'wager' && view.you && view.you.wager === null) {
+    const st = ctx.settings as Settings;
+    const words = typeof view.prompt?.prompt === 'string' ? view.prompt.prompt.split(/\s+/).length : 10;
+    // A long prompt looks harder.
+    const p = Math.max(0.05, mind.selfBelief() - Math.max(0, words - 14) * 0.01);
+    const bold = mind.boldness();
+    const level = mind.choose(LEVELS, (l) => (p * confidenceChange(l, true, st.highStakes) + (1 - p) * confidenceChange(l, false, st.highStakes)) / 100 + (l - 2) * (bold - 0.5) * 0.6, 0.8) ?? 1;
+    return { type: 'wager', level };
+  }
+  const q = view?.question;
+  if (view?.phase === 'question' && q && view.you && !view.you.answered) return { type: 'answer', iid: q.iid, answer: ctx.answer(q.iid) };
+  return null;
+}
 
 const opts = (ctx: ModeContext) => ctx.settings as Settings;
 
@@ -379,6 +399,7 @@ export const confidence = defineMode<State, Settings, Action>({
     return { standings, ...(teams ? { teamStandings: teams } : {}), summary: calibrationSummary(s) };
   },
   bot(view, ctx) {
+    if (ctx.mind) return mindedBot(view, ctx, ctx.mind);
     if (view?.phase === 'wager' && view.you && view.you.wager === null) {
       // Bots cannot see the question yet, so they pick a level that roughly matches how good they are.
       const r = ctx.rng.next();

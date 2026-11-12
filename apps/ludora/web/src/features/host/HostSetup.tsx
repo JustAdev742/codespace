@@ -3,14 +3,13 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate, useSearchParams } from 'react-router';
 import { Bot, Presentation, Search, Users } from 'lucide-react';
 import { toast } from 'sonner';
-import type { CommonField, SettingField } from '@ludora/shared';
+import { PERSONA_INFO, PRACTICE_LEVEL_IDS, PRACTICE_LEVEL_INFO, PRACTICE_LEVEL_PERSONAS, type CommonField, type PracticeLevel, type SettingField } from '@ludora/shared';
 import { soloBlocker } from '@ludora/engine/catalog';
 import { api, ApiError } from '../../lib/api.ts';
 import { useMe } from '../../lib/session.ts';
 import { useModes, type CatalogEntry, type SetSummary } from '../../lib/queries.ts';
 import { AccountError, EmptyState, ErrorNotice, Field, Input, PageHeader, Panel, Select, Skeleton, Switch } from '../../ui/primitives.tsx';
 import { ToggleChips } from '../../ui/game.tsx';
-import { Segmented } from '../../ui/Segmented.tsx';
 import { Button, ButtonLink } from '../../ui/Button.tsx';
 import { OpenGames, openGamesKey, useOpenGames, type OpenGame } from './OpenGames.tsx';
 import { SaveGameDialog, type MadeGame } from '../games/SaveGameDialog.tsx';
@@ -325,7 +324,7 @@ function Setup({ solo, preset, gameId, making, again, classId }: { solo: boolean
   const [common, setCommon] = useState<Record<string, number | boolean>>({});
   // Solo: practice bots to play against, and how good they are (the server decides what each level means).
   const [bots, setBots] = useState(0);
-  const [botLevel, setBotLevel] = useState<'easy' | 'medium' | 'hard'>('medium');
+  const [botLevel, setBotLevel] = useState<PracticeLevel>('mixed');
   const [options, setOptions] = useState<Record<string, unknown> & { lateJoin: boolean; generatedNames: boolean; requireAccount: boolean; quiet: boolean }>({ lateJoin: true, generatedNames: false, requireAccount: false, quiet: false });
   const [busy, setBusy] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -541,7 +540,7 @@ function Setup({ solo, preset, gameId, making, again, classId }: { solo: boolean
                 <h3 className="mb-1 flex items-center gap-2 font-display text-xl font-bold" aria-hidden>
                   <Bot className="size-5 text-text-3" aria-hidden /> Practice bots
                 </h3>
-                <p className="mb-3 max-w-[60ch] text-sm text-text-2">Play against bots instead of on your own. Easy bots are slow and often wrong; hard ones are quick and nearly always right. They never change what you earn.</p>
+                <p className="mb-3 max-w-[60ch] text-sm text-text-2">Play against bots instead of on your own. Each bot has its own way of playing: some careful, some quick, some still learning. They never change what you earn.</p>
                 <div className="flex flex-wrap items-end gap-4">
                   <Field label="How many">
                     {(p) => (
@@ -555,24 +554,8 @@ function Setup({ solo, preset, gameId, making, again, classId }: { solo: boolean
                       </Select>
                     )}
                   </Field>
-                  {bots > 0 ? (
-                    <div className="flex flex-col gap-1.5 max-sm:w-full">
-                      <span className="text-sm font-semibold text-text" aria-hidden>
-                        How good
-                      </span>
-                    <Segmented<'easy' | 'medium' | 'hard'>
-                      label="How good"
-                      value={botLevel}
-                      onChange={setBotLevel}
-                      options={[
-                        { value: 'easy', label: 'Easy' },
-                        { value: 'medium', label: 'Medium' },
-                        { value: 'hard', label: 'Hard' },
-                      ]}
-                    />
-                    </div>
-                  ) : null}
                 </div>
+                {bots > 0 ? <BotLevelPicker value={botLevel} onChange={setBotLevel} /> : null}
               </fieldset>
             ) : null}
             {!solo ? (
@@ -696,5 +679,46 @@ function SignedOutHost({ solo }: { solo: boolean }) {
         {solo ? 'Solo games need an account so your rewards have somewhere to go. A guest account takes one tap.' : 'Hosting needs an account, and a guest account takes one tap. Players joining your game need no account at all.'}
       </EmptyState>
     </>
+  );
+}
+
+/** How good the practice bots are, and the personalities that level brings. The server decides what each level means. */
+function BotLevelPicker({ value, onChange }: { value: PracticeLevel; onChange: (v: PracticeLevel) => void }) {
+  return (
+    <div className="mt-4 min-w-0">
+      <p id="bot-level-label" className="mb-1.5 text-sm font-semibold text-text">
+        How good
+      </p>
+      <div role="radiogroup" aria-labelledby="bot-level-label" className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
+        {PRACTICE_LEVEL_IDS.map((id) => {
+          const on = value === id;
+          return (
+            <button
+              key={id}
+              type="button"
+              role="radio"
+              aria-checked={on}
+              aria-label={PRACTICE_LEVEL_INFO[id].label}
+              aria-describedby={`bot-level-${id}`}
+              onClick={() => onChange(id)}
+              className={`flex min-h-11 min-w-0 flex-col items-start rounded-[var(--radius-m)] border px-3 py-2 text-left transition-colors ${on ? 'border-line-strong bg-raised text-text shadow-[0_1px_3px_rgb(2_5_20/0.3)] ring-1 ring-line-strong' : 'border-line bg-sunken text-text-2 hover:text-text'}`}
+            >
+              <span className="text-sm font-semibold">{PRACTICE_LEVEL_INFO[id].label}</span>
+              <span id={`bot-level-${id}`} className="text-xs text-text-2">
+                {PRACTICE_LEVEL_INFO[id].blurb}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+      <p className="mt-3 text-sm font-semibold text-text">Who you might meet</p>
+      <ul className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-sm text-text-2" aria-live="polite">
+        {PRACTICE_LEVEL_PERSONAS[value].map((p) => (
+          <li key={p} className="min-w-0">
+            <span className="font-semibold text-text">{PERSONA_INFO[p].label}</span>: {PERSONA_INFO[p].blurb.replace(/\.$/, '').toLowerCase()}
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }

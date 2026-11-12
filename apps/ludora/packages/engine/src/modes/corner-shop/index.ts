@@ -21,7 +21,7 @@
 import { z } from 'zod';
 import { answerSchema } from '@ludora/shared';
 import { defineMode } from '../../sdk/define.ts';
-import type { EnginePlayer, ModeContext, PlayerId } from '../../sdk/types.ts';
+import type { BotContext, BotMind, EnginePlayer, ModeContext, PlayerId } from '../../sdk/types.ts';
 import { streamInit, streamNext, streamQuestionView, streamSubmit, type StreamState } from '../../mechanics/selfPaced.ts';
 import { listNames, nameOf } from '../rules.ts';
 import {
@@ -974,6 +974,32 @@ export function botPurchase(view: any, now: number): Action | null {
 
 /* ---------------------------------- mode ----------------------------------- */
 
+/**
+ * A practice bot with a mind juggles the till and the question like a player: an attentive bot
+ * notices a busy queue sooner, a bold one spends sooner, and delivery picks go by value with a
+ * little personal noise. Its answers come when its mind has thought them through.
+ */
+function mindedBot(view: any, ctx: BotContext, mind: BotMind): Action | null {
+  const you = view?.you;
+  if (!you) return null;
+  const now = ctx.now;
+  const t = mind.traits;
+  if (you.offer) {
+    const values = botDeliveryValues(you);
+    const best = Math.max(1, ...values);
+    const pick = mind.choose(values.map((v, i) => ({ v, i })), (o) => (o.v / best) * 2);
+    return { type: 'pickDelivery', offer: you.offer.seq, index: pick?.i ?? 0 };
+  }
+  const serve = botServeChoice(you, now);
+  const pressure = botPressure(you, now);
+  if (serve !== null && pressure === 'critical' && mind.chance(0.55 + t.attention * 0.45)) return { type: 'serve', customer: serve };
+  if (serve !== null && pressure === 'busy' && mind.chance(0.25 + t.attention * 0.5)) return { type: 'serve', customer: serve };
+  const buy = botPurchase(view, now);
+  if (buy && mind.chance(0.3 + mind.boldness() * 0.5)) return buy;
+  if (you.question) return { type: 'answer', iid: you.question.iid, answer: ctx.answer(you.question.iid) };
+  return serve !== null ? { type: 'serve', customer: serve } : null;
+}
+
 export const cornerShop = defineMode<State, Settings, Action>({
   meta,
   settings,
@@ -1257,6 +1283,7 @@ export const cornerShop = defineMode<State, Settings, Action>({
     };
   },
   bot(view, ctx) {
+    if (ctx.mind) return mindedBot(view, ctx, ctx.mind);
     const you = view?.you;
     switch (botMove(view, ctx.now)) {
       case 'pick': {

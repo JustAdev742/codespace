@@ -21,7 +21,7 @@
 import { z } from 'zod';
 import { answerSchema } from '@ludora/shared';
 import { defineMode } from '../../sdk/define.ts';
-import type { ModeContext, PlayerId } from '../../sdk/types.ts';
+import type { BotContext, BotMind, ModeContext, PlayerId } from '../../sdk/types.ts';
 import { streamInit, streamNext, streamQuestionView, streamSubmit, type StreamState } from '../../mechanics/selfPaced.ts';
 import { listNames, nameOf } from '../rules.ts';
 import { meta, settings } from './meta.ts';
@@ -703,6 +703,45 @@ export function botSpend(view: any, playerId: string): Action | null {
 
 /* ----------------------------------- mode ----------------------------------- */
 
+/**
+ * A practice bot with a mind spends like a player looking at the map: it builds on a spot that
+ * covers plenty of road (not always the very best one), upgrades a tower near the middle of the
+ * road, and feeds the Great Lantern once nothing else is left. Bolder bots spend sooner.
+ */
+function mindedSpend(view: any, playerId: string, mind: BotMind): Action | null {
+  const you = view?.you;
+  if (!you || view.result) return null;
+  const map = MAPS[view.map as MapId];
+  if (!map) return null;
+  const taken = new Set<number>(view.towers.map((t: any) => t.spot));
+  const free = map.spots.map((_, i) => i).filter((i) => !taken.has(i));
+  if (free.length) {
+    const kind = botTowerChoice(view.allowed, you.built, playerId, view.towers.length);
+    if (you.gold < TOWERS[kind].cost) return null;
+    const range = towerStats(kind, 1).range;
+    const best = Math.max(1, ...free.map((i) => reachOf(map, i, range)));
+    const spot = mind.choose(free, (i) => (reachOf(map, i, range) / best) * 2, 0.8);
+    return spot === undefined ? null : { type: 'build', spot, tower: kind };
+  }
+  const upgradable = (view.towers as any[]).filter((t) => t.level < MAX_LEVEL);
+  if (upgradable.length) {
+    const t = mind.choose(upgradable, (x) => 1 - Math.abs(progressOf(map, x.spot) - 0.5) * 3, 0.8);
+    return t && you.gold >= upgradeCost(t.kind, t.level)! ? { type: 'upgrade', spot: t.spot, level: t.level + 1 } : null;
+  }
+  return !view.flare.charged && you.gold >= FLARE_GIFT ? { type: 'feed' } : null;
+}
+
+function mindedBot(view: any, ctx: BotContext, mind: BotMind): Action | null {
+  const you = view?.you;
+  if (!you || view.result) return null;
+  if (mind.chance(0.45 + mind.boldness() * 0.5)) {
+    const spend = mindedSpend(view, ctx.playerId, mind);
+    if (spend) return spend;
+  }
+  const q = you.question;
+  return q ? { type: 'answer', iid: q.iid, answer: ctx.answer(q.iid) } : null;
+}
+
 export const lanternGuard = defineMode<State, Settings, Action>({
   meta,
   settings,
@@ -896,6 +935,7 @@ export const lanternGuard = defineMode<State, Settings, Action>({
     return { standings, outcome: s.result === 'win' ? 'coop-win' : 'coop-loss', summary };
   },
   bot(view, ctx) {
+    if (ctx.mind) return mindedBot(view, ctx, ctx.mind);
     const you = view?.you;
     if (!you || view.result) return null;
     const spend = botSpend(view, ctx.playerId);

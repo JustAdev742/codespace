@@ -34,7 +34,7 @@
 import { z } from 'zod';
 import { answerSchema, type Rng } from '@ludora/shared';
 import { defineMode } from '../../sdk/define.ts';
-import type { ModeContext, PlayerId } from '../../sdk/types.ts';
+import type { BotContext, BotMind, ModeContext, PlayerId } from '../../sdk/types.ts';
 import { streamInit, streamNext, streamQuestionView, streamSubmit, type StreamState } from '../../mechanics/selfPaced.ts';
 import {
   AUTO,
@@ -822,6 +822,20 @@ function teamRows(s: State, ctx: ModeContext) {
 
 /* ----------------------------------- mode ---------------------------------- */
 
+/* eslint-disable @typescript-eslint/no-explicit-any */
+/**
+ * A practice bot with a mind lets auto-steer drive, as many players do, but spends boosts by
+ * temperament: a bold bot fires a charge as soon as it has a spare one, a careful one saves them.
+ */
+function mindedBot(view: any, ctx: BotContext, mind: BotMind): Action | null {
+  const you = view?.you;
+  if (!you) return null;
+  if (!you.auto && view.phase === 'race' && you.finished === null) return { type: 'auto', on: true };
+  if (view.phase === 'race' && you.finished === null && you.charges >= 2 && mind.chance(mind.boldness() * 0.35)) return { type: 'boost' };
+  const q = you.question;
+  return q ? { type: 'answer', iid: q.iid, answer: ctx.answer(q.iid) } : null;
+}
+
 export const lanternRally = defineMode<State, Settings, Action>({
   meta,
   settings,
@@ -1115,6 +1129,7 @@ export const lanternRally = defineMode<State, Settings, Action>({
     };
   },
   bot(view, ctx) {
+    if (ctx.mind) return mindedBot(view, ctx, ctx.mind);
     const you = view?.you;
     if (!you) return null;
     // Bots let auto-steer drive and spend their charges, and answer questions.

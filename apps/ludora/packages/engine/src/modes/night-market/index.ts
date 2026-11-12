@@ -19,7 +19,7 @@
 import { z } from 'zod';
 import { answerSchema, type Rng } from '@ludora/shared';
 import { defineMode } from '../../sdk/define.ts';
-import type { EnginePlayer, ModeContext, PlayerId } from '../../sdk/types.ts';
+import type { BotContext, BotMind, EnginePlayer, ModeContext, PlayerId } from '../../sdk/types.ts';
 import { streamInit, streamNext, streamQuestionView, streamSubmit, type StreamState } from '../../mechanics/selfPaced.ts';
 import {
   EVENT_INFO,
@@ -685,6 +685,52 @@ function choiceView(s: State, ctx: ModeContext<Settings>, id: PlayerId, st: Stal
 
 /* ---------------------------------- mode ---------------------------------- */
 
+/**
+ * A practice bot with a mind picks a lantern by what it is worth to it now (a trick when someone is
+ * well ahead, a charm to protect a lead, a gamble when it is behind, more often when it feels bold)
+ * and tricks the player it would gain most from, with a little personal noise so bots differ.
+ */
+function mindedBot(view: any, ctx: BotContext, mind: BotMind): Action | null {
+  const you = view?.you;
+  if (!you) return null;
+  if (you.choose) {
+    const open = (you.choose.targets as any[]).filter((t) => !t.blocked);
+    const top = Math.max(1, ...open.map((t) => t.coins as number));
+    const pick = mind.choose(open, (t) => {
+      const gain = you.choose.trick === 'swipe' ? t.coins / top : (t.coins - you.coins) / top;
+      return gain * 2 - (t.shield ? 1.2 : 0);
+    });
+    return pick ? { type: 'target', playerId: pick.playerId } : null;
+  }
+  if (you.offer) {
+    const lanterns: { kind: LanternKind | null; content: ContentId | null }[] = you.offer.lanterns;
+    const rivals = (view.board as any[]).filter((r) => !r.isYou && !(you.teamId && r.teamId === you.teamId));
+    const richest = Math.max(0, ...rivals.map((r) => r.coins as number));
+    const leader = Math.max(0, ...(view.board as any[]).map((r) => r.coins as number));
+    const bold = mind.boldness();
+    const scale = Math.max(50, you.coins, richest);
+    const options = lanterns.map((l, i) => ({ l, i }));
+    const pick = mind.choose(options, ({ l }) => {
+      if (you.offer.sight && l.content) return (botValue(l.content, you, richest) / scale) * 2;
+      switch (l.kind) {
+        case 'trick':
+          return ((richest - you.coins) / scale) * 2;
+        case 'charm':
+          return you.rank === 1 && you.coins > 0 && !you.shield ? 1.2 : 0.3;
+        case 'wild':
+          return (you.coins < leader / 2 || you.coins < 100 ? 1 : 0.2) + (bold - 0.5);
+        case 'fortune':
+          return 0.7;
+        default:
+          return 0.5;
+      }
+    });
+    return { type: 'pick', offer: you.offer.seq, index: pick?.i ?? 0 };
+  }
+  const q = you.question;
+  return q ? { type: 'answer', iid: q.iid, answer: ctx.answer(q.iid) } : null;
+}
+
 export const nightMarket = defineMode<State, Settings, Action>({
   meta,
   settings,
@@ -879,6 +925,7 @@ export const nightMarket = defineMode<State, Settings, Action>({
     };
   },
   bot(view, ctx) {
+    if (ctx.mind) return mindedBot(view, ctx, ctx.mind);
     const you = view?.you;
     if (!you) return null;
     if (you.choose) {

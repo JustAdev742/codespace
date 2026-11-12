@@ -15,7 +15,7 @@
 import { z } from 'zod';
 import { answerSchema } from '@ludora/shared';
 import { defineMode } from '../../sdk/define.ts';
-import type { ModeContext, PlayerId } from '../../sdk/types.ts';
+import type { BotContext, BotMind, ModeContext, PlayerId } from '../../sdk/types.ts';
 import { streamInit, streamNext, streamQuestionView, streamSubmit, type StreamState } from '../../mechanics/selfPaced.ts';
 import { meta, settings } from './meta.ts';
 
@@ -250,6 +250,32 @@ function teamRows(s: State, ctx: ModeContext) {
   });
 }
 
+/* eslint-disable @typescript-eslint/no-explicit-any */
+/**
+ * A practice bot with a mind launches when the wind it can see beats what it hopes for by waiting,
+ * given the storm chance on the forecast and how many lanterns it would lose. Bold bots wait for a
+ * better wind; careful ones take a fair one. Last wind or the end close: everything goes up.
+ */
+function mindedBot(view: any, ctx: BotContext, mind: BotMind): Action | null {
+  const you = view?.you;
+  if (!you) return null;
+  if (you.ground > 0) {
+    const mult: number = view.wind.mult;
+    const storm = Math.min(1, (view.forecast.chance ?? 0) / 100);
+    const msLeft = view.endsAt - ctx.now;
+    const bold = mind.boldness();
+    if (view.wind.changeAt === null || msLeft < 8_000 + (1 - bold) * 10_000) return { type: 'launch' };
+    const hope = 2.2 + (bold - 0.5) * 1.2;
+    const atStake = 1 + Math.min(1, you.ground / 8);
+    const wait = (1 - storm * atStake) * hope;
+    const launch = mind.choose([true, false], (go) => (go ? mult : wait), 0.6);
+    if (launch) return { type: 'launch' };
+  }
+  if (you.oil >= view.cost) return { type: 'light' };
+  const q = you.question;
+  return q ? { type: 'answer', iid: q.iid, answer: ctx.answer(q.iid) } : null;
+}
+
 export const skyLanterns = defineMode<State, Settings, Action>({
   meta,
   settings,
@@ -394,6 +420,7 @@ export const skyLanterns = defineMode<State, Settings, Action>({
     };
   },
   bot(view, ctx) {
+    if (ctx.mind) return mindedBot(view, ctx, ctx.mind);
     const you = view?.you;
     if (!you) return null;
     if (you.ground > 0) {

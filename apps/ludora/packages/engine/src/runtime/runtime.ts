@@ -9,6 +9,8 @@ import {
 import { gradeAnswer, isGraded, revealAnswer, correctAnswerFor, wrongAnswerFor } from '../questions/grade.ts';
 import { answerFromTokens, answerToTokens, presentationOrder, revealToTokens, toPublicQuestion } from '../questions/present.ts';
 import { answerText } from './answerText.ts';
+import type { AnswerPlan, PracticeMind } from '../bots/mind.ts';
+import { botAnswerPool, findQuestionViews } from '../bots/views.ts';
 import type {
   ActionResult,
   AnswerRecord,
@@ -521,11 +523,16 @@ export class GameRuntime {
     }
   }
 
-  /** The action a practice bot would take now, or null. */
-  botAction(playerId: PlayerId, skill: number, rng: Rng): unknown {
+  /**
+   * The action a practice bot would take now, or null. With a `mind` (the server's practice bots
+   * only), the mind answers and the action waits until it has finished thinking; without one, the
+   * bot plays exactly as the test harness has always relied on.
+   */
+  botAction(playerId: PlayerId, skill: number, rng: Rng, mind?: PracticeMind): unknown {
     if (this.status !== 'running' || !this.mode.bot || !this.players.has(playerId)) return null;
     const view = this.view({ kind: 'player', playerId });
     if (!view || (typeof view === 'object' && 'error' in view)) return null;
+    if (mind) return this.mindedBotAction(playerId, skill, rng, mind, view);
     const ctx: BotContext = {
       playerId,
       rng,
@@ -548,13 +555,90 @@ export class GameRuntime {
     }
   }
 
-  botDelay(playerId: PlayerId, rng: Rng): number {
+  botDelay(playerId: PlayerId, rng: Rng, mind?: PracticeMind): number {
+    if (mind) return this.mindedBotDelay(playerId, rng, mind);
     if (!this.mode.botDelay) return 1200 + rng.int(0, 1800);
     try {
       return Math.max(50, this.mode.botDelay(this.view({ kind: 'player', playerId }), rng));
     } catch {
       return 1500;
     }
+  }
+
+  private botPool: string[] | null = null;
+
+  /** A minded bot's plan for a question it can see: what it will answer and when. */
+  private planFor(mind: PracticeMind, iid: string, view: unknown, now: number): AnswerPlan | null {
+    const inst = this.instances.get(iid);
+    if (!inst) return null;
+    const q = this.questionMap.get(inst.qid);
+    if (!q) return null;
+    if (!this.botPool) {
+      this.botPool = botAnswerPool([...this.questionMap.values()]);
+      mind.setPool(this.botPool);
+    } else mind.setPool(this.botPool);
+    const seen = findQuestionViews(view).find((v) => v.iid === iid);
+    let progress: number | null = null;
+    if (seen?.index !== undefined && seen.total) progress = Math.min(1, (seen.index + 1) / seen.total);
+    else if (this.common.timeLimitSec > 0) progress = Math.min(1, now / (this.common.timeLimitSec * 1000));
+    else progress = Math.min(1, mind.record.answered / Math.max(1, this.questionMap.size));
+    return mind.plan({ iid, q, shownAt: inst.shownAt, deadline: seen?.deadline ?? null, now, progress });
+  }
+
+  private mindedBotAction(playerId: PlayerId, skill: number, rng: Rng, mind: PracticeMind, view: unknown): unknown {
+    const now = this.gameNow();
+    let held = false;
+    const used: string[] = [];
+    const ctx: BotContext = {
+      playerId,
+      rng,
+      skill,
+      now,
+      settings: this.settings,
+      mind,
+      answer: (iid) => {
+        const inst = this.instances.get(iid);
+        const plan = this.planFor(mind, iid, view, now);
+        if (!inst || !plan) return { type: 'short', text: '?' };
+        // Still reading or thinking: whatever the mode builds from this answer waits.
+        if (plan.readyAt > now) held = true;
+        else used.push(iid);
+        return answerToTokens(this.questionMap.get(inst.qid)!, inst.order, plan.answer);
+      },
+    };
+    try {
+      const action = this.mode.bot!(view, ctx);
+      if (held) return null;
+      if (action) for (const iid of used) mind.commit(iid, now);
+      return action;
+    } catch (err) {
+      this.listener.error?.(err, 'bot');
+      return null;
+    }
+  }
+
+  /** A minded bot looks again when its thinking is done, or after the mode's own pace scaled to its speed. */
+  private mindedBotDelay(playerId: PlayerId, rng: Rng, mind: PracticeMind): number {
+    let base = 1500;
+    const view = this.view({ kind: 'player', playerId });
+    try {
+      base = this.mode.botDelay ? Math.max(50, this.mode.botDelay(view, rng)) : 1200 + rng.int(0, 1800);
+    } catch {
+      base = 1500;
+    }
+    let wait = base * mind.tapScale();
+    if (this.status !== 'running') return Math.round(wait);
+    const now = this.gameNow();
+    let fresh = false;
+    for (const qv of findQuestionViews(view)) {
+      const plan = this.planFor(mind, qv.iid, view, now);
+      // Ready a moment ago and not yet answered: come back promptly to answer it.
+      if (plan && !plan.committed && plan.readyAt <= now && plan.readyAt > now - 2000) fresh = true;
+    }
+    const ready = mind.nextReady(now);
+    if (ready !== null) wait = Math.min(wait, ready - now + 30);
+    if (fresh) wait = Math.min(wait, 120);
+    return Math.max(60, Math.round(wait));
   }
 
   statsFor(id: PlayerId): PlayerStats {

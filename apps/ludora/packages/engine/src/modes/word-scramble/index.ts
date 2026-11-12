@@ -8,7 +8,7 @@
 import { z } from 'zod';
 import { answerSchema, type Question, type Rng } from '@ludora/shared';
 import { defineMode } from '../../sdk/define.ts';
-import type { ModeContext, PlayerId } from '../../sdk/types.ts';
+import type { BotContext, BotMind, ModeContext, PlayerId } from '../../sdk/types.ts';
 import { streamInit, streamNext, streamSubmit, type StreamState } from '../../mechanics/selfPaced.ts';
 import { DEADLINE_GRACE_MS } from '../../mechanics/syncRounds.ts';
 import { normalizeAnswerText } from '../../questions/grade.ts';
@@ -326,6 +326,24 @@ function teamRows(s: State, ctx: ModeContext) {
   });
 }
 
+/* eslint-disable @typescript-eslint/no-explicit-any */
+/**
+ * A practice bot with a mind stares at the letters until it has a go. Unsure, it may ask for a hint
+ * (a timid bot sooner than a bold one); after two misses it usually moves on.
+ */
+function mindedBot(view: any, ctx: BotContext, mind: BotMind): Action | null {
+  const you = view?.you;
+  if (!you || you.finished) return null;
+  const w = you.word;
+  if (!w) return you.nextAt !== null ? { type: 'next' } : null;
+  if (w.kind === 'plain') return { type: 'answer', iid: w.iid, answer: ctx.answer(w.iid) };
+  const a = ctx.answer(w.iid);
+  const sure = mind.sure(w.iid) ?? 0.5;
+  if (w.tries >= 2 && !mind.chance(mind.boldness() * 0.4)) return { type: 'skip', iid: w.iid };
+  if (w.hints < w.maxHints && sure < 0.5 && mind.chance(0.75 - mind.boldness() * 0.4)) return { type: 'hint', iid: w.iid };
+  return a.type === 'short' ? { type: 'solve', iid: w.iid, text: a.text } : { type: 'answer', iid: w.iid, answer: a };
+}
+
 export const wordScramble = defineMode<State, Settings, Action>({
   meta,
   settings,
@@ -446,6 +464,7 @@ export const wordScramble = defineMode<State, Settings, Action>({
     return { standings, ...(teams ? { teamStandings: teams } : {}), summary: 'Final scores.' };
   },
   bot(view, ctx) {
+    if (ctx.mind) return mindedBot(view, ctx, ctx.mind);
     const you = view?.you;
     if (!you || you.finished) return null;
     const w = you.word;

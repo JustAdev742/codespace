@@ -25,7 +25,7 @@
 import { z } from 'zod';
 import { answerSchema, type Rng } from '@ludora/shared';
 import { defineMode } from '../../sdk/define.ts';
-import type { BotContext, ModeContext, PlayerId } from '../../sdk/types.ts';
+import type { BotContext, BotMind, ModeContext, PlayerId } from '../../sdk/types.ts';
 import { streamInit, streamNext, streamQuestionView, streamSubmit, type StreamState } from '../../mechanics/selfPaced.ts';
 import { nameOf } from '../rules.ts';
 import {
@@ -531,6 +531,46 @@ const round2 = (n: number) => Math.round(n * 100) / 100;
 
 /* ---------------------------------- mode ---------------------------------- */
 
+/**
+ * A practice bot with a mind fishes with its own reflexes: it reels a little after the bite, sooner
+ * if it is quick and attentive, and a jumpy bot sometimes strikes before the bite. Landed fish go
+ * by feel: rare ones and set-finishers into the tank, a bold bot keeps more commons for a set, a
+ * careful one sells to save for a lure while there is time for the lure to pay off.
+ */
+function mindedBot(view: any, ctx: BotContext, mind: BotMind): Action | null {
+  const you = view?.you;
+  if (!you) return null;
+  const line = you.line;
+  const t = mind.traits;
+  if (line.phase === 'landed') {
+    const sell = { type: 'sell', seq: line.seq } as const;
+    const tank = { type: 'tank', seq: line.seq } as const;
+    if (!line.canTank) return sell;
+    const rarity = speciesById(line.fish.species)?.rarity ?? 'common';
+    const same = (you.tank.fish as any[]).filter((f) => speciesById(f.species)?.rarity === rarity).length;
+    const room = view.rules.tankSize - you.tank.fish.length;
+    if (same % SET_SIZE === SET_SIZE - 1 || rarity === 'rare' || rarity === 'legend') return tank;
+    const saving = wantsLure(view, you, ctx.now) && you.wallet < you.lure.next.price;
+    const keep = mind.choose([true, false], (k) => {
+      if (!k) return saving ? 1 : 0.3;
+      return (rarity === 'uncommon' ? 0.8 : same % SET_SIZE > 0 ? 0.6 : 0.1) + (mind.boldness() - 0.5) * 0.6 - (room <= 2 ? 0.8 : 0);
+    });
+    return keep ? tank : sell;
+  }
+  if (line.phase === 'biting') {
+    // Reaction time: a quick, attentive bot reels in about a quarter of a second; a slow one later.
+    const react = 220 + (1 - t.speed) * 500 + (1 - t.attention) * 300;
+    return ctx.now - line.biteAt >= react * (0.7 + mind.random() * 0.6) ? { type: 'reel' } : null;
+  }
+  if (line.phase === 'waiting') return mind.chance((1 - t.nerve * 0.5) * (1 - t.consistency) * 0.04) ? { type: 'reel' } : null;
+  if (you.casts > 0) {
+    if (wantsLure(view, you, ctx.now) && you.wallet >= you.lure.next.price && mind.chance(0.4 + (1 - t.nerve) * 0.4)) return { type: 'lure', level: you.lure.next.level };
+    return { type: 'cast' };
+  }
+  const q = you.question;
+  return q ? { type: 'answer', iid: q.iid, answer: ctx.answer(q.iid) } : null;
+}
+
 export const bigCatch = defineMode<State, Settings, Action>({
   meta,
   settings,
@@ -735,6 +775,7 @@ export const bigCatch = defineMode<State, Settings, Action>({
     };
   },
   bot(view, ctx) {
+    if (ctx.mind) return mindedBot(view, ctx, ctx.mind);
     const you = view?.you;
     if (!you) return null;
     const line = you.line;

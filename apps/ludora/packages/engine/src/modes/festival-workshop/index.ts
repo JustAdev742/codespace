@@ -17,7 +17,7 @@
 import { z } from 'zod';
 import { answerSchema } from '@ludora/shared';
 import { defineMode } from '../../sdk/define.ts';
-import type { EnginePlayer, ModeContext, PlayerId } from '../../sdk/types.ts';
+import type { BotContext, BotMind, EnginePlayer, ModeContext, PlayerId } from '../../sdk/types.ts';
 import { streamInit, streamNext, streamQuestionView, streamSubmit, type StreamState } from '../../mechanics/selfPaced.ts';
 import { listNames, nameOf } from '../rules.ts';
 import {
@@ -1002,6 +1002,72 @@ function name(ctx: Ctx, id: PlayerId) {
   return nameOf(ctx, id);
 }
 
+/**
+ * A practice bot with a mind shops like a player: it looks for good value (income per coin), not
+ * always the very best, and a patient bot saves up longer for a bigger step. Favours go by feel:
+ * a prank on the leader when it is well behind, a lock when it leads, otherwise extra income.
+ */
+function mindedPurchase(view: any, now: number, mind: BotMind): BotOption | null {
+  const you = view?.you;
+  if (!you) return null;
+  const coins = you.coins + (you.rate * Math.max(0, now - you.asOf)) / 1000;
+  const options: BotOption[] = [];
+  const free = (you.stations as unknown[]).findIndex((st) => st === null);
+  if (free >= 0) for (const o of you.shop as { kind: StationKind; cost: number; gain: number }[]) options.push({ action: { type: 'build', slot: free, station: o.kind }, cost: o.cost, gain: o.gain });
+  (you.stations as any[]).forEach((st, i) => {
+    if (!st) return;
+    if (st.upgrade) options.push({ action: { type: 'upgrade', slot: i }, cost: st.upgrade.cost, gain: st.upgrade.gain });
+    if (st.replace) {
+      for (const [kind, gain] of Object.entries(st.replace as Record<StationKind, number>)) {
+        if (gain <= Math.max(1, st.income * 0.5)) continue;
+        const cost = (you.shop as { kind: string; cost: number }[]).find((o) => o.kind === kind)?.cost ?? Infinity;
+        options.push({ action: { type: 'build', slot: i, station: kind as StationKind }, cost, gain });
+      }
+    }
+  });
+  const patience = 5 + (1 - mind.traits.nerve) * 30;
+  const pool = options.filter((o) => o.gain > 0 && o.cost <= coins + patience * you.rate);
+  if (!pool.length) return null;
+  const best = Math.max(...pool.map((o) => o.gain / o.cost));
+  return mind.choose(pool, (o) => ((o.gain / o.cost) / best) * 2) ?? null;
+}
+
+function mindedFavour(view: any, mind: BotMind): Action {
+  const you = view.you;
+  const cards: FavourKind[] = you.offer.cards;
+  const targets: { playerId: string; lock: boolean }[] = you.offer.targets ?? [];
+  const leader = view.board?.[0];
+  const behind = leader && leader.takings > 0 ? 1 - you.takings / leader.takings : 0;
+  const card = mind.choose(cards, (k) => {
+    if (k === 'prank') return targets.length ? behind * 2 + (mind.boldness() - 0.5) : -2;
+    if (k === 'lock') return you.rank === 1 && !you.lock ? 1.4 : 0.2;
+    return 0.8;
+  }) ?? cards[0]!;
+  if (card === 'prank') {
+    const target = mind.choose(targets, (t) => (leader && t.playerId === leader.playerId ? 1 : 0) - (t.lock ? 1 : 0));
+    return { type: 'favour', card, ...(target ? { target: target.playerId } : {}) };
+  }
+  return { type: 'favour', card };
+}
+
+function mindedBot(view: any, ctx: BotContext, mind: BotMind): Action | null {
+  const you = view?.you;
+  if (!you) return null;
+  if (you.offer) return mindedFavour(view, mind);
+  const mem = mind.memory('festival', () => ({ want: null as BotOption | null }));
+  if (!mem.want || mind.chance(0.25)) mem.want = mindedPurchase(view, ctx.now, mind);
+  const buy = mem.want;
+  if (buy) {
+    const coins = you.coins + (you.rate * Math.max(0, ctx.now - you.asOf)) / 1000;
+    if (buy.cost <= coins) {
+      mem.want = null;
+      return buy.action;
+    }
+  }
+  const q = you.question;
+  return q ? { type: 'answer', iid: q.iid, answer: ctx.answer(q.iid) } : null;
+}
+
 export const festivalWorkshop = defineMode<State, Settings, Action>({
   meta,
   settings,
@@ -1321,6 +1387,7 @@ export const festivalWorkshop = defineMode<State, Settings, Action>({
     };
   },
   bot(view, ctx) {
+    if (ctx.mind) return mindedBot(view, ctx, ctx.mind);
     const you = view?.you;
     if (!you) return null;
     if (you.offer) return botFavour(view);

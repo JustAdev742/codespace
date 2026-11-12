@@ -1,7 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { eq } from 'drizzle-orm';
-import { commonSettingsSchema, roomCodeSchema, roomOptionsSchema, schoolTeamsSchema } from '@ludora/shared';
+import { commonSettingsSchema, PRACTICE_LEVEL_IDS, roomCodeSchema, roomOptionsSchema, schoolTeamsSchema } from '@ludora/shared';
 import { getMode, getVariant } from '@ludora/engine';
 import { soloBlocker } from '@ludora/engine/catalog';
 import type { AppDeps } from '../../app.ts';
@@ -30,7 +30,7 @@ const createSchema = z.object({
   /** School: teams by house, two classes, or a tournament match (modules/school/teams.ts). */
   school: schoolTeamsSchema.optional(),
   /** Solo only: practice bots to play against, at a skill the server turns into their accuracy and speed. */
-  practiceBots: z.object({ count: z.number().int().min(1).max(5), level: z.enum(['easy', 'medium', 'hard']) }).optional(),
+  practiceBots: z.object({ count: z.number().int().min(1).max(5), level: z.enum(PRACTICE_LEVEL_IDS) }).optional(),
   /** Host for a class: only its members can join, and the game counts as the class's. The caller must teach it. */
   classId: z.string().uuid().optional(),
 });

@@ -228,6 +228,32 @@ describe('solo practice bots at a chosen skill', () => {
   });
 });
 
+describe('practice bots with personalities', () => {
+  it('gives a mixed class and “My level” bots a personality the room shows', async () => {
+    const player = await registered(t.app, { accountType: 'student' });
+    const [set] = await t.db.insert(questionSets).values({ ownerId: player.userId, title: 'Mixed', subject: 'general', visibility: 'private', questions: MIXED_SET, questionCount: MIXED_SET.length }).returning({ id: questionSets.id });
+    const make = async (level: string, count: number) => {
+      const r = await player.client.post('/api/rooms', { setId: set!.id, modeId: 'gold-rush', solo: true, practiceBots: { count, level } });
+      expect(r.status, JSON.stringify(r.body)).toBe(200);
+      return t.deps.rooms.get(r.body.code)!;
+    };
+    const mixed = await make('mixed', 5);
+    const bots = [...mixed.players.values()].filter((p) => p.isBot);
+    expect(bots).toHaveLength(5);
+    // Five bots in a mixed class: five different personalities, and abilities spread from still learning to strong.
+    expect(new Set(bots.map((b) => b.profile!.persona)).size).toBe(5);
+    const abilities = bots.map((b) => b.profile!.traits.ability);
+    expect(Math.max(...abilities) - Math.min(...abilities)).toBeGreaterThan(0.4);
+    const view = mixed.view(null) as unknown as { players: { isBot: boolean; persona?: string }[] };
+    const shown = view.players.filter((p) => p.isBot).map((p) => p.persona);
+    expect(shown.every((p) => typeof p === 'string' && p.length > 0)).toBe(true);
+    const mine = await make('mine', 2);
+    expect([...mine.players.values()].filter((p) => p.isBot).every((b) => b.profile!.follows)).toBe(true);
+    // The client only names a level: anything else is refused.
+    expect((await player.client.post('/api/rooms', { setId: set!.id, modeId: 'gold-rush', solo: true, practiceBots: { count: 2, level: 'genius' } })).status).toBe(400);
+  });
+});
+
 describe('practice levels play as they say', () => {
   it('easy bots are right far less often than hard ones over whole games', () => {
     const TF = Array.from({ length: 12 }, (_, i) => ({ id: `t${i}`, type: 'truefalse' as const, prompt: `Statement ${i + 1}.`, correct: i % 2 === 0 }));

@@ -13,7 +13,7 @@
 import { z } from 'zod';
 import { answerSchema, type Rng } from '@ludora/shared';
 import { defineMode } from '../../sdk/define.ts';
-import type { EnginePlayer, ModeContext, PlayerId } from '../../sdk/types.ts';
+import type { BotContext, BotMind, EnginePlayer, ModeContext, PlayerId } from '../../sdk/types.ts';
 import { streamInit, streamNext, streamQuestionView, streamSubmit, type StreamState } from '../../mechanics/selfPaced.ts';
 import {
   BONUS_EVERY,
@@ -329,6 +329,34 @@ const FIELD_MAX = 40;
 
 /* ----------------------------------- mode ----------------------------------- */
 
+/* eslint-disable @typescript-eslint/no-explicit-any */
+/**
+ * A practice bot with a mind weighs each dig as a person would from what the screen shows: the
+ * average find against the cave-in chance and what is in the cart. Bold bots push their luck,
+ * careful ones bank early; everyone heads for the bank as the whistle nears, some later than others.
+ */
+function mindedBot(view: any, ctx: BotContext, mind: BotMind): Action | null {
+  const you = view?.you;
+  if (!you) return null;
+  const left = view.endsAt - ctx.now;
+  const bold = mind.boldness();
+  if (you.cart > 0 && left < 12_000 + (1 - bold) * 25_000) return { type: 'bank' };
+  if (left > 60_000) {
+    const affordable = (you.gear as { id: GearId; canBuy: boolean; cost: number | null }[]).filter((g) => g.canBuy && g.cost !== null && you.banked >= g.cost * (1.2 + (1 - bold) * 0.8));
+    const buy = mind.choose(affordable, (g) => (g.id === 'props' ? 1 : 0.5) - (g.cost ?? 0) / Math.max(1, you.banked));
+    if (buy && mind.chance(0.7)) return { type: 'buy', gear: buy.id };
+  }
+  if (you.cart > 0) {
+    const c = Math.min(1, (you.next.caveIn ?? 0) / 100);
+    const gain = (1 - c) * (you.next.average ?? 0);
+    const loss = c * you.cart * (1.6 - bold);
+    if (gain - loss < 0 && (you.digs === 0 || mind.chance(0.85))) return { type: 'bank' };
+  }
+  if (you.digs > 0) return { type: 'dig' };
+  const q = you.question;
+  return q ? { type: 'answer', iid: q.iid, answer: ctx.answer(q.iid) } : null;
+}
+
 export const goldRush = defineMode<State, Settings, Action>({
   meta,
   settings,
@@ -475,6 +503,7 @@ export const goldRush = defineMode<State, Settings, Action>({
     };
   },
   bot(view, ctx) {
+    if (ctx.mind) return mindedBot(view, ctx, ctx.mind);
     const you = view?.you;
     if (!you) return null;
     const left = view.endsAt - ctx.now;

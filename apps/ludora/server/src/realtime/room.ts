@@ -8,6 +8,7 @@ import {
   MAX_BAR_REACTIONS,
   generateName,
   hashString,
+  PERSONA_INFO,
   S2C,
   uniformForDress,
   type AvatarLite,
@@ -17,6 +18,7 @@ import {
   type FeedItem,
   type Feeling,
   type HostCommand,
+  type PracticeLevel,
   type HostExtras,
   type LessonRoomView,
   type PlayerRequest,
@@ -37,8 +39,11 @@ import { spectatorView } from '../modules/school/spectator.ts';
 import {
   GameRuntime,
   makeTeams,
+  PracticeMind,
+  practiceRoster,
   prepareQuestions,
   resolveGameConfig,
+  type BotProfile,
   type EngineResults,
   type GameMode,
   type ModeVariant,
@@ -87,17 +92,25 @@ export interface RoomPlayer {
   bar?: string[];
   /** Practice bots in a solo game: how much slower (over 1) or quicker (under 1) than the mode's own pace it plays. */
   pace?: number;
+  /** A practice bot's personality and traits, decided on the server when it joins. Its mind is made from this each game. */
+  profile?: BotProfile;
   /** The account behind this slot has unlocked chaos. Set by the server from the database, never by the client. */
   chaos: boolean;
 }
 
-export type PracticeLevel = 'easy' | 'medium' | 'hard';
+export type { PracticeLevel };
 export const MAX_PRACTICE_BOTS = 5;
-/** Practice bots' accuracy (the chance each answer is right) and pace (times the mode's own bot speed). */
+/**
+ * Practice bots' rough accuracy (the chance each answer is right) and pace (times the mode's own bot speed),
+ * the fallback for a bot without a mind. Bots with a mind (all of them now) play by their profile instead
+ * (packages/engine/src/bots), which keeps to these bands on average.
+ */
 export const PRACTICE_LEVELS: Record<PracticeLevel, { skill: number; pace: number }> = {
   easy: { skill: 0.4, pace: 1.6 },
   medium: { skill: 0.65, pace: 1 },
   hard: { skill: 0.88, pace: 0.6 },
+  mixed: { skill: 0.65, pace: 1 },
+  mine: { skill: 0.65, pace: 1 },
 };
 
 export interface PersistOutcome {
@@ -273,6 +286,8 @@ export class Room {
   readonly roster = new Map<string, { userId: string | null; name: string; isGuest: boolean; isBot: boolean; forgotten?: true }>();
   teams: TeamView[] = [];
   runtime: GameRuntime | null = null;
+  /** Practice bots' minds for the game being played. */
+  private minds = new Map<string, PracticeMind>();
   gameId: string | null = null;
   results: EngineResults | null = null;
   rewards = new Map<string, RewardSummary>();
@@ -641,6 +656,7 @@ export class Room {
     const space = Math.max(0, this.mode.meta.players.max - this.players.size);
     const n = Math.max(0, Math.min(count, space, MAX_PRACTICE_BOTS));
     const { skill, pace } = PRACTICE_LEVELS[level];
+    const roster = practiceRoster(level, n, hashString(`${this.code}:practice:${this.playerSeq}`));
     for (let i = 0; i < n; i++) {
       const name = this.uniqueName(this.botName());
       const id = `b${++this.playerSeq}`;
@@ -661,6 +677,7 @@ export class Room {
         // A little spread, so three bots on one level do not tie on every question.
         skill: Math.min(0.97, Math.max(0.05, skill + (this.botRng.next() - 0.5) * 0.08)),
         pace: pace * (0.92 + this.botRng.next() * 0.16),
+        profile: roster[i]!,
         chaos: false,
       });
     }
@@ -789,6 +806,7 @@ export class Room {
         const room = Math.min(this.options.maxPlayers, this.mode.meta.players.max) - this.players.size;
         const count = Math.min(cmd.count, room, 20 - [...this.players.values()].filter((p) => p.isBot).length);
         if (count <= 0) return fail('room_full', 'No space for more bots.');
+        const classBots = practiceRoster('mixed', count, hashString(`${this.code}:class:${this.playerSeq}`));
         for (let i = 0; i < count; i++) {
           const name = this.uniqueName(this.botName());
           const id = `b${++this.playerSeq}`;
@@ -807,6 +825,8 @@ export class Room {
             recent: new Map(),
             lastReactionAt: 0,
             skill: 0.45 + this.botRng.next() * 0.45,
+            // Bots a host adds to a lobby are a mixed class: a spread of personalities and abilities.
+            profile: classBots[i]!,
             chaos: false,
           });
         }
@@ -1022,6 +1042,7 @@ export class Room {
       },
     });
     this.runtime = runtime;
+    this.minds = this.makeMinds(runtime);
     this.status = 'running';
     this.feed = [];
     const r = runtime.start();
@@ -1197,16 +1218,37 @@ export class Room {
     this.botTimers.delete(id);
   }
 
+  /**
+   * A fresh mind for each practice bot every game, seeded from the game's own seed so a game's bots
+   * are the same people however often it is replayed. "My level" bots keep pace with the players
+   * here: their accuracy and speed so far in this game, as the runtime counts them.
+   */
+  private makeMinds(runtime: GameRuntime): Map<string, PracticeMind> {
+    const minds = new Map<string, PracticeMind>();
+    const people = () => [...this.players.values()].filter((p) => !p.isBot).map((p) => runtime.statsFor(p.id));
+    const follow = () => {
+      const all = people();
+      return all.length ? { answered: all.reduce((n, s) => n + s.answered, 0), correct: all.reduce((n, s) => n + s.correct, 0), responseMsSum: all.reduce((n, s) => n + s.responseMsSum, 0) } : null;
+    };
+    for (const p of this.players.values()) {
+      if (!p.isBot || !p.profile) continue;
+      minds.set(p.id, new PracticeMind({ ...p.profile, seed: hashString(`${this.code}:${this.gameId}:${p.id}`) }, { follow }));
+    }
+    return minds;
+  }
+
   private scheduleBot(p: RoomPlayer) {
     if (!this.runtime || this.status !== 'running') return;
     this.clearBot(p.id);
-    const delay = Math.round(this.runtime.botDelay(p.id, this.botRng) * (p.pace ?? 1));
+    const mind = this.minds.get(p.id);
+    // A bot with a mind keeps its own pace; the old bot is slowed or quickened by its level.
+    const delay = mind ? this.runtime.botDelay(p.id, this.botRng, mind) : Math.round(this.runtime.botDelay(p.id, this.botRng) * (p.pace ?? 1));
     this.botTimers.set(
       p.id,
       setTimeout(() => {
         this.botTimers.delete(p.id);
         if (!this.runtime || this.status !== 'running' || !this.players.has(p.id)) return;
-        const action = this.runtime.botAction(p.id, p.skill, this.botRng);
+        const action = this.runtime.botAction(p.id, p.skill, this.botRng, mind);
         if (action) this.runtime.act(p.id, action);
         this.scheduleBot(p);
       }, delay),
@@ -1330,6 +1372,7 @@ export class Room {
         isBot: p.isBot,
         isGuest: p.isGuest,
         avatar: p.avatar,
+        ...(p.isBot && p.profile ? { persona: PERSONA_INFO[p.profile.persona].label } : {}),
         ...(this.ready.has(p.id) ? { ready: true } : {}),
       })),
       game,

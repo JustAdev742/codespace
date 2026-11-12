@@ -18,3 +18,4 @@ export * from './schoolUniformSchema.ts';
 export * from './students.ts';
 export * from './school.ts';
 export * from './lessons.ts';
+export * from './practice.ts';
