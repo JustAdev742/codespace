@@ -147,9 +147,13 @@ content seed, an account, a question set, and a whole Classic game with a host a
 players over WebSockets, with the results then read back from Neon itself; queries went through
 the pooled address and migrations through the direct one. That run was made from a machine
 where the Postgres port is closed, so the connections were carried over Neon's WebSocket
-endpoint; a plain encrypted connection to port 5432, which is what a host makes, has been
-checked against a local Postgres only. What has not been checked: a deploy on Render. Nobody
-has run this there yet.
+endpoint. It has since been deployed for real: a free Render web service in Singapore, built
+from this repository's Dockerfile, on that Neon database over its ordinary port. There, the
+health check, the home page, the 30 modes, a sign-up at the `onrender.com` address (accepted,
+with a secure cookie), the session read back, and a WebSocket connection all work. That
+service was made with Render's "new web service" form rather than from `render.yaml`, with the
+same settings; the Blueprint route itself has not been run. Not measured there: how many
+players it carries.
 
 ## Environments
 
