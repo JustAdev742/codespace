@@ -1,8 +1,8 @@
 // Bars 18 to 30: make it your own (notes, your own game mode, your own Glim, the collection),
 // then what it gives a classroom.
 import { Group } from 'three';
-import { Card, Clip, bar, cone, ease, glow, lerp, loadStill, ring, seg, text, clamp01 } from '../engine.ts';
-import { Actor, floorLight, hop } from '../cast.ts';
+import { Card, Clip, bar, cone, ease, glow, lerp, loadStill, ring, seg, slab, text, clamp01 } from '../engine.ts';
+import { Actor, casting, floorLight, hop } from '../cast.ts';
 import { caption, punch, roll } from './kit.ts';
 import { CROP, MARK } from './marks.ts';
 import type { Film, Shot } from '../film.ts';
@@ -12,7 +12,7 @@ const FLOOR = -330;
 export async function making(film: Film): Promise<Shot[]> {
   const { stage } = film;
   const [notes, code, shuffle, paint, picker] = await Promise.all(['make-notes', 'gamemaker-code', 'designs-shuffle', 'designs-paint', 'tools-picker'].map((n) => new Clip(n).init()));
-  const [collection, report] = await Promise.all([loadStill('collection-full'), loadStill('report-game')]);
+  const report = await loadStill('report-game');
 
   /* ---- bars 18 and 19: the turn. Quiet. One Glim, one question. ---- */
   const E0 = new Group(), hud0 = new Group();
@@ -118,12 +118,15 @@ export async function making(film: Film): Promise<Shot[]> {
   const mk = (c: Clip) => c.marks as unknown as Record<string, Box | undefined> & Record<string, number>;
 
   /* ---- bars 22 and 23: write your own game mode. The code on the left, the test game it drives on the right ---- */
-  const codeBox = pad(mk(code).code, [0.21, 0.27, 0.6, 0.62]);
-  const liveBox = pad(mk(code).live, [0.21, 0.63, 0.6, 1.0]);
+  // The code box as the camera noted it runs under the test game (the page clips it); stop it just above.
+  const cm = mk(code).code ?? [0.213, 0.18, 0.594, 0.45], lm = mk(code).live ?? [0.213, 0.47, 0.594, 0.96];
+  const codeBox: Box = [cm[0] - 0.006, cm[1] - 0.012, cm[2] + 0.006, Math.min(cm[3], lm[1] - 0.012)];
+  const liveBox: Box = [lm[0] - 0.006, lm[1], lm[2] + 0.006, Math.min(1, lm[3])];
+  const sizeOf = (c: Clip, fallback: [number, number]) => (mk(c).size as unknown as [number, number] | undefined) ?? fallback;
   const s2 = pairScene(bar(22), bar(24), {
     clipL: (t) => ({ clip: code, t, from: Math.max(1, ((mk(code).edit as unknown as number) ?? 34) - 14), speed: 1.55 }),
     clipR: (t) => ({ clip: code, t, from: Math.max(1, ((mk(code).edit as unknown as number) ?? 34) - 14), speed: 1.55 }),
-    left: codeBox, right: liveBox, picture: [1920, 1770], glowL: '#22b8a0', glowR: '#3f6bff',
+    left: codeBox, right: liveBox, picture: sizeOf(code, [1920, 2670]), glowL: '#22b8a0', glowR: '#3f6bff', height: 690,
     lines: [['Write your own game mode.', 0.3, 1.55], ['Simple code. A real game.', 2.05, 9, '#ffc233']],
   });
 
@@ -134,17 +137,32 @@ export async function making(film: Film): Promise<Shot[]> {
   const s3 = pairScene(bar(24), bar(26), {
     clipL: (t) => (t < 2 ? { clip: shuffle, t, from: 12, speed: 1.6 } : { clip: paint, t: t - 2, from: 6, speed: 1.5 }),
     clipR: (t) => ({ clip: paint, t: Math.max(0, t - 1.4), from: 4, speed: 1.25 }),
-    left: glimBox, right: paintBox, picture: [1920, 3000], glowL: '#8a5cff', glowR: '#ff5d9a', height: 560,
+    left: glimBox, right: paintBox, picture: sizeOf(shuffle, [1920, 3600]), glowL: '#8a5cff', glowR: '#ff5d9a', height: 560,
     lines: [['Design your own Glim.', 0.3, 1.55], ['Shape it. Paint it. Wear it.', 2.05, 9, '#ffc233']],
   });
 
-  /* ---- bar 26: the collection ---- */
+  /* ---- bar 26: the collection. Three shelves of Glims, each one different ---- */
   const E4 = new Group(), hud4 = new Group();
-  const shelf = new Card({ w: 1700, h: 956, radius: 30, rim: 2, rimColor: '#7f8be0', glow: '#ffb31a', shadow: 0.7 });
-  shelf.position.set(0, 70, -80);
-  shelf.rotation.x = -0.12;
-  shelf.show(collection, [0.195, 0.05, 1, 0.5]);
-  E4.add(shelf);
+  const shelfY = [200, -40, -280];
+  const shelfGlow = glow(2600, '#ffb31a', 0.22);
+  shelfGlow.position.set(0, -40, -500);
+  E4.add(shelfGlow);
+  for (const y of shelfY) { const bar_ = slab(2600, 10, '#2c3684', 5, 0.2); bar_.position.set(0, y - 6, -30); E4.add(bar_); }
+  const shelfCast = casting(24, 57);
+  const shelves = shelfCast.map((who, i) => {
+    const a = new Actor(who, 205);
+    const row = Math.floor(i / 8), col = i % 8;
+    const x = -1015 + col * 290 + (row % 2) * 60;
+    a.path = (t) => {
+      const u = Math.max(0, t - 0.1 - col * 0.07 - row * 0.05);
+      const up = Math.abs(Math.sin(Math.min(1, u / 0.45) * Math.PI)) * 90 * (u < 0.45 ? 1 : 0);
+      return { x, y: shelfY[row]! + up, z: 0, turn: Math.sin(t * 1.4 + i) * 0.25, squash: 1 + (u < 0.45 ? 0.06 : 0) };
+    };
+    a.cue(0.5 + col * 0.07, i % 3 === 0 ? 'wave' : i % 3 === 1 ? 'cheer' : 'celebrate');
+    E4.add(a);
+    return a;
+  });
+  await Promise.all(shelves.map((a) => a.glim.ready));
   const cap4 = caption('Over 100 Glims to collect.', 0, -462, { size: 96 });
   hud4.add(cap4.group);
   const s4: Shot = {
@@ -152,11 +170,9 @@ export async function making(film: Film): Promise<Shot[]> {
     update(t) {
       film.energy = 0.6; film.warm = 0.5;
       const k = punch(t);
-      // The picture is taller than the card: glide down it.
-      const top = lerp(0.03, 0.34, ease.inOutSine(seg(t, 0, 2)));
-      shelf.u.uCrop!.value = [0.195, top, 1, top + 0.4];
+      for (const a of shelves) a.seek(t);
       cap4.show(t - 0.25);
-      stage.view({ dolly: lerp(-40, 60, seg(t, 0, 2)) + k * 80, orbitY: lerp(0.05, -0.04, seg(t, 0, 2)) });
+      stage.view({ x: lerp(-120, 120, seg(t, 0, 2)), y: 10, dolly: lerp(-60, 90, seg(t, 0, 2)) + k * 80, orbitY: lerp(0.08, -0.06, seg(t, 0, 2)) });
       stage.fx.uAberration.value = 0.0012 + k * 0.004;
     },
   };

@@ -379,7 +379,9 @@ def s_feature2(slide, s):
     ph = pw * 9 / 16
     pic(slide, s['images'][0], MX, 1.7, pw, ph, anchor='top')
     pic(slide, s['images'][1], MX + 2.2, 3.55, pw, ph, anchor='top')
-    bullets(slide, 8.45, 1.85, W - 8.45 - MX, 4.8, s['points'], size=17.5, gap=13)
+    bullets(slide, 8.45, 1.85, W - 8.45 - MX, 4.8, s['points'], size=17 if len(s['points']) > 5 else 17.5, gap=11 if len(s['points']) > 5 else 13)
+    if s.get('foot'):
+        foot(slide, s['foot'], y=3.55 + ph + 0.2)
 
 
 def s_tiles(slide, s):

@@ -232,8 +232,8 @@ const CARD_FS = /* glsl */ `
     vec2 uv = vec2(mix(uCrop.x, uCrop.z, vUv.x), mix(1.0 - uCrop.w, 1.0 - uCrop.y, vUv.y));
     vec3 c = mix(uColor, texture2D(map, uv).rgb, uHasMap) * uBright;
     // A band of light that can sweep across the glass.
-    float band = smoothstep(0.12, 0.0, abs((vUv.x + vUv.y * 0.35) - uSheen));
-    c += band * 0.09;
+    float band = smoothstep(0.07, 0.0, abs((vUv.x + vUv.y * 0.35) - uSheen));
+    c += band * 0.05;
     // A thin bright edge, so a dark screen still has a shape against a dark stage.
     float rim = smoothstep(uRim + aa, uRim - aa, -d) ;
     c = mix(c, uRimColor, rim * 0.9 * step(0.001, uRim));
@@ -413,6 +413,18 @@ export function riseIn(items: TextMesh[], t: number, { each = 0.07, dur = 0.42, 
     const s = 0.86 + 0.14 * p;
     m.scale.set(s, s, 1);
   });
+}
+
+/** A soft dark patch to sit behind words that cross a busy picture. */
+export function scrim(w: number, h: number, opacity = 0.6): Mesh<PlaneGeometry, ShaderMaterial> {
+  const m = Math.min(w, h) * 0.5;
+  const mesh = new Mesh(unit, new ShaderMaterial({
+    uniforms: { uSize: { value: new Vector2(w + m * 2, h + m * 2) }, uInner: { value: new Vector2(w * 0.7, h * 0.6) }, uRadius: { value: h * 0.3 }, uBlur: { value: m }, uOpacity: { value: opacity }, uColor: { value: new Color(0x02030f) } },
+    vertexShader: CARD_VS, fragmentShader: SHADOW_FS, transparent: true, depthWrite: false,
+  }));
+  mesh.scale.set(w + m * 2, h + m * 2, 1);
+  mesh.renderOrder = 15;
+  return mesh;
 }
 
 /** A plain coloured bar or pill. */

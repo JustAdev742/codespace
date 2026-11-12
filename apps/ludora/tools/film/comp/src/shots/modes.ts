@@ -1,6 +1,6 @@
 // Bars 12 to 17: thirty game modes, and ten of them in 3D, one a second.
 import { CanvasTexture, Group, Mesh, MeshBasicMaterial, PlaneGeometry, SRGBColorSpace } from 'three';
-import { Card, Clip, H, W, bar, ease, glow, lerp, seg } from '../engine.ts';
+import { Card, Clip, H, W, bar, ease, glow, lerp, scrim, seg } from '../engine.ts';
 import { caption, nameTag, punch, roll } from './kit.ts';
 import type { Film, Shot } from '../film.ts';
 
@@ -61,7 +61,9 @@ export async function modes(film: Film): Promise<Shot[]> {
   num.mesh.position.set(0, 110, 0);
   const sub = caption('game modes', 0, -190, { size: 190 });
   const more = caption('Races. Builds. Heists. Tag. Every one plays differently.', 0, -372, { size: 54, font: 'sans', weight: 700, italic: false, color: '#d5dbff' });
-  hud1.add(num.mesh, sub.group, more.group);
+  const shade = scrim(1500, 760, 0.72);
+  shade.position.set(0, -60, -2);
+  hud1.add(shade, num.mesh, sub.group, more.group);
   const s1: Shot = {
     a: bar(12), b: bar(13), group: D1, hud: hud1,
     update(t) {
@@ -72,7 +74,8 @@ export async function modes(film: Film): Promise<Shot[]> {
       num.mesh.scale.setScalar(lerp(1.6, 1, land) * (1 + 0.08 * punch(t - 0.62, 10)));
       sub.show(t - 0.5);
       more.show(t - 0.95);
-      wall.u.uBright!.value = 0.5;
+      wall.u.uBright!.value = 0.62;
+      shade.material.uniforms.uOpacity!.value = 0.72 * seg(t, 0.0, 0.4);
       wall.position.y = -60 + t * 60;
       stage.view({ dolly: lerp(-100, 60, ease.outCubic(seg(t, 0, 2))) + k * 110, orbitY: lerp(-0.04, 0.04, seg(t, 0, 2)) });
       stage.fx.uFlash.value = 1 - ease.outCubic(seg(t, 0, 0.32));

@@ -433,14 +433,14 @@ fx.add(whoosh(0.55, 2600), at(6) - 0.42, 0.5)
 for i, bar in enumerate(range(6, 12)):
     four_floor(bar, sixteenths=bar >= 8)
     bass_bar(bar)
-    stabs(bar, 0.17 + 0.01 * i, bright=0.9 + 0.05 * i)
+    stabs(bar, 0.22 + 0.012 * i, bright=0.95 + 0.05 * i)
     pads.add(pad(chord_of(bar)['tones'], BAR), at(bar), 0.14)
     if bar in (6, 8, 10):
         hits.add(crash(1.8), at(bar), 0.28)
 for bar in range(6, 10):
-    hook(bar, (bar - 6) % 4, gain=0.2, voice='pluck')
+    hook(bar, (bar - 6) % 4, gain=0.27, voice='pluck')
 for bar in (10, 11):
-    hook(bar, (bar - 6) % 4, gain=0.22, voice='lead')
+    hook(bar, (bar - 6) % 4, gain=0.25, voice='lead')
 fx.add(bell(90, 0.9), at(8, 1) + 0.12, 0.3)  # Correct
 fx.add(bell(97, 0.9), at(8, 1) + 0.24, 0.24, pan=0.3)
 fx.add(riser(2.8), at(11) - 0.8, 0.55)
@@ -486,16 +486,22 @@ for i, bar in enumerate(range(20, 27)):
     half_time(bar, level=0.85 + 0.03 * i, shaker=bar >= 22)
     bass_bar(bar, pattern='long', gain=0.5)
     pads.add(pad(chord_of(bar)['tones'], BAR), at(bar), 0.24)
-    arp(bar, gain=0.085 + 0.006 * i, bright=0.6 + 0.05 * i, sixteenths=bar >= 24)
+    arp(bar, gain=0.11 + 0.008 * i, bright=0.65 + 0.05 * i, sixteenths=bar >= 24)
     if bar % 2 == 0:
         fx.add(whoosh(0.5, 2000), at(bar) - 0.28, 0.32)
         hits.add(crash(1.4), at(bar), 0.16)
 for bar in (20, 21, 24, 25):
-    hook(bar, (bar - 20) % 4, gain=0.2, voice='bell')
+    hook(bar, (bar - 20) % 4, gain=0.27, voice='bell')
 for bar in (22, 23, 26):
-    hook(bar, (bar - 20) % 4, gain=0.17, voice='pluck')
+    hook(bar, (bar - 20) % 4, gain=0.23, voice='pluck')
 for k in range(34):  # a keyboard, while the notes are typed
     fx.add(filt(noise(900) * decay(900, 0.004), bp(1800, 6000)), at(20) + 0.1 + k * 0.045 + rng.random() * 0.012, 0.07, pan=rng.random() - 0.5)
+for k in range(16):  # the game code being typed, and the test game answering
+    fx.add(filt(noise(900) * decay(900, 0.004), bp(1800, 6000)), at(22) + 1.45 + k * 0.04 + rng.random() * 0.012, 0.07, pan=rng.random() - 0.5)
+fx.add(bell(93, 0.8), at(22) + 0.42, 0.2, pan=-0.3)  # one number changed
+fx.add(bell(98, 1.0), at(23) + 0.2, 0.2, pan=0.3)   # the rule is in
+for k in range(24):  # three shelves of Glims hopping up, left to right
+    fx.add(pluck(79 + [0, 2, 4, 7, 9, 12, 14, 16][k % 8] + (k // 8) * 0, 0.2, 1.5), at(26) + 0.12 + (k % 8) * 0.07 + (k // 8) * 0.05, 0.085, pan=-0.8 + (k % 8) * 0.23)
 for t0 in (at(26, 2), at(26, 2.5), at(26, 3), at(26, 3.5)):
     hits.add(tom(47 + int((t0 - at(26, 2)) * 4)), t0, 0.36)
 fx.add(whoosh(0.55, 2400), at(27) - 0.36, 0.42)
