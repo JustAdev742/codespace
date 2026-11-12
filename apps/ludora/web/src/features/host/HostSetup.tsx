@@ -1,7 +1,7 @@
-import { lazy, Suspense, useEffect, useMemo, useRef, useState, type RefObject } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, type RefObject } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate, useSearchParams } from 'react-router';
-import { Bot, Presentation, Search, Users } from 'lucide-react';
+import { Bot, Presentation, Search, SlidersHorizontal, Users } from 'lucide-react';
 import { toast } from 'sonner';
 import { PERSONA_INFO, PRACTICE_LEVEL_IDS, PRACTICE_LEVEL_INFO, PRACTICE_LEVEL_PERSONAS, type CommonField, type PracticeLevel, type SetProfile, type SettingField } from '@ludora/shared';
 import { soloBlocker } from '@ludora/engine/catalog';
@@ -17,6 +17,8 @@ import { ChosenSet, ModeGrid, SetButton, type Choice } from './pickers.tsx';
 import { ModeSuggestHelper } from '../ai/AiModeHelper.tsx';
 import { rankModes, suggestedSettings, type ModeFit, type RankedMode } from './fit.ts';
 import { HostMadeGames } from '../modestudio/HostMadeGames.tsx';
+import { SoloMadeGames, type SoloMadeGame } from './SoloMadeGames.tsx';
+import { maxBots, readSoloPrefs, soloPrefsKey, soloSummary, writeSoloPrefs } from './soloSettings.ts';
 
 // Lessons: "Add to a lesson instead" (features/lessons), loaded when opened.
 const AddToLessonDialog = lazy(() => import('../lessons/AddToLesson.tsx'));
@@ -249,9 +251,9 @@ function SettingInput({ field, value, onChange, locked }: { field: SettingField;
 /* ------------------------------------- page -------------------------------------- */
 
 /** A step's heading: its number on a gold tile, then its name. Read aloud as "1. Questions". */
-function StepTitle({ id, n, children, className = 'mb-4' }: { id: string; n: number; children: string; className?: string }) {
+function StepTitle({ id, n, children, className = 'mb-4', headingRef }: { id: string; n: number; children: string; className?: string; /** For a step the page moves focus to. */ headingRef?: RefObject<HTMLHeadingElement | null> }) {
   return (
-    <h2 id={id} className={`flex items-center gap-2.5 font-display text-2xl leading-tight font-bold ${className}`}>
+    <h2 id={id} ref={headingRef} tabIndex={headingRef ? -1 : undefined} className={`flex scroll-mt-20 items-center gap-2.5 font-display text-2xl leading-tight font-bold outline-none ${className}`}>
       <span className="grid size-8 shrink-0 place-items-center rounded-[var(--radius-s)] bg-lantern text-xl text-on-accent tabular">{n}</span>
       <span className="sr-only">. </span>
       {children}
@@ -344,6 +346,33 @@ function Setup({ solo, preset, presetMode = null, gameId, making, again, classId
   const [lessoning, setLessoning] = useState(false);
   const isTeacher = me0.data?.user?.accountType === 'teacher';
   const [atLimit, setAtLimit] = useState(false);
+  // Solo: a game made in Mode Studio, chosen in step 2 in place of a built-in mode.
+  const [made, setMade] = useState<SoloMadeGame | null>(null);
+  /** Start a game's settings afresh; solo starts from what this player changed for that game last time, on this device. */
+  const startFrom = useCallback(
+    (key: string, playersMax: number, defaultBots = 0) => {
+      const p = solo ? readSoloPrefs(key) : null;
+      setSettings(p?.settings ?? {});
+      setCommon(p?.common ?? {});
+      setBots(Math.min(p ? p.bots : defaultBots, maxBots(playersMax)));
+      setBotLevel(p?.botLevel ?? 'mixed');
+    },
+    [solo],
+  );
+  const pickMode = (c: Choice) => {
+    setMade(null);
+    setChoice(c);
+    startFrom(soloPrefsKey({ modeId: c.mode.meta.id, variantId: c.variant?.meta.id ?? null }), c.mode.meta.players.max);
+  };
+  // Made games played solo started with three bots before they had settings of their own; that stays the default.
+  const pickMade = useCallback(
+    (g: SoloMadeGame) => {
+      setChoice(null);
+      setMade(g);
+      startFrom(soloPrefsKey({ modeId: 'made-game', madeGameId: g.id }), 200, 3);
+    },
+    [startFrom],
+  );
   const gameApplied = useRef(false);
   useEffect(() => {
     if (!game || gameApplied.current || !modes.data) return;
@@ -372,8 +401,10 @@ function Setup({ solo, preset, presetMode = null, gameId, making, again, classId
     if (!presetMode || modeApplied.current || !modes.data) return;
     const entry = modes.data.modes.find((m) => m.meta.id === presetMode);
     modeApplied.current = true;
-    if (entry) setChoice((c) => c ?? { mode: entry, variant: null });
-  }, [presetMode, modes.data]);
+    if (!entry) return;
+    setChoice((c) => c ?? { mode: entry, variant: null });
+    if (solo && !gameId) startFrom(soloPrefsKey({ modeId: entry.meta.id }), entry.meta.players.max);
+  }, [presetMode, modes.data, solo, gameId, startFrom]);
   const classApplied = useRef(false);
   useEffect(() => {
     if (!forClass?.hostDefaults || classApplied.current) return;
@@ -405,8 +436,30 @@ function Setup({ solo, preset, presetMode = null, gameId, making, again, classId
     return true;
   };
 
-  const canHaveBots = Boolean(choice && choice.mode.meta.players.max >= 2);
+  const canHaveBots = Boolean(made || (choice && choice.mode.meta.players.max >= 2));
+  const botsMax = made ? maxBots(200) : maxBots(choice?.mode.meta.players.max ?? 1);
+  const settingsStage = useRef<HTMLHeadingElement>(null);
+  /** Solo: the "Your settings" stage, brought into view with focus on its heading. */
+  const toSettings = () => {
+    const h = settingsStage.current;
+    h?.scrollIntoView({ block: 'start', behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+    h?.focus({ preventScroll: true });
+  };
+  const playMade = async (g: SoloMadeGame) => {
+    if (!set) return;
+    setBusy(true);
+    try {
+      const res = await api.post<{ code: string }>('/api/rooms', { setId: set.id, modeId: 'made-game', blueprintId: g.id, solo: true, ...(onlyLevel ? { difficulty: onlyLevel } : {}), ...(bots > 0 ? { practiceBots: { count: bots, level: botLevel } } : {}) });
+      writeSoloPrefs(soloPrefsKey({ modeId: 'made-game', madeGameId: g.id }), { common: {}, settings: {}, bots, botLevel });
+      navigate(`/room/${res.code}`);
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : 'Could not start the game.');
+    } finally {
+      setBusy(false);
+    }
+  };
   const create = async () => {
+    if (solo && made) return playMade(made);
     if (!set || !choice) return;
     setBusy(true);
     try {
@@ -432,6 +485,8 @@ function Setup({ solo, preset, presetMode = null, gameId, making, again, classId
         ...(forClass && !solo ? { classId: forClass.id } : {}),
       });
       void qc.invalidateQueries({ queryKey: openGamesKey });
+      // Solo: what the player changed is where this game starts next time, on this device.
+      if (solo) writeSoloPrefs(soloPrefsKey({ modeId: choice.mode.meta.id, variantId: choice.variant?.meta.id ?? null }), { common, settings: settings as Record<string, string | number | boolean>, bots, botLevel });
       navigate(`/room/${res.code}`);
     } catch (err) {
       // Hosting refuses a new game as a conflict only when too many are open (games opened in another tab, say).
@@ -444,6 +499,29 @@ function Setup({ solo, preset, presetMode = null, gameId, making, again, classId
 
   const full = Boolean(open && open.rooms.length >= open.limit);
   const meta = choice?.mode.meta;
+  // What Start playing will start: the chosen mode or variant, or the made game.
+  const picked = choice ? (choice.variant?.meta.title ?? choice.mode.meta.title) : solo && made ? made.name : null;
+  const summary = soloSummary({
+    ...(meta?.common.fields.includes('questionLimit') ? { questionLimit: commonValue('questionLimit') } : {}),
+    ...(meta?.common.fields.includes('questionTimeSec') ? { questionTimeSec: commonValue('questionTimeSec') } : {}),
+    ...(meta?.common.fields.includes('timeLimitSec') ? { timeLimitSec: commonValue('timeLimitSec') } : {}),
+    bots: canHaveBots ? bots : 0,
+    botLevel,
+    onlyLevel,
+  });
+  const remembered = solo && choice ? readSoloPrefs(soloPrefsKey({ modeId: choice.mode.meta.id, variantId: choice.variant?.meta.id ?? null })) !== null : false;
+  const whichQuestions =
+    profile && profile.difficulty.hard + profile.difficulty.medium > 0 ? (
+      <Field label="Which questions" hint={`Questions are marked in the editor: ${profile.difficulty.hard} hard, ${profile.difficulty.medium} medium, ${profile.difficulty.easy} easy, ${profile.difficulty.unset} not marked.`}>
+        {(p) => (
+          <Select {...p} value={onlyLevel} onChange={(e) => setOnlyLevel(e.target.value as '' | 'medium' | 'hard')}>
+            <option value="">All of them</option>
+            <option value="medium">Only medium and hard ones</option>
+            {profile.difficulty.hard > 0 ? <option value="hard">Only the hard ones</option> : null}
+          </Select>
+        )}
+      </Field>
+    ) : null;
   return (
     <>
       <PageHeader
@@ -454,7 +532,7 @@ function Setup({ solo, preset, presetMode = null, gameId, making, again, classId
             : making
               ? 'Pick a question set and a mode (2D or 3D), tune the settings, then press Save as a game. You can host it any time, or share its link.'
               : solo
-                ? 'Practise any self-paced mode on your own. Solo games earn a little less, so playing together stays the best way to earn.'
+                ? 'Three steps: your questions, a game, then your settings. Solo games earn a little less, so playing together stays the best way to earn.'
                 : 'Pick what to play, then share the code with your players.'
         }
       />
@@ -522,7 +600,7 @@ function Setup({ solo, preset, presetMode = null, gameId, making, again, classId
             </>
           )}
         </Panel>
-        <HostMadeGames setId={set?.id ?? null} setTitle={set?.title ?? null} solo={solo} />
+        {solo ? null : <HostMadeGames setId={set?.id ?? null} setTitle={set?.title ?? null} solo={false} />}
         <Panel className="p-5" aria-labelledby="host-step-mode">
           <StepTitle id="host-step-mode" n={2}>
             Game mode
@@ -542,61 +620,59 @@ function Setup({ solo, preset, presetMode = null, gameId, making, again, classId
               Sorted by how well each mode fits “{set?.title}”, best first.
             </p>
           ) : null}
-          <ModePicker
-            value={choice}
-            solo={solo}
-            fit={ranking}
-            onChange={(c) => {
-              setChoice(c);
-              setSettings({});
-              setCommon({});
-            }}
-          />
+          <ModePicker value={choice} solo={solo} fit={ranking} onChange={pickMode} />
+          {solo ? <SoloMadeGames value={made} onChange={pickMade} /> : null}
         </Panel>
-        {meta && choice ? (
+        {(meta && choice) || solo ? (
           <Panel className="p-5" aria-labelledby="host-step-settings">
-            <StepTitle id="host-step-settings" n={3} className="mb-1">
-              Settings
+            <StepTitle id="host-step-settings" n={3} className="mb-1" headingRef={solo ? settingsStage : undefined}>
+              {solo ? 'Your settings' : 'Settings'}
             </StepTitle>
-            <p className="mb-4 text-sm text-text-2">{choice.variant ? choice.variant.meta.changes : meta.description}</p>
-            {suggested && meta.common.fields.includes('questionTimeSec') && common.questionTimeSec === undefined && !locked.has('questionTimeSec') ? (
-              <p className="mb-4 rounded-[var(--radius-m)] border border-line bg-surface-2 px-3 py-2 text-sm text-text" data-suggested>
-                Filled in from the set: {suggested.questionTimeSec} seconds per question ({suggested.why}). Change it below if you like.
-              </p>
-            ) : null}
-            <div className="grid grid-cols-1 gap-x-8 gap-y-4 md:grid-cols-2">
-              {meta.common.fields.map((k) => (
-                <CommonInput key={k} field={k} meta={meta} value={commonValue(k)} locked={locked.has(k)} onChange={(v) => setCommon((c) => ({ ...c, [k]: v }))} />
-              ))}
-              {meta.teams !== 'none' && !solo ? (
-                <Field label="Teams" hint={meta.teams === 'required' ? 'This mode is always played in teams.' : choice.variant?.common?.teamCount ? 'This variant is always played in teams.' : undefined}>
-                  {(p) => (
-                    <Select {...p} value={String(common.teamCount ?? choice.variant?.common?.teamCount ?? (meta.teams === 'required' ? 2 : 0))} onChange={(e) => setCommon((c) => ({ ...c, teamCount: Number(e.target.value) }))}>
-                      {meta.teams === 'optional' && !choice.variant?.common?.teamCount ? <option value="0">No teams</option> : null}
-                      {[2, 3, 4, 5, 6].map((n) => (
-                        <option key={n} value={n}>
-                          {n} teams
-                        </option>
-                      ))}
-                    </Select>
-                  )}
-                </Field>
-              ) : null}
-              {profile && profile.difficulty.hard + profile.difficulty.medium > 0 ? (
-                <Field label="Which questions" hint={`Questions are marked in the editor: ${profile.difficulty.hard} hard, ${profile.difficulty.medium} medium, ${profile.difficulty.easy} easy, ${profile.difficulty.unset} not marked.`}>
-                  {(p) => (
-                    <Select {...p} value={onlyLevel} onChange={(e) => setOnlyLevel(e.target.value as '' | 'medium' | 'hard')}>
-                      <option value="">All of them</option>
-                      <option value="medium">Only medium and hard ones</option>
-                      {profile.difficulty.hard > 0 ? <option value="hard">Only the hard ones</option> : null}
-                    </Select>
-                  )}
-                </Field>
-              ) : null}
-              {choice.mode.settings.map((f) => (
-                <SettingInput key={f.key} field={f} value={effective(f.key, f.default)} onChange={(v) => setSettings((s) => ({ ...s, [f.key]: v }))} locked={locked.has(f.key)} />
-              ))}
-            </div>
+            {meta && choice ? (
+              <>
+                <p className="mb-4 text-sm text-text-2">{choice.variant ? choice.variant.meta.changes : meta.description}</p>
+                {suggested && meta.common.fields.includes('questionTimeSec') && common.questionTimeSec === undefined && !locked.has('questionTimeSec') ? (
+                  <p className="mb-4 rounded-[var(--radius-m)] border border-line bg-surface-2 px-3 py-2 text-sm text-text" data-suggested>
+                    Filled in from the set: {suggested.questionTimeSec} seconds per question ({suggested.why}). Change it below if you like.
+                  </p>
+                ) : null}
+                {solo && remembered ? (
+                  <p className="mb-4 text-sm text-text-2" data-remembered>
+                    Starting from what you chose last time for this game, on this device.
+                  </p>
+                ) : null}
+                <div className="grid grid-cols-1 gap-x-8 gap-y-4 md:grid-cols-2">
+                  {meta.common.fields.map((k) => (
+                    <CommonInput key={k} field={k} meta={meta} value={commonValue(k)} locked={locked.has(k)} onChange={(v) => setCommon((c) => ({ ...c, [k]: v }))} />
+                  ))}
+                  {meta.teams !== 'none' && !solo ? (
+                    <Field label="Teams" hint={meta.teams === 'required' ? 'This mode is always played in teams.' : choice.variant?.common?.teamCount ? 'This variant is always played in teams.' : undefined}>
+                      {(p) => (
+                        <Select {...p} value={String(common.teamCount ?? choice.variant?.common?.teamCount ?? (meta.teams === 'required' ? 2 : 0))} onChange={(e) => setCommon((c) => ({ ...c, teamCount: Number(e.target.value) }))}>
+                          {meta.teams === 'optional' && !choice.variant?.common?.teamCount ? <option value="0">No teams</option> : null}
+                          {[2, 3, 4, 5, 6].map((n) => (
+                            <option key={n} value={n}>
+                              {n} teams
+                            </option>
+                          ))}
+                        </Select>
+                      )}
+                    </Field>
+                  ) : null}
+                  {whichQuestions}
+                  {choice.mode.settings.map((f) => (
+                    <SettingInput key={f.key} field={f} value={effective(f.key, f.default)} onChange={(v) => setSettings((s) => ({ ...s, [f.key]: v }))} locked={locked.has(f.key)} />
+                  ))}
+                </div>
+              </>
+            ) : made ? (
+              <>
+                <p className="mb-4 text-sm text-text-2">{made.tagline || `${made.name}, made in Mode Studio.`} Its maker set its rules and timing; you choose the questions and who you play against.</p>
+                {whichQuestions ? <div className="grid grid-cols-1 gap-x-8 gap-y-4 md:grid-cols-2">{whichQuestions}</div> : null}
+              </>
+            ) : (
+              <p className="text-sm text-text-2">Choose a game in step 2, then set it up here: how many questions, how long each one lasts, practice bots to play against, and the game&rsquo;s own rules.</p>
+            )}
             {solo && canHaveBots ? (
               <fieldset className="mt-6 min-w-0 border-t border-line pt-4">
                 <legend className="sr-only">Practice bots</legend>
@@ -609,7 +685,7 @@ function Setup({ solo, preset, presetMode = null, gameId, making, again, classId
                     {(p) => (
                       <Select {...p} value={String(bots)} onChange={(e) => setBots(Number(e.target.value))} className="w-40">
                         <option value="0">None</option>
-                        {[1, 2, 3, 4, 5].filter((n) => n < choice.mode.meta.players.max).map((n) => (
+                        {Array.from({ length: botsMax }, (_, i) => i + 1).map((n) => (
                           <option key={n} value={n}>
                             {n === 1 ? '1 bot' : `${n} bots`}
                           </option>
@@ -620,6 +696,8 @@ function Setup({ solo, preset, presetMode = null, gameId, making, again, classId
                 </div>
                 {bots > 0 ? <BotLevelPicker value={botLevel} onChange={setBotLevel} /> : null}
               </fieldset>
+            ) : solo && choice ? (
+              <p className="mt-6 border-t border-line pt-4 text-sm text-text-2">{choice.mode.meta.title} is played on your own, so it has no practice bots.</p>
             ) : null}
             {!solo ? (
               <div className="mt-6 border-t border-line pt-4">
@@ -638,8 +716,8 @@ function Setup({ solo, preset, presetMode = null, gameId, making, again, classId
           </Panel>
         ) : null}
         <div ref={bar} className="lift sticky bottom-20 z-10 flex flex-wrap items-center justify-between gap-3 rounded-[var(--radius-l)] border border-line bg-raised/95 p-4 backdrop-blur lg:bottom-4">
-          <p className="min-w-0 text-sm text-text-2">
-            {!set ? 'Choose a question set.' : !choice ? 'Choose a game mode.' : `${choice.variant?.meta.title ?? choice.mode.meta.title} with “${set.title}”.`}
+          <p className="min-w-0 text-sm text-text-2" data-summary>
+            {!set ? 'Choose a question set.' : !picked ? 'Choose a game mode.' : `${picked} with “${set.title}”${solo ? `: ${summary}` : ''}.`}
           </p>
           <div className="flex flex-wrap gap-2">
             {!solo && !making && isTeacher ? (
@@ -652,7 +730,12 @@ function Setup({ solo, preset, presetMode = null, gameId, making, again, classId
                 {game?.mine ? 'Save changes' : 'Save as a game'}
               </Button>
             ) : null}
-            <Button variant={making ? 'secondary' : 'primary'} size="lg" disabled={!set || !choice} loading={busy} onClick={create}>
+            {solo && picked ? (
+              <Button variant="secondary" size="lg" icon={<SlidersHorizontal className="size-5" aria-hidden />} onClick={toSettings}>
+                Your settings
+              </Button>
+            ) : null}
+            <Button variant={making ? 'secondary' : 'primary'} size="lg" disabled={!set || !picked} loading={busy} onClick={create}>
               {solo ? 'Start playing' : 'Create game'}
             </Button>
           </div>
