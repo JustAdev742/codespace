@@ -26,7 +26,13 @@ import { gameAccess, loadGame, promptOf } from './gameData.ts';
  * ever read games where host_user_id is the caller. Players appear by display name only.
  */
 
-const modeTitle = (modeId: string, variantId: string | null) => (variantId ? getVariant(variantId)?.meta.title : null) ?? getMode(modeId)?.meta.title ?? modeId;
+/** A made game (Mode Studio) is reported by its own name, kept with the saved game's settings. */
+const madeName = (settings: unknown): string | null => {
+  const n = (settings as { madeGame?: { name?: unknown } } | null)?.madeGame?.name;
+  return typeof n === 'string' && n ? n : null;
+};
+const modeTitle = (modeId: string, variantId: string | null, settings?: unknown) =>
+  madeName(settings) ?? (variantId ? getVariant(variantId)?.meta.title : null) ?? getMode(modeId)?.meta.title ?? (modeId === 'made-game' ? 'Made game' : modeId);
 const idParam = z.object({ id: z.string().uuid('No game with that id.') });
 const day = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Use a date like 2026-11-30.');
 const PAGE = 25;
@@ -139,7 +145,7 @@ export async function reportRoutes(app: FastifyInstance, deps: AppDeps) {
     return {
       games: rows.map(({ g, className, accuracy, questions }) => ({
         id: g.id,
-        mode: modeTitle(g.modeId, g.variantId),
+        mode: modeTitle(g.modeId, g.variantId, g.settings),
         modeId: g.modeId,
         setTitle: g.setTitle,
         setId: g.setId,
@@ -255,7 +261,7 @@ export async function reportRoutes(app: FastifyInstance, deps: AppDeps) {
     if (!picked.length) throw conflict('Nobody got a question wrong in this game, so there is nothing to reteach.');
     const input = questionSetInputSchema.safeParse({
       title: `Reteach: ${game.setTitle}`.slice(0, 80),
-      description: `The questions players found hardest when they played ${modeTitle(game.modeId, game.variantId)} on ${game.endedAt.toISOString().slice(0, 10)}, hardest first.`.slice(0, 500),
+      description: `The questions players found hardest when they played ${modeTitle(game.modeId, game.variantId, game.settings)} on ${game.endedAt.toISOString().slice(0, 10)}, hardest first.`.slice(0, 500),
       subject: (SUBJECTS as readonly string[]).includes(set.subject) ? set.subject : 'other',
       visibility: 'private',
       questions: picked,
@@ -326,7 +332,7 @@ export async function reportRoutes(app: FastifyInstance, deps: AppDeps) {
       const names = new Map(data.players.map((p) => [p.playerKey, p.name]));
       out.push({
         id: g.id,
-        mode: modeTitle(g.modeId, g.variantId),
+        mode: modeTitle(g.modeId, g.variantId, g.settings),
         setTitle: g.setTitle,
         startedAt: g.startedAt.toISOString(),
         endedAt: g.endedAt.toISOString(),
@@ -416,7 +422,7 @@ export async function reportRoutes(app: FastifyInstance, deps: AppDeps) {
     const played = new Set(summary.map((s) => s.questionId));
     return {
       set: { id, title: set?.title ?? games[games.length - 1]!.setTitle, exists: Boolean(set && !set.deletedAt), editable: Boolean(set && set.ownerId === auth.user.id && !set.deletedAt) },
-      games: games.map((g) => ({ id: g.id, mode: modeTitle(g.modeId, g.variantId), endedAt: g.endedAt.toISOString(), players: g.playerCount })),
+      games: games.map((g) => ({ id: g.id, mode: modeTitle(g.modeId, g.variantId, g.settings), endedAt: g.endedAt.toISOString(), players: g.playerCount })),
       questions: summary.map((s) => ({ ...s, ...promptOf(byId, s.questionId), inSet: byId.has(s.questionId) })),
       // Questions in the set now that none of your games has asked yet.
       unplayed: [...byId.values()].filter((q) => !played.has(q.id)).map((q) => ({ questionId: q.id, prompt: q.prompt, type: q.type })),
@@ -501,7 +507,7 @@ export async function reportRoutes(app: FastifyInstance, deps: AppDeps) {
     }
     return {
       student: { key, name, classes: [...new Map(roster.filter((r) => r.userId === uid).map((r) => [r.classId, { id: r.classId, name: r.className }])).values()] },
-      games: games.map((r) => ({ id: r.g.id, mode: modeTitle(r.g.modeId, r.g.variantId), setTitle: r.g.setTitle, endedAt: r.g.endedAt.toISOString(), correct: r.correct, answered: r.answered, rank: r.rank, players: r.g.playerCount, leftEarly: r.leftEarly })),
+      games: games.map((r) => ({ id: r.g.id, mode: modeTitle(r.g.modeId, r.g.variantId, r.g.settings), setTitle: r.g.setTitle, endedAt: r.g.endedAt.toISOString(), correct: r.correct, answered: r.answered, rank: r.rank, players: r.g.playerCount, leftEarly: r.leftEarly })),
       bySubject: [...bySubject].map(([subject, s]) => ({ subject, ...s })).sort((a, b) => b.games - a.games),
       byType: [...byType].map(([type, s]) => ({ type, ...s })).sort((a, b) => b.answered - a.answered),
     };

@@ -4,7 +4,7 @@ import { alias } from 'drizzle-orm/pg-core';
 import { z } from 'zod';
 import { REPORT_REASON_INFO, REPORT_TARGETS, reportSchema, staffReasonSchema } from '@ludora/shared';
 import type { AppDeps } from '../../app.ts';
-import { moderationActions, questionSets, reports, users } from '../../db/schema.ts';
+import { blueprints, moderationActions, questionSets, reports, users } from '../../db/schema.ts';
 import { noStore, requireAuth } from '../../http/context.ts';
 import { AppError, conflict, notFound } from '../../lib/errors.ts';
 import { parse } from '../../lib/validate.ts';
@@ -44,6 +44,11 @@ export async function moderationRoutes(app: FastifyInstance, deps: AppDeps) {
       } else if (body.targetType === 'set') {
         const set = await loadSet(db, targetId);
         if (!set || !canView(set, auth)) return { ok: true };
+      } else if (body.targetType === 'blueprint') {
+        // A made game (Mode Studio): only one the reporter can see.
+        if (!/^[0-9a-f-]{36}$/i.test(targetId)) return { ok: true };
+        const [g] = await db.select({ ownerId: blueprints.ownerId, visibility: blueprints.visibility, hiddenAt: blueprints.hiddenAt }).from(blueprints).where(eq(blueprints.id, targetId)).limit(1);
+        if (!g || g.ownerId === auth.user.id || (g.visibility === 'private' && !auth.permissions.has('content.moderate'))) return { ok: true };
       } else {
         // Rooms disappear when the game ends, so keep a snapshot of who hosted it and what was playing.
         const room = deps.rooms.get(targetId);
@@ -113,6 +118,8 @@ export async function moderationRoutes(app: FastifyInstance, deps: AppDeps) {
     ]);
     // Describe each target, so moderators can triage without opening every report.
     const userIds = rows.filter((x) => x.r.targetType === 'user').map((x) => x.r.targetId).filter((id) => /^[0-9a-f-]{36}$/i.test(id));
+    const blueprintIds = rows.filter((x) => x.r.targetType === 'blueprint').map((x) => x.r.targetId).filter((id) => /^[0-9a-f-]{36}$/i.test(id));
+    const targetBlueprints = blueprintIds.length ? await db.select({ id: blueprints.id, name: blueprints.name, visibility: blueprints.visibility, hiddenAt: blueprints.hiddenAt }).from(blueprints).where(inArray(blueprints.id, blueprintIds)) : [];
     const setIds = rows.filter((x) => x.r.targetType === 'set').map((x) => x.r.targetId).filter((id) => /^[0-9a-f-]{36}$/i.test(id));
     const [targetUsers, targetSets] = await Promise.all([
       userIds.length ? db.select({ id: users.id, username: users.username, displayName: users.displayName, status: users.status, isGuest: users.isGuest }).from(users).where(inArray(users.id, userIds)) : Promise.resolve([]),
@@ -130,6 +137,7 @@ export async function moderationRoutes(app: FastifyInstance, deps: AppDeps) {
       reports: rows.map(({ r, reporterName, resolverName }) => {
         const tu = r.targetType === 'user' ? targetUsers.find((u) => u.id === r.targetId) : undefined;
         const ts = r.targetType === 'set' ? targetSets.find((s) => s.id === r.targetId) : undefined;
+        const tb = r.targetType === 'blueprint' ? targetBlueprints.find((b) => b.id === r.targetId) : undefined;
         return {
           id: r.id,
           targetType: r.targetType,
@@ -138,7 +146,9 @@ export async function moderationRoutes(app: FastifyInstance, deps: AppDeps) {
             ? { label: tu.username ? `${tu.displayName} (@${tu.username})` : `${tu.displayName} (guest)`, status: tu.status }
             : ts
               ? { label: ts.title, status: ts.hiddenAt ? 'hidden' : ts.visibility }
-              : { label: r.targetType === 'room' ? `Room ${r.targetId}` : 'No longer exists', status: null },
+              : tb
+                ? { label: `Made game: ${tb.name}`, status: tb.hiddenAt ? 'hidden' : tb.visibility }
+                : { label: r.targetType === 'room' ? `Room ${r.targetId}` : 'No longer exists', status: null },
           reason: r.reason,
           details: r.details,
           reporter: reporterName ?? 'Deleted account',

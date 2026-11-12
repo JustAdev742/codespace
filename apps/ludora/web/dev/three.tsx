@@ -25,6 +25,8 @@ import { Field } from '../src/features/room/modes/glow-tag-field.ts';
 import { GlowTagHostScene, GlowTagScene } from '../src/features/room/modes/glow-tag-scene.ts';
 import { SummitHostScene, SummitScene, type MoveKind, type SceneClimber } from '../src/features/room/modes/summit-scene.ts';
 import { TowerHostScene, TowerScene, type SceneState as TowerState } from '../src/features/room/modes/tower-scene.ts';
+import { MadePathScene } from '../src/features/room/modes/made-game-scene.ts';
+import { STARTER_BLUEPRINTS } from '@ludora/shared';
 import { RallyField } from '../src/features/room/modes/lantern-rally-field.ts';
 import { RallyHostScene, RallyScene } from '../src/features/room/modes/lantern-rally-scene.ts';
 import { CIRCUIT_IDS, lapLength, type CircuitId } from '@ludora/engine/lantern-rally';
@@ -574,6 +576,27 @@ function makeGarden(env: StageEnv, host: boolean) {
   return w;
 }
 
+// ?scene=made  a Mode Studio race or climb from one player's phone (&players=40, &kind=climb, &place=harbour|canyon|snowfield|old-town,
+// &shape=straight|zigzag|loop, &camera=follow|overview|side, &time=dusk|night). ?scene=made-host  the big screen.
+function makeMade(env: StageEnv, host: boolean) {
+  const base = structuredClone(STARTER_BLUEPRINTS[0]!.blueprint);
+  const kind = params.get('kind') === 'climb' ? ({ type: 'climb', height: 30, twist: true } as const) : base.kind;
+  const scene = { ...base.look.scene, ...Object.fromEntries(['place', 'shape', 'camera', 'time'].filter((k) => params.get(k)).map((k) => [k, params.get(k)])) } as typeof base.look.scene;
+  const bp = { ...base, kind, look: { ...base.look, scene } };
+  const n = Number(params.get('players') ?? 40);
+  const rng = createRng(3);
+  const runners = Array.from({ length: n }, (_, i) => ({ playerId: `p${i}`, name: GLIMS[i % GLIMS.length]!.name, score: 0, me: !host && i === 0, look: { art: GLIMS[i % GLIMS.length]!.art as GlimArt } }));
+  const w = new MadePathScene(env, bp, host);
+  w.setRunners(runners);
+  (window as unknown as { __world: unknown }).__world = w;
+  setInterval(() => {
+    for (const r of runners) if (rng.next() < 0.3) r.score = Math.min(30, r.score + rng.int(1, 3));
+    runners.sort((a, b) => b.score - a.score);
+    w.setRunners(runners);
+  }, 1500);
+  return w;
+}
+
 function App() {
   const create = (env: StageEnv) =>
     sceneName === 'gold'
@@ -600,6 +623,8 @@ function App() {
                           ? makeTower(env, sceneName === 'tower-host')
                         : sceneName === 'rally' || sceneName === 'rally-host'
                           ? makeRally(env, sceneName === 'rally-host')
+                          : sceneName === 'made' || sceneName === 'made-host'
+                            ? makeMade(env, sceneName === 'made-host')
                           : sceneName === 'garden' || sceneName === 'garden-host'
                             ? makeGarden(env, sceneName === 'garden-host')
                             : new Gallery(env);

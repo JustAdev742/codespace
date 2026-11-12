@@ -17,6 +17,7 @@ import { answerText } from './answers.ts';
 import { MathText } from './math/MathText.tsx';
 import { ReportDialog } from '../moderation/ReportDialog.tsx';
 import { AiSetTools } from '../ai/AiSetTools.tsx';
+import { PlayInMadeGame } from '../modestudio/MakerGames.tsx';
 
 // Lessons: "Add to a lesson" (features/lessons), loaded when opened.
 const AddToLessonDialog = lazy(() => import('../lessons/AddToLesson.tsx'));
@@ -122,6 +123,7 @@ export default function SetDetail() {
           <ButtonLink to={`/host?solo=1&set=${set.id}`} icon={<Play className="size-4" />}>
             Solo
           </ButtonLink>
+          <PlayInMadeGame setId={set.id} />
           {me.data?.user?.accountType === 'teacher' ? (
             <Button icon={<ListPlus className="size-4" />} onClick={() => setLessoning(true)}>
               Add to a lesson

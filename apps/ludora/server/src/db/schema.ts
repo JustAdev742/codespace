@@ -1407,3 +1407,28 @@ export const uploadFiles = pgTable('upload_files', {
   data: bytea('data').notNull(),
   createdAt: now('created_at'),
 });
+
+/* ---------------------------------- Mode Studio (modestudio) ---------------------------------- */
+
+/**
+ * Games people make in Mode Studio: a blueprint (packages/shared/src/blueprint.ts), data only,
+ * checked again by parseBlueprint whenever it is saved or hosted. Public needs a trusted account;
+ * a moderator can hide one from everyone but its maker.
+ */
+export const blueprints = pgTable(
+  'blueprints',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    ownerId: uuid('owner_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+    name: text('name').notNull(),
+    blueprint: jsonb('blueprint').notNull(),
+    visibility: text('visibility').notNull().default('private'),
+    hiddenAt: ts('hidden_at'),
+    plays: integer('plays').notNull().default(0),
+    /** The public game this one was copied from, if any (no foreign key: the original may be deleted). */
+    copiedFrom: uuid('copied_from'),
+    createdAt: now('created_at'),
+    updatedAt: now('updated_at'),
+  },
+  (t) => [index('blueprints_owner_idx').on(t.ownerId, t.updatedAt), index('blueprints_public_idx').on(t.visibility, t.plays), check('blueprints_visibility_valid', sql`${t.visibility} in ('private','unlisted','public')`)],
+);

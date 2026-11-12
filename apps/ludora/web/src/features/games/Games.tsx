@@ -10,6 +10,7 @@ import { ModeArt } from '../../art/ModeArt.tsx';
 import { Badge, Dialog, EmptyState, ErrorNotice, PageHeader, Skeleton, TabPanel, Tabs } from '../../ui/primitives.tsx';
 import { Button, ButtonLink } from '../../ui/Button.tsx';
 import type { MadeGame } from './SaveGameDialog.tsx';
+import { ModeStudioLink } from '../modestudio/MadeGameCard.tsx';
 
 /*
  * The Game Maker: games players made from any mode, 2D or 3D. Making one
@@ -157,6 +158,7 @@ export default function Games() {
           ) : null
         }
       />
+      <ModeStudioLink className="mb-5" />
       {signedIn ? (
         <Tabs
           value={tab}

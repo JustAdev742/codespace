@@ -1,3 +1,4 @@
+import type { GameMode } from '../sdk/types.ts';
 import { createRng, type CommonSettings, type PracticeLevel, type Question } from '@ludora/shared';
 import { GameRuntime, type EngineResults } from '../runtime/runtime.ts';
 import { prepareQuestions, resolveGameConfig } from '../registry.ts';
@@ -24,6 +25,8 @@ export interface MindedOptions {
   settings?: Record<string, unknown>;
   common?: Partial<CommonSettings>;
   maxGameMs?: number;
+  /** A mode built for this game (a Mode Studio blueprint's), used in place of the registered one. */
+  mode?: GameMode;
 }
 
 export interface MindedResult {
@@ -42,7 +45,7 @@ export interface MindedResult {
 
 export function simulateMinded(opts: MindedOptions): MindedResult {
   const seed = opts.seed ?? 4321;
-  const resolved = resolveGameConfig({ modeId: opts.modeId, variantId: opts.variantId ?? null, settings: opts.settings ?? {}, common: opts.common ?? {} });
+  const resolved = resolveGameConfig({ modeId: opts.modeId, variantId: opts.variantId ?? null, settings: opts.settings ?? {}, common: opts.common ?? {}, ...(opts.mode ? { mode: opts.mode } : {}) });
   if (!resolved.ok) throw new Error(resolved.message);
   const { mode, settings, common } = resolved.value;
   const prepared = prepareQuestions(mode, opts.questions, seed);

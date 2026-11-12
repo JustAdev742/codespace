@@ -31,6 +31,8 @@ export interface GameConfigInput {
   variantId?: string | null;
   settings?: Record<string, unknown>;
   common?: Partial<CommonSettings>;
+  /** A mode built for this game (Mode Studio's made games), used in place of the registered one with its id. */
+  mode?: GameMode;
 }
 
 export interface GameConfig {
@@ -49,7 +51,7 @@ export type Resolved<T> = { ok: true; value: T } | { ok: false; message: string 
  * settings the game will actually run with. Variant-locked keys win.
  */
 export function resolveGameConfig(input: GameConfigInput): Resolved<GameConfig> {
-  let mode = getMode(input.modeId);
+  let mode = input.mode && input.mode.meta.id === input.modeId ? input.mode : getMode(input.modeId);
   let variant: ModeVariant | null = null;
   if (input.variantId) {
     variant = getVariant(input.variantId) ?? null;

@@ -32,6 +32,8 @@ import {
   type RoomView,
   type SettingValues,
   type TeamView,
+  type Blueprint,
+  MADE_GAME_MODE_ID,
 } from '@ludora/shared';
 import { extraTimeFor } from '@ludora/engine/catalog';
 import { computeAwards, hostReport, missedQuestionIds } from './report.ts';
@@ -44,6 +46,7 @@ import {
   practiceRoster,
   prepareQuestions,
   resolveGameConfig,
+  blueprintMode,
   type BotProfile,
   type EngineResults,
   type GameMode,
@@ -148,6 +151,15 @@ export interface RoomInit {
   classTitle?: string | null;
   /** Extra time the class teacher set for members (user id to a share of the limit), applied as each one joins. */
   classExtraTime?: Readonly<Record<string, number>> | null;
+  /** Mode Studio: the made game this room plays (modeId is MADE_GAME_MODE_ID). Checked by the caller. */
+  madeGame?: MadeGame | null;
+}
+
+/** A made game in a room: its saved id (null for an unsaved test game), its name and its blueprint. */
+export interface MadeGame {
+  id: string | null;
+  name: string;
+  blueprint: Blueprint;
 }
 
 /**
@@ -307,6 +319,9 @@ export class Room {
   readonly classMembers: Set<string> | null;
   readonly classTitle: string | null;
   readonly classExtraTime: Readonly<Record<string, number>> | null;
+  /** Mode Studio: the made game this room plays, and the mode built from its blueprint. */
+  madeGame: MadeGame | null = null;
+  private madeMode: GameMode | null = null;
   /** Extra time on timed questions, by player id. Only the host sees it. */
   private readonly extraTime = new Map<string, number>();
   private startTimer: ReturnType<typeof setTimeout> | null = null;
@@ -354,6 +369,10 @@ export class Room {
     this.classTitle = init.classTitle ?? null;
     this.classExtraTime = init.classExtraTime ?? null;
     this.hooks = hooks;
+    if (init.madeGame) {
+      this.madeGame = init.madeGame;
+      this.madeMode = blueprintMode(init.madeGame.blueprint);
+    }
     this.createdAt = hooks.now();
     this.lastActivity = this.createdAt;
     const problem = this.configure(init.modeId, init.variantId, init.settings, init.common);
@@ -365,7 +384,7 @@ export class Room {
 
   /** Apply mode, variant and settings. Returns a problem message, or null if the room can use them. */
   configure(modeId: string, variantId: string | null, settings: Record<string, unknown>, common: Partial<CommonSettings>): string | null {
-    const resolved = resolveGameConfig({ modeId, variantId, settings, common });
+    const resolved = resolveGameConfig({ modeId, variantId, settings, common, ...(modeId === MADE_GAME_MODE_ID && this.madeMode ? { mode: this.madeMode } : {}) });
     if (!resolved.ok) return resolved.message;
     const prepared = prepareQuestions(resolved.value.mode, this.set.questions, hashString(this.code));
     if (prepared.problem) return prepared.problem;
@@ -1420,6 +1439,7 @@ export class Room {
 
   /** What extra time does in this game: longer timed questions, a longer clock of their own, or nothing (one shared clock). */
   extraTimeKind(): { kind: 'rounds' | 'own' | 'none'; what: string } {
+    if (this.madeMode && this.mode === this.madeMode) return this.mode.meta.pacing === 'host' ? { kind: 'rounds', what: 'each timed question' } : { kind: 'none', what: '' };
     return extraTimeFor(this.mode.meta.id, this.variant?.meta.id ?? null, this.settings);
   }
 

@@ -32,6 +32,10 @@ export const MODE_SCREENS: Record<
     tableHidden?: (room: RoomView) => boolean;
   }
 > = {
+  'made-game': {
+    Player: lazy(() => import('./made-game.tsx').then((m) => ({ default: m.MadeGamePlayer }))),
+    Host: lazy(() => import('./made-game.tsx').then((m) => ({ default: m.MadeGameHost }))),
+  },
   'gold-rush': {
     Player: lazy(() => import('./gold-rush.tsx').then((m) => ({ default: m.GoldRushPlayer }))),
     Host: lazy(() => import('./gold-rush.tsx').then((m) => ({ default: m.GoldRushHost }))),

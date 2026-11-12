@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { roomOptionsSchema, type HostCommand, type PlayerRequest, type PulseView, type Question, type RoomView } from '@ludora/shared';
 import { findCatalogMode } from '@ludora/engine/catalog';
 // The room the live server runs, unchanged. It knows nothing about sockets or the database, so it runs here too.
-import { Room } from '../../../server/src/realtime/room.ts';
+import { Room, type MadeGame } from '../../../server/src/realtime/room.ts';
 import { newRequestKey } from '../lib/api.ts';
 import { createPulseSource, type AckResult, type Reaction, type RoomHandle } from '../lib/useRoom.ts';
 
@@ -25,6 +25,8 @@ export interface DemoSetup {
   /** Practice bots to add, besides you. */
   bots: number;
   name: string;
+  /** Mode Studio's live test: the made game to play (modeId is then 'made-game'). */
+  madeGame?: MadeGame | null;
 }
 
 /** The demo's one account. It exists only inside this page's room. */
@@ -74,6 +76,7 @@ export function useLocalRoom(setup: DemoSetup): { player: RoomHandle | null; hos
           set: { id: null, title: setup.set.title, questions: setup.set.questions },
           // A room of one person and some bots: you are its host as well as its player, as in a solo game.
           solo: true,
+          ...(setup.madeGame ? { madeGame: setup.madeGame } : {}),
         },
         {
           now: () => Date.now(),

@@ -16,6 +16,7 @@ import { SaveGameDialog, type MadeGame } from '../games/SaveGameDialog.tsx';
 import { ChosenSet, ModeGrid, SetButton, type Choice } from './pickers.tsx';
 import { ModeSuggestHelper } from '../ai/AiModeHelper.tsx';
 import { rankModes, suggestedSettings, type ModeFit, type RankedMode } from './fit.ts';
+import { HostMadeGames } from '../modestudio/HostMadeGames.tsx';
 
 // Lessons: "Add to a lesson instead" (features/lessons), loaded when opened.
 const AddToLessonDialog = lazy(() => import('../lessons/AddToLesson.tsx'));
@@ -513,6 +514,7 @@ function Setup({ solo, preset, gameId, making, again, classId }: { solo: boolean
             </>
           )}
         </Panel>
+        <HostMadeGames setId={set?.id ?? null} setTitle={set?.title ?? null} solo={solo} />
         <Panel className="p-5" aria-labelledby="host-step-mode">
           <StepTitle id="host-step-mode" n={2}>
             Game mode

@@ -1,7 +1,7 @@
 import { useState, type ReactNode } from 'react';
 import { useSearchParams } from 'react-router';
 import { useQuery } from '@tanstack/react-query';
-import { LibraryBig, Radio, UserRound } from 'lucide-react';
+import { Hammer, LibraryBig, Radio, UserRound } from 'lucide-react';
 import { REPORT_REASON_INFO, REPORT_TARGETS, type ReportReason, type ReportTarget } from '@ludora/shared';
 import { api } from '../../lib/api.ts';
 import { formatNumber, plural, timeAgo } from '../../lib/format.ts';
@@ -48,6 +48,7 @@ const TARGET_INFO: Record<ReportTarget, { filter: string; noun: string; label: s
   user: { filter: 'Players', noun: 'player', label: 'Player', icon: <UserRound className="size-3.5" aria-hidden /> },
   set: { filter: 'Question sets', noun: 'set', label: 'Question set', icon: <LibraryBig className="size-3.5" aria-hidden /> },
   room: { filter: 'Live rooms', noun: 'room', label: 'Live room', icon: <Radio className="size-3.5" aria-hidden /> },
+  blueprint: { filter: 'Made games', noun: 'made game', label: 'Made game', icon: <Hammer className="size-3.5" aria-hidden /> },
 };
 
 const TARGET_STATUS: Record<string, string> = {
@@ -252,6 +253,11 @@ function ReportCard({ r, can, onResolve, onReopen, onReviewSet }: { r: ReportRow
           <Button size="sm" variant={r.status === 'open' ? 'primary' : 'secondary'} onClick={onReviewSet}>
             Review set
           </Button>
+        ) : null}
+        {r.targetType === 'blueprint' && can.sets && exists ? (
+          <ButtonLink size="sm" variant={r.status === 'open' ? 'primary' : 'secondary'} to={`/mode-studio/${r.targetId}`}>
+            Open made game
+          </ButtonLink>
         ) : null}
         {r.targetType === 'room' && can.rooms ? (
           <ButtonLink size="sm" to={`/staff/rooms?room=${encodeURIComponent(r.targetId)}`}>

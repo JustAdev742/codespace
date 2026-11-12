@@ -20,3 +20,4 @@ export * from './school.ts';
 export * from './lessons.ts';
 export * from './setProfile.ts';
 export * from './practice.ts';
+export * from './blueprint.ts';

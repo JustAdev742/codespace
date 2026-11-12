@@ -2,7 +2,7 @@ import { useDeferredValue, useEffect, useMemo, useState, type ReactNode } from '
 import { useNavigate } from 'react-router';
 import { Dialog as RDialog } from 'radix-ui';
 import { useQuery } from '@tanstack/react-query';
-import { BarChart3, Bell, BookOpen, Gamepad2, Home, LayoutGrid, Presentation, School, Search, Settings, ShoppingBag, Shirt, Sparkles, Target, Trophy, User, Users, Wand2, X } from 'lucide-react';
+import { BarChart3, Bell, BookOpen, Gamepad2, Home, LayoutGrid, Presentation, School, Search, Settings, ShoppingBag, Shirt, Sparkles, Target, Trophy, User, Users, Wand2, X, Hammer } from 'lucide-react';
 import { api } from '../../lib/api.ts';
 import { useMe } from '../../lib/session.ts';
 import { useModes, type SetSummary } from '../../lib/queries.ts';
@@ -17,7 +17,7 @@ import type { FriendsData } from '../social/data.ts';
 
 interface Result {
   id: string;
-  group: 'Pages' | 'Game modes' | 'Question sets' | 'Classes' | 'Friends';
+  group: 'Pages' | 'Game modes' | 'Made games' | 'Question sets' | 'Classes' | 'Friends';
   title: string;
   detail?: string;
   to: string;
@@ -28,6 +28,7 @@ const PAGES: { title: string; to: string; icon: ReactNode; words: string; accoun
   { title: 'Home', to: '/', icon: <Home className="size-4" />, words: 'start dashboard' },
   { title: 'Join a game', to: '/play', icon: <Gamepad2 className="size-4" />, words: 'code play enter' },
   { title: 'Host a game', to: '/host', icon: <Presentation className="size-4" />, words: 'start teacher' },
+  { title: 'Mode Studio', to: '/mode-studio', icon: <Hammer className="size-4" />, words: 'make game mode design build 3d 2d' },
   { title: 'Play solo', to: '/host?solo=1', icon: <Gamepad2 className="size-4" />, words: 'alone practice single' },
   { title: 'Game modes', to: '/modes', icon: <LayoutGrid className="size-4" />, words: 'catalogue games' },
   { title: 'Game Maker', to: '/games', icon: <Wand2 className="size-4" />, words: 'make custom' },
@@ -71,6 +72,7 @@ export default function SearchPalette({ open, onOpenChange }: { open: boolean; o
 
   const modes = useModes();
   const sets = useQuery({ queryKey: ['search', 'sets', setQuery], queryFn: ({ signal }) => api.get<{ sets: SetSummary[] }>(`/api/sets?${new URLSearchParams({ q: setQuery })}`, signal), enabled: open && setQuery.length >= 2, placeholderData: (p) => p });
+  const made = useQuery({ queryKey: ['search', 'made', setQuery], queryFn: ({ signal }) => api.get<{ games: { id: string; name: string; kindLabel: string | null; owner: { name: string } }[] }>(`/api/blueprints?${new URLSearchParams({ scope: 'public', q: setQuery })}`, signal), enabled: open && setQuery.length >= 2, placeholderData: (p) => p });
   const classes = useQuery({ queryKey: ['classes', 'list'], queryFn: () => api.get<ClassesResponse>('/api/classes'), enabled: open && account, staleTime: 60_000 });
   const friendsOn = me.data?.flags?.['social.friends'] !== false;
   const friends = useQuery({ queryKey: ['friends'], queryFn: () => api.get<FriendsData>('/api/friends'), enabled: open && account && friendsOn, staleTime: 60_000 });
@@ -86,6 +88,7 @@ export default function SearchPalette({ open, onOpenChange }: { open: boolean; o
       if (matches(query, m.meta.title, m.meta.tagline, m.meta.category, ...m.variants.map((v) => v.meta.title))) out.push({ id: `mode:${m.meta.id}`, group: 'Game modes', title: m.meta.title, detail: m.meta.tagline, to: `/modes/${m.meta.id}`, icon: <LayoutGrid className="size-4" /> });
     }
     if (query.length >= 2 && setQuery === query) {
+      for (const g of (made.data?.games ?? []).slice(0, 4)) out.push({ id: `made:${g.id}`, group: 'Made games', title: g.name, detail: `${g.kindLabel ?? 'Made game'}, by ${g.owner.name}`, to: `/mode-studio/${g.id}`, icon: <Hammer className="size-4" /> });
       for (const s of (sets.data?.sets ?? []).slice(0, 6)) out.push({ id: `set:${s.id}`, group: 'Question sets', title: s.title, detail: `${s.questionCount} questions${s.ownerName ? `, by ${s.ownerName}` : ''}`, to: `/sets/${s.id}`, icon: <BookOpen className="size-4" /> });
     }
     const c = classes.data;
@@ -96,7 +99,7 @@ export default function SearchPalette({ open, onOpenChange }: { open: boolean; o
       if (matches(query, f.displayName)) out.push({ id: `friend:${f.id}`, group: 'Friends', title: f.displayName, detail: `Level ${f.level}`, to: `/profile/${f.id}`, icon: <User className="size-4" /> });
     }
     return out;
-  }, [deferred, setQuery, modes.data, sets.data, classes.data, friends.data, account]);
+  }, [deferred, setQuery, modes.data, made.data, sets.data, classes.data, friends.data, account]);
 
   useEffect(() => setActive(0), [deferred]);
   const go = (r: Result | undefined) => {

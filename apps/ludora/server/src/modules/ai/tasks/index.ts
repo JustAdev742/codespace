@@ -6,3 +6,4 @@ import './sets.ts';
 import './lessons.ts';
 import './games.ts';
 import './generic.ts';
+import './modestudio.ts';

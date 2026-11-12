@@ -1,8 +1,8 @@
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { eq } from 'drizzle-orm';
-import { commonSettingsSchema, DIFFICULTIES, PRACTICE_LEVEL_IDS, roomCodeSchema, roomOptionsSchema, schoolTeamsSchema, setFeelSchema, type Difficulty, type Question, type SetFeel } from '@ludora/shared';
-import { getMode, getVariant } from '@ludora/engine';
+import { MADE_GAME_MODE_ID, commonSettingsSchema, DIFFICULTIES, PRACTICE_LEVEL_IDS, roomCodeSchema, roomOptionsSchema, schoolTeamsSchema, setFeelSchema, type Difficulty, type Question, type SetFeel } from '@ludora/shared';
+import { blueprintMeta, getMode, getVariant } from '@ludora/engine';
 import { soloBlocker } from '@ludora/engine/catalog';
 import type { AppDeps } from '../../app.ts';
 import { noStore, requirePermission } from '../../http/context.ts';
@@ -13,6 +13,7 @@ import { MAX_ROOMS_PER_HOST, type RoomManager } from '../../realtime/manager.ts'
 import type { Room } from '../../realtime/room.ts';
 import { isModePlayableBy } from '../modes/service.ts';
 import { countGamePlay } from '../games/routes.ts';
+import { madeGameForRoom } from '../modestudio/routes.ts';
 import { schoolTeamPlan } from '../school/teams.ts';
 import { teacherClass } from '../classes/access.ts';
 import { classMembers } from '../../db/schema.ts';
@@ -27,6 +28,8 @@ const createSchema = z.object({
   solo: z.boolean().optional(),
   /** The Game Maker game this room was set up from, to count its plays. */
   gameId: z.string().uuid().optional(),
+  /** Mode Studio: play this made game (modeId is then 'made-game'). The server checks the host may play it. */
+  blueprintId: z.string().uuid().optional(),
   /** School: teams by house, two classes, or a tournament match (modules/school/teams.ts). */
   school: schoolTeamsSchema.optional(),
   /** Solo only: practice bots to play against, at a skill the server turns into their accuracy and speed. */
@@ -79,14 +82,21 @@ export async function roomRoutes(app: FastifyInstance, deps: AppDeps) {
     app.post('/api/rooms', { config: { rateLimit: { max: 30, timeWindow: '10 minutes' } } }, async (req) => {
       const auth = requirePermission(req, 'rooms.host');
       const body = parse(createSchema, req.body);
-      const mode = getMode(body.variantId ? (getVariant(body.variantId)?.meta.modeId ?? body.modeId) : body.modeId);
+      // A made game: checked (who may play it, hidden, still valid) before anything else, and its mode built from the blueprint.
+      const madeGame = body.blueprintId ? await madeGameForRoom(deps.db, body.blueprintId, auth) : null;
+      if (madeGame) {
+        body.modeId = MADE_GAME_MODE_ID;
+        body.variantId = null;
+      }
+      const madeMeta = madeGame ? blueprintMeta(madeGame.blueprint) : null;
+      const mode = madeMeta ? { meta: madeMeta } : getMode(body.variantId ? (getVariant(body.variantId)?.meta.modeId ?? body.modeId) : body.modeId);
       if (!mode) throw notFound('That game mode does not exist.');
       const solo = body.solo === true || mode.meta.pacing === 'solo';
-      if (solo) {
+      if (solo && !madeGame) {
         const blocker = soloBlocker(mode.meta.id, body.variantId ?? null, body.settings ?? {});
         if (blocker) throw new AppError(409, 'conflict', blocker);
       }
-      await isModePlayableBy(deps, auth, mode.meta.id, body.variantId ?? null);
+      if (!madeGame) await isModePlayableBy(deps, auth, mode.meta.id, body.variantId ?? null);
       if (!solo && openGames(manager, auth.user.id).length >= MAX_ROOMS_PER_HOST) {
         throw new AppError(409, 'conflict', `You already have ${MAX_ROOMS_PER_HOST} games open, the most you can have at once. Close one in Your open games, then try again.`);
       }
@@ -115,6 +125,7 @@ export async function roomRoutes(app: FastifyInstance, deps: AppDeps) {
           set: { id: set.id, title: set.title, questions, feel: setFeelOf(set.defaults) },
           solo,
           teamPlan,
+          madeGame,
           ...(cls ? { classId: cls.id, classMembers: cls.members, classTitle: cls.name, classExtraTime: cls.extra } : {}),
         });
       } catch (err) {
@@ -177,6 +188,7 @@ export async function roomRoutes(app: FastifyInstance, deps: AppDeps) {
         options: room.options,
         set: { id: room.set.id, title: `${room.set.title}: missed questions`, questions: chosen },
         solo: false,
+        madeGame: room.madeGame,
         ...(room.classId && room.classMembers ? { classId: room.classId, classMembers: [...room.classMembers], classTitle: room.classTitle, classExtraTime: room.classExtraTime } : {}),
       };
       let next;

@@ -72,7 +72,8 @@ export async function persistGame(deps: AppDeps, room: Room, results: EngineResu
         hostUserId: room.hostUserId,
         setId: room.set.id,
         setTitle: room.set.title,
-        settings: room.settings,
+        // A made game keeps its own name (reports show it) and saved id beside its (empty) settings.
+        settings: room.madeGame ? { ...room.settings, madeGame: { id: room.madeGame.id, name: room.madeGame.name } } : room.settings,
         common: room.common,
         status: results.endedBy === 'error' ? 'error' : 'completed',
         endedBy: results.endedBy,

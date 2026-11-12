@@ -7,3 +7,4 @@ export * from './mechanics/selfPaced.ts';
 export { classicPoints } from './modes/classic/index.ts';
 export * from './teams.ts';
 export * from './bots/index.ts';
+export { blueprintMode, blueprintMeta, type MadeView, type MadeYou, type MadeRow, type MadeLast } from './modes/made-game/index.ts';

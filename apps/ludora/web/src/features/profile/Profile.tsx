@@ -20,6 +20,7 @@ import { Button, ButtonLink } from '../../ui/Button.tsx';
 import { ProfileCard } from '../collection/ProfileCard.tsx';
 import { ReportDialog } from '../moderation/ReportDialog.tsx';
 import { errorText, useFocusAfterUpdate, useReturnFocus, useSocialRefresh, usePageTitle } from '../social/data.ts';
+import { MakerGames } from '../modestudio/MakerGames.tsx';
 
 /** GET /api/profiles/:id. Stats and the join date only come back when the viewer may see the full profile. */
 interface PublicProfile {
@@ -422,6 +423,7 @@ export default function Profile() {
           </Panel>
           {p.isSelf ? <PersonalBests limit={6} /> : null}
           {!p.blockedByMe ? <MeritsPanel userId={id} /> : null}
+          {!p.blockedByMe ? <MakerGames userId={id} name={p.displayName} self={p.isSelf} /> : null}
           {p.stats ? (
             <StatsPanel stats={p.stats} joinedAt={p.joinedAt} />
           ) : p.restricted && !p.blockedByMe ? (

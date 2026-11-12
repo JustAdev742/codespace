@@ -88,6 +88,7 @@ export const AI_TASK_IDS = [
   'lesson.discussion',
   'game.suggest_mode',
   'any.name_describe',
+  'mode.draft',
 ] as const;
 export type AiTaskId = (typeof AI_TASK_IDS)[number];
 
