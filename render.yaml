@@ -34,5 +34,9 @@ services:
       # Render's proxy is in front of the server, so visitors' addresses come from its header.
       - key: TRUST_PROXY
         value: "true"
+      # Uploaded pictures and sound clips go in the database: a free service's disk is wiped at
+      # every restart.
+      - key: UPLOAD_STORE
+        value: db
       # PUBLIC_ORIGIN is not needed here: the server uses the onrender.com address Render gives
       # it. Set PUBLIC_ORIGIN only if you add a domain of your own.

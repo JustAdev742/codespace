@@ -94,9 +94,12 @@ database is at Neon.
   with 40 players used 3% of a core on average and 11% at most, and a 3D game with 40 players
   10% and 18%. So one class on a quiz game should be comfortable, and several classes at once
   or the busy 3D games may lag. This has not been measured on Render.
-- **Uploaded pictures do not last.** A free service has no disk that survives a restart or a
-  sleep, so pictures people upload (a set's cover, a lesson slide) disappear. Everything else
-  is in the database and stays.
+- **Uploads go in the database.** A free service has no disk that survives a restart or a
+  sleep, so `render.yaml` sets `UPLOAD_STORE=db`: pictures and sound clips people upload are
+  kept in the database instead (25 MB an account by default, counted in Neon's 1 GB). A service
+  made before that setting existed needs `UPLOAD_STORE` = `db` added by hand in Render, under
+  Environment; until then its uploads vanish at each restart. Everything else is in the
+  database and stays.
 - **Monthly allowances.** Render: 750 hours of running time, enough for one service all month.
   Neon: 1 GB of storage and 100 compute-hours for the project; its database also sleeps after
   5 minutes idle and wakes on the next request. Reaching a limit pauses the service until the
@@ -244,6 +247,27 @@ Teachers, creators and staff then see "Draft with AI" in the set editor. A
 request can take up to a minute or two, so if a reverse proxy sits in front of
 the app, give `/api/ai/drafts` a read timeout of at least 180 seconds. The
 System page in the staff area shows whether drafting is configured.
+
+### AI helpers, on a free AI service
+
+The helpers in the making tools (drafting questions, wording, wrong answers, a lesson outline, a
+mode for this set, "describe your game" in Mode Studio, "describe a Glim" in My designs) work
+with any service that speaks the OpenAI chat-completions API. Several have a free tier with no
+card (Groq and OpenRouter, for example): you make one account there, players never see or sign
+in to it, and the key stays on the server.
+
+1. Make a key at the service and set `AI_PROVIDERS` (its shape is in the table above). More than
+   one provider, and more than one model each, is fine: people get a model picker, and when one
+   model is rate-limited the next is tried.
+2. In the staff area, Feature flags: switch on `ai.helpers_teachers`, `ai.helpers_students`, or
+   both. Guests never get helpers.
+3. Each account gets 20 requests in any 5 hours by default, and the whole site has a cap per day
+   so a free tier's limit is not spent by one class. Staff change both, and turn single models
+   on and off, in the staff area (AI helpers); every change is audited.
+
+A free tier's own limits still apply to the whole site at once, and its terms may require the
+account holder to be an adult. Nothing here has been run against a live service: the helpers are
+tested against a stand-in provider. [features/ai.md](features/ai.md) has the detail.
 
 ### The first administrator
 

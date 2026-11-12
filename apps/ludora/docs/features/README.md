@@ -5,7 +5,8 @@ or do, with where it lives in the code and the exact test or check that verified
 verified rows are counted. Things that already existed, were replaced or were not done are listed
 in each file under their own headings and are not counted.
 
-Counts are of the main branch as it stands (last updated 11 November 2026).
+Counts are of the main branch as it stands (last updated 12 November 2026). The making programme
+that followed is counted in its own section below.
 
 ## Features
 
@@ -21,6 +22,26 @@ Counts are of the main branch as it stands (last updated 11 November 2026).
 | Lessons: several games and teaching steps in one room | [lessons.md](lessons.md) | 16 |
 | Loose ends the pieces above left (co-teachers, class groups, challenge a friend, how to play and more) | [finish.md](finish.md) | 20 |
 | **Total** | | **207** |
+
+## The making programme (12 November 2026)
+
+Making things (sets, lessons, games, Glims, game modes) easier, richer and less limited.
+
+| Area | File | Features |
+|---|---|---|
+| Practice bots that play like people | [bots.md](bots.md) | 9 |
+| AI helpers in the making tools, on any free provider, with an allowance per account | [ai.md](ai.md) | 18 |
+| Sets with sound, a feel of their own, and games that adapt to the set | [sets2.md](sets2.md) | 23 |
+| Mode Studio: people make their own game modes, in 2D and 3D | [modestudio.md](modestudio.md) | 12 |
+| A richer Studio, a painter, and "My designs" for every account | [studio2.md](studio2.md) | 15 |
+| One place to make things, notes to a game with no AI, classroom tools, the teacher's day | [making.md](making.md) | 28 |
+| **Total** | | **105** |
+
+With the 207 above, that is 312 features. What each piece left undone is under "Not done" in its
+file. The main ones: no AI helper has ever been run against a live AI service (they are tested
+against a stand-in); a made game has a 3D scene only for races and climbs; capes, held items,
+trails and name plates cannot be designed yet; the host page and the lesson dialog still use
+their own set pickers.
 
 ## New 3D game modes
 
