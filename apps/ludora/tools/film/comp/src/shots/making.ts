@@ -136,7 +136,13 @@ export async function making(film: Film): Promise<Shot[]> {
   const s2 = pairScene(bar(22), bar(24), {
     // Half a second on "30" with the number picked out, so the change to 12 is seen happening.
     clipL: (t) => (t < 0.5 ? { clip: code, t, from: editAt - 9, speed: 0.6 } : { clip: code, t: t - 0.5, from: editAt, speed: 1.5 }),
-    clipR: (t) => (t < 0.5 ? { clip: code, t, from: editAt - 9, speed: 0.6 } : { clip: code, t: t - 0.5, from: editAt, speed: 1.5 }),
+    // The page restarts its test game after each change to the code, which leaves the card blank for
+    // a few frames; the card holds the last frame of the old game through each restart instead.
+    clipR: (t) => {
+      const f = t < 0.5 ? editAt - 9 + t * 30 * 0.6 : editAt + (t - 0.5) * 30 * 1.5;
+      const restart = [[38, 41], [57, 62], [131, 137]].find(([a, b]) => f >= a! && f < b!);
+      return { clip: code, t: 0, from: restart ? restart[0]! - 1 : f, speed: 1 };
+    },
     left: codeBox, right: liveBox, picture: sizeOf(code, [1920, 2670]), glowL: '#22b8a0', glowR: '#3f6bff', height: 700,
     lines: [['Write your own game mode.', 0.3, 1.55], ['Simple code. A real game.', 2.05, 9, '#ffc233']],
   });
