@@ -130,7 +130,7 @@ def export_policy(ac, path):
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--name", default="rough")
-    ap.add_argument("--variant", default=os.environ.get("KESTREL_VARIANT", "k1"), choices=["k1", "s1", "s1scrap", "k1scrap", "s1fast", "k1fast"],
+    ap.add_argument("--variant", default=os.environ.get("KESTREL_VARIANT", "k1"), choices=["k1", "s1", "s1scrap", "k1scrap", "s1fast", "k1fast", "s1run", "s1sprint"],
                     help="robot: k1 (KESTREL K1, current calc revision) or s1 (the simple off-the-shelf build)")
     ap.add_argument("--workers", type=int, default=max(1, (os.cpu_count() or 2)))
     ap.add_argument("--envs", type=int, default=96, help="environments per worker")

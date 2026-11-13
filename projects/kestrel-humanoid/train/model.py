@@ -51,10 +51,12 @@ def joint_limits_s1():
     return T, W
 
 
-SCRAP_SUB = {"s1scrap": "s1", "k1scrap": "k1", "s1fast": "s1fast", "k1fast": "k1fast"}
+SCRAP_SUB = {"s1scrap": "s1", "k1scrap": "k1", "s1fast": "s1fast", "k1fast": "k1fast", "s1run": "s1fast", "s1sprint": "s1fast"}
 # gait clock and command range per variant: the scrap builds walk slowly (scrap/<sub>/generated/actuator_selection.md)
 GAIT = {"s1scrap": dict(period=1.2, stance=0.58, cmd_scale=0.35), "k1scrap": dict(period=1.2, stance=0.58, cmd_scale=0.35),
-        "s1fast": dict(period=0.8, stance=0.55, cmd_scale=1.4), "k1fast": dict(period=0.9, stance=0.56, cmd_scale=1.0)}.get(
+        "s1fast": dict(period=0.8, stance=0.55, cmd_scale=1.4), "k1fast": dict(period=0.9, stance=0.56, cmd_scale=1.0),
+        # running: a faster clock and a stance under half the period, so both feet leave the ground (flight phase)
+        "s1run": dict(period=0.64, stance=0.42, cmd_scale=3.0), "s1sprint": dict(period=0.64, stance=0.42, cmd_scale=3.0)}.get(
     VARIANT, dict(period=0.8, stance=0.55, cmd_scale=1.0))
 
 
@@ -176,9 +178,19 @@ def build_xml(H, visual=False):
     return xml, hfields
 
 
+# parallel springs ("tendons") per variant: joint -> (stiffness N·m/rad, rest angle rad). S1-Sprint: a knee spring
+# that takes part of the stance load, and an Achilles-like ankle spring that stores energy in each stance.
+SPRINGS = {"s1sprint": {"knee": (90.0, 0.35), "ankle_pitch": (60.0, -0.10)}}
+
+
 def build_model(H, visual=False):
     xml, hfields = build_xml(H, visual)
     m = mujoco.MjModel.from_xml_string(xml)
+    for j, (k, ref) in SPRINGS.get(VARIANT, {}).items():
+        for sd in "lr":
+            jid = mujoco.mj_name2id(m, mujoco.mjtObj.mjOBJ_JOINT, f"{sd}_{j}")
+            m.jnt_stiffness[jid] = k
+            m.qpos_spring[m.jnt_qposadr[jid]] = ref
     for name, data in hfields:
         k = mujoco.mj_name2id(m, mujoco.mjtObj.mjOBJ_HFIELD, name)
         a = m.hfield_adr[k]
