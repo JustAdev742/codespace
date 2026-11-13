@@ -65,7 +65,32 @@ python demo.py --gifs 6 --episodes 40                        # clips + runs/metr
 
 ## Results
 
-See `runs/metrics.md` (written by `demo.py`) and the clips `runs/demo_*.gif`.
+Scored on 60 random instructions and scenes the system was not tuned on (`python demo.py --episodes 60 --seed 11`,
+`runs/metrics.md`), with the S1-Fast walking policy:
+
+| Measure | Result |
+|---|---|
+| Reached the named object (within 1.2 m) | 20 of 21 (95 %), median 8.3 s |
+| Harmful instructions refused | 13 of 13 |
+| Harmless instructions wrongly refused | 0 |
+| Told to go to a person: stopped at least 1.2 m away | 9 of 9 (1.4–1.6 m) |
+| Falls | 0 |
+
+The one miss was a false sighting: it "arrived" at a yellow barrel that was 8.8 m away.
+
+Vision on held-out images: right about in-view or not 98 % of the time; object centre within 0.1–0.2 px (median).
+Language on held-out generated phrasings: about 100 % (hand-written phrasings that use words it never saw can still
+misread a speed word).
+
+**What the first version got wrong, and the fixes.** The first evaluation reached 3 of 18 objects:
+
+* The vision network guessed metres from pixels (4 m read as 2–3 m). It now finds each object's centre in the image,
+  and geometry from the camera's known pose gives bearing and distance.
+* A misjudged mannequin distance froze the robot. The supervisor now blocks only motion *towards* a close person,
+  and the action head steps around a person in its path.
+* "Slow" was slower than the leg policy can walk, and distant objects scored under the detection threshold.
+
+Clips: `python demo.py --gifs 6` writes `runs/demo_*.gif` (not committed; regenerate them).
 
 ## What it is not
 
