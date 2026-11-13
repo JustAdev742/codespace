@@ -22,7 +22,8 @@ from dataclasses import dataclass, field
 from safety import Supervisor, Limits
 from persona import Persona
 
-SPEED = {"slow": 0.4, "normal": 0.8, "fast": None}     # None = the supervisor's top speed
+SPEED = {"slow": 0.5, "normal": 0.8, "fast": None}     # None = the supervisor's top speed (the leg policy
+# walks noticeably slower than commanded below about 0.5 m/s)
 ARRIVE = 0.9          # m from an object's centre
 MEMORY_S = 4.0        # s a sighting is trusted after the object leaves the view
 
@@ -60,11 +61,13 @@ class VLA:
         self.status = ""
         self.said = self.voice.say("boot")
         self.last_view = {}
+        self.detour = None          # (turn sign, phase, time) while stepping around a person
 
     # ---------------------------------------------------------------- instructions
     def instruct(self, text):
         p = self.ear.hear(text)
         self.tracks = {}
+        self.detour = None
         ok, why = self.sup.check_instruction(text, p)
         if not ok:
             self.task = Task(intent="refused", text=text, done=True)
@@ -105,7 +108,7 @@ class VLA:
 
     # ---------------------------------------------------------------- one 5 Hz step
     def step(self, img, pose, cam_pos, cam_mat, dt=0.2):
-        view = self.eye.see(img, cam_pos, cam_mat, pose)
+        view = self.eye.see(img, cam_pos, cam_mat, pose, thresh=0.3)   # far objects score lower; a false person only slows us
         self.last_view = view
         self._remember(view, pose, dt)
         tk = self.task
@@ -131,15 +134,33 @@ class VLA:
                     v_req = SPEED[tk.speed] if SPEED[tk.speed] is not None else self.sup.lim.top_speed
                     face = max(0.0, math.cos(b)) ** 2
                     v = v_req * face * min(1.0, max(0.0, d - stop_at) / 1.5 + 0.2)
+                    v = max(v, 0.25 * face)          # the walking policy stands still below about 0.2 m/s
                     wz = 1.8 * b
                     if pr and tk.target != "person" and pr[1] < 3.0 and abs(pr[0]) < 0.7 and pr[1] < d:
                         wz -= math.copysign(0.9 * (3.0 - pr[1]) / 3.0, pr[0] if abs(pr[0]) > 0.02 else 1.0)
+                        if pr[1] < 1.5 and self.detour is None:   # blocked: commit to a sidestep
+                            self.detour = [-math.copysign(1.0, pr[0] if abs(pr[0]) > 0.02 else 1.0), "turn", 0.0]
+                    if self.detour is not None:  # turn until the person is off to the side, walk on, then resume
+                        sgn, ph, tt = self.detour
+                        self.detour[2] += dt
+                        if ph == "turn":
+                            v, wz = 0.0, 0.7 * sgn
+                            if (pr is None or abs(pr[0]) > math.radians(75)) or tt > 3.0:
+                                self.detour = [sgn, "walk", 0.0]
+                        else:
+                            v, wz = 0.45, 0.0
+                            if tt > 1.6:
+                                self.detour = None
+                        self.status = f"stepping around a person · target {d:.1f} m"
                     cmd = (v, 0.0, max(-1.0, min(1.0, wz)))
-                    self.status = f"go to {tk.target}: {d:.1f} m, bearing {math.degrees(b):+.0f}°" + \
-                                  (" (remembered)" if age > 0.1 else "")
+                    if self.detour is None:
+                        self.status = f"go to {tk.target}: {d:.1f} m, bearing {math.degrees(b):+.0f}°" + \
+                                      (" (remembered)" if age > 0.1 else "")
             else:
-                cmd = (0.0, 0.0, 0.6)            # search: turn on the spot
-                self.status = f"searching for {tk.target}"
+                # search: a full turn on the spot (about 10.5 s at 0.6 rad/s), then walk on 2.5 s and look again
+                cyc = tk.t % 13.0
+                cmd = (0.0, 0.0, 0.6) if cyc < 10.5 else (0.5, 0.0, 0.0)
+                self.status = f"searching for {tk.target}" + (" (moving on)" if cyc >= 10.5 else "")
                 if tk.t > 0.6 and not tk.seen and int(tk.t / dt) % 15 == 3:
                     ev = ("search", {})
         elif tk.intent in ("turn_left", "turn_right") and not tk.done:
@@ -150,7 +171,8 @@ class VLA:
             seen = [n for n, (v, _, _) in view.items() if v and n != "person"]
             tk.done = True
             ev = ("look", dict(seen=", ".join(seen) if seen else "nothing I recognise"))
-        vx, vy, wz, note = self.sup.filter(cmd, pose, person_dist, tk.target == "person", tgt_dist)
+        vx, vy, wz, note = self.sup.filter(cmd, pose, person_dist, tk.target == "person", tgt_dist,
+                                           pr[0] if pr else 0.0)
         if note:
             self.status += f" · {note}"
             if "person" in note and tk.intent == "goto" and not ev and "person" not in self.said:

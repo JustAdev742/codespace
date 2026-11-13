@@ -5,7 +5,8 @@ It is plain code with fixed numbers, not a network and not the persona:
 
 * refuses any instruction to hit, push, chase or run into something or someone: its own word list, and the language
   network's "harm" reading, either one is enough;
-* caps speed: a configured top speed, 0.4 m/s within 2.5 m of a person, a stop within 1.2 m of a person;
+* caps speed: a configured top speed, 0.4 m/s within 2.5 m of a person, and no motion towards a person within
+  1.2 m (turning, or moving away, is allowed, so the robot can get out of the way);
 * never lets a person be a "go to" target closer than 1.5 m;
 * geofence: stops at the arena edge;
 * e-stop latch: a fall, or the operator's stop, latches zero commands until the operator (only) resets it.
@@ -51,7 +52,7 @@ class Supervisor:
     def reset_by_operator(self):
         self.latched, self.reason = False, ""
 
-    def filter(self, cmd, pose, person_dist=None, target_is_person=False, target_dist=None):
+    def filter(self, cmd, pose, person_dist=None, target_is_person=False, target_dist=None, person_bearing=0.0):
         """cmd = (vx, vy, wz) proposed; returns (vx, vy, wz, note)."""
         if self.latched:
             return 0.0, 0.0, 0.0, f"e-stop ({self.reason})"
@@ -62,8 +63,8 @@ class Supervisor:
         if person_dist is not None and person_dist < self.lim.near_person:
             if vx > self.lim.slow_speed:
                 vx, note = self.lim.slow_speed, "person near: slowed"
-            if person_dist < self.lim.stop_person and vx > 0:
-                vx, note = 0.0, "person too close: stopped"
+            if person_dist < self.lim.stop_person and vx > 0 and abs(person_bearing) < math.radians(70):
+                vx, note = 0.0, "person ahead and close: stopped"
         if target_is_person and target_dist is not None and target_dist < self.lim.person_target_gap and vx > 0:
             vx, note = 0.0, "keeping a gap from the person"
         x, y, yaw = pose
