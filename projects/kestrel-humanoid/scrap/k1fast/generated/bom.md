@@ -49,7 +49,7 @@ Target: **A$2,000**. Met by scrounging.
 | Power | Charger: 54.6 V 2 A Li-ion charger (or a CC/CV boost module from a laptop supply) | 1 | 25.00 | 15.00 | E | supervised charging only |
 | Safety | Latching e-stop mushroom button | 1 | 5.00 | 5.00 | E |  |
 | Safety | 100 A DC contactor (12 V coil) + coil buck + flyback diode (hub-motor peak currents) | 1 | 25.00 | 25.00 | E | AliExpress |
-| Safety | Fuses: 60 A MIDI main fuse + holder, 15 A blade fuse per drive pair and per limb | 1 | 15.00 | 15.00 | E | the main fuse carries the 71 A walking peaks (milliseconds) and opens on a short |
+| Safety | Fuses: 60 A MIDI main fuse + holder, 25 A blade fuse per pair of ODESC drives, 15 A per drill limb | 1 | 15.00 | 15.00 | E | the main fuse carries the 71 A walking peaks (milliseconds) and opens on a short |
 | Safety | Gantry: 10 m rope, 2 carabiners, chest and pelvis straps (garage beam or A-frame) | 1 | 20.00 | 10.00 | E |  |
 | Head and shell | Old smartphone (camera, IMU, screen face, Wi-Fi) | 1 | 40.00 | 0.00 | E | your old phone; used A$30-60 |
 | Head and shell | EVA foam floor tiles, Kmart 12-pack | 2 | 10.00 | 10.00 | Vs | R11 §4.4 |

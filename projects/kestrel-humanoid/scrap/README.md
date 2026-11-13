@@ -90,6 +90,8 @@ balance and for every joint's torque.
 
 [tutorial/scrap-build-guide.md](tutorial/scrap-build-guide.md) (PDF: `tutorial/KESTREL-scrap-build-guide.pdf`).
 
+**S1-Fast, the easy way:** a picture-led guide with a tick-box for every step, a clickable robot map, to-scale chain drives, wiring and battery diagrams and the bring-up ladder: open `tutorial/s1-fast/index.html` in a browser. It is generated from the design files by `tutorial/s1-fast/make_guide.py`, so re-run that after changing the design.
+
 ## Re-run after a change
 
 ```bash

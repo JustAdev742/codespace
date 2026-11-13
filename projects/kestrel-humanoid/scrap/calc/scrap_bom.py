@@ -122,7 +122,7 @@ def lines(sub, c):
     else:
         add("Safety", "40 A automotive relay (contactor) + 12 V coil buck + flyback diode", 1, 8.0, 8.0, "E", "")
     if c["odesc"]:
-        add("Safety", "Fuses: 60 A MIDI main fuse + holder, 15 A blade fuse per drive pair and per limb", 1, 15.0, 15.0, "E",
+        add("Safety", "Fuses: 60 A MIDI main fuse + holder, 25 A blade fuse per pair of ODESC drives, 15 A per drill limb", 1, 15.0, 15.0, "E",
             "the main fuse carries the 71 A walking peaks (milliseconds) and opens on a short")
     else:
         add("Safety", "Blade fuse holders + fuses (40 A main, 15 A per limb)", 1, 8.0, 8.0, "E", "")

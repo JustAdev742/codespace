@@ -1,0 +1,234 @@
+/* Layout: assembly-manual plates down one column, a sticky stage rail on the left (a strip on phones).
+   Colour carries meaning everywhere: amber = hub motors, teal = drill gearmotors, red = danger. */
+:root {
+  --paper: #f2f4f5; --panel: #ffffff; --ink: #17212b; --ink-2: #4b5a68; --rule: #d3dbe1;
+  --hub: #c27c00; --hub-soft: #fbecc9; --drill: #17798b; --drill-soft: #d6eef2;
+  --wood: #a88352; --wood-soft: #efe2cc; --alu: #8996a3; --alu-soft: #e2e7eb;
+  --chain: #2d3742; --danger: #c22f28; --danger-soft: #f9dfdc; --ok: #2b7a4b; --ok-soft: #ddf1e4;
+  --batt: #7b5bb3; --batt-soft: #e7defa;
+  --f-disp: "Archivo", "Arial Narrow", system-ui, sans-serif;
+  --f-body: "Public Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --f-mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --paper: #10161c; --panel: #172029; --ink: #e5ebf0; --ink-2: #9aa9b6; --rule: #2a3742;
+  --hub: #f2a93b; --hub-soft: #3a2b10; --drill: #4fb6c9; --drill-soft: #0f3139;
+  --wood: #b8935f; --wood-soft: #34291b; --alu: #7f8d9a; --alu-soft: #26313b;
+  --chain: #b3bec8; --danger: #f06b60; --danger-soft: #3b1917; --ok: #5cc28b; --ok-soft: #12301f;
+  --batt: #a98be0; --batt-soft: #2a2140; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --paper: #10161c; --panel: #172029; --ink: #e5ebf0; --ink-2: #9aa9b6; --rule: #2a3742;
+  --hub: #f2a93b; --hub-soft: #3a2b10; --drill: #4fb6c9; --drill-soft: #0f3139;
+  --wood: #b8935f; --wood-soft: #34291b; --alu: #7f8d9a; --alu-soft: #26313b;
+  --chain: #b3bec8; --danger: #f06b60; --danger-soft: #3b1917; --ok: #5cc28b; --ok-soft: #12301f;
+  --batt: #a98be0; --batt-soft: #2a2140; color-scheme: dark }
+
+* { box-sizing: border-box }
+body { background: var(--paper); color: var(--ink); font: 16px/1.6 var(--f-body); }
+.wrap { max-width: 1240px; margin: 0 auto; padding-block: 24px 64px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+h1, h2, h3 { font-family: var(--f-disp); text-wrap: balance; margin: 0 }
+h1 { font-size: clamp(2.6rem, 7vw, 4.6rem); font-weight: 800; font-stretch: 72%; line-height: .95; letter-spacing: -.01em }
+h2 { font-size: clamp(1.6rem, 3.4vw, 2.3rem); font-weight: 750; font-stretch: 80%; line-height: 1.05 }
+h3 { font-size: 1.15rem; font-weight: 700; margin-block: 8px }
+code { font-family: var(--f-mono); font-size: .86em; background: var(--alu-soft); padding: 1px 5px; border-radius: 4px; overflow-wrap: anywhere }
+a { color: inherit }
+:focus-visible { outline: 3px solid var(--hub); outline-offset: 2px; border-radius: 4px }
+
+/* hero */
+.hero { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 32px; align-items: center; margin-bottom: 28px }
+.eyebrow { font: 600 .78rem/1 var(--f-body); letter-spacing: .12em; text-transform: uppercase; color: var(--ink-2); margin: 0 0 12px }
+.sub { font-size: 1.15rem; color: var(--ink-2); max-width: 34ch; margin: 14px 0 20px }
+.stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0; margin: 0; border-top: 2px solid var(--ink) }
+.stats div { padding: 10px 12px 0 0 }
+.stats dt { font: 600 .72rem/1.2 var(--f-body); letter-spacing: .08em; text-transform: uppercase; color: var(--ink-2) }
+.stats dd { margin: 4px 0 0; font: 700 1.25rem/1.1 var(--f-disp); font-variant-numeric: tabular-nums }
+.progress-line { font-size: .85rem; color: var(--ink-2); margin-top: 18px }
+.hero-g { margin: 0; background: var(--panel); border: 1px solid var(--rule); border-radius: 10px; overflow: hidden }
+.hero-g img, .gif img { display: block; width: 100%; height: auto }
+
+/* layout */
+.layout { display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 36px; align-items: start }
+.rail { position: sticky; top: calc(env(safe-area-inset-top, 0px) + 16px) }
+.rail ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px }
+.rail a { display: grid; grid-template-columns: 28px 1fr auto; gap: 8px; align-items: center; padding: 6px 8px;
+  border-radius: 6px; text-decoration: none; font-size: .92rem; color: var(--ink-2) }
+.rail a:hover, .rail a.cur { background: var(--panel); color: var(--ink) }
+.rail a.cur .nn { background: var(--ink); color: var(--paper) }
+.nn { display: grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; border: 1.5px solid currentColor;
+  font: 700 .78rem/1 var(--f-disp); font-variant-numeric: tabular-nums }
+.np { font: 500 .72rem/1 var(--f-mono); color: var(--ok) }
+main { min-width: 0; display: grid; grid-template-columns: minmax(0, 1fr); gap: 56px }
+
+/* stage */
+.stage { scroll-margin-top: 72px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 20px; min-width: 0 }
+.stage-h { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 16px; align-items: center;
+  border-top: 2px solid var(--ink); padding-top: 14px }
+.stage-h .num { font: 800 3.4rem/0.9 var(--f-disp); font-stretch: 70%; color: var(--hub); min-width: 1.2ch; font-variant-numeric: tabular-nums }
+.meta { margin: 4px 0 0; color: var(--ink-2); font-size: .92rem }
+.need { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: baseline }
+.need > span { font: 600 .74rem/1 var(--f-body); letter-spacing: .1em; text-transform: uppercase; color: var(--ink-2) }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; list-style: none; margin: 0; padding: 0 }
+.chips li { font-size: .84rem; padding: 3px 10px; border: 1px solid var(--rule); border-radius: 999px; background: var(--panel) }
+.lead { font-size: 1.06rem; max-width: 68ch; margin: 0 }
+.lead b.hubt { color: var(--hub) } .lead b.drillt { color: var(--drill) }
+.small { font-size: .86rem; color: var(--ink-2); max-width: 68ch }
+.plate { display: grid; grid-template-columns: minmax(0, 1fr); min-width: 0; gap: 18px; background: var(--panel); border: 1px solid var(--rule); border-radius: 12px; padding: 20px }
+.plate.two { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: start }
+.plate-fig { margin: 0; min-width: 0 }
+.plate-fig figcaption { font-size: .9rem; color: var(--ink-2); margin-top: 8px; max-width: 68ch }
+.scroll { overflow-x: auto; min-width: 0; max-width: 100% }
+.drives { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; align-items: end }
+
+/* steps */
+.steps { list-style: none; counter-reset: s; margin: 0; padding: 0; display: grid; gap: 10px }
+.steps li { counter-increment: s }
+.steps label { display: grid; grid-template-columns: 26px 22px minmax(0, 1fr); gap: 10px; align-items: start; cursor: pointer }
+.steps label::before { content: counter(s); font: 800 1.05rem/1.5 var(--f-disp); color: var(--ink-2); text-align: right; grid-column: 1; grid-row: 1 }
+.steps input { grid-column: 2; grid-row: 1; width: 20px; height: 20px; margin: 3px 0 0; accent-color: var(--ok) }
+.steps span { grid-column: 3; grid-row: 1; max-width: 70ch }
+.steps input:checked + span { color: var(--ink-2); text-decoration: line-through; text-decoration-color: var(--ok) }
+.check, .warn { border-radius: 10px; padding: 12px 16px; display: grid; gap: 2px }
+.check { background: var(--ok-soft); border-left: 4px solid var(--ok) }
+.warn { background: var(--danger-soft); border-left: 4px solid var(--danger) }
+.check b, .warn b { font: 700 .76rem/1.4 var(--f-body); letter-spacing: .1em; text-transform: uppercase }
+.check p, .warn p { margin: 0 }
+
+/* rules */
+.rules { display: grid; gap: 10px }
+.rule { border: 1px solid var(--rule); border-radius: 8px; padding: 10px 14px }
+.rule b { font-family: var(--f-disp); font-size: 1.05rem }
+.rule p { margin: 2px 0 0; font-size: .92rem }
+.rule.danger { border-color: var(--danger); background: var(--danger-soft) }
+
+/* parts */
+.totals { display: flex; flex-wrap: wrap; gap: 12px 28px; align-items: end }
+.tot span { display: block; font: 600 .72rem/1.2 var(--f-body); letter-spacing: .08em; text-transform: uppercase; color: var(--ink-2) }
+.tot b { font: 800 2rem/1.1 var(--f-disp); font-variant-numeric: tabular-nums }
+.seg { display: inline-flex; border: 1px solid var(--rule); border-radius: 8px; overflow: hidden; margin-left: auto }
+.seg button { font: 600 .85rem var(--f-body); padding: 8px 14px; border: 0; background: transparent; color: var(--ink-2); cursor: pointer }
+.seg button.on { background: var(--ink); color: var(--paper) }
+table { border-collapse: collapse; width: 100%; font-size: .9rem }
+th { text-align: left; font: 600 .74rem/1.3 var(--f-body); letter-spacing: .06em; text-transform: uppercase; color: var(--ink-2); padding: 8px 8px; border-bottom: 2px solid var(--rule) }
+td { padding: 7px 8px; border-bottom: 1px solid var(--rule); vertical-align: top }
+.parts { min-width: 560px }
+.parts .grp th { padding-top: 16px; color: var(--ink); font-size: .8rem; border-bottom: 1px solid var(--ink) }
+.parts td.q, .parts td.pr { font-variant-numeric: tabular-nums; white-space: nowrap }
+.parts td.pr { text-align: right }
+.parts tr.have td { color: var(--ink-2); text-decoration: line-through }
+.parts input { width: 18px; height: 18px; accent-color: var(--ok) }
+.mini { font-variant-numeric: tabular-nums }
+.tips { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px }
+.tips div { border-left: 3px solid var(--rule); padding-left: 12px }
+.tips b { font-family: var(--f-disp) } .tips p { margin: 2px 0 0; font-size: .9rem }
+
+/* code */
+.code { position: relative; background: var(--paper); border: 1px solid var(--rule); border-radius: 8px }
+.code pre { margin: 0; padding: 14px 16px; overflow-x: auto; font: 13px/1.55 var(--f-mono) }
+.code code { background: none; padding: 0; font-size: inherit }
+.copy { position: absolute; top: 8px; right: 8px; font: 600 .8rem var(--f-body); padding: 5px 10px; border-radius: 6px;
+  border: 1px solid var(--rule); background: var(--panel); color: var(--ink); cursor: pointer }
+
+/* ladder */
+.ladder { list-style: none; margin: 0; padding: 0; display: grid; gap: 0; counter-reset: l }
+.ladder li { counter-increment: l; display: grid; grid-template-columns: 54px 150px minmax(0, 1fr) minmax(0, 220px); gap: 12px;
+  align-items: center; padding: 12px 0; border-bottom: 1px dashed var(--rule); position: relative }
+.ladder li::before { content: counter(l); display: grid; place-items: center; width: 40px; height: 40px; border-radius: 50%;
+  background: var(--hub-soft); color: var(--hub); border: 2px solid var(--hub); font: 800 1.1rem var(--f-disp) }
+.ladder li:last-child::before { background: var(--ok); color: var(--panel); border-color: var(--ok) }
+.ladder b { font: 700 1.1rem var(--f-disp) }
+.ladder em { font-style: normal; font-size: .86rem; color: var(--ok); font-weight: 600 }
+
+/* results */
+.facts { display: grid; gap: 14px }
+.facts div { display: grid; grid-template-columns: 120px minmax(0, 1fr); gap: 12px; align-items: baseline; border-bottom: 1px solid var(--rule); padding-bottom: 10px }
+.facts b { font: 800 1.7rem/1 var(--f-disp); color: var(--hub); font-variant-numeric: tabular-nums }
+.gif { background: var(--paper); border-radius: 8px; overflow: hidden }
+.trouble td:first-child { font-weight: 600 }
+.trouble { min-width: 620px }
+.foot { font-size: .86rem; color: var(--ink-2); border-top: 1px solid var(--rule); padding-top: 16px }
+
+/* spec panel next to the map */
+.plate:has(.mapfig) { grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); align-items: start }
+.spec { position: sticky; top: 80px; border: 1px solid var(--rule); border-radius: 10px; padding: 16px; background: var(--paper); min-width: 0 }
+.spec h3 { margin-top: 0 }
+.spec .tag { display: inline-block; font: 600 .72rem/1 var(--f-body); letter-spacing: .08em; text-transform: uppercase; padding: 4px 8px; border-radius: 4px }
+.spec .tag.hub { background: var(--hub-soft); color: var(--hub) } .spec .tag.drill { background: var(--drill-soft); color: var(--drill) }
+.spec .tag.batt { background: var(--batt-soft); color: var(--batt) }
+.spec dl { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 6px 12px; margin: 12px 0 0; font-size: .92rem }
+.spec dt { color: var(--ink-2) } .spec dd { margin: 0; font-variant-numeric: tabular-nums }
+
+/* ---------------- SVG drawing styles (theme tokens) */
+.sv { display: block; width: 100%; height: auto; color: var(--ink) }
+.sv text { fill: var(--ink); font: 500 12px var(--f-body) }
+.sv .lbl { font-size: 12px } .sv .muted { fill: var(--ink-2) } .sv .cap { font: 700 12px var(--f-body); letter-spacing: .12em; fill: var(--ink-2) }
+.sv .eq { font: 600 13px var(--f-mono); fill: var(--ink) } .sv .eqb { font: 800 18px var(--f-disp); fill: var(--hub) }
+.sv .lbl, .sv .dl, .sv .cap, .sv .eq { paint-order: stroke; stroke: var(--panel); stroke-width: 4px; stroke-linejoin: round }
+.sv .leader { stroke: var(--ink-2); stroke-width: 1.2 } .sv .leader-dot { fill: var(--ink) }
+.sv .cordring { fill: none; stroke: var(--hub); stroke-width: 3 }
+.fig.map .lbl { font-size: 17px } .fig.map .cap { font-size: 15px } .fig.map .pin-t { font-size: 16px }
+.fig.speed .lbl { font-size: 15px } .fig.drives { min-width: 600px } .sv .dl { font: 500 11px var(--f-mono); fill: var(--ink-2) }
+.sv .bt { font: 700 13px var(--f-disp) } .sv .bs { font-size: 10.5px; fill: var(--ink-2) } .sv .big { font: 800 20px var(--f-disp) }
+.sv .strongt { font-weight: 700; fill: var(--hub) }
+.sv .ln { stroke: var(--ink); stroke-width: 1.5; fill: none } .sv .thick { stroke-width: 4 } .sv .dashed { stroke-dasharray: 5 4 }
+.sv .ground { stroke: var(--ink-2); stroke-width: 1.5 }
+.sv .hub { fill: var(--hub-soft); stroke: var(--hub); stroke-width: 2 } .sv .hub.ghost { opacity: .55; stroke-dasharray: 4 3 }
+.sv .drill { fill: var(--drill-soft); stroke: var(--drill); stroke-width: 2 }
+.sv .wood { fill: var(--wood-soft); stroke: var(--wood); stroke-width: 1.5 }
+.sv .alu { fill: var(--alu-soft); stroke: var(--alu); stroke-width: 1.5 }
+.sv .batt { fill: var(--batt-soft); stroke: var(--batt); stroke-width: 1.5 }
+.sv .joint { fill: var(--panel); stroke: var(--ink); stroke-width: 1.5 }
+.sv .chain { stroke: var(--chain); stroke-width: 2.5; fill: none; stroke-dasharray: 5 2.5 }
+.sv .chain3 { stroke-width: 5 }
+.sv .rod { stroke: var(--ink); stroke-width: 3; fill: var(--alu-soft) }
+.sv .cord { stroke: var(--hub); stroke-width: 2; fill: none }
+.sv .spk { fill: var(--alu-soft); stroke: var(--ink); stroke-width: 1.5 } .sv .spk2 { fill: var(--wood-soft); stroke: var(--ink); stroke-width: 1.5 }
+.sv .teeth { fill: none; stroke: var(--ink-2); stroke-width: 4 }
+.sv .axle { fill: var(--ink) } .sv .bolt { fill: var(--ink-2) } .sv .tyre { fill: none; stroke: var(--ink-2); stroke-width: 10; stroke-dasharray: 6 6; opacity: .6 }
+.sv .shaft { stroke: var(--ink); stroke-width: 6; stroke-linecap: round }
+.sv .brg { fill: var(--panel); stroke: var(--ink); stroke-width: 2 }
+.sv .clutch { fill: var(--wood-soft); stroke: var(--wood); stroke-width: 1.5 }
+.sv .scale { fill: var(--alu-soft); stroke: var(--ink); stroke-width: 1.5 }
+.sv .dim { stroke: var(--ink-2); stroke-width: 1; fill: none } .sv .stick { stroke: var(--ink); stroke-width: 3; stroke-linecap: round }
+.sv .blk { fill: var(--panel); stroke: var(--ink); stroke-width: 1.5 } .sv .blk.strong { fill: var(--alu-soft); stroke-width: 2 }
+.sv .blk.hubb { fill: var(--hub-soft); stroke: var(--hub) } .sv .blk.drillb { fill: var(--drill-soft); stroke: var(--drill) }
+.sv .blk.battb { fill: var(--batt-soft); stroke: var(--batt) } .sv .blk.danger { fill: var(--danger-soft); stroke: var(--danger) }
+.sv .can { stroke: var(--drill); stroke-width: 3 } .sv .uart { stroke: var(--ink-2); stroke-width: 2; stroke-dasharray: 6 4 }
+.sv .term { fill: var(--ink) }
+.sv .bus48 { stroke: var(--danger); stroke-width: 4 } .sv .bus18 { stroke: var(--drill); stroke-width: 3 }
+.sv .estop { stroke: var(--danger); stroke-width: 2; stroke-dasharray: 5 4; fill: none }
+.sv .cell { fill: var(--batt-soft); stroke: var(--batt); stroke-width: 1.5 } .sv .group { fill: none; stroke: var(--ink-2); stroke-width: 1; stroke-dasharray: 3 3 }
+.sv .series { stroke: var(--danger); stroke-width: 3 }
+.sv .rope { stroke: var(--wood); stroke-width: 3; fill: none } .sv .strap { stroke: var(--hub); stroke-width: 4 }
+.sv .danger-fill { fill: var(--danger) }
+.sv .grid { stroke: var(--rule); stroke-width: 1 } .sv .diag { stroke: var(--ink-2); stroke-width: 1; stroke-dasharray: 4 4 }
+.sv .band { fill: var(--ok-soft) } .sv .series { fill: none } .sv polyline.series { stroke: var(--hub); stroke-width: 2.5; fill: none }
+.sv .dot { fill: var(--hub); stroke: var(--panel); stroke-width: 2 }
+.sv .pin { cursor: pointer } .sv .pin-c { fill: var(--ink); stroke: var(--panel); stroke-width: 2 }
+.sv .pin-t { fill: var(--paper); font: 800 13px var(--f-disp) }
+.sv .pin:hover .pin-c, .sv .pin:focus .pin-c, .sv .pin.on .pin-c { fill: var(--hub) }
+.sv .pin:focus { outline: none }
+.fig.map { min-width: 520px } .fig.wiring, .fig.power, .fig.loops, .fig.battery, .fig.plan { min-width: 600px }
+.fig.capstan, .fig.hubprep, .fig.lever, .fig.frame { min-width: 480px }
+
+@media (max-width: 980px) {
+  .layout { grid-template-columns: minmax(0, 1fr); gap: 20px }
+  .rail { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--paper); padding-block: 8px; margin-inline: -4px; overflow-x: auto }
+  .rail ol { grid-auto-flow: column; grid-auto-columns: max-content }
+  .rail .nt { display: none } .rail a { grid-template-columns: 28px }
+  .rail .np { display: none }
+  body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--paper) }
+  .plate:has(.mapfig) { grid-template-columns: minmax(0, 1fr) }
+  .spec { position: static }
+}
+@media (max-width: 760px) {
+  .hero { grid-template-columns: minmax(0, 1fr) }
+  .plate.two, .drives, .tips { grid-template-columns: minmax(0, 1fr) }
+  .stats { grid-template-columns: repeat(2, minmax(0, 1fr)) }
+  .ladder li { grid-template-columns: 48px minmax(0, 1fr); }
+  .ladder li span, .ladder li em { grid-column: 2 }
+  .plate { padding: 14px }
+  .seg { margin-left: 0 }
+}
+@media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important } }
+html { scroll-behavior: smooth }
