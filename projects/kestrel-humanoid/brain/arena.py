@@ -91,6 +91,8 @@ class Arena:
                 y = ry + self.rng.uniform(*near)
                 if y > Y_MAX - 0.6:
                     continue
+                if n == "person" and math.hypot(x - rx, y - ry) < 2.5:
+                    continue
                 if all(math.hypot(x - a, y - b) > 1.2 for a, b in self.pos.values()):
                     break
             self.pos[n] = (x, y)
@@ -144,6 +146,20 @@ class Arena:
         self._sync()
         self.r_ego.update_scene(self.dv, camera=self.cam_id)
         return self.r_ego.render()
+
+    def cam_pose(self):
+        """Head camera position and rotation (world), valid after ego(). On the robot: IMU + joint angles."""
+        return self.dv.cam_xpos[self.cam_id].copy(), self.dv.cam_xmat[self.cam_id].reshape(3, 3).copy()
+
+    def project(self, pw):
+        """World point -> (u, v) in [0, 1] image coordinates and its depth along the view (after ego())."""
+        cp, R = self.cam_pose()
+        pc = R.T @ (np.asarray(pw) - cp)
+        z = -pc[2]
+        if z <= 1e-6:
+            return None, None, z
+        f = (CAM_H / 2) / math.tan(math.radians(CAM_FOVY / 2))
+        return 0.5 + f * pc[0] / z / CAM_W, 0.5 - f * pc[1] / z / CAM_H, z
 
     def chase_view(self):
         self._sync()

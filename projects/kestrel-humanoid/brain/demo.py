@@ -75,7 +75,9 @@ def episode(ar, vla, policy, text, max_s=40.0, frames=None, rng=None):
     dist_trace = []
     while t < max_s:
         if k % 10 == 0:                           # 5 Hz brain
-            cmd = vla.step(ar.ego(), ar.robot_pose())
+            img = ar.ego()
+            cp, cm = ar.cam_pose()
+            cmd = vla.step(img, ar.robot_pose(), cp, cm)
             e.cmd[0] = cmd
         PL.hold(e)
         obs, _, _, done, trunc = e.step(policy(obs))
