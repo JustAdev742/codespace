@@ -112,8 +112,19 @@ Round 1, after 42 M steps (2.4 h) each, flat-ground speed test with the motors' 
 
 The unchanged hardware can reach a jog in short bursts, but its motors would overheat at that pace. With the motors
 moved up to the hip, the robot holds 2.6 m/s, a human jogging pace, inside every limit. Heat (RMS torque against the
-continuous rating) is now what binds. Round 2 trains S1-Sprint with commands to 4 m/s, and S1-Sprint 2 with stiffer
-springs (`variant_s1sprint2.py`), to see whether the springs can take more of that load.
+continuous rating) is now what binds.
+
+Round 2 (interrupted by a machine restart at 86 % of its budget):
+* **S1-Sprint** trained on with commands to 4 m/s (77 M steps in all, `runs/s1sprint/speed.md`). It is no faster:
+  2.43 m/s within the limits, about 2.65 m/s at most. Its joints reach only 55–59 % of no-load speed, while its
+  hottest motor is at 94 % of continuous at 2.6 m/s and over 100 % above that.
+* **S1-Sprint 2**, with stiffer springs (knee 160, ankle 110 N·m/rad), is worse. It falls at 2.2 m/s and above
+  (`runs/s1sprint2/speed.md`), so springs that stiff fight the gait.
+
+So with hub motors the sustained ceiling in simulation is about 2.5 m/s, a jog, and heat sets it. The next lever is
+the motors' continuous rating: vent holes and a fan, or ferrofluid in the air gap, are common hub-motor cooling
+mods. A 1.5 times higher continuous current would bring S1-Sprint's 3 m/s run (104 % of today's rating) to about
+70 %. That is an estimate on the rating, not something this simulation models.
 
 ## Results (trained on this VM)
 
