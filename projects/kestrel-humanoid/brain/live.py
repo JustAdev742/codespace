@@ -147,6 +147,8 @@ class Live:
                     self.push("log", f"(interrupted: {ex})")
                 if h.holding is not None and str(ex) == "fell":
                     bot.release()
+                if not bot.seated:
+                    h.stiff(False)            # interrupted mid-crouch or mid-sit: back to the walking gains
                 bot.arms = list(HB.CARRY_ARMS if h.holding else HB.REST_ARMS)
             except Exception:
                 self.push("log", "error: " + traceback.format_exc().splitlines()[-1])

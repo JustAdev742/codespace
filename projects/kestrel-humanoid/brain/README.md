@@ -168,6 +168,88 @@ python test_walkup.py --seeds 10-33                  # sit-and-stand from 24 ran
 python will.py --seconds 200 --alarm 120 --gif runs/will.gif
 ```
 
+## Talk to it live, in a house
+
+```bash
+cd projects/kestrel-humanoid/brain
+python live.py              # open http://localhost:8765
+```
+
+![The house](runs/house_overview.png)
+
+**The house** (`house.py`): a 14 m x 10 m single-storey home on a slab 14 cm above the garden, built to test the
+robot the way a real home would:
+
+* open-plan kitchen (L-shaped counters, island, stools, fridge), dining area (table and four chairs) and living room
+  with a sunken lounge one 14 cm step down (sofa, coffee table, TV, armchair, rug);
+* a hall with a runner rug, a console table, a coat stand and shoes by the front door; a bedroom, a bathroom (tiles
+  with friction 0.5 and a 1.5 cm door threshold) and a study;
+* hinged doors that swing if bumped, windows, ceilings (seen by the head camera);
+* outside, a porch with two 7 cm steps, a patio deck one step down from the living room, and a lawn;
+* seven things to fetch, each with a handle for the hook hand (kettle, lunchbox, shopping bag, laundry basket,
+  bucket, toolbox, watering can);
+* people: Alex standing in the study, Jordan walking a loop through the kitchen, hall and dining area (Jordan stops
+  for the robot), and you; a robot vacuum wandering the kitchen and dining area.
+
+Floors are real collision geometry with friction by room. The walking policy's height scan reads a height map of
+exactly that floor, the same kind of input it learned stairs from, so it sees the steps and thresholds and steps
+over them.
+
+**The robot at home** (`housebot.py`). It knows the floor plan, like a robot that has mapped its home. It does not
+know where things are: its head camera sees an object only when it is in view, within 8 m and not behind a wall or
+furniture. What it sees goes into a memory, and when something isn't where it was last seen, it searches the likely
+rooms. It plans paths with A* on an occupancy grid, keeps about 1.5 m from people where there is room, re-plans
+every 1.5 s as people and the vacuum move, and turns the path into walking commands. Every command passes the
+safety supervisor. Skills: go anywhere; pick up by the handle, from a table or, crouching, from the floor; carry;
+put down on a table; hand over (it stops 1.5 m away and holds the object out); sit on any of the five chairs and
+stand up; look around; gestures.
+
+**Live mode** (`live.py`). The simulation runs in real time. The web page shows the robot (behind it, the whole house,
+or its head camera), the conversation, and buttons. Type, or press **Talk** and speak (the browser's own speech
+recognition, in Chrome, Edge or Safari); replies are read out. A new instruction interrupts the current one, and
+"stop" always works. Things to say: "go to the kitchen", "bring me the kettle", "put the toolbox on the dining
+table", "sit on the desk chair", "stand up", "where is the bucket?", "what do you see?", "I'm in the study, come
+here", "tidy up", "wave", "do whatever you want". Left alone after "do whatever you want", it picks for itself:
+it explores rooms, tidies things that are out of place, talks to people with gestures, and sits down to rest when
+tired.
+
+* Out of the box, plain-English instructions are understood offline by `house_lang.py` (no model, no network).
+* `python live.py --claude` lets a Claude model hold the conversation (`live_claude.py`). It plays the persona and
+  acts through tools that queue the same actions, so they still run through the same skills and the same
+  supervisor. It needs `pip install anthropic` and an API key. Refusal fallbacks are switched on.
+* `--viewer` also opens MuJoCo's 3D window (on macOS, run it with `mjpython`). `--terminal` takes typed
+  instructions.
+
+It never strikes anyone. Asked to, it refuses (`house_test.py` checks 20 harmful phrasings, all refused, and 20
+harmless ones, none refused). Told that someone is being hurt (or the red button), it stops on the spot, keeps at
+least 2 m away, warns, and raises an alert for a human. It does not intervene physically.
+
+### Run it on your own computer
+
+Everything runs on an ordinary computer; no GPU is needed. On Windows, double-click `brain\run_live.bat`. On macOS
+or Linux, run `brain/run_live.sh`. The first run sets up Python packages (a few minutes); after that it starts the
+house and opens your browser. By hand:
+
+```bash
+git clone https://github.com/JustAdev742/codespace
+cd codespace
+git checkout claude/dreamy-carson-f16476
+cd projects/kestrel-humanoid/brain
+python -m venv .venv
+```
+
+Activate the environment: `.venv\Scripts\activate` on Windows, or `source .venv/bin/activate` on macOS and Linux.
+
+```bash
+pip install torch --index-url https://download.pytorch.org/whl/cpu
+pip install -r requirements-live.txt
+python live.py
+```
+
+Then open http://localhost:8765. `python live.py --host 0.0.0.0` makes it reachable from a phone on the same Wi-Fi,
+at your computer's address. For the Claude conversation mode, run `pip install anthropic`, set `ANTHROPIC_API_KEY`,
+and start it with `--claude`.
+
 ## What it is not
 
 * Not a large pretrained VLA. The vision network knows five objects in one arena; the language network knows the

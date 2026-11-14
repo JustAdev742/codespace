@@ -791,7 +791,7 @@ def main():
     out.mkdir(exist_ok=True)
     Image.fromarray(h.chase_view("overview")).save(out / "house_overview.png")
     shots = [("kitchen", 4.2, 4.0, -2.4), ("living", 10.0, 4.8, -0.9), ("hall", 7.0, 5.9, 0.0),
-             ("bedroom", 4.0, 7.2, 2.4), ("bath", 6.7, 7.1, 1.57), ("study", 9.6, 7.2, 0.6)]
+             ("bedroom", 4.0, 7.2, 2.4), ("bath", 6.7, 7.1, 1.57), ("study", 10.4, 7.4, 0.6)]
     for name, x, y, yaw in shots:
         h.place_robot(x, y, yaw)
         for _ in range(10):

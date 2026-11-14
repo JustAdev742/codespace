@@ -193,6 +193,8 @@ def trial(job):
             except HB.Interrupted:
                 pass
             h.step = step_prev
+            if not bot.seated:
+                h.stiff(False)
             t_alarm = h.t
             bot.on_alarm()
             d = h.e.d[0]
