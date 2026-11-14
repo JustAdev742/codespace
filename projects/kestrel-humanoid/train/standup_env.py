@@ -7,7 +7,9 @@ state (brain/make_seated_bank.py) with a little noise. The policy commands all 1
 from the mean seated pose, on stiff PD position servos (4 x the walking gains, as brain/skills.py uses for slow
 whole-body motion), with the actuators' force limits. It is rewarded for raising the pelvis, staying upright, keeping
 its centre of mass over the feet once it is up, and holding a balanced stand; it is penalised for falling, effort and
-jerky commands.
+jerky commands, joint speeds near the motors' no-load speed, and rising faster than 0.8 m/s. Every physics step
+caps each motor's force by its torque-speed line (as env.py does for walking), so the stand-up the policy learns is
+one the hub motors and drills can actually deliver.
 """
 from __future__ import annotations
 
@@ -36,7 +38,8 @@ WORLD = f"""
       <geom name="seat" type="box" size="0.22 0.22 0.02" pos="0 0 {SEAT_TOP - 0.02}" friction="1 0.02 0.001"/>
       <geom type="box" size="0.22 0.02 0.25" pos="0 0.21 {SEAT_TOP + 0.25}"/>
     </body>"""
-W = dict(height=1.0, upright=0.5, balance=-2.0, stand=1.0, effort=-2e-6, action_rate=-0.02, alive=0.1, fall=-5.0)
+W = dict(height=1.0, upright=0.5, balance=-2.0, stand=1.0, effort=-2e-6, action_rate=-0.02, alive=0.1, fall=-5.0,
+         speed_limit=-1.0, rise_rate=-2.0)
 STAND_Z = 0.86
 
 
@@ -58,6 +61,16 @@ class Envs:
         bank = np.load(HERE.parent / "brain" / "data" / "seated_bank.npz")
         self.bank_q, self.bank_v = bank["qpos"][:, :m.nq], bank["qvel"][:, :m.nv]   # robot first; the bag (skills world) after
         self.ref = self.bank_q[:, self.qadr].mean(0)
+        # motor torque-speed lines for all 16 joints (as env.py applies to the legs): T, T_V, w0
+        import json
+        ts = KM.torque_speed()
+        legs = np.array([ts[j[2:]][:3] for j in KM.LEG_JOINTS])
+        fam = json.loads((HERE.parent / "scrap" / "s1fast" / "data" / "actuator_family.json").read_text())
+        arm = []
+        for j in KM.ARM_JOINTS:
+            f = fam["X-SH" if "shoulder" in j else "X-EL"]
+            arm.append((f["T_peak_joint"], f["T_peak_joint"] * (18.0 / 0.17) / 40.0, f["w_noload_joint"]))
+        self.ts = np.vstack([legs, np.array(arm)]).T          # 3 x 16
         self.lf, self.rf = m.body("l_foot").id, m.body("r_foot").id
         self.pelvis = m.body("pelvis").id
         self.d = [mujoco.MjData(m) for _ in range(M)]
@@ -141,14 +154,25 @@ class Envs:
         M = self.M
         a = np.clip(actions, -ACTION_CLIP, ACTION_CLIP)
         target = self.ref + ACTION_SCALE * a
-        for i, d in enumerate(self.d):
-            d.ctrl[:16] = target[i]
-            mujoco.mj_step(self.m, d, DECIM)
+        m = self.m
+        T, TV, w0 = self.ts
+        kp, kv = m.actuator_gainprm[:16, 0], -m.actuator_biasprm[:16, 2]
+        for _ in range(DECIM):                    # PD force capped by each motor's torque-speed line, every substep
+            q = np.array([d.qpos[self.qadr] for d in self.d])
+            qd = np.array([d.qvel[self.vadr] for d in self.d])
+            F = kp * (target - q) - kv * qd
+            lim = np.minimum(T, np.clip(TV * (1.0 - np.abs(qd) / w0), 0.0, None))
+            F = np.clip(F, -np.where(qd < 0, lim, T), np.where(qd > 0, lim, T))
+            ctrl = q + (F + kv * qd) / kp
+            for i, d in enumerate(self.d):
+                d.ctrl[:16] = ctrl[i]
+                mujoco.mj_step(m, d, 1)
         self.prev_a, self.last_a = self.last_a, a.copy()
         self.t += 1
         s = self._state()
         grav, ang, lin, q, qd, pz, up, ca = s
         tau = np.array([d.actuator_force[:16] for d in self.d])
+        lin_z = np.array([d.qvel[2] for d in self.d])          # pelvis rising speed (world), m/s
         risen = pz > 0.62
         rt = dict(height=np.clip((pz - 0.52) / (STAND_Z - 0.52), 0, 1),
                   upright=np.clip((up - 0.8) / 0.2, -1, 1),
@@ -156,7 +180,9 @@ class Envs:
                   stand=((pz > STAND_Z - 0.03) & (up > 0.95) & (np.abs(ca - 0.03) < 0.07)).astype(float),
                   effort=np.sum(tau ** 2, 1),
                   action_rate=np.sum((self.last_a - self.prev_a) ** 2, 1),
-                  alive=np.ones(M))
+                  alive=np.ones(M),
+                  speed_limit=np.sum(np.clip(np.abs(qd) - 0.85 * self.ts[2], 0, None) ** 2, 1),
+                  rise_rate=np.clip(lin_z - 0.8, 0, None) ** 2)
         fell = (up < 0.5) | (pz < 0.3)
         rt["fall"] = fell.astype(float)
         r = np.zeros(M)
