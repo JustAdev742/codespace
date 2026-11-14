@@ -183,7 +183,7 @@ robot the way a real home would:
 * open-plan kitchen (L-shaped counters, island, stools, fridge), dining area (table and four chairs) and living room
   with a sunken lounge one 14 cm step down (sofa, coffee table, TV, armchair, rug);
 * a hall with a runner rug, a console table, a coat stand and shoes by the front door; a bedroom, a bathroom (tiles
-  with friction 0.5 and a 1.5 cm door threshold) and a study;
+  with friction 0.6 and a 1.5 cm door threshold) and a study;
 * hinged doors that swing if bumped, windows, ceilings (seen by the head camera);
 * outside, a porch with two 7 cm steps, a patio deck one step down from the living room, and a lawn;
 * seven things to fetch, each with a handle for the hook hand (kettle, lunchbox, shopping bag, laundry basket,

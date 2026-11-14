@@ -61,6 +61,7 @@ def setup(seed, walker=True, vacuum=True):
         if b in h.obj_body.values():
             continue
         hard.add(g)
+    chairs = {mujoco.mj_name2id(m, mujoco.mjtObj.mjOBJ_BODY, c) for c in h.b.chairs}
     stats = dict(bumps=0, steps=0, min_person=99.0)
     step0 = h.step
 
@@ -68,9 +69,13 @@ def setup(seed, walker=True, vacuum=True):
         r = step0(*a, **k)
         d = h.e.d[0]
         stats["steps"] += 1
+        low = h.pelvis_z() < 0.8                       # sitting, rising or crouching: touching the chair is the point
         for c in d.contact[:d.ncon]:
             g1, g2 = c.geom1, c.geom2
             r1, r2 = m.geom_bodyid[g1] in h.robot_bodies, m.geom_bodyid[g2] in h.robot_bodies
+            other = g2 if r1 else g1
+            if low and m.geom_bodyid[other] in chairs:
+                continue
             if (r1 and g2 in hard) or (r2 and g1 in hard):
                 stats["bumps"] += 1
                 break

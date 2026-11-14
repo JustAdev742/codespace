@@ -266,7 +266,7 @@ class World(A.Arena):
         return r[0] * math.cos(yaw) + r[1] * math.sin(yaw)
 
     def _run_balanced(self, legs_kf, arms_kf, secs, gate_from=0.0, lo=-0.04, hi=0.08, gain=1.2, max_s=16.0,
-                      gate_until=None):
+                      gate_until=None, release_stiff=True):
         """Play a leg trajectory, but between gate_from and gate_until only let its clock advance while the centre of
         mass is over the feet (between lo behind and hi ahead of the ankles); while it is outside, hold, and lean forward
         or back (hip flexion and ankle angle in proportion to the error). This is what lets the robot stand up without a
@@ -304,7 +304,8 @@ class World(A.Arena):
                     return False
             return tau >= secs
         finally:
-            self.stiff(False)
+            if release_stiff:
+                self.stiff(False)
 
     def sit(self):
         """Back to the chair: knees forward and torso leaning, centre of mass over the feet, down to the seat; then let

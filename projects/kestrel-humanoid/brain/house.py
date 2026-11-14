@@ -18,7 +18,7 @@
 
 Floors are real collision geometry; the walking policy's height scan reads a height map of exactly that floor (the
 same kind of input it was trained on, with stairs), so steps, rugs and thresholds are seen and stepped over. Floor
-friction differs by room (bathroom tiles 0.5, kitchen tiles 0.7, wood 0.8, carpet and rugs 1.0).
+friction differs by room (bathroom tiles 0.6, kitchen tiles 0.7, wood 0.8, carpet and rugs 1.0).
 
 The house also provides what a robot that has mapped its home would know: an occupancy grid for path planning, named
 rooms, furniture with places to stand, chairs it can sit on, and where each object belongs.
@@ -40,7 +40,6 @@ import numpy as np            # noqa: E402
 import mujoco                 # noqa: E402
 
 import skills as SK           # noqa: E402
-import arena as A             # noqa: E402
 import env as E               # noqa: E402
 import terrain as T           # noqa: E402
 
@@ -334,7 +333,7 @@ OBJECTS = {
     "basket": ("box", (0.17, 0.12, 0.10), (0.90, 0.80, 0.30, 1), 0.7, 0.36, ["basket", "laundry basket", "yellow basket"], "bedroom"),
     "bucket": ("cylinder", (0.12, 0.12), (0.15, 0.40, 0.85, 1), 0.6, 0.30, ["bucket", "blue bucket"], "bathroom"),
     "toolbox": ("box", (0.18, 0.08, 0.07), (0.80, 0.12, 0.10, 1), 1.4, 0.14, ["toolbox", "tool box", "red toolbox", "tools"], "study desk"),
-    "can": ("cylinder", (0.09, 0.12), (0.20, 0.60, 0.25, 1), 0.6, 0.20, ["watering can", "can", "green can"], "patio"),
+    "can": ("cylinder", (0.09, 0.12), (0.20, 0.60, 0.25, 1), 0.6, 0.27, ["watering can", "can", "green can"], "patio"),
 }
 
 
@@ -366,7 +365,7 @@ def build():
     b.floor_box(LX0, LX1, LY0, LY1, 0.002, "carpet", 1.0, bottom=-0.1)       # the lounge, one step down
     b.floor_box(0, 14, 5.2, 6.6, Z0, "wood_floor", 0.8)                        # hall
     b.floor_box(0, 5.4, 6.6, 10, Z0, "carpet", 1.0)                            # bedroom
-    b.floor_box(5.4, 8.2, 6.6, 10, Z0, "bath_floor", 0.5)                      # bathroom: slippery tiles
+    b.floor_box(5.4, 8.2, 6.6, 10, Z0, "bath_floor", 0.6)                      # bathroom: the most slippery floor
     b.floor_box(8.2, 14, 6.6, 10, Z0, "wood_floor", 0.8)                       # study
     # outside: porch (two 7 cm steps) and patio deck (one step down from the house, one to the lawn)
     b.floor_box(14.0, 15.3, 5.0, 6.8, Z0, "deck", 0.9, kind="step")
@@ -391,9 +390,10 @@ def build():
     wall(b, "y", 8.2, 6.66, 9.8, 0.12)
     wall(b, "y", 5.2, 3.6, 5.14, 0.12)
     # doors: they stand open, and swing if bumped
-    door(b, "door_bedroom", (2.4, 6.66), 0.0, math.radians(92), 0.9)
-    door(b, "door_bath", (7.1, 6.66), math.pi, -math.radians(92), 0.9)
-    door(b, "door_study", (9.6, 6.66), 0.0, math.radians(92), 0.9)
+    # interior doors pushed right back against the wall (a door standing out at 90 degrees cut the bedroom in two)
+    door(b, "door_bedroom", (2.4, 6.69), 0.0, math.radians(178), 0.9)
+    door(b, "door_bath", (7.1, 6.69), math.pi, -math.radians(178), 0.9)
+    door(b, "door_study", (9.6, 6.69), 0.0, math.radians(178), 0.9)
     door(b, "door_front", (13.8, 6.35), -math.pi / 2, -math.radians(88), 0.9)
     # ceilings: head camera only (group 3, no collision)
     for x0, x1, y0, y1 in [(0, 14, 0, 5.2), (0, 14, 5.2, 6.6), (0, 14, 6.6, 10)]:
