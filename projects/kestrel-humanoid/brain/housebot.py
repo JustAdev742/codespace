@@ -287,6 +287,11 @@ class HouseBot:
             return (min(ny - 1, max(0, int((py - HS.MAP_Y[0]) / HS.GRID))),
                     min(nx - 1, max(0, int((px - HS.MAP_X[0]) / HS.GRID))))
         s, g = cell(x, y), cell(*goal)
+        # passages narrower than the robot's shoulders (0.4 m clear) are closed, except in the last 0.4 m to the goal
+        # and the first 0.4 m from where it stands, where it may work close to furniture
+        jj, ii = np.ogrid[:ny, :nx]
+        near_ends = ((jj - g[0]) ** 2 + (ii - g[1]) ** 2 <= 16) | ((jj - s[0]) ** 2 + (ii - s[1]) ** 2 <= 16)
+        hard |= (clr < 0.20) & ~near_ends
         hard[s] = False
         if allow_goal_blocked:
             hard[g] = False

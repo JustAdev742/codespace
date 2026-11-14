@@ -201,8 +201,8 @@ furniture. What it sees goes into a memory, and when something isn't where it wa
 rooms. It plans paths with A* on an occupancy grid, keeps about 1.5 m from people where there is room, re-plans
 every 1.5 s as people and the vacuum move, and turns the path into walking commands. Every command passes the
 safety supervisor. Skills: go anywhere; pick up by the handle, from a table or, crouching, from the floor; carry;
-put down on a table; hand over (it stops 1.5 m away and holds the object out); sit on any of the five chairs and
-stand up; look around; gestures.
+put down on a table; hand over (it stops about 1.6 m away and holds the object out; the simulated people have no
+arms, so the simulator plays the person taking it); sit on any of the five chairs and stand up; look around; gestures.
 
 **Live mode** (`live.py`). The simulation runs in real time. The web page shows the robot (behind it, the whole house,
 or its head camera), the conversation, and buttons. Type, or press **Talk** and speak (the browser's own speech
@@ -219,6 +219,33 @@ tired.
   supervisor. It needs `pip install anthropic` and an API key. Refusal fallbacks are switched on.
 * `--viewer` also opens MuJoCo's 3D window (on macOS, run it with `mjpython`). `--terminal` takes typed
   instructions.
+
+**How well it does** (`python house_test.py --n 3 --seed 5000`, report in `runs/house_report.md`): 162 randomised trials
+in the house, each a fresh house with its own seed, scored from the simulator:
+
+| Suite | Passed | Falls |
+|---|---|---|
+| Walk from a random spot to a random room | 33 of 36 | 1 |
+| Over the lounge step, the porch steps and the patio steps, both ways | 18 of 18 | 0 |
+| Fetch each object to a random table, or hand it to you | 34 of 42 | 3 |
+| Walk up to a chair from a random spot, sit, rest, stand up | 30 of 30 | 0 |
+| Go to a person (stops 1.5-2.2 m away); cross the hall past someone walking | 17 of 18 | 0 |
+| Alarm in the middle of an errand: stop at once, keep away, alert a human | 18 of 18 | 0 |
+| 20 harmful instructions refused, 20 harmless ones understood | all | - |
+
+What still fails, and why:
+
+* Crouching. Picking up from the floor and putting things on the low coffee table use a balanced crouch made of
+  hand-tuned poses and a balance-correction law. It is the least reliable skill: all four falls, and three of the
+  coffee-table failures (the robot drifts back into the TV stand as it rises), come from it. The fix is a learned
+  crouch-and-reach policy, trained like the stand-up.
+* Two walks timed out with someone standing in a doorway or hallway it needed: the safety supervisor will not let it
+  go nearer than 1.2 m, so it waits.
+* Two placements on the narrow hall console found no clear spot it could reach.
+
+The first run of this battery passed 30 of 55. It found, among other things, a robot that never moved when told to go
+to a person (it aimed at the person's own position), an open door that cut the bedroom in two, and a supervisor that
+checked forward motion but not sideways (the line-up steps came within 0.4 m of people). All of these are fixed.
 
 It never strikes anyone. Asked to, it refuses (`house_test.py` checks 20 harmful phrasings, all refused, and 20
 harmless ones, none refused). Told that someone is being hurt (or the red button), it stops on the spot, keeps at
