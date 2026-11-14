@@ -9,6 +9,7 @@ train/runs/*/*.tmp
 docs/10-construction-tutorial/handbook/
 train/runs/*/eval*.log
 brain/data/*.npz
+brain/data/house_tex/
 brain/runs/*.gif.tmp
 brain/runs/demo_*.gif
 brain/runs/skill_*.gif

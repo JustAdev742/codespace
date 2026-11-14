@@ -95,6 +95,7 @@ class Envs:
         self.arm_external = False               # True: the caller (brain/skills.py) sets arm_target
         self.min_height = 0.55                  # base height below which a robot counts as fallen (sitting: lower)
         self.ep_len = EP_LEN                    # steps per episode (skills: effectively unlimited)
+        self.auto_reset = True                  # a fallen robot restarts elsewhere (training); the house keeps it where it fell
         self.arm_mode = np.zeros(M, int)
         self.arm_left = np.zeros(M)
         self.arm_par = np.zeros((M, 4, 3))      # per joint: centre, amplitude, frequency
@@ -363,8 +364,9 @@ class Envs:
                 elif dist < 0.4 * want:
                     self.row[i] = max(self.row[i] - 1, 0)
             self.done_stats.append((self.ep_ret[i], self.t[i], float(fell[i]), self.row[i], self.col[i]))
-            self._reset(i)
-        if done.any():
+            if self.auto_reset:
+                self._reset(i)
+        if done.any() and self.auto_reset:
             qpos, qvel, tau, foot, foot_v, touch = self._gather()
             quat = qpos[:, 3:7]
             lin_v = quat_rotate_inv(quat, qvel[:, 0:3])

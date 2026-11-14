@@ -91,8 +91,12 @@ def keyframes(kf, t):
 class World(A.Arena):
     """The arena plus colliding furniture and the hook constraint; arms driven by the caller."""
 
-    def __init__(self, seed=0, policy="s1fast", chase_size=(480, 300)):
-        KM.EXTRA_WORLD, KM.EXTRA_MJCF, KM.SEAT_COLLISION = WORLD, EQ, True
+    def __init__(self, seed=0, policy="s1fast", chase_size=(480, 300), world_xml=None, top_xml=None):
+        """world_xml / top_xml: MJCF for inside <worldbody> and at the top level (default: the chair, table and bag
+        test room; house.py passes a whole house)."""
+        KM.EXTRA_WORLD = WORLD if world_xml is None else world_xml
+        KM.EXTRA_MJCF = EQ if top_xml is None else top_xml
+        KM.SEAT_COLLISION = True
         super().__init__(seed=seed, chase_size=chase_size)
         import play as PL
         self.policy = PL.load_policy(policy)
@@ -151,7 +155,12 @@ class World(A.Arena):
         return np.array([self.e.d[0].qpos[a] for a in self.arm_qadr])
 
     def pelvis_z(self):
-        return float(self.e.d[0].xpos[self.pelvis][2])
+        """Pelvis height above the floor under the robot (the house's floor is a raised slab)."""
+        d = self.e.d[0]
+        return float(d.xpos[self.pelvis][2]) - self.floor_under(d.qpos[0], d.qpos[1])
+
+    def floor_under(self, x, y):
+        return float(self.e.hs(np.array([x]), np.array([y]))[0])
 
     def upright(self):
         return float(self.e.d[0].xmat[self.pelvis][8])          # cos of the pelvis tilt
@@ -341,7 +350,8 @@ class World(A.Arena):
         lf, rf = m.body("l_foot").id, m.body("r_foot").id
         for _ in range(int(max_s / E.DT)):
             side, vside = self.com_side()
-            if d.xpos[lf][2] < 0.082 and d.xpos[rf][2] < 0.082 and abs(side) < 0.02 and abs(vside) < 0.08:
+            down = [d.xpos[f][2] - self.floor_under(d.xpos[f][0], d.xpos[f][1]) < 0.082 for f in (lf, rf)]
+            if all(down) and abs(side) < 0.02 and abs(vside) < 0.08:
                 return True
             if self.step(arms=[0.0, 0.0, -0.2, -0.2]):
                 return False
