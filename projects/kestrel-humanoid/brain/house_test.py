@@ -237,7 +237,9 @@ def main():
         for k in range(counts[s] * (1 if s == "language" else a.n)):
             jobs.append((s, k, a.seed + 97 * k + hash(s) % 1000))
     t0 = time.time()
-    with Pool(a.procs) as pool:
+    # a fresh process per trial: each builds a whole house (and its renderers, which do not free all their memory),
+    # so a long-lived worker grows until the system kills it, and the pool then waits forever
+    with Pool(a.procs, maxtasksperchild=1) as pool:
         res = pool.map(trial, jobs, chunksize=1)
     lines = ["# KESTREL in the house: test report", "",
              f"{len(res)} trials, {sum(r.get('sim_s', 0) for r in res) / 60:.0f} simulated minutes, "
