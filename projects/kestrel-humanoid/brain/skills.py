@@ -378,10 +378,19 @@ class World(A.Arena):
         last = np.zeros(16)
         stood_at = None
         steps = int(max_s / E.DT)
+        # The stand-up environment computes its angular-velocity input as quat_rotate_inv(quat, qvel[3:6]), but MuJoCo
+        # already gives a free joint's angular velocity in the body frame, so that input depends on which way the robot
+        # faces; every training chair faced -y. Seen from a world turned so that the robot starts facing -y, the input
+        # is exactly what it was in training, for a chair facing any direction.
+        _, _, yaw0 = self.robot_pose()
+        turn = -math.pi / 2 - yaw0
+        qturn = np.array([math.cos(turn / 2), 0.0, 0.0, math.sin(turn / 2)])
         self.stiff(True)
         try:
             for k in range(steps):
-                quat = d.qpos[3:7][None]
+                qw = np.zeros(4)
+                mujoco.mju_mulQuat(qw, qturn, d.qpos[3:7])
+                quat = qw[None]
                 grav = quat_rotate_inv(quat, np.array([[0, 0, -1.0]]))[0]
                 ang = quat_rotate_inv(quat, d.qvel[3:6][None])[0]
                 obs = np.concatenate([grav, ang * 0.25, d.qpos[qadr] - ref, d.qvel[vadr] * 0.05, last, [k / 350.0]])

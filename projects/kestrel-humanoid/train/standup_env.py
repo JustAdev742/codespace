@@ -38,15 +38,24 @@ SEAT_TOP = 0.46
 # which a real chair's front legs stop
 LEGS = "".join(f'<geom type="box" size="0.02 0.02 {SEAT_TOP / 2 - 0.02}" pos="{sx * 0.19} {sy * 0.19} {SEAT_TOP / 2 - 0.02}"/>'
                for sx in (-1, 1) for sy in (-1, 1))
+# The floor's friction takes priority over the feet's (priority="1") and is randomised from 0.5 to 1.2: with MuJoCo's
+# default (the larger of the two), the earlier runs never saw a floor below 1.0, and could not rise on a 0.8 wood floor.
+# A table stands in front of the chair in most episodes (a mocap body, placed per episode): the earlier policy, once
+# up, kept stepping forward and walked into it.
+TABLE_TOP = (0.6, 0.4, 0.02)
 WORLD = f"""
-    <geom name="floor" type="plane" size="30 30 0.1" rgba="0.6 0.6 0.6 1" friction="1 0.02 0.001"/>
+    <geom name="floor" type="plane" size="30 30 0.1" rgba="0.6 0.6 0.6 1" friction="1 0.02 0.001" priority="1"/>
     <body name="chair" pos="{CHAIR[0]} {CHAIR[1]} 0">
       <geom name="seat" type="box" size="0.22 0.22 0.02" pos="0 0 {SEAT_TOP - 0.02}" friction="1 0.02 0.001"/>
       <geom type="box" size="0.22 0.02 0.25" pos="0 0.21 {SEAT_TOP + 0.25}"/>
       {LEGS}
+    </body>
+    <body name="table" mocap="true" pos="{CHAIR[0]} {CHAIR[1] - 30} 0">
+      <geom name="table_top" type="box" size="{TABLE_TOP[0]} {TABLE_TOP[1]} {TABLE_TOP[2]}" pos="0 0 0.73"/>
+      {''.join(f'<geom type="box" size="0.025 0.025 0.36" pos="{sx * 0.54} {sy * 0.34} 0.36"/>' for sx in (-1, 1) for sy in (-1, 1))}
     </body>"""
 W = dict(height=1.0, upright=0.5, balance=-2.0, stand=1.0, effort=-2e-6, action_rate=-0.02, alive=0.1, fall=-5.0,
-         speed_limit=-1.0, rise_rate=-2.0)
+         speed_limit=-1.0, rise_rate=-2.0, drift=-3.0, table=-3.0)
 STAND_Z = 0.86
 
 
@@ -91,6 +100,12 @@ class Envs:
         self.w = dict(W)
         self.done_stats, self.term_sum, self.term_n = [], {}, 0
         self.friction, self.motor_scale = 1.0, 1.0
+        self.floor = m.geom("floor").id
+        self.table_body = m.body("table").id
+        self.table_mocap = m.body_mocapid[self.table_body]
+        root = m.body_rootid[self.pelvis]
+        self.robot_bodies = np.array([m.body_rootid[k] == root and k != 0 for k in range(m.nbody)])
+        self.up_xy = np.full((M, 2), np.nan)          # where each robot first stood up
         for i in range(M):
             self._reset(i)
 
@@ -109,9 +124,7 @@ class Envs:
             return
         m = self.m
         self.friction = self.rng.uniform(0.5, 1.2)
-        for g in range(m.ngeom):
-            if m.geom_bodyid[g] in (self.lf, self.rf):
-                m.geom_friction[g, 0] = self.friction
+        m.geom_friction[self.floor, 0] = self.friction          # the floor's value applies (priority)
         self.motor_scale = self.rng.uniform(0.9, 1.1)
         self._set_gains(self.motor_scale)
         m.body_mass[self.pelvis] = m.body_mass[self.pelvis]  # (masses kept: the bank's poses depend on them)
@@ -124,7 +137,14 @@ class Envs:
         if self.randomize:
             d.qpos[self.qadr] += self.rng.uniform(-0.06, 0.06, 16)
         d.ctrl[:16] = d.qpos[self.qadr]
+        if self.randomize and self.rng.random() < 0.7:          # a table in front, its near edge 0.8-1.4 m from the seat
+            dist = self.rng.uniform(0.8, 1.4)
+            d.mocap_pos[self.table_mocap] = (CHAIR[0] + self.rng.uniform(-0.3, 0.3), CHAIR[1] - dist - TABLE_TOP[1],
+                                            self.rng.uniform(-0.05, 0.12))
+        else:
+            d.mocap_pos[self.table_mocap] = (CHAIR[0], CHAIR[1] - 30, 0)
         mujoco.mj_forward(self.m, d)
+        self.up_xy[i] = np.nan
         self.t[i] = 0
         self.last_a[i] = 0
         self.prev_a[i] = 0
@@ -183,6 +203,18 @@ class Envs:
         tau = np.array([d.actuator_force[:16] for d in self.d])
         lin_z = np.array([d.qvel[2] for d in self.d])          # pelvis rising speed (world), m/s
         risen = pz > 0.62
+        base_xy = np.array([d.qpos[0:2] for d in self.d])
+        first = np.isnan(self.up_xy[:, 0]) & (pz > STAND_Z - 0.06)
+        self.up_xy[first] = base_xy[first]
+        drift = np.nan_to_num(np.linalg.norm(base_xy - self.up_xy, axis=1), nan=0.0)
+        touch = np.zeros(M)
+        for i, d in enumerate(self.d):                     # robot touching the table
+            for c in d.contact[:d.ncon]:
+                b1, b2 = self.m.geom_bodyid[c.geom1], self.m.geom_bodyid[c.geom2]
+                if (b1 == self.table_body and self.robot_bodies[b2]) or (b2 == self.table_body and self.robot_bodies[b1]):
+                    touch[i] = 1.0
+                    break
+        self.last_drift, self.last_touch = drift, touch
         rt = dict(height=np.clip((pz - 0.52) / (STAND_Z - 0.52), 0, 1),
                   upright=np.clip((up - 0.8) / 0.2, -1, 1),
                   balance=np.maximum(0.0, np.abs(ca - 0.03) - 0.07) * risen,
@@ -191,7 +223,9 @@ class Envs:
                   action_rate=np.sum((self.last_a - self.prev_a) ** 2, 1),
                   alive=np.ones(M),
                   speed_limit=np.sum(np.clip(np.abs(qd) - 0.85 * self.ts[2], 0, None) ** 2, 1),
-                  rise_rate=np.clip(lin_z - 0.8, 0, None) ** 2)
+                  rise_rate=np.clip(lin_z - 0.8, 0, None) ** 2,
+                  drift=np.clip(drift - 0.12, 0, None) + 0.5 * np.sum(lin[:, :2] ** 2, 1) * (pz > STAND_Z - 0.06),
+                  table=touch)
         fell = (up < 0.5) | (pz < 0.3)
         rt["fall"] = fell.astype(float)
         r = np.zeros(M)
