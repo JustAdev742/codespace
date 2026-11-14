@@ -161,8 +161,9 @@ class Live:
             img = Image.fromarray(h.ego()).resize((self.a.width, int(self.a.width * 3 / 4)), Image.BILINEAR)
         else:
             img = Image.fromarray(h.chase_view("overview" if self.view == "house" else "follow"))
-            ego = Image.fromarray(h.ego()).resize((176, 132), Image.BILINEAR)
-            img.paste(ego, (img.width - 184, 8))
+            iw = max(96, img.width // 5)
+            ego = Image.fromarray(h.ego()).resize((iw, iw * 3 // 4), Image.BILINEAR)
+            img.paste(ego, (img.width - iw - 8, 8))
         d = ImageDraw.Draw(img)
         x, y, _ = h.robot_pose()
         hud = f"{h.room_of(x, y)}  |  {self.task}"
@@ -171,7 +172,7 @@ class Live:
         d.rectangle([0, img.height - 26, img.width, img.height], fill=(16, 20, 26))
         d.text((10, img.height - 20), hud[:96], fill=(240, 200, 120))
         buf = io.BytesIO()
-        img.convert("RGB").save(buf, "JPEG", quality=72)
+        img.convert("RGB").save(buf, "JPEG", quality=self.a.quality)
         with self.fr_cond:
             self.frame, self.frame_id = buf.getvalue(), self.frame_id + 1
             self.fr_cond.notify_all()
@@ -466,11 +467,13 @@ input[type=text]{flex:1;min-width:0;font:inherit;color:var(--text);background:#0
 <form id="f"><button type="button" class="mic" id="mic" aria-pressed="false" title="Hold a conversation by voice">&#127908; Talk</button>
 <input type="text" id="t" placeholder="Tell it what to do&hellip;" autocomplete="off" aria-label="Instruction">
 <button type="submit">Send</button><button type="button" id="spk" aria-pressed="true" title="Read replies aloud">&#128266;</button></form>
-<div class="hint" id="hint">Type, or press Talk and speak. A new instruction interrupts the current one.</div>
+<div class="hint" id="hint">Type, or press Talk and speak. A new instruction interrupts the current one. On an iPhone, tap anywhere once so it can speak aloud.</div>
 </section></main>
 <script>
 const log=document.getElementById('log'),st=document.getElementById('st'),t=document.getElementById('t');
-let speak=true,lastId=-1;
+let speak=true,lastId=-1,unlocked=false;
+function unlock(){if(unlocked||!('speechSynthesis' in window))return;unlocked=true;const u=new SpeechSynthesisUtterance(' ');u.volume=0;speechSynthesis.speak(u);}
+document.addEventListener('click',unlock,{capture:true});document.addEventListener('touchend',unlock,{capture:true});
 function add(kind,text){const d=document.createElement('div');d.className='m '+(kind==='log'?'logline':kind);d.textContent=text;log.appendChild(d);log.scrollTop=log.scrollHeight;
  if(kind==='robot'&&speak&&'speechSynthesis' in window){const u=new SpeechSynthesisUtterance(text);u.pitch=0.55;u.rate=0.98;const vs=speechSynthesis.getVoices();const v=vs.find(v=>/male|daniel|george|alex|fred|ryan/i.test(v.name)&&/en/i.test(v.lang))||vs.find(v=>/en/i.test(v.lang));if(v)u.voice=v;speechSynthesis.speak(u);}}
 function send(text){fetch('/say',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text})});}
@@ -582,10 +585,15 @@ def main():
     ap.add_argument("--width", type=int, default=800)
     ap.add_argument("--height", type=int, default=500)
     ap.add_argument("--render-every", type=int, default=5, help="video frame every N control steps (50 Hz)")
+    ap.add_argument("--quality", type=int, default=72, help="JPEG quality of the video")
+    ap.add_argument("--phone", action="store_true",
+                    help="lighter video for a phone on mobile data: 640 x 400, about 6 frames a second")
     ap.add_argument("--seed", type=int, default=0)
     ap.add_argument("--script", default=None, help="test: a file of 'seconds|instruction' lines to play, then exit")
     ap.add_argument("--verbose", action="store_true")
     a = ap.parse_args()
+    if a.phone:
+        a.width, a.height, a.render_every, a.quality = 640, 400, 8, 60
     live = Live(a)
     if a.claude:
         from live_claude import ClaudeBrain

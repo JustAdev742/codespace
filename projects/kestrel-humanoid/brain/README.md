@@ -273,8 +273,30 @@ pip install -r requirements-live.txt
 python live.py
 ```
 
-Then open http://localhost:8765. `python live.py --host 0.0.0.0` makes it reachable from a phone on the same Wi-Fi,
-at your computer's address. For the Claude conversation mode, run `pip install anthropic`, set `ANTHROPIC_API_KEY`,
+Then open http://localhost:8765. `python live.py --host 0.0.0.0 --phone` makes it reachable from a phone on the same
+Wi-Fi, at your computer's address.
+
+### On an iPhone (or any phone), with a GitHub Codespace
+
+The phone only shows the page: the simulation runs on a cloud computer, so the phone does no more work than playing a
+video. The repository has a ready-made Codespace setup (`.devcontainer/kestrel-live/`) that installs everything and
+starts the robot by itself.
+
+1. On github.com (in Safari, signed in), open the repository, tap **Code**, then **Codespaces**, then the **...** menu
+   and **New with options**.
+2. Branch: `claude/dreamy-carson-f16476`. Dev container configuration: **KESTREL live (robot in a house)**. Machine:
+   2-core. Tap **Create codespace**.
+3. The first start takes about 5 minutes (it installs Python packages). The robot then starts on its own, on port 8765.
+4. In the codespace (VS Code in the browser), open the **Ports** tab and tap the globe next to port 8765. Or open
+   `https://<your-codespace-name>-8765.app.github.dev` directly. The port is private: only your GitHub account can
+   open it.
+5. Tap anywhere once (iPhones only let a page speak after a tap). Press **Talk** to speak, or type.
+
+`--phone` video is 640 x 400 at about 6 frames a second: about 1.6 Mbit/s, roughly 0.7 GB an hour, so use Wi-Fi when
+you can. A codespace stops itself after 30 minutes without use; personal GitHub accounts get free Codespace hours each
+month (on a 2-core machine, about 60 hours). Stop it from github.com/codespaces when you are done. If the robot isn't
+running, run `bash projects/kestrel-humanoid/brain/codespace_start.sh` in the codespace's terminal; its log is
+`/tmp/kestrel-live.log`. For the Claude conversation mode, run `pip install anthropic`, set `ANTHROPIC_API_KEY`,
 and start it with `--claude`.
 
 ## What it is not

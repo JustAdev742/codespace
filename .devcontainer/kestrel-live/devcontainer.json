@@ -1,0 +1,11 @@
+{
+  "name": "KESTREL live (robot in a house)",
+  "image": "mcr.microsoft.com/devcontainers/python:3.12-bookworm",
+  "hostRequirements": { "cpus": 2, "memory": "8gb" },
+  "postCreateCommand": "bash projects/kestrel-humanoid/brain/codespace_setup.sh",
+  "postStartCommand": "bash projects/kestrel-humanoid/brain/codespace_start.sh",
+  "forwardPorts": [8765],
+  "portsAttributes": {
+    "8765": { "label": "KESTREL live", "onAutoForward": "notify" }
+  }
+}
