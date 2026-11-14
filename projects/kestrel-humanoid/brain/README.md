@@ -101,8 +101,8 @@ each hand. That teaches the legs to balance whatever the upper body does.
 | Skill | File | How it works | Status in simulation |
 |---|---|---|---|
 | Gestures while talking | `skills.py` | five keyframed arm gestures (explain, point, dismiss, triumph, refuse), one per spoken line | stands through all five |
-| Sit on a chair | `skills.py` | balanced poses solved on the model itself (feet flat, centre of mass placed), stiff leg control for the slow motion | sits from the mark in front of the chair |
-| Stand up | `skills.py`, `train/standup_env.py` | a learned policy (`train.py --task standup`) driving all 16 joints, legs and arms, on stiff PD within every motor's torque-speed line; trained from 60 recorded seated states | 10 of 10 after the sit skill (the planned stand-up, still in `stand_up_planned`, managed 1 of 6) |
+| Sit on a chair | `skills.py` | waits for a calm moment in the gait (both feet down, weight centred between them), plants a balanced stance, then crouches through poses solved on the model itself (feet flat, centre of mass placed), balance-gated until the hips are low, on stiff leg control | 80 of 80 walk-ups from random places on the floor |
+| Stand up | `skills.py`, `train/standup_env.py` | a learned policy (`train.py --task standup`) driving all 16 joints, legs and arms, on stiff PD within every motor's torque-speed line; trained from 220 recorded seated states, 80 of them from real walk-ups | {{STAND}} |
 | Pick up and carry | `skills.py` | inverse kinematics puts the hook through the bag's handle; a point constraint hangs the 1 kg bag on it, like the real S1 hook hand; lift, walk, lower, release | lifts and carries |
 | Line up on a mark | `will.py` | small forward, sideways and turning steps until within 4–5 cm | used before sitting and picking up |
 
@@ -114,13 +114,13 @@ randomness, narrating the choice in the persona's voice:
 * **talk** with gestures now and then;
 * **move the bag** off the table.
 
-A failed attempt waits 30 s before the next try.
+It walks round the chair and table on the way. A failed attempt waits 30 s before the next try.
 
 **It does not hit people, for any reason.** There is no striking skill in the library, and the supervisor refuses
 any instruction to hit, push or chase. If someone is hurting people (an alarm: on the robot, from the operator's
 panic button or sound detection), it:
 
-* stops within one control step;
+* stops within one control step: the alarm interrupts whatever skill is running, mid-sit or mid-carry;
 * keeps at least 2 m away;
 * shouts a warning in character;
 * raises an alert for a human to act on.
@@ -131,10 +131,29 @@ Limits:
 
 * The furniture positions come from a map, not from vision; the vision network knows the five arena objects.
 * The chair is fixed to the floor in the simulation.
-* Sitting is planned, not learned, and works from the mark in front of the chair, not from anywhere. Standing up is
-  learned. Its first version stood up by an impossible leap (knee at 122 % of the motors' no-load speed): the
-  stand-up environment then capped motor current but not speed. It was retrained within the motors' torque-speed
-  lines and still rises briskly: the pelvis peaks at about 1.35 m/s, and the robot is up in 0.3–0.4 s.
+* Sitting is planned, not learned: the robot walks to the chair, lines up on a mark in front of it and sits from
+  there. Standing up is learned. Its first version stood up by an impossible leap (knee at 122 % of the motors'
+  no-load speed): the stand-up environment then capped motor current but not speed. It was retrained within the
+  motors' torque-speed lines and still rises briskly: the pelvis peaks at about 1.35 m/s, and the robot is up in
+  0.3–0.4 s.
+
+**What it took to make sit-and-stand work when the robot chooses it.** Each skill passed its own test, and the
+combination still failed when the will chose it. Each fix is general:
+
+* *Start a planned motion from a calm, planted state.* The sit started wherever the walking gait left the legs, often
+  mid-step and swaying sideways, and tipped over in 2 of 6 walk-ups. A bug made it worse: the first keyframe was
+  captured before the feet were planted. It now waits for both feet down and the weight centred, plants a balanced
+  stance (the default stance has its centre of mass right over the ankles and tips back when held rigidly), and
+  crouches from there.
+* *Train on the states the robot actually reaches.* The stand-up policy was trained from seats reached by the sit
+  skill from a fixed mark. A real walk-up ends a few centimetres different, and that was outside what it had learned:
+  4 of 8 stand-ups failed. Recording 80 seats from real walk-ups (`make_seated_bank.py --walkup`) and fine-tuning
+  fixed most of it.
+* *Make the training world match the real one.* The training chair had no legs, so the policy learned to tuck its
+  feet back under the seat as it rose; a real chair's front legs stop that. With the legs added the old policy fell
+  in 23 of 64 tries; it was fine-tuned again on the legged chair.
+* *Let an emergency interrupt anything.* The alarm used to wait for the current skill to finish (up to 3 s). It now
+  raises inside the skill on the next control step.
 
 ## What it is not
 
