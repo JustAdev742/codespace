@@ -299,8 +299,11 @@ class World(A.Arena):
 
     def stand_up(self):
         """The learned stand-up (train/runs/standup2, train.py --task standup) when it exists, else the planned one."""
-        run = HERE.parent / "train" / "runs" / "standup2" / "policy.pt"
-        return self.stand_up_learned(run) if run.exists() else self.stand_up_planned()
+        for name in ("standup3", "standup2"):         # the newest stand-up policy trained within the motor limits
+            run = HERE.parent / "train" / "runs" / name / "policy.pt"
+            if run.exists():
+                return self.stand_up_learned(run)
+        return self.stand_up_planned()
 
     def stand_up_learned(self, path, max_s=7.0):
         """Run the stand-up policy: the observations it was trained on (standup_env.py), all 16 joints on stiff PD."""
