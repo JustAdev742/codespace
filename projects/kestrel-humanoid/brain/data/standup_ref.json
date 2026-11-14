@@ -1,0 +1,21 @@
+{
+ "note": "Reference pose (16 joints: 12 leg, 4 arm, rad) the stand-up policies act around: the mean of the first 60 seated states. Fixed, so policies trained on wider banks keep the same inputs.",
+ "ref": [
+  0.002057,
+  0.00037,
+  -1.130916,
+  1.571121,
+  -0.089443,
+  -0.000843,
+  0.005488,
+  0.003845,
+  -1.132847,
+  1.569244,
+  -0.084795,
+  -0.000943,
+  -0.343411,
+  -0.240126,
+  -0.863746,
+  -0.763109
+ ]
+}

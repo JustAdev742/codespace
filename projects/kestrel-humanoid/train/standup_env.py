@@ -18,6 +18,8 @@ import os
 import sys
 from pathlib import Path
 
+import json
+
 import numpy as np
 import mujoco
 
@@ -61,9 +63,10 @@ class Envs:
         bank = np.load(HERE.parent / "brain" / "data" / "seated_bank.npz")
         self.bank_q, self.bank_v = bank["qpos"][:, :m.nq], bank["qvel"][:, :m.nv]   # robot first; the bag (skills world) after
         # the reference pose the policy acts around: stored in the bank once, so a wider bank leaves it unchanged
-        self.ref = bank["ref"] if "ref" in bank else self.bank_q[:, self.qadr].mean(0)
+        ref_file = HERE.parent / "brain" / "data" / "standup_ref.json"
+        self.ref = (np.array(json.loads(ref_file.read_text())["ref"]) if ref_file.exists()
+                    else bank["ref"] if "ref" in bank else self.bank_q[:, self.qadr].mean(0))
         # motor torque-speed lines for all 16 joints (as env.py applies to the legs): T, T_V, w0
-        import json
         ts = KM.torque_speed()
         legs = np.array([ts[j[2:]][:3] for j in KM.LEG_JOINTS])
         fam = json.loads((HERE.parent / "scrap" / "s1fast" / "data" / "actuator_family.json").read_text())

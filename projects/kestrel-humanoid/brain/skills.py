@@ -13,6 +13,7 @@ Joint conventions (radians): hip and shoulder pitch negative = forward, knee pos
 from __future__ import annotations
 
 import argparse
+import json
 import math
 import os
 import sys
@@ -297,13 +298,13 @@ class World(A.Arena):
     def sit(self):
         """Back to the chair: knees forward and torso leaning, centre of mass over the feet, down to the seat; then let
         the weight go back onto the seat and sit up. Poses come from solve_pose (feet flat, centre of mass placed)."""
+        if not self.settle():                 # first plant the feet; the crouch starts from where that leaves them
+            return False
         legs = [(0.0, self.legs_now())] + self._pose_path([(1.2, 0.70, 0.25, 0.02), (2.2, 0.60, 0.45, 0.0),
                                                             (3.0, 0.52, 0.45, -0.05), (3.8, 0.47, 0.30, -0.15),
                                                             (4.6, 0.47, 0.0, -0.25)])
         arms = [(0.0, self.arms_now()), (1.2, [-0.7, -0.7, -0.4, -0.4]), (3.0, [-0.9, -0.9, -0.4, -0.4]),
                 (4.6, [-0.3, -0.3, -1.3, -1.3])]
-        if not self.settle():
-            return False
         # the crouch is balance-gated down to hips 0.60 m (2.3 s); below that the plan moves the weight back onto the seat
         if not self._run_balanced(legs, arms, 5.2, gate_from=0.0, gate_until=2.3, lo=-0.03, hi=0.09, max_s=12.0):
             return False
@@ -315,13 +316,38 @@ class World(A.Arena):
         centre of mass right over the ankles, so held rigidly it tips back; the walking policy would keep stepping.)"""
         if not hasattr(self, "_stand_pose"):
             self._stand_pose = self.leg_pose(self.solve_pose(0.78, 0.0, 0.04)[0])
+        if not self.calm_moment():
+            return False
         legs = [(0.0, self.legs_now()), (0.6, self._stand_pose), (1.4, self._stand_pose)]
         arms = [(0.0, self.arms_now()), (0.6, [0.0, 0.0, -0.2, -0.2])]
         return self._run_balanced(legs, arms, 1.4, gate_from=0.3, lo=0.0, hi=0.08, max_s=4.0)
 
+    def com_side(self):
+        """Centre of mass to the left (+) of the midpoint between the feet (m), and its sideways speed (m/s)."""
+        d, m = self.e.d[0], self.e.m
+        mid = 0.5 * (d.xpos[m.body("l_foot").id] + d.xpos[m.body("r_foot").id])
+        _, _, yaw = self.robot_pose()
+        r = d.subtree_com[1] - mid
+        v = d.qvel[0:2]
+        return -r[0] * math.sin(yaw) + r[1] * math.cos(yaw), -v[0] * math.sin(yaw) + v[1] * math.cos(yaw)
+
+    def calm_moment(self, max_s=3.0):
+        """Let the walking policy keep balancing (it steps in place) until both feet are down and the weight is centred
+        between them, not swaying: the moment to switch to a planned motion. Planting the feet mid-sway tips the robot
+        sideways, which the forward-backward balance gate cannot catch."""
+        d, m = self.e.d[0], self.e.m
+        lf, rf = m.body("l_foot").id, m.body("r_foot").id
+        for _ in range(int(max_s / E.DT)):
+            side, vside = self.com_side()
+            if d.xpos[lf][2] < 0.082 and d.xpos[rf][2] < 0.082 and abs(side) < 0.02 and abs(vside) < 0.08:
+                return True
+            if self.step(arms=[0.0, 0.0, -0.2, -0.2]):
+                return False
+        return True                              # no calm moment found: go ahead anyway
+
     def stand_up(self):
         """The learned stand-up (train/runs/standup2, train.py --task standup) when it exists, else the planned one."""
-        for name in ("standup3", "standup2"):         # the newest stand-up policy trained within the motor limits
+        for name in ("standup5", "standup4", "standup3", "standup2"):     # the newest stand-up policy trained within the motor limits
             run = HERE.parent / "train" / "runs" / name / "policy.pt"
             if run.exists():
                 return self.stand_up_learned(run)
@@ -334,10 +360,9 @@ class World(A.Arena):
         pol = torch.jit.load(str(path))
         pol.eval()
         e, d = self.e, self.e.d[0]
-        bank = np.load(HERE / "data" / "seated_bank.npz")
         qadr = list(e.qadr) + self.arm_qadr
         vadr = list(e.vadr) + [e.m.jnt_dofadr[e.m.joint(j).id] for j in KM.ARM_JOINTS]
-        ref = bank["ref"] if "ref" in bank else bank["qpos"][:, qadr].mean(0)
+        ref = np.array(json.loads((HERE / "data" / "standup_ref.json").read_text())["ref"])   # the pose it acts around
         last = np.zeros(16)
         stood_at = None
         steps = int(max_s / E.DT)
