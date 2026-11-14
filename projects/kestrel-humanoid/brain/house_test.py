@@ -235,7 +235,7 @@ def main():
     jobs = []
     for s in a.suites.split(","):
         for k in range(counts[s] * (1 if s == "language" else a.n)):
-            jobs.append((s, k, a.seed + 97 * k + hash(s) % 1000))
+            jobs.append((s, k, a.seed + 97 * k + sum(map(ord, s))))          # fixed seeds: any trial can be re-run
     t0 = time.time()
     # a fresh process per trial: each builds a whole house (and its renderers, which do not free all their memory),
     # so a long-lived worker grows until the system kills it, and the pool then waits forever
@@ -249,10 +249,12 @@ def main():
         rs = [r for r in res if r["suite"] == s]
         lines.append(f"| {s} | {sum(r['ok'] for r in rs)} of {len(rs)} | {sum(bool(r.get('fell')) for r in rs)} | "
                      f"{sum(r.get('bumps', 0) for r in rs)} |")
-    lines += ["", "## Every trial", "", "| Suite | Result | Details | Simulated s | Bumps | Closest person (m) |", "|---|---|---|---|---|---|"]
+    lines += ["", "## Every trial", "", "Re-run one: `python -c \"import house_test as T; print(T.trial(('fetch', 3, 1480)))\"` "
+              "with its suite, number and seed.", "",
+              "| Suite | # | Seed | Result | Details | Simulated s | Bumps | Closest person (m) |", "|---|---|---|---|---|---|---|---|"]
     for r in res:
-        lines.append(f"| {r['suite']} | {'pass' if r['ok'] else 'FAIL'}{' (fell)' if r.get('fell') else ''} | {r['note']} | "
-                     f"{r.get('sim_s', '')} | {r.get('bumps', '')} | {r.get('min_person', '')} |")
+        lines.append(f"| {r['suite']} | {r['k']} | {r['seed']} | {'pass' if r['ok'] else 'FAIL'}{' (fell)' if r.get('fell') else ''} | "
+                     f"{r['note']} | {r.get('sim_s', '')} | {r.get('bumps', '')} | {r.get('min_person', '')} |")
     out = HERE / "runs" / "house_report.md"
     out.write_text("\n".join(lines) + "\n")
     print("\n".join(lines[:12 + len(a.suites.split(","))]))

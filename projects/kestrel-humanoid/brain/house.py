@@ -333,7 +333,7 @@ OBJECTS = {
     "basket": ("box", (0.17, 0.12, 0.10), (0.90, 0.80, 0.30, 1), 0.7, 0.36, ["basket", "laundry basket", "yellow basket"], "bedroom"),
     "bucket": ("cylinder", (0.12, 0.12), (0.15, 0.40, 0.85, 1), 0.6, 0.30, ["bucket", "blue bucket"], "bathroom"),
     "toolbox": ("box", (0.18, 0.08, 0.07), (0.80, 0.12, 0.10, 1), 1.4, 0.14, ["toolbox", "tool box", "red toolbox", "tools"], "study desk"),
-    "can": ("cylinder", (0.09, 0.12), (0.20, 0.60, 0.25, 1), 0.6, 0.27, ["watering can", "can", "green can"], "patio"),
+    "can": ("cylinder", (0.09, 0.12), (0.20, 0.60, 0.25, 1), 0.6, 0.31, ["watering can", "can", "green can"], "patio"),
 }
 
 
@@ -346,7 +346,8 @@ def grab_object(b, name, x, y, z_surface):
     for s in (-1, 1):
         g.append(b.geom("box", (s * span, 0, (half_h + hz) / 2), (0.008, 0.008, (hz - half_h) / 2 + 0.008),
                         rgba=(0.12, 0.12, 0.12, 1), dst=[]))
-    j = f'<freejoint name="{name}_free"/><inertial pos="0 0 0" mass="{mass}" diaginertia="0.004 0.004 0.003"/>'
+    # a little damping: a load hanging from the hook stops swinging in a second instead of swinging on
+    j = f'<joint name="{name}_free" type="free" damping="0.04"/><inertial pos="0 0 0" mass="{mass}" diaginertia="0.004 0.004 0.003"/>'
     b.body(name, (x, y, z_surface + half_h + 0.002), 0.0, g, joint=j)
     b.objects[name] = dict(home=home, words=words, handle_z=hz, half_h=half_h, start=(x, y, z_surface))
 
@@ -432,8 +433,8 @@ def build():
     b.box(11.6, 11.9, 2.7, 2.92, 0.434, 0.49, "wood_dark", rgba=(0.6, 0.2, 0.2, 1), name=b.nm("vis"))   # books
     plant(b, 9.0, 4.75, Z0, 1.2)
     plant(b, 13.4, 0.6, Z0, 0.9)
-    b.geom("cylinder", (13.3, 4.7, Z0 + 0.8), (0.02, 0.8), "black", name=b.nm("furn"))  # floor lamp
-    b.geom("cylinder", (13.3, 4.7, Z0 + 1.6), (0.18, 0.12), "lamp", name=b.nm("vis"), col=False)
+    b.geom("cylinder", (13.55, 4.92, Z0 + 0.8), (0.02, 0.8), "black", name=b.nm("furn"))   # floor lamp, in the corner
+    b.geom("cylinder", (13.55, 4.92, Z0 + 1.6), (0.18, 0.12), "lamp", name=b.nm("vis"), col=False)
     # ---- hall
     b.box(11.2, 12.2, 6.2, 6.54, Z0 + 0.76, Z0 + 0.8, "wood_light", name=b.nm("furn"))   # console table
     for x in (11.25, 12.15):
@@ -668,8 +669,17 @@ class House(SK.World):
                 continue                       # floors, moving people, doors and objects are added when planning
             self._raster(occ, m, d, g)
         self.static_occ = occ
-        from scipy.ndimage import distance_transform_edt
+        from scipy.ndimage import distance_transform_edt, binary_dilation
         self.static_dist = distance_transform_edt(~occ) * GRID
+        # step edges (floor height jumps over 4 cm): planning prefers to cross them straight on, not along them
+        xs = MAP_X[0] + (np.arange(nx) + 0.5) * GRID
+        ys = MAP_Y[0] + (np.arange(ny) + 0.5) * GRID
+        X, Y = np.meshgrid(xs, ys)
+        hz = self.e.hs(X.ravel(), Y.ravel()).reshape(ny, nx)
+        edge = np.zeros_like(occ)
+        edge[:, 1:] |= np.abs(np.diff(hz, axis=1)) > 0.04
+        edge[1:, :] |= np.abs(np.diff(hz, axis=0)) > 0.04
+        self.step_edge = binary_dilation(edge, iterations=2)
 
     def _raster(self, occ, m, d, g, pad=0.0):
         typ, size = m.geom_type[g], m.geom_size[g]

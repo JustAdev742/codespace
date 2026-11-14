@@ -6,7 +6,7 @@ It is plain code with fixed numbers, not a network and not the persona:
 * refuses any instruction to hit, push, chase or run into something or someone: its own word list, and the language
   network's "harm" reading, either one is enough;
 * caps speed: a configured top speed, 0.4 m/s within 2.5 m of a person, and no motion towards a person within
-  1.2 m (turning, or moving away, is allowed, so the robot can get out of the way);
+  1.2 m, in any direction (turning, moving away or past is allowed, so the robot can get out of the way);
 * never lets a person be a "go to" target closer than 1.5 m;
 * geofence: stops at the arena edge;
 * e-stop latch: a fall, or the operator's stop, latches zero commands until the operator (only) resets it.
@@ -67,8 +67,15 @@ class Supervisor:
         if person_dist is not None and person_dist < self.lim.near_person:
             if vx > self.lim.slow_speed:
                 vx, note = self.lim.slow_speed, "person near: slowed"
-            if person_dist < self.lim.stop_person and vx > 0 and abs(person_bearing) < math.radians(70):
-                vx, note = 0.0, "person ahead and close: stopped"
+            if person_dist < self.lim.stop_person:
+                # no motion towards a close person in any direction (forward, sideways or backwards): the part of the
+                # velocity pointing at them is removed; moving away or past is still allowed
+                ux, uy = math.cos(person_bearing), math.sin(person_bearing)
+                toward = vx * ux + vy * uy
+                if toward > 0:
+                    vx, vy = vx - toward * ux, vy - toward * uy
+                    note = "person ahead and close: stopped" if abs(person_bearing) < math.radians(70) else \
+                        "person close: not moving towards them"
         if target_is_person and target_dist is not None and target_dist < self.lim.person_target_gap and vx > 0:
             vx, note = 0.0, "keeping a gap from the person"
         x, y, yaw = pose

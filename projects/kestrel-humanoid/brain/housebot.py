@@ -260,13 +260,15 @@ class HouseBot:
     # ================================================================== navigation
     def plan(self, goal, allow_goal_blocked=True, people_hard=True):
         h = self.h
-        occ = h.occ_now()
+        self.blocked = [b for b in getattr(self, "blocked", []) if h.t - b[3] < 40.0]
+        occ = h.occ_now(extra=[b[:3] for b in self.blocked])
         from scipy.ndimage import distance_transform_edt
         clr = distance_transform_edt(~occ) * HS.GRID
         ny, nx = occ.shape
         cost = 1.0 + 3.0 * np.clip((0.65 - clr) / 0.35, 0, 1)
         soft = clr < HS.ROBOT_R
         cost[soft] += 30.0
+        cost[h.step_edge] += 4.0                          # cross steps straight on
         hard = clr < 0.14
         # people: keep a social distance where there is room (1.6 m), never plan within 0.9 m of anyone
         X = HS.MAP_X[0] + (np.arange(nx) + 0.5) * HS.GRID
@@ -276,7 +278,7 @@ class HouseBot:
             i0, i1 = max(0, int((px - 1.7 - HS.MAP_X[0]) / HS.GRID)), min(nx, int((px + 1.7 - HS.MAP_X[0]) / HS.GRID) + 1)
             j0, j1 = max(0, int((py - 1.7 - HS.MAP_Y[0]) / HS.GRID)), min(ny, int((py + 1.7 - HS.MAP_Y[0]) / HS.GRID) + 1)
             r = np.hypot(X[None, i0:i1] - px, Y[j0:j1, None] - py)
-            cost[j0:j1, i0:i1] += 25.0 * np.clip((1.6 - r) / 0.7, 0, 1)
+            cost[j0:j1, i0:i1] += 6.0 * np.clip((1.6 - r) / 0.7, 0, 1)       # passing politely beats a long detour
             if people_hard:
                 hard[j0:j1, i0:i1] |= r < 0.9
         x, y, _ = h.robot_pose()
@@ -372,14 +374,16 @@ class HouseBot:
                     self.say("person_wait")
             else:
                 waited = 0.0
-            if h.t - prog_t > 6.0:                                      # stuck: re-plan; give up after a while
+            if h.t - prog_t > 6.0:                                      # stuck: back off, mark the spot, re-plan
                 if math.hypot(x - prog_xy[0], y - prog_xy[1]) < 0.15 and not self.note.startswith("person"):
-                    self.log(f"  [{h.t:6.1f} s] (stuck at {x:.1f}, {y:.1f}; re-planning)")
-                    p2 = self.plan(goal)
+                    self.log(f"  [{h.t:6.1f} s] (stuck at {x:.1f}, {y:.1f}; backing off and trying another way)")
+                    self.blocked = getattr(self, "blocked", []) + [(x + 0.35 * math.cos(yaw), y + 0.35 * math.sin(yaw), 0.25, h.t)]
+                    self.back_off(0.3)
+                    p2 = self.plan(goal) or self.plan(goal, people_hard=False)
                     if p2 is None:
                         return False
                     path = p2
-                prog_t, prog_xy = h.t, (x, y)
+                prog_t, prog_xy = h.t, h.robot_pose()[:2]
         else:
             return False
         if face is not None:
@@ -438,6 +442,8 @@ class HouseBot:
                 continue
             if abs(h.floor_z(sx, sy) - h.floor_z(*target_xy)) > 0.05 and h.floor_z(*target_xy) < 0.3:
                 continue                                  # do not reach across a step for something on the floor
+            if any(math.dist((sx, sy), h.person_xy(n)) < 1.4 for n in h.b.people):
+                continue                                  # never work right next to someone
             score = math.hypot(sx - x, sy - y) - 2.0 * min(clr[j, i], 0.5)
             if best is None or score < best[0]:
                 best = (score, (sx, sy), yaw)
@@ -486,12 +492,29 @@ class HouseBot:
                 return True
             return ok
         self.say("go", place=label)
+        if name in self.h.b.rooms:
+            goal = self.clear_of_people(goal, self.h.b.rooms[name]["box"])
         ok = self.goto(goal, face=face, speed=speed)
         if ok:
             self.say("arrive", place=label)
         else:
             self.say("cant", why=f"I couldn't get to the {label}")
         return ok
+
+    def clear_of_people(self, goal, box, gap=1.7):
+        """The goal, or if someone is standing near it, the nearest free point in the room at least 1.7 m from people."""
+        h = self.h
+        if all(math.dist(goal, h.person_xy(n)) >= gap for n in h.b.people):
+            return goal
+        x0, x1, y0, y1 = box
+        for r in np.arange(0.3, 3.01, 0.3):
+            for k in range(16):
+                a = k * math.pi / 8
+                sx, sy = goal[0] + r * math.cos(a), goal[1] + r * math.sin(a)
+                if x0 + 0.3 < sx < x1 - 0.3 and y0 + 0.3 < sy < y1 - 0.3 and not h.occupied(sx, sy, 0.4) \
+                        and all(math.dist((sx, sy), h.person_xy(n)) >= gap for n in h.b.people):
+                    return (sx, sy)
+        return goal
 
     def spot_near_person(self, person, r0=1.6):
         """A free floor point about 1.6 m from the person (never closer than 1.5 m), the one nearest the robot."""
@@ -743,9 +766,24 @@ class HouseBot:
             low = top + half_h + hz - h.floor_z(*f["xy"]) < LOW_HANDLE
             fwd = 0.31 if low else REACH_FWD
             best = None
-            for inset in (0.18, 0.12):                   # a stand point whose reach point lands well inside the top
-                best = self.stand_point(self._nearest_inside(f, inset), fwd, REACH_RIGHT)
-                if best is not None:
+            fx, fy = f["xy"]
+            fsx, fsy = f["size"]
+            x0, y0, _ = h.robot_pose()
+            for inset in (0.18, 0.12):                   # points well inside the top, all round it: the nearest reachable
+                cands = [self._nearest_inside(f, inset)]
+                for u in np.linspace(-1, 1, 5):
+                    for v in (-1, 1):
+                        cands += [(fx + u * (fsx / 2 - inset), fy + v * (fsy / 2 - inset)),
+                                  (fx + v * (fsx / 2 - inset), fy + u * (fsy / 2 - inset))]
+                others = [h.obj_pos(o)[:2] for o in HS.OBJECTS if o != obj]
+                cands = [c for c in cands if all(math.dist(c, q) > 0.25 for q in others)]     # a clear spot on the top
+                scored = []
+                for c in cands:
+                    st = self.stand_point(c, fwd, REACH_RIGHT)
+                    if st is not None:
+                        scored.append((math.dist(st[0], (x0, y0)), st))
+                if scored:
+                    best = min(scored, key=lambda q: q[0])[1]
                     break
             if best is None:
                 self.say("cant", why=f"there's no room to reach the {where}")
@@ -786,9 +824,13 @@ class HouseBot:
             target = reach_point(0.31)
         sh, el, err = h.ik_right(np.array([target[0], target[1], hook_z]))
         sh_d, el_d, _ = h.ik_right(np.array([target[0], target[1], hook_z - 0.05]))       # then the hook drops clear
+        Rb = h.e.d[0].xmat[h.obj_body[obj]].reshape(3, 3)
+        bar = Rb[:2, 0] / (np.linalg.norm(Rb[:2, 0]) + 1e-9)                             # the handle bar's direction
         x, y, yaw = h.robot_pose()
-        sh_b, el_b, _ = h.ik_right(np.array([target[0] - 0.15 * math.cos(yaw), target[1] - 0.15 * math.sin(yaw),
-                                             hook_z - 0.05]))                              # and comes back out
+        out = np.array([-bar[1], bar[0]])                                                 # out across the bar, never along
+        if out @ np.array([x - target[0], y - target[1]]) < 0:                            # (along it catches a post)
+            out = -out
+        sh_b, el_b, _ = h.ik_right(np.array([target[0] + 0.15 * out[0], target[1] + 0.15 * out[1], hook_z - 0.05]))
         cur = h.arms_now()
         lower = [(0.0, cur), (2.2, [0.0, sh, -0.2, el]), (3.4, [0.0, sh, -0.2, el])]      # lower slowly, let it stop swinging
         back = [(0.0, [0.0, sh, -0.2, el]), (0.5, [0.0, sh_d, -0.2, el_d]), (1.0, [0.0, sh_b, -0.2, el_b]),
@@ -822,7 +864,11 @@ class HouseBot:
         return (min(cx + sx / 2 - inset, max(cx - sx / 2 + inset, x)), min(cy + sy / 2 - inset, max(cy - sy / 2 + inset, y)))
 
     def hand_over(self, person):
-        """Walk to 1.5 m from the person, hold it out; then put it on the nearest surface, or the floor."""
+        """Walk to about 1.6 m from the person (never closer than 1.5 m), turn to them and hold the object out.
+
+        The person's side is simulated: the people here have no arms, so when the robot holds something out within
+        reach (2.3 m), the person takes it, and the simulator moves it to the floor at their feet. On the real robot
+        this is where the hand-over waits for the person to lift the object off the hook."""
         h = self.h
         obj = h.holding
         name = HS.OBJECTS[obj][5][0]
@@ -833,16 +879,26 @@ class HouseBot:
             self.arms = list(SK.keyframes(hold, k * E.DT))
             self.step()
         self.say("handover", obj=name)
-        self.stand_still(3.0)
-        self.arms = list(CARRY_ARMS)
-        self.stand_still(0.8)
+        self.stand_still(1.5)
         px, py = h.person_xy(person)
-        near = [(math.dist((px, py), f["xy"]), n) for n, f in h.b.furniture.items()
-                if f["top"] - h.floor_z(*f["xy"]) > 0.4]
-        near.sort()
-        if near and near[0][0] < 2.5:
-            return self.place(near[0][1])
-        return self.place("floor")
+        x, y, _ = h.robot_pose()
+        if math.hypot(px - x, py - y) > 2.3:
+            self.arms = list(CARRY_ARMS)
+            self.say("cant", why=f"I couldn't get close enough to hand over the {name}")
+            return False
+        self.release()                                          # the person takes it
+        u = np.array([x - px, y - py]) / max(math.hypot(x - px, y - py), 1e-6)
+        fx, fy = px + 0.35 * u[0], py + 0.35 * u[1]
+        h.set_obj(obj, fx, fy, h.floor_z(fx, fy))
+        who = "You take" if person == "you" else f"{person.capitalize()} takes"
+        self.log(f"  [{h.t:6.1f} s] ({who} the {name}.)")
+        back = [(0.0, h.arms_now()), (1.2, REST_ARMS)]
+        for k in range(int(1.3 / E.DT)):
+            self.arms = list(SK.keyframes(back, k * E.DT))
+            self.step()
+        self.arms = list(REST_ARMS)
+        self.memory[obj] = dict(xyz=h.obj_pos(obj), t=h.t, room=h.room_of(fx, fy))
+        return True
 
     def fetch(self, obj, to="you"):
         self.say("fetch", obj=HS.OBJECTS[obj][5][0])
