@@ -90,6 +90,17 @@ class Envs:
         _, Wn = KM.joint_limits()
         self.w_lim = np.array([Wn[j[2:]] for j in KM.LEG_JOINTS])
         self.arm_src = np.array([KM.LEG_JOINTS.index("r_hip_pitch"), KM.LEG_JOINTS.index("l_hip_pitch")])
+        nA = len(KM.ARM_JOINTS)
+        self.arm_target = np.zeros((M, nA))     # shoulder L, R, elbow L, R (rad)
+        self.arm_external = False               # True: the caller (brain/skills.py) sets arm_target
+        self.min_height = 0.55                  # base height below which a robot counts as fallen (sitting: lower)
+        self.ep_len = EP_LEN                    # steps per episode (skills: effectively unlimited)
+        self.arm_mode = np.zeros(M, int)
+        self.arm_left = np.zeros(M)
+        self.arm_par = np.zeros((M, 4, 3))      # per joint: centre, amplitude, frequency
+        self.arm_phase = np.zeros((M, 4))
+        self.hand_ids = [mujoco.mj_name2id(m, mujoco.mjtObj.mjOBJ_BODY, f"{s}_hand") for s in "lr"]
+        self.hand_mass = [m.body_mass[h] for h in self.hand_ids] if nA == 4 else []
         ts = KM.torque_speed()          # motor torque-speed lines (scrap and fast builds), applied every physics step
         self.ts = None if ts is None else np.array([ts[j[2:]] for j in KM.LEG_JOINTS]).T     # 4 x 12: T, T_V, w0, T_cont
         self.foot_geoms = [[mujoco.mj_name2id(m, mujoco.mjtObj.mjOBJ_GEOM, f"{s}_foot_c{i}") for i in range(4)] for s in "lr"]
@@ -124,10 +135,41 @@ class Envs:
             self._reset(i)
 
     # ------------------------------------------------------------------ randomisation
+    def _arm_gen(self):
+        """Random upper-body motion for free-arm training: rest, arm swing, gestures, carry and reach poses, each held
+        2-6 s. Joints: shoulder L, R (pitch, negative = forward), elbow L, R (negative = bent)."""
+        M = self.M
+        self.arm_left -= DT
+        for i in np.where(self.arm_left <= 0)[0]:
+            self.arm_mode[i] = self.rng.integers(0, 5)
+            self.arm_left[i] = self.rng.uniform(2.0, 6.0)
+            self.arm_par[i, :2] = np.stack([self.rng.uniform(-1.3, 0.2, 2), self.rng.uniform(0, 0.6, 2),
+                                            self.rng.uniform(0.3, 1.5, 2)], 1)
+            self.arm_par[i, 2:] = np.stack([self.rng.uniform(-1.5, -0.1, 2), self.rng.uniform(0, 0.5, 2),
+                                            self.rng.uniform(0.3, 1.5, 2)], 1)
+            self.arm_phase[i] = self.rng.uniform(0, 2 * np.pi, 4)
+        t = (self.t * DT)[:, None]
+        q = np.array([d.qpos[self.qadr[self.arm_src]] for d in self.d]) - self.default[self.arm_src]
+        tgt = np.zeros((M, 4))
+        mode = self.arm_mode
+        tgt[mode == 0] = [0.0, 0.0, -0.2, -0.2]
+        sw = mode == 1
+        tgt[sw, :2] = 0.9 * q[sw]
+        tgt[sw, 2:] = -0.4
+        g = mode == 2
+        tgt[g] = self.arm_par[g, :, 0] + self.arm_par[g, :, 1] * np.sin(2 * np.pi * self.arm_par[g, :, 2] * t[g] + self.arm_phase[g])
+        tgt[mode == 3] = [-0.4, -0.4, -1.4, -1.4]
+        tgt[mode == 4] = [-1.3, -1.3, -0.2, -0.2]
+        tgt[:, :2] = np.clip(tgt[:, :2], -2.8, 0.9)
+        tgt[:, 2:] = np.clip(tgt[:, 2:], -2.1, 0.0)
+        self.arm_target = tgt
+
     def randomize_model(self):
         if not self.randomize:
             return
         m = self.m
+        for h, base in zip(self.hand_ids, self.hand_mass):     # free arms: sometimes something in the hand
+            m.body_mass[h] = base + (self.rng.uniform(0.0, 2.0) if self.rng.random() < 0.5 else 0.0)
         self.friction = self.rng.uniform(0.4, 1.25)
         for gs in self.foot_geoms:
             for g in gs:
@@ -180,11 +222,16 @@ class Envs:
         applied = np.where(self.delay[:, None], self.last_a, actions)
         target = self.default + ACTION_SCALE * applied
         m = self.m
-        if KM.ARM_JOINTS:               # arm swing from the opposite hip (see model.ARM_SWING)
+        if KM.ARM_JOINTS and KM.VARIANT in KM.ARM_SWING:   # arm swing from the opposite hip
             g = KM.ARM_SWING[KM.VARIANT]
             for i, d in enumerate(self.d):
                 hp = d.qpos[self.qadr[self.arm_src]] - self.default[self.arm_src]
                 d.ctrl[ACT_DIM:ACT_DIM + 2] = g * hp
+        elif KM.ARM_JOINTS:             # free arms: random upper-body motion in training, the brain's at run time
+            if not self.arm_external:
+                self._arm_gen()
+            for i, d in enumerate(self.d):
+                d.ctrl[ACT_DIM:ACT_DIM + 4] = self.arm_target[i]
         if self.ts is None:
             for i, d in enumerate(self.d):
                 d.ctrl[:ACT_DIM] = target[i]
@@ -281,7 +328,7 @@ class Envs:
         rt["limits"] = np.sum(over, 1)
         rt["speed_limit"] = np.sum(np.clip(np.abs(qd) - 0.9 * self.w_lim, 0, None) ** 2, 1)
         rt["alive"] = np.ones(M)
-        fell = (h_base < 0.55) | (grav[:, 2] > -0.5)
+        fell = (h_base < self.min_height) | (grav[:, 2] > -0.5)
         rt["termination"] = fell.astype(float)
         r = np.zeros(M)
         for k, v in rt.items():
@@ -290,7 +337,7 @@ class Envs:
         self.term_n += M
         r *= DT
         self.t += 1
-        timeout = self.t >= EP_LEN
+        timeout = self.t >= self.ep_len
         done = fell | timeout
         self.ep_ret += r
         # pushes and command resampling

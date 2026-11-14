@@ -24,7 +24,15 @@ LEG_JOINTS = [f"{s}_{j}" for s in "lr" for j in LEGS]
 # reflexive arm swing per variant: shoulder pitch target = gain x (opposite hip pitch - its standing angle). The
 # policy does not command the arms; env.py drives them from the legs every step, as human arm swing largely is.
 ARM_SWING = {"s1sprint3": 0.9}
-ARM_JOINTS = ["l_shoulder_pitch", "r_shoulder_pitch"] if os.environ.get("KESTREL_VARIANT", "k1").lower() in ARM_SWING else []
+# free arms: shoulders and elbows driven by env.arm_target (random gestures, carry and reach poses in training; the
+# brain's skills at run time), so the leg policy learns to balance whatever the upper body does
+FREE_ARMS = {"s1body"}
+_V = os.environ.get("KESTREL_VARIANT", "k1").lower()
+ARM_JOINTS = (["l_shoulder_pitch", "r_shoulder_pitch"] if _V in ARM_SWING else
+              ["l_shoulder_pitch", "r_shoulder_pitch", "l_elbow", "r_elbow"] if _V in FREE_ARMS else [])
+EXTRA_WORLD = ""    # extra MJCF inside <worldbody> (brain/skills.py: chair, table, bag)
+EXTRA_MJCF = ""     # extra top-level MJCF (brain/skills.py: the hand-to-bag weld)
+SEAT_COLLISION = False   # brain/skills.py: give the pelvis and torso back collision boxes, so the robot can sit
 DEFAULT = {"hip_yaw": 0.0, "hip_roll": 0.0, "hip_pitch": -0.28, "knee": 0.56, "ankle_pitch": -0.28, "ankle_roll": 0.0}
 KP = {"hip_yaw": 150.0, "hip_roll": 250.0, "hip_pitch": 300.0, "knee": 300.0, "ankle_pitch": 80.0, "ankle_roll": 50.0}
 KD = {"hip_yaw": 5.0, "hip_roll": 7.0, "hip_pitch": 8.0, "knee": 8.0, "ankle_pitch": 2.5, "ankle_roll": 2.0}
@@ -55,7 +63,7 @@ def joint_limits_s1():
     return T, W
 
 
-SCRAP_SUB = {"s1scrap": "s1", "k1scrap": "k1", "s1fast": "s1fast", "k1fast": "k1fast", "s1run": "s1fast", "s1sprint": "s1fast", "s1sprint2": "s1fast", "s1sprint3": "s1fast"}
+SCRAP_SUB = {"s1scrap": "s1", "k1scrap": "k1", "s1fast": "s1fast", "k1fast": "k1fast", "s1run": "s1fast", "s1sprint": "s1fast", "s1sprint2": "s1fast", "s1sprint3": "s1fast", "s1body": "s1fast"}
 # gait clock and command range per variant: the scrap builds walk slowly (scrap/<sub>/generated/actuator_selection.md)
 GAIT = {"s1scrap": dict(period=1.2, stance=0.58, cmd_scale=0.35), "k1scrap": dict(period=1.2, stance=0.58, cmd_scale=0.35),
         "s1fast": dict(period=0.8, stance=0.55, cmd_scale=1.4), "k1fast": dict(period=0.9, stance=0.56, cmd_scale=1.0),
@@ -63,7 +71,8 @@ GAIT = {"s1scrap": dict(period=1.2, stance=0.58, cmd_scale=0.35), "k1scrap": dic
         "s1run": dict(period=0.64, stance=0.42, cmd_scale=3.0),
         # S1-Sprint round 2 (from 42 M steps): commands to 4 m/s
         "s1sprint": dict(period=0.64, stance=0.42, cmd_scale=4.0), "s1sprint2": dict(period=0.64, stance=0.42, cmd_scale=4.0),
-        "s1sprint3": dict(period=0.64, stance=0.42, cmd_scale=4.0)}.get(
+        "s1sprint3": dict(period=0.64, stance=0.42, cmd_scale=4.0),
+        "s1body": dict(period=0.8, stance=0.55, cmd_scale=1.4)}.get(
     VARIANT, dict(period=0.8, stance=0.55, cmd_scale=1.0))
 
 
@@ -157,6 +166,13 @@ def build_xml(H, visual=False):
             xml = re.sub(rf'(<body name="{s}_{seg}"[^>]*>(?:\s*<joint[^>]*/>)*\s*<inertial[^>]*/>)',
                          lambda mm: mm.group(1) + f'\n      <geom name="{s}_{seg}_col" type="capsule" fromto="{ft}" size="{rad}" '
                                                    f'rgba="0.3 0.3 0.3 0.4"/>', xml, count=1)
+    if SEAT_COLLISION:               # seat bones and back: what touches a chair
+        xml = re.sub(r'(<body name="pelvis"[^>]*>(?:\s*<(?:freejoint|joint)[^>]*/>)*\s*<inertial[^>]*/>)',
+                     lambda mm: mm.group(1) + '\n      <geom name="pelvis_col" type="box" size="0.11 0.15 0.05" pos="-0.02 0 -0.02" '
+                                               'rgba="0.3 0.3 0.3 0.0" friction="1 0.02 0.001"/>', xml, count=1)
+        xml = re.sub(r'(<body name="torso"[^>]*>(?:\s*<joint[^>]*/>)*\s*<inertial[^>]*/>)',
+                     lambda mm: mm.group(1) + '\n      <geom name="back_col" type="box" size="0.03 0.14 0.18" pos="-0.11 0 0.18" '
+                                               'rgba="0.3 0.3 0.3 0.0"/>', xml, count=1)
     # 3. actuators: PD position servos with force limits = joint-side actuator peaks
     T, _ = joint_limits()
     acts = []
@@ -165,7 +181,8 @@ def build_xml(H, visual=False):
         acts.append(f'    <position name="{jn}" joint="{jn}" kp="{KP[base]}" kv="{KD[base]}" forcerange="{-T[base]:.1f} {T[base]:.1f}" '
                     f'ctrlrange="-6 6"/>')
     if ARM_JOINTS:                   # shoulder-pitch drills (S1-Fast's X-SH: 37 N·m)
-        acts += [f'    <position name="{jn}" joint="{jn}" kp="80" kv="3" forcerange="-36 36" ctrlrange="-3 3"/>' for jn in ARM_JOINTS]
+        acts += [f'    <position name="{jn}" joint="{jn}" kp="{80 if "shoulder" in jn else 50}" kv="{3 if "shoulder" in jn else 2}" '
+                 f'forcerange="{"-36 36" if "shoulder" in jn else "-27 27"}" ctrlrange="-3 3"/>' for jn in ARM_JOINTS]
     sens = "".join(f'\n    <touch name="{s}_touch" site="{s}_touch"/>' for s in "lr")
     sens += "".join(f'\n    <framepos name="{s}_sole_pos" objtype="site" objname="{s}_sole"/>' for s in "lr")
     sens += "".join(f'\n    <framelinvel name="{s}_sole_vel" objtype="site" objname="{s}_sole"/>' for s in "lr")
@@ -173,6 +190,10 @@ def build_xml(H, visual=False):
                  "\n  </sensor>", xml, flags=re.S)
     xml = xml.replace('<option timestep="0.005" integrator="implicitfast"/>',
                       '<option timestep="0.005" integrator="implicitfast" iterations="20" ls_iterations="10"/>')
+    if EXTRA_WORLD:
+        xml = xml.replace("</worldbody>", EXTRA_WORLD + "\n  </worldbody>", 1)
+    if EXTRA_MJCF:
+        xml = xml.replace("</mujoco>", EXTRA_MJCF + "\n</mujoco>", 1)
     if H is None:                    # robot only (for the Isaac Lab MJCF -> USD import)
         return xml, []
     # 4. terrain: plane + boxes (stairs) + convex meshes (slopes) + small heightfields (rough tiles only)

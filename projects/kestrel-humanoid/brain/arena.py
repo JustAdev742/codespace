@@ -110,7 +110,7 @@ class Arena:
         d.qpos[3:7] = [math.cos(yaw / 2), 0, 0, math.sin(yaw / 2)]
         d.qpos[e.qadr] = e.default
         d.qvel[:] = 0
-        d.ctrl[:] = e.default
+        d.ctrl[:len(e.default)] = e.default
         mujoco.mj_forward(e.m, d)
         e.start_xy[0] = [x, y]
         e.cmd[0] = 0
