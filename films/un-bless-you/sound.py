@@ -88,12 +88,12 @@ def design(mix):
     at_peak("sneeze_marcus", T("sneeze1.hit"), 0.9, 0.3)
     mix.add(T("open", 0.4), s.rustle(1.2, 2) * 0.5, 0.25, -0.3)                  # crossword
     sfx("pen", T("open", 1.0), 0.25, -0.3)
-    sfx("newspaper", T("stare.lower") - 0.1, 0.5, -0.3)
+    sfx("newspaper", T("lb1") - 0.35, 0.5, -0.3)
     mix.add(T("finger.up"), s.rustle(0.25, 3), 0.25, 0.2)
 
     # ------------------------------------------------------------ the revocation
     mix.add(T("rise.cap"), s.click(0.03, 2500, 4), 0.6, -0.2)
-    mix.add(T("rise.down"), s.rustle(0.6, 5), 0.4, -0.2)
+    mix.add(T("rise.cap", 0.2), s.rustle(0.6, 5), 0.4, -0.2)
     mix.add(T("rise.glasses", 0.5), s.click(0.025, 3000, 6), 0.4, -0.2)
     mix.add(T("rise.stand"), s.rustle(0.8, 7), 0.4, -0.2)
     steps(T("rise.stand", 1.0), T("rise.stand", 2.7), 1.5, 0.22, -0.1, 150)
@@ -101,11 +101,11 @@ def design(mix):
     drone = s.fade(s.drone(drone_len, 49, 8, 1.06), 2.5, 0.02)
     mix.add(T("rise"), drone, 0.28, 0, "music")
     sfx("soul", T("ritual.pull") - 0.2, 0.75, 0.1)
-    mix.add(T("ritual.snap"), s.pluck(s.midi(88), 0.5), 0.5, 0.1)
+    mix.add(T("fold.snap"), s.pluck(s.midi(88), 0.5), 0.5, 0.1)
     for k in ("fold1", "fold2"):
-        mix.add(T(f"ritual.{k}"), s.rustle(0.25, 8), 0.3, 0)
+        mix.add(T(f"fold.{k}"), s.rustle(0.25, 8), 0.3, 0)
     for i in range(3):
-        mix.add(T("ritual.pat") + i * 0.2, s.thud(0.08, 140, 9 + i), 0.3, 0)
+        mix.add(T("fold.pat") + i * 0.2, s.thud(0.08, 140, 9 + i), 0.3, 0)
     mix.add(T("l19") + D("l19") * 0.35, s.boom(2.6, 62, 22), 0.85)
     sfx("bell", E("l19", 0.5), 0.55, -0.4)
     steps(T("sits", 0.3), T("sits", 1.8), 1.5, 0.2, -0.2, 150, 20)
@@ -130,16 +130,23 @@ def design(mix):
 
     # ------------------------------------------------------------ the return
     steps(T("lower.turn"), T("lower.turn", 0.9), 2.0, 0.2, 0.1)
-    sfx("notebook", T("notebook.out") - 0.1, 0.55, -0.2)
-    mix.add(T("notebook.lick"), s.hp(s.noise(0.08, 13), 2000) * s.decay(0.08, 0.02), 0.25, -0.2)
-    mix.add(T("lanyard.look"), s.whoosh(0.3, 2000, 600, 14, 0.6), 0.15)
+    sfx("notebook", T("l38") - 0.2, 0.55, -0.2)
+    mix.add(E("l44", 0.05), s.whoosh(0.3, 2000, 600, 14, 0.6), 0.15)
+    # the menu: a laminated card whipped out, and a little lift under each tier
+    mix.add(T("menu.out"), s.layer([(0, s.whoosh(0.25, 900, 3000, 22, 0.7)), (0.2, s.click(0.03, 1200, 23) * 1.5)]), 0.4, -0.2)
+    for i, k in enumerate(("lp2", "lp3", "lp4", "lp5")):
+        mix.add(T(k), s.bell(s.midi(76 + (0, 2, 4, 7)[i]), 0.6, 0.6), 0.22, -0.1, "music")
+    # the supervisor: one low, ominous chord for the least dramatic reveal possible
+    sup = s.pad([s.midi(n) for n in (38, 45, 50, 53)], 2.4, "saw", 900, attack=0.01, release=1.4)
+    mix.add(T("reveal.badge", 0.25), s.layer([(0, s.boom(1.6, 70, 30)), (0, sup)]), 0.45, 0, "music")
     mix.add(T("crouch.down"), s.rustle(0.8, 15), 0.35, 0)
     sfx("strings", T("m48") - 0.6, 0.55, 0, cut=T("l49"))
-    mix.add(T("process"), s.lp(s.noise(T("bus") - T("process"), 16), 160) * env([(0, 0), (T("bus") - T("process"), 1)], T("bus") - T("process")), 0.25, 0.6)
+    far = T("pepper.bus") - T("l51")
+    mix.add(T("l51"), s.lp(s.noise(far, 16), 160) * env([(0, 0), (far, 1)], far), 0.25, 0.6)         # the bus, still distant
 
     # a clock that is not there, ticking
     t, i = E("l52"), 0
-    while t < T("bus.stop"):
+    while t < T("pepper.stop"):
         mix.add(t, s.click(0.02, 2400 if i % 2 else 1800, 50 + i), 0.22, 0.4, "music")
         t += 0.5
         i += 1
@@ -149,9 +156,11 @@ def design(mix):
     mix.add(T("sun.look"), glare, 0.25, 0, "music")
     sfx("packet", T("pepper.tear"), 0.7, 0.1)
     sfx("snort", T("pepper.snort") - 0.1, 0.8, 0.1)
-    mix.add(T("pepper.pluck"), s.squeak(0.07, 3000, 4200), 0.5, 0.1)
-    sfx("busarrive", T("bus") - 0.3, 0.8, 0.5)
-    steps(T("bus", 1.4), T("bus.step"), 2.0, 0.2, 0.4, 150, 60)
+    sfx("busarrive", T("pepper.bus") - 0.3, 0.8, 0.5)
+    steps(T("m55", 0.2), T("m55", 3.0), 1.9, 0.2, 0.4, 150, 60)                   # Leonard, to the kerb
+    steps(T("backfire", 1.5), T("backfire", 2.2), 2.4, 0.2, 0.5, 160, 70)        # and up the step
+    mix.add(T("backfire.fling") - 0.05, s.whoosh(0.4, 600, 2500, 24, 0.4), 0.35, 0.3)
+    mix.add(T("backfire.burst"), s.layer([(0, s.lp(s.noise(0.5, 25), 1800) * s.decay(0.5, 0.12)), (0, s.thud(0.1, 220, 26))]), 0.55, 0.4)
     riser = mix.clip("riser")
     mix.add(T("crest.die") - len(riser) / s.SR, riser, 0.6)
     mix.add(T("crest.die"), s.whoosh(0.8, 1500, 150, 17, 0.1), 0.35)            # ...and it's gone
@@ -159,7 +168,7 @@ def design(mix):
     # ------------------------------------------------------------ the reversal
     at_peak("sneeze_leonard", T("sneeze2.hit"), 1.0, 0.45)
     mix.add(T("silence.driver", 1.2), s.click(0.03, 2200, 18), 0.35, 0.5)       # shades on
-    sfx("standoff", T("silence", 3.4), 0.6, 0, cut=T("l58", -0.1))
+    sfx("standoff", T("silence.driver") - 0.2, 0.6, 0, cut=T("l58", -0.1))
     ringtone(T("phone2.ring"), T("phone2.finger"), 0.4, 0.2)
     for t in (T("doors.close"),):
         mix.add(t, s.hiss(0.7, 1500, 19, 0.15) * 0.8, 0.5, 0.5)                 # pneumatic doors

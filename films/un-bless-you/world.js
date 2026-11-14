@@ -192,6 +192,13 @@ export function buildProps() {
   el("ellipse", { rx: 22, ry: 22, fill: "#d9dde1", ...line }, h.hubcap);
   for (let i = 0; i < 5; i++) el("rect", { x: -2, y: -32, width: 4, height: 12, fill: "#8d9399", transform: `rotate(${i * 72})` }, h.hubcap);
   h.sunGlare = el("circle", { r: 260, fill: "url(#sun)" });
+  h.menuCard = el("g", {});
+  el("rect", { x: -34, y: -50, width: 68, height: 50, rx: 4, fill: "#fbfaf6", stroke: "#b7953f", "stroke-width": 3 }, h.menuCard);
+  el("rect", { x: -34, y: -50, width: 68, height: 11, rx: 4, fill: "#7a2230" }, h.menuCard);
+  for (let i = 0; i < 4; i++) el("rect", { x: -26, y: -33 + i * 8, width: 52, height: 3, fill: "#9a958b" }, h.menuCard);
+  h.flyPacket = el("rect", { x: -9, y: -12, width: 18, height: 24, fill: "#f2ede1", stroke: INK, "stroke-width": 1.2 });
+  h.cloud = el("g", {});
+  for (let i = 0; i < 40; i++) el("circle", { r: 6 + (i % 4) * 4, fill: i % 3 ? "#6b5a48" : "#9a8a76", opacity: 0.85 }, h.cloud);
   return h;
 }
 
@@ -248,6 +255,49 @@ export function buildInserts(stage) {
   el("path", { d: "M -270 140 q 70 -110 140 0 z", fill: "#a9c4e0" }, badge);
   txt(badge, 110, 30, "MARCUS", 104, INK, { "font-weight": 900 });
   txt(badge, 110, 100, "Regional Lead (Interim)", 30, "#666", { "font-weight": 500 });
+
+  // the laminated menu of blessings
+  h.menu = el("g", {}, stage);
+  el("rect", { width: 1920, height: 1080, fill: "#7d5239" }, h.menu);                                    // cardigan behind it
+  el("rect", { width: 1920, height: 1080, fill: "#8c3b3f", opacity: 0.55 }, h.menu);
+  const card = el("g", { transform: "translate(960 545) rotate(-2)" }, h.menu);
+  el("rect", { x: -560, y: -360, width: 1120, height: 720, rx: 26, fill: "#fbfaf6", stroke: "#d8c48a", "stroke-width": 10 }, card);
+  el("rect", { x: -560, y: -360, width: 1120, height: 120, rx: 26, fill: "#7a2230" }, card);
+  el("rect", { x: -560, y: -270, width: 1120, height: 30, fill: "#7a2230" }, card);
+  txt(card, 0, -282, "BLESSINGS", 66, "#f6e7c1", { "font-weight": 900, "letter-spacing": 16 });
+  const tiers = [
+    ["STANDARD", "\u201cBless you\u201d", "Gets the job done"],
+    ["PREMIUM", "\u201cGod bless you\u201d", "Comes with God"],
+    ["IMPORTED", "\u201cGesundheit\u201d", "German. Very efficient."],
+    ["REGIONAL", "\u201cBless your heart\u201d*", "Southern"],
+  ];
+  h.menuRows = tiers.map(([tier, phrase, note], i) => {
+    const row = el("g", { transform: `translate(0 ${-170 + i * 118})` }, card);
+    const band = el("rect", { x: -520, y: -48, width: 1040, height: 96, rx: 14, fill: "#f2d98b", opacity: 0 }, row);
+    txt(row, -490, 14, tier, 30, "#7a2230", { "text-anchor": "start", "font-weight": 900, "letter-spacing": 4 });
+    txt(row, -230, 16, phrase, 46, INK, { "text-anchor": "start", "font-weight": 800 });
+    txt(row, 500, 14, note, 28, "#6b665d", { "text-anchor": "end", "font-weight": 500, "font-style": "italic" });
+    return band;
+  });
+  h.finePrint = txt(card, 0, 330, "*Not a blessing.", 26, "#6b665d", { "font-weight": 500 });
+
+  // Denise's staff badge
+  h.badge = el("g", {}, stage);
+  el("rect", { width: 1920, height: 1080, fill: "#2f7f86" }, h.badge);
+  el("path", { d: "M 0 700 L 1920 620 L 1920 1080 L 0 1080 Z", fill: "#2a7279" }, h.badge);
+  el("path", { d: "M 720 0 L 850 380 M 1200 0 L 1070 380", stroke: "#1f3b2c", "stroke-width": 34 }, h.badge);
+  const sup = el("g", { transform: "translate(960 560) rotate(3)" }, h.badge);
+  el("rect", { x: -330, y: -220, width: 660, height: 440, rx: 22, fill: "#fbfaf6", ...line, "stroke-width": 3 }, sup);
+  el("rect", { x: -330, y: -220, width: 660, height: 110, rx: 22, fill: "#1f5c3a" }, sup);
+  el("rect", { x: -330, y: -140, width: 660, height: 30, fill: "#1f5c3a" }, sup);
+  txt(sup, 0, -150, "STAFF", 40, "#fff", { "letter-spacing": 12 });
+  el("rect", { x: -290, y: -80, width: 180, height: 220, fill: "#d9d0b8" }, sup);
+  el("circle", { cx: -200, cy: -10, r: 46, fill: "#b47b55" }, sup);
+  el("path", { d: "M -250 -20 Q -250 -78 -200 -78 Q -150 -78 -150 -20 Q -170 -50 -200 -50 Q -230 -50 -250 -20 Z", fill: "#2a1a12" }, sup);
+  el("path", { d: "M -270 140 q 70 -110 140 0 z", fill: "#2f7f86" }, sup);
+  txt(sup, 110, 10, "DENISE", 96, INK, { "font-weight": 900 });
+  txt(sup, 110, 66, "Supervisor", 34, "#1f5c3a", { "font-weight": 700 });
+  txt(sup, 110, 108, "Blessings & Courtesies \u00b7 since 1986", 25, "#666", { "font-weight": 500 });
 
   // cards
   h.black = el("rect", { width: 1920, height: 1080, fill: "#000" }, stage);

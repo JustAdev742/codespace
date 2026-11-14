@@ -1,7 +1,7 @@
 # Installed Agent Skills
 
 70 skills vendored from 7 upstream repositories into `.claude/skills/`, plus
-one written here (`design-pipeline`).
+two written here (`design-pipeline`, `comedy-writing`).
 Claude Code picks up every directory here that contains a `SKILL.md`.
 
 ## Sources
@@ -160,3 +160,12 @@ spec does not list (`argument-hint`, `disable-model-invocation`, `when_to_use`,
 ## Not installed
 
 21st.dev and 21st.dev/mcp were excluded by request.
+
+- **`comedy-writing`** — writes or punches up sketches, scripts, stand-up
+  and comedic dialogue against targets measured from data. Laugh density
+  comes from StandUp4AI's word-level laughter labels (5.4 to 7.9 laughs a
+  minute in professional sets). Tier contrasts come from funny_bench's 23k
+  engagement-ranked stand-up transcripts. It adds a laugh-map process and the
+  craft moves that raise density. `references/data-findings.md` has the
+  numbers and their caveats, and `scripts/analyze_funny_bench.py` reproduces
+  them.
