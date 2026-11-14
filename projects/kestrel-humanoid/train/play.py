@@ -18,7 +18,7 @@ import os
 import sys
 from pathlib import Path
 
-if "MUJOCO_GL" not in os.environ and not os.environ.get("DISPLAY"):
+if "MUJOCO_GL" not in os.environ and sys.platform.startswith("linux") and not os.environ.get("DISPLAY"):
     os.environ["MUJOCO_GL"] = "osmesa"
 os.environ.setdefault("OMP_NUM_THREADS", "1")
 if "--variant" in sys.argv:          # the robot model is chosen at import time (model.py / calc)

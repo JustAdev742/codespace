@@ -433,6 +433,10 @@ class HouseBot:
             i, j = int((sx - HS.MAP_X[0]) / HS.GRID), int((sy - HS.MAP_Y[0]) / HS.GRID)
             if not (0 <= j < clr.shape[0] and 0 <= i < clr.shape[1]) or clr[j, i] < min_clear:
                 continue
+            bx, by = sx - 0.14 * math.cos(yaw), sy - 0.14 * math.sin(yaw)     # the body behind the front needs room
+            ib, jb = int((bx - HS.MAP_X[0]) / HS.GRID), int((by - HS.MAP_Y[0]) / HS.GRID)
+            if not (0 <= jb < clr.shape[0] and 0 <= ib < clr.shape[1]) or clr[jb, ib] < 0.26:
+                continue
             if abs(h.floor_z(sx, sy) - h.floor_z(*target_xy)) > 0.05 and h.floor_z(*target_xy) < 0.3:
                 continue                                  # do not reach across a step for something on the floor
             score = math.hypot(sx - x, sy - y) - 2.0 * min(clr[j, i], 0.5)
@@ -615,28 +619,40 @@ class HouseBot:
         d.eq_active[eq] = 1
         h.holding = obj
         z0 = d.xpos[b][2]
-        lift = [(0.0, [0.0, sh1, -0.2, el1]), (1.2, [0.0, sh1 + 0.3, -0.2, el1 + 0.2])]
-        for k in range(int(1.3 / E.DT)):
+        sh2, el2, _ = h.ik_right(hd + [0, 0, 0.14])             # straight up first, clear of the surface
+        lift = [(0.0, [0.0, sh1, -0.2, el1]), (1.0, [0.0, sh2, -0.2, el2])]
+        for k in range(int(1.2 / E.DT)):
             a = SK.keyframes(lift, k * E.DT)
             if low:
                 h.step(legs=self._legs_hold, arms=a)
             else:
                 self.arms = list(a)
                 self.step()
-        self.arms = list(CARRY_ARMS)
+        if d.xpos[b][2] < z0 + 0.05:
+            self.release()
+            if low:
+                self.crouch(False)
+            return False, "it didn't come up with the hook"
         if low:
+            self.arms = [0.0, sh2, -0.2, el2]
             if not self.crouch(False):
                 return False, "lost balance standing up"
         else:
-            carry = [(0.0, h.arms_now()), (1.2, CARRY_ARMS)]
-            for k in range(int(1.3 / E.DT)):
-                self.arms = list(SK.keyframes(carry, k * E.DT))
-                self.step()
-            self.arms = list(CARRY_ARMS)
-        if d.xpos[b][2] < z0 + 0.04:
-            self.release()
-            return False, "it didn't come up with the hook"
+            self.arms = [0.0, sh2, -0.2, el2]
+            self.back_off(0.35)                                 # step back from the surface, then lower to carry
+        carry = [(0.0, h.arms_now()), (1.2, CARRY_ARMS)]
+        for k in range(int(1.3 / E.DT)):
+            self.arms = list(SK.keyframes(carry, k * E.DT))
+            self.step()
+        self.arms = list(CARRY_ARMS)
         return True, "lifted"
+
+    def back_off(self, dist, max_s=5.0):
+        x0, y0, _ = self.h.robot_pose()
+        t0 = self.h.t
+        while self.h.t - t0 < max_s and math.dist((x0, y0), self.h.robot_pose()[:2]) < dist:
+            self.step((-0.22, 0.0, 0.0))
+        self.stand_still(0.5)
 
     def release(self):
         h = self.h
@@ -660,6 +676,13 @@ class HouseBot:
             x, y, yaw = h.robot_pose()
             target = (x + REACH_FWD * math.cos(yaw) + REACH_RIGHT * math.sin(yaw),
                       y + REACH_FWD * math.sin(yaw) - REACH_RIGHT * math.cos(yaw))
+            fx, fy = f["xy"]
+            fsx, fsy = f["size"]
+            self.log(f"  [{h.t:6.1f} s] (placing at {target[0]:.2f}, {target[1]:.2f} on the {where}: "
+                     f"x {fx - fsx / 2:.2f}..{fx + fsx / 2:.2f}, y {fy - fsy / 2:.2f}..{fy + fsy / 2:.2f})")
+            if not (fx - fsx / 2 + 0.06 < target[0] < fx + fsx / 2 - 0.06 and fy - fsy / 2 + 0.06 < target[1] < fy + fsy / 2 - 0.06):
+                self.say("cant", why=f"I'd be putting it on the edge of the {where}")
+                return False
             top = h.floor_z(*target)
             label = "floor"
         else:
@@ -683,45 +706,64 @@ class HouseBot:
                 self.say("cant", why=f"there's no room to reach the {where}")
                 return False
             (sx, sy), yaw = best
-            if not self.goto((sx, sy), face=yaw, stop=0.15, speed=0.6):
+            top = f["top"]
+            label = where
+            pre = (sx - 0.4 * math.cos(yaw), sy - 0.4 * math.sin(yaw))       # stop short, raise the load, step in
+            if not self.goto(pre, face=yaw, stop=0.15, speed=0.6):
                 return False
+            x, y, yaw = h.robot_pose()
+            over = np.array([x + 0.32 * math.cos(yaw) + REACH_RIGHT * math.sin(yaw),
+                             y + 0.32 * math.sin(yaw) - REACH_RIGHT * math.cos(yaw), top + 2 * half_h + hz + 0.08])
+            sh, el, _ = h.ik_right(over)
+            raise_ = [(0.0, h.arms_now()), (1.2, [0.0, sh, -0.2, el])]
+            for k in range(int(1.3 / E.DT)):
+                self.arms = list(SK.keyframes(raise_, k * E.DT))
+                self.step()
+            self.arms = [0.0, sh, -0.2, el]
             self.align((sx, sy), yaw, tol=0.04)
             x, y, yaw = h.robot_pose()
             target = (x + REACH_FWD * math.cos(yaw) + REACH_RIGHT * math.sin(yaw),
                       y + REACH_FWD * math.sin(yaw) - REACH_RIGHT * math.cos(yaw))
-            top = f["top"]
-            label = where
+            fx, fy = f["xy"]
+            fsx, fsy = f["size"]
+            self.log(f"  [{h.t:6.1f} s] (placing at {target[0]:.2f}, {target[1]:.2f} on the {where}: "
+                     f"x {fx - fsx / 2:.2f}..{fx + fsx / 2:.2f}, y {fy - fsy / 2:.2f}..{fy + fsy / 2:.2f})")
+            if not (fx - fsx / 2 + 0.06 < target[0] < fx + fsx / 2 - 0.06 and fy - fsy / 2 + 0.06 < target[1] < fy + fsy / 2 - 0.06):
+                self.say("cant", why=f"I'd be putting it on the edge of the {where}")
+                return False
         low = top + half_h + hz - h.floor_under(*h.robot_pose()[:2]) < LOW_HANDLE
         if low and not self.crouch(True):
             return False
         if low:
             self._legs_hold = h.legs_now()
-        hook_z = top + half_h + hz + 0.03                 # the object resting on the top, handle on the hook
+        hook_z = top + half_h + hz + 0.005               # lowered until it just rests on the top
         sh, el, err = h.ik_right(np.array([target[0], target[1], hook_z]))
+        sh_d, el_d, _ = h.ik_right(np.array([target[0], target[1], hook_z - 0.05]))       # then the hook drops clear
+        x, y, yaw = h.robot_pose()
+        sh_b, el_b, _ = h.ik_right(np.array([target[0] - 0.15 * math.cos(yaw), target[1] - 0.15 * math.sin(yaw),
+                                             hook_z - 0.05]))                              # and comes back out
         cur = h.arms_now()
-        plan = [(0.0, cur), (1.6, [0.0, sh, -0.2, el])]
-        for k in range(int(1.8 / E.DT)):
-            a = SK.keyframes(plan, k * E.DT)
-            if low:
-                h.step(legs=self._legs_hold, arms=a)
-            else:
-                self.arms = list(a)
-                self.step()
+        plan = [(0.0, cur), (2.0, [0.0, sh, -0.2, el]), (2.6, [0.0, sh, -0.2, el])]       # lower slowly, let it settle
+
+        def run(kf, secs):
+            for k in range(int(secs / E.DT)):
+                a = SK.keyframes(kf, k * E.DT)
+                if low:
+                    h.step(legs=self._legs_hold, arms=a)
+                else:
+                    self.arms = list(a)
+                    self.step()
+        run(plan, 2.7)
         self.release()
-        back = [(0.0, [0.0, sh, -0.2, el]), (0.6, [0.0, sh, -0.2, el + 0.3]), (1.5, REST_ARMS)]
-        for k in range(int(1.6 / E.DT)):
-            a = SK.keyframes(back, k * E.DT)
-            if low:
-                h.step(legs=self._legs_hold, arms=a)
-            else:
-                self.arms = list(a)
-                self.step()
+        run([(0.0, [0.0, sh, -0.2, el]), (0.5, [0.0, sh_d, -0.2, el_d]), (1.0, [0.0, sh_b, -0.2, el_b]),
+             (2.0, REST_ARMS)], 2.1)
         self.arms = list(REST_ARMS)
         if low:
             self.crouch(False)
         self.stand_still(0.8)
         p = h.obj_pos(obj)
-        ok = abs(p[2] - (top + half_h)) < 0.08
+        upright = h.e.d[0].xmat[h.obj_body[obj]][8] > 0.9
+        ok = abs(p[2] - (top + half_h)) < 0.05 and upright
         self.say("placed", obj=name, place=label) if ok else self.say("cant", why=f"the {name} fell")
         self.memory[obj] = dict(xyz=p, t=h.t, room=h.room_of(p[0], p[1]))
         return ok

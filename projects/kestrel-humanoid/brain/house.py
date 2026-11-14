@@ -33,7 +33,7 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 os.environ.setdefault("KESTREL_VARIANT", "s1body")
-if "MUJOCO_GL" not in os.environ and not os.environ.get("DISPLAY"):
+if "MUJOCO_GL" not in os.environ and sys.platform.startswith("linux") and not os.environ.get("DISPLAY"):
     os.environ["MUJOCO_GL"] = "osmesa"
 
 import numpy as np            # noqa: E402

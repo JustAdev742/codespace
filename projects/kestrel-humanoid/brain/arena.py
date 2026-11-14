@@ -12,7 +12,7 @@ import re
 import sys
 from pathlib import Path
 
-if "MUJOCO_GL" not in os.environ and not os.environ.get("DISPLAY"):
+if "MUJOCO_GL" not in os.environ and sys.platform.startswith("linux") and not os.environ.get("DISPLAY"):
     os.environ["MUJOCO_GL"] = "osmesa"
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE.parent / "train"))
