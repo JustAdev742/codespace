@@ -359,7 +359,7 @@ class World(A.Arena):
 
     def stand_up(self):
         """The learned stand-up (train/runs/standup2, train.py --task standup) when it exists, else the planned one."""
-        names = ("standup6", "standup5", "standup4", "standup3", "standup2")
+        names = ("standup7", "standup6", "standup5", "standup4", "standup3", "standup2")
         if os.environ.get("KESTREL_STANDUP"):                  # pick a run, e.g. KESTREL_STANDUP=standup6
             names = (os.environ["KESTREL_STANDUP"],)
         for name in names:     # the newest stand-up policy trained within the motor limits
