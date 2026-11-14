@@ -89,6 +89,7 @@ class Envs:
         self.hi = np.array([m.joint(j).range[1] for j in KM.LEG_JOINTS])
         _, Wn = KM.joint_limits()
         self.w_lim = np.array([Wn[j[2:]] for j in KM.LEG_JOINTS])
+        self.arm_src = np.array([KM.LEG_JOINTS.index("r_hip_pitch"), KM.LEG_JOINTS.index("l_hip_pitch")])
         ts = KM.torque_speed()          # motor torque-speed lines (scrap and fast builds), applied every physics step
         self.ts = None if ts is None else np.array([ts[j[2:]] for j in KM.LEG_JOINTS]).T     # 4 x 12: T, T_V, w0, T_cont
         self.foot_geoms = [[mujoco.mj_name2id(m, mujoco.mjtObj.mjOBJ_GEOM, f"{s}_foot_c{i}") for i in range(4)] for s in "lr"]
@@ -157,7 +158,7 @@ class Envs:
         d.qpos[0:3] = [x, y, h + 0.90]
         d.qpos[3:7] = [np.cos(yaw / 2), 0, 0, np.sin(yaw / 2)]
         d.qpos[self.qadr] = self.default + self.rng.uniform(-0.05, 0.05, ACT_DIM)
-        d.ctrl[:] = d.qpos[self.qadr]
+        d.ctrl[:ACT_DIM] = d.qpos[self.qadr]
         mujoco.mj_forward(self.m, d)
         self.start_xy[i] = [x, y]
         self.t[i] = 0
@@ -179,9 +180,14 @@ class Envs:
         applied = np.where(self.delay[:, None], self.last_a, actions)
         target = self.default + ACTION_SCALE * applied
         m = self.m
+        if KM.ARM_JOINTS:               # arm swing from the opposite hip (see model.ARM_SWING)
+            g = KM.ARM_SWING[KM.VARIANT]
+            for i, d in enumerate(self.d):
+                hp = d.qpos[self.qadr[self.arm_src]] - self.default[self.arm_src]
+                d.ctrl[ACT_DIM:ACT_DIM + 2] = g * hp
         if self.ts is None:
             for i, d in enumerate(self.d):
-                d.ctrl[:] = target[i]
+                d.ctrl[:ACT_DIM] = target[i]
                 mujoco.mj_step(m, d, DECIM)
         else:
             self._step_torque_speed(target)
@@ -203,7 +209,7 @@ class Envs:
             F = np.clip(F, -np.where(qd < 0, lim, T), np.where(qd > 0, lim, T))
             ctrl = q + (F + kv * qd) / kp
             for i, d in enumerate(self.d):
-                d.ctrl[:] = ctrl[i]
+                d.ctrl[:ACT_DIM] = ctrl[i]
                 mujoco.mj_step(m, d, 1)
 
     def _gather(self):
@@ -217,7 +223,7 @@ class Envs:
         for i, d in enumerate(self.d):
             qpos[i] = d.qpos
             qvel[i] = d.qvel
-            tau[i] = d.actuator_force
+            tau[i] = d.actuator_force[:ACT_DIM]
             sd[i] = d.sensordata
         touch = sd[:, 0:2] > 1.0
         foot = sd[:, 2:8].reshape(M, 2, 3)

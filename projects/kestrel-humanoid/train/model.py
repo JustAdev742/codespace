@@ -21,6 +21,10 @@ import terrain as TR  # noqa: E402
 
 LEGS = ["hip_yaw", "hip_roll", "hip_pitch", "knee", "ankle_pitch", "ankle_roll"]
 LEG_JOINTS = [f"{s}_{j}" for s in "lr" for j in LEGS]
+# reflexive arm swing per variant: shoulder pitch target = gain x (opposite hip pitch - its standing angle). The
+# policy does not command the arms; env.py drives them from the legs every step, as human arm swing largely is.
+ARM_SWING = {"s1sprint3": 0.9}
+ARM_JOINTS = ["l_shoulder_pitch", "r_shoulder_pitch"] if os.environ.get("KESTREL_VARIANT", "k1").lower() in ARM_SWING else []
 DEFAULT = {"hip_yaw": 0.0, "hip_roll": 0.0, "hip_pitch": -0.28, "knee": 0.56, "ankle_pitch": -0.28, "ankle_roll": 0.0}
 KP = {"hip_yaw": 150.0, "hip_roll": 250.0, "hip_pitch": 300.0, "knee": 300.0, "ankle_pitch": 80.0, "ankle_roll": 50.0}
 KD = {"hip_yaw": 5.0, "hip_roll": 7.0, "hip_pitch": 8.0, "knee": 8.0, "ankle_pitch": 2.5, "ankle_roll": 2.0}
@@ -51,14 +55,15 @@ def joint_limits_s1():
     return T, W
 
 
-SCRAP_SUB = {"s1scrap": "s1", "k1scrap": "k1", "s1fast": "s1fast", "k1fast": "k1fast", "s1run": "s1fast", "s1sprint": "s1fast", "s1sprint2": "s1fast"}
+SCRAP_SUB = {"s1scrap": "s1", "k1scrap": "k1", "s1fast": "s1fast", "k1fast": "k1fast", "s1run": "s1fast", "s1sprint": "s1fast", "s1sprint2": "s1fast", "s1sprint3": "s1fast"}
 # gait clock and command range per variant: the scrap builds walk slowly (scrap/<sub>/generated/actuator_selection.md)
 GAIT = {"s1scrap": dict(period=1.2, stance=0.58, cmd_scale=0.35), "k1scrap": dict(period=1.2, stance=0.58, cmd_scale=0.35),
         "s1fast": dict(period=0.8, stance=0.55, cmd_scale=1.4), "k1fast": dict(period=0.9, stance=0.56, cmd_scale=1.0),
         # running: a faster clock and a stance under half the period, so both feet leave the ground (flight phase)
         "s1run": dict(period=0.64, stance=0.42, cmd_scale=3.0),
         # S1-Sprint round 2 (from 42 M steps): commands to 4 m/s
-        "s1sprint": dict(period=0.64, stance=0.42, cmd_scale=4.0), "s1sprint2": dict(period=0.64, stance=0.42, cmd_scale=4.0)}.get(
+        "s1sprint": dict(period=0.64, stance=0.42, cmd_scale=4.0), "s1sprint2": dict(period=0.64, stance=0.42, cmd_scale=4.0),
+        "s1sprint3": dict(period=0.64, stance=0.42, cmd_scale=4.0)}.get(
     VARIANT, dict(period=0.8, stance=0.55, cmd_scale=1.0))
 
 
@@ -128,7 +133,7 @@ def build_xml(H, visual=False):
     # 1. lock everything that is not a leg joint (bodies become rigid at the zero pose)
     def keep(m):
         name = re.search(r'name="([^"]+)"', m.group(0)).group(1)
-        return m.group(0) if name in LEG_JOINTS else ""
+        return m.group(0) if name in LEG_JOINTS or name in ARM_JOINTS else ""
     xml = re.sub(r'\s*<joint name="[^"]+" type="hinge"[^>]*/>', keep, xml)
     # 2. visual geoms off (speed); feet keep their collision boxes
     if not visual:
@@ -159,6 +164,8 @@ def build_xml(H, visual=False):
         base = jn[2:]
         acts.append(f'    <position name="{jn}" joint="{jn}" kp="{KP[base]}" kv="{KD[base]}" forcerange="{-T[base]:.1f} {T[base]:.1f}" '
                     f'ctrlrange="-6 6"/>')
+    if ARM_JOINTS:                   # shoulder-pitch drills (S1-Fast's X-SH: 37 N·m)
+        acts += [f'    <position name="{jn}" joint="{jn}" kp="80" kv="3" forcerange="-36 36" ctrlrange="-3 3"/>' for jn in ARM_JOINTS]
     sens = "".join(f'\n    <touch name="{s}_touch" site="{s}_touch"/>' for s in "lr")
     sens += "".join(f'\n    <framepos name="{s}_sole_pos" objtype="site" objname="{s}_sole"/>' for s in "lr")
     sens += "".join(f'\n    <framelinvel name="{s}_sole_vel" objtype="site" objname="{s}_sole"/>' for s in "lr")
@@ -183,7 +190,8 @@ def build_xml(H, visual=False):
 # parallel springs ("tendons") per variant: joint -> (stiffness N·m/rad, rest angle rad). S1-Sprint: a knee spring
 # that takes part of the stance load, and an Achilles-like ankle spring that stores energy in each stance.
 SPRINGS = {"s1sprint": {"knee": (90.0, 0.35), "ankle_pitch": (60.0, -0.10)},
-           "s1sprint2": {"knee": (160.0, 0.35), "ankle_pitch": (110.0, -0.10)}}
+           "s1sprint2": {"knee": (160.0, 0.35), "ankle_pitch": (110.0, -0.10)},
+           "s1sprint3": {"knee": (90.0, 0.35), "ankle_pitch": (60.0, -0.10)}}
 
 
 def build_model(H, visual=False):

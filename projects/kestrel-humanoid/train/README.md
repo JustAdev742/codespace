@@ -82,6 +82,39 @@ level off near row 1.3 with it. The likelier limit is the drill builds' slow joi
 the curriculum. For steps they use the scripted, balance-checked motions in `scrap/<s1|k1>/data/gait_SU.csv` and
 `gait_ST.csv`.
 
+### Toward human speed: S1-Sprint (`--variant s1sprint | s1run | s1sprint2`)
+
+Humans walk at about 1.4 m/s, jog at 2.5–3 m/s and sprint at 8–10 m/s. S1-Fast walks 1.44 m/s. What holds it back
+is swing inertia: two 1.9 kg hub motors ride on each thigh (knee) and two on each calf (ankle), so every stride
+swings 7.6 kg of motor through the leg.
+
+**The idea tested: proximal actuation.** This is what Cassie, Digit and the MIT humanoid do.
+* The knee motors move onto the hip bracket, above the hip axis. They drive the knee through a chain over a
+  jackshaft that turns on the hip pitch axis.
+* The ankle motors move up to the top of the thigh. They drive the ankle cranks through a chain over a jackshaft
+  that turns on the knee axis.
+* Parallel springs at the knee and the ankle (an artificial Achilles tendon) take part of the stance load.
+* Same motors, ratios and drives as S1-Fast (`calc/kestrel/variant_s1sprint.py`). Each calf drops from 4.95 kg to
+  1.5 kg; the whole robot weighs 52.5 kg.
+* A chain over a coaxial jackshaft couples the knee to the hip angle, and the ankle to the knee. The joint
+  controller removes that coupling, because it measures each joint's angle directly.
+
+**The control:** S1-Run, the S1-Fast hardware unchanged, trained identically: a running clock (0.64 s, 42 % stance, so
+both feet leave the ground) and commands to 3 m/s. Both started from the S1-Fast policy and trained on flat ground.
+
+Round 1, after 42 M steps (2.4 h) each, flat-ground speed test with the motors' torque-speed lines
+(`runs/s1sprint/speed_42M.md`, `runs/s1run/speed_42M.md`):
+
+| | Top speed within the motor limits | Fastest seen | At 3 m/s commanded |
+|---|---|---|---|
+| **S1-Sprint** | **2.62 m/s** (commanded 3.0) | 2.62 m/s | joints 74 % of no-load, hottest motor 94 % of continuous, no falls |
+| S1-Run (S1-Fast hardware) | 1.48 m/s (commanded 1.4) | 2.89 m/s | joints 95 % of no-load, hottest motor 126 % of continuous |
+
+The unchanged hardware can reach a jog in short bursts, but its motors would overheat at that pace. With the motors
+moved up to the hip, the robot holds 2.6 m/s, a human jogging pace, inside every limit. Heat (RMS torque against the
+continuous rating) is now what binds. Round 2 trains S1-Sprint with commands to 4 m/s, and S1-Sprint 2 with stiffer
+springs (`variant_s1sprint2.py`), to see whether the springs can take more of that load.
+
 ## Results (trained on this VM)
 
 ![KESTREL K1 walking, climbing 18 cm stairs and descending 18 cm stairs](runs/rough/demo.gif)
