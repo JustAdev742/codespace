@@ -19,15 +19,16 @@ w = SK.World()
 rng = random.Random(1)
 Q, V = [], []
 while len(Q) < n:
-    dx, dy, dh = rng.uniform(-0.04, 0.04), rng.uniform(-0.04, 0.04), rng.uniform(-0.06, 0.06)
+    dx, dy, dh = rng.uniform(-0.06, 0.06), rng.uniform(-0.06, 0.06), rng.uniform(-0.08, 0.08)
     w.place_robot(SK.CHAIR[0] + dx, SK.CHAIR[1] - 0.40 + dy, -math.pi / 2 + dh)
     for _ in range(40):
         w.step(arms=[0, 0, -0.2, -0.2])
     if not w.sit():
         continue
-    w.stiff(True)
-    for _ in range(100):
-        w.step(legs=w.legs_now(), arms=w.arms_now())
+    w.stiff(True)                         # sit for a varied while (slumping settles in), arms anywhere comfortable
+    arms = [rng.uniform(-0.8, 0.2), rng.uniform(-0.8, 0.2), rng.uniform(-1.6, -0.1), rng.uniform(-1.6, -0.1)]
+    for _ in range(rng.randint(50, 400)):
+        w.step(legs=w.legs_now(), arms=arms)
     w.stiff(False)
     Q.append(w.e.d[0].qpos.copy())
     V.append(w.e.d[0].qvel.copy())

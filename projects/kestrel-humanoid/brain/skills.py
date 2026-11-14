@@ -314,6 +314,7 @@ class World(A.Arena):
         vadr = list(e.vadr) + [e.m.jnt_dofadr[e.m.joint(j).id] for j in KM.ARM_JOINTS]
         ref = bank["qpos"][:, qadr].mean(0)
         last = np.zeros(16)
+        stood_at = None
         steps = int(max_s / E.DT)
         self.stiff(True)
         try:
@@ -327,14 +328,22 @@ class World(A.Arena):
                 last = a
                 tgt = ref + 0.25 * a
                 if self.step(legs=tgt[:12], arms=tgt[12:]):
+                    self.stand_note = f"fell during the stand-up at {k * E.DT:.1f} s (balanced from {stood_at})"
                     return False
-                if k > 100 and self.pelvis_z() > 0.83 and self.upright() > 0.95 and abs(self.com_ahead() - 0.03) < 0.08:
+                up = self.pelvis_z() > 0.83 and self.upright() > 0.95 and abs(self.com_ahead() - 0.03) < 0.08
+                stood_at = stood_at if (stood_at is not None or not up) else k
+                if stood_at is not None and k - stood_at > int(1.5 / E.DT):     # balanced for 1.5 s: hand over
                     break
         finally:
             self.stiff(False)
+        if stood_at is None:
+            self.stand_note = f"never balanced in {max_s:.0f} s (pelvis {self.pelvis_z():.2f} m)"
+            return False
         for _ in range(50):                  # hand back to the walking policy, standing still
             if self.step(arms=[0.0, 0.0, -0.2, -0.2]):
+                self.stand_note = "fell after the hand-off to the walking policy"
                 return False
+        self.stand_note = "stood"
         return self.pelvis_z() > 0.85 and self.upright() > 0.9
 
     def stand_up_planned(self):

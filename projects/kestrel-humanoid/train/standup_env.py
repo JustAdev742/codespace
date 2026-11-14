@@ -113,7 +113,7 @@ class Envs:
         d.qpos[:] = self.bank_q[k]
         d.qvel[:] = 0
         if self.randomize:
-            d.qpos[self.qadr] += self.rng.uniform(-0.03, 0.03, 16)
+            d.qpos[self.qadr] += self.rng.uniform(-0.06, 0.06, 16)
         d.ctrl[:16] = d.qpos[self.qadr]
         mujoco.mj_forward(self.m, d)
         self.t[i] = 0
