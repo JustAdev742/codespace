@@ -37,7 +37,8 @@ sys.path.insert(0, str(HERE))
 def worker(rank, conn, cfg):
     signal.signal(signal.SIGINT, signal.SIG_IGN)     # Ctrl-C goes to the learner, which saves and then closes
                                                      # the workers (SIGTERM stays default so they can be killed)
-    import env as E
+    import importlib
+    E = importlib.import_module("standup_env" if cfg.get("task") == "standup" else "env")
     e = E.Envs(M=cfg["envs"], seed=cfg["seed"] * 1000 + rank, terrain_seed=cfg["terrain_seed"],
                max_row=cfg["max_row"], curriculum=cfg["curriculum"], randomize=cfg["randomize"], cols=cfg["cols"],
                delay_prob=cfg["delay"])
@@ -137,6 +138,8 @@ def main():
     ap.add_argument("--steps", type=int, default=24, help="rollout length per iteration")
     ap.add_argument("--iters", type=int, default=100000)
     ap.add_argument("--hours", type=float, default=1.0, help="wall-clock budget for this invocation")
+    ap.add_argument("--task", choices=["walk", "standup"], default="walk",
+                    help="walk: the locomotion task (env.py); standup: from a chair to standing (standup_env.py, s1body)")
     ap.add_argument("--terrain", choices=["rough", "flat", "stairs", "mixed", "climb"], default="rough",
                     help="rough: all 6 types equally; mixed: stairs get half the environments; climb: 40 %% stairs up, "
                          "20 %% stairs down; stairs: flat + stairs")
@@ -153,12 +156,13 @@ def main():
 
     cols = {"rough": None, "flat": [0], "stairs": [0, 4, 5], "mixed": [0, 1, 2, 3, 4, 4, 5, 5],
             "climb": [0, 1, 2, 3, 4, 4, 5, 5, 5, 5]}[args.terrain]
-    cfg = dict(envs=args.envs, seed=args.seed, terrain_seed=0, max_row=None, curriculum=True,
+    cfg = dict(task=args.task, envs=args.envs, seed=args.seed, terrain_seed=0, max_row=None, curriculum=True,
                randomize=not args.no_randomize, cols=cols, delay=args.delay)
     pool = Pool(args.workers, cfg)          # fork before torch starts any threads
 
     import torch
-    import env as E
+    import importlib
+    E = importlib.import_module("standup_env" if args.task == "standup" else "env")
     from ppo import PPO, ActorCritic
     learn_threads = args.threads or os.cpu_count() or 1
     torch.manual_seed(args.seed)
