@@ -102,7 +102,7 @@ each hand. That teaches the legs to balance whatever the upper body does.
 |---|---|---|---|
 | Gestures while talking | `skills.py` | five keyframed arm gestures (explain, point, dismiss, triumph, refuse), one per spoken line | stands through all five |
 | Sit on a chair | `skills.py` | waits for a calm moment in the gait (both feet down, weight centred between them), plants a balanced stance, then crouches through poses solved on the model itself (feet flat, centre of mass placed), balance-gated until the hips are low, on stiff leg control | 80 of 80 walk-ups from random places on the floor |
-| Stand up | `skills.py`, `train/standup_env.py` | a learned policy (`train.py --task standup`) driving all 16 joints, legs and arms, on stiff PD within every motor's torque-speed line; trained from 220 recorded seated states, 80 of them from real walk-ups | {{STAND}} |
+| Stand up | `skills.py`, `train/standup_env.py` | a learned policy (`train.py --task standup`) driving all 16 joints, legs and arms, on stiff PD within every motor's torque-speed line; trained from 220 recorded seated states, 80 of them from real walk-ups | 24 of 24 walk-ups from random places: walk to the chair, line up, sit, rest 6 s, stand, walk on (`test_walkup.py`); 59 of 64 in the training world's randomised physics. The planned stand-up, still in `stand_up_planned`, managed 1 of 6 |
 | Pick up and carry | `skills.py` | inverse kinematics puts the hook through the bag's handle; a point constraint hangs the 1 kg bag on it, like the real S1 hook hand; lift, walk, lower, release | lifts and carries |
 | Line up on a mark | `will.py` | small forward, sideways and turning steps until within 4–5 cm | used before sitting and picking up |
 
@@ -154,6 +154,19 @@ combination still failed when the will chose it. Each fix is general:
   in 23 of 64 tries; it was fine-tuned again on the legged chair.
 * *Let an emergency interrupt anything.* The alarm used to wait for the current skill to finish (up to 3 s). It now
   raises inside the skill on the next control step.
+
+Result: a 200 s run with nobody giving instructions (`python will.py --seconds 200 --alarm 120`): 10 visits to the
+objects, the bag carried off the table, the alarm at 120.0 s handled on the spot (stop, warning, alert; the visit it
+interrupted is dropped), then tired, it walked to the chair, sat, rested and stood up again, and went back to
+exploring. Every behaviour it chose succeeded, with no falls.
+
+```bash
+cd projects/kestrel-humanoid/brain
+python make_seated_bank.py 20 --walkup --part 1      # x4 in parallel, then: python make_seated_bank.py --merge
+python ../train/train.py --task standup --variant s1body --name standup6 --init standup5 --hours 1
+python test_walkup.py --seeds 10-33                  # sit-and-stand from 24 random places
+python will.py --seconds 200 --alarm 120 --gif runs/will.gif
+```
 
 ## What it is not
 

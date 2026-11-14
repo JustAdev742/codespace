@@ -316,3 +316,24 @@ These choices made it light:
   [`docs/11-testing-commissioning.md`](../docs/11-testing-commissioning.md): gantry first, torque limits
   reduced, safety monitor and e-stop live, nobody inside the test cell. Re-train with `--delay 0.5`, with
   identified gains, and with measured masses (after P12's final weigh-in) first.
+
+## Standing up from a chair (`--task standup`, variant `s1body`)
+
+`standup_env.py` has the same interface as `env.py`, so the same PPO trains it. Each episode starts from a recorded
+seated state (`brain/make_seated_bank.py`) on a chair with legs; the policy drives all 16 joints (legs and arms) as
+offsets from a fixed seated reference pose (`brain/data/standup_ref.json`), on stiff PD inside every motor's
+torque-speed line. Rewards: height, upright, centre of mass over the feet, standing still, effort, smoothness, joint
+speed under 85 % of no-load, pelvis rising no faster than 0.8 m/s, and a fall penalty.
+
+| Run | Started from | Seated states | Training-world result (64 episodes) | Walk-ups (`brain/test_walkup.py`) |
+|---|---|---|---|---|
+| standup | scratch | 30 from a fixed mark | stood by a leap: knee at 122 % of no-load speed | - |
+| standup2, 3 | standup, standup2 | 60 from a fixed mark | 64 of 64 (legless chair) | 0 of 2 after the new sit |
+| standup4 | standup3 | 140, adding 80 begun mid-gait | 60 of 64 (legless chair) | 4 of 8 |
+| standup5 | standup4 | 220, adding 80 real walk-ups | 61 of 64 legless, 35 of 64 with chair legs | 9 of 12 |
+| standup6 | standup5 | 220, chair with legs | 59 of 64 | 24 of 24 |
+
+```bash
+python train.py --task standup --variant s1body --name standup6 --init standup5 --workers 3 --hours 1
+python eval_standup.py --run standup6 --episodes 64
+```

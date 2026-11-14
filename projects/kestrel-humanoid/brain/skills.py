@@ -107,6 +107,7 @@ class World(A.Arena):
         self.arm_qadr = [e.m.joint(j).qposadr[0] for j in KM.ARM_JOINTS]
         self.obs, _ = e.observe()
         self.frames = None
+        self.frame_t = []                       # sim time of each recorded frame (for cutting clips)
         self.frame_every = 5
         self.caption = ""
         self.t = 0.0
@@ -127,6 +128,7 @@ class World(A.Arena):
         self.t += E.DT
         if self.frames is not None and round(self.t / E.DT) % self.frame_every == 0:
             self.frames.append(self.render())
+            self.frame_t.append(self.t)
         return bool(done[0] and not trunc[0])
 
     def render(self):

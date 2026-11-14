@@ -13,3 +13,4 @@ brain/runs/*.gif.tmp
 brain/runs/demo_*.gif
 brain/runs/skill_*.gif
 brain/runs/will*.gif
+brain/runs/will*.times.npy
