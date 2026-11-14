@@ -325,7 +325,9 @@ def main():
     print("alerts:", will.alerts)
     if a.gif and w.frames:
         DM.write_gif(w.frames, Path(a.gif))
-        np.save(Path(a.gif).with_suffix(".times.npy"), np.array(w.frame_t))
+        ft = np.array(w.frame_t)                # the times of the frames write_gif keeps
+        np.save(Path(a.gif).with_suffix(".times.npy"),
+                np.concatenate([ft[:-25:2], ft[-25:]]) if len(ft) > 220 else ft)
 
 
 if __name__ == "__main__":
