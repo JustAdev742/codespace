@@ -221,7 +221,7 @@ def render(policy, path, segments, fps=15, size=(560, 350), speed=0.6):
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--run", default="rough")
-    ap.add_argument("--variant", default=None, choices=["k1", "s1", "s1scrap", "k1scrap", "s1fast", "k1fast", "s1run", "s1sprint"], help="robot model (default: from the run's checkpoint)")
+    ap.add_argument("--variant", default=None, choices=["k1", "s1", "s1scrap", "k1scrap", "s1fast", "k1fast", "s1run", "s1sprint", "s1sprint2"], help="robot model (default: from the run's checkpoint)")
     ap.add_argument("--eval-envs", type=int, default=16)
     ap.add_argument("--speed", type=float, default=0.6)
     ap.add_argument("--table", default=None, help="write the success table as markdown here")

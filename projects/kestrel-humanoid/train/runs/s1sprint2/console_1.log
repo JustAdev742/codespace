@@ -1,0 +1,23 @@
+initialised from /home/user/codespace/projects/kestrel-humanoid/train/runs/s1sprint/ckpt_last.pt (weights only; new optimiser, curriculum and step count)
+2 workers x 96 envs = 192 environments, 24-step rollouts, terrain 'flat'
+  iter  Msteps    fps  return  len_s  fall  row stairsDn stairsUp   vloss      kl       lr   std
+     1    0.00   2173    0.00    0.0  0.00 0.00      nan      nan  0.0097  0.2718 1.00e-05  0.63   (rollout 1.63s)
+     5    0.02   5667    0.00    0.0  0.00 0.00      nan      nan  0.0153  0.0100 1.14e-04  0.63   (rollout 0.42s)
+    10    0.05   6022    0.44    3.8  1.00 0.00      nan      nan  0.0172  0.0131 1.00e-05  0.63   (rollout 0.41s)
+/tmp/claude-0/-home-user-codespace/21c59a1b-2112-5f15-9603-d14dc838548b/scratchpad/venv/lib/python3.13/site-packages/torch/jit/_trace.py:1006: FutureWarning: `torch.jit.trace` is deprecated. Please switch to `torch.compile` or `torch.export`.
+  warnings.warn(
+/tmp/claude-0/-home-user-codespace/21c59a1b-2112-5f15-9603-d14dc838548b/scratchpad/venv/lib/python3.13/site-packages/torch/jit/_trace.py:1145: FutureWarning: `torch.jit.trace_method` is deprecated. Please switch to `torch.compile` or `torch.export`.
+  warnings.warn(
+    15    0.07   6706    1.49    5.7  1.00 0.00      nan      nan  0.0102  0.0122 1.00e-05  0.63   (rollout 0.40s)
+    20    0.09   6471    2.39    6.1  1.00 0.00      nan      nan  0.0184  0.0120 1.00e-05  0.63   (rollout 0.41s)
+    25    0.12   6338    4.48    7.4  1.00 0.00      nan      nan  0.0097  0.0127 5.06e-05  0.63   (rollout 0.41s)
+    30    0.14   5625    5.56    7.8  1.00 0.00      nan      nan  0.0202  0.0143 1.00e-05  0.63   (rollout 0.40s)
+    35    0.16   5759    5.90    8.1  1.00 0.00      nan      nan  0.0213  0.0126 1.00e-05  0.62   (rollout 0.43s)
+    40    0.18   5548    6.88    9.2  1.00 0.00      nan      nan  0.0095  0.0116 1.00e-05  0.62   (rollout 0.47s)
+    45    0.21   7171   23.12   17.5  0.24 0.70      nan      nan  0.0052  0.0155 1.00e-05  0.62   (rollout 0.38s)
+    50    0.23   6489   22.93   17.4  0.25 0.70      nan      nan  0.0086  0.0107 7.59e-05  0.62   (rollout 0.45s)
+    55    0.25   6488   22.79   17.3  0.25 0.73      nan      nan  0.0117  0.0132 1.00e-05  0.62   (rollout 0.43s)
+    60    0.28   4378   22.62   17.2  0.27 0.77      nan      nan  0.0237  0.0192 1.00e-05  0.62   (rollout 0.64s)
+    65    0.30   4909   22.70   17.2  0.27 0.80      nan      nan  0.0080  0.0129 2.25e-05  0.62   (rollout 0.51s)
+    70    0.32   4091   22.81   17.2  0.27 0.82      nan      nan  0.0112  0.0128 1.00e-05  0.62   (rollout 0.65s)
+    75    0.35   4863   22.69   17.1  0.28 0.82      nan      nan  0.3043  0.0080 2.56e-04  0.62   (rollout 0.54s)
