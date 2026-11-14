@@ -92,6 +92,48 @@ misread a speed word).
 
 Clips: `python demo.py --gifs 6` writes `runs/demo_*.gif` (not committed; regenerate them).
 
+## Whole-body skills and a will (variant `s1body`)
+
+The robot's arms are free here: both shoulders and elbows move while the legs walk. The walking policy is retrained
+(`train/`, variant `s1body`) with the arms doing random gestures, swings, carry and reach poses, with up to 2 kg in
+each hand. That teaches the legs to balance whatever the upper body does.
+
+| Skill | File | How it works | Status in simulation |
+|---|---|---|---|
+| Gestures while talking | `skills.py` | five keyframed arm gestures (explain, point, dismiss, triumph, refuse), one per spoken line | stands through all five |
+| Sit on a chair | `skills.py` | balanced poses solved on the model itself (feet flat, centre of mass placed), stiff leg control for the slow motion | sits from the mark in front of the chair |
+| Stand up | `skills.py` | lean and bring the knees forward until the weight is over the feet, then rise; the clock only advances while the centre of mass (with a 0.35 s look-ahead) is over the feet, otherwise it holds and leans | stands up without a backrest |
+| Pick up and carry | `skills.py` | inverse kinematics puts the hook through the bag's handle; a point constraint hangs the 1 kg bag on it, like the real S1 hook hand; lift, walk, lower, release | lifts and carries |
+| Line up on a mark | `will.py` | small forward, sideways and turning steps until within 4–5 cm | used before sitting and picking up |
+
+**The will** (`will.py`): when nobody gives an instruction, the robot scores its options and picks one, with some
+randomness, narrating the choice in the persona's voice:
+
+* **visit** an object it has not looked at for a while (curiosity);
+* **sit down** and rest when walking has tired it (a stand-in for motor heat and battery);
+* **talk** with gestures now and then;
+* **move the bag** off the table.
+
+A failed attempt waits 30 s before the next try.
+
+**It does not hit people, for any reason.** There is no striking skill in the library, and the supervisor refuses
+any instruction to hit, push or chase. If someone is hurting people (an alarm: on the robot, from the operator's
+panic button or sound detection), it:
+
+* stops within one control step;
+* keeps at least 2 m away;
+* shouts a warning in character;
+* raises an alert for a human to act on.
+
+A 52 kg machine cannot be trusted to judge when force is justified, so it does not decide to use any.
+
+Limits:
+
+* The furniture positions come from a map, not from vision; the vision network knows the five arena objects.
+* The chair is fixed to the floor in the simulation.
+* The sit and stand motions are planned, not learned. They work from the mark in front of the chair, not from
+  anywhere.
+
 ## What it is not
 
 * Not a large pretrained VLA. The vision network knows five objects in one arena; the language network knows the
