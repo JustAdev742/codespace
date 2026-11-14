@@ -1,0 +1,9 @@
+# KESTREL live: the house simulation, the robot's policies and the web page.
+#   pip install -r requirements-live.txt
+mujoco>=3.2
+numpy
+scipy
+pillow
+torch            # CPU build is enough: pip install torch --index-url https://download.pytorch.org/whl/cpu
+# optional: python live.py --claude (a Claude model holds the conversation)
+# anthropic

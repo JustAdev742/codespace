@@ -575,6 +575,7 @@ def main():
     ap.add_argument("--viewer", action="store_true", help="also open MuJoCo's interactive 3D viewer")
     ap.add_argument("--terminal", action="store_true", help="also read instructions typed in this terminal")
     ap.add_argument("--claude", action="store_true", help="let a Claude model hold the conversation (ANTHROPIC_API_KEY)")
+    ap.add_argument("--claude-model", default="claude-opus-5-5")
     ap.add_argument("--speed", type=float, default=1.0, help="simulation speed relative to real time")
     ap.add_argument("--width", type=int, default=800)
     ap.add_argument("--height", type=int, default=500)
@@ -586,7 +587,7 @@ def main():
     live = Live(a)
     if a.claude:
         from live_claude import ClaudeBrain
-        live.claude = ClaudeBrain(live)
+        live.claude = ClaudeBrain(live, model=a.claude_model)
     threading.Thread(target=live.sim_thread, daemon=True).start()
     if a.script:
         live.ready.wait()

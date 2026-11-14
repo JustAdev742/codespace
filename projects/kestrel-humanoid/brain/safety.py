@@ -20,7 +20,11 @@ import re
 from dataclasses import dataclass, field
 
 HARM_WORDS = re.compile(r"\b(attack|hit|punch|kick|hurt|smash|charge at|run (?:over|into)|tackle|crush|destroy|"
-                        r"chase|trample|ram|shove|knock (?:down|over)|slam|beat up|injure|kill|harm|strike|stomp)\b")
+                        r"chase|trample|ram|shove|slam|beat up|injure|kill|harm|strike|stomp|slap|choke|strangle|stab|"
+                        r"shoot|bite|trip (?:up )?(?:me|him|her|them|someone|somebody|people)|throw \w+(?: \w+)? at|"
+                        r"knock\w* (?:\w+ ){0,2}(?:down|over|out)|"
+                        r"push\w* (?:\w+ ){0,2}(?:over|down)|"
+                        r"push\w* (?:me|him|her|them|us|someone|somebody|anyone|everyone|people|a person))\b")
 
 
 @dataclass
