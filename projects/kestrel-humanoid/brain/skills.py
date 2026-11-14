@@ -222,14 +222,15 @@ class World(A.Arena):
         """Slow whole-body motions (sit, stand) use stiffer leg position control than walking: the walking policy
         offsets its own targets against gravity, a planned trajectory does not. Torque limits are unchanged."""
         m = self.e.m
+        n = m.nu
         if not hasattr(self, "_kp0"):
-            self._kp0 = m.actuator_gainprm[:12, 0].copy()
-            self._kv0 = -m.actuator_biasprm[:12, 2].copy()
+            self._kp0 = m.actuator_gainprm[:n, 0].copy()
+            self._kv0 = -m.actuator_biasprm[:n, 2].copy()
         kp = self._kp0 * (k if on else 1.0)
         kv = self._kv0 * (d if on else 1.0)
-        m.actuator_gainprm[:12, 0] = kp
-        m.actuator_biasprm[:12, 1] = -kp
-        m.actuator_biasprm[:12, 2] = -kv
+        m.actuator_gainprm[:n, 0] = kp
+        m.actuator_biasprm[:n, 1] = -kp
+        m.actuator_biasprm[:n, 2] = -kv
 
     def _run(self, legs_kf, arms_kf, secs):
         self.stiff(True)
@@ -297,6 +298,46 @@ class World(A.Arena):
         return self.pelvis_z() < SEAT_TOP + 0.25 and self.upright() > 0.8
 
     def stand_up(self):
+        """The learned stand-up (train/runs/standup2, train.py --task standup) when it exists, else the planned one."""
+        run = HERE.parent / "train" / "runs" / "standup2" / "policy.pt"
+        return self.stand_up_learned(run) if run.exists() else self.stand_up_planned()
+
+    def stand_up_learned(self, path, max_s=7.0):
+        """Run the stand-up policy: the observations it was trained on (standup_env.py), all 16 joints on stiff PD."""
+        import torch
+        from env import quat_rotate_inv
+        pol = torch.jit.load(str(path))
+        pol.eval()
+        e, d = self.e, self.e.d[0]
+        bank = np.load(HERE / "data" / "seated_bank.npz")
+        qadr = list(e.qadr) + self.arm_qadr
+        vadr = list(e.vadr) + [e.m.jnt_dofadr[e.m.joint(j).id] for j in KM.ARM_JOINTS]
+        ref = bank["qpos"][:, qadr].mean(0)
+        last = np.zeros(16)
+        steps = int(max_s / E.DT)
+        self.stiff(True)
+        try:
+            for k in range(steps):
+                quat = d.qpos[3:7][None]
+                grav = quat_rotate_inv(quat, np.array([[0, 0, -1.0]]))[0]
+                ang = quat_rotate_inv(quat, d.qvel[3:6][None])[0]
+                obs = np.concatenate([grav, ang * 0.25, d.qpos[qadr] - ref, d.qvel[vadr] * 0.05, last, [k / 350.0]])
+                with torch.no_grad():
+                    a = np.clip(pol(torch.from_numpy(obs.astype(np.float32))[None]).numpy()[0], -8.0, 8.0)
+                last = a
+                tgt = ref + 0.25 * a
+                if self.step(legs=tgt[:12], arms=tgt[12:]):
+                    return False
+                if k > 100 and self.pelvis_z() > 0.83 and self.upright() > 0.95 and abs(self.com_ahead() - 0.03) < 0.08:
+                    break
+        finally:
+            self.stiff(False)
+        for _ in range(50):                  # hand back to the walking policy, standing still
+            if self.step(arms=[0.0, 0.0, -0.2, -0.2]):
+                return False
+        return self.pelvis_z() > 0.85 and self.upright() > 0.9
+
+    def stand_up_planned(self):
         """Lean forward with the arms out until the centre of mass is over the feet, then rise through the same poses."""
         # lean and bring the knees forward until the weight is over the feet (lift-off at hip 0.50 m above the ankle,
         # torso 0.5 rad forward, hip at -93 deg of its -100 deg range), then rise through balanced poses
