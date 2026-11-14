@@ -253,10 +253,13 @@ class World(A.Arena):
         r = d.subtree_com[1] - mid
         return r[0] * math.cos(yaw) + r[1] * math.sin(yaw)
 
-    def _run_balanced(self, legs_kf, arms_kf, secs, gate_from=0.0, lo=-0.04, hi=0.08, gain=1.2, max_s=16.0):
-        """Play a leg trajectory, but after gate_from only let its clock advance while the centre of mass is over the
-        feet (between lo behind and hi ahead of the ankles); while it is outside, hold, and lean forward or back (hip
-        flexion and ankle angle in proportion to the error). This is what lets the robot stand up without a backrest."""
+    def _run_balanced(self, legs_kf, arms_kf, secs, gate_from=0.0, lo=-0.04, hi=0.08, gain=1.2, max_s=16.0,
+                      gate_until=None):
+        """Play a leg trajectory, but between gate_from and gate_until only let its clock advance while the centre of
+        mass is over the feet (between lo behind and hi ahead of the ankles); while it is outside, hold, and lean forward
+        or back (hip flexion and ankle angle in proportion to the error). This is what lets the robot stand up without a
+        backrest, and crouch to a seat without tipping back before it gets there."""
+        gate_until = secs if gate_until is None else gate_until
         self.stiff(True)
         try:
             tau, t_wall = 0.0, 0.0
@@ -269,7 +272,12 @@ class World(A.Arena):
                 c_now = self.com_ahead()
                 c = c_now + 0.35 * (c_now - c_prev) / E.DT      # where the weight is heading (0.35 s ahead)
                 c_prev = c_now
-                if tau >= gate_from:
+                if tau >= gate_until:                         # past the gated part: let the correction fade
+                    corr -= math.copysign(min(abs(corr), 0.6 * E.DT), corr)
+                    legs[hip] = np.clip(legs[hip] - corr, -1.745, 0.5)
+                    legs[ank] = np.clip(legs[ank] - 0.6 * corr, -0.68, 0.68)
+                    tau += E.DT
+                elif tau >= gate_from:
                     err = max(0.0, lo - c) - max(0.0, c - hi)    # > 0: weight too far back; < 0: too far forward
                     corr = max(-0.35, min(0.45, corr + gain * err * E.DT * 5))
                     if err == 0.0:
@@ -294,9 +302,22 @@ class World(A.Arena):
                                                             (4.6, 0.47, 0.0, -0.25)])
         arms = [(0.0, self.arms_now()), (1.2, [-0.7, -0.7, -0.4, -0.4]), (3.0, [-0.9, -0.9, -0.4, -0.4]),
                 (4.6, [-0.3, -0.3, -1.3, -1.3])]
-        if not self._run(legs, arms, 5.2):
+        if not self.settle():
+            return False
+        # the crouch is balance-gated down to hips 0.60 m (2.3 s); below that the plan moves the weight back onto the seat
+        if not self._run_balanced(legs, arms, 5.2, gate_from=0.0, gate_until=2.3, lo=-0.03, hi=0.09, max_s=12.0):
             return False
         return self.pelvis_z() < SEAT_TOP + 0.25 and self.upright() > 0.8
+
+    def settle(self):
+        """Plant both feet before a slow whole-body motion: blend from wherever the gait left the legs (often mid-step)
+        to a solved standing pose with the weight 4 cm ahead of the ankles, balance-gated. (The default stance has its
+        centre of mass right over the ankles, so held rigidly it tips back; the walking policy would keep stepping.)"""
+        if not hasattr(self, "_stand_pose"):
+            self._stand_pose = self.leg_pose(self.solve_pose(0.78, 0.0, 0.04)[0])
+        legs = [(0.0, self.legs_now()), (0.6, self._stand_pose), (1.4, self._stand_pose)]
+        arms = [(0.0, self.arms_now()), (0.6, [0.0, 0.0, -0.2, -0.2])]
+        return self._run_balanced(legs, arms, 1.4, gate_from=0.3, lo=0.0, hi=0.08, max_s=4.0)
 
     def stand_up(self):
         """The learned stand-up (train/runs/standup2, train.py --task standup) when it exists, else the planned one."""
@@ -316,7 +337,7 @@ class World(A.Arena):
         bank = np.load(HERE / "data" / "seated_bank.npz")
         qadr = list(e.qadr) + self.arm_qadr
         vadr = list(e.vadr) + [e.m.jnt_dofadr[e.m.joint(j).id] for j in KM.ARM_JOINTS]
-        ref = bank["qpos"][:, qadr].mean(0)
+        ref = bank["ref"] if "ref" in bank else bank["qpos"][:, qadr].mean(0)
         last = np.zeros(16)
         stood_at = None
         steps = int(max_s / E.DT)

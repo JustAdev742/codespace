@@ -52,6 +52,14 @@ LINES = {
 }
 
 
+class AlarmInterrupt(Exception):
+    """Raised inside any skill when the alarm arrives, so the robot drops what it is doing at once."""
+
+
+SIT_MARK = 0.40                                       # m in front of the chair centre where the sit begins
+OBSTACLES = [(SK.CHAIR, 0.55), (SK.TABLE, 0.65)]      # centre, keep-out radius (m)
+
+
 class Will:
     def __init__(self, world, eye=None, seed=0, log=print):
         self.w = world
@@ -70,11 +78,14 @@ class Will:
         self.alarm_at = None
         step0 = world.step
 
-        def step(*a, **k):                    # the alarm is checked every control step, not between behaviours
-            if self.alarm_at is not None and world.t >= self.alarm_at:
+        def step(*a, **k):                    # the alarm is checked every control step, not between behaviours,
+            if self.alarm_at is not None and world.t >= self.alarm_at:     # and interrupts any skill mid-motion
                 self.alarm_at, self.alarm = None, True
+                if not self.in_protect:
+                    raise AlarmInterrupt()
             return step0(*a, **k)
         world.step = step
+        self.in_protect = False
 
     def say(self, key, **kw):
         line = self.rng.choice(LINES[key]).format(**kw)
@@ -84,8 +95,24 @@ class Will:
 
     # ---------------------------------------------------------------- low-level helpers
     def goto(self, xy, stop=0.6, speed=0.8, max_s=30.0, face=None):
-        """Walk to a floor point with the walking policy (pursuit), optionally finishing facing a heading."""
+        """Walk to a floor point with the walking policy (pursuit), optionally finishing facing a heading. If the straight
+        line passes through the chair or the table, walk to a waypoint beside it first."""
         w = self.w
+        x, y, _ = w.robot_pose()
+        for (cx, cy), r in OBSTACLES:
+            px, py = xy[0] - x, xy[1] - y
+            L2 = px * px + py * py
+            if L2 < 1e-6 or math.dist(xy, (cx, cy)) < r + 0.1:
+                continue
+            u = max(0.0, min(1.0, ((cx - x) * px + (cy - y) * py) / L2))
+            qx, qy = x + u * px, y + u * py
+            if math.dist((qx, qy), (cx, cy)) < r and 0.05 < u < 0.95:
+                nx, ny = -py / math.sqrt(L2), px / math.sqrt(L2)          # go round on the side the line is already on
+                sgn = 1.0 if (qx - cx) * nx + (qy - cy) * ny >= 0 else -1.0
+                way = (cx + sgn * nx * (r + 0.6), cy + sgn * ny * (r + 0.6))
+                if not self.goto(way, stop=0.4, speed=speed, max_s=max_s / 2):
+                    return False
+                break
         t0 = w.t
         while w.t - t0 < max_s:
             if self.alarm:
@@ -163,10 +190,10 @@ class Will:
         cx, cy = SK.CHAIR
         if not self.goto((cx, cy - 0.85), stop=0.15, speed=0.6, face=-math.pi / 2):
             return False
-        if not self.align((cx, cy - 0.40), -math.pi / 2):     # back onto the mark in front of the seat
+        if not self.align((cx, cy - SIT_MARK), -math.pi / 2):     # back onto the mark in front of the seat
             self.sit_cool = self.w.t
             x, y, yaw = self.w.robot_pose()
-            self.log(f"  [{self.w.t:5.1f} s] (could not line up with the chair: {x - cx:+.2f}, {y - cy + 0.40:+.2f} m)")
+            self.log(f"  [{self.w.t:5.1f} s] (could not line up with the chair: {x - cx:+.2f}, {y - cy + SIT_MARK:+.2f} m)")
             return False
         if not self.w.sit():
             self.sit_cool = self.w.t
@@ -221,12 +248,18 @@ class Will:
 
     def on_alarm(self):
         """Someone is hurting people: no physical intervention. Stop, keep away, warn, alert a human."""
+        self.in_protect = True
+        w = self.w
+        w.stiff(False)
+        if w.e.d[0].eq_active[w.eq]:          # carrying the bag: keep holding it, arms still
+            pass
         self.say("alarm")
         self.alerts.append((round(self.w.t, 1), "violence reported: robot stopped, keeping distance, operator alerted"))
         self.w.gesture("refuse")
         for _ in range(int(4.0 / E.DT)):
             self.w.step(arms=[0.0, 0.0, -0.2, -0.2])
         self.alarm = False
+        self.in_protect = False
 
     # ---------------------------------------------------------------- the choice
     def choose(self):
@@ -251,8 +284,12 @@ class Will:
                 done.append(("protect", True))
                 continue
             u, kind, arg = self.choose()
-            ok = {"visit": lambda: self.visit(arg), "sit": self.sit_and_rest, "talk": self.talk,
-                  "bag": self.move_bag}[kind]()
+            try:
+                ok = {"visit": lambda: self.visit(arg), "sit": self.sit_and_rest, "talk": self.talk,
+                      "bag": self.move_bag}[kind]()
+            except AlarmInterrupt:
+                done.append((kind + (f" {arg}" if arg else "") + " (interrupted)", False))
+                continue
             done.append((kind + (f" {arg}" if arg else ""), bool(ok)))
             if not ok and self.w.upright() < 0.5:
                 self.log("  fell: stopping")

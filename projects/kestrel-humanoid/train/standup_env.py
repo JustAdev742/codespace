@@ -60,7 +60,8 @@ class Envs:
         self._set_gains(1.0)
         bank = np.load(HERE.parent / "brain" / "data" / "seated_bank.npz")
         self.bank_q, self.bank_v = bank["qpos"][:, :m.nq], bank["qvel"][:, :m.nv]   # robot first; the bag (skills world) after
-        self.ref = self.bank_q[:, self.qadr].mean(0)
+        # the reference pose the policy acts around: stored in the bank once, so a wider bank leaves it unchanged
+        self.ref = bank["ref"] if "ref" in bank else self.bank_q[:, self.qadr].mean(0)
         # motor torque-speed lines for all 16 joints (as env.py applies to the legs): T, T_V, w0
         import json
         ts = KM.torque_speed()
