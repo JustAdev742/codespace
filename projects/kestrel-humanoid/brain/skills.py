@@ -347,7 +347,7 @@ class World(A.Arena):
 
     def stand_up(self):
         """The learned stand-up (train/runs/standup2, train.py --task standup) when it exists, else the planned one."""
-        for name in ("standup5", "standup4", "standup3", "standup2"):     # the newest stand-up policy trained within the motor limits
+        for name in ("standup6", "standup5", "standup4", "standup3", "standup2"):     # the newest stand-up policy trained within the motor limits
             run = HERE.parent / "train" / "runs" / name / "policy.pt"
             if run.exists():
                 return self.stand_up_learned(run)

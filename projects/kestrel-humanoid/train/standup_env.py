@@ -34,11 +34,16 @@ EP_LEN = 350                                   # 7 s
 ACTION_SCALE, ACTION_CLIP = 0.25, 8.0
 CHAIR = (-15.0, -12.0)
 SEAT_TOP = 0.46
+# the chair's four legs, as in brain/skills.py: without them the policy learned to tuck its feet back under the seat,
+# which a real chair's front legs stop
+LEGS = "".join(f'<geom type="box" size="0.02 0.02 {SEAT_TOP / 2 - 0.02}" pos="{sx * 0.19} {sy * 0.19} {SEAT_TOP / 2 - 0.02}"/>'
+               for sx in (-1, 1) for sy in (-1, 1))
 WORLD = f"""
     <geom name="floor" type="plane" size="30 30 0.1" rgba="0.6 0.6 0.6 1" friction="1 0.02 0.001"/>
     <body name="chair" pos="{CHAIR[0]} {CHAIR[1]} 0">
       <geom name="seat" type="box" size="0.22 0.22 0.02" pos="0 0 {SEAT_TOP - 0.02}" friction="1 0.02 0.001"/>
       <geom type="box" size="0.22 0.02 0.25" pos="0 0.21 {SEAT_TOP + 0.25}"/>
+      {LEGS}
     </body>"""
 W = dict(height=1.0, upright=0.5, balance=-2.0, stand=1.0, effort=-2e-6, action_rate=-0.02, alive=0.1, fall=-5.0,
          speed_limit=-1.0, rise_rate=-2.0)
