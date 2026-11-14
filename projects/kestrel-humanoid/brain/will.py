@@ -272,7 +272,8 @@ def main():
     ap.add_argument("--gif", default=None)
     ap.add_argument("--seed", type=int, default=0)
     a = ap.parse_args()
-    w = SK.World(policy=a.policy, seed=a.seed)
+    w = SK.World(policy=a.policy, seed=a.seed, chase_size=(400, 250))
+    w.frame_every = 10
     w.place(near=(2.0, 9.0))                     # coloured objects ahead on the strip
     for n in A.NAMES:                            # objects that clash with the furniture: move them aside
         x, y = w.pos[n]

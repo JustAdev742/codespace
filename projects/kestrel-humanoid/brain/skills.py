@@ -106,6 +106,7 @@ class World(A.Arena):
         self.arm_qadr = [e.m.joint(j).qposadr[0] for j in KM.ARM_JOINTS]
         self.obs, _ = e.observe()
         self.frames = None
+        self.frame_every = 5
         self.caption = ""
         self.t = 0.0
         for n in A.NAMES:                       # the coloured objects are not part of this world
@@ -123,7 +124,7 @@ class World(A.Arena):
         act = self.policy(self.obs) if legs is None else ((np.asarray(legs) - e.default) / E.ACTION_SCALE)[None]
         self.obs, _, _, done, trunc = e.step(act.astype(np.float32))
         self.t += E.DT
-        if self.frames is not None and round(self.t / E.DT) % 5 == 0:
+        if self.frames is not None and round(self.t / E.DT) % self.frame_every == 0:
             self.frames.append(self.render())
         return bool(done[0] and not trunc[0])
 

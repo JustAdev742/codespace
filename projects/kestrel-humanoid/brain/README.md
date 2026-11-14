@@ -102,7 +102,7 @@ each hand. That teaches the legs to balance whatever the upper body does.
 |---|---|---|---|
 | Gestures while talking | `skills.py` | five keyframed arm gestures (explain, point, dismiss, triumph, refuse), one per spoken line | stands through all five |
 | Sit on a chair | `skills.py` | balanced poses solved on the model itself (feet flat, centre of mass placed), stiff leg control for the slow motion | sits from the mark in front of the chair |
-| Stand up | `skills.py` | lean and bring the knees forward until the weight is over the feet, then rise; the clock only advances while the centre of mass (with a 0.35 s look-ahead) is over the feet, otherwise it holds and leans | stands up without a backrest |
+| Stand up | `skills.py`, `train/standup_env.py` | a learned policy (`train.py --task standup`) driving all 16 joints, legs and arms, on stiff PD within every motor's torque-speed line; trained from 60 recorded seated states | 10 of 10 after the sit skill (the planned stand-up, still in `stand_up_planned`, managed 1 of 6) |
 | Pick up and carry | `skills.py` | inverse kinematics puts the hook through the bag's handle; a point constraint hangs the 1 kg bag on it, like the real S1 hook hand; lift, walk, lower, release | lifts and carries |
 | Line up on a mark | `will.py` | small forward, sideways and turning steps until within 4–5 cm | used before sitting and picking up |
 
@@ -131,8 +131,10 @@ Limits:
 
 * The furniture positions come from a map, not from vision; the vision network knows the five arena objects.
 * The chair is fixed to the floor in the simulation.
-* The sit and stand motions are planned, not learned. They work from the mark in front of the chair, not from
-  anywhere.
+* Sitting is planned, not learned, and works from the mark in front of the chair, not from anywhere. Standing up is
+  learned. Its first version stood up by an impossible leap (knee at 122 % of the motors' no-load speed): the
+  stand-up environment then capped motor current but not speed. It was retrained within the motors' torque-speed
+  lines and still rises briskly: the pelvis peaks at about 1.35 m/s, and the robot is up in 0.3–0.4 s.
 
 ## What it is not
 
