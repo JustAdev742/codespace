@@ -74,6 +74,10 @@ class Envs:
         self.H = T.make(terrain_seed)
         self.hs = T.HeightSampler(self.H)
         self.m = KM.build_model(self.H)
+        # MuJoCo answers a NaN by silently resetting the whole scene to the model's default pose (the robot jumps to the
+        # world origin mid-episode, which can even look like a long walk to the curriculum); keep the NaN instead, so the
+        # blow-up check in step() handles it
+        self.m.opt.disableflags |= int(mujoco.mjtDisableBit.mjDSBL_AUTORESET)
         self.M = M
         self.d = [mujoco.MjData(self.m) for _ in range(M)]
         self.curriculum, self.randomize = curriculum, randomize
@@ -97,6 +101,7 @@ class Envs:
         self.ep_len = EP_LEN                    # steps per episode (skills: effectively unlimited)
         self.auto_reset = True                  # a fallen robot restarts elsewhere (training); the house keeps it where it fell
         self.nan_resets = 0                     # simulations that blew up and were restarted
+        self.good_qpos = [None] * M             # without auto reset: each scene's last finite state (blow-up recovery)
         self.force_fall = np.zeros(M, bool)
         self.arm_mode = np.zeros(M, int)
         self.arm_left = np.zeros(M)
@@ -241,14 +246,23 @@ class Envs:
                 mujoco.mj_step(m, d, DECIM)
         else:
             self._step_torque_speed(target)
-        # a simulation that blew up (NaN): restart that robot and count it as a fall, rather than crash the run
+        # a simulation that blew up (NaN): in training, restart that robot and count it as a fall, rather than crash the
+        # run; in the house (no auto reset), put the whole scene back to its last good state, at rest, where it was
         for i, d in enumerate(self.d):
             if not (np.isfinite(d.qpos).all() and np.isfinite(d.qvel).all()) or np.abs(d.qvel).max() > 150.0:
                 self.nan_resets += 1
                 if self.nan_resets in (1, 10, 100, 1000, 10000):
                     print(f"(env: {self.nan_resets} physics blow-ups reset so far)", flush=True)
-                self._reset(i)
-                self.force_fall[i] = True
+                if self.auto_reset or self.good_qpos[i] is None:
+                    self._reset(i)
+                    self.force_fall[i] = True
+                else:
+                    d.qpos[:] = self.good_qpos[i]
+                    d.qvel[:] = 0.0
+                    d.qacc_warmstart[:] = 0.0
+                    mujoco.mj_forward(m, d)
+            elif not self.auto_reset:
+                self.good_qpos[i] = d.qpos.copy()
         self.prev_a = self.last_a.copy()
         self.last_a = actions.copy()
         return self._post()

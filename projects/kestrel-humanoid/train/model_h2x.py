@@ -57,7 +57,7 @@ SIT = {"gain": 2.0}        # sitting down: a faster balance correction (brain/sk
 RISE = {"lean_pose": [0.0, 0.35, -0.15], "knees_pose": [0.0, 0.65, -0.02],
         "path": [[0.05, 0.6, -0.02], [0.13, 0.55, -0.02], [0.22, 0.42, -0.02], [0.31, 0.28, -0.02]],
         "dt": 1.8, "gain": 1.2, "com_up": 0.0}
-WALK_POLICY, BODY_NAME = "h2x2", "Unitree H2-X"   # walking policy trained for this body (train/runs/h2x2)
+WALK_POLICY, BODY_NAME = "h2x3", "Unitree H2-X"   # walking policy trained for this body (train/runs/h2x3)
 W_NOLOAD = {"hip_yaw": 20.0, "hip_roll": 20.0, "hip_pitch": 20.0, "knee": 20.0, "ankle_pitch": 25.0, "ankle_roll": 25.0}
 
 
