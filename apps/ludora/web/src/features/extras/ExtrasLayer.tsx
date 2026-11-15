@@ -10,7 +10,7 @@ import './extras.css';
  * and sends it in the room view; this layer only draws it: whole-screen
  * looks, weather, things covering the screen, answer tiles that misbehave,
  * and the chips that say who did what. It is part of the public app because
- * anyone can be on the receiving end; the menu that casts cheats is not.
+ * anyone can be on the receiving end.
  *
  * Nothing here flashes. Animated looks become still versions for players who
  * asked for reduced motion.

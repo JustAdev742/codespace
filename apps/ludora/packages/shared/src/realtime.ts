@@ -84,10 +84,6 @@ export const roomOptionsSchema = z.object({
   generatedNames: z.boolean().default(false),
   /** Only signed-in accounts may join. */
   requireAccount: z.boolean().default(false),
-  /**
-   * Players who found the secret chaos lantern may cast cheats. Off unless the host turns it on
-   * (classroom games stay calm by default); always off for assignments.
-   */
   /** No longer read: chaos is not a room option any more. Kept so options saved with older games still parse. */
   chaos: z.boolean().default(false),
   /** Seconds of "Starting in" on every screen after the host presses Start. 0 starts at once. */

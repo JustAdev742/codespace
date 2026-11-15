@@ -58,7 +58,6 @@ export default defineConfig({
       PUBLIC_ORIGIN: E2E_BASE,
       EXTRA_ORIGINS: '',
       WEB_DIST: resolve('web/dist'),
-      WEB_PRIVATE_DIST: resolve('web/dist-private'),
       // E2E_SCHOOL_THEME=hills-grammar runs the suite in a school's look.
       SCHOOL_THEME: process.env.E2E_SCHOOL_THEME ?? '',
       // Every test makes its own accounts, all from this one machine: more than one address may

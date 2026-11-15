@@ -77,8 +77,6 @@ const schema = z.object({
   WEB_DIST: z.string().default('../web/dist'),
   /** The playable demo (one browser, bots, no accounts), served at /demo/ when it has been built (`npm run build:demo`). */
   WEB_DEMO_DIST: z.string().default('../web/dist-demo'),
-  /** Built files served only to signed-in accounts that are allowed them (the chaos menu). Never served statically. */
-  WEB_PRIVATE_DIST: z.string().default('../web/dist-private'),
   /** Seeds the secret chaos sequence (the knock rhythm). Defaults to one derived from IP_HASH_KEY, so it differs per deployment. */
   CHAOS_SECRET: z.preprocess((v) => (v === '' ? undefined : v), z.string().min(16).optional()),
   LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent']).default('info'),

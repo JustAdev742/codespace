@@ -1,9 +1,13 @@
-# Chaos: the secret cheat menu
+# Chaos: the secret lantern and its cheats
 
-Chaos is an Easter egg. A player who finds the secret unlocks a menu of cheats they can cast in
+Chaos is an Easter egg. A player who finds the secret is unlocked for cheats they could cast in
 live games: score swings, shields, pranks on rivals, round twists and screen effects. Anyone can
 unlock it, the owner included, and only by finding it. There is no admin grant, no request form
 and no role that turns it on.
+
+The cheat menu that unlocked players cast from was removed on 15 November 2026, at the owner's
+request. Nothing in the app casts cheats now, so an unlocked player sees nothing new in a game.
+The unlock, the cheats and the server's rules are all still here, as described below.
 
 One exception has been made by hand, and it is recorded here so that the paragraph above stays
 honest. On 12 November 2026 the owner asked for their own account (`justadev`) on the copy at
@@ -40,26 +44,15 @@ The whole sequence must be finished within 20 minutes of the knock. Progress is 
 server's memory, so a restart starts everyone over. The unlock is written to the account
 (`users.chaos_unlocked_at`) with an audit entry.
 
-"Put the lantern out", at the bottom of the menu's Active tab, locks the account again; it is
-also audited. After that the player has to find the secret again.
+The "put the lantern out" control was in the menu and went with it. The endpoint `POST /api/lantern/forget` still locks the account again and is audited, but nothing in the app calls it, so a player cannot lock the lantern out from the app. The secret would then have to be found again.
 
 ## What it does in a game
 
-Players with chaos unlocked see a lantern button in the game header. It loads the menu, which
-has three tabs:
-
-- **Cheats**: search, category chips (Favourites, Recent and the seven categories), and "Only ones
-  that work here". Each card shows its cost, target, duration, cooldown and why it would not work
-  in this game.
-- **Active**: the effects running now, each with stop and, for the first 20 seconds, undo.
-- **Combos**: ten named combinations that do something extra when cast together.
-
-A cast can hold up to five cheats. Picking a target or setting a parameter happens in the tray at
-the bottom.
+Nothing new is shown to a player with chaos unlocked. The lantern button and its menu were removed, so there is no catalogue and no screen for casting. The server still checks every cast it receives from an unlocked account, and the screen effects still draw if one arrives, but nothing in the app sends one.
 
 ### Rules every cast follows
 
-- **The server decides.** The menu sends a request; the game runtime checks it and runs it in a
+- **The server decides.** A cast is a request; the game runtime checks it and runs it in a
   transaction like a mode's own moves. It either changes real game state or is refused with a
   reason and changes nothing. No success is shown for a cast that did nothing.
 - **Energy and cooldowns.** Each player has 100 chaos energy, refilling at 4 a second. Each cheat
@@ -73,7 +66,7 @@ the bottom.
   slot replace each other. Casting a cheat again refreshes it.
 - **Effects end with the game.** Nothing outlasts a game, and nothing touches the account's
   Sparks, items or collection.
-- **Random cheats show their odds** in the menu, and the server rolls them.
+- **Random cheats have published odds**, and the server rolls them.
 - **Duplicates.** Each request carries an action id; a repeat of a request already handled is
   answered from memory instead of running twice.
 - **Disconnects.** When a player leaves, effects on them end, and so do helpful effects they
@@ -102,11 +95,7 @@ addresses. The protection is the server, not the obscurity:
 
 - **Casting** checks the account's unlock in the database on every request (cached for 5
   seconds per connection). A locked account gets "Nothing happens."
-- **The cheat list and the menu's code** come from `GET /api/lantern/book` and
-  `GET /api/lantern/book.js`. For a locked account both answer exactly like an address that does
-  not exist (404 Not Found).
-- **The menu is a separate build** (`web/vite.extras.config.ts`, written to `web/dist-private/`).
-  It is never served as a static file, and the public build does not contain it.
+- **There is no cheat list or menu code to fetch.** `GET /api/lantern/book` and `GET /api/lantern/book.js` no longer exist, for anyone. The server test checks that both answer 404.
 - **The engine's public entry point does not export the cheats.** They register only through
   `@ludora/engine/extras-effects`, which only the server imports.
 - **CI checks the public files.** `scripts/check-public-bundle.ts` searches `web/dist` and
@@ -124,7 +113,7 @@ Production refuses to start on the `change-me` or `dev-only` placeholders publis
 repository (`server/src/config.ts`, tested in `server/test/config.test.ts`).
 
 **Limits, plainly.** The flicker shows the rhythm on purpose: watching it is the first clue, so
-the knock is a puzzle step rather than a password. What keeps the menu earned is that the riddle
+the knock is a puzzle step rather than a password. What keeps the unlock earned is that the riddle
 and the ritual are drawn fresh for each attempt, checked on the server and the ritual must be
 done in a live game, within time limits, with 30 knocks an hour per account and three riddle
 tries per attempt. Anyone who obtains `CHAOS_SECRET`, `IP_HASH_KEY`, the database or a shell on
@@ -140,10 +129,9 @@ role, permission or staff route depends on it.
 | `packages/engine/src/extras/effects/` | The 209 universal cheats and the combos. |
 | `packages/engine/src/extras/packs/` | One pack per mode. |
 | `packages/engine/src/runtime/runtime.ts` | Runs casts in transactions; `cast`, `undoCast`, `stopEffect`, `calmChaos`, `chaosView`. |
-| `server/src/modules/extras/` | The sequence, the unlock and the `/api/lantern/*` routes. |
+| `server/src/modules/extras/` | The sequence, the unlock and the `/api/lantern/*` routes. No catalogue or menu routes. |
 | `server/src/realtime/room.ts`, `attach.ts` | Casting over the socket, dedupe, rate limits, calm. |
-| `web/src/features/extras/` | The public end: the About lantern, the glowing lantern, the menu button and the screen effects. |
-| `web/extras-menu/` | The private menu, built separately. |
+| `web/src/features/extras/` | The public end: the About lantern, the glowing lantern and the screen effects. |
 
 ## The catalogue
 
@@ -191,11 +179,11 @@ every mode it supports, casts it into one, and requires the two games to differ 
 
 Mode-specific setups live in `packages/engine/test/extras-scenarios/`. The core rules (energy,
 shields, conflicts, undo, calm, dedupe) have their own tests in `extras-core.test.ts`, the
-sequence and routes in `server/test/extras.test.ts`, and `e2e/extras.spec.ts` drives the whole
-thing in real browsers: knock, riddle, ritual, light, open the menu, cast Upside Down on another
-player, see their screen turn over, and calm the room.
+sequence and routes in `server/test/extras.test.ts`, and `e2e/extras.spec.ts` drives the unlock in real browsers: knock, riddle, ritual and light, then checks that no menu or catalogue is left.
 
 ## Known limits
+
+- **No casting from the app.** The cheat menu was removed on 15 November 2026, so nothing in the app sends a cast. Unlocked players can see the effects of a cast, but have no control to make one.
 
 - Effects that hide or restyle one part of the screen (a player's name, scores, a choice) only
   work where that part uses the shared components (leaderboard, answer tiles, question card).
@@ -210,6 +198,4 @@ Set `CHAOS_SECRET` (at least 16 random characters) to give the knock its own sec
 the rhythm is derived from `IP_HASH_KEY`, which production already requires. Changing either one
 changes the rhythm; unlocks already on accounts stay.
 
-The production image copies `web/dist-private` and sets `WEB_PRIVATE_DIST`. If that file is
-missing the menu cannot open; casting still works for unlocked players, but they have no way to
-do it from the app.
+There is no separate menu build, so the production image has nothing extra to copy.

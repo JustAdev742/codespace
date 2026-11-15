@@ -463,3 +463,5 @@ season's garland, and on the class page with what is coming. Ludora holds no
 school's dates and shows no crest or logo; the school name is plain text as
 the teacher typed it, so "The Hills Grammar School" appears only where a
 teacher there wrote it.
+**D53. The cheat menu is removed; the unlock stays (15 November 2026).** At the owner's request, the menu that unlocked players cast cheats from is gone. The app no longer serves the cheat list or the menu's code, and nothing in the app can cast. Kept: the knock, riddle, ritual and light; the unlock and its audit entry; the server's cast rules; the cheats in the engine. Removed: the lantern button in games, the private menu build (`web/extras-menu/`, `web/vite.extras.config.ts`), the `/api/lantern/book` and `/api/lantern/book.js` routes, and the `WEB_PRIVATE_DIST` setting. The end-to-end test now checks that nothing is left to open.
+

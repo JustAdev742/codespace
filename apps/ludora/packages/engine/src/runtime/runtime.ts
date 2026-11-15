@@ -77,7 +77,7 @@ export interface RuntimeOptions {
    * example inside view()) throws. Used by tests; too slow for production.
    */
   strict?: boolean;
-  /** Let players who unlocked the secret chaos menu cast cheats in this game. */
+  /** Let players who unlocked chaos cast cheats in this game. */
   chaos?: boolean;
 }
 

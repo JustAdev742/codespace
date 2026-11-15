@@ -1,9 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { io as connect, type Socket } from 'socket.io-client';
 import { and, eq } from 'drizzle-orm';
-import { mkdtempSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
 import { COLLECTIONS, GLIMS } from '@ludora/content';
 import { MIXED_SET } from '@ludora/engine/testing';
 import { roomOptionsSchema } from '@ludora/shared';
@@ -98,11 +95,9 @@ describe('over HTTP and sockets', () => {
   let t: TestContext;
   let base: string;
   const sockets: Socket[] = [];
-  const privateDir = mkdtempSync(join(tmpdir(), 'ludora-private-'));
-  writeFileSync(join(privateDir, 'extras-menu.js'), 'export function mount() { return () => {}; }\n');
 
   beforeAll(async () => {
-    t = await createTestApp({ WEB_PRIVATE_DIST: privateDir });
+    t = await createTestApp();
     attachRealtime(t.app, t.deps);
     await t.app.listen({ port: 0, host: '127.0.0.1' });
     base = `http://127.0.0.1:${(t.app.server.address() as { port: number }).port}`;
@@ -149,7 +144,7 @@ describe('over HTTP and sockets', () => {
     return GLIMS.filter((g) => g.collectionId === collection.id).sort((a, b) => (a.sort ?? 0) - (b.sort ?? 0))[n - 1]!.name;
   }
 
-  it('hides the catalogue and the menu code from anyone who has not unlocked chaos', async () => {
+  it('serves no cheat catalogue and no menu code, to anyone', async () => {
     const anon = new Client(t.app);
     const unknown = await anon.get('/api/this-route-does-not-exist');
     const locked = await registered(t.app);
@@ -211,10 +206,9 @@ describe('over HTTP and sockets', () => {
     expect(row!.at).toBeInstanceOf(Date);
     const audit = await t.db.select().from(auditLog).where(and(eq(auditLog.action, 'chaos.unlocked'), eq(auditLog.targetId, finder.userId)));
     expect(audit).toHaveLength(1);
-    const book = await finder.client.get('/api/lantern/book');
-    expect(book.status).toBe(200);
-    expect(book.body.cheats.length).toBeGreaterThan(200);
-    expect((await finder.client.get('/api/lantern/book.js')).res.body).toMatch(/export function mount/);
+    // Unlocking gives no menu: the catalogue and the menu's code do not exist, even for this account.
+    expect((await finder.client.get('/api/lantern/book')).status).toBe(404);
+    expect((await finder.client.get('/api/lantern/book.js')).status).toBe(404);
 
     // The open room learns about the unlock straight away.
     await until(() => Boolean(fView.v?.chaos?.me));
@@ -272,7 +266,7 @@ describe('over HTTP and sockets', () => {
 
     // Putting the lantern out locks everything again.
     expect((await finder.client.post('/api/lantern/forget')).body).toEqual({ ok: true });
-    expect((await finder.client.get('/api/lantern/book')).status).toBe(404);
+    expect((await finder.client.get('/api/lantern/status')).body).toMatchObject({ lit: false });
   }, 40_000);
 
   it('never runs chaos in homework', async () => {

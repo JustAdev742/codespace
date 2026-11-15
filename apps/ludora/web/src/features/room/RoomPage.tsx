@@ -10,7 +10,7 @@ import { Stage } from '../../ui/Stage.tsx';
 import { HostLobby, PlayerLobby } from './Lobby.tsx';
 import { Results } from './Results.tsx';
 import { ReactionBar, ReactionLayer, useChooseReactions } from './game/Reactions.tsx';
-import { ChaosMenuButton, LanternGlow } from '../extras/ExtrasEntry.tsx';
+import { LanternGlow } from '../extras/ExtrasEntry.tsx';
 import { ReportDialog } from '../moderation/ReportDialog.tsx';
 import { DebugOverlay } from './DebugOverlay.tsx';
 import './stage.css';
@@ -255,7 +255,6 @@ export default function RoomPage() {
             </span>
           ) : null}
           <div className="ml-auto flex shrink-0 items-center gap-1.5 sm:gap-2">
-            {!isHost && live ? <ChaosMenuButton room={room} handle={handle} /> : null}
             {isHost && live ? <HostControls room={room} handle={handle} /> : null}
             {!isHost && room.room.solo && live ? (
               <Button size="sm" variant="ghost" onClick={() => void handle.host({ cmd: 'end' })}>

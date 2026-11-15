@@ -3,11 +3,12 @@ import { COLLECTIONS, GLIMS } from '@ludora/content';
 import { CSRF, account, watchErrors } from './helpers.ts';
 
 /*
- * The secret chaos menu, end to end in real browsers: a player finds the
- * lantern on the About panel, knocks its rhythm, answers its riddle, sends
- * the ritual reactions in a running game, lights the lantern, opens the menu
- * (fetched from the server, not the public app) and casts on another player,
- * whose screen changes. Screenshots go to test-results for a look by eye.
+ * The secret lantern, end to end in real browsers: a player finds the lantern
+ * on the About panel, knocks its rhythm, answers its riddle, sends the ritual
+ * reactions in a running game and lights the lantern. The cheat menu has been
+ * removed, so the test then checks that nothing is left to open: no button,
+ * and no catalogue or menu code from the server. Screenshots go to test-results
+ * for a look by eye.
  */
 
 /** Solve the riddle from its text, as a player would with the collection book open. */
@@ -25,13 +26,11 @@ async function joinAs(page: Page, code: string, name: string) {
   await expect(page.getByText('You are in', { exact: true })).toBeVisible();
 }
 
-test('a player finds the lantern, unlocks chaos and casts on another player', async ({ browser }) => {
+test('a player finds the lantern and unlocks chaos, and no menu is left to open', async ({ browser }) => {
   test.setTimeout(150_000);
   const host = await account(browser, { accountType: 'teacher', displayName: 'Mr Lake' });
   const finder = await account(browser, { displayName: 'Finder Fox' });
-  const victim = await account(browser, { displayName: 'Victim Vole' });
   const finderErrors = watchErrors(finder.page);
-  const victimErrors = watchErrors(victim.page);
 
   // Before anything, the menu and catalogue do not exist for this account.
   expect((await finder.page.request.get('/api/lantern/book')).status()).toBe(404);
@@ -80,7 +79,6 @@ test('a player finds the lantern, unlocks chaos and casts on another player', as
   const { code } = await room.json();
   await host.page.goto(`/room/${code}`);
   await joinAs(finder.page, code, 'Finder Fox');
-  await joinAs(victim.page, code, 'Victim Vole');
   await host.page.getByRole('button', { name: 'Start game' }).click();
   await host.page.getByRole('button', { name: /Next|Skip ahead/ }).click();
   await expect(finder.page.getByRole('group', { name: 'Answers' })).toBeVisible();
@@ -100,30 +98,10 @@ test('a player finds the lantern, unlocks chaos and casts on another player', as
   await finder.page.mouse.up();
   await expect(finder.page.getByText(/The lantern is lit/)).toBeVisible();
 
-  // The menu: loaded from the server, with the catalogue fetched after.
-  const open = finder.page.getByRole('button', { name: 'Open the lantern' });
-  await expect(open).toBeVisible();
-  await open.click();
-  const menu = finder.page.getByRole('dialog', { name: 'The lantern' });
-  await expect(menu).toBeVisible();
-  await expect(menu.getByRole('searchbox', { name: 'Search cheats' })).toBeVisible();
-  await finder.page.screenshot({ path: 'test-results/extras-menu.png' });
-  await menu.getByRole('searchbox', { name: 'Search cheats' }).fill('upside down');
-  await menu.getByRole('button', { name: /Upside Down/ }).first().click();
-  await menu.getByLabel('Target').selectOption({ label: 'Victim Vole' });
-  await menu.getByRole('button', { name: /^Cast/ }).click();
-  await expect(menu.getByRole('status')).toContainText('Upside Down');
-  await finder.page.screenshot({ path: 'test-results/extras-menu-cast.png' });
-
-  // The victim's screen turns upside down and says who did it.
-  await expect(victim.page.locator('[data-chaos-root].chaos-look-upside-down')).toBeVisible();
-  await expect(victim.page.getByText(/Finder Fox: Upside Down/)).toBeVisible();
-  await victim.page.screenshot({ path: 'test-results/chaos-victim.png' });
-
-  // The host can calm the room.
-  await host.page.getByRole('button', { name: 'Calm the room' }).click();
-  await expect(victim.page.locator('[data-chaos-root].chaos-look-upside-down')).toHaveCount(0);
+  // Nothing is left to open: no lantern button in the game, and the catalogue and menu code answer 404.
+  await expect(finder.page.getByRole('button', { name: 'Open the lantern' })).toHaveCount(0);
+  expect((await finder.page.request.get('/api/lantern/book')).status()).toBe(404);
+  expect((await finder.page.request.get('/api/lantern/book.js')).status()).toBe(404);
 
   expect(finderErrors.filter((e) => !/favicon/.test(e))).toEqual([]);
-  expect(victimErrors).toEqual([]);
 });

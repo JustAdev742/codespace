@@ -1,8 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
-import type { ChaosRequest, RoomView } from '@ludora/shared';
 import { api, ApiError } from '../../lib/api.ts';
-import type { AckResult, RoomHandle } from '../../lib/useRoom.ts';
+import type { RoomHandle } from '../../lib/useRoom.ts';
 import { playSfx } from '../../lib/sound/react.tsx';
 import { prefersReducedMotion } from '../../lib/prefs.ts';
 import { EmoteGlyph } from '../../art/cosmetics.tsx';
@@ -11,11 +10,10 @@ import { Button } from '../../ui/Button.tsx';
 
 /*
  * The public end of the secret: a lantern on the About panel that listens
- * for a knock, the lantern that appears when the ritual is done, and the
- * button that fetches the menu for players who have unlocked it. None of
+ * for a knock, and the lantern that appears when the ritual is done. None of
  * this knows the rhythm, the riddle or the ritual; the server sends each
- * stage only to whoever reached it, and the menu's code is fetched from the
- * server only for unlocked accounts.
+ * stage only to whoever reached it. The cheat menu was removed, so an
+ * unlocked player has no control for casting here.
  */
 
 /** The lantern on the About panel. Tapping it in the right rhythm starts the sequence. */
@@ -162,7 +160,7 @@ export function LanternGlow({ handle }: { handle: RoomHandle }) {
       const r = await api.post<{ ok: boolean; message?: string }>('/api/lantern/light');
       if (r.ok) {
         playSfx('jackpot');
-        toast.success('The lantern is lit. Something new is waiting in your games.');
+        toast.success('The lantern is lit.');
       } else toast(r.message ?? 'Nothing happens.');
     } catch {
       toast('Nothing happens.');
@@ -194,84 +192,5 @@ export function LanternGlow({ handle }: { handle: RoomHandle }) {
         <ellipse cx="16" cy="22" rx="4" ry="6" fill="#fff" />
       </svg>
     </button>
-  );
-}
-
-/** What the menu (loaded from the server) is given to work with. */
-export interface ChaosHost {
-  view(): RoomView;
-  subscribe(fn: (v: RoomView) => void): () => void;
-  send(req: ChaosRequestBody): Promise<AckResult>;
-  gameNow(): number;
-  play(sfx: 'powerUp' | 'steal' | 'shield' | 'bust' | 'select' | 'tap'): void;
-  reducedMotion(): boolean;
-  close(): void;
-}
-type ChaosRequestBody = ChaosRequest extends infer T ? (T extends unknown ? Omit<T, 'actionId'> : never) : never;
-
-interface MenuModule {
-  mount(el: HTMLElement, host: ChaosHost): () => void;
-}
-
-/** The button that opens the secret menu. Only rendered for players the server says have unlocked chaos. */
-export function ChaosMenuButton({ room, handle }: { room: RoomView; handle: RoomHandle }) {
-  const [open, setOpen] = useState(false);
-  const latest = useRef(room);
-  const listeners = useRef(new Set<(v: RoomView) => void>());
-  latest.current = room;
-  useEffect(() => {
-    for (const fn of listeners.current) fn(room);
-  }, [room]);
-  useEffect(() => {
-    if (!open) return;
-    // On the page itself, above the room's header and stage, so nothing in the game can sit over it.
-    const holder = document.createElement('div');
-    document.body.appendChild(holder);
-    let unmount: (() => void) | null = null;
-    let cancelled = false;
-    const host: ChaosHost = {
-      view: () => latest.current,
-      subscribe: (fn) => {
-        listeners.current.add(fn);
-        return () => listeners.current.delete(fn);
-      },
-      send: (req) => handle.chaos(req),
-      gameNow: () => handle.gameNow(),
-      play: (s) => playSfx(s),
-      reducedMotion: prefersReducedMotion,
-      close: () => setOpen(false),
-    };
-    // The menu's code is served only to accounts that unlocked it, and never as a public file.
-    import(/* @vite-ignore */ `${location.origin}/api/lantern/book.js`)
-      .then((m: MenuModule) => {
-        if (!cancelled) unmount = m.mount(holder, host);
-      })
-      .catch(() => {
-        toast('The lantern flickers out. Try again in a moment.');
-        setOpen(false);
-      });
-    return () => {
-      cancelled = true;
-      unmount?.();
-      holder.remove();
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open]);
-  if (!room.chaos?.me) return null;
-  return (
-    <>
-      <button
-        type="button"
-        aria-label="Open the lantern"
-        aria-expanded={open}
-        onClick={() => setOpen((o) => !o)}
-        className="grid size-11 shrink-0 place-items-center rounded-full bg-[radial-gradient(circle,rgb(255_200_80/.45),transparent_70%)] outline-none focus-visible:ring-4 focus-visible:ring-lantern"
-      >
-        <svg viewBox="0 0 32 40" className="h-7 w-6" aria-hidden>
-          <path d="M8 11h16l-2 22H10z" fill="var(--lantern)" />
-          <ellipse cx="16" cy="22" rx="4" ry="6" fill="#fff6c9" />
-        </svg>
-      </button>
-    </>
   );
 }

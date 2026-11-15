@@ -21,7 +21,6 @@ ENV NODE_ENV=production \
     HOST=0.0.0.0 \
     PORT=8787 \
     WEB_DIST=../web/dist \
-    WEB_PRIVATE_DIST=../web/dist-private \
     UPLOAD_DIR=/data/uploads
 WORKDIR /app
 COPY package.json package-lock.json ./
@@ -37,8 +36,6 @@ COPY --from=build /app/server/drizzle server/drizzle
 COPY --from=build /app/web/dist web/dist
 # The one-screen practice game at /demo/, for a class with no devices: no server state, no account.
 COPY --from=build /app/web/dist-demo web/dist-demo
-# The chaos menu: read by the server and sent only to accounts that unlocked it; never served statically.
-COPY --from=build /app/web/dist-private web/dist-private
 RUN mkdir -p /data/uploads && chown -R node:node /data
 USER node
 WORKDIR /app/server
