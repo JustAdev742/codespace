@@ -123,6 +123,8 @@ test('a solo player chooses their settings as a stage, the game honours them, an
   expect(room.room!.solo).toBe(true);
   expect(room.room!.questionCount).toBeLessThanOrEqual(5);
   expect(room.players.filter((p) => p.isBot)).toHaveLength(2);
+  // Leave once the first word is on screen: the word game's code loads with it, and leaving sooner cuts that load off.
+  await expect(page.getByRole('group', { name: /Your answer so far/ })).toBeVisible({ timeout: 30_000 });
 
   // Next time, the same game starts from what was chosen, on this device.
   await page.goto('/host?solo=1');

@@ -146,12 +146,14 @@ test('build a game from a starting point, change it, save it, host it to the end
 test('copy someone’s public game to change it', async ({ browser }) => {
   test.setTimeout(180_000);
   const maker = await account(browser);
+  // A title only this account uses: the database is shared by every attempt, so a fixed name would find earlier games.
+  const title = `Island ${maker.username}`;
   expect(operator('grant', maker.username, 'trusted', '--reason', 'e2e')).toContain('Granted');
   const starter = await (await maker.page.request.get('/api/blueprints?scope=public')).json();
   expect(Array.isArray(starter.games)).toBe(true);
   // The maker builds from the island starting point and lists it for everyone.
   await maker.page.goto('/game-maker/new?from=island-claim');
-  await maker.page.getByLabel('Name', { exact: true }).fill('Island of the week');
+  await maker.page.getByLabel('Name', { exact: true }).fill(title);
   await maker.page.getByLabel('Who can see it').selectOption('public');
   await maker.page.getByRole('button', { name: 'Save game' }).click();
   await expect(maker.page).toHaveURL(/\/game-maker\/[0-9a-f-]{36}$/);
@@ -159,17 +161,17 @@ test('copy someone’s public game to change it', async ({ browser }) => {
   const other = await account(browser);
   const errors = watchErrors(other.page);
   await other.page.goto('/game-maker');
-  await other.page.getByRole('searchbox', { name: 'Search made games' }).fill('Island of the week');
-  const card = other.page.getByRole('listitem').filter({ has: other.page.getByRole('heading', { name: 'Island of the week' }) });
+  await other.page.getByRole('searchbox', { name: 'Search made games' }).fill(title);
+  const card = other.page.getByRole('listitem').filter({ has: other.page.getByRole('heading', { name: title }) });
   // The card says plainly what acts on other players, and who made it.
   await expect(card).toContainText('Acts on other players');
   await expect(card).toContainText('Gust power-up');
   await expect(card).toContainText(`Made by ${maker.username}`);
   await check(other.page, 'studio-community');
   await card.getByRole('link', { name: 'See its code' }).click();
-  await expect(other.page.getByRole('heading', { name: 'Island of the week', level: 1 })).toBeVisible();
+  await expect(other.page.getByRole('heading', { name: title, level: 1 })).toBeVisible();
   await other.page.getByRole('button', { name: 'Copy to change it' }).click();
-  await expect(other.page.getByRole('heading', { name: 'Island of the week (copy)', level: 1 })).toBeVisible();
+  await expect(other.page.getByRole('heading', { name: `${title} (copy)`, level: 1 })).toBeVisible();
   // The copy is theirs: they can change and save it.
   await other.page.getByLabel('Name', { exact: true }).fill('My island');
   await other.page.getByRole('button', { name: 'Save', exact: true }).click();
@@ -177,6 +179,19 @@ test('copy someone’s public game to change it', async ({ browser }) => {
   const mine = await (await other.page.request.get('/api/blueprints?scope=mine')).json();
   expect(mine.games.map((g: { name: string }) => g.name)).toEqual(['My island']);
   expect(errors).toEqual([]);
+});
+
+test('typing in the form keeps its focus after a pause, while the test game restarts', async ({ browser }) => {
+  test.setTimeout(120_000);
+  const maker = await account(browser, { accountType: 'teacher' });
+  await maker.page.goto('/game-maker/new?from=island-claim');
+  const name = maker.page.getByLabel('Name', { exact: true });
+  await name.fill('Island');
+  // A pause longer than the test game's restart: the typing after it must still go into the name.
+  await maker.page.waitForTimeout(1500);
+  await maker.page.keyboard.type(' one');
+  await expect(name).toHaveValue('Island one');
+  await expect(maker.page.getByRole('textbox', { name: 'Your answer' })).toHaveValue('');
 });
 
 test('a 3D race draws its scene in the live test, with you and 20 bots on the big screen', async ({ browser, browserName }) => {

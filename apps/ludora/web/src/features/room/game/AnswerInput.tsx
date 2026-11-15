@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import { ArrowDown, ArrowUp, Check, Delete, Send, Undo2, Users, WifiOff, X } from 'lucide-react';
 import type { Answer, Media, PublicQuestion } from '@ludora/shared';
 import { AnswerShape, ANSWER_LETTERS } from '../../../art/icons.tsx';
@@ -18,6 +18,9 @@ import { SoundPlay } from '../../sets/sound/SoundPlay.tsx';
  */
 
 /** Shows the key hints on tiles from the first key press, and hides them again at the first touch. */
+/** Whether a question's first field takes the focus when it appears. The Game Maker's live test turns it off, so the form being typed in keeps its focus. */
+export const AutoFocusContext = createContext(true);
+
 function useKeyboardHints() {
   useEffect(() => {
     const root = document.documentElement;
@@ -399,10 +402,11 @@ function TextAnswer({ numeric, unit, onSubmit, disabled }: { numeric: boolean; u
   const [error, setError] = useState<string | null>(null);
   const ref = useRef<HTMLInputElement>(null);
   const pad = usePad(numeric);
+  const autoFocus = useContext(AutoFocusContext);
   // With the number pad on screen the system keyboard stays away, so focusing the field first is no use.
   useEffect(() => {
-    if (!pad) ref.current?.focus();
-  }, [pad]);
+    if (!pad && autoFocus) ref.current?.focus();
+  }, [pad, autoFocus]);
   const locked = disabled || sent;
   const submit = async (e: FormEvent) => {
     e.preventDefault();
@@ -626,7 +630,10 @@ function BlanksAnswer({ q, onSubmit, disabled }: AnswerInputProps & { q: Extract
   const [target, setTarget] = useState<number | null>(null);
   const [sent, setSent] = useState(false);
   const first = useRef<HTMLInputElement>(null);
-  useEffect(() => first.current?.focus(), []);
+  const autoFocus = useContext(AutoFocusContext);
+  useEffect(() => {
+    if (autoFocus) first.current?.focus();
+  }, [autoFocus]);
   const locked = disabled || sent;
   const bank = q.bank ?? null;
   const complete = values.every((v) => v.trim());

@@ -1,4 +1,5 @@
 import { Suspense, useMemo, useState } from 'react';
+import { AutoFocusContext } from '../room/game/AnswerInput.tsx';
 import { RotateCcw } from 'lucide-react';
 import { MADE_GAME_MODE_ID, type Blueprint, type Question } from '@ludora/shared';
 import type { MadeView } from '@ludora/engine';
@@ -40,7 +41,12 @@ export function LiveTest({ blueprint, bots }: { blueprint: Blueprint; bots: numb
     // eslint-disable-next-line react-hooks/exhaustive-deps -- the key is the blueprint; a new round restarts it.
     [key, bots, round],
   );
-  return <TestRoom key={`${key}|${bots}|${round}`} setup={setup} onRestart={() => setRound((r) => r + 1)} />;
+  // The test restarts with every change to the form: a restart must not take the focus from the field being typed in.
+  return (
+    <AutoFocusContext.Provider value={false}>
+      <TestRoom key={`${key}|${bots}|${round}`} setup={setup} onRestart={() => setRound((r) => r + 1)} />
+    </AutoFocusContext.Provider>
+  );
 }
 
 function TestRoom({ setup, onRestart }: { setup: DemoSetup; onRestart: () => void }) {
