@@ -521,8 +521,15 @@ input[type=text]{flex:1;min-width:0;font:inherit;color:var(--text);background:#0
 .chips{display:flex;flex-wrap:wrap;gap:6px;padding:0 10px 10px}.chips button{font-size:13px;padding:6px 9px}
 .mic.on{background:#3a1717;border-color:var(--alert)}
 .hint{color:var(--muted);font-size:12.5px;padding:0 12px 10px}
+.pick{color:var(--muted);font-size:13px;display:flex;align-items:center;gap:6px}
+select{font:inherit;font-size:13px;color:var(--text);background:#222a34;border:1px solid var(--line);border-radius:8px;padding:5px 8px}
+select:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+@media (max-width:600px){header{flex-wrap:wrap}header .st{margin-left:0;width:100%}}
 </style></head><body>
-<header><h1>__BODY__ &middot; live in the house</h1><div class="st" id="st" aria-live="polite">connecting&hellip;</div></header>
+<header><h1>__BODY__ &middot; live in the house</h1>
+<label class="pick">Robot <select id="robot" aria-label="Robot body">
+<option value="kestrel"__SEL_KESTREL__>KESTREL S1</option><option value="h2x"__SEL_H2X__>Unitree H2-X</option></select></label>
+<div class="st" id="st" aria-live="polite">connecting&hellip;</div></header>
 <main>
 <section class="panel video" aria-label="Live view">
 <img id="v" src="/stream" alt="Live simulation view of the robot in the house">
@@ -554,6 +561,10 @@ document.querySelectorAll('.chips button').forEach(b=>b.onclick=()=>send(b.textC
 document.querySelectorAll('[data-view]').forEach(b=>b.onclick=()=>{fetch('/view',{method:'POST',body:b.dataset.view});document.querySelectorAll('[data-view]').forEach(x=>x.setAttribute('aria-pressed',x===b));});
 document.getElementById('alarm').onclick=()=>send("Someone is being hurt!");
 document.getElementById('reset').onclick=()=>send("reset");
+const robot=document.getElementById('robot');
+robot.onchange=()=>{const name=robot.options[robot.selectedIndex].text;robot.disabled=true;st.textContent='switching to '+name+'…';
+ add('log','Switching to '+name+'. The house restarts with the new body; this takes about half a minute.');
+ fetch('/robot',{method:'POST',body:robot.value}).then(()=>{const t0=Date.now();const poll=()=>setTimeout(()=>fetch('/state').then(r=>r.json()).then(s=>{if(s.room&&s.body===robot.value)location.reload();else poll();}).catch(poll),1500);setTimeout(poll,2500);});};
 const spk=document.getElementById('spk');spk.onclick=()=>{speak=!speak;spk.setAttribute('aria-pressed',speak);if(!speak&&'speechSynthesis' in window)speechSynthesis.cancel();};
 const es=new EventSource('/events');es.onmessage=e=>{const m=JSON.parse(e.data);if(m.id>lastId){lastId=m.id;add(m.kind,m.text);}};
 setInterval(()=>fetch('/state').then(r=>r.json()).then(s=>{if(!s.room){return;}st.textContent=`${s.room} · ${s.task}`+(s.holding?` · holding ${s.holding}`:'')+(s.estop?' · E-STOP':'')+` · fatigue ${Math.round(s.fatigue*100)}%`;}).catch(()=>{st.textContent='disconnected';}),1000);
@@ -583,10 +594,13 @@ def make_handler(live):
 
         def do_GET(self):
             if self.path in ("/", "/index.html"):
-                body = "Unitree H2-X" if os.environ.get("KESTREL_VARIANT") == "h2x" else "KESTREL"
-                self._send(200, PAGE.replace("__BODY__", body).encode(), "text/html; charset=utf-8")
+                h2x = os.environ.get("KESTREL_VARIANT") == "h2x"
+                page = (PAGE.replace("__BODY__", "Unitree H2-X" if h2x else "KESTREL")
+                        .replace("__SEL_H2X__", " selected" if h2x else "").replace("__SEL_KESTREL__", "" if h2x else " selected"))
+                self._send(200, page.encode(), "text/html; charset=utf-8")
             elif self.path == "/state":
-                self._send(200, json.dumps(live.status).encode(), "application/json")
+                st = dict(live.status, body=live.robot)
+                self._send(200, json.dumps(st).encode(), "application/json")
             elif self.path == "/stream":
                 self.send_response(200)
                 self.send_header("Content-Type", "multipart/x-mixed-replace; boundary=frame")
@@ -641,12 +655,33 @@ def make_handler(live):
                 if body in ("follow", "house", "head"):
                     live.view = body
                 self._send(200, b"ok", "text/plain")
+            elif self.path == "/robot":
+                if body not in ROBOTS:
+                    self._send(400, b"unknown robot", "text/plain")
+                    return
+                self._send(200, b"ok", "text/plain")
+                if body != live.robot:
+                    threading.Thread(target=restart_as, args=(body,), daemon=True).start()
             else:
                 self._send(404, b"not found", "text/plain")
     return H
 
 
 ROBOTS = {"kestrel": "s1body", "h2x": "h2x"}
+
+
+def restart_as(robot):
+    """Switch bodies from the web page: the robot model is fixed when the simulation imports it, so start this program
+    again in place (same process, same port and options) with --robot changed. The page reloads when it is back."""
+    time.sleep(0.4)                                  # let the reply reach the browser
+    argv = [x for x in sys.argv[1:]]
+    if "--robot" in argv:
+        k = argv.index("--robot")
+        del argv[k:k + 2]
+    argv = [a for a in argv if not a.startswith("--robot=")]
+    print(f"switching to {robot}: restarting", flush=True)
+    sys.stdout.flush()
+    os.execv(sys.executable, [sys.executable, str(Path(__file__).resolve())] + argv + ["--robot", robot])
 
 
 def main():
@@ -674,6 +709,7 @@ def main():
     if a.phone:
         a.width, a.height, a.render_every, a.quality = 640, 400, 8, 60
     live = Live(a)
+    live.robot = a.robot
     if a.claude:
         from live_claude import ClaudeBrain
         live.claude = ClaudeBrain(live, model=a.claude_model)
