@@ -292,6 +292,25 @@ starts the robot by itself.
    open it.
 5. Tap anywhere once (iPhones only let a page speak after a tap). Press **Talk** to speak, or type.
 
+**A white page on the iPhone?** GitHub puts a sign-in check in front of a private port, and iPhone Safari's "Prevent
+Cross-Site Tracking" blocks the cookie it uses, so the page stays white. In the codespace's terminal, check that the
+robot is running, then make the port public (anyone with the link can open it; the link is random, and the codespace
+sleeps after 30 minutes):
+
+```bash
+curl -s localhost:8765/state
+```
+
+```bash
+gh codespace ports visibility 8765:public -c $CODESPACE_NAME
+```
+
+The first should print the robot's state, such as `{"room": "hall", ...}`. If it says the connection was refused,
+start the robot with `bash projects/kestrel-humanoid/brain/codespace_start.sh`, wait half a minute and try again (the
+log is `/tmp/kestrel-live.log`). Make it private again with `gh codespace ports visibility 8765:private -c
+$CODESPACE_NAME`. Turning off Settings > Safari > Prevent Cross-Site Tracking also works, without making the port
+public.
+
 `--phone` video is 640 x 400 at about 6 frames a second: about 1.6 Mbit/s, roughly 0.7 GB an hour, so use Wi-Fi when
 you can. A codespace stops itself after 30 minutes without use; personal GitHub accounts get free Codespace hours each
 month (on a 2-core machine, about 60 hours). Stop it from github.com/codespaces when you are done. If the robot isn't
