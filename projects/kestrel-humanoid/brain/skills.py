@@ -416,14 +416,18 @@ class World(A.Arena):
         if not self.settle():                 # first plant the feet; the crouch starts from where that leaves them
             return False
         z = KM.SIT_Z                          # this body's seated hip height (KESTREL 0.47 m)
-        legs = [(0.0, self.legs_now())] + self._pose_path([(1.2, KM.STAND_HIP - 0.11, 0.25, 0.02), (2.2, z + 0.13, 0.45, 0.0),
-                                                            (3.0, z + 0.05, 0.45, -0.05), (3.8, z, 0.30, -0.15),
-                                                            (4.6, z, 0.0, -0.25)])
-        arms = [(0.0, self.arms_now()), (1.2, [-0.7, -0.7, -0.4, -0.4]), (3.0, [-0.9, -0.9, -0.4, -0.4]),
-                (4.6, [-0.3, -0.3, -1.3, -1.3])]
+        sp = getattr(KM, "SIT", {})           # per body: CoM further forward while crouching, a slower descent
+        f, ts = sp.get("com_fwd", 0.0), sp.get("slow", 1.0)
+        legs = [(0.0, self.legs_now())] + self._pose_path([(1.2 * ts, KM.STAND_HIP - 0.11, 0.25, 0.02 + f),
+                                                            (2.2 * ts, z + 0.13, 0.45, 0.0 + f),
+                                                            (3.0 * ts, z + 0.05, 0.45, -0.05 + f), (3.8 * ts, z, 0.30, -0.15),
+                                                            (4.6 * ts, z, 0.0, -0.25)])
+        arms = [(0.0, self.arms_now()), (1.2 * ts, [-0.7, -0.7, -0.4, -0.4]), (3.0 * ts, [-0.9, -0.9, -0.4, -0.4]),
+                (4.6 * ts, [-0.3, -0.3, -1.3, -1.3])]
         # the crouch is balance-gated down to hips 13 cm above the seated height (2.3 s); below that the plan moves the
         # weight back onto the seat
-        if not self._run_balanced(legs, arms, 5.2, gate_from=0.0, gate_until=2.3, lo=-0.03, hi=0.09, max_s=12.0):
+        if not self._run_balanced(legs, arms, 5.2 * ts, gate_from=0.0, gate_until=2.3 * ts, lo=-0.03, hi=0.09,
+                                  max_s=12.0 * ts, gain=sp.get("gain", 1.2)):
             return False
         return self.pelvis_z() < SEAT_TOP + 0.25 and self.upright() > 0.8
 

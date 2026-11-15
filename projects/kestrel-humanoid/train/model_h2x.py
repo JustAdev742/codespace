@@ -17,6 +17,7 @@ What changes from Unitree's file, and why:
   thigh capsules may not touch the robot's own pelvis and torso: at deep hip flexion they overlap where the real hip
   housing clears);
 * a hook on each hand (the H2 ships without hands; the hook matches KESTREL's carrying method);
+* the pelvis gets Unitree's mass (4.25 kg) as an explicit inertial: Unitree's file derives it from the collision mesh;
 * actuators: PD position servos with Unitree's joint torque limits (hip and knee 360 N m, ankle pitch 67, ankle roll
   19, shoulder 130, elbow 60). Mesh visuals are kept only for rendering.
 """
@@ -46,8 +47,9 @@ CAM_POS = "0.11 0 0.08"    # head camera in the head (head-yaw link) frame: at e
 STAND_HIP, REACH_FWD, CROUCH_FWD, LOW_HANDLE, LOW_REACH = 0.946, 0.36, 0.21, 1.0, 0.33
 CROUCH = [(0.75, (0.80, 0.2)), (0.60, (0.70, 0.4)), (0.50, (0.62, 0.5)), (0.40, (0.55, 0.6)), (0.0, (0.50, 0.7))]
 SIT_Z = 0.52               # seated on the 46 cm chair: pelvis box on the seat, soles on the floor
-STIFF_ANKLE = 2.5          # planned motions (sit, crouch): 67 kg with its centre of mass at pelvis height on 60 N m/rad
-                           # ankle servos sags forward onto the toes; 2.5x (still within the 66.9 N m limit) holds it
+STIFF_ANKLE = 4.0          # planned motions (sit, crouch): 71 kg with its centre of mass at pelvis height on 60 N m/rad
+                           # ankle servos sags onto the toes or the heels; 4x (still within the 66.9 N m limit) holds it
+SIT = {"gain": 2.0}        # sitting down: a faster balance correction (brain/skills.py sit; KESTREL's is 1.2)
 # planned stand-up from the chair (brain/skills.py stand_up_planned; KESTREL uses its learned stand-up): seated poses
 # solved from (hip above the seated height, torso pitch, CoM ahead of the ankle), then rise through balanced poses with
 # the weight kept over the heel half of the sole - a 67 kg body with its CoM at pelvis height that comes up with the
@@ -57,6 +59,11 @@ RISE = {"lean_pose": [0.0, 0.35, -0.15], "knees_pose": [0.0, 0.65, -0.02],
         "dt": 1.8, "gain": 1.2, "com_up": 0.0}
 WALK_POLICY, BODY_NAME = "h2x2", "Unitree H2-X"   # walking policy trained for this body (train/runs/h2x2)
 W_NOLOAD = {"hip_yaw": 20.0, "hip_roll": 20.0, "hip_pitch": 20.0, "knee": 20.0, "ankle_pitch": 25.0, "ankle_roll": 25.0}
+
+
+# the pelvis inertial MuJoCo computes from Unitree's pelvis mesh (density 1000; total robot 71.3 kg)
+PELVIS_INERTIAL = {"pos": "0 0.001509 -0.003244", "quat": "1 0.000415 0.00001 -0.0000476", "mass": "4.2481",
+                   "diaginertia": "0.016355 0.013147 0.012838"}
 
 
 def _name_map():
@@ -124,6 +131,11 @@ def robot_xml(visual, seat_collision, leg_joints, arm_joints):
                         child.set("group", "1")
                 else:
                     body.remove(child)                  # Unitree's foot spheres and sole box: replaced below
+    if pelvis.find("inertial") is None:                 # Unitree gives the pelvis no <inertial>: MuJoCo derives it from the
+        el = ET.Element("inertial")                       # collision mesh (inertiafromgeom); with that mesh gone, set the
+        for k, v in PELVIS_INERTIAL.items():              # same values explicitly
+            el.set(k, v)
+        pelvis.insert(0, el)
     by = {b.get("name"): b for b in pelvis.iter("body")}
 
     def add(body, tag, **attrs):

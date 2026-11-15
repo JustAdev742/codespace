@@ -182,7 +182,7 @@ class Envs:
         m.actuator_gainprm[:, 0] = kp
         m.actuator_biasprm[:, 1] = -kp
         m.actuator_biasprm[:, 2] = -self.base_kv * self.rng.uniform(0.85, 1.15)
-        m.body_mass[1] = self.base_mass + self.rng.uniform(-3.0, 6.0)
+        m.body_mass[1] = max(0.3 * self.base_mass, self.base_mass + self.rng.uniform(-3.0, 6.0))   # never massless
 
     def _resample_cmd(self, i):
         s = self.cmd_scale
