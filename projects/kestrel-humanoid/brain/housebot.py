@@ -54,8 +54,10 @@ class Interrupted(Exception):
 
 LINES = {
     "hello": ["Hello. I'm awake, I'm balanced, and I'm listening.", "Greetings. Speak; I'll act."],
-    "who": (["H2-X: Unitree's body, one point eight metres of it, and KESTREL's mind. I fetch, I carry, I don't strike.",
-             "A guardian frame with a gentle brief. Unitree built the body; the opinions are mine."] if KM.VARIANT == "h2x" else
+    "who": {"h2x": ["H2-X: Unitree's body, one point eight metres of it, and KESTREL's mind. I fetch, I carry, I don't strike.",
+                    "A guardian frame with a gentle brief. Unitree built the body; the opinions are mine."],
+            "g1": ["G1: Unitree's compact frame, one point three metres, with KESTREL's mind in it. I don't strike.",
+                   "Small body, large opinions. Unitree built the frame; the thinking is mine."]}.get(KM.VARIANT,
             ["KESTREL. Hoverboard motors, drill gearboxes, and a mind that walks. I fetch, I carry, I sit, I don't strike.",
              "I am what you built from scrap: two legs, a hook for a hand, and opinions."]),
     "how": ["Joints warm, balance perfect, patience finite. Give me something to do.",

@@ -230,9 +230,9 @@ def main():
     ap.add_argument("--n", type=int, default=1, help="multiplier on the number of trials per suite")
     ap.add_argument("--suites", default="language,nav,steps,fetch,sit,people,alarm")
     ap.add_argument("--seed", type=int, default=1000)
-    ap.add_argument("--robot", choices=["kestrel", "h2x"], default="kestrel")
+    ap.add_argument("--robot", choices=["kestrel", "h2x", "g1"], default="kestrel")
     a = ap.parse_args()
-    os.environ["KESTREL_VARIANT"] = {"kestrel": "s1body", "h2x": "h2x"}[a.robot]     # inherited by the trial processes
+    os.environ["KESTREL_VARIANT"] = {"kestrel": "s1body", "h2x": "h2x", "g1": "g1"}[a.robot]     # inherited by the trial processes
     counts = dict(language=1, nav=12, steps=6, fetch=14, sit=10, people=6, alarm=6)
     jobs = []
     for s in a.suites.split(","):
@@ -243,7 +243,7 @@ def main():
     # so a long-lived worker grows until the system kills it, and the pool then waits forever
     with Pool(a.procs, maxtasksperchild=1) as pool:
         res = pool.map(trial, jobs, chunksize=1)
-    lines = [f"# {'KESTREL' if a.robot == 'kestrel' else 'Unitree H2-X'} in the house: test report", "",
+    lines = [f"# {dict(kestrel='KESTREL', h2x='Unitree H2-X', g1='Unitree G1')[a.robot]} in the house: test report", "",
              f"{len(res)} trials, {sum(r.get('sim_s', 0) for r in res) / 60:.0f} simulated minutes, "
              f"{(time.time() - t0) / 60:.0f} minutes on {a.procs} CPU cores. `python house_test.py` reproduces it.", "",
              "| Suite | Passed | Falls | Bumps (control steps touching a wall, furniture, person or vacuum) |", "|---|---|---|---|"]

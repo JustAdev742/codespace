@@ -528,7 +528,7 @@ select:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 </style></head><body>
 <header><h1>__BODY__ &middot; live in the house</h1>
 <label class="pick">Robot <select id="robot" aria-label="Robot body">
-<option value="kestrel"__SEL_KESTREL__>KESTREL S1</option><option value="h2x"__SEL_H2X__>Unitree H2-X</option></select></label>
+<option value="kestrel"__SEL_KESTREL__>KESTREL S1</option><option value="h2x"__SEL_H2X__>Unitree H2-X</option><option value="g1"__SEL_G1__>Unitree G1</option></select></label>
 <div class="st" id="st" aria-live="polite">connecting&hellip;</div></header>
 <main>
 <section class="panel video" aria-label="Live view">
@@ -594,9 +594,11 @@ def make_handler(live):
 
         def do_GET(self):
             if self.path in ("/", "/index.html"):
-                h2x = os.environ.get("KESTREL_VARIANT") == "h2x"
-                page = (PAGE.replace("__BODY__", "Unitree H2-X" if h2x else "KESTREL")
-                        .replace("__SEL_H2X__", " selected" if h2x else "").replace("__SEL_KESTREL__", "" if h2x else " selected"))
+                v = os.environ.get("KESTREL_VARIANT")
+                title = {"h2x": "Unitree H2-X", "g1": "Unitree G1"}.get(v, "KESTREL")
+                page = (PAGE.replace("__BODY__", title).replace("__SEL_H2X__", " selected" if v == "h2x" else "")
+                        .replace("__SEL_G1__", " selected" if v == "g1" else "")
+                        .replace("__SEL_KESTREL__", "" if v in ("h2x", "g1") else " selected"))
                 self._send(200, page.encode(), "text/html; charset=utf-8")
             elif self.path == "/state":
                 st = dict(live.status, body=live.robot)
@@ -667,7 +669,7 @@ def make_handler(live):
     return H
 
 
-ROBOTS = {"kestrel": "s1body", "h2x": "h2x"}
+ROBOTS = {"kestrel": "s1body", "h2x": "h2x", "g1": "g1"}
 
 
 def restart_as(robot):
@@ -687,7 +689,7 @@ def restart_as(robot):
 def main():
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     ap.add_argument("--robot", choices=sorted(ROBOTS), default="kestrel",
-                    help="the body: kestrel (KESTREL S1) or h2x (Unitree H2-X, on Unitree's official H2 model)")
+                    help="the body: kestrel (KESTREL S1), h2x (Unitree H2-X, on Unitree's H2 model) or g1 (Unitree G1)")
     ap.add_argument("--port", type=int, default=8765)
     ap.add_argument("--host", default="127.0.0.1", help="0.0.0.0 to open it to other devices on your network")
     ap.add_argument("--viewer", action="store_true", help="also open MuJoCo's interactive 3D viewer")
