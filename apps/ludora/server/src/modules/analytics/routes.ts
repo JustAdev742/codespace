@@ -41,7 +41,7 @@ export async function analyticsRoutes(app: FastifyInstance, deps: AppDeps) {
     const r = await buildReport(db, g, auth);
     const [cls] = g.classId ? await db.select({ name: classes.name }).from(classes).where(eq(classes.id, g.classId)).limit(1) : [];
     return {
-      game: { id: g.id, mode: modeTitle(g.modeId, g.variantId, g.settings), modeId: g.modeId, variantId: g.variantId, setTitle: g.setTitle, setId: g.setId, startedAt: g.startedAt.toISOString(), endedAt: g.endedAt.toISOString(), durationMs: g.durationMs, players: g.playerCount, endedBy: g.endedBy, solo: g.isSolo, chaos: (g.chaos as { casts: number } | null)?.casts ?? 0, pacing: r.data.pacing, classId: g.classId, className: cls?.name ?? null },
+      game: { id: g.id, mode: modeTitle(g.modeId, g.variantId, g.settings), modeId: g.modeId, variantId: g.variantId, setTitle: g.setTitle, setId: g.setId, startedAt: g.startedAt.toISOString(), endedAt: g.endedAt.toISOString(), durationMs: g.durationMs, players: g.playerCount, endedBy: g.endedBy, solo: g.isSolo, pacing: r.data.pacing, classId: g.classId, className: cls?.name ?? null },
       // Display names only: never an account id, username or email. Player keys ("p3") are per game.
       standings: r.data.players.map((s) => ({ rank: s.rank, playerKey: s.playerKey, name: s.name, isGuest: s.isGuest, isBot: s.isBot, membership: s.membership, team: s.team, score: s.score, label: s.label, correct: s.correct, answered: s.answered, avgResponseMs: s.avgResponseMs, bestStreak: s.bestStreak, leftEarly: s.leftEarly })),
       questions: r.view.questions,
@@ -74,7 +74,7 @@ export async function analyticsRoutes(app: FastifyInstance, deps: AppDeps) {
       .orderBy(desc(gameSessions.endedAt))
       .limit(31);
     return {
-      games: rows.slice(0, 30).map((g) => ({ id: g.id, mode: modeTitle(g.modeId, g.variantId, g.settings), setTitle: g.setTitle, players: g.playerCount, endedAt: g.endedAt.toISOString(), durationMs: g.durationMs, chaos: Boolean(g.chaos) })),
+      games: rows.slice(0, 30).map((g) => ({ id: g.id, mode: modeTitle(g.modeId, g.variantId, g.settings), setTitle: g.setTitle, players: g.playerCount, endedAt: g.endedAt.toISOString(), durationMs: g.durationMs })),
       nextBefore: rows.length > 30 ? rows[29]!.endedAt.toISOString() : null,
     };
   });

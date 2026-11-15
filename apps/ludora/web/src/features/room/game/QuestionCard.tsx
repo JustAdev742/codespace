@@ -5,7 +5,6 @@ import { formatDecimal } from '../../../lib/format.ts';
 import { useAnnounce } from './announce.tsx';
 import { focusAdrift, focusSettled } from '../../../lib/focus.ts';
 import { useSfx, useSharedSounds } from '../../../lib/sound/react.tsx';
-import { useChaosPrompt } from '../../extras/ExtrasLayer.tsx';
 import { MathText } from '../../sets/math/MathText.tsx';
 import { mathToWords } from '../../sets/math/parse.ts';
 import { ReadAloud, useBigScreenReads } from './comfort.tsx';
@@ -66,13 +65,6 @@ export function QuestionCard({ q, index, total, children, size = 'md' }: { q: Pu
   useAnnounce(`${index !== undefined && total ? `Question ${index + 1} of ${total}. ` : ''}${q.double ? 'Double points. ' : ''}${q.points !== undefined ? `${worthWords(q.points)}. ` : ''}${mathToWords(q.prompt)}`, key);
   useSfx('question', key, useSharedSounds());
   const heading = useRef<HTMLHeadingElement>(null);
-  // Chaos text looks (jumbled, typed out...) change only how the prompt is drawn, never what is read out.
-  const chaosPrompt = useChaosPrompt();
-  // Maths is drawn unless a chaos text look is changing how the prompt looks.
-  const prompt = (text: string) => {
-    const shown = chaosPrompt(text);
-    return shown === text ? <MathText text={text} /> : shown;
-  };
   useEffect(() => focusSettled(() => heading.current, { preventScroll: true }), [key]);
   // Answering swaps the answer buttons for "locked in" within the same question, and focus goes
   // with them to the page body, which sends a screen reader back to the top. Bring it to the prompt.
@@ -150,8 +142,8 @@ export function QuestionCard({ q, index, total, children, size = 'md' }: { q: Pu
         {counter}
         {layout === 'listen' ? listen : null}
         <div className="flex flex-col gap-[clamp(1rem,2vw,2.5rem)] sm:flex-row sm:items-center">
-          <h2 ref={heading} tabIndex={-1} data-chaos-part="prompt" className={`min-w-0 flex-1 font-sans leading-[1.12] font-bold tracking-[-0.01em] text-pretty break-words text-text outline-none ${text} max-sm:text-[1.6rem]`}>
-            {prompt(q.prompt)}
+          <h2 ref={heading} tabIndex={-1} data-question-prompt className={`min-w-0 flex-1 font-sans leading-[1.12] font-bold tracking-[-0.01em] text-pretty break-words text-text outline-none ${text} max-sm:text-[1.6rem]`}>
+            <MathText text={q.prompt} />
           </h2>
           {q.media ? <QuestionImage media={q.media} size={pictureFirst ? 'hostLarge' : many ? 'hostCompact' : 'host'} className={`self-start sm:self-auto ${pictureFirst ? 'sm:max-w-[50%]' : 'sm:max-w-[42%]'}`} /> : null}
         </div>
@@ -169,8 +161,8 @@ export function QuestionCard({ q, index, total, children, size = 'md' }: { q: Pu
       {/* Listen first: the Play control comes before the words. Picture first: the picture leads. */}
       {layout === 'listen' ? listen : null}
       {pictureFirst && layout === 'picture' ? picture : null}
-      <h2 ref={heading} tabIndex={-1} data-chaos-part="prompt" className={`font-sans leading-snug font-bold text-pretty break-words text-text outline-none ${text}`}>
-        {prompt(q.prompt)}
+      <h2 ref={heading} tabIndex={-1} data-question-prompt className={`font-sans leading-snug font-bold text-pretty break-words text-text outline-none ${text}`}>
+        <MathText text={q.prompt} />
       </h2>
       {pictureFirst && layout === 'picture' ? null : picture}
       {layout !== 'listen' ? listen : null}

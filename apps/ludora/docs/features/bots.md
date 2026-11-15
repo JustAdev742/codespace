@@ -5,7 +5,7 @@ choices it mostly did the first legal thing. Server practice bots now have a **m
 player written in code (no outside service, no learning library), seeded from the room's code and
 game so a game's bots replay the same.
 
-The engine's test harness (`simulateGame`, `ChaosSim`, `simulateTower`) is untouched: its bots have
+The engine's test harness (`simulateGame`, `simulateTower`) is untouched: its bots have
 no mind and play exactly as before. The mind is an optional `mind` on `BotContext` that only the
 server's rooms supply; `GameRuntime.botAction`/`botDelay` take it as an optional last argument and
 fall back to the old path, with the same random draws, when it is absent.

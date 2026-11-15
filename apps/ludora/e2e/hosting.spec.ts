@@ -310,7 +310,7 @@ test('hosting for a class: members only, attendance on the class page, class def
   await expect(student.page.getByRole('group', { name: 'Answers' })).toBeVisible({ timeout: 20_000 });
   // Answer right, whichever question came up first.
   // The question's own heading, not whichever second-level heading comes first on the page.
-  const prompt = (await student.page.locator('main [data-chaos-part="prompt"]').first().textContent()) ?? '';
+  const prompt = (await student.page.locator('main [data-question-prompt]').first().textContent()) ?? '';
   const right = /Sun is a star|Moon orbits|Owls hunt/.test(prompt) ? 'True' : 'False';
   await student.page.getByRole('group', { name: 'Answers' }).getByRole('button', { name: new RegExp(`${right}$`) }).click();
   await expect(teacher.page.getByText(/1 of 1 answered|Correct/).first()).toBeVisible();

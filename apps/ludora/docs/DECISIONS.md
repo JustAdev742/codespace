@@ -387,6 +387,9 @@ odds and sound are unchanged.
 owner asked for a hidden cheat menu that any player can unlock, themselves
 included, with no admin grant and no request form, and for the cheat code to
 stay hidden from people who download the app's files. So:
+
+*Superseded by D54 (the cheat system is removed from the code, 15 November 2026).*
+
 - The unlock is a four-stage sequence (knock, riddle, ritual, light) checked
   stage by stage on the server. The knock comes from a server secret, the
   riddle and ritual are drawn fresh each attempt, and the browser only
@@ -463,5 +466,20 @@ season's garland, and on the class page with what is coming. Ludora holds no
 school's dates and shows no crest or logo; the school name is plain text as
 the teacher typed it, so "The Hills Grammar School" appears only where a
 teacher there wrote it.
+
 **D53. The cheat menu is removed; the unlock stays (15 November 2026).** At the owner's request, the menu that unlocked players cast cheats from is gone. The app no longer serves the cheat list or the menu's code, and nothing in the app can cast. Kept: the knock, riddle, ritual and light; the unlock and its audit entry; the server's cast rules; the cheats in the engine. Removed: the lantern button in games, the private menu build (`web/extras-menu/`, `web/vite.extras.config.ts`), the `/api/lantern/book` and `/api/lantern/book.js` routes, and the `WEB_PRIVATE_DIST` setting. The end-to-end test now checks that nothing is left to open.
+
+*Superseded by D54 (the cheat system is removed from the code, 15 November 2026).*
+
+**D54. The cheat system is removed from the code (15 November 2026).** At the owner's
+request every cheat is taken out of the code. This supersedes D47 and D53, which kept
+the secret unlock. Deleted: the cheat engine and its catalogue, the server module, the
+`room:chaos` socket event, the cheat menu in the app, the secret unlock (knock, riddle,
+ritual and light), the `ChaosSim` test helper, the `CHAOS_SECRET` environment variable,
+the CI check that kept cheats out of the public bundle, and docs/CHAOS.md. The two
+database columns, `users.chaos_unlocked_at` and `game_sessions.chaos`, stay in the schema
+but are no longer written or read, so no data is dropped. Migrations are not rewritten.
+Kept: the `cheating` report reason (a general moderation reason), the "anti-cheat"
+wording about server-decided scores, Game Maker's extras (power-ups and events), and the
+lantern game modes and their art.
 

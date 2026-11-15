@@ -58,7 +58,6 @@ async function finishGame(opts: { players: { a: Account; correct: number }[]; so
     endedBy: 'mode',
     durationMs: 60_000,
     answers: opts.players.flatMap((p, i) => Array.from({ length: 40 }, (_, q) => ({ playerId: `p${i}`, qid: `q${q}`, correct: q < p.correct, partial: q < p.correct ? 1 : 0, responseMs: 2000, at: 0, kind: 'answer' as const }))),
-    chaos: null,
   } as unknown as EngineResults;
   const out = await persistGame(t.deps, room, results);
   return { gameId, out };

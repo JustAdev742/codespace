@@ -77,8 +77,6 @@ const schema = z.object({
   WEB_DIST: z.string().default('../web/dist'),
   /** The playable demo (one browser, bots, no accounts), served at /demo/ when it has been built (`npm run build:demo`). */
   WEB_DEMO_DIST: z.string().default('../web/dist-demo'),
-  /** Seeds the secret chaos sequence (the knock rhythm). Defaults to one derived from IP_HASH_KEY, so it differs per deployment. */
-  CHAOS_SECRET: z.preprocess((v) => (v === '' ? undefined : v), z.string().min(16).optional()),
   LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent']).default('info'),
   /** Adds Anthropic as an AI provider, alongside any in AI_PROVIDERS. */
   ANTHROPIC_API_KEY: z.string().optional(),
@@ -155,11 +153,10 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
   }
   const c = parsed.data;
   const isProduction = c.APP_ENV === 'production';
-  // Production never runs on a value that is published in this repository: the IP hashes and the
-  // chaos knock rhythm are only as private as these keys.
+  // Production never runs on a value that is published in this repository: the IP hashes are only
+  // as private as this key.
   const placeholder = (v: string) => /^(dev-only|change-me)/i.test(v);
   if (isProduction && placeholder(c.IP_HASH_KEY)) throw new Error('Set IP_HASH_KEY to a long random value in production.');
-  if (isProduction && c.CHAOS_SECRET !== undefined && placeholder(c.CHAOS_SECRET)) throw new Error('Set CHAOS_SECRET to a long random value, or leave it unset.');
   const allowedOrigins = [c.PUBLIC_ORIGIN, ...c.EXTRA_ORIGINS.split(',').map((s) => s.trim()).filter(Boolean)];
   const databaseUrl = c.DATABASE_URL_POOLED ?? c.DATABASE_URL;
   const directDatabaseUrl = c.DATABASE_URL_UNPOOLED ?? c.DATABASE_URL;

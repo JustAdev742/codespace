@@ -19,16 +19,14 @@ secret() { openssl rand -hex 32; }
 umask 077
 cat > .env <<ENV
 # Written by scripts/new-env.sh on $(date -u +%Y-%m-%d). Never commit this file.
-# Keep a copy of it somewhere safe: without POSTGRES_PASSWORD, IP_HASH_KEY and
-# CHAOS_SECRET a restored backup still works, but sign-in rate limits and the
-# secret lantern start afresh.
+# Keep a copy of it somewhere safe: without POSTGRES_PASSWORD and IP_HASH_KEY a
+# restored backup still works, but sign-in rate limits start afresh.
 # Every docker compose command here includes the HTTPS proxy (compose.https.yaml).
 COMPOSE_FILE=compose.yaml:compose.https.yaml
 DOMAIN=$domain
 PUBLIC_ORIGIN=https://$domain
 POSTGRES_PASSWORD=$(secret)
 IP_HASH_KEY=$(secret)
-CHAOS_SECRET=$(secret)
 OPERATOR_NAME=$name
 OPERATOR_CONTACT=$contact
 APP_ENV=production

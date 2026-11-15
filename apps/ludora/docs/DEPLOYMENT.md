@@ -182,7 +182,6 @@ Nothing secret is committed; copy `.env.example` to `.env` for compose.
 | `DATABASE_URL_POOLED`, `DATABASE_URL_UNPOOLED` | no | For a host that gives one database two addresses (Neon does). The server sends its everyday queries to the pooled one and runs migrations, the seed and the operator CLI over the direct one. Either naming works: `DATABASE_URL` (direct) with `DATABASE_URL_POOLED`, as Neon's console shows them, or `DATABASE_URL` (pooled) with `DATABASE_URL_UNPOOLED`, as `neon env pull` writes them. All must name the same database, or the server refuses to start. |
 | `PUBLIC_ORIGIN` | yes | The address people open, e.g. `https://play.example.org`. Used for CSRF and WebSocket origin checks; requests from other origins are refused. On Render it is taken from `RENDER_EXTERNAL_URL` when not set. |
 | `IP_HASH_KEY` | yes in production | At least 16 random characters. IP addresses are only stored as keyed hashes. Production refuses the `change-me` and `dev-only` placeholders. |
-| `CHAOS_SECRET` | no | At least 16 random characters (`openssl rand -hex 32`). Seeds the secret lantern's knock rhythm (see CHAOS.md); without it the rhythm is derived from `IP_HASH_KEY`. Keep it in the host's secret store or `.env`, never in the repository. Changing it changes the rhythm. |
 | `SIGNUPS_PER_10_MIN`, `GUESTS_PER_10_MIN` | no | How many new accounts (default 40) and guests (default 60) one address may make in ten minutes; 5 to 5000. Everyone at a school usually shares one address, and so does everyone behind a tunnel or forwarded port, so raise these (for example to 600) on a school's own copy before several classes join at once. |
 | `OPERATOR_NAME`, `OPERATOR_CONTACT` | before real use | Who runs this copy (a school, a trust, a company) and an email or address for privacy questions. The privacy policy and terms at `/privacy` and `/terms` name them; until they are set, those pages say the operator has not added contact details. |
 | `SCHOOL_THEME` | no | A school's touches on its own copy, from the first paint: `hills-grammar` adds The Hills Grammar School's logo beside Ludora's, its typeface (Lato), its red and green as accents, and its uniform on every Glim, at the school's request. Unset keeps Ludora's look. An unknown name stops the server at startup. See [SCHOOL_LOOKS.md](SCHOOL_LOOKS.md), which also says how to add a school. |
@@ -350,8 +349,7 @@ It creates a teacher account and a room, so point it at a test server, not a liv
   backups/uploads-<time>.tar.gz`. It asks you to type `yes`, replaces the whole database and
   the images, and restarts the app. If it stops part-way it says how to start the app again.
 - Restoring onto a new server works the same way, with the old `.env` copied across first.
-  A different `IP_HASH_KEY` or `CHAOS_SECRET` does not break anything: sign-in rate limits
-  and the secret lantern's rhythm simply start afresh.
+  A different `IP_HASH_KEY` does not break anything: sign-in rate limits simply start afresh.
 - Passwords and recovery codes are stored as Argon2id hashes; session cookies are
   stored as SHA-256 hashes; IP addresses only as keyed hashes.
 - Players download or delete their own account under **Settings → Your data**

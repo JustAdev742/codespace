@@ -2,17 +2,14 @@ import { createRng, type CommonSettings, type Question } from '@ludora/shared';
 import { GameRuntime } from '../runtime/runtime.ts';
 import { prepareQuestions, resolveGameConfig } from '../registry.ts';
 import { makeTeams } from '../teams.ts';
-import type { CastRequest } from '../extras/types.ts';
-import '../extras/effects/index.ts';
 
 /*
- * A game with bots on a fake clock that a test drives step by step, so it
- * can cast cheats at chosen moments and look at what changed. Bots play the
- * same way for the same seed, so two runs that differ only in one cast can
+ * A game with bots on a fake clock that a test drives step by step. Bots play
+ * the same way for the same seed, so two runs that differ in one setting can
  * be compared.
  */
 
-export interface ChaosSimOptions {
+export interface BotGameOptions {
   modeId: string;
   variantId?: string;
   questions: readonly Question[];
@@ -23,7 +20,7 @@ export interface ChaosSimOptions {
   common?: Partial<CommonSettings>;
 }
 
-export class ChaosSim {
+export class BotGame {
   readonly rt: GameRuntime;
   readonly ids: string[];
   readonly errors: { where: string; error: unknown }[] = [];
@@ -36,7 +33,7 @@ export class ChaosSim {
   /** Players whose bots stop acting (to keep a target still in a test). */
   readonly idle = new Set<string>();
 
-  constructor(opts: ChaosSimOptions) {
+  constructor(opts: BotGameOptions) {
     const seed = opts.seed ?? 4242;
     const resolved = resolveGameConfig({ modeId: opts.modeId, variantId: opts.variantId ?? null, settings: opts.settings ?? {}, common: opts.common ?? {} });
     if (!resolved.ok) throw new Error(resolved.message);
@@ -61,7 +58,6 @@ export class ChaosSim {
       seed,
       clock: { now: () => this.t },
       strict: true,
-      chaos: true,
       listener: {
         error: (error, where) => this.errors.push({ where, error }),
         feed: (item) => this.feed.push(item.text),
@@ -111,19 +107,7 @@ export class ChaosSim {
     if (this.t < until) this.t = until;
   }
 
-  cast(caster: string, ...requests: CastRequest[]) {
-    return this.rt.cast(caster, requests);
-  }
-
   state(): any {
     return this.rt.debugState();
-  }
-
-  chaos() {
-    return this.rt.debugChaos()!;
-  }
-
-  view(playerId: string, unlocked = true) {
-    return this.rt.chaosView({ kind: 'player', playerId }, unlocked)!;
   }
 }

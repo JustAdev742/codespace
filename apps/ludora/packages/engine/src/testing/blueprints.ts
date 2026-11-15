@@ -150,7 +150,7 @@ export const BREAKERS: readonly { what: string; path: string; apply: (bp: Bluepr
   { what: 'a fractional gain', path: 'answer.right', apply: (bp) => ({ ...bp, answer: { ...bp.answer, right: 2.5 } }) },
   { what: 'a gain as text', path: 'answer.right', apply: (bp) => ({ ...bp, answer: { ...bp.answer, right: '9999' } }) },
   { what: 'too many power-ups', path: 'extras.powers', apply: (bp) => ({ ...bp, extras: { ...bp.extras, powers: ['double', 'double'] } }) },
-  { what: 'an unknown power-up', path: 'extras.powers', apply: (bp) => ({ ...bp, extras: { ...bp.extras, powers: ['chaos'] } }) },
+  { what: 'an unknown power-up', path: 'extras.powers', apply: (bp) => ({ ...bp, extras: { ...bp.extras, powers: ['no-such-power'] } }) },
   { what: 'one surprise', path: 'answer.outcomes', apply: (bp) => ({ ...bp, answer: { ...bp.answer, rule: 'chance', outcomes: [{ label: 'Only', weight: 1, amount: 2 }] } }) },
   { what: 'empty surprises', path: 'answer.outcomes', apply: (bp) => ({ ...bp, answer: { ...bp.answer, rule: 'chance', outcomes: [{ label: 'Nil', weight: 1, amount: 0 }, { label: 'Zip', weight: 1, amount: 0 }] } }) },
   { what: 'last standing in a race', path: 'end.type', apply: (bp) => ({ ...bp, kind: { type: 'race', length: 20, twist: false }, end: { ...bp.end, type: 'last' } }) },

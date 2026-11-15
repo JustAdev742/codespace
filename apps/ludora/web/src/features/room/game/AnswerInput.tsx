@@ -104,7 +104,7 @@ export function ChoiceTile({
   media,
   choice,
 }: {
-  /** The choice's token (c0, c1... or true/false), for chaos looks that point at one tile. */
+  /** The choice's token (c0, c1... or true/false), kept on the tile as a data attribute. */
   choice?: string | undefined;
   index: number;
   text: string;

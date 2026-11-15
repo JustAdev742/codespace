@@ -10,7 +10,6 @@ import { Stage } from '../../ui/Stage.tsx';
 import { HostLobby, PlayerLobby } from './Lobby.tsx';
 import { Results } from './Results.tsx';
 import { ReactionBar, ReactionLayer, useChooseReactions } from './game/Reactions.tsx';
-import { LanternGlow } from '../extras/ExtrasEntry.tsx';
 import { ReportDialog } from '../moderation/ReportDialog.tsx';
 import { DebugOverlay } from './DebugOverlay.tsx';
 import './stage.css';
@@ -345,7 +344,6 @@ export default function RoomPage() {
       {/* In the host's lobby each arrival already slides in as a card, and toasts in the corner would sit over the crowd. */}
       <FeedToasts feed={room.feed} quiet={isHost && (status === 'lobby' || (live && hostListsFeed(room.room.modeId)))} overHeader={isHost ? null : room.room.solo ? 'solo' : 'player'} />
       {calm ? null : <ReactionLayer reactions={handle.reactions} big={isHost} />}
-      <LanternGlow handle={handle} />
       {debug ? <DebugOverlay handle={handle} /> : null}
       {status === 'lobby' && !room.room.solo ? <StartCountdown handle={handle} isHost={isHost} /> : null}
       {live ? <BrainBreak handle={handle} isHost={isHost} /> : null}

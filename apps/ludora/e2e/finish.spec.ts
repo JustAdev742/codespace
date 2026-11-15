@@ -200,7 +200,7 @@ test('a player challenges a friend, who joins from the notification, and the gam
   await expect(ben.page).toHaveURL(/\/join\/\d{6}/);
   await ben.page.getByRole('button', { name: 'Join game' }).click({ timeout: 15_000 });
   // Both in: it counts down and starts with nobody pressing Start.
-  for (const p of [ana.page, ben.page]) await expect(p.locator('[data-chaos-part="prompt"]').first()).toBeVisible({ timeout: 40_000 });
+  for (const p of [ana.page, ben.page]) await expect(p.locator('[data-question-prompt]').first()).toBeVisible({ timeout: 40_000 });
 });
 
 test('the error page has a Glim, plain words and a way out', async ({ browser }) => {
@@ -245,7 +245,7 @@ test('a host invites a friend from the lobby, and a shared device returns to the
   await check(kid, 'player-lobby');
   await check(host.page, 'host-lobby');
   await host.page.getByRole('button', { name: 'Start game' }).click();
-  await expect(kid.locator('[data-chaos-part="prompt"]').first()).toBeVisible({ timeout: 20_000 });
+  await expect(kid.locator('[data-question-prompt]').first()).toBeVisible({ timeout: 20_000 });
   await host.page.getByRole('button', { name: 'End game' }).click();
   await host.page.getByRole('dialog').getByRole('button', { name: 'End game' }).click();
   const banner = kid.getByRole('region', { name: 'Next player' });

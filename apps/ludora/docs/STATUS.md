@@ -19,7 +19,7 @@ item with how each was checked, in [features/README.md](features/README.md). The
 | M4 Economy and progression | Done | Shop, Lanterns with disclosed odds, collections, locker, quests, achievements, levels, streaks. |
 | M5 Staff tools | Done | Staff API and all 14 staff sections in the web app. An end-to-end test opens every section as a super administrator at phone and desktop widths. |
 | M6 Content, social, classes, analytics | Done | Friends, blocks, profiles, my stats, leaderboards, classes, assignments and their reports, hosted games, game reports, the set editor with image uploads, and AI question drafts. |
-| Chaos (D47) | Unlock kept; cheat menu removed 15 Nov 2026 | The secret unlock, and 1,005 cheats and 10 combos on the server, each tested in a real game. The cheat menu in the app was removed at the owner's request. See [CHAOS.md](CHAOS.md). |
+| Chaos (D47) | Removed from the code 15 Nov 2026 (D54) | The cheat system was taken out at the owner's request: the cheat engine and its catalogue, the server module, the secret unlock and the cheat menu. The two database columns stay, unused. See D54 in [DECISIONS.md](DECISIONS.md). |
 | November programme | Done | 207 features, 5 new 3D modes (30 modes and 130 variants, 10 modes in 3D), 3 new question types (11 in all), an illustrated cover for every mode, a visual lift of the live game screens, and 48 bugs fixed. Each is a row with its check in [features/](features/README.md). |
 | Making programme | Done | 121 features: practice bots with personalities, AI helpers on any free provider with an allowance per account, sets with sound and a feel of their own, Game Maker (people make game modes in 2D and 3D), My designs for every account with a painter, and one place to make things with classroom tools and the teacher's day. Counted in [features/](features/README.md). |
 | M7-8 Polish, CI, deployment | In progress | Production build, Docker image, compose file, CI workflow, docs and end-to-end tests (run in CI) are in. The whole app is restyled for players aged 8 to 17 (D46), and automated accessibility checks pass on every page, game screen and staff section. A design review of the whole app was done and its findings fixed. A playable demo builds for GitHub Pages. 2026-10-29: account download and deletion, a privacy policy and terms, data retention, a measured load test, a deployment kit tested in Docker, a machine screen-reader audit, and WebKit and Firefox runs in CI. Remaining: a person's screen-reader pass, legal review of the policy, and a real deployment, which needs the operator's server and domain. |
@@ -184,21 +184,7 @@ person with a screen reader. Every check was automated.
   - Fast answerers pull far ahead, because paydays grow with income. In a
     demo against bots a slow player trails a long way.
   - Long names are cut short in the projector's two-column board.
-- **Chaos, the secret lantern** (D47, [CHAOS.md](CHAOS.md)). Any player can unlock it by finding the lantern's secret: a knock on the About panel, a riddle, a ritual of reactions in a live game, and a lantern to hold. Every stage is checked on the server. The cheat menu that unlocked players cast from was removed on 15 November 2026, so nothing in the app casts cheats now.
-  - 1,005 cheats and 10 combos (counted from the registry): 209 work in any mode and 796
-    belong to one of 25 modes (all five 3D modes included). Seven categories: score,
-    advantage, troll, round, economy, visual and random. No cheat is a copy of another;
-    ideas that only changed a number or a target were turned down.
-  - Each cheat was cast into one of two identical bot games, in every mode
-    it supports, and the two games differed afterwards. Screen cheats had to
-    show on the target's screen.
-  - Energy, cooldowns, shields, conflicts, combos, undo, the host's Calm the
-    room and repeated requests have their own tests. Chaos is off in
-    assignments, and casters earn no rewards from that game.
-  - An end-to-end test does the whole sequence in real browsers and checks that no menu is left. The cheat list answers 404 for everyone, and CI fails if a cheat turns up in the public files.
-  - Not done: effects on one part of the screen (a name, a score) work only
-    where screens use the shared leaderboard, answer tiles and question card.
-    Sequence progress resets when the server restarts.
+- **Chaos, the secret lantern, is removed** (D47; superseded by D54 in [DECISIONS.md](DECISIONS.md)). On 15 November 2026, at the owner's request, the cheat engine and its catalogue, the server module, the `room:chaos` event, the secret unlock and the cheat menu were deleted from the code. The `users.chaos_unlocked_at` and `game_sessions.chaos` columns stay, unused, so no data is dropped.
 - **Accessibility**: an axe-core audit (WCAG 2.2 A and AA rules) of every
   player page, the sign-in pages and every staff section, in both themes at
   phone and desktop widths, finds no violations; the layout end-to-end test now

@@ -71,7 +71,6 @@ async function finishGame(opts: { code?: string; host: Account; set: { id: strin
     endedBy: 'mode',
     durationMs: 60_000,
     answers: opts.players.flatMap((p, i) => p.answers.map((a) => ({ playerId: `p${i}`, qid: a.qid, correct: a.correct, partial: a.correct ? 1 : 0, responseMs: 2000, at: 0, kind: a.kind ?? 'answer' }))),
-    chaos: null,
   };
   return persistGame(t.deps, room, results);
 }

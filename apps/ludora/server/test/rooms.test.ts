@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { io as connect, type Socket } from 'socket.io-client';
 import { eq } from 'drizzle-orm';
-import { ChaosSim, MIXED_SET } from '@ludora/engine/testing';
+import { BotGame, MIXED_SET } from '@ludora/engine/testing';
 import { PRACTICE_LEVELS } from '../src/realtime/room.ts';
 import { Client, createTestApp, registered, type TestContext } from './helpers.ts';
 import { attachRealtime } from '../src/realtime/attach.ts';
@@ -261,7 +261,7 @@ describe('practice levels play as they say', () => {
       let right = 0;
       let answered = 0;
       for (const seed of [1, 2, 3]) {
-        const sim = new ChaosSim({ modeId: 'classic', questions: TF, players: 4, seed, skill, settings: {}, common: { shuffleQuestions: false } });
+        const sim = new BotGame({ modeId: 'classic', questions: TF, players: 4, seed, skill, settings: {}, common: { shuffleQuestions: false } });
         for (let t = 0; t < 600_000 && sim.rt.status === 'running'; t += 1000) sim.run(1000);
         for (const a of sim.rt.results!.answers) {
           answered++;

@@ -24,11 +24,6 @@ import type {
   QuestionApi,
   Viewer,
 } from '../sdk/types.ts';
-import { ChaosEngine, emptyChaosState } from '../extras/engine.ts';
-import { chaosAdapterFor } from '../extras/adapters/index.ts';
-import { getCheat } from '../extras/registry.ts';
-import type { CastOutcome, CastRequest, ChaosState, ChaosView } from '../extras/types.ts';
-
 function sameTimers(a: ReadonlyMap<string, number>, b: ReadonlyMap<string, number>): boolean {
   if (a.size !== b.size) return false;
   for (const [k, v] of a) if (b.get(k) !== v) return false;
@@ -77,8 +72,6 @@ export interface RuntimeOptions {
    * example inside view()) throws. Used by tests; too slow for production.
    */
   strict?: boolean;
-  /** Let players who unlocked chaos cast cheats in this game. */
-  chaos?: boolean;
 }
 
 export interface PlayerStats {
@@ -110,8 +103,6 @@ export interface EngineResults {
   endedBy: 'mode' | 'host' | 'error';
   durationMs: number;
   answers: AnswerRecord[];
-  /** Set when anyone cast a chaos cheat in this game. */
-  chaos: { casts: number; casters: PlayerId[] } | null;
   /**
    * How the room voted on each poll question: votes per authored choice id. Polls have no right
    * answer, so they never appear in `answers`; this is what the host's saved report shows instead.
@@ -136,11 +127,8 @@ interface Effects {
 }
 
 const MAX_TIMER_FIRES_PER_TICK = 500;
-/** The pseudo-timer id under which the chaos layer's expiries and ticks are scheduled. */
-const CHAOS_TIMER = '\u0000chaos';
 
-type ChaosDraft = ChaosState & { rng: number };
-type TxFn = (draft: any, ctx: ModeContext, chaos: ChaosDraft | null) => ActionResult;
+type TxFn = (draft: any, ctx: ModeContext) => ActionResult;
 
 function readOnly(what: string): never {
   throw new Error(`${what}() cannot be called while drawing a view or results`);
@@ -186,8 +174,6 @@ export class GameRuntime {
   private pausedAt: number | null = null;
   private pausedTotal = 0;
   private feedSeq = 0;
-  private chaosState: ChaosDraft | null = null;
-  private readonly chaos: ChaosEngine | null = null;
 
   constructor(opts: RuntimeOptions) {
     this.mode = opts.mode;
@@ -205,11 +191,6 @@ export class GameRuntime {
     for (const p of opts.players) {
       this.players.set(p.id, { ...p, connected: p.connected ?? true, joinedAt: 0 });
       this.stats.set(p.id, emptyStats());
-    }
-    const adapter = opts.chaos ? chaosAdapterFor(opts.mode.meta.id) : null;
-    if (adapter) {
-      this.chaos = new ChaosEngine(adapter, { players: () => [...this.players.values()], teams: () => this.teams, name: (id) => this.nameOf(id) }, this.teams, this.settings);
-      this.chaosState = emptyChaosState(opts.seed ^ 0x5eed);
     }
   }
 
@@ -277,11 +258,6 @@ export class GameRuntime {
     if (!p) return { ok: true };
     this.players.delete(id);
     this.departed.set(id, p);
-    if (this.status === 'running' || this.status === 'paused') {
-      if (this.chaos && this.chaosState && this.chaos.touchesPlayer(this.chaosState, id)) {
-        this.transact('chaos:left', (draft, ctx, cd) => this.chaos!.dropPlayer(draft, ctx, cd!, id));
-      }
-    }
     if (this.status === 'idle' || this.status === 'ended' || !this.mode.onPlayerLeave) {
       this.bump();
       return { ok: true };
@@ -322,59 +298,7 @@ export class GameRuntime {
     if (!this.players.has(playerId)) return { ok: false, code: 'rejected', message: 'You are not in this game.' };
     const parsed = this.mode.action.safeParse(raw);
     if (!parsed.success) return { ok: false, code: 'rejected', message: 'That move is not allowed here.' };
-    if (this.chaos && this.chaosState?.effects.length) {
-      const blocked = this.chaosGate(playerId, parsed.data);
-      if (blocked) return { ok: false, code: 'rejected', message: blocked };
-    }
     return this.transact('action', (draft, ctx) => this.mode.onAction(draft, playerId, parsed.data, ctx), false, playerId);
-  }
-
-  /* -------------------------------- chaos -------------------------------- */
-
-  /** Whether this game runs the chaos layer at all. */
-  get chaosEnabled(): boolean {
-    return this.chaos !== null;
-  }
-
-  /** Cast chaos cheats (one, or several as a combination). All or nothing. */
-  cast(playerId: PlayerId, requests: readonly CastRequest[]): CastOutcome {
-    if (!this.chaos || !this.chaosState) return { ok: false, code: 'invalid_state', message: 'Chaos is switched off in this game.' };
-    if (this.status !== 'running') {
-      return { ok: false, code: 'invalid_state', message: this.status === 'paused' ? 'The game is paused.' : 'Chaos only works while a game is running.' };
-    }
-    let outcome: CastOutcome = { ok: false, code: 'internal', message: 'Something went wrong with that cheat.' };
-    const r = this.transact('chaos:cast', (draft, ctx, cd) => {
-      outcome = this.chaos!.cast(draft, ctx, cd!, playerId, requests);
-      if (!outcome.ok) return { error: outcome.message };
-    });
-    if (!r.ok && outcome.ok) return { ok: false, code: r.code, message: r.message };
-    if (!r.ok && r.code === 'internal') return { ok: false, code: 'internal', message: r.message };
-    return outcome;
-  }
-
-  undoCast(playerId: PlayerId, castId: string): DispatchResult {
-    return this.chaosCommand((draft, ctx, cd) => {
-      const r = this.chaos!.undo(draft, ctx, cd, playerId, castId);
-      if (!r.ok) return { error: r.message };
-    });
-  }
-
-  stopEffect(playerId: PlayerId, eid: string): DispatchResult {
-    return this.chaosCommand((draft, ctx, cd) => {
-      const r = this.chaos!.stop(draft, ctx, cd, playerId, eid);
-      if (!r.ok) return { error: r.message };
-    });
-  }
-
-  /** The host ends all chaos for the rest of this game. */
-  calmChaos(): DispatchResult {
-    if (this.chaosState?.calmed) return { ok: true };
-    return this.chaosCommand((draft, ctx, cd) => this.chaos!.calm(draft, ctx, cd));
-  }
-
-  chaosView(viewer: Viewer, unlocked: boolean): ChaosView | null {
-    if (!this.chaos || !this.chaosState || this.status === 'idle') return null;
-    return this.chaos.view(this.chaosState, viewer, this.gameNow(), unlocked);
   }
 
   /** The answer to a presented question in its tokens, for tests only. */
@@ -383,41 +307,6 @@ export class GameRuntime {
     if (!inst) return null;
     const q = this.questionMap.get(inst.qid)!;
     return revealToTokens(q, inst.order, revealAnswer(q));
-  }
-
-  /** Chaos state, for tests and debugging tools only. */
-  debugChaos(): ChaosState | null {
-    return this.chaosState;
-  }
-
-  private chaosCommand(fn: (draft: any, ctx: ModeContext, cd: ChaosDraft) => ActionResult): DispatchResult {
-    if (!this.chaos || !this.chaosState) return { ok: false, code: 'invalid_state', message: 'Chaos is switched off in this game.' };
-    if (this.status !== 'running' && this.status !== 'paused') return { ok: false, code: 'invalid_state', message: 'The game is not running.' };
-    return this.transact('chaos:command', (draft, ctx, cd) => fn(draft, ctx, cd!));
-  }
-
-  /**
-   * Let active effects refuse an action before the mode sees it. Gates read
-   * the committed state; any bookkeeping they do (charges used) is kept even
-   * though the action itself is refused.
-   */
-  private chaosGate(playerId: PlayerId, action: unknown): string | null {
-    const cd = structuredClone(this.chaosState!);
-    const fx: Effects = { timers: new Map(this.timers), instances: new Map(), feed: [], answers: [], end: null };
-    const ctx = this.makeContext(fx);
-    let blocked: string | null;
-    try {
-      blocked = this.chaos!.gate(this.state, ctx, cd, playerId, action);
-    } catch (err) {
-      this.listener.error?.(err, 'chaos:gate');
-      return null;
-    }
-    this.chaosState = cd;
-    if (blocked) {
-      for (const f of fx.feed) this.emitFeed(f);
-      this.bump();
-    }
-    return blocked;
   }
 
   /** Who the open question is waiting for, or null when this mode or moment has none. */
@@ -465,14 +354,6 @@ export class GameRuntime {
       if (!due || due[1] > this.gameNow()) break;
       const [id] = due;
       fired++;
-      if (id === CHAOS_TIMER) {
-        const r = this.transact('chaos:tick', (draft, ctx, cd) => this.chaos!.fireDue(draft, ctx, cd!));
-        if (!r.ok && this.chaosState) {
-          this.chaos!.dropDue(this.chaosState, this.gameNow());
-          this.bump();
-        }
-        continue;
-      }
       this.timers.delete(id);
       if (this.mode.onTimer) this.transact(`timer:${id}`, (draft, ctx) => this.mode.onTimer!(draft, id, ctx));
     }
@@ -495,8 +376,6 @@ export class GameRuntime {
   private earliestTimer(): [string, number] | null {
     let best: [string, number] | null = null;
     for (const entry of this.timers) if (!best || entry[1] < best[1]) best = entry;
-    const chaosAt = this.chaos && this.chaosState ? this.chaos.nextDue(this.chaosState) : null;
-    if (chaosAt !== null && (!best || chaosAt < best[1])) best = [CHAOS_TIMER, chaosAt];
     return best;
   }
 
@@ -666,32 +545,16 @@ export class GameRuntime {
     const rngState = this.rng.state();
     const fx: Effects = { timers: new Map(this.timers), instances: new Map(), feed: [], answers: [], end: null, ...(actor ? { actor } : {}) };
     const ctx = this.makeContext(fx);
-    const cd = this.chaosState && !isInit ? structuredClone(this.chaosState) : null;
-    // Lasting cheats bend what the mode itself does (points, coins), never what other cheats do.
-    const before = cd && this.chaos && cd.effects.length && !where.startsWith('chaos') ? this.chaos.snapshot(draft, ctx, cd) : null;
     let outcome: ActionResult;
     try {
-      outcome = fn(draft, ctx, cd);
+      outcome = fn(draft, ctx);
     } catch (err) {
       this.rng = createRng(rngState);
       if (isInit) this.state = undefined;
-      // A broken cheat is refused; it never counts towards stopping the game.
-      if (where.startsWith('chaos')) this.listener.error?.(err, where);
-      else this.fail(err, where);
+      this.fail(err, where);
       return { ok: false, code: 'internal', message: 'Something went wrong in this game.' };
     }
-    let result = draft;
-    if (before && !(outcome && typeof outcome === 'object' && 'error' in outcome)) {
-      const safe = structuredClone(draft);
-      try {
-        this.chaos!.afterTransact(draft, ctx, cd!, before);
-      } catch (err) {
-        // The mode's own move stands; the effect that failed to bend it is removed.
-        this.listener.error?.(err, 'chaos:delta');
-        result = safe;
-        cd!.effects = cd!.effects.filter((e) => !Object.keys(getCheat(e.cheatId)?.hooks?.delta ?? {}).length);
-      }
-    }
+    const result = draft;
     if (outcome && typeof outcome === 'object' && 'error' in outcome) {
       this.rng = createRng(rngState);
       return { ok: false, code: 'rejected', message: outcome.error };
@@ -699,7 +562,6 @@ export class GameRuntime {
     // A quiet move that set no timers, fed no news, recorded no answers and ended nothing is just a pulse.
     const quiet = Boolean(outcome && typeof outcome === 'object' && 'quiet' in outcome) && !fx.feed.length && !fx.answers.length && !fx.end && !fx.instances.size && sameTimers(this.timers, fx.timers);
     if (!isInit) this.state = result;
-    if (cd) this.chaosState = cd;
     if (this.strict) deepFreeze(this.state);
     this.timers = fx.timers;
     for (const [iid, inst] of fx.instances) this.instances.set(iid, inst);
@@ -816,8 +678,7 @@ export class GameRuntime {
       score: item.score,
       label: item.label,
     }));
-    const chaos = this.chaosState && this.chaosState.totalCasts > 0 ? { casts: this.chaosState.totalCasts, casters: this.chaosState.usedBy.slice() } : null;
-    return { standings, teamStandings, outcome: r.outcome ?? 'competitive', summary, endedBy, durationMs, answers: this.answers.slice(), chaos, ...this.pollResults() };
+    return { standings, teamStandings, outcome: r.outcome ?? 'competitive', summary, endedBy, durationMs, answers: this.answers.slice(), ...this.pollResults() };
   }
 
   /** Votes per choice for each poll, counting each player's latest vote once. Bots' votes are left out. */

@@ -19,7 +19,6 @@ export const C2S = {
   action: 'room:action',
   host: 'room:host',
   react: 'room:react',
-  chaos: 'room:chaos',
   /** A player's own lobby and end-of-game choices: ready, their team, the exit ticket. */
   player: 'room:player',
 } as const;
@@ -30,8 +29,6 @@ export const S2C = {
   reaction: 'room:reaction',
   closed: 'room:closed',
   rewards: 'room:rewards',
-  /** Sent only to an account that has just finished the lantern ritual. */
-  glow: 'room:glow',
   /** Compact, frequent updates (where everyone is standing) between full views. See `PulseView`. */
   pulse: 'room:pulse',
   /** The host is waiting for this player's answer. Sent only to that player. */
@@ -84,8 +81,6 @@ export const roomOptionsSchema = z.object({
   generatedNames: z.boolean().default(false),
   /** Only signed-in accounts may join. */
   requireAccount: z.boolean().default(false),
-  /** No longer read: chaos is not a room option any more. Kept so options saved with older games still parse. */
-  chaos: z.boolean().default(false),
   /** Seconds of "Starting in" on every screen after the host presses Start. 0 starts at once. */
   startCountdownSec: z.number().int().min(0).max(10).default(0),
   /** Start (with the countdown) by itself once this many players are in. 0 is off. */
@@ -136,8 +131,6 @@ export const hostCommandSchema = z.discriminatedUnion('cmd', [
   z.object({ cmd: z.literal('lock'), locked: z.boolean() }),
   z.object({ cmd: z.literal('addBots'), count: z.number().int().min(1).max(20) }),
   z.object({ cmd: z.literal('removeBots') }),
-  /** End every chaos effect and close chaos for the rest of this game. */
-  z.object({ cmd: z.literal('chaosCalm') }),
   z.object({ cmd: z.literal('shuffleTeams') }),
   z.object({ cmd: z.literal('setTeam'), playerId: z.string().min(1).max(40), teamId: z.string().min(1).max(20) }),
   z.object({ cmd: z.literal('renameTeam'), teamId: z.string().min(1).max(20), name: z.string().max(40) }),
@@ -181,49 +174,6 @@ export const FREE_REACTIONS = ['wave', 'laugh', 'wow', 'clap', 'heart', 'fire', 
 export const MAX_BAR_REACTIONS = 8;
 
 export const reactionSchema = z.object({ emote: z.string().min(1).max(20) });
-
-const chaosActionId = z.string().min(8).max(40).regex(/^[A-Za-z0-9_-]+$/);
-const chaosCast = z.object({
-  cheatId: z.string().min(3).max(60).regex(/^[a-z0-9.-]+$/),
-  target: z.string().min(1).max(40).nullable().optional(),
-  params: z.record(z.string().max(30), z.union([z.number(), z.string().max(40)])).optional(),
-});
-
-/** Chaos requests from players. The server checks that the account has unlocked chaos before any of them. */
-export const chaosRequestSchema = z.discriminatedUnion('op', [
-  z.object({ op: z.literal('cast'), actionId: chaosActionId, casts: z.array(chaosCast).min(1).max(5) }),
-  z.object({ op: z.literal('undo'), actionId: chaosActionId, castId: z.string().min(1).max(20) }),
-  z.object({ op: z.literal('stop'), actionId: chaosActionId, eid: z.string().min(1).max(20) }),
-]);
-export type ChaosRequest = z.infer<typeof chaosRequestSchema>;
-
-/** What a viewer sees of the chaos in their game. Mirrors the engine's ChaosView. */
-export interface ChaosRoomView {
-  calmed: boolean;
-  casts: number;
-  effects: {
-    eid: string;
-    cheatId: string;
-    name: string;
-    category: string;
-    caster: string;
-    casterName: string;
-    targets: string[];
-    team: string | null;
-    startedAt: number;
-    endsAt: number;
-    hostile: boolean;
-  }[];
-  overlays: ({ kind: string; eid?: string; endsAt?: number } & Record<string, unknown>)[];
-  me: {
-    energy: number;
-    maxEnergy: number;
-    regenPerSec: number;
-    cooldowns: Record<string, number>;
-    undo: { castId: string; names: string[]; until: number }[];
-    capabilities: string[];
-  } | null;
-}
 
 export type AckOk<T = object> = { ok: true } & T;
 export type AckErr = { ok: false; error: { code: string; message: string } };
@@ -323,8 +273,6 @@ export interface ResultsView {
   awards?: AwardView[];
   /** Only in the host's view. */
   report?: HostReportView;
-  /** Chaos cheats were cast in this game, so places earn no rewards. */
-  chaos?: boolean;
   standings: StandingView[];
   teamStandings: { teamId: string; name: string; rank: number; score: number; label: string }[];
   outcome: 'competitive' | 'coop-win' | 'coop-loss';
@@ -403,8 +351,6 @@ export interface RoomView<G = unknown> {
   results: ResultsView | null;
   rewards: RewardSummary | null;
   feed: FeedItem[];
-  /** Present once chaos has been used in this game, or for a viewer who has unlocked it. */
-  chaos?: ChaosRoomView | null;
   /** A lesson running in this room (lessons.ts). */
   lesson?: LessonRoomView | null;
 }

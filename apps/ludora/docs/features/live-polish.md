@@ -48,7 +48,7 @@ with reduced motion, 3D off, and five modes in the Hills Grammar look.
 
 | Defect | Why not fixed |
 |---|---|
-| Flashcards turned into choice questions for modes that need choices are padded with answers of another kind ("Condensation": "34%", "Jump", "6"), which can give the answer away. | A fix in `packages/engine/src/questions/adapt.ts` (use only answers of the same kind when there are two or more) worked, but it changes the questions every seeded game is dealt, and 14 seeded chaos tests (`extras-catalogue`, `extras-pack-*`) depend on those exact games. Updating the chaos scenarios is outside this workstream, so the fix was taken back out. |
+| Flashcards turned into choice questions for modes that need choices are padded with answers of another kind ("Condensation": "34%", "Jump", "6"), which can give the answer away. | A fix in `packages/engine/src/questions/adapt.ts` (use only answers of the same kind when there are two or more) worked, but it changes the questions every seeded game is dealt, and 14 seeded cheat-system tests depended on those exact games. The fix was taken back out; those tests were removed with the cheat system on 15 November 2026 (D54). |
 | Glim Duels with 6 players did not finish inside 160 seconds with 6 questions per round (4 rounds), so the hunt ended it with End game. | Not a bug: the mode plays up to 4 rounds of duels by design; ending early worked and saved the results. |
 | Lantern Trail and Festival Workshop host boards cut long names ("Bartholomew Fitzgerald...") in their narrow side columns; Glimgo's "Get ready" is dimmed behind the side board. | Cosmetic, known in STATUS.md for Festival Workshop; left so as not to redesign layouts that otherwise work. |
 

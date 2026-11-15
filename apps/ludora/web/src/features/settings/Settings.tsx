@@ -11,7 +11,6 @@ import { localPrefsChanged, usePrefs } from '../../lib/usePrefs.ts';
 import { AccountError, Dialog, Field, Input, PageHeader, Panel, Select, Skeleton, Switch } from '../../ui/primitives.tsx';
 import { matches, SETTINGS, SettingsList } from './AccessSettings.tsx';
 import { WhatsNewLink } from '../whatsnew/WhatsNew.tsx';
-import { SecretLantern } from '../extras/ExtrasEntry.tsx';
 import { Button, ButtonLink } from '../../ui/Button.tsx';
 import { RecoveryCodeDialog } from '../auth/RecoveryCodeDialog.tsx';
 import { YourData } from './YourData.tsx';
@@ -306,10 +305,9 @@ export default function Settings() {
         </Panel>
         <YourData username={user.username} isGuest={user.isGuest} />
         <Panel className="flex items-center gap-4 p-5">
-          <SecretLantern />
           <div>
             <h2 className="font-display text-2xl leading-tight font-bold">About Ludora</h2>
-            <p className="text-sm text-text-2">Made for classrooms. Every lantern has a story, if you know how to ask.</p>
+            <p className="text-sm text-text-2">Made for classrooms. Every lantern has a story.</p>
           </div>
         </Panel>
         </>

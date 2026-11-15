@@ -7,7 +7,7 @@ import { correctAnswerFor, gradeAnswer, isGraded, revealAnswer, wrongAnswerFor }
 import { answerFromTokens, answerToTokens, presentationOrder, revealToTokens, toPublicQuestion } from '../src/questions/present.ts';
 import { prepareQuestions } from '../src/registry.ts';
 import { simulateGame } from '../src/testing/harness.ts';
-import { ChaosSim } from '../src/testing/extras.ts';
+import { BotGame } from '../src/testing/botgame.ts';
 import { NEW_TYPES_SET } from '../src/testing/fixtures.ts';
 
 /* Poll, fill in the blanks and sort into groups: the schema, grading, what players see, bots, and how every mode copes. */
@@ -177,7 +177,7 @@ describe('new question types: played with bots in every mode that shows them', (
 
 describe('a poll in Classic', () => {
   const run = (settings: Record<string, unknown>) => {
-    const sim = new ChaosSim({ modeId: 'classic', questions: [byId('n1'), byId('n5'), byId('n8'), byId('n2')], players: 4, seed: 3, settings, common: { shuffleQuestions: false } });
+    const sim = new BotGame({ modeId: 'classic', questions: [byId('n1'), byId('n5'), byId('n8'), byId('n2')], players: 4, seed: 3, settings, common: { shuffleQuestions: false } });
     return sim;
   };
   it('scores nothing, keeps streaks and shows how the room split at the reveal', () => {
@@ -208,7 +208,7 @@ describe('a poll in Classic', () => {
 
 describe('poll votes in the results', () => {
   it('counts each person\'s vote once per poll, by authored choice, and leaves bots out', () => {
-    const sim = new ChaosSim({ modeId: 'classic', questions: [byId('n1'), byId('n5'), byId('n8'), byId('n2')], players: 2, seed: 5, settings: {}, common: { shuffleQuestions: false } });
+    const sim = new BotGame({ modeId: 'classic', questions: [byId('n1'), byId('n5'), byId('n8'), byId('n2')], players: 2, seed: 5, settings: {}, common: { shuffleQuestions: false } });
     expect(sim.rt.addPlayer({ id: 'h1', name: 'Ada', teamId: null, isBot: false }).ok).toBe(true);
     for (let t = 0; t < 60_000 && !(sim.state().sync.phase === 'question' && sim.state().sync.iid); t += 50) sim.run(50);
     const iid = sim.state().sync.iid as string;
@@ -244,7 +244,7 @@ describe('double points and why notes', () => {
   });
   it('doubles the points of a double-points question in a quiz round', () => {
     const play = (questions: Question[]) => {
-      const sim = new ChaosSim({ modeId: 'classic', questions, players: 3, seed: 4, skill: 1, settings: {}, common: { shuffleQuestions: false } });
+      const sim = new BotGame({ modeId: 'classic', questions, players: 3, seed: 4, skill: 1, settings: {}, common: { shuffleQuestions: false } });
       for (let t = 0; t < 60_000 && sim.state().sync.phase !== 'reveal'; t += 250) sim.run(250);
       return Object.values(sim.state().sync.answers as Record<string, { points: number }>).map((a) => a.points);
     };
@@ -278,11 +278,11 @@ describe("a question's Points field in quiz rounds", () => {
     { id: 'w3', type: 'truefalse', prompt: 'The Sun is a star.', correct: true },
   ];
   const firstRound = (questions: Question[], modeId = 'classic') => {
-    const sim = new ChaosSim({ modeId, questions, players: 3, seed: 4, skill: 1, settings: {}, common: { shuffleQuestions: false } });
+    const sim = new BotGame({ modeId, questions, players: 3, seed: 4, skill: 1, settings: {}, common: { shuffleQuestions: false } });
     for (let t = 0; t < 60_000 && sim.state().sync.phase !== 'reveal'; t += 250) sim.run(250);
     return sim;
   };
-  const points = (sim: ChaosSim) => Object.values(sim.state().sync.answers as Record<string, { points: number }>).map((a) => a.points);
+  const points = (sim: BotGame) => Object.values(sim.state().sync.answers as Record<string, { points: number }>).map((a) => a.points);
   it('scales the mode\'s own score: 2,000 is twice a usual question, 0 scores nothing', () => {
     const plain = points(firstRound(base));
     expect(plain.some((p) => p > 0)).toBe(true);
@@ -290,7 +290,7 @@ describe("a question's Points field in quiz rounds", () => {
     expect(points(firstRound([{ ...base[0]!, points: 0 }, base[1]!, base[2]!])).every((p) => p === 0)).toBe(true);
   });
   it('tells players what the question is worth before they answer, and says nothing for a usual one', () => {
-    const view = (sim: ChaosSim) => (sim.rt.view({ kind: 'player', playerId: 'p1' }) as { sync: { question: { q: { points?: number } } } }).sync.question.q;
+    const view = (sim: BotGame) => (sim.rt.view({ kind: 'player', playerId: 'p1' }) as { sync: { question: { q: { points?: number } } } }).sync.question.q;
     expect(view(firstRound([{ ...base[0]!, points: 500 }, base[1]!, base[2]!])).points).toBe(500);
     expect(view(firstRound(base)).points).toBeUndefined();
     expect(view(firstRound([{ ...base[0]!, points: 1000 }, base[1]!, base[2]!])).points).toBeUndefined();

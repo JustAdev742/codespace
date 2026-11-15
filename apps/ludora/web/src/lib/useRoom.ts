@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { deviceDress, schoolLook } from './school.ts';
 import { io, type Socket } from 'socket.io-client';
-import type { ChaosRequest, HostCommand, PlayerRequest, PulseView, RoomView } from '@ludora/shared';
+import type { HostCommand, PlayerRequest, PulseView, RoomView } from '@ludora/shared';
 import { newRequestKey } from './api.ts';
 
 /*
@@ -63,8 +63,6 @@ export interface RoomState {
   closedReason?: string | null;
   role: 'host' | 'player' | null;
   reactions: Reaction[];
-  /** The server says this account just finished the lantern ritual: the lantern can be lit. */
-  glow: boolean;
   /** When the host last nudged this player ("Your teacher is waiting for your answer"). */
   nudgedAt: number | null;
   /** Connection numbers for the staff debug overlay. */
@@ -154,7 +152,6 @@ export function useRoom(code: string, opts: { name?: string | undefined; as?: 'h
     closedReason: null,
     role: null,
     reactions: [],
-    glow: false,
     nudgedAt: null,
     debug: { transport: '-', views: 0, reconnects: 0, lastAckMs: null },
   });
@@ -223,7 +220,6 @@ export function useRoom(code: string, opts: { name?: string | undefined; as?: 'h
       setState((s) => ({ ...s, reactions: [...s.reactions.slice(-12), { key, ...r }] }));
       setTimeout(() => setState((s) => ({ ...s, reactions: s.reactions.filter((x) => x.key !== key) })), 3200);
     });
-    socket.on('room:glow', () => setState((s) => ({ ...s, glow: true })));
     socket.on('room:nudge', () => setState((s) => ({ ...s, nudgedAt: Date.now() })));
     // Let in from the waiting room: the seat is ready, so join again with its token.
     socket.on('room:admitted', (p: { reconnectToken?: string }) => {
@@ -294,18 +290,6 @@ export function useRoom(code: string, opts: { name?: string | undefined; as?: 'h
     return emitWithAck(socket, 'room:player', req);
   }, []);
 
-  /** A chaos request. The server checks the account's unlock; a locked account is told nothing. */
-  const chaos = useCallback(async (req: DistributiveOmit<ChaosRequest, 'actionId'>): Promise<AckResult> => {
-    const socket = socketRef.current;
-    if (!socket?.connected) return { ok: false, error: { code: 'offline', message: 'You are offline.' } };
-    const actionId = newRequestKey('c').slice(0, 30);
-    let ack = await emitWithAck(socket, 'room:chaos', { ...req, actionId });
-    if (!ack.ok && ack.error.code === 'timeout') ack = await emitWithAck(socket, 'room:chaos', { ...req, actionId });
-    return ack;
-  }, []);
-
-  const clearGlow = useCallback(() => setState((s) => ({ ...s, glow: false })), []);
-
   const leave = useCallback(async () => {
     const socket = socketRef.current;
     storeToken(code, null);
@@ -320,9 +304,7 @@ export function useRoom(code: string, opts: { name?: string | undefined; as?: 'h
     return v.paused ? v.gameNow : v.gameNow + (Date.now() - state.receivedAt);
   }, [state.view, state.receivedAt]);
 
-  return { ...state, act, fire, pulse, host, react, player, leave, gameNow, chaos, clearGlow };
+  return { ...state, act, fire, pulse, host, react, player, leave, gameNow };
 }
-
-type DistributiveOmit<T, K extends PropertyKey> = T extends unknown ? Omit<T, K> : never;
 
 export type RoomHandle = ReturnType<typeof useRoom>;
