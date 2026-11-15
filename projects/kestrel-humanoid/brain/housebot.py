@@ -606,7 +606,59 @@ class HouseBot:
     # ================================================================== manipulation
     CROUCH = KM.CROUCH                          # handle height above the floor -> crouch pose (per robot)
     TUCK = [0.0, -0.3, -0.2, -0.4]
-    GATE = dict(lo=-0.015, hi=0.085, gain=1.0)     # balance window for the crouch (narrower and wider both fail sometimes)
+    GATE = dict(lo=-0.015, hi=0.085, gain=getattr(KM, "GATE_GAIN", 1.0))   # balance window for the crouch (narrower and
+    #                                                     wider both fail sometimes); a faster correction on the H2-X
+
+    def reach_offset(self, handle_rel, low):
+        """(ahead, right) of the robot where a handle this high above the floor should be, for the hook to take it.
+        KESTREL's arm swings in a plane 20 cm right of its centre, so fixed numbers do. The H2-X's shoulder pitch axis is
+        tilted, so its hook moves sideways as the arm reaches (about -9 to +19 cm): sweep its arm in the pose it will be
+        in (standing, or the crouch for this height) and stand where the hook reaches that height well inside its range."""
+        if not getattr(KM, "REACH_SOLVE", False):
+            return (KM.CROUCH_FWD if low else REACH_FWD), REACH_RIGHT
+        key = (round(handle_rel, 2), bool(low))
+        cache = self.__dict__.setdefault("_reach_cache", {})
+        if key in cache:
+            return cache[key]
+        import mujoco
+        w = self.h
+        m = w.e.m
+        z, tp = next(pose for lim, pose in self.CROUCH if handle_rel >= lim) if low else (KM.STAND_HIP - 0.03, 0.0)
+        legs = w.leg_pose(w.solve_pose(z, tp, 0.03)[0])
+        stand = w.leg_pose(w.solve_pose(KM.STAND_HIP - 0.03, 0.0, 0.04)[0])
+        dd = mujoco.MjData(m)
+        hand, lf, rf, pel = m.body("r_hand").id, m.body("l_foot").id, m.body("r_foot").id, w.pelvis
+
+        def place(L, pitch):
+            dd.qpos[:] = 0
+            dd.qpos[2] = 1.0
+            dd.qpos[3:7] = [math.cos(pitch / 2), 0, math.sin(pitch / 2), 0]
+            for j, i in SK.LEG.items():
+                dd.qpos[m.joint(j).qposadr[0]] = L[i]
+        place(stand, 0.0)
+        mujoco.mj_kinematics(m, dd)
+        pel_dx = dd.xpos[pel][0] - 0.5 * (dd.xpos[lf][0] + dd.xpos[rf][0])   # standing pelvis ahead of the ankles
+        pts = []
+        for sh in np.linspace(-2.6, 0.4, 61):
+            for el in np.linspace(-2.1, 0.0, 43):
+                place(legs, tp)
+                for a, v in zip(w.arm_qadr, [0.0, sh, -0.2, el]):
+                    dd.qpos[a] = v
+                mujoco.mj_kinematics(m, dd)
+                mid = 0.5 * (dd.xpos[lf] + dd.xpos[rf])
+                hk = dd.xpos[hand] + dd.xmat[hand].reshape(3, 3) @ np.array(SK.HOOK)
+                sole = mid[2] - 0.062
+                pts.append((hk[0] - mid[0] - pel_dx, mid[1] - hk[1], hk[2] - sole))
+        P = np.array(pts)
+        sel = P[np.abs(P[:, 2] - handle_rel) < 0.02]
+        if not len(sel):                                   # out of this pose's range: the old numbers, and the IK will say
+            out = (KM.CROUCH_FWD if low else REACH_FWD), REACH_RIGHT
+        else:
+            fwd = max(0.15, min(sel[:, 0].max() - 0.07, 0.55))   # well inside the range, but clear of the furniture
+            best = sel[np.abs(sel[:, 0] - fwd).argmin()]
+            out = (float(best[0]), float(best[1]))
+        cache[key] = out
+        return out
 
     def crouch_to(self, handle_rel):
         """Balanced crouch deep enough for a handle this high above the floor (lowest reach 0.34 m: the ankles and hips
@@ -616,7 +668,8 @@ class HouseBot:
         if not w.settle():
             return False
         # slowly, weight kept a little forward: a fast crouch pushes the feet backwards, and on tiles they slide
-        legs = [(0.0, w.legs_now())] + w._pose_path([(2.0, KM.STAND_HIP - 0.11, 0.20, 0.035), (4.0, z, tp, 0.03)])
+        dip = [(2.0, KM.STAND_HIP - 0.11, 0.20, 0.035)] if z < KM.STAND_HIP - 0.11 else []   # standing reaches: no dip
+        legs = [(0.0, w.legs_now())] + w._pose_path(dip + [(4.0, z, tp, 0.03)])
         arms = [(0.0, w.arms_now()), (1.2, self.TUCK)]
         self._crouch_pose = legs[-1][1]
         return w._run_balanced(legs + [(4.5, legs[-1][1])], arms, 4.5, gate_from=0.0, max_s=14.0, release_stiff=False,
@@ -649,9 +702,10 @@ class HouseBot:
         why = "I couldn't get to it"
         for attempt in range(2):
             hd = h.handle_of(obj)
-            low = hd[2] - h.floor_z(*hd[:2]) < LOW_HANDLE
-            fwd = KM.CROUCH_FWD if low else REACH_FWD           # crouched, the hook reaches less far ahead
-            st = self.stand_point(hd[:2], fwd, REACH_RIGHT)
+            rel = hd[2] - h.floor_z(*hd[:2])
+            low = rel < LOW_HANDLE
+            fwd, right = self.reach_offset(rel, low)            # crouched, the hook reaches less far ahead
+            st = self.stand_point(hd[:2], fwd, right)
             if st is None:
                 self.say("pick_fail", obj=name, why="there's nowhere to stand next to it")
                 return False
@@ -660,8 +714,8 @@ class HouseBot:
                 continue
             hd = h.handle_of(obj)
             # final placement relative to the handle as it is now
-            sx = hd[0] - fwd * math.cos(yaw) - REACH_RIGHT * math.sin(yaw)
-            sy = hd[1] - fwd * math.sin(yaw) + REACH_RIGHT * math.cos(yaw)
+            sx = hd[0] - fwd * math.cos(yaw) - right * math.sin(yaw)
+            sy = hd[1] - fwd * math.sin(yaw) + right * math.cos(yaw)
             self.align((sx, sy), yaw, tol=0.035)
             ok, why = self._hook(obj)
             if ok:
@@ -774,12 +828,12 @@ class HouseBot:
                 return self.place("floor")
             where = surf[0]
 
-        def reach_point(fwd):
+        def reach_point(fwd, right=REACH_RIGHT):
             x, y, yaw = h.robot_pose()
-            return (x + fwd * math.cos(yaw) + REACH_RIGHT * math.sin(yaw), y + fwd * math.sin(yaw) - REACH_RIGHT * math.cos(yaw))
+            return (x + fwd * math.cos(yaw) + right * math.sin(yaw), y + fwd * math.sin(yaw) - right * math.cos(yaw))
         if where == "floor":
-            fwd = KM.CROUCH_FWD
-            target = reach_point(fwd)
+            fwd, right = self.reach_offset(KM.LOW_REACH, True)
+            target = reach_point(fwd, right)
             top, label, low = h.floor_z(*target), "floor", True
         else:
             f = h.b.furniture.get(where)
@@ -788,7 +842,7 @@ class HouseBot:
                 return False
             top, label = f["top"], where
             low = top + half_h + hz - h.floor_z(*f["xy"]) < LOW_HANDLE
-            fwd = KM.CROUCH_FWD if low else REACH_FWD
+            fwd, right = self.reach_offset(top + half_h + hz - h.floor_z(*f["xy"]), low)
             best = None
             fx, fy = f["xy"]
             fsx, fsy = f["size"]
@@ -803,7 +857,7 @@ class HouseBot:
                 cands = [c for c in cands if all(math.dist(c, q) > 0.25 for q in others)]     # a clear spot on the top
                 scored = []
                 for c in cands:
-                    st = self.stand_point(c, fwd, REACH_RIGHT)
+                    st = self.stand_point(c, fwd, right)
                     if st is not None:
                         scored.append((math.dist(st[0], (x0, y0)), st))
                 if scored:
@@ -830,7 +884,7 @@ class HouseBot:
                     self.step()
                 self.arms = [0.0, sh, -0.2, el]
             self.align((sx, sy), yaw, tol=0.04)
-            target = reach_point(fwd)
+            target = reach_point(fwd, right)
             fx, fy = f["xy"]
             fsx, fsy = f["size"]
             self.log(f"  [{h.t:6.1f} s] (placing at {target[0]:.2f}, {target[1]:.2f} on the {where}: "
@@ -845,7 +899,7 @@ class HouseBot:
             if not self.crouch_to(hook_z - floor_here):
                 h.stiff(False)
                 return False
-            target = reach_point(KM.CROUCH_FWD)
+            target = reach_point(*self.reach_offset(hook_z - floor_here, True))
         sh, el, err = h.ik_right(np.array([target[0], target[1], hook_z]))
         sh_d, el_d, _ = h.ik_right(np.array([target[0], target[1], hook_z - 0.05]))       # then the hook drops clear
         Rb = h.e.d[0].xmat[h.obj_body[obj]].reshape(3, 3)

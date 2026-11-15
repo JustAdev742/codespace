@@ -44,8 +44,16 @@ HOOK = (0.13, 0.0, -0.02)  # hook point in the hand (wrist-yaw link) frame: just
 CAM_POS = "0.11 0 0.08"    # head camera in the head (head-yaw link) frame: at eye height
 # reach profile (measured on this model with brain/skills.py's solver): standing, the hook reaches down to 0.92 m and
 # 0.36 m ahead at table height; crouching with the H2's deep hip and ankle range, down to 0.31 m
-STAND_HIP, REACH_FWD, CROUCH_FWD, LOW_HANDLE, LOW_REACH = 0.946, 0.36, 0.21, 1.0, 0.33
-CROUCH = [(0.75, (0.80, 0.2)), (0.60, (0.70, 0.4)), (0.50, (0.62, 0.5)), (0.40, (0.55, 0.6)), (0.0, (0.50, 0.7))]
+# every reach uses held, balance-gated legs (LOW_HANDLE above any handle): the H2-X's arms are heavy enough that, left
+# to the walking policy, a reach makes it shuffle 15 cm and turn 5 degrees before the hook arrives; high handles take
+# the first, standing pose
+STAND_HIP, REACH_FWD, CROUCH_FWD, LOW_HANDLE, LOW_REACH = 0.946, 0.36, 0.21, 3.0, 0.33
+CROUCH = [(1.05, (0.916, 0.0)), (0.75, (0.80, 0.2)), (0.60, (0.70, 0.4)), (0.50, (0.62, 0.5)), (0.40, (0.55, 0.6)),
+          (0.0, (0.50, 0.7))]
+CALM_S = 8.0               # before a planned motion, wait up to 8 s for the weight to be centred (KESTREL: 3 s)
+GATE_GAIN = 2.0            # crouching to reach: the faster fore-aft balance correction that sitting needed
+REACH_SOLVE = True         # where to stand to hook a handle: from this arm's own kinematics (brain/housebot.py)
+ARM_GRAVITY_COMP = True    # the arm servos add gravity compensation, as real arm controllers do (brain/skills.py)
 SIT_Z = 0.52               # seated on the 46 cm chair: pelvis box on the seat, soles on the floor
 STIFF_ANKLE = 4.0          # planned motions (sit, crouch): 71 kg with its centre of mass at pelvis height on 60 N m/rad
                            # ankle servos sags onto the toes or the heels; 4x (still within the 66.9 N m limit) holds it

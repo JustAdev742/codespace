@@ -146,6 +146,13 @@ class World(A.Arena):
         e.cmd[0] = cmd
         e.cmd_t[:] = 0
         e.push_t[:] = 10 ** 6
+        if getattr(KM, "ARM_GRAVITY_COMP", False):       # gravity compensation in the arm servos (the H2-X's heavy arms
+            d = e.d[0]                                    # otherwise sag 10+ cm below where the hook was aimed)
+            if not hasattr(self, "_arm_dof"):
+                self._arm_dof = [e.m.jnt_dofadr[e.m.joint(j).id] for j in KM.ARM_JOINTS]
+                self._arm_lim = [100.0 if "shoulder" in j else 45.0 for j in KM.ARM_JOINTS]
+            for dof, lim in zip(self._arm_dof, self._arm_lim):
+                d.qfrc_applied[dof] = max(-lim, min(lim, d.qfrc_bias[dof]))
         act = self.policy(self.obs) if legs is None else ((np.asarray(legs) - e.default) / E.ACTION_SCALE)[None]
         self.obs, _, _, done, trunc = e.step(act.astype(np.float32))
         self.t += E.DT
@@ -452,12 +459,13 @@ class World(A.Arena):
         v = d.qvel[0:2]
         return -r[0] * math.sin(yaw) + r[1] * math.cos(yaw), -v[0] * math.sin(yaw) + v[1] * math.cos(yaw)
 
-    def calm_moment(self, max_s=3.0):
+    def calm_moment(self, max_s=None):
         """Let the walking policy keep balancing (it steps in place) until both feet are down and the weight is centred
         between them, not swaying: the moment to switch to a planned motion. Planting the feet mid-sway tips the robot
         sideways, which the forward-backward balance gate cannot catch."""
         d, m = self.e.d[0], self.e.m
         lf, rf = m.body("l_foot").id, m.body("r_foot").id
+        max_s = getattr(KM, "CALM_S", 3.0) if max_s is None else max_s     # the H2-X sways longer after walking
         for _ in range(int(max_s / E.DT)):
             side, vside = self.com_side()
             down = [d.xpos[f][2] - self.floor_under(d.xpos[f][0], d.xpos[f][1]) < 0.082 for f in (lf, rf)]
