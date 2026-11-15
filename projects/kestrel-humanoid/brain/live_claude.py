@@ -5,7 +5,14 @@ Claude holds the conversation in the Ultron-style persona and turns requests int
 the skills run them, and every walking command still goes through the safety supervisor. Claude has no tool that
 moves a joint, changes a speed limit, or touches the e-stop, and there is no tool for striking anything.
 
-Needs `pip install anthropic` and credentials (ANTHROPIC_API_KEY, or an `ant auth login` profile).
+Needs `pip install anthropic` and a credential. In order: --claude-key-file PATH; a key file next to this program
+(anthropic_key.txt or kestrel_api_anthropic_key.txt, both gitignored); then the SDK's own sources (ANTHROPIC_API_KEY,
+ANTHROPIC_AUTH_TOKEN, an `ant auth login` profile). A key file holds the key on its first line and, for a key that
+is not scoped to one workspace, the workspace id (wrkspc_...) on the second (or --claude-workspace, or
+ANTHROPIC_WORKSPACE_ID). A Console API key (sk-ant-api...)
+is sent as an API key; an OAuth token (sk-ant-oat...) is sent as a bearer token with the oauth beta. Whether a token
+from a Claude subscription is accepted for direct API calls is Anthropic's decision, not this program's: if the API
+answers 401 or 403, the robot says so and falls back to plain commands.
 Model: claude-opus-5-5 by default (--claude-model to change). Thinking is always on with this model; effort is set to
 "low" here, since replies are short and spoken. Refusal fallbacks are on ("default" server-side fallback), so a
 safety-classifier decline on an innocent request is retried on another model inside the same call.
@@ -110,10 +117,46 @@ def to_action(name, inp):
     }[name]()
 
 
+KEY_FILES = ("anthropic_key.txt", "kestrel_api_anthropic_key.txt")
+
+
+def read_key_file(path=None):
+    """(key, workspace id or None) from a key file - the key on the first line, optionally a workspace id (wrkspc_...)
+    on the second - or (None, None) to let the SDK find a credential itself. The key is never printed or logged."""
+    paths = [Path(path).expanduser()] if path else [HERE / n for n in KEY_FILES]
+    for p in paths:
+        if p.is_file():
+            lines = [ln.strip() for ln in p.read_text(encoding="utf-8-sig").splitlines() if ln.strip()]
+            if lines:
+                return lines[0], (lines[1] if len(lines) > 1 else None)
+        elif path:
+            raise FileNotFoundError(f"no key file at {p}")
+    return None, None
+
+
+def read_key(path=None):
+    return read_key_file(path)[0]
+
+
 class ClaudeBrain:
-    def __init__(self, live, model="claude-opus-5-5", effort="low"):
+    def __init__(self, live, model="claude-opus-5-5", effort="low", key_file=None, workspace=None):
+        import os
         import anthropic
-        self.client = anthropic.Anthropic()
+        self.betas = ["server-side-fallback-2026-07-01"]
+        key, ws_file = read_key_file(key_file)
+        # a key that is not scoped to one workspace must name the workspace on every request
+        ws = workspace or ws_file or os.environ.get("ANTHROPIC_WORKSPACE_ID")
+        headers = {"anthropic-workspace-id": ws} if ws else None
+        if key is None:
+            self.client = anthropic.Anthropic(default_headers=headers)   # ANTHROPIC_API_KEY, ..._AUTH_TOKEN or a profile
+            self.cred = "the SDK's own credentials"
+        elif key.startswith("sk-ant-oat"):                      # an OAuth access token: bearer auth plus the oauth beta
+            self.client = anthropic.Anthropic(auth_token=key, default_headers=headers)
+            self.betas.append("oauth-2025-04-20")
+            self.cred = "an OAuth token from the key file"
+        else:
+            self.client = anthropic.Anthropic(api_key=key, default_headers=headers)
+            self.cred = "an API key from the key file"
         self.anthropic = anthropic
         self.live = live
         self.model, self.effort = model, effort
@@ -148,10 +191,29 @@ class ClaudeBrain:
                     model=self.model, max_tokens=16000, system=self._sys, tools=self._tools,
                     messages=self.messages, output_config={"effort": self.effort},
                     cache_control={"type": "ephemeral"},
-                    betas=["server-side-fallback-2026-07-01"], fallbacks="default")
+                    betas=self.betas, fallbacks="default")
             except self.anthropic.APIConnectionError:
                 self.messages.pop()
                 return self._offline(text, "I can't reach my language model. Falling back to plain commands.")
+            except self.anthropic.AuthenticationError as e:
+                self.messages.pop()
+                return self._offline(text, f"My language model rejected the credential (401, {self.cred}): {e.message}. "
+                                           "Plain commands, then.")
+            except self.anthropic.PermissionDeniedError as e:
+                self.messages.pop()
+                return self._offline(text, f"This credential may not call the API (403, {self.cred}): {e.message}. "
+                                           "Plain commands, then.")
+            except self.anthropic.RateLimitError:
+                self.messages.pop()
+                return self._offline(text, "My language model is rate-limited or out of credit right now (429). "
+                                           "Plain commands, then.")
+            except self.anthropic.BadRequestError as e:
+                self.messages.pop()
+                if "workspace" in str(e.message).lower():
+                    return self._offline(text, "My API key is organisation-wide and needs a workspace id: put it on the "
+                                               "second line of the key file (wrkspc_...), or pass --claude-workspace. "
+                                               "Plain commands, then.")
+                return self._offline(text, f"My language model returned an error (400: {e.message}). Plain commands.")
             except self.anthropic.APIStatusError as e:
                 self.messages.pop()
                 return self._offline(text, f"My language model returned an error ({e.status_code}). Plain commands, then.")

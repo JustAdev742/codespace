@@ -694,6 +694,14 @@ def main():
     ap.add_argument("--terminal", action="store_true", help="also read instructions typed in this terminal")
     ap.add_argument("--claude", action="store_true", help="let a Claude model hold the conversation (ANTHROPIC_API_KEY)")
     ap.add_argument("--claude-model", default="claude-opus-5-5")
+    ap.add_argument("--claude-key-file", default=None,
+                    help="file holding the Anthropic key (default: anthropic_key.txt next to live.py, if present)")
+    ap.add_argument("--claude-workspace", default=None,
+                    help="workspace id (wrkspc_...) for a key that is not scoped to one workspace")
+    ap.add_argument("--local", default=None, metavar="MODEL",
+                    help="let a local model hold the conversation, e.g. qwen3:8b (Ollama or LM Studio)")
+    ap.add_argument("--local-url", default="http://localhost:11434/v1",
+                    help="OpenAI-compatible server of the local model (LM Studio: http://localhost:1234/v1)")
     ap.add_argument("--speed", type=float, default=1.0, help="simulation speed relative to real time")
     ap.add_argument("--width", type=int, default=800)
     ap.add_argument("--height", type=int, default=500)
@@ -712,7 +720,10 @@ def main():
     live.robot = a.robot
     if a.claude:
         from live_claude import ClaudeBrain
-        live.claude = ClaudeBrain(live, model=a.claude_model)
+        live.claude = ClaudeBrain(live, model=a.claude_model, key_file=a.claude_key_file, workspace=a.claude_workspace)
+    elif a.local:                                        # the same interface: turn(text) -> actions
+        from live_local import LocalBrain
+        live.claude = LocalBrain(live, model=a.local, url=a.local_url)
     threading.Thread(target=live.sim_thread, daemon=True).start()
     if a.script:
         live.ready.wait()
