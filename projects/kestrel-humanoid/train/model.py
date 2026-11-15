@@ -45,6 +45,8 @@ CAM_POS = "0.10 0 0.02"           # head camera in the head frame
 # (z_hip, torso pitch) by handle height (deepest last), measured on the model (lowest hook 0.34 m on KESTREL)
 STAND_HIP, REACH_FWD, CROUCH_FWD, LOW_HANDLE, LOW_REACH = 0.81, 0.42, 0.31, 0.78, 0.36
 CROUCH = [(0.52, (0.56, 0.4)), (0.45, (0.52, 0.5)), (0.0, (0.48, 0.6))]
+SIT_Z = 0.47                      # hip height above the ankle seated on the 46 cm chair (the sit and stand-up plans)
+STIFF_ANKLE = 1.0                 # extra ankle stiffness for planned whole-body motions (brain/skills.py World.stiff)
 WALK_POLICY, BODY_NAME = "s1fast", "KESTREL S1"     # the house's walking policy (train/runs/<name>) and the body's name
 if _V == "h2x":                      # Unitree H2-X (on the official H2 model): train/model_h2x.py
     import model_h2x as H2X
@@ -52,7 +54,7 @@ if _V == "h2x":                      # Unitree H2-X (on the official H2 model): 
     BASE_Z, STAND_Z, STAND_PELVIS, HOOK = H2X.BASE_Z, H2X.STAND_Z, H2X.STAND_PELVIS, H2X.HOOK
     CAM_POS = H2X.CAM_POS
     STAND_HIP, REACH_FWD, CROUCH_FWD, LOW_HANDLE, CROUCH = H2X.STAND_HIP, H2X.REACH_FWD, H2X.CROUCH_FWD, H2X.LOW_HANDLE, H2X.CROUCH
-    LOW_REACH = H2X.LOW_REACH
+    LOW_REACH, SIT_Z, STIFF_ANKLE, RISE = H2X.LOW_REACH, H2X.SIT_Z, H2X.STIFF_ANKLE, H2X.RISE
     WALK_POLICY, BODY_NAME = H2X.WALK_POLICY, H2X.BODY_NAME
 
 

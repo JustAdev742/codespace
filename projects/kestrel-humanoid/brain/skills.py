@@ -197,14 +197,16 @@ class World(A.Arena):
         lf = m.body("l_foot").id
         pel = self.pelvis
 
+        com_off = com_off + self.sole_shift()      # the targets were set on KESTREL's foot: keep them over this sole
+        adr = {j: m.joint(j).qposadr[0] for j in KM.LEG_JOINTS}
+
         def fk(h, k, a):
             dd.qpos[:] = 0
             dd.qpos[3:7] = [math.cos(torso_pitch / 2), 0, math.sin(torso_pitch / 2), 0]
             dd.qpos[2] = 1.0
             for sd in "lr":
-                dd.qpos[m.joint(f"{sd}_hip_pitch").qposadr[0]] = h
-                dd.qpos[m.joint(f"{sd}_knee").qposadr[0]] = k
-                dd.qpos[m.joint(f"{sd}_ankle_pitch").qposadr[0]] = a
+                for j, v in self.sagittal(sd, (h, k, a)).items():
+                    dd.qpos[adr[j]] = v
             mujoco.mj_kinematics(m, dd)
             mujoco.mj_comPos(m, dd)
             R = dd.xmat[lf].reshape(3, 3)
@@ -238,10 +240,75 @@ class World(A.Arena):
         return x, c
 
     def leg_pose(self, hka):
+        """12 leg targets for both legs in the sagittal plane: hip flexion, knee and ankle pitch (hka)."""
         out = self.e.default.copy()
         for sd in "lr":
-            out[LEG[f"{sd}_hip_pitch"]], out[LEG[f"{sd}_knee"]], out[LEG[f"{sd}_ankle_pitch"]] = hka
+            for j, v in self.sagittal(sd, hka).items():
+                out[LEG[j]] = v
+        if self.hip_cant("l"):
+            out = self._flat_feet(out)
         return out
+
+    def hip_cant(self, side):
+        """Tilt of the hip pitch axis about the forward axis (rad): 0 on KESTREL; +-30 deg on Unitree's H2, whose hip
+        pitch link is rotated about x and its hip roll link rotated back."""
+        if not hasattr(self, "_cant"):
+            m = self.e.m
+            self._cant = {}
+            for sd in "lr":
+                q = m.body_quat[m.jnt_bodyid[m.joint(f"{sd}_hip_pitch").id]]
+                c = -2.0 * math.atan2(q[1], q[0])
+                self._cant[sd] = c if abs(c) > 1e-3 and abs(q[2]) + abs(q[3]) < 1e-6 else 0.0
+        return self._cant[side]
+
+    def sagittal(self, side, hka):
+        """{joint: angle} for one leg with the thigh in the sagittal plane at hip flexion hka[0], knee hka[1] and ankle
+        pitch hka[2]. With a canted hip pitch axis, pitch alone swings the thigh outward as it flexes (18 cm at the knee
+        when seated, on the H2); hip roll and yaw take that out: Ry(pitch) Rx(cant + roll) Rz(yaw) = Rx(cant) Ry(flexion),
+        within the joint ranges."""
+        h, k, a = hka
+        al = self.hip_cant(side)
+        out = {f"{side}_hip_pitch": h, f"{side}_knee": k, f"{side}_ankle_pitch": a}
+        if not al:
+            return out
+        out[f"{side}_hip_pitch"] = math.atan2(math.sin(h), math.cos(al) * math.cos(h))
+        out[f"{side}_hip_roll"] = math.asin(max(-1.0, min(1.0, math.sin(al) * math.cos(h)))) - al
+        out[f"{side}_hip_yaw"] = math.atan2(math.sin(al) * math.sin(h), math.cos(al))
+        if not hasattr(self, "_rng"):
+            m = self.e.m
+            self._rng = {j: tuple(m.jnt_range[m.joint(j).id]) for j in KM.LEG_JOINTS}
+        for j in out:
+            lo, hi = self._rng[j]
+            out[j] = min(hi - 0.01, max(lo + 0.01, out[j]))
+        return out
+
+    def _flat_feet(self, legs):
+        """Ankle roll that levels each foot (left over where a hip roll limit stops the thigh short of the sagittal plane)."""
+        m = self.e.m
+        dd = mujoco.MjData(m)
+        dd.qpos[3] = 1.0
+        dd.qpos[2] = 1.0
+        out = legs.copy()
+        for _ in range(3):
+            for j, i in LEG.items():
+                dd.qpos[m.joint(j).qposadr[0]] = out[i]
+            mujoco.mj_kinematics(m, dd)
+            for sd in "lr":
+                R = dd.xmat[m.body(f"{sd}_foot").id].reshape(3, 3)
+                lo, hi = self._rng[f"{sd}_ankle_roll"]
+                i = LEG[f"{sd}_ankle_roll"]
+                out[i] = min(hi - 0.01, max(lo + 0.01, out[i] - math.atan2(R[2, 1], R[2, 2])))
+        return out
+
+    def sole_shift(self):
+        """How far this robot's sole centre is ahead of KESTREL's, relative to the ankle (m): the balance targets and gates
+        were set on KESTREL (sole centre 6 cm ahead of the ankle; the H2's is 3.75 cm)."""
+        if not hasattr(self, "_sole_shift"):
+            m = self.e.m
+            lf = m.body("l_foot").id
+            xs = [float(m.geom_pos[g][0]) for g in range(m.ngeom) if m.geom_bodyid[g] == lf and m.geom_contype[g]]
+            self._sole_shift = round(0.5 * (min(xs) + max(xs)) - 0.06, 4) if xs else 0.0
+        return self._sole_shift
 
     # ---------------------------------------------------------------- skills
     def _pose_path(self, spec):
@@ -263,6 +330,10 @@ class World(A.Arena):
             self._kv0 = -m.actuator_biasprm[:n, 2].copy()
         kp = self._kp0 * (k if on else 1.0)
         kv = self._kv0 * (d if on else 1.0)
+        if on and getattr(KM, "STIFF_ANKLE", 1.0) != 1.0:   # a heavier body on softer ankle servos (the H2-X): stiffer still
+            ank = [i for i, j in enumerate(KM.LEG_JOINTS) if "ankle" in j]
+            kp[ank] *= KM.STIFF_ANKLE
+            kv[ank] *= math.sqrt(KM.STIFF_ANKLE)
         m.actuator_gainprm[:n, 0] = kp
         m.actuator_biasprm[:n, 1] = -kp
         m.actuator_biasprm[:n, 2] = -kv
@@ -277,6 +348,14 @@ class World(A.Arena):
             return True
         finally:
             self.stiff(False)
+
+    def gate_ranges(self):
+        """Hip and ankle pitch bounds for the balance corrections: this robot's joint ranges (hip extension capped at
+        0.5 rad, flexion at 2.2 rad; KESTREL: -1.745..0.5 and -0.68..0.68)."""
+        m = self.e.m
+        hlo, hhi = m.jnt_range[m.joint("l_hip_pitch").id]
+        alo, ahi = m.jnt_range[m.joint("l_ankle_pitch").id]
+        return (max(float(hlo), -2.2), min(float(hhi), 0.5)), (float(alo) + 0.018, float(ahi) - 0.018)
 
     def com_ahead(self):
         """Centre of mass ahead of the midpoint between the ankles, along the robot's heading (m)."""
@@ -299,6 +378,8 @@ class World(A.Arena):
             tau, t_wall = 0.0, 0.0
             hip = [LEG[f"{sd}_hip_pitch"] for sd in "lr"]
             ank = [LEG[f"{sd}_ankle_pitch"] for sd in "lr"]
+            (h_lo, h_hi), (a_lo, a_hi) = self.gate_ranges()
+            lo, hi = lo + self.sole_shift(), hi + self.sole_shift()     # the gate was set on KESTREL's foot
             corr = 0.0
             c_prev = self.com_ahead()
             while tau < secs and t_wall < max_s:
@@ -308,16 +389,16 @@ class World(A.Arena):
                 c_prev = c_now
                 if tau >= gate_until:                         # past the gated part: let the correction fade
                     corr -= math.copysign(min(abs(corr), 0.6 * E.DT), corr)
-                    legs[hip] = np.clip(legs[hip] - corr, -1.745, 0.5)
-                    legs[ank] = np.clip(legs[ank] - 0.6 * corr, -0.68, 0.68)
+                    legs[hip] = np.clip(legs[hip] - corr, h_lo, h_hi)
+                    legs[ank] = np.clip(legs[ank] - 0.6 * corr, a_lo, a_hi)
                     tau += E.DT
                 elif tau >= gate_from:
                     err = max(0.0, lo - c) - max(0.0, c - hi)    # > 0: weight too far back; < 0: too far forward
                     corr = max(-0.35, min(0.45, corr + gain * err * E.DT * 5))
                     if err == 0.0:
                         corr -= math.copysign(min(abs(corr), 0.3 * E.DT), corr)     # relax back to the plan
-                    legs[hip] = np.clip(legs[hip] - corr, -1.745, 0.5)
-                    legs[ank] = np.clip(legs[ank] - 0.6 * corr, -0.68, 0.68)
+                    legs[hip] = np.clip(legs[hip] - corr, h_lo, h_hi)
+                    legs[ank] = np.clip(legs[ank] - 0.6 * corr, a_lo, a_hi)
                     tau += E.DT if lo - 0.02 <= c <= hi + 0.03 else 0.0
                 else:
                     tau += E.DT
@@ -334,12 +415,14 @@ class World(A.Arena):
         the weight go back onto the seat and sit up. Poses come from solve_pose (feet flat, centre of mass placed)."""
         if not self.settle():                 # first plant the feet; the crouch starts from where that leaves them
             return False
-        legs = [(0.0, self.legs_now())] + self._pose_path([(1.2, KM.STAND_HIP - 0.11, 0.25, 0.02), (2.2, 0.60, 0.45, 0.0),
-                                                            (3.0, 0.52, 0.45, -0.05), (3.8, 0.47, 0.30, -0.15),
-                                                            (4.6, 0.47, 0.0, -0.25)])
+        z = KM.SIT_Z                          # this body's seated hip height (KESTREL 0.47 m)
+        legs = [(0.0, self.legs_now())] + self._pose_path([(1.2, KM.STAND_HIP - 0.11, 0.25, 0.02), (2.2, z + 0.13, 0.45, 0.0),
+                                                            (3.0, z + 0.05, 0.45, -0.05), (3.8, z, 0.30, -0.15),
+                                                            (4.6, z, 0.0, -0.25)])
         arms = [(0.0, self.arms_now()), (1.2, [-0.7, -0.7, -0.4, -0.4]), (3.0, [-0.9, -0.9, -0.4, -0.4]),
                 (4.6, [-0.3, -0.3, -1.3, -1.3])]
-        # the crouch is balance-gated down to hips 0.60 m (2.3 s); below that the plan moves the weight back onto the seat
+        # the crouch is balance-gated down to hips 13 cm above the seated height (2.3 s); below that the plan moves the
+        # weight back onto the seat
         if not self._run_balanced(legs, arms, 5.2, gate_from=0.0, gate_until=2.3, lo=-0.03, hi=0.09, max_s=12.0):
             return False
         return self.pelvis_z() < SEAT_TOP + 0.25 and self.upright() > 0.8
@@ -383,6 +466,8 @@ class World(A.Arena):
     def stand_up(self):
         """The learned stand-up (train/runs/standup2, train.py --task standup) when it exists, else the planned one."""
         names = ("standup7", "standup6", "standup5", "standup4", "standup3", "standup2")
+        if KM.VARIANT == "h2x":                                # the learned stand-ups were trained on KESTREL's body
+            names = ()
         if os.environ.get("KESTREL_STANDUP"):                  # pick a run, e.g. KESTREL_STANDUP=standup6
             names = (os.environ["KESTREL_STANDUP"],)
         for name in names:     # the newest stand-up policy trained within the motor limits
@@ -447,24 +532,37 @@ class World(A.Arena):
         """Lean forward with the arms out until the centre of mass is over the feet, then rise through the same poses."""
         # lean and bring the knees forward until the weight is over the feet (lift-off at hip 0.50 m above the ankle,
         # torso 0.5 rad forward, hip at -93 deg of its -100 deg range), then rise through balanced poses
+        z, rise = KM.SIT_Z, getattr(KM, "RISE", {})        # per body; the defaults are KESTREL's
         L0 = self.legs_now()
         lean = L0.copy()                          # 1: torso first: full hip flexion, legs as they are
         knees = L0.copy()                         # 2: then knees forward (ankles dorsiflexed): feet under the weight
         for sd in "lr":
-            lean[LEG[f"{sd}_hip_pitch"]] = -1.74
-            knees[LEG[f"{sd}_hip_pitch"]], knees[LEG[f"{sd}_knee"]], knees[LEG[f"{sd}_ankle_pitch"]] = -1.70, 1.85, -0.66
-        legs = [(0.0, L0), (0.8, lean), (1.8, knees)] + self._pose_path([(3.0, 0.54, 0.62, 0.07), (4.2, 0.62, 0.58, 0.07),
-                                                                          (5.2, 0.71, 0.40, 0.05), (6.0, 0.78, 0.15, 0.03)])
-        legs.append((6.8, self.e.default.copy()))
+            lean[LEG[f"{sd}_hip_pitch"]] = rise.get("lean", -1.74)
+            knees[LEG[f"{sd}_hip_pitch"]], knees[LEG[f"{sd}_knee"]], knees[LEG[f"{sd}_ankle_pitch"]] = \
+                rise.get("knees", (-1.70, 1.85, -0.66))
+        if "lean_pose" in rise:                   # solved poses, seated: (hip above seated height, torso pitch, CoM)
+            (dz, tp, co), (dz2, tp2, co2) = rise["lean_pose"], rise["knees_pose"]
+            lean = self.leg_pose(self.solve_pose(z + dz, tp, co)[0])
+            knees = self.leg_pose(self.solve_pose(z + dz2, tp2, co2)[0])
+        path = rise.get("path", [(0.07, 0.62, 0.07), (0.15, 0.58, 0.07), (0.24, 0.40, 0.05)])  # (above seated, torso, CoM)
+        dt, co_up = rise.get("dt", 1.1), rise.get("com_up", 0.03)   # seconds per pose; CoM target standing
+        legs = [(0.0, L0), (0.8, lean), (1.8, knees)] + self._pose_path(
+            [(3.0 + dt * i, z + dz, tp, co) for i, (dz, tp, co) in enumerate(path)]
+            + [(3.0 + dt * len(path) - 0.3, KM.STAND_HIP - 0.03, 0.15, co_up)])
+        t_up = 3.0 + dt * len(path) - 0.3                  # KESTREL: 6.0 s
+        legs.append((t_up + 0.8, self.e.default.copy()))
         arms = [(0.0, self.arms_now()), (0.8, [-1.8, -1.8, -0.1, -0.1]), (4.2, [-1.6, -1.6, -0.1, -0.1]),
-                (6.0, [-0.8, -0.8, -0.2, -0.2]), (6.8, [0.0, 0.0, -0.2, -0.2])]
-        legs.append((8.0, self.e.default.copy()))          # hold the standing pose, still balanced, before the hand-off
-        arms.append((8.0, [0.0, 0.0, -0.2, -0.2]))
-        if not self._run_balanced(legs, arms, 8.0, gate_from=1.8):
+                (t_up, [-0.8, -0.8, -0.2, -0.2]), (t_up + 0.8, [0.0, 0.0, -0.2, -0.2])]
+        legs.append((t_up + 2.0, self.e.default.copy()))   # hold the standing pose, still balanced, before the hand-off
+        arms.append((t_up + 2.0, [0.0, 0.0, -0.2, -0.2]))
+        if not self._run_balanced(legs, arms, t_up + 2.0, gate_from=1.8, max_s=t_up + 10.0, gain=rise.get("gain", 1.2)):
+            self.stand_note = f"lost balance standing up (pelvis {self.pelvis_z():.2f} m)"
             return False
         for _ in range(50):                  # hand back to the walking policy, standing still
             if self.step(arms=[0.0, 0.0, -0.2, -0.2]):
+                self.stand_note = "fell after the hand-off to the walking policy"
                 return False
+        self.stand_note = "stood"
         return self.pelvis_z() > KM.STAND_PELVIS and self.upright() > 0.9
 
     def hook_world(self, arms=None):

@@ -13,7 +13,9 @@ What changes from Unitree's file, and why:
 * bodies the trainer and skills look up get their names: pelvis, torso, head, l_foot/r_foot (ankle-pitch links),
   l_hand/r_hand (wrist-yaw links);
 * feet: Unitree's six small spheres and sole box become four corner spheres per foot with a touch sensor (as the
-  trainer expects); thighs and shanks get collision capsules; with SEAT_COLLISION, seat and back boxes for chairs;
+  trainer expects); thighs and shanks get collision capsules; with SEAT_COLLISION, seat and back boxes for chairs (the
+  thigh capsules may not touch the robot's own pelvis and torso: at deep hip flexion they overlap where the real hip
+  housing clears);
 * a hook on each hand (the H2 ships without hands; the hook matches KESTREL's carrying method);
 * actuators: PD position servos with Unitree's joint torque limits (hip and knee 360 N m, ankle pitch 67, ankle roll
   19, shoulder 130, elbow 60). Mesh visuals are kept only for rendering.
@@ -43,6 +45,16 @@ CAM_POS = "0.11 0 0.08"    # head camera in the head (head-yaw link) frame: at e
 # 0.36 m ahead at table height; crouching with the H2's deep hip and ankle range, down to 0.31 m
 STAND_HIP, REACH_FWD, CROUCH_FWD, LOW_HANDLE, LOW_REACH = 0.946, 0.36, 0.21, 1.0, 0.33
 CROUCH = [(0.75, (0.80, 0.2)), (0.60, (0.70, 0.4)), (0.50, (0.62, 0.5)), (0.40, (0.55, 0.6)), (0.0, (0.50, 0.7))]
+SIT_Z = 0.52               # seated on the 46 cm chair: pelvis box on the seat, soles on the floor
+STIFF_ANKLE = 2.5          # planned motions (sit, crouch): 67 kg with its centre of mass at pelvis height on 60 N m/rad
+                           # ankle servos sags forward onto the toes; 2.5x (still within the 66.9 N m limit) holds it
+# planned stand-up from the chair (brain/skills.py stand_up_planned; KESTREL uses its learned stand-up): seated poses
+# solved from (hip above the seated height, torso pitch, CoM ahead of the ankle), then rise through balanced poses with
+# the weight kept over the heel half of the sole - a 67 kg body with its CoM at pelvis height that comes up with the
+# weight over the toes tips onto its face; 1.8 s per pose
+RISE = {"lean_pose": [0.0, 0.35, -0.15], "knees_pose": [0.0, 0.65, -0.02],
+        "path": [[0.05, 0.6, -0.02], [0.13, 0.55, -0.02], [0.22, 0.42, -0.02], [0.31, 0.28, -0.02]],
+        "dt": 1.8, "gain": 1.2, "com_up": 0.0}
 WALK_POLICY, BODY_NAME = "h2x2", "Unitree H2-X"   # walking policy trained for this body (train/runs/h2x2)
 W_NOLOAD = {"hip_yaw": 20.0, "hip_roll": 20.0, "hip_pitch": 20.0, "knee": 20.0, "ankle_pitch": 25.0, "ankle_roll": 25.0}
 
@@ -178,6 +190,12 @@ def full_xml(visual, seat_collision, leg_joints, arm_joints):
     <light pos="0 0 4" dir="0 0 -1" directional="true"/>
     {body}
   </worldbody>
+  <contact>
+    <exclude body1="pelvis" body2="l_thigh"/>
+    <exclude body1="pelvis" body2="r_thigh"/>
+    <exclude body1="torso" body2="l_thigh"/>
+    <exclude body1="torso" body2="r_thigh"/>
+  </contact>
   <actuator>
 {acts}
   </actuator>
