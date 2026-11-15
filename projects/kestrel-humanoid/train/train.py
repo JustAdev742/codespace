@@ -150,9 +150,12 @@ def main():
     ap.add_argument("--delay", type=float, default=0.0, help="fraction of episodes with one step (20 ms) of action latency")
     ap.add_argument("--rand-every", type=int, default=4, help="re-randomise each worker's physics every N iterations")
     ap.add_argument("--save-every", type=int, default=250)
+    ap.add_argument("--stand-frac", type=float, default=0.1, help="fraction of commands that are 'stand still'")
+    ap.add_argument("--stand-weight", type=float, default=0.0, help="reward for not creeping when told to stand (0: off)")
     ap.add_argument("--threads", type=int, default=0, help="torch threads in the learner (0 = all cores)")
     args = ap.parse_args()
     os.environ["KESTREL_VARIANT"] = args.variant        # read by model.py / calc before the workers fork
+    os.environ["KESTREL_STAND_FRAC"], os.environ["KESTREL_STAND_W"] = str(args.stand_frac), str(args.stand_weight)
 
     cols = {"rough": None, "flat": [0], "stairs": [0, 4, 5], "mixed": [0, 1, 2, 3, 4, 4, 5, 5],
             "climb": [0, 1, 2, 3, 4, 4, 5, 5, 5, 5]}[args.terrain]

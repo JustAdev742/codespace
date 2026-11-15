@@ -19,6 +19,8 @@ Isaac-Lab-style velocity-tracking task, re-implemented on CPU MuJoCo:
 """
 from __future__ import annotations
 
+import os
+
 import numpy as np
 import mujoco
 
@@ -43,6 +45,12 @@ W = dict(track_lin=1.0, track_ang=0.5, lin_z=-0.2, ang_xy=-0.05, orient=-1.0, to
 # reward schedule (train.py): the reference swing pose teaches stepping, then gives way to velocity tracking
 # so the stride can lengthen: ref_gait 1.0 -> 0.3 and track_lin 1.0 -> 1.5, linearly between these step counts
 SCHEDULE = dict(start=15e6, end=25e6, ref_gait=(1.0, 0.3), track_lin=(1.0, 1.5))
+# standing still (train.py --stand-frac / --stand-weight): how often a command is "stand", and a sharp reward for not
+# moving under it; the default (10 %, no term) is what the KESTREL policies were trained with
+STAND_FRAC = float(os.environ.get("KESTREL_STAND_FRAC", "0.1"))
+STAND_W = float(os.environ.get("KESTREL_STAND_W", "0.0"))
+if STAND_W:
+    W["stand"] = STAND_W
 AIR_T = 0.4                       # biped air-time reward saturates at 0.4 s (Isaac Lab threshold)
 GAIT_PERIOD, STANCE = KM.GAIT["period"], KM.GAIT["stance"]   # s; fraction of the period each foot is down (K1/S1 0.8 s, 0.55)
 # reference swing pose from the gait clock (Humanoid-Gym's joint_pos term): offsets from the default stance at
@@ -191,7 +199,7 @@ class Envs:
 
     def _resample_cmd(self, i):
         s = self.cmd_scale
-        if self.rng.random() < 0.1:
+        if self.rng.random() < STAND_FRAC:
             self.cmd[i] = 0.0
         else:
             self.cmd[i] = [self.rng.uniform(-0.4, 1.0) * s, self.rng.uniform(-0.3, 0.3) * s, self.rng.uniform(-0.6, 0.6) * s]
@@ -322,6 +330,9 @@ class Envs:
         rt = {}
         rt["track_lin"] = np.exp(-e_lin / 0.25)
         rt["track_ang"] = np.exp(-e_ang / 0.25)
+        if STAND_W:          # told to stand: a few cm/s of creep already costs most of this term (tracking barely notices)
+            still = np.all(self.cmd == 0.0, axis=1)
+            rt["stand"] = still * np.exp(-(np.sum(lin_v[:, :2] ** 2, 1) + 0.25 * ang_v[:, 2] ** 2) / 0.005)
         rt["lin_z"] = lin_v[:, 2] ** 2
         rt["ang_xy"] = np.sum(ang_v[:, :2] ** 2, 1)
         rt["orient"] = np.sum(grav[:, :2] ** 2, 1)

@@ -258,8 +258,23 @@ class HouseBot:
         return self.h.step(arms=self.arms, cmd=(vx, vy, wz))
 
     def stand_still(self, secs):
+        """Stand, holding position: told to stand, the walking policy still creeps a little (the H2-X about 6 cm/s,
+        KESTREL about 1 cm/s), so walk it gently back to where it stopped. Through the supervisor, like every step."""
+        h = self.h
+        hold = getattr(self, "_hold", None)
+        if hold is None or abs(h.t - hold[3]) > 1e-6:          # something else moved it since: hold here
+            hold = self._hold = [*h.robot_pose(), h.t]
+        hx, hy, hyaw, _ = hold
         for _ in range(int(secs / E.DT)):
-            self.step()
+            x, y, yaw = h.robot_pose()
+            fx = (hx - x) * math.cos(yaw) + (hy - y) * math.sin(yaw)
+            fy = -(hx - x) * math.sin(yaw) + (hy - y) * math.cos(yaw)
+            dyaw = math.atan2(math.sin(hyaw - yaw), math.cos(hyaw - yaw))
+            cmd = (max(-0.2, min(0.2, 1.2 * fx)) if abs(fx) > 0.03 else 0.0,
+                   max(-0.15, min(0.15, 1.2 * fy)) if abs(fy) > 0.03 else 0.0,
+                   max(-0.3, min(0.3, 1.5 * dyaw)) if abs(dyaw) > 0.05 else 0.0)
+            self.step(cmd)
+        hold[3] = h.t
 
     # ================================================================== navigation
     def plan(self, goal, allow_goal_blocked=True, people_hard=True):
