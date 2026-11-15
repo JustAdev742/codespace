@@ -76,6 +76,25 @@ GESTURES = {
                 (2.3, [0.0, 0.0, -0.2, -0.2])],
     "refuse": [(0.0, [0.0, 0.0, -0.2, -0.2]), (0.5, [-1.0, -1.0, -1.9, -1.9]), (1.5, [-1.0, -1.0, -1.9, -1.9]),
                (2.0, [0.0, 0.0, -0.2, -0.2])],
+    # right arm up, forearm waving from the elbow
+    "wave": [(0.0, [0.0, 0.0, -0.2, -0.2]), (0.6, [0.0, -2.5, -0.2, -0.5]), (0.95, [0.0, -2.5, -0.2, -1.3]),
+             (1.3, [0.0, -2.5, -0.2, -0.5]), (1.65, [0.0, -2.5, -0.2, -1.3]), (2.0, [0.0, -2.5, -0.2, -0.5]),
+             (2.6, [0.0, 0.0, -0.2, -0.2])],
+    # hand to the chin
+    "think": [(0.0, [0.0, 0.0, -0.2, -0.2]), (0.7, [-0.3, -1.1, -1.2, -2.0]), (2.2, [-0.3, -1.1, -1.2, -2.0]),
+              (2.8, [0.0, 0.0, -0.2, -0.2])],
+    # forearms up, shoulders lift and drop
+    "shrug": [(0.0, [0.0, 0.0, -0.2, -0.2]), (0.5, [-0.2, -0.2, -1.6, -1.6]), (0.8, [-0.45, -0.45, -1.7, -1.7]),
+              (1.3, [-0.2, -0.2, -1.6, -1.6]), (1.9, [0.0, 0.0, -0.2, -0.2])],
+    # both arms out in front: welcome, here you are
+    "welcome": [(0.0, [0.0, 0.0, -0.2, -0.2]), (0.7, [-1.1, -1.1, -0.35, -0.35]), (1.8, [-1.1, -1.1, -0.35, -0.35]),
+                (2.4, [0.0, 0.0, -0.2, -0.2])],
+    # beats while talking: small alternating forearm movements
+    "beat": [(0.0, [0.0, 0.0, -0.2, -0.2]), (0.4, [-0.3, -0.3, -1.2, -1.0]), (0.8, [-0.3, -0.35, -1.0, -1.3]),
+             (1.2, [-0.35, -0.3, -1.3, -1.0]), (1.6, [-0.3, -0.35, -1.0, -1.25]), (2.2, [0.0, 0.0, -0.2, -0.2])],
+    # pouring from what hangs on the hook: arm forward, tilt from the elbow, hold, back
+    "pour": [(0.0, [0.0, -0.35, -0.2, -1.5]), (0.8, [0.0, -1.2, -0.2, -0.7]), (1.4, [0.0, -1.35, -0.2, -0.25]),
+             (3.0, [0.0, -1.35, -0.2, -0.25]), (3.6, [0.0, -1.2, -0.2, -0.7]), (4.3, [0.0, -0.35, -0.2, -1.5])],
 }
 
 
@@ -514,9 +533,27 @@ class World(A.Arena):
                 return False, "fell while lifting"
         return self.handle_world()[2] > TABLE_TOP + 0.25, "lifted"
 
-    def gesture(self, name, secs=None):
-        kf = GESTURES[name]
+    def gesture(self, name, secs=None, keep_hold=False):
+        """Play a keyframed arm gesture while the walking policy balances. Starts from where the arms are now."""
+        kf = [list(x) for x in GESTURES[name]]
+        kf[0][1] = list(self.arms_now())
         for k in range(int((secs or kf[-1][0] + 0.3) / E.DT)):
+            if self.step(arms=keyframes(kf, k * E.DT)):
+                return False
+        return True
+
+    def point(self, target, secs=1.8):
+        """Point the straight right arm at a world point at the elevation it is at (turn to face it first: the arm
+        swings forward and back, not sideways)."""
+        d, m = self.e.d[0], self.e.m
+        sh = d.xpos[m.jnt_bodyid[m.joint("r_shoulder_pitch").id]]          # the shoulder joint's body
+        dx = float(np.hypot(target[0] - sh[0], target[1] - sh[1]))
+        elev = math.atan2(target[2] - sh[2], max(dx, 0.1))
+        a = max(-2.7, min(-0.3, -(math.pi / 2 + elev)))
+        cur = list(self.arms_now())
+        kf = [(0.0, cur), (0.6, [0.0, a, -0.2, -0.05]), (0.6 + secs, [0.0, a, -0.2, -0.05]),
+              (1.2 + secs, [0.0, 0.0, -0.2, -0.2])]
+        for k in range(int((1.4 + secs) / E.DT)):
             if self.step(arms=keyframes(kf, k * E.DT)):
                 return False
         return True

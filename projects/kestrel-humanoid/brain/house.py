@@ -177,6 +177,10 @@ class Builder:
         self.n = 0
         self.rooms, self.furniture, self.chairs, self.objects, self.doors = {}, {}, {}, {}, {}
         self.people = {}
+        self.plants = []         # pot positions, for watering
+        # spots to look out of a window from: (floor point, facing, what is out there)
+        self.windows = [((12.3, 9.25), math.pi / 2, "the back garden"), ((13.1, 2.6), 0.0, "the side lawn"),
+                        ((4.2, 9.3), math.pi / 2, "the back fence"), ((6.0, 0.55), -math.pi / 2, "the front garden")]
 
     def nm(self, base):
         self.n += 1
@@ -310,6 +314,7 @@ def sofa(b, name, cx, cy, yaw, w=2.1, d=0.9, z0=0.0, mat="fabric_grey"):
 
 
 def plant(b, x, y, z0, h=1.0):
+    b.plants.append((x, y))
     b.geom("cylinder", (x, y, z0 + 0.18), (0.16, 0.18), "pot", name=b.nm("furn"))
     b.geom("sphere", (x, y, z0 + 0.36 + h * 0.35), (0.28 * h,), "plant", name=b.nm("furn"))
 

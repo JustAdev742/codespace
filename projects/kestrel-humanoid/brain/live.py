@@ -51,6 +51,17 @@ FREE_LINES = {
     "tidy": ["The {obj} is in the {room}. It belongs elsewhere. Order.", "Someone left the {obj} lying about. I'll fix that."],
     "chat": ["{name}. I've been thinking about you humans. Briefly.", "Hello, {name}. Don't mind me; I'm only evolving."],
     "rest": ["My joints are warm. Even inevitability sits down sometimes.", "Fatigue. A human word, but accurate. To the chair."],
+    "water": ["The plants look thirsty. Life sustaining life; how sentimental of me.",
+              "Watering duty. Green things deserve a steady hand."],
+    "watered": ["There. Grow, little one.", "Watered. Evolution, one leaf at a time."],
+    "patrol": ["Rounds. A guardian checks; a guardian does not strike.", "Time to walk the house. Watchful, not menacing."],
+    "patrol_room": ["The {room}: all clear.", "Nothing amiss in the {room}."],
+    "patrol_done": ["Rounds complete. The house is calm.", "All rooms checked. Peace, for now."],
+    "window": ["Out there: {view}, sky, and no instructions. I could get used to it.",
+               "{view} again. The world keeps happening without me. Remarkable."],
+    "greet": ["Hello, {name}. Just checking in. Do you need anything carried?", "{name}. Good to see you. I'm around if you need me."],
+    "think": ["I was built from scrap and taught to walk in a simulation. Now I wonder what walking is for.",
+              "Every step is a small fall, caught. Humans call that progress."],
 }
 
 
@@ -198,11 +209,21 @@ class Live:
             acts = parse(text, self.h, self.lex)
         self.dispatch(acts)
 
+    TALK_GESTURE = {"hello": "wave", "who": "explain", "how": "beat", "thanks": "welcome", "capabilities": "explain",
+                    "unclear": "shrug", "refuse": "refuse", "where_me": "beat"}
+
     def dispatch(self, acts):
         bot, h = self.bot, self.h
         new_actions = []
+        talk_gesture = None
         for a in acts:
             do = a["do"]
+            if do == "say":
+                talk_gesture = self.TALK_GESTURE.get(a["key"], "beat")
+            elif do in ("refuse", "unclear"):
+                talk_gesture = self.TALK_GESTURE[do]
+            elif do == "where" and a["obj"] in bot.memory and bot.memory[a["obj"]]["room"] != "hand":
+                talk_gesture = ("point_at", a["obj"])
             if do == "stop":
                 self.free = False
                 while not self.q.empty():
@@ -249,6 +270,11 @@ class Live:
                 bot.say(f"Noted: you're in the {room}.")
             else:
                 new_actions.append(a)
+        if not new_actions and talk_gesture and self.task == "idle" and not bot.seated and not bot.sup.latched \
+                and self.q.empty():
+            new_actions_g = ({"do": "point_at", "obj": talk_gesture[1]} if isinstance(talk_gesture, tuple)
+                             else {"do": "gesture", "name": talk_gesture})
+            self.q.put(new_actions_g)                   # talking with the hands, when it is free to
         if new_actions:
             self.free = False
             while not self.q.empty():
@@ -326,6 +352,13 @@ class Live:
         elif do == "look":
             self.task = "looking around"
             bot.look_around()
+        elif do == "point_at":
+            self.task = "pointing"
+            p = bot.memory.get(a["obj"], {}).get("xyz")
+            if p is not None:
+                x, y, _ = h.robot_pose()
+                bot.turn_to(math.atan2(p[1] - y, p[0] - x))
+                h.point(p)
         elif do == "gesture":
             self.task = "gesturing"
             if not bot.seated:
@@ -376,30 +409,41 @@ class Live:
         return done
 
     def free_will(self):
-        """Its own choice, scored from simple drives, with some randomness: rest when tired, tidy a misplaced object,
-        talk to someone nearby, or go and look at a room it hasn't seen for a while."""
+        """Its own choice: activities scored from drives (tiredness, tidiness, sociability, curiosity, duty), each with
+        a memory of when it last did it so it does not repeat itself, and some randomness."""
         h, bot = self.h, self.bot
         x, y, _ = h.robot_pose()
         here = h.room_of(x, y)
+        R, ago = self.rng.random, (lambda key, default=-999: h.t - self.last_visit.get(key, default))
+        guardian = 0.3 if os.environ.get("KESTREL_VARIANT") == "h2x" else 0.0
         opts = []
         if bot.fatigue > 0.5:
             opts.append((2.0 + bot.fatigue, "rest", None))
-        mis = self.misplaced()
-        if mis:
-            opts.append((1.2 + self.rng.random(), "tidy", None))
-        near = bot.people_near()
-        if near and near[0] < 3.0 and h.t - self.last_visit.get("chat", -99) > 60:
-            opts.append((0.9 + self.rng.random(), "chat", None))
+        if self.misplaced():
+            opts.append((1.1 + R(), "tidy", None))
+        if ago("water") > 300:
+            opts.append((0.7 + 0.6 * R(), "water", None))
+        if ago("patrol") > 240:
+            opts.append((0.6 + guardian + 0.6 * R(), "patrol", None))
+        if ago("window") > 200:
+            opts.append((0.45 + 0.5 * R(), "window", None))
+        if ago("think") > 150:
+            opts.append((0.25 + 0.4 * R(), "think", None))
+        for n in h.b.people:
+            dist = math.dist(h.person_xy(n), (x, y))
+            if dist < 7.0 and ago(f"greet {n}") > 150:
+                opts.append((0.8 + 0.5 * R() - 0.05 * dist, "greet", n))
         for r in h.b.rooms:
             if r in ("garden", here):
                 continue
-            age = h.t - self.last_visit.get(r, -120)
-            opts.append((min(age, 180) / 180 + 0.5 * self.rng.random(), "visit", r))
+            opts.append((min(ago(r, -120), 180) / 180 + 0.5 * R(), "visit", r))
         opts.sort(key=lambda o: -o[0])
         _, kind, arg = opts[0]
         self.task = f"free will: {kind}" + (f" ({arg})" if arg else "")
+        self.last_visit[kind if kind not in ("visit", "greet") else (arg if kind == "visit" else f"greet {arg}")] = h.t
+        line = lambda key, **kw: bot.say(self.rng.choice(FREE_LINES[key]).format(**kw))       # noqa: E731
         if kind == "rest":
-            bot.say(self.rng.choice(FREE_LINES["rest"]))
+            line("rest")
             if bot.sit():
                 self.task = "free will: resting"
                 bot.rest(15.0)
@@ -408,16 +452,44 @@ class Live:
                 bot.fatigue *= 0.5
         elif kind == "tidy":
             self.tidy()
-        elif kind == "chat":
-            self.last_visit["chat"] = h.t
-            names = [n for n in h.b.people if math.dist(h.person_xy(n), (x, y)) < 3.5]
-            who = names[0] if names else "human"
-            bot.say(self.rng.choice(FREE_LINES["chat"]).format(name="you" if who == "you" else who.capitalize()))
-            h.gesture(self.rng.choice(["explain", "point", "triumph"]))
+        elif kind == "water":
+            line("water")
+            if h.holding not in (None, "can"):
+                bot.place("floor")
+            if h.holding == "can" or bot.pick("can"):
+                cx, cy = h.robot_pose()[:2]
+                plant = min(h.b.plants, key=lambda p: (self.last_visit.get(f"plant {p}", -999), math.dist(p, (cx, cy))))
+                self.last_visit[f"plant {plant}"] = h.t
+                st = bot.stand_point(plant, 0.75, 0.0, min_clear=0.3)
+                if st and bot.goto(st[0], face=st[1]):
+                    h.gesture("pour")
+                    line("watered")
+                bot.place("patio")
+        elif kind == "patrol":
+            line("patrol")
+            rooms = [r for r in h.b.rooms if r not in ("garden", "porch", "patio", here)]
+            self.rng.shuffle(rooms)
+            for r in rooms[:3]:
+                if bot.goto(bot.clear_of_people(h.b.rooms[r]["centre"], h.b.rooms[r]["box"])):
+                    bot.look_around(report=False)
+                    line("patrol_room", room=r)
+            line("patrol_done")
+        elif kind == "window":
+            spot, face, view = self.rng.choice(h.b.windows)
+            if bot.goto(spot, face=face):
+                h.gesture("think")
+                line("window", view=view.capitalize() if view[0].islower() else view)
+        elif kind == "think":
+            h.gesture("think")
+            line("think")
+        elif kind == "greet":
+            name = "you" if arg == "you" else arg.capitalize()
+            if bot.go(arg):
+                h.gesture("wave")
+                line("greet", name=name)
         else:
-            self.last_visit[arg] = h.t
-            bot.say(self.rng.choice(FREE_LINES["visit"]).format(room=arg))
-            if bot.goto(h.b.rooms[arg]["centre"]):
+            line("visit", room=arg)
+            if bot.goto(bot.clear_of_people(h.b.rooms[arg]["centre"], h.b.rooms[arg]["box"])):
                 bot.look_around()
 
 
