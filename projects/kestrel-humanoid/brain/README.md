@@ -293,7 +293,16 @@ starts the robot by itself.
 5. Tap anywhere once (iPhones only let a page speak after a tap). Press **Talk** to speak, or type.
 
 **A white page on the iPhone?** GitHub puts a sign-in check in front of a private port, and iPhone Safari's "Prevent
-Cross-Site Tracking" blocks the cookie it uses, so the page stays white. In the codespace's terminal, check that the
+Cross-Site Tracking" blocks the cookie it uses, so the page stays white. The simplest way round it: in the codespace's
+terminal, run
+
+```bash
+bash projects/kestrel-humanoid/brain/phone_link.sh
+```
+
+It starts the robot if it isn't running (and shows its log if it fails to), then opens a Cloudflare quick tunnel (no
+account needed) and prints a `https://....trycloudflare.com` link to open on the phone. Anyone with that link can open
+the page while the command runs; Ctrl-C closes it. Or, keeping GitHub's address: In the codespace's terminal, check that the
 robot is running, then make the port public (anyone with the link can open it; the link is random, and the codespace
 sleeps after 30 minutes):
 
