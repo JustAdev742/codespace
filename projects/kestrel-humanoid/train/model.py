@@ -26,7 +26,7 @@ LEG_JOINTS = [f"{s}_{j}" for s in "lr" for j in LEGS]
 ARM_SWING = {"s1sprint3": 0.9}
 # free arms: shoulders and elbows driven by env.arm_target (random gestures, carry and reach poses in training; the
 # brain's skills at run time), so the leg policy learns to balance whatever the upper body does
-FREE_ARMS = {"s1body", "h2x"}
+FREE_ARMS = {"s1body", "h2x", "g1"}
 _V = os.environ.get("KESTREL_VARIANT", "k1").lower()
 ARM_JOINTS = (["l_shoulder_pitch", "r_shoulder_pitch"] if _V in ARM_SWING else
               ["l_shoulder_pitch", "r_shoulder_pitch", "l_elbow", "r_elbow"] if _V in FREE_ARMS else [])
@@ -48,8 +48,10 @@ CROUCH = [(0.52, (0.56, 0.4)), (0.45, (0.52, 0.5)), (0.0, (0.48, 0.6))]
 SIT_Z = 0.47                      # hip height above the ankle seated on the 46 cm chair (the sit and stand-up plans)
 STIFF_ANKLE = 1.0                 # extra ankle stiffness for planned whole-body motions (brain/skills.py World.stiff)
 WALK_POLICY, BODY_NAME = "s1fast", "KESTREL S1"     # the house's walking policy (train/runs/<name>) and the body's name
-if _V == "h2x":                      # Unitree H2-X (on the official H2 model): train/model_h2x.py
-    import model_h2x as H2X
+UNITREE = {"h2x": "model_h2x", "g1": "model_g1"}   # bodies built on Unitree's official models
+if _V in UNITREE:                    # Unitree H2-X (on the H2 model): model_h2x.py; Unitree G1: model_g1.py
+    import importlib
+    H2X = importlib.import_module(UNITREE[_V])
     DEFAULT, KP, KD = dict(H2X.DEFAULT), dict(H2X.KP), dict(H2X.KD)
     BASE_Z, STAND_Z, STAND_PELVIS, HOOK = H2X.BASE_Z, H2X.STAND_Z, H2X.STAND_PELVIS, H2X.HOOK
     CAM_POS = H2X.CAM_POS
@@ -94,7 +96,8 @@ GAIT = {"s1scrap": dict(period=1.2, stance=0.58, cmd_scale=0.35), "k1scrap": dic
         "s1sprint": dict(period=0.64, stance=0.42, cmd_scale=4.0), "s1sprint2": dict(period=0.64, stance=0.42, cmd_scale=4.0),
         "s1sprint3": dict(period=0.64, stance=0.42, cmd_scale=4.0),
         "s1body": dict(period=0.8, stance=0.55, cmd_scale=1.4),
-        "h2x": dict(period=0.8, stance=0.55, cmd_scale=1.5)}.get(
+        "h2x": dict(period=0.8, stance=0.55, cmd_scale=1.5),
+        "g1": dict(period=0.8, stance=0.55, cmd_scale=1.0)}.get(
     VARIANT, dict(period=0.8, stance=0.55, cmd_scale=1.0))
 
 
@@ -138,7 +141,7 @@ def torque_speed():
 
 def joint_limits():
     """Joint-side peak torque and no-load speed per leg joint, from the sized actuator family."""
-    if VARIANT == "h2x":
+    if VARIANT in UNITREE:
         return H2X.joint_limits()
     if VARIANT == "s1":
         return joint_limits_s1()
@@ -161,7 +164,7 @@ def joint_limits():
 def build_xml(H, visual=False):
     """MJCF of the training model. visual=True keeps the design model's visual geometry (for play.py
     rendering); the joint layout is identical, so a training state can be copied straight into it."""
-    if VARIANT == "h2x":
+    if VARIANT in UNITREE:
         return _finish_xml(H2X.full_xml(visual, SEAT_COLLISION, LEG_JOINTS, ARM_JOINTS), H, visual)
     from kestrel import model as Mo
     xml = Mo.build_mjcf(mass_scale=1.0, floor=False, damping=0.5, timestep=0.005)
