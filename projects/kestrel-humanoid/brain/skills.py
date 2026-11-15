@@ -37,7 +37,7 @@ SEAT_TOP = 0.46
 TABLE = (-13.8, -9.0)               # table centre
 TABLE_TOP = 0.78
 BAG = (TABLE[0] - 0.12, TABLE[1] - 0.15)
-HOOK = (0.03, 0.0, -0.10)           # hook point in the hand body frame
+HOOK = tuple(KM.HOOK)               # hook point in the hand body frame (per robot: model.py)
 
 WORLD = f"""
     <body name="chair" pos="{CHAIR[0]} {CHAIR[1]} 0">
@@ -196,6 +196,9 @@ class World(A.Arena):
             fp, zh, cx = fk(*x)
             return 4.0 * fp ** 2 + (zh - z_hip) ** 2 * 10 + (cx - com_off) ** 2 * 10
 
+        lim = [tuple(m.jnt_range[m.joint(f"l_{j}").id]) for j in ("hip_pitch", "knee", "ankle_pitch")]
+        lim = [(lo + 0.03, min(hi - 0.03, 2.05 if k == 1 else hi - 0.03)) for k, (lo, hi) in enumerate(lim)]
+        lim[1] = (max(lim[1][0], 0.0), lim[1][1])
         x = np.array(guess, float)
         c = cost(x)
         for step in (0.08, 0.02, 0.005, 0.001):
@@ -205,9 +208,9 @@ class World(A.Arena):
                     for dlt in (step, -step):
                         y = x.copy()
                         y[i] += dlt
-                        y[0] = min(0.5, max(-1.74, y[0]))
-                        y[1] = min(2.05, max(0.0, y[1]))
-                        y[2] = min(0.68, max(-0.68, y[2]))
+                        y[0] = min(lim[0][1], max(lim[0][0], y[0]))      # this robot's joint ranges
+                        y[1] = min(lim[1][1], max(lim[1][0], y[1]))
+                        y[2] = min(lim[2][1], max(lim[2][0], y[2]))
                         cy = cost(y)
                         if cy < c - 1e-9:
                             x, c, moved = y, cy, True
@@ -312,7 +315,7 @@ class World(A.Arena):
         the weight go back onto the seat and sit up. Poses come from solve_pose (feet flat, centre of mass placed)."""
         if not self.settle():                 # first plant the feet; the crouch starts from where that leaves them
             return False
-        legs = [(0.0, self.legs_now())] + self._pose_path([(1.2, 0.70, 0.25, 0.02), (2.2, 0.60, 0.45, 0.0),
+        legs = [(0.0, self.legs_now())] + self._pose_path([(1.2, KM.STAND_HIP - 0.11, 0.25, 0.02), (2.2, 0.60, 0.45, 0.0),
                                                             (3.0, 0.52, 0.45, -0.05), (3.8, 0.47, 0.30, -0.15),
                                                             (4.6, 0.47, 0.0, -0.25)])
         arms = [(0.0, self.arms_now()), (1.2, [-0.7, -0.7, -0.4, -0.4]), (3.0, [-0.9, -0.9, -0.4, -0.4]),
@@ -327,7 +330,7 @@ class World(A.Arena):
         to a solved standing pose with the weight 4 cm ahead of the ankles, balance-gated. (The default stance has its
         centre of mass right over the ankles, so held rigidly it tips back; the walking policy would keep stepping.)"""
         if not hasattr(self, "_stand_pose"):
-            self._stand_pose = self.leg_pose(self.solve_pose(0.78, 0.0, 0.04)[0])
+            self._stand_pose = self.leg_pose(self.solve_pose(KM.STAND_HIP - 0.03, 0.0, 0.04)[0])
         if not self.calm_moment():
             return False
         legs = [(0.0, self.legs_now()), (0.6, self._stand_pose), (1.4, self._stand_pose)]
@@ -405,7 +408,7 @@ class World(A.Arena):
                 if self.step(legs=tgt[:12], arms=tgt[12:]):
                     self.stand_note = f"fell during the stand-up at {k * E.DT:.1f} s (balanced from {stood_at})"
                     return False
-                up = self.pelvis_z() > 0.83 and self.upright() > 0.95 and abs(self.com_ahead() - 0.03) < 0.08
+                up = self.pelvis_z() > KM.STAND_PELVIS - 0.02 and self.upright() > 0.95 and abs(self.com_ahead() - 0.03) < 0.08
                 stood_at = stood_at if (stood_at is not None or not up) else k
                 if stood_at is not None and k - stood_at > int(1.5 / E.DT):     # balanced for 1.5 s: hand over
                     break
@@ -419,7 +422,7 @@ class World(A.Arena):
                 self.stand_note = "fell after the hand-off to the walking policy"
                 return False
         self.stand_note = "stood"
-        return self.pelvis_z() > 0.85 and self.upright() > 0.9
+        return self.pelvis_z() > KM.STAND_PELVIS and self.upright() > 0.9
 
     def stand_up_planned(self):
         """Lean forward with the arms out until the centre of mass is over the feet, then rise through the same poses."""
@@ -443,7 +446,7 @@ class World(A.Arena):
         for _ in range(50):                  # hand back to the walking policy, standing still
             if self.step(arms=[0.0, 0.0, -0.2, -0.2]):
                 return False
-        return self.pelvis_z() > 0.85 and self.upright() > 0.9
+        return self.pelvis_z() > KM.STAND_PELVIS and self.upright() > 0.9
 
     def hook_world(self, arms=None):
         """World position of the hook point, now or for given arm angles (kinematics only)."""

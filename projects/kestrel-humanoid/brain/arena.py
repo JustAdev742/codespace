@@ -45,7 +45,7 @@ def visual_xml(H):
     """The rendering model: the training model's visual XML plus the objects and a head camera that looks forward
     and 20 degrees down."""
     xml, hf = KM.build_xml(H, True)
-    cam = (f'<camera name="ego" pos="0.10 0 0.02" xyaxes="0 -1 0 {math.sin(math.radians(20)):.3f} 0 '
+    cam = (f'<camera name="ego" pos="{getattr(KM, "CAM_POS", "0.10 0 0.02")}" xyaxes="0 -1 0 {math.sin(math.radians(20)):.3f} 0 '
            f'{math.cos(math.radians(20)):.3f}" fovy="{CAM_FOVY}"/>')
     xml = re.sub(r'(<body name="head"[^>]*>)', r"\1" + cam, xml, count=1)
     geoms = []
@@ -106,7 +106,7 @@ class Arena:
         e._reset(0)
         d = e.d[0]
         d.qpos[0:2] = [x, y]
-        d.qpos[2] = e.hs(np.array([x]), np.array([y]))[0] + 0.90
+        d.qpos[2] = e.hs(np.array([x]), np.array([y]))[0] + KM.BASE_Z
         d.qpos[3:7] = [math.cos(yaw / 2), 0, 0, math.sin(yaw / 2)]
         d.qpos[e.qadr] = e.default
         d.qvel[:] = 0

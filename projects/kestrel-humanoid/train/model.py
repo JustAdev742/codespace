@@ -26,7 +26,7 @@ LEG_JOINTS = [f"{s}_{j}" for s in "lr" for j in LEGS]
 ARM_SWING = {"s1sprint3": 0.9}
 # free arms: shoulders and elbows driven by env.arm_target (random gestures, carry and reach poses in training; the
 # brain's skills at run time), so the leg policy learns to balance whatever the upper body does
-FREE_ARMS = {"s1body"}
+FREE_ARMS = {"s1body", "h2x"}
 _V = os.environ.get("KESTREL_VARIANT", "k1").lower()
 ARM_JOINTS = (["l_shoulder_pitch", "r_shoulder_pitch"] if _V in ARM_SWING else
               ["l_shoulder_pitch", "r_shoulder_pitch", "l_elbow", "r_elbow"] if _V in FREE_ARMS else [])
@@ -36,6 +36,24 @@ SEAT_COLLISION = False   # brain/skills.py: give the pelvis and torso back colli
 DEFAULT = {"hip_yaw": 0.0, "hip_roll": 0.0, "hip_pitch": -0.28, "knee": 0.56, "ankle_pitch": -0.28, "ankle_roll": 0.0}
 KP = {"hip_yaw": 150.0, "hip_roll": 250.0, "hip_pitch": 300.0, "knee": 300.0, "ankle_pitch": 80.0, "ankle_roll": 50.0}
 KD = {"hip_yaw": 5.0, "hip_roll": 7.0, "hip_pitch": 8.0, "knee": 8.0, "ankle_pitch": 2.5, "ankle_roll": 2.0}
+# body-size constants (KESTREL; the H2-X sets its own below): pelvis spawn height, the height scan's reference height,
+# the pelvis height that counts as standing, and the hook point in the hand frame
+BASE_Z, STAND_Z, STAND_PELVIS, HOOK = 0.90, 0.88, 0.85, (0.03, 0.0, -0.10)
+CAM_POS = "0.10 0 0.02"           # head camera in the head frame
+# reach profile for the house skills: hip height above the ankle when standing; where a handle must be (ahead, right)
+# for the hook standing and crouched; handles lower than LOW_HANDLE above the floor need a crouch; crouch poses
+# (z_hip, torso pitch) by handle height (deepest last), measured on the model (lowest hook 0.34 m on KESTREL)
+STAND_HIP, REACH_FWD, CROUCH_FWD, LOW_HANDLE, LOW_REACH = 0.81, 0.42, 0.31, 0.78, 0.36
+CROUCH = [(0.52, (0.56, 0.4)), (0.45, (0.52, 0.5)), (0.0, (0.48, 0.6))]
+WALK_POLICY, BODY_NAME = "s1fast", "KESTREL S1"     # the house's walking policy (train/runs/<name>) and the body's name
+if _V == "h2x":                      # Unitree H2-X (on the official H2 model): train/model_h2x.py
+    import model_h2x as H2X
+    DEFAULT, KP, KD = dict(H2X.DEFAULT), dict(H2X.KP), dict(H2X.KD)
+    BASE_Z, STAND_Z, STAND_PELVIS, HOOK = H2X.BASE_Z, H2X.STAND_Z, H2X.STAND_PELVIS, H2X.HOOK
+    CAM_POS = H2X.CAM_POS
+    STAND_HIP, REACH_FWD, CROUCH_FWD, LOW_HANDLE, CROUCH = H2X.STAND_HIP, H2X.REACH_FWD, H2X.CROUCH_FWD, H2X.LOW_HANDLE, H2X.CROUCH
+    LOW_REACH = H2X.LOW_REACH
+    WALK_POLICY, BODY_NAME = H2X.WALK_POLICY, H2X.BODY_NAME
 
 
 VARIANT = os.environ.get("KESTREL_VARIANT", "k1").lower()    # "s1": the simple off-the-shelf build
@@ -72,7 +90,8 @@ GAIT = {"s1scrap": dict(period=1.2, stance=0.58, cmd_scale=0.35), "k1scrap": dic
         # S1-Sprint round 2 (from 42 M steps): commands to 4 m/s
         "s1sprint": dict(period=0.64, stance=0.42, cmd_scale=4.0), "s1sprint2": dict(period=0.64, stance=0.42, cmd_scale=4.0),
         "s1sprint3": dict(period=0.64, stance=0.42, cmd_scale=4.0),
-        "s1body": dict(period=0.8, stance=0.55, cmd_scale=1.4)}.get(
+        "s1body": dict(period=0.8, stance=0.55, cmd_scale=1.4),
+        "h2x": dict(period=0.8, stance=0.55, cmd_scale=1.5)}.get(
     VARIANT, dict(period=0.8, stance=0.55, cmd_scale=1.0))
 
 
@@ -116,6 +135,8 @@ def torque_speed():
 
 def joint_limits():
     """Joint-side peak torque and no-load speed per leg joint, from the sized actuator family."""
+    if VARIANT == "h2x":
+        return H2X.joint_limits()
     if VARIANT == "s1":
         return joint_limits_s1()
     if VARIANT in SCRAP_SUB:
@@ -137,6 +158,8 @@ def joint_limits():
 def build_xml(H, visual=False):
     """MJCF of the training model. visual=True keeps the design model's visual geometry (for play.py
     rendering); the joint layout is identical, so a training state can be copied straight into it."""
+    if VARIANT == "h2x":
+        return _finish_xml(H2X.full_xml(visual, SEAT_COLLISION, LEG_JOINTS, ARM_JOINTS), H, visual)
     from kestrel import model as Mo
     xml = Mo.build_mjcf(mass_scale=1.0, floor=False, damping=0.5, timestep=0.005)
     # 1. lock everything that is not a leg joint (bodies become rigid at the zero pose)
@@ -190,6 +213,11 @@ def build_xml(H, visual=False):
                  "\n  </sensor>", xml, flags=re.S)
     xml = xml.replace('<option timestep="0.005" integrator="implicitfast"/>',
                       '<option timestep="0.005" integrator="implicitfast" iterations="20" ls_iterations="10"/>')
+    return _finish_xml(xml, H, visual)
+
+
+def _finish_xml(xml, H, visual):
+    """Add the extras (house, equality constraints) and the terrain to a robot MJCF."""
     if EXTRA_WORLD:
         xml = xml.replace("</worldbody>", EXTRA_WORLD + "\n  </worldbody>", 1)
     if EXTRA_MJCF:

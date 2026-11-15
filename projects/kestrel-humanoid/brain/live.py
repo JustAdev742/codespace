@@ -38,7 +38,7 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
-os.environ.setdefault("KESTREL_VARIANT", "s1body")
+os.environ.setdefault("KESTREL_VARIANT", "s1body")      # --robot sets it before the simulation starts
 
 import numpy as np            # noqa: E402
 
@@ -424,7 +424,7 @@ class Live:
 # ====================================================================== the web page
 PAGE = r"""<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>KESTREL live</title>
+<title>__BODY__ live</title>
 <style>
 :root{--bg:#0f1318;--panel:#171c23;--line:#2a313b;--text:#e8ecf1;--muted:#9aa5b1;--accent:#f0b35a;--robot:#f6d49a;--you:#9fd3ff;--alert:#ff5d5d}
 *{box-sizing:border-box}html,body{margin:0;background:var(--bg);color:var(--text);font:15px/1.45 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
@@ -450,7 +450,7 @@ input[type=text]{flex:1;min-width:0;font:inherit;color:var(--text);background:#0
 .mic.on{background:#3a1717;border-color:var(--alert)}
 .hint{color:var(--muted);font-size:12.5px;padding:0 12px 10px}
 </style></head><body>
-<header><h1>KESTREL &middot; live in the house</h1><div class="st" id="st" aria-live="polite">connecting&hellip;</div></header>
+<header><h1>__BODY__ &middot; live in the house</h1><div class="st" id="st" aria-live="polite">connecting&hellip;</div></header>
 <main>
 <section class="panel video" aria-label="Live view">
 <img id="v" src="/stream" alt="Live simulation view of the robot in the house">
@@ -511,7 +511,8 @@ def make_handler(live):
 
         def do_GET(self):
             if self.path in ("/", "/index.html"):
-                self._send(200, PAGE.encode(), "text/html; charset=utf-8")
+                body = "Unitree H2-X" if os.environ.get("KESTREL_VARIANT") == "h2x" else "KESTREL"
+                self._send(200, PAGE.replace("__BODY__", body).encode(), "text/html; charset=utf-8")
             elif self.path == "/state":
                 self._send(200, json.dumps(live.status).encode(), "application/json")
             elif self.path == "/stream":
@@ -573,8 +574,13 @@ def make_handler(live):
     return H
 
 
+ROBOTS = {"kestrel": "s1body", "h2x": "h2x"}
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
+    ap.add_argument("--robot", choices=sorted(ROBOTS), default="kestrel",
+                    help="the body: kestrel (KESTREL S1) or h2x (Unitree H2-X, on Unitree's official H2 model)")
     ap.add_argument("--port", type=int, default=8765)
     ap.add_argument("--host", default="127.0.0.1", help="0.0.0.0 to open it to other devices on your network")
     ap.add_argument("--viewer", action="store_true", help="also open MuJoCo's interactive 3D viewer")
@@ -592,6 +598,7 @@ def main():
     ap.add_argument("--script", default=None, help="test: a file of 'seconds|instruction' lines to play, then exit")
     ap.add_argument("--verbose", action="store_true")
     a = ap.parse_args()
+    os.environ["KESTREL_VARIANT"] = ROBOTS[a.robot]      # read when the simulation thread imports the robot model
     if a.phone:
         a.width, a.height, a.render_every, a.quality = 640, 400, 8, 60
     live = Live(a)

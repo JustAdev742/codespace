@@ -514,7 +514,9 @@ def build():
 class House(SK.World):
     """The house with the robot (and people, a vacuum, objects). Same stepping and skills as skills.World."""
 
-    def __init__(self, seed=0, policy="s1fast", chase_size=(640, 400), walker=True, vacuum=True):
+    def __init__(self, seed=0, policy=None, chase_size=(640, 400), walker=True, vacuum=True):
+        import model as KM
+        policy = policy or KM.WALK_POLICY            # each body walks with the policy trained for it
         make_textures()
         self.b = build()
         world_xml = "\n".join(self.b.world + self.b.bodies) + (

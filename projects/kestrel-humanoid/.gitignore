@@ -15,3 +15,6 @@ brain/runs/demo_*.gif
 brain/runs/skill_*.gif
 brain/runs/will*.gif
 brain/runs/will*.times.npy
+
+# MuJoCo writes its warnings here (it reached 280 MB during an H2-X training run that diverged)
+**/MUJOCO_LOG.TXT

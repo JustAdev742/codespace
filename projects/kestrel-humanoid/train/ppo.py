@@ -32,6 +32,9 @@ class RunningNorm(nn.Module):
         self.eps = eps
 
     def update(self, x):
+        x = x[torch.isfinite(x).all(1)]                 # a non-finite row would poison the running statistics
+        if x.shape[0] < 2:
+            return
         b_mean, b_var, b_n = x.mean(0), x.var(0, unbiased=False), x.shape[0]
         delta = b_mean - self.mean
         tot = self.count + b_n
@@ -98,7 +101,7 @@ class PPO:
                 for g in self.opt.param_groups:
                     g["lr"] = self.lr
                 logp = d.log_prob(act[j]).sum(-1)
-                ratio = torch.exp(logp - logp_old[j])
+                ratio = torch.exp(torch.clamp(logp - logp_old[j], -20.0, 20.0))     # no overflow to inf on an outlier
                 p1, p2 = ratio * adv[j], torch.clamp(ratio, 1 - self.clip, 1 + self.clip) * adv[j]
                 ploss = -torch.min(p1, p2).mean()
                 v = self.ac.value(cobs[j])
@@ -107,9 +110,16 @@ class PPO:
                 ent = d.entropy().sum(-1).mean()
                 loss = ploss + self.vcoef * vloss - self.ent * ent
                 self.opt.zero_grad()
+                if not torch.isfinite(loss):                # skip a minibatch that went numerically wrong
+                    self.skipped = getattr(self, "skipped", 0) + 1
+                    continue
                 loss.backward()
-                nn.utils.clip_grad_norm_(self.ac.parameters(), self.max_grad)
+                gn = nn.utils.clip_grad_norm_(self.ac.parameters(), self.max_grad)
+                if not torch.isfinite(gn):
+                    self.opt.zero_grad()
+                    self.skipped = getattr(self, "skipped", 0) + 1
+                    continue
                 self.opt.step()
                 stats["kl"] += kl; stats["vloss"] += vloss.item(); stats["ploss"] += ploss.item(); stats["ent"] += ent.item()
                 k += 1
-        return {kk: vv / k for kk, vv in stats.items()} | {"lr": self.lr}
+        return {kk: vv / max(k, 1) for kk, vv in stats.items()} | {"lr": self.lr}

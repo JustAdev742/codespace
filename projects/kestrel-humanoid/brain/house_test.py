@@ -230,7 +230,9 @@ def main():
     ap.add_argument("--n", type=int, default=1, help="multiplier on the number of trials per suite")
     ap.add_argument("--suites", default="language,nav,steps,fetch,sit,people,alarm")
     ap.add_argument("--seed", type=int, default=1000)
+    ap.add_argument("--robot", choices=["kestrel", "h2x"], default="kestrel")
     a = ap.parse_args()
+    os.environ["KESTREL_VARIANT"] = {"kestrel": "s1body", "h2x": "h2x"}[a.robot]     # inherited by the trial processes
     counts = dict(language=1, nav=12, steps=6, fetch=14, sit=10, people=6, alarm=6)
     jobs = []
     for s in a.suites.split(","):
@@ -241,7 +243,7 @@ def main():
     # so a long-lived worker grows until the system kills it, and the pool then waits forever
     with Pool(a.procs, maxtasksperchild=1) as pool:
         res = pool.map(trial, jobs, chunksize=1)
-    lines = ["# KESTREL in the house: test report", "",
+    lines = [f"# {'KESTREL' if a.robot == 'kestrel' else 'Unitree H2-X'} in the house: test report", "",
              f"{len(res)} trials, {sum(r.get('sim_s', 0) for r in res) / 60:.0f} simulated minutes, "
              f"{(time.time() - t0) / 60:.0f} minutes on {a.procs} CPU cores. `python house_test.py` reproduces it.", "",
              "| Suite | Passed | Falls | Bumps (control steps touching a wall, furniture, person or vacuum) |", "|---|---|---|---|"]
@@ -255,7 +257,7 @@ def main():
     for r in res:
         lines.append(f"| {r['suite']} | {r['k']} | {r['seed']} | {'pass' if r['ok'] else 'FAIL'}{' (fell)' if r.get('fell') else ''} | "
                      f"{r['note']} | {r.get('sim_s', '')} | {r.get('bumps', '')} | {r.get('min_person', '')} |")
-    out = HERE / "runs" / "house_report.md"
+    out = HERE / "runs" / ("house_report.md" if a.robot == "kestrel" else f"house_report_{a.robot}.md")
     out.write_text("\n".join(lines) + "\n")
     print("\n".join(lines[:12 + len(a.suites.split(","))]))
     print(f"wrote {out}")

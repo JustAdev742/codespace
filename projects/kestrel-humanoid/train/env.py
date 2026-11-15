@@ -96,6 +96,8 @@ class Envs:
         self.min_height = 0.55                  # base height below which a robot counts as fallen (sitting: lower)
         self.ep_len = EP_LEN                    # steps per episode (skills: effectively unlimited)
         self.auto_reset = True                  # a fallen robot restarts elsewhere (training); the house keeps it where it fell
+        self.nan_resets = 0                     # simulations that blew up and were restarted
+        self.force_fall = np.zeros(M, bool)
         self.arm_mode = np.zeros(M, int)
         self.arm_left = np.zeros(M)
         self.arm_par = np.zeros((M, 4, 3))      # per joint: centre, amplitude, frequency
@@ -198,7 +200,7 @@ class Envs:
         x, y = cx + self.rng.uniform(-0.4, 0.4), cy + self.rng.uniform(-0.4, 0.4)
         h = self.hs(np.array([x]), np.array([y]))[0]
         yaw = self.rng.uniform(-np.pi, np.pi)
-        d.qpos[0:3] = [x, y, h + 0.90]
+        d.qpos[0:3] = [x, y, h + KM.BASE_Z]
         d.qpos[3:7] = [np.cos(yaw / 2), 0, 0, np.sin(yaw / 2)]
         d.qpos[self.qadr] = self.default + self.rng.uniform(-0.05, 0.05, ACT_DIM)
         d.ctrl[:ACT_DIM] = d.qpos[self.qadr]
@@ -239,6 +241,14 @@ class Envs:
                 mujoco.mj_step(m, d, DECIM)
         else:
             self._step_torque_speed(target)
+        # a simulation that blew up (NaN): restart that robot and count it as a fall, rather than crash the run
+        for i, d in enumerate(self.d):
+            if not (np.isfinite(d.qpos).all() and np.isfinite(d.qvel).all()) or np.abs(d.qvel).max() > 150.0:
+                self.nan_resets += 1
+                if self.nan_resets in (1, 10, 100, 1000, 10000):
+                    print(f"(env: {self.nan_resets} physics blow-ups reset so far)", flush=True)
+                self._reset(i)
+                self.force_fall[i] = True
         self.prev_a = self.last_a.copy()
         self.last_a = actions.copy()
         return self._post()
@@ -329,7 +339,8 @@ class Envs:
         rt["limits"] = np.sum(over, 1)
         rt["speed_limit"] = np.sum(np.clip(np.abs(qd) - 0.9 * self.w_lim, 0, None) ** 2, 1)
         rt["alive"] = np.ones(M)
-        fell = (h_base < self.min_height) | (grav[:, 2] > -0.5)
+        fell = (h_base < self.min_height) | (grav[:, 2] > -0.5) | self.force_fall
+        self.force_fall[:] = False
         rt["termination"] = fell.astype(float)
         r = np.zeros(M)
         for k, v in rt.items():
@@ -373,6 +384,10 @@ class Envs:
             grav = quat_rotate_inv(quat, np.tile([0, 0, -1.0], (M, 1)))
             obs, critic = self._obs(qpos, lin_v, qvel[:, 3:6], grav, qpos[:, self.qadr], qvel[:, self.vadr],
                                     self.hs(qpos[:, 0], qpos[:, 1]))
+        # never hand the learner a runaway number (a physics blow-up that was not yet NaN)
+        obs = np.clip(np.nan_to_num(obs, nan=0.0, posinf=100.0, neginf=-100.0), -100.0, 100.0)
+        critic = np.clip(np.nan_to_num(critic, nan=0.0, posinf=100.0, neginf=-100.0), -100.0, 100.0)
+        r = np.clip(np.nan_to_num(r, nan=0.0, posinf=0.0, neginf=-10.0), -10.0, 10.0)
         return obs, critic, r.astype(np.float32), done, timeout & ~fell
 
     def ref_offsets(self, moving):
@@ -406,7 +421,7 @@ class Envs:
         px = qpos[:, 0:1] + c[:, None] * gx - s[:, None] * gy
         py = qpos[:, 1:2] + s[:, None] * gx + c[:, None] * gy
         heights = self.hs(px.ravel(), py.ravel()).reshape(M, -1)
-        scan = np.clip(qpos[:, 2:3] - 0.88 - heights, -1, 1)
+        scan = np.clip(qpos[:, 2:3] - KM.STAND_Z - heights, -1, 1)
         clean = np.concatenate([ang_v * 0.25, grav, self.cmd * np.array([2.0, 2.0, 0.25]), np.sin(p), np.cos(p),
                                 q - self.default, qd * 0.05, self.last_a, scan], 1)
         noise = np.concatenate([self.rng.uniform(-0.05, 0.05, (M, 3)), self.rng.uniform(-0.05, 0.05, (M, 3)), np.zeros((M, 5)),

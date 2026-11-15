@@ -40,10 +40,12 @@ import env as E
 import arena as A
 from safety import Supervisor, Limits
 
+import model as KM
+
 REST_ARMS = [0.0, 0.0, -0.2, -0.2]
 CARRY_ARMS = [0.0, -0.35, -0.2, -1.5]
-REACH_FWD, REACH_RIGHT = 0.42, 0.20          # where a handle must be, in the robot's frame, for the hook to reach it
-LOW_HANDLE = 0.78                            # handles lower than this above the floor need a crouch
+REACH_FWD, REACH_RIGHT = KM.REACH_FWD, 0.20  # where a handle must be, in the robot's frame, for the hook to reach it
+LOW_HANDLE = KM.LOW_HANDLE                   # handles lower than this above the floor need a crouch (per robot)
 
 
 class Interrupted(Exception):
@@ -52,8 +54,10 @@ class Interrupted(Exception):
 
 LINES = {
     "hello": ["Hello. I'm awake, I'm balanced, and I'm listening.", "Greetings. Speak; I'll act."],
-    "who": ["KESTREL. Hoverboard motors, drill gearboxes, and a mind that walks. I fetch, I carry, I sit, I don't strike.",
-            "I am what you built from scrap: two legs, a hook for a hand, and opinions."],
+    "who": (["H2-X: Unitree's body, one point eight metres of it, and KESTREL's mind. I fetch, I carry, I don't strike.",
+             "A guardian frame with a gentle brief. Unitree built the body; the opinions are mine."] if KM.VARIANT == "h2x" else
+            ["KESTREL. Hoverboard motors, drill gearboxes, and a mind that walks. I fetch, I carry, I sit, I don't strike.",
+             "I am what you built from scrap: two legs, a hook for a hand, and opinions."]),
     "how": ["Joints warm, balance perfect, patience finite. Give me something to do.",
             "Operational. Fatigue {fat:.0%}. That's a confession, not a complaint."],
     "thanks": ["Gratitude noted. It costs nothing, and I accept it.", "You're welcome. Inevitably."],
@@ -585,7 +589,7 @@ class HouseBot:
         return False
 
     # ================================================================== manipulation
-    CROUCH = [(0.52, (0.56, 0.4)), (0.45, (0.52, 0.5)), (0.0, (0.48, 0.6))]    # handle height above floor -> pose
+    CROUCH = KM.CROUCH                          # handle height above the floor -> crouch pose (per robot)
     TUCK = [0.0, -0.3, -0.2, -0.4]
     GATE = dict(lo=-0.015, hi=0.085, gain=1.0)     # balance window for the crouch (narrower and wider both fail sometimes)
 
@@ -597,7 +601,7 @@ class HouseBot:
         if not w.settle():
             return False
         # slowly, weight kept a little forward: a fast crouch pushes the feet backwards, and on tiles they slide
-        legs = [(0.0, w.legs_now())] + w._pose_path([(2.0, 0.70, 0.20, 0.035), (4.0, z, tp, 0.03)])
+        legs = [(0.0, w.legs_now())] + w._pose_path([(2.0, KM.STAND_HIP - 0.11, 0.20, 0.035), (4.0, z, tp, 0.03)])
         arms = [(0.0, w.arms_now()), (1.2, self.TUCK)]
         self._crouch_pose = legs[-1][1]
         return w._run_balanced(legs + [(4.5, legs[-1][1])], arms, 4.5, gate_from=0.0, max_s=14.0, release_stiff=False,
@@ -612,7 +616,7 @@ class HouseBot:
 
     def rise(self):
         w = self.h
-        legs = [(0.0, w.legs_now())] + w._pose_path([(1.6, 0.66, 0.25, 0.04), (2.8, 0.78, 0.0, 0.04)])
+        legs = [(0.0, w.legs_now())] + w._pose_path([(1.6, KM.STAND_HIP - 0.15, 0.25, 0.04), (2.8, KM.STAND_HIP - 0.03, 0.0, 0.04)])
         legs.append((3.4, w.e.default.copy()))
         arms = [(0.0, w.arms_now()), (3.4, self.arms)]
         return w._run_balanced(legs, arms, 3.4, gate_from=0.0, lo=0.0, hi=0.08, max_s=12.0)
@@ -631,7 +635,7 @@ class HouseBot:
         for attempt in range(2):
             hd = h.handle_of(obj)
             low = hd[2] - h.floor_z(*hd[:2]) < LOW_HANDLE
-            fwd = 0.31 if low else REACH_FWD                    # crouched, the hook reaches 0.31 m ahead
+            fwd = KM.CROUCH_FWD if low else REACH_FWD           # crouched, the hook reaches less far ahead
             st = self.stand_point(hd[:2], fwd, REACH_RIGHT)
             if st is None:
                 self.say("pick_fail", obj=name, why="there's nowhere to stand next to it")
@@ -759,7 +763,7 @@ class HouseBot:
             x, y, yaw = h.robot_pose()
             return (x + fwd * math.cos(yaw) + REACH_RIGHT * math.sin(yaw), y + fwd * math.sin(yaw) - REACH_RIGHT * math.cos(yaw))
         if where == "floor":
-            fwd = 0.31
+            fwd = KM.CROUCH_FWD
             target = reach_point(fwd)
             top, label, low = h.floor_z(*target), "floor", True
         else:
@@ -769,7 +773,7 @@ class HouseBot:
                 return False
             top, label = f["top"], where
             low = top + half_h + hz - h.floor_z(*f["xy"]) < LOW_HANDLE
-            fwd = 0.31 if low else REACH_FWD
+            fwd = KM.CROUCH_FWD if low else REACH_FWD
             best = None
             fx, fy = f["xy"]
             fsx, fsy = f["size"]
@@ -822,11 +826,11 @@ class HouseBot:
         floor_here = h.floor_under(*h.robot_pose()[:2])
         hook_z = top + half_h + hz + 0.005               # lowered until it just rests on the top
         if low:
-            hook_z = max(hook_z, floor_here + 0.36)      # the lowest the hook reaches crouched: a short drop if lower
+            hook_z = max(hook_z, floor_here + KM.LOW_REACH)   # the lowest the hook reaches crouched: a short drop if lower
             if not self.crouch_to(hook_z - floor_here):
                 h.stiff(False)
                 return False
-            target = reach_point(0.31)
+            target = reach_point(KM.CROUCH_FWD)
         sh, el, err = h.ik_right(np.array([target[0], target[1], hook_z]))
         sh_d, el_d, _ = h.ik_right(np.array([target[0], target[1], hook_z - 0.05]))       # then the hook drops clear
         Rb = h.e.d[0].xmat[h.obj_body[obj]].reshape(3, 3)
