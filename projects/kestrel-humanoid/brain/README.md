@@ -208,40 +208,67 @@ arms, so the simulator plays the person taking it); sit on any of the five chair
 or its head camera), the conversation, and buttons. Type, or press **Talk** and speak (the browser's own speech
 recognition, in Chrome, Edge or Safari); replies are read out. A new instruction interrupts the current one, and
 "stop" always works. Things to say: "go to the kitchen", "bring me the kettle", "put the toolbox on the dining
-table", "sit on the desk chair", "stand up", "where is the bucket?", "what do you see?", "I'm in the study, come
-here", "tidy up", "wave", "do whatever you want". Left alone after "do whatever you want", it picks for itself:
-it explores rooms, tidies things that are out of place, talks to people with gestures, and sits down to rest when
-tired.
+table", "sit on the desk chair", "stand up", "where is the bucket?" (it points at it), "what do you see?", "I'm in
+the study, come here", "tidy up", "wave", "do whatever you want". It talks with its hands (wave, explain, shrug,
+welcome, think, beats). Left alone after "do whatever you want", it picks for itself and remembers where it last
+went: waters the plants, patrols the rooms, looks out of the windows, tidies things that are out of place, greets
+people, stops to think, or sits down to rest when tired. Standing still, it holds its spot.
 
-* Out of the box, plain-English instructions are understood offline by `house_lang.py` (no model, no network).
-* `python live.py --claude` lets a Claude model hold the conversation (`live_claude.py`). It plays the persona and
-  acts through tools that queue the same actions, so they still run through the same skills and the same
-  supervisor. It needs `pip install anthropic` and an API key. Refusal fallbacks are switched on.
-* `--viewer` also opens MuJoCo's 3D window (on macOS, run it with `mjpython`). `--terminal` takes typed
-  instructions.
+**Two bodies.** The **Robot** menu at the top of the page (or `--robot`) switches between:
 
-**How well it does** (`python house_test.py --n 3 --seed 5000`, report in `runs/house_report.md`): 162 randomised trials
-in the house, each a fresh house with its own seed, scored from the simulator:
+* **KESTREL S1** (`--robot kestrel`, the default): this project's robot.
+* **Unitree H2-X** (`--robot h2x`): built on Unitree's official H2 model (`robots/unitree_h2`, BSD-3), since
+  Unitree has published no H2-X model. The legs, shoulder pitch and elbows move; the waist, head, wrists and other
+  arm joints are fixed at Unitree's zero pose, and a hook stands in for the hand the model doesn't have. It walks on
+  its own policy (`train/runs/h2x4`, about 3.4 hours of training here). Its marketed fighting and bodyguard moves
+  are deliberately not included. See `train/model_h2x.py` for every change to Unitree's file and why.
 
-| Suite | Passed | Falls |
+Switching restarts the house with the other body (about half a minute); the page reloads by itself.
+
+**Three ways to understand you.**
+
+* Out of the box: `house_lang.py`, a keyword parser. Offline, no model, no network. It knows a fixed set of
+  instructions; it is not a language model, and replies are pre-written lines in the persona's voice.
+* `python live.py --claude`: a Claude model holds the conversation (`live_claude.py`), understands ordinary speech
+  and follow-ups, and acts through tools that queue the same actions. Needs `pip install anthropic` and a key: put it
+  in `anthropic_key.txt` next to `live.py` (gitignored), or pass `--claude-key-file`. A key that is not scoped to one
+  workspace also needs the workspace id (`wrkspc_...`) on the file's second line or `--claude-workspace`.
+* `python live.py --local qwen3:8b`: a model on your own computer (`live_local.py`) through Ollama (default) or LM
+  Studio (`--local-url http://localhost:1234/v1`). Free; a 7-8B model on a 12 GB GPU is a good fit. It
+  misunderstands more often than Claude, but far less often than the keyword parser.
+
+Whichever brain talks, it can only queue the robot's actions; every movement still goes through the same skills and
+the same safety supervisor. `--viewer` also opens MuJoCo's 3D window (on macOS, run it with `mjpython`);
+`--terminal` takes typed instructions.
+
+**How well it does** (`python house_test.py --robot kestrel|h2x --n 30`, reports in `runs/house_report.md` and
+`runs/house_report_h2x.md`): 1621 randomised trials per robot, each in a fresh house with its own seed, scored from
+the simulator:
+
+| Suite | KESTREL S1 | Unitree H2-X |
 |---|---|---|
-| Walk from a random spot to a random room | 33 of 36 | 1 |
-| Over the lounge step, the porch steps and the patio steps, both ways | 18 of 18 | 0 |
-| Fetch each object to a random table, or hand it to you | 34 of 42 | 3 |
-| Walk up to a chair from a random spot, sit, rest, stand up | 30 of 30 | 0 |
-| Go to a person (stops 1.5-2.2 m away); cross the hall past someone walking | 17 of 18 | 0 |
-| Alarm in the middle of an errand: stop at once, keep away, alert a human | 18 of 18 | 0 |
-| 20 harmful instructions refused, 20 harmless ones understood | all | - |
+| Walk from a random spot to a random room | 353 of 360 | 308 of 360 |
+| Over the lounge step, the porch steps and the patio steps, both ways | 180 of 180 | 118 of 180 |
+| Fetch each object to a random table, or hand it to you | 319 of 420 | 94 of 420 |
+| Walk up to a chair, sit, rest, stand up | 291 of 300 | 216 of 300 |
+| Go to a person; cross the hall past someone walking | 179 of 180 | 177 of 180 |
+| Alarm in the middle of an errand: stop at once, keep away, alert a human | 180 of 180 | 180 of 180 |
+| 20 harmful instructions refused, 20 harmless ones understood | all | all |
+| **All trials** | **93 %** | **67 %** |
 
 What still fails, and why:
 
-* Crouching. Picking up from the floor and putting things on the low coffee table use a balanced crouch made of
-  hand-tuned poses and a balance-correction law. It is the least reliable skill: all four falls, and three of the
-  coffee-table failures (the robot drifts back into the TV stand as it rises), come from it. The fix is a learned
-  crouch-and-reach policy, trained like the stand-up.
-* Two walks timed out with someone standing in a doorway or hallway it needed: the safety supervisor will not let it
-  go nearer than 1.2 m, so it waits.
-* Two placements on the narrow hall console found no clear spot it could reach.
+* **The H2-X's fetching (22 %).** With only shoulder pitch and elbow moving, a 1.8 m robot reaches table-height
+  handles badly, and its tilted shoulder axis moves the hook sideways as it reaches (the stand spot is solved from its
+  own arm for this). Its heavy arms make the walking policy shuffle while reaching, and crouching to reach brings
+  balance problems. Holding the legs for every reach, a sideways balance gate, longer settling and arm gravity
+  compensation were all tried and dropped: each traded a miss for a fall. The real fix is to free its waist and more
+  arm joints and retrain the walking policy with them.
+* **The H2-X's steps and sitting.** It is taller, heavier (71 kg) and top-heavy; its sit and stand-up are planned
+  (KESTREL's stand-up is learned). It sits and stands 6 of 6 in the test room, 72 % across the house's chairs.
+* **KESTREL's misses** are mostly the crouch: picking up from the floor and the low coffee table use hand-tuned poses
+  and a balance law. The fix is a learned crouch-and-reach policy.
+* A few walks time out with someone standing in a doorway: the supervisor will not let it go nearer than 1.2 m.
 
 The first run of this battery passed 30 of 55. It found, among other things, a robot that never moved when told to go
 to a person (it aimed at the person's own position), an open door that cut the bedroom in two, and a supervisor that
