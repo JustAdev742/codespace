@@ -22,14 +22,13 @@ export const MODERATION_ACTION_INFO: Record<ModerationAction, { label: string; p
 export const REPORT_TARGETS = ['user', 'set', 'room', 'blueprint'] as const;
 export type ReportTarget = (typeof REPORT_TARGETS)[number];
 
-export const REPORT_REASONS = ['inappropriate_name', 'harassment', 'inappropriate_content', 'cheating', 'spam', 'wrong_answers', 'other'] as const;
+export const REPORT_REASONS = ['inappropriate_name', 'harassment', 'inappropriate_content', 'spam', 'wrong_answers', 'other'] as const;
 export type ReportReason = (typeof REPORT_REASONS)[number];
 
 export const REPORT_REASON_INFO: Record<ReportReason, { label: string; targets: readonly ReportTarget[] }> = {
   inappropriate_name: { label: 'Inappropriate name', targets: ['user', 'room'] },
   harassment: { label: 'Bullying or harassment', targets: ['user', 'room'] },
   inappropriate_content: { label: 'Inappropriate content', targets: ['user', 'set', 'room', 'blueprint'] },
-  cheating: { label: 'Cheating', targets: ['user', 'room'] },
   spam: { label: 'Spam', targets: ['user', 'set', 'blueprint'] },
   wrong_answers: { label: 'Wrong or misleading answers', targets: ['set'] },
   other: { label: 'Something else', targets: ['user', 'set', 'room', 'blueprint'] },

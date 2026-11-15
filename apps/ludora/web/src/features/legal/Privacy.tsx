@@ -45,7 +45,7 @@ export default function Privacy() {
       <List>
         <li>To run games and save your progress.</li>
         <li>So teachers can see how their classes did and set homework.</li>
-        <li>To keep players safe: stopping rude names, spam, cheating and people guessing passwords.</li>
+        <li>To keep players safe: stopping rude names, spam and people guessing passwords.</li>
         <li>To find and fix problems.</li>
       </List>
       <P>There are no adverts. Your information is not sold, not used to track you on other websites, and not shared with analytics companies.</P>

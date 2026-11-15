@@ -479,7 +479,8 @@ ritual and light), the `ChaosSim` test helper, the `CHAOS_SECRET` environment va
 the CI check that kept cheats out of the public bundle, and docs/CHAOS.md. The two
 database columns, `users.chaos_unlocked_at` and `game_sessions.chaos`, stay in the schema
 but are no longer written or read, so no data is dropped. Migrations are not rewritten.
-Kept: the `cheating` report reason (a general moderation reason), the "anti-cheat"
-wording about server-decided scores, Game Maker's extras (power-ups and events), and the
-lantern game modes and their art.
+Kept: Game Maker's extras (power-ups and events), and the lantern game modes and their
+art. Later the same day the owner asked for the anti-cheat wording to go as well: the
+`cheating` report reason, its privacy line and the sales-deck claim are removed. Hidden
+answers and server-decided scores stay, because the game depends on them.
 

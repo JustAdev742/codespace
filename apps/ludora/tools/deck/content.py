@@ -161,7 +161,7 @@ SLIDES = [
         'kind': 'safety', 'title': 'Safe by design',
         'big': ['No student emails.', 'No ads.', 'Nothing to buy.'],
         'points': ['Students join with a code and a name; names are filtered', 'No free chat between students, anywhere', 'Anything a student makes can be reported and hidden', 'Scores and rewards are decided by the server, not the device', 'Staff roles with only the access each needs, and an audit log', 'A privacy policy and terms inside the app'],
-        'say': "Safety first. Students never give an email address. There are no ads, and nothing to buy. There's no free chat between students anywhere in Ludora. Names are filtered, anything a student creates can be reported and hidden by staff, and the server decides every score, so nobody can cheat by fiddling with their device.",
+        'say': "Safety first. Students never give an email address. There are no ads, and nothing to buy. There's no free chat between students anywhere in Ludora. Names are filtered, anything a student creates can be reported and hidden by staff, and the server decides every score.",
         'do': 'Slow down for the three big lines.', 'secs': 30,
     },
     {

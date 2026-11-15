@@ -160,7 +160,7 @@ describe('GameRuntime', () => {
   });
 });
 
-describe('Classic scoring and anti-cheat', () => {
+describe('Classic scoring and answers', () => {
   function classicGame(clock = fakeClock()) {
     const rt = new GameRuntime({
       mode: classic,
