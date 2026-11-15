@@ -60,7 +60,6 @@ class G1FK:
     """Forward kinematics of the full G1 from its MuJoCo model, in torch."""
 
     def __init__(self, m=None, device="cpu", dtype=torch.float32):
-        import mujoco
         m = m or G.load_model()
         self.m, self.device, self.dtype = m, device, dtype
         t = lambda a: torch.tensor(np.asarray(a), dtype=dtype, device=device)
