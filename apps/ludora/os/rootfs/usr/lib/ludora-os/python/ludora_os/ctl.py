@@ -518,8 +518,29 @@ def cmd_dash_op(args: argparse.Namespace) -> int:
         request = json.loads(raw or b"null")
     except ValueError:
         request = None
-    sys.stdout.write(json.dumps(dashops.handle(request)))
-    sys.stdout.flush()
+    import socket
+    import stat
+    conn = None
+    if stat.S_ISSOCK(os.fstat(0).st_mode):
+        # Started by systemd with the dashboard's connection as standard input and output. Keep that connection to
+        # ourselves and give the commands we run /dev/null instead: with a socket for standard input `podman exec`
+        # fails (backups did), and a command still holding the connection would keep the web service waiting.
+        conn = socket.socket(fileno=os.dup(0))
+        null = os.open(os.devnull, os.O_RDWR)
+        os.dup2(null, 0)
+        os.dup2(null, 1)
+        os.close(null)
+    answer = json.dumps(dashops.handle(request))
+    if conn is None:
+        sys.stdout.write(answer)
+        sys.stdout.flush()
+    else:
+        with conn:
+            conn.sendall(answer.encode())
+            conn.shutdown(socket.SHUT_RDWR)
+    # Some changes cut the connection they were asked over (a new site name restarts the proxy). Their answer has
+    # gone by now; the work is done here, after it.
+    dashops.run_later()
     return 0
 
 

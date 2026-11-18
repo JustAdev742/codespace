@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import ipaddress
 import json
 import os
 import tempfile
@@ -89,6 +90,19 @@ def sshd_check() -> system.Result:
         return system.run(["sshd", "-t", "-h", key])
 
 
+def edge_network_stale() -> bool:
+    """Whether the proxy's container network exists but is not as the settings describe it (made by an older version,
+    or by a setup that stopped halfway). Read from Podman itself, not from which files happened to change."""
+    found = system.run(["podman", "network", "inspect", "ludora-edge"])
+    try:
+        subnet = json.loads(found.out)[0]["subnets"][0]
+        start = (subnet.get("lease_range") or {}).get("start_ip")
+        return (subnet.get("gateway") != render.edge_gateway() or not start
+                or ipaddress.ip_address(start) not in ipaddress.ip_network(render.edge_dynamic()))
+    except (ValueError, LookupError, TypeError, AttributeError):
+        return False        # no such network yet: it is made correctly when the services start
+
+
 def apply(*, restart: bool = True, firewall_only: bool = False, log=print) -> list[str]:
     """Render, check, write, reload. Returns the paths that changed."""
     cfg = config.load()
@@ -154,14 +168,22 @@ def apply(*, restart: bool = True, firewall_only: bool = False, log=print) -> li
         system.run(["systemctl", "try-restart", "ludora-sentinel.service"])
     if claimed():
         touched = lambda *needles: any(n in path for path in changed for n in needles)  # noqa: E731
+        rebuilt = touched("ludora-edge.network") or edge_network_stale()
+        if rebuilt:
+            # Podman keeps a network as it was first made: a changed definition means making it again, with the two
+            # containers on it out of the way. They are started again just below.
+            log("Rebuilding the proxy's container network.")
+            system.run(["systemctl", "stop", "ludora-proxy.service", "ludora-app.service"], timeout=300)
+            system.run(["podman", "network", "rm", "--force", "ludora-edge"], timeout=120)
+            system.run(["systemctl", "restart", "ludora-edge-network.service"], timeout=120)
         if touched("ludora-db", "db.env", "ludora-internal", "pgdata"):
             log("Restarting the database, the app and the proxy.")
             system.run(["systemctl", "restart", "ludora-db.service", "ludora-app.service", "ludora-proxy.service"], timeout=600)
         else:
-            if touched("ludora-app", "app.env", "uploads", "ludora-edge"):
+            if rebuilt or touched("ludora-app", "app.env", "uploads", "ludora-edge"):
                 log("Restarting the app.")
                 system.run(["systemctl", "restart", "ludora-app.service"], timeout=600)
-            if touched("ludora-proxy", "Caddyfile", "caddy", "ludora-edge"):
+            if rebuilt or touched("ludora-proxy", "Caddyfile", "caddy", "ludora-edge"):
                 log("Restarting the HTTPS proxy.")
                 system.run(["systemctl", "restart", "ludora-proxy.service"], timeout=300)
         if cfg["DASH_ENABLED"]:

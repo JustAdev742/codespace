@@ -424,6 +424,7 @@ def effective(cfg: dict[str, Any]) -> dict[str, Any]:
         return cfg
     out = dict(cfg)
     out["SSH_ENABLED"] = True
+    out["ADMIN_NETS_OWN"] = list(cfg["ADMIN_NETS"])   # a helper let in over SSH is not thereby let in to the staff dashboard
     out["ADMIN_NETS"] = sorted(set(cfg["ADMIN_NETS"]) | {window["from"]})
     out["TRIPWIRE_PORTS"] = [p for p in cfg["TRIPWIRE_PORTS"] if p != cfg["SSH_PORT"]]
     return out

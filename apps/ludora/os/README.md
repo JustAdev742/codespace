@@ -45,6 +45,13 @@ operations. The pages are static files in `rootfs/usr/share/ludora-os/dash/`; `t
 with canned answers for working on the screen. The proxy serves the dashboard on its own port and the firewall
 opens that port to the staff addresses only.
 
+Three things to keep in mind when changing it. The proxy has a fixed address on its container network
+(`render.proxy_address()`): the firewall and the web service accept the dashboard's traffic from that address and
+no other, and other containers draw theirs from a separate range. Anything that restarts the proxy or the web
+service cuts the request that asked for it, so such work is queued in `dashops.LATER` and done by
+`ludoractl dash-op` after the answer has been sent; its outcome is `last_change` in the overview. And the helper
+runs with root's home hidden and gives the commands it starts `/dev/null` instead of the dashboard's connection.
+
 ## Tests
 
 ```bash

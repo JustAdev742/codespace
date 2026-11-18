@@ -32,10 +32,11 @@ from typing import Any, Callable
 
 from . import system
 
-AUTH_FILE = f"{system.ETC}/dash.json"          # the password's hash and the authenticator secret: root and the dashboard only
+AUTH_FILE = f"{system.ETC}/dash.json"          # the password's hash and the authenticator secret: root only. The web service never sees them.
 SOCKET = "/run/ludora-dashop.sock"            # the root helper
 STATIC_DIR = "/usr/share/ludora-os/dash"
 LISTEN_PORT = 8760                            # reached only by the proxy container; the firewall refuses everyone else
+PROXY_ADDRESS = str(ipaddress.ip_network(system.NET_EDGE).network_address + 2)   # the proxy's fixed address on its network
 STATIC = {"/": ("index.html", "text/html; charset=utf-8"), "/dash.css": ("dash.css", "text/css; charset=utf-8"), "/dash.js": ("dash.js", "text/javascript; charset=utf-8")}
 CSP = "default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
 IDLE_SECONDS, MAX_SECONDS, MAX_SESSIONS = 15 * 60, 8 * 3600, 8
@@ -82,7 +83,7 @@ def load_auth() -> dict[str, Any]:
 
 
 def save_auth(data: dict[str, Any]) -> None:
-    system.write_atomic(AUTH_FILE, json.dumps(data), 0o640, group="ludora-dash")
+    system.write_atomic(AUTH_FILE, json.dumps(data), 0o600)
 
 
 # ---- the app: pure enough to test without a network ---------------------------------------------------------------
@@ -95,9 +96,11 @@ class Reply:
 
 
 class App:
-    def __init__(self, ops: Callable[[dict[str, Any]], dict[str, Any]], origin: str, *, server: str = "ludora", auth: Callable[[], dict[str, Any]] = load_auth,
+    def __init__(self, ops: Callable[[dict[str, Any]], dict[str, Any]], origin: str, *, server: str = "ludora",
                  static_dir: str = STATIC_DIR, clock: Callable[[], float] = time.time):
-        self.ops, self.origin, self.server, self.auth, self.static_dir, self.clock = ops, origin, server, auth, static_dir, clock
+        self.ops, self.origin, self.server, self.static_dir, self.clock = ops, origin, server, static_dir, clock
+        self.checking = threading.Semaphore(2)            # password checks are slow and heavy on purpose: two at a time, no more
+        self.inside = [ipaddress.ip_network(system.NET_EDGE), ipaddress.ip_network(system.NET_INTERNAL)]
         self.host = origin.split("://", 1)[1]
         self.sessions: dict[str, dict[str, Any]] = {}     # sha256(token) -> {ip, since, seen}
         self.failures: dict[str, list[float]] = {}        # address -> times of wrong tries
@@ -139,36 +142,43 @@ class App:
                 if self.paused.get(who, 0) > now:
                     left = int(self.paused[who] - now) + 1
                     return Reply(429, {"error": f"Too many wrong tries. Sign-in is paused for {max(1, round(left / 60))} more minutes.", "retry_after": left})
-        stored = self.auth()
+        # Every try is counted BEFORE it is checked, under the lock: forty guesses sent at once are still five
+        # guesses and a pause, and the slow check only ever runs for a try that was allowed.
+        locked = False
+        with self.lock:
+            for who, limit in ((ip, TRIES), ("*", GLOBAL_TRIES)):
+                tries = [t for t in self.failures.get(who, []) if now - t < WINDOW] + [now]
+                self.failures[who] = tries
+                if len(tries) >= limit:
+                    self.paused[who] = now + PAUSE
+                    self.failures[who] = []
+                    locked = True
+            if len(self.failures) > 5000:
+                self.failures.clear()
         password, code = body.get("password"), body.get("code")
-        good = isinstance(password, str) and 0 < len(password) <= 256 and password_matches(stored.get("password"), password)
-        secret = stored.get("totp")
-        if good and secret:
-            good = False
-            if isinstance(code, str) and len(code) == 6 and code.isdigit():
-                with self.lock:
-                    self.used_codes = {c: t for c, t in self.used_codes.items() if now - t < 120}
-                    fresh = code not in self.used_codes
-                    if fresh and any(hmac.compare_digest(totp(secret, now, step), code) for step in (-1, 0, 1)):
-                        self.used_codes[code] = now
-                        good = True
-        if not good:
-            locked = False
+        good = False
+        if isinstance(password, str) and 0 < len(password) <= 256 and (code is None or (isinstance(code, str) and len(code) == 6 and code.isdigit())):
             with self.lock:
-                for who, limit in ((ip, TRIES), ("*", GLOBAL_TRIES)):
-                    tries = [t for t in self.failures.get(who, []) if now - t < WINDOW] + [now]
-                    self.failures[who] = tries
-                    if len(tries) >= limit:
-                        self.paused[who] = now + PAUSE
-                        self.failures[who] = []
-                        locked = True
-                if len(self.failures) > 5000:
-                    self.failures.clear()
+                self.used_codes = {c: t for c, t in self.used_codes.items() if now - t < 120}
+                replayed = code is not None and code in self.used_codes
+            if not replayed:
+                with self.checking:
+                    try:
+                        answer = self.ops({"op": "verify", "password": password, "code": code, "client": ip})
+                    except Exception:
+                        answer = {}
+                good = isinstance(answer, dict) and answer.get("ok") is True and answer.get("valid") is True
+                if good and code is not None:
+                    with self.lock:
+                        self.used_codes[code] = now
+        if not good:
             self._note("locked" if locked else "failed", ip)
-            return Reply(401, {"error": "That password or code is not right." if stored.get("password") else "No dashboard password has been set. Set one at the server with `ludoractl dash password`."})
+            return Reply(401, {"error": "That password or code is not right."})
         token = secrets.token_urlsafe(32)
         with self.lock:
             self.failures.pop(ip, None)
+            if self.failures.get("*"):
+                self.failures["*"].pop()        # a right password is not a wrong try
             live = sorted(self.sessions.items(), key=lambda kv: kv[1]["seen"])
             for key, _ in live[: max(0, len(live) - MAX_SESSIONS + 1)]:
                 del self.sessions[key]
@@ -208,10 +218,18 @@ class App:
                 return Reply(400, {"error": "That was not understood."})
         elif method != "GET":
             return Reply(405, {"error": "That is not how this is asked for."})
+        try:
+            if any(ipaddress.ip_address(ip) in net for net in self.inside):
+                return Reply(403, {"error": "The dashboard is for staff machines, not for the server's own services."})
+        except ValueError:
+            return Reply(400, {"error": "That was not understood."})
         session = self._session(headers.get("cookie", ""), ip)
-        stored = self.auth()
         if path == "/api/session" and method == "GET":
-            return Reply(200, {"signed_in": bool(session), "server": self.server, "version": system.VERSION, "needs_code": bool(stored.get("totp")), "idle_minutes": IDLE_SECONDS // 60})
+            try:
+                needs_code = bool(self.ops({"op": "auth_info"}).get("needs_code"))
+            except Exception:
+                needs_code = False
+            return Reply(200, {"signed_in": bool(session), "server": self.server, "version": system.VERSION, "needs_code": needs_code, "idle_minutes": IDLE_SECONDS // 60})
         if path == "/api/login" and method == "POST":
             return self._login(data, ip)
         if not session:
@@ -232,7 +250,7 @@ class App:
             if path == "/api/dns-check":
                 return self._ask({"op": "dns_check", "name": data.get("name")}, ip)
             if path == "/api/action":
-                return self._ask({**{k: v for k, v in data.items() if k not in ("op", "client")}, "op": "action"}, ip)
+                return self._ask({**{k: v for k, v in data.items() if k not in ("op", "client", "password", "code")}, "op": "action"}, ip)
         return Reply(404, {"error": "There is nothing at that address."})
 
 
@@ -258,7 +276,7 @@ def ask_helper(request: dict[str, Any]) -> dict[str, Any]:
     return json.loads(b"".join(chunks) or b"{}")
 
 
-def make_handler(app: App, proxy_net: ipaddress.IPv4Network | None) -> type[BaseHTTPRequestHandler]:
+def make_handler(app: App, proxy: str | None) -> type[BaseHTTPRequestHandler]:
     class Handler(BaseHTTPRequestHandler):
         protocol_version = "HTTP/1.1"
         server_version = "ludora"
@@ -267,8 +285,8 @@ def make_handler(app: App, proxy_net: ipaddress.IPv4Network | None) -> type[Base
 
         def _serve(self, method: str) -> None:
             peer = self.client_address[0]
-            if proxy_net is not None and ipaddress.ip_address(peer) not in proxy_net:
-                self.send_error(403)   # only the proxy may speak to this service, whatever the firewall says
+            if proxy is not None and peer != proxy:
+                self.send_error(403)   # only the proxy itself may speak to this service, whatever the firewall says: not even its neighbours
                 return
             try:
                 length = int(self.headers.get("Content-Length") or 0)
@@ -321,7 +339,7 @@ def main() -> int:
     if not origin.startswith("https://"):
         return 1
     app = App(ask_helper, origin, server=os.environ.get("LUDORA_DASH_SERVER", "ludora"))
-    server = ThreadingHTTPServer(("0.0.0.0", LISTEN_PORT), make_handler(app, ipaddress.ip_network(system.NET_EDGE)))
+    server = ThreadingHTTPServer(("0.0.0.0", LISTEN_PORT), make_handler(app, PROXY_ADDRESS))
     server.daemon_threads = True
     try:
         server.serve_forever()

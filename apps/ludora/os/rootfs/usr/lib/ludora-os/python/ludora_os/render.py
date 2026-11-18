@@ -66,6 +66,9 @@ def nftables(cfg: dict[str, Any], *, bans: dict[str, int] | None = None, shield:
     out += _set("admin6", "ipv6_addr", "interval", _v6(cfg["ADMIN_NETS"]))
     out += _set("lan4", "ipv4_addr", "interval", _v4(cfg["LAN_NETS"]))
     out += _set("lan6", "ipv6_addr", "interval", _v6(cfg["LAN_NETS"]))
+    staff = list(cfg["TRUSTED_NETS"]) + list(cfg.get("ADMIN_NETS_OWN", cfg["ADMIN_NETS"]))
+    out += _set("dash4", "ipv4_addr", "interval", _v4(staff))
+    out += _set("dash6", "ipv6_addr", "interval", _v6(staff))
     out += _set("block4", "ipv4_addr", "interval", _v4(cfg["BLOCKED_NETS"]))
     out += _set("block6", "ipv6_addr", "interval", _v6(cfg["BLOCKED_NETS"]))
     out += _set("ban4", "ipv4_addr", "timeout", ban4, "size 65536")
@@ -118,8 +121,8 @@ def nftables(cfg: dict[str, Any], *, bans: dict[str, int] | None = None, shield:
             out += "\t\tcounter name c_closed drop\n"
         else:
             out += "\t\t# The staff dashboard: staff and administrators' addresses only, and never in a rush.\n"
-            out += "\t\tip saddr != @trust4 ip saddr != @admin4 counter name c_closed drop\n"
-            out += "\t\tip6 saddr != @trust6 ip6 saddr != @admin6 counter name c_closed drop\n"
+            out += "\t\tip saddr != @dash4 counter name c_closed drop\n"
+            out += "\t\tip6 saddr != @dash6 counter name c_closed drop\n"
             out += "\t\tct state new add @dash_rate4 { ip saddr limit rate over 60/minute burst 60 packets } counter name c_ssh_rate drop\n"
             out += "\t\tct state new add @dash_rate6 { ip6 saddr limit rate over 60/minute burst 60 packets } counter name c_ssh_rate drop\n"
         out += "\t}\n"
@@ -171,7 +174,7 @@ def nftables(cfg: dict[str, Any], *, bans: dict[str, int] | None = None, shield:
     if not sealed:
         if cfg["DASH_ENABLED"]:
             out += "\t\t# The HTTPS proxy, and nothing else, may speak to the staff dashboard's service.\n"
-            out += f'\t\tiifname "podman*" ip saddr {system.NET_EDGE} tcp dport 8760 accept\n'
+            out += f'\t\tiifname "podman*" ip saddr {proxy_address()} tcp dport 8760 accept\n'
         if cfg["SSH_ENABLED"]:
             out += "\t\t# SSH: only from the administrators' addresses, and slowly.\n"
             out += f"\t\ttcp dport {ssh_port} ip saddr @admin4 ct state new add @ssh_rate4 {{ ip saddr limit rate over 6/minute burst 6 packets }} counter name c_ssh_rate drop\n"
@@ -288,6 +291,9 @@ def caddyfile(cfg: dict[str, Any]) -> str:
     out += "\t# out (they hold cookies, and padding them would make a line too long to read), except the one the sentinel needs.\n"
     out += "\tlog_append fetch_site {header.Sec-Fetch-Site}\n"
     out += "\tlog {\n\t\toutput stdout\n\t\tformat filter {\n\t\t\twrap json\n\t\t\tfields {\n\t\t\t\trequest>headers delete\n\t\t\t\tresp_headers delete\n\t\t\t}\n\t\t}\n\t}\n"
+    out += "\t# A browser sends a cookie to every port of a site. The staff dashboard's sign-in cookie stops here, so the\n"
+    out += "\t# game never sees it.\n"
+    out += "\trequest_header Cookie \"__Host-ludora-dash=[^;]*(; )?\" \"\"\n"
     out += "\treverse_proxy ludora-app:8787\n"
     out += "}\n"
     if cfg["DASH_ENABLED"]:
@@ -302,6 +308,9 @@ def caddyfile(cfg: dict[str, Any]) -> str:
         out += "\theader {\n\t\tStrict-Transport-Security \"max-age=31536000\"\n\t\t-Server\n\t\t-Via\n\t}\n"
         out += "\t@from_another_site {\n\t\theader Sec-Fetch-Site cross-site\n\t\tnot {\n\t\t\tmethod GET HEAD\n\t\t\theader Sec-Fetch-Mode navigate\n\t\t}\n\t}\n"
         out += "\trespond @from_another_site 403\n"
+        out += "\t# The server's own containers sit beside this proxy and are not staff machines: the game is never let in here.\n"
+        out += "\t@from_inside remote_ip 10.89.0.0/16\n"
+        out += "\trespond @from_inside 403\n"
         out += "\tlog_append fetch_site {header.Sec-Fetch-Site}\n"
         out += "\tlog {\n\t\toutput stdout\n\t\tformat filter {\n\t\t\twrap json\n\t\t\tfields {\n\t\t\t\trequest>headers delete\n\t\t\t\tresp_headers delete\n\t\t\t}\n\t\t}\n\t}\n"
         out += "\t# The dashboard's service learns the visitor's address from this header, which the proxy sets itself.\n"
@@ -314,6 +323,19 @@ def edge_gateway() -> str:
     """The server's own address on the proxy's network: where the proxy finds the dashboard's service."""
     import ipaddress
     return str(ipaddress.ip_network(system.NET_EDGE).network_address + 1)
+
+
+def edge_dynamic() -> str:
+    """Where containers that are not given an address get theirs: the upper half, so none of them is ever handed the
+    proxy's fixed address (the game starts first, and without this it took it and the proxy could not start)."""
+    import ipaddress
+    return str(list(ipaddress.ip_network(system.NET_EDGE).subnets(prefixlen_diff=1))[1])
+
+
+def proxy_address() -> str:
+    """The proxy's fixed address on its network. Only this one address may speak to the staff dashboard's service."""
+    import ipaddress
+    return str(ipaddress.ip_network(system.NET_EDGE).network_address + 2)
 
 
 def dash_env(cfg: dict[str, Any]) -> str:
@@ -406,7 +428,7 @@ def quadlets(cfg: dict[str, Any], images: dict[str, str] | None = None) -> dict[
     )
     files["ludora-edge.network"] = (
         _QUADLET_NOTE + "# Proxy and app. The firewall decides what may leave.\n"
-        f"[Network]\nNetworkName=ludora-edge\nSubnet={system.NET_EDGE}\nGateway={edge_gateway()}\n"
+        f"[Network]\nNetworkName=ludora-edge\nSubnet={system.NET_EDGE}\nGateway={edge_gateway()}\nIPRange={edge_dynamic()}\n"
     )
     for volume in ("pgdata", "uploads", "caddy-data", "caddy-config"):
         files[f"ludora-{volume}.volume"] = _QUADLET_NOTE + f"[Volume]\nVolumeName=ludora-{volume}\n"
@@ -450,6 +472,7 @@ def quadlets(cfg: dict[str, Any], images: dict[str, str] | None = None) -> dict[
         + "[Container]\nContainerName=ludora-proxy\n"
         + f"Image={proxy_image}\n"
         + "Network=ludora-edge.network\n"
+        + f"IP={proxy_address()}\n"
         + "PublishPort=80:80\nPublishPort=443:443\n"
         + (f"PublishPort={cfg['DASH_PORT']}:{cfg['DASH_PORT']}\n" if cfg["DASH_ENABLED"] else "")
         + f"Volume={system.CADDYFILE}:/etc/caddy/Caddyfile:ro,Z\n"

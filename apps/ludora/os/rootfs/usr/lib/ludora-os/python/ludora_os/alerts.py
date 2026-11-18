@@ -148,6 +148,18 @@ def save_secret(key: str, value: str) -> None:
     system.write_atomic(system.ALERT_SECRETS_FILE, body, 0o640, group=system.SENTINEL_GROUP)
 
 
+def clear_secret(key: str) -> bool:
+    """Forget a stored secret. True when there was one."""
+    found = load_secrets()
+    if key not in found:
+        return False
+    del found[key]
+    body = "# Written by `ludoractl alerts secret`. Read by root and by the sentinel, which sends the alerts.\n"
+    body += "".join(f"{k}={found[k]}\n" for k in SECRET_KEYS if k in found)
+    system.write_atomic(system.ALERT_SECRETS_FILE, body, 0o640, group=system.SENTINEL_GROUP)
+    return True
+
+
 def recipients(cfg: dict[str, Any], audience: str) -> list[str]:
     return list(cfg[AUDIENCES[audience][0]])
 
@@ -217,6 +229,9 @@ def _send_mail(cfg: dict[str, Any], secrets: dict[str, str], to: list[str], subj
     message["Auto-Submitted"] = "auto-generated"
     message.set_content(body)
     host, port = cfg["SMTP_HOST"], cfg["SMTP_PORT"]
+    if cfg["SMTP_USER"] and not secrets.get("SMTP_PASSWORD"):
+        # Never knock on a mail server with the account name and an empty password: say what is missing instead.
+        raise smtplib.SMTPException("the mail account has no password saved (ludoractl alerts secret smtp-password)")
     if cfg["SMTP_SECURITY"] == "tls":
         server: smtplib.SMTP = smtplib.SMTP_SSL(host, port, timeout=TIMEOUT, context=_ssl_context())
     else:
@@ -225,7 +240,7 @@ def _send_mail(cfg: dict[str, Any], secrets: dict[str, str], to: list[str], subj
         if cfg["SMTP_SECURITY"] != "tls":
             server.starttls(context=_ssl_context())  # raises if the server offers no encryption: never sent in the clear
         if cfg["SMTP_USER"]:
-            server.login(cfg["SMTP_USER"], secrets.get("SMTP_PASSWORD", ""))
+            server.login(cfg["SMTP_USER"], secrets["SMTP_PASSWORD"])
         server.send_message(message, from_addr=cfg["SMTP_FROM"], to_addrs=to)
     finally:
         try:

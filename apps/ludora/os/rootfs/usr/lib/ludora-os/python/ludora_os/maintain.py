@@ -7,6 +7,7 @@ import os
 import re
 import shutil
 import subprocess
+import tempfile
 import time
 from typing import Any
 
@@ -196,14 +197,33 @@ def proxy_ca() -> tuple[str, str]:
 # ---- backups ---------------------------------------------------------------------------------
 
 
+def _gpg_home() -> str:
+    """A private, throwaway working folder for gpg. Left to itself it uses root's home, which is hidden from the staff
+    dashboard's helper on purpose: backups made from the dashboard failed for that reason."""
+    return tempfile.mkdtemp(prefix="ludora-gpg-")
+
+
+def _gpg_done(home: str, *started: subprocess.Popen | None) -> None:
+    for process in started:
+        if process is not None:
+            for pipe in (process.stdin, process.stdout, process.stderr):
+                if pipe is not None and not pipe.closed:
+                    pipe.close()
+            process.wait()
+    subprocess.run(["gpgconf", "--homedir", home, "--kill", "gpg-agent"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=False)
+    shutil.rmtree(home, ignore_errors=True)
+
+
 def _encrypt_stream(argv: list[str], target: str, passphrase: str) -> None:
     """Run a command and write its output to `target`, encrypted. The passphrase travels on a pipe, never on a command line."""
     read_fd, write_fd = os.pipe()
     partial = target + ".partial"
+    home = _gpg_home()
+    source = gpg = None
     try:
         source = subprocess.Popen(argv, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         gpg = subprocess.Popen(
-            ["gpg", "--batch", "--yes", "--quiet", "--no-tty", "--pinentry-mode", "loopback", "--symmetric", "--cipher-algo", "AES256",
+            ["gpg", "--homedir", home, "--batch", "--yes", "--quiet", "--no-tty", "--pinentry-mode", "loopback", "--symmetric", "--cipher-algo", "AES256",
              "--passphrase-fd", str(read_fd), "--output", partial],
             stdin=source.stdout, stderr=subprocess.PIPE, pass_fds=(read_fd,),
         )
@@ -217,10 +237,11 @@ def _encrypt_stream(argv: list[str], target: str, passphrase: str) -> None:
         gpg_err = gpg.communicate()[1]
         source_err = source.stderr.read() if source.stderr else b""
         source.wait()
-        if source.returncode != 0:
-            raise MaintainError(f"{argv[0]} failed: {source_err.decode(errors='replace').strip()[-300:]}")
+        # Encryption first: when it stops early, the command feeding it dies of a closed pipe and says nothing useful.
         if gpg.returncode != 0:
             raise MaintainError(f"Encryption failed: {gpg_err.decode(errors='replace').strip()[-300:]}")
+        if source.returncode != 0:
+            raise MaintainError(f"{argv[0]} failed (exit {source.returncode}): {source_err.decode(errors='replace').strip()[-300:]}")
         os.chmod(partial, 0o600)
         os.replace(partial, target)
     finally:
@@ -229,13 +250,16 @@ def _encrypt_stream(argv: list[str], target: str, passphrase: str) -> None:
                 os.close(fd)
         if os.path.exists(partial):
             os.unlink(partial)
+        _gpg_done(home, source, gpg)
 
 
 def _decrypt_stream(source_file: str, argv: list[str], passphrase: str) -> None:
     read_fd, write_fd = os.pipe()
+    home = _gpg_home()
+    gpg = sink = None
     try:
         gpg = subprocess.Popen(
-            ["gpg", "--batch", "--quiet", "--no-tty", "--pinentry-mode", "loopback", "--decrypt", "--passphrase-fd", str(read_fd), source_file],
+            ["gpg", "--homedir", home, "--batch", "--quiet", "--no-tty", "--pinentry-mode", "loopback", "--decrypt", "--passphrase-fd", str(read_fd), source_file],
             stdout=subprocess.PIPE, stderr=subprocess.PIPE, pass_fds=(read_fd,),
         )
         os.close(read_fd)
@@ -257,6 +281,7 @@ def _decrypt_stream(source_file: str, argv: list[str], passphrase: str) -> None:
         for fd in (read_fd, write_fd):
             if fd >= 0:
                 os.close(fd)
+        _gpg_done(home, gpg, sink)
 
 
 def backups() -> list[dict[str, Any]]:

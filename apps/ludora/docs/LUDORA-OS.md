@@ -232,9 +232,14 @@ The same is in the console under **Remote access > Staff dashboard**.
 How it is kept safe:
 
 - **Who can reach it.** Only the staff addresses (`TRUSTED_NETS` and `ADMIN_NETS`). The firewall refuses everyone
-  else before the page is ever served, and it cannot be switched on while those lists are empty.
+  else before the page is ever served, and it cannot be switched on while those lists are empty. Someone let in for
+  support over SSH is not thereby let in here. The server's own containers are refused too: if the game itself were
+  broken into, it could not walk into the dashboard, and the dashboard's sign-in cookie is removed from every
+  request before the game sees it.
 - **Who can sign in.** A password, and an authenticator code as well if you set one up. Five wrong tries from one
   address pause that address for fifteen minutes and alert the security list; twenty from anywhere pause everyone.
+  Tries are counted before they are checked, so forty sent in the same instant are still five tries. The password
+  is checked by the root helper: the web service never holds its stored form.
 - **What a session is.** A random token in a cookie that scripts cannot read, tied to the address it began at, ended
   after fifteen idle minutes or eight hours. Changing the password signs everyone out.
 - **What a web page elsewhere can do to a signed-in browser.** Nothing: every change must come from the
@@ -246,6 +251,17 @@ How it is kept safe:
   read any secret, touch SSH or administrators' keys, change who is trusted, switch the firewall or the sentinel
   off, or run a command of anyone's choosing. So even someone who broke into the web service would be held to
   that list. Everything done from the dashboard is written to the event log with the address it came from.
+- **What a signed-in person cannot quietly do.** Take people off the alert lists without them hearing of it (the
+  list as it was is told first); point the mail server somewhere else and collect the mail password (changing
+  the mail server forgets the password, and it has to be entered again); read a phone-push topic back (they are
+  shown masked); ban the staff's or an administrator's own address; push out the restore points by making backup
+  after backup (one every ten minutes at most); or open an outgoing port other than a mail port.
+
+Changing the site's address or certificate restarts the proxy, which cuts the dashboard's own connection. So the
+server answers first ("open the new address in about a minute"), then makes the change and checks that the site
+answers. If it does not, the old settings are put back without anyone doing anything, and the dashboard says why
+the next time someone signs in. An address that is not the server's own, or a name the server cannot find, is
+refused before anything is touched.
 
 ### Easy setup: your school's domain and email
 
@@ -373,6 +389,23 @@ systemd inside a container, with separate "student" and "staff" machines on the 
   settings file are unreadable, the root helper refuses anything off its list, no other user can open the helper's
   socket, and five wrong passwords pause that address. Its authenticator code is covered by unit tests against the
   standard's own examples, not yet by a real phone app.
+- **A second independent review, of the dashboard alone.** It found nine problems, two of them serious: a signed-in
+  person could have pointed the mail server at their own machine and collected the school's mail password, and a
+  broken-into game container could have reached the dashboard's service directly while claiming to be a staff
+  address. All nine are fixed, each with a test, and the attacks were then tried again on the real system: from
+  inside the game's container the dashboard is unreachable by every route (refused by the proxy, dropped by the
+  firewall), the cookie is stripped by the real proxy software, the mail password is gone after the mail server
+  changes and no sign-in is attempted without one, forty wrong passwords sent at once came back as five refusals
+  and thirty-five "paused", and a second backup straight after the first is refused.
+- **What trying it for real found that the tests had not**: the proxy could not start, because the game's container
+  had been handed the address reserved for it (the two now draw from separate ranges, and a container network
+  that does not match the settings is rebuilt by `ludoractl apply`); a backup started from the dashboard failed,
+  because the encryption tool wanted a folder the helper is not allowed to see (it now has its own); and a new
+  site address that could not work was accepted and never undone, because the change cut the request that asked
+  for it. With the answer-first design described above, on the real system: an address the server does not have and
+  a name that does not exist are refused at once; a public certificate that could not be issued was put back by the
+  server after about seventy seconds, with the reason shown at the next sign-in; and a name that does point at the
+  server took effect, with the dashboard and the game both answering under it.
 - **An independent security review** of the code, by a reviewer given the code and the threat model but not the
   author's conclusions. It found seven problems and several suspicions; all seven are fixed and have tests (among
   them: a padded request could hide from the sentinel, changing a setting could stop the sentinel, a decoy touch

@@ -7,6 +7,7 @@ import base64
 import io
 import json
 import os
+import pathlib
 import shutil
 import struct
 import sys
@@ -592,6 +593,67 @@ class ApplyTests(Sandbox):
         self.assertIn("DATABASE_URL=postgres://ludora:", system.read(system.APP_ENV_FILE))
         self.assertIn("PUBLIC_ORIGIN=https://10.20.0.5", system.read(system.APP_ENV_FILE))
 
+    def test_a_changed_container_network_is_made_again_with_its_containers_out_of_the_way(self):
+        """Podman never alters a network that exists. The proxy has a fixed address the firewall and the dashboard rely
+        on, and the other containers are kept out of that part of the range."""
+        self.configure(DOMAIN="10.20.0.5")
+        system.write_atomic(system.CLAIMED_FLAG, "x")
+        applier.apply(log=lambda *_: None)
+        network = system.read(f"{system.QUADLET_DIR}/ludora-edge.network")
+        self.assertIn("Gateway=10.89.20.1\nIPRange=10.89.20.128/25\n", network)
+        self.assertIn("IP=10.89.20.2\n", system.read(f"{system.QUADLET_DIR}/ludora-proxy.container"))
+        said = [" ".join(call) for call in self.calls]
+        order = [said.index(next(s for s in said if s.startswith(start))) for start in (
+            "systemctl stop ludora-proxy.service ludora-app.service", "podman network rm --force ludora-edge",
+            "systemctl restart ludora-edge-network.service", "systemctl restart ludora-db.service ludora-app.service ludora-proxy.service")]
+        self.assertEqual(order, sorted(order))
+        self.calls.clear()
+        applier.apply(log=lambda *_: None)                      # nothing changed: the network is left alone
+        self.assertFalse(self.ran("podman network rm"))
+        system.write_atomic(f"{system.QUADLET_DIR}/ludora-edge.network", "[Network]\nNetworkName=ludora-edge\n", 0o644)   # as an older version left it
+        applier.apply(log=lambda *_: None)
+        self.assertTrue(self.ran("podman network rm --force ludora-edge"))
+        self.assertTrue(self.ran("systemctl restart ludora-app.service"))
+        self.assertTrue(self.ran("systemctl restart ludora-proxy.service"))
+        # And when the files are right but the network Podman actually has is not (a setup that stopped halfway).
+        described = {"subnets": [{"subnet": "10.89.20.0/24", "gateway": "10.89.20.1"}]}
+        self.answers["podman network inspect ludora-edge"] = system.Result(0, json.dumps([described]), "")
+        self.calls.clear()
+        applier.apply(log=lambda *_: None)
+        self.assertTrue(self.ran("podman network rm --force ludora-edge"))
+        self.assertTrue(self.ran("systemctl restart ludora-app.service"))
+        self.assertTrue(self.ran("systemctl restart ludora-proxy.service"))
+        described["subnets"][0]["lease_range"] = {"start_ip": "10.89.20.128", "end_ip": "10.89.20.255"}
+        self.answers["podman network inspect ludora-edge"] = system.Result(0, json.dumps([described]), "")
+        self.calls.clear()
+        applier.apply(log=lambda *_: None)
+        self.assertFalse(self.ran("podman network rm"))
+
+    @unittest.skipUnless(shutil.which("gpg"), "gpg is not installed here")
+    def test_backups_are_encrypted_without_needing_roots_home(self):
+        """The staff dashboard's helper cannot see root's home (on purpose), and gpg wants a folder there by default:
+        backups started from the dashboard failed on a real system until gpg was given its own."""
+        target, back = os.path.join(self.root, "out.gpg"), os.path.join(self.root, "back.txt")
+        home, os.environ["HOME"] = os.environ.get("HOME"), "/proc/nowhere"     # as hidden as it is for the helper
+        os.environ.pop("GNUPGHOME", None)
+        try:
+            maintain._encrypt_stream(["printf", "the class list"], target, "correct horse battery staple")
+            self.assertNotIn(b"the class list", pathlib.Path(target).read_bytes())
+            maintain._decrypt_stream(target, ["sh", "-c", f"cat > {back}"], "correct horse battery staple")
+            self.assertEqual(pathlib.Path(back).read_text(), "the class list")
+            with self.assertRaises(maintain.MaintainError) as failed:
+                maintain._decrypt_stream(target, ["sh", "-c", "cat > /dev/null"], "the wrong passphrase")
+            self.assertIn("could not be opened", str(failed.exception))
+            with self.assertRaises(maintain.MaintainError) as failed:
+                maintain._encrypt_stream(["sh", "-c", "echo broken >&2; exit 3"], target, "correct horse battery staple")
+            self.assertIn("sh failed (exit 3): broken", str(failed.exception))
+        finally:
+            if home is None:
+                os.environ.pop("HOME", None)
+            else:
+                os.environ["HOME"] = home
+        self.assertEqual([n for n in os.listdir(tempfile.gettempdir()) if n.startswith("ludora-gpg-")], [])   # nothing left behind
+
     def test_a_firewall_the_kernel_rejects_changes_nothing(self):
         self.configure(DOMAIN="10.20.0.5")
         self.answers["nft -c -f"] = system.Result(1, "", "Error: syntax error")
@@ -1002,13 +1064,21 @@ class DashTests(Sandbox):
     def app(self, totp: str | None = None, **kw):
         self.asked: list[dict] = []
         self.now = [1_000_000.0]
-        stored = {"password": self.stored_password, **({"totp": totp} if totp else {})}
+        self.verifies = 0
 
         def ops(request):
+            if request.get("op") == "auth_info":
+                return {"ok": True, "needs_code": bool(totp)}
+            if request.get("op") == "verify":      # what the root helper does, with the test's clock
+                self.verifies += 1
+                valid = dash.password_matches(self.stored_password, request.get("password") or "")
+                if valid and totp:
+                    valid = any(dash.totp(totp, self.now[0], step) == request.get("code") for step in (-1, 0, 1))
+                return {"ok": True, "valid": valid}
             self.asked.append(request)
             return {"ok": True, "echo": request.get("op")}
 
-        return dash.App(ops, self.ORIGIN, server="ludora-hills", auth=lambda: stored, static_dir="/static", clock=lambda: self.now[0], **kw)
+        return dash.App(ops, self.ORIGIN, server="ludora-hills", static_dir="/static", clock=lambda: self.now[0], **kw)
 
     @classmethod
     def setUpClass(cls) -> None:
@@ -1098,6 +1168,35 @@ class DashTests(Sandbox):
         self.assertEqual(self.call(app, "POST", "/api/login", {"password": self.PASSWORD, "code": code}, ip="10.20.9.11")[0], 401)   # read over a shoulder
         self.assertEqual(self.call(app, "POST", "/api/login", {"password": "wrong-wrong-wrong", "code": dash.totp(secret, self.now[0], 1)})[0], 401)
 
+    def test_forty_guesses_at_once_are_still_five_guesses(self):
+        """Tries are counted before they are checked. Otherwise a burst sent together all gets checked, and each check
+        is slow and memory-hungry on purpose: a way to guess faster and to knock the service over at the same time."""
+        import threading
+        app = self.app()
+        results: list[int] = []
+        barrier = threading.Barrier(40)
+
+        def guess(i: int) -> None:
+            barrier.wait()
+            results.append(self.call(app, "POST", "/api/login", {"password": f"wrong-wrong-wrong-{i}"}, ip="10.20.9.50")[0])
+
+        threads = [threading.Thread(target=guess, args=(i,)) for i in range(40)]
+        for thread in threads:
+            thread.start()
+        for thread in threads:
+            thread.join()
+        self.assertLessEqual(self.verifies, 5)
+        self.assertEqual((results.count(401), results.count(429)), (5, 35))
+
+    def test_the_servers_own_containers_are_not_staff(self):
+        """The game runs in a container beside the proxy. If it were broken into, it must not be able to walk into the dashboard."""
+        app = self.app()
+        cookie = self.sign_in(app)
+        for inside in ("10.89.20.3", "10.89.10.2"):
+            self.assertEqual(self.call(app, "GET", "/api/session", ip=inside)[0], 403)
+            self.assertEqual(self.call(app, "POST", "/api/login", {"password": self.PASSWORD}, ip=inside)[0], 403)
+        self.assertEqual(self.call(app, "GET", "/api/overview", cookie=cookie)[0], 200)
+
     def test_a_change_must_come_from_the_dashboards_own_page(self):
         app = self.app()
         cookie = self.sign_in(app)
@@ -1154,7 +1253,8 @@ class DashTests(Sandbox):
         finally:
             server.shutdown()
             server.server_close()
-        closed = ThreadingHTTPServer(("127.0.0.1", 0), dash.make_handler(app, ipaddress.ip_network("10.89.20.0/24")))
+        self.assertEqual(dash.PROXY_ADDRESS, "10.89.20.2")
+        closed = ThreadingHTTPServer(("127.0.0.1", 0), dash.make_handler(app, dash.PROXY_ADDRESS))
         threading.Thread(target=closed.serve_forever, daemon=True).start()
         try:
             conn = http.client.HTTPConnection("127.0.0.1", closed.server_address[1], timeout=5)
@@ -1166,7 +1266,22 @@ class DashTests(Sandbox):
 
     # ---- the root helper: the boundary --------------------------------------------------------------------------
     def helper(self, **settings: str) -> None:
-        self.configure(DOMAIN="10.20.0.5", TRUSTED_NETS="10.20.9.0/24", **settings)
+        self.configure(**{"DOMAIN": "10.20.0.5", "TRUSTED_NETS": "10.20.9.0/24", "DASH_ENABLED": "yes", **settings})
+        if not getattr(self, "faked", False):          # no test reaches a real mail server, phone service or web site
+            import smtplib
+            self.faked = True
+            real = (dashops.site_answers, smtplib.SMTP, smtplib.SMTP_SSL, alerts._post)
+            self.posts: list = []
+            FakeSMTP.log, FakeSMTP.fail_login = [], False
+            dashops.site_answers = lambda domain, wait=45: True
+            dashops.LATER.clear()
+            smtplib.SMTP = smtplib.SMTP_SSL = FakeSMTP
+            alerts._post = lambda url, data, headers: self.posts.append((url, data))
+
+            def undo() -> None:
+                dashops.site_answers, smtplib.SMTP, smtplib.SMTP_SSL, alerts._post = real
+
+            self.addCleanup(undo)
         system.write_atomic(system.CLAIMED_FLAG, "x")
         config.load_secrets(create=True)
         for query in ("ip -j addr show", "ip -j -4 addr show"):
@@ -1174,6 +1289,8 @@ class DashTests(Sandbox):
 
     def test_the_helper_does_only_what_is_on_its_list(self):
         self.assertFalse(dashops.handle({"op": "overview"})["ok"])                        # not set up yet: nothing at all
+        self.helper(DASH_ENABLED="no")
+        self.assertIn("switched off", dashops.handle({"op": "overview"})["error"])       # and nothing once it is switched off
         self.helper()
         for nonsense in (None, [], "overview", {}, {"op": 5}, {"op": "shell", "cmd": "id"}, {"op": "action", "action": "exec"}, {"op": "action"},
                          {"op": "action", "action": "restart", "what": "sshd"}, {"op": "action", "action": "restart", "what": "db; reboot"},
@@ -1186,7 +1303,7 @@ class DashTests(Sandbox):
 
     def test_bans_from_the_dashboard_are_checked_like_any_other(self):
         self.helper()
-        for bad in ("nonsense", "10.20.3.3; nft flush ruleset", "10.20.3.0/24", "", None, 5):
+        for bad in ("nonsense", "10.20.3.3; nft flush ruleset", "10.20.3.0/24", "", None, 5, "fe80::1%x } ; flush ruleset ; add table inet y #", "fe80::1%eth0"):
             self.assertFalse(dashops.handle({"op": "action", "action": "ban", "ip": bad})["ok"], bad)
         self.assertIn("trusted", dashops.handle({"op": "action", "action": "ban", "ip": "10.20.9.10"})["error"])      # staff cannot be banned from here either
         for minutes in (0, -5, 100000, "60", True):
@@ -1195,6 +1312,8 @@ class DashTests(Sandbox):
         self.assertTrue(dashops.handle({"op": "action", "action": "ban", "ip": "10.20.3.3", "minutes": 30, "client": "10.20.9.10"})["ok"])
         self.assertTrue(self.ran("nft add element inet ludora ban4 { 10.20.3.3 timeout 1800s }"))
         self.assertIn("Dashboard (10.20.9.10): 10.20.3.3 banned for 30 minutes.", [e["text"] for e in sentinel.read_events()])
+        self.helper(ADMIN_NETS="10.20.8.7")
+        self.assertIn("administrator", dashops.handle({"op": "action", "action": "ban", "ip": "10.20.8.7"})["error"])   # nor can the administrators be cut off
 
     def test_only_listed_settings_can_be_read_or_changed_and_no_secret_ever_comes_back(self):
         self.helper(SMTP_HOST="smtp.school.example", SMTP_FROM="alerts@school.example", WEBHOOK_URL="https://hooks.example/secret-path")
@@ -1215,10 +1334,131 @@ class DashTests(Sandbox):
         cfg = config.load()
         self.assertEqual((cfg["ALERT_SECURITY_TO"], cfg["SMTP_PORT"], cfg["SMTP_SECURITY"]), (["it@school.example"], 465, "tls"))
         self.assertIn("tcp dport 465 accept", system.read(system.NFT_FILE))                                         # and it is in effect
+        for port in ("22", "443", "5432", "8760"):
+            self.assertFalse(dashops.handle({"op": "action", "action": "set", "changes": {"SMTP_PORT": port}})["ok"], port)   # not a way to open any port outwards
         for name, value in (("postgres", "x"), ("smtp_password", "two\nlines"), ("telegram_token", "not-a-token"), ("smtp_password", 7)):
             self.assertFalse(dashops.handle({"op": "action", "action": "secret", "name": name, "value": value})["ok"], name)
         self.assertTrue(dashops.handle({"op": "action", "action": "secret", "name": "smtp_password", "value": "abcd efgh ijkl"})["ok"])
         self.assertEqual(alerts.load_secrets()["SMTP_PASSWORD"], "abcdefghijkl")
+
+    def test_the_password_is_checked_on_the_root_side_and_never_handed_over(self):
+        self.helper()
+        dash.save_auth({"password": self.stored_password, "totp": "GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ"})
+        self.assertEqual(dashops.handle({"op": "auth_info"}), {"ok": True, "needs_code": True})
+        code = dash.totp("GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ", time.time())
+        self.assertTrue(dashops.handle({"op": "verify", "password": self.PASSWORD, "code": code})["valid"])
+        for password, try_code in ((self.PASSWORD, None), (self.PASSWORD, "000000"), ("wrong-wrong-wrong", code), (None, code), (["x"], code)):
+            self.assertFalse(dashops.handle({"op": "verify", "password": password, "code": try_code})["valid"])
+        everything = json.dumps([dashops.handle({"op": op}) for op in ("overview", "settings", "setup", "auth_info", "doctor")])
+        self.assertNotIn(self.stored_password["hash"], everything)
+        self.assertNotIn("GEZDGNBVGY3TQOJQ", everything)
+
+    def test_changing_the_mail_server_forgets_the_mail_password(self):
+        """Otherwise: point the mail server at your own machine, ask for a test alert, and the server signs in to you
+        with the school's mail password."""
+        self.helper(SMTP_HOST="smtp.school.example", SMTP_USER="alerts@school.example", SMTP_FROM="alerts@school.example", ALERT_CHEAT_TO="head@school.example")
+        alerts.save_secret("SMTP_PASSWORD", "hunter2-secret-pw")
+        answer = dashops.handle({"op": "action", "action": "set", "changes": {"SMTP_HOST": "mx.attacker.example", "SMTP_PORT": "465", "SMTP_SECURITY": "tls"}})
+        self.assertTrue(answer["ok"], answer)
+        self.assertIn("mail password was forgotten", answer["message"])
+        self.assertNotIn("SMTP_PASSWORD", alerts.load_secrets())
+        FakeSMTP.log.clear()
+        dashops.handle({"op": "action", "action": "alerts_test", "audience": "cheat"})
+        self.assertEqual(FakeSMTP.log, [])                                                 # the new server is not even contacted without a password
+
+    def test_a_change_that_would_break_the_site_is_undone(self):
+        """Changing the site's name or certificate restarts the proxy, which cuts the request that asked for it. So the
+        helper answers first, makes the change afterwards, checks the site still answers, and puts the old settings back
+        by itself if it does not."""
+        self.helper()
+        self.answers["ip -j -4 addr show scope global"] = system.Result(0, json.dumps([{"ifname": "eth0", "addr_info": [{"local": "10.20.0.5"}]}]), "")
+        points_to = {"play.school.example": "10.20.0.5", "elsewhere.school.example": "203.0.113.9"}
+        real = dashops.socket.getaddrinfo
+
+        def lookup(name, *a, **k):
+            if name not in points_to:
+                raise OSError("no such name")
+            return [(2, 1, 6, "", (points_to[name], 443))]
+
+        dashops.socket.getaddrinfo = lookup
+        self.addCleanup(lambda: setattr(dashops.socket, "getaddrinfo", real))
+
+        def change(**changes: str) -> dict:
+            return dashops.handle({"op": "action", "action": "set", "changes": changes, "client": "10.20.9.10"})
+
+        # Refused before anything is touched: nothing to undo.
+        self.assertIn("put on the server first", change(TLS_MODE="custom")["error"])
+        self.assertIn("not one of this server's own addresses", change(DOMAIN="10.20.0.99")["error"])
+        self.assertIn("cannot find nowhere.school.example", change(DOMAIN="nowhere.school.example")["error"])
+        self.assertIn("not an address", change(TLS_MODE="public")["error"])
+        self.assertEqual(dashops.LATER, [])
+        cfg = config.load()
+        self.assertEqual((cfg["DOMAIN"], cfg["TLS_MODE"]), ("10.20.0.5", "internal"))
+
+        # Accepted: the answer comes back at once, saying where to go, and nothing has changed yet.
+        dashops.site_answers = lambda domain, wait=45: False       # ...but the proxy will not answer under the new name
+        answer = change(DOMAIN="play.school.example", TLS_MODE="public")
+        self.assertTrue(answer["ok"], answer)
+        self.assertEqual(answer["moving"], {"to": "https://play.school.example:8443", "seconds": 90})
+        self.assertEqual(config.load()["DOMAIN"], "10.20.0.5")
+        self.assertIsNone(dashops.handle({"op": "overview"})["last_change"])
+        dashops.run_later()
+        cfg = config.load()
+        self.assertEqual((cfg["DOMAIN"], cfg["TLS_MODE"]), ("10.20.0.5", "internal"))
+        self.assertIn("10.20.0.5 {", system.read(system.CADDYFILE))                       # the old site is what is running
+        outcome = dashops.handle({"op": "overview"})["last_change"]
+        self.assertFalse(outcome["ok"])
+        self.assertIn("the change was undone", outcome["message"])
+        self.assertTrue(any("did not hold" in e["text"] for e in sentinel.read_events()))
+
+        # And when the site does answer, the change stays.
+        dashops.site_answers = lambda domain, wait=45: True
+        self.assertIn("moving", change(DOMAIN="play.school.example"))
+        dashops.run_later()
+        self.assertEqual(config.load()["DOMAIN"], "play.school.example")
+        outcome = dashops.handle({"op": "overview"})["last_change"]
+        self.assertTrue(outcome["ok"])
+        self.assertIn("Saved and in effect: the address people open", outcome["message"])
+
+        # Restarting the proxy cuts the request off in the same way.
+        self.calls.clear()
+        answer = dashops.handle({"op": "action", "action": "restart", "what": "proxy"})
+        self.assertEqual(answer["moving"], {"to": None, "seconds": 15})
+        self.assertFalse(self.ran("systemctl restart ludora-proxy.service"))
+        dashops.run_later()
+        self.assertTrue(self.ran("systemctl restart ludora-proxy.service"))
+        self.assertEqual(dashops.handle({"op": "overview"})["last_change"]["message"], "The proxy was restarted.")
+
+    def test_nobody_is_quietly_taken_off_the_alert_list_and_topics_stay_hidden(self):
+        self.helper(ALERT_SECURITY_TO="ntfy:ludora-Zk3v9qPq2xYw,it@school.example", SMTP_HOST="smtp.school.example", SMTP_FROM="a@school.example")
+        shown = dashops.handle({"op": "settings"})["settings"]["ALERT_SECURITY_TO"]["value"]
+        self.assertEqual(shown, "ntfy:ludo****,it@school.example")                        # the topic is what keeps those messages private
+        self.assertNotIn("Zk3v9qPq2xYw", json.dumps([dashops.handle({"op": "setup"}), dashops.handle({"op": "settings"})]))
+        # Sending the list back as it was shown keeps the real topic; emptying it warns the people who were on it.
+        self.assertTrue(dashops.handle({"op": "action", "action": "set", "changes": {"ALERT_SECURITY_TO": shown + ",deputy@school.example"}})["ok"])
+        self.assertEqual(config.load()["ALERT_SECURITY_TO"], ["ntfy:ludora-Zk3v9qPq2xYw", "it@school.example", "deputy@school.example"])
+        self.posts.clear()
+        FakeSMTP.log.clear()
+        self.assertTrue(dashops.handle({"op": "action", "action": "set", "changes": {"ALERT_SECURITY_TO": ""}, "client": "10.20.9.10"})["ok"])
+        self.assertEqual(config.load()["ALERT_SECURITY_TO"], [])
+        self.assertEqual([url for url, _ in self.posts], ["https://ntfy.sh/ludora-Zk3v9qPq2xYw"])
+        self.assertIn(b"The alert settings were changed from the staff dashboard", self.posts[0][1])
+        sent = [entry for entry in FakeSMTP.log if entry[0] == "send"]
+        self.assertEqual(sorted(sent[0][2]), ["deputy@school.example", "it@school.example"])
+        self.assertFalse(dashops.handle({"op": "action", "action": "set", "changes": {"ALERT_UPKEEP_TO": "ntfy:zzzz****"}})["ok"])   # a mask that matches nothing
+
+    def test_the_record_cannot_be_flooded_and_backups_cannot_be_churned(self):
+        self.helper()
+        for _ in range(80):
+            dashops.handle({"op": "note", "kind": "failed", "client": "10.20.9.50"})
+        self.assertLessEqual(sum(1 for e in sentinel.read_events(300) if "wrong password" in e["text"]), 30)
+        self.assertFalse(dashops.handle({"op": "note", "kind": "anything else", "client": "10.20.9.50"})["ok"])
+        real = maintain.backups
+        maintain.backups = lambda: [{"stamp": "x", "age_hours": 0.05, "size": 1}]
+        try:
+            self.assertIn("a few minutes ago", dashops.handle({"op": "action", "action": "backup"})["error"])
+        finally:
+            maintain.backups = real
 
     def test_the_domain_check_says_plainly_where_a_name_points(self):
         self.helper()
@@ -1251,23 +1491,36 @@ class DashTests(Sandbox):
             self.assertNotIn("8760", text)
         on = self.configure(DOMAIN="10.20.0.5", TRUSTED_NETS="10.20.9.0/24", DASH_ENABLED="yes")
         rules = render.nftables(on)
-        for needed in ("fib daddr type local tcp dport 8443 jump dash", "ip saddr != @trust4 ip saddr != @admin4 counter name c_closed drop",
-                       'iifname "podman*" ip saddr 10.89.20.0/24 tcp dport 8760 accept', "ip daddr 10.89.20.0/24 ct status dnat tcp dport 8443 accept"):
+        for needed in ("fib daddr type local tcp dport 8443 jump dash", "ip saddr != @dash4 counter name c_closed drop",
+                       'iifname "podman*" ip saddr 10.89.20.2 tcp dport 8760 accept', "ip daddr 10.89.20.0/24 ct status dnat tcp dport 8443 accept"):
             self.assertIn(needed, rules)
+        self.assertNotIn("ip saddr 10.89.20.0/24 tcp dport 8760", rules)                 # the proxy alone, not its neighbours on that network
         sealed = render.nftables(on, sealed=True)
         self.assertNotIn("dport 8760 accept", sealed)
         self.assertNotIn("dnat tcp dport 8443", sealed)
         site = render.caddyfile(on)
-        for needed in ("10.20.0.5:8443 {", "reverse_proxy 10.89.20.1:8760", "header_up X-Real-IP {remote_host}", "max_size 64KB"):
+        for needed in ("10.20.0.5:8443 {", "reverse_proxy 10.89.20.1:8760", "header_up X-Real-IP {remote_host}", "max_size 64KB",
+                       "@from_inside remote_ip 10.89.0.0/16", "respond @from_inside 403", 'request_header Cookie "__Host-ludora-dash=[^;]*(; )?" ""'):
             self.assertIn(needed, site)
-        self.assertIn("PublishPort=8443:8443", render.quadlets(on, {})["ludora-proxy.container"])
+        proxy = render.quadlets(on, {})["ludora-proxy.container"]
+        self.assertIn("PublishPort=8443:8443", proxy)
+        self.assertIn("IP=10.89.20.2", proxy)
+        # Someone let in over SSH for support is not thereby let in to the dashboard.
+        system.write_atomic(system.CLAIMED_FLAG, "x")
+        system.write_atomic(system.SUPPORT_FILE, json.dumps({"until": time.time() + 3600, "from": "203.0.113.0/24", "fingerprint": "x", "opened": time.time()}))
+        with_helper = render.nftables(config.effective(on))
+        admin4 = with_helper.split("set admin4 {")[1].split("}")[0]
+        dash4 = with_helper.split("set dash4 {")[1].split("}")[0]
+        self.assertIn("203.0.113.0/24", admin4)
+        self.assertNotIn("203.0.113", dash4)
+        self.assertIn("10.20.9.0/24", dash4)
         self.assertEqual(render.dash_env(on).splitlines()[-2:], ["LUDORA_DASH_ORIGIN=https://10.20.0.5:8443", "LUDORA_DASH_SERVER=ludora"])
         self.assertNotIn("WEBHOOK", render.dash_env(on))                                 # the service is told two things and no more
         self.assertEqual(doctor._dash(off)[0], "pass")
         self.assertEqual(doctor._dash(on)[0], "fail")                                    # switched on with no password
         dash.save_auth({"password": self.stored_password})
         self.assertEqual(doctor._dash(on)[0], "pass")
-        self.assertEqual(os.stat(system.p(dash.AUTH_FILE)).st_mode & 0o777, 0o640)
+        self.assertEqual(os.stat(system.p(dash.AUTH_FILE)).st_mode & 0o777, 0o600)       # root only: the web service never holds the hash
 
 
 class CtlTests(Sandbox):
