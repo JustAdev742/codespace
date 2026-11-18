@@ -25,6 +25,18 @@ export const meta: ModeMeta = {
     'Nobody knows the next wind. The forecast shows the chance of a storm, which rises after every change without one and resets after a storm.',
     'Lanterns still on the ground when time runs out do not score. The highest score wins.',
   ],
+  tutorial: {
+    steps: [
+      { title: 'Answer for oil', text: 'Each right answer earns 1 oil.' },
+      { title: 'Light lanterns', text: 'Lighting a lantern costs 3 oil. Lit lanterns wait on the ground.' },
+      { title: 'Launch in good wind', text: 'Launch sends them all up. Stronger wind scores more, up to 3 times.' },
+      { title: 'Watch for storms', text: 'A storm blows out lanterns still on the ground. Launched points are safe.' },
+    ],
+    controls: [
+      { label: 'Light a lantern', does: 'Spends 3 oil. The lantern waits on the ground.' },
+      { label: 'Launch', does: 'Sends up every lit lantern and scores the wind.' },
+    ],
+  },
   thumbnail: { glyph: 'lantern', hue: 255, accentHue: 40 },
   status: 'playable',
   tags: ['push your luck', 'strategy', 'projector', 'self-paced'],

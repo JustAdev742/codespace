@@ -25,6 +25,13 @@ export const meta: ModeMeta = {
     'With more than two teams, teams take turns joining the left and right sides.',
     'Players are ranked by how many pulls they made.',
   ],
+  tutorial: {
+    steps: [
+      { title: 'Two sides, one rope', text: 'You are on one of two sides pulling a rope.' },
+      { title: 'Answer to pull', text: 'Every right answer pulls the knot towards your end.' },
+      { title: 'Pull it home', text: 'Drag the knot into your end zone to win.' },
+    ],
+  },
   thumbnail: { glyph: 'rope', hue: 200, accentHue: 42 },
   status: 'playable',
   tags: ['teams', 'projector', 'self-paced', 'classroom'],

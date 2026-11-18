@@ -38,6 +38,19 @@ export const meta: ModeMeta = {
     'Keep at least one light burning until the last wave is held, and the whole class wins.',
     'Guard points: 10 for each right answer, 1 for each gold you spend, 3 for each gloomling your towers defeat and 30 for a Gloom Lord.',
   ],
+  tutorial: {
+    steps: [
+      { title: 'Answer for gold', text: 'A right answer earns gold.' },
+      { title: 'Build light towers', text: 'Spend gold on towers beside the road. Towers stop gloomlings by themselves.' },
+      { title: 'Hold the waves', text: 'Gloomlings march to the Great Lantern. Each one that arrives puts out a light.' },
+      { title: 'Win together', text: 'Keep at least one light burning until the last wave.' },
+    ],
+    controls: [
+      { label: 'Build', does: 'Puts a tower on a free spot beside the road.' },
+      { label: 'Upgrade', does: 'Makes any tower hit harder and reach further.' },
+      { label: 'Feed the Great Lantern', does: 'Gives it gold. When it is full, it flares.' },
+    ],
+  },
   thumbnail: { glyph: 'castle', hue: 220, accentHue: 45 },
   status: 'playable',
   tags: ['co-operative', 'tower defence', 'projector', 'self-paced'],

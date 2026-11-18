@@ -22,6 +22,13 @@ export const meta: ModeMeta = {
     'Every 10 correct answers win back a heart, up to the hearts you started with.',
     'The run ends when your last heart is gone. Your score is how many you got right.',
   ],
+  tutorial: {
+    steps: [
+      { title: 'Three hearts', text: 'You start with three hearts.' },
+      { title: 'Answer in time', text: 'A wrong answer, or running out of time, costs a heart.' },
+      { title: 'Keep going', text: 'The timer gets a little shorter as you go. Every 10 right answers win back a heart.' },
+    ],
+  },
   thumbnail: { glyph: 'heart', hue: 350, accentHue: 30 },
   status: 'playable',
   tags: ['solo', 'endless', 'practice'],

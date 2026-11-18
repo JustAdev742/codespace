@@ -22,6 +22,13 @@ export const meta: ModeMeta = {
     'Every five correct answers in a row raise the multiplier by one, up to ×3. A wrong answer resets it to ×1.',
     'A wrong answer also takes seconds off the clock.',
   ],
+  tutorial: {
+    steps: [
+      { title: 'Beat the clock', text: 'Answer as many questions as you can before time runs out.' },
+      { title: 'Streaks multiply', text: 'Five right in a row raises your multiplier, up to 3 times the points.' },
+      { title: 'Wrong answers cost', text: 'A wrong answer resets the multiplier and takes seconds off the clock.' },
+    ],
+  },
   thumbnail: { glyph: 'stopwatch', hue: 8, accentHue: 48 },
   status: 'playable',
   tags: ['solo', 'score attack', 'practice'],

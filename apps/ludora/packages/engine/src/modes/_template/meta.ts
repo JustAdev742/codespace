@@ -21,6 +21,16 @@ export const meta: ModeMeta = {
   minQuestions: 5,
   common: { fields: ['timeLimitSec'], defaults: { timeLimitSec: 300 } },
   rules: ['Short sentences, one rule each.', 'Players read these before playing.'],
+  // The walkthrough before the game: two to four steps written from the rules above, in very few plain words.
+  // Add `controls` (each button's words and what it does) if players press anything besides answers.
+  tutorial: {
+    steps: [
+      { title: 'Answer', text: 'Read each question and pick your answer.' },
+      { title: 'First to ten', text: 'The first player with ten right answers wins.' },
+    ],
+  },
+  // calmPlay: 'One thing at a time. ...' Only for a mode with an action that needs steering, aiming or timing
+  // while a question is open: say what calm play changes, and follow it in the mode (mechanics/oneThing.ts).
   thumbnail: { glyph: 'spark', hue: 160, accentHue: 40 }, // glyph names: web/src/art/ModeArt.tsx
   status: 'playable', // only after the conformance tests pass; otherwise 'beta' or 'planned'
 };

@@ -36,6 +36,17 @@ export const meta: ModeMeta = {
     'Every 90 seconds a room event changes a rule for 30 seconds. In the last 45 seconds, Golden Lanterns cost 10.',
     'Most Golden Lanterns wins. Coins break a tie.',
   ],
+  tutorial: {
+    steps: [
+      { title: 'Answer to roll', text: 'A right answer rolls the dice and walks your Glim round the town.' },
+      { title: 'Spaces', text: 'Coin spaces and fairs pay coins. Gloom puddles take some.' },
+      { title: 'Golden Lanterns', text: 'Reach the Golden Lantern stall with 20 coins to buy one. Most Golden Lanterns wins.' },
+    ],
+    controls: [
+      { label: 'Long way or Shortcut', does: 'At the Crossroads, choose your path.' },
+      { label: 'Buy a Golden Lantern', does: 'At the stall, spend 20 coins on one.' },
+    ],
+  },
   thumbnail: { glyph: 'dice', hue: 140, accentHue: 45 },
   status: 'playable',
   tags: ['board game', 'party', 'chance', 'projector', 'self-paced'],

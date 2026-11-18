@@ -35,6 +35,18 @@ export const meta: ModeMeta = {
     'A map lets you jump a claim: take a quarter of the cart of whoever carries the most. Banked gold is always safe.',
     'Gold still in your cart when the whistle blows does not count. Only banked gold wins.',
   ],
+  tutorial: {
+    steps: [
+      { title: 'Answer for digs', text: 'Every right answer gives you a dig.' },
+      { title: 'Dig', text: 'Each dig goes one level deeper and finds something for your cart. Deeper pays more.' },
+      { title: 'Cave-ins', text: 'A cave-in loses your cart. The chance is always shown.' },
+      { title: 'Bank', text: 'Bank your cart to keep its gold for good. Only banked gold counts.' },
+    ],
+    controls: [
+      { label: 'Dig', does: 'Goes one level deeper and finds something.' },
+      { label: 'Bank', does: 'Keeps your cart’s gold safe. Your shaft starts again from the top.' },
+    ],
+  },
   thumbnail: { glyph: 'mountain', hue: 42, accentHue: 24 },
   status: 'playable',
   stage: '3d',

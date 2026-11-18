@@ -36,10 +36,12 @@ import { answerSchema, hashString, type Answer, type Rng } from '@ludora/shared'
 import { defineMode } from '../../sdk/define.ts';
 import type { BotContext, BotMind, EnginePlayer, ModeContext, PlayerId } from '../../sdk/types.ts';
 import { streamInit, streamNext, streamQuestionView, streamSubmit, type StreamState } from '../../mechanics/selfPaced.ts';
+import { goBegin, goEnd, holdBegin, holdEnd, newTurn, putAway, shiftClocks, thinking, turnTimerOf, turnView, type Turn } from '../../mechanics/oneThing.ts';
 import {
   ARENA,
   BEAMS,
   BOARD,
+  CALM,
   CHARGE,
   CRATE_INFO,
   CRATE_ODDS,
@@ -106,6 +108,10 @@ interface Glower {
   dimmed: number;
   relights: number;
   cheer: number;
+  /** Calm play: whose turn it is (thinking, or their go). Untouched in every other game. */
+  turn: Turn;
+  /** Calm play: just out of shelter, so the ring does not drain this player until this time. */
+  ringGraceUntil: number;
 }
 
 interface NextRing extends RingCircle {
@@ -248,7 +254,52 @@ function newGlower(ctx: ModeContext<Settings>, p: EnginePlayer, spot: { x: numbe
     dimmed: 0,
     relights: 0,
     cheer: 0,
+    turn: newTurn(),
+    ringGraceUntil: 0,
   };
+}
+
+/* --------------------------------- calm play -------------------------------- */
+
+/**
+ * Calm play, one thing at a time: a player in the arena with a question open is hidden. They cannot
+ * walk or tag, nobody can tag them, and the ring takes no glow from them. The game opens the
+ * question (when their go ends), never the player, and the shelter lasts CALM.shelterMs at most:
+ * then the question is put away, uncounted, and their go starts with nothing earned. A dimmed
+ * player has nothing else to do, so their questions stay open as in any other game.
+ */
+function sheltered(g: Glower, ctx: ModeContext): boolean {
+  return g.in && thinking(ctx, g.stream);
+}
+
+/** A question has opened for a player in the arena: hide them. */
+function shelter(g: Glower, id: PlayerId, ctx: ModeContext) {
+  if (ctx.calm && g.in && g.stream.iid !== null) holdBegin(g.turn, id, ctx, CALM.shelterMs);
+}
+
+/** The shelter is over (answered, or out of time): the player's own clocks move on by the wait, and their go starts. */
+function startGo(g: Glower, id: PlayerId, ctx: ModeContext) {
+  const from = g.turn.heldAt;
+  const held = holdEnd(g.turn, id, ctx);
+  const now = ctx.now();
+  if (from !== null) shiftClocks(g, ['cooldownUntil', 'safeUntil', 'speedUntil'], from, held);
+  g.budgetAt = now;
+  g.ringGraceUntil = now + CALM.ringGraceMs;
+  goBegin(g.turn, id, ctx, CALM.goMs);
+}
+
+function onTurnTimer(s: State, ctx: ModeContext<Settings>, id: PlayerId, kind: 'go' | 'shelter') {
+  const g = s.g[id];
+  if (!g || !ctx.player(id)) return;
+  if (kind === 'go') {
+    goEnd(g.turn, g.stream, id, ctx);
+    shelter(g, id, ctx);
+  } else if (sheltered(g, ctx)) {
+    putAway(g.stream);
+    g.stream.last = null;
+    ctx.feed('That question is put away for now. It is your go.', { to: [id] });
+    startGo(g, id, ctx);
+  }
 }
 
 /* ---------------------------------- the ring -------------------------------- */
@@ -298,7 +349,8 @@ function startShrink(s: State, ctx: ModeContext<Settings>) {
 function startFinal(s: State, ctx: ModeContext<Settings>) {
   s.final = true;
   for (const p of present(s, ctx)) {
-    if (p.g.in) p.g.score += SCORE.finalRing;
+    // Calm play pays no bonus for still glowing: a player is hidden while they think, and hiding must never score.
+    if (p.g.in) p.g.score += ctx.calm ? 0 : SCORE.finalRing;
     else {
       p.g.out = true;
       p.g.relight = 0;
@@ -315,7 +367,7 @@ function drainTick(s: State, ctx: ModeContext<Settings>) {
   ctx.setTimer('drain', s.drainAt);
   const ring = ringAt(s.ring, now);
   for (const p of present(s, ctx)) {
-    if (p.g.in && outsideRing(ring, p.g.x, p.g.z)) {
+    if (p.g.in && outsideRing(ring, p.g.x, p.g.z) && !sheltered(p.g, ctx) && now >= p.g.ringGraceUntil) {
       s.stats.ring++;
       loseGlow(s, ctx, p.id, null);
     }
@@ -341,6 +393,11 @@ function dim(s: State, ctx: ModeContext<Settings>, id: PlayerId, by: PlayerId | 
   g.speedUntil = 0;
   g.dimmed++;
   if (s.final) g.out = true;
+  // Calm play: dimmed in the middle of their go. There is nothing left to do but answer, so the next question opens now.
+  if (ctx.calm) {
+    holdEnd(g.turn, id, ctx);
+    goEnd(g.turn, g.stream, id, ctx);
+  }
   s.stats.dims++;
   ctx.feed(by ? `${nameOf(ctx, by)} dimmed ${nameOf(ctx, id)}.` : `${nameOf(ctx, id)} was dimmed by the ring.`);
 }
@@ -422,7 +479,7 @@ function checkEnd(s: State, ctx: ModeContext<Settings>) {
 function finish(s: State, ctx: ModeContext<Settings>) {
   if (s.over) return;
   s.over = true;
-  for (const p of present(s, ctx)) if (p.g.in) p.g.score += SCORE.lastGlow;
+  if (!ctx.calm) for (const p of present(s, ctx)) if (p.g.in) p.g.score += SCORE.lastGlow;
   ctx.endGame();
 }
 
@@ -489,6 +546,7 @@ function dimmedError(g: Glower) {
 function move(s: State, ctx: ModeContext<Settings>, id: PlayerId, a: Extract<Action, { type: 'move' }>) {
   const g = s.g[id]!;
   if (!g.in) return dimmedError(g);
+  if (sheltered(g, ctx)) return { error: 'Answer your question first. Nobody can tag you while you think.' };
   const now = ctx.now();
   const speed = MOVE.speed * (now < g.speedUntil ? MOVE.boost : 1);
   // A walking allowance: game time since it was last spent (at most windowMs of standing still), plus slack for jitter.
@@ -530,6 +588,7 @@ function tag(s: State, ctx: ModeContext<Settings>, id: PlayerId, targetId: Playe
   const me = s.g[id]!;
   const now = ctx.now();
   if (!me.in) return dimmedError(me);
+  if (sheltered(me, ctx)) return { error: 'Answer your question first. Nobody can tag you while you think.' };
   if (me.charges < 1) return { error: 'No charge. Answer a question right to charge your beam.' };
   if (now < me.cooldownUntil) return { error: 'Your beam is still recharging.' };
   if (targetId === id) return { error: 'You cannot tag yourself.' };
@@ -537,6 +596,7 @@ function tag(s: State, ctx: ModeContext<Settings>, id: PlayerId, targetId: Playe
   if (!t || !ctx.player(targetId)) return { error: 'That player is not in the game.' };
   if (teammates(ctx, me, t)) return { error: 'That is your teammate.' };
   if (!t.in) return { error: 'That player is already dimmed.' };
+  if (sheltered(t, ctx)) return { error: 'That player is answering a question, and nobody can be tagged while they think.' };
   if (now < t.safeUntil) return { error: 'That player is flickering and cannot be tagged for a moment.' };
 
   me.charges--;
@@ -588,9 +648,14 @@ function answer(s: State, ctx: ModeContext<Settings>, id: PlayerId, a: Extract<A
   const res = streamSubmit(g.stream, id, a.iid, a.answer, ctx);
   if ('error' in res) return res;
   const last = g.stream.last;
+  // Calm play: an answer in the arena ends the shelter and starts the player's go; the next question waits for it to end.
+  const next = () => {
+    if (ctx.calm && g.in) startGo(g, id, ctx);
+    else streamNext(g.stream, ctx);
+  };
   if (!res.correct) {
     if (last) last.text = g.in || g.out ? 'No charge this time.' : 'Not this time. Try the next one.';
-    streamNext(g.stream, ctx);
+    next();
     return undefined;
   }
   let points: number = SCORE.answer;
@@ -619,16 +684,18 @@ function answer(s: State, ctx: ModeContext<Settings>, id: PlayerId, a: Extract<A
     last.text = text;
     last.points = points;
   }
-  streamNext(g.stream, ctx);
+  next();
   return undefined;
 }
 
 /* ----------------------------------- views ---------------------------------- */
 
-function flagsOf(g: Glower, now: number) {
+function flagsOf(g: Glower, now: number, ctx: ModeContext) {
+  const hidden = sheltered(g, ctx);
   return (
     (g.in ? FLAGS.in : 0) |
-    (now < g.safeUntil ? FLAGS.safe : 0) |
+    (now < g.safeUntil || hidden ? FLAGS.safe : 0) |
+    (hidden ? FLAGS.thinking : 0) |
     (g.shield ? FLAGS.shield : 0) |
     (now < g.speedUntil ? FLAGS.speed : 0) |
     (now - g.beamAt <= LIGHTS_OUT.litMs ? FLAGS.lit : 0)
@@ -701,7 +768,7 @@ function baseView(s: State, ctx: ModeContext<Settings>, viewer: PlayerId | null,
   if (mine && !board.includes(mine)) board.push(mine);
   const players: GlowTagPlayer[] = present(s, ctx).map((p) => {
     const seen = canSee(s, ctx, viewer, p.id, now);
-    return [p.id, p.name, p.g.team, seen ? r1(p.g.x) : null, seen ? r1(p.g.z) : null, seen ? r2(p.g.h) : null, p.g.glow, flagsOf(p.g, now)];
+    return [p.id, p.name, p.g.team, seen ? r1(p.g.x) : null, seen ? r1(p.g.z) : null, seen ? r2(p.g.h) : null, p.g.glow, flagsOf(p.g, now, ctx)];
   });
   return {
     at: now,
@@ -750,6 +817,7 @@ function youView(s: State, ctx: ModeContext<Settings>, id: PlayerId, rows: Board
     streak: g.stream.streak,
     question: streamQuestionView(g.stream, ctx),
     last: g.stream.last,
+    calm: g.in ? turnView(g.turn, g.stream, ctx) : null,
   };
 }
 
@@ -815,7 +883,11 @@ export const glowTag = defineMode<State, Settings, Action>({
       .sort((a, b) => (a.p.teamId ?? '').localeCompare(b.p.teamId ?? '') || a.i - b.i)
       .map((x) => x.p);
     const spots = edgeSpots(size, order.length, ctx.rng.next());
-    order.forEach((p, i) => (s.g[p.id] = newGlower(ctx, p, spots[i]!)));
+    order.forEach((p, i) => {
+      const g = newGlower(ctx, p, spots[i]!);
+      s.g[p.id] = g;
+      shelter(g, p.id, ctx);
+    });
     decideNext(s, ctx, 0);
     ctx.setTimer('end', s.endsAt);
     ctx.setTimer('crate', now + CRATES.firstMs);
@@ -837,6 +909,7 @@ export const glowTag = defineMode<State, Settings, Action>({
     g.h = spot.h;
     g.safeUntil = ctx.now() + RELIGHT.safeMs;
     g.budgetAt = ctx.now();
+    shelter(g, p.id, ctx);
   },
   onPlayerLeave(s, _p, ctx) {
     checkEnd(s, ctx);
@@ -855,6 +928,8 @@ export const glowTag = defineMode<State, Settings, Action>({
   },
   onTimer(s, id, ctx) {
     if (s.over) return;
+    const turn = turnTimerOf(id);
+    if (turn) return onTurnTimer(s, ctx, turn.playerId, turn.kind);
     if (id === 'end') finish(s, ctx);
     else if (id === 'ring') startShrink(s, ctx);
     else if (id === 'ringDone') decideNext(s, ctx, s.phase);
@@ -873,7 +948,7 @@ export const glowTag = defineMode<State, Settings, Action>({
     const p: PulseEntry[] = [];
     for (const pl of present(s, ctx)) {
       if (!canSee(s, ctx, null, pl.id, now)) continue;
-      p.push([pl.id, Math.round(pl.g.x * 10), Math.round(pl.g.z * 10), Math.round(pl.g.h * 100), flagsOf(pl.g, now), pl.g.glow]);
+      p.push([pl.id, Math.round(pl.g.x * 10), Math.round(pl.g.z * 10), Math.round(pl.g.h * 100), flagsOf(pl.g, now, ctx), pl.g.glow]);
     }
     return { t: now, ring: [Math.round(ring.x * 10), Math.round(ring.z * 10), Math.round(ring.r * 10)], p };
   },
@@ -981,9 +1056,11 @@ function botAction(view: GlowTagPlayerView, id: PlayerId, now: number, rng: Rng,
   const nearest = foes[0];
   const q = you.question;
   const wantsCharge = !you.in || you.charges < BOT.lowCharge || (!(nearest && nearest.d < BOT.threat) && you.charges < CHARGE.max - 1);
-  const thinking = Boolean(q && wantsCharge);
+  // Calm play: with a question open in the arena there is nothing to do but answer it.
+  const hidden = you.calm?.phase === 'question';
+  const thinking = Boolean(q && (wantsCharge || hidden));
   if (q && thinking && now >= thinkingSince(you) + thinkMs(q.iid)) return { type: 'answer', iid: q.iid, answer: answerFor(q.iid) };
-  if (!you.in) return null;
+  if (!you.in || hidden) return null;
 
   if (you.charges > 0 && now >= you.cooldownUntil && rng.next() < BOT.reaction) {
     const target = foes.find(

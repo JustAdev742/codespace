@@ -34,6 +34,8 @@ export interface SimulateOptions {
   churn?: boolean;
   /** Pause the game for a while partway through. */
   pauseAt?: number;
+  /** Calm play (the room's option): one thing at a time in the modes that have an action. */
+  calm?: boolean;
 }
 
 export interface SimulateResult {
@@ -99,6 +101,7 @@ export function simulateGame(opts: SimulateOptions): SimulateResult {
     seed,
     clock,
     strict: true,
+    ...(opts.calm ? { calm: true } : {}),
     listener: { error: (error, where) => errors.push({ where, error }) },
   });
   const rng = createRng(seed + 7);

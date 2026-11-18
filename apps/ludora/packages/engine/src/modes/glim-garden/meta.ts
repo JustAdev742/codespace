@@ -34,6 +34,19 @@ export const meta: ModeMeta = {
     'A plant left without water for a while droops. It never dies: the next drop perks it up, and it blooms a little later.',
     'Fireflies stay at the plot that brought them. A plot with 6 fireflies glows. Light up most of the garden’s plots before morning. Nobody loses anything.',
   ],
+  tutorial: {
+    steps: [
+      { title: 'Answer for water', text: 'A right answer gives you a drop of water. A wrong answer costs nothing.' },
+      { title: 'Plant and water', text: 'Spend a drop to plant a seed in your plot, or to water a plant.' },
+      { title: 'Give', text: 'Give a drop to a neighbour’s plant to help it grow.' },
+      { title: 'Light up the garden', text: 'Blooms bring fireflies. Light up the garden together before morning.' },
+    ],
+    controls: [
+      { label: 'Plant a seed', does: 'Spends a drop on a flower, a bush or a lantern tree.' },
+      { label: 'Water', does: 'Spends a drop on a plant in your plot.' },
+      { label: 'Give a drop', does: 'Waters a neighbour’s plant. You both score.' },
+    ],
+  },
   thumbnail: { glyph: 'sprout', hue: 236, accentHue: 52 },
   status: 'playable',
   stage: '3d',

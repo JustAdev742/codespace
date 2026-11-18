@@ -80,6 +80,8 @@ export interface RuntimeOptions {
   seed: number;
   clock: RuntimeClock;
   listener?: RuntimeListener;
+  /** Calm play, the room's option: modes read it as `ctx.calm` and give players one thing at a time. */
+  calm?: boolean;
   /** Mode errors tolerated before the game is stopped and saved. */
   maxErrors?: number;
   /**
@@ -165,6 +167,7 @@ export class GameRuntime {
   readonly mode: GameMode;
   readonly settings: SettingValues;
   readonly common: CommonSettings;
+  readonly calm: boolean;
   status: 'idle' | 'running' | 'paused' | 'ended' = 'idle';
   version = 0;
   results: EngineResults | null = null;
@@ -199,6 +202,7 @@ export class GameRuntime {
     this.mode = opts.mode;
     this.settings = opts.settings;
     this.common = opts.common;
+    this.calm = opts.calm ?? false;
     this.teams = opts.teams;
     this.clock = opts.clock;
     this.listener = opts.listener ?? {};
@@ -553,6 +557,12 @@ export class GameRuntime {
     return this.state;
   }
 
+  /** Replace the internal state, for tests only: sets a scene up without having to play to it. */
+  debugSetState(state: unknown): void {
+    this.state = state;
+    if (this.strict) deepFreeze(this.state);
+  }
+
   /* ----------------------------- transactions ---------------------------- */
 
   /**
@@ -745,6 +755,7 @@ export class GameRuntime {
       settings: this.settings,
       common: this.common,
       rng: this.rng,
+      calm: this.calm,
       now: () => this.gameNow(),
       players: () => [...this.players.values()],
       player: (id) => this.players.get(id),

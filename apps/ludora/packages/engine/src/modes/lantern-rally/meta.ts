@@ -36,6 +36,22 @@ export const meta: ModeMeta = {
     'Finishing order decides the table: everyone who finishes ranks above everyone still racing, an earlier finisher above a later one, and at the whistle the rest are placed by how far round they are.',
     'Points: 200 for every driver you beat, 100 more for finishing, and 10 for each right answer (your first 15 in a race). Answers can never lift you past someone who placed ahead of you.',
   ],
+  tutorial: {
+    steps: [
+      { title: 'Answer for boosts', text: 'Your kart drives itself. Every right answer gives you a boost charge.' },
+      { title: 'Boost', text: 'Press Boost to spend a charge on 3 seconds of extra speed.' },
+      { title: 'Steer', text: 'Steer left or right between three lanes. Drive through lanterns. Go round puddles and cones.' },
+      { title: 'Or just answer', text: 'Turn on Auto-steer and your kart steers and boosts for you.' },
+    ],
+    controls: [
+      { label: 'Steer left', does: 'Moves your kart one lane to the left.', key: 'Left arrow' },
+      { label: 'Steer right', does: 'Moves your kart one lane to the right.', key: 'Right arrow' },
+      { label: 'Boost', does: 'Spends a charge on 3 seconds of extra speed.', key: 'B' },
+      { label: 'Auto-steer', does: 'Steers and boosts for you, so you can just answer.' },
+    ],
+  },
+  calmPlay:
+    'One thing at a time. While a question is open your kart drives itself and nothing can slow it down. After you answer it is your go: steer and boost for 7 seconds, then the next question comes.',
   thumbnail: { glyph: 'lantern', hue: 248, accentHue: 44 },
   status: 'playable',
   stage: '3d',
@@ -129,6 +145,8 @@ export const HAZARD = {
 export const COUGH = { cut: 5, ms: 1500 } as const;
 /** After a wrong answer the next question waits while the engine coughs. */
 export const STEADY_MS = COUGH.ms;
+/** Calm play: after each answer in a race the driver has this long to drive before the next question opens. */
+export const CALM = { goMs: 7000 } as const;
 /** The quickest a kart can change lane again. */
 export const LANE_MS = 220;
 

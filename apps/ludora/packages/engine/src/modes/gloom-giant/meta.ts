@@ -24,6 +24,14 @@ export const meta: ModeMeta = {
     'Bring the giant down to zero and everyone wins. If the shield breaks or time runs out, everyone loses.',
     'The results rank players by the damage they dealt.',
   ],
+  tutorial: {
+    steps: [
+      { title: 'All against the giant', text: 'The whole room fights one giant together.' },
+      { title: 'Right answers hit it', text: 'A right answer hurts the giant. Three in a row hurts it more.' },
+      { title: 'Wrong answers hit back', text: 'A wrong answer lets the giant hit the shield you all share.' },
+      { title: 'Win together', text: 'Bring the giant down before the shield breaks or time runs out.' },
+    ],
+  },
   thumbnail: { glyph: 'ghost', hue: 262, accentHue: 330 },
   status: 'playable',
   tags: ['co-operative', 'boss battle', 'projector', 'self-paced'],

@@ -36,10 +36,12 @@ import { answerSchema, type Rng } from '@ludora/shared';
 import { defineMode } from '../../sdk/define.ts';
 import type { BotContext, BotMind, ModeContext, PlayerId } from '../../sdk/types.ts';
 import { streamInit, streamNext, streamQuestionView, streamSubmit, type StreamState } from '../../mechanics/selfPaced.ts';
+import { thinking } from '../../mechanics/oneThing.ts';
 import {
   AUTO,
   BOOST,
   BREAK_MS,
+  CALM,
   COUGH,
   GLOW,
   GP_RACES,
@@ -468,6 +470,18 @@ function autoSteer(s: State, ctx: ModeContext<Settings>, k: Kart, t: number) {
   }
 }
 
+/**
+ * Calm play, one thing at a time: while a question is open for a driver who is still racing, their
+ * kart drives itself. It holds its cruising speed whatever was speeding it up or slowing it down,
+ * nothing on the road touches it, and it collects nothing. Its boost, glow, puddle and cough wait:
+ * each still has as long to run when the driver has answered as it had when the question opened.
+ */
+function coasting(k: Kart, ctx: ModeContext): boolean {
+  return thinking(ctx, k.stream) && k.finished === null;
+}
+
+const EFFECT_CLOCKS = ['boostUntil', 'glowUntil', 'slowUntil', 'coughUntil'] as const;
+
 /** Slipstreams: a kart close ahead in the same lane, any lap (finished karts parked past the line do not count). */
 function slipstreams(s: State, karts: [PlayerId, Kart][]) {
   for (const [, k] of karts) k.slip = false;
@@ -497,12 +511,17 @@ function step(s: State, ctx: ModeContext<Settings>, t: number) {
       k.d = Math.min(park, k.d + k.v * dt);
       continue;
     }
-    if (k.auto) autoSteer(s, ctx, k, t);
-    const v = speedOf(k, t);
+    const coast = coasting(k, ctx);
+    if (coast) {
+      // The kart's own effects stand still for this step, and it takes no slipstream.
+      for (const key of EFFECT_CLOCKS) if (k[key] > t) k[key] += STEP_MS;
+      k.slip = false;
+    } else if (k.auto) autoSteer(s, ctx, k, t);
+    const v = coast ? SPEED.cruise : speedOf(k, t);
     const d0 = k.d;
     const d1 = d0 + v * dt;
-    // Items in this kart's lane that it drives over in this step.
-    for (let i = 0; i < s.items.length; i++) {
+    // Items in this kart's lane that it drives over in this step (a coasting kart passes them all by).
+    for (let i = 0; i < s.items.length && !coast; i++) {
       const it = s.items[i]!;
       if (it.lane !== k.lane || crossing(d0, d1, it.at, s.length) === null) continue;
       if (it.kind === 'lantern') {
@@ -744,8 +763,11 @@ function endRace(s: State, ctx: ModeContext<Settings>) {
 
 /* ---------------------------------- views ---------------------------------- */
 
-const flagBits = (k: Kart, t: number) =>
-  (k.boostUntil > t ? 1 : 0) | (k.slowUntil > t ? 2 : 0) | (k.shield ? 4 : 0) | (k.glowUntil > t ? 8 : 0) | (k.finished !== null ? 16 : 0) | (k.coughUntil > t ? 32 : 0) | (k.slip ? 64 : 0);
+/** Bit 128: calm play, the kart is driving itself while its driver answers (its effects wait, so they are not drawn). */
+const flagBits = (k: Kart, t: number, coast = false) =>
+  coast
+    ? (k.shield ? 4 : 0) | 128
+    : (k.boostUntil > t ? 1 : 0) | (k.slowUntil > t ? 2 : 0) | (k.shield ? 4 : 0) | (k.glowUntil > t ? 8 : 0) | (k.finished !== null ? 16 : 0) | (k.coughUntil > t ? 32 : 0) | (k.slip ? 64 : 0);
 
 /** Compact kart positions for every screen: [id, metres × 10, lane, speed × 10, flags]. */
 export type PulseKart = [string, number, number, number, number];
@@ -764,7 +786,7 @@ function kartView(s: State, ctx: ModeContext, id: PlayerId, me: PlayerId | null)
     d: Math.round(k.d * 10) / 10,
     lane: k.lane,
     v: Math.round(k.v * 10) / 10,
-    flags: flagBits(k, s.simAt),
+    flags: flagBits(k, s.simAt, racing(s, ctx.now()) && coasting(k, ctx)),
     place: k.place,
     lap: lapOf(s, k),
     finished: k.finished,
@@ -831,7 +853,7 @@ function mindedBot(view: any, ctx: BotContext, mind: BotMind): Action | null {
   const you = view?.you;
   if (!you) return null;
   if (!you.auto && view.phase === 'race' && you.finished === null) return { type: 'auto', on: true };
-  if (view.phase === 'race' && you.finished === null && you.charges >= 2 && mind.chance(mind.boldness() * 0.35)) return { type: 'boost' };
+  if (view.phase === 'race' && you.finished === null && you.charges >= 2 && you.calm?.phase !== 'question' && mind.chance(mind.boldness() * 0.35)) return { type: 'boost' };
   const q = you.question;
   return q ? { type: 'answer', iid: q.iid, answer: ctx.answer(q.iid) } : null;
 }
@@ -908,6 +930,8 @@ export const lanternRally = defineMode<State, Settings, Action>({
         const res = streamSubmit(k.stream, playerId, a.iid, a.answer, ctx);
         if ('error' in res) return res;
         const last = k.stream.last;
+        // Calm play: after an answer in a race it is the driver's go, and the next question waits until it is over.
+        const go = ctx.calm && racing(s, now) && k.finished === null;
         if (res.correct) {
           const live = s.phase === 'race';
           if (live) k.answers++;
@@ -921,14 +945,17 @@ export const lanternRally = defineMode<State, Settings, Action>({
             pushEvent(k, t, { kind: 'full' });
             if (last) last.text = `Charges full, so it boosted at once${scored}`;
           } else if (last) last.text = `Your charges are full${scored}`;
-          streamNext(k.stream, ctx);
+          if (go) {
+            k.steadyUntil = now + CALM.goMs;
+            ctx.setTimer(`steady:${playerId}`, k.steadyUntil);
+          } else streamNext(k.stream, ctx);
         } else {
-          if (last) last.text = 'Your engine coughed. The next question comes when it clears.';
+          if (last) last.text = go ? 'Your engine coughed. Drive on: the next question comes soon.' : 'Your engine coughed. The next question comes when it clears.';
           if (racing(s, now) && k.finished === null) {
             k.coughUntil = t + COUGH.ms;
             pushEvent(k, t, { kind: 'cough' });
           }
-          k.steadyUntil = now + STEADY_MS;
+          k.steadyUntil = now + (go ? CALM.goMs : STEADY_MS);
           ctx.setTimer(`steady:${playerId}`, k.steadyUntil);
         }
         break;
@@ -937,6 +964,7 @@ export const lanternRally = defineMode<State, Settings, Action>({
         if (s.phase !== 'race') return { error: 'Wait for the next race to start.' };
         if (now < s.startAt) return { error: 'Wait for the lights: the race has not started.' };
         if (k.finished !== null) return { error: 'You have finished the race.' };
+        if (coasting(k, ctx)) return { error: 'Answer your question first. Your kart is driving itself.' };
         if (k.charges < 1) return { error: 'You have no boost charges. Answer a question right to earn one.' };
         boost(k, t);
         pushEvent(k, t, { kind: 'boost' });
@@ -945,6 +973,7 @@ export const lanternRally = defineMode<State, Settings, Action>({
       case 'steer': {
         if (s.phase !== 'race') return { error: 'Wait for the next race to start.' };
         if (k.finished !== null) return { error: 'You have finished the race.' };
+        if (now >= s.startAt && coasting(k, ctx)) return { error: 'Answer your question first. Your kart is driving itself.' };
         const to = k.lane + a.dir;
         if (to < 0 || to >= LANES) return { error: a.dir < 0 ? 'You are already in the left lane.' : 'You are already in the right lane.' };
         if (t - k.laneAt < LANE_MS) return { error: 'Your kart is still changing lane.' };
@@ -1065,6 +1094,8 @@ export const lanternRally = defineMode<State, Settings, Action>({
         slip: k.slip,
         canSteerAt: k.laneAt + LANE_MS,
         steadyUntil: k.steadyUntil > now ? k.steadyUntil : null,
+        /** Calm play, one thing at a time: 'question' (the kart drives itself) or 'go' (drive; the next question opens at `goUntil`). Null in every other game. */
+        calm: ctx.calm ? { phase: k.stream.iid !== null ? ('question' as const) : ('go' as const), goUntil: k.stream.iid === null && k.steadyUntil > now ? k.steadyUntil : null, coasting: racing(s, now) && coasting(k, ctx) } : null,
         points: pts.get(me) ?? 0,
         gp: s.kind === 'gp' ? k.gp : null,
         answers: Math.min(k.answers, POINTS.answerCap),
@@ -1082,7 +1113,8 @@ export const lanternRally = defineMode<State, Settings, Action>({
   },
   pulse(s, ctx): RallyPulse {
     const t = s.simAt;
-    return { t, k: present(s, ctx).map(([id, k]) => [id, Math.round(k.d * 10), k.lane, Math.round(k.v * 10), flagBits(k, t)]) };
+    const live = racing(s, ctx.now());
+    return { t, k: present(s, ctx).map(([id, k]) => [id, Math.round(k.d * 10), k.lane, Math.round(k.v * 10), flagBits(k, t, live && coasting(k, ctx))]) };
   },
   results(s, ctx) {
     const pts = totals(s);

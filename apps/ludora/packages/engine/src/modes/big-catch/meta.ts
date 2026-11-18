@@ -39,6 +39,22 @@ export const meta: ModeMeta = {
     'Events change the odds for 20 seconds: Feeding Time, Golden Hour and Passing School.',
     'The biggest score when time runs out wins. In a team game, the best average wins.',
   ],
+  tutorial: {
+    steps: [
+      { title: 'Answer for casts', text: 'Every right answer gives you a cast.' },
+      { title: 'Cast and wait', text: 'Cast your line and watch the bobber.' },
+      { title: 'Reel when it dips', text: 'When the bobber dips, press Reel within 3 seconds. Too early scares the fish away.' },
+      { title: 'Sell or keep', text: 'Sell a fish for points, or keep it in your tank. The biggest score wins.' },
+    ],
+    controls: [
+      { label: 'Cast', does: 'Throws your line into the water.' },
+      { label: 'Reel', does: 'Pulls the fish in. Press it when the bobber dips.' },
+      { label: 'Sell', does: 'Sells the fish for points.' },
+      { label: 'Tank', does: 'Keeps the fish. Sets of three earn a bonus.' },
+    ],
+  },
+  calmPlay:
+    'One thing at a time. Answer first, then fish: no question comes while your line is in the water, and you cannot cast while a question is open.',
   thumbnail: { glyph: 'fish', hue: 198, accentHue: 46 },
   status: 'playable',
   stage: '3d',
@@ -67,6 +83,8 @@ export const PERFECT_MS = 500;
 export const PERFECT_BONUS = 0.1;
 /** A landed fish that is neither sold nor tanked in this long is sold for you. */
 export const DECIDE_SEC = 10;
+/** Calm play: a player holding a cast who does nothing for this long gets their next question anyway. */
+export const CALM = { idleMs: 20_000 } as const;
 /** Every third right answer in a row gives one more cast. */
 export const BONUS_CAST_EVERY = 3;
 

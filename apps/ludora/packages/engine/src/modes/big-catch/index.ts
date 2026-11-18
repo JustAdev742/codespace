@@ -27,12 +27,14 @@ import { answerSchema, type Rng } from '@ludora/shared';
 import { defineMode } from '../../sdk/define.ts';
 import type { BotContext, BotMind, ModeContext, PlayerId } from '../../sdk/types.ts';
 import { streamInit, streamNext, streamQuestionView, streamSubmit, type StreamState } from '../../mechanics/selfPaced.ts';
+import { goBegin, goEnd, newTurn, thinking, turnTimerOf, turnView, type Turn } from '../../mechanics/oneThing.ts';
 import { nameOf } from '../rules.ts';
 import {
   BONUS_CAST_EVERY,
   DECIDE_SEC,
   EVENTS,
   EVENT_TIMING,
+  CALM,
   LURES,
   MAX_LURE,
   PERFECT_BONUS,
@@ -106,6 +108,8 @@ interface Outcome {
 
 interface Fisher {
   stream: StreamState;
+  /** Calm play: whose turn it is (a question, or their go at fishing). Untouched in every other game. */
+  turn: Turn;
   casts: number;
   line: Line;
   lure: number;
@@ -204,6 +208,7 @@ function idleLine(seq: number, water: WaterId): Line {
 function newFisher(s: { water: WaterId }, ctx: ModeContext): Fisher {
   return {
     stream: streamInit(ctx),
+    turn: newTurn(),
     casts: 0,
     line: idleLine(0, s.water),
     lure: 0,
@@ -258,6 +263,22 @@ function insertSorted(list: Highlight[] | Fish[], item: Highlight | Fish, keep: 
   arr.push(item);
   arr.sort((a, b) => b.grams - a.grams || a.at - b.at);
   arr.length = Math.min(arr.length, keep);
+}
+
+/* -------------------------------- calm play -------------------------------- */
+
+/**
+ * Calm play, one thing at a time: a question and a line in the water never share the screen. With a
+ * question open the player cannot cast, so no bite can come while they read. After an answer that
+ * earned a cast it is their go: they cast, wait for the bite, reel and deal with the catch, and the
+ * next question opens when the line is back in and no casts are left. A player who holds a cast and
+ * does nothing for CALM.idleMs gets their next question anyway (the cast is kept).
+ */
+function calmNext(ctx: ModeContext<Settings>, id: PlayerId, f: Fisher) {
+  if (!ctx.calm || f.stream.iid !== null) return;
+  if (f.line.phase !== 'idle') return;
+  if (f.casts > 0) goBegin(f.turn, id, ctx, CALM.idleMs);
+  else goEnd(f.turn, f.stream, id, ctx);
 }
 
 /* --------------------------------- casting -------------------------------- */
@@ -467,6 +488,7 @@ function onLineTimer(s: State, ctx: ModeContext<Settings>, id: PlayerId) {
   } else if (line.phase === 'landed' && now >= line.decideBy) {
     sell(f, ctx, id, `Sold for you after ${String(DECIDE_SEC)} seconds.`);
   }
+  if (ctx.player(id)) calmNext(ctx, id, f);
 }
 
 /* ---------------------------------- views --------------------------------- */
@@ -563,7 +585,7 @@ function mindedBot(view: any, ctx: BotContext, mind: BotMind): Action | null {
     return ctx.now - line.biteAt >= react * (0.7 + mind.random() * 0.6) ? { type: 'reel' } : null;
   }
   if (line.phase === 'waiting') return mind.chance((1 - t.nerve * 0.5) * (1 - t.consistency) * 0.04) ? { type: 'reel' } : null;
-  if (you.casts > 0) {
+  if (you.casts > 0 && you.calm?.phase !== 'question') {
     if (wantsLure(view, you, ctx.now) && you.wallet >= you.lure.next.price && mind.chance(0.4 + (1 - t.nerve) * 0.4)) return { type: 'lure', level: you.lure.next.level };
     return { type: 'cast' };
   }
@@ -633,12 +655,14 @@ export const bigCatch = defineMode<State, Settings, Action>({
           f.casts += 1 + bonus;
           if (f.stream.last) f.stream.last.text = bonus ? `+2 casts: ${String(BONUS_CAST_EVERY)} in a row!` : '+1 cast';
         } else if (f.stream.last) f.stream.last.text = 'No cast this time';
-        streamNext(f.stream, ctx);
+        if (ctx.calm) calmNext(ctx, playerId, f);
+        else streamNext(f.stream, ctx);
         return;
       }
       case 'cast': {
         if (f.line.phase === 'landed') return { error: 'Sell your catch or put it in your tank first.' };
         if (f.line.phase !== 'idle') return { error: 'Your line is already in the water.' };
+        if (thinking(ctx, f.stream)) return { error: 'Answer your question first, then cast.' };
         if (f.casts <= 0) return { error: 'You have no casts left. Answer a question to earn one.' };
         cast(s, ctx, playerId, f);
         return;
@@ -652,6 +676,7 @@ export const bigCatch = defineMode<State, Settings, Action>({
         if (now < f.line.biteAt) spook(f, ctx, playerId, s);
         else if (now > f.line.biteAt + REEL_WINDOW_MS) escape(f, ctx, s);
         else land(s, ctx, playerId, f);
+        calmNext(ctx, playerId, f);
         return;
       }
       case 'sell':
@@ -663,6 +688,7 @@ export const bigCatch = defineMode<State, Settings, Action>({
           if (f.tank.length >= TANK_SIZE) return { error: 'Your tank is full. Sell this one instead.' };
           tank(f, ctx, playerId);
         }
+        calmNext(ctx, playerId, f);
         return;
       }
       case 'lure': {
@@ -682,6 +708,13 @@ export const bigCatch = defineMode<State, Settings, Action>({
       // Catches still on the table are sold, so every landed fish counts.
       for (const [pid, f] of Object.entries(s.fishers)) if (f.line.phase === 'landed') sell(f, ctx, pid, 'Time is up, so it was sold for you.');
       ctx.endGame();
+      return;
+    }
+    const turn = turnTimerOf(id);
+    if (turn) {
+      // Calm play: a player held a cast and did nothing with it, so their next question opens (the cast is kept).
+      const f = s.fishers[turn.playerId];
+      if (f && ctx.player(turn.playerId) && f.line.phase === 'idle') goEnd(f.turn, f.stream, turn.playerId, ctx);
       return;
     }
     if (id === 'water') rotateWater(s, ctx);
@@ -751,6 +784,8 @@ export const bigCatch = defineMode<State, Settings, Action>({
         stats: { casts: f.casted, landed: f.landed, perfect: f.perfect, escaped: f.escaped, spooked: f.spooked },
         question: streamQuestionView(f.stream, ctx),
         feedback: f.stream.last,
+        /** Calm play, one thing at a time: 'question' (no casting) or 'go' (fish; no question is open). Null in every other game. */
+        calm: turnView(f.turn, f.stream, ctx),
       },
     };
   },
@@ -783,7 +818,7 @@ export const bigCatch = defineMode<State, Settings, Action>({
     if (line.phase === 'biting') return ctx.rng.next() < reelChance(ctx.now - line.biteAt) ? { type: 'reel' } : null;
     // Watching the bobber; every now and then too keen and reeling before the bite.
     if (line.phase === 'waiting') return ctx.rng.next() < 0.015 ? { type: 'reel' } : null;
-    if (you.casts > 0) {
+    if (you.casts > 0 && you.calm?.phase !== 'question') {
       if (wantsLure(view, you, ctx.now) && you.wallet >= you.lure.next.price && ctx.rng.next() < 0.6) return { type: 'lure', level: you.lure.next.level };
       return { type: 'cast' };
     }

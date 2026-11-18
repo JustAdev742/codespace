@@ -35,6 +35,19 @@ export const meta: ModeMeta = {
     'Land on a ledge with a rope to pick it up, then throw it down: the nearest climber below you comes up two ledges, and you both score (your first 5 ropes score for you).',
     'Points come from your height, camp bonuses, ropes thrown and the summit. Reaching the summit always puts you above everyone still climbing, and getting there earlier always beats getting there later.',
   ],
+  tutorial: {
+    steps: [
+      { title: 'Answer for grip', text: 'Every right answer gives you 1 grip.' },
+      { title: 'Climb', text: 'Climb spends 1 grip and goes up one ledge. It always works.' },
+      { title: 'Leap', text: 'Leap spends 2 grip to go up four ledges. It can fail: the odds are on the button.' },
+      { title: 'Camps and ropes', text: 'You never slide below a camp. Throw a rope to help a climber below you.' },
+    ],
+    controls: [
+      { label: 'Climb', does: 'Up one ledge. Always works.' },
+      { label: 'Leap', does: 'Up four ledges, or a slide back one if it fails.' },
+      { label: 'Throw rope', does: 'Pulls the nearest climber below you up two ledges.' },
+    ],
+  },
   thumbnail: { glyph: 'mountain', hue: 226, accentHue: 44 },
   status: 'playable',
   stage: '3d',

@@ -19,10 +19,18 @@ export const meta: ModeMeta = {
   rules: [
     'Everyone gets the same question at the same time.',
     'A correct answer is worth 500 points plus up to 500 for speed.',
+    'You answer each question once. An answer cannot be changed after you send it.',
     'Answer correctly several times in a row for a streak bonus of up to 250.',
     'Partly right answers to select-all, ordering and matching questions earn part of the points.',
     'With teams on, a team scores the average of its players, so team sizes do not matter.',
   ],
+  tutorial: {
+    steps: [
+      { title: 'Same question for all', text: 'Everyone gets the same question at the same time.' },
+      { title: 'Pick your answer', text: 'Tap the answer you think is right before the timer runs out. You answer once.' },
+      { title: 'Right and quick', text: 'A right answer scores points. A quicker one scores a few more.' },
+    ],
+  },
   thumbnail: { glyph: 'bolt', hue: 42, accentHue: 255 },
   status: 'playable',
   tags: ['classroom', 'competitive', 'projector'],

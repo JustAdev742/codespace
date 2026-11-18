@@ -35,6 +35,19 @@ export const meta: ModeMeta = {
     'A wrong answer costs nothing but a moment. Nobody is ever knocked out.',
     'You score for the pieces you place, your floors still standing at dawn, and floors your braces save.',
   ],
+  tutorial: {
+    steps: [
+      { title: 'Answer for pieces', text: 'Every right answer earns a building piece. Everyone builds one tower.' },
+      { title: 'Timber, stone, brace', text: 'Timber is tall but wobbly. Stone is short and steady. A brace keeps everything below it safe.' },
+      { title: 'Watch the wind', text: 'Gusts are announced before they land. If the tower sways too much, the top falls.' },
+      { title: 'Win together', text: 'Reach the class target before dawn.' },
+    ],
+    controls: [
+      { label: 'Timber', does: 'Adds two floors. The tower sways more.' },
+      { label: 'Stone', does: 'Adds one floor and steadies the tower.' },
+      { label: 'Lantern brace', does: 'Adds no height. Nothing below it can fall.' },
+    ],
+  },
   thumbnail: { glyph: 'tower', hue: 238, accentHue: 44 },
   status: 'playable',
   stage: '3d',

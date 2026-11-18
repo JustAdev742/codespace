@@ -37,6 +37,19 @@ export const meta: ModeMeta = {
     'Events change the game for 20 seconds at a time: Data Storm, Bounty and System Glitch.',
     'The most bits when time runs out wins. In a team game you only hack the other teams, and the best average wins.',
   ],
+  tutorial: {
+    steps: [
+      { title: 'Pick a passphrase', text: 'At the start, choose one of three secret passphrases.' },
+      { title: 'Answer, pick a packet', text: 'Every right answer lets you pick a data packet: Bits, Boost, Hack or Defence.' },
+      { title: 'Hack and defend', text: 'A Hack lets you guess a rival’s password to take some bits. Firewalls and 2FA protect yours.' },
+      { title: 'Most bits wins', text: 'The most bits when time runs out wins.' },
+    ],
+    controls: [
+      { label: 'A packet', does: 'Opens it. You see its kind before you pick.' },
+      { label: 'Hack', does: 'Guess a rival’s password from 4 options.' },
+      { label: 'Firewall or 2FA', does: 'Spend bits to protect your own bits.' },
+    ],
+  },
   thumbnail: { glyph: 'key', hue: 196, accentHue: 150 },
   status: 'playable',
   stage: '3d',

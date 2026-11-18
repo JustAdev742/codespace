@@ -45,6 +45,20 @@ export const meta: ModeMeta = {
     'The game ends when time runs out, or when only one player or team is still glowing in the final ring.',
     'In a team game you cannot tag teammates, and the highest team total wins.',
   ],
+  tutorial: {
+    steps: [
+      { title: 'Answer for charges', text: 'Each right answer gives your beam 2 charges.' },
+      { title: 'Walk and tag', text: 'Walk round the park. Tag spends a charge on a player in front of you.' },
+      { title: 'Keep your glow', text: 'You have 3 glow. A tag takes 1. At 0 you are dimmed: answer 2 right to relight.' },
+      { title: 'Stay in the ring', text: 'The safe ring shrinks. Outside it you slowly lose glow.' },
+    ],
+    controls: [
+      { label: 'Walk', does: 'Move with the on-screen stick.', key: 'W, A, S, D or the arrow keys' },
+      { label: 'Tag', does: 'Sends your beam at the nearest player in front of you.', key: 'Space' },
+    ],
+  },
+  calmPlay:
+    'One thing at a time. While you answer you are hidden: nobody can tag you and the ring cannot hurt you, for up to 30 seconds. After you answer you have 10 seconds to walk and tag. There are no bonus points for still glowing.',
   thumbnail: { glyph: 'spark', hue: 160, accentHue: 290 },
   status: 'playable',
   stage: '3d',
@@ -196,7 +210,16 @@ export const LIGHTS_OUT = { sight: 12, litMs: 2000, refreshMs: 200 } as const;
 /* ------------------------------------ views --------------------------------- */
 
 /** Bits of a player's `f` (flags) in views and pulses. */
-export const FLAGS = { in: 1, safe: 2, shield: 4, speed: 8, lit: 16 } as const;
+/** `thinking`: calm play, the player is answering a question and is hidden (always with `safe`). */
+export const FLAGS = { in: 1, safe: 2, shield: 4, speed: 8, lit: 16, thinking: 32 } as const;
+
+/**
+ * Calm play, one thing at a time. After an answer in the arena a player has `goMs` to play before
+ * their next question opens. While it is open they are hidden for `shelterMs` at most (longer with
+ * extra time), and for `ringGraceMs` after it the ring takes no glow, so nobody steps out of shelter
+ * straight into a drain.
+ */
+export const CALM = { goMs: 10_000, shelterMs: 30_000, ringGraceMs: 4000 } as const;
 
 /** Leaderboard rows: the top `player` (plus you) on a phone, the top `host` on the big screen. */
 export const BOARD = { player: 5, host: 10 } as const;
@@ -329,6 +352,8 @@ export interface GlowTagYou {
   streak: number;
   question: QuestionView | null;
   last: FeedbackView | null;
+  /** Calm play, one thing at a time: 'question' (you are hidden while you answer) or 'go' (play; the next question opens at `goUntil`). Null when dimmed and in every other game. */
+  calm?: { phase: 'question' | 'go'; goUntil: number | null; shelterUntil: number | null } | null;
 }
 
 interface GlowTagBaseView {

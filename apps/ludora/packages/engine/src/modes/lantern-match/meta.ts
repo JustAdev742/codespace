@@ -23,6 +23,16 @@ export const meta: ModeMeta = {
     'Cards that do not belong together stay showing until your next turn, then flip back over. Try to remember them.',
     'Clear your board and a new one is dealt. The most pairs when time runs out wins, and fewer misses breaks a tie.',
   ],
+  tutorial: {
+    steps: [
+      { title: 'Your board', text: 'Every card hides a question or an answer.' },
+      { title: 'Turn over two', text: 'Turn over two cards. A question and its answer stay face up as a pair.' },
+      { title: 'Remember', text: 'Cards that do not match flip back on your next turn. Try to remember where they are.' },
+    ],
+    controls: [
+      { label: 'A card', does: 'Turns it over.' },
+    ],
+  },
   thumbnail: { glyph: 'lantern', hue: 262, accentHue: 42 },
   status: 'playable',
   tags: ['memory', 'self-paced', 'projector'],

@@ -27,6 +27,8 @@ export interface DriveOptions {
   teams?: number;
   seed?: number;
   shuffle?: boolean;
+  /** Calm play: the room's option. */
+  calm?: boolean;
 }
 
 /** Four-choice questions, so the tests know the right and wrong tokens. */
@@ -78,6 +80,7 @@ export function drive(mode: GameMode, o: DriveOptions = {}) {
     seed: o.seed ?? 42,
     clock,
     strict: true,
+    ...(o.calm ? { calm: true } : {}),
     listener: {
       error: (e) => errors.push(e),
       feed: (f) => feed.push({ text: f.text, ...(f.to ? { to: f.to } : {}) }),

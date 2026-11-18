@@ -34,6 +34,19 @@ export const meta: ModeMeta = {
     'Three goals in a row and you are on fire: your next goal counts double. A miss or a save puts the fire out.',
     'Every goal is a point. The most points at the final whistle wins.',
   ],
+  tutorial: {
+    steps: [
+      { title: 'Answer for footballs', text: 'Every right answer earns a football.' },
+      { title: 'Pick your spot', text: 'Choose one of five places in the goal, and how hard to hit it.' },
+      { title: 'Beat the keeper', text: 'The chance of a goal is on every button. The keeper learns, so mix your shots up.' },
+      { title: 'Score goals', text: 'Every goal is a point. The most points wins.' },
+    ],
+    controls: [
+      { label: 'A place in the goal', does: 'Where you aim: a corner or the middle.' },
+      { label: 'Placed or Blasted', does: 'Placed always hits the target. Blasted is harder to save but can fly wide.' },
+      { label: 'Shoot', does: 'Takes the penalty. Spends a football.' },
+    ],
+  },
   thumbnail: { glyph: 'ball', hue: 140, accentHue: 48 },
   status: 'playable',
   stage: '3d',

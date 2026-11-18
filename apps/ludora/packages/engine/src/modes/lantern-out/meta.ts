@@ -26,6 +26,13 @@ export const meta: ModeMeta = {
     'Players who join late start with one lantern.',
     'With teams on, the team with the biggest share of its lanterns still lit wins.',
   ],
+  tutorial: {
+    steps: [
+      { title: 'Keep your lanterns lit', text: 'Everyone starts with the same number of lanterns.' },
+      { title: 'A miss blows one out', text: 'A wrong or missed answer blows out one lantern. With none left, you are out.' },
+      { title: 'Revival rounds', text: 'Every few questions, players who are out can answer to relight a lantern.' },
+    ],
+  },
   thumbnail: { glyph: 'lantern', hue: 38, accentHue: 262 },
   status: 'playable',
   tags: ['survival', 'classroom', 'projector'],

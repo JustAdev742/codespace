@@ -23,6 +23,18 @@ export const meta: ModeMeta = {
     '"Not yet" sends a card back to box 1, and it comes back again soon.',
     'The session ends when every card is mastered or time runs out.',
   ],
+  tutorial: {
+    steps: [
+      { title: 'Think', text: 'Each card has a question on the front. Think of the answer.' },
+      { title: 'Turn the card', text: 'Turn it over to see the answer.' },
+      { title: 'Be honest', text: 'Choose Knew it or Not yet. Cards you know leave the pile. The rest come back.' },
+    ],
+    controls: [
+      { label: 'Turn over', does: 'Shows the answer on the back.' },
+      { label: 'Knew it', does: 'Moves the card up a box.' },
+      { label: 'Not yet', does: 'Sends the card back, to come round again soon.' },
+    ],
+  },
   thumbnail: { glyph: 'layers', hue: 150, accentHue: 262 },
   status: 'playable',
   tags: ['study', 'revision', 'solo'],

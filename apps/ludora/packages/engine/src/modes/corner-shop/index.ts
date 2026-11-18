@@ -23,6 +23,7 @@ import { answerSchema } from '@ludora/shared';
 import { defineMode } from '../../sdk/define.ts';
 import type { BotContext, BotMind, EnginePlayer, ModeContext, PlayerId } from '../../sdk/types.ts';
 import { streamInit, streamNext, streamQuestionView, streamSubmit, type StreamState } from '../../mechanics/selfPaced.ts';
+import { goBegin, goEnd, newTurn, turnTimerOf, type Turn } from '../../mechanics/oneThing.ts';
 import { listNames, nameOf } from '../rules.ts';
 import {
   BASE_GAP_MS,
@@ -52,6 +53,7 @@ import {
   SIGN_CUSTOMERS,
   START_STOCK,
   STAR_CUSTOMERS,
+  CALM,
   TILL_MS,
   TILL_SERVES,
   TIP,
@@ -142,6 +144,8 @@ interface Clerk {
   earned: number;
   served: number;
   away: boolean;
+  /** Calm play: whose turn it is (a question or a delivery to pick, or their go at the till). Untouched in every other game. */
+  turn: Turn;
 }
 
 type NewsKind = 'left' | 'walked';
@@ -171,6 +175,8 @@ interface Shop {
   nextArrivalAt: number | null;
   /** Someone is running it. A shop nobody is in is shut: no customers come. */
   active: boolean;
+  /** Calm play: game time since which the queue has been waiting politely (nobody loses patience). Null when it is not. */
+  heldAt: number | null;
   nextCustomer: number;
   wakeAt: number | null;
   served: number;
@@ -487,7 +493,8 @@ function firstToLeave(shop: Shop): number {
 /** Plays out a shop's arrivals and departures, in order, up to game time `to`. */
 function advanceShop(s: State, ctx: Ctx, shop: Shop, to: number, c: Config) {
   for (let guard = 0; guard < 2_000; guard++) {
-    const i = firstToLeave(shop);
+    // Calm play: while the queue is waiting politely, customers still arrive but nobody leaves.
+    const i = shop.heldAt === null ? firstToLeave(shop) : -1;
     const leaveAt = i >= 0 ? shop.queue[i]!.leavesAt : Infinity;
     const arriveAt = shop.active && shop.nextArrivalAt !== null ? shop.nextArrivalAt : Infinity;
     const t = Math.min(leaveAt, arriveAt);
@@ -510,7 +517,7 @@ function advanceAll(s: State, ctx: Ctx, to: number, c: Config) {
 }
 
 function syncTimer(ctx: Ctx, shop: Shop) {
-  const i = firstToLeave(shop);
+  const i = shop.heldAt === null ? firstToLeave(shop) : -1;
   const leaveAt = i >= 0 ? shop.queue[i]!.leavesAt : null;
   const arriveAt = shop.active ? shop.nextArrivalAt : null;
   const at = leaveAt === null ? arriveAt : arriveAt === null ? leaveAt : Math.min(leaveAt, arriveAt);
@@ -528,6 +535,47 @@ function syncAll(s: State, ctx: Ctx) {
 function rescale(shop: Shop, at: number, before: number, after: number) {
   if (shop.nextArrivalAt === null || !shop.active || before === after) return;
   shop.nextArrivalAt = at + Math.round(((shop.nextArrivalAt - at) * before) / after);
+}
+
+/* --------------------------------- calm play -------------------------------- */
+
+/** A clerk with a question open or a delivery to pick has something to read, so they are not at the till. */
+function reading(clerk: Clerk): boolean {
+  return clerk.stream.iid !== null || clerk.offer !== null;
+}
+
+/**
+ * Calm play, one thing at a time: while everyone who works in a shop is reading (a question, or a
+ * delivery to pick), its queue waits politely. Customers still arrive, but nobody's patience runs
+ * down, so nobody leaves and no tip shrinks. When someone is back at the till every waiting
+ * customer's clock carries on from where it stopped. Called after anything that changes who is
+ * reading, with the shop already played up to `now`.
+ */
+function calmHold(s: State, ctx: Ctx, shop: Shop, now: number) {
+  if (!ctx.calm) return;
+  const staff = members(s, ctx, shop.id);
+  const hold = staff.length > 0 && staff.every((id) => reading(s.clerks[id]!));
+  if (hold && shop.heldAt === null) shop.heldAt = now;
+  else if (!hold && shop.heldAt !== null) {
+    for (const cu of shop.queue) {
+      const waited = now - Math.max(shop.heldAt, cu.arrivedAt);
+      if (waited > 0) {
+        cu.arrivedAt += waited;
+        cu.leavesAt += waited;
+      }
+    }
+    shop.heldAt = null;
+  }
+}
+
+/**
+ * Calm play: a clerk has finished reading (a wrong answer, or a delivery picked). With customers
+ * waiting it is their go at the till, for CALM.goMs or until the queue is empty; with nobody
+ * waiting the next question opens at once.
+ */
+function calmAfterReading(ctx: Ctx, pid: PlayerId, clerk: Clerk, shop: Shop) {
+  if (shop.queue.length) goBegin(clerk.turn, pid, ctx, CALM.goMs);
+  else goEnd(clerk.turn, clerk.stream, pid, ctx);
 }
 
 /* ---------------------------------- shops ---------------------------------- */
@@ -562,6 +610,7 @@ function openShop(s: State, ctx: Ctx, id: string, owner: PlayerId | null, teamId
     queue: [],
     nextArrivalAt: null,
     active: true,
+    heldAt: null,
     nextCustomer: 0,
     wakeAt: null,
     served: 0,
@@ -590,7 +639,7 @@ function shopIdFor(p: EnginePlayer, c: Config): { id: string; owner: PlayerId | 
 }
 
 function newClerk(ctx: Ctx, shopId: string): Clerk {
-  return { shopId, stream: streamInit(ctx), offer: null, offers: 0, tillReadyAt: 0, sales: [], delivery: null, earned: 0, served: 0, away: false };
+  return { shopId, stream: streamInit(ctx), offer: null, offers: 0, tillReadyAt: 0, sales: [], delivery: null, earned: 0, served: 0, away: false, turn: newTurn() };
 }
 
 function join(s: State, ctx: Ctx, p: EnginePlayer, now: number, c: Config) {
@@ -608,6 +657,7 @@ function reopen(s: State, ctx: Ctx, shop: Shop, now: number, c: Config) {
 /** Nobody is left to run the shop: it shuts until someone comes back, and the queue drifts away. */
 function shut(shop: Shop) {
   shop.active = false;
+  shop.heldAt = null;
   shop.queue = [];
   shop.nextArrivalAt = null;
 }
@@ -913,8 +963,11 @@ export function botMove(view: any, now: number): 'pick' | 'serve' | 'answer' | '
   if (you.offer) return 'pick';
   const pressure = botPressure(you, now);
   const canServe = botServeChoice(you, now) !== null;
-  if (canServe && pressure === 'critical') return 'serve';
   const q = you.question;
+  // Calm play: one thing at a time. With a question open the till waits; in a go there is only the till.
+  if (you.calm?.phase === 'question') return q && now - q.shownAt >= BOT_THINK_MS ? 'answer' : botPurchase(view, now) ? 'buy' : q ? 'answer' : null;
+  if (you.calm?.phase === 'go') return canServe ? 'serve' : botPurchase(view, now) ? 'buy' : null;
+  if (canServe && pressure === 'critical') return 'serve';
   if (q && now - q.shownAt >= BOT_THINK_MS) return 'answer';
   if (canServe && pressure === 'busy') return 'serve';
   if (botPurchase(view, now)) return 'buy';
@@ -992,6 +1045,11 @@ function mindedBot(view: any, ctx: BotContext, mind: BotMind): Action | null {
   }
   const serve = botServeChoice(you, now);
   const pressure = botPressure(you, now);
+  if (you.calm) {
+    // Calm play: with a question open the till waits; in a go there is only the till.
+    if (you.calm.phase === 'question') return you.question ? { type: 'answer', iid: you.question.iid, answer: ctx.answer(you.question.iid) } : null;
+    return serve !== null ? { type: 'serve', customer: serve } : botPurchase(view, now);
+  }
   if (serve !== null && pressure === 'critical' && mind.chance(0.55 + t.attention * 0.45)) return { type: 'serve', customer: serve };
   if (serve !== null && pressure === 'busy' && mind.chance(0.25 + t.attention * 0.5)) return { type: 'serve', customer: serve };
   const buy = botPurchase(view, now);
@@ -1020,6 +1078,7 @@ export const cornerShop = defineMode<State, Settings, Action>({
       saleSeq: 0,
     };
     for (const p of ctx.players()) join(s, ctx, p, now, c);
+    for (const id of s.street) calmHold(s, ctx, s.shops[id]!, now);
     ctx.setTimer('end', s.endsAt);
     if (c.events) scheduleEvent(s, ctx, now + EVENT_TIMING.firstAtMs);
     syncAll(s, ctx);
@@ -1038,6 +1097,12 @@ export const cornerShop = defineMode<State, Settings, Action>({
         reopen(s, ctx, shop, now, c);
       }
     }
+    const mine = s.clerks[p.id];
+    if (mine && ctx.calm) {
+      const shop = s.shops[mine.shopId]!;
+      advanceShop(s, ctx, shop, now, c);
+      calmHold(s, ctx, shop, now);
+    }
     syncAll(s, ctx);
   },
   onPlayerLeave(s, p, ctx) {
@@ -1049,6 +1114,9 @@ export const cornerShop = defineMode<State, Settings, Action>({
     if (!members(s, ctx, shop.id).filter((id) => id !== p.id).length) {
       advanceShop(s, ctx, shop, ctx.now(), c);
       shut(shop);
+    } else if (ctx.calm) {
+      advanceShop(s, ctx, shop, ctx.now(), c);
+      calmHold(s, ctx, shop, ctx.now());
     }
     syncAll(s, ctx);
   },
@@ -1066,7 +1134,8 @@ export const cornerShop = defineMode<State, Settings, Action>({
         if ('error' in res) return res;
         if (!res.correct) {
           if (clerk.stream.last) clerk.stream.last.text = 'No delivery this time.';
-          streamNext(clerk.stream, ctx);
+          if (ctx.calm) calmAfterReading(ctx, pid, clerk, shop);
+          else streamNext(clerk.stream, ctx);
           break;
         }
         clerk.offers++;
@@ -1082,11 +1151,13 @@ export const cornerShop = defineMode<State, Settings, Action>({
         if (!option) return { error: 'There is no delivery there.' };
         clerk.offer = null;
         deliver(ctx, clerk, shop, option, offer.seq, now, c);
-        streamNext(clerk.stream, ctx);
+        if (ctx.calm) calmAfterReading(ctx, pid, clerk, shop);
+        else streamNext(clerk.stream, ctx);
         break;
       }
       case 'serve': {
         if (!shop.queue.length) return { error: 'Nobody is waiting to be served.' };
+        if (ctx.calm && reading(clerk)) return { error: clerk.offer ? 'Pick your delivery first. Your customers will wait.' : 'Answer your question first. Your customers will wait.' };
         if (clerk.tillReadyAt > now) return { error: 'The till is still busy. Try again in a moment.' };
         const first = a.customer === undefined ? shop.queue[0]! : shop.queue.find((cu) => cu.id === a.customer);
         if (!first) return { error: 'That customer is not in the queue any more.' };
@@ -1099,6 +1170,8 @@ export const cornerShop = defineMode<State, Settings, Action>({
         const sales = served.map((cu) => sell(s, ctx, clerk, shop, cu, now, c));
         clerk.sales = sales;
         clerk.tillReadyAt = now + TILL_MS[shop.up.till]!;
+        // Calm play: the queue is served, so the go is over and the next question opens.
+        if (ctx.calm && !shop.queue.length) goEnd(clerk.turn, clerk.stream, pid, ctx);
         break;
       }
       case 'upgrade': {
@@ -1139,6 +1212,7 @@ export const cornerShop = defineMode<State, Settings, Action>({
         break;
       }
     }
+    calmHold(s, ctx, shop, now);
     syncTimer(ctx, shop);
   },
   onTimer(s, id, ctx) {
@@ -1148,7 +1222,18 @@ export const cornerShop = defineMode<State, Settings, Action>({
       ctx.endGame();
       return;
     }
-    if (id === 'event') startEvent(s, ctx, c);
+    const turn = turnTimerOf(id);
+    if (turn) {
+      // Calm play: a clerk's go at the till is over, so their next question opens.
+      const clerk = s.clerks[turn.playerId];
+      if (clerk && !clerk.away && ctx.player(turn.playerId)) {
+        const shop = s.shops[clerk.shopId]!;
+        const now = ctx.now();
+        advanceShop(s, ctx, shop, boundary(s, now), c);
+        goEnd(clerk.turn, clerk.stream, turn.playerId, ctx);
+        calmHold(s, ctx, shop, now);
+      }
+    } else if (id === 'event') startEvent(s, ctx, c);
     else if (id === 'eventEnd') endEvent(s, ctx, c);
     else if (id.startsWith('shop:')) {
       const shop = s.shops[id.slice(5)];
@@ -1242,6 +1327,12 @@ export const cornerShop = defineMode<State, Settings, Action>({
           : null,
         crateOdds: CRATE_ODDS.map((o) => ({ id: o.id, weight: o.weight })),
         question: clerk.offer ? null : streamQuestionView(clerk.stream, ctx),
+        /**
+         * Calm play, one thing at a time: 'question' (a question or a delivery to read; the till waits) or 'go' (serve; no
+         * question is open, the next opens at `goUntil` or when the queue is empty). `waiting`: the queue is waiting politely,
+         * and nobody's patience is running down. Null in every other game.
+         */
+        calm: ctx.calm ? { phase: reading(clerk) ? ('question' as const) : ('go' as const), goUntil: reading(clerk) ? null : clerk.turn.goUntil, waiting: shop.heldAt !== null, since: shop.heldAt } : null,
         last: clerk.stream.last,
         streak: clerk.stream.streak,
         sales: clerk.sales,

@@ -137,6 +137,12 @@ export interface ModeContext<TSettings extends SettingValues = SettingValues> {
   readonly settings: TSettings;
   readonly common: CommonSettings;
   readonly rng: Rng;
+  /**
+   * Calm play: the host chose it for the whole room. A mode whose questions compete with an action
+   * that needs steering, aiming or timing must give players one thing at a time while it is on
+   * (mechanics/oneThing.ts). False in every other game, where a mode must play exactly as before.
+   */
+  readonly calm: boolean;
   /** Game time in ms. Stops while the game is paused. */
   now(): number;
   /** Players in the game, including disconnected ones. Players who left or were removed are gone. */

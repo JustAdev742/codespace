@@ -141,6 +141,18 @@ export const meta: ModeMeta = {
     'Every 5th right answer, pick a Festival Favour: Overtime, a Tip jar, a Prank on a rival or a Lock against pranks.',
     'The last 45 seconds are the Grand finale: fireworks sell at ×2 and paydays are 50% bigger.',
   ],
+  tutorial: {
+    steps: [
+      { title: 'Answer for coins', text: 'A right answer brings in a payday of coins.' },
+      { title: 'Build stations', text: 'Spend coins on stations for your workshop. Stations earn coins every second.' },
+      { title: 'Read the market', text: 'Goods that few people make pay more. The market shifts every minute.' },
+      { title: 'Biggest takings win', text: 'Everything your workshop earns counts. Spending never lowers it.' },
+    ],
+    controls: [
+      { label: 'Build', does: 'Puts a station in an empty slot.' },
+      { label: 'Upgrade', does: 'Makes a station earn more, up to level 5.' },
+    ],
+  },
   thumbnail: { glyph: 'rocket', hue: 25, accentHue: 200 },
   status: 'playable',
   tags: ['economy', 'shared market', 'strategy', 'projector', 'self-paced'],

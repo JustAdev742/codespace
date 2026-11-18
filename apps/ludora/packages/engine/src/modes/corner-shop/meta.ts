@@ -173,6 +173,8 @@ export const UPGRADES: Record<UpgradeId, { name: string; levels: readonly { cost
 export const TILL_MS = [2_500, 1_000, 1_000] as const;
 /** Customers served by one press of Serve, by till level. */
 export const TILL_SERVES = [1, 1, 2] as const;
+/** Calm play: after reading, a clerk with customers waiting has this long at the till before their next question opens. */
+export const CALM = { goMs: 12_000 } as const;
 /** Extra patience, by decor level. */
 export const DECOR_MS = [0, 8_000, 16_000] as const;
 /** Customers come this many times as often, by sign level. */
@@ -226,6 +228,21 @@ export const meta: ModeMeta = {
     'The most cash when the shop shuts wins. Spending lowers your cash, so make every upgrade pay for itself.',
     'In a team game, the best average wins.',
   ],
+  tutorial: {
+    steps: [
+      { title: 'Answer for deliveries', text: 'Every right answer brings three deliveries. Pick one to fill your shelves.' },
+      { title: 'Serve customers', text: 'Customers queue at your till. Press Serve to sell them what they want.' },
+      { title: 'Be quick', text: 'Quick service earns bigger tips. A customer who waits too long leaves.' },
+      { title: 'Grow your shop', text: 'Spend cash on shelves, a faster till and more. The most cash wins.' },
+    ],
+    controls: [
+      { label: 'A delivery', does: 'Fills your shelves with what it shows.' },
+      { label: 'Serve', does: 'Sells the customer at the front what they want.' },
+      { label: 'Upgrade', does: 'Spend cash on bigger shelves, a faster till, decor or a sign.' },
+    ],
+  },
+  calmPlay:
+    'One thing at a time. While you read a question or pick a delivery, your customers wait happily and nobody leaves. Then it is your go at the till, and the next question comes when the queue is served.',
   thumbnail: { glyph: 'chest', hue: 150, accentHue: 40 },
   status: 'playable',
   stage: '3d',

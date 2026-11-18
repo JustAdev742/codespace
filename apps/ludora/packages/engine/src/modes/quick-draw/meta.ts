@@ -24,6 +24,13 @@ export const meta: ModeMeta = {
     'With a target set, the first player to reach it wins straight away. Otherwise every question is played and the most points wins.',
     'With teams on, every round a player wins counts for their team.',
   ],
+  tutorial: {
+    steps: [
+      { title: 'Same question for all', text: 'Everyone gets the same question at the same moment.' },
+      { title: 'One try each', text: 'You get one try. A wrong answer locks you out until the next question.' },
+      { title: 'First right answer wins', text: 'The first right answer wins the round and scores a point.' },
+    ],
+  },
   thumbnail: { glyph: 'stopwatch', hue: 14, accentHue: 48 },
   status: 'playable',
   tags: ['buzzer', 'competitive', 'projector'],

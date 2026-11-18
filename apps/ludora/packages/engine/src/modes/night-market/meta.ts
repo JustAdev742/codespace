@@ -38,6 +38,16 @@ export const meta: ModeMeta = {
     'The most coins when the market closes wins.',
     'In a team game, tricks only reach the other teams, and the best average wins.',
   ],
+  tutorial: {
+    steps: [
+      { title: 'Answer to pick', text: 'Every right answer lets you pick one of three mystery lanterns.' },
+      { title: 'Read the lantern', text: 'Its colour, icon and word tell you its kind: coins, a gamble, a trick or a charm.' },
+      { title: 'Richest stall wins', text: 'The most coins when the market closes wins.' },
+    ],
+    controls: [
+      { label: 'A lantern', does: 'Opens it. You get what is inside.' },
+    ],
+  },
   thumbnail: { glyph: 'chest', hue: 280, accentHue: 45 },
   status: 'playable',
   tags: ['luck', 'tricks', 'party', 'projector', 'self-paced'],

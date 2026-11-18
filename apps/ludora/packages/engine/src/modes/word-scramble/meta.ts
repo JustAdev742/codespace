@@ -24,6 +24,18 @@ export const meta: ModeMeta = {
     'Numbers, very short or very long answers, and true-or-false, select-all, ordering and matching questions are asked as ordinary questions, worth 50 points.',
     'Everyone has every word once. The game ends when everyone has finished or time runs out.',
   ],
+  tutorial: {
+    steps: [
+      { title: 'Shuffled letters', text: 'The letters of each answer are mixed up in tiles.' },
+      { title: 'Spell the answer', text: 'Tap the tiles in order to spell it, or type it.' },
+      { title: 'Hints and skips', text: 'A hint shows the next letter for 10 points. Skip shows the answer and counts as wrong.' },
+    ],
+    controls: [
+      { label: 'A letter tile', does: 'Adds that letter to your answer.' },
+      { label: 'Hint', does: 'Shows the next letter. Costs 10 points.' },
+      { label: 'Skip', does: 'Shows the answer. Counts as wrong.' },
+    ],
+  },
   thumbnail: { glyph: 'letters', hue: 172, accentHue: 300 },
   status: 'playable',
   tags: ['spelling', 'vocabulary', 'self-paced'],

@@ -86,6 +86,19 @@ export const meta: ModeMeta = {
     'A team with fewer players gets bonus energy too, so team size never decides the game.',
     'The team with the most points wins.',
   ],
+  tutorial: {
+    steps: [
+      { title: 'Answer for energy', text: 'A right answer gives 1 energy.' },
+      { title: 'Claim', text: 'Spend energy to light an empty land next to your team’s lands.' },
+      { title: 'Fortify and raid', text: 'Add a fort to protect a land, or raid a rival land next to yours.' },
+      { title: 'Score', text: 'Every 10 seconds your team scores for each land it holds. Shrines score more.' },
+    ],
+    controls: [
+      { label: 'Claim', does: 'Lights an empty land next to yours. Costs 1 energy.' },
+      { label: 'Fortify', does: 'Adds a fort to one of your lands.' },
+      { label: 'Raid', does: 'Takes a fort off a rival land next to yours.' },
+    ],
+  },
   thumbnail: { glyph: 'map', hue: 100, accentHue: 30 },
   status: 'playable',
   tags: ['teams', 'strategy', 'map', 'projector', 'self-paced'],

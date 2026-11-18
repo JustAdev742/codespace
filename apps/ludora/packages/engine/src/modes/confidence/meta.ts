@@ -26,6 +26,18 @@ export const meta: ModeMeta = {
     'After each question you see how sure everyone was and how often each level was right.',
     'With teams on, a team scores the average of its players.',
   ],
+  tutorial: {
+    steps: [
+      { title: 'Read the question', text: 'First you see only the question, without the answers.' },
+      { title: 'How sure are you?', text: 'Choose 1 (guessing), 2 (fairly sure) or 3 (certain).' },
+      { title: 'Then answer', text: 'The answers appear. Right scores more the surer you were. Wrong costs points if you said you were sure.' },
+    ],
+    controls: [
+      { label: '1: Guessing', does: 'Right scores 100. Wrong costs nothing.' },
+      { label: '2: Fairly sure', does: 'Right scores 200. Wrong costs 50.' },
+      { label: '3: Certain', does: 'Right scores 300. Wrong costs 100.' },
+    ],
+  },
   thumbnail: { glyph: 'scales', hue: 262, accentHue: 160 },
   status: 'playable',
   tags: ['calibration', 'classroom', 'reflection'],

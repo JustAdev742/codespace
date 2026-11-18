@@ -26,6 +26,16 @@ export const meta: ModeMeta = {
     'If the calls run out first, the player with the most marked squares wins.',
     'When a set has too few different answers, cards get a free square in the middle.',
   ],
+  tutorial: {
+    steps: [
+      { title: 'Your card', text: 'You get your own card of answers.' },
+      { title: 'Find the answer', text: 'Each call is a question. Tap the square on your card that answers it.' },
+      { title: 'Make a line', text: 'Complete a line on your card to win. A wrong tap locks you out for a few seconds.' },
+    ],
+    controls: [
+      { label: 'A square on your card', does: 'Marks it, if it answers the question.' },
+    ],
+  },
   thumbnail: { glyph: 'bingo', hue: 160, accentHue: 42 },
   status: 'playable',
   tags: ['bingo', 'projector', 'vocabulary'],

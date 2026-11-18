@@ -46,6 +46,36 @@ export type ModeThumbnail = {
   accentHue: number;
 };
 
+/** One step of a mode's walkthrough: a few plain words a player of 8 can read on a phone. */
+export interface TutorialStep {
+  /** Two or three words, e.g. "Answer for charges". */
+  title: string;
+  /** One or two short sentences. */
+  text: string;
+}
+
+/** One thing a player presses in a mode besides answering, for the picture of the controls. */
+export interface ModeControl {
+  /** The words on the button, as the game screen shows them. */
+  label: string;
+  /** What it does, in a short sentence. */
+  does: string;
+  /** The key that does the same on a keyboard, when there is one (e.g. "B", "Left arrow"). */
+  key?: string;
+}
+
+/**
+ * How to play a mode, shown before the game starts (docs/GAME_MODE_SDK.md, "The walkthrough").
+ * Written from the mode's own rules: two to four steps, and the mode's controls when it has any.
+ */
+export interface ModeTutorial {
+  steps: readonly TutorialStep[];
+  controls?: readonly ModeControl[];
+}
+
+/** The walkthrough's limits. The catalogue test holds every mode to them. */
+export const TUTORIAL_LIMITS = { minSteps: 2, maxSteps: 4, titleChars: 28, textChars: 150, controls: 5 } as const;
+
 export interface ModeMeta {
   id: string;
   title: string;
@@ -77,6 +107,31 @@ export interface ModeMeta {
    * each one still plays without WebGL through its plain controls.
    */
   stage?: '2d' | '3d';
+  /** The walkthrough players see before the game. A mode without one gets its first rules as steps (`tutorialOf`). */
+  tutorial?: ModeTutorial;
+  /**
+   * Set by a mode that gives players one thing at a time in calm play (`ctx.calm`): what calm play
+   * changes in this mode, in a sentence or two for players. A mode where a question stays open
+   * during an action that needs steering, aiming or timing must set it and follow it. The
+   * conformance suite plays every mode that sets it in calm play as well.
+   */
+  calmPlay?: string;
+}
+
+const firstSentence = (text: string) => {
+  const m = /^.*?[.!?](?=\s|$)/.exec(text);
+  return (m ? m[0] : text).trim();
+};
+
+/**
+ * The walkthrough for a mode: its own, or (for a mode that has none, such as a made game) its
+ * first rules, one step each, cut to their first sentence.
+ */
+export function tutorialOf(meta: Pick<ModeMeta, 'rules' | 'tutorial'>): ModeTutorial {
+  if (meta.tutorial && meta.tutorial.steps.length >= TUTORIAL_LIMITS.minSteps) return meta.tutorial;
+  const steps = meta.rules.slice(0, 3).map((rule, i) => ({ title: `Rule ${i + 1}`, text: firstSentence(rule) }));
+  while (steps.length < TUTORIAL_LIMITS.minSteps) steps.push({ title: 'Answer', text: 'Read each question and pick your answer.' });
+  return { steps };
 }
 
 export interface VariantMeta {

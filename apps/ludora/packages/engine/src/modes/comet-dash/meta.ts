@@ -18,10 +18,18 @@ export const meta: ModeMeta = {
   common: { fields: ['timeLimitSec'], defaults: { timeLimitSec: 300 } },
   rules: [
     'Each correct answer moves you one space.',
+    'A wrong answer does not move you. The next question comes straight away.',
     'Every third correct answer in a row is a boost: one extra space.',
     'Answer correctly while a rival is up to three spaces ahead to slipstream: one extra space.',
     'The race ends when the podium is full, everyone has finished, or time runs out.',
   ],
+  tutorial: {
+    steps: [
+      { title: 'Answer to move', text: 'Each right answer moves you one space along the comet trail.' },
+      { title: 'Three in a row', text: 'Every third right answer in a row is a boost: one extra space.' },
+      { title: 'Reach the end', text: 'The first players to the end of the trail win.' },
+    ],
+  },
   thumbnail: { glyph: 'comet', hue: 200, accentHue: 45 },
   status: 'playable',
   tags: ['race', 'projector', 'self-paced'],

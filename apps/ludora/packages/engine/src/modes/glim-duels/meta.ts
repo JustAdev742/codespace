@@ -67,6 +67,19 @@ export const meta: ModeMeta = {
     'Most points wins. Ties go to damage dealt, then right answers.',
     'With teams on, a team scores the average points of its players.',
   ],
+  tutorial: {
+    steps: [
+      { title: 'Face a classmate', text: 'Each round you duel one classmate. You both get the same questions.' },
+      { title: 'Right answers hit', text: 'A right answer hits your rival. A quicker one hits harder.' },
+      { title: 'Powers', text: 'Hits charge your powers. You can use one before you answer.' },
+      { title: 'Win the duel', text: 'The Glim with more health wins. A win is 3 points and a draw is 1.' },
+    ],
+    controls: [
+      { label: 'Shield', does: 'Blocks the next hit on you.' },
+      { label: 'Power strike', does: 'Makes your next hit double.' },
+      { label: 'Mend', does: 'Gives back 30 health.' },
+    ],
+  },
   thumbnail: { glyph: 'sword', hue: 350, accentHue: 200 },
   status: 'playable',
   tags: ['classroom', 'competitive', 'projector', 'head-to-head'],
