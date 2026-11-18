@@ -46,8 +46,9 @@ def ns(name: str, *argv: str, check: bool = True, timeout: float = 30) -> subpro
     return sh("ip", "netns", "exec", name, *argv, check=check, timeout=timeout)
 
 
-def spawn(name: str, *argv: str, env: dict[str, str] | None = None) -> subprocess.Popen:
-    proc = subprocess.Popen(["ip", "netns", "exec", name, *argv], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, env=env)
+def spawn(name: str, *argv: str, env: dict[str, str] | None = None, errors: str | None = None) -> subprocess.Popen:
+    err = open(errors, "w") if errors else subprocess.DEVNULL  # noqa: SIM115 - lives as long as the process it belongs to
+    proc = subprocess.Popen(["ip", "netns", "exec", name, *argv], stdout=subprocess.DEVNULL, stderr=err, env=env)
     procs.append(proc)
     return proc
 
@@ -228,11 +229,15 @@ def start_sentinel(tmp: str, cfg: dict) -> subprocess.Popen:
         os.chmod(path, 0o755)
     sh("chown", "-R", "nobody", os.path.join(root, "var"))
     os.chmod(feed, 0o644)
-    env = {"PATH": shim + ":/usr/sbin:/usr/bin:/sbin:/bin", "LUDORA_OS_ROOT": root, "PYTHONPATH": PY, "PYTHONUNBUFFERED": "1"}
+    # The sentinel runs as "nobody", who may not be able to read a checkout under someone's home folder: give it a copy.
+    code = os.path.join(tmp, "py")
+    shutil.copytree(PY, code, ignore=shutil.ignore_patterns("__pycache__"))
+    sh("chmod", "-R", "a+rX", code)
+    env = {"PATH": shim + ":/usr/sbin:/usr/bin:/sbin:/bin", "LUDORA_OS_ROOT": root, "PYTHONPATH": code, "PYTHONUNBUFFERED": "1", "PYTHONDONTWRITEBYTECODE": "1"}
     caps = "+net_admin,+net_bind_service"
     return spawn(
         SRV, "setpriv", "--reuid", "nobody", "--regid", "nogroup", "--clear-groups", "--inh-caps", caps, "--ambient-caps", caps,
-        "--bounding-set", caps, sys.executable, "-m", "ludora_os.sentinel", env=env,
+        "--bounding-set", caps, sys.executable, "-m", "ludora_os.sentinel", env=env, errors=os.path.join(tmp, "sentinel.err"),
     )
 
 
@@ -275,6 +280,10 @@ def main() -> int:
         sentinel = start_sentinel(tmp, cfg)
         check(wait_for(lambda: reach(STAFF, SERVER, 3389, 0.5), 8), "the sentinel (no root, two capabilities) is listening on the decoy ports")
         check(sentinel.poll() is None, "the sentinel is still running")
+        if sentinel.poll() is not None:
+            with open(os.path.join(tmp, "sentinel.err")) as fh:
+                print("  the sentinel stopped with code", sentinel.returncode, "and said:\n   ", fh.read().strip()[-800:].replace("\n", "\n    "))
+            return 1
         check(reach(STU1, SERVER, 443) and reach(STU1, SERVER, 80), "a student opens Ludora through the published ports")
         check(reach(STAFF, SERVER, cfg["SSH_PORT"]), "the staff desk reaches SSH")
         check(not reach(STU2, SERVER, cfg["SSH_PORT"]), "a student cannot reach SSH")
