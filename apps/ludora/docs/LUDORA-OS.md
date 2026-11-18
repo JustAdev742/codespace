@@ -366,6 +366,13 @@ systemd inside a container, with separate "student" and "staff" machines on the 
   missing firewall file is made again at start, and with broken settings the server refuses every connection
   rather than starting open. A real browser signed up and moved around the site through the proxy with no refused
   request, while a second site's hidden form and hidden pictures aimed at Ludora were refused.
+- **The staff dashboard**, on the same real system: it refuses to switch on without a password; a staff machine
+  signs in over HTTPS and reads the server's state; a ban and an unban made from it take effect on the student
+  machine; requests without the dashboard's own origin are refused; the student machine cannot reach its port, and
+  nobody can reach its service around the proxy. From inside, as the dashboard's own user: every secret and the
+  settings file are unreadable, the root helper refuses anything off its list, no other user can open the helper's
+  socket, and five wrong passwords pause that address. Its authenticator code is covered by unit tests against the
+  standard's own examples, not yet by a real phone app.
 - **An independent security review** of the code, by a reviewer given the code and the threat model but not the
   author's conclusions. It found seven problems and several suspicions; all seven are fixed and have tests (among
   them: a padded request could hide from the sentinel, changing a setting could stop the sentinel, a decoy touch
