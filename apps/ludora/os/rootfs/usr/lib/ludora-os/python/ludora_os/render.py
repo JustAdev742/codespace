@@ -419,6 +419,24 @@ def quadlets(cfg: dict[str, Any], images: dict[str, str] | None = None) -> dict[
         + "[Install]\nWantedBy=multi-user.target\n"
     )
     files["ludora-proxy.container"] = proxy
+    if cfg["AI_ENABLED"] and images.get("analyst"):
+        files["ludora-analyst.container"] = (
+            _QUADLET_NOTE
+            + "# The optional AI analyst: a decision model that gives security alerts a second opinion. It sits on the\n"
+            + "# network that has no route out of the server, and is published on this machine's loopback only.\n"
+            + "[Unit]\nDescription=Ludora OS analyst (a small AI model; advice only)\nAfter=network-online.target\n\n"
+            + "[Container]\nContainerName=ludora-analyst\n"
+            + f"Image={images['analyst']}\n"
+            + "Network=ludora-internal.network\n"
+            + f"PublishPort=127.0.0.1:{cfg['AI_PORT']}:8000\n"
+            + "Volume=/var/lib/ludora-os/analyst/model:/model:ro,Z\n"
+            + _HARDEN
+            + "Tmpfs=/tmp\n"
+            + "# It must never crowd out the game: little processor share, and a hard ceiling on memory.\n"
+            + "PodmanArgs=--memory=3g --cpu-shares=256\n\n"
+            + "[Service]\nRestart=always\nRestartSec=10\nTimeoutStartSec=300\nNice=10\n\n"
+            + "[Install]\nWantedBy=multi-user.target\n"
+        )
     return files
 
 

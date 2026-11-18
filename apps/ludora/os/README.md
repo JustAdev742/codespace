@@ -27,6 +27,15 @@ an unprivileged user that holds only the right to edit the firewall's ban sets. 
 needs evidence that cannot be forged from another address; staff addresses, the gateway, name servers and the
 server's own addresses are never banned.
 
+## Alerts and the analyst
+
+`alerts.py` composes and delivers alerts (mail over TLS, ntfy, Telegram) for three audiences; `Outbox` is the
+batching policy and is pure. The sentinel sends security and fair-play alerts off its main loop; commands send
+upkeep alerts directly. `analyst.py` is the optional AI second opinion: a client for Colibri's
+`POST /v1/systemone` on loopback, the three fixed questions, strict validation of the reply, the quiz used by
+`ludoractl ai bench`, and the pinned install. Only the model's probabilities are ever used; no string from its
+reply is shown to anyone. The real engine and model have not been run against this code yet.
+
 ## Tests
 
 ```bash

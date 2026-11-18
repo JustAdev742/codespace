@@ -28,7 +28,7 @@ from collections import defaultdict, deque
 from dataclasses import dataclass, field
 from typing import Any, Iterable
 
-from . import alerts, config, render, system
+from . import alerts, analyst, config, render, system
 
 STATE_DIR = f"{system.STATE}/sentinel"
 BANS_FILE = f"{STATE_DIR}/bans.json"
@@ -720,10 +720,15 @@ class Daemon:
     async def send_due(self, now: float) -> None:
         """Tell the people on the lists, off the main loop so a slow mail server never delays a ban."""
         due: list[alerts.Alert] = []
+        loop = asyncio.get_running_loop()
         batch = self.security_box.take(now)
         if batch:
             made = alerts.from_events(batch, self.cfg)
             if made:
+                if self.cfg["AI_ENABLED"] and alerts.recipients(self.cfg, "security"):
+                    # A second opinion, asked off the main loop and never waited on for long. No answer changes nothing.
+                    reading = await loop.run_in_executor(None, lambda b=batch: analyst.read(b, self.cfg))
+                    analyst.annotate(made, reading)
                 due.append(made)
         batch = self.cheat_box.take(now)
         if batch:

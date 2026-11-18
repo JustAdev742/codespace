@@ -214,6 +214,60 @@ correct answers faster than anyone can read the question, moves the game does no
 as several players. The fair-play list is told which game and which player names. It is a signal, not proof, and
 Ludora never punishes or slows anyone by itself.
 
+### The analyst: an optional AI second opinion
+
+The server can run a small AI model that reads each batch of security events and adds a second opinion to the
+alert: what it most likely was, how serious, and whether several devices seem to be working together.
+
+```text
+Second opinion, from the small AI model on this server (advice only; it decides nothing):
+  - Most likely password guessing (84% sure).
+  - Seriousness: needs a person to act now (1.6 on a scale of 0 to 2).
+```
+
+It is a **decision model**, not a chat model. It is given the events and three fixed questions and answers each
+with a probability for every option, in one pass. It never writes text. That choice is deliberate:
+
+- **Safety.** Attackers choose some of the words in a log (user names, page addresses). A chat model can be
+  talked round by them. A decision model has nothing to say: the most a planted word can do is tilt a number. And
+  the analyst only advises. The sentinel's rules ban and unban before it is ever asked; it can make an alert more
+  urgent, never less; if it is slow or missing, the alert goes out without it.
+- **Speed on an old computer.** A chat model good enough to trust writes a few words a second on an old office
+  PC. A decision model has nothing to write: it reads several hundred tokens a second on a laptop processor and
+  answers a whole alert in about a second there.
+- **Privacy.** It runs in its own container with no route to any network and listens only on the server itself.
+  Events never leave the building.
+
+The engine is [Colibri](https://github.com/JustVugg/colibri) (Apache-2.0), running
+[Laya](https://huggingface.co/convaiinnovations/laya) (Convai Innovations, Apache-2.0; 840 MB), through Colibri's
+decision endpoint. Both are fetched at pinned versions; the model's main file is checked against a pinned
+checksum, and the engine is built from its pinned source inside a container, so no compiler is left on the server.
+
+```bash
+ludoractl ai install     # downloads the model, builds the engine (several minutes; needs the internet once)
+ludoractl ai on
+ludoractl ai bench       # 14 cases with known answers, three times over: how many it gets right, and how fast
+ludoractl ai status
+```
+
+It needs about 2 GB of memory while it runs, so use it on a server with 8 GB or more. It is held to a small share
+of the processor so it can never slow a game.
+
+**What has and has not been checked.** The server's side is tested against a stand-in for the model: what is
+sent, that a reply which is not exactly what was asked for is thrown away, that nothing the model returns except
+its numbers can reach a person, that it can raise urgency but never lower it, and that a model file which does not
+match its checksum is not installed. **The real model has not been run by the author**: building and running the
+engine was not possible in the environment this was written in. So `ludoractl ai install` and the container build
+are unproven, and nobody has yet measured how well Laya judges these events. Run `ludoractl ai bench` first: it
+answers both questions on your own machine, and if the model does badly on the 14 cases, leave it off.
+
+**How fast, and the graphics card.** Colibri's authors measured this model at about 0.9 seconds for three
+questions on a laptop processor (an i7-1355U). An older desktop will be slower, perhaps two to four seconds an
+alert; that is an estimate, not a measurement, and alerts are sent a minute apart at the closest, so it is fast
+enough either way. "Tokens a second" does not really apply, because nothing is generated. A small, old graphics
+card is not used: Colibri can run this model on an NVIDIA card, but the driver for an old card means loading
+outside kernel code on a locked-down server, and the processor is already fast enough for the job.
+
 ### USB devices
 
 After setup, plug in the keyboard and anything else that belongs, then run `ludoractl usb init`. Devices plugged in

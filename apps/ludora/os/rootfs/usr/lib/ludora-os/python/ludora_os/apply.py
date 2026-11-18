@@ -8,7 +8,7 @@ import os
 import tempfile
 from typing import Any
 
-from . import config, render, sentinel, system
+from . import analyst, config, render, sentinel, system
 
 
 class ApplyError(RuntimeError):
@@ -50,7 +50,11 @@ def rendered(cfg: dict[str, Any], *, bans: dict[str, int] | None = None, shield:
         ),
     }
     files["/etc/dnf/automatic.conf"] = (render.dnf_automatic(cfg), 0o644)
-    for name, content in render.quadlets(cfg, images_lock()).items():
+    images = images_lock()
+    built = analyst.image()
+    if built:
+        images["analyst"] = built
+    for name, content in render.quadlets(cfg, images).items():
         files[f"{system.QUADLET_DIR}/{name}"] = (content, 0o644)
     return files
 
@@ -159,6 +163,10 @@ def apply(*, restart: bool = True, firewall_only: bool = False, log=print) -> li
             if touched("ludora-proxy", "Caddyfile", "caddy", "ludora-edge"):
                 log("Restarting the HTTPS proxy.")
                 system.run(["systemctl", "restart", "ludora-proxy.service"], timeout=300)
+        if cfg["AI_ENABLED"] and analyst.image():
+            system.run(["systemctl", "restart" if touched("ludora-analyst") else "start", "ludora-analyst.service"], timeout=300)
+        else:
+            system.run(["systemctl", "stop", "ludora-analyst.service"], timeout=120)
     return changed
 
 

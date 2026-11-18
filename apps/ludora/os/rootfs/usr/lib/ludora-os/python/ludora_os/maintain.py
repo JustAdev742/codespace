@@ -13,7 +13,8 @@ from typing import Any
 from . import config, system
 
 BUILD_DIR = f"{system.STATE}/build"
-SERVICES = {"db": "ludora-db.service", "app": "ludora-app.service", "proxy": "ludora-proxy.service", "sentinel": "ludora-sentinel.service"}
+SERVICES = {"db": "ludora-db.service", "app": "ludora-app.service", "proxy": "ludora-proxy.service", "sentinel": "ludora-sentinel.service",
+            "analyst": "ludora-analyst.service"}
 _USERNAME = re.compile(r"^[A-Za-z0-9_.-]{2,40}$")
 KEEP_BACKUPS = 14
 

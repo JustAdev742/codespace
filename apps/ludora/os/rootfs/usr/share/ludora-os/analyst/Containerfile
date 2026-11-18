@@ -1,0 +1,21 @@
+# The analyst's engine: Colibri (github.com/JustVugg/colibri, Apache-2.0) built for its Laya decision model only.
+# Built on the server it will run on, so the compiler may use everything that server's processor has.
+# `ludoractl ai install` passes the exact commit to build; the model's files are mounted in, not baked in.
+FROM docker.io/rockylinux/rockylinux:10 AS build
+ARG ENGINE_REPO
+ARG ENGINE_COMMIT
+RUN dnf -y install --setopt=install_weak_deps=False gcc make git-core python3 && dnf clean all
+RUN git init -q /src && cd /src && git remote add origin "$ENGINE_REPO" \
+ && git fetch -q --depth 1 origin "$ENGINE_COMMIT" && git checkout -q FETCH_HEAD \
+ && test "$(git rev-parse HEAD)" = "$ENGINE_COMMIT"
+RUN make -C /src/c laya
+# Keep only what serving needs: the launcher, the gateway (plain Python, no packages) and the one engine.
+RUN mkdir -p /out/c && cd /src/c && cp -a coli laya ./*.py /out/c/ && cp -a /src/LICENSE /src/NOTICE /src/THIRD_PARTY_NOTICES.md /out/
+
+FROM docker.io/rockylinux/rockylinux:10
+RUN dnf -y install --setopt=install_weak_deps=False python3 libgomp && dnf clean all && useradd --system --uid 10001 --no-create-home analyst
+COPY --from=build /out /opt/colibri
+USER 10001
+ENV HOME=/tmp
+EXPOSE 8000
+ENTRYPOINT ["python3", "/opt/colibri/c/coli", "serve", "--host", "0.0.0.0", "--port", "8000", "--model", "/model"]

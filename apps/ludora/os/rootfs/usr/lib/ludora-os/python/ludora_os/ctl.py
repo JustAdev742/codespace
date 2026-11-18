@@ -15,7 +15,7 @@ import sys
 import time
 from typing import Any
 
-from . import access, alerts, config, doctor, maintain, overview, render, sentinel, system
+from . import access, alerts, analyst, config, doctor, maintain, overview, render, sentinel, system
 from . import apply as applier
 
 
@@ -408,6 +408,49 @@ def cmd_alerts(args: argparse.Namespace) -> int:
     return 2
 
 
+def cmd_ai(args: argparse.Namespace) -> int:
+    cfg = config.load()
+    if args.action == "status":
+        missing = analyst.model_ready()
+        say("The analyst is " + ("ON" if cfg["AI_ENABLED"] else "off") + ": a small AI model that adds a second opinion to security alerts. It never bans or unbans.")
+        say("Model: " + ("installed" if not missing else "not installed (" + ", ".join(missing[:2]) + ("..." if len(missing) > 2 else "") + " missing)"))
+        say("Engine: " + (analyst.image() or "not built"))
+        if cfg["AI_ENABLED"]:
+            reading = analyst.read([{"text": "10.20.3.3 connected to decoy port 3389. Banned for 15 min.", "at": int(time.time()), "ip": "10.20.3.3", "minutes": 15}], cfg)
+            say("Answering: " + (f"yes, in {reading.ms} ms" if reading else f"NO: nothing usable came back from port {cfg['AI_PORT']} on this machine. See `ludoractl logs analyst`."))
+        return 0
+    need_root()
+    if args.action == "install":
+        say("This downloads an 840 MB model and builds its engine. The model needs about 2 GB of memory while it runs.")
+        try:
+            tag = analyst.install(say)
+        except (analyst.AnalystError, OSError) as err:
+            raise Refused(str(err)) from None
+        say(f"Installed ({tag}). Switch it on with: ludoractl ai on")
+        return 0
+    if args.action in ("on", "off"):
+        if args.action == "on" and (analyst.model_ready() or not analyst.image()):
+            raise Refused("It is not installed yet. Run: ludoractl ai install")
+        cfg["AI_ENABLED"] = args.action == "on"
+        config.save(cfg)
+        applier.apply(log=say)
+        say("The analyst is on. Check it: ludoractl ai bench" if cfg["AI_ENABLED"] else "The analyst is off. Alerts go out exactly as before.")
+        return 0
+    if args.action == "bench":
+        say("Asking the model a fixed set of 14 cases with known answers, three times over, after a warm-up.")
+        result = analyst.bench(cfg)
+        if not result["answered"]:
+            raise Refused(f"Nothing usable came back from port {cfg['AI_PORT']} on this machine. Is it installed and on? `ludoractl ai status`")
+        say(f"Right: {result['right']} of {result['answered']} answered ({result['asked'] - result['answered']} not answered).")
+        say(f"Speed: {result['median_ms']} ms for a typical alert, {result['slowest_ms']} ms for the slowest; about {result['readings_per_minute']} alerts a minute.")
+        if result["words_read_per_second"]:
+            say(f"It read about {result['words_read_per_second']} tokens a second. It writes none: it scores fixed options, which is why it is quick.")
+        for line in result["wrong"]:
+            say("  missed: " + line)
+        return 0
+    return 2
+
+
 def cmd_backups(args: argparse.Namespace) -> int:
     found = maintain.backups()
     if not found:
@@ -576,13 +619,15 @@ def parser() -> argparse.ArgumentParser:
     add("reboot", cmd_power, "Restart the server.")
     add("poweroff", cmd_power, "Shut the server down.")
     p = add("alerts", cmd_alerts, "Who is told about attacks, upkeep and cheating, and a test message.")
-    sub = p.add_subparsers(dest="action", required=True)
-    sub.add_parser("show", help="the lists and what, if anything, stops delivery")
-    a = sub.add_parser("test", help="send a test message to a list, or to all three")
+    alert_actions = p.add_subparsers(dest="action", required=True)
+    alert_actions.add_parser("show", help="the lists and what, if anything, stops delivery")
+    a = alert_actions.add_parser("test", help="send a test message to a list, or to all three")
     a.add_argument("audience", nargs="?", choices=sorted(alerts.AUDIENCES))
-    a = sub.add_parser("secret", help="set the mail password or the Telegram bot token (read from standard input, never from the command line)")
+    a = alert_actions.add_parser("secret", help="set the mail password or the Telegram bot token (read from standard input, never from the command line)")
     a.add_argument("name", choices=["smtp-password", "telegram-token"])
-    sub.add_parser("topic", help="make a long random ntfy topic name for phone pushes")
+    alert_actions.add_parser("topic", help="make a long random ntfy topic name for phone pushes")
+    p = add("ai", cmd_ai, "The optional AI analyst: a small model that adds a second opinion to security alerts.")
+    p.add_argument("action", choices=["status", "install", "on", "off", "bench"])
     p = add("usb", cmd_usb, "Trust the USB devices plugged in now and refuse new ones.")
     p.add_argument("action", choices=["init"])
     p = add("tls", cmd_tls, "Print the server's own root certificate (TLS_MODE=internal).")
