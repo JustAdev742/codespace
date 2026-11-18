@@ -1,0 +1,9 @@
+[Unit]
+Description=Ludora OS file-integrity check at 2:40, before updates
+
+[Timer]
+OnCalendar=*-*-* 02:40
+Persistent=true
+
+[Install]
+WantedBy=timers.target

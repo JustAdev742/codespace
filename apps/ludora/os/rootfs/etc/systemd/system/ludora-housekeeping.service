@@ -1,0 +1,7 @@
+[Unit]
+Description=Ludora OS housekeeping (close expired support access, refresh the sign-in screen)
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/ludoractl housekeeping
+Nice=10

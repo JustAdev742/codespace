@@ -1,0 +1,10 @@
+[Unit]
+Description=Ludora OS self-check, every hour
+
+[Timer]
+OnBootSec=5min
+OnUnitActiveSec=1h
+RandomizedDelaySec=5min
+
+[Install]
+WantedBy=timers.target

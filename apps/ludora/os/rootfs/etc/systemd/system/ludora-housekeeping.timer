@@ -1,0 +1,10 @@
+[Unit]
+Description=Ludora OS housekeeping, every two minutes
+
+[Timer]
+OnBootSec=20s
+OnUnitActiveSec=2min
+AccuracySec=15s
+
+[Install]
+WantedBy=timers.target

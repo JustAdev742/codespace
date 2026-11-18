@@ -1,0 +1,8 @@
+[Unit]
+Description=Ludora nightly backup (database and uploads, encrypted)
+ConditionPathExists=/etc/ludora-os/claimed
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/ludoractl backup
+Nice=10

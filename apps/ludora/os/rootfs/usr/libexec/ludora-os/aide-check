@@ -1,0 +1,31 @@
+#!/bin/sh
+# Compares system files with the last baseline and records the answer for `ludoractl doctor`.
+#   aide-check              check (makes the first baseline if there is none)
+#   aide-check --rebaseline accept the files as they are now (run straight after a package update)
+set -u
+state=/var/lib/ludora-os/aide-last
+db=/var/lib/aide/aide.db.gz
+new=/var/lib/aide/aide.db.new.gz
+stamp=$(date -u +%Y-%m-%dT%H:%MZ)
+mkdir -p /var/lib/ludora-os
+if [ "${1:-}" = "--rebaseline" ] || [ ! -f "$db" ]; then
+  if aide --init >/dev/null 2>&1 && [ -f "$new" ]; then
+    mv -f "$new" "$db"
+    echo "ok: baseline taken $stamp" > "$state"
+    exit 0
+  fi
+  echo "unknown: the baseline could not be made $stamp" > "$state"
+  exit 1
+fi
+out=$(aide --check 2>&1)
+code=$?
+if [ "$code" -eq 0 ]; then
+  echo "ok: no system file changed (checked $stamp)" > "$state"
+elif [ "$code" -lt 8 ]; then
+  summary=$(printf '%s\n' "$out" | grep -E '^ +(Added|Removed|Changed) entries:' | tr -s ' ' | tr '\n' ';')
+  echo "changed: system files differ from the baseline ($summary) checked $stamp. See: sudo aide --check" > "$state"
+  logger -p authpriv.alert -t ludora-os "AIDE: system files differ from the baseline: $summary"
+else
+  echo "unknown: the integrity check could not run (code $code) $stamp" > "$state"
+fi
+exit 0

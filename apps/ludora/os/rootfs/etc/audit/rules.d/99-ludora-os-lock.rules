@@ -1,0 +1,2 @@
+## The audit rules cannot be changed or switched off until the next restart, even by root.
+-e 2

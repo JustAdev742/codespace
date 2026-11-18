@@ -1,0 +1,20 @@
+#!/usr/sbin/nft -f
+# Ludora OS emergency rules: loaded only when the real firewall could not be made or loaded.
+# Nothing can connect to the server. The server's own screen still works, and so do its own outgoing
+# connections (updates, time), so it can be repaired. `ludoractl apply` replaces these rules.
+table inet ludora
+delete table inet ludora
+
+table inet ludora {
+	chain failsafe {
+	}
+	chain input {
+		type filter hook input priority filter; policy drop;
+		iif "lo" accept
+		ct state established,related accept
+		icmpv6 type { nd-neighbor-solicit, nd-neighbor-advert, nd-router-advert } accept
+	}
+	chain forward {
+		type filter hook forward priority filter; policy drop;
+	}
+}

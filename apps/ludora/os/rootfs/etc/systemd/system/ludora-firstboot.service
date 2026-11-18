@@ -1,0 +1,26 @@
+[Unit]
+Description=Ludora OS first-boot setup (on the server's own screen)
+After=systemd-user-sessions.service plymouth-quit-wait.service network-online.target nftables.service
+Wants=network-online.target
+Before=getty@tty1.service
+Conflicts=getty@tty1.service
+# Runs until the server has been claimed, then never again.
+ConditionPathExists=!/etc/ludora-os/claimed
+
+[Service]
+Type=idle
+ExecStart=/usr/libexec/ludora-os/console --firstboot
+ExecStopPost=-/usr/bin/systemctl --no-block start getty@tty1.service
+StandardInput=tty
+StandardOutput=tty
+StandardError=journal
+TTYPath=/dev/tty1
+TTYReset=yes
+TTYVHangup=yes
+TTYVTDisallocate=yes
+Environment=TERM=linux
+Restart=always
+RestartSec=1
+
+[Install]
+WantedBy=multi-user.target

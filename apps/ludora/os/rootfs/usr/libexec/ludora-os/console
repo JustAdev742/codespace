@@ -1,0 +1,8 @@
+#!/usr/bin/python3 -I
+# Ludora OS. -I: ignore the caller's Python environment, so nothing they set can be loaded as root.
+import sys
+
+sys.path.insert(0, "/usr/lib/ludora-os/python")
+from ludora_os.console import main
+
+raise SystemExit(main())

@@ -1,0 +1,47 @@
+[Unit]
+Description=Ludora OS sentinel (decoy ports, sign-in and web-log watch, bans)
+Documentation=file:///usr/share/doc/ludora-os/LUDORA-OS.md
+After=nftables.service network-online.target
+Wants=network-online.target
+
+[Service]
+ExecStart=/usr/libexec/ludora-os/sentinel
+# Not root. It may change the firewall's sets and listen on low ports; it may do nothing else.
+User=ludora-sentinel
+Group=ludora-sentinel
+SupplementaryGroups=systemd-journal
+AmbientCapabilities=CAP_NET_ADMIN CAP_NET_BIND_SERVICE
+CapabilityBoundingSet=CAP_NET_ADMIN CAP_NET_BIND_SERVICE
+NoNewPrivileges=yes
+StateDirectory=ludora-os/sentinel
+# Remembers, across a restart of the sentinel but not of the server, that the firewall still holds the bans.
+RuntimeDirectory=ludora-sentinel
+RuntimeDirectoryPreserve=yes
+StateDirectoryMode=0750
+UMask=0027
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+ProtectClock=yes
+ProtectHostname=yes
+ProtectProc=invisible
+RestrictAddressFamilies=AF_INET AF_INET6 AF_NETLINK AF_UNIX
+RestrictNamespaces=yes
+RestrictRealtime=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+MemoryDenyWriteExecute=yes
+SystemCallArchitectures=native
+SystemCallFilter=@system-service
+MemoryMax=256M
+TasksMax=64
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target

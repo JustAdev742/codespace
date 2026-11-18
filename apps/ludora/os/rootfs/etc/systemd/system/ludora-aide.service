@@ -1,0 +1,7 @@
+[Unit]
+Description=Ludora OS file-integrity check
+
+[Service]
+Type=oneshot
+ExecStart=/usr/libexec/ludora-os/aide-check
+Nice=10

@@ -142,5 +142,6 @@ Server tests create and drop their own databases; set
 | [docs/PLAYTEST.md](docs/PLAYTEST.md) | Running a first playtest at The Hills Grammar School: the school's copy in a Codespace, the lesson, what to watch, the questions to ask. |
 | [docs/SCHOOL_LOOKS.md](docs/SCHOOL_LOOKS.md) | A school's own look (logo, colours, uniforms by year), switched on with `SCHOOL_THEME`. |
 | [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) | A school's own copy from a blank server (HTTPS, settings, backups), configuration, capacity, operations. |
+| [docs/LUDORA-OS.md](docs/LUDORA-OS.md) | Ludora OS: a locked-down Rocky Linux 10.3 server that runs Ludora and defends itself against attacks from inside the school network. Source in `os/`. |
 | [docs/SCREEN_READER_AUDIT.md](docs/SCREEN_READER_AUDIT.md) | What a screen reader is given in the key flows, what was fixed, and the human pass still needed. |
 | [tools/audio/README.md](tools/audio/README.md) | How the music and sound effects are written and built. |

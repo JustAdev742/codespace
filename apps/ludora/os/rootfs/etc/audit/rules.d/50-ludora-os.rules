@@ -1,0 +1,31 @@
+## Ludora OS: what the audit log records. Search it with: ausearch -k <key>
+
+## Accounts and who may become root.
+-w /etc/passwd -p wa -k identity
+-w /etc/shadow -p wa -k identity
+-w /etc/group -p wa -k identity
+-w /etc/gshadow -p wa -k identity
+-w /etc/sudoers -p wa -k sudoers
+-w /etc/sudoers.d/ -p wa -k sudoers
+
+## Remote access: the SSH settings and every key.
+-w /etc/ssh/sshd_config -p wa -k sshd
+-w /etc/ssh/sshd_config.d/ -p wa -k sshd
+-w /etc/ssh/authorized_keys.d/ -p wa -k ssh-keys
+
+## Ludora OS's own settings, firewall, services and code.
+-w /etc/ludora-os/ -p wa -k ludora-os
+-w /etc/nftables/ -p wa -k firewall
+-w /etc/containers/systemd/ -p wa -k containers
+-w /usr/lib/ludora-os/ -p wa -k ludora-os-code
+-w /usr/libexec/ludora-os/ -p wa -k ludora-os-code
+-w /usr/local/sbin/ludoractl -p wa -k ludora-os-code
+-w /usr/sbin/nft -p x -k firewall-tool
+
+## Every command a signed-in person runs as root (administrators and support sessions alike).
+-a always,exit -F arch=b64 -S execve -F euid=0 -F auid>=1000 -F auid!=unset -k root-commands
+
+## Kernel modules, the clock, and mounts.
+-a always,exit -F arch=b64 -S init_module,finit_module,delete_module -k modules
+-a always,exit -F arch=b64 -S adjtimex,settimeofday,clock_settime -k time
+-a always,exit -F arch=b64 -S mount -F auid>=1000 -F auid!=unset -k mounts

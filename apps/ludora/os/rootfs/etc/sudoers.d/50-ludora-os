@@ -1,0 +1,25 @@
+# Ludora OS. Checked with visudo when installed.
+Defaults use_pty
+Defaults logfile=/var/log/sudo.log
+Defaults timestamp_timeout=5
+Defaults passwd_tries=3
+Defaults !visiblepw
+Defaults secure_path=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin
+
+# Support access may run exactly these commands as root, with exactly these words, and nothing else.
+Cmnd_Alias LUDORA_SUPPORT = \
+    /usr/local/sbin/ludoractl backup,\
+    /usr/local/sbin/ludoractl bans,\
+    /usr/local/sbin/ludoractl doctor,\
+    /usr/local/sbin/ludoractl doctor --json,\
+    /usr/local/sbin/ludoractl events,\
+    /usr/local/sbin/ludoractl logs app,\
+    /usr/local/sbin/ludoractl logs db,\
+    /usr/local/sbin/ludoractl logs proxy,\
+    /usr/local/sbin/ludoractl logs sentinel,\
+    /usr/local/sbin/ludoractl restart app,\
+    /usr/local/sbin/ludoractl status,\
+    /usr/local/sbin/ludoractl status --json,\
+    /usr/local/sbin/ludoractl update app,\
+    /usr/local/sbin/ludoractl update os
+ludora-support ALL=(root) NOPASSWD: LUDORA_SUPPORT

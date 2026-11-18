@@ -1,0 +1,8 @@
+[Unit]
+Description=Ludora OS self-check
+
+[Service]
+Type=oneshot
+ExecStart=-/usr/local/sbin/ludoractl doctor --json
+StandardOutput=null
+Nice=10

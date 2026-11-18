@@ -1,0 +1,3 @@
+#!/bin/sh
+# The Ludora OS console. It asks for the administrator's password (through sudo) and opens the dashboard.
+exec sudo /usr/libexec/ludora-os/console "$@"

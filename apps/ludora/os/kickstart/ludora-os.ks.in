@@ -1,0 +1,183 @@
+# Ludora OS: unattended install on Rocky Linux 10.
+# build-iso.sh fills the @@...@@ marks and puts this file on the install media.
+#
+# The install asks two things on the screen before it touches anything: which disk to
+# ERASE, and the passphrase that encrypts it. Everything else is automatic. The server
+# comes up sealed (nothing can connect) with its setup on the screen.
+
+text
+reboot --eject
+lang @@LANG@@
+keyboard --vckeymap=@@KEYBOARD@@
+timezone @@TIMEZONE@@ --utc
+network --bootproto=dhcp --device=link --activate --hostname=ludora
+@@SOURCE@@
+
+# No root sign-in at all. The administrator account gets its password at first boot, on the console.
+rootpw --lock
+selinux --enforcing
+# Ludora OS brings its own firewall (nftables, sealed until the server is claimed).
+firewall --disabled
+services --enabled=chronyd,auditd --disabled=sshd,kdump
+skipx
+firstboot --disable
+
+bootloader --timeout=1 --append="init_on_alloc=1 init_on_free=1 slab_nomerge page_alloc.shuffle=1 randomize_kstack_offset=on vsyscall=none pti=on audit=1 audit_backlog_limit=8192 lockdown=integrity"
+
+# Written by the %pre script below, after the person at the screen has confirmed the disk.
+%include /tmp/ludora-disk.ks
+
+%packages --exclude-weakdeps
+@^minimal-environment
+podman
+nftables
+audit
+aide
+usbguard
+openscap-scanner
+scap-security-guide
+dnf-automatic
+chrony
+policycoreutils
+policycoreutils-python-utils
+openssh-server
+openssh-clients
+gnupg2
+sudo
+git-core
+tar
+libpwquality
+authselect
+iproute
+procps-ng
+NetworkManager-tui
+python3
+openssl
+grubby
+tpm2-tools
+cryptsetup
+%end
+
+%pre --interpreter=/bin/bash --log=/tmp/ludora-pre.log
+# Talk to the person at the keyboard on a free console.
+exec < /dev/tty6 > /dev/tty6 2>&1
+chvt 6
+ENCRYPT=@@ENCRYPT@@
+clear
+echo
+echo "  Ludora OS installer"
+echo "  ==================="
+echo
+echo "  This ERASES one disk of this computer and installs Ludora OS on it."
+echo
+mapfile -t DISKS < <(lsblk -dn -o NAME,SIZE,TYPE,RM,MODEL | awk '$3 == "disk" && $4 == 0 { print }')
+if [ "${#DISKS[@]}" -eq 0 ]; then
+  echo "  No fixed disk was found. Press Enter to restart."
+  read -r _
+  reboot -f
+fi
+echo "  Disks in this computer:"
+n=1
+for line in "${DISKS[@]}"; do
+  set -- $line
+  printf '    %d) /dev/%s  %s  %s\n' "$n" "$1" "$2" "${*:5}"
+  n=$((n + 1))
+done
+echo
+pick=""
+while :; do
+  read -r -p "  Number of the disk to ERASE (or q to stop): " pick
+  case "$pick" in
+    q | Q) echo "  Stopping. Nothing was changed."; sleep 2; reboot -f ;;
+    '' | *[!0-9]*) continue ;;
+  esac
+  [ "$pick" -ge 1 ] && [ "$pick" -le "${#DISKS[@]}" ] && break
+done
+set -- ${DISKS[$((pick - 1))]}
+DISK=$1
+bytes=$(lsblk -bdn -o SIZE "/dev/$DISK")
+if [ "$bytes" -lt 40000000000 ]; then
+  echo "  /dev/$DISK is smaller than 40 GB. Ludora OS needs at least that. Press Enter to restart."
+  read -r _
+  reboot -f
+fi
+echo
+echo "  EVERYTHING on /dev/$DISK ($2) will be destroyed."
+read -r -p "  Type ERASE in capitals to go on: " word
+if [ "$word" != "ERASE" ]; then
+  echo "  Stopping. Nothing was changed."
+  sleep 2
+  reboot -f
+fi
+CRYPT=""
+if [ "$ENCRYPT" = "yes" ]; then
+  echo
+  echo "  The disk is encrypted. Choose its passphrase: it is typed at this keyboard each time"
+  echo "  the server starts (you can bind it to the computer's security chip later; see the guide)."
+  echo "  At least 12 characters; letters, digits and . _ - only, so it can be typed on any keyboard."
+  while :; do
+    read -r -s -p "  Passphrase: " one; echo
+    read -r -s -p "  Again:      " two; echo
+    if [ "$one" != "$two" ]; then echo "  Those did not match."; continue; fi
+    if [ "${#one}" -lt 12 ]; then echo "  Too short."; continue; fi
+    case "$one" in *[!A-Za-z0-9._-]*) echo "  Use only letters, digits and . _ -"; continue ;; esac
+    break
+  done
+  CRYPT="--encrypted --luks-version=luks2 --passphrase=$one"
+fi
+cat > /tmp/ludora-disk.ks <<DISKEOF
+ignoredisk --only-use=$DISK
+zerombr
+clearpart --all --initlabel --drives=$DISK
+reqpart --add-boot
+part pv.01 --size=1 --grow --ondisk=$DISK $CRYPT
+volgroup ludora pv.01
+logvol /              --vgname=ludora --name=root     --fstype=xfs --size=10240
+logvol /var           --vgname=ludora --name=var      --fstype=xfs --size=15360 --grow
+logvol /var/log       --vgname=ludora --name=log      --fstype=xfs --size=4096 --fsoptions="nodev,nosuid,noexec"
+logvol /var/log/audit --vgname=ludora --name=audit    --fstype=xfs --size=2048 --fsoptions="nodev,nosuid,noexec"
+logvol /var/tmp       --vgname=ludora --name=vartmp   --fstype=xfs --size=2048 --fsoptions="nodev,nosuid,noexec"
+logvol /home          --vgname=ludora --name=home     --fstype=xfs --size=1024 --fsoptions="nodev,nosuid,noexec"
+logvol swap           --vgname=ludora --name=swap     --size=2048
+DISKEOF
+echo
+echo "  Installing. This screen goes back to the installer now."
+sleep 2
+chvt 1
+exec < /dev/tty1 > /dev/tty1 2>&1
+%end
+
+%post --nochroot --log=/mnt/sysroot/root/ludora-os-payload.log
+# Copy Ludora OS from the install media onto the new system.
+set -u
+found=""
+for place in /run/install/repo /run/install/isodir /run/initramfs/live /run/install/sources/mount-0000-cdrom; do
+  if [ -f "$place/ludora-os/install.sh" ]; then found="$place/ludora-os"; break; fi
+done
+if [ -z "$found" ]; then
+  mkdir -p /tmp/ludora-media
+  for device in /dev/disk/by-label/@@VOLID@@ /dev/sr0 /dev/cdrom; do
+    [ -e "$device" ] || continue
+    if mount -o ro "$device" /tmp/ludora-media 2>/dev/null && [ -f /tmp/ludora-media/ludora-os/install.sh ]; then found=/tmp/ludora-media/ludora-os; break; fi
+    umount /tmp/ludora-media 2>/dev/null
+  done
+fi
+if [ -z "$found" ]; then
+  echo "The Ludora OS files were not found on the install media."
+  exit 1
+fi
+mkdir -p /mnt/sysroot/usr/share/ludora-os
+cp -r "$found" /mnt/sysroot/usr/share/ludora-os/payload
+%end
+
+%post --log=/root/ludora-os-install.log
+set -u
+payload=/usr/share/ludora-os/payload
+args="--kickstart --src $payload/src"
+[ -d "$payload/images" ] && args="$args --images $payload/images"
+# shellcheck disable=SC2086
+bash "$payload/install.sh" $args
+status=$?
+rm -rf "$payload/images" "$payload/src"
+exit $status
+%end

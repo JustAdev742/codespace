@@ -1,0 +1,15 @@
+#!/usr/bin/bash
+# Loads the firewall when the server starts. It never leaves the server open: if the rules made from the settings
+# are missing or will not load, it makes them again; if that fails too, it loads rules that refuse every connection
+# and reports failure, so `ludoractl status` and `ludoractl doctor` show it.
+rules=/etc/nftables/ludora-os.nft
+if [ -s "$rules" ] && nft -f "$rules" 2>/dev/null; then
+  exit 0
+fi
+if /usr/local/sbin/ludoractl apply --firewall-only >/dev/null 2>&1; then
+  echo "ludora-os: the firewall rules were missing or broken and have been made again from the settings."
+  exit 0
+fi
+echo "ludora-os: the firewall rules could not be made. Refusing every connection until \`ludoractl apply\` succeeds." >&2
+nft -f /usr/lib/ludora-os/failsafe.nft
+exit 1

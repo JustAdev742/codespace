@@ -20,6 +20,7 @@ slash commands, MCP servers and scripts that make them work.
 | `apps/ghost-typer/` | Ghost Typer, a desktop app built with these skills. `.github/workflows/build.yml` packages it for Windows, macOS and Linux. |
 | `.devcontainer/` | Codespaces / dev container for Ludora: Node 22 and Postgres 16; builds Ludora on create and runs the production build on port 8787 (`start.sh` restarts it). `hills-grammar/` is the same in the school's look, for playtests (`apps/ludora/docs/PLAYTEST.md`). |
 | `apps/ludora/` | Ludora, an educational game platform (TypeScript monorepo: shared, engine, content, server, web). Start at `apps/ludora/README.md`; `docs/STATUS.md` there is the live status. `.github/workflows/ludora.yml` typechecks, lints, tests and builds it; `.github/workflows/pages.yml` publishes its playable demo (a static build, no server) to GitHub Pages once Pages is set to GitHub Actions. |
+| `apps/ludora/os/` | Ludora OS: a hardened server appliance for Ludora on Rocky Linux 10.3 (default-deny firewall, the sentinel that bans attackers, a console, time-limited support access, install image). Guide, tests run and limits: `apps/ludora/docs/LUDORA-OS.md`. |
 
 ## Setup
 

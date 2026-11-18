@@ -1,0 +1,9 @@
+[Unit]
+Description=Ludora nightly backup at 2:15
+
+[Timer]
+OnCalendar=*-*-* 02:15
+Persistent=true
+
+[Install]
+WantedBy=timers.target
