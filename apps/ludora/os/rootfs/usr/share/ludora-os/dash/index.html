@@ -1,0 +1,638 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<meta name="referrer" content="no-referrer">
+<meta name="robots" content="noindex, nofollow">
+<title>Ludora OS staff dashboard</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="dash.css">
+<script src="dash.js" defer></script>
+</head>
+<body data-threat="0">
+<a class="skip" href="#main">Skip to the main part</a>
+<noscript><p class="noscript">This dashboard needs JavaScript. Switch it on for this address, or use the console on the server's own screen.</p></noscript>
+
+<!-- ======================= sign-in ======================= -->
+<main id="signin" class="signin" hidden>
+  <section class="box" aria-labelledby="signin-title">
+    <h1 class="box-title" id="signin-title"><span>Ludora OS staff sign-in</span></h1>
+    <div class="box-body">
+      <p class="signin-server"><span id="signin-server">this server</span><span class="cursor" aria-hidden="true">&#9608;</span></p>
+      <p>This is the server's own dashboard, for the school's staff. It is not the game site: nobody playing or teaching with Ludora needs this page.</p>
+      <p id="signin-note" class="say" hidden></p>
+      <p id="signin-moved" class="say say--note" hidden></p>
+      <form id="signin-form" novalidate>
+        <div class="field">
+          <label for="signin-password">Administrator password</label>
+          <input id="signin-password" name="password" type="password" autocomplete="current-password" autocapitalize="off" spellcheck="false" required aria-describedby="signin-password-help signin-error">
+          <p class="hint" id="signin-password-help">The password that was set at the server's own screen.</p>
+        </div>
+        <div class="field" id="signin-code-field" hidden>
+          <label for="signin-code">6-digit code from your authenticator app</label>
+          <input id="signin-code" name="code" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="6" spellcheck="false" class="input-code" aria-describedby="signin-error">
+        </div>
+        <p id="signin-error" class="say say--bad" role="alert"></p>
+        <button type="submit" class="btn btn--primary" id="signin-go">Sign in</button>
+      </form>
+      <p class="hint" id="signin-foot">Every sign-in is recorded. The dashboard signs you out by itself when it is left unused.</p>
+    </div>
+  </section>
+</main>
+
+<!-- ======================= moving: a change that cuts the connection ======================= -->
+<main id="moving" class="signin moving" hidden>
+  <section class="box" aria-labelledby="moving-title">
+    <h1 class="box-title" id="moving-title" tabindex="-1"><span>The server is moving</span></h1>
+    <div class="box-body">
+      <div class="moving-head">
+        <span class="moving-ico" id="moving-ico"></span>
+        <p class="moving-count" id="moving-count"></p>
+      </div>
+      <p id="moving-message"></p>
+      <p id="moving-link" class="moving-link" hidden></p>
+      <p class="hint" id="moving-status" role="status" aria-live="polite"></p>
+      <p class="hint">Nothing needs doing here. This page checks every few seconds by itself.</p>
+    </div>
+  </section>
+</main>
+
+<!-- ======================= dashboard ======================= -->
+<div id="app" class="app" hidden>
+
+  <header class="statusline">
+    <p class="sl-name"><span class="sl-brand">Ludora OS</span> <span id="sl-server"></span></p>
+    <a class="sl-threat" id="sl-threat" href="#security"><span class="sl-radar" id="sl-radar"></span><span class="sl-label">Threat level:</span> <span id="sl-threat-text">checking</span></a>
+    <p class="sl-clock"><span class="sl-label">Updated</span> <span id="sl-clock">--:--:--</span></p>
+    <p class="sl-idle" id="sl-idle"><span class="sl-label">Signs out in</span> <span id="sl-idle-left">--:--</span> <span class="sl-label">if unused</span></p>
+    <button type="button" class="btn btn--small" id="signout">Sign out</button>
+  </header>
+
+  <div class="band" id="band" hidden>
+    <span class="band-mark" aria-hidden="true">&#9632;</span>
+    <p id="band-text"></p>
+    <a href="#security" id="band-link">See what is happening</a>
+  </div>
+
+  <nav class="rail" id="rail" aria-label="Sections">
+    <ul>
+      <li><a href="#overview" data-view="overview"><kbd aria-hidden="true">1</kbd><span>Overview</span></a></li>
+      <li><a href="#security" data-view="security"><kbd aria-hidden="true">2</kbd><span>Security</span></a></li>
+      <li><a href="#setup" data-view="setup"><kbd aria-hidden="true">3</kbd><span>Setup</span></a></li>
+      <li><a href="#health" data-view="health"><kbd aria-hidden="true">4</kbd><span>Health</span></a></li>
+      <li><a href="#logs" data-view="logs"><kbd aria-hidden="true">5</kbd><span>Logs</span></a></li>
+    </ul>
+    <button type="button" class="rail-keys" id="open-keys"><kbd aria-hidden="true">?</kbd><span>Keyboard shortcuts</span></button>
+  </nav>
+
+  <main id="main" class="main" tabindex="-1">
+
+    <!-- ---------- 1 overview ---------- -->
+    <section id="view-overview" class="view" aria-labelledby="h-overview" hidden>
+      <h1 id="h-overview" class="view-title" tabindex="-1">Overview</h1>
+
+      <div class="notice" id="last-change" hidden>
+        <p class="notice-text"><strong id="last-change-head"></strong> <span id="last-change-text"></span></p>
+        <button type="button" class="btn btn--small" id="last-change-x">Dismiss</button>
+      </div>
+
+      <section class="box hero" aria-labelledby="hero-title">
+        <h2 class="box-title" id="hero-title"><span>Right now</span></h2>
+        <div class="box-body hero-body">
+          <div class="hero-radar" id="hero-radar"></div>
+          <div class="hero-words">
+            <p class="hero-level" id="hero-level">Checking</p>
+            <p class="hero-line" id="hero-line">Asking the server how it is.</p>
+            <div class="attention" id="hero-attention" hidden>
+              <p class="attention-title">Needs your attention</p>
+              <ul id="hero-attention-list"></ul>
+            </div>
+            <p class="hero-meta" id="hero-meta"></p>
+          </div>
+          <ul class="gauges" aria-label="Protection">
+            <li class="gauge"><span class="gauge-ico" id="g-shield-ico"></span><span class="gauge-name">Shield</span><span class="gauge-val" id="g-shield"></span></li>
+            <li class="gauge"><span class="gauge-ico" id="g-lock-ico"></span><span class="gauge-name">Lockdown</span><span class="gauge-val" id="g-lock"></span></li>
+            <li class="gauge"><span class="gauge-ico gauge-count" id="g-bans-n" aria-hidden="true">0</span><span class="gauge-name">Banned now</span><span class="gauge-val" id="g-bans"></span></li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="cols">
+        <div class="col">
+          <section class="box" aria-labelledby="t-services">
+            <h2 class="box-title" id="t-services"><span>Services</span></h2>
+            <div class="box-body">
+              <ul class="services" id="services"></ul>
+            </div>
+          </section>
+
+          <section class="box" aria-labelledby="t-upkeep">
+            <h2 class="box-title" id="t-upkeep"><span>Upkeep</span></h2>
+            <div class="box-body">
+              <dl class="facts" id="upkeep"></dl>
+            </div>
+          </section>
+
+          <section class="box" aria-labelledby="t-traffic">
+            <h2 class="box-title" id="t-traffic"><span>Traffic, each second</span></h2>
+            <div class="box-body">
+              <ul class="rates" id="rates"></ul>
+              <p class="hint" id="rates-none" hidden>The sentinel has not reported any traffic yet.</p>
+            </div>
+          </section>
+        </div>
+
+        <div class="col">
+          <section class="box" aria-labelledby="t-feed">
+            <h2 class="box-title" id="t-feed"><span>What the sentinel has seen</span></h2>
+            <div class="box-body">
+              <p class="hint">Newest first. This list updates by itself every few seconds.</p>
+              <ol class="feed" id="feed" aria-labelledby="t-feed"></ol>
+              <p class="hint" id="feed-none" hidden>Nothing has been recorded yet.</p>
+              <p><a href="#security">Open the full list in Security</a></p>
+            </div>
+          </section>
+        </div>
+      </div>
+    </section>
+
+    <!-- ---------- 2 security ---------- -->
+    <section id="view-security" class="view" aria-labelledby="h-security" hidden>
+      <h1 id="h-security" class="view-title" tabindex="-1">Security</h1>
+
+      <div class="cols">
+        <div class="col">
+          <section class="box" aria-labelledby="t-bans">
+            <h2 class="box-title" id="t-bans"><span>Banned addresses</span></h2>
+            <div class="box-body">
+              <p>A banned device cannot open Ludora until its time runs out. The sentinel bans by itself; a first ban lasts 15 minutes and repeat bans last longer.</p>
+              <ul class="bans" id="bans"></ul>
+              <p class="hint" id="bans-none">Nobody is banned right now.</p>
+
+              <form id="ban-form" class="inline-form" novalidate>
+                <h3>Ban an address yourself</h3>
+                <div class="field">
+                  <label for="ban-ip">The device's address</label>
+                  <input id="ban-ip" type="text" inputmode="decimal" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="10.20.3.7" aria-describedby="ban-ip-help ban-out">
+                  <p class="hint" id="ban-ip-help">The numbers shown in the list of events, such as 10.20.3.7.</p>
+                </div>
+                <div class="field">
+                  <label for="ban-minutes">For how long</label>
+                  <select id="ban-minutes">
+                    <option value="15">15 minutes</option>
+                    <option value="60" selected>1 hour</option>
+                    <option value="240">4 hours</option>
+                    <option value="1440">A whole day</option>
+                  </select>
+                </div>
+                <button type="submit" class="btn btn--danger">Ban this address</button>
+                <p class="say" id="ban-out"></p>
+              </form>
+            </div>
+          </section>
+        </div>
+
+        <div class="col">
+          <section class="box" aria-labelledby="t-shield">
+            <h2 class="box-title" id="t-shield"><span>Shield</span></h2>
+            <div class="box-body">
+              <div class="state-row">
+                <span class="state-ico" id="shield-ico"></span>
+                <p class="state-now" id="shield-now"></p>
+              </div>
+              <p>The shield cuts every limit to a quarter for everyone outside the staff addresses. The sentinel raises it by itself when many addresses misbehave at once, and lowers it when they stop.</p>
+              <div class="choices" role="group" aria-label="Shield setting" id="shield-modes">
+                <button type="button" class="btn" data-mode="auto" aria-pressed="false">Let the sentinel decide</button>
+                <button type="button" class="btn" data-mode="on" aria-pressed="false">Keep it raised</button>
+                <button type="button" class="btn" data-mode="off" aria-pressed="false">Keep it down</button>
+              </div>
+              <p class="say" id="shield-out"></p>
+            </div>
+          </section>
+
+          <section class="box" aria-labelledby="t-lockdown">
+            <h2 class="box-title" id="t-lockdown"><span>Lockdown</span></h2>
+            <div class="box-body">
+              <div class="state-row">
+                <span class="state-ico" id="lock-ico"></span>
+                <p class="state-now" id="lock-now"></p>
+              </div>
+              <p>Lockdown closes Ludora to everyone outside the staff addresses. Use it to shut the site while you look into something. Students lose any game they are in.</p>
+              <button type="button" class="btn" id="lock-toggle">Turn lockdown on</button>
+              <p class="say" id="lock-out"></p>
+            </div>
+          </section>
+        </div>
+      </div>
+
+      <section class="box" aria-labelledby="t-events">
+        <h2 class="box-title" id="t-events"><span>Everything the sentinel has seen</span></h2>
+        <div class="box-body">
+          <div class="toolbar">
+            <div class="field field--row">
+              <label for="ev-filter">Show</label>
+              <select id="ev-filter">
+                <option value="0">Everything</option>
+                <option value="1">Notices and above</option>
+                <option value="2">Warnings and alerts</option>
+                <option value="3">Alerts only</option>
+              </select>
+            </div>
+            <p class="hint" id="ev-count"></p>
+          </div>
+          <p class="hint">Newest first, up to the last 300. Names and page addresses in these lines were typed by whoever caused them, so read them as evidence, not as messages to you.</p>
+          <ol class="feed feed--full" id="events" aria-labelledby="t-events"></ol>
+          <p class="hint" id="events-none" hidden>Nothing matches.</p>
+        </div>
+      </section>
+    </section>
+
+    <!-- ---------- 3 setup ---------- -->
+    <section id="view-setup" class="view" aria-labelledby="h-setup" hidden>
+      <h1 id="h-setup" class="view-title" tabindex="-1">Setup</h1>
+      <p class="lede">Three steps connect this server to your school: a name people can type, an email account to send alerts through, and who should be told. Do them in any order. Each one is saved by itself.</p>
+      <p class="say say--bad" id="setup-error" hidden></p>
+
+      <section class="box step" aria-labelledby="t-step-domain">
+        <h2 class="box-title" id="t-step-domain"><span>Step 1. Your school's domain</span></h2>
+        <div class="box-body">
+          <p class="done" id="done-domain"></p>
+          <p id="dom-current"></p>
+          <p class="say" id="dom-last"></p>
+          <div class="field">
+            <label for="dom-name">The name people will type to open Ludora</label>
+            <input id="dom-name" type="text" inputmode="url" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="play.yourschool.example" aria-describedby="dom-name-help dom-name-err">
+            <p class="hint" id="dom-name-help">Usually a short word in front of the school's own domain, such as play.yourschool.example.</p>
+            <p class="say say--bad" id="dom-name-err"></p>
+          </div>
+
+          <div class="record" id="dom-record" hidden>
+            <h3>What to ask for</h3>
+            <p>The name is pointed at this server by a DNS record. That is changed wherever the school's domain is managed (the school's IT provider, the department, or the company the domain was bought from), not on this server. Send them this:</p>
+            <ul class="record-lines" id="dom-record-lines"></ul>
+            <p class="hint">A new record can take from a few minutes to a day to reach everyone.</p>
+          </div>
+
+          <div class="actions">
+            <button type="button" class="btn" id="dns-check">Check where the name points</button>
+          </div>
+          <div class="result" id="dns-result" hidden></div>
+
+          <fieldset class="radios" id="cert-choice">
+            <legend>The certificate that makes the padlock in the browser</legend>
+            <label class="radio"><input type="radio" name="cert" value="public">
+              <span><strong>A free public certificate</strong> Browsers trust it straight away. It only works when the name can be reached from the internet, because the certificate maker has to visit it.</span></label>
+            <label class="radio"><input type="radio" name="cert" value="internal">
+              <span><strong>The server's own certificate</strong> For a name used only inside the school. School devices need the server's root certificate installed once; until then browsers show a warning.</span></label>
+            <p class="hint" id="cert-custom" hidden>This server is using a certificate the school supplied. Choosing one of these replaces it.</p>
+          </fieldset>
+
+          <div class="actions">
+            <button type="button" class="btn btn--primary" id="dom-apply">Use this name</button>
+          </div>
+          <p class="say" id="dom-out"></p>
+          <p class="say say--note" id="dom-next" hidden></p>
+        </div>
+      </section>
+
+      <section class="box step" aria-labelledby="t-step-email">
+        <h2 class="box-title" id="t-step-email"><span>Step 2. Email</span></h2>
+        <div class="box-body">
+          <p class="done" id="done-email"></p>
+          <p>Alerts by email are sent through an ordinary mail account: the school's own, or a free one kept for this. Mail is only ever sent encrypted.</p>
+          <ul class="problems" id="email-problems" hidden></ul>
+          <form id="email-form" novalidate>
+            <div class="field">
+              <label for="smtp-preset">Mail provider</label>
+              <select id="smtp-preset" aria-describedby="smtp-preset-note"></select>
+              <p class="hint" id="smtp-preset-note"></p>
+            </div>
+            <div class="field-grid">
+              <div class="field">
+                <label for="smtp-host">Mail server</label>
+                <input id="smtp-host" type="text" data-key="SMTP_HOST" inputmode="url" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="smtp.yourschool.example">
+              </div>
+              <div class="field field--narrow">
+                <label for="smtp-port">Port</label>
+                <select id="smtp-port" data-key="SMTP_PORT">
+                  <option value="587">587</option>
+                  <option value="465">465</option>
+                  <option value="25">25</option>
+                  <option value="2525">2525</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="smtp-security">How the connection is protected</label>
+                <select id="smtp-security" data-key="SMTP_SECURITY">
+                  <option value="starttls">STARTTLS (the usual, with port 587)</option>
+                  <option value="tls">TLS from the start (with port 465)</option>
+                </select>
+              </div>
+            </div>
+            <div class="field">
+              <label for="smtp-user">Account the server signs in with</label>
+              <input id="smtp-user" type="text" data-key="SMTP_USER" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="alerts@yourschool.example">
+            </div>
+            <div class="field">
+              <label for="smtp-pass">That account's password</label>
+              <input id="smtp-pass" type="password" autocomplete="new-password" autocapitalize="off" spellcheck="false" aria-describedby="smtp-pass-help">
+              <p class="hint" id="smtp-pass-help"></p>
+              <p class="say say--note" id="smtp-pass-ask"></p>
+            </div>
+            <div class="field">
+              <label for="smtp-from">Address the alerts come from</label>
+              <input id="smtp-from" type="email" data-key="SMTP_FROM" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="alerts@yourschool.example" aria-describedby="smtp-from-help">
+              <p class="hint" id="smtp-from-help">Usually the same as the account.</p>
+            </div>
+            <div class="actions">
+              <button type="submit" class="btn btn--primary" id="email-save">Save email settings</button>
+              <button type="button" class="btn" id="email-test"><span class="btn-ico" id="email-test-ico"></span>Send a test to every list</button>
+            </div>
+            <p class="say" id="email-out"></p>
+          </form>
+        </div>
+      </section>
+
+      <section class="box step" aria-labelledby="t-step-alerts">
+        <h2 class="box-title" id="t-step-alerts"><span>Step 3. Who is told</span></h2>
+        <div class="box-body">
+          <p class="done" id="done-alerts"></p>
+          <p>There are three lists, so each person hears only what they need. An entry is an email address, a phone push written as <code>ntfy:topic</code>, or a Telegram chat written as <code>telegram:chat number</code>.</p>
+          <p class="hint">A phone push topic already on a list shows only its first letters, because anyone who knows the whole name can read its alerts. Leave it as it is and it keeps working.</p>
+          <ul class="problems" id="alerts-problems" hidden></ul>
+          <div class="lists" id="lists"></div>
+          <div class="actions">
+            <button type="button" class="btn btn--primary" id="lists-save">Save the three lists</button>
+            <p class="hint" id="lists-dirty" hidden>You have changes that are not saved yet.</p>
+          </div>
+          <p class="say" id="lists-out"></p>
+
+          <div class="sub">
+            <h3>Pushes to a phone</h3>
+            <p>Install the free ntfy app on the phone. Make a topic here, subscribe to that name in the app, then add it to a list. No account is needed.</p>
+            <button type="button" class="btn" id="ntfy-make">Make a phone push topic</button>
+            <div class="result" id="ntfy-result" hidden></div>
+          </div>
+
+          <details class="sub">
+            <summary>Using Telegram?</summary>
+            <p>Make a bot with Telegram's BotFather, give the bot's token to the server here, then send the bot one message so it may write to you.</p>
+            <form id="tg-form" novalidate>
+              <div class="field">
+                <label for="tg-token">Telegram bot token</label>
+                <input id="tg-token" type="password" autocomplete="off" autocapitalize="off" spellcheck="false" aria-describedby="tg-token-help">
+                <p class="hint" id="tg-token-help"></p>
+              </div>
+              <button type="submit" class="btn">Save the token</button>
+              <p class="say" id="tg-out"></p>
+            </form>
+          </details>
+        </div>
+      </section>
+
+      <section class="box" aria-labelledby="t-more">
+        <h2 class="box-title" id="t-more"><span>Other settings</span></h2>
+        <div class="box-body">
+          <form id="more-form" novalidate>
+            <div id="more-fields"></div>
+            <div class="actions">
+              <button type="submit" class="btn">Save these settings</button>
+            </div>
+            <p class="say" id="more-out"></p>
+          </form>
+        </div>
+      </section>
+    </section>
+
+    <!-- ---------- 4 health ---------- -->
+    <section id="view-health" class="view" aria-labelledby="h-health" hidden>
+      <h1 id="h-health" class="view-title" tabindex="-1">Health</h1>
+
+      <div class="cols">
+        <div class="col">
+          <section class="box" aria-labelledby="t-doctor">
+            <h2 class="box-title" id="t-doctor"><span>Self-check</span></h2>
+            <div class="box-body">
+              <p>The server checks that each of its protections is still in place. Anything that failed comes first.</p>
+              <p class="state-now" id="doctor-sum"></p>
+              <div class="actions">
+                <button type="button" class="btn" id="doctor-run">Run the self-check again</button>
+              </div>
+              <p class="say" id="doctor-out"></p>
+              <ul class="checks" id="checks"></ul>
+            </div>
+          </section>
+        </div>
+
+        <div class="col">
+          <section class="box" aria-labelledby="t-hservices">
+            <h2 class="box-title" id="t-hservices"><span>Services</span></h2>
+            <div class="box-body">
+              <ul class="services" id="services-health"></ul>
+              <div class="actions">
+                <button type="button" class="btn" data-restart="app">Restart Ludora</button>
+                <button type="button" class="btn" data-restart="proxy">Restart the secure connection</button>
+              </div>
+              <p class="hint">A restart takes under a minute. Use it when the site has stopped answering.</p>
+              <p class="say" id="restart-out"></p>
+            </div>
+          </section>
+
+          <section class="box" aria-labelledby="t-backups">
+            <h2 class="box-title" id="t-backups"><span>Backups</span></h2>
+            <div class="box-body">
+              <p class="state-now" id="backup-now"></p>
+              <p>The server makes an encrypted backup every night. Make one now before a change you are unsure about.</p>
+              <button type="button" class="btn" id="backup-run">Back up now</button>
+              <p class="say" id="backup-out"></p>
+            </div>
+          </section>
+
+          <section class="box" aria-labelledby="t-support">
+            <h2 class="box-title" id="t-support"><span>Support access</span></h2>
+            <div class="box-body">
+              <p class="state-now" id="support-now"></p>
+              <p>Support access lets one helper connect from one address for a few hours and run a short list of safe commands. It is opened at the server's own screen and closes by itself.</p>
+              <button type="button" class="btn btn--danger" id="support-close" hidden>Close support access now</button>
+              <p class="say" id="support-out"></p>
+            </div>
+          </section>
+
+          <section class="box" aria-labelledby="t-analyst">
+            <h2 class="box-title" id="t-analyst"><span>The analyst</span></h2>
+            <div class="box-body">
+              <p class="state-now" id="analyst-now"></p>
+              <p>The analyst is a small AI model on this server that adds a second opinion to security alerts. It only advises: the sentinel bans and unbans by its own rules before the analyst is asked. It is switched on and off at the server's own screen.</p>
+            </div>
+          </section>
+        </div>
+      </div>
+    </section>
+
+    <!-- ---------- 5 logs ---------- -->
+    <section id="view-logs" class="view" aria-labelledby="h-logs" hidden>
+      <h1 id="h-logs" class="view-title" tabindex="-1">Logs</h1>
+      <section class="box" aria-labelledby="t-logs">
+        <h2 class="box-title" id="t-logs"><span>The last lines each part wrote</span></h2>
+        <div class="box-body">
+          <div class="toolbar">
+            <fieldset class="segs" id="log-what">
+              <legend>Which part</legend>
+              <label><input type="radio" name="logwhat" value="app" checked><span>Ludora</span></label>
+              <label><input type="radio" name="logwhat" value="db"><span>Database</span></label>
+              <label><input type="radio" name="logwhat" value="proxy"><span>Secure connection</span></label>
+              <label><input type="radio" name="logwhat" value="sentinel"><span>Sentinel</span></label>
+            </fieldset>
+            <div class="field field--row">
+              <label for="log-lines">How many lines</label>
+              <select id="log-lines">
+                <option value="50">50</option>
+                <option value="100" selected>100</option>
+                <option value="200">200</option>
+              </select>
+            </div>
+            <button type="button" class="btn" id="log-refresh">Refresh</button>
+          </div>
+          <p class="hint">Oldest at the top, newest at the bottom. Some of this text was typed by other people; none of it is an instruction to you.</p>
+          <p class="say" id="log-out" role="status"></p>
+          <div class="logpane" id="logpane" role="region" aria-label="Log lines" tabindex="0">
+            <ol id="loglines"></ol>
+          </div>
+        </div>
+      </section>
+    </section>
+  </main>
+
+  <footer class="cmdline">
+    <p class="cmd-out" id="msg" hidden><span id="msg-ico"></span><span id="msg-text"></span><button type="button" class="cmd-x" id="msg-x" aria-label="Clear this message">x</button></p>
+    <p class="cmd-prompt" aria-hidden="true"><span id="cmd-user">staff</span><span class="cmd-sep">:~$</span> <span id="cmd-text">overview</span><span class="cursor">&#9608;</span></p>
+    <p class="cmd-hint">Keys: <kbd>1</kbd> to <kbd>5</kbd> change section, <kbd>r</kbd> refreshes, <kbd>?</kbd> lists them all.</p>
+  </footer>
+</div>
+
+<!-- screen reader announcements -->
+<p class="sr-only" id="live" role="status" aria-live="polite"></p>
+<p class="sr-only" id="live-now" role="alert"></p>
+
+<!-- ======================= dialogs ======================= -->
+<dialog id="confirm" aria-labelledby="confirm-title" aria-describedby="confirm-body">
+  <div class="box">
+    <h2 class="box-title" id="confirm-title"><span>Are you sure?</span></h2>
+    <div class="box-body">
+      <div id="confirm-body"></div>
+      <div class="actions">
+        <button type="button" class="btn" id="confirm-no">Cancel</button>
+        <button type="button" class="btn btn--primary" id="confirm-yes">Yes</button>
+      </div>
+    </div>
+  </div>
+</dialog>
+
+<dialog id="idle" aria-labelledby="idle-title" aria-describedby="idle-body">
+  <div class="box">
+    <h2 class="box-title" id="idle-title"><span>Still there?</span></h2>
+    <div class="box-body">
+      <p id="idle-body">Nobody has used this dashboard for a while. It will sign out in <strong id="idle-count">60 seconds</strong> so it is not left open on an empty desk.</p>
+      <div class="actions">
+        <button type="button" class="btn btn--primary" id="idle-stay">Stay signed in</button>
+        <button type="button" class="btn" id="idle-out">Sign out now</button>
+      </div>
+    </div>
+  </div>
+</dialog>
+
+<dialog id="keys" aria-labelledby="keys-title">
+  <div class="box">
+    <h2 class="box-title" id="keys-title"><span>Keyboard shortcuts</span></h2>
+    <div class="box-body">
+      <dl class="keys">
+        <div><dt><kbd>1</kbd></dt><dd>Overview</dd></div>
+        <div><dt><kbd>2</kbd></dt><dd>Security</dd></div>
+        <div><dt><kbd>3</kbd></dt><dd>Setup</dd></div>
+        <div><dt><kbd>4</kbd></dt><dd>Health</dd></div>
+        <div><dt><kbd>5</kbd></dt><dd>Logs</dd></div>
+        <div><dt><kbd>r</kbd></dt><dd>Refresh what is on screen now</dd></div>
+        <div><dt><kbd>/</kbd></dt><dd>Go to the event filter in Security</dd></div>
+        <div><dt><kbd>?</kbd></dt><dd>Show this list</dd></div>
+        <div><dt><kbd>Esc</kbd></dt><dd>Close a question or this list</dd></div>
+      </dl>
+      <label class="radio"><input type="checkbox" id="keys-on" checked><span>Single-key shortcuts are on. Untick this if a screen reader or voice control keeps setting them off.</span></label>
+      <p class="hint">Shortcuts never fire while you are typing in a box. Tab, Enter and Space work everywhere, as on any web page.</p>
+      <div class="actions">
+        <button type="button" class="btn btn--primary" id="keys-close">Close</button>
+      </div>
+    </div>
+  </div>
+</dialog>
+
+<!-- ======================= animated icons ======================= -->
+<template id="tpl-radar">
+  <svg class="ico radar" viewBox="0 0 100 100" aria-hidden="true" focusable="false">
+    <circle class="radar-alarm" cx="50" cy="50" r="47"/>
+    <circle class="radar-ring" cx="50" cy="50" r="42"/>
+    <circle class="radar-ring radar-ring--in" cx="50" cy="50" r="27"/>
+    <circle class="radar-ring radar-ring--in" cx="50" cy="50" r="12"/>
+    <path class="radar-cross" d="M50 8V92M8 50H92"/>
+    <g class="radar-sweep">
+      <path class="radar-wedge" d="M50 50 L20.3 20.3 A42 42 0 0 1 50 8 Z"/>
+      <path class="radar-beam" d="M50 50V8"/>
+    </g>
+    <g class="radar-blips">
+      <rect class="blip blip-a" x="63" y="27" width="7" height="7"/>
+      <rect class="blip blip-a" x="26" y="58" width="7" height="7"/>
+      <rect class="blip blip-b" x="68" y="60" width="7" height="7"/>
+      <rect class="blip blip-b" x="33" y="22" width="7" height="7"/>
+      <rect class="blip blip-b" x="46" y="71" width="7" height="7"/>
+      <rect class="blip blip-b" x="20" y="40" width="7" height="7"/>
+    </g>
+    <circle class="radar-hub" cx="50" cy="50" r="2.5"/>
+  </svg>
+</template>
+
+<template id="tpl-pulse">
+  <svg class="ico pulse" viewBox="0 0 48 16" aria-hidden="true" focusable="false">
+    <path class="pulse-base" d="M0 9H15l3-7 4 12 3-8 2 3H48"/>
+    <path class="pulse-run" pathLength="100" d="M0 9H15l3-7 4 12 3-8 2 3H48"/>
+    <path class="pulse-flat" d="M0 9H48"/>
+    <path class="pulse-stop" d="M19 4l10 10M29 4L19 14"/>
+  </svg>
+</template>
+
+<template id="tpl-shield">
+  <svg class="ico shield" viewBox="0 0 36 44" aria-hidden="true" focusable="false">
+    <path class="shield-ground" d="M2 42H34"/>
+    <g class="shield-body">
+      <path class="shield-plate" d="M18 3 31 8V19C31 28 25 34 18 37 11 34 5 28 5 19V8Z"/>
+      <path class="shield-chev shield-chev--1" d="M11 26l7-7 7 7"/>
+      <path class="shield-chev shield-chev--2" d="M11 19l7-7 7 7"/>
+    </g>
+  </svg>
+</template>
+
+<template id="tpl-lock">
+  <svg class="ico lock" viewBox="0 0 36 44" aria-hidden="true" focusable="false">
+    <path class="lock-shackle" d="M11 20V13a7 7 0 0 1 14 0V20"/>
+    <rect class="lock-body" x="6" y="20" width="24" height="20"/>
+    <path class="lock-key" d="M18 27v7"/>
+    <circle class="lock-hole" cx="18" cy="27" r="2.6"/>
+  </svg>
+</template>
+
+<template id="tpl-mail">
+  <svg class="ico mail" viewBox="0 0 44 30" aria-hidden="true" focusable="false">
+    <path class="mail-lines" d="M1 10H7M0 15H7M2 20H7"/>
+    <rect class="mail-body" x="10" y="5" width="32" height="22"/>
+    <path class="mail-flap" d="M10 5 26 17 42 5"/>
+    <path class="mail-tick" d="M19 16l5 5 9-10"/>
+    <path class="mail-bang" d="M26 9v9M26 21v2"/>
+  </svg>
+</template>
+
+<template id="tpl-spin">
+  <span class="spin" aria-hidden="true"><span class="spin-strip"><i>|</i><i>/</i><i>-</i><i>\</i></span></span>
+</template>
+
+</body>
+</html>
