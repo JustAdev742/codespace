@@ -17,7 +17,7 @@ import threading
 import time
 from typing import Any, Callable
 
-from . import access, config, ctl, doctor, maintain, overview, sentinel, system
+from . import access, alerts, config, ctl, doctor, maintain, overview, sentinel, system
 from . import apply as applier
 
 MIN_ROWS, MIN_COLS = 22, 78
@@ -524,6 +524,7 @@ def security(ui: UI) -> None:
                 (f"Shield: {view['shield_mode']}" + (" (UP now)" if view["shield"] else ""), "The shield cuts every limit to a quarter. auto lets the sentinel raise it under attack."),
                 (f"Lockdown: {'ON' if view['lockdown'] else 'off'}", "Lockdown closes Ludora to everyone outside the staff addresses. Use it to stop an attack during a lesson."),
                 ("Run the self-check", "Is every protection still in place? About a minute."),
+                ("Alerts: who is told", "The people told about attacks, upkeep and cheating; send a test; set the mail password."),
             ],
             intro=f"Threat level: {view['threat']}.",
         )
@@ -560,6 +561,51 @@ def security(ui: UI) -> None:
             if ok and isinstance(report, dict):
                 marks = {"pass": "[  ok  ]", "fail": "[ FAIL ]", "unknown": "[  ??  ]"}
                 ui.pager(f"Self-check: {report['passed']} passing, {report['failed']} failing", [f"{marks[c['state']]} {c['title']}: {c['detail']}" for c in report["checks"]])
+        elif choice == 6:
+            alerts_menu(ui)
+
+
+def alerts_menu(ui: UI) -> None:
+    while True:
+        cfg = config.load()
+        lists = [(audience, key, label, cfg[key]) for audience, (key, label) in alerts.AUDIENCES.items()]
+        rows = [(f"{label}: {', '.join(to) if to else 'nobody'}", config.BY_KEY[key].help) for _, key, label, to in lists]
+        rows += [
+            ("Send a test to everyone listed", "Each list gets one message saying it is a test."),
+            ("Set the mail account's password", "Needed when alerts go by email through an account that signs in."),
+            ("Set the Telegram bot's token", "Needed for telegram: recipients. BotFather gives it to you when you make the bot."),
+            ("Make a topic for phone pushes", "A long random ntfy topic name to subscribe to in the free ntfy phone app."),
+        ]
+        found = alerts.problems(cfg)
+        intro = "Free ways only: email, a push to the ntfy phone app, or a Telegram message. " + (("Not working yet: " + " ".join(found)) if found else "The mail server is under Settings.")
+        choice = ui.menu("Alerts", rows, intro=intro)
+        if choice is None:
+            return
+        if choice < len(lists):
+            _, key, label, to = lists[choice]
+            value = ui.ask(label, "Email addresses, ntfy:<topic> or telegram:<chat number>, separated by commas. Empty for nobody.", default=", ".join(to), check=check_setting(key))
+            if value is not None:
+                problem = save_settings({key: value})
+                if problem:
+                    ui.message(label, "That does not fit with the other settings: " + problem)
+                else:
+                    apply_now(ui)
+        elif choice == len(lists):
+            ok, result = ui.task("Sending a test", lambda log: _ctl(["alerts", "test"]))
+            ui.message("Test sent" if ok else "The test did not go through", str(result))
+        elif choice in (len(lists) + 1, len(lists) + 2):
+            name = "SMTP_PASSWORD" if choice == len(lists) + 1 else "TELEGRAM_BOT_TOKEN"
+            value = ui.ask(rows[choice][0], "Type or paste it. It is kept in a file only the server's own services can read.", secret=True)
+            if value:
+                try:
+                    alerts.save_secret(name, value)
+                    system.run(["systemctl", "try-restart", "ludora-sentinel.service"])
+                    ui.message("Alerts", "Saved. Send a test to check it works.")
+                except ValueError as err:
+                    ui.message("Alerts", f"Not saved: {err}.")
+        else:
+            ok, result = ui.task("Phone pushes", lambda log: _ctl(["alerts", "topic"]))
+            ui.message("A topic for phone pushes", str(result))
 
 
 def _ctl(argv: list[str]) -> str:
@@ -585,7 +631,15 @@ def settings_menu(ui: UI) -> None:
         ("LAN_NETS", "School networks (only these may open Ludora)"),
         ("BLOCKED_NETS", "Addresses that are always refused"),
         ("NAT_MODE", "Students share one address: yes or no"),
-        ("WEBHOOK_URL", "Where alerts are sent (https address)"),
+        ("ALERT_SECURITY_TO", "Told about attacks (email, ntfy:topic, telegram:chat)"),
+        ("ALERT_UPKEEP_TO", "Told when the server needs care"),
+        ("ALERT_CHEAT_TO", "Told about likely cheating in games"),
+        ("SMTP_HOST", "Mail server for alert emails"),
+        ("SMTP_PORT", "Mail server port"),
+        ("SMTP_SECURITY", "Mail encryption: starttls or tls"),
+        ("SMTP_USER", "Mail account"),
+        ("SMTP_FROM", "Address alerts come from"),
+        ("WEBHOOK_URL", "Also post serious alerts to (https address)"),
         ("SCHOOL_THEME", "School look"),
         ("IPV6", "IPv6: yes or no"),
         ("AUTO_REBOOT", "Restart at night for security updates: yes or no"),

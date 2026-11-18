@@ -31,6 +31,7 @@ MANIFEST_FILE = f"{STATE}/manifest.json"
 IMAGES_LOCK = f"{STATE}/images.lock"
 DOCTOR_FILE = f"{STATE}/doctor.json"
 SUPPORT_FILE = f"{STATE}/support.json"
+ALERT_SECRETS_FILE = f"{ETC}/alerts.env"   # the mail password and the Telegram bot token: root and the sentinel only
 BACKUP_DIR = "/var/backups/ludora"
 SRC_DIR = f"{SHARE}/src"
 

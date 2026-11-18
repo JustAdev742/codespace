@@ -15,7 +15,7 @@ import sys
 import time
 from typing import Any
 
-from . import access, config, doctor, maintain, overview, render, sentinel, system
+from . import access, alerts, config, doctor, maintain, overview, render, sentinel, system
 from . import apply as applier
 
 
@@ -104,8 +104,36 @@ def cmd_status(args: argparse.Namespace) -> int:
     return 0 if view["state"] == "OK" else 1
 
 
+def tell(alert: alerts.Alert, quiet: bool = False) -> None:
+    """Send an alert from a command (the sentinel sends its own). Says where it went; never fails the command."""
+    try:
+        cfg = config.load()
+        if not alerts.recipients(cfg, alert.audience):
+            return
+        outcome = alerts.summary(alerts.deliver(alert, cfg))
+        sentinel.append_event({"at": int(time.time()), "severity": "info", "kind": "alert-delivery", "text": f"Alert \"{alerts.clean(alert.title, 80)}\": {outcome}."})
+        if not quiet:
+            say(f"Alert {outcome}.")
+    except Exception as err:  # telling people is never worth failing the thing they are told about
+        if not quiet:
+            say(f"(The alert could not be sent: {alerts.clean(err, 160)})")
+
+
 def cmd_doctor(args: argparse.Namespace) -> int:
+    try:
+        before = {c["title"] for c in json.loads(system.read(system.DOCTOR_FILE) or "{}").get("checks", []) if c.get("state") == "fail"}
+        first_run = not system.exists(system.DOCTOR_FILE)
+    except (ValueError, AttributeError, TypeError):
+        before, first_run = set(), True
     report = doctor.run_all()
+    newly = [c for c in report["checks"] if c["state"] == "fail" and c["title"] not in before]
+    if newly and not first_run and system.is_root():
+        tell(alerts.Alert(
+            "upkeep", f"{len(newly)} protection{'s' if len(newly) != 1 else ''} stopped passing the self-check",
+            what="The server checks its own protections every hour. These were passing and now are not.",
+            todo="Sign in at the server, type `ludora`, and open Security > Run the self-check. Each line says what is wrong and usually how to put it right.",
+            facts=[f"{c['title']}: {c['detail']}" for c in newly], urgent=any("firewall" in c["title"].lower() or "generated files" in c["title"].lower() for c in newly),
+        ), quiet=bool(args.json))
     if args.json:
         say(json.dumps(report, indent=1))
     else:
@@ -217,6 +245,7 @@ def cmd_lockdown(args: argparse.Namespace) -> int:
     config.save(cfg)
     applier.apply(restart=True, firewall_only=True, log=say)
     sentinel.append_event({"at": int(time.time()), "severity": "alert" if cfg["LOCKDOWN"] else "notice", "kind": "manual", "text": f"Lockdown switched {args.mode} by an administrator."})
+    tell(alerts.Alert("security", f"Lockdown was switched {args.mode}", what=alerts.ADVICE["lockdown"][0], todo=alerts.ADVICE["lockdown"][1], urgent=cfg["LOCKDOWN"]))
     if cfg["LOCKDOWN"]:
         say("Lockdown is ON: only TRUSTED_NETS can open Ludora." + ("" if cfg["TRUSTED_NETS"] else " TRUSTED_NETS is empty, so nobody can."))
     else:
@@ -299,6 +328,8 @@ def cmd_support(args: argparse.Namespace) -> int:
         say(f"Support access is open until {time.strftime('%d %b %H:%M', time.localtime(window['until']))} for key {window['fingerprint']} from {window['from']}.")
         say("It can run: " + ", ".join(sorted(access.SUPPORT_VERBS)) + ". It has no shell.")
         sentinel.append_event({"at": int(time.time()), "severity": "notice", "kind": "support", "text": f"Support access opened for {args.hours} h from {window['from']}."})
+        tell(alerts.Alert("security", f"Support access was opened for {args.hours:g} hours", what=alerts.ADVICE["support"][0], todo=alerts.ADVICE["support"][1],
+                          facts=[f"From {window['from']}, for the key {window['fingerprint']}", "Closes by itself at " + time.strftime("%H:%M on %d %B", time.localtime(window["until"]))]))
         return 0
     if args.action == "close":
         closed = access.support_close(log=say)
@@ -311,8 +342,70 @@ def cmd_support(args: argparse.Namespace) -> int:
 
 def cmd_backup(args: argparse.Namespace) -> int:
     need_root()
-    maintain.backup(say)
+    try:
+        maintain.backup(say)
+    except Exception as err:
+        tell(alerts.Alert("upkeep", "The backup failed", what="The nightly copy of Ludora's database and uploads was not made.",
+                          todo="Run `ludoractl backup` at the server to see the error. The usual causes are a full disk or the database being stopped. "
+                               "Until it works, the newest backup is getting older.", facts=[alerts.clean(err, 300)], urgent=True))
+        raise
     return 0
+
+
+def cmd_alerts(args: argparse.Namespace) -> int:
+    cfg = config.load()
+    if args.action == "show":
+        for audience, (key, label) in alerts.AUDIENCES.items():
+            to = alerts.recipients(cfg, audience)
+            say(f"{label:<10} ({key}): " + (", ".join(to) if to else "nobody"))
+        say(f"Mail server: {cfg['SMTP_HOST'] or 'not set'}" + (f" port {cfg['SMTP_PORT']} ({cfg['SMTP_SECURITY']}), from {cfg['SMTP_FROM'] or 'not set'}" if cfg["SMTP_HOST"] else ""))
+        say(f"Phone pushes: {cfg['NTFY_SERVER']}")
+        found = alerts.problems(cfg) if system.is_root() else []
+        for problem in found:
+            say("PROBLEM: " + problem)
+        if not any(alerts.recipients(cfg, a) for a in alerts.AUDIENCES):
+            say("Nobody is on any list, so nobody would be told about an attack. Add someone: ludoractl set ALERT_SECURITY_TO you@school.example")
+        return 1 if found else 0
+    need_root()
+    if args.action == "topic":
+        import secrets as _random
+        topic = "ludora-" + _random.token_urlsafe(18).replace("-", "x").replace("_", "y")
+        say(topic)
+        say(f"On the phone: install the ntfy app, add a subscription to this topic on {cfg['NTFY_SERVER']}.")
+        say(f"On the server: ludoractl set ALERT_SECURITY_TO ntfy:{topic}   (add it to the other lists the same way)")
+        say("Anyone who knows the topic name can read its messages, so treat it like a password.")
+        return 0
+    if args.action == "secret":
+        if sys.stdin.isatty():
+            import getpass
+            value = getpass.getpass("Paste it here (it is not shown): ")
+        else:
+            value = sys.stdin.readline()
+        try:
+            alerts.save_secret({"smtp-password": "SMTP_PASSWORD", "telegram-token": "TELEGRAM_BOT_TOKEN"}[args.name], value)
+        except ValueError as err:
+            raise Refused(str(err)) from None
+        system.run(["systemctl", "try-restart", "ludora-sentinel.service"])
+        say("Saved. Check it works: ludoractl alerts test")
+        return 0
+    if args.action == "test":
+        wanted = [args.audience] if args.audience else list(alerts.AUDIENCES)
+        failed = False
+        for problem in alerts.problems(cfg):
+            say("PROBLEM: " + problem)
+        for audience in wanted:
+            label = alerts.AUDIENCES[audience][1]
+            if not alerts.recipients(cfg, audience):
+                say(f"{label}: nobody is on that list.")
+                continue
+            results = alerts.deliver(alerts.Alert(
+                audience, "This is a test", what=f"Someone at the server asked for a test of the {label.lower()} alerts. Nothing is wrong.",
+                todo="Nothing. If you were not expecting this, you are on this server's alert list: ask whoever runs it.",
+                facts=["Real alerts look like this one: what happened, what the server did, and what to do."]), cfg)
+            failed = failed or any(not ok for _, ok, _ in results)
+            say(f"{label}: " + "; ".join(f"{r}: {'sent' if ok else 'NOT delivered: ' + why}" for r, ok, why in results))
+        return 1 if failed else 0
+    return 2
 
 
 def cmd_backups(args: argparse.Namespace) -> int:
@@ -334,7 +427,13 @@ def cmd_restore(args: argparse.Namespace) -> int:
 
 def cmd_update(args: argparse.Namespace) -> int:
     need_root()
-    say(maintain.update_app(args.ref, say) if args.what == "app" else maintain.update_os(say))
+    try:
+        say(maintain.update_app(args.ref, say) if args.what == "app" else maintain.update_os(say))
+    except Exception as err:
+        what = "Ludora" if args.what == "app" else "the operating system"
+        tell(alerts.Alert("upkeep", f"Updating {what} did not work", what="An update was tried and did not finish." + (" Ludora was put back to the version it had been running." if args.what == "app" else ""),
+                          todo="Nothing urgent if Ludora is answering. Read the error, and try again when its cause is fixed.", facts=[alerts.clean(err, 300)]))
+        raise
     return 0
 
 
@@ -476,6 +575,14 @@ def parser() -> argparse.ArgumentParser:
     p.add_argument("what", choices=sorted(maintain.SERVICES) + ["all"])
     add("reboot", cmd_power, "Restart the server.")
     add("poweroff", cmd_power, "Shut the server down.")
+    p = add("alerts", cmd_alerts, "Who is told about attacks, upkeep and cheating, and a test message.")
+    sub = p.add_subparsers(dest="action", required=True)
+    sub.add_parser("show", help="the lists and what, if anything, stops delivery")
+    a = sub.add_parser("test", help="send a test message to a list, or to all three")
+    a.add_argument("audience", nargs="?", choices=sorted(alerts.AUDIENCES))
+    a = sub.add_parser("secret", help="set the mail password or the Telegram bot token (read from standard input, never from the command line)")
+    a.add_argument("name", choices=["smtp-password", "telegram-token"])
+    sub.add_parser("topic", help="make a long random ntfy topic name for phone pushes")
     p = add("usb", cmd_usb, "Trust the USB devices plugged in now and refuse new ones.")
     p.add_argument("action", choices=["init"])
     p = add("tls", cmd_tls, "Print the server's own root certificate (TLS_MODE=internal).")

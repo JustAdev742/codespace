@@ -17,7 +17,7 @@ from contextlib import redirect_stderr, redirect_stdout
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(HERE, "..", "rootfs", "usr", "lib", "ludora-os", "python"))
 
-from ludora_os import access, apply as applier, config, ctl, doctor, maintain, overview, render, sentinel, system  # noqa: E402
+from ludora_os import access, alerts, apply as applier, config, ctl, doctor, maintain, overview, render, sentinel, system  # noqa: E402
 
 HOSTILE = [
     "a; nft flush ruleset", "x\nPermitRootLogin yes", "$(reboot)", "`id`", "} table inet evil {", "10.0.0.1 } accept #",
@@ -403,6 +403,23 @@ class SentinelTests(unittest.TestCase):
             os.environ.pop("LUDORA_OS_ROOT", None)
             shutil.rmtree(root, ignore_errors=True)
 
+    def test_cheating_reported_by_ludora_is_passed_on_once_and_nobody_is_banned(self):
+        b = self.brain()
+        line = json.dumps({"level": 40, "time": 1, "ludora_event": "integrity", "kind": "too_fast", "room": "ABCD", "mode": "classic", "player": "Sam", "count": 4,
+                           "detail": "x", "at": "2026-11-18T00:00:00Z", "msg": "possible cheating"})
+        got = b.on_app_line(line, 1000)
+        self.assertEqual(self.bans(got), [])
+        self.assertEqual([a.event["kind"] for a in got], ["integrity"])
+        self.assertEqual(got[0].event["record"], {"kind": "too_fast", "room": "ABCD", "mode": "classic", "player": "Sam", "count": 4})
+        self.assertEqual(b.on_app_line(line, 1010), [])                        # the same signal is not repeated
+        for other in ("not json", "{}", json.dumps({"ludora_event": "integrity", "kind": "made_up"}), json.dumps({"msg": 'x "ludora_event":"integrity","kind":"too_fast"'}),
+                      json.dumps(["ludora_event"]), "{" + "a" * 5000):
+            self.assertEqual(b.on_app_line(other, 1000), [], other[:40])
+        made = alerts.from_integrity([got[0].event["record"]])
+        self.assertEqual(made.audience, "cheat")
+        self.assertIn("Possible cheating in game ABCD (classic)", made.title)
+        self.assertIn('calling themselves "Sam" answered correctly faster than a person can read the question, more than once (4 times).', made.facts[0])
+
     def test_events_are_never_written_through_a_link(self):
         """Root logs into a folder the sentinel owns. A link planted there must not make root write somewhere else."""
         root = tempfile.mkdtemp(prefix="ludora-os-test-")
@@ -627,6 +644,214 @@ class ApplyTests(Sandbox):
             self.assertEqual((info.st_gid, info.st_mode & 0o777), (other.gr_gid, 0o640))
         finally:
             system.SENTINEL_GROUP = real
+
+
+class FakeSMTP:
+    """Stands in for a mail server and remembers what it was asked to do."""
+    log: list = []
+    fail_login = False
+
+    def __init__(self, host, port, timeout=None, context=None):
+        FakeSMTP.log.append(("connect", host, port, context is not None))
+
+    def starttls(self, context=None):
+        FakeSMTP.log.append(("starttls", context is not None))
+
+    def login(self, user, password):
+        if FakeSMTP.fail_login:
+            import smtplib
+            raise smtplib.SMTPAuthenticationError(535, b"bad credentials for hunter2-secret-pw")
+        FakeSMTP.log.append(("login", user, password))
+
+    def send_message(self, message, from_addr=None, to_addrs=None):
+        FakeSMTP.log.append(("send", from_addr, list(to_addrs), message["Subject"], message.get_content()))
+
+    def quit(self):
+        FakeSMTP.log.append(("quit",))
+
+
+class AlertTests(Sandbox):
+    def setUp(self) -> None:
+        super().setUp()
+        import smtplib
+        self._smtp, self._smtp_ssl, self._post = smtplib.SMTP, smtplib.SMTP_SSL, alerts._post
+        smtplib.SMTP = smtplib.SMTP_SSL = FakeSMTP
+        FakeSMTP.log, FakeSMTP.fail_login = [], False
+        self.posts: list = []
+        alerts._post = lambda url, data, headers: self.posts.append((url, data, headers))
+
+    def tearDown(self) -> None:
+        import smtplib
+        smtplib.SMTP, smtplib.SMTP_SSL, alerts._post = self._smtp, self._smtp_ssl, self._post
+        super().tearDown()
+
+    def mail_cfg(self, **more: str) -> dict:
+        return self.configure(DOMAIN="10.20.0.5", SERVER_NAME="ludora-hills", SMTP_HOST="smtp.school.example", SMTP_USER="alerts@school.example",
+                              SMTP_FROM="alerts@school.example", **more)
+
+    def test_recipients_are_emails_ntfy_topics_or_telegram_chats_and_nothing_else(self):
+        cfg = config.defaults()
+        config.set_value(cfg, "ALERT_SECURITY_TO", "it@school.example, ntfy:ludora-Zk3v9qPq2xYw, telegram:-1001234567890")
+        self.assertEqual(cfg["ALERT_SECURITY_TO"], ["it@school.example", "ntfy:ludora-Zk3v9qPq2xYw", "telegram:-1001234567890"])
+        for bad in ("someone", "a@b", "ntfy:short", "ntfy:has/slash-in-topic", "telegram:abc", "sms:+61400000000", "mailto:it@school.example",
+                    "it@school.example?bcc=x@y.z", "it@school..example", "https://ntfy.sh/topic"):
+            with self.assertRaises(config.ConfigError, msg=bad):
+                config.set_value(config.defaults(), "ALERT_SECURITY_TO", bad)
+
+    def test_an_alert_says_what_happened_what_was_done_and_what_to_do(self):
+        cfg = self.mail_cfg()
+        events = [
+            {"at": 1000, "severity": "warning", "kind": "tripwire", "text": "10.20.3.3 connected to decoy port 3389. Banned for 15 min.", "ip": "10.20.3.3", "minutes": 15},
+            {"at": 1005, "severity": "warning", "kind": "probe", "text": "10.20.3.4 probed for other software's weak spots. Banned for 60 min.", "ip": "10.20.3.4", "minutes": 60},
+        ]
+        subject, body = alerts.compose(alerts.from_events(events, cfg), cfg, now=1010)
+        self.assertEqual(subject, "[Ludora OS ludora-hills] Security: 2 addresses banned in the last few minutes")
+        for needed in ("10.20.3.3 connected to decoy port 3389", "Decoy port touched. A device connected to a decoy port: a port with nothing real behind it",
+                       "Probing for weak spots. A device asked for pages that belong to other software", "What the server did: Refused 2 addresses for up to 60 minutes",
+                       "  What to do: Usually nothing", "ludoractl unban ADDRESS", "Server: ludora-hills (https://10.20.0.5)", "When: "):
+            self.assertIn(needed, body)
+        self.assertTrue(body.isascii(), "plain letters only, so every mail and phone app shows it the same")
+        one = alerts.compose(alerts.from_events(events[:1], cfg), cfg, now=1010)[1]
+        self.assertIn("What to do: Usually nothing", one)                         # one kind: said once, without headings
+        urgent = alerts.from_events(events + [{"at": 1006, "severity": "alert", "kind": "level", "text": "Threat level: under attack.", "level": 2}], cfg)
+        self.assertTrue(urgent.urgent)
+        self.assertEqual(urgent.title, "Threat level: under attack. (and 2 more events)")  # the most serious thing leads
+
+    def test_text_an_outsider_typed_cannot_add_lines_or_headers(self):
+        cfg = self.mail_cfg(ALERT_CHEAT_TO="head@school.example")
+        nasty = "Sam\r\nBcc: everyone@school.example\n\nYou have been hacked \x1b[31m" + "A" * 500
+        alert = alerts.from_integrity([{"kind": "too_fast", "room": "ABCD\nX", "mode": "classic", "player": nasty, "count": 4}])
+        subject, body = alerts.compose(alert, cfg, now=1)
+        self.assertNotIn("\r", subject + body)
+        self.assertNotIn("\x1b", body)
+        self.assertNotIn("\nBcc:", body)
+        self.assertEqual(sum(1 for line in body.splitlines() if "calling themselves" in line), 1)
+        self.assertIn("This is a signal, not proof", body)
+        alerts.deliver(alert, cfg, secrets={"SMTP_PASSWORD": "pw"})
+        sent = [entry for entry in FakeSMTP.log if entry[0] == "send"][0]
+        self.assertEqual(sent[2], ["head@school.example"])
+        self.assertNotIn("\n", sent[3])
+
+    def test_mail_is_encrypted_signed_in_and_goes_only_to_its_list(self):
+        cfg = self.mail_cfg(ALERT_SECURITY_TO="it@school.example,deputy@school.example", ALERT_UPKEEP_TO="it@school.example")
+        results = alerts.deliver(alerts.Alert("security", "A test"), cfg, secrets={"SMTP_PASSWORD": "abcd efgh"})
+        self.assertEqual(results, [("it@school.example", True, ""), ("deputy@school.example", True, "")])
+        kinds = [entry[0] for entry in FakeSMTP.log]
+        self.assertEqual(kinds, ["connect", "starttls", "login", "send", "quit"])   # never sent before encryption is on
+        self.assertEqual(FakeSMTP.log[0][1:3], ("smtp.school.example", 587))
+        self.assertEqual(FakeSMTP.log[3][1:3], ("alerts@school.example", ["it@school.example", "deputy@school.example"]))
+        self.assertEqual(alerts.deliver(alerts.Alert("cheat", "Nobody listed"), cfg, secrets={}), [])
+
+    def test_a_failed_delivery_is_reported_without_leaking_secrets(self):
+        cfg = self.mail_cfg(ALERT_SECURITY_TO="it@school.example,telegram:123456789,ntfy:ludora-Zk3v9qPq2xYw")
+        FakeSMTP.fail_login = True
+        token = "123456789:" + "A" * 35
+
+        def refuse(url, data, headers):
+            raise OSError(f"could not reach {url}")
+
+        alerts._post = refuse
+        results = alerts.deliver(alerts.Alert("security", "A test"), cfg, secrets={"SMTP_PASSWORD": "hunter2-secret-pw", "TELEGRAM_BOT_TOKEN": token})
+        self.assertEqual([ok for _, ok, _ in results], [False, False, False])       # and none of it raised
+        text = alerts.summary(results)
+        self.assertNotIn(token, text)
+        self.assertNotIn("hunter2-secret-pw", text)
+        self.assertNotIn("Zk3v9qPq2xYw", text.split("(")[0])                          # recipients are shortened in logs
+        self.assertIn("NOT delivered", text)
+
+    def test_phone_pushes_and_telegram_use_https_and_carry_the_whole_message(self):
+        cfg = self.mail_cfg(ALERT_UPKEEP_TO="ntfy:ludora-Zk3v9qPq2xYw,telegram:123456789")
+        token = "123456789:" + "A" * 35
+        alert = alerts.Alert("upkeep", "The backup failed", todo="Run `ludoractl backup`.", urgent=True)
+        self.assertEqual([ok for _, ok, _ in alerts.deliver(alert, cfg, secrets={"TELEGRAM_BOT_TOKEN": token})], [True, True])
+        (ntfy_url, ntfy_body, ntfy_headers), (tg_url, tg_body, _) = self.posts
+        self.assertEqual(ntfy_url, "https://ntfy.sh/ludora-Zk3v9qPq2xYw")
+        self.assertEqual(ntfy_headers["Priority"], "urgent")
+        self.assertIn(b"What to do: Run `ludoractl backup`.", ntfy_body)
+        self.assertEqual(tg_url, f"https://api.telegram.org/bot{token}/sendMessage")
+        self.assertEqual(json.loads(tg_body)["chat_id"], "123456789")
+        self.assertNotIn("parse_mode", json.loads(tg_body))   # plain text: nothing a player typed is read as formatting
+
+    def test_bursts_become_one_message_and_urgent_news_does_not_wait(self):
+        box = alerts.Outbox(quiet=600)
+        box.add({"n": 1}, 0)
+        self.assertIsNone(box.take(30))                    # waiting a minute for its companions
+        box.add({"n": 2}, 40)
+        self.assertEqual(len(box.take(61)), 2)
+        box.add({"n": 3}, 100)
+        self.assertIsNone(box.take(300))                   # quiet period after a message
+        box.add({"n": 4}, 320, urgent=True)
+        self.assertEqual(len(box.take(321)), 2)            # urgent: goes at once, with what was waiting
+        box.add({"n": 5}, 330, urgent=True)
+        self.assertIsNone(box.take(331))                   # but never more than one a minute
+        self.assertEqual(len(box.take(382)), 1)
+        small = alerts.Outbox(quiet=0, settle=0, cap=3)
+        for i in range(10):
+            small.add({"n": i}, 0)
+        taken = small.take(1)
+        self.assertEqual(len(taken), 4)
+        self.assertIn("7 more events", taken[-1]["text"])
+
+    def test_secrets_are_kept_private_and_checked(self):
+        alerts.save_secret("SMTP_PASSWORD", "abcd efgh ijkl mnop\n")
+        self.assertEqual(alerts.load_secrets(), {"SMTP_PASSWORD": "abcdefghijklmnop"})
+        self.assertEqual(os.stat(system.p(system.ALERT_SECRETS_FILE)).st_mode & 0o777, 0o640)
+        for key, bad in (("SMTP_PASSWORD", ""), ("SMTP_PASSWORD", "two\nlines"), ("TELEGRAM_BOT_TOKEN", "not-a-token"), ("OTHER", "x")):
+            with self.assertRaises(ValueError):
+                alerts.save_secret(key, bad)
+        alerts.save_secret("TELEGRAM_BOT_TOKEN", "123456789:" + "A" * 35)
+        self.assertEqual(sorted(alerts.load_secrets()), ["SMTP_PASSWORD", "TELEGRAM_BOT_TOKEN"])
+
+    def test_what_stops_delivery_is_named(self):
+        cfg = self.configure(DOMAIN="10.20.0.5", ALERT_SECURITY_TO="it@school.example,telegram:123456789")
+        found = " ".join(alerts.problems(cfg, {}))
+        self.assertIn("SMTP_HOST", found)
+        self.assertIn("telegram-token", found)
+        cfg = self.mail_cfg(ALERT_SECURITY_TO="it@school.example")
+        self.assertIn("smtp-password", " ".join(alerts.problems(cfg, {})))
+        self.assertEqual(alerts.problems(cfg, {"SMTP_PASSWORD": "x"}), [])
+        self.assertEqual(doctor._alerts(config.defaults())[0], "unknown")     # nobody listed: said plainly, not a failure
+        self.assertEqual(doctor._alerts(cfg)[0], "fail")                      # listed but the password is missing
+
+    def test_the_firewall_lets_mail_out_only_when_a_mail_server_is_set(self):
+        cfg = config.defaults()
+        self.assertNotIn("tcp dport 587 accept", render.nftables(cfg))
+        config.set_value(cfg, "SMTP_HOST", "smtp.school.example")
+        self.assertIn("tcp dport 587 accept", render.nftables(cfg))
+
+    def test_the_alerts_command_shows_tests_and_never_takes_a_secret_as_an_argument(self):
+        self.mail_cfg(ALERT_SECURITY_TO="it@school.example")
+        alerts.save_secret("SMTP_PASSWORD", "pw")
+        out, err = io.StringIO(), io.StringIO()
+        with redirect_stdout(out), redirect_stderr(err):
+            self.assertEqual(ctl.main(["alerts", "test", "security"]), 0)
+            self.assertEqual(ctl.main(["alerts", "show"]), 0)
+            with self.assertRaises(SystemExit):
+                ctl.main(["alerts", "secret", "smtp-password", "the-password-on-the-command-line"])
+        self.assertIn("Security: it@school.example: sent", out.getvalue())
+        sent = [entry for entry in FakeSMTP.log if entry[0] == "send"][0]
+        self.assertIn("This is a test", sent[3])
+        self.assertIn("Nothing is wrong", sent[4])
+
+    def test_a_backup_that_fails_tells_the_upkeep_list(self):
+        self.mail_cfg(ALERT_UPKEEP_TO="it@school.example")
+        alerts.save_secret("SMTP_PASSWORD", "pw")
+        real = maintain.backup
+
+        def broken(log):
+            raise maintain.MaintainError("the database is not running")
+
+        maintain.backup = broken
+        try:
+            out, err = io.StringIO(), io.StringIO()
+            with redirect_stdout(out), redirect_stderr(err):
+                code = ctl.main(["backup"])
+        finally:
+            maintain.backup = real
+        self.assertNotEqual(code, 0)
+        sent = [entry for entry in FakeSMTP.log if entry[0] == "send"][0]
+        self.assertIn("The backup failed", sent[3])
+        self.assertIn("the database is not running", sent[4])
 
 
 class CtlTests(Sandbox):

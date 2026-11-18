@@ -165,6 +165,53 @@ def _ports(v: str) -> list[int]:
     return sorted(out)
 
 
+_MAIL = re.compile(r"^[A-Za-z0-9._+-]{1,64}@(?=.{1,253}$)[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?(?:\.[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?)+$")
+_NTFY_TOPIC = re.compile(r"^[A-Za-z0-9_-]{8,64}$")
+_TELEGRAM_CHAT = re.compile(r"^-?[0-9]{5,20}$")
+
+
+def _recipients(v: str) -> list[str]:
+    """Who gets a kind of alert. Each one is an email address, ntfy:<topic> (a free push to a phone) or
+    telegram:<chat id> (a message from the school's own Telegram bot)."""
+    out: list[str] = []
+    for part in _split(v):
+        kind, sep, rest = part.partition(":")
+        if not sep and _MAIL.match(part):
+            item = part
+        elif sep and kind == "ntfy" and _NTFY_TOPIC.match(rest):
+            item = part
+        elif sep and kind == "telegram" and _TELEGRAM_CHAT.match(rest):
+            item = part
+        else:
+            raise ConfigError(f"{part[:60]!r} is not an email address, ntfy:<topic of 8 or more letters and digits> or telegram:<chat number>")
+        if item not in out:
+            out.append(item)
+    if len(out) > 12:
+        raise ConfigError("at most 12 recipients")
+    return out
+
+
+def _mail_or_empty(v: str) -> str:
+    v = v.strip()
+    if v and not _MAIL.match(v):
+        raise ConfigError("give one email address")
+    return v
+
+
+def _host_or_empty(v: str) -> str:
+    v = v.strip().lower()
+    if v and not _FQDN.match(v):
+        raise ConfigError("give a host name such as smtp.your-school.org")
+    return v
+
+
+def _login(v: str) -> str:
+    v = v.strip()
+    if not re.fullmatch(r"[A-Za-z0-9._%+@-]{0,128}", v):
+        raise ConfigError("letters, digits and . _ % + @ - only")
+    return v
+
+
 def _https_url(v: str) -> str:
     v = v.strip()
     if not v:
@@ -224,6 +271,16 @@ FIELDS: list[Field] = [
     Field("DNS_SERVERS", _ips, [], "If set, the server may ask only these name servers."),
     Field("AUTO_REBOOT", _bool, True, "Restart in the small hours when a security update needs it."),
     Field("WEBHOOK_URL", _https_url, "", "Optional https address that receives a JSON alert for serious events (a Teams or Slack incoming webhook works)."),
+    Field("ALERT_SECURITY_TO", _recipients, [], "Who is told about attacks: bans, floods, impersonation, lockdown, support access. Email addresses, ntfy:<topic> or telegram:<chat number>, separated by commas."),
+    Field("ALERT_UPKEEP_TO", _recipients, [], "Who is told when the server needs care: a failed backup or update, a self-check that starts failing, a full disk."),
+    Field("ALERT_CHEAT_TO", _recipients, [], "Who is told when Ludora spots likely cheating in a game."),
+    Field("ALERT_QUIET_MINUTES", _int(1, 1440), 10, "After an alert about bans, further ones are saved up and sent together after this many minutes."),
+    Field("SMTP_HOST", _host_or_empty, "", "The mail server that sends alert emails, e.g. smtp.gmail.com or the school's own. Needed for email recipients."),
+    Field("SMTP_PORT", _int(1, 65535), 587, "Its port: 587 (the usual) or 465."),
+    Field("SMTP_SECURITY", _choice("starttls", "tls"), "starttls", "starttls for port 587, tls for port 465. Mail is never sent unencrypted."),
+    Field("SMTP_USER", _login, "", "The account the server signs in to the mail server with. Its password is set with `ludoractl alerts secret smtp-password`."),
+    Field("SMTP_FROM", _mail_or_empty, "", "The address alerts come from. Usually the same as the account."),
+    Field("NTFY_SERVER", _https_url, "https://ntfy.sh", "The ntfy server for phone pushes. ntfy.sh is free and public; a school can run its own."),
     Field("APP_REPO", _https_url, "https://github.com/JustAdev742/codespace", "Where Ludora's source comes from for updates."),
     Field("APP_REF", _ref, "main", "The branch, tag or commit of Ludora to run."),
     Field("DB_IMAGE", _image, "docker.io/library/postgres:16-alpine", "The database image."),

@@ -28,7 +28,7 @@ from collections import defaultdict, deque
 from dataclasses import dataclass, field
 from typing import Any, Iterable
 
-from . import config, render, system
+from . import alerts, config, render, system
 
 STATE_DIR = f"{system.STATE}/sentinel"
 BANS_FILE = f"{STATE_DIR}/bans.json"
@@ -281,6 +281,25 @@ class Brain:
         if self.flood.add(ip, now):
             return self._ban(ip, "flooded the site with requests", "flood", now)
         return []
+
+    def on_app_line(self, message: str, now: float) -> list[Action]:
+        """Ludora itself reports likely cheating in a game as one JSON log line. Passed on; nobody is banned for it."""
+        if not message.startswith("{") or len(message) > 4000:
+            return []
+        try:
+            record = json.loads(message)
+        except ValueError:
+            return []
+        if not isinstance(record, dict) or record.get("ludora_event") != "integrity" or record.get("kind") not in alerts.CHEAT_KINDS:
+            return []
+        key = f"cheat:{alerts.clean(record.get('room', ''), 12)}:{alerts.clean(record.get('player', ''), 40)}:{record['kind']}"
+        if now - self.warned.get(key, float("-inf")) < 3600:
+            return []
+        self._warn(key, now)
+        kept = {"kind": record["kind"], "room": alerts.clean(record.get("room", "?"), 12), "mode": alerts.clean(record.get("mode", ""), 40),
+                "player": alerts.clean(record.get("player", "?"), 40), "count": record.get("count") if isinstance(record.get("count"), int) else None}
+        text = f"Game {kept['room']}: a player calling themselves \"{kept['player']}\" {alerts.CHEAT_KINDS[kept['kind']]}."
+        return [self._event(now, "notice", "integrity", text, record=kept)]
 
     def on_neighbours(self, entries: list[dict[str, Any]], gateways: list[str], now: float) -> list[Action]:
         """Watch the gateway's hardware address: if it changes, someone may be standing in the middle."""
@@ -547,6 +566,9 @@ class Daemon:
         self.brain.lookup = neighbour_mac
         self.pending_alerts: list[str] = []
         self.last_alert = 0.0
+        quiet = self.cfg["ALERT_QUIET_MINUTES"] * 60
+        self.security_box = alerts.Outbox(quiet)
+        self.cheat_box = alerts.Outbox(quiet, settle=120)
         self.stop = asyncio.Event()
 
     def perform(self, actions: list[Action]) -> None:
@@ -557,8 +579,14 @@ class Daemon:
                 set_shield(self.cfg, action.on)
             elif action.kind == "event":
                 append_event(action.event)
-                if action.event.get("severity") == "alert":
+                severity = action.event.get("severity")
+                if severity == "alert":
                     self.pending_alerts.append(action.event["text"])
+                now = time.time()
+                if action.event.get("kind") == "integrity":
+                    self.cheat_box.add(action.event.get("record", {}), now)
+                elif severity in ("alert", "warning"):
+                    self.security_box.add(action.event, now, urgent=severity == "alert")
 
     async def tripwire(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
         try:
@@ -587,7 +615,7 @@ class Daemon:
     async def follow_journal(self) -> None:
         # --all: without it the journal hands over any line longer than 4096 bytes as "null", and a request padded
         # past that would slip by unseen.
-        argv = ["journalctl", "--follow", "--lines=0", "--output=json", "--all", "--unit=sshd.service", "--unit=ludora-proxy.service"]
+        argv = ["journalctl", "--follow", "--lines=0", "--output=json", "--all", "--unit=sshd.service", "--unit=ludora-proxy.service", "--unit=ludora-app.service"]
         while not self.stop.is_set():
             try:
                 proc = await asyncio.create_subprocess_exec(*argv, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.DEVNULL, limit=1 << 20)
@@ -620,6 +648,8 @@ class Daemon:
                 now = time.time()
                 if unit == "sshd.service" or record.get("SYSLOG_IDENTIFIER", "").startswith("sshd"):
                     self.perform(self.brain.on_ssh_line(message, now))
+                elif unit == "ludora-app.service":
+                    self.perform(self.brain.on_app_line(message, now))
                 else:
                     self.perform(self.brain.on_web_line(message, now))
             await proc.wait()
@@ -680,11 +710,33 @@ class Daemon:
                 self.pending_alerts.clear()
                 self.last_alert = now
                 await asyncio.get_running_loop().run_in_executor(None, post_webhook, self.cfg["WEBHOOK_URL"], text)
+            await self.send_due(now)
             ticks += 1
             try:
                 await asyncio.wait_for(self.stop.wait(), timeout=5)
             except asyncio.TimeoutError:
                 pass
+
+    async def send_due(self, now: float) -> None:
+        """Tell the people on the lists, off the main loop so a slow mail server never delays a ban."""
+        due: list[alerts.Alert] = []
+        batch = self.security_box.take(now)
+        if batch:
+            made = alerts.from_events(batch, self.cfg)
+            if made:
+                due.append(made)
+        batch = self.cheat_box.take(now)
+        if batch:
+            made = alerts.from_integrity(batch)
+            if made:
+                due.append(made)
+        for alert in due:
+            if not alerts.recipients(self.cfg, alert.audience):
+                continue
+            results = await asyncio.get_running_loop().run_in_executor(None, lambda a=alert: alerts.deliver(a, self.cfg))
+            failed = any(not ok for _, ok, _ in results)
+            append_event({"at": int(time.time()), "severity": "notice" if failed else "info", "kind": "alert-delivery",
+                          "text": f"Alert \"{alerts.clean(alert.title, 80)}\": {alerts.summary(results)}."})
 
     async def main(self) -> None:
         loop = asyncio.get_running_loop()

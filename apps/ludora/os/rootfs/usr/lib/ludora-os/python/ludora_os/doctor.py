@@ -14,7 +14,7 @@ import shutil
 import time
 from typing import Any, Callable
 
-from . import apply as applier
+from . import alerts, apply as applier
 from . import config, maintain, sentinel, system
 
 Check = tuple[str, str, str]  # state, title, detail
@@ -296,6 +296,17 @@ def _ctrl_alt_del() -> Check:
     return (_state(result.out.strip() == "masked"), "Ctrl-Alt-Del does not restart the server", result.out.strip() or "unknown")
 
 
+def _alerts(cfg: dict[str, Any]) -> Check:
+    title = "Someone is told when something happens"
+    lists = {label: alerts.recipients(cfg, audience) for audience, (_, label) in alerts.AUDIENCES.items()}
+    if not lists["Security"]:
+        return ("unknown", title, "nobody is on the security alert list, so an attack would only show on this screen: `ludoractl set ALERT_SECURITY_TO you@school.example`")
+    found = alerts.problems(cfg)
+    if found:
+        return ("fail", title, " ".join(found))
+    return ("pass", title, ", ".join(f"{label.lower()}: {len(to)}" for label, to in lists.items()) + " (`ludoractl alerts test` sends a test)")
+
+
 def run_all() -> dict[str, Any]:
     cfg = config.load()
     checks: list[Callable[[], Check]] = [
@@ -307,6 +318,7 @@ def run_all() -> dict[str, Any]:
         _sentinel_fresh, _time_sync,
         _unit("dnf-automatic.timer", "Automatic updates are scheduled"),
         _updates, _restart_needed, _images, _app_health, _backups, _disk, _drift, _world_writable, _foreign_suid, _aide, _failed_units,
+        lambda: _alerts(cfg),
     ]
     results = []
     for check in checks:

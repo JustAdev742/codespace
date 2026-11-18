@@ -148,6 +148,72 @@ by itself; `ludoractl support close` closes it now. The limit is 72 hours and on
 This is also how an AI assistant can be connected to the server safely: give it a support key. It can see what is
 wrong and run the safe fixes, and it cannot do anything else.
 
+### Alerts: who is told, and how
+
+The server tells people when something happens, by ways that cost nothing. There are three lists, so each person
+gets only what they need to know:
+
+| List | Setting | What it gets |
+|---|---|---|
+| Security | `ALERT_SECURITY_TO` | Attacks: bans, floods, password guessing, impersonation, lockdown, support access opened. |
+| Upkeep | `ALERT_UPKEEP_TO` | The server needs care: a backup or update failed, a protection stopped passing the self-check. |
+| Fair play | `ALERT_CHEAT_TO` | Ludora spotted likely cheating in a game (see below). |
+
+Each entry on a list is one of:
+
+- **An email address.** Free, but the server needs a mail account to send through: the school's own, or a free one
+  (for Gmail, make an "app password" for the account).
+- **`ntfy:<topic>`: a push to a phone.** Install the free ntfy app, run `ludoractl alerts topic` to make a long random
+  topic name, and subscribe to it in the app. No account is needed. Anyone who knows the topic name can read its
+  messages, so treat it like a password; a school can also run its own ntfy server (`NTFY_SERVER`).
+- **`telegram:<chat number>`: a Telegram message.** Make a bot with Telegram's BotFather, give its token to the
+  server (`ludoractl alerts secret telegram-token`), and message the bot once so it may write to you.
+
+A text message to a phone number is not offered. Every way of sending one costs money, and the free
+email-to-text gateways that mobile carriers ran are being switched off. A push to the phone does the same job.
+
+```bash
+ludoractl set SMTP_HOST smtp.gmail.com          # port 587 with STARTTLS is the default
+ludoractl set SMTP_USER alerts@your-school.org
+ludoractl set SMTP_FROM alerts@your-school.org
+ludoractl alerts secret smtp-password           # asks for it; it is never given on the command line
+ludoractl set ALERT_SECURITY_TO it@your-school.org,ntfy:ludora-Zk3v9qPq2xYw
+ludoractl set ALERT_UPKEEP_TO it@your-school.org
+ludoractl set ALERT_CHEAT_TO deputy@your-school.org
+ludoractl apply
+ludoractl alerts test                            # one test message to each list
+```
+
+The same is in the console under **Security > Alerts**.
+
+An alert says what happened, what the server already did, and what to do, in plain words:
+
+```text
+[Ludora OS ludora-hills] Security: 2 addresses banned in the last few minutes
+
+Details:
+  - 10:42:07  10.20.3.3 connected to decoy port 3389. Banned for 15 min.
+  - 10:42:31  10.20.3.4 probed for other software's weak spots. Banned for 60 min.
+
+Decoy port touched. A device connected to a decoy port: a port with nothing real behind it, which only
+something scanning the server finds.
+  What to do: Usually nothing: the address is refused for the length of the ban. If it is a school machine
+  that should not have been banned, run `ludoractl unban ADDRESS` ...
+
+What the server did: Refused 2 addresses for up to 60 minutes. Staff addresses are never refused.
+```
+
+A burst of bans is one message, not fifty: the first goes after a minute, and later ones are saved up for
+`ALERT_QUIET_MINUTES` (ten by default). Anything urgent (the server under attack, a failed backup) goes within a
+minute. Mail is only ever sent encrypted. Names and addresses an outsider typed are cleaned before they go into a
+message, so nobody can add lines to an alert. If a message cannot be delivered, the server carries on and records
+why in `ludoractl events`.
+
+**Cheating in a game.** Ludora itself reports play that a person at the ordinary game screen could not produce:
+correct answers faster than anyone can read the question, moves the game does not allow, or one device playing
+as several players. The fair-play list is told which game and which player names. It is a signal, not proof, and
+Ludora never punishes or slows anyone by itself.
+
 ### USB devices
 
 After setup, plug in the keyboard and anything else that belongs, then run `ludoractl usb init`. Devices plugged in
@@ -182,6 +248,9 @@ systemd inside a container, with separate "student" and "staff" machines on the 
 
 - **Unit tests** (`python3 -m unittest discover -s tests`): settings validation against hostile values, every
   generated file, the sentinel's decisions, key handling, the support command list.
+- **Alerts**: unit tests for the messages, the batching and the mail conversation (against a stand-in mail
+  server), and one real alert sent through the public ntfy.sh service and read back. No email has been sent to a
+  real mailbox and no Telegram message has been sent: run `ludoractl alerts test` once they are set up.
 - **Attack simulation** (`sudo python3 tests/attack_sim.py`, 42 checks): builds a small school network out of
   network namespaces, loads the real firewall and sentinel, and attacks it: port scan, decoy ports, floods,
   connection exhaustion, 12,000 forged connection attempts, framing a classmate with forged packets, reaching the

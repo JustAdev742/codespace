@@ -202,6 +202,9 @@ def nftables(cfg: dict[str, Any], *, bans: dict[str, int] | None = None, shield:
         out += "\t\tmeta l4proto { tcp, udp } th dport 53 accept\n"
     out += "\t\tudp dport 123 accept\n"
     out += f"\t\ttcp dport {web} accept\n"
+    if cfg["SMTP_HOST"] and cfg["SMTP_PORT"] not in (80, 443):
+        out += "\t\t# Alert emails go out through the mail server in the settings.\n"
+        out += f"\t\ttcp dport {cfg['SMTP_PORT']} accept\n"
     out += "\t\tudp sport 68 udp dport 67 accept\n"
     if cfg["IPV6"]:
         out += "\t\tudp sport 546 udp dport 547 accept\n"
