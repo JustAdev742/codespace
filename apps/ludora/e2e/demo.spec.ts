@@ -10,6 +10,17 @@ import { answerAnyQuestion, watchErrors } from './helpers.ts';
 const axe = async (page: Page) =>
   (await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa']).analyze()).violations.map((v) => `${v.id}: ${v.nodes.map((n) => n.target.join(' ')).slice(0, 3).join(', ')}`);
 
+/**
+ * Wait for what is still arriving to arrive: every animation that ends (a result pops in over a fifth of a second)
+ * has ended. Checked mid-fade, text that is half transparent for a moment fails the contrast rule, which made the
+ * game-screen check fail now and then, whenever the answer given was wrong and the check landed inside the pop-in.
+ */
+const settled = (page: Page) =>
+  page.evaluate(async () => {
+    const ending = document.getAnimations().filter((a) => Number.isFinite(a.effect?.getComputedTiming().endTime ?? Infinity));
+    await Promise.race([Promise.allSettled(ending.map((a) => a.finished)), new Promise((done) => setTimeout(done, 3000))]);
+  });
+
 /** Everything the page loads must come from the demo's own folder: no API, no sockets, no other sites. */
 function watchRequests(page: Page, base: string): string[] {
   const outside: string[] = [];
@@ -59,9 +70,11 @@ test('plays a game against practice bots with nothing but static files', async (
   await page.getByRole('button', { name: 'Pause' }).click();
   await expect(page.getByText('Paused', { exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Resume' }).click();
+  await settled(page);
   expect(await axe(page), 'big screen accessibility').toEqual([]);
   await bigScreen.click();
   await expect(bigScreen).toHaveAttribute('aria-pressed', 'false');
+  await settled(page);
   expect(await axe(page), 'game screen accessibility').toEqual([]);
 
   // Finish now goes to the results; Play again starts the next game in the same room.
