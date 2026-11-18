@@ -70,7 +70,7 @@ def nftables(cfg: dict[str, Any], *, bans: dict[str, int] | None = None, shield:
     out += _set("block6", "ipv6_addr", "interval", _v6(cfg["BLOCKED_NETS"]))
     out += _set("ban4", "ipv4_addr", "timeout", ban4, "size 65536")
     out += _set("ban6", "ipv6_addr", "timeout", ban6, "size 65536")
-    for name in ("http_rate", "shield_rate", "ssh_rate"):
+    for name in ("http_rate", "shield_rate", "ssh_rate", "dash_rate"):
         out += _set(f"{name}4", "ipv4_addr", "dynamic,timeout", [], "timeout 1m\n\t\tsize 131072")
         out += _set(f"{name}6", "ipv6_addr", "dynamic,timeout", [], "timeout 1m\n\t\tsize 131072")
     for name in ("http_conn", "shield_conn"):
@@ -109,7 +109,20 @@ def nftables(cfg: dict[str, Any], *, bans: dict[str, int] | None = None, shield:
     out += "\t\tct state invalid counter name c_bogus drop\n"
     out += "\t\tct state established,related accept\n"
     out += f"\t\tfib daddr type local tcp dport {web} jump web\n"
+    if cfg["DASH_ENABLED"]:
+        out += f"\t\tfib daddr type local tcp dport {cfg['DASH_PORT']} jump dash\n"
     out += "\t}\n"
+    if cfg["DASH_ENABLED"]:
+        out += "\n\tchain dash {\n"
+        if sealed:
+            out += "\t\tcounter name c_closed drop\n"
+        else:
+            out += "\t\t# The staff dashboard: staff and administrators' addresses only, and never in a rush.\n"
+            out += "\t\tip saddr != @trust4 ip saddr != @admin4 counter name c_closed drop\n"
+            out += "\t\tip6 saddr != @trust6 ip6 saddr != @admin6 counter name c_closed drop\n"
+            out += "\t\tct state new add @dash_rate4 { ip saddr limit rate over 60/minute burst 60 packets } counter name c_ssh_rate drop\n"
+            out += "\t\tct state new add @dash_rate6 { ip6 saddr limit rate over 60/minute burst 60 packets } counter name c_ssh_rate drop\n"
+        out += "\t}\n"
 
     out += "\n\tchain web {\n"
     if sealed:
@@ -156,6 +169,9 @@ def nftables(cfg: dict[str, Any], *, bans: dict[str, int] | None = None, shield:
     out += "\t\tudp sport 67 udp dport 68 accept\n"
     out += f'\t\tiifname "podman*" ip saddr {{ {system.NET_INTERNAL}, {system.NET_EDGE} }} meta l4proto {{ tcp, udp }} th dport 53 accept\n'
     if not sealed:
+        if cfg["DASH_ENABLED"]:
+            out += "\t\t# The HTTPS proxy, and nothing else, may speak to the staff dashboard's service.\n"
+            out += f'\t\tiifname "podman*" ip saddr {system.NET_EDGE} tcp dport 8760 accept\n'
         if cfg["SSH_ENABLED"]:
             out += "\t\t# SSH: only from the administrators' addresses, and slowly.\n"
             out += f"\t\ttcp dport {ssh_port} ip saddr @admin4 ct state new add @ssh_rate4 {{ ip saddr limit rate over 6/minute burst 6 packets }} counter name c_ssh_rate drop\n"
@@ -179,6 +195,8 @@ def nftables(cfg: dict[str, Any], *, bans: dict[str, int] | None = None, shield:
     out += f"\t\tip saddr {system.NET_INTERNAL} ip daddr {system.NET_INTERNAL} accept\n"
     out += f"\t\tip saddr {edge} ip daddr {edge} accept\n"
     out += f"\t\t# In: only what was published, to the proxy.\n\t\tip daddr {edge} ct status dnat tcp dport {web} accept\n"
+    if cfg["DASH_ENABLED"] and not sealed:
+        out += f"\t\tip daddr {edge} ct status dnat tcp dport {cfg['DASH_PORT']} accept\n"
     out += "\t\t# Out: the proxy and the app may fetch from the internet (certificates, AI drafts), never from the school's own network.\n"
     out += f"\t\tip saddr {edge} ip daddr {{ 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16, 169.254.0.0/16, 100.64.0.0/10 }} counter name c_fwd_dropped drop\n"
     out += f"\t\tip saddr {edge} tcp dport {web} accept\n"
@@ -272,7 +290,35 @@ def caddyfile(cfg: dict[str, Any]) -> str:
     out += "\tlog {\n\t\toutput stdout\n\t\tformat filter {\n\t\t\twrap json\n\t\t\tfields {\n\t\t\t\trequest>headers delete\n\t\t\t\tresp_headers delete\n\t\t\t}\n\t\t}\n\t}\n"
     out += "\treverse_proxy ludora-app:8787\n"
     out += "}\n"
+    if cfg["DASH_ENABLED"]:
+        gateway = edge_gateway()
+        out += f"\n# The staff dashboard, on its own port. The firewall opens that port to the staff addresses only.\n{domain}:{cfg['DASH_PORT']} {{\n"
+        if cfg["TLS_MODE"] == "internal":
+            out += "\ttls internal\n"
+        elif cfg["TLS_MODE"] == "custom":
+            out += "\ttls /certs/site.crt /certs/site.key\n"
+        out += "\tencode zstd gzip\n"
+        out += "\trequest_body {\n\t\tmax_size 64KB\n\t}\n"
+        out += "\theader {\n\t\tStrict-Transport-Security \"max-age=31536000\"\n\t\t-Server\n\t\t-Via\n\t}\n"
+        out += "\t@from_another_site {\n\t\theader Sec-Fetch-Site cross-site\n\t\tnot {\n\t\t\tmethod GET HEAD\n\t\t\theader Sec-Fetch-Mode navigate\n\t\t}\n\t}\n"
+        out += "\trespond @from_another_site 403\n"
+        out += "\tlog_append fetch_site {header.Sec-Fetch-Site}\n"
+        out += "\tlog {\n\t\toutput stdout\n\t\tformat filter {\n\t\t\twrap json\n\t\t\tfields {\n\t\t\t\trequest>headers delete\n\t\t\t\tresp_headers delete\n\t\t\t}\n\t\t}\n\t}\n"
+        out += "\t# The dashboard's service learns the visitor's address from this header, which the proxy sets itself.\n"
+        out += f"\treverse_proxy {gateway}:8760 {{\n\t\theader_up X-Real-IP {{remote_host}}\n\t}}\n"
+        out += "}\n"
     return out
+
+
+def edge_gateway() -> str:
+    """The server's own address on the proxy's network: where the proxy finds the dashboard's service."""
+    import ipaddress
+    return str(ipaddress.ip_network(system.NET_EDGE).network_address + 1)
+
+
+def dash_env(cfg: dict[str, Any]) -> str:
+    """All the staff dashboard's service is told: its own web address and the server's name. It reads no settings."""
+    return HEADER + f"LUDORA_DASH_ORIGIN=https://{cfg['DOMAIN']}:{cfg['DASH_PORT']}\nLUDORA_DASH_SERVER={cfg['SERVER_NAME']}\n"
 
 
 def sshd(cfg: dict[str, Any]) -> str:
@@ -360,7 +406,7 @@ def quadlets(cfg: dict[str, Any], images: dict[str, str] | None = None) -> dict[
     )
     files["ludora-edge.network"] = (
         _QUADLET_NOTE + "# Proxy and app. The firewall decides what may leave.\n"
-        f"[Network]\nNetworkName=ludora-edge\nSubnet={system.NET_EDGE}\n"
+        f"[Network]\nNetworkName=ludora-edge\nSubnet={system.NET_EDGE}\nGateway={edge_gateway()}\n"
     )
     for volume in ("pgdata", "uploads", "caddy-data", "caddy-config"):
         files[f"ludora-{volume}.volume"] = _QUADLET_NOTE + f"[Volume]\nVolumeName=ludora-{volume}\n"
@@ -405,6 +451,7 @@ def quadlets(cfg: dict[str, Any], images: dict[str, str] | None = None) -> dict[
         + f"Image={proxy_image}\n"
         + "Network=ludora-edge.network\n"
         + "PublishPort=80:80\nPublishPort=443:443\n"
+        + (f"PublishPort={cfg['DASH_PORT']}:{cfg['DASH_PORT']}\n" if cfg["DASH_ENABLED"] else "")
         + f"Volume={system.CADDYFILE}:/etc/caddy/Caddyfile:ro,Z\n"
         + "Volume=ludora-caddy-data.volume:/data:Z\n"
         + "Volume=ludora-caddy-config.volume:/config:Z\n"

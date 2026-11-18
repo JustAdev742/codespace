@@ -50,6 +50,7 @@ def rendered(cfg: dict[str, Any], *, bans: dict[str, int] | None = None, shield:
         ),
     }
     files["/etc/dnf/automatic.conf"] = (render.dnf_automatic(cfg), 0o644)
+    files[f"{system.ETC}/dash.env"] = (render.dash_env(cfg), 0o644)
     images = images_lock()
     built = analyst.image()
     if built:
@@ -163,6 +164,12 @@ def apply(*, restart: bool = True, firewall_only: bool = False, log=print) -> li
             if touched("ludora-proxy", "Caddyfile", "caddy", "ludora-edge"):
                 log("Restarting the HTTPS proxy.")
                 system.run(["systemctl", "restart", "ludora-proxy.service"], timeout=300)
+        if cfg["DASH_ENABLED"]:
+            system.run(["systemctl", "enable", "--now", "ludora-dashop.socket"])
+            system.run(["systemctl", "enable", "ludora-dash.service"])
+            system.run(["systemctl", "restart" if touched("dash.env") else "start", "ludora-dash.service"])
+        else:
+            system.run(["systemctl", "disable", "--now", "ludora-dash.service", "ludora-dashop.socket"])
         if cfg["AI_ENABLED"] and analyst.image():
             system.run(["systemctl", "restart" if touched("ludora-analyst") else "start", "ludora-analyst.service"], timeout=300)
         else:

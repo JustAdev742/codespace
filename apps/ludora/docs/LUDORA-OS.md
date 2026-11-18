@@ -215,6 +215,53 @@ screens never send, or three players connected at once from one browser. It neve
 a whole class often shares one. The fair-play list is told which game and which player names, and staff also see it
 in Ludora's audit log. It is a signal, not proof: Ludora never punishes, slows or tells a player by itself.
 
+### The staff dashboard
+
+A web page for the school's own staff, styled like a terminal: the state of the server at a glance, who is banned
+and why, shield and lockdown, the self-check, backups, logs, and a three-step setup for the school's domain, its
+email and who gets alerts. It is off until you switch it on at the server:
+
+```bash
+ludoractl dash password        # at least 12 characters; separate from the console's password
+ludoractl dash code on         # recommended: also ask for a six-digit code from an authenticator app
+ludoractl dash on              # then open https://<the server's address>:8443 from a staff machine
+```
+
+The same is in the console under **Remote access > Staff dashboard**.
+
+How it is kept safe:
+
+- **Who can reach it.** Only the staff addresses (`TRUSTED_NETS` and `ADMIN_NETS`). The firewall refuses everyone
+  else before the page is ever served, and it cannot be switched on while those lists are empty.
+- **Who can sign in.** A password, and an authenticator code as well if you set one up. Five wrong tries from one
+  address pause that address for fifteen minutes and alert the security list; twenty from anywhere pause everyone.
+- **What a session is.** A random token in a cookie that scripts cannot read, tied to the address it began at, ended
+  after fifteen idle minutes or eight hours. Changing the password signs everyone out.
+- **What a web page elsewhere can do to a signed-in browser.** Nothing: every change must come from the
+  dashboard's own page, and the page may load nothing from anywhere else.
+- **What the dashboard can do at all.** The web service runs as its own user with no privileges and no route to
+  anywhere but the proxy. For every reading and every action it asks one root helper, which will do only what is
+  on a fixed list (`dashops.py`): show status, events, the self-check and logs; ban and unban; shield and lockdown;
+  back up; restart the app or the proxy; change the site's name, the mail settings and the alert lists. It cannot
+  read any secret, touch SSH or administrators' keys, change who is trusted, switch the firewall or the sentinel
+  off, or run a command of anyone's choosing. So even someone who broke into the web service would be held to
+  that list. Everything done from the dashboard is written to the event log with the address it came from.
+
+### Easy setup: your school's domain and email
+
+The dashboard's **Setup** page walks through three steps, each of which can also be done with `ludoractl set`:
+
+1. **Your school's domain.** Choose a name, such as `play.yourschool.nsw.edu.au`. The page shows the exact record
+   to ask for (an A record for that name pointing at the server's address) and a **Check** button that looks the
+   name up and says in plain words whether it points here yet. The record itself is created by whoever manages the
+   school's domain (the IT provider or the Department's DNS), not on this server. Once it points here, choose the
+   certificate: a free public one when the name is reachable from the internet, or the server's own for a name
+   used only inside the school.
+2. **Email.** Pick Google Workspace, Microsoft 365 or another mail server; enter the account, its password and the
+   address alerts should come from; send a test. The password can be set but never read back.
+3. **Who is told.** Put people on the security, upkeep and fair-play lists by email address, phone push (ntfy) or
+   Telegram, and send each list a test.
+
 ### The analyst: an optional AI second opinion
 
 The server can run a small AI model that reads each batch of security events and adds a second opinion to the

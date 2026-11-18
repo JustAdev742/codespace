@@ -678,6 +678,7 @@ def remote(ui: UI) -> None:
                 (f"Administrators' addresses: {','.join(cfg['ADMIN_NETS']) or 'none'}", "The only addresses that may reach SSH."),
                 (f"Administrators' keys ({len(keys)})", "Add a key from GitHub or paste one; remove a key."),
                 ("Support access: " + ("OPEN" if window else "closed"), "Let a helper in for a few hours: one key, one address, a fixed list of commands, no shell. It closes by itself."),
+                (f"Staff dashboard: {'on' if cfg['DASH_ENABLED'] else 'off'}", "A web page for staff, from the staff addresses only: status, bans, alerts, and the email and domain setup."),
             ],
         )
         if choice is None:
@@ -704,6 +705,45 @@ def remote(ui: UI) -> None:
             keys_menu(ui)
         elif choice == 3:
             support_menu(ui)
+        elif choice == 4:
+            dashboard_menu(ui)
+
+
+def dashboard_menu(ui: UI) -> None:
+    from . import dash
+    while True:
+        cfg = config.load()
+        auth = dash.load_auth()
+        where = f"https://{cfg['DOMAIN']}:{cfg['DASH_PORT']}" if cfg["DOMAIN"] else "(set the server's address first)"
+        staff = ", ".join(cfg["TRUSTED_NETS"] + cfg["ADMIN_NETS"]) or "none set"
+        choice = ui.menu(
+            "Staff dashboard",
+            [
+                ("Set its password" if not auth.get("password") else "Change its password", "At least 12 characters. It is separate from this console's password. Changing it signs everyone out."),
+                ("Authenticator code: " + ("required" if auth.get("totp") else "not used"), "Ask for a six-digit code from a phone app as well as the password. Recommended."),
+                ("Switch it " + ("off" if cfg["DASH_ENABLED"] else "on"), f"On, it is at {where} and opens only to the staff addresses ({staff})."),
+            ],
+            intro=f"The dashboard is {'ON at ' + where if cfg['DASH_ENABLED'] else 'off'}. Staff addresses: {staff}.",
+        )
+        if choice is None:
+            return
+        if choice == 0:
+            first = ui.ask("Dashboard password", "At least 12 characters; four unrelated words work well.", secret=True, check=lambda v: ctl.password_problem(v))
+            if first is None:
+                continue
+            if ui.ask("Dashboard password", "Type it once more.", secret=True) != first:
+                ui.message("Dashboard password", "Those two did not match. Nothing was changed.")
+                continue
+            auth["password"] = dash.hash_password(first)
+            dash.save_auth(auth)
+            system.run(["systemctl", "try-restart", "ludora-dash.service"])
+            ui.message("Dashboard password", "Set. Anyone who was signed in has been signed out.")
+        elif choice == 1:
+            ok, result = ui.task("Authenticator code", lambda log, m=("off" if auth.get("totp") else "on"): _ctl(["dash", "code", m]))
+            ui.message("Authenticator code", str(result))
+        elif choice == 2:
+            ok, result = ui.task("Staff dashboard", lambda log, m=("off" if cfg["DASH_ENABLED"] else "on"): _ctl(["dash", m]))
+            ui.message("Staff dashboard", str(result))
 
 
 def keys_menu(ui: UI) -> None:

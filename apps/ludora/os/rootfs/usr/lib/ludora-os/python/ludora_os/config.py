@@ -280,6 +280,8 @@ FIELDS: list[Field] = [
     Field("SMTP_SECURITY", _choice("starttls", "tls"), "starttls", "starttls for port 587, tls for port 465. Mail is never sent unencrypted."),
     Field("SMTP_USER", _login, "", "The account the server signs in to the mail server with. Its password is set with `ludoractl alerts secret smtp-password`."),
     Field("SMTP_FROM", _mail_or_empty, "", "The address alerts come from. Usually the same as the account."),
+    Field("DASH_ENABLED", _bool, False, "yes opens the web staff dashboard, to the staff addresses only. Set its password first with `ludoractl dash password`."),
+    Field("DASH_PORT", _int(1024, 65535), 8443, "The port the staff dashboard is on: https://<the server's address>:8443."),
     Field("AI_ENABLED", _bool, False, "yes adds a small AI model's second opinion to security alerts. It only advises: it never bans or unbans. Install it first with `ludoractl ai install`."),
     Field("AI_PORT", _int(1024, 65535), 8750, "The port on this machine itself where the AI model listens. Nothing outside the server can reach it."),
     Field("NTFY_SERVER", _https_url, "https://ntfy.sh", "The ntfy server for phone pushes. ntfy.sh is free and public; a school can run its own."),
@@ -329,6 +331,13 @@ def check(cfg: dict[str, Any]) -> list[str]:
         problems.append("SSH_PORT cannot be 80 or 443.")
     if cfg["SSH_ENABLED"] and cfg["SSH_PORT"] in cfg["TRIPWIRE_PORTS"]:
         problems.append("SSH_PORT is also listed in TRIPWIRE_PORTS.")
+    if cfg["DASH_ENABLED"]:
+        if not cfg["TRUSTED_NETS"] and not cfg["ADMIN_NETS"]:
+            problems.append("DASH_ENABLED=yes needs TRUSTED_NETS or ADMIN_NETS: the staff dashboard is never opened to every address.")
+        if not cfg["DOMAIN"]:
+            problems.append("DASH_ENABLED=yes needs DOMAIN.")
+    if cfg["DASH_PORT"] in (cfg["SSH_PORT"], cfg["AI_PORT"], 8760, 8787, 5432) or cfg["DASH_PORT"] in cfg["TRIPWIRE_PORTS"]:
+        problems.append("DASH_PORT is already used for something else.")
     v6 = [n for key in ("LAN_NETS", "TRUSTED_NETS", "ADMIN_NETS") for n in cfg[key] if ":" in n]
     if v6 and not cfg["IPV6"]:
         problems.append(f"IPV6=no but {v6[0]} is an IPv6 network.")

@@ -101,6 +101,9 @@ if ! id ludora-sentinel >/dev/null 2>&1; then
   useradd --system --no-create-home --home-dir /nonexistent --shell /usr/sbin/nologin --comment "Ludora OS sentinel" ludora-sentinel
 fi
 usermod --append --groups systemd-journal ludora-sentinel
+if ! id ludora-dash >/dev/null 2>&1; then
+  useradd --system --no-create-home --home-dir /nonexistent --shell /usr/sbin/nologin --comment "Ludora OS staff dashboard" ludora-dash
+fi
 passwd -l root >/dev/null
 chmod 750 /home/ludora-admin /home/ludora-support
 

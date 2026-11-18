@@ -18,7 +18,7 @@ from contextlib import redirect_stderr, redirect_stdout
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(HERE, "..", "rootfs", "usr", "lib", "ludora-os", "python"))
 
-from ludora_os import access, alerts, analyst, apply as applier, config, ctl, doctor, maintain, overview, render, sentinel, system  # noqa: E402
+from ludora_os import access, alerts, analyst, apply as applier, config, ctl, dash, dashops, doctor, maintain, overview, render, sentinel, system  # noqa: E402
 
 HOSTILE = [
     "a; nft flush ruleset", "x\nPermitRootLogin yes", "$(reboot)", "`id`", "} table inet evil {", "10.0.0.1 } accept #",
@@ -994,6 +994,282 @@ def hashlib_sha(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
 
 
+class DashTests(Sandbox):
+    """The web staff dashboard: who gets in, what a request must look like, and the fixed list of what it may do."""
+    ORIGIN = "https://10.20.0.5:8443"
+    PASSWORD = "orbit-maple-seven-tugboat"
+
+    def app(self, totp: str | None = None, **kw):
+        self.asked: list[dict] = []
+        self.now = [1_000_000.0]
+        stored = {"password": self.stored_password, **({"totp": totp} if totp else {})}
+
+        def ops(request):
+            self.asked.append(request)
+            return {"ok": True, "echo": request.get("op")}
+
+        return dash.App(ops, self.ORIGIN, server="ludora-hills", auth=lambda: stored, static_dir="/static", clock=lambda: self.now[0], **kw)
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.stored_password = dash.hash_password(cls.PASSWORD)   # scrypt is slow on purpose: hash once for the class
+
+    def call(self, app, method, path, body=None, ip="10.20.9.10", cookie="", **headers):
+        base = {"host": "10.20.0.5:8443", "cookie": cookie}
+        if method == "POST":
+            base.update({"origin": self.ORIGIN, "x-ludora-dash": "1", "content-type": "application/json"})
+        base.update({k.replace("_", "-"): v for k, v in headers.items()})
+        reply = app.handle(method, path, base, json.dumps(body).encode() if body is not None else b"", ip)
+        return reply.status, (json.loads(reply.body) if reply.kind == "application/json" else reply.body), reply.headers
+
+    def sign_in(self, app, ip="10.20.9.10", **extra) -> str:
+        status, _, headers = self.call(app, "POST", "/api/login", {"password": self.PASSWORD, **extra}, ip=ip)
+        self.assertEqual(status, 200)
+        return headers["Set-Cookie"].split(";")[0]
+
+    def test_passwords_are_stretched_and_codes_follow_the_standard(self):
+        self.assertTrue(dash.password_matches(self.stored_password, self.PASSWORD))
+        self.assertFalse(dash.password_matches(self.stored_password, self.PASSWORD + "x"))
+        self.assertNotIn(self.PASSWORD, json.dumps(self.stored_password))
+        for broken in (None, {}, {"salt": "zz", "hash": "00", "n": 2, "r": 8, "p": 1}, {**self.stored_password, "n": 1 << 30}):
+            self.assertFalse(dash.password_matches(broken, self.PASSWORD))
+        self.assertEqual(dash.totp("GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ", 59), "287082")              # RFC 6238's own example
+        self.assertEqual(dash.totp("GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ", 1111111109), "081804")
+
+    def test_nothing_is_shown_or_done_before_signing_in(self):
+        app = self.app()
+        for path in ("/api/overview", "/api/events", "/api/doctor", "/api/settings", "/api/setup", "/api/logs?what=app"):
+            self.assertEqual(self.call(app, "GET", path)[:2], (401, {"error": "signed_out"}))
+        self.assertEqual(self.call(app, "POST", "/api/action", {"action": "lockdown", "on": True})[0], 401)
+        self.assertEqual(self.asked, [])
+        status, body, _ = self.call(app, "GET", "/api/session")
+        self.assertEqual((status, body["signed_in"], body["server"]), (200, False, "ludora-hills"))
+
+    def test_a_session_is_a_locked_down_cookie_tied_to_its_address_and_its_time(self):
+        app = self.app()
+        cookie = self.sign_in(app)
+        header = [h for h in self.call(app, "POST", "/api/login", {"password": self.PASSWORD})[2]["Set-Cookie"].split("; ")]
+        self.assertTrue(header[0].startswith("__Host-ludora-dash="))
+        for flag in ("Path=/", "Secure", "HttpOnly", "SameSite=Strict"):
+            self.assertIn(flag, header)
+        self.assertEqual(self.call(app, "GET", "/api/overview", cookie=cookie)[0], 200)
+        self.assertEqual(self.asked[-1], {"op": "overview", "client": "10.20.9.10"})
+        self.assertEqual(self.call(app, "GET", "/api/overview", cookie=cookie, ip="10.20.9.99")[0], 401)   # a stolen cookie used from elsewhere
+        cookie = self.sign_in(app)
+        self.now[0] += 14 * 60
+        self.assertEqual(self.call(app, "GET", "/api/overview", cookie=cookie)[0], 200)
+        self.now[0] += 16 * 60
+        self.assertEqual(self.call(app, "GET", "/api/overview", cookie=cookie)[0], 401)                    # idle too long
+        cookie = self.sign_in(app)
+        for _ in range(40):
+            self.now[0] += 13 * 60
+            last = self.call(app, "GET", "/api/overview", cookie=cookie)[0]
+        self.assertEqual(last, 401)                                                                         # eight hours at most, however busy
+        cookie = self.sign_in(app)
+        self.assertEqual(self.call(app, "POST", "/api/logout", {}, cookie=cookie)[0], 200)
+        self.assertEqual(self.call(app, "GET", "/api/overview", cookie=cookie)[0], 401)
+
+    def test_wrong_passwords_pause_that_address_then_everyone(self):
+        app = self.app()
+        for _ in range(4):
+            self.assertEqual(self.call(app, "POST", "/api/login", {"password": "wrong-wrong-wrong"}, ip="10.20.9.50")[0], 401)
+        self.assertEqual(self.call(app, "POST", "/api/login", {"password": "wrong-wrong-wrong"}, ip="10.20.9.50")[0], 401)
+        status, body, _ = self.call(app, "POST", "/api/login", {"password": self.PASSWORD}, ip="10.20.9.50")
+        self.assertEqual(status, 429)                                       # even the right password waits now
+        self.assertGreater(body["retry_after"], 800)
+        self.assertEqual([r["kind"] for r in self.asked if r["op"] == "note"], ["failed"] * 4 + ["locked"])
+        self.sign_in(app, ip="10.20.9.10")                                  # other staff are not affected by one address
+        self.now[0] += 16 * 60
+        self.sign_in(app, ip="10.20.9.50")
+        for i in range(20):                                                 # guesses spread over many addresses
+            self.call(app, "POST", "/api/login", {"password": "wrong-wrong-wrong"}, ip=f"10.20.8.{i + 1}")
+        self.assertEqual(self.call(app, "POST", "/api/login", {"password": self.PASSWORD}, ip="10.20.9.10")[0], 429)
+        for bad in ({}, {"password": None}, {"password": ["x"]}, {"password": "x" * 5000}):
+            self.assertIn(self.call(self.app(), "POST", "/api/login", bad)[0], (401,))
+
+    def test_an_authenticator_code_is_needed_when_set_and_cannot_be_used_twice(self):
+        secret = "GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ"
+        app = self.app(totp=secret)
+        self.assertTrue(self.call(app, "GET", "/api/session")[1]["needs_code"])
+        self.assertEqual(self.call(app, "POST", "/api/login", {"password": self.PASSWORD})[0], 401)
+        self.assertEqual(self.call(app, "POST", "/api/login", {"password": self.PASSWORD, "code": "000000"})[0], 401)
+        code = dash.totp(secret, self.now[0])
+        self.assertEqual(self.call(app, "POST", "/api/login", {"password": self.PASSWORD, "code": code})[0], 200)
+        self.assertEqual(self.call(app, "POST", "/api/login", {"password": self.PASSWORD, "code": code}, ip="10.20.9.11")[0], 401)   # read over a shoulder
+        self.assertEqual(self.call(app, "POST", "/api/login", {"password": "wrong-wrong-wrong", "code": dash.totp(secret, self.now[0], 1)})[0], 401)
+
+    def test_a_change_must_come_from_the_dashboards_own_page(self):
+        app = self.app()
+        cookie = self.sign_in(app)
+        body = {"action": "lockdown", "on": True}
+        self.assertEqual(self.call(app, "POST", "/api/action", body, cookie=cookie)[0], 200)
+        for tamper in ({"origin": "https://evil.example"}, {"origin": ""}, {"x_ludora_dash": "0"}, {"content_type": "text/plain"}, {"origin": "http://10.20.0.5:8443"}):
+            self.assertEqual(self.call(app, "POST", "/api/action", body, cookie=cookie, **tamper)[0], 403, tamper)
+        self.assertEqual(self.call(app, "GET", "/api/overview", cookie=cookie, host="evil.example:8443")[0], 421)   # someone else's name pointed at us
+        self.assertEqual(app.handle("PUT", "/api/action", {"host": "10.20.0.5:8443", "cookie": cookie}, b"", "10.20.9.10").status, 405)
+        self.assertEqual(self.call(app, "POST", "/api/action", None, cookie=cookie)[0], 200)   # an empty body is an empty request, refused further in
+        reply = app.handle("POST", "/api/action", {"host": "10.20.0.5:8443", "cookie": cookie, "origin": self.ORIGIN, "x-ludora-dash": "1", "content-type": "application/json"}, b"[1,2", "10.20.9.10")
+        self.assertEqual(reply.status, 400)
+
+    def test_the_page_cannot_choose_the_operation_or_who_it_says_it_is(self):
+        app = self.app()
+        cookie = self.sign_in(app)
+        self.call(app, "POST", "/api/action", {"action": "ban", "ip": "10.20.3.3", "op": "note", "client": "10.20.9.99", "kind": "signed_in"}, cookie=cookie)
+        self.assertEqual(self.asked[-1], {"action": "ban", "ip": "10.20.3.3", "kind": "signed_in", "op": "action", "client": "10.20.9.10"})
+        self.call(app, "GET", "/api/logs?what=../../etc/shadow&lines=999999", cookie=cookie)
+        self.assertEqual(self.asked[-1], {"op": "logs", "what": "../../etc/shadow", "lines": 80, "client": "10.20.9.10"})   # passed on as text, refused by the helper
+        self.assertEqual(self.call(app, "GET", "/api/shadow", cookie=cookie)[0], 404)
+        self.assertEqual(self.call(app, "GET", "/../../etc/passwd")[0], 404)                    # only three named files are ever served
+        os.makedirs(os.path.join(self.root, "static"))
+        with open(os.path.join(self.root, "static", "index.html"), "w") as fh:
+            fh.write("<!doctype html><title>Ludora OS</title>")
+        self.assertEqual(self.call(app, "GET", "/")[1], b"<!doctype html><title>Ludora OS</title>")
+
+    def test_over_real_http_every_reply_carries_the_safety_headers(self):
+        import http.client
+        import ipaddress
+        import threading
+        from http.server import ThreadingHTTPServer
+
+        app = self.app()
+        server = ThreadingHTTPServer(("127.0.0.1", 0), dash.make_handler(app, None))
+        threading.Thread(target=server.serve_forever, daemon=True).start()
+        try:
+            conn = http.client.HTTPConnection("127.0.0.1", server.server_address[1], timeout=5)
+            conn.request("GET", "/api/session", headers={"Host": "10.20.0.5:8443", "X-Real-IP": "10.20.9.10"})
+            reply = conn.getresponse()
+            self.assertEqual(reply.status, 200)
+            reply.read()
+            self.assertEqual(reply.getheader("Content-Security-Policy"), dash.CSP)
+            self.assertIn("script-src 'self'", dash.CSP)
+            self.assertNotIn("unsafe", dash.CSP)
+            self.assertEqual((reply.getheader("X-Frame-Options"), reply.getheader("X-Content-Type-Options"), reply.getheader("Cache-Control")), ("DENY", "nosniff", "no-store"))
+            self.assertNotIn("Python", reply.getheader("Server") or "")
+            conn.request("GET", "/api/session", headers={"Host": "10.20.0.5:8443"})      # not through the proxy: no address to go by
+            reply = conn.getresponse()
+            reply.read()
+            self.assertEqual(reply.status, 400)
+            conn.request("POST", "/api/login", body=b"x" * 10, headers={"Host": "10.20.0.5:8443", "X-Real-IP": "10.20.9.10", "Content-Length": str(10 << 20)})
+            self.assertEqual(conn.getresponse().status, 413)
+        finally:
+            server.shutdown()
+            server.server_close()
+        closed = ThreadingHTTPServer(("127.0.0.1", 0), dash.make_handler(app, ipaddress.ip_network("10.89.20.0/24")))
+        threading.Thread(target=closed.serve_forever, daemon=True).start()
+        try:
+            conn = http.client.HTTPConnection("127.0.0.1", closed.server_address[1], timeout=5)
+            conn.request("GET", "/api/session", headers={"Host": "10.20.0.5:8443", "X-Real-IP": "10.20.9.10"})
+            self.assertEqual(conn.getresponse().status, 403)                              # only the proxy may speak to it
+        finally:
+            closed.shutdown()
+            closed.server_close()
+
+    # ---- the root helper: the boundary --------------------------------------------------------------------------
+    def helper(self, **settings: str) -> None:
+        self.configure(DOMAIN="10.20.0.5", TRUSTED_NETS="10.20.9.0/24", **settings)
+        system.write_atomic(system.CLAIMED_FLAG, "x")
+        config.load_secrets(create=True)
+        for query in ("ip -j addr show", "ip -j -4 addr show"):
+            self.answers[query] = system.Result(0, json.dumps([{"ifname": "eth0", "addr_info": [{"local": "10.20.0.5"}]}]), "")
+
+    def test_the_helper_does_only_what_is_on_its_list(self):
+        self.assertFalse(dashops.handle({"op": "overview"})["ok"])                        # not set up yet: nothing at all
+        self.helper()
+        for nonsense in (None, [], "overview", {}, {"op": 5}, {"op": "shell", "cmd": "id"}, {"op": "action", "action": "exec"}, {"op": "action"},
+                         {"op": "action", "action": "restart", "what": "sshd"}, {"op": "action", "action": "restart", "what": "db; reboot"},
+                         {"op": "logs", "what": "sshd"}, {"op": "logs", "what": "app", "lines": 100000}, {"op": "logs", "what": "app", "lines": True},
+                         {"op": "events", "limit": 10 ** 9}, {"op": "note", "kind": "anything"}):
+            answer = dashops.handle(nonsense)
+            self.assertFalse(answer["ok"], nonsense)
+            self.assertIsInstance(answer["error"], str)
+        self.assertFalse(any(c[0] in ("sh", "bash", "reboot") for c in self.calls))
+
+    def test_bans_from_the_dashboard_are_checked_like_any_other(self):
+        self.helper()
+        for bad in ("nonsense", "10.20.3.3; nft flush ruleset", "10.20.3.0/24", "", None, 5):
+            self.assertFalse(dashops.handle({"op": "action", "action": "ban", "ip": bad})["ok"], bad)
+        self.assertIn("trusted", dashops.handle({"op": "action", "action": "ban", "ip": "10.20.9.10"})["error"])      # staff cannot be banned from here either
+        for minutes in (0, -5, 100000, "60", True):
+            self.assertFalse(dashops.handle({"op": "action", "action": "ban", "ip": "10.20.3.3", "minutes": minutes})["ok"], minutes)
+        self.calls.clear()
+        self.assertTrue(dashops.handle({"op": "action", "action": "ban", "ip": "10.20.3.3", "minutes": 30, "client": "10.20.9.10"})["ok"])
+        self.assertTrue(self.ran("nft add element inet ludora ban4 { 10.20.3.3 timeout 1800s }"))
+        self.assertIn("Dashboard (10.20.9.10): 10.20.3.3 banned for 30 minutes.", [e["text"] for e in sentinel.read_events()])
+
+    def test_only_listed_settings_can_be_read_or_changed_and_no_secret_ever_comes_back(self):
+        self.helper(SMTP_HOST="smtp.school.example", SMTP_FROM="alerts@school.example", WEBHOOK_URL="https://hooks.example/secret-path")
+        alerts.save_secret("SMTP_PASSWORD", "hunter2-secret-pw")
+        everything = json.dumps([dashops.handle({"op": op}) for op in ("overview", "settings", "setup", "doctor", "events")])
+        for hidden in ("hunter2-secret-pw", "secret-path", config.load_secrets()["POSTGRES_PASSWORD"], config.load_secrets()["BACKUP_PASSPHRASE"]):
+            self.assertNotIn(hidden, everything)
+        self.assertTrue(dashops.handle({"op": "settings"})["secrets"]["smtp_password"])                               # only whether it is set
+        for key in ("SSH_ENABLED", "TRUSTED_NETS", "ADMIN_NETS", "LAN_NETS", "WEBHOOK_URL", "DASH_ENABLED", "DASH_PORT", "AI_ENABLED", "APP_REPO", "DB_IMAGE", "NAT_MODE", "TRIPWIRE_PORTS"):
+            answer = dashops.handle({"op": "action", "action": "set", "changes": {key: "yes"}})
+            self.assertFalse(answer["ok"], key)
+            self.assertNotIn(key, dashops.handle({"op": "settings"})["settings"])
+        for value in HOSTILE:
+            self.assertFalse(dashops.handle({"op": "action", "action": "set", "changes": {"SMTP_HOST": value}})["ok"], value)
+        self.assertEqual(config.load()["SMTP_HOST"], "smtp.school.example")
+        answer = dashops.handle({"op": "action", "action": "set", "changes": {"ALERT_SECURITY_TO": "it@school.example", "SMTP_PORT": "465", "SMTP_SECURITY": "tls"}, "client": "10.20.9.10"})
+        self.assertTrue(answer["ok"], answer)
+        cfg = config.load()
+        self.assertEqual((cfg["ALERT_SECURITY_TO"], cfg["SMTP_PORT"], cfg["SMTP_SECURITY"]), (["it@school.example"], 465, "tls"))
+        self.assertIn("tcp dport 465 accept", system.read(system.NFT_FILE))                                         # and it is in effect
+        for name, value in (("postgres", "x"), ("smtp_password", "two\nlines"), ("telegram_token", "not-a-token"), ("smtp_password", 7)):
+            self.assertFalse(dashops.handle({"op": "action", "action": "secret", "name": name, "value": value})["ok"], name)
+        self.assertTrue(dashops.handle({"op": "action", "action": "secret", "name": "smtp_password", "value": "abcd efgh ijkl"})["ok"])
+        self.assertEqual(alerts.load_secrets()["SMTP_PASSWORD"], "abcdefghijkl")
+
+    def test_the_domain_check_says_plainly_where_a_name_points(self):
+        self.helper()
+        for bad in ("", "a b", "; reboot", "10.20.0.5", "x" * 400, None, "http://play.school.example"):
+            self.assertFalse(dashops.handle({"op": "dns_check", "name": bad})["ok"], bad)
+        real = dashops.socket.getaddrinfo
+        try:
+            dashops.socket.getaddrinfo = lambda *a, **k: [(2, 1, 6, "", ("10.20.0.5", 443))]
+            here = dashops.handle({"op": "dns_check", "name": "Play.School.Example."})
+            self.assertEqual((here["name"], here["matches"]), ("play.school.example", True))
+            dashops.socket.getaddrinfo = lambda *a, **k: [(2, 1, 6, "", ("203.0.113.9", 443))]
+            self.assertFalse(dashops.handle({"op": "dns_check", "name": "play.school.example"})["matches"])
+
+            def missing(*a, **k):
+                raise OSError("no such name")
+
+            dashops.socket.getaddrinfo = missing
+            self.assertIn("A record", dashops.handle({"op": "dns_check", "name": "play.school.example"})["advice"])
+        finally:
+            dashops.socket.getaddrinfo = real
+
+    def test_it_opens_only_to_staff_and_only_through_the_proxy(self):
+        with self.assertRaises(config.ConfigError):
+            self.configure(DOMAIN="10.20.0.5", DASH_ENABLED="yes")                       # never to every address
+        with self.assertRaises(config.ConfigError):
+            self.configure(DOMAIN="10.20.0.5", TRUSTED_NETS="10.20.9.0/24", DASH_ENABLED="yes", DASH_PORT="3389")
+        off = self.configure(DOMAIN="10.20.0.5", TRUSTED_NETS="10.20.9.0/24")
+        for text in (render.nftables(off), render.caddyfile(off), render.quadlets(off, {})["ludora-proxy.container"]):
+            self.assertNotIn("8443", text)
+            self.assertNotIn("8760", text)
+        on = self.configure(DOMAIN="10.20.0.5", TRUSTED_NETS="10.20.9.0/24", DASH_ENABLED="yes")
+        rules = render.nftables(on)
+        for needed in ("fib daddr type local tcp dport 8443 jump dash", "ip saddr != @trust4 ip saddr != @admin4 counter name c_closed drop",
+                       'iifname "podman*" ip saddr 10.89.20.0/24 tcp dport 8760 accept', "ip daddr 10.89.20.0/24 ct status dnat tcp dport 8443 accept"):
+            self.assertIn(needed, rules)
+        sealed = render.nftables(on, sealed=True)
+        self.assertNotIn("dport 8760 accept", sealed)
+        self.assertNotIn("dnat tcp dport 8443", sealed)
+        site = render.caddyfile(on)
+        for needed in ("10.20.0.5:8443 {", "reverse_proxy 10.89.20.1:8760", "header_up X-Real-IP {remote_host}", "max_size 64KB"):
+            self.assertIn(needed, site)
+        self.assertIn("PublishPort=8443:8443", render.quadlets(on, {})["ludora-proxy.container"])
+        self.assertEqual(render.dash_env(on).splitlines()[-2:], ["LUDORA_DASH_ORIGIN=https://10.20.0.5:8443", "LUDORA_DASH_SERVER=ludora"])
+        self.assertNotIn("WEBHOOK", render.dash_env(on))                                 # the service is told two things and no more
+        self.assertEqual(doctor._dash(off)[0], "pass")
+        self.assertEqual(doctor._dash(on)[0], "fail")                                    # switched on with no password
+        dash.save_auth({"password": self.stored_password})
+        self.assertEqual(doctor._dash(on)[0], "pass")
+        self.assertEqual(os.stat(system.p(dash.AUTH_FILE)).st_mode & 0o777, 0o640)
+
+
 class CtlTests(Sandbox):
     def run_ctl(self, *argv: str) -> tuple[int, str, str]:
         out, err = io.StringIO(), io.StringIO()
@@ -1006,11 +1282,11 @@ class CtlTests(Sandbox):
         top = ctl.parser()
         commands = next(a for a in top._actions if isinstance(a, argparse._SubParsersAction)).choices
         for needed in ("status", "doctor", "apply", "set", "get", "ban", "unban", "bans", "shield", "lockdown", "events", "logs", "admin", "support", "backup",
-                       "backups", "restore", "update", "images", "restart", "reboot", "poweroff", "alerts", "ai", "usb", "tls", "claim", "housekeeping", "install-app", "version"):
+                       "backups", "restore", "update", "images", "restart", "reboot", "poweroff", "alerts", "ai", "dash", "dash-op", "usb", "tls", "claim", "housekeeping", "install-app", "version"):
             self.assertIn(needed, commands)
         # What the timers, the installer and the support shell run must parse.
         for argv in (["doctor", "--json"], ["backup"], ["housekeeping"], ["claim"], ["apply", "--no-restart"], ["apply", "--firewall-only"], ["usb", "init"], ["tls", "ca"],
-                     ["alerts", "test"], ["ai", "status"], ["logs", "analyst"], ["status", "--json"], ["update", "os"], ["restart", "app"], ["install-app"]):
+                     ["alerts", "test"], ["ai", "status"], ["dash", "status"], ["dash", "password"], ["dash", "code", "on"], ["dash", "on"], ["dash-op"], ["logs", "analyst"], ["status", "--json"], ["update", "os"], ["restart", "app"], ["install-app"]):
             top.parse_args(argv)
         for verb in access.SUPPORT_VERBS:
             top.parse_args(verb.split())

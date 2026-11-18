@@ -307,6 +307,21 @@ def _alerts(cfg: dict[str, Any]) -> Check:
     return ("pass", title, ", ".join(f"{label.lower()}: {len(to)}" for label, to in lists.items()) + " (`ludoractl alerts test` sends a test)")
 
 
+def _dash(cfg: dict[str, Any]) -> Check:
+    title = "The staff dashboard is closed, or properly guarded"
+    if not cfg["DASH_ENABLED"]:
+        return ("pass", title, "it is off and its port is closed")
+    from . import dash
+    auth = dash.load_auth()
+    if not auth.get("password"):
+        return ("fail", title, "it is on with no password: `ludoractl dash password`, or `ludoractl dash off`")
+    info = os.stat(system.p(dash.AUTH_FILE))
+    if info.st_mode & 0o007:
+        return ("fail", title, f"{dash.AUTH_FILE} can be read by everyone: run `ludoractl dash password` again")
+    extra = "with an authenticator code" if auth.get("totp") else "password only: `ludoractl dash code on` adds an authenticator code"
+    return ("pass", title, f"open to the staff addresses only, {extra}")
+
+
 def run_all() -> dict[str, Any]:
     cfg = config.load()
     checks: list[Callable[[], Check]] = [
@@ -318,7 +333,7 @@ def run_all() -> dict[str, Any]:
         _sentinel_fresh, _time_sync,
         _unit("dnf-automatic.timer", "Automatic updates are scheduled"),
         _updates, _restart_needed, _images, _app_health, _backups, _disk, _drift, _world_writable, _foreign_suid, _aide, _failed_units,
-        lambda: _alerts(cfg),
+        lambda: _alerts(cfg), lambda: _dash(cfg),
     ]
     results = []
     for check in checks:

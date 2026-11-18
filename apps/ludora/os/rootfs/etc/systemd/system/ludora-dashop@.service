@@ -1,0 +1,13 @@
+[Unit]
+Description=Ludora OS staff dashboard: one request to the root helper
+CollectMode=inactive-or-failed
+
+[Service]
+# Reads one JSON request from the socket, answers it and exits. What it will do is the fixed list in dashops.py.
+ExecStart=/usr/local/sbin/ludoractl dash-op
+StandardInput=socket
+StandardOutput=socket
+StandardError=journal
+TimeoutStartSec=180
+ProtectHome=yes
+PrivateTmp=yes

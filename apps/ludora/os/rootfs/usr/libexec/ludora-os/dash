@@ -1,0 +1,8 @@
+#!/usr/bin/python3 -I
+# Ludora OS staff dashboard (web service). -I: ignore the caller's Python environment.
+import sys
+
+sys.path.insert(0, "/usr/lib/ludora-os/python")
+from ludora_os.dash import main
+
+raise SystemExit(main())

@@ -36,6 +36,15 @@ upkeep alerts directly. `analyst.py` is the optional AI second opinion: a client
 `ludoractl ai bench`, and the pinned install. Only the model's probabilities are ever used; no string from its
 reply is shown to anyone. The real engine and model have not been run against this code yet.
 
+## The staff dashboard
+
+`dash.py` is the web service (sign-in, lock-out, sessions, request checks, safety headers; unprivileged and
+sandboxed, `ludora-dash.service`). `dashops.py` is the root side and the security boundary: one JSON request per
+socket connection (`ludora-dashop.socket`, `ludoractl dash-op`), each field validated again there, a fixed list of
+operations. The pages are static files in `rootfs/usr/share/ludora-os/dash/`; `tests/dash_mock.py` serves them
+with canned answers for working on the screen. The proxy serves the dashboard on its own port and the firewall
+opens that port to the staff addresses only.
+
 ## Tests
 
 ```bash

@@ -15,7 +15,7 @@ import sys
 import time
 from typing import Any
 
-from . import access, alerts, analyst, config, doctor, maintain, overview, render, sentinel, system
+from . import access, alerts, analyst, config, dash, dashops, doctor, maintain, overview, render, sentinel, system
 from . import apply as applier
 
 
@@ -451,6 +451,78 @@ def cmd_ai(args: argparse.Namespace) -> int:
     return 2
 
 
+def cmd_dash(args: argparse.Namespace) -> int:
+    cfg = config.load()
+    auth = dash.load_auth() if system.is_root() else {}
+    if args.action == "status":
+        say("The staff dashboard is " + (f"ON at https://{cfg['DOMAIN']}:{cfg['DASH_PORT']}" if cfg["DASH_ENABLED"] else "off") + ".")
+        say("It opens only to the staff addresses: " + (", ".join(cfg["TRUSTED_NETS"] + cfg["ADMIN_NETS"]) or "none set yet") + ".")
+        if system.is_root():
+            say("Password: " + ("set" if auth.get("password") else "NOT set (`ludoractl dash password`)") + ". Authenticator code: " + ("required" if auth.get("totp") else "not used (`ludoractl dash code on` adds one)") + ".")
+        return 0
+    need_root()
+    if args.action == "password":
+        if sys.stdin.isatty():
+            import getpass
+            first = getpass.getpass("New dashboard password (it is not shown): ")
+            if getpass.getpass("Again: ") != first:
+                raise Refused("Those two did not match. Nothing was changed.")
+        else:
+            first = sys.stdin.readline().rstrip("\n")
+        problem = password_problem(first)
+        if problem:
+            raise Refused(problem)
+        auth["password"] = dash.hash_password(first)
+        dash.save_auth(auth)
+        system.run(["systemctl", "try-restart", "ludora-dash.service"])   # everyone signed in is signed out
+        say("The dashboard password is set. Anyone signed in has been signed out.")
+        return 0
+    if args.action == "code":
+        if args.mode == "on":
+            import base64
+            import secrets as _random
+            auth["totp"] = base64.b32encode(_random.token_bytes(20)).decode().rstrip("=")
+            dash.save_auth(auth)
+            say("In an authenticator app (Google Authenticator, Microsoft Authenticator, Aegis), add an account by typing this key:")
+            say("  " + " ".join(auth["totp"][i:i + 4] for i in range(0, len(auth["totp"]), 4)))
+            say(f"  (or this address: otpauth://totp/Ludora%20OS:{cfg['SERVER_NAME']}?secret={auth['totp']}&issuer=Ludora%20OS)")
+            say("From now on the dashboard asks for the six-digit code from that app as well as the password.")
+        else:
+            auth.pop("totp", None)
+            dash.save_auth(auth)
+            say("The dashboard no longer asks for an authenticator code.")
+        system.run(["systemctl", "try-restart", "ludora-dash.service"])
+        return 0
+    if args.action in ("on", "off"):
+        if args.action == "on":
+            if not applier.claimed():
+                raise Refused("Finish the first-boot setup first.")
+            if not auth.get("password"):
+                raise Refused("Set its password first: ludoractl dash password")
+        cfg["DASH_ENABLED"] = args.action == "on"
+        try:
+            config.save(cfg)
+        except config.ConfigError as err:
+            raise Refused(str(err)) from None
+        applier.apply(log=say)
+        say(f"The staff dashboard is on: https://{cfg['DOMAIN']}:{cfg['DASH_PORT']} (from the staff addresses only)." if cfg["DASH_ENABLED"] else "The staff dashboard is off and its port is closed.")
+        return 0
+    return 2
+
+
+def cmd_dash_op(args: argparse.Namespace) -> int:
+    """One request from the dashboard's web service, on standard input; one answer on standard output. Root only."""
+    need_root()
+    raw = sys.stdin.buffer.read(dash.MAX_BODY + 4096)
+    try:
+        request = json.loads(raw or b"null")
+    except ValueError:
+        request = None
+    sys.stdout.write(json.dumps(dashops.handle(request)))
+    sys.stdout.flush()
+    return 0
+
+
 def cmd_backups(args: argparse.Namespace) -> int:
     found = maintain.backups()
     if not found:
@@ -626,6 +698,13 @@ def parser() -> argparse.ArgumentParser:
     a = alert_actions.add_parser("secret", help="set the mail password or the Telegram bot token (read from standard input, never from the command line)")
     a.add_argument("name", choices=["smtp-password", "telegram-token"])
     alert_actions.add_parser("topic", help="make a long random ntfy topic name for phone pushes")
+    p = add("dash", cmd_dash, "The web staff dashboard: its password, an optional authenticator code, on and off.")
+    dash_actions = p.add_subparsers(dest="action", required=True)
+    for name in ("status", "password", "on", "off"):
+        dash_actions.add_parser(name)
+    a = dash_actions.add_parser("code", help="ask for a six-digit authenticator code as well as the password")
+    a.add_argument("mode", choices=["on", "off"])
+    add("dash-op", cmd_dash_op, "Used by the staff dashboard itself: one request on standard input.")
     p = add("ai", cmd_ai, "The optional AI analyst: a small model that adds a second opinion to security alerts.")
     p.add_argument("action", choices=["status", "install", "on", "off", "bench"])
     p = add("usb", cmd_usb, "Trust the USB devices plugged in now and refuse new ones.")

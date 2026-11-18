@@ -1,0 +1,14 @@
+[Unit]
+Description=Ludora OS staff dashboard: the door to its root helper
+
+[Socket]
+ListenStream=/run/ludora-dashop.sock
+# Only the dashboard's own user may knock. Each request gets a fresh helper that handles it and exits.
+SocketUser=root
+SocketGroup=ludora-dash
+SocketMode=0660
+Accept=yes
+MaxConnections=8
+
+[Install]
+WantedBy=sockets.target
