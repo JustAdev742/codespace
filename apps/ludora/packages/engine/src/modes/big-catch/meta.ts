@@ -54,7 +54,7 @@ export const meta: ModeMeta = {
     ],
   },
   calmPlay:
-    'One thing at a time. Answer first, then fish: no question comes while your line is in the water, and you cannot cast while a question is open.',
+    'One thing at a time. You cannot cast while a question is open, and no question comes while your line is in the water.',
   thumbnail: { glyph: 'fish', hue: 198, accentHue: 46 },
   status: 'playable',
   stage: '3d',

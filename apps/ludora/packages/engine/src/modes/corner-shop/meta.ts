@@ -242,7 +242,7 @@ export const meta: ModeMeta = {
     ],
   },
   calmPlay:
-    'One thing at a time. While you read a question or pick a delivery, your customers wait happily and nobody leaves. Then it is your go at the till, and the next question comes when the queue is served.',
+    'One thing at a time. While you read, your customers wait happily. Then serve them. The next question comes when the queue is served.',
   thumbnail: { glyph: 'chest', hue: 150, accentHue: 40 },
   status: 'playable',
   stage: '3d',

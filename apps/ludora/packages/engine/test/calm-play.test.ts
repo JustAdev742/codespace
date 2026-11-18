@@ -552,6 +552,8 @@ describe('the walkthrough every mode gives', () => {
         expect(s.text.endsWith('.'), `${m.meta.id}: ${s.text}`).toBe(true);
       }
       expect(t!.controls?.length ?? 0, m.meta.id).toBeLessThanOrEqual(TUTORIAL_LIMITS.controls);
+      // What calm play changes is a step of the walkthrough in a calm room, so it is held to the same length.
+      if (m.meta.calmPlay) expect(m.meta.calmPlay.length, m.meta.id).toBeLessThanOrEqual(TUTORIAL_LIMITS.textChars);
       expect(tutorialOf(m.meta)).toBe(t);
     }
   });

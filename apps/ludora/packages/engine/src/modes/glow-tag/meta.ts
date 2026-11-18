@@ -58,7 +58,7 @@ export const meta: ModeMeta = {
     ],
   },
   calmPlay:
-    'One thing at a time. While you answer you are hidden: nobody can tag you and the ring cannot hurt you, for up to 30 seconds. After you answer you have 10 seconds to walk and tag. There are no bonus points for still glowing.',
+    'One thing at a time. While you answer you are hidden and safe, for up to 30 seconds. Then you have 10 seconds to walk and tag.',
   thumbnail: { glyph: 'spark', hue: 160, accentHue: 290 },
   status: 'playable',
   stage: '3d',

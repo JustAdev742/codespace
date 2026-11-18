@@ -51,7 +51,7 @@ export const meta: ModeMeta = {
     ],
   },
   calmPlay:
-    'One thing at a time. While a question is open your kart drives itself and nothing can slow it down. After you answer it is your go: steer and boost for 7 seconds, then the next question comes.',
+    'One thing at a time. While you answer, your kart drives itself and nothing can slow it. Then you steer and boost for 7 seconds.',
   thumbnail: { glyph: 'lantern', hue: 248, accentHue: 44 },
   status: 'playable',
   stage: '3d',
