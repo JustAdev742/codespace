@@ -49,7 +49,7 @@ describe('extra time in a live room', () => {
         variantId: null,
         settings: {},
         common: { shuffleQuestions: false, questionLimit: 3, timeLimitSec: 20 },
-        options: roomOptionsSchema.parse({}),
+        options: roomOptionsSchema.parse({ tutorial: false }),
         set: { id: null, title: 'Facts', questions: TF },
         solo: false,
         ...(classExtraTime ? { classId: 'class-1', classMembers: Object.keys(classExtraTime), classTitle: 'Year 5', classExtraTime } : {}),

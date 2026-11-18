@@ -3,7 +3,7 @@ import { and, asc, count, desc, eq, inArray, isNull, sql } from 'drizzle-orm';
 import { z } from 'zod';
 import { getMode, getVariant, prepareQuestions } from '@ludora/engine';
 import { soloBlocker } from '@ludora/engine/catalog';
-import { classEventSchema, hasPermission, levelFromXp, questionSchema, roomOptionsSchema, schoolNameSchema, type Question } from '@ludora/shared';
+import { classEventSchema, hasPermission, levelFromXp, questionSchema, schoolNameSchema, type Question } from '@ludora/shared';
 import type { AppDeps } from '../../app.ts';
 import type { DbOrTx } from '../../db/client.ts';
 import { assignments, classEvents, classLogins, classMembers, classNotices, classStudentNotes, classTeachers, classes, gameParticipants, gameSessions, moderationActions, questionSets, users } from '../../db/schema.ts';
@@ -23,6 +23,7 @@ import { activeGoal, classToolRoutes, goalView } from './tools.ts';
 import { classLoginRoutes } from './logins.ts';
 import { classLiveRoutes } from './live.ts';
 import { checkGroup, classGroupRoutes, groupsOf, leaveGroups, membersFor, myGroups, setForGroups, teachersOf } from './groups.ts';
+import { newRoomOptions } from '../rooms/options.ts';
 
 /*
  * Classes and assignments. A teacher account creates a class and shares its
@@ -471,7 +472,7 @@ export async function classRoutes(app: FastifyInstance, deps: AppDeps) {
         variantId: a.variantId,
         settings: {},
         common: {},
-        options: roomOptionsSchema.parse({ maxPlayers: 1, lateJoin: false }),
+        options: newRoomOptions(deps.config, auth.user.preferences, { maxPlayers: 1, lateJoin: false }),
         set: { id: set.id, title: set.title, questions },
         solo: true,
         classId: a.classId,

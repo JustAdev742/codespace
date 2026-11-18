@@ -1,7 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { and, asc, desc, eq, gte, inArray, isNull, sql } from 'drizzle-orm';
-import { lessonBodySchema, lessonStepSchema, questionSchema, roomCodeSchema, roomOptionsSchema, type LessonBody, type LessonStep } from '@ludora/shared';
+import { lessonBodySchema, lessonStepSchema, questionSchema, roomCodeSchema, type LessonBody, type LessonStep } from '@ludora/shared';
 import { getMode, getVariant, prepareQuestions } from '@ludora/engine';
 import type { AppDeps } from '../../app.ts';
 import type { Db } from '../../db/client.ts';
@@ -17,6 +17,7 @@ import { MAX_ROOMS_PER_HOST } from '../../realtime/manager.ts';
 import type { Room } from '../../realtime/room.ts';
 import { TEMPLATES, languageProblem, modeTitle, stepId, stepMinutes, stepTitle, type Tally, type TemplateId } from './model.ts';
 import { LessonRun, screenFor, type RunGame, type RunState } from './run.ts';
+import { newRoomOptions } from '../rooms/options.ts';
 
 /*
  * Lessons: a teacher's ordered steps, run in one room. Every route is for a teacher account and
@@ -364,7 +365,7 @@ export async function lessonRoutes(app: FastifyInstance, deps: AppDeps) {
         variantId: game.variantId,
         settings: game.settings,
         common: game.common,
-        options: roomOptionsSchema.parse({}),
+        options: newRoomOptions(deps.config, auth.user.preferences),
         set: game.set,
         solo: false,
         ...(cls ? { classId: cls.id, classMembers: cls.members, classTitle: cls.name, classExtraTime: cls.extra } : {}),

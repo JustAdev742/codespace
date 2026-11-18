@@ -7,6 +7,8 @@ const stageBackdrop = z.enum(['floodlights', 'hills', 'harbour', 'aurora', 'roof
 const textSize = z.enum(['normal', 'large', 'larger']);
 const profileVisibility = z.enum(['public', 'friends', 'private']);
 const allowFriendRequests = z.enum(['everyone', 'friend_code', 'nobody']);
+/** Mode and variant ids. Far more room than the catalogue has, so made games fit too; the oldest are dropped by the client. */
+const tutorialsSeen = z.array(z.string().min(1).max(80)).max(300);
 
 /** A time zone name the runtime knows (Europe/London), or null for the device's own. */
 const timeZone = z
@@ -99,6 +101,13 @@ export const preferencesSchema = z.object({
   reactionBar: z.array(z.enum(EMOTE_GLYPHS)).max(8).default([]),
   /** The host's big-screen backdrop for the lobby and between questions (web/src/features/room/game/Backdrop.tsx). */
   stageBackdrop: stageBackdrop.default('floodlights'),
+  /**
+   * Choices for the games this account starts. `calmPlay`: calm play in new games, when the request to make one
+   * does not say: true or false, or null for this copy's usual (on for a school's own copy, off elsewhere).
+   */
+  host: z.object({ calmPlay: z.boolean().nullable().default(null) }).default({ calmPlay: null }),
+  /** Modes and variants whose walkthrough this player has finished, so the next game shows them the short reminder instead. */
+  tutorials: tutorialsSeen.default([]),
 });
 export type Preferences = z.infer<typeof preferencesSchema>;
 
@@ -120,6 +129,9 @@ export const preferencesPatchSchema = z.object({
   access: accessPatchSchema.optional(),
   reactionBar: z.array(z.enum(EMOTE_GLYPHS)).max(8, 'Choose up to 8 reactions.').optional(),
   stageBackdrop: stageBackdrop.optional(),
+  host: z.object({ calmPlay: z.boolean().nullable() }).partial().optional(),
+  /** Walkthroughs to remember as seen. They are added to the ones already kept: a seen walkthrough is never forgotten by a patch. */
+  tutorials: tutorialsSeen.optional(),
 });
 
 /** Parse stored preferences, filling anything missing with defaults. Never throws. */
@@ -129,6 +141,14 @@ export function readPreferences(raw: unknown): Preferences {
   // One unreadable accessibility choice must not cost the player every other setting.
   const rest = preferencesSchema.safeParse({ ...(raw as object), access: undefined });
   return rest.success ? rest.data : preferencesSchema.parse({});
+}
+
+/**
+ * Calm play for a new room whose host did not say: their saved choice for the games they start, or
+ * this copy's usual (`copyDefault`: rooms/options.ts, `copyCalmPlay`).
+ */
+export function defaultCalmPlay(prefs: Pick<Preferences, 'host'>, copyDefault: boolean): boolean {
+  return prefs.host.calmPlay ?? copyDefault;
 }
 
 /** Safer defaults for players under 13: private-ish profile, friend requests by code only. */
@@ -145,10 +165,13 @@ export function defaultPreferences(ageBand: string | null): Preferences {
 const defined = <T extends object>(o: T | undefined): Partial<T> => Object.fromEntries(Object.entries(o ?? {}).filter(([, v]) => v !== undefined)) as Partial<T>;
 
 export function mergePreferences(current: Preferences, patch: z.infer<typeof preferencesPatchSchema>): Preferences {
-  const { notifications, privacy, school, access, ...top } = patch;
+  const { notifications, privacy, school, access, host, tutorials, ...top } = patch;
   return preferencesSchema.parse({
     ...current,
     ...defined(top),
+    host: { ...current.host, ...defined(host) },
+    // Added to, never replaced, so two devices finishing different walkthroughs both count. The newest 300 are kept.
+    tutorials: tutorials ? [...new Set([...current.tutorials, ...tutorials])].slice(-300) : current.tutorials,
     notifications: { ...current.notifications, ...defined(notifications) },
     privacy: { ...current.privacy, ...defined(privacy) },
     school: { ...current.school, ...defined(school) },

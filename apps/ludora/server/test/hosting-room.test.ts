@@ -39,7 +39,7 @@ function makeRoom(opts: { modeId?: string; options?: Partial<RoomOptions>; commo
       variantId: null,
       settings: {},
       common: { shuffleQuestions: false, questionLimit: 3, ...opts.common },
-      options: roomOptionsSchema.parse(opts.options ?? {}),
+      options: roomOptionsSchema.parse({ tutorial: false, ...opts.options }),
       set: { id: null, title: 'Facts', questions: opts.questions ?? TF },
       solo: false,
       ...(opts.classMembers ? { classId: 'class-1', classMembers: opts.classMembers, classTitle: 'Year 5 Oak' } : {}),

@@ -31,7 +31,7 @@ function makeRoom(opts: { options?: Partial<RoomOptions>; watch?: boolean; onInt
       variantId: null,
       settings: {},
       common: { shuffleQuestions: false },
-      options: roomOptionsSchema.parse(opts.options ?? {}),
+      options: roomOptionsSchema.parse({ tutorial: false, ...opts.options }),
       set: { id: null, title: 'Facts', questions: TF },
       solo: false,
     },

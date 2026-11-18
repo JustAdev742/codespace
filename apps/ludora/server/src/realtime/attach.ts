@@ -156,6 +156,7 @@ export function attachRealtime(app: FastifyInstance, deps: AppDeps) {
         avatar,
         dress: parsed.data.dress,
         deviceSeat: parsed.data.deviceSeat,
+        tutorialsSeen: auth?.user.preferences.tutorials,
         ...(reacts ? { ownedReactions: reacts.owned, reactionBar: reacts.bar } : {}),
         // Waiting room: the host's answer arrives later, on this socket.
         onAdmitted: (reconnectToken) => {

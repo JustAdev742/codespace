@@ -1,7 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { eq } from 'drizzle-orm';
-import { MADE_GAME_MODE_ID, commonSettingsSchema, DIFFICULTIES, PRACTICE_LEVEL_IDS, roomCodeSchema, roomOptionsSchema, schoolTeamsSchema, setFeelSchema, type Difficulty, type Question, type SetFeel } from '@ludora/shared';
+import { MADE_GAME_MODE_ID, commonSettingsSchema, DIFFICULTIES, PRACTICE_LEVEL_IDS, roomCodeSchema, roomOptionsPatchSchema, roomOptionsSchema, schoolTeamsSchema, setFeelSchema, type Difficulty, type Question, type SetFeel } from '@ludora/shared';
 import { blueprintMeta, getMode, getVariant } from '@ludora/engine';
 import { soloBlocker } from '@ludora/engine/catalog';
 import type { AppDeps } from '../../app.ts';
@@ -16,6 +16,7 @@ import { countGamePlay } from '../games/routes.ts';
 import { madeGameForRoom } from '../modestudio/routes.ts';
 import { schoolTeamPlan } from '../school/teams.ts';
 import { teacherClass } from '../classes/access.ts';
+import { newRoomOptions } from './options.ts';
 import { classMembers } from '../../db/schema.ts';
 
 const createSchema = z.object({
@@ -24,7 +25,7 @@ const createSchema = z.object({
   variantId: z.string().min(1).max(60).nullable().optional(),
   settings: z.record(z.string(), z.union([z.number(), z.string(), z.boolean()])).optional(),
   common: commonSettingsSchema.partial().optional(),
-  options: roomOptionsSchema.partial().optional(),
+  options: roomOptionsPatchSchema.optional(),
   solo: z.boolean().optional(),
   /** The Game Maker game this room was set up from, to count its plays. */
   gameId: z.string().uuid().optional(),
@@ -121,7 +122,8 @@ export async function roomRoutes(app: FastifyInstance, deps: AppDeps) {
           variantId: body.variantId ?? null,
           settings: body.settings ?? {},
           common: teamPlan ? { ...body.common, teamCount: teamPlan.teams.length } : (body.common ?? {}),
-          options: roomOptionsSchema.parse(solo ? { ...body.options, maxPlayers: 1, lateJoin: false } : (body.options ?? {})),
+          // Calm play and the walkthrough, when the request does not mention them: the host's saved choice and this copy's defaults.
+          options: newRoomOptions(deps.config, auth.user.preferences, { ...body.options, ...(solo ? { maxPlayers: 1, lateJoin: false } : {}) }),
           set: { id: set.id, title: set.title, questions, feel: setFeelOf(set.defaults) },
           solo,
           teamPlan,
@@ -230,7 +232,7 @@ export async function roomRoutes(app: FastifyInstance, deps: AppDeps) {
             variantId: null,
             settings: {},
             common: {},
-            options: roomOptionsSchema.parse({ maxPlayers: 1, lateJoin: false }),
+            options: roomOptionsSchema.parse({ maxPlayers: 1, lateJoin: false, calmPlay: room.options.calmPlay, tutorial: room.options.tutorial }),
             set: { id: room.set.id, title: room.set.title, questions: room.set.questions },
             solo: true,
           });

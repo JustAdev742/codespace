@@ -1,5 +1,5 @@
 import { and, asc, desc, eq, gt, inArray, isNotNull, isNull, sql } from 'drizzle-orm';
-import { DAILY_CHALLENGE_QUESTIONS, MISTAKES_PER_ROUND, questionSchema, roomOptionsSchema, streakEnding, type Question } from '@ludora/shared';
+import { DAILY_CHALLENGE_QUESTIONS, MISTAKES_PER_ROUND, questionSchema, streakEnding, type Question } from '@ludora/shared';
 import { getMode } from '@ludora/engine';
 import { soloBlocker } from '@ludora/engine/catalog';
 import type { AppDeps } from '../../app.ts';
@@ -9,6 +9,7 @@ import type { AuthContext } from '../../http/context.ts';
 import { AppError, conflict } from '../../lib/errors.ts';
 import { addDays, utcDay } from '../../lib/time.ts';
 import { dailyPick, dailySample, mistakeStep, questionOutcome } from './logic.ts';
+import { newRoomOptions } from '../rooms/options.ts';
 
 /*
  * Study: the mistakes list, "Fix my mistakes" rounds and the daily challenge.
@@ -78,7 +79,7 @@ function createSoloRoom(deps: AppDeps, auth: AuthContext, init: { modeId: string
       variantId: null,
       settings: {},
       common: { questionLimit: init.questionLimit },
-      options: roomOptionsSchema.parse({ maxPlayers: 1, lateJoin: false }),
+      options: newRoomOptions(deps.config, auth.user.preferences, { maxPlayers: 1, lateJoin: false }),
       set: init.set,
       solo: true,
     });

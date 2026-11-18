@@ -115,6 +115,16 @@ const schema = z.object({
   OPERATOR_CONTACT: z.preprocess((v) => (v === '' ? undefined : v), z.string().max(200).optional()),
   /** A school's look for this copy, e.g. hills-grammar. Unset: Ludora's own. */
   SCHOOL_THEME: z.preprocess((v) => (v === '' ? undefined : v), z.enum(SCHOOL_THEMES).optional()),
+  /**
+   * Whether a new game shows the walkthrough of its mode before it starts (to players who have not seen it), unless
+   * the host says otherwise for the room. On unless set to "off"; the browser tests turn it off and test it on purpose.
+   */
+  TUTORIAL_DEFAULT: z.preprocess((v) => (v === '' ? undefined : v), z.enum(['on', 'off']).default('on')),
+  /**
+   * Calm play in new games when the host has not chosen for themselves (docs/DECISIONS.md, D56): "on" or "off".
+   * Unset: on for a school's own copy (SCHOOL_THEME set), off elsewhere.
+   */
+  CALM_PLAY_DEFAULT: z.preprocess((v) => (v === '' ? undefined : v), z.enum(['on', 'off']).optional()),
   SMTP_URL: z.string().optional(),
   MAIL_FROM: z.string().default('Ludora <no-reply@ludora.local>'),
 });

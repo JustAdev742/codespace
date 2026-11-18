@@ -79,6 +79,8 @@ export interface RoomSubscriber {
 export interface RoomPlayer {
   id: string;
   userId: string | null;
+  /** The walkthroughs this player's account had finished when they joined (JoinInput.tutorialsSeen). */
+  tutorialsSeen?: readonly string[];
   name: string;
   isGuest: boolean;
   isBot: boolean;
@@ -214,6 +216,8 @@ export interface JoinInput {
    * comes from a browser that already holds one.
    */
   deviceSeat?: string | undefined;
+  /** The walkthroughs this player's account has finished (its preferences), so one they know is not shown again. */
+  tutorialsSeen?: readonly string[] | undefined;
   /** Waiting room: called when the host lets this request in, or turns it away. Without them the request is refused. */
   onAdmitted?: (reconnectToken: string) => void;
   onDeclined?: (message: string) => void;
@@ -340,6 +344,15 @@ export class Room {
   /** Extra time on timed questions, by player id. Only the host sees it. */
   private readonly extraTime = new Map<string, number>();
   private startTimer: ReturnType<typeof setTimeout> | null = null;
+  /** The walkthrough before a game: when it opened. Null when none is open. */
+  private intro: { since: number } | null = null;
+  /**
+   * Players who know how to play this room's mode: their device says they have seen its walkthrough before, or
+   * they have just finished it. When everyone here does, Start goes straight to the game.
+   */
+  private readonly knows = new Set<string>();
+  /** This start's walkthrough has been shown (finished, or skipped by the host), so the next Start starts the game. */
+  private introOver = false;
   private breakTimer: ReturnType<typeof setTimeout> | null = null;
   /** The break paused a running game, so the game carries on when it ends. */
   private breakPausedGame = false;
@@ -473,6 +486,8 @@ export class Room {
         p.connected = false;
         p.disconnectedAt = this.hooks.now();
         this.runtime?.setConnected(p.id, false);
+        // Someone the walkthrough was waiting for has gone: the others need not wait for them.
+        this.checkIntroDone();
       }
     }
     this.scheduleBroadcast();
@@ -545,6 +560,8 @@ export class Room {
     const sibling = input.deviceSeat ? [...this.players.values()].find((p) => !p.isBot && p.reconnectToken === input.deviceSeat) : undefined;
     player.device = sibling?.device ?? player.id;
     this.players.set(player.id, player);
+    if (input.tutorialsSeen?.length) player.tutorialsSeen = input.tutorialsSeen;
+    if (player.tutorialsSeen?.includes(this.tutorialKey)) this.knows.add(player.id);
     this.roster.set(player.id, { userId: player.userId, name: player.name, isGuest: player.isGuest, isBot: false });
     const classExtra = player.userId ? (this.classExtraTime?.[player.userId] ?? 0) : 0;
     if (classExtra > 0) this.extraTime.set(player.id, classExtra);
@@ -614,12 +631,69 @@ export class Room {
     this.startTimer = setTimeout(() => {
       this.startTimer = null;
       this.startsAt = null;
-      const r = this.start();
+      // A countdown nobody pressed Start for (the room filled up) still shows the walkthrough first.
+      const r = this.wantsIntro() ? this.beginIntro() : this.start();
       if (!r.ok) this.pushFeed(r.error.message, 'bad');
       this.scheduleBroadcast();
     }, seconds * 1000);
     this.scheduleBroadcast();
     return { ok: true };
+  }
+
+  /* ------------------------------- the walkthrough ------------------------------ */
+
+  /**
+   * What a finished walkthrough is remembered as (in an account's preferences, or on a guest's device): the mode, or
+   * for a made game that game, since each made game has rules of its own.
+   */
+  get tutorialKey(): string {
+    return this.madeGame?.id ? `made:${this.madeGame.id}` : this.mode.meta.id;
+  }
+
+  /** Players the walkthrough waits for: people who are here now. Bots and anyone disconnected are not waited for. */
+  private introPlayers(): RoomPlayer[] {
+    return [...this.players.values()].filter((p) => !p.isBot && p.connected);
+  }
+
+  /**
+   * Whether pressing Start should open the walkthrough rather than start the game: the room shows
+   * one, this start has not had it yet, and somebody here has not seen it (a class that knows the
+   * game, or a room of practice bots, needs no telling).
+   */
+  private wantsIntro(): boolean {
+    return this.options.tutorial && !this.introOver && !this.intro && this.status === 'lobby' && this.introPlayers().some((p) => !this.knows.has(p.id));
+  }
+
+  /** Every screen shows how to play. The game starts when every player has finished, or the host presses Start again. */
+  private beginIntro(): Ack {
+    if (this.status !== 'lobby') return fail('invalid_state', 'The game has already started.');
+    const problem = this.startProblem();
+    if (problem) return fail('invalid_state', problem);
+    this.clearCountdown();
+    this.intro = { since: this.hooks.now() };
+    this.scheduleBroadcast();
+    return { ok: true };
+  }
+
+  /** The walkthrough is over (everyone finished it, or the host said so): the countdown if the room has one, then the game. */
+  private endIntro(now = false): Ack {
+    this.intro = null;
+    this.introOver = true;
+    if (!now && this.options.startCountdownSec > 0 && !this.solo) return this.beginCountdown(this.options.startCountdownSec);
+    const r = this.start();
+    // The game could not start after all (someone left): the next Start shows the walkthrough again.
+    if (!r.ok) this.introOver = false;
+    this.scheduleBroadcast();
+    return r;
+  }
+
+  /** Start the game once everyone the walkthrough waits for has finished it. */
+  private checkIntroDone(): void {
+    if (!this.intro || this.status !== 'lobby') return;
+    const waiting = this.introPlayers();
+    if (!waiting.length || !waiting.every((p) => this.knows.has(p.id))) return;
+    const r = this.endIntro();
+    if (!r.ok) this.pushFeed(r.error.message, 'bad');
   }
 
   /** Why the game cannot start now, or null. */
@@ -657,6 +731,20 @@ export class Room {
         this.scheduleBroadcast();
         return { ok: true };
       }
+      case 'tutorial':
+        // In the lobby a device says its player has seen this mode's walkthrough; during the walkthrough, that they
+        // have finished it. Once the game is on there is nothing to finish, and a late message is not an error.
+        if (this.status !== 'lobby') return { ok: true };
+        if (req.done) {
+          this.knows.add(p.id);
+          // Remembered for this room's later games too (a lesson can come back to this mode).
+          if (!p.tutorialsSeen?.includes(this.tutorialKey)) p.tutorialsSeen = [...(p.tutorialsSeen ?? []), this.tutorialKey];
+        } else this.knows.delete(p.id);
+        if (this.intro) {
+          this.scheduleBroadcast();
+          this.checkIntroDone();
+        }
+        return { ok: true };
       case 'feeling':
         if (!this.options.exitTicket) return fail('forbidden', 'There is no exit ticket in this game.');
         if (this.status !== 'ended' || !this.results) return fail('invalid_state', 'The exit ticket opens when the game ends.');
@@ -774,12 +862,16 @@ export class Room {
   private removePlayer(p: RoomPlayer, line: string, notice?: string) {
     this.players.delete(p.id);
     this.ready.delete(p.id);
+    this.knows.delete(p.id);
     this.runtime?.removePlayer(p.id);
     this.clearBot(p.id);
     const message = notice ?? (line.includes('removed') ? 'The host removed you from the room.' : 'You left the room.');
     for (const sub of this.subscribers.values()) if (sub.playerId === p.id) sub.emit('room:closed', { reason: 'removed', message });
     for (const [id, sub] of this.subscribers) if (sub.playerId === p.id) this.subscribers.delete(id);
     if (!p.isBot && !this.solo) this.pushFeed(line, 'info');
+    // Nobody left to show the walkthrough to: back to the lobby. Otherwise the others need not wait for someone who left.
+    if (this.intro && !this.introPlayers().length) this.intro = null;
+    else this.checkIntroDone();
     this.scheduleBroadcast();
   }
 
@@ -790,9 +882,20 @@ export class Room {
     this.touch();
     switch (cmd.cmd) {
       case 'start':
-        if (this.status === 'lobby' && !cmd.now && this.options.startCountdownSec > 0 && !this.solo) return this.beginCountdown(this.options.startCountdownSec);
+        if (this.status === 'lobby' && !cmd.now) {
+          // Start pressed while the walkthrough is open: the host has seen enough, on with the game.
+          if (this.intro) return this.endIntro();
+          if (this.wantsIntro()) return this.beginIntro();
+          if (this.options.startCountdownSec > 0 && !this.solo) return this.beginCountdown(this.options.startCountdownSec);
+        }
         return this.start();
       case 'cancelStart':
+        if (this.intro && this.startsAt === null) {
+          // Back from the walkthrough to the lobby; the next Start shows it again.
+          this.intro = null;
+          this.scheduleBroadcast();
+          return { ok: true };
+        }
         if (this.startsAt === null) return fail('invalid_state', 'There is no countdown to cancel.');
         this.clearCountdown();
         // A cancelled auto-start does not fire again in this lobby: the host starts when they are ready.
@@ -1022,6 +1125,12 @@ export class Room {
     }
     this.clearRoomTimers();
     this.ready.clear();
+    this.intro = null;
+    this.introOver = false;
+    // Another game of the lesson may be another mode: every device says again whether its player knows it, and
+    // accounts are checked against what they had finished.
+    this.knows.clear();
+    for (const p of this.players.values()) if (p.tutorialsSeen?.includes(this.tutorialKey)) this.knows.add(p.id);
     this.feelings.clear();
     this.nudgedAt.clear();
     this.runtime = null;
@@ -1044,6 +1153,7 @@ export class Room {
     if (problem) return fail('invalid_state', problem);
     this.clearCountdown();
     this.clearBreak();
+    this.intro = null;
     this.ready.clear();
     this.flushFeelings();
     this.feelings.clear();
@@ -1064,6 +1174,8 @@ export class Room {
       players: active.map((p) => ({ id: p.id, name: p.name, teamId: p.teamId, isBot: p.isBot, connected: p.connected, ...this.extraOf(p.id) })),
       teams: this.teams.map((t) => ({ id: t.id, name: t.name, hue: t.hue })),
       seed: hashString(`${this.code}:${this.gameId}`),
+      // Calm play is the room's: the game's rules read it (one thing at a time), and it cannot change until the next game.
+      calm: this.options.calmPlay,
       clock: { now: () => this.hooks.now() },
       listener: {
         changed: () => this.scheduleBroadcast(),
@@ -1382,6 +1494,7 @@ export class Room {
         code: this.code,
         status: this.status,
         modeId: this.mode.meta.id,
+        tutorialKey: this.tutorialKey,
         pacing: this.mode.meta.pacing,
         variantId: this.variant?.meta.id ?? null,
         title: this.variant?.meta.title ?? this.mode.meta.title,
@@ -1397,6 +1510,7 @@ export class Room {
         teams: this.teams,
         hostConnected: this.hasHostConnected(),
         startsAt: this.startsAt,
+        intro: this.intro ? { since: this.intro.since, done: this.introPlayers().filter((p) => this.knows.has(p.id)).length, players: this.introPlayers().length } : null,
         breakEndsAt: this.breakEndsAt,
         pinned: this.pinned,
         readyCount: this.ready.size,
@@ -1404,7 +1518,7 @@ export class Room {
         doubleNow,
       },
       me: me
-        ? { playerId: me.id, role: 'player', name: me.name, teamId: me.teamId, reconnectToken: me.reconnectToken, ready: this.ready.has(me.id), feeling: this.feelings.get(me.id) ?? null, reactions: me.bar ?? [...FREE_REACTIONS], canReact: [...(me.canReact ?? FREE_SET)] }
+        ? { playerId: me.id, role: 'player', name: me.name, teamId: me.teamId, reconnectToken: me.reconnectToken, ready: this.ready.has(me.id), ...(this.intro ? { tutorialDone: this.knows.has(me.id) } : {}), feeling: this.feelings.get(me.id) ?? null, reactions: me.bar ?? [...FREE_REACTIONS], canReact: [...(me.canReact ?? FREE_SET)] }
         : { playerId: null, role: 'host', name: this.hostName, teamId: null, reconnectToken: null },
       players: [...this.players.values()].slice(0, 200).map((p) => ({
         id: p.id,
@@ -1416,6 +1530,7 @@ export class Room {
         avatar: p.avatar,
         ...(p.isBot && p.profile ? { persona: PERSONA_INFO[p.profile.persona].label } : {}),
         ...(this.ready.has(p.id) ? { ready: true } : {}),
+        ...(this.intro && this.knows.has(p.id) ? { tutorialDone: true } : {}),
       })),
       game,
       results,

@@ -111,6 +111,16 @@ export const roomOptionsSchema = z.object({
   readAloud: z.boolean().default(false),
   /** Shared classroom devices: after a game, a device that joined with only a name goes back to the join page for the next player after a short countdown. */
   sharedDevices: z.boolean().default(false),
+  /**
+   * Calm play for the whole room, chosen by the host: every player's screen and the big screen play calm (no shake,
+   * flashes or particle bursts, still pictures, quieter and simpler sound, no countdown pressure but the timer itself),
+   * whatever each player's own setting, and modes with an action give players one thing at a time (the engine's
+   * `ctx.calm`). It changes how a game is played, so it is set between games. A room made without saying gets the
+   * host's saved choice, or on on a school's own copy (server: modules/rooms/routes.ts).
+   */
+  calmPlay: z.boolean().default(false),
+  /** A short walkthrough of the mode on every screen before the game starts. The host can skip it, or turn it off here. */
+  tutorial: z.boolean().default(true),
 });
 export type RoomOptions = z.infer<typeof roomOptionsSchema>;
 
@@ -122,10 +132,15 @@ function patchOf<T extends z.ZodRawShape>(shape: T) {
   return z.object(Object.fromEntries(Object.entries(shape).map(([k, v]) => [k, (v instanceof z.ZodDefault ? (v.unwrap() as z.ZodType) : (v as unknown as z.ZodType)).optional()])));
 }
 const commonPatchSchema = patchOf(commonSettingsSchema.shape) as unknown as z.ZodType<Partial<CommonSettings>>;
-const optionsPatchSchema = patchOf(roomOptionsSchema.shape) as unknown as z.ZodType<Partial<RoomOptions>>;
+/** Some room options: only the keys sent, with nothing filled in. For making a room too, so the server can tell "not said" from "off". */
+export const roomOptionsPatchSchema = patchOf(roomOptionsSchema.shape) as unknown as z.ZodType<Partial<RoomOptions>>;
+const optionsPatchSchema = roomOptionsPatchSchema;
 
 export const hostCommandSchema = z.discriminatedUnion('cmd', [
-  /** `now` skips the room's countdown. */
+  /**
+   * From the lobby: the walkthrough opens first when the room shows one, and pressing Start again there ends it
+   * and starts the game (after the room's countdown, if it has one). `now` starts at once: no walkthrough, no countdown.
+   */
   z.object({ cmd: z.literal('start'), now: z.boolean().optional() }),
   z.object({ cmd: z.literal('cancelStart') }),
   z.object({ cmd: z.literal('pause') }),
@@ -171,6 +186,8 @@ export const playerRequestSchema = z.discriminatedUnion('op', [
   z.object({ op: z.literal('feeling'), feeling: z.enum(FEELINGS) }),
   /** The reactions on the player's bar for this room (checked against what they may send). */
   z.object({ op: z.literal('reactionBar'), emotes: z.array(z.string().min(1).max(20)).min(1).max(8) }),
+  /** The player has finished the walkthrough before the game (or does not need it). When everyone has, the game starts. */
+  z.object({ op: z.literal('tutorial'), done: z.boolean() }),
 ]);
 export type PlayerRequest = z.infer<typeof playerRequestSchema>;
 
@@ -218,6 +235,8 @@ export interface RoomPlayerView {
   avatar: AvatarLite | null;
   /** Tapped Ready in the lobby. */
   ready?: boolean;
+  /** While the walkthrough is open before a game: this player has finished it. */
+  tutorialDone?: boolean;
   /** A practice bot's personality in a word or two ("Careful", "Quick"). */
   persona?: string;
 }
@@ -307,6 +326,8 @@ export interface RoomView<G = unknown> {
     code: string;
     status: RoomStatus;
     modeId: string;
+    /** What this room's walkthrough is remembered as once a player has finished it: the mode's id, or `made:<id>` for a made game. */
+    tutorialKey?: string;
     /** Host-paced games pause while the host is away; self-paced ones keep going. */
     pacing: Pacing;
     variantId: string | null;
@@ -325,6 +346,11 @@ export interface RoomView<G = unknown> {
     hostConnected: boolean;
     /** Server time the countdown ends and the game starts, while one is running. */
     startsAt?: number | null;
+    /**
+     * The walkthrough is open before the game: every screen shows how to play. `since` is server time; `done` of
+     * `players` connected players have finished it. The game starts when they all have, or when the host says so.
+     */
+    intro?: { since: number; done: number; players: number } | null;
     /** Server time a brain break ends, while one is on. */
     breakEndsAt?: number | null;
     /** The host's pinned lobby message. */
@@ -343,6 +369,8 @@ export interface RoomView<G = unknown> {
     teamId: string | null;
     reconnectToken: string | null;
     ready?: boolean;
+    /** This player has finished the walkthrough that is open. */
+    tutorialDone?: boolean;
     /** The exit ticket choice this player made. */
     feeling?: Feeling | null;
     /** The reactions on this player's bar, in order: the free ones and any they own, as they chose them. */

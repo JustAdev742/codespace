@@ -21,6 +21,7 @@ import {
 } from './service.ts';
 import { afterAccountCreated } from '../economy/welcome.ts';
 import { flagsFor } from '../flags/service.ts';
+import { hostingDefaults } from '../rooms/options.ts';
 
 const thisYear = new Date().getUTCFullYear();
 const birthYear = z.number().int().min(thisYear - 120).max(thisYear - 4).optional();
@@ -67,6 +68,8 @@ export function meResponse(auth: AuthContext, deps: AppDeps) {
     roles: auth.roles,
     permissions: [...auth.permissions].sort(),
     environment: deps.config.APP_ENV,
+    /** What a game this account hosts starts with unless they change it: calm play and the walkthrough (rooms/options.ts). */
+    hosting: hostingDefaults(deps.config, u.preferences),
   };
 }
 

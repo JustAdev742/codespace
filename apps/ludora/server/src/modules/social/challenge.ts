@@ -1,7 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import { eq } from 'drizzle-orm';
 import { z } from 'zod';
-import { roomOptionsSchema } from '@ludora/shared';
 import { MODES, type GameMode } from '@ludora/engine';
 import type { AppDeps } from '../../app.ts';
 import { users } from '../../db/schema.ts';
@@ -15,6 +14,7 @@ import { notify } from '../notifications/service.ts';
 import { loadSetForPlay } from '../sets/access.ts';
 import { readPreferences } from '../users/preferences.ts';
 import { areFriends, blockedEitherWay } from './service.ts';
+import { newRoomOptions } from '../rooms/options.ts';
 
 /*
  * Challenge a friend (finish): a one-against-one game on a set the challenger picks. The server
@@ -79,7 +79,7 @@ export async function challengeRoutes(app: FastifyInstance, deps: AppDeps) {
         settings: mode.settings.some((s) => s.key === 'autoAdvance') ? { autoAdvance: true } : {},
         common: {},
         // The two of them only, signed in; it starts by itself a few seconds after both are in.
-        options: roomOptionsSchema.parse({ maxPlayers: 2, lateJoin: false, requireAccount: true, autoStartAt: 2, startCountdownSec: 5 }),
+        options: newRoomOptions(deps.config, auth.user.preferences, { maxPlayers: 2, lateJoin: false, requireAccount: true, autoStartAt: 2, startCountdownSec: 5 }),
         set: { id: set.id, title: set.title, questions },
         solo: false,
         classMembers: [auth.user.id, friend.id],

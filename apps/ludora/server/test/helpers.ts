@@ -41,7 +41,8 @@ export interface TestContext {
 
 export async function createTestApp(env: Record<string, string> = {}): Promise<TestContext> {
   const database = await createTestDatabase();
-  const config = loadConfig({ APP_ENV: 'test', DATABASE_URL: database.url, LOG_LEVEL: 'silent', PUBLIC_ORIGIN: 'http://localhost:5173', ...env });
+  // The walkthrough before a game is off unless a test asks for it (tutorial.test.ts), so tests of everything else start their games in one step.
+  const config = loadConfig({ APP_ENV: 'test', DATABASE_URL: database.url, LOG_LEVEL: 'silent', PUBLIC_ORIGIN: 'http://localhost:5173', TUTORIAL_DEFAULT: 'off', ...env });
   const { db, pool } = createDb(config.DATABASE_URL, 10);
   await runMigrations(db);
   await seedContent(db);

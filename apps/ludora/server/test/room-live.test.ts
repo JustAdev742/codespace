@@ -23,7 +23,7 @@ function makeRoom(modeId = 'classic', settings: Record<string, unknown> = {}) {
       variantId: null,
       settings,
       common: { questionLimit: 4 },
-      options: roomOptionsSchema.parse({}),
+      options: roomOptionsSchema.parse({ tutorial: false }),
       set: { id: null, title: 'Mixed', questions: MIXED_SET },
       solo: false,
     },
