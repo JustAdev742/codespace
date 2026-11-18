@@ -210,9 +210,10 @@ message, so nobody can add lines to an alert. If a message cannot be delivered, 
 why in `ludoractl events`.
 
 **Cheating in a game.** Ludora itself reports play that a person at the ordinary game screen could not produce:
-correct answers faster than anyone can read the question, moves the game does not allow, or one device playing
-as several players. The fair-play list is told which game and which player names. It is a signal, not proof, and
-Ludora never punishes or slows anyone by itself.
+five right answers each within a quarter of a second of the question appearing, five messages the game's own
+screens never send, or three players connected at once from one browser. It never goes by network address, because
+a whole class often shares one. The fair-play list is told which game and which player names, and staff also see it
+in Ludora's audit log. It is a signal, not proof: Ludora never punishes, slows or tells a player by itself.
 
 ### The analyst: an optional AI second opinion
 
@@ -325,10 +326,15 @@ systemd inside a container, with separate "student" and "staff" machines on the 
   hardware-address check against impersonation is covered by unit tests only, not by a live attack.
 - **The console**: every setup screen and the main menus, driven in a pretend terminal
   (`python3 tests/console_harness.py firstboot`).
-- **The install image**: see `apps/ludora/os/README.md` for exactly how far the image build was taken.
+- **The install image**: GitHub builds it on every change (the "Ludora OS" workflow) and keeps it for download.
+  That image was started in an emulated PC: it shows the Ludora OS boot menu on both old-style (BIOS) and UEFI
+  firmware, loads the installer, asks which disk to erase (offering only the real disk) and for the passphrase, and
+  the installer accepts the encrypted disk layout. Doing this found and fixed two installer faults. See
+  `apps/ludora/os/README.md`.
 
-Not tested, because the test machine could not do it: starting a computer from the install image and installing to a
-real disk; disk encryption and the boot menu password on real hardware; SELinux in enforcing mode with the containers
+Not tested, because the test machine could not do it: a complete install to a disk and the first start of the
+installed system (the emulator had no network and no hardware acceleration, so the run stops where the installer
+downloads its packages); disk encryption and the boot menu password on real hardware; SELinux in enforcing mode with the containers
 running (the test system had SELinux off); USBGuard with real devices; auditing. These are configured the standard
 Rocky way, and `ludoractl doctor` reports each of them, so run it after the first real install and read every line.
 

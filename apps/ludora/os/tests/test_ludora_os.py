@@ -416,6 +416,12 @@ class SentinelTests(unittest.TestCase):
         for other in ("not json", "{}", json.dumps({"ludora_event": "integrity", "kind": "made_up"}), json.dumps({"msg": 'x "ludora_event":"integrity","kind":"too_fast"'}),
                       json.dumps(["ludora_event"]), "{" + "a" * 5000):
             self.assertEqual(b.on_app_line(other, 1000), [], other[:40])
+        # The line exactly as Ludora's server logs it (pino adds level, time, pid, hostname and msg around the fields).
+        real = ('{"level":40,"time":1794999240082,"pid":1772,"hostname":"vm","ludora_event":"integrity","kind":"too_fast","room":"482913","mode":"classic",'
+                '"player":"Sam R","count":5,"detail":"Sam R gave 5 right answers, each less than a quarter of a second after the question appeared.",'
+                '"at":"2026-11-18T09:30:05.120Z","msg":"integrity signal"}')
+        from_app = b.on_app_line(real, 2000)
+        self.assertEqual(from_app[0].event["record"], {"kind": "too_fast", "room": "482913", "mode": "classic", "player": "Sam R", "count": 5})
         made = alerts.from_integrity([got[0].event["record"]])
         self.assertEqual(made.audience, "cheat")
         self.assertIn("Possible cheating in game ABCD (classic)", made.title)

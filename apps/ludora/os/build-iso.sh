@@ -134,7 +134,7 @@ fi
 echo "== Building $OUT"
 rm -f "$OUT"
 mkksiso --ks "$KS" -a "$PAYLOAD" -V "$VOLID" -c "inst.text" \
-  -R "Test this media & install Rocky Linux" "Check this media, then install Ludora OS (erases a disk) on Rocky Linux" \
+  -R "Test this media & install Rocky Linux" "Check this media first, then install Ludora OS on Rocky Linux" \
   -R "Install Rocky Linux" "Install Ludora OS (erases a disk) on Rocky Linux" "$ISO" "$OUT"
 echo
 echo "Built $OUT"

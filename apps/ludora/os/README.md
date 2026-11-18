@@ -57,7 +57,15 @@ the kickstart), the kickstart with its package sources filled in, and the Ludora
 The installer's disk and passphrase questions were run with pretend disks: it skips removable disks, refuses a disk
 under 40 GB, and stops unless `ERASE` is typed.
 
-The image has **not been started**: the build machine had no virtual machine support. The build machine's kernel
-also had no FAT support, so the EFI boot partition was assembled with `mtools` through a stand-in for `mount`; on a
-normal Linux machine `mkksiso` does this itself. Start the image in a virtual machine before putting it on real
-hardware, and run `ludoractl doctor` on the result.
+GitHub now builds the image on every change (`.github/workflows/ludora-os.yml`, on a normal kernel, with
+`mkksiso` doing the EFI partition itself) and keeps it as the run's `LudoraOS-iso` artifact.
+
+That GitHub-built image was started in QEMU without hardware acceleration: the boot menu appears on SeaBIOS and on
+OVMF (UEFI), the installer loads, the kickstart's `%pre` runs, lists only the fixed disk, takes `ERASE` and the
+passphrase, and Anaconda accepts the generated LUKS and LVM layout. Two faults showed up this way and are fixed: a
+memory swap device was offered as a disk, and the installer has no `clear` command.
+
+A **complete install has still not been run**: the emulator here had no network, so it stops where Anaconda
+fetches packages, and everything after that (the `%post` step that runs `install.sh`, the first start, the
+first-boot setup on a really installed system) is unproven. Install it in a virtual machine before putting it on
+real hardware, and run `ludoractl doctor` on the result.
