@@ -133,7 +133,9 @@ fi
 
 echo "== Building $OUT"
 rm -f "$OUT"
-mkksiso --ks "$KS" -a "$PAYLOAD" -V "$VOLID" -c "inst.text" -R "Install Rocky Linux" "Install Ludora OS (erases a disk) on Rocky Linux" "$ISO" "$OUT"
+mkksiso --ks "$KS" -a "$PAYLOAD" -V "$VOLID" -c "inst.text" \
+  -R "Test this media & install Rocky Linux" "Check this media, then install Ludora OS (erases a disk) on Rocky Linux" \
+  -R "Install Rocky Linux" "Install Ludora OS (erases a disk) on Rocky Linux" "$ISO" "$OUT"
 echo
 echo "Built $OUT"
 echo "SHA256 $(sha256sum "$OUT" | cut -d' ' -f1)"

@@ -1,0 +1,78 @@
+name: Ludora OS
+
+# Tests Ludora OS and builds its install image (an ISO) from the official Rocky Linux 10.3 boot ISO.
+# The image is kept with the run for 30 days: open the run, scroll to Artifacts, download "LudoraOS-iso".
+
+on:
+  push:
+    paths:
+      - 'apps/ludora/os/**'
+      - '.github/workflows/ludora-os.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ludora-os-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  ROCKY_BASE: https://download.rockylinux.org/pub/rocky/10.3/isos/x86_64
+  ROCKY_ISO: Rocky-10.3-x86_64-boot.iso
+
+jobs:
+  test:
+    name: Unit tests and attack simulation
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Unit tests
+        working-directory: apps/ludora/os
+        run: python3 -W error -m unittest discover -s tests -v
+      - name: Console screens
+        working-directory: apps/ludora/os
+        run: |
+          python3 -m pip install --quiet --break-system-packages pyte
+          python3 tests/console_harness.py firstboot | tail -1
+          python3 tests/console_harness.py dashboard | tail -1
+      - name: Network attack simulation (real firewall and sentinel in network namespaces)
+        working-directory: apps/ludora/os
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq nftables nmap >/dev/null
+          sudo python3 tests/attack_sim.py
+
+  iso:
+    name: Build the install image
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download the official Rocky Linux ISO, its checksum and the checksum's signature
+        run: |
+          mkdir -p build && cd build
+          for file in CHECKSUM CHECKSUM.asc "$ROCKY_ISO"; do
+            curl --fail --silent --show-error --location --retry 4 -o "$file" "$ROCKY_BASE/$file"
+          done
+          ls -l
+      - name: Build (inside Rocky Linux 10, which has mkksiso and Rocky's release key)
+        run: |
+          sudo modprobe loop || true
+          sudo modprobe vfat || true
+          docker run --rm --privileged -v "$PWD:/work" -w /work/build rockylinux/rockylinux:10 bash -euc '
+            dnf -q -y install lorax pykickstart git-core gnupg2 xorriso >/dev/null
+            git config --global --add safe.directory /work
+            bash /work/apps/ludora/os/build-iso.sh --iso "'"$ROCKY_ISO"'" --checksum CHECKSUM --out LudoraOS-x86_64.iso
+          '
+          cd build && sudo chown "$(id -u)" LudoraOS-x86_64.iso && sha256sum LudoraOS-x86_64.iso | tee LudoraOS-x86_64.iso.sha256
+      - uses: actions/upload-artifact@v4
+        with:
+          name: LudoraOS-iso
+          path: |
+            build/LudoraOS-x86_64.iso
+            build/LudoraOS-x86_64.iso.sha256
+          compression-level: 0
+          retention-days: 30
+          if-no-files-found: error
