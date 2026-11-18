@@ -79,6 +79,11 @@ export function webglSupported(): boolean {
   return webgl;
 }
 
+/** True when WebGL is drawn by the processor, with no graphics chip behind it: 3D works, but slowly. */
+export function softwareRenderer(): boolean {
+  return webglSupported() && /swiftshader|llvmpipe|software/i.test(gpuName);
+}
+
 /** The tier this device should start at, from what it says about itself. */
 export function detectTier(): QualityTier {
   if (!webglSupported()) return 'low';

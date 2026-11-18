@@ -531,3 +531,44 @@ in the existing audit log, `room.integrity_signal`, so no table or migration
 was added. Both carry the name shown in the game, never an address, an
 account id or an email. Practice bots are never watched, and the playable demo
 watches for nothing.
+
+**D56. The home menu is a calm 3D place over a real menu, and the Hills Grammar copy wears
+the school's colours and colour logo (18 November 2026).** Two requests in one piece of work.
+
+*The menu.* The owner asked for the signed-in home to be a 3D, interactive place rather than
+flat cards. The Hills Grammar School had just told us the games over-stimulate, so the place
+(the yard: the player's buddy on a dais, ringed by a hosting board, a practice target, an arcade
+cabinet, a quest board, a lantern stall and a podium) impresses with depth, light and response
+to the player, not motion. Nothing moves by itself except breathing and lamplight that change
+over several seconds. Everything else answers the player: the view leans a few degrees with the
+pointer or a tablet's tilt, a drag looks round, the buddy turns its head to the pointer, and the
+place whose link is hovered or focused lights and the buddy points to it. With reduced motion
+or Calm the picture is still and is only redrawn when something changes. At rest it draws about
+15 frames a second, every frame only while the player is doing something, and not at all when
+hidden or scrolled away.
+- The menu is ordinary HTML, on the page from the first paint and in one Tab order: the join box,
+  six links (Host a game, Play solo, Game modes, Quests, Lantern shop, My Glims), the buddy's
+  link to the locker and the 3D switch. The canvas is decoration behind it (the links stand over
+  the things they lead to), never the navigation. Without 3D the same links sit round a drawing
+  of the buddy on a wide screen, and in a grid on a phone or tablet.
+- Three.js and the scene are fetched only after the flat menu is up, in an idle moment, so the
+  first paint never waits for them and the entry bundle carries none of it.
+- 3D or flat is decided before anything is fetched (`features/home/place/capability.ts`, with
+  unit tests): no WebGL, 3D off in the graphics menu, data saver, or WebGL drawn by the processor
+  (school Chromebooks) mean flat. If the first frames on a device run under about 20 a second,
+  the flat menu comes back and the device remembers it. A player can switch either way; a player
+  who asked for 3D keeps it, with the usual lowering of resolution and quality.
+- Reused, not added: the existing `Stage3D`, `World`, `Glim3D`, props and quality tiers. `World`
+  gained `wantsFrame()` so a scene can skip frames, and `Stage3D` an `onUnavailable` callback so a
+  page that works without 3D takes over by itself rather than offering the "3D off?" tip.
+
+*The school's look.* After the playtest the school asked for its colour logo and its colours.
+Ludora's navy and gold give way to the uniform: deep bottle green for the chrome and the stage,
+cream pages, action green for primary actions (white words), and the red only as a trim line
+under the header. Bright green is kept for meaning (right, done, progress) and never used as a
+surface, because the first, all-green version looked too much like Shrek. Dark mode is
+green-black with cream highlights. The colour logo is never recoloured; it does not read on the
+dark chrome, so it always stands on a warm-white plate. Ludora's own gold mark stays gold: it
+is Ludora's, not the school's. Every text pair passes WCAG 2.1 AA (palette and ratios in
+SCHOOL_LOOKS.md). Text on the highlight follows it wherever it is used as a fill
+(`--on-lantern`), which the axe checks in the e2e tests caught on tabs.

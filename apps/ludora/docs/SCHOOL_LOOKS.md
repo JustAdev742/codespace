@@ -7,16 +7,41 @@ copy keep Ludora's own look.
 
 ## The Hills Grammar School (`SCHOOL_THEME=hills-grammar`)
 
-Made at the request of the school's junior principal, then reworked after a first, all-green version
-looked too much like Shrek. It keeps Ludora's own look and adds the school to it:
+Made at the request of the school's junior principal. The first, all-green version looked too much
+like Shrek; the second kept Ludora's navy and gold and added the school's green and red as accents.
+After the playtest the school asked for two things, and this is the third (D56):
 
-- **Logo.** Ludora's gold mark and wordmark, with the school's logo beside them: under Ludora's in
-  the sidebar, beside it on the sign-in and join pages, and the crest alone next to the gold mark in
-  the game bar and the phone header (`art/icons.tsx`).
+- **The colour logo.** The school's colour lockup and crest (`logo-colour.svg`, `crest-colour.svg`),
+  never recoloured, redrawn or stretched (`art/icons.tsx`). Its lettering is near-black and its
+  crest bottle green, so it does not read on the dark chrome (1.3:1). Everywhere it shows it stands
+  on a warm-white plate (#FFFDF8) with clear space round it: under Ludora's mark in the sidebar,
+  beside it on the sign-in and join pages, and the crest alone next to Ludora's mark in the game
+  bar and the phone header. Those places are on the stage in both colour schemes, so the plate is
+  always there; on it the lettering is 16:1 and the crest's green 9.8:1, and the plate stands out
+  from the chrome at 12.5:1. Ludora's own gold mark stays gold: it is Ludora's, not the school's.
 - **Typeface.** Lato, the school's, for everything.
-- **Colours.** Ludora's navy stage and gold, with the school's green (#00A766) for right answers and
-  good news, its red (#EE3350, tinted to #F04B65 so dark text on it passes 4.5:1) for wrong answers,
-  both on answer tiles C and D, and as the stage's two corner glows (`styles/schools.css`).
+- **Colours: the uniform.** The bottle-green blazer is the chrome, the cream shirt is the page and
+  the red of the pullover is a trim used in very few places (`styles/schools.css`):
+
+  | Role | Light | Dark |
+  |---|---|---|
+  | Sidebar, header, stage (deep bottle) | #083A2B to #031611 | the same |
+  | Page / raised surface | cream #F8F4EA / #FFFDF8 | green-black #101815 / #18231E |
+  | Text / secondary / quiet | #14211B / #36413A / #59655D | #F6F1E4 / #C8CFC6 / #A3AEA6 |
+  | Primary actions, links, focus | action green #00603F, white words (7.6:1) | cream #F6ECD2, bottle-green words |
+  | Highlights on the stage and chrome | cream #F6ECD2, bottle-green words (13:1) | the same |
+  | Trim | the red #EE3350, a 3px line under the header with a fine cream line above it | the same |
+  | Right answers, good news, progress | #00A766 fill, ink words (5.7:1); #00664A as words on cream | #5FDCAA as words |
+  | Wrong answers, warnings | #F04B65 fill, ink words (5.0:1); #C02327 as words on cream | #FFA3AD as words |
+
+  Bright green is kept for meaning (right, done, progress) and never used for a surface: that is
+  what made the first version look like Shrek. The surfaces are cream and a deep, nearly black
+  bottle green, and red appears as a line, not a fill. Right and wrong still carry their shape and
+  icon on every tile and result, so they never rely on green and red alone. Every text pair passes
+  WCAG 2.1 AA; the automated checks in `e2e/layout.spec.ts` and `e2e/school.spec.ts` pass in this
+  look in both schemes. Answer tiles C and D take the school's green and red; A, B, E and F stay.
+- **The home menu's yard** in the school's colours: cream and stone paving, bottle-green paint,
+  red only as trim (`features/home/place/scene.ts`, `HILLS_YARD`).
 - **Glims in uniform** (`art/glim/uniform.ts`, `uniform.tsx`). Seven uniforms, from the school's
   Uniform Expectations Policy:
   - Senior School (Years 7 to 12), green or grey: the bottle-green (girls') or grey tweed (boys')
@@ -70,6 +95,7 @@ used only on the school's own copy. Confirm with the school before it goes in fr
 1. Add its id to `SCHOOL_THEMES` in `server/src/config.ts` and `SchoolId` in `web/src/lib/school.ts`.
 2. Add its block to `web/src/styles/schools.css`. Keep text contrast at WCAG AA: check every new
    colour against what sits on it.
-3. For a logo, add white versions under `web/public/schools/<id>/` and to `SCHOOL_LOGO` in
-   `art/icons.tsx`, with the school's permission.
+3. For a logo, add the school's own files under `web/public/schools/<id>/` and to `SCHOOL_LOGO` in
+   `art/icons.tsx` with their proportions, with the school's permission. They are shown on a light
+   plate, so a colour logo reads on the dark chrome; check that it does.
 4. Run the layout and game tests in the look: `E2E_SCHOOL_THEME=<id> npx playwright test e2e/layout.spec.ts e2e/game.spec.ts`.

@@ -104,24 +104,46 @@ export function AnswerShape({ index, size = 28, className }: { index: number; si
   );
 }
 
-/** The Ludora mark: a lantern-shaped Glim. */
-/** Ludora's mark: a gold plate leaning forward like a broadcast caption, with a pressable bottom edge. */
+/**
+ * Ludora's mark: a gold plate leaning forward like a broadcast caption, with a pressable bottom edge.
+ * Its gold is the mark's own and stays gold in every look: a school's colours never recolour it.
+ */
 export function LogoMark({ size = 32, className }: { size?: number; className?: string }) {
   return (
     <svg width={size} height={size} viewBox="0 0 64 64" className={className} aria-hidden focusable={false}>
       <g transform="translate(32 32) skewX(-10) translate(-32 -32)">
-        <rect x="9" y="5" width="46" height="54" rx="9" fill="var(--lantern-deep)" />
-        <rect x="9" y="5" width="46" height="49" rx="9" fill="var(--lantern)" />
-        <path d="M22 14h9.5v24.5H44V47H22z" fill="var(--on-accent)" />
+        <rect x="9" y="5" width="46" height="54" rx="9" fill="#e9a400" />
+        <rect x="9" y="5" width="46" height="49" rx="9" fill="#ffc233" />
+        <path d="M22 14h9.5v24.5H44V47H22z" fill="#0b1020" />
       </g>
     </svg>
   );
 }
 
-/** A school's own logo, shown with Ludora's on the school's copy (public/schools/<id>, white for the stage). */
-const SCHOOL_LOGO: Record<SchoolId, { lockup: string; crest: string }> = {
-  'hills-grammar': { lockup: '/schools/hills-grammar/logo-white.svg', crest: '/schools/hills-grammar/crest-white.svg' },
+/**
+ * A school's own logo, shown with Ludora's on the school's copy (public/schools/<id>). The files are
+ * the school's colour logo, never recoloured, redrawn or stretched: the widths are the files' own,
+ * for a height of 153.
+ */
+const SCHOOL_LOGO: Record<SchoolId, { lockup: string; crest: string; w: number; cw: number }> = {
+  'hills-grammar': { lockup: '/schools/hills-grammar/logo-colour.svg', crest: '/schools/hills-grammar/crest-colour.svg', w: 377, cw: 145 },
 };
+
+/*
+ * The colour logo has near-black lettering and a bottle-green crest, so it only reads on a light
+ * ground. Everywhere it shows (the sidebar, sign-in, the join page, the game bar, the phone header)
+ * is the dark stage in both themes, so it always stands on a warm-white plate with clear space
+ * round it (`.school-plate` in styles/schools.css): lettering 16:1 and crest green 9.8:1 on the
+ * plate; the plate itself is 12.5:1 against the chrome.
+ */
+function SchoolLockup({ school, height, pad }: { school: SchoolId; height: number; pad: string }) {
+  const l = SCHOOL_LOGO[school];
+  return (
+    <span className="school-plate rounded-[var(--radius-m)]" style={{ padding: pad }}>
+      <img src={l.lockup} alt="" width={Math.round((height * l.w) / 153)} height={height} className="block" />
+    </span>
+  );
+}
 
 export function Logo({ size = 28, stack = false, className }: { size?: number; stack?: boolean; className?: string }) {
   const school = schoolLook();
@@ -134,30 +156,35 @@ export function Logo({ size = 28, stack = false, className }: { size?: number; s
     </span>
   );
   if (!school) return <span className={`inline-flex ${className ?? ''}`}>{ludora}</span>;
-  const lockup = SCHOOL_LOGO[school].lockup;
-  // Stacked where the width is short (the sidebar): the school's logo under Ludora's, big enough to read.
+  // Stacked where the width is short (the sidebar): the school's logo under Ludora's, as wide as the column.
   if (stack) {
-    const h = Math.round(size * 1.7);
     return (
-      <span className={`inline-flex flex-col items-start gap-2.5 ${className ?? ''}`}>
+      <span className={`inline-flex flex-col items-start gap-3 ${className ?? ''}`}>
         {ludora}
-        <img src={lockup} alt="" width={Math.round((h * 377) / 153)} height={h} className="shrink-0" />
+        <SchoolLockup school={school} height={Math.round(size * 2.5)} pad="10px 14px" />
       </span>
     );
   }
-  const h = size + 10;
   return (
-    <span className={`inline-flex items-center gap-2.5 ${className ?? ''}`}>
+    <span className={`inline-flex items-center gap-3 ${className ?? ''}`}>
       {ludora}
-      <span aria-hidden className="w-px self-stretch bg-white/30" />
-      <img src={lockup} alt="" width={Math.round((h * 377) / 153)} height={h} className="shrink-0" />
+      <SchoolLockup school={school} height={size + 12} pad="5px 9px" />
     </span>
   );
 }
 
-/** The school's crest on its own, beside Ludora's mark where there is only room for marks. Nothing on Ludora's own look. */
-export function SchoolCrest({ size = 30, className }: { size?: number; className?: string }) {
+/**
+ * The school's crest on its own, beside Ludora's mark where there is only room for marks, on the same
+ * plate as the full logo. Nothing on Ludora's own look. `className` sizes the picture; `plateClassName`
+ * is for the plate round it (hiding it at a width, say).
+ */
+export function SchoolCrest({ size = 30, className = '', plateClassName = '' }: { size?: number; className?: string; plateClassName?: string }) {
   const school = schoolLook();
   if (!school) return null;
-  return <img src={SCHOOL_LOGO[school].crest} alt="" width={Math.round((size * 145) / 153)} height={size} className={`shrink-0 ${className ?? ''}`} />;
+  const l = SCHOOL_LOGO[school];
+  return (
+    <span className={`school-plate rounded-[var(--radius-s)] p-[3px] ${plateClassName}`}>
+      <img src={l.crest} alt="" width={Math.round((size * l.cw) / 153)} height={size} className={`block ${className}`} />
+    </span>
+  );
 }

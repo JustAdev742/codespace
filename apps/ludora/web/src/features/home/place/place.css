@@ -1,0 +1,383 @@
+/*
+ * The home menu as a place (Place.tsx). Two layouts, chosen from the box's own width:
+ *
+ *   place  the links stand over the picture, each above the thing it leads to; the join box is
+ *          at the foot. Flat, they keep the same spots round the buddy's drawing.
+ *   stack  the greeting, the picture, the join box, then the links as a grid (a phone).
+ *
+ * In the components layer, so a utility on an element still wins. Colours are the stage's own
+ * tokens, so a school's look comes through without anything here knowing about it.
+ */
+@layer components {
+  .place {
+    position: relative;
+    isolation: isolate;
+    overflow: hidden;
+    --place-plaque: color-mix(in oklab, var(--stage-4) 80%, transparent);
+    --place-notch: color-mix(in oklab, var(--stage-4) 80%, transparent);
+    --place-on: var(--on-lantern, var(--on-accent));
+  }
+  .place[data-layout='place'] {
+    height: clamp(35rem, calc(100dvh - 12rem), 43rem);
+  }
+  .place[data-layout='stack'] {
+    display: flex;
+    flex-direction: column;
+    padding-bottom: 1rem;
+  }
+
+  /* ------------------------------- the picture ------------------------------- */
+  .place-scene {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+  }
+  .place[data-layout='stack'] .place-scene {
+    position: relative;
+    inset: auto;
+    order: 2;
+    height: 16.5rem;
+  }
+  /* Flat for good (no 3D on this device, or turned off): a shorter picture, the buddy on its ground. */
+  .place[data-layout='stack'][data-flat='true'] .place-scene {
+    height: 12.5rem;
+  }
+  /* On a phone the picture sits between the greeting and the join box: its top fades into the stage. */
+  .place[data-layout='stack'] .place-canvas {
+    mask-image: linear-gradient(to bottom, transparent 0, #000 22%);
+  }
+  /* The 3D stage comes up over the flat drawing once its first picture is ready. */
+  .place .place-canvas {
+    position: absolute;
+    inset: 0;
+    background: transparent;
+    opacity: 0;
+    transition: opacity 600ms var(--ease-out);
+  }
+  .place[data-live='true'] .place-canvas {
+    opacity: 1;
+  }
+  /* A sideways drag looks round; up and down still scrolls the page on a touch screen. */
+  .place .s3-canvas {
+    touch-action: pan-y;
+    cursor: grab;
+  }
+  .place .s3-canvas:active {
+    cursor: grabbing;
+  }
+  .place[data-still='true'] .s3-canvas {
+    cursor: default;
+  }
+  .place-flat {
+    position: absolute;
+    inset: 0;
+    transition:
+      opacity 400ms var(--ease-out),
+      visibility 0s 400ms;
+  }
+  .place[data-live='true'] .place-flat {
+    opacity: 0;
+    visibility: hidden;
+  }
+  /* The yard, flat: a lit oval of ground with the buddy standing on it. */
+  .place-flat-ground {
+    position: absolute;
+    left: 50%;
+    top: 73%;
+    width: min(74%, 52rem);
+    aspect-ratio: 3.4;
+    transform: translate(-50%, -50%);
+    border-radius: 50%;
+    background: radial-gradient(closest-side, color-mix(in oklab, var(--lantern) 30%, transparent) 0%, rgb(255 255 255 / 0.07) 58%, rgb(255 255 255 / 0.03) 100%);
+    box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.1);
+  }
+  .place-flat-buddy {
+    position: absolute;
+    left: 50%;
+    top: 72%;
+    width: 11.5rem;
+    transform: translate(-50%, -92%);
+  }
+  .place[data-layout='stack'] .place-flat-buddy {
+    width: 9.5rem;
+    top: 80%;
+  }
+  .place[data-layout='stack'] .place-flat-ground {
+    width: 92%;
+    top: 78%;
+  }
+
+  /* ------------------------------- the greeting ------------------------------ */
+  .place-head {
+    position: relative;
+    z-index: 2;
+    padding: 4.25rem 1rem 0;
+  }
+  .place[data-layout='place'] .place-head {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    max-width: 46rem;
+    padding: 4.5rem 1.5rem 0;
+  }
+  /* What is on this season: a quiet line in the corner of the place, under the greeting on a phone. */
+  .place-season {
+    position: relative;
+    z-index: 2;
+    text-shadow: 0 1px 2px rgb(0 0 0 / 0.6);
+  }
+  /* On its own plaque: over a lit paving (the school's cream stone) bare words would not read. */
+  .place[data-layout='place'] .place-season {
+    position: absolute;
+    left: 1rem;
+    bottom: 1.25rem;
+    max-width: 16rem;
+    padding: 0.5rem 0.75rem;
+    border-radius: var(--radius-m);
+    background: var(--place-plaque);
+    font-size: 0.875rem;
+    line-height: 1.4;
+    text-shadow: none;
+  }
+  .place[data-layout='stack'] .place-season {
+    order: 1;
+    padding: 0.625rem 1rem 0;
+  }
+  .place[data-layout='stack'] .place-head {
+    order: 1;
+  }
+
+  /* -------------------------------- the join box ----------------------------- */
+  .place-join {
+    position: relative;
+    z-index: 3;
+    padding: 1rem;
+  }
+  .place-join > h2 {
+    margin-bottom: 0.625rem;
+  }
+  /* At the foot of the place: the heading and the code box in one row. */
+  .place[data-layout='place'] .place-join {
+    position: absolute;
+    left: 50%;
+    bottom: 1.25rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    width: min(31rem, calc(100% - 36rem));
+    min-width: 25rem;
+    padding: 0.75rem 0.75rem 0.75rem 1.125rem;
+    transform: translateX(-50%);
+  }
+  .place[data-layout='place'] .place-join > h2 {
+    flex: none;
+    margin: 0;
+  }
+  .place[data-layout='stack'] .place-join {
+    order: 4;
+    margin: 0.875rem 1rem 0;
+  }
+
+  /* --------------------------------- the links ------------------------------- */
+  .place-nav ul {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+  .place[data-layout='stack'] .place-nav {
+    order: 5;
+    padding: 0.75rem 1rem 0;
+  }
+  .place[data-layout='stack'] .place-nav ul {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.5rem;
+  }
+  .place-sign {
+    display: flex;
+    align-items: center;
+    gap: 0.625rem;
+    min-height: 3.25rem;
+    padding: 0.375rem 0.875rem 0.375rem 0.375rem;
+    border: 1px solid rgb(255 255 255 / 0.16);
+    border-radius: var(--radius-m);
+    background: var(--place-plaque);
+    box-shadow: 0 12px 26px -14px rgb(0 0 0 / 0.7);
+    color: var(--text);
+    text-decoration: none;
+    transition:
+      background-color 150ms var(--ease-out),
+      color 150ms var(--ease-out),
+      border-color 150ms var(--ease-out);
+  }
+  .place[data-layout='place'] .place-sign {
+    position: absolute;
+    z-index: 2;
+    left: var(--fx);
+    top: var(--fy);
+    transform: translate(-50%, -100%);
+    white-space: nowrap;
+  }
+  /* A notch under the plaque, pointing at the thing it names. */
+  .place[data-layout='place'] .place-sign::after {
+    content: '';
+    position: absolute;
+    left: 50%;
+    bottom: -0.3125rem;
+    width: 0.625rem;
+    height: 0.625rem;
+    border-right: 1px solid rgb(255 255 255 / 0.16);
+    border-bottom: 1px solid rgb(255 255 255 / 0.16);
+    border-bottom-right-radius: 2px;
+    background: linear-gradient(135deg, transparent 50%, var(--place-notch, #0a0f2c) 50%);
+    transform: translateX(-50%) rotate(45deg);
+  }
+  /* Flat, there is nothing in the picture for the notch to point at. */
+  .place[data-layout='place']:not([data-live='true']) .place-sign::after {
+    display: none;
+  }
+  /* Live, each link is moved over its place by the scene (an inline transform from Place.tsx). */
+  .place[data-layout='place'][data-live='true'] .place-sign {
+    left: 0;
+    top: 0;
+  }
+  .place-sign-icon {
+    display: grid;
+    flex: none;
+    place-items: center;
+    width: 2.375rem;
+    height: 2.375rem;
+    border-radius: var(--radius-s);
+    background: var(--lantern);
+    color: var(--place-on);
+  }
+  .place-sign-title {
+    display: block;
+    font-size: 0.9375rem;
+    font-weight: 700;
+    line-height: 1.2;
+  }
+  .place-sign-note {
+    display: block;
+    color: var(--text-2);
+    font-size: 0.8125rem;
+    line-height: 1.3;
+  }
+  /* Under the pointer or with keyboard focus the plaque lights like its place in the picture. */
+  .place-sign:hover,
+  .place-sign:focus-visible,
+  .place-sign[data-on] {
+    border-color: transparent;
+    background: var(--lantern);
+    color: var(--place-on);
+  }
+  .place-sign:is(:hover, :focus-visible, [data-on]) .place-sign-note {
+    color: inherit;
+  }
+  .place[data-layout='place'] .place-sign:is(:hover, :focus-visible, [data-on])::after {
+    border-color: transparent;
+    background: linear-gradient(135deg, transparent 50%, var(--lantern) 50%);
+  }
+  .place-sign:is(:hover, :focus-visible, [data-on]) .place-sign-icon {
+    background: var(--place-on);
+    color: var(--lantern);
+  }
+
+  /* The buddy's name: the way to the locker. 28px to see, 44px to press. */
+  .place-tag {
+    position: relative;
+    z-index: 2;
+    display: inline-flex;
+    align-items: center;
+    height: 1.75rem;
+    padding: 0 0.625rem;
+    border-radius: var(--radius-s);
+    background: #ffffff;
+    box-shadow: 0 2px 0 rgb(0 0 0 / 0.25);
+    color: #0b1020;
+    font-size: 0.875rem;
+    font-weight: 700;
+    text-decoration: none;
+    white-space: nowrap;
+  }
+  .place-tag::after {
+    content: '';
+    position: absolute;
+    inset: -0.5rem 0;
+  }
+  .place[data-layout='place'] .place-tag {
+    position: absolute;
+    left: 50%;
+    top: 73%;
+    transform: translate(-50%, 0);
+  }
+  .place[data-layout='place'][data-live='true'] .place-tag {
+    left: 0;
+    top: 0;
+  }
+  .place[data-layout='stack'] .place-tag {
+    order: 3;
+    align-self: center;
+    margin-top: -1.25rem;
+  }
+
+  /* ------------------------- the 3D switch and its note ----------------------- */
+  .place-tools {
+    position: relative;
+    z-index: 3;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.5rem 0.75rem;
+  }
+  .place[data-layout='place'] .place-tools {
+    position: absolute;
+    right: 1rem;
+    bottom: 1.25rem;
+    max-width: 17rem;
+  }
+  .place[data-layout='stack'] .place-tools {
+    order: 6;
+    padding: 0.75rem 1rem 0;
+  }
+  .place-note {
+    margin: 0;
+    padding: 0.25rem 0.5rem;
+    border-radius: var(--radius-s);
+    background: var(--place-plaque);
+    color: var(--text-2);
+    font-size: 0.8125rem;
+    line-height: 1.35;
+    text-align: right;
+  }
+  .place-switch {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    min-height: 2.75rem;
+    padding: 0 0.5rem 0 0.75rem;
+    border: 1px solid rgb(255 255 255 / 0.16);
+    border-radius: var(--radius-m);
+    background: var(--place-plaque);
+    color: var(--text);
+    font-size: 0.875rem;
+    font-weight: 700;
+    cursor: pointer;
+  }
+  .place-switch:hover {
+    background: color-mix(in oklab, var(--stage-4) 92%, transparent);
+  }
+  .place-switch-state {
+    min-width: 2.25rem;
+    padding: 0.125rem 0.375rem;
+    border-radius: var(--radius-s);
+    background: rgb(255 255 255 / 0.16);
+    text-align: center;
+  }
+  .place-switch[aria-pressed='true'] .place-switch-state {
+    background: var(--lantern);
+    color: var(--place-on);
+  }
+}

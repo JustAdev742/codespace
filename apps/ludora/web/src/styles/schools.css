@@ -12,44 +12,233 @@
 @import '@fontsource/lato/900-italic.css';
 
 /*
- * The Hills Grammar School, at the school's request: Ludora's own night-time look (navy stage,
- * gold Ludora mark), the school's crest beside it (art/icons.tsx), its typeface, Lato, and its
- * red and green where Ludora already uses a red and a green.
+ * The Hills Grammar School, in the school's own colours (docs/SCHOOL_LOOKS.md, D56). The palette
+ * is the uniform: the bottle-green blazer is the chrome and the stage, the cream shirt is the
+ * page, and the red of the pullover is a trim, used in very few places.
  *
- * - Right answers and good news: the school's green, #00A766.
- * - Wrong answers and warnings: the school's red, #EE3350, tinted to #F04B65 so dark text on it
- *   passes 4.5:1.
- * - Answer tiles C and D take the same green and red; A, B, E and F stay as they are.
- * - The stage's two corner glows, teal and violet in Ludora's own look, are the school's green
- *   and red.
- * Glims wear the school uniform (art/glim/uniform.tsx).
+ *   Bottle green  #004D32  the logo's own green: the top of the sidebar, plates
+ *   Deep bottle   #083A2B  the stage and the chrome (to #031611 at the foot)
+ *   Action green  #00603F  primary buttons, links and focus on cream (white on it is 7.6:1)
+ *   School green  #00A766  right answers, good news, progress
+ *   School red    #EE3350  the trim under the header; #F04B65 for wrong answers (ink on it 5:1)
+ *   Cream         #F8F4EA  the page; #F6ECD2 is the highlight on green and on dark surfaces
+ *   Ink           #14211B  text on cream; neutrals are warm greys with a little green in them
+ *
+ * An earlier all-green version looked too much like Shrek: bright green is kept for meaning
+ * (right, done, progress), never for surfaces. What Ludora calls its gold (`--lantern`: primary
+ * buttons, the current section, highlights) is action green on cream and cream on green, so the
+ * words on it change colour with it (`--on-lantern`).
  */
 :root[data-school='hills-grammar'] {
   --face-display: 'Lato', ui-sans-serif, system-ui, sans-serif;
   --face-sans: 'Lato', ui-sans-serif, system-ui, sans-serif;
+
+  /* Right and wrong keep the school's green and red, as fills with ink text and a shape or icon. */
   --glim: #00a766;
   --ember: #f04b65;
   --tile-c: #00a766;
   --tile-d: #f04b65;
-}
-:root[data-school='hills-grammar'][data-theme='light'] {
-  --glim-text: #007366;
+  --glim-text: #00664a;
   --ember-text: #c02327;
+  --lantern-text: #00603f;
+  /* The same two as words on dark surfaces, where the fills are too deep to read. */
+  --glim-soft: #5fdcaa;
+  --ember-soft: #ffa3ad;
+  --on-accent: #0a1a13;
+  --floodlight: #00a766;
+  --plate-blue: #007a52;
+  --hud: rgb(3 20 14 / 0.55);
+
+  /* The stage and the chrome: the blazer. */
+  --stage-1: #083a2b;
+  --stage-2: #062b20;
+  --stage-3: #05241b;
+  --stage-4: #031611;
+  --stage-sky:
+    radial-gradient(70% 55% at 50% -12%, rgb(255 244 214 / 0.09) 0%, rgb(255 244 214 / 0.03) 45%, transparent 72%),
+    radial-gradient(45% 50% at 0% 100%, rgb(0 167 102 / 0.14) 0%, transparent 70%),
+    radial-gradient(45% 50% at 100% 100%, rgb(238 51 80 / 0.1) 0%, transparent 70%),
+    linear-gradient(180deg, var(--stage-1) 0%, var(--stage-2) 55%, var(--stage-4) 100%);
+
+  /* Dark is the default, as in Ludora's own look: green-black neutrals, cream for highlights. */
+  --bg: #101815;
+  --bg-raised: #18231e;
+  --bg-sunken: #0a110e;
+  --surface-2: #1e2b25;
+  --surface-3: #28372f;
+  --line: #30413a;
+  --line-strong: #4f6359;
+  --text: #f6f1e4;
+  --text-2: #c8cfc6;
+  --text-3: #a3aea6;
+  --ink: #050b08;
+  --focus: #f6ecd2;
+  --link: #86dbb4;
+  --scrim: rgb(4 14 10 / 0.78);
+  --lantern: #f6ecd2;
+  --lantern-deep: #d9cba4;
+  --on-lantern: #0a2a1e;
+}
+
+:root[data-school='hills-grammar'][data-theme='light'] {
+  --bg: #f8f4ea;
+  --bg-raised: #fffdf8;
+  --bg-sunken: #eee8d9;
+  --surface-2: #fbf8f0;
+  --surface-3: #f1ebdd;
+  --line: #e0d8c5;
+  --line-strong: #b3aa93;
+  --text: #14211b;
+  --text-2: #36413a;
+  --text-3: #59655d;
+  --ink: #14211b;
+  --focus: #00603f;
+  --link: #00603f;
+  --scrim: rgb(10 26 19 / 0.55);
+  --lantern: #00603f;
+  --lantern-deep: #004d32;
+  --on-lantern: #ffffff;
 }
 @media (prefers-color-scheme: light) {
   :root[data-school='hills-grammar']:not([data-theme='dark']) {
-    --glim-text: #007366;
-    --ember-text: #c02327;
+    --bg: #f8f4ea;
+    --bg-raised: #fffdf8;
+    --bg-sunken: #eee8d9;
+    --surface-2: #fbf8f0;
+    --surface-3: #f1ebdd;
+    --line: #e0d8c5;
+    --line-strong: #b3aa93;
+    --text: #14211b;
+    --text-2: #36413a;
+    --text-3: #59655d;
+    --ink: #14211b;
+    --focus: #00603f;
+    --link: #00603f;
+    --scrim: rgb(10 26 19 / 0.55);
+    --lantern: #00603f;
+    --lantern-deep: #004d32;
+    --on-lantern: #ffffff;
   }
 }
 
-[data-school='hills-grammar'] .stage,
-[data-school='hills-grammar'] .on-stage {
-  --stage-sky:
-    radial-gradient(70% 55% at 50% -12%, rgb(84 128 255 / 0.5) 0%, rgb(58 107 255 / 0.14) 45%, transparent 72%),
-    radial-gradient(45% 50% at 0% 100%, rgb(0 167 102 / 0.2) 0%, transparent 70%),
-    radial-gradient(45% 50% at 100% 100%, rgb(238 49 36 / 0.16) 0%, transparent 70%),
-    linear-gradient(180deg, var(--stage-1) 0%, var(--stage-2) 55%, var(--stage-4) 100%);
+/* On the stage and the chrome, in both themes: white words, cream highlights. */
+:root[data-school='hills-grammar'] :is(.stage, .on-stage) {
+  --text-2: #d9e4dc;
+  --text-3: #bccbc1;
+  --bg-sunken: rgb(2 14 10 / 0.42);
+  --focus: #ffffff;
+  --lantern: #f6ecd2;
+  --lantern-deep: #d9cba4;
+  --on-lantern: #0a2a1e;
+}
+/* A paper card (the sign-in form, a printed sheet), in both themes. */
+:root[data-school='hills-grammar'] .paper {
+  --text: #14211b;
+  --text-2: #36413a;
+  --text-3: #59655d;
+  --bg-raised: #fffdf8;
+  --bg-sunken: #f1ebdd;
+  --surface-2: #fbf8f0;
+  --surface-3: #f1ebdd;
+  --line: #e0d8c5;
+  --line-strong: #b3aa93;
+  --link: #00603f;
+  --focus: #00603f;
+  --lantern: #00603f;
+  --lantern-deep: #004d32;
+  --on-lantern: #ffffff;
+  background: #fffdf8;
+}
+:root[data-school='hills-grammar'][data-contrast='max'] .paper {
+  --text-2: #14211b;
+  --text-3: #14211b;
+  --line: #59655d;
+  --line-strong: #3f4b44;
+}
+
+/*
+ * Words on the highlight follow it: white on action green, bottle green on cream. Anything that
+ * can take the highlight as its fill, in any state (`bg-lantern`, `data-[state=active]:bg-lantern`,
+ * `hover:bg-lantern`, `bg-lantern-deep`), gets `--on-lantern` as its ink, so `text-on-accent` on it
+ * and inside it reads. Its tints (`bg-lantern/10`) are washes under ordinary text and are left alone.
+ */
+:root[data-school='hills-grammar'] :is([class*='bg-lantern '], [class*='bg-lantern-deep'], [class$='bg-lantern'], .plate-gold) {
+  --on-accent: var(--on-lantern);
+}
+:root[data-school='hills-grammar'] :is(.bg-lantern, .plate-gold),
+:root[data-school='hills-grammar'] :is(.bg-lantern, .plate-gold) .text-on-accent,
+:root[data-school='hills-grammar'] .focus\:bg-lantern:focus,
+:root[data-school='hills-grammar'] [data-sonner-toast]:not([data-type]) [data-button],
+:root[data-school='hills-grammar'] [data-sonner-toast][data-type='default'] [data-button] {
+  color: var(--on-lantern);
+}
+/* A warning is not a call to action: cream, with ink words, in either theme. */
+:root[data-school='hills-grammar'] [data-sonner-toast][data-type='warning'] {
+  background: #f6ecd2;
+}
+
+/* Green and red as words: the soft shades on dark surfaces and the stage, the deep ones on cream. */
+:root[data-school='hills-grammar'] .text-glim {
+  color: var(--glim-soft);
+}
+:root[data-school='hills-grammar'] :is(.text-ember, .badge-coral) {
+  color: var(--ember-soft);
+}
+:root[data-school='hills-grammar'][data-theme='light'] .text-glim {
+  color: var(--glim-text);
+}
+:root[data-school='hills-grammar'][data-theme='light'] :is(.text-ember, .badge-coral) {
+  color: var(--ember-text);
+}
+@media (prefers-color-scheme: light) {
+  :root[data-school='hills-grammar']:not([data-theme='dark']) .text-glim {
+    color: var(--glim-text);
+  }
+  :root[data-school='hills-grammar']:not([data-theme='dark']) :is(.text-ember, .badge-coral) {
+    color: var(--ember-text);
+  }
+}
+:root[data-school='hills-grammar'] :is(.stage, .on-stage) .text-glim {
+  color: var(--glim-soft);
+}
+:root[data-school='hills-grammar'] :is(.stage, .on-stage) :is(.text-ember, .badge-coral) {
+  color: var(--ember-soft);
+}
+:root[data-school='hills-grammar'] .paper .text-glim {
+  color: var(--glim-text);
+}
+:root[data-school='hills-grammar'] .paper :is(.text-ember, .badge-coral) {
+  color: var(--ember-text);
+}
+
+/* The plate the school's colour logo stands on, wherever it shows (art/icons.tsx). A component, so
+   a utility on it (hiding it on a phone, say) still wins. */
+@layer components {
+  .school-plate {
+    display: inline-flex;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    background: #fffdf8;
+    box-shadow: 0 1px 0 rgb(0 0 0 / 0.25);
+  }
+}
+
+/* The trim: under the header, the red of the pullover with the tie's fine cream line above it. */
+:root[data-school='hills-grammar'] .chrome-bar {
+  border-bottom-color: transparent;
+  box-shadow:
+    inset 0 -3px 0 #ee3350,
+    inset 0 -4px 0 rgb(255 253 248 / 0.9);
+}
+
+/* Less transparency: the solid versions of the smoked glass, in the stage's green. */
+:root[data-school='hills-grammar'][data-transparency='less'] {
+  --scrim: rgb(4 14 10 / 0.94);
+  --hud: #05241b;
+}
+:root[data-school='hills-grammar'][data-transparency='less'] :is(.stage, .on-stage) :is([class*='bg-white/[0.0'], [class*='bg-white/[0.1']) {
+  background-color: #17493a !important;
 }
 
 /* Lato is wider than the condensed display face: big headings sit a touch tighter. */

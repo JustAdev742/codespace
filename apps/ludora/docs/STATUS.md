@@ -26,6 +26,17 @@ item with how each was checked, in [features/README.md](features/README.md). The
 
 ## Added in November 2026 (verified; details in [features/](features/README.md))
 
+- **A 3D home menu, and the Hills Grammar copy in the school's colours** (18 November, D56).
+  The signed-in home is the yard: a calm 3D place round the player's buddy, behind a real HTML
+  menu that works without it, with a flat version for devices with no WebGL, 3D off, data saver,
+  software-only WebGL or slow frames. Still under reduced motion or Calm. On The Hills Grammar
+  School's copy: the colour logo on a light plate, bottle-green chrome, cream pages, red as a trim.
+  Checked: unit tests for the 3D-or-flat decision; in Chromium the menu at 390, 820, 1100, 1280 and
+  1440 px across both looks and both schemes, with WebGL disabled, with reduced motion (picture unchanged
+  under pointer moves and drags), keyboard order and focus, no console errors; the layout, pages,
+  school, school-uniform and game e2e tests in both looks (axe clean). Under software rendering
+  (SwiftShader, 4 cores) the forced-on yard draws a frame in about 65 ms at 1440 px on the low
+  tier and the page stays at 60 frames a second at rest; on a real Chromebook it is not yet tried.
 - **Integrity signals for staff** (18 November, D55): a live game notices right answers that
   arrive sooner than a person could read the question (5 under 250 ms), messages the game's own
   screens never send (5), and one browser connected as three or more players, and reports each
@@ -337,8 +348,9 @@ person with a screen reader. Every check was automated.
 - **School looks** (2026-10-29, reworked 2026-11-01): `SCHOOL_THEME` on the server gives that
   copy of Ludora a school's touches, from the first paint. Details in
   [SCHOOL_LOOKS.md](SCHOOL_LOOKS.md).
-  - `hills-grammar`, at The Hills Grammar School's request: Ludora's own navy and gold, the school's
-    logo beside Ludora's, Lato, the school's green and red for right and wrong answers and two
+  - `hills-grammar`, at The Hills Grammar School's request: since 18 November (D56) the school's
+    colours (bottle-green chrome, cream pages, red as a trim) and its colour logo on a light plate
+    beside Ludora's, Lato, the school's green and red for right and wrong answers and two
     answer tiles, and every Glim in one of six Hills Grammar uniforms, in 2D and 3D. A first,
     all-green version looked too much like Shrek, so it was replaced.
   - The uniforms (redrawn 2026-11-01 from the school's uniform policy and the photographs on its

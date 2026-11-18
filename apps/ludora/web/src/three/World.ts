@@ -162,6 +162,14 @@ export abstract class World {
   /** Move things along. `dt` is seconds since the last frame (capped), `t` seconds since the scene began. */
   abstract tick(dt: number, t: number): void;
 
+  /**
+   * Whether the next frame needs drawing. A scene that holds still (the home menu under reduced
+   * motion) says no until something changes, and the stage leaves the last picture up.
+   */
+  wantsFrame(): boolean {
+    return true;
+  }
+
   /** Called by the stage each frame. */
   frame(dt: number, t: number) {
     this.tick(dt, t);

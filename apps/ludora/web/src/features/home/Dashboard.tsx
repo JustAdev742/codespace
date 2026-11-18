@@ -2,62 +2,22 @@ import { Link } from 'react-router';
 import { SchoolStrip } from '../school/SchoolStrip.tsx';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { Flame, Presentation, Swords, Trophy } from 'lucide-react';
-import { RARITIES, type GlimArt, type Rarity } from '@ludora/shared';
+import { Trophy } from 'lucide-react';
 import { useMe } from '../../lib/session.ts';
 import { thumbFor, useModes, useOverview, type QuestView } from '../../lib/queries.ts';
 import { ModeArt } from '../../art/ModeArt.tsx';
 import { api, ApiError } from '../../lib/api.ts';
 import { formatNumber, ordinal, timeAgo, untilText } from '../../lib/format.ts';
-import { CodeEntry } from '../play/CodeEntry.tsx';
-import { Glim } from '../../art/glim/Glim.tsx';
-import { FrameRing } from '../../art/cosmetics.tsx';
 import { SparkIcon } from '../../art/icons.tsx';
-import { Stage } from '../../ui/Stage.tsx';
 import { Amount, Badge, ErrorNotice, Panel, Skeleton } from '../../ui/primitives.tsx';
 import { Button, ButtonLink } from '../../ui/Button.tsx';
 import { ModeCard } from '../modes/ModeCard.tsx';
 import { OpenGames } from '../host/OpenGames.tsx';
 import { NextUp } from './NextUp.tsx';
 import { StudentMore, StudentToday } from './StudentHome.tsx';
-import { BLEED_ROUNDING, Bleed, Meter } from './kit.tsx';
-import { SeasonDecor, SeasonLine } from '../season/SeasonBanner.tsx';
+import { Meter } from './kit.tsx';
+import { Place } from './Place.tsx';
 import { QuestBadge } from '../../art/badges.tsx';
-
-/** Shown until the overview loads, or if a player somehow has no buddy. */
-const PLACEHOLDER_BUDDY: GlimArt = { kind: 'glim', body: 'blob', hue: 30, accentHue: 45, saturation: 25, eyes: 'dot', mouth: 'smile', pattern: 'freckles', topper: 'none', cheeks: true };
-
-/** The player's buddy as their avatar, in its frame if they have one equipped, with a link to change it. Still: no idle motion. */
-function Buddy() {
-  const o = useOverview();
-  const avatar = o.data?.avatar;
-  const frame = o.data?.equipped.frame?.art;
-  const buddy = o.data?.equipped.buddy;
-  const name = buddy?.name;
-  const rarity: Rarity | undefined = avatar?.rarity ?? RARITIES.find((r) => r === buddy?.rarity);
-  const glim = <Glim art={avatar?.art ?? PLACEHOLDER_BUDDY} accessories={avatar?.accessories} dress={avatar?.uniform ?? null} size={190} rarity={rarity} silhouette={!avatar} className="h-auto w-full" />;
-  return (
-    <div className="relative w-[104px] shrink-0 sm:w-[168px]">
-      {frame?.kind === 'frame' ? (
-        <FrameRing style={frame.style} hue={frame.hue} accentHue={frame.accentHue} size={168}>
-          <span className="grid size-full place-items-center bg-white/10">{glim}</span>
-        </FrameRing>
-      ) : (
-        <div className="relative">{glim}</div>
-      )}
-      {name ? (
-        // 28px to see, 44px to press: the strip above and below makes up the difference.
-        <Link
-          to="/locker"
-          className="absolute -bottom-2 left-1/2 inline-flex h-7 -translate-x-1/2 items-center rounded-[var(--radius-s)] bg-white px-2.5 text-sm font-bold whitespace-nowrap text-on-accent no-underline after:absolute after:inset-x-0 after:-inset-y-2 hover:bg-[#e8ecfb]"
-          aria-label={`${name} is your buddy. Change your buddy in the locker`}
-        >
-          {name}
-        </Link>
-      ) : null}
-    </div>
-  );
-}
 
 function rewardText(r: QuestView['reward']): string {
   return [r.sparks ? `${r.sparks} Sparks` : '', r.moonstones ? `${r.moonstones} Moonstones` : '', r.frost_tickets ? `${r.frost_tickets} Frost Tickets` : '', r.xp ? `${r.xp} XP` : ''].filter(Boolean).join(', ');
@@ -116,62 +76,15 @@ export default function Dashboard() {
   const modes = useModes();
   const user = me.data!.user!;
   const o = overview.data;
-  const lv = user.level;
   const quests = o?.quests.list ?? [];
   const today = quests.filter((q) => q.kind === 'daily' || (q.completed && !q.claimed));
   const later = quests.filter((q) => !today.includes(q));
   const laterDone = later.filter((q) => q.completed).length;
-  const streak = o?.stats.dailyStreak ?? 0;
 
   return (
     <div className="flex flex-col gap-8">
-      <Bleed>
-        <Stage className={`px-4 pt-[72px] pb-8 sm:px-6 lg:pt-[84px] lg:pb-11 ${BLEED_ROUNDING}`}>
-          <SeasonDecor />
-          <SeasonLine className="relative z-10 mx-auto mb-5 max-w-[1120px]" />
-          <div className="relative z-10 mx-auto grid max-w-[1120px] grid-cols-1 items-center gap-7 lg:grid-cols-[minmax(0,1fr)_minmax(0,410px)]">
-            {/* The player card: their buddy, their name, their level. On phones the meter and streak run the full width under it. */}
-            <div className="grid min-w-0 grid-cols-[auto_minmax(0,1fr)] items-center gap-x-4 gap-y-5 sm:gap-x-6 sm:gap-y-3">
-              <div className="sm:row-span-3 sm:self-center">
-                <Buddy />
-              </div>
-              <div className="flex min-w-0 flex-col gap-3">
-                {/* Long names step down a size on phones, so a name breaks between words rather than in the middle of one. */}
-                <h1 className={`font-display leading-none font-extrabold break-words sm:text-[3.4rem] ${user.displayName.length > 18 ? 'text-[1.35rem]' : user.displayName.length > 14 ? 'text-[1.6rem]' : user.displayName.length > 10 ? 'text-[2rem]' : 'text-[2.4rem]'}`}>Hi, {user.displayName}</h1>
-                <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
-                  <span className="plate plate-gold text-xl sm:text-2xl">
-                    <span className="tabular">Level {lv.level}</span>
-                  </span>
-                  <span className="text-sm text-text-2 tabular">{lv.needed ? `${formatNumber(lv.needed - lv.into)} XP to level ${lv.level + 1}` : 'Top level reached'}</span>
-                </div>
-              </div>
-              <div className="col-span-2 w-full max-w-[480px] sm:col-span-1 sm:col-start-2">
-                <Meter value={lv.needed ? lv.into : 1} max={lv.needed || 1} tone="amber" size="lg" label={`Level ${lv.level} progress`} />
-              </div>
-              {streak > 0 ? (
-                <p className="col-span-2 inline-flex items-center gap-1.5 font-semibold text-lantern sm:col-span-1 sm:col-start-2">
-                  <Flame className="size-5 shrink-0" aria-hidden />
-                  {o?.stats.playedToday ? `${streak}-day streak. Come back tomorrow to keep it.` : `Play today to keep your ${streak}-day streak.`}
-                </p>
-              ) : (
-                <p className="col-span-2 text-text-2 sm:col-span-1 sm:col-start-2">Play a game today to start a streak.</p>
-              )}
-            </div>
-            <div className="hud stage-card p-4 sm:p-5">
-              <h2 className="mb-3 font-display text-2xl leading-none font-bold">Join a game</h2>
-              <CodeEntry />
-              <div className="mt-3 grid grid-cols-2 gap-2">
-                <ButtonLink to="/host" variant="secondary" icon={<Presentation className="size-4" aria-hidden />}>
-                  Host a game
-                </ButtonLink>
-                <ButtonLink to="/host?solo=1" variant="secondary" icon={<Swords className="size-4" aria-hidden />}>
-                  Play solo
-                </ButtonLink>
-              </div>
-            </div>
-          </div>
-        </Stage>
-      </Bleed>
+      {/* The menu: the yard, with the join box and the places to go. */}
+      <Place />
 
       {user.isGuest ? (
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-[var(--radius-m)] border border-lantern/60 bg-lantern/10 px-4 py-3">

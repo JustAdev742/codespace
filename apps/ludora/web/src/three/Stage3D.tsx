@@ -32,13 +32,19 @@ export interface Stage3DProps<W extends World> {
   controls?: boolean;
   /** The season's drift of confetti, petals or motes in front of the camera. On by default. */
   season?: boolean;
+  /**
+   * For a scene the page works without (the home menu): told when there is no 3D to show, or when
+   * frames stay slow at the lowest quality, so the page can put its flat version back by itself.
+   * With this set the stage does not offer its own "3D off?" tip.
+   */
+  onUnavailable?: (reason: 'off' | 'unsupported' | 'lost' | 'slow') => void;
 }
 
 type StageState = { kind: 'ready' } | { kind: 'fallback'; reason: 'off' | 'unsupported' | 'lost' };
 
 const LOWER: Record<Quality['tier'], Quality['tier'] | null> = { high: 'medium', medium: 'low', low: null };
 
-export function Stage3D<W extends World>({ create, onWorld, label, className = '', fallback = null, controls = true, season = true }: Stage3DProps<W>) {
+export function Stage3D<W extends World>({ create, onWorld, label, className = '', fallback = null, controls = true, season = true, onUnavailable }: Stage3DProps<W>) {
   const box = useRef<HTMLDivElement>(null);
   const [state, setState] = useState<StageState>({ kind: 'ready' });
   const [generation, setGeneration] = useState(0);
@@ -50,6 +56,8 @@ export function Stage3D<W extends World>({ create, onWorld, label, className = '
   seasonRef.current = season;
   const labelRef = useRef(label);
   labelRef.current = label;
+  const unavailableRef = useRef(onUnavailable);
+  unavailableRef.current = onUnavailable;
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   /** The one-time offer of "3D off" when frames stay slow even at the lowest quality. */
   const [tip, setTip] = useState(false);
@@ -68,6 +76,10 @@ export function Stage3D<W extends World>({ create, onWorld, label, className = '
     window.addEventListener('ludora:graphics', again);
     return () => window.removeEventListener('ludora:graphics', again);
   }, []);
+
+  useEffect(() => {
+    if (state.kind === 'fallback') unavailableRef.current?.(state.reason);
+  }, [state]);
 
   useEffect(() => {
     const el = box.current;
@@ -137,8 +149,10 @@ export function Stage3D<W extends World>({ create, onWorld, label, className = '
       }
       const lower = LOWER[quality!.tier];
       if (!lower) {
-        // Already as light as it goes and still slow: offer to turn 3D off, once per device.
-        if (!devicePrefs().tip3d) setTip(true);
+        // Already as light as it goes and still slow: the page takes over if it asked to, or else
+        // offer to turn 3D off, once per device.
+        if (unavailableRef.current) unavailableRef.current('slow');
+        else if (!devicePrefs().tip3d) setTip(true);
         return;
       }
       quality = qualityFor(lower);
@@ -157,6 +171,8 @@ export function Stage3D<W extends World>({ create, onWorld, label, className = '
     let raf = 0;
     let last = performance.now();
     const start = last;
+    /** When the scene was last drawn: a scene that skips frames still moves on by the real time. */
+    let drawn = last;
     const loop = (now: number) => {
       raf = requestAnimationFrame(loop);
       // Battery saver (Settings): at most 30 frames a second. The frame monitor rests meanwhile,
@@ -166,7 +182,11 @@ export function Stage3D<W extends World>({ create, onWorld, label, className = '
       const dtMs = now - last;
       last = now;
       if (!onScreen) return;
-      const dt = Math.min(0.05, dtMs / 1000);
+      // A scene holding still (reduced motion, nothing changed) or resting between its slow ambient
+      // frames is not drawn, or measured.
+      if (!world.wantsFrame()) return;
+      const dt = Math.min(0.05, (now - drawn) / 1000);
+      drawn = now;
       world.frame(dt, (now - start) / 1000);
       drift?.update(dt, (now - start) / 1000);
       renderer.render(world.scene, world.camera);

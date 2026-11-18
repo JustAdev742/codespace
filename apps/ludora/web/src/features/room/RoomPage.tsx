@@ -218,7 +218,7 @@ export default function RoomPage() {
         <div className="safe-x flex h-14 [--safe-pad:0.75rem] sm:[--safe-pad:1.25rem] min-[1600px]:[--safe-pad:2rem] items-center gap-2.5 px-3 sm:h-16 sm:gap-3 sm:px-5 min-[1600px]:h-20 min-[1600px]:px-8">
           {/* On a phone, a host mid-game needs the header's width for the game controls. */}
           <LogoMark size={30} className={`shrink-0 min-[1600px]:size-11 ${isHost && live ? 'max-sm:hidden' : ''}`} />
-          <SchoolCrest size={30} className={`min-[1600px]:h-11 min-[1600px]:w-auto ${isHost && live ? 'max-sm:hidden' : ''}`} />
+          <SchoolCrest size={24} className="sm:h-[30px] sm:w-auto min-[1600px]:h-11" plateClassName={isHost && live ? 'max-sm:hidden' : ''} />
           <div className={`min-w-0 ${isHost && live ? 'max-sm:sr-only' : ''}`}>
             <Title className="truncate font-display text-lg leading-tight font-bold text-text sm:text-xl min-[1600px]:text-[1.75rem]">{room.lesson?.screen ? room.lesson.title : room.room.title}</Title>
             <p className="flex min-w-0 items-center gap-2 text-xs font-semibold text-text-2 sm:text-sm min-[1600px]:text-base">

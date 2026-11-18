@@ -35,7 +35,7 @@ useEffect(() => scene.current?.setState(stateFromView), [view]);      // push ea
 | File | Use it for |
 |---|---|
 | `Stage3D.tsx` | Mounts a scene: renderer, canvas, size, frame loop (paused when hidden or off screen), frame-time monitor, fallback, and the graphics menu in the corner. |
-| `World.ts` | Base class for a scene: `scene`, `camera`, sky dome, sun and fill light (`DAY`, `DUSK`, `NIGHT`), fog, `labels`, `fx`, `shadowArea()`. Implement `tick(dt, t)`; free extra resources in `dispose()`. |
+| `World.ts` | Base class for a scene: `scene`, `camera`, sky dome, sun and fill light (`DAY`, `DUSK`, `NIGHT`), fog, `labels`, `fx`, `shadowArea()`. Implement `tick(dt, t)`; free extra resources in `dispose()`. Override `wantsFrame()` to skip frames when nothing changes (the home menu's yard, `features/home/place/scene.ts`, holds still under reduced motion and rests at about 15 frames a second). |
 | `glim3d.ts` | `new Glim3D({ look, quality, reducedMotion })`: a player's Glim in 3D. `setMoving(speed)`, `play('wave' / 'cheer' / 'dig' / 'cast' / 'reel' / 'type' / 'serve' / 'point' / 'sit' / 'hit' / 'celebrate')`, `setExpression('happy' / 'surprised' / 'determined' / 'dizzy' / 'proud' / 'sad')`, `setDim(true)`, `update(dt)` every frame. Get a look with `lookOf(avatar, fallbackArt(playerId))`. |
 | `toon.ts` | `toon(colour, { glow })` cel-shaded materials (cached), `outline(mesh)`, `css('hsl(...)')`. |
 | `props.ts` | Toy-style props: `tree('round' / 'gum' / 'pine' / 'palm')`, `bush`, `rock`, `crate`, `barrel`, `lantern`, `lampPost`, `fence`, `tent`, `sign(text)`, `nugget`, `gem`, `coin`, `ground`, `water` (call `.time(t)`), `bunting`, `blobShadow`, `seeded(n)`. |
