@@ -155,6 +155,7 @@ export function attachRealtime(app: FastifyInstance, deps: AppDeps) {
         isGuestAccount: auth?.user.isGuest ?? true,
         avatar,
         dress: parsed.data.dress,
+        deviceSeat: parsed.data.deviceSeat,
         ...(reacts ? { ownedReactions: reacts.owned, reactionBar: reacts.bar } : {}),
         // Waiting room: the host's answer arrives later, on this socket.
         onAdmitted: (reconnectToken) => {
@@ -204,7 +205,11 @@ export function attachRealtime(app: FastifyInstance, deps: AppDeps) {
       if (!guard(ack)) return;
       if (!current || current.sub.role !== 'player' || !current.sub.playerId) return reply(ack, fail('forbidden', 'Join the game first.'));
       const parsed = actionRequestSchema.safeParse(payload);
-      if (!parsed.success) return reply(ack, fail('bad_request', 'That move was not understood.'));
+      if (!parsed.success) {
+        // Counted for staff (integrity.ts): the app never sends a move in this shape. The player is told what they always were.
+        current.room.refused(current.sub.playerId, 'malformed');
+        return reply(ack, fail('bad_request', 'That move was not understood.'));
+      }
       reply(ack, current.room.action(current.sub.playerId, parsed.data.actionId, parsed.data.action));
     });
 
@@ -213,7 +218,11 @@ export function attachRealtime(app: FastifyInstance, deps: AppDeps) {
       if (!current) return reply(ack, fail('forbidden', 'Join the room first.'));
       const isHostSocket = current.sub.role === 'host';
       const soloOwner = current.room.solo && state.auth?.user.id === current.room.hostUserId;
-      if (!isHostSocket && !soloOwner) return reply(ack, fail('not_host', 'Only the host can do that.'));
+      if (!isHostSocket && !soloOwner) {
+        // A player's screen has no host controls, so this is counted for staff too (integrity.ts).
+        if (current.sub.playerId) current.room.refused(current.sub.playerId, 'host_command');
+        return reply(ack, fail('not_host', 'Only the host can do that.'));
+      }
       const parsed = hostCommandSchema.safeParse(payload);
       if (!parsed.success) return reply(ack, fail('bad_request', 'That command was not understood.'));
       reply(ack, current.room.hostCommand(parsed.data));

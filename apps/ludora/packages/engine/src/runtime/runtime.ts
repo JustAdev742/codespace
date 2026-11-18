@@ -13,6 +13,7 @@ import type { AnswerPlan, PracticeMind } from '../bots/mind.ts';
 import { botAnswerPool, findQuestionViews } from '../bots/views.ts';
 import type {
   ActionResult,
+  AnswerKind,
   AnswerRecord,
   BotContext,
   EnginePlayer,
@@ -43,6 +44,20 @@ export interface RuntimeListener {
   ended?(results: EngineResults): void;
   error?(err: unknown, where: string): void;
   timersChanged?(): void;
+  /**
+   * A player's own action answered a question it was graded on. `shownAt` and `at` are the
+   * clock's own time (not game time, which stops for a pause): when that question was first
+   * presented and when the answer was applied. Nothing in the game reads it.
+   */
+  answered?(e: AnswerTiming): void;
+}
+
+export interface AnswerTiming {
+  playerId: PlayerId;
+  correct: boolean;
+  kind: AnswerKind;
+  shownAt: number;
+  at: number;
 }
 
 export interface RuntimePlayerInit {
@@ -110,7 +125,8 @@ export interface EngineResults {
   polls?: { qid: string; votes: Record<string, number> }[];
 }
 
-export type DispatchResult = { ok: true } | { ok: false; code: 'invalid_state' | 'rejected' | 'internal'; message: string };
+/** `malformed`: the action did not have the shape this mode's actions have, so no rule was asked about it. */
+export type DispatchResult = { ok: true } | { ok: false; code: 'invalid_state' | 'rejected' | 'internal'; message: string; malformed?: true };
 
 interface Effects {
   timers: Map<string, number>;
@@ -120,6 +136,8 @@ interface Effects {
   end: { summary?: string } | null;
   /** The last answer graded for each question in this transaction, in words, for the host's report. */
   graded?: Map<string, string | null>;
+  /** The question instance last graded for each question in this transaction. */
+  gradedIid?: Map<string, string>;
   /** The player whose action this is, when it is one: a poll vote graded in it is theirs. */
   actor?: PlayerId;
   /** Poll votes graded in this transaction. */
@@ -155,6 +173,8 @@ export class GameRuntime {
   private state: unknown = undefined;
   private timers = new Map<string, number>();
   private instances = new Map<string, PresentedQuestion>();
+  /** The clock's own time each question instance was presented (`shownAt` on the instance is game time). */
+  private readonly shownWall = new Map<string, number>();
   private iidCounter = 0;
   private readonly players = new Map<PlayerId, EnginePlayer>();
   private readonly departed = new Map<PlayerId, EnginePlayer>();
@@ -297,7 +317,7 @@ export class GameRuntime {
     }
     if (!this.players.has(playerId)) return { ok: false, code: 'rejected', message: 'You are not in this game.' };
     const parsed = this.mode.action.safeParse(raw);
-    if (!parsed.success) return { ok: false, code: 'rejected', message: 'That move is not allowed here.' };
+    if (!parsed.success) return { ok: false, code: 'rejected', message: 'That move is not allowed here.', malformed: true };
     return this.transact('action', (draft, ctx) => this.mode.onAction(draft, playerId, parsed.data, ctx), false, playerId);
   }
 
@@ -564,8 +584,12 @@ export class GameRuntime {
     if (!isInit) this.state = result;
     if (this.strict) deepFreeze(this.state);
     this.timers = fx.timers;
-    for (const [iid, inst] of fx.instances) this.instances.set(iid, inst);
+    for (const [iid, inst] of fx.instances) {
+      this.instances.set(iid, inst);
+      this.shownWall.set(iid, this.clock.now());
+    }
     for (const a of fx.answers) this.applyAnswer(a);
+    if (actor && this.listener.answered) this.reportTimings(actor, fx);
     for (const v of fx.votes ?? []) {
       const byPlayer = this.votes.get(v.qid) ?? new Map<PlayerId, string>();
       byPlayer.set(v.playerId, v.choiceId);
@@ -586,6 +610,16 @@ export class GameRuntime {
   private emitFeed(f: Effects['feed'][number]) {
     const item: FeedItem = { id: ++this.feedSeq, at: this.gameNow(), text: f.text, ...(f.tone ? { tone: f.tone } : {}), ...(f.to ? { to: f.to } : {}) };
     this.listener.feed?.(item);
+  }
+
+  /** Tell the listener how long the actor's answers took, for the questions graded in this same action. */
+  private reportTimings(actor: PlayerId, fx: Effects) {
+    for (const a of fx.answers) {
+      const iid = a.playerId === actor ? fx.gradedIid?.get(a.qid) : undefined;
+      const shownAt = iid === undefined ? undefined : this.shownWall.get(iid);
+      if (shownAt === undefined) continue;
+      this.listener.answered!({ playerId: actor, correct: a.correct, kind: a.kind ?? 'answer', shownAt, at: this.clock.now() });
+    }
   }
 
   private applyAnswer(a: AnswerRecord) {
@@ -768,7 +802,10 @@ export class GameRuntime {
         const inst = instance(iid);
         const q = question(inst.qid);
         const authored = answerFromTokens(q, inst.order, answer);
-        if (fx) (fx.graded ??= new Map()).set(inst.qid, answerText(q, authored));
+        if (fx) {
+          (fx.graded ??= new Map()).set(inst.qid, answerText(q, authored));
+          (fx.gradedIid ??= new Map()).set(inst.qid, iid);
+        }
         if (fx?.actor && q.type === 'poll' && authored.type === 'poll') (fx.votes ??= []).push({ playerId: fx.actor, qid: inst.qid, choiceId: authored.choiceId });
         return gradeAnswer(q, authored);
       },

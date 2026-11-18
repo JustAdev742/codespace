@@ -56,7 +56,8 @@ server/src
   config.ts         environment variables, validated at start
   db/               Drizzle schema, migrations runner, content seed
   http/             request context (who is signed in, permissions) and plugins
-  realtime/         RoomManager, Room (wraps a GameRuntime), Socket.IO transport, persistence of results
+  realtime/         RoomManager, Room (wraps a GameRuntime), Socket.IO transport, persistence of results,
+                    integrity signals for staff (integrity.ts)
   modules/          one folder per area: auth, economy, shop, packs, inventory, progression, profiles,
                     sets, rooms, modes, flags, events, social, classes, analytics, admin, audit, system
   cli/admin.ts      operator commands (grant and revoke roles)

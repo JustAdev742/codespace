@@ -5,6 +5,8 @@ import { classMembers, errorReports, gameSessions } from '../db/schema.ts';
 import { roomCode } from '../lib/crypto.ts';
 import { Room, type RoomHooks, type RoomInit } from './room.ts';
 import { persistGame } from './persist.ts';
+import type { IntegrityEvent } from './integrity.ts';
+import { writeAudit } from '../modules/audit/service.ts';
 
 const SWEEP_MS = 5000;
 export const MAX_ROOMS_PER_HOST = 6;
@@ -40,7 +42,28 @@ export class RoomManager {
       onClosed: (room) => {
         if (this.rooms.get(room.code) === room) this.rooms.delete(room.code);
       },
+      onIntegrity: (event) => this.reportIntegrity(event),
     };
+  }
+
+  /**
+   * An integrity signal from a room (integrity.ts), for staff: one warn line in the server log,
+   * which whatever watches the log can turn into an alert, and one entry in the audit log, where
+   * staff with `audit.read` see it under Live rooms. Neither holds an address or an account id.
+   */
+  reportIntegrity(event: IntegrityEvent) {
+    this.deps.log?.warn(event, 'integrity signal');
+    const { kind, mode, player, count } = event;
+    void this.track(
+      writeAudit(this.deps.db, this.deps.config.APP_ENV, {
+        actor: { system: 'integrity' },
+        action: 'room.integrity_signal',
+        targetType: 'room',
+        targetId: event.room,
+        reason: event.detail,
+        after: { kind, mode, player, count },
+      }).catch((err) => this.deps.log?.error({ err, room: event.room }, 'integrity signal not saved')),
+    );
   }
 
   private async persist(room: Room, results: EngineResults) {

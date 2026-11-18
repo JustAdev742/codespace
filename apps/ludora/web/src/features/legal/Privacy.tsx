@@ -36,6 +36,9 @@ export default function Privacy() {
           <strong className="text-text">Safety records:</strong> reports you make about names or sets, and any action staff take on your account.
         </li>
         <li>
+          <strong className="text-text">Fair play notes:</strong> if a game sees play that does not look like one person on one device (right answers sooner than anyone could read the question, messages the game's own screens never send, or one browser playing as several players), it notes that for staff with the name shown in the game; only staff see the note, and it changes nothing in your game.
+        </li>
+        <li>
           <strong className="text-text">To keep you signed in safely:</strong> one sign-in cookie, and for each sign-in your browser's name and a scrambled form of your internet address (never the address itself). Ludora also records app errors, without your answers or personal details, so they can be fixed.
         </li>
       </List>

@@ -37,6 +37,7 @@ import { extraTimeFor } from '@ludora/engine/catalog';
 import { computeAwards, hostReport, missedQuestionIds } from './report.ts';
 import { hideNames } from './hideNames.ts';
 import { spectatorView } from '../modules/school/spectator.ts';
+import { integrityEvent, IntegrityWatch, type IntegrityEvent, type IntegritySignal, type Rejection } from './integrity.ts';
 import {
   GameRuntime,
   makeTeams,
@@ -96,6 +97,11 @@ export interface RoomPlayer {
   pace?: number;
   /** A practice bot's personality and traits, decided on the server when it joins. Its mind is made from this each game. */
   profile?: BotProfile;
+  /**
+   * Which browser this seat was taken from: the id of the first seat that browser took in this
+   * room. Only integrity signals read it (integrity.ts); it never leaves the room. Bots have none.
+   */
+  device?: string;
 }
 
 export type { PracticeLevel };
@@ -125,6 +131,11 @@ export interface RoomHooks {
   saveFeelings?(gameId: string, feelings: Record<Feeling, number>): Promise<void>;
   onError(err: unknown, where: string, room: Room): void;
   onClosed(room: Room): void;
+  /**
+   * Something in a game looks like it is not being played by hand, on one device (integrity.ts).
+   * For staff only. Without this hook the room watches for nothing, as in the playable demo.
+   */
+  onIntegrity?(event: IntegrityEvent, room: Room): void;
 }
 
 export interface RoomInit {
@@ -197,6 +208,12 @@ export interface JoinInput {
   /** Reactions this account owns beyond the free ones (from the database), and the bar it chose in Settings. */
   ownedReactions?: readonly string[] | undefined;
   reactionBar?: readonly string[] | undefined;
+  /**
+   * The reconnect token of the seat this browser last took in this room, if it says so. It never
+   * gives a seat back (only `reconnectToken` does): it tells integrity signals that a new seat
+   * comes from a browser that already holds one.
+   */
+  deviceSeat?: string | undefined;
   /** Waiting room: called when the host lets this request in, or turns it away. Without them the request is refused. */
   onAdmitted?: (reconnectToken: string) => void;
   onDeclined?: (message: string) => void;
@@ -297,6 +314,8 @@ export class Room {
   runtime: GameRuntime | null = null;
   /** Practice bots' minds for the game being played. */
   private minds = new Map<string, PracticeMind>();
+  /** Integrity signals for the game being played (integrity.ts). Made at the start, dropped at the end. */
+  private watch: IntegrityWatch | null = null;
   gameId: string | null = null;
   results: EngineResults | null = null;
   rewards = new Map<string, RewardSummary>();
@@ -523,6 +542,8 @@ export class Room {
       skill: 0,
       ...reactionsFor(input),
     };
+    const sibling = input.deviceSeat ? [...this.players.values()].find((p) => !p.isBot && p.reconnectToken === input.deviceSeat) : undefined;
+    player.device = sibling?.device ?? player.id;
     this.players.set(player.id, player);
     this.roster.set(player.id, { userId: player.userId, name: player.name, isGuest: player.isGuest, isBot: false });
     const classExtra = player.userId ? (this.classExtraTime?.[player.userId] ?? 0) : 0;
@@ -537,6 +558,7 @@ export class Room {
     this.touch();
     this.scheduleBroadcast();
     this.checkAutoStart();
+    this.checkDevice(player);
     return { ok: true, player, resumed: false };
   }
 
@@ -658,6 +680,7 @@ export class Room {
     this.runtime?.setConnected(p.id, true);
     this.touch();
     this.scheduleBroadcast();
+    this.checkDevice(p);
     return p;
   }
 
@@ -1002,6 +1025,7 @@ export class Room {
     this.feelings.clear();
     this.nudgedAt.clear();
     this.runtime = null;
+    this.watch = null;
     this.results = null;
     this.rewards.clear();
     this.endedAt = null;
@@ -1030,6 +1054,8 @@ export class Room {
     this.rewardsPending = false;
     this.endedAt = null;
     this.gameId = crypto.randomUUID();
+    const watching = Boolean(this.hooks.onIntegrity);
+    this.watch = watching ? new IntegrityWatch() : null;
     const runtime = new GameRuntime({
       mode: this.mode,
       settings: this.settings,
@@ -1046,6 +1072,14 @@ export class Room {
         timersChanged: () => this.armTimer(),
         error: (err, where) => this.hooks.onError(err, `mode:${this.mode.meta.id}:${where}`, this),
         ended: (results) => this.onEnded(results),
+        // Only a first answer to a question: a retry or a self-marked card was read before.
+        ...(watching
+          ? {
+              answered: (e) => {
+                if (e.kind === 'answer') this.observe(e.playerId, (w) => w.answered(e.playerId, e.shownAt, e.at, e.correct));
+              },
+            }
+          : {}),
       },
     });
     this.runtime = runtime;
@@ -1057,11 +1091,13 @@ export class Room {
     if (runtime.status === 'running') this.startBots();
     this.armTimer();
     this.scheduleBroadcast();
+    this.checkDevices();
     return { ok: true };
   }
 
   private onEnded(results: EngineResults) {
     this.status = 'ended';
+    this.watch = null;
     this.endedAt = this.hooks.now();
     this.results = results;
     this.gamesPlayed++;
@@ -1098,7 +1134,58 @@ export class Room {
     p.recent.set(actionId, ack);
     if (p.recent.size > MAX_RECENT_ACTIONS) p.recent.delete(p.recent.keys().next().value!);
     this.touch();
+    // After the answer to the player is decided, so it cannot depend on this. A mode's own crash is not the player's doing.
+    if (!r.ok && r.code !== 'internal') this.refused(playerId, r.malformed ? 'malformed' : 'refused');
     return ack;
+  }
+
+  /* --------------------------------- integrity -------------------------------- */
+
+  /**
+   * A move from this player was turned away, here or by the transport before it reached the room
+   * (a message that was not a move, a host command from a player). It changes nothing for the
+   * player: integrity.ts counts the kinds no real screen sends.
+   */
+  refused(playerId: string, why: Rejection): void {
+    this.observe(playerId, (w) => w.rejected(playerId, why));
+  }
+
+  /** Hand the watch a fact about a player, and pass on any signal. Bots are never watched, and a fault here never reaches the game. */
+  private observe(playerId: string, fact: (watch: IntegrityWatch) => IntegritySignal | null): void {
+    if (!this.watch || this.players.get(playerId)?.isBot !== false) return;
+    try {
+      this.raise(fact(this.watch));
+    } catch (err) {
+      this.hooks.onError(err, 'integrity', this);
+    }
+  }
+
+  private raise(signal: IntegritySignal | null): void {
+    if (!signal || !this.hooks.onIntegrity) return;
+    const name = (id: string) => this.players.get(id)?.name ?? this.roster.get(id)?.name ?? 'Player';
+    this.hooks.onIntegrity(
+      integrityEvent({ kind: signal.kind, room: this.code, mode: this.mode.meta.id, player: name(signal.playerId), count: signal.count, at: this.hooks.now(), ...(signal.others ? { others: signal.others.map(name) } : {}) }),
+      this,
+    );
+  }
+
+  /** While a game is on: the players connected now from the browser this player's seat came from. */
+  private checkDevice(p: RoomPlayer): void {
+    const device = p.device;
+    if (!this.watch || !device) return;
+    const same = [...this.players.values()].filter((x) => !x.isBot && x.connected && x.device === device).map((x) => x.id);
+    this.observe(p.id, (w) => w.sameDevice(device, same));
+  }
+
+  /** As a game starts: every browser that holds seats in it. */
+  private checkDevices(): void {
+    if (!this.watch) return;
+    const seen = new Set<string>();
+    for (const p of this.players.values()) {
+      if (p.isBot || !p.device || seen.has(p.device)) continue;
+      seen.add(p.device);
+      this.checkDevice(p);
+    }
   }
 
   react(playerId: string | null, emote: string, from: 'host' | 'player'): Ack<{ name: string }> {
@@ -1516,6 +1603,7 @@ export class Room {
     if (this.status === 'running' || this.status === 'paused') this.runtime?.end('host', reason);
     this.closed = true;
     this.status = 'closed';
+    this.watch = null;
     this.clearRoomTimers();
     for (const e of this.pending.values()) e.declined(reason);
     this.pending.clear();

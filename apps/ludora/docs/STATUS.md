@@ -4,7 +4,7 @@ Live status of the build. Updated with each milestone commit. Everything marked
 **verified** was checked by an automated test or by driving the real app in a
 browser; anything else says what it is.
 
-Last updated: 2026-11-12. What the November 2026 improvement programme added is counted, item by
+Last updated: 2026-11-18. What the November 2026 improvement programme added is counted, item by
 item with how each was checked, in [features/README.md](features/README.md). The sections under
 "What works today" describe the app before that programme; the summary just below is current.
 
@@ -26,6 +26,15 @@ item with how each was checked, in [features/README.md](features/README.md). The
 
 ## Added in November 2026 (verified; details in [features/](features/README.md))
 
+- **Integrity signals for staff** (18 November, D55): a live game notices right answers that
+  arrive sooner than a person could read the question (5 under 250 ms), messages the game's own
+  screens never send (5), and one browser connected as three or more players, and reports each
+  once a game to staff: a warn line in the server log for an alert, and an entry in the audit
+  log under Live rooms. It only reports. Scores, moves and seats are untouched and no player or
+  host screen shows anything. Not by network address. Checked by unit tests of the rules, room
+  tests with a clock, and one test over real sockets and the database
+  (`server/test/integrity*.test.ts`); not yet tried in a real classroom, so the thresholds are
+  reasoned, not measured. See [SECURITY.md](SECURITY.md), "Integrity signals".
 - **Making things** (12 November): one Make page with guided starts and drafts that follow you
   between devices; pasted notes turned into questions in code, with no AI needed; sets with
   sound (spoken words, a bank of 36 sounds made in code, or your own short clip), their own

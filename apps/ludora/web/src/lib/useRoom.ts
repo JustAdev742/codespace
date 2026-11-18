@@ -123,8 +123,24 @@ function storeRemoved(code: string, token: string | null | undefined) {
     /* private mode: the tab's own token still keeps them out */
   }
 }
+/*
+ * The seat this browser last took in the room, under any name. A join sends it (as `deviceSeat`)
+ * when it asks for a different seat, so the server can tell one browser holding several seats at
+ * once from several devices. It is the room's own token, kept and cleared with the seat above:
+ * nothing new identifies the device, and it means nothing outside this room.
+ */
+const lastSeatKey = (code: string) => `ludora.last.${code}`;
+function lastSeatToken(code: string): string | undefined {
+  try {
+    return localStorage.getItem(lastSeatKey(code)) ?? undefined;
+  } catch {
+    return undefined;
+  }
+}
 function storeDeviceSeat(code: string, name: string | undefined, token: string | null) {
   try {
+    if (token) localStorage.setItem(lastSeatKey(code), token);
+    else localStorage.removeItem(lastSeatKey(code));
     if (!token) localStorage.removeItem(seatKey(code));
     else if (name?.trim()) localStorage.setItem(seatKey(code), JSON.stringify({ name: name.trim(), token }));
   } catch {
@@ -173,7 +189,8 @@ export function useRoom(code: string, opts: { name?: string | undefined; as?: 'h
     const join = async () => {
       const dress = schoolLook() ? deviceDress() : null;
       const reconnectToken = deviceRemovedToken(code) ?? storedToken(code) ?? deviceToken(code, nameRef.current);
-      const ack = await emitWithAck(socket, 'room:join', { code, name: nameRef.current, reconnectToken, as: opts.as, ...(dress ? { dress } : {}) });
+      const deviceSeat = lastSeatToken(code);
+      const ack = await emitWithAck(socket, 'room:join', { code, name: nameRef.current, reconnectToken, as: opts.as, ...(dress ? { dress } : {}), ...(deviceSeat && deviceSeat !== reconnectToken ? { deviceSeat } : {}) });
       if (closed) return;
       if (!ack.ok) {
         // A token for a room that is gone should not get in the way of the next game with that code. A player the host

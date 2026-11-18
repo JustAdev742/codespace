@@ -87,6 +87,18 @@ describe('GameRuntime', () => {
     expect(rt.act('zed', { type: 'click' }).ok).toBe(false);
   });
 
+  it('marks only a move with the wrong shape as malformed, with the same code and words as before', () => {
+    const rt = makeRuntime();
+    rt.start();
+    expect(rt.act('a', { type: 'hack' })).toEqual({ ok: false, code: 'rejected', message: 'That move is not allowed here.', malformed: true });
+    expect(rt.act('a', 'click')).toMatchObject({ ok: false, malformed: true });
+    // A move the mode's rules refuse, a player who is not in the game and a paused game are not malformed.
+    expect(rt.act('a', { type: 'bad' })).toEqual({ ok: false, code: 'rejected', message: 'not like that' });
+    expect(rt.act('zed', { type: 'click' })).not.toHaveProperty('malformed');
+    rt.pause();
+    expect(rt.act('a', { type: 'hack' })).not.toHaveProperty('malformed');
+  });
+
   it('isolates mode errors: rolls back, then stops the game after three, keeping results', () => {
     const errors: unknown[] = [];
     const rt = makeRuntime(fakeClock(), errors);
@@ -181,6 +193,49 @@ describe('Classic scoring and answers', () => {
     rt.fireDueTimers();
     return rt;
   }
+
+  it('tells the listener how long an answer took by the clock, pauses and extra time included', () => {
+    const clock = fakeClock();
+    const timings: { playerId: string; correct: boolean; kind: string; shownAt: number; at: number }[] = [];
+    const rt = new GameRuntime({
+      mode: classic,
+      settings: parseSettings(classic.settings, {}),
+      common: { ...common, questionTimeSec: 20, shuffleQuestions: false },
+      questions: MIXED_SET.filter((q) => q.type === 'mcq'),
+      players: [
+        { id: 'a', name: 'A', teamId: null, isBot: false },
+        // Extra time halves the response time the game scores with; the clock's own time is not scaled.
+        { id: 'b', name: 'B', teamId: null, isBot: false, extraTime: 1 },
+      ],
+      teams: [],
+      seed: 9,
+      clock,
+      listener: { answered: (e) => timings.push(e) },
+    });
+    rt.start();
+    clock.t += 4000;
+    rt.fireDueTimers();
+    const opened = clock.t;
+    const v = rt.view({ kind: 'player', playerId: 'a' }) as any;
+    const iid = v.sync.question.iid;
+    const right = (rt.debugReveal(iid) as { correct: string }).correct;
+    const wrong = v.sync.question.q.choices.find((c: { id: string }) => c.id !== right).id;
+    clock.t += 300;
+    expect(rt.act('b', { type: 'answer', iid, answer: { type: 'mcq', choiceId: right } }).ok).toBe(true);
+    expect(rt.answerLog()[0]).toMatchObject({ playerId: 'b', responseMs: 150 });
+    expect(timings).toEqual([{ playerId: 'b', correct: true, kind: 'answer', shownAt: opened, at: opened + 300 }]);
+    // A pause stops game time, not the clock: the question was on screen for all of it.
+    rt.pause();
+    clock.t += 10_000;
+    rt.resume();
+    // A refused move reports nothing.
+    expect(rt.act('b', { type: 'answer', iid, answer: { type: 'mcq', choiceId: right } }).ok).toBe(false);
+    expect(timings).toHaveLength(1);
+    clock.t += 100;
+    expect(rt.act('a', { type: 'answer', iid, answer: { type: 'mcq', choiceId: wrong } }).ok).toBe(true);
+    expect(rt.answerLog()[1]).toMatchObject({ playerId: 'a', responseMs: 400 });
+    expect(timings[1]).toEqual({ playerId: 'a', correct: false, kind: 'answer', shownAt: opened, at: opened + 10_400 });
+  });
 
   it('hides correctness until the reveal and refuses double answers', () => {
     const clock = fakeClock();

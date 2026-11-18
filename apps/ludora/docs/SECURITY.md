@@ -81,6 +81,52 @@ a security problem privately to the maintainers rather than in a public issue.
   room); player names are filtered; hosts can remove players and lock rooms.
 - Reconnect tokens are random and only ever sent to their own player.
 
+## Integrity signals
+
+A live room notices three things and reports them to staff (D55). It only
+reports: no score, move, speed or seat changes, and neither the player nor the
+host is shown anything. The rules are one small file with no I/O,
+`server/src/realtime/integrity.ts`, with every threshold named at the top.
+
+| Kind | Reported when, in one game | Measured with |
+|---|---|---|
+| `too_fast` | A player has 5 right answers that each arrived under 250 ms after their question opened, and no more than one in ten of their answers that fast were wrong. | The server's own clock, when the question was presented and when the answer arrived. A pause counts as reading time. Extra time changes nothing. Nothing the device says about time is used. |
+| `illegal_moves` | A player's connection has sent 5 messages the game's own screens never send: one that is not a move at all, one with a shape this mode's moves do not have, or a host command. | The validation that already refuses them (`actionRequestSchema`, the mode's own action schema, the host check). The socket's event budget caps how fast they can be counted. |
+| `one_device_many_players` | 3 players are connected at the same time from one browser. | The browser's own record of the seat it last took in this room: a join sends that seat's reconnect token as `deviceSeat` when it asks for a different seat. |
+
+- **Not counted as illegal moves:** anything the game refused by its rules or
+  its state. A second tap on an answer, an answer after time ran out, a tap
+  while the game is paused or after it ended, and buying something the player
+  cannot afford all come from the real screens in ordinary play, and the same
+  move sent again under the same id is answered from the cache.
+- **Never the network address.** A class shares one address, and a set of
+  identical school tablets shares the browser name too, so neither says
+  "one device". Nothing about the address or browser name is read for this.
+- **What `deviceSeat` is.** A token this server already gave that browser for
+  that room. It gives no seat back, means nothing outside the room and is
+  forgotten with it. A browser that hides it (a private window, a second
+  browser, a changed app) is not noticed; one that sends another player's
+  token would need that player's secret, and would get itself reported.
+- **Bots** the server adds are never watched. A fault in the watch is logged
+  as a room error and the move is answered as usual.
+- **Each signal is raised once** for a player and kind in a game (once for a
+  browser, for `one_device_many_players`). Counts start again with each game
+  and nothing is kept in memory after it.
+- **Where it goes.** One warn line in the server log, and one entry in the
+  audit log (`room.integrity_signal`, by `system:integrity`, under Live rooms,
+  for staff with `audit.read`). Both hold the room code, the mode, the name
+  shown in the game, a count and a sentence. Neither holds an address, an
+  account id or an email. The log line is JSON with these fields, for whatever
+  reads the log to turn into an alert; `LOG_LEVEL` must be `warn` or lower:
+
+  ```json
+  {"level":40,"time":1794994205120,"pid":1,"hostname":"ludora","ludora_event":"integrity","kind":"too_fast","room":"482913","mode":"classic","player":"Sam R","count":5,"detail":"Sam R gave 5 right answers, each less than a quarter of a second after the question appeared.","at":"2026-11-18T09:30:05.120Z","msg":"integrity signal"}
+  ```
+
+- **Reading a signal.** It is a reason to look, not a finding. If every player
+  in a room is reported for `illegal_moves` at once, suspect browser tabs
+  still running an older version of the app after an update.
+
 ## Economy
 
 - Amounts are integers. Every balance change locks the wallet row, writes the

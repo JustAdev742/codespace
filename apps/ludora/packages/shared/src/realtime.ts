@@ -48,6 +48,12 @@ export const joinRequestSchema = z.object({
   code: roomCodeSchema,
   name: z.string().max(40).optional(),
   reconnectToken: z.string().min(16).max(80).optional(),
+  /**
+   * The reconnect token of the seat this browser last took in this room, when it is not the seat
+   * being asked for. It gives nothing back: the server only uses it to notice one browser holding
+   * several seats at once (server/src/realtime/integrity.ts).
+   */
+  deviceSeat: z.string().min(16).max(80).optional(),
   /** A guest's school year, blazer and kit, for their uniform on a school's copy. Accounts use their settings. */
   dress: schoolDressSchema.optional(),
 });

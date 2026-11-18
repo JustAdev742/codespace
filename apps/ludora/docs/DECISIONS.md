@@ -484,3 +484,50 @@ art. Later the same day the owner asked for the anti-cheat wording to go as well
 `cheating` report reason, its privacy line and the sales-deck claim are removed. Hidden
 answers and server-decided scores stay, because the game depends on them.
 
+
+**D55. A live game reports integrity signals to staff, and does nothing else
+(18 November 2026).** At the owner's request Ludora notices three patterns in
+a live game and tells staff. This is not the cheat system D54 removed and
+brings none of it back: there is nothing a player can use, no `cheating`
+report reason, and nothing in any player's or host's screen. A reported player
+is scored, ranked and treated exactly as before, so a wrong signal costs a
+player nothing. The rules are in `server/src/realtime/integrity.ts`, a small
+file with no I/O that the room hands facts to.
+
+- *Answers faster than a person can read.* 5 right answers in one game, each
+  under 250 ms after its question opened, by the server's clock. Five, not
+  three, and only while at most one in ten of the player's answers that fast
+  were wrong: number keys answer, so a key held down is as fast as a program
+  and right by chance, about one game in eight at three on true-or-false
+  questions. A program that knows the answers is right nearly every time. The
+  engine now reports the clock time between a question being presented and
+  its answer, because the response time it scores with stops for a pause and
+  is halved by extra time; either would have reported a pupil for a teacher's
+  pause or for their own access arrangement.
+- *Moves the game does not allow.* 5 messages in one game that the app never
+  sends: not a move at all, not a move this mode has, or a host command from a
+  player. Moves the rules refused are not counted. The modes have over 200 of
+  those refusals and they are ordinary play (a second tap, an answer as the
+  timer ends, a tap during a pause, "You need 30 more gold"), all reported by
+  the engine with one code, so counting them would report slow connections
+  and impatient fingers.
+- *One device playing as many players.* 3 players connected at once from one
+  browser. Not by network address: a class shares one. Not by address and
+  browser name either, which the brief allowed as weaker evidence: a set of
+  identical school tablets shares both, so every such class would be
+  reported, at any count. An account already holds one seat in a room
+  whatever it does. For players who join with only a name the server held
+  nothing that meant "the same device", so a join now also sends the
+  reconnect token of the seat that browser last took in that room. That is a
+  token Ludora already gave it, it identifies nothing outside the room, and
+  no new cookie or device id was made. Two seats are not reported: that is a
+  pupil who rejoined under a new name with the old tab still open. A private
+  window or a second browser is not noticed; that is the price of not
+  guessing from the address.
+
+A signal goes out once for a player and kind in a game, as a warn line in the
+server log (for the operating system layer to turn into an alert) and an entry
+in the existing audit log, `room.integrity_signal`, so no table or migration
+was added. Both carry the name shown in the game, never an address, an
+account id or an email. Practice bots are never watched, and the playable demo
+watches for nothing.
