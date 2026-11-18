@@ -191,7 +191,12 @@ test('typing in the form keeps its focus after a pause, while the test game rest
   await maker.page.waitForTimeout(1500);
   await maker.page.keyboard.type(' one');
   await expect(name).toHaveValue('Island one');
-  await expect(maker.page.getByRole('textbox', { name: 'Your answer' })).toHaveValue('');
+  // The test game is running beside the form and took none of the typing. Its questions come in a random order, so
+  // the first one is a typed question only some of the time: the answer box is checked when there is one. (Requiring
+  // it made this test fail more often than it passed, on every browser.)
+  await expect(maker.page.getByRole('heading', { name: 'Live test' })).toBeVisible();
+  const answer = maker.page.getByRole('textbox', { name: 'Your answer' });
+  if (await answer.count()) await expect(answer).toHaveValue('');
 });
 
 test('a 3D race draws its scene in the live test, with you and 20 bots on the big screen', async ({ browser, browserName }) => {
