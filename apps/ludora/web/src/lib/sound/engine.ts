@@ -41,6 +41,10 @@ function readMuted(): boolean {
 
 /** The mix: effects louder than the music, which sits underneath. */
 const LEVEL = { master: 1, sfx: 1, music: 0.4, reverb: 0.22 };
+/** Effects calm mode and calm play leave out: pressure (ticks, the race grid's beeps, alarms) and other people's reactions. */
+const CALM_SILENT = new Set<SfxName>(['tick', 'tickFinal', 'reaction', 'countdown', 'alarm']);
+/** Calm mode and calm play: how much of the usual level effects and music keep. */
+const CALM_LEVEL = { sfx: 0.7, music: 0.55 };
 
 /** Big moments turn the music down for a moment: how far (gain) and for how long (seconds). */
 const DUCK: Partial<Record<SfxAssetName, [depth: number, hold: number]>> = {
@@ -205,7 +209,7 @@ class SoundEngine {
   /** Plays an effect now, unless effects are off or the device is muted. Returns a stop function for long effects. */
   play(name: SfxName, options: SfxOptions = {}): () => void {
     for (const l of this.cueListeners) l(name);
-    if (this.calm && (name === 'tick' || name === 'tickFinal' || name === 'reaction')) return () => {};
+    if (this.calm && CALM_SILENT.has(name)) return () => {};
     if (this.state.muted || this.state.silenced || !this.state.effects) return () => {};
     // A set's own sound for this moment (its feel), when a game is played from a set that has one.
     const swap = this.feel[name];
@@ -510,8 +514,10 @@ class SoundEngine {
   private applyVolume() {
     const g = this.graph;
     if (!g) return;
-    g.sfx.gain.value = LEVEL.sfx * this.volume.effects;
-    g.music.gain.value = LEVEL.music * this.volume.music;
+    // Calm (the player's calm mode, or a calm room): everything a little quieter, the music most.
+    const calm = this.calm ? CALM_LEVEL : { sfx: 1, music: 1 };
+    g.sfx.gain.value = LEVEL.sfx * this.volume.effects * calm.sfx;
+    g.music.gain.value = LEVEL.music * this.volume.music * calm.music;
   }
 
   /** This device's volume sliders, each 0 to 1. */
@@ -522,8 +528,10 @@ class SoundEngine {
 
   /** Calm mode and data saver. A recording already downloaded may carry on under data saver; nothing new is fetched. */
   setComfort(opts: { calm: boolean; saveData: boolean }) {
+    const changed = this.calm !== opts.calm;
     this.calm = opts.calm;
     this.saveData = opts.saveData;
+    if (changed) this.applyVolume();
   }
 
   /** Hears every effect the game asks for, even muted. Returns an unsubscribe function. */

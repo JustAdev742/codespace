@@ -19,6 +19,7 @@ import {
 import type { ModeScreenProps } from './registry.ts';
 import { AnswerInput } from '../game/AnswerInput.tsx';
 import { QuestionCard } from '../game/QuestionCard.tsx';
+import { CalmTurn } from '../CalmPlay.tsx';
 import { Countdown } from '../game/TimerBar.tsx';
 import { ResultBanner } from '../game/Reveal.tsx';
 import { Leaderboard, TeamScores } from '../game/Leaderboard.tsx';
@@ -387,8 +388,10 @@ export function GlowTagPlayer({ view, act, fire, pulse, gameNow, paused, room }:
   const field = useField(view, meId, gameNow, pulse);
   const looks = useLooks(room.players);
   const [oddsOpen, setOddsOpen] = useState(false);
+  // Calm play, one thing at a time: while a question is open you are hidden, and there is no walking or tagging.
+  const hidden = you?.calm?.phase === 'question';
   // Walking and Space stop while the chances are open, so keys stay with the dialog.
-  const input: MoveInput = useMoveInput(Boolean(you) && !oddsOpen);
+  const input: MoveInput = useMoveInput(Boolean(you) && !oddsOpen && !hidden);
   const coarse = useCoarsePointer();
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState<string | null>(null);
@@ -399,6 +402,8 @@ export function GlowTagPlayer({ view, act, fire, pulse, gameNow, paused, room }:
   youRef.current = you;
   const pausedRef = useRef(paused);
   pausedRef.current = paused;
+  const hiddenRef = useRef(hidden);
+  hiddenRef.current = hidden;
   const fireRef = useRef(fire);
   fireRef.current = fire;
 
@@ -411,7 +416,7 @@ export function GlowTagPlayer({ view, act, fire, pulse, gameNow, paused, room }:
       // Up to a tenth of a second a frame, so a slow device still walks at full speed (walk() takes short steps).
       const dt = Math.min(0.1, (t - last) / 1000);
       last = t;
-      field.step(dt, input, pausedRef.current, (a) => fireRef.current(a));
+      field.step(dt, input, pausedRef.current || hiddenRef.current, (a) => fireRef.current(a));
     };
     raf = requestAnimationFrame(loop);
     return () => cancelAnimationFrame(raf);
@@ -428,7 +433,7 @@ export function GlowTagPlayer({ view, act, fire, pulse, gameNow, paused, room }:
 
   const tagNow = useCallback(async () => {
     const target = field.aim(youRef.current).target;
-    if (!target || busy || pausedRef.current) return;
+    if (!target || busy || pausedRef.current || hiddenRef.current) return;
     const h = field.headingToward(target.id);
     if (h !== null) field.face(h, (a) => fireRef.current(a));
     setBusy(true);
@@ -538,17 +543,25 @@ export function GlowTagPlayer({ view, act, fire, pulse, gameNow, paused, room }:
               </div>
             </div>
           ) : null}
-          {you.in && coarse ? (
+          {hidden ? (
+            <div className="pointer-events-none absolute inset-x-4 bottom-4 flex justify-center">
+              <p className="max-w-sm rounded-[var(--radius-l)] bg-black/75 px-5 py-3 text-center font-display text-xl font-extrabold text-white shadow-xl">You are hidden while you answer</p>
+            </div>
+          ) : null}
+          {you.in && coarse && !hidden ? (
             <div className="absolute bottom-3 left-3">
               <Joystick input={input} label="Walk and turn" />
             </div>
           ) : null}
-          {you.in ? (
+          {you.in && !hidden ? (
             <div className="pointer-events-none absolute right-3 bottom-3">
               <TagButton aim={aim} busy={busy || paused} onTag={() => void tagNow()} />
             </div>
           ) : null}
         </div>
+        {you.calm ? (
+          <CalmTurn turn={you.calm} gameNow={gameNow} waiting="You are hidden for up to 30 seconds: nobody can tag you, and the ring cannot hurt you." going="Walk and tag. The next question comes when the time is up." />
+        ) : null}
         <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
           <span className="inline-flex items-center gap-1.5 rounded-full bg-white/[0.08] px-3 py-1 font-bold text-text max-sm:hidden">
             <Package className="size-4" aria-hidden /> Crates: {crateOddsLine(view.crateOdds)}
@@ -559,7 +572,7 @@ export function GlowTagPlayer({ view, act, fire, pulse, gameNow, paused, room }:
             <span className="max-sm:hidden">All the chances</span>
           </button>
         </div>
-        {coarse ? null : (
+        {coarse || hidden ? null : (
           <p className="text-sm text-text-2">
             W and S (or the arrow keys) walk, A and D turn. Space or the Tag button tags the nearest player in front of you. Typing an answer? Press Esc or click the park to walk again.
           </p>

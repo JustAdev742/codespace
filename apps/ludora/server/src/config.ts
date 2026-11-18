@@ -121,7 +121,7 @@ const schema = z.object({
    */
   TUTORIAL_DEFAULT: z.preprocess((v) => (v === '' ? undefined : v), z.enum(['on', 'off']).default('on')),
   /**
-   * Calm play in new games when the host has not chosen for themselves (docs/DECISIONS.md, D56): "on" or "off".
+   * Calm play in new games when the host has not chosen for themselves (docs/DECISIONS.md, D57): "on" or "off".
    * Unset: on for a school's own copy (SCHOOL_THEME set), off elsewhere.
    */
   CALM_PLAY_DEFAULT: z.preprocess((v) => (v === '' ? undefined : v), z.enum(['on', 'off']).optional()),

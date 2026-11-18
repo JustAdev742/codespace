@@ -572,3 +572,66 @@ dark chrome, so it always stands on a warm-white plate. Ludora's own gold mark s
 is Ludora's, not the school's. Every text pair passes WCAG 2.1 AA (palette and ratios in
 SCHOOL_LOOKS.md). Text on the highlight follows it wherever it is used as a fill
 (`--on-lantern`), which the axe checks in the e2e tests caught on tabs.
+
+**D57. Calm play is the host's choice for a room, enforced by the game's rules; every game opens
+with a short walkthrough (18 November 2026).** The Hills Grammar School's playtest found the
+modes over-stimulating, with no tutorial, and players having to "drive a car while answering
+questions".
+
+*Calm play* is a room option (`calmPlay`) the host sets before a game (Host page and Room
+settings; it cannot change mid-game). New games take the host's saved choice (`host.calmPlay` in
+their preferences, kept when they flip the switch), else the copy's usual: `CALM_PLAY_DEFAULT`,
+or on when `SCHOOL_THEME` is set and off elsewhere. The server holds it and every screen shows it
+(a Calm tag; "Your teacher chose calm play" in the lobby). It does two things:
+
+- *Turns the room down on every screen, the big screen too*, whatever each player chose. It is
+  the existing per-player calm mode plus "less motion", applied while the page shows the room
+  (`setRoomCalm`, lib/prefs.ts), so everything that already obeyed those obeys it: no reactions,
+  confetti, celebration bursts or flashing; still backdrops and covers; 3D scenes with no camera
+  swoops or shake, fewer and slower particles and no seasonal drift. Sound is quieter (effects
+  70%, music 55%), countdown ticks, the race grid's beeps and alarms are silent, and music is the
+  gentle track all game with no final-stretch track. The timer counts down and nothing more: no
+  coral, ring, beat or warning cue (a screen reader still hears "5 seconds left" once).
+- *One thing at a time*, in the engine (`ctx.calm`, `mechanics/oneThing.ts`), so no client can
+  get round it. I went through all 30 modes. Four ask a player to steer, aim or time something
+  while a question is open, and now take turns in calm play:
+  Lantern Rally (while a question is open the kart drives itself at cruising speed, passes every
+  item and hazard, takes no slipstream, and its boost or slow-down waits; then 7 s to steer and
+  boost with no question), Glow Tag (a player answering is hidden: cannot walk or tag, cannot be
+  tagged, the ring takes no glow, for at most 30 s; then 10 s to walk and tag, with 4 s of grace
+  from the ring), Big Catch (no casting while a question is open, and no question while the line
+  is out; a player who sits on a cast gets the next question after 20 s) and Corner Shop (while
+  everyone in a shop is reading a question or picking a delivery its queue waits politely: people
+  arrive, nobody's patience runs down; then a go at the till until the queue is served or 12 s).
+  The other 26 are turn-based, choose-then-spend or wait for an answer (Spot Kick picks a place
+  and strength from buttons, Summit Scramble and Tower Together announce wind and gusts seconds
+  ahead, Gold Rush, Code Breakers and Lantern Guard spend earned resources whenever the player
+  likes, the rest are question-only): nothing in them competes with a question, so calm play
+  changes only how they look and sound there, and a test proves each plays the identical game
+  from a seed with calm play on or off.
+
+*Fairness when some players are answering and others acting.* Everyone in a room plays under the
+same rule, and each player's turns are their own. The game opens a question, never the player,
+so nobody can call up shelter when in trouble. Waiting is never better than playing: a coasting
+kart cruises with no boosts or lanterns and a driver who never answers finishes behind one who
+plays (tested); a hidden tagger earns nothing, the shelter is bounded and an unanswered question is
+then put away uncounted, and calm Glow Tag pays no bonus for still glowing at a ring change or the
+end, so hiding can never score; the fish and the shop only pause what belongs to the player who
+is reading. Scoring is otherwise unchanged, and with calm play off every mode plays exactly as
+before (no extra random numbers or timers).
+
+*The walkthrough.* When the host presses Start and anyone connected has not finished this mode's
+walkthrough, the server opens it on every screen (`room.intro`) and the game waits. Each player
+steps through two to four short steps from the mode's metadata (`meta.tutorial`, written for a
+reader of 8 to 17 on a phone), the mode's controls to press and try (unscored, nothing sent),
+what calm play changes, and Ready; or skips. The big screen shows the same steps large with how
+many are ready, Start now and Back to the lobby. The game starts when everyone is ready or the
+host says so, then the room's countdown if it has one. A finished walkthrough is remembered by
+mode (`made:<id>` for a made game): in an account's preferences (`tutorials`, added to and never
+replaced, newest 300; the server reads it at join) or, signed out, on the device. A player who
+knows it is ready at once and sees a short note with "Show me how to play"; How to play in the
+lobby replays it at any time. The host can turn it off for a game, and an operator for the copy
+(`TUTORIAL_DEFAULT`); practice bots and "start now" never wait for it, nor does Play again.
+
+No database migration: both preferences live in the existing `preferences` JSON. The playable
+demo starts its game at once, with no walkthrough.

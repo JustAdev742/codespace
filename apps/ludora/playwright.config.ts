@@ -62,6 +62,9 @@ export default defineConfig({
       SCHOOL_THEME: process.env.E2E_SCHOOL_THEME ?? '',
       // Every test makes its own accounts, all from this one machine: more than one address may
       // normally make in ten minutes. (The limit itself is tested in server/test/auth.test.ts.)
+      // Every test is a room full of brand-new players, so every game would open with its walkthrough. It is off
+      // here, and e2e/calm-play.spec.ts turns it on for its rooms to test it.
+      TUTORIAL_DEFAULT: 'off',
       SIGNUPS_PER_10_MIN: '1000',
       GUESTS_PER_10_MIN: '1000',
       LOG_LEVEL: 'warn',

@@ -1,12 +1,13 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, type RefObject } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate, useSearchParams } from 'react-router';
-import { Bot, Presentation, Search, SlidersHorizontal, Users } from 'lucide-react';
+import { Bot, Feather, Presentation, Search, SlidersHorizontal, Users } from 'lucide-react';
 import { toast } from 'sonner';
 import { PERSONA_INFO, PRACTICE_LEVEL_IDS, PRACTICE_LEVEL_INFO, PRACTICE_LEVEL_PERSONAS, type CommonField, type PracticeLevel, type SetProfile, type SettingField } from '@ludora/shared';
 import { soloBlocker } from '@ludora/engine/catalog';
 import { api, ApiError } from '../../lib/api.ts';
 import { useMe } from '../../lib/session.ts';
+import { usePrefs } from '../../lib/usePrefs.ts';
 import { useModes, type CatalogEntry, type SetSummary } from '../../lib/queries.ts';
 import { AccountError, EmptyState, ErrorNotice, Field, Input, PageHeader, Panel, Select, Skeleton, Switch } from '../../ui/primitives.tsx';
 import { ToggleChips } from '../../ui/game.tsx';
@@ -341,6 +342,20 @@ function Setup({ solo, preset, presetMode = null, gameId, making, again, classId
   const [bots, setBots] = useState(0);
   const [botLevel, setBotLevel] = useState<PracticeLevel>('mixed');
   const [options, setOptions] = useState<Record<string, unknown> & { lateJoin: boolean; generatedNames: boolean; requireAccount: boolean; quiet: boolean }>({ lateJoin: true, generatedNames: false, requireAccount: false, quiet: false });
+  // Calm play and the walkthrough: the host's saved choice and this copy's usual (from the server), until they change them here.
+  const hosting = me0.data?.hosting;
+  const prefsApi = usePrefs();
+  const [calm, setCalm] = useState<boolean | null>(null);
+  const [walk, setWalk] = useState<boolean | null>(null);
+  const calmOn = calm ?? (typeof options.calmPlay === 'boolean' ? options.calmPlay : (hosting?.calmPlay ?? false));
+  const walkOn = walk ?? (typeof options.tutorial === 'boolean' ? options.tutorial : (hosting?.tutorial ?? true));
+  /** What goes to the server: only what is known, so a host the server has not described gets its defaults there. */
+  const calmOptions = { ...(calm !== null || hosting || typeof options.calmPlay === 'boolean' ? { calmPlay: calmOn } : {}), ...(walk !== null || hosting || typeof options.tutorial === 'boolean' ? { tutorial: walkOn } : {}) };
+  const chooseCalm = (v: boolean) => {
+    setCalm(v);
+    // Kept as this host's choice for the games they start from now on.
+    if (prefsApi.signedIn) prefsApi.save({ host: { calmPlay: v } });
+  };
   const [busy, setBusy] = useState(false);
   const [saving, setSaving] = useState(false);
   const [lessoning, setLessoning] = useState(false);
@@ -449,7 +464,7 @@ function Setup({ solo, preset, presetMode = null, gameId, making, again, classId
     if (!set) return;
     setBusy(true);
     try {
-      const res = await api.post<{ code: string }>('/api/rooms', { setId: set.id, modeId: 'made-game', blueprintId: g.id, solo: true, ...(onlyLevel ? { difficulty: onlyLevel } : {}), ...(bots > 0 ? { practiceBots: { count: bots, level: botLevel } } : {}) });
+      const res = await api.post<{ code: string }>('/api/rooms', { setId: set.id, modeId: 'made-game', blueprintId: g.id, solo: true, options: calmOptions, ...(onlyLevel ? { difficulty: onlyLevel } : {}), ...(bots > 0 ? { practiceBots: { count: bots, level: botLevel } } : {}) });
       writeSoloPrefs(soloPrefsKey({ modeId: 'made-game', madeGameId: g.id }), { common: {}, settings: {}, bots, botLevel });
       navigate(`/room/${res.code}`);
     } catch (err) {
@@ -478,7 +493,7 @@ function Setup({ solo, preset, presetMode = null, gameId, making, again, classId
         settings,
         common: filled,
         ...(onlyLevel ? { difficulty: onlyLevel } : {}),
-        options,
+        options: { ...options, ...calmOptions },
         solo,
         ...(solo && bots > 0 && canHaveBots ? { practiceBots: { count: bots, level: botLevel } } : {}),
         ...(game ? { gameId: game.id } : {}),
@@ -699,6 +714,20 @@ function Setup({ solo, preset, presetMode = null, gameId, making, again, classId
             ) : solo && choice ? (
               <p className="mt-6 border-t border-line pt-4 text-sm text-text-2">{choice.mode.meta.title} is played on your own, so it has no practice bots.</p>
             ) : null}
+            <div className="mt-6 border-t border-line pt-4">
+              <h3 className="mb-1 flex items-center gap-2 font-display text-xl font-bold">
+                <Feather className="size-5 text-text-3" aria-hidden /> Calm and clear
+              </h3>
+              <div className="grid grid-cols-1 gap-x-8 md:grid-cols-2">
+                <Switch
+                  checked={calmOn}
+                  onCheckedChange={chooseCalm}
+                  label="Calm play"
+                  description={`One thing at a time: ${solo ? 'you answer' : 'players answer'}, then act, never both at once. No flashing or shaking, quieter sounds, no countdown pressure.${prefsApi.signedIn ? ' Kept for your next games.' : ''}`}
+                />
+                <Switch checked={walkOn} onCheckedChange={setWalk} label="How to play first" description={solo ? 'A few short steps before a game you have not played before.' : 'A few short steps on every screen before the game, for players new to it. You can skip them.'} />
+              </div>
+            </div>
             {!solo ? (
               <div className="mt-6 border-t border-line pt-4">
                 <h3 className="mb-1 flex items-center gap-2 font-display text-xl font-bold">

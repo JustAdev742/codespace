@@ -72,7 +72,8 @@ export function useLocalRoom(setup: DemoSetup): { player: RoomHandle | null; hos
           variantId: setup.variantId,
           settings: selfRunningSettings(setup.modeId),
           common: {},
-          options: roomOptionsSchema.parse({}),
+          // The demo starts its game at once. (On a server, a first game of a mode opens with its walkthrough.)
+          options: roomOptionsSchema.parse({ tutorial: false }),
           set: { id: null, title: setup.set.title, questions: setup.set.questions },
           // A room of one person and some bots: you are its host as well as its player, as in a solo game.
           solo: true,

@@ -22,6 +22,7 @@ import type { ModeScreenProps } from './registry.ts';
 import type { FeedbackView, QuestionView } from '../game/types.ts';
 import { AnswerInput } from '../game/AnswerInput.tsx';
 import { QuestionCard } from '../game/QuestionCard.tsx';
+import { CalmTurn } from '../CalmPlay.tsx';
 import { Countdown } from '../game/TimerBar.tsx';
 import { ResultBanner } from '../game/Reveal.tsx';
 import { Leaderboard, TeamScores } from '../game/Leaderboard.tsx';
@@ -95,6 +96,8 @@ interface You {
   stats: { casts: number; landed: number; perfect: number; escaped: number; spooked: number };
   question: QuestionView | null;
   feedback: (FeedbackView & { text?: string }) | null;
+  /** Calm play: 'question' (no casting) or 'go' (fish; no question is open). Null in every other game. */
+  calm?: { phase: 'question' | 'go'; goUntil: number | null } | null;
 }
 
 interface BoardRow {
@@ -527,6 +530,10 @@ export function BigCatchPlayer({ view, act, gameNow, paused, room }: ModeScreenP
           </div>
         </div>
 
+        {you.calm ? (
+          <CalmTurn turn={you.calm} gameNow={gameNow} waiting="Your line waits on the jetty. Answer to earn a cast." going="Cast, wait for the bite and reel. The next question comes when your casts are used." timed={false} />
+        ) : null}
+        {you.calm?.phase === 'question' ? null : (
         <div className="grid grid-cols-2 gap-2">
           <Button data-bc="cast" size="lg" variant="secondary" onClick={cast} disabled={busy || paused || you.casts <= 0 || line.phase !== 'idle'}>
             <Anchor className="size-5" aria-hidden /> Cast
@@ -554,6 +561,7 @@ export function BigCatchPlayer({ view, act, gameNow, paused, room }: ModeScreenP
             ) : null}
           </Button>
         </div>
+        )}
         <p className="text-sm font-semibold text-text-2" aria-hidden>
           {line.phase === 'waiting'
             ? 'Wait for the bobber to dip, then reel (or press Space).'
@@ -563,8 +571,12 @@ export function BigCatchPlayer({ view, act, gameNow, paused, room }: ModeScreenP
                 ? landedShown
                   ? 'Sell it, or put it in your tank.'
                   : 'Reeling it in…'
-                : you.casts > 0
-                  ? 'Cast your line. You can answer questions while it is out.'
+                : you.calm?.phase === 'question'
+                  ? 'Answer the question first. Then it is your go at fishing.'
+                  : you.casts > 0
+                  ? you.calm
+                    ? 'Cast your line.'
+                    : 'Cast your line. You can answer questions while it is out.'
                   : 'Answer a question to earn a cast.'}
         </p>
 

@@ -89,6 +89,8 @@ export function roomMusic(room: RoomView | null, role: SoundRole, stretch: boole
   const status = room.room.status;
   if (status === 'lobby') return role === 'host' ? 'lobby' : null;
   if (role !== 'host' && role !== 'solo') return null;
+  // Calm play: the gentle track all game, with no final-stretch music.
+  if (status === 'running' && room.room.options?.calmPlay) return 'calm';
   if (status === 'running') return stretch ? 'intense' : (MODE_MUSIC[room.room.modeId] ?? 'game');
   // A class that lost a co-op game gets the gentle track, not the celebration.
   if (status === 'ended') return room.results?.outcome === 'coop-loss' ? 'calm' : 'results';
@@ -114,6 +116,7 @@ export function useRoomMusic(room: RoomView | null, role: SoundRole, gameNow: ((
   }, [running, modeId, game, gameNow]);
   useMusic(roomMusic(room, role, stretch), room?.room.status === 'ended' ? AFTER_THE_FANFARE : undefined);
   const shared = role === 'host' || role === 'solo';
-  const next: MusicId[] = room?.room.status === 'lobby' ? [MODE_MUSIC[modeId] ?? 'game', 'intense', 'results'] : running ? ['intense', 'results'] : [];
+  const calm = Boolean(room?.room.options?.calmPlay);
+  const next: MusicId[] = room?.room.status === 'lobby' ? (calm ? ['calm', 'results'] : [MODE_MUSIC[modeId] ?? 'game', 'intense', 'results']) : running ? (calm ? ['results'] : ['intense', 'results']) : [];
   usePrefetchMusic(next, shared);
 }

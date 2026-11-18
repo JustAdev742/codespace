@@ -4,8 +4,8 @@ import { MODES } from '@ludora/engine';
 import { MUSIC_ASSETS } from '../../lib/sound/assets.generated.ts';
 import { MODE_MUSIC, STRETCH_MS, inFinalStretch, roomMusic } from './music.ts';
 
-function room(status: RoomView['room']['status'], modeId = 'classic', results: RoomView['results'] = null) {
-  return { room: { status, modeId }, results } as unknown as RoomView;
+function room(status: RoomView['room']['status'], modeId = 'classic', results: RoomView['results'] = null, calmPlay = false) {
+  return { room: { status, modeId, options: { calmPlay } }, results } as unknown as RoomView;
 }
 
 describe('room music', () => {
@@ -28,6 +28,13 @@ describe('room music', () => {
     expect(roomMusic(room('running', 'word-scramble'), 'solo', false)).toBe('calm');
     expect(roomMusic(room('running', 'a-mode-from-later'), 'solo', false)).toBe('game');
     expect(roomMusic(room('running', 'classic'), 'host', true)).toBe('intense');
+  });
+
+  it('plays the gentle track all through a calm game, with no final stretch', () => {
+    expect(roomMusic(room('running', 'lantern-rally', null, true), 'host', false)).toBe('calm');
+    expect(roomMusic(room('running', 'classic', null, true), 'solo', true)).toBe('calm');
+    expect(roomMusic(room('running', 'classic', null, true), 'player', false)).toBeNull();
+    expect(roomMusic(room('lobby', 'classic', null, true), 'host', false)).toBe('lobby');
   });
 
   it('rests while paused, and celebrates at the end unless a co-op game was lost', () => {

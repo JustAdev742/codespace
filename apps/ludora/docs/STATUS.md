@@ -26,6 +26,21 @@ item with how each was checked, in [features/README.md](features/README.md). The
 
 ## Added in November 2026 (verified; details in [features/](features/README.md))
 
+- **Calm play and a walkthrough before every game** (18 November, D57), from The Hills Grammar
+  School's playtest. *Calm play* is a room option the host sets (and keeps as their own default;
+  on by default on a school's copy, `CALM_PLAY_DEFAULT`): every screen turns down (no flashes,
+  shaking, bursts or pressure sounds, less motion, quieter sound, the gentle music, a plain
+  timer), and in the four modes where a question competed with steering, aiming or timing
+  (Lantern Rally, Glow Tag, Big Catch, Corner Shop) the engine makes answering and acting take
+  turns. The other 26 modes have nothing that competes with a question and play the identical game.
+  *The walkthrough*: two to four short steps, the controls to try and Ready, on every screen
+  before a game for players new to the mode; the host can skip it; finished ones are remembered
+  per account or per device; How to play replays it. Checked by engine tests (turns, fairness,
+  every calm mode and variant through the conformance scenarios, the other modes unchanged from a
+  seed), server tests (the option, defaults, the walkthrough's flow and the seen memory), web unit
+  tests, `e2e/calm-play.spec.ts`, and by playing Lantern Rally (3D), Glow Tag, Big Catch and Corner
+  Shop calm and Lantern Rally and Glow Tag not calm with a host and two phones in Chromium. Not yet
+  tried with a class.
 - **A 3D home menu, and the Hills Grammar copy in the school's colours** (18 November, D56).
   The signed-in home is the yard: a calm 3D place round the player's buddy, behind a real HTML
   menu that works without it, with a flat version for devices with no WebGL, 3D off, data saver,

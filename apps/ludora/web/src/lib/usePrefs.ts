@@ -3,7 +3,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { api, ApiError } from './api.ts';
 import { meKey, useMe, type Me, type Preferences } from './session.ts';
-import { ACCESS_DEFAULTS, applyPreferences, currentAccess, devicePrefs, localPrefs, saveLocalPrefs, setDevicePrefs, subscribeAccess, subscribeDevice, type AccessPrefs, type DevicePrefs, type LocalPrefs } from './prefs.ts';
+import { ACCESS_DEFAULTS, applyPreferences, currentAccess, devicePrefs, localPrefs, roomCalmOn, saveLocalPrefs, setDevicePrefs, subscribeAccess, subscribeDevice, type AccessPrefs, type DevicePrefs, type LocalPrefs } from './prefs.ts';
 
 export type PrefPatch = Partial<Omit<Preferences, 'notifications' | 'privacy' | 'school' | 'access'>> & {
   notifications?: Partial<Preferences['notifications']>;
@@ -75,6 +75,11 @@ export function localPrefsChanged() {
 /** The accessibility settings in force now, for game screens. Works signed in or out. */
 export function useAccess(): AccessPrefs {
   return useSyncExternalStore(subscribeAccess, currentAccess, currentAccess);
+}
+
+/** Whether the room on this page plays calm (the host's calm play), as distinct from the player's own calm mode. */
+export function useRoomCalm(): boolean {
+  return useSyncExternalStore(subscribeAccess, roomCalmOn, roomCalmOn);
 }
 
 export function useDevicePrefs(): [DevicePrefs, (patch: Partial<DevicePrefs>) => void] {

@@ -1,13 +1,14 @@
 import { useState } from 'react';
-import { HelpCircle } from 'lucide-react';
+import { Footprints, HelpCircle } from 'lucide-react';
 import type { RoomView } from '@ludora/shared';
 import { useModes } from '../../lib/queries.ts';
 import { Dialog } from '../../ui/primitives.tsx';
 import { Button } from '../../ui/Button.tsx';
+import { ReplayWalkthrough } from './Walkthrough.tsx';
 
 /**
  * "How to play" in the lobby: the game's own rules (the list on its page) and what this version of it
- * changes. On a phone it is for a player who has not met the game before; on the big screen it is for
+ * changes, with the short step-by-step walkthrough (Walkthrough.tsx) one press away, to see again at any time. On a phone it is for a player who has not met the game before; on the big screen it is for
  * the teacher to talk through before pressing Start, so the words there are large enough for the back row.
  *
  * The rules come from the public catalogue the room already loads. Nothing shows until that has arrived,
@@ -16,6 +17,7 @@ import { Button } from '../../ui/Button.tsx';
 export function HowToPlay({ room, big = false, className = '' }: { room: RoomView; big?: boolean; className?: string }) {
   const modes = useModes();
   const [open, setOpen] = useState(false);
+  const [steps, setSteps] = useState(false);
   const entry = modes.data?.modes.find((m) => m.meta.id === room.room.modeId);
   if (!entry || !entry.meta.rules.length) return null;
   const variant = room.room.variantId ? entry.variants.find((v) => v.meta.id === room.room.variantId) : undefined;
@@ -26,6 +28,19 @@ export function HowToPlay({ room, big = false, className = '' }: { room: RoomVie
         How to play
       </Button>
       <Dialog open={open} onOpenChange={setOpen} title={`How to play ${name}`} description={variant?.meta.tagline ?? entry.meta.tagline} size={big ? 'lg' : 'md'}>
+        {/* The short walkthrough again, with the buttons to try: the same steps players see before a game. */}
+        <Button
+          variant="primary"
+          size={big ? 'lg' : 'md'}
+          className="mb-4"
+          icon={<Footprints className="size-4" aria-hidden />}
+          onClick={() => {
+            setOpen(false);
+            setSteps(true);
+          }}
+        >
+          Show me step by step
+        </Button>
         <ol className={`flex flex-col text-left ${big ? 'gap-4' : 'gap-3'}`}>
           {entry.meta.rules.map((rule, i) => (
             <li key={rule} className="flex gap-3">
@@ -43,6 +58,7 @@ export function HowToPlay({ room, big = false, className = '' }: { room: RoomVie
           </p>
         ) : null}
       </Dialog>
+      {steps ? <ReplayWalkthrough room={room} onClose={() => setSteps(false)} /> : null}
     </>
   );
 }

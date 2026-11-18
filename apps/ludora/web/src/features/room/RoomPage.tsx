@@ -36,6 +36,9 @@ import { GREETERS } from './game/stage.tsx';
 import { Backdrop } from './game/Backdrop.tsx';
 import { SetFeelContext, useApplySetFeel, useRoomBackdrop } from './game/setFeel.tsx';
 import { PhaseFade } from './game/PhaseFade.tsx';
+import { setRoomCalm } from '../../lib/prefs.ts';
+import { Walkthrough, useKnownTutorial } from './Walkthrough.tsx';
+import { CalmPlayTag } from './CalmPlay.tsx';
 
 const nameKey = (code: string) => `ludora.name.${code}`;
 const spaced = (code: string) => `${code.slice(0, 3)} ${code.slice(3)}`;
@@ -117,6 +120,13 @@ export default function RoomPage() {
       if (roomLittle && had !== 'on') delete root.dataset.little;
     };
   }, [roomLittle]);
+  // Calm play, the host's choice for the room: this screen turns down as the player's own calm mode and less motion
+  // would, for as long as it shows the room (lib/prefs.ts). The big screen too.
+  const roomCalm = Boolean(room?.room.options.calmPlay);
+  useEffect(() => {
+    setRoomCalm(roomCalm);
+    return () => setRoomCalm(false);
+  }, [roomCalm]);
   const live0 = room?.room.status === 'running' || room?.room.status === 'paused';
   useWakeLock(Boolean(live0));
   const { calm } = useAccess();
@@ -126,6 +136,8 @@ export default function RoomPage() {
   const setFeel = room?.room.setFeel ?? null;
   useApplySetFeel(setFeel);
   const backdrop = useRoomBackdrop(setFeel);
+  // A player who knows this mode tells the room, so its walkthrough is not shown to them again.
+  useKnownTutorial(room, handle);
 
   // A new stage of the room (the game starting, the results, Play again) opens at its top: a player scrolled down
   // to a tall game board would otherwise land in the middle of the results, under the title and the podium.
@@ -223,6 +235,7 @@ export default function RoomPage() {
             <Title className="truncate font-display text-lg leading-tight font-bold text-text sm:text-xl min-[1600px]:text-[1.75rem]">{room.lesson?.screen ? room.lesson.title : room.room.title}</Title>
             <p className="flex min-w-0 items-center gap-2 text-xs font-semibold text-text-2 sm:text-sm min-[1600px]:text-base">
               {status === 'running' ? <LiveTag /> : null}
+              {room.room.options.calmPlay ? <CalmPlayTag solo={room.room.solo} isHost={isHost} /> : null}
               <span className="truncate">
                 {room.room.solo ? (
                   'Solo game'
@@ -346,6 +359,7 @@ export default function RoomPage() {
       {calm ? null : <ReactionLayer reactions={handle.reactions} big={isHost} />}
       {debug ? <DebugOverlay handle={handle} /> : null}
       {status === 'lobby' && !room.room.solo ? <StartCountdown handle={handle} isHost={isHost} /> : null}
+      {status === 'lobby' ? <Walkthrough room={room} handle={handle} isHost={isHost} /> : null}
       {live ? <BrainBreak handle={handle} isHost={isHost} /> : null}
       </HostToolsIf>
       </Announcer>

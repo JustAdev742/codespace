@@ -78,7 +78,7 @@ test('the stage: a backdrop the teacher keeps, every phase accessible, podium sk
   // How to play: the game's own rules, for a player with only a name on a phone and on the big screen for the class.
   await phone.getByRole('button', { name: 'How to play' }).click();
   const phoneRules = phone.getByRole('dialog', { name: 'How to play Classic' });
-  await expect(phoneRules.getByRole('listitem')).toHaveCount(5);
+  await expect(phoneRules.getByRole('listitem')).toHaveCount(6);
   await expect(phoneRules.getByText('Everyone gets the same question at the same time.')).toBeVisible();
   await check(phone, 'how to play on a phone');
   await phone.keyboard.press('Escape');

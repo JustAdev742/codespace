@@ -71,6 +71,54 @@ A mode is `GameMode<State, Settings, Action>` (see `packages/engine/src/sdk/type
   everyone has answered, buzzer mode (`closeOnFirstCorrect`), eligibility for
   eliminations (`canAnswer`), and `leaderboard()` for ranked rows.
 - `questions/deck.ts`: shuffled decks that reshuffle without immediate repeats.
+- `oneThing.ts`: calm play's turns (below): `thinking`, `holdBegin`/`holdEnd`,
+  `goBegin`/`goEnd`, `putAway`, `shiftClocks`, `turnView`.
+
+## The walkthrough (every mode)
+
+Before a game the server opens a short walkthrough on every screen for players who
+have not played the mode (D57). It is made from `meta.tutorial`:
+
+- `steps`: two to four, each a title of up to 28 characters and one or two short
+  sentences (up to 150 characters, ending in a full stop) a player of 8 can read on a
+  phone. One idea a step. Write them from your rules, not new rules.
+- `controls`: every button the mode has besides answering, with the words on the
+  game's button, what it does in a sentence, and its key if it has one ("Left
+  arrow", "B", "Space", "W, A, S, D or the arrow keys"). Players press them in the
+  walkthrough to see what they do; nothing is sent to the game. Required for 3D and
+  strategy modes.
+
+`TUTORIAL_LIMITS` in `@ludora/shared` holds the limits and
+`packages/engine/test/calm-play.test.ts` checks every mode. A mode without a
+walkthrough (a made game) gets its first rules as steps (`tutorialOf`).
+
+## Calm play (`ctx.calm`)
+
+A host can make a game calm for the whole room. Screens turn down on their own
+(no flashes, shaking, bursts or pressure sounds, less motion, quieter sound): a
+mode screen only needs to use the shared pieces and `motionOK()`.
+
+The rule part is yours if your mode has an action that needs steering, aiming or
+timing while a question is open. Then, when `ctx.calm` is true, a question and the
+action must take turns for each player, and you must set `meta.calmPlay` (up to 150
+characters, for players) saying what changes. Use `mechanics/oneThing.ts`:
+
+- While a question is open the player's piece waits in neutral: it does nothing,
+  nothing can happen to it, and its own clocks stand still (`shiftClocks` when it
+  resumes). Refuse the action with a plain message.
+- After an answer it is the player's go, with no question open, for a set time or
+  until the action is finished (`goBegin`, `goEnd`). The game opens the next
+  question, never the player.
+- Waiting must never be better than playing. Where others could reach the piece,
+  bound the wait (`holdBegin` with `shelterMs`; `putAway` the question, uncounted,
+  when it runs out), and pay nothing for merely surviving.
+- Put the turn in the player's view as `you.calm` (`turnView`), null outside calm
+  play, and put the action's buttons away on screen while `phase` is `'question'`
+  (`web/src/features/room/CalmPlay.tsx`, `CalmTurn`).
+- With `ctx.calm` false the mode must play exactly as before: draw no extra random
+  numbers and set no extra timers. The test suite checks that every mode without
+  `calmPlay` plays the same game from a seed with calm play on or off, and plays every
+  mode with it through the conformance scenarios in calm play.
 
 ## Settings and variants
 

@@ -166,8 +166,11 @@ export function subscribeDevice(l: () => void) {
 let access: AccessPrefs = { ...ACCESS_DEFAULTS, ...readJson<{ access: AccessPrefs }>(LOOK_KEY).access };
 const accessListeners = new Set<() => void>();
 
-/** The accessibility settings in force on this page (the account's, or this device's when signed out). */
-export const currentAccess = () => access;
+/** `access` with calm play's turn-down on top, kept as one object so React sees no change until there is one. */
+let effective: AccessPrefs | null = null;
+
+/** The accessibility settings in force on this page (the account's, or this device's when signed out), with a calm room's on top. */
+export const currentAccess = () => (effective ??= roomCalm ? { ...access, calm: true } : access);
 export function subscribeAccess(l: () => void) {
   accessListeners.add(l);
   return () => accessListeners.delete(l);
@@ -222,21 +225,61 @@ export function lookAttributes(p: Applied): Record<string, string> {
 /** Every attribute lookAttributes can set, so ones no longer chosen are taken off. */
 const LOOK_ATTRS = ['motion', 'text', 'contrast', 'font', 'letters', 'lines', 'transparency', 'links', 'focus', 'tiles', 'calm', 'little', 'timer', 'saver'];
 
-export function applyPreferences(p: Applied) {
+/** The attributes from the player's own settings, last applied. */
+let ownAttrs: Record<string, string> | null = null;
+
+/** Write the look attributes on <html>: the player's own, with calm play's on top while a room asks for it. */
+function writeAttrs() {
+  if (typeof document === 'undefined') return;
   const root = document.documentElement;
-  applyTheme(p.theme);
-  const attrs = lookAttributes(p);
+  // Before the settings have loaded, the player's own are what theme.js put on the page.
+  ownAttrs ??= Object.fromEntries(LOOK_ATTRS.filter((k) => root.dataset[k]).map((k) => [k, root.dataset[k]!]));
+  const attrs = { ...ownAttrs, ...(roomCalm ? ROOM_CALM_ATTRS : {}) };
   for (const k of LOOK_ATTRS) {
     if (attrs[k]) root.dataset[k] = attrs[k];
     else delete root.dataset[k];
   }
+}
+
+export function applyPreferences(p: Applied) {
+  applyTheme(p.theme);
+  const attrs = lookAttributes(p);
+  ownAttrs = attrs;
+  writeAttrs();
   access = { ...ACCESS_DEFAULTS, ...p.access };
+  effective = null;
+  // What theme.js puts back at the next first paint: the player's own settings, never a room's.
   safeSet(LOOK_KEY, JSON.stringify({ attrs, access }));
   accessListeners.forEach((l) => l());
 }
 
-/** True when the player (or their OS) has asked for less motion. */
+/* ------------------------------ calm play (a room's) ------------------------------ */
+
+/*
+ * Calm play is the host's choice for a whole room (docs/DECISIONS.md, D57). It is the player's own
+ * calm mode and "less motion" switched on for as long as this page shows that room, whatever the
+ * player chose: everything that already listens to those (no reactions, confetti, flashes or
+ * countdown ticks, still backdrops and covers, calmer 3D scenes, quieter sound) turns down at once.
+ * Leaving the room puts the player's own settings back. Nothing is saved.
+ */
+let roomCalm = false;
+const ROOM_CALM_ATTRS: Record<string, string> = { calm: 'on', motion: 'off' };
+
+/** A room says whether it plays calm (RoomPage). */
+export function setRoomCalm(on: boolean) {
+  if (on === roomCalm) return;
+  roomCalm = on;
+  effective = null;
+  writeAttrs();
+  accessListeners.forEach((l) => l());
+}
+
+/** Whether this page shows a room that plays calm. */
+export const roomCalmOn = () => roomCalm;
+
+/** True when the player (or their OS) has asked for less motion, or the room plays calm. */
 export function prefersReducedMotion(): boolean {
+  if (roomCalm) return true;
   const m = document.documentElement.dataset.motion;
   if (m === 'off') return true;
   if (m === 'on') return false;

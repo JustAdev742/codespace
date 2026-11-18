@@ -6,6 +6,7 @@ import type { ModeScreenProps } from './registry.ts';
 import type { FeedbackView, QuestionView } from '../game/types.ts';
 import { AnswerInput } from '../game/AnswerInput.tsx';
 import { QuestionCard } from '../game/QuestionCard.tsx';
+import { CalmTurn } from '../CalmPlay.tsx';
 import { Countdown } from '../game/TimerBar.tsx';
 import { ResultBanner } from '../game/Reveal.tsx';
 import { Leaderboard, TeamScores } from '../game/Leaderboard.tsx';
@@ -89,6 +90,11 @@ interface You {
   crateOdds: { id: CrateId; weight: number }[];
   question: QuestionView | null;
   last: (FeedbackView & { text?: string }) | null;
+  /**
+   * Calm play: 'question' (a question or a delivery to read; the till waits) or 'go' (serve). `waiting`: the queue
+   * waits politely since `since`, so nobody's patience runs down. Null in every other game.
+   */
+  calm?: { phase: 'question' | 'go'; goUntil: number | null; waiting: boolean; since: number | null } | null;
   streak: number;
   sales: Sale[];
   delivery: Delivery | null;
@@ -443,10 +449,13 @@ function UpgradesDialog({ open, onOpenChange, you, onBuy, onLine, busy }: { open
 
 /** Whether the till can take a customer now. Ticks with the game clock while someone waits, so only these small parts re-render. */
 function useTill(you: You, busy: boolean, paused: boolean, gameNow: () => number) {
-  useNow(250, you.queue.length > 0 && !paused);
-  const now = gameNow();
-  const tillBusy = you.queue.length > 0 && you.till.readyAt > now;
-  return { now, tillBusy, canServe: you.queue.length > 0 && !busy && !paused && !tillBusy };
+  // Calm play: while the queue waits politely its patience stands still, so the cards show it stopped where it was.
+  const held = you.calm?.waiting && you.calm.since !== null ? you.calm.since : null;
+  useNow(250, you.queue.length > 0 && !paused && held === null);
+  const now = held ?? gameNow();
+  const tillBusy = you.queue.length > 0 && you.till.readyAt > gameNow();
+  const reading = you.calm?.phase === 'question';
+  return { now, tillBusy, canServe: you.queue.length > 0 && !busy && !paused && !tillBusy && !reading };
 }
 
 function TillButtons({ you, busy, paused, gameNow, onServe, onUpgrades }: { you: You; busy: boolean; paused: boolean; gameNow: () => number; onServe: () => void; onUpgrades: () => void }) {
@@ -644,7 +653,7 @@ export function CornerShopPlayer({ view, act, gameNow, paused, room }: ModeScree
   // Space serves the next customer, unless a key belongs to an answer box, a button or a dialog.
   const serveNext = useRef<() => void>(() => {});
   serveNext.current = () => {
-    if (you && you.queue.length && !busy && !paused && you.till.readyAt <= gameNow()) serve();
+    if (you && you.queue.length && !busy && !paused && you.calm?.phase !== 'question' && you.till.readyAt <= gameNow()) serve();
   };
   useEffect(() => {
     const down = (e: KeyboardEvent) => {
@@ -692,6 +701,9 @@ export function CornerShopPlayer({ view, act, gameNow, paused, room }: ModeScree
             </div>
           ) : null}
         </div>
+        {you.calm ? (
+          <CalmTurn turn={you.calm} gameNow={gameNow} waiting={you.offer ? 'Pick a delivery. Your customers wait happily.' : 'Your customers wait happily while you answer.'} going="Serve your customers. The next question comes when the queue is served." />
+        ) : null}
         <TillButtons you={you} busy={busy} paused={paused} gameNow={gameNow} onServe={() => serve()} onUpgrades={() => setUpOpen(true)} />
         <Queue you={you} busy={busy} paused={paused} gameNow={gameNow} onServe={serve} />
         {outcome ? (

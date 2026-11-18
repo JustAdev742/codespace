@@ -19,6 +19,10 @@ export interface Preferences {
   reactionBar?: string[];
   /** The host's big-screen backdrop (room/game/Backdrop.tsx). Older servers may leave it out. */
   stageBackdrop?: string;
+  /** Choices for the games this account hosts. `calmPlay` null: this copy's usual. Older servers leave it out. */
+  host?: { calmPlay: boolean | null };
+  /** Walkthroughs this account has finished, by mode id (lib/tutorials.ts). Older servers leave it out. */
+  tutorials?: string[];
 }
 
 export interface MeUser {
@@ -42,6 +46,8 @@ export interface Me {
   environment: 'development' | 'test' | 'sandbox' | 'production';
   /** Feature flags evaluated for this viewer by the server. */
   flags?: Record<string, boolean>;
+  /** Signed in: what a game they host starts with unless they change it (calm play and the walkthrough). */
+  hosting?: { calmPlay: boolean; tutorial: boolean };
 }
 
 export const meKey = ['me'] as const;

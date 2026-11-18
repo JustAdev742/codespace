@@ -14,6 +14,7 @@ import { QrCode } from './host/QrCode.tsx';
 import { useHostTools } from './host/HostTools.tsx';
 import { POINTS_MODES } from './host/RoomSettings.tsx';
 import { HowToPlay } from './HowToPlay.tsx';
+import { CalmPlayNote } from './CalmPlay.tsx';
 import { estimateMinutes, withKey } from './host/tools.ts';
 import { ReactionBar, useChooseReactions } from './game/Reactions.tsx';
 import { Pill, PlayerGlim, StagePanel, motionOK } from './game/stage.tsx';
@@ -439,6 +440,11 @@ export function HostLobby({ room, handle }: { room: RoomView; handle: RoomHandle
                   <Pill>About {plural(minutes, 'minute')}</Pill>
                 </li>
               ) : null}
+              {room.room.options.calmPlay ? (
+                <li>
+                  <Pill tone="glim">Calm play</Pill>
+                </li>
+              ) : null}
               <li>
                 <Pill>{room.room.common.questionTimeSec} s per question</Pill>
               </li>
@@ -660,6 +666,7 @@ export function PlayerLobby({ room, handle }: { room: RoomView; handle: RoomHand
           {ready ? 'Ready' : 'Tap when you are ready'}
         </Button>
       </div>
+      {room.room.options.calmPlay ? <CalmPlayNote modeId={room.room.modeId} solo={room.room.solo} isHost={false} className="w-full" /> : null}
       <div className="paper stage-card w-full px-5 pt-4 pb-5">
         <p className="font-display text-[1.75rem] leading-tight font-bold">{room.room.title}</p>
         <p className="text-text-2">{room.room.setTitle}</p>

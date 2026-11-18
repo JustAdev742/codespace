@@ -16,7 +16,7 @@ import type { ModeContext, PlayerId } from '../sdk/types.ts';
  *             when the go ends: after a set time, or when the mode says the
  *             action is finished.
  *
- * What keeps it fair (docs/DECISIONS.md, D56):
+ * What keeps it fair (docs/DECISIONS.md, D57):
  *  - The game opens the question, never the player, so nobody can call up
  *    shelter when they are in trouble.
  *  - Neutral is never better than playing: nothing is gained while thinking.

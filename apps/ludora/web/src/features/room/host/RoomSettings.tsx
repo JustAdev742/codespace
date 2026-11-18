@@ -56,6 +56,26 @@ export function RoomSettings({ room, handle, open, onOpenChange }: { room: RoomV
           </form>
         ) : null}
 
+        <section aria-labelledby="rs-calm" className="flex flex-col">
+          <h3 id="rs-calm" className="mb-1 font-display text-xl font-bold">
+            Calm and clear
+          </h3>
+          <Switch
+            checked={o.calmPlay}
+            onCheckedChange={(v) => set({ calmPlay: v })}
+            disabled={!lobby}
+            label="Calm play"
+            description={`${lobby ? '' : 'Changes between games. '}One thing at a time: players answer, then act, never both at once. No flashing or shaking, quieter sounds, and no countdown pressure, on every screen.`}
+          />
+          <Switch
+            checked={o.tutorial}
+            onCheckedChange={(v) => set({ tutorial: v })}
+            disabled={!lobby}
+            label="How to play first"
+            description="When you press Start, players new to this game see a few short steps on their screens first. You can skip them."
+          />
+        </section>
+
         <section aria-labelledby="rs-room" className="flex flex-col">
           <h3 id="rs-room" className="mb-1 font-display text-xl font-bold">
             In the room

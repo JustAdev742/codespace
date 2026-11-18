@@ -6,6 +6,7 @@ import type { ModeScreenProps } from './registry.ts';
 import type { FeedbackView, QuestionView } from '../game/types.ts';
 import { AnswerInput } from '../game/AnswerInput.tsx';
 import { QuestionCard } from '../game/QuestionCard.tsx';
+import { CalmTurn } from '../CalmPlay.tsx';
 import { Countdown } from '../game/TimerBar.tsx';
 import { ResultBanner } from '../game/Reveal.tsx';
 import { TeamScores } from '../game/Leaderboard.tsx';
@@ -68,6 +69,8 @@ interface You {
   slip: boolean;
   canSteerAt: number;
   steadyUntil: number | null;
+  /** Calm play: whose turn it is, and whether the kart is driving itself now. Null in every other game. */
+  calm?: { phase: 'question' | 'go'; goUntil: number | null; coasting: boolean } | null;
   points: number;
   gp: number[] | null;
   answers: number;
@@ -340,14 +343,15 @@ export function LanternRallyPlayer({ view, act, fire, pulse, gameNow, paused, ro
 
   const steer = useCallback(
     (dir: -1 | 1) => {
-      if (!you || paused || view.phase !== 'race' || you.finished !== null) return;
+      // Calm play: while a question is open the kart drives itself, and the server would refuse the steer.
+      if (!you || paused || view.phase !== 'race' || you.finished !== null || you.calm?.phase === 'question') return;
       playSfx('tap');
       fire({ type: 'steer', dir });
     },
     [you, paused, view.phase, fire],
   );
   const boost = useCallback(async () => {
-    if (!you || paused) return;
+    if (!you || paused || you.calm?.phase === 'question') return;
     setBusy(true);
     const ack = await act({ type: 'boost' });
     setBusy(false);
@@ -436,7 +440,12 @@ export function LanternRallyPlayer({ view, act, fire, pulse, gameNow, paused, ro
               {you.finishMs !== null ? ` in ${timeText(you.finishMs)}` : ''}! Keep answering while the others finish.
             </p>
           </StagePanel>
+        ) : you.calm?.phase === 'question' ? (
+          // Calm play, one thing at a time: the controls are put away while the question is open (on the grid too).
+          <CalmTurn turn={you.calm} gameNow={gameNow} waiting="Your kart drives itself while you answer. Nothing can slow it down." going="" />
         ) : (
+          <>
+          {you.calm && now >= view.startAt ? <CalmTurn turn={you.calm} gameNow={gameNow} waiting="" going="Steer and boost. The next question comes when the time is up." /> : null}
           <div className="grid grid-cols-[1fr_1.3fr_1fr] gap-2">
             <Button size="xl" onClick={() => steer(-1)} disabled={paused || you.lane <= 0} className="px-2">
               <ArrowLeft className="size-6" aria-hidden />
@@ -458,6 +467,7 @@ export function LanternRallyPlayer({ view, act, fire, pulse, gameNow, paused, ro
               <ArrowRight className="size-6" aria-hidden />
             </Button>
           </div>
+          </>
         )}
         <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-sm text-text-2">
           <Button size="sm" variant={you.auto ? 'success' : 'secondary'} aria-pressed={you.auto} onClick={() => void toggleAuto()} disabled={paused}>
@@ -510,7 +520,7 @@ export function LanternRallyPlayer({ view, act, fire, pulse, gameNow, paused, ro
             <QuestionCard q={you.question.q} />
             <AnswerInput key={you.question.iid} q={you.question.q} onSubmit={submit} disabled={paused} compact />
           </>
-        ) : you.steadyUntil ? (
+        ) : you.calm ? null : you.steadyUntil ? (
           <StagePanel className="px-4 py-3">
             <p className="font-bold">Your engine is coughing. The next question comes in a moment.</p>
           </StagePanel>
