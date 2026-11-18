@@ -56,6 +56,9 @@ openssl
 grubby
 tpm2-tools
 cryptsetup
+less
+findutils
+util-linux
 %end
 
 %pre --interpreter=/bin/bash --log=/tmp/ludora-pre.log
@@ -63,16 +66,24 @@ cryptsetup
 exec < /dev/tty6 > /dev/tty6 2>&1
 chvt 6
 ENCRYPT=@@ENCRYPT@@
-clear
+printf '\033[2J\033[H'
 echo
 echo "  Ludora OS installer"
 echo "  ==================="
 echo
 echo "  This ERASES one disk of this computer and installs Ludora OS on it."
 echo
-mapfile -t DISKS < <(lsblk -dn -o NAME,SIZE,TYPE,RM,MODEL | awk '$3 == "disk" && $4 == 0 { print }')
+# The stick or disc this installer started from is never offered, nor are memory devices or removable drives.
+media_dev=$(blkid -L "@@VOLID@@" 2>/dev/null || true)
+MEDIA=""
+if [ -n "$media_dev" ]; then
+  MEDIA=$(lsblk -no PKNAME "$media_dev" 2>/dev/null | head -1)
+  [ -n "$MEDIA" ] || MEDIA=$(basename "$media_dev")
+fi
+mapfile -t DISKS < <(lsblk -bdn -o NAME,SIZE,TYPE,RM,MODEL | awk -v media="$MEDIA" \
+  '$3 == "disk" && $4 == 0 && $1 != media && $1 !~ /^(zram|loop|ram|md|dm-|sr|fd|nbd)/ && $2 >= 40000000000 { print }')
 if [ "${#DISKS[@]}" -eq 0 ]; then
-  echo "  No fixed disk was found. Press Enter to restart."
+  echo "  No fixed disk of 40 GB or more was found. Press Enter to restart."
   read -r _
   reboot -f
 fi
@@ -80,7 +91,7 @@ echo "  Disks in this computer:"
 n=1
 for line in "${DISKS[@]}"; do
   set -- $line
-  printf '    %d) /dev/%s  %s  %s\n' "$n" "$1" "$2" "${*:5}"
+  printf '    %d) /dev/%s  %d GB  %s\n' "$n" "$1" "$(($2 / 1000000000))" "${*:5}"
   n=$((n + 1))
 done
 echo
@@ -95,14 +106,9 @@ while :; do
 done
 set -- ${DISKS[$((pick - 1))]}
 DISK=$1
-bytes=$(lsblk -bdn -o SIZE "/dev/$DISK")
-if [ "$bytes" -lt 40000000000 ]; then
-  echo "  /dev/$DISK is smaller than 40 GB. Ludora OS needs at least that. Press Enter to restart."
-  read -r _
-  reboot -f
-fi
+SIZE="$(($2 / 1000000000)) GB"
 echo
-echo "  EVERYTHING on /dev/$DISK ($2) will be destroyed."
+echo "  EVERYTHING on /dev/$DISK ($SIZE) will be destroyed."
 read -r -p "  Type ERASE in capitals to go on: " word
 if [ "$word" != "ERASE" ]; then
   echo "  Stopping. Nothing was changed."
@@ -132,8 +138,8 @@ clearpart --all --initlabel --drives=$DISK
 reqpart --add-boot
 part pv.01 --size=1 --grow --ondisk=$DISK $CRYPT
 volgroup ludora pv.01
-logvol /              --vgname=ludora --name=root     --fstype=xfs --size=10240
-logvol /var           --vgname=ludora --name=var      --fstype=xfs --size=15360 --grow
+logvol /              --vgname=ludora --name=root     --fstype=xfs --size=8192
+logvol /var           --vgname=ludora --name=var      --fstype=xfs --size=8192 --grow
 logvol /var/log       --vgname=ludora --name=log      --fstype=xfs --size=4096 --fsoptions="nodev,nosuid,noexec"
 logvol /var/log/audit --vgname=ludora --name=audit    --fstype=xfs --size=2048 --fsoptions="nodev,nosuid,noexec"
 logvol /var/tmp       --vgname=ludora --name=vartmp   --fstype=xfs --size=2048 --fsoptions="nodev,nosuid,noexec"

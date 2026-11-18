@@ -47,7 +47,11 @@ PACKAGES=(
   policycoreutils policycoreutils-python-utils openssh-server openssh-clients gnupg2 sudo git-core tar
   libpwquality authselect iproute procps-ng NetworkManager-tui python3 openssl util-linux findutils less
 )
-dnf -y install --setopt=install_weak_deps=False "${PACKAGES[@]}"
+# The install image has already put these on (its kickstart lists them), and inside the installer there may be no
+# way to reach a package mirror: only ask for what is missing.
+if ! rpm -q "${PACKAGES[@]}" >/dev/null 2>&1; then
+  dnf -y install --setopt=install_weak_deps=False "${PACKAGES[@]}"
+fi
 
 step "Files"
 # Copied without owners or modes from the source tree; both are set explicitly below.
