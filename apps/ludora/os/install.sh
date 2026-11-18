@@ -59,6 +59,9 @@ cp -r --no-preserve=mode,ownership "$HERE/rootfs/." /
 chown -R root:root /usr/lib/ludora-os /usr/libexec/ludora-os /etc/ludora-os
 find /usr/lib/ludora-os -type d -exec chmod 755 {} +
 find /usr/lib/ludora-os -type f -exec chmod 644 {} +
+# The dashboard's pages (and the other shared files) are read by an unprivileged service: readable whatever the umask was.
+find /usr/share/ludora-os -type d -exec chmod 755 {} +
+find /usr/share/ludora-os -type f -exec chmod 644 {} +
 chmod 755 /usr/libexec/ludora-os /usr/libexec/ludora-os/* /usr/local/sbin/ludoractl /usr/local/bin/ludora
 chmod 755 /etc/ludora-os   # the folder is open; each file inside is locked down on its own (secrets 0600, settings 0640)
 chmod 440 /etc/sudoers.d/50-ludora-os

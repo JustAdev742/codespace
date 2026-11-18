@@ -217,7 +217,8 @@ def _overview() -> dict[str, Any]:
         "server": view["name"], "address": ", ".join(view["addresses"]), "site": view["url"], "version": view["version"], "time": int(time.time()),
         "state": "ok" if view["state"] == "OK" else "attention", "attention": list(view["problems"]),
         "services": dict(view["services"]),
-        "threat": {"level": level, "name": sentinel.LEVELS[level]},
+        # "known" is False when the sentinel is stopped or has not reported for two minutes: calm must never be a guess.
+        "threat": {"level": level, "name": sentinel.LEVELS[level], "known": view["threat_level"] in (0, 1, 2) and view["services"].get("sentinel") == "active"},
         "shield": {"up": bool(view["shield"]), "mode": view["shield_mode"]},
         "lockdown": bool(view["lockdown"]),
         "bans": [{"ip": ip, "seconds_left": int(left)} for ip, left in sorted(held.items())],

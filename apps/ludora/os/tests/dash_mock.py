@@ -385,7 +385,7 @@ class World:
             "time": int(now), "state": "attention" if attention else "ok", "attention": attention,
             "services": {"database": "active", "app": "active", "proxy": "active", "sentinel": "active", "firewall": "active",
                          "ssh": "active" if self.support else "inactive", "usb guard": "active", "auditing": "active"},
-            "threat": {"level": level, "name": ("calm", "watchful", "under attack")[level]},
+            "threat": {"level": level, "name": ("calm", "watchful", "under attack")[level], "known": os.environ.get("DASH_MOCK_BLIND") != "1"},
             "shield": {"up": self.shield_mode == "on" or (self.shield_mode == "auto" and SCENARIO == "attack"), "mode": self.shield_mode},
             "lockdown": self.lockdown,
             "bans": [{"ip": ip, "seconds_left": int(until - now)} for ip, until in sorted(self.bans.items())],
@@ -754,7 +754,7 @@ class Handler(BaseHTTPRequestHandler):
         self.send(status, json.dumps(data).encode(), "application/json", extra)
 
     def session(self) -> bool:
-        """Like dash.App._session: every signed-in request, polls included, counts as use."""
+        """Like dash.App._session: the page's own refreshes (overview and events) do not count as someone using it."""
         jar = cookies.SimpleCookie()
         try:
             jar.load(self.headers.get("Cookie", ""))
@@ -769,7 +769,8 @@ class Handler(BaseHTTPRequestHandler):
             if now - found["seen"] > IDLE_MINUTES * 60 or now - found["since"] > 8 * 3600:
                 del WORLD.sessions[token]
                 return False
-            found["seen"] = now
+            if not (self.command == "GET" and self.path.split("?")[0] in ("/api/overview", "/api/events")):
+                found["seen"] = now
             self.token = token
         return True
 

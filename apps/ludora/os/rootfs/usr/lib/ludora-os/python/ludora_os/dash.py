@@ -109,7 +109,7 @@ class App:
         self.lock = threading.Lock()
 
     # -- sessions
-    def _session(self, cookie: str, ip: str) -> str | None:
+    def _session(self, cookie: str, ip: str, *, counts: bool = True) -> str | None:
         token = ""
         for part in cookie.split(";"):
             name, _, value = part.strip().partition("=")
@@ -126,7 +126,8 @@ class App:
             if found["ip"] != ip or now - found["seen"] > IDLE_SECONDS or now - found["since"] > MAX_SECONDS:
                 del self.sessions[key]
                 return None
-            found["seen"] = now
+            if counts:
+                found["seen"] = now
         return key
 
     def _note(self, kind: str, ip: str) -> None:
@@ -223,7 +224,10 @@ class App:
                 return Reply(403, {"error": "The dashboard is for staff machines, not for the server's own services."})
         except ValueError:
             return Reply(400, {"error": "That was not understood."})
-        session = self._session(headers.get("cookie", ""), ip)
+        # The page refreshes these two by itself every few seconds. That is not a person using it: a tab left open must
+        # still be signed out after fifteen idle minutes, by the server and not only by the page's own clock.
+        background = method == "GET" and path in ("/api/overview", "/api/events")
+        session = self._session(headers.get("cookie", ""), ip, counts=not background)
         if path == "/api/session" and method == "GET":
             try:
                 needs_code = bool(self.ops({"op": "auth_info"}).get("needs_code"))

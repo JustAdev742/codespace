@@ -75,6 +75,7 @@
     view: 'overview',
     overview: null,
     threat: -1,
+    blind: false,
     events: [],
     seenEvents: null,
     doctor: null,
@@ -554,7 +555,7 @@
 
   function title() {
     var server = state.session ? clean(state.session.server, 60) : '';
-    var prefix = state.threat === 2 ? '(under attack) ' : state.threat === 1 ? '(watchful) ' : '';
+    var prefix = state.blind ? '(guard not reporting) ' : state.threat === 2 ? '(under attack) ' : state.threat === 1 ? '(watchful) ' : '';
     document.title = prefix + VIEW_NAMES[state.view] + ' - ' + (server ? server + ' - ' : '') + 'Ludora OS';
   }
 
@@ -747,6 +748,16 @@
     return Math.max(0, Math.min(2, level));
   }
 
+  /* The sentinel is not reporting. "Calm" would then be a guess, so the page says it does not know. */
+  function blind(o) {
+    return !!(o && o.threat && o.threat.known === false);
+  }
+
+  /* "Database" -> "database", but "USB guard" and "Ludora, the game site" keep their capitals */
+  function midSentence(name) {
+    return /^[A-Z][a-z]/.test(name) && !/^Ludora/.test(name) ? name.charAt(0).toLowerCase() + name.slice(1) : name;
+  }
+
   function serviceState(name, raw) {
     if (raw === 'active') { return { icon: 'running', word: 'running', tag: 'ok' }; }
     if (name === 'ssh') { return { icon: 'off', word: 'off', tag: 'off' }; }
@@ -761,6 +772,15 @@
       band.className = 'band band--offline';
       setText($('band-text'), 'This page cannot reach the server, so what you see may be out of date. It keeps trying every few seconds.');
       show($('band-link'), false);
+      show(band, true);
+      return;
+    }
+    if (blind(o)) {
+      band.className = 'band band--offline';
+      $('band-link').href = '#health';
+      setText($('band-link'), 'See what has stopped');
+      setText($('band-text'), 'The sentinel, the guard, is not reporting. Until it does, this page cannot tell whether the server is under attack.');
+      show($('band-link'), state.view !== 'health');
       show(band, true);
       return;
     }
@@ -780,6 +800,8 @@
 
   function renderOverview(o) {
     var level = threatLevel(o);
+    var unknown = blind(o);
+    if (unknown) { level = 1; }    /* drawn as "watchful", worded as "not known" */
     var services = (o.services && typeof o.services === 'object') ? o.services : {};
     var bans = Array.isArray(o.bans) ? o.bans : [];
     var shield = o.shield || {};
@@ -787,14 +809,20 @@
     var down = names.filter(function (n) { return n !== 'ssh' && services[n] !== 'active'; });
 
     /* status line and page-wide state */
-    if (level !== state.threat) {
+    if (level !== state.threat || unknown !== state.blind) {
       var before = state.threat;
+      var wasBlind = state.blind;
       state.threat = level;
+      state.blind = unknown;
       document.body.setAttribute('data-threat', String(level));
       $('hero-radar').setAttribute('data-level', String(level));
       $('sl-radar').setAttribute('data-level', String(level));
       title();
-      if (before >= 0 && level > before) {
+      if (unknown) {
+        if (!wasBlind) { announce('The sentinel has stopped reporting, so the threat level is not known. Open Health to see what has stopped.', true); }
+      } else if (wasBlind) {
+        announce('The sentinel is reporting again. The threat level is ' + THREAT[level].badge + '.', false);
+      } else if (before >= 0 && level > before) {
         announce(level === 2
           ? 'Under attack. The sentinel is refusing the addresses involved. Open Security to see them.'
           : 'The threat level went up to watchful.', level === 2);
@@ -802,21 +830,23 @@
         announce('The threat level went down to ' + THREAT[level].badge + '.', false);
       }
     }
-    setText($('sl-threat-text'), THREAT[level].badge);
+    setText($('sl-threat-text'), unknown ? 'not known' : THREAT[level].badge);
     setText($('sl-clock'), clock(new Date()));
     renderBand();
 
     /* hero */
-    setText($('hero-level'), THREAT[level].word);
+    setText($('hero-level'), unknown ? 'Not known' : THREAT[level].word);
     var line;
-    if (level === 2) {
+    if (unknown) {
+      line = 'The sentinel, the guard, is not reporting, so this page cannot tell whether anything is wrong. Open Health to see what has stopped.';
+    } else if (level === 2) {
       line = 'Several addresses are misbehaving at once. The sentinel is refusing them' +
         (shield.up ? ' and has tightened every limit' : '') + '. Games already running carry on.';
     } else if (level === 1) {
       line = 'The sentinel has seen something unusual and is watching more closely. ' +
         (bans.length ? plural(bans.length, 'address is', 'addresses are') + ' banned.' : 'Nobody is banned.');
     } else if (down.length) {
-      line = 'No attack, but ' + down.map(function (n) { return (SERVICES[n] || clean(n, 30)).toLowerCase(); }).join(' and ') +
+      line = 'No attack, but ' + down.map(function (n) { return midSentence(SERVICES[n] || clean(n, 30)); }).join(' and ') +
         (down.length === 1 ? ' is' : ' are') + ' not running.';
     } else {
       line = 'Nothing needs you. Every service is running and ' +
@@ -1604,7 +1634,9 @@
         pass.value = '';
         var secret = await api('/api/action', { action: 'secret', name: 'smtp_password', value: typed }, ACTION_TIMEOUT_MS);
         typed = '';
-        said = said.replace(/\s*The mail password was forgotten[^.]*\.?[^.]*\.?$/i, '') + ' The password is saved too. ' + clean(secret.message, 200);
+        said = said.replace(/\s*The mail password was forgotten[^.]*\.?[^.]*\.?$/i, '');
+        said = (/^Nothing needed changing/i.test(said) ? 'The password is saved.' : said + ' The password is saved too.') + ' Send a test to check it works.';
+        if (!secret || secret.ok === false) { throw new ApiError('The password could not be saved.', 0); }
         forgot = false;
       }
       finish(button);

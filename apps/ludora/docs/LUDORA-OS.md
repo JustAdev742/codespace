@@ -241,7 +241,11 @@ How it is kept safe:
   Tries are counted before they are checked, so forty sent in the same instant are still five tries. The password
   is checked by the root helper: the web service never holds its stored form.
 - **What a session is.** A random token in a cookie that scripts cannot read, tied to the address it began at, ended
-  after fifteen idle minutes or eight hours. Changing the password signs everyone out.
+  after fifteen idle minutes or eight hours. Changing the password signs everyone out. The page refreshes itself
+  every few seconds, and the server does not count that as someone using it: a tab left open is signed out all the
+  same.
+- **What it never does is guess.** If the sentinel is stopped, or has said nothing for two minutes, the page shows
+  the threat level as "not known", never as "calm".
 - **What a web page elsewhere can do to a signed-in browser.** Nothing: every change must come from the
   dashboard's own page, and the page may load nothing from anywhere else.
 - **What the dashboard can do at all.** The web service runs as its own user with no privileges and no route to
@@ -389,6 +393,14 @@ systemd inside a container, with separate "student" and "staff" machines on the 
   settings file are unreadable, the root helper refuses anything off its list, no other user can open the helper's
   socket, and five wrong passwords pause that address. Its authenticator code is covered by unit tests against the
   standard's own examples, not yet by a real phone app.
+- **The dashboard's pages, in a real browser against the real system** (`tests/` has the pretend server used while
+  building them; this run used the real one), at desktop and phone widths: sign in, with a wrong password refused;
+  ban the student machine and let it back in; a staff address refused; the self-check; a backup; the logs; the
+  name check; saving mail settings. No Content-Security-Policy violation, no request left the dashboard's own
+  address, neither password remained anywhere in the page, and the old session was refused after signing out.
+  With the sentinel stopped the page said "not known". The pages were also driven against the pretend server
+  with hostile text in every field (markup, very long strings, right-to-left overrides): nothing was interpreted.
+  Not checked: a real screen reader, and the pages on a real phone.
 - **A second independent review, of the dashboard alone.** It found nine problems, two of them serious: a signed-in
   person could have pointed the mail server at their own machine and collected the school's mail password, and a
   broken-into game container could have reached the dashboard's service directly while claiming to be a staff

@@ -1188,6 +1188,20 @@ class DashTests(Sandbox):
         self.assertLessEqual(self.verifies, 5)
         self.assertEqual((results.count(401), results.count(429)), (5, 35))
 
+    def test_a_tab_left_open_is_signed_out_even_though_it_keeps_refreshing(self):
+        app = self.app()
+        cookie = self.sign_in(app)
+        for _ in range(20):                                  # the page's own refreshes, for twenty minutes
+            self.now[0] += 60
+            status = self.call(app, "GET", "/api/overview", cookie=cookie)[0]
+            self.call(app, "GET", "/api/events", cookie=cookie)
+        self.assertEqual(status, 401)
+        cookie = self.sign_in(app)
+        for _ in range(20):                                  # someone using it: anything else counts
+            self.now[0] += 60
+            self.assertEqual(self.call(app, "GET", "/api/overview", cookie=cookie)[0], 200)
+            self.assertTrue(self.call(app, "GET", "/api/session", cookie=cookie)[1]["signed_in"])
+
     def test_the_servers_own_containers_are_not_staff(self):
         """The game runs in a container beside the proxy. If it were broken into, it must not be able to walk into the dashboard."""
         app = self.app()
@@ -1340,6 +1354,23 @@ class DashTests(Sandbox):
             self.assertFalse(dashops.handle({"op": "action", "action": "secret", "name": name, "value": value})["ok"], name)
         self.assertTrue(dashops.handle({"op": "action", "action": "secret", "name": "smtp_password", "value": "abcd efgh ijkl"})["ok"])
         self.assertEqual(alerts.load_secrets()["SMTP_PASSWORD"], "abcdefghijkl")
+
+    def test_calm_is_never_a_guess(self):
+        """With the guard stopped, or silent for two minutes, the dashboard is told the threat level is not known."""
+        self.helper()
+        system.write_atomic(sentinel.STATUS_FILE, json.dumps({"at": time.time(), "level": 0, "level_name": "calm"}), 0o644)
+        names = list(overview.UNITS)
+
+        def running(**other: str) -> None:
+            self.answers["systemctl is-active"] = system.Result(0, "\n".join(other.get(name, "active") for name in names), "")
+
+        running()
+        self.assertEqual(dashops.handle({"op": "overview"})["threat"], {"level": 0, "name": "calm", "known": True})
+        running(sentinel="inactive")
+        self.assertFalse(dashops.handle({"op": "overview"})["threat"]["known"])          # stopped
+        running()
+        system.write_atomic(sentinel.STATUS_FILE, json.dumps({"at": time.time() - 600, "level": 0, "level_name": "calm"}), 0o644)
+        self.assertFalse(dashops.handle({"op": "overview"})["threat"]["known"])          # running, but saying nothing
 
     def test_the_password_is_checked_on_the_root_side_and_never_handed_over(self):
         self.helper()
