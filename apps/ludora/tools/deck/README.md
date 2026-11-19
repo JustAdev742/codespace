@@ -17,3 +17,14 @@ python3 tools/deck/build_cards.py    # needs reportlab
 
 Fonts are Arial and Calibri on purpose: they are on every school computer, so the slides look
 the same wherever they are opened.
+
+## "What's new"
+
+- `updates_content.py`: the slides and script for everything added between 12 and 19 November 2026.
+- `build_updates.py`: writes `Ludora - what is new.pptx` in the look of The Hills Grammar School's
+  copy, with the script in each slide's notes. Pictures come from `tools/film/capture/updates.mjs`
+  (`FILM_OUT`, stills and two film frames saved as `deck/crowd.jpg` and `deck/uniforms.jpg`).
+
+```bash
+FILM_OUT=/path/to/scratch/upd python3 tools/deck/build_updates.py
+```

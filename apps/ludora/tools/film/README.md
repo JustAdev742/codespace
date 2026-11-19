@@ -49,3 +49,36 @@ frames are large).
   by reading its spectrogram.
 - The classmates in the game shots are real joined players driven by the script, not children.
 - Rendering uses a software graphics driver here, so a full render takes a while.
+
+## The second film: "What's new"
+
+An 88-second film of everything added between 12 and 19 November 2026, shot on The Hills Grammar
+School's copy (`SCHOOL_THEME=hills-grammar`) with every Glim in the school's uniform. It uses the same
+camera, stage and synthesiser as the first film.
+
+| Part | Where |
+|---|---|
+| Footage | `capture/updates.mjs`: the 3D home, a calm Classic game with the walkthrough (thirteen players, twelve of them small windows that really join in their own year's uniform), the Wallet, class rewards, a sale, the economy room, the school's pages, and the staff dashboard. |
+| Timeline and scenes | `comp/updates.html`, `comp/src/updates.ts`, `comp/src/news/` (one file a section). `?only=guard,end` builds only those scenes. |
+| Music and sound | `score/updates.py`, on `score/kit.py` (the synthesiser, split out of the first score, which still comes out bit for bit the same). |
+
+The dashboard is filmed from its no-server demo (`os/demo`): the real pages, with a pretend server
+moved on by hand (`window.ludoraDemo.script`) through a calm morning, a probe, password guessing, a
+decoy port, a flood and the shield. The film says "A pretend attack on a demo server" on screen while
+it runs. The alert text shown is what `alerts.compose` writes for those events.
+
+```bash
+# from apps/ludora, with Postgres running and the app built (npm run build)
+#   1. the private Hills copy: port 8981, its own database, SCHOOL_THEME=hills-grammar (serve.sh in the scratch folder)
+#   2. the dashboard demo: python3 os/demo/build.py OUT --standalone, served on port 8791
+export FILM_OUT=/path/to/scratch/upd FILM_APP=http://127.0.0.1:8981
+node tools/film/capture/updates.mjs                      # or: game economy home school dash
+npx vite --config tools/film/comp/vite.config.ts &       # port 5188
+FILM_URL=http://127.0.0.1:5188/updates.html node tools/film/render.mjs --frames 300,900,2000
+FILM_URL=http://127.0.0.1:5188/updates.html FILM_FRAMES=2640 FILM_NAME=ludora-whats-new FILM_SCORE=tools/film/score/updates.py tools/film/build.sh 3
+```
+
+What it claims, and where each claim is true: calm play and the walkthrough (D57), the 3D home (D56),
+the navigation (D59), the Wallet, class rewards, sales, boosts and the economy manager (D58), the
+school's copy (D56, D60), and Ludora OS (`docs/LUDORA-OS.md`). It gives no number for the self-check,
+because the demo's list is shorter than a real server's.

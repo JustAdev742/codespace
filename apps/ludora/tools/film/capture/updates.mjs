@@ -31,7 +31,15 @@ const CLASS = [
 
 /** The same student all the way through: Ada, Year 5. Made once, then signed in wherever a shot needs her. */
 async function ada(browser) {
-  const a = await account(browser, { accountType: 'player', displayName: 'Ada Bloom', viewport: BIG, deviceScaleFactor: 1.5, colorScheme: 'light', filmClock: false });
+  // The same account on every run against this database, so one scene can be shot again after another (her Wallet keeps what the game paid).
+  const known = { username: 'adafilm', password: 'a long film passphrase' };
+  try {
+    const again = await signIn(browser, known, { filmClock: false });
+    const me = await (await again.page.request.get('/api/auth/me')).json();
+    await again.context.close();
+    if (me?.user?.id) return { ...known, userId: me.user.id };
+  } catch { /* not made yet */ }
+  const a = await account(browser, { accountType: 'player', displayName: 'Ada Bloom', username: known.username, viewport: BIG, deviceScaleFactor: 1.5, colorScheme: 'light', filmClock: false });
   await a.page.goto('/settings');
   const panel = a.page.locator('#uniform');
   await panel.getByLabel('School year').selectOption({ label: 'Year 5' });
@@ -159,7 +167,8 @@ async function game(browser, who) {
   await rec.during(() => walk.getByRole('button', { name: 'I’m ready' }).click());
   await rec.until(() => host.page.getByRole('heading', { name: SCIENCE[0].prompt }).isVisible(), { max: 600 });
   rec.mark('question');
-  await rec.frames(30);
+  // The question is only open for two minutes of real time, and this machine films slowly: straight on to the answer.
+  await rec.frames(4);
   rec.done();
 
   const next = host.page.getByRole('button', { name: /Next|Skip ahead/ });
@@ -170,20 +179,21 @@ async function game(browser, who) {
       const miss = (i + q * 5) % 4 === 3;
       const pick = miss ? wrong[(i + q) % wrong.length] : right;
       await answers(k.page).getByRole('button', { name: new RegExp(pick) }).click({ timeout: 10000 }).catch(() => {});
-      if (recorder) await recorder.frames(3);
+      if (recorder) await recorder.frames(1);
     }
   };
 
+  // Ada answers first (the question is only open for two minutes of real time and this machine films
+  // slowly), then the class; the answer is shown once everyone is in.
   rec = new Recorder('q1', { host: host.page, phone: hero.page });
-  await rec.frames(40);
-  await still(host.page, 'host-question');
-  await still(hero.page, 'phone-question');
-  await classAnswers(0, rec);
-  await rec.frames(10);
+  await rec.frames(8);
   const box = await answers(hero.page).getByRole('button', { name: /Mars/ }).boundingBox();
   if (box) { rec.marks.tapX = (box.x + box.width / 2) / PHONE.width; rec.marks.tapY = (box.y + box.height / 2) / PHONE.height; }
   rec.mark('tap');
   await rec.during(() => answers(hero.page).getByRole('button', { name: /Mars/ }).click());
+  await rec.frames(10);
+  rec.mark('class');
+  await classAnswers(0, rec);
   await rec.until(() => hero.page.getByText('Correct', { exact: true }).isVisible(), { max: 240, extra: 80 });
   await still(host.page, 'host-reveal');
   await still(hero.page, 'phone-correct');
@@ -518,11 +528,15 @@ const browser = await launch();
 try {
   let who = null;
   if (on('home') || on('game') || on('economy')) who = await ada(browser);
-  if (on('game')) await game(browser, who);
-  if (on('economy')) await economy(browser, who);
-  if (on('home')) await home(browser, who);
-  if (on('school')) await school(browser);
-  if (on('dash')) await dash(browser);
+  // One scene failing does not stop the others being shot; it is named at the end.
+  const failed = [];
+  const shoot = async (name, fn) => { if (!on(name)) return; try { await fn(); } catch (e) { failed.push(name); console.log(`SCENE FAILED: ${name}\n${String(e?.stack ?? e).slice(0, 1500)}`); } };
+  await shoot('game', () => game(browser, who));
+  await shoot('economy', () => economy(browser, who));
+  await shoot('home', () => home(browser, who));
+  await shoot('school', () => school(browser));
+  await shoot('dash', () => dash(browser));
+  if (failed.length) console.log(`failed scenes: ${failed.join(', ')}`);
   console.log(`footage in ${OUT}`);
 } finally {
   await browser.close();

@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Renders the whole film and joins it to its music.
 #   tools/film/build.sh [workers]     (default 3 browsers side by side)
+#   FILM_URL, FILM_FRAMES, FILM_NAME and FILM_SCORE choose another film (see README: the second film).
 # Needs the film's preview server running (npx vite --config tools/film/comp/vite.config.ts)
 # and the footage already shot (tools/film/capture).
 set -euo pipefail
@@ -22,7 +23,7 @@ for p in "${pids[@]}"; do wait "$p" || fail=1; done
 [ "$fail" = 0 ] || { echo "a render worker failed: see $OUT/logs/render-*.log"; exit 1; }
 have=$(ls "$OUT/frames" | wc -l)
 [ "$have" = "$TOTAL" ] || { echo "expected $TOTAL frames, have $have"; exit 1; }
-python3 tools/film/score/score.py "$OUT/audio/score.wav"
+python3 "${FILM_SCORE:-tools/film/score/score.py}" "$OUT/audio/score.wav"
 ffmpeg -y -loglevel error -framerate 30 -start_number 0 -i "$OUT/frames/%05d.jpg" -i "$OUT/audio/score.wav" \
   -c:v libx264 -preset slow -crf 17 -pix_fmt yuv420p -profile:v high -level 4.1 -movflags +faststart \
   -c:a aac -b:a 256k -shortest "$OUT/out/$NAME.mp4"

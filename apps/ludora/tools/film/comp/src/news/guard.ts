@@ -27,8 +27,9 @@ export async function guard(film: Film): Promise<Shot[]> {
   const core = glow(900, '#0d4a44', 0.5);
   core.position.set(0, 20, -400);
   A.add(core, sweep);
-  const a1 = line('And the server it runs on', 0, 110, { size: 104 });
-  const a2 = line('guards itself.', 0, -20, { size: 132, color: C.calm });
+  // Said carefully: the live site is hosted elsewhere today; Ludora OS is for a school that runs its own.
+  const a1 = line('And on a school’s own server,', 0, 110, { size: 96 });
+  const a2 = line('it guards itself.', 0, -20, { size: 132, color: C.calm });
   const os = place(plate('Ludora OS', { size: 48, bg: C.calm, fg: C.term }), -150, -190);
   hudA.add(a1.group, a2.group, os.mesh);
   const sA: Shot = {
@@ -212,7 +213,8 @@ export async function guard(film: Film): Promise<Shot[]> {
   support.u.uRimColor!.value.set('#3f7f7a');
   support.position.set(430, 60, 0);
   Hh.add(glow(2200, '#0b3d3a', 0.22), checks, backups, support);
-  const h1 = line('21 self-checks.', 430, -220, { size: 84 });
+  // No number here: the demo's list is shorter than a real server's (31 checks in doctor.py).
+  const h1 = line('It checks itself.', 430, -220, { size: 84 });
   const h2 = line('Encrypted backups, every night.', 430, -330, { size: 60, color: C.calm });
   hudH.add(h1.group, h2.group);
   const sH: Shot = {

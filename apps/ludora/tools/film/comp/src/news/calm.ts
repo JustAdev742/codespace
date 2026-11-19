@@ -93,14 +93,18 @@ export async function calm(film: Film): Promise<Shot[]> {
   const d1 = line('One thing at a time.', -900, -350, { align: 'left', size: 100 });
   const d2 = sub('No flashing. No countdown ticks. The same game.', -900, -445, { align: 'left', size: 48 });
   hudD.add(d1.group, d2.group);
-  const TAP = q1h.marks.tap ?? 120;
+  const TAP = q1h.marks.tap ?? 8;
+  // The student answers almost at once (the question's own clock runs in real time while it is filmed), so the shot
+  // opens on the question, holds it for a beat, and then plays.
+  const LEAD = 0.8;
+  const FROM = Math.max(0, TAP - 14);
   const sD: Shot = {
     a: bar(17), b: bar(19), group: D, hud: hudD,
     update(t) {
       film.energy = 0.35; film.warm = 0.3;
       const k = punch(t);
       d1.show(t - 0.3); d2.show(t - 1.0);
-      const since = t - 36 / 30; // the clip starts 36 frames before the tap
+      const since = t - LEAD - (TAP - FROM) / 30;
       touch.visible = since >= 0 && since < 0.6;
       touch.scale.setScalar(lerp(50, 460, ease.outCubic(seg(since, 0, 0.55))));
       touch.material.uniforms.uP!.value = 1;
@@ -110,7 +114,8 @@ export async function calm(film: Film): Promise<Shot[]> {
       D.position.x = -out * 2400;
       stage.fx.uBlur.value.set(out * 0.1, 0);
       stage.view({ x: 20, dolly: lerp(-80, 60, ease.outCubic(seg(t, 0, 4))) + k * 60, orbitY: lerp(0.05, -0.04, ease.inOutSine(seg(t, 0, 4))) });
-      return [roll(q1h, big.screen, t, { from: TAP - 36, speed: 1.0, hold: true }), roll(q1p, mine.screen, t, { from: TAP - 36, speed: 1.0, hold: true })];
+      const tt = Math.max(0, t - LEAD);
+      return [roll(q1h, big.screen, tt, { from: FROM, speed: 1.0, hold: true }), roll(q1p, mine.screen, tt, { from: FROM, speed: 1.0, hold: true })];
     },
   };
   return [sA, sB, sD];
