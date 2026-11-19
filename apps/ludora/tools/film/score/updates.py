@@ -304,9 +304,9 @@ for i, bar in enumerate(range(27, 31)):
     if i < 3:
         for b in (1, 3):
             drums.add(clap(), at(bar, b) + 0.01, 0.3, pan=0.4)
-# Seven uniforms step forward, one a beat.
+# Seven uniforms step forward in a quick run, a half beat apart, and then stand as a line.
 for k in range(7):
-    drums.add(tom(57 + k) * 0.7, at(28, 2) + k * 0.5, 0.22, pan=-0.6 + k * 0.2)
+    drums.add(tom(57 + k) * 0.7, at(28, 1) + k * 0.25, 0.22, pan=-0.6 + k * 0.2)
 # The last half bar falls away: the lights are about to go down.
 fx.add(whoosh(1.0, 900)[::-1].copy(), at(30, 2.4), 0.3)
 

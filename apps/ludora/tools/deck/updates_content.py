@@ -15,14 +15,14 @@ SLIDES = [
     {
         'kind': 'cover', 'title': 'What’s new in Ludora', 'sub': 'Everything added since 12 November, shown on The Hills Grammar School’s copy.',
         'image': 'frame:crowd',
-        'say': "This is everything that has changed in Ludora since the last presentation on the twelfth of November. Every picture is from the Hills Grammar copy, with the Glims in the school's uniform. I'll play the trailer first, which is about a minute and a half, then go through each change. All of it is on the live site today.",
+        'say': "This is everything that has changed in Ludora since the last presentation on the twelfth of November. Every picture is from the Hills Grammar copy, with the Glims in the school's uniform. I'll play the trailer first, which is about a minute and a half, then go through each change. The changes to Ludora itself are on the live site today.",
     },
     {
         'kind': 'tiles', 'title': 'Six things are new',
         'tiles': [
             ('A 3D home', 'The home page is a place you can look round.', 'still:home-yard'),
             ('Calm play', 'One thing at a time, and how to play before every game.', 'still:host-lobby'),
-            ('Clearer menus', 'Every button says what it does.', 'still:sidebar-crop'),
+            ('Clearer menus', 'Every button says what it does.', 'still:sidebar-tile'),
             ('An economy you can see', 'A Wallet, class rewards, sales, and someone to mind it.', 'still:rewards'),
             ('The school’s own copy', 'Its colours, logo and uniform on every screen.', 'still:landing-light'),
             ('Ludora OS', 'A server that guards itself, with a dashboard for staff.', 'still:dash-attack'),
@@ -73,7 +73,7 @@ SLIDES = [
         'points': [
             ('What you have', 'Sparks, Moonstones and Glow Dust, and today’s game Sparks against the daily limit.'),
             ('A goal to save for', 'Chosen from the player’s own wishlist, with how far there is to go.'),
-            ('Every Spark in and out', 'Newest first, with the teacher’s name and reason on a reward, and the item’s name on a purchase.'),
+            ('Every Spark in and out', 'Newest first, with the teacher’s name and reason on a reward, and the item’s name on anything bought.'),
         ],
         'foot': 'Everything is earned by playing. None of it is real money, and nothing can be bought with real money.',
         'phone': 'still:wallet-top', 'image': 'still:wallet-list',
@@ -113,7 +113,7 @@ SLIDES = [
             ('still:econ-health', 'Health', 'Earned and spent each day, where it comes from and goes, and how balances are spread. Counts only, never a list of children.'),
             ('still:econ-rules', 'Rules', 'Change a rule and see what a game would pay before saving: “earns 108 Sparks instead of 92”. One step back if it was wrong.'),
             ('still:econ-sales', 'Shop and sales', 'Prices, featured items and sales, with every listing’s sales beside it.'),
-            ('still:econ-grant', 'Grants and refunds', 'To one account or a whole class, counted against the daily limit.'),
+            ('still:econ-grant', 'Grants', 'Currency to one account or a whole class, counted against the daily limit. Purchases are refunded here too.'),
         ],
         'say': "This is their room. Health shows what was earned and spent each day and how balances are spread across players, in bands, never as a ranking of children. Rules lets you change what a game pays, and shows you a worked example before you save it. Then sales, grants and refunds, the full ledger which can be downloaded, and a history of every change.",
     },
@@ -121,11 +121,11 @@ SLIDES = [
         'kind': 'gallery', 'title': 'The school’s copy, finished properly',
         'shots': [
             ('still:landing-light', 'The front page', '“Quiz games for your class.” Sign in comes first, because students arrive with a login card.'),
-            ('still:landing-dark', 'Dark mode', 'A player who chose Dark used to get Ludora’s navy pages. Now it is the school’s green throughout.'),
+            ('still:class-logins', 'Login cards', 'For students with no email: a username and three easy words, printed with the crest and the school’s name.'),
             ('still:host-lobby', 'The class board', 'The school’s whole logo in the game bar, and a stage lit cream and green instead of blue.'),
-            ('still:settings-uniform', 'The uniform', 'Set once in Settings or when joining. Every Glim wears it, on the board, on phones and in 3D.'),
+            ('frame:uniforms', 'The uniform', 'Set once in Settings or when joining. Every Glim wears it, on the board, on phones and in 3D.'),
         ],
-        'foot': 'Also: the browser bar is the school’s green, an installed copy is called “Ludora at The Hills Grammar School”, and the login cards and School page carry the crest and name.',
+        'foot': 'Also: dark mode is the school’s green instead of Ludora’s navy, the browser bar is the school’s green, and an installed copy is called “Ludora at The Hills Grammar School”.',
         'say': "Your copy already had your colours and uniform. This week it had a proper finishing pass. We went through every screen, on a laptop, a phone and a classroom board, and fixed what looked unfinished: dark mode, the board's game bar, a phone bar that cut the game's name short, and the front page, which said answer fast, climb the board on a copy that plays calmly. It now says quiz games for your class.",
     },
     {
@@ -190,7 +190,7 @@ SLIDES = [
         'say': "Four things from you. Permission to use the logo in the places it now appears. Your real house names, and a motto if you'd like one, because we haven't invented anything about the school. A small square version of the crest for the tab icon. And one class to try calm play and tell us honestly whether it's calm enough.",
     },
     {
-        'kind': 'cover', 'title': 'All of it is live today', 'sub': SITE, 'image': 'frame:uniforms', 'closing': True,
-        'say': "Everything you've seen is live on the site now, in your colours. Thank you. I'm happy to take questions, or to open the site and show any part of it.",
+        'kind': 'cover', 'title': 'Live today, in your colours', 'sub': SITE, 'image': 'frame:crowd2', 'closing': True,
+        'say': "Everything you've seen in Ludora itself is live on the site now, in your colours. Ludora OS is ready to try on a machine of yours whenever you want to. Thank you. I'm happy to take questions, or to open the site and show any part of it.",
     },
 ]

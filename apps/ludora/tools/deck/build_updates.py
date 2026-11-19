@@ -250,7 +250,8 @@ def crops():
             im = Image.open(s)
             im.crop((int(box[0] * im.width), int(box[1] * im.height), int(box[2] * im.width), int(box[3] * im.height))).save(d)
     cut('sidebar', 'sidebar-crop', (0, 0, 1, 0.86))
-    cut('wallet-full', 'wallet-list', (0, 0.5, 1, 1.0))
+    cut('sidebar', 'sidebar-tile', (0, 0.226, 1, 0.336))
+    cut('wallet-full', 'wallet-list', (0, 0.565, 1, 0.905))
     cut('econ-grant-dialog', 'econ-grant', (0, 0, 1, 1))
 
 
@@ -337,7 +338,7 @@ def s_phones(slide, s, n, total):
     text(slide, MX, 1.5, 4.9, 1.6, s['lead'], 18, color=BODY_INK, line=1.12)
     pic(slide, s['image'], MX, 3.3, 4.9, 4.9 * 9 / 16, radius=0.12, anchor='top')
     text(slide, MX, 3.3 + 4.9 * 9 / 16 + 0.14, 4.9, 0.7, s['caption'], 13, color=MUTED, italic=True, line=1.08)
-    ph_ = 4.55
+    ph_ = 4.1
     w = ph_ * 390 / 844
     x0 = MX + 4.9 + 0.6
     gap = (W - MX - x0 - 3 * w) / 2

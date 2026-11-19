@@ -47,10 +47,11 @@ export async function home(film: Film): Promise<Shot[]> {
   menu.rotation.y = -0.22;
   menu.screen.show(menuPic);
   B.add(glow(2400, '#0b6b4b', 0.55), side, menu);
-  const b1 = line('Every button says', 80, 170, { size: 92 });
-  const b2 = line('what it does.', 80, 55, { size: 92, color: C.mint });
-  const b3 = sub('Plain words, in groups, on a laptop and on a phone.', 80, -60, { size: 40 });
-  hudB.add(b1.group, b2.group, b3.group);
+  const b1 = line('Every button says', 130, 200, { size: 88 });
+  const b2 = line('what it does.', 130, 90, { size: 88, color: C.mint });
+  const b3 = sub('Plain words, in named groups,', 130, -30, { size: 40 });
+  const b4 = sub('on a laptop and on a phone.', 130, -85, { size: 40 });
+  hudB.add(b1.group, b2.group, b3.group, b4.group);
   const sB: Shot = {
     a: bar(11), b: bar(13), group: B, hud: hudB,
     update(t) {
@@ -63,7 +64,7 @@ export async function home(film: Film): Promise<Shot[]> {
       const up = pop(t, 0.5, 0.5);
       menu.position.y = -10 - (1 - up) * 1100;
       menu.opacity = up > 0.01 ? 1 : 0;
-      b1.show(t - 0.35); b2.show(t - 0.7); b3.show(t - 1.3);
+      b1.show(t - 0.35); b2.show(t - 0.7); b3.show(t - 1.3); b4.show(t - 1.5);
       const out = ease.inCubic(seg(t, 3.7, 4.0));
       B.position.x = -out * 2400;
       stage.fx.uBlur.value.set(out * 0.1, 0);

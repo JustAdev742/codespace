@@ -3,7 +3,8 @@
 // from its no-server demo (os/demo). Every Glim wears the school's uniform because the copy does.
 // usage: node updates.mjs [home] [game] [economy] [school] [dash]   (no names: all)
 import { execFileSync } from 'node:child_process';
-import { launch, Recorder, pump, open, still, account, visitor, signIn, post, put, OUT, FAKE_CLOCK } from './rig.mjs';
+import { randomUUID } from 'node:crypto';
+import { launch, Recorder, pump, open, still, account, visitor, signIn, post, put, CSRF, OUT, FAKE_CLOCK } from './rig.mjs';
 
 const want = new Set(process.argv.slice(2));
 const on = (name) => want.size === 0 || want.has(name);
@@ -228,6 +229,41 @@ async function game(browser, who) {
   await host.context.close();
 }
 
+/* Ada's Wallet on her phone: what she has, a goal from her wishlist, and where every Spark came and went.
+   She has bought one Lantern, so the list shows spending too, and she saves for a Glim she cannot yet afford. */
+const GOAL = 'l-daily-glim-ashbloom';
+async function filmWallet(page) {
+  const before = (await (await page.request.get('/api/shop')).json()).balances.sparks;
+  if (before >= 500) await post(page, '/api/shop/purchase', { listingId: 'l-lantern-starfall', requestKey: randomUUID() });
+  await page.request.delete('/api/me/wishlist/l-lantern-moonlit', { headers: CSRF }).catch(() => {});
+  await put(page, `/api/me/wishlist/${GOAL}`, {});
+  await open(page, '/wallet', page.getByRole('heading', { name: 'Wallet', level: 1 }), { settleFrames: 40 });
+  const rec = new Recorder('wallet', { main: page });
+  await rec.frames(50);
+  await page.getByLabel('Choose from your wishlist').selectOption(GOAL);
+  await rec.frames(12);
+  rec.mark('goal');
+  await rec.during(() => page.getByRole('button', { name: 'Save for this' }).click());
+  await rec.until(() => page.getByRole('progressbar', { name: /Saving for/ }).isVisible(), { max: 200, extra: 60 });
+  rec.mark('scroll');
+  const tall = await page.evaluate(() => document.documentElement.scrollHeight - window.innerHeight);
+  const steps = Math.max(1, Math.ceil(tall / 7));
+  await rec.frames(steps, () => page.evaluate(() => window.scrollBy(0, 7)));
+  rec.mark('end');
+  await rec.frames(60);
+  rec.done();
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await pump([page], page.waitForTimeout(6000));
+  await still(page, 'wallet-top');
+  await still(page, 'wallet-full', { fullPage: true });
+}
+
+async function wallet(browser, who) {
+  const a = await signIn(browser, who, { viewport: PHONE, deviceScaleFactor: 2, colorScheme: 'light', mobile: true });
+  await filmWallet(a.page);
+  await a.context.close();
+}
+
 /* ------------------------------------------------------------------ Wallet, class rewards, sales, the economy room */
 
 async function economy(browser, who) {
@@ -278,28 +314,8 @@ async function economy(browser, who) {
   await still(teacher.page, 'rewards');
   await teacher.context.close();
 
-  // Ada's Wallet on her phone: what she has, a goal from her wishlist, and where every Spark came from.
   const page = adaPage.page;
-  await put(page, '/api/me/wishlist/l-lantern-moonlit', {});
-  await open(page, '/wallet', page.getByRole('heading', { name: 'Wallet', level: 1 }), { settleFrames: 40 });
-  rec = new Recorder('wallet', { main: page });
-  await rec.frames(50);
-  await page.getByLabel('Choose from your wishlist').selectOption({ index: 1 });
-  await rec.frames(12);
-  rec.mark('goal');
-  await rec.during(() => page.getByRole('button', { name: 'Save for this' }).click());
-  await rec.until(() => page.getByRole('progressbar', { name: /Saving for/ }).isVisible(), { max: 200, extra: 60 });
-  rec.mark('scroll');
-  const tall = await page.evaluate(() => document.documentElement.scrollHeight - window.innerHeight);
-  const steps = Math.max(1, Math.ceil(tall / 7));
-  await rec.frames(steps, () => page.evaluate(() => window.scrollBy(0, 7)));
-  rec.mark('end');
-  await rec.frames(60);
-  rec.done();
-  await page.evaluate(() => window.scrollTo(0, 0));
-  await pump([page], page.waitForTimeout(6000));
-  await still(page, 'wallet-top');
-  await still(page, 'wallet-full', { fullPage: true });
+  await filmWallet(page);
 
   // The shop says a sale calmly: "On sale until Sunday", never a countdown.
   await open(page, '/shop?tab=lanterns', page.getByRole('article').filter({ hasText: 'Moonlit Lantern' }).first(), { settleFrames: 40 });
@@ -535,12 +551,13 @@ async function dash(browser) {
 const browser = await launch();
 try {
   let who = null;
-  if (on('home') || on('game') || on('economy')) who = await ada(browser);
+  if (on('home') || on('game') || on('economy') || on('wallet')) who = await ada(browser);
   // One scene failing does not stop the others being shot; it is named at the end.
   const failed = [];
   const shoot = async (name, fn) => { if (!on(name)) return; try { await fn(); } catch (e) { failed.push(name); console.log(`SCENE FAILED: ${name}\n${String(e?.stack ?? e).slice(0, 1500)}`); } };
   await shoot('game', () => game(browser, who));
   await shoot('economy', () => economy(browser, who));
+  await shoot('wallet', () => wallet(browser, who));
   await shoot('home', () => home(browser, who));
   await shoot('school', () => school(browser));
   await shoot('dash', () => dash(browser));

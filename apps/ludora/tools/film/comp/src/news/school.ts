@@ -45,22 +45,23 @@ export async function school(film: Film): Promise<Shot[]> {
   pool.position.set(0, FLOOR + 1, 0);
   B.add(pool, glow(2600, '#0b6b4b', 0.6));
   const who = ['glim-sprig', 'glim-pebblet', 'glim-mossbun', 'glim-dandelump', 'glim-capling', 'glim-pebblet', 'glim-sprig'];
-  const STEP = 1.0; // the first steps forward a second in (bar 28, the third beat), then one every half second
+  const STEP = 0.5; // the first steps forward on the second beat of bar 28, then one every half beat: a run, and then the line is held
   const line7 = UNIFORMS.map((u, i) => {
     const x = -765 + i * 255;
     const a = new Actor(who[i]!, 235, u.id);
-    const at = STEP + i * 0.5;
+    const at = STEP + i * 0.25;
     a.path = (t) => {
-      const p = seg(t, at, at + 0.42);
+      const p = seg(t, at, at + 0.36);
       const h = hop(p, 1, 130);
       return { x, y: FLOOR + h.y, z: lerp(-260, 120, ease.outCubic(p)), turn: 0, squash: h.squash, moving: p > 0 && p < 1 ? 1 : 0 };
     };
-    a.cue(at + 0.45, i % 2 ? 'wave' : 'cheer').cue(3.6, 'celebrate');
+    // Facing the camera throughout: the uniform is the point, so nobody spins.
+    a.cue(at + 0.4, 'wave').cue(2.9, 'cheer');
     B.add(a);
     // Which years wear it, under each one.
     const tags = u.years.split('\n').map((words, n) => {
-      const tag = text(words, { size: n ? 24 : 28, font: 'lato', weight: n ? 400 : 700, color: n ? C.mint : C.cream, shadow: true, shadowColor: 'rgba(1,14,9,0.9)' });
-      tag.position.set(x, FLOOR - 58 - n * 36, 200);
+      const tag = text(words, { size: n ? 26 : 29, font: 'lato', weight: 700, color: n ? '#d6f5e6' : C.cream, shadow: true, shadowColor: 'rgba(1,14,9,0.9)' });
+      tag.position.set(x, FLOOR - 58 - n * 38, 200);
       B.add(tag);
       return tag;
     });
