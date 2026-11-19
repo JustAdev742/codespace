@@ -1,3 +1,45 @@
+# Moving without training (works now, on an ordinary PC)
+
+The G1 does what it is told - walk anywhere, turn, wave, bow, point, reach, crouch, walk tired or proud, wave while
+walking - smoothly and physically balanced, with **no training**: no GPU, no server, no weeks. It starts in seconds.
+
+![the G1 moving without training](../../media/g1_moves_without_training.png)
+Video: [`media/g1_moves_without_training.mp4`](../../media/g1_moves_without_training.mp4) (39.5 s, no falls).
+
+On Windows: double-click `train/run_mover.bat` (or `run_mover.bat --claude`, or `run_mover.bat --local qwen3:8b`).
+On Linux / macOS: `train/run_mover.sh`. The first run installs the packages, downloads the Bandai Namco motion dataset
+and builds the motion library (about 10 minutes); a 3D window then shows the robot and you type in the terminal:
+`walk`, `walk fast`, `turn left`, `stop`, `wave`, `bow`, `point`, `reach up`, `pick up`, `crouch`, `look left`,
+`walk and wave`, `style tired`, `free` (it does whatever it likes), `list`. With `--claude` or `--local` you just talk
+to it, and the language model turns what you say into moves, composing new ones from the parts below.
+
+How it works (`mover.py`, all of it running live on one CPU core):
+
+| Part | What it does | File |
+|---|---|---|
+| Brain | you, Claude, a local model or free will: chooses *what* to do | `live_mover.py` |
+| Motion matching | finds the best frame in 1.3 h of human motion capture for the intent, ten times a second, and blends every switch away (inertialization). It searches with the robot's own feet, so the human arm swing stays in step with the robot's legs, as in people | `matching.py` |
+| Walker | plans footsteps and a balanced centre-of-mass path (ZMP preview control) for any walking command, and moves a footstep to catch itself if it drifts | `walker.py` |
+| Whole-body controller | turns all of it into 29 joint torques every 2 ms: balance first (centre of mass, feet, body spin), then hands, then the human style | `wbc.py` |
+| Layers | an action for the arms only (wave while walking), hand targets, crouch, lean, look - combinable | `mover.py` |
+
+Tested (in MuJoCo, on the G1's real masses and torque limits): the scripted demo above; walking 0.15-0.5 m/s, backward,
+sideways, turning on the spot and while walking; push-free stops and starts; random sequences of every action and style
+for 2 minutes at a time (`demo_mover.py` and the soak test). Hands reach their targets within 1-2.5 cm. On the way the
+tests found and fixed: arm swing out of step with the legs (it spun the robot on its standing foot), jumpy joint-speed
+targets, a QP that could become infeasible, and walking clips of the wrong direction.
+
+Limits, honestly: it walks up to 0.5 m/s; it does not run, jump or climb; walking is on flat ground; actions come from
+the dataset (about 20 kinds in 17 styles) plus whatever the layers can compose; it is a simulation, and a real G1 would
+also need state estimation and Unitree's low-level interface. The library is built from the Bandai Namco Research
+Motiondataset (CC BY-NC 4.0, non-commercial use, attribution); `python -m motion.library` builds one from AMASS and
+others too, and more data means more kinds of movement with no training.
+
+Files: `mover.py` (the three combined), `live_mover.py` (live program), `demo_mover.py` (scripted run, video),
+`build_bandai.py` (dataset download and library), `matching.py`, `walker.py`, `wbc.py`, `player.py`.
+
+---
+
 # Motion training: every dataset at once, one whole-body G1 controller
 
 This folder is the program for `../MOTION_PLAN.md`: it reads AMASS, Bandai Namco, Nymeria and other mocap,

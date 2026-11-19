@@ -67,7 +67,11 @@ class WBC:
         self.last_ok = True
         self.hard_contacts = False
         self.w_contact = 1e4
-        self.w_angmom = 0.0              # whole-body spin (angular momentum about the vertical) damping task
+        self.hands = {s: m.body(f"{s}_wrist_yaw_link").id for s in ("left", "right")}
+        self.palm = np.array([0.08, 0.0, 0.0])
+        self.w_hand, self.kp_hand = 30.0, 100.0
+        self.kd_hand = 2 * math.sqrt(self.kp_hand)
+        self.w_angmom = 50.0             # whole-body spin (angular momentum about the vertical) damping task
         self.kd_angmom = 10.0
         self._bodies = np.arange(1, m.nbody)
         self._jp, self._jr = np.zeros((3, self.nv)), np.zeros((3, self.nv))
@@ -98,6 +102,10 @@ class WBC:
     def angmom_z_jac(self, d, c):
         """Row A_z with L_z = A_z qvel: the vertical component of the angular momentum about the CoM c."""
         mj, m = self.mj, self.m
+        if hasattr(mj, "mj_angmomMat"):                     # MuJoCo >= 3.1: in C, about the subtree CoM
+            A = np.zeros((3, self.nv))
+            mj.mj_angmomMat(m, d, A, self.pelvis)
+            return A[2]
         Az = np.zeros(self.nv)
         for b in self._bodies:
             mb = m.body_mass[b]
@@ -174,6 +182,13 @@ class WBC:
             acc = np.concatenate([self.kp_sw * (p_ref - d.xpos[self.feet[s]]) + self.kd_sw * (v_ref - v6[:3]),
                                   self.kp_sw * quat_err(q_ref, d.xquat[self.feet[s]]) - self.kd_sw * v6[3:]])
             task(Jf, acc - self._djqd(f"swing_{s}", Jf, qd, dt), np.full(6, self.w_swing))
+        # hands: reach for points (ref["hands"] = {side: (pos [3], vel [3])}, world frame; the palm, 8 cm past the wrist)
+        for s, (p_ref, v_ref) in ref.get("hands", {}).items():
+            b = self.hands[s]
+            p = d.xpos[b] + d.xmat[b].reshape(3, 3) @ self.palm
+            Jh = self._jac_point(d, b, p)
+            acc = self.kp_hand * (p_ref - p) + self.kd_hand * (v_ref - Jh @ qd)
+            task(Jh, acc - self._djqd(f"hand_{s}", Jh, qd, dt), np.full(3, self.w_hand))
         # the motion itself: reference joint angles
         S = np.zeros((self.nj, nv))
         S[np.arange(self.nj), self.vadr] = 1.0

@@ -25,3 +25,5 @@ train/runs/_*/
 # Anthropic keys for live.py --claude: never committed
 brain/*key*.txt
 **/anthropic_key.txt
+train/runs/motion/
+train/.venv-mover/

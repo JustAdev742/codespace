@@ -43,11 +43,16 @@ class Moves:
         self.style = None
         self.free = False
 
-    def put(self, action="stand", vx=0.0, vy=0.0, turn=0.0, style=None, seconds=None):
+    def put(self, action="stand", vx=0.0, vy=0.0, turn=0.0, style=None, seconds=None, arms=None, reach=None,
+            crouch=0.0, lean=0.0, look=0.0, **_):
         if action not in ("stand", "walk") and action not in self.gestures:
             print(f"  (no '{action}' in the motion library)")
             return
-        self.q.put((action, float(vx), float(vy), float(turn), style or self.style, seconds))
+        if arms and arms not in self.gestures:
+            arms = None
+        self.q.put(dict(action=action, vx=float(vx or 0), vy=float(vy or 0), wz=float(turn or 0),
+                        style=style or self.style, arms=arms, reach=reach, crouch=float(crouch or 0),
+                        lean=float(lean or 0), look=float(look or 0), seconds=seconds))
 
     def clear(self):
         while not self.q.empty():
@@ -78,6 +83,19 @@ class Moves:
         speed = 0.4 if "fast" in t or "quick" in t else 0.15 if "slow" in t else 0.3
         if t in ("stop", "stand", "halt", "wait"):
             self.put("stand")
+        elif "point" in t:
+            self.put("stand", reach={"right": (0.45, -0.15, 1.05)} if "left" not in t else {"left": (0.45, 0.15, 1.05)})
+        elif "reach up" in t or "hands up" in t:
+            self.put("stand", reach={"right": (0.2, -0.2, 1.3), "left": (0.2, 0.2, 1.3)})
+        elif "pick" in t or "reach down" in t or "floor" in t:
+            self.put("stand", crouch=0.2, reach={"right": (0.35, -0.15, 0.45)}, seconds=4)
+            self.put("stand")
+        elif "crouch" in t or "squat" in t or "duck" in t:
+            self.put("stand", crouch=0.2)
+        elif "look" in t:
+            self.put("stand", look=0.5 if "left" in t else -0.5 if "right" in t else 0.0, lean=0.2 if "down" in t else 0.0)
+        elif ("walk" in t or "go" in t) and self.find(t.replace("walk", "")):
+            self.put("walk", speed, arms=self.find(t.replace("walk", "")))       # e.g. "walk and wave"
         elif "turn" in t:
             self.put("walk", 0.0, 0.0, 0.5 if "left" in t else -0.5, seconds=3.2)
             self.put("stand")
@@ -99,12 +117,14 @@ class Moves:
         words = re.sub(r"[^a-z ]", " ", t).split()
         if not words:
             return None
-        best, score = None, 0
-        for g in self.gestures:
+        best, key = None, (0,)
+        for g in sorted(self.gestures):
             parts = g.split("-")
             sc = sum(1 for w in words if any(p.startswith(w[:4]) for p in parts))
-            if sc > score:
-                best, score = g, sc
+            # ties: the right hand (most people's default), then the simplest name
+            k = (sc, "right" in parts, -len(parts))
+            if sc > 0 and k > key:
+                best, key = g, k
         return best
 
     def next_free(self, rng):
@@ -131,14 +151,25 @@ def move_tool(gestures, styles):
             "action": {"type": "string", "enum": acts},
             "vx": {"type": "number"}, "vy": {"type": "number"}, "turn": {"type": "number"},
             "style": {"type": "string", "enum": sorted(styles), "description": "how it moves (optional)"},
+            "arms": {"type": "string", "enum": sorted(gestures - WALKS),
+                     "description": "an action for the arms only, layered over walking or standing (optional)"},
+            "reach": {"type": "object", "description": "hand targets (optional), metres from the floor between the "
+                      "feet: x forward, y left, z up; e.g. {\"right\": [0.45, -0.15, 1.05]} points ahead, z 0.45 with "
+                      "crouch 0.2 reaches low. The arm is about 0.6 m long, the shoulders about 1.1 m up.",
+                      "properties": {"left": {"type": "array", "items": {"type": "number"}},
+                                     "right": {"type": "array", "items": {"type": "number"}}}},
+            "crouch": {"type": "number", "description": "lower the body, m (0..0.25, standing only)"},
+            "lean": {"type": "number", "description": "bend the torso forward, rad (-0.3..0.5)"},
+            "look": {"type": "number", "description": "turn the torso to look, rad (+ left, -0.6..0.6)"},
             "seconds": {"type": "number"}}, "required": ["action"]},
     }
 
 
-SYSTEM = ("You control the body of a Unitree G1 humanoid robot in a physics simulation. It moves by playing back real "
-          "human motion capture, kept balanced by a controller. Turn what the person says into moves with the move "
-          "tool (a sequence is fine: e.g. walk 3 s, turn, wave). If they ask you to do whatever you like, choose "
-          "moves yourself. Keep spoken replies to one short sentence. It cannot run, jump, fight or strike anyone: "
+SYSTEM = ("You control the body of a Unitree G1 humanoid robot (1.32 m tall) in a physics simulation. It moves by "
+          "playing back real human motion capture, kept balanced by a controller. Turn what the person says into moves "
+          "with the move tool: a sequence is fine (walk 3 s, turn, wave), and layers combine (walk with arms=wave, "
+          "crouch with a hand reaching low, look while pointing). Compose new movements from these parts when no single "
+          "action fits. If they ask you to do whatever you like, choose moves yourself. Keep spoken replies to one short sentence. It cannot run, jump, fight or strike anyone: "
           "refuse anything meant to hurt someone, briefly, and call no tool for it.")
 
 
@@ -178,7 +209,7 @@ class ClaudeMover:
             self.moves.free = False
             self.moves.clear()
             for b in calls:
-                self.moves.put(**{k: v for k, v in b.input.items() if k in ("action", "vx", "vy", "turn", "style", "seconds")})
+                self.moves.put(**b.input)
         self.msgs.append({"role": "assistant", "content": r.content})
         if calls:
             self.msgs.append({"role": "user", "content": [{"type": "tool_result", "tool_use_id": b.id, "content": "queued"}
@@ -222,7 +253,7 @@ class LocalMover:
             for c in calls:
                 try:
                     a = json.loads(c["function"]["arguments"])
-                    self.moves.put(**{k: v for k, v in a.items() if k in ("action", "vx", "vy", "turn", "style", "seconds")})
+                    self.moves.put(**a)
                 except (ValueError, TypeError, KeyError):
                     pass
         elif not say:
@@ -289,16 +320,17 @@ def main():
     sim_t, wall0, last_print, last_sync = 0.0, time.time(), 0.0, 0.0
     while alive.is_set() and (viewer is None or viewer.is_running()):
         # next move: a timed move runs out; an untimed one lasts until another is queued
-        if current is None or (until and sim_t >= until) or (not current[5] and not moves.q.empty()):
+        if current is None or (until and sim_t >= until) or (not current["seconds"] and (not moves.q.empty() or moves.free)):
             if moves.q.empty() and moves.free:
                 moves.next_free(rng)
             if not moves.q.empty():
                 current = moves.q.get_nowait()
-                act, vx, vy, turn, style, secs = current
-                mv.set_intent(act, vx, vy, turn, style)
+                secs = current["seconds"]
+                mv.set_intent(**{k: v for k, v in current.items() if k != "seconds"})
                 until = sim_t + secs if secs else 0.0
-                print(f"\n  moving: {act}" + (f" ({vx:+.2f} m/s, {vy:+.2f} m/s, {turn:+.2f} rad/s)" if act == "walk" else "")
-                      + (f", {style}" if style else "") + (f" for {secs:.1f} s" if secs else "") + "\n> ", end="", flush=True)
+                fmt = lambda v: f"{v:.2f}" if isinstance(v, float) else str(v)
+                desc = ", ".join(f"{k} {fmt(v)}" for k, v in current.items() if v not in (None, 0.0, {}) and k != "action")
+                print(f"\n  moving: {current['action']}" + (f" ({desc})" if desc else "") + "\n> ", end="", flush=True)
             elif current is not None and until:
                 mv.set_intent("stand")
                 current, until = None, 0.0
