@@ -43,8 +43,9 @@ def _gains(name):
     return 40.0, 2.0                     # shoulders, elbows
 
 
-def build_xml(visual=False, floor=True):
-    """MJCF string of the full G1 for tracking."""
+def build_xml(visual=False, floor=True, actuator="position", timestep=0.005):
+    """MJCF string of the full G1 for tracking. actuator="motor" gives torque-controlled joints (the whole-body
+    controller, wbc.py, computes torques itself); "position" gives PD servos (the learned tracker)."""
     root = ET.parse(G1_XML).getroot()
     comp = root.find("compiler")
     comp.set("meshdir", str((G1_DIR / "meshes").resolve()))
@@ -52,7 +53,7 @@ def build_xml(visual=False, floor=True):
     for tag in ("actuator", "sensor", "option"):
         for el in root.findall(tag):
             root.remove(el)
-    opt = ET.Element("option", timestep="0.005", integrator="implicitfast", iterations="20", ls_iterations="10")
+    opt = ET.Element("option", timestep=f"{timestep}", integrator="implicitfast", iterations="20", ls_iterations="10")
     root.insert(1, opt)
     if not visual:
         asset = root.find("asset")
@@ -96,14 +97,17 @@ def build_xml(visual=False, floor=True):
         ET.SubElement(wb, "light", pos="0 0 4", dir="0 0 -1", directional="true")
     act = ET.SubElement(root, "actuator")
     for name, frc in joints:
-        kp, kv = _gains(name)
-        ET.SubElement(act, "position", name=name, joint=name, kp=f"{kp}", kv=f"{kv}", forcerange=frc, ctrlrange="-6.3 6.3")
+        if actuator == "motor":
+            ET.SubElement(act, "motor", name=name, joint=name, ctrlrange=frc, ctrllimited="true")
+        else:
+            kp, kv = _gains(name)
+            ET.SubElement(act, "position", name=name, joint=name, kp=f"{kp}", kv=f"{kv}", forcerange=frc, ctrlrange="-6.3 6.3")
     return ET.tostring(root, encoding="unicode")
 
 
-def load_model(visual=False):
+def load_model(visual=False, actuator="position", timestep=0.005):
     import mujoco
-    return mujoco.MjModel.from_xml_string(build_xml(visual=visual))
+    return mujoco.MjModel.from_xml_string(build_xml(visual=visual, actuator=actuator, timestep=timestep))
 
 
 def joint_info(m):

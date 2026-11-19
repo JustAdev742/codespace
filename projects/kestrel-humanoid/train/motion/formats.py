@@ -111,30 +111,51 @@ def load_amass(path, smplh_dir, max_frames=None):
 
 
 # ----------------------------------------------------------------------------------------------------------- BVH
-BVH_NAMES = {   # keypoint -> name patterns, tried in order (case-insensitive, after removing prefixes like "mixamorig:")
+# joint names: the side is split off first (Left/L as a prefix or a suffix: LeftUpLeg, l_thigh, UpperLeg_L, Hand.R),
+# then the rest is matched; patterns are tried in order, so "UpperArm" beats "Shoulder" (often the collarbone)
+BVH_BASE = {
     "pelvis": [r"^hips?$", r"^pelvis$", r"^root$"],
-    "l_hip": [r"^(left|l)_?up_?leg$", r"^(left|l)_?thigh$", r"^(left|l)_?hip$", r"^(left|l)_?upperleg$"],
-    "r_hip": [r"^(right|r)_?up_?leg$", r"^(right|r)_?thigh$", r"^(right|r)_?hip$", r"^(right|r)_?upperleg$"],
-    "l_knee": [r"^(left|l)_?leg$", r"^(left|l)_?knee$", r"^(left|l)_?shin$", r"^(left|l)_?lowerleg$", r"^(left|l)_?calf$"],
-    "r_knee": [r"^(right|r)_?leg$", r"^(right|r)_?knee$", r"^(right|r)_?shin$", r"^(right|r)_?lowerleg$", r"^(right|r)_?calf$"],
-    "l_ankle": [r"^(left|l)_?foot$", r"^(left|l)_?ankle$"],
-    "r_ankle": [r"^(right|r)_?foot$", r"^(right|r)_?ankle$"],
-    "l_toe": [r"^(left|l)_?toe_?base$", r"^(left|l)_?toes?$", r"^(left|l)_?ball$"],
-    "r_toe": [r"^(right|r)_?toe_?base$", r"^(right|r)_?toes?$", r"^(right|r)_?ball$"],
-    "chest": [r"^spine_?2$", r"^chest$", r"^upper_?chest$", r"^spine_?1$", r"^spine$"],
+    "hip": [r"^up_?leg$", r"^upper_?leg$", r"^thigh$", r"^hip$", r"^femur$"],
+    "knee": [r"^leg$", r"^lower_?leg$", r"^knee$", r"^shin$", r"^calf$", r"^low_?leg$", r"^tibia$"],
+    "ankle": [r"^foot$", r"^ankle$"],
+    "toe": [r"^toe_?base$", r"^toes?$", r"^ball$", r"^toe_?end$"],
+    "chest": [r"^spine_?2$", r"^chest$", r"^upper_?chest$", r"^spine_?1$", r"^spine_?3$", r"^spine$"],
     "head": [r"^head$"],
-    "l_shoulder": [r"^(left|l)_?arm$", r"^(left|l)_?upper_?arm$", r"^(left|l)_?shoulder$"],
-    "r_shoulder": [r"^(right|r)_?arm$", r"^(right|r)_?upper_?arm$", r"^(right|r)_?shoulder$"],
-    "l_elbow": [r"^(left|l)_?fore_?arm$", r"^(left|l)_?elbow$", r"^(left|l)_?lower_?arm$"],
-    "r_elbow": [r"^(right|r)_?fore_?arm$", r"^(right|r)_?elbow$", r"^(right|r)_?lower_?arm$"],
-    "l_wrist": [r"^(left|l)_?hand$", r"^(left|l)_?wrist$"],
-    "r_wrist": [r"^(right|r)_?hand$", r"^(right|r)_?wrist$"],
+    "shoulder": [r"^upper_?arm$", r"^arm$", r"^up_?arm$", r"^shoulder$", r"^humerus$"],
+    "elbow": [r"^fore_?arm$", r"^lower_?arm$", r"^low_?arm$", r"^elbow$", r"^radius$"],
+    "wrist": [r"^hand$", r"^wrist$"],
 }
 
 
 def _clean(n):
-    n = n.split(":")[-1].lower()
+    n = n.split(":")[-1].lower()                       # "mixamorig:LeftArm" -> "leftarm"
     return re.sub(r"[\s\-\.]", "_", n)
+
+
+def _side_split(n):
+    """('l' | 'r' | '', base name) from a cleaned joint name."""
+    for pre, side in (("left", "l"), ("right", "r"), ("l_", "l"), ("r_", "r")):
+        if n.startswith(pre) and len(n) > len(pre):
+            return side, n[len(pre):].lstrip("_")
+    for suf, side in (("_left", "l"), ("_right", "r"), ("_l", "l"), ("_r", "r"), ("left", "l"), ("right", "r")):
+        if n.endswith(suf) and len(n) > len(suf):
+            return side, n[:-len(suf)].rstrip("_")
+    return "", n
+
+
+def _match_joints(names):
+    cleaned = [_side_split(_clean(n)) for n in names]
+    idx = {}
+    for base, pats in BVH_BASE.items():
+        sides = [""] if base in ("pelvis", "chest", "head") else ["l", "r"]
+        for side in sides:
+            key = base if not side else f"{side}_{base}"
+            for pat in pats:
+                hit = [j for j, (sd, b) in enumerate(cleaned) if sd == side and re.search(pat, b) and not names[j].startswith("_end")]
+                if hit:
+                    idx[key] = hit[0]
+                    break
+    return idx
 
 
 def parse_bvh(path):
@@ -199,14 +220,7 @@ def load_bvh(path, max_frames=None):
         else:
             G_R[:, j] = G_R[:, p] @ R
             G_t[:, j] = G_t[:, p] + np.einsum("tij,tj->ti", G_R[:, p], pos)
-    cleaned = [_clean(n) for n in names]
-    idx = {}
-    for kp, pats in BVH_NAMES.items():
-        for pat in pats:
-            hit = [j for j, n in enumerate(cleaned) if re.search(pat, n)]
-            if hit:
-                idx[kp] = hit[0]
-                break
+    idx = _match_joints(names)
     missing = [k for k in KEYPOINTS if k not in idx]
     if missing:
         raise ValueError(f"{Path(path).name}: no joints matched for {missing}")

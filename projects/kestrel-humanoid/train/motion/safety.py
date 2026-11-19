@@ -15,7 +15,7 @@ from .formats import K
 COMBAT_WORDS = [
     "punch", "kick", "boxing", "boxer", "fight", "karate", "kung_?fu", "martial", "taekwondo", "muay", "kickbox",
     "jab", "uppercut", "hook_punch", "strike", "striking", "slap", "attack", "assault", "combat", "sparring",
-    "stab", "sword", "katana", "fencing", "baton", "bat_?swing", "batting", "hitting", "shove", "shoving", "headbutt",
+    "stab", "slash", "sword", "katana", "fencing", "baton", "bat_?swing", "batting", "hitting", "shove", "shoving", "headbutt",
     "elbow_?strike", "knee_?strike", "throw_punch", "brawl", "wrestl", "grappl", "choke", "tackle", "melee",
 ]
 _RX = re.compile("|".join(COMBAT_WORDS))
