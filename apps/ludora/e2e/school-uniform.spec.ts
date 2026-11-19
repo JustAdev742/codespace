@@ -62,3 +62,17 @@ test('players wear the uniform for their year, set in Settings or on the join sc
   await expect(seat('Sam Lee')).toHaveAttribute('data-uniform', 'senior-grey');
   await guestContext.close();
 });
+
+test('the front page of a school copy speaks to a class that plays calmly', async ({ page }) => {
+  test.skip(process.env.E2E_SCHOOL_THEME !== 'hills-grammar', 'Only on a copy with the Hills Grammar look.');
+  await page.goto('/');
+  // A school's copy plays calmly by default, so its front page does not sell speed and ranking (D60).
+  await expect(page.getByRole('heading', { level: 1, name: 'Quiz games for your class.' })).toBeVisible();
+  await expect(page.getByText('Answer fast.')).toHaveCount(0);
+  // Students arrive with a login card, so signing in is offered beside hosting.
+  const hero = page.locator('section[aria-labelledby="hero-title"]');
+  await expect(hero.getByRole('link', { name: 'Sign in', exact: true })).toBeVisible();
+  await expect(hero.getByRole('link', { name: 'Host a game', exact: true })).toBeVisible();
+  const report = await new AxeBuilder({ page }).include('section[aria-labelledby="hero-title"]').withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze();
+  expect(report.violations.map((v) => v.id)).toEqual([]);
+});

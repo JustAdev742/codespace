@@ -738,8 +738,10 @@ class first, then what pupils see every day, then rare screens. What changed, an
 - *The sidebar no longer scrolls.* The school's logo under Ludora's cost about 90px at 1366x768
   (D59). It now starts the page header on a wide screen, level with Ludora's mark, where the
   header had empty room; the sidebar is exactly Ludora's. The layout test checks this in both
-  looks now. A school with houses adds a School row, which scrolls about 38px in either look; that
-  is D59's teacher case and is left alone.
+  looks now. A school with houses adds a School row for every student, which scrolled about
+  38px in either look; on a screen up to 800px tall the rows are now 3px shorter, so a student's
+  sidebar fits with that row too (the layout test checks there is room for one more). A
+  teacher's sidebar still scrolls, as in D59.
 - *Small things that looked broken:* a disabled Join game read bottle green on grey (the rule
   that inks the highlight outranked the disabled grey); a focused white field on the stage had a
   white ring round it, which vanished (now cream with a green gap); the Locker's big buddy wore a
@@ -749,6 +751,12 @@ class first, then what pupils see every day, then rare screens. What changed, an
   manifest of its own, served by `school-theme.ts`); the printable class login cards carry the
   crest and the school's name; the School page has them above its heading. No motto, house
   names, staff, dates or history were added: none is in the repository.
+
+- *The front page.* A school's copy plays calmly by default (D57), yet its front page said "Answer
+  fast. Climb the board." On a school's copy it now says "Quiz games for your class.", describes
+  playing together one question at a time, and offers Sign in beside Host a game (students
+  arrive with a login card; Create account stays in the header). Ludora's own front page is
+  unchanged.
 
 Left alone on purpose: Ludora's own gold mark and favicon (they are Ludora's), answer tiles A, B,
 E and F, rarity colours and the seasonal garland (they mean something), and the 3D modes' own

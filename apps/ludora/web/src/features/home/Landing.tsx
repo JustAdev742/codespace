@@ -11,6 +11,7 @@ import { ModeCard, ModeCardSkeleton } from '../modes/ModeCard.tsx';
 import { GLIMS } from './glims.ts';
 import { BLEED_ROUNDING, Bleed, RarityTag } from './kit.tsx';
 import { SeasonDecor, SeasonLine } from '../season/SeasonBanner.tsx';
+import { schoolLook } from '../../lib/school.ts';
 
 /** One Glim of every rarity, from common to mythic. */
 const LADDER: { rarity: Rarity; name: string; art: GlimArt }[] = [
@@ -126,6 +127,8 @@ export default function Landing() {
   const modes = useModes();
   const playable = (modes.data?.modes ?? []).filter((m) => m.meta.status === 'playable');
   // One of each kind first, so the four cards show the range rather than four quizzes.
+  // A school's own copy plays calmly by default (D57), so its front page does not sell speed and ranking (D60).
+  const school = schoolLook();
   const featured = [...MODE_CATEGORIES.map((c) => playable.find((m) => m.meta.category === c)), ...playable].filter((m, i, all): m is NonNullable<typeof m> => Boolean(m) && all.indexOf(m) === i).slice(0, 8);
   return (
     <div className="flex flex-col gap-16 pb-12 sm:gap-20">
@@ -137,8 +140,8 @@ export default function Landing() {
               <div className="flex flex-col gap-5">
                 <SeasonLine />
                 <h1 id="hero-title" className="font-display text-[2.75rem] leading-[0.95] font-extrabold min-[400px]:text-[3.25rem] sm:text-[4.25rem] xl:text-[4.75rem]">
-                  <span className="block">Answer fast.</span>
-                  <span className="block">Climb the board.</span>
+                  <span className="block">{school ? 'Quiz games' : 'Answer fast.'}</span>
+                  <span className="block">{school ? 'for your class.' : 'Climb the board.'}</span>
                 </h1>
                 {/* The way in comes first: most people arrive with a code from their teacher. */}
                 <div className="hud stage-card max-w-[480px] p-4 sm:p-5">
@@ -146,14 +149,26 @@ export default function Landing() {
                   <CodeEntry size="xl" />
                   <p className="mt-2.5 text-sm text-text-2">Got a code from your teacher? Type it in. You do not need an account.</p>
                 </div>
-                <p className="max-w-[46ch] text-lg text-text-2">Quizzes, races and team battles your whole class plays live, on any device. Every right answer earns Sparks, and Sparks open Lanterns with Glims inside.</p>
+                <p className="max-w-[46ch] text-lg text-text-2">
+                  {school
+                    ? 'Quizzes and team games your whole class plays together, one question at a time. Right answers earn Sparks, and Sparks open Lanterns with Glims inside.'
+                    : 'Quizzes, races and team battles your whole class plays live, on any device. Every right answer earns Sparks, and Sparks open Lanterns with Glims inside.'}
+                </p>
                 <div className="flex flex-wrap items-center gap-3">
+                  {/* At a school, students arrive with a login card from their teacher, so signing in comes first. */}
+                  {school ? (
+                    <ButtonLink to="/signin" variant="secondary" size="lg">
+                      Sign in
+                    </ButtonLink>
+                  ) : null}
                   <ButtonLink to="/host" variant="secondary" size="lg">
                     Host a game
                   </ButtonLink>
-                  <ButtonLink to="/signup" variant="secondary" size="lg">
-                    Create account
-                  </ButtonLink>
+                  {school ? null : (
+                    <ButtonLink to="/signup" variant="secondary" size="lg">
+                      Create account
+                    </ButtonLink>
+                  )}
                 </div>
               </div>
               <GamePreview className="hidden justify-self-center md:block lg:justify-self-end" />

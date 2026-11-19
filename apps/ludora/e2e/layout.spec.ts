@@ -44,6 +44,9 @@ test('every section in the navigation says what you do there, and a student’s 
   // The whole sidebar shows at 1366x768, in a school's look too: there the school's logo starts the header (D60).
   const extra = await page.locator('aside').evaluate((el) => el.scrollHeight - el.clientHeight);
   expect(extra, 'the sidebar scrolls').toBeLessThanOrEqual(0);
+  // With room to spare for one more row: a school with houses gives every student a School section.
+  const spare = await page.locator('aside').evaluate((el) => el.getBoundingClientRect().bottom - el.querySelector('nav')!.getBoundingClientRect().bottom);
+  expect(spare, 'room under the last section for one more').toBeGreaterThanOrEqual(36);
   if (process.env.E2E_SCHOOL_THEME) await expect(page.getByRole('banner').getByRole('img', { name: /School$/ })).toBeVisible();
   // Settings is the gear by the logo.
   await page.locator('aside').getByRole('link', { name: 'Settings', exact: true }).click();
