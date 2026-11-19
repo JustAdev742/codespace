@@ -1,0 +1,27 @@
+<aside class="demo" aria-labelledby="demo-title">
+  <p class="demo-what"><strong id="demo-title" class="demo-tag">Demo</strong> This is the real staff dashboard page. The server behind it is made up, and nothing here reaches a real one.</p>
+  <div class="demo-row">
+    <span class="demo-label" id="demo-pick-label">Show the server when it is</span>
+    <div class="demo-pick" role="group" aria-labelledby="demo-pick-label">
+      <button type="button" class="btn btn--small" id="demo-calm" data-scenario="calm" aria-pressed="false">Calm</button>
+      <button type="button" class="btn btn--small" id="demo-watchful" data-scenario="watchful" aria-pressed="false">Watchful</button>
+      <button type="button" class="btn btn--small" id="demo-attack" data-scenario="attack" aria-pressed="false">Under attack</button>
+    </div>
+    <button type="button" class="btn btn--small" id="demo-again">Start again</button>
+  </div>
+  <details class="demo-try">
+    <summary>Things to try</summary>
+    <ul>
+      <li>Security: ban the address 10.20.3.99 for a while, then let one of the banned addresses back in.</li>
+      <li>Security: try to ban 10.20.9.10. It is a staff address, so the server refuses.</li>
+      <li>Security: raise the shield, or switch lockdown on and off.</li>
+      <li>Set-up: check the name play.school.example (it points at this server), then old.school.example (it does not).</li>
+      <li>Set-up: change the address to ludora.school.example with a public certificate. The site stops answering, so the server puts the old settings back and says why.</li>
+      <li>Health: run the self-check. Make a backup, then ask for a second one straight away.</li>
+      <li>Sign out, then get the password wrong five times. Sign-in pauses (for one minute here, fifteen on a real server).</li>
+      <li>Leave it alone for fifteen minutes and it signs you out by itself.</li>
+      <li>Press ? to see the keyboard shortcuts.</li>
+    </ul>
+  </details>
+  <p class="demo-pass">Password, for after you sign out: <code id="demo-password">correct horse battery</code> <button type="button" class="btn btn--small" id="demo-fill" hidden>Type it in for me</button></p>
+</aside>

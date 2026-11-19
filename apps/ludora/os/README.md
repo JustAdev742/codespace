@@ -54,6 +54,12 @@ operations. The pages are static files in `rootfs/usr/share/ludora-os/dash/`; `t
 with canned answers for working on the screen. The proxy serves the dashboard on its own port and the firewall
 opens that port to the staff addresses only.
 
+`demo/` turns the same pages into a demo with no server at all: `demo/mock.js` is a JavaScript port of
+`tests/dash_mock.py` that answers the pages' requests inside the browser, and `demo/bar.*` add a strip for
+switching between calm, watchful and under attack. `python3 demo/build.py OUT --standalone` writes a folder
+any static web server (or a double click) opens; without `--standalone` it writes page content for a host
+that supplies its own `<html>`. The dashboard's own files are copied unchanged.
+
 Three things to keep in mind when changing it. The proxy has a fixed address on its container network
 (`render.proxy_address()`): the firewall and the web service accept the dashboard's traffic from that address and
 no other, and other containers draw theirs from a separate range. Anything that restarts the proxy or the web

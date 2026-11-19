@@ -1,0 +1,32 @@
+/* The demo bar sits above the dashboard and scrolls away with the page. It borrows the dashboard's
+   own colours and buttons so it reads as a note on the page, not as part of the product. */
+:root { color-scheme: dark; }
+.demo {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  padding: 0.85rem var(--gutter);
+  background: var(--well);
+  border-bottom: 1px dashed var(--watch);
+  color: var(--dim);
+  font-size: 0.9375rem;
+}
+.demo p { margin: 0; max-width: 78ch; }
+.demo-tag {
+  display: inline-block;
+  margin-right: 0.5rem;
+  padding: 0 0.5rem;
+  background: var(--watch);
+  color: var(--ink);
+  font-weight: 700;
+}
+.demo-row { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 0.75rem; }
+.demo-pick { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+.demo-pick .btn[aria-pressed="true"] { background: var(--watch); border-color: var(--watch); color: var(--ink); }
+.demo-try summary { cursor: pointer; color: var(--accent); width: fit-content; padding: 0.25rem 0; }
+.demo-try ul { margin-top: 0.4rem; padding-left: 1.2rem; list-style: square; max-width: 78ch; }
+.demo-try li + li { margin-top: 0.3rem; }
+.demo code { color: var(--bright); background: var(--panel); padding: 0.1rem 0.4rem; border: 1px solid var(--line); user-select: all; }
+@media (max-width: 40rem) {
+  .demo .btn { min-height: 2.75rem; }
+}
