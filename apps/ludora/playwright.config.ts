@@ -43,6 +43,12 @@ export default defineConfig({
     // Recording every test costs about a third of the run; on CI only the second try is recorded.
     trace: process.env.CI ? 'on-first-retry' : 'retain-on-failure',
     screenshot: 'only-on-failure',
+    // Headless WebKit and Firefox draw WebGL with the processor and do not say so, so the home page's 3D menu
+    // starts, runs slowly and gives way to the flat one, on every fresh page of every test: that pushed the WebKit
+    // run past its time limit. A real device remembers "slow" after the first visit (features/home/place/
+    // capability.ts); a test starts as a new device each time, so these two start with the flat menu chosen.
+    // Chromium notices software rendering by itself and never loads the 3D menu here.
+    ...(browser === 'chromium' ? {} : { storageState: { cookies: [], origins: [{ origin: E2E_BASE, localStorage: [{ name: 'ludora.menu', value: 'off' }] }] } }),
   },
   projects: [{ name: browser, use: BROWSERS[browser] }],
   webServer: {
