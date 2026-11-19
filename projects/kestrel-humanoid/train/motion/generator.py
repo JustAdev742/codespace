@@ -146,6 +146,20 @@ def captions_for(name, cmu):
     return []
 
 
+def consistent(f, caption):
+    """False for a clip that travels mostly sideways although its description says nothing about sideways, back,
+    turning or circling: a sign that its recorded facing direction is off (a few CMU subjects)."""
+    sp = np.hypot(f[:, NQ + 3], f[:, NQ + 4])
+    moving = sp > 0.3
+    if moving.mean() < 0.3:
+        return True
+    fwd = np.abs(f[moving, NQ + 3]).mean()
+    side = np.abs(f[moving, NQ + 4]).mean()
+    if side <= fwd:
+        return True
+    return bool(re.search(r"side|left|right|back|turn|circle|random|crab|around|zig|diagonal", caption))
+
+
 def refused(text):
     t = re.sub(r"[\s\-\.]", "_", text.lower())
     return bool(COMBAT.search(t)) or bool(re.search(r"\b(hit|punch|kick|hurt|attack|stab|choke|strangle)", text.lower()))
@@ -182,13 +196,14 @@ class MotionSet:
         for lib in libs:
             z = np.load(lib, allow_pickle=True)
             q, rp, rq = z["q"], z["root_pos"], z["root_quat"]
-            n_used = 0
+            n_used = n_bad = 0
             for s, L, name in zip(z["clip_start"], z["clip_len"], z["clip_name"]):
                 caps = captions_for(name, cmu)
                 if not caps or L < 25:
                     continue
                 f = clip_features(q[s:s + L], rp[s:s + L], rq[s:s + L])
-                if not np.isfinite(f).all():
+                if not np.isfinite(f).all() or not consistent(f, caps[0]):
+                    n_bad += 1
                     continue
                 ids = []
                 for c in caps:
@@ -197,7 +212,7 @@ class MotionSet:
                 self.clips.append(f)
                 self.caps.append(ids)
                 n_used += 1
-            log(f"{lib}: {n_used} captioned clips")
+            log(f"{lib}: {n_used} captioned clips ({n_bad} left out: motion contradicts its description)")
         allf = np.concatenate(self.clips)
         self.mu = allf.mean(0)
         self.sd = np.maximum(allf.std(0), 0.02)

@@ -56,12 +56,13 @@ def windows(f, step=16):
 
 def train_classifier(bandai, g, labels, epochs=12, seed=0):
     z = np.load(bandai, allow_pickle=True)
+    Q, RP, RQ = z["q"], z["root_pos"], z["root_quat"]          # read once (each z[...] decompresses the whole array)
     rng = np.random.default_rng(seed)
     clips = []
     for s, L, name in zip(z["clip_start"], z["clip_len"], z["clip_name"]):
         a = action_of(name)[0]
         if a in labels:
-            f = g.norm(clip_features(z["q"][s:s + L], z["root_pos"][s:s + L], z["root_quat"][s:s + L]))
+            f = g.norm(clip_features(Q[s:s + L], RP[s:s + L], RQ[s:s + L]))
             clips.append((labels.index(a), f))
     rng.shuffle(clips)
     n_test = len(clips) // 5
