@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react';
+import { useId, useState, type ReactNode } from 'react';
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router';
 import { DropdownMenu, Dialog as RDialog } from 'radix-ui';
 import { useQueryClient } from '@tanstack/react-query';
@@ -51,12 +51,19 @@ import { OfflineBanner } from './OfflineBanner.tsx';
  * bar sit on the stage in both themes, like the chrome of a broadcast, so a
  * stage hero runs straight on from the header. The page itself follows the
  * theme. The current section is marked by a gold bar as well as its fill.
+ *
+ * Every section says what you do there: its name, and under it a short line in
+ * words a nine-year-old knows (D59). The line is the link's description, not
+ * part of its name, so a screen reader says "Game Maker, link, Invent a game
+ * with code", and tests still find the link by its name.
  */
 
 interface NavItem {
   to: string;
   label: string;
   icon: ReactNode;
+  /** What you do there, in a few plain words, shown under the name. */
+  hint?: string;
   end?: boolean;
   /** 'school' shows once this copy has houses, and before that to the people who can set them up. */
   show?: 'signedIn' | 'staff' | 'studio' | 'school' | 'teacher';
@@ -65,31 +72,46 @@ interface NavItem {
 }
 
 const PRIMARY: NavItem[] = [
-  { to: '/', label: 'Home', icon: <Home className="size-5" />, end: true },
-  { to: '/play', label: 'Join a game', icon: <Gamepad2 className="size-5" /> },
-  { to: '/host', label: 'Host', icon: <Presentation className="size-5" /> },
-  { to: '/make', label: 'Make', icon: <PencilRuler className="size-5" />, show: 'signedIn' },
-  { to: '/lessons', label: 'Lessons', icon: <ListOrdered className="size-5" />, show: 'teacher' },
-  { to: '/modes', label: 'Game modes', icon: <LayoutGrid className="size-5" /> },
-  { to: '/game-maker', label: 'Game Maker', icon: <Wand2 className="size-5" /> },
-  { to: '/library', label: 'Question sets', icon: <BookOpen className="size-5" /> },
+  { to: '/', label: 'Home', icon: <Home className="size-5" />, hint: 'Your start page', end: true },
+];
+const PLAY: NavItem[] = [
+  { to: '/play', label: 'Join a game', icon: <Gamepad2 className="size-5" />, hint: 'Type the code from the board' },
+  { to: '/host', label: 'Host a game', icon: <Presentation className="size-5" />, hint: 'Put a code on the board' },
+  { to: '/modes', label: 'Game modes', icon: <LayoutGrid className="size-5" />, hint: 'All the ways to play' },
+];
+const MAKE: NavItem[] = [
+  { to: '/make', label: 'Make', icon: <PencilRuler className="size-5" />, hint: 'Start here to make anything', show: 'signedIn' },
+  { to: '/library', label: 'Question sets', icon: <BookOpen className="size-5" />, hint: 'Find a quiz or write one' },
+  { to: '/game-maker', label: 'Game Maker', icon: <Wand2 className="size-5" />, hint: 'Invent a game with code' },
+  { to: '/lessons', label: 'Lessons', icon: <ListOrdered className="size-5" />, hint: 'Plan several games in a row', show: 'teacher' },
 ];
 const COLLECT: NavItem[] = [
-  { to: '/collection', label: 'Collection', icon: <Sparkles className="size-5" />, show: 'signedIn' },
-  { to: '/shop', label: 'Shop', icon: <ShoppingBag className="size-5" />, show: 'signedIn' },
-  { to: '/locker', label: 'Locker', icon: <Shirt className="size-5" />, show: 'signedIn' },
-  { to: '/designs', label: 'My designs', icon: <Brush className="size-5" />, show: 'signedIn' },
-  { to: '/quests', label: 'Quests', icon: <Target className="size-5" />, show: 'signedIn' },
+  { to: '/collection', label: 'Collection', icon: <Sparkles className="size-5" />, hint: 'All the Glims you have found', show: 'signedIn' },
+  { to: '/shop', label: 'Shop', icon: <ShoppingBag className="size-5" />, hint: 'Spend what you earn playing', show: 'signedIn' },
+  { to: '/locker', label: 'Locker', icon: <Shirt className="size-5" />, hint: 'Dress up your buddy', show: 'signedIn' },
+  { to: '/designs', label: 'My designs', icon: <Brush className="size-5" />, hint: 'Draw a Glim of your own', show: 'signedIn' },
+  { to: '/quests', label: 'Quests', icon: <Target className="size-5" />, hint: 'Goals that win rewards', show: 'signedIn' },
 ];
 const SOCIAL: NavItem[] = [
-  { to: '/friends', label: 'Friends', icon: <Users className="size-5" />, show: 'signedIn', flag: 'social.friends' },
-  { to: '/classes', label: 'Classes', icon: <School className="size-5" />, show: 'signedIn' },
-  { to: '/school', label: 'School', icon: <Castle className="size-5" />, show: 'school' },
-  { to: '/leaderboards', label: 'Leaderboards', icon: <Trophy className="size-5" />, show: 'signedIn' },
-  { to: '/studio', label: 'Studio', icon: <Palette className="size-5" />, show: 'studio' },
-  { to: '/staff', label: 'Staff', icon: <Shield className="size-5" />, show: 'staff' },
+  { to: '/friends', label: 'Friends', icon: <Users className="size-5" />, hint: 'Play with people you know', show: 'signedIn', flag: 'social.friends' },
+  { to: '/classes', label: 'Classes', icon: <School className="size-5" />, hint: 'Your classes and homework', show: 'signedIn' },
+  { to: '/school', label: 'School', icon: <Castle className="size-5" />, hint: 'Houses and house points', show: 'school' },
+  { to: '/leaderboards', label: 'Leaderboards', icon: <Trophy className="size-5" />, hint: 'See who is on top', show: 'signedIn' },
+  { to: '/studio', label: 'Creator Studio', icon: <Palette className="size-5" />, hint: 'Make Glims for the shop', show: 'studio' },
+  { to: '/staff', label: 'Staff', icon: <Shield className="size-5" />, hint: 'Tools to run Ludora', show: 'staff' },
+];
+const SETTINGS: NavItem = { to: '/settings', label: 'Settings', icon: <Settings className="size-5" />, hint: 'Sound, reading help and more' };
+
+/** Headings in plain words, by what you do there. The first group (Home) has none. */
+const GROUPS: [string | null, NavItem[]][] = [
+  [null, PRIMARY],
+  ['Play', PLAY],
+  ['Make things', MAKE],
+  ['Glims and rewards', COLLECT],
+  ['With others', SOCIAL],
 ];
 
+/** The phone's bottom bar: short names for sections the More sheet lists in full. */
 const MOBILE: NavItem[] = [
   { to: '/', label: 'Home', icon: <Home className="size-5" />, end: true },
   { to: '/play', label: 'Join', icon: <Gamepad2 className="size-5" /> },
@@ -97,22 +119,57 @@ const MOBILE: NavItem[] = [
   { to: '/collection', label: 'Glims', icon: <Sparkles className="size-5" /> },
 ];
 
-/** A section link on the stage: 44px tall in the phone menu, 40px in the sidebar. */
+/** A section link on the stage: its name and, under it, what you do there. 48px tall in the phone menu, 38px in the sidebar. */
 function NavLinkItem({ item, onNavigate }: { item: NavItem; onNavigate?: () => void }) {
+  const hintId = useId();
   return (
     <NavLink
       to={item.to}
       end={item.end}
       onClick={onNavigate}
+      aria-describedby={item.hint ? hintId : undefined}
       className={({ isActive }) =>
-        `relative flex h-11 items-center gap-3 rounded-[var(--radius-m)] px-3 text-[15px] font-semibold transition-colors lg:h-10 ${isActive ? 'bg-white/[0.12] text-text' : 'text-text-2 hover:bg-white/[0.06] hover:text-text'}`
+        `relative flex min-h-12 items-center gap-3 rounded-[var(--radius-m)] px-3 py-1 transition-colors lg:min-h-[38px] lg:py-0.5 ${isActive ? 'bg-white/[0.12] text-text' : 'text-text-2 hover:bg-white/[0.06] hover:text-text'}`
       }
     >
       {({ isActive }) => (
         <>
           {isActive ? <span className="absolute inset-y-2 left-0 w-1 rounded-r-[3px] bg-lantern" aria-hidden /> : null}
-          <span className={isActive ? 'text-lantern' : 'text-text-3'}>{item.icon}</span>
-          {item.label}
+          <span className={`shrink-0 ${isActive ? 'text-lantern' : 'text-text-3'}`}>{item.icon}</span>
+          <span className="flex min-w-0 flex-col">
+            <span className="text-[15px] leading-[18px] font-semibold">{item.label}</span>
+            {/* Left out of the link's name and read as its description: aria-describedby still reads a hidden element. */}
+            {item.hint ? (
+              <span id={hintId} aria-hidden className={`truncate text-[12.5px] leading-[15px] ${isActive ? 'text-text-2' : 'text-text-3'}`}>
+                {item.hint}
+              </span>
+            ) : null}
+          </span>
+        </>
+      )}
+    </NavLink>
+  );
+}
+
+/**
+ * Settings in the sidebar: the gear at the logo's right, named "Settings" for screen readers and in
+ * its tooltip. There is no room beside the logo for the word; the account menu and the phone's More
+ * sheet name it in full. The current page gets the same fill and gold as a section.
+ */
+function SettingsChip() {
+  return (
+    <NavLink
+      to={SETTINGS.to}
+      aria-label={SETTINGS.label}
+      title={`${SETTINGS.label}: ${SETTINGS.hint}`}
+      className={({ isActive }) =>
+        `absolute top-0 right-0 grid size-10 place-items-center overflow-hidden rounded-full border transition-colors ${isActive ? 'border-transparent bg-white/[0.12] text-lantern' : 'border-white/15 text-text-2 hover:bg-white/[0.06] hover:text-text'}`
+      }
+    >
+      {({ isActive }) => (
+        <>
+          {isActive ? <span className="absolute inset-x-3 bottom-1 h-[3px] rounded-full bg-lantern" aria-hidden /> : null}
+          <Settings className="size-5" aria-hidden />
         </>
       )}
     </NavLink>
@@ -125,24 +182,29 @@ function NavGroups({ onNavigate }: { onNavigate?: () => void }) {
   const staff = Boolean(me.data?.permissions.includes('staff.access'));
   const studio = Boolean(me.data?.permissions.includes('studio.use'));
   const school = useSchool();
+  const groupId = useId();
   const hasSchool = Boolean(school.data && (school.data.houses.length > 0 || school.data.can.manage || school.data.can.viewUsage));
   const flagOn = (key?: string) => !key || me.data?.flags?.[key] !== false;
   const visible = (i: NavItem) => flagOn(i.flag) && (!i.show || (i.show === 'signedIn' ? signedIn : i.show === 'teacher' ? me.data?.user?.accountType === 'teacher' : i.show === 'studio' ? studio : i.show === 'school' ? hasSchool : staff));
-  const groups: [string | null, NavItem[]][] = [
-    [null, PRIMARY],
-    ['Collect', COLLECT.filter(visible)],
-    ['Together', SOCIAL.filter(visible)],
-  ];
   return (
-    <nav aria-label="Main" className="flex flex-col gap-5">
-      {groups
+    <nav aria-label="Main" className="flex flex-col gap-4 lg:gap-2">
+      {GROUPS.map(([title, all], g) => [title, all.filter(visible), g] as const)
         .filter(([, items]) => items.length)
-        .map(([title, items]) => (
-          <div key={title ?? 'main'} className="flex flex-col gap-0.5">
-            {title ? <div className="px-3 pb-1 text-xs font-semibold text-text-3">{title}</div> : null}
-            {items.map((i) => (
-              <NavLinkItem key={i.to} item={i} onNavigate={onNavigate} />
-            ))}
+        .map(([title, items, g]) => (
+          // Each group is a list named by its heading. The heading is not a page heading, so it adds nothing to a page's outline.
+          <div key={title ?? 'main'} className="flex flex-col">
+            {title ? (
+              <div id={`${groupId}-${g}`} className="px-3 pb-0.5 text-xs leading-4 font-semibold text-text-3">
+                {title}
+              </div>
+            ) : null}
+            <ul className="flex flex-col gap-px" aria-labelledby={title ? `${groupId}-${g}` : undefined}>
+              {items.map((i) => (
+                <li key={i.to}>
+                  <NavLinkItem item={i} onNavigate={onNavigate} />
+                </li>
+              ))}
+            </ul>
           </div>
         ))}
     </nav>
@@ -280,14 +342,15 @@ export function Shell() {
       <a href="#main" className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-50 focus:rounded-[var(--radius-s)] focus:bg-lantern focus:px-3 focus:py-2 focus:font-semibold focus:text-on-accent">
         Skip to content
       </a>
-      <aside className="stage-plain on-stage sticky top-0 hidden h-dvh flex-col gap-6 overflow-y-auto border-r border-white/[0.06] px-3 py-5 lg:flex">
-        <Link to="/" className="self-start rounded-[var(--radius-s)] px-2" aria-label="Ludora home">
-          <Logo size={26} stack />
-        </Link>
-        <NavGroups />
-        <div className="mt-auto flex flex-col gap-0.5">
-          <NavLinkItem item={{ to: '/settings', label: 'Settings', icon: <Settings className="size-5" /> }} />
+      <aside className="stage-plain on-stage sticky top-0 hidden h-dvh flex-col gap-4 overflow-y-auto border-r border-white/[0.06] px-3 py-3.5 lg:flex">
+        {/* Settings sits beside the logo, so the sections below fit a 768px-tall laptop without scrolling (D59). */}
+        <div className="relative">
+          <Link to="/" className="inline-flex rounded-[var(--radius-s)] px-2" aria-label="Ludora home">
+            <Logo size={26} stack />
+          </Link>
+          <SettingsChip />
         </div>
+        <NavGroups />
       </aside>
 
       <div className="flex min-w-0 flex-col">
@@ -356,7 +419,7 @@ export function Shell() {
               <RDialog.Description className="sr-only">All sections of Ludora</RDialog.Description>
               <NavGroups onNavigate={() => setMoreOpen(false)} />
               <div className="mt-4">
-                <NavLinkItem item={{ to: '/settings', label: 'Settings', icon: <Settings className="size-5" /> }} onNavigate={() => setMoreOpen(false)} />
+                <NavLinkItem item={SETTINGS} onNavigate={() => setMoreOpen(false)} />
               </div>
             </RDialog.Content>
           </RDialog.Portal>

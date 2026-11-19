@@ -23,3 +23,38 @@ test('main pages fit a 360px phone, have one main heading, pass automated access
   }
   expect(errors).toEqual([]);
 });
+
+test('every section in the navigation says what you do there, and a student’s sidebar fits a 768px-tall laptop', async ({ browser }) => {
+  const student = await account(browser, { accountType: 'student' });
+  const page = student.page;
+  await page.setViewportSize({ width: 1366, height: 768 });
+  const errors = watchErrors(page);
+  await page.goto('/collection');
+  const nav = page.getByRole('navigation', { name: 'Main' });
+  // Named by the section alone (so tests and voice control find it by its name), described by its line.
+  await expect(nav.getByRole('link', { name: 'Game Maker', exact: true })).toHaveAccessibleDescription('Invent a game with code');
+  await expect(nav.getByRole('link', { name: 'Host a game', exact: true })).toHaveAccessibleDescription('Put a code on the board');
+  await expect(nav.getByRole('link', { name: 'Collection', exact: true })).toHaveAttribute('aria-current', 'page');
+  // Grouped under plain headings.
+  for (const group of ['Play', 'Make things', 'Glims and rewards', 'With others']) await expect(nav.getByRole('list', { name: group })).toBeVisible();
+  // Every section has its line.
+  for (const link of await nav.getByRole('link').all()) expect(await link.getAttribute('aria-describedby'), await link.innerText()).toBeTruthy();
+  // Teachers' sections are not offered to a student.
+  await expect(nav.getByRole('link', { name: 'Lessons' })).toHaveCount(0);
+  // In Ludora's own look the whole sidebar shows at 1366x768. A school's logo under Ludora's takes more room.
+  if (!process.env.E2E_SCHOOL_THEME) {
+    const extra = await page.locator('aside').evaluate((el) => el.scrollHeight - el.clientHeight);
+    expect(extra, 'the sidebar scrolls').toBeLessThanOrEqual(0);
+  }
+  // Settings is the gear by the logo.
+  await page.locator('aside').getByRole('link', { name: 'Settings', exact: true }).click();
+  await expect(page.getByRole('heading', { level: 1, name: 'Settings' })).toBeVisible();
+  // The phone's More sheet lists the same sections with the same lines, each 44px tall or more.
+  await page.setViewportSize({ width: 360, height: 740 });
+  await page.getByRole('button', { name: 'More' }).click();
+  const sheet = page.getByRole('dialog', { name: 'Menu' });
+  await expect(sheet.getByRole('link', { name: 'Game Maker', exact: true })).toHaveAccessibleDescription('Invent a game with code');
+  await expect(sheet.getByRole('link', { name: 'Settings', exact: true })).toHaveAccessibleDescription('Sound, reading help and more');
+  for (const link of await sheet.getByRole('link').all()) expect((await link.boundingBox())?.height ?? 0).toBeGreaterThanOrEqual(44);
+  expect(errors).toEqual([]);
+});

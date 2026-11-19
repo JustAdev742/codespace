@@ -635,3 +635,27 @@ lobby replays it at any time. The host can turn it off for a game, and an operat
 
 No database migration: both preferences live in the existing `preferences` JSON. The playable
 demo starts its game at once, with no walkthrough.
+
+**D59. Every section in the navigation says what you do there (19 November 2026).** The owner
+asked for the sidebar's buttons to be easier to understand: a new student or teacher could not
+tell Make from Game Maker, Question sets and Game modes, Collection from Locker and My designs, or
+Host from Join a game. Each section now has a short line under its name in words a nine-year-old
+knows ("Game Maker: Invent a game with code", "Locker: Dress up your buddy"), and the sections sit
+under plain headings: Play, Make things, Glims and rewards, With others. The same names and lines
+are in the phone's More sheet; the bottom bar keeps its short names (Home, Join, Host, Glims, More).
+
+- *The line is the link's description, not its name.* A screen reader says the name, then the
+  line; tests, voice control and links in docs keep finding a section by its name alone.
+- *Two names changed, to match the page they open:* Host is "Host a game" and Studio is
+  "Creator Studio". The rest keep their names, which are also their pages' headings.
+- *Nothing merged.* Make is the front door to everything you can make; Question sets is the
+  library (built-in and your own); Game Maker is writing your own mode; Game modes is the
+  catalogue. Collection, Locker and My designs are three different jobs. Each now says which.
+- *Settings is the gear beside the logo* (named "Settings" for screen readers and in its
+  tooltip; in words in the account menu and the More sheet), so a student's whole sidebar fits a
+  1366x768 laptop with nothing to scroll. A teacher's scrolls about 40px, staff's about 155px, and a
+  school's look (its logo under Ludora's) about 90px for a student.
+- *Sections for someone else are hidden.* The first group was not filtered, so students and
+  signed-out visitors saw Lessons (teachers only) and visitors saw Make; they no longer do.
+
+A section added later is one line in its list with a `hint`.

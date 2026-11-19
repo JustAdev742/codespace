@@ -32,7 +32,7 @@ browser and nothing else: no app to install, no accounts, no email addresses.
 
 ## In the lesson (about 40 minutes)
 
-**The teacher** chooses **Host**, a question set and a game, then **Start**. Put the big screen on
+**The teacher** chooses **Host a game** (**Host** on a phone), a question set and a game, then **Start**. Put the big screen on
 the projector. Under **Room**:
 
 - **Generated names only** gives everyone a random friendly name: good for younger classes.
