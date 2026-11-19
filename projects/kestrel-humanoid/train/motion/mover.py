@@ -117,6 +117,7 @@ class Mover:
         self.reach, self.reach_f = {}, {}
         self.crouch = self.lean = self.look = 0.0
         self.f_crouch = self.f_lean = self.f_look = 0.0
+        self.pending_cmd = None
 
     def set_intent(self, action="stand", vx=0.0, vy=0.0, wz=0.0, style=None, arms=None, reach=None, crouch=0.0,
                    lean=0.0, look=0.0):
@@ -138,7 +139,12 @@ class Mover:
         vx, vy, wz = limit_command(vx, vy, wz)
         self.intent = (action, vx, vy, wz, style)
         walking = action == "walk" and (abs(vx) + abs(vy) + abs(wz)) > 1e-3
-        self.walker.set_command(vx, vy, wz) if walking else self.walker.set_command(0, 0, 0)
+        # walking starts once the body is upright again (from a crouch, lean or turned torso): see step()
+        self.pending_cmd = (vx, vy, wz) if walking else None
+        self.walker.set_command(0, 0, 0)
+        if walking and self.posed() < 0.03:
+            self.walker.set_command(vx, vy, wz)
+            self.pending_cmd = None
         if walking:                         # human walking clips for the arms and style, at a walking pace
             self.matcher.set_intent(self.walk_family(vx, vy, wz), max(abs(vx), 0.6) * (1 if vx >= 0 else -1),
                                     vy * 3, wz, style)
@@ -146,6 +152,10 @@ class Mover:
             self.matcher.set_intent("walk", 0.0, 0.0, 0.0, style)
         else:
             self.matcher.set_intent(action, 0.0, 0.0, 0.0, style)
+
+    def posed(self):
+        """How far the body is from upright: crouch (m) and lean / look (rad, scaled), whichever is largest."""
+        return max(self.f_crouch, 0.25 * abs(self.f_lean), 0.25 * abs(self.f_look))
 
     @staticmethod
     def walk_family(vx, vy, wz):
@@ -208,11 +218,17 @@ class Mover:
             b = self.arms_blend
             q_ref[self.arm] = (1 - b) * q_ref[self.arm] + b * q_a[self.arm]
             qd_ref[self.arm] = (1 - b) * qd_ref[self.arm] + b * qd_a[self.arm]
-        self.f_lean += (self.lean - self.f_lean) * DT / 0.5
-        self.f_look += (self.look - self.f_look) * DT / 0.5
+        # posture layers only with both feet planted: leaning, looking or crouching while stepping twisted or dropped
+        # the body over a single foot (soak tests); walking waits until they have eased back
+        planted = self.walker.standing and self.pending_cmd is None
+        self.f_lean += ((self.lean if planted else 0.0) - self.f_lean) * DT / 0.5
+        self.f_look += ((self.look if planted else 0.0) - self.f_look) * DT / 0.5
+        if self.pending_cmd is not None and self.posed() < 0.03:
+            self.walker.set_command(*self.pending_cmd)
+            self.pending_cmd = None
         q_ref[self.waist_pitch] += self.f_lean
         q_ref[self.waist_yaw] += self.f_look
-        self.f_crouch += ((self.crouch if self.walker.standing else 0.0) - self.f_crouch) * DT / 0.6
+        self.f_crouch += ((self.crouch if planted else 0.0) - self.f_crouch) * DT / 0.6
         hands = {}
         if self.reach:
             yaw = self.plan["pelvis_yaw"]
