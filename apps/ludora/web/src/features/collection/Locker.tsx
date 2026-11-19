@@ -1,4 +1,5 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useSyncExternalStore } from 'react';
+import { subscribeViewerUniform, viewerUniform } from '../../lib/school.ts';
 import { LockerUniform } from '../school/LockerUniform.tsx';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
@@ -216,6 +217,7 @@ export default function Locker() {
   const me = useMe();
   const qc = useQueryClient();
   const [slot, setSlot] = useState('buddy');
+  const uniform = useSyncExternalStore(subscribeViewerUniform, viewerUniform, viewerUniform);
   const locker = useQuery({ queryKey: ['locker'], queryFn: () => api.get<{ items: LockerItem[]; equipped: Record<string, string> }>('/api/locker'), enabled: Boolean(me.data?.user) });
   const refresh = () => Promise.all([qc.invalidateQueries({ queryKey: ['locker'] }), qc.invalidateQueries({ queryKey: ['overview'] }), qc.invalidateQueries({ queryKey: ['collection'] }), qc.invalidateQueries({ queryKey: extrasKey })]);
   const extras = useExtras();
@@ -303,7 +305,8 @@ export default function Locker() {
             <ProfileCard
               name={me.data!.user!.displayName}
               level={me.data!.user!.level.level}
-              avatar={buddy ? { art: buddy.art as GlimArt, accessories, rarity: buddy.rarity } : null}
+              // On a school's copy the buddy wears the player's own uniform here, as it does in games (from Settings).
+              avatar={buddy ? { art: buddy.art as GlimArt, accessories, rarity: buddy.rarity, ...(uniform ? { uniform } : {}) } : null}
               equipment={{ frame: eq('frame')?.art, banner: eq('banner')?.art, title: eq('title')?.art, theme: eq('theme')?.art }}
               earnedTitle={extras.data?.earnedTitle?.text}
             />

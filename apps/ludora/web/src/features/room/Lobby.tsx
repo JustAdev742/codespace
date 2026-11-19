@@ -136,7 +136,7 @@ function Seat({ p, actions, delay, hop, cheering = false }: { p: RoomPlayerView;
     <li className={`group relative flex flex-col items-center gap-1 px-1 pt-1 ${CARD}`} style={motionOK() ? { animation: `stage-arrive 220ms var(--ease-out) ${delay}ms both` } : undefined}>
       <span className="relative">
         {/* The spot of light each Glim stands in. */}
-        <span className="absolute inset-x-[8%] bottom-[2%] h-[16%] rounded-[50%] bg-[radial-gradient(closest-side,rgb(120_160_255/0.38),transparent)]" aria-hidden />
+        <span className="absolute inset-x-[8%] bottom-[2%] h-[16%] rounded-[50%] bg-[radial-gradient(closest-side,var(--stage-spot,rgb(120_160_255/0.38)),transparent)]" aria-hidden />
         {/* Lobby play: the Glim hops when its player taps it on their own device. Still under reduced motion. */}
         <span key={hop ?? 0} className="relative block" style={hop && motionOK() ? { animation: 'seat-hop 520ms var(--ease-out)' } : undefined}>
           {/* A player sending a reaction from their phone throws their arms up here for a moment. */}
@@ -556,7 +556,7 @@ export function HostLobby({ room, handle }: { room: RoomView; handle: RoomHandle
         ) : (
           // The crowd stands on a lit stage floor that runs the width of the screen.
           <div className="relative flex flex-1 flex-col justify-end pb-[clamp(0.5rem,2vh,1.5rem)]">
-            <div className="pointer-events-none absolute inset-x-[-2rem] bottom-0 h-[min(70%,14rem)] bg-[radial-gradient(60%_100%_at_50%_100%,rgb(58_107_255/0.22),transparent_75%)]" aria-hidden />
+            <div className="pointer-events-none absolute inset-x-[-2rem] bottom-0 h-[min(70%,14rem)] bg-[radial-gradient(60%_100%_at_50%_100%,var(--stage-floor,rgb(58_107_255/0.22)),transparent_75%)]" aria-hidden />
             <div className="relative">
               <Crowd players={room.players} actions={actions} hops={hops} cheers={cheers} />
             </div>
@@ -621,7 +621,7 @@ export function PlayerLobby({ room, handle }: { room: RoomView; handle: RoomHand
       {/* The player's card: their Glim under the stage light, their name and their team. */}
       {room.room.pinned ? <PinnedMessage text={room.room.pinned} big={false} /> : null}
       <LessonLobbyLine room={room} big={false} />
-      <div className="stage-card flex w-full flex-col items-center gap-2 bg-white/[0.07] bg-[radial-gradient(90%_70%_at_50%_0%,rgb(58_107_255/0.35)_0%,transparent_70%)] px-5 pt-5 pb-4">
+      <div className="stage-card flex w-full flex-col items-center gap-2 bg-white/[0.07] bg-[radial-gradient(90%_70%_at_50%_0%,var(--stage-glow,rgb(58_107_255/0.35))_0%,transparent_70%)] px-5 pt-5 pb-4">
         {reactions ? (
           // Lobby play: tap your Glim and it hops on the big screen too.
           <button type="button" onClick={() => void hop()} disabled={hopCool} className="rounded-full disabled:cursor-default" aria-label="Make your Glim hop on the big screen" title="Tap to make your Glim hop on the big screen">

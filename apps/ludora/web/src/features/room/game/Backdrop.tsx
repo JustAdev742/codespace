@@ -3,6 +3,7 @@ import { Check, Mountain } from 'lucide-react';
 import { Button } from '../../../ui/Button.tsx';
 import { Dialog } from '../../../ui/primitives.tsx';
 import { usePrefs } from '../../../lib/usePrefs.ts';
+import { schoolLook } from '../../../lib/school.ts';
 
 /*
  * Big-screen backdrops: scenes the host picks for the lobby and the moments
@@ -44,6 +45,30 @@ function seeded(seed: number) {
 const W = 1600;
 const H = 900;
 
+/*
+ * On The Hills Grammar School's copy the scenes are lit like its stage: the navies become the blazer's
+ * deep greens at the same lightness, and the cold blue light warms to cream (D60). Lamps, the aurora's
+ * teal and the gold stay. Ludora's own look draws every colour as written.
+ */
+const HILLS_LIGHT: Record<string, string> = {
+  '#0c1439': '#113728',
+  '#080d28': '#0c271c',
+  '#18245c': '#1b4c39',
+  '#121c4f': '#174532',
+  '#111b4c': '#164330',
+  '#101a48': '#15402e',
+  '#070c25': '#0a2419',
+  '#070c24': '#0a2319',
+  '#070b22': '#0a2118',
+  '#9db7ff': '#fae1a2',
+  '#a9bcff': '#fbe5ad',
+  '#b9c9ff': '#fbeabd',
+  '#c9d8ff': '#fcefcc',
+  '#3a6bff': '#00a766',
+  '#3d9bff': '#5fdcaa',
+};
+const c = (hex: string): string => (schoolLook() === 'hills-grammar' ? (HILLS_LIGHT[hex] ?? hex) : hex);
+
 /** One moving layer: the animation lives in stage.css, keyed by name. */
 const move = (name: string, seconds: number, origin = 'center', delay = 0, box: 'fill-box' | 'view-box' = 'fill-box'): CSSProperties => ({
   animation: `${name} ${seconds}s ease-in-out ${delay}s infinite alternate`,
@@ -56,12 +81,12 @@ function Floodlights() {
     <>
       <defs>
         <linearGradient id="bd-beam" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stopColor="#9db7ff" stopOpacity="0.22" />
-          <stop offset="1" stopColor="#9db7ff" stopOpacity="0" />
+          <stop offset="0" stopColor={c('#9db7ff')} stopOpacity="0.22" />
+          <stop offset="1" stopColor={c('#9db7ff')} stopOpacity="0" />
         </linearGradient>
         <radialGradient id="bd-floor" cx="0.5" cy="1" r="0.6">
-          <stop offset="0" stopColor="#3a6bff" stopOpacity="0.2" />
-          <stop offset="1" stopColor="#3a6bff" stopOpacity="0" />
+          <stop offset="0" stopColor={c('#3a6bff')} stopOpacity="0.2" />
+          <stop offset="1" stopColor={c('#3a6bff')} stopOpacity="0" />
         </radialGradient>
       </defs>
       <rect x="0" y="560" width={W} height="340" fill="url(#bd-floor)" />
@@ -81,23 +106,23 @@ function Hills() {
     <>
       <defs>
         <radialGradient id="bd-mist" cx="0.5" cy="0.5" r="0.5">
-          <stop offset="0" stopColor="#b9c9ff" stopOpacity="0.1" />
-          <stop offset="1" stopColor="#b9c9ff" stopOpacity="0" />
+          <stop offset="0" stopColor={c('#b9c9ff')} stopOpacity="0.1" />
+          <stop offset="1" stopColor={c('#b9c9ff')} stopOpacity="0" />
         </radialGradient>
         <radialGradient id="bd-moonglow" cx="0.5" cy="0.5" r="0.5">
-          <stop offset="0" stopColor="#c9d8ff" stopOpacity="0.2" />
-          <stop offset="1" stopColor="#c9d8ff" stopOpacity="0" />
+          <stop offset="0" stopColor={c('#c9d8ff')} stopOpacity="0.2" />
+          <stop offset="1" stopColor={c('#c9d8ff')} stopOpacity="0" />
         </radialGradient>
       </defs>
       <circle cx="1470" cy="150" r="150" fill="url(#bd-moonglow)" />
-      <circle cx="1470" cy="150" r="44" fill="#c9d8ff" opacity="0.24" />
-      <path d="M0 610 C 220 520 380 560 560 600 S 960 500 1180 560 S 1480 610 1600 560 V 900 H 0 Z" fill="#111b4c" />
+      <circle cx="1470" cy="150" r="44" fill={c('#c9d8ff')} opacity="0.24" />
+      <path d="M0 610 C 220 520 380 560 560 600 S 960 500 1180 560 S 1480 610 1600 560 V 900 H 0 Z" fill={c('#111b4c')} />
       <g style={move('bd-drift', 38)}>
         <ellipse cx="350" cy="640" rx="560" ry="60" fill="url(#bd-mist)" />
         <ellipse cx="1350" cy="690" rx="480" ry="50" fill="url(#bd-mist)" />
       </g>
-      <path d="M0 700 C 260 640 420 690 640 700 S 1060 630 1300 690 S 1520 720 1600 690 V 900 H 0 Z" fill="#0c1439" />
-      <path d="M0 800 C 300 760 520 790 800 800 S 1260 760 1600 790 V 900 H 0 Z" fill="#080d28" />
+      <path d="M0 700 C 260 640 420 690 640 700 S 1060 630 1300 690 S 1520 720 1600 690 V 900 H 0 Z" fill={c('#0c1439')} />
+      <path d="M0 800 C 300 760 520 790 800 800 S 1260 760 1600 790 V 900 H 0 Z" fill={c('#080d28')} />
     </>
   );
 }
@@ -109,21 +134,21 @@ function Harbour() {
     <>
       <defs>
         <linearGradient id="bd-sweep-light" x1="0" y1="0" x2="1" y2="0">
-          <stop offset="0" stopColor="#ffd77a" stopOpacity="0.28" />
-          <stop offset="1" stopColor="#ffd77a" stopOpacity="0" />
+          <stop offset="0" stopColor={c('#ffd77a')} stopOpacity="0.28" />
+          <stop offset="1" stopColor={c('#ffd77a')} stopOpacity="0" />
         </linearGradient>
       </defs>
       {/* A headland with a lighthouse whose beam turns slowly over the water. */}
-      <path d="M760 690 C 900 620 1040 600 1160 620 C 1260 636 1380 650 1600 640 V 690 Z" fill="#101a48" />
-      <rect x="1150" y="520" width="26" height="104" fill="#18245c" />
-      <rect x="1144" y="508" width="38" height="16" rx="3" fill="#ffd77a" opacity="0.75" />
+      <path d="M760 690 C 900 620 1040 600 1160 620 C 1260 636 1380 650 1600 640 V 690 Z" fill={c('#101a48')} />
+      <rect x="1150" y="520" width="26" height="104" fill={c('#18245c')} />
+      <rect x="1144" y="508" width="38" height="16" rx="3" fill={c('#ffd77a')} opacity="0.75" />
       <g style={move('bd-beam-turn', 9, '1163px 516px', 0, 'view-box')}>
         <polygon points="1163,516 160,420 160,612" fill="url(#bd-sweep-light)" />
       </g>
-      <rect x="0" y="690" width={W} height="210" fill="#070c25" />
+      <rect x="0" y="690" width={W} height="210" fill={c('#070c25')} />
       <g style={move('bd-shimmer', 6)}>
         {streaks.map((s, i) => (
-          <rect key={i} x={s.x} y={s.y} width={s.w} height="3" rx="1.5" fill="#ffd77a" opacity={0.08 + (i % 4) * 0.04} />
+          <rect key={i} x={s.x} y={s.y} width={s.w} height="3" rx="1.5" fill={c('#ffd77a')} opacity={0.08 + (i % 4) * 0.04} />
         ))}
       </g>
     </>
@@ -135,14 +160,14 @@ function Aurora() {
     <>
       <defs>
         <linearGradient id="bd-ribbon" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stopColor="#22cfc3" stopOpacity="0" />
-          <stop offset="0.55" stopColor="#22cfc3" stopOpacity="0.24" />
-          <stop offset="1" stopColor="#2bd47e" stopOpacity="0" />
+          <stop offset="0" stopColor={c('#22cfc3')} stopOpacity="0" />
+          <stop offset="0.55" stopColor={c('#22cfc3')} stopOpacity="0.24" />
+          <stop offset="1" stopColor={c('#2bd47e')} stopOpacity="0" />
         </linearGradient>
         <linearGradient id="bd-ribbon-2" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stopColor="#3d9bff" stopOpacity="0" />
-          <stop offset="0.6" stopColor="#3d9bff" stopOpacity="0.2" />
-          <stop offset="1" stopColor="#22cfc3" stopOpacity="0" />
+          <stop offset="0" stopColor={c('#3d9bff')} stopOpacity="0" />
+          <stop offset="0.6" stopColor={c('#3d9bff')} stopOpacity="0.2" />
+          <stop offset="1" stopColor={c('#22cfc3')} stopOpacity="0" />
         </linearGradient>
       </defs>
       <g style={move('bd-ribbon-sway', 17)}>
@@ -151,8 +176,8 @@ function Aurora() {
       <g style={move('bd-ribbon-sway', 23, 'center', -8)}>
         <path d="M-100 260 C 260 200 600 360 940 280 S 1420 200 1700 300 L 1700 520 C 1380 450 1100 560 820 500 S 240 430 -100 500 Z" fill="url(#bd-ribbon-2)" />
       </g>
-      <path d="M0 760 L 180 700 L 300 740 L 470 660 L 640 735 L 820 690 L 1010 750 L 1200 680 L 1390 740 L 1600 700 V 900 H 0 Z" fill="#0c1439" />
-      <path d="M0 830 C 400 800 900 820 1600 800 V 900 H 0 Z" fill="#080d28" />
+      <path d="M0 760 L 180 700 L 300 740 L 470 660 L 640 735 L 820 690 L 1010 750 L 1200 680 L 1390 740 L 1600 700 V 900 H 0 Z" fill={c('#0c1439')} />
+      <path d="M0 830 C 400 800 900 820 1600 800 V 900 H 0 Z" fill={c('#080d28')} />
     </>
   );
 }
@@ -173,15 +198,15 @@ function Rooftops() {
   }
   return (
     <>
-      <g fill="#0c1439">
+      <g fill={c('#0c1439')}>
         {blocks.map((b, i) => (
           <rect key={i} x={b.x} y={H - b.h} width={b.w} height={b.h} />
         ))}
       </g>
       {windows.map((w, i) => (
-        <rect key={i} x={w.x} y={w.y} width="9" height="12" rx="1.5" fill="#ffc233" opacity={0.34} style={w.blink ? { animation: `bd-window ${9 + (i % 5) * 3}s steps(1) ${-(i % 7)}s infinite` } : undefined} />
+        <rect key={i} x={w.x} y={w.y} width="9" height="12" rx="1.5" fill={c('#ffc233')} opacity={0.34} style={w.blink ? { animation: `bd-window ${9 + (i % 5) * 3}s steps(1) ${-(i % 7)}s infinite` } : undefined} />
       ))}
-      <rect x="0" y={H - 30} width={W} height="30" fill="#070b22" />
+      <rect x="0" y={H - 30} width={W} height="30" fill={c('#070b22')} />
     </>
   );
 }
@@ -205,17 +230,17 @@ function Forest() {
     <>
       <defs>
         <radialGradient id="bd-fog" cx="0.5" cy="0.5" r="0.5">
-          <stop offset="0" stopColor="#a9bcff" stopOpacity="0.12" />
-          <stop offset="1" stopColor="#a9bcff" stopOpacity="0" />
+          <stop offset="0" stopColor={c('#a9bcff')} stopOpacity="0.12" />
+          <stop offset="1" stopColor={c('#a9bcff')} stopOpacity="0" />
         </radialGradient>
       </defs>
-      {row(3, 690, 190, '#121c4f')}
+      {row(3, 690, 190, c('#121c4f'))}
       <g style={move('bd-drift', 42)}>
         <ellipse cx="300" cy="690" rx="600" ry="60" fill="url(#bd-fog)" />
         <ellipse cx="1300" cy="645" rx="500" ry="55" fill="url(#bd-fog)" />
       </g>
-      {row(11, 790, 160, '#0c1439')}
-      {row(19, 880, 130, '#070c24')}
+      {row(11, 790, 160, c('#0c1439'))}
+      {row(19, 880, 130, c('#070c24'))}
     </>
   );
 }

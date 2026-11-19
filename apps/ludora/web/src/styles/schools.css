@@ -28,8 +28,13 @@
  * (right, done, progress), never for surfaces. What Ludora calls its gold (`--lantern`: primary
  * buttons, the current section, highlights) is action green on cream and cream on green, so the
  * words on it change colour with it (`--on-lantern`).
+ *
+ * Named twice: app.css sets Ludora's navy for `:root[data-theme='dark']` (a player who picked Dark
+ * in Settings), which is as specific as `:root[data-school]` and comes later, so without the second
+ * name that player got navy pages under the green chrome.
  */
-:root[data-school='hills-grammar'] {
+:root[data-school='hills-grammar'],
+:root[data-school='hills-grammar'][data-theme='dark'] {
   --face-display: 'Lato', ui-sans-serif, system-ui, sans-serif;
   --face-sans: 'Lato', ui-sans-serif, system-ui, sans-serif;
 
@@ -59,6 +64,11 @@
     radial-gradient(45% 50% at 0% 100%, rgb(0 167 102 / 0.14) 0%, transparent 70%),
     radial-gradient(45% 50% at 100% 100%, rgb(238 51 80 / 0.1) 0%, transparent 70%),
     linear-gradient(180deg, var(--stage-1) 0%, var(--stage-2) 55%, var(--stage-4) 100%);
+  /* The lobby's lit floor, the spot under each player and the glow on a phone's "You are in" card:
+     Ludora lights them blue; here they are the warm cream of the stage's light (Lobby.tsx). */
+  --stage-floor: rgb(246 236 210 / 0.12);
+  --stage-spot: rgb(246 236 210 / 0.26);
+  --stage-glow: rgb(246 236 210 / 0.16);
 
   /* Dark is the default, as in Ludora's own look: green-black neutrals, cream for highlights. */
   --bg: #101815;
@@ -244,4 +254,33 @@
 /* Lato is wider than the condensed display face: big headings sit a touch tighter. */
 [data-school='hills-grammar'] :is(h1, h2, .font-display) {
   letter-spacing: -0.01em;
+}
+
+/*
+ * A disabled solid button greys out (`.sticker:disabled` in app.css). The rule above that gives words
+ * on the highlight their ink is more specific, so a disabled Join game read bottle green on grey,
+ * which looked broken. Disabled keeps the quiet grey words in this look too.
+ */
+:root[data-school='hills-grammar'] .sticker:disabled,
+:root[data-school='hills-grammar'] .sticker:disabled .text-on-accent {
+  color: var(--text-3);
+}
+
+/*
+ * White text fields on the stage (the join code, a guest's name): the focus colour there is white, so
+ * a ring round a white field vanished into it. On the stage the ring is cream with a gap of the
+ * blazer's green between it and the field, so it shows against both.
+ */
+:root[data-school='hills-grammar'] :is(.stage, .on-stage) .input-well:focus,
+:root[data-school='hills-grammar'] :is(.stage, .on-stage) input.bg-white:focus-visible {
+  box-shadow:
+    0 0 0 3px #083a2b,
+    0 0 0 6px #f6ecd2 !important;
+}
+
+/* The question timer's disc: Lato's figures are wider than Ludora's condensed face, so three of them
+   (a two-minute question) are set a size down to stay inside it. */
+:root[data-school='hills-grammar'] [role='timer'] [data-digits='3'] {
+  font-size: 0.74em;
+  letter-spacing: -0.02em;
 }

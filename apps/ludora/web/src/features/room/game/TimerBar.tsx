@@ -52,7 +52,8 @@ export function TimerBar({ deadline, start, gameNow, paused = false, tone = 'amb
         className={`${shown === 'bar' ? 'sr-only' : 'grid'} shrink-0 place-items-center rounded-full font-display font-extrabold text-on-accent tabular ${fill} ${pressure ? 'shadow-[0_0_0_4px_var(--stage-3),0_0_0_7px_var(--ember)]' : ''} ${big ? 'size-[clamp(4rem,7vh,5.5rem)] text-[clamp(2.25rem,4.2vh,3.4rem)]' : 'size-12 text-[1.6rem]'}`}
         style={beat ? { animation: 'timer-beat 320ms var(--ease-out)' } : undefined}
       >
-        {secs}
+        {/* How many figures, so a school's wider typeface can set three a size down (schools.css). */}
+        <span data-digits={String(secs).length}>{secs}</span>
       </span>
     </div>
   );

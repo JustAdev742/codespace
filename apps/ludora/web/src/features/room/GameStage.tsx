@@ -40,9 +40,9 @@ export const HUD_BAR = 'hud sticky top-0 z-30 border-x-0 border-t-0';
 export const HUD_FOOT = 'hud border-x-0 border-b-0';
 
 /** "LIVE" on a coral plate, in the header while a game runs. The narrowest phones leave it out, so the game code keeps its room. */
-export function LiveTag() {
+export function LiveTag({ className = '' }: { className?: string }) {
   return (
-    <span className="plate shrink-0 bg-ember px-1.5 py-0 text-[0.85em] leading-[1.35] text-on-accent max-[379px]:hidden">
+    <span className={`plate shrink-0 bg-ember px-1.5 py-0 text-[0.85em] leading-[1.35] text-on-accent max-[379px]:hidden ${className}`}>
       <span>LIVE</span>
     </span>
   );

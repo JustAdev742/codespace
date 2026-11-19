@@ -3,7 +3,8 @@ import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'reac
 import { DoorOpen, Flag, Hourglass, WifiOff } from 'lucide-react';
 import { useFlag, useMe } from '../../lib/session.ts';
 import { useRoom } from '../../lib/useRoom.ts';
-import { LogoMark, SchoolCrest } from '../../art/icons.tsx';
+import { LogoMark, SchoolCrest, SchoolLogo } from '../../art/icons.tsx';
+import { schoolLook } from '../../lib/school.ts';
 import { Button, IconButton, buttonClass } from '../../ui/Button.tsx';
 import { Dialog, Spinner } from '../../ui/primitives.tsx';
 import { Stage } from '../../ui/Stage.tsx';
@@ -201,6 +202,7 @@ export default function RoomPage() {
   if (isHost && remote) return <RemoteControls room={room} handle={handle} />;
   const status = room.room.status;
   const live = status === 'running' || status === 'paused';
+  const school = schoolLook();
   const leave = async () => {
     if (!isHost) await handle.leave();
     navigate('/');
@@ -228,13 +230,17 @@ export default function RoomPage() {
       {/* The game's HUD bar: what is on and where to join, then the controls. */}
       <header className={HUD_BAR}>
         <div className="safe-x flex h-14 [--safe-pad:0.75rem] sm:[--safe-pad:1.25rem] min-[1600px]:[--safe-pad:2rem] items-center gap-2.5 px-3 sm:h-16 sm:gap-3 sm:px-5 min-[1600px]:h-20 min-[1600px]:px-8">
-          {/* On a phone, a host mid-game needs the header's width for the game controls. */}
-          <LogoMark size={30} className={`shrink-0 min-[1600px]:size-11 ${isHost && live ? 'max-sm:hidden' : ''}`} />
-          <SchoolCrest size={24} className="sm:h-[30px] sm:w-auto min-[1600px]:h-11" plateClassName={isHost && live ? 'max-sm:hidden' : ''} />
+          {/* On a phone, a host mid-game needs the header's width for the game controls. On a school's copy the
+              crest alone stands for the game on a phone, so the room's name is not cut to a letter (D60). */}
+          <LogoMark size={30} className={`shrink-0 min-[1600px]:size-11 ${isHost && live ? 'max-sm:hidden' : school ? 'max-sm:hidden' : ''}`} />
+          {/* The board (and a wide laptop in the lobby) shows the school's whole logo; smaller screens its crest. */}
+          <SchoolCrest size={24} className="sm:h-[30px] sm:w-auto min-[1600px]:h-11" plateClassName={`${isHost && live ? 'max-sm:hidden' : ''} ${live ? 'min-[1600px]:hidden' : 'xl:hidden'}`} />
+          <SchoolLogo height={live ? 46 : 40} decorative className={`hidden ${live ? 'min-[1600px]:inline-flex' : 'xl:inline-flex'}`} imgClassName={live ? '' : 'min-[1600px]:h-[46px] min-[1600px]:w-auto'} />
           <div className={`min-w-0 ${isHost && live ? 'max-sm:sr-only' : ''}`}>
             <Title className="truncate font-display text-lg leading-tight font-bold text-text sm:text-xl min-[1600px]:text-[1.75rem]">{room.lesson?.screen ? room.lesson.title : room.room.title}</Title>
             <p className="flex min-w-0 items-center gap-2 text-xs font-semibold text-text-2 sm:text-sm min-[1600px]:text-base">
-              {status === 'running' ? <LiveTag /> : null}
+              {/* On a school's phone the calm leaf already says what is on, so the code keeps its room. */}
+              {status === 'running' ? <LiveTag className={school && room.room.options.calmPlay ? 'max-sm:hidden' : ''} /> : null}
               {room.room.options.calmPlay ? <CalmPlayTag solo={room.room.solo} isHost={isHost} /> : null}
               <span className="truncate">
                 {room.room.solo ? (

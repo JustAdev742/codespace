@@ -74,10 +74,11 @@ export default function Join() {
       <div className="mx-auto flex w-full max-w-md flex-1 flex-col px-4 pt-4 pb-8 sm:px-5">
         <div className="flex min-h-11 items-center justify-between gap-3">
           <Link to="/" aria-label="Ludora home" className="rounded-[var(--radius-s)]">
-            <Logo size={24} />
+            {/* A school's logo stands beside Ludora's here: a size smaller, so "Different code" stays on one line on a phone. */}
+            <Logo size={schoolLook() ? 20 : 24} />
           </Link>
           {code ? (
-            <Link to="/play" className="flex min-h-11 items-center gap-1.5 rounded-[var(--radius-s)] px-2 text-sm font-bold">
+            <Link to="/play" className="flex min-h-11 shrink-0 items-center gap-1.5 rounded-[var(--radius-s)] px-2 text-sm font-bold whitespace-nowrap">
               <ArrowLeft className="size-4" aria-hidden /> Different code
             </Link>
           ) : null}
