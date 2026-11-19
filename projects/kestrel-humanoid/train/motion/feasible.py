@@ -60,7 +60,8 @@ def make_feasible(r, fk, fps):
         R = torch.tensor(np.stack([quat_to_mat(x) for x in rq]), dtype=fk.dtype, device=fk.device)
         P = fk(torch.tensor(q, dtype=fk.dtype, device=fk.device), torch.tensor(rp, dtype=fk.dtype, device=fk.device),
                R).cpu().numpy()
-    feet = P[:, [K["l_ankle"], K["r_ankle"], K["l_toe"], K["r_toe"]], 2].min(1) - 0.035   # soles below the sites
+    # soles: 3.5 cm below the ankle sites, 0.5 cm below the toe sites (which sit 3 cm below the ankle)
+    feet = np.minimum(P[:, [K["l_ankle"], K["r_ankle"]], 2].min(1) - 0.035, P[:, [K["l_toe"], K["r_toe"]], 2].min(1) - 0.005)
     w = max(1, int(fps * 0.5))
     lowest = np.array([feet[max(0, i - w):i + w + 1].min() for i in range(len(feet))])
     rp[:, 2] -= _smooth(lowest[:, None], 9)[:, 0]

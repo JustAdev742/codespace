@@ -91,6 +91,8 @@ def build_xml(visual=False, floor=True, actuator="position", timestep=0.005):
                           friction="1.0 0.02 0.001", contype="1", conaffinity="1")
     for k, (b, off) in KEYPOINT_SITES.items():
         ET.SubElement(by[b], "site", name=f"kp_{k}", pos=" ".join(f"{v:g}" for v in off), size="0.01", rgba="1 0.5 0 0.5")
+    cont = ET.SubElement(root, "contact")                    # the two feet do not collide with each other
+    ET.SubElement(cont, "exclude", body1="left_ankle_roll_link", body2="right_ankle_roll_link")
     if floor:
         ET.SubElement(wb, "geom", name="floor", type="plane", size="0 0 1", friction="1.0 0.02 0.001",
                       contype="1", conaffinity="1", rgba="0.5 0.5 0.5 1")

@@ -141,16 +141,24 @@ class WalkAnchor:
     of both feet in double support) and placed on the robot's actual stance foot, so errors never pile up across
     steps. A foot becomes support only once it really touches the floor; until then it is steered down onto it."""
 
-    def __init__(self, m, margin=0.02, h_contact=0.025, v_contact=0.35):
+    def __init__(self, m, margin=0.02, h_contact=0.025, v_contact=0.35, step_gain=1.0, step_max=0.15):
         self.ref = RefModel(m)
         self.m = m
         self.margin, self.hc, self.vc = margin, h_contact, v_contact
+        self.step_gain, self.step_max = step_gain, step_max
         self.stance = {"left": True, "right": True}
         self.foot_geoms = {sd: {m.geom(f"{sd}_foot_{i}").id for i in range(4)} for sd in SIDES}
+        self.floor = m.geom("floor").id if "floor" in [m.geom(i).name for i in range(m.ngeom)] else -1
+        self.omega = math.sqrt(9.81 / 0.7)              # capture-point time constant (centre of mass about 0.7 m up)
 
     def touching(self, d, side):
+        """A foot touches the floor (not the other foot, not anything else)."""
         g = self.foot_geoms[side]
-        return any(d.contact[i].geom1 in g or d.contact[i].geom2 in g for i in range(d.ncon))
+        for i in range(d.ncon):
+            c = d.contact[i]
+            if (c.geom1 in g and c.geom2 == self.floor) or (c.geom2 in g and c.geom1 == self.floor):
+                return True
+        return False
 
     def _frame(self, pos, quat):
         y = yaw_of(quat)
@@ -168,10 +176,11 @@ class WalkAnchor:
         if not any(ref_contact.values()):                 # a flight phase (running): keep the lower foot
             k = int(np.argmin([feet_ref[0][2], feet_ref[1][2]]))
             ref_contact[SIDES[k]] = True
-        # support: the reference's contact, but only on a foot that is really down; a planted foot stays planted
+        # support: the reference's contact, but only on a foot that is really down and flat; a planted foot stays
         for sd in SIDES:
             if ref_contact[sd]:
-                if not self.stance[sd] and self.touching(d, sd):
+                flat = d.xmat[wbc.feet[sd]][8] > math.cos(0.15)
+                if not self.stance[sd] and self.touching(d, sd) and flat:
                     self.stance[sd] = True
             else:
                 self.stance[sd] = False
@@ -202,20 +211,38 @@ class WalkAnchor:
         w = np.zeros(3)
         mujoco.mju_subQuat(w, qmul(dqz, r_next["root_quat"]), pelvis_q)
         w /= dt
+        # balance by stepping (capture point, as in SIMBICON): the swing foot lands where it catches the body. The
+        # error between the robot's capture point and the reference's moves the landing spot by the same amount.
+        c_act, cv_act = wbc.com(d), wbc.com_vel(d)[0]
+        cp_err = (c_act - com) + (cv_act - com_vel) / self.omega
+        shift = np.clip(self.step_gain * cp_err[:2], -self.step_max, self.step_max)
         swing = {}
         for k, sd in enumerate(SIDES):
             if not self.stance[sd]:
                 tgt = T(feet_ref[k])
+                tgt[:2] += shift
                 if ref_contact[sd]:
                     tgt[2] = min(tgt[2], ANKLE_UP - 0.01)      # landing: press gently onto the floor
-                swing[sd] = (tgt, Rz @ (feet_nx[k] - feet_ref[k]) / dt, qmul(dqz, fq_ref[k]))
-        # the centre of mass stays over the support (stance contact points, shrunk)
-        pts = np.array(sum([wbc.contact_points(d, sd) for sd in st], []))
-        yh = y_act
-        ch, sh = math.cos(yh), math.sin(yh)
-        Rh = np.array([[ch, sh], [-sh, ch]])
-        loc = (pts[:, :2] - p_act[:2]) @ Rh.T
-        c_loc = np.clip(Rh @ (com[:2] - p_act[:2]), loc.min(0) + self.margin, loc.max(0) - self.margin)
-        com[:2] = p_act[:2] + Rh.T @ c_loc
+                # the foot is kept level (the reference's heading only): it lands flat, ready to be planted
+                swing[sd] = (tgt, Rz @ (feet_nx[k] - feet_ref[k]) / dt, quat_yaw(yaw_of(qmul(dqz, fq_ref[k]))))
+        # standing still (both feet down, reference barely moving): keep the centre of mass inside the feet. While
+        # walking, follow the reference's centre of mass: walking balance is dynamic, the steps catch the body.
+        if len(st) == 2 and np.linalg.norm(com_vel[:2]) < 0.15:
+            pts = np.array(sum([wbc.contact_points(d, sd) for sd in st], []))
+            ch, sh = math.cos(y_act), math.sin(y_act)
+            Rh = np.array([[ch, sh], [-sh, ch]])
+            loc = (pts[:, :2] - p_act[:2]) @ Rh.T
+            c_loc = np.clip(Rh @ (com[:2] - p_act[:2]), loc.min(0) + self.margin, loc.max(0) - self.margin)
+            com[:2] = p_act[:2] + Rh.T @ c_loc
         return dict(q=r["q"], qd=r["qd"], qdd=r["qdd"], pelvis_quat=pelvis_q, pelvis_angvel=w, com=com,
                     com_vel=com_vel, swing=swing), dict(self.stance)
+
+
+def double_support_start(m, q, root_pos, root_quat, h=ANKLE_UP + 0.015):
+    """The first frame of a clip with both feet on the floor (clips often start mid-stride)."""
+    rm = RefModel(m)
+    for f in range(len(q)):
+        _, lf, rf = rm.pose(q[f], root_pos[f], root_quat[f])
+        if lf[2] < h and rf[2] < h:
+            return f
+    return 0

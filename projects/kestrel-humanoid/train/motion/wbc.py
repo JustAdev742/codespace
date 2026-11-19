@@ -43,8 +43,8 @@ def quat_err(q_des, q):
 
 
 class WBC:
-    def __init__(self, m, w_com=(100.0, 100.0, 20.0), w_pelvis=50.0, w_posture=1.0, w_swing=40.0,
-                 kp_com=40.0, kp_rot=150.0, kp_q=100.0, kp_swing=200.0):
+    def __init__(self, m, w_com=(100.0, 100.0, 20.0), w_pelvis=50.0, w_posture=1.0, w_swing=150.0,
+                 kp_com=40.0, kp_rot=150.0, kp_q=100.0, kp_swing=400.0):
         import mujoco
         self.mj = mujoco
         self.m = m
