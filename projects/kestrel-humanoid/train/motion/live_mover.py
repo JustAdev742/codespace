@@ -37,22 +37,27 @@ WALKS = {"walk", "walk-back", "walk-left", "walk-right", "walk-turn-left", "walk
 class Moves:
     """A queue of (action, vx, vy, turn, style, seconds); the physics loop pulls from it."""
 
-    def __init__(self, gestures, styles):
+    def __init__(self, gestures, styles, can_generate=False):
         self.q = queue.Queue()
         self.gestures, self.styles = gestures, styles
+        self.can_generate = can_generate
         self.style = None
         self.free = False
 
     def put(self, action="stand", vx=0.0, vy=0.0, turn=0.0, style=None, seconds=None, arms=None, reach=None,
-            crouch=0.0, lean=0.0, look=0.0, **_):
-        if action not in ("stand", "walk") and action not in self.gestures:
+            crouch=0.0, lean=0.0, look=0.0, text=None, **_):
+        if action == "generate":
+            if not (self.can_generate and text):
+                print("  (no generator loaded: train one with python -m motion.generator train, see README)")
+                return
+        elif action not in ("stand", "walk") and action not in self.gestures:
             print(f"  (no '{action}' in the motion library)")
             return
         if arms and arms not in self.gestures:
             arms = None
         self.q.put(dict(action=action, vx=float(vx or 0), vy=float(vy or 0), wz=float(turn or 0),
                         style=style or self.style, arms=arms, reach=reach, crouch=float(crouch or 0),
-                        lean=float(lean or 0), look=float(look or 0), seconds=seconds))
+                        lean=float(lean or 0), look=float(look or 0), text=text, seconds=seconds))
 
     def clear(self):
         while not self.q.empty():
@@ -107,8 +112,12 @@ class Moves:
             self.put("walk", speed)
         else:
             act = self.find(t)
-            if act:
+            if t.startswith("do ") and self.can_generate:          # "do <anything>": the generator makes it
+                self.put("generate", text=text.strip()[3:])
+            elif act:
                 self.put(act)
+            elif self.can_generate:                                 # not a library action: describe it to the generator
+                self.put("generate", text=text.strip())
             else:
                 print("  ? try: walk, turn left, stop, wave, bow, guide, free, style tired, list")
         return True
@@ -139,14 +148,17 @@ class Moves:
 
 
 # ------------------------------------------------------------------------------------------------ language models
-def move_tool(gestures, styles):
-    acts = ["stand", "walk"] + sorted(gestures - WALKS)
+def move_tool(gestures, styles, can_generate=False):
+    acts = ["stand", "walk"] + sorted(gestures - WALKS) + (["generate"] if can_generate else [])
     return {
         "name": "move",
         "description": ("Queue one move for the robot's body. Several calls make a sequence (they run in order). "
                         "walk: vx forward m/s (-0.15..0.35), vy sideways m/s (-0.1..0.1, left positive), turn rad/s "
                         "(-0.3..0.3, left positive; 0.3 for 5.2 s is about 90 degrees). Other actions are motions from human motion capture, done in place. "
-                        "seconds: how long (default: until the next move)."),
+                        "seconds: how long (default: until the next move)." +
+                        (" generate: any other movement, described in words in `text` (e.g. 'a person dances "
+                         "happily', 'stretch both arms above the head'); a generative model trained on hours of human "
+                         "motion makes it, and the balance controller keeps it physical." if can_generate else "")),
         "input_schema": {"type": "object", "properties": {
             "action": {"type": "string", "enum": acts},
             "vx": {"type": "number"}, "vy": {"type": "number"}, "turn": {"type": "number"},
@@ -161,6 +173,7 @@ def move_tool(gestures, styles):
             "crouch": {"type": "number", "description": "lower the body, m (0..0.25, standing only)"},
             "lean": {"type": "number", "description": "bend the torso forward, rad (-0.3..0.5)"},
             "look": {"type": "number", "description": "turn the torso to look, rad (+ left, -0.6..0.6)"},
+            "text": {"type": "string", "description": "for action generate: the movement, described in words"},
             "seconds": {"type": "number"}}, "required": ["action"]},
     }
 
@@ -189,7 +202,7 @@ class ClaudeMover:
         else:
             self.client = anthropic.Anthropic(api_key=key, default_headers=headers)
         self.moves, self.model, self.msgs = moves, model, []
-        self.tool = move_tool(moves.gestures, moves.styles)
+        self.tool = move_tool(moves.gestures, moves.styles, moves.can_generate)
 
     def turn(self, text):
         self.msgs.append({"role": "user", "content": text})
@@ -225,7 +238,7 @@ class LocalMover:
     """Any OpenAI-compatible chat server (Ollama, LM Studio)."""
 
     def __init__(self, moves, model, url="http://localhost:11434/v1"):
-        t = move_tool(moves.gestures, moves.styles)
+        t = move_tool(moves.gestures, moves.styles, moves.can_generate)
         self.tool = {"type": "function", "function": {"name": t["name"], "description": t["description"],
                                                       "parameters": t["input_schema"]}}
         self.moves, self.model, self.url, self.msgs = moves, model, url.rstrip("/"), []
@@ -272,17 +285,25 @@ def main():
     ap.add_argument("--local", default=None, help="model name on an OpenAI-compatible server, e.g. qwen3:8b")
     ap.add_argument("--local-url", default="http://localhost:11434/v1")
     ap.add_argument("--no-viewer", action="store_true", help="no 3D window (prints the state instead)")
+    ap.add_argument("--generator", default="runs/motion/generator/model.pt",
+                    help="trained text-to-motion model (generator.py); used when the file exists")
     a = ap.parse_args()
 
     print("loading the motion library ...", flush=True)
-    mv = Mover(a.library)
+    gen = None
+    if a.generator and Path(a.generator).exists():
+        from .generator import Generator
+        print("loading the text-to-motion generator ...", flush=True)
+        gen = Generator(a.generator)
+    mv = Mover(a.library, generator=gen)
     gestures = {x for x in set(mv.db.actions) if not COMBAT.search(x.replace("-", "_"))}
     styles = {s for s in set(mv.db.styles) if s}
-    moves = Moves(gestures, styles)
+    moves = Moves(gestures, styles, can_generate=gen is not None)
     brain = ClaudeMover(moves, a.claude_model, a.claude_key_file) if a.claude else \
         LocalMover(moves, a.local, a.local_url) if a.local else None
     print(f"{len(mv.db.names)} human clips; actions: {', '.join(sorted(gestures - WALKS))}")
     print("type a command (walk, turn left, wave, bow, free, style tired, list, quit)" +
+          (", or describe any movement (do a little dance, stretch your arms)" if gen else "") +
           (" or just talk to it" if brain else ""))
 
     alive = threading.Event()
@@ -326,7 +347,12 @@ def main():
             if not moves.q.empty():
                 current = moves.q.get_nowait()
                 secs = current["seconds"]
-                mv.set_intent(**{k: v for k, v in current.items() if k != "seconds"})
+                try:
+                    mv.set_intent(**{k: v for k, v in current.items() if k != "seconds"})
+                except ValueError as e:                     # e.g. a refused description
+                    print(f"\n  {e}\n> ", end="", flush=True)
+                    mv.set_intent("stand")
+                    current["action"] = "stand"
                 until = sim_t + secs if secs else 0.0
                 fmt = lambda v: f"{v:.2f}" if isinstance(v, float) else str(v)
                 desc = ", ".join(f"{k} {fmt(v)}" for k, v in current.items() if v not in (None, 0.0, {}) and k != "action")
@@ -336,7 +362,7 @@ def main():
                 current, until = None, 0.0
         if not mv.step():
             print("\n  the robot fell - restarting it standing")
-            mv = Mover(a.library, db=mv.db)
+            mv = Mover(a.library, db=mv.db, generator=gen)
             moves.clear()
             current, until = None, 0.0
         sim_t += DT

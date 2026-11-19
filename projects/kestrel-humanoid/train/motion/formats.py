@@ -6,6 +6,7 @@ Positions are in metres, z up, for the 17 keypoints in KEYPOINTS (joint centres 
   (the "Extended SMPL+H model" from mano.is.tue.mpg.de: smplh/<gender>/model.npz). Pass its folder as smplh_dir.
 * BVH (Bandai Namco and most mocap exports): parsed directly; joints matched by name; units and up axis detected.
 * XSens MVNX (.mvnx): segment origin positions, which are the joint centres.
+* CMU / Acclaim (.amc with the subject's .asf skeleton in the same folder): Acclaim forward kinematics.
 * Canonical .npz with "positions" [T, 17, 3] and "fps": already in this form.
 
 A dataset in another format needs one more reader that returns a Motion; everything after this works unchanged.
@@ -240,6 +241,112 @@ def load_bvh(path, max_frames=None):
     return Motion(Path(path).stem, 1.0 / dt, (pos * scale).astype(np.float32), dict(source="bvh"))
 
 
+# ------------------------------------------------------------------------------------------------- CMU ASF / AMC
+def parse_asf(path):
+    """CMU / Acclaim skeleton: {bone: dict(direction, length, axis, dof)}, children, units scale (to metres)."""
+    lines = [ln.strip() for ln in open(path, encoding="latin-1")]
+    bones, children, section, cur = {}, {}, None, None
+    length_unit = 1.0
+    for ln in lines:
+        if not ln or ln.startswith("#"):
+            continue
+        if ln.startswith(":"):
+            section = ln.split()[0]
+            continue
+        tok = ln.split()
+        if section == ":units" and tok[0] == "length":
+            length_unit = float(tok[1])
+        elif section == ":bonedata":
+            if tok[0] == "begin":
+                cur = dict(dof=[], axis=np.zeros(3), direction=np.zeros(3), length=0.0)
+            elif tok[0] == "end":
+                bones[cur["name"]] = cur
+            elif tok[0] == "name":
+                cur["name"] = tok[1]
+            elif tok[0] == "direction":
+                cur["direction"] = np.array([float(x) for x in tok[1:4]])
+            elif tok[0] == "length":
+                cur["length"] = float(tok[1])
+            elif tok[0] == "axis":
+                cur["axis"] = np.array([float(x) for x in tok[1:4]])
+            elif tok[0] == "dof":
+                cur["dof"] = [d.lower() for d in tok[1:]]
+        elif section == ":hierarchy" and tok[0] not in ("begin", "end"):
+            children.setdefault(tok[0], []).extend(tok[1:])
+    # lengths are in units of (1 / length_unit) inches
+    return bones, children, 0.0254 / length_unit
+
+
+def parse_amc(path):
+    frames, cur = [], None
+    for ln in open(path, encoding="latin-1"):
+        ln = ln.strip()
+        if not ln or ln.startswith("#") or ln.startswith(":"):
+            continue
+        tok = ln.split()
+        if len(tok) == 1 and tok[0].isdigit():
+            cur = {}
+            frames.append(cur)
+        elif cur is not None:
+            cur[tok[0]] = np.array([float(x) for x in tok[1:]])
+    return frames
+
+
+CMU_KP = {"l_hip": "lhipjoint", "r_hip": "rhipjoint", "l_knee": "lfemur", "r_knee": "rfemur", "l_ankle": "ltibia",
+          "r_ankle": "rtibia", "l_toe": "lfoot", "r_toe": "rfoot", "chest": "upperback", "head": "upperneck",
+          "l_shoulder": "lclavicle", "r_shoulder": "rclavicle", "l_elbow": "lhumerus", "r_elbow": "rhumerus",
+          "l_wrist": "lradius", "r_wrist": "rradius"}           # keypoint = the far end of that bone
+
+
+def _xyz_matrix(deg):
+    """[T, 3] Euler angles (degrees, X then Y then Z about fixed axes) -> [T, 3, 3] = Rz Ry Rx (the ASF convention)."""
+    return euler_matrix(np.asarray(deg)[:, ::-1], "ZYX")
+
+
+def load_amc(path, max_frames=None, asf=None, fps=120.0):
+    """A CMU .amc motion; its skeleton is the subject's .asf in the same folder (or asf=...)."""
+    p = Path(path)
+    if asf is None:
+        cands = sorted(p.parent.glob("*.asf"))
+        if not cands:
+            raise ValueError(f"{p.name}: no .asf skeleton next to it")
+        asf = cands[0]
+    bones, children, unit = parse_asf(asf)
+    frames = parse_amc(p)[:max_frames]
+    T = len(frames)
+    if T < 2:
+        raise ValueError(f"{p.name}: no frames")
+    root = np.stack([f["root"] for f in frames])                # TX TY TZ RX RY RZ
+    G_R = {"root": _xyz_matrix(root[:, 3:])}
+    G_t = {"root": root[:, :3] * unit}
+    order, stack = [], ["root"]
+    while stack:
+        b = stack.pop(0)
+        for c in children.get(b, []):
+            order.append((c, b))
+            stack.append(c)
+    for name, parent in order:
+        bone = bones[name]
+        C = _xyz_matrix(bone["axis"][None])[0]
+        rot = np.zeros((T, 3))
+        if bone["dof"]:
+            vals = np.stack([f.get(name, np.zeros(len(bone["dof"]))) for f in frames])
+            for k, dof in enumerate(bone["dof"]):
+                if dof in ("rx", "ry", "rz") and k < vals.shape[1]:
+                    rot[:, "xyz".index(dof[1])] = vals[:, k]
+        M = _xyz_matrix(rot)
+        G_R[name] = G_R[parent] @ C @ M @ C.T
+        G_t[name] = G_t[parent] + bone["length"] * unit * np.einsum("tij,j->ti", G_R[name], C @ C.T @ bone["direction"])
+    pos = np.stack([G_t["root"] if k == "pelvis" else G_t[CMU_KP[k]] for k in KEYPOINTS], 1)
+    # CMU is y up; find forward from the feet and make the frame right-handed with x forward, y left, z up
+    pos = np.stack([pos[..., 2], pos[..., 0], pos[..., 1]], -1)
+    side = np.median(pos[:, K["l_hip"]] - pos[:, K["r_hip"]], 0)
+    fwd = np.median(pos[:, [K["l_toe"], K["r_toe"]]].mean(1) - pos[:, [K["l_ankle"], K["r_ankle"]]].mean(1), 0)
+    if np.dot(np.cross(side, [0, 0, 1.0]), fwd) < 0:          # mirrored: left would be on the right
+        pos[..., 1] *= -1
+    return Motion(p.stem, fps, pos.astype(np.float32), dict(source="cmu"))
+
+
 # ---------------------------------------------------------------------------------------------------------- MVNX
 MVNX_SEG = {"pelvis": "Pelvis", "l_hip": "LeftUpperLeg", "r_hip": "RightUpperLeg", "l_knee": "LeftLowerLeg",
             "r_knee": "RightLowerLeg", "l_ankle": "LeftFoot", "r_ankle": "RightFoot", "l_toe": "LeftToe", "r_toe": "RightToe",
@@ -271,6 +378,12 @@ def load(path, smplh_dir=None, max_frames=None):
         return load_bvh(p, max_frames)
     if ext == ".mvnx":
         return load_mvnx(p, max_frames)
+    if ext == ".amc":
+        fps = 120.0
+        side = p.with_suffix(".fps")                     # written by build_cmu.py (some CMU trials are 60 fps)
+        if side.exists():
+            fps = float(side.read_text().strip())
+        return load_amc(p, max_frames, fps=fps)
     if ext == ".npz":
         z = np.load(p, allow_pickle=True)
         if "positions" in z.files:
@@ -284,7 +397,7 @@ def load(path, smplh_dir=None, max_frames=None):
     return None
 
 
-MOTION_EXT = {".bvh", ".mvnx", ".npz"}
+MOTION_EXT = {".bvh", ".mvnx", ".npz", ".amc"}
 
 
 def find_files(roots):

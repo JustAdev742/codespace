@@ -71,7 +71,7 @@ def nominal_pose(names):
 
 
 class Mover:
-    def __init__(self, library, db=None, w_upper=0.3, w_leg_walk=0.05, w_leg_gesture=0.3, **wbc_kw):
+    def __init__(self, library, db=None, w_upper=0.3, w_leg_walk=0.05, w_leg_gesture=0.3, generator=None, **wbc_kw):
         # balance outranks style: the centre of mass task weighs 10x the controller's default, the human motion of the
         # arms and waist 0.3 (with 1.0 the arm swing of turning clips pulled the robot over)
         wbc_kw.setdefault("w_com", (1000.0, 1000.0, 200.0))
@@ -123,10 +123,15 @@ class Mover:
         self.f_crouch = self.f_lean = self.f_look = 0.0
         self.pending_cmd = None
         self.stand_time = 0.0
+        # text-to-motion (generator.py): a Generator, or a path to its checkpoint, loaded on first use
+        self.generator, self.gen_stream = generator, None
+        self.gen_vel, self.gen_moving = np.zeros(3), False
 
     def set_intent(self, action="stand", vx=0.0, vy=0.0, wz=0.0, style=None, arms=None, reach=None, crouch=0.0,
-                   lean=0.0, look=0.0):
-        """action: "stand", "walk" (with vx, vy m/s and wz rad/s) or any action in the library, done in place;
+                   lean=0.0, look=0.0, text=None):
+        """action: "stand", "walk" (with vx, vy m/s and wz rad/s), any action in the library done in place, or
+        "generate" with text: a movement described in words, made by the text-to-motion generator (if it travels,
+        the walker carries the robot along the generated path; otherwise the whole body follows);
         style: any style in the library. Layers, all optional and combinable:
         arms   - an action from the library played by the arms only (wave while walking, guide while turning, ...)
         reach  - {"left"/"right": (x, y, z)}: put that hand there; metres, from the floor between the feet, x forward,
@@ -143,6 +148,22 @@ class Mover:
         self.crouch = float(np.clip(crouch, 0.0, 0.2))
         self.lean = float(np.clip(lean, -0.3, 0.5))
         self.look = float(np.clip(look, -0.6, 0.6))
+        if action == "generate":
+            if not text:
+                raise ValueError("generate needs text")
+            if self.generator is None:
+                raise ValueError("no generator: pass Mover(generator=...) (a trained generator.py checkpoint)")
+            if not hasattr(self.generator, "generate"):
+                from .generator import Generator
+                self.generator = Generator(self.generator)
+            from .generator import GenStream, refused
+            if refused(text):
+                raise ValueError("refused: no striking or harmful motions")
+            if self.gen_stream is None:
+                self.gen_stream = GenStream(self.generator, text)
+            else:
+                self.gen_stream.set_text(text)
+            self.gen_vel[:], self.gen_moving = 0.0, False
         vx, vy, wz = limit_command(vx, vy, wz)
         self.intent = (action, vx, vy, wz, style)
         walking = action == "walk" and (abs(vx) + abs(vy) + abs(wz)) > 1e-3
@@ -159,6 +180,19 @@ class Mover:
             self.matcher.set_intent("walk", 0.0, 0.0, 0.0, style)
         else:
             self.matcher.set_intent(action, 0.0, 0.0, 0.0, style)
+
+    def _follow_generated_path(self):
+        """A generated motion that travels: its path (2 s average) becomes the walker's command, inside the envelope."""
+        v = self.human.get("vel")
+        if v is None:
+            return
+        self.gen_vel += (v - self.gen_vel) * (MATCH_DT / 1.0)
+        moving = np.linalg.norm(self.gen_vel[:2]) > 0.12 or abs(self.gen_vel[2]) > 0.25
+        if moving and self.posed() < 0.03:
+            self.walker.set_command(*limit_command(*self.gen_vel))
+        elif self.gen_moving and not moving:
+            self.walker.set_command(0, 0, 0)
+        self.gen_moving = moving
 
     def posed(self):
         """How far the body is from upright: crouch (m) and lean / look (rad, scaled), whichever is largest."""
@@ -184,7 +218,11 @@ class Mover:
             self.plan = self.walker.update(self.wbc.com(d), cv)
         if self.k % int(MATCH_DT / DT) == 0:
             self.q_h_prev = self.human["q"].copy()
-            self.human = self.matcher.step(self._robot_now() if self.match_robot else None)
+            if self.intent[0] == "generate":
+                self.human = self.gen_stream.step()
+                self._follow_generated_path()
+            else:
+                self.human = self.matcher.step(self._robot_now() if self.match_robot else None)
             # joint speeds of the human motion, from frame to frame (capped: a clip switch must not jerk a joint)
             self.qd_h = np.clip((self.human["q"] - self.q_h_prev) / MATCH_DT, -QD_MAX, QD_MAX)
             if self.arms_action:
@@ -195,11 +233,12 @@ class Mover:
         self.stand_time = self.stand_time + DT if self.walker.standing else 0.0
         settled = self.stand_time > SETTLE and self.pending_cmd is None
         action = self.intent[0]
-        gesture = action not in ("walk", "stand")
+        walkish = action == "walk" or (action == "generate" and self.gen_moving)
+        gesture = not walkish and action != "stand"
         if gesture:
             follow = 1.0 if settled else 0.0
         else:
-            follow = 1.0 if action == "walk" and not self.walker.standing else 0.0
+            follow = 1.0 if walkish and not self.walker.standing else 0.0
         self.blend += (follow - self.blend) * min(1.0, DT / 0.4)
         # the human pose between its 50 Hz frames: interpolated, so the targets move smoothly every 2 ms
         frac = (self.k % int(MATCH_DT / DT)) / (MATCH_DT / DT)
