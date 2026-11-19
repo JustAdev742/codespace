@@ -14,9 +14,13 @@ After the playtest the school asked for two things, and this is the third (D56):
 - **The colour logo.** The school's colour lockup and crest (`logo-colour.svg`, `crest-colour.svg`),
   never recoloured, redrawn or stretched (`art/icons.tsx`). Its lettering is near-black and its
   crest bottle green, so it does not read on the dark chrome (1.3:1). Everywhere it shows it stands
-  on a warm-white plate (#FFFDF8) with clear space round it: under Ludora's mark in the sidebar,
-  beside it on the sign-in and join pages, and the crest alone next to Ludora's mark in the game
-  bar and the phone header. Those places are on the stage in both colour schemes, so the plate is
+  on a warm-white plate (#FFFDF8) with clear space round it: at the start of the page header on a
+  wide screen, level with Ludora's mark in the sidebar (so the sidebar fits a 1366x768 laptop as
+  in Ludora's own look); beside Ludora's on the sign-in and join pages; in the game bar the crest
+  beside Ludora's mark, and the whole logo on a wide screen (the board); the crest beside Ludora's
+  mark in the phone header, and the crest alone in a phone's game bar so the game's name keeps its
+  room. The crest and the school's name also head the School page and every printed class login
+  card (D60). Those places are on the stage in both colour schemes, so the plate is
   always there; on it the lettering is 16:1 and the crest's green 9.8:1, and the plate stands out
   from the chrome at 12.5:1. Ludora's own gold mark stays gold: it is Ludora's, not the school's.
 - **Typeface.** Lato, the school's, for everything.
@@ -73,6 +77,21 @@ After the playtest the school asked for two things, and this is the third (D56):
   of a 3D Glim wears the back of its garment and hat. A hat or neckwear the player has put on shows
   instead of the uniform's; the garment always shows. Not-yet-found Glims stay plain, and the
   Creator Studio shows Glims without uniform, since there the Glim itself is the subject.
+
+- **The finishing pass (D60).** Checked screen by screen at 1366x768, 1440x900, 390x844 and on a
+  1920x1080 board, in both schemes:
+  - a player who picked Dark in Settings gets the school's green-black, not Ludora's navy;
+  - the browser's bar is the school's green (#083A2B) in both schemes, and an installed copy is
+    called "Ludora at The Hills Grammar School" in the same colours
+    (`public/schools/hills-grammar/manifest.webmanifest`, linked by `server/src/school-theme.ts`).
+    The tab's icon stays Ludora's: the crest is not cut down to a 16px icon;
+  - the board's lobby floor, the light under each player, the phone's "You are in" glow and the
+    host's backdrops are lit cream and green instead of Ludora blue (`--stage-floor`,
+    `--stage-spot`, `--stage-glow` in `schools.css`; `HILLS_LIGHT` in `room/game/Backdrop.tsx`);
+  - a three-figure timer (a two-minute question) is set a size down so it stays in its disc;
+  - a disabled solid button keeps grey words, and a focused white field on the stage gets a cream
+    ring with a green gap, so it shows;
+  - the Locker's big buddy wears the player's own uniform.
 
 ### Where it comes from
 

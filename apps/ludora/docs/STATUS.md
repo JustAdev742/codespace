@@ -26,6 +26,20 @@ item with how each was checked, in [features/README.md](features/README.md). The
 
 ## Added in November 2026 (verified; details in [features/](features/README.md))
 
+- **A finishing pass on The Hills Grammar School's copy** (19 November, D60). Every surface shot
+  in the school's look at 1366x768, 1440x900, 390x844 and 1920x1080, in both schemes, ranked and
+  fixed: a player who picked Dark no longer gets Ludora's navy pages; the board shows the school's
+  whole logo, a two-minute timer stays inside its disc, and the lobby, players' spots and
+  backdrops are lit cream and green rather than blue; a phone's game bar keeps the game's name and
+  code (the crest alone stands for the game there); the sidebar fits a 1366x768 laptop (the
+  school's logo starts the header instead); a disabled button and a focused white field on the
+  stage read properly; the Locker's buddy wears the player's uniform; the browser bar and an
+  installed copy are in the school's colours and name; the login cards and the School page carry
+  the crest and name. Checked by `server/test/school-theme.test.ts`, the layout test's sidebar
+  check (now in both looks) and the school, school-uniform, layout, pages, calm-play,
+  economy-manager, game and classes browser tests in both looks (axe clean). Not yet seen by the
+  school, nor on a real classroom projector.
+
 - **An economy manager and the economy room** (19 November, D58). A staff role, *Economy manager*, that runs
   the in-game economy and nothing else (no players' records, moderation, roles, system or audit pages; only an
   administrator grants it), with a daily grant total only an administrator changes and no grants to oneself.
@@ -409,6 +423,10 @@ person with a screen reader. Every check was automated.
     home page and lobby; the front and back pictures of 3D Glims. Glims without the school look
     are drawn exactly as before (the markup of every Glim in every pose compared before and after).
     CI reruns the layout and game tests in this look.
+  - Finishing pass (2026-11-19, D60): see the entry at the top. The school's logo now starts the
+    page header on a wide screen rather than sitting under Ludora's in the sidebar, which fits a
+    student's sidebar at 1366x768 (a school with houses adds a School row that scrolls about 38px,
+    as in Ludora's own look).
   - Not done yet: the avatars the school is emailing. Confirm the logo's use with the school before
     students see it.
 - **Playable demo** (D42): a static build for GitHub Pages

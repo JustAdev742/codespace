@@ -714,3 +714,42 @@ are in the phone's More sheet; the bottom bar keeps its short names (Home, Join,
   signed-out visitors saw Lessons (teachers only) and visitors saw Make; they no longer do.
 
 A section added later is one line in its list with a `hint`.
+
+**D60. The Hills Grammar copy gets a finishing pass: the school is on every screen it is shown on,
+and nothing of Ludora's navy is left (19 November 2026).** The owner asked to "make the Hills
+Grammar version really good". I shot every surface in the school's look (laptop, phone and a
+1920 board, both schemes) and ranked what was weak: what looks broken on the board in front of a
+class first, then what pupils see every day, then rare screens. What changed, and why:
+
+- *A player who picked Dark got Ludora's navy pages.* `:root[data-theme='dark']` in app.css is as
+  specific as the school's block and comes later, so its navy won whenever the theme was set
+  explicitly (the default, "match the device", was fine). The school's block now names that case
+  too. Worst of the list because it was every page for anyone who had chosen Dark.
+- *The board.* A two-minute question's "120" spilled out of the timer disc (Lato's figures are
+  wider than Ludora's condensed face), so three figures are set a size down in this look. The
+  game bar showed only a 30px crest; on a wide screen (the lobby from 1280px, a live game from
+  1600px) it shows the school's whole colour logo on its plate. The lobby's floor, the spot
+  under each player, the phone's "You are in" glow and the host's backdrops were lit Ludora blue;
+  in this look they are the cream of the stage's light and the backdrops' navies are the blazer's
+  greens at the same lightness (a colour map in `Backdrop.tsx`, CSS variables for the rest).
+- *The phone's game bar* cut the game's name to "C": Ludora's mark, the crest, the Calm leaf and
+  four buttons did not fit 390px. On a school's copy the crest alone stands for the game there
+  (Ludora's mark is back from 640px), and in a calm room the LIVE tag gives way to the leaf.
+- *The sidebar no longer scrolls.* The school's logo under Ludora's cost about 90px at 1366x768
+  (D59). It now starts the page header on a wide screen, level with Ludora's mark, where the
+  header had empty room; the sidebar is exactly Ludora's. The layout test checks this in both
+  looks now. A school with houses adds a School row, which scrolls about 38px in either look; that
+  is D59's teacher case and is left alone.
+- *Small things that looked broken:* a disabled Join game read bottle green on grey (the rule
+  that inks the highlight outranked the disabled grey); a focused white field on the stage had a
+  white ring round it, which vanished (now cream with a green gap); the Locker's big buddy wore a
+  look picked at random instead of the player's own uniform.
+- *Made for the school, using only what the repository already has:* the browser's bar is the
+  school's green and an installed copy is "Ludora at The Hills Grammar School" in its colours (a
+  manifest of its own, served by `school-theme.ts`); the printable class login cards carry the
+  crest and the school's name; the School page has them above its heading. No motto, house
+  names, staff, dates or history were added: none is in the repository.
+
+Left alone on purpose: Ludora's own gold mark and favicon (they are Ludora's), answer tiles A, B,
+E and F, rarity colours and the seasonal garland (they mean something), and the 3D modes' own
+scenes. Ludora's own look is unchanged; the default-look browser tests prove it.
