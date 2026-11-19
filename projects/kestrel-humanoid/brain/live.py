@@ -207,7 +207,14 @@ class Live:
         if getattr(self, "uno_active", False) and not re.search(r"\b(stop|quit|end the game|i give up)\b", text.lower()):
             self.uno_q.put(text)                        # a game of Uno is on: this is your move
             return
-        if self.claude is not None:
+        if getattr(self, "agent_mode", False):           # Claude as the robot's mind: what you say becomes its goal
+            from house_lang import parse
+            first = parse(text, self.h, self.lex)
+            if first and first[0]["do"] in ("stop", "alarm", "refuse", "reset"):
+                acts = first
+            else:
+                acts = [{"do": "agent", "goal": text}]
+        elif self.claude is not None:
             acts = self.claude.turn(text)
         else:
             from house_lang import parse
@@ -307,6 +314,8 @@ class Live:
             bot.say("I'm on the floor with the e-stop set. Say 'reset' first.")
             return
         walking = do in ("go", "go_obj", "fetch", "pick", "place", "find", "tidy", "look", "chore") or (do == "sit" and a.get("chair") is not None)
+        if do == "agent":
+            walking = False                              # the agent decides for itself whether to stand up
         if bot.seated and walking:
             self.task = "standing up"
             if not bot.stand():
@@ -373,6 +382,8 @@ class Live:
             self.tidy(all_of_it=True)
         elif do == "chore":
             self.run_chore(a)
+        elif do == "agent":
+            self.run_agent(a["goal"])
         elif do == "free":
             bot.say(self.rng.choice(self.bot_lines("free")))
             self.free = True
@@ -408,6 +419,27 @@ class Live:
                       saturday=c.saturday)[name]
             ok, note = fn()
         self.push("robot", f"({'done' if ok else 'not done'}: {note})")
+
+    def run_agent(self, goal):
+        """Claude works on the goal: it sees the robot's camera every step, acts with small skills, learns (agent.py)."""
+        if getattr(self, "agent", None) is None:
+            from agent import RobotAgent
+            m, kf, ws = self.agent_args
+            self.agent = RobotAgent(self.h, self.bot, model=m, key_file=kf, workspace=ws,
+                                    on_event=lambda kind, text: self.push("robot" if kind == "thought" else "log",
+                                                                          text if kind == "thought" else f"({kind}: {text[:300]})"))
+        self.task = f"working on: {goal[:60]}"
+        try:
+            ok, summary = self.agent.run(goal)
+        except Exception as e:                          # no credential, offline: say so, fall back to plain commands
+            name = type(e).__name__
+            self.push("robot", f"My mind is offline ({name}). Plain commands work: try 'go to the kitchen'.")
+            from house_lang import parse
+            for act in parse(goal, self.h, self.lex):
+                if act["do"] not in ("agent", "unclear"):
+                    self.run(act)
+            return
+        self.push("robot", f"({'done' if ok else 'not done'}: {summary})")
 
     def your_uno_move(self, g):
         """Your turn at Uno: the robot reads out your hand; you type a card ('red 7', 'blue skip', 'wild green',
@@ -771,6 +803,9 @@ def main():
     ap.add_argument("--terminal", action="store_true", help="also read instructions typed in this terminal")
     ap.add_argument("--claude", action="store_true", help="let a Claude model hold the conversation (ANTHROPIC_API_KEY)")
     ap.add_argument("--claude-model", default="claude-opus-5-5")
+    ap.add_argument("--agent", action="store_true",
+                    help="with --claude: Claude is the robot's mind - it sees the camera every step, chooses small actions, "
+                         "and learns skills and lessons across sessions (agent.py)")
     ap.add_argument("--claude-key-file", default=None,
                     help="file holding the Anthropic key (default: anthropic_key.txt next to live.py, if present)")
     ap.add_argument("--claude-workspace", default=None,
@@ -795,7 +830,9 @@ def main():
         a.width, a.height, a.render_every, a.quality = 640, 400, 8, 60
     live = Live(a)
     live.robot = a.robot
-    if a.claude:
+    if a.claude and a.agent:                             # Claude as the robot's mind (sees, acts, learns)
+        live.agent_mode, live.agent_args = True, (a.claude_model, a.claude_key_file, a.claude_workspace)
+    elif a.claude:
         from live_claude import ClaudeBrain
         live.claude = ClaudeBrain(live, model=a.claude_model, key_file=a.claude_key_file, workspace=a.claude_workspace)
     elif a.local:                                        # the same interface: turn(text) -> actions

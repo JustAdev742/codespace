@@ -188,8 +188,9 @@ class TextEncoder:
 
 # ------------------------------------------------------------------------------------------------------------ data
 class MotionSet:
-    def __init__(self, libs, caption_files=(), log=print):
+    def __init__(self, libs, caption_files=(), log=print, upweight=None):
         cmu = {}
+        self.weights = []                 # per clip: practice clips (the robot's own, feasible motions) count more
         for c in caption_files:
             cmu.update(json.loads(Path(c).read_text()))
         self.clips, self.caps, self.texts = [], [], []
@@ -211,13 +212,14 @@ class MotionSet:
                     self.texts.append(c)
                 self.clips.append(f)
                 self.caps.append(ids)
+                self.weights.append(next((w for k, w in (upweight or {}).items() if k in str(lib)), 1.0))
                 n_used += 1
             log(f"{lib}: {n_used} captioned clips ({n_bad} left out: motion contradicts its description)")
         allf = np.concatenate(self.clips)
         self.mu = allf.mean(0)
         self.sd = np.maximum(allf.std(0), 0.02)
         self.lens = np.array([len(c) for c in self.clips])
-        self.p = np.minimum(self.lens, 20 * FPS).astype(float)
+        self.p = np.minimum(self.lens, 20 * FPS).astype(float) * np.array(self.weights)
         self.p /= self.p.sum()
         log(f"{len(self.clips)} clips, {len(allf) / FPS / 3600:.2f} h, {len(self.texts)} captions")
 
@@ -392,12 +394,15 @@ class Generator:
 class GenStream:
     """Plays generated motion to the mover at 50 Hz with the Matcher's interface; generates ahead, continuing."""
 
-    def __init__(self, generator, text="a person stands still", chunk=3.2):
+    def __init__(self, generator, text="a person stands still", chunk=3.2, preset=None):
         self.g, self.text, self.chunk = generator, text, chunk
         self.buf = None                  # 50 Hz q [N, 29], root_quat [N, 4]
         self.feat = None                 # 20 fps features generated so far (for continuation)
         self.i = 0
         self.action = "generated"
+        self.hold = preset is not None   # a given motion: play it once, then hold its last pose
+        if preset is not None:
+            self._add(np.asarray(preset, np.float32))
 
     def set_text(self, text):
         if text != self.text:
@@ -408,7 +413,14 @@ class GenStream:
                 self.feat = self.feat[:int(keep * FPS / 50) + 1]
 
     def _extend(self):
-        f = self.g.generate(self.text, self.chunk, prefix=self.feat)
+        if self.hold:                    # a given motion has ended: hold its last pose
+            last = self.feat[-1:].copy()
+            last[:, NQ + 3:] = 0.0
+            self._add(np.repeat(last, int(self.chunk * FPS), 0))
+            return
+        self._add(self.g.generate(self.text, self.chunk, prefix=self.feat))
+
+    def _add(self, f):
         self.feat = f if self.feat is None else np.concatenate([self.feat, f])
         q, rp, rq = features_to_motion(f)
         q50, rq50 = upsample(q, FPS, 50), upsample(rq, FPS, 50)
@@ -440,7 +452,8 @@ def train(a):
         log_f.write(s + "\n")
         log_f.flush()
 
-    data = MotionSet(a.libs, a.captions, log)
+    up = {k: float(v) for k, v in (x.split("=") for x in a.upweight)} if a.upweight else None
+    data = MotionSet(a.libs, a.captions, log, upweight=up)
     enc = TextEncoder()
     emb = enc(data.texts)
     cfg = dict(d=a.d, layers=a.layers, heads=a.heads, ff=a.ff)
@@ -452,6 +465,7 @@ def train(a):
         model.load_state_dict(z["model"])
         opt.load_state_dict(z["opt"])
         step = z["step"]
+        data.mu, data.sd = z["mu"], z["sd"]            # keep the scale it learned with (new data must not shift it)
         log(f"resumed at step {step}")
     log(f"model: {sum(p.numel() for p in model.parameters()) / 1e6:.2f} M parameters; batch {a.batch}")
     rng = np.random.default_rng(step + 1)
@@ -506,6 +520,8 @@ def main():
     t.add_argument("--ff", type=int, default=768)
     t.add_argument("--threads", type=int, default=None)
     t.add_argument("--save-min", type=float, default=10.0)
+    t.add_argument("--upweight", nargs="*", default=[], help="name=factor: sample clips of libraries whose path contains "
+                                                            "name this many times more often (e.g. practice=5)")
     s = sub.add_parser("sample")
     s.add_argument("--ckpt", default="runs/motion/generator/model.pt")
     s.add_argument("--text", required=True)

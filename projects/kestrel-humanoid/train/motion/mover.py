@@ -128,7 +128,7 @@ class Mover:
         self.gen_vel, self.gen_moving = np.zeros(3), False
 
     def set_intent(self, action="stand", vx=0.0, vy=0.0, wz=0.0, style=None, arms=None, reach=None, crouch=0.0,
-                   lean=0.0, look=0.0, text=None):
+                   lean=0.0, look=0.0, text=None, preset=None):
         """action: "stand", "walk" (with vx, vy m/s and wz rad/s), any action in the library done in place, or
         "generate" with text: a movement described in words, made by the text-to-motion generator (if it travels,
         the walker carries the robot along the generated path; otherwise the whole body follows);
@@ -159,7 +159,9 @@ class Mover:
             from .generator import GenStream, refused
             if refused(text):
                 raise ValueError("refused: no striking or harmful motions")
-            if self.gen_stream is None:
+            if preset is not None:                       # a motion made earlier (practice): play exactly that
+                self.gen_stream = GenStream(self.generator, text, preset=preset)
+            elif self.gen_stream is None or self.gen_stream.hold:
                 self.gen_stream = GenStream(self.generator, text)
             else:
                 self.gen_stream.set_text(text)

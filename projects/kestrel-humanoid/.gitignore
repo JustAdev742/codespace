@@ -27,3 +27,6 @@ brain/*key*.txt
 **/anthropic_key.txt
 train/runs/motion/
 train/.venv-mover/
+
+# what the robot learns on your computer (skills, lessons, notes): personal, never committed
+brain/data/robot_memory.json
