@@ -55,7 +55,7 @@ SIT = {"gain": 1.5}
 RISE = {"lean_pose": [0.0, 0.35, -0.15], "knees_pose": [0.0, 0.65, -0.02],
         "path": [[0.04, 0.6, -0.02], [0.09, 0.55, -0.02], [0.15, 0.42, -0.02]],
         "dt": 1.4, "gain": 1.2, "com_up": 0.0}
-WALK_POLICY, BODY_NAME = "g1", "Unitree G1"         # walking policy trained for this body (train/runs/g1)
+WALK_POLICY, BODY_NAME = "g1b", "Unitree G1"        # walking policy (train/runs/g1b: g1 plus 1.5 h more)
 W_NOLOAD = {"hip_yaw": 32.0, "hip_roll": 32.0, "hip_pitch": 32.0, "knee": 20.0, "ankle_pitch": 37.0, "ankle_roll": 37.0}
 
 
