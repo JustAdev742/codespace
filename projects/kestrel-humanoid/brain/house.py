@@ -273,13 +273,14 @@ def wall(b, axis, fixed, a0, a1, t, openings=(), z0=Z0, h=WALL_H):
 
 def door(b, name, hinge, closed_yaw, open_yaw, width):
     """A hinged door leaf. hinge: (x, y) of the hinge; closed_yaw: direction from the hinge to the far jamb when shut;
-    open_yaw: how far it stands open (+ anticlockwise). It swings freely (damped) if pushed."""
+    open_yaw: how far it stands open (+ anticlockwise). It swings if pushed firmly; a brush (a load hanging from the hook)
+    does not move it, as with a real door's hinges and closer."""
     w = width - 0.04
     g = [b.geom("box", (w / 2 + 0.02, 0, 1.03), (w / 2, 0.02, 1.02), "wood_light", name=f"{name}_leaf", dst=[]),
          b.geom("sphere", (w - 0.05, 0.05, 1.0), (0.03,), "steel", col=False, dst=[]),
          b.geom("sphere", (w - 0.05, -0.05, 1.0), (0.03,), "steel", col=False, dst=[])]
     lo, hi = sorted([-open_yaw, 0.15 * math.copysign(1, open_yaw)])
-    j = f'<joint name="{name}_hinge" type="hinge" axis="0 0 1" damping="6" frictionloss="2" range="{lo:.3f} {hi:.3f}"/>'
+    j = f'<joint name="{name}_hinge" type="hinge" axis="0 0 1" damping="15" frictionloss="25" range="{lo:.3f} {hi:.3f}"/>'
     inertial = f'<inertial pos="{w / 2 + 0.02} 0 1.03" mass="12" diaginertia="4.2 4.2 0.8"/>'
     b.body(name, (hinge[0], hinge[1], Z0 + 0.012), closed_yaw + open_yaw, g, joint=j + inertial)
     b.doors[name] = dict(hinge=hinge, closed_yaw=closed_yaw, open_yaw=open_yaw, width=width)
@@ -340,15 +341,15 @@ def person(b, name, x, y, z0, rgba, mocap=False):
 # objects with a handle on top for the hook hand: name -> (shape, half-size, rgba, mass, handle height above the
 # object's centre, words that name it, where it belongs)
 OBJECTS = {
-    "kettle": ("cylinder", (0.08, 0.10), (0.95, 0.95, 0.95, 1), 0.8, 0.17, ["kettle", "white kettle", "jug"], "kitchen counter"),
+    "kettle": ("cylinder", (0.08, 0.10), (0.95, 0.95, 0.95, 1), 0.6, 0.17, ["kettle", "white kettle", "jug"], "kitchen counter"),
     "lunchbox": ("box", (0.11, 0.07, 0.05), (0.95, 0.55, 0.10, 1), 0.5, 0.12, ["lunchbox", "lunch box", "orange box"], "kitchen island"),
     "bag": ("box", (0.12, 0.05, 0.13), (0.10, 0.10, 0.12, 1), 0.9, 0.20, ["bag", "shopping bag", "black bag"], "hall table"),
     "basket": ("box", (0.17, 0.12, 0.10), (0.90, 0.80, 0.30, 1), 0.7, 0.36, ["basket", "laundry basket", "yellow basket"], "bedroom"),
     "bucket": ("cylinder", (0.12, 0.12), (0.15, 0.40, 0.85, 1), 0.6, 0.30, ["bucket", "blue bucket"], "bathroom"),
     "toolbox": ("box", (0.18, 0.08, 0.07), (0.80, 0.12, 0.10, 1), 1.4, 0.14, ["toolbox", "tool box", "red toolbox", "tools"], "study desk"),
-    "can": ("cylinder", (0.09, 0.12), (0.20, 0.60, 0.25, 1), 0.6, 0.31, ["watering can", "can", "green can"], "patio"),
+    "can": ("cylinder", (0.09, 0.12), (0.20, 0.60, 0.25, 1), 0.4, 0.31, ["watering can", "can", "green can"], "patio"),
     # kitchen
-    "pot": ("cylinder", (0.12, 0.08), (0.72, 0.74, 0.78, 1), 1.0, 0.17, ["pot", "saucepan", "cooking pot", "pan"], "kitchen counter"),
+    "pot": ("cylinder", (0.12, 0.08), (0.72, 0.74, 0.78, 1), 0.7, 0.17, ["pot", "saucepan", "cooking pot", "pan"], "kitchen counter"),
     "pasta": ("box", (0.07, 0.035, 0.10), (0.95, 0.80, 0.20, 1), 0.5, 0.18, ["pasta", "spaghetti", "pasta box", "packet of pasta"], "kitchen counter"),
     "mug_red": ("cylinder", (0.045, 0.05), (0.85, 0.15, 0.12, 1), 0.3, 0.11, ["red mug", "mug", "cup", "red cup", "tea mug"], "kitchen counter"),
     "mug_blue": ("cylinder", (0.045, 0.05), (0.15, 0.35, 0.85, 1), 0.3, 0.11, ["blue mug", "blue cup"], "kitchen counter"),
@@ -386,7 +387,7 @@ def grab_object(b, name, x, y, z_surface):
                         rgba=(0.12, 0.12, 0.12, 1), dst=[]))
     # a little damping: a load hanging from the hook stops swinging in a second instead of swinging on
     inert = "0.09 0.09 0.01" if name == "hoover" else "0.004 0.004 0.003"
-    j = f'<joint name="{name}_free" type="free" damping="0.04"/><inertial pos="0 0 0" mass="{mass}" diaginertia="{inert}"/>'
+    j = f'<joint name="{name}_free" type="free" damping="0.12"/><inertial pos="0 0 0" mass="{mass}" diaginertia="{inert}"/>'
     b.body(name, (x, y, z_surface + half_h + 0.002), 0.0, g, joint=j)
     b.objects[name] = dict(home=home, words=words, handle_z=hz, half_h=half_h, start=(x, y, z_surface))
 
@@ -458,7 +459,7 @@ def build_upper(b):
     b.box(-8.92 + o, -8.35 + o, 2.6, 4.4, UP, UP + 0.86, "cabinet", name=b.nm("furn"))
     b.box(-8.92 + o, -8.33 + o, 2.6, 4.4, UP + 0.86, UP + 0.9, "worktop", name=b.nm("furn"))
     b.furniture["laundry counter"] = dict(xy=(-8.63 + o, 3.5), size=(0.59, 1.8), top=UP + 0.9)
-    control(b, "washer", (-8.38 + o, 1.07, UP + 0.865), math.pi, (0.2, 0.8, 0.3, 1), ["washing machine", "washer", "start button"])
+    control(b, "washer", (-8.38 + o, 1.32, UP + 0.865), math.pi, (0.2, 0.8, 0.3, 1), ["washing machine", "washer", "start button"])
     b.flights = [dict(bottom=(0.55, 5.9), top=(SX - 0.45, 5.9), up_yaw=math.pi, box=(SX - 0.1, 0.25, 5.3, 6.5))]
     b.rooms_lights = [(-6.5 + o, 3.0, UP), (-6.5 + o, 7.5, UP), ((XI + X1) / 2, 5.9, UP)]
 
@@ -467,17 +468,17 @@ def build_extras(b):
     """The kitchen's working parts, bins, the card tray, hazards and extra visitors."""
     # kitchen: hob knob and kettle switch on the counter front, the sink's tap lever, the bin
     # touch controls on the worktop's front edge (the hook reaches 0.9-1.5 m standing; lower needs a crouch)
-    control(b, "hob", (3.2, 0.74, Z0 + 0.915), -math.pi / 2, (0.85, 0.15, 0.1, 1), ["hob", "cooker", "stove", "hob switch"])
+    control(b, "hob", (3.62, 0.74, Z0 + 0.915), -math.pi / 2, (0.85, 0.15, 0.1, 1), ["hob", "cooker", "stove", "hob switch"])
     control(b, "kettle", (2.2, 0.74, Z0 + 0.915), -math.pi / 2, (0.15, 0.35, 0.85, 1), ["kettle switch", "kettle"])
     control(b, "tap", (0.79, 2.5, Z0 + 0.915), math.pi, (0.7, 0.7, 0.75, 1), ["tap", "faucet"])
-    b.zones = dict(hob=(2.9, 3.5, 0.3, 0.7), kettle_base=(2.42, 2.78, 0.44, 0.8), trivet=(6.55, 7.25, 2.08, 2.45))
-    b.furniture["hob"] = dict(xy=(3.2, 0.5), size=(0.6, 0.4), top=Z0 + 0.9)
+    b.zones = dict(hob=(2.9, 3.5, 0.40, 0.76), kettle_base=(2.42, 2.78, 0.44, 0.8), trivet=(6.55, 7.25, 2.08, 2.45))
+    b.furniture["hob"] = dict(xy=(3.2, 0.58), size=(0.6, 0.36), top=Z0 + 0.9)
     b.furniture["kettle base"] = dict(xy=(2.6, 0.62), size=(0.36, 0.36), top=Z0 + 0.9)
     b.furniture["trivet"] = dict(xy=(6.9, 2.26), size=(0.6, 0.32), top=Z0 + 0.75)       # near the table's edge, in reach
     b.box(6.7, 7.1, 2.12, 2.4, Z0 + 0.75, Z0 + 0.752, "black", name=b.nm("vis"), col=False)        # the trivet
-    b.box(2.9, 3.5, 0.3, 0.7, Z0 + 0.9, Z0 + 0.905, "black", name=b.nm("vis"), col=False)       # cooktop
+    b.box(2.9, 3.5, 0.40, 0.76, Z0 + 0.9, Z0 + 0.905, "black", name=b.nm("vis"), col=False)     # cooktop, near the front
     container(b, "kitchen bin", 4.33, 4.87, 0.24, 0.76, Z0, 0.45, mat="steel", words=["bin", "kitchen bin", "rubbish bin", "trash can"])
-    container(b, "garden bin", 16.25, 16.95, 6.6, 7.3, 0.0, 0.85, mat="black", words=["garden bin", "wheelie bin", "outside bin", "big bin"])
+    container(b, "garden bin", 16.25, 16.95, 6.6, 7.3, 0.0, 0.75, mat="black", words=["garden bin", "wheelie bin", "outside bin", "big bin"])
     # dust to vacuum (visual specks, placed per test)
     for k in range(80):
         name = f"dirt_{k}"
@@ -554,14 +555,20 @@ def build():
         b.box(0.2, 0.8, y0, y1, Z0, Z0 + 0.86, "cabinet", name=b.nm("furn"))
         b.box(0.2, 0.82, y0, y1, Z0 + 0.86, Z0 + 0.9, "worktop", name=b.nm("furn"))
     b.box(0.2, 0.8, 2.2, 2.8, Z0, Z0 + 0.68, "cabinet", name=b.nm("furn"))           # under the sink
-    b.box(0.26, 0.76, 2.2, 2.8, Z0 + 0.68, Z0 + 0.70, "steel", name=b.nm("furn"))     # basin bottom
-    b.box(0.2, 0.26, 2.2, 2.8, Z0 + 0.68, Z0 + 0.9, "worktop", name=b.nm("furn"))     # basin back
+    b.box(0.40, 0.76, 2.2, 2.8, Z0 + 0.68, Z0 + 0.70, "steel", name=b.nm("furn"))     # basin bottom (near the front:
+    b.box(0.2, 0.40, 2.2, 2.8, Z0 + 0.68, Z0 + 0.9, "worktop", name=b.nm("furn"))     # in reach) and the worktop behind
     b.box(0.76, 0.82, 2.2, 2.8, Z0 + 0.68, Z0 + 0.9, "worktop", name=b.nm("furn"))    # basin front
-    b.geom("cylinder", (0.25, 2.5, Z0 + 1.02), (0.015, 0.12), "steel", name=b.nm("vis"), col=False)    # tap: a sensor
-    b.geom("cylinder", (0.38, 2.5, Z0 + 1.14), (0.012, 0.13), "steel", name=b.nm("vis"), col=False, euler=(0, math.pi / 2, 0))
-    b.tap_stream = (0.51, 2.5)               # water runs while something is held under the spout (a sensor tap)
-    b.containers["sink"] = dict(box=(0.26, 0.76, 2.2, 2.8), bottom=Z0 + 0.70, rim=Z0 + 0.90, words=["sink", "kitchen sink"])
-    b.furniture["sink"] = dict(xy=(0.51, 2.5), size=(0.5, 0.6), top=Z0 + 0.70)      # to stand a pot in, under the tap
+    b.geom("cylinder", (0.32, 2.5, Z0 + 1.02), (0.015, 0.12), "steel", name=b.nm("vis"), col=False)    # tap: a sensor
+    b.geom("cylinder", (0.45, 2.5, Z0 + 1.14), (0.012, 0.13), "steel", name=b.nm("vis"), col=False, euler=(0, math.pi / 2, 0))
+    # the filling station: a drip tray on the worktop under a sensor tap (like a fridge's water dispenser): stand a
+    # pot or kettle on it and it fills
+    b.tap_stream = (0.62, 3.2)
+    b.furniture["drip tray"] = dict(xy=(0.62, 3.2), size=(0.36, 0.5), top=Z0 + 0.9)
+    b.box(0.45, 0.79, 2.97, 3.43, Z0 + 0.9, Z0 + 0.903, "steel", name=b.nm("vis"), col=False)
+    b.geom("cylinder", (0.30, 3.2, Z0 + 1.15), (0.02, 0.25), "steel", name=b.nm("vis"), col=False)
+    b.geom("cylinder", (0.47, 3.2, Z0 + 1.38), (0.015, 0.17), "steel", name=b.nm("vis"), col=False, euler=(0, math.pi / 2, 0))
+    b.containers["sink"] = dict(box=(0.40, 0.76, 2.2, 2.8), bottom=Z0 + 0.70, rim=Z0 + 0.90, words=["sink", "kitchen sink"])
+    b.furniture["sink"] = dict(xy=(0.58, 2.5), size=(0.36, 0.6), top=Z0 + 0.70)     # to stand a pot in, under the tap
     b.box(0.8, 3.8, 0.2, 0.8, Z0, Z0 + 0.86, "cabinet", name=b.nm("furn"))           # south counter run
     b.box(0.2, 3.82, 0.2, 0.82, Z0 + 0.86, Z0 + 0.9, "worktop", name=b.nm("furn"))
     b.box(2.9, 3.5, 0.3, 0.7, Z0 + 0.9, Z0 + 0.905, "black", name=b.nm("vis"), col=False)        # cooktop
@@ -647,7 +654,7 @@ def build():
     grab_object(b, "toolbox", 11.2, 9.25, Z0 + 0.75)
     grab_object(b, "can", 12.1, -0.7, 0.07)
     grab_object(b, "pot", 1.5, 0.55, Z0 + 0.9)
-    grab_object(b, "pasta", 0.66, 3.55, Z0 + 0.9)
+    grab_object(b, "pasta", 0.66, 3.82, Z0 + 0.9)
     for k, mug in enumerate(MUGS):
         grab_object(b, mug, 0.68, 1.0 + 0.3 * k, Z0 + 0.9)
     grab_object(b, "hoover", 4.85, 4.7, Z0)
@@ -825,6 +832,7 @@ class House(SK.World):
         self.st = dict(tap=False, hob=False, kettle=False, washer=False)
         self.washer_t, self.washed = 0.0, False
         self.water = {n: 0.0 for n in WATER_CAP}
+        self.fill_to = {}                    # the filling station stops at the amount asked for
         self.temp = {n: 20.0 for n in WATER_CAP}
         self.pot_pasta, self.cook_t, self.burn_t, self.hob_empty_t = False, 0.0, 0.0, 0.0
         self.tea = {k: False for k in MUGS}
@@ -874,17 +882,17 @@ class House(SK.World):
             self.event("pasta into the pot" + ("" if self.water["pot"] > 0.5 else " (no water in it!)"))
             return True
         if src == "kettle" and dst in MUGS:
-            ok = self.water["kettle"] >= 0.25 and self.temp["kettle"] >= 90
+            ok = self.water["kettle"] >= 0.2 and self.temp["kettle"] >= 90
             if ok:
-                self.water["kettle"] -= 0.25
+                self.water["kettle"] -= 0.2
                 self._set_mass("kettle")
                 self.tea[dst] = True
             self.event(f"poured into the {dst.replace('_', ' ')}" + ("" if ok else " (but the kettle was not boiled)"))
             return ok
         if src == "can" and isinstance(dst, int):
-            ok = self.water["can"] >= 0.2
+            ok = self.water["can"] >= 0.15
             if ok:
-                self.water["can"] -= 0.2
+                self.water["can"] -= 0.15
                 self._set_mass("can")
                 self.watered.add(dst)
             self.event(f"watered plant {dst}" + ("" if ok else " (the can is empty)"))
@@ -944,9 +952,11 @@ class House(SK.World):
         sx, sy = self.b.tap_stream
         for n, cap in WATER_CAP.items():
             p = self.obj_pos(n)
-            under = math.hypot(p[0] - sx, p[1] - sy) < 0.12 and Z0 + 0.68 < p[2] < Z0 + 1.1
-            if (under or (self.st["tap"] and self.in_container(n, "sink"))) and self.water[n] < cap:
-                self.water[n] = min(cap, self.water[n] + 0.15 * dt)
+            under = (math.hypot(p[0] - sx, p[1] - sy) < 0.2 and abs(p[2] - OBJECTS[n][1][-1] - (Z0 + 0.9)) < 0.03
+                     and n != self.holding)                  # standing on the drip tray
+            want = min(cap, self.fill_to.get(n, cap)) if under else cap
+            if (under or (self.st["tap"] and self.in_container(n, "sink"))) and self.water[n] < want:
+                self.water[n] = min(want, self.water[n] + 0.15 * dt)
                 self._set_mass(n)
         # kettle on its base
         if self.st["kettle"]:
@@ -964,7 +974,7 @@ class House(SK.World):
         if self.st["hob"]:
             if pot_on:
                 self.hob_empty_t = 0.0
-                if self.water["pot"] > 0.3:
+                if self.water["pot"] > 0.5:
                     self.temp["pot"] = min(100.0, self.temp["pot"] + 2.5 * dt)
                 else:
                     self.burn_t += dt

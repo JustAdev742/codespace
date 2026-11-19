@@ -41,7 +41,7 @@ class Chores:
         """Fill the kettle, boil it, pour a mug, bring it to you."""
         b, h = self.bot, self.h
         b.say("I'll make you a cup of tea.")
-        ok = b.fill("kettle", 0.5) and b.place("kettle base") and b.press("kettle")
+        ok = b.fill("kettle", 0.35) and b.place("kettle base") and b.press("kettle")
         ok = ok and self.wait_for(lambda: h.temp["kettle"] >= 99.0 or not h.st["kettle"], 60.0) and h.temp["kettle"] >= 95.0
         ok = ok and b.pick("kettle") and b.pour(mug) and b.place("kettle base")
         ok = ok and b.pick(mug) and b.place(to)
@@ -53,7 +53,7 @@ class Chores:
         """Pot of water on the hob, hob on, pasta in once it boils, cook it, hob off, pot to the table."""
         b, h = self.bot, self.h
         b.say("Pasta. I'll be the chef.")
-        ok = b.fill("pot", 1.2) and b.place("hob") and b.press("hob")
+        ok = b.fill("pot", 0.8) and b.place("hob") and b.press("hob")
         ok = ok and self.wait_for(lambda: h.temp["pot"] >= 98.0, 60.0)
         ok = ok and b.pick("pasta") and b.pour("pot") and b.place("kitchen counter")
         ok = ok and self.wait_for(lambda: h.cook_t >= HS.COOK_S, HS.COOK_S + 30.0)
@@ -133,12 +133,12 @@ class Chores:
         b, h = self.bot, self.h
         plants = plants if plants is not None else [k for k, (x, y) in enumerate(h.b.plants)
                                                     if h.room_of(x, y) not in ("garden", "patio")]
-        ok = b.fill("can", 1.0)
+        ok = b.fill("can", 0.6)
         for k in plants:
             if not ok:
                 break
             if h.water["can"] < 0.2:
-                ok = b.fill("can", 1.0)
+                ok = b.fill("can", 0.6)
             b.pour(k)
         if h.holding == "can":
             b.place("patio") if h.holding else None

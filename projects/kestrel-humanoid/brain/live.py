@@ -26,6 +26,7 @@ import argparse
 import io
 import json
 import math
+import re
 import os
 import queue
 import random
@@ -73,6 +74,7 @@ class Live:
         self.frame, self.frame_id = None, 0
         self.fr_cond = threading.Condition()
         self.q = queue.Queue()
+        self.uno_q, self.uno_active = queue.Queue(), False        # your moves while a game of Uno is on
         self.view = "follow"
         self.free = False
         self.task = "starting up"
@@ -202,6 +204,9 @@ class Live:
         if not self.ready.is_set():
             self.push("robot", "One moment. I'm still waking up.")
             return
+        if getattr(self, "uno_active", False) and not re.search(r"\b(stop|quit|end the game|i give up)\b", text.lower()):
+            self.uno_q.put(text)                        # a game of Uno is on: this is your move
+            return
         if self.claude is not None:
             acts = self.claude.turn(text)
         else:
@@ -301,7 +306,7 @@ class Live:
         if bot.sup.latched and do != "reset":
             bot.say("I'm on the floor with the e-stop set. Say 'reset' first.")
             return
-        walking = do in ("go", "go_obj", "fetch", "pick", "place", "find", "tidy", "look") or (do == "sit" and a.get("chair") is not None)
+        walking = do in ("go", "go_obj", "fetch", "pick", "place", "find", "tidy", "look", "chore") or (do == "sit" and a.get("chair") is not None)
         if bot.seated and walking:
             self.task = "standing up"
             if not bot.stand():
@@ -366,6 +371,8 @@ class Live:
         elif do == "tidy":
             self.task = "tidying up"
             self.tidy(all_of_it=True)
+        elif do == "chore":
+            self.run_chore(a)
         elif do == "free":
             bot.say(self.rng.choice(self.bot_lines("free")))
             self.free = True
@@ -374,6 +381,70 @@ class Live:
                 bot.reset_after_fall()
             else:
                 bot.say("Nothing to reset. I'm upright.")
+
+    # ------------------------------------------------------------------ chores (chores.py) and Uno with you
+    def run_chore(self, a):
+        import chores as C
+        bot, h = self.bot, self.h
+        c = C.Chores(bot)
+        name = a["name"]
+        if h.holding is not None and name not in ("tea",):
+            bot.place("floor")
+        labels = dict(tea="making tea", pasta="cooking pasta", vacuum=f"vacuuming the {a.get('room', 'room')}",
+                      tidy_room="tidying the kids' room", table="setting the table", washup="washing up",
+                      trash="taking out the rubbish", plants="watering the plants", laundry="doing the laundry",
+                      visitor="answering the door", saturday="doing all the chores", uno="playing Uno with you")
+        self.task = labels.get(name, name)
+        if name == "uno":
+            self.uno_active = True
+            try:
+                ok, note = c.play_uno(seed=self.rng.randrange(10 ** 6), you_move=self.your_uno_move)
+            finally:
+                self.uno_active = False
+        else:
+            fn = dict(tea=c.make_tea, pasta=c.cook_pasta, vacuum=lambda: c.vacuum(a.get("room", "dining room"),
+                      seed=self.rng.randrange(1000)), tidy_room=c.tidy_room, table=c.set_table, washup=c.wash_up,
+                      trash=c.take_out_trash, plants=c.water_plants, laundry=c.laundry, visitor=c.greet_visitor,
+                      saturday=c.saturday)[name]
+            ok, note = fn()
+        self.push("robot", f"({'done' if ok else 'not done'}: {note})")
+
+    def your_uno_move(self, g):
+        """Your turn at Uno: the robot reads out your hand; you type a card ('red 7', 'blue skip', 'wild green',
+        'wild four yellow') or 'draw'. No answer in two minutes: it plays a card for you."""
+        import uno as U
+        hand = g.hands[g.turn]
+        self.bot.say(f"Your turn. Top card: {g.discard[-1]} ({g.colour}). You hold: " + ", ".join(map(str, hand)) + ".")
+        while True:
+            try:
+                text = self.uno_q.get(timeout=120).lower().strip()
+            except queue.Empty:
+                opts = g.playable(g.turn)
+                return (opts[0], "red" if opts and opts[0].colour is None else None) if opts else (None, None)
+            if re.search(r"\bdraw\b|\bpass\b|\bpick up\b", text):
+                return None, None
+            col = next((c for c in U.COLOURS if c in text), None)
+            val = None
+            if "wild" in text:
+                val = "wild4" if re.search(r"four|4|draw", text) else "wild"
+            else:
+                for v, pat in (("draw2", r"draw ?two|draw ?2|\+2"), ("skip", r"skip"), ("reverse", r"reverse")):
+                    if re.search(pat, text):
+                        val = v
+                m = re.search(r"\b([0-9])\b", text)
+                if val is None and m:
+                    val = m.group(1)
+            card = next((c for c in hand if c.value == val and (c.colour == col or c.colour is None)), None)
+            if card is None:
+                self.bot.say("You don't have that card. Try again, or say draw.")
+                continue
+            if not g.legal(card, hand):
+                self.bot.say(f"That doesn't go on {g.discard[-1]}. Try again, or say draw.")
+                continue
+            if card.colour is None and col is None:
+                self.bot.say("Which colour? Say the card again with a colour, like 'wild blue'.")
+                continue
+            return card, (col if card.colour is None else None)
 
     @staticmethod
     def bot_lines(key):
@@ -388,7 +459,11 @@ class Live:
             if mem["room"] == "hand" or o == h.holding:
                 continue
             home = HS.OBJECTS[o][6]
-            home_room = h.room_of(*h.b.furniture[home]["xy"]) if home in h.b.furniture else home
+            if home in h.b.containers:
+                x0, x1, y0, y1 = h.b.containers[home]["box"]
+                home_room = h.room_of((x0 + x1) / 2, (y0 + y1) / 2)
+            else:
+                home_room = h.room_of(*h.b.furniture[home]["xy"]) if home in h.b.furniture else home
             if mem["room"] != home_room:
                 out.append((o, home, mem["room"]))
         return out

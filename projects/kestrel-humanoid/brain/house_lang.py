@@ -40,6 +40,7 @@ FURNITURE_WORDS = {
     "sink": ["sink", "kitchen sink"],
     "kettle base": ["kettle base"],
     "trivet": ["trivet", "pot stand"],
+    "drip tray": ["drip tray", "filling station", "water dispenser"],
 }
 CHAIR_WORDS = {
     "desk chair": ["desk chair", "office chair", "study chair"],
@@ -71,6 +72,9 @@ class Lexicon:
                 self.objects[w] = n
         self.rooms = {w: n for n, r in house.b.rooms.items() for w in r["words"]}
         self.furniture = {w: n for n, ws in FURNITURE_WORDS.items() for w in ws if n in house.b.furniture}
+        for n, c in getattr(house.b, "containers", {}).items():       # the toy box, the hamper, the bins
+            for w in c["words"]:
+                self.furniture.setdefault(w, n)
         self.chairs = {w: n for n, ws in CHAIR_WORDS.items() for w in ws}
         self.people = {w: n for n, ws in PEOPLE_WORDS.items() for w in ws}
 
