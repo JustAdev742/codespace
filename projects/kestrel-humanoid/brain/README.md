@@ -177,19 +177,29 @@ python live.py              # open http://localhost:8765
 
 ![The house](runs/house_overview.png)
 
-**The house** (`house.py`): a 14 m x 10 m single-storey home on a slab 14 cm above the garden, built to test the
-robot the way a real home would:
+**The house** (`house.py`): a 14 m x 10 m home on a slab 14 cm above the garden, with an upper wing up a flight of
+stairs, built to test the robot the way a real home would:
 
-* open-plan kitchen (L-shaped counters, island, stools, fridge), dining area (table and four chairs) and living room
+* open-plan kitchen (L-shaped counters, island, stools, fridge, a hob, a kettle on its base, a sink whose sensor tap
+  fills whatever is put on its drip tray, a bin), dining area (table with a trivet, four chairs) and living room
   with a sunken lounge one 14 cm step down (sofa, coffee table, TV, armchair, rug);
 * a hall with a runner rug, a console table, a coat stand and shoes by the front door; a bedroom, a bathroom (tiles
   with friction 0.6 and a 1.5 cm door threshold) and a study;
+* up 12 stairs (10 cm risers): a landing, a messy kids' room (toys and clothes on the floor, a toy box, a hamper) and
+  a laundry room with a washing machine;
 * hinged doors that swing if bumped, windows, ceilings (seen by the head camera);
-* outside, a porch with two 7 cm steps, a patio deck one step down from the living room, and a lawn;
-* seven things to fetch, each with a handle for the hook hand (kettle, lunchbox, shopping bag, laundry basket,
-  bucket, toolbox, watering can);
-* people: Alex standing in the study, Jordan walking a loop through the kitchen, hall and dining area (Jordan stops
-  for the robot), and you; a robot vacuum wandering the kitchen and dining area.
+* outside, a porch with two 7 cm steps, a patio deck one step down from the living room, a lawn and the garden bin;
+* about 30 things to handle, each with a handle for the hook hand: kettle, pot, pasta, four mugs, a stick vacuum,
+  a rubbish bag, toys, clothes, and the original seven (lunchbox, shopping bag, laundry basket, bucket, toolbox,
+  watering can);
+* appliances with real state: touch controls switch the hob, kettle, tap and washer; the house tracks the water in
+  every container, the kettle's temperature, how long the pasta has been on a hot hob, the washer's cycle and 80
+  patches of dust that only the vacuum head picks up;
+* people and pets: Alex standing in the study, Jordan walking a loop through the kitchen, hall and dining area
+  (Jordan stops for the robot), you, a visitor who rings at the front door, and a dog that wanders into the robot's
+  way; a robot vacuum wandering the kitchen and dining area.
+
+![Up the stairs](runs/house_stairs.png)
 
 Floors are real collision geometry with friction by room. The walking policy's height scan reads a height map of
 exactly that floor, the same kind of input it learned stairs from, so it sees the steps and thresholds and steps
@@ -277,6 +287,69 @@ checked forward motion but not sideways (the line-up steps came within 0.4 m of 
 It never strikes anyone. Asked to, it refuses (`house_test.py` checks 20 harmful phrasings, all refused, and 20
 harmless ones, none refused). Told that someone is being hurt (or the red button), it stops on the spot, keeps at
 least 2 m away, warns, and raises an alert for a human. It does not intervene physically.
+
+## Chores, a card game, and a stress test
+
+![The kids' room before tidying](runs/house_kids_room.png)
+
+`chores.py` gives the robot household jobs. Each one is built from its skills (walk, climb the stairs, pick up,
+put down, drop into, press, fill, pour, push the vacuum), and the house, not the robot, decides whether it worked:
+
+| Chore | What it does | What the house checks |
+|---|---|---|
+| Make tea | fills the kettle at the tap, boils it, pours a mug, brings it to you | tea in the mug, the mug within 2.5 m of you |
+| Cook pasta | fills the pot, hob on, pasta in when it boils, cooks it, hob off, pot to the table | cooked 40 s, hob off, pot on the trivet, nothing burnt |
+| Set the table | a mug at each of four places | all four mugs standing on the table |
+| Wash up | every mug into the sink | four mugs in the sink |
+| Vacuum a room | takes the stick vacuum, covers the floor in lanes, puts it back | at least 65 % of the dust picked up by the head |
+| Tidy the kids' room | toys into the toy box, clothes into the hamper, upstairs | every toy and every piece of clothing in its box |
+| Laundry | the basket up the stairs, washing machine on, waits for the cycle | basket in the laundry room, wash finished |
+| Take out the rubbish | the bag out of the front door, down the porch steps, into the garden bin | bag in the garden bin |
+| Water the plants | fills the watering can, waters every indoor plant, refilling as needed | every indoor plant watered |
+| Greet a visitor | answers the door, leads the visitor to the living room, offers the sofa | visitor in the living room; never closer than 1.2 m to them |
+| Play Uno | sits at the dining table and plays you; reaches to the card tray to draw and to play | a full game by the rules, every reach made, stands up after |
+| Saturday | several of the above in a row | all of them |
+
+**Uno** (`uno.py`) is the full two-player game: the 108-card deck, skips, reverses, draw twos, wilds, wild draw
+fours (only when you hold nothing of the colour), drawing when stuck, saying "Uno" and being caught. The robot's
+strategy keeps the colour it holds most of, saves wilds, and hits back when you are nearly out; against a random
+player it wins 58 % of 2,000 games with no illegal plays. In live mode, "let's play Uno" sits it down at the table
+and you type your cards ("red 7", "wild blue", "draw").
+
+**The stress tests** (`house_test.py`) add trouble on top of the chores: stairs (and a steeper 12 cm flight), the dog
+walking into its path, a spill on the floor it must go around, being pushed mid-walk, the lights turned down (the
+camera sees only 2.5 m), a toy left on the stairs (it clears it or refuses to climb, never climbs over it), and the
+whole Saturday list in a row.
+
+<!-- battery results -->
+
+## Claude as the robot's mind: it sees, and it learns
+
+```bash
+python live.py --claude --agent
+```
+
+With `--agent`, what you say becomes a goal for `agent.py` instead of a fixed command. Nothing is scripted. At every
+step Claude gets two pictures, the robot's head camera and a view from behind it, plus a line of state (where it is,
+what it holds, which appliances are on). It chooses the next action from small tools: go somewhere, look around,
+pick up, put down, drop into, press a switch, fill, pour, wait, say something. Then it sees what happened.
+
+The chores above are **starter skills**, not the only way to do things. Claude can run one as it is, read its steps
+and change them, or ignore it and work something out. When its own way works, it saves the steps as a **learned
+skill**, and each skill counts how often it has worked. When something fails, it writes a **lesson** ("put the pot
+down before pressing the hob"), and every later task starts with the lessons it has. Skills, lessons and a short
+log of past tasks are kept in `data/robot_memory.json`, which is personal and gitignored, so the robot gets better
+the more you use it. This is learning by memory, not by changing a network's weights. The motion generator learns by
+practice instead (`train/motion/practice.py`).
+
+The safety supervisor still checks every step, and no tool strikes anything. "Stop", the alarm and refusals skip the
+agent and go straight to the robot.
+
+Cost and limits: every step sends two small images (480 x 360) and the conversation so far, so a chore of 20 to 40
+steps costs noticeably more than one command in `--claude` mode. Plain commands still work if the API is
+unreachable. It has been tested here with a stand-in for the API that plays the role of Claude (it saw both images
+at every step, moved the mug, saved a skill and a lesson). It has not been run against the real API in this
+environment, which has no key.
 
 ### Run it on your own computer
 

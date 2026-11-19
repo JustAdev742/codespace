@@ -1,27 +1,43 @@
-"""KESTREL house: a whole single-storey home in the simulator, to test the robot as hard as a real home would.
+"""KESTREL house: a whole home in the simulator, to test the robot as hard as a real home would.
 
     KESTREL_VARIANT=s1body python house.py              # renders an overview and room views to runs/house_*.png
 
-14 m x 10 m, on a raised floor slab 14 cm above the garden:
+The ground floor, 14 m x 10 m, on a raised floor slab 14 cm above the garden:
 
-* open-plan kitchen (L-shaped counters, island, fridge, stools), dining area (table, four chairs) and living room with
-  a sunken lounge one 14 cm step down (sofa, coffee table, TV, armchair, rug);
+* open-plan kitchen (L-shaped counters, island, fridge, stools) with a hob, a kettle on its base, a sink with a
+  sensor tap over a drip tray (it fills what is put under it, by the amount asked for), and a bin; dining area
+  (table with a trivet at its edge, four chairs) and living room with a sunken lounge one 14 cm step down (sofa,
+  coffee table, TV, armchair, rug);
 * a hallway with a runner rug, console table, coat stand and shoes by the front door;
 * bedroom (double bed, nightstands, wardrobe, rug), bathroom (bath, toilet, vanity, slippery tiles, a 1.5 cm door
   threshold), study (desk, desk chair, bookshelf, armchair);
 * hinged doors (bedroom, bathroom, study, front door) that swing if pushed, windows, ceilings (head camera only);
-* outside: a front porch with two 7 cm steps, a patio deck one step down from the living room, a lawn and a bench;
-* things to fetch, each with a handle on top for the S1's hook hand: kettle, lunchbox, shopping bag, laundry basket,
-  bucket, toolbox, watering can;
-* people: one standing in the study, one walking a loop through the kitchen, hall and dining area (they stop for the
-  robot), and "you", the person giving instructions; a robot vacuum wandering the kitchen and dining area.
+* outside: a front porch with two 7 cm steps, a patio deck one step down from the living room, a lawn, a bench and
+  the garden bin.
+
+Up a straight flight of 12 stairs (10 cm risers, 30 cm treads; KESTREL_RISER / KESTREL_NRISERS make them steeper),
+an upper wing: a landing, a messy kids' room (bed, toy box, clothes hamper, table, toys and clothes on the floor) and
+a laundry room with a washing machine.
+
+Things to handle, each with a handle on top for the S1's hook hand: kettle, pot, pasta, four mugs, lunchbox,
+shopping bag, laundry basket, bucket, toolbox, watering can, a stick vacuum, a rubbish bag, toys (teddy, truck,
+blocks, ball) and clothes (shirt, jeans, socks). Containers (sink, bins, toy box, hamper) keep what is dropped in.
+Touch controls on the worktop edge switch the hob, kettle, tap and washer on and off. The house keeps the state the
+chores are scored on: water in each container, kettle temperature, pasta cooking time on a hot hob, the washer's
+cycle, and 80 patches of dust that only the vacuum head picks up.
+
+People and pets: one standing in the study, one walking a loop through the kitchen, hall and dining area (they stop
+for the robot), "you", a visitor who rings at the front door and follows the robot, a dog that wanders and gets in
+the way, a spill that can appear on the floor, a card tray at the dining table for Uno, and a robot vacuum. A test
+can also push the robot, turn the lights down, or leave clutter on the stairs.
 
 Floors are real collision geometry; the walking policy's height scan reads a height map of exactly that floor (the
 same kind of input it was trained on, with stairs), so steps, rugs and thresholds are seen and stepped over. Floor
 friction differs by room (bathroom tiles 0.6, kitchen tiles 0.7, wood 0.8, carpet and rugs 1.0).
 
-The house also provides what a robot that has mapped its home would know: an occupancy grid for path planning, named
-rooms, furniture with places to stand, chairs it can sit on, and where each object belongs.
+The house also provides what a robot that has mapped its home would know: an occupancy grid per floor for path
+planning, named rooms, the flight of stairs between them, furniture with places to stand, chairs it can sit on, and
+where each object belongs.
 """
 from __future__ import annotations
 

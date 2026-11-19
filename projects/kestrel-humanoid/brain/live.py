@@ -453,8 +453,8 @@ class Live:
             except queue.Empty:
                 opts = g.playable(g.turn)
                 return (opts[0], "red" if opts and opts[0].colour is None else None) if opts else (None, None)
-            if re.search(r"\bdraw\b|\bpass\b|\bpick up\b", text):
-                return None, None
+            if re.search(r"\bdraw\b|\bpass\b|\bpick up\b", text) and not re.search(r"wild|draw ?(two|2|four|4)|\+[24]", text):
+                return None, None                                   # "draw", not "red draw two" / "wild draw four"
             col = next((c for c in U.COLOURS if c in text), None)
             val = None
             if "wild" in text:
