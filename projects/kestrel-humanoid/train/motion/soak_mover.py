@@ -64,8 +64,11 @@ def main():
     ap.add_argument("--log", default=None)
     ap.add_argument("--vmax", type=float, default=None, help="cap the random forward speed")
     ap.add_argument("--mode", default="all", choices=["all", "stand", "walk"])
+    ap.add_argument("--wz-max", type=float, default=None, help="override the mover's turning-rate limit (rad/s)")
     a = ap.parse_args()
     rng = np.random.default_rng(a.seed)
+    if a.wz_max:
+        LIMITS["wz"] = (-a.wz_max, a.wz_max)
     mv = Mover(a.library)
     gestures = sorted(x for x in set(mv.db.actions) if x not in WALKS and not COMBAT.search(x.replace("-", "_")))
     styles = sorted(s for s in set(mv.db.styles) if s)
