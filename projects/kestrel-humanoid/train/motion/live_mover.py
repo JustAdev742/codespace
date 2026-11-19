@@ -1,0 +1,331 @@
+"""Tell the G1 what to do and watch it move - no training: motion matching on human data + walker + balance control.
+
+    python -m motion.live_mover --library runs/motion/bandai_library.npz             # type commands
+    python -m motion.live_mover --library ... --claude                               # Claude decides the moves
+    python -m motion.live_mover --library ... --local qwen3:8b                       # a local model (Ollama) decides
+
+A 3D window shows the robot; type in the terminal. Plain commands always work: walk, walk fast, walk slowly, back,
+step left / right, turn left / right, stop, any action from the motion library (wave, bow, guide, call, byebye,
+raise hands, respond, ...), "style tired" (or old, proud, active, happy, sad, ... - any style in the library),
+"free" (it does whatever it likes until you say stop), "list", "quit".
+
+With --claude or --local the language model reads what you say and answers with a sequence of moves (one `move` tool
+call per step: an action or a walk, a style, how long). The tool only offers the library's actions; the library has no
+fighting moves (they are filtered out when it is built), so no model can make the robot strike.
+
+The library is built once from the Bandai Namco motion dataset (see motion/README.md, "Moving without training").
+"""
+from __future__ import annotations
+
+import argparse
+import json
+import queue
+import re
+import sys
+import threading
+import time
+from pathlib import Path
+
+import numpy as np
+
+from .mover import DT, LIMITS, Mover
+from .safety import _RX as COMBAT
+
+WALKS = {"walk", "walk-back", "walk-left", "walk-right", "walk-turn-left", "walk-turn-right", "run", "dash"}
+
+
+class Moves:
+    """A queue of (action, vx, vy, turn, style, seconds); the physics loop pulls from it."""
+
+    def __init__(self, gestures, styles):
+        self.q = queue.Queue()
+        self.gestures, self.styles = gestures, styles
+        self.style = None
+        self.free = False
+
+    def put(self, action="stand", vx=0.0, vy=0.0, turn=0.0, style=None, seconds=None):
+        if action not in ("stand", "walk") and action not in self.gestures:
+            print(f"  (no '{action}' in the motion library)")
+            return
+        self.q.put((action, float(vx), float(vy), float(turn), style or self.style, seconds))
+
+    def clear(self):
+        while not self.q.empty():
+            self.q.get_nowait()
+
+    # -------------------------------------------------------------------------------------------- plain commands
+    def plain(self, text):
+        t = text.lower().strip()
+        if not t:
+            return True
+        if t in ("quit", "exit", "q"):
+            return False
+        if t == "list":
+            print("  actions:", ", ".join(sorted(self.gestures)))
+            print("  styles: ", ", ".join(sorted(self.styles)))
+            return True
+        if t in ("free", "free will", "do what you want", "whatever you want"):
+            self.free = True
+            print("  free will: on (say stop)")
+            return True
+        if t.startswith("style"):
+            s = t.split(None, 1)[1].strip() if " " in t else ""
+            self.style = s if s in self.styles else None
+            print(f"  style: {self.style or 'any'}")
+            return True
+        self.free = False
+        self.clear()
+        speed = 0.4 if "fast" in t or "quick" in t else 0.15 if "slow" in t else 0.3
+        if t in ("stop", "stand", "halt", "wait"):
+            self.put("stand")
+        elif "turn" in t:
+            self.put("walk", 0.0, 0.0, 0.5 if "left" in t else -0.5, seconds=3.2)
+            self.put("stand")
+        elif "back" in t:
+            self.put("walk", -0.15)
+        elif "left" in t or "right" in t:
+            self.put("walk", 0.0, 0.1 if "left" in t else -0.1)
+        elif "walk" in t or "go" in t or "forward" in t:
+            self.put("walk", speed)
+        else:
+            act = self.find(t)
+            if act:
+                self.put(act)
+            else:
+                print("  ? try: walk, turn left, stop, wave, bow, guide, free, style tired, list")
+        return True
+
+    def find(self, t):
+        words = re.sub(r"[^a-z ]", " ", t).split()
+        if not words:
+            return None
+        best, score = None, 0
+        for g in self.gestures:
+            parts = g.split("-")
+            sc = sum(1 for w in words if any(p.startswith(w[:4]) for p in parts))
+            if sc > score:
+                best, score = g, sc
+        return best
+
+    def next_free(self, rng):
+        r = rng.random()
+        if r < 0.5:
+            self.put("walk", rng.uniform(0.1, 0.35), 0.0, rng.choice([0.0, 0.0, rng.uniform(-0.4, 0.4)]),
+                     seconds=rng.uniform(2, 6), style=rng.choice([None] + sorted(self.styles)))
+        elif r < 0.8:
+            self.put(rng.choice(sorted(self.gestures - WALKS)), seconds=rng.uniform(3, 5))
+        else:
+            self.put("stand", seconds=rng.uniform(1, 3))
+
+
+# ------------------------------------------------------------------------------------------------ language models
+def move_tool(gestures, styles):
+    acts = ["stand", "walk"] + sorted(gestures - WALKS)
+    return {
+        "name": "move",
+        "description": ("Queue one move for the robot's body. Several calls make a sequence (they run in order). "
+                        "walk: vx forward m/s (-0.15..0.4), vy sideways m/s (-0.1..0.1, left positive), turn rad/s "
+                        "(-0.5..0.5, left positive). Other actions are motions from human motion capture, done in place. "
+                        "seconds: how long (default: until the next move)."),
+        "input_schema": {"type": "object", "properties": {
+            "action": {"type": "string", "enum": acts},
+            "vx": {"type": "number"}, "vy": {"type": "number"}, "turn": {"type": "number"},
+            "style": {"type": "string", "enum": sorted(styles), "description": "how it moves (optional)"},
+            "seconds": {"type": "number"}}, "required": ["action"]},
+    }
+
+
+SYSTEM = ("You control the body of a Unitree G1 humanoid robot in a physics simulation. It moves by playing back real "
+          "human motion capture, kept balanced by a controller. Turn what the person says into moves with the move "
+          "tool (a sequence is fine: e.g. walk 3 s, turn, wave). If they ask you to do whatever you like, choose "
+          "moves yourself. Keep spoken replies to one short sentence. It cannot run, jump, fight or strike anyone: "
+          "refuse anything meant to hurt someone, briefly, and call no tool for it.")
+
+
+class ClaudeMover:
+    def __init__(self, moves, model="claude-opus-5-5", key_file=None):
+        import anthropic
+        sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "brain"))
+        from live_claude import read_key_file
+        key, ws = read_key_file(key_file)
+        headers = {"anthropic-workspace-id": ws} if ws else None
+        self.betas = []
+        if key is None:
+            self.client = anthropic.Anthropic(default_headers=headers)
+        elif key.startswith("sk-ant-oat"):
+            self.client = anthropic.Anthropic(auth_token=key, default_headers=headers)
+            self.betas.append("oauth-2025-04-20")
+        else:
+            self.client = anthropic.Anthropic(api_key=key, default_headers=headers)
+        self.moves, self.model, self.msgs = moves, model, []
+        self.tool = move_tool(moves.gestures, moves.styles)
+
+    def turn(self, text):
+        self.msgs.append({"role": "user", "content": text})
+        kw = dict(model=self.model, max_tokens=4000, system=SYSTEM, tools=[self.tool], messages=self.msgs,
+                  output_config={"effort": "low"})
+        try:
+            r = self.client.beta.messages.create(betas=self.betas, **kw) if self.betas else self.client.messages.create(**kw)
+        except Exception as e:                          # offline, bad key, out of credit: plain commands still work
+            self.msgs.pop()
+            print(f"  (language model unavailable: {type(e).__name__}; using plain commands)")
+            return self.moves.plain(text)
+        calls = [b for b in r.content if b.type == "tool_use"]
+        for b in r.content:
+            if b.type == "text" and b.text.strip():
+                print("  robot:", b.text.strip())
+        if calls:
+            self.moves.free = False
+            self.moves.clear()
+            for b in calls:
+                self.moves.put(**{k: v for k, v in b.input.items() if k in ("action", "vx", "vy", "turn", "style", "seconds")})
+        self.msgs.append({"role": "assistant", "content": r.content})
+        if calls:
+            self.msgs.append({"role": "user", "content": [{"type": "tool_result", "tool_use_id": b.id, "content": "queued"}
+                                                          for b in calls]})
+            self.msgs.append({"role": "assistant", "content": "OK."})
+        self.msgs = self.msgs[-30:]
+        while self.msgs and self.msgs[0]["role"] != "user" or (self.msgs and not isinstance(self.msgs[0]["content"], str)):
+            self.msgs.pop(0)
+        return True
+
+
+class LocalMover:
+    """Any OpenAI-compatible chat server (Ollama, LM Studio)."""
+
+    def __init__(self, moves, model, url="http://localhost:11434/v1"):
+        t = move_tool(moves.gestures, moves.styles)
+        self.tool = {"type": "function", "function": {"name": t["name"], "description": t["description"],
+                                                      "parameters": t["input_schema"]}}
+        self.moves, self.model, self.url, self.msgs = moves, model, url.rstrip("/"), []
+
+    def turn(self, text):
+        import urllib.request
+        self.msgs = (self.msgs + [{"role": "user", "content": text}])[-20:]
+        body = {"model": self.model, "messages": [{"role": "system", "content": SYSTEM + " Do not think aloud."}] + self.msgs,
+                "tools": [self.tool]}
+        try:
+            req = urllib.request.Request(f"{self.url}/chat/completions", data=json.dumps(body).encode(),
+                                         headers={"Content-Type": "application/json"})
+            with urllib.request.urlopen(req, timeout=120) as r:
+                msg = json.loads(r.read().decode())["choices"][0]["message"]
+        except Exception as e:
+            print(f"  (local model unavailable: {type(e).__name__}; using plain commands)")
+            return self.moves.plain(text)
+        say = re.sub(r"<think>.*?</think>", "", msg.get("content") or "", flags=re.S).strip()
+        if say:
+            print("  robot:", say)
+        calls = msg.get("tool_calls") or []
+        if calls:
+            self.moves.free = False
+            self.moves.clear()
+            for c in calls:
+                try:
+                    a = json.loads(c["function"]["arguments"])
+                    self.moves.put(**{k: v for k, v in a.items() if k in ("action", "vx", "vy", "turn", "style", "seconds")})
+                except (ValueError, TypeError, KeyError):
+                    pass
+        elif not say:
+            return self.moves.plain(text)
+        self.msgs.append({"role": "assistant", "content": say or "OK."})
+        return True
+
+
+# ----------------------------------------------------------------------------------------------------------- main
+def main():
+    ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
+    ap.add_argument("--library", default="runs/motion/bandai_library.npz")
+    ap.add_argument("--claude", action="store_true")
+    ap.add_argument("--claude-model", default="claude-opus-5-5")
+    ap.add_argument("--claude-key-file", default=None)
+    ap.add_argument("--local", default=None, help="model name on an OpenAI-compatible server, e.g. qwen3:8b")
+    ap.add_argument("--local-url", default="http://localhost:11434/v1")
+    ap.add_argument("--no-viewer", action="store_true", help="no 3D window (prints the state instead)")
+    a = ap.parse_args()
+
+    print("loading the motion library ...", flush=True)
+    mv = Mover(a.library)
+    gestures = {x for x in set(mv.db.actions) if not COMBAT.search(x.replace("-", "_"))}
+    styles = {s for s in set(mv.db.styles) if s}
+    moves = Moves(gestures, styles)
+    brain = ClaudeMover(moves, a.claude_model, a.claude_key_file) if a.claude else \
+        LocalMover(moves, a.local, a.local_url) if a.local else None
+    print(f"{len(mv.db.names)} human clips; actions: {', '.join(sorted(gestures - WALKS))}")
+    print("type a command (walk, turn left, wave, bow, free, style tired, list, quit)" +
+          (" or just talk to it" if brain else ""))
+
+    alive = threading.Event()
+    alive.set()
+
+    def reader():
+        while alive.is_set():
+            try:
+                line = input("> ")
+            except EOFError:
+                break
+            ok = brain.turn(line) if (brain and line.strip() and line.strip().lower() not in ("quit", "exit", "q", "list", "free", "stop")) \
+                else moves.plain(line)
+            if not ok:
+                break
+        alive.clear()
+
+    threading.Thread(target=reader, daemon=True).start()
+
+    viewer, vd, vm = None, None, None
+    if not a.no_viewer:
+        import mujoco
+        import mujoco.viewer
+        from . import g1 as G
+        try:
+            vm = G.load_model(visual=True)
+        except Exception:                               # no meshes: show the collision model
+            vm = mv.m
+        vd = mujoco.MjData(vm)
+        viewer = mujoco.viewer.launch_passive(vm, vd, show_left_ui=False, show_right_ui=False)
+        viewer.cam.distance, viewer.cam.elevation = 3.0, -15
+
+    rng = np.random.default_rng()
+    current, until = None, 0.0
+    sim_t, wall0, last_print, last_sync = 0.0, time.time(), 0.0, 0.0
+    while alive.is_set() and (viewer is None or viewer.is_running()):
+        # next move: a timed move runs out; an untimed one lasts until another is queued
+        if current is None or (until and sim_t >= until) or (not current[5] and not moves.q.empty()):
+            if moves.q.empty() and moves.free:
+                moves.next_free(rng)
+            if not moves.q.empty():
+                current = moves.q.get_nowait()
+                act, vx, vy, turn, style, secs = current
+                mv.set_intent(act, vx, vy, turn, style)
+                until = sim_t + secs if secs else 0.0
+                print(f"\n  moving: {act}" + (f" ({vx:+.2f} m/s, {vy:+.2f} m/s, {turn:+.2f} rad/s)" if act == "walk" else "")
+                      + (f", {style}" if style else "") + (f" for {secs:.1f} s" if secs else "") + "\n> ", end="", flush=True)
+            elif current is not None and until:
+                mv.set_intent("stand")
+                current, until = None, 0.0
+        if not mv.step():
+            print("\n  the robot fell - restarting it standing")
+            mv = Mover(a.library, db=mv.db)
+            moves.clear()
+            current, until = None, 0.0
+        sim_t += DT
+        if viewer is not None and sim_t - last_sync >= 1 / 30:
+            last_sync = sim_t
+            vd.qpos[:] = mv.d.qpos
+            mujoco.mj_forward(vm, vd)
+            viewer.cam.lookat[:] = [mv.d.qpos[0], mv.d.qpos[1], 0.7]
+            viewer.sync()
+        elif viewer is None and sim_t - last_print >= 2.0:
+            last_print = sim_t
+            print(f"  t={sim_t:5.1f} pos ({mv.d.qpos[0]:+.2f},{mv.d.qpos[1]:+.2f}) playing {mv.playing()}", flush=True)
+        lag = sim_t - (time.time() - wall0)
+        if lag > 0:
+            time.sleep(lag)
+        elif lag < -0.5:                                # slower than real time on this computer: don't try to catch up
+            wall0 = time.time() - sim_t
+    alive.clear()
+    if viewer is not None:
+        viewer.close()
+
+
+if __name__ == "__main__":
+    main()

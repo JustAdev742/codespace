@@ -65,6 +65,13 @@ class WBC:
         self.w_even = 1e-3
         self.M = np.zeros((self.nv, self.nv))
         self.last_ok = True
+        self.hard_contacts = False
+        self.w_contact = 1e4
+        self.w_angmom = 0.0              # whole-body spin (angular momentum about the vertical) damping task
+        self.kd_angmom = 10.0
+        self._bodies = np.arange(1, m.nbody)
+        self._jp, self._jr = np.zeros((3, self.nv)), np.zeros((3, self.nv))
+        self.tau_last = np.zeros(m.nu)
 
     # ------------------------------------------------------------------------------------------- jacobians
     def _jac_point(self, d, body, point):
@@ -87,6 +94,21 @@ class WBC:
 
     def contact_points(self, d, side):
         return [d.geom_xpos[g] - np.array([0, 0, self.r_sphere]) for g in self.points[side]]
+
+    def angmom_z_jac(self, d, c):
+        """Row A_z with L_z = A_z qvel: the vertical component of the angular momentum about the CoM c."""
+        mj, m = self.mj, self.m
+        Az = np.zeros(self.nv)
+        for b in self._bodies:
+            mb = m.body_mass[b]
+            if mb <= 0:
+                continue
+            mj.mj_jacBodyCom(m, d, self._jp, self._jr, b)
+            R = d.ximat[b].reshape(3, 3)
+            Iw_z = (R[2] * m.body_inertia[b]) @ R.T            # third row of R diag(I) R^T
+            r = d.xipos[b] - c
+            Az += Iw_z @ self._jr + mb * (r[0] * self._jp[1] - r[1] * self._jp[0])
+        return Az
 
     def com(self, d):
         return d.subtree_com[self.pelvis].copy()
@@ -131,6 +153,12 @@ class WBC:
         c = self.com(d)
         acc_c = ref.get("com_acc", np.zeros(3)) + self.kp_com * (ref["com"] - c) + self.kd_com * (ref["com_vel"] - cv)
         task(Jcom, acc_c - self._djqd("com", Jcom, qd, dt), self.w_com)
+        # spin: the whole body's angular momentum about the vertical through the CoM decays to zero. People swing their
+        # arms against their legs for this; without it, arm and torso motion can spin the robot on its standing foot
+        if self.w_angmom > 0:
+            Az = self.angmom_z_jac(d, c)
+            Lz = float(Az @ qd)
+            task(Az[None], np.array([-self.kd_angmom * Lz]) - self._djqd("angmom", Az[None], qd, dt), np.array([self.w_angmom]))
         # pelvis orientation
         J6 = self._jac_body6(d, self.pelvis)
         Jr = J6[3:]
@@ -168,8 +196,14 @@ class WBC:
         for s in ("left", "right"):
             if stance[s]:
                 Jf = self._jac_body6(d, self.feet[s])
-                Aeq.append(np.hstack([Jf, np.zeros((6, nf))]))
-                beq.append(-self._djqd(f"stance_{s}", Jf, qd, dt) - 20.0 * (Jf @ qd))
+                b_st = -self._djqd(f"stance_{s}", Jf, qd, dt) - 20.0 * (Jf @ qd)
+                if self.hard_contacts:
+                    Aeq.append(np.hstack([Jf, np.zeros((6, nf))]))
+                    beq.append(b_st)
+                else:
+                    # a very heavy task instead of a hard constraint: the QP can then never be infeasible (falling
+                    # freely is always a solution), so a demanding moment degrades gracefully instead of failing
+                    task(Jf, b_st, np.full(6, self.w_contact))
         Aeq, beq = np.vstack(Aeq), np.concatenate(beq)
         # inequalities: friction pyramid, pushing only; torque limits
         Ain, bin_ = [], []
@@ -199,7 +233,8 @@ class WBC:
             try:
                 x = quadprog.solve_qp(H, g, C[:, :k], b[:k], meq=len(beq))[0]
             except ValueError:
-                x = np.concatenate([np.zeros(nv), np.zeros(nf)])
+                return self.tau_last.copy(), dict(qdd=np.zeros(nv), f=np.zeros(nf))   # hold the last good torques
         qdd, f = x[:nv], x[nv:]
         tau = Ma @ qdd + ha - (Jc[:, self.vadr].T @ f if nf else 0.0)
-        return np.clip(tau, -self.tau_lim, self.tau_lim), dict(qdd=qdd, f=f)
+        self.tau_last = np.clip(tau, -self.tau_lim, self.tau_lim)
+        return self.tau_last.copy(), dict(qdd=qdd, f=f)

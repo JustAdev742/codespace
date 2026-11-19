@@ -115,6 +115,13 @@ class Walker:
         self.t = 0.0
         self.phase_t = 0.0
         self.walking = False
+        self.omega = math.sqrt(G_ACC / zc)
+        self.k_state = 0.0           # measured CoM error fed back into the plan (0: with the WBC's lag it destabilised)
+        self.k_step = 1.0            # footstep correction per metre of capture-point error
+        self.max_adjust = 0.12       # m: largest correction of a footstep
+        self.dcm_err = np.zeros(2)
+        self.recover_at = 0.07       # m of capture-point error while standing that triggers a catching step
+        self.recoveries = 0
 
     def start(self, left_pos, left_yaw, right_pos, right_yaw, com_xy):
         self.feet = {"left": (np.array(left_pos[:2]), left_yaw), "right": (np.array(right_pos[:2]), right_yaw)}
@@ -178,10 +185,44 @@ class Walker:
                 out[n] = seq[-1][3]
         return out, steps
 
-    def update(self):
+    def _adjust_target(self):
+        """Move the swing foot's landing spot by the capture-point error (clamped; the feet never cross)."""
+        p_nom, yaw = self.target_nominal
+        adj = np.clip(self.k_step * self.dcm_err, -self.max_adjust, self.max_adjust)
+        p = p_nom + adj
+        stance = "left" if self.swing == "right" else "right"
+        sp, syaw = self.feet[stance]
+        c, s_ = math.cos(syaw), math.sin(syaw)
+        d = p - sp
+        lx, ly = c * d[0] + s_ * d[1], -s_ * d[0] + c * d[1]
+        sign = 1.0 if self.swing == "left" else -1.0
+        ly = sign * min(max(sign * ly, 0.16), 0.40)
+        lx = float(np.clip(lx, -0.25, 0.35))
+        self.target = (sp + np.array([c * lx - s_ * ly, s_ * lx + c * ly]), yaw)
+
+    def update(self, com_meas=None, com_vel_meas=None):
         """Advance dt. Returns dict(com [3], com_vel, com_acc, stance {side: bool}, swing {side: (pos, vel, yaw)},
-        pelvis_yaw)."""
+        pelvis_yaw).
+
+        com_meas / com_vel_meas (the robot's real centre of mass, x y): closes the loop. Part of the error goes back
+        into the plan (so the plan steers from where the body really is) and, while a foot is in the air, its landing
+        spot moves by the capture-point error - the body catches itself by stepping, as people do when pushed."""
         dt = self.dt
+        if com_meas is not None:
+            ex = np.asarray(com_meas[:2]) - self.zmp.x[0]
+            ev = np.asarray(com_vel_meas[:2]) - self.zmp.x[1]
+            self.dcm_err = ex + ev / self.omega
+            self.zmp.x[0] += self.k_state * ex
+            self.zmp.x[1] += self.k_state * ev
+            if self.standing and np.linalg.norm(self.dcm_err) > self.recover_at:
+                # pushed (or leaning too far) while standing: take a step towards the error, quickly
+                yl, yr = self.feet["left"][1], self.feet["right"][1]
+                hy = math.atan2(math.sin(yl) + math.sin(yr), math.cos(yl) + math.cos(yr))
+                lat = -math.sin(hy) * self.dcm_err[0] + math.cos(hy) * self.dcm_err[1]
+                self.swing = "left" if lat > 0 else "right"
+                self.standing = False
+                self.td_first = 0.1
+                self.recoveries += 1
         # ease into a new command, like a person changing direction (0.6 m/s^2, 1.5 rad/s^2)
         goal = getattr(self, "cmd_goal", self.cmd)
         lim = np.array([0.6, 0.6, 1.5]) * dt
@@ -206,11 +247,14 @@ class Walker:
                 # the swing foot's target: where the planner puts it
                 _, feet_after = self.planner.plan(self.feet["left"], self.feet["right"], self.swing, self.cmd, 1)
                 self.target = feet_after[self.swing]
+                self.target_nominal = (self.target[0].copy(), self.target[1])
                 self.lift_from = (self.feet[self.swing][0].copy(), self.feet[self.swing][1])
             if not self.in_double:
                 s = self.swing
                 stance[s] = False
                 f = min(self.phase_t / ts, 1.0)
+                if f < 0.7:
+                    self._adjust_target()
                 sm = f * f * (3 - 2 * f)                  # smoothstep: starts and stops gently
                 dsm = 6 * f * (1 - f) / ts
                 p0, y0 = self.lift_from

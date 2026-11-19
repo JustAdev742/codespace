@@ -150,7 +150,7 @@ class Matcher:
         self.action, self.style = action, style
         self.cmd = np.array([vx, vy, yaw_rate], float)
 
-    def _query(self):
+    def _query(self, now=None):
         db, i = self.db, self.frame
         fut = []
         v = self.cmd_s
@@ -163,13 +163,18 @@ class Matcher:
             else:
                 x, y = v[0] * t, v[1] * t
             fut += [x, y, math.cos(dy), math.sin(dy)]
-        cur = db.F[i] / db.w * db.sd + db.mu              # current motion features, from the playing frame
-        return np.concatenate([fut, cur[12:24]])
+        if now is None:                                    # current motion features, from the playing frame
+            now = (db.F[i] / db.w * db.sd + db.mu)[12:24]
+        return np.concatenate([fut, now])
 
     def _allowed(self):
         db = self.db
         a = self.action
-        if a in ("walk", "move", "locomotion"):
+        if isinstance(a, (list, tuple, set, frozenset)):     # an explicit set of actions (e.g. only forward walking)
+            ok = np.isin(db.action_of_frame, list(a))
+            if not ok.any():
+                ok = np.isin(db.action_of_frame, list(LOCOMOTION))
+        elif a in ("walk", "move", "locomotion"):
             ok = np.isin(db.action_of_frame, list(LOCOMOTION))
         else:
             ok = db.action_of_frame == a
@@ -181,15 +186,19 @@ class Matcher:
                 ok = s_ok
         return ok
 
-    def step(self):
-        """Advance one frame (1/50 s). Returns dict(q, qd, root_pos, root_quat, frame, action)."""
+    def step(self, now=None):
+        """Advance one frame (1/50 s). Returns dict(q, qd, root_pos, root_quat, frame, action).
+
+        now: optional 12 current-motion features from the real robot (feet positions [6] and velocities [4] and root
+        velocity [2], in its own heading frame; see robot_features). Matching against the robot's own feet keeps the
+        human motion in step with the legs - arms swing against the stepping foot, as in people."""
         db = self.db
         dt = 1.0 / FPS
         self.cmd_s += (self.cmd - self.cmd_s) * min(1.0, dt / 0.25)
         nxt = self.frame + 1
         end = nxt >= db.starts[db.clip_of[self.frame]] + db.lens[db.clip_of[self.frame]] - 1
         if self.n % self.every == 0 or end or not db.valid[min(nxt, len(db.q) - 1)]:
-            best, cost = db.search(self._query(), self._allowed())
+            best, cost = db.search(self._query(now), self._allowed())
             same_clip = db.clip_of[best] == db.clip_of[self.frame] and abs(best - nxt) < 10
             if not same_clip or end:
                 # inertialization: keep the current output pose and velocity, fade the difference out
@@ -226,3 +235,14 @@ class Matcher:
         root_quat = qmul(np.array([math.cos(self.yaw / 2), 0, 0, math.sin(self.yaw / 2)]), tilt)
         return dict(q=self.q_out.copy(), qd=self.v_out.copy(), root_pos=self.root_pos.copy(),
                     root_quat=root_quat / np.linalg.norm(root_quat), frame=j, action=db.actions[db.clip_of[j]])
+
+
+def robot_features(root_pos, root_yaw, feet, feet_vel, root_vel):
+    """The 12 current-motion features (as in Database._features) from a real robot state: root (pelvis) position and
+    heading, ankle positions [2, 3] and velocities [2, 3], root velocity [3], all in the world."""
+    c, s = math.cos(root_yaw), math.sin(root_yaw)
+    loc = lambda v: np.array([c * v[0] + s * v[1], -s * v[0] + c * v[1], v[2]])
+    f = [loc(np.asarray(p) - root_pos) for p in feet]
+    fv = [loc(np.asarray(v)) for v in feet_vel]
+    rv = loc(np.asarray(root_vel))
+    return np.concatenate([f[0], f[1], fv[0][:2], fv[1][:2], rv[:2]])
