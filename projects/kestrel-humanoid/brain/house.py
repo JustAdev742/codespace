@@ -974,7 +974,7 @@ class House(SK.World):
         if self.st["hob"]:
             if pot_on:
                 self.hob_empty_t = 0.0
-                if self.water["pot"] > 0.5:
+                if self.water["pot"] > 0.4:
                     self.temp["pot"] = min(100.0, self.temp["pot"] + 2.5 * dt)
                 else:
                     self.burn_t += dt
@@ -1253,8 +1253,11 @@ def main():
     out = HERE / "runs"
     out.mkdir(exist_ok=True)
     Image.fromarray(h.chase_view("overview")).save(out / "house_overview.png")
+    o = WING_O
     shots = [("kitchen", 4.2, 4.0, -2.4), ("living", 10.0, 4.8, -0.9), ("hall", 7.0, 5.9, 0.0),
-             ("bedroom", 4.0, 7.2, 2.4), ("bath", 6.7, 7.1, 1.57), ("study", 10.4, 7.4, 0.6)]
+             ("bedroom", 4.0, 7.2, 2.4), ("bath", 6.7, 7.1, 1.57), ("study", 10.4, 7.4, 0.6),
+             ("stairs", 1.4, 5.9, math.pi), ("landing", -3.6 + o / 2, 4.6, 1.57), ("kids_room", -4.9 + o, 6.3, 2.5),
+             ("laundry", -5.0 + o, 3.6, -2.6), ("sink", 1.5, 3.2, math.pi)]
     for name, x, y, yaw in shots:
         h.place_robot(x, y, yaw)
         for _ in range(10):

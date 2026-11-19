@@ -800,6 +800,8 @@ class HouseBot:
             sx = hd[0] - fwd * math.cos(yaw) - right * math.sin(yaw)
             sy = hd[1] - fwd * math.sin(yaw) + right * math.cos(yaw)
             self.align((sx, sy), yaw, tol=0.035)
+            if not low:
+                self.square_up(h.handle_of(obj)[:2])        # the handle in the arm's plane (it cannot reach sideways)
             ok, why = self._hook(obj)
             if ok:
                 self.say("picked", obj=name)
@@ -850,7 +852,7 @@ class HouseBot:
         d.eq_active[eq] = 1
         h.holding = obj
         z0 = d.xpos[b][2]
-        sh2, el2, _ = h.ik_right(hd + [0, 0, 0.14])             # straight up first, clear of the surface
+        sh2, el2, _ = h.ik_right(hd + [0, 0, 0.20])             # straight up first, well clear of the surface
         lift = [(0.0, [0.0, sh1, -0.2, el1]), (1.0, [0.0, sh2, -0.2, el2])]
         if low:
             self.crouched_arms(lift, 1.2)
