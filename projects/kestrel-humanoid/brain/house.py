@@ -48,7 +48,12 @@ WALL_H = 2.5
 TEX_DIR = HERE / "data" / "house_tex"
 TEX_VERSION = "v2"
 GRID = 0.10                   # occupancy grid cell (m)
-MAP_X, MAP_Y = (-3.0, 18.0), (-4.0, 13.0)
+MAP_X, MAP_Y = (-11.2, 18.0), (-4.0, 13.0)
+# 12 risers of 10 cm: the S1's walking policy climbs those every time held straight at 0.6 m/s (12 cm: 3 in 5;
+# 15 cm: rarely); KESTREL_RISER / KESTREL_NRISERS build steeper stairs for the stress test
+RISER, TREAD, N_RISERS = float(os.environ.get("KESTREL_RISER", 0.10)), 0.30, int(os.environ.get("KESTREL_NRISERS", 12))
+UP = Z0 + RISER * N_RISERS     # the upper wing's floor
+SX = -TREAD * (N_RISERS - 1)   # the top of the stairs (the wing's east wall)
 ROBOT_R = 0.30                # inflation radius for planning (half the robot's width plus a margin)
 ROBOT_TOP = 1.55              # anything lower than this above the floor is in the robot's way
 
@@ -178,6 +183,9 @@ class Builder:
         self.rooms, self.furniture, self.chairs, self.objects, self.doors = {}, {}, {}, {}, {}
         self.people = {}
         self.plants = []         # pot positions, for watering
+        self.containers = {}     # open-topped things to drop into: box (inside), bottom and rim heights
+        self.controls = {}       # switches, knobs and buttons the hook can press: position and the side to press from
+        self.dirt = []           # names of the dust specks (visual), placed when a room needs vacuuming
         # spots to look out of a window from: (floor point, facing, what is out there)
         self.windows = [((12.3, 9.25), math.pi / 2, "the back garden"), ((13.1, 2.6), 0.0, "the side lawn"),
                         ((4.2, 9.3), math.pi / 2, "the back fence"), ((6.0, 0.55), -math.pi / 2, "the front garden")]
@@ -316,7 +324,7 @@ def sofa(b, name, cx, cy, yaw, w=2.1, d=0.9, z0=0.0, mat="fabric_grey"):
 def plant(b, x, y, z0, h=1.0):
     b.plants.append((x, y))
     b.geom("cylinder", (x, y, z0 + 0.18), (0.16, 0.18), "pot", name=b.nm("furn"))
-    b.geom("sphere", (x, y, z0 + 0.36 + h * 0.35), (0.28 * h,), "plant", name=b.nm("furn"))
+    b.geom("sphere", (x, y, z0 + 0.36 + h * 0.35), (0.28 * h,), "plant", name=b.nm("vis"), col=False)    # leaves
 
 
 def person(b, name, x, y, z0, rgba, mocap=False):
@@ -339,22 +347,158 @@ OBJECTS = {
     "bucket": ("cylinder", (0.12, 0.12), (0.15, 0.40, 0.85, 1), 0.6, 0.30, ["bucket", "blue bucket"], "bathroom"),
     "toolbox": ("box", (0.18, 0.08, 0.07), (0.80, 0.12, 0.10, 1), 1.4, 0.14, ["toolbox", "tool box", "red toolbox", "tools"], "study desk"),
     "can": ("cylinder", (0.09, 0.12), (0.20, 0.60, 0.25, 1), 0.6, 0.31, ["watering can", "can", "green can"], "patio"),
+    # kitchen
+    "pot": ("cylinder", (0.12, 0.08), (0.72, 0.74, 0.78, 1), 1.0, 0.17, ["pot", "saucepan", "cooking pot", "pan"], "kitchen counter"),
+    "pasta": ("box", (0.07, 0.035, 0.10), (0.95, 0.80, 0.20, 1), 0.5, 0.18, ["pasta", "spaghetti", "pasta box", "packet of pasta"], "kitchen counter"),
+    "mug_red": ("cylinder", (0.045, 0.05), (0.85, 0.15, 0.12, 1), 0.3, 0.11, ["red mug", "mug", "cup", "red cup", "tea mug"], "kitchen counter"),
+    "mug_blue": ("cylinder", (0.045, 0.05), (0.15, 0.35, 0.85, 1), 0.3, 0.11, ["blue mug", "blue cup"], "kitchen counter"),
+    "mug_green": ("cylinder", (0.045, 0.05), (0.20, 0.65, 0.30, 1), 0.3, 0.11, ["green mug", "green cup"], "kitchen counter"),
+    "mug_yellow": ("cylinder", (0.045, 0.05), (0.95, 0.80, 0.15, 1), 0.3, 0.11, ["yellow mug", "yellow cup"], "kitchen counter"),
+    "hoover": ("box", (0.13, 0.06, 0.03), (0.55, 0.20, 0.60, 1), 1.4, 0.90, ["vacuum cleaner", "hoover", "stick vacuum", "vacuum"], "kitchen"),
+    "trash": ("box", (0.13, 0.11, 0.17), (0.12, 0.12, 0.13, 1), 0.8, 0.29, ["rubbish", "trash", "bin bag", "garbage", "rubbish bag"], "garden bin"),
+    # the kids' room mess: every toy and bundle of clothes has a carry loop (the S1's hook hand needs one)
+    "teddy": ("box", (0.10, 0.07, 0.12), (0.62, 0.42, 0.25, 1), 0.4, 0.27, ["teddy", "teddy bear", "bear", "soft toy"], "toy box"),
+    "truck": ("box", (0.15, 0.07, 0.06), (0.95, 0.75, 0.10, 1), 0.6, 0.33, ["truck", "toy truck", "lorry"], "toy box"),
+    "blocks": ("cylinder", (0.09, 0.08), (0.30, 0.65, 0.95, 1), 0.7, 0.31, ["blocks", "building blocks", "bucket of blocks", "lego"], "toy box"),
+    "ball": ("sphere", (0.10,), (0.95, 0.25, 0.45, 1), 0.3, 0.29, ["ball", "football", "pink ball"], "toy box"),
+    "shirt": ("box", (0.15, 0.11, 0.03), (0.92, 0.92, 0.96, 1), 0.3, 0.37, ["shirt", "t-shirt", "top", "clothes"], "hamper"),
+    "jeans": ("box", (0.17, 0.10, 0.035), (0.20, 0.30, 0.55, 1), 0.5, 0.36, ["jeans", "trousers", "pants"], "hamper"),
+    "socks": ("box", (0.07, 0.05, 0.03), (0.55, 0.55, 0.58, 1), 0.15, 0.37, ["socks", "pair of socks"], "hamper"),
 }
+WATER_CAP = {"pot": 2.0, "kettle": 1.2, "can": 2.0, "mug_red": 0.3, "mug_blue": 0.3, "mug_green": 0.3, "mug_yellow": 0.3}
+COOK_S, WASH_S = 40.0, 30.0            # simulated cooking and washing times (a real one is minutes; the test is not)
+TOYS = ["teddy", "truck", "blocks", "ball"]
+CLOTHES = ["shirt", "jeans", "socks"]
+MUGS = ["mug_red", "mug_blue", "mug_green", "mug_yellow"]
 
 
 def grab_object(b, name, x, y, z_surface):
     shape, size, rgba, mass, hz, words, home = OBJECTS[name]
     half_h = size[-1]
-    g = [b.geom(shape, (0, 0, 0), size, rgba=rgba, name=f"{name}_main", fr=1.0, dst=[])]
-    span = (size[0] if shape == "box" else size[0]) * 0.55
+    g = [b.geom(shape, (0, 0, 0), size, rgba=rgba, name=f"{name}_main", fr=0.25 if name == "hoover" else 1.0, dst=[])]
+    if name == "hoover":                     # a stick vacuum: the floor head, a shaft up to the handle
+        g.append(b.geom("cylinder", (0, 0, (half_h + hz) / 2), (0.016, (hz - half_h) / 2), rgba=(0.2, 0.2, 0.22, 1), dst=[], mass=0.01))
+        g.append(b.geom("cylinder", (0, 0, 0.18), (0.05, 0.1), rgba=(0.55, 0.20, 0.60, 1), dst=[], mass=0.01))
+    span = max(size[0] * 0.55, 0.05)
     g.append(b.geom("box", (0, 0, hz), (span, 0.008, 0.008), rgba=(0.12, 0.12, 0.12, 1), name=f"{name}_handle", dst=[]))
     for s in (-1, 1):
         g.append(b.geom("box", (s * span, 0, (half_h + hz) / 2), (0.008, 0.008, (hz - half_h) / 2 + 0.008),
                         rgba=(0.12, 0.12, 0.12, 1), dst=[]))
     # a little damping: a load hanging from the hook stops swinging in a second instead of swinging on
-    j = f'<joint name="{name}_free" type="free" damping="0.04"/><inertial pos="0 0 0" mass="{mass}" diaginertia="0.004 0.004 0.003"/>'
+    inert = "0.09 0.09 0.01" if name == "hoover" else "0.004 0.004 0.003"
+    j = f'<joint name="{name}_free" type="free" damping="0.04"/><inertial pos="0 0 0" mass="{mass}" diaginertia="{inert}"/>'
     b.body(name, (x, y, z_surface + half_h + 0.002), 0.0, g, joint=j)
     b.objects[name] = dict(home=home, words=words, handle_z=hz, half_h=half_h, start=(x, y, z_surface))
+
+
+# ----------------------------------------------------------------------- containers and controls
+def container(b, name, x0, x1, y0, y1, z0, h, mat="white", t=0.02, words=(), floor=True):
+    """An open-topped box (bin, toy box, hamper): a bottom and four walls; things dropped in stay in."""
+    b.box(x0, x1, y0, y1, z0, z0 + 0.02, mat, name=b.nm("furn"))
+    for (a0, a1, c0, c1) in ((x0, x0 + t, y0, y1), (x1 - t, x1, y0, y1), (x0, x1, y0, y0 + t), (x0, x1, y1 - t, y1)):
+        b.box(a0, a1, c0, c1, z0, z0 + h, mat, name=b.nm("furn"))
+    b.containers[name] = dict(box=(x0 + t, x1 - t, y0 + t, y1 - t), bottom=z0 + 0.02, rim=z0 + h, words=list(words) or [name])
+
+
+def control(b, name, pos, face, rgba, words, kind="button"):
+    """Something the hook presses: pos (world), face = the direction the robot faces to press it."""
+    if kind == "knob":
+        b.geom("cylinder", pos, (0.025, 0.012), rgba=rgba, name=f"ctl_{name}", col=False,
+               euler=(math.pi / 2, 0, 0) if abs(math.sin(face)) > 0.5 else (0, math.pi / 2, 0))
+    else:
+        b.geom("box", pos, (0.025, 0.025, 0.015), rgba=rgba, name=f"ctl_{name}", col=False)
+    b.controls[name] = dict(pos=tuple(pos), face=face, words=list(words))
+
+
+# ----------------------------------------------------------------------- the upper wing
+WING_O = SX + 2.1                # the wing sits west of the stairs: shift it with the stair length
+MESS_SPOTS = [(-6.6 + WING_O, 6.4), (-5.4 + WING_O, 8.6), (-7.4 + WING_O, 7.0), (-5.0 + WING_O, 6.2),
+              (-6.0 + WING_O, 9.2), (-7.0 + WING_O, 8.3), (-5.6 + WING_O, 7.4)]
+
+
+def build_upper(b):
+    """A split-level wing up the stairs (12 risers of 10 cm, 30 cm treads, 1.2 m wide, walls both sides): a landing, the
+    kids' room (a mess of toys and clothes) and a laundry room (washing machine and dryer)."""
+    o = WING_O
+    for i in range(1, N_RISERS):
+        b.floor_box(-TREAD * i, -TREAD * (i - 1), 5.3, 6.5, Z0 + RISER * i, "wood_floor", 0.9, kind="step", bottom=0.0)
+    for yy in (5.24, 6.56):                                       # stairwell walls
+        wall(b, "x", yy, SX, 0.0, 0.12, z0=0.0, h=UP + WALL_H)
+    b.geom("box", (SX / 2, 5.36, Z0 + 0.95 + (UP - Z0) / 2), (-SX / 2 / math.cos(math.atan(RISER / TREAD)), 0.02, 0.02),
+           "wood_dark", name=b.nm("vis"), col=False, euler=(0, -math.atan(RISER / TREAD), 0))      # handrail
+    X0, X1, Y0, Y1 = -9.0 + o, SX, 0.6, 10.0
+    XI = -4.3 + o                                                 # the landing's west wall
+    b.floor_box(XI, X1, Y0, Y1, UP, "wood_floor", 0.8, bottom=0.0)                     # landing
+    b.floor_box(X0, XI, 5.2, Y1, UP, "carpet", 1.0, bottom=0.0)                        # kids' room
+    b.floor_box(X0, XI, Y0, 5.2, UP, "tile_floor", 0.7, bottom=0.0)                    # laundry
+    b.floor_box(-7.6 + o, -5.6 + o, 6.6, 8.2, UP + 0.012, "rug_blue", 1.0, kind="rug", bottom=UP - 0.001)
+    U = dict(z0=UP)
+    wall(b, "y", X0, Y0, Y1, 0.2, [(2.0, 3.2, "window", 1.0), (7.0, 8.4, "window", 0.9)], **U)
+    wall(b, "x", Y1, X0, X1, 0.2, [(XI + 0.7, XI + 1.5, "window", 0.9)], **U)
+    wall(b, "x", Y0, X0, X1, 0.2, [(XI + 0.7, XI + 1.5, "window", 0.9)], **U)
+    wall(b, "y", X1, Y0, Y1, 0.2, [(5.3, 6.5, "open")], **U)
+    wall(b, "y", XI, Y0, Y1, 0.12, [(2.6, 3.6, "door"), (6.9, 7.9, "door")], **U)
+    wall(b, "x", 5.2, X0, XI, 0.12, **U)
+    b.box(X0, X1, Y0, Y1, UP + WALL_H, UP + WALL_H + 0.05, "white", name=b.nm("ceil"), col=False, group=3)
+    # kids' room: bed, toy box, hamper, a little table, shelves
+    b.box(-8.9 + o, -7.95 + o, 7.7, 9.9, UP, UP + 0.25, "wood_light", name=b.nm("furn"))
+    b.box(-8.88 + o, -7.97 + o, 7.72, 9.88, UP + 0.25, UP + 0.45, "fabric_bed", name=b.nm("furn"))
+    b.furniture["kids bed"] = dict(xy=(-8.43 + o, 8.8), size=(0.95, 2.2), top=UP + 0.45)
+    container(b, "toy box", -6.2 + o, -5.4 + o, 9.35, 9.9, UP, 0.38, mat="wood_light", words=["toy box", "toybox", "toy chest"])
+    container(b, "hamper", -4.95 + o, -4.45 + o, 5.32, 5.82, UP, 0.55, mat="fabric_grey",
+              words=["hamper", "laundry hamper", "clothes hamper"])
+    table(b, "kids table", -7.9 + o, 6.0, 0.7, 0.6, 0.5, z0=UP)
+    b.box(-8.9 + o, -8.6 + o, 5.4, 6.8, UP, UP + 1.2, "wood_dark", name=b.nm("furn"))           # shelves
+    # laundry: washing machine, dryer, folding counter
+    b.box(-8.92 + o, -8.3 + o, 0.75, 1.4, UP, UP + 0.85, "white", name=b.nm("furn"))
+    b.geom("cylinder", (-8.29 + o, 1.07, UP + 0.45), (0.2, 0.01), "glass", name=b.nm("vis"), col=False, euler=(0, math.pi / 2, 0))
+    b.box(-8.92 + o, -8.3 + o, 1.5, 2.15, UP, UP + 0.85, "white", name=b.nm("furn"))
+    b.furniture["washing machine"] = dict(xy=(-8.61 + o, 1.07), size=(0.62, 0.65), top=UP + 0.85)
+    b.furniture["dryer"] = dict(xy=(-8.61 + o, 1.82), size=(0.62, 0.65), top=UP + 0.85)
+    b.box(-8.92 + o, -8.35 + o, 2.6, 4.4, UP, UP + 0.86, "cabinet", name=b.nm("furn"))
+    b.box(-8.92 + o, -8.33 + o, 2.6, 4.4, UP + 0.86, UP + 0.9, "worktop", name=b.nm("furn"))
+    b.furniture["laundry counter"] = dict(xy=(-8.63 + o, 3.5), size=(0.59, 1.8), top=UP + 0.9)
+    control(b, "washer", (-8.38 + o, 1.07, UP + 0.865), math.pi, (0.2, 0.8, 0.3, 1), ["washing machine", "washer", "start button"])
+    b.flights = [dict(bottom=(0.55, 5.9), top=(SX - 0.45, 5.9), up_yaw=math.pi, box=(SX - 0.1, 0.25, 5.3, 6.5))]
+    b.rooms_lights = [(-6.5 + o, 3.0, UP), (-6.5 + o, 7.5, UP), ((XI + X1) / 2, 5.9, UP)]
+
+
+def build_extras(b):
+    """The kitchen's working parts, bins, the card tray, hazards and extra visitors."""
+    # kitchen: hob knob and kettle switch on the counter front, the sink's tap lever, the bin
+    # touch controls on the worktop's front edge (the hook reaches 0.9-1.5 m standing; lower needs a crouch)
+    control(b, "hob", (3.2, 0.74, Z0 + 0.915), -math.pi / 2, (0.85, 0.15, 0.1, 1), ["hob", "cooker", "stove", "hob switch"])
+    control(b, "kettle", (2.2, 0.74, Z0 + 0.915), -math.pi / 2, (0.15, 0.35, 0.85, 1), ["kettle switch", "kettle"])
+    control(b, "tap", (0.79, 2.5, Z0 + 0.915), math.pi, (0.7, 0.7, 0.75, 1), ["tap", "faucet"])
+    b.zones = dict(hob=(2.9, 3.5, 0.3, 0.7), kettle_base=(2.42, 2.78, 0.44, 0.8), trivet=(6.55, 7.25, 2.08, 2.45))
+    b.furniture["hob"] = dict(xy=(3.2, 0.5), size=(0.6, 0.4), top=Z0 + 0.9)
+    b.furniture["kettle base"] = dict(xy=(2.6, 0.62), size=(0.36, 0.36), top=Z0 + 0.9)
+    b.furniture["trivet"] = dict(xy=(6.9, 2.26), size=(0.6, 0.32), top=Z0 + 0.75)       # near the table's edge, in reach
+    b.box(6.7, 7.1, 2.12, 2.4, Z0 + 0.75, Z0 + 0.752, "black", name=b.nm("vis"), col=False)        # the trivet
+    b.box(2.9, 3.5, 0.3, 0.7, Z0 + 0.9, Z0 + 0.905, "black", name=b.nm("vis"), col=False)       # cooktop
+    container(b, "kitchen bin", 4.33, 4.87, 0.24, 0.76, Z0, 0.45, mat="steel", words=["bin", "kitchen bin", "rubbish bin", "trash can"])
+    container(b, "garden bin", 16.25, 16.95, 6.6, 7.3, 0.0, 0.85, mat="black", words=["garden bin", "wheelie bin", "outside bin", "big bin"])
+    # dust to vacuum (visual specks, placed per test)
+    for k in range(80):
+        name = f"dirt_{k}"
+        b.geom("cylinder", (20.0, 20.0, -5.0), (0.025, 0.002), rgba=(0.30, 0.22, 0.14, 1), name=name, col=False)
+        b.dirt.append(name)
+    # the card tray "you" pull up in front of the robot's chair for a game (mocap: placed when needed)
+    tray = [b.geom("box", (0, 0, 0.705), (0.24, 0.18, 0.015), "wood_light", name="tray_top", dst=[]),
+            b.geom("cylinder", (0, 0, 0.35), (0.02, 0.345), "wood_dark", dst=[]),
+            b.geom("box", (-0.09, 0, 0.732), (0.035, 0.05, 0.012), rgba=(0.12, 0.12, 0.14, 1), name="uno_deck", col=False, dst=[]),
+            b.geom("box", (0.08, 0, 0.724), (0.035, 0.05, 0.004), rgba=(0.85, 0.1, 0.1, 1), name="uno_pile", col=False, dst=[])]
+    b.bodies.append(f'<body name="card_tray" mocap="true" pos="20 21 -5">{"".join(tray)}</body>')
+    # hazards and visitors, parked out of sight until a test uses them
+    b.bodies.append('<body name="spill" mocap="true" pos="20 22 -5"><geom name="spill_geom" type="box" size="0.45 0.3 0.0015" '
+                    'rgba="0.55 0.75 0.95 0.55" friction="0.12 0.005 0.0001" priority="3"/></body>')
+    dog = [b.geom("box", (0, 0, 0.32), (0.28, 0.1, 0.1), rgba=(0.55, 0.35, 0.18, 1), name="rex_body", dst=[]),
+           b.geom("sphere", (0.32, 0, 0.45), (0.09,), rgba=(0.55, 0.35, 0.18, 1), name="rex_head", dst=[])]
+    for lx in (-0.2, 0.2):
+        for ly in (-0.07, 0.07):
+            dog.append(b.geom("cylinder", (lx, ly, 0.11), (0.03, 0.11), rgba=(0.45, 0.28, 0.14, 1), dst=[]))
+    b.bodies.append(f'<body name="rex" mocap="true" pos="20 23 -5">{"".join(dog)}</body>')
+    person(b, "sam", 20.0, 24.0, -5.0, (0.75, 0.55, 0.20, 1), mocap=True)
 
 
 # ======================================================================= the house
@@ -388,7 +532,7 @@ def build():
     wall(b, "x", 0.1, 0, 14, 0.2, [(1.6, 2.8, "window", 1.0), (5.9, 7.9, "window", 0.8), (10.2, 12.2, "door"),
                                    (12.6, 13.5, "window", 0.8)])
     wall(b, "x", 9.9, 0, 14, 0.2, [(3.6, 4.8, "window", 0.9), (6.2, 7.0, "window", 1.4), (10.4, 12.6, "window", 0.9)])
-    wall(b, "y", 0.1, 0.2, 9.8, 0.2, [(2.0, 3.0, "window", 1.0), (7.6, 9.0, "window", 0.9)])
+    wall(b, "y", 0.1, 0.2, 9.8, 0.2, [(2.0, 3.0, "window", 1.0), (5.3, 6.5, "door"), (7.6, 9.0, "window", 0.9)])
     wall(b, "y", 13.9, 0.2, 9.8, 0.2, [(1.6, 3.4, "window", 0.8), (5.45, 6.35, "door"), (7.6, 9.0, "window", 0.9)])
     wall(b, "x", 5.2, 0.2, 13.8, 0.12, [(2.2, 3.4, "open"), (6.0, 9.2, "open")])
     wall(b, "x", 6.6, 0.2, 13.8, 0.12, [(2.4, 3.3, "door"), (6.2, 7.1, "door"), (9.6, 10.5, "door")])
@@ -406,11 +550,20 @@ def build():
         b.box(x0, x1, y0, y1, Z0 + WALL_H, Z0 + WALL_H + 0.05, "white", name=b.nm("ceil"), col=False, group=3)
 
     # ---- kitchen
-    b.box(0.2, 0.8, 0.8, 4.0, Z0, Z0 + 0.86, "cabinet", name=b.nm("furn"))           # west counter run
-    b.box(0.2, 0.82, 0.8, 4.0, Z0 + 0.86, Z0 + 0.9, "worktop", name=b.nm("furn"))
+    for y0, y1 in ((0.8, 2.2), (2.8, 4.0)):                                           # west counter run, the sink between
+        b.box(0.2, 0.8, y0, y1, Z0, Z0 + 0.86, "cabinet", name=b.nm("furn"))
+        b.box(0.2, 0.82, y0, y1, Z0 + 0.86, Z0 + 0.9, "worktop", name=b.nm("furn"))
+    b.box(0.2, 0.8, 2.2, 2.8, Z0, Z0 + 0.68, "cabinet", name=b.nm("furn"))           # under the sink
+    b.box(0.26, 0.76, 2.2, 2.8, Z0 + 0.68, Z0 + 0.70, "steel", name=b.nm("furn"))     # basin bottom
+    b.box(0.2, 0.26, 2.2, 2.8, Z0 + 0.68, Z0 + 0.9, "worktop", name=b.nm("furn"))     # basin back
+    b.box(0.76, 0.82, 2.2, 2.8, Z0 + 0.68, Z0 + 0.9, "worktop", name=b.nm("furn"))    # basin front
+    b.geom("cylinder", (0.25, 2.5, Z0 + 1.02), (0.015, 0.12), "steel", name=b.nm("vis"), col=False)    # tap: a sensor
+    b.geom("cylinder", (0.38, 2.5, Z0 + 1.14), (0.012, 0.13), "steel", name=b.nm("vis"), col=False, euler=(0, math.pi / 2, 0))
+    b.tap_stream = (0.51, 2.5)               # water runs while something is held under the spout (a sensor tap)
+    b.containers["sink"] = dict(box=(0.26, 0.76, 2.2, 2.8), bottom=Z0 + 0.70, rim=Z0 + 0.90, words=["sink", "kitchen sink"])
+    b.furniture["sink"] = dict(xy=(0.51, 2.5), size=(0.5, 0.6), top=Z0 + 0.70)      # to stand a pot in, under the tap
     b.box(0.8, 3.8, 0.2, 0.8, Z0, Z0 + 0.86, "cabinet", name=b.nm("furn"))           # south counter run
     b.box(0.2, 3.82, 0.2, 0.82, Z0 + 0.86, Z0 + 0.9, "worktop", name=b.nm("furn"))
-    b.box(0.3, 0.7, 2.2, 2.8, Z0 + 0.9, Z0 + 0.905, "steel", name=b.nm("vis"), col=False)        # sink
     b.box(2.9, 3.5, 0.3, 0.7, Z0 + 0.9, Z0 + 0.905, "black", name=b.nm("vis"), col=False)        # cooktop
     b.box(0.2, 0.55, 0.8, 4.0, Z0 + 1.5, Z0 + 2.2, "cabinet", name=b.nm("furn"))     # wall cabinets
     b.box(0.2, 0.9, 4.2, 4.95, Z0, Z0 + 1.85, "steel", name=b.nm("furn"))            # fridge
@@ -482,6 +635,9 @@ def build():
     plant(b, 9.4, -1.2, 0.0, 1.0)
     plant(b, 15.9, 7.3, 0.0, 1.0)
 
+    build_upper(b)
+    build_extras(b)
+
     # ---- objects to fetch (handles on top)
     grab_object(b, "kettle", 2.6, 0.62, Z0 + 0.9)
     grab_object(b, "lunchbox", 3.2, 2.42, Z0 + 0.92)
@@ -490,6 +646,14 @@ def build():
     grab_object(b, "bucket", 7.65, 7.15, Z0)
     grab_object(b, "toolbox", 11.2, 9.25, Z0 + 0.75)
     grab_object(b, "can", 12.1, -0.7, 0.07)
+    grab_object(b, "pot", 1.5, 0.55, Z0 + 0.9)
+    grab_object(b, "pasta", 0.66, 3.55, Z0 + 0.9)
+    for k, mug in enumerate(MUGS):
+        grab_object(b, mug, 0.68, 1.0 + 0.3 * k, Z0 + 0.9)
+    grab_object(b, "hoover", 4.85, 4.7, Z0)
+    grab_object(b, "trash", 4.6, 1.15, Z0)            # tied up, next to the kitchen bin, ready to go out
+    for name, (x, y) in zip(TOYS + CLOTHES, MESS_SPOTS):
+        grab_object(b, name, x, y, UP)
     # ---- people: one standing in the study, one walking, and "you"
     person(b, "alex", 12.6, 8.9, Z0, (0.30, 0.45, 0.65, 1))
     person(b, "jordan", 3.0, 4.2, Z0, (0.62, 0.35, 0.45, 1), mocap=True)
@@ -510,6 +674,13 @@ def build():
         "study": dict(box=(8.26, 13.8, 6.66, 9.8), centre=(11.2, 7.6), words=["study", "office"]),
         "patio": dict(box=(9.8, 12.6, -1.6, 0.0), centre=(11.2, -0.9), words=["patio", "deck", "outside"]),
         "porch": dict(box=(14.0, 15.6, 5.0, 6.8), centre=(14.7, 5.9), words=["porch", "front door", "front step"]),
+        "stairs": dict(box=(SX, 0.0, 5.26, 6.54), centre=(SX / 2, 5.9), words=["stairs", "staircase"]),
+        "landing": dict(box=(-4.3 + WING_O, SX, 0.66, 9.94), centre=((-4.3 + WING_O + SX) / 2, 5.9),
+                        words=["landing", "upstairs", "upstairs hall", "upstairs landing"]),
+        "kids room": dict(box=(-8.94 + WING_O, -4.3 + WING_O, 5.26, 9.94), centre=(-6.0 + WING_O, 7.2),
+                          words=["kids room", "kids' room", "children's room", "kid's room", "playroom", "messy room", "messy bedroom"]),
+        "laundry": dict(box=(-8.94 + WING_O, -4.3 + WING_O, 0.66, 5.14), centre=(-6.2 + WING_O, 3.4),
+                        words=["laundry", "laundry room", "utility room"]),
         "garden": dict(box=(14.0, 18.0, -3.0, 12.0), centre=(16.2, 4.0), words=["garden", "yard", "lawn"]),
     }
     return b
@@ -528,7 +699,9 @@ class House(SK.World):
             '\n<light name="sun" directional="true" pos="7 5 30" dir="-0.35 -0.25 -1" diffuse="0.55 0.55 0.5" '
             'specular="0.1 0.1 0.1" castshadow="false"/>'
             + "".join(f'<light pos="{x} {y} {Z0 + 2.3}" dir="0 0 -1" diffuse="0.28 0.27 0.24" attenuation="1 0.08 0" '
-                      f'cutoff="85" castshadow="false"/>' for x, y in [(3, 2.6), (11, 2.6), (7, 8.2)]))
+                      f'cutoff="85" castshadow="false"/>' for x, y in [(3, 2.6), (11, 2.6), (7, 8.2)])
+            + "".join(f'<light pos="{x} {y} {z + 2.3}" dir="0 0 -1" diffuse="0.28 0.27 0.24" attenuation="1 0.08 0" '
+                      f'cutoff="85" castshadow="false"/>' for x, y, z in self.b.rooms_lights))
         eqs = "".join(f'<connect name="hook_{n}" body1="r_hand" body2="{n}" anchor="{f3(SK.HOOK)}" active="false"/>'
                       for n in OBJECTS)
         top_xml = assets_xml() + f"\n  <equality>{eqs}</equality>"
@@ -567,7 +740,8 @@ class House(SK.World):
         self.obj_qadr = {n: m.jnt_qposadr[nm(m, mujoco.mjtObj.mjOBJ_JOINT, f"{n}_free")] for n in OBJECTS}
         self.obj_eq = {n: nm(m, mujoco.mjtObj.mjOBJ_EQUALITY, f"hook_{n}") for n in OBJECTS}
         self.door_qadr = {n: m.jnt_qposadr[nm(m, mujoco.mjtObj.mjOBJ_JOINT, f"{n}_hinge")] for n in self.b.doors}
-        self.mocap = {n: m.body_mocapid[nm(m, mujoco.mjtObj.mjOBJ_BODY, n)] for n in ("jordan", "you", "vacuum")}
+        self.mocap = {n: m.body_mocapid[nm(m, mujoco.mjtObj.mjOBJ_BODY, n)]
+                      for n in ("jordan", "you", "vacuum", "sam", "rex", "spill", "card_tray")}
         self.walls_v = [g for g in range(mv.ngeom) if (mujoco.mj_id2name(mv, mujoco.mjtObj.mjOBJ_GEOM, g) or "").startswith("wall_")]
         self.wall_full = (mv.geom_size[self.walls_v].copy(), mv.geom_pos[self.walls_v].copy())
         root = m.body_rootid[self.pelvis]
@@ -579,6 +753,7 @@ class House(SK.World):
         self.vac_heading, self.vac_rng = 0.3, np.random.default_rng(seed + 11)
         self.static_occ = None
         self.occ_static()
+        self._init_extras()
         # render options: the follow camera cuts the walls down so it can see into rooms; the head camera sees ceilings
         self.opt_ego = mujoco.MjvOption()
         self.opt_ego.geomgroup[3] = 1
@@ -621,12 +796,272 @@ class House(SK.World):
         self.set_mocap("vacuum", 5.8, 0.9)
         self.walk_k, self.walk_pause = 1, 0.0
         self.holding = None
+        self.reset_extras()
         mujoco.mj_forward(self.e.m, self.e.d[0])
 
     # ---------------------------------------------------------------- the moving things
     def step(self, legs=None, arms=None, cmd=(0.0, 0.0, 0.0)):
         self._move_people()
-        return super().step(legs=legs, arms=arms, cmd=cmd)
+        d = self.e.d[0]
+        d.xfrc_applied[self.pelvis, :3] = self.push_f if self.t < self.push_until else 0.0
+        r = super().step(legs=legs, arms=arms, cmd=cmd)
+        self._tick_extras()
+        return r
+
+    # ---------------------------------------------------------------- the house's working parts
+    def _init_extras(self):
+        m, mv = self.e.m, self.mv
+        gid = lambda mm, n: mujoco.mj_name2id(mm, mujoco.mjtObj.mjOBJ_GEOM, n)        # noqa: E731
+        self.dirt_gv = np.array([gid(mv, n) for n in self.b.dirt])
+        self.dirt_xy = np.full((len(self.b.dirt), 2), 1e6)
+        self.dirt_on = np.zeros(len(self.b.dirt), bool)
+        self.pile_gv = gid(mv, "uno_pile")
+        self.base_mass = {n: float(m.body_mass[self.obj_body[n]]) for n in OBJECTS}
+        self.reset_extras()
+
+    def reset_extras(self):
+        """Appliances off, containers empty, no dust, hazards and visitors parked."""
+        m = self.e.m
+        self.st = dict(tap=False, hob=False, kettle=False, washer=False)
+        self.washer_t, self.washed = 0.0, False
+        self.water = {n: 0.0 for n in WATER_CAP}
+        self.temp = {n: 20.0 for n in WATER_CAP}
+        self.pot_pasta, self.cook_t, self.burn_t, self.hob_empty_t = False, 0.0, 0.0, 0.0
+        self.tea = {k: False for k in MUGS}
+        self.watered = set()
+        self.events = []
+        self.push_f, self.push_until = np.zeros(3), -1.0
+        self.dog_on, self.dog_goal = False, None
+        self.visitor, self.crumbs, self.crumb_i = None, [], 0
+        self.dark = False
+        self.hazards = []
+        for n in OBJECTS:
+            m.body_mass[self.obj_body[n]] = self.base_mass[n]
+        self.set_dirt([])
+        d = self.e.d[0]
+        for k, n in enumerate(("sam", "rex", "spill", "card_tray")):
+            d.mocap_pos[self.mocap[n]] = (20.0 + k, 25.0, -5.0)
+
+    def event(self, text):
+        self.events.append((round(self.t, 1), text))
+
+    def in_box(self, p, box, margin=0.0):
+        x0, x1, y0, y1 = box
+        return x0 - margin <= p[0] <= x1 + margin and y0 - margin <= p[1] <= y1 + margin
+
+    def in_container(self, obj, cname):
+        c = self.b.containers[cname]
+        p = self.obj_pos(obj)
+        return self.in_box(p, c["box"], 0.02) and c["bottom"] - 0.02 <= p[2] - OBJECTS[obj][1][-1] <= c["rim"]
+
+    def on_zone(self, obj, zone, z_top=Z0 + 0.9):
+        p = self.obj_pos(obj)
+        return self.in_box(p, self.b.zones[zone]) and abs(p[2] - OBJECTS[obj][1][-1] - z_top) < 0.04 and obj != self.holding
+
+    def press(self, name):
+        """A control was pressed (the robot's hook touched it): toggle it."""
+        if name == "washer":
+            self.st["washer"], self.washer_t = True, 0.0
+            self.event("washing machine started")
+            return
+        self.st[name] = not self.st[name]
+        self.event(f"{name} {'on' if self.st[name] else 'off'}")
+
+    def pour(self, src, dst):
+        """src held over dst long enough: what happens (pasta into the pot, tea into a mug, water on a plant)."""
+        if src == "pasta" and dst == "pot":
+            self.pot_pasta = True
+            self.event("pasta into the pot" + ("" if self.water["pot"] > 0.5 else " (no water in it!)"))
+            return True
+        if src == "kettle" and dst in MUGS:
+            ok = self.water["kettle"] >= 0.25 and self.temp["kettle"] >= 90
+            if ok:
+                self.water["kettle"] -= 0.25
+                self._set_mass("kettle")
+                self.tea[dst] = True
+            self.event(f"poured into the {dst.replace('_', ' ')}" + ("" if ok else " (but the kettle was not boiled)"))
+            return ok
+        if src == "can" and isinstance(dst, int):
+            ok = self.water["can"] >= 0.2
+            if ok:
+                self.water["can"] -= 0.2
+                self._set_mass("can")
+                self.watered.add(dst)
+            self.event(f"watered plant {dst}" + ("" if ok else " (the can is empty)"))
+            return ok
+        return False
+
+    def _set_mass(self, n):
+        self.e.m.body_mass[self.obj_body[n]] = self.base_mass[n] + self.water.get(n, 0.0)
+
+    def set_dirt(self, points):
+        self.dirt_on[:] = False
+        self.dirt_xy[:] = 1e6
+        for k, g in enumerate(self.dirt_gv):
+            if k < len(points):
+                x, y = points[k]
+                self.dirt_xy[k] = (x, y)
+                self.dirt_on[k] = True
+                self.mv.geom_pos[g] = (x, y, self.floor_z(x, y) + 0.004)
+            else:
+                self.mv.geom_pos[g] = (20.0, 20.0, -5.0)
+
+    def dirt_points(self, room, n, rng):
+        """n dust specks on the open floor of a room (not under furniture)."""
+        x0, x1, y0, y1 = self.b.rooms[room]["box"]
+        out = []
+        for _ in range(5000):
+            x, y = rng.uniform(x0 + 0.2, x1 - 0.2), rng.uniform(y0 + 0.2, y1 - 0.2)
+            lvl = self.floor_z(*self.b.rooms[room]["centre"])
+            if not self.occupied(x, y, 0.12, static=True) and abs(self.floor_z(x, y) - lvl) < 0.03:
+                out.append((x, y))
+                if len(out) == n:
+                    break
+        return out
+
+    def place_tray(self, x, y, yaw=0.0):
+        d = self.e.d[0]
+        d.mocap_pos[self.mocap["card_tray"]] = (x, y, self.floor_z(x, y))
+        d.mocap_quat[self.mocap["card_tray"]] = (math.cos(yaw / 2), 0, 0, math.sin(yaw / 2))
+
+    def set_pile(self, rgb):
+        self.mv.geom_rgba[self.pile_gv] = (*rgb, 1.0)
+
+    def put_spill(self, x, y):
+        self.e.d[0].mocap_pos[self.mocap["spill"]] = (x, y, self.floor_z(x, y) + 0.0015)
+        self.hazards = [(x, y, 0.55)]                    # the robot sees the wet floor and plans round it
+
+    def push(self, f, secs=0.25):
+        self.push_f, self.push_until = np.asarray(f, float), self.t + secs
+
+    def movers(self):
+        """Other moving things the safety sensor must treat like people (the dog)."""
+        return {"rex": tuple(self.e.d[0].mocap_pos[self.mocap["rex"]][:2])} if self.dog_on else {}
+
+    def _tick_extras(self):
+        dt = E.DT
+        # water: the sensor tap runs into whatever is held (or stands) under its spout; the tap control forces it on
+        sx, sy = self.b.tap_stream
+        for n, cap in WATER_CAP.items():
+            p = self.obj_pos(n)
+            under = math.hypot(p[0] - sx, p[1] - sy) < 0.12 and Z0 + 0.68 < p[2] < Z0 + 1.1
+            if (under or (self.st["tap"] and self.in_container(n, "sink"))) and self.water[n] < cap:
+                self.water[n] = min(cap, self.water[n] + 0.15 * dt)
+                self._set_mass(n)
+        # kettle on its base
+        if self.st["kettle"]:
+            if self.on_zone("kettle", "kettle_base"):
+                if self.water["kettle"] > 0.2:
+                    self.temp["kettle"] = min(100.0, self.temp["kettle"] + 4.0 * dt)
+                    if self.temp["kettle"] >= 100.0:
+                        self.st["kettle"] = False
+                        self.event("kettle boiled (switched itself off)")
+                else:
+                    self.st["kettle"] = False
+                    self.event("kettle switched off: it was empty")
+        # the hob and the pot
+        pot_on = self.on_zone("pot", "hob")
+        if self.st["hob"]:
+            if pot_on:
+                self.hob_empty_t = 0.0
+                if self.water["pot"] > 0.3:
+                    self.temp["pot"] = min(100.0, self.temp["pot"] + 2.5 * dt)
+                else:
+                    self.burn_t += dt
+                    if abs(self.burn_t - 8.0) < dt / 2:
+                        self.event("the empty pot is burning")
+            else:
+                self.hob_empty_t += dt
+                if abs(self.hob_empty_t - 30.0) < dt / 2:
+                    self.event("hob left on with nothing on it")
+        for n in WATER_CAP:
+            if not ((n == "pot" and pot_on and self.st["hob"]) or (n == "kettle" and self.st["kettle"])):
+                self.temp[n] = max(20.0, self.temp[n] - 0.15 * dt)
+        if self.pot_pasta and pot_on and self.st["hob"] and self.temp["pot"] >= 95.0:
+            self.cook_t += dt
+            if abs(self.cook_t - COOK_S) < dt / 2:
+                self.event("pasta cooked")
+        # washing machine
+        if self.st["washer"]:
+            self.washer_t += dt
+            if self.washer_t >= WASH_S:
+                self.st["washer"] = False
+                self.washed = True
+                self.event("washing finished")
+        # vacuum: the head on the floor picks up the dust under it
+        if self.holding == "hoover" and self.dirt_on.any():
+            p = self.obj_pos("hoover")
+            if p[2] - self.floor_z(p[0], p[1]) < 0.09:
+                hit = self.dirt_on & (((self.dirt_xy - p[:2]) ** 2).sum(1) < 0.17 ** 2)
+                if hit.any():
+                    self.dirt_on[hit] = False
+                    for g in self.dirt_gv[hit]:
+                        self.mv.geom_pos[g] = (20.0, 20.0, -5.0)
+        self._move_dog()
+        self._move_visitor()
+
+    def _move_dog(self):
+        if not self.dog_on:
+            return
+        d = self.e.d[0]
+        rx, ry = d.qpos[0], d.qpos[1]
+        x, y = d.mocap_pos[self.mocap["rex"]][:2]
+        rng = self.vac_rng
+        if self.dog_goal is None or math.dist((x, y), self.dog_goal) < 0.2:
+            for _ in range(200):
+                g = (rng.uniform(0.8, 13.2), rng.uniform(0.8, 9.2))
+                if not self.occupied(*g, 0.3, static=True):
+                    self.dog_goal = g
+                    break
+        gx, gy = self.dog_goal
+        dx, dy = gx - x, gy - y
+        dist = max(math.hypot(dx, dy), 1e-6)
+        step = min(dist, 1.2 * E.DT)
+        nx, ny = x + dx / dist * step, y + dy / dist * step
+        if math.hypot(nx - rx, ny - ry) < 0.9 or self.occupied(nx, ny, 0.18, static=True):
+            self.dog_goal = None                          # a dog steers clear of the robot (and of the walls)
+            return
+        d.mocap_pos[self.mocap["rex"]] = (nx, ny, self.floor_z(nx, ny))
+        d.mocap_quat[self.mocap["rex"]] = (math.cos(math.atan2(dy, dx) / 2), 0, 0, math.sin(math.atan2(dy, dx) / 2))
+
+    def start_visitor(self):
+        """Sam walks up the garden path to the front door and waits there (the doorbell)."""
+        self.visitor = "arriving"
+        self.e.d[0].mocap_pos[self.mocap["sam"]] = (17.6, 9.0, 0.0)
+        self.event("doorbell: someone is at the front door")
+
+    def follow_me(self):
+        """The visitor follows the robot from where they stand (along the robot's path from now on)."""
+        x, y = self.e.d[0].mocap_pos[self.mocap["sam"]][:2]
+        self.visitor, self.crumbs, self.crumb_i = "following", [(x, y)], 0
+
+    def _move_visitor(self):
+        if self.visitor is None:
+            return
+        d = self.e.d[0]
+        x, y = d.mocap_pos[self.mocap["sam"]][:2]
+        rx, ry = d.qpos[0], d.qpos[1]
+        if not self.crumbs or math.dist(self.crumbs[-1], (rx, ry)) > 0.15:
+            self.crumbs.append((rx, ry))
+        if self.visitor == "arriving":
+            target = (15.3, 5.9)
+        elif self.visitor == "following":            # walk the robot's own path, staying 1.6 m behind it
+            if math.hypot(rx - x, ry - y) < 1.6:
+                return
+            i = self.crumb_i
+            while i < len(self.crumbs) - 1 and math.dist(self.crumbs[i], (x, y)) < 0.25:
+                i += 1
+            self.crumb_i = i
+            target = self.crumbs[i]
+        else:
+            return
+        dx, dy = target[0] - x, target[1] - y
+        dist = math.hypot(dx, dy)
+        if dist < 0.05:
+            return
+        step = min(dist, 0.9 * E.DT)
+        nx, ny = x + dx / dist * step, y + dy / dist * step
+        d.mocap_pos[self.mocap["sam"]] = (nx, ny, self.floor_z(nx, ny))
 
     def _move_people(self):
         d = self.e.d[0]
@@ -731,7 +1166,7 @@ class House(SK.World):
                 if self.holding is not None and b == self.obj_body[self.holding]:
                     continue
                 self._raster(occ, m, d, g)
-        for (x, y, r) in extra:
+        for (x, y, r) in list(extra) + list(getattr(self, "hazards", [])):
             j, i = int((y - MAP_Y[0]) / GRID), int((x - MAP_X[0]) / GRID)
             k = int(r / GRID) + 1
             occ[max(0, j - k):j + k + 1, max(0, i - k):i + k + 1] = True
@@ -764,8 +1199,9 @@ class House(SK.World):
         if not cut:
             self.mv.geom_size[self.walls_v], self.mv.geom_pos[self.walls_v] = size, pos
             return
-        top = Z0 + 1.05
         z0 = pos[:, 2] - size[:, 2]
+        lvl = np.where(pos[:, 0] < SX + 0.05, UP, np.where(pos[:, 0] < 0.0, (Z0 + UP) / 2, Z0))
+        top = lvl + 1.05
         hz = np.clip((top - z0) / 2, 0.0005, size[:, 2])
         nsize, npos = size.copy(), pos.copy()
         nsize[:, 2], npos[:, 2] = hz, z0 + hz
@@ -787,8 +1223,8 @@ class House(SK.World):
         self.look = p if self.look is None else 0.85 * self.look + 0.15 * p
         _, _, yaw = self.robot_pose()
         if mode == "overview":
-            self.chase.lookat[:] = (7.0, 4.6, 0.0)
-            self.chase.distance, self.chase.elevation, self.chase.azimuth = 15.5, -62.0, 90.0
+            self.chase.lookat[:] = (3.6, 4.8, 0.4)
+            self.chase.distance, self.chase.elevation, self.chase.azimuth = 22.0, -60.0, 90.0
         else:
             self.chase.lookat[:] = self.look + [0, 0, -0.25]
             self.chase.distance, self.chase.elevation = 3.6, -38.0

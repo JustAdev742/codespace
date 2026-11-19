@@ -31,6 +31,15 @@ FURNITURE_WORDS = {
     "bed": ["bed"],
     "study desk": ["study desk", "desk", "office desk"],
     "study armchair": ["study armchair"],
+    "washing machine": ["washing machine", "washer"],
+    "dryer": ["dryer", "tumble dryer"],
+    "laundry counter": ["laundry counter", "folding counter"],
+    "kids bed": ["kids bed", "kid's bed", "small bed"],
+    "kids table": ["kids table", "little table"],
+    "hob": ["hob", "stove", "cooker", "stovetop"],
+    "sink": ["sink", "kitchen sink"],
+    "kettle base": ["kettle base"],
+    "trivet": ["trivet", "pot stand"],
 }
 CHAIR_WORDS = {
     "desk chair": ["desk chair", "office chair", "study chair"],
@@ -129,6 +138,33 @@ def parse(text, house, lex=None):
     return acts or [{"do": "unclear"}]
 
 
+CHORES = [   # (pattern, chore): whole jobs the robot does in the house (chores.py)
+    (r"\b(play|let'?s play|fancy a game of|game of)\b.*\buno\b|^uno$", "uno"),
+    (r"\b(make|brew|get|fix)\b.*\b(tea|cuppa|cup of tea|brew)\b|\bput the kettle on\b", "tea"),
+    (r"\b(cook|make|prepare|fix)\b.*\b(pasta|spaghetti|dinner|tea for)\b", "pasta"),
+    (r"\b(vacuum|hoover|vacuuming|hoovering)\b", "vacuum"),
+    (r"\b(tidy|clean)\b.*\b(kids|kid's|children'?s|messy|play) ?room\b|\bput the toys away\b", "tidy_room"),
+    (r"\bset the table\b|\blay the table\b", "table"),
+    (r"\b(wash up|washing up|do the dishes|wash the dishes|clear the table)\b", "washup"),
+    (r"\b(take|put) (out )?the (trash|rubbish|bins?|garbage)( out)?\b|\bempty the bins?\b", "trash"),
+    (r"\bwater (the |my )?plants\b", "plants"),
+    (r"\b(do|put on|start) the (laundry|washing)\b|\bwashing machine\b", "laundry"),
+    (r"\b(answer|get) the door\b|\bsomeone'?s at the door\b|\bdoorbell\b", "visitor"),
+    (r"\b(do (all )?the chores|saturday chores|clean the (whole )?house|all the housework)\b", "saturday"),
+]
+
+
+def chore_of(s, lex):
+    for pat, name in CHORES:
+        if re.search(pat, s):
+            act = {"do": "chore", "name": name}
+            if name == "vacuum":
+                place, kind = lex.place(s)
+                act["room"] = place if kind == "room" else "dining room"
+            return act
+    return None
+
+
 def parse_step(s, lex):
     speed = 1.0 if re.search(r"\b(quick|quickly|fast|hurry|run)\b", s) else 0.4 if re.search(r"\b(slow|slowly|gently|carefully)\b", s) else 0.7
     if re.fullmatch(r"(please )?(stop|halt|freeze|cancel|wait|hold on|stay|stay there|never mind)( it| that| now| please)?", s) \
@@ -161,6 +197,9 @@ def parse_step(s, lex):
     if re.search(r"\b(do whatever you want|do what you want|whatever you like|free time|be free|your choice|"
                  r"entertain yourself|live your life|be yourself|explore|go wild|you decide|do your thing|free will)\b", s):
         return {"do": "free"}
+    c = chore_of(s, lex)
+    if c:
+        return c
     if re.search(r"\b(tidy|clean up|put (everything|things|stuff) away|put away)\b", s):
         return {"do": "tidy"}
     m = re.search(r"\b(?:i'?m|i am|i'?ll be)\s+(?:now\s+)?(?:in|at|on)\s+(?:the\s+)?(.+)", s)
