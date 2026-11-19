@@ -129,7 +129,9 @@ jobs:
   browsers:
     # The end-to-end suite again in WebKit (Safari's engine, for iPads and Macs) and Firefox.
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    # WebKit is the slowest of the three: its three parts took 12, 18 and over 29 minutes when the limit was 60,
+    # so the job was cut off while still passing tests. Run alone on a quiet machine the last part takes 18 to 22.
+    timeout-minutes: 90
     strategy:
       fail-fast: false
       matrix:
