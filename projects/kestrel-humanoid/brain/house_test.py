@@ -63,7 +63,10 @@ def setup(seed, walker=True, vacuum=True):
     import housebot as HB
     h = HS.House(seed=seed, walker=walker, vacuum=vacuum)
     h.reset()
-    bot = HB.HouseBot(h, log=lambda *a: None, seed=seed)
+    import collections
+    trail = collections.deque(maxlen=4)            # the robot's last few log lines: where a failed trial went wrong
+    bot = HB.HouseBot(h, log=lambda *a: trail.append(f"{h.t:.0f}s {' '.join(map(str, a))}"[:140]), seed=seed)
+    bot.trail = trail
     m = h.e.m
     import mujoco
     floorish = ("floor_", "rug_", "step_", "thr_", "ground")
@@ -239,7 +242,13 @@ def trial(job):
         out["min_person"] = round(stats["min_person"], 2)
         out["sim_s"] = round(h.t, 1)
     except HB.Interrupted as ex:
-        out.update(ok=False, note=out["note"] + f" (interrupted: {ex})", fell=str(ex) == "fell")
+        where = ""
+        try:
+            where = f" at {h.t:.0f} s; last: {bot.trail[-1]}" if bot.trail else f" at {h.t:.0f} s"
+            out["sim_s"] = round(h.t, 1)
+        except NameError:
+            pass
+        out.update(ok=False, note=out["note"] + f" (interrupted: {ex}{where})", fell=str(ex) == "fell")
     except Exception as ex:                           # a crash is a failed trial, reported
         import traceback
         out.update(ok=False, note=out["note"] + f" (error: {type(ex).__name__}: {ex})", fell=False)
@@ -287,6 +296,9 @@ def new_suite(suite, k, h, bot, rng, stats):
         room = ["dining room", "living room", "kids room", "bedroom", "study"][k % 5]
         return c.vacuum(room, seed=k)
     if suite in CHORES:
+        if suite not in ("visitor", "laundry"):          # start somewhere different each trial (same floor as you)
+            x, y = random_spot(h, rng)
+            h.place_robot(x, y, rng.uniform(-m_.pi, m_.pi))
         fn = dict(tea=c.make_tea, pasta=c.cook_pasta, table=c.set_table, laundry=c.laundry, trash=c.take_out_trash,
                   plants=c.water_plants, visitor=c.greet_visitor, uno=lambda: c.play_uno(seed=k), saturday=c.saturday)[suite]
         return fn()
