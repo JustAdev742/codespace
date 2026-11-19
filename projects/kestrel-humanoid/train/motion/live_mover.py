@@ -97,7 +97,7 @@ class Moves:
         elif ("walk" in t or "go" in t) and self.find(t.replace("walk", "")):
             self.put("walk", speed, arms=self.find(t.replace("walk", "")))       # e.g. "walk and wave"
         elif "turn" in t:
-            self.put("walk", 0.0, 0.0, 0.5 if "left" in t else -0.5, seconds=3.2)
+            self.put("walk", 0.0, 0.0, 0.3 if "left" in t else -0.3, seconds=5.2)      # about 90 degrees
             self.put("stand")
         elif "back" in t:
             self.put("walk", -0.15)
@@ -130,7 +130,7 @@ class Moves:
     def next_free(self, rng):
         r = rng.random()
         if r < 0.5:
-            self.put("walk", rng.uniform(0.1, 0.35), 0.0, rng.choice([0.0, 0.0, rng.uniform(-0.4, 0.4)]),
+            self.put("walk", rng.uniform(0.1, 0.3), 0.0, rng.choice([0.0, 0.0, rng.uniform(-0.3, 0.3)]),
                      seconds=rng.uniform(2, 6), style=rng.choice([None] + sorted(self.styles)))
         elif r < 0.8:
             self.put(rng.choice(sorted(self.gestures - WALKS)), seconds=rng.uniform(3, 5))
@@ -144,8 +144,8 @@ def move_tool(gestures, styles):
     return {
         "name": "move",
         "description": ("Queue one move for the robot's body. Several calls make a sequence (they run in order). "
-                        "walk: vx forward m/s (-0.15..0.4), vy sideways m/s (-0.1..0.1, left positive), turn rad/s "
-                        "(-0.5..0.5, left positive). Other actions are motions from human motion capture, done in place. "
+                        "walk: vx forward m/s (-0.15..0.35), vy sideways m/s (-0.1..0.1, left positive), turn rad/s "
+                        "(-0.3..0.3, left positive; 0.3 for 5.2 s is about 90 degrees). Other actions are motions from human motion capture, done in place. "
                         "seconds: how long (default: until the next move)."),
         "input_schema": {"type": "object", "properties": {
             "action": {"type": "string", "enum": acts},

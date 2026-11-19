@@ -33,8 +33,9 @@ REACH_LO = np.array([0.0, -0.45, 0.45])     # hand target box (m, from the floor
 REACH_HI = np.array([0.55, 0.45, 1.40])
 SETTLE = 0.6                       # s standing still before whole-body actions and posture layers start
 QD_MAX = 6.0                       # rad/s: largest target joint speed taken from the human motion
-# the walking envelope the soak tests found reliable (random intents for hours: 0.3-0.5 m/s with turns fell often)
-LIMITS = dict(vx=(-0.15, 0.35), vy=(-0.1, 0.1), wz=(-0.45, 0.45))
+# the walking envelope the soak tests found reliable (random intents for hours: 0.3-0.5 m/s fell often, and turning
+# faster than 0.3 rad/s while changing commands caused most of the remaining falls)
+LIMITS = dict(vx=(-0.15, 0.35), vy=(-0.1, 0.1), wz=(-0.3, 0.3))
 
 
 def limit_command(vx, vy, wz):

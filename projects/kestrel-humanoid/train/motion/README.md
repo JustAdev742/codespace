@@ -23,20 +23,44 @@ How it works (`mover.py`, all of it running live on one CPU core):
 | Whole-body controller | turns all of it into 29 joint torques every 2 ms: balance first (centre of mass, feet, body spin), then hands, then the human style | `wbc.py` |
 | Layers | an action for the arms only (wave while walking), hand targets, crouch, lean, look - combinable | `mover.py` |
 
-Tested (in MuJoCo, on the G1's real masses and torque limits): the scripted demo above; walking 0.15-0.5 m/s, backward,
-sideways, turning on the spot and while walking; push-free stops and starts; random sequences of every action and style
-for 2 minutes at a time (`demo_mover.py` and the soak test). Hands reach their targets within 1-2.5 cm. On the way the
-tests found and fixed: arm swing out of step with the legs (it spun the robot on its standing foot), jumpy joint-speed
-targets, a QP that could become infeasible, and walking clips of the wrong direction.
+Tested in MuJoCo, on the G1's real masses and torque limits:
+- the scripted demo above, with no falls;
+- walking from 0.15 to 0.35 m/s, backward, sideways, and turning on the spot and while walking;
+- hands reaching their targets within 1–2.5 cm;
+- a soak test (`soak_mover.py`): random intents, styles and layers, a new one every 1.5–6 s, for hours.
 
-Limits, honestly: it walks up to 0.5 m/s; it does not run, jump or climb; walking is on flat ground; actions come from
-the dataset (about 20 kinds in 17 styles) plus whatever the layers can compose; it is a simulation, and a real G1 would
-also need state estimation and Unitree's low-level interface. The library is built from the Bandai Namco Research
-Motiondataset (CC BY-NC 4.0, non-commercial use, attribution); `python -m motion.library` builds one from AMASS and
-others too, and more data means more kinds of movement with no training.
+The soak results, step by step:
+
+| Version | Falls |
+|---|---|
+| First version | 24 per hour |
+| Final version, turning limited to 0.3 rad/s | 3 in 160 robot-minutes and 2,560 intents (about one per 850) |
+| Standing actions only (gestures, reaching, crouching, leaning, looking) | 0 in 20 minutes |
+
+The tests found and fixed these problems:
+- arm swing out of step with the legs, which spun the robot on its standing foot;
+- jumpy joint-speed targets;
+- a QP that could become infeasible;
+- walking clips of the wrong direction;
+- gestures and posture changes starting before the robot had settled;
+- commands that were too fast or too combined.
+
+The live program stands the robot back up if it falls.
+
+Limits, honestly:
+- It walks at up to 0.35 m/s and turns at up to 0.3 rad/s. Faster walking works when it goes straight, but falls too
+  often under random changes of command.
+- It does not run, jump or climb, and it only walks on flat ground.
+- Its actions come from the dataset (12 kinds of gesture in about 17 styles, plus walking in every direction and
+  turning), plus whatever the layers can compose.
+- It is a simulation. A real G1 would also need state estimation and Unitree's low-level interface.
+
+The library is built from the Bandai Namco Research Motiondataset (CC BY-NC 4.0: non-commercial use, with
+attribution). `python -m motion.library` builds one from AMASS and other datasets too. More data means more kinds of
+movement, with no training.
 
 Files: `mover.py` (the three combined), `live_mover.py` (live program), `demo_mover.py` (scripted run, video),
-`build_bandai.py` (dataset download and library), `matching.py`, `walker.py`, `wbc.py`, `player.py`.
+`soak_mover.py` (long random test), `build_bandai.py` (dataset download and library), `matching.py`, `walker.py`, `wbc.py`, `player.py`.
 
 ---
 
