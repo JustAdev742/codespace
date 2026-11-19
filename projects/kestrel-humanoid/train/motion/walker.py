@@ -223,9 +223,10 @@ class Walker:
                 self.standing = False
                 self.td_first = 0.1
                 self.recoveries += 1
-        # ease into a new command, like a person changing direction (0.6 m/s^2, 1.5 rad/s^2)
+        # ease into a new command, like a person changing direction (0.4 m/s^2, 1.0 rad/s^2: faster reversals fell in
+        # the soak tests)
         goal = getattr(self, "cmd_goal", self.cmd)
-        lim = np.array([0.6, 0.6, 1.5]) * dt
+        lim = np.array([0.4, 0.4, 1.0]) * dt
         self.cmd = self.cmd + np.clip(goal - self.cmd, -lim, lim)
         if np.linalg.norm(goal) < 1e-3 and np.linalg.norm(self.cmd) < 0.02:
             self.cmd[:] = 0.0

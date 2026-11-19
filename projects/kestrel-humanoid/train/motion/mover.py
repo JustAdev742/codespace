@@ -29,6 +29,9 @@ DT = 0.002                         # physics and balance control: 500 Hz
 PLAN_DT = 0.01                     # footsteps and centre of mass: 100 Hz
 MATCH_DT = 0.02                    # human motion: 50 Hz
 REACH_SPEED = 0.6                  # m/s: how fast a hand target moves
+REACH_LO = np.array([0.0, -0.45, 0.45])     # hand target box (m, from the floor between the feet, x fwd, y left)
+REACH_HI = np.array([0.55, 0.45, 1.40])
+SETTLE = 0.6                       # s standing still before whole-body actions and posture layers start
 QD_MAX = 6.0                       # rad/s: largest target joint speed taken from the human motion
 # the walking envelope the soak tests found reliable (random intents for hours: 0.3-0.5 m/s with turns fell often)
 LIMITS = dict(vx=(-0.15, 0.35), vy=(-0.1, 0.1), wz=(-0.45, 0.45))
@@ -118,6 +121,7 @@ class Mover:
         self.crouch = self.lean = self.look = 0.0
         self.f_crouch = self.f_lean = self.f_look = 0.0
         self.pending_cmd = None
+        self.stand_time = 0.0
 
     def set_intent(self, action="stand", vx=0.0, vy=0.0, wz=0.0, style=None, arms=None, reach=None, crouch=0.0,
                    lean=0.0, look=0.0):
@@ -126,14 +130,16 @@ class Mover:
         arms   - an action from the library played by the arms only (wave while walking, guide while turning, ...)
         reach  - {"left"/"right": (x, y, z)}: put that hand there; metres, from the floor between the feet, x forward,
                  y left, z up (point at something, reach a shelf, hold out a hand)
-        crouch - lower the body by this much (m, up to 0.25; while standing)
+        crouch - lower the body by this much (m, up to 0.2; while standing)
         lean   - bend the torso forward (rad, + forward, -0.3..0.5)
         look   - turn the torso to look left (+) or right (-) (rad, up to 0.6)"""
         self.arms_action = arms if arms and arms != action else None
         if self.arms_action:
             self.arms_matcher.set_intent(self.arms_action, 0.0, 0.0, 0.0, None)
-        self.reach = {k: np.asarray(v, float) for k, v in (reach or {}).items() if k in ("left", "right")}
-        self.crouch = float(np.clip(crouch, 0.0, 0.25))
+        # hand targets inside what the arm can reach without pulling the body over (the soak tests found the edge)
+        self.reach = {k: np.clip(np.asarray(v, float), REACH_LO, REACH_HI) for k, v in (reach or {}).items()
+                      if k in ("left", "right")}
+        self.crouch = float(np.clip(crouch, 0.0, 0.2))
         self.lean = float(np.clip(lean, -0.3, 0.5))
         self.look = float(np.clip(look, -0.6, 0.6))
         vx, vy, wz = limit_command(vx, vy, wz)
@@ -183,11 +189,16 @@ class Mover:
             if self.arms_action:
                 self.q_a_prev = self.q_a
                 self.q_a = self.arms_matcher.step()["q"]
+        # settled: standing still on both feet for a moment (after the last step the body is still swaying over
+        # to the middle). Whole-body actions and posture layers start only then, as a person stops, then waves.
+        self.stand_time = self.stand_time + DT if self.walker.standing else 0.0
+        settled = self.stand_time > SETTLE and self.pending_cmd is None
         action = self.intent[0]
         gesture = action not in ("walk", "stand")
-        follow = 1.0 if (gesture or action == "walk") and not (action == "walk" and self.walker.standing) else 0.0
-        if action == "stand":
-            follow = 0.0
+        if gesture:
+            follow = 1.0 if settled else 0.0
+        else:
+            follow = 1.0 if action == "walk" and not self.walker.standing else 0.0
         self.blend += (follow - self.blend) * min(1.0, DT / 0.4)
         # the human pose between its 50 Hz frames: interpolated, so the targets move smoothly every 2 ms
         frac = (self.k % int(MATCH_DT / DT)) / (MATCH_DT / DT)
@@ -200,7 +211,7 @@ class Mover:
             # robot cannot resist the spin they cause (its sole grips less than a shoe on a person). Forward lean
             # (a tired or proud posture) stays at full strength.
             q_ref[up] = self.q_nom[up] + self.gain_walk[up] * (q_ref[up] - self.q_nom[up])
-        standing = self.walker.standing and all(self.plan["stance"].values())
+        standing = settled and all(self.plan["stance"].values())
         if gesture and standing:            # whole-body gestures: the legs follow the human motion too (balance first)
             q_ref[self.leg] = (1 - self.blend) * self.q_nom[self.leg] + self.blend * q_h[self.leg]
             w_post = np.where(self.leg, self.w_leg_gesture, self.w_upper)
@@ -220,7 +231,7 @@ class Mover:
             qd_ref[self.arm] = (1 - b) * qd_ref[self.arm] + b * qd_a[self.arm]
         # posture layers only with both feet planted: leaning, looking or crouching while stepping twisted or dropped
         # the body over a single foot (soak tests); walking waits until they have eased back
-        planted = self.walker.standing and self.pending_cmd is None
+        planted = settled
         self.f_lean += ((self.lean if planted else 0.0) - self.f_lean) * DT / 0.5
         self.f_look += ((self.look if planted else 0.0) - self.f_look) * DT / 0.5
         if self.pending_cmd is not None and self.posed() < 0.03:
