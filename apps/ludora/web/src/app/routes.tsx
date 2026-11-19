@@ -118,6 +118,7 @@ export const router = createBrowserRouter([
           { path: 'sets/:id', lazy: page(() => import('../features/sets/SetDetail.tsx')) },
           { path: 'sets/:id/edit', lazy: page(() => import('../features/sets/SetEditor.tsx')) },
           { path: 'shop', lazy: page(() => import('../features/shop/Shop.tsx')) },
+          { path: 'wallet', lazy: page(() => import('../features/wallet/Wallet.tsx')) },
           { path: 'collection', lazy: page(() => import('../features/collection/Collection.tsx')) },
           { path: 'locker', lazy: page(() => import('../features/collection/Locker.tsx')) },
           { path: 'quests', lazy: page(() => import('../features/quests/Quests.tsx')) },

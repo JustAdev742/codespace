@@ -22,7 +22,8 @@ import { CurrencyIcon } from '../../art/icons.tsx';
 import { ItemArtView } from '../../art/cosmetics.tsx';
 import { Amount, Badge, Dialog, EmptyState, ErrorNotice, Field, Input, RarityBadge, Select, Skeleton, Switch, TabPanel, Tabs, Textarea } from '../../ui/primitives.tsx';
 import { Button, ButtonLink, IconButton } from '../../ui/Button.tsx';
-import { ActionDialog, Card, DataTable, OlderButton, Stat, StaffPage, StatusPill, dateTime, useDebounced, useStaffMutation, type Column } from './ui.tsx';
+import { ActionDialog, Card, DataTable, OlderButton, StaffPage, StatusPill, dateTime, useDebounced, useStaffMutation, type Column } from './ui.tsx';
+import { ActivityTab, BoostCard, ClassGrantCard, GrantLimitsCard, HealthTab, LedgerCsvLink, RefundsCard, RulesHistoryCard, RulesPreviewCard, RulesPreviewHeadline, SalesTab, type BoostDraft, boostDraftFrom, buildBoost } from './economyRoom.tsx';
 
 /*
  * Economy: what is in circulation, where it comes from and goes, the
@@ -185,6 +186,8 @@ export const LEDGER_REASONS: Record<string, string> = {
   craft: 'Crafting',
   admin_grant: 'Staff grant',
   admin_revoke: 'Staff removal',
+  refund: 'Refund',
+  class_reward: 'Class reward from a teacher',
   test_reset: 'Test reset',
   event_expire: 'Event currency expired',
 };
@@ -244,6 +247,8 @@ export interface StaffUser {
   roles: string[];
   createdAt: string;
   lastSeenAt: string | null;
+  /** From the economy room's account finder, which returns only a name and kind (D58). */
+  lite?: boolean;
 }
 
 export interface AdminItem {
@@ -464,13 +469,21 @@ export function accountName(u: Pick<StaffUser, 'username' | 'displayName'>): str
  * users.read the person can still paste an account id.
  */
 export function AccountSearch({ label = 'Find an account', kind, onPick, selectedId, hint, initialQuery = '' }: { label?: string; kind?: 'registered' | 'test'; onPick: (id: string, user?: StaffUser) => void; selectedId?: string | null; hint?: ReactNode; initialQuery?: string }) {
-  const canSearch = useCan('users.read');
+  const canUsers = useCan('users.read');
+  // An economy manager has no users.read; the economy room's own finder returns just a name and kind (D58).
+  const canEconomy = useCan('economy.view') && !kind;
+  const canSearch = canUsers || canEconomy;
   const [q, setQ] = useState(initialQuery);
   const [pasted, setPasted] = useState('');
   const dq = useDebounced(q.trim(), 300);
   const res = useQuery({
-    queryKey: ['admin', 'users', 'search', dq, kind ?? ''],
-    queryFn: ({ signal }) => api.get<{ users: StaffUser[]; total: number }>(`/api/admin/users?${new URLSearchParams({ q: dq, ...(kind ? { kind } : {}) })}`, signal),
+    queryKey: ['admin', 'users', 'search', dq, kind ?? '', canUsers ? 'full' : 'economy'],
+    queryFn: async ({ signal }) => {
+      if (canUsers) return api.get<{ users: StaffUser[]; total: number }>(`/api/admin/users?${new URLSearchParams({ q: dq, ...(kind ? { kind } : {}) })}`, signal);
+      const r = await api.get<{ accounts: { id: string; username: string | null; displayName: string; isTestAccount: boolean; isGuest: boolean }[] }>(`/api/admin/economy/accounts?${new URLSearchParams({ q: dq })}`, signal);
+      const users: StaffUser[] = r.accounts.map((a) => ({ ...a, accountType: '', ageBand: null, status: 'active', level: 0, roles: [], createdAt: '', lastSeenAt: null, lite: true }));
+      return { users, total: users.length };
+    },
     enabled: canSearch && dq.length >= 2,
     placeholderData: (prev) => prev,
   });
@@ -518,9 +531,7 @@ export function AccountSearch({ label = 'Find an account', kind, onPick, selecte
                   >
                     <span className="min-w-0 flex-1">
                       <span className="block truncate text-sm font-semibold text-text">{accountName(u)}</span>
-                      <span className="block truncate text-xs text-text-3">
-                        {u.displayName} · {u.accountType} · level {u.level}
-                      </span>
+                      <span className="block truncate text-xs text-text-3">{u.lite ? u.displayName : `${u.displayName} · ${u.accountType} · level ${u.level}`}</span>
                     </span>
                     <span className="flex flex-wrap items-center gap-1">
                       {u.isTestAccount ? <Badge tone="sky">Test</Badge> : null}
@@ -718,30 +729,47 @@ export function RealCapsNote({ choices }: { choices: CurrencyChoice[] }) {
 
 /* ================================= the page ================================== */
 
-const TABS = ['overview', 'ledger', 'rules', 'currencies', 'grant'] as const;
+const TABS = ['health', 'rules', 'sales', 'grant', 'ledger', 'currencies', 'activity'] as const;
 type Tab = (typeof TABS)[number];
 
+/**
+ * The economy room (D58): health, rules, shop and sales, grants and refunds, the ledger, currencies
+ * and the economy's own history. An economy manager sees all of it and nothing else in the staff
+ * area; each tab still asks the server, which checks every permission itself.
+ */
 export default function Economy() {
   const [params, patch] = useQueryParams();
   const canGrant = useCan('economy.grant');
+  const canShop = useCan('shop.manage');
   const raw = params.get('tab');
-  const tab: Tab = (TABS as readonly string[]).includes(raw ?? '') ? (raw as Tab) : 'overview';
+  // Old links to the overview land on Health, which replaced it.
+  const tab: Tab = (TABS as readonly string[]).includes(raw ?? '') && (raw !== 'sales' || canShop) ? (raw as Tab) : 'health';
   return (
-    <StaffPage title="Economy" description="What is in circulation, where it comes from and where it goes, the ledger of every balance change, the earning rules and currencies. Figures leave out test accounts.">
+    <StaffPage title="Economy" description="How Ludora's in-game economy is doing, its earning rules, the shop's prices and sales, grants and refunds, and every balance change. Sparks, Moonstones and Dust are earned by playing; nothing here is real money. Figures leave out test accounts.">
       <Tabs
         label="Economy sections"
         value={tab}
-        onValueChange={(v) => patch({ tab: v === 'overview' ? null : v }, { push: true })}
+        onValueChange={(v) => patch({ tab: v === 'health' ? null : v }, { push: true })}
         items={[
-          { value: 'overview', label: 'Overview' },
-          { value: 'ledger', label: 'Ledger' },
+          { value: 'health', label: 'Health' },
           { value: 'rules', label: 'Rules' },
+          ...(canShop ? [{ value: 'sales', label: 'Shop and sales' }] : []),
+          { value: 'grant', label: canGrant ? 'Grants and refunds' : 'Wallets' },
+          { value: 'ledger', label: 'Ledger' },
           { value: 'currencies', label: 'Currencies' },
-          { value: 'grant', label: canGrant ? 'Grant' : 'Wallets' },
+          { value: 'activity', label: 'History' },
         ]}
       >
-        <TabPanel value="overview">
-          <OverviewTab />
+        <TabPanel value="health">
+          <HealthTab />
+        </TabPanel>
+        {canShop ? (
+          <TabPanel value="sales">
+            <SalesTab />
+          </TabPanel>
+        ) : null}
+        <TabPanel value="activity">
+          <ActivityTab />
         </TabPanel>
         <TabPanel value="ledger">
           <LedgerTab />
@@ -762,7 +790,7 @@ export default function Economy() {
 
 /* --------------------------------- overview ---------------------------------- */
 
-interface OverviewData {
+export interface OverviewData {
   since: string;
   currencies: { code: string; name: string; kind: string; circulating: number; holders: number }[];
   flows: { currency: string; reason: string; total: number; count: number }[];
@@ -770,157 +798,7 @@ interface OverviewData {
   topPurchases: { listingId: string; count: number; spent: number; currency: string }[];
 }
 
-function OverviewTab() {
-  const q = useQuery({ queryKey: ['admin', 'economy', 'overview'], queryFn: () => api.get<OverviewData>('/api/admin/economy/overview') });
-  const canShop = useCan('shop.manage');
-  if (q.isError) return <ErrorNotice message="The economy overview did not load." onRetry={() => void q.refetch()} />;
-  if (!q.data) {
-    return (
-      <div className="flex flex-col gap-4">
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          {[0, 1, 2, 3].map((i) => (
-            <Skeleton key={i} className="h-24" />
-          ))}
-        </div>
-        <Skeleton className="h-64" />
-      </div>
-    );
-  }
-  const d = q.data;
-  const byCurrency = d.currencies.map((c) => ({ ...c, flows: d.flows.filter((f) => f.currency === c.code) })).filter((c) => c.flows.length);
-  const purchaseCols: Column<OverviewData['topPurchases'][number]>[] = [
-    {
-      key: 'listing',
-      header: 'Listing',
-      cell: (r) =>
-        canShop ? (
-          <Link to={`/staff/shop?q=${encodeURIComponent(r.listingId)}`} className="font-mono text-xs break-all text-link underline-offset-2 hover:underline">
-            {r.listingId}
-          </Link>
-        ) : (
-          <span className="font-mono text-xs break-all">{r.listingId}</span>
-        ),
-    },
-    { key: 'n', header: 'Purchases', align: 'right', cell: (r) => formatNumber(r.count) },
-    { key: 'spent', header: 'Spent', align: 'right', cell: (r) => <Amount currency={r.currency} value={r.spent} size="sm" /> },
-  ];
-  return (
-    <div className="flex flex-col gap-5">
-      <p className="text-sm text-text-2">
-        Real accounts only, since {dateTime(d.since)}. Test accounts, unlimited test currency and guaranteed Lantern draws are left out.
-      </p>
-      <section aria-labelledby="circulation-h">
-        <h2 id="circulation-h" className="mb-2 font-display text-xl leading-tight font-bold text-text">
-          In circulation now
-        </h2>
-        {!d.currencies.length ? <p className="text-sm text-text-3">No currencies yet.</p> : null}
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          {d.currencies.map((c) => (
-            <Stat
-              key={c.code}
-              label={c.name}
-              value={
-                <span className="inline-flex items-center gap-1.5">
-                  <CurrencyIcon code={c.code} size={22} />
-                  {formatNumber(c.circulating)}
-                </span>
-              }
-              hint={`${plural(c.holders, 'holder')} · ${KIND_INFO[c.kind]?.label ?? c.kind}`}
-            />
-          ))}
-        </div>
-      </section>
-
-      <Card title="Earned and spent, last 7 days">
-        {byCurrency.length ? (
-          <div className="flex flex-col gap-5">
-            {byCurrency.map((c) => (
-              <FlowBlock key={c.code} code={c.code} name={c.name} flows={c.flows} />
-            ))}
-          </div>
-        ) : (
-          <EmptyState title="No movement">No currency moved on real accounts in the last 7 days.</EmptyState>
-        )}
-      </Card>
-
-      <Card title="Lantern odds: disclosed and observed">
-        <p className="mb-3 text-sm text-text-2">Disclosed is what players are told. Observed is what real players drew in the last 7 days. Small samples swing a lot, so compare once a Lantern has a few hundred openings.</p>
-        {d.lanterns.length ? (
-          <div className="grid grid-cols-1 gap-3 xl:grid-cols-2">
-            {d.lanterns.map((l) => (
-              <LanternOddsBlock key={l.id} lantern={l} />
-            ))}
-          </div>
-        ) : (
-          <EmptyState title="No Lanterns">There are no Lanterns in the catalogue.</EmptyState>
-        )}
-      </Card>
-
-      <Card title="Top purchases, last 7 days">
-        <DataTable columns={purchaseCols} rows={d.topPurchases} rowKey={(r) => r.listingId} empty="Nobody bought anything in the last 7 days." minWidth={420} caption="Most bought shop listings in the last 7 days" />
-      </Card>
-    </div>
-  );
-}
-
-function FlowBlock({ code, name, flows }: { code: string; name: string; flows: OverviewData['flows'] }) {
-  const sources = flows.filter((f) => f.total > 0).sort((a, b) => b.total - a.total);
-  const sinks = flows.filter((f) => f.total < 0).sort((a, b) => a.total - b.total);
-  const net = flows.reduce((n, f) => n + f.total, 0);
-  const max = Math.max(1, ...flows.map((f) => Math.abs(f.total)));
-  const list = (rows: typeof flows, tone: 'in' | 'out') =>
-    rows.length ? (
-      <ul className="flex flex-col gap-2">
-        {rows.map((f) => (
-          <li key={f.reason} className="min-w-0">
-            <div className="flex items-baseline justify-between gap-3 text-sm">
-              <span className="min-w-0 truncate text-text">
-                {reasonLabel(f.reason)} <span className="text-xs text-text-3">· {plural(f.count, 'entry', 'entries')}</span>
-              </span>
-              <span className={`shrink-0 font-semibold tabular ${tone === 'in' ? 'text-glim' : 'text-ember'}`}>
-                {f.total > 0 ? '+' : '-'}
-                {formatNumber(Math.abs(f.total))}
-              </span>
-            </div>
-            <div className="mt-1 h-1.5 rounded-full bg-surface-3" aria-hidden>
-              <div className={`h-full rounded-full ${tone === 'in' ? 'bg-glim/70' : 'bg-ember/70'}`} style={{ width: `${Math.max(2, (Math.abs(f.total) / max) * 100)}%` }} />
-            </div>
-          </li>
-        ))}
-      </ul>
-    ) : (
-      <p className="text-sm text-text-3">{tone === 'in' ? 'Nothing earned.' : 'Nothing spent or removed.'}</p>
-    );
-  return (
-    <div className="min-w-0">
-      <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-        <h3 className="flex items-center gap-1.5 font-sans font-semibold text-text">
-          <CurrencyIcon code={code} size={18} />
-          {name}
-        </h3>
-        <span className="text-sm text-text-2">
-          Net{' '}
-          <span className={`font-semibold tabular ${net >= 0 ? 'text-glim' : 'text-ember'}`}>
-            {net >= 0 ? '+' : '-'}
-            {formatNumber(Math.abs(net))}
-          </span>
-        </span>
-      </div>
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-        <div className="min-w-0 rounded-[var(--radius-m)] border border-line p-3">
-          <h4 className="mb-2 font-sans text-xs font-semibold text-text-3">Earned (sources)</h4>
-          {list(sources, 'in')}
-        </div>
-        <div className="min-w-0 rounded-[var(--radius-m)] border border-line p-3">
-          <h4 className="mb-2 font-sans text-xs font-semibold text-text-3">Spent or removed (sinks)</h4>
-          {list(sinks, 'out')}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function LanternOddsBlock({ lantern }: { lantern: OverviewData['lanterns'][number] }) {
+export function LanternOddsBlock({ lantern }: { lantern: OverviewData['lanterns'][number] }) {
   return (
     <div className="min-w-0 rounded-[var(--radius-m)] border border-line p-3">
       <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
@@ -1126,8 +1004,8 @@ function LedgerTab() {
             <Switch checked={staffOnly} onCheckedChange={(v) => patch({ staff: v ? '1' : null })} label="Staff changes only" description="Grants, removals and test resets." />
           </div>
         </div>
-        {anyFilter ? (
-          <div className="mt-2">
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          {anyFilter ? (
             <Button
               size="sm"
               variant="ghost"
@@ -1138,8 +1016,9 @@ function LedgerTab() {
             >
               Clear filters
             </Button>
-          </div>
-        ) : null}
+          ) : null}
+          <LedgerCsvLink userId={userId} currency={currency} reason={reason} />
+        </div>
       </Card>
       <DataTable
         columns={cols}
@@ -1167,7 +1046,7 @@ function LedgerTab() {
 
 /* ----------------------------------- rules ----------------------------------- */
 
-interface EconomyRules {
+export interface EconomyRules {
   welcomeSparks: number;
   starterItems: string[];
   game: {
@@ -1184,6 +1063,8 @@ interface EconomyRules {
   };
   levelUp: { sparks: number; moonstonesEvery: number; moonstones: number };
   dailyStreak: { sparksPerDay: number; maxBonusDays: number; moonstonesOnWeek: number };
+  classRewards: { weeklyBudget: number; maxPerStudent: number };
+  boost: { label: string; multiplier: number; startsAt: string; endsAt: string } | null;
 }
 
 interface NumberRule {
@@ -1235,6 +1116,14 @@ const RULE_GROUPS: { title: string; description: string; fields: NumberRule[] }[
       { path: 'dailyStreak.moonstonesOnWeek', label: 'Moonstones for each full week', help: 'Paid on day 7, 14, 21 and so on of a streak.', min: 0, max: 1000 },
     ],
   },
+  {
+    title: 'Class rewards',
+    description: 'Sparks teachers can give their students for effort, kindness or good work. Each class has its own budget, which starts again every Monday.',
+    fields: [
+      { path: 'classRewards.weeklyBudget', label: 'Weekly budget per class', help: 'The most Sparks a class\'s teachers can give in one week, all students together.', min: 0, max: 100_000 },
+      { path: 'classRewards.maxPerStudent', label: 'Most for one student at a time', help: 'The largest single reward to one student.', min: 1, max: 1000 },
+    ],
+  },
 ];
 
 const PLACE_MAX = 10;
@@ -1257,12 +1146,13 @@ interface RulesDraft {
   values: Record<string, string>;
   places: string[];
   starters: string[];
+  boost: BoostDraft;
 }
 
 function draftFrom(rules: EconomyRules): RulesDraft {
   const values: Record<string, string> = {};
   for (const g of RULE_GROUPS) for (const f of g.fields) values[f.path] = String(getPath(rules, f.path) ?? '');
-  return { values, places: rules.game.placeSparks.map(String), starters: [...rules.starterItems] };
+  return { values, places: rules.game.placeSparks.map(String), starters: [...rules.starterItems], boost: boostDraftFrom(rules.boost) };
 }
 
 function buildRules(draft: RulesDraft): { rules: EconomyRules | null; errors: Record<string, string> } {
@@ -1289,6 +1179,9 @@ function buildRules(draft: RulesDraft): { rules: EconomyRules | null; errors: Re
   });
   setPath(out, 'game.placeSparks', places);
   out.starterItems = draft.starters;
+  const boost = buildBoost(draft.boost);
+  Object.assign(errors, boost.errors);
+  out.boost = boost.boost;
   return { rules: Object.keys(errors).length ? null : (out as unknown as EconomyRules), errors };
 }
 
@@ -1305,6 +1198,8 @@ function describeChanges(before: EconomyRules, after: EconomyRules): { label: st
   }
   if (!sameRules(before.game.placeSparks, after.game.placeSparks)) out.push({ label: 'Podium Sparks', from: before.game.placeSparks.join(', ') || 'none', to: after.game.placeSparks.join(', ') || 'none' });
   if (!sameRules(before.starterItems, after.starterItems)) out.push({ label: 'Starter items', from: before.starterItems.join(', ') || 'none', to: after.starterItems.join(', ') || 'none' });
+  const boostText = (b: EconomyRules['boost']) => (b ? `${b.label}, x${b.multiplier}, ${dateTime(b.startsAt)} to ${dateTime(b.endsAt)}` : 'none');
+  if (boostText(before.boost) !== boostText(after.boost)) out.push({ label: 'Sparks boost', from: boostText(before.boost), to: boostText(after.boost) });
   return out;
 }
 
@@ -1320,7 +1215,7 @@ function RulesTab() {
   const save = useStaffMutation((body: { rules: EconomyRules; reason: string }) => api.put<{ ok: true; rules: EconomyRules }>('/api/admin/economy/rules', body), {
     silentError: true,
     success: 'Economy rules saved. New values apply within 10 seconds.',
-    invalidate: [['admin', 'economy', 'rules']],
+    invalidate: [['admin', 'economy', 'rules'], ['admin', 'economy', 'rules-history'], ['admin', 'economy', 'activity']],
     onSuccess: (res) => setDraft(draftFrom(res.rules)),
   });
   if (q.isError) return <ErrorNotice message="The economy rules did not load." onRetry={() => void q.refetch()} />;
@@ -1335,7 +1230,7 @@ function RulesTab() {
     <div className="flex flex-col gap-4">
       {ro ? (
         <p className="rounded-[var(--radius-m)] border border-line bg-raised px-4 py-3 text-sm text-text-2" role="note">
-          You can read the rules. Changing them needs the economy configuration permission, which administrators have.
+          You can read the rules. Changing them needs the economy configuration permission, which economy managers and administrators have.
         </p>
       ) : (
         <p className="text-sm text-text-2">Changes apply to everything earned after saving, within about 10 seconds. Nothing already paid changes. Each save asks for a reason and is recorded in the audit log.</p>
@@ -1439,10 +1334,13 @@ function RulesTab() {
           </div>
         </Card>
       ))}
+      <BoostCard draft={draft.boost} onChange={(boost) => setDraft({ ...draft, boost })} errors={built.errors} readOnly={ro} />
+      <RulesPreviewCard rules={dirty && built.rules && changes.length ? built.rules : null} />
       {!ro ? (
         <div className={`${dirty ? 'sticky bottom-24 z-10 shadow-[0_8px_24px_rgb(0_0_0/0.25)] lg:bottom-4' : ''} flex flex-wrap items-center justify-between gap-3 rounded-[var(--radius-m)] border border-line-strong bg-raised px-4 py-3`}>
           <span className="text-sm text-text-2" aria-live="polite">
             {Object.keys(built.errors).length ? 'Fix the highlighted fields before saving.' : dirty ? `${plural(changes.length, 'change')} not saved.` : 'No changes.'}
+            {dirty && built.rules && changes.length ? <RulesPreviewHeadline rules={built.rules} /> : null}
           </span>
           <div className="flex flex-wrap gap-2">
             <Button variant="ghost" onClick={() => setDraft(draftFrom(defaults))}>
@@ -1469,6 +1367,7 @@ function RulesTab() {
           await save.mutateAsync({ rules: built.rules, reason });
         }}
       >
+        {built.rules ? <RulesPreviewCard rules={built.rules} compact /> : null}
         <div>
           <h3 className="mb-1.5 font-sans text-sm font-semibold text-text">What changes</h3>
           <ul className="flex flex-col gap-1 text-sm">
@@ -1483,6 +1382,7 @@ function RulesTab() {
           </ul>
         </div>
       </ActionDialog>
+      <RulesHistoryCard onUndone={(rules) => setDraft(draftFrom(rules))} />
     </div>
   );
 }
@@ -1841,6 +1741,13 @@ function GrantTab() {
             caption="This account's latest ledger entries"
           />
         </Card>
+      ) : null}
+      {accountId && w && canGrant && !w.self ? <RefundsCard userId={accountId} name={name} confirmWord={w.isTestAccount ? null : w.confirmWord} /> : null}
+      {canGrant ? (
+        <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+          <GrantLimitsCard />
+          <ClassGrantCard />
+        </div>
       ) : null}
       {target ? <MovementDialog open={dialogOpen} onOpenChange={setDialogOpen} direction={direction} target={target} mode="staff" /> : null}
     </div>

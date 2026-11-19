@@ -146,3 +146,22 @@ export function untilText(iso: string): string {
   if (h >= 1) return `${h} h ${m} min`;
   return `${Math.max(1, m)} min`;
 }
+
+/**
+ * When something calm ends, in words, with no clock ticking (D58): "until today", "until tomorrow",
+ * "until Friday" within the week, otherwise "until 3 December". For sales and boosts, which must
+ * never be shown as a countdown.
+ */
+export function calmUntil(iso: string, now: Date = new Date()): string {
+  const end = new Date(iso);
+  const tz = appTimeZone();
+  const dayOf = (d: Date) => {
+    const p = zonedParts(d, tz);
+    return Date.UTC(p.y, p.mo - 1, p.d);
+  };
+  const days = Math.round((dayOf(end) - dayOf(now)) / 86_400_000);
+  if (days <= 0) return 'until today';
+  if (days === 1) return 'until tomorrow';
+  if (days < 7) return `until ${formatDate(end, { weekday: 'long' })}`;
+  return `until ${formatDate(end, { day: 'numeric', month: 'long' })}`;
+}

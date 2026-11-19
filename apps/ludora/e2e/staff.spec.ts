@@ -40,6 +40,8 @@ const SECTIONS = [
   'economy?tab=rules',
   'economy?tab=currencies',
   'economy?tab=grant',
+  'economy?tab=sales',
+  'economy?tab=activity',
   'catalog',
   'catalog?tab=collections',
   'catalog?tab=lanterns',

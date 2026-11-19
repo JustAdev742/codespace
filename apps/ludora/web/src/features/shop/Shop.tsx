@@ -7,7 +7,7 @@ import { ITEM_TYPE_INFO, RARITY_INFO, SHOP_SECTION_INFO, type GlimArt, type Item
 import { api, ApiError, newRequestKey } from '../../lib/api.ts';
 import { useMe } from '../../lib/session.ts';
 import { useOverview } from '../../lib/queries.ts';
-import { formatDate, formatNumber, untilText } from '../../lib/format.ts';
+import { calmUntil, formatDate, formatNumber, untilText } from '../../lib/format.ts';
 import { ItemArtView } from '../../art/cosmetics.tsx';
 import { Lantern } from '../../art/Lantern.tsx';
 import { Glim } from '../../art/glim/Glim.tsx';
@@ -42,6 +42,10 @@ interface Listing {
   description: string;
   price: { currency: string; amount: number };
   worth: number | null;
+  /** A sale running now (D58): the usual price and when it ends. Shown as "On sale until Friday", never a countdown. */
+  sale: { was: number; until: string } | null;
+  /** Staff picked it for the Featured tab. */
+  featured: boolean;
   endsAt: string | null;
   limit: number | null;
   boughtThisPeriod: number;
@@ -175,8 +179,24 @@ function PriceButton({ l, onBuy, wide = false }: { l: Listing; onBuy: (l: Listin
         <CurrencyIcon code={l.price.currency} size={17} />
         {formatNumber(l.price.amount)}
       </span>
-      <span className="sr-only">{currencyName(l.price.currency)}</span>
+      <span className="sr-only">
+        {currencyName(l.price.currency)}
+        {l.sale ? `, on sale, usually ${formatNumber(l.sale.was)}` : ''}
+      </span>
     </Button>
+  );
+}
+
+/** A calm sale note: the usual price crossed out and the day it ends, with no clock. */
+function SaleNote({ l }: { l: Listing }) {
+  if (!l.sale) return null;
+  return (
+    <p className="inline-flex flex-wrap items-center gap-x-1.5 text-sm font-semibold text-text">
+      <span className="rounded-full bg-glim px-2 py-0.5 text-xs font-bold text-on-accent">On sale {calmUntil(l.sale.until)}</span>
+      <span className="font-normal text-text-2">
+        Usually <span className="line-through tabular">{formatNumber(l.sale.was)}</span>
+      </span>
+    </p>
   );
 }
 
@@ -219,6 +239,7 @@ function LanternCard({ l, onBuy, onOdds, featured = false, ...wish }: { l: Listi
       <div className="flex flex-1 flex-col gap-1.5 p-4">
         <h3 className={`font-display leading-tight font-bold ${featured ? 'text-[1.9rem]' : 'text-[1.45rem]'}`}>{l.title}</h3>
         <p className="text-sm text-text-2">{l.description}</p>
+        <SaleNote l={l} />
         <div className="mt-2">
           <CardOdds packId={pack.id} onOdds={onOdds} />
         </div>
@@ -244,6 +265,7 @@ function ItemCard({ l, onBuy, ...wish }: { l: Listing; onBuy: (l: Listing) => vo
         <h3 className="font-display text-[1.3rem] leading-tight font-bold">{l.title}</h3>
         <p className="text-xs font-bold text-text-2">{info.label}</p>
         <p className="line-clamp-2 text-sm text-text-2">{l.description}</p>
+        <SaleNote l={l} />
         {item.owned && info.stackable ? <p className="text-sm text-text-2">You have {item.owned}</p> : null}
         <div className="mt-auto flex flex-wrap items-center justify-end gap-2 pt-2">
           {wish.onTry && TRY_ON_TYPES.includes(item.type) ? (
@@ -292,6 +314,7 @@ function BundleCard({ l, onBuy, ...wish }: { l: Listing; onBuy: (l: Listing) => 
             </li>
           ))}
         </ul>
+        <SaleNote l={l} />
         {l.worth && save ? (
           <p className="mt-1 text-sm text-text-2">
             Worth <span className="line-through tabular">{formatNumber(l.worth)}</span> bought one by one
@@ -454,6 +477,9 @@ export default function Shop() {
   const bySection = useMemo(() => {
     const m = new Map<ShopSection, Listing[]>();
     for (const l of shop.data?.listings ?? []) m.set(l.section, [...(m.get(l.section) ?? []), l]);
+    // Listings staff feature also show on the Featured tab, after its own picks (D58).
+    const extra = (shop.data?.listings ?? []).filter((l) => l.featured && l.section !== 'featured' && l.section !== 'bundles');
+    if (extra.length) m.set('featured', [...(m.get('featured') ?? []), ...extra]);
     return m;
   }, [shop.data]);
   const tabs = TAB_ORDER.filter((t) => t.sections.some((s) => (bySection.get(s)?.length ?? 0) > 0));
@@ -731,8 +757,9 @@ function ConfirmBody({ listing, balance, canAfford, shortBy, onOdds }: { listing
       ) : null}
       <dl className="flex flex-col gap-2 rounded-[var(--radius-m)] border border-line bg-surface-2 px-3.5 py-3">
         <div className="flex items-center justify-between">
-          <dt className="text-text-2">Price</dt>
-          <dd>
+          <dt className="text-text-2">Price{listing.sale ? ' (on sale)' : ''}</dt>
+          <dd className="flex items-center gap-2">
+            {listing.sale ? <span className="text-sm text-text-2 line-through tabular">{formatNumber(listing.sale.was)}</span> : null}
             <Amount currency={listing.price.currency} value={listing.price.amount} />
           </dd>
         </div>

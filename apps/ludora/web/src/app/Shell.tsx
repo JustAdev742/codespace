@@ -26,6 +26,7 @@ import {
   Trophy,
   User,
   Users,
+  Wallet,
   Wand2,
   X,
   ListOrdered,
@@ -88,6 +89,7 @@ const MAKE: NavItem[] = [
 const COLLECT: NavItem[] = [
   { to: '/collection', label: 'Collection', icon: <Sparkles className="size-5" />, hint: 'All the Glims you have found', show: 'signedIn' },
   { to: '/shop', label: 'Shop', icon: <ShoppingBag className="size-5" />, hint: 'Spend what you earn playing', show: 'signedIn' },
+  { to: '/wallet', label: 'Wallet', icon: <Wallet className="size-5" />, hint: 'Your Sparks, in and out', show: 'signedIn' },
   { to: '/locker', label: 'Locker', icon: <Shirt className="size-5" />, hint: 'Dress up your buddy', show: 'signedIn' },
   { to: '/designs', label: 'My designs', icon: <Brush className="size-5" />, hint: 'Draw a Glim of your own', show: 'signedIn' },
   { to: '/quests', label: 'Quests', icon: <Target className="size-5" />, hint: 'Goals that win rewards', show: 'signedIn' },

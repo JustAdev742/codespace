@@ -2,7 +2,7 @@ import { useDeferredValue, useEffect, useMemo, useState, type ReactNode } from '
 import { useNavigate } from 'react-router';
 import { Dialog as RDialog } from 'radix-ui';
 import { useQuery } from '@tanstack/react-query';
-import { BarChart3, Bell, BookOpen, Gamepad2, Home, LayoutGrid, Presentation, School, Search, Settings, ShoppingBag, Shirt, Sparkles, Target, Trophy, User, Users, Wand2, X, Hammer } from 'lucide-react';
+import { BarChart3, Bell, BookOpen, Gamepad2, Home, LayoutGrid, Presentation, School, Search, Settings, ShoppingBag, Shirt, Sparkles, Target, Trophy, User, Users, Wallet, Wand2, X, Hammer } from 'lucide-react';
 import { api } from '../../lib/api.ts';
 import { useMe } from '../../lib/session.ts';
 import { useModes, type SetSummary } from '../../lib/queries.ts';
@@ -37,6 +37,7 @@ const PAGES: { title: string; to: string; icon: ReactNode; words: string; accoun
   { title: 'My stats', to: '/me', icon: <BarChart3 className="size-4" />, words: 'calendar bests accuracy history', account: true },
   { title: 'Collection', to: '/collection', icon: <Sparkles className="size-4" />, words: 'glims cards', account: true },
   { title: 'Shop', to: '/shop', icon: <ShoppingBag className="size-4" />, words: 'buy lanterns wishlist', account: true },
+  { title: 'Wallet', to: '/wallet', icon: <Wallet className="size-4" />, words: 'sparks moonstones dust balance saving goal money', account: true },
   { title: 'Locker', to: '/locker', icon: <Shirt className="size-4" />, words: 'buddy outfits dress hats', account: true },
   { title: 'Quests and achievements', to: '/quests', icon: <Target className="size-4" />, words: 'quests levels titles', account: true },
   { title: 'Friends', to: '/friends', icon: <Users className="size-4" />, words: 'friend code invite', account: true },

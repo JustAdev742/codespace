@@ -44,6 +44,7 @@ const PERMISSION_TEXT: Record<Permission, string> = {
   'economy.view': 'See the economy and transaction history',
   'economy.configure': 'Change economy rules and currencies',
   'economy.grant': 'Give or take currency and items (capped and audited)',
+  'economy.limits': 'Set the daily grant limits for economy managers',
   'events.manage': 'Run limited-time events',
   'flags.manage': 'Change feature flags',
   'system.view': 'See system health and error reports',

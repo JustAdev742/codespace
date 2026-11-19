@@ -39,6 +39,7 @@ import {
 } from './classData.ts';
 import { ClassAccountGate, ClassPageSkeleton, ConfirmDialog, DueLabel, JoinCode } from './classUi.tsx';
 import { ExtraTimePanel } from './ExtraTimePanel.tsx';
+import { ClassRewards } from './ClassRewards.tsx';
 import { GroupsPanel, TeachersPanel } from './GroupsAndTeachers.tsx';
 import { ClassNextUp } from '../making/ClassNextUp.tsx';
 
@@ -580,6 +581,7 @@ function TeacherView({ data }: { data: TeacherClassDetail }) {
           { value: 'board', label: 'Noticeboard', count: data.notices.length },
           { value: 'calendar', label: 'Calendar' },
           { value: 'live', label: 'Live games' },
+          { value: 'rewards', label: 'Rewards' },
           {
             value: 'events',
             label: 'School and events',
@@ -640,6 +642,9 @@ function TeacherView({ data }: { data: TeacherClassDetail }) {
           <Roster classId={cls.id} className={cls.name} archived={cls.archived} members={data.members} onRemove={setRemoving} onHelp={setHelping} onReset={setResetting} />
           <ExtraTimePanel classId={cls.id} members={data.members} archived={cls.archived} />
           <TeachersPanel classId={cls.id} className={cls.name} teachers={data.teachers} owner={data.owner} myId={me.data?.user?.id} archived={cls.archived} />
+        </TabPanel>
+        <TabPanel value="rewards" className="focus-visible:outline-offset-4">
+          <ClassRewards classId={cls.id} archived={cls.archived} />
         </TabPanel>
         <TabPanel value="groups" className="focus-visible:outline-offset-4">
           <GroupsPanel classId={cls.id} groups={data.groups} members={data.members} assignments={data.assignments} archived={cls.archived} />
