@@ -20,11 +20,16 @@ from .safety import _RX as COMBAT
 WALKS = {"walk", "walk-back", "walk-left", "walk-right", "walk-turn-left", "walk-turn-right", "run", "dash"}
 
 
-def random_intent(rng, gestures, styles):
+def random_intent(rng, gestures, styles, vmax=None, mode="all"):
     r = rng.random()
+    if mode == "stand":
+        r = 0.45 + 0.55 * r
+    elif mode == "walk":
+        r = 0.45 * r
     it = {}
     if r < 0.45:
-        it = dict(action="walk", vx=float(rng.uniform(*LIMITS["vx"])), style=rng.choice([None] + styles))
+        hi = min(LIMITS["vx"][1], vmax) if vmax else LIMITS["vx"][1]
+        it = dict(action="walk", vx=float(rng.uniform(LIMITS["vx"][0], hi)), style=rng.choice([None] + styles))
         if rng.random() < 0.3:
             it["vy"] = float(rng.uniform(*LIMITS["vy"]))
         if rng.random() < 0.5:
@@ -57,6 +62,8 @@ def main():
     ap.add_argument("--minutes", type=float, default=60.0)
     ap.add_argument("--seed", type=int, default=0)
     ap.add_argument("--log", default=None)
+    ap.add_argument("--vmax", type=float, default=None, help="cap the random forward speed")
+    ap.add_argument("--mode", default="all", choices=["all", "stand", "walk"])
     a = ap.parse_args()
     rng = np.random.default_rng(a.seed)
     mv = Mover(a.library)
@@ -69,7 +76,7 @@ def main():
     k = 0
     while t < T:
         if t >= nxt:
-            it = random_intent(rng, gestures, styles)
+            it = random_intent(rng, gestures, styles, a.vmax, a.mode)
             mv.set_intent(**it)
             hist = (hist + [(round(t, 1), it)])[-4:]
             intents += 1
