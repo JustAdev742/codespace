@@ -72,7 +72,7 @@ it runs. The alert text shown is what `alerts.compose` writes for those events.
 #   1. the private Hills copy: port 8981, its own database, SCHOOL_THEME=hills-grammar (serve.sh in the scratch folder)
 #   2. the dashboard demo: python3 os/demo/build.py OUT --standalone, served on port 8791
 export FILM_OUT=/path/to/scratch/upd FILM_APP=http://127.0.0.1:8981
-node tools/film/capture/updates.mjs                      # or: game economy home school dash
+node tools/film/capture/updates.mjs                      # or: game economy wallet home school dash
 npx vite --config tools/film/comp/vite.config.ts &       # port 5188
 FILM_URL=http://127.0.0.1:5188/updates.html node tools/film/render.mjs --frames 300,900,2000
 FILM_URL=http://127.0.0.1:5188/updates.html FILM_FRAMES=2640 FILM_NAME=ludora-whats-new FILM_SCORE=tools/film/score/updates.py tools/film/build.sh 3
@@ -82,3 +82,18 @@ What it claims, and where each claim is true: calm play and the walkthrough (D57
 the navigation (D59), the Wallet, class rewards, sales, boosts and the economy manager (D58), the
 school's copy (D56, D60), and Ludora OS (`docs/LUDORA-OS.md`). It gives no number for the self-check,
 because the demo's list is shorter than a real server's.
+
+Things worth knowing before shooting it again:
+
+- The question's clock runs in real time on the server while two pages are filmed at about two
+  seconds a frame, so the student answers within the first few frames and the class after. The timer
+  on screen falls faster than it does in a classroom for that half second; nothing else is sped up.
+- One scene failing does not stop the others, and the student's account is the same on every run, so
+  a single scene can be shot again (`wallet` re-films only the Wallet).
+- Do not edit `comp/src` while a render is running: the preview server reloads the page under it.
+- To change one shot after a full render, render only its frames into the same folder
+  (`render.mjs --from 1080 --to 1260 --out $FILM_OUT/frames`) and join them again with the `ffmpeg`
+  line in `build.sh`. The sound was lowered by 3.6 dB when it was joined (to -14 LUFS, peaks under
+  -2 dB); `build.sh` alone writes it louder than that.
+- What was checked: every scene on contact sheets, 132 frames across the film. Nobody has listened
+  to the score; its loudness was measured, not heard.
