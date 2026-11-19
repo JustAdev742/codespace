@@ -282,59 +282,71 @@ The dashboard's **Setup** page walks through three steps, each of which can also
 3. **Who is told.** Put people on the security, upkeep and fair-play lists by email address, phone push (ntfy) or
    Telegram, and send each list a test.
 
-### The analyst: an optional AI second opinion
+### What the guard makes of it, and the optional AI model
 
-The server can run a small AI model that reads each batch of security events and adds a second opinion to the
-alert: what it most likely was, how serious, and whether several devices seem to be working together.
+Every security alert ends with a short reading of the whole batch of events:
 
 ```text
-Second opinion, from the small AI model on this server (advice only; it decides nothing):
-  - Most likely password guessing (84% sure).
-  - Seriousness: needs a person to act now (1.6 on a scale of 0 to 2).
+What the guard makes of it (worked out by fixed rules from what it recorded):
+  - What it was: an attempt to overload the server.
+  - How serious: needs a person to act now.
+  - 5 devices were at it together.
 ```
 
-It is a **decision model**, not a chat model. It is given the events and three fixed questions and answers each
-with a probability for every option, in one pass. It never writes text. That choice is deliberate:
+**This reading comes from rules, not from a model.** The sentinel knows exactly what each event is, because a
+rule of its own produced it. From the kinds of event, how many devices were banned and the threat level, it says
+what happened, how serious it is (needs no action, worth a look today, needs a person now) and whether several
+devices were at it together. It is exact, instant and always there, and nothing an attacker writes into a log
+line can change it: only the kinds and the counts are read. It can make an alert more urgent, never less.
 
-- **Safety.** Attackers choose some of the words in a log (user names, page addresses). A chat model can be
-  talked round by them. A decision model has nothing to say: the most a planted word can do is tilt a number. And
-  the analyst only advises. The sentinel's rules ban and unban before it is ever asked; it can make an alert more
-  urgent, never less; if it is slow or missing, the alert goes out without it.
-- **Speed on an old computer.** A chat model good enough to trust writes a few words a second on an old office
-  PC. A decision model has nothing to write: it reads several hundred tokens a second on a laptop processor and
-  answers a whole alert in about a second there.
-- **Privacy.** It runs in its own container with no route to any network and listens only on the server itself.
-  Events never leave the building.
-
-The engine is [Colibri](https://github.com/JustVugg/colibri) (Apache-2.0), running
-[Laya](https://huggingface.co/convaiinnovations/laya) (Convai Innovations, Apache-2.0; 840 MB), through Colibri's
-decision endpoint. Both are fetched at pinned versions; the model's main file is checked against a pinned
-checksum, and the engine is built from its pinned source inside a container, so no compiler is left on the server.
+**The AI model is an optional extra line under that reading**, and it has to earn its place:
 
 ```bash
-ludoractl ai install     # downloads the model, builds the engine (several minutes; needs the internet once)
-ludoractl ai on
-ludoractl ai bench       # 14 cases with known answers, three times over: how many it gets right, and how fast
+ludoractl ai install     # downloads the model (840 MB), builds the engine (several minutes; needs the internet once)
+ludoractl ai on          # starts it, TESTS it on this server, and switches it off again if it fails the test
+ludoractl ai bench       # the test on its own: 36 cases the rules know the answer to, and how long each takes
 ludoractl ai status
 ```
 
-It needs about 2 GB of memory while it runs, so use it on a server with 8 GB or more. It is held to a small share
-of the processor so it can never slow a game.
+It is a decision model, not a chat model: it is shown the event texts and one fixed question with five fixed
+answers, and returns a probability for each. It never writes text, runs in its own container with no route to
+any network, and its line changes nothing: not what the server does, not an alert's urgency, not whether an alert
+is sent. When it disagrees with the rules its line says so, and says that the server acts on the rules.
 
-**What has and has not been checked.** The server's side is tested against a stand-in for the model: what is
-sent, that a reply which is not exactly what was asked for is thrown away, that nothing the model returns except
-its numbers can reach a person, that it can raise urgency but never lower it, and that a model file which does not
-match its checksum is not installed. **The real model has not been run by the author**: building and running the
-engine was not possible in the environment this was written in. So `ludoractl ai install` and the container build
-are unproven, and nobody has yet measured how well Laya judges these events. Run `ludoractl ai bench` first: it
-answers both questions on your own machine, and if the model does badly on the 14 cases, leave it off.
+**What was measured, on the real model.** The engine is [Colibri](https://github.com/JustVugg/colibri)
+(Apache-2.0) running [Laya](https://huggingface.co/convaiinnovations/laya) (Convai Innovations, Apache-2.0), a
+general decision model, not one trained on security. Built, downloaded through `ludoractl`'s own installer code
+(the checksum matched) and run on a 4-core cloud server:
 
-**How fast, and the graphics card.** Colibri's authors measured this model at about 0.9 seconds for three
-questions on a laptop processor (an i7-1355U). An older desktop will be slower, perhaps two to four seconds an
-alert; that is an estimate, not a measurement, and alerts are sent a minute apart at the closest, so it is fast
-enough either way. "Tokens a second" does not really apply, because nothing is generated. A small, old graphics
-card is not used: Colibri can run this model on an NVIDIA card, but the driver for an old card means loading
-outside kernel code on a locked-down server, and the processor is already fast enough for the job.
+- **How often it is right.** Asked the three questions this guide first shipped with, it got 8 of 14 cases
+  right: it took password guessing for an honest mistake, missed impersonation, and was poor at judging
+  seriousness (7 to 13 right of 36, depending on wording). With one question, reworded on half of a 72-case set
+  and scored on the other half, it names the activity correctly on 31 of 36 held-out cases (26 of 36 on an
+  earlier, differently drawn half). The rules are right on all of them. The pass mark is 33 of 36, so on this
+  evidence `ludoractl ai on` switches the model off again and says why; `ludoractl ai on --anyway` keeps it,
+  with its score printed beside its line on every alert.
+- **How fast.** 513 ms for a typical alert, about 230 tokens read a second; it began at 1,620 ms. Three things
+  changed: one question instead of three (each question is the whole text read again), shorter wording, and a
+  faster engine.
+- **The faster engine.** `analyst/patches/` holds changes to Colibri's matrix products, applied on top of the
+  pinned commit when the engine is built: the weights are stored once in the layout the kernel reads instead of
+  being re-shuffled for every product, the loops are ordered so a block of activations stays in the fast cache,
+  and processors with 512-bit instructions get a wider kernel. Every answer is **bit for bit the same** as the
+  unmodified engine's, and Colibri's own 26 oracle tests pass. Measured side by side: 1.23 and 1.59 times
+  faster on two cloud servers with 512-bit instructions, 1.12 times faster on a build limited to what a
+  2013-2017 desktop processor has. It is not more than that because the engine was already close to what the
+  hardware can do with exact arithmetic: 85% of its time is matrix products, and the original kernel ran at
+  about nine tenths of the old instruction set's ceiling.
+
+**Not measured:** an old EliteDesk itself (the 1.12 figure is the same instructions on newer hardware); a
+graphics card (not used: an old card's driver means outside kernel code on a locked-down server); the container
+build under `ludoractl ai install` on Rocky Linux (the engine was built and run directly here, not through
+Podman). It needs about 2 GB of memory while it runs, so use it on a server with 8 GB or more.
+
+**A security-trained model.** Small models trained on security text exist (RedSage and Foundation-Sec, both 8
+billion parameters). They are chat models: on an old office PC they would write a few words a second, and they
+can be talked round by text an attacker plants in a log, so they are not used to judge alerts here. One could be
+added as an "explain this incident" button for staff; that is not built.
 
 ### USB devices
 

@@ -725,10 +725,11 @@ class Daemon:
         if batch:
             made = alerts.from_events(batch, self.cfg)
             if made:
+                reading = None
                 if self.cfg["AI_ENABLED"] and alerts.recipients(self.cfg, "security"):
-                    # A second opinion, asked off the main loop and never waited on for long. No answer changes nothing.
+                    # The optional model's line, asked off the main loop and never waited on for long. No answer changes nothing.
                     reading = await loop.run_in_executor(None, lambda b=batch: analyst.read(b, self.cfg))
-                    analyst.annotate(made, reading)
+                analyst.annotate(made, analyst.by_rules(batch), reading)      # the rules' reading is always there
                 due.append(made)
         batch = self.cheat_box.take(now)
         if batch:

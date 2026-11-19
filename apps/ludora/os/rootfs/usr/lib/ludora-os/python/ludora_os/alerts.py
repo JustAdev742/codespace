@@ -112,7 +112,7 @@ class Alert:
     facts: list[str] = field(default_factory=list)   # the specifics, one per line
     urgent: bool = False
     explain: list[tuple[str, str, str]] = field(default_factory=list)   # (heading, what it means, what to do) when several kinds are in one alert
-    second_opinion: list[str] = field(default_factory=list)             # the optional AI analyst's reading: advice only
+    second_opinion: list[str] = field(default_factory=list)             # the rules' reading of the batch (analyst.by_rules), and the optional AI model's line
 
 
 def clean(text: Any, limit: int = 300) -> str:
@@ -198,7 +198,7 @@ def compose(alert: Alert, cfg: dict[str, Any], now: float | None = None) -> tupl
     for heading, meaning, todo in alert.explain[:6]:
         lines += [clean(heading, 80) + ". " + clean(meaning, 500), "  What to do: " + clean(todo, 600), ""]
     if alert.second_opinion:
-        lines += ["Second opinion, from the small AI model on this server (advice only; it decides nothing):"]
+        lines += ["What the guard makes of it (worked out by fixed rules from what it recorded):"]
         lines += [f"  - {clean(line, 200)}" for line in alert.second_opinion[:4]] + [""]
     if alert.did:
         lines += ["What the server did: " + clean(alert.did, 500), ""]

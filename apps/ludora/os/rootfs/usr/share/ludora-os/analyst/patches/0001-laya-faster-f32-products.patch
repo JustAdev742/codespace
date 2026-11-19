@@ -1,0 +1,172 @@
+diff --git a/c/laya.c b/c/laya.c
+index 3bb5eaf..e064f6d 100644
+--- a/c/laya.c
++++ b/c/laya.c
+@@ -223,6 +223,17 @@ static float *load_opt(shards *S, const char *name, int64_t expect)
+ static QiMat load_mat(shards *S, const char *name, int N, int K)
+ {
+     QiMat m = {QI_F32, N, K, load_f32(S, name, (int64_t)N * K), NULL, 0};
++#if !defined(COLI_VULKAN) && !defined(COLI_CUDA)
++    /* The CPU reads every matrix only through qi_gemm: keep it in the kernel's panels, so that no product
++     * packs anything (qi_gemm.h, QI_F32P). COLI_LAYA_PREPACK=0 keeps the plain rows, to measure against. */
++    const char *pre = getenv("COLI_LAYA_PREPACK");
++    if (!pre || strcmp(pre, "0")) {
++        float *rows = (float *)m.w;
++        m.w = qi_prepack_f32(rows, N, K);
++        m.fmt = QI_F32P;
++        free(rows);
++    }
++#endif
+     return m;
+ }
+ 
+diff --git a/c/qi_gemm.h b/c/qi_gemm.h
+index 216f43c..efb4973 100644
+--- a/c/qi_gemm.h
++++ b/c/qi_gemm.h
+@@ -31,7 +31,8 @@
+ #include <immintrin.h>
+ #endif
+ 
+-enum { QI_F32 = 0, QI_BF16 = 1, QI_I8 = 2 };
++enum { QI_F32 = 0, QI_BF16 = 1, QI_I8 = 2,
++       QI_F32P = 3 };   /* f32 already in the kernel's panels (qi_prepack_f32): nothing to pack per product */
+ 
+ typedef struct {
+     int fmt;            /* QI_F32 | QI_BF16 | QI_I8 */
+@@ -70,6 +71,29 @@ static void qi_pack_w(float *panel, const QiMat *W, int n0, int nr, int k0, int
+     }
+ }
+ 
++/* A matrix whose weights are f32 anyway can be stored once in the layout the kernel reads: panels of QI_NR
++ * rows, k-major, P[nb][k][j] = W[nb*QI_NR + j][k], rows past N zero. qi_gemm then points the kernel at the
++ * weights themselves. Same numbers in the same order as packing on the fly, so the product is bit for bit
++ * the same; what goes is the packing, which for a few hundred rows was about a third of the product's time.
++ * The caller owns the returned block (free() it); the original [N][K] array is not needed afterwards.
++ * Not for a matrix another backend reads as [N][K] (the Vulkan and CUDA paths upload W->w as it is). */
++static float *qi_prepack_f32(const float *w, int N, int K){
++    const int nblocks = (N + QI_NR - 1) / QI_NR;
++    float *p = (float *)malloc((size_t)nblocks * (size_t)K * QI_NR * sizeof(float));
++    if (!p) { fprintf(stderr, "OOM qi_prepack_f32\n"); exit(1); }
++    #pragma omp parallel for schedule(static)
++    for (int nb = 0; nb < nblocks; nb++) {
++        float *panel = p + (size_t)nb * (size_t)K * QI_NR;
++        for (int j = 0; j < QI_NR; j++) {
++            int n = nb * QI_NR + j;
++            if (n >= N) { for (int k = 0; k < K; k++) panel[(size_t)k*QI_NR + j] = 0.f; continue; }
++            const float *s = w + (size_t)n * K;
++            for (int k = 0; k < K; k++) panel[(size_t)k*QI_NR + j] = s[k];
++        }
++    }
++    return p;
++}
++
+ /* acc[MR][NR] (+)= X[m0.., k0..k0+kc) . panel ; mr <= MR rows valid */
+ static void qi_kernel(float *Y, int ldy, const float *X, int ldx, const float *panel,
+                       int kc, int mr, int nr, int accumulate){
+@@ -116,11 +140,90 @@ static void qi_kernel(float *Y, int ldy, const float *X, int ldx, const float *p
+             Y[(int64_t)i*ldy + j] = accumulate ? Y[(int64_t)i*ldy + j] + t[i][j] : t[i][j];
+ }
+ 
++#if defined(__AVX512F__)
++#define QI_HAVE_K12 1
++/* Twelve rows at once on AVX-512: each output is still one FMA chain over k in the same order as in
++ * qi_kernel (so the result is bit for bit the same), but a row's sixteen outputs are one zmm instead of
++ * two ymm, and twelve chains keep both 512-bit FMA units busy where six would leave one idle. */
++static void qi_kernel12(float *Y, int ldy, const float *X, int ldx, const float *panel, int kc, int nr, int accumulate){
++    __m512 c0=_mm512_setzero_ps(), c1=_mm512_setzero_ps(), c2=_mm512_setzero_ps(), c3=_mm512_setzero_ps();
++    __m512 c4=_mm512_setzero_ps(), c5=_mm512_setzero_ps(), c6=_mm512_setzero_ps(), c7=_mm512_setzero_ps();
++    __m512 c8=_mm512_setzero_ps(), c9=_mm512_setzero_ps(), c10=_mm512_setzero_ps(), c11=_mm512_setzero_ps();
++    const float *x0 = X, *x1 = X + ldx, *x2 = X + 2*(int64_t)ldx, *x3 = X + 3*(int64_t)ldx, *x4 = X + 4*(int64_t)ldx, *x5 = X + 5*(int64_t)ldx;
++    const float *x6 = X + 6*(int64_t)ldx, *x7 = X + 7*(int64_t)ldx, *x8 = X + 8*(int64_t)ldx, *x9 = X + 9*(int64_t)ldx, *x10 = X + 10*(int64_t)ldx, *x11 = X + 11*(int64_t)ldx;
++    for (int k = 0; k < kc; k++) {
++        __m512 b = _mm512_loadu_ps(panel + k*QI_NR);
++        c0  = _mm512_fmadd_ps(_mm512_set1_ps(x0[k]),  b, c0);  c1  = _mm512_fmadd_ps(_mm512_set1_ps(x1[k]),  b, c1);
++        c2  = _mm512_fmadd_ps(_mm512_set1_ps(x2[k]),  b, c2);  c3  = _mm512_fmadd_ps(_mm512_set1_ps(x3[k]),  b, c3);
++        c4  = _mm512_fmadd_ps(_mm512_set1_ps(x4[k]),  b, c4);  c5  = _mm512_fmadd_ps(_mm512_set1_ps(x5[k]),  b, c5);
++        c6  = _mm512_fmadd_ps(_mm512_set1_ps(x6[k]),  b, c6);  c7  = _mm512_fmadd_ps(_mm512_set1_ps(x7[k]),  b, c7);
++        c8  = _mm512_fmadd_ps(_mm512_set1_ps(x8[k]),  b, c8);  c9  = _mm512_fmadd_ps(_mm512_set1_ps(x9[k]),  b, c9);
++        c10 = _mm512_fmadd_ps(_mm512_set1_ps(x10[k]), b, c10); c11 = _mm512_fmadd_ps(_mm512_set1_ps(x11[k]), b, c11);
++    }
++    float t[12][QI_NR];
++    _mm512_storeu_ps(t[0], c0); _mm512_storeu_ps(t[1], c1); _mm512_storeu_ps(t[2], c2); _mm512_storeu_ps(t[3], c3);
++    _mm512_storeu_ps(t[4], c4); _mm512_storeu_ps(t[5], c5); _mm512_storeu_ps(t[6], c6); _mm512_storeu_ps(t[7], c7);
++    _mm512_storeu_ps(t[8], c8); _mm512_storeu_ps(t[9], c9); _mm512_storeu_ps(t[10], c10); _mm512_storeu_ps(t[11], c11);
++    for (int i = 0; i < 12; i++)
++        for (int j = 0; j < nr; j++)
++            Y[(int64_t)i*ldy + j] = accumulate ? Y[(int64_t)i*ldy + j] + t[i][j] : t[i][j];
++}
++#endif
++
+ /* Y[M][N] = X[M][K] . W^T (+ bias). ldx/ldy are the row strides (K and N for
+  * dense rows; larger when X or Y is a column slice of a wider matrix). */
++/* The product for pre-packed weights (QI_F32P). Nothing is packed, so the loops are free to be ordered for the
++ * cache alone: a task is one block of MC rows by QI_NC panels (QI_NC*QI_NR outputs); inside it the k-blocks go
++ * outermost, so one MC x KC block of X (196 KB) is read from L2 by every panel of the task before the next
++ * k-block is touched, and the task's block of Y stays in L2 with it. Swept panel by panel over the whole of X
++ * instead, X comes back from L3 once per panel: measured on one core, that halves the kernel's throughput.
++ * Each output is accumulated over the k-blocks in ascending order, then k within the block, exactly as in
++ * qi_gemm_ld: the result is bit for bit the same and does not depend on the thread count. */
++#ifndef QI_NC
++#define QI_NC 8
++#endif
++static void qi_gemm_packed(float *Y, int ldy, const float *X, int ldx, int M, const QiMat *W, const float *bias){
++    const int N = W->N, K = W->K;
++    const int nblocks = (N + QI_NR - 1) / QI_NR;
++    const int nchunks = (nblocks + QI_NC - 1) / QI_NC;
++    const int mblocks = (M + QI_MC - 1) / QI_MC;
++    const float *base = (const float *)W->w;
++    #pragma omp parallel for schedule(dynamic, 1) collapse(2)
++    for (int mb = 0; mb < mblocks; mb++)
++        for (int nc = 0; nc < nchunks; nc++) {
++            int m0 = mb * QI_MC, mc = M - m0 < QI_MC ? M - m0 : QI_MC;
++            int nb0 = nc * QI_NC, nb1 = nb0 + QI_NC < nblocks ? nb0 + QI_NC : nblocks;
++            for (int k0 = 0; k0 < K; k0 += QI_KC) {
++                int kc = K - k0 < QI_KC ? K - k0 : QI_KC;
++                for (int nb = nb0; nb < nb1; nb++) {
++                    int n0 = nb * QI_NR, nr = N - n0 < QI_NR ? N - n0 : QI_NR;
++                    const float *pk = base + ((size_t)nb * (size_t)K + (size_t)k0) * QI_NR;
++                    int i = 0;
++#ifdef QI_HAVE_K12
++                    for (; i + 12 <= mc; i += 12)
++                        qi_kernel12(Y + (int64_t)(m0 + i) * ldy + n0, ldy,
++                                    X + (int64_t)(m0 + i) * ldx + k0, ldx, pk, kc, nr, k0 > 0);
++#endif
++                    for (; i < mc; i += QI_MR) {
++                        int mr = mc - i < QI_MR ? mc - i : QI_MR;
++                        qi_kernel(Y + (int64_t)(m0 + i) * ldy + n0, ldy,
++                                  X + (int64_t)(m0 + i) * ldx + k0, ldx, pk, kc, mr, nr, k0 > 0);
++                    }
++                }
++            }
++            if (bias)
++                for (int nb = nb0; nb < nb1; nb++) {
++                    int n0 = nb * QI_NR, nr = N - n0 < QI_NR ? N - n0 : QI_NR;
++                    for (int i = 0; i < mc; i++)
++                        for (int j = 0; j < nr; j++) Y[(int64_t)(m0 + i) * ldy + n0 + j] += bias[n0 + j];
++                }
++        }
++}
++
+ static void qi_gemm_ld(float *Y, int ldy, const float *X, int ldx, int M, const QiMat *W, const float *bias){
+     const int N = W->N, K = W->K;
+     if (M <= 0 || N <= 0) return;
++    if (W->fmt == QI_F32P) { qi_gemm_packed(Y, ldy, X, ldx, M, W, bias); return; }
+     const int nblocks = (N + QI_NR - 1) / QI_NR;
+     const int mblocks = (M + QI_MC - 1) / QI_MC;
+     /* Parallel over (m-block, n-panel) tiles; each tile walks all of K, so the
+@@ -140,7 +243,13 @@ static void qi_gemm_ld(float *Y, int ldy, const float *X, int ldx, int M, const
+                 for (int k0 = 0; k0 < K; k0 += QI_KC) {
+                     int kc = K - k0 < QI_KC ? K - k0 : QI_KC;
+                     qi_pack_w(panel, W, n0, nr, k0, kc);
+-                    for (int i = 0; i < mc; i += QI_MR) {
++                    int i = 0;
++#ifdef QI_HAVE_K12
++                    for (; i + 12 <= mc; i += 12)
++                        qi_kernel12(Y + (int64_t)(m0 + i) * ldy + n0, ldy,
++                                    X + (int64_t)(m0 + i) * ldx + k0, ldx, panel, kc, nr, k0 > 0);
++#endif
++                    for (; i < mc; i += QI_MR) {
+                         int mr = mc - i < QI_MR ? mc - i : QI_MR;
+                         qi_kernel(Y + (int64_t)(m0 + i) * ldy + n0, ldy,
+                                   X + (int64_t)(m0 + i) * ldx + k0, ldx,

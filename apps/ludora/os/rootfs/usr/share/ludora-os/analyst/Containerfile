@@ -8,6 +8,10 @@ RUN dnf -y install --setopt=install_weak_deps=False gcc make git-core python3 &&
 RUN git init -q /src && cd /src && git remote add origin "$ENGINE_REPO" \
  && git fetch -q --depth 1 origin "$ENGINE_COMMIT" && git checkout -q FETCH_HEAD \
  && test "$(git rev-parse HEAD)" = "$ENGINE_COMMIT"
+# This repository's patches on the pinned source: the same answers bit for bit, in less time (see each patch's notes
+# and docs/LUDORA-OS.md). A patch that does not apply stops the build rather than being skipped.
+COPY patches/ /patches/
+RUN cd /src && for p in /patches/*.patch; do git apply --verbose "$p" || exit 1; done
 RUN make -C /src/c laya
 # Keep only what serving needs: the launcher, the gateway (plain Python, no packages) and the one engine.
 RUN mkdir -p /out/c && cd /src/c && cp -a coli laya ./*.py /out/c/ && cp -a /src/LICENSE /src/NOTICE /src/THIRD_PARTY_NOTICES.md /out/

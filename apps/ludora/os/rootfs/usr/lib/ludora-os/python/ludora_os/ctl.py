@@ -408,13 +408,26 @@ def cmd_alerts(args: argparse.Namespace) -> int:
     return 2
 
 
+def _say_bench(result: dict[str, Any]) -> None:
+    say(f"Right: {result['right']} of {result['asked']} cases the guard's own rules know the answer to" + (f" ({result['asked'] - result['answered']} not answered)." if result["answered"] < result["asked"] else "."))
+    say(f"Speed: {result['median_ms']} ms for a typical alert, {result['slowest_ms']} ms for the slowest; about {result['readings_per_minute']} alerts a minute.")
+    if result.get("tokens_read_per_second"):
+        say(f"It read about {result['tokens_read_per_second']} tokens a second. It writes none: it scores five fixed answers.")
+    need = -(-int(analyst.PASS_MARK * 100) * result["asked"] // 100)
+    say("That is a pass." if analyst.passed(result) else f"That is below the pass mark ({need} of {result['asked']}). The rules' reading on each alert does not depend on this model.")
+
+
 def cmd_ai(args: argparse.Namespace) -> int:
     cfg = config.load()
     if args.action == "status":
         missing = analyst.model_ready()
-        say("The analyst is " + ("ON" if cfg["AI_ENABLED"] else "off") + ": a small AI model that adds a second opinion to security alerts. It never bans or unbans.")
+        say("Every security alert carries the guard's own reading of what happened, worked out by fixed rules. That needs no model.")
+        say("The AI model is " + ("ON" if cfg["AI_ENABLED"] else "off") + ": an optional extra line on those alerts. It never bans, unbans or changes an alert's urgency.")
         say("Model: " + ("installed" if not missing else "not installed (" + ", ".join(missing[:2]) + ("..." if len(missing) > 2 else "") + " missing)"))
         say("Engine: " + (analyst.image() or "not built"))
+        scored = analyst.last_bench()
+        say("Its test on this server: " + (f"{scored['right']} of {scored['asked']} right, {scored.get('median_ms')} ms a reading" + (" (a pass)." if analyst.passed(scored) else " (below the pass mark).")
+                                           if scored else "not run yet (`ludoractl ai bench`)."))
         if cfg["AI_ENABLED"]:
             reading = analyst.read([{"text": "10.20.3.3 connected to decoy port 3389. Banned for 15 min.", "at": int(time.time()), "ip": "10.20.3.3", "minutes": 15}], cfg)
             say("Answering: " + (f"yes, in {reading.ms} ms" if reading else f"NO: nothing usable came back from port {cfg['AI_PORT']} on this machine. See `ludoractl logs analyst`."))
@@ -426,25 +439,47 @@ def cmd_ai(args: argparse.Namespace) -> int:
             tag = analyst.install(say)
         except (analyst.AnalystError, OSError) as err:
             raise Refused(str(err)) from None
-        say(f"Installed ({tag}). Switch it on with: ludoractl ai on")
+        say(f"Installed ({tag}). Try it with: ludoractl ai on")
         return 0
-    if args.action in ("on", "off"):
-        if args.action == "on" and (analyst.model_ready() or not analyst.image()):
-            raise Refused("It is not installed yet. Run: ludoractl ai install")
-        cfg["AI_ENABLED"] = args.action == "on"
+    if args.action == "off":
+        cfg["AI_ENABLED"] = False
         config.save(cfg)
         applier.apply(log=say)
-        say("The analyst is on. Check it: ludoractl ai bench" if cfg["AI_ENABLED"] else "The analyst is off. Alerts go out exactly as before.")
+        say("The AI model is off. Alerts still carry the guard's own reading.")
+        return 0
+    if args.action == "on":
+        if analyst.model_ready() or not analyst.image():
+            raise Refused("It is not installed yet. Run: ludoractl ai install")
+        cfg["AI_ENABLED"] = True
+        config.save(cfg)
+        applier.apply(log=say)
+        say("Testing the model on this server before its line goes on any alert.")
+        result = None
+        for _ in range(30):                              # the engine takes a few seconds to load the model
+            if analyst.read([{"text": "10.20.3.3 connected to decoy port 3389. Banned for 15 min."}], cfg):
+                result = analyst.bench(cfg)
+                break
+            time.sleep(3)
+        if result is None or not result["answered"]:
+            cfg["AI_ENABLED"] = False
+            config.save(cfg)
+            applier.apply(log=say)
+            raise Refused(f"The model did not answer on port {cfg['AI_PORT']}, so it was switched off again. See `ludoractl logs analyst`.")
+        _say_bench(result)
+        if not analyst.passed(result) and not getattr(args, "anyway", False):
+            cfg["AI_ENABLED"] = False
+            config.save(cfg)
+            applier.apply(log=say)
+            raise Refused("So the model was switched off again: a line that is wrong this often would mislead more than it helps. "
+                          "To see its line anyway, marked with its score: ludoractl ai on --anyway")
+        say("The AI model is on. Its line appears under the guard's own reading" + ("." if analyst.passed(result) else ", marked with its score."))
         return 0
     if args.action == "bench":
-        say("Asking the model a fixed set of 14 cases with known answers, three times over, after a warm-up.")
+        say("Asking the model 36 held-out cases the guard's rules know the answer to, after a warm-up.")
         result = analyst.bench(cfg)
         if not result["answered"]:
             raise Refused(f"Nothing usable came back from port {cfg['AI_PORT']} on this machine. Is it installed and on? `ludoractl ai status`")
-        say(f"Right: {result['right']} of {result['answered']} answered ({result['asked'] - result['answered']} not answered).")
-        say(f"Speed: {result['median_ms']} ms for a typical alert, {result['slowest_ms']} ms for the slowest; about {result['readings_per_minute']} alerts a minute.")
-        if result["words_read_per_second"]:
-            say(f"It read about {result['words_read_per_second']} tokens a second. It writes none: it scores fixed options, which is why it is quick.")
+        _say_bench(result)
         for line in result["wrong"]:
             say("  missed: " + line)
         return 0
@@ -726,8 +761,9 @@ def parser() -> argparse.ArgumentParser:
     a = dash_actions.add_parser("code", help="ask for a six-digit authenticator code as well as the password")
     a.add_argument("mode", choices=["on", "off"])
     add("dash-op", cmd_dash_op, "Used by the staff dashboard itself: one request on standard input.")
-    p = add("ai", cmd_ai, "The optional AI analyst: a small model that adds a second opinion to security alerts.")
+    p = add("ai", cmd_ai, "The optional AI model: one extra line on security alerts, beside the guard's own reading.")
     p.add_argument("action", choices=["status", "install", "on", "off", "bench"])
+    p.add_argument("--anyway", action="store_true", help="with `on`: keep the model on even if it fails its test (its line is then marked with its score)")
     p = add("usb", cmd_usb, "Trust the USB devices plugged in now and refuse new ones.")
     p.add_argument("action", choices=["init"])
     p = add("tls", cmd_tls, "Print the server's own root certificate (TLS_MODE=internal).")

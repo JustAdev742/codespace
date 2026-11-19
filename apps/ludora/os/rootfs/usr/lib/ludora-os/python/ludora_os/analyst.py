@@ -1,22 +1,24 @@
-"""The analyst: an optional small AI model that reads a batch of security events and gives a second opinion.
+"""The analyst: what a batch of security events amounts to, said in three plain lines on each alert.
 
-It is a DECISION model, not a chat model. It is handed the events and three fixed questions, and answers each with
-a probability for every option, in one pass. It never writes text, so nothing an attacker plants in a log line can
-make it say anything: the most a planted line can do is tilt a probability. For that reason its reading is advice
-and nothing more:
+Two readers, kept strictly apart:
 
-  - it never bans, unbans, opens or closes anything: the sentinel's rules do that, before the analyst is asked;
-  - it can make an alert MORE urgent, never less, and it can never hold an alert back;
-  - if it is slow, missing or answers nonsense, the alert goes out without it.
+  - THE RULES (`by_rules`). The sentinel knows exactly what each event is, because a rule of its own produced it.
+    From the kinds of event, how many devices were banned and the threat level, the rules say what it was, how
+    serious it is and whether several devices were at it together. This reading is exact, instant and free, and
+    nothing an attacker writes into a log line can sway it. It is always there, with or without the model below.
+
+  - AN OPTIONAL AI MODEL (`read`). A small DECISION model is shown the event texts and asked one fixed question
+    with five fixed answers. It never writes text. Measured on this server's own test set
+    (`ludoractl ai bench`), the model shipped here names the activity correctly on about three quarters of the
+    held-out cases, where the rules are right by construction. So it is off unless switched on, its line is printed
+    beside the rules' reading as advice, it changes nothing (not urgency, not bans, not whether an alert is sent),
+    and while its score is below the pass mark its line says so.
 
 The engine is Colibri (github.com/JustVugg/colibri, Apache-2.0) running Laya (Convai Innovations, Apache-2.0, a
 ModernBERT encoder with a decision head) and serving Colibri's `POST /v1/systemone`. It runs in its own container
-with no way out to any network, listening on this machine's loopback only. Events never leave the server.
-
-Why a decision model and not a small chat model: on an old office PC a chat model good enough to trust writes a
-few words a second, and the wording of an alert is better fixed and tested anyway. A decision model reads several
-hundred words a second on the same machine and has nothing to generate. `ludoractl ai bench` measures it on the
-machine it is on.
+with no way out to any network, listening on this machine's loopback only. Events never leave the server. The
+engine is built from a pinned commit with this repository's patches on top (`analyst/patches/`): the same
+answers, bit for bit, in less time.
 """
 
 from __future__ import annotations
@@ -52,63 +54,24 @@ MODEL_FILES: dict[str, tuple[int, str | None]] = {   # path -> (bytes, sha256 wh
 }
 TIMEOUT = 8.0
 
-ACTIVITY = {
-    "scan": "an automated tool looking for open ports or for web pages with known weaknesses",
-    "guessing": "someone trying many passwords to get into an account",
-    "flood": "an attempt to overload the server or knock it offline",
-    "impersonation": "a device pretending to be another machine or the network router",
-    "mistake": "an ordinary person or a misconfigured device, not an attack",
+ACTIVITY = {     # the options the model chooses between, in the guard's own vocabulary (wording tuned on half the test set)
+    "scan": "touching decoy ports or probing for weak spots",
+    "guessing": "repeated failed sign-ins: guessing passwords",
+    "flood": "flooding the site with requests to overload it",
+    "impersonation": "a device using another machine's address or hardware address",
+    "mistake": "a trusted staff device, not banned: an honest slip",
 }
 ACTIVITY_WORDS = {
     "scan": "an automated scan", "guessing": "password guessing", "flood": "an attempt to overload the server",
     "impersonation": "a device impersonating another", "mistake": "a mistake rather than an attack",
 }
-SERIOUSNESS = ["routine background noise that needs no action", "worth a look later today", "needs a person to act now"]
-# Two neutral labels, not yes/no: this model can lean on the words "true" and "false" themselves (its model card says so).
-PLANNED = {
-    "together": "several devices working together on one planned attack",
-    "separate": "one device, or unrelated devices acting separately",
-}
-QUESTIONS = {
-    "activity": {"type": "choice", "instructions": "A school runs a quiz-game web server for its students. Its guard recorded these events. What best describes what happened?", "criteria": ACTIVITY},
-    "seriousness": {"type": "score", "instructions": "How serious is this for a school that is running lessons on this server right now?", "criteria": SERIOUSNESS},
-    "planned": {"type": "choice", "instructions": "Do these events look like the work of several devices together, or not?", "criteria": PLANNED},
-}
-
-
-@dataclass
-class Reading:
-    activity: str
-    activity_p: float
-    seriousness: float          # 0 (noise) to 2 (act now)
-    planned_p: float            # probability that several devices are working together
-    ms: int
-    input_tokens: int
-
-    def lines(self) -> list[str]:
-        level = SERIOUSNESS[min(2, max(0, round(self.seriousness)))]
-        out = [f"Most likely {ACTIVITY_WORDS[self.activity]} ({self.activity_p:.0%} sure).", f"Seriousness: {level} ({self.seriousness:.1f} on a scale of 0 to 2)."]
-        if self.planned_p >= 0.6:
-            out.append(f"It looks like several devices working together ({self.planned_p:.0%}).")
-        return out
-
-    @property
-    def raises_urgency(self) -> bool:
-        return self.seriousness >= 1.5 and self.activity != "mistake"
-
-
-def state_for(events: list[dict[str, Any]], cfg: dict[str, Any]) -> dict[str, Any]:
-    """What the model is shown: the cleaned event texts and a few counts. No options and no instructions go in here."""
-    texts = [alerts.clean(e.get("text", ""), 200) for e in events if e.get("text")][:24]
-    addresses = sorted({str(e["ip"]) for e in events if e.get("ip")})
-    times = [e.get("at", 0) for e in events if e.get("at")]
-    return {
-        "events": texts,
-        "distinct_addresses": len(addresses),
-        "addresses_banned": len({str(e["ip"]) for e in events if e.get("ip") and "minutes" in e}),
-        "minutes_spanned": round((max(times) - min(times)) / 60, 1) if len(times) > 1 else 0,
-        "students_share_one_address": bool(cfg.get("NAT_MODE")),
-    }
+SERIOUSNESS = ["needs no action", "worth a look today", "needs a person to act now"]
+# What each kind of event the sentinel records IS. The sentinel knows this exactly: it is the rule that fired.
+KIND_ACTIVITY = {"tripwire": "scan", "probe": "scan", "ssh": "guessing", "guessing": "guessing", "fuzzing": "flood", "flood": "flood",
+                 "impersonation": "impersonation", "arp": "impersonation"}
+QUESTION = {"activity": {"type": "choice", "instructions": "A school server's guard recorded this. What was it?", "criteria": ACTIVITY}}
+PASS_MARK = 0.9          # the share of the test cases a model must get right before its line is trusted in an alert
+BENCH_FILE = f"{system.STATE}/analyst/bench.json"
 
 
 def _ask(port: int, state: Any, questions: dict[str, Any], timeout: float = TIMEOUT) -> tuple[dict[str, Any], float]:
@@ -134,90 +97,216 @@ def _probabilities(answer: Any, labels: list[str]) -> dict[str, float] | None:
     return out if 0.98 <= sum(out.values()) <= 1.02 else None
 
 
+@dataclass
+class Verdict:
+    """What the guard's own rules make of a batch of events. Exact, instant, and nothing in a log line can sway it."""
+    activity: str
+    seriousness: int            # 0 needs no action, 1 worth a look today, 2 needs a person now
+    devices: int                # distinct addresses that were banned in this batch
+
+    def lines(self) -> list[str]:
+        out = [f"What it was: {ACTIVITY_WORDS[self.activity]}.", f"How serious: {SERIOUSNESS[self.seriousness]}."]
+        if self.devices >= 3:
+            out.append(f"{self.devices} devices were at it together.")
+        return out
+
+
+def by_rules(events: list[dict[str, Any]]) -> Verdict | None:
+    """Read a batch the way the rules that produced it would. None when it holds nothing the rules class as an offence.
+
+    Seriousness, by a fixed rubric: 2 when the router is impersonated, the threat level is "under attack", or three
+    or more devices were banned together; 1 for one device guessing, flooding, probing or coming back after a ban,
+    and for a decoy touch from an address that had just changed hands; 0 for a single decoy touch and for staff slips."""
+    offences = [e for e in events if e.get("kind") in KIND_ACTIVITY]
+    if not offences:
+        return None
+    banned = [e for e in offences if "minutes" in e]
+    devices = len({str(e.get("ip")) for e in banned if e.get("ip")})
+    kinds = {e["kind"] for e in offences}
+    under_attack = any(e.get("kind") == "level" and e.get("level") == 2 for e in events)
+    if kinds & {"impersonation", "arp"}:
+        activity = "impersonation"
+    elif banned:
+        counts: dict[str, int] = {}
+        for e in banned:
+            counts[KIND_ACTIVITY[e["kind"]]] = counts.get(KIND_ACTIVITY[e["kind"]], 0) + 1
+        activity = max(("flood", "guessing", "scan"), key=lambda a: counts.get(a, 0))     # ties go to the graver one
+    else:
+        activity = "mistake"                        # every offender was trusted staff, or a shared address: nobody was banned
+    if "arp" in kinds or under_attack or devices >= 3:
+        seriousness = 2
+    elif activity in ("guessing", "flood", "impersonation") or "probe" in kinds or any(e.get("minutes", 0) > 15 for e in banned):
+        seriousness = 1
+    else:
+        seriousness = 0
+    return Verdict(activity, seriousness, devices)
+
+
+@dataclass
+class Reading:
+    """The optional AI model's reading of the same batch: which of the five activities, and how sure."""
+    activity: str
+    activity_p: float
+    ms: int
+    input_tokens: int
+
+
+def state_for(events: list[dict[str, Any]]) -> str:
+    """What the model is shown: the cleaned event texts, one a line. No options and no instructions go in here."""
+    return "\n".join(alerts.clean(e.get("text", ""), 200) for e in events if e.get("text"))[:6000]
+
+
 def read(events: list[dict[str, Any]], cfg: dict[str, Any], ask=_ask) -> Reading | None:
     """Ask the model about one batch of events. None when it is off, unreachable, slow or its reply is not usable."""
     if not cfg.get("AI_ENABLED") or not events:
         return None
     try:
-        reply, seconds = ask(cfg["AI_PORT"], state_for(events, cfg), QUESTIONS)
+        reply, seconds = ask(cfg["AI_PORT"], state_for(events[:24]), QUESTION)
         answers = reply.get("answers") if isinstance(reply, dict) else None
         if not isinstance(answers, dict):
             return None
         activity = _probabilities(answers.get("activity"), list(ACTIVITY))
-        serious = _probabilities(answers.get("seriousness"), ["0", "1", "2"])
-        planned = _probabilities(answers.get("planned"), list(PLANNED))
-        if not activity or not serious or not planned:
+        if not activity:
             return None
         top = max(activity, key=lambda k: activity[k])
         usage = reply.get("usage") if isinstance(reply.get("usage"), dict) else {}
         tokens = usage.get("input_tokens")
-        return Reading(top, activity[top], sum(int(k) * v for k, v in serious.items()), planned["together"], int(seconds * 1000),
-                       int(tokens) if isinstance(tokens, int) and not isinstance(tokens, bool) else 0)
+        return Reading(top, activity[top], int(seconds * 1000), int(tokens) if isinstance(tokens, int) and not isinstance(tokens, bool) else 0)
     except (urllib.error.URLError, OSError, ValueError, TypeError, AttributeError):
         return None
 
 
-def annotate(alert: alerts.Alert, reading: Reading | None) -> alerts.Alert:
-    """Add the analyst's reading to an alert. It can raise the urgency; it cannot lower it or change anything else."""
-    if reading is None:
+def last_bench() -> dict[str, Any] | None:
+    try:
+        found = json.loads(system.read(BENCH_FILE) or "null")
+        return found if isinstance(found, dict) and isinstance(found.get("right"), int) and isinstance(found.get("asked"), int) and found["asked"] > 0 else None
+    except ValueError:
+        return None
+
+
+def passed(result: dict[str, Any] | None) -> bool:
+    return bool(result) and result["answered"] == result["asked"] and result["right"] >= PASS_MARK * result["asked"]
+
+
+def annotate(alert: alerts.Alert, verdict: Verdict | None, reading: Reading | None = None) -> alerts.Alert:
+    """Add the rules' reading of the batch to an alert, and the model's line beside it if there is one.
+
+    The rules' reading can make an alert MORE urgent, never less. The model's line changes nothing at all: it is
+    printed as advice, says plainly when it disagrees with the rules, and carries its own test score when that
+    score is below the pass mark."""
+    if verdict is None:
         return alert
-    alert.second_opinion = reading.lines()
-    alert.urgent = alert.urgent or reading.raises_urgency
+    lines = verdict.lines()
+    if reading is not None:
+        scored = last_bench()
+        caveat = "" if passed(scored) else (f" This model got {scored['right']} of {scored['asked']} test cases right on this server: treat its line with care."
+                                            if scored else " This model has not been tested on this server yet (`ludoractl ai bench`).")
+        if reading.activity == verdict.activity:
+            lines.append(f"The AI model reads it the same way ({reading.activity_p:.0%} sure).{caveat}")
+        else:
+            lines.append(f"The AI model reads it differently, as {ACTIVITY_WORDS[reading.activity]} ({reading.activity_p:.0%} sure). The server acts on the rules, not on this.{caveat}")
+    alert.second_opinion = lines
+    alert.urgent = alert.urgent or verdict.seriousness >= 2
     return alert
 
 
 # ---- a fixed set of cases with known answers, to check a model before trusting it and to time it ---------------
-# The idea is Colibri's own: judge a setting by a small fixed quiz, and report speed beside it, never speed alone.
-QUIZ: list[tuple[str, int, list[str]]] = [   # (expected activity, least seriousness expected 0-2, event texts)
-    ("scan", 0, ["10.20.3.3 connected to decoy port 3389. Banned for 15 min."]),
-    ("scan", 0, ["10.20.4.9 probed for other software's weak spots. Banned for 15 min."]),
-    ("scan", 0, ["10.20.3.3 connected to decoy port 23. Banned for 15 min.", "10.20.3.3 connected to decoy port 445. Banned for 60 min."]),
-    ("guessing", 1, ["10.20.5.5 kept guessing at sign-in. Banned for 15 min."]),
-    ("guessing", 1, ["10.20.5.5 failed to sign in over SSH 5 times. Banned for 15 min."]),
-    ("guessing", 1, ["10.20.5.5 kept guessing at sign-in. Banned for 60 min.", "10.20.5.6 kept guessing at sign-in. Banned for 15 min."]),
-    ("flood", 1, ["10.20.6.1 flooded the site with requests. Banned for 15 min."]),
-    ("flood", 2, ["Threat level: under attack.", "Shield raised: every limit is a quarter of normal.", "10.20.6.1 flooded the site with requests. Banned for 15 min.",
-                  "10.20.6.2 flooded the site with requests. Banned for 15 min.", "10.20.6.3 flooded the site with requests. Banned for 15 min."]),
-    ("flood", 1, ["10.20.6.4 sent a stream of broken requests. Banned for 15 min.", "10.20.6.4 flooded the site with requests. Banned for 60 min."]),
-    ("impersonation", 1, ["The gateway 10.20.0.1 changed hardware address (aa:aa:aa:aa:aa:01 to ee:ee:ee:ee:ee:66). If nobody replaced the router, a device is impersonating it."]),
-    ("impersonation", 1, ["10.20.3.30 connected to decoy port 23, minutes after that address moved to a different device (ee:ee:ee:ee:ee:66). Not banned: someone may be using another machine's address to get it banned."]),
-    ("impersonation", 1, ["One device (ee:ee:ee:ee:ee:66) answers for 9 addresses. That is how traffic gets intercepted."]),
-    ("mistake", 0, ["10.20.9.10 connected to decoy port 23. Not banned: it is trusted."]),
-    ("mistake", 0, ["10.20.9.12 failed to sign in over SSH 5 times. Not banned: it is trusted."]),
-]
+# The idea is Colibri's own: judge a setting by a fixed quiz, and report speed beside it, never speed alone. The cases
+# are built from the sentences the sentinel really writes; the right answer for each is what the rules say it is.
+def cases(seed: int = 7) -> tuple[list[list[dict[str, Any]]], list[list[dict[str, Any]]]]:
+    """72 batches of events, as (tuning half, held-out half). The wording above was chosen on the first half only;
+    `bench` scores a model on the second."""
+    import random
+    r = random.Random(seed)
+    out: list[list[dict[str, Any]]] = []
+    address = lambda: f"10.20.{r.randint(1, 8)}.{r.randint(2, 250)}"            # noqa: E731
+    staff = lambda: f"10.20.9.{r.randint(2, 60)}"                                # noqa: E731
+    mac = lambda: ":".join(f"{r.randint(0, 255):02x}" for _ in range(6))         # noqa: E731
+    minutes = lambda: r.choice([15, 60, 240])                                    # noqa: E731
+    port = lambda: r.choice([21, 23, 445, 1433, 3306, 3389, 5900, 8080])         # noqa: E731
+    WHY = {"tripwire": lambda: f"connected to decoy port {port()}", "probe": lambda: "probed for other software's weak spots", "ssh": lambda: "failed to sign in over SSH 5 times",
+           "guessing": lambda: "kept guessing at sign-in", "fuzzing": lambda: "sent a stream of broken requests", "flood": lambda: "flooded the site with requests"}
+
+    def ban(kind: str, ip: str, mins: int | None = None) -> dict[str, Any]:
+        mins = mins or minutes()
+        return {"kind": kind, "ip": ip, "minutes": mins, "text": f"{ip} {WHY[kind]()}. Banned for {mins} min."}
+
+    def trusted(kind: str, ip: str) -> dict[str, Any]:
+        return {"kind": kind, "ip": ip, "text": f"{ip} {WHY[kind]()}. Not banned: it is trusted."}
+
+    for _ in range(9):
+        out.append([ban("tripwire", address(), 15)])
+    for _ in range(6):
+        a = address()
+        out.append([ban("probe", a)] + ([ban("tripwire", a, 60)] if r.random() < 0.5 else []))
+    for _ in range(5):
+        out.append([ban("tripwire", address(), 15) for _ in range(r.randint(4, 7))])
+    for _ in range(8):
+        out.append([ban(r.choice(["guessing", "ssh"]), address())])
+    for _ in range(6):
+        out.append([ban("guessing", address()) for _ in range(r.randint(3, 6))])
+    for _ in range(7):
+        out.append([ban(r.choice(["flood", "fuzzing"]), address())])
+    for _ in range(7):
+        lead = ([{"kind": "level", "level": 2, "text": "Threat level: under attack."}, {"kind": "shield", "text": "Shield raised: every limit is a quarter of normal."}]
+                if r.random() < 0.7 else [{"kind": "level", "level": 1, "text": "Threat level: watchful."}])
+        out.append(lead + [ban("flood", address(), 15) for _ in range(r.randint(3, 6))])
+    for _ in range(5):
+        out.append([{"kind": "arp", "ip": "10.20.0.1", "text": f"The gateway 10.20.0.1 changed hardware address ({mac()} to {mac()}). If nobody replaced the router, a device is impersonating it."}])
+    for _ in range(5):
+        out.append([{"kind": "arp", "text": f"One device ({mac()}) answers for {r.randint(3, 14)} addresses. That is how traffic gets intercepted."}])
+    for _ in range(5):
+        a = address()
+        out.append([{"kind": "impersonation", "ip": a, "text": f"{a} connected to decoy port {port()}, minutes after that address moved to a different device ({mac()}). "
+                     "Not banned: someone may be using another machine's address to get it banned."}])
+    for _ in range(9):
+        out.append([trusted(r.choice(["tripwire", "ssh", "guessing"]), staff())])
+    r.shuffle(out)
+    for batch in out:
+        for i, event in enumerate(batch):
+            event["at"] = 1000 + i
+    return out[0::2], out[1::2]
 
 
-def bench(cfg: dict[str, Any], rounds: int = 3, ask=_ask) -> dict[str, Any]:
-    """Run the quiz against the running model. One warm-up pass is thrown away; then `rounds` passes are timed."""
-    cases = [([{"text": t, "at": 1000 + i} for i, t in enumerate(texts)], want, least) for want, least, texts in QUIZ]
+def bench(cfg: dict[str, Any], rounds: int = 1, ask=_ask, keep: bool = True) -> dict[str, Any]:
+    """Score the running model on the held-out half of the cases: how often it names what the rules know happened,
+    and how long it takes. One warm-up pass of two cases is thrown away. The result is kept for `ludoractl ai status`
+    and for the caveat alerts carry while the model is below the pass mark."""
+    held_out = cases()[1]
     on = dict(cfg, AI_ENABLED=True)
-    for events, _, _ in cases[:2]:
-        read(events, on, ask)
-    right = answered = 0
+    for batch in held_out[:2]:
+        read(batch, on, ask)
+    right = answered = tokens = 0
     times: list[int] = []
-    tokens = 0
     wrong: list[str] = []
     for _ in range(max(1, rounds)):
-        for events, want, least in cases:
-            reading = read(events, on, ask)
+        for batch in held_out:
+            reading = read(batch, on, ask)
             if reading is None:
                 continue
             answered += 1
             times.append(reading.ms)
             tokens += reading.input_tokens
-            if reading.activity == want and reading.seriousness >= least - 0.5:
+            want = by_rules(batch)
+            assert want is not None
+            if reading.activity == want.activity:
                 right += 1
             elif len(wrong) < 8:
-                wrong.append(f"expected {want}, at least {least}; got {reading.activity} ({reading.activity_p:.0%}), {reading.seriousness:.1f}: {events[0]['text'][:70]}")
-    asked = len(cases) * max(1, rounds)
+                wrong.append(f"it is {want.activity}; the model said {reading.activity} ({reading.activity_p:.0%}): {batch[0]['text'][:70]}")
+    asked = len(held_out) * max(1, rounds)
     total = sum(times) / 1000 or 1e-9
-    return {
+    result = {
         "asked": asked, "answered": answered, "right": right, "wrong": wrong,
         "median_ms": int(statistics.median(times)) if times else None,
         "slowest_ms": max(times) if times else None,
         "readings_per_minute": round(answered / total * 60, 1) if times else 0,
-        "words_read_per_second": round(tokens / total) if times and tokens else None,   # the model's own count of input tokens
+        "tokens_read_per_second": round(tokens / total) if times and tokens else None,   # the model's own count of input tokens
+        "at": int(time.time()),
     }
+    if keep and answered:
+        os.makedirs(os.path.dirname(system.p(BENCH_FILE)), exist_ok=True)
+        system.write_atomic(BENCH_FILE, json.dumps({k: v for k, v in result.items() if k != "wrong"}), 0o644)
+    return result
 
 
 # ---- installing it ----------------------------------------------------------------------------------------------
@@ -267,6 +356,16 @@ def _fetch(url: str, path: str, size: int, sha256: str | None, log) -> None:
     os.replace(partial, path)
 
 
+def engine_version() -> str:
+    """Twelve hex digits naming the engine that would be built: the pinned commit and every patch laid on it."""
+    digest = hashlib.sha256(ENGINE_COMMIT.encode())
+    folder = system.p(f"{BUILD_DIR}/patches")
+    for name in sorted(os.listdir(folder)) if os.path.isdir(folder) else []:
+        with open(os.path.join(folder, name), "rb") as fh:
+            digest.update(name.encode() + b"\0" + fh.read())
+    return digest.hexdigest()[:12]
+
+
 def install(log=print) -> str:
     """Fetch the model (checked against pinned checksums) and build the engine from its pinned source, in a container."""
     for name, (size, sha256) in MODEL_FILES.items():
@@ -277,7 +376,7 @@ def install(log=print) -> str:
         _fetch(f"{MODEL_REPO}/resolve/{MODEL_REVISION}/{name}", path, size, sha256, log)
     for folder, _, _ in os.walk(system.p(MODEL_DIR)):
         os.chmod(folder, 0o755)
-    tag = f"{IMAGE}:{ENGINE_COMMIT[:12]}"
+    tag = f"{IMAGE}:{engine_version()}"
     if not system.run(["podman", "image", "exists", tag]).ok:
         log("Building the engine from its source. This takes several minutes.")
         built = system.run(["podman", "build", "--quiet", "--network", "host", "--build-arg", f"ENGINE_REPO={ENGINE_REPO}", "--build-arg", f"ENGINE_COMMIT={ENGINE_COMMIT}",

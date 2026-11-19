@@ -31,10 +31,19 @@ server's own addresses are never banned.
 
 `alerts.py` composes and delivers alerts (mail over TLS, ntfy, Telegram) for three audiences; `Outbox` is the
 batching policy and is pure. The sentinel sends security and fair-play alerts off its main loop; commands send
-upkeep alerts directly. `analyst.py` is the optional AI second opinion: a client for Colibri's
-`POST /v1/systemone` on loopback, the three fixed questions, strict validation of the reply, the quiz used by
-`ludoractl ai bench`, and the pinned install. Only the model's probabilities are ever used; no string from its
-reply is shown to anyone. The real engine and model have not been run against this code yet.
+upkeep alerts directly.
+
+`analyst.py` has two readers of a batch of events, kept apart. `by_rules` is exact and always used: it maps the
+sentinel's own event kinds to what happened, how serious it is and how many devices were involved, and is the only
+one that can raise an alert's urgency. `read` asks the optional model (Colibri's `POST /v1/systemone` on loopback,
+one fixed question, strict validation of the reply; only its probabilities are used, never a string from it).
+`cases()` builds the 72-case test set from the sentinel's real sentences (the wording was tuned on the first half
+only), `bench` scores a model on the second half against `by_rules` and keeps the result, and `ludoractl ai on`
+runs it before the model's line may appear. `rootfs/usr/share/ludora-os/analyst/patches/` are this repository's
+changes to Colibri, applied to the pinned commit in the Containerfile; the image tag is a digest of the commit
+and the patches, so a changed patch means a rebuilt engine. To change a patch: check out the pinned commit, apply,
+edit, compare answers bit for bit with the unpatched engine on a records file (`laya --records`), run
+`make -C c laya-tiny-check`, and write the diff back.
 
 ## The staff dashboard
 
