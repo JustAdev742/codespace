@@ -67,7 +67,9 @@ export async function open(film: Film): Promise<Shot[]> {
       const wideShot = kind === 'wide';
       full.visible = wideShot; phone.visible = !wideShot; back.visible = !wideShot;
       film.backdrop.visible = !wideShot;
-      if (wideShot) full.show(pics[i]!, cover(pics[i]!)); else phone.screen.show(pics[i]!);
+      // The economy room is framed on the page itself (a local copy shows a staff notice above it).
+      const frame = LOOKS[i]![0] === 'econ-health' ? ([0.37, 0.19, 1.0, 0.82] as [number, number, number, number]) : cover(pics[i]!);
+      if (wideShot) full.show(pics[i]!, frame); else phone.screen.show(pics[i]!);
       phone.rotation.y = lerp(-0.25, 0.05, u * 2);
       phone.rotation.z = lerp(0.04, -0.01, u * 2);
       tags.forEach((p, k) => { if (k === i) p.show(u - 0.04); else p.mesh.visible = false; });
@@ -85,7 +87,7 @@ export async function open(film: Film): Promise<Shot[]> {
   const lamps = [cone(1700, '#f6ecd2', 0.3), cone(1700, '#5fdcaa', 0.24), cone(1700, '#f6ecd2', 0.34), cone(1700, '#5fdcaa', 0.24), cone(1700, '#f6ecd2', 0.3)];
   lamps.forEach((l, i) => { l.position.set(-1300 + i * 650, 800, -300); T.add(l); });
   const floor = floorLight(1700, '#f6ecd2', 0.45);
-  floor.position.set(0, -470, 0);
+  floor.position.set(0, -410, 0);
   T.add(floor, glow(2600, '#0b6b4b', 0.8));
   const five: [string, string, number][] = [['glim-sprig', 'kinder', -720], ['glim-mossbun', 'junior-grey', -360], ['glim-pebblet', 'junior-green', 0], ['glim-dandelump', 'senior-green', 360], ['glim-capling', 'sport', 720]];
   const cast = five.map(([id, dress, x], i) => {
@@ -95,7 +97,7 @@ export async function open(film: Film): Promise<Shot[]> {
       const p = seg(t, at, at + 0.5);
       const h = hop(p, 1, 260);
       const idle = Math.max(0, Math.sin((t - at - 0.6) * 5 + i)) * 26 * (t > at + 0.6 ? 1 : 0);
-      return { x, y: lerp(-1000, -470, ease.outCubic(p)) + h.y * 0.4 + idle, z: 220, turn: Math.sin(t * 1.3 + i) * 0.15, squash: h.squash };
+      return { x, y: lerp(-1000, -410, ease.outCubic(p)) + h.y * 0.4 + idle, z: 220, turn: Math.sin(t * 1.3 + i) * 0.15, squash: h.squash };
     };
     a.cue(at + 0.5, i % 2 ? 'cheer' : 'wave').cue(2.2 + i * 0.1, 'celebrate');
     T.add(a);

@@ -157,9 +157,10 @@ export async function guard(film: Film): Promise<Shot[]> {
   // The dashboard's own words about the optional AI model.
   const analyst = closeUp(healthPic, [0.565, 0.438, 0.98, 0.552], 820, { rim: 2.5 });
   analyst.u.uRimColor!.value.set('#3f7f7a');
-  analyst.position.set(0, -260, 0);
+  analyst.position.set(0, -290, 0);
   F.add(glow(2000, '#0b3d3a', 0.22), reading, analyst);
-  hudF.add(f1.group);
+  const f2 = sub('And an AI second opinion, if the school wants one. It decides nothing.', 0, -25, { size: 40 });
+  hudF.add(f1.group, f2.group);
   const sF: Shot = {
     a: bar(38), b: bar(39), group: F, hud: hudF,
     update(t) {
@@ -167,9 +168,9 @@ export async function guard(film: Film): Promise<Shot[]> {
       const inn = pop(t, 0, 0.45);
       reading.scale.setScalar(0.86 + 0.14 * inn);
       reading.opacity = seg(t, 0, 0.18);
-      f1.show(t - 0.35);
+      f1.show(t - 0.35); f2.show(t - 0.95);
       const up = pop(t, 0.85, 0.4);
-      analyst.position.y = -260 - (1 - up) * 520;
+      analyst.position.y = -290 - (1 - up) * 520;
       analyst.opacity = seg(t, 0.85, 1.0);
       stage.view({ dolly: lerp(-30, 50, seg(t, 0, 2)) + punch(t) * 40 });
     },

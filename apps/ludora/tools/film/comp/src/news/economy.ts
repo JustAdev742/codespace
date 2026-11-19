@@ -23,9 +23,10 @@ export async function economy(film: Film): Promise<Shot[]> {
   const a2 = line('and where it came from.', -60, 60, { align: 'left', size: 88 });
   const a3 = sub('Earned by playing. None of it is real money.', -60, -50, { align: 'left', size: 44 });
   const a4 = line('Save up for something.', -60, 115, { align: 'left', size: 96, color: C.mint });
-  const a5 = sub('A goal from your own wishlist, with how far there is to go.', -60, 5, { align: 'left', size: 42 });
-  const a6 = sub('Sparks boosts for special days. The daily limit stays the same.', -60, -60, { align: 'left', size: 42 });
-  hudA.add(tagA.mesh, a1.group, a2.group, a3.group, a4.group, a5.group, a6.group);
+  const a5 = sub('A goal from your own wishlist.', -60, 5, { align: 'left', size: 44 });
+  const a6 = sub('Sparks boosts for special days:', -60, -75, { align: 'left', size: 44 });
+  const a7 = sub('the daily limit stays the same.', -60, -130, { align: 'left', size: 44 });
+  hudA.add(tagA.mesh, a1.group, a2.group, a3.group, a4.group, a5.group, a6.group, a7.group);
   const GOAL = W.goal ?? 62;
   const sA: Shot = {
     a: bar(19), b: bar(22), group: A, hud: hudA,
@@ -36,8 +37,8 @@ export async function economy(film: Film): Promise<Shot[]> {
       phone.rotation.y = lerp(0.34, 0.14, ease.outCubic(seg(t, 0, 2.5)));
       phone.screen.u.uSheen!.value = lerp(-0.4, 1.8, seg(t, 0.3, 1.5));
       tagA.show(t - 0.3);
-      a1.show(t - 0.5, 3.4); a2.show(t - 0.85, 3.4); a3.show(t - 1.5, 3.3);
-      a4.show(t - 4.05); a5.show(t - 4.6); a6.show(t - 5.0);
+      a1.show(t - 0.5, 3.0); a2.show(t - 0.85, 2.65); a3.show(t - 1.5, 2.0);
+      a4.show(t - 4.05); a5.show(t - 4.5); a6.show(t - 4.95); a7.show(t - 5.15);
       // The balances for four seconds, then the goal being chosen and its bar.
       const f = t < 4 ? 8 + t * 10 : GOAL - 6 + (t - 4) * 30;
       const k = punch(t - 4);

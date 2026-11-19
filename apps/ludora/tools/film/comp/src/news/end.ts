@@ -5,7 +5,7 @@ import { Actor, casting, floorLight } from '../cast.ts';
 import { C, PAPER, UNIFORMS, line, logoTile, schoolPlate } from './kit.ts';
 import type { Film, Shot } from '../film.ts';
 
-const FLOOR = -400;
+const FLOOR = -440;
 
 export async function end(film: Film): Promise<Shot[]> {
   const { stage } = film;
@@ -50,12 +50,12 @@ export async function end(film: Film): Promise<Shot[]> {
   tile.position.set(-total / 2 + 105, 4, 0);
   name.position.set(-total / 2 + 210 + 28 + name.w / 2, -6, 0);
   mark.add(tile, name);
-  mark.position.y = 330;
-  const said = line('All of this is new this term.', 0, 160, { size: 86, color: C.cream });
+  mark.position.y = 350;
+  const said = line('All of this is new this term.', 0, 190, { size: 86, color: C.cream });
   const school = await schoolPlate(104);
-  school.position.set(0, 40, 0);
+  school.position.set(0, 82, 0);
   const wave = ring('#f6ecd2');
-  wave.position.set(0, 330, -10);
+  wave.position.set(0, 350, -10);
   hud.add(wave, mark, said.group, school);
 
   const shot: Shot = {
