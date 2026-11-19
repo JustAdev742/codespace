@@ -41,7 +41,8 @@ test('the stage: a backdrop the teacher keeps, every phase accessible, podium sk
     },
   });
   expect(set.ok(), await set.text()).toBe(true);
-  const room = await host.page.request.post('/api/rooms', { headers: CSRF, data: { setId: (await set.json()).set.id, modeId: 'classic', common: { questionLimit: 3, shuffleQuestions: false, questionTimeSec: 90 }, settings: { autoAdvance: false } } });
+  // Not a calm room, by name: this is about the staged reveal and celebration, which calm play leaves out (and a school's copy is calm unless asked).
+  const room = await host.page.request.post('/api/rooms', { headers: CSRF, data: { setId: (await set.json()).set.id, modeId: 'classic', common: { questionLimit: 3, shuffleQuestions: false, questionTimeSec: 90 }, settings: { autoAdvance: false }, options: { calmPlay: false } } });
   expect(room.ok(), await room.text()).toBe(true);
   // 90 seconds a question: each screen is checked for accessibility while its question is open, and on a
   // slow browser two of those checks can outlast the usual 20 seconds, closing the question under the test.
@@ -137,7 +138,7 @@ test('the stage: a backdrop the teacher keeps, every phase accessible, podium sk
   await check(phone, 'results on a phone');
 
   // A second room with three practice bots, so there is a podium.
-  const room2 = await host.page.request.post('/api/rooms', { headers: CSRF, data: { setId: (await set.json()).set.id, modeId: 'classic', common: { questionLimit: 3, shuffleQuestions: false, questionTimeSec: 10 }, settings: { autoAdvance: false } } });
+  const room2 = await host.page.request.post('/api/rooms', { headers: CSRF, data: { setId: (await set.json()).set.id, modeId: 'classic', common: { questionLimit: 3, shuffleQuestions: false, questionTimeSec: 10 }, settings: { autoAdvance: false }, options: { calmPlay: false } } });
   expect(room2.ok(), await room2.text()).toBe(true);
   const code2 = (await room2.json()).code as string;
   await host.page.goto(`/room/${code2}`);

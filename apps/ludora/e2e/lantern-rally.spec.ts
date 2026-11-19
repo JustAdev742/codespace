@@ -55,7 +55,8 @@ async function play(browser: Browser, threeD: boolean) {
     data: { title: 'Rally facts', description: 'All true', subject: 'science', visibility: 'private', questions: Array.from({ length: 6 }, (_, i) => ({ id: `q${i}`, type: 'truefalse', prompt: `Rally fact number ${i + 1} is true.`, correct: true })) },
   });
   expect(set.ok(), await set.text()).toBe(true);
-  const room = await host.page.request.post('/api/rooms', { headers: CSRF, data: { setId: (await set.json()).set.id, modeId: 'lantern-rally', common: { timeLimitSec: 60 }, settings: { laps: 1, circuit: 'forest' } } });
+  // Not a calm room, by name: here steering and answering happen together, which calm play takes in turns (and a school's copy is calm unless asked).
+  const room = await host.page.request.post('/api/rooms', { headers: CSRF, data: { setId: (await set.json()).set.id, modeId: 'lantern-rally', common: { timeLimitSec: 60 }, settings: { laps: 1, circuit: 'forest' }, options: { calmPlay: false } } });
   expect(room.ok(), await room.text()).toBe(true);
   const { code } = await room.json();
   await host.page.setViewportSize({ width: 1366, height: 768 });

@@ -133,7 +133,7 @@ function NavLinkItem({ item, onNavigate }: { item: NavItem; onNavigate?: () => v
       onClick={onNavigate}
       aria-describedby={item.hint ? hintId : undefined}
       className={({ isActive }) =>
-        `relative flex min-h-12 items-center gap-3 rounded-[var(--radius-m)] px-3 py-1 transition-colors lg:min-h-[38px] lg:py-0.5 [@media(max-height:800px)]:lg:min-h-[35px] [@media(max-height:800px)]:lg:py-0 ${isActive ? 'bg-white/[0.12] text-text' : 'text-text-2 hover:bg-white/[0.06] hover:text-text'}`
+        `relative flex min-h-12 items-center gap-3 rounded-[var(--radius-m)] py-1 pr-1.5 pl-3 transition-colors lg:min-h-[38px] lg:py-0.5 [@media(max-height:800px)]:lg:min-h-[35px] [@media(max-height:800px)]:lg:py-0 ${isActive ? 'bg-white/[0.12] text-text' : 'text-text-2 hover:bg-white/[0.06] hover:text-text'}`
       }
     >
       {({ isActive }) => (
