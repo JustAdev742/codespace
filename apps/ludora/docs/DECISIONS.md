@@ -636,6 +636,57 @@ lobby replays it at any time. The host can turn it off for a game, and an operat
 No database migration: both preferences live in the existing `preferences` JSON. The playable
 demo starts its game at once, with no walkthrough.
 
+**D58. An economy manager runs the in-game economy, and nothing else (19 November 2026).** The owner asked
+for "a super full economy role and so much more economy stuff". Read as: a staff role whose job is Ludora's
+in-game economy with a proper control room, and more economy for players and teachers. Sparks, Moonstones
+and Dust stay in-game only; there is no real money anywhere and none was added.
+
+*The role.* `economist`, shown as "Economy manager", rank 3 (beside moderator and support), so only an
+administrator or above can grant it (`canAssignRole`). It holds `staff.access`, `economy.view`,
+`economy.configure`, `economy.grant`, `shop.manage` and `events.manage`, and nothing else: no `users.read`
+(players' records), moderation, roles, catalogue, flags, system pages or `audit.read`. The server enforces
+every one; the staff menu only follows. To grant without player records it has its own finder
+(`/api/admin/economy/accounts`) that returns a name and kind only. It reads the economy's own part of the
+audit log (`/api/admin/economy/activity`) and no other. Staff tools never change one's own balance, and that
+now covers class grants and refunds too.
+
+*The daily total.* An economy manager's grants (single and class) add up per currency per UTC day against
+limits an administrator sets (`economy.limits`, a new permission only administrators hold; 20,000 Sparks,
+1,000 Moonstones, 10,000 Dust and 2,000 of anything else by default). The total is read from the audit log,
+which every grant writes in its own transaction, so the count and the grants cannot disagree; an advisory
+lock per person makes simultaneous grants queue. Removals and refunds do not count (a refund returns what
+was paid). Administrators are not held to it; the per-change cap (`REAL_GRANT_MAX`) holds for everyone.
+
+*The economy room* is the existing Economy section, rebuilt as tabs: Health (per-day earning and spending,
+sources and sinks, balance bands with a median and never a ranked list, most and least bought, daily-limit
+hits, Lantern odds), Rules (with a live preview in example games computed by the same `computeGameReward`
+that pays, a history from the audit log and a one-step undo of the newest change), Shop and sales (prices,
+featured listings, sales with dates), Grants and refunds (single, whole class, refunds, the daily limit),
+Ledger (with CSV, whose download is audited), Currencies and History. Every figure leaves out test accounts,
+unlimited test currency and test resets. Tables, each with a sentence above it; there is no charting
+library, so there are no charts.
+
+*Sales and refunds.* A sale is a price and two dates on a listing (lower than the price, at most 31 days);
+the shop charges it in the purchase transaction and shows "On sale until Friday", never a countdown
+(`calmUntil`). A refund returns the price and takes back what the purchase gave (a bundle's cosmetics the
+player already had stay theirs), once per purchase, idempotent and audited; refunded purchases no longer
+count towards per-player limits. Lantern purchases are not refundable because the draw has happened.
+
+*For teachers and players.* A teacher gives Sparks to one student or the whole class with a reason the
+student sees, from a weekly budget per class in the economy rules (500 Sparks, at most 25 to one student at
+a time, by default), recorded in `class_rewards` and pointed to by the ledger. This is the only way a teacher
+gives currency: school merits still earn house points and never currency, and students cannot give each
+other anything (gifting invites pressure and bullying). The Wallet shows a player's balances, today's game
+Sparks against the limit, a saving goal chosen from their wishlist, the week so far and every movement,
+newest first. A Sparks boost (an economy event in the rules: a multiplier from 1.1 to 3 for at most 14 days)
+multiplies game Sparks but never the daily limit, so it changes how fast a day's Sparks come, not how many.
+Nothing compares players by wealth, nothing counts down and nothing nags.
+
+*Migration 0024* adds nullable columns and one defaulted boolean to `shop_listings` and `purchases`, a CHECK
+over the new sale columns (null on every existing row), and the new `class_rewards` table. All are quick on
+a live database and leave existing rows unchanged; the new rule fields have defaults, so stored rules parse
+as before.
+
 **D59. Every section in the navigation says what you do there (19 November 2026).** The owner
 asked for the sidebar's buttons to be easier to understand: a new student or teacher could not
 tell Make from Game Maker, Question sets and Game modes, Collection from Locker and My designs, or

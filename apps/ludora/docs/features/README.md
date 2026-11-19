@@ -45,6 +45,12 @@ against a stand-in); a made game has a 3D scene only for races and climbs; capes
 trails and name plates cannot be designed yet; the host page and the lesson dialog still use
 their own set pickers.
 
+## The economy (19 November 2026)
+
+| Area | File | Features |
+|---|---|---|
+| An economy manager role, the economy room, class rewards, the Wallet and four extras | [economy.md](economy.md) | 19 |
+
 ## New 3D game modes
 
 | Mode | File | What it is |

@@ -4,7 +4,7 @@ Live status of the build. Updated with each milestone commit. Everything marked
 **verified** was checked by an automated test or by driving the real app in a
 browser; anything else says what it is.
 
-Last updated: 2026-11-18. What the November 2026 improvement programme added is counted, item by
+Last updated: 2026-11-19. What the November 2026 improvement programme added is counted, item by
 item with how each was checked, in [features/README.md](features/README.md). The sections under
 "What works today" describe the app before that programme; the summary just below is current.
 
@@ -26,6 +26,17 @@ item with how each was checked, in [features/README.md](features/README.md). The
 
 ## Added in November 2026 (verified; details in [features/](features/README.md))
 
+- **An economy manager and the economy room** (19 November, D58). A staff role, *Economy manager*, that runs
+  the in-game economy and nothing else (no players' records, moderation, roles, system or audit pages; only an
+  administrator grants it), with a daily grant total only an administrator changes and no grants to oneself.
+  The Economy section is now the economy room: health from the ledger, a rules preview in example games, rule
+  history with undo, sales with dates ("on sale until Friday", never a countdown), featured listings, grants
+  to a player or a class, refunds, the ledger as CSV, and the economy's own history. For classrooms: teachers
+  give Sparks from a weekly class budget with a reason students see, and players get a Wallet with today's
+  game Sparks, a saving goal from their wishlist and every Spark in and out. A Sparks boost is an economy event
+  that never raises the daily limit. Migration 0024. Checked by `server/test/economist.test.ts` (22), the staff
+  authorisation matrix, web unit tests and `e2e/economy-manager.spec.ts` (Chromium, axe). Not yet tried with a
+  class or by a person with a screen reader. Details: [features/economy.md](features/economy.md).
 - **Calm play and a walkthrough before every game** (18 November, D57), from The Hills Grammar
   School's playtest. *Calm play* is a room option the host sets (and keeps as their own default;
   on by default on a school's copy, `CALM_PLAY_DEFAULT`): every screen turns down (no flashes,
