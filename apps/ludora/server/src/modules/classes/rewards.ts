@@ -1,6 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import { randomUUID } from 'node:crypto';
-import { and, desc, eq, gte, sql } from 'drizzle-orm';
+import { and, desc, eq, gte, inArray, sql } from 'drizzle-orm';
 import { z } from 'zod';
 import type { AppDeps } from '../../app.ts';
 import type { DbOrTx } from '../../db/client.ts';
@@ -19,7 +19,8 @@ import { teacherClass } from './access.ts';
  * Class rewards (D58): a teacher gives Sparks to one student or the whole class, with a reason the
  * student sees, out of a weekly budget per class set in the economy rules. School staff merits
  * earn house points and never currency (that stays as it is); this is the one way a teacher can
- * give Sparks. Students cannot give anything to each other.
+ * give Sparks. Students cannot give anything to each other, and because anyone can switch to a
+ * teacher account, one student can only be given so much in a week across every class they are in.
  */
 
 const idParam = z.object({ id: z.string().uuid() });
@@ -51,6 +52,17 @@ export function budgetProblem(o: { amountEach: number; students: number; used: n
       : `That needs ${cost} Sparks, and this class has ${left} left this week.`;
   }
   return null;
+}
+
+/** What each of these students has been given this week, in every class they are in. */
+async function receivedThisWeek(db: DbOrTx, studentIds: string[], now = new Date()): Promise<Map<string, number>> {
+  if (!studentIds.length) return new Map();
+  const rows = await db
+    .select({ id: classRewards.studentId, n: sql<number>`coalesce(sum(${classRewards.amount}), 0)::int` })
+    .from(classRewards)
+    .where(and(inArray(classRewards.studentId, studentIds), gte(classRewards.createdAt, weekStart(now))))
+    .groupBy(classRewards.studentId);
+  return new Map(rows.map((r) => [r.id, r.n]));
 }
 
 async function usedThisWeek(db: DbOrTx, classId: string, now = new Date()): Promise<number> {
@@ -98,13 +110,17 @@ export async function classRewardRoutes(app: FastifyInstance, deps: AppDeps) {
         .orderBy(desc(sql`max(${classRewards.createdAt})`))
         .limit(20),
     ]);
+    const had = await receivedThisWeek(db, students.map((s) => s.id));
+    const perStudent = rules.classRewards.weeklyPerStudent;
     return {
       budget: rules.classRewards.weeklyBudget,
       maxPerStudent: rules.classRewards.maxPerStudent,
+      weeklyPerStudent: perStudent,
       used,
       left: Math.max(0, rules.classRewards.weeklyBudget - used),
       resetsAt: nextWeeklyReset().toISOString(),
-      students,
+      // `room` is what the student can still be given this week, counting rewards from their other classes.
+      students: students.map((s) => ({ ...s, room: Math.max(0, perStudent - (had.get(s.id) ?? 0)) })),
       recent: recent.map((r) => ({ ...r, at: new Date(r.at).toISOString() })),
     };
   });
@@ -121,8 +137,30 @@ export async function classRewardRoutes(app: FastifyInstance, deps: AppDeps) {
       // One award at a time per class, so two teachers pressing at once cannot both spend the last of the budget.
       await tx.select({ id: classes.id }).from(classes).where(eq(classes.id, id)).for('update');
       const members = await tx.select({ userId: classMembers.userId, name: users.displayName }).from(classMembers).innerJoin(users, eq(users.id, classMembers.userId)).where(and(eq(classMembers.classId, id), eq(classMembers.role, 'student')));
-      const targets = body.wholeClass ? members : members.filter((m) => m.userId === body.studentId);
-      if (!body.wholeClass && !targets.length) throw conflict('That student is not in this class.');
+      const chosen = body.wholeClass ? members : members.filter((m) => m.userId === body.studentId);
+      if (!body.wholeClass && !chosen.length) throw conflict('That student is not in this class.');
+      // A student's week is counted across every class, so the same student is taken one award at a time too
+      // (in id order, so two whole-class awards cannot wait on each other).
+      for (const m of [...chosen].sort((a, b) => a.userId.localeCompare(b.userId))) {
+        await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${`class-reward:${m.userId}`}))`);
+      }
+      const perStudent = rules.classRewards.weeklyPerStudent;
+      const had = await receivedThisWeek(tx, chosen.map((m) => m.userId));
+      const targets = chosen.filter((m) => (had.get(m.userId) ?? 0) + body.amount <= perStudent);
+      const skipped = chosen.length - targets.length;
+      if (body.amount > rules.classRewards.maxPerStudent) {
+        const problem = `You can give up to ${rules.classRewards.maxPerStudent} Sparks to each student at a time.`;
+        throw new AppError(409, 'conflict', problem, { amount: problem });
+      }
+      if (chosen.length && !targets.length) {
+        const room = body.wholeClass ? 0 : Math.max(0, perStudent - (had.get(chosen[0]!.userId) ?? 0));
+        const problem = body.wholeClass
+          ? `Every student here has already been given close to the most a student can have in a week (${perStudent} Sparks), so ${body.amount} more is too many for all of them.`
+          : room > 0
+            ? `${chosen[0]!.name} can be given ${room} more Sparks this week. A student can have up to ${perStudent} a week from their teachers.`
+            : `${chosen[0]!.name} has already been given ${perStudent} Sparks this week, the most a student can have from their teachers. It starts again on Monday.`;
+        throw new AppError(409, 'conflict', problem, { amount: problem });
+      }
       const used = await usedThisWeek(tx, id);
       const problem = budgetProblem({ amountEach: body.amount, students: targets.length, used, budget: rules.classRewards.weeklyBudget, maxPerStudent: rules.classRewards.maxPerStudent });
       if (problem) throw new AppError(409, 'conflict', problem, { amount: problem });
@@ -142,9 +180,9 @@ export async function classRewardRoutes(app: FastifyInstance, deps: AppDeps) {
         targetId: id,
         targetName: body.wholeClass ? 'whole class' : targets[0]!.name,
         reason: body.note,
-        after: { currency: 'sparks', amountEach: body.amount, students: targets.length, total, batchId },
+        after: { currency: 'sparks', amountEach: body.amount, students: targets.length, skipped, total, batchId },
       });
-      return { batchId, students: targets.length, amountEach: body.amount, total, left: Math.max(0, rules.classRewards.weeklyBudget - used - total) };
+      return { batchId, students: targets.length, skipped, amountEach: body.amount, total, left: Math.max(0, rules.classRewards.weeklyBudget - used - total) };
     });
     return { ok: true, replayed, ...result };
   });

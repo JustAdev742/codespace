@@ -18,10 +18,12 @@ import { Button } from '../../ui/Button.tsx';
 interface RewardsData {
   budget: number;
   maxPerStudent: number;
+  /** The most one student can be given in a week, across every class they are in. */
+  weeklyPerStudent: number;
   used: number;
   left: number;
   resetsAt: string;
-  students: { id: string; name: string; thisWeek: number }[];
+  students: { id: string; name: string; thisWeek: number; room: number }[];
   recent: { batchId: string; teacherName: string; note: string; amount: number; students: number; wholeClass: boolean; studentName: string | null; at: string }[];
 }
 
@@ -37,12 +39,13 @@ export function ClassRewards({ classId, archived }: { classId: string; archived:
   const [error, setError] = useState<ApiError | null>(null);
   const keyRef = useRef<{ sig: string; key: string } | null>(null);
   const give = useMutation({
-    mutationFn: (body: Record<string, unknown>) => api.post<{ students: number; amountEach: number; total: number; left: number; replayed: boolean }>(`/api/classes/${classId}/rewards`, body),
+    mutationFn: (body: Record<string, unknown>) => api.post<{ students: number; skipped: number; amountEach: number; total: number; left: number; replayed: boolean }>(`/api/classes/${classId}/rewards`, body),
     onSuccess: async (r) => {
       keyRef.current = null;
       setNote('');
       setError(null);
-      toast.success(r.replayed ? 'That reward was already given.' : r.students === 1 ? `Gave ${r.amountEach} Sparks. ${r.left} left this week.` : `Gave ${r.amountEach} Sparks each to ${r.students} students. ${r.left} left this week.`);
+      const leftOut = r.skipped ? ` ${plural(r.skipped, 'student')} ${r.skipped === 1 ? 'was' : 'were'} left out: they have had the most a student can be given this week.` : '';
+      toast.success(r.replayed ? 'That reward was already given.' : r.students === 1 && !r.skipped ? `Gave ${r.amountEach} Sparks. ${r.left} left this week.` : `Gave ${r.amountEach} Sparks each to ${plural(r.students, 'student')}. ${r.left} left this week.${leftOut}`);
       await qc.invalidateQueries({ queryKey: ['class', classId, 'rewards'] });
     },
     onError: (err) => setError(err instanceof ApiError ? err : new ApiError(0, 'internal', 'The reward was not given. Try again.')),
@@ -52,12 +55,26 @@ export function ClassRewards({ classId, archived }: { classId: string; archived:
   if (!q.data) return <Skeleton className="h-72" />;
   const d = q.data;
   const n = /^\d+$/.test(amount.trim()) ? Number(amount) : NaN;
-  const count = who === 'all' ? d.students.length : studentId ? 1 : 0;
+  const chosen = d.students.find((s) => s.id === studentId);
+  // A whole-class reward leaves out students who have had the week's limit, so it only counts those with room.
+  const count = who === 'all' ? (Number.isFinite(n) ? d.students.filter((s) => s.room >= n).length : d.students.length) : studentId ? 1 : 0;
+  const leftOut = who === 'all' && Number.isFinite(n) ? d.students.length - count : 0;
   const total = Number.isFinite(n) ? n * count : 0;
-  const amountErr = amount && !(n >= 1 && n <= d.maxPerStudent) ? `Give from 1 to ${d.maxPerStudent} Sparks to each student.` : total > d.left ? `That is ${total} Sparks and this class has ${d.left} left this week.` : undefined;
+  const amountErr =
+    amount && !(n >= 1 && n <= d.maxPerStudent)
+      ? `Give from 1 to ${d.maxPerStudent} Sparks to each student.`
+      : who === 'one' && chosen && n > chosen.room
+        ? chosen.room > 0
+          ? `${chosen.name} can be given ${chosen.room} more this week. A student can have up to ${d.weeklyPerStudent} a week.`
+          : `${chosen.name} has had this week's limit of ${d.weeklyPerStudent} Sparks. It starts again on Monday.`
+        : total > d.left
+          ? `That is ${total} Sparks and this class has ${d.left} left this week.`
+          : who === 'all' && d.students.length > 0 && count === 0
+            ? `Every student has had close to this week's limit of ${d.weeklyPerStudent} Sparks.`
+            : undefined;
   const noteOk = note.trim().length >= 3;
-  const ready = !archived && count > 0 && n >= 1 && n <= d.maxPerStudent && total <= d.left && noteOk && !give.isPending;
-  const studentName = d.students.find((s) => s.id === studentId)?.name;
+  const ready = !archived && count > 0 && n >= 1 && n <= d.maxPerStudent && !(who === 'one' && chosen && n > chosen.room) && total <= d.left && noteOk && !give.isPending;
+  const studentName = chosen?.name;
   const label = !count ? 'Give Sparks' : who === 'all' ? `Give ${Number.isFinite(n) ? n : 0} Sparks each to ${plural(count, 'student')}` : `Give ${Number.isFinite(n) ? n : 0} Sparks to ${studentName}`;
 
   const submit = () => {
@@ -124,14 +141,14 @@ export function ClassRewards({ classId, archived }: { classId: string; archived:
                     {d.students.map((s) => (
                       <option key={s.id} value={s.id}>
                         {s.name}
-                        {s.thisWeek ? ` (${s.thisWeek} this week)` : ''}
+                        {s.room === 0 ? " (has had this week's limit)" : s.thisWeek ? ` (${s.thisWeek} this week)` : ''}
                       </option>
                     ))}
                   </Select>
                 )}
               </Field>
             ) : null}
-            <Field label={who === 'all' ? 'Sparks for each student' : 'Sparks'} error={amountErr ?? error?.fields.amount} hint={who === 'all' && Number.isFinite(n) && n > 0 ? `${formatNumber(total)} from the budget in all.` : `Up to ${d.maxPerStudent} for each student at a time.`}>
+            <Field label={who === 'all' ? 'Sparks for each student' : 'Sparks'} error={amountErr ?? error?.fields.amount} hint={who === 'all' && Number.isFinite(n) && n > 0 ? `${formatNumber(total)} from the budget in all.${leftOut ? ` ${plural(leftOut, 'student')} will be left out: they have had this week's limit of ${d.weeklyPerStudent}.` : ''}` : `Up to ${d.maxPerStudent} at a time, and ${d.weeklyPerStudent} a week for each student.`}>
               {(p) => <Input {...p} inputMode="numeric" value={amount} onChange={(e) => setAmount(e.target.value)} autoComplete="off" className="max-w-[10rem]" />}
             </Field>
             <Field label="What it is for" hint="Students see this. Keep it short and kind." error={error?.fields.note}>

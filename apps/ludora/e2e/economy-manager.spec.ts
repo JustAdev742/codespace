@@ -191,6 +191,11 @@ test('a teacher rewards from the class budget and the student sees it in the Wal
   await shot(ada.page, 'wallet-390');
   await ada.page.setViewportSize({ width: 1440, height: 900 });
   await shot(ada.page, 'wallet-1440');
+  // On a wide screen the balances in the header are the way into the Wallet, so the sidebar needs no row for it.
+  await ada.page.goto('/shop');
+  await expect(ada.page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Wallet', exact: true })).toHaveCount(0);
+  await ada.page.getByRole('banner').getByRole('link', { name: /Open your wallet/ }).click();
+  await expect(ada.page.getByRole('heading', { name: 'Wallet', level: 1 })).toBeVisible();
   expect(sErrors).toEqual([]);
   for (const c of [teacher, ...kids]) await c.context.close();
 });

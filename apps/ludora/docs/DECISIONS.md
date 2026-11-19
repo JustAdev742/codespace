@@ -676,7 +676,11 @@ count towards per-player limits. Lantern purchases are not refundable because th
 student sees, from a weekly budget per class in the economy rules (500 Sparks, at most 25 to one student at
 a time, by default), recorded in `class_rewards` and pointed to by the ledger. This is the only way a teacher
 gives currency: school merits still earn house points and never currency, and students cannot give each
-other anything (gifting invites pressure and bullying). The Wallet shows a player's balances, today's game
+other anything (gifting invites pressure and bullying). Anyone can switch to a teacher account and open up
+to 30 classes, so the class budget alone would let a student make up classes and pass Sparks to a friend.
+One student can therefore be given at most 100 Sparks a week (`classRewards.weeklyPerStudent`, in the rules)
+across every class they are in; a whole-class reward leaves out anyone already at that total, tells the
+teacher how many, and charges the budget only for the students it reached. The Wallet shows a player's balances, today's game
 Sparks against the limit, a saving goal chosen from their wishlist, the week so far and every movement,
 newest first. A Sparks boost (an economy event in the rules: a multiplier from 1.1 to 3 for at most 14 days)
 multiplies game Sparks but never the daily limit, so it changes how fast a day's Sparks come, not how many.

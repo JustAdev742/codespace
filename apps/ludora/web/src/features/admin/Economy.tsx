@@ -1063,7 +1063,7 @@ export interface EconomyRules {
   };
   levelUp: { sparks: number; moonstonesEvery: number; moonstones: number };
   dailyStreak: { sparksPerDay: number; maxBonusDays: number; moonstonesOnWeek: number };
-  classRewards: { weeklyBudget: number; maxPerStudent: number };
+  classRewards: { weeklyBudget: number; maxPerStudent: number; weeklyPerStudent: number };
   boost: { label: string; multiplier: number; startsAt: string; endsAt: string } | null;
 }
 
@@ -1122,6 +1122,7 @@ const RULE_GROUPS: { title: string; description: string; fields: NumberRule[] }[
     fields: [
       { path: 'classRewards.weeklyBudget', label: 'Weekly budget per class', help: 'The most Sparks a class\'s teachers can give in one week, all students together.', min: 0, max: 100_000 },
       { path: 'classRewards.maxPerStudent', label: 'Most for one student at a time', help: 'The largest single reward to one student.', min: 1, max: 1000 },
+      { path: 'classRewards.weeklyPerStudent', label: 'Most for one student in a week', help: 'Across every class the student is in. This is what stops a made-up class being used to pass Sparks to a friend.', min: 1, max: 10_000 },
     ],
   },
 ];

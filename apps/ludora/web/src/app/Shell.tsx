@@ -70,6 +70,8 @@ interface NavItem {
   show?: 'signedIn' | 'staff' | 'studio' | 'school' | 'teacher';
   /** Hidden while this feature flag is off for the viewer. */
   flag?: string;
+  /** Left out of the desktop sidebar because the header already holds it there (the balances open the Wallet). */
+  narrowOnly?: boolean;
 }
 
 const PRIMARY: NavItem[] = [
@@ -89,7 +91,7 @@ const MAKE: NavItem[] = [
 const COLLECT: NavItem[] = [
   { to: '/collection', label: 'Collection', icon: <Sparkles className="size-5" />, hint: 'All the Glims you have found', show: 'signedIn' },
   { to: '/shop', label: 'Shop', icon: <ShoppingBag className="size-5" />, hint: 'Spend what you earn playing', show: 'signedIn' },
-  { to: '/wallet', label: 'Wallet', icon: <Wallet className="size-5" />, hint: 'Your Sparks, in and out', show: 'signedIn' },
+  { to: '/wallet', label: 'Wallet', icon: <Wallet className="size-5" />, hint: 'Your Sparks, in and out', show: 'signedIn', narrowOnly: true },
   { to: '/locker', label: 'Locker', icon: <Shirt className="size-5" />, hint: 'Dress up your buddy', show: 'signedIn' },
   { to: '/designs', label: 'My designs', icon: <Brush className="size-5" />, hint: 'Draw a Glim of your own', show: 'signedIn' },
   { to: '/quests', label: 'Quests', icon: <Target className="size-5" />, hint: 'Goals that win rewards', show: 'signedIn' },
@@ -202,7 +204,7 @@ function NavGroups({ onNavigate }: { onNavigate?: () => void }) {
             ) : null}
             <ul className="flex flex-col gap-px" aria-labelledby={title ? `${groupId}-${g}` : undefined}>
               {items.map((i) => (
-                <li key={i.to}>
+                <li key={i.to} className={i.narrowOnly ? 'lg:hidden' : undefined}>
                   <NavLinkItem item={i} onNavigate={onNavigate} />
                 </li>
               ))}
@@ -326,12 +328,12 @@ function Balances() {
   // Never zeros it does not know: a placeholder while loading, and nothing if the load failed.
   if (!b) return overview.isLoading ? <Skeleton className="hidden h-11 w-36 rounded-[var(--radius-m)] sm:block" /> : null;
   return (
-    // A HUD readout of the two currencies. The name comes from the numbers shown, with the currency names added for screen readers (WCAG 2.5.3).
-    <Link to="/shop" className="hidden h-11 items-center gap-3.5 rounded-[var(--radius-m)] border border-line bg-raised px-3 text-text no-underline hover:bg-surface-2 sm:flex">
+    // A HUD readout of the two currencies, and the way into the Wallet on a wide screen. The name comes from the numbers shown, with the currency names added for screen readers (WCAG 2.5.3).
+    <Link to="/wallet" title="Your wallet" className="hidden h-11 items-center gap-3.5 rounded-[var(--radius-m)] border border-line bg-raised px-3 text-text no-underline hover:bg-surface-2 sm:flex">
       <Amount currency="sparks" value={b.sparks ?? 0} />
       <span className="sr-only"> Sparks and </span>
       <Amount currency="moonstones" value={b.moonstones ?? 0} />
-      <span className="sr-only"> Moonstones. Open the shop</span>
+      <span className="sr-only"> Moonstones. Open your wallet</span>
     </Link>
   );
 }

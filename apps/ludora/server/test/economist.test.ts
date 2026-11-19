@@ -270,7 +270,7 @@ describe('rules: preview, history and undo', () => {
     delete old.classRewards;
     delete old.boost;
     const parsed = economyRulesSchema.parse(old);
-    expect(parsed.classRewards).toEqual({ weeklyBudget: 500, maxPerStudent: 25 });
+    expect(parsed.classRewards).toEqual({ weeklyBudget: 500, maxPerStudent: 25, weeklyPerStudent: 100 });
     expect(parsed.boost).toBe(null);
   });
 });
@@ -323,7 +323,8 @@ describe('class rewards', () => {
     const kids = await Promise.all([0, 1, 2].map(() => registered(t.app)));
     for (const k of kids) expect((await k.client.post('/api/classes/join', { code: made.body.class.joinCode })).status).toBe(200);
     const view = await teacher.client.get(`/api/classes/${classId}/rewards`);
-    expect(view.body).toMatchObject({ budget: 500, maxPerStudent: 25, used: 0, left: 500 });
+    expect(view.body).toMatchObject({ budget: 500, maxPerStudent: 25, weeklyPerStudent: 100, used: 0, left: 500 });
+    expect(view.body.students.every((s: { room: number }) => s.room === 100)).toBe(true);
     expect(view.body.students).toHaveLength(3);
     const one = await teacher.client.post(`/api/classes/${classId}/rewards`, { studentId: kids[0]!.userId, amount: 20, note: 'Brilliant explaining', requestKey: key() });
     expect(one.status, JSON.stringify(one.body)).toBe(200);
@@ -333,7 +334,8 @@ describe('class rewards', () => {
     expect(await balance(kids[1]!.userId)).toBe(260);
     // Over the per-student limit, over the budget, and from a student: all refused.
     expect((await teacher.client.post(`/api/classes/${classId}/rewards`, { studentId: kids[0]!.userId, amount: 26, note: 'too much', requestKey: key() })).status).toBe(409);
-    await t.db.insert(classRewards).values({ classId, studentId: kids[2]!.userId, teacherId: teacher.userId, teacherName: 'x', amount: 440, note: 'filler', batchId: '00000000-0000-4000-8000-000000000001' });
+    // The filler is in someone else's name, so the class budget is nearly spent while each student still has room this week.
+    await t.db.insert(classRewards).values({ classId, studentId: other.userId, teacherId: teacher.userId, teacherName: 'x', amount: 440, note: 'filler', batchId: '00000000-0000-4000-8000-000000000001' });
     const over = await teacher.client.post(`/api/classes/${classId}/rewards`, { wholeClass: true, amount: 5, note: 'one more', requestKey: key() });
     expect(over.status).toBe(409);
     expect(over.body.error.message).toBe('That needs 15 Sparks (5 each for 3 students), and this class has 10 left this week.');
@@ -346,6 +348,36 @@ describe('class rewards', () => {
     expect(details).toEqual(expect.arrayContaining([`From ${teacher.username}: Brilliant explaining`, `From ${teacher.username}: Great teamwork today`]));
     const [a] = await t.db.select().from(auditLog).where(and(eq(auditLog.action, 'class.reward'), eq(auditLog.targetId, classId)));
     expect(a?.reason).toBe('Brilliant explaining');
+  });
+
+  it('holds one student to a weekly total across every class, so a made-up class cannot pass Sparks to a friend', async () => {
+    // Anyone can switch to a teacher account and open classes, so the limit follows the student, not the class.
+    const teacher = await registered(t.app, { accountType: 'teacher' });
+    const friend = await registered(t.app);
+    const classmate = await registered(t.app);
+    const ids: string[] = [];
+    const codes: string[] = [];
+    for (const name of ['Made up 1', 'Made up 2']) {
+      const made = await teacher.client.post('/api/classes', { name });
+      ids.push(made.body.class.id);
+      codes.push(made.body.class.joinCode);
+      expect((await friend.client.post('/api/classes/join', { code: made.body.class.joinCode })).status).toBe(200);
+    }
+    expect((await classmate.client.post('/api/classes/join', { code: codes[1] })).status).toBe(200);
+    // Four awards of 25 in the first class reach the week's 100.
+    for (let i = 0; i < 4; i++) expect((await teacher.client.post(`/api/classes/${ids[0]}/rewards`, { studentId: friend.userId, amount: 25, note: 'Great effort', requestKey: key() })).status).toBe(200);
+    expect(await balance(friend.userId)).toBe(350);
+    // The second class has its whole budget left, and the friend still cannot be given more.
+    const more = await teacher.client.post(`/api/classes/${ids[1]}/rewards`, { studentId: friend.userId, amount: 5, note: 'Great effort', requestKey: key() });
+    expect(more.status).toBe(409);
+    expect(more.body.error.message).toMatch(/already been given 100 Sparks this week/);
+    const view = await teacher.client.get(`/api/classes/${ids[1]}/rewards`);
+    expect(view.body.students.find((s: { id: string }) => s.id === friend.userId)).toMatchObject({ room: 0, thisWeek: 0 });
+    // A whole-class award leaves them out, says so, and only charges the budget for those it reached.
+    const all = await teacher.client.post(`/api/classes/${ids[1]}/rewards`, { wholeClass: true, amount: 10, note: 'Great teamwork', requestKey: key() });
+    expect(all.body).toMatchObject({ students: 1, skipped: 1, total: 10, left: 490 });
+    expect(await balance(friend.userId)).toBe(350);
+    expect(await balance(classmate.userId)).toBe(260);
   });
 });
 

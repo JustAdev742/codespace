@@ -124,9 +124,9 @@ export default function Wallet() {
         <ul className="grid grid-cols-3 gap-2 sm:gap-3">
           {balances.map((c) => (
             <li key={c} className="panel flex min-w-0 flex-col gap-1.5 rounded-[var(--radius-l)] px-3 py-3 sm:flex-row sm:items-center sm:gap-3 sm:px-4 sm:py-3.5">
-              <span className="flex min-w-0 items-center gap-1.5 sm:contents">
+              <span className="flex min-w-0 flex-col items-start gap-1 sm:contents">
                 <CurrencyIcon code={c} size={28} />
-                <span className="min-w-0 truncate text-sm font-semibold text-text-2 sm:hidden">{currencyName(c)}</span>
+                <span className="text-[13px] leading-tight font-semibold text-text-2 sm:hidden">{currencyName(c)}</span>
               </span>
               <div className="min-w-0">
                 <p className="hidden text-sm font-semibold text-text-2 sm:block">{currencyName(c)}</p>

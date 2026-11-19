@@ -503,6 +503,7 @@ const RULE_PATH_LABEL: Record<string, string> = {
   'dailyStreak.moonstonesOnWeek': 'Moonstones for each full week',
   'classRewards.weeklyBudget': 'Class rewards: weekly budget per class',
   'classRewards.maxPerStudent': 'Class rewards: most for one student',
+  'classRewards.weeklyPerStudent': 'Class rewards: most for one student in a week',
   boost: 'Sparks boost',
 };
 

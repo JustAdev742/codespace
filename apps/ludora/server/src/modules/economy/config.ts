@@ -51,13 +51,18 @@ export const economyRulesSchema = z.object({
       moonstonesOnWeek: z.number().int().min(0).max(1000).default(5),
     })
     .default({ sparksPerDay: 15, maxBonusDays: 7, moonstonesOnWeek: 5 }),
-  /** Teachers' class rewards (D58): Sparks a teacher can give each week, per class, and at most per student in one award. */
+  /**
+   * Teachers' class rewards (D58): Sparks a teacher can give each week, per class, at most per student in
+   * one award, and the most one student can be given in a week across every class they are in. That last
+   * limit is what stops a made-up class being used to pass Sparks to a friend: anyone can open a teacher account.
+   */
   classRewards: z
     .object({
       weeklyBudget: z.number().int().min(0).max(100_000).default(500),
       maxPerStudent: z.number().int().min(1).max(1000).default(25),
+      weeklyPerStudent: z.number().int().min(1).max(10_000).default(100),
     })
-    .default({ weeklyBudget: 500, maxPerStudent: 25 }),
+    .default({ weeklyBudget: 500, maxPerStudent: 25, weeklyPerStudent: 100 }),
   /**
    * A Sparks boost (D58): between the two dates, game Sparks are multiplied. The daily cap still
    * applies, so a boost speeds up a day's earning and never raises it. Null when none is set.
