@@ -271,10 +271,11 @@ export async function still(page, name, opts = {}) {
 }
 
 /** A signed-in account in its own window. */
-export async function account(browser, { accountType = 'teacher', displayName, viewport = { width: 1280, height: 720 }, deviceScaleFactor = 1.5, username, filmClock = true, mobile = false } = {}) {
-  const context = await browser.newContext({ viewport, deviceScaleFactor, baseURL: APP, reducedMotion: 'no-preference', colorScheme: 'dark', serviceWorkers: 'block', ...(mobile ? { hasTouch: true, isMobile: true } : {}) });
+export async function account(browser, { accountType = 'teacher', displayName, viewport = { width: 1280, height: 720 }, deviceScaleFactor = 1.5, username, filmClock = true, mobile = false, colorScheme = 'dark', init } = {}) {
+  const context = await browser.newContext({ viewport, deviceScaleFactor, baseURL: APP, reducedMotion: 'no-preference', colorScheme, serviceWorkers: 'block', ...(mobile ? { hasTouch: true, isMobile: true } : {}) });
   if (filmClock) await context.addInitScript(FAKE_CLOCK);
   await context.addInitScript(NO_ENV_BADGE);
+  if (init) await context.addInitScript(init);
   const page = await context.newPage();
   const name = username ?? `film${Date.now().toString(36).slice(-5)}${Math.floor(Math.random() * 900 + 100)}`;
   const password = 'a long film passphrase';
@@ -285,12 +286,21 @@ export async function account(browser, { accountType = 'teacher', displayName, v
 }
 
 /** A window with no account, on the film clock unless told otherwise: a phone joining with only a name. */
-export async function visitor(browser, { viewport = { width: 390, height: 844 }, deviceScaleFactor = 2, filmClock = true, mobile = true } = {}) {
-  const context = await browser.newContext({ viewport, deviceScaleFactor, baseURL: APP, reducedMotion: 'no-preference', colorScheme: 'dark', serviceWorkers: 'block', ...(mobile ? { hasTouch: true, isMobile: true } : {}) });
+export async function visitor(browser, { viewport = { width: 390, height: 844 }, deviceScaleFactor = 2, filmClock = true, mobile = true, colorScheme = 'dark', init } = {}) {
+  const context = await browser.newContext({ viewport, deviceScaleFactor, baseURL: APP, reducedMotion: 'no-preference', colorScheme, serviceWorkers: 'block', ...(mobile ? { hasTouch: true, isMobile: true } : {}) });
   if (filmClock) await context.addInitScript(FAKE_CLOCK);
   await context.addInitScript(NO_ENV_BADGE);
+  if (init) await context.addInitScript(init);
   const page = await context.newPage();
   return { context, page };
+}
+
+/** A second window for an account that already exists (the same student on a phone and on a laptop). */
+export async function signIn(browser, who, opts = {}) {
+  const v = await visitor(browser, { mobile: false, ...opts });
+  const res = await v.page.request.post('/api/auth/login', { headers: CSRF, data: { username: who.username, password: who.password } });
+  if (!res.ok()) throw new Error(`login ${who.username}: ${res.status()} ${await res.text()}`);
+  return { ...v, username: who.username, password: who.password, userId: who.userId };
 }
 
 /** Goes to a page on the film clock and keeps the clock moving until `ready` is on screen and fonts are in. */

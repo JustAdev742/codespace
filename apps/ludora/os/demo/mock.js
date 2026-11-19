@@ -750,6 +750,17 @@
       persist();
       window.location.hash = '';
       window.location.reload();
+    },
+    /* For a guided demo or a film: move the pretend server on by hand, without loading the page again.
+       The dashboard shows each change at its next refresh (every few seconds, or at once with the r key). */
+    script: {
+      scenario: function (name) { if (['calm', 'watchful', 'attack'].indexOf(name) >= 0) { SCENARIO = name; W.scenario = name; persist(); } },
+      event: function (severity, kind, text) { event(nowS(), severity, kind, String(text)); persist(); },
+      ban: function (ip, minutes) { W.bans[String(ip)] = nowS() + minutes * 60; persist(); },
+      clearBans: function () { W.bans = {}; persist(); },
+      analyst: function (on) { W.analyst = { enabled: !!on, installed: !!on }; persist(); },
+      /* Stop the scenario adding events of its own for a while, so only scripted ones appear. */
+      quiet: function (seconds) { W.last_event = nowS() + (seconds || 3600); persist(); }
     }
   };
   persist();

@@ -31,6 +31,8 @@ function media(): Plugin {
 
 export default defineConfig({
   root: resolve(import.meta.dirname),
+  // The app's own public files (a school's logo and crest), for films shot on a school's copy.
+  publicDir: resolve(import.meta.dirname, '../../../web/public'),
   plugins: [media()],
   server: { port: 5188, strictPort: true, host: '127.0.0.1', fs: { allow: [resolve(import.meta.dirname, '../../..')] } },
   esbuild: { jsx: 'automatic' },

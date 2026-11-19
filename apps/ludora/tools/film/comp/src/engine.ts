@@ -312,11 +312,11 @@ export class Card extends Group {
 export class Phone extends Group {
   readonly body: Card;
   readonly screen: Card;
-  constructor(screenW = 300) {
+  constructor(screenW = 300, o: { body?: string; rim?: string } = {}) {
     super();
     const sh = (screenW * 844) / 390;
     const bez = screenW * 0.045;
-    this.body = new Card({ w: screenW + bez * 2, h: sh + bez * 2, radius: screenW * 0.16, color: '#060714', rim: 2.2, rimColor: '#8a93c8', shadow: 0.7 });
+    this.body = new Card({ w: screenW + bez * 2, h: sh + bez * 2, radius: screenW * 0.16, color: o.body ?? '#060714', rim: 2.2, rimColor: o.rim ?? '#8a93c8', shadow: 0.7 });
     this.screen = new Card({ w: screenW, h: sh, radius: screenW * 0.12, shadow: 0 });
     this.screen.position.z = 1;
     this.add(this.body, this.screen);
@@ -328,10 +328,10 @@ export class Phone extends Group {
 export class BigScreen extends Group {
   readonly frame: Card;
   readonly screen: Card;
-  constructor(w = 1280, glow = '#3b4bff') {
+  constructor(w = 1280, glow = '#3b4bff', o: { body?: string; rim?: string } = {}) {
     super();
     const h = (w * 9) / 16;
-    this.frame = new Card({ w: w + 28, h: h + 28, radius: 30, color: '#04050d', rim: 2, rimColor: '#7f8be0', glow, shadow: 0.75 });
+    this.frame = new Card({ w: w + 28, h: h + 28, radius: 30, color: o.body ?? '#04050d', rim: 2, rimColor: o.rim ?? '#7f8be0', glow, shadow: 0.75 });
     this.screen = new Card({ w, h, radius: 18, shadow: 0 });
     this.screen.position.z = 1;
     this.add(this.frame, this.screen);
@@ -341,8 +341,8 @@ export class BigScreen extends Group {
 
 /* ------------------------------------------------ text ------------------------------------------------ */
 
-export interface TextOptions { size: number; font?: 'display' | 'sans'; weight?: number; italic?: boolean; color?: string; tracking?: number; glow?: number; stroke?: string; strokeWidth?: number; shadow?: boolean }
-const FONT = { display: '"Barlow Condensed"', sans: '"Atkinson Hyperlegible Next Variable"' } as const;
+export interface TextOptions { size: number; font?: 'display' | 'sans' | 'lato' | 'mono'; weight?: number; italic?: boolean; color?: string; tracking?: number; glow?: number; stroke?: string; strokeWidth?: number; shadow?: boolean; shadowColor?: string }
+const FONT = { display: '"Barlow Condensed"', sans: '"Atkinson Hyperlegible Next Variable"', lato: '"Lato"', mono: '"DejaVu Sans Mono", "Liberation Mono", ui-monospace, monospace' } as const;
 const SS = 2; // Text is drawn at twice its size so a push-in stays sharp.
 
 function fontOf(o: TextOptions) {
@@ -367,7 +367,7 @@ export function text(str: string, o: TextOptions): TextMesh {
   (ctx as unknown as { letterSpacing: string }).letterSpacing = `${(o.tracking ?? 0) * SS}px`;
   ctx.textBaseline = 'alphabetic';
   if (o.stroke) { ctx.lineJoin = 'round'; ctx.lineWidth = (o.strokeWidth ?? 6) * SS; ctx.strokeStyle = o.stroke; ctx.strokeText(str, padX, padY + asc); }
-  if (o.shadow) { ctx.shadowColor = 'rgba(2,3,18,0.85)'; ctx.shadowBlur = o.size * 0.22 * SS; ctx.shadowOffsetY = o.size * 0.05 * SS; }
+  if (o.shadow) { ctx.shadowColor = o.shadowColor ?? 'rgba(2,3,18,0.85)'; ctx.shadowBlur = o.size * 0.22 * SS; ctx.shadowOffsetY = o.size * 0.05 * SS; }
   ctx.fillStyle = o.color ?? '#ffffff';
   ctx.fillText(str, padX, padY + asc);
   if (o.shadow) { ctx.shadowBlur = o.size * 0.08 * SS; ctx.fillText(str, padX, padY + asc); }
@@ -481,30 +481,37 @@ export function cone(length: number, color: string, strength = 0.5): Group {
 }
 
 const BG_FS = /* glsl */ `
-  uniform float uT, uWarm, uEnergy; varying vec2 vUv;
+  uniform float uT, uWarm, uEnergy; uniform vec3 uTop, uLow, uA, uB, uGlow; varying vec2 vUv;
   float hash(vec2 p){ p = fract(p * vec2(123.34, 456.21)); p += dot(p, p + 45.32); return fract(p.x * p.y); }
   float noise(vec2 p){ vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
     return mix(mix(hash(i), hash(i + vec2(1, 0)), f.x), mix(hash(i + vec2(0, 1)), hash(i + vec2(1, 1)), f.x), f.y); }
   void main(){
     vec2 p = vUv - 0.5; p.x *= 1.7778;
-    vec3 top = vec3(0.004, 0.006, 0.030), low = vec3(0.016, 0.012, 0.070);
-    vec3 c = mix(low, top, smoothstep(-0.45, 0.5, p.y));
+    vec3 c = mix(uLow, uTop, smoothstep(-0.45, 0.5, p.y));
     // Slow coloured weather: violet and blue, with gold when the scene is warm.
     float n1 = noise(p * 1.4 + vec2(uT * 0.05, -uT * 0.03)), n2 = noise(p * 2.3 - vec2(uT * 0.04, uT * 0.02) + 7.0);
-    c += vec3(0.030, 0.018, 0.120) * smoothstep(0.30, 0.95, n1) * (0.6 + uEnergy * 1.1);
-    c += vec3(0.006, 0.040, 0.105) * smoothstep(0.40, 1.0, n2) * (0.5 + uEnergy * 1.0);
-    c += vec3(0.20, 0.10, 0.012) * uWarm * smoothstep(0.85, 0.0, length(p - vec2(0.0, -0.46)));
+    c += uA * smoothstep(0.30, 0.95, n1) * (0.6 + uEnergy * 1.1);
+    c += uB * smoothstep(0.40, 1.0, n2) * (0.5 + uEnergy * 1.0);
+    c += uGlow * uWarm * smoothstep(0.85, 0.0, length(p - vec2(0.0, -0.46)));
     gl_FragColor = vec4(c, 1.0);
   }`;
+
+/** The colours of the air: the sky top and bottom, two slow weathers, the warm glow from below, and the motes (all linear, small numbers). */
+export interface BackdropLook { top: [number, number, number]; low: [number, number, number]; a: [number, number, number]; b: [number, number, number]; glow: [number, number, number]; motes: string[] }
+const NIGHT: BackdropLook = { top: [0.004, 0.006, 0.030], low: [0.016, 0.012, 0.070], a: [0.030, 0.018, 0.120], b: [0.006, 0.040, 0.105], glow: [0.20, 0.10, 0.012], motes: ['#7c8cff', '#ffc233', '#5fe0d0', '#b68cff', '#ffffff'] };
+/** A school hall at night in bottle green, lit cream from below: The Hills Grammar School's stage. */
+export const HILLS_NIGHT: BackdropLook = { top: [0.002, 0.012, 0.008], low: [0.004, 0.034, 0.022], a: [0.004, 0.070, 0.040], b: [0.050, 0.046, 0.020], glow: [0.22, 0.19, 0.10], motes: ['#f6ecd2', '#5fdcaa', '#00a766', '#ffffff', '#ffd98a'] };
 
 /** The air behind everything: a deep night with slow colour, far enough back to stay still when the camera moves. */
 export class Backdrop extends Group {
   readonly sky: Mesh<PlaneGeometry, ShaderMaterial>;
   private dots: InstancedMesh;
   private seeds: number[][] = [];
-  constructor(count = 110) {
+  constructor(count = 110, look: Partial<BackdropLook> = {}) {
     super();
-    this.sky = new Mesh(unit, new ShaderMaterial({ uniforms: { uT: { value: 0 }, uWarm: { value: 0 }, uEnergy: { value: 0 } }, vertexShader: CARD_VS, fragmentShader: BG_FS, depthWrite: false }));
+    const k = { ...NIGHT, ...look };
+    const v = (c: [number, number, number]) => ({ value: new Vector3(...c) });
+    this.sky = new Mesh(unit, new ShaderMaterial({ uniforms: { uT: { value: 0 }, uWarm: { value: 0 }, uEnergy: { value: 0 }, uTop: v(k.top), uLow: v(k.low), uA: v(k.a), uB: v(k.b), uGlow: v(k.glow) }, vertexShader: CARD_VS, fragmentShader: BG_FS, depthWrite: false }));
     this.sky.scale.set(W * 4.2, H * 4.2, 1);
     this.sky.position.z = -3600;
     this.sky.renderOrder = -100;
@@ -514,7 +521,7 @@ export class Backdrop extends Group {
     this.dots.instanceMatrix.setUsage(DynamicDrawUsage);
     this.dots.renderOrder = -50;
     const col = new Color();
-    const tones = ['#7c8cff', '#ffc233', '#5fe0d0', '#b68cff', '#ffffff'];
+    const tones = k.motes;
     for (let i = 0; i < count; i++) {
       this.seeds.push([r() * 2 - 1, r() * 2 - 1, r(), r(), r(), r()]);
       this.dots.setColorAt(i, col.set(tones[Math.floor(r() * tones.length)]!).multiplyScalar(0.25 + r() * 0.5));
@@ -545,7 +552,7 @@ const PAPER = ['#ffc233', '#ff5d73', '#4dd6ff', '#7cf29a', '#b68cff', '#ffffff',
 export class Confetti extends Group {
   private mesh: InstancedMesh;
   private bits: { v: Vector3; spin: Vector3; phase: number; size: number; delay: number; start: Vector3 }[] = [];
-  constructor(count = 260, seed = 5, o: { spread?: number; power?: number; up?: number; width?: number; rain?: boolean } = {}) {
+  constructor(count = 260, seed = 5, o: { spread?: number; power?: number; up?: number; width?: number; rain?: boolean; paper?: string[] } = {}) {
     super();
     const r = rng(seed);
     this.mesh = new InstancedMesh(unit, new MeshBasicMaterial({ side: DoubleSide, transparent: true, depthWrite: false, blending: NormalBlending }), count);
@@ -563,7 +570,8 @@ export class Confetti extends Group {
         phase: r() * 6.28, size: 12 + r() * 16, delay: rain ? r() * 2.6 : r() * 0.08,
         start: rain ? new Vector3((r() - 0.5) * (o.width ?? W * 1.2), H * 0.62 + r() * 200, (r() - 0.5) * 500) : new Vector3((r() - 0.5) * (o.width ?? 60), 0, 0),
       });
-      this.mesh.setColorAt(i, col.set(PAPER[Math.floor(r() * PAPER.length)]!).multiplyScalar(1.05));
+      const paper = o.paper ?? PAPER;
+      this.mesh.setColorAt(i, col.set(paper[Math.floor(r() * paper.length)]!).multiplyScalar(1.05));
     }
     this.add(this.mesh);
     this.visible = false;

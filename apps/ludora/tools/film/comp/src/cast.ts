@@ -1,6 +1,7 @@
 // The cast: the game's own 3D Glims, built by the game's own code, directed for the film.
 import { CanvasTexture, Group, Mesh, MeshBasicMaterial, PlaneGeometry, SRGBColorSpace, AdditiveBlending, Color } from 'three';
 import { GLIMS } from '@ludora/content';
+import type { SchoolUniform } from '@ludora/shared';
 import { Glim3D, type GlimAction } from '../../../../web/src/three/glim3d.ts';
 import type { Quality } from '../../../../web/src/three/quality.ts';
 import { FPS, rng } from './engine.ts';
@@ -19,10 +20,11 @@ export class Actor extends Group {
   private nextCue = 0;
   /** Where it stands at time t (seconds into its shot): set by the shot. */
   path: ((t: number) => { x: number; y: number; z: number; turn?: number; squash?: number; moving?: number }) | null = null;
-  constructor(readonly who: string, scale = GLIM_SCALE) {
+  /** `dress` is a school uniform to wear (on a film whose page is marked as a school's copy); none means the Glim as it comes. */
+  constructor(readonly who: string, scale = GLIM_SCALE, dress: SchoolUniform | null = null) {
     super();
     const item = GLIMS.find((g) => g.id === who) ?? GLIMS[0]!;
-    this.glim = new Glim3D({ look: { art: item.art as never, rarity: item.rarity, uniform: false, dress: null }, quality: QUALITY, reducedMotion: false });
+    this.glim = new Glim3D({ look: { art: item.art as never, rarity: item.rarity, uniform: dress !== null, dress }, quality: QUALITY, reducedMotion: false });
     this.glim.scale.setScalar(scale);
     this.add(this.glim);
   }
