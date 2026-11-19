@@ -118,7 +118,8 @@ export async function playerRoutes(app: FastifyInstance, deps: AppDeps) {
     const { id } = parse(z.object({ id: z.string().min(1).max(80) }), req.params);
     return updateExtras(db, auth.user.id, (cur) => {
       const wishlist = cur.wishlist.filter((x) => x !== id);
-      return { next: { ...cur, wishlist }, result: { wishlist } };
+      // Taking the saving goal off the wishlist ends the goal too.
+      return { next: { ...cur, wishlist, savingGoal: cur.savingGoal === id ? null : cur.savingGoal }, result: { wishlist } };
     });
   });
 

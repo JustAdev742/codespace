@@ -15,6 +15,7 @@ export const ROLES = [
   'tester',
   'moderator',
   'support',
+  'economist',
   'admin',
   'superadmin',
 ] as const;
@@ -38,6 +39,7 @@ export const PERMISSIONS = [
   'economy.view',
   'economy.configure',
   'economy.grant',
+  'economy.limits',
   'events.manage',
   'flags.manage',
   'system.view',
@@ -60,6 +62,7 @@ export const ROLE_INFO: Record<Role, { label: string; description: string; rank:
   tester: { label: 'Tester', description: 'Uses staff testing tools on test accounts.', rank: 2 },
   moderator: { label: 'Moderator', description: 'Handles reports and moderates players and content.', rank: 3 },
   support: { label: 'Support', description: 'Looks up accounts, resets passwords, reads economy history.', rank: 3 },
+  economist: { label: 'Economy manager', description: 'Runs the in-game economy: earning rules, the shop and sales, economy events, grants and refunds within daily limits.', rank: 3 },
   admin: { label: 'Administrator', description: 'Runs the platform: catalogue, shop, economy, modes and flags.', rank: 4 },
   superadmin: { label: 'Super administrator', description: 'Everything, including assigning administrators and test entitlements.', rank: 5 },
 };
@@ -85,6 +88,9 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     'rooms.manage',
   ],
   support: [...PLAYER, 'staff.access', 'users.read', 'users.edit', 'reports.handle', 'economy.view'],
+  // The economy and nothing else (D58): no player records beyond what a grant needs, no moderation, roles,
+  // system pages or audit log. Changing an economy manager's own daily grant limit is economy.limits, which only administrators hold.
+  economist: [...PLAYER, 'staff.access', 'economy.view', 'economy.configure', 'economy.grant', 'shop.manage', 'events.manage'],
   admin: PERMISSIONS.filter((p) => p !== 'testing.entitlements'),
   superadmin: [...PERMISSIONS],
 };

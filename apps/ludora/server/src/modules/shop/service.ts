@@ -1,4 +1,4 @@
-import { and, eq, gte, inArray, sql } from 'drizzle-orm';
+import { and, eq, gte, inArray, isNull, sql } from 'drizzle-orm';
 import { createRng, hashString, ITEM_TYPE_INFO, type ItemType, type ShopSection } from '@ludora/shared';
 import type { Db, DbOrTx } from '../../db/client.ts';
 import { inventory, items, packs, purchases, shopListings } from '../../db/schema.ts';
@@ -26,6 +26,16 @@ function periodStart(rotation: string | null, now: Date): Date | null {
   if (rotation === 'daily') return new Date(`${utcDay(now)}T00:00:00Z`);
   if (rotation === 'weekly') return new Date(nextWeeklyReset(now).getTime() - 7 * 86_400_000);
   return null;
+}
+
+/** Whether a listing's sale is running at `now` (D58). A sale never raises a price. */
+export function saleActive(l: Pick<ListingRow, 'salePrice' | 'saleStartsAt' | 'saleEndsAt' | 'priceAmount'>, now = new Date()): boolean {
+  return l.salePrice !== null && l.saleStartsAt !== null && l.saleEndsAt !== null && l.saleStartsAt <= now && now < l.saleEndsAt && l.salePrice < l.priceAmount;
+}
+
+/** What a listing costs at `now`: the sale price while a sale runs, otherwise the price. */
+export function effectivePrice(l: Pick<ListingRow, 'salePrice' | 'saleStartsAt' | 'saleEndsAt' | 'priceAmount'>, now = new Date()): number {
+  return saleActive(l, now) ? l.salePrice! : l.priceAmount;
 }
 
 export interface AvailabilityContext {
@@ -76,6 +86,10 @@ export interface ListingView {
   description: string;
   price: { currency: string; amount: number };
   worth: number | null;
+  /** A sale running now: the usual price and the day it ends. The shop says "on sale until Friday", never a countdown. */
+  sale: { was: number; until: string } | null;
+  /** Staff picked it for the Featured tab. */
+  featured: boolean;
   endsAt: string | null;
   limit: number | null;
   boughtThisPeriod: number;
@@ -99,7 +113,7 @@ export async function shopView(db: Db, userId: string, auth: Parameters<typeof i
     itemIds.size ? db.select().from(items).where(inArray(items.id, [...itemIds])) : Promise.resolve([]),
     packIds.length ? db.select().from(packs).where(inArray(packs.id, packIds)) : Promise.resolve([]),
     db.select({ itemId: inventory.itemId, q: inventory.quantity }).from(inventory).where(eq(inventory.userId, userId)),
-    db.select({ listingId: purchases.listingId, at: purchases.createdAt }).from(purchases).where(eq(purchases.userId, userId)),
+    db.select({ listingId: purchases.listingId, at: purchases.createdAt }).from(purchases).where(and(eq(purchases.userId, userId), isNull(purchases.refundedAt))),
   ]);
   const itemById = new Map(itemRows.map((i) => [i.id, i]));
   const packById = new Map(packRows.map((p) => [p.id, p]));
@@ -117,8 +131,10 @@ export async function shopView(db: Db, userId: string, auth: Parameters<typeof i
     const base = {
       id: l.id,
       section: l.section as ShopSection,
-      price: { currency: l.priceCurrency, amount: l.priceAmount },
+      price: { currency: l.priceCurrency, amount: effectivePrice(l, now) },
       worth: l.worth,
+      sale: saleActive(l, now) ? { was: l.priceAmount, until: l.saleEndsAt!.toISOString() } : null,
+      featured: l.featured,
       endsAt: l.endsAt?.toISOString() ?? (l.rotation === 'daily' ? nextDailyReset(now).toISOString() : l.rotation === 'weekly' ? nextWeeklyReset(now).toISOString() : null),
       limit: l.perUserLimit,
       boughtThisPeriod,
@@ -169,7 +185,7 @@ export async function purchase(db: Db, args: { userId: string; listingId: string
       const [{ n }] = (await tx
         .select({ n: sql<number>`count(*)::int` })
         .from(purchases)
-        .where(and(eq(purchases.userId, args.userId), eq(purchases.listingId, l.id), start ? gte(purchases.createdAt, start) : sql`true`))) as [{ n: number }];
+        .where(and(eq(purchases.userId, args.userId), eq(purchases.listingId, l.id), isNull(purchases.refundedAt), start ? gte(purchases.createdAt, start) : sql`true`))) as [{ n: number }];
       if (n >= l.perUserLimit) throw new AppError(409, 'conflict', 'You have already bought this.');
     }
     const grantIds = l.itemId ? [l.itemId] : ((l.bundle as string[] | null) ?? []);
@@ -188,14 +204,15 @@ export async function purchase(db: Db, args: { userId: string; listingId: string
       if (packRow.availableFrom && packRow.availableFrom > now) throw notAvailable('This Lantern is not on sale yet.');
       if (packRow.availableUntil && packRow.availableUntil < now) throw notAvailable('This Lantern is no longer on sale.');
     }
+    const price = effectivePrice(l, now);
     let charge;
     try {
-      charge = await debit(tx, { userId: args.userId, currency: l.priceCurrency, amount: l.priceAmount, reason: l.packId ? 'pack_open' : 'purchase', refType: 'listing', refId: l.id, opId });
+      charge = await debit(tx, { userId: args.userId, currency: l.priceCurrency, amount: price, reason: l.packId ? 'pack_open' : 'purchase', refType: 'listing', refId: l.id, opId, ...(price !== l.priceAmount ? { metadata: { sale: true, was: l.priceAmount } } : {}) });
     } catch (err) {
       if (err instanceof AppError && err.code === 'insufficient_funds') throw insufficientFunds(err.message);
       throw err;
     }
-    await tx.insert(purchases).values({ userId: args.userId, listingId: l.id, opId, priceCurrency: l.priceCurrency, priceAmount: l.priceAmount, unlimited: charge.unlimited });
+    await tx.insert(purchases).values({ userId: args.userId, listingId: l.id, opId, priceCurrency: l.priceCurrency, priceAmount: price, unlimited: charge.unlimited });
     const granted: PurchaseResult['granted'] = [];
     for (const i of grantRows) {
       // Bundles skip cosmetics already owned rather than duplicating them.
@@ -212,6 +229,6 @@ export async function purchase(db: Db, args: { userId: string; listingId: string
       await payCollectionRewards(tx, args.userId, opId);
       await checkAchievements(tx, args.userId, opId);
     }
-    return { listingId: l.id, kind: l.packId ? 'pack' : l.itemId ? 'item' : 'bundle', granted, pack, charged: { currency: l.priceCurrency, amount: l.priceAmount }, unlimited: charge.unlimited };
+    return { listingId: l.id, kind: l.packId ? 'pack' : l.itemId ? 'item' : 'bundle', granted, pack, charged: { currency: l.priceCurrency, amount: price }, unlimited: charge.unlimited };
   });
 }

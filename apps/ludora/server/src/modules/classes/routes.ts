@@ -24,6 +24,7 @@ import { classLoginRoutes } from './logins.ts';
 import { classLiveRoutes } from './live.ts';
 import { checkGroup, classGroupRoutes, groupsOf, leaveGroups, membersFor, myGroups, setForGroups, teachersOf } from './groups.ts';
 import { newRoomOptions } from '../rooms/options.ts';
+import { classRewardRoutes } from './rewards.ts';
 
 /*
  * Classes and assignments. A teacher account creates a class and shares its
@@ -546,6 +547,7 @@ export async function classRoutes(app: FastifyInstance, deps: AppDeps) {
   await classLoginRoutes(app, deps);
   await classLiveRoutes(app, deps);
   await classGroupRoutes(app, deps);
+  await classRewardRoutes(app, deps);
 
   /* ---------------------------------- school events ---------------------------------- */
 

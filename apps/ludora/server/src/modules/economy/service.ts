@@ -28,6 +28,8 @@ export type LedgerReason =
   | 'craft'
   | 'admin_grant'
   | 'admin_revoke'
+  | 'refund'
+  | 'class_reward'
   | 'test_reset'
   | 'event_expire';
 

@@ -35,6 +35,8 @@ const fields = {
   title: z.string().max(60).nullable(),
   card: z.object({ pose: z.enum(CARD_POSES), expression: z.enum(CARD_EXPRESSIONS) }),
   help: z.object({ dismissed: z.array(z.enum(HELP_KEYS)).max(HELP_KEYS.length) }),
+  /** The wishlist listing the player is saving towards (D58), shown on their Wallet. Only they see it. */
+  savingGoal: z.string().min(1).max(80).nullable(),
 };
 
 export interface Extras {
@@ -46,6 +48,7 @@ export interface Extras {
   title: string | null;
   card: { pose: (typeof CARD_POSES)[number]; expression: (typeof CARD_EXPRESSIONS)[number] };
   help: { dismissed: (typeof HELP_KEYS)[number][] };
+  savingGoal: string | null;
 }
 
 export const DEFAULT_EXTRAS: Extras = {
@@ -57,6 +60,7 @@ export const DEFAULT_EXTRAS: Extras = {
   title: null,
   card: { pose: 'wave', expression: 'own' },
   help: { dismissed: [] },
+  savingGoal: null,
 };
 
 /** Read stored JSON field by field, falling back to the default for any field that does not validate. */

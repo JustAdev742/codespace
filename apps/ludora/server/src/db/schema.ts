@@ -447,11 +447,18 @@ export const shopListings = pgTable(
     endsAt: ts('ends_at'),
     active: boolean('active').notNull().default(true),
     sort: integer('sort').notNull().default(0),
+    /** A sale (0024, D58): this price instead of priceAmount between the two dates. Shown to players as "on sale until Friday", never a countdown. */
+    salePrice: integer('sale_price'),
+    saleStartsAt: ts('sale_starts_at'),
+    saleEndsAt: ts('sale_ends_at'),
+    /** Also shown on the shop's Featured tab, whatever its own section. */
+    featured: boolean('featured').notNull().default(false),
   },
   (t) => [
     index('listings_section_idx').on(t.section, t.active),
     check('listings_price_nonneg', sql`${t.priceAmount} >= 0`),
     check('listings_target', sql`num_nonnulls(${t.itemId}, ${t.packId}, ${t.bundle}) = 1`),
+    check('listings_sale_valid', sql`${t.salePrice} is null or (${t.salePrice} >= 0 and ${t.saleStartsAt} is not null and ${t.saleEndsAt} is not null and ${t.saleStartsAt} < ${t.saleEndsAt})`),
   ],
 );
 
@@ -466,6 +473,9 @@ export const purchases = pgTable(
     priceAmount: integer('price_amount').notNull(),
     unlimited: boolean('unlimited').notNull().default(false),
     createdAt: now('created_at'),
+    /** A staff refund (0024, D58): the price went back to the player and the items came off them. */
+    refundedAt: ts('refunded_at'),
+    refundedBy: uuid('refunded_by').references(() => users.id, { onDelete: 'set null' }),
   },
   (t) => [index('purchases_user_listing_idx').on(t.userId, t.listingId)],
 );
@@ -1520,3 +1530,31 @@ export const makingPrefs = pgTable('making_prefs', {
   dismissed: jsonb('dismissed').$type<string[]>().notNull().default([]),
   updatedAt: now('updated_at'),
 });
+
+/* ------------------------------- class rewards (0024) ------------------------------- */
+
+/**
+ * Sparks a teacher gave a student, out of the class's weekly budget (D58). One row per student,
+ * so a whole-class award is several rows with one batch id. The ledger entry points here
+ * (ref_type 'class_reward'), which is how the student sees who gave it and why.
+ */
+export const classRewards = pgTable(
+  'class_rewards',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    classId: uuid('class_id').notNull().references(() => classes.id, { onDelete: 'cascade' }),
+    studentId: uuid('student_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+    teacherId: uuid('teacher_id').references(() => users.id, { onDelete: 'set null' }),
+    teacherName: text('teacher_name').notNull(),
+    amount: integer('amount').notNull(),
+    note: text('note').notNull(),
+    batchId: uuid('batch_id').notNull(),
+    wholeClass: boolean('whole_class').notNull().default(false),
+    createdAt: now('created_at'),
+  },
+  (t) => [
+    index('class_rewards_class_idx').on(t.classId, t.createdAt),
+    index('class_rewards_student_idx').on(t.studentId, t.createdAt),
+    check('class_rewards_amount_positive', sql`${t.amount} > 0`),
+  ],
+);

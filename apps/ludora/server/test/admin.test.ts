@@ -14,7 +14,7 @@ import { GLIMS } from '@ludora/content';
 
 let t: TestContext;
 type Account = Awaited<ReturnType<typeof registered>>;
-const STAFF_ROLES = ['tester', 'moderator', 'support', 'admin', 'superadmin'] as const;
+const STAFF_ROLES = ['tester', 'moderator', 'support', 'economist', 'admin', 'superadmin'] as const;
 const as: Record<'player' | (typeof STAFF_ROLES)[number], Account> = {} as never;
 
 let keyN = 0;
@@ -37,7 +37,7 @@ beforeAll(async () => {
   // The first super administrator comes from the operator CLI, as in a real deployment.
   const boot = await cliChangeRole(t.db, 'test', 'grant', as.superadmin.username, 'superadmin', 'first admin');
   expect(boot.ok).toBe(true);
-  for (const role of ['tester', 'moderator', 'support', 'admin'] as const) {
+  for (const role of ['tester', 'moderator', 'support', 'economist', 'admin'] as const) {
     const res = await as.superadmin.client.post(`/api/admin/users/${as[role].userId}/roles`, { role, grant: true, reason: 'test setup', confirm: as[role].username });
     expect(res.status, `${role}: ${JSON.stringify(res.body)}`).toBe(200);
   }
@@ -59,6 +59,10 @@ describe('authorisation matrix', () => {
     ['/api/admin/economy/ledger', 'economy.view'],
     ['/api/admin/economy/rules', 'economy.view'],
     ['/api/admin/currencies', 'economy.view'],
+    ['/api/admin/economy/health', 'economy.view'],
+    ['/api/admin/economy/rules/history', 'economy.view'],
+    ['/api/admin/economy/limits', 'economy.view'],
+    ['/api/admin/economy/activity', 'economy.view'],
     ['/api/admin/items', 'catalog.manage'],
     ['/api/admin/collections', 'catalog.manage'],
     ['/api/admin/packs', 'catalog.manage'],
@@ -89,6 +93,13 @@ describe('authorisation matrix', () => {
     ['PUT', '/api/admin/economy/rules', 'economy.configure'],
     ['POST', '/api/admin/currencies', 'economy.configure'],
     ['PATCH', '/api/admin/currencies/sparks', 'economy.configure'],
+    ['POST', '/api/admin/economy/rules/preview', 'economy.view'],
+    ['POST', '/api/admin/economy/rules/undo', 'economy.configure'],
+    ['PUT', '/api/admin/economy/limits', 'economy.limits'],
+    ['POST', '/api/admin/economy/grant-class', 'economy.grant'],
+    ['POST', '/api/admin/economy/refund', 'economy.grant'],
+    ['PUT', '/api/admin/economy/sales/l-lantern-meadow', 'shop.manage'],
+    ['POST', '/api/admin/economy/sales/l-lantern-meadow/end', 'shop.manage'],
     ['POST', '/api/admin/items', 'catalog.manage'],
     ['PATCH', '/api/admin/items/glim-sprig', 'catalog.manage'],
     ['PATCH', '/api/admin/collections/meadow', 'catalog.manage'],

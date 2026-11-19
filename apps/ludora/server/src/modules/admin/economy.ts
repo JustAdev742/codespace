@@ -23,6 +23,7 @@ import { credit, debit, IDEMPOTENCY_KEY_PATTERN, withOperation } from '../econom
 import { grantItem, ownedQuantity, takeItem } from '../inventory/service.ts';
 import { computeOdds, parseDropTable, resolvePool } from '../packs/service.ts';
 import { audit, confirmWordFor, loadUser, requireConfirm, staff, staffLimit } from './common.ts';
+import { assertWithinDailyLimit } from './grantLimits.ts';
 
 const isoDate = z.iso.datetime({ offset: true });
 
@@ -89,6 +90,8 @@ export async function applyMovement(deps: AppDeps, req: FastifyRequest, auth: Au
 
   const { result, replayed } = await withOperation(deps.db, u.id, `staff:${body.requestKey}`, action, async (tx, opId) => {
     let after: Record<string, unknown>;
+    // An economy manager's grants count towards their daily total (D58); removals and test tools do not.
+    if (mode === 'staff' && direction === 'grant' && body.currency && body.amount) await assertWithinDailyLimit(tx, auth, body.currency, body.amount);
     if (body.currency && body.amount) {
       const meta = { reason: body.reason, tool: mode };
       const balance =

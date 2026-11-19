@@ -104,6 +104,7 @@ const listingFields = {
   endsAt: nullableDate,
   active: z.boolean(),
   sort: z.number().int().min(-100_000).max(100_000),
+  featured: z.boolean(),
 };
 const listingCreateSchema = z
   .object({
@@ -120,6 +121,7 @@ const listingCreateSchema = z
     endsAt: nullableDate.default(null),
     active: listingFields.active.default(true),
     sort: listingFields.sort.default(0),
+    featured: listingFields.featured.default(false),
     reason: staffReasonSchema,
   })
   .refine((l) => [l.itemId, l.packId, l.bundle].filter(Boolean).length === 1, 'A listing sells exactly one item, one Lantern or one bundle.');

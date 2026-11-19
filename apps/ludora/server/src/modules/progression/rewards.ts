@@ -3,7 +3,7 @@ import type { RewardSummary } from '@ludora/shared';
 import type { Db, DbOrTx } from '../../db/client.ts';
 import { userStats } from '../../db/schema.ts';
 import { addDays, utcDay } from '../../lib/time.ts';
-import { getRules, type EconomyRules } from '../economy/config.ts';
+import { activeBoost, getRules, type EconomyRules } from '../economy/config.ts';
 import { credit, withOperation } from '../economy/service.ts';
 import { checkAchievements } from './achievements.ts';
 import { addXp } from './levels.ts';
@@ -26,6 +26,8 @@ export interface GameRewardInput {
   solo: boolean;
   outcome: 'competitive' | 'coop-win' | 'coop-loss';
   sparksToday: number;
+  /** A staff Sparks boost running now (D58), e.g. 2 for double Sparks. The daily cap still applies. */
+  boost?: number;
 }
 
 export interface GameReward {
@@ -51,7 +53,7 @@ export function computeGameReward(rules: EconomyRules, i: GameRewardInput): Game
   if (i.outcome === 'coop-win' && !i.solo) place = g.placeSparks[1] ?? 0;
   else if (i.outcome === 'competitive' && contested) place = g.placeSparks[i.rank - 1] ?? 0;
   const mult = i.solo ? g.soloMultiplier : 1;
-  const sparks = Math.round((g.participationSparks + i.correct * g.sparksPerCorrect + place) * mult);
+  const sparks = Math.round((g.participationSparks + i.correct * g.sparksPerCorrect + place) * mult * (i.boost ?? 1));
   const remaining = Math.max(0, g.dailySparkCap - i.sparksToday);
   const granted = Math.min(sparks, remaining);
   const xp = Math.round((g.xpParticipation + i.correct * g.xpPerCorrect + (win ? g.xpWin : 0)) * mult);
@@ -94,7 +96,8 @@ export async function applyGameResult(db: Db, r: PlayerGameRecord): Promise<Rewa
     const today = utcDay();
     const stats = await lockStats(tx, r.userId);
     const sparksToday = stats.sparksDay === today ? stats.sparksToday : 0;
-    const reward = computeGameReward(rules, { ...r, sparksToday });
+    const boost = activeBoost(rules);
+    const reward = computeGameReward(rules, { ...r, sparksToday, boost: boost?.multiplier });
     const notes: string[] = [];
     if (reward.note) notes.push(reward.note);
 
@@ -129,7 +132,8 @@ export async function applyGameResult(db: Db, r: PlayerGameRecord): Promise<Rewa
       })
       .where(eq(userStats.userId, r.userId));
 
-    if (reward.sparks) await credit(tx, { userId: r.userId, currency: 'sparks', amount: reward.sparks, reason: 'game_reward', refType: 'game', refId: r.gameId, opId });
+    if (reward.sparks) await credit(tx, { userId: r.userId, currency: 'sparks', amount: reward.sparks, reason: 'game_reward', refType: 'game', refId: r.gameId, opId, ...(boost ? { metadata: { boost: boost.multiplier } } : {}) });
+    if (boost && reward.sparks) notes.push(`${boost.label}: your game Sparks were multiplied by ${boost.multiplier}.`);
     if (streakBonus) {
       await credit(tx, { userId: r.userId, currency: 'sparks', amount: streakBonus, reason: 'streak_reward', refType: 'streak', refId: String(streak), opId });
       notes.push(`Day ${streak} streak: +${streakBonus} Sparks.`);

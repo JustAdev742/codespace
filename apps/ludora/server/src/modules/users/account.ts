@@ -21,7 +21,7 @@ import { rolesOf, SESSION_COOKIE, verifySecret } from '../auth/service.ts';
  */
 
 /** Roles that run the platform. Their holders close their accounts through another administrator, so nobody locks staff out by accident. */
-const STAFF_ROLES = new Set(['tester', 'moderator', 'support', 'admin', 'superadmin']);
+const STAFF_ROLES = new Set(['tester', 'moderator', 'support', 'economist', 'admin', 'superadmin']);
 
 const deleteSchema = z.object({
   /** Required for accounts with a password. */
@@ -62,6 +62,8 @@ const OWN_ROWS: readonly [table: string, column: string][] = [
   ['class_teachers', 'user_id'],
   ['class_teachers', 'added_by'],
   ['class_group_members', 'user_id'],
+  ['class_rewards', 'student_id'],
+  ['class_rewards', 'teacher_id'],
   ['question_sets', 'owner_id'],
   ['custom_games', 'owner_id'],
   ['studio_drafts', 'owner_id'],
@@ -93,7 +95,7 @@ const OWN_ROWS: readonly [table: string, column: string][] = [
 const ROW_LIMIT = 5000;
 const DELETED = 'Deleted account';
 /** Never part of a download: secrets, and other people's identities in staff records. */
-const WITHHELD = /hash|token|secret|^actor_id$|^granted_by$|^resolved_by$|^hidden_by$/i;
+const WITHHELD = /hash|token|secret|^actor_id$|^granted_by$|^resolved_by$|^hidden_by$|^refunded_by$/i;
 
 export async function accountRoutes(app: FastifyInstance, deps: AppDeps) {
   // Public: who runs this copy, for the privacy policy and terms pages.
