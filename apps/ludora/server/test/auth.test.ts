@@ -197,7 +197,8 @@ describe('serving the built web app', () => {
       expect((await plain.app.inject({ method: 'GET', url: '/' })).body).toBe(html);
       for (const url of ['/', '/play']) {
         const body = (await school.app.inject({ method: 'GET', url })).body;
-        expect(body).toBe(html.replace('<html lang="en-GB">', '<html lang="en-GB" data-school="hills-grammar">'));
+        // The school's look, and the browser's bar in the school's green in both schemes (D60).
+        expect(body).toBe(html.replace('<html lang="en-GB">', '<html lang="en-GB" data-school="hills-grammar">').replaceAll(/content="#(0D1230|F3F5FB)"/g, 'content="#083A2B"'));
       }
     } finally {
       await plain.close();

@@ -35,7 +35,7 @@ import { PencilRuler } from 'lucide-react';
 import { useMe } from '../lib/session.ts';
 import { useOverview } from '../lib/queries.ts';
 import { api } from '../lib/api.ts';
-import { Logo, LogoMark, SchoolCrest } from '../art/icons.tsx';
+import { Logo, LogoMark, SchoolCrest, SchoolLogo } from '../art/icons.tsx';
 import { Glim } from '../art/glim/Glim.tsx';
 import { Amount, Skeleton } from '../ui/primitives.tsx';
 import { Button, buttonClass } from '../ui/Button.tsx';
@@ -350,7 +350,8 @@ export function Shell() {
         {/* Settings sits beside the logo, so the sections below fit a 768px-tall laptop without scrolling (D59). */}
         <div className="relative">
           <Link to="/" className="inline-flex rounded-[var(--radius-s)] px-2" aria-label="Ludora home">
-            <Logo size={26} stack />
+            {/* On a school's copy its logo starts the header beside this (D60), so the sidebar fits as in Ludora's own look. */}
+            <Logo size={26} school={false} />
           </Link>
           <SettingsChip />
         </div>
@@ -364,6 +365,8 @@ export function Shell() {
             <LogoMark size={34} />
             <SchoolCrest size={30} />
           </Link>
+          {/* A school's copy: its colour logo starts the header on a wide screen, level with Ludora's mark in the sidebar. */}
+          <SchoolLogo height={38} className="hidden lg:inline-flex" />
           <EnvironmentBadge />
           <div className="ml-auto flex items-center gap-2 sm:gap-3">
             <SearchLauncher />

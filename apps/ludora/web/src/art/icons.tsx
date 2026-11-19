@@ -125,27 +125,49 @@ export function LogoMark({ size = 32, className }: { size?: number; className?: 
  * the school's colour logo, never recoloured, redrawn or stretched: the widths are the files' own,
  * for a height of 153.
  */
-const SCHOOL_LOGO: Record<SchoolId, { lockup: string; crest: string; w: number; cw: number }> = {
-  'hills-grammar': { lockup: '/schools/hills-grammar/logo-colour.svg', crest: '/schools/hills-grammar/crest-colour.svg', w: 377, cw: 145 },
+const SCHOOL_LOGO: Record<SchoolId, { name: string; lockup: string; crest: string; w: number; cw: number }> = {
+  'hills-grammar': { name: 'The Hills Grammar School', lockup: '/schools/hills-grammar/logo-colour.svg', crest: '/schools/hills-grammar/crest-colour.svg', w: 377, cw: 145 },
 };
+
+/** The school's name as it writes it, for the school's copy (null on Ludora's own). */
+export function schoolName(): string | null {
+  const school = schoolLook();
+  return school ? SCHOOL_LOGO[school].name : null;
+}
 
 /*
  * The colour logo has near-black lettering and a bottle-green crest, so it only reads on a light
- * ground. Everywhere it shows (the sidebar, sign-in, the join page, the game bar, the phone header)
+ * ground. Everywhere it shows (the page header, sign-in, the join page, the game bar, the phone header)
  * is the dark stage in both themes, so it always stands on a warm-white plate with clear space
  * round it (`.school-plate` in styles/schools.css): lettering 16:1 and crest green 9.8:1 on the
  * plate; the plate itself is 12.5:1 against the chrome.
  */
-function SchoolLockup({ school, height, pad }: { school: SchoolId; height: number; pad: string }) {
+function SchoolLockup({ school, height, pad, label = false, className = '', imgClassName = '' }: { school: SchoolId; height: number; pad: string; label?: boolean; className?: string; imgClassName?: string }) {
   const l = SCHOOL_LOGO[school];
   return (
-    <span className="school-plate rounded-[var(--radius-m)]" style={{ padding: pad }}>
-      <img src={l.lockup} alt="" width={Math.round((height * l.w) / 153)} height={height} className="block" />
+    <span className={`school-plate rounded-[var(--radius-m)] ${className}`} style={{ padding: pad }}>
+      <img src={l.lockup} alt={label ? l.name : ''} width={Math.round((height * l.w) / 153)} height={height} className={`block ${imgClassName}`} />
     </span>
   );
 }
 
-export function Logo({ size = 28, stack = false, className }: { size?: number; stack?: boolean; className?: string }) {
+/**
+ * The school's colour logo on its plate, on its own: at the start of the page header on a wide screen
+ * and in the game bar on the board. Named for screen readers by the school's name, unless it sits in a
+ * link or beside words that already say it (`decorative`). Nothing on Ludora's own look.
+ */
+export function SchoolLogo({ height = 36, className = '', imgClassName = '', decorative = false }: { height?: number; className?: string; imgClassName?: string; decorative?: boolean }) {
+  const school = schoolLook();
+  if (!school) return null;
+  const pad = `${Math.round(height * 0.14)}px ${Math.round(height * 0.24)}px`;
+  return <SchoolLockup school={school} height={height} pad={pad} label={!decorative} className={className} imgClassName={imgClassName} />;
+}
+
+/**
+ * Ludora's mark and name, and on a school's copy the school's logo beside it. `school={false}` leaves the
+ * school's logo out where the page shows it elsewhere (the sidebar: it is at the start of the header).
+ */
+export function Logo({ size = 28, school: withSchool = true, className }: { size?: number; school?: boolean; className?: string }) {
   const school = schoolLook();
   const ludora = (
     <span className="inline-flex items-center gap-2">
@@ -155,16 +177,7 @@ export function Logo({ size = 28, stack = false, className }: { size?: number; s
       </span>
     </span>
   );
-  if (!school) return <span className={`inline-flex ${className ?? ''}`}>{ludora}</span>;
-  // Stacked where the width is short (the sidebar): the school's logo under Ludora's, as wide as the column.
-  if (stack) {
-    return (
-      <span className={`inline-flex flex-col items-start gap-3 ${className ?? ''}`}>
-        {ludora}
-        <SchoolLockup school={school} height={Math.round(size * 2.5)} pad="10px 14px" />
-      </span>
-    );
-  }
+  if (!school || !withSchool) return <span className={`inline-flex ${className ?? ''}`}>{ludora}</span>;
   return (
     <span className={`inline-flex items-center gap-3 ${className ?? ''}`}>
       {ludora}

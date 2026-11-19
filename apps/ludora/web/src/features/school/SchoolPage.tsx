@@ -10,6 +10,7 @@ import { Button, ButtonLink } from '../../ui/Button.tsx';
 import { Segmented } from '../../ui/Segmented.tsx';
 import { errorText, usePageTitle } from '../reports/reportUi.tsx';
 import { HouseCrest } from './emblems.tsx';
+import { SchoolCrest, schoolName } from '../../art/icons.tsx';
 import { HouseBoard, YearTable } from './Standings.tsx';
 import { CupsPanel } from './Cups.tsx';
 import { CompetePanel } from './Compete.tsx';
@@ -182,6 +183,15 @@ export default function SchoolPage() {
     <>
       <PageHeader
         title="School"
+        // On a school's own copy this page is that school's: its crest and name above the heading.
+        eyebrow={
+          schoolName() ? (
+            <span className="flex items-center gap-2.5 text-base text-text-2">
+              <SchoolCrest size={34} />
+              {schoolName()}
+            </span>
+          ) : undefined
+        }
         description="Houses, house points, cups and competitions across the whole school."
         actions={
           <>

@@ -10,6 +10,7 @@ import { errorText } from '../reports/reportUi.tsx';
 import { classKeys, type ClassMember, type LoginCard } from './classData.ts';
 import { parseNames } from './classLogic.ts';
 import { PrintSheet, usePrinting } from './PrintSheet.tsx';
+import { SchoolCrest, schoolName } from '../../art/icons.tsx';
 
 /*
  * Class logins: the teacher pastes first names (or imports a CSV from the school's
@@ -26,8 +27,16 @@ function signInAddress(): string {
 
 /** One card: big, plain type, so a seven-year-old can copy it at a laptop. */
 function Card({ card, className }: { card: LoginCard; className: string }) {
+  const school = schoolName();
   return (
     <div className="print-avoid-break rounded-[var(--radius-m)] border-2 border-dashed border-line p-4">
+      {school ? (
+        // On a school's copy the card carries its crest and name, so a child knows what it is for at a glance.
+        <p className="mb-2 flex items-center gap-2 text-sm font-semibold text-text-2">
+          <SchoolCrest size={32} />
+          <span className="min-w-0">{school}</span>
+        </p>
+      ) : null}
       <p className="text-xs text-text-3">Ludora, {className}</p>
       <p className="mt-1 font-display text-2xl leading-tight font-bold break-words text-text">{card.displayName}</p>
       <dl className="mt-3 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-sm">

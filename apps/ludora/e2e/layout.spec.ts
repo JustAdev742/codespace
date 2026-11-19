@@ -41,11 +41,10 @@ test('every section in the navigation says what you do there, and a student’s 
   for (const link of await nav.getByRole('link').all()) expect(await link.getAttribute('aria-describedby'), await link.innerText()).toBeTruthy();
   // Teachers' sections are not offered to a student.
   await expect(nav.getByRole('link', { name: 'Lessons' })).toHaveCount(0);
-  // In Ludora's own look the whole sidebar shows at 1366x768. A school's logo under Ludora's takes more room.
-  if (!process.env.E2E_SCHOOL_THEME) {
-    const extra = await page.locator('aside').evaluate((el) => el.scrollHeight - el.clientHeight);
-    expect(extra, 'the sidebar scrolls').toBeLessThanOrEqual(0);
-  }
+  // The whole sidebar shows at 1366x768, in a school's look too: there the school's logo starts the header (D60).
+  const extra = await page.locator('aside').evaluate((el) => el.scrollHeight - el.clientHeight);
+  expect(extra, 'the sidebar scrolls').toBeLessThanOrEqual(0);
+  if (process.env.E2E_SCHOOL_THEME) await expect(page.getByRole('banner').getByRole('img', { name: /School$/ })).toBeVisible();
   // Settings is the gear by the logo.
   await page.locator('aside').getByRole('link', { name: 'Settings', exact: true }).click();
   await expect(page.getByRole('heading', { level: 1, name: 'Settings' })).toBeVisible();
