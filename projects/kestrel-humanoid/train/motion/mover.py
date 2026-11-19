@@ -30,7 +30,22 @@ PLAN_DT = 0.01                     # footsteps and centre of mass: 100 Hz
 MATCH_DT = 0.02                    # human motion: 50 Hz
 REACH_SPEED = 0.6                  # m/s: how fast a hand target moves
 QD_MAX = 6.0                       # rad/s: largest target joint speed taken from the human motion
-LIMITS = dict(vx=(-0.15, 0.5), vy=(-0.1, 0.1), wz=(-0.5, 0.5))
+# the walking envelope the soak tests found reliable (random intents for hours: 0.3-0.5 m/s with turns fell often)
+LIMITS = dict(vx=(-0.15, 0.35), vy=(-0.1, 0.1), wz=(-0.45, 0.45))
+
+
+def limit_command(vx, vy, wz):
+    """Clamp each part, then share one effort budget: going forward, sideways and turning at full rate all at once is
+    scaled down (an ellipsoid, as most legged robots do)."""
+    vx = float(np.clip(vx, *LIMITS["vx"]))
+    vy = float(np.clip(vy, *LIMITS["vy"]))
+    wz = float(np.clip(wz, *LIMITS["wz"]))
+    e = (vx / (LIMITS["vx"][1] if vx >= 0 else -LIMITS["vx"][0])) ** 2 + (vy / LIMITS["vy"][1]) ** 2 + \
+        (wz / LIMITS["wz"][1]) ** 2
+    if e > 1.0:
+        k = 1.0 / math.sqrt(e)
+        vx, vy, wz = vx * k, vy * k, wz * k
+    return vx, vy, wz
 
 
 def nominal_pose(names):
@@ -120,9 +135,7 @@ class Mover:
         self.crouch = float(np.clip(crouch, 0.0, 0.25))
         self.lean = float(np.clip(lean, -0.3, 0.5))
         self.look = float(np.clip(look, -0.6, 0.6))
-        vx = float(np.clip(vx, *LIMITS["vx"]))
-        vy = float(np.clip(vy, *LIMITS["vy"]))
-        wz = float(np.clip(wz, *LIMITS["wz"]))
+        vx, vy, wz = limit_command(vx, vy, wz)
         self.intent = (action, vx, vy, wz, style)
         walking = action == "walk" and (abs(vx) + abs(vy) + abs(wz)) > 1e-3
         self.walker.set_command(vx, vy, wz) if walking else self.walker.set_command(0, 0, 0)
