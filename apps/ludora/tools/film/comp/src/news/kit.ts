@@ -183,13 +183,13 @@ export function logoTile(size: number) {
 
 /** The seven uniforms of The Hills Grammar School as the game dresses them, with the years that wear each. */
 export const UNIFORMS = [
-  { id: 'kinder', years: 'Kindergarten to Year 2' },
+  { id: 'kinder', years: 'Kindergarten\nto Year 2' },
   { id: 'junior-green', years: 'Years 3 to 6' },
-  { id: 'junior-grey', years: 'Years 3 to 6, grey blazer' },
+  { id: 'junior-grey', years: 'Years 3 to 6\ngrey blazer' },
   { id: 'senior-green', years: 'Years 7 to 12' },
-  { id: 'senior-grey', years: 'Years 7 to 12, grey blazer' },
-  { id: 'sport-junior', years: 'Sport, to Year 6' },
-  { id: 'sport', years: 'Sport, Years 7 to 12' },
+  { id: 'senior-grey', years: 'Years 7 to 12\ngrey blazer' },
+  { id: 'sport-junior', years: 'Sport\nto Year 6' },
+  { id: 'sport', years: 'Sport\nYears 7 to 12' },
 ] as const;
 export type Uniform = (typeof UNIFORMS)[number]['id'];
 /** The school's own colours for paper and light. */

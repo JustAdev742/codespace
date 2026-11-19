@@ -106,7 +106,7 @@ export async function calm(film: Film): Promise<Shot[]> {
       d1.show(t - 0.3); d2.show(t - 1.0);
       const since = t - LEAD - (TAP - FROM) / 30;
       touch.visible = since >= 0 && since < 0.6;
-      touch.scale.setScalar(lerp(50, 460, ease.outCubic(seg(since, 0, 0.55))));
+      touch.scale.setScalar(lerp(40, 300, ease.outCubic(seg(since, 0, 0.55))));
       touch.material.uniforms.uP!.value = 1;
       touch.material.uniforms.uOpacity!.value = (1 - seg(since, 0.05, 0.55)) * 0.8;
       // Out to the next scene: the last quarter second slides away.

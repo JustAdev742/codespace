@@ -10,9 +10,9 @@ const FLOOR = -330;
 
 export async function school(film: Film): Promise<Shot[]> {
   const { stage } = film;
-  const [light, dark, lobby, cards, uniform] = await Promise.all(['landing-light', 'landing-dark', 'host-lobby', 'class-logins', 'settings-uniform'].map(still));
+  const [light, dark, lobby, cards, uniform] = await Promise.all(['landing-light', 'rewards', 'host-lobby', 'class-logins', 'settings-uniform'].map(still));
 
-  /* ---- bar 27: the school's colours, light or dark ---- */
+  /* ---- bar 27: the school's colours, on the front page and on a teacher's page ---- */
   const A = new Group(), hudA = new Group();
   const day = picture(light, 1040, { rim: 3, glow: '#0b6b4b' });
   const night = picture(dark, 1040, { rim: 3, rimColor: '#bfe5d0', glow: '#0b6b4b' });
@@ -20,7 +20,7 @@ export async function school(film: Film): Promise<Shot[]> {
   A.add(glow(2600, '#0b6b4b', 0.7), day, night);
   const tagA = place(plate('Your school’s copy', { size: 60, bg: C.cream }), -900, 470);
   const a1 = line('In the school’s colours,', -900, -360, { align: 'left', size: 92 });
-  const a2 = line('light or dark.', -900, -360, { align: 'left', size: 92, color: C.mint });
+  const a2 = line('on every page.', -900, -360, { align: 'left', size: 92, color: C.mint });
   hudA.add(tagA.mesh, a1.group, a2.group);
   a2.group.position.x = -900 + a1.width + 30;
   const sA: Shot = {
@@ -47,7 +47,7 @@ export async function school(film: Film): Promise<Shot[]> {
   const who = ['glim-sprig', 'glim-pebblet', 'glim-mossbun', 'glim-dandelump', 'glim-capling', 'glim-pebblet', 'glim-sprig'];
   const STEP = 1.0; // the first steps forward a second in (bar 28, the third beat), then one every half second
   const line7 = UNIFORMS.map((u, i) => {
-    const x = -840 + i * 280;
+    const x = -765 + i * 255;
     const a = new Actor(who[i]!, 235, u.id);
     const at = STEP + i * 0.5;
     a.path = (t) => {
@@ -58,10 +58,13 @@ export async function school(film: Film): Promise<Shot[]> {
     a.cue(at + 0.45, i % 2 ? 'wave' : 'cheer').cue(3.6, 'celebrate');
     B.add(a);
     // Which years wear it, under each one.
-    const tag = text(u.years, { size: 27, font: 'lato', weight: 700, color: C.cream, shadow: true, shadowColor: 'rgba(1,14,9,0.9)' });
-    tag.position.set(x, FLOOR - 62, 200);
-    B.add(tag);
-    return { a, tag, at };
+    const tags = u.years.split('\n').map((words, n) => {
+      const tag = text(words, { size: n ? 24 : 28, font: 'lato', weight: n ? 400 : 700, color: n ? C.mint : C.cream, shadow: true, shadowColor: 'rgba(1,14,9,0.9)' });
+      tag.position.set(x, FLOOR - 58 - n * 36, 200);
+      B.add(tag);
+      return tag;
+    });
+    return { a, tags, at };
   });
   await Promise.all(line7.map((m) => m.a.glim.ready));
   const b1 = line('In the school’s uniform,', 0, 400, { size: 88 });
@@ -73,12 +76,14 @@ export async function school(film: Film): Promise<Shot[]> {
       film.energy = 1; film.warm = 0.9;
       for (const m of line7) {
         m.a.seek(t);
-        m.tag.material.opacity = seg(t, m.at + 0.3, m.at + 0.55);
-        m.tag.visible = m.tag.material.opacity > 0.01;
+        for (const tag of m.tags) {
+          tag.material.opacity = seg(t, m.at + 0.3, m.at + 0.55);
+          tag.visible = tag.material.opacity > 0.01;
+        }
       }
       b1.show(t - 0.25); b2.show(t - 0.6);
       lamps.forEach((l, i) => { l.rotation.z = Math.sin(t * 0.9 + i * 1.7) * 0.25; });
-      stage.view({ y: -30, dolly: lerp(-220, 0, ease.outCubic(seg(t, 0, 4))) + punch(t) * 80, orbitY: lerp(-0.06, 0.06, ease.inOutSine(seg(t, 0, 4))), orbitX: 0.03 });
+      stage.view({ y: -90, dolly: lerp(-260, -90, ease.outCubic(seg(t, 0, 4))) + punch(t) * 80, orbitY: lerp(-0.06, 0.06, ease.inOutSine(seg(t, 0, 4))), orbitX: 0.03 });
       stage.bloom.strength = 0.38;
     },
   };

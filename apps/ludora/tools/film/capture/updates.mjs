@@ -55,7 +55,8 @@ async function ada(browser) {
 async function home(browser, who) {
   const s = await signIn(browser, who, { viewport: BIG, deviceScaleFactor: 1.5, colorScheme: 'light', init: WANT_3D });
   const page = s.page;
-  await open(page, '/', page.getByRole('navigation', { name: 'Places to go' }), { settleFrames: 30 });
+  // The signs stand around the scene, so the list that holds them has no size of its own: wait for a sign.
+  await open(page, '/', page.getByRole('navigation', { name: 'Places to go' }).getByRole('link').first(), { settleFrames: 30 });
   // The scene arrives in an idle moment after the flat menu: keep the clock moving until its canvas is drawing.
   for (let i = 0; i < 260; i++) {
     await page.evaluate((ms) => window.__film.step(ms), 1000 / 30);
@@ -266,7 +267,9 @@ async function economy(browser, who) {
   await rec.until(() => teacher.page.getByText(/440 left of 500/).isVisible(), { max: 240, extra: 70 });
   rec.done();
   await pump([teacher.page], teacher.page.getByRole('radio', { name: /One student/ }).click());
-  await pump([teacher.page], teacher.page.getByLabel('Student', { exact: true }).selectOption({ label: 'Ada Bloom' }));
+  // Her entry also says what she has had this week, so it is found by her name and chosen by its value.
+  const adaOption = await teacher.page.getByLabel('Student', { exact: true }).locator('option', { hasText: 'Ada Bloom' }).getAttribute('value');
+  await pump([teacher.page], teacher.page.getByLabel('Student', { exact: true }).selectOption(adaOption ?? ''));
   await pump([teacher.page], teacher.page.getByLabel('Sparks', { exact: true }).fill('20'));
   await pump([teacher.page], teacher.page.getByRole('button', { name: 'Brilliant answer' }).click());
   await pump([teacher.page], teacher.page.getByRole('button', { name: 'Give 20 Sparks to Ada Bloom' }).click());
@@ -354,9 +357,14 @@ async function school(browser) {
   // Class login cards, as they print.
   const t = await account(browser, { accountType: 'teacher', displayName: 'Ms Rivera', viewport: BIG, deviceScaleFactor: 2, colorScheme: 'light', filmClock: false });
   const made = await post(t.page, '/api/classes', { name: 'Year 5 Willow' });
-  await t.page.goto(`/classes/${made.class.id}?tab=logins`).catch(() => {});
-  await t.page.waitForTimeout(1500);
-  await still(t.page, 'class-logins');
+  await t.page.goto(`/classes/${made.class.id}?tab=students`);
+  await t.page.getByRole('button', { name: 'Make class logins' }).click();
+  await t.page.getByLabel('First names').fill('Amira\nBen\nChloe\nDev');
+  await t.page.getByRole('button', { name: 'Make 4 logins' }).click();
+  const cards = t.page.getByRole('list', { name: 'Login cards' });
+  await cards.waitFor();
+  await t.page.waitForTimeout(900);
+  await still(t.page, 'class-logins', { clip: await cards.boundingBox() ?? undefined });
   await t.context.close();
 }
 
