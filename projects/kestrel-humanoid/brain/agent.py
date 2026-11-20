@@ -202,8 +202,11 @@ class RobotAgent:
         places = sorted(set(h.b.rooms) | set(h.b.furniture) | set(h.b.containers) | set(h.b.chairs) |
                         {"you", "floor"} | set(n for n in h.b.people if n != "sam"))
 
+        STRICT = {"go_to", "pick_up", "put", "press", "fill", "pour", "sit", "walk_to", "shuffle", "move_hand", "crouch",
+                  "use", "inspect", "move_body", "run_skill", "save_skill", "done"}      # the API allows 20 strict tools
+
         def t(name, desc, props, req=()):
-            return {"name": name, "description": desc, "strict": True,
+            return {"name": name, "description": desc, "strict": name in STRICT,
                     "input_schema": {"type": "object", "properties": props, "required": list(req) or list(props),
                                      "additionalProperties": False}}
         S = {"type": "string"}

@@ -329,27 +329,81 @@ whole Saturday list in a row.
 python live.py --claude --agent
 ```
 
-With `--agent`, what you say becomes a goal for `agent.py` instead of a fixed command. Nothing is scripted. At every
-step Claude gets two pictures, the robot's head camera and a view from behind it, plus a line of state (where it is,
-what it holds, which appliances are on). It chooses the next action from small tools: go somewhere, look around,
-pick up, put down, drop into, press a switch, fill, pour, wait, say something. Then it sees what happened.
+**The principle.** The robot is not a set of scripts. The chores above are a *kickstart*: examples written by its
+builders. Claude, as the robot's mind, decides what to do, sees what happens, and keeps what works. Most of what you
+will ask it has no script at all, and that is the point: it should be able to cook a steak, clean the bathroom, or
+do something nobody thought of, by working it out.
 
-The chores above are **starter skills**, not the only way to do things. Claude can run one as it is, read its steps
-and change them, or ignore it and work something out. When its own way works, it saves the steps as a **learned
-skill**, and each skill counts how often it has worked. When something fails, it writes a **lesson** ("put the pot
-down before pressing the hob"), and every later task starts with the lessons it has. Skills, lessons and a short
-log of past tasks are kept in `data/robot_memory.json`, which is personal and gitignored, so the robot gets better
-the more you use it. This is learning by memory, not by changing a network's weights. The motion generator learns by
-practice instead (`train/motion/practice.py`).
+**How it works.** With `--agent`, what you say becomes a goal for `agent.py`. At every step Claude gets two pictures,
+the robot's head camera and a view from behind it, plus a line of state (where it is, what it holds and how heavy,
+which appliances are on). It chooses the next action and then sees the result. It has two kinds of tools:
+
+* **errand tools** for common actions: go somewhere, pick up, put down or drop in, press a switch, fill at the tap,
+  pour, sit, say something;
+* **body tools**, the parts those are made of: walk to a point, shuffle, move the hook to a point, grip whatever
+  handle is at the hook, let go, crouch, stand up. With these it can do things no errand tool covers;
+* plus **use** (use what it holds on something: rub it back and forth, spray, slide it under and lift), **inspect**
+  (look closely, with a thermometer for food), and **move_body** (any arm movement described in words, made by the
+  motion generator; see below).
+
+**It learns by memory.** Starter skills can be read (`show_skill`) but not run as a whole, so Claude does the work
+itself. When its own way works, it saves the steps as a **learned skill**, with notes on what mattered, and replays
+it next time (`run_skill`), counting how often each skill works and fails. When something fails, it writes a
+**lesson**, and every later task starts with all its lessons. Skills, lessons and a log of past tasks live in
+`data/robot_memory.json`, which is personal and gitignored, so the robot gets better the more you use it. This is
+learning by memory, not by changing a network's weights. The motion generator learns by practice instead
+(`train/motion/practice.py`).
+
+**Free time.** Say "do whatever you want" and Claude chooses its own activities: practise something that failed,
+try something new, improve a skill, or see to something that needs doing. The house starts lived-in, with some
+grime in the bathroom and dust on a floor. Each activity costs API tokens, so there is a minute between activities
+and at most 10 per session (`--free-limit`).
+
+### A world that works by general rules
+
+For the robot to learn new jobs, the house has to behave the same way for everything, not have a rule per chore.
+`world.py` holds those rules, and nothing in it describes how to do any job:
+
+* **heat**: anything on a lit hob heats up. Water stops at 100 C; a dry pan reaches about 230 C. Off the heat,
+  things cool towards room temperature;
+* **contents**: containers hold water and food, and pouring moves them (temperatures mix). Hot water on a mug's tea
+  bag makes tea; water on a plant waters it;
+* **food** cooks by temperature and time, and you can see it. Pasta needs boiling water: about 40 s, longer turns
+  it to mush. A steak browns on the side facing down in a hot pan while its inside cooks through (rare 45-52 C,
+  medium 57-63 C, well done above 68 C). Left on one side too long it burns, so it has to be turned over;
+* **grime** sits on surfaces (the bath, the basin, the toilet, worktops, tables). Something that scrubs, rubbed over
+  it while touching, wears it away. Sprayed with cleaner first, it comes off twice as fast;
+* **tools** have properties: the scrub brush scrubs, the spray bottle sprays, the spatula turns food over, the stick
+  vacuum picks up dust. The wrong tool does nothing, and the robot finds that out by trying.
+
+New things to work with: a frying pan, a steak on a board, a spatula, a plate on the dining table, and a scrub brush
+and a spray bottle in the bathroom.
+
+`world_check.py` confirms the jobs are possible with the robot's own actions. The robot never sees this file; it is
+a test of the house, not a skill. Cleaning the bathroom was done: spray, then scrub six patches clean, with no fall.
+
+### Does it learn? (`learn_test.py`)
+
+`python learn_test.py --task steak --attempts 3` gives Claude a job with no starter skill, several times, starting
+from an empty memory, so whatever the later attempts know, the earlier ones taught them. The house scores every
+attempt from its state (is the steak medium and on the plate, is the bathroom clean), never from the steps taken,
+and the tokens and their cost are counted. Jobs: `steak`, `bathroom`, `wipe`.
+
+<!-- learning results -->
+
+### Which Claude model does what
+
+| Job | Default model | Why |
+|---|---|---|
+| Talk mode (`--claude`): what you say becomes actions | Claude Haiku 5.5 | quick routing work; fast and cheap |
+| The robot's mind (`--claude --agent`): sees every step, plans, learns | Claude Sonnet 5.5 | near-Opus at agentic work, half the price |
+| The G1's mover (`live_mover.py --claude`): composes moves, checks pictures | Claude Sonnet 5.5 | judging a picture and adjusting |
+
+`--agent-model claude-opus-5-5` (or `--claude-model`) switches to Opus for harder work. Opus costs about twice as
+much as Sonnet. Your key goes in `anthropic_key.txt` next to `live.py`, which is gitignored and never committed.
 
 The safety supervisor still checks every step, and no tool strikes anything. "Stop", the alarm and refusals skip the
 agent and go straight to the robot.
-
-Cost and limits: every step sends two small images (480 x 360) and the conversation so far, so a chore of 20 to 40
-steps costs noticeably more than one command in `--claude` mode. Plain commands still work if the API is
-unreachable. It has been tested here with a stand-in for the API that plays the role of Claude (it saw both images
-at every step, moved the mug, saved a skill and a lesson). It has not been run against the real API in this
-environment, which has no key.
 
 ### Run it on your own computer
 

@@ -110,6 +110,10 @@ class Live:
         self.HS, self.HB = HS, HB
         self.h = h = HS.House(seed=self.a.seed, chase_size=(self.a.width, self.a.height))
         h.reset()
+        import random as _r
+        _rng = _r.Random(self.a.seed)                      # a lived-in house: some grime and dust about
+        h.world.soil(["bath", "basin", "toilet", "dining table"], 6, _rng)
+        h.set_dirt(h.dirt_points(_rng.choice(["living room", "dining room", "bedroom"]), 30, _rng))
         self.bot = bot = HB.HouseBot(h, log=lambda line: None if "KESTREL:" in line else self.push("log", line.strip()),
                                      seed=self.a.seed)
         bot.on_say = lambda line: self.push("robot", line)
@@ -148,7 +152,10 @@ class Live:
                 elif not self.q.empty():
                     self.run(self.q.get())
                 elif self.free and not bot.sup.latched:
-                    self.free_will()
+                    if getattr(self, "agent_mode", False):
+                        self.agent_free_time()
+                    else:
+                        self.free_will()
                 else:
                     self.task = "e-stop: say 'reset'" if bot.sup.latched else ("sitting" if bot.seated else "idle")
                     if bot.seated:
@@ -210,8 +217,8 @@ class Live:
         if getattr(self, "agent_mode", False):           # Claude as the robot's mind: what you say becomes its goal
             from house_lang import parse
             first = parse(text, self.h, self.lex)
-            if first and first[0]["do"] in ("stop", "alarm", "refuse", "reset"):
-                acts = first
+            if first and first[0]["do"] in ("stop", "alarm", "refuse", "reset", "free"):
+                acts = first                                # "do whatever you want": free time, Claude chooses
             else:
                 acts = [{"do": "agent", "goal": text}]
         elif self.claude is not None:
@@ -515,6 +522,27 @@ class Live:
             bot.say("tidy_done")
         return done
 
+    FREE_GOAL = ("Free time: nobody needs anything right now. Choose something to do yourself - practise something that "
+                 "failed before, try something you have never done, improve one of your skills, or see to something in "
+                 "the house that needs doing. One activity, then done.")
+
+    def agent_free_time(self):
+        """Free time in agent mode: Claude picks the activity (each one costs API tokens, so there is a pause between
+        them and a cap per session: --free-limit)."""
+        n = getattr(self, "free_done", 0)
+        if n >= self.a.free_limit:
+            if n == self.a.free_limit:
+                self.push("robot", f"(I've had {n} free-time activities this session: resting now. --free-limit to change.)")
+                self.free_done = n + 1
+            self.bot.stand_still(0.5) if not self.bot.seated else self.bot.rest(0.5)
+            return
+        if self.h.t - getattr(self, "free_last", -1e9) < 60.0:   # a minute between activities
+            self.bot.stand_still(0.5) if not self.bot.seated else self.bot.rest(0.5)
+            return
+        self.free_done = n + 1
+        self.run_agent(self.FREE_GOAL)
+        self.free_last = self.h.t
+
     def free_will(self):
         """Its own choice: activities scored from drives (tiredness, tidiness, sociability, curiosity, duty), each with
         a memory of when it last did it so it does not repeat itself, and some randomness."""
@@ -807,6 +835,8 @@ def main():
     ap.add_argument("--agent-model", default="claude-sonnet-5-5",
                     help="model for agent mode (--claude --agent): sees every step, plans, learns "
                          "(claude-opus-5-5 for harder tasks, at about twice the cost)")
+    ap.add_argument("--free-limit", type=int, default=10,
+                    help="agent mode: at most this many free-time activities per session (each costs API tokens)")
     ap.add_argument("--agent", action="store_true",
                     help="with --claude: Claude is the robot's mind - it sees the camera every step, chooses small actions, "
                          "and learns skills and lessons across sessions (agent.py)")

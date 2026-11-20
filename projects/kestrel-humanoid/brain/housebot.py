@@ -1125,6 +1125,77 @@ class HouseBot:
         mark = (x + fwd * math.cos(yaw) - lft * math.sin(yaw), y + fwd * math.sin(yaw) + lft * math.cos(yaw))
         return self.align(mark, wrap(yaw + math.radians(turn_deg)), tol=0.04, max_s=12.0)
 
+    def use(self, target):
+        """Use what it holds on something: bring it there and do what such a thing is for - rub it back and forth
+        (anything held is rubbed: whether that cleans depends on the thing), spray, or slide it under and lift.
+        What happens is the house's business (world.py): this only does the motion. Returns (ok, what happened)."""
+        import world as WR
+        h = self.h
+        tool = h.holding
+        if tool is None:
+            return False, "holding nothing to use"
+        props = WR.TOOLS.get(tool, set())
+        words = {w: n for n, o in HS.OBJECTS.items() for w in o[5]}
+        target = words.get(target, target)
+        W = h.world
+        if target in WR.SURFACES or target in h.b.rooms:      # a surface (or a room): its nearest grimy patch first
+            on = [k for k in range(WR.N_GRIME) if W.grime[k] > 0.08 and (W.grime_on[k] == target or
+                                                                         WR.SURFACE_ROOM.get(W.grime_on[k]) == target)]
+            x, y, _ = h.robot_pose()
+            if on:
+                k = min(on, key=lambda k: math.dist((x, y), W.grime_xyz[k][:2]))
+                xy, z_top = tuple(W.grime_xyz[k][:2]), float(W.grime_xyz[k][2]) - 0.002
+            elif target in WR.SURFACES:
+                x0, x1, y0, y1, z = WR.SURFACES[target]
+                xy, z_top = ((x0 + x1) / 2, (y0 + y1) / 2), HS.Z0 + z
+            else:
+                return False, f"nothing grimy in the {target}"
+        elif target in h.b.furniture:
+            f = h.b.furniture[target]
+            xy, z_top = f["xy"], f["top"]
+        elif target in HS.OBJECTS:
+            p = h.obj_pos(target)
+            xy, z_top = (p[0], p[1]), p[2] + HS.OBJECTS[target][1][-1]
+        else:
+            return False, f"I don't know what '{target}' is"
+        clear = 0.10 if "sprays" in props else 0.0
+        if not self.hold_over(xy, z_top, secs=0.6, clear=clear, near_ok=0.12):
+            return False, f"couldn't bring the {HS.OBJECTS[tool][5][0]} to the {target}"
+        anchor = h.robot_pose()
+        x, y, yaw = anchor
+        hook = h.hook_world()
+        if "sprays" in props or "flips" in props:
+            if "flips" in props:                            # slide under, then lift
+                low_hook = hook + [0, 0, -0.03]
+                high_hook = hook + [0, 0, 0.08]
+                for tgt, secs in ((low_hook, 0.6), (high_hook, 0.8)):
+                    sh, el, _ = h.ik_right(tgt)
+                    kf = [(0.0, h.arms_now()), (secs, [0.0, sh, -0.2, el])]
+                    for k in range(int((secs + 0.2) / E.DT)):
+                        self.arms = list(SK.keyframes(kf, k * E.DT))
+                        self.hold_step(anchor)
+                result = W.use(tool, xy, z_top)
+            else:
+                result = W.use(tool, xy, z_top)
+        else:                                               # rub it back and forth along the arm's swing
+            fwd = np.array([math.cos(yaw), math.sin(yaw), 0.0])
+            pts = [hook + 0.07 * fwd + [0, 0, -0.008], hook - 0.07 * fwd + [0, 0, -0.008]]
+            sols = [h.ik_right(p)[:2] for p in pts]
+            before = W.grime.copy()
+            for k in range(int(5.0 / E.DT)):
+                ph = (k * E.DT / 0.5) % 2.0                     # 0.5 s each way
+                a, b = (sols[0], sols[1]) if ph < 1.0 else (sols[1], sols[0])
+                f = ph % 1.0
+                self.arms = [0.0, a[0] + (b[0] - a[0]) * f, -0.2, a[1] + (b[1] - a[1]) * f]
+                self.hold_step(anchor)
+            gone = int(((before > 0.08) & (W.grime <= 0.08)).sum())
+            less = float((before - W.grime).clip(0).sum())
+            result = (f"rubbed it back and forth for 5 s: {gone} patch(es) came clean" if gone else
+                      "rubbed it back and forth for 5 s: the grime is fading" if less > 0.05 else
+                      "rubbed it back and forth for 5 s: nothing changed")
+        self.retract()
+        return True, result
+
     def back_off(self, dist, max_s=5.0):
         x0, y0, _ = self.h.robot_pose()
         t0 = self.h.t

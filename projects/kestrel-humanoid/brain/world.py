@@ -10,9 +10,10 @@ the robot (Claude, in agent mode) has to work out what to do:
   of its water, mixing the temperatures. Hot water onto a tea bag (every mug has one) is tea; water on a plant waters it.
 * food cooks by its temperature over time, and it shows:
   - pasta cooks in boiling water (40 s cooked; much longer and it turns to mush);
-  - a steak browns on the side facing down in a hot pan, and its inside cooks through (rare at 45-52 C, medium at
-    57-63 C, well done above 68 C). A side left down too long burns, so it has to be turned over. Its colour changes
-    with how browned the side facing up is, so the camera shows it.
+  - a steak browns on the side facing down in a hot pan (browned after about 45 s, burnt after about 2 minutes
+    on one side) while its inside cooks through (rare at 45-52 C, medium at 57-63 C, well done above 68 C; medium
+    takes 3-4 minutes in a hot pan). It has to be turned over, and it keeps cooking in a hot pan after the hob is off.
+    Its colour shows how browned the side facing up is, so the camera sees it.
 * grime: dirty patches on surfaces (the bath, the basin, the toilet, worktops, tables). Rubbing something that scrubs
   over a patch, touching it and moving, wears it away; sprayed with cleaner first, it comes off twice as fast.
 * tools: what a thing does is a property, and it works through how it is used:
@@ -35,7 +36,8 @@ ROOM_T = 20.0
 
 # things to work with (merged into house.OBJECTS): shape, size, colour, kg, handle height above the middle, words, home
 NEW_OBJECTS = {
-    "pan": ("cylinder", (0.13, 0.025), (0.16, 0.16, 0.18, 1), 0.6, 0.15, ["frying pan", "pan", "skillet"], "kitchen counter"),
+    # the pan's carry handle stands high (0.30 m over its middle) so a spatula fits underneath it to turn food over
+    "pan": ("cylinder", (0.13, 0.025), (0.16, 0.16, 0.18, 1), 0.6, 0.30, ["frying pan", "pan", "skillet"], "kitchen counter"),
     "board": ("box", (0.10, 0.07, 0.015), (0.62, 0.45, 0.28, 1), 0.4, 0.16,
               ["board", "steak board", "chopping board", "steak", "meat"], "kitchen island"),
     "spatula": ("box", (0.05, 0.035, 0.008), (0.12, 0.12, 0.13, 1), 0.15, 0.20, ["spatula", "fish slice", "turner", "flipper"],
@@ -143,8 +145,8 @@ class World:
             if hob and on:
                 top = 100.0 if wet else 230.0
                 h.temp[n] = min(top, h.temp[n] + (2.5 if wet else 6.0) * dt)
-            else:
-                h.temp[n] = ROOM_T + (h.temp[n] - ROOM_T) * math.exp(-dt / 200.0)
+            else:                                                    # off the heat, a pan cools in a few minutes
+                h.temp[n] = ROOM_T + (h.temp[n] - ROOM_T) * math.exp(-dt / 120.0)
         for n in ("plate", "board"):
             h.temp[n] = ROOM_T + (h.temp[n] - ROOM_T) * math.exp(-dt / 200.0)
         # food takes its container's heat
@@ -152,9 +154,10 @@ class World:
         where = self.food_in["steak"]
         if where in ("pan", "pot"):
             tc = h.temp[where]
-            s["core"] += 0.004 * (tc - s["core"]) * dt * (1.6 if h.water.get(where, 0) > 0.2 else 1.0)
+            surface = min(tc, 100.0)                                 # a wet surface stays near 100 C however hot the pan
+            s["core"] += (0.006 if h.water.get(where, 0) > 0.2 else 0.004) * (surface - s["core"]) * dt
             if h.water.get(where, 0.0) <= 0.2:                       # dry heat browns the side that's down
-                s["sear"][s["down"]] += max(0.0, (tc - 120.0) / 80.0) * dt
+                s["sear"][s["down"]] += max(0.0, (tc - 120.0) / 160.0) * dt
         else:
             s["core"] += 0.002 * (ROOM_T - s["core"]) * dt
         if max(s["sear"]) > 90 and "steak burnt" not in self._said:
@@ -255,8 +258,9 @@ class World:
                        (" (boiling)" if h.temp.get("pot", 0) >= 99 else "") + "." + extra
             return f"pasta: in the {self.food_in['pasta']}." + extra
         if name in h.water or name in HEATS:
+            boiling = h.temp.get(name, 0) >= 99 and h.water.get(name, 0.0) > 0.05
             return (f"{name}: {h.water.get(name, 0.0):.2f} l of water, {h.temp.get(name, ROOM_T):.0f} C"
-                    + (" (boiling)" if h.temp.get(name, 0) >= 99 else "") + "."
+                    + (" (boiling)" if boiling else "") + "."
                     + (" There is tea in it." if getattr(h, "tea", {}).get(name) else ""))
         if name in SURFACES or name in ("bathroom", "kitchen", "dining room"):
             n = self.grime_left(surfaces=[name]) if name in SURFACES else self.grime_left(room=name)

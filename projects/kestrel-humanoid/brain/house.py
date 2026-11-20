@@ -365,7 +365,7 @@ OBJECTS = {
     "toolbox": ("box", (0.18, 0.08, 0.07), (0.80, 0.12, 0.10, 1), 1.4, 0.14, ["toolbox", "tool box", "red toolbox", "tools"], "study desk"),
     "can": ("cylinder", (0.09, 0.12), (0.20, 0.60, 0.25, 1), 0.4, 0.31, ["watering can", "can", "green can"], "patio"),
     # kitchen
-    "pot": ("cylinder", (0.12, 0.08), (0.72, 0.74, 0.78, 1), 0.7, 0.17, ["pot", "saucepan", "cooking pot", "pan"], "kitchen counter"),
+    "pot": ("cylinder", (0.12, 0.08), (0.72, 0.74, 0.78, 1), 0.7, 0.17, ["pot", "saucepan", "cooking pot"], "kitchen counter"),
     "pasta": ("box", (0.07, 0.035, 0.10), (0.95, 0.80, 0.20, 1), 0.5, 0.18, ["pasta", "spaghetti", "pasta box", "packet of pasta"], "kitchen counter"),
     "mug_red": ("cylinder", (0.045, 0.05), (0.85, 0.15, 0.12, 1), 0.3, 0.11, ["red mug", "mug", "cup", "red cup", "tea mug"], "kitchen counter"),
     "mug_blue": ("cylinder", (0.045, 0.05), (0.15, 0.35, 0.85, 1), 0.3, 0.11, ["blue mug", "blue cup"], "kitchen counter"),
@@ -383,6 +383,8 @@ OBJECTS = {
     "socks": ("box", (0.07, 0.05, 0.03), (0.55, 0.55, 0.58, 1), 0.15, 0.37, ["socks", "pair of socks"], "hamper"),
 }
 WATER_CAP = {"pot": 2.0, "kettle": 1.2, "can": 2.0, "mug_red": 0.3, "mug_blue": 0.3, "mug_green": 0.3, "mug_yellow": 0.3}
+import world as W                     # noqa: E402  (general rules: heat, food, grime, tools)
+OBJECTS.update(W.NEW_OBJECTS)
 COOK_S, WASH_S = 40.0, 30.0            # simulated cooking and washing times (a real one is minutes; the test is not)
 TOYS = ["teddy", "truck", "blocks", "ball"]
 CLOTHES = ["shirt", "jeans", "socks"]
@@ -660,6 +662,7 @@ def build():
 
     build_upper(b)
     build_extras(b)
+    W.build(b, Z0)
 
     # ---- objects to fetch (handles on top)
     grab_object(b, "kettle", 2.6, 0.62, Z0 + 0.9)
@@ -850,7 +853,9 @@ class House(SK.World):
         self.pile_gv = gid(mv, "uno_pile")
         self.base_mass = {n: float(m.body_mass[self.obj_body[n]]) for n in OBJECTS}
         self.base_inertia = {n: m.body_inertia[self.obj_body[n]].copy() for n in OBJECTS}
+        self.world = None
         self.reset_extras()
+        self.world = W.World(self, Z0)
 
     def reset_extras(self):
         """Appliances off, containers empty, no dust, hazards and visitors parked."""
@@ -870,6 +875,8 @@ class House(SK.World):
         self.dark = False
         self.hazards = []
         self.water_w = {}
+        if getattr(self, "world", None) is not None:
+            self.world.reset()
         for n in OBJECTS:
             m.body_mass[self.obj_body[n]] = self.base_mass[n]
             m.body_inertia[self.obj_body[n]] = self.base_inertia[n]
@@ -905,28 +912,26 @@ class House(SK.World):
         self.event(f"{name} {'on' if self.st[name] else 'off'}")
 
     def pour(self, src, dst):
-        """src held over dst long enough: what happens (pasta into the pot, tea into a mug, water on a plant)."""
-        if src == "pasta" and dst == "pot":
-            self.pot_pasta = True
-            self.event("pasta into the pot" + ("" if self.water["pot"] > 0.5 else " (no water in it!)"))
-            return True
-        if src == "kettle" and dst in MUGS:
-            ok = self.water["kettle"] >= 0.2 and self.temp["kettle"] >= 90
+        """src held over dst long enough: food and water move by the general rules (world.py) - pasta into the pot,
+        hot water onto a mug's tea bag (tea), water onto a plant, a steak into a pan or onto a plate."""
+        if isinstance(dst, int):                             # a plant
+            ok = self.water.get(src, 0.0) >= 0.15
             if ok:
-                self.water["kettle"] -= 0.2
-                self._set_mass("kettle")
-                self.tea[dst] = True
-            self.event(f"poured into the {dst.replace('_', ' ')}" + ("" if ok else " (but the kettle was not boiled)"))
-            return ok
-        if src == "can" and isinstance(dst, int):
-            ok = self.water["can"] >= 0.15
-            if ok:
-                self.water["can"] -= 0.15
-                self._set_mass("can")
+                self.water[src] -= 0.15
+                self._set_mass(src)
                 self.watered.add(dst)
-            self.event(f"watered plant {dst}" + ("" if ok else " (the can is empty)"))
+            self.event(f"watered plant {dst}" + ("" if ok else f" (the {src} has no water in it)"))
             return ok
-        return False
+        what = self.world.pour(src, dst)
+        self.pot_pasta = self.world.food_in["pasta"] == "pot"
+        if dst in MUGS and self.water[dst] >= 0.15 and self.temp[dst] >= 85.0 and not self.tea[dst]:
+            self.tea[dst] = True
+            what = (what or "") + "; tea made"
+        elif dst in MUGS and src == "kettle" and self.temp["kettle"] < 85.0:
+            what = (what or "") + " (but the kettle was not boiled)"
+        if what:
+            self.event(f"poured from the {src}: {what.lstrip('; ')}")
+        return what is not None
 
     def _set_mass(self, n):
         """Water's weight, as a downward force on the container (applied every step in step()). Changing body_mass at
@@ -935,6 +940,17 @@ class House(SK.World):
         (mj_setConst) resets other parts of the model. So the arm, the balance and 'too heavy' all feel the water's
         full weight; only its inertia is left out."""
         self.water_w[n] = 9.81 * self.water.get(n, 0.0)
+
+    def objects_half_h(self, n):
+        return OBJECTS[n][1][-1]
+
+    def obj_vel(self, n):
+        d = self.e.d[0]
+        a = self.e.m.jnt_dofadr[mujoco.mj_name2id(self.e.m, mujoco.mjtObj.mjOBJ_JOINT, f"{n}_free")]
+        return d.qvel[a:a + 3]
+
+    def water_cap(self, n):
+        return WATER_CAP.get(n, 0.0)
 
     def mass_of(self, n):
         return self.base_mass[n] + self.water.get(n, 0.0)
@@ -1017,7 +1033,7 @@ class House(SK.World):
                     self.burn_t += dt
                     if abs(self.burn_t - 8.0) < dt / 2:
                         self.event("the empty pot is burning")
-            else:
+            elif not any(self.on_zone(n, "hob") for n in W.HEATS if n != "pot"):
                 self.hob_empty_t += dt
                 if abs(self.hob_empty_t - 30.0) < dt / 2:
                     self.event("hob left on with nothing on it")
@@ -1046,6 +1062,8 @@ class House(SK.World):
                         self.mv.geom_pos[g] = (20.0, 20.0, -5.0)
         self._move_dog()
         self._move_visitor()
+        if self.world is not None:
+            self.world.tick(dt)
 
     def _move_dog(self):
         if not self.dog_on:
