@@ -199,6 +199,21 @@ stairs, built to test the robot the way a real home would:
   (Jordan stops for the robot), you, a visitor who rings at the front door, and a dog that wanders into the robot's
   way; a robot vacuum wandering the kitchen and dining area.
 
+**What it looks like** (`real_assets.py`, run once: `python real_assets.py`, about 110 MB into `data/real/`, not in
+git). Photographed surfaces (laminate, tiles, granite, carpet, painted walls, fabrics, wood, a stone worktop, with
+their relief and roughness maps), a real indoor environment for the sky and reflections, and 30 scanned or modelled
+pieces of furniture and household things from Poly Haven (all CC0): the sofa, armchairs, dining table and chairs,
+coffee table, TV cabinet, console table, bed, nightstands, wardrobe, bookshelf, desk, stools, pendant lamps, potted
+plants, and the kettle, pot, chopping board, plate, basket, toolbox and spray bottle the robot handles. Kitchen
+cabinets have doors, drawers and handles; walls have skirting boards; people have bodies, faces and hair instead of
+capsules; and they face the way they walk.
+
+Each model is **only the look**. It is fitted over the simple shape the physics uses for that piece, and only the
+visual model carries it; the physics model is byte-for-byte the same with or without the models. So the robot can't
+reach through a table that it sees as solid, and nothing the robot sees sticks out past what it can bump into. Its
+rays (the depth sense) still hit the simple shapes. Without the download, or with `KESTREL_SKINS=0`, the house uses
+plain shapes and its own textures; everything else works the same.
+
 ![Up the stairs](runs/house_stairs.png)
 
 Floors are real collision geometry with friction by room. The walking policy's height scan reads a height map of
@@ -440,6 +455,7 @@ Activate the environment: `.venv\Scripts\activate` on Windows, or `source .venv/
 ```bash
 pip install torch --index-url https://download.pytorch.org/whl/cpu
 pip install -r requirements-live.txt
+python real_assets.py       # once: the real furniture, surfaces and lighting (optional, about 110 MB)
 python live.py
 ```
 

@@ -11,5 +11,7 @@ if not exist .venv (
   .venv\Scripts\pip install anthropic
 )
 .venv\Scripts\python -c "import anthropic" 2>nul || .venv\Scripts\pip install anthropic
-start "" cmd /c "timeout /t 12 >nul & start http://localhost:8765"
+rem the real furniture, surfaces and lighting (once, about 110 MB; the house works with plain shapes without them)
+if not exist data\real\models\sofa_02\meta.json .venv\Scripts\python real_assets.py
+start "" cmd /c "timeout /t 20 >nul & start http://localhost:8765"
 .venv\Scripts\python live.py %*

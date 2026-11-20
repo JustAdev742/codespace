@@ -72,6 +72,18 @@ UP = Z0 + RISER * N_RISERS     # the upper wing's floor
 SX = -TREAD * (N_RISERS - 1)   # the top of the stairs (the wing's east wall)
 ROBOT_R = 0.30                # inflation radius for planning (half the robot's width plus a margin)
 ROBOT_TOP = 1.55              # anything lower than this above the floor is in the robot's way
+# MJCF only the visual model gets (real furniture models) and only the physics model gets (the plain shapes they
+# cover): train/model.py keeps one or the other when it builds each model
+SKIN, PHYS = ("<!--skin-->", "<!--/skin-->"), ("<!--phys-->", "<!--/phys-->")
+SKINS = os.environ.get("KESTREL_SKINS", "1") != "0"      # KESTREL_SKINS=0: plain shapes (faster to load)
+BED_MODEL, BED_H = "GothicBed_01", 1.0                   # the double bed (to its headboard top)
+
+
+def real_model(mid):
+    if not SKINS:
+        return None
+    import real_assets as RA
+    return RA.model(mid)
 
 
 # ======================================================================= textures
@@ -228,6 +240,7 @@ class Builder:
         self.containers = {}     # open-topped things to drop into: box (inside), bottom and rim heights
         self.controls = {}       # switches, knobs and buttons the hook can press: position and the side to press from
         self.dirt = []           # names of the dust specks (visual), placed when a room needs vacuuming
+        self.skin_assets, self.skin_models = [], set()      # real models: meshes, textures, materials (visual model)
         # spots to look out of a window from: (floor point, facing, what is out there)
         self.windows = [((12.3, 9.25), math.pi / 2, "the back garden"), ((13.1, 2.6), 0.0, "the side lawn"),
                         ((4.2, 9.3), math.pi / 2, "the back fence"), ((6.0, 0.55), -math.pi / 2, "the front garden")]
@@ -276,6 +289,53 @@ class Builder:
         j = joint or ""
         self.bodies.append(f'<body name="{name}" pos="{f3(pos)}" euler="0 0 {yaw:.4f}">{j}{extra}{"".join(geoms)}</body>')
 
+    # ---- real models over the collision shapes (real_assets.MODELS)
+    def skin(self, mid, x0, x1, y0, y1, z0, z1, yaw=0.0, dst=None, fit="box", group=2):
+        """Dress a piece in a real 3D model, fitted into the box x0..x1, y0..y1, z0..z1 (world coordinates, or the
+        body's own when dst is a body's geom list) and turned by yaw (a multiple of 90 degrees; the models face -y).
+        fit='height': scaled evenly to the box's height (a plant). Visual only: it is not in the physics model, and
+        the robot's rays don't hit it (group 2, like glass). False if the model hasn't been fetched."""
+        meta = real_model(mid)
+        if meta is None:
+            return False
+        sx, sy, sz = meta["size"]
+        turned = abs(math.sin(yaw)) > 0.7
+        tx, ty = (y1 - y0, x1 - x0) if turned else (x1 - x0, y1 - y0)
+        s = (z1 - z0) / sz
+        scale = (s, s, s) if fit == "height" else (tx / sx, ty / sy, s)
+        if mid not in self.skin_models:
+            self.skin_models.add(mid)
+            for k, p in enumerate(meta["parts"]):
+                layers = ""
+                for key in (("rgb", "normal", "orm") if p.get("rgb") else ()):      # no colour map: a plain colour
+                    if p.get(key):
+                        nc = ' nchannel="4"' if key == "rgb" and p["alpha"] == "MASK" else ""
+                        self.skin_assets.append(f'<texture name="sk_{mid}_{k}_{key}" type="2d" file="{p[key]}"{nc}/>')
+                        layers += f'<layer texture="sk_{mid}_{k}_{key}" role="{key}"/>'
+                rgba = list(p["rgba"])
+                if p["alpha"] == "MASK":
+                    rgba[3] = min(rgba[3], 0.999)                 # leaves: the colour's alpha cuts them out
+                pbr = f' roughness="{p["rough"]:.3f}" metallic="{p["metal"]:.3f}"' if rgba[3] >= 1 and not layers else ""
+                self.skin_assets.append(f'<material name="sk_{mid}_{k}" rgba="{f3(rgba)}"{pbr}>{layers}</material>')
+        self.n += 1
+        g = []
+        for k, p in enumerate(meta["parts"]):
+            self.skin_assets.append(f'<mesh name="skin{self.n}_{k}" file="{p["obj"]}" scale="{f3(scale)}" inertia="shell"/>')
+            g.append(f'<geom type="mesh" mesh="skin{self.n}_{k}" material="sk_{mid}_{k}" '
+                     f'pos="{f3(((x0 + x1) / 2, (y0 + y1) / 2, z0))}" euler="0 0 {yaw:.4f}" contype="0" conaffinity="0" '
+                     f'group="{group}" mass="0"/>')
+        (self.world if dst is None else dst).append(SKIN[0] + "".join(g) + SKIN[1])
+        return True
+
+    def hide(self, shapes, dst=None):
+        """Leave these shapes out of the visual model (a real model shows the piece); the physics keeps them."""
+        lst = self.world if dst is None else dst
+        for s in ([shapes] if isinstance(shapes, str) else shapes):
+            for i in range(len(lst) - 1, -1, -1):
+                if lst[i] == s:
+                    lst[i] = PHYS[0] + s + PHYS[1]
+                    break
+
 
 # ----------------------------------------------------------------------- walls
 def wall(b, axis, fixed, a0, a1, t, openings=(), z0=Z0, h=WALL_H):
@@ -295,6 +355,10 @@ def wall(b, axis, fixed, a0, a1, t, openings=(), z0=Z0, h=WALL_H):
             else:
                 x0, x1 = fixed - 0.01, fixed + 0.01
         b.box(x0, x1, y0, y1, zz0, zz1, "glass" if glass else mat, name=b.nm("wall"), group=2 if glass else None)
+        if not glass and abs(zz0 - z0) < 1e-6 and SKINS:          # a skirting board along the floor (visual model)
+            ex = (0.0, 0.012) if axis == "x" else (0.012, 0.0)
+            b.world.append(SKIN[0] + b.box(x0 - ex[0], x1 + ex[0], y0 - ex[1], y1 + ex[1], zz0, zz0 + 0.08, "white",
+                                           col=False, group=2, dst=[]) + SKIN[1])
 
     s = a0
     for op in sorted(openings):
@@ -329,16 +393,18 @@ def door(b, name, hinge, closed_yaw, open_yaw, width):
 
 
 # ----------------------------------------------------------------------- furniture
-def table(b, name, cx, cy, sx, sy, h, z0=Z0, mat="wood_light", legmat="wood_dark"):
-    b.box(cx - sx / 2, cx + sx / 2, cy - sy / 2, cy + sy / 2, z0 + h - 0.04, z0 + h, mat, name=b.nm("furn"))
+def table(b, name, cx, cy, sx, sy, h, z0=Z0, mat="wood_light", legmat="wood_dark", model=None):
+    parts = [b.box(cx - sx / 2, cx + sx / 2, cy - sy / 2, cy + sy / 2, z0 + h - 0.04, z0 + h, mat, name=b.nm("furn"))]
     for ex in (-1, 1):
         for ey in (-1, 1):
             x, y = cx + ex * (sx / 2 - 0.06), cy + ey * (sy / 2 - 0.06)
-            b.box(x - 0.025, x + 0.025, y - 0.025, y + 0.025, z0, z0 + h - 0.04, legmat, name=b.nm("furn"))
+            parts.append(b.box(x - 0.025, x + 0.025, y - 0.025, y + 0.025, z0, z0 + h - 0.04, legmat, name=b.nm("furn")))
+    if model and b.skin(model, cx - sx / 2, cx + sx / 2, cy - sy / 2, cy + sy / 2, z0, z0 + h):
+        b.hide(parts)
     b.furniture[name] = dict(xy=(cx, cy), size=(sx, sy), top=z0 + h)
 
 
-def chair(b, name, cx, cy, face, z0=Z0):
+def chair(b, name, cx, cy, face, z0=Z0, model="dining_chair_02"):
     """The standard dining chair (the one the sit and stand-up skills were trained on): seat 46 cm, four legs, back.
     face: the direction a seated person faces (world yaw)."""
     st = SK.SEAT_TOP
@@ -347,11 +413,14 @@ def chair(b, name, cx, cy, face, z0=Z0):
     for sx in (-1, 1):
         for sy in (-1, 1):
             g.append(b.geom("box", (sx * 0.19, sy * 0.19, st / 2 - 0.02), (0.02, 0.02, st / 2 - 0.02), "wood_dark", dst=[]))
+    plain = list(g)
+    if model and b.skin(model, -0.22, 0.22, -0.22, 0.23, 0.0, st + 0.5, dst=g):
+        b.hide(plain, dst=g)
     b.body(name, (cx, cy, z0), face + math.pi / 2, g)
     b.chairs[name] = dict(xy=(cx, cy), face=face, z=z0)
 
 
-def sofa(b, name, cx, cy, yaw, w=2.1, d=0.9, z0=0.0, mat="fabric_grey"):
+def sofa(b, name, cx, cy, yaw, w=2.1, d=0.9, z0=0.0, mat="fabric_grey", model=None):
     """Back along the local +y side; a seated person faces local -y."""
     g = [b.geom("box", (0, 0, 0.21), (w / 2, d / 2, 0.21), mat, dst=[]),
          b.geom("box", (0, d / 2 - 0.1, 0.55), (w / 2, 0.1, 0.34), mat, dst=[]),
@@ -360,19 +429,101 @@ def sofa(b, name, cx, cy, yaw, w=2.1, d=0.9, z0=0.0, mat="fabric_grey"):
     for k in range(3):                                       # cushions (visual)
         g.append(b.geom("box", (-w / 3 + k * w / 3, -0.05, 0.45), (w / 6 - 0.03, d / 2 - 0.15, 0.04), mat,
                         rgba=(0.42, 0.46, 0.55, 1), col=False, dst=[]))
+    plain = list(g)
+    if model and b.skin(model, -w / 2, w / 2, -d / 2, d / 2, 0.0, 0.89, dst=g):
+        b.hide(plain, dst=g)
     b.body(name, (cx, cy, z0), yaw, g)
     b.furniture[name] = dict(xy=(cx, cy), size=(w, d), top=z0 + 0.45)
 
 
-def plant(b, x, y, z0, h=1.0):
+def plant(b, x, y, z0, h=1.0, model="potted_plant_02"):
     b.plants.append((x, y))
-    b.geom("cylinder", (x, y, z0 + 0.18), (0.16, 0.18), "pot", name=b.nm("furn"))
-    b.geom("sphere", (x, y, z0 + 0.36 + h * 0.35), (0.28 * h,), "plant", name=b.nm("vis"), col=False)    # leaves
+    parts = [b.geom("cylinder", (x, y, z0 + 0.18), (0.16, 0.18), "pot", name=b.nm("furn")),
+             b.geom("sphere", (x, y, z0 + 0.36 + h * 0.35), (0.28 * h,), "plant", name=b.nm("vis"), col=False)]   # leaves
+    if model and b.skin(model, x - 0.3, x + 0.3, y - 0.3, y + 0.3, z0, z0 + 0.36 + 0.63 * h, fit="height"):
+        b.hide(parts)
+
+
+def fronts(b, axis, plane, a0, a1, z0, z1, out, door=0.6, drawer=True, vertical=False):
+    """Doors on a run of cabinets (visual model): the gaps between doors, a drawer line, and a steel handle on each.
+    axis 'x': the front is the plane y = plane, from x = a0 to a1; 'y': x = plane, from y = a0 to a1. out: +1 or -1,
+    the way the front faces."""
+    if not SKINS:
+        return
+    n = max(1, round((a1 - a0) / door))
+    w = (a1 - a0) / n
+    g = []
+
+    def bx(s0, s1, d0, d1, zz0, zz1, mat):              # s: along the run, d: out from the front
+        p0, p1 = sorted((plane + d0 * out, plane + d1 * out))
+        if axis == "x":
+            g.append(b.box(s0, s1, p0, p1, zz0, zz1, mat, col=False, group=2, dst=[]))
+        else:
+            g.append(b.box(p0, p1, s0, s1, zz0, zz1, mat, col=False, group=2, dst=[]))
+
+    def fix(lo_, hi_):
+        return (lo_, hi_)
+    for k in range(n + 1):                                                    # gaps between doors
+        s0 = a0 + k * w
+        bx(s0 - 0.003, s0 + 0.003, *fix(0.0, 0.003), z0 + 0.01, z1 - 0.01, "black")
+    if drawer and z1 - z0 > 0.5:
+        bx(a0, a1, *fix(0.0, 0.003), z1 - 0.19, z1 - 0.184, "black")              # top drawers
+    for k in range(n):
+        c = a0 + (k + 0.5) * w
+        if vertical:                                                          # tall doors: an upright bar
+            bx(c + w / 2 - 0.07, c + w / 2 - 0.05, *fix(0.01, 0.03), z0 + 0.35 * (z1 - z0), z0 + 0.65 * (z1 - z0), "steel")
+        else:
+            hz = z1 - 0.11 if drawer and z1 - z0 > 0.5 else z0 + 0.08
+            bx(c - 0.07, c + 0.07, *fix(0.01, 0.025), hz - 0.007, hz + 0.007, "steel")
+            if drawer and z1 - z0 > 0.5:
+                bx(c - 0.06, c + 0.06, *fix(0.01, 0.025), z1 - 0.32, z1 - 0.306, "steel")
+    b.world.append(SKIN[0] + "".join(g) + SKIN[1])
+
+
+def dress(b, model, parts, x0, x1, y0, y1, z0, z1, yaw=0.0):
+    """A piece built from plain boxes (parts: their MJCF) dressed in a real model fitted over all of them."""
+    if b.skin(model, x0, x1, y0, y1, z0, z1, yaw=yaw):
+        b.hide(parts)
+
+
+SKIN_TONES = [(0.87, 0.71, 0.60, 1), (0.62, 0.45, 0.33, 1), (0.42, 0.29, 0.21, 1), (0.95, 0.80, 0.69, 1)]
+HAIR = [(0.12, 0.08, 0.05, 1), (0.35, 0.22, 0.12, 1), (0.05, 0.05, 0.05, 1), (0.62, 0.48, 0.30, 1)]
+
+
+def figure(shirt, k):
+    """A person's visible body (legs, hips, torso, arms, neck, head, hair; facing +x), drawn over the simple capsule
+    the physics and the robot's sensors use. Visual model only."""
+    skin, hair = SKIN_TONES[k % 4], HAIR[(k * 3 + 1) % 4]
+    trousers = (0.16, 0.18, 0.24, 1) if k % 2 == 0 else (0.30, 0.27, 0.22, 1)
+    sleeve = tuple(0.85 * c for c in shirt[:3]) + (1,)
+
+    def cap(a, c, r, col):
+        return (f'<geom type="capsule" fromto="{f3(a)} {f3(c)}" size="{r}" rgba="{f3(col)}" contype="0" conaffinity="0" '
+                f'mass="0"/>')
+
+    def ell(c, size, col):
+        return (f'<geom type="ellipsoid" pos="{f3(c)}" size="{f3(size)}" rgba="{f3(col)}" contype="0" conaffinity="0" '
+                f'mass="0"/>')
+    g = []
+    for sy in (-1, 1):
+        g += [cap((0.0, sy * 0.09, 0.88), (0.0, sy * 0.095, 0.10), 0.068, trousers),            # legs
+              ell((0.05, sy * 0.095, 0.04), (0.13, 0.05, 0.04), (0.10, 0.10, 0.11, 1)),          # shoes
+              cap((0.0, sy * 0.20, 1.40), (0.02, sy * 0.23, 1.12), 0.05, sleeve),                # upper arms
+              cap((0.02, sy * 0.23, 1.12), (0.06, sy * 0.22, 0.86), 0.04, skin),                 # forearms
+              ell((0.065, sy * 0.22, 0.81), (0.03, 0.022, 0.05), skin)]                          # hands
+    g += [ell((0, 0, 0.93), (0.13, 0.19, 0.10), trousers),                                       # hips
+          ell((0, 0, 1.20), (0.14, 0.20, 0.28), shirt),                                          # torso
+          cap((0, 0, 1.44), (0, 0, 1.53), 0.05, skin),                                           # neck
+          ell((0.01, 0, 1.64), (0.10, 0.085, 0.115), skin),                                      # head
+          ell((-0.015, 0, 1.68), (0.098, 0.09, 0.095), hair),                                    # hair
+          ell((0.095, 0, 1.63), (0.012, 0.012, 0.018), skin)]                                    # nose
+    return SKIN[0] + "".join(g) + SKIN[1]
 
 
 def person(b, name, x, y, z0, rgba, mocap=False):
     g = [b.geom("capsule", (0, 0, 0.85), (0.2, 0.55), rgba=rgba, name=f"{name}_body", dst=[]),
          b.geom("sphere", (0, 0, 1.62), (0.11,), rgba=(0.85, 0.70, 0.58, 1), name=f"{name}_head", dst=[])]
+    g = [PHYS[0] + x_ + PHYS[1] for x_ in g] + [figure(rgba, len(b.people))]
     if mocap:
         b.bodies.append(f'<body name="{name}" mocap="true" pos="{f3((x, y, z0))}">{"".join(g)}</body>')
     else:
@@ -408,6 +559,10 @@ OBJECTS = {
     "jeans": ("box", (0.17, 0.10, 0.035), (0.20, 0.30, 0.55, 1), 0.5, 0.36, ["jeans", "trousers", "pants"], "hamper"),
     "socks": ("box", (0.07, 0.05, 0.03), (0.55, 0.55, 0.58, 1), 0.15, 0.37, ["socks", "pair of socks"], "hamper"),
 }
+# things the robot picks up, and the real model each one looks like (real_assets.MODELS)
+OBJECT_MODELS = {"kettle": "vintage_electric_kettle", "pot": "pot_enamel_01", "board": "wooden_cutting_board",
+                 "basket": "wicker_basket_02", "toolbox": "metal_toolbox", "spray": "multi_cleaner_bottle",
+                 "plate": "carved_wooden_plate"}
 WATER_CAP = {"pot": 2.0, "kettle": 1.2, "can": 2.0, "mug_red": 0.3, "mug_blue": 0.3, "mug_green": 0.3, "mug_yellow": 0.3}
 import world as W                     # noqa: E402  (general rules: heat, food, grime, tools)
 OBJECTS.update(W.NEW_OBJECTS)
@@ -432,6 +587,11 @@ def grab_object(b, name, x, y, z_surface):
     # a little damping: a load hanging from the hook stops swinging in a second instead of swinging on
     inert = "0.09 0.09 0.01" if name == "hoover" else "0.004 0.004 0.003"
     j = f'<joint name="{name}_free" type="free" damping="0.12"/><inertial pos="0 0 0" mass="{mass}" diaginertia="{inert}"/>'
+    mid = OBJECT_MODELS.get(name)
+    if mid:                                  # the real thing, fitted over its collision shape (the hook handle stays)
+        hx, hy = (size[0], size[0]) if shape in ("cylinder", "sphere") else size[:2]
+        if b.skin(mid, -hx, hx, -hy, hy, -half_h, half_h, dst=g):
+            b.hide(g[0], dst=g)
     b.body(name, (x, y, z_surface + half_h + 0.002), 0.0, g, joint=j)
     b.objects[name] = dict(home=home, words=words, handle_z=hz, half_h=half_h, start=(x, y, z_surface))
 
@@ -492,7 +652,7 @@ def build_upper(b):
     container(b, "toy box", -6.2 + o, -5.4 + o, 9.35, 9.9, UP, 0.38, mat="wood_light", words=["toy box", "toybox", "toy chest"])
     container(b, "hamper", -4.95 + o, -4.45 + o, 5.32, 5.82, UP, 0.55, mat="fabric_grey",
               words=["hamper", "laundry hamper", "clothes hamper"])
-    table(b, "kids table", -7.9 + o, 6.0, 0.7, 0.6, 0.5, z0=UP)
+    table(b, "kids table", -7.9 + o, 6.0, 0.7, 0.6, 0.5, z0=UP, model="gallinera_table")
     b.box(-8.9 + o, -8.6 + o, 5.4, 6.8, UP, UP + 1.2, "wood_dark", name=b.nm("furn"))           # shelves
     # laundry: washing machine, dryer, folding counter
     b.box(-8.92 + o, -8.3 + o, 0.75, 1.4, UP, UP + 0.85, "white", name=b.nm("furn"))
@@ -621,23 +781,36 @@ def build():
     b.box(2.0, 3.8, 2.25, 3.15, Z0, Z0 + 0.88, "cabinet", name=b.nm("furn"))         # island
     b.box(1.98, 3.82, 2.23, 3.17, Z0 + 0.88, Z0 + 0.92, "worktop", name=b.nm("furn"))
     for x in (2.5, 3.3):                                                             # stools
-        b.geom("cylinder", (x, 3.55, Z0 + 0.33), (0.17, 0.33), "wood_dark", name=b.nm("furn"))
+        dress(b, "metal_stool_01", b.geom("cylinder", (x, 3.55, Z0 + 0.33), (0.17, 0.33), "wood_dark", name=b.nm("furn")),
+              x - 0.17, x + 0.17, 3.38, 3.72, Z0, Z0 + 0.66)
+    fronts(b, "y", 0.8, 0.8, 2.2, Z0, Z0 + 0.86, +1)                                 # cabinet doors and handles
+    fronts(b, "y", 0.8, 2.8, 4.0, Z0, Z0 + 0.86, +1)
+    fronts(b, "y", 0.8, 2.2, 2.8, Z0, Z0 + 0.68, +1, drawer=False)
+    fronts(b, "x", 0.8, 0.8, 3.8, Z0, Z0 + 0.86, +1)
+    fronts(b, "y", 0.55, 0.8, 4.0, Z0 + 1.5, Z0 + 2.2, +1, drawer=False)
+    fronts(b, "x", 2.25, 2.0, 3.8, Z0, Z0 + 0.88, -1)
+    fronts(b, "y", 0.9, 4.2, 4.95, Z0, Z0 + 1.2, +1, door=0.75, drawer=False, vertical=True)        # fridge
+    fronts(b, "y", 0.9, 4.2, 4.95, Z0 + 1.2, Z0 + 1.85, +1, door=0.75, drawer=False, vertical=True)
+    for x, y in ((6.9, 2.5), (2.6, 2.7), (3.3, 2.7)):                                # pendant lamps (head camera)
+        b.skin("modern_ceiling_lamp_01", x - 0.22, x + 0.22, y - 0.22, y + 0.22, Z0 + WALL_H - 0.7, Z0 + WALL_H,
+               group=3)
     b.furniture["kitchen counter"] = dict(xy=(2.3, 0.5), size=(3.0, 0.6), top=Z0 + 0.9)
     b.furniture["kitchen island"] = dict(xy=(2.9, 2.7), size=(1.8, 0.9), top=Z0 + 0.92)
     b.furniture["fridge"] = dict(xy=(0.55, 4.57), size=(0.7, 0.75), top=Z0 + 1.85)
     # ---- dining
-    table(b, "dining table", 6.9, 2.5, 1.6, 0.9, 0.75)
+    table(b, "dining table", 6.9, 2.5, 1.6, 0.9, 0.75, model="wooden_table_02")
     for k, (x, y, face) in enumerate([(6.5, 0.85, math.pi / 2), (7.3, 0.85, math.pi / 2),       # pulled out 1.2 m
                                       (6.5, 4.15, -math.pi / 2), (7.3, 4.15, -math.pi / 2)]):
         chair(b, f"dining chair {k + 1}", x, y, face)
     plant(b, 5.6, 4.7, Z0, 1.1)
     # ---- living room (lounge at garden level)
-    sofa(b, "sofa", 11.4, 3.95, 0.0)
-    table(b, "coffee table", 11.4, 2.75, 1.1, 0.6, 0.42, z0=0.014)
-    b.box(10.6, 12.2, 1.25, 1.65, 0.002, 0.5, "wood_dark", name=b.nm("furn"))          # TV stand
+    sofa(b, "sofa", 11.4, 3.95, 0.0, model="sofa_02")
+    table(b, "coffee table", 11.4, 2.75, 1.1, 0.6, 0.42, z0=0.014, model="modern_coffee_table_01")
+    dress(b, "modern_wooden_cabinet", b.box(10.6, 12.2, 1.25, 1.65, 0.002, 0.5, "wood_dark", name=b.nm("furn")),   # TV stand
+          10.6, 12.2, 1.25, 1.65, 0.002, 0.5, yaw=math.pi)
     b.box(10.8, 12.0, 1.42, 1.48, 0.55, 1.25, "black", name=b.nm("furn"))              # TV
     b.furniture["tv"] = dict(xy=(11.4, 1.45), size=(1.6, 0.4), top=0.5)
-    sofa(b, "armchair", 9.95, 2.75, math.pi / 2, w=0.9, d=0.85)
+    sofa(b, "armchair", 9.95, 2.75, math.pi / 2, w=0.9, d=0.85, model="ArmChair_01")
     b.box(11.0, 11.25, 2.6, 2.75, 0.434, 0.46, "black", name=b.nm("vis"))              # remote (clutter)
     b.box(11.6, 11.9, 2.7, 2.92, 0.434, 0.49, "wood_dark", rgba=(0.6, 0.2, 0.2, 1), name=b.nm("vis"))   # books
     plant(b, 9.0, 4.75, Z0, 1.2)
@@ -645,41 +818,56 @@ def build():
     b.geom("cylinder", (13.55, 4.92, Z0 + 0.8), (0.02, 0.8), "black", name=b.nm("furn"))   # floor lamp, in the corner
     b.geom("cylinder", (13.55, 4.92, Z0 + 1.6), (0.18, 0.12), "lamp", name=b.nm("vis"), col=False)
     # ---- hall
-    b.box(11.2, 12.2, 6.2, 6.54, Z0 + 0.76, Z0 + 0.8, "wood_light", name=b.nm("furn"))   # console table
+    console = [b.box(11.2, 12.2, 6.2, 6.54, Z0 + 0.76, Z0 + 0.8, "wood_light", name=b.nm("furn"))]   # console table
     for x in (11.25, 12.15):
-        b.box(x - 0.02, x + 0.02, 6.24, 6.5, Z0, Z0 + 0.76, "wood_dark", name=b.nm("furn"))
+        console.append(b.box(x - 0.02, x + 0.02, 6.24, 6.5, Z0, Z0 + 0.76, "wood_dark", name=b.nm("furn")))
+    dress(b, "chinese_console_table", console, 11.2, 12.2, 6.2, 6.54, Z0, Z0 + 0.8)
     b.furniture["hall table"] = dict(xy=(11.7, 6.37), size=(1.0, 0.34), top=Z0 + 0.8)
     b.geom("cylinder", (13.35, 5.45, Z0 + 0.9), (0.03, 0.9), "wood_dark", name=b.nm("furn"))   # coat stand
     b.geom("cylinder", (13.35, 5.45, Z0 + 0.02), (0.22, 0.02), "wood_dark", name=b.nm("furn"))
     for x, y in [(13.1, 5.95), (13.0, 6.15)]:                                         # shoes
         b.box(x - 0.14, x + 0.14, y - 0.05, y + 0.05, Z0, Z0 + 0.09, "black", name=b.nm("clutter"))
     # ---- bedroom
-    b.box(1.5, 3.1, 7.75, 9.7, Z0, Z0 + 0.3, "wood_dark", name=b.nm("furn"))           # bed base
-    b.box(1.52, 3.08, 7.77, 9.68, Z0 + 0.3, Z0 + 0.55, "fabric_bed", name=b.nm("furn"))   # mattress + duvet
-    b.box(1.5, 3.1, 9.7, 9.8, Z0, Z0 + 1.0, "wood_dark", name=b.nm("furn"))            # headboard
+    bed = [b.box(1.5, 3.1, 7.75, 9.7, Z0, Z0 + 0.3, "wood_dark", name=b.nm("furn")),           # bed base
+           b.box(1.52, 3.08, 7.77, 9.68, Z0 + 0.3, Z0 + 0.55, "fabric_bed", name=b.nm("furn")),   # mattress + duvet
+           b.box(1.5, 3.1, 9.7, 9.8, Z0, Z0 + 1.0, "wood_dark", name=b.nm("furn"))]            # headboard
     for x in (1.95, 2.65):
-        b.box(x - 0.3, x + 0.3, 9.3, 9.62, Z0 + 0.55, Z0 + 0.66, "white", name=b.nm("vis"), col=False)   # pillows
+        bed.append(b.box(x - 0.3, x + 0.3, 9.3, 9.62, Z0 + 0.55, Z0 + 0.66, "white", name=b.nm("vis"), col=False))   # pillows
+    dress(b, BED_MODEL, bed, 1.5, 3.1, 7.75, 9.8, Z0, Z0 + BED_H)
     for x in (1.0, 3.6):
-        b.box(x - 0.22, x + 0.22, 9.35, 9.75, Z0, Z0 + 0.55, "wood_light", name=b.nm("furn"))   # nightstands
+        dress(b, "ClassicNightstand_01", b.box(x - 0.22, x + 0.22, 9.35, 9.75, Z0, Z0 + 0.55, "wood_light", name=b.nm("furn")),
+              x - 0.22, x + 0.22, 9.35, 9.75, Z0, Z0 + 0.55)                                       # nightstands
         b.geom("cylinder", (x, 9.55, Z0 + 0.7), (0.09, 0.15), "lamp", name=b.nm("vis"), col=False)
-    b.box(4.75, 5.34, 7.0, 8.8, Z0, Z0 + 2.0, "wood_light", name=b.nm("furn"))         # wardrobe
+    dress(b, "vintage_cabinet_01", b.box(4.75, 5.34, 7.0, 8.8, Z0, Z0 + 2.0, "wood_light", name=b.nm("furn")),   # wardrobe
+          4.75, 5.34, 7.0, 8.8, Z0, Z0 + 2.0, yaw=-math.pi / 2)
     b.furniture["bed"] = dict(xy=(2.3, 8.75), size=(1.6, 2.05), top=Z0 + 0.55)
     # ---- bathroom
     b.box(5.5, 7.2, 9.05, 9.8, Z0, Z0 + 0.55, "white", name=b.nm("furn"))              # bath
     b.box(5.6, 7.1, 9.15, 9.7, Z0 + 0.55, Z0 + 0.551, "bath_floor", name=b.nm("vis"), col=False)
-    b.box(7.6, 8.1, 8.1, 8.5, Z0, Z0 + 0.42, "white", name=b.nm("furn"))               # toilet bowl
+    bowl = b.box(7.6, 8.1, 8.1, 8.5, Z0, Z0 + 0.42, "white", name=b.nm("furn"))        # toilet bowl
     b.box(7.95, 8.14, 8.0, 8.6, Z0, Z0 + 0.8, "white", name=b.nm("furn"))              # cistern
+    if SKINS:                                       # what it looks like: pedestal, bowl, seat and water (visual model)
+        b.hide(bowl)
+        b.world.append(SKIN[0] + "".join([
+            b.geom("cylinder", (7.9, 8.3, Z0 + 0.13), (0.12, 0.13), "white", col=False, group=2, dst=[]),
+            b.geom("ellipsoid", (7.84, 8.3, Z0 + 0.31), (0.245, 0.185, 0.11), "white", col=False, group=2, dst=[]),
+            b.geom("ellipsoid", (7.84, 8.3, Z0 + 0.41), (0.235, 0.18, 0.012), "white", col=False, group=2, dst=[]),
+            b.geom("ellipsoid", (7.82, 8.3, Z0 + 0.418), (0.15, 0.11, 0.006), rgba=(0.62, 0.70, 0.74, 1), col=False,
+                   group=2, dst=[]),
+            b.geom("box", (8.045, 8.3, Z0 + 0.805), (0.1, 0.31, 0.012), "white", col=False, group=2, dst=[]),
+            b.geom("cylinder", (8.0, 8.3, Z0 + 0.82), (0.025, 0.006), "steel", col=False, group=2, dst=[])]) + SKIN[1])
     b.box(5.46, 5.96, 7.3, 8.2, Z0, Z0 + 0.85, "wood_light", name=b.nm("furn"))        # vanity
     b.box(5.5, 5.9, 7.45, 8.05, Z0 + 0.85, Z0 + 0.88, "white", name=b.nm("vis"), col=False)
     b.box(5.46, 5.48, 7.35, 8.15, Z0 + 1.1, Z0 + 1.8, "glass", rgba=(0.85, 0.9, 0.95, 1), name=b.nm("vis"), col=False)
     # ---- study
-    table(b, "study desk", 10.9, 9.45, 1.4, 0.7, 0.75)
-    chair(b, "desk chair", 10.9, 8.1, math.pi / 2)
-    b.box(8.26, 8.62, 7.2, 9.2, Z0, Z0 + 1.9, "wood_dark", name=b.nm("furn"))          # bookshelf
+    table(b, "study desk", 10.9, 9.45, 1.4, 0.7, 0.75, model="metal_office_desk")
+    chair(b, "desk chair", 10.9, 8.1, math.pi / 2, model="painted_wooden_chair_01")
+    shelf = [b.box(8.26, 8.62, 7.2, 9.2, Z0, Z0 + 1.9, "wood_dark", name=b.nm("furn"))]          # bookshelf
     for k in range(4):                                                               # books (visual)
-        b.box(8.6, 8.63, 7.3, 9.1, Z0 + 0.3 + 0.42 * k, Z0 + 0.6 + 0.42 * k, "wood_dark",
-              rgba=(0.2 + 0.15 * k, 0.25, 0.5 - 0.08 * k, 1), name=b.nm("vis"), col=False)
-    sofa(b, "study armchair", 12.9, 7.4, -math.pi / 2, w=0.9, d=0.85, z0=Z0)
+        shelf.append(b.box(8.6, 8.63, 7.3, 9.1, Z0 + 0.3 + 0.42 * k, Z0 + 0.6 + 0.42 * k, "wood_dark",
+                           rgba=(0.2 + 0.15 * k, 0.25, 0.5 - 0.08 * k, 1), name=b.nm("vis"), col=False))
+    dress(b, "wooden_bookshelf_worn", shelf, 8.26, 8.63, 7.2, 9.2, Z0, Z0 + 1.9, yaw=math.pi / 2)
+    sofa(b, "study armchair", 12.9, 7.4, -math.pi / 2, w=0.9, d=0.85, z0=Z0, model="ArmChair_01")
     plant(b, 9.0, 9.45, Z0, 0.9)          # by the bookshelf (in the far corner, next to Alex, there was nowhere to stand)
     # ---- garden
     b.box(16.0, 17.4, 2.0, 2.45, 0, 0.45, "wood_dark", name=b.nm("furn"))              # bench
@@ -764,6 +952,8 @@ class House(SK.World):
             eqs = "".join(f'<weld name="hook_{n}" body1="r_hand" body2="{n}" torquescale="0.05" active="false"/>'
                           for n in OBJECTS)
         top_xml = assets_xml() + f"\n  <equality>{eqs}</equality>"
+        if self.b.skin_assets:                   # real models: the visual model only
+            top_xml += f"\n  {SKIN[0]}<asset>" + "\n    ".join(self.b.skin_assets) + f"</asset>{SKIN[1]}"
         orig = T.make
 
         def flat_make(seed=0, rows=T.ROWS, cols=T.COLS):        # flat ground everywhere: the house brings its floor
@@ -844,7 +1034,12 @@ class House(SK.World):
         return self.b.people[n]["xy"]
 
     def set_mocap(self, n, x, y):
-        self.e.d[0].mocap_pos[self.mocap[n]] = (x, y, self.floor_z(x, y) + (0.045 if n == "vacuum" else 0.0))
+        d, k = self.e.d[0], self.mocap[n]
+        px, py = d.mocap_pos[k][:2]
+        if n in self.b.people and 1e-4 < math.hypot(x - px, y - py) < 0.5:     # a walking person faces the way they go
+            yaw = math.atan2(y - py, x - px)
+            d.mocap_quat[k] = (math.cos(yaw / 2), 0, 0, math.sin(yaw / 2))
+        d.mocap_pos[k] = (x, y, self.floor_z(x, y) + (0.045 if n == "vacuum" else 0.0))
 
     def reset(self, x=7.0, y=5.9, yaw=0.0):
         """Robot standing in the hall; objects, people and doors as built (mj_resetData restores them)."""

@@ -238,11 +238,14 @@ def build_xml(H, visual=False):
 
 
 def _finish_xml(xml, H, visual):
-    """Add the extras (house, equality constraints) and the terrain to a robot MJCF."""
+    """Add the extras (house, equality constraints) and the terrain to a robot MJCF. Extras can carry parts for one
+    model only: <!--skin-->...<!--/skin--> for the visual model (real furniture meshes), <!--phys-->...<!--/phys-->
+    for the physics model (the plain shapes they cover)."""
+    drop = re.compile(r"<!--phys-->.*?<!--/phys-->" if visual else r"<!--skin-->.*?<!--/skin-->", re.S)
     if EXTRA_WORLD:
-        xml = xml.replace("</worldbody>", EXTRA_WORLD + "\n  </worldbody>", 1)
+        xml = xml.replace("</worldbody>", drop.sub("", EXTRA_WORLD) + "\n  </worldbody>", 1)
     if EXTRA_MJCF:
-        xml = xml.replace("</mujoco>", EXTRA_MJCF + "\n</mujoco>", 1)
+        xml = xml.replace("</mujoco>", drop.sub("", EXTRA_MJCF) + "\n</mujoco>", 1)
     if H is None:                    # robot only (for the Isaac Lab MJCF -> USD import)
         return xml, []
     # 4. terrain: plane + boxes (stairs) + convex meshes (slopes) + small heightfields (rough tiles only)
