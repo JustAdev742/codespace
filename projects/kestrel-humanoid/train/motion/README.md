@@ -64,6 +64,46 @@ Files: `mover.py` (the three combined), `live_mover.py` (live program), `demo_mo
 
 ---
 
+# Any movement, described in words: the text-to-motion generator
+
+The motion library above can only play back what was captured. `generator.py` makes new movement from a description:
+"a person dances happily", "stretch both arms up high", "beckon someone over", anything. It is a small diffusion model
+(the method behind today's image and motion generators): a transformer of 4.2 million parameters that learned from
+12.2 hours of human motion capture, retargeted onto the G1's 29 joints. That is 1,215 captioned clips from Bandai
+Namco and 2,064 described clips from the CMU motion capture database; fighting clips are left out, and so are 95
+clips whose motion contradicts their description. Text is read with a small sentence-embedding model
+(all-MiniLM-L6-v2).
+
+```bash
+python -m motion.build_cmu                                   # CMU clips + descriptions (once)
+python -m motion.generator train --libs runs/motion/bandai_library.npz runs/motion/cmu_library.npz \
+    --captions runs/motion/cmu_captions.json --out runs/motion/generator --hours 6
+python -m motion.generator sample --ckpt runs/motion/generator/model.pt --text "a person dances happily"
+```
+
+It trains on a CPU: a few hours on an ordinary desktop, no GPU or server. Once `runs/motion/generator/model.pt`
+exists, the live program uses it by itself. Type "do a little dance" (anything that isn't a library action goes to
+the generator), or let Claude ask for it. It can also continue smoothly from what the robot is doing, and keep the legs
+the walker planned while it makes the arms. Descriptions of striking or hurting are refused.
+
+**Claude sees the G1.** With `live_mover.py --claude`, after the moves Claude asked for are done, it gets a picture of
+the robot and a report: did it stay up, how far it went and turned, how low it got. It can adjust and try again, up
+to three times on its own per request. Moves that worked can be saved under a name and replayed, and it keeps notes
+on how this body moves (`runs/motion/g1_memory.json`, which is personal and gitignored). What people ask for is kept
+there too, so practice can work on it.
+
+**The generator learns from practice** (`practice.py`). It makes a motion for a description, plays it on the simulated
+G1 through the balance controller, and scores it: did it stay up, did the body follow. The motions the body did well
+are saved, as the joint angles the robot actually reached, which are possible for this body. Fine-tuning on them
+(`--upweight practice=5`) teaches the generator what this body can do. Practice again afterwards, and the success
+rate shows what it learned.
+
+**The house robot uses it too** (`brain/express.py`, the agent's `move_body` tool). KESTREL S1's arms follow the
+forward-and-back swing and the elbow bend of the generated movement. It has no shoulder roll and no wrists, so it
+shows a simplified version.
+
+<!-- generator results -->
+
 # Motion training: every dataset at once, one whole-body G1 controller
 
 This folder is the program for `../MOTION_PLAN.md`: it reads AMASS, Bandai Namco, Nymeria and other mocap,
