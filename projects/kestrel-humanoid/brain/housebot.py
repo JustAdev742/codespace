@@ -811,7 +811,7 @@ class HouseBot:
             self.say("cant", why=f"I searched and couldn't find the {name}")
             return False
         why = "I couldn't get to it"
-        for attempt in range(2):
+        for attempt in range(3):                       # a third try: a shove mid-reach is no reason to give up
             hd = h.handle_of(obj)
             rel = hd[2] - h.floor_z(*hd[:2])
             low = rel < LOW_HANDLE

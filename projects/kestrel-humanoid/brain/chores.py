@@ -41,10 +41,14 @@ class Chores:
         """Fill the kettle, boil it, pour a mug, bring it to you."""
         b, h = self.bot, self.h
         b.say("I'll make you a cup of tea.")
-        ok = b.fill("kettle", 0.3) and b.place("kettle base") and b.press("kettle")
+        # the mug to the dining table first: pouring over a mug on the worktop needs the kettle higher than this arm
+        # reaches, and the table is near you anyway
+        ok = b.pick(mug) and b.place("dining table")
+        ok = ok and b.fill("kettle", 0.3) and b.place("kettle base") and b.press("kettle")
         ok = ok and self.wait_for(lambda: h.temp["kettle"] >= 99.0 or not h.st["kettle"], 60.0) and h.temp["kettle"] >= 95.0
         ok = ok and b.pick("kettle") and b.pour(mug) and b.place("kettle base")
-        ok = ok and b.pick(mug) and b.place(to)
+        if to != "you" or math.dist(h.obj_pos(mug)[:2], h.person_xy("you")) > 2.5:
+            ok = ok and b.pick(mug) and b.place(to)
         served = h.tea[mug] and math.dist(h.obj_pos(mug)[:2], h.person_xy(to)) < 2.5
         return bool(ok and served), (f"water {h.water['kettle']:.2f} l, kettle {h.temp['kettle']:.0f} C, tea in the mug "
                                      f"{h.tea[mug]}, mug {math.dist(h.obj_pos(mug)[:2], h.person_xy(to)):.1f} m from {to}")

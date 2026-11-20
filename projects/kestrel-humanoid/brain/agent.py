@@ -40,10 +40,11 @@ VIEW_W, VIEW_H = 480, 360
 # version in chores.py)
 STARTER = {
     "make_tea": ("Make a cup of tea and bring it to someone (default: you).",
-                 [("fill", {"object": "kettle", "litres": 0.3}), ("put", {"where": "kettle base"}),
+                 [("pick_up", {"object": "mug_red"}), ("put", {"where": "dining table"}),
+                  ("fill", {"object": "kettle", "litres": 0.3}), ("put", {"where": "kettle base"}),
                   ("press", {"control": "kettle"}), ("wait", {"seconds": 25, "until": "kettle boiled"}),
                   ("pick_up", {"object": "kettle"}), ("pour", {"into": "mug_red"}), ("put", {"where": "kettle base"}),
-                  ("pick_up", {"object": "mug_red"}), ("put", {"where": "you"})]),
+                  ("...", {"note": "the mug on the low table: pouring over one on the worktop needs more reach"})]),
     "cook_pasta": ("Cook pasta and serve the pot on the dining table's trivet, hob off at the end.",
                    [("fill", {"object": "pot", "litres": 0.6}), ("put", {"where": "hob"}), ("press", {"control": "hob"}),
                     ("wait", {"seconds": 35, "until": "the water boils"}), ("pick_up", {"object": "pasta"}),

@@ -654,7 +654,7 @@ def build():
         b.box(8.6, 8.63, 7.3, 9.1, Z0 + 0.3 + 0.42 * k, Z0 + 0.6 + 0.42 * k, "wood_dark",
               rgba=(0.2 + 0.15 * k, 0.25, 0.5 - 0.08 * k, 1), name=b.nm("vis"), col=False)
     sofa(b, "study armchair", 12.9, 7.4, -math.pi / 2, w=0.9, d=0.85, z0=Z0)
-    plant(b, 13.4, 9.4, Z0, 0.9)
+    plant(b, 9.0, 9.45, Z0, 0.9)          # by the bookshelf (in the far corner, next to Alex, there was nowhere to stand)
     # ---- garden
     b.box(16.0, 17.4, 2.0, 2.45, 0, 0.45, "wood_dark", name=b.nm("furn"))              # bench
     plant(b, 9.4, -1.2, 0.0, 1.0)
