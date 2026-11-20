@@ -1029,7 +1029,7 @@ class House(SK.World):
                 self.hob_empty_t = 0.0
                 if self.water["pot"] > 0.4:
                     self.temp["pot"] = min(100.0, self.temp["pot"] + 2.5 * dt)
-                else:
+                elif self.world is None or self.world.food_in.get("steak") != "pot":   # empty and dry: it burns
                     self.burn_t += dt
                     if abs(self.burn_t - 8.0) < dt / 2:
                         self.event("the empty pot is burning")
@@ -1038,6 +1038,8 @@ class House(SK.World):
                 if abs(self.hob_empty_t - 30.0) < dt / 2:
                     self.event("hob left on with nothing on it")
         for n in WATER_CAP:
+            if n == "pot" and self.water["pot"] <= 0.4:          # a dry pot's heat: world.py, like the pan
+                continue
             if not ((n == "pot" and pot_on and self.st["hob"]) or (n == "kettle" and self.st["kettle"])):
                 self.temp[n] = max(20.0, self.temp[n] - 0.15 * dt)
         if self.pot_pasta and pot_on and self.st["hob"] and self.temp["pot"] >= 95.0:

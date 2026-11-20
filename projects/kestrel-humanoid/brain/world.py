@@ -17,7 +17,7 @@ the robot (Claude, in agent mode) has to work out what to do:
 * grime: dirty patches on surfaces (the bath, the basin, the toilet, worktops, tables). Rubbing something that scrubs
   over a patch, touching it and moving, wears it away; sprayed with cleaner first, it comes off twice as fast.
 * tools: what a thing does is a property, and it works through how it is used:
-  - scrubs (the scrub brush): rubbing it over grime cleans it;
+  - scrubs (the scrub brush, and the long-handled toilet brush): rubbing it over grime cleans it;
   - sprays (the spray bottle): using it at a surface wets the grime within 25 cm;
   - flips (the spatula): using it at food in a pan turns the food over;
   - vacuums (the stick vacuum): its head on the floor picks up dust.
@@ -45,19 +45,24 @@ NEW_OBJECTS = {
     "plate": ("cylinder", (0.11, 0.01), (0.96, 0.96, 0.94, 1), 0.3, 0.12, ["plate", "dinner plate", "dish"], "dining table"),
     "brush": ("box", (0.08, 0.04, 0.025), (0.20, 0.55, 0.85, 1), 0.25, 0.22,
               ["scrub brush", "brush", "scrubbing brush", "sponge", "scrubber"], "bathroom"),
+    # a long-handled brush (the head hangs 0.45 m below the hook): reaches the toilet, too long for the basin
+    "toilet_brush": ("box", (0.05, 0.05, 0.03), (0.92, 0.92, 0.95, 1), 0.25, 0.45,
+                     ["toilet brush", "long brush", "long-handled brush"], "bathroom"),
     "spray": ("cylinder", (0.04, 0.09), (0.35, 0.80, 0.90, 1), 0.35, 0.16,
               ["spray bottle", "spray", "cleaner", "cleaning spray", "bathroom cleaner"], "bathroom"),
 }
 # where they start (x, y, surface z above the house floor Z0)
 NEW_SPOTS = {"pan": (1.95, 0.55, 0.9), "board": (2.5, 2.42, 0.92), "spatula": (2.85, 2.42, 0.92),
-             "plate": (6.35, 2.3, 0.75), "brush": (5.7, 7.42, 0.85), "spray": (5.7, 8.08, 0.85)}
+             "plate": (6.35, 2.3, 0.75), "brush": (5.7, 7.42, 0.85), "spray": (5.7, 8.08, 0.85),
+             "toilet_brush": (7.0, 9.2, 0.55)}
 
-TOOLS = {"brush": {"scrubs"}, "spray": {"sprays"}, "spatula": {"flips"}, "hoover": {"vacuums"}}
+TOOLS = {"brush": {"scrubs"}, "toilet_brush": {"scrubs"}, "spray": {"sprays"}, "spatula": {"flips"},
+         "hoover": {"vacuums"}}
 HEATS = ("pot", "pan")                        # stand on the hob and heat up (the kettle has its own base)
 FOOD_HOLDERS = ("pot", "pan", "plate", "board", "pasta")
 # grime: where patches can be (name: x0, x1, y0, y1, surface z above Z0)
 SURFACES = {
-    "bath": (5.6, 7.1, 9.08, 9.22, 0.55), "basin": (5.52, 5.9, 7.36, 8.14, 0.85), "toilet": (7.62, 8.08, 8.12, 8.48, 0.42),
+    "bath": (5.6, 7.1, 9.08, 9.22, 0.55), "basin": (5.52, 5.9, 7.36, 8.14, 0.85), "toilet": (7.62, 7.85, 8.15, 8.45, 0.42),
     "bathroom floor": (6.0, 7.5, 7.0, 8.8, 0.0), "worktop": (0.85, 3.7, 0.25, 0.75, 0.9),
     "dining table": (6.15, 7.65, 2.1, 2.9, 0.75), "kitchen island": (2.05, 3.75, 2.3, 3.1, 0.92),
 }
@@ -138,7 +143,7 @@ class World:
         h = self.h
         hob = h.st.get("hob", False)
         for n in HEATS:                                              # the hob heats whatever stands on it
-            if n == "pot":                                           # (the house heats and cools the pot itself)
+            if n == "pot" and h.water.get("pot", 0.0) > 0.4:         # (the house heats a pot of water itself)
                 continue
             on = h.on_zone(n, "hob")
             wet = h.water.get(n, 0.0) > 0.2
@@ -268,6 +273,11 @@ class World:
             return f"{name}: {n} grimy patch(es)" + (f", {wet} wet with cleaner" if wet else "") + "."
         if name in TOOLS:
             return f"{name}: a tool; it {', '.join(sorted(TOOLS[name]))}."
+        if name in ("hob", "cooker", "stove", "kettle base"):
+            zone, ctl = ("hob", "hob") if name != "kettle base" else ("kettle_base", "kettle")
+            on = [n for n in h.obj_body if h.on_zone(n, zone)]
+            what = ", ".join(f"the {n} ({h.temp.get(n, ROOM_T):.0f} C)" for n in on) or "nothing"
+            return f"{name}: {'on' if h.st.get(ctl) else 'off'}; on it: {what}. Pressing its control switches it on or off."
         return None
 
     # ------------------------------------------------------------------------------------------ drawing

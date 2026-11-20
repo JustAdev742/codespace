@@ -695,8 +695,10 @@ class HouseBot:
         here = self.h.room_of(x, y)
         # where it belongs first, then the room it is in, then the nearest; never the stairs (a flight is not a room to
         # stand in the middle of - going to its centre walked up and down it) or the garden
-        rooms = sorted((r for r in b.rooms if r not in ("garden", "stairs")),
-                       key=lambda r: (r != home_room, r != here, math.dist((x, y), b.rooms[r]["centre"])))
+        z_here = self.h.floor_z(x, y)
+        rooms = sorted((r for r in b.rooms if r not in ("garden", "stairs")),     # another floor is a flight away
+                       key=lambda r: (r != home_room, r != here, math.dist((x, y), b.rooms[r]["centre"])
+                                      + (8.0 if abs(self.h.floor_z(*b.rooms[r]["centre"]) - z_here) > 0.5 else 0.0)))
         for r in rooms:
             self.say("search", obj=HS.OBJECTS[obj][5][0], room=r)
             if not self.goto(self.h.b.rooms[r]["centre"], speed=0.7):
@@ -1041,6 +1043,8 @@ class HouseBot:
             m.eq_data[eq, 0:3] = R.T @ (hook - d.xpos[b])        # the hold point in the object's frame
             m.eq_data[eq, 3:6] = R1.T @ (hook - d.xpos[hb])      # ... and in the hand's (MuJoCo 4 weld data layout)
             m.eq_data[eq, 6:10] = rq
+            import world as WR                                 # a tool is gripped firmly; a load hangs and may swing a little
+            m.eq_data[eq, 10] = 1.0 if obj in WR.TOOLS and obj != "hoover" else 0.05
         else:
             m.eq_data[eq, 3:6] = R.T @ (h.hook_world() - d.xpos[b])
         d.eq_active[eq] = 1
@@ -1235,10 +1239,10 @@ class HouseBot:
         def reach_point(fwd, right=REACH_RIGHT):
             x, y, yaw = h.robot_pose()
             return (x + fwd * math.cos(yaw) + right * math.sin(yaw), y + fwd * math.sin(yaw) - right * math.cos(yaw))
-        if where == "floor":
-            fwd, right = self.reach_offset(KM.LOW_REACH, True)
+        if where == "floor":                         # standing: the hook as low as it goes 0.32 m ahead, then let go -
+            fwd, right = 0.32, REACH_RIGHT            # a short drop. A crouch to set things down tipped the robot over
             target = reach_point(fwd, right)
-            top, label, low = h.floor_z(*target), "floor", True
+            top, label, low = h.floor_z(*target), "floor", False
         else:
             f = h.b.furniture.get(where)
             if f is None:
@@ -1358,6 +1362,8 @@ class HouseBot:
         p = h.obj_pos(obj)
         upright = h.e.d[0].xmat[h.obj_body[obj]][8] > 0.9
         ok = abs(p[2] - (top + half_h)) < 0.05 and upright
+        if where == "floor":                          # dropped the last bit: on the floor is on the floor, any way up
+            ok = p[2] - top < 0.3
         self.say("placed", obj=name, place=label) if ok else self.say("cant", why=f"the {name} fell over")
         self.memory[obj] = dict(xyz=p, t=h.t, room=h.room_of(p[0], p[1]))
         return ok

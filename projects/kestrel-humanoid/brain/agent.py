@@ -120,6 +120,11 @@ class Memory:
         return "\n".join(lines) or "(No memory yet: this is your first task.)"
 
 
+def HB_Interrupted():
+    import housebot as HB
+    return HB.Interrupted
+
+
 class RobotAgent:
     MAX_TURNS = 40
 
@@ -335,6 +340,21 @@ Your memory (from earlier tasks):
         ok, note = True, ""
         if bot.sup.latched and name not in ("done", "note_lesson", "say", "look"):
             return False, "You are on the floor with the e-stop set: a person has to help you up. Call done."
+        words = {w: n for n, o in HS.OBJECTS.items() for w in o[5]}
+        for k in ("object", "into", "where", "target", "thing"):    # 'frying pan' -> 'pan', 'scrub brush' -> 'brush'
+            if isinstance(inp.get(k), str) and inp[k].strip().lower() in words and inp[k] not in HS.OBJECTS:
+                inp = dict(inp, **{k: words[inp[k].strip().lower()]})
+        try:
+            return self._execute(name, inp, said0, ev0)
+        except HB_Interrupted():
+            raise
+        except Exception as e:                              # a bad argument or a slip: a failed action, not the end
+            return False, f"FAILED: {type(e).__name__}: {e}"
+
+    def _execute(self, name, inp, said0, ev0):
+        import house as HS
+        h, bot = self.h, self.bot
+        ok, note = True, ""
         if name == "look":
             if inp.get("turn_deg"):
                 x, y, yaw = h.robot_pose()
@@ -507,12 +527,19 @@ Your memory (from earlier tasks):
                     except HB.Interrupted as e:
                         if str(e) == "fell":
                             ok, text = False, "you FELL; the e-stop is set until a person helps you up"
+                            # remembered whether or not Claude writes it down: what was being done when it fell
+                            self.mem.d["lessons"] = (self.mem.d["lessons"] + [
+                                f"I fell while doing {b.name} {json.dumps(b.input)} (during: {goal[:60]}). "
+                                f"Avoid that, or do it another way."])[-60:]
+                            self.mem.save()
                         else:
                             raise
                     self.on_event("result", text)
                     last = i == len(calls) - 1 and b.name not in ("note_lesson", "save_skill", "show_skill", "done")
                     content = self.observation(text) if last else [{"type": "text", "text": text}]
-                    results.append({"type": "tool_result", "tool_use_id": b.id, "content": content, "is_error": not ok})
+                    # an error result may hold text only; with pictures attached, the text's "FAILED" says it instead
+                    results.append({"type": "tool_result", "tool_use_id": b.id, "content": content,
+                                    "is_error": (not ok) and not last})
                 messages.append({"role": "user", "content": results})
                 if self.done is not None:
                     break

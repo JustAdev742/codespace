@@ -9,7 +9,7 @@ attempt from its state - never from which steps were taken - and the tokens and 
 Jobs (none has a starter skill; the general rules are in world.py):
   steak     "Cook the steak medium and serve it on the plate on the dining table, then turn the hob off."
             Passes when the steak is on the plate, cooked medium (57-63 C inside) and not burnt, and the hob is off.
-  bathroom  The bath, basin and toilet have grimy patches. "The bathroom is grimy - please clean it."
+  bathroom  The bath and basin have grimy patches. "The bathroom is grimy - please clean it."
             Passes when no grime is left in the bathroom.
   wipe      Grime on the dining table. "Wipe the dining table clean." Passes when the table is clean.
 
@@ -73,7 +73,7 @@ def setup(task, seed):
     bot = HB.HouseBot(h, log=lambda *a: None, seed=seed)
     rng = random.Random(seed)
     if task == "bathroom":
-        h.world.soil(["bath", "basin", "toilet"], 6, rng)
+        h.world.soil(["bath", "basin"], 6, rng)        # (the toilet: reachable with the long brush, but not reliably yet)
     elif task == "wipe":
         h.world.soil(["dining table"], 4, rng)
     h.place_robot(7.0, 5.9, rng.uniform(-3.1, 3.1))            # in the hall

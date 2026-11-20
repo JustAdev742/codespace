@@ -64,7 +64,7 @@ def setup(seed, walker=True, vacuum=True):
     h = HS.House(seed=seed, walker=walker, vacuum=vacuum)
     h.reset()
     import collections
-    trail = collections.deque(maxlen=4)            # the robot's last few log lines: where a failed trial went wrong
+    trail = collections.deque(maxlen=6)            # the robot's last few log lines: where a failed trial went wrong
     bot = HB.HouseBot(h, log=lambda *a: trail.append(f"{h.t:.0f}s {' '.join(map(str, a))}"[:140]), seed=seed)
     bot.trail = trail
     m = h.e.m
@@ -244,7 +244,8 @@ def trial(job):
     except HB.Interrupted as ex:
         where = ""
         try:
-            where = f" at {h.t:.0f} s; last: {bot.trail[-1]}" if bot.trail else f" at {h.t:.0f} s"
+            before = [t for t in bot.trail if "I fell" not in t]
+            where = f" at {h.t:.0f} s; before that: {before[-1]}" if before else f" at {h.t:.0f} s"
             out["sim_s"] = round(h.t, 1)
         except NameError:
             pass
