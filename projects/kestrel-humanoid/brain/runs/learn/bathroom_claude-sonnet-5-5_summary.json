@@ -1,16 +1,93 @@
 {
  "task": "bathroom",
  "model": "claude-sonnet-5-5",
- "attempts": 3,
+ "attempts": 2,
  "passed": [
-  true,
-  true,
+  false,
   true
  ],
- "total_cost_usd": 0.21,
+ "total_cost_usd": 0.14,
  "memory": {
-  "skills": {},
-  "lessons": [],
+  "skills": {
+   "clean_bathroom": {
+    "description": "Clean the grimy bathroom: spray then scrub basin and bath.",
+    "steps": [
+     [
+      "go_to",
+      {
+       "place": "bathroom"
+      }
+     ],
+     [
+      "pick_up",
+      {
+       "object": "spray"
+      }
+     ],
+     [
+      "use",
+      {
+       "target": "bath"
+      }
+     ],
+     [
+      "use",
+      {
+       "target": "basin"
+      }
+     ],
+     [
+      "put",
+      {
+       "where": "floor"
+      }
+     ],
+     [
+      "pick_up",
+      {
+       "object": "brush"
+      }
+     ],
+     [
+      "use",
+      {
+       "target": "basin"
+      }
+     ],
+     [
+      "use",
+      {
+       "target": "bath"
+      }
+     ],
+     [
+      "use",
+      {
+       "target": "bath"
+      }
+     ],
+     [
+      "use",
+      {
+       "target": "bath"
+      }
+     ],
+     [
+      "inspect",
+      {
+       "thing": "bathroom"
+      }
+     ]
+    ],
+    "notes": "Pick up spray once only (falls happened when picking it up repeatedly); put it on floor before taking the brush. Each use rubs 5 s; the bath needed about 8 to 10 rubs in total. Repeat use bath/basin and inspect until 0 patches remain. If cleaner dries, re-spray. Took about 280 s.",
+    "wins": 1,
+    "fails": 0,
+    "saved": "2026-11-20 01:52"
+   }
+  },
+  "lessons": [
+   "I fell while doing pick_up {\"object\": \"spray\"} (during: The bathroom is grimy - please clean it.). Avoid that, or do it another way."
+  ],
   "episodes": [
    {
     "goal": "The bathroom is grimy - please clean it.",
@@ -32,6 +109,20 @@
     "steps": 27,
     "summary": "Sprayed and scrubbed the basin and bath, re-spraying where the cleaner had dried. Inspect now shows 0 grimy patches in the bathroom.",
     "when": "2026-11-20 01:47"
+   },
+   {
+    "goal": "The bathroom is grimy - please clean it.",
+    "ok": false,
+    "steps": 17,
+    "summary": "Cleaned part of the bathroom, but 2 grimy patches remain. I fell while picking up the spray bottle a second time, and the e-stop is set until someone helps me up.",
+    "when": "2026-11-20 01:50"
+   },
+   {
+    "goal": "The bathroom is grimy - please clean it.",
+    "ok": true,
+    "steps": 22,
+    "summary": "Bathroom cleaned (0 grimy patches); skill saved.",
+    "when": "2026-11-20 01:52"
    }
   ]
  }

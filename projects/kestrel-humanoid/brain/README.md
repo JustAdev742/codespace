@@ -389,7 +389,23 @@ from an empty memory, so whatever the later attempts know, the earlier ones taug
 attempt from its state (is the steak medium and on the plate, is the bathroom clean), never from the steps taken,
 and the tokens and their cost are counted. Jobs: `steak`, `bathroom`, `wipe`.
 
-<!-- learning results -->
+**Results with Claude Sonnet 5.5** (the house scores every attempt; memory carried from one attempt to the next):
+
+| Job | Attempts in order | What it learned on the way |
+|---|---|---|
+| Cook a steak medium, serve it, hob off | fail, fail, fail, fail, **pass**, **pass** | Its own lessons: put the pan on the heat only once the steak is ready (a preheated pan burnt it), turn it every ~30 s, take it off at ~50 C because it keeps cooking. Then it saved two skills with notes ("pour the board into the cold pan, then switch the hob on"; "the flip only works standing close to the hob") |
+| Clean the grimy bathroom | **pass**, **pass**, **pass** (47, 29, 27 actions), fail (a fall), **pass** | Re-spray where the cleaner has dried; pick the spray bottle up only once; the bath takes 8-10 rubs. Saved as a skill |
+
+Six attempts cost $0.06-0.14 each. Earlier rounds (logs in `runs/learn/`) failed for reasons that were mine, not
+Claude's: a request format the API rejected, a pan that slid off the worktop, a brush held too rigidly, a spatula that
+knocked the board away. Every one of those was found by watching what Claude tried, and fixed in the robot's basic
+actions or in the house, never by telling it what to do. When Claude tried to slide the steak off the board with
+the spatula (as people do), the house was taught that a spatula can carry food.
+
+Limits: this is learning by memory and reasoning, not by changing the model's weights. Each attempt starts from the
+same house with a different seed, and three to six attempts are a small sample, not a measured success rate. The
+toilet is cleaned only unreliably (the long-handled brush reaches it, but holding a rigid 45 cm brush on a small
+spot is hard for this arm), so the bathroom test uses the bath and basin.
 
 ### Which Claude model does what
 

@@ -219,3 +219,92 @@
 [ 400.9] action: done {"summary": "Sprayed and scrubbed the basin and bath, re-spraying where the cleaner had dried. Inspect now shows 0 grimy patches in the bathroom.", "success": true}
 [ 400.9] result: ok
 
+{"attempt": 4, "passed": false, "claimed": false, "state": "2 grimy patch(es) left in the bathroom", "summary": "Cleaned part of the bathroom, but 2 grimy patches remain. I fell while picking up the spray bottle a second time, and the e-stop is set until someone helps me up.", "steps": 17, "sim_s": 237.8, "wall_min": 1.3, "usage": {"input": 18, "output": 895, "cache_read": 54168, "cache_write": 24959, "calls": 8}, "cost_usd": 0.077, "skills": [], "lessons": 1}
+[   0.5] action: pick_up {"object": "spray"}
+[  18.4] result: done | you said: Got it.
+[  18.4] action: use {"target": "basin"}
+[  37.0] result: done: sprayed: 2 grimy patch(es) wet with cleaner
+[  37.0] action: use {"target": "bath"}
+[  54.6] result: done: sprayed: 2 grimy patch(es) wet with cleaner
+[  54.6] thought: Need to swap to brush.
+[  54.6] action: put {"where": "floor"}
+[  61.0] result: done | you said: Delivered: the spray bottle, on the floor.
+[  61.0] action: pick_up {"object": "brush"}
+[  78.8] result: done | you said: Got it.
+[  78.8] action: use {"target": "basin"}
+[ 100.3] result: done: rubbed it back and forth for 5 s: 1 patch(es) came clean
+[ 100.3] action: use {"target": "bath"}
+[ 122.8] result: done: rubbed it back and forth for 5 s: the grime is fading
+[ 122.8] action: inspect {"thing": "bathroom"}
+[ 122.8] result: bathroom: 4 grimy patch(es).
+[ 122.8] thought: Still 4 patches; scrub more.
+[ 122.8] action: use {"target": "bath"}
+[ 143.7] result: done: rubbed it back and forth for 5 s: the grime is fading
+[ 143.7] action: use {"target": "basin"}
+[ 169.7] result: done: rubbed it back and forth for 5 s: 1 patch(es) came clean
+[ 169.7] action: inspect {"thing": "bathroom"}
+[ 169.7] result: bathroom: 2 grimy patch(es).
+[ 169.7] action: use {"target": "bath"}
+[ 195.0] result: done: rubbed it back and forth for 5 s: nothing changed
+[ 195.0] action: use {"target": "bath"}
+[ 214.2] result: done: rubbed it back and forth for 5 s: nothing changed
+[ 214.2] action: inspect {"thing": "bathroom"}
+[ 214.2] result: bathroom: 2 grimy patch(es).
+[ 214.2] thought: Cleaner dried; re-spray.
+[ 214.2] action: put {"where": "floor"}
+[ 220.6] result: done | you said: Delivered: the scrub brush, on the floor.
+[ 220.6] action: pick_up {"object": "spray"}
+[ 237.8] result: you FELL; the e-stop is set until a person helps you up
+[ 237.8] action: done {"summary": "Cleaned part of the bathroom, but 2 grimy patches remain. I fell while picking up the spray bottle a second time, and the e-stop is set until someone helps me up.", "success": false}
+[ 237.8] result: ok
+
+{"attempt": 5, "passed": true, "claimed": true, "state": "0 grimy patch(es) left in the bathroom", "summary": "Bathroom cleaned (0 grimy patches); skill saved.", "steps": 22, "sim_s": 284.2, "wall_min": 1.5, "usage": {"input": 24, "output": 1522, "cache_read": 93843, "cache_write": 14150, "calls": 10}, "cost_usd": 0.06, "skills": ["clean_bathroom"], "lessons": 1}
+[   0.5] action: go_to {"place": "bathroom"}
+[   8.4] result: done | you said: The bathroom: a short walk for a long mind. / Arrived: the bathroom.
+[   8.4] thought: Pick up brush first (spray fell before).
+[   8.4] action: pick_up {"object": "spray"}
+[  23.0] result: done | you said: The spray bottle is mine. Temporarily.
+[  23.0] action: use {"target": "bath"}
+[  44.0] result: done: sprayed: 3 grimy patch(es) wet with cleaner
+[  44.0] action: use {"target": "basin"}
+[  63.4] result: done: sprayed: 2 grimy patch(es) wet with cleaner
+[  63.4] thought: Now brush; put spray down first.
+[  63.4] action: put {"where": "floor"}
+[  69.8] result: done | you said: The spray bottle is on the floor.
+[  69.8] action: pick_up {"object": "brush"}
+[  84.5] result: done | you said: The scrub brush is mine. Temporarily.
+[  84.5] action: use {"target": "basin"}
+[ 105.9] result: done: rubbed it back and forth for 5 s: 1 patch(es) came clean
+[ 105.9] action: use {"target": "bath"}
+[ 129.0] result: done: rubbed it back and forth for 5 s: the grime is fading
+[ 129.0] action: inspect {"thing": "bathroom"}
+[ 129.0] result: bathroom: 5 grimy patch(es).
+[ 129.0] thought: Keep scrubbing the bath.
+[ 129.0] action: use {"target": "bath"}
+[ 147.4] result: done: rubbed it back and forth for 5 s: nothing changed
+[ 147.4] action: use {"target": "bath"}
+[ 169.7] result: done: rubbed it back and forth for 5 s: 1 patch(es) came clean
+[ 169.7] action: inspect {"thing": "bathroom"}
+[ 169.7] result: bathroom: 3 grimy patch(es).
+[ 169.7] action: use {"target": "bath"}
+[ 190.8] result: done: rubbed it back and forth for 5 s: the grime is fading
+[ 190.8] action: use {"target": "bath"}
+[ 211.9] result: done: rubbed it back and forth for 5 s: nothing changed
+[ 211.9] action: use {"target": "basin"}
+[ 234.4] result: done: rubbed it back and forth for 5 s: 1 patch(es) came clean
+[ 234.4] action: inspect {"thing": "bathroom"}
+[ 234.4] result: bathroom: 1 grimy patch(es).
+[ 234.4] thought: One left in bath.
+[ 234.4] action: use {"target": "bath"}
+[ 263.0] result: done: rubbed it back and forth for 5 s: the grime is fading
+[ 263.0] action: use {"target": "bath"}
+[ 284.2] result: done: rubbed it back and forth for 5 s: the grime is fading
+[ 284.2] action: inspect {"thing": "bathroom"}
+[ 284.2] result: bathroom: 0 grimy patch(es).
+[ 284.2] action: done {"summary": "Sprayed and scrubbed the basin and bath. Inspect now shows 0 grimy patches in the bathroom.", "success": true}
+[ 284.2] result: ok
+[ 284.2] action: save_skill {"name": "clean_bathroom", "description": "Clean the grimy bathroom: spray then scrub basin and bath.", "steps_json": "[[\"go_to\",{\"place\":\"bathroom\"}],[\"pick_up\",{\"object\":\"spray\"}],[\"use\",{\"target\":\"bath\"}],[\"use\",{\"target\":\"basin\"}],[\"put\",{\"where\":\"floor\"}
+[ 284.2] result: saved skill 'clean_bathroom' (11 steps)
+[ 284.2] action: done {"summary": "Bathroom cleaned (0 grimy patches); skill saved.", "success": true}
+[ 284.2] result: ok
+
