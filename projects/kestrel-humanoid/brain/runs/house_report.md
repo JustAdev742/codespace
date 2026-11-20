@@ -1,6 +1,6 @@
 # KESTREL in the house: test report
 
-152 trials, 397 simulated minutes, 33 minutes on 3 CPU cores. `python house_test.py` reproduces it.
+152 trials, 432 simulated minutes, 38 minutes on 3 CPU cores. `python house_test.py` reproduces it.
 
 | Suite | Passed | Falls | Bumps (control steps touching a wall, furniture, person or vacuum) |
 |---|---|---|---|
@@ -13,23 +13,23 @@
 | alarm | 6 of 6 | 0 | 5 |
 | stairs | 12 of 12 | 0 | 176 |
 | steep | 1 of 6 | 0 | 136 |
-| tea | 1 of 4 | 0 | 94 |
+| tea | 4 of 4 | 0 | 66 |
 | pasta | 4 of 4 | 0 | 180 |
 | table | 4 of 4 | 0 | 9 |
-| washup | 0 of 4 | 4 | 0 |
+| washup | 4 of 4 | 0 | 1500 |
 | tidy | 4 of 4 | 0 | 296 |
 | laundry | 3 of 3 | 0 | 42 |
 | trash | 4 of 4 | 0 | 203 |
-| plants | 0 of 3 | 0 | 101 |
-| vacuum | 7 of 10 | 0 | 3648 |
+| plants | 3 of 3 | 0 | 138 |
+| vacuum | 6 of 10 | 0 | 3742 |
 | visitor | 4 of 4 | 0 | 424 |
-| uno | 1 of 4 | 1 | 7254 |
+| uno | 1 of 4 | 1 | 7533 |
 | dog | 5 of 6 | 0 | 78 |
 | spill | 3 of 4 | 0 | 12 |
-| push | 3 of 8 | 1 | 120 |
-| dark | 5 of 6 | 0 | 983 |
+| push | 3 of 8 | 1 | 122 |
+| dark | 5 of 6 | 0 | 1181 |
 | clutter | 5 of 5 | 0 | 45 |
-| saturday | 0 of 2 | 0 | 1703 |
+| saturday | 0 of 2 | 0 | 6365 |
 
 ## Every trial
 
@@ -110,10 +110,10 @@ Re-run one: `python -c "import house_test as T; print(T.trial(('fetch', 3, 1480)
 | steep | 3 | 3836 | pass | bedroom -> laundry carrying the basket (12 cm stairs) | 106.6 | 61 | 1.88 |
 | steep | 4 | 3933 | FAIL | landing -> hall (12 cm stairs) | 36.7 | 0 | 6.11 |
 | steep | 5 | 4030 | FAIL | kitchen -> laundry (12 cm stairs) | 51.4 | 11 | 1.3 |
-| tea | 0 | 3314 | FAIL | water 0.30 l, kettle 94 C, tea in the mug False, mug 8.5 m from you | 161.0 | 42 | 1.3 |
-| tea | 1 | 3411 | FAIL | water 0.30 l, kettle 95 C, tea in the mug False, mug 8.5 m from you | 160.5 | 15 | 1.35 |
-| tea | 2 | 3508 | FAIL | water 0.30 l, kettle 95 C, tea in the mug False, mug 8.5 m from you | 168.8 | 24 | 1.33 |
-| tea | 3 | 3605 | pass | water 0.10 l, kettle 86 C, tea in the mug True, mug 0.3 m from you | 202.1 | 13 | 1.32 |
+| tea | 0 | 3314 | pass | water 0.10 l, kettle 85 C, tea in the mug True, mug 0.3 m from you | 269.2 | 19 | 1.3 |
+| tea | 1 | 3411 | pass | water 0.10 l, kettle 86 C, tea in the mug True, mug 0.3 m from you | 253.3 | 15 | 1.32 |
+| tea | 2 | 3508 | pass | water 0.10 l, kettle 85 C, tea in the mug True, mug 0.3 m from you | 274.5 | 20 | 1.33 |
+| tea | 3 | 3605 | pass | water 0.10 l, kettle 86 C, tea in the mug True, mug 0.3 m from you | 251.9 | 12 | 1.32 |
 | pasta | 0 | 3537 | pass | water 0.6 l, pasta True, cooked 53 s, hob off, pot on the table True | 301.8 | 53 | 1.32 |
 | pasta | 1 | 3634 | pass | water 0.6 l, pasta True, cooked 53 s, hob off, pot on the table True | 300.1 | 53 | 1.32 |
 | pasta | 2 | 3731 | pass | water 0.6 l, pasta True, cooked 48 s, hob off, pot on the table True | 289.9 | 42 | 1.32 |
@@ -122,10 +122,10 @@ Re-run one: `python -c "import house_test as T; print(T.trial(('fetch', 3, 1480)
 | table | 1 | 3617 | pass | 4 of 4 mugs on the table, closest pair 0.31 m apart | 219.4 | 4 | 1.3 |
 | table | 2 | 3714 | pass | 4 of 4 mugs on the table, closest pair 0.33 m apart | 229.9 | 2 | 1.33 |
 | table | 3 | 3811 | pass | 4 of 4 mugs on the table, closest pair 0.31 m apart | 209.5 | 1 | 1.41 |
-| washup | 0 | 3664 | FAIL (fell) |  (interrupted: fell at 520 s; before that: 507s   [ 506.6 s] KESTREL: I don't know where the green mug is. Searching the patio first.) | 520.3 |  |  |
-| washup | 1 | 3761 | FAIL (fell) |  (interrupted: fell at 520 s; before that: 507s   [ 506.6 s] KESTREL: I don't know where the green mug is. Searching the patio first.) | 520.3 |  |  |
-| washup | 2 | 3858 | FAIL (fell) |  (interrupted: fell at 520 s; before that: 507s   [ 506.6 s] KESTREL: I don't know where the green mug is. Searching the patio first.) | 520.3 |  |  |
-| washup | 3 | 3955 | FAIL (fell) |  (interrupted: fell at 520 s; before that: 507s   [ 506.6 s] KESTREL: The green mug isn't where I last saw it. Checking the patio.) | 520.3 |  |  |
+| washup | 0 | 3664 | pass | 4 of 4 mugs in the sink | 683.3 | 375 | 1.12 |
+| washup | 1 | 3761 | pass | 4 of 4 mugs in the sink | 683.3 | 375 | 1.12 |
+| washup | 2 | 3858 | pass | 4 of 4 mugs in the sink | 683.3 | 375 | 1.12 |
+| washup | 3 | 3955 | pass | 4 of 4 mugs in the sink | 683.3 | 375 | 1.12 |
 | tidy | 0 | 3442 | pass | 4/4 toys in the toy box, 3/3 clothes in the hamper | 363.9 | 74 | 7.59 |
 | tidy | 1 | 3539 | pass | 4/4 toys in the toy box, 3/3 clothes in the hamper | 363.9 | 74 | 7.59 |
 | tidy | 2 | 3636 | pass | 4/4 toys in the toy box, 3/3 clothes in the hamper | 363.9 | 74 | 7.59 |
@@ -137,26 +137,26 @@ Re-run one: `python -c "import house_test as T; print(T.trial(('fetch', 3, 1480)
 | trash | 1 | 3643 | pass | bag in the garden bin True | 162.4 | 43 | 1.3 |
 | trash | 2 | 3740 | pass | bag in the garden bin True | 176.1 | 57 | 1.28 |
 | trash | 3 | 3837 | pass | bag in the garden bin True | 186.4 | 59 | 1.59 |
-| plants | 0 | 3658 | FAIL | watered 3 of 4 plants | 302.7 | 34 | 1.59 |
-| plants | 1 | 3755 | FAIL | watered 3 of 4 plants | 297.1 | 30 | 1.59 |
-| plants | 2 | 3852 | FAIL | watered 3 of 4 plants | 291.5 | 37 | 1.59 |
+| plants | 0 | 3658 | pass | watered 4 of 4 plants | 384.2 | 47 | 1.52 |
+| plants | 1 | 3755 | pass | watered 4 of 4 plants | 379.4 | 43 | 1.52 |
+| plants | 2 | 3852 | pass | watered 4 of 4 plants | 373.0 | 48 | 1.52 |
 | vacuum | 0 | 3657 | pass | picked up 31 of 40 specks of dust (78%); vacuum put back True | 643.6 | 1591 | 0.69 |
 | vacuum | 1 | 3754 | FAIL | picked up 6 of 40 specks of dust (15%); vacuum put back True | 141.0 | 4 | 1.12 |
 | vacuum | 2 | 3851 | pass | picked up 31 of 40 specks of dust (78%); vacuum put back True | 492.4 | 20 | 0.43 |
 | vacuum | 3 | 3948 | pass | picked up 33 of 40 specks of dust (82%); vacuum put back True | 410.7 | 16 | 0.85 |
-| vacuum | 4 | 4045 | pass | picked up 26 of 40 specks of dust (65%); vacuum put back True | 497.9 | 193 | 0.61 |
+| vacuum | 4 | 4045 | FAIL | picked up 25 of 40 specks of dust (62%); vacuum put back True | 528.2 | 240 | 0.54 |
 | vacuum | 5 | 4142 | pass | picked up 30 of 40 specks of dust (75%); vacuum put back True | 643.6 | 1591 | 0.69 |
 | vacuum | 6 | 4239 | FAIL | picked up 8 of 40 specks of dust (20%); vacuum put back True | 141.0 | 4 | 1.12 |
 | vacuum | 7 | 4336 | FAIL | picked up 25 of 40 specks of dust (62%); vacuum put back True | 492.4 | 20 | 0.43 |
 | vacuum | 8 | 4433 | pass | picked up 37 of 40 specks of dust (92%); vacuum put back True | 410.7 | 16 | 0.85 |
-| vacuum | 9 | 4530 | pass | picked up 28 of 40 specks of dust (70%); vacuum put back True | 497.9 | 193 | 0.61 |
+| vacuum | 9 | 4530 | pass | picked up 30 of 40 specks of dust (75%); vacuum put back True | 528.2 | 240 | 0.54 |
 | visitor | 0 | 3784 | pass | Sam in the living room, closest 1.43 m | 83.4 | 106 | 0.46 |
 | visitor | 1 | 3881 | pass | Sam in the living room, closest 1.43 m | 83.4 | 106 | 0.46 |
 | visitor | 2 | 3978 | pass | Sam in the living room, closest 1.43 m | 83.4 | 106 | 0.46 |
 | visitor | 3 | 4075 | pass | Sam in the living room, closest 1.43 m | 83.4 | 106 | 0.46 |
 | uno | 0 | 3338 | FAIL (fell) |  (interrupted: fell at 136 s; before that: 134s   [ 134.2 s] KESTREL: You win. I'll allow it, this once.) | 136.1 |  |  |
-| uno | 1 | 3435 | FAIL | 1 game(s), robot won 1; 25 turns, reaches 12/13 on target, Uno called 1x, missed Unos caught 0, illegal plays 0; stood up after False | 109.1 | 622 | 1.56 |
-| uno | 2 | 3532 | FAIL | 1 game(s), robot won 0; 89 turns, reaches 38/42 on target, Uno called 1x, missed Unos caught 0, illegal plays 0; stood up after False | 244.3 | 6269 | 1.59 |
+| uno | 1 | 3435 | FAIL | 1 game(s), robot won 1; 59 turns, reaches 26/27 on target, Uno called 3x, missed Unos caught 0, illegal plays 0; stood up after False | 182.5 | 3939 | 1.56 |
+| uno | 2 | 3532 | FAIL | 1 game(s), robot won 1; 58 turns, reaches 28/29 on target, Uno called 2x, missed Unos caught 0, illegal plays 0; stood up after False | 177.0 | 3231 | 1.59 |
 | uno | 3 | 3629 | pass | 1 game(s), robot won 0; 19 turns, reaches 10/10 on target, Uno called 0x, missed Unos caught 0, illegal plays 0; stood up after True | 70.4 | 363 | 1.94 |
 | dog | 0 | 3314 | FAIL | errands with the dog about: kitchen -> living room -> dining room | 120.0 | 0 | 0.98 |
 | dog | 1 | 3411 | pass | errands with the dog about: bedroom -> living room -> kitchen | 86.0 | 16 | 1.29 |
@@ -169,14 +169,14 @@ Re-run one: `python -c "import house_test as T; print(T.trial(('fetch', 3, 1480)
 | spill | 2 | 3742 | pass | fetched the mug_blue past a spill; closest 1.27 m from its middle | 105.3 | 3 | 1.0 |
 | spill | 3 | 3839 | pass | fetched the pasta past a spill; closest 2.57 m from its middle | 96.4 | 3 | 1.01 |
 | push | 0 | 3448 | pass | carried the kettle to the study desk through 19 shoves | 90.3 | 21 | 1.44 |
-| push | 1 | 3545 | FAIL | carried the toolbox to the dining table through 8 shoves | 38.1 | 0 | 1.34 |
+| push | 1 | 3545 | FAIL | carried the toolbox to the dining table through 9 shoves - 43s   [  42.9 s] KESTREL: The toolbox slipped my hook. the hook missed the handle by 0.18 m. | 42.9 | 0 | 1.26 |
 | push | 2 | 3642 | pass | carried the bag to the kitchen island through 14 shoves | 68.9 | 38 | 1.42 |
-| push | 3 | 3739 | FAIL | carried the lunchbox to the hall table through 8 shoves | 40.3 | 21 | 1.36 |
-| push | 4 | 3836 | FAIL | carried the kettle to the study desk through 9 shoves | 42.1 | 1 | 1.37 |
+| push | 3 | 3739 | FAIL | carried the lunchbox to the hall table through 9 shoves - 46s   [  45.9 s] KESTREL: I couldn't take the lunchbox: the hook missed the handle by 0.07 m. | 45.9 | 21 | 1.36 |
+| push | 4 | 3836 | FAIL | carried the kettle to the study desk through 11 shoves - 51s   [  50.8 s] KESTREL: I couldn't take the kettle: the hook missed the handle by 0.08 m. | 50.8 | 1 | 1.37 |
 | push | 5 | 3933 | FAIL (fell) |  (interrupted: fell at 67 s; before that: 51s   [  51.0 s] (supervisor: person near: slowed)) | 66.9 |  |  |
 | push | 6 | 4030 | pass | carried the bag to the kitchen island through 13 shoves | 64.4 | 33 | 1.02 |
-| push | 7 | 4127 | FAIL | carried the lunchbox to the hall table through 8 shoves | 39.3 | 6 | 1.42 |
-| dark | 0 | 3418 | pass | lights off: find the bag, take it to the dining table | 478.2 | 136 | 1.11 |
+| push | 7 | 4127 | FAIL | carried the lunchbox to the hall table through 9 shoves - 46s   [  45.9 s] KESTREL: I couldn't take the lunchbox: the hook missed the handle by 0.08 m. | 45.9 | 8 | 1.42 |
+| dark | 0 | 3418 | pass | lights off: find the bag, take it to the dining table | 447.8 | 334 | 1.11 |
 | dark | 1 | 3515 | pass | lights off: find the bucket, take it to the kitchen island | 80.0 | 9 | 1.46 |
 | dark | 2 | 3612 | pass | lights off: find the bag, take it to the hall table | 47.4 | 0 | 3.01 |
 | dark | 3 | 3709 | FAIL | lights off: find the pot, take it to the kitchen island | 442.7 | 96 | 1.0 |
@@ -187,5 +187,5 @@ Re-run one: `python -c "import house_test as T; print(T.trial(('fetch', 3, 1480)
 | clutter | 2 | 3965 | pass | the blocks left on stair 5: cleared, then up | 38.9 | 9 | 1.73 |
 | clutter | 3 | 4062 | pass | the ball left on stair 6: cleared, then up | 38.9 | 9 | 1.73 |
 | clutter | 4 | 4159 | pass | the teddy left on stair 7: cleared, then up | 38.9 | 9 | 1.73 |
-| saturday | 0 | 3877 | FAIL | 6 of 10 chores done: tidy the kids' room FAIL; laundry ok; vacuum the living room FAIL; cook pasta ok; set the table ok; wash up ok; take out the trash ok; water the plants FAIL; tea ok; Uno FAIL | 1736.7 | 1360 | 1.02 |
-| saturday | 1 | 3974 | FAIL | 4 of 10 chores done: tidy the kids' room FAIL; laundry FAIL; vacuum the living room FAIL; cook pasta ok; set the table ok; wash up ok; take out the trash ok; water the plants FAIL; tea FAIL; Uno FAIL | 1835.5 | 343 | 0.79 |
+| saturday | 0 | 3877 | FAIL | 7 of 10 chores done: tidy the kids' room FAIL; laundry ok; vacuum the living room FAIL; cook pasta ok; set the table ok; wash up ok; take out the trash ok; water the plants ok; tea ok; Uno FAIL | 1871.9 | 2678 | 0.83 |
+| saturday | 1 | 3974 | FAIL | 6 of 10 chores done: tidy the kids' room FAIL; laundry FAIL; vacuum the living room FAIL; cook pasta ok; set the table ok; wash up ok; take out the trash ok; water the plants ok; tea ok; Uno FAIL | 2440.8 | 3687 | 0.82 |
