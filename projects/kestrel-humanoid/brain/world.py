@@ -36,8 +36,7 @@ ROOM_T = 20.0
 
 # things to work with (merged into house.OBJECTS): shape, size, colour, kg, handle height above the middle, words, home
 NEW_OBJECTS = {
-    # the pan's carry handle stands high (0.30 m over its middle) so a spatula fits underneath it to turn food over
-    "pan": ("cylinder", (0.13, 0.025), (0.16, 0.16, 0.18, 1), 0.6, 0.30, ["frying pan", "pan", "skillet"], "kitchen counter"),
+    "pan": ("cylinder", (0.13, 0.025), (0.16, 0.16, 0.18, 1), 0.6, 0.15, ["frying pan", "pan", "skillet"], "kitchen counter"),
     "board": ("box", (0.10, 0.07, 0.015), (0.62, 0.45, 0.28, 1), 0.4, 0.16,
               ["board", "steak board", "chopping board", "steak", "meat"], "kitchen island"),
     "spatula": ("box", (0.05, 0.035, 0.008), (0.12, 0.12, 0.13, 1), 0.15, 0.20, ["spatula", "fish slice", "turner", "flipper"],
@@ -177,7 +176,8 @@ class World:
             bottom = p[2] - h.objects_half_h(held)
             v = np.linalg.norm(h.obj_vel(held)[:2])
             if v > 0.03:
-                near = (self.grime > 0) & (np.hypot(self.grime_xyz[:, 0] - p[0], self.grime_xyz[:, 1] - p[1]) < 0.08) \
+                reach = h.objects_size(held)[0] + 0.035              # half the head's length plus a patch's radius
+                near = (self.grime > 0) & (np.hypot(self.grime_xyz[:, 0] - p[0], self.grime_xyz[:, 1] - p[1]) < reach) \
                     & (np.abs(self.grime_xyz[:, 2] - bottom) < 0.035)
                 if near.any():
                     rate = 0.5 * np.where(self.wet_until[near] > h.t, 2.0, 1.0)
@@ -223,7 +223,7 @@ class World:
             if where in ("pan", "plate", "board"):
                 p = h.obj_pos(where)
                 tp = h.obj_pos(tool)
-                if math.hypot(tp[0] - p[0], tp[1] - p[1]) < 0.12 and abs(tp[2] - p[2]) < 0.12:
+                if math.hypot(tp[0] - p[0], tp[1] - p[1]) < 0.16 and abs(tp[2] - p[2]) < 0.12:    # in the pan
                     self.steak["down"] = 1 - self.steak["down"]
                     return "turned the steak over"
             return "nothing to turn over there"

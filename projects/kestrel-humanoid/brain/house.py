@@ -944,6 +944,9 @@ class House(SK.World):
     def objects_half_h(self, n):
         return OBJECTS[n][1][-1]
 
+    def objects_size(self, n):
+        return OBJECTS[n][1]
+
     def obj_vel(self, n):
         d = self.e.d[0]
         a = self.e.m.jnt_dofadr[mujoco.mj_name2id(self.e.m, mujoco.mjtObj.mjOBJ_JOINT, f"{n}_free")]

@@ -1043,8 +1043,8 @@ class HouseBot:
             m.eq_data[eq, 0:3] = R.T @ (hook - d.xpos[b])        # the hold point in the object's frame
             m.eq_data[eq, 3:6] = R1.T @ (hook - d.xpos[hb])      # ... and in the hand's (MuJoCo 4 weld data layout)
             m.eq_data[eq, 6:10] = rq
-            import world as WR                                 # a tool is gripped firmly; a load hangs and may swing a little
-            m.eq_data[eq, 10] = 1.0 if obj in WR.TOOLS and obj != "hoover" else 0.05
+            m.eq_data[eq, 10] = 0.05                           # turning held softly: a rigid grip made a brush pressed on
+            #                                                    a surface kick itself away instead of rubbing
         else:
             m.eq_data[eq, 3:6] = R.T @ (h.hook_world() - d.xpos[b])
         d.eq_active[eq] = 1
@@ -1163,6 +1163,11 @@ class HouseBot:
         else:
             return False, f"I don't know what '{target}' is"
         clear = 0.10 if "sprays" in props else 0.0
+        if "flips" in props and target in HS.OBJECTS:          # beside the middle, clear of the carry bar over it
+            x, y, _ = h.robot_pose()
+            d = np.array([x - xy[0], y - xy[1]])
+            d /= max(1e-6, np.linalg.norm(d))
+            xy = (xy[0] + 0.09 * d[0], xy[1] + 0.09 * d[1])
         if not self.hold_over(xy, z_top, secs=0.6, clear=clear, near_ok=0.12):
             return False, f"couldn't bring the {HS.OBJECTS[tool][5][0]} to the {target}"
         anchor = h.robot_pose()
