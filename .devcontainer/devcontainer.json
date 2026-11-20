@@ -1,0 +1,17 @@
+{
+  "name": "KESTREL live (robot in a house)",
+  "image": "mcr.microsoft.com/devcontainers/python:3.12-bookworm",
+  "hostRequirements": { "cpus": 2, "memory": "8gb" },
+  "postCreateCommand": "bash projects/kestrel-humanoid/brain/codespace_setup.sh",
+  "postStartCommand": "bash projects/kestrel-humanoid/brain/codespace_start.sh",
+  "forwardPorts": [8765],
+  "portsAttributes": {
+    "8765": { "label": "KESTREL live", "onAutoForward": "openBrowser" }
+  },
+  "secrets": {
+    "ANTHROPIC_API_KEY": {
+      "description": "Optional. Your Anthropic API key: with it, Claude is the robot's mind (it sees, works things out and learns). Without it, the robot understands plain commands.",
+      "documentationUrl": "https://console.anthropic.com/settings/keys"
+    }
+  }
+}

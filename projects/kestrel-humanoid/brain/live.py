@@ -83,7 +83,7 @@ class Live:
         self.rng = random.Random(a.seed)
         self.last_visit = {}
         self.claude = None
-        self.status = {}
+        self.status = dict(boot="Starting up...")
 
     # ------------------------------------------------------------------ events for the page
     def push(self, kind, text):
@@ -99,7 +99,9 @@ class Live:
     def sim_thread(self):
         try:
             self._sim()
-        except Exception:
+        except Exception as e:
+            self.status = dict(error=f"{type(e).__name__}: {e}")       # the page shows it instead of a black box
+            self.push("alert", f"The simulation could not start: {type(e).__name__}: {e}")
             self.push("log", "simulation crashed:\n" + traceback.format_exc())
             raise
 
@@ -108,7 +110,9 @@ class Live:
         import housebot as HB
         from house_lang import Lexicon
         self.HS, self.HB = HS, HB
+        self.status = dict(boot="Building the house (the first start takes about a minute: it also makes the textures)...")
         self.h = h = HS.House(seed=self.a.seed, chase_size=(self.a.width, self.a.height))
+        self.status = dict(boot="Waking the robot up...")
         h.reset()
         import random as _r
         _rng = _r.Random(self.a.seed)                      # a lived-in house: some grime and dust about
@@ -631,7 +635,7 @@ class Live:
 # ====================================================================== the web page
 PAGE = r"""<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>__BODY__ live</title>
+<title>__BODY__ live</title><link rel="icon" href="data:,">
 <style>
 :root{--bg:#0f1318;--panel:#171c23;--line:#2a313b;--text:#e8ecf1;--muted:#9aa5b1;--accent:#f0b35a;--robot:#f6d49a;--you:#9fd3ff;--alert:#ff5d5d}
 *{box-sizing:border-box}html,body{margin:0;background:var(--bg);color:var(--text);font:15px/1.45 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
@@ -641,6 +645,12 @@ main{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,1fr);gap:14px;p
 @media (max-width:900px){main{grid-template-columns:minmax(0,1fr)}}
 .panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;overflow:hidden}
 .video img{display:block;width:100%;height:auto;background:#000;aspect-ratio:8/5}
+.vwrap{position:relative}
+.boot{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;
+ padding:20px;text-align:center;background:#0b0e12;color:var(--muted);font-size:14px}
+.boot.err{color:#ffd6d6}.boot b{color:var(--text);font-size:16px}
+.spin{width:28px;height:28px;border:3px solid var(--line);border-top-color:var(--accent);border-radius:50%;animation:sp 1s linear infinite}
+@keyframes sp{to{transform:rotate(360deg)}}@media (prefers-reduced-motion:reduce){.spin{animation:none}}
 .bar{display:flex;flex-wrap:wrap;gap:8px;padding:10px}
 button{font:inherit;color:var(--text);background:#222a34;border:1px solid var(--line);border-radius:8px;padding:8px 12px;cursor:pointer}
 button:hover{border-color:#4b5664}button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
@@ -667,7 +677,8 @@ select:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 <div class="st" id="st" aria-live="polite">connecting&hellip;</div></header>
 <main>
 <section class="panel video" aria-label="Live view">
-<img id="v" src="/stream" alt="Live simulation view of the robot in the house">
+<div class="vwrap"><img id="v" src="/stream" alt="Live simulation view of the robot in the house">
+<div class="boot" id="boot" role="status" aria-live="polite"><div class="spin"></div><b>Starting the robot's house</b><span id="bootmsg">Starting up...</span></div></div>
 <div class="bar" role="group" aria-label="Camera">
 <button data-view="follow" aria-pressed="true">Follow</button><button data-view="house" aria-pressed="false">Whole house</button><button data-view="head" aria-pressed="false">Head camera</button>
 <button id="reset" title="After a fall: help it up">Reset after fall</button>
@@ -702,7 +713,13 @@ robot.onchange=()=>{const name=robot.options[robot.selectedIndex].text;robot.dis
  fetch('/robot',{method:'POST',body:robot.value}).then(()=>{const t0=Date.now();const poll=()=>setTimeout(()=>fetch('/state').then(r=>r.json()).then(s=>{if(s.room&&s.body===robot.value)location.reload();else poll();}).catch(poll),1500);setTimeout(poll,2500);});};
 const spk=document.getElementById('spk');spk.onclick=()=>{speak=!speak;spk.setAttribute('aria-pressed',speak);if(!speak&&'speechSynthesis' in window)speechSynthesis.cancel();};
 const es=new EventSource('/events');es.onmessage=e=>{const m=JSON.parse(e.data);if(m.id>lastId){lastId=m.id;add(m.kind,m.text);}};
-setInterval(()=>fetch('/state').then(r=>r.json()).then(s=>{if(!s.room){return;}st.textContent=`${s.room} · ${s.task}`+(s.holding?` · holding ${s.holding}`:'')+(s.estop?' · E-STOP':'')+` · fatigue ${Math.round(s.fatigue*100)}%`;}).catch(()=>{st.textContent='disconnected';}),1000);
+const boot=document.getElementById('boot'),bootmsg=document.getElementById('bootmsg'),vid=document.getElementById('v');
+let fails=0;
+vid.onerror=()=>setTimeout(()=>{vid.src='/stream?'+Date.now();},2000);          // the stream dropped: reconnect
+setInterval(()=>fetch('/state').then(r=>r.json()).then(s=>{fails=0;
+ if(s.error){boot.hidden=false;boot.classList.add('err');boot.innerHTML='<b>The simulation could not start</b><span></span><span>The log is /tmp/kestrel-live.log in the codespace. Run: bash projects/kestrel-humanoid/brain/codespace_start.sh</span>';boot.children[1].textContent=s.error;st.textContent='error';return;}
+ if(!s.room){boot.hidden=false;bootmsg.textContent=s.boot||'Starting up...';st.textContent='starting…';return;}
+ boot.hidden=true;st.textContent=`${s.room} · ${s.task}`+(s.holding?` · holding ${s.holding}`:'')+(s.estop?' · E-STOP':'')+` · fatigue ${Math.round(s.fatigue*100)}%`;}).catch(()=>{if(++fails>3)st.textContent='reconnecting…';}),1000);
 const SR=window.SpeechRecognition||window.webkitSpeechRecognition,mic=document.getElementById('mic');
 if(!SR){mic.disabled=true;mic.title='Voice input needs Chrome, Edge or Safari';}
 else{const r=new SR();r.lang='en-US';r.interimResults=false;r.continuous=false;let on=false;
@@ -738,7 +755,7 @@ def make_handler(live):
             elif self.path == "/state":
                 st = dict(live.status, body=live.robot)
                 self._send(200, json.dumps(st).encode(), "application/json")
-            elif self.path == "/stream":
+            elif self.path.split("?")[0] == "/stream":
                 self.send_response(200)
                 self.send_header("Content-Type", "multipart/x-mixed-replace; boundary=frame")
                 self.send_header("Cache-Control", "no-store")
@@ -775,6 +792,8 @@ def make_handler(live):
                         self.wfile.flush()
                 except (BrokenPipeError, ConnectionResetError):
                     pass
+            elif self.path == "/favicon.ico":
+                self._send(204, b"", "image/x-icon")
             else:
                 self._send(404, b"not found", "text/plain")
 
