@@ -345,7 +345,8 @@ def new_suite(suite, k, h, bot, rng, stats):
         dest = ["study desk", "dining table", "kitchen island", "hall table"][k % 4]
         ok = bot.fetch(obj, to=dest)
         h.step = step0
-        return ok, f"carried the {obj} to the {dest} through {pushes[0]} shoves"
+        why = "" if ok or not getattr(bot, "trail", None) else f" - {bot.trail[-1][:120]}"
+        return ok, f"carried the {obj} to the {dest} through {pushes[0]} shoves{why}"
     if suite == "dark":
         h.dark = True
         bot.memory = {}

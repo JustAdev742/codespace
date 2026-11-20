@@ -698,7 +698,8 @@ class HouseBot:
         z_here = self.h.floor_z(x, y)
         rooms = sorted((r for r in b.rooms if r not in ("garden", "stairs")),     # another floor is a flight away
                        key=lambda r: (r != home_room, r != here, math.dist((x, y), b.rooms[r]["centre"])
-                                      + (8.0 if abs(self.h.floor_z(*b.rooms[r]["centre"]) - z_here) > 0.5 else 0.0)))
+                                      + (8.0 if abs(self.h.floor_z(*b.rooms[r]["centre"]) - z_here) > 0.5 else 0.0)
+                                      + (6.0 if r in ("patio", "porch") else 0.0)))     # indoor things: indoors first
         for r in rooms:
             self.say("search", obj=HS.OBJECTS[obj][5][0], room=r)
             if not self.goto(self.h.b.rooms[r]["centre"], speed=0.7):
@@ -1206,8 +1207,14 @@ class HouseBot:
         return True, result
 
     def back_off(self, dist, max_s=5.0):
-        x0, y0, _ = self.h.robot_pose()
+        x0, y0, yaw = self.h.robot_pose()
         t0 = self.h.t
+        behind = [self.h.floor_z(x0 - k * math.cos(yaw), y0 - k * math.sin(yaw)) for k in (0.2, 0.35, dist + 0.15)]
+        if max(abs(z - self.h.floor_z(x0, y0)) for z in behind) > 0.03:     # a step behind: never reverse off it
+            for _ in range(int(1.5 / E.DT)):
+                self.step((0.0, 0.0, 0.5))                                   # turn a little instead
+            self.stand_still(0.3)
+            return
         while self.h.t - t0 < max_s and math.dist((x0, y0), self.h.robot_pose()[:2]) < dist:
             self.step((-0.22, 0.0, 0.0))
         self.stand_still(0.5)

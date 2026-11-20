@@ -648,7 +648,7 @@ main{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,1fr);gap:14px;p
 .vwrap{position:relative}
 .boot{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;
  padding:20px;text-align:center;background:#0b0e12;color:var(--muted);font-size:14px}
-.boot.err{color:#ffd6d6}.boot b{color:var(--text);font-size:16px}
+.boot[hidden]{display:none}.boot.err{color:#ffd6d6}.boot b{color:var(--text);font-size:16px}
 .spin{width:28px;height:28px;border:3px solid var(--line);border-top-color:var(--accent);border-radius:50%;animation:sp 1s linear infinite}
 @keyframes sp{to{transform:rotate(360deg)}}@media (prefers-reduced-motion:reduce){.spin{animation:none}}
 .bar{display:flex;flex-wrap:wrap;gap:8px;padding:10px}
