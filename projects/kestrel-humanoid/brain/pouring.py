@@ -13,6 +13,16 @@ over the lip like a weir: Q = 0.6 * 2/3 * sqrt(2 g) * w * head^1.5, with the lip
 height of the surface above the rim. Each drop carries DROP_L litres.
 
 The drops are spheres in the visual model only (drop_0 ... drop_{N-1}), parked out of sight when not falling.
+
+Water in a container sloshes: its surface is a damped pendulum (the standard equivalent model of liquid sloshing in a
+tank: the first mode of a cylinder of radius r filled to depth f swings at w = sqrt(g k tanh(k f)), k = 1.841 / r,
+damping ratio 0.06). Accelerating the container tips the surface against the acceleration; the surface swings,
+pushes back on the container (the moving water's share of the weight, as a force), and the spill test above uses
+the surface's tilt, not the container's: rush a full pot and it slops over the side.
+
+Drops hit what is really there (rays against the physics model): they splash once, then settle into puddles that
+spread to a 2 mm film (radius by volume) and evaporate slowly; a floor puddle of 0.08 l or more is slippery
+(house.put_spill). Scrubbing over a puddle wipes it up (world.py). Boiling water steams.
 """
 from __future__ import annotations
 
@@ -25,6 +35,11 @@ DROP_L = 0.003               # litres per drop
 G = 9.81
 MAX_FLOW = 0.6               # litres per second at most out of one container (a full pot tipped right over)
 PARK = (20.0, 20.0, -5.0)
+SLOSH_ZETA = 0.06            # damping ratio of the sloshing mode (water in a small container)
+FILM = 0.002                 # a puddle's thickness (m)
+N_PUDDLE = 8                 # puddles drawn at once (each in three sizes: a renderer may fix sizes at load)
+PUDDLE_R = (0.07, 0.15, 0.3)
+N_STEAM = 30
 UPRIGHT_COS = math.cos(math.radians(35))      # an opening still catches water tipped up to 35 degrees
 
 
@@ -33,6 +48,18 @@ def build(b, Z0):
     from house import SKIN, f3
     g = [f'<geom name="drop_{k}" type="sphere" size="0.011" pos="{f3(PARK)}" rgba="0.62 0.78 0.95 0.75" '
          f'contype="0" conaffinity="0" group="0" mass="0"/>' for k in range(N)]
+    import house as HS
+    for n in HS.MUGS:                                  # the water's surface in each mug (stays level)
+        r = HS.OBJECTS[n][1][0] * 0.8
+        g.append(f'<geom name="surf_{n}" type="cylinder" size="{r:.4f} 0.0015" pos="{f3(PARK)}" rgba="0.55 0.7 0.85 0.8" '
+                 f'contype="0" conaffinity="0" group="0" mass="0"/>')
+    for k in range(N_PUDDLE):
+        for j, r in enumerate(PUDDLE_R):
+            g.append(f'<geom name="puddle_{k}_{j}" type="cylinder" size="{r} 0.0012" pos="{f3(PARK)}" '
+                     f'rgba="0.7 0.82 0.95 0.45" contype="0" conaffinity="0" group="0" mass="0"/>')
+    for k in range(N_STEAM):
+        g.append(f'<geom name="steam_{k}" type="sphere" size="0.02" pos="{f3(PARK)}" rgba="0.95 0.95 0.97 0.18" '
+                 f'contype="0" conaffinity="0" group="0" mass="0"/>')
     b.world.append(SKIN[0] + "".join(g) + SKIN[1])
 
 
@@ -43,6 +70,14 @@ class Liquid:
         mv = house.mv
         self.gid = np.array([mujoco.mj_name2id(mv, mujoco.mjtObj.mjOBJ_GEOM, f"drop_{k}") for k in range(N)])
         self.ok = bool((self.gid >= 0).all())
+        import house as HS
+        name = lambda nm: mujoco.mj_name2id(mv, mujoco.mjtObj.mjOBJ_GEOM, nm)        # noqa: E731
+        self.surf = {n: name(f"surf_{n}") for n in HS.MUGS}
+        self.pg = np.array([[name(f"puddle_{k}_{j}") for j in range(len(PUDDLE_R))] for k in range(N_PUDDLE)])
+        self.sg = np.array([name(f"steam_{k}") for k in range(N_STEAM)])
+        self.slosh = {n: np.zeros(4) for n in HS.WATER_CAP}        # surface tilt (x, y) and its rate, per container
+        self.slosh_f = {n: np.zeros(2) for n in HS.WATER_CAP}      # the moving water's push on its container (N)
+        self.prev_v = {}
         self.pos = np.zeros((N, 3))
         self.vel = np.zeros((N, 3))
         self.alive = np.zeros(N, bool)
@@ -57,13 +92,26 @@ class Liquid:
 
     def reset(self):
         self.alive[:] = False
+        self.bounced = np.zeros(N, bool)
         self.owed = {}
+        self.puddles = []            # dicts: x, y, z, litres, kind
+        self.steam_p = np.zeros((N_STEAM, 3))
+        self.steam_age = np.full(N_STEAM, 99.0)
+        for st in getattr(self, "slosh", {}).values():
+            st[:] = 0.0
+        for f in getattr(self, "slosh_f", {}).values():
+            f[:] = 0.0
+        self.prev_v = {}
         self.spilled = {"floor": 0.0, "worktop": 0.0, "sink": 0.0}
         self.into = {}               # litres landed in each container or plant since the last take()
         self.plant_l = {}
         self.floor_l, self.floor_xy = 0.0, None
         if self.ok:
-            self.h.mv.geom_pos[self.gid] = PARK
+            mv = self.h.mv
+            mv.geom_pos[self.gid] = PARK
+            for g in list(getattr(self, "surf", {}).values()) + list(np.ravel(getattr(self, "pg", []))) + list(getattr(self, "sg", [])):
+                if g >= 0:
+                    mv.geom_pos[g] = PARK
 
     # ---------------------------------------------------------------- the containers
     def _shape(self, n):
@@ -81,7 +129,10 @@ class Liquid:
         d = h.e.d[0]
         b = h.obj_body[n]
         R = d.xmat[b].reshape(3, 3)
-        down = R.T @ np.array([0.0, 0.0, -1.0])                # world down, in the container's frame
+        sx, sy = self.slosh[n][:2] if n in self.slosh else (0.0, 0.0)
+        ns = np.array([-sx, -sy, 1.0])                         # the water surface's normal (world): sloshing tips it
+        ns /= np.linalg.norm(ns)
+        down = R.T @ -ns                                       # "down" for the water, in the container's frame
         sin_t = math.hypot(down[0], down[1])
         cos_t = -down[2]
         tilt = math.atan2(sin_t, cos_t)
@@ -147,9 +198,141 @@ class Liquid:
         return out
 
     # ---------------------------------------------------------------- each step
+    def _slosh(self, dt):
+        """Each container's water surface: a damped pendulum driven by the container's acceleration."""
+        import house as HS
+        h = self.h
+        for n in HS.WATER_CAP:
+            st = self.slosh[n]
+            w = h.water.get(n, 0.0)
+            v = h.obj_vel(n).copy()
+            a_raw = (v - self.prev_v[n][0]) / dt if n in self.prev_v else np.zeros(3)
+            a = a_raw if n not in self.prev_v else self.prev_v[n][1] + (a_raw - self.prev_v[n][1]) * min(1.0, dt / 0.08)
+            self.prev_v[n] = (v, a)                            # (contact jitter filtered out of the acceleration)
+            if w < 0.01:
+                st[:] = 0.0
+                self.slosh_f[n][:] = 0.0
+                continue
+            r, H = self._shape(n)
+            f = min(H, w / 1000.0 / (math.pi * r * r))
+            k = 1.841 / r
+            om = math.sqrt(G * k * math.tanh(k * f))
+            target = -np.clip(a[:2], -6, 6) / G                # the surface leans against the acceleration
+            acc = -om * om * (st[:2] - target) - 2 * SLOSH_ZETA * om * st[2:]
+            st[2:] += acc * dt
+            st[:2] += st[2:] * dt
+            st[:2] = np.clip(st[:2], -1.2, 1.2)
+            # the sloshing share of the water (most of it in a shallow container) pushes the container
+            m_s = 0.001 * w * 1000.0 * min(0.9, math.tanh(k * f) / (k * f) * 0.8 + 0.1)
+            self.slosh_f[n][:] = m_s * G * (st[:2] - target)
+
+    def _steam(self, dt):
+        h = self.h
+        src = []
+        if h.temp.get("kettle", 20) >= 98 and h.water.get("kettle", 0) > 0.05:
+            src.append(h.obj_pos("kettle") + np.array([0.0, 0.0, 0.12]))
+        if h.temp.get("pot", 20) >= 95 and h.water.get("pot", 0) > 0.1:
+            src.append(h.obj_pos("pot") + np.array([0.0, 0.0, 0.07]))
+        self.steam_age += dt
+        if src:
+            old = np.argsort(-self.steam_age)[:max(1, int(25 * dt * 3))]
+            for k in old:
+                if self.steam_age[k] > 1.2:
+                    self.steam_p[k] = src[self.rng.integers(len(src))] + self.rng.normal(0, 0.02, 3)
+                    self.steam_age[k] = 0.0
+        live = self.steam_age < 1.5
+        self.steam_p[live, 2] += 0.22 * dt
+        self.steam_p[live, :2] += self.rng.normal(0, 0.02, (int(live.sum()), 2)) * dt * 3
+        mv = self.h.mv
+        for k, g in enumerate(self.sg):
+            if g < 0:
+                continue
+            if live[k]:
+                mv.geom_pos[g] = self.steam_p[k]
+                mv.geom_rgba[g] = (0.95, 0.95, 0.97, 0.22 * (1 - self.steam_age[k] / 1.5))
+            else:
+                mv.geom_pos[g] = PARK
+
+    def _settle(self, p, kind):
+        """A drop's water comes to rest at p: into the nearest puddle on that surface, or a new one."""
+        for pd in self.puddles:
+            if pd["kind"] == kind and abs(pd["z"] - p[2]) < 0.03 and math.hypot(pd["x"] - p[0], pd["y"] - p[1]) < max(0.12, self._radius(pd)):
+                l2 = pd["litres"] + DROP_L
+                pd["x"] = (pd["x"] * pd["litres"] + p[0] * DROP_L) / l2
+                pd["y"] = (pd["y"] * pd["litres"] + p[1] * DROP_L) / l2
+                pd["litres"] = l2
+                return pd
+        pd = dict(x=float(p[0]), y=float(p[1]), z=float(p[2]), litres=DROP_L, kind=kind)
+        self.puddles.append(pd)
+        if len(self.puddles) > N_PUDDLE:                       # the smallest dries up first
+            self.puddles.remove(min(self.puddles, key=lambda q: q["litres"]))
+        return pd
+
+    @staticmethod
+    def _radius(pd):
+        return min(0.5, math.sqrt(pd["litres"] / 1000.0 / (math.pi * FILM)))
+
+    def wipe(self, x, y, z, radius=0.12, litres=0.03):
+        """Something that scrubs, rubbed at (x, y, z), soaks up water. Returns litres taken."""
+        took = 0.0
+        for pd in list(self.puddles):
+            if abs(pd["z"] - z) < 0.06 and math.hypot(pd["x"] - x, pd["y"] - y) < radius + self._radius(pd):
+                t = min(litres - took, pd["litres"])
+                pd["litres"] -= t
+                took += t
+                if pd["litres"] < 0.002:
+                    self.puddles.remove(pd)
+        return took
+
+    def _draw_rest(self):
+        """Puddles and the water in mugs."""
+        import house as HS
+        h, mv = self.h, self.h.mv
+        for k in range(N_PUDDLE):
+            pd = self.puddles[k] if k < len(self.puddles) else None
+            j = None
+            if pd is not None:
+                rr = self._radius(pd)
+                j = int(np.argmin([abs(rr - r_) for r_ in PUDDLE_R]))
+            for jj in range(len(PUDDLE_R)):
+                g = self.pg[k, jj]
+                if g < 0:
+                    continue
+                mv.geom_pos[g] = (pd["x"], pd["y"], pd["z"] + 0.0013) if jj == j else PARK
+        d = h.e.d[0]
+        for n, g in self.surf.items():
+            if g < 0:
+                continue
+            w = h.water.get(n, 0.0)
+            if w < 0.01:
+                mv.geom_pos[g] = PARK
+                continue
+            b = h.obj_body[n]
+            R = d.xmat[b].reshape(3, 3)
+            r, H = self._shape(n)
+            f = min(H * 0.92, w / 1000.0 / (math.pi * r * r))
+            mv.geom_pos[g] = d.xpos[b] + R[:, 2] * (-H / 2 + 0.008 + f)
+            sx, sy = self.slosh[n][:2]
+            ax = np.array([-sy, sx, 0.0])
+            ang = math.atan(math.hypot(sx, sy))
+            if ang > 1e-4:
+                ax /= np.linalg.norm(ax)
+                mv.geom_quat[g] = (math.cos(ang / 2), *(math.sin(ang / 2) * ax))
+            else:
+                mv.geom_quat[g] = (1, 0, 0, 0)
+            hot = h.temp.get(n, 20.0) > 60
+            mv.geom_rgba[g] = (0.45, 0.27, 0.12, 0.92) if h.tea.get(n) else ((0.7, 0.8, 0.9, 0.8) if hot else (0.55, 0.7, 0.85, 0.75))
+
     def tick(self, dt):
         if not self.ok:
             return
+        self._slosh(dt)
+        self._steam(dt)
+        for pd in list(self.puddles):                          # puddles dry slowly (about 2 ml a minute)
+            pd["litres"] -= 0.00004 * dt * 1000.0 / 1000.0
+            if pd["litres"] <= 0.001:
+                self.puddles.remove(pd)
+        self._draw_rest()
         import house as HS
         h = self.h
         for n in HS.WATER_CAP:                                # tipped containers let water out
@@ -204,13 +387,46 @@ class Liquid:
                 self._land_in(caught, self.temp[k])
                 self.alive[k] = False
                 continue
-            ground, kind = self._surface(p[0], p[1], prev[2])
-            if p[2] <= ground:
-                self._spill(kind, p)
+            hit = self._ray(prev, p)                          # what is really there between here and there
+            if hit is not None:
+                q, kind = hit
+                if not self.bounced[k] and np.linalg.norm(self.vel[k]) > 0.8:      # a splash: once, small and slow
+                    self.bounced[k] = True
+                    self.pos[k] = q + np.array([0.0, 0.0, 0.004])
+                    sp = self.rng.normal(0, 0.25, 2)
+                    self.vel[k] = np.array([sp[0], sp[1], 0.25 * abs(self.vel[k][2])])
+                    continue
+                self._spill(kind, q)
                 self.alive[k] = False
+                self.bounced[k] = False
                 if self.trace is not None:
-                    self.trace.append((float(p[0]), float(p[1]), float(p[2]), kind))
+                    self.trace.append((float(q[0]), float(q[1]), float(q[2]), kind))
         self._draw()
+
+    def _ray(self, p0, p1):
+        """The first thing the segment p0 -> p1 hits in the physics model (not the robot's own drops): (point, kind)
+        with kind 'sink' (its basin), 'floor' or 'worktop' (anything else: a table, a worktop, the robot)."""
+        import mujoco
+        h = self.h
+        v = p1 - p0
+        L = float(np.linalg.norm(v))
+        if L < 1e-9:
+            return None
+        gid = np.array([-1], np.int32)
+        dist = mujoco.mj_ray(h.e.m, h.e.d[0], p0, v / L, None, 1, -1, gid)
+        if dist < 0 or dist > L:
+            if p1[2] < h.floor_z(p1[0], p1[1]):                 # missed the floor's edge: it is the floor
+                return np.array([p1[0], p1[1], h.floor_z(p1[0], p1[1])]), "floor"
+            return None
+        q = p0 + v / L * dist
+        c = h.b.containers.get("sink")
+        if c is not None:
+            x0, x1, y0, y1 = c["box"]
+            if x0 <= q[0] <= x1 and y0 <= q[1] <= y1 and q[2] < c["rim"]:
+                return q, "sink"
+        if abs(q[2] - h.floor_z(q[0], q[1])) < 0.02:
+            return q, "floor"
+        return q, "worktop"
 
     def _surface(self, x, y, z_above):
         """The highest surface under a point that is below z_above: (height, 'floor' | 'worktop' | 'sink')."""
@@ -248,13 +464,13 @@ class Liquid:
 
     def _spill(self, kind, p):
         self.spilled[kind] = self.spilled.get(kind, 0.0) + DROP_L
-        if kind == "floor":
-            self.floor_l += DROP_L
-            self.floor_xy = (float(p[0]), float(p[1]))
-            if self.floor_l >= 0.1:                           # a puddle on the floor: slippery
-                self.h.put_spill(*self.floor_xy)
-                self.h.event("water spilled on the floor")
-                self.floor_l = 0.0
+        if kind == "sink":                                    # down the drain
+            return
+        pd = self._settle(p, kind)
+        if kind == "floor" and pd["litres"] >= 0.08 and not pd.get("slippery"):
+            pd["slippery"] = True                             # a puddle on the floor: slippery underfoot
+            self.h.put_spill(pd["x"], pd["y"])
+            self.h.event("water spilled on the floor")
 
     def _draw(self):
         mv = self.h.mv

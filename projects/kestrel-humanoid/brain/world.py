@@ -240,6 +240,8 @@ class World:
             self.food_in["steak"] = tool
             return f"lifted the steak off the {here[0]} onto the spatula"
         if "scrubs" in props:
+            if getattr(h, "liquid", None) is not None:      # it soaks up any water there too
+                h.liquid.wipe(at_xy[0], at_xy[1], at_z)
             return "scrubbed (rubbing it over grime wears the grime away)"
         return f"the {tool} doesn't do anything there"
 

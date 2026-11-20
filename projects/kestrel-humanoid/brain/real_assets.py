@@ -43,11 +43,7 @@ MODELS = {
     "metal_stool_01": 512, "potted_plant_02": 1024, "potted_plant_04": 512, "chinese_console_table": 1024,
     "gallinera_table": 512, "old_bed_frame": 1024, "drawer_cabinet": 1024, "painted_wooden_cabinet": 512,
     "modern_ceiling_lamp_01": 512,
-    # things the robot picks up
-    "vintage_electric_kettle": 512, "pot_enamel_01": 512, "brass_pan_01": 512, "wooden_cutting_board": 512,
-    "wicker_basket_02": 512, "metal_toolbox": 512, "multi_cleaner_bottle": 512, "carved_wooden_plate": 512,
-    "wooden_bucket_02": 512,
-}
+}                 # (the things the robot picks up are built with their own handles: objects3d.py)
 
 
 def _get(url, timeout=60):

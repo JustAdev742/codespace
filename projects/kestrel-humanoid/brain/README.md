@@ -208,6 +208,33 @@ plants, and the kettle, pot, chopping board, plate, basket, toolbox and spray bo
 cabinets have doors, drawers and handles; walls have skirting boards; people have bodies, faces and hair instead of
 capsules; and they face the way they walk.
 
+**Things to handle, with their own handles** (`objects3d.py`). Every object is built as the real thing, not a box
+with a bar on top: glazed mugs with a handle at the side, a steel saucepan with loop handles, a frying pan with a long
+handle, a chopping board with a hang-hole grip, a dome kettle with an arched handle, a bucket and a tub of blocks with
+wire bails, a watering can, a wicker basket, a red toolbox, a lunchbox, a tote bag, a spaghetti packet with its hang
+tab, a stick vacuum, a tied bin bag, a teddy, a toy truck, a ball in a net, a spray bottle, brushes, a spatula, a
+cake plate, folded clothes. The hook takes each one by its own handle: for the mugs, the pot, the pan and the board
+that is at the side, so it holds them firmly, like a wrist, and places and pours them knowing where the handle is
+from the middle (`HouseBot.load_offset`). Clothes are slung over the kids' chest of drawers (fabric has no handle; the
+hook takes the cloth), since the floor is below the S1's lowest reach. The meshes are made on first use into `data/gen/`.
+
+**Appliances that look and work like real ones** (`appliances.py`). A black glass hob whose cooking zones glow red
+while it is on, a touch panel with a power symbol and a light, an oven with a glass door and handle under it; a steel
+sink with a drain, chrome gooseneck taps (the basin's and the filling station's) and a push button whose blue ring
+lights while water runs, with the water visibly running; a kettle base with a light ring, its cable and a wall
+socket; a washing machine and dryer with chrome-ringed portholes, panels with a dial, display and start button, and
+a drum you can see turning; a TV showing a picture. The buttons are where the robot presses them.
+
+**Water that behaves like water** (`pouring.py`). A tipped container lets water out over its lowest lip at the rate a
+weir would; it falls as drops that hit whatever is really there (rays against the physics model), splash once and
+settle into puddles that spread with their volume, slowly dry, and can be wiped up with a brush. Water in a
+container sloshes, using the standard pendulum model of a sloshing tank, tuned to the container's size and fill. Rushing it tips the surface, the
+moving water pushes back on the container, and a big enough slop goes over the rim. A floor puddle of 0.08 l or more is
+slippery. Boiling water steams; a mug's water and tea are visible and stay level. The robot pours by tipping: it
+tilts quickly to just short of the spill angle, slowly past it, keeps the stream gentle and watches where it lands
+every quarter of a second, steering it into the opening (in a test: 0.23 l into a mug on the table, 0.06 l on the
+table round it). `KESTREL_POUR=rule` keeps the old instant pour.
+
 **The realistic view** (`python live.py --real`, or `run_live.bat --real` on Windows): the page's main picture is
 drawn by MuJoCo 4's Filament renderer on your graphics card, with physically based materials, the real environment's
 light and reflections, shadows, ambient occlusion and tone mapping. It runs in its own process (`render_real.py`): the

@@ -555,17 +555,15 @@ OBJECTS = {
     "truck": ("box", (0.15, 0.07, 0.06), (0.95, 0.75, 0.10, 1), 0.6, 0.33, ["truck", "toy truck", "lorry"], "toy box"),
     "blocks": ("cylinder", (0.09, 0.08), (0.30, 0.65, 0.95, 1), 0.7, 0.31, ["blocks", "building blocks", "bucket of blocks", "lego"], "toy box"),
     "ball": ("sphere", (0.10,), (0.95, 0.25, 0.45, 1), 0.3, 0.29, ["ball", "football", "pink ball"], "toy box"),
-    "shirt": ("box", (0.15, 0.11, 0.03), (0.92, 0.92, 0.96, 1), 0.3, 0.37, ["shirt", "t-shirt", "top", "clothes"], "hamper"),
-    "jeans": ("box", (0.17, 0.10, 0.035), (0.20, 0.30, 0.55, 1), 0.5, 0.36, ["jeans", "trousers", "pants"], "hamper"),
-    "socks": ("box", (0.07, 0.05, 0.03), (0.55, 0.55, 0.58, 1), 0.15, 0.37, ["socks", "pair of socks"], "hamper"),
+    "shirt": ("box", (0.15, 0.11, 0.03), (0.92, 0.92, 0.96, 1), 0.3, 0.042, ["shirt", "t-shirt", "top", "clothes"], "hamper"),
+    "jeans": ("box", (0.17, 0.10, 0.035), (0.20, 0.30, 0.55, 1), 0.5, 0.047, ["jeans", "trousers", "pants"], "hamper"),
+    "socks": ("box", (0.07, 0.05, 0.03), (0.55, 0.55, 0.58, 1), 0.15, 0.042, ["socks", "pair of socks"], "hamper"),
 }
-# things the robot picks up, and the real model each one looks like (real_assets.MODELS)
-OBJECT_MODELS = {"kettle": "vintage_electric_kettle", "pot": "pot_enamel_01", "board": "wooden_cutting_board",
-                 "basket": "wicker_basket_02", "toolbox": "metal_toolbox", "spray": "multi_cleaner_bottle",
-                 "plate": "carved_wooden_plate"}
 WATER_CAP = {"pot": 2.0, "kettle": 1.2, "can": 2.0, "mug_red": 0.3, "mug_blue": 0.3, "mug_green": 0.3, "mug_yellow": 0.3}
 import world as W                     # noqa: E402  (general rules: heat, food, grime, tools)
 import pouring as PO                  # noqa: E402  (water that pours: drops that land where gravity takes them)
+import objects3d as O3                # noqa: E402  (real shapes for the things to handle, with their own handles)
+import appliances as AP               # noqa: E402  (the hob, oven, sink, kettle base, washer, TV as they really look)
 OBJECTS.update(W.NEW_OBJECTS)
 COOK_S, WASH_S = 40.0, 30.0            # simulated cooking and washing times (a real one is minutes; the test is not)
 TOYS = ["teddy", "truck", "blocks", "ball"]
@@ -573,10 +571,20 @@ CLOTHES = ["shirt", "jeans", "socks"]
 MUGS = ["mug_red", "mug_blue", "mug_green", "mug_yellow"]
 
 
-def grab_object(b, name, x, y, z_surface):
+def grab_object(b, name, x, y, z_surface, yaw=None):
     shape, size, rgba, mass, hz, words, home = OBJECTS[name]
     half_h = size[-1]
+    yaw = O3.START_YAW.get(name, 0.0) if yaw is None else yaw
     g = [b.geom(shape, (0, 0, 0), size, rgba=rgba, name=f"{name}_main", fr=0.25 if name == "hoover" else 1.0, dst=[])]
+    if name in O3.HANDLE_SHAPES:             # a handle at its side (a mug's, a pan's): that is what the hook takes
+        for k, (c, hs) in enumerate(O3.HANDLE_SHAPES[name]):
+            g.append(b.geom("box", c, hs, rgba=rgba, name=f"{name}_handle" if k == 0 else None, dst=[]))
+        if SKINS:
+            _object_look(b, name, g, list(g))
+        j = f'<joint name="{name}_free" type="free" damping="0.12"/><inertial pos="0 0 0" mass="{mass}" diaginertia="0.004 0.004 0.003"/>'
+        b.body(name, (x, y, z_surface + half_h + 0.002), yaw, g, joint=j)
+        b.objects[name] = dict(home=home, words=words, handle_z=O3.HANDLES[name][2], half_h=half_h, start=(x, y, z_surface))
+        return
     if name == "hoover":                     # a stick vacuum: the floor head, a shaft up to the handle
         g.append(b.geom("cylinder", (0, 0, (half_h + hz) / 2), (0.016, (hz - half_h) / 2), rgba=(0.2, 0.2, 0.22, 1), dst=[], mass=0.01))
         g.append(b.geom("cylinder", (0, 0, 0.18), (0.05, 0.1), rgba=(0.55, 0.20, 0.60, 1), dst=[], mass=0.01))
@@ -588,13 +596,31 @@ def grab_object(b, name, x, y, z_surface):
     # a little damping: a load hanging from the hook stops swinging in a second instead of swinging on
     inert = "0.09 0.09 0.01" if name == "hoover" else "0.004 0.004 0.003"
     j = f'<joint name="{name}_free" type="free" damping="0.12"/><inertial pos="0 0 0" mass="{mass}" diaginertia="{inert}"/>'
-    mid = OBJECT_MODELS.get(name)
-    if mid:                                  # the real thing, fitted over its collision shape (the hook handle stays)
-        hx, hy = (size[0], size[0]) if shape in ("cylinder", "sphere") else size[:2]
-        if b.skin(mid, -hx, hx, -hy, hy, -half_h, half_h, dst=g):
-            b.hide(g[0], dst=g)
-    b.body(name, (x, y, z_surface + half_h + 0.002), 0.0, g, joint=j)
+    if SKINS:                                # what it really looks like, its own handle where the hook takes it
+        _object_look(b, name, g, list(g))
+    b.body(name, (x, y, z_surface + half_h + 0.002), yaw, g, joint=j)
     b.objects[name] = dict(home=home, words=words, handle_z=hz, half_h=half_h, start=(x, y, z_surface))
+
+
+def _object_look(b, name, g, plain):
+    """Dress an object in its real shape (objects3d.py): the plain shapes leave the visual model, the meshes join it."""
+    shape, size, rgba, mass, hz, words, home = OBJECTS[name]
+    look = O3.fetch(name, size, rgba, hz)
+    if not look:
+        return
+    geoms = []
+    for k, (f, mt) in enumerate(look):
+        mat = f"ob_{name}_{k}"
+        layers = ""
+        if mt.get("tex"):
+            b.skin_assets.append(f'<texture name="{mat}_t" type="2d" file="{Path(mt["tex"]).as_posix()}"/>')
+            layers = f'<layer texture="{mat}_t" role="rgb"/>'
+        pbr = f' roughness="{mt["rough"]}" metallic="{mt["metal"]}"' if mt["rgba"][3] >= 1 and not layers else ""
+        b.skin_assets.append(f'<material name="{mat}" rgba="{f3(mt["rgba"])}" specular="0.35" shininess="0.6"{pbr}>{layers}</material>')
+        b.skin_assets.append(f'<mesh name="{mat}" file="{Path(f).as_posix()}" inertia="shell"/>')
+        geoms.append(f'<geom type="mesh" mesh="{mat}" material="{mat}" contype="0" conaffinity="0" group="2" mass="0"/>')
+    b.hide(plain, dst=g)
+    g.append(SKIN[0] + "".join(geoms) + SKIN[1])
 
 
 # ----------------------------------------------------------------------- containers and controls
@@ -618,6 +644,7 @@ def control(b, name, pos, face, rgba, words, kind="button"):
 
 # ----------------------------------------------------------------------- the upper wing
 WING_O = SX + 2.1                # the wing sits west of the stairs: shift it with the stair length
+CLOTHES_SPOTS = [(-7.45 + WING_O, 9.66, 0.0), (-6.8 + WING_O, 9.66, math.pi / 2), (-7.1 + WING_O, 9.66, 0.0)]   # shirt, jeans, socks
 MESS_SPOTS = [(-6.6 + WING_O, 6.4), (-5.4 + WING_O, 8.6), (-7.4 + WING_O, 7.0), (-5.0 + WING_O, 6.2),
               (-6.0 + WING_O, 9.2), (-7.0 + WING_O, 8.3), (-5.6 + WING_O, 7.4)]
 
@@ -654,6 +681,9 @@ def build_upper(b):
     container(b, "hamper", -4.95 + o, -4.45 + o, 5.32, 5.82, UP, 0.55, mat="fabric_grey",
               words=["hamper", "laundry hamper", "clothes hamper"])
     table(b, "kids table", -7.9 + o, 6.0, 0.7, 0.6, 0.5, z0=UP, model="gallinera_table")
+    dress(b, "painted_wooden_cabinet", b.box(-7.75 + o, -6.65 + o, 9.45, 9.9, UP, UP + 0.82, "wood_light", name=b.nm("furn")),
+          -7.75 + o, -6.65 + o, 9.45, 9.9, UP, UP + 0.82)                    # a chest of drawers, clothes slung on it
+    b.furniture["chest of drawers"] = dict(xy=(-7.2 + o, 9.675), size=(1.1, 0.45), top=UP + 0.82)
     b.box(-8.9 + o, -8.6 + o, 5.4, 6.8, UP, UP + 1.2, "wood_dark", name=b.nm("furn"))           # shelves
     # laundry: washing machine, dryer, folding counter
     b.box(-8.92 + o, -8.3 + o, 0.75, 1.4, UP, UP + 0.85, "white", name=b.nm("furn"))
@@ -705,6 +735,7 @@ def build_extras(b):
             dog.append(b.geom("cylinder", (lx, ly, 0.11), (0.03, 0.11), rgba=(0.45, 0.28, 0.14, 1), dst=[]))
     b.bodies.append(f'<body name="rex" mocap="true" pos="20 23 -5">{"".join(dog)}</body>')
     person(b, "sam", 20.0, 24.0, -5.0, (0.75, 0.55, 0.20, 1), mocap=True)
+    AP.build(b, Z0, UP, WING_O)                # what the appliances really look like (visual model)
 
 
 # ======================================================================= the house
@@ -894,8 +925,10 @@ def build():
         grab_object(b, mug, 0.68, 1.0 + 0.3 * k, Z0 + 0.9)
     grab_object(b, "hoover", 4.85, 4.7, Z0)
     grab_object(b, "trash", 4.6, 1.15, Z0)            # tied up, next to the kitchen bin, ready to go out
-    for name, (x, y) in zip(TOYS + CLOTHES, MESS_SPOTS):
+    for name, (x, y) in zip(TOYS, MESS_SPOTS):
         grab_object(b, name, x, y, UP)
+    for name, (x, y, yaw) in zip(CLOTHES, CLOTHES_SPOTS):    # slung on the chest of drawers (the hook takes the fabric)
+        grab_object(b, name, x, y, UP + 0.82, yaw=yaw)
     # ---- people: one standing in the study, one walking, and "you"
     person(b, "alex", 12.6, 8.9, Z0, (0.30, 0.45, 0.65, 1))
     person(b, "jordan", 3.0, 4.2, Z0, (0.62, 0.35, 0.45, 1), mocap=True)
@@ -1018,7 +1051,7 @@ class House(SK.World):
     def handle_of(self, n):
         d = self.e.d[0]
         R = d.xmat[self.obj_body[n]].reshape(3, 3)
-        return d.xpos[self.obj_body[n]] + R @ np.array([0, 0, OBJECTS[n][4]])
+        return d.xpos[self.obj_body[n]] + R @ np.array(O3.HANDLES.get(n, (0, 0, OBJECTS[n][4])))
 
     def set_obj(self, n, x, y, z_surface, yaw=0.0):
         d = self.e.d[0]
@@ -1062,6 +1095,10 @@ class House(SK.World):
         d.xfrc_applied[self.pelvis, :3] = self.push_f if self.t < self.push_until else 0.0
         for n, w in self.water_w.items():                  # the water's weight (see _set_mass)
             d.xfrc_applied[self.obj_body[n], 2] = -w
+        liq = getattr(self, "liquid", None)
+        if liq is not None:                                # ... and the sloshing water's push (pouring.py)
+            for n, f in liq.slosh_f.items():
+                d.xfrc_applied[self.obj_body[n], :2] = f
         r = super().step(legs=legs, arms=arms, cmd=cmd)
         self._tick_extras()
         return r
@@ -1080,6 +1117,7 @@ class House(SK.World):
         self.reset_extras()
         self.world = W.World(self, Z0)
         self.liquid = PO.Liquid(self)
+        self.appliances = AP.Appliances(self)
 
     def reset_extras(self):
         """Appliances off, containers empty, no dust, hazards and visitors parked."""
@@ -1235,6 +1273,7 @@ class House(SK.World):
         dt = E.DT
         # water: the sensor tap runs into whatever is held (or stands) under its spout; the tap control forces it on
         sx, sy = self.b.tap_stream
+        self.flowing = {"station": False}
         for n, cap in WATER_CAP.items():
             p = self.obj_pos(n)
             under = (math.hypot(p[0] - sx, p[1] - sy) < 0.2 and abs(p[2] - OBJECTS[n][1][-1] - (Z0 + 0.9)) < 0.03
@@ -1242,6 +1281,7 @@ class House(SK.World):
             want = min(cap, self.fill_to.get(n, cap)) if under else cap
             if (under or (self.st["tap"] and self.in_container(n, "sink"))) and self.water[n] < want:
                 self.water[n] = min(want, self.water[n] + 0.15 * dt)
+                self.flowing["station"] = self.flowing["station"] or under
                 self._set_mass(n)
         # kettle on its base
         if self.st["kettle"]:
@@ -1300,6 +1340,8 @@ class House(SK.World):
             self.world.tick(dt)
         if getattr(self, "liquid", None) is not None:
             self.liquid.tick(dt)
+        if getattr(self, "appliances", None) is not None:
+            self.appliances.update(dt)
 
     def _move_dog(self):
         if not self.dog_on:

@@ -36,6 +36,7 @@ import numpy as np
 import mujoco
 
 import house as HS
+import objects3d as O3
 import skills as SK
 import env as E
 import arena as A
@@ -1102,8 +1103,9 @@ class HouseBot:
             m.eq_data[eq, 0:3] = R.T @ (hook - d.xpos[b])        # the hold point in the object's frame
             m.eq_data[eq, 3:6] = R1.T @ (hook - d.xpos[hb])      # ... and in the hand's (MuJoCo 4 weld data layout)
             m.eq_data[eq, 6:10] = rq
-            m.eq_data[eq, 10] = 0.05                           # turning held softly: a rigid grip made a brush pressed on
-            #                                                    a surface kick itself away instead of rubbing
+            m.eq_data[eq, 10] = 1.0 if obj in O3.FIRM else 0.05
+            # turning held softly: a rigid grip made a brush pressed on a surface kick itself away instead of rubbing.
+            # Firmly, like a wrist, for things held by a handle at their side (a mug, the pot): they'd tip over
         else:
             m.eq_data[eq, 3:6] = R.T @ (h.hook_world() - d.xpos[b])
         d.eq_active[eq] = 1
@@ -1293,7 +1295,7 @@ class HouseBot:
             return False
         obj = h.holding
         name = HS.OBJECTS[obj][5][0]
-        half_h, hz = HS.OBJECTS[obj][1][-1], HS.OBJECTS[obj][4]
+        half_h, hz = HS.OBJECTS[obj][1][-1], float(self.load_offset()[2])
         if where in ("you", "me") or where in h.b.people:
             return self.hand_over("you" if where == "me" else where)
         if where in h.b.containers:                     # a bin, the toy box, the hamper: drop it in
@@ -1379,7 +1381,8 @@ class HouseBot:
             aim = (fx, fy) if max(fsx, fsy) <= 0.7 else spot   # a small spot (sink, hob, trivet): its middle
             self.square_up(aim)                            # turn so the arm's plane passes through it
             for _ in range(2):                             # out of reach from here: shuffle to where it is in reach
-                if h.ik_right(np.array([aim[0], aim[1], top + half_h + hz + 0.005]))[2] < 0.045:
+                off = self.load_offset()
+                if h.ik_right(np.array([aim[0] + off[0], aim[1] + off[1], top + half_h + hz + 0.005]))[2] < 0.045:
                     target = aim
                     break
                 _, _, yw = h.robot_pose()
@@ -1401,14 +1404,19 @@ class HouseBot:
                 h.stiff(False)
                 return False
             target = reach_point(*self.reach_offset(hook_z - floor_here, True))
+        off = self.load_offset()                         # the hook goes where the handle will be with the load set down
+        target = (target[0] + off[0], target[1] + off[1])
         sh, el, err = h.ik_right(np.array([target[0], target[1], hook_z]))
         sh_d, el_d, _ = h.ik_right(np.array([target[0], target[1], hook_z - 0.05]))       # then the hook drops clear
         Rb = h.e.d[0].xmat[h.obj_body[obj]].reshape(3, 3)
-        bar = Rb[:2, 0] / (np.linalg.norm(Rb[:2, 0]) + 1e-9)                             # the handle bar's direction
         x, y, yaw = h.robot_pose()
-        out = np.array([-bar[1], bar[0]])                                                 # out across the bar, never along
-        if out @ np.array([x - target[0], y - target[1]]) < 0:                            # (along it catches a post)
-            out = -out
+        if obj in O3.FIRM:                                                                # out of a side handle: away
+            out = off[:2] / (np.linalg.norm(off[:2]) + 1e-9)                              # from the thing it holds
+        else:
+            bar = Rb[:2, 0] / (np.linalg.norm(Rb[:2, 0]) + 1e-9)                         # the handle bar's direction
+            out = np.array([-bar[1], bar[0]])                                             # out across the bar, never along
+            if out @ np.array([x - target[0], y - target[1]]) < 0:                        # (along it catches a post)
+                out = -out
         sh_b, el_b, _ = h.ik_right(np.array([target[0] + 0.15 * out[0], target[1] + 0.15 * out[1], hook_z - 0.05]))
         cur = h.arms_now()
         lower = [(0.0, cur), (2.2, [0.0, sh, -0.2, el]), (3.4, [0.0, sh, -0.2, el])]      # lower slowly, let it stop swinging
@@ -1507,6 +1515,19 @@ class HouseBot:
             self.step()
         self.arms = list(target)
 
+    def load_offset(self):
+        """Where the hook is from the centre of what it holds (world): straight up by the handle's height for a load
+        hanging from a handle on top; for one held firmly by a handle at its side, that handle's place, turned as the
+        load is turned now."""
+        h = self.h
+        obj = h.holding
+        if obj is None:
+            return np.zeros(3)
+        if obj not in O3.FIRM:
+            return np.array([0.0, 0.0, HS.OBJECTS[obj][4]])
+        R = h.e.d[0].xmat[h.obj_body[obj]].reshape(3, 3)
+        return R @ np.array(O3.HANDLES[obj])
+
     def hold_step(self, anchor):
         """One step that keeps the body where it was (x, y, yaw) while the arms work: with a load held out in front,
         the walking policy shuffles to keep its balance, and without this the body drifts several centimetres."""
@@ -1590,7 +1611,7 @@ class HouseBot:
         obj = h.holding
         if obj is None:
             return False
-        half_h, hz = HS.OBJECTS[obj][1][-1], HS.OBJECTS[obj][4]
+        half_h, hz = HS.OBJECTS[obj][1][-1], float(self.load_offset()[2])
         hook_z = z_top + clear + half_h + hz
         # how far ahead the hook reaches at this height (measured: 0.36 m at 0.8 m up ... 0.6 m from 1.1 m up)
         rel = hook_z - h.floor_z(*xy)
@@ -1622,7 +1643,8 @@ class HouseBot:
             x_, y_, _ = h.robot_pose()
             self.log(f"  (hold: aligned {math.dist((x_, y_), (sx, sy)):.2f} m from the plan)")
         self.square_up(xy)
-        sh1, el1, e1 = h.ik_right(np.array([xy[0], xy[1], max(hook_z + 0.2, h.floor_z(x, y) + 1.1)]))
+        off = self.load_offset()                         # the hook goes where the handle is with the load over the target
+        sh1, el1, e1 = h.ik_right(np.array([xy[0] + off[0], xy[1] + off[1], max(hook_z + 0.2, h.floor_z(x, y) + 1.1)]))
         if getattr(self, "debug", False):
             self.log(f"  (hold: over the target high: arms {h.arms_now()} -> sh {sh1:.2f} el {el1:.2f}, IK error {e1:.2f})")
         anchor = h.robot_pose()
@@ -1634,7 +1656,8 @@ class HouseBot:
             self.hold_step(anchor)
         if getattr(self, "debug", False):
             self.log(f"  (hold: hook at {np.round(h.hook_world(), 2)}, load at {np.round(h.obj_pos(obj), 2)})")
-        sh2, el2, err = h.ik_right(np.array([xy[0], xy[1], hook_z]))
+        off = self.load_offset()
+        sh2, el2, err = h.ik_right(np.array([xy[0] + off[0], xy[1] + off[1], hook_z]))
         if err > 0.08:
             x, y, yaw = h.robot_pose()
             dx, dy = xy[0] - x, xy[1] - y
@@ -1654,7 +1677,8 @@ class HouseBot:
             if short < 0.015:
                 break
             hook_z += short
-            sh2, el2, err = h.ik_right(np.array([xy[0], xy[1], hook_z]))
+            off = self.load_offset()
+            sh2, el2, err = h.ik_right(np.array([xy[0] + off[0], xy[1] + off[1], hook_z]))
             kf = [(0.0, h.arms_now()), (0.6, [0.0, sh2, -0.2, el2])]
             for k in range(int(1.0 / E.DT)):
                 self.arms = list(SK.keyframes(kf, k * E.DT))
@@ -1683,10 +1707,14 @@ class HouseBot:
         # lands inside, so the tolerance is the opening less the object's size
         rad = HS.OBJECTS[obj][1][0]
         near = max(0.08, min(x1 - x0, y1 - y0) / 2 - 0.6 * rad)
-        ok = self.hold_over(xy, c["rim"], secs=1.0, clear=0.12, near_ok=near)
+        # dropped from at least 0.95 m up: a low-held load (clothes taken by the fabric) leaves the arm too short a
+        # reach to find anywhere to stand round a bin in a corner
+        half_h, hz = HS.OBJECTS[obj][1][-1], float(self.load_offset()[2])
+        clear = max(0.12, h.floor_z(*xy) + 0.95 - (c["rim"] + half_h + hz))
+        ok = self.hold_over(xy, c["rim"], secs=1.0, clear=clear, near_ok=near)
         if not ok and h.holding is not None:
             self.retract()
-            ok = self.hold_over(xy, c["rim"], secs=1.0, clear=0.12, near_ok=near)
+            ok = self.hold_over(xy, c["rim"], secs=1.0, clear=clear, near_ok=near)
         if not ok:
             self.say("cant", why=f"I couldn't get the {name} over the {c['words'][0]}")
             if h.holding is not None:
@@ -1756,7 +1784,7 @@ class HouseBot:
         got, food, phi, t = 0.0, None, 0.0, 0.0
         miss = 0.0
         logged = False
-        phi_max = math.radians(115)
+        phi_max = math.radians(150)                          # the wrist's turn (a hanging load lags behind it)
 
         def set_tilt(a):
             q = np.zeros(4)
@@ -1786,7 +1814,9 @@ class HouseBot:
                     break
                 g_lip, g_out, tilt, spill, head = liq.geometry(src, toward=fwd)
                 if not has_water:                             # food: tip it well over, and it slides out
-                    if tilt >= math.radians(70) and food is None:
+                    if getattr(self, "debug", False) and int(round(t / E.DT)) % 25 == 0:
+                        self.log(f"  (tip t={t:.1f}: tilt {math.degrees(tilt):.0f} deg, wrist {math.degrees(phi):.0f})")
+                    if tilt >= math.radians(55) and food is None:     # it slides out of a packet or pan from ~55 deg
                         food = h.world.pour(src, dst, water=False)
                     if food is not None and t > 1.0:
                         break

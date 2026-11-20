@@ -233,8 +233,10 @@ class RobotAgent:
             t("fill", "Fill a pot, kettle, watering can or mug at the filling station (drip tray with a metered sensor "
                       "tap) with this many litres, then pick it up again.",
               {"object": {"type": "string", "enum": sorted(HS.WATER_CAP)}, "litres": {"type": "number"}}),
-            t("pour", "Pour what you hold into an object (pot, a mug) or onto a plant ('plant 1' .. 'plant 6').",
-              {"into": S}),
+            t("pour", "Pour what you hold into an object (pot, a mug) or onto a plant ('plant 1' .. 'plant 6'): you hold it "
+              "over, tip it and steer the stream; water that misses the opening is spilled (a puddle on the floor is "
+              "slippery; scrubbing wipes it up). litres: how much to pour (0 or less: a mug's worth, or what fits).",
+              {"into": S, "litres": {"type": "number"}}),
             t("wait", "Stand (or sit) still for some seconds, e.g. while water boils.", {"seconds": {"type": "number"}}),
             t("sit", "Sit on a chair.", {"chair": {"type": "string", "enum": sorted(h.b.chairs)}}),
             t("stand", "Stand up from sitting.", {}),
@@ -384,7 +386,8 @@ Your memory (from earlier tasks):
                     tgt = int(tgt.split()[-1]) - 1
                 except ValueError:
                     return False, "plants are 'plant 1' .. 'plant N'"
-            ok = bot.pour(tgt)
+            amt = float(inp.get("litres") or 0.0)
+            ok = bot.pour(tgt, litres=amt if amt > 0 else None)
         elif name == "wait":
             secs = max(0.5, min(120.0, float(inp["seconds"])))
             bot.rest(secs) if bot.seated else bot.stand_still(secs)
