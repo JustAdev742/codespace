@@ -208,6 +208,17 @@ plants, and the kettle, pot, chopping board, plate, basket, toolbox and spray bo
 cabinets have doors, drawers and handles; walls have skirting boards; people have bodies, faces and hair instead of
 capsules; and they face the way they walk.
 
+**The realistic view** (`python live.py --real`, or `run_live.bat --real` on Windows): the page's main picture is
+drawn by MuJoCo 4's Filament renderer on your graphics card, with physically based materials, the real environment's
+light and reflections, shadows, ambient occlusion and tone mapping. It runs in its own process (`render_real.py`): the
+classic renderer, which draws the robot's own camera, and Filament can upset each other's graphics context in one
+process. If Filament can't start, or stops, the page carries on with the standard picture and says why in the log.
+On an AMD card such as the RX 6700 XT it uses Vulkan; `KESTREL_FILAMENT_API=opengl` picks OpenGL if Vulkan gives
+trouble, and `KESTREL_FILAMENT_LIGHT=1.5` makes it brighter. Without a GPU it falls back to software rendering, which
+works but takes tens of seconds a frame. `python render_real.py` writes stills to `runs/real_*.png`.
+
+![Filament: the living room from the robot's head](runs/real_living_head.png)
+
 Each model is **only the look**. It is fitted over the simple shape the physics uses for that piece, and only the
 visual model carries it; the physics model is byte-for-byte the same with or without the models. So the robot can't
 reach through a table that it sees as solid, and nothing the robot sees sticks out past what it can bump into. Its

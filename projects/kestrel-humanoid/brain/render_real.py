@@ -1,84 +1,253 @@
 """Realistic pictures of the house: MuJoCo 4's Filament renderer (physically based materials, image-based lighting,
-soft shadows, ambient occlusion, bloom, tone mapping), on the GPU through Vulkan or OpenGL.
+shadows, reflections, ambient occlusion, tone mapping) on the GPU, through Vulkan or OpenGL.
 
     from render_real import RealView
-    rv = RealView(house)                       # once
-    img = rv.render("follow")                  # an RGB array, like house.chase_view("follow")
+    rv = RealView(house)                       # once: starts the renderer in its own process
+    img = rv.render("follow")                  # an RGB array like house.chase_view("follow"), or None if it failed
 
-    python render_real.py                      # stills of every room -> runs/real_*.png
+    python live.py --real                      # the live page shows this view
+    python render_real.py                      # stills of a few rooms -> runs/real_*.png
 
-On a computer with a GPU (an AMD Radeon RX 6700 XT, an NVIDIA or Intel card) it renders through Vulkan, in real time.
-Without one (a cloud machine, a codespace) it falls back to software Vulkan (Mesa's lavapipe: apt install
-mesa-vulkan-drivers), which is slow but gives the same pictures. The classic renderer (house.chase_view) stays
-available everywhere and is what the robot's own camera uses when Filament can't start.
+Filament runs in a separate process. Two GPU renderers in one process (MuJoCo's classic one, which the robot's own
+camera uses, and Filament) can crash each other's graphics context; apart, they don't. And if Filament can't start on
+a computer, or dies, only that process goes: RealView.render returns None and the caller shows the classic picture.
 
-Filament works in physical units: lights are in candela, the camera exposure is for a lit room, so the house's lights
-carry real intensities (house.py) and an image light (the sky through the windows) gives the ambient light.
+Each frame the house sends what moved (joint positions, people, shapes that change: dust, food, water, the cut-down
+walls of the follow view) and the camera; the picture comes back through shared memory.
+
+Graphics: on a computer with a GPU (an AMD Radeon RX 6700 XT, NVIDIA, Intel) Vulkan, in real time; KESTREL_FILAMENT_API
+=opengl picks OpenGL. Without a GPU, Filament falls back to software rendering (Mesa's lavapipe for Vulkan, llvmpipe
+for OpenGL), which is slow but gives the same pictures.
+
+Filament works in physical units (lights in lux and candela, a camera exposed for daylight), so the view adds a
+headlight from the camera to light the rooms' interiors as indoor lamps would; KESTREL_FILAMENT_LIGHT scales it.
 """
 from __future__ import annotations
 
 import math
 import os
+import sys
+import tempfile
+import time
 
 import numpy as np
 
+HEADLIGHT_LUX = 9000.0                 # a camera-mounted fill light: rooms lit like a bright day indoors
 
-class RealView:
-    def __init__(self, house, width=960, height=600, api=None):
+
+def _child(conn, mjb, width, height, api, soft, shm_name):
+    """The renderer process: load the visual model, then draw a frame for each state the house sends."""
+    try:
+        from multiprocessing import shared_memory
         import mujoco
         from mujoco import mjrf
         import mujoco.studio.window  # noqa: F401  (registers the filament: material and asset files)
         from mujoco.rendering.filament.renderer import Renderer, View
-        self.mj, self.mjrf, self.View = mujoco, mjrf, View
-        self.h = house
-        self.w, self.ht = width, height
-        api = api or os.environ.get("KESTREL_FILAMENT_API", "vulkan")
+        m = mujoco.MjModel.from_binary_path(mjb)
+        d = mujoco.MjData(m)
         gapi = mjrf.GraphicsApi.GRAPHICS_API_VULKAN if api == "vulkan" else mjrf.GraphicsApi.GRAPHICS_API_OPENGL
+        ctx = mjrf.Context(mjrf.ContextConfig(graphics_api=gapi, software_rendering=soft))
+        r = Renderer(ctx)
+        scene = r.scene("house")
+        scene.configure_from_model(m)
+        res = mjrf.ModelResources(ctx, m)
+        rend = mjrf.ModelRenderables(scene, res)
+        lights = mjrf.ModelLights(scene, res)
+        out = np.zeros((height, width, 3), np.uint8)
+        r.target("out", out)
+        shm = shared_memory.SharedMemory(name=shm_name)
+        img = np.ndarray((height, width, 3), np.uint8, buffer=shm.buf)
+        opt, pert, cam = mujoco.MjvOption(), mujoco.MjvPerturb(), mujoco.MjvCamera()
+        abstract = mujoco.MjvScene(m, maxgeom=20000)
+        try:
+            info = str(ctx.get_renderer_info())
+        except Exception:
+            info = api
+        conn.send(("ready", info))
+        while True:
+            msg = conn.recv()
+            if msg is None:
+                break
+            d.qpos[:] = msg["qpos"]
+            d.mocap_pos[:] = msg["mocap_pos"]
+            d.mocap_quat[:] = msg["mocap_quat"]
+            m.geom_pos[:], m.geom_size[:], m.geom_rgba[:] = msg["geom_pos"], msg["geom_size"], msg["geom_rgba"]
+            mujoco.mj_kinematics(m, d)
+            mujoco.mj_camlight(m, d)
+            opt.geomgroup[:] = msg["groups"]
+            rend.set_options(opt)
+            rend.update(d)
+            lights.update(d)
+            c = msg["cam"]
+            if c["type"] == "fixed":
+                cam.type, cam.fixedcamid = mujoco.mjtCamera.mjCAMERA_FIXED, c["id"]
+            else:
+                cam.type = mujoco.mjtCamera.mjCAMERA_FREE
+                cam.lookat[:] = c["lookat"]
+                cam.distance, cam.elevation, cam.azimuth = c["distance"], c["elevation"], c["azimuth"]
+            mujoco.mjv_updateScene(m, d, opt, pert, cam, mujoco.mjtCatBit.mjCAT_ALL, abstract)
+            r.render([View(scene="house", target="out", camera=abstract.camera[0], headlight=True,
+                           headlight_intensity=msg["headlight"])])
+            img[:] = out
+            conn.send("ok")
+    except Exception as e:                                    # tell the house why, then stop
+        try:
+            conn.send(("error", f"{type(e).__name__}: {e}"))
+        except Exception:
+            pass
+
+
+class RealView:
+    """The house through Filament, from a renderer process. render() returns None once it has failed."""
+
+    def __init__(self, house, width=960, height=600, api=None, timeout=180.0):
+        import multiprocessing as mp
+        from multiprocessing import shared_memory
+        import mujoco
+        self.mj, self.h, self.w, self.ht = mujoco, house, width, height
+        self.error, self.info, self.frames = None, None, 0
+        self.pending, self.sent, self.last = False, 0.0, None
+        api = api or os.environ.get("KESTREL_FILAMENT_API", "vulkan")
         soft = os.environ.get("KESTREL_FILAMENT_SOFTWARE", "auto")
-        self.ctx = mjrf.Context(mjrf.ContextConfig(graphics_api=gapi,
-                                                   software_rendering=None if soft == "auto" else soft == "1"))
-        self.r = Renderer(self.ctx)
-        m = house.mv
-        self.scene = self.r.scene("house")
-        self.scene.configure_from_model(m)
-        self.res = mjrf.ModelResources(self.ctx, m)
-        self.rend = mjrf.ModelRenderables(self.scene, self.res)
-        self.lights = mjrf.ModelLights(self.scene, self.res)
-        self.buf = np.zeros((height, width, 3), np.uint8)
-        self.r.target("out", self.buf)
-        self.cam = mujoco.MjvCamera()
-        self.opt = mujoco.MjvOption()
-        self.abstract = mujoco.MjvScene(m, maxgeom=20000)
-        self.pert = mujoco.MjvPerturb()
+        soft = None if soft == "auto" else soft == "1"
+        self.light = HEADLIGHT_LUX * float(os.environ.get("KESTREL_FILAMENT_LIGHT", "1"))
+        fd, self.mjb = tempfile.mkstemp(suffix=".mjb", prefix="kestrel_house_")
+        os.close(fd)
+        mujoco.mj_saveModel(house.mv, self.mjb, None)        # the visual model, with its meshes and textures
+        self.shm = shared_memory.SharedMemory(create=True, size=width * height * 3)
+        self.img = np.ndarray((height, width, 3), np.uint8, buffer=self.shm.buf)
+        ctx = mp.get_context("spawn")
+        self.conn, child = ctx.Pipe()
+        self.proc = ctx.Process(target=_child, args=(child, self.mjb, width, height, api, soft, self.shm.name), daemon=True)
+        self.proc.start()
+        if not self.conn.poll(timeout):
+            self._fail(f"the renderer didn't start in {timeout:.0f} s")
+            return
+        try:
+            kind, info = self.conn.recv()
+        except EOFError:
+            self._fail(f"the renderer process stopped (exit code {self.proc.exitcode}): no {api} graphics?")
+            return
+        if kind != "ready":
+            self._fail(info)
+            return
+        self.info = info
+
+    def _fail(self, why):
+        self.error = why
+        try:
+            self.proc.kill()
+        except Exception:
+            pass
+
+    @property
+    def ok(self):
+        return self.error is None
 
     def _camera(self, view):
-        """A camera like the classic renderer's views: behind the robot, the whole house, or the robot's head."""
-        h, cam = self.h, self.cam
-        x, y, yaw = h.robot_pose()
-        z = h.floor_z(x, y)
-        if view == "head" and getattr(h, "cam_id", None) is not None:
-            cam.type = self.mj.mjtCamera.mjCAMERA_FIXED
-            cam.fixedcamid = h.cam_id
-        elif view == "house":
-            cam.type = self.mj.mjtCamera.mjCAMERA_FREE
-            cam.lookat[:] = [4.0, 4.5, 0.0]
-            cam.distance, cam.elevation, cam.azimuth = 17.0, -55.0, 90.0
-        else:
-            cam.type = self.mj.mjtCamera.mjCAMERA_FREE
-            cam.lookat[:] = [x, y, z + 0.8]
-            cam.distance, cam.elevation, cam.azimuth = 3.2, -22.0, math.degrees(yaw) + 180.0 - 25.0
-        return cam
-
-    def render(self, view="follow"):
+        """Like the classic views: behind and above the robot (walls cut down), the whole house, or the robot's head."""
         h = self.h
-        h._sync()                                    # the render model follows the simulation
-        self.rend.update(h.dv)
-        self.lights.update(h.dv)
-        self.mj.mjv_updateScene(h.mv, h.dv, self.opt, self.pert, self._camera(view), self.mj.mjtCatBit.mjCAT_ALL,
-                                self.abstract)
-        glcam = self.abstract.camera[0]
-        self.r.render([self.View(scene="house", target="out", camera=glcam)])
-        return self.buf.copy()
+        if view == "head" and getattr(h, "cam_id", None) is not None:
+            return dict(type="fixed", id=int(h.cam_id))
+        if view == "house":
+            return dict(type="free", lookat=(3.6, 4.8, 0.4), distance=22.0, elevation=-60.0, azimuth=90.0)
+        p = h.e.d[0].qpos[:3].copy()
+        h.look = p if h.look is None else 0.85 * h.look + 0.15 * p
+        _, _, yaw = h.robot_pose()
+        return dict(type="free", lookat=tuple(h.look + [0, 0, -0.25]), distance=3.6, elevation=-38.0,
+                    azimuth=math.degrees(yaw) + 20.0)
+
+    def _state(self, view):
+        h = self.h
+        h._walls(False)                       # full-size walls; the cut-away views sink them instead (see sunk_walls)
+        h._sync()
+        groups = np.array([1, 1, 1, 1 if view == "head" else 0, 0, 0], np.uint8)   # ceilings: the head camera only
+        mv, dv = h.mv, h.dv
+        geom_pos = mv.geom_pos.copy()
+        if view != "head":
+            geom_pos[h.walls_v] = h.sunk_walls()
+        return dict(qpos=dv.qpos.copy(), mocap_pos=dv.mocap_pos.copy(), mocap_quat=dv.mocap_quat.copy(),
+                    geom_pos=geom_pos, geom_size=mv.geom_size.copy(), geom_rgba=mv.geom_rgba.copy(),
+                    groups=groups, cam=self._camera(view), headlight=self.light)
+
+    def latest(self, view="follow"):
+        """Without waiting: the newest finished frame (None until the first is ready, or after a failure), and a new
+        frame of the house as it is now is started if the renderer is free. For a live view: the simulation never waits
+        for the picture (on a GPU it is a frame behind; on a software renderer, many)."""
+        if self.error:
+            return None
+        if self.pending:
+            try:
+                if not self.conn.poll(0):
+                    if time.time() - self.sent > (600.0 if not self.frames else 120.0):
+                        self._fail("no frame for too long")
+                        return None
+                    return self.last
+                reply = self.conn.recv()
+            except (EOFError, BrokenPipeError, OSError) as e:
+                self._fail(f"the renderer process stopped ({type(e).__name__}, exit code {self.proc.exitcode})")
+                return None
+            self.pending = False
+            if reply != "ok":
+                self._fail(reply[1] if isinstance(reply, tuple) else str(reply))
+                return None
+            self.frames += 1
+            self.last = self.img.copy()
+        try:
+            self.conn.send(self._state(view))
+            self.pending, self.sent = True, time.time()
+        except (BrokenPipeError, OSError) as e:
+            self._fail(f"the renderer process stopped ({type(e).__name__})")
+        return self.last
+
+    def render(self, view="follow", timeout=None):
+        """A frame of the house as it is now (waits for it). None if the renderer has failed."""
+        if self.error:
+            return None
+        if self.pending:                                    # a live frame still being drawn: let it finish
+            try:
+                if self.conn.poll(120.0):
+                    self.conn.recv()
+            except (EOFError, BrokenPipeError, OSError) as e:
+                self._fail(f"the renderer process stopped ({type(e).__name__})")
+                return None
+            self.pending = False
+        if timeout is None:                  # the first frame compiles the shaders (minutes on a software renderer)
+            timeout = 600.0 if not self.frames else 120.0
+        msg = self._state(view)
+        try:
+            self.conn.send(msg)
+            if not self.conn.poll(timeout):
+                self._fail(f"no frame in {timeout:.0f} s")
+                return None
+            reply = self.conn.recv()
+        except (EOFError, BrokenPipeError, OSError) as e:
+            self._fail(f"the renderer process stopped ({type(e).__name__}, exit code {self.proc.exitcode})")
+            return None
+        if reply != "ok":
+            self._fail(reply[1] if isinstance(reply, tuple) else str(reply))
+            return None
+        self.frames += 1
+        self.last = self.img.copy()
+        return self.last
+
+    def close(self):
+        try:
+            if self.proc.is_alive():
+                self.conn.send(None)
+                self.proc.join(3)
+            if self.proc.is_alive():
+                self.proc.kill()
+        except Exception:
+            pass
+        for f in (lambda: self.shm.close(), lambda: self.shm.unlink(), lambda: os.remove(self.mjb)):
+            try:
+                f()
+            except Exception:
+                pass
+
+    def __del__(self):
+        self.close()
 
 
 def main():
@@ -88,15 +257,37 @@ def main():
     h.reset()
     for _ in range(25):
         h.step()
+    t = time.time()
     rv = RealView(h)
+    if not rv.ok:
+        print("Filament didn't start:", rv.error)
+        sys.exit(1)
+    print(f"renderer up in {time.time() - t:.1f} s: {rv.info}")
     out = HS.HERE / "runs"
-    shots = [("kitchen", 4.2, 4.0, -2.4), ("living", 10.0, 4.8, -0.9), ("bath", 6.7, 7.1, 1.57)]
-    Image.fromarray(rv.render("house")).save(out / "real_overview.png")
+    shots = [("kitchen", 4.2, 4.0, -2.4), ("living", 10.0, 4.8, -0.9), ("bedroom", 4.0, 7.2, 2.4)]
+    if len(sys.argv) > 1:
+        shots = [s_ for s_ in shots if s_[0] in sys.argv[1:]]
+    t = time.time()
+    img = rv.render("house")
+    if img is None:
+        print("failed:", rv.error)
+        sys.exit(1)
+    Image.fromarray(img).save(out / "real_overview.png")
+    print(f"first frame {time.time() - t:.1f} s")
     for name, x, y, yaw in shots:
         h.place_robot(x, y, yaw)
         for _ in range(10):
             h.step()
-        Image.fromarray(rv.render("follow")).save(out / f"real_{name}.png")
+        h.look = None
+        t = time.time()
+        img = rv.render("follow")
+        if img is None:
+            print("failed:", rv.error)
+            sys.exit(1)
+        Image.fromarray(img).save(out / f"real_{name}.png")
+        Image.fromarray(rv.render("head")).save(out / f"real_{name}_head.png")
+        print(f"{name}: {time.time() - t:.2f} s for two frames")
+    rv.close()
     print("wrote", sorted(p.name for p in out.glob("real_*.png")))
 
 

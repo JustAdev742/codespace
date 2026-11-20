@@ -48,6 +48,7 @@ CROUCH = [(0.52, (0.56, 0.4)), (0.45, (0.52, 0.5)), (0.0, (0.48, 0.6))]
 SIT_Z = 0.47                      # hip height above the ankle seated on the 46 cm chair (the sit and stand-up plans)
 STIFF_ANKLE = 1.0                 # extra ankle stiffness for planned whole-body motions (brain/skills.py World.stiff)
 WALK_POLICY, BODY_NAME = "s1fast", "KESTREL S1"     # the house's walking policy (train/runs/<name>) and the body's name
+WALK_SMOOTH = 0.0                 # the low-pass on joint targets the walking policy was trained with (env.ACTION_SMOOTH)
 UNITREE = {"h2x": "model_h2x", "g1": "model_g1"}   # bodies built on Unitree's official models
 if _V in UNITREE:                    # Unitree H2-X (on the H2 model): model_h2x.py; Unitree G1: model_g1.py
     import importlib
@@ -59,6 +60,7 @@ if _V in UNITREE:                    # Unitree H2-X (on the H2 model): model_h2x
     LOW_REACH, SIT_Z, STIFF_ANKLE, RISE, SIT = H2X.LOW_REACH, H2X.SIT_Z, H2X.STIFF_ANKLE, H2X.RISE, H2X.SIT
     REACH_SOLVE, ARM_GRAVITY_COMP, GATE_GAIN, CALM_S = H2X.REACH_SOLVE, H2X.ARM_GRAVITY_COMP, H2X.GATE_GAIN, H2X.CALM_S
     WALK_POLICY, BODY_NAME = H2X.WALK_POLICY, H2X.BODY_NAME
+    WALK_SMOOTH = getattr(H2X, "WALK_SMOOTH", 0.0)
 
 
 VARIANT = os.environ.get("KESTREL_VARIANT", "k1").lower()    # "s1": the simple off-the-shelf build

@@ -29,6 +29,7 @@ from __future__ import annotations
 
 import heapq
 import math
+import os
 import random
 
 import numpy as np
@@ -44,6 +45,7 @@ import model as KM
 
 REST_ARMS = [0.0, 0.0, -0.2, -0.2]
 CARRY_ARMS = [0.0, -0.35, -0.2, -1.5]
+LOOK_EVERY = 12                 # pouring: the robot looks at its stream and corrects every 12 steps (0.24 s)
 REACH_FWD, REACH_RIGHT = KM.REACH_FWD, 0.20  # where a handle must be, in the robot's frame, for the hook to reach it
 LOW_HANDLE = KM.LOW_HANDLE                   # handles lower than this above the floor need a crouch (per robot)
 
@@ -219,6 +221,62 @@ class HouseBot:
             if self.visible((xy[0], xy[1], self.h.floor_z(*xy) + 1.2), b)[0]:
                 out.append("you" if n == "you" else n.capitalize())
         return out
+
+    DIRS = ["ahead", "ahead-left", "ahead-left", "left", "behind-left", "behind-left", "behind", "behind-right",
+            "behind-right", "right", "ahead-right", "ahead-right"]
+
+    def close_by(self, within=0.6, body_r=0.22):
+        """What the body could bump: horizontal rays all round, from knee to shoulder height. [(what, gap in m from the
+        body's side, direction)], nearest first, one entry per thing."""
+        h = self.h
+        m, d = h.e.m, h.e.d[0]
+        x, y, yaw = h.robot_pose()
+        fz = h.floor_z(x, y)
+        near = {}
+        gid = np.array([-1], np.int32)
+        for k in range(12):
+            a = yaw + k * math.pi / 6
+            u = np.array([math.cos(a), math.sin(a), 0.0])
+            for zh in (0.25, 0.4, 0.73, 0.85, 1.0):                   # low furniture, table tops, worktops, shoulders
+                p0 = np.array([x, y, fz + zh]) + 0.3 * u                 # from just outside the torso
+                dist = mujoco.mj_ray(m, d, p0, u, self.ray_groups, 1, -1, gid)
+                if dist < 0 or dist > within or m.geom_bodyid[gid[0]] in h.robot_bodies:
+                    continue
+                what = self._thing_at(gid[0], p0 + dist * u)
+                gap = max(0.0, dist + 0.3 - body_r)
+                if what not in near or gap < near[what][0]:
+                    near[what] = (gap, self.DIRS[k])
+        return sorted(((w, g, dr) for w, (g, dr) in near.items()), key=lambda t: t[1])
+
+    def _thing_at(self, g, p):
+        """A name for the thing a ray hit: an object, person, chair or sofa by name; a wall; else the furniture whose
+        footprint holds the point."""
+        h, m = self.h, self.h.e.m
+        bid = m.geom_bodyid[g]
+        if bid:
+            n = mujoco.mj_id2name(m, mujoco.mjtObj.mjOBJ_BODY, bid) or ""
+            if n in HS.OBJECTS:
+                return HS.OBJECTS[n][5][0]
+            if n in h.b.people:
+                return "you" if n == "you" else n.capitalize()
+            return n.replace("_", " ") or "something"
+        gn = mujoco.mj_id2name(m, mujoco.mjtObj.mjOBJ_GEOM, g) or ""
+        if gn.startswith("wall"):
+            return "wall"
+        if gn.startswith("door"):
+            return "door"
+        best = None
+        for n, f in h.b.furniture.items():
+            (cx, cy), (sx, sy) = f["xy"], f["size"]
+            dx, dy = abs(p[0] - cx) - sx / 2, abs(p[1] - cy) - sy / 2
+            if dx < 0.15 and dy < 0.15 and p[2] < f["top"] + 0.3:
+                score = max(dx, dy)
+                if best is None or score < best[0]:
+                    best = (score, n)
+        if best:
+            return best[1]
+        room = h.room_of(p[0], p[1])
+        return "kitchen units" if room == "kitchen" else "furniture"
 
     def people_near(self):
         """Nearest person (360-degree safety sensor: within 3.5 m and not behind a wall): (distance, bearing) or None."""
@@ -1644,8 +1702,11 @@ class HouseBot:
         self.say(f"The {name} is in the {c['words'][0]}.") if ok else self.say("cant", why=f"the {name} missed the {c['words'][0]}")
         return ok
 
-    def pour(self, dst):
-        """Pour what it holds into dst (an object, like the pot or a mug), or water plant number dst."""
+    def pour(self, dst, litres=None):
+        """Pour what it holds into dst (an object, like the pot or a mug), or water plant number dst: hold it over,
+        tip it (the hook turns like a wrist) and watch the stream, steering it into the opening, until enough has gone
+        in; then tip it back. The water is real drops (pouring.py): what misses is spilled. KESTREL_POUR=rule: the
+        old way (held over it, the water moves by rule)."""
         h = self.h
         src = h.holding
         if isinstance(dst, int):
@@ -1654,12 +1715,150 @@ class HouseBot:
         else:
             p = h.obj_pos(dst)
             xy, z_top, label = (p[0], p[1]), p[2] + HS.OBJECTS[dst][1][-1], HS.OBJECTS[dst][5][0]
-        ok = self.hold_over(xy, z_top, secs=2.0, clear=0.05, near_ok=0.10)
-        res = ok and h.pour(src, dst)
+        real = os.environ.get("KESTREL_POUR", "real") != "rule" and getattr(h, "liquid", None) is not None and h.liquid.ok
+        ok = self.hold_over(xy, z_top, secs=1.0 if real else 2.0, clear=0.03 if real else 0.05, near_ok=0.10)
+        if not real:
+            res = ok and h.pour(src, dst)
+        elif not ok:
+            res = False
+        else:
+            res = self.tip(src, dst, xy, z_top, litres)
         self.retract()
         if not res:
             self.say("cant", why=f"I couldn't pour into the {label}")
         return res
+
+    def tip(self, src, dst, xy, z_top, litres=None, max_s=14.0):
+        """Tip the held container over (xy, z_top) until `litres` have landed in dst (default: a mug's worth, what
+        dst still has room for, or all of it), steering the stream with the arm; food in it slides out once it is
+        tipped well over. Then tip it back. True if the water (or food) went in."""
+        import mujoco
+        h, liq = self.h, self.h.liquid
+        m, d = h.e.m, h.e.d[0]
+        eq, b = h.obj_eq[src], h.obj_body[src]
+        has_water = h.water.get(src, 0.0) >= 0.01
+        if litres is None:
+            litres = 0.2 if isinstance(dst, int) else 0.25
+            if not isinstance(dst, int) and dst in h.water:
+                litres = min(litres, max(0.0, h.water_cap(dst) - h.water[dst]))
+        litres = min(litres, h.water.get(src, 0.0))
+        rq0, ts0 = m.eq_data[eq, 6:10].copy(), float(m.eq_data[eq, 10])
+        x, y, yaw = h.robot_pose()
+        fwd = np.array([math.cos(yaw), math.sin(yaw), 0.0])
+        R = d.xmat[b].reshape(3, 3)
+        p_l = R.T @ fwd
+        p_l[2] = 0.0
+        p_l /= max(np.linalg.norm(p_l), 1e-9)
+        axis = np.cross([0.0, 0.0, 1.0], p_l)                 # turning about this lowers the side facing forward
+        anchor = h.robot_pose()
+        goal = h.hook_world().copy()
+        liq.take()
+        got, food, phi, t = 0.0, None, 0.0, 0.0
+        miss = 0.0
+        logged = False
+        phi_max = math.radians(115)
+
+        def set_tilt(a):
+            q = np.zeros(4)
+            mujoco.mju_axisAngle2Quat(q, axis, a)
+            out = np.zeros(4)
+            mujoco.mju_mulQuat(out, rq0, q)
+            m.eq_data[eq, 6:10] = out
+
+        def arm_to(g):
+            sh, el, err = h.ik_right(g)
+            if err < 0.06:
+                self.arms = [0.0, sh, -0.2, el]
+
+        q_s = 0.0
+        aim_from, aim_to, aim_k = None, None, 0
+        liq.aim_z, liq.cross = z_top, []
+        try:
+            m.eq_data[eq, 10] = 1.0                           # a firm wrist while tipping
+            ax, ay, ayaw = anchor
+            while t < max_s:
+                q, lip, out = liq.flow(src)
+                q_s += (q - q_s) * min(1.0, E.DT / 0.25)      # the flow, smoothed over the load's swing
+                into, sp = liq.take()
+                got += into.get(dst, 0.0)
+                miss += sum(sp.values()) + sum(v for k, v in into.items() if k != dst)
+                if has_water and (got >= litres - 1e-6 or h.water.get(src, 0.0) < 0.004):
+                    break
+                g_lip, g_out, tilt, spill, head = liq.geometry(src, toward=fwd)
+                if not has_water:                             # food: tip it well over, and it slides out
+                    if tilt >= math.radians(70) and food is None:
+                        food = h.world.pour(src, dst, water=False)
+                    if food is not None and t > 1.0:
+                        break
+                    phi = min(phi_max, phi + math.radians(30) * E.DT)
+                elif q_s < 0.02:                              # not running yet: quickly to just short of the lip,
+                    gap = spill - tilt                        # then slowly over it
+                    phi = min(phi_max, phi + math.radians(40 if gap > math.radians(10) else 4) * E.DT)
+                elif q_s < 0.06:
+                    phi = min(phi_max, phi + math.radians(2.5) * E.DT)
+                elif q_s > 0.15:
+                    phi = max(0.0, phi - math.radians(6) * E.DT)
+                set_tilt(phi)
+                # watch the stream (where it crosses the rim's height; before it runs, where it will): steer it over the
+                # opening - forward and back with the arm, sideways by turning the body a little (the arm can't reach
+                # sideways)
+                land = liq.landing(g_lip, g_out, max(q, 0.05), z_top)
+                k_ = int(round(t / E.DT))
+                if k_ % LOOK_EVERY == 0:                          # a look: where is the stream going?
+                    seen = None
+                    if len(liq.cross) >= 3:                       # the drops since the last look
+                        seen = np.mean(liq.cross, axis=0)
+                    elif q_s < 0.02:                              # not running yet: where it will start
+                        seen = land
+                    liq.cross = []
+                    if seen is not None:
+                        land = seen
+                        e = np.asarray(xy[:2]) - seen
+                        e_fwd = float(e @ fwd[:2])
+                        e_left = float(e @ np.array([-fwd[1], fwd[0]]))
+                        if abs(e_fwd) > 0.008:                    # forward and back: move the hook (half the error)
+                            step_fwd = float(np.clip(0.5 * e_fwd, -0.02, 0.02))
+                        else:
+                            step_fwd = 0.0
+                        if abs(e_left) > 0.012:                   # sideways: turn the body a little
+                            ayaw += float(np.clip(0.5 * e_left / 0.58, -0.03, 0.03))
+                        aim_from, aim_to = goal.copy(), goal + step_fwd * fwd
+                        aim_k = 0
+                if aim_from is not None and aim_k < LOOK_EVERY:   # the correction, spread over until the next look
+                    aim_k += 1
+                    goal = aim_from + (aim_to - aim_from) * (aim_k / LOOK_EVERY)
+                    arm_to(goal)
+                if getattr(self, "debug", False) and lip is not None and int(t / E.DT) % 10 == 0:
+                    self.log(f"  (pour t={t:.1f}: q {q:.2f} l/s, tilt {math.degrees(tilt):.0f}, lands {np.round(land, 3)}, "
+                             f"in {got:.3f}, missed {miss:.3f}, lip {np.round(g_lip, 3)}, drops {liq.flying()})")
+                if lip is not None and not logged and getattr(self, "debug", False):
+                    logged = True
+                    self.log(f"  (pour: flowing at {math.degrees(tilt):.0f} deg (spill at {math.degrees(spill):.0f}), "
+                             f"lands {np.round(land, 3)} for a target at {np.round(xy, 3)})")
+                self.hold_step((ax, ay, ayaw))
+                t += E.DT
+            for k in range(int(1.0 / E.DT)):                  # tip it back, and let the last drops land
+                set_tilt(phi * max(0.0, 1.0 - (k + 1) * E.DT / 0.6))
+                self.hold_step((ax, ay, ayaw))
+                into, sp = liq.take()
+                got += into.get(dst, 0.0)
+                miss += sum(sp.values()) + sum(v for k_, v in into.items() if k_ != dst)
+        finally:
+            m.eq_data[eq, 6:10] = rq0
+            m.eq_data[eq, 10] = ts0
+            liq.aim_z, liq.cross = None, []
+        what = []
+        if got > 0:
+            what.append(f"{got:.2f} l of water into the {dst if not isinstance(dst, int) else f'plant {dst + 1}'}")
+        if food:
+            what.append(food)
+        self.log(f"  [{h.t:6.1f} s] (poured: {', '.join(what) or 'nothing went in'}"
+                 + (f"; {miss:.2f} l missed and spilled" if miss > 0.005 else "")
+                 + (f"; {liq.flying()} drops still falling" if liq.flying() else "") + ")")
+        if isinstance(dst, int):
+            return dst in h.watered
+        h.poured(src, dst, "; ".join(what) or None)
+        return (got >= 0.6 * litres) if has_water else bool(food)
 
     def fill(self, obj, litres):
         """Stand a pot, kettle or can on the filling station's drip tray, let the sensor tap run until it holds

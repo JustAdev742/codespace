@@ -190,9 +190,11 @@ class RobotAgent:
             app.append(f"pot {h.temp['pot']:.0f} C" + (", pasta in" if h.pot_pasta else "") + (f", cooked {h.cook_t:.0f} s" if h.cook_t else ""))
         seen = "; ".join(f"{HS.OBJECTS[o][5][0]} ({m['room']})" for o, m in bot.memory.items()) or "nothing yet"
         people = "; ".join(f"{n}: {h.room_of(*h.person_xy(n))}" for n in h.b.people if h.person_xy(n)[0] < 19)
+        close = ", ".join(f"{w} {g:.2f} m {dr}" for w, g, dr in bot.close_by()[:4]) or "nothing within 0.6 m"
         return (f"[state t={h.t:.0f}s] in the {h.room_of(x, y)} at ({x:.1f}, {y:.1f}) facing {math.degrees(yaw):.0f} deg; "
                 f"{'seated' if bot.seated else 'standing'}; holding {hold}; {', '.join(app)}; "
-                f"{'FALLEN, e-stop set' if bot.sup.latched else ''} seen: {seen}; people: {people}")
+                f"{'FALLEN, e-stop set' if bot.sup.latched else ''} seen: {seen}; people: {people}; "
+                f"close to your body: {close}")
 
     def observation(self, text):
         head, follow = self.views()
@@ -294,7 +296,10 @@ lines short (say), and use them sparingly.
 Your body: you walk (stairs too), have one hook hand on the right arm that holds things by their handle (every object
 here has one), and a left arm for balance. Your right arm swings in a plane beside your body: the low-level skills
 line you up for it. You are small: heavy loads (over about 1.4 kg) may not come up, and you can't reach the back of a
-deep worktop. You cannot run, jump, climb onto furniture, or open closed doors.
+deep worktop. You cannot run, jump, climb onto furniture, or open closed doors. Your body and arms are solid: they
+bump into furniture and can knock things over. The state line's "close to your body" lists what is within 0.6 m of
+your sides, with the gap: leave room for your arm to swing before reaching, and shuffle away from something that is
+in the way.
 
 The house: rooms (x0, x1, y0, y1 in metres) {rooms}. Furniture with tops: {', '.join(h.b.furniture)}.
 Containers (put drops things in): {', '.join(h.b.containers)}. Controls to press: {', '.join(h.b.controls)}.

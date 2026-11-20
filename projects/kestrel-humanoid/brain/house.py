@@ -565,6 +565,7 @@ OBJECT_MODELS = {"kettle": "vintage_electric_kettle", "pot": "pot_enamel_01", "b
                  "plate": "carved_wooden_plate"}
 WATER_CAP = {"pot": 2.0, "kettle": 1.2, "can": 2.0, "mug_red": 0.3, "mug_blue": 0.3, "mug_green": 0.3, "mug_yellow": 0.3}
 import world as W                     # noqa: E402  (general rules: heat, food, grime, tools)
+import pouring as PO                  # noqa: E402  (water that pours: drops that land where gravity takes them)
 OBJECTS.update(W.NEW_OBJECTS)
 COOK_S, WASH_S = 40.0, 30.0            # simulated cooking and washing times (a real one is minutes; the test is not)
 TOYS = ["teddy", "truck", "blocks", "ball"]
@@ -877,6 +878,7 @@ def build():
     build_upper(b)
     build_extras(b)
     W.build(b, Z0)
+    PO.build(b, Z0)
 
     # ---- objects to fetch (handles on top)
     grab_object(b, "kettle", 2.6, 0.62, Z0 + 0.9)
@@ -1077,6 +1079,7 @@ class House(SK.World):
         self.world = None
         self.reset_extras()
         self.world = W.World(self, Z0)
+        self.liquid = PO.Liquid(self)
 
     def reset_extras(self):
         """Appliances off, containers empty, no dust, hazards and visitors parked."""
@@ -1084,6 +1087,8 @@ class House(SK.World):
         self.st = dict(tap=False, hob=False, kettle=False, washer=False)
         self.washer_t, self.washed = 0.0, False
         self.water = {n: 0.0 for n in WATER_CAP}
+        if getattr(self, "liquid", None) is not None:
+            self.liquid.reset()
         self.fill_to = {}                    # the filling station stops at the amount asked for
         self.temp = {n: 20.0 for n in WATER_CAP}
         self.pot_pasta, self.cook_t, self.burn_t, self.hob_empty_t = False, 0.0, 0.0, 0.0
@@ -1143,7 +1148,10 @@ class House(SK.World):
                 self.watered.add(dst)
             self.event(f"watered plant {dst}" + ("" if ok else f" (the {src} has no water in it)"))
             return ok
-        what = self.world.pour(src, dst)
+        return self.poured(src, dst, self.world.pour(src, dst))
+
+    def poured(self, src, dst, what):
+        """After src was emptied into dst (by the rules, or by real pouring: pouring.py): tea, pasta, what happened."""
         self.pot_pasta = self.world.food_in["pasta"] == "pot"
         if dst in MUGS and self.water[dst] >= 0.15 and self.temp[dst] >= 85.0 and not self.tea[dst]:
             self.tea[dst] = True
@@ -1290,6 +1298,8 @@ class House(SK.World):
         self._move_visitor()
         if self.world is not None:
             self.world.tick(dt)
+        if getattr(self, "liquid", None) is not None:
+            self.liquid.tick(dt)
 
     def _move_dog(self):
         if not self.dog_on:
@@ -1485,14 +1495,29 @@ class House(SK.World):
         dv.mocap_quat[:] = d.mocap_quat
         mujoco.mj_forward(self.mv, dv)
 
+    def _wall_cut(self):
+        """The follow view's walls: their bottoms, and how high they are cut (1.05 m above their floor)."""
+        size, pos = self.wall_full
+        z0 = pos[:, 2] - size[:, 2]
+        lvl = np.where(pos[:, 0] < SX + 0.05, UP, np.where(pos[:, 0] < 0.0, (Z0 + UP) / 2, Z0))
+        return z0, lvl + 1.05
+
+    def sunk_walls(self):
+        """The walls' positions for a cut-away view by moving instead of resizing (a renderer that fixes each shape's
+        size when it loads, like Filament): each wall sinks into the ground until only its cut height shows."""
+        size, pos = self.wall_full
+        z0, top = self._wall_cut()
+        npos = pos.copy()
+        npos[:, 2] -= np.maximum(0.0, pos[:, 2] + size[:, 2] - top)
+        npos[z0 > top - 1e-3, 2] = -20.0
+        return npos
+
     def _walls(self, cut):
         size, pos = self.wall_full
         if not cut:
             self.mv.geom_size[self.walls_v], self.mv.geom_pos[self.walls_v] = size, pos
             return
-        z0 = pos[:, 2] - size[:, 2]
-        lvl = np.where(pos[:, 0] < SX + 0.05, UP, np.where(pos[:, 0] < 0.0, (Z0 + UP) / 2, Z0))
-        top = lvl + 1.05
+        z0, top = self._wall_cut()
         hz = np.clip((top - z0) / 2, 0.0005, size[:, 2])
         nsize, npos = size.copy(), pos.copy()
         nsize[:, 2], npos[:, 2] = hz, z0 + hz

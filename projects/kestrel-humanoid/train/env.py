@@ -49,6 +49,13 @@ SCHEDULE = dict(start=15e6, end=25e6, ref_gait=(1.0, 0.3), track_lin=(1.0, 1.5))
 # moving under it; the default (10 %, no term) is what the KESTREL policies were trained with
 STAND_FRAC = float(os.environ.get("KESTREL_STAND_FRAC", "0.1"))
 STAND_W = float(os.environ.get("KESTREL_STAND_W", "0.0"))
+# smoother walking: a low-pass on the joint targets in training too (KESTREL_ACTION_SMOOTH, the filter's memory per 20 ms
+# step), so the policy learns to walk at full speed through it, and heavier penalties on jerky joints
+# (KESTREL_W_ACTION_RATE, KESTREL_W_DOF_ACC). The house runs a policy with the filter it was trained with (WALK_SMOOTH).
+ACTION_SMOOTH = float(os.environ.get("KESTREL_ACTION_SMOOTH", "0"))
+for _k in ("action_rate", "dof_acc"):
+    if os.environ.get(f"KESTREL_W_{_k.upper()}"):
+        W[_k] = float(os.environ[f"KESTREL_W_{_k.upper()}"])
 if STAND_W:
     W["stand"] = STAND_W
 AIR_T = 0.4                       # biped air-time reward saturates at 0.4 s (Isaac Lab threshold)
@@ -92,6 +99,7 @@ class Envs:
         self.max_row = T.ROWS - 1 if max_row is None else max_row
         self.cmd_scale = KM.GAIT["cmd_scale"] if cmd_scale is None else cmd_scale
         self.delay_prob = delay_prob if randomize else 0.0
+        self.action_smooth = ACTION_SMOOTH or getattr(KM, "WALK_SMOOTH", 0.0)
         self.cols = list(range(T.COLS)) if cols is None else list(cols)
         m = self.m
         self.qadr = np.array([m.joint(j).qposadr[0] for j in KM.LEG_JOINTS])
@@ -222,6 +230,8 @@ class Envs:
         self.t[i] = 0
         self.last_a[i] = 0
         self.prev_a[i] = 0
+        if getattr(self, "_smooth_a", None) is not None:
+            self._smooth_a[i] = 0
         self.air[i] = 0
         self.stance[i] = 0
         self.contact[i] = True

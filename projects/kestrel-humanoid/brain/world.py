@@ -186,8 +186,9 @@ class World:
         self._draw()
 
     # ------------------------------------------------------------------------------------------ actions
-    def pour(self, src, dst):
-        """src tipped over dst: food moves, some water moves (temperatures mix). Returns what happened, or None."""
+    def pour(self, src, dst, water=True):
+        """src tipped over dst: food moves, some water moves (temperatures mix). Returns what happened, or None.
+        water=False: food only (real pouring moves the water itself, as drops: pouring.py)."""
         h = self.h
         said = []
         for f, where in self.food_in.items():
@@ -195,7 +196,7 @@ class World:
                 self.food_in[f] = dst
                 said.append(f"the {f} into the {dst}")
         w = h.water.get(src, 0.0)
-        if w >= 0.05 and not isinstance(dst, int):
+        if water and w >= 0.05 and not isinstance(dst, int):
             amount = min(w, 0.2)
             if dst in h.water:
                 cap = h.water_cap(dst)

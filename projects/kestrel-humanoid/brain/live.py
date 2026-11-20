@@ -126,6 +126,17 @@ class Live:
         if self.a.viewer:
             import mujoco.viewer
             self.viewer = mujoco.viewer.launch_passive(h.mv, h.dv)
+        self.real = None
+        if self.a.real:                       # the realistic view (Filament, on the GPU), in its own process
+            self.status = dict(boot="Starting the realistic renderer (Filament on your graphics card)...")
+            from render_real import RealView
+            rv = RealView(h, self.a.width, self.a.height)
+            if rv.ok:
+                self.real = rv
+                print(f"realistic view on: {rv.info}", flush=True)
+            else:
+                print(f"realistic view unavailable ({rv.error}); showing the standard view", flush=True)
+                self.push("log", f"(realistic view unavailable: {rv.error})")
         step_bot = h.step
         self.wall0, self.sim0 = time.time(), h.t
         self.k = 0
@@ -184,7 +195,15 @@ class Live:
         if self.view == "head":
             img = Image.fromarray(h.ego()).resize((self.a.width, int(self.a.width * 3 / 4)), Image.BILINEAR)
         else:
-            img = Image.fromarray(h.chase_view("overview" if self.view == "house" else "follow"))
+            pic = None
+            if self.real is not None:                 # the newest realistic frame (the simulation doesn't wait for it)
+                pic = self.real.latest("house" if self.view == "house" else "follow")
+                if self.real.error:                   # it failed: the standard view from now on
+                    self.push("log", f"(realistic view stopped: {self.real.error}; showing the standard view)")
+                    self.real, pic = None, None
+            if pic is None:
+                pic = h.chase_view("overview" if self.view == "house" else "follow")
+            img = Image.fromarray(pic)
             iw = max(96, img.width // 5)
             ego = Image.fromarray(h.ego()).resize((iw, iw * 3 // 4), Image.BILINEAR)
             img.paste(ego, (img.width - iw - 8, 8))
@@ -847,6 +866,9 @@ def main():
     ap.add_argument("--port", type=int, default=8765)
     ap.add_argument("--host", default="127.0.0.1", help="0.0.0.0 to open it to other devices on your network")
     ap.add_argument("--viewer", action="store_true", help="also open MuJoCo's interactive 3D viewer")
+    ap.add_argument("--real", action="store_true",
+                    help="realistic view: Filament on the graphics card (python real_assets.py first for the real "
+                         "furniture; KESTREL_FILAMENT_API=opengl if Vulkan won't start)")
     ap.add_argument("--terminal", action="store_true", help="also read instructions typed in this terminal")
     ap.add_argument("--claude", action="store_true", help="let a Claude model hold the conversation (ANTHROPIC_API_KEY)")
     ap.add_argument("--claude-model", default="claude-haiku-5-5",
