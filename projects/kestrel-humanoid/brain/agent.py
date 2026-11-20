@@ -149,6 +149,7 @@ class RobotAgent:
         self.client = client
         self.view = None
         self.done = None
+        self.usage = dict(input=0, output=0, cache_read=0, cache_write=0, calls=0)
 
     # ---------------------------------------------------------------------------------------- seeing
     def views(self):
@@ -226,6 +227,11 @@ class RobotAgent:
             t("sit", "Sit on a chair.", {"chair": {"type": "string", "enum": sorted(h.b.chairs)}}),
             t("stand", "Stand up from sitting.", {}),
             t("say", "Say something out loud.", {"text": S}),
+            t("move_body", "Do any movement of your arms described in words (e.g. 'wave hello with both hands', 'stretch "
+                           "both arms up', 'celebrate', 'beckon someone over'): a motion model trained on hours of human "
+                           "motion makes it, so it can be anything, and it differs a little each time. Your arms only "
+                           "swing forward/back and bend at the elbow, so you show a simplified version. Hand must be free.",
+              {"text": S, "seconds": {"type": "number"}}),
             t("gesture", "An arm gesture.", {"name": {"type": "string", "enum": ["wave", "point", "explain", "shrug", "welcome", "refuse"]}}),
             t("walk_to", "Walk to a point on the floor (x, y in metres, the coordinates in your state line), e.g. "
                          "along lanes across a room. Your arms keep the pose they have.",
@@ -239,6 +245,12 @@ class RobotAgent:
                            "plane). Anything you hold moves with it. Returns how close the hook got.",
               {"ahead": {"type": "number"}, "up": {"type": "number"}, "seconds": {"type": "number"}}),
             t("grip", "Hook the handle that is at your hook now (within 7 cm), whatever it belongs to.", {}),
+            t("use", "Use what you hold on something - an object, a piece of furniture, or a surface ('bath', 'basin', "
+                     "'toilet', 'worktop', 'dining table', 'bathroom floor'): you bring it there and do what it is for "
+                     "(rub it back and forth, spray, slide it under and lift). Whether anything happens depends on the "
+                     "thing and the target: try, then look or inspect.", {"target": S}),
+            t("inspect", "Look closely at something: an object, food, a surface or a room's grime - what it looks like, "
+                         "what is in it, how hot it is (you have a thermometer).", {"thing": S}),
             t("let_go", "Unhook what you hold, where it is now; tells you where it came to rest.", {}),
             t("crouch", "Crouch, balanced, low enough to reach something `reach_height` metres above the floor "
                         "(0.34 lowest). Crouching can tip you over: keep the arm moves slow.",
@@ -279,8 +291,13 @@ Containers (put drops things in): {', '.join(h.b.containers)}. Controls to press
 Objects: {', '.join(HS.OBJECTS)}. Plants: {len(h.b.plants)} (plant 1 .. plant {len(h.b.plants)}). People: you (the
 person talking), Alex, Jordan.
 
+Things behave as they do at home: a lit hob heats what stands on it (water boils at 100 C, a dry pan gets much
+hotter), food cooks with heat and time and burns if left, grime comes off when something that scrubs is rubbed over
+it (cleaner spray helps), and a tool does what it is for only when used on the right thing.
+
 Two kinds of tools. Errand tools do a whole common action (go_to, pick_up, put, press, fill, pour, sit). Body tools
-are the parts those are made of (walk_to, shuffle, move_hand, grip, let_go, crouch, stand_tall, look): use them to
+are the parts those are made of (walk_to, shuffle, move_hand, grip, let_go, crouch, stand_tall, look), and use
+and inspect work with tools and see how things are going: use them to
 do things no errand tool covers, or when an errand tool keeps failing - for example, hold something in a new pose
 while walking lanes, sweep the hook over a surface, or line up by hand for a handle the errand tool misses.
 
@@ -347,6 +364,9 @@ Your memory (from earlier tasks):
             ok = bot.stand()
         elif name == "say":
             bot.say(inp["text"])
+        elif name == "move_body":
+            from express import express
+            ok, note = express(bot, inp["text"], float(inp.get("seconds") or 4.0))
         elif name == "gesture":
             if not bot.seated:
                 h.gesture({"wave": "triumph"}.get(inp["name"], inp["name"]))
@@ -360,6 +380,13 @@ Your memory (from earlier tasks):
             note = f"hook {err:.2f} m from the point, at height {hook[2] - h.floor_z(*hook[:2]):.2f} m"
         elif name == "grip":
             ok, note = bot.grip()
+        elif name == "use":
+            ok, note = bot.use(inp["target"].strip().lower())
+        elif name == "inspect":
+            thing = inp["thing"].strip().lower()
+            words = {w: n for n, o in HS.OBJECTS.items() for w in o[5]}
+            text = h.world.describe(words.get(thing, thing)) if getattr(h, "world", None) else None
+            return (True, text) if text else (False, f"nothing called '{thing}' to look at closely")
         elif name == "let_go":
             ok, note = bot.let_go()
         elif name == "crouch":
@@ -449,6 +476,13 @@ Your memory (from earlier tasks):
         try:
             for _ in range(max_turns or self.MAX_TURNS):
                 resp = self.create(messages)
+                u = getattr(resp, "usage", None)
+                if u is not None:
+                    self.usage["calls"] += 1
+                    self.usage["input"] += getattr(u, "input_tokens", 0) or 0
+                    self.usage["output"] += getattr(u, "output_tokens", 0) or 0
+                    self.usage["cache_read"] += getattr(u, "cache_read_input_tokens", 0) or 0
+                    self.usage["cache_write"] += getattr(u, "cache_creation_input_tokens", 0) or 0
                 messages.append({"role": "assistant", "content": resp.content})
                 if resp.stop_reason == "refusal":
                     self.bot.say("refuse")
