@@ -497,6 +497,7 @@ Your memory (from earlier tasks):
         self.done = None
         messages = [{"role": "user", "content": self.observation(f"Your goal: {goal}")}]
         steps = 0
+        saved = nudged = False
         try:
             for _ in range(max_turns or self.MAX_TURNS):
                 resp = self.create(messages)
@@ -520,6 +521,7 @@ Your memory (from earlier tasks):
                     self.done = self.done or (False, "stopped without calling done")
                     break
                 results = []
+                saved = saved or any(b.name == "save_skill" for b in calls)
                 for i, b in enumerate(calls):
                     steps += 1
                     self.on_event("action", f"{b.name} {json.dumps(b.input)}")
@@ -542,6 +544,14 @@ Your memory (from earlier tasks):
                     results.append({"type": "tool_result", "tool_use_id": b.id, "content": content,
                                     "is_error": (not ok) and not last})
                 messages.append({"role": "user", "content": results})
+                if self.done is not None and self.done[0] and not saved and not nudged:
+                    # it worked: before closing, ask once whether to keep how (a skill grows from doing, not from us)
+                    nudged = True
+                    messages[-1]["content"] = list(messages[-1]["content"]) + [{"type": "text", "text": (
+                        "That worked. If this is something you might do again, save_skill the steps that worked, with "
+                        "notes on what mattered (timings, what to watch for, what failed first). Then call done again.")}]
+                    self.done = None
+                    continue
                 if self.done is not None:
                     break
         except HB.Interrupted as e:                      # a new instruction, or stop

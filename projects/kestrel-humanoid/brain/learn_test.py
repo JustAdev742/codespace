@@ -112,6 +112,7 @@ def main():
     ap.add_argument("--max-turns", type=int, default=60)
     ap.add_argument("--seed", type=int, default=1)
     ap.add_argument("--stand-in", action="store_true")
+    ap.add_argument("--keep-memory", action="store_true", help="carry on from the memory an earlier run left")
     ap.add_argument("--out", default=str(HERE / "runs" / "learn"))
     a = ap.parse_args()
     from agent import Memory, RobotAgent
@@ -119,12 +120,13 @@ def main():
     out.mkdir(parents=True, exist_ok=True)
     tag = f"{a.task}_{'standin' if a.stand_in else a.model}"
     mem_path = out / f"{tag}.json"
-    if mem_path.exists():
-        mem_path.unlink()                                          # every run learns from nothing
+    if mem_path.exists() and not a.keep_memory:
+        mem_path.unlink()                                          # every run learns from nothing (unless told)
     log = open(out / f"{tag}.log", "a")
     results = []
+    first = 1 + (len(json.loads(mem_path.read_text()).get("episodes", [])) if a.keep_memory and mem_path.exists() else 0)
     for k in range(a.attempts):
-        h, bot = setup(a.task, a.seed + k)
+        h, bot = setup(a.task, a.seed + first - 1 + k)
         events = []
         agent = RobotAgent(h, bot, model=a.model, effort=a.effort, memory=Memory(mem_path),
                            client=StandIn() if a.stand_in else None,
@@ -136,14 +138,14 @@ def main():
             claimed, summary = False, f"error: {type(e).__name__}: {e}"
         ok, state = score(a.task, h)
         c = None if a.stand_in else cost(a.model, agent.usage)
-        r = dict(attempt=k + 1, passed=ok, claimed=claimed, state=state, summary=summary[:300], steps=len(
+        r = dict(attempt=first + k, passed=ok, claimed=claimed, state=state, summary=summary[:300], steps=len(
             [e for e in events if "action:" in e]), sim_s=round(h.t, 1), wall_min=round((time.time() - t0) / 60, 1),
                  usage=agent.usage, cost_usd=None if c is None else round(c, 3),
                  skills=sorted(agent.mem.d["skills"]), lessons=len(agent.mem.d["lessons"]))
         results.append(r)
         log.write(json.dumps(r) + "\n" + "\n".join(events) + "\n\n")
         log.flush()
-        print(f"attempt {k + 1}: {'PASSED' if ok else 'failed'} ({state}); robot said {'done' if claimed else 'not done'}; "
+        print(f"attempt {first + k}: {'PASSED' if ok else 'failed'} ({state}); robot said {'done' if claimed else 'not done'}; "
               f"{r['steps']} actions, {r['sim_s']:.0f} s simulated, {r['wall_min']} min; "
               f"{agent.usage['input'] + agent.usage['cache_read'] + agent.usage['cache_write']} in / {agent.usage['output']} out tokens"
               + (f", about ${c:.2f}" if c is not None else "") + f"; knows {len(r['skills'])} skill(s), {r['lessons']} lesson(s)",

@@ -1,0 +1,27 @@
+{
+ "skills": {},
+ "lessons": [],
+ "episodes": [
+  {
+   "goal": "The bathroom is grimy - please clean it.",
+   "ok": true,
+   "steps": 47,
+   "summary": "Sprayed and scrubbed the basin and bath; inspect now shows 0 grimy patches in the bathroom.",
+   "when": "2026-11-20 01:43"
+  },
+  {
+   "goal": "The bathroom is grimy - please clean it.",
+   "ok": true,
+   "steps": 29,
+   "summary": "Sprayed and scrubbed basin and bath; inspect shows 0 grimy patches.",
+   "when": "2026-11-20 01:45"
+  },
+  {
+   "goal": "The bathroom is grimy - please clean it.",
+   "ok": true,
+   "steps": 27,
+   "summary": "Sprayed and scrubbed the basin and bath, re-spraying where the cleaner had dried. Inspect now shows 0 grimy patches in the bathroom.",
+   "when": "2026-11-20 01:47"
+  }
+ ]
+}

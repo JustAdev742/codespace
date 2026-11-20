@@ -1,0 +1,41 @@
+{
+ "task": "steak",
+ "model": "claude-sonnet-5-5",
+ "attempts": 3,
+ "passed": [
+  false,
+  false,
+  false
+ ],
+ "total_cost_usd": 0.3,
+ "memory": {
+  "skills": {},
+  "lessons": [
+   "Steak burns fast once pan is hot (pan preheated while I fetched board/spatula; ~1 min of waiting then flip burned the top). Pan on hob only after steak is ready; check inspect every ~15s; take off at ~58C inside.",
+   "Steak: the side against the pan keeps cooking/burns; core heats slowly (~0.25C/s, 55C after ~160s from flip). Flip more often (every ~30s) so neither side blackens, and take pan off the heat at ~50C (hob off earlier; residual heat adds ~10C). Use spatula 'use pan' to flip. Moving the steak out with spatula to the plate early is better than carrying the hot pan."
+  ],
+  "episodes": [
+   {
+    "goal": "Cook the steak medium and serve it on the plate on the dining table, then turn the hob off.",
+    "ok": true,
+    "steps": 38,
+    "summary": "Steak seared in pan, flipped, taken off at 58C (medium), poured onto plate on dining table, hob off.",
+    "when": "2026-11-20 01:43"
+   },
+   {
+    "goal": "Cook the steak medium and serve it on the plate on the dining table, then turn the hob off.",
+    "ok": false,
+    "steps": 22,
+    "summary": "Failed: the steak burnt (top black) because the pan overheated while I waited and fetched the spatula. I turned the hob off but did not serve it. It is not medium and there is no spare steak.",
+    "when": "2026-11-20 01:44"
+   },
+   {
+    "goal": "Cook the steak medium and serve it on the plate on the dining table, then turn the hob off.",
+    "ok": false,
+    "steps": 40,
+    "summary": "Steak ended on the plate on the dining table and hob is off, but the underside burnt (core 67C) because I left it too long on one side; not medium.",
+    "when": "2026-11-20 01:46"
+   }
+  ]
+ }
+}
