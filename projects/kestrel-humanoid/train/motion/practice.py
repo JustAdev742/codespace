@@ -100,6 +100,8 @@ def main():
     ap.add_argument("--library", default="runs/motion/bandai_library.npz", help="motion library for the mover's walking")
     ap.add_argument("--captions", nargs="*", default=[], help="caption files to draw descriptions from")
     ap.add_argument("--prompts", default=None, help="a text file of extra descriptions, one per line (e.g. requests)")
+    ap.add_argument("--from-memory", nargs="?", const="runs/motion/g1_memory.json", default=None,
+                    help="also practise what people asked the robot for (live_mover.py --claude keeps them there)")
     ap.add_argument("--rounds", type=int, default=100)
     ap.add_argument("--seed", type=int, default=0)
     ap.add_argument("--out", default="runs/motion/practice")
@@ -108,6 +110,9 @@ def main():
     from .mover import Mover
     g = Generator(a.ckpt)
     extra = Path(a.prompts).read_text().splitlines() if a.prompts else []
+    if a.from_memory and Path(a.from_memory).exists():
+        asked = json.loads(Path(a.from_memory).read_text()).get("requests", [])
+        extra += [t if t.lower().startswith("a person") else f"a person {t}" for t in asked]
     pool = prompts(a.captions, extra)
     rng = np.random.default_rng(a.seed)
     base = Mover(a.library, generator=g)

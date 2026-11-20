@@ -470,6 +470,9 @@ def main():
 
     print("loading the motion library ...", flush=True)
     gen = None
+    if a.generator and not Path(a.generator).exists():         # none trained here: the one that comes with the code
+        shipped = Path(__file__).resolve().parents[1] / "models" / "generator.pt"
+        a.generator = str(shipped) if shipped.exists() else a.generator
     if a.generator and Path(a.generator).exists():
         from .generator import Generator
         print("loading the text-to-motion generator ...", flush=True)

@@ -527,9 +527,19 @@ def main():
     s.add_argument("--text", required=True)
     s.add_argument("--seconds", type=float, default=6.4)
     s.add_argument("--out", default=None, help=".npz with q, root_pos, root_quat at 50 Hz")
+    x = sub.add_parser("export", help="the weights alone, half precision: a small file to share or commit")
+    x.add_argument("--ckpt", default="runs/motion/generator/model.pt")
+    x.add_argument("--out", default="models/generator.pt")
     a = ap.parse_args()
     if a.cmd == "train":
         train(a)
+    elif a.cmd == "export":
+        z = torch.load(a.ckpt, map_location="cpu", weights_only=False)
+        slim = dict(model={k: v.half() for k, v in z["model"].items()}, config=z["config"], mu=z["mu"], sd=z["sd"],
+                    step=z.get("step", 0), text_model=z.get("text_model", TEXT_MODEL))
+        Path(a.out).parent.mkdir(parents=True, exist_ok=True)
+        torch.save(slim, a.out)
+        print(f"wrote {a.out}: {Path(a.out).stat().st_size / 1e6:.1f} MB (step {slim['step']})")
     else:
         g = Generator(a.ckpt)
         f = g.generate(a.text, a.seconds)

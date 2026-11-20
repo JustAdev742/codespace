@@ -35,7 +35,8 @@ S1_PITCH, S1_ELBOW = (-3.1, 1.0), (-2.25, 0.0)      # the S1's ranges (rad); its
 
 
 def generator_path():
-    for p in (os.environ.get("KESTREL_GENERATOR"), TRAIN / "runs" / "motion" / "generator" / "model.pt"):
+    for p in (os.environ.get("KESTREL_GENERATOR"), TRAIN / "runs" / "motion" / "generator" / "model.pt",
+              TRAIN / "models" / "generator.pt"):                 # trained here, else the one that comes with the code
         if p and Path(p).is_file():
             return Path(p)
     return None
