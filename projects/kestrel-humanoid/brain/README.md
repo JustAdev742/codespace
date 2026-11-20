@@ -240,8 +240,10 @@ drawn by MuJoCo 4's Filament renderer on your graphics card, with physically bas
 light and reflections, shadows, ambient occlusion and tone mapping. It runs in its own process (`render_real.py`): the
 classic renderer, which draws the robot's own camera, and Filament can upset each other's graphics context in one
 process. If Filament can't start, or stops, the page carries on with the standard picture and says why in the log.
-On an AMD card such as the RX 6700 XT it uses Vulkan; `KESTREL_FILAMENT_API=opengl` picks OpenGL if Vulkan gives
-trouble, and `KESTREL_FILAMENT_LIGHT=1.5` makes it brighter. Without a GPU it falls back to software rendering, which
+It tries the graphics backends in turn until one works: on Windows OpenGL first (MuJoCo's Filament for Windows has
+no Vulkan: "Selected backend not supported in this build"), then the build's default, then Vulkan; on Linux Vulkan
+first. A backend that starts but can't draw is dropped for the next one. `KESTREL_FILAMENT_API=opengl` (or a list,
+`opengl,vulkan`) picks them, and `KESTREL_FILAMENT_LIGHT=1.5` makes it brighter. Without a GPU it falls back to software rendering, which
 works but takes tens of seconds a frame. `python render_real.py` writes stills to `runs/real_*.png`.
 
 ![Filament: the living room from the robot's head](runs/real_living_head.png)

@@ -15,9 +15,10 @@ a computer, or dies, only that process goes: RealView.render returns None and th
 Each frame the house sends what moved (joint positions, people, shapes that change: dust, food, water, the cut-down
 walls of the follow view) and the camera; the picture comes back through shared memory.
 
-Graphics: on a computer with a GPU (an AMD Radeon RX 6700 XT, NVIDIA, Intel) Vulkan, in real time; KESTREL_FILAMENT_API
-=opengl picks OpenGL. Without a GPU, Filament falls back to software rendering (Mesa's lavapipe for Vulkan, llvmpipe
-for OpenGL), which is slow but gives the same pictures.
+Graphics: on a computer with a GPU (an AMD Radeon RX 6700 XT, NVIDIA, Intel) it renders in real time. It tries the
+backends in turn: on Windows OpenGL, then the build's default, then Vulkan (MuJoCo's Filament for Windows has no
+Vulkan); on Linux Vulkan first. KESTREL_FILAMENT_API=opengl|vulkan|default picks one. Without a GPU, Filament falls
+back to software rendering (Mesa's lavapipe for Vulkan, llvmpipe for OpenGL): slow, the same pictures.
 
 Filament works in physical units (lights in lux and candela, a camera exposed for daylight), so the view adds a
 headlight from the camera to light the rooms' interiors as indoor lamps would; KESTREL_FILAMENT_LIGHT scales it.
@@ -45,7 +46,11 @@ def _child(conn, mjb, width, height, api, soft, shm_name):
         from mujoco.rendering.filament.renderer import Renderer, View
         m = mujoco.MjModel.from_binary_path(mjb)
         d = mujoco.MjData(m)
-        gapi = mjrf.GraphicsApi.GRAPHICS_API_VULKAN if api == "vulkan" else mjrf.GraphicsApi.GRAPHICS_API_OPENGL
+        apis = {"vulkan": mjrf.GraphicsApi.GRAPHICS_API_VULKAN, "opengl": mjrf.GraphicsApi.GRAPHICS_API_OPENGL,
+                "default": mjrf.GraphicsApi.GRAPHICS_API_DEFAULT}
+        if api not in apis:
+            raise ValueError(f"unknown graphics backend '{api}' (opengl, vulkan or default)")
+        gapi = apis[api]
         ctx = mjrf.Context(mjrf.ContextConfig(graphics_api=gapi, software_rendering=soft))
         r = Renderer(ctx)
         scene = r.scene("house")
@@ -100,14 +105,23 @@ def _child(conn, mjb, width, height, api, soft, shm_name):
 class RealView:
     """The house through Filament, from a renderer process. render() returns None once it has failed."""
 
-    def __init__(self, house, width=960, height=600, api=None, timeout=180.0):
+    @staticmethod
+    def apis():
+        """The graphics backends to try, in order. MuJoCo's Filament for Windows has no Vulkan ("Selected backend not
+        supported in this build"), so OpenGL goes first there; Linux tries Vulkan first. KESTREL_FILAMENT_API picks one."""
+        if os.environ.get("KESTREL_FILAMENT_API"):                     # one, or a list to try: "opengl,vulkan"
+            return [a.strip() for a in os.environ["KESTREL_FILAMENT_API"].split(",") if a.strip()]
+        if sys.platform.startswith("win") or sys.platform == "darwin":
+            return ["opengl", "default", "vulkan"]
+        return ["vulkan", "opengl", "default"]
+
+    def __init__(self, house, width=960, height=600, api=None, timeout=60.0):
         import multiprocessing as mp
         from multiprocessing import shared_memory
         import mujoco
         self.mj, self.h, self.w, self.ht = mujoco, house, width, height
         self.error, self.info, self.frames = None, None, 0
         self.pending, self.sent, self.last = False, 0.0, None
-        api = api or os.environ.get("KESTREL_FILAMENT_API", "vulkan")
         soft = os.environ.get("KESTREL_FILAMENT_SOFTWARE", "auto")
         soft = None if soft == "auto" else soft == "1"
         self.light = HEADLIGHT_LUX * float(os.environ.get("KESTREL_FILAMENT_LIGHT", "1"))
@@ -116,25 +130,53 @@ class RealView:
         mujoco.mj_saveModel(house.mv, self.mjb, None)        # the visual model, with its meshes and textures
         self.shm = shared_memory.SharedMemory(create=True, size=width * height * 3)
         self.img = np.ndarray((height, width, 3), np.uint8, buffer=self.shm.buf)
-        ctx = mp.get_context("spawn")
-        self.conn, child = ctx.Pipe()
-        self.proc = ctx.Process(target=_child, args=(child, self.mjb, width, height, api, soft, self.shm.name), daemon=True)
-        self.proc.start()
-        if not self.conn.poll(timeout):
-            self._fail(f"the renderer didn't start in {timeout:.0f} s")
-            return
+        self._mp, self._soft, self._timeout = mp.get_context("spawn"), soft, timeout
+        self.remaining = [api] if api else self.apis()
+        self.tried = []
+        self._start()
+
+    def _start(self):
+        """Start the renderer process with the next graphics backend that works."""
+        while self.remaining:
+            api_ = self.remaining.pop(0)
+            self.error = None
+            self.conn, child = self._mp.Pipe()
+            self.proc = self._mp.Process(target=_child, args=(child, self.mjb, self.w, self.ht, api_, self._soft,
+                                                              self.shm.name), daemon=True)
+            self.proc.start()
+            why = None
+            if not self.conn.poll(self._timeout):
+                why = f"didn't start in {self._timeout:.0f} s"
+            else:
+                try:
+                    kind, info = self.conn.recv()
+                    if kind != "ready":
+                        why = info
+                except EOFError:
+                    why = f"stopped (exit code {self.proc.exitcode})"
+            if why is None:
+                self.info, self.api = f"{api_}: {info}", api_
+                return True
+            self._give_up(api_, why)
+        self.error = "; ".join(self.tried) or "no graphics backend to try"
+        return False
+
+    def _give_up(self, api_, why):
+        self.tried.append(f"{api_} {why}")
+        print(f"realistic view: {api_} {why}" + ("; trying the next" if self.remaining else ""), flush=True)
         try:
-            kind, info = self.conn.recv()
-        except EOFError:
-            self._fail(f"the renderer process stopped (exit code {self.proc.exitcode}): no {api} graphics?")
-            return
-        if kind != "ready":
-            self._fail(info)
-            return
-        self.info = info
+            self.proc.kill()
+        except Exception:
+            pass
 
     def _fail(self, why):
-        self.error = why
+        """The renderer failed. Before its first picture (a backend that starts but can't draw), try the next one."""
+        if not self.frames and self.remaining:
+            self._give_up(getattr(self, "api", "?"), why)
+            self.pending = False
+            if self._start():
+                return
+        self.error = why if not self.tried else "; ".join(self.tried + [why])
         try:
             self.proc.kill()
         except Exception:
@@ -201,7 +243,15 @@ class RealView:
         return self.last
 
     def render(self, view="follow", timeout=None):
-        """A frame of the house as it is now (waits for it). None if the renderer has failed."""
+        """A frame of the house as it is now (waits for it). None if the renderer has failed (after trying every
+        graphics backend)."""
+        while not self.error:
+            img = self._render_once(view, timeout)
+            if img is not None:
+                return img
+        return None
+
+    def _render_once(self, view="follow", timeout=None):
         if self.error:
             return None
         if self.pending:                                    # a live frame still being drawn: let it finish

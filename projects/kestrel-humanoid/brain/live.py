@@ -856,7 +856,38 @@ def restart_as(robot):
     argv = [a for a in argv if not a.startswith("--robot=")]
     print(f"switching to {robot}: restarting", flush=True)
     sys.stdout.flush()
+    if os.environ.get("KESTREL_RESTART_FILE"):        # Windows: the supervisor (main) starts it again for us
+        Path(os.environ["KESTREL_RESTART_FILE"]).write_text(json.dumps(argv + ["--robot", robot]))
+        os._exit(RESTART_CODE)
     os.execv(sys.executable, [sys.executable, str(Path(__file__).resolve())] + argv + ["--robot", robot])
+
+
+RESTART_CODE = 75
+
+
+def supervise():
+    """Windows: os.execv starts a new process and ends this one, so the console's prompt came back while the new
+    program kept printing over it (and Ctrl+C no longer stopped it). Instead this process stays with the console and
+    runs the program as a child, starting it again with the new options when it asks to (switching robots)."""
+    import subprocess
+    import tempfile
+    fd, restart_file = tempfile.mkstemp(prefix="kestrel_restart_", suffix=".json")
+    os.close(fd)
+    args = sys.argv[1:]
+    env = dict(os.environ, KESTREL_RESTART_FILE=restart_file)
+    try:
+        while True:
+            rc = subprocess.call([sys.executable, str(Path(__file__).resolve())] + args, env=env)
+            if rc != RESTART_CODE:
+                return rc
+            args = json.loads(Path(restart_file).read_text())
+    except KeyboardInterrupt:
+        return 0
+    finally:
+        try:
+            os.remove(restart_file)
+        except OSError:
+            pass
 
 
 def main():
@@ -940,4 +971,6 @@ def main():
 
 
 if __name__ == "__main__":
+    if os.name == "nt" and not os.environ.get("KESTREL_RESTART_FILE"):
+        sys.exit(supervise())
     main()
