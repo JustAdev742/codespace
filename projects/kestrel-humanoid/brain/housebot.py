@@ -893,7 +893,9 @@ class HouseBot:
             if obj in O3.FIRM and obj not in h.grasp:           # a handle at the side: come at it from that side
                 u = hd[:2] - h.obj_pos(obj)[:2]
                 face = math.atan2(-u[1], -u[0])
-            st, fwd = stand_for(hd, face)
+            # crouching, level footing matters more than the side (a crouch with a foot on a rug's edge tips over): the
+            # side is only a preference standing up; crouched, a handle that would be come at across the mug means the rim
+            st, fwd = stand_for(hd, None if low else face)
             if face is not None and obj.startswith("mug") and (st is None or abs(wrap(st[1] - face)) > 0.55):
                 # the handle points where it can't be reached from: a finger (the hook) inside the near rim, as people
                 # pick up a mug whose handle faces away
@@ -939,13 +941,16 @@ class HouseBot:
         hd = h.handle_of(obj)
         rel = hd[2] - h.floor_under(*h.robot_pose()[:2])
         low = rel < LOW_HANDLE
-        if low and not self.crouch_to(rel):
+        # how far above the handle the hook stops (it catches within 7 cm): a low side handle (a mug on the coffee
+        # table) sits lower than a handle on top would, and the deeper crouch for it tipped the robot over
+        above = 0.045 if (low and obj in O3.FIRM) else 0.02
+        if low and not self.crouch_to(rel + above - 0.02):
             h.stiff(False)
             return False, "lost balance crouching"
         hd = h.handle_of(obj)
         cur = h.arms_now()
-        sh0, el0, e0 = h.ik_right(hd + [0, 0, 0.07])
-        sh1, el1, e1 = h.ik_right(hd + [0, 0, 0.02])            # just above the bar: pushing into it pressed the object
+        sh0, el0, e0 = h.ik_right(hd + [0, 0, 0.07 + above - 0.02])
+        sh1, el1, e1 = h.ik_right(hd + [0, 0, above])           # just above the bar: pushing into it pressed the object
         #                                                       into the surface under it, and the simulation blew up
         if e1 > 0.06:
             if low:
@@ -995,7 +1000,14 @@ class HouseBot:
             return False, "it didn't come up with the hook"
         self.arms = [0.0, sh2, -0.2, el2]
         if low:
-            if not self.rise():
+            # standing up from a crouch, a load held rigidly at its side swings with the arm's arc and can catch the
+            # table's edge and shove the robot over: hold it loosely until standing, then firmly again
+            eq = h.obj_eq[obj]
+            firm = float(h.e.m.eq_data[eq, 10])
+            h.e.m.eq_data[eq, 10] = min(firm, 0.05)
+            up = self.rise()
+            h.e.m.eq_data[eq, 10] = firm
+            if not up:
                 return False, "lost balance standing up"
         else:
             self.back_off(0.35)                                 # step back from the surface, then lower to carry

@@ -102,7 +102,18 @@ rate shows what it learned.
 forward-and-back swing and the elbow bend of the generated movement. It has no shoulder roll and no wrists, so it
 shows a simplified version.
 
-<!-- generator results -->
+**Results** (`models/generator.pt`, 8.5 MB, ships with the code; trained 5.5 h on 4 CPU cores to step 53,012 on
+3,279 captioned clips, 12.2 h of motion: Bandai Namco and CMU). Asked in words it never saw in training (13
+descriptions, 6 tries each), a classifier trained on real motion recognises the generated movement as the action
+asked for 51 % of the time (40 of 78); it recognises real held-out clips 96 % of the time, and chance is 9 %. It is
+good at waving with the left or both hands (6/6), bowing (9/12), showing the way (5/6) and walking (6/6), weak at
+"say hi with the right hand", "wave goodbye", "come here" and "hand up like asking a question" (0/6 each: it makes a
+related arm movement, recognised as a different gesture). All 17 motions tried in physics on the G1 were done
+without falling. In practice (the G1 playing each motion through its balance controller), 94 of 100 performed well.
+
+Fine-tuning on the practice clips for 45 minutes, as described above, did not help this time: recognition 56 % (44 of
+78, within the noise of 78 samples), variety down from 0.185 to 0.161 rad, and practice down to 86 of 100. So the
+model before that fine-tune is the one that ships; the run is in `../runs/motion/` when you train it yourself.
 
 # Motion training: every dataset at once, one whole-body G1 controller
 
