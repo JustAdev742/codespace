@@ -802,7 +802,11 @@ def main():
     ap.add_argument("--viewer", action="store_true", help="also open MuJoCo's interactive 3D viewer")
     ap.add_argument("--terminal", action="store_true", help="also read instructions typed in this terminal")
     ap.add_argument("--claude", action="store_true", help="let a Claude model hold the conversation (ANTHROPIC_API_KEY)")
-    ap.add_argument("--claude-model", default="claude-opus-5-5")
+    ap.add_argument("--claude-model", default="claude-haiku-5-5",
+                    help="model for talk mode (--claude): turning what you say into actions")
+    ap.add_argument("--agent-model", default="claude-sonnet-5-5",
+                    help="model for agent mode (--claude --agent): sees every step, plans, learns "
+                         "(claude-opus-5-5 for harder tasks, at about twice the cost)")
     ap.add_argument("--agent", action="store_true",
                     help="with --claude: Claude is the robot's mind - it sees the camera every step, chooses small actions, "
                          "and learns skills and lessons across sessions (agent.py)")
@@ -831,7 +835,7 @@ def main():
     live = Live(a)
     live.robot = a.robot
     if a.claude and a.agent:                             # Claude as the robot's mind (sees, acts, learns)
-        live.agent_mode, live.agent_args = True, (a.claude_model, a.claude_key_file, a.claude_workspace)
+        live.agent_mode, live.agent_args = True, (a.agent_model, a.claude_key_file, a.claude_workspace)
     elif a.claude:
         from live_claude import ClaudeBrain
         live.claude = ClaudeBrain(live, model=a.claude_model, key_file=a.claude_key_file, workspace=a.claude_workspace)

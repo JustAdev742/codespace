@@ -217,10 +217,11 @@ class ClaudeMover:
 
     AUTO_ROUNDS = 3                                   # follow-ups on its own after one request, then wait for you
 
-    def __init__(self, moves, model="claude-opus-5-5", key_file=None, snapshot=None):
+    def __init__(self, moves, model="claude-sonnet-5-5", key_file=None, snapshot=None):
         import anthropic
         sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "brain"))
-        from live_claude import read_key_file
+        from live_claude import create_message, read_key_file
+        self._create = create_message
         key, ws = read_key_file(key_file)
         headers = {"anthropic-workspace-id": ws} if ws else None
         self.betas = ["server-side-fallback-2026-07-01"]
@@ -258,7 +259,11 @@ class ClaudeMover:
     def _call(self):
         kw = dict(model=self.model, max_tokens=8000, system=self.system(), tools=self.tools, messages=self.msgs,
                   output_config={"effort": "low"}, cache_control={"type": "ephemeral"})
-        r = self.client.beta.messages.create(betas=self.betas, fallbacks="default", **kw)
+        create = getattr(self, "_create", None)
+        if create is None:
+            sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "brain"))
+            from live_claude import create_message as create
+        r = create(self.client, self.betas, **kw)
         self.msgs.append({"role": "assistant", "content": r.content})
         if r.stop_reason == "refusal":
             print("  robot: I won't do that.")
@@ -453,7 +458,8 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     ap.add_argument("--library", default="runs/motion/bandai_library.npz")
     ap.add_argument("--claude", action="store_true")
-    ap.add_argument("--claude-model", default="claude-opus-5-5")
+    ap.add_argument("--claude-model", default="claude-sonnet-5-5",
+                    help="model that decides the moves and checks the pictures (claude-opus-5-5: stronger, about twice the cost)")
     ap.add_argument("--claude-key-file", default=None)
     ap.add_argument("--local", default=None, help="model name on an OpenAI-compatible server, e.g. qwen3:8b")
     ap.add_argument("--local-url", default="http://localhost:11434/v1")

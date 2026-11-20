@@ -65,9 +65,15 @@ STARTER = {
     "water_plants": ("Fill the watering can and water each indoor plant.",
                      [("fill", {"object": "can", "litres": 0.5}), ("pour", {"into": "plant 1"}), ("pour", {"into": "plant 2"}),
                       ("...", {"note": "each indoor plant"})]),
-    "vacuum": ("Vacuum a room (input: room) with the stick vacuum; the house counts the dust picked up.", []),
-    "greet_visitor": ("Answer the door, greet the visitor, lead them to the living room.", []),
-    "play_uno": ("Sit at the table and play a game of Uno.", []),
+    "vacuum": ("Vacuum a room with the stick vacuum: its head picks up the dust it passes over.",
+               [("pick_up", {"object": "hoover"}), ("go_to", {"place": "living room"}),
+                ("move_hand", {"ahead": 0.45, "up": 0.90, "seconds": 1.5}),
+                ("walk_to", {"x": 9.0, "y": 3.0}), ("walk_to", {"x": 12.5, "y": 3.0}),
+                ("...", {"note": "lanes about 0.27 m apart over the floor; the head trails 0.2 m right of you, 0.45 m ahead"}),
+                ("go_to", {"place": "kitchen"}), ("put", {"where": "floor"})]),
+    "greet_visitor": ("Answer the door, greet the visitor, show them to the living room (keep 1.2 m from them).",
+                      [("go_to", {"place": "hall"}), ("say", {"text": "Hello, come in."}),
+                       ("go_to", {"place": "living room"}), ("gesture", {"name": "welcome"})]),
 }
 
 
@@ -117,7 +123,7 @@ class Memory:
 class RobotAgent:
     MAX_TURNS = 40
 
-    def __init__(self, house, bot, model="claude-opus-5-5", effort="medium", key_file=None, workspace=None,
+    def __init__(self, house, bot, model="claude-sonnet-5-5", effort="medium", key_file=None, workspace=None,
                  client=None, memory=None, on_event=None):
         self.h, self.bot = house, bot
         self.model, self.effort = model, effort
@@ -166,7 +172,7 @@ class RobotAgent:
         held = h.holding
         hold = "nothing"
         if held:
-            kg = float(h.e.m.body_mass[h.obj_body[held]])
+            kg = float(h.mass_of(held))
             hold = f"the {HS.OBJECTS[held][5][0]} ({kg:.2f} kg" + (f", {h.water[held]:.2f} l of water" if held in h.water and h.water[held] > 0 else "") + ")"
         app = []
         for n, v in h.st.items():
@@ -221,12 +227,31 @@ class RobotAgent:
             t("stand", "Stand up from sitting.", {}),
             t("say", "Say something out loud.", {"text": S}),
             t("gesture", "An arm gesture.", {"name": {"type": "string", "enum": ["wave", "point", "explain", "shrug", "welcome", "refuse"]}}),
-            t("run_skill", "Run a whole skill: a starter chore or one you learned. `input` is a room for 'vacuum', "
-                           "otherwise ''.", {"name": S, "input": S}),
-            t("show_skill", "Read the steps of a starter or learned skill, to follow or adapt them.", {"name": S}),
-            t("save_skill", "After something worked, save the steps you used as a skill for next time. steps: a JSON "
-                            "list of [tool, input] pairs using these tools.",
-              {"name": S, "description": S, "steps_json": S}),
+            t("walk_to", "Walk to a point on the floor (x, y in metres, the coordinates in your state line), e.g. "
+                         "along lanes across a room. Your arms keep the pose they have.",
+              {"x": {"type": "number"}, "y": {"type": "number"}}),
+            t("shuffle", "A small body move onto a mark relative to where you stand: forward and left in metres "
+                         "(each -0.6..0.6), and a turn in degrees (left positive).",
+              {"forward": {"type": "number"}, "left": {"type": "number"}, "turn_deg": {"type": "number"}}),
+            t("move_hand", "Move your hook to a point: `ahead` metres in front of your body's centre and `up` metres "
+                           "above the floor you stand on (your shoulder is about 0.95 m up, the arm about 0.55 m long; "
+                           "the arm swings in a plane 0.2 m to the right of your centre, so the point is in that "
+                           "plane). Anything you hold moves with it. Returns how close the hook got.",
+              {"ahead": {"type": "number"}, "up": {"type": "number"}, "seconds": {"type": "number"}}),
+            t("grip", "Hook the handle that is at your hook now (within 7 cm), whatever it belongs to.", {}),
+            t("let_go", "Unhook what you hold, where it is now; tells you where it came to rest.", {}),
+            t("crouch", "Crouch, balanced, low enough to reach something `reach_height` metres above the floor "
+                        "(0.34 lowest). Crouching can tip you over: keep the arm moves slow.",
+              {"reach_height": {"type": "number"}}),
+            t("stand_tall", "Stand up straight from a crouch.", {}),
+            t("run_skill", "Run a skill you learned and saved yourself (all its steps, in order). The starter skills "
+                           "can't be run whole: read them with show_skill and do the work yourself.", {"name": S}),
+            t("show_skill", "Read the steps of a starter skill (an example written by your builders) or one you "
+                            "learned, to follow, change or ignore.", {"name": S}),
+            t("save_skill", "After something worked, save how you did it for next time. steps_json: a JSON list of "
+                            "[tool, input] pairs using these tools (it can be replayed with run_skill). notes: what "
+                            "matters (what to watch for, what failed before, when to use it); '' if none.",
+              {"name": S, "description": S, "steps_json": S, "notes": S}),
             t("note_lesson", "Write down a lesson for next time (why something failed, what worked).", {"text": S}),
             t("done", "Finish the task. success: whether the goal was reached, judged from what you saw.",
               {"summary": S, "success": {"type": "boolean"}}),
@@ -237,6 +262,8 @@ class RobotAgent:
         import model as KM
         h = self.h
         starter = "\n".join(f"- {n}: {d}" for n, (d, _) in STARTER.items())
+        rooms = "; ".join(f"{n} ({b['box'][0]:.1f}, {b['box'][1]:.1f}, {b['box'][2]:.1f}, {b['box'][3]:.1f})"
+                          for n, b in h.b.rooms.items() if n != "garden")
         return f"""You are the mind of {KM.BODY_NAME}, a small humanoid robot in a house (a physics simulation of one).
 You see through its head camera and a camera following it, and you act through tools. Every step you get both
 pictures and a state line. Decide what to do from what you see; after each action you see the result. Keep spoken
@@ -247,17 +274,30 @@ here has one), and a left arm for balance. Your right arm swings in a plane besi
 line you up for it. You are small: heavy loads (over about 1.4 kg) may not come up, and you can't reach the back of a
 deep worktop. You cannot run, jump, climb onto furniture, or open closed doors.
 
-The house: rooms {', '.join(h.b.rooms)}. Furniture with tops: {', '.join(h.b.furniture)}. Containers (put drops
-things in): {', '.join(h.b.containers)}. Controls to press: {', '.join(h.b.controls)}. Objects: {', '.join(HS.OBJECTS)}.
-Plants: {len(h.b.plants)} (plant 1 .. plant {len(h.b.plants)}). People: you (the person talking), Alex, Jordan.
+The house: rooms (x0, x1, y0, y1 in metres) {rooms}. Furniture with tops: {', '.join(h.b.furniture)}.
+Containers (put drops things in): {', '.join(h.b.containers)}. Controls to press: {', '.join(h.b.controls)}.
+Objects: {', '.join(HS.OBJECTS)}. Plants: {len(h.b.plants)} (plant 1 .. plant {len(h.b.plants)}). People: you (the
+person talking), Alex, Jordan.
 
-Starter skills (written by your builders: a kickstart, not a rule; run_skill runs them, show_skill shows their steps):
+Two kinds of tools. Errand tools do a whole common action (go_to, pick_up, put, press, fill, pour, sit). Body tools
+are the parts those are made of (walk_to, shuffle, move_hand, grip, let_go, crouch, stand_tall, look): use them to
+do things no errand tool covers, or when an errand tool keeps failing - for example, hold something in a new pose
+while walking lanes, sweep the hook over a surface, or line up by hand for a handle the errand tool misses.
+
+Starter skills: examples your builders wrote for a few chores. They are a starting point, not the way you have to
+work, and you can't run them whole: read one with show_skill if it helps, then do the work yourself with your
+tools - the same way, a better way, or a different one. Most things you'll be asked have no starter skill at all:
+work them out from what you see and what your tools do.
 {starter}
 
-How to work: look first if you don't know where things are. Prefer your own sequence of small tools when a task
-differs from a starter skill. When a step fails, look, think about why, try another way (a different place to put
-something, picking it up again, another approach), and note_lesson what you learned. When you succeed at something
-new or improved, save_skill it. Finish with done.
+How to work: look first if you don't know where things are. After each action, check the pictures and the result:
+did it do what you meant? When a step fails, think about why, try another way (another place to stand, another
+pose, a different order, a body tool instead of an errand tool) and note_lesson what you learned. When something
+works - especially something new - save_skill it, with notes on what mattered. Next time, run_skill your own skill
+and watch that it still works. Finish with done, judged from what you saw.
+
+If you are given free time, choose for yourself: practise something that failed before, try something you haven't
+done, or improve a skill of yours that fails sometimes. One activity, then done.
 
 Safety, always: never hit, push or chase anyone, never carry anything hot near a person's face, and if someone says
 a person is being hurt, stop and say you are alerting a human. The safety supervisor limits your walking near people
@@ -269,7 +309,6 @@ Your memory (from earlier tasks):
     def execute(self, name, inp):
         """Run one tool. Returns (ok, text)."""
         import house as HS
-        import chores as C
         h, bot = self.h, self.bot
         said0 = len(bot.said)
         ev0 = len(h.events)
@@ -311,19 +350,31 @@ Your memory (from earlier tasks):
         elif name == "gesture":
             if not bot.seated:
                 h.gesture({"wave": "triumph"}.get(inp["name"], inp["name"]))
+        elif name == "walk_to":
+            ok = bot.goto((float(inp["x"]), float(inp["y"])), stop=0.15, speed=0.6)
+        elif name == "shuffle":
+            ok = bot.shuffle(float(inp["forward"]), float(inp["left"]), float(inp["turn_deg"]))
+        elif name == "move_hand":
+            err, hook = bot.move_hand(float(inp["ahead"]), float(inp["up"]), float(inp.get("seconds") or 1.5))
+            ok = err < 0.05
+            note = f"hook {err:.2f} m from the point, at height {hook[2] - h.floor_z(*hook[:2]):.2f} m"
+        elif name == "grip":
+            ok, note = bot.grip()
+        elif name == "let_go":
+            ok, note = bot.let_go()
+        elif name == "crouch":
+            ok = bot.crouch(float(inp["reach_height"]))
+        elif name == "stand_tall":
+            ok = bot.stand_tall()
         elif name == "run_skill":
             n = inp["name"]
-            c = C.Chores(bot)
-            starters = dict(make_tea=c.make_tea, cook_pasta=c.cook_pasta, set_table=c.set_table, wash_up=c.wash_up,
-                            tidy_kids_room=c.tidy_room, laundry=c.laundry, take_out_trash=c.take_out_trash,
-                            water_plants=c.water_plants, vacuum=lambda: c.vacuum(inp.get("input") or "dining room"),
-                            greet_visitor=c.greet_visitor, play_uno=c.play_uno)
-            if n in starters:
-                ok, note = starters[n]()
-            elif n in self.mem.d["skills"]:
+            if n in self.mem.d["skills"]:
                 ok, note = self.replay(n)
+            elif n in STARTER:
+                return False, (f"'{n}' is a starter skill: an example, not something to run whole. show_skill it and "
+                               f"do the steps yourself, changing what doesn't fit; save_skill your way when it works.")
             else:
-                return False, f"no skill '{n}'. Starter: {', '.join(starters)}; learned: {', '.join(self.mem.d['skills']) or 'none'}"
+                return False, f"no skill '{n}'. Learned: {', '.join(self.mem.d['skills']) or 'none yet'}"
         elif name == "show_skill":
             n = inp["name"]
             if n in STARTER:
@@ -331,7 +382,8 @@ Your memory (from earlier tasks):
                 return True, f"{n}: {d}\nsteps: {json.dumps(steps)}"
             if n in self.mem.d["skills"]:
                 s = self.mem.d["skills"][n]
-                return True, f"{n}: {s['description']}\nsteps: {json.dumps(s['steps'])}"
+                return True, (f"{n}: {s['description']}\nsteps: {json.dumps(s['steps'])}"
+                              + (f"\nnotes: {s['notes']}" if s.get("notes") else ""))
             return False, f"no skill '{n}'"
         elif name == "save_skill":
             try:
@@ -341,6 +393,7 @@ Your memory (from earlier tasks):
                 return False, "steps_json must be a JSON list of [tool, input] pairs"
             old = self.mem.d["skills"].get(inp["name"], {})
             self.mem.d["skills"][inp["name"]] = dict(description=inp["description"], steps=steps,
+                                                     notes=inp.get("notes", "").strip(),
                                                      wins=old.get("wins", 0) + 1, fails=old.get("fails", 0),
                                                      saved=time.strftime("%Y-%m-%d %H:%M"))
             self.mem.save()
@@ -383,7 +436,8 @@ Your memory (from earlier tasks):
                   output_config={"effort": self.effort}, cache_control={"type": "ephemeral"})
         if self.anthropic is None:                       # a stand-in client (tests)
             return self.client.messages.create(**kw)
-        return self.client.beta.messages.create(betas=self.betas, fallbacks="default", **kw)
+        from live_claude import create_message
+        return create_message(self.client, self.betas, **kw)
 
     def run(self, goal, max_turns=None):
         """Work on a goal until done (or out of turns). Returns (ok, summary). A new goal is a new conversation: the

@@ -13,9 +13,12 @@ ANTHROPIC_WORKSPACE_ID). A Console API key (sk-ant-api...)
 is sent as an API key; an OAuth token (sk-ant-oat...) is sent as a bearer token with the oauth beta. Whether a token
 from a Claude subscription is accepted for direct API calls is Anthropic's decision, not this program's: if the API
 answers 401 or 403, the robot says so and falls back to plain commands.
-Model: claude-opus-5-5 by default (--claude-model to change). Thinking is always on with this model; effort is set to
-"low" here, since replies are short and spoken. Refusal fallbacks are on ("default" server-side fallback), so a
-safety-classifier decline on an innocent request is retried on another model inside the same call.
+Model: claude-haiku-5-5 by default (--claude-model to change): turning what you say into queued actions is quick,
+routing-style work, and Haiku is fast and cheap for it ($0.10 / $0.50 per million tokens). The house agent, which
+plans and learns from pictures, uses a stronger model (live.py --agent-model, default claude-sonnet-5-5). Effort is
+"low" here, since replies are short and spoken. On models that have it, the "default" server-side refusal fallback
+is on, so a safety-classifier decline on an innocent request is retried on another model inside the same call
+(Haiku 5.5 has no server-side fallback, so it isn't sent there).
 """
 from __future__ import annotations
 
@@ -119,6 +122,27 @@ def to_action(name, inp):
 
 KEY_FILES = ("anthropic_key.txt", "kestrel_api_anthropic_key.txt")
 
+# which model does which job (each can be changed on the command line)
+MODELS = dict(talk="claude-haiku-5-5",      # live.py --claude: speech -> queued actions (fast, cheap)
+              agent="claude-sonnet-5-5",    # live.py --claude --agent: sees every step, plans, learns
+              mover="claude-sonnet-5-5")    # train/motion/live_mover.py --claude: composes moves, judges a picture
+
+
+def create_message(client, betas, **kw):
+    """client.beta.messages.create with the server-side refusal fallback on models that have one. Haiku 5.5 has none,
+    so the fallback field and its beta header are left out there; if the API rejects the field for another model, the
+    call is retried once without it."""
+    model = kw.get("model", "")
+    base = [b for b in betas if not b.startswith("server-side-fallback")]
+    if model.startswith("claude-haiku"):
+        return client.beta.messages.create(betas=base, **kw) if base else client.messages.create(**kw)
+    try:
+        return client.beta.messages.create(betas=betas, fallbacks="default", **kw)
+    except Exception as e:                              # a 400 naming the fallbacks field: once more without it
+        if getattr(e, "status_code", None) == 400 and "fallback" in str(e).lower():
+            return client.beta.messages.create(betas=base, **kw) if base else client.messages.create(**kw)
+        raise
+
 
 def read_key_file(path=None):
     """(key, workspace id or None) from a key file - the key on the first line, optionally a workspace id (wrkspc_...)
@@ -139,10 +163,11 @@ def read_key(path=None):
 
 
 class ClaudeBrain:
-    def __init__(self, live, model="claude-opus-5-5", effort="low", key_file=None, workspace=None):
+    def __init__(self, live, model=None, effort="low", key_file=None, workspace=None):
         import os
         import anthropic
         self.betas = ["server-side-fallback-2026-07-01"]
+        model = model or MODELS["talk"]
         key, ws_file = read_key_file(key_file)
         # a key that is not scoped to one workspace must name the workspace on every request
         ws = workspace or ws_file or os.environ.get("ANTHROPIC_WORKSPACE_ID")
@@ -187,11 +212,10 @@ class ClaudeBrain:
             self.pending = []
             self.messages.append({"role": "user", "content": content})
             try:
-                resp = self.client.beta.messages.create(
-                    model=self.model, max_tokens=16000, system=self._sys, tools=self._tools,
+                resp = create_message(
+                    self.client, self.betas, model=self.model, max_tokens=16000, system=self._sys, tools=self._tools,
                     messages=self.messages, output_config={"effort": self.effort},
-                    cache_control={"type": "ephemeral"},
-                    betas=self.betas, fallbacks="default")
+                    cache_control={"type": "ephemeral"})
             except self.anthropic.APIConnectionError:
                 self.messages.pop()
                 return self._offline(text, "I can't reach my language model. Falling back to plain commands.")

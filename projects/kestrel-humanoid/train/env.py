@@ -259,6 +259,18 @@ class Envs:
         for i, d in enumerate(self.d):
             if not (np.isfinite(d.qpos).all() and np.isfinite(d.qvel).all()) or np.abs(d.qvel).max() > 150.0:
                 self.nan_resets += 1
+                if os.environ.get("KESTREL_DEBUG_BLOWUP") and self.nan_resets <= 5:     # which joint ran away
+                    k = int(np.nanargmax(np.abs(np.nan_to_num(d.qvel, nan=1e9))))
+                    jn = next((mujoco.mj_id2name(m, mujoco.mjtObj.mjOBJ_JOINT, j) for j in range(m.njnt)
+                               if m.jnt_dofadr[j] <= k < m.jnt_dofadr[j] + (6 if m.jnt_type[j] == 0 else 3 if m.jnt_type[j] == 1 else 1)), "?")
+                    print(f"(env: blow-up: dof {k} of joint {jn}, qvel {d.qvel[k]:.3g}; ncon {d.ncon})", flush=True)
+                    jb = m.jnt_bodyid[m.dof_jntid[k]]
+                    for c in d.contact[:d.ncon]:
+                        b1, b2 = m.geom_bodyid[c.geom1], m.geom_bodyid[c.geom2]
+                        if jb in (b1, b2):
+                            n1 = mujoco.mj_id2name(m, mujoco.mjtObj.mjOBJ_GEOM, c.geom1) or f"g{c.geom1}({mujoco.mj_id2name(m, mujoco.mjtObj.mjOBJ_BODY, b1)})"
+                            n2 = mujoco.mj_id2name(m, mujoco.mjtObj.mjOBJ_GEOM, c.geom2) or f"g{c.geom2}({mujoco.mj_id2name(m, mujoco.mjtObj.mjOBJ_BODY, b2)})"
+                            print(f"    contact {n1} - {n2}: dist {c.dist:.4f}", flush=True)
                 if self.nan_resets in (1, 10, 100, 1000, 10000):
                     print(f"(env: {self.nan_resets} physics blow-ups reset so far)", flush=True)
                 if self.auto_reset or self.good_qpos[i] is None:

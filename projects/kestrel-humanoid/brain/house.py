@@ -725,8 +725,15 @@ class House(SK.World):
                       f'cutoff="85" castshadow="false"/>' for x, y in [(3, 2.6), (11, 2.6), (7, 8.2)])
             + "".join(f'<light pos="{x} {y} {z + 2.3}" dir="0 0 -1" diffuse="0.28 0.27 0.24" attenuation="1 0.08 0" '
                       f'cutoff="85" castshadow="false"/>' for x, y, z in self.b.rooms_lights))
-        eqs = "".join(f'<connect name="hook_{n}" body1="r_hand" body2="{n}" anchor="{f3(SK.HOOK)}" active="false"/>'
-                      for n in OBJECTS)
+        # the hook's hold on a handle: a weld whose turning part is soft (torquescale), so a load can still swing a
+        # little but the swing is damped. A pure ball joint (connect) let a 0.9 kg kettle, lifted off a worktop,
+        # swing harder and harder against the counter until the simulation blew up. KESTREL_HOOK=connect: the old way
+        if os.environ.get("KESTREL_HOOK", "weld") == "connect":
+            eqs = "".join(f'<connect name="hook_{n}" body1="r_hand" body2="{n}" anchor="{f3(SK.HOOK)}" active="false"/>'
+                          for n in OBJECTS)
+        else:
+            eqs = "".join(f'<weld name="hook_{n}" body1="r_hand" body2="{n}" torquescale="0.05" active="false"/>'
+                          for n in OBJECTS)
         top_xml = assets_xml() + f"\n  <equality>{eqs}</equality>"
         orig = T.make
 
@@ -827,6 +834,8 @@ class House(SK.World):
         self._move_people()
         d = self.e.d[0]
         d.xfrc_applied[self.pelvis, :3] = self.push_f if self.t < self.push_until else 0.0
+        for n, w in self.water_w.items():                  # the water's weight (see _set_mass)
+            d.xfrc_applied[self.obj_body[n], 2] = -w
         r = super().step(legs=legs, arms=arms, cmd=cmd)
         self._tick_extras()
         return r
@@ -840,6 +849,7 @@ class House(SK.World):
         self.dirt_on = np.zeros(len(self.b.dirt), bool)
         self.pile_gv = gid(mv, "uno_pile")
         self.base_mass = {n: float(m.body_mass[self.obj_body[n]]) for n in OBJECTS}
+        self.base_inertia = {n: m.body_inertia[self.obj_body[n]].copy() for n in OBJECTS}
         self.reset_extras()
 
     def reset_extras(self):
@@ -859,8 +869,11 @@ class House(SK.World):
         self.visitor, self.crumbs, self.crumb_i = None, [], 0
         self.dark = False
         self.hazards = []
+        self.water_w = {}
         for n in OBJECTS:
             m.body_mass[self.obj_body[n]] = self.base_mass[n]
+            m.body_inertia[self.obj_body[n]] = self.base_inertia[n]
+            self.e.d[0].xfrc_applied[self.obj_body[n]] = 0.0
         self.set_dirt([])
         d = self.e.d[0]
         for k, n in enumerate(("sam", "rex", "spill", "card_tray")):
@@ -916,7 +929,15 @@ class House(SK.World):
         return False
 
     def _set_mass(self, n):
-        self.e.m.body_mass[self.obj_body[n]] = self.base_mass[n] + self.water.get(n, 0.0)
+        """Water's weight, as a downward force on the container (applied every step in step()). Changing body_mass at
+        run time left MuJoCo's precomputed constants (inverse weights, which scale how stiff contacts and the hook's
+        hold feel) for the empty container, and a full kettle on the hook shook itself apart; recomputing them
+        (mj_setConst) resets other parts of the model. So the arm, the balance and 'too heavy' all feel the water's
+        full weight; only its inertia is left out."""
+        self.water_w[n] = 9.81 * self.water.get(n, 0.0)
+
+    def mass_of(self, n):
+        return self.base_mass[n] + self.water.get(n, 0.0)
 
     def set_dirt(self, points):
         self.dirt_on[:] = False

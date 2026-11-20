@@ -367,11 +367,22 @@ class HouseBot:
         last_plan = h.t
         prog_t, prog_xy = h.t, h.robot_pose()[:2]
         waited = 0.0
+        shuffles = 0
         while h.t - t0 < max_s:
             x, y, yaw = h.robot_pose()
             dgoal = math.hypot(goal[0] - x, goal[1] - y)
             if dgoal < stop:
                 break
+            # the last few tens of cm: shuffle onto the spot (sideways too). Walking only forward and turning, a goal
+            # beside the robot next to a worktop was never reached: it turned into the counter, backed off, and again
+            if dgoal < 0.4 and target_person is None and shuffles < 2 and not any(
+                    h.in_box((x, y), fl["box"]) for fl in getattr(h.b, "flights", [])):
+                shuffles += 1
+                self.align(goal, face if face is not None else yaw, tol=max(0.04, min(0.07, stop / 2)), max_s=10.0)
+                x, y, yaw = h.robot_pose()
+                if math.hypot(goal[0] - x, goal[1] - y) < stop:
+                    break
+                prog_t, prog_xy = h.t, (x, y)
             if target_person is not None:
                 px, py = h.person_xy(target_person)
                 if math.hypot(px - x, py - y) < self.sup.lim.person_target_gap + 0.05:
@@ -417,6 +428,8 @@ class HouseBot:
                 waited = 0.0
             if h.t - prog_t > 6.0:                                      # stuck: back off, mark the spot, re-plan
                 if math.hypot(x - prog_xy[0], y - prog_xy[1]) < 0.15 and not self.note.startswith("person"):
+                    if getattr(self, "debug", False):
+                        self.log(f"  [{h.t:6.1f} s] (goal {goal[0]:.2f}, {goal[1]:.2f}, {dgoal:.2f} m away)")
                     self.log(f"  [{h.t:6.1f} s] (stuck at {x:.1f}, {y:.1f}; backing off and trying another way)")
                     self.blocked = getattr(self, "blocked", []) + [(x + 0.35 * math.cos(yaw), y + 0.35 * math.sin(yaw), 0.25, h.t)]
                     self.back_off(0.3)
@@ -521,9 +534,10 @@ class HouseBot:
         x, y, _ = h.robot_pose()
         return math.dist((x, y), xy) < 2.5 * tol
 
-    def stand_point(self, target_xy, fwd, right, min_clear=0.17):
+    def stand_point(self, target_xy, fwd, right, min_clear=0.17, low=False):
         """Where to stand (and which way to face) so that target_xy is fwd ahead and right to the right: the reachable,
-        clear candidate with the shortest walk."""
+        clear candidate with the shortest walk. low: a crouching reach - same floor level as the target, and both feet
+        on the same level if at all possible (one foot on a rug's edge tipped crouches over)."""
         h = self.h
         x, y, _ = h.robot_pose()
         best = None
@@ -541,11 +555,17 @@ class HouseBot:
             ib, jb = int((bx - HS.MAP_X[0]) / HS.GRID), int((by - HS.MAP_Y[0]) / HS.GRID)
             if not (0 <= jb < clr.shape[0] and 0 <= ib < clr.shape[1]) or clr[jb, ib] < 0.26:
                 continue
-            if abs(h.floor_z(sx, sy) - h.floor_z(*target_xy)) > 0.05 and h.floor_z(*target_xy) < 0.3:
+            fz = h.floor_z(sx, sy)
+            if low and abs(fz - h.floor_z(*target_xy)) > 0.05:
                 continue                                  # do not reach across a step for something on the floor
             if any(math.dist((sx, sy), h.person_xy(n)) < 1.4 for n in h.b.people):
                 continue                                  # never work right next to someone
             score = math.hypot(sx - x, sy - y) - 2.0 * min(clr[j, i], 0.5)
+            if low:                                       # feet (and toes, heels) all on one level
+                pts = [(sx + a * math.cos(yaw) + b * math.sin(yaw), sy + a * math.sin(yaw) - b * math.cos(yaw))
+                       for a in (-0.12, 0.12) for b in (-0.12, 0.12)]
+                if max(abs(h.floor_z(*p) - fz) for p in pts) > 0.005:
+                    score += 3.0
             if best is None or score < best[0]:
                 best = (score, (sx, sy), yaw)
         return None if best is None else (best[1], best[2])
@@ -558,6 +578,12 @@ class HouseBot:
             return h.person_xy("you"), None, "you", "you"
         if name in h.b.people:
             return h.person_xy(name), None, name.capitalize(), name
+        if name == "stairs" and getattr(h.b, "flights", None):     # the nearer end of the flight, not its middle
+            fl = h.b.flights[0]
+            x, y, _ = h.robot_pose()
+            up = h.floor_z(x, y) > h.floor_z(*fl["bottom"]) + 0.3
+            end = fl["top"] if up else fl["bottom"]
+            return end, (fl["up_yaw"] + (math.pi if up else 0.0)), "the stairs", None
         if name in h.b.rooms:
             return h.b.rooms[name]["centre"], None, name, None
         if name in h.b.chairs:
@@ -593,7 +619,7 @@ class HouseBot:
                 return True
             return ok
         self.say("go", place=label)
-        if name in self.h.b.rooms:
+        if name in self.h.b.rooms and name != "stairs":
             goal = self.clear_of_people(goal, self.h.b.rooms[name]["box"])
         ok = self.goto(goal, face=face, speed=speed)
         if ok:
@@ -657,16 +683,21 @@ class HouseBot:
             return True
         home = HS.OBJECTS[obj][6]
         home_room = None
-        for n, f in self.h.b.furniture.items():
-            if n == home:
-                home_room = self.h.room_of(*f["xy"])
-        if home in self.h.b.rooms:
+        b = self.h.b
+        if home in b.furniture:
+            home_room = self.h.room_of(*b.furniture[home]["xy"])
+        elif home in b.containers:                      # toys belong in the toy box, clothes in the hamper, ...
+            x0, x1, y0, y1 = b.containers[home]["box"]
+            home_room = self.h.room_of((x0 + x1) / 2, (y0 + y1) / 2)
+        if home in b.rooms:
             home_room = home
         x, y, _ = self.h.robot_pose()
-        rooms = sorted(self.h.b.rooms, key=lambda r: (r != home_room, math.dist((x, y), self.h.b.rooms[r]["centre"])))
+        here = self.h.room_of(x, y)
+        # where it belongs first, then the room it is in, then the nearest; never the stairs (a flight is not a room to
+        # stand in the middle of - going to its centre walked up and down it) or the garden
+        rooms = sorted((r for r in b.rooms if r not in ("garden", "stairs")),
+                       key=lambda r: (r != home_room, r != here, math.dist((x, y), b.rooms[r]["centre"])))
         for r in rooms:
-            if r == "garden":
-                continue
             self.say("search", obj=HS.OBJECTS[obj][5][0], room=r)
             if not self.goto(self.h.b.rooms[r]["centre"], speed=0.7):
                 continue
@@ -741,7 +772,7 @@ class HouseBot:
         """Balanced crouch deep enough for a handle this high above the floor (lowest reach 0.34 m: the ankles and hips
         are at their limits). The legs stay stiff and balanced afterwards, for the reach."""
         w = self.h
-        z, tp = next(pose for lim, pose in self.CROUCH if handle_rel >= lim)
+        z, tp = next((pose for lim, pose in self.CROUCH if handle_rel >= lim), self.CROUCH[-1][1])
         if not w.settle():
             return False
         # slowly, weight kept a little forward: a fast crouch pushes the feet backwards, and on tiles they slide
@@ -782,7 +813,7 @@ class HouseBot:
             rel = hd[2] - h.floor_z(*hd[:2])
             low = rel < LOW_HANDLE
             fwd, right = self.reach_offset(rel, low)            # crouched, the hook reaches less far ahead
-            st = self.stand_point(hd[:2], fwd, right)
+            st = self.stand_point(hd[:2], fwd, right, low=low)
             if st is None and not low and rel > 0.95:           # high up (the back of a worktop): the arm reaches further
                 for extra in (0.06, 0.12):
                     st = self.stand_point(hd[:2], fwd + extra, right)
@@ -824,7 +855,8 @@ class HouseBot:
         hd = h.handle_of(obj)
         cur = h.arms_now()
         sh0, el0, e0 = h.ik_right(hd + [0, 0, 0.07])
-        sh1, el1, e1 = h.ik_right(hd + [0, 0, -0.01])
+        sh1, el1, e1 = h.ik_right(hd + [0, 0, 0.02])            # just above the bar: pushing into it pressed the object
+        #                                                       into the surface under it, and the simulation blew up
         if e1 > 0.06:
             if low:
                 self.rise()
@@ -835,7 +867,16 @@ class HouseBot:
                 h.stiff(False)
                 return False, "lost balance reaching"
         else:
-            for k in range(int(2.8 / E.DT)):
+            # standing: lift the hook close to the body first, then out over the handle, then down onto it. Swung
+            # straight there, the arm's arc passed just above the worktop and hit the side of whatever stood on it
+            # (a kettle at the back of the drip tray was wedged against the counter, and the simulation blew up)
+            above = [cur[0], sh0, cur[2], el0]
+            path = self.arm_path(above, target=obj, target_xy=hd[:2])
+            if path is None:                               # boxed in: the old straight swing
+                path = [(0.0, cur), (1.4, above)]
+            tt = path[-1][0]
+            plan = path + [(tt + 0.8, [cur[0], sh1, cur[2], el1])]
+            for k in range(int((tt + 1.1) / E.DT)):
                 self.arms = list(SK.keyframes(plan, k * E.DT))
                 self.step()
         gap = float(np.linalg.norm(h.hook_world() - h.handle_of(obj)))
@@ -846,11 +887,7 @@ class HouseBot:
             return False, f"the hook missed the handle by {gap:.2f} m"
         d = h.e.d[0]
         b = h.obj_body[obj]
-        eq = h.obj_eq[obj]
-        R = d.xmat[b].reshape(3, 3)
-        h.e.m.eq_data[eq, 3:6] = R.T @ (h.hook_world() - d.xpos[b])
-        d.eq_active[eq] = 1
-        h.holding = obj
+        self._attach(obj)
         z0 = d.xpos[b][2]
         sh2, el2, _ = h.ik_right(hd + [0, 0, 0.20])             # straight up first, well clear of the surface
         lift = [(0.0, [0.0, sh1, -0.2, el1]), (1.0, [0.0, sh2, -0.2, el2])]
@@ -878,6 +915,215 @@ class HouseBot:
             self.step()
         self.arms = list(CARRY_ARMS)
         return True, "lifted"
+
+    def arm_path(self, goal, target=None, target_xy=None, speed=1.4):
+        """Keyframes taking the right arm from where it is to `goal` (arm angles) without the hook, wrist, elbow or a
+        held load dipping into whatever is under them - a worktop, a table, the things standing on them. A grid search
+        over shoulder and elbow angles (0.1 rad), with clearance checked by casting a ray straight down from each point.
+        Near target_xy (a handle being reached for) the target object itself doesn't count. None if there is no way."""
+        import heapq
+        import mujoco
+        h = self.h
+        m, d = h.e.m, h.e.d[0]
+        dd = mujoco.MjData(m)
+        dd.qpos[:] = d.qpos
+        qs, qe = h.arm_qadr[1], h.arm_qadr[3]
+        b_fore, b_wrist, b_hand = m.body("r_forearm").id, m.body("r_wrist").id, m.body("r_hand").id
+        skip = set(h.robot_bodies)
+        drop = 0.0
+        if h.holding is not None:
+            hb = h.obj_body[h.holding]
+            skip.add(hb)
+            drop = float(h.hook_world()[2] - (h.obj_pos(h.holding)[2] - HS.OBJECTS[h.holding][1][-1]))
+        tb = h.obj_body[target] if target is not None else None
+        gid = np.zeros(1, np.int32)
+        down = np.array([0.0, 0.0, -1.0])
+
+        def below(p, skip_b):
+            start = np.array([p[0], p[1], p[2] + 0.08])
+            for _ in range(8):
+                dist = mujoco.mj_ray(m, d, start, down, None, 1, -1, gid)
+                if dist < 0:
+                    return -9.0
+                g = int(gid[0])
+                hit = start[2] - dist
+                if (m.geom_bodyid[g] in skip_b) or (m.geom_contype[g] == 0 and m.geom_conaffinity[g] == 0):
+                    start = np.array([p[0], p[1], hit - 1e-4])
+                    continue
+                return hit
+            return -9.0
+
+        memo = {}
+
+        def clear(i, j):
+            if (i, j) in memo:
+                return memo[(i, j)]
+            dd.qpos[qs], dd.qpos[qe] = SH[i], EL[j]
+            mujoco.mj_kinematics(m, dd)
+            hook = dd.xpos[b_hand] + dd.xmat[b_hand].reshape(3, 3) @ np.array(SK.HOOK)
+            sk = skip | ({tb} if tb is not None and target_xy is not None
+                         and math.hypot(hook[0] - target_xy[0], hook[1] - target_xy[1]) < 0.12 else set())
+            pts = [hook, dd.xpos[b_wrist], dd.xpos[b_fore], 0.5 * (hook + dd.xpos[b_fore])]
+            if drop > 0:
+                pts.append(hook - [0, 0, drop])
+            ok = all(p[2] > below(p, sk) + 0.025 for p in pts)
+            memo[(i, j)] = ok
+            return ok
+
+        SH, EL = np.round(np.arange(-2.6, 0.41, 0.1), 3), np.round(np.arange(-2.1, 0.01, 0.1), 3)
+        cur = h.arms_now()
+        near = lambda v, grid: int(np.argmin(np.abs(grid - v)))          # noqa: E731
+        a, z = (near(cur[1], SH), near(cur[3], EL)), (near(goal[1], SH), near(goal[3], EL))
+        dist = {a: 0.0}
+        prev = {}
+        pq = [(0.0, a)]
+        while pq:
+            c, n = heapq.heappop(pq)
+            if n == z:
+                break
+            if c > dist.get(n, 1e9):
+                continue
+            for di in (-1, 0, 1):
+                for dj in (-1, 0, 1):
+                    q = (n[0] + di, n[1] + dj)
+                    if (di, dj) == (0, 0) or not (0 <= q[0] < len(SH) and 0 <= q[1] < len(EL)):
+                        continue
+                    if q != z and not clear(*q):
+                        continue
+                    nc = c + math.hypot(di, dj) * 0.1
+                    if nc < dist.get(q, 1e9):
+                        dist[q], prev[q] = nc, n
+                        heapq.heappush(pq, (nc, q))
+        if z not in dist:
+            return None
+        path = [z]
+        while path[-1] != a:
+            path.append(prev[path[-1]])
+        path = path[::-1]
+        # shortcut: keep a waypoint only where the straight line from the last kept one would not be clear
+        keep = [path[0]]
+        k = 0
+        while k < len(path) - 1:
+            j = len(path) - 1
+            while j > k + 1:
+                n0, n1 = path[k], path[j]
+                steps = max(abs(n1[0] - n0[0]), abs(n1[1] - n0[1]))
+                if all(clear(round(n0[0] + (n1[0] - n0[0]) * s / steps), round(n0[1] + (n1[1] - n0[1]) * s / steps))
+                       or (round(n0[0] + (n1[0] - n0[0]) * s / steps), round(n0[1] + (n1[1] - n0[1]) * s / steps)) == z
+                       for s in range(1, steps)):
+                    break
+                j -= 1
+            keep.append(path[j])
+            k = j
+        pts = [list(cur)] + [[cur[0], SH[i], cur[2], EL[j]] for i, j in keep[1:-1]] + [list(goal)]
+        kf, t = [(0.0, pts[0])], 0.0
+        for p0, p1 in zip(pts, pts[1:]):
+            t += max(0.3, math.hypot(p1[1] - p0[1], p1[3] - p0[3]) / speed)
+            kf.append((t, p1))
+        return kf
+
+    def _attach(self, obj):
+        """The hook holds obj by its handle from now on (a weld at the hook, where the handle is now)."""
+        import mujoco
+        h = self.h
+        m, d = h.e.m, h.e.d[0]
+        b = h.obj_body[obj]
+        eq = h.obj_eq[obj]
+        R = d.xmat[b].reshape(3, 3)
+        if m.eq_type[eq] == mujoco.mjtEq.mjEQ_WELD:          # hold it as it is now: anchor at the hook, the current pose
+            hb = m.eq_obj1id[eq]
+            R1 = d.xmat[hb].reshape(3, 3)
+            q1inv = np.zeros(4)
+            mujoco.mju_negQuat(q1inv, d.xquat[hb])
+            rq = np.zeros(4)
+            mujoco.mju_mulQuat(rq, q1inv, d.xquat[b])
+            hook = h.hook_world()
+            m.eq_data[eq, 0:3] = R.T @ (hook - d.xpos[b])        # the hold point in the object's frame
+            m.eq_data[eq, 3:6] = R1.T @ (hook - d.xpos[hb])      # ... and in the hand's (MuJoCo 4 weld data layout)
+            m.eq_data[eq, 6:10] = rq
+        else:
+            m.eq_data[eq, 3:6] = R.T @ (h.hook_world() - d.xpos[b])
+        d.eq_active[eq] = 1
+        h.holding = obj
+
+    # ------------------------------------------------------------- the body's low-level moves (for the agent to compose)
+    def move_hand(self, ahead, up, secs=1.5):
+        """Move the hook to a point: `ahead` m in front of the body's centre and `up` m above the floor it stands on.
+        The right arm swings in a plane 0.2 m to the right of the body's centre, so that is where the point is.
+        Returns (how far the hook ended from the point in m, the hook's position)."""
+        h = self.h
+        x, y, yaw = h.robot_pose()
+        tgt = np.array([x + ahead * math.cos(yaw) + REACH_RIGHT * math.sin(yaw),
+                        y + ahead * math.sin(yaw) - REACH_RIGHT * math.cos(yaw), h.floor_under(x, y) + up])
+        sh, el, _ = h.ik_right(tgt)
+        cur = h.arms_now()
+        goal = [cur[0], sh, cur[2], el]
+        kf = [(0.0, cur), (max(0.5, secs), goal)]
+        if getattr(self, "crouched", False):
+            if not self.crouched_arms(kf, max(0.5, secs)):
+                h.stiff(False)
+                self.crouched = False
+                return 9.9, h.hook_world()
+        else:
+            for k in range(int(max(0.5, secs) / E.DT) + 10):
+                self.arms = list(SK.keyframes(kf, k * E.DT))
+                self.step()
+        self.arms = goal
+        return float(np.linalg.norm(h.hook_world() - tgt)), h.hook_world()
+
+    def grip(self):
+        """Hook whatever handle is at the hook now (within 7 cm). Returns (ok, what happened)."""
+        h = self.h
+        if h.holding is not None:
+            return False, f"already holding the {HS.OBJECTS[h.holding][5][0]}"
+        hook = h.hook_world()
+        dist = {o: float(np.linalg.norm(h.handle_of(o) - hook)) for o in HS.OBJECTS}
+        o = min(dist, key=dist.get)
+        if dist[o] > 0.07:
+            return False, f"no handle at the hook (nearest: the {HS.OBJECTS[o][5][0]}'s, {dist[o]:.2f} m away)"
+        self._attach(o)
+        return True, f"hooked the {HS.OBJECTS[o][5][0]}"
+
+    def let_go(self):
+        """Unhook what it holds, where it is; report where it came to rest."""
+        h = self.h
+        o = h.holding
+        if o is None:
+            return False, "holding nothing"
+        self.release()
+        self.stand_still(1.2)
+        p = h.obj_pos(o)
+        where = next((c for c in h.b.containers if h.in_container(o, c)), None)
+        if where is None:
+            where = next((n for n, f in h.b.furniture.items() if abs(p[0] - f["xy"][0]) < f["size"][0] / 2
+                          and abs(p[1] - f["xy"][1]) < f["size"][1] / 2 and abs(p[2] - f["top"] - HS.OBJECTS[o][1][-1]) < 0.06),
+                         None)
+        on = f"in the {where}" if where in h.b.containers else f"on the {where}" if where else (
+            "on the floor" if p[2] - h.floor_z(*p[:2]) < 0.15 else f"at {p[2] - h.floor_z(*p[:2]):.2f} m above the floor")
+        return True, f"let go of the {HS.OBJECTS[o][5][0]}; it is {on}"
+
+    def crouch(self, reach_height):
+        """Crouch, balanced, deep enough to reach something reach_height m above the floor (0.34 is the lowest)."""
+        if getattr(self, "crouched", False):
+            self.rise()
+        ok = self.crouch_to(max(0.34, float(reach_height)))
+        self.crouched = bool(ok)
+        if not ok:
+            self.h.stiff(False)
+        return ok
+
+    def stand_tall(self):
+        ok = self.rise() if getattr(self, "crouched", False) else True
+        self.crouched = False
+        return ok
+
+    def shuffle(self, forward, left, turn_deg):
+        """A small body move: up to 0.6 m forward/back and sideways, and a turn, onto a mark relative to here."""
+        h = self.h
+        x, y, yaw = h.robot_pose()
+        fwd, lft = max(-0.6, min(0.6, forward)), max(-0.6, min(0.6, left))
+        mark = (x + fwd * math.cos(yaw) - lft * math.sin(yaw), y + fwd * math.sin(yaw) + lft * math.cos(yaw))
+        return self.align(mark, wrap(yaw + math.radians(turn_deg)), tol=0.04, max_s=12.0)
 
     def back_off(self, dist, max_s=5.0):
         x0, y0, _ = self.h.robot_pose()
@@ -939,7 +1185,7 @@ class HouseBot:
             for inset in ((0.0,) if small else (0.18, 0.12)):   # points well inside the top, all round it: the nearest reachable
                 if small:                                # set back from the worktop edge: reach a little further
                     for extra in (0.0, 0.06, 0.12):
-                        st = self.stand_point((fx, fy), fwd + extra, right)
+                        st = self.stand_point((fx, fy), fwd + extra, right, low=low)
                         if st is not None:
                             best, fwd = st, fwd + extra
                             break
@@ -955,7 +1201,7 @@ class HouseBot:
                 cands = [c for c in cands if all(math.dist(c, q) > 0.25 for q in others)]     # a clear spot on the top
                 scored = []
                 for c in cands:
-                    st = self.stand_point(c, fwd, right)
+                    st = self.stand_point(c, fwd, right, low=low)
                     if st is not None:
                         scored.append((math.dist(st[0], (x0, y0)), st, c))
                 if scored:
@@ -987,8 +1233,15 @@ class HouseBot:
             fsx, fsy = f["size"]
             aim = (fx, fy) if max(fsx, fsy) <= 0.7 else spot   # a small spot (sink, hob, trivet): its middle
             self.square_up(aim)                            # turn so the arm's plane passes through it
-            if h.ik_right(np.array([aim[0], aim[1], top + half_h + hz + 0.005]))[2] < 0.045:
-                target = aim
+            for _ in range(2):                             # out of reach from here: shuffle to where it is in reach
+                if h.ik_right(np.array([aim[0], aim[1], top + half_h + hz + 0.005]))[2] < 0.045:
+                    target = aim
+                    break
+                _, _, yw = h.robot_pose()
+                mark = (aim[0] - fwd * math.cos(yw) - right * math.sin(yw), aim[1] - fwd * math.sin(yw) + right * math.cos(yw))
+                self.align(mark, yw, tol=0.03)
+                self.square_up(aim)
+                target = reach_point(fwd, right)
             self.log(f"  [{h.t:6.1f} s] (placing at {target[0]:.2f}, {target[1]:.2f} on the {where}: "
                      f"x {fx - fsx / 2:.2f}..{fx + fsx / 2:.2f}, y {fy - fsy / 2:.2f}..{fy + fsy / 2:.2f})")
             rad = max(0.06, HS.OBJECTS[obj][1][0] * (1.0 if HS.OBJECTS[obj][0] != "box" else 0.7) + 0.01)
@@ -1249,6 +1502,16 @@ class HouseBot:
             self.hold_step(anchor)
         for k in range(int(0.6 / E.DT)):                # let it stop swinging
             self.hold_step(anchor)
+        for _ in range(2):                              # a heavy load sags the arm: measure, and lift by the shortfall
+            short = (z_top + clear) - (h.obj_pos(obj)[2] - half_h)
+            if short < 0.015:
+                break
+            hook_z += short
+            sh2, el2, err = h.ik_right(np.array([xy[0], xy[1], hook_z]))
+            kf = [(0.0, h.arms_now()), (0.6, [0.0, sh2, -0.2, el2])]
+            for k in range(int(1.0 / E.DT)):
+                self.arms = list(SK.keyframes(kf, k * E.DT))
+                self.hold_step(anchor)
         held, off = 0.0, []
         for k in range(int(secs / E.DT)):
             self.hold_step(anchor)
