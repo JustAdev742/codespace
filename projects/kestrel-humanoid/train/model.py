@@ -195,6 +195,21 @@ def build_xml(H, visual=False):
             xml = re.sub(rf'(<body name="{s}_{seg}"[^>]*>(?:\s*<joint[^>]*/>)*\s*<inertial[^>]*/>)',
                          lambda mm: mm.group(1) + f'\n      <geom name="{s}_{seg}_col" type="capsule" fromto="{ft}" size="{rad}" '
                                                    f'rgba="0.3 0.3 0.3 0.4"/>', xml, count=1)
+    # 2d. arm collision capsules: upper arm and forearm, both sides, so an arm cannot pass through a worktop, a table or
+    #     a wall (it used to: the hook reached things through the furniture). The hook end (the last ~0.12 m) has none,
+    #     so a held handle never fights the forearm. The arms do not collide with the robot's own body.
+    if ARM_JOINTS or True:
+        arm_caps = {"upper_arm": ("0 0 -0.04 0 0 -0.27", 0.045), "forearm": ("0 0 0.02 0 0 -0.12", 0.038)}
+        for s_ in "lr":
+            for seg, (ft, rad) in arm_caps.items():
+                xml = re.sub(rf'(<body name="{s_}_{seg}"[^>]*>(?:\s*<joint[^>]*/>)*\s*<inertial[^>]*/>)',
+                             lambda mm: mm.group(1) + f'\n      <geom name="{s_}_{seg}_col" type="capsule" fromto="{ft}" '
+                                                       f'size="{rad}" rgba="0.3 0.3 0.3 0.3"/>', xml, count=1)
+        robot_bodies = re.findall(r'<body name="([^"]+)"', xml)
+        arm_bodies = [f"{s_}_{seg}" for s_ in "lr" for seg in arm_caps]
+        pairs = sorted({tuple(sorted((a, b))) for a in arm_bodies for b in robot_bodies if a != b})
+        excl = "".join(f'\n    <exclude body1="{a}" body2="{b}"/>' for a, b in pairs)
+        xml = xml.replace("</mujoco>", f"  <contact>{excl}\n  </contact>\n</mujoco>", 1) if "</mujoco>" in xml else xml
     if SEAT_COLLISION:               # seat bones and back: what touches a chair
         xml = re.sub(r'(<body name="pelvis"[^>]*>(?:\s*<(?:freejoint|joint)[^>]*/>)*\s*<inertial[^>]*/>)',
                      lambda mm: mm.group(1) + '\n      <geom name="pelvis_col" type="box" size="0.11 0.15 0.05" pos="-0.02 0 -0.02" '

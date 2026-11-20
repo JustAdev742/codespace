@@ -236,6 +236,11 @@ class Envs:
         M = self.M
         actions = np.clip(actions, -ACTION_CLIP, ACTION_CLIP)
         applied = np.where(self.delay[:, None], self.last_a, actions)
+        s = getattr(self, "action_smooth", 0.0)                # low-pass on the joint targets (the policy still sees
+        if s > 0:                                              # its own actions): a jittery policy walks smoothly
+            prev = getattr(self, "_smooth_a", None)
+            applied = applied if prev is None else s * prev + (1.0 - s) * applied
+            self._smooth_a = applied.copy()
         target = self.default + ACTION_SCALE * applied
         m = self.m
         if KM.ARM_JOINTS and KM.VARIANT in KM.ARM_SWING:   # arm swing from the opposite hip
