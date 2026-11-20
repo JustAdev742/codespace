@@ -593,10 +593,11 @@ class HouseBot:
         x, y, _ = h.robot_pose()
         return math.dist((x, y), xy) < 2.5 * tol
 
-    def stand_point(self, target_xy, fwd, right, min_clear=0.17, low=False):
+    def stand_point(self, target_xy, fwd, right, min_clear=0.17, low=False, prefer_yaw=None):
         """Where to stand (and which way to face) so that target_xy is fwd ahead and right to the right: the reachable,
         clear candidate with the shortest walk. low: a crouching reach - same floor level as the target, and both feet
-        on the same level if at all possible (one foot on a rug's edge tipped crouches over)."""
+        on the same level if at all possible (one foot on a rug's edge tipped crouches over). prefer_yaw: face this way
+        if at all possible (a handle at the side of a mug is taken from its side, so the forearm doesn't hit the mug)."""
         h = self.h
         x, y, _ = h.robot_pose()
         best = None
@@ -620,6 +621,8 @@ class HouseBot:
             if any(math.dist((sx, sy), h.person_xy(n)) < 1.4 for n in h.b.people):
                 continue                                  # never work right next to someone
             score = math.hypot(sx - x, sy - y) - 2.0 * min(clr[j, i], 0.5)
+            if prefer_yaw is not None:
+                score += 4.0 * abs(wrap(yaw - prefer_yaw))
             if low:                                       # feet (and toes, heels) all on one level
                 pts = [(sx + a * math.cos(yaw) + b * math.sin(yaw), sy + a * math.sin(yaw) - b * math.cos(yaw))
                        for a in (-0.12, 0.12) for b in (-0.12, 0.12)]
@@ -870,18 +873,43 @@ class HouseBot:
             self.say("cant", why=f"I searched and couldn't find the {name}")
             return False
         why = "I couldn't get to it"
+        h.grasp.pop(obj, None)
         for attempt in range(3):                       # a third try: a shove mid-reach is no reason to give up
             hd = h.handle_of(obj)
             rel = hd[2] - h.floor_z(*hd[:2])
             low = rel < LOW_HANDLE
-            fwd, right = self.reach_offset(rel, low)            # crouched, the hook reaches less far ahead
-            st = self.stand_point(hd[:2], fwd, right, low=low)
-            if st is None and not low and rel > 0.95:           # high up (the back of a worktop): the arm reaches further
-                for extra in (0.06, 0.12):
-                    st = self.stand_point(hd[:2], fwd + extra, right)
-                    if st is not None:
-                        fwd += extra
-                        break
+            fwd0, right = self.reach_offset(rel, low)           # crouched, the hook reaches less far ahead
+
+            def stand_for(pt, prefer=None):
+                """Where to stand for a handle at pt: the usual reach, or (high up, the back of a worktop) further."""
+                st_ = self.stand_point(pt[:2], fwd0, right, low=low, prefer_yaw=prefer)
+                if st_ is None and not low and rel > 0.95:
+                    for extra in (0.06, 0.12):
+                        st_ = self.stand_point(pt[:2], fwd0 + extra, right, prefer_yaw=prefer)
+                        if st_ is not None:
+                            return st_, fwd0 + extra
+                return st_, fwd0
+            face = None
+            if obj in O3.FIRM and obj not in h.grasp:           # a handle at the side: come at it from that side
+                u = hd[:2] - h.obj_pos(obj)[:2]
+                face = math.atan2(-u[1], -u[0])
+            st, fwd = stand_for(hd, face)
+            if face is not None and obj.startswith("mug") and (st is None or abs(wrap(st[1] - face)) > 0.55):
+                # the handle points where it can't be reached from: a finger (the hook) inside the near rim, as people
+                # pick up a mug whose handle faces away
+                c = h.obj_pos(obj)
+                anywhere, _ = stand_for(c)
+                if anywhere is not None:
+                    (ax, ay), _ = anywhere
+                    R = h.e.d[0].xmat[h.obj_body[obj]].reshape(3, 3)
+                    dl = R.T @ np.array([ax - c[0], ay - c[1], 0.0])
+                    dl[2] = 0.0
+                    dl /= max(np.linalg.norm(dl), 1e-9)
+                    r_in, top = HS.OBJECTS[obj][1][0] - 0.012, HS.OBJECTS[obj][1][-1] - 0.004
+                    h.grasp[obj] = (r_in * dl[0], r_in * dl[1], top)
+                    self.log(f"  [{h.t:6.1f} s] (the {name}'s handle faces away: taking it by the rim)")
+                    hd = h.handle_of(obj)
+                    st, fwd = stand_for(hd)
             if st is None:
                 self.say("pick_fail", obj=name, why="there's nowhere to stand next to it")
                 return False
@@ -1526,7 +1554,7 @@ class HouseBot:
         if obj not in O3.FIRM:
             return np.array([0.0, 0.0, HS.OBJECTS[obj][4]])
         R = h.e.d[0].xmat[h.obj_body[obj]].reshape(3, 3)
-        return R @ np.array(O3.HANDLES[obj])
+        return R @ np.array(h.grasp_local(obj))
 
     def hold_step(self, anchor):
         """One step that keeps the body where it was (x, y, yaw) while the arms work: with a load held out in front,
@@ -1604,7 +1632,7 @@ class HouseBot:
             self.say("cant", why=f"I missed the {c['words'][0]}")
         return pressed
 
-    def hold_over(self, xy, z_top, secs=2.0, clear=0.06, near_ok=0.10):
+    def hold_over(self, xy, z_top, secs=2.0, clear=0.06, near_ok=0.10, need=0.75):
         """Hold what it carries over a point, its bottom just above z_top (to pour into, water, or drop into
         something). True if it was held there, steady, for most of secs."""
         h = self.h
@@ -1690,10 +1718,10 @@ class HouseBot:
             off.append(math.dist(p[:2], xy))
             if off[-1] < near_ok and p[2] - half_h > z_top - 0.01:
                 held += E.DT
-        if held < 0.75 * secs:
+        if held < need * secs:
             self.log(f"  [{h.t:6.1f} s] (held over the target {held:.1f} of {secs:.1f} s; off by {np.mean(off):.2f} m, "
                      f"bottom {p[2] - half_h - z_top:+.2f} m above it; IK error {err:.2f})")
-        return held >= 0.75 * secs
+        return held >= need * secs
 
     def drop_into(self, cname):
         """Hold what it carries over a bin, box or hamper and let go."""
@@ -1739,18 +1767,22 @@ class HouseBot:
         src = h.holding
         if isinstance(dst, int):
             px, py = h.b.plants[dst]
-            xy, z_top, label = (px, py), h.floor_z(px, py) + 0.36 + 0.12, f"plant {dst + 1}"
+            xy, z_top, label = (px, py), h.floor_z(px, py) + 0.36 + 0.12, f"plant {dst + 1}"   # held over the leaves,
+            aim_z = h.floor_z(px, py) + 0.36                                                 # watering the soil
         else:
             p = h.obj_pos(dst)
             xy, z_top, label = (p[0], p[1]), p[2] + HS.OBJECTS[dst][1][-1], HS.OBJECTS[dst][5][0]
+            aim_z = z_top
         real = os.environ.get("KESTREL_POUR", "real") != "rule" and getattr(h, "liquid", None) is not None and h.liquid.ok
-        ok = self.hold_over(xy, z_top, secs=1.0 if real else 2.0, clear=0.03 if real else 0.05, near_ok=0.10)
+        # real pouring steers its own stream into the opening, so being held a little off-centre is fine
+        ok = self.hold_over(xy, z_top, secs=1.5 if real else 2.0, clear=0.03 if real else 0.05, near_ok=0.14 if real else 0.10,
+                            need=0.5 if real else 0.75)
         if not real:
             res = ok and h.pour(src, dst)
         elif not ok:
             res = False
         else:
-            res = self.tip(src, dst, xy, z_top, litres)
+            res = self.tip(src, dst, xy, aim_z, litres)
         self.retract()
         if not res:
             self.say("cant", why=f"I couldn't pour into the {label}")

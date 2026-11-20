@@ -421,7 +421,18 @@ class Liquid:
         if L < 1e-9:
             return None
         gid = np.array([-1], np.int32)
-        dist = mujoco.mj_ray(h.e.m, h.e.d[0], p0, v / L, None, 1, -1, gid)
+        m = h.e.m
+        start, left = p0.copy(), L
+        for _ in range(4):                                     # through shapes that are only for looking at
+            dist = mujoco.mj_ray(m, h.e.d[0], start, v / L, None, 1, -1, gid)
+            if dist < 0 or dist > left or gid[0] < 0 or m.geom_contype[gid[0]] or m.geom_conaffinity[gid[0]]:
+                break
+            start = start + v / L * (dist + 1e-4)                # (a plant's leaves: water runs through to the soil)
+            left -= dist + 1e-4
+        if dist >= 0 and dist <= left:
+            dist += L - left
+        else:
+            dist = -1.0
         if dist < 0 or dist > L:
             if p1[2] < h.floor_z(p1[0], p1[1]):                 # missed the floor's edge: it is the floor
                 return np.array([p1[0], p1[1], h.floor_z(p1[0], p1[1])]), "floor"

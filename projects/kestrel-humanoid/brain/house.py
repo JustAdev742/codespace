@@ -1053,7 +1053,12 @@ class House(SK.World):
     def handle_of(self, n):
         d = self.e.d[0]
         R = d.xmat[self.obj_body[n]].reshape(3, 3)
-        return d.xpos[self.obj_body[n]] + R @ np.array(O3.HANDLES.get(n, (0, 0, OBJECTS[n][4])))
+        return d.xpos[self.obj_body[n]] + R @ np.array(self.grasp_local(n))
+
+    def grasp_local(self, n):
+        """Where the hook takes n, in n's frame: its handle, or (a mug whose handle can't be reached) its rim."""
+        g = getattr(self, "grasp", {})
+        return g[n] if n in g else O3.HANDLES.get(n, (0, 0, OBJECTS[n][4]))
 
     def set_obj(self, n, x, y, z_surface, yaw=0.0):
         d = self.e.d[0]
@@ -1087,6 +1092,7 @@ class House(SK.World):
         self.set_mocap("vacuum", 5.8, 0.9)
         self.walk_k, self.walk_pause = 1, 0.0
         self.holding = None
+        self.grasp = {}
         self.reset_extras()
         mujoco.mj_forward(self.e.m, self.e.d[0])
 

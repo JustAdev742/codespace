@@ -44,7 +44,7 @@ class Chores:
         # the mug to the dining table first: pouring over a mug on the worktop needs the kettle higher than this arm
         # reaches, and the table is near you anyway
         ok = b.pick(mug) and b.place("dining table")
-        ok = ok and b.fill("kettle", 0.3) and b.place("kettle base") and b.press("kettle")
+        ok = ok and b.fill("kettle", 0.5) and b.place("kettle base") and b.press("kettle")    # more than a cupful
         ok = ok and self.wait_for(lambda: h.temp["kettle"] >= 99.0 or not h.st["kettle"], 60.0) and h.temp["kettle"] >= 95.0
         ok = ok and b.pick("kettle") and b.pour(mug) and b.place("kettle base")
         if to != "you" or math.dist(h.obj_pos(mug)[:2], h.person_xy("you")) > 2.5:
