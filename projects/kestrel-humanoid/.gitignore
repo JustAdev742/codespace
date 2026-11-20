@@ -33,3 +33,4 @@ brain/data/robot_memory.json
 
 # real textures and environment (CC0, fetched by brain/real_assets.py): large, re-downloadable
 brain/data/real/
+brain/data/gen/

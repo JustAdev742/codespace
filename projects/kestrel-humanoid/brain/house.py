@@ -726,8 +726,10 @@ def build_extras(b):
             b.geom("box", (0.08, 0, 0.724), (0.035, 0.05, 0.004), rgba=(0.85, 0.1, 0.1, 1), name="uno_pile", col=False, dst=[])]
     b.bodies.append(f'<body name="card_tray" mocap="true" pos="20 21 -5">{"".join(tray)}</body>')
     # hazards and visitors, parked out of sight until a test uses them
-    b.bodies.append('<body name="spill" mocap="true" pos="20 22 -5"><geom name="spill_geom" type="box" size="0.45 0.3 0.0015" '
-                    'rgba="0.55 0.75 0.95 0.55" friction="0.12 0.005 0.0001" priority="3"/></body>')
+    b.bodies.append('<body name="spill" mocap="true" pos="20 22 -5">' + PHYS[0] + '<geom name="spill_geom" type="box" '
+                    'size="0.45 0.3 0.0015" rgba="0.55 0.75 0.95 0.55" friction="0.12 0.005 0.0001" priority="3"/>' + PHYS[1]
+                    + SKIN[0] + '<geom name="spill_geom" type="ellipsoid" size="0.45 0.3 0.0016" rgba="0.62 0.78 0.95 0.5" '
+                    'contype="0" conaffinity="0" mass="0"/>' + SKIN[1] + '</body>')     # looks like a puddle, slips like one
     dog = [b.geom("box", (0, 0, 0.32), (0.28, 0.1, 0.1), rgba=(0.55, 0.35, 0.18, 1), name="rex_body", dst=[]),
            b.geom("sphere", (0.32, 0, 0.45), (0.09,), rgba=(0.55, 0.35, 0.18, 1), name="rex_head", dst=[])]
     for lx in (-0.2, 0.2):

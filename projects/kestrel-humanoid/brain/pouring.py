@@ -390,6 +390,14 @@ class Liquid:
             hit = self._ray(prev, p)                          # what is really there between here and there
             if hit is not None:
                 q, kind = hit
+                movable = self.hit_body > 0 and self.h.e.m.body_jntnum[self.hit_body] > 0
+                if kind != "sink" and (movable or not self._flat_under(q)):   # a wall, a door, a loose thing: it runs off
+                    hv = self.vel[k][:2]
+                    nh = np.linalg.norm(hv)
+                    back = -hv / nh * 0.004 if nh > 1e-6 else np.zeros(2)
+                    self.pos[k] = np.array([q[0] + back[0], q[1] + back[1], q[2] - 0.002])
+                    self.vel[k] = np.array([0.0, 0.0, min(self.vel[k][2], -0.3)])
+                    continue
                 if not self.bounced[k] and np.linalg.norm(self.vel[k]) > 0.8:      # a splash: once, small and slow
                     self.bounced[k] = True
                     self.pos[k] = q + np.array([0.0, 0.0, 0.004])
@@ -419,6 +427,7 @@ class Liquid:
                 return np.array([p1[0], p1[1], h.floor_z(p1[0], p1[1])]), "floor"
             return None
         q = p0 + v / L * dist
+        self.hit_body = int(h.e.m.geom_bodyid[gid[0]]) if gid[0] >= 0 else 0
         c = h.b.containers.get("sink")
         if c is not None:
             x0, x1, y0, y1 = c["box"]
@@ -427,6 +436,14 @@ class Liquid:
         if abs(q[2] - h.floor_z(q[0], q[1])) < 0.02:
             return q, "floor"
         return q, "worktop"
+
+    def _flat_under(self, q):
+        """Is there a surface right under q (water can rest there), rather than q being on a wall or a door?"""
+        import mujoco
+        h = self.h
+        gid = np.array([-1], np.int32)
+        d_ = mujoco.mj_ray(h.e.m, h.e.d[0], q + np.array([0.0, 0.0, 0.01]), np.array([0.0, 0.0, -1.0]), None, 1, -1, gid)
+        return 0 <= d_ < 0.03 or q[2] - h.floor_z(q[0], q[1]) < 0.03
 
     def _surface(self, x, y, z_above):
         """The highest surface under a point that is below z_above: (height, 'floor' | 'worktop' | 'sink')."""
