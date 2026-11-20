@@ -1,0 +1,32 @@
+{
+ "skills": {},
+ "lessons": [
+  "I fell while doing pick_up {\"object\": \"board\"} (during: Cook the steak medium and serve it on the plate on the dinin). Avoid that, or do it another way.",
+  "I fell while doing pick_up {\"object\": \"board\"} (during: Cook the steak medium and serve it on the plate on the dinin). Avoid that, or do it another way.",
+  "pick_up board always makes me fall (twice). Don't use it; ask a person for help or find another way. Also pick_up search can waste 8 minutes with hob on - turn hob off before searching.",
+  "Steak is on the board on the kitchen island, out of hook reach; spatula 'use steak' only flips it when near. pick_up board falls. Couldn't transfer steak to pan. Need a person's help or better reach plan."
+ ],
+ "episodes": [
+  {
+   "goal": "Cook the steak medium and serve it on the plate on the dining table, then turn the hob off.",
+   "ok": false,
+   "steps": 14,
+   "summary": "I failed. I put the frying pan on the hob and turned the hob on. Then pick_up board made me fall, the same fall as in my earlier lesson, and the e-stop is set. The steak is still raw on the board, nothing was served, and the hob is still ON. A person needs to help me up and switch the hob off. Lesso",
+   "when": "2026-11-20 01:32"
+  },
+  {
+   "goal": "Cook the steak medium and serve it on the plate on the dining table, then turn the hob off.",
+   "ok": false,
+   "steps": 23,
+   "summary": "Failed. I fell again on pick_up board and the e-stop is set. The steak is still raw on the board and was not cooked or served. The hob is off. I need a person to help me up.",
+   "when": "2026-11-20 01:34"
+  },
+  {
+   "goal": "Cook the steak medium and serve it on the plate on the dining table, then turn the hob off.",
+   "ok": false,
+   "steps": 22,
+   "summary": "Failed: steak is still raw on the board and was not cooked or served. I put the pan on the hob and heated it, but I couldn't get the steak from the board into the pan, because the board was out of reach and pick_up board has made me fall before. I didn't try it. The hob is off now.",
+   "when": "2026-11-20 01:36"
+  }
+ ]
+}

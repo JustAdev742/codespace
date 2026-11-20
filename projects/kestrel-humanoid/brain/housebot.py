@@ -1162,7 +1162,7 @@ class HouseBot:
             xy, z_top = (p[0], p[1]), p[2] + HS.OBJECTS[target][1][-1]
         else:
             return False, f"I don't know what '{target}' is"
-        clear = 0.10 if "sprays" in props else 0.0
+        clear = 0.03 if "sprays" in props else 0.0
         if "flips" in props and target in HS.OBJECTS:          # beside the middle, clear of the carry bar over it
             x, y, _ = h.robot_pose()
             d = np.array([x - xy[0], y - xy[1]])
@@ -1175,7 +1175,7 @@ class HouseBot:
         hook = h.hook_world()
         if "sprays" in props or "flips" in props:
             if "flips" in props:                            # slide under, then lift
-                low_hook = hook + [0, 0, -0.03]
+                low_hook = hook + [0, 0, -0.01]                 # (deeper pressed light things off the top)
                 high_hook = hook + [0, 0, 0.08]
                 for tgt, secs in ((low_hook, 0.6), (high_hook, 0.8)):
                     sh, el, _ = h.ik_right(tgt)

@@ -223,7 +223,8 @@ class RobotAgent:
             t("pick_up", "Find the object (searching likely rooms if needed), walk to it, hook its handle, lift it.",
               {"object": {"type": "string", "enum": objs}}),
             t("put", "Put what you hold on furniture, into a container (sink, bin, toy box, hamper), on the floor "
-                     "here, or hand it to a person.", {"where": {"type": "string", "enum": places}}),
+                     "here (let go from your lowest standing reach), or hand it to a person. Picking something up off "
+                     "the floor needs a deep crouch, which can tip you over.", {"where": {"type": "string", "enum": places}}),
             t("press", "Press a switch or button with the hook (hand must be free).",
               {"control": {"type": "string", "enum": sorted(h.b.controls)}}),
             t("fill", "Fill a pot, kettle, watering can or mug at the filling station (drip tray with a metered sensor "

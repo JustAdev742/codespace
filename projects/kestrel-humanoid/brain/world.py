@@ -19,7 +19,8 @@ the robot (Claude, in agent mode) has to work out what to do:
 * tools: what a thing does is a property, and it works through how it is used:
   - scrubs (the scrub brush, and the long-handled toilet brush): rubbing it over grime cleans it;
   - sprays (the spray bottle): using it at a surface wets the grime within 25 cm;
-  - flips (the spatula): using it at food in a pan turns the food over;
+  - flips (the spatula): using it at food in a pan turns the food over; used at food on a board or plate it lifts
+    the food onto itself, and used again over a pan or plate it slides it off;
   - vacuums (the stick vacuum): its head on the floor picks up dust.
   Using the wrong thing does nothing, and the robot finds that out by trying.
 
@@ -42,12 +43,12 @@ NEW_OBJECTS = {
     "spatula": ("box", (0.05, 0.035, 0.008), (0.12, 0.12, 0.13, 1), 0.15, 0.20, ["spatula", "fish slice", "turner", "flipper"],
                 "kitchen island"),
     "plate": ("cylinder", (0.11, 0.01), (0.96, 0.96, 0.94, 1), 0.3, 0.12, ["plate", "dinner plate", "dish"], "dining table"),
-    "brush": ("box", (0.08, 0.04, 0.025), (0.20, 0.55, 0.85, 1), 0.25, 0.22,
+    "brush": ("box", (0.08, 0.04, 0.025), (0.20, 0.55, 0.85, 1), 0.25, 0.32,
               ["scrub brush", "brush", "scrubbing brush", "sponge", "scrubber"], "bathroom"),
     # a long-handled brush (the head hangs 0.45 m below the hook): reaches the toilet, too long for the basin
     "toilet_brush": ("box", (0.05, 0.05, 0.03), (0.92, 0.92, 0.95, 1), 0.25, 0.45,
                      ["toilet brush", "long brush", "long-handled brush"], "bathroom"),
-    "spray": ("cylinder", (0.04, 0.09), (0.35, 0.80, 0.90, 1), 0.35, 0.16,
+    "spray": ("cylinder", (0.04, 0.09), (0.35, 0.80, 0.90, 1), 0.35, 0.24,
               ["spray bottle", "spray", "cleaner", "cleaning spray", "bathroom cleaner"], "bathroom"),
 }
 # where they start (x, y, surface z above the house floor Z0)
@@ -58,7 +59,7 @@ NEW_SPOTS = {"pan": (1.95, 0.55, 0.9), "board": (2.5, 2.42, 0.92), "spatula": (2
 TOOLS = {"brush": {"scrubs"}, "toilet_brush": {"scrubs"}, "spray": {"sprays"}, "spatula": {"flips"},
          "hoover": {"vacuums"}}
 HEATS = ("pot", "pan")                        # stand on the hob and heat up (the kettle has its own base)
-FOOD_HOLDERS = ("pot", "pan", "plate", "board", "pasta")
+FOOD_HOLDERS = ("pot", "pan", "plate", "board", "pasta", "spatula")
 # grime: where patches can be (name: x0, x1, y0, y1, surface z above Z0)
 SURFACES = {
     "bath": (5.6, 7.1, 9.08, 9.22, 0.55), "basin": (5.52, 5.9, 7.36, 8.14, 0.85), "toilet": (7.62, 7.85, 8.15, 8.45, 0.42),
@@ -218,15 +219,25 @@ class World:
             hit = (self.grime > 0) & (d < 0.25) & (np.abs(self.grime_xyz[:, 2] - at_z) < 0.15)
             self.wet_until[hit] = h.t + 40.0
             return f"sprayed: {int(hit.sum())} grimy patch(es) wet with cleaner" if hit.any() else "sprayed: nothing grimy there"
-        if "flips" in props:
-            where = self.food_in["steak"]
-            if where in ("pan", "plate", "board"):
-                p = h.obj_pos(where)
-                tp = h.obj_pos(tool)
-                if math.hypot(tp[0] - p[0], tp[1] - p[1]) < 0.16 and abs(tp[2] - p[2]) < 0.12:    # in the pan
-                    self.steak["down"] = 1 - self.steak["down"]
-                    return "turned the steak over"
-            return "nothing to turn over there"
+        if "flips" in props:                             # a spatula: turns food over, or carries it
+            tp = h.obj_pos(tool)
+            near = [n for n in FOOD_HOLDERS if n in h.obj_body and n != tool
+                    and math.hypot(tp[0] - h.obj_pos(n)[0], tp[1] - h.obj_pos(n)[1]) < 0.16
+                    and abs(tp[2] - h.obj_pos(n)[2]) < 0.14]
+            carried = [f for f, w in self.food_in.items() if w == tool]
+            if carried:
+                if not near:
+                    return f"the {carried[0]} is still on the spatula: nothing here to slide it onto"
+                self.food_in[carried[0]] = near[0]
+                return f"slid the {carried[0]} off the spatula onto/into the {near[0]}"
+            here = [n for n in near if self.food_in.get("steak") == n]
+            if not here:
+                return "nothing on the spatula, and no food here to turn over or lift"
+            if here[0] == "pan":
+                self.steak["down"] = 1 - self.steak["down"]
+                return "turned the steak over"
+            self.food_in["steak"] = tool
+            return f"lifted the steak off the {here[0]} onto the spatula"
         if "scrubs" in props:
             return "scrubbed (rubbing it over grime wears the grime away)"
         return f"the {tool} doesn't do anything there"
@@ -272,7 +283,8 @@ class World:
             wet = int(((self.grime > 0.08) & (self.wet_until > h.t)).sum())
             return f"{name}: {n} grimy patch(es)" + (f", {wet} wet with cleaner" if wet else "") + "."
         if name in TOOLS:
-            return f"{name}: a tool; it {', '.join(sorted(TOOLS[name]))}."
+            on = [f for f, w in self.food_in.items() if w == name]
+            return f"{name}: a tool; it {', '.join(sorted(TOOLS[name]))}." + (f" The {on[0]} is on it." if on else "")
         if name in ("hob", "cooker", "stove", "kettle base"):
             zone, ctl = ("hob", "hob") if name != "kettle base" else ("kettle_base", "kettle")
             on = [n for n in h.obj_body if h.on_zone(n, zone)]
@@ -297,6 +309,8 @@ class World:
         if where in h.obj_body:
             p = h.obj_pos(where)
             top = p[2] + h.objects_half_h(where) if where != "pot" else p[2] - h.objects_half_h(where) + 0.02
+            if where == "spatula":
+                top = p[2] + h.objects_half_h(where) - 0.004
             mv.geom_pos[self.steak_g] = (p[0], p[1], top + 0.012)
             up = self.steak["sear"][1 - self.steak["down"]]
             c = STEAK_RAW + (STEAK_BROWN - STEAK_RAW) * min(1.0, up / 30.0)
