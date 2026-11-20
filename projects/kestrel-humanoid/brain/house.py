@@ -173,13 +173,39 @@ MATERIALS = {   # name: (texture or None, rgba, texrepeat per metre, reflectance
 }
 
 
+# physically based surface properties for the Filament renderer (render_real.py): roughness 0 = mirror-smooth,
+# 1 = fully matte; metallic 1 = bare metal. The classic renderer ignores them.
+PBR = {"wood_floor": (0.55, 0), "tile_floor": (0.22, 0), "bath_floor": (0.18, 0), "carpet": (0.95, 0), "paint": (0.85, 0),
+       "grass": (0.9, 0), "deck": (0.7, 0), "rug_red": (0.95, 0), "rug_blue": (0.95, 0), "fabric_grey": (0.9, 0),
+       "fabric_bed": (0.92, 0), "wood_dark": (0.45, 0), "wood_light": (0.5, 0), "worktop": (0.28, 0), "cabinet": (0.4, 0),
+       "steel": (0.28, 1), "black": (0.35, 0), "white": (0.2, 0), "glass": (0.04, 0), "plant": (0.7, 0),
+       "pot": (0.8, 0), "lamp": (0.3, 0)}
+
+
 def assets_xml():
-    out = ['<texture type="skybox" builtin="gradient" rgb1="0.62 0.76 0.94" rgb2="0.95 0.96 1.0" width="256" height="256"/>']
+    out = ['<texture name="house_sky" type="skybox" builtin="gradient" rgb1="0.62 0.76 0.94" rgb2="0.95 0.96 1.0" width="256" '
+           'height="256"/>']
     for f in sorted(TEX_DIR.glob("*.png")):
         out.append(f'<texture name="t_{f.stem}" type="2d" file="{f.as_posix()}"/>')
+    import real_assets as RA                   # photographed textures and a real environment, if fetched
+    real = RA.manifest() or {"textures": {}, "hdri": None}
+    if real.get("hdri"):
+        out[0] = (f'<texture name="house_sky" type="skybox" file="{(RA.DEST / real["hdri"]["cube"]).as_posix()}" '
+                  f'gridsize="3 4" gridlayout=".U..LFRB.D.."/>')
     for name, (tex, rgba, rep, refl) in MATERIALS.items():
+        rough, metal = PBR.get(name, (0.6, 0))
+        r_ = real["textures"].get(name)
+        if r_ is not None:                       # colour, surface relief, occlusion/roughness/metal: real surfaces
+            for kind in ("rgb", "normal", "orm"):
+                out.append(f'<texture name="r_{name}_{kind}" type="2d" file="{(RA.DEST / r_[kind]).as_posix()}"/>')
+            rp = r_["repeat"]
+            out.append(f'<material name="{name}" texrepeat="{rp} {rp}" texuniform="true" reflectance="{refl}">'
+                       f'<layer texture="r_{name}_rgb" role="rgb"/><layer texture="r_{name}_normal" role="normal"/>'
+                       f'<layer texture="r_{name}_orm" role="orm"/></material>')
+            continue
         t = f' texture="t_{tex}" texrepeat="{rep} {rep}" texuniform="true"' if tex else ""
-        out.append(f'<material name="{name}"{t} rgba="{" ".join(map(str, rgba))}" reflectance="{refl}"/>')
+        pbr = f' roughness="{rough}" metallic="{metal}"' if rgba[3] >= 1 else ""      # (transparent: classic shading)
+        out.append(f'<material name="{name}"{t} rgba="{" ".join(map(str, rgba))}" reflectance="{refl}"{pbr}/>')
     return "<asset>\n    " + "\n    ".join(out) + "\n  </asset>"
 
 
