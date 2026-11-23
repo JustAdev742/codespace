@@ -63,8 +63,8 @@ export default function LessonPrint() {
         ) : null}
         <ol className="mt-4 flex flex-col gap-3">
           {l.steps.map((s, i) => {
-            const at = clock;
-            clock += info[i]?.minutes ?? 0;
+            const at = Math.round(clock / 60);
+            clock += info[i]?.seconds ?? 0;
             return (
               <li key={s.id} className="print-step border-t border-[#c8ccd8] pt-3">
                 <p className="font-bold break-words">

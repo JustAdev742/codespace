@@ -65,54 +65,91 @@ export const TEMPLATES = {
   },
   'aviation-through-the-ages': {
     title: 'Aviation Through the Ages',
-    description: 'Ready to run in about 10 minutes, made by Leviticus1001: real photos from the myth of Icarus to giant cargo planes, in two quick rounds.',
+    description: 'A 10-minute presentation and quiz in one, made by Leviticus1001: real photos from the myth of Icarus to giant cargo planes, with the script in the notes.',
     /** The built-in sets its games use, by step: the lesson arrives ready to run (packages/content/src/lessons/aviation.ts). */
-    seededSets: [null, 'lesson-aviation-round-1', null, 'lesson-aviation-round-2'],
-    body: (): LessonBody => ({
-      title: 'Aviation Through the Ages',
-      goals: ['Retell the myth of Daedalus and Icarus, and its lesson', 'Describe the Wright brothers’ first flight in 1903', 'Name a jet, a giant airliner and a giant cargo plane', 'Say which part of a plane makes lift'],
-      standings: true,
-      steps: [
-        {
-          id: stepId(),
-          kind: 'slide',
-          title: 'Aviation Through the Ages',
-          lines: ['Made by Leviticus1001 (@leviticus1001)', 'From a Greek myth to the biggest planes ever built.', 'Two quick rounds. Your points add up, so look closely at every photo!'],
-          image: { kind: 'image', url: '/art/aviation/a380.jpg', alt: 'A Qantas Airbus A380 climbing into a blue sky after take-off' },
-          note: 'About 30 seconds. Ask: “Hands up if you have ever been on a plane.” People dreamed of flying for thousands of years before anyone did it. Two rounds: dreamers and the first flight, then flying today. Every question has a real photo, and points add up across both rounds. Lesson by Leviticus1001 (@leviticus1001), used with permission. Photos: Wikimedia Commons (Adrian Pingstone; John T. Daniels; Leonardo da Vinci, photo Luc Viatour; Heinkel; Dan Nevill, CC BY 2.0; MarcelX42, CC BY-SA 4.0; Zavryk, CC BY-SA 4.0), NASA (parts of a plane), and the original Aeroplanes slides (Icarus engraving, Wright brothers portraits).',
-        },
-        {
-          id: stepId(),
-          kind: 'game',
-          title: 'Round 1: Dreamers and the first flight',
-          setId: null,
-          modeId: 'classic',
-          variantId: null,
-          settings: {},
-          common: { questionTimeSec: 20, shuffleQuestions: false },
-          note: 'About 3 minutes, five questions. If the how-to-play walkthrough comes up, press Start now once most are ready. After each question, read the explanation aloud: Icarus ignored good advice; Leonardo studied birds around 1505; the Wright brothers ran a bicycle shop and flew for 12 seconds on 17 December 1903.',
-        },
-        {
-          id: stepId(),
-          kind: 'slide',
-          title: 'Flying today',
-          lines: ['1939: the first jet plane takes off.', 'Today, computers help pilots find their way, and millions of people fly every day.', 'Some planes are so big they carry other planes’ wings!'],
-          image: { kind: 'image', url: '/art/aviation/b777x.jpg', alt: 'A blue and white Boeing 777X airliner in a huge hangar, with people standing around it' },
-          note: 'About 30 seconds. From wooden gliders to a worldwide network: the first jet engine (Hans von Ohain, 1939) to today’s Boeing 777X. Then: “Lightning round! Twelve seconds a question, and points are doubled.”',
-        },
-        {
-          id: stepId(),
-          kind: 'game',
-          title: 'Round 2: Lightning round',
-          setId: null,
-          modeId: 'classic',
-          variantId: 'classic-lightning',
-          settings: {},
-          common: { questionTimeSec: 12, shuffleQuestions: false },
-          note: 'About 3 minutes, six quick questions. It is the same game as round 1, so press Start now on the walkthrough. The questions: the first jet, the 777X’s folding wingtips, how safe flying is, the BelugaXL, the An-225 Mriya and the parts of a plane. The lesson ends on the class’s points.',
-        },
-      ],
-    }),
+    seededSets: [null, null, null, null, 'lesson-aviation-round-1', null, null, null, 'lesson-aviation-round-2'],
+    body: (): LessonBody => {
+      const art = (name: string, alt: string) => ({ kind: 'image' as const, url: `/art/aviation/${name}.jpg`, alt });
+      const slide = (title: string, seconds: number, lines: string[], image: ReturnType<typeof art>, note: string): LessonStep => ({ id: stepId(), kind: 'slide', title, lines, image, seconds, note });
+      return {
+        title: 'Aviation Through the Ages',
+        goals: ['Retell the myth of Daedalus and Icarus, and its lesson', 'Describe the Wright brothers’ first flight in 1903', 'Name a jet, a giant airliner and a giant cargo plane', 'Say which part of a plane makes lift'],
+        standings: true,
+        steps: [
+          slide(
+            'Aviation Through the Ages',
+            20,
+            ['Made by Leviticus1001 (@leviticus1001)', 'From a Greek myth to the biggest planes ever built.', 'Join with the code on the board. Two quiz rounds, and your points add up!'],
+            art('a380', 'A Qantas Airbus A380 climbing into a blue sky after take-off'),
+            'About 20 seconds, while everyone joins. Say: “Welcome to Aviation Through the Ages! Join on your device with the code on the board. We’re going from a Greek myth to the biggest planes ever built, with two quick quiz rounds on the way.” Lesson by Leviticus1001 (@leviticus1001), used with permission. Photos: Wikimedia Commons (Adrian Pingstone; John T. Daniels; Leonardo da Vinci, photo Luc Viatour; Heinkel; Dan Nevill, CC BY 2.0; MarcelX42, CC BY-SA 4.0; Zavryk, CC BY-SA 4.0), NASA, and the original Aeroplanes slides.',
+          ),
+          slide(
+            'Myths: Daedalus and Icarus',
+            45,
+            ['Daedalus made wings of feathers and wax to escape Crete.', 'Too low: sea spray weighs down the feathers.', 'Too high: the sun melts the wax.', 'Icarus flew too high. Listen to good advice!'],
+            art('icarus', 'An old coloured engraving: Daedalus flies on feathered wings while Icarus falls towards the sea'),
+            'Levi, about 45 seconds. “Daedalus was a brilliant inventor from Athens. When King Minos imprisoned him and his son Icarus on the island of Crete, Daedalus made wings from feathers and wax so they could escape by flying. He warned Icarus not to fly too low, because the sea spray would weigh down the feathers, and not too high, because the sun would melt the wax. Icarus thought it was so cool that he ignored the advice, climbed towards the sun, lost his wings and drowned. This story is used as a warning not to ignore good advice.”',
+          ),
+          slide(
+            'Leonardo da Vinci',
+            35,
+            ['An Italian inventor and artist, 1452 to 1519.', 'About 1505: the Codex on the Flight of Birds.', 'His flying machines never flew, but his ideas did.'],
+            art('leonardo', 'A page of Leonardo da Vinci’s notebook with ink sketches of a flapping-wing machine and his mirror writing'),
+            'Levi, about 35 seconds. “Leonardo Da Vinci was an Italian Renaissance polymath, born in 1452. He never got a flying machine off the ground, but around 1505 he wrote the Codex on the Flight of Birds, which looks at how birds’ wings catch air and how often they flap. His idea of a flying machine is one we now have the technology to make real.”',
+          ),
+          slide(
+            'The Wright brothers',
+            45,
+            ['17 December 1903, near Kitty Hawk, North Carolina', 'The first powered flight: 12 seconds and 36.6 metres', 'By 1905: over 30 minutes in the air'],
+            art('wright-flight', 'The famous 1903 photo of the Wright Flyer lifting off the sand at Kitty Hawk, with Wilbur Wright running beside it'),
+            'Levi, about 45 seconds. “Orville and Wilbur Wright owned a bicycle shop in Dayton, Ohio, and that mechanical background helped them build the Wright Flyer, the first successful powered, controlled, heavier-than-air aeroplane. On December 17, 1903, near Kitty Hawk, North Carolina, Orville flew it for 12 seconds and 36.6 metres. Later that day Wilbur flew for 59 seconds. By 1905 the Wright Flyer III could fly for over 30 minutes and do figure eights.” Then: “Quiz time! Round 1.”',
+          ),
+          {
+            id: stepId(),
+            kind: 'game',
+            title: 'Round 1: Dreamers and the first flight',
+            setId: null,
+            modeId: 'classic',
+            variantId: null,
+            settings: {},
+            common: { questionTimeSec: 15, shuffleQuestions: false },
+            note: 'About 2½ minutes: five questions, 15 seconds each. If the how-to-play walkthrough comes up, press Start now once most are ready. At each reveal, read the explanation only if there is time.',
+          },
+          slide(
+            'Commercial flights',
+            40,
+            ['1939: the first jet engine, by Hans von Ohain', 'Today: the Boeing 777X, whose wingtips fold up', 'About one fatal accident in every 5.6 million flights (2021 to 2025)'],
+            art('b777x', 'A blue and white Boeing 777X airliner in a huge hangar, with people standing around it'),
+            'Ella, about 40 seconds. “From the first jet engine in 1939, made by Hans von Ohain, to the latest Boeing 777X, aviation has transformed massively over the past century. Fragile wooden gliders became a fast, mass-market and highly automated global network, and we rely on computerised navigation to help fly safely. It’s one of the safest ways to travel: from 2021 to 2025 there was about one fatal accident for every 5.6 million flights.”',
+          ),
+          slide(
+            'Cargo planes',
+            50,
+            ['Airbus BelugaXL: a hold big enough for whole aircraft wings', 'Antonov An-124: lifts over 100 tonnes', 'Antonov An-225 Mriya: about 250 tonnes, the most ever'],
+            art('beluga', 'The Airbus BelugaXL cargo plane in flight, painted with eyes and a smile'),
+            'Ella, about 50 seconds. “Cargo planes aren’t just passenger jets with the seats ripped out. Most move everyday stuff like parcels, electronics and fresh food around the world. My favourite is the Airbus BelugaXL. It’s named after the beluga whale, and once you see that big rounded head, you get why. Its hold can swallow whole aircraft wings. For lifting power, the Antonov An-124 can carry over 100 tonnes. Only one plane ever beat it, the An-225 Mriya, at around 250 tonnes. There was only ever one, and it was destroyed in its hangar near Kyiv on 27 February 2022. Ukraine has said it wants to finish a second one.”',
+          ),
+          slide(
+            'Parts of a plane',
+            25,
+            ['The wings make lift.', 'The engines push the plane forward.', 'The rudder and elevator on the tail steer it.'],
+            art('plane-parts', 'A diagram of a plane with its parts labelled, including the wings, jet engines, rudder, elevator, flaps and cockpit'),
+            'About 25 seconds. “Here are the main parts of a plane. The wings make lift, the jet engines push it forward, and the rudder and elevator on the tail steer it. Remember them, because they’re in the lightning round!”',
+          ),
+          {
+            id: stepId(),
+            kind: 'game',
+            title: 'Round 2: Lightning round',
+            setId: null,
+            modeId: 'classic',
+            variantId: 'classic-lightning',
+            settings: {},
+            common: { questionTimeSec: 12, shuffleQuestions: false },
+            note: 'About 2½ minutes: six questions, 12 seconds each, double points. It is the same game as round 1, so press Start now on the walkthrough. Then press Finish the lesson: everyone sees today’s goals and the final points.',
+          },
+        ],
+      };
+    },
   },
 } as const;
 export type TemplateId = keyof typeof TEMPLATES;
@@ -153,7 +190,7 @@ export function modeTitle(modeId: string, variantId: string | null): string {
  */
 export function stepMinutes(step: LessonStep, questionCount: number | null): number {
   // A slide with a classroom tool takes the time planned for the tool (making).
-  if (step.kind === 'slide') return step.tool ? Math.max(1, Math.ceil(step.tool.seconds / 60)) : 2;
+  if (step.kind === 'slide') return step.tool ? Math.max(1, Math.ceil(step.tool.seconds / 60)) : step.seconds ? Math.max(1, Math.round(step.seconds / 60)) : 2;
   if (step.kind === 'discussion') return Math.ceil(step.seconds / 60) + 1;
   const variant = step.variantId ? getVariant(step.variantId) : undefined;
   const mode = getMode(variant?.meta.modeId ?? step.modeId);
@@ -169,6 +206,20 @@ export function stepMinutes(step: LessonStep, questionCount: number | null): num
   const each = mode.meta.pacing === 'host' ? sec * 0.8 + 9 : sec * 0.6;
   // Getting everyone into the game and the results at the end take a minute or so.
   return Math.max(1, Math.round((n * each + 10) / 60)) + 1;
+}
+
+/**
+ * About how many seconds a step takes, for adding up a whole lesson: a slide with a planned time
+ * counts that time (a 45-second presentation slide is not two minutes), anything else its minutes.
+ */
+export function stepSeconds(step: LessonStep, questionCount: number | null): number {
+  if (step.kind === 'slide' && !step.tool && step.seconds) return step.seconds;
+  return stepMinutes(step, questionCount) * 60;
+}
+
+/** A whole lesson's length in minutes, from its steps' seconds. */
+export function lessonMinutes(seconds: readonly number[]): number {
+  return Math.round(seconds.reduce((n, s) => n + s, 0) / 60);
 }
 
 /**

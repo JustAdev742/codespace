@@ -443,7 +443,7 @@ function Editor({ detail }: { detail: LessonDetail }) {
     }
   };
 
-  const total = steps.reduce((n, s, i) => n + (infoFor(s, i)?.minutes ?? 0), 0) || detail.totalMinutes;
+  const total = Math.round(steps.reduce((n, s, i) => n + (infoFor(s, i)?.seconds ?? 0), 0) / 60) || detail.totalMinutes;
   const lastRun = detail.lastRun;
   const canCarry = lastRun && !lastRun.finished && (lastRun.games > 0 || lastRun.index > 0);
   return (

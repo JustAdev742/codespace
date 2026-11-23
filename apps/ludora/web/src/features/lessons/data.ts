@@ -22,6 +22,8 @@ export interface StepInfo {
   setTitle: string | null;
   questionCount: number | null;
   minutes: number;
+  /** The same, in seconds, for adding up a lesson (a short presentation slide counts its own time). */
+  seconds: number;
   /** Why this step cannot run yet, if it cannot. */
   problem: string | null;
 }

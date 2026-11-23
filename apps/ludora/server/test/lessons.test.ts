@@ -172,9 +172,11 @@ describe('making lessons', () => {
     const made = await teacher.client.post('/api/lessons', { template: 'aviation-through-the-ages' });
     const got = await teacher.client.get(`/api/lessons/${made.body.id}`);
     expect(got.body.lesson.title).toBe('Aviation Through the Ages');
-    expect(got.body.info.map((s: { problem: string | null }) => s.problem)).toEqual([null, null, null, null]);
-    expect(got.body.info.map((s: { questionCount: number | null }) => s.questionCount)).toEqual([null, 5, null, 6]);
-    expect(got.body.totalMinutes).toBeLessThanOrEqual(10);
+    expect(got.body.info.map((s: { problem: string | null }) => s.problem)).toEqual(Array(9).fill(null));
+    expect(got.body.info.map((s: { questionCount: number | null }) => s.questionCount)).toEqual([null, null, null, null, 5, null, null, null, 6]);
+    // Presentation and quizzes together: ten minutes, not two for every slide.
+    expect(got.body.totalMinutes).toBe(10);
+    expect(got.body.info[1].seconds).toBe(45);
     const seeded = await t.db.select({ visibility: questionSets.visibility, official: questionSets.isOfficial }).from(questionSets).where(eq(questionSets.seedKey, 'lesson-aviation-round-1'));
     expect(seeded).toEqual([{ visibility: 'unlisted', official: true }]);
   });

@@ -113,6 +113,8 @@ function GameFields({ step, setTitle, onChange }: { step: GameStep; setTitle: st
 }
 
 const SECONDS = [30, 60, 90, 120, 180, 300, 600];
+/** How long a teacher can plan to present a slide for. */
+const SLIDE_SECONDS = [20, 30, 45, 60, 90, 180, 300];
 
 export function StepDialog({ open, step, setTitle, onOpenChange, onSave }: { open: boolean; step: LessonStep | null; setTitle: string | null; onOpenChange: (v: boolean) => void; onSave: (s: LessonStep, setTitle?: string) => void }) {
   const [draft, setDraft] = useState<LessonStep | null>(step);
@@ -203,7 +205,20 @@ export function StepDialog({ open, step, setTitle, onOpenChange, onSave }: { ope
                     </Select>
                   )}
                 </Field>
-              ) : null}
+              ) : (
+                <Field label="Time to spend on it" hint="For presenting: the lesson's length adds this up.">
+                  {(p) => (
+                    <Select {...p} value={draft.seconds ? String(draft.seconds) : ''} onChange={(e) => setDraft({ ...draft, seconds: e.target.value ? Number(e.target.value) : undefined })}>
+                      <option value="">About 2 minutes</option>
+                      {SLIDE_SECONDS.map((s) => (
+                        <option key={s} value={s}>
+                          {s < 60 ? `${s} seconds` : s === 60 ? '1 minute' : s % 60 ? `${Math.floor(s / 60)} minutes ${s % 60} seconds` : `${s / 60} minutes`}
+                        </option>
+                      ))}
+                    </Select>
+                  )}
+                </Field>
+              )}
             </div>
           </>
         ) : (

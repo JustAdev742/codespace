@@ -15,7 +15,7 @@ import { isModePlayableBy } from '../modes/service.ts';
 import { notify } from '../notifications/service.ts';
 import { MAX_ROOMS_PER_HOST } from '../../realtime/manager.ts';
 import type { Room } from '../../realtime/room.ts';
-import { TEMPLATES, languageProblem, modeTitle, stepId, stepMinutes, stepTitle, type Tally, type TemplateId } from './model.ts';
+import { TEMPLATES, languageProblem, lessonMinutes, modeTitle, stepId, stepMinutes, stepSeconds, stepTitle, type Tally, type TemplateId } from './model.ts';
 import { LessonRun, screenFor, type RunGame, type RunState } from './run.ts';
 import { newRoomOptions } from '../rooms/options.ts';
 
@@ -113,8 +113,9 @@ async function describe(db: Db, row: LessonRow, auth: AuthContext, manager: AppD
   const info = steps.map((s) => {
     const set = s.kind === 'game' && s.setId ? sets.get(s.setId) : undefined;
     const minutes = stepMinutes(s, set?.questionCount ?? null);
+    const seconds = stepSeconds(s, set?.questionCount ?? null);
     const problem = s.kind !== 'game' ? null : !s.setId ? 'Choose a question set.' : !set ? 'Its question set was deleted. Choose another.' : !set.playable ? 'Its question set is private to its owner. Choose another, or ask them for a copy.' : null;
-    return { title: stepTitle(s, set?.title ?? null), modeTitle: s.kind === 'game' ? modeTitle(s.modeId, s.variantId) : null, setTitle: set?.title ?? null, questionCount: set?.questionCount ?? null, minutes, problem };
+    return { title: stepTitle(s, set?.title ?? null), modeTitle: s.kind === 'game' ? modeTitle(s.modeId, s.variantId) : null, setTitle: set?.title ?? null, questionCount: set?.questionCount ?? null, minutes, seconds, problem };
   });
   const [cls] = row.classId ? await db.select({ name: classes.name }).from(classes).where(eq(classes.id, row.classId)).limit(1) : [];
   const [run] = await db.select().from(lessonRuns).where(and(eq(lessonRuns.lessonId, row.id), eq(lessonRuns.hostUserId, auth.user.id))).orderBy(desc(lessonRuns.startedAt)).limit(1);
@@ -122,7 +123,7 @@ async function describe(db: Db, row: LessonRow, auth: AuthContext, manager: AppD
   return {
     lesson: { id: row.id, ...bodyOf(row), classId: row.classId, className: cls?.name ?? null, startsAt: row.startsAt?.toISOString() ?? null, updatedAt: row.updatedAt.toISOString() },
     info,
-    totalMinutes: info.reduce((n, s) => n + s.minutes, 0),
+    totalMinutes: lessonMinutes(info.map((s) => s.seconds)),
     lastRun: run ? { id: run.id, index: run.stepIndex, finished: Boolean(run.finishedAt), startedAt: run.startedAt.toISOString(), games: (run.games as RunGame[]).length } : null,
     liveCode: live?.code ?? null,
   };
@@ -196,7 +197,7 @@ export async function lessonRoutes(app: FastifyInstance, deps: AppDeps) {
           title: r.title,
           steps: steps.length,
           games: steps.filter((s) => s.kind === 'game').length,
-          minutes: steps.reduce((n, s) => n + stepMinutes(s, s.kind === 'game' && s.setId ? (sets.get(s.setId)?.questionCount ?? null) : null), 0),
+          minutes: lessonMinutes(steps.map((s) => stepSeconds(s, s.kind === 'game' && s.setId ? (sets.get(s.setId)?.questionCount ?? null) : null))),
           className: r.classId ? (classNames.get(r.classId) ?? null) : null,
           startsAt: r.startsAt?.toISOString() ?? null,
           updatedAt: r.updatedAt.toISOString(),

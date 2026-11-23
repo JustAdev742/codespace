@@ -57,6 +57,8 @@ export const lessonSlideStepSchema = z.object({
   image: mediaSchema.nullable().default(null),
   /** A classroom tool on the big screen with this slide (a timer, a picker, a check-in...). */
   tool: lessonSlideToolSchema.optional(),
+  /** How long the teacher plans to talk over it, in seconds (a presentation slide). Unset: two minutes. A tool's own time wins. */
+  seconds: z.number().int().min(10).max(600).optional(),
   note,
 });
 

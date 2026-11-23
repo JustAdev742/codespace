@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { LessonStep } from '@ludora/shared';
-import { TEMPLATES, languageProblem, lessonPoints, rankTally, stepMinutes, stepTitle } from '../src/modules/lessons/model.ts';
+import { TEMPLATES, languageProblem, lessonMinutes, lessonPoints, rankTally, stepMinutes, stepSeconds, stepTitle } from '../src/modules/lessons/model.ts';
 import { lessonBodySchema } from '@ludora/shared';
 
 const standing = (playerId: string, rank: number, correct: number, isBot = false) => ({ playerId, name: playerId, rank, score: 0, label: '', teamId: null, isBot, stats: { correct, answered: 3 } });
@@ -46,10 +46,17 @@ describe('templates and titles', () => {
   it('every template is a valid lesson', () => {
     for (const t of Object.values(TEMPLATES)) expect(lessonBodySchema.safeParse(t.body()).success).toBe(true);
   });
-  it('the Aviation lesson is planned for ten minutes or less', () => {
-    const counts = [null, 5, null, 6];
-    const minutes = TEMPLATES['aviation-through-the-ages'].body().steps.reduce((n, s, i) => n + stepMinutes(s, counts[i] ?? null), 0);
-    expect(minutes).toBeLessThanOrEqual(10);
+  it('a presentation slide counts its own time, and a lesson adds up in seconds', () => {
+    const talk: LessonStep = { id: 's', kind: 'slide', title: 'Myths', lines: [], image: null, seconds: 45, note: '' };
+    expect(stepSeconds(talk, null)).toBe(45);
+    expect(stepMinutes(talk, null)).toBe(1);
+    expect(stepSeconds({ ...talk, seconds: undefined }, null)).toBe(120);
+    expect(lessonMinutes([45, 45, 45, 45])).toBe(3);
+  });
+  it('the Aviation lesson, presentation and quizzes, is planned for ten minutes', () => {
+    const counts = [null, null, null, null, 5, null, null, null, 6];
+    const steps = TEMPLATES['aviation-through-the-ages'].body().steps;
+    expect(lessonMinutes(steps.map((s, i) => stepSeconds(s, counts[i] ?? null)))).toBe(10);
   });
   it('titles a game by its own title, or its mode and set', () => {
     const g: LessonStep = { id: 'g', kind: 'game', title: '', setId: null, modeId: 'classic', variantId: 'classic-lightning', settings: {}, common: {}, note: '' };
