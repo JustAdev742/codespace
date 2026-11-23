@@ -76,6 +76,20 @@ function checkBody(body: LessonBody) {
 }
 
 /** Each set a lesson uses: its title, size and whether this teacher may play it. */
+/** A ready-made template names its built-in sets by seedKey; the new lesson gets their ids. */
+async function fillSeededSets(db: Db, template: TemplateId, body: LessonBody) {
+  const t = TEMPLATES[template];
+  const keys: readonly (string | null)[] = 'seededSets' in t ? t.seededSets : [];
+  const wanted = keys.filter((k): k is string => k !== null);
+  if (!wanted.length) return;
+  const rows = await db.select({ id: questionSets.id, seedKey: questionSets.seedKey }).from(questionSets).where(and(inArray(questionSets.seedKey, wanted), isNull(questionSets.deletedAt)));
+  const ids = new Map(rows.map((r) => [r.seedKey, r.id]));
+  body.steps.forEach((step, i) => {
+    const key = keys[i];
+    if (step.kind === 'game' && key) step.setId = ids.get(key) ?? null;
+  });
+}
+
 async function setsFor(db: Db, steps: LessonStep[], auth: AuthContext) {
   const ids = [...new Set(steps.flatMap((s) => (s.kind === 'game' && s.setId ? [s.setId] : [])))];
   const rows = ids.length ? await db.select().from(questionSets).where(inArray(questionSets.id, ids)) : [];
@@ -163,7 +177,8 @@ export async function lessonRoutes(app: FastifyInstance, deps: AppDeps) {
 
   app.get('/api/lessons/templates', async (req) => {
     teacherAuth(req);
-    return { templates: Object.entries(TEMPLATES).map(([id, t]) => ({ id, title: t.title, description: t.description, steps: t.body().steps.length })) };
+    // A ready-made lesson arrives with its own question sets; the others leave them to the teacher.
+    return { templates: Object.entries(TEMPLATES).map(([id, t]) => ({ id, title: t.title, description: t.description, steps: t.body().steps.length, ready: 'seededSets' in t })) };
   });
 
   app.get('/api/lessons', async (req, reply) => {
@@ -201,6 +216,7 @@ export async function lessonRoutes(app: FastifyInstance, deps: AppDeps) {
     const auth = teacherAuth(req);
     const body = parse(createSchema, req.body);
     const base: LessonBody = body.template ? TEMPLATES[body.template].body() : { title: 'New lesson', goals: [], standings: true, steps: [] };
+    if (body.template) await fillSeededSets(db, body.template, base);
     if (body.title) base.title = body.title;
     if (body.step) base.steps.push({ ...body.step, id: stepId() });
     checkBody(base);

@@ -8,6 +8,7 @@ import {
   PACKS,
   QUESTS,
   SETS,
+  LESSON_SETS,
 } from '@ludora/content';
 import type { Db } from './client.ts';
 import {
@@ -139,7 +140,9 @@ export async function seedContent(db: Db, opts: SeedOptions = {}): Promise<{ ins
       const q = tx.insert(achievements).values(values);
       await (force ? q.onConflictDoUpdate({ target: achievements.id, set: values }) : q.onConflictDoNothing());
     }
-    for (const s of SETS) {
+    // The library's sets are public; a lesson template's own sets are unlisted (playable, not listed).
+    const seededSets = [...SETS.map((s) => [s, 'public'] as const), ...LESSON_SETS.map((s) => [s, 'unlisted'] as const)];
+    for (const [s, visibility] of seededSets) {
       const values = {
         seedKey: s.seedKey,
         ownerId: null,
@@ -149,7 +152,7 @@ export async function seedContent(db: Db, opts: SeedOptions = {}): Promise<{ ins
         gradeBand: s.gradeBand ?? null,
         language: 'en',
         tags: s.tags,
-        visibility: 'public',
+        visibility,
         cover: s.cover,
         questions: s.questions,
         questionCount: s.questions.length,
@@ -163,7 +166,7 @@ export async function seedContent(db: Db, opts: SeedOptions = {}): Promise<{ ins
           set: { title: values.title, description: values.description, subject: values.subject, gradeBand: values.gradeBand, tags: values.tags, cover: values.cover, questions: values.questions, questionCount: values.questionCount, updatedAt: new Date() },
         });
     }
-    inserted.sets = SETS.length;
+    inserted.sets = seededSets.length;
     await tx.insert(economyConfig).values({ key: 'rules', value: DEFAULT_RULES }).onConflictDoNothing();
     for (const f of DEFAULT_FLAGS) {
       await tx

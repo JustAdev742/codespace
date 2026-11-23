@@ -4,6 +4,7 @@ import { createTestApp, registered, type TestContext } from './helpers.ts';
 import { lessonRuns, lessons, notifications, questionSets } from '../src/db/schema.ts';
 import type { Room } from '../src/realtime/room.ts';
 import { lessonSavesIdle } from '../src/modules/lessons/routes.ts';
+import { seedContent } from '../src/db/seed.ts';
 
 /*
  * Lessons: every route against the owner, another teacher (404, as if the lesson did not exist)
@@ -152,7 +153,7 @@ describe('making lessons', () => {
 
   it('starts from a template, and adds a step from anywhere', async () => {
     const templates = await teacher.client.get('/api/lessons/templates');
-    expect(templates.body.templates.map((x: { id: string }) => x.id)).toEqual(['starter-main-exit', 'revision-carousel', 'friday-quiz']);
+    expect(templates.body.templates.map((x: { id: string }) => x.id)).toEqual(['starter-main-exit', 'revision-carousel', 'friday-quiz', 'aviation-through-the-ages']);
     const made = await teacher.client.post('/api/lessons', { template: 'friday-quiz' });
     const got = await teacher.client.get(`/api/lessons/${made.body.id}`);
     expect(got.body.lesson.standings).toBe(true);
@@ -164,6 +165,18 @@ describe('making lessons', () => {
     // A new lesson straight from a set's page.
     const fromSet = await teacher.client.post('/api/lessons', { title: 'From a set', step: { id: 'x', kind: 'game', setId, modeId: 'classic' } });
     expect((await teacher.client.get(`/api/lessons/${fromSet.body.id}`)).body.info[0].title).toBe('Classic: Animals');
+  });
+
+  it('a ready-made lesson arrives with its sets, runs in ten minutes or less, and its sets stay out of the library', async () => {
+    await seedContent(t.db);
+    const made = await teacher.client.post('/api/lessons', { template: 'aviation-through-the-ages' });
+    const got = await teacher.client.get(`/api/lessons/${made.body.id}`);
+    expect(got.body.lesson.title).toBe('Aviation Through the Ages');
+    expect(got.body.info.map((s: { problem: string | null }) => s.problem)).toEqual([null, null, null, null]);
+    expect(got.body.info.map((s: { questionCount: number | null }) => s.questionCount)).toEqual([null, 5, null, 6]);
+    expect(got.body.totalMinutes).toBeLessThanOrEqual(10);
+    const seeded = await t.db.select({ visibility: questionSets.visibility, official: questionSets.isOfficial }).from(questionSets).where(eq(questionSets.seedKey, 'lesson-aviation-round-1'));
+    expect(seeded).toEqual([{ visibility: 'unlisted', official: true }]);
   });
 
   it('puts slide text, goals and titles through the language filter, and refuses modes played alone', async () => {

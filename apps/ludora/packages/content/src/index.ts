@@ -10,6 +10,7 @@ export { COLLECTIONS, GLIMS } from './glims.ts';
 export { COSMETICS } from './cosmetics.ts';
 export { QUESTS, ACHIEVEMENTS } from './progression.ts';
 export { SETS } from './sets/index.ts';
+export { LESSON_SETS } from './lessons/aviation.ts';
 export { STANDARD_WEIGHTS } from './packs.ts';
 export { GLIM_PRICES, FROST_FESTIVAL } from './shop.ts';
 export { MONTHLY, MONTHLY_PREFIX, MONTHLY_COLLECTIONS, MONTHLY_GLIMS, MONTHLY_ACCESSORIES, MONTHLY_PACKS, MONTHLY_LISTINGS, currentDrop, monthWindow } from './monthly.ts';

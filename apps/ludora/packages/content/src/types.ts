@@ -146,6 +146,6 @@ export interface SeedSet {
   subject: Subject;
   gradeBand?: string;
   tags: string[];
-  cover: { glyph: SetCoverGlyph; hue: number };
+  cover: { glyph: SetCoverGlyph; hue: number; image?: { kind: 'image'; url: string; alt: string } };
   questions: Question[];
 }

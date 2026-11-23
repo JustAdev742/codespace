@@ -63,6 +63,57 @@ export const TEMPLATES = {
       ],
     }),
   },
+  'aviation-through-the-ages': {
+    title: 'Aviation Through the Ages',
+    description: 'Ready to run in about 10 minutes, made by Leviticus1001: real photos from the myth of Icarus to giant cargo planes, in two quick rounds.',
+    /** The built-in sets its games use, by step: the lesson arrives ready to run (packages/content/src/lessons/aviation.ts). */
+    seededSets: [null, 'lesson-aviation-round-1', null, 'lesson-aviation-round-2'],
+    body: (): LessonBody => ({
+      title: 'Aviation Through the Ages',
+      goals: ['Retell the myth of Daedalus and Icarus, and its lesson', 'Describe the Wright brothers’ first flight in 1903', 'Name a jet, a giant airliner and a giant cargo plane', 'Say which part of a plane makes lift'],
+      standings: true,
+      steps: [
+        {
+          id: stepId(),
+          kind: 'slide',
+          title: 'Aviation Through the Ages',
+          lines: ['Made by Leviticus1001 (@leviticus1001)', 'From a Greek myth to the biggest planes ever built.', 'Two quick rounds. Your points add up, so look closely at every photo!'],
+          image: { kind: 'image', url: '/art/aviation/a380.jpg', alt: 'A Qantas Airbus A380 climbing into a blue sky after take-off' },
+          note: 'About 30 seconds. Ask: “Hands up if you have ever been on a plane.” People dreamed of flying for thousands of years before anyone did it. Two rounds: dreamers and the first flight, then flying today. Every question has a real photo, and points add up across both rounds. Lesson by Leviticus1001 (@leviticus1001), used with permission. Photos: Wikimedia Commons (Adrian Pingstone; John T. Daniels; Leonardo da Vinci, photo Luc Viatour; Heinkel; Dan Nevill, CC BY 2.0; MarcelX42, CC BY-SA 4.0; Zavryk, CC BY-SA 4.0), NASA (parts of a plane), and the original Aeroplanes slides (Icarus engraving, Wright brothers portraits).',
+        },
+        {
+          id: stepId(),
+          kind: 'game',
+          title: 'Round 1: Dreamers and the first flight',
+          setId: null,
+          modeId: 'classic',
+          variantId: null,
+          settings: {},
+          common: { questionTimeSec: 20, shuffleQuestions: false },
+          note: 'About 3 minutes, five questions. If the how-to-play walkthrough comes up, press Start now once most are ready. After each question, read the explanation aloud: Icarus ignored good advice; Leonardo studied birds around 1505; the Wright brothers ran a bicycle shop and flew for 12 seconds on 17 December 1903.',
+        },
+        {
+          id: stepId(),
+          kind: 'slide',
+          title: 'Flying today',
+          lines: ['1939: the first jet plane takes off.', 'Today, computers help pilots find their way, and millions of people fly every day.', 'Some planes are so big they carry other planes’ wings!'],
+          image: { kind: 'image', url: '/art/aviation/b777x.jpg', alt: 'A blue and white Boeing 777X airliner in a huge hangar, with people standing around it' },
+          note: 'About 30 seconds. From wooden gliders to a worldwide network: the first jet engine (Hans von Ohain, 1939) to today’s Boeing 777X. Then: “Lightning round! Twelve seconds a question, and points are doubled.”',
+        },
+        {
+          id: stepId(),
+          kind: 'game',
+          title: 'Round 2: Lightning round',
+          setId: null,
+          modeId: 'classic',
+          variantId: 'classic-lightning',
+          settings: {},
+          common: { questionTimeSec: 12, shuffleQuestions: false },
+          note: 'About 3 minutes, six quick questions. It is the same game as round 1, so press Start now on the walkthrough. The questions: the first jet, the 777X’s folding wingtips, how safe flying is, the BelugaXL, the An-225 Mriya and the parts of a plane. The lesson ends on the class’s points.',
+        },
+      ],
+    }),
+  },
 } as const;
 export type TemplateId = keyof typeof TEMPLATES;
 

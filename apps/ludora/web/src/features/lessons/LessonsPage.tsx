@@ -105,19 +105,22 @@ export default function LessonsPage() {
         <h2 id="templates" className="mb-1 flex items-center gap-2 font-display text-2xl font-bold">
           <LayoutTemplate className="size-6 text-text-3" aria-hidden /> Start from a template
         </h2>
-        <p className="mb-4 text-sm text-text-2">Each template sets out the steps; you choose the question sets.</p>
+        <p className="mb-4 text-sm text-text-2">Each template sets out the steps, and you choose the question sets. One marked Ready to run comes with its own.</p>
         {templates.isError ? (
           <ErrorNotice message="Templates could not be loaded." onRetry={() => void templates.refetch()} />
         ) : templates.isPending ? (
           <Skeleton className="h-24" />
         ) : (
-          <ul className="grid grid-cols-1 gap-3 md:grid-cols-3">
+          <ul className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
             {templates.data.templates.map((t) => (
               <li key={t.id} className="flex flex-col gap-2 rounded-[var(--radius-m)] border border-line bg-surface-2 p-4">
                 <h3 className="font-display text-xl leading-tight font-bold">{t.title}</h3>
                 <p className="text-sm text-text-2">{t.description}</p>
                 <div className="mt-auto flex items-center justify-between gap-2 pt-1">
-                  <Badge>{plural(t.steps, 'step')}</Badge>
+                  <span className="flex flex-wrap gap-1.5">
+                    <Badge>{plural(t.steps, 'step')}</Badge>
+                    {t.ready ? <Badge tone="mint">Ready to run</Badge> : null}
+                  </span>
                   <Button size="sm" loading={busy === t.id} onClick={() => void create(t.id, { template: t.id })} aria-label={`Use this template: ${t.title}`}>
                     Use this
                   </Button>

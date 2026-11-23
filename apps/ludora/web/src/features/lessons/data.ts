@@ -39,6 +39,8 @@ export interface TemplateSummary {
   title: string;
   description: string;
   steps: number;
+  /** Comes with its own question sets, so it can run straight away. */
+  ready: boolean;
 }
 
 export interface RunReport {

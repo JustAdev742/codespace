@@ -46,6 +46,11 @@ describe('templates and titles', () => {
   it('every template is a valid lesson', () => {
     for (const t of Object.values(TEMPLATES)) expect(lessonBodySchema.safeParse(t.body()).success).toBe(true);
   });
+  it('the Aviation lesson is planned for ten minutes or less', () => {
+    const counts = [null, 5, null, 6];
+    const minutes = TEMPLATES['aviation-through-the-ages'].body().steps.reduce((n, s, i) => n + stepMinutes(s, counts[i] ?? null), 0);
+    expect(minutes).toBeLessThanOrEqual(10);
+  });
   it('titles a game by its own title, or its mode and set', () => {
     const g: LessonStep = { id: 'g', kind: 'game', title: '', setId: null, modeId: 'classic', variantId: 'classic-lightning', settings: {}, common: {}, note: '' };
     expect(stepTitle(g, 'Fractions')).toBe('Lightning Round: Fractions');
