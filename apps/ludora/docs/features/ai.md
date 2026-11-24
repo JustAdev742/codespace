@@ -99,3 +99,31 @@ made before asking (then the panel waits for Suggest) and `ready` to say what is
   of Anthropic only (only that table may be edited in this programme).
 - No real provider was ever called: everything is tested against a fake OpenAI-compatible server
   and stubbed browser routes.
+
+## AI review of bans, suspensions and large grants
+
+Off by default. A super administrator turns it on under **Staff → AI helpers → AI review**:
+paste an Anthropic API key from the Claude Console (or set `ANTHROPIC_API_KEY` on the server),
+then **Switch on**. The saved key is encrypted with a key derived from `IP_HASH_KEY`; if that
+changes, save the key again. A Claude subscription (Pro or Max) is not an API key.
+
+When it is on, a ban, a suspension, or a grant at or above the thresholds (10,000 Sparks or 500
+Moonstones by default, per account; a class grant counts the total) needs an approving review:
+
+1. **First check, no API call.** A reason under 15 characters, with fewer than three real words,
+   long runs of one letter or a 25+ letter "word" (`ihfjosifjsdoifjso`) is declined at once.
+2. **The investigator** (`server/src/modules/aiReview/investigator.ts`): Claude with read-only
+   tools over the account's reports, moderation history, activity log, games and integrity
+   signals, money, sign-ins, made content, and the asking staff member's own recent actions and
+   ties to the account. It returns a verdict with the evidence ids it relied on.
+3. **Server checks on the verdict.** Evidence ids it never fetched are dropped. An approval with
+   a reason it did not rate "clear", without having read the account and the staff member, or
+   (for a ban or suspension) without one piece of evidence beyond those, becomes a decline.
+4. **The gate** (`gate.ts`), inside the action's own transaction: the review must be approved,
+   by the same staff member, for exactly the same action and reason, within 30 minutes, and
+   unused. It is marked used in the same transaction.
+
+A super administrator can override a decline with a written reason of 30+ characters; that is
+audited. Email addresses, passwords, network addresses, session tokens and dates of birth are
+never sent; player-written text is passed as quoted data. The privacy policy mentions the review
+only while it is on.

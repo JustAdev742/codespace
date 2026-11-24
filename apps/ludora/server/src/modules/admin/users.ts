@@ -30,6 +30,7 @@ import {
 } from '../../db/schema.ts';
 import { noStore } from '../../http/context.ts';
 import { conflict, forbidden } from '../../lib/errors.ts';
+import { useReview } from '../aiReview/gate.ts';
 import { CLEAR_ALPHABET, randomCode, recoveryCode } from '../../lib/crypto.ts';
 import { parse } from '../../lib/validate.ts';
 import { hashSecret, normalizeRecovery, revokeAllSessions } from '../auth/service.ts';
@@ -63,6 +64,8 @@ const moderateSchema = z.object({
   durationHours: z.number().int().min(1).max(24 * 365).optional(),
   reportId: z.number().int().positive().optional(),
   confirm: z.string().max(80).optional(),
+  /** An approved AI review of exactly this ban or suspension, when the site requires one (aiReview). */
+  reviewId: z.string().uuid().optional(),
 });
 
 const roleSchema = z.object({
@@ -323,6 +326,13 @@ export async function adminUserRoutes(app: FastifyInstance, deps: AppDeps) {
           patch.nameChangedAt = now;
           break;
       }
+      // A ban or a suspension goes ahead only with an approved AI review of exactly this action, when the site requires one.
+      const reviewId =
+        body.action === 'ban'
+          ? await useReview(tx, deps, auth, { kind: 'ban', userId: id, reason: body.reason }, body.reviewId)
+          : body.action === 'suspend'
+            ? await useReview(tx, deps, auth, { kind: 'suspend', userId: id, reason: body.reason, durationHours: body.durationHours ?? null }, body.reviewId)
+            : null;
       let updated = u;
       if (Object.keys(patch).length) {
         [updated] = await tx.update(users).set({ ...patch, updatedAt: now }).where(eq(users.id, id)).returning() as [UserRow];
@@ -346,7 +356,7 @@ export async function adminUserRoutes(app: FastifyInstance, deps: AppDeps) {
         targetName: u.username ?? u.displayName,
         reason: body.reason,
         before,
-        after: moderationState(updated),
+        after: { ...moderationState(updated), ...(reviewId ? { aiReview: reviewId } : {}) },
       });
       return { actionId: action!.id, signOut, user: moderationState(updated) };
     });

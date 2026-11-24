@@ -22,6 +22,8 @@ export const ERROR_CODES = [
   'invalid_state',
   'account_suspended',
   'confirmation_required',
+  /** A serious staff action that needs an approved AI review first (aiReview.ts). */
+  'review_required',
   'internal',
 ] as const;
 export type ErrorCode = (typeof ERROR_CODES)[number];

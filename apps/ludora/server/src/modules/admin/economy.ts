@@ -23,6 +23,7 @@ import { credit, debit, IDEMPOTENCY_KEY_PATTERN, withOperation } from '../econom
 import { grantItem, ownedQuantity, takeItem } from '../inventory/service.ts';
 import { computeOdds, parseDropTable, resolvePool } from '../packs/service.ts';
 import { audit, confirmWordFor, loadUser, requireConfirm, staff, staffLimit } from './common.ts';
+import { reviewNeeded, useReview } from '../aiReview/gate.ts';
 import { assertWithinDailyLimit } from './grantLimits.ts';
 
 const isoDate = z.iso.datetime({ offset: true });
@@ -37,6 +38,8 @@ const movementSchema = z
     reason: staffReasonSchema,
     requestKey: z.string().regex(IDEMPOTENCY_KEY_PATTERN, 'Missing request key'),
     confirm: z.string().max(80).optional(),
+    /** An approved AI review of exactly this grant, when the site requires one (aiReview). */
+    reviewId: z.string().uuid().optional(),
   })
   .refine((g) => Boolean(g.currency && g.amount) !== Boolean(g.itemId), 'Choose either an amount of a currency or an item.');
 export type MovementInput = z.infer<typeof movementSchema>;
@@ -87,11 +90,15 @@ export async function applyMovement(deps: AppDeps, req: FastifyRequest, auth: Au
   }
   const action = `${mode === 'test' ? 'testing' : 'economy'}.${direction}`;
   const reason = direction === 'grant' ? 'admin_grant' : 'admin_revoke';
+  // A large grant to a real player needs an approved AI review first, when the site requires one. Asked before the operation starts, so a retry with the review keeps the same request key.
+  const review = mode === 'staff' && direction === 'grant' && real && body.currency && body.amount ? ({ kind: 'grant', userId: u.id, currency: body.currency, amount: body.amount, reason: body.reason } as const) : null;
+  if (review && !body.reviewId && (await reviewNeeded(deps.db, deps, review))) await useReview(deps.db, deps, auth, review, undefined);
 
   const { result, replayed } = await withOperation(deps.db, u.id, `staff:${body.requestKey}`, action, async (tx, opId) => {
     let after: Record<string, unknown>;
     // An economy manager's grants count towards their daily total (D58); removals and test tools do not.
     if (mode === 'staff' && direction === 'grant' && body.currency && body.amount) await assertWithinDailyLimit(tx, auth, body.currency, body.amount);
+    const reviewId = review ? await useReview(tx, deps, auth, review, body.reviewId) : null;
     if (body.currency && body.amount) {
       const meta = { reason: body.reason, tool: mode };
       const balance =
@@ -113,7 +120,7 @@ export async function applyMovement(deps: AppDeps, req: FastifyRequest, auth: Au
       }
       after = { itemId: it.id, itemName: it.name, quantity };
     }
-    await audit(deps, req, tx, { actor: auth, action, targetType: 'user', targetId: u.id, targetName: u.username ?? u.displayName, reason: body.reason, after });
+    await audit(deps, req, tx, { actor: auth, action, targetType: 'user', targetId: u.id, targetName: u.username ?? u.displayName, reason: body.reason, after: reviewId ? { ...after, aiReview: reviewId } : after });
     return after;
   });
   return { ok: true, replayed, ...result };

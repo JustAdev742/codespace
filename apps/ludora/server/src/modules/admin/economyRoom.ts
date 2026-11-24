@@ -4,6 +4,7 @@ import { alias } from 'drizzle-orm/pg-core';
 import { z } from 'zod';
 import { ITEM_TYPE_INFO, currencyCodeSchema, realGrantCap, staffReasonSchema, type ItemType } from '@ludora/shared';
 import type { AppDeps } from '../../app.ts';
+import { reviewNeeded, useReview } from '../aiReview/gate.ts';
 import { auditLog, classMembers, classes, equipped, inventory, items, ledger, packs, purchases, shopListings, users } from '../../db/schema.ts';
 import { noStore } from '../../http/context.ts';
 import { AppError, conflict, forbidden, notFound } from '../../lib/errors.ts';
@@ -284,6 +285,7 @@ export async function economyRoomRoutes(app: FastifyInstance, deps: AppDeps) {
         reason: staffReasonSchema,
         requestKey,
         confirm: z.string().max(80).optional(),
+        reviewId: z.string().uuid().optional(),
       }),
       req.body,
     );
@@ -297,12 +299,16 @@ export async function economyRoomRoutes(app: FastifyInstance, deps: AppDeps) {
     if (members.some((m) => m.userId === auth.user.id)) throw forbidden('You are a student in this class, and staff tools cannot change your own balance. Ask another staff member.');
     if (!members.length) throw conflict('This class has no students yet.');
     const total = body.amountEach * members.length;
+    // A large class grant (in total) needs an approved AI review first, when the site requires one.
+    const review = { kind: 'class_grant', classId: cls.id, currency: body.currency, amountEach: body.amountEach, reason: body.reason } as const;
+    if (!body.reviewId && (await reviewNeeded(db, deps, review, total))) await useReview(db, deps, auth, review, undefined, total);
     const { result, replayed } = await withOperation(db, auth.user.id, `staff-class:${body.requestKey}`, 'economy.class_grant', async (tx, opId) => {
       await assertWithinDailyLimit(tx, auth, body.currency, total);
+      const reviewId = await useReview(tx, deps, auth, review, body.reviewId, total);
       for (const m of members) {
         await credit(tx, { userId: m.userId, currency: body.currency, amount: body.amountEach, reason: 'admin_grant', refType: 'class', refId: cls.id, opId, actorId: auth.user.id, metadata: { reason: body.reason, tool: 'staff', classId: cls.id } });
       }
-      const after = { currency: body.currency, amountEach: body.amountEach, students: members.length, total };
+      const after = { currency: body.currency, amountEach: body.amountEach, students: members.length, total, ...(reviewId ? { aiReview: reviewId } : {}) };
       await audit(deps, req, tx, { actor: auth, action: 'economy.class_grant', targetType: 'class', targetId: cls.id, targetName: cls.name, reason: body.reason, after });
       return after;
     });

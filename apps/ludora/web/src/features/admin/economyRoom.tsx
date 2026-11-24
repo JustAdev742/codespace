@@ -1110,11 +1110,12 @@ export function ClassGrantCard() {
           description={`${plural(picked.students, 'student')} each get ${formatNumber(n)} ${currencyName(choices, currency)}: ${formatNumber(n * picked.students)} in all. Type the class name to confirm.`}
           confirmWord={picked.name}
           confirmLabel={`Grant ${formatNumber(n * picked.students)} in all`}
-          onSubmit={async ({ reason, confirm }) => {
+          onSubmit={async ({ reason, confirm, reviewId }) => {
             const sig = JSON.stringify([picked.id, currency, n]);
             if (!keyRef.current || keyRef.current.sig !== sig) keyRef.current = { sig, key: newRequestKey('class') };
-            await grant.mutateAsync({ classId: picked.id, currency, amountEach: n, reason, requestKey: keyRef.current.key, confirm });
+            await grant.mutateAsync({ classId: picked.id, currency, amountEach: n, reason, requestKey: keyRef.current.key, confirm, ...(reviewId ? { reviewId } : {}) });
           }}
+          review={({ reason }) => ({ kind: 'class_grant', classId: picked.id, currency, amountEach: n, reason })}
         />
       ) : null}
     </Card>

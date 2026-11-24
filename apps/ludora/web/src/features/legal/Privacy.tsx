@@ -69,6 +69,12 @@ export default function Privacy() {
         </li>
         <li>
           <strong className="text-text">Staff who run this copy</strong> (moderators, support and administrators): what they need to help you and keep people safe. Every change staff make is recorded.
+          {ai?.staffReview ? (
+            <>
+              {' '}
+              Before staff ban or suspend an account, or give it a large amount of Sparks or Moonstones, an AI reviewer from Anthropic checks the account's records (reports, earlier moderation, games, Sparks and Moonstones, sign-ins and things it made) to make sure the reason holds up. Email addresses, passwords, network addresses and dates of birth are never sent.
+            </>
+          ) : null}
         </li>
         <li>
           <strong className="text-text">Other companies:</strong> the hosting company that stores Ludora's database for the people running it.

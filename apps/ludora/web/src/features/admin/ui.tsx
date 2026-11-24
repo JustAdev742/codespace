@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode, type RefObject } from 'react';
+import { useCallback, useEffect, useRef, useState, type ReactNode, type RefObject } from 'react';
 import { useMutation, useQueryClient, type QueryKey } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
@@ -6,6 +6,8 @@ import { ApiError } from '../../lib/api.ts';
 import { Badge, Dialog, ErrorNotice, Field, Input, Skeleton, Textarea } from '../../ui/primitives.tsx';
 import { Button, IconButton, type ButtonVariant } from '../../ui/Button.tsx';
 import { formatDate, formatNumber } from '../../lib/format.ts';
+import type { AiReviewRequest } from '@ludora/shared';
+import { AiReviewPanel } from './AiReviewPanel.tsx';
 
 /*
  * Building blocks for staff pages. Staff screens are dense and plain on
@@ -242,6 +244,7 @@ export function ActionDialog({
   reasonLabel = 'Reason',
   reasonHint = 'Saved in the audit log. Write it for a colleague reading it later.',
   disabled = false,
+  review,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
@@ -251,33 +254,62 @@ export function ActionDialog({
   confirmLabel: string;
   variant?: ButtonVariant;
   children?: ReactNode;
-  onSubmit: (input: { reason: string; confirm?: string }) => Promise<unknown>;
+  onSubmit: (input: { reason: string; confirm?: string; reviewId?: string }) => Promise<unknown>;
   reasonLabel?: string;
   reasonHint?: string;
   disabled?: boolean;
+  /**
+   * When the site requires an AI review of this action (the server answers review_required), what to
+   * review: the dialog then starts one, shows it, and goes ahead only once it approves.
+   */
+  review?: (input: { reason: string }) => AiReviewRequest | null;
 }) {
   const [reason, setReason] = useState('');
   const [confirm, setConfirm] = useState('');
   const [error, setError] = useState<ApiError | null>(null);
   const [pending, setPending] = useState(false);
+  // The review in progress for the reason as typed; a changed reason needs a new review.
+  const [reviewFor, setReviewFor] = useState<{ request: AiReviewRequest; reason: string; round: number } | null>(null);
+  const [approvedId, setApprovedId] = useState<string | null>(null);
+  const [decided, setDecided] = useState(false);
+  const onDecided = useCallback((id: string | null) => {
+    setApprovedId(id);
+    setDecided(true);
+  }, []);
   useEffect(() => {
     if (open) {
       setReason('');
       setConfirm('');
       setError(null);
+      setReviewFor(null);
+      setApprovedId(null);
     }
   }, [open]);
+  useEffect(() => {
+    if (reviewFor && reviewFor.reason !== reason.trim()) {
+      setReviewFor(null);
+      setApprovedId(null);
+    }
+  }, [reason, reviewFor]);
   const confirmOk = !confirmWord || confirm.trim().toLowerCase() === confirmWord.toLowerCase();
-  const ready = reason.trim().length >= 3 && confirmOk && !disabled;
+  // While a review runs the action waits; after a decline or a failure, trying again starts a new review.
+  const waiting = Boolean(reviewFor && !decided);
+  const ready = reason.trim().length >= 3 && confirmOk && !disabled && !waiting;
   const submit = async () => {
     if (!ready) return;
     setPending(true);
     setError(null);
     try {
-      await onSubmit({ reason: reason.trim(), ...(confirmWord ? { confirm: confirm.trim() } : {}) });
+      await onSubmit({ reason: reason.trim(), ...(confirmWord ? { confirm: confirm.trim() } : {}), ...(approvedId ? { reviewId: approvedId } : {}) });
       onOpenChange(false);
     } catch (err) {
-      setError(err instanceof ApiError ? err : new ApiError(0, 'internal', 'That did not work.'));
+      const e = err instanceof ApiError ? err : new ApiError(0, 'internal', 'That did not work.');
+      const request = e.code === 'review_required' && !approvedId ? review?.({ reason: reason.trim() }) : null;
+      if (request) {
+        setReviewFor({ request, reason: reason.trim(), round: (reviewFor?.round ?? 0) + 1 });
+        setDecided(false);
+      }
+      else setError(e);
     } finally {
       setPending(false);
     }
@@ -294,7 +326,7 @@ export function ActionDialog({
             Cancel
           </Button>
           <Button variant={variant} onClick={submit} loading={pending} disabled={!ready}>
-            {confirmLabel}
+            {approvedId ? `Go ahead: ${confirmLabel}` : confirmLabel}
           </Button>
         </>
       }
@@ -315,6 +347,7 @@ export function ActionDialog({
             {(p) => <Input {...p} value={confirm} onChange={(e) => setConfirm(e.target.value)} autoComplete="off" spellCheck={false} />}
           </Field>
         ) : null}
+        {reviewFor ? <AiReviewPanel key={reviewFor.round} request={reviewFor.request} onDecided={onDecided} /> : null}
         {error && !error.fields.reason && !error.fields.confirm ? <ErrorNotice title="Not done" message={error.message} /> : null}
         <button type="submit" hidden />
       </form>

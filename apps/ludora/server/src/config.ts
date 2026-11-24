@@ -81,6 +81,8 @@ const schema = z.object({
   /** Adds Anthropic as an AI provider, alongside any in AI_PROVIDERS. */
   ANTHROPIC_API_KEY: z.string().optional(),
   ANTHROPIC_MODEL: z.string().default('claude-opus-5-5'),
+  /** The model the AI review of bans, suspensions and large grants uses, unless staff choose another (aiReview). */
+  AI_REVIEW_MODEL: z.string().default('claude-opus-5-5'),
   /** AI helper requests allowed across the whole site in any 24 hours, to cap spending. Staff can change it on the AI page. */
   AI_DRAFTS_DAILY_LIMIT: z.coerce.number().int().min(0).default(500),
   /**

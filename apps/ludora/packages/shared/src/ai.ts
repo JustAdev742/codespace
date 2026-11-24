@@ -136,6 +136,8 @@ export interface AiRunResponse<T = unknown> {
 export interface AiAbout {
   on: boolean;
   providers: string[];
+  /** Whether bans, suspensions and large grants go to an AI reviewer (Anthropic) first. */
+  staffReview: boolean;
 }
 
 /** The body of a helper request: the task's own fields, the model the person picked, and whether another may stand in. */

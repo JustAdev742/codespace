@@ -524,11 +524,11 @@ describe('the staff AI page', () => {
   it('tells the privacy page which providers receive text, only while helpers are on', async () => {
     await setFlags({ 'ai.helpers_teachers': false, 'ai.helpers_students': false, 'ai.question_drafts': false });
     const anon = new Client(t.app);
-    expect((await anon.get('/api/ai/about')).body).toEqual({ on: false, providers: [] });
+    expect((await anon.get('/api/ai/about')).body).toEqual({ on: false, providers: [], staffReview: false });
     await setFlags({ 'ai.helpers_students': true });
-    expect((await anon.get('/api/ai/about')).body).toEqual({ on: true, providers: ['Fast', 'Backup'] });
+    expect((await anon.get('/api/ai/about')).body).toEqual({ on: true, providers: ['Fast', 'Backup'], staffReview: false });
     await t.db.insert(aiSettings).values({ id: 'site', disabledModels: ['backup/backup-1'] });
-    expect((await anon.get('/api/ai/about')).body).toEqual({ on: true, providers: ['Fast'] });
+    expect((await anon.get('/api/ai/about')).body).toEqual({ on: true, providers: ['Fast'], staffReview: false });
   });
 });
 

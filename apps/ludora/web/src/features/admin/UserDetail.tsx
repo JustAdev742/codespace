@@ -403,8 +403,11 @@ function UserDialogs({ detail: d, dialog, close, reportId, onSecret, queryKey }:
         variant={dialog.action === 'ban' || dialog.action === 'suspend' ? 'danger' : 'primary'}
         reasonLabel={dialog.action === 'warn' ? 'Message to the player' : 'Reason'}
         reasonHint={dialog.action === 'warn' || dialog.action === 'mute' ? 'The player sees this, and it is saved in the audit log.' : undefined}
-        onSubmit={({ reason, confirm }) =>
-          moderate.mutateAsync({ action: dialog.action, reason, ...(confirm ? { confirm } : {}), ...(needsHours && hours !== '' ? { durationHours: hours } : {}), ...(reportId ? { reportId } : {}) })
+        onSubmit={({ reason, confirm, reviewId }) =>
+          moderate.mutateAsync({ action: dialog.action, reason, ...(confirm ? { confirm } : {}), ...(needsHours && hours !== '' ? { durationHours: hours } : {}), ...(reportId ? { reportId } : {}), ...(reviewId ? { reviewId } : {}) })
+        }
+        review={({ reason }) =>
+          dialog.action === 'ban' ? { kind: 'ban', userId: u.id, reason } : dialog.action === 'suspend' ? { kind: 'suspend', userId: u.id, reason, durationHours: hours === '' ? null : hours } : null
         }
       >
         {needsHours ? (
@@ -508,15 +511,17 @@ function MoneyDialog({ detail: d, direction, onClose, invalidate }: { detail: De
       confirmLabel={direction === 'grant' ? 'Give' : 'Take away'}
       variant={direction === 'grant' ? 'primary' : 'danger'}
       disabled={!valid}
-      onSubmit={({ reason, confirm }) =>
+      onSubmit={({ reason, confirm, reviewId }) =>
         move.mutateAsync({
           userId: u.id,
           reason,
           requestKey,
           ...(confirm ? { confirm } : {}),
+          ...(reviewId ? { reviewId } : {}),
           ...(what === 'currency' ? { currency, amount: n } : { itemId: itemId.trim(), quantity: 1 }),
         })
       }
+      review={({ reason }) => (direction === 'grant' && what === 'currency' ? { kind: 'grant', userId: u.id, currency, amount: n, reason } : null)}
     >
       <div className="flex gap-2" role="radiogroup" aria-label="What to change">
         {(['currency', 'item'] as const).map((w) => (

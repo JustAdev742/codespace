@@ -1402,6 +1402,62 @@ export const aiSettings = pgTable(
   (t) => [check('ai_settings_single_row', sql`${t.id} = 'site'`)],
 );
 
+/* ---------------------------------- AI review of staff actions ---------------------------------- */
+
+/**
+ * Whether bans, suspensions and large grants go to the AI investigator first, and with which key and
+ * model. One row. The key, when it is saved here rather than in ANTHROPIC_API_KEY, is encrypted
+ * (aiReview/secret.ts) and never sent back: staff see only its last four characters.
+ */
+export const aiReviewSettings = pgTable(
+  'ai_review_settings',
+  {
+    id: text('id').primaryKey().default('site'),
+    enabled: boolean('enabled').notNull().default(false),
+    /** Null: AI_REVIEW_MODEL from the environment. */
+    model: text('model'),
+    /** Currency code to the amount at or above which a grant is reviewed. */
+    thresholds: jsonb('thresholds').$type<Record<string, number>>().notNull().default({ sparks: 10_000, moonstones: 500 }),
+    keyCipher: text('key_cipher'),
+    keyHint: text('key_hint'),
+    updatedAt: now('updated_at'),
+    updatedBy: uuid('updated_by').references(() => users.id, { onDelete: 'set null' }),
+  },
+  (t) => [check('ai_review_settings_single_row', sql`${t.id} = 'site'`)],
+);
+
+/** One review of one staff action: what was asked, what the investigator found, and whether it was used. */
+export const aiReviews = pgTable(
+  'ai_reviews',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    actorId: uuid('actor_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    kind: text('kind').notNull(),
+    targetType: text('target_type').notNull(),
+    targetId: text('target_id').notNull(),
+    request: jsonb('request').notNull(),
+    status: text('status').notNull().default('running'),
+    source: text('source'),
+    verdict: jsonb('verdict'),
+    error: text('error'),
+    model: text('model'),
+    inputTokens: integer('input_tokens').notNull().default(0),
+    outputTokens: integer('output_tokens').notNull().default(0),
+    overriddenBy: uuid('overridden_by').references(() => users.id, { onDelete: 'set null' }),
+    overrideReason: text('override_reason'),
+    createdAt: now('created_at'),
+    finishedAt: timestamp('finished_at', { withTimezone: true }),
+    usedAt: timestamp('used_at', { withTimezone: true }),
+  },
+  (t) => [
+    index('ai_reviews_actor_idx').on(t.actorId, t.createdAt),
+    index('ai_reviews_target_idx').on(t.targetType, t.targetId),
+    check('ai_reviews_status_valid', sql`${t.status} in ('running','approved','declined','failed','overridden')`),
+  ],
+);
+
 /* ---------------------------------- Set media (sets2) ---------------------------------- */
 
 const bytea = customType<{ data: Buffer }>({ dataType: () => 'bytea' });

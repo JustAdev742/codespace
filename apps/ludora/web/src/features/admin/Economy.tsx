@@ -663,16 +663,18 @@ export function MovementDialog({ open, onOpenChange, direction, target, mode }: 
       confirmLabel={label}
       variant={direction === 'grant' ? 'primary' : 'danger'}
       disabled={!valid}
-      onSubmit={async ({ reason, confirm }) => {
+      onSubmit={async ({ reason, confirm, reviewId }) => {
         const body: Record<string, unknown> = {
           ...(mode === 'staff' ? { userId: target.id } : {}),
           ...(what === 'currency' ? { currency, amount: amountNum } : { itemId: item!.id, quantity: qty }),
           reason,
           requestKey: requestKey(),
           ...(confirm !== undefined ? { confirm } : {}),
+          ...(reviewId ? { reviewId } : {}),
         };
         await move.mutateAsync(body);
       }}
+      review={({ reason }) => (mode === 'staff' && direction === 'grant' && what === 'currency' && amountNum ? { kind: 'grant', userId: target.id, currency, amount: amountNum, reason } : null)}
     >
       <Segmented
         label={`What to ${direction === 'grant' ? 'give' : 'take'}`}

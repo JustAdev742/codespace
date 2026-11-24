@@ -29,6 +29,8 @@ export interface AppDeps {
   serveSpa?: (req: FastifyRequest, reply: FastifyReply) => Promise<unknown>;
   /** The AI providers the environment configures (AI_PROVIDERS, ANTHROPIC_API_KEY). Built from the config unless given; tests pass their own. */
   ai?: AiProviderInfo[];
+  /** Makes the AI review's API client from a key (aiReview). Tests pass a stand-in; unset, the Anthropic SDK. */
+  reviewClient?: (apiKey: string) => import('./modules/aiReview/investigator.ts').ReviewClient;
 }
 
 export type RouteModule = (app: FastifyInstance, deps: AppDeps) => Promise<void>;

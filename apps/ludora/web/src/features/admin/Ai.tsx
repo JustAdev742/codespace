@@ -6,6 +6,7 @@ import { formatNumber } from '../../lib/format.ts';
 import { EmptyState, ErrorNotice, Field, Input, Skeleton } from '../../ui/primitives.tsx';
 import { Button } from '../../ui/Button.tsx';
 import { ActionDialog, Card, DataTable, Stat, StaffPage, StatusPill, dateTime } from './ui.tsx';
+import { AiReviewSection } from './AiReviewSettings.tsx';
 
 /*
  * The AI helpers, for staff: which providers and models the server's
@@ -159,6 +160,7 @@ export default function AiPage() {
             <Stat label="People" value={formatNumber(d.today.people)} />
           </section>
           <Models key={d.providers.map((p) => p.models.map((m) => `${m.id}:${m.enabled}`).join()).join()} data={d} />
+          <AiReviewSection />
           <Allowance key={`${d.settings.perAccount}:${d.settings.windowHours}:${d.settings.siteDailyCapSetting}`} data={d} />
           <Card title="Helpers used, 24 hours">
             {d.today.byTask.length ? (

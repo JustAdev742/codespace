@@ -9,6 +9,8 @@ import { AppError, badRequest, forbidden, notFound } from '../../lib/errors.ts';
 import { parse } from '../../lib/validate.ts';
 import { allFlags, isFlagOn } from '../flags/service.ts';
 import { aiAdminRoutes } from './admin.ts';
+import { aiReviewRoutes } from '../aiReview/routes.ts';
+import { loadReviewSettings } from '../aiReview/settings.ts';
 import { allowanceFor, enabledModels, finishRequest, loadAiSettings, reserveRequest } from './allowance.ts';
 import { modelOrder, RunError, runTask, type RunFailure } from './runner.ts';
 import { getAiTask, listAiTasks, TaskInputError, TaskReject, type AiAudience } from './tasks.ts';
@@ -142,7 +144,8 @@ export async function aiRoutes(app: FastifyInstance, deps: AppDeps) {
     const providers = [...new Set(enabledModels(deps, settings).map((m) => m.provider))];
     const flags = (await allFlags(deps.db)).filter((f) => (AI_FLAGS as readonly string[]).includes(f.key));
     const on = providers.length > 0 && flags.some((f) => f.enabled || f.rolloutPercent > 0 || f.roles.length > 0 || f.userIds.length > 0);
-    return { on, providers: on ? providers : [] };
+    const review = await loadReviewSettings(deps.db, deps.config);
+    return { on, providers: on ? providers : [], staffReview: review.enabled && review.keySource !== 'none' };
   });
 
   app.post('/api/ai/tasks/:task', addressLimit, async (req): Promise<AiRunResponse> => {
@@ -175,5 +178,6 @@ export async function aiRoutes(app: FastifyInstance, deps: AppDeps) {
   });
 
   await aiAdminRoutes(app, deps);
+  await aiReviewRoutes(app, deps);
 }
 
