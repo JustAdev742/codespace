@@ -8,7 +8,7 @@ import { QuestionCard } from '../game/QuestionCard.tsx';
 import { TimerBar } from '../game/TimerBar.tsx';
 import { ChoicesDisplay, ResultBanner, RevealAnswer, shortAnswer } from '../game/Reveal.tsx';
 import { TeamScores } from '../game/Leaderboard.tsx';
-import { Explanation, HudCount, HudScore, IntroScreen, RoundHeader, myAvatar } from '../game/parts.tsx';
+import { Explanation, HudCount, HudScore, IntroScreen, LockedIn, RoundHeader, myAvatar } from '../game/parts.tsx';
 import { useAnnounce } from '../game/announce.tsx';
 import { NIGHT, Pill, PlayerGlim, StagePanel, avatarOf } from '../game/stage.tsx';
 
@@ -285,7 +285,7 @@ export function LanternOutPlayer({ view, act, gameNow, paused, room }: ModeScree
   // Arrived after this question began and did not answer it: it does not count, so no result for it.
   const late = Boolean(s.you?.joinedLate && !s.you.answered);
   return (
-    <div className="mx-auto flex w-full max-w-3xl flex-col gap-3 sm:gap-4">
+    <div className="round-fill mx-auto flex w-full max-w-3xl flex-col gap-3 sm:gap-4">
       <RoundHeader round={s.round} total={s.total}>
         <Pill>
           <Flame className="size-4 text-lantern" aria-hidden /> <span className="font-display text-[1.25em] font-extrabold">{view.alive}</span> still lit
@@ -312,17 +312,9 @@ export function LanternOutPlayer({ view, act, gameNow, paused, room }: ModeScree
       {s.phase === 'question' ? (
         canAnswer ? (
           s.you?.answered ? (
-            <StagePanel className="flex items-center gap-4 px-4 py-3.5">
-              <PlayerGlim avatar={myAvatar(room)} seed={room.me.playerId ?? 'you'} size={72} className="shrink-0" />
-              <div role="status">
-                <p className="font-display text-[1.75rem] leading-tight font-extrabold">Answer locked in</p>
-                <p className="font-semibold text-text-2">
-                  {s.answered} of {s.eligible} have answered.
-                </p>
-              </div>
-            </StagePanel>
+            <LockedIn answered={s.answered} eligible={s.eligible} avatar={myAvatar(room)} seed={room.me.playerId ?? 'you'} />
           ) : (
-            <AnswerInput key={q.iid} q={q.q} onSubmit={submit} disabled={paused} />
+            <AnswerInput key={q.iid} q={q.q} onSubmit={submit} disabled={paused} fill />
           )
         ) : (
           <div className="pointer-events-none opacity-60">

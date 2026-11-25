@@ -31,6 +31,27 @@ export function placesClimbed(r: LeaderRow, all: readonly LeaderRow[]): number {
 }
 
 /**
+ * Where a player stands against the places around them, in a few plain words for under their rank on
+ * their own screen: how far ahead the leader is, or how many points would reach the next place up (or,
+ * for a player below the rows shown, the last of them). Null when there is nothing true to say: a lone
+ * player, a tie for first, or everyone level.
+ */
+export function standingLine(rows: readonly LeaderRow[], you: LeaderRow | null | undefined): string | null {
+  if (!you) return null;
+  const others = rows.filter((r) => r.playerId !== you.playerId);
+  if (!others.length) return null;
+  if (you.rank === 1) {
+    const next = Math.max(...others.map((r) => r.score));
+    return you.score > next ? `${formatNumber(you.score - next)} ahead of 2nd.` : null;
+  }
+  const above = others.filter((r) => r.score > you.score).sort((a, b) => a.score - b.score)[0];
+  if (!above) return null;
+  const gap = formatNumber(above.score - you.score);
+  // Among the rows shown, the nearest score above is the next place up. From below them, it is the way onto the board.
+  return rows.some((r) => r.playerId === you.playerId) ? `${gap} more to reach ${ordinal(above.rank)}.` : `${gap} more to reach the top ${rows.length}.`;
+}
+
+/**
  * A row's score. As the board appears it counts up from last round's total while the rows move, so the
  * room sees the points land; after that it follows the score. Screen readers get the final number.
  */

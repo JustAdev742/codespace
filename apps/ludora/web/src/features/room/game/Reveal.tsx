@@ -1,7 +1,7 @@
 import { useEffect, type ReactNode } from 'react';
 import { Check, X } from 'lucide-react';
 import type { AnswerReveal, PublicQuestion } from '@ludora/shared';
-import { ChoiceTile, HOST_PAIR, choiceGrid, type TileSize } from './AnswerInput.tsx';
+import { ChoiceTile, HOST_PAIR, allShort, choiceGrid, type TileSize } from './AnswerInput.tsx';
 import { Burst } from '../../../art/bursts.tsx';
 import { useOverview } from '../../../lib/queries.ts';
 import { useAnnounce } from './announce.tsx';
@@ -27,11 +27,12 @@ export function ChoicesDisplay({ q, size = 'lg' }: { q: PublicQuestion; size?: T
       q.choices.map((c) => c.text),
       host,
     );
+    const roomy = host && q.choices.length <= 4 && !q.media && allShort(q.choices);
     return (
       <HostChoices host={host}>
         <div className={grid}>
           {q.choices.map((c, i) => (
-            <ChoiceTile key={c.id} index={i} text={c.text} media={c.media} disabled size={size} layout={layout} tall={host && q.choices.length <= 4 && !q.media} dense={dense} />
+            <ChoiceTile key={c.id} index={i} text={c.text} media={c.media} disabled size={size} layout={layout} tall={host && q.choices.length <= 4 && !q.media} dense={dense} roomy={roomy} />
           ))}
         </div>
       </HostChoices>
@@ -40,8 +41,8 @@ export function ChoicesDisplay({ q, size = 'lg' }: { q: PublicQuestion; size?: T
   if (q.type === 'truefalse') {
     return (
       <div className={host ? HOST_PAIR : 'grid grid-cols-2 gap-3'}>
-        <ChoiceTile index={0} text="True" disabled size={size} layout={host ? 'row' : 'stack'} tall={host && !q.media} />
-        <ChoiceTile index={1} text="False" disabled size={size} layout={host ? 'row' : 'stack'} tall={host && !q.media} />
+        <ChoiceTile index={0} text="True" disabled size={size} layout={host ? 'row' : 'stack'} tall={host && !q.media} roomy={host && !q.media} pair />
+        <ChoiceTile index={1} text="False" disabled size={size} layout={host ? 'row' : 'stack'} tall={host && !q.media} roomy={host && !q.media} pair />
       </div>
     );
   }
@@ -204,12 +205,14 @@ export function RevealAnswer({
     );
     // The author's "why" note for each wrong choice this player picked (never on the big screen).
     const whys = host ? [] : q.choices.filter((c) => picked.has(c.id) && !correct.has(c.id) && reveal.whys?.[c.id]).map((c) => ({ c, why: reveal.whys![c.id]! }));
+    // The same sizes as the question had, so nothing changes size as the answer lands.
+    const roomy = host && q.choices.length <= 4 && !q.media && allShort(q.choices);
     return (
       <div className="flex flex-col gap-3">
         <HostChoices host={host}>
           <div className={grid}>
             {q.choices.map((c, i) => (
-              <ChoiceTile key={c.id} index={i} text={c.text} media={c.media} dense={dense} correct={correct.has(c.id)} dimmed={!correct.has(c.id)} wrong={picked.has(c.id) && !correct.has(c.id)} mine={picked.has(c.id)} disabled size={sz} layout={layout} count={count(c.id)} max={max} tall={host && q.choices.length <= 4 && !q.media} revealAt={lands} />
+              <ChoiceTile key={c.id} index={i} text={c.text} media={c.media} dense={dense} correct={correct.has(c.id)} dimmed={!correct.has(c.id)} wrong={picked.has(c.id) && !correct.has(c.id)} mine={picked.has(c.id)} disabled size={sz} layout={layout} count={count(c.id)} max={max} tall={host && q.choices.length <= 4 && !q.media} revealAt={lands} roomy={roomy} />
             ))}
           </div>
         </HostChoices>
@@ -225,8 +228,8 @@ export function RevealAnswer({
   if (q.type === 'truefalse' && reveal.type === 'truefalse') {
     return (
       <div className={host ? HOST_PAIR : 'grid grid-cols-2 gap-3'}>
-        <ChoiceTile index={0} text="True" correct={reveal.correct} dimmed={!reveal.correct} wrong={picked.has('true') && !reveal.correct} mine={picked.has('true')} disabled size={sz} layout={host ? 'row' : 'stack'} count={count('true')} max={max} tall={host && !q.media} revealAt={lands} />
-        <ChoiceTile index={1} text="False" correct={!reveal.correct} dimmed={reveal.correct} wrong={picked.has('false') && reveal.correct} mine={picked.has('false')} disabled size={sz} layout={host ? 'row' : 'stack'} count={count('false')} max={max} tall={host && !q.media} revealAt={lands} />
+        <ChoiceTile index={0} text="True" correct={reveal.correct} dimmed={!reveal.correct} wrong={picked.has('true') && !reveal.correct} mine={picked.has('true')} disabled size={sz} layout={host ? 'row' : 'stack'} count={count('true')} max={max} tall={host && !q.media} revealAt={lands} roomy={host && !q.media} pair />
+        <ChoiceTile index={1} text="False" correct={!reveal.correct} dimmed={reveal.correct} wrong={picked.has('false') && reveal.correct} mine={picked.has('false')} disabled size={sz} layout={host ? 'row' : 'stack'} count={count('false')} max={max} tall={host && !q.media} revealAt={lands} roomy={host && !q.media} pair />
       </div>
     );
   }
@@ -243,7 +246,7 @@ export function RevealAnswer({
         <HostChoices host={host}>
           <div className={grid}>
             {q.choices.map((c, i) => (
-              <ChoiceTile key={c.id} index={i} text={c.text} media={c.media} dense={dense} mine={picked.has(c.id)} selected={false} disabled size={sz} layout={layout} count={count(c.id)} max={max} tall={host && q.choices.length <= 4 && !q.media} revealAt={lands} />
+              <ChoiceTile key={c.id} index={i} text={c.text} media={c.media} dense={dense} mine={picked.has(c.id)} selected={false} disabled size={sz} layout={layout} count={count(c.id)} max={max} tall={host && q.choices.length <= 4 && !q.media} revealAt={lands} roomy={host && q.choices.length <= 4 && !q.media && allShort(q.choices)} />
             ))}
           </div>
         </HostChoices>

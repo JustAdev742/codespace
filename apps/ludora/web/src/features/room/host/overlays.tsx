@@ -6,6 +6,7 @@ import { useNow } from '../../../lib/useNow.ts';
 import { Button } from '../../../ui/Button.tsx';
 import { useAnnounce } from '../game/announce.tsx';
 import { motionOK } from '../game/stage.tsx';
+import { useSfx } from '../../../lib/sound/react.tsx';
 import { serverClock } from './tools.ts';
 
 /*
@@ -25,6 +26,8 @@ export function StartCountdown({ handle, isHost }: { handle: RoomHandle; isHost:
   const view = handle.view!;
   const secs = useSecondsLeft(view.room.startsAt, view, handle.receivedAt);
   useAnnounce(secs !== null ? 'The game is about to start.' : null, view.room.startsAt ?? 'none');
+  // The big screen counts the last three seconds in (phones stay quiet; calm play leaves it out).
+  useSfx('countdown', secs, isHost && secs !== null && secs >= 1 && secs <= 3);
   if (secs === null) return null;
   return (
     <div className="fixed inset-0 z-40 grid place-items-center bg-[color-mix(in_srgb,var(--stage-4)_80%,transparent)] px-4 backdrop-blur-sm" role="alertdialog" aria-modal="false" aria-label="The game is starting">

@@ -10,6 +10,7 @@ import { useAnnounce } from './announce.tsx';
 import { useLastAnswerWords } from './answerMemory.tsx';
 import { useModeFill } from './modeFill.ts';
 import { useCountUp } from './countUp.ts';
+import { useSfx, useSharedSounds } from '../../../lib/sound/react.tsx';
 
 /*
  * Pieces shared by the round-based screens: the intro, the HUD row with the
@@ -20,8 +21,10 @@ import { useCountUp } from './countUp.ts';
 /** Seconds until a moment on the game clock, as one big italic number on a gold disc. */
 export function BigCountdown({ until, gameNow, big = false, label = 'Starting in', fill }: { until: number | null; gameNow: () => number; big?: boolean; label?: string; fill?: string }) {
   useNow(250, until !== null);
+  const secs = until === null ? 0 : Math.max(0, Math.ceil((until - gameNow()) / 1000));
+  // Three, two, one: the last seconds are counted in on the shared screen (never in calm play: the engine leaves it out).
+  useSfx('countdown', secs, useSharedSounds() && until !== null && secs >= 1 && secs <= 3);
   if (until === null) return null;
-  const secs = Math.max(0, Math.ceil((until - gameNow()) / 1000));
   return (
     <span
       className={`lift grid place-items-center rounded-full bg-lantern font-display leading-none font-extrabold text-on-accent italic tabular ${big ? 'size-[clamp(6rem,15vh,10rem)] text-[clamp(3.5rem,9vh,6.25rem)]' : 'size-24 text-[3.5rem]'}`}
@@ -42,10 +45,15 @@ export function LineUp({ players, big = false }: { players: RoomPlayerView[]; bi
   // Sixteen Glims and the count of the rest fit one row on a 1366 or 1920 projector; a second row would push the intro off screen.
   const shown = players.slice(0, big ? 16 : 8);
   if (!shown.length) return null;
+  // A small room's Glims stand taller: eight or fewer have the row to themselves.
+  const size = big ? (shown.length <= 8 ? 'size-[clamp(4.25rem,11vh,8rem)]' : 'size-[clamp(3.5rem,8vh,6rem)]') : 'size-12';
   return (
     <div className="flex flex-wrap items-end justify-center gap-[clamp(0.25rem,0.8vw,0.9rem)]" aria-hidden>
-      {shown.map((p) => (
-        <PlayerGlim key={p.id} avatar={p.avatar} seed={p.id} size={64} className={big ? 'size-[clamp(3.5rem,8vh,6rem)]' : 'size-12'} />
+      {shown.map((p, i) => (
+        // They take their places one after another, left to right.
+        <span key={p.id} style={motionOK() ? { animation: `stage-arrive 220ms var(--ease-out) ${200 + i * 45}ms both` } : undefined}>
+          <PlayerGlim avatar={p.avatar} seed={p.id} size={96} className={size} />
+        </span>
       ))}
       {players.length > shown.length ? <span className="mb-2 font-display text-2xl font-extrabold tabular">+{players.length - shown.length}</span> : null}
     </div>
@@ -169,12 +177,28 @@ export function HudCount({ value, total, label, big = false, className = '' }: {
 
 /** A streak of right answers as a gold chip with a flame: "Streak ×3". Shows from two in a row; `children` replaces the words. */
 export function StreakChip({ streak, children, className = '' }: { streak: number; children?: ReactNode; className?: string }) {
+  // What the streak was at the last render that settled: a longer one now means it has just grown.
+  const before = useRef(0);
+  const was = before.current;
+  useEffect(() => {
+    before.current = streak;
+  }, [streak]);
   if (streak < 2) return null;
   return (
-    // Keyed by the streak, so the chip pops each time it grows (and when it first appears).
-    <span key={streak} className={`inline-flex items-center gap-1 rounded-full bg-lantern px-2.5 py-1 leading-tight font-bold whitespace-nowrap text-on-accent tabular ${className}`} style={motionOK() ? { animation: `pop-in 240ms var(--ease-spring) ${SCORE_LANDS_AFTER}ms both` } : undefined}>
-      <Flame className="size-[1.05em] shrink-0" aria-hidden />
+    // Keyed by the streak: each length is a chip of its own, so its beat plays once, as it arrives.
+    <StreakChipFace key={streak} grew={was >= 2 && streak > was} className={className}>
       {children ?? <>Streak ×{streak}</>}
+    </StreakChipFace>
+  );
+}
+
+function StreakChipFace({ grew, children, className }: { grew: boolean; children: ReactNode; className: string }) {
+  // Fixed as the chip appears: a new streak pops in; one that grew bumps where it sits (it never blinks out first).
+  const [beat] = useState(() => (!motionOK() ? undefined : grew ? { animation: 'chip-bump 320ms var(--ease-out) 140ms backwards' } : { animation: 'pop-in 240ms var(--ease-spring) 140ms both' }));
+  return (
+    <span className={`inline-flex items-center gap-1 rounded-full bg-lantern px-2.5 py-1 leading-tight font-bold whitespace-nowrap text-on-accent tabular ${className}`} style={beat}>
+      <Flame className="size-[1.05em] shrink-0" aria-hidden />
+      {children}
     </span>
   );
 }

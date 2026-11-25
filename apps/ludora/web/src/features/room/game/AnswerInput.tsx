@@ -79,6 +79,13 @@ const SIZE: Record<TileSize, { tile: string; stack: string; text: string; long: 
 
 /** Taller projector tiles when there are only two rows of them, so they fill the screen (not on a host screen opened on a phone). */
 const TALL = 'min-h-[clamp(5.5rem,19vh,13rem)]! max-sm:min-h-[4.5rem]!';
+/** True and False on the projector: one row of two, so they stand taller still rather than leave half the board empty. */
+const TALL_PAIR = 'min-h-[clamp(6.5rem,27vh,17rem)]! max-sm:min-h-[4.5rem]!';
+/** Projector text for a question whose answers are all a word or two: a size up, to read from the back of the room. */
+const ROOMY_LG = 'text-[clamp(1.75rem,3vw,3.75rem)]';
+
+/** Every answer of a question is a word or two (and none is a picture): the tiles can set their words a size up. */
+export const allShort = (choices: readonly { text: string; media?: unknown }[]): boolean => choices.every((c) => c.text.length <= 14 && !c.media);
 /** Taller two-up phone tiles when there are four or fewer: bigger targets that still fit above the fold. */
 const TALL_STACK = 'min-h-[clamp(7rem,18vh,10rem)]!';
 /** Shorter two-up phone tiles for five or six answers, so the last row stays above the fold. */
@@ -113,7 +120,13 @@ export function ChoiceTile({
   media,
   choice,
   revealAt = null,
+  roomy = false,
+  pair = false,
 }: {
+  /** Every answer of this question is a word or two: its words are set a size up (decided for the question, so its tiles match). */
+  roomy?: boolean;
+  /** One of a row of two on the projector (True and False): taller than `tall`. */
+  pair?: boolean;
   /**
    * The big screen's reveal, played as the tile appears: `revealAt` is how long (ms) the right answer
    * waits before it lands. Tiles out of play lose their colour first, then the right one lifts and is
@@ -163,7 +176,7 @@ export function ChoiceTile({
       data-pressed={selected || undefined}
       data-choice={choice}
       aria-pressed={selected}
-      className={`relative isolate flex w-full text-left [--press:5px] disabled:cursor-default ${layout === 'stack' ? `flex-col items-start justify-between ${s.stack} ${tall ? TALL_STACK : dense ? DENSE_STACK : ''}` : `items-center ${s.tile} ${tall ? TALL : ''}`} ${lit ? 'piece text-on-accent' : 'piece-off'} ${
+      className={`relative isolate flex w-full text-left [--press:5px] disabled:cursor-default ${layout === 'stack' ? `flex-col items-start justify-between ${s.stack} ${tall ? TALL_STACK : dense ? DENSE_STACK : ''}` : `items-center ${s.tile} ${tall ? (pair ? TALL_PAIR : TALL) : ''}`} ${lit ? 'piece text-on-accent' : 'piece-off'} ${
         correct ? 'ring-[3px] ring-glim ring-offset-[3px] ring-offset-[color:var(--stage-3)]' : ''
       }`}
       // A chosen tile locks in with a firm press and a small rebound (still with reduced motion). At a staged
@@ -181,7 +194,7 @@ export function ChoiceTile({
       </span>{' '}
       {media ? <QuestionImage media={media} size="tile" className={layout === 'stack' ? 'self-start' : ''} /> : null}
       {text ? (
-        <span data-tile-text={text.length <= 14 ? 'short' : undefined} className={`min-w-0 flex-1 leading-tight font-bold break-words hyphens-auto ${long ? s.long : s.text} ${layout === 'stack' ? 'flex w-full items-end' : ''}`}>
+        <span data-tile-text={roomy ? 'short' : undefined} className={`min-w-0 flex-1 leading-tight font-bold break-words hyphens-auto ${long ? s.long : roomy && size === 'lg' ? ROOMY_LG : s.text} ${layout === 'stack' ? 'flex w-full items-end' : ''}`}>
           <span>
             <MathText text={text} />
           </span>
@@ -310,10 +323,11 @@ function ChoiceAnswer({ q, onSubmit, disabled, chosen, compact, fill }: AnswerIn
   };
   useNumberKeys(q.choices.length, (i) => void pick(q.choices[i]!.id), !locked, !compact);
   const { grid, layout, tall, dense } = choiceGrid(q.choices.map((c) => c.text));
+  const roomy = allShort(q.choices);
   return (
     <div className={`${grid} ${fill && !compact ? FILL : ''}`} role="group" aria-label="Answers">
       {q.choices.map((c, i) => (
-        <ChoiceTile key={c.id} choice={c.id} index={i} text={c.text} media={c.media} selected={picked === c.id} dimmed={picked !== null && picked !== c.id} onClick={() => void pick(c.id)} disabled={locked && picked !== c.id} compact={compact} layout={layout} tall={tall && !compact && !q.media} dense={dense} keyHint />
+        <ChoiceTile key={c.id} choice={c.id} index={i} text={c.text} media={c.media} selected={picked === c.id} dimmed={picked !== null && picked !== c.id} onClick={() => void pick(c.id)} disabled={locked && picked !== c.id} compact={compact} layout={layout} tall={tall && !compact && !q.media} dense={dense} roomy={roomy} keyHint />
       ))}
     </div>
   );
@@ -330,8 +344,8 @@ function TrueFalseAnswer({ q, onSubmit, disabled, compact, fill }: AnswerInputPr
   useNumberKeys(2, (i) => void pick(i === 0), !locked, !compact);
   return (
     <div className={`grid grid-cols-2 gap-3 ${fill && !compact ? FILL : ''}`} role="group" aria-label="Answers">
-      <ChoiceTile choice="true" index={0} text="True" selected={picked === true} dimmed={picked === false} onClick={() => void pick(true)} disabled={locked} compact={compact} layout="stack" tall={!compact && !q.media} keyHint />
-      <ChoiceTile choice="false" index={1} text="False" selected={picked === false} dimmed={picked === true} onClick={() => void pick(false)} disabled={locked} compact={compact} layout="stack" tall={!compact && !q.media} keyHint />
+      <ChoiceTile choice="true" index={0} text="True" selected={picked === true} dimmed={picked === false} onClick={() => void pick(true)} disabled={locked} compact={compact} layout="stack" tall={!compact && !q.media} roomy keyHint />
+      <ChoiceTile choice="false" index={1} text="False" selected={picked === false} dimmed={picked === true} onClick={() => void pick(false)} disabled={locked} compact={compact} layout="stack" tall={!compact && !q.media} roomy keyHint />
     </div>
   );
 }

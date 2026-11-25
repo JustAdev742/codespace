@@ -21,7 +21,8 @@ import { Burst } from '../../art/bursts.tsx';
 import { useAnnounce } from './game/announce.tsx';
 import { playSfx, useSfx, useSharedSounds } from '../../lib/sound/react.tsx';
 import { GameNextSteps } from '../making/GameNextSteps.tsx';
-import { FANFARE_LEAD_MS, ceremonyFor, ceremonyPace, endingKey, fanfareStarted, overStage, placeLands, sinceEnd, stageAt, winnerLands, type Beat, type Ceremony, type Stage } from './ceremony.ts';
+import { FANFARE_LEAD_MS, ceremonyFor, ceremonyPace, endingKey, fanfareStarted, overStage, placeLands, placeTitle, sinceEnd, stageAt, winnerLands, type Beat, type Ceremony, type Stage } from './ceremony.ts';
+import { focusAdrift } from '../../lib/focus.ts';
 
 /** Block heights as a share of the tallest: first, second, third. */
 const HEIGHT = [1, 0.72, 0.5];
@@ -116,7 +117,7 @@ function CeremonyCaption({ room, plan, stage }: { room: RoomView; plan: Ceremony
         <div key={beat.place} className="flex max-w-full min-w-0 flex-col items-start gap-[clamp(0.5rem,1.6vh,1.25rem)]">
           <div style={pop}>
             <p className={`${plate} text-on-accent`} style={{ background: PLACE_BG[beat.place] }}>
-              <span>{beat.place === 0 ? 'The winner' : `${ordinal(standing.rank)} place`}</span>
+              <span>{placeTitle(room.results!.standings, beat.place, ordinal)}</span>
             </p>
           </div>
           {landed ? (
@@ -226,10 +227,11 @@ function Standings({ room, big }: { room: RoomView; big: boolean }) {
             <RankBadge rank={s.rank} />
             <PlayerGlim avatar={avatarOf(room.players, s.playerId)} seed={s.playerId} size={44} className="shrink-0" />
             <span className="min-w-0 flex-1">
-              <span className="block truncate font-bold">
-                {s.name}
+              {/* A long name is cut short; "(you)" after it never is. */}
+              <span className="flex min-w-0 items-baseline font-bold">
+                <span className="truncate">{s.name}</span>
                 {/* A real space, so a screen reader does not run the name into "(you)". */}
-                {mine ? <span className="text-[0.85em] font-semibold text-text-2"> (you)</span> : null}
+                {mine ? <span className="shrink-0 text-[0.85em] font-semibold whitespace-pre text-text-2"> (you)</span> : null}
               </span>
               <span className="block truncate text-sm text-text-2">
                 {s.correct} of {s.answered} right{t ? `, ${t}` : ''}
@@ -363,11 +365,12 @@ function EndCard({ room, mine, awards }: { room: RoomView; mine: StandingView; a
           </p>
         </div>
       </div>
-      <dl className="mt-4 grid grid-cols-3 gap-2">
-        {stats.map((st) => (
-          <div key={st.label} className="flex min-w-0 flex-col rounded-[var(--radius-m)] bg-[var(--stage-3)] px-2.5 py-2">
+      {/* The result has a row to itself: a mode's own wording ("Survived, 2,000 pts") stays on one line on a phone. */}
+      <dl className="mt-4 grid grid-cols-2 gap-2">
+        {stats.map((st, i) => (
+          <div key={st.label} className={`flex min-w-0 flex-col rounded-[var(--radius-m)] bg-[var(--stage-3)] px-3 py-2 ${i === 0 ? 'col-span-2' : ''}`}>
             <dt className="text-sm font-semibold text-text-2">{st.label}</dt>
-            <dd className="font-display text-[1.6rem] leading-tight font-extrabold break-words tabular">{st.value}</dd>
+            <dd className={`font-display leading-tight font-extrabold break-words tabular ${i === 0 ? 'text-[2rem]' : 'text-[1.6rem]'}`}>{st.value}</dd>
           </div>
         ))}
       </dl>
@@ -533,6 +536,14 @@ export function Results({ room, handle, isHost, guest }: { room: RoomView; handl
   };
   const [summary, setSummary] = useState(false);
   const feelings = room.host?.feelings ?? null;
+  // The Skip button goes when the ceremony does. If it had the focus, the host's next step takes it, so a
+  // keyboard is never left at the top of the page.
+  const nextSteps = useRef<HTMLDivElement>(null);
+  const running = ceremony.running;
+  useEffect(() => {
+    if (running || !isHost) return;
+    if (focusAdrift()) nextSteps.current?.querySelector<HTMLElement>('button, a')?.focus({ preventScroll: true });
+  }, [running, isHost]);
   // What waits for the ceremony: the rest of the results. A solo game's quick reveal holds only its standings and awards.
   const held = ceremony.running && plan?.pace === 'show';
   const heldBrisk = ceremony.running && plan?.pace === 'brisk';
@@ -582,7 +593,7 @@ export function Results({ room, handle, isHost, guest }: { room: RoomView; handl
           <div className="flex flex-col gap-4" style={big ? arrive : undefined}>
             {isHost ? (
               // The host's next steps come first, so they stay on screen however long the standings are.
-              <div className="paper stage-card flex flex-wrap items-center gap-2 p-3" role="group" aria-label="What next">
+              <div ref={nextSteps} className="paper stage-card flex flex-wrap items-center gap-2 p-3" role="group" aria-label="What next">
                 {/* Lessons: the next step with the same players comes first. */}
                 {room.lesson ? <NextStepButton room={room} className="grow" /> : null}
                 <Button variant={room.lesson ? 'secondary' : 'primary'} size="lg" className="grow" icon={<RotateCcw className="size-5" aria-hidden />} loading={busy} onClick={restart}>

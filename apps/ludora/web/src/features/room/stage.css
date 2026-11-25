@@ -216,6 +216,17 @@
   }
 }
 
+/* A streak that has just grown: its chip swells where it sits. */
+@keyframes chip-bump {
+  0%,
+  100% {
+    transform: none;
+  }
+  40% {
+    transform: scale(1.16);
+  }
+}
+
 /* A climber's arrow on the leaderboard lifts into place once the rows have moved. */
 @keyframes climb-in {
   from {

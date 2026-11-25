@@ -77,6 +77,17 @@ export function stageAt(c: Ceremony, elapsed: number): Stage {
 /** A ceremony with nothing left to show: every place on the podium, everything else on screen. */
 export const overStage = (c: Ceremony | null): Stage => ({ risen: c?.beats.length ?? 0, landed: c?.beats.length ?? 0, done: true });
 
+/**
+ * What the big screen calls a place as it is revealed: "3rd place", "2nd place", "The winner". Players
+ * level on points share a rank, and are named for what they share ("Joint 1st"), so nobody level with
+ * the winner is called second.
+ */
+export function placeTitle(standings: readonly { rank: number }[], place: number, ordinal: (n: number) => string): string {
+  const rank = standings[place]?.rank ?? place + 1;
+  if (standings.some((s, i) => i !== place && s.rank === rank)) return `Joint ${ordinal(rank)}`;
+  return place === 0 ? 'The winner' : `${ordinal(rank)} place`;
+}
+
 /** When the winner lands. */
 export const winnerLands = (c: Ceremony): number => c.beats[c.beats.length - 1]!.land;
 

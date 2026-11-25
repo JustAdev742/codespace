@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { placesClimbed, type LeaderRow } from './Leaderboard.tsx';
+import { placesClimbed, standingLine, type LeaderRow } from './Leaderboard.tsx';
 
 const row = (playerId: string, rank: number, score: number, gain = 0): LeaderRow => ({ playerId, name: playerId, rank, score, gain, teamId: null });
 
@@ -27,5 +27,34 @@ describe('the leaderboard between rounds', () => {
     const first = [row('a', 1, 950, 950), row('b', 2, 900, 900), row('c', 3, 0)];
     expect(placesClimbed(first[0]!, first)).toBe(0);
     expect(placesClimbed(first[1]!, first)).toBe(0);
+  });
+});
+
+describe('where a player stands, in words', () => {
+  const rows = [row('a', 1, 3010), row('b', 2, 1980), row('c', 3, 1850), row('d', 4, 900), row('e', 5, 900)];
+
+  it('tells the leader how far ahead they are', () => {
+    expect(standingLine(rows, rows[0]!)).toBe('1,030 ahead of 2nd.');
+  });
+
+  it('tells everyone else how many points would reach the next place up', () => {
+    expect(standingLine(rows, rows[1]!)).toBe('1,030 more to reach 1st.');
+    expect(standingLine(rows, rows[2]!)).toBe('130 more to reach 2nd.');
+    // Two players level in fourth: the next place up is third for both.
+    expect(standingLine(rows, rows[3]!)).toBe('950 more to reach 3rd.');
+    expect(standingLine(rows, rows[4]!)).toBe('950 more to reach 3rd.');
+  });
+
+  it('tells a player below the rows shown how to get onto them', () => {
+    expect(standingLine(rows, row('z', 9, 400))).toBe('500 more to reach the top 5.');
+  });
+
+  it('says nothing when there is nothing true to say', () => {
+    expect(standingLine(rows, null)).toBeNull();
+    expect(standingLine([row('a', 1, 500)], row('a', 1, 500))).toBeNull();
+    // Level at the top: nobody is ahead.
+    const level = [row('a', 1, 500), row('b', 1, 500)];
+    expect(standingLine(level, level[0]!)).toBeNull();
+    expect(standingLine(level, level[1]!)).toBeNull();
   });
 });

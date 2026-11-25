@@ -163,7 +163,8 @@ export function QuickDrawPlayer({ view, act, gameNow, paused, room }: ModeScreen
   // Arrived after this question began and did not answer it: it does not count for them.
   const late = Boolean(s.you?.joinedLate && !s.you.answered);
   return (
-    <div className="mx-auto flex w-full max-w-3xl flex-col gap-3 sm:gap-4">
+    // A buzzer round is a race to the answer: on a phone the tiles take all the room there is (.round-fill).
+    <div className="round-fill mx-auto flex w-full max-w-3xl flex-col gap-3 sm:gap-4">
       <RoundHeader round={s.round} total={s.total}>
         <TargetBadge target={view.target} />
         <HudScore value={you?.score ?? 0} unit={(you?.score ?? 0) === 1 ? 'point' : 'points'} />
@@ -194,7 +195,7 @@ export function QuickDrawPlayer({ view, act, gameNow, paused, room }: ModeScreen
         ) : (
           <>
             <p className="font-semibold text-text-2">{view.penalty ? 'One try. A wrong answer costs a point.' : 'One try. First right answer wins the round.'}</p>
-            <AnswerInput key={q.iid} q={q.q} onSubmit={submit} disabled={paused} />
+            <AnswerInput key={q.iid} q={q.q} onSubmit={submit} disabled={paused} fill />
           </>
         )
       ) : (

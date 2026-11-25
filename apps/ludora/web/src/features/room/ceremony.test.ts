@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { RoomView } from '@ludora/shared';
-import { FANFARE_LEAD_MS, ceremonyFor, ceremonyPace, endingKey, fanfareStarted, hasFanfareStarted, overStage, placeLands, sinceEnd, stageAt, winnerLands } from './ceremony.ts';
+import { FANFARE_LEAD_MS, ceremonyFor, ceremonyPace, endingKey, fanfareStarted, hasFanfareStarted, overStage, placeLands, placeTitle, sinceEnd, stageAt, winnerLands } from './ceremony.ts';
+import { ordinal } from '../../lib/format.ts';
 import { roomMusic } from './music.ts';
 
 const standing = (playerId: string, rank: number) => ({ playerId, name: playerId, rank, score: 100 - rank, label: '', teamId: null, correct: 0, answered: 0 });
@@ -63,6 +64,17 @@ describe('the podium ceremony', () => {
     expect(placeLands(c, 0)).toBe(winnerLands(c));
     expect(placeLands(c, 3)).toBeNull();
     expect(placeLands(ceremonyFor(2, 'show'), 2)).toBeNull();
+  });
+
+  it('names each place as it is revealed, and players level on points for what they share', () => {
+    const clear = [{ rank: 1 }, { rank: 2 }, { rank: 3 }, { rank: 4 }];
+    expect([2, 1, 0].map((p) => placeTitle(clear, p, ordinal))).toEqual(['3rd place', '2nd place', 'The winner']);
+    // Two level at the top: neither is "second".
+    const top = [{ rank: 1 }, { rank: 1 }, { rank: 3 }];
+    expect([2, 1, 0].map((p) => placeTitle(top, p, ordinal))).toEqual(['3rd place', 'Joint 1st', 'Joint 1st']);
+    // Third and fourth level: third is shared with someone off the podium.
+    const third = [{ rank: 1 }, { rank: 2 }, { rank: 3 }, { rank: 3 }];
+    expect([2, 1, 0].map((p) => placeTitle(third, p, ordinal))).toEqual(['Joint 3rd', '2nd place', 'The winner']);
   });
 
   it('gives a room the ceremony, a solo game the quick reveal, and co-op games, lone players and modes with their own ending neither', () => {

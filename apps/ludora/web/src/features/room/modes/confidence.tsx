@@ -294,7 +294,7 @@ export function ConfidencePlayer({ view, act, gameNow, paused, room }: ModeScree
   const submit = async (answer: Answer) => (await act({ type: 'answer', iid: q.iid, answer })).ok;
   const level = you?.wager ?? 1;
   return (
-    <div className="mx-auto flex w-full max-w-3xl flex-col gap-3 sm:gap-4">
+    <div className="round-fill mx-auto flex w-full max-w-3xl flex-col gap-3 sm:gap-4">
       {header}
       {view.phase === 'question' ? (
         <>
@@ -310,7 +310,7 @@ export function ConfidencePlayer({ view, act, gameNow, paused, room }: ModeScree
         you?.answered ? (
           <LockedIn answered={view.answered} eligible={view.players} avatar={myAvatar(room)} seed={room.me.playerId ?? 'you'} />
         ) : (
-          <AnswerInput key={q.iid} q={q.q} onSubmit={submit} disabled={paused} />
+          <AnswerInput key={q.iid} q={q.q} onSubmit={submit} disabled={paused} fill />
         )
       ) : (
         <div className="flex flex-col gap-4">

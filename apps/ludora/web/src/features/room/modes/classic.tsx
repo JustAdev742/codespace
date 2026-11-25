@@ -6,7 +6,7 @@ import { AnswerInput } from '../game/AnswerInput.tsx';
 import { QuestionCard } from '../game/QuestionCard.tsx';
 import { TimerBar } from '../game/TimerBar.tsx';
 import { ChoicesDisplay, ResultBanner, RevealAnswer, shortAnswer } from '../game/Reveal.tsx';
-import { Leaderboard, TeamScores, type LeaderRow } from '../game/Leaderboard.tsx';
+import { Leaderboard, TeamScores, standingLine, type LeaderRow } from '../game/Leaderboard.tsx';
 import { Explanation, HudCount, HudScore, IntroScreen, LockedIn, RoundHeader, StreakChip, myAvatar } from '../game/parts.tsx';
 import { Pill, PlayerGlim, StagePanel } from '../game/stage.tsx';
 import { formatNumber, ordinal } from '../../../lib/format.ts';
@@ -58,7 +58,7 @@ export function ClassicPlayer({ view, act, gameNow, paused, room }: ModeScreenPr
   if (s.phase === 'intro') {
     return (
       <IntroScreen kicker="Get ready" title={room.room.title} until={s.phaseEndsAt} gameNow={gameNow} room={room} art={<PlayerGlim avatar={myAvatar(room)} seed={seed} size={120} />}>
-        {s.total} questions
+        <WhatIsOn set={room.room.setTitle} title={room.room.title} questions={s.total} />
       </IntroScreen>
     );
   }
@@ -70,7 +70,12 @@ export function ClassicPlayer({ view, act, gameNow, paused, room }: ModeScreenPr
           <div className="flex flex-col items-start gap-1">
             {/* Your rank on the gold plate: the moment of the standings. */}
             <h2 className={me ? 'plate plate-gold text-[2rem]' : 'font-display text-[2.25rem] font-bold'}>{me ? <span>You are {ordinal(me.rank)}</span> : 'Standings'}</h2>
-            {me ? <p className="font-semibold text-text-2">{formatNumber(me.score)} points so far</p> : null}
+            {/* The score, and what it would take to climb (or how far ahead the leader is). */}
+            {me ? (
+              <p className="font-semibold text-text-2">
+                {formatNumber(me.score)} points so far. {standingLine(view.board.rows, me)}
+              </p>
+            ) : null}
           </div>
         </div>
         {view.teams ? <TeamScores teams={view.teams} /> : null}
@@ -144,6 +149,16 @@ export function ClassicPlayer({ view, act, gameNow, paused, room }: ModeScreenPr
   );
 }
 
+/** Under the game's name as it starts: the question set the class is about to play, and how long it is. */
+function WhatIsOn({ set, title, questions }: { set: string; title: string; questions: number }) {
+  return (
+    <>
+      {set && set !== title ? <span className="block font-bold text-text">{set}</span> : null}
+      {questions} {questions === 1 ? 'question' : 'questions'}
+    </>
+  );
+}
+
 const JOINED_LATE = 'You joined during this question, so it does not count. You play from the next one.';
 
 function JoinedMidQuestion() {
@@ -158,7 +173,7 @@ export function ClassicHost({ view, gameNow, paused, room }: ModeScreenProps<Cla
   if (s.phase === 'intro') {
     return (
       <IntroScreen kicker="Get ready" title={room.room.title} until={s.phaseEndsAt} gameNow={gameNow} room={room} big>
-        {s.total} questions
+        <WhatIsOn set={room.room.setTitle} title={room.room.title} questions={s.total} />
       </IntroScreen>
     );
   }

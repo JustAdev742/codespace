@@ -213,6 +213,8 @@ export default function RoomPage() {
   const askFirst = isHost ? (live || othersHere) && !room.room.solo : live && !room.room.solo;
   // The lobby and results screens carry their own main heading; during play the room's title is the page's one heading.
   const Title = live ? 'h1' : 'p';
+  // A player's own arrival is news for the room, not for them: their screen already says "You are in".
+  const ownJoin = room.me.name ? `${room.me.name} joined.` : null;
   // The big screen's backdrop shows in the lobby and between questions; while a question is up the picture belongs to the game.
   const syncPhase = (room.game as { sync?: { phase?: string } } | null)?.sync?.phase;
   const between = status === 'lobby' || (live && (syncPhase === 'intro' || syncPhase === 'leaderboard'));
@@ -361,7 +363,7 @@ export default function RoomPage() {
         </footer>
       ) : null}
       {/* In the host's lobby each arrival already slides in as a card, and toasts in the corner would sit over the crowd. */}
-      <FeedToasts feed={room.feed} quiet={isHost && (status === 'lobby' || (live && hostListsFeed(room.room.modeId)))} overHeader={isHost ? null : room.room.solo ? 'solo' : 'player'} />
+      <FeedToasts feed={isHost ? room.feed : room.feed.filter((f) => f.text !== ownJoin)} quiet={isHost && (status === 'lobby' || (live && hostListsFeed(room.room.modeId)))} overHeader={isHost ? null : room.room.solo ? 'solo' : 'player'} />
       {calm ? null : <ReactionLayer reactions={handle.reactions} big={isHost} />}
       {debug ? <DebugOverlay handle={handle} /> : null}
       {status === 'lobby' && !room.room.solo ? <StartCountdown handle={handle} isHost={isHost} /> : null}
