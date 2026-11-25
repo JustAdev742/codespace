@@ -40,6 +40,12 @@ async function playToTheEnd(browser: Browser, reducedMotion: boolean) {
   const { code } = await room.json();
   await host.page.goto(`/room/${code}`);
   await expect(host.page.getByRole('button', { name: 'Start game' })).toBeVisible();
+  // The floodlights behind the lobby: drawn as light where effects are up (or given back to the flat beams by a
+  // browser with no WebGL, as headless Firefox and WebKit have none), and a still picture for less motion.
+  const backdrop = host.page.locator('[data-backdrop="floodlights"]');
+  await expect(backdrop).toHaveCount(1);
+  if (reducedMotion) await expect(host.page.locator('canvas[data-stage-light]')).toHaveCount(0);
+  else await expect(host.page.locator('canvas[data-stage-light]')).toHaveCount(1);
 
   const phoneContext = await browser.newContext({ viewport: { width: 390, height: 844 }, ...(reducedMotion ? { reducedMotion: 'reduce' as const } : {}) });
   const phone = await phoneContext.newPage();

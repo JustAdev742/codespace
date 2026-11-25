@@ -56,7 +56,7 @@ their own set pickers.
 | Area | File | Rows |
 |---|---|---|
 | Scores that wait for the reveal, the reveal itself, a podium ceremony in step on every screen, phones as controllers, rewards, and the way on between answers | [game-feel.md](game-feel.md) | 21 changes, 8 bugs fixed |
-| Effects that scale with the device: a graphics setting, celebrations with real movement, scene changes between phases, an older device keeps the game as it was | [stage-effects.md](stage-effects.md) | 11 changes |
+| Effects that scale with the device: a graphics setting, celebrations with real movement, scene changes between phases, an older device keeps the game as it was | [stage-effects.md](stage-effects.md) | 12 changes |
 
 ## New 3D game modes
 

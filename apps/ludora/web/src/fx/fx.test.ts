@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { decideFx, FX_BUDGET, type FxFacts } from './decide.ts';
 import { FxGovernor, SLOW_FRAME_MS, WINDOW, type GovernorStep } from './governor.ts';
 import { alphaAt, burst, cannon, Field, HEADS, rain, seeded, SHAPES, styleOf, TUMBLES } from './particles.ts';
+import { GAIN, rgb } from './stageLight.ts';
 
 const facts = (over: Partial<FxFacts> = {}): FxFacts => ({ choice: 'auto', cores: 8, memory: 8, software: false, dataSaver: false, slow: false, ...over });
 
@@ -193,5 +194,21 @@ describe('the pieces of a celebration', () => {
     const streaks = Array.from({ length: f.n }, (_, i) => i).filter((i) => f.shape[i] === streak);
     expect(streaks.length).toBeGreaterThan(0);
     expect(streaks.every((i) => (f.bits[i]! & HEADS) !== 0 && (f.bits[i]! & TUMBLES) === 0)).toBe(true);
+  });
+});
+
+describe('the stage light', () => {
+  it('reads a colour as the three numbers a shader wants', () => {
+    expect(rgb('#ffffff')).toEqual([1, 1, 1]);
+    expect(rgb('#000000')).toEqual([0, 0, 0]);
+    const [r, g, b] = rgb('#9db7ff');
+    expect(r).toBeCloseTo(157 / 255);
+    expect(g).toBeCloseTo(183 / 255);
+    expect(b).toBe(1);
+  });
+
+  it('is never brighter than the flat beams it stands in for', () => {
+    // The shader holds a beam to 1.1 times the gain; the drawn beams are 22% of the same colour.
+    expect(GAIN * 1.1).toBeLessThanOrEqual(0.22 + 1e-9);
   });
 });

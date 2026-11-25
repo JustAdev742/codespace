@@ -868,11 +868,20 @@ can still be tapped the instant it shows. A screen drawn on a canvas (a 3D game)
 and changes as before.
 
 *Moments, not a moving stage.* DESIGN.md's rule stands: one orchestrated moment per screen, no
-idle bobbing or drifting. A breathing crowd of Glims, drifting haze or a shader behind the
-question would have been the obvious way to spend the new budget, and each was left out on
-purpose: a board is for reading, and a class includes children whom constant movement
-distracts. Everything added starts, plays and stops: paper falls and is gone, the winner jumps
-three times and stands still, a level turns over once.
+idle bobbing or drifting. A breathing crowd of Glims or a shader behind the question would have
+been the obvious way to spend the new budget, and each was left out on purpose: a board is for
+reading, and a class includes children whom constant movement distracts. Everything added
+starts, plays and stops: paper falls and is gone, the winner jumps three times and stands still,
+a level turns over once.
+
+*The floodlights as light.* The one place something already moved by itself is the big screen's
+backdrop: one slow layer, in the lobby and between questions, fading out while a question is up.
+Where effects are up, the default backdrop's two flat beams are drawn by the graphics chip
+instead (`fx/stageLight.ts`): soft beams with dust turning in them and a haze on the floor. It is
+the same picture in the same place under the same rule, not a new layer. The shader holds it to
+the flat beams' own brightness, so text on the stage keeps the contrast it had; it is drawn at
+half size and 30 frames a second, and a browser without WebGL, a lost context or slow frames
+gives the flat beams back. Less motion, a calm room and data saver keep the still picture.
 
 *Less motion is not a graphics level.* With reduced motion (the device's setting or the player's)
 or in a calm room there are no effects at all, as before, and nothing is fetched. That is

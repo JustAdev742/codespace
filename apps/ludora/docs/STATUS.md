@@ -39,13 +39,19 @@ item with how each was checked, in [features/README.md](features/README.md). The
     arriving in the lobby.
   - *Scene changes.* Between phases the screen being left lifts away as the next arrives,
     instead of a cut. The new screen is live from its first frame.
-  - *Still no idle motion:* Glims hold still and nothing drifts behind a question, on purpose.
+  - *The floodlights as light.* The default backdrop's two flat beams are drawn by the graphics
+    chip where effects are up: soft beams with dust turning in them, in the lobby and between
+    questions, held to the flat beams' brightness. No WebGL, slow frames, less motion, a calm
+    room or data saver: the flat picture.
+  - *Still nothing moves behind a question, and Glims hold still,* on purpose.
   - *An older device keeps the game as it was:* the plain level is the code that ran before, and
     the effects file (8 KB) is not fetched there, nor for anyone who asked for less motion.
 
-  Checked: 22 unit tests (the choice, the frame-time check, the pieces), and games played in
-  headless Chromium on the production build with the setting on High, on Automatic (which chose
-  plain there) and on High with reduced motion (nothing drawn). **Not checked:** any real
+  Checked: 24 unit tests (the choice, the frame-time check, the pieces, the light's brightness),
+  2 browser tests that draw the effects (`e2e/effects.spec.ts`), and games played in headless
+  Chromium on the production build with the setting on High (Classic and seven other modes, solo,
+  a hall screen, the Hills Grammar look), on Automatic (which chose plain there), on High with
+  reduced motion and in a calm room (nothing drawn). **Not checked:** any real
   device, a real frame rate (headless Chromium draws in software), Safari or Firefox.
 
 - **The live game: anticipation and payoff** (25 November, D61). The game was played end to end

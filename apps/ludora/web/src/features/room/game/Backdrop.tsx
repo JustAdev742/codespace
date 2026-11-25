@@ -1,9 +1,11 @@
-import { useState, type CSSProperties, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { Check, Mountain } from 'lucide-react';
 import { Button } from '../../../ui/Button.tsx';
 import { Dialog } from '../../../ui/primitives.tsx';
 import { usePrefs } from '../../../lib/usePrefs.ts';
 import { schoolLook } from '../../../lib/school.ts';
+import { dataSaverOn, prefersReducedMotion } from '../../../lib/prefs.ts';
+import { fxLevel } from '../../../fx/index.ts';
 
 /*
  * Big-screen backdrops: scenes the host picks for the lobby and the moments
@@ -76,7 +78,7 @@ const move = (name: string, seconds: number, origin = 'center', delay = 0, box: 
   transformBox: box,
 });
 
-function Floodlights() {
+function Floodlights({ lit = false }: { lit?: boolean }) {
   return (
     <>
       <defs>
@@ -90,13 +92,17 @@ function Floodlights() {
         </radialGradient>
       </defs>
       <rect x="0" y="560" width={W} height="340" fill="url(#bd-floor)" />
-      {/* Two light towers, their beams sweeping slowly across the floor. */}
-      <g style={move('bd-sweep', 13, 'top left')}>
-        <polygon points="120,-20 190,-20 900,900 420,900" fill="url(#bd-beam)" />
-      </g>
-      <g style={move('bd-sweep-back', 15, 'top right')}>
-        <polygon points="1410,-20 1480,-20 1180,900 700,900" fill="url(#bd-beam)" />
-      </g>
+      {/* Two light towers, their beams sweeping slowly across the floor. Where the stage light is up (StageLight), it draws them instead. */}
+      {lit ? null : (
+        <>
+          <g style={move('bd-sweep', 13, 'top left')}>
+            <polygon points="120,-20 190,-20 900,900 420,900" fill="url(#bd-beam)" />
+          </g>
+          <g style={move('bd-sweep-back', 15, 'top right')}>
+            <polygon points="1410,-20 1480,-20 1180,900 700,900" fill="url(#bd-beam)" />
+          </g>
+        </>
+      )}
     </>
   );
 }
@@ -245,17 +251,61 @@ function Forest() {
   );
 }
 
-const SCENES: Record<Exclude<BackdropId, 'plain'>, () => ReactNode> = { floodlights: Floodlights, hills: Hills, harbour: Harbour, aurora: Aurora, rooftops: Rooftops, forest: Forest };
+const SCENES: Record<Exclude<BackdropId, 'plain'>, (p: { lit?: boolean }) => ReactNode> = { floodlights: Floodlights, hills: Hills, harbour: Harbour, aurora: Aurora, rooftops: Rooftops, forest: Forest };
 
-/** The scene itself, filling its box (the screen behind the room, or a small preview). */
-export function BackdropScene({ id, className = '' }: { id: BackdropId; className?: string }) {
+/** The scene itself, filling its box (the screen behind the room, or a small preview). `lit`: the stage light is drawing the floodlights' beams. */
+export function BackdropScene({ id, className = '', lit = false }: { id: BackdropId; className?: string; lit?: boolean }) {
   if (id === 'plain') return null;
   const Scene = SCENES[id];
   return (
     <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="xMidYMax slice" className={`backdrop block ${className}`} aria-hidden focusable="false">
-      <Scene />
+      <Scene lit={lit} />
     </svg>
   );
+}
+
+/**
+ * The floodlights as light (fx/stageLight.ts), where the stage's effects are up: beams with dust
+ * turning in them, drawn by the graphics chip in place of the two flat ones. `onUp` says whether it
+ * is drawing, so the flat beams can give way (and come back if it has to stop). Not for less motion,
+ * a calm room or data saver, which keep the still picture; nor for the plain game.
+ */
+function StageLight({ on, onUp }: { on: boolean; onUp: (up: boolean) => void }) {
+  const canvas = useRef<HTMLCanvasElement>(null);
+  const light = useRef<{ show(on: boolean): void; stop(): void } | null>(null);
+  const shown = useRef(on);
+  shown.current = on;
+  const [wanted] = useState(() => !prefersReducedMotion() && !dataSaverOn() && fxLevel() !== 'plain');
+  useEffect(() => {
+    if (!wanted) return;
+    let gone = false;
+    void import('../../../fx/stageLight.ts').then(
+      (m) => {
+        const el = canvas.current;
+        if (gone || !el) return;
+        const made = m.start(el, { beam: c('#9db7ff'), floor: c('#3a6bff') }, () => onUp(false));
+        if (!made) return;
+        light.current = made;
+        made.show(shown.current);
+        onUp(true);
+      },
+      () => {
+        /* Offline, or the file is gone after an update: the flat beams stay. */
+      },
+    );
+    return () => {
+      gone = true;
+      light.current?.stop();
+      light.current = null;
+      onUp(false);
+    };
+    // Started once: `on` reaches it through the effect below.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [wanted]);
+  useEffect(() => {
+    light.current?.show(on);
+  }, [on]);
+  return wanted ? <canvas ref={canvas} className="absolute inset-0 size-full" aria-hidden data-stage-light="" /> : null;
 }
 
 /**
@@ -263,10 +313,13 @@ export function BackdropScene({ id, className = '' }: { id: BackdropId; classNam
  * questions, and out while a question is up, so the picture belongs to the game then.
  */
 export function Backdrop({ id, on }: { id: BackdropId; on: boolean }) {
+  // The stage light is drawing the floodlights' beams: the flat ones give way to it.
+  const [lit, setLit] = useState(false);
   if (id === 'plain') return null;
   return (
-    <div className={`pointer-events-none fixed inset-0 -z-10 transition-opacity duration-500 ease-[var(--ease-out)] ${on ? 'opacity-100' : 'opacity-0'}`} aria-hidden data-backdrop={id}>
-      <BackdropScene id={id} className="size-full" />
+    <div className={`pointer-events-none fixed inset-0 -z-10 transition-opacity duration-500 ease-[var(--ease-out)] ${on ? 'opacity-100' : 'opacity-0'}`} aria-hidden data-backdrop={id} data-light={id === 'floodlights' && lit ? 'on' : undefined}>
+      <BackdropScene id={id} className="size-full" lit={id === 'floodlights' && lit} />
+      {id === 'floodlights' ? <StageLight on={on} onUp={setLit} /> : null}
     </div>
   );
 }
