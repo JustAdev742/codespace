@@ -189,7 +189,8 @@ function Sequence({ lantern, packId, packName, result, onClose, again, onMakeBud
                 {/* The card: framed in the rarity's colour, foil from epic up, the Glim big in its own light. */}
                 <div className="relative mt-3 w-full max-w-[min(19.5rem,44dvh)]" style={{ animation: motion('pack-card-land 220ms var(--ease-out) both') }}>
                   <div className="pointer-events-none absolute top-1/2 left-1/2 -z-10 size-[min(120vw,560px)] -translate-x-1/2 -translate-y-1/2 rounded-full" style={{ background: `radial-gradient(circle, color-mix(in oklab, ${color} ${big ? 48 : 34}%, transparent) 0%, transparent 62%)` }} aria-hidden />
-                  {rank(rarity) >= rank('rare') ? <Burst hue={RARITY_HUE[rarity]} size={big ? 460 : 340} count={big ? 20 : 14} /> : null}
+                  {/* Always the plain burst: opening a Lantern is a matter of chance, and is not made a bigger moment than it is (D61, D62). */}
+                  {rank(rarity) >= rank('rare') ? <Burst plain hue={RARITY_HUE[rarity]} size={big ? 460 : 340} count={big ? 20 : 14} /> : null}
                   <div className={`overflow-hidden p-2 shadow-[0_24px_60px_-20px_rgb(0_0_0/0.8)] [--card-bg:#121a46] ${f.className}`} style={f.style}>
                     <RarityPanel rarity={rarity} tag={false} className="aspect-square w-full">
                       <Glim art={result.item.art as GlimArt} size={240} rarity={rarity} aura={rarity} pose="cheer" className="h-auto w-[88%]" />

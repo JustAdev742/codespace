@@ -38,6 +38,7 @@ import { Backdrop } from './game/Backdrop.tsx';
 import { SetFeelContext, useApplySetFeel, useRoomBackdrop } from './game/setFeel.tsx';
 import { PhaseFade } from './game/PhaseFade.tsx';
 import { setRoomCalm } from '../../lib/prefs.ts';
+import { fxWarm } from '../../fx/index.ts';
 import { Walkthrough, useKnownTutorial } from './Walkthrough.tsx';
 import { CalmPlayTag } from './CalmPlay.tsx';
 
@@ -128,6 +129,14 @@ export default function RoomPage() {
     setRoomCalm(roomCalm);
     return () => setRoomCalm(false);
   }, [roomCalm]);
+  // The stage's effects (fx/) are fetched once the room is up and has had a moment to settle, and only on a
+  // device that will draw them: joining and the first question never wait for them.
+  const inRoom = Boolean(room);
+  useEffect(() => {
+    if (!inRoom) return;
+    const t = setTimeout(fxWarm, 1500);
+    return () => clearTimeout(t);
+  }, [inRoom]);
   const live0 = room?.room.status === 'running' || room?.room.status === 'paused';
   useWakeLock(Boolean(live0));
   const { calm } = useAccess();

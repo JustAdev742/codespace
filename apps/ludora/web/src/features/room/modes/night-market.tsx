@@ -680,7 +680,8 @@ function OpenedCard({ opened, onNext }: { opened: Opened; onNext: (() => void) |
   return (
     <div className="flex flex-col gap-2">
       <div className="lift relative isolate flex items-center gap-3 rounded-[var(--radius-l)] px-4 py-3 text-on-accent" style={{ background: fillOf(opened.kind), animation: 'pop-in 200ms var(--ease-out)' }}>
-        {opened.big ? <Burst style="festival" hue={KIND_INFO[opened.kind].hue} size={320} /> : null}
+        {/* Always the plain burst: what a lantern holds is chance, and is not made a bigger moment than it is. */}
+        {opened.big ? <Burst plain style="festival" hue={KIND_INFO[opened.kind].hue} size={320} /> : null}
         <span className="grid size-14 shrink-0 place-items-center rounded-full bg-ink/85" aria-hidden>
           <Lantern art={artFor(opened.kind)} size={36} lit />
         </span>

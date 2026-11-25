@@ -117,6 +117,15 @@ Motion never stands in the way: answer tiles can be pressed the instant they
 show, and a result that moves on by itself also has a button, with a line
 running out along its foot to say so.
 
+Effects scale with the device (D62). A celebration has a plain form (a quick
+CSS burst, what every device had) and a full one drawn on a canvas: pieces
+that are thrown, tumble, fall and settle, and paper across the whole screen
+as a winner lands. The graphics setting picks between them, by itself
+unless the player chooses, and an older or slower device keeps the plain
+form. New effects go through `Burst` (`art/bursts.tsx`) or `fx/`, never a
+canvas of their own, so they inherit the levels, the frame-time check and
+the rule that less motion means none.
+
 ## Characters
 
 Glims stay Ludora's collectibles, restyled to suit 8 to 17:

@@ -13,6 +13,7 @@ import { buttonClass } from '../../ui/Button.tsx';
 import { MODE_SCREENS } from '../room/modes/registry.ts';
 import { PlayerGlim } from '../room/game/stage.tsx';
 import { PodiumCeremony } from '../room/Results.tsx';
+import { fxWarm } from '../../fx/index.ts';
 // The room's motion (the podium rising, a countdown's beat): every page that shows game screens loads it.
 import '../room/stage.css';
 import { usePageTitle } from '../reports/reportUi.tsx';
@@ -183,6 +184,11 @@ export default function Watch() {
 
 function Watching({ code, hall }: { code: string; hall: boolean }) {
   const w = useWatch(code);
+  // The stage's effects, once the screen has settled (as in the room itself).
+  useEffect(() => {
+    const t = setTimeout(fxWarm, 1500);
+    return () => clearTimeout(t);
+  }, []);
   const v = w.view;
   if (w.error || w.ended) {
     return (

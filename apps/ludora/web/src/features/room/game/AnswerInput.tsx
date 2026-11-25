@@ -8,6 +8,7 @@ import { useAnswerMemory, useRememberingSubmit } from './answerMemory.tsx';
 import { useOnline } from './online.tsx';
 import { playSfx, useSoundPacing, useSoundRole } from '../../../lib/sound/react.tsx';
 import { motionOK } from './stage.tsx';
+import { Burst } from '../../../art/bursts.tsx';
 import { SoundPlay } from '../../sets/sound/SoundPlay.tsx';
 
 /*
@@ -234,6 +235,8 @@ export function ChoiceTile({
       {correct ? (
         <span className="absolute -top-3 -right-3 grid size-10 place-items-center rounded-full bg-glim text-on-accent shadow-[0_0_0_3px_var(--stage-3)]" style={staged ? { animation: `badge-stamp 280ms var(--ease-out) ${lands + 140}ms both` } : undefined} role="img" aria-label="Correct answer">
           <Check className="size-6" strokeWidth={3} aria-hidden />
+          {/* Where the stage's effects are up, stars fly from the tick as it lands on the big screen (fx/). */}
+          {staged ? <Burst extra style="sparkle" hue={40} size={300} count={9} delay={lands + 170} /> : null}
         </span>
       ) : null}
       {tagged ? (

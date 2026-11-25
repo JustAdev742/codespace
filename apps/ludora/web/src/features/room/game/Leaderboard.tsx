@@ -5,6 +5,7 @@ import { formatNumber, ordinal } from '../../../lib/format.ts';
 import { playSfx, useSoundRole } from '../../../lib/sound/react.tsx';
 import { useCountUp } from './countUp.ts';
 import { PlayerGlim, avatarOf, motionOK } from './stage.tsx';
+import { Burst } from '../../../art/bursts.tsx';
 
 export interface LeaderRow {
   playerId: string;
@@ -262,12 +263,14 @@ export const teamFill = (hue: number) => `hsl(${hue} 85% 70%)`;
 function Climb({ n, big }: { n: number; big: boolean }) {
   return (
     <span
-      className={`inline-flex shrink-0 items-center gap-0.5 rounded-full bg-glim/[0.16] font-display font-extrabold text-glim tabular ${big ? 'px-[0.5em] py-[0.1em] text-[length:calc(var(--lb-score)*0.6)] max-sm:hidden' : 'px-2 py-0.5 text-sm'}`}
+      className={`relative inline-flex shrink-0 items-center gap-0.5 rounded-full bg-glim/[0.16] font-display font-extrabold text-glim tabular ${big ? 'px-[0.5em] py-[0.1em] text-[length:calc(var(--lb-score)*0.6)] max-sm:hidden' : 'px-2 py-0.5 text-sm'}`}
       style={motionOK() ? { animation: 'climb-in 240ms var(--ease-out) 1150ms both' } : undefined}
     >
       <ArrowUp className="size-[1em]" strokeWidth={3} aria-hidden />
       {n}
       <span className="sr-only"> {n === 1 ? 'place' : 'places'} up,</span>
+      {/* Where the stage's effects are up, a climb lands with a few stars (fx/). */}
+      <Burst extra style="sparkle" hue={150} size={big ? 300 : 190} count={6} delay={1200} />
     </span>
   );
 }

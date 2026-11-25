@@ -10,6 +10,8 @@ import { speak, speechSupported, useVoices } from '../../lib/speech.ts';
 import { installState, promptInstall, subscribeInstall } from '../../lib/pwa.ts';
 import { deviceTimeZone, timeZones } from '../../lib/format.ts';
 import { SectionBoundary } from '../../ui/SectionBoundary.tsx';
+import { storeChoice, storedChoice, type QualityChoice } from '../../three/quality.ts';
+import { fxLevel } from '../../fx/index.ts';
 
 /*
  * The accessibility and comfort settings, as a list of definitions: Settings shows every one,
@@ -65,6 +67,46 @@ export function Row({ label, description, children, device = false }: { label: s
       </div>
       {children}
     </div>
+  );
+}
+
+const GRAPHICS: { value: QualityChoice; label: string }[] = [
+  { value: 'auto', label: 'Automatic' },
+  { value: 'high', label: 'High' },
+  { value: 'medium', label: 'Medium' },
+  { value: 'low', label: 'Low (for an older device)' },
+  { value: 'off', label: '3D off (flat pictures)' },
+];
+/** What the automatic setting has settled on for celebrations here, in words. */
+const AUTO_MEANS = { plain: 'simple celebrations', full: 'full celebrations', rich: 'the fullest celebrations' } as const;
+
+function subscribeGraphics(l: () => void) {
+  window.addEventListener('ludora:graphics', l);
+  return () => window.removeEventListener('ludora:graphics', l);
+}
+
+/**
+ * Graphics and effects, for this device: the same choice the corner menu of a 3D game makes (three/quality.ts).
+ * Automatic starts from what the device says about itself and turns things down if frames are slow (fx/, D62).
+ */
+function GraphicsRow() {
+  const id = useId();
+  const choice = useSyncExternalStore(subscribeGraphics, storedChoice, () => 'auto' as const);
+  const auto = choice === 'auto' ? ` On this device it has chosen ${AUTO_MEANS[fxLevel()]}.` : '';
+  return (
+    <Row
+      label="Graphics and effects"
+      device
+      description={`Automatic picks what this device can draw smoothly, and turns it down by itself if the game runs slowly.${auto}`}
+    >
+      <Select id={id} aria-label="Graphics and effects" value={choice} onChange={(e) => storeChoice(e.target.value as QualityChoice)} className="w-60 max-sm:w-full">
+        {GRAPHICS.map((g) => (
+          <option key={g.value} value={g.value}>
+            {g.label}
+          </option>
+        ))}
+      </Select>
+    </Row>
   );
 }
 
@@ -440,6 +482,15 @@ export const SETTINGS: SettingDef[] = [
     device: true,
     keywords: 'loud quiet audio',
     render: (c) => <Slider label="Music volume" value={c.device.musicVolume} onChange={(v) => c.setDevice({ musicVolume: v })} device />,
+  },
+  {
+    id: 'graphics',
+    section: 'device',
+    label: 'Graphics and effects',
+    device: true,
+    description: 'How much the game draws: celebrations, and the picture in 3D games.',
+    keywords: '3d quality performance speed slow fast lag confetti particles celebrations frame rate',
+    render: () => <GraphicsRow />,
   },
   {
     id: 'dataSaver',

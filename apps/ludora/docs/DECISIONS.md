@@ -824,3 +824,46 @@ setting a player turns on, off by default, and it stays that way.
 No database migration. Two optional fields were added to what the server sends (`results.endedAt`,
 `rewards.xpTotal`). Without them the app still works: the ceremony starts as each screen opens
 rather than from the server's clock, and the rewards show no level bar.
+
+**D62. The stage's effects scale with the device; an older one gets the game as it was
+(25 November 2026).** The owner relaxed the performance limit: Ludora may now aim at laptops,
+phones and classroom boards from roughly the last four years, as long as an older device still
+works and simply looks plainer. So the game does what games do with a graphics setting.
+
+*One choice, per device.* The graphics choice that 3D games already had in their corner menu
+(Automatic, High, Medium, Low, 3D off; `three/quality.ts`) now also governs the stage's effects
+and is on the Settings page ("Graphics and effects", This device). For effects it comes to three
+levels (`fx/decide.ts`). **Plain** is the game exactly as it was drawn before: a celebration is a
+handful of CSS pieces, nothing else is fetched, and nothing about it changed for those devices.
+**Full** and **rich** draw celebrations on a canvas with real movement, rich with more pieces.
+Automatic starts from what the device says about itself (two processors or 2 GB of memory or
+fewer, no graphics chip, or data saver: plain; eight processors and 8 GB or more: rich; anything
+else: full), and a frame-time check runs while the first effects play: if three frames in four
+take longer than 28 ms it halves the pieces, and if that is not enough the device goes back to
+the plain game for the rest of the visit. A level chosen by hand is kept, at half its pieces at
+worst. It only ever turns things down.
+
+*What is drawn.* A particle system written for Ludora (`fx/particles.ts`, about 250 lines): pieces
+that are thrown, slowed by the air, pulled down (or lifted: a bubble, an ember, a lantern) and
+flutter as they fall. The burst a player already knew keeps its style and colours, the shop's
+answer and victory effects included, and gains pieces that tumble and settle. As the winner lands
+in a room's ceremony, paper falls on every screen: two cannons and a shower across a big screen,
+a lighter fall on a phone. Three small touches exist only where the effects are up: stars from the
+tick as the right answer lands on the board, from a climb on the standings, and round a player who
+walks into the lobby while the class watches.
+
+*Never in the way.* The canvas is on the page only while pieces are in the air, so nothing sits
+between a reader and the words (or between axe and the colours it measures) the rest of the time.
+What draws is a separate file of 8 KB (3.5 KB compressed), fetched a second and a half after a room
+opens and only on a device that will use it, so joining and the first question never wait for it;
+until it arrives a burst is the plain one. A store of fixed size drops what does not fit instead
+of growing. No library was added: it is a small amount of code, written for the game's own
+shapes and styles.
+
+*Less motion is not a graphics level.* With reduced motion (the device's setting or the player's)
+or in a calm room there are no effects at all, as before, and nothing is fetched. That is
+accessibility, and no graphics choice overrides it.
+
+*Not made bigger.* Opening a Lantern and the Night Market's lantern keep the plain burst on every
+device: what they hold is chance, and a chance-based reward for children is not given a bigger
+moment (D61).

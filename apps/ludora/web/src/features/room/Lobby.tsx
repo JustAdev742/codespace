@@ -23,6 +23,7 @@ import { BackdropPicker } from './game/Backdrop.tsx';
 import { teamFill } from './game/Leaderboard.tsx';
 import { plural } from '../../lib/format.ts';
 import { playSfx } from '../../lib/sound/react.tsx';
+import { Burst } from '../../art/bursts.tsx';
 import { EXTRA_SHARES, extraOf, setExtraTime, type ExtraShare } from './host/ExtraTime.tsx';
 import { InviteFriendsButton } from '../social/InviteFriends.tsx';
 
@@ -130,13 +131,15 @@ function SeatMenu({ p, actions }: { p: RoomPlayerView; actions: SeatActions }) {
   );
 }
 
-function Seat({ p, actions, delay, hop, cheering = false }: { p: RoomPlayerView; actions?: SeatActions | undefined; delay: number; hop?: number | undefined; cheering?: boolean }) {
+function Seat({ p, actions, delay, hop, cheering = false, arrived = false }: { p: RoomPlayerView; actions?: SeatActions | undefined; delay: number; hop?: number | undefined; cheering?: boolean; arrived?: boolean }) {
   return (
     // No box around a player: their Glim stands on the stage floor with its name on a tag, so a full class reads as a crowd, not a grid of cards.
     <li className={`group relative flex flex-col items-center gap-1 px-1 pt-1 ${CARD}`} style={motionOK() ? { animation: `stage-arrive 220ms var(--ease-out) ${delay}ms both` } : undefined}>
       <span className="relative">
         {/* The spot of light each Glim stands in. */}
         <span className="absolute inset-x-[8%] bottom-[2%] h-[16%] rounded-[50%] bg-[radial-gradient(closest-side,var(--stage-spot,rgb(120_160_255/0.38)),transparent)]" aria-hidden />
+        {/* Where the stage's effects are up, a player who walks in while the class watches arrives in a puff of stars in their own colour (fx/). */}
+        {arrived ? <Burst extra style="stars" hue={(p.avatar?.art as { hue?: number } | undefined)?.hue ?? 42} size={260} count={7} delay={140} /> : null}
         {/* Lobby play: the Glim hops when its player taps it on their own device. Still under reduced motion. */}
         <span key={hop ?? 0} className="relative block" style={hop && motionOK() ? { animation: 'seat-hop 520ms var(--ease-out)' } : undefined}>
           {/* A player sending a reaction from their phone throws their arms up here for a moment. */}
@@ -177,7 +180,7 @@ function Crowd({ players, actions, hops, cheers, inTeam = false }: { players: Ro
   return (
     <ul className="flex flex-wrap items-end justify-center gap-x-[clamp(0.25rem,calc(var(--seat)*0.1),1rem)] gap-y-[clamp(0.25rem,calc(var(--seat)*0.08),0.9rem)]" style={crowdVars(players.length, inTeam)}>
       {players.map((p, i) => (
-        <Seat key={p.id} p={p} actions={actions} hop={hops?.get(p.id)} cheering={cheers?.has(p.id)} delay={initial.has(p.id) ? Math.min(i, 16) * 40 : 0} />
+        <Seat key={p.id} p={p} actions={actions} hop={hops?.get(p.id)} cheering={cheers?.has(p.id)} delay={initial.has(p.id) ? Math.min(i, 16) * 40 : 0} arrived={!initial.has(p.id)} />
       ))}
     </ul>
   );

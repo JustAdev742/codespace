@@ -1,11 +1,19 @@
+import { useEffect, useRef } from 'react';
 import { prefersReducedMotion } from '../lib/prefs.ts';
+import { fxBurst, fxColors, fxReady, fxWarm } from '../fx/index.ts';
 
 /*
  * Celebration effects: the burst on a correct answer, the victory effect on
  * the podium and the reveal of a rare Glim. Players who equip an answer or
  * victory effect see its style and hue; everyone else gets crisp shards and
- * streaks in the game's colours. One quick, outward hit (about 700 ms), pure
- * CSS, decoration only, and nothing plays when the player asks for less motion.
+ * streaks in the game's colours. Decoration only, and nothing plays when the
+ * player asks for less motion.
+ *
+ * It is drawn one of two ways (D62). The plain burst is one quick, outward hit
+ * (about 700 ms) in pure CSS: what every device gets until the stage's effects
+ * have loaded, and what an older or slower device always gets. Where the
+ * effects are up (fx/), the same burst in the same style and colours is thrown
+ * on a canvas instead: more pieces, which tumble, fall and settle.
  */
 
 const COUNT = 16;
@@ -53,14 +61,51 @@ function shape(style: string, i: number, color: string, heading: number) {
   }
 }
 
+interface BurstProps {
+  style?: string;
+  hue?: number;
+  size?: number;
+  rise?: boolean;
+  delay?: number;
+  count?: number;
+  /** Always the plain burst, whatever the device: for a moment that must not be made bigger (opening a Lantern). */
+  plain?: boolean;
+  /** Only where the stage's effects are up; nothing at all on the plain game. For touches the plain game never had. */
+  extra?: boolean;
+}
+
 /**
  * A ring of particles flying out from the middle of the nearest positioned
  * parent. `rise` sends them upwards (for the podium); `delay` holds the burst
  * back, in milliseconds, so it can land on a beat of a longer reveal.
  */
-export function Burst({ style = 'festival', hue = 42, size = 220, rise = false, delay = 0, count = COUNT }: { style?: string; hue?: number; size?: number; rise?: boolean; delay?: number; count?: number }) {
+export function Burst(props: BurstProps) {
   // Nothing for less motion, nor in calm mode (Settings), which leaves celebrations out.
   if (prefersReducedMotion() || document.documentElement.dataset.calm === 'on') return null;
+  if (!props.plain && fxReady()) return <CanvasBurst {...props} />;
+  // Not up yet (or never will be here): ask for it, for next time, and draw the plain burst now.
+  if (!props.plain) fxWarm();
+  return props.extra ? null : <PlainBurst {...props} />;
+}
+
+/** The burst's place on the page: the canvas throws the pieces from wherever this point is when its moment comes. */
+function CanvasBurst({ style = 'festival', hue = 42, size = 220, rise = false, delay = 0, count = COUNT }: BurstProps) {
+  const at = useRef<HTMLSpanElement>(null);
+  useEffect(() => {
+    const t = setTimeout(() => {
+      const el = at.current;
+      if (!el) return;
+      const r = el.getBoundingClientRect();
+      fxBurst({ x: r.left, y: r.top, size, count, rise, style, colors: fxColors(el, style, hue) });
+    }, Math.max(0, delay));
+    return () => clearTimeout(t);
+    // Thrown once, as it appears: a burst is a moment, not a state.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  return <span ref={at} className="pointer-events-none absolute top-1/2 left-1/2 size-0" aria-hidden data-burst="canvas" />;
+}
+
+function PlainBurst({ style = 'festival', hue = 42, size = 220, rise = false, delay = 0, count = COUNT }: BurstProps) {
   const colors = style === 'festival' ? FESTIVAL : [`hsl(${hue} 95% 64%)`, `hsl(${(hue + 40) % 360} 95% 68%)`, '#ffffff'];
   const piece = Math.round(Math.max(14, Math.min(26, size / 12)));
   return (

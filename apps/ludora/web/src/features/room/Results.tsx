@@ -17,6 +17,7 @@ import { duration, ordinal } from '../../lib/format.ts';
 import { PLACE_BG, RankBadge, TeamScores } from './game/Leaderboard.tsx';
 import { PlayerGlim, StagePanel, avatarOf, motionOK } from './game/stage.tsx';
 import { Burst } from '../../art/bursts.tsx';
+import { fxColors, fxShower } from '../../fx/index.ts';
 import { useAnnounce } from './game/announce.tsx';
 import { playSfx, useSharedSounds } from '../../lib/sound/react.tsx';
 import { GameNextSteps } from '../making/GameNextSteps.tsx';
@@ -209,6 +210,14 @@ function useCeremony(plan: Ceremony | null, startedAgo: number, on: { land?: (be
 }
 
 /**
+ * As the winner lands in a room's ceremony, paper falls: cannons and a shower across a big screen, a lighter
+ * fall on a phone. Only where the stage's effects are up (fx/); the plain game keeps its burst and nothing more.
+ */
+function winnerShower(beat: Beat, big: boolean) {
+  if (beat.place === 0) fxShower({ big, colors: fxColors(document.documentElement) });
+}
+
+/**
  * The podium ceremony on its own, for a second screen showing the game (features/school/Watch.tsx):
  * the same places at the same moments as the board and the phones, then `children` (that screen's own
  * lists), so a spare display never gives the winner away. A game with no ceremony shows `children` at once.
@@ -218,7 +227,7 @@ export function PodiumCeremony({ room, receivedAt, children }: { room: RoomView;
   const places = Math.min(3, room.results?.standings.length ?? 0);
   const plan = useMemo(() => (pace === 'show' ? ceremonyFor(places, pace) : null), [pace, places]);
   const [startedAgo] = useState(() => sinceEnd(room, receivedAt));
-  const ceremony = useCeremony(plan, startedAgo, {});
+  const ceremony = useCeremony(plan, startedAgo, { land: (beat) => winnerShower(beat, true) });
   if (!plan || !ceremony.running) return <>{children}</>;
   return (
     <div className="grid w-full max-w-[100rem] flex-1 grid-cols-1 items-end gap-[clamp(1rem,2.5vw,2.5rem)] lg:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)]">
@@ -488,6 +497,7 @@ export function Results({ room, handle, isHost, guest }: { room: RoomView; handl
     // The shared screen marks second and third place as they land in a room's ceremony.
     land: (beat) => {
       if (shared && beat.place !== 0 && plan?.pace === 'show') playSfx('rankUp');
+      if (plan?.pace === 'show') winnerShower(beat, big);
     },
     // The shared screen celebrates as the winner lands, unless the class lost a co-op game: then a gentle sting, not a
     // fanfare. (A phone's own moment is below.)

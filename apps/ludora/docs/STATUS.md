@@ -26,6 +26,24 @@ item with how each was checked, in [features/README.md](features/README.md). The
 
 ## Added in November 2026 (verified; details in [features/](features/README.md))
 
+- **Effects that scale with the device** (25 November, D62). The performance limit was relaxed:
+  the game may aim at devices from the last four years, as long as an older one still works and
+  simply looks plainer. Details: [features/stage-effects.md](features/stage-effects.md).
+  - *A graphics setting.* "Graphics and effects" in Settings (This device): Automatic, High,
+    Medium, Low, 3D off. Automatic picks from what the device reports and a frame-time check
+    turns effects down, then back to the plain game, on a device that cannot keep up.
+  - *Celebrations with real movement,* where the device can draw them: a burst's pieces tumble,
+    fall and settle, and as the winner lands in a room's ceremony paper falls on every screen
+    (two cannons and a shower on a big screen). Stars at the right answer's tick on the board,
+    on a climb, and round a player arriving in the lobby.
+  - *An older device keeps the game as it was:* the plain level is the code that ran before, and
+    the effects file (8 KB) is not fetched there, nor for anyone who asked for less motion.
+
+  Checked: 22 unit tests (the choice, the frame-time check, the pieces), and games played in
+  headless Chromium on the production build with the setting on High, on Automatic (which chose
+  plain there) and on High with reduced motion (nothing drawn). **Not checked:** any real
+  device, a real frame rate (headless Chromium draws in software), Safari or Firefox.
+
 - **The live game: anticipation and payoff** (25 November, D61). The game was played end to end
   as a class would (a board, phones, signed-in students, solo) and what stood between it and a
   top studio's was ranked and worked through. Details, with how each was checked:
@@ -678,9 +696,9 @@ creates and drops its own database).
 | content | 5 |
 | engine | 41 |
 | server | 50 |
-| web | 37 |
+| web | 38 |
 | shared | 5 |
-| **Total** | **138 files, 2953 tests passing** (full run on 2026-11-25) |
+| **Total** | **139 files, 2975 tests passing** (full run on 2026-11-25) |
 
 End-to-end: `npm run test:e2e` (needs Postgres; builds first, then runs 101 browser tests in 37
 files against a fresh `ludora_e2e` database). The full run on 2026-11-25 in Chromium: 97 passed,
