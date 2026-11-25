@@ -73,6 +73,9 @@ function apply() {
   });
 }
 
+/** Celebrations asked for while what draws was still on its way: thrown as it arrives, if it is soon enough. */
+let waiting: (() => void)[] = [];
+
 /** Fetches what draws, if this device will use it. Safe to call often; it never blocks. */
 export function fxWarm() {
   // Nothing is fetched for a screen that will not draw it: the plain game, or anyone who asked for less motion.
@@ -83,6 +86,9 @@ export function fxWarm() {
       runtime = m;
       loading = false;
       apply();
+      const due = waiting;
+      waiting = [];
+      due.forEach((go) => go());
     },
     () => {
       // Offline, or the file is gone after an update: the plain effects carry on.
@@ -98,6 +104,30 @@ export function fxReady(): boolean {
 
 export function fxBurst(r: BurstRequest) {
   if (fxReady()) runtime!.burstAt(r);
+}
+
+/**
+ * Runs `go` now if a celebration would be drawn, or as soon as what draws has arrived, as long as
+ * that is within `patience` ms (a moment thrown late is worse than one not thrown). Returns a way
+ * to call it off. For the first moment on a page, which comes before anything has been fetched.
+ */
+export function fxWhenReady(go: () => void, patience = 2500): () => void {
+  if (fxReady()) {
+    go();
+    return () => {};
+  }
+  let live = true;
+  const run = () => {
+    if (live && fxReady()) go();
+    live = false;
+  };
+  waiting.push(run);
+  const t = setTimeout(() => (live = false), patience);
+  fxWarm();
+  return () => {
+    live = false;
+    clearTimeout(t);
+  };
 }
 
 /** The winner's shower: cannons and falling paper on a big screen, a lighter fall on a phone. */

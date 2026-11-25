@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { prefersReducedMotion } from '../lib/prefs.ts';
-import { fxBurst, fxColors, fxReady, fxWarm } from '../fx/index.ts';
+import { fxBurst, fxColors, fxLevel, fxReady, fxWarm, fxWhenReady } from '../fx/index.ts';
 
 /*
  * Celebration effects: the burst on a correct answer, the victory effect on
@@ -72,6 +72,8 @@ interface BurstProps {
   plain?: boolean;
   /** Only where the stage's effects are up; nothing at all on the plain game. For touches the plain game never had. */
   extra?: boolean;
+  /** With `extra`, for the first moment on a page: waits a little for the effects to arrive rather than be skipped. */
+  patient?: boolean;
 }
 
 /**
@@ -82,7 +84,7 @@ interface BurstProps {
 export function Burst(props: BurstProps) {
   // Nothing for less motion, nor in calm mode (Settings), which leaves celebrations out.
   if (prefersReducedMotion() || document.documentElement.dataset.calm === 'on') return null;
-  if (!props.plain && fxReady()) return <CanvasBurst {...props} />;
+  if (!props.plain && (fxReady() || (props.extra && props.patient && fxLevel() !== 'plain'))) return <CanvasBurst {...props} />;
   // Not up yet (or never will be here): ask for it, for next time, and draw the plain burst now.
   if (!props.plain) fxWarm();
   return props.extra ? null : <PlainBurst {...props} />;
@@ -92,13 +94,20 @@ export function Burst(props: BurstProps) {
 function CanvasBurst({ style = 'festival', hue = 42, size = 220, rise = false, delay = 0, count = COUNT }: BurstProps) {
   const at = useRef<HTMLSpanElement>(null);
   useEffect(() => {
+    let off = () => {};
     const t = setTimeout(() => {
-      const el = at.current;
-      if (!el) return;
-      const r = el.getBoundingClientRect();
-      fxBurst({ x: r.left, y: r.top, size, count, rise, style, colors: fxColors(el, style, hue) });
+      // Thrown now; or, for a burst that came before the effects had been fetched, as they arrive.
+      off = fxWhenReady(() => {
+        const el = at.current;
+        if (!el) return;
+        const r = el.getBoundingClientRect();
+        fxBurst({ x: r.left, y: r.top, size, count, rise, style, colors: fxColors(el, style, hue) });
+      });
     }, Math.max(0, delay));
-    return () => clearTimeout(t);
+    return () => {
+      clearTimeout(t);
+      off();
+    };
     // Thrown once, as it appears: a burst is a moment, not a state.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

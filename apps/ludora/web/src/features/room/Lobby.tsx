@@ -630,7 +630,11 @@ export function PlayerLobby({ room, handle }: { room: RoomView; handle: RoomHand
       {/* The player's card: their Glim under the stage light, their name and their team. */}
       {room.room.pinned ? <PinnedMessage text={room.room.pinned} big={false} /> : null}
       <LessonLobbyLine room={room} big={false} />
-      <div className="stage-card flex w-full flex-col items-center gap-2 bg-white/[0.07] bg-[radial-gradient(90%_70%_at_50%_0%,var(--stage-glow,rgb(58_107_255/0.35))_0%,transparent_70%)] px-5 pt-5 pb-4">
+      <div className="stage-card relative flex w-full flex-col items-center gap-2 bg-white/[0.07] bg-[radial-gradient(90%_70%_at_50%_0%,var(--stage-glow,rgb(58_107_255/0.35))_0%,transparent_70%)] px-5 pt-5 pb-4">
+        {/* "You are in": where the stage's effects are up, the player arrives on their own screen in stars of their Glim's colour (fx/). */}
+        <span className="pointer-events-none absolute top-[6.25rem] left-1/2" aria-hidden>
+          <Burst extra patient style="stars" hue={(me?.avatar?.art as { hue?: number } | undefined)?.hue ?? 42} size={340} count={9} delay={180} />
+        </span>
         {reactions ? (
           // Lobby play: tap your Glim and it hops on the big screen too.
           <button type="button" onClick={() => void hop()} disabled={hopCool} className="rounded-full disabled:cursor-default" aria-label="Make your Glim hop on the big screen" title="Tap to make your Glim hop on the big screen">
