@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { useEffect, type ReactNode } from 'react';
 import { Check, X } from 'lucide-react';
 import type { AnswerReveal, PublicQuestion } from '@ludora/shared';
 import { ChoiceTile, HOST_PAIR, choiceGrid, type TileSize } from './AnswerInput.tsx';
@@ -6,7 +6,8 @@ import { Burst } from '../../../art/bursts.tsx';
 import { useOverview } from '../../../lib/queries.ts';
 import { useAnnounce } from './announce.tsx';
 import { myAnswerWords, useMyAnswer } from './answerMemory.tsx';
-import { useSfx, useSoundRole } from '../../../lib/sound/react.tsx';
+import { playSfx, useSfx, useSoundRole } from '../../../lib/sound/react.tsx';
+import { useAccess } from '../../../lib/usePrefs.ts';
 import { MathText } from '../../sets/math/MathText.tsx';
 import { mathToWords } from '../../sets/math/parse.ts';
 import { formatNumber } from '../../../lib/format.ts';
@@ -135,8 +136,32 @@ export function shortAnswer(q: PublicQuestion, reveal: AnswerReveal): string | n
   }
 }
 
-/** The correct answer, shown in the form the question was asked in. With `distribution`, each choice shows how many picked it. */
-export function RevealAnswer({ q, reveal, mine, distribution, compact, size }: { q: PublicQuestion; reveal: AnswerReveal; mine?: string | null; distribution?: Record<string, number> | null; compact?: boolean; size?: TileSize }) {
+/** How long the big screen's right answer waits before it lands (ms): a short beat, or a longer one after "time's up". */
+export const REVEAL_LANDS = { beat: 220, afterTimeUp: 640 };
+
+/**
+ * The correct answer, shown in the form the question was asked in. With `distribution`, each choice shows how many picked it.
+ * On the big screen (`size="lg"`) the reveal is staged in under a second: wrong answers lose their colour, the right
+ * one lands with the chime, then the counts arrive. `timedOut` (the clock ran out with answers still to come) puts a
+ * "time's up" sting first and holds the answer a beat longer. With less motion everything is simply there.
+ */
+export function RevealAnswer({
+  q,
+  reveal,
+  mine,
+  distribution,
+  compact,
+  size,
+  timedOut = false,
+}: {
+  q: PublicQuestion;
+  reveal: AnswerReveal;
+  mine?: string | null;
+  distribution?: Record<string, number> | null;
+  compact?: boolean;
+  size?: TileSize;
+  timedOut?: boolean;
+}) {
   // What this player sent, so their pick is marked and, if it was wrong, read out too.
   const sent = useMyAnswer(q);
   const picked = new Set<string>(mine ? [mine] : sent?.type === 'mcq' || sent?.type === 'poll' ? [sent.choiceId] : sent?.type === 'multi' ? sent.choiceIds : sent?.type === 'truefalse' ? [String(sent.value)] : []);
@@ -146,11 +171,29 @@ export function RevealAnswer({ q, reveal, mine, distribution, compact, size }: {
   const said = plainSaid === null ? null : mathToWords(plainSaid);
   const whyMine = sent?.type === 'mcq' && (reveal.type === 'mcq' || reveal.type === 'multi') ? reveal.whys?.[sent.choiceId] : undefined;
   useAnnounce(said && missed && sent ? `${said} You answered ${myAnswerWords(q, sent)}.${whyMine ? ` ${whyMine}` : ''}` : said, `${q.prompt}|${JSON.stringify(reveal)}`);
-  // The big screen chimes as the answer appears; players hear their own result instead (ResultBanner).
   const role = useSoundRole();
-  useSfx('reveal', `${q.prompt}|${JSON.stringify(reveal)}`, role === 'host');
+  const { calm } = useAccess();
   const sz: TileSize = size ?? (compact ? 'sm' : distribution ? 'lg' : 'md');
   const host = sz === 'lg';
+  // The staged reveal belongs to the big screen; a phone's moment is the player's own result (ResultBanner).
+  const staged = host && role === 'host' && motionOK();
+  const sting = timedOut && !calm;
+  const lands = staged ? (sting ? REVEAL_LANDS.afterTimeUp : REVEAL_LANDS.beat) : null;
+  // The big screen chimes as the answer lands (after a "time's up" sting when the clock ran out);
+  // players hear their own result instead.
+  const key = `${q.prompt}|${JSON.stringify(reveal)}`;
+  useEffect(() => {
+    if (role !== 'host') return;
+    if (sting) playSfx('timeUp');
+    const wait = lands ?? (sting ? REVEAL_LANDS.afterTimeUp : 0);
+    if (!wait) {
+      playSfx('reveal');
+      return;
+    }
+    const t = setTimeout(() => playSfx('reveal'), wait);
+    return () => clearTimeout(t);
+    // Once per reveal: the key names it.
+  }, [key]); // eslint-disable-line react-hooks/exhaustive-deps
   const max = distribution ? Math.max(1, ...Object.values(distribution)) : 0;
   const count = (key: string) => (distribution ? (distribution[key] ?? 0) : null);
   if ((q.type === 'mcq' || q.type === 'multi') && (reveal.type === 'mcq' || reveal.type === 'multi')) {
@@ -166,7 +209,7 @@ export function RevealAnswer({ q, reveal, mine, distribution, compact, size }: {
         <HostChoices host={host}>
           <div className={grid}>
             {q.choices.map((c, i) => (
-              <ChoiceTile key={c.id} index={i} text={c.text} media={c.media} dense={dense} correct={correct.has(c.id)} dimmed={!correct.has(c.id)} wrong={picked.has(c.id) && !correct.has(c.id)} mine={picked.has(c.id)} disabled size={sz} layout={layout} count={count(c.id)} max={max} tall={host && q.choices.length <= 4 && !q.media} />
+              <ChoiceTile key={c.id} index={i} text={c.text} media={c.media} dense={dense} correct={correct.has(c.id)} dimmed={!correct.has(c.id)} wrong={picked.has(c.id) && !correct.has(c.id)} mine={picked.has(c.id)} disabled size={sz} layout={layout} count={count(c.id)} max={max} tall={host && q.choices.length <= 4 && !q.media} revealAt={lands} />
             ))}
           </div>
         </HostChoices>
@@ -182,8 +225,8 @@ export function RevealAnswer({ q, reveal, mine, distribution, compact, size }: {
   if (q.type === 'truefalse' && reveal.type === 'truefalse') {
     return (
       <div className={host ? HOST_PAIR : 'grid grid-cols-2 gap-3'}>
-        <ChoiceTile index={0} text="True" correct={reveal.correct} dimmed={!reveal.correct} wrong={picked.has('true') && !reveal.correct} mine={picked.has('true')} disabled size={sz} layout={host ? 'row' : 'stack'} count={count('true')} max={max} tall={host && !q.media} />
-        <ChoiceTile index={1} text="False" correct={!reveal.correct} dimmed={reveal.correct} wrong={picked.has('false') && reveal.correct} mine={picked.has('false')} disabled size={sz} layout={host ? 'row' : 'stack'} count={count('false')} max={max} tall={host && !q.media} />
+        <ChoiceTile index={0} text="True" correct={reveal.correct} dimmed={!reveal.correct} wrong={picked.has('true') && !reveal.correct} mine={picked.has('true')} disabled size={sz} layout={host ? 'row' : 'stack'} count={count('true')} max={max} tall={host && !q.media} revealAt={lands} />
+        <ChoiceTile index={1} text="False" correct={!reveal.correct} dimmed={reveal.correct} wrong={picked.has('false') && reveal.correct} mine={picked.has('false')} disabled size={sz} layout={host ? 'row' : 'stack'} count={count('false')} max={max} tall={host && !q.media} revealAt={lands} />
       </div>
     );
   }
@@ -200,7 +243,7 @@ export function RevealAnswer({ q, reveal, mine, distribution, compact, size }: {
         <HostChoices host={host}>
           <div className={grid}>
             {q.choices.map((c, i) => (
-              <ChoiceTile key={c.id} index={i} text={c.text} media={c.media} dense={dense} mine={picked.has(c.id)} selected={false} disabled size={sz} layout={layout} count={count(c.id)} max={max} tall={host && q.choices.length <= 4 && !q.media} />
+              <ChoiceTile key={c.id} index={i} text={c.text} media={c.media} dense={dense} mine={picked.has(c.id)} selected={false} disabled size={sz} layout={layout} count={count(c.id)} max={max} tall={host && q.choices.length <= 4 && !q.media} revealAt={lands} />
             ))}
           </div>
         </HostChoices>
@@ -264,7 +307,7 @@ export function RevealAnswer({ q, reveal, mine, distribution, compact, size }: {
   else if (reveal.type === 'numeric') text = `${reveal.answer}${reveal.unit ? ` ${reveal.unit}` : ''}${reveal.tolerance ? ` (give or take ${reveal.tolerance})` : ''}`;
   else if (reveal.type === 'flashcard') text = reveal.back;
   return (
-    <div className={`lift rounded-[var(--radius-l)] bg-glim text-on-accent ${host ? 'px-7 py-5' : 'px-5 py-4'}`}>
+    <div className={`lift rounded-[var(--radius-l)] bg-glim text-on-accent ${host ? 'px-7 py-5' : 'px-5 py-4'}`} style={lands !== null ? { animation: `pop-in 260ms var(--ease-out) ${lands}ms both` } : undefined}>
       <div className={`font-bold ${host ? 'text-[clamp(1rem,1.4vw,1.5rem)]' : 'text-sm'}`}>Answer</div>
       <div className={`font-display font-extrabold break-words ${host ? 'text-[clamp(2.25rem,4vw,4.75rem)] leading-[1.02]' : 'text-[2rem] leading-tight'}`}>
         <MathText text={text} />

@@ -50,7 +50,16 @@ export interface AnswerInputProps {
   chosen?: string | null;
   /** Smaller tiles, for modes where the question shares the phone with a game board. */
   compact?: boolean;
+  /**
+   * On a phone, answer tiles grow to take the room the screen has left under the question (the screen's
+   * root must be a column that fills the stage: see `.round-fill` in stage.css). For screens that are a
+   * question and its answers and nothing else.
+   */
+  fill?: boolean;
 }
+
+/** The grid of answer tiles, stretched over the room left on a phone when the screen asks for it. */
+const FILL = 'ans-fill';
 
 export type TileSize = 'sm' | 'md' | 'lg';
 
@@ -103,7 +112,14 @@ export function ChoiceTile({
   dense = false,
   media,
   choice,
+  revealAt = null,
 }: {
+  /**
+   * The big screen's reveal, played as the tile appears: `revealAt` is how long (ms) the right answer
+   * waits before it lands. Tiles out of play lose their colour first, then the right one lifts and is
+   * checked, then the counts arrive. Null (and with less motion): everything is simply there.
+   */
+  revealAt?: number | null;
   /** The choice's token (c0, c1... or true/false), kept on the tile as a data attribute. */
   choice?: string | undefined;
   index: number;
@@ -135,6 +151,10 @@ export function ChoiceTile({
   const bg = TILE_BG[index % TILE_BG.length];
   const long = text.length > 60;
   const tagged = wrong || mine;
+  // The staged reveal: when each part of it starts, in ms from the tile appearing.
+  const staged = revealAt !== null && motionOK();
+  const lands = staged ? revealAt : 0;
+  const countsAt = lands + 300;
   return (
     <button
       type="button"
@@ -143,14 +163,17 @@ export function ChoiceTile({
       data-pressed={selected || undefined}
       data-choice={choice}
       aria-pressed={selected}
-      className={`relative flex w-full text-left [--press:5px] disabled:cursor-default ${layout === 'stack' ? `flex-col items-start justify-between ${s.stack} ${tall ? TALL_STACK : dense ? DENSE_STACK : ''}` : `items-center ${s.tile} ${tall ? TALL : ''}`} ${lit ? 'piece text-on-accent' : 'piece-off'} ${
+      className={`relative isolate flex w-full text-left [--press:5px] disabled:cursor-default ${layout === 'stack' ? `flex-col items-start justify-between ${s.stack} ${tall ? TALL_STACK : dense ? DENSE_STACK : ''}` : `items-center ${s.tile} ${tall ? TALL : ''}`} ${lit ? 'piece text-on-accent' : 'piece-off'} ${
         correct ? 'ring-[3px] ring-glim ring-offset-[3px] ring-offset-[color:var(--stage-3)]' : ''
       }`}
-      // A chosen tile locks in with a firm press and a small rebound (still with reduced motion).
-      style={lit ? { backgroundColor: bg, ...(selected && onClick && motionOK() ? { animation: 'tile-lock 260ms var(--ease-out)' } : {}) } : undefined}
+      // A chosen tile locks in with a firm press and a small rebound (still with reduced motion). At a staged
+      // reveal the right answer lifts as it is named.
+      style={lit ? { backgroundColor: bg, ...(selected && onClick && motionOK() ? { animation: 'tile-lock 260ms var(--ease-out)' } : staged && correct ? { animation: `tile-right 560ms var(--ease-out) ${lands}ms both` } : {}) } : undefined}
       data-tile={index % TILE_BG.length}
       aria-keyshortcuts={keyHint ? `${index + 1} ${ANSWER_LETTERS[index] ?? ''}`.trim() : undefined}
     >
+      {/* A tile going out of play at a staged reveal: its colour drains away under the words. */}
+      {staged && !lit ? <span className="pointer-events-none absolute inset-0 -z-10 rounded-[inherit]" style={{ background: bg, animation: 'tile-drain 360ms var(--ease-out) both' }} aria-hidden /> : null}
       {/* On a lit tile the letter and shape sit straight on its colour; on a smoked one they keep a chip of it. */}
       <span className={`flex shrink-0 items-center rounded-[var(--radius-s)] font-display leading-none font-extrabold text-on-accent ${s.badge} ${lit ? 'bg-white/30 shadow-[inset_0_-2px_0_rgb(0_0_0/0.12)]' : ''}`} style={lit ? undefined : { background: bg }}>
         <AnswerShape index={index} size={s.shape} />
@@ -158,7 +181,7 @@ export function ChoiceTile({
       </span>{' '}
       {media ? <QuestionImage media={media} size="tile" className={layout === 'stack' ? 'self-start' : ''} /> : null}
       {text ? (
-        <span className={`min-w-0 flex-1 leading-tight font-bold break-words hyphens-auto ${long ? s.long : s.text} ${layout === 'stack' ? 'flex w-full items-end' : ''}`}>
+        <span data-tile-text={text.length <= 14 ? 'short' : undefined} className={`min-w-0 flex-1 leading-tight font-bold break-words hyphens-auto ${long ? s.long : s.text} ${layout === 'stack' ? 'flex w-full items-end' : ''}`}>
           <span>
             <MathText text={text} />
           </span>
@@ -179,20 +202,24 @@ export function ChoiceTile({
       ) : null}
       {count !== undefined && count !== null ? (
         <>
-          <span className={`flex shrink-0 items-center gap-1.5 self-center rounded-full px-3 py-1 font-display font-extrabold tabular ${lit ? 'bg-ink/85 text-white' : 'bg-white/[0.12] text-text'} ${size === 'lg' ? 'text-[clamp(1.25rem,2vw,2.25rem)]' : 'text-lg'}`}>
+          <span
+            className={`flex shrink-0 items-center gap-1.5 self-center rounded-full px-3 py-1 font-display font-extrabold tabular ${lit ? 'bg-ink/85 text-white' : 'bg-white/[0.12] text-text'} ${size === 'lg' ? 'text-[clamp(1.25rem,2vw,2.25rem)]' : 'text-lg'}`}
+            style={staged ? { animation: `rise-fade 240ms var(--ease-out) ${countsAt}ms both` } : undefined}
+          >
             <Users className="size-[0.85em]" aria-hidden />
             {count}
             <span className="sr-only"> {count === 1 ? 'player' : 'players'}</span>
           </span>
           {max > 0 ? (
-            <span className="pointer-events-none absolute inset-x-3 bottom-2 h-1.5 overflow-hidden rounded-full" aria-hidden>
-              <span className={`block h-full origin-left rounded-full ${lit ? 'bg-ink/45' : 'bg-white/45'}`} style={{ transform: `scaleX(${Math.min(1, count / max)})`, animation: 'stage-grow 420ms var(--ease-out) both' }} />
+            // How the room split, as a bar along the tile's foot: thick enough on the projector to read from the back.
+            <span className={`pointer-events-none absolute inset-x-3 bottom-2 overflow-hidden rounded-full ${size === 'lg' ? 'h-[clamp(0.4rem,1vh,0.65rem)]' : 'h-1.5'}`} aria-hidden>
+              <span className={`block h-full origin-left rounded-full ${lit ? 'bg-ink/45' : 'bg-white/45'}`} style={{ transform: `scaleX(${Math.min(1, count / max)})`, animation: `stage-grow 480ms var(--ease-out) ${staged ? countsAt + 60 : 0}ms both` }} />
             </span>
           ) : null}
         </>
       ) : null}
       {correct ? (
-        <span className="absolute -top-3 -right-3 grid size-10 place-items-center rounded-full bg-glim text-on-accent shadow-[0_0_0_3px_var(--stage-3)]" role="img" aria-label="Correct answer">
+        <span className="absolute -top-3 -right-3 grid size-10 place-items-center rounded-full bg-glim text-on-accent shadow-[0_0_0_3px_var(--stage-3)]" style={staged ? { animation: `badge-stamp 280ms var(--ease-out) ${lands + 140}ms both` } : undefined} role="img" aria-label="Correct answer">
           <Check className="size-6" strokeWidth={3} aria-hidden />
         </span>
       ) : null}
@@ -269,7 +296,7 @@ function useNumberKeys(count: number, onPick: (i: number) => void, enabled: bool
   }, [count, enabled, letters]);
 }
 
-function ChoiceAnswer({ q, onSubmit, disabled, chosen, compact }: AnswerInputProps & { q: Extract<PublicQuestion, { type: 'mcq' }> }) {
+function ChoiceAnswer({ q, onSubmit, disabled, chosen, compact, fill }: AnswerInputProps & { q: Extract<PublicQuestion, { type: 'mcq' }> }) {
   const [picked, setPicked] = useState<string | null>(chosen ?? null);
   const [busy, setBusy] = useState(false);
   const locked = disabled || busy || picked !== null;
@@ -284,7 +311,7 @@ function ChoiceAnswer({ q, onSubmit, disabled, chosen, compact }: AnswerInputPro
   useNumberKeys(q.choices.length, (i) => void pick(q.choices[i]!.id), !locked, !compact);
   const { grid, layout, tall, dense } = choiceGrid(q.choices.map((c) => c.text));
   return (
-    <div className={grid} role="group" aria-label="Answers">
+    <div className={`${grid} ${fill && !compact ? FILL : ''}`} role="group" aria-label="Answers">
       {q.choices.map((c, i) => (
         <ChoiceTile key={c.id} choice={c.id} index={i} text={c.text} media={c.media} selected={picked === c.id} dimmed={picked !== null && picked !== c.id} onClick={() => void pick(c.id)} disabled={locked && picked !== c.id} compact={compact} layout={layout} tall={tall && !compact && !q.media} dense={dense} keyHint />
       ))}
@@ -292,7 +319,7 @@ function ChoiceAnswer({ q, onSubmit, disabled, chosen, compact }: AnswerInputPro
   );
 }
 
-function TrueFalseAnswer({ q, onSubmit, disabled, compact }: AnswerInputProps) {
+function TrueFalseAnswer({ q, onSubmit, disabled, compact, fill }: AnswerInputProps) {
   const [picked, setPicked] = useState<boolean | null>(null);
   const locked = disabled || picked !== null;
   const pick = async (v: boolean) => {
@@ -302,7 +329,7 @@ function TrueFalseAnswer({ q, onSubmit, disabled, compact }: AnswerInputProps) {
   };
   useNumberKeys(2, (i) => void pick(i === 0), !locked, !compact);
   return (
-    <div className="grid grid-cols-2 gap-3" role="group" aria-label="Answers">
+    <div className={`grid grid-cols-2 gap-3 ${fill && !compact ? FILL : ''}`} role="group" aria-label="Answers">
       <ChoiceTile choice="true" index={0} text="True" selected={picked === true} dimmed={picked === false} onClick={() => void pick(true)} disabled={locked} compact={compact} layout="stack" tall={!compact && !q.media} keyHint />
       <ChoiceTile choice="false" index={1} text="False" selected={picked === false} dimmed={picked === true} onClick={() => void pick(false)} disabled={locked} compact={compact} layout="stack" tall={!compact && !q.media} keyHint />
     </div>

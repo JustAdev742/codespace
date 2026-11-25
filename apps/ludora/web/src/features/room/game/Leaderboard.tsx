@@ -1,7 +1,9 @@
-import { useLayoutEffect, useRef, type CSSProperties, type RefObject } from 'react';
+import { useEffect, useLayoutEffect, useRef, type CSSProperties, type RefObject } from 'react';
 import type { RoomPlayerView, TeamView } from '@ludora/shared';
 import { ArrowUp } from 'lucide-react';
 import { formatNumber, ordinal } from '../../../lib/format.ts';
+import { playSfx, useSoundRole } from '../../../lib/sound/react.tsx';
+import { useCountUp } from './countUp.ts';
 import { PlayerGlim, avatarOf, motionOK } from './stage.tsx';
 
 export interface LeaderRow {
@@ -15,6 +17,32 @@ export interface LeaderRow {
 
 /** Strong ease-in-out: rows travel across the screen rather than enter it. */
 const MOVE = 'cubic-bezier(0.77, 0, 0.175, 1)';
+
+/** A board's first showing: the beat the old order holds for, then how long the rows take to slide (ms). */
+const HOLD_MS = 450;
+const SLIDE_MS = 650;
+
+/** Where a round's points stood before it: last round's total, which a row's score counts up from. */
+const before = (r: LeaderRow) => r.score - (r.gain ?? 0);
+
+/** How many places a row climbed this round, from last round's totals (0 for a row that gained nothing). */
+export function placesClimbed(r: LeaderRow, all: readonly LeaderRow[]): number {
+  return r.gain ? Math.max(0, 1 + all.filter((o) => before(o) > before(r)).length - r.rank) : 0;
+}
+
+/**
+ * A row's score. As the board appears it counts up from last round's total while the rows move, so the
+ * room sees the points land; after that it follows the score. Screen readers get the final number.
+ */
+function RowScore({ row }: { row: LeaderRow }) {
+  const shown = useCountUp(row.score, SLIDE_MS, before(row), HOLD_MS);
+  return (
+    <>
+      <span aria-hidden>{formatNumber(shown)}</span>
+      <span className="sr-only">{formatNumber(row.score)} points</span>
+    </>
+  );
+}
 
 /** Podium colours, shared by rank badges and the podium itself: gold, silver and bronze. Ink text passes AA on each. */
 export const PLACE_BG = ['var(--lantern)', 'var(--r-common)', 'var(--tile-a)'];
@@ -70,8 +98,8 @@ function useRankSlide(listRef: RefObject<HTMLOListElement | null>, rows: LeaderR
       const slots = nodes.map((n) => tops.get(n.dataset.row!) ?? 0);
       from = new Map(before.map((id, i) => [id, slots[Math.min(i, slots.length - 1)] ?? 0]));
       // The rank change is the moment of the board: a beat to see the old order, then a quick, readable slide.
-      delay = 450;
-      duration = 650;
+      delay = HOLD_MS;
+      duration = SLIDE_MS;
     }
     for (const n of nodes) {
       const a = from.get(n.dataset.row!);
@@ -110,6 +138,7 @@ export function Leaderboard({
   big = false,
   dense = false,
   label,
+  moment = false,
 }: {
   rows: LeaderRow[];
   you?: LeaderRow | null;
@@ -119,14 +148,27 @@ export function Leaderboard({
   /** Projector type in compact rows, for a board in a side panel. */
   dense?: boolean;
   label?: (r: LeaderRow) => string;
+  /**
+   * The standings between rounds, a moment of their own (not a board beside a game in play): a climb is
+   * heard as well as seen. On a phone, the player's own; on the big screen, anyone's.
+   */
+  moment?: boolean;
 }) {
   const listRef = useRef<HTMLOListElement>(null);
   const team = (id: string | null) => teams?.find((t) => t.id === id);
   const all = you && !rows.some((r) => r.playerId === you.playerId) ? [...rows, you] : rows;
-  useRankSlide(listRef, rows, all.map((r) => r.playerId).join('|'), big ? 'projector' : 'phone');
+  const orderKey = all.map((r) => r.playerId).join('|');
+  useRankSlide(listRef, rows, orderKey, big ? 'projector' : 'phone');
   // Places climbed this round, worked out from last round's scores (score less this round's gain), for the "up 3" arrows.
-  const before = (r: LeaderRow) => r.score - (r.gain ?? 0);
-  const climbed = (r: LeaderRow) => (r.gain ? 1 + all.filter((o) => before(o) > before(r)).length - r.rank : 0);
+  const climbed = (r: LeaderRow) => placesClimbed(r, all);
+  const role = useSoundRole();
+  const heard = moment && (role === 'host' ? all.some((r) => climbed(r) > 0) : Boolean(you && climbed(you) > 0));
+  useEffect(() => {
+    if (!heard) return;
+    // As the arrow lands, once the rows have moved (at once with less motion, when nothing moves).
+    const t = setTimeout(() => playSfx('rankUp'), motionOK() ? HOLD_MS + SLIDE_MS : 0);
+    return () => clearTimeout(t);
+  }, [heard, orderKey]);
   const roomy = all.length <= 5 && !dense;
   // A board of six to eight on its own screen (the usual top eight) fills the projector's height rather than leave its lower half empty.
   const middling = !roomy && !dense && all.length <= 8;
@@ -179,10 +221,7 @@ export function Leaderboard({
                 </span>
               </span>
             ) : null}
-            <span className="shrink-0 text-right font-display text-[length:var(--lb-score)] leading-none font-extrabold tabular">
-              {label ? label(r) : formatNumber(r.score)}
-              {label ? null : <span className="sr-only"> points</span>}
-            </span>
+            <span className="shrink-0 text-right font-display text-[length:var(--lb-score)] leading-none font-extrabold tabular">{label ? label(r) : <RowScore row={r} />}</span>
           </li>
         );
       })}

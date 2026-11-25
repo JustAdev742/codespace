@@ -1,3 +1,4 @@
+import { useRef } from 'react';
 import type { Answer, AnswerReveal } from '@ludora/shared';
 import type { ModeScreenProps } from './registry.ts';
 import type { QuestionView } from '../game/types.ts';
@@ -10,6 +11,7 @@ import { Explanation, HudCount, HudScore, IntroScreen, LockedIn, RoundHeader, St
 import { Pill, PlayerGlim, StagePanel } from '../game/stage.tsx';
 import { formatNumber, ordinal } from '../../../lib/format.ts';
 import { useAnnounce } from '../game/announce.tsx';
+import { useGlide } from '../game/glide.ts';
 
 /* Views for Classic (and every host-paced mode built on synced rounds with the same view shape). */
 
@@ -49,6 +51,9 @@ export function ClassicPlayer({ view, act, gameNow, paused, room }: ModeScreenPr
   const s = view.sync;
   const seed = room.me.playerId ?? 'you';
   const me = view.board.you;
+  // The timer leaves at the reveal and the question moves up: it glides there rather than jumps.
+  const body = useRef<HTMLDivElement>(null);
+  useGlide(body, s.round, s.phase);
   useAnnounce(s.phase === 'leaderboard' && me ? `You are ${ordinal(me.rank)} with ${formatNumber(me.score)} points.` : null, `${s.phase}${s.round}`);
   if (s.phase === 'intro') {
     return (
@@ -69,7 +74,7 @@ export function ClassicPlayer({ view, act, gameNow, paused, room }: ModeScreenPr
           </div>
         </div>
         {view.teams ? <TeamScores teams={view.teams} /> : null}
-        <Leaderboard rows={view.board.rows} you={view.board.you} players={room.players} teams={room.room.teams} />
+        <Leaderboard rows={view.board.rows} you={view.board.you} players={room.players} teams={room.room.teams} moment />
       </div>
     );
   }
@@ -94,7 +99,7 @@ export function ClassicPlayer({ view, act, gameNow, paused, room }: ModeScreenPr
   // Joined during this question and did not answer it: no result for it, they play from the next one.
   const lateJoiner = Boolean(s.you?.joinedLate && !s.you.answered);
   return (
-    <div className="mx-auto flex w-full max-w-3xl flex-col gap-4">
+    <div className="round-fill mx-auto flex w-full max-w-3xl flex-col gap-4">
       <RoundHeader round={s.round} total={s.total}>
         {view.encore ? <Pill tone="dusk">Encore, half points</Pill> : null}
         {view.boosted && s.phase === 'question' ? <Pill tone="glim">Double points</Pill> : null}
@@ -102,12 +107,13 @@ export function ClassicPlayer({ view, act, gameNow, paused, room }: ModeScreenPr
         <HudScore value={view.score ?? 0} />
       </RoundHeader>
       {s.phase === 'question' ? <TimerBar deadline={q.deadline} start={q.shownAt} gameNow={gameNow} paused={paused} /> : null}
+      <div ref={body} className="round-fill flex flex-col gap-4">
       <QuestionCard q={q.q} />
       {s.phase === 'question' ? (
         s.you?.answered ? (
           <LockedIn answered={s.answered} eligible={s.eligible} avatar={myAvatar(room)} seed={seed} />
         ) : (
-          <AnswerInput key={q.iid} q={q.q} onSubmit={submit} disabled={paused} />
+          <AnswerInput key={q.iid} q={q.q} onSubmit={submit} disabled={paused} fill />
         )
       ) : (
         <div className="flex flex-col gap-4">
@@ -117,7 +123,15 @@ export function ClassicPlayer({ view, act, gameNow, paused, room }: ModeScreenPr
             <p className="font-semibold text-text-2">{s.you?.answered ? 'Thanks for voting. Polls score no points.' : 'You did not vote this time.'}</p>
           ) : (
             <>
-              <ResultBanner correct={s.you?.answered ? (s.you.correct ?? false) : false} missed={!s.you?.answered} partial={s.you?.partial} points={s.you?.points} answer={s.reveal ? shortAnswer(q.q, s.reveal) : null} />
+              <ResultBanner
+                correct={s.you?.answered ? (s.you.correct ?? false) : false}
+                missed={!s.you?.answered}
+                partial={s.you?.partial}
+                points={s.you?.points}
+                // A run of right answers is said where the result is, as it grows.
+                text={s.you?.correct && s.you.streak >= 3 ? `${s.you.streak} in a row` : undefined}
+                answer={s.reveal ? shortAnswer(q.q, s.reveal) : null}
+              />
               {!s.you?.answered ? <p className="font-semibold text-text-2">You did not answer.</p> : null}
             </>
           )}
@@ -125,6 +139,7 @@ export function ClassicPlayer({ view, act, gameNow, paused, room }: ModeScreenPr
           <Explanation text={s.explanation} />
         </div>
       )}
+      </div>
     </div>
   );
 }
@@ -138,6 +153,8 @@ function JoinedMidQuestion() {
 
 export function ClassicHost({ view, gameNow, paused, room }: ModeScreenProps<ClassicView>) {
   const s = view.sync;
+  const body = useRef<HTMLDivElement>(null);
+  useGlide(body, s.round, s.phase);
   if (s.phase === 'intro') {
     return (
       <IntroScreen kicker="Get ready" title={room.room.title} until={s.phaseEndsAt} gameNow={gameNow} room={room} big>
@@ -158,7 +175,7 @@ export function ClassicHost({ view, gameNow, paused, room }: ModeScreenProps<Cla
               </p>
             ) : null}
           </div>
-          <Leaderboard rows={view.board.rows} players={room.players} teams={room.room.teams} big />
+          <Leaderboard rows={view.board.rows} players={room.players} teams={room.room.teams} big moment />
         </div>
         {view.teams ? (
           <section className="flex flex-col gap-3 lg:pt-[clamp(3.5rem,6.5vw,7rem)]" aria-label="Teams">
@@ -183,15 +200,18 @@ export function ClassicHost({ view, gameNow, paused, room }: ModeScreenProps<Cla
         <HudCount value={s.answered} total={s.eligible} label="answered" big />
       </RoundHeader>
       {s.phase === 'question' ? <TimerBar deadline={q.deadline} start={q.shownAt} gameNow={gameNow} paused={paused} size="lg" /> : null}
-      <QuestionCard q={q.q} size="lg" />
-      {s.phase === 'question' ? (
-        <ChoicesDisplay q={q.q} />
-      ) : s.reveal ? (
-        <div className="flex flex-col gap-[clamp(0.75rem,2vh,1.25rem)]">
-          <RevealAnswer q={q.q} reveal={s.reveal} distribution={s.distribution} size="lg" />
-          <Explanation text={s.explanation} big />
-        </div>
-      ) : null}
+      <div ref={body} className="flex flex-col gap-[clamp(0.75rem,2vh,1.5rem)]">
+        <QuestionCard q={q.q} size="lg" />
+        {s.phase === 'question' ? (
+          <ChoicesDisplay q={q.q} />
+        ) : s.reveal ? (
+          <div className="flex flex-col gap-[clamp(0.75rem,2vh,1.25rem)]">
+            {/* Answers still to come when the question closed: the clock ran out (or the host called time). */}
+            <RevealAnswer q={q.q} reveal={s.reveal} distribution={s.distribution} size="lg" timedOut={s.answered < s.eligible} />
+            <Explanation text={s.explanation} big />
+          </div>
+        ) : null}
+      </div>
     </div>
   );
 }

@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Flame, Lock } from 'lucide-react';
 import { AnswerShape, ANSWER_LETTERS } from '../../../art/icons.tsx';
 import { TILE_BG } from './AnswerInput.tsx';
@@ -116,14 +116,16 @@ export function RoundHeader({ round, total, children, big = false, label = 'Ques
  * beside it. The number is the hero; `label` is what a screen reader hears first.
  */
 export function HudScore({ value, unit = 'pts', big = false, label = 'Score', className = '' }: { value: number; unit?: string; big?: boolean; label?: string; className?: string }) {
-  const shown = useCountUp(value);
+  // The score lands a beat after the result that earned it, so the eye can follow the points across.
+  const shown = useCountUp(value, 650, undefined, SCORE_LANDS_AFTER);
+  const gains = useGains(value);
   return (
     <span className={`inline-flex items-baseline gap-1 leading-none whitespace-nowrap ${className}`}>
       <span className="sr-only">
         {label}: {formatNumber(value)}
       </span>
-      {/* The score counts up as points land; screen readers get the final number above. */}
-      <span className={`font-display font-extrabold tabular ${big ? 'text-[clamp(1.75rem,2.8vw,3.25rem)]' : 'text-[1.75rem]'}`} aria-hidden>
+      {/* The score counts up as points land, with a gold beat each time it grows; screen readers get the final number above. */}
+      <span key={gains} className={`inline-block origin-right font-display font-extrabold tabular ${big ? 'text-[clamp(1.75rem,2.8vw,3.25rem)]' : 'text-[1.75rem]'}`} style={gains && motionOK() ? { animation: `score-land 620ms var(--ease-out) ${SCORE_LANDS_AFTER}ms both` } : undefined} aria-hidden>
         {formatNumber(shown)}
       </span>
       <span className={`font-bold text-text-2 ${big ? 'text-[0.9em]' : 'text-sm'}`}>{unit}</span>
@@ -131,14 +133,32 @@ export function HudScore({ value, unit = 'pts', big = false, label = 'Score', cl
   );
 }
 
+/** How long after a result appears its points reach the score in the HUD (ms). */
+export const SCORE_LANDS_AFTER = 320;
+
+/** How many times `value` has grown since the screen opened: a key that restarts a "that just went up" beat. */
+export function useGains(value: number): number {
+  const [gains, setGains] = useState(0);
+  const last = useRef(value);
+  useEffect(() => {
+    if (value > last.current) setGains((n) => n + 1);
+    last.current = value;
+  }, [value]);
+  return gains;
+}
+
 /**
  * A count in a HUD row, the number as the hero: "5 of 6 answered", "3 of 8 still standing".
  * Reads as one line of text, so it can be found and announced as one.
  */
 export function HudCount({ value, total, label, big = false, className = '' }: { value: number; total?: number | null; label: string; big?: boolean; className?: string }) {
+  // Each answer that arrives lands on the number with a small beat, so the room can see them coming in.
+  const gains = useGains(value);
   return (
     <span className={`inline-flex items-baseline gap-1.5 rounded-full bg-white/[0.09] leading-none whitespace-nowrap ${big ? 'px-5 py-2' : 'px-3 py-1.5'} ${className}`}>
-      <span className={`font-display font-extrabold tabular ${big ? 'text-[1.6em]' : 'text-[1.35em]'}`}>{value}</span>{' '}
+      <span key={gains} className={`inline-block font-display font-extrabold tabular ${big ? 'text-[1.6em]' : 'text-[1.35em]'}`} style={gains && motionOK() ? { animation: 'count-pop 200ms var(--ease-out)' } : undefined}>
+        {value}
+      </span>{' '}
       <span className="font-bold text-text-2">
         {total !== undefined && total !== null ? `of ${total} ` : ''}
         {label}
@@ -151,7 +171,8 @@ export function HudCount({ value, total, label, big = false, className = '' }: {
 export function StreakChip({ streak, children, className = '' }: { streak: number; children?: ReactNode; className?: string }) {
   if (streak < 2) return null;
   return (
-    <span className={`inline-flex items-center gap-1 rounded-full bg-lantern px-2.5 py-1 leading-tight font-bold whitespace-nowrap text-on-accent tabular ${className}`}>
+    // Keyed by the streak, so the chip pops each time it grows (and when it first appears).
+    <span key={streak} className={`inline-flex items-center gap-1 rounded-full bg-lantern px-2.5 py-1 leading-tight font-bold whitespace-nowrap text-on-accent tabular ${className}`} style={motionOK() ? { animation: `pop-in 240ms var(--ease-spring) ${SCORE_LANDS_AFTER}ms both` } : undefined}>
       <Flame className="size-[1.05em] shrink-0" aria-hidden />
       {children ?? <>Streak ×{streak}</>}
     </span>

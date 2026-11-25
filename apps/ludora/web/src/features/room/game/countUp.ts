@@ -3,10 +3,11 @@ import { motionOK } from './stage.tsx';
 
 /**
  * A number that counts up to its new value over `ms` (points landing, a score growing), from where it
- * was shown last, or from `from` the first time. Jumps straight there with reduced motion. For what is
- * seen only: give screen readers the final value.
+ * was shown last, or from `from` the first time. `delay` holds the count back for a beat (a score that
+ * lands after the result that earned it). Jumps straight there with reduced motion. For what is seen
+ * only: give screen readers the final value.
  */
-export function useCountUp(value: number, ms = 650, from?: number): number {
+export function useCountUp(value: number, ms = 650, from?: number, delay = 0): number {
   const [shown, setShown] = useState(from ?? value);
   const current = useRef(from ?? value);
   useEffect(() => {
@@ -16,10 +17,10 @@ export function useCountUp(value: number, ms = 650, from?: number): number {
       setShown(value);
       return;
     }
-    const t0 = performance.now();
+    const t0 = performance.now() + delay;
     let raf = 0;
     const step = (t: number) => {
-      const k = Math.min(1, (t - t0) / ms);
+      const k = Math.min(1, Math.max(0, t - t0) / ms);
       // Fast at first, settling on the number: the ease of a score landing.
       const eased = 1 - Math.pow(1 - k, 3);
       const n = Math.round(start + (value - start) * eased);
@@ -29,6 +30,6 @@ export function useCountUp(value: number, ms = 650, from?: number): number {
     };
     raf = requestAnimationFrame(step);
     return () => cancelAnimationFrame(raf);
-  }, [value, ms]);
+  }, [value, ms, delay]);
   return shown;
 }

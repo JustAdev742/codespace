@@ -622,6 +622,8 @@
 :root[data-motion='off'] *::after {
   animation-duration: 0.01ms !important;
   animation-iteration-count: 1 !important;
+  /* As above: nothing waits out a stagger it will not play (calm play sets this for a whole room). */
+  animation-delay: 0s !important;
   transition-duration: 0.01ms !important;
   scroll-behavior: auto !important;
 }

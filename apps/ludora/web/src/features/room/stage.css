@@ -130,6 +130,79 @@
   }
 }
 
+/*
+ * A phone as a controller: on a screen that is only a question and its answers, the answer tiles take
+ * the room left under the question, so the targets are as big as the phone allows. `.round-fill` is
+ * the screen's root (a column that fills the stage); `.ans-fill` is the grid of tiles inside it. A long
+ * question simply leaves less room, down to the tiles' own minimum height, and the page scrolls as
+ * before. Wider screens keep their usual tiles.
+ */
+@media (max-width: 639px) {
+  .round-fill {
+    flex: 1 1 auto;
+  }
+  .round-fill > .ans-fill {
+    flex: 1 1 auto;
+    grid-auto-rows: 1fr;
+    max-height: 31rem;
+  }
+  /* A word or two on a tile this big is set a size up, to read at arm's length. */
+  .round-fill > .ans-fill [data-tile-text='short'] {
+    font-size: 1.5rem;
+  }
+}
+
+/*
+ * The big screen's reveal, staged in under a second (AnswerInput's ChoiceTile): tiles out of play lose
+ * their colour, the right answer lifts as it is named, its check is stamped on, and the counts arrive.
+ */
+@keyframes tile-drain {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+@keyframes tile-right {
+  0% {
+    transform: none;
+  }
+  40% {
+    transform: scale(1.035);
+  }
+  100% {
+    transform: none;
+  }
+}
+@keyframes badge-stamp {
+  from {
+    opacity: 0;
+    transform: scale(1.7);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* Points reach the score in the HUD: the number swells from its right edge and glows gold for a beat. */
+@keyframes score-land {
+  0% {
+    transform: none;
+  }
+  30% {
+    transform: scale(1.2);
+    color: var(--lantern);
+  }
+  60% {
+    color: var(--lantern);
+  }
+  100% {
+    transform: none;
+  }
+}
+
 /* A climber's arrow on the leaderboard lifts into place once the rows have moved. */
 @keyframes climb-in {
   from {
