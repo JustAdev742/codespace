@@ -23,8 +23,16 @@ What separated the game from a top studio's after the first pass (game-feel.md),
 | The right answer's tick stamped in place. | On the big screen, stars fly from the tick as it lands. | `game/AnswerInput.tsx` | Frames of the board's reveal on High. |
 | A player arriving in the lobby slid in. | On the big screen, a player who walks in while the class watches arrives in a puff of stars in their Glim's own colour. | `features/room/Lobby.tsx` | Frames of two arrivals on High. |
 | A climb on the standings was an arrow. | It lands with a few stars. | `game/Leaderboard.tsx` | Not seen: nobody climbed in the game that was filmed. |
+| One phase cut to the next: the new screen faded in over 200 ms and the old one was simply gone. | Where effects are up, a scene change: the screen being left lifts away towards the viewer while the next arrives from behind it (260 and 440 ms on a big screen, 180 and 260 ms on a phone). What leaves is a picture of the old screen that nothing can reach, so the new one is live from its first frame. A 3D game's screen, which cannot be copied, changes as before. | `game/PhaseFade.tsx`, `stage.css` (`.scene-leaving`) | Filmed in slow motion on the board and a phone: the reveal to the standings and the standings to the next question. No copy was left on the page afterwards, and an answer tapped as the next question arrived was locked in. |
+| The winner stood on the podium with their arms up. | They jump for joy three times as they land, then stand still for the teacher. | `Results.tsx` (`Podium`), `stage.css` (`glim-cheer`) | Measured in the page every 60 ms from the landing: the top of the winner's Glim rose 30 px twice in the samples taken, then held still. |
+| A new level was a plate that popped. | It turns over in a ring of stars. A level is earned, never drawn by chance. | `Rewards.tsx` | Two signed-in students played two games in a row on High: frames of level 1 becoming level 2. |
 
 ## Kept as they were, on purpose
+
+- **Glims hold still, and nothing drifts.** DESIGN.md's rule (one orchestrated moment per screen;
+  no idle bobbing or drifting) was kept on purpose: a board is for reading, and a class includes
+  children whom constant movement distracts. So there is no breathing crowd, no drifting haze
+  and no shader behind the question. What was added are moments: they start, play and stop.
 
 - **Reduced motion and calm rooms.** No effects at all, as before, and the effects file is not
   fetched. Checked on High with reduced motion: no canvas through a whole game.
@@ -45,4 +53,8 @@ dependency was added.
   real frame rate was measured (headless Chromium draws in software).
 - Safari and Firefox.
 - The standings' stars, and a burst in each of the shop's twelve styles: only the festival
-  default, the tick's sparkle and the arrival's stars were looked at.
+  default, the tick's sparkle, the arrival's and the level's stars were looked at.
+- A scene change at full speed, by eye, and on any screen other than Classic's.
+- **The sound.** Nothing was changed, because nothing can be listened to here: the engine already
+  ducks music under its big effects and crosses between tracks, and a change that cannot be heard
+  cannot be judged.

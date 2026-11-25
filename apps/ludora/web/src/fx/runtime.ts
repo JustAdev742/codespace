@@ -102,48 +102,50 @@ let halo: Path2D | null = null;
 
 function draw(c: CanvasRenderingContext2D) {
   const f = field;
-  for (let pass = 0; pass < 2; pass++) {
-    // Solid pieces first; then the ones made of light, which brighten where they cross.
-    c.globalCompositeOperation = pass ? 'lighter' : 'source-over';
-    for (let i = 0; i < f.n; i++) {
-      const bits = f.bits[i]!;
-      if (((bits & GLOWS) !== 0) !== (pass === 1)) continue;
-      const age = f.age[i]!;
-      const a = alphaAt(age, f.ttl[i]!);
-      if (a <= 0) continue;
-      const s = (f.size[i]! / 12) * dpr;
-      const rot = bits & HEADS ? Math.atan2(f.vy[i]!, f.vx[i]!) + Math.PI / 2 : f.rot[i]!;
-      // A flat piece turning end over end shows its face, then its edge, then its back.
-      const turn = bits & TUMBLES ? Math.cos(f.phase[i]! * 1.3 + age * f.rate[i]! * 1.7) : 1;
-      const cos = Math.cos(rot) * s;
-      const sin = Math.sin(rot) * s;
-      c.setTransform(cos, sin, -sin * turn, cos * turn, f.x[i]! * dpr, f.y[i]! * dpr);
-      const color = palette[f.color[i]!] ?? '#ffffff';
-      const shape = SHAPES[f.shape[i]!]!;
-      // The back of a piece is a shade duller than its face.
-      c.globalAlpha = turn < 0 ? a * 0.78 : a;
-      if (shape === 'ring') {
-        c.strokeStyle = color;
-        c.lineWidth = 1.5;
-        c.stroke(path(shape));
-        continue;
-      }
-      c.fillStyle = color;
-      if (pass === 1) {
-        // A soft light round a spark, an ember or a star.
-        c.globalAlpha = a * 0.22;
-        c.fill((halo ??= circle(6.5)));
-        c.globalAlpha = a;
-      }
-      c.fill(path(shape));
-      if (shape === 'lantern') {
-        c.fillStyle = '#1a1d33';
-        c.fill((caps ??= lanternCaps()));
-      }
+  // First the soft light round a spark, an ember or a star, which brightens where lights cross on a dark stage
+  // (and is invisible, harmlessly, on a white card). Then every piece itself, solid, so it shows on any surface.
+  c.globalCompositeOperation = 'lighter';
+  for (let i = 0; i < f.n; i++) {
+    if (!(f.bits[i]! & GLOWS)) continue;
+    const a = alphaAt(f.age[i]!, f.ttl[i]!);
+    if (a <= 0) continue;
+    const s = (f.size[i]! / 12) * dpr;
+    c.setTransform(s, 0, 0, s, f.x[i]! * dpr, f.y[i]! * dpr);
+    c.globalAlpha = a * 0.22;
+    c.fillStyle = palette[f.color[i]!] ?? '#ffffff';
+    c.fill((halo ??= circle(6.5)));
+  }
+  c.globalCompositeOperation = 'source-over';
+  for (let i = 0; i < f.n; i++) {
+    const bits = f.bits[i]!;
+    const age = f.age[i]!;
+    const a = alphaAt(age, f.ttl[i]!);
+    if (a <= 0) continue;
+    const s = (f.size[i]! / 12) * dpr;
+    const rot = bits & HEADS ? Math.atan2(f.vy[i]!, f.vx[i]!) + Math.PI / 2 : f.rot[i]!;
+    // A flat piece turning end over end shows its face, then its edge, then its back.
+    const turn = bits & TUMBLES ? Math.cos(f.phase[i]! * 1.3 + age * f.rate[i]! * 1.7) : 1;
+    const cos = Math.cos(rot) * s;
+    const sin = Math.sin(rot) * s;
+    c.setTransform(cos, sin, -sin * turn, cos * turn, f.x[i]! * dpr, f.y[i]! * dpr);
+    const color = palette[f.color[i]!] ?? '#ffffff';
+    const shape = SHAPES[f.shape[i]!]!;
+    // The back of a piece is a shade duller than its face.
+    c.globalAlpha = turn < 0 ? a * 0.78 : a;
+    if (shape === 'ring') {
+      c.strokeStyle = color;
+      c.lineWidth = 1.5;
+      c.stroke(path(shape));
+      continue;
+    }
+    c.fillStyle = color;
+    c.fill(path(shape));
+    if (shape === 'lantern') {
+      c.fillStyle = '#1a1d33';
+      c.fill((caps ??= lanternCaps()));
     }
   }
   c.globalAlpha = 1;
-  c.globalCompositeOperation = 'source-over';
 }
 
 function circle(r: number): Path2D {

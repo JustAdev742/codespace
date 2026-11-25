@@ -34,8 +34,12 @@ item with how each was checked, in [features/README.md](features/README.md). The
     turns effects down, then back to the plain game, on a device that cannot keep up.
   - *Celebrations with real movement,* where the device can draw them: a burst's pieces tumble,
     fall and settle, and as the winner lands in a room's ceremony paper falls on every screen
-    (two cannons and a shower on a big screen). Stars at the right answer's tick on the board,
-    on a climb, and round a player arriving in the lobby.
+    (two cannons and a shower on a big screen) and the winner jumps for joy three times. Stars
+    at the right answer's tick on the board, on a climb, on a new level and round a player
+    arriving in the lobby.
+  - *Scene changes.* Between phases the screen being left lifts away as the next arrives,
+    instead of a cut. The new screen is live from its first frame.
+  - *Still no idle motion:* Glims hold still and nothing drifts behind a question, on purpose.
   - *An older device keeps the game as it was:* the plain level is the code that ran before, and
     the effects file (8 KB) is not fetched there, nor for anyone who asked for less motion.
 

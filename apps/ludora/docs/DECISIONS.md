@@ -860,6 +860,20 @@ until it arrives a burst is the plain one. A store of fixed size drops what does
 of growing. No library was added: it is a small amount of code, written for the game's own
 shapes and styles.
 
+*Scene changes.* Between phases the old screen was simply gone and the new one faded in. Where
+effects are up, the screen being left lifts away towards the viewer while the next arrives from
+behind it. What leaves is a copy of the old screen, taken as the phase changes and held still, that
+no tap, key or screen reader can reach: the new screen is live from its first frame, so an answer
+can still be tapped the instant it shows. A screen drawn on a canvas (a 3D game) cannot be copied
+and changes as before.
+
+*Moments, not a moving stage.* DESIGN.md's rule stands: one orchestrated moment per screen, no
+idle bobbing or drifting. A breathing crowd of Glims, drifting haze or a shader behind the
+question would have been the obvious way to spend the new budget, and each was left out on
+purpose: a board is for reading, and a class includes children whom constant movement
+distracts. Everything added starts, plays and stops: paper falls and is gone, the winner jumps
+three times and stands still, a level turns over once.
+
 *Less motion is not a graphics level.* With reduced motion (the device's setting or the player's)
 or in a calm room there are no effects at all, as before, and nothing is fetched. That is
 accessibility, and no graphics choice overrides it.

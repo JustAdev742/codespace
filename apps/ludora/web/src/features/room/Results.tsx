@@ -17,7 +17,7 @@ import { duration, ordinal } from '../../lib/format.ts';
 import { PLACE_BG, RankBadge, TeamScores } from './game/Leaderboard.tsx';
 import { PlayerGlim, StagePanel, avatarOf, motionOK } from './game/stage.tsx';
 import { Burst } from '../../art/bursts.tsx';
-import { fxColors, fxShower } from '../../fx/index.ts';
+import { fxColors, fxLevel, fxShower } from '../../fx/index.ts';
 import { useAnnounce } from './game/announce.tsx';
 import { playSfx, useSharedSounds } from '../../lib/sound/react.tsx';
 import { GameNextSteps } from '../making/GameNextSteps.tsx';
@@ -72,7 +72,10 @@ function Podium({ room, big, plan, offset, stage }: { room: RoomView; big: boole
           return (
             <li key={s.playerId} className={`flex min-w-0 flex-col items-center ${ORDER[place]} ${big ? 'w-[clamp(7rem,13vw,16rem)]' : 'w-[6.75rem]'}`}>
               <div className={`relative flex w-full flex-col items-center ${waiting}`} style={moving ? { animation: `stage-land ${LAND_MS}ms var(--ease-out) ${at(land)} both` } : undefined}>
-                <PlayerGlim avatar={a} seed={s.playerId} size={first ? 120 : 92} aura={first ? 'legendary' : null} pose={first ? 'cheer' : 'idle'} className={first ? (big ? 'size-[clamp(6rem,17vh,11.5rem)]' : 'size-[6rem]') : big ? 'size-[clamp(4.75rem,12.5vh,8.5rem)]' : 'size-[4.5rem]'} />
+                {/* Where the stage's effects are up, the winner jumps for joy three times as they land, then stands still for the teacher (stage.css). */}
+                <span className="block origin-bottom" style={first && moving && plan.pace === 'show' && fxLevel() !== 'plain' ? { animation: `glim-cheer 640ms ease-in-out ${at(land + LAND_MS)} 3` } : undefined}>
+                  <PlayerGlim avatar={a} seed={s.playerId} size={first ? 120 : 92} aura={first ? 'legendary' : null} pose={first ? 'cheer' : 'idle'} className={first ? (big ? 'size-[clamp(6rem,17vh,11.5rem)]' : 'size-[6rem]') : big ? 'size-[clamp(4.75rem,12.5vh,8.5rem)]' : 'size-[4.5rem]'} />
+                </span>
                 {first ? <Burst style={a?.victory?.style ?? 'festival'} hue={a?.victory?.hue ?? 42} size={big ? 380 : 250} rise delay={moving ? land + 120 - (offset ?? 0) : 0} count={20} /> : null}
                 {/* The winner's name is on gold; the runners-up on white. A long name takes a second line rather than lose its end. */}
                 <span

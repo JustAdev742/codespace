@@ -371,3 +371,34 @@
     font-size: 0.9375rem;
   }
 }
+
+/*
+ * A scene change (game/PhaseFade.tsx): the picture of the screen being left. Nothing in it moves:
+ * every animation is held at its end, so nothing in the copy plays again while it lifts away.
+ */
+.scene-leaving,
+.scene-leaving * {
+  animation-delay: -100s !important;
+  animation-play-state: paused !important;
+  transition: none !important;
+}
+
+/*
+ * The winner's jump for joy as they land on the podium (Results.tsx), where the stage's effects are
+ * up: a crouch, a jump, a landing. Played three times, and then they stand still.
+ */
+@keyframes glim-cheer {
+  0%,
+  100% {
+    transform: none;
+  }
+  18% {
+    transform: scale(1.07, 0.9);
+  }
+  52% {
+    transform: translateY(-17%) scale(0.96, 1.06);
+  }
+  84% {
+    transform: scale(1.05, 0.93);
+  }
+}

@@ -124,7 +124,10 @@ as a winner lands. The graphics setting picks between them, by itself
 unless the player chooses, and an older or slower device keeps the plain
 form. New effects go through `Burst` (`art/bursts.tsx`) or `fx/`, never a
 canvas of their own, so they inherit the levels, the frame-time check and
-the rule that less motion means none.
+the rule that less motion means none. The same levels decide how one phase
+gives way to the next: a fade on the plain game, a scene change (the old
+screen lifts away as the new one arrives) where effects are up. More budget
+does not change the rule above: moments, never a stage that moves by itself.
 
 ## Characters
 

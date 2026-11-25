@@ -10,6 +10,7 @@ import { useSfx } from '../../lib/sound/react.tsx';
 import { useAnnounce } from './game/announce.tsx';
 import { useCountUp } from './game/countUp.ts';
 import { motionOK } from './game/stage.tsx';
+import { Burst } from '../../art/bursts.tsx';
 
 /*
  * What a player earned from the game, on their own results screen: the Sparks and XP counting up, the
@@ -71,10 +72,12 @@ function LevelBar({ journey }: { journey: XpJourney }) {
     <div className="flex flex-col gap-1.5">
       <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
         {/* The pop is on a wrapper: a plate's lean is a transform of its own. */}
-        <span key={level} className="inline-flex" style={level !== before.level && motionOK() ? { animation: 'pop-in 260ms var(--ease-spring) both' } : undefined}>
+        <span key={level} className="relative inline-flex" style={level !== before.level && motionOK() ? { animation: 'pop-in 260ms var(--ease-spring) both' } : undefined}>
           <span className="plate plate-gold text-lg">
             <span className="tabular">Level {level}</span>
           </span>
+          {/* A level is earned, never drawn by chance: where the stage's effects are up it turns over in a ring of stars (fx/). */}
+          {level !== before.level ? <Burst extra style="stars" hue={44} size={260} count={10} /> : null}
         </span>
         <span className="text-sm font-semibold text-text-2 tabular">{after.needed ? `${formatNumber(left)} XP to level ${after.level + 1}` : 'Top level reached'}</span>
       </div>
