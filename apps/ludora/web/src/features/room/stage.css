@@ -19,12 +19,25 @@
   }
 }
 
-/* A podium block rises out of the floor. Its parent clips it. */
+/* A podium block rises out of the floor. Its parent clips it (it starts a hair below, so no edge of it shows while it waits). */
 @keyframes stage-rise {
   from {
-    transform: translateY(100%);
+    transform: translateY(104%);
   }
   to {
+    transform: none;
+  }
+}
+
+/* The held breath before a name in the podium ceremony: three lights, each coming on in turn. */
+@keyframes drum-dot {
+  0%,
+  100% {
+    opacity: 0.25;
+    transform: scale(0.8);
+  }
+  40% {
+    opacity: 1;
     transform: none;
   }
 }

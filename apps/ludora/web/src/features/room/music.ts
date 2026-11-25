@@ -2,6 +2,9 @@ import { useEffect, useState } from 'react';
 import type { RoomView } from '@ludora/shared';
 import type { MusicId } from '../../lib/sound/assets.generated.ts';
 import { useMusic, usePrefetchMusic, type SoundRole } from '../../lib/sound/react.tsx';
+import { prefersReducedMotion } from '../../lib/prefs.ts';
+import { ceremonyPace, endingKey, useFanfareStarted } from './ceremony.ts';
+import { MODE_SCREENS } from './modes/registry.ts';
 
 /*
  * The music in a game room. It plays on the host's screen and in solo games,
@@ -83,8 +86,11 @@ export function inFinalStretch(modeId: string, game: unknown, now: number): bool
   return (rule ?? genericStretch)(game as GameShape, now);
 }
 
-/** The track for this screen of the room, or null for silence. */
-export function roomMusic(room: RoomView | null, role: SoundRole, stretch: boolean): MusicId | null {
+/**
+ * The track for this screen of the room, or null for silence. `drumRoll`: the game has ended and the
+ * podium is being revealed (ceremony.ts): the room is quiet until the fanfare, which the music follows.
+ */
+export function roomMusic(room: RoomView | null, role: SoundRole, stretch: boolean, drumRoll = false): MusicId | null {
   if (!room) return null;
   const status = room.room.status;
   if (status === 'lobby') return role === 'host' ? 'lobby' : null;
@@ -92,6 +98,7 @@ export function roomMusic(room: RoomView | null, role: SoundRole, stretch: boole
   // Calm play: the gentle track all game, with no final-stretch music.
   if (status === 'running' && room.room.options?.calmPlay) return 'calm';
   if (status === 'running') return stretch ? 'intense' : (MODE_MUSIC[room.room.modeId] ?? 'game');
+  if (status === 'ended' && drumRoll) return null;
   // A class that lost a co-op game gets the gentle track, not the celebration.
   if (status === 'ended') return room.results?.outcome === 'coop-loss' ? 'calm' : 'results';
   return null;
@@ -114,7 +121,11 @@ export function useRoomMusic(room: RoomView | null, role: SoundRole, gameNow: ((
     const timer = setInterval(check, 1000);
     return () => clearInterval(timer);
   }, [running, modeId, game, gameNow]);
-  useMusic(roomMusic(room, role, stretch), room?.room.status === 'ended' ? AFTER_THE_FANFARE : undefined);
+  // A room's podium ceremony keeps the fanfare for the winner; until the results screen says it has started, no music.
+  const ended = room?.room.status === 'ended';
+  const fanfare = useFanfareStarted(room && ended ? endingKey(room) : '');
+  const ceremony = Boolean(room && ended && ceremonyPace(room, Boolean(MODE_SCREENS[modeId]?.Ending)) === 'show' && !prefersReducedMotion());
+  useMusic(roomMusic(room, role, stretch, ceremony && !fanfare), ended ? AFTER_THE_FANFARE : undefined);
   const shared = role === 'host' || role === 'solo';
   const calm = Boolean(room?.room.options?.calmPlay);
   const next: MusicId[] = room?.room.status === 'lobby' ? (calm ? ['calm', 'results'] : [MODE_MUSIC[modeId] ?? 'game', 'intense', 'results']) : running ? (calm ? ['results'] : ['intense', 'results']) : [];

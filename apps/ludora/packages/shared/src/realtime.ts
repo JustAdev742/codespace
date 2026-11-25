@@ -303,6 +303,12 @@ export interface ResultsView {
   outcome: 'competitive' | 'coop-win' | 'coop-loss';
   summary: string;
   durationMs: number;
+  /**
+   * When the game ended, on the server's clock (compare with `serverNow`). Every screen times the podium
+   * ceremony from it, so the big screen and the phones reveal the places together, and a screen that
+   * opens late joins part-way rather than starting again.
+   */
+  endedAt?: number;
 }
 
 /** What a player earned from a finished game. */

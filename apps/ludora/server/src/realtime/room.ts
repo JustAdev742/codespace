@@ -1661,6 +1661,7 @@ export class Room {
       outcome: r.outcome,
       summary: r.summary,
       durationMs: r.durationMs,
+      ...(this.endedAt !== null ? { endedAt: this.endedAt } : {}),
     };
   }
 
