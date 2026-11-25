@@ -112,13 +112,19 @@ Moonstones by default, per account; a class grant counts the total) needs an app
 
 1. **First check, no API call.** A reason under 15 characters, with fewer than three real words,
    long runs of one letter or a 25+ letter "word" (`ihfjosifjsdoifjso`) is declined at once.
-2. **The investigator** (`server/src/modules/aiReview/investigator.ts`): Claude with read-only
-   tools over the account's reports, moderation history, activity log, games and integrity
-   signals, money, sign-ins, made content, and the asking staff member's own recent actions and
-   ties to the account. It returns a verdict with the evidence ids it relied on.
-3. **Server checks on the verdict.** Evidence ids it never fetched are dropped. An approval with
-   a reason it did not rate "clear", without having read the account and the staff member, or
-   (for a ban or suspension) without one piece of evidence beyond those, becomes a decline.
+2. **The investigator** (`server/src/modules/aiReview/investigator.ts`): Claude, given the whole
+   record in its first message (`Evidence.dossier()`), so a smaller model cannot skip parts:
+   reports, moderation history, the activity log, games and integrity signals, answer speed and
+   accuracy against the whole site, money (where it came from, how it compares with everyone),
+   sign-ins, linked accounts (same network, copied names, made together), classes, teacher notes,
+   merits and class rewards, made content, and the asking staff member's recent actions and ties
+   to the account. Tools fetch older activity pages or look again. The prompt asks for the right
+   decision in both directions, and treats junk, spam and duplicate accounts as evidence in
+   themselves. It returns a verdict with the evidence ids it relied on.
+3. **Server checks on the verdict.** Evidence ids it was never given are dropped. An approval with
+   a reason it did not rate "clear", or (for a ban or suspension) citing nothing from the account,
+   becomes a decline whose summary starts "The AI approved this, but the server's checks turned
+   it into a decline because ...", so it is never mistaken for the AI's own refusal.
 4. **The gate** (`gate.ts`), inside the action's own transaction: the review must be approved,
    by the same staff member, for exactly the same action and reason, within 30 minutes, and
    unused. It is marked used in the same transaction.
@@ -127,3 +133,18 @@ A super administrator can override a decline with a written reason of 30+ charac
 audited. Email addresses, passwords, network addresses, session tokens and dates of birth are
 never sent; player-written text is passed as quoted data. The privacy policy mentions the review
 only while it is on.
+
+## Clean-up (super administrators)
+
+**Staff → Clean-up** (`server/src/modules/admin/cleanup.ts`, names in `admin/spam.ts`):
+
+- **Bring big balances down**: everyone holding more than an amount of Sparks or Moonstones is
+  brought down to it through the ledger (`admin_revoke`, tool `cap`). Staff and test accounts are
+  skipped. One `economy.cap` audit entry.
+- **Junk and copied accounts**: names that look like keyboard mashing, and usernames (or long
+  display names) that copy an older account's username with disguises removed (`singto2`,
+  `s1ngt0`, `siingto`), plus a search for names like a given one. Ticked accounts are removed with
+  the same deletion players use on themselves (`eraseAccount`), audited as `user.removed` with the
+  username and reason. Staff and test accounts never appear and cannot be removed.
+
+Both show what they will touch first and need a real-words reason and the account count typed back.

@@ -142,6 +142,11 @@ describe('a ban', () => {
     expect(sent).toContain('<staff_reason>');
     expect(sent).toContain('quoted_text');
     expect(sent).not.toMatch(/@example|email/i);
+    // Every model starts from the full records, not only what it thinks to ask for.
+    const first = seenRequests[seenRequests.length - 2]!.messages[0]!.content as string;
+    expect(first).toContain('<records>');
+    for (const part of ['"account"', '"staffMember"', '"reports"', '"relatedAccounts"', '"answerPatterns"', '"money"', '"schoolAndFriends"', 'Kept sending rude reactions']) expect(first).toContain(part);
+    expect(first).not.toMatch(/ip_?hash|password/i);
     const other = await admin.client.post(`/api/admin/users/${kid.userId}/moderate`, { action: 'ban', reason: 'A different reason entirely, not the reviewed one.', confirm: kid.username, reviewId: r.id });
     expect(other.status).toBe(409);
     const ok = await admin.client.post(`/api/admin/users/${kid.userId}/moderate`, { action: 'ban', reason: REASON, confirm: kid.username, reviewId: r.id });
@@ -157,7 +162,8 @@ describe('a ban', () => {
     script = 'approve_without_evidence';
     const r = await review(admin, { kind: 'ban', userId: kid.userId, reason: REASON });
     expect(r.status).toBe('declined');
-    expect(r.verdict.concerns[0]).toMatch(/No finding rests on a record/);
+    expect(r.verdict.concerns[0]).toMatch(/no finding cites a record from the account/);
+    expect(r.verdict.summary).toMatch(/^The AI approved this, but the server/);
   });
 
   it('a failed review can be overridden by a super administrator, with a real reason, and nobody else', async () => {
@@ -202,5 +208,19 @@ describe('the server checks a verdict', () => {
     expect(checkVerdict(v, new Set(['account:x', 'report:1']), req).verdict.decision).toBe('decline');
     expect(checkVerdict({ ...v, reasonQuality: 'clear' }, new Set(['account:x', 'report:1']), req).verdict.concerns[0]).toMatch(/staff member/);
     expect(checkVerdict({ ...v, reasonQuality: 'clear' }, new Set(['account:x', 'staff:y', 'report:1']), req).verdict.decision).toBe('approve');
+  });
+});
+
+describe('the server checks on a verdict', () => {
+  const verdict = { decision: 'approve' as const, reasonQuality: 'clear' as const, summary: 'A copy of an older account, made from the same network.', findings: [{ point: 'Copies the name of an older account', evidence: ['related:abc', 'account:x'] }], concerns: [], suggestion: null };
+  it('lets a junk-account ban rest on the account and its linked accounts', () => {
+    const out = checkVerdict(verdict, new Set(['account:x', 'staff:y', 'related:abc']), { kind: 'ban', userId: '00000000-0000-4000-8000-000000000000', reason: 'Spam account copying the name singto.' });
+    expect(out.corrected).toBe(false);
+    expect(out.verdict.decision).toBe('approve');
+  });
+  it('says so plainly when it turns an approval down, rather than passing it off as the AI', () => {
+    const out = checkVerdict({ ...verdict, reasonQuality: 'vague' }, new Set(['account:x', 'staff:y', 'related:abc']), { kind: 'ban', userId: '00000000-0000-4000-8000-000000000000', reason: 'Spam account copying the name singto.' });
+    expect(out.verdict.decision).toBe('decline');
+    expect(out.verdict.summary).toMatch(/^The AI approved this, but the server's checks turned it into a decline because the AI rated the reason "vague"/);
   });
 });

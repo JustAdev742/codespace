@@ -1,6 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import type { AppDeps } from '../../app.ts';
 import { adminCatalogRoutes } from './catalog.ts';
+import { adminCleanupRoutes } from './cleanup.ts';
 import { adminEconomyRoutes } from './economy.ts';
 import { economyRoomRoutes } from './economyRoom.ts';
 import { adminLiveRoutes } from './live.ts';
@@ -13,6 +14,7 @@ import { adminUserRoutes } from './users.ts';
 export async function adminRoutes(app: FastifyInstance, deps: AppDeps) {
   await adminUserRoutes(app, deps);
   await adminEconomyRoutes(app, deps);
+  await adminCleanupRoutes(app, deps);
   await economyRoomRoutes(app, deps);
   await adminCatalogRoutes(app, deps);
   await adminSeasonRoutes(app, deps);

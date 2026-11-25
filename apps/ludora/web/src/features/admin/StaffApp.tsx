@@ -5,6 +5,7 @@ import {
   BarChart3,
   Boxes,
   CalendarRange,
+  Eraser,
   Flag,
   FlaskConical,
   Gamepad2,
@@ -28,6 +29,8 @@ interface Section {
   icon: ReactNode;
   permission: Permission;
   page: ComponentType;
+  /** Only for super administrators (the server checks this too). */
+  superadmin?: boolean;
   /** Extra routes under the section, e.g. a detail page. */
   children?: { path: string; page: ComponentType }[];
 }
@@ -54,6 +57,7 @@ export const SECTIONS: Section[] = [
   { path: 'events', label: 'Events', icon: <CalendarRange className="size-4" />, permission: 'events.manage', page: page(() => import('./Events.tsx')) },
   { path: 'flags', label: 'Feature flags', icon: <Flag className="size-4" />, permission: 'flags.manage', page: page(() => import('./Flags.tsx')) },
   { path: 'testing', label: 'Testing', icon: <FlaskConical className="size-4" />, permission: 'testing.tools', page: page(() => import('./Testing.tsx')) },
+  { path: 'cleanup', label: 'Clean-up', icon: <Eraser className="size-4" />, permission: 'roles.assign', superadmin: true, page: page(() => import('./Cleanup.tsx')) },
   { path: 'ai', label: 'AI helpers', icon: <Sparkles className="size-4" />, permission: 'system.view', page: page(() => import('./Ai.tsx')) },
   { path: 'system', label: 'System health', icon: <Activity className="size-4" />, permission: 'system.view', page: page(() => import('./System.tsx')) },
   { path: 'audit', label: 'Audit log', icon: <ScrollText className="size-4" />, permission: 'audit.read', page: page(() => import('./Audit.tsx')) },
@@ -83,7 +87,8 @@ export default function StaffApp() {
       </EmptyState>
     );
   }
-  const sections = SECTIONS.filter((s) => perms.has(s.permission));
+  const isSuper = Boolean(me.data?.roles.includes('superadmin'));
+  const sections = SECTIONS.filter((s) => perms.has(s.permission) && (!s.superadmin || isSuper));
   const env = ENV_NOTE[me.data?.environment ?? 'development'] ?? ENV_NOTE.development!;
   return (
     <div className="flex flex-col gap-4">

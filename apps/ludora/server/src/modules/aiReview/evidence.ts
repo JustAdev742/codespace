@@ -1,7 +1,8 @@
 import { and, desc, eq, gte, inArray, isNull, lt, or, sql } from 'drizzle-orm';
 import type { AiReviewRequest } from '@ludora/shared';
 import type { Db } from '../../db/client.ts';
-import { aiReviews, auditLog, blocks, classMembers, classes, friendships, gameParticipants, gameSessions, ledger, moderationActions, purchases, questionSets, reports, sessions, uploads, userRoles, users, wallets } from '../../db/schema.ts';
+import { aiReviews, answerEvents, auditLog, blocks, classMembers, classRewards, classStudentNotes, classes, customGames, designs, friendships, gameParticipants, gameSessions, ledger, merits, moderationActions, purchases, questionSets, reports, sessions, uploads, userRoles, userStats, users, wallets } from '../../db/schema.ts';
+import { copiesOf, mashSigns, nameKey, nameKeys } from '../admin/spam.ts';
 
 /*
  * What the investigator can read: one read-only lookup per tool, about the account (or class) under
@@ -57,9 +58,51 @@ export class Evidence {
         return this.content();
       case 'get_staff_member':
         return this.staffMember();
+      case 'get_related_accounts':
+        return this.related();
+      case 'get_answer_patterns':
+        return this.answers();
+      case 'get_school_and_friends':
+        return this.social();
       default:
         throw new Error(`There is no tool called ${name}.`);
     }
+  }
+
+  /**
+   * Everything at once, for the first message: every model starts from the full picture instead of
+   * depending on which tools it thinks to call. Each part that fails is left out with a note.
+   */
+  async dossier(): Promise<Record<string, unknown>> {
+    const parts: [string, () => Promise<unknown>][] =
+      this.c.request.kind === 'class_grant'
+        ? [
+            ['class', () => this.classInfo()],
+            ['staffMember', () => this.staffMember()],
+          ]
+        : [
+            ['account', () => this.account()],
+            ['staffMember', () => this.staffMember()],
+            ['reports', () => this.reports()],
+            ['moderationHistory', () => this.moderation()],
+            ['relatedAccounts', () => this.related()],
+            ['activityLog', () => this.activity(null)],
+            ['games', () => this.games()],
+            ['answerPatterns', () => this.answers()],
+            ['money', () => this.money()],
+            ['signIns', () => this.signIns()],
+            ['madeContent', () => this.content()],
+            ['schoolAndFriends', () => this.social()],
+          ];
+    const out: Record<string, unknown> = {};
+    for (const [key, load] of parts) {
+      try {
+        out[key] = await load();
+      } catch {
+        out[key] = { unavailable: 'This part could not be loaded.' };
+      }
+    }
+    return out;
   }
 
   private needUser(): string {
@@ -257,8 +300,30 @@ export class Evidence {
       select coalesce(json_object_agg(currency, total), '{}'::json) as totals from (
         select currency, sum(delta)::int as total from ${ledger}
         where user_id = ${id} and reason = 'admin_grant' and created_at > now() - interval '30 days' group by currency) t`)).rows as [{ totals: Record<string, number> }];
+    // Where each currency came from, and how this account's balance compares with everyone's.
+    const earned = (await this.db.execute(sql`
+      select currency, reason,
+             sum(delta) filter (where created_at > now() - interval '7 days')::int as last7,
+             sum(delta) filter (where created_at > now() - interval '30 days')::int as last30,
+             sum(delta)::int as all_time, count(*)::int as times
+      from ${ledger} where user_id = ${id} group by currency, reason order by currency, all_time desc`)).rows as { currency: string; reason: string; last7: number | null; last30: number | null; all_time: number; times: number }[];
+    const compare = balances.length
+      ? ((await this.db.execute(sql`
+          select w.currency,
+                 percentile_cont(0.5) within group (order by w.balance)::int as median,
+                 percentile_cont(0.99) within group (order by w.balance)::int as top1,
+                 max(w.balance)::int as highest,
+                 (select count(*) from ${wallets} x where x.currency = w.currency and x.balance > (select balance from ${wallets} y where y.user_id = ${id} and y.currency = w.currency))::int as richer
+          from ${wallets} w where w.currency in (${sql.join(balances.map((b) => sql`${b.currency}`), sql`, `)}) group by w.currency`)).rows as { currency: string; median: number; top1: number; highest: number; richer: number }[])
+      : [];
+    const [st] = await this.db.select().from(userStats).where(eq(userStats.userId, id)).limit(1);
     return {
       balances,
+      comparedWithEveryone: compare.map((c) => ({ currency: c.currency, medianBalance: c.median, top1PercentFrom: c.top1, highestBalance: c.highest, accountsWithMore: c.richer })),
+      whereItCameFrom: earned.map((e) => ({ currency: e.currency, why: e.reason, last7Days: e.last7 ?? 0, last30Days: e.last30 ?? 0, allTime: e.all_time, times: e.times })),
+      playStats: st
+        ? { id: this.cite(`stats:${id}`), gamesPlayed: st.gamesPlayed, gamesWon: st.gamesWon, gamesHosted: st.gamesHosted, questionsAnswered: st.questionsAnswered, questionsCorrect: st.questionsCorrect, packsOpened: st.packsOpened, dailyStreak: st.dailyStreak, longestDailyStreak: st.longestDailyStreak, lastPlayDay: st.lastPlayDay, sparksEarnedToday: st.sparksToday }
+        : null,
       staffGrantsInLast30Days: staffTotals.totals,
       recentMovements: entries.map(({ l, actorName }) => ({
         id: this.cite(`ledger:${l.id}`),
@@ -301,9 +366,139 @@ export class Evidence {
       .orderBy(desc(questionSets.createdAt))
       .limit(20);
     const [hidden] = (await this.db.execute(sql`select count(*)::int as n from ${uploads} where owner_id = ${id} and hidden_at is not null`)).rows as [{ n: number }];
+    const made = await this.db.select({ id: designs.id, kind: designs.kind, name: designs.name, hiddenAt: designs.hiddenAt, hiddenReason: designs.hiddenReason, createdAt: designs.createdAt }).from(designs).where(eq(designs.ownerId, id)).orderBy(desc(designs.createdAt)).limit(20);
+    const games = await this.db.select({ id: customGames.id, title: customGames.title, visibility: customGames.visibility, hiddenAt: customGames.hiddenAt, plays: customGames.plays }).from(customGames).where(eq(customGames.ownerId, id)).orderBy(desc(customGames.createdAt)).limit(20);
     return {
+      designs: made.map((d) => ({ id: this.cite(`design:${d.id}`), kind: d.kind, name: { quoted_text: d.name }, hiddenByStaff: Boolean(d.hiddenAt), hiddenReason: d.hiddenReason, at: d.createdAt.toISOString() })),
+      customGames: games.map((g) => ({ id: this.cite(`customgame:${g.id}`), title: { quoted_text: g.title }, visibility: g.visibility, hiddenByStaff: Boolean(g.hiddenAt), plays: g.plays })),
       questionSets: sets.map((s) => ({ id: this.cite(`set:${s.id}`), title: { quoted_text: s.title }, visibility: s.visibility, hiddenByStaff: Boolean(s.hiddenAt), hiddenReason: s.hiddenReason, at: s.createdAt.toISOString() })),
       uploadsHiddenByStaff: hidden.n,
+    };
+  }
+
+  /**
+   * Accounts linked to this one: signed in from the same network, carrying the same name with the
+   * disguises off ("singto2", "s1ngt0"), or made around the same time from the same network. Network
+   * addresses themselves are never shown. Also how the account's own name looks.
+   */
+  private async related() {
+    const id = this.needUser();
+    const [me] = await this.db.select({ username: users.username, displayName: users.displayName, createdAt: users.createdAt }).from(users).where(eq(users.id, id)).limit(1);
+    if (!me) return { found: false };
+    const network = (await this.db.execute(sql`
+      select u.id, u.username, u.display_name as "displayName", u.created_at as "createdAt", u.last_seen_at as "lastSeenAt", u.status, u.is_guest as "isGuest",
+             coalesce(st.games_played, 0)::int as games,
+             exists(select 1 from ${userRoles} r where r.user_id = u.id) as staff
+      from ${users} u left join ${userStats} st on st.user_id = u.id
+      where u.id <> ${id} and u.id in (
+        select distinct b.user_id from ${sessions} a join ${sessions} b on a.ip_hash = b.ip_hash
+        where a.user_id = ${id} and a.ip_hash is not null)
+      order by u.created_at desc limit 40`)).rows as { id: string; username: string | null; displayName: string; createdAt: string | Date; lastSeenAt: string | Date | null; status: string; isGuest: boolean; games: number; staff: boolean }[];
+    const key = nameKey(me.username) || nameKey(me.displayName);
+    const myKeys = new Set([...nameKeys(me.username), ...nameKeys(me.displayName)].filter((k) => k.length >= 3));
+    const everyone = key.length >= 3 ? await this.db.select({ id: users.id, username: users.username, displayName: users.displayName, createdAt: users.createdAt, status: users.status }).from(users).where(eq(users.isGuest, false)).limit(50_000) : [];
+    const sameName = everyone.filter((u) => u.id !== id && [...nameKeys(u.username), ...nameKeys(u.displayName)].some((k) => myKeys.has(k)));
+    const copy = copiesOf(everyone).get(id);
+    const at = (d: string | Date | null) => (d ? new Date(d).toISOString() : null);
+    const hour = 3_600_000;
+    return {
+      note: 'Accounts that share a network may be a family, a school or one person with several accounts: weigh it with everything else. Names are quoted text.',
+      thisAccountsName: {
+        username: me.username ? { quoted_text: me.username } : null,
+        displayName: { quoted_text: me.displayName },
+        withDisguisesRemoved: key || null,
+        looksLikeKeyboardMash: [...new Set([...mashSigns(me.username), ...mashSigns(me.displayName)])],
+        copiesAnOlderAccountsName: copy ? { id: this.cite(`related:${copy.id}`), username: copy.username, displayName: copy.displayName, madeAt: copy.createdAt.toISOString() } : null,
+      },
+      sameNetwork: {
+        accounts: network.length,
+        madeWithinAnHourOfThisOne: network.filter((n) => Math.abs(new Date(n.createdAt).getTime() - me.createdAt.getTime()) < hour).length,
+        list: network.map((n) => ({
+          id: this.cite(`related:${n.id}`),
+          username: n.username,
+          displayName: { quoted_text: n.displayName },
+          madeAt: at(n.createdAt),
+          lastSeen: at(n.lastSeenAt),
+          status: n.status,
+          guest: n.isGuest,
+          staff: n.staff,
+          gamesPlayed: n.games,
+          nameLooksLikeKeyboardMash: mashSigns(n.username).length + mashSigns(n.displayName).length > 0,
+        })),
+      },
+      sameNameOtherAccounts: sameName.slice(0, 30).map((u) => ({ id: this.cite(`related:${u.id}`), username: u.username, displayName: { quoted_text: u.displayName }, madeAt: u.createdAt.toISOString(), status: u.status, madeBeforeThisOne: u.createdAt < me.createdAt })),
+    };
+  }
+
+  /** How this account answers questions, next to everyone else on the site: speed and accuracy patterns that cheating or bots leave. */
+  private async answers() {
+    const id = this.needUser();
+    const rows = await this.db
+      .select({ gameId: answerEvents.gameId, correct: answerEvents.correct, ms: answerEvents.responseMs, at: answerEvents.createdAt })
+      .from(answerEvents)
+      .where(eq(answerEvents.userId, id))
+      .orderBy(desc(answerEvents.id))
+      .limit(500);
+    const [site] = (await this.db.execute(sql`
+      select percentile_cont(0.5) within group (order by response_ms)::int as median_ms,
+             avg(case when correct then 1 else 0 end)::float as accuracy,
+             avg(case when correct and response_ms < 1000 then 1 else 0 end)::float as fast_correct
+      from (select response_ms, correct from ${answerEvents} where response_ms is not null order by id desc limit 20000) s`)).rows as [{ median_ms: number | null; accuracy: number | null; fast_correct: number | null }];
+    const timed = rows.map((r) => r.ms).filter((m): m is number => typeof m === 'number').sort((a, b) => a - b);
+    const pct = (n: number, d: number) => (d ? Math.round((n / d) * 1000) / 10 : null);
+    const byGame = new Map<string, { n: number; correct: number; fastCorrect: number }>();
+    for (const r of rows) {
+      const g = byGame.get(r.gameId) ?? { n: 0, correct: 0, fastCorrect: 0 };
+      g.n++;
+      if (r.correct) g.correct++;
+      if (r.correct && typeof r.ms === 'number' && r.ms < 1000) g.fastCorrect++;
+      byGame.set(r.gameId, g);
+    }
+    return {
+      id: this.cite(`answers:${id}`),
+      note: 'Fast correct answers alone are not cheating: a strong player who knows a set answers quickly. Look for patterns across many games, and compare with the site.',
+      answersLooked: rows.length,
+      thisAccount: {
+        accuracyPercent: pct(rows.filter((r) => r.correct).length, rows.length),
+        medianAnswerMs: timed.length ? timed[Math.floor(timed.length / 2)] : null,
+        fastestTenthMs: timed.length ? timed[Math.floor(timed.length / 10)] : null,
+        correctUnderOneSecondPercent: pct(rows.filter((r) => r.correct && typeof r.ms === 'number' && r.ms < 1000).length, rows.length),
+        under300msPercent: pct(timed.filter((m) => m < 300).length, timed.length),
+      },
+      wholeSite: { accuracyPercent: site?.accuracy == null ? null : Math.round(site.accuracy * 1000) / 10, medianAnswerMs: site?.median_ms ?? null, correctUnderOneSecondPercent: site?.fast_correct == null ? null : Math.round(site.fast_correct * 1000) / 10 },
+      gamesWithMostFastCorrectAnswers: [...byGame.entries()]
+        .sort((a, b) => b[1].fastCorrect - a[1].fastCorrect)
+        .slice(0, 8)
+        .map(([gameId, g]) => ({ game: `game:${gameId}`, answers: g.n, correct: g.correct, correctUnderOneSecond: g.fastCorrect })),
+    };
+  }
+
+  /** The account's place in a school and among friends: classes and teachers, what teachers noted, merits and rewards, friends, and blocks. */
+  private async social() {
+    const id = this.needUser();
+    const cls = (await this.db.execute(sql`
+      select c.id, c.name, c.school_name as school, m.role, m.joined_at as "joinedAt", t.display_name as teacher, c.archived_at is not null as archived
+      from ${classMembers} m join ${classes} c on c.id = m.class_id left join ${users} t on t.id = c.owner_id
+      where m.user_id = ${id} order by m.joined_at desc limit 20`)).rows as { id: string; name: string; school: string | null; role: string; joinedAt: string | Date; teacher: string | null; archived: boolean }[];
+    const notes = await this.db.select().from(classStudentNotes).where(eq(classStudentNotes.userId, id)).limit(20);
+    const merit = await this.db.select().from(merits).where(eq(merits.studentId, id)).orderBy(desc(merits.createdAt)).limit(30);
+    const rewards = await this.db.select().from(classRewards).where(eq(classRewards.studentId, id)).orderBy(desc(classRewards.createdAt)).limit(30);
+    const friends = (await this.db.execute(sql`
+      select u.id, u.username, u.display_name as "displayName", u.status from ${friendships} f
+      join ${users} u on u.id = case when f.user_a = ${id} then f.user_b else f.user_a end
+      where (f.user_a = ${id} or f.user_b = ${id}) and f.status = 'accepted' limit 40`)).rows as { id: string; username: string | null; displayName: string; status: string }[];
+    const [b] = (await this.db.execute(sql`
+      select (select count(*) from ${blocks} where blocked_id = ${id})::int as blocked_by,
+             (select count(*) from ${blocks} where blocker_id = ${id})::int as blocking`)).rows as [{ blocked_by: number; blocking: number }];
+    return {
+      note: 'Teacher notes and merit notes are quoted text written by teachers.',
+      classes: cls.map((c) => ({ id: this.cite(`class:${c.id}`), name: { quoted_text: c.name }, school: c.school, role: c.role, teacher: c.teacher, joined: new Date(c.joinedAt).toISOString(), archived: c.archived })),
+      teacherNotes: notes.map((n) => ({ id: this.cite(`note:${n.classId}`), updated: n.updatedAt.toISOString(), text: { quoted_text: n.body } })),
+      meritsAndDemerits: merit.map((m) => ({ id: this.cite(`merit:${m.id}`), day: m.day, value: m.value, by: m.teacherName, note: m.note ? { quoted_text: m.note } : null })),
+      classRewards: rewards.map((r) => ({ id: this.cite(`classreward:${r.id}`), at: r.createdAt.toISOString(), amount: r.amount, by: r.teacherName, wholeClass: r.wholeClass, note: r.note ? { quoted_text: r.note } : null })),
+      friends: friends.map((f) => ({ id: this.cite(`related:${f.id}`), username: f.username, displayName: { quoted_text: f.displayName }, status: f.status })),
+      blockedByThisManyAccounts: b.blocked_by,
+      blocksThisManyAccounts: b.blocking,
     };
   }
 

@@ -5,7 +5,7 @@ import { join, resolve } from 'node:path';
 import { z } from 'zod';
 import type { AppDeps } from '../../app.ts';
 import { auditLog, gameParticipants, questionSets, uploads, users } from '../../db/schema.ts';
-import { noStore, requireAuth } from '../../http/context.ts';
+import { noStore, requireAuth, type AuthContext } from '../../http/context.ts';
 import { AppError, conflict } from '../../lib/errors.ts';
 import { parse } from '../../lib/validate.ts';
 import { writeAudit } from '../audit/service.ts';
@@ -141,47 +141,57 @@ export async function accountRoutes(app: FastifyInstance, deps: AppDeps) {
       throw conflict('Staff accounts are closed by another administrator: ask one to remove your staff roles first.');
     }
 
-    // Out of every live room first, and out of their rosters, so no game saved afterwards points at the account.
-    deps.rooms.forgetUser(uid, 'This player has left Ludora.');
-    await deps.rooms.idle();
-
-    // Private sets are the owner's alone; public and shared ones stay for the people using them, without a name.
-    const privateSets = await deps.db
-      .delete(questionSets)
-      .where(and(eq(questionSets.ownerId, uid), eq(questionSets.visibility, 'private')))
-      .returning({ id: questionSets.id });
-
-    // Images the account uploaded that no remaining set shows. An image's row is what lets it be served.
-    const mine = await deps.db.select({ id: uploads.id, mime: uploads.mime }).from(uploads).where(eq(uploads.ownerId, uid));
-    const orphans: { id: string; mime: string }[] = [];
-    for (const u of mine) {
-      const used = await deps.db.execute(sql`select 1 from question_sets where questions::text like ${'%/uploads/' + u.id + '.%'} limit 1`);
-      if (!used.rows.length) orphans.push(u);
-    }
-
-    await deps.db.transaction(async (tx) => {
-      for (const o of orphans) await tx.delete(uploads).where(eq(uploads.id, o.id));
-      // Copies of the name: past games keep their scores under "Player", and the audit log keeps
-      // what happened without saying to whom (its ids are set to null by the delete below).
-      await tx.update(gameParticipants).set({ displayName: 'Player' }).where(eq(gameParticipants.userId, uid));
-      await tx.update(auditLog).set({ actorName: DELETED }).where(eq(auditLog.actorId, uid));
-      await tx.update(auditLog).set({ targetName: DELETED }).where(and(eq(auditLog.targetType, 'user'), eq(auditLog.targetId, uid)));
-      // The record of the deletion names no one: the id was random and now points at nothing.
-      await writeAudit(tx, deps.config.APP_ENV, {
-        actor: { system: 'self-service' },
-        action: 'account.deleted',
-        targetType: 'user',
-        targetId: uid,
-        after: { privateSets: privateSets.length, images: orphans.length },
-      });
-      await tx.delete(users).where(eq(users.id, uid));
-    });
-
-    const dir = resolve(process.cwd(), deps.config.UPLOAD_DIR);
-    const ext: Record<string, string> = { 'image/png': 'png', 'image/jpeg': 'jpg', 'image/gif': 'gif', 'image/webp': 'webp', 'audio/wav': 'wav' };
-    await Promise.all(orphans.map((o) => unlink(join(dir, `${o.id}.${ext[o.mime] ?? 'bin'}`)).catch(() => {})));
+    await eraseAccount(deps, uid, null);
 
     reply.clearCookie(SESSION_COOKIE, { path: '/' });
     return { ok: true };
   });
+}
+
+/**
+ * Removes an account and what belongs only to it (see the top of this file). Used by the player's own
+ * deletion (by = null) and by a super administrator's spam clean-up (admin/cleanup.ts).
+ */
+export async function eraseAccount(deps: AppDeps, uid: string, by: { actor: AuthContext; reason: string; name: string; ipHash?: string | null } | null): Promise<void> {
+  // Out of every live room first, and out of their rosters, so no game saved afterwards points at the account.
+  deps.rooms.forgetUser(uid, 'This player has left Ludora.');
+  await deps.rooms.idle();
+
+  // Private sets are the owner's alone; public and shared ones stay for the people using them, without a name.
+  const privateSets = await deps.db
+    .delete(questionSets)
+    .where(and(eq(questionSets.ownerId, uid), eq(questionSets.visibility, 'private')))
+    .returning({ id: questionSets.id });
+
+  // Images the account uploaded that no remaining set shows. An image's row is what lets it be served.
+  const mine = await deps.db.select({ id: uploads.id, mime: uploads.mime }).from(uploads).where(eq(uploads.ownerId, uid));
+  const orphans: { id: string; mime: string }[] = [];
+  for (const u of mine) {
+    const used = await deps.db.execute(sql`select 1 from question_sets where questions::text like ${'%/uploads/' + u.id + '.%'} limit 1`);
+    if (!used.rows.length) orphans.push(u);
+  }
+
+  await deps.db.transaction(async (tx) => {
+    for (const o of orphans) await tx.delete(uploads).where(eq(uploads.id, o.id));
+    // Copies of the name: past games keep their scores under "Player", and the audit log keeps
+    // what happened without saying to whom (its ids are set to null by the delete below).
+    await tx.update(gameParticipants).set({ displayName: 'Player' }).where(eq(gameParticipants.userId, uid));
+    await tx.update(auditLog).set({ actorName: DELETED }).where(eq(auditLog.actorId, uid));
+    await tx.update(auditLog).set({ targetName: DELETED }).where(and(eq(auditLog.targetType, 'user'), eq(auditLog.targetId, uid)));
+    // A self-service deletion's record names no one: the id was random and now points at nothing.
+    // A staff removal (spam clean-up) keeps the username, so the decision can be checked later.
+    await writeAudit(tx, deps.config.APP_ENV, {
+      actor: by ? by.actor : { system: 'self-service' },
+      action: by ? 'user.removed' : 'account.deleted',
+      targetType: 'user',
+      targetId: uid,
+      ...(by ? { targetName: by.name, reason: by.reason, ipHash: by.ipHash ?? null } : {}),
+      after: { privateSets: privateSets.length, images: orphans.length },
+    });
+    await tx.delete(users).where(eq(users.id, uid));
+  });
+
+  const dir = resolve(process.cwd(), deps.config.UPLOAD_DIR);
+  const ext: Record<string, string> = { 'image/png': 'png', 'image/jpeg': 'jpg', 'image/gif': 'gif', 'image/webp': 'webp', 'audio/wav': 'wav' };
+  await Promise.all(orphans.map((o) => unlink(join(dir, `${o.id}.${ext[o.mime] ?? 'bin'}`)).catch(() => {})));
 }

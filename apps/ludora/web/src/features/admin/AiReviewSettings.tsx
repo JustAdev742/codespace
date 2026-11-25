@@ -62,7 +62,7 @@ function Settings({ s }: { s: ReviewSettings }) {
     <Card title="AI review of bans, suspensions and large grants">
       <div className="flex max-w-[75ch] flex-col gap-3 text-sm text-text-2">
         <p>
-          When this is on, a ban, a suspension, or a grant at or above the amounts below goes to an AI investigator before it happens. It reads the account's reports, earlier moderation, activity log, games and likely-cheating signals, money, sign-ins and content, and the asking staff member's own recent actions and ties to the account, then approves or declines with its reasons. A reason
+          When this is on, a ban, a suspension, or a grant at or above the amounts below goes to an AI investigator before it happens. It is given the account's whole record up front: reports, earlier moderation, the activity log, games, answer speed against the whole site, likely-cheating signals, where its money came from, sign-ins, linked accounts (same network, copied names), classes, teacher notes and merits, things it made, and the asking staff member's own recent actions and ties to the account. It then approves or declines with its reasons. A reason
           that is not real words is declined straight away without asking the AI. Only a super administrator can override a decline, with a written reason that goes in the audit log.
         </p>
         <p>
@@ -98,8 +98,17 @@ function Settings({ s }: { s: ReviewSettings }) {
         </div>
       ) : null}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <Field label="Model" hint={`Empty uses the server's setting.`}>
-          {(p) => <Input {...p} value={model} placeholder={s.model} disabled={!s.canChange} onChange={(e) => setModel(e.target.value)} autoComplete="off" spellCheck={false} />}
+        <Field label="Model" hint="Empty uses the server's setting. claude-opus-5-5 investigates most thoroughly; claude-sonnet-5-5 costs less; claude-haiku-5-5 costs least but misses more.">
+          {(p) => (
+            <>
+              <Input {...p} list="ai-review-models" value={model} placeholder={s.model} disabled={!s.canChange} onChange={(e) => setModel(e.target.value)} autoComplete="off" spellCheck={false} />
+              <datalist id="ai-review-models">
+                <option value="claude-opus-5-5" />
+                <option value="claude-sonnet-5-5" />
+                <option value="claude-haiku-5-5" />
+              </datalist>
+            </>
+          )}
         </Field>
         <Field label="Review grants of Sparks from" error={whole(sparks) ? undefined : 'A whole number from 1, or empty for never.'}>
           {(p) => <Input {...p} inputMode="numeric" value={sparks} disabled={!s.canChange} onChange={(e) => setSparks(e.target.value)} />}
