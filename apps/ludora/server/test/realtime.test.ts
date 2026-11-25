@@ -159,6 +159,12 @@ describe('hosting and playing Classic over sockets', () => {
     expect(ended.results.standings).toHaveLength(2);
     expect(ended.rewards.status).toBe('granted');
     expect(ended.rewards.sparks).toBeGreaterThan(0);
+    // The results say when the game ended, on the server's clock: every screen times the podium from it.
+    expect(ended.results.endedAt).toBeGreaterThan(0);
+    expect(ended.results.endedAt).toBeLessThanOrEqual(ended.serverNow);
+    // A new account's XP in all is what this game gave, for the level bar on the results.
+    expect(ended.rewards.xp).toBeGreaterThan(0);
+    expect(ended.rewards.xpTotal).toBe(ended.rewards.xp);
     const anon = await bViews.until((v) => v.room.status === 'ended' && v.rewards && v.rewards.status !== 'pending', 10_000);
     expect(anon.rewards.status).toBe('none');
 

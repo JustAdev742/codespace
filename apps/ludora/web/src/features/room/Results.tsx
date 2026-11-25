@@ -4,23 +4,23 @@ import { MODE_SCREENS } from './modes/registry.ts';
 import { GameHouses } from '../school/GameHouses.tsx';
 import { LessonResults, NextStepButton } from '../lessons/room.tsx';
 import { Link, useNavigate } from 'react-router';
-import { BookOpen, ClipboardList, Download, FastForward, Flame, Home, Rocket, RotateCcw, TrendingUp, Trophy, Zap } from 'lucide-react';
+import { BookOpen, ClipboardList, Download, FastForward, Flame, Home, Rocket, RotateCcw, TrendingUp, Zap } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import type { AwardView, Feeling, RewardSummary, RoomView, StandingView } from '@ludora/shared';
+import type { AwardView, Feeling, RoomView, StandingView } from '@ludora/shared';
 import { api, ApiError } from '../../lib/api.ts';
 import { meKey, useMe } from '../../lib/session.ts';
 import { ClassSummaryDialog, FEELING_INFO, Feelings } from './host/ClassSummary.tsx';
 import type { RoomHandle } from '../../lib/useRoom.ts';
-import { Amount, Badge } from '../../ui/primitives.tsx';
 import { Button, buttonClass } from '../../ui/Button.tsx';
-import { duration, formatNumber, ordinal } from '../../lib/format.ts';
+import { duration, ordinal } from '../../lib/format.ts';
 import { PLACE_BG, RankBadge, TeamScores } from './game/Leaderboard.tsx';
 import { PlayerGlim, StagePanel, avatarOf, motionOK } from './game/stage.tsx';
 import { Burst } from '../../art/bursts.tsx';
 import { useAnnounce } from './game/announce.tsx';
-import { playSfx, useSfx, useSharedSounds } from '../../lib/sound/react.tsx';
+import { playSfx, useSharedSounds } from '../../lib/sound/react.tsx';
 import { GameNextSteps } from '../making/GameNextSteps.tsx';
+import { Rewards } from './Rewards.tsx';
 import { FANFARE_LEAD_MS, ceremonyFor, ceremonyPace, endingKey, fanfareStarted, overStage, placeLands, placeTitle, sinceEnd, stageAt, winnerLands, type Beat, type Ceremony, type Stage } from './ceremony.ts';
 import { focusAdrift } from '../../lib/focus.ts';
 
@@ -243,59 +243,6 @@ function Standings({ room, big }: { room: RoomView; big: boolean }) {
         );
       })}
     </ol>
-  );
-}
-
-function Rewards({ rewards, guest }: { rewards: RewardSummary | null; guest: boolean }) {
-  useAnnounce(
-    rewards?.status === 'granted' ? `You earned ${formatNumber(rewards.sparks)} Sparks and ${formatNumber(rewards.xp)} XP.${rewards.levelUp ? ` You reached level ${rewards.levelUp.to}.` : ''}` : null,
-    rewards?.status,
-  );
-  useSfx('levelUp', rewards?.levelUp?.to ?? null, Boolean(rewards?.levelUp));
-  if (!rewards) return null;
-  if (rewards.status === 'pending') {
-    return (
-      <div className="paper stage-card px-5 py-4">
-        <p className="font-semibold">Adding up your rewards…</p>
-      </div>
-    );
-  }
-  return (
-    <div className="paper stage-card flex flex-col gap-3 px-5 py-4" style={{ animation: 'pop-in 200ms var(--ease-out)' }}>
-      <h2 className="font-display text-[1.75rem] leading-tight font-bold">Your rewards</h2>
-      {rewards.status === 'granted' ? (
-        <div className="flex flex-wrap items-center gap-4">
-          <Amount currency="sparks" value={rewards.sparks} size="lg" />
-          <span className="font-display text-[1.75rem] font-extrabold text-link tabular">+{formatNumber(rewards.xp)} XP</span>
-          {rewards.levelUp ? <Badge tone="violet">Level {rewards.levelUp.to}</Badge> : null}
-        </div>
-      ) : null}
-      {rewards.quests.length ? (
-        <ul className="flex flex-col gap-1 text-sm">
-          {rewards.quests.map((q) => (
-            <li key={q.title} className="flex justify-between gap-2">
-              <span>{q.title}</span>
-              <span className={q.completed ? 'font-semibold text-glim' : 'text-text-2 tabular'}>{q.completed ? 'Complete: claim it on the quests page' : `${q.progress}/${q.target}`}</span>
-            </li>
-          ))}
-        </ul>
-      ) : null}
-      {rewards.achievements.map((a) => (
-        <p key={a.title} className="flex items-center gap-2 font-semibold text-lantern">
-          <Trophy className="size-4" aria-hidden /> Achievement unlocked: {a.title}
-        </p>
-      ))}
-      {rewards.notes.map((n) => (
-        <p key={n} className="text-text-2">
-          {n}
-        </p>
-      ))}
-      {guest && rewards.status === 'none' ? (
-        <Link to="/signup" className={buttonClass('primary', 'lg', 'self-start')}>
-          Create a free account
-        </Link>
-      ) : null}
-    </div>
   );
 }
 

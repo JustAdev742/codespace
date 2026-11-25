@@ -166,6 +166,7 @@ export async function applyGameResult(db: Db, r: PlayerGameRecord): Promise<Rewa
       status: reward.eligible ? 'granted' : 'none',
       sparks: reward.sparks + streakBonus + (xp?.rewards.sparks ?? 0),
       xp: reward.xp,
+      ...(xp ? { xpTotal: xp.xp } : {}),
       ...(xp && xp.to > xp.from ? { levelUp: { from: xp.from, to: xp.to } } : {}),
       quests,
       achievements: unlocked.map((a) => ({ title: a.title })),

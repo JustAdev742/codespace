@@ -316,6 +316,11 @@ export interface RewardSummary {
   status: 'pending' | 'granted' | 'none';
   sparks: number;
   xp: number;
+  /**
+   * The player's XP in all once this game's is added, so the results can show the level bar filling
+   * (levelFromXp gives the level; take `xp` off for where the bar started). Absent when no XP was earned.
+   */
+  xpTotal?: number;
   levelUp?: { from: number; to: number };
   quests: { title: string; progress: number; target: number; completed: boolean }[];
   achievements: { title: string }[];
