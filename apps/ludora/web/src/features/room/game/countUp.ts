@@ -10,6 +10,10 @@ import { motionOK } from './stage.tsx';
 export function useCountUp(value: number, ms = 650, from?: number, delay = 0): number {
   const [shown, setShown] = useState(from ?? value);
   const current = useRef(from ?? value);
+  // Read as each count starts: a caller may hold the first count back and let later ones start at once,
+  // and changing the delay alone never restarts a count in flight.
+  const wait = useRef(delay);
+  wait.current = delay;
   useEffect(() => {
     const start = current.current;
     if (start === value || !motionOK() || typeof requestAnimationFrame !== 'function') {
@@ -17,7 +21,7 @@ export function useCountUp(value: number, ms = 650, from?: number, delay = 0): n
       setShown(value);
       return;
     }
-    const t0 = performance.now() + delay;
+    const t0 = performance.now() + wait.current;
     let raf = 0;
     const step = (t: number) => {
       const k = Math.min(1, Math.max(0, t - t0) / ms);
@@ -30,6 +34,6 @@ export function useCountUp(value: number, ms = 650, from?: number, delay = 0): n
     };
     raf = requestAnimationFrame(step);
     return () => cancelAnimationFrame(raf);
-  }, [value, ms, delay]);
+  }, [value, ms]);
   return shown;
 }

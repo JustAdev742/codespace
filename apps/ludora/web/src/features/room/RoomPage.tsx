@@ -234,7 +234,8 @@ export default function RoomPage() {
         <div className="safe-x flex h-14 [--safe-pad:0.75rem] sm:[--safe-pad:1.25rem] min-[1600px]:[--safe-pad:2rem] items-center gap-2.5 px-3 sm:h-16 sm:gap-3 sm:px-5 min-[1600px]:h-20 min-[1600px]:px-8">
           {/* On a phone, a host mid-game needs the header's width for the game controls. On a school's copy the
               crest alone stands for the game on a phone, so the room's name is not cut to a letter (D60). */}
-          <LogoMark size={30} className={`shrink-0 min-[1600px]:size-11 ${isHost && live ? 'max-sm:hidden' : school ? 'max-sm:hidden' : ''}`} />
+          {/* A solo game's phone header also holds Finish now: without the mark (and the LIVE tag), "Solo game" is not cut to "Sol…". */}
+          <LogoMark size={30} className={`shrink-0 min-[1600px]:size-11 ${(isHost || room.room.solo) && live ? 'max-sm:hidden' : school ? 'max-sm:hidden' : ''}`} />
           {/* The board (and a wide laptop in the lobby) shows the school's whole logo; smaller screens its crest. */}
           <SchoolCrest size={24} className="sm:h-[30px] sm:w-auto min-[1600px]:h-11" plateClassName={`${isHost && live ? 'max-sm:hidden' : ''} ${live ? 'min-[1600px]:hidden' : 'xl:hidden'}`} />
           <SchoolLogo height={live ? 46 : 40} decorative className={`hidden ${live ? 'min-[1600px]:inline-flex' : 'xl:inline-flex'}`} imgClassName={live ? '' : 'min-[1600px]:h-[46px] min-[1600px]:w-auto'} />
@@ -242,7 +243,7 @@ export default function RoomPage() {
             <Title className="truncate font-display text-lg leading-tight font-bold text-text sm:text-xl min-[1600px]:text-[1.75rem]">{room.lesson?.screen ? room.lesson.title : room.room.title}</Title>
             <p className="flex min-w-0 items-center gap-2 text-xs font-semibold text-text-2 sm:text-sm min-[1600px]:text-base">
               {/* On a school's phone the calm leaf already says what is on, so the code keeps its room. */}
-              {status === 'running' ? <LiveTag className={school && room.room.options.calmPlay ? 'max-sm:hidden' : ''} /> : null}
+              {status === 'running' ? <LiveTag className={room.room.solo || (school && room.room.options.calmPlay) ? 'max-sm:hidden' : ''} /> : null}
               {room.room.options.calmPlay ? <CalmPlayTag solo={room.room.solo} isHost={isHost} /> : null}
               <span className="truncate">
                 {room.room.solo ? (

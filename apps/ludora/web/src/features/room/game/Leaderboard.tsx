@@ -56,7 +56,12 @@ export function standingLine(rows: readonly LeaderRow[], you: LeaderRow | null |
  * room sees the points land; after that it follows the score. Screen readers get the final number.
  */
 function RowScore({ row }: { row: LeaderRow }) {
-  const shown = useCountUp(row.score, SLIDE_MS, before(row), HOLD_MS);
+  // The first count waits for the beat the old order holds; a score that changes while the board stays up counts at once.
+  const first = useRef(true);
+  const shown = useCountUp(row.score, SLIDE_MS, before(row), first.current ? HOLD_MS : 0);
+  useEffect(() => {
+    first.current = false;
+  }, []);
   return (
     <>
       <span aria-hidden>{formatNumber(shown)}</span>

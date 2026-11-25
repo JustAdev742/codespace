@@ -337,3 +337,21 @@
     transform: scaleX(0);
   }
 }
+
+/*
+ * A solo player's way on from the results (Play again, Try another mode): on a phone it stays at the foot of the
+ * screen while the rewards and the rest scroll under it, on the same smoked glass as the game's other bars.
+ */
+@media (max-width: 639px) {
+  .results-next {
+    position: sticky;
+    bottom: 0;
+    z-index: 10;
+    margin: 0 -0.75rem calc(-1 * max(1.5rem, env(safe-area-inset-bottom)));
+    padding: 0.625rem 0.75rem max(0.625rem, env(safe-area-inset-bottom));
+    /* Nearly solid, in the stage's own darkest colour (a school's look has its own): a white card passes under
+       it, and the buttons' words must keep their contrast whatever is beneath. */
+    background: color-mix(in srgb, var(--stage-4) 94%, transparent);
+    border-top: 1px solid rgb(255 255 255 / 0.1);
+  }
+}

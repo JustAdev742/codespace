@@ -290,9 +290,10 @@ function Awards({ awards, big, me }: { awards: AwardView[]; big: boolean; me: st
  * The player's own end-of-game card, worth a screenshot: their Glim on a lit spot, their place on the gold
  * plate, then the numbers that matter (score, accuracy, right answers) and any award they took.
  */
-function EndCard({ room, mine, awards }: { room: RoomView; mine: StandingView; awards: AwardView[] }) {
+function EndCard({ room, mine, awards, lone = false }: { room: RoomView; mine: StandingView; awards: AwardView[]; lone?: boolean }) {
   const accuracy = mine.answered ? Math.round((mine.correct / mine.answered) * 100) : 0;
-  const podiumPlace = mine.rank <= 3;
+  // On their own, a player has no place to come: the card is their result, and they cheer for getting most of it right.
+  const podiumPlace = lone ? accuracy >= 50 : mine.rank <= 3;
   const stats = [
     { label: 'Result', value: mine.label },
     { label: 'Accuracy', value: `${accuracy}%` },
@@ -302,14 +303,12 @@ function EndCard({ room, mine, awards }: { room: RoomView; mine: StandingView; a
     <section aria-labelledby="end-card-title" className="relative isolate overflow-hidden rounded-[var(--radius-l)] bg-[color-mix(in_srgb,var(--stage-1)_90%,#ffffff)] px-5 pt-5 pb-4 shadow-[0_14px_36px_-12px_rgb(2_5_20/0.7)]" style={motionOK() ? { animation: 'pop-in 220ms var(--ease-out)' } : undefined}>
       <div className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-40 bg-[radial-gradient(60%_90%_at_50%_0%,rgb(255_194_51/0.28),transparent_70%)]" aria-hidden />
       <div className="flex items-center gap-4">
-        <PlayerGlim avatar={avatarOf(room.players, mine.playerId)} seed={mine.playerId} size={104} pose={podiumPlace ? 'cheer' : 'idle'} aura={mine.rank === 1 ? 'legendary' : null} className="shrink-0" />
+        <PlayerGlim avatar={avatarOf(room.players, mine.playerId)} seed={mine.playerId} size={104} pose={podiumPlace ? 'cheer' : 'idle'} aura={mine.rank === 1 && !lone ? 'legendary' : null} className="shrink-0" />
         <div className="flex min-w-0 flex-col items-start gap-1.5">
           <h2 id="end-card-title" className="plate plate-gold text-[1.8rem] whitespace-nowrap">
-            <span>You came {ordinal(mine.rank)}</span>
+            <span>{lone ? 'Your result' : `You came ${ordinal(mine.rank)}`}</span>
           </h2>
-          <p className="truncate font-semibold text-text-2">
-            {mine.name}, of {room.results!.standings.length}
-          </p>
+          <p className="max-w-full truncate font-semibold text-text-2">{lone ? mine.name : `${mine.name}, of ${room.results!.standings.length}`}</p>
         </div>
       </div>
       {/* The result has a row to itself: a mode's own wording ("Survived, 2,000 pts") stays on one line on a phone. */}
@@ -327,7 +326,8 @@ function EndCard({ room, mine, awards }: { room: RoomView; mine: StandingView; a
             const { title, Icon } = AWARD_INFO[a.kind];
             return (
               <li key={a.kind} className="inline-flex items-center gap-1.5 rounded-full bg-lantern px-3 py-1 text-sm font-bold text-on-accent">
-                <Icon className="size-4" aria-hidden /> {title}
+                {/* Alone, nobody was beaten to it: the chip says what the player did ("6 right in a row"). */}
+                <Icon className="size-4" aria-hidden /> {lone ? a.detail : title}
               </li>
             );
           })}
@@ -448,17 +448,14 @@ export function Results({ room, handle, isHost, guest }: { room: RoomView; handl
   // Fixed as the screen opens: how long ago the game ended by the server's clock, so every screen is at the same point.
   const [startedAgo] = useState(() => sinceEnd(room, handle.receivedAt));
   const ceremony = useCeremony(plan, startedAgo, {
-    // The big screen marks each place as it lands; a phone marks only its own, and the winner's phone celebrates.
+    // The shared screen marks second and third place as they land in a room's ceremony.
     land: (beat) => {
-      if (beat.place === 0) {
-        if (!shared && myPlace === 0) playSfx('win');
-        return;
-      }
-      if (shared ? plan?.pace === 'show' : beat.place === myPlace) playSfx('rankUp');
+      if (shared && beat.place !== 0 && plan?.pace === 'show') playSfx('rankUp');
     },
-    // The big screen celebrates as the winner lands, unless the class lost a co-op game: then a gentle sting, not a fanfare.
+    // The shared screen celebrates as the winner lands, unless the class lost a co-op game: then a gentle sting, not a
+    // fanfare. (A phone's own moment is below.)
     fanfare: () => {
-      playSfx(shared ? (r.outcome === 'coop-loss' ? (Ending ? 'reveal' : 'lose') : 'fanfare') : 'reveal');
+      if (shared) playSfx(r.outcome === 'coop-loss' ? (Ending ? 'reveal' : 'lose') : 'fanfare');
       fanfareStarted(key);
     },
   });
@@ -491,12 +488,22 @@ export function Results({ room, handle, isHost, guest }: { room: RoomView; handl
     if (running || !isHost) return;
     if (focusAdrift()) nextSteps.current?.querySelector<HTMLElement>('button, a')?.focus({ preventScroll: true });
   }, [running, isHost]);
+  // A player who played on their own (a solo game, or the only one in the room): their card is their result, and
+  // awards "won" against nobody and a table of one are left out. The big screen keeps its table.
+  const lone = !isHost && competitive && r.standings.length === 1;
   // What waits for the ceremony: the rest of the results. A solo game's quick reveal holds only its standings and awards.
   const held = ceremony.running && plan?.pace === 'show';
   const heldBrisk = ceremony.running && plan?.pace === 'brisk';
   // A player's own card lands with their place on the podium, and for everyone else when the ceremony is over.
   const myLand = plan && myPlace >= 0 ? placeLands(plan, myPlace) : null;
   const myCard = !held || (myLand !== null && stage.landed > plan!.beats.findIndex((b) => b.place === myPlace));
+  // A phone's own moment, heard once as its player's result arrives: the winner's celebrates, a podium place
+  // chimes up, and everyone else hears the same soft chime the results always had.
+  useEffect(() => {
+    if (shared || !myCard) return;
+    playSfx(!plan || myPlace < 0 ? 'reveal' : myPlace === 0 ? 'win' : 'rankUp');
+    // Once: when the card arrives.
+  }, [shared, myCard]); // eslint-disable-line react-hooks/exhaustive-deps
   // Things that arrive after the ceremony settle in, rather than snap on.
   const arrive = plan && ceremony.offset !== null ? { animation: 'rise-fade 280ms var(--ease-out) both' } : undefined;
   return (
@@ -570,7 +577,7 @@ export function Results({ room, handle, isHost, guest }: { room: RoomView; handl
             ) : (
               <>
                 {held && !myCard ? <DrumRoll /> : null}
-                {mine && r.standings.length > 1 && competitive && myCard ? <EndCard room={room} mine={mine} awards={held ? [] : (r.awards ?? []).filter((a) => a.playerId === room.me.playerId)} /> : null}
+                {mine && competitive && myCard ? <EndCard room={room} mine={mine} lone={lone} awards={held ? [] : (r.awards ?? []).filter((a) => a.playerId === room.me.playerId)} /> : null}
                 {held ? null : (
                   <div className="flex flex-col gap-4" style={arrive}>
                     <Rewards rewards={room.rewards} guest={guest} />
@@ -581,7 +588,7 @@ export function Results({ room, handle, isHost, guest }: { room: RoomView; handl
             )}
             {held || heldBrisk ? null : (
               <div className="flex flex-col gap-4" style={big ? undefined : arrive}>
-                {r.awards?.length ? <Awards awards={r.awards} big={big} me={room.me.playerId} /> : null}
+                {r.awards?.length && !lone ? <Awards awards={r.awards} big={big} me={room.me.playerId} /> : null}
                 {r.teamStandings.length && !tableHidden ? (
                   <StagePanel as="section" className="p-4" label="Teams">
                     <h2 className="mb-3 font-display text-2xl font-bold">Teams</h2>
@@ -592,23 +599,29 @@ export function Results({ room, handle, isHost, guest }: { room: RoomView; handl
                 {room.room.solo ? null : <GameHouses gameId={r.gameId} />}
                 {/* Lessons: points across the whole lesson so far. */}
                 <LessonResults room={room} isHost={isHost} />
-                {tableHidden ? null : <Standings room={room} big={big} />}
+                {tableHidden || lone ? null : <Standings room={room} big={big} />}
                 <p className="text-sm font-semibold text-text-2">Played for {duration(r.durationMs)}.</p>
               </div>
             )}
             {isHost ? null : room.room.solo ? (
-              // A solo player is their own host: they can go again straight away.
-              <div className="flex flex-wrap gap-2" role="group" aria-label="What next">
-                <Button variant="primary" size="lg" className="grow" icon={<RotateCcw className="size-5" aria-hidden />} loading={busy} onClick={restart}>
-                  Play again
-                </Button>
-                <Link to="/host?solo=1" className={buttonClass('secondary', 'lg', 'grow')}>
-                  Try another mode
-                </Link>
-                <Link to="/" className={buttonClass('ghost', 'lg', 'grow')}>
+              // A solo player is their own host: they can go again straight away. On a phone the way on stays at the
+              // foot of the screen however long the rewards above it are.
+              <>
+                <Link to="/" className={buttonClass('ghost', 'lg', 'sm:hidden')}>
                   <Home className="size-5" aria-hidden /> Back to home
                 </Link>
-              </div>
+                <div className="results-next flex flex-wrap gap-2" role="group" aria-label="What next">
+                  <Button variant="primary" size="lg" className="grow" icon={<RotateCcw className="size-5" aria-hidden />} loading={busy} onClick={restart}>
+                    Play again
+                  </Button>
+                  <Link to="/host?solo=1" className={buttonClass('secondary', 'lg', 'grow')}>
+                    Try another mode
+                  </Link>
+                  <Link to="/" className={buttonClass('ghost', 'lg', 'grow max-sm:hidden')}>
+                    <Home className="size-5" aria-hidden /> Back to home
+                  </Link>
+                </div>
+              </>
             ) : held ? null : (
               <div className="flex flex-col gap-2" style={arrive}>
                 <PracticeButton room={room} />

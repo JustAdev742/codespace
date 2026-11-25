@@ -633,6 +633,8 @@ export function PlayerLobby({ room, handle }: { room: RoomView; handle: RoomHand
         <p className="text-lg text-text-2">
           Playing as <span className="font-bold text-text">{room.me.name}</span>
         </p>
+        {/* Something to do while the class arrives, said in words: a tooltip never shows on a phone. Not in a calm room, where nothing hops. */}
+        {reactions && !room.room.options.calmPlay ? <p className="text-sm font-semibold text-text-2">Tap your Glim to make it hop on the big screen.</p> : null}
         {team && !pickTeam ? (
           <span className="rounded-full px-3 py-0.5 font-bold text-on-accent" style={{ background: `hsl(${team.hue} 80% 65%)` }}>
             {team.name}
