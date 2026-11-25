@@ -28,6 +28,14 @@ What separated the game from a top studio's after the first pass (game-feel.md),
 | The winner stood on the podium with their arms up. | They jump for joy three times as they land, then stand still for the teacher. | `Results.tsx` (`Podium`), `stage.css` (`glim-cheer`) | Measured in the page every 60 ms from the landing: the top of the winner's Glim rose 30 px twice in the samples taken, then held still. |
 | A new level was a plate that popped. | It turns over in a ring of stars. A level is earned, never drawn by chance. | `Rewards.tsx` | Two signed-in students played two games in a row on High: frames of level 1 becoming level 2. |
 
+## A bug found on the way
+
+A burst chose its form (canvas, plain or nothing) each time it was drawn. If the effects arrived
+while a burst was already on the page, its next render threw it again in the other form: seen as a
+player's arrival stars going off seconds late, over the next screen. A burst now decides once, as
+it appears (`art/bursts.tsx`). Found by playing seven other modes with effects on and looking at
+the screenshots; checked the same way afterwards.
+
 ## Kept as they were, on purpose
 
 - **Glims hold still, and nothing drifts.** DESIGN.md's rule (one orchestrated moment per screen;
@@ -65,7 +73,9 @@ Ludora, so there is nothing new to credit.
 - Safari and Firefox.
 - The standings' stars, and a burst in each of the shop's twelve styles: only the festival
   default, the tick's sparkle, the arrival's and the level's stars were looked at.
-- A scene change at full speed, by eye, and on any screen other than Classic's.
+- A scene change at full speed, by eye. Besides Classic, Quick Draw, Lantern Out, Confidence,
+  Glim Duels, Comet Dash, Tug of War and Spot Kick (3D) were played with effects on, watching for
+  console errors and anything left on the page: none. Their scene changes were not filmed.
 - **The sound.** Nothing was changed, because nothing can be listened to here: the engine already
   ducks music under its big effects and crosses between tracks, and a change that cannot be heard
   cannot be judged.

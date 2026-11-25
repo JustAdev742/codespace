@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { prefersReducedMotion } from '../lib/prefs.ts';
 import { fxBurst, fxColors, fxLevel, fxReady, fxWarm, fxWhenReady } from '../fx/index.ts';
 
@@ -82,12 +82,18 @@ interface BurstProps {
  * back, in milliseconds, so it can land on a beat of a longer reveal.
  */
 export function Burst(props: BurstProps) {
-  // Nothing for less motion, nor in calm mode (Settings), which leaves celebrations out.
-  if (prefersReducedMotion() || document.documentElement.dataset.calm === 'on') return null;
-  if (!props.plain && (fxReady() || (props.extra && props.patient && fxLevel() !== 'plain'))) return <CanvasBurst {...props} />;
-  // Not up yet (or never will be here): ask for it, for next time, and draw the plain burst now.
-  if (!props.plain) fxWarm();
-  return props.extra ? null : <PlainBurst {...props} />;
+  // Decided once, as the burst appears. A burst is a moment: if the effects arrive while it is on the page, a later
+  // render must not throw it a second time in its other form (or throw, late, one that was left out).
+  const [form] = useState<'none' | 'canvas' | 'plain'>(() => {
+    // Nothing for less motion, nor in calm mode (Settings), which leaves celebrations out.
+    if (prefersReducedMotion() || document.documentElement.dataset.calm === 'on') return 'none';
+    if (!props.plain && (fxReady() || (props.extra && props.patient && fxLevel() !== 'plain'))) return 'canvas';
+    // Not up yet (or never will be here): ask for it, for next time, and draw the plain burst now.
+    if (!props.plain) fxWarm();
+    return props.extra ? 'none' : 'plain';
+  });
+  if (form === 'canvas') return <CanvasBurst {...props} />;
+  return form === 'plain' ? <PlainBurst {...props} /> : null;
 }
 
 /** The burst's place on the page: the canvas throws the pieces from wherever this point is when its moment comes. */
