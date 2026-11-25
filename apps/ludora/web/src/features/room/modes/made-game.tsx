@@ -8,6 +8,10 @@ import { AnswerInput } from '../game/AnswerInput.tsx';
 import { QuestionCard } from '../game/QuestionCard.tsx';
 import { Countdown, TimerBar } from '../game/TimerBar.tsx';
 import { ChoicesDisplay, ResultBanner, RevealAnswer, shortAnswer } from '../game/Reveal.tsx';
+import { NextUp, feedbackMs } from '../game/answerFlow.tsx';
+
+/** How long a result stays up before the next question in a game played at one's own pace. */
+const RESULT_MS = { right: 1100, wrong: 2200 };
 import { Explanation, HudCount, HudScore, IntroScreen, LockedIn, ModeTitle, RoundHeader, StreakChip, myAvatar } from '../game/parts.tsx';
 import { Pill, PlayerGlim, StagePanel } from '../game/stage.tsx';
 import { useAnnounce } from '../game/announce.tsx';
@@ -159,7 +163,8 @@ function OwnPace({ view, act, room }: ModeScreenProps<MadeView>) {
     lastSeen.current = last.iid;
     setFeedback(last);
     if (timer.current) clearTimeout(timer.current);
-    timer.current = setTimeout(() => setFeedback(null), last.correct ? 1100 : 2200);
+    // A wrong answer stays long enough to read why (game/answerFlow.tsx); a tap moves on sooner.
+    timer.current = setTimeout(() => setFeedback(null), feedbackMs(last.correct, RESULT_MS, last.explanation));
   }, [lastIid]);
   useEffect(() => () => void (timer.current && clearTimeout(timer.current)), []);
   useEffect(() => {
@@ -184,9 +189,7 @@ function OwnPace({ view, act, room }: ModeScreenProps<MadeView>) {
         <ResultBanner key={feedback.iid} correct={feedback.correct} partial={feedback.partial} text={feedback.text} answer={answeredQ ? shortAnswer(answeredQ.q, feedback.reveal) : null} />
         {!feedback.correct && answeredQ ? <RevealAnswer q={answeredQ.q} reveal={feedback.reveal} compact /> : null}
         {!feedback.correct ? <Explanation text={feedback.explanation} /> : null}
-        <button type="button" onClick={() => setFeedback(null)} className="min-h-11 self-center rounded-[var(--radius-m)] px-4 py-2 font-bold text-text-2 hover:bg-white/10">
-          Continue
-        </button>
+        <NextUp key={feedback.iid} onClick={() => setFeedback(null)} ms={feedbackMs(feedback.correct, RESULT_MS, feedback.explanation)} label="Continue" />
       </div>
     );
   }

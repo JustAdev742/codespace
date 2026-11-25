@@ -21,6 +21,7 @@ import {
   type TowerKind,
 } from '@ludora/engine/lantern-guard-maps';
 import type { ModeScreenProps } from './registry.ts';
+import { NextUp, useAnswerFlow } from '../game/answerFlow.tsx';
 import type { FeedbackView, QuestionView } from '../game/types.ts';
 import { AnswerInput } from '../game/AnswerInput.tsx';
 import { QuestionCard } from '../game/QuestionCard.tsx';
@@ -96,38 +97,6 @@ export interface LanternGuardView {
     question: QuestionView | null;
     last: FeedbackView | null;
   } | null;
-}
-
-/**
- * Shows each answer's result for a moment before the next question. Keyed by
- * question id, so frequent view updates (four a second in this mode) neither
- * restart nor cancel the timer, and the reveal is matched to the question answered.
- */
-function useAnswerFlow(last: FeedbackView | null | undefined, question: QuestionView | null | undefined) {
-  const asked = useRef(new Map<string, QuestionView>());
-  const lastRef = useRef(last);
-  const seen = useRef<string | null>(last?.iid ?? null);
-  const [feedback, setFeedback] = useState<FeedbackView | null>(null);
-  const lastIid = last?.iid ?? null;
-  useEffect(() => {
-    lastRef.current = last;
-  });
-  useEffect(() => {
-    if (!question) return;
-    asked.current.set(question.iid, question);
-    if (asked.current.size > 6) asked.current.delete(asked.current.keys().next().value!);
-  }, [question]);
-  useEffect(() => {
-    if (!lastIid || lastIid === seen.current) return;
-    seen.current = lastIid;
-    setFeedback(lastRef.current ?? null);
-  }, [lastIid]);
-  useEffect(() => {
-    if (!feedback) return;
-    const t = setTimeout(() => setFeedback(null), feedback.correct ? 1200 : 2600);
-    return () => clearTimeout(t);
-  }, [feedback]);
-  return { feedback, answered: feedback ? (asked.current.get(feedback.iid) ?? null) : null, dismiss: () => setFeedback(null) };
 }
 
 /* --------------------------------- small parts -------------------------------- */
@@ -380,7 +349,7 @@ function SheetHeader({ title, onPrev, onNext, onClose, headingRef }: { title: Re
 
 export function LanternGuardPlayer({ view, act, gameNow, paused, room }: ModeScreenProps<LanternGuardView>) {
   const you = view.you;
-  const flow = useAnswerFlow(you?.last, you?.question);
+  const flow = useAnswerFlow(you?.last, you?.question, { right: 1200, wrong: 2600 });
   const [sel, setSel] = useState<Selection>(null);
   const [preview, setPreview] = useState<TowerKind | null>(null);
   const [busy, setBusy] = useState(false);
@@ -570,9 +539,7 @@ export function LanternGuardPlayer({ view, act, gameNow, paused, room }: ModeScr
           <ResultBanner key={flow.feedback.iid} correct={flow.feedback.correct} partial={flow.feedback.partial} text={flow.feedback.text} answer={flow.answered ? shortAnswer(flow.answered.q, flow.feedback.reveal) : null} />
           {!flow.feedback.correct && flow.answered ? <RevealAnswer q={flow.answered.q} reveal={flow.feedback.reveal} compact /> : null}
           {!flow.feedback.correct ? <Explanation text={flow.feedback.explanation} /> : null}
-          <button type="button" onClick={flow.dismiss} className="min-h-11 self-center rounded-[var(--radius-m)] px-4 py-2 font-bold text-text-2 hover:bg-white/10">
-            Next question
-          </button>
+          <NextUp key={flow.feedback.iid} onClick={flow.dismiss} ms={flow.ms} />
         </div>
       ) : you.question ? (
         <div className="flex flex-col gap-3">

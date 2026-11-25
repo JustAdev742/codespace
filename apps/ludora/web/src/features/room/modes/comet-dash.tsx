@@ -7,6 +7,7 @@ import { AnswerInput } from '../game/AnswerInput.tsx';
 import { QuestionCard } from '../game/QuestionCard.tsx';
 import { Countdown } from '../game/TimerBar.tsx';
 import { ResultBanner, RevealAnswer, shortAnswer } from '../game/Reveal.tsx';
+import { NextUp, feedbackMs } from '../game/answerFlow.tsx';
 import { Explanation, ModeTitle, StreakChip, myAvatar } from '../game/parts.tsx';
 import { NIGHT, Pill, PlayerGlim, StagePanel, avatarOf } from '../game/stage.tsx';
 import { ordinal } from '../../../lib/format.ts';
@@ -106,6 +107,9 @@ function Track({ lanes, distance, players, big = false, together = false }: { la
 /** Constellation Run: the whole room races together and wins only if every Glim gets home in time. */
 const isTogether = (room: ModeScreenProps['room']) => room.room.settings.together === true;
 
+/** How long a result stays up in the race before the next question: a glance for a right answer, longer for a wrong one. */
+const RESULT_MS = { right: 1100, wrong: 2200 };
+
 export function CometDashPlayer({ view, act, gameNow, room }: ModeScreenProps<CometView>) {
   const you = view.you;
   const [feedback, setFeedback] = useState<FeedbackView | null>(null);
@@ -127,7 +131,8 @@ export function CometDashPlayer({ view, act, gameNow, room }: ModeScreenProps<Co
     lastSeen.current = last.iid;
     setFeedback(last);
     if (timer.current) clearTimeout(timer.current);
-    timer.current = setTimeout(() => setFeedback(null), last.correct ? 1100 : 2200);
+    // A wrong answer stays long enough to read why (game/answerFlow.tsx); a tap moves on sooner.
+    timer.current = setTimeout(() => setFeedback(null), feedbackMs(last.correct, RESULT_MS, last.explanation));
   }, [lastIid]);
   useEffect(() => () => void (timer.current && clearTimeout(timer.current)), []);
   useEffect(() => {
@@ -184,9 +189,7 @@ export function CometDashPlayer({ view, act, gameNow, room }: ModeScreenProps<Co
           <ResultBanner key={feedback.iid} correct={feedback.correct} partial={feedback.partial} text={feedback.text} answer={answeredQ ? shortAnswer(answeredQ.q, feedback.reveal) : null} />
           {!feedback.correct && answeredQ ? <RevealAnswer q={answeredQ.q} reveal={feedback.reveal} compact /> : null}
           {!feedback.correct ? <Explanation text={feedback.explanation} /> : null}
-          <button type="button" onClick={() => setFeedback(null)} className="min-h-11 self-center rounded-[var(--radius-m)] px-4 py-2 font-bold text-text-2 hover:bg-white/10">
-            Continue
-          </button>
+          <NextUp key={feedback.iid} onClick={() => setFeedback(null)} ms={feedbackMs(feedback.correct, RESULT_MS, feedback.explanation)} label="Continue" />
         </div>
       ) : shownQuestion ? (
         <div className="flex flex-col gap-4">

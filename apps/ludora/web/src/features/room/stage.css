@@ -327,3 +327,13 @@
     visibility: hidden;
   }
 }
+
+/* The line along the foot of a "Next question" button, running out as the next question gets nearer (game/answerFlow.tsx). */
+@keyframes next-drain {
+  from {
+    transform: none;
+  }
+  to {
+    transform: scaleX(0);
+  }
+}

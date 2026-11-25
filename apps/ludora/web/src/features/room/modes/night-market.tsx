@@ -51,6 +51,7 @@ import { AnswerInput } from '../game/AnswerInput.tsx';
 import { QuestionCard } from '../game/QuestionCard.tsx';
 import { Countdown } from '../game/TimerBar.tsx';
 import { ResultBanner, RevealAnswer, shortAnswer } from '../game/Reveal.tsx';
+import { NextUp, feedbackMs } from '../game/answerFlow.tsx';
 import { RankBadge, TeamScores } from '../game/Leaderboard.tsx';
 import { Explanation, ModeTitle } from '../game/parts.tsx';
 import { useAnnounce } from '../game/announce.tsx';
@@ -371,6 +372,9 @@ function CoinCount({ value, className = '' }: { value: number; className?: strin
 
 /* --------------------------------- player --------------------------------- */
 
+/** How long a miss stays up before the next question, before any time to read the explanation. */
+const MISS_MS = { right: 0, wrong: 2600 };
+
 /**
  * Holds a wrong answer's feedback (the right answer, the explanation) on screen for a moment
  * before the next question. Keyed by question id, so other players' updates never restart it.
@@ -395,12 +399,14 @@ function useMissFlow(last: FeedbackView | null | undefined, question: QuestionVi
     // A right answer opens an offer instead, which says so itself.
     if (lastRef.current && !lastRef.current.correct) setFeedback(lastRef.current);
   }, [lastIid]);
+  // Long enough to read why (game/answerFlow.tsx); the button moves on sooner.
+  const ms = feedback ? feedbackMs(false, MISS_MS, feedback.explanation) : 0;
   useEffect(() => {
     if (!feedback) return;
-    const t = setTimeout(() => setFeedback(null), 2600);
+    const t = setTimeout(() => setFeedback(null), ms);
     return () => clearTimeout(t);
-  }, [feedback]);
-  return { feedback, answered: feedback ? (asked.current.get(feedback.iid) ?? null) : null, dismiss: () => setFeedback(null) };
+  }, [feedback, ms]);
+  return { feedback, ms, answered: feedback ? (asked.current.get(feedback.iid) ?? null) : null, dismiss: () => setFeedback(null) };
 }
 
 /** Shows a freshly opened lantern's result for a moment. `hold` keeps it up (while the opening plays). */
@@ -687,9 +693,7 @@ function OpenedCard({ opened, onNext }: { opened: Opened; onNext: (() => void) |
         </div>
       </div>
       {onNext ? (
-        <button type="button" onClick={onNext} className="min-h-11 self-center rounded-[var(--radius-m)] px-4 py-2 font-bold text-text-2 hover:bg-white/10">
-          Next question
-        </button>
+        <NextUp onClick={onNext} />
       ) : null}
     </div>
   );
@@ -936,9 +940,7 @@ export function NightMarketPlayer({ view, act, gameNow, paused, room }: ModeScre
         <ResultBanner key={miss.feedback.iid} correct={false} partial={miss.feedback.partial} text={miss.feedback.text} answer={miss.answered ? shortAnswer(miss.answered.q, miss.feedback.reveal) : null} />
         {miss.answered ? <RevealAnswer q={miss.answered.q} reveal={miss.feedback.reveal} compact /> : null}
         <Explanation text={miss.feedback.explanation} />
-        <button type="button" onClick={miss.dismiss} className="min-h-11 self-center rounded-[var(--radius-m)] px-4 py-2 font-bold text-text-2 hover:bg-white/10">
-          Next question
-        </button>
+        <NextUp key={miss.feedback.iid} onClick={miss.dismiss} ms={miss.ms} />
       </div>
     );
   } else if (you.question) {

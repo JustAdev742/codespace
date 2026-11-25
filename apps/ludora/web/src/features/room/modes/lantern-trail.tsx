@@ -50,6 +50,7 @@ import { AnswerInput } from '../game/AnswerInput.tsx';
 import { QuestionCard } from '../game/QuestionCard.tsx';
 import { Countdown } from '../game/TimerBar.tsx';
 import { ResultBanner, RevealAnswer, shortAnswer } from '../game/Reveal.tsx';
+import { NextUp, feedbackMs } from '../game/answerFlow.tsx';
 import { RankBadge, TeamScores } from '../game/Leaderboard.tsx';
 import { Explanation, ModeTitle, myAvatar } from '../game/parts.tsx';
 import { NIGHT, Pill, PlayerGlim, StagePanel, avatarOf, motionOK } from '../game/stage.tsx';
@@ -641,6 +642,9 @@ function useWalk(move: MoveView | null, motion: boolean) {
   return { idx, caughtUp: idx >= len - 1, closed, close: () => setW((x) => ({ ...x, idx: len - 1, closed: true })) };
 }
 
+/** How long a miss stays up before the next question, before any time to read the explanation. */
+const MISS_MS = { right: 0, wrong: 2600 };
+
 /** Shows a wrong answer's result (the right answer and why) for a moment before the next question. */
 function useMissFlow(last: FeedbackView | null | undefined, question: QuestionView | null | undefined) {
   const asked = useRef(new Map<string, QuestionView>());
@@ -660,12 +664,14 @@ function useMissFlow(last: FeedbackView | null | undefined, question: QuestionVi
     const l = latest.current;
     if (l && !l.correct) setMiss(l);
   }, [lastIid]);
+  // Long enough to read why (game/answerFlow.tsx); the button moves on sooner.
+  const ms = miss ? feedbackMs(false, MISS_MS, miss.explanation) : 0;
   useEffect(() => {
     if (!miss) return;
-    const t = setTimeout(() => setMiss(null), 2600);
+    const t = setTimeout(() => setMiss(null), ms);
     return () => clearTimeout(t);
-  }, [miss]);
-  return { miss, answered: miss ? (asked.current.get(miss.iid) ?? null) : null, dismiss: () => setMiss(null) };
+  }, [miss, ms]);
+  return { miss, ms, answered: miss ? (asked.current.get(miss.iid) ?? null) : null, dismiss: () => setMiss(null) };
 }
 
 const PIPS: Record<number, [number, number][]> = {
@@ -1141,9 +1147,7 @@ export function LanternTrailPlayer({ view, act, gameNow, paused, room }: ModeScr
           <ResultBanner key={miss.miss.iid} correct={false} partial={miss.miss.partial} text={miss.miss.text} answer={miss.answered ? shortAnswer(miss.answered.q, miss.miss.reveal) : null} />
           {miss.answered ? <RevealAnswer q={miss.answered.q} reveal={miss.miss.reveal} compact /> : null}
           <Explanation text={miss.miss.explanation} />
-          <button type="button" onClick={miss.dismiss} className="min-h-11 self-center rounded-[var(--radius-m)] px-4 py-2 font-bold text-text-2 hover:bg-white/10">
-            Next question
-          </button>
+          <NextUp key={miss.miss.iid} onClick={miss.dismiss} ms={miss.ms} />
         </div>
       ) : showRoll && move ? (
         <div className="flex flex-col gap-3">
@@ -1153,9 +1157,7 @@ export function LanternTrailPlayer({ view, act, gameNow, paused, room }: ModeScr
           {prompt?.kind === 'buy' ? <BuyPrompt view={view} gameNow={gameNow} busy={busy || paused} decide={(buy) => void send({ type: 'buy', buy })} /> : null}
           {prompt?.kind === 'target' ? <TargetPrompt view={view} gameNow={gameNow} players={room.players} busy={busy || paused} pick={(playerId) => void send({ type: 'target', playerId })} /> : null}
           {!pending ? (
-            <button type="button" onClick={walk.close} className="min-h-11 self-center rounded-[var(--radius-m)] px-4 py-2 font-bold text-text-2 hover:bg-white/10">
-              Next question
-            </button>
+            <NextUp onClick={walk.close} />
           ) : null}
         </div>
       ) : pending ? (
