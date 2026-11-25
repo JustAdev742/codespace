@@ -17,6 +17,7 @@ import {
   syncAddTime,
   syncWaitingOn,
   syncCatchUp,
+  syncShown,
 } from '../../mechanics/syncRounds.ts';
 import { bottomHalf, listNames, recordingAs, roundTo10 } from '../rules.ts';
 import { meta, settings } from './meta.ts';
@@ -276,10 +277,10 @@ function step(s: State, ctx: ModeContext, fn: () => ActionResult): ActionResult 
   return result;
 }
 
-function teamScores(s: State, ctx: ModeContext) {
+function teamScores(s: State, ctx: ModeContext, scores: Readonly<Record<PlayerId, number>> = s.sync.scores) {
   return ctx.teams().map((t) => {
     const members = ctx.players().filter((p) => p.teamId === t.id);
-    const total = members.reduce((n, p) => n + (s.sync.scores[p.id] ?? 0), 0);
+    const total = members.reduce((n, p) => n + (scores[p.id] ?? 0), 0);
     const avg = members.length ? Math.round(total / members.length) : 0;
     const bonus = s.teamBonus[t.id] ?? 0;
     return { teamId: t.id, name: t.name, hue: t.hue, score: avg + bonus, average: avg, bonus, members: members.length };
@@ -337,19 +338,22 @@ export const classic = defineMode<State, Settings, Action>({
     return step(s, ctx, () => syncHostNext(s, cfg, ctx));
   },
   view(s, viewer, ctx) {
-    const board = leaderboard(s.sync.scores, s.sync.lastGain, ctx, viewer, viewer.kind === 'host' ? 10 : 5);
+    // While a question is open every score stands as it did when it opened (an answer's points, and a
+    // wrong answer's penalty, land at the reveal), so no screen can tell who has answered correctly.
+    const scores = syncShown(s, s.penalties).scores;
+    const board = leaderboard(scores, s.sync.lastGain, ctx, viewer, viewer.kind === 'host' ? 10 : 5);
     const elim = eliminating(ctx);
     return {
       sync: syncView(s, cfg, viewer, ctx),
       board,
-      teams: ctx.teams().length ? teamScores(s, ctx) : null,
+      teams: ctx.teams().length ? teamScores(s, ctx, scores) : null,
       // Read by the screens as "players can be knocked out": shows who is still standing.
       suddenDeath: elim,
       alive: elim ? ctx.players().filter((p) => !isOut(s, p.id)).length : null,
       out: viewer.kind === 'player' ? isOut(s, viewer.playerId) : false,
       // Out because they joined after the start (see onPlayerJoin), not knocked out.
       watching: viewer.kind === 'player' && s.out[viewer.playerId] === -1,
-      score: viewer.kind === 'player' ? (s.sync.scores[viewer.playerId] ?? 0) : null,
+      score: viewer.kind === 'player' ? (scores[viewer.playerId] ?? 0) : null,
       // Optional extras (screens may ignore them): the open question is an encore; the viewer scores double for it.
       encore: s.sync.round >= 0 && isEncore(s),
       boosted: viewer.kind === 'player' && s.boosted.includes(viewer.playerId),

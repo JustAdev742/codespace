@@ -24,6 +24,7 @@ import {
   type SyncState,
   syncAddTime,
   syncWaitingOn,
+  syncShown,
 } from '../../mechanics/syncRounds.ts';
 import { listNames } from '../rules.ts';
 import { meta, settings } from './meta.ts';
@@ -217,13 +218,13 @@ function nextRevival(s: State, ctx: ModeContext): number | null {
   return n < s.sync.order.length ? n : null;
 }
 
-function teamScores(s: State, ctx: ModeContext) {
+function teamScores(s: State, ctx: ModeContext, scores: Readonly<Record<PlayerId, number>> = s.sync.scores) {
   const lives = opts(ctx).lives;
   return ctx.teams().map((t) => {
     const members = ctx.players().filter((p) => p.teamId === t.id);
     const lit = members.reduce((n, p) => n + (s.lanterns[p.id] ?? 0), 0);
     const share = members.length ? Math.round((100 * lit) / (members.length * lives)) : 0;
-    const points = members.length ? Math.round(members.reduce((n, p) => n + (s.sync.scores[p.id] ?? 0), 0) / members.length) : 0;
+    const points = members.length ? Math.round(members.reduce((n, p) => n + (scores[p.id] ?? 0), 0) / members.length) : 0;
     return { teamId: t.id, name: t.name, hue: t.hue, score: share, points, members: members.length };
   });
 }
@@ -290,8 +291,10 @@ export const lanternOut = defineMode<State, Settings, Action>({
     const live = s.sync.phase === 'question' || revealed;
     const last = revealed && s.last && s.last.round === s.sync.round ? s.last : null;
     const names = (ids: PlayerId[]) => ids.map((id) => ctx.player(id)?.name ?? 'A player');
+    // Points stand as they did when the open question opened, on every screen, until its reveal (syncShown).
+    const scores = syncShown(s).scores;
     const roster = players
-      .map((p) => ({ playerId: p.id, name: p.name, teamId: p.teamId, lanterns: s.lanterns[p.id] ?? 0, outAt: s.outAt[p.id] ?? null, points: s.sync.scores[p.id] ?? 0 }))
+      .map((p) => ({ playerId: p.id, name: p.name, teamId: p.teamId, lanterns: s.lanterns[p.id] ?? 0, outAt: s.outAt[p.id] ?? null, points: scores[p.id] ?? 0 }))
       .sort((a, b) => b.lanterns - a.lanterns || (b.outAt ?? -1) - (a.outAt ?? -1) || b.points - a.points || a.name.localeCompare(b.name));
     const me = viewer.kind === 'player' ? viewer.playerId : null;
     return {
@@ -304,14 +307,14 @@ export const lanternOut = defineMode<State, Settings, Action>({
       out: players.filter((p) => isOut(s, p.id)).length,
       roster: viewer.kind === 'host' ? roster.slice(0, 60) : roster.slice(0, 8),
       last: last ? { blown: last.blown.length, out: names(last.out), relit: names(last.relit), kindled: names(last.kindled), slow: names(last.slow) } : null,
-      teams: ctx.teams().length ? teamScores(s, ctx) : null,
-      board: leaderboard(s.sync.scores, s.sync.lastGain, ctx, viewer, 5),
+      teams: ctx.teams().length ? teamScores(s, ctx, scores) : null,
+      board: leaderboard(scores, s.sync.lastGain, ctx, viewer, 5),
       you: me
         ? {
             lanterns: s.lanterns[me] ?? 0,
             out: isOut(s, me),
             outAt: s.outAt[me] ?? null,
-            points: s.sync.scores[me] ?? 0,
+            points: scores[me] ?? 0,
             lost: Boolean(last?.blown.includes(me)),
             knockedOut: Boolean(last?.out.includes(me)),
             relit: Boolean(last?.relit.includes(me)),

@@ -23,6 +23,8 @@ export interface SyncAnswer {
   token: string | null;
   /** A poll vote: no right answer, no points, and the streak is left as it was. */
   ungraded?: boolean;
+  /** The player's streak as the question opened, which views keep showing until the reveal (see syncShown). */
+  streakBefore?: number;
 }
 
 export interface SyncState {
@@ -259,7 +261,8 @@ export function syncAnswer<S extends { sync: SyncState }>(
   const ownLimit = mine - sync.startedAt;
   const sharedLimit = sync.deadline - sync.startedAt;
   const responseMs = Math.round((Math.min(now - sync.startedAt, ownLimit) * sharedLimit) / Math.max(1, ownLimit));
-  const streak = grade.ungraded ? (sync.streaks[playerId] ?? 0) : grade.correct ? (sync.streaks[playerId] ?? 0) + 1 : 0;
+  const streakBefore = sync.streaks[playerId] ?? 0;
+  const streak = grade.ungraded ? streakBefore : grade.correct ? streakBefore + 1 : 0;
   sync.streaks[playerId] = streak;
   const limitMs = sync.deadline - sync.startedAt;
   // Double points: a question its author marked, or the final question when the host chose that
@@ -281,6 +284,7 @@ export function syncAnswer<S extends { sync: SyncState }>(
     points,
     token: answer.type === 'mcq' || answer.type === 'poll' ? answer.choiceId : answer.type === 'truefalse' ? String(answer.value) : null,
     ...(grade.ungraded ? { ungraded: true } : {}),
+    streakBefore,
   };
   // A poll vote is not right or wrong, so it stays out of accuracy and reports.
   if (!grade.ungraded) ctx.recordAnswer({ playerId, qid: ctx.questions.instance(sync.iid).qid, correct: grade.correct, partial: grade.partial, responseMs });
@@ -324,6 +328,28 @@ export function syncCatchUp(s: { sync: SyncState }, playerId: PlayerId, ctx: Mod
   const others = ctx.players().filter((p) => p.id !== playerId).map((p) => s.sync.scores[p.id] ?? 0);
   if (!others.length) return;
   s.sync.scores[playerId] = Math.max(s.sync.scores[playerId] ?? 0, Math.min(...others));
+}
+
+/**
+ * Scores and streaks as the room may see them. While a question is open they stand as they did when
+ * it opened: the points of an answer already given, and what it did to the streak, are held back
+ * until the reveal. A score that jumps or a streak that breaks the moment a player answers would
+ * tell them (and, on a leaderboard or the big screen, everyone) whether the answer was right, with
+ * the question still open for the rest of the room. The state itself is scored at once, as before;
+ * only what views show waits. `settle` adds anything else a mode took or gave at submission that
+ * must also wait (Classic's wrong-answer penalty). Never changes the state: `view()` may call it.
+ */
+export function syncShown(s: { sync: SyncState }, settle?: Readonly<Record<PlayerId, number>>): { scores: Readonly<Record<PlayerId, number>>; streaks: Readonly<Record<PlayerId, number>> } {
+  const sync = s.sync;
+  if (sync.phase !== 'question') return { scores: sync.scores, streaks: sync.streaks };
+  const scores = { ...sync.scores };
+  const streaks = { ...sync.streaks };
+  for (const [pid, a] of Object.entries(sync.answers)) {
+    scores[pid] = (scores[pid] ?? 0) - a.points;
+    if (a.streakBefore !== undefined) streaks[pid] = a.streakBefore;
+  }
+  if (settle) for (const [pid, n] of Object.entries(settle)) scores[pid] = (scores[pid] ?? 0) + n;
+  return { scores, streaks };
 }
 
 export interface SyncView {
@@ -371,7 +397,8 @@ export function syncView<S extends { sync: SyncState }>(s: S, cfg: SyncConfig<S>
       correct: revealed && a && !a.ungraded ? a.correct : null,
       points: revealed && a ? a.points : null,
       partial: revealed && a ? a.partial : null,
-      streak: sync.streaks[viewer.playerId] ?? 0,
+      // The streak, too, changes only at the reveal: one that grew or broke on answering would give the result away.
+      streak: syncShown(s).streaks[viewer.playerId] ?? 0,
     };
   }
   return {
@@ -400,7 +427,7 @@ export interface LeaderRow {
 }
 
 /** Top rows plus the viewer's own row if they are further down. */
-export function leaderboard(scores: Record<PlayerId, number>, gains: Record<PlayerId, number>, ctx: ModeContext, viewer: Viewer, top = 8): { rows: LeaderRow[]; you: LeaderRow | null } {
+export function leaderboard(scores: Readonly<Record<PlayerId, number>>, gains: Readonly<Record<PlayerId, number>>, ctx: ModeContext, viewer: Viewer, top = 8): { rows: LeaderRow[]; you: LeaderRow | null } {
   const rows = ctx
     .players()
     .map((p) => ({ playerId: p.id, name: p.name, score: scores[p.id] ?? 0, gain: gains[p.id] ?? 0, teamId: p.teamId, rank: 0 }))
