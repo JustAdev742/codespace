@@ -51,6 +51,12 @@ their own set pickers.
 |---|---|---|
 | An economy manager role, the economy room, class rewards, the Wallet and four extras | [economy.md](economy.md) | 19 |
 
+## The live game: anticipation and payoff (25 November 2026)
+
+| Area | File | Rows |
+|---|---|---|
+| Scores that wait for the reveal, the reveal itself, a podium ceremony in step on every screen, phones as controllers, rewards, and the way on between answers | [game-feel.md](game-feel.md) | 21 changes, 8 bugs fixed |
+
 ## New 3D game modes
 
 | Mode | File | What it is |

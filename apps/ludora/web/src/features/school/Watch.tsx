@@ -12,6 +12,9 @@ import { Spinner } from '../../ui/primitives.tsx';
 import { buttonClass } from '../../ui/Button.tsx';
 import { MODE_SCREENS } from '../room/modes/registry.ts';
 import { PlayerGlim } from '../room/game/stage.tsx';
+import { PodiumCeremony } from '../room/Results.tsx';
+// The room's motion (the podium rising, a countdown's beat): every page that shows game screens loads it.
+import '../room/stage.css';
 import { usePageTitle } from '../reports/reportUi.tsx';
 import { HouseChip, HouseCrest } from './emblems.tsx';
 import type { RankedHouse } from './schoolData.ts';
@@ -234,29 +237,32 @@ function Watching({ code, hall }: { code: string; hall: boolean }) {
           </Suspense>
         ) : null}
         {status === 'ended' && v.results ? (
-          <div className="flex flex-col items-center gap-8">
-            {hall ? <HouseReveal gameId={v.results.gameId} /> : null}
-            {v.results.teamStandings.length ? (
-              <ol className="flex flex-wrap justify-center gap-4" aria-label="Teams">
-                {v.results.teamStandings.map((t, i) => (
-                  <li key={t.teamId} className="stage-card flex items-center gap-3 px-5 py-3">
-                    <span className="font-display text-3xl font-extrabold">{ordinal(i + 1)}</span>
-                    <span className="font-display text-3xl font-bold">{t.name}</span>
-                    <span className="font-display text-3xl font-extrabold tabular">{formatNumber(Math.round(t.score))}</span>
+          // The podium first, at the same moments as the board and the phones; then this screen's own lists.
+          <PodiumCeremony room={v} receivedAt={w.receivedAt}>
+            <div className="flex flex-col items-center gap-8">
+              {hall ? <HouseReveal gameId={v.results.gameId} /> : null}
+              {v.results.teamStandings.length ? (
+                <ol className="flex flex-wrap justify-center gap-4" aria-label="Teams">
+                  {v.results.teamStandings.map((t, i) => (
+                    <li key={t.teamId} className="stage-card flex items-center gap-3 px-5 py-3">
+                      <span className="font-display text-3xl font-extrabold">{ordinal(i + 1)}</span>
+                      <span className="font-display text-3xl font-bold">{t.name}</span>
+                      <span className="font-display text-3xl font-extrabold tabular">{formatNumber(Math.round(t.score))}</span>
+                    </li>
+                  ))}
+                </ol>
+              ) : null}
+              <ol className="flex w-full max-w-3xl flex-col gap-2" aria-label="Top players">
+                {v.results.standings.slice(0, hall ? 5 : 10).map((s) => (
+                  <li key={s.playerId} className="stage-card flex items-center gap-4 px-4 py-2">
+                    <span className="w-12 font-display text-2xl font-extrabold tabular">{s.rank}</span>
+                    <span className="min-w-0 flex-1 truncate text-xl font-bold">{s.name}</span>
+                    <span className="font-display text-2xl font-extrabold tabular">{s.label}</span>
                   </li>
                 ))}
               </ol>
-            ) : null}
-            <ol className="flex w-full max-w-3xl flex-col gap-2" aria-label="Top players">
-              {v.results.standings.slice(0, hall ? 5 : 10).map((s) => (
-                <li key={s.playerId} className="stage-card flex items-center gap-4 px-4 py-2">
-                  <span className="w-12 font-display text-2xl font-extrabold tabular">{s.rank}</span>
-                  <span className="min-w-0 flex-1 truncate text-xl font-bold">{s.name}</span>
-                  <span className="font-display text-2xl font-extrabold tabular">{s.label}</span>
-                </li>
-              ))}
-            </ol>
-          </div>
+            </div>
+          </PodiumCeremony>
         ) : null}
       </div>
     </Stage>

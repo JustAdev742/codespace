@@ -1,4 +1,4 @@
-import { Suspense, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { ClassPhotoButton } from './ClassPhoto.tsx';
 import { MODE_SCREENS } from './modes/registry.ts';
 import { GameHouses } from '../school/GameHouses.tsx';
@@ -35,13 +35,17 @@ const WINNER_RISE = 'cubic-bezier(0.77, 0, 0.175, 1)';
 /**
  * The podium reveal, the game's last moment. Each block rises out of the floor, then its Glim, name
  * and score land on top, third place first; the winner's victory effect bursts as they land. Then
- * everything holds still while the teacher talks. `plan` is the ceremony's timeline (ceremony.ts) and
- * `offset` how far into it this screen joined; with `offset` null (less motion, a skipped or finished
- * ceremony) everything is simply there.
+ * everything holds still while the teacher talks. `plan` is the ceremony's timeline (ceremony.ts),
+ * `offset` how far into it this screen joined and `stage` where it has got to. With `offset` null (a
+ * skipped or finished ceremony) everything is simply there.
+ *
+ * The moments are the room's; the movement is this device's. With less motion (the device's setting,
+ * the player's, or a calm room) each place is simply there at its moment: nothing rises, lands or bursts.
  */
-function Podium({ room, big, plan, offset }: { room: RoomView; big: boolean; plan: Ceremony; offset: number | null }) {
+function Podium({ room, big, plan, offset, stage }: { room: RoomView; big: boolean; plan: Ceremony; offset: number | null; stage: Stage }) {
   const top = room.results!.standings.slice(0, 3);
   const moving = offset !== null && motionOK();
+  const still = offset !== null && !moving;
   const vars = { '--podium': big ? 'clamp(8.5rem, 27vh, 19rem)' : '8.5rem' } as CSSProperties;
   // A screen that joined part-way starts each animation part-way too (a negative delay), so it is in step with the room.
   const at = (ms: number) => `${ms - (offset ?? 0)}ms`;
@@ -58,12 +62,15 @@ function Podium({ room, big, plan, offset }: { room: RoomView; big: boolean; pla
         {top.map((s, place) => {
           const a = avatarOf(room.players, s.playerId);
           const first = place === 0;
-          const beat = plan.beats.find((b) => b.place === place);
+          const index = plan.beats.findIndex((b) => b.place === place);
+          const beat = plan.beats[index];
           const rise = beat?.rise ?? 0;
           const land = beat?.land ?? 0;
+          // Without movement a place keeps its room on the podium and is not there until its moment.
+          const waiting = still && stage.landed <= index ? 'invisible' : '';
           return (
             <li key={s.playerId} className={`flex min-w-0 flex-col items-center ${ORDER[place]} ${big ? 'w-[clamp(7rem,13vw,16rem)]' : 'w-[6.75rem]'}`}>
-              <div className="relative flex w-full flex-col items-center" style={moving ? { animation: `stage-land ${LAND_MS}ms var(--ease-out) ${at(land)} both` } : undefined}>
+              <div className={`relative flex w-full flex-col items-center ${waiting}`} style={moving ? { animation: `stage-land ${LAND_MS}ms var(--ease-out) ${at(land)} both` } : undefined}>
                 <PlayerGlim avatar={a} seed={s.playerId} size={first ? 120 : 92} aura={first ? 'legendary' : null} pose={first ? 'cheer' : 'idle'} className={first ? (big ? 'size-[clamp(6rem,17vh,11.5rem)]' : 'size-[6rem]') : big ? 'size-[clamp(4.75rem,12.5vh,8.5rem)]' : 'size-[4.5rem]'} />
                 {first ? <Burst style={a?.victory?.style ?? 'festival'} hue={a?.victory?.hue ?? 42} size={big ? 380 : 250} rise delay={moving ? land + 120 - (offset ?? 0) : 0} count={20} /> : null}
                 {/* The winner's name is on gold; the runners-up on white. A long name takes a second line rather than lose its end. */}
@@ -78,7 +85,7 @@ function Podium({ room, big, plan, offset }: { room: RoomView; big: boolean; pla
               <div className="mt-2 w-full overflow-hidden" style={{ height: `calc(var(--podium) * ${HEIGHT[place]})` }}>
                 {/* A solid block with a lit top edge and a darker base, like the stage's pressable pieces. */}
                 <div
-                  className="flex h-full w-full items-start justify-center rounded-t-[var(--radius-l)] pt-[clamp(0.25rem,1vh,0.75rem)] font-display leading-none font-extrabold text-on-accent italic shadow-[inset_0_3px_0_rgb(255_255_255/0.35),inset_0_-14px_0_rgb(0_0_0/0.14)]"
+                  className={`flex h-full w-full items-start justify-center rounded-t-[var(--radius-l)] pt-[clamp(0.25rem,1vh,0.75rem)] font-display leading-none font-extrabold text-on-accent italic shadow-[inset_0_3px_0_rgb(255_255_255/0.35),inset_0_-14px_0_rgb(0_0_0/0.14)] ${waiting}`}
                   style={{ background: PLACE_BG[place], animation: moving ? `stage-rise ${beat?.riseMs ?? 360}ms ${first && plan.pace === 'show' ? WINNER_RISE : 'var(--ease-out)'} ${at(rise)} both` : undefined }}
                 >
                   <span className="text-[length:calc(var(--podium)*0.32)]">
@@ -111,7 +118,8 @@ function CeremonyCaption({ room, plan, stage }: { room: RoomView; plan: Ceremony
   // wrapper: a plate's lean is a transform of its own.)
   const pop = { animation: 'pop-in 220ms var(--ease-out) both' };
   return (
-    <div className="flex min-h-[clamp(14rem,44vh,30rem)] flex-col items-start gap-[clamp(0.5rem,1.6vh,1.25rem)] pt-[clamp(0.5rem,7vh,5rem)]" aria-hidden>
+    // Tall enough for a name on two lines, so the Skip button under it never shifts from one place to the next.
+    <div className="flex min-h-[clamp(15rem,50vh,32rem)] flex-col items-start gap-[clamp(0.5rem,1.6vh,1.25rem)] pt-[clamp(0.5rem,7vh,5rem)]" aria-hidden>
       {beat && standing ? (
         // Keyed by the place, so each one arrives fresh.
         <div key={beat.place} className="flex max-w-full min-w-0 flex-col items-start gap-[clamp(0.5rem,1.6vh,1.25rem)]">
@@ -129,7 +137,7 @@ function CeremonyCaption({ room, plan, stage }: { room: RoomView; plan: Ceremony
             // The held breath before a name: three lights coming on, one after another.
             <p className="flex h-[clamp(3rem,6.4vw,7.5rem)] items-center gap-[clamp(0.5rem,1vw,1rem)]">
               {[0, 1, 2].map((i) => (
-                <span key={i} className="size-[clamp(0.9rem,1.6vw,1.75rem)] rounded-full bg-white/70" style={{ animation: `drum-dot 900ms var(--ease-out) ${i * 180}ms infinite both` }} />
+                <span key={i} className="size-[clamp(0.9rem,1.6vw,1.75rem)] rounded-full bg-white/70" style={motionOK() ? { animation: `drum-dot 900ms var(--ease-out) ${i * 180}ms infinite both` } : undefined} />
               ))}
             </p>
           )}
@@ -148,12 +156,16 @@ function CeremonyCaption({ room, plan, stage }: { room: RoomView; plan: Ceremony
 /**
  * Runs a ceremony's timeline on this screen: how far it has got, a way to skip it, and the moments
  * that have a sound. `startedAgo` is how long ago the game ended when the screen opened, so every
- * screen in the room is at the same point. With no plan, less motion, or a ceremony already over,
- * there is nothing to run and everything is on screen from the start.
+ * screen in the room is at the same point. With no plan, or a ceremony already over, there is nothing
+ * to run and everything is on screen from the start.
+ *
+ * A room's ceremony runs whatever this device's motion setting, so every screen stays in step and
+ * nobody's phone gives the winner away; less motion changes how the places appear, not when (Podium).
+ * A solo game's quick reveal is only movement: with less motion it is simply over.
  */
 function useCeremony(plan: Ceremony | null, startedAgo: number, on: { land?: (beat: Beat) => void; fanfare?: () => void }) {
   // Decided once, as the results open: a setting changed mid-ceremony does not restart it.
-  const [offset] = useState<number | null>(() => (plan && motionOK() && startedAgo < plan.done ? Math.max(0, startedAgo) : null));
+  const [offset] = useState<number | null>(() => (plan && startedAgo < plan.done && (plan.pace === 'show' || motionOK()) ? Math.max(0, startedAgo) : null));
   const [stage, setStage] = useState<Stage>(() => (plan && offset !== null ? stageAt(plan, offset) : overStage(plan)));
   const [skipped, setSkipped] = useState(false);
   const handlers = useRef(on);
@@ -196,6 +208,28 @@ function useCeremony(plan: Ceremony | null, startedAgo: number, on: { land?: (be
   return { stage, offset: skipped ? null : offset, running: !stage.done, skip };
 }
 
+/**
+ * The podium ceremony on its own, for a second screen showing the game (features/school/Watch.tsx):
+ * the same places at the same moments as the board and the phones, then `children` (that screen's own
+ * lists), so a spare display never gives the winner away. A game with no ceremony shows `children` at once.
+ */
+export function PodiumCeremony({ room, receivedAt, children }: { room: RoomView; receivedAt: number; children: ReactNode }) {
+  const pace = ceremonyPace(room, Boolean(MODE_SCREENS[room.room.modeId]?.Ending));
+  const places = Math.min(3, room.results?.standings.length ?? 0);
+  const plan = useMemo(() => (pace === 'show' ? ceremonyFor(places, pace) : null), [pace, places]);
+  const [startedAgo] = useState(() => sinceEnd(room, receivedAt));
+  const ceremony = useCeremony(plan, startedAgo, {});
+  if (!plan || !ceremony.running) return <>{children}</>;
+  return (
+    <div className="grid w-full max-w-[100rem] flex-1 grid-cols-1 items-end gap-[clamp(1rem,2.5vw,2.5rem)] lg:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)]">
+      <div className="flex min-h-[min(58vh,34rem)] flex-col justify-end">
+        <Podium room={room} big plan={plan} offset={ceremony.offset} stage={ceremony.stage} />
+      </div>
+      <CeremonyCaption room={room} plan={plan} stage={ceremony.stage} />
+    </div>
+  );
+}
+
 /** Co-op endings: the whole room together, cheering a win or standing still after a loss. */
 function TeamPhoto({ room, won, big }: { room: RoomView; won: boolean; big: boolean }) {
   const people = room.players.slice(0, 12);
@@ -216,7 +250,10 @@ function TeamPhoto({ room, won, big }: { room: RoomView; won: boolean; big: bool
 function Standings({ room, big }: { room: RoomView; big: boolean }) {
   const team = (id: string | null) => room.room.teams.find((t) => t.id === id)?.name ?? null;
   // On the projector the list scrolls inside the space left beside the podium, so the host's buttons stay on screen.
-  const fit = room.results!.teamStandings.length ? 'lg:max-h-[max(9rem,calc(100dvh-37rem))]' : 'lg:max-h-[max(12rem,calc(100dvh-28rem))]';
+  // Awards above it take their share of that space: without allowing for them the page grew taller than a
+  // 1366 by 768 board by the height of the list, more with every player.
+  const r = room.results!;
+  const fit = r.teamStandings.length ? 'lg:max-h-[max(9rem,calc(100dvh-37rem))]' : r.awards?.length ? 'lg:max-h-[max(7.5rem,calc(100dvh-46rem))]' : 'lg:max-h-[max(12rem,calc(100dvh-28rem))]';
   return (
     <ol className={`flex flex-col gap-1.5 ${big ? `${fit} lg:overflow-y-auto lg:pr-1` : ''}`} aria-label="Final standings" tabIndex={big ? 0 : undefined}>
       {room.results!.standings.map((s: StandingView) => {
@@ -488,9 +525,11 @@ export function Results({ room, handle, isHost, guest }: { room: RoomView; handl
     if (running || !isHost) return;
     if (focusAdrift()) nextSteps.current?.querySelector<HTMLElement>('button, a')?.focus({ preventScroll: true });
   }, [running, isHost]);
-  // A player who played on their own (a solo game, or the only one in the room): their card is their result, and
-  // awards "won" against nobody and a table of one are left out. The big screen keeps its table.
+  // A player who played on their own (a solo game, or the only one in the room): their card is their result, and a
+  // table of one is left out. In a solo game so are awards "won" against nobody; in a host's room the awards are
+  // the room's, on the big screen too, so the player's screen keeps them. The big screen keeps its table.
   const lone = !isHost && competitive && r.standings.length === 1;
+  const soloAwards = lone && room.room.solo;
   // What waits for the ceremony: the rest of the results. A solo game's quick reveal holds only its standings and awards.
   const held = ceremony.running && plan?.pace === 'show';
   const heldBrisk = ceremony.running && plan?.pace === 'brisk';
@@ -527,7 +566,7 @@ export function Results({ room, handle, isHost, guest }: { room: RoomView; handl
                 <Ending room={room} big={big} />
               </Suspense>
             ) : plan ? (
-              <Podium key={ceremony.offset === null ? 'still' : 'reveal'} room={room} big={big} plan={plan} offset={ceremony.offset} />
+              <Podium key={ceremony.offset === null ? 'over' : 'live'} room={room} big={big} plan={plan} offset={ceremony.offset} stage={stage} />
             ) : (
               <TeamPhoto room={room} won={r.outcome === 'coop-win'} big={big} />
             )}
@@ -538,8 +577,8 @@ export function Results({ room, handle, isHost, guest }: { room: RoomView; handl
           <div className="flex flex-col gap-4">
             <CeremonyCaption room={room} plan={plan} stage={stage} />
             {canSkip ? (
-              <Button size="sm" variant="ghost" className="self-start" icon={<FastForward className="size-4" aria-hidden />} onClick={skip} title="Skip to the results (Esc)" aria-keyshortcuts="Escape">
-                Skip to the results
+              <Button size="sm" variant="ghost" className="self-start" icon={<FastForward className="size-4" aria-hidden />} onClick={skip} title="Skip to the winner (Esc)" aria-keyshortcuts="Escape">
+                Skip to the winner
               </Button>
             ) : null}
           </div>
@@ -547,7 +586,7 @@ export function Results({ room, handle, isHost, guest }: { room: RoomView; handl
           <div className="flex flex-col gap-4" style={big ? arrive : undefined}>
             {isHost ? (
               // The host's next steps come first, so they stay on screen however long the standings are.
-              <div ref={nextSteps} className="paper stage-card flex flex-wrap items-center gap-2 p-3" role="group" aria-label="What next">
+              <div ref={nextSteps} className="host-next paper stage-card flex flex-wrap items-center gap-2 p-3" role="group" aria-label="What next">
                 {/* Lessons: the next step with the same players comes first. */}
                 {room.lesson ? <NextStepButton room={room} className="grow" /> : null}
                 <Button variant={room.lesson ? 'secondary' : 'primary'} size="lg" className="grow" icon={<RotateCcw className="size-5" aria-hidden />} loading={busy} onClick={restart}>
@@ -588,7 +627,7 @@ export function Results({ room, handle, isHost, guest }: { room: RoomView; handl
             )}
             {held || heldBrisk ? null : (
               <div className="flex flex-col gap-4" style={big ? undefined : arrive}>
-                {r.awards?.length && !lone ? <Awards awards={r.awards} big={big} me={room.me.playerId} /> : null}
+                {r.awards?.length && !soloAwards ? <Awards awards={r.awards} big={big} me={room.me.playerId} /> : null}
                 {r.teamStandings.length && !tableHidden ? (
                   <StagePanel as="section" className="p-4" label="Teams">
                     <h2 className="mb-3 font-display text-2xl font-bold">Teams</h2>

@@ -579,12 +579,18 @@ export function HostLobby({ room, handle }: { room: RoomView; handle: RoomHandle
 /** The player's own Glim jumps for joy for a moment whenever they send a reaction. */
 function useOwnPose(): [GlimPose, () => void] {
   const [cheerAt, setCheerAt] = useState(0);
+  // The player's Glim waves hello as they arrive: "You are in" with someone pleased to see them.
+  const [arriving, setArriving] = useState(true);
+  useEffect(() => {
+    const t = setTimeout(() => setArriving(false), 1800);
+    return () => clearTimeout(t);
+  }, []);
   useEffect(() => {
     if (!cheerAt) return;
     const t = setTimeout(() => setCheerAt(0), 1200);
     return () => clearTimeout(t);
   }, [cheerAt]);
-  return [cheerAt ? 'cheer' : 'idle', () => setCheerAt(Date.now())];
+  return [cheerAt ? 'cheer' : arriving ? 'wave' : 'idle', () => setCheerAt(Date.now())];
 }
 
 export function PlayerLobby({ room, handle }: { room: RoomView; handle: RoomHandle }) {

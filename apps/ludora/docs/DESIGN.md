@@ -98,6 +98,25 @@ Fast and purposeful: 150 to 220 ms with `--ease-out`. One orchestrated
 moment per screen (the reveal, the score landing, the rank change); no idle
 bobbing or drifting. Everything holds still under reduced motion.
 
+A moment is told in order, each part a beat after the one that causes it:
+- **The reveal.** On the board, answers out of play lose their colour, the
+  right one lifts and is checked as the chime plays, then the counts arrive
+  (under a second in all). On a phone the result appears, then its points
+  reach the score in the HUD and a streak chip bumps.
+- **The standings.** The old order holds for a beat, rows slide, each score
+  counts up from last round's total, then a climber's arrow lands.
+- **The podium.** The one moment allowed to take its time: in a room it is a
+  ceremony of about seven seconds (third, second, a held breath, the
+  winner), in step on the board and every phone, and the host can skip it.
+  A solo game keeps to a second and a half.
+
+Nothing that tells a player whether they were right may appear before the
+reveal: not a score, a streak or a rank (D61).
+
+Motion never stands in the way: answer tiles can be pressed the instant they
+show, and a result that moves on by itself also has a button, with a line
+running out along its foot to say so.
+
 ## Characters
 
 Glims stay Ludora's collectibles, restyled to suit 8 to 17:

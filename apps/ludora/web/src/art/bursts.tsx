@@ -64,7 +64,8 @@ export function Burst({ style = 'festival', hue = 42, size = 220, rise = false, 
   const colors = style === 'festival' ? FESTIVAL : [`hsl(${hue} 95% 64%)`, `hsl(${(hue + 40) % 360} 95% 68%)`, '#ffffff'];
   const piece = Math.round(Math.max(14, Math.min(26, size / 12)));
   return (
-    <div className="pointer-events-none absolute top-1/2 left-1/2 z-10" style={{ width: size, height: size, marginLeft: -size / 2, marginTop: -size / 2 }} aria-hidden>
+    // A point, not a box: the pieces fly out from it, and a box of the burst's size would make a page taller than its screen.
+    <div className="pointer-events-none absolute top-1/2 left-1/2 z-10 size-0" aria-hidden>
       {Array.from({ length: count }, (_, i) => {
         const angle = (i / count) * Math.PI * 2 + (i % 2) * 0.2;
         const dist = size * (0.34 + (i % 3) * 0.07);

@@ -761,3 +761,66 @@ class first, then what pupils see every day, then rare screens. What changed, an
 Left alone on purpose: Ludora's own gold mark and favicon (they are Ludora's), answer tiles A, B,
 E and F, rarity colours and the seasonal garland (they mean something), and the 3D modes' own
 scenes. Ludora's own look is unchanged; the default-look browser tests prove it.
+
+**D61. Nothing tells a player they were right before the reveal, and the end of a game is a
+ceremony the whole room shares (25 November 2026).** The owner asked for the live game to feel
+like a top studio made it. I played it through as a host with phones beside it, and ranked what
+stood between it and that. The look was already there; what was missing was anticipation and
+payoff: results arrived early or all at once.
+
+*Scores wait for the reveal.* In Classic, its 14 variants and Lantern Out a player's score changed
+the moment they answered (and in Classic the streak chip with it), on their own screen, on other
+players' leaderboards and on the big screen, while the question was still open for everyone else.
+A score that jumped told the player the answer; a child can call it across the room. In Glim Duels
+and made games played in rounds no screen showed it, but the streak sent to the player's browser
+changed in the same way. The state is still scored at once, because rules read it (a knockout,
+a pot, a penalty). What views show is `syncShown(s)`: scores and streaks as they stood when the
+question opened, landing together at the reveal. A test plays each of those modes and variants
+twice from one seed, differing only in whether one answer is right, and requires every view and the
+room's news to be identical while the question is open. Quick Draw is left out by design: a buzzer
+round ends on the first right answer and locks out a wrong one, at once. Self-paced games are not
+affected: each player has their own question, and its result is theirs alone.
+
+*The reveal is where the points land.* With nothing given away early, the reveal carries the
+round: on the board the wrong answers lose their colour, the right one lifts as the chime plays and
+the counts arrive; on a phone the result appears and its points reach the score. When the clock ran
+out with answers still to come the board says so first ("time's up", a sound that shipped and was
+never played). Docs/DESIGN.md now says how a moment is told in order.
+
+*The podium is a ceremony, timed by the server's clock.* The end of a game was over in a second and
+a half beside a panel of the host's buttons, and each phone showed its player's place at once, so
+the winner knew before the board said so. In a room the podium now takes about seven seconds (third
+place, second, a held breath, the winner), with each place named in type the back of the room can
+read and the fanfare kept for the winner; the rest of the results wait for it, and the host can
+skip it (a button, or Escape). Seven seconds is longer than DESIGN.md's 150 to 220 ms because it is
+not interface motion but the one event a game builds to, seen once a game. Phones show the same
+podium at the same moments, and a player's own card lands with their place. Every screen works out
+where the ceremony has got to from when the game ended on the server's clock (`results.endedAt`,
+beside `serverNow`), so nothing is sent between them, a screen that opens late joins part-way, and a
+reload afterwards shows the result. A solo game keeps the quick reveal: nobody is watching, and the
+player wants to go again.
+
+*The moments are the room's; the movement is the device's.* The first version left the ceremony out
+wherever motion was reduced, as the old reveal had been. That would have put a board with reduced
+motion seven seconds ahead of the phones beside it, and left the ceremony out of every calm room,
+which is how a school's own copy plays by default. So the ceremony's moments are the same on every
+screen whatever its motion setting; less motion (the device's, the player's, or a calm room's)
+changes how a place appears, not when: it is simply there at its moment, with no rise, landing or
+shower (and in a calm room the sounds are at their calm level). This is the one place where
+something waits to appear under reduced motion. It is a sequence in time, not movement, and the
+host can still skip it; a solo game's reveal, which is only movement, is left out under reduced
+motion as before. A second screen showing the game (the school's hall screen) runs the same
+ceremony before its own lists.
+
+*What was left alone on purpose.* Opening a Lantern stays at 1 to 1.7 seconds with the odds on
+screen (D46): a chance-based reward for children is not the place to build suspense. The rewards
+after a game now count up and show the level bar filling, and say how far the next level is, but
+they only report: no countdown, no "one more game", nothing that nags. A wrong answer in a
+self-paced game stays up long enough to read the explanation (about 180 words a minute, seven
+seconds at most) instead of 2.2 to 2.6 seconds, with a button to move on at once: slower by default
+after a miss, which also takes a little off guessing fast. No haptics were added: the buzz is a
+setting a player turns on, off by default, and it stays that way.
+
+No database migration. Two optional fields were added to what the server sends (`results.endedAt`,
+`rewards.xpTotal`). Without them the app still works: the ceremony starts as each screen opens
+rather than from the server's clock, and the rewards show no level bar.

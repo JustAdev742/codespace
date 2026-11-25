@@ -61,6 +61,17 @@ A mode is `GameMode<State, Settings, Action>` (see `packages/engine/src/sdk/type
    If you grade directly with `ctx.questions.grade`, call `ctx.recordAnswer` yourself.
 7. **Use `ctx.everyone()` in `results()`** so players who left still appear.
 8. **Per-player state for late joiners**: create it in `onPlayerJoin`.
+9. **While a shared question is open, nothing a view shows may depend on whether an answer
+   was right.** In synced rounds everyone has the same question, so a score that jumps, a
+   streak that breaks or a board that reorders when one player answers gives the answer to
+   the room. The round helpers score in the state at once (rules such as a knockout read it),
+   so build views from `syncShown(s)`: scores and streaks as they stood when the question
+   opened, landing at the reveal. Pass anything else your mode took or gave at submission as
+   its second argument (Classic's wrong-answer penalty). `packages/engine/test/reveal-secrecy.test.ts`
+   plays every host-paced mode and variant twice from a seed, differing in one answer, and
+   requires every view and the room's news to match until the question closes; a new
+   host-paced mode must be covered there or listed with its reason (a buzzer judges at once
+   by design).
 
 ## Mechanics you can reuse
 

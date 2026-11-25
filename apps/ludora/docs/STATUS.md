@@ -4,7 +4,7 @@ Live status of the build. Updated with each milestone commit. Everything marked
 **verified** was checked by an automated test or by driving the real app in a
 browser; anything else says what it is.
 
-Last updated: 2026-11-19. What the November 2026 improvement programme added is counted, item by
+Last updated: 2026-11-25. What the November 2026 improvement programme added is counted, item by
 item with how each was checked, in [features/README.md](features/README.md). The sections under
 "What works today" describe the app before that programme; the summary just below is current.
 
@@ -25,6 +25,49 @@ item with how each was checked, in [features/README.md](features/README.md). The
 | M7-8 Polish, CI, deployment | In progress | Production build, Docker image, compose file, CI workflow, docs and end-to-end tests (run in CI) are in. The whole app is restyled for players aged 8 to 17 (D46), and automated accessibility checks pass on every page, game screen and staff section. A design review of the whole app was done and its findings fixed. A playable demo builds for GitHub Pages. 2026-10-29: account download and deletion, a privacy policy and terms, data retention, a measured load test, a deployment kit tested in Docker, a machine screen-reader audit, and WebKit and Firefox runs in CI. Remaining: a person's screen-reader pass, legal review of the policy, and a real deployment, which needs the operator's server and domain. |
 
 ## Added in November 2026 (verified; details in [features/](features/README.md))
+
+- **The live game: anticipation and payoff** (25 November, D61). The game was played end to end
+  as a class would (a board, phones, signed-in students, solo) and what stood between it and a
+  top studio's was ranked and worked through. Details, with how each was checked:
+  [features/game-feel.md](features/game-feel.md).
+  - *A score no longer gives the answer away.* In Classic, its variants and Lantern Out a
+    player's score used to change the moment they answered, on every screen, with the question
+    still open. Scores and streaks now land at the reveal. A test plays Classic, Lantern Out,
+    Confidence, Glim Duels (every variant of each) and a made game in rounds twice from one
+    seed, differing in one answer, and requires every screen to match until the question
+    closes. Quick Draw (a buzzer judges at once) and Glimgo (each player marks their own card)
+    are left out, each with its reason in the test.
+  - *The reveal is the moment.* On the board the wrong answers lose their colour, the right one
+    lifts as the chime plays, then the counts arrive; a "time's up" sting comes first when the
+    clock ran out. On a phone the result appears and its points reach the score. Between rounds
+    each leaderboard score counts up as the rows move, and a player's screen says what it would
+    take to climb.
+  - *The podium is a ceremony.* In a room it takes about seven seconds (third, second, a held
+    breath, the winner), in step on the board and every phone from the server's clock, with the
+    fanfare kept for the winner; the host can skip it. With reduced motion or in a calm room the
+    places appear at the same moments without movement. A solo game keeps its quick reveal.
+  - *Phones are controllers.* In Classic, Quick Draw, Lantern Out and Confidence the answer tiles
+    take the room the screen has left; short answers are set a size up, on the board too.
+  - *Rewards, results and the way on.* A signed-in player's Sparks and XP count up and the level
+    bar fills; a player on their own gets a result of their own; in a solo game Play again stays
+    in reach; in ten self-paced modes a wrong answer stays long enough to read why.
+  - *The board's results fit a 1366x768 projector again.* With awards on screen they had grown
+    99 px taller than the screen with three players and 234 px with eleven (measured on the
+    build before this work); they now fit, at 1920x1080 too. The school's second screen (the
+    hall screen) runs the same podium before its own lists.
+  - Unchanged on purpose: opening a Lantern (no suspense is added to a chance-based reward), and
+    the buzz on answering stays a setting that is off until someone turns it on.
+
+  Checked: unit tests for every new rule (engine 38, web 24), the whole test suite, the browser
+  test suite in Chromium (its first full run failed two tests, both from this work: a renamed
+  button and the room's awards missing from the only player's phone; both were put right and
+  their files run again, and the suite's Hills Grammar part and the playable demo's tests
+  pass), and games played in Chromium on the production build with a board at
+  1366x768 and 1920x1080 and phones at 390x844, 375x667 and 360x640, with reduced motion, in a
+  calm room, and in the Hills Grammar look, with axe on the new screens and no console errors.
+  **Not checked:** any real device or projector, a real class, a person with a screen reader,
+  Safari or Firefox, and the sound: nothing was listened to, and which sound is asked for at
+  which moment was read from the code, not measured.
 
 - **A finishing pass on The Hills Grammar School's copy** (19 November, D60). Every surface shot
   in the school's look at 1366x768, 1440x900, 390x844 and 1920x1080, in both schemes, ranked and
@@ -632,22 +675,23 @@ creates and drops its own database).
 
 | Project | Files |
 |---|---|
-| content | 4 |
-| engine | 60 |
-| server | 36 |
-| web | 23 |
-| shared | 1 |
-| **Total** | **124 files, 9212 tests passing** (full run on 2026-11-11) |
+| content | 5 |
+| engine | 41 |
+| server | 50 |
+| web | 37 |
+| shared | 5 |
+| **Total** | **138 files, 2953 tests passing** (full run on 2026-11-25) |
 
-End-to-end: `npm run test:e2e` (needs Postgres; builds first, then runs 65 browser tests in 28
-files against a fresh `ludora_e2e` database). `E2E_BROWSER=webkit` or `firefox` runs them in those
-engines; CI runs each of those two in three parts (`--shard`), because one long WebKit run used
-more memory than a CI machine has. Tests that need the 3D picture run in Chromium only (headless
+End-to-end: `npm run test:e2e` (needs Postgres; builds first, then runs 101 browser tests in 37
+files against a fresh `ludora_e2e` database). The full run on 2026-11-25 in Chromium: 97 passed,
+2 skipped and 2 failed; the two were fixed and their files then passed when run again.
+`E2E_BROWSER=webkit` or `firefox` runs them in those engines; CI runs each of those two in three
+parts (`--shard`), because one long WebKit run used more memory than a CI machine has. Tests that need the 3D picture run in Chromium only (headless
 Firefox and WebKit have no WebGL) and skip elsewhere with the reason. On CI a failed browser test
 gets one more try and is reported as flaky if it needed it; locally there are no second tries.
 `npm run test:demo` builds the playable demo and runs its 4 browser tests with no server.
 
-`npm run typecheck` is clean. `npm run lint` reports 13 stylistic warnings and
+`npm run typecheck` is clean. `npm run lint` reports 12 stylistic warnings and
 no errors.
 
 ## Open items

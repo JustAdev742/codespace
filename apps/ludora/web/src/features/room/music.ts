@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react';
 import type { RoomView } from '@ludora/shared';
 import type { MusicId } from '../../lib/sound/assets.generated.ts';
 import { useMusic, usePrefetchMusic, type SoundRole } from '../../lib/sound/react.tsx';
-import { prefersReducedMotion } from '../../lib/prefs.ts';
 import { ceremonyPace, endingKey, useFanfareStarted } from './ceremony.ts';
 import { MODE_SCREENS } from './modes/registry.ts';
 
@@ -124,7 +123,7 @@ export function useRoomMusic(room: RoomView | null, role: SoundRole, gameNow: ((
   // A room's podium ceremony keeps the fanfare for the winner; until the results screen says it has started, no music.
   const ended = room?.room.status === 'ended';
   const fanfare = useFanfareStarted(room && ended ? endingKey(room) : '');
-  const ceremony = Boolean(room && ended && ceremonyPace(room, Boolean(MODE_SCREENS[modeId]?.Ending)) === 'show' && !prefersReducedMotion());
+  const ceremony = Boolean(room && ended && ceremonyPace(room, Boolean(MODE_SCREENS[modeId]?.Ending)) === 'show');
   useMusic(roomMusic(room, role, stretch, ceremony && !fanfare), ended ? AFTER_THE_FANFARE : undefined);
   const shared = role === 'host' || role === 'solo';
   const calm = Boolean(room?.room.options?.calmPlay);

@@ -9,6 +9,11 @@ import type { RoomView } from '@ludora/shared';
  * step without a message between them, and a screen that opens late (or is reloaded) joins part-way
  * or, once it is over, simply shows the result.
  *
+ * The moments belong to the room and are the same on every screen, whatever a device's motion setting:
+ * a board that showed everything at once while phones waited (or a phone that told its player early)
+ * would undo the point. Less motion, or a calm room, changes how a place appears (it is simply there,
+ * with no rise, landing or shower), never when.
+ *
  * This file is the timeline and nothing else, so it can be tested: no React rendering, no sound.
  */
 
