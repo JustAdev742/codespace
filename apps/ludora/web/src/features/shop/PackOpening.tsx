@@ -136,7 +136,7 @@ function Sequence({ lantern, packId, packName, result, onClose, again, onMakeBud
         (phase === 'reveal' ? doneRef : lanternRef).current?.focus({ preventScroll: true });
       }}
     >
-      <Stage className="h-full">
+      <Stage className="h-full" scene="quiet">
         <div className="h-full overflow-y-auto">
           <RDialog.Title className="sr-only">Opening your {packName}</RDialog.Title>
           <p role="status" className="sr-only">

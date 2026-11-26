@@ -48,7 +48,7 @@ item with how each was checked, in [features/README.md](features/README.md). The
     when at least half of it was right.
   - *Paper and stalls.* A lesson's slide is a sheet of warm paper laid on the stage, in ink, which
     reads furthest across a lit classroom; the shop shows each Lantern in a stall strung with
-    small lights.
+    small lights, and a Lantern is opened out in the same night.
   - Credits: `CREDITS.md` and `/credits`.
 
   Checked: typecheck, lint, every unit and server test, the whole browser suite once in Chromium
