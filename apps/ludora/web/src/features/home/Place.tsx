@@ -8,6 +8,7 @@ import { currentAccess, dataSaverOn, prefersReducedMotion, subscribeAccess } fro
 import { formatNumber, plural } from '../../lib/format.ts';
 import { softwareRenderer, storedChoice, webglSupported } from '../../three/quality.ts';
 import { Glim } from '../../art/glim/Glim.tsx';
+import { NightScene } from '../../art/NightScene.tsx';
 import { FrameRing } from '../../art/cosmetics.tsx';
 import { CodeEntry } from '../play/CodeEntry.tsx';
 import { SeasonDecor, SeasonLine } from '../season/SeasonBanner.tsx';
@@ -191,6 +192,8 @@ export function Place() {
   return (
     <Bleed>
       <section ref={box} className={`place stage on-stage ${BLEED_ROUNDING}`} data-layout={wide ? 'place' : 'stack'} data-live={live ? 'true' : 'false'} data-flat={want3d ? undefined : 'true'} data-still={still ? 'true' : 'false'} aria-labelledby="place-title">
+        {/* Where the yard is not drawn in 3D, the night's own picture stands behind the menu (art/NightScene). */}
+        {want3d ? null : <NightScene />}
         {/* The picture. Decoration: everything it shows is also a link or words below. */}
         <div className="place-scene">
           <div className="place-flat" aria-hidden>
