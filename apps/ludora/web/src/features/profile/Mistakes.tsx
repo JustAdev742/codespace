@@ -5,7 +5,7 @@ import { Check, Target } from 'lucide-react';
 import { MISTAKES_PER_ROUND, QUESTION_TYPE_LABELS, type QuestionType } from '@ludora/shared';
 import { api } from '../../lib/api.ts';
 import { useMe } from '../../lib/session.ts';
-import { plural, timeAgo } from '../../lib/format.ts';
+import { formatDay, plural, timeAgo } from '../../lib/format.ts';
 import { AccountError, EmptyState, ErrorNotice, PageHeader, Panel, Skeleton } from '../../ui/primitives.tsx';
 import { Button, ButtonLink } from '../../ui/Button.tsx';
 import { usePageTitle } from '../social/data.ts';
@@ -25,7 +25,7 @@ interface Mistake {
 }
 
 /** "Thursday 28 November": the day a resting question comes back, in the reader's own words for dates. */
-const backOn = (day: string) => new Date(`${day}T12:00:00Z`).toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' });
+const backOn = (day: string) => formatDay(day, { weekday: 'long', day: 'numeric', month: 'long' });
 
 /**
  * My mistakes: every question a signed-in player got wrong, grouped by set, with a round of
