@@ -39,7 +39,12 @@ export function LanternGlyph({ hue, glow = true }: { hue: number; glow?: boolean
 const W = 1600;
 const H = 900;
 
-export const NightScene = memo(function NightScene({ quiet = false, className = '' }: { quiet?: boolean; className?: string }) {
+/**
+ * Everything in the picture, for a 1600 by 900 drawing: the board's default backdrop draws it inside
+ * its own (features/room/game/Backdrop.tsx), without the moon: a board has words in every corner at
+ * one time or another, and nothing that bright may sit behind them.
+ */
+export const NightParts = memo(function NightParts({ quiet = false, moon = true }: { quiet?: boolean; moon?: boolean }) {
   const r = seeded(quiet ? 11 : 5);
   const stars = Array.from({ length: quiet ? 46 : 90 }, () => ({ x: r() * W, y: r() * H * 0.62, s: 0.6 + r() * 1.5, o: 0.25 + r() * 0.65 }));
   const hues = [42, 38, 350, 28, 160, 265, 44];
@@ -58,7 +63,7 @@ export const NightScene = memo(function NightScene({ quiet = false, className = 
     });
   const strings = quiet ? [] : [bulbs(-20, 60, 760, 30, 120, 13), bulbs(760, 30, 1620, 80, 130, 14)];
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="xMidYMax slice" className={`night-scene pointer-events-none absolute inset-0 -z-10 size-full ${className}`} aria-hidden focusable="false">
+    <>
       <defs>
         <radialGradient id="ns-moon" cx="0.5" cy="0.5" r="0.5">
           <stop offset="0" stopColor="#fff6dc" stopOpacity="0.5" />
@@ -78,7 +83,7 @@ export const NightScene = memo(function NightScene({ quiet = false, className = 
       {stars.map((s, i) => (
         <circle key={i} cx={s.x} cy={s.y} r={s.s} fill="#ffffff" opacity={s.o} />
       ))}
-      {quiet ? null : (
+      {quiet || !moon ? null : (
         <>
           <circle cx="1230" cy="210" r="290" fill="url(#ns-moon)" />
           <circle cx="1230" cy="210" r="74" fill="#fff6dc" />
@@ -130,6 +135,14 @@ export const NightScene = memo(function NightScene({ quiet = false, className = 
           </g>
         </g>
       ))}
+    </>
+  );
+});
+
+export const NightScene = memo(function NightScene({ quiet = false, className = '' }: { quiet?: boolean; className?: string }) {
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="xMidYMax slice" className={`night-scene pointer-events-none absolute inset-0 -z-10 size-full ${className}`} aria-hidden focusable="false">
+      <NightParts quiet={quiet} />
     </svg>
   );
 });

@@ -227,12 +227,16 @@ export default function RoomPage() {
   const Title = live ? 'h1' : 'p';
   // A player's own arrival is news for the room, not for them: their screen already says "You are in".
   const ownJoin = room.me.name ? `${room.me.name} joined.` : null;
-  // The big screen's backdrop shows in the lobby and between questions; while a question is up the picture belongs to the game.
+  // The big screen's backdrop shows in the lobby, between questions and behind the results; while a question is up the picture belongs to the game.
   const syncPhase = (room.game as { sync?: { phase?: string } } | null)?.sync?.phase;
-  const between = status === 'lobby' || (live && (syncPhase === 'intro' || syncPhase === 'leaderboard'));
+  const between = status === 'lobby' || status === 'ended' || (live && (syncPhase === 'intro' || syncPhase === 'leaderboard'));
+  // A quiet night stays behind a question on a phone, and on a board whose backdrop is the night itself (the default).
+  // A board that draws the world has that instead, and a teacher who picked another backdrop, or the plain stage, has what they picked.
+  const board = isHost && !room.room.solo;
+  const scene = !board ? 'quiet' : worldUp || backdrop !== 'floodlights' ? false : 'quiet';
 
   return (
-    <Stage className={STAGE} scene={isHost ? false : 'quiet'}>
+    <Stage className={STAGE} scene={scene}>
       {/* The board's world, where this screen draws it; its own flat backdrop everywhere else (world/). */}
       {isHost && !room.room.solo ? <BoardWorldLayer room={room} /> : null}
       {isHost && !room.room.solo && !worldUp ? <Backdrop id={backdrop} on={between} /> : null}

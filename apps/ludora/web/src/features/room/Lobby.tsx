@@ -138,7 +138,7 @@ function Seat({ p, actions, delay, hop, cheering = false, arrived = false }: { p
       {/* Where the board's world is up, the class stands on its stage in three dimensions (world/): the flat Glim gives way, and the name stays as the host's handle on the player. */}
       <span className="relative" data-seat-art>
         {/* The spot of light each Glim stands in. */}
-        <span className="absolute inset-x-[8%] bottom-[2%] h-[16%] rounded-[50%] bg-[radial-gradient(closest-side,var(--stage-spot,rgb(120_160_255/0.38)),transparent)]" aria-hidden />
+        <span className="absolute inset-x-[8%] bottom-[2%] h-[16%] rounded-[50%] bg-[radial-gradient(closest-side,var(--stage-spot,rgb(255_214_130/0.5)),transparent)]" aria-hidden />
         {/* Where the stage's effects are up, a player who walks in while the class watches arrives in a puff of stars in their own colour (fx/). */}
         {arrived ? <Burst extra style="stars" hue={(p.avatar?.art as { hue?: number } | undefined)?.hue ?? 42} size={260} count={7} delay={140} /> : null}
         {/* Lobby play: the Glim hops when its player taps it on their own device. Still under reduced motion. */}
@@ -560,7 +560,9 @@ export function HostLobby({ room, handle }: { room: RoomView; handle: RoomHandle
         ) : (
           // The crowd stands on a lit stage floor that runs the width of the screen.
           <div className="relative flex flex-1 flex-col justify-end pb-[clamp(0.5rem,2vh,1.5rem)]" data-crowd-floor>
-            <div className="pointer-events-none absolute inset-x-[-2rem] bottom-0 h-[min(70%,14rem)] bg-[radial-gradient(60%_100%_at_50%_100%,var(--stage-floor,rgb(58_107_255/0.22)),transparent_75%)]" aria-hidden />
+            <div className="pointer-events-none absolute inset-x-[-2rem] bottom-0 h-[min(70%,14rem)] bg-[radial-gradient(60%_100%_at_50%_100%,var(--stage-floor,rgb(255_196_110/0.2)),transparent_75%)]" aria-hidden />
+            {/* The stage itself, seen from the front: a disc of lantern light with a lit rim (stage.css). */}
+            <div className="crowd-stage" aria-hidden />
             <div className="relative">
               <Crowd players={room.players} actions={actions} hops={hops} cheers={cheers} />
             </div>

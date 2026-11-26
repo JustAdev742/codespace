@@ -76,7 +76,7 @@ async function play(browser: Browser, threeD: boolean) {
 
   // A right answer gives grip; a climb spends it and the picture's words follow.
   await ana.page.getByRole('button', { name: /^[A-F]? ?True$/ }).first().click();
-  await expect(ana.page.getByText('+1 grip')).toBeVisible();
+  await expect(ana.page.getByText('+1 grip', { exact: true })).toBeVisible();
   await ana.page.getByRole('button', { name: /^Climb ?1 grip/ }).click();
   await expect(picture(ana.page)).toHaveAttribute('aria-label', /^You are on ledge 1 of 30\./);
   await expect(ana.page.getByRole('region', { name: 'Your climb' }).getByText('You climbed to ledge 1.')).toBeVisible();

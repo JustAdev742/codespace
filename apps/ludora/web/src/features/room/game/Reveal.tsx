@@ -336,7 +336,7 @@ function PointsPlate({ points }: { points: number }) {
  * `answer`. A correct answer bursts with the player's equipped answer effect,
  * or the default mix when they have none; a miss stays calm.
  */
-export function ResultBanner({ correct, partial, points, text, answer, missed = false }: { correct: boolean | null; partial?: number | null; points?: number | null; text?: string | undefined; answer?: string | null | undefined; missed?: boolean }) {
+export function ResultBanner({ correct, partial, points, text, answer, missed = false, who }: { correct: boolean | null; partial?: number | null; points?: number | null; text?: string | undefined; answer?: string | null | undefined; missed?: boolean; /** The player's own Glim, reacting: it stands where the tick or cross would, and wears that as a badge. */ who?: ReactNode }) {
   const part = !correct && Boolean(partial && partial > 0);
   const percent = Math.round((partial ?? 0) * 100);
   const verdict = correct ? 'Correct' : part ? `Partly right (${percent}%)` : missed ? "Time's up" : 'Incorrect';
@@ -354,12 +354,24 @@ export function ResultBanner({ correct, partial, points, text, answer, missed = 
     <div className={`lift relative isolate flex flex-col overflow-visible rounded-[var(--radius-l)] text-on-accent ${correct ? 'bg-glim' : part ? 'bg-lantern' : 'bg-ember'}`} style={motionOK() ? { animation: 'pop-in 200ms var(--ease-out)' } : undefined}>
       {correct ? <Burst style={own?.style ?? 'festival'} hue={own?.hue ?? 42} size={300} /> : null}
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 px-4 py-3">
-        <span className="grid size-10 shrink-0 place-items-center rounded-full bg-ink/85 text-white" aria-hidden>
-          {correct || part ? <Check className="size-6" strokeWidth={3.2} /> : <X className="size-6" strokeWidth={3.2} />}
-        </span>
+        {who ? (
+          // The player's Glim takes the result with them: a jump for a right answer, and it simply stands by them for a miss.
+          <span className="relative -my-2 grid size-[4.25rem] shrink-0 place-items-end" aria-hidden>
+            <span className="block origin-bottom" style={correct && motionOK() ? { animation: 'glim-cheer 640ms ease-in-out 120ms 2' } : undefined}>
+              {who}
+            </span>
+            <span className="absolute -right-0.5 bottom-0 grid size-6 place-items-center rounded-full bg-ink/90 text-white shadow-[0_0_0_2px_rgb(255_255_255/0.5)]">
+              {correct || part ? <Check className="size-4" strokeWidth={3.4} /> : <X className="size-4" strokeWidth={3.4} />}
+            </span>
+          </span>
+        ) : (
+          <span className="grid size-10 shrink-0 place-items-center rounded-full bg-ink/85 text-white" aria-hidden>
+            {correct || part ? <Check className="size-6" strokeWidth={3.2} /> : <X className="size-6" strokeWidth={3.2} />}
+          </span>
+        )}
         <span className={`min-w-0 flex-1 font-display leading-none font-extrabold italic ${part ? 'text-[1.7rem]' : 'text-[2.1rem]'}`}>{verdict}</span>
         {points ? <PointsPlate points={points} /> : null}
-        {text ? <span className="basis-full pl-[3.25rem] text-base leading-snug font-bold">{text}</span> : null}
+        {text ? <span className={`basis-full text-base leading-snug font-bold ${who ? 'pl-[5rem]' : 'pl-[3.25rem]'}`}>{text}</span> : null}
       </div>
       {/* A miss is told kindly: the right answer is the biggest thing in it, on white, with a check. */}
       {showAnswer ? (

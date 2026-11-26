@@ -225,7 +225,7 @@ export function Leaderboard({
           <li
             key={r.playerId}
             data-row={r.playerId}
-            className={`relative flex min-h-[var(--lb-row)] items-center rounded-[var(--radius-m)] ${big ? 'gap-[clamp(0.75rem,1.4vw,1.5rem)] px-[clamp(0.75rem,1.2vw,1.25rem)] py-1' : 'gap-3 px-2.5 py-1.5'} ${isYou ? 'bg-[color-mix(in_srgb,var(--stage-1)_84%,var(--lantern))] ring-2 ring-lantern ring-inset' : 'bg-[color-mix(in_srgb,var(--stage-1)_90%,#ffffff)]'}`}
+            className={`lb-row ${r.rank === 1 ? 'lb-first' : ''} relative flex min-h-[var(--lb-row)] items-center rounded-[var(--radius-m)] ${big ? 'gap-[clamp(0.75rem,1.4vw,1.5rem)] px-[clamp(0.75rem,1.2vw,1.25rem)] py-1' : 'gap-3 px-2.5 py-1.5'} ${isYou ? 'bg-[color-mix(in_srgb,var(--stage-1)_84%,var(--lantern))] ring-2 ring-lantern ring-inset' : 'bg-[color-mix(in_srgb,var(--stage-1)_90%,#ffffff)]'}`}
           >
             <RankBadge rank={r.rank} big={big} />
             <PlayerGlim avatar={avatarOf(players, r.playerId)} seed={r.playerId} size={64} pose={r.rank === 1 ? 'cheer' : 'idle'} className="size-[var(--lb-glim)] shrink-0" />

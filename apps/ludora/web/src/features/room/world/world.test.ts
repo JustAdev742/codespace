@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { lookOf, shotFor, worldFor } from './gate.ts';
+import { lookOf, rightAtReveal, shotFor, worldFor } from './gate.ts';
 
 describe('which world a game is played in', () => {
   it('a mode with a world of its own plays there, and every other mode at the lantern festival', () => {
@@ -46,5 +46,20 @@ describe('who stands on the stage', () => {
   it('a stand-in for a player with none, always the same for them', () => {
     expect(lookOf(null, art)).toEqual({ art, dress: null });
     expect(lookOf(undefined, art)).toEqual({ art, dress: null });
+  });
+});
+
+describe('when the class cheers', () => {
+  it('counts who was right from the answer and how many picked each choice', () => {
+    expect(rightAtReveal({ type: 'mcq', correct: 'b' }, { a: 3, b: 5 })).toBe(5);
+    expect(rightAtReveal({ type: 'mcq', correct: 'c' }, { a: 3, b: 5 })).toBe(0);
+    expect(rightAtReveal({ type: 'truefalse', correct: false }, { true: 2, false: 4 })).toBe(4);
+  });
+
+  it('says nothing for a question the count cannot be read from, or before the reveal', () => {
+    expect(rightAtReveal({ type: 'short', correct: 'Mars' }, { mars: 4 })).toBeNull();
+    expect(rightAtReveal({ type: 'poll' }, { a: 4 })).toBeNull();
+    expect(rightAtReveal(null, { a: 1 })).toBeNull();
+    expect(rightAtReveal({ type: 'mcq', correct: 'a' }, null)).toBeNull();
   });
 });

@@ -402,3 +402,106 @@
     transform: scale(1.05, 0.93);
   }
 }
+
+/*
+ * The flat board is still a place (ART_DIRECTION.md). A board that is not drawing the world (world/)
+ * has the same night behind it as a picture, and these are its set: the disc of lantern light the
+ * class stands on, the podium's lacquered plinths with the winner in a light of their own, and a
+ * leaderboard of lit rows. Shape, light and shadow only: nothing here moves.
+ */
+.crowd-stage {
+  position: absolute;
+  left: 50%;
+  bottom: clamp(-4.5rem, -6vh, -1.75rem);
+  width: min(124%, 104rem);
+  height: clamp(6rem, 21vh, 13rem);
+  transform: translateX(-50%);
+  border-radius: 50%;
+  background:
+    radial-gradient(ellipse 58% 62% at 50% 26%, var(--stage-spot, rgb(255 214 130 / 0.36)), transparent 72%),
+    linear-gradient(180deg, color-mix(in oklab, var(--stage-1) 62%, #b7a1ff) 0%, var(--stage-2) 46%, var(--stage-4) 100%);
+  box-shadow:
+    inset 0 2px 0 rgb(255 228 160 / 0.8),
+    inset 0 12px 26px rgb(255 255 255 / 0.07),
+    0 -1px 0 rgb(0 0 0 / 0.35),
+    0 -22px 60px -18px rgb(255 204 110 / 0.28);
+  pointer-events: none;
+}
+
+.plinth {
+  position: relative;
+  background-image:
+    linear-gradient(90deg, rgb(255 255 255 / 0.26) 0%, rgb(255 255 255 / 0) 26%, rgb(0 0 0 / 0) 70%, rgb(0 0 0 / 0.18) 100%),
+    linear-gradient(180deg, rgb(255 255 255 / 0.14) 0%, rgb(255 255 255 / 0) 34%, rgb(0 0 0 / 0.3) 100%);
+  box-shadow:
+    inset 0 -22px 30px -12px rgb(0 0 0 / 0.32),
+    inset 0 0 0 1px rgb(255 255 255 / 0.14);
+  text-shadow:
+    0 2px 0 rgb(255 255 255 / 0.32),
+    0 -1px 0 rgb(0 0 0 / 0.18);
+}
+/* The plinth's top face, seen from a little above. */
+.plinth::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto;
+  height: clamp(7px, 1.5vh, 15px);
+  border-radius: inherit;
+  background: linear-gradient(180deg, rgb(255 255 255 / 0.72), rgb(255 255 255 / 0.2));
+  box-shadow: 0 1px 0 rgb(0 0 0 / 0.14);
+}
+
+/* The winner's light: a cone from above that pools on their plinth. Behind them, and never in the way of a tap. */
+.podium-light {
+  position: absolute;
+  z-index: -1;
+  left: 50%;
+  bottom: 0;
+  width: 230%;
+  height: 190%;
+  transform: translateX(-50%);
+  background: linear-gradient(180deg, rgb(255 236 180 / 0) 0%, rgb(255 228 156 / 0.16) 45%, rgb(255 214 120 / 0.36) 100%);
+  clip-path: polygon(44% 0, 56% 0, 100% 100%, 0 100%);
+  filter: blur(7px);
+  pointer-events: none;
+}
+
+.podium-floor {
+  width: min(104%, 62rem);
+  height: clamp(1rem, 3vh, 2rem);
+  margin-top: -2px;
+  border-radius: 50%;
+  background:
+    radial-gradient(ellipse 50% 100% at 50% 0%, rgb(255 226 150 / 0.6), rgb(255 226 150 / 0.1) 62%, transparent 78%),
+    linear-gradient(180deg, color-mix(in oklab, var(--stage-1) 60%, #b7a1ff), var(--stage-3));
+  box-shadow:
+    inset 0 2px 0 rgb(255 228 160 / 0.75),
+    0 16px 34px -10px rgb(0 0 0 / 0.65);
+}
+
+/* A row of the leaderboard: lacquer, lit along its top, standing a little off the night. The leader's row is lit gold. */
+.lb-row {
+  background-image: linear-gradient(180deg, rgb(255 255 255 / 0.1), rgb(255 255 255 / 0) 55%, rgb(0 0 0 / 0.12));
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.22),
+    0 10px 22px -14px rgb(2 2 18 / 0.9);
+}
+.lb-row.lb-first {
+  background-image:
+    linear-gradient(90deg, rgb(255 194 51 / 0.3), rgb(255 194 51 / 0.06) 46%, rgb(255 194 51 / 0)),
+    linear-gradient(180deg, rgb(255 255 255 / 0.12), rgb(255 255 255 / 0) 55%, rgb(0 0 0 / 0.12));
+  box-shadow:
+    inset 0 1px 0 rgb(255 232 170 / 0.6),
+    inset 0 0 0 1px rgb(255 194 51 / 0.32),
+    0 0 34px -10px rgb(255 194 51 / 0.55),
+    0 10px 22px -14px rgb(2 2 18 / 0.9);
+}
+
+/* Where the world is drawn, its own podium stands on its own stage. */
+:root[data-world='on'] .podium-floor {
+  visibility: hidden;
+}
+/* Less transparency: the pieces keep their shape and lose the soft light. */
+:root[data-transparency='less'] .podium-light {
+  display: none;
+}

@@ -136,6 +136,7 @@ export function ClassicPlayer({ view, act, gameNow, paused, room }: ModeScreenPr
                 // A run of right answers is said where the result is, as it grows.
                 text={s.you?.correct && s.you.streak >= 3 ? `${s.you.streak} in a row` : undefined}
                 answer={s.reveal ? shortAnswer(q.q, s.reveal) : null}
+                who={<PlayerGlim avatar={myAvatar(room)} seed={seed} size={68} pose={s.you?.answered && s.you.correct ? 'cheer' : 'idle'} />}
               />
               {!s.you?.answered ? <p className="font-semibold text-text-2">You did not answer.</p> : null}
             </>

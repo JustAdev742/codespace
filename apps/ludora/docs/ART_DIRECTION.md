@@ -88,11 +88,17 @@ and that thing has room round it.
 On a big screen that can draw it, the ground itself is a place: the board's world (`world/`), a
 stage in the open at night that the class's Glims stand on. Each game mode has its own.
 
+A board that cannot draw it is still a place, as a picture: the same night stands behind it (it is
+the default backdrop), the class waits on a disc of lantern light, the podium is three lacquered
+plinths with the winner in a light of their own, and the leaderboard is a run of lit rows with the
+leader's in gold. Nothing in that set moves, so it costs an old computer nothing.
+
 ## Motion
 
 Things have weight. They press down and come back, lift when a hand comes near, and settle
-when they arrive (a short rise, a soft landing, 160 to 260 ms). A glow may breathe; nothing
-else moves by itself in front of something being read. Moments are staged in order (D61). With
+when they arrive (a short rise, a soft landing, 160 to 260 ms). A glow may breathe, and so may a
+Glim (a rise of two parts in a hundred, every few seconds); nothing else moves by itself in front
+of something being read. Moments are staged in order (D61). With
 less motion, nothing moves at all, and nothing is lost by it.
 
 ## Characters

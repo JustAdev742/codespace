@@ -845,7 +845,11 @@ worst. It only ever turns things down. A device with no graphics chip (it draws 
 processor, or has none) keeps the plain game whatever is chosen: the choice still sets how its 3D
 games are drawn. That is also every headless browser, so the browser tests run the plain game,
 3D tests included, unless one asks for the effects by name (`localStorage['ludora.fx'] = 'on'`,
-which `e2e/effects.spec.ts` does).
+which `e2e/effects.spec.ts` does). Asked for that way on such a machine, the board's world (D63)
+is drawn lightly: at half size, without its glow, five pictures a second. Drawn in full it took a
+fifth of a second a picture and left the page five frames a second, so a press on the board took
+two seconds to be answered and the test that plays a game through it stalled. `'show'` in place of
+`'on'` draws everything in full, however slowly: that is for pictures.
 
 *What is drawn.* A particle system written for Ludora (`fx/particles.ts`, about 250 lines): pieces
 that are thrown, slowed by the air, pulled down (or lifted: a bubble, an ember, a lantern) and
@@ -921,4 +925,21 @@ form keeps a plain one that works (D62); nothing on a screen is another product'
 Third-party material is listed in `CREDITS.md` and on the app's Credits page (`/credits`): three
 typefaces under the Open Font License and the libraries the app is built with. Nothing else is
 anyone else's.
+
+*The flat board is a place too.* The world (`world/`) is only drawn where there is a graphics chip,
+and every picture taken of the game in a test browser, and many a classroom computer, has none.
+So the board without it is not left as panels on a colour: its default backdrop is the same night
+as a picture (the "Floodlights" scene, redrawn, keeping its name and id so nobody's choice is
+lost), it stays up behind the results, the class waits on a disc of lantern light, the podium is
+lacquered plinths with the winner in a light of their own, and the leaderboard's rows are lit,
+the leader's in gold. All of it is shape, gradient and shadow, with nothing that moves, so it
+costs an old computer nothing. The night's picture is left out with less transparency or the
+highest contrast, as every backdrop already was.
+
+*Glims breathe.* Where the stage's effects are up (D62) a player's Glim rises and settles by two
+parts in a hundred every few seconds, each in its own time; on a player's own result it jumps for
+a right answer and simply stands by them for a miss; on the board's world the class cheers
+together when at least half of it was right (the board is told how many picked each answer, never
+who, so nobody is singled out and nothing marks a miss), and a Glim waves when its player taps
+Ready. Still with less motion, in a calm room, with data saver, and on the plain game.
 

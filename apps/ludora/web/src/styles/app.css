@@ -693,6 +693,49 @@
 .stage:has(> .night-scene) .paper :is(h1, h2, h3, p, li, label) {
   text-shadow: none;
 }
+/*
+ * The shadow is for light words on the night. It is inherited, so anything inside a row that carries
+ * its own bright ground (a medal, a gold chip, a key, a tile) drops it: dark words there need no night
+ * behind them, and a shadow of their own colour would only blur them.
+ */
+.stage:has(> .night-scene) :is(.text-on-accent, .paper, .plate, .sticker, .piece, .lift) {
+  text-shadow: none;
+}
+
+/*
+ * Glims are alive (ART_DIRECTION.md): where the stage's effects are up they breathe where they stand,
+ * each in its own time. Still with less motion, and on the plain game.
+ */
+@keyframes glim-breathe {
+  0%,
+  100% {
+    transform: none;
+  }
+  50% {
+    transform: scale(1.022, 0.974);
+  }
+}
+.glim-alive {
+  animation: glim-breathe 3.4s ease-in-out infinite;
+  transform-origin: 50% 94%;
+}
+/* A calm room, and data saver: they stand still. */
+:root[data-calm='on'] .glim-alive,
+:root[data-saver='on'] .glim-alive {
+  animation: none;
+}
+.glim-beat-1 {
+  animation-delay: -0.7s;
+}
+.glim-beat-2 {
+  animation-delay: -1.5s;
+}
+.glim-beat-3 {
+  animation-delay: -2.2s;
+}
+.glim-beat-4 {
+  animation-delay: -2.9s;
+}
 
 /* The night's lanterns rise and settle, each in its own time (art/NightScene.tsx). Still with less motion. */
 @keyframes night-rise {
@@ -1127,6 +1170,12 @@ html:root[data-font='easy'] {
   --text-3: #0e1430;
   --line: #5a638c;
   --line-strong: #3b4470;
+}
+
+/* The highest contrast, and less transparency: the night's picture gives way to the plain stage, as the board's backdrop does (stage.css). */
+:root[data-contrast='max'] .night-scene,
+:root[data-transparency='less'] .night-scene {
+  display: none;
 }
 
 /* Less transparency: solid panels and scrims, no frosted glass. */

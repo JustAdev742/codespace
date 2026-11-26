@@ -72,7 +72,9 @@ function Podium({ room, big, plan, offset, stage }: { room: RoomView; big: boole
           // Without movement a place keeps its room on the podium and is not there until its moment.
           const waiting = still && stage.landed <= index ? 'invisible' : '';
           return (
-            <li key={s.playerId} className={`flex min-w-0 flex-col items-center ${ORDER[place]} ${big ? 'w-[clamp(7rem,13vw,16rem)]' : 'w-[6.75rem]'}`}>
+            <li key={s.playerId} className={`relative flex min-w-0 flex-col items-center ${ORDER[place]} ${big ? 'w-[clamp(7rem,13vw,16rem)]' : 'w-[6.75rem]'}`}>
+              {/* The winner stands in a light of their own (stage.css). */}
+              {first ? <span className={`podium-light ${waiting}`} aria-hidden /> : null}
               <div className={`relative flex w-full flex-col items-center ${waiting}`} style={moving ? { animation: `stage-land ${LAND_MS}ms var(--ease-out) ${at(land)} both` } : undefined}>
                 {/* Where the stage's effects are up, the winner jumps for joy three times as they land, then stands still for the teacher (stage.css). */}
                 <span className="block origin-bottom" style={first && moving && plan.pace === 'show' && fxLevel() !== 'plain' ? { animation: `glim-cheer 640ms ease-in-out ${at(land + LAND_MS)} 3` } : undefined}>
@@ -89,10 +91,10 @@ function Podium({ room, big, plan, offset, stage }: { room: RoomView; big: boole
                 <span className={`mt-1 text-center font-display leading-tight font-extrabold tabular ${big ? 'text-[clamp(1.15rem,1.9vw,2.1rem)]' : 'text-lg'}`}>{s.label}</span>
               </div>
               <div className="mt-2 w-full overflow-hidden" style={{ height: `calc(var(--podium) * ${HEIGHT[place]})` }}>
-                {/* A solid block with a lit top edge and a darker base, like the stage's pressable pieces. */}
+                {/* A lacquered plinth, lit from above and a little to the left: a bright top face, a sheen down its near edge, a body that falls away (stage.css). */}
                 <div
-                  className={`flex h-full w-full items-start justify-center rounded-t-[var(--radius-l)] pt-[clamp(0.25rem,1vh,0.75rem)] font-display leading-none font-extrabold text-on-accent italic shadow-[inset_0_3px_0_rgb(255_255_255/0.35),inset_0_-14px_0_rgb(0_0_0/0.14)] ${waiting}`}
-                  style={{ background: PLACE_BG[place], animation: moving ? `stage-rise ${beat?.riseMs ?? 360}ms ${first && plan.pace === 'show' ? WINNER_RISE : 'var(--ease-out)'} ${at(rise)} both` : undefined }}
+                  className={`plinth flex h-full w-full items-start justify-center rounded-t-[var(--radius-l)] pt-[clamp(0.6rem,2.2vh,1.5rem)] font-display leading-none font-extrabold text-on-accent ${waiting}`}
+                  style={{ backgroundColor: PLACE_BG[place], animation: moving ? `stage-rise ${beat?.riseMs ?? 360}ms ${first && plan.pace === 'show' ? WINNER_RISE : 'var(--ease-out)'} ${at(rise)} both` : undefined }}
                 >
                   <span className="text-[length:calc(var(--podium)*0.32)]">
                     <span className="sr-only">{ordinal(s.rank)} place</span>
@@ -104,8 +106,8 @@ function Podium({ room, big, plan, offset, stage }: { room: RoomView; big: boole
           );
         })}
       </ol>
-      {/* The stage floor the blocks rise out of. */}
-      <div className="h-1.5 w-[min(100%,52rem)] rounded-full bg-white/25" aria-hidden />
+      {/* The stage floor the blocks rise out of: the front of a lit disc. */}
+      <div className="podium-floor" aria-hidden />
     </div>
   );
 }

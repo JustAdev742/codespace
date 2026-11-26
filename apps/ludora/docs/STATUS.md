@@ -39,15 +39,19 @@ item with how each was checked, in [features/README.md](features/README.md). The
     home page's menu and a game on a phone.
   - *The board is a place.* On a board with a graphics chip the big screen is a 3D stage at night
     with the class's own Glims on it, a camera that follows the game, a world for each kind of
-    mode and a lit podium built on the stage at the end. Everywhere else the board keeps its
-    backdrop.
+    mode and a lit podium built on the stage at the end. A board without one has the same night
+    as a picture (it is the default backdrop, and stays up behind the results), the class on a
+    disc of lantern light, lacquered plinths with the winner in a light of their own, and a
+    leaderboard of lit rows.
+  - *Glims are alive* where effects are up: they breathe where they stand, a player's own Glim
+    jumps on their result when they are right, and on the board's world the class cheers together
+    when at least half of it was right.
   - Credits: `CREDITS.md` and `/credits`.
 
-  Checked: typecheck, lint, the web unit tests, and the layout, pages, accessibility, stage,
-  game, hosting and effects browser tests in Chromium; before and after pictures of 37 screens.
-  **Not checked:** the full browser suite since these changes, Safari and Firefox, a real
-  graphics chip (the world was drawn by the processor in headless Chromium), and the look on a
-  real phone or projector. Pages deep in the app (staff tools, reports' inner pages, Game Maker)
+  Checked: typecheck, lint, every unit and server test, the whole browser suite once in Chromium
+  and the files the later work touches again (see Tests); before and after pictures of every main
+  screen. **Not checked:** Safari and Firefox, a real graphics chip (the world was drawn by the
+  processor in headless Chromium), and the look on a real phone or projector. Pages deep in the app (staff tools, reports' inner pages, Game Maker)
   take the new tokens and shell but were not looked at one by one.
 
 - **Insight while the game is still being played** (26 November). On the teacher's phone remote:
@@ -751,14 +755,20 @@ creates and drops its own database).
 |---|---|
 | content | 5 |
 | engine | 41 |
-| server | 50 |
-| web | 38 |
+| server | 53 |
+| web | 39 |
 | shared | 5 |
-| **Total** | **139 files, 2977 tests passing** (full run on 2026-11-25) |
+| **Total** | **143 files, 3013 tests passing** (full run on 2026-11-26) |
 
-End-to-end: `npm run test:e2e` (needs Postgres; builds first, then runs 101 browser tests in 37
-files against a fresh `ludora_e2e` database). The full run on 2026-11-25 in Chromium: 97 passed,
-2 skipped and 2 failed; the two were fixed and their files then passed when run again.
+End-to-end: `npm run test:e2e` (needs Postgres; builds first, then runs 103 browser tests in 39
+files against a fresh `ludora_e2e` database). The full run on 2026-11-26 in Chromium, on the new
+art direction: 97 passed, 2 skipped and 4 failed. Three of the four were one fault (the shadow that
+light words carry on the night's picture was inherited by the dark words on a medal, which the
+contrast check rightly refused) and the fourth was a test whose words matched twice; both were
+fixed. Afterwards the four files and seventeen others that the later work touches were run again
+(72 tests): all passed but the effects test, which the board's world drawn by the processor had
+slowed to a stall; that was fixed too (D62) and its file then passed alone. The whole suite was
+not run again after those last changes.
 `E2E_BROWSER=webkit` or `firefox` runs them in those engines; CI runs each of those two in three
 parts (`--shard`), because one long WebKit run used more memory than a CI machine has. Tests that need the 3D picture run in Chromium only (headless
 Firefox and WebKit have no WebGL) and skip elsewhere with the reason. On CI a failed browser test

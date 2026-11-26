@@ -31,18 +31,29 @@ function slowHere(): boolean {
 
 /**
  * True when this device has no graphics chip to draw with (WebGL drawn by the processor, or none at
- * all): it keeps the plain game. `localStorage['ludora.fx'] = 'on'` says to draw the effects anyway:
- * that is for the browser tests, which run without a graphics chip and would otherwise never draw
- * them, and for trying the effects on such a machine. It is not a setting anyone is shown.
+ * all): it keeps the plain game. `localStorage['ludora.fx']` set to `'on'` or `'show'` says to draw
+ * the effects anyway (`fxAsked`): that is for the browser tests, which run without a graphics chip
+ * and would otherwise never draw them, and for trying the effects on such a machine. It is not a
+ * setting anyone is shown.
  */
 export function fxSoftware(): boolean {
-  let asked = false;
+  return !fxAsked() && (softwareRenderer() || !webglSupported());
+}
+
+/**
+ * Whether the effects were asked for by name on this device, and how. `'on'` draws them where there
+ * is no graphics chip but keeps the board's world light there (small, without its glow, a few
+ * pictures a second), so the page under it stays quick: that is what the browser tests use. `'show'`
+ * draws everything in full, however slowly: for looking at it, and for pictures.
+ */
+export function fxAsked(): 'on' | 'show' | null {
   try {
-    asked = localStorage.getItem('ludora.fx') === 'on';
+    const v = localStorage.getItem('ludora.fx');
+    return v === 'on' || v === 'show' ? v : null;
   } catch {
     /* private mode */
+    return null;
   }
-  return !asked && (softwareRenderer() || !webglSupported());
 }
 
 /** What this device gets: worked out once, and again when the player changes the graphics setting. */

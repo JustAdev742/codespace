@@ -146,6 +146,17 @@ export function worldAct(id: string, what: 'hop' | 'cheer' | 'wave') {
   tell();
 }
 
+/**
+ * How many were right at a reveal, from what the board is sent: the answer, and how many picked each
+ * choice. Null for a question the count cannot be read from (typed answers, puzzles, a poll).
+ */
+export function rightAtReveal(reveal: { type: string; correct?: unknown } | null | undefined, distribution: Record<string, number> | null | undefined): number | null {
+  if (!reveal || !distribution) return null;
+  if (reveal.type === 'mcq' && typeof reveal.correct === 'string') return distribution[reveal.correct] ?? 0;
+  if (reveal.type === 'truefalse' && typeof reveal.correct === 'boolean') return distribution[String(reveal.correct)] ?? 0;
+  return null;
+}
+
 /** The whole class cheers. */
 export function worldCheer() {
   if (!up) return;

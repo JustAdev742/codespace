@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import type { AvatarLite, GlimArt, Rarity, RoomPlayerView } from '@ludora/shared';
 import { Glim, type GlimPose } from '../../../art/glim/Glim.tsx';
 import { prefersReducedMotion } from '../../../lib/prefs.ts';
+import { fxLevel } from '../../../fx/index.ts';
 
 /*
  * Small building blocks for screens drawn on the stage: players' Glims, name
@@ -90,6 +91,8 @@ export function PlayerGlim({
   pose?: GlimPose;
   title?: string;
 }) {
+  // Alive where the stage's effects are up (fx/): it breathes where it stands, in its own time (app.css).
+  const alive = !prefersReducedMotion() && fxLevel() !== 'plain';
   return (
     <Glim
       art={avatar?.art ?? fallbackArt(seed)}
@@ -97,7 +100,7 @@ export function PlayerGlim({
       dress={avatar?.uniform ?? null}
       housePin={avatar?.house?.hue ?? null}
       size={size}
-      className={className}
+      className={alive ? `${className ?? ''} glim-alive glim-beat-${hash(seed) % 5}` : className}
       bob={bob}
       aura={aura}
       rarity={rarity ?? avatar?.rarity ?? 'common'}

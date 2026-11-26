@@ -8,6 +8,7 @@ import { dataSaverOn, prefersReducedMotion } from '../../../lib/prefs.ts';
 import { fxLevel, fxSoftware } from '../../../fx/index.ts';
 import { stageLightWanted } from '../../../fx/decide.ts';
 import { webglSupported } from '../../../three/quality.ts';
+import { NightParts } from '../../../art/NightScene.tsx';
 
 /*
  * Big-screen backdrops: scenes the host picks for the lobby and the moments
@@ -80,9 +81,14 @@ const move = (name: string, seconds: number, origin = 'center', delay = 0, box: 
   transformBox: box,
 });
 
+/*
+ * The default: the night Ludora is set in (art/NightScene.tsx, ART_DIRECTION.md), with the stage's two
+ * lights sweeping across it. It keeps its name and its id, so a teacher who chose it still has it.
+ */
 function Floodlights({ lit = false }: { lit?: boolean }) {
   return (
     <>
+      <NightParts moon={false} />
       <defs>
         <linearGradient id="bd-beam" x1="0" y1="0" x2="0" y2="1">
           <stop offset="0" stopColor={c('#9db7ff')} stopOpacity="0.22" />

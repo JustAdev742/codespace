@@ -7,7 +7,7 @@ import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { prefersReducedMotion } from '../../../lib/prefs.ts';
 import { schoolLook } from '../../../lib/school.ts';
 import { qualityFor, softwareRenderer } from '../../../three/quality.ts';
-import { fxLevel } from '../../../fx/index.ts';
+import { fxAsked, fxLevel } from '../../../fx/index.ts';
 import '../../../three/stage3d.css';
 import './world.css';
 import { BoardWorld } from './BoardWorld.ts';
@@ -62,15 +62,21 @@ export default function BoardStage({ actors, shot, modeId, hidden }: { actors: A
     w.setCrowd(latest.current.actors);
     w.setShot(latest.current.shot);
 
+    // A device drawing this with its processor was asked to by name (fx/index.ts), and one picture costs it
+    // a fifth of a second. Unless it was asked to show everything, the world keeps out of the page's way
+    // there: small, without its glow, and a few pictures a second, so a tap on the page is still answered at once.
+    const light = softwareRenderer() && fxAsked() !== 'show';
+    const frameMs = light ? 1000 / 5 : FRAME_MS;
+
     // Light that spills: lanterns, bulbs and the stage's rim glow into the air round them.
     let composer: EffectComposer | null = null;
-    if (rich) {
+    if (rich && !light) {
       composer = new EffectComposer(renderer);
       composer.addPass(new RenderPass(w.scene, w.camera));
       composer.addPass(new UnrealBloomPass(new Vector2(256, 256), 0.62, 0.72, 0.8));
       composer.addPass(new OutputPass());
     }
-    let scale = 1;
+    let scale = light ? 0.5 : 1;
     const size = () => {
       const width = Math.max(1, el.clientWidth);
       const height = Math.max(1, el.clientHeight);
@@ -97,12 +103,12 @@ export default function BoardStage({ actors, shot, modeId, hidden }: { actors: A
       el.dataset.hidden = 'true';
       worldSetUp(false);
     };
-    // A device drawing this with its processor was asked to by name (fx/index.ts): it is slow there and knows it.
+    // Asked for by name on a slow device: it is not judged on its frames, it has already been cut down.
     const measured = !softwareRenderer();
     const loop = (now: number) => {
       raf = requestAnimationFrame(loop);
       const dtMs = now - last;
-      if (dtMs < FRAME_MS - 2 || document.hidden || paused.current || dead) return;
+      if (dtMs < frameMs - 2 || document.hidden || paused.current || dead) return;
       last = now;
       if (!w.wantsFrame()) return;
       w.frame(Math.min(0.1, dtMs / 1000), (now - began) / 1000);

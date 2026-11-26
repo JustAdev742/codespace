@@ -43,6 +43,13 @@ with no graphics chip keeps the plain game whatever is chosen, which is every he
 and the 3D tests run exactly the effects they ran before this work. `e2e/effects.spec.ts` asks
 for the effects by name (`ludora.fx`) to draw them.
 
+The board's world taught the same lesson again (26 November). Drawn in full by the processor it
+left the board at five frames a second (measured: a press on "Next" took 2.0 to 2.3 seconds to be
+answered, against 0.13 once it was cut down), and the test that plays a game through it timed out.
+So where the world is asked for by name on a machine with no graphics chip it is drawn at half
+size, without its glow, five pictures a second (`world/BoardStage.tsx`, `fxAsked`), and the page
+kept 39 frames a second. `ludora.fx = 'show'` draws it in full for pictures.
+
 ## A bug found on the way
 
 A burst chose its form (canvas, plain or nothing) each time it was drawn. If the effects arrived
