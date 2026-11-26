@@ -841,7 +841,11 @@ fewer, no graphics chip, or data saver: plain; eight processors and 8 GB or more
 else: full), and a frame-time check runs while the first effects play: if three frames in four
 take longer than 28 ms it halves the pieces, and if that is not enough the device goes back to
 the plain game for the rest of the visit. A level chosen by hand is kept, at half its pieces at
-worst. It only ever turns things down.
+worst. It only ever turns things down. A device with no graphics chip (it draws WebGL with its
+processor, or has none) keeps the plain game whatever is chosen: the choice still sets how its 3D
+games are drawn. That is also every headless browser, so the browser tests run the plain game,
+3D tests included, unless one asks for the effects by name (`localStorage['ludora.fx'] = 'on'`,
+which `e2e/effects.spec.ts` does).
 
 *What is drawn.* A particle system written for Ludora (`fx/particles.ts`, about 250 lines): pieces
 that are thrown, slowed by the air, pulled down (or lifted: a bubble, an ember, a lantern) and
@@ -880,8 +884,9 @@ Where effects are up, the default backdrop's two flat beams are drawn by the gra
 instead (`fx/stageLight.ts`): soft beams with dust turning in them and a haze on the floor. It is
 the same picture in the same place under the same rule, not a new layer. The shader holds it to
 the flat beams' own brightness, so text on the stage keeps the contrast it had; it is drawn at
-half size and 30 frames a second, and a browser without WebGL, a lost context or slow frames
-gives the flat beams back. Less motion, a calm room and data saver keep the still picture.
+half size and 30 frames a second. It needs a graphics chip: a device that draws WebGL with its
+processor (or has none) keeps the flat beams whatever the graphics setting, and a lost context
+or slow frames give them back. Less motion, a calm room and data saver keep the still picture.
 
 *Less motion is not a graphics level.* With reduced motion (the device's setting or the player's)
 or in a calm room there are no effects at all, as before, and nothing is fetched. That is

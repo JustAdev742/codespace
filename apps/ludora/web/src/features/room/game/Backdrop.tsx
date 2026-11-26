@@ -5,7 +5,9 @@ import { Dialog } from '../../../ui/primitives.tsx';
 import { usePrefs } from '../../../lib/usePrefs.ts';
 import { schoolLook } from '../../../lib/school.ts';
 import { dataSaverOn, prefersReducedMotion } from '../../../lib/prefs.ts';
-import { fxLevel } from '../../../fx/index.ts';
+import { fxLevel, fxSoftware } from '../../../fx/index.ts';
+import { stageLightWanted } from '../../../fx/decide.ts';
+import { webglSupported } from '../../../three/quality.ts';
 
 /*
  * Big-screen backdrops: scenes the host picks for the lobby and the moments
@@ -268,14 +270,15 @@ export function BackdropScene({ id, className = '', lit = false }: { id: Backdro
  * The floodlights as light (fx/stageLight.ts), where the stage's effects are up: beams with dust
  * turning in them, drawn by the graphics chip in place of the two flat ones. `onUp` says whether it
  * is drawing, so the flat beams can give way (and come back if it has to stop). Not for less motion,
- * a calm room or data saver, which keep the still picture; nor for the plain game.
+ * a calm room or data saver, which keep the still picture; nor for the plain game, nor on a device
+ * with no graphics chip to draw it (fx/decide.ts, `stageLightWanted`).
  */
 function StageLight({ on, onUp }: { on: boolean; onUp: (up: boolean) => void }) {
   const canvas = useRef<HTMLCanvasElement>(null);
   const light = useRef<{ show(on: boolean): void; stop(): void } | null>(null);
   const shown = useRef(on);
   shown.current = on;
-  const [wanted] = useState(() => !prefersReducedMotion() && !dataSaverOn() && fxLevel() !== 'plain');
+  const [wanted] = useState(() => stageLightWanted({ level: fxLevel(), webgl: webglSupported(), software: fxSoftware(), dataSaver: dataSaverOn(), lessMotion: prefersReducedMotion() }));
   useEffect(() => {
     if (!wanted) return;
     let gone = false;

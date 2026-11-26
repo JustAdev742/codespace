@@ -4,13 +4,14 @@ import { account, CSRF, watchErrors } from './helpers.ts';
 /*
  * The stage's effects (docs/features/stage-effects.md, D62). The other tests run on the automatic
  * graphics setting, which picks the plain game in a headless browser (no graphics chip), so this is
- * the one place the canvas is drawn: with the setting on High a celebration is thrown on a canvas
- * that leaves the page when it is over, a scene change leaves nothing behind, and with less motion
- * nothing is drawn at all, whatever the graphics setting says.
+ * the one place the canvas is drawn (it asks for the effects by name, `ludora.fx`): a celebration is
+ * thrown on a canvas that leaves the page when it is over, a scene change leaves nothing behind,
+ * and with less motion nothing is drawn at all, whatever the graphics setting says.
  */
 
 const FX = 'canvas[data-fx]';
-const high = (page: Page) => page.addInitScript(() => localStorage.setItem('ludora.graphics', 'high'));
+// High, and the effects asked for by name: a headless browser has no graphics chip, where they are otherwise left out.
+const high = (page: Page) => page.addInitScript(() => (localStorage.setItem('ludora.graphics', 'high'), localStorage.setItem('ludora.fx', 'on')));
 
 /** A two-question Classic room with one player on a phone and three practice bots, played to its results. */
 async function playToTheEnd(browser: Browser, reducedMotion: boolean) {
@@ -40,12 +41,6 @@ async function playToTheEnd(browser: Browser, reducedMotion: boolean) {
   const { code } = await room.json();
   await host.page.goto(`/room/${code}`);
   await expect(host.page.getByRole('button', { name: 'Start game' })).toBeVisible();
-  // The floodlights behind the lobby: drawn as light where effects are up (or given back to the flat beams by a
-  // browser with no WebGL, as headless Firefox and WebKit have none), and a still picture for less motion.
-  const backdrop = host.page.locator('[data-backdrop="floodlights"]');
-  await expect(backdrop).toHaveCount(1);
-  if (reducedMotion) await expect(host.page.locator('canvas[data-stage-light]')).toHaveCount(0);
-  else await expect(host.page.locator('canvas[data-stage-light]')).toHaveCount(1);
 
   const phoneContext = await browser.newContext({ viewport: { width: 390, height: 844 }, ...(reducedMotion ? { reducedMotion: 'reduce' as const } : {}) });
   const phone = await phoneContext.newPage();

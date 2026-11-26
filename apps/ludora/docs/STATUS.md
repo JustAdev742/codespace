@@ -41,18 +41,21 @@ item with how each was checked, in [features/README.md](features/README.md). The
     instead of a cut. The new screen is live from its first frame.
   - *The floodlights as light.* The default backdrop's two flat beams are drawn by the graphics
     chip where effects are up: soft beams with dust turning in them, in the lobby and between
-    questions, held to the flat beams' brightness. No WebGL, slow frames, less motion, a calm
-    room or data saver: the flat picture.
+    questions, held to the flat beams' brightness. No graphics chip, slow frames, less motion,
+    a calm room or data saver: the flat picture.
   - *Still nothing moves behind a question, and Glims hold still,* on purpose.
   - *An older device keeps the game as it was:* the plain level is the code that ran before, and
     the effects file (8 KB) is not fetched there, nor for anyone who asked for less motion.
 
-  Checked: 24 unit tests (the choice, the frame-time check, the pieces, the light's brightness),
+  Checked: 26 unit tests (the choice, the frame-time check, the pieces, the light's rule and
+  brightness),
   2 browser tests that draw the effects (`e2e/effects.spec.ts`), and games played in headless
   Chromium on the production build with the setting on High (Classic and seven other modes, solo,
   a hall screen, the Hills Grammar look), on Automatic (which chose plain there), on High with
   reduced motion and in a calm room (nothing drawn). **Not checked:** any real
-  device, a real frame rate (headless Chromium draws in software), Safari or Firefox.
+  device, a real frame rate (headless Chromium draws in software), Safari or Firefox, and the
+  stage light on a real graphics chip: it was only ever drawn by a processor, and now starts
+  only where there is a chip, so no test here draws it.
 
 - **The live game: anticipation and payoff** (25 November, D61). The game was played end to end
   as a class would (a board, phones, signed-in students, solo) and what stood between it and a
@@ -708,7 +711,7 @@ creates and drops its own database).
 | server | 50 |
 | web | 38 |
 | shared | 5 |
-| **Total** | **139 files, 2975 tests passing** (full run on 2026-11-25) |
+| **Total** | **139 files, 2977 tests passing** (full run on 2026-11-25) |
 
 End-to-end: `npm run test:e2e` (needs Postgres; builds first, then runs 101 browser tests in 37
 files against a fresh `ludora_e2e` database). The full run on 2026-11-25 in Chromium: 97 passed,

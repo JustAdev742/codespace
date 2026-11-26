@@ -29,6 +29,22 @@ function slowHere(): boolean {
   }
 }
 
+/**
+ * True when this device has no graphics chip to draw with (WebGL drawn by the processor, or none at
+ * all): it keeps the plain game. `localStorage['ludora.fx'] = 'on'` says to draw the effects anyway:
+ * that is for the browser tests, which run without a graphics chip and would otherwise never draw
+ * them, and for trying the effects on such a machine. It is not a setting anyone is shown.
+ */
+export function fxSoftware(): boolean {
+  let asked = false;
+  try {
+    asked = localStorage.getItem('ludora.fx') === 'on';
+  } catch {
+    /* private mode */
+  }
+  return !asked && (softwareRenderer() || !webglSupported());
+}
+
 /** What this device gets: worked out once, and again when the player changes the graphics setting. */
 export function fxLevel(): FxLevel {
   if (level) return level;
@@ -47,8 +63,7 @@ export function fxLevel(): FxLevel {
     });
   }
   const nav = navigator as Navigator & { deviceMemory?: number };
-  // A browser that cannot draw WebGL 2 at all is an old one: it gets the plain game too.
-  level = decideFx({ choice: storedChoice(), cores: nav.hardwareConcurrency ?? 4, memory: nav.deviceMemory ?? null, software: softwareRenderer() || !webglSupported(), dataSaver: dataSaverOn(), slow: slowHere() });
+  level = decideFx({ choice: storedChoice(), cores: nav.hardwareConcurrency ?? 4, memory: nav.deviceMemory ?? null, software: fxSoftware(), dataSaver: dataSaverOn(), slow: slowHere() });
   return level;
 }
 

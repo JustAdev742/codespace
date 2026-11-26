@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { decideFx, FX_BUDGET, type FxFacts } from './decide.ts';
+import { decideFx, FX_BUDGET, stageLightWanted, type FxFacts } from './decide.ts';
 import { FxGovernor, SLOW_FRAME_MS, WINDOW, type GovernorStep } from './governor.ts';
 import { alphaAt, burst, cannon, Field, HEADS, rain, seeded, SHAPES, styleOf, TUMBLES } from './particles.ts';
 import { GAIN, rgb } from './stageLight.ts';
@@ -27,12 +27,18 @@ describe('what a device gets', () => {
     expect(decideFx(facts({ slow: true }))).toBe('plain');
   });
 
-  it('a choice made by hand is kept, whatever the device says', () => {
-    const weak = { cores: 2, memory: 2, software: true, dataSaver: true, slow: true };
+  it('a choice made by hand is kept on a weak device', () => {
+    const weak = { cores: 2, memory: 2, dataSaver: true, slow: true };
     expect(decideFx(facts({ ...weak, choice: 'high' }))).toBe('rich');
     expect(decideFx(facts({ ...weak, choice: 'medium' }))).toBe('full');
     expect(decideFx(facts({ choice: 'low' }))).toBe('plain');
     expect(decideFx(facts({ choice: 'off' }))).toBe('plain');
+  });
+
+  it('a device with no graphics chip keeps the plain game, whatever is chosen', () => {
+    expect(decideFx(facts({ software: true, choice: 'high' }))).toBe('plain');
+    expect(decideFx(facts({ software: true, choice: 'medium' }))).toBe('plain');
+    expect(decideFx(facts({ software: true }))).toBe('plain');
   });
 
   it('the plain game draws nothing on the canvas, and a richer level draws more', () => {
@@ -205,6 +211,22 @@ describe('the stage light', () => {
     expect(r).toBeCloseTo(157 / 255);
     expect(g).toBeCloseTo(183 / 255);
     expect(b).toBe(1);
+  });
+
+  it('is drawn only where effects are up and a graphics chip will draw it', () => {
+    const board = { level: 'rich' as const, webgl: true, software: false, dataSaver: false, lessMotion: false };
+    expect(stageLightWanted(board)).toBe(true);
+    expect(stageLightWanted({ ...board, level: 'full' })).toBe(true);
+    expect(stageLightWanted({ ...board, level: 'plain' })).toBe(false);
+    // No WebGL, or WebGL drawn by the processor (a Chromebook with no usable chip, a headless browser): the flat beams.
+    expect(stageLightWanted({ ...board, webgl: false })).toBe(false);
+    expect(stageLightWanted({ ...board, software: true })).toBe(false);
+  });
+
+  it('gives way to less motion and to data saver, whatever the graphics setting', () => {
+    const board = { level: 'rich' as const, webgl: true, software: false, dataSaver: false, lessMotion: false };
+    expect(stageLightWanted({ ...board, lessMotion: true })).toBe(false);
+    expect(stageLightWanted({ ...board, dataSaver: true })).toBe(false);
   });
 
   it('is never brighter than the flat beams it stands in for', () => {

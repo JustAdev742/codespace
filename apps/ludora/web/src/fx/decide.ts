@@ -21,7 +21,12 @@ export interface FxFacts {
   cores: number;
   /** navigator.deviceMemory in GB, or null where the browser does not say (Safari, Firefox). */
   memory: number | null;
-  /** WebGL drawn by the processor: no usable graphics chip, so canvases are slow too. */
+  /**
+   * No graphics chip: WebGL is drawn by the processor, or there is none. Canvases are slow there too,
+   * so such a device gets the plain game whatever was chosen (the choice still sets how its 3D games
+   * are drawn). This is also every headless browser, so the browser tests run the plain game unless
+   * one asks for the effects by name (fx/index.ts, `ludora.fx`).
+   */
   software: boolean;
   dataSaver: boolean;
   /** The frame-time check found effects too slow on this device during this visit. */
@@ -30,11 +35,11 @@ export interface FxFacts {
 
 export function decideFx(f: FxFacts): FxLevel {
   // Low and "3D off" both ask for the plain game.
-  if (f.choice === 'off' || f.choice === 'low') return 'plain';
+  if (f.choice === 'off' || f.choice === 'low' || f.software) return 'plain';
   // A choice made by hand is kept even when frames are slow: the check trims how much is drawn instead.
   if (f.choice === 'high') return 'rich';
   if (f.choice === 'medium') return 'full';
-  if (f.slow || f.dataSaver || f.software) return 'plain';
+  if (f.slow || f.dataSaver) return 'plain';
   if (f.cores <= 2 || (f.memory !== null && f.memory <= 2)) return 'plain';
   if (f.cores >= 8 && (f.memory === null || f.memory >= 8)) return 'rich';
   return 'full';
@@ -45,3 +50,13 @@ export const FX_BUDGET: Record<FxLevel, number> = { plain: 0, full: 0.6, rich: 1
 
 /** The sharpest a level draws: device pixels per CSS pixel. */
 export const FX_DPR: Record<FxLevel, number> = { plain: 1, full: 1.5, rich: 2 };
+
+/**
+ * Whether the big screen draws its floodlights as light (stageLight.ts). Besides effects being up,
+ * it needs a graphics chip to draw it: a whole screen of shader on a processor is slow whatever
+ * the player chose, so a device without one keeps the flat beams. And it is a moving backdrop, so
+ * less motion (a calm room included) and data saver keep the still picture, as they always have.
+ */
+export function stageLightWanted(f: { level: FxLevel; webgl: boolean; software: boolean; dataSaver: boolean; lessMotion: boolean }): boolean {
+  return f.level !== 'plain' && f.webgl && !f.software && !f.dataSaver && !f.lessMotion;
+}
