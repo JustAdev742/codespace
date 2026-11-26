@@ -16,6 +16,25 @@ export const MISTAKES_PER_ROUND = 10;
 export const DAILY_CHALLENGE_QUESTIONS = 5;
 /** Right answers, on different days, that take a question off the mistakes list. */
 export const MISTAKE_CLEAR_DAYS = 2;
+/**
+ * Days a mistake rests after it has been got right, before it is asked again. Coming back to
+ * something just as it starts to fade is what makes it stick, so a question got right today is not
+ * due again tomorrow: it comes back after this rest. (It may still be practised sooner, and a
+ * right answer on any later day still counts.)
+ */
+export const MISTAKE_REST_DAYS = 2;
+
+/**
+ * When a mistake is next due. One not yet got right since it was last missed is due now. One got
+ * right rests for MISTAKE_REST_DAYS, then is due. Days are `YYYY-MM-DD` in UTC.
+ */
+export function mistakeDue(rightDays: number, lastRightDay: string | null, today: string): { due: boolean; on: string } {
+  if (rightDays <= 0 || !lastRightDay) return { due: true, on: today };
+  const d = new Date(`${lastRightDay}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + MISTAKE_REST_DAYS);
+  const on = d.toISOString().slice(0, 10);
+  return { due: on <= today, on };
+}
 
 export const GOAL_METRICS = ['games', 'correct'] as const;
 export type GoalMetric = (typeof GOAL_METRICS)[number];

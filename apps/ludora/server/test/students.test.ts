@@ -125,6 +125,9 @@ describe('my mistakes', () => {
     const list = await a.client.get('/api/me/mistakes');
     expect(list.status).toBe(200);
     expect(list.body.mistakes.map((m: { questionId: string }) => m.questionId).sort()).toEqual([q1, q2].sort());
+    // Spaced practice: a question just missed is ready to try again at once.
+    expect(list.body.due).toBe(2);
+    expect(list.body.mistakes.every((m: { due: boolean; dueOn: string }) => m.due && m.dueOn === utcDay())).toBe(true);
     // The list carries prompts, never answers.
     expect(JSON.stringify(list.body)).not.toMatch(/"correct"|"accepted"|"answer"/);
 
@@ -144,6 +147,14 @@ describe('my mistakes', () => {
     let rows = await t.db.select().from(mistakes).where(eq(mistakes.userId, a.userId));
     expect(rows.find((r) => r.questionId === q1)).toMatchObject({ rightDays: 1, lastRightDay: utcDay() });
     expect(rows.find((r) => r.questionId === q2)).toMatchObject({ misses: 2, rightDays: 0 });
+    // Got right today, q1 rests for two days; q2, missed again, is still ready and comes first.
+    const rested = await a.client.get('/api/me/mistakes');
+    expect(rested.body.due).toBe(1);
+    expect(rested.body.mistakes.map((m: { questionId: string; due: boolean }) => [m.questionId, m.due])).toEqual([
+      [q2, true],
+      [q1, false],
+    ]);
+    expect(rested.body.mistakes[1].dueOn > utcDay()).toBe(true);
     const [done] = await t.db.select().from(practiceRuns).where(eq(practiceRuns.id, run!.id));
     expect(done!.completedAt).not.toBeNull();
 

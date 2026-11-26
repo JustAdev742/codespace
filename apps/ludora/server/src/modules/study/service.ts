@@ -1,5 +1,5 @@
 import { and, asc, desc, eq, gt, inArray, isNotNull, isNull, sql } from 'drizzle-orm';
-import { DAILY_CHALLENGE_QUESTIONS, MISTAKES_PER_ROUND, questionSchema, streakEnding, type Question } from '@ludora/shared';
+import { DAILY_CHALLENGE_QUESTIONS, MISTAKES_PER_ROUND, mistakeDue, questionSchema, streakEnding, type Question } from '@ludora/shared';
 import { getMode } from '@ludora/engine';
 import { soloBlocker } from '@ludora/engine/catalog';
 import type { AppDeps } from '../../app.ts';
@@ -106,12 +106,20 @@ export interface MistakeView {
   misses: number;
   rightDays: number;
   lastMissedAt: string;
+  /** Ready to be asked again now (spaced practice: mistakeDue in @ludora/shared). */
+  due: boolean;
+  /** The day it comes back, `YYYY-MM-DD` in UTC: today for one that is due. */
+  dueOn: string;
 }
 
-/** The player's mistakes with their questions, most missed first. Questions since removed from their set are left out. */
-export async function listMistakes(db: DbOrTx, userId: string): Promise<(MistakeView & { question: Question })[]> {
+/**
+ * The player's mistakes with their questions: the ones due now first (most missed first among
+ * them), then the ones resting, soonest back first. Questions since removed from their set are
+ * left out.
+ */
+export async function listMistakes(db: DbOrTx, userId: string, today = utcDay()): Promise<(MistakeView & { question: Question })[]> {
   const rows = await db
-    .select({ setId: mistakes.setId, questionId: mistakes.questionId, misses: mistakes.misses, rightDays: mistakes.rightDays, lastMissedAt: mistakes.lastMissedAt, title: questionSets.title, questions: questionSets.questions, hiddenAt: questionSets.hiddenAt })
+    .select({ setId: mistakes.setId, questionId: mistakes.questionId, misses: mistakes.misses, rightDays: mistakes.rightDays, lastRightDay: mistakes.lastRightDay, lastMissedAt: mistakes.lastMissedAt, title: questionSets.title, questions: questionSets.questions, hiddenAt: questionSets.hiddenAt })
     .from(mistakes)
     .innerJoin(questionSets, eq(questionSets.id, mistakes.setId))
     .where(eq(mistakes.userId, userId))
@@ -124,15 +132,19 @@ export async function listMistakes(db: DbOrTx, userId: string): Promise<(Mistake
     if (!cache.has(r.setId)) cache.set(r.setId, new Map(validQuestions(r.questions).map((q) => [q.id, q])));
     const q = cache.get(r.setId)!.get(r.questionId);
     if (!q) continue;
-    out.push({ setId: r.setId, setTitle: r.title, questionId: r.questionId, prompt: q.prompt, type: q.type, misses: r.misses, rightDays: r.rightDays, lastMissedAt: r.lastMissedAt.toISOString(), question: q });
+    const when = mistakeDue(r.rightDays, r.lastRightDay, today);
+    out.push({ setId: r.setId, setTitle: r.title, questionId: r.questionId, prompt: q.prompt, type: q.type, misses: r.misses, rightDays: r.rightDays, lastMissedAt: r.lastMissedAt.toISOString(), due: when.due, dueOn: when.on, question: q });
   }
-  return out;
+  // The query's order (most missed, then latest) holds within each half: a stable sort.
+  return out.sort((a, b) => Number(b.due) - Number(a.due) || (a.due ? 0 : a.dueOn.localeCompare(b.dueOn)));
 }
 
 /**
- * A round of up to ten mistakes as a solo game. The room's questions get fresh ids (m0, m1...)
- * because two sets can use the same id; the run remembers where each came from. A list shorter
- * than the mode's minimum is topped up with other questions from the same sets.
+ * A round of up to ten mistakes as a solo game: the ones due now first, then (only if there is
+ * room) ones still resting, soonest back first, so a round is never refused for being early. The
+ * room's questions get fresh ids (m0, m1...) because two sets can use the same id; the run
+ * remembers where each came from. A list shorter than the mode's minimum is topped up with other
+ * questions from the same sets.
  */
 export async function startMistakes(deps: AppDeps, auth: AuthContext) {
   const list = await listMistakes(deps.db, auth.user.id);

@@ -245,9 +245,11 @@ function DailyCard() {
 /* ---------------------------------- mistakes ---------------------------------- */
 
 function MistakesCard() {
-  const list = useQuery({ queryKey: ['mistakes'], queryFn: () => api.get<{ total: number }>('/api/me/mistakes') });
+  const list = useQuery({ queryKey: ['mistakes'], queryFn: () => api.get<{ total: number; due?: number }>('/api/me/mistakes') });
   const start = useStart('/api/me/mistakes/play', 'The round did not start. Try again.');
   const n = list.data?.total ?? 0;
+  // Spaced practice: how many are ready to be tried again today; the rest are resting (mistakeDue).
+  const due = list.data?.due ?? n;
   return (
     <Panel className="flex flex-col p-5" aria-labelledby="mistakes-title">
       <h2 id="mistakes-title" className="mb-3 font-display text-[1.6rem] leading-tight font-bold">
@@ -268,13 +270,15 @@ function MistakesCard() {
       ) : (
         <div className="flex flex-1 flex-col">
           <p className="flex items-baseline gap-2">
-            <span className="font-display text-[3rem] leading-none font-extrabold tabular">{formatNumber(n)}</span>
-            <span className="text-text-2">{n === 1 ? 'question to fix' : 'questions to fix'}</span>
+            <span className="font-display text-[3rem] leading-none font-extrabold tabular">{formatNumber(due)}</span>
+            <span className="text-text-2">{due === 1 ? 'question ready to try again' : 'questions ready to try again'}</span>
           </p>
-          <p className="mt-2 text-sm text-text-2">Get one right on two different days and it leaves the list.</p>
+          <p className="mt-2 text-sm text-text-2">
+            {due < n ? `${formatNumber(n - due)} more ${n - due === 1 ? 'is' : 'are'} resting and will come back in a day or two. ` : ''}Get one right on two different days and it leaves the list.
+          </p>
           <div className="mt-auto flex flex-col gap-2 pt-4">
             <Button variant="primary" className="w-full" icon={<Target className="size-4" aria-hidden />} loading={start.isPending} onClick={() => start.mutate()}>
-              Fix my mistakes
+              {due ? 'Fix my mistakes' : 'Practise early'}
             </Button>
             <Link to="/mistakes" className="inline-flex min-h-11 items-center justify-center text-sm font-semibold">
               See the list

@@ -20,7 +20,12 @@ interface Mistake {
   misses: number;
   rightDays: number;
   lastMissedAt: string;
+  due: boolean;
+  dueOn: string;
 }
+
+/** "Thursday 28 November": the day a resting question comes back, in the reader's own words for dates. */
+const backOn = (day: string) => new Date(`${day}T12:00:00Z`).toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' });
 
 /**
  * My mistakes: every question a signed-in player got wrong, grouped by set, with a round of
@@ -31,7 +36,8 @@ export default function Mistakes() {
   usePageTitle('My mistakes');
   const me = useMe();
   const navigate = useNavigate();
-  const list = useQuery({ queryKey: ['mistakes'], queryFn: () => api.get<{ total: number; mistakes: Mistake[] }>('/api/me/mistakes'), enabled: Boolean(me.data?.user) });
+  const list = useQuery({ queryKey: ['mistakes'], queryFn: () => api.get<{ total: number; due: number; mistakes: Mistake[] }>('/api/me/mistakes'), enabled: Boolean(me.data?.user) });
+  const due = list.data?.due ?? 0;
   const start = useMutation({
     mutationFn: () => api.post<{ code: string }>('/api/me/mistakes/play'),
     onSuccess: (r) => navigate(`/room/${r.code}`),
@@ -40,11 +46,11 @@ export default function Mistakes() {
   const header = (
     <PageHeader
       title="My mistakes"
-      description={`Questions you got wrong in games. Each round plays up to ${MISTAKES_PER_ROUND} of them, the ones you miss most first. Get a question right on two different days and it leaves the list.`}
+      description={`Questions you got wrong in games come back here when they are ready to be tried again: at once the first time, then after a rest, because coming back to something just as it starts to fade is what makes it stick. Each round plays up to ${MISTAKES_PER_ROUND}. Get a question right on two different days and it leaves the list.`}
       actions={
         list.data?.total ? (
           <Button variant="primary" size="lg" icon={<Target className="size-5" aria-hidden />} loading={start.isPending} onClick={() => start.mutate()}>
-            Fix my mistakes
+            {due ? 'Fix my mistakes' : 'Practise early'}
           </Button>
         ) : null
       }
@@ -109,7 +115,7 @@ export default function Mistakes() {
                         {i < m.rightDays ? <Check className="size-4" /> : null}
                       </span>
                     ))}
-                    <span className="text-sm text-text-2">{m.rightDays ? 'Once more on another day' : 'Not fixed yet'}</span>
+                    <span className="text-sm text-text-2">{!m.rightDays ? 'Ready now' : m.due ? 'Ready again now' : `Resting. Back on ${backOn(m.dueOn)}`}</span>
                   </div>
                 </li>
               ))}
@@ -117,7 +123,11 @@ export default function Mistakes() {
           </Panel>
         ))}
       </div>
-      {list.data && list.data.total > 0 ? <p className="mt-6 text-sm text-text-2">{plural(list.data.total, 'question')} on your list. Answers are shown after you play each question.</p> : null}
+      {list.data && list.data.total > 0 ? (
+        <p className="mt-6 text-sm text-text-2">
+          {plural(list.data.total, 'question')} on your list, {due} ready now. Answers are shown after you play each question.
+        </p>
+      ) : null}
     </>
   );
 }

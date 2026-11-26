@@ -112,5 +112,5 @@ Firefox and WebKit, and automated accessibility checks). Each file says what els
 
 | Area | File | Rows |
 |---|---|---|
-| Insight while the game is still being played: the misconception worth a word now, the questions found hardest, who might like a hand | [teaching.md](teaching.md) | 1 feature |
+| Insight while the game is still being played: the misconception worth a word now, the questions found hardest, who might like a hand; and mistakes that come back when they are due | [teaching.md](teaching.md) | 2 features |
 

@@ -55,6 +55,11 @@ item with how each was checked, in [features/README.md](features/README.md). The
   might like a hand. Never the question still open, never the big screen, nothing new collected.
   Details and tests: [features/teaching.md](features/teaching.md).
 
+- **Mistakes come back when they are due** (26 November). A student's wrong answers are asked
+  again at once, then after a rest of two days once got right; the home page says how many are
+  ready and how many are resting. Nothing new is stored. Tested with the database; not yet looked
+  at in the browser.
+
 - **Effects that scale with the device** (25 November, D62). The performance limit was relaxed:
   the game may aim at devices from the last four years, as long as an older one still works and
   simply looks plainer. Details: [features/stage-effects.md](features/stage-effects.md).

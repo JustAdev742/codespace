@@ -26,7 +26,7 @@ export async function studyRoutes(app: FastifyInstance, deps: AppDeps) {
     const auth = requireAuth(req);
     const list = await listMistakes(db, auth.user.id);
     // The prompt and type only: the answers stay on the server, as in a game.
-    return { total: list.length, mistakes: list.map(({ question: _q, ...m }) => m) };
+    return { total: list.length, due: list.filter((m) => m.due).length, mistakes: list.map(({ question: _q, ...m }) => m) };
   });
 
   app.post('/api/me/mistakes/play', { config: { rateLimit: { max: 20, timeWindow: '10 minutes' } } }, async (req) => {
