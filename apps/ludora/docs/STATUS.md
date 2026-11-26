@@ -60,6 +60,15 @@ item with how each was checked, in [features/README.md](features/README.md). The
   ready and how many are resting. Nothing new is stored. Tested with the database; not yet looked
   at in the browser.
 
+- **What to teach next, and who knows what** (26 November). A *Teach next* tab on a class's page:
+  one step for each topic the class has played, the most pressing first (teach it again, practise
+  once more, ready to move on, or too few have played to say), each with the questions that
+  tripped the class, the wrong answer they shared, a small group to sit with, and buttons to make
+  a reteach set of that topic or host it again. Under it, every student against every topic. A
+  student's report shows their own row. Counted from the first tries already kept for reports, in
+  the class's assignments and live games; nothing new is stored. For the class's teachers only.
+  Details and tests: [features/teaching.md](features/teaching.md).
+
 - **Effects that scale with the device** (25 November, D62). The performance limit was relaxed:
   the game may aim at devices from the last four years, as long as an older one still works and
   simply looks plainer. Details: [features/stage-effects.md](features/stage-effects.md).

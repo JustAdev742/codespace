@@ -101,7 +101,7 @@ export function goalView(g: GoalState) {
   };
 }
 
-async function membersOf(db: DbOrTx, classId: string) {
+export async function membersOf(db: DbOrTx, classId: string) {
   return db
     .select({ id: users.id, displayName: users.displayName, username: users.username })
     .from(classMembers)
@@ -110,7 +110,7 @@ async function membersOf(db: DbOrTx, classId: string) {
     .orderBy(asc(users.displayName));
 }
 
-async function isMember(db: DbOrTx, classId: string, userId: string) {
+export async function isMember(db: DbOrTx, classId: string, userId: string) {
   const [m] = await db.select({ u: classMembers.userId }).from(classMembers).where(and(eq(classMembers.classId, classId), eq(classMembers.userId, userId))).limit(1);
   return Boolean(m);
 }
@@ -148,7 +148,7 @@ async function firstTries(db: DbOrTx, gameIds: readonly string[]): Promise<First
   return res.rows.filter((r) => r.user_id).map((r) => ({ gameId: r.game_id, userId: r.user_id!, setId: r.set_id, questionId: r.question_id, correct: Boolean(r.correct), at: new Date(r.created_at) }));
 }
 
-function setQuestions(set: { questions: unknown } | undefined): Map<string, Question> {
+export function setQuestions(set: { questions: unknown } | undefined): Map<string, Question> {
   const out = new Map<string, Question>();
   for (const raw of (set?.questions as unknown[] | undefined) ?? []) {
     const r = questionSchema.safeParse(raw);
@@ -161,6 +161,31 @@ async function loadSets(db: DbOrTx, ids: readonly (string | null)[]) {
   const unique = [...new Set(ids.filter((x): x is string => Boolean(x)))];
   const rows = unique.length ? await db.select({ id: questionSets.id, title: questionSets.title, subject: questionSets.subject, questions: questionSets.questions, hiddenAt: questionSets.hiddenAt }).from(questionSets).where(inArray(questionSets.id, unique)) : [];
   return new Map(rows.map((r) => [r.id, { ...r, byId: setQuestions(r) }]));
+}
+
+/**
+ * A new private set in a teacher's library, from questions picked for teaching again (the class's
+ * most-missed, or one topic's: teach.ts). The caller has already checked who is asking.
+ */
+export async function saveReteachSet(db: DbOrTx, ownerId: string, set: { title: string; description: string; subject: string; topic?: string; questions: Question[] }): Promise<{ id: string; title: string; questionCount: number }> {
+  const input = questionSetInputSchema.safeParse({
+    title: set.title.slice(0, 80),
+    description: set.description.slice(0, 500),
+    subject: (SUBJECTS as readonly string[]).includes(set.subject) ? set.subject : 'other',
+    visibility: 'private',
+    ...(set.topic ? { topic: set.topic.slice(0, 60) } : {}),
+    questions: set.questions,
+  });
+  if (!input.success) throw conflict('Those questions could not be copied into a new set.');
+  await assertUploadsUsable(db, input.data.questions);
+  const [owned] = await db.select({ n: count() }).from(questionSets).where(eq(questionSets.ownerId, ownerId));
+  if ((owned?.n ?? 0) >= 500) throw conflict('You have reached the limit of 500 sets. Delete some you no longer use.');
+  const d = input.data;
+  const [row] = await db
+    .insert(questionSets)
+    .values({ ownerId, title: d.title, description: d.description, subject: d.subject, language: d.language, tags: d.tags, visibility: 'private', topic: d.topic ?? null, questions: d.questions, questionCount: d.questions.length })
+    .returning({ id: questionSets.id, title: questionSets.title });
+  return { id: row!.id, title: row!.title, questionCount: d.questions.length };
 }
 
 /* ----------------------------------- routes ----------------------------------- */
@@ -419,23 +444,13 @@ export async function classToolRoutes(app: FastifyInstance, deps: AppDeps) {
     }
     if (!picked.length) throw conflict('No questions have been missed yet, so there is nothing to reteach. Try again once students have played.');
     const subject = [...subjects].sort((a, b) => b[1] - a[1])[0]![0];
-    const input = questionSetInputSchema.safeParse({
-      title: `Reteach: ${cls.name}`.slice(0, 80),
-      description: `The questions ${cls.name} found hardest${body.assignmentId ? ` in ${tasks[0]!.title}` : ''}, hardest first.`.slice(0, 500),
-      subject: (SUBJECTS as readonly string[]).includes(subject) ? subject : 'other',
-      visibility: 'private',
+    const set = await saveReteachSet(db, auth.user.id, {
+      title: `Reteach: ${cls.name}`,
+      description: `The questions ${cls.name} found hardest${body.assignmentId ? ` in ${tasks[0]!.title}` : ''}, hardest first.`,
+      subject,
       questions: picked,
     });
-    if (!input.success) throw conflict('Those questions could not be copied into a new set.');
-    await assertUploadsUsable(db, input.data.questions);
-    const [owned] = await db.select({ n: count() }).from(questionSets).where(eq(questionSets.ownerId, auth.user.id));
-    if ((owned?.n ?? 0) >= 500) throw conflict('You have reached the limit of 500 sets. Delete some you no longer use.');
-    const d = input.data;
-    const [row] = await db
-      .insert(questionSets)
-      .values({ ownerId: auth.user.id, title: d.title, description: d.description, subject: d.subject, language: d.language, tags: d.tags, visibility: 'private', questions: d.questions, questionCount: d.questions.length })
-      .returning({ id: questionSets.id, title: questionSets.title });
-    return { ok: true, set: { id: row!.id, title: row!.title, questionCount: d.questions.length } };
+    return { ok: true, set };
   });
 
   /* ---------------------------------- notices ---------------------------------- */

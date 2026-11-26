@@ -22,6 +22,7 @@ import { assignmentBlocker, loadClass, requireTeacherAccount } from './access.ts
 import { activeGoal, classToolRoutes, goalView } from './tools.ts';
 import { classLoginRoutes } from './logins.ts';
 import { classLiveRoutes } from './live.ts';
+import { classTeachRoutes } from './teach.ts';
 import { checkGroup, classGroupRoutes, groupsOf, leaveGroups, membersFor, myGroups, setForGroups, teachersOf } from './groups.ts';
 import { newRoomOptions } from '../rooms/options.ts';
 import { classRewardRoutes } from './rewards.ts';
@@ -546,6 +547,7 @@ export async function classRoutes(app: FastifyInstance, deps: AppDeps) {
   await classToolRoutes(app, deps);
   await classLoginRoutes(app, deps);
   await classLiveRoutes(app, deps);
+  await classTeachRoutes(app, deps);
   await classGroupRoutes(app, deps);
   await classRewardRoutes(app, deps);
 

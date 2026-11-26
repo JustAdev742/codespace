@@ -220,6 +220,8 @@ export const classKeys = {
   report: (id: string, aid: string) => ['classes', 'detail', id, 'report', aid] as const,
   attempts: (id: string, aid: string) => ['classes', 'detail', id, 'attempts', aid] as const,
   insights: (id: string) => ['classes', 'detail', id, 'insights'] as const,
+  teachNext: (id: string) => ['classes', 'detail', id, 'teach-next'] as const,
+  topics: (id: string, uid: string) => ['classes', 'detail', id, 'topics', uid] as const,
   student: (id: string, uid: string) => ['classes', 'detail', id, 'student', uid] as const,
 };
 
@@ -291,6 +293,54 @@ export function useInsights(id: string, enabled = true) {
     queryKey: classKeys.insights(id),
     queryFn: () => api.get<InsightsData>(`/api/classes/${encodeURIComponent(id)}/insights`),
     enabled: enabled && Boolean(id),
+  });
+}
+
+/* ------------------------------ What to teach next ------------------------------ */
+
+/** How secure a topic is for one student: from their latest first try at each of its questions. */
+export type MasteryLevel = 'secure' | 'nearly' | 'learning' | 'started' | 'none';
+export type TeachVerdict = 'reteach' | 'practise' | 'moveOn' | 'unseen';
+
+export interface TopicCell {
+  level: MasteryLevel;
+  right: number;
+  answered: number;
+}
+
+export interface TeachStep {
+  verdict: TeachVerdict;
+  topic: string;
+  rate: number | null;
+  /** Students who have answered in it, and the size of the class. */
+  students: number;
+  of: number;
+  group: { id: string; displayName: string; right: number; answered: number }[];
+  groupSize: number;
+  notYet: { id: string; displayName: string }[];
+  notYetCount: number;
+  hardest: { prompt: string; right: number; tries: number; commonWrong: { text: string; count: number } | null }[];
+  /** Sets behind the topic that the viewer can host again. */
+  sets: { id: string; title: string }[];
+}
+
+export interface TeachNextData {
+  days: number;
+  classSize: number;
+  topics: { topic: string; right: number; answered: number; rate: number | null; students: number; levels: Record<MasteryLevel, number>; lastAt: string | null }[];
+  students: { id: string; displayName: string; cells: TopicCell[] }[];
+  next: TeachStep[];
+}
+
+export interface StudentTopics {
+  topics: ({ topic: string } & TopicCell)[];
+}
+
+export function useStudentTopics(id: string, uid: string, enabled = true) {
+  return useQuery({
+    queryKey: classKeys.topics(id, uid),
+    queryFn: () => api.get<StudentTopics>(`/api/classes/${encodeURIComponent(id)}/students/${encodeURIComponent(uid)}/topics`),
+    enabled: enabled && Boolean(id) && Boolean(uid),
   });
 }
 

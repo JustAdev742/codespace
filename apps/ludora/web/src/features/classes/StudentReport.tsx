@@ -8,7 +8,8 @@ import { duration, formatDate, plural } from '../../lib/format.ts';
 import { Badge, EmptyState, ErrorNotice, Field, PageHeader, Panel, SectionTitle, Textarea } from '../../ui/primitives.tsx';
 import { Button, ButtonLink } from '../../ui/Button.tsx';
 import { BackLink, dateText, dateTimeText, errorText, hasStatus, NoValue, percent, questionTypeLabel, RateBar, StatRow, StatTile, usePageTitle } from '../reports/reportUi.tsx';
-import { classKeys, useAccountState, useClassDetail, useStudentReport, type StudentReportData, type WorkStatus } from './classData.ts';
+import { classKeys, useAccountState, useClassDetail, useStudentReport, useStudentTopics, type StudentReportData, type StudentTopics, type WorkStatus } from './classData.ts';
+import { LevelMark } from './TeachNext.tsx';
 import { ClassAccountGate, ClassPageSkeleton } from './classUi.tsx';
 import { CertificateDialog } from './Certificate.tsx';
 import { subjectLabel } from './gradeUi.tsx';
@@ -114,7 +115,7 @@ function NoteEditor({ classId, uid, note }: { classId: string; uid: string; note
 }
 
 /** The report itself: on screen, and again on paper. */
-function ReportBody({ data, paper = false }: { data: StudentReportData; paper?: boolean }) {
+function ReportBody({ data, topics, paper = false }: { data: StudentReportData; topics?: StudentTopics['topics']; paper?: boolean }) {
   const s = data.summary;
   return (
     <div className="flex flex-col gap-6">
@@ -174,6 +175,21 @@ function ReportBody({ data, paper = false }: { data: StudentReportData; paper?: 
         )}
       </section>
 
+      {topics?.length ? (
+        <section className="print-avoid-break">
+          <SectionTitle>Topics</SectionTitle>
+          <p className="mb-2 max-w-[70ch] text-sm text-text-2">Each topic played in this class, judged on the latest first try at each question. Getting it right the next time it comes round counts.</p>
+          <ul className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+            {topics.map((t) => (
+              <li key={t.topic} className="flex items-center justify-between gap-3 rounded-[var(--radius-m)] bg-surface-2 px-3 py-2">
+                <span className="min-w-0 font-semibold break-words text-text">{t.topic}</span>
+                <LevelMark cell={t} />
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
+
       <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
         <section className="print-avoid-break">
           <SectionTitle>By subject</SectionTitle>
@@ -228,6 +244,8 @@ export default function StudentReport() {
   const account = useAccountState();
   const enabled = account === 'account';
   const report = useStudentReport(id, uid, enabled);
+  // Their row of the class's map (TeachNext.tsx). The report stands without it if it does not load.
+  const topics = useStudentTopics(id, uid, enabled);
   const cls = useClassDetail(id, enabled && report.isSuccess);
   const p = usePrinting();
   const [certificate, setCertificate] = useState(false);
@@ -280,7 +298,7 @@ export default function StudentReport() {
           </>
         }
       />
-      <ReportBody data={data} />
+      <ReportBody data={data} topics={topics.data?.topics} />
       {teacher ? (
         <div className="mt-8">
           <NoteEditor key={data.note?.updatedAt ?? 'none'} classId={id} uid={uid} note={data.note ?? null} />
@@ -288,7 +306,7 @@ export default function StudentReport() {
       ) : null}
       {p.printing ? (
         <PrintSheet onDone={p.done} label="Student report">
-          <ReportBody data={data} paper />
+          <ReportBody data={data} topics={topics.data?.topics} paper />
         </PrintSheet>
       ) : null}
       {teacher ? (

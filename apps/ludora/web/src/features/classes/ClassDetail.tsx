@@ -22,6 +22,7 @@ import { LiveGames } from './LiveGames.tsx';
 import { ClassLessons } from '../lessons/ClassLessons.tsx';
 import { GradebookPanel } from './Gradebook.tsx';
 import { InsightsPanel } from './Insights.tsx';
+import { TeachNextPanel } from './TeachNext.tsx';
 import { studentWork, type StudentWork } from './classLogic.ts';
 import {
   classKeys,
@@ -574,6 +575,7 @@ function TeacherView({ data }: { data: TeacherClassDetail }) {
             label: 'Assignments',
             count: data.assignments.length,
           },
+          { value: 'next', label: 'Teach next' },
           { value: 'students', label: 'Students', count: data.memberCount },
           { value: 'groups', label: 'Groups', count: data.groups.length },
           { value: 'gradebook', label: 'Gradebook' },
@@ -589,6 +591,9 @@ function TeacherView({ data }: { data: TeacherClassDetail }) {
           },
         ]}
       >
+        <TabPanel value="next" className="focus-visible:outline-offset-4">
+          <TeachNextPanel classId={cls.id} />
+        </TabPanel>
         <TabPanel value="gradebook" className="focus-visible:outline-offset-4">
           <GradebookPanel classId={cls.id} className={cls.name} members={data.members} />
         </TabPanel>
