@@ -108,14 +108,14 @@
 /* "Question 3": the plate sweeps in from the left, holds, and leaves to the right (QuestionSting). */
 @keyframes sting-sweep {
   0% {
-    transform: translateX(-60vw) skewX(-10deg);
+    transform: translateX(-60vw);
   }
   22%,
   72% {
-    transform: translateX(0) skewX(-10deg);
+    transform: translateX(0);
   }
   100% {
-    transform: translateX(60vw) skewX(-10deg);
+    transform: translateX(60vw);
     visibility: hidden;
   }
 }

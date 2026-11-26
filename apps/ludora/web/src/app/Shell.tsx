@@ -46,6 +46,7 @@ import { useSchool } from '../features/school/schoolData.ts';
 import { SectionBoundary } from '../ui/SectionBoundary.tsx';
 import { WhatsNewButton } from '../features/whatsnew/WhatsNew.tsx';
 import { OfflineBanner } from './OfflineBanner.tsx';
+import { schoolLook } from '../lib/school.ts';
 
 /*
  * The frame around every page: the sidebar, the header and the phone's bottom
@@ -133,13 +134,13 @@ function NavLinkItem({ item, onNavigate }: { item: NavItem; onNavigate?: () => v
       onClick={onNavigate}
       aria-describedby={item.hint ? hintId : undefined}
       className={({ isActive }) =>
-        `relative flex min-h-12 items-center gap-3 rounded-[var(--radius-m)] py-1 pr-1.5 pl-3 transition-colors lg:min-h-[38px] lg:py-0.5 [@media(max-height:800px)]:lg:min-h-[35px] [@media(max-height:800px)]:lg:py-0 ${isActive ? 'bg-white/[0.12] text-text' : 'text-text-2 hover:bg-white/[0.06] hover:text-text'}`
+        `relative flex min-h-12 items-center gap-2.5 rounded-[var(--radius-m)] py-1 pr-1.5 pl-1.5 transition-colors lg:min-h-[38px] lg:py-0.5 [@media(max-height:800px)]:lg:min-h-[35px] [@media(max-height:800px)]:lg:py-0 ${isActive ? 'bg-[linear-gradient(90deg,rgb(255_194_51/0.2),rgb(255_194_51/0.04))] text-text shadow-[inset_0_1px_0_rgb(255_255_255/0.1)]' : 'text-text-2 hover:bg-white/[0.07] hover:text-text'}`
       }
     >
       {({ isActive }) => (
         <>
-          {isActive ? <span className="absolute inset-y-2 left-0 w-1 rounded-r-[3px] bg-lantern" aria-hidden /> : null}
-          <span className={`shrink-0 ${isActive ? 'text-lantern' : 'text-text-3'}`}>{item.icon}</span>
+          {/* The icon stands in a tile of its own; the page you are on has the lit one. */}
+          <span className={`grid size-[30px] shrink-0 place-items-center rounded-[9px] [&_svg]:size-[18px] ${isActive ? 'bg-lantern text-on-accent shadow-[inset_0_1px_0_rgb(255_255_255/0.5),0_6px_16px_-6px_rgb(255_194_51/0.8)]' : 'bg-white/[0.07] text-text-2 shadow-[inset_0_1px_0_rgb(255_255_255/0.08)]'}`}>{item.icon}</span>
           <span className="flex min-w-0 flex-col">
             <span className="text-[15px] leading-[18px] font-semibold">{item.label}</span>
             {/* Left out of the link's name and read as its description: aria-describedby still reads a hidden element. */}
@@ -342,11 +343,11 @@ export function Shell() {
   const [moreOpen, setMoreOpen] = useState(false);
   const location = useLocation();
   return (
-    <div className="min-h-dvh lg:grid lg:grid-cols-[248px_1fr]">
+    <div className="min-h-dvh lg:grid lg:grid-cols-[268px_1fr]">
       <a href="#main" className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-50 focus:rounded-[var(--radius-s)] focus:bg-lantern focus:px-3 focus:py-2 focus:font-semibold focus:text-on-accent">
         Skip to content
       </a>
-      <aside className="stage-plain on-stage sticky top-0 hidden h-dvh flex-col gap-4 overflow-y-auto border-r border-white/[0.06] px-3 py-3.5 lg:flex">
+      <aside className="shell-rail stage-plain on-stage sticky top-3 my-3 ml-3 hidden h-[calc(100dvh-1.5rem)] flex-col gap-4 overflow-y-auto rounded-[var(--radius-xl)] px-3 py-3.5 lg:flex">
         {/* Settings sits beside the logo, so the sections below fit a 768px-tall laptop without scrolling (D59). */}
         <div className="relative">
           <Link to="/" className="inline-flex rounded-[var(--radius-s)] px-2" aria-label="Ludora home">
@@ -360,7 +361,8 @@ export function Shell() {
 
       <div className="flex min-w-0 flex-col">
         {/* On the stage in both themes, the same navy as the top of the sidebar, so the chrome reads as one frame. */}
-        <header className="on-stage chrome-bar sticky top-0 z-30 flex h-16 items-center gap-3 border-b border-white/10 bg-[color-mix(in_oklab,var(--stage-1)_96%,transparent)] px-4 backdrop-blur-sm sm:px-6">
+        {/* The bar is part of the page: the ground shows through it, blurred. A school's copy keeps its own bar, in its own colours and trim (D60). */}
+        <header className={`chrome-bar sticky top-0 z-30 flex h-16 items-center gap-3 px-4 sm:px-6 ${schoolLook() ? 'on-stage border-b border-white/10 bg-[color-mix(in_oklab,var(--stage-1)_96%,transparent)] backdrop-blur-sm' : 'bg-[color-mix(in_oklab,var(--bg)_78%,transparent)] backdrop-blur-md'}`}>
           <Link to="/" className="flex items-center gap-2 rounded-[var(--radius-s)] lg:hidden" aria-label="Ludora home">
             <LogoMark size={34} />
             <SchoolCrest size={30} />
@@ -390,16 +392,19 @@ export function Shell() {
           <Link to="/terms" className="hover:text-text">
             Terms of use
           </Link>
+          <Link to="/credits" className="hover:text-text">
+            Credits
+          </Link>
         </footer>
       </div>
 
-      <nav aria-label="Quick" className="stage-plain on-stage fixed inset-x-0 bottom-0 z-30 grid grid-cols-5 border-t border-white/10 pb-[env(safe-area-inset-bottom)] lg:hidden">
+      <nav aria-label="Quick" className="shell-dock stage-plain on-stage fixed inset-x-2.5 bottom-[max(0.6rem,env(safe-area-inset-bottom))] z-30 grid grid-cols-5 overflow-hidden rounded-[22px] lg:hidden">
         {MOBILE.map((i) => (
           <NavLink key={i.to} to={i.to} end={i.end} className={({ isActive }) => `relative flex min-h-14 flex-col items-center justify-center gap-0.5 py-2 text-xs font-semibold ${isActive ? 'text-lantern' : 'text-text-2 hover:text-text'}`}>
             {({ isActive }) => (
               <>
                 {/* The current section: a gold bar along the top edge, as well as the gold label. */}
-                {isActive ? <span className="absolute inset-x-3 top-0 h-[3px] rounded-b-[3px] bg-lantern" aria-hidden /> : null}
+                {isActive ? <span className="absolute inset-x-4 top-0 h-[3px] rounded-b-[3px] bg-lantern shadow-[0_0_12px_2px_rgb(255_194_51/0.7)]" aria-hidden /> : null}
                 <span className="grid h-7 place-items-center">{i.icon}</span>
                 {i.label}
               </>

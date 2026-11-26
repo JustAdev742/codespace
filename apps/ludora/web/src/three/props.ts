@@ -297,7 +297,7 @@ export function sign(text: string, o: { width?: number; color?: string; ink?: bo
   x.fillStyle = o.color ?? '#f6e7c8';
   x.fillRect(0, 0, 512, 160);
   x.fillStyle = '#2a1c14';
-  x.font = '800 78px "Barlow Condensed", system-ui, sans-serif';
+  x.font = '800 78px "Bricolage Grotesque Variable", system-ui, sans-serif';
   x.textAlign = 'center';
   x.textBaseline = 'middle';
   x.fillText(text, 256, 84, 480);

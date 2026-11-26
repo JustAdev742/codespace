@@ -30,15 +30,63 @@ export function PageHeader({
   /** No longer shown: characters and illustrations do not decorate page headers (docs/DESIGN.md, principle 4). Still accepted, so existing callers keep working. */
   art?: ReactNode;
 }) {
+  // The head of a page is a strip of night with lanterns strung across it, whatever the time of day
+  // below it (ART_DIRECTION.md): the page's name in light, what it is for, and what you can do here.
   return (
-    <header className="mb-6 flex flex-wrap items-end justify-between gap-4">
-      <div className="min-w-0">
-        {eyebrow ? <div className="mb-1.5 text-sm font-semibold text-text-3">{eyebrow}</div> : null}
-        <h1 className="font-display text-[2.25rem] leading-[1.02] font-bold text-text sm:text-[2.9rem]">{title}</h1>
-        {description ? <p className="mt-2 max-w-[62ch] text-text-2">{description}</p> : null}
+    <header className="page-hero on-stage relative mb-7 flex flex-wrap items-end justify-between gap-x-6 gap-y-4 overflow-hidden rounded-[var(--radius-xl)] px-5 pt-6 pb-5 sm:px-8 sm:pt-8 sm:pb-7">
+      <HeroLanterns />
+      <div className="relative min-w-0">
+        {eyebrow ? <div className="mb-1.5 text-sm font-semibold text-text-2">{eyebrow}</div> : null}
+        <h1 className="font-display text-[2.4rem] leading-[1] font-extrabold text-text sm:text-[3.25rem]">{title}</h1>
+        {description ? <p className="mt-2.5 max-w-[62ch] text-text-2">{description}</p> : null}
       </div>
-      {actions ? <div className="flex flex-wrap items-center gap-2">{actions}</div> : null}
+      {actions ? <div className="relative flex flex-wrap items-center gap-2">{actions}</div> : null}
     </header>
+  );
+}
+
+/**
+ * A string of lanterns across the head of a page: decoration only, drawn for Ludora. Each hangs on its
+ * own thread at its own height and glows; on a narrow screen there are fewer and they keep to the corner.
+ */
+function HeroLanterns() {
+  // They keep to the top of the strip: what a page lets you do sits along its foot, and nothing hangs over it.
+  const lanterns = [
+    { x: 64, drop: 14, hue: 42, s: 0.8 },
+    { x: 150, drop: 30, hue: 350, s: 0.62 },
+    { x: 232, drop: 8, hue: 160, s: 0.56 },
+    { x: 316, drop: 26, hue: 42, s: 0.74 },
+    { x: 402, drop: 12, hue: 265, s: 0.62 },
+  ];
+  return (
+    <svg className="pointer-events-none absolute top-0 right-0 h-[120px] w-[min(62%,460px)] opacity-80 max-sm:w-[46%] max-sm:opacity-50" viewBox="0 0 460 120" preserveAspectRatio="xMaxYMin slice" aria-hidden focusable="false">
+      <defs>
+        <radialGradient id="hero-halo" cx="0.5" cy="0.5" r="0.5">
+          <stop offset="0" stopColor="#fff" stopOpacity="0.55" />
+          <stop offset="1" stopColor="#fff" stopOpacity="0" />
+        </radialGradient>
+      </defs>
+      <path d="M-10 6 C 110 34 240 4 360 26 S 470 10 470 10" fill="none" stroke="rgb(255 255 255 / 0.28)" strokeWidth="1.4" />
+      {lanterns.map((l) => {
+        const y = 14 + l.drop;
+        const c = `hsl(${l.hue} 96% 62%)`;
+        return (
+          <g key={l.x}>
+            <line x1={l.x} y1={12 + (l.x % 40) * 0.3} x2={l.x} y2={y} stroke="rgb(255 255 255 / 0.3)" strokeWidth="1" />
+            <g transform={`translate(${l.x} ${y}) scale(${l.s})`}>
+              <circle r="34" cy="16" fill="url(#hero-halo)" style={{ color: c }} opacity="0.5" />
+              <circle r="22" cy="16" fill={c} opacity="0.2" />
+              <rect x="-7" y="-2" width="14" height="5" rx="1.5" fill="#1a1433" />
+              <path d="M-11 4 Q-15 16 -11 28 H11 Q15 16 11 4 Z" fill={c} />
+              <path d="M-5 4 Q-7 16 -5 28" stroke="rgb(255 255 255 / 0.45)" strokeWidth="1.6" fill="none" />
+              <path d="M11 4 Q15 16 11 28" stroke="rgb(0 0 0 / 0.18)" strokeWidth="3" fill="none" />
+              <rect x="-6" y="28" width="12" height="4" rx="1.5" fill="#1a1433" />
+              <line y1="32" y2="40" stroke={c} strokeWidth="1.4" />
+            </g>
+          </g>
+        );
+      })}
+    </svg>
   );
 }
 

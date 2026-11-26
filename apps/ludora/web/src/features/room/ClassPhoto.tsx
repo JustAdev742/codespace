@@ -90,7 +90,7 @@ async function drawPhoto(canvas: HTMLCanvasElement, svgs: SVGSVGElement[], names
   ctx.fill();
   await document.fonts?.ready;
   ctx.fillStyle = '#ffffff';
-  ctx.font = "800 64px 'Barlow Condensed', sans-serif";
+  ctx.font = "800 64px 'Bricolage Grotesque Variable', sans-serif";
   ctx.textBaseline = 'top';
   ctx.fillText(title, 64, 48);
   ctx.font = "700 30px 'Atkinson Hyperlegible Next Variable', sans-serif";

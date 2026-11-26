@@ -1,37 +1,43 @@
 @import 'tailwindcss';
-@import '@fontsource/barlow-condensed/600.css';
-@import '@fontsource/barlow-condensed/700.css';
-@import '@fontsource/barlow-condensed/800.css';
-@import '@fontsource/barlow-condensed/800-italic.css';
+@import '@fontsource-variable/bricolage-grotesque/wdth.css';
 @import '@fontsource-variable/atkinson-hyperlegible-next/wght.css';
 /* Schools' own looks, switched on by the server (SCHOOL_THEME). */
 @import './schools.css';
 
 /*
- * Ludora design tokens: "game night, live" (docs/DESIGN.md).
- * Dark is midnight navy, light a cool white; the stage is always midnight.
- * Accents keep their old names (lantern is gold, glim mint, ember coral,
- * dusk violet). Pieces you press are solid colour with a darker bottom edge
- * that collapses when pressed; panels stay flat. No ink outlines.
+ * Ludora design tokens: Lanternlight (docs/ART_DIRECTION.md, D63).
+ * Night is indigo ink with lanterns in it; morning is warm paper. Everything
+ * is an object under one light from above: a lit top edge, a body that falls
+ * away, a shadow below. Accents keep their names (lantern is gold, glim mint,
+ * ember coral, dusk violet). Pieces you press have thickness and sink when
+ * pressed. No ink outlines.
  */
 
 :root,
 :root[data-theme='dark'] {
   color-scheme: dark;
-  --bg: #0d1230;
-  --bg-raised: #151b40;
-  --bg-sunken: #090d24;
-  --surface-2: #1b2350;
-  --surface-3: #242d60;
-  --line: #2c3670;
-  --line-strong: #44518f;
-  --text: #f4f6ff;
-  --text-2: #c5ccee;
-  --text-3: #959dc9;
-  --ink: #060a1c;
+  --bg: #0c0a26;
+  --bg-raised: #171440;
+  --bg-sunken: #080619;
+  --surface-2: #1f1b52;
+  --surface-3: #2a2566;
+  --line: #332d78;
+  --line-strong: #5148a8;
+  --text: #f6f4ff;
+  --text-2: #cbc6f2;
+  --text-3: #9d97d0;
+  --ink: #070518;
   --focus: #ffc233;
-  --link: #8fb0ff;
-  --scrim: rgb(5 8 24 / 0.75);
+  --link: #a9b8ff;
+  --scrim: rgb(6 4 22 / 0.78);
+  /* The light: a hairline along the top of a surface, a body lighter at its top, and three heights of shadow. */
+  --edge-light: rgb(255 255 255 / 0.1);
+  --body-light: rgb(255 255 255 / 0.045);
+  --shadow-1: 0 1px 0 rgb(0 0 0 / 0.25), 0 10px 24px -16px rgb(2 1 16 / 0.9);
+  --shadow-2: 0 2px 0 rgb(0 0 0 / 0.25), 0 20px 44px -22px rgb(2 1 16 / 0.95);
+  --shadow-3: 0 30px 80px -24px rgb(2 1 16 / 0.95), 0 0 0 1px rgb(255 255 255 / 0.06);
+  /* The ground has a breath of aurora in it: teal low on the left, violet low on the right. */
+  --ground: radial-gradient(60% 50% at 0% 100%, rgb(34 207 195 / 0.1) 0%, transparent 70%), radial-gradient(60% 55% at 100% 100%, rgb(140 107 255 / 0.14) 0%, transparent 70%), radial-gradient(80% 45% at 50% -10%, rgb(90 80 255 / 0.16) 0%, transparent 70%);
   --glim-text: #08704f;
   --lantern-text: #845400;
   --ember-text: #b51f37;
@@ -40,20 +46,26 @@
 
 :root[data-theme='light'] {
   color-scheme: light;
-  --bg: #f3f5fb;
-  --bg-raised: #ffffff;
-  --bg-sunken: #e6e9f4;
-  --surface-2: #f7f8fc;
-  --surface-3: #eceff8;
-  --line: #d6dbec;
-  --line-strong: #aeb7d6;
-  --text: #0e1430;
-  --text-2: #3b4470;
-  --text-3: #5a638c;
-  --ink: #0e1430;
-  --focus: #2f55e0;
-  --link: #2f55e0;
-  --scrim: rgb(14 20 48 / 0.55);
+  --bg: #f6f1e6;
+  --bg-raised: #fffdf8;
+  --bg-sunken: #ebe4d3;
+  --surface-2: #fbf7ee;
+  --surface-3: #f0e9d9;
+  --line: #e2d9c4;
+  --line-strong: #b9ad90;
+  --text: #1b1638;
+  --text-2: #453f6b;
+  --text-3: #625c88;
+  --ink: #1b1638;
+  --focus: #3b2fd6;
+  --link: #3b2fd6;
+  --scrim: rgb(27 22 56 / 0.55);
+  --edge-light: rgb(255 255 255 / 0.95);
+  --body-light: rgb(255 255 255 / 0.5);
+  --shadow-1: 0 1px 2px rgb(70 50 10 / 0.07), 0 10px 22px -16px rgb(70 50 10 / 0.3);
+  --shadow-2: 0 2px 3px rgb(70 50 10 / 0.08), 0 20px 40px -22px rgb(70 50 10 / 0.38);
+  --shadow-3: 0 30px 80px -24px rgb(40 28 6 / 0.45), 0 0 0 1px rgb(70 50 10 / 0.06);
+  --ground: radial-gradient(70% 50% at 50% -10%, rgb(255 226 150 / 0.35) 0%, transparent 70%), radial-gradient(50% 45% at 100% 100%, rgb(140 107 255 / 0.07) 0%, transparent 70%);
   --glim-text: #08704f;
   --lantern-text: #845400;
   --ember-text: #b51f37;
@@ -63,20 +75,26 @@
 @media (prefers-color-scheme: light) {
   :root:not([data-theme='dark']) {
     color-scheme: light;
-    --bg: #f3f5fb;
-    --bg-raised: #ffffff;
-    --bg-sunken: #e6e9f4;
-    --surface-2: #f7f8fc;
-    --surface-3: #eceff8;
-    --line: #d6dbec;
-    --line-strong: #aeb7d6;
-    --text: #0e1430;
-    --text-2: #3b4470;
-    --text-3: #5a638c;
-    --ink: #0e1430;
-    --focus: #2f55e0;
-    --link: #2f55e0;
-    --scrim: rgb(14 20 48 / 0.55);
+    --bg: #f6f1e6;
+    --bg-raised: #fffdf8;
+    --bg-sunken: #ebe4d3;
+    --surface-2: #fbf7ee;
+    --surface-3: #f0e9d9;
+    --line: #e2d9c4;
+    --line-strong: #b9ad90;
+    --text: #1b1638;
+    --text-2: #453f6b;
+    --text-3: #625c88;
+    --ink: #1b1638;
+    --focus: #3b2fd6;
+    --link: #3b2fd6;
+    --scrim: rgb(27 22 56 / 0.55);
+    --edge-light: rgb(255 255 255 / 0.95);
+    --body-light: rgb(255 255 255 / 0.5);
+    --shadow-1: 0 1px 2px rgb(70 50 10 / 0.07), 0 10px 22px -16px rgb(70 50 10 / 0.3);
+    --shadow-2: 0 2px 3px rgb(70 50 10 / 0.08), 0 20px 40px -22px rgb(70 50 10 / 0.38);
+    --shadow-3: 0 30px 80px -24px rgb(40 28 6 / 0.45), 0 0 0 1px rgb(70 50 10 / 0.06);
+    --ground: radial-gradient(70% 50% at 50% -10%, rgb(255 226 150 / 0.35) 0%, transparent 70%), radial-gradient(50% 45% at 100% 100%, rgb(140 107 255 / 0.07) 0%, transparent 70%);
     --glim-text: #08704f;
     --lantern-text: #845400;
     --ember-text: #b51f37;
@@ -114,16 +132,21 @@
 .on-stage {
   color-scheme: dark;
   --text: #ffffff;
-  --text-2: #d5dcfa;
-  --text-3: #a9b3e0;
+  --text-2: #dcd8fb;
+  --text-3: #b1abe3;
   --bg-raised: rgb(255 255 255 / 0.07);
-  --bg-sunken: rgb(3 6 20 / 0.4);
+  --bg-sunken: rgb(4 3 20 / 0.42);
   --surface-2: rgb(255 255 255 / 0.09);
   --surface-3: rgb(255 255 255 / 0.14);
   --line: rgb(255 255 255 / 0.14);
   --line-strong: rgb(255 255 255 / 0.3);
   --link: var(--lantern);
   --focus: #ffc233;
+  --edge-light: rgb(255 255 255 / 0.12);
+  --body-light: rgb(255 255 255 / 0.05);
+  --shadow-1: 0 1px 0 rgb(0 0 0 / 0.25), 0 10px 24px -16px rgb(2 1 16 / 0.9);
+  --shadow-2: 0 2px 0 rgb(0 0 0 / 0.25), 0 20px 44px -22px rgb(2 1 16 / 0.95);
+  --shadow-3: 0 30px 80px -24px rgb(2 1 16 / 0.95), 0 0 0 1px rgb(255 255 255 / 0.06);
   color: var(--text);
 }
 :root .stage .text-glim,
@@ -139,19 +162,23 @@
 
 .paper {
   color-scheme: light;
-  --text: #0e1430;
-  --text-2: #3b4470;
-  --text-3: #5a638c;
-  --bg-raised: #ffffff;
-  --bg-sunken: #eef1f8;
-  --surface-2: #f7f8fc;
-  --surface-3: #eceff8;
-  --line: #d6dbec;
-  --line-strong: #aeb7d6;
-  --link: #2f55e0;
-  --focus: #2f55e0;
+  --text: #1b1638;
+  --text-2: #453f6b;
+  --text-3: #625c88;
+  --bg-raised: #fffdf8;
+  --bg-sunken: #efe8d8;
+  --surface-2: #fbf7ee;
+  --surface-3: #f0e9d9;
+  --line: #e2d9c4;
+  --line-strong: #b9ad90;
+  --link: #3b2fd6;
+  --focus: #3b2fd6;
+  --edge-light: rgb(255 255 255 / 0.95);
+  --body-light: rgb(255 255 255 / 0.5);
+  --shadow-1: 0 1px 2px rgb(70 50 10 / 0.07), 0 10px 22px -16px rgb(70 50 10 / 0.3);
+  --shadow-2: 0 2px 3px rgb(70 50 10 / 0.08), 0 20px 40px -22px rgb(70 50 10 / 0.38);
   color: var(--text);
-  background: #ffffff;
+  background: linear-gradient(180deg, #fffefb 0%, #fbf6ea 100%);
 }
 :root .paper .text-glim { color: var(--glim-text, #08704f); }
 :root .paper .text-lantern { color: var(--lantern-text, #845400); }
@@ -170,11 +197,16 @@
   --floodlight: #3a6bff;
   --on-accent: #0b1020;
   /* The typefaces, by role. A school's look swaps them (schools.css). */
-  --face-display: 'Barlow Condensed', 'Atkinson Hyperlegible Next Variable', ui-sans-serif, system-ui, sans-serif;
+  --face-display: 'Bricolage Grotesque Variable', 'Atkinson Hyperlegible Next Variable', ui-sans-serif, system-ui, sans-serif;
+  /* How narrow the display face is set (it has a width axis): a little narrow, so a long title still fits its line. */
+  --display-width: 80%;
   --face-sans: 'Atkinson Hyperlegible Next Variable', ui-sans-serif, system-ui, sans-serif;
   /* The label plate for counters and the HUD bar over the stage. */
-  --plate-blue: #2f5ae8;
-  --hud: rgb(4 8 26 / 0.55);
+  --plate-blue: #4636e8;
+  --hud: rgb(8 6 30 / 0.62);
+  /* The light across the top of a key or a tile, and the halo of the action that matters. */
+  --gloss: linear-gradient(180deg, rgb(255 255 255 / 0.28) 0%, rgb(255 255 255 / 0.08) 46%, rgb(255 255 255 / 0) 47%, rgb(0 0 0 / 0.06) 100%);
+  --glow-lantern: 0 10px 28px -8px rgb(255 194 51 / 0.65);
 
   /* Answer tiles: ink text passes 4.5:1 on each; letters and shapes tell them apart too. */
   --tile-a: #ff8a2a;
@@ -198,20 +230,21 @@
    * sidebar sit on it, in both themes. White text passes AA everywhere on it
    * (7:1 in the brightest part of the floodlight).
    */
-  --stage-1: #121c55;
-  --stage-2: #0b1236;
-  --stage-3: #0a0f2c;
-  --stage-4: #070a20;
+  --stage-1: #1d1668;
+  --stage-2: #120e42;
+  --stage-3: #0d0a2e;
+  --stage-4: #080620;
   --stage-sky:
-    radial-gradient(70% 55% at 50% -12%, rgb(84 128 255 / 0.5) 0%, rgb(58 107 255 / 0.14) 45%, transparent 72%),
-    radial-gradient(45% 50% at 0% 100%, rgb(34 207 195 / 0.16) 0%, transparent 70%),
-    radial-gradient(45% 50% at 100% 100%, rgb(160 124 255 / 0.16) 0%, transparent 70%),
+    radial-gradient(75% 55% at 50% -14%, rgb(120 104 255 / 0.55) 0%, rgb(96 80 255 / 0.16) 45%, transparent 72%),
+    radial-gradient(50% 55% at 0% 100%, rgb(34 207 195 / 0.2) 0%, transparent 70%),
+    radial-gradient(50% 55% at 100% 100%, rgb(255 92 168 / 0.16) 0%, transparent 70%),
     linear-gradient(180deg, var(--stage-1) 0%, var(--stage-2) 55%, var(--stage-4) 100%);
 
-  --radius-s: 6px;
-  --radius-m: 10px;
-  --radius-l: 14px;
-  --press: 4px;
+  --radius-s: 8px;
+  --radius-m: 12px;
+  --radius-l: 18px;
+  --radius-xl: 26px;
+  --press: 5px;
   --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
   --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
 }
@@ -268,7 +301,9 @@
   body {
     margin: 0;
     min-height: 100dvh;
-    background: var(--bg);
+    /* The ground: the time of day's own colour with a breath of light in it, held still behind the page. */
+    background: var(--ground, none), var(--bg);
+    background-attachment: fixed;
     line-height: 1.5;
     font-feature-settings: 'tnum' 0;
   }
@@ -277,8 +312,8 @@
   h3 {
     font-family: var(--font-display);
     font-weight: 700;
-    line-height: 1.05;
-    letter-spacing: 0;
+    line-height: 1.04;
+    letter-spacing: -0.012em;
     text-wrap: balance;
   }
   p {
@@ -313,105 +348,149 @@
   }
 }
 
+/*
+ * The display face is set a little narrow and never slanted: the lean belonged to the old look, and
+ * this face has no italic to lean with. Outside any layer, so it holds wherever a heading still asks
+ * for italic. A school's own look sets its own faces and keeps its own habits (schools.css).
+ */
+:root:not([data-school]) :is(h1, h2, h3, .font-display) {
+  font-stretch: var(--display-width);
+  font-style: normal;
+  letter-spacing: -0.012em;
+}
+
 @layer components {
   /*
-   * Things you press in a game: solid colour with a darker band inside the bottom
-   * edge (an inset shadow, so it works on any fill) and a slight lift. Pressing
-   * moves it down and thins the band, like a controller button. No outline.
+   * Keys: anything pressed. A solid colour with thickness: light across its top half, a darker
+   * band along its foot (an inset shadow, so it works on any fill), a shadow under it. Pressed, it
+   * sinks and the band thins, like a real key. No outline.
    */
   .sticker {
     border: 0;
+    background-image: var(--gloss);
     box-shadow:
-      inset 0 calc(-1 * var(--press)) 0 rgb(0 0 0 / 0.24),
-      0 2px 0 rgb(0 0 0 / 0.18);
+      inset 0 1px 0 rgb(255 255 255 / 0.4),
+      inset 0 calc(-1 * var(--press)) 0 rgb(0 0 0 / 0.22),
+      0 2px 0 rgb(0 0 0 / 0.2),
+      0 12px 22px -12px rgb(0 0 0 / 0.5);
     transition:
-      transform 120ms var(--ease-out),
-      box-shadow 120ms var(--ease-out),
-      filter 120ms;
+      transform 130ms var(--ease-out),
+      box-shadow 130ms var(--ease-out),
+      filter 130ms;
   }
   .sticker:not(:disabled):hover {
-    filter: brightness(1.06);
+    filter: brightness(1.07) saturate(1.05);
   }
   .sticker:not(:disabled):active,
   .sticker[data-pressed='true'] {
     transform: translateY(2px);
     box-shadow:
-      inset 0 calc(-1 * (var(--press) - 2px)) 0 rgb(0 0 0 / 0.24),
-      0 0 0 rgb(0 0 0 / 0.18);
+      inset 0 1px 0 rgb(255 255 255 / 0.3),
+      inset 0 calc(-1 * (var(--press) - 3px)) 0 rgb(0 0 0 / 0.22),
+      0 0 0 rgb(0 0 0 / 0.2),
+      0 4px 10px -8px rgb(0 0 0 / 0.5);
   }
+  /* The halo of the one action a screen is about. */
+  .glow {
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 0.45),
+      inset 0 calc(-1 * var(--press)) 0 rgb(0 0 0 / 0.2),
+      0 2px 0 rgb(0 0 0 / 0.2),
+      var(--glow-lantern);
+  }
+  /* Lacquer by night, paper by morning: a surface resting on the ground, lit along its top. */
   .panel {
-    background: var(--bg-raised);
+    background-color: var(--bg-raised);
+    background-image: linear-gradient(180deg, var(--body-light) 0%, transparent 34%);
     border: 1px solid var(--line);
     border-radius: var(--radius-l);
+    box-shadow:
+      inset 0 1px 0 var(--edge-light),
+      var(--shadow-1);
   }
-  /* A quiet press for secondary controls: a fine line and a thin bottom edge. */
+  /* A quiet key for secondary controls: the surface's own colour, a fine edge, a thin foot. */
   .press-soft {
     border: 1px solid var(--line-strong);
-    box-shadow: inset 0 -3px 0 color-mix(in oklab, var(--line-strong) 55%, transparent);
+    background-image: linear-gradient(180deg, var(--body-light) 0%, transparent 60%);
+    box-shadow:
+      inset 0 1px 0 var(--edge-light),
+      inset 0 -3px 0 color-mix(in oklab, var(--line-strong) 50%, transparent),
+      0 6px 12px -10px rgb(0 0 0 / 0.5);
     transition:
-      transform 120ms var(--ease-out),
-      box-shadow 120ms var(--ease-out),
-      background-color 120ms;
+      transform 130ms var(--ease-out),
+      box-shadow 130ms var(--ease-out),
+      background-color 130ms;
   }
   .press-soft:not(:disabled):active {
     transform: translateY(1px);
-    box-shadow: inset 0 -1px 0 color-mix(in oklab, var(--line-strong) 55%, transparent);
+    box-shadow:
+      inset 0 1px 0 var(--edge-light),
+      inset 0 -1px 0 color-mix(in oklab, var(--line-strong) 50%, transparent);
   }
-  /* The stage: midnight navy under a floodlight, with arena glows low in the corners. */
+  /* The stage: an indigo night with light in it, high in the middle and low in the corners. */
   .stage {
     background-color: var(--stage-3);
     background-image: var(--stage-sky);
     background-size: 100% 100%;
   }
-  /* A plain fall of the same navy, for narrow chrome such as the sidebar. */
+  /* A plain fall of the same night, for narrow chrome such as the sidebar, with a glow at its foot. */
   .stage-plain {
     background-color: var(--stage-3);
-    background-image: linear-gradient(180deg, var(--stage-1) 0%, var(--stage-3) 100%);
+    background-image: radial-gradient(120% 40% at 50% 104%, rgb(140 107 255 / 0.22) 0%, transparent 70%), linear-gradient(180deg, var(--stage-1) 0%, var(--stage-3) 62%, var(--stage-4) 100%);
   }
-  /* A card on the stage: it floats on a soft dark shadow; no outline. */
+  /* A card on the stage: it floats, lit along its top; no outline. */
   .stage-card {
     border: 0;
     border-radius: var(--radius-l);
-    box-shadow: 0 14px 36px -12px rgb(2 5 20 / 0.7);
+    box-shadow:
+      inset 0 1px 0 var(--edge-light),
+      0 2px 0 rgb(0 0 0 / 0.25),
+      0 24px 50px -22px rgb(2 1 16 / 0.95);
   }
   /* The same float for any surface. */
   .lift {
-    box-shadow: 0 14px 36px -12px rgb(2 5 20 / 0.55);
+    box-shadow: var(--shadow-2);
   }
   /*
-   * The signature: a slanted plate, leaning back like a broadcast caption, for
-   * short labels at big moments. Its children stay upright.
+   * The signature: the lantern tag. An upright rounded label, lit along its top, for the few
+   * words at a big moment. (It was a slanted plate; the name stays so every label follows.)
    */
   .plate {
     display: inline-flex;
     align-items: center;
     gap: 0.4em;
-    padding: 0.2em 0.75em;
-    border-radius: var(--radius-s);
-    transform: skewX(-10deg);
+    padding: 0.22em 0.8em 0.26em;
+    border-radius: 0.55em;
     font-family: var(--font-display);
     font-weight: 800;
     line-height: 1.1;
-    background: var(--stage-1);
+    background-color: var(--stage-1);
+    background-image: var(--gloss);
     color: #ffffff;
-  }
-  .plate > * {
-    transform: skewX(10deg);
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 0.35),
+      inset 0 -3px 0 rgb(0 0 0 / 0.2),
+      0 8px 18px -10px rgb(0 0 0 / 0.7);
   }
   .plate-gold {
-    background: var(--lantern);
+    background-color: var(--lantern);
     color: var(--on-accent);
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 0.55),
+      inset 0 -3px 0 rgb(0 0 0 / 0.16),
+      var(--glow-lantern);
   }
-  /* A shade darker than the floodlight, so white text passes AA at any size (5.6:1). */
+  /* Deep enough that white text passes AA at any size. */
   .plate-blue {
-    background: var(--plate-blue);
+    background-color: var(--plate-blue);
     color: #ffffff;
   }
-  /* A HUD bar over the stage: smoked glass, a fine edge. */
+  /* Glass: a bar over the stage. Smoked indigo, blurred behind, a fine light edge. */
   .hud {
     background: var(--hud);
-    border: 1px solid rgb(255 255 255 / 0.08);
-    backdrop-filter: blur(8px);
+    border: 1px solid rgb(255 255 255 / 0.1);
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.08);
+    backdrop-filter: blur(14px) saturate(1.3);
   }
   .skeleton {
     /* Surface to line and back: visible on white cards and on the page in both themes. */
@@ -824,11 +903,11 @@
 }
 @keyframes pack-plate-stamp {
   from {
-    transform: skewX(-10deg) scale(1.5);
+    transform: scale(1.5);
     opacity: 0;
   }
   to {
-    transform: skewX(-10deg) scale(1);
+    transform: scale(1);
     opacity: 1;
   }
 }
@@ -849,24 +928,56 @@
  * utility on the element still wins.
  */
 @layer components {
-  /* Text fields (ui/primitives.tsx): a dark well on dark surfaces, plain white on light ones. */
+  /* Text fields (ui/primitives.tsx): a well pressed into the surface, shaded along its top; dark on night surfaces, white paper by morning. */
   .input-well {
     background-color: var(--bg-sunken);
+    box-shadow: inset 0 2px 3px rgb(0 0 0 / 0.28);
   }
   :root[data-theme='light'] .input-well {
     background-color: #ffffff;
+    box-shadow: inset 0 2px 3px rgb(70 50 10 / 0.09);
   }
   @media (prefers-color-scheme: light) {
     :root:not([data-theme='dark']) .input-well {
       background-color: #ffffff;
+      box-shadow: inset 0 2px 3px rgb(70 50 10 / 0.09);
     }
   }
   :root .stage .input-well,
   :root .on-stage .input-well {
     background-color: var(--bg-sunken);
+    box-shadow: inset 0 2px 3px rgb(0 0 0 / 0.28);
   }
   :root .paper .input-well {
     background-color: #ffffff;
+    box-shadow: inset 0 2px 3px rgb(70 50 10 / 0.09);
+  }
+
+  /* The rail: the app's own navigation, a slab of night standing clear of the window's edge. */
+  .shell-rail {
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 0.12),
+      inset 0 0 0 1px rgb(255 255 255 / 0.06),
+      var(--shadow-3);
+  }
+  /* The dock: the same on a phone, floating above the foot of the screen. */
+  .shell-dock {
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 0.14),
+      inset 0 0 0 1px rgb(255 255 255 / 0.07),
+      0 18px 40px -14px rgb(2 1 16 / 0.9);
+  }
+  /* The head of a page: a strip of night with light in it, whatever the time of day below. */
+  .page-hero {
+    background-color: var(--stage-2);
+    background-image:
+      radial-gradient(60% 120% at 100% 0%, rgb(140 107 255 / 0.5) 0%, transparent 62%),
+      radial-gradient(50% 120% at 0% 100%, rgb(34 207 195 / 0.24) 0%, transparent 65%),
+      linear-gradient(135deg, var(--stage-1) 0%, var(--stage-3) 100%);
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 0.14),
+      inset 0 0 0 1px rgb(255 255 255 / 0.06),
+      var(--shadow-2);
   }
 
   /*

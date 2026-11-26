@@ -14,7 +14,7 @@ const VARIANTS: Record<ButtonVariant, string> = {
 };
 
 /*
- * Radii follow the 6 / 10 / 14 scale. The two small sizes draw at 32 and 40px but
+ * Radii follow the 8 / 12 / 18 scale. The two small sizes draw at 32 and 40px but
  * take presses across 44px: an invisible strip above and below (::after) makes up
  * the difference without moving anything around them.
  */
@@ -33,7 +33,9 @@ const SIZES: Record<ButtonSize, string> = {
 
 /* A disabled solid button loses its colour (`.sticker:disabled` in app.css) so it never reads as pressable; quiet buttons fade instead. */
 export function buttonClass(variant: ButtonVariant = 'secondary', size: ButtonSize = 'md', extra = '') {
-  return `inline-flex shrink-0 select-none items-center justify-center font-semibold whitespace-nowrap transition-colors disabled:cursor-not-allowed disabled:opacity-55 ${VARIANTS[variant]} ${SIZES[size]} ${extra}`;
+  // The big gold key is the one action a screen is about: it has the halo (ART_DIRECTION.md).
+  const halo = variant === 'primary' && (size === 'xl' || size === '2xl') ? 'glow' : '';
+  return `inline-flex shrink-0 select-none items-center justify-center font-semibold whitespace-nowrap transition-colors disabled:cursor-not-allowed disabled:opacity-55 ${VARIANTS[variant]} ${halo} ${SIZES[size]} ${extra}`;
 }
 
 export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {

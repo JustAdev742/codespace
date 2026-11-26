@@ -129,7 +129,7 @@ export function GoalMouth({ shot, guard, aim, ready, onFire, reads, big = false 
         {/* The boards. */}
         <rect x="0" y="106" width={W} height="12" fill="#0d1440" />
         {[0, 1, 2, 3].map((i) => (
-          <text key={i} x={24 + i * 100} y="115.5" fontSize="8.5" fontWeight="800" fontStyle="italic" fill={i % 2 ? '#ffc233' : '#7fb2ff'} fontFamily="'Barlow Condensed', system-ui, sans-serif">
+          <text key={i} x={24 + i * 100} y="115.5" fontSize="8.5" fontWeight="800" fill={i % 2 ? '#ffc233' : '#7fb2ff'} fontFamily="'Bricolage Grotesque Variable', system-ui, sans-serif">
             {i % 2 ? 'LUDORA' : 'SPOT KICK'}
           </text>
         ))}

@@ -204,7 +204,7 @@ const boardTexture = () => {
   const t = canvasTexture('boards', 1024, 64, (g) => {
     g.fillStyle = '#0d1440';
     g.fillRect(0, 0, 1024, 64);
-    g.font = '800 italic 40px "Barlow Condensed", system-ui, sans-serif';
+    g.font = '800 40px "Bricolage Grotesque Variable", system-ui, sans-serif';
     g.textBaseline = 'middle';
     const words = ['SPOT KICK', 'LUDORA', 'GOAL!', 'LUDORA'];
     words.forEach((w, i) => {

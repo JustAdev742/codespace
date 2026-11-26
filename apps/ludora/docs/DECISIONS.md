@@ -895,3 +895,30 @@ accessibility, and no graphics choice overrides it.
 *Not made bigger.* Opening a Lantern and the Night Market's lantern keep the plain burst on every
 device: what they hold is chance, and a chance-based reward for children is not given a bigger
 moment (D61).
+
+**D63. Lanternlight: one new art direction for the whole of Ludora (26 November 2026).** The owner
+looked at the game after D61 and D62 and said it still looked like the same flat web app, and asked
+for the whole product to be remade so that one still picture of any screen reads as a different and
+far more expensive product. So "game night, live" (D46) is replaced: the navy panels, the cool
+white pages, the slanted plates and the condensed italic headings go. What replaces them is in
+[ART_DIRECTION.md](ART_DIRECTION.md): Ludora is a place lit by lanterns, indigo at night and warm
+paper by morning, and everything on a screen is an object under one light, with a lit top edge, a
+body that falls away and a shadow under it. The display face is Bricolage Grotesque; the body face
+stays Atkinson Hyperlegible Next, on purpose. The slanted plate becomes the lantern tag.
+
+It is done in the tokens and the shared pieces (`styles/app.css`, `ui/`, the shell), so it reaches
+every screen: the app's navigation is a rail of night standing clear of the window's edge, the
+bar above a page belongs to the page, and every page opens with a strip of night with lanterns
+strung across it. A school's own look (D60) keeps its colours, its faces and its bar, and takes
+the light, the materials and the shapes.
+
+This also sets aside two rules of DESIGN.md, because the owner asked for it in so many words:
+characters and decoration may be part of a page's head again, and (with the board's world) the
+stage may be a place that moves. What does not change: nothing that says whether an answer was
+right appears before the reveal (D61); less motion means none; a device that cannot draw the rich
+form keeps a plain one that works (D62); nothing on a screen is another product's.
+
+Third-party material is listed in `CREDITS.md` and on the app's Credits page (`/credits`): three
+typefaces under the Open Font License and the libraries the app is built with. Nothing else is
+anyone else's.
+
