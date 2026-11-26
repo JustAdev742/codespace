@@ -703,6 +703,47 @@
 }
 
 /*
+ * A stall at the night market (the shop): where a Lantern is shown. Its own colour of night, a string
+ * of small lights across the top, the Lantern's glow, and the pool of light it stands in. Nothing moves.
+ */
+.stall {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  background:
+    radial-gradient(62% 16% at 50% 90%, hsl(var(--stall-hue, 260) 95% 74% / 0.42), transparent 72%),
+    radial-gradient(78% 60% at 50% 44%, hsl(var(--stall-hue, 260) 90% 60% / 0.5), transparent 70%),
+    linear-gradient(180deg, hsl(var(--stall-hue, 260) 48% 17%) 0%, hsl(var(--stall-hue, 260) 54% 8%) 100%);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.16);
+}
+/* The string of lights: a bulb every 34px, each with its own small halo. */
+.stall::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto;
+  height: 30px;
+  z-index: -1;
+  background:
+    radial-gradient(circle at 50% 62%, #fff1c4 0 2.2px, rgb(255 214 130 / 0.5) 2.6px 5px, rgb(255 214 130 / 0) 9px) 0 0 / 34px 30px repeat-x,
+    linear-gradient(180deg, transparent 17px, rgb(255 255 255 / 0.16) 17px 18px, transparent 18px);
+}
+/* Stars in the dark above the glow. */
+.stall::after {
+  content: '';
+  position: absolute;
+  inset: 30px 0 45%;
+  z-index: -1;
+  opacity: 0.55;
+  background:
+    radial-gradient(circle, #fff 0 1px, transparent 1.4px) 12px 8px / 97px 61px,
+    radial-gradient(circle, #fff 0 0.8px, transparent 1.2px) 53px 31px / 71px 83px;
+}
+.stall-small::before,
+.stall-small::after {
+  display: none;
+}
+
+/*
  * Glims are alive (ART_DIRECTION.md): where the stage's effects are up they breathe where they stand,
  * each in its own time. Still with less motion, and on the plain game.
  */

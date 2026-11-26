@@ -46,6 +46,9 @@ item with how each was checked, in [features/README.md](features/README.md). The
   - *Glims are alive* where effects are up: they breathe where they stand, a player's own Glim
     jumps on their result when they are right, and on the board's world the class cheers together
     when at least half of it was right.
+  - *Paper and stalls.* A lesson's slide is a sheet of warm paper laid on the stage, in ink, which
+    reads furthest across a lit classroom; the shop shows each Lantern in a stall strung with
+    small lights.
   - Credits: `CREDITS.md` and `/credits`.
 
   Checked: typecheck, lint, every unit and server test, the whole browser suite once in Chromium

@@ -188,14 +188,15 @@ export function LessonScreen({ room, handle, isHost }: { room: RoomView; handle:
       </div>
 
       {screen.kind === 'slide' ? (
-        <article className={`stage-card flex flex-col gap-[clamp(1rem,2.5vh,2rem)] bg-white/[0.06] ${big ? 'p-[clamp(1.5rem,3vw,3.5rem)]' : 'p-5'} ${screen.image ? 'lg:grid lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)] lg:items-center' : ''}`}>
+        // A slide is a sheet of paper laid on the stage (ART_DIRECTION.md): ink on warm ivory reads furthest across a lit classroom.
+        <article className={`paper stage-card flex flex-col gap-[clamp(1rem,2.5vh,2rem)] rounded-[var(--radius-xl)] border-t-[6px] border-t-lantern ${big ? 'p-[clamp(1.5rem,3vw,3.5rem)]' : 'p-5'} ${screen.image ? 'lg:grid lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)] lg:items-center' : ''}`}>
           <div className="flex min-w-0 flex-col gap-[clamp(0.75rem,2vh,1.5rem)]">
             <h1 className={`font-display leading-[0.98] font-extrabold break-words ${big ? 'text-[clamp(2.75rem,5.2vw,6rem)]' : 'text-[2.4rem]'}`}>{screen.title}</h1>
             {screen.lines.length ? (
               <ul className={`flex flex-col gap-[0.6em] font-semibold ${big ? 'text-[clamp(1.3rem,2.2vw,2.6rem)]' : 'text-lg'}`}>
                 {screen.lines.map((l, i) => (
                   <li key={i} className="flex gap-3 break-words">
-                    <span className="mt-[0.45em] size-[0.45em] shrink-0 rounded-full bg-lantern" aria-hidden />
+                    <span className="mt-[0.45em] size-[0.45em] shrink-0 rounded-full bg-[var(--link)]" aria-hidden />
                     <span className="min-w-0">{l}</span>
                   </li>
                 ))}

@@ -65,9 +65,8 @@ const CURRENCY_NAME: Record<string, string> = { sparks: 'Sparks', moonstones: 'M
 const currencyName = (c: string) => CURRENCY_NAME[c] ?? c.replace(/_/g, ' ');
 
 /** A dark display case in the Lantern's own colour, for Lantern art. */
-const caseStyle = (hue: number): CSSProperties => ({
-  background: `radial-gradient(90% 70% at 50% 38%, hsl(${hue} 85% 55% / 0.42) 0%, transparent 70%), linear-gradient(180deg, hsl(${hue} 45% 20%) 0%, hsl(${hue} 50% 11%) 100%)`,
-});
+/** A Lantern's stall at the night market: its own colour of night, a string of small lights, and the pool of light it stands in (app.css, `.stall`). */
+const caseStyle = (hue: number): CSSProperties => ({ '--stall-hue': hue }) as CSSProperties;
 
 /* --------------------------------- Odds dialog --------------------------------- */
 
@@ -228,7 +227,7 @@ function LanternCard({ l, onBuy, onOdds, featured = false, ...wish }: { l: Listi
   return (
     <article className={`panel relative flex overflow-hidden rounded-[var(--radius-l)] ${featured ? 'flex-col sm:flex-row' : 'flex-col'}`}>
       <WishButton l={l} {...wish} />
-      <div className={`relative grid shrink-0 place-items-center ${featured ? 'h-56 sm:h-auto sm:w-[46%]' : 'h-48'}`} style={caseStyle(pack.art.hue)}>
+      <div className={`stall relative grid shrink-0 place-items-center ${featured ? 'h-56 sm:h-auto sm:w-[46%]' : 'h-48'}`} style={caseStyle(pack.art.hue)}>
         {featured ? (
           <span className="plate plate-gold absolute top-3 left-3 text-sm uppercase">
             <span>Featured</span>
@@ -729,7 +728,7 @@ function ConfirmBody({ listing, balance, canAfford, shortBy, onOdds }: { listing
   return (
     <div className="flex flex-col gap-4 text-sm">
       {listing.pack ? (
-        <div className="flex items-center gap-4 rounded-[var(--radius-m)] p-3" style={caseStyle(listing.pack.art.hue)}>
+        <div className="stall stall-small flex items-center gap-4 rounded-[var(--radius-m)] p-3" style={caseStyle(listing.pack.art.hue)}>
           <Lantern art={listing.pack.art} size={64} lit className="shrink-0" />
           <p className="text-[15px] text-white">{listing.pack.description}</p>
         </div>
