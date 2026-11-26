@@ -11,6 +11,7 @@ import { LogoMark } from '../../../art/icons.tsx';
 import { STAGE, HUD_BAR } from '../GameStage.tsx';
 import { StagePanel } from '../game/stage.tsx';
 import { PlayersList, StillAnsweringList } from './panels.tsx';
+import { ClassInsight } from './Insight.tsx';
 import { serverClock } from './tools.ts';
 import { useNow } from '../../../lib/useNow.ts';
 
@@ -150,6 +151,9 @@ export function RemoteControls({ room, handle }: { room: RoomView; handle: RoomH
             </ul>
           </StagePanel>
         ) : null}
+
+        {/* How the class is finding it, while there is still time to act on it. Only here: never on the big screen. */}
+        {live && room.host?.insight ? <ClassInsight insight={room.host.insight} /> : null}
 
         {live ? (
           <StagePanel as="section" className="p-4" label="Still answering">

@@ -4,7 +4,7 @@ Live status of the build. Updated with each milestone commit. Everything marked
 **verified** was checked by an automated test or by driving the real app in a
 browser; anything else says what it is.
 
-Last updated: 2026-11-25. What the November 2026 improvement programme added is counted, item by
+Last updated: 2026-11-26. What the November 2026 improvement programme added is counted, item by
 item with how each was checked, in [features/README.md](features/README.md). The sections under
 "What works today" describe the app before that programme; the summary just below is current.
 
@@ -25,6 +25,35 @@ item with how each was checked, in [features/README.md](features/README.md). The
 | M7-8 Polish, CI, deployment | In progress | Production build, Docker image, compose file, CI workflow, docs and end-to-end tests (run in CI) are in. The whole app is restyled for players aged 8 to 17 (D46), and automated accessibility checks pass on every page, game screen and staff section. A design review of the whole app was done and its findings fixed. A playable demo builds for GitHub Pages. 2026-10-29: account download and deletion, a privacy policy and terms, data retention, a measured load test, a deployment kit tested in Docker, a machine screen-reader audit, and WebKit and Firefox runs in CI. Remaining: a person's screen-reader pass, legal review of the policy, and a real deployment, which needs the operator's server and domain. |
 
 ## Added in November 2026 (verified; details in [features/](features/README.md))
+
+- **Lanternlight: a new art direction for the whole app** (26 November, D63). The owner asked for
+  every screen to read, in one still picture, as a different and far more expensive product.
+  [ART_DIRECTION.md](ART_DIRECTION.md) says what it is; it is done in the tokens and the shared
+  pieces so it reaches every page.
+  - *Night and morning.* Indigo night with lanterns in it, warm paper by day, one light from
+    above. A new display face (Bricolage Grotesque) with Atkinson Hyperlegible kept for reading.
+    Keys with thickness, lacquer and paper panels, enamel answer tiles, the lantern tag.
+  - *The shell.* The navigation is a rail of night clear of the window's edge (a floating dock on
+    a phone); every page opens with a strip of night strung with lanterns.
+  - *A night scene* drawn for Ludora stands behind the landing page, signing in, joining, the
+    home page's menu and a game on a phone.
+  - *The board is a place.* On a board with a graphics chip the big screen is a 3D stage at night
+    with the class's own Glims on it, a camera that follows the game, a world for each kind of
+    mode and a lit podium built on the stage at the end. Everywhere else the board keeps its
+    backdrop.
+  - Credits: `CREDITS.md` and `/credits`.
+
+  Checked: typecheck, lint, the web unit tests, and the layout, pages, accessibility, stage,
+  game, hosting and effects browser tests in Chromium; before and after pictures of 37 screens.
+  **Not checked:** the full browser suite since these changes, Safari and Firefox, a real
+  graphics chip (the world was drawn by the processor in headless Chromium), and the look on a
+  real phone or projector. Pages deep in the app (staff tools, reports' inner pages, Game Maker)
+  take the new tokens and shell but were not looked at one by one.
+
+- **Insight while the game is still being played** (26 November). On the teacher's phone remote:
+  the wrong answer most of the class gave (worth a word now), the questions found hardest, and who
+  might like a hand. Never the question still open, never the big screen, nothing new collected.
+  Details and tests: [features/teaching.md](features/teaching.md).
 
 - **Effects that scale with the device** (25 November, D62). The performance limit was relaxed:
   the game may aim at devices from the last four years, as long as an older one still works and

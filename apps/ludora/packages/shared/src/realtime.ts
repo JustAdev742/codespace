@@ -400,6 +400,32 @@ export interface RoomView<G = unknown> {
   lesson?: LessonRoomView | null;
 }
 
+/** A question as the class has found it so far, for the teacher's eyes (HostExtras.insight). */
+export interface InsightQuestion {
+  questionId: string;
+  prompt: string;
+  players: number;
+  right: number;
+  /** The wrong answer most of them gave, in words, when one was shared. */
+  commonWrong: { text: string; count: number } | null;
+}
+
+/**
+ * Insight while the game is still being played: what the report will say afterwards, in time to act
+ * on it. Never about the question still open, and sent only to the teacher's own remote.
+ */
+export interface LiveInsightView {
+  /** The class so far: first tries, and how many were right. */
+  answered: number;
+  right: number;
+  /** The questions found hardest so far, hardest first. */
+  hardest: InsightQuestion[];
+  /** Worth a word now: the latest question where a wrong answer was shared. */
+  talkAbout: InsightQuestion | null;
+  /** Who might need someone to come over: three wrong in a row ('run'), or under half right ('low'). */
+  checkIn: { playerId: string; name: string; answered: number; correct: number; wrongRun: number; reason: 'run' | 'low' }[];
+}
+
 export interface HostExtras {
   /** Who the open question is waiting for. Null when this mode or moment has no single question to wait on. */
   waiting: { id: string; name: string; nudged: boolean }[] | null;
@@ -413,6 +439,8 @@ export interface HostExtras {
   extraTime?: Record<string, number>;
   /** What extra time does in this game: 'rounds' (timed questions stay open longer), 'own' (the player's own clock runs longer), 'none' (one shared clock: it does not apply). */
   extraTimeKind?: { kind: 'rounds' | 'own' | 'none'; what: string };
+  /** How the class is finding the game so far. The teacher's remote only: the big screen is never sent it. */
+  insight?: LiveInsightView | null;
 }
 
 export type EmoteGlyph = (typeof EMOTE_GLYPHS)[number];

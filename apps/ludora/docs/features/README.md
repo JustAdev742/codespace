@@ -107,3 +107,10 @@ device at the end of every game). Those are described in the commit that merged 
 Nothing here has been tried on a real Chromebook, iPad or phone in a classroom, and no person has
 used it with a screen reader: the checks are automated (unit tests, browser tests in Chromium,
 Firefox and WebKit, and automated accessibility checks). Each file says what else was not checked.
+
+## The next generation of teaching (26 November 2026)
+
+| Area | File | Rows |
+|---|---|---|
+| Insight while the game is still being played: the misconception worth a word now, the questions found hardest, who might like a hand | [teaching.md](teaching.md) | 1 feature |
+

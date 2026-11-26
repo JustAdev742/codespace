@@ -37,6 +37,7 @@ import { extraTimeFor } from '@ludora/engine/catalog';
 import { computeAwards, hostReport, missedQuestionIds } from './report.ts';
 import { hideNames } from './hideNames.ts';
 import { spectatorView } from '../modules/school/spectator.ts';
+import { liveInsight, type LiveInsight } from '../modules/analytics/live.ts';
 import { integrityEvent, IntegrityWatch, type IntegrityEvent, type IntegritySignal, type Rejection } from './integrity.ts';
 import {
   GameRuntime,
@@ -1536,12 +1537,25 @@ export class Room {
       results,
       rewards,
       feed: this.feed.filter((f) => !f.to || (playerId && f.to.includes(playerId))).slice(-FEED_KEEP),
-      ...(playerId ? {} : { host: this.hostExtras() }),
+      ...(playerId ? {} : { host: remote ? { ...this.hostExtras(), insight: this.insight(sync) } : this.hostExtras() }),
       ...(this.lesson ? { lesson: this.lesson.view(this, playerId, !playerId && !remote && this.options.hideNames ? this.nameAliases() : null) } : {}),
     };
     // Names hidden on the big screen: the projector shows "Player 3" for each person; the host's phone remote keeps real names.
     if (!playerId && !remote && this.options.hideNames) return hideNames(view, this.nameAliases());
     return view;
+  }
+
+  /**
+   * How the class is finding the game so far (modules/analytics/live.ts), for the teacher's remote. In a game
+   * played in rounds the question still open is left out: while it is open the only answers arriving are to it,
+   * so they are the ones for the same question as the latest answer.
+   */
+  private insight(sync: { phase?: string; answered?: number } | undefined): LiveInsight | null {
+    if (!this.runtime || (this.status !== 'running' && this.status !== 'paused')) return null;
+    const log = this.runtime.answerLog();
+    const open = sync?.phase === 'question' && (sync.answered ?? 0) > 0 ? (log[log.length - 1]?.qid ?? null) : null;
+    const prompts = new Map([...this.set.questions, ...this.prepared].map((q) => [q.id, q.prompt] as const));
+    return liveInsight({ answers: log, openQid: open, players: [...this.players.values()].map((p) => ({ id: p.id, name: p.name, isBot: p.isBot })), promptOf: (qid) => prompts.get(qid) ?? '' });
   }
 
   /** "Player 1", "Player 2" … in the order people joined; bots keep their names. */
