@@ -163,5 +163,5 @@ export default function BoardStage({ actors, shot, modeId, hidden }: { actors: A
   useEffect(() => world.current?.setCrowd(actors), [actors]);
   useEffect(() => world.current?.setShot(shot), [shot]);
 
-  return <div ref={box} className="world-stage" aria-hidden data-hidden={hidden} />;
+  return <div ref={box} className="world-stage" aria-hidden data-hidden={hidden} data-shot={shot} />;
 }

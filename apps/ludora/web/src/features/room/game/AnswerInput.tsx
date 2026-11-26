@@ -65,11 +65,11 @@ const FILL = 'ans-fill';
 export type TileSize = 'sm' | 'md' | 'lg';
 
 const SIZE: Record<TileSize, { tile: string; stack: string; text: string; long: string; badge: string; shape: number; mark: string }> = {
-  sm: { tile: 'min-h-[3.75rem] gap-3 rounded-[12px] px-3 py-2', stack: 'min-h-[5.5rem] gap-2 rounded-[12px] p-3', text: 'text-lg', long: 'text-base', badge: 'gap-1 px-1.5 py-1 text-lg', shape: 18, mark: 'size-7' },
-  md: { tile: 'min-h-[4.5rem] gap-3 rounded-[14px] px-3.5 py-2.5', stack: 'min-h-[7rem] gap-2 rounded-[14px] p-3.5', text: 'text-xl', long: 'text-base', badge: 'gap-1.5 px-1.5 py-1 text-[1.35rem]', shape: 22, mark: 'size-8' },
+  sm: { tile: 'min-h-[3.75rem] gap-3 rounded-[16px] px-3 py-2', stack: 'min-h-[5.5rem] gap-2 rounded-[16px] p-3', text: 'text-lg', long: 'text-base', badge: 'gap-1 px-1.5 py-1 text-lg', shape: 18, mark: 'size-7' },
+  md: { tile: 'min-h-[4.5rem] gap-3 rounded-[20px] px-3.5 py-2.5', stack: 'min-h-[7rem] gap-2 rounded-[20px] p-3.5', text: 'text-xl', long: 'text-base', badge: 'gap-1.5 px-1.5 py-1 text-[1.35rem]', shape: 22, mark: 'size-8' },
   lg: {
-    tile: 'min-h-[clamp(5rem,12.5vh,9.5rem)] gap-[clamp(0.75rem,1.4vw,1.5rem)] rounded-[14px] px-[clamp(1rem,1.6vw,1.75rem)] py-3 max-sm:min-h-[4.5rem]',
-    stack: 'min-h-[clamp(7rem,18vh,12rem)] gap-3 rounded-[14px] p-[clamp(1rem,1.6vw,1.75rem)]',
+    tile: 'min-h-[clamp(5rem,12.5vh,9.5rem)] gap-[clamp(0.75rem,1.4vw,1.5rem)] rounded-[20px] px-[clamp(1rem,1.6vw,1.75rem)] py-3 max-sm:min-h-[4.5rem]',
+    stack: 'min-h-[clamp(7rem,18vh,12rem)] gap-3 rounded-[20px] p-[clamp(1rem,1.6vw,1.75rem)]',
     text: 'text-[clamp(1.4rem,2.3vw,2.75rem)]',
     long: 'text-[clamp(1.1rem,1.6vw,1.9rem)]',
     badge: 'gap-2 px-[clamp(0.4rem,0.7vw,0.75rem)] py-[clamp(0.25rem,0.5vh,0.5rem)] text-[clamp(1.5rem,2.4vw,2.75rem)]',
@@ -189,7 +189,7 @@ export function ChoiceTile({
       {/* A tile going out of play at a staged reveal: its colour drains away under the words. */}
       {staged && !lit ? <span className="pointer-events-none absolute inset-0 -z-10 rounded-[inherit]" style={{ background: bg, animation: 'tile-drain 360ms var(--ease-out) both' }} aria-hidden /> : null}
       {/* On a lit tile the letter and shape sit straight on its colour; on a smoked one they keep a chip of it. */}
-      <span className={`flex shrink-0 items-center rounded-[var(--radius-s)] font-display leading-none font-extrabold text-on-accent ${s.badge} ${lit ? 'bg-white/30 shadow-[inset_0_-2px_0_rgb(0_0_0/0.12)]' : ''}`} style={lit ? undefined : { background: bg }}>
+      <span className={`flex shrink-0 items-center rounded-[var(--radius-s)] font-display leading-none font-extrabold text-on-accent ${s.badge} ${lit ? 'bg-white/45 shadow-[inset_0_1.5px_0_rgb(255_255_255/0.85),inset_0_-3px_0_rgb(0_0_0/0.16),0_3px_6px_-2px_rgb(0_0_0/0.3)]' : ''}`} style={lit ? undefined : { background: bg }}>
         <AnswerShape index={index} size={s.shape} />
         <span>{ANSWER_LETTERS[index]}</span>
       </span>{' '}

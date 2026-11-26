@@ -1,21 +1,9 @@
 import { lazy, Suspense, useMemo, useState } from 'react';
 import type { RoomView } from '@ludora/shared';
 import { fallbackArt } from '../game/stage.tsx';
-import { boardWorldWanted, lookOf, type Actor, type Shot } from './gate.ts';
+import { boardWorldWanted, lookOf, shotFor, type Actor } from './gate.ts';
 
 const BoardStage = lazy(() => import('./BoardStage.tsx'));
-
-/** Which moment of the game the camera is on. */
-function shotOf(room: RoomView): Shot {
-  const status = room.room.status;
-  if (status === 'lobby') return 'lobby';
-  if (status === 'ended') return room.results && room.results.outcome === 'competitive' && room.results.standings.length >= 2 ? 'podium' : 'lobby';
-  const phase = (room.game as { sync?: { phase?: string } } | null)?.sync?.phase;
-  if (phase === 'intro') return 'ready';
-  if (phase === 'reveal') return 'reveal';
-  if (phase === 'leaderboard' || phase === 'done') return 'standings';
-  return 'question';
-}
 
 /**
  * The board's world behind a room (D63), where this screen draws it (gate.ts); nothing at all where
@@ -34,7 +22,7 @@ export function BoardWorldLayer({ room }: { room: RoomView }) {
   const rounds = Boolean((room.game as { sync?: unknown } | null)?.sync);
   return (
     <Suspense fallback={null}>
-      <BoardStage actors={actors} shot={shotOf(room)} modeId={room.room.modeId} hidden={live && !rounds} />
+      <BoardStage actors={actors} shot={shotFor({ status: room.room.status, phase: (room.game as { sync?: { phase?: string } } | null)?.sync?.phase, outcome: room.results?.outcome, standings: room.results?.standings.length })} modeId={room.room.modeId} hidden={live && !rounds} />
     </Suspense>
   );
 }

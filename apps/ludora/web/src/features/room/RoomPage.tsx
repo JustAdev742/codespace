@@ -39,6 +39,8 @@ import { SetFeelContext, useApplySetFeel, useRoomBackdrop } from './game/setFeel
 import { PhaseFade } from './game/PhaseFade.tsx';
 import { setRoomCalm } from '../../lib/prefs.ts';
 import { fxWarm } from '../../fx/index.ts';
+import { BoardWorldLayer } from './world/Layer.tsx';
+import { useWorldUp } from './world/gate.ts';
 import { Walkthrough, useKnownTutorial } from './Walkthrough.tsx';
 import { CalmPlayTag } from './CalmPlay.tsx';
 
@@ -137,6 +139,7 @@ export default function RoomPage() {
     const t = setTimeout(fxWarm, 1500);
     return () => clearTimeout(t);
   }, [inRoom]);
+  const worldUp = useWorldUp();
   const live0 = room?.room.status === 'running' || room?.room.status === 'paused';
   useWakeLock(Boolean(live0));
   const { calm } = useAccess();
@@ -230,7 +233,9 @@ export default function RoomPage() {
 
   return (
     <Stage className={STAGE}>
-      {isHost && !room.room.solo ? <Backdrop id={backdrop} on={between} /> : null}
+      {/* The board's world, where this screen draws it; its own flat backdrop everywhere else (world/). */}
+      {isHost && !room.room.solo ? <BoardWorldLayer room={room} /> : null}
+      {isHost && !room.room.solo && !worldUp ? <Backdrop id={backdrop} on={between} /> : null}
       <SetFeelContext.Provider value={setFeel}>
       <SoundRoleContext.Provider value={soundScene}>
       <Announcer>

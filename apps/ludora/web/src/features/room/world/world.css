@@ -27,6 +27,22 @@
   background:
     radial-gradient(120% 90% at 50% 62%, transparent 55%, rgb(2 3 16 / 0.62) 100%),
     linear-gradient(to bottom, rgb(3 5 24 / 0.5), rgb(3 5 24 / 0.12) 38%, transparent 60%);
+  transition: opacity 600ms var(--ease-out);
+}
+/* While a question, its answer or the standings fill the screen, the place steps further back behind them. */
+.world-stage::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background: linear-gradient(to bottom, rgb(5 4 26 / 0.74), rgb(5 4 26 / 0.62) 62%, rgb(5 4 26 / 0.16) 92%);
+  opacity: 0;
+  transition: opacity 600ms var(--ease-out);
+}
+.world-stage[data-shot='question']::before,
+.world-stage[data-shot='reveal']::before,
+.world-stage[data-shot='standings']::before {
+  opacity: 1;
 }
 .world-stage .s3-label.world-name {
   background: rgb(8 12 40 / 0.82);
@@ -40,3 +56,43 @@
   color: #241804;
   font-size: clamp(1rem, 1.5vw, 1.7rem);
 }
+
+/* The class stands on the world's stage: the flat Glims give way, and each name stays as a small tag. */
+:root[data-world='on'] [data-seat-art] {
+  display: none;
+}
+/* The podium is built on the world's stage: the flat one keeps its room on the page and is not drawn. */
+:root[data-world='on'] ol[aria-label='Podium'] {
+  visibility: hidden;
+}
+/* Words set straight on the stage have the night behind them wherever the picture is bright. */
+:root[data-world='on'] .stage :is(h1, h2, h3) {
+  text-shadow:
+    0 2px 0 rgb(6 4 24 / 0.55),
+    0 0 26px rgb(6 4 24 / 0.95),
+    0 0 8px rgb(6 4 24 / 0.8);
+}
+:root[data-world='on'] .stage .paper :is(h1, h2, h3) {
+  text-shadow: none;
+}
+
+/* The roster: with the class standing on the stage, the names are a list under their heading, each still the host's handle on its player. */
+:root[data-world='on'] [data-crowd-floor] {
+  justify-content: flex-start;
+}
+:root[data-world='on'] [data-crowd-floor] > [aria-hidden] {
+  display: none;
+}
+:root[data-world='on'] [data-crowd] {
+  justify-content: flex-start;
+  gap: 0.4rem;
+}
+/*
+ * Glass over the world: every smoked panel on the stage becomes frosted indigo glass, solid enough
+ * that its words never depend on what the picture is doing behind them.
+ */
+:root[data-world='on'] .stage :is([class*='bg-white/[0.0'], [class*='bg-white/[0.1'], .piece-off) {
+  background: rgb(14 11 46 / 0.8);
+  backdrop-filter: blur(12px) saturate(1.2);
+}
+

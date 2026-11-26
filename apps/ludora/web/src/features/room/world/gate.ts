@@ -13,6 +13,53 @@ import type { GlimLook } from '../../../three/glimTexture.ts';
 /** The moments of a game the camera knows. */
 export type Shot = 'lobby' | 'ready' | 'question' | 'reveal' | 'standings' | 'podium';
 
+/** The worlds a game can be played in (themes.ts). */
+export type WorldId = 'festival' | 'cosmos' | 'market' | 'gloom' | 'hills';
+
+/** The modes that have a world of their own; every other mode plays at the lantern festival. */
+const WORLD_OF: Record<string, WorldId> = {
+  'comet-dash': 'cosmos',
+  'sky-lanterns': 'cosmos',
+  'summit-scramble': 'cosmos',
+  'time-attack': 'cosmos',
+  'night-market': 'market',
+  'corner-shop': 'market',
+  'festival-workshop': 'market',
+  'gold-rush': 'market',
+  'gloom-giant': 'gloom',
+  'lantern-guard': 'gloom',
+  'lantern-out': 'gloom',
+  'glow-tag': 'gloom',
+  'survival-run': 'gloom',
+};
+
+/** Which world a game is played in. A school's copy keeps to its own place, whatever the game (D60). */
+export function worldFor(modeId: string, school: string | null): WorldId {
+  if (school === 'hills-grammar') return 'hills';
+  return WORLD_OF[modeId] ?? 'festival';
+}
+
+/** What the camera needs to know of a room: where the game has got to. */
+export interface RoomMoment {
+  status: string;
+  /** The phase of a game played in rounds, if it is one. */
+  phase?: string | undefined;
+  /** How the game ended and how many stood at the end, once it has. */
+  outcome?: string | undefined;
+  standings?: number | undefined;
+}
+
+/** Which moment of the game the camera is on. */
+export function shotFor(m: RoomMoment): Shot {
+  if (m.status === 'lobby') return 'lobby';
+  // A podium needs places to give: a game that was a race between at least two.
+  if (m.status === 'ended') return m.outcome === 'competitive' && (m.standings ?? 0) >= 2 ? 'podium' : 'lobby';
+  if (m.phase === 'intro') return 'ready';
+  if (m.phase === 'reveal') return 'reveal';
+  if (m.phase === 'leaderboard' || m.phase === 'done') return 'standings';
+  return 'question';
+}
+
 export interface Actor {
   id: string;
   name: string;

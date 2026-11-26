@@ -10,6 +10,7 @@ import type { Lighting } from '../../../three/World.ts';
 import { toon } from '../../../three/toon.ts';
 import * as props from '../../../three/props.ts';
 import { skyGlow } from './BoardWorld.ts';
+import { worldFor } from './gate.ts';
 
 export interface WorldTheme {
   id: 'festival' | 'cosmos' | 'market' | 'gloom' | 'hills';
@@ -41,15 +42,28 @@ export interface WorldTheme {
 
 const FLAGS = ['#ff4d6a', '#ffc233', '#1fd38f', '#3d9bff', '#c86bff'];
 
-/** A row of festival tents either side, lit from inside. */
-function tents(colors: string[]) {
+/** Arches of lanterns either side of the stage, running back into the night: the way in to the festival. */
+function arches(hues: number[]) {
   return (scene: Scene, r: () => number) => {
     for (let i = 0; i < 8; i++) {
       const side = i % 2 ? 1 : -1;
-      const tent = props.tent({ color: colors[i % colors.length]!, scale: 2.4 + r() * 1.3 });
-      tent.position.set(side * (11 + Math.floor(i / 2) * 5.5 + r() * 1.5), 0, -6 - Math.floor(i / 2) * 4.5 - r() * 2);
-      tent.rotation.y = -side * 0.5;
-      scene.add(tent);
+      const row = Math.floor(i / 2);
+      const x = side * (11.5 + row * 5.5);
+      const z = -3 - row * 7 - r() * 2;
+      const h = 4.2 + r() * 1.4;
+      for (const dx of [-1.6, 1.6]) {
+        const pole = new Mesh(new CylinderGeometry(0.07, 0.09, h, 6).translate(0, h / 2, 0), toon('#1a1640'));
+        pole.position.set(x + dx, 0, z);
+        scene.add(pole);
+      }
+      const bar = new Mesh(new CylinderGeometry(0.05, 0.05, 3.3, 6).rotateZ(Math.PI / 2), toon('#1a1640'));
+      bar.position.set(x, h, z);
+      scene.add(bar);
+      for (let k = 0; k < 3; k++) {
+        const lamp = props.lantern({ hue: hues[(i + k) % hues.length]!, scale: 0.75 + (k === 1 ? 0.25 : 0) });
+        lamp.position.set(x - 1 + k, h - 0.75 - (k === 1 ? 0.3 : 0), z);
+        scene.add(lamp);
+      }
     }
   };
 }
@@ -78,7 +92,7 @@ const festival: WorldTheme = {
   beams: ['#9db7ff', '#ffd9a0', '#b99bff'],
   motes: '#c4d4ff',
   confetti: ['#ffc233', '#1fd38f', '#3d9bff', '#ff4d6a', '#ffffff'],
-  dress: tents(['#ffe7a8', '#ffb38a', '#b9d4ff', '#ffd1e0']),
+  dress: arches([44, 350, 200]),
 };
 
 const cosmos: WorldTheme = {
@@ -279,30 +293,12 @@ const hills: WorldTheme = {
   beams: ['#fae1a2', '#fbf0c8', '#bfe8cf'],
   motes: '#fbeabd',
   confetti: ['#f6ecd2', '#00a766', '#fae1a2', '#ffffff', '#f04b65'],
-  dress: tents(['#f6ecd2', '#e8dcb8', '#cfe6d6', '#f6ecd2']),
+  dress: arches([46, 44, 150]),
 };
 
 export const THEMES = { festival, cosmos, market, gloom, hills } as const;
 
-/** The modes that have a world of their own; every other mode plays at the lantern festival. */
-const BY_MODE: Record<string, WorldTheme['id']> = {
-  'comet-dash': 'cosmos',
-  'sky-lanterns': 'cosmos',
-  'summit-scramble': 'cosmos',
-  'time-attack': 'cosmos',
-  'night-market': 'market',
-  'corner-shop': 'market',
-  'festival-workshop': 'market',
-  'gold-rush': 'market',
-  'gloom-giant': 'gloom',
-  'lantern-guard': 'gloom',
-  'lantern-out': 'gloom',
-  'glow-tag': 'gloom',
-  'survival-run': 'gloom',
-};
-
-/** Which world a game is played in. A school's copy keeps to its own. */
+/** Which world a game is played in (gate.ts decides; a school's copy keeps to its own). */
 export function themeFor(modeId: string, school: string | null): WorldTheme {
-  if (school === 'hills-grammar') return THEMES.hills;
-  return THEMES[BY_MODE[modeId] ?? 'festival'];
+  return THEMES[worldFor(modeId, school)];
 }

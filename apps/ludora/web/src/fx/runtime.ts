@@ -211,8 +211,10 @@ function frame(now: number) {
   last = now;
   governor.sample(dtMs);
   if (!canvas || !ctx) return;
-  // A long gap (a tab left and come back to) moves the pieces on by one ordinary frame, not by the gap.
-  field.step(Math.min(dtMs, 50) / 1000, window.innerHeight + 40);
+  // The pieces keep to the clock, however slowly frames arrive: a slow device sees fewer pictures of the same
+  // fall, not a longer one. Taken in steps of an ordinary frame, so nothing leaps through the floor. A long gap
+  // (a tab left and come back to) moves them on by a quarter of a second at most.
+  for (let left = Math.min(dtMs, 250) / 1000; left > 0; left -= 0.05) field.step(Math.min(left, 0.05), window.innerHeight + 40);
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   if (field.n === 0) {

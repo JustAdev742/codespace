@@ -67,9 +67,15 @@ async function playToTheEnd(browser: Browser, reducedMotion: boolean) {
   return { host, phone, hostErrors, phoneErrors, close: () => phoneContext.close() };
 }
 
-test('with graphics on High a win is thrown on a canvas, on the board and a phone, and the page is left clean', async ({ browser }) => {
-  test.setTimeout(180_000);
+test('with graphics on High a win is thrown on a canvas, on the board and a phone, and the page is left clean', async ({ browser, browserName }) => {
+  test.setTimeout(240_000);
   const { host, phone, hostErrors, phoneErrors, close } = await playToTheEnd(browser, false);
+  // The board's world is drawn behind the room where the browser has WebGL (headless Firefox and WebKit have none,
+  // and keep the flat backdrop): the podium is built on its stage, and the flat one gives way to it.
+  if (browserName === 'chromium') {
+    await expect(host.page.locator('html')).toHaveAttribute('data-world', 'on');
+    await expect(host.page.locator('canvas.world-canvas')).toHaveCount(1);
+  }
   // The winner lands about six seconds into the ceremony: paper falls on both screens.
   await Promise.all([expect(host.page.locator(FX)).toHaveCount(1, { timeout: 20_000 }), expect(phone.locator(FX)).toHaveCount(1, { timeout: 20_000 })]);
   // The canvas is decoration: hidden from screen readers, and a click goes straight through it.

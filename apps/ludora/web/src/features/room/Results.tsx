@@ -18,6 +18,8 @@ import { PLACE_BG, RankBadge, TeamScores } from './game/Leaderboard.tsx';
 import { PlayerGlim, StagePanel, avatarOf, motionOK } from './game/stage.tsx';
 import { Burst } from '../../art/bursts.tsx';
 import { fxColors, fxLevel, fxShower } from '../../fx/index.ts';
+import { lookOf, useWorldUp, worldPodium } from './world/gate.ts';
+import { fallbackArt } from './game/stage.tsx';
 import { useAnnounce } from './game/announce.tsx';
 import { playSfx, useSharedSounds } from '../../lib/sound/react.tsx';
 import { GameNextSteps } from '../making/GameNextSteps.tsx';
@@ -510,6 +512,23 @@ export function Results({ room, handle, isHost, guest }: { room: RoomView; handl
     },
   });
   const { stage } = ceremony;
+  // Where the board's world is up, the podium is built on its stage (world/): the same places at the same
+  // moments, told from here. The flat podium keeps its place on the page, unseen, for a screen reader.
+  const worldUp = useWorldUp();
+  const top = r.standings.slice(0, 3);
+  const topKey = top.map((s) => `${s.playerId}|${s.label}`).join(';');
+  useEffect(() => {
+    if (!worldUp || !plan) return;
+    worldPodium({
+      places: top.map((s, place) => ({ id: s.playerId, name: s.name, score: s.label, place, look: lookOf(avatarOf(room.players, s.playerId), fallbackArt(s.playerId)) })),
+      order: plan.beats.map((b) => b.place),
+      risen: stage.risen,
+      landed: stage.landed,
+    });
+    // The room's players and their Glims do not change once a game has ended.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [worldUp, plan, stage.risen, stage.landed, topKey]);
+  useEffect(() => () => worldPodium(null), []);
   // A room's ceremony can be skipped by the host: with the button, or Escape.
   const canSkip = ceremony.running && isHost && plan?.pace === 'show';
   const skip = ceremony.skip;

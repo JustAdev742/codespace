@@ -135,7 +135,8 @@ function Seat({ p, actions, delay, hop, cheering = false, arrived = false }: { p
   return (
     // No box around a player: their Glim stands on the stage floor with its name on a tag, so a full class reads as a crowd, not a grid of cards.
     <li className={`group relative flex flex-col items-center gap-1 px-1 pt-1 ${CARD}`} style={motionOK() ? { animation: `stage-arrive 220ms var(--ease-out) ${delay}ms both` } : undefined}>
-      <span className="relative">
+      {/* Where the board's world is up, the class stands on its stage in three dimensions (world/): the flat Glim gives way, and the name stays as the host's handle on the player. */}
+      <span className="relative" data-seat-art>
         {/* The spot of light each Glim stands in. */}
         <span className="absolute inset-x-[8%] bottom-[2%] h-[16%] rounded-[50%] bg-[radial-gradient(closest-side,var(--stage-spot,rgb(120_160_255/0.38)),transparent)]" aria-hidden />
         {/* Where the stage's effects are up, a player who walks in while the class watches arrives in a puff of stars in their own colour (fx/). */}
@@ -178,7 +179,7 @@ function Crowd({ players, actions, hops, cheers, inTeam = false }: { players: Ro
   firstSeen.current ??= new Set(players.map((p) => p.id));
   const initial = firstSeen.current;
   return (
-    <ul className="flex flex-wrap items-end justify-center gap-x-[clamp(0.25rem,calc(var(--seat)*0.1),1rem)] gap-y-[clamp(0.25rem,calc(var(--seat)*0.08),0.9rem)]" style={crowdVars(players.length, inTeam)}>
+    <ul data-crowd className="flex flex-wrap items-end justify-center gap-x-[clamp(0.25rem,calc(var(--seat)*0.1),1rem)] gap-y-[clamp(0.25rem,calc(var(--seat)*0.08),0.9rem)]" style={crowdVars(players.length, inTeam)}>
       {players.map((p, i) => (
         <Seat key={p.id} p={p} actions={actions} hop={hops?.get(p.id)} cheering={cheers?.has(p.id)} delay={initial.has(p.id) ? Math.min(i, 16) * 40 : 0} arrived={!initial.has(p.id)} />
       ))}
@@ -558,7 +559,7 @@ export function HostLobby({ room, handle }: { room: RoomView; handle: RoomHandle
           </div>
         ) : (
           // The crowd stands on a lit stage floor that runs the width of the screen.
-          <div className="relative flex flex-1 flex-col justify-end pb-[clamp(0.5rem,2vh,1.5rem)]">
+          <div className="relative flex flex-1 flex-col justify-end pb-[clamp(0.5rem,2vh,1.5rem)]" data-crowd-floor>
             <div className="pointer-events-none absolute inset-x-[-2rem] bottom-0 h-[min(70%,14rem)] bg-[radial-gradient(60%_100%_at_50%_100%,var(--stage-floor,rgb(58_107_255/0.22)),transparent_75%)]" aria-hidden />
             <div className="relative">
               <Crowd players={room.players} actions={actions} hops={hops} cheers={cheers} />

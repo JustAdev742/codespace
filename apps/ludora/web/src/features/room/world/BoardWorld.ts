@@ -9,7 +9,7 @@
  * engine's particles. Fetched on its own and only by a board that will draw it (BoardStage.tsx).
  */
 
-import { AdditiveBlending, BackSide, BoxGeometry, BufferAttribute, BufferGeometry, CanvasTexture, CatmullRomCurve3, CircleGeometry, Color, ConeGeometry, CylinderGeometry, DoubleSide, Group, Mesh, MeshBasicMaterial, Points, PointsMaterial, RingGeometry, ShaderMaterial, SphereGeometry, Sprite, SpriteMaterial, TorusGeometry, TubeGeometry, Vector3, type Object3D } from 'three';
+import { AdditiveBlending, BackSide, BoxGeometry, BufferAttribute, BufferGeometry, CanvasTexture, CatmullRomCurve3, CircleGeometry, Color, ConeGeometry, CylinderGeometry, DoubleSide, Group, Mesh, MeshBasicMaterial, PlaneGeometry, Points, PointsMaterial, RingGeometry, ShaderMaterial, SphereGeometry, Sprite, SpriteMaterial, TorusGeometry, TubeGeometry, Vector3, type Object3D } from 'three';
 import { World, type StageEnv } from '../../../three/World.ts';
 import { Glim3D } from '../../../three/glim3d.ts';
 import type { GlimLook } from '../../../three/glimTexture.ts';
@@ -51,7 +51,7 @@ const SHOTS: Record<Shot, { pos: [number, number, number]; look: [number, number
   reveal: { pos: [0, 4.2, 16.2], look: [0, 8.2, 0] },
   standings: { pos: [8.5, 3.6, 13.5], look: [-1.5, 6.4, 0] },
   // The podium stands in the left half of the picture: the captions and the host's buttons have the right.
-  podium: { pos: [2.6, 2.7, 9.6], look: [2.9, 2.5, 0] },
+  podium: { pos: [3.4, 3.3, 11.2], look: [3.1, 2.3, 0] },
 };
 
 function seeded(seed: number) {
@@ -105,7 +105,8 @@ export class BoardWorld extends World {
   private readonly beams: { m: Mesh; base: number; rate: number; phase: number }[] = [];
   private readonly bulbs: { m: Mesh; phase: number }[] = [];
   private readonly podium = new Group();
-  private readonly blocks: { m: Mesh; h: number; up: number; target: number }[] = [];
+  private readonly blocks: { m: Mesh; h: number; up: number; target: number; number: Mesh }[] = [];
+  private spot: Mesh | null = null;
   private podiumPlaces: PodiumPlace[] = [];
   private podiumLabels: Label[] = [];
   private landed = 0;
@@ -160,8 +161,8 @@ export class BoardWorld extends World {
     const moon = new Mesh(new SphereGeometry(t.moon.size, 32, 20), new MeshBasicMaterial({ color: t.moon.color, fog: false }));
     moon.position.set(...t.moon.at);
     this.scene.add(moon);
-    const halo = new Sprite(new SpriteMaterial({ map: glow, color: t.moon.glow, blending: AdditiveBlending, depthWrite: false, fog: false, opacity: 0.7 }));
-    halo.scale.setScalar(t.moon.size * 7);
+    const halo = new Sprite(new SpriteMaterial({ map: glow, color: t.moon.glow, blending: AdditiveBlending, depthWrite: false, fog: false, opacity: 0.38 }));
+    halo.scale.setScalar(t.moon.size * 6);
     halo.position.copy(moon.position);
     this.scene.add(halo);
 
@@ -277,13 +278,13 @@ export class BoardWorld extends World {
 
     // Beams of light through the air above the stage.
     const lights: [number, number, string, number][] = [
-      [-7.5, -2.5, t.beams[0]!, 0.5],
-      [7.5, -2.5, t.beams[1]!, 0.5],
-      [-3.2, -5.5, t.beams[2]!, 0.36],
-      [3.2, -5.5, t.beams[0]!, 0.36],
+      [-7.5, -2.5, t.beams[0]!, 0.2],
+      [7.5, -2.5, t.beams[1]!, 0.2],
+      [-3.2, -5.5, t.beams[2]!, 0.13],
+      [3.2, -5.5, t.beams[0]!, 0.13],
     ];
     lights.forEach(([x, z, color, strength], i) => {
-      const m = beam(color, 17, 3.4, strength);
+      const m = beam(color, 17, 2.5, strength);
       m.position.set(x, 16.5, z);
       m.rotation.z = (x < 0 ? -1 : 1) * 0.32;
       m.rotation.x = 0.1;
@@ -307,15 +308,33 @@ export class BoardWorld extends World {
     }
 
     // The podium waits under the stage until the end of a game.
-    BLOCK.forEach((b) => {
-      const m = new Mesh(new BoxGeometry(1.55, 1, 1.5).translate(0, 0.5, 0), toon(b.color));
+    BLOCK.forEach((b, place) => {
+      // Each block is lit from inside a little, so it holds its colour in the night, and wears its number.
+      const m = new Mesh(new BoxGeometry(1.6, 1, 1.5).translate(0, 0.5, 0), toon(b.color, { glow: 0.42 }));
       m.position.set(b.x, 0.7, 0);
       m.scale.y = 0.001;
       m.visible = false;
       m.castShadow = true;
       this.podium.add(m);
-      this.blocks.push({ m, h: b.h, up: 0, target: 0 });
+      const c = document.createElement('canvas');
+      c.width = c.height = 128;
+      const x = c.getContext('2d')!;
+      x.font = '800 104px "Bricolage Grotesque Variable", system-ui, sans-serif';
+      x.textAlign = 'center';
+      x.textBaseline = 'middle';
+      x.fillStyle = 'rgba(20, 12, 4, 0.82)';
+      x.fillText(String(place + 1), 64, 70);
+      const number = new Mesh(new PlaneGeometry(0.8, 0.8), new MeshBasicMaterial({ map: new CanvasTexture(c), transparent: true, depthWrite: false }));
+      number.position.set(b.x, 0.7, 0.76);
+      number.visible = false;
+      this.podium.add(number);
+      this.blocks.push({ m, h: b.h, up: 0, target: 0, number });
     });
+    // A light of the winner's own, straight down on the top step.
+    this.spot = beam('#ffe9b0', 12, 1.5, 0.3);
+    this.spot.position.set(0, 13.5, 0.1);
+    this.spot.visible = false;
+    this.scene.add(this.spot);
     this.scene.add(this.podium);
     this.shadowArea(11, [0, 0.7, 0]);
   }
@@ -397,7 +416,26 @@ export class BoardWorld extends World {
     this.names = shot === 'lobby' || shot === 'ready';
     this.showNames();
     if (shot !== 'podium') this.clearPodium();
+    this.arrange();
     this.touch(200);
+  }
+
+  /** Where everyone stands for this moment: in rows facing the room, or in a curve behind the podium, watching. */
+  private arrange() {
+    const all = [...this.actors.values()];
+    const watching = all.filter((a) => !a.onPodium);
+    all.forEach((a, i) => {
+      if (a.onPodium) return;
+      if (this.shot !== 'podium') {
+        a.home.copy(this.home(i, all.length));
+        return;
+      }
+      const k = watching.indexOf(a);
+      const n = Math.max(watching.length, 1);
+      const turn = Math.PI * (0.16 + (0.68 * (k + 0.5)) / n);
+      const ring = k % 2 ? 4.9 : 3.9;
+      a.home.set(Math.cos(turn) * ring, 0.71, -Math.sin(turn) * ring * 0.8 - 0.6);
+    });
   }
 
   private showNames() {
@@ -449,6 +487,7 @@ export class BoardWorld extends World {
       }
     }
     this.landed = Math.max(this.landed, landed);
+    this.arrange();
     this.touch(300);
   }
 
@@ -473,7 +512,8 @@ export class BoardWorld extends World {
 
   /** Something changed: draw for a while even if this screen otherwise holds still. */
   private touch(frames = 90) {
-    this.dirty = Math.max(this.dirty, frames);
+    // A still picture needs drawing only a few times to be right: everything in it arrives at once.
+    this.dirty = Math.max(this.dirty, this.env.reducedMotion ? 3 : frames);
   }
 
   override wantsFrame(): boolean {
@@ -516,7 +556,10 @@ export class BoardWorld extends World {
         b.m.visible = false;
       }
       b.m.scale.y = Math.max(0.001, b.h * b.up);
+      b.number.visible = b.up > 0.6;
+      b.number.position.y = 0.7 + b.h * b.up * 0.5;
     }
+    if (this.spot) this.spot.visible = this.shot === 'podium' && this.landed >= this.podiumPlaces.length && this.podiumPlaces.length > 0;
     let i = 0;
     for (const a of this.actors.values()) {
       const g = a.glim;
