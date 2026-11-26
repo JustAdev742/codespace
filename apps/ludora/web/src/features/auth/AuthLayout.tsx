@@ -17,7 +17,7 @@ const PERKS = [
  */
 export function AuthLayout({ title, intro, children, footer }: { title: string; intro: ReactNode; children: ReactNode; footer?: ReactNode }) {
   return (
-    <Stage className="flex min-h-dvh flex-col">
+    <Stage scene="night" className="flex min-h-dvh flex-col">
       <header className="relative z-10 mx-auto w-full max-w-[1180px] px-4 pt-5 sm:px-6 lg:pt-7">
         <Link to="/" aria-label="Ludora home" className="inline-block rounded-[var(--radius-s)]">
           <Logo size={28} />
@@ -25,13 +25,13 @@ export function AuthLayout({ title, intro, children, footer }: { title: string; 
       </header>
       <div className="mx-auto grid w-full max-w-[1180px] flex-1 grid-cols-1 items-center gap-x-16 px-4 sm:px-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,460px)]">
         <div className="hidden lg:block">
-          <p className="max-w-[20ch] font-display text-[3.4rem] leading-[0.95] font-extrabold">
-            Learn something. Win something. Collect something.
+          <p className="max-w-[16ch] font-display text-[4rem] leading-[0.94] font-extrabold">
+            Learn something. Win something. <span className="text-lantern">Collect something.</span>
           </p>
           <ul className="mt-8 flex flex-col gap-3.5">
             {PERKS.map(({ icon: Icon, text }) => (
               <li key={text} className="flex items-center gap-3 text-lg text-text-2">
-                <span className="grid size-9 shrink-0 place-items-center rounded-[var(--radius-s)] bg-white/[0.08] text-lantern">
+                <span className="grid size-10 shrink-0 place-items-center rounded-[var(--radius-m)] bg-lantern text-on-accent shadow-[inset_0_1px_0_rgb(255_255_255/0.5),0_8px_18px_-8px_rgb(255_194_51/0.8)]">
                   <Icon className="size-5" aria-hidden />
                 </span>
                 {text}

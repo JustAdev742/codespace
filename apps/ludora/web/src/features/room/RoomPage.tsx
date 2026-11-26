@@ -232,7 +232,7 @@ export default function RoomPage() {
   const between = status === 'lobby' || (live && (syncPhase === 'intro' || syncPhase === 'leaderboard'));
 
   return (
-    <Stage className={STAGE}>
+    <Stage className={STAGE} scene={isHost ? false : 'quiet'}>
       {/* The board's world, where this screen draws it; its own flat backdrop everywhere else (world/). */}
       {isHost && !room.room.solo ? <BoardWorldLayer room={room} /> : null}
       {isHost && !room.room.solo && !worldUp ? <Backdrop id={backdrop} on={between} /> : null}

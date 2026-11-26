@@ -683,6 +683,30 @@
   }
 }
 
+/* Words set straight on the night's picture carry the night behind them, wherever a lantern drifts. */
+.stage:has(> .night-scene) :is(h1, h2, h3, p, li, label) {
+  text-shadow:
+    0 1px 0 rgb(6 4 24 / 0.45),
+    0 0 20px rgb(6 4 24 / 0.9),
+    0 0 6px rgb(6 4 24 / 0.7);
+}
+.stage:has(> .night-scene) .paper :is(h1, h2, h3, p, li, label) {
+  text-shadow: none;
+}
+
+/* The night's lanterns rise and settle, each in its own time (art/NightScene.tsx). Still with less motion. */
+@keyframes night-rise {
+  from {
+    transform: translateY(12px);
+  }
+  to {
+    transform: translateY(-26px);
+  }
+}
+.night-rise {
+  animation: night-rise 30s ease-in-out infinite alternate;
+}
+
 /* Reduced motion: the OS setting, or the player's own choice in Settings. */
 @media (prefers-reduced-motion: reduce) {
   :root:not([data-motion='on']) *,

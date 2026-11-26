@@ -57,7 +57,7 @@ const BOARD: { name: string; points: string; art: GlimArt; rarity: Rarity; you?:
  */
 function GamePreview({ className = '' }: { className?: string }) {
   return (
-    <div className={`hud stage-card w-full max-w-[520px] p-4 sm:p-5 ${className}`} aria-hidden>
+    <div className={`hud stage-card w-full max-w-[520px] rounded-[var(--radius-xl)] p-4 shadow-[inset_0_1px_0_rgb(255_255_255/0.14),0_40px_90px_-30px_rgb(140_107_255/0.85)] sm:p-6 lg:rotate-[1.6deg] ${className}`} aria-hidden>
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-2.5">
           <span className="plate plate-gold text-xl">
@@ -77,8 +77,8 @@ function GamePreview({ className = '' }: { className?: string }) {
           return (
             <div
               key={a}
-              className={`relative flex min-h-14 items-center gap-2.5 rounded-[var(--radius-m)] px-2.5 py-2 font-semibold ${right ? 'text-on-accent shadow-[inset_0_-4px_0_rgb(0_0_0/0.24),0_0_0_3px_#ffffff]' : 'bg-white/[0.07] text-text'}`}
-              style={right ? { background: TILES[i] } : undefined}
+              className={`relative flex min-h-14 items-center gap-2.5 rounded-[var(--radius-m)] px-2.5 py-2 font-semibold ${right ? 'piece text-on-accent ring-[3px] ring-white' : 'piece-off'}`}
+              style={right ? { backgroundColor: TILES[i] } : undefined}
             >
               {/* Unlit answers keep their badge's colour and shape, as at a real reveal. */}
               <span className="inline-flex shrink-0 items-center gap-1 rounded-[var(--radius-s)] px-1.5 py-1 font-display text-base leading-none font-extrabold text-on-accent" style={{ background: right ? 'rgb(0 0 0 / 0.14)' : TILES[i] }}>
@@ -134,17 +134,17 @@ export default function Landing() {
     <div className="flex flex-col gap-16 pb-12 sm:gap-20">
       <Bleed>
         <section aria-labelledby="hero-title">
-          <Stage className={`px-4 pt-[72px] pb-10 sm:px-6 lg:pt-[96px] lg:pb-16 ${BLEED_ROUNDING}`}>
+          <Stage scene="night" className={`px-4 pt-[72px] pb-10 sm:px-6 lg:pt-[96px] lg:pb-20 ${BLEED_ROUNDING}`}>
             <SeasonDecor />
             <div className="relative z-10 mx-auto grid max-w-[1120px] grid-cols-1 items-center gap-x-10 gap-y-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
               <div className="flex flex-col gap-5">
                 <SeasonLine />
-                <h1 id="hero-title" className="font-display text-[2.75rem] leading-[0.95] font-extrabold min-[400px]:text-[3.25rem] sm:text-[4.25rem] xl:text-[4.75rem]">
+                <h1 id="hero-title" className="font-display text-[3rem] leading-[0.92] font-extrabold min-[400px]:text-[3.5rem] sm:text-[4.75rem] xl:text-[5.5rem]">
                   <span className="block">{school ? 'Quiz games' : 'Answer fast.'}</span>
-                  <span className="block">{school ? 'for your class.' : 'Climb the board.'}</span>
+                  <span className="block text-lantern">{school ? 'for your class.' : 'Climb the board.'}</span>
                 </h1>
                 {/* The way in comes first: most people arrive with a code from their teacher. */}
-                <div className="hud stage-card max-w-[480px] p-4 sm:p-5">
+                <div className="paper stage-card max-w-[480px] rounded-[var(--radius-xl)] p-4 sm:p-5">
                   <h2 className="mb-3 font-display text-2xl leading-none font-bold">Join a game</h2>
                   <CodeEntry size="xl" />
                   <p className="mt-2.5 text-sm text-text-2">Got a code from your teacher? Type it in. You do not need an account.</p>

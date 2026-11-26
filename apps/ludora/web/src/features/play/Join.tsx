@@ -70,7 +70,7 @@ export default function Join() {
   };
 
   return (
-    <Stage as="main" className="flex min-h-dvh flex-col overflow-x-clip! overflow-y-visible!">
+    <Stage as="main" scene="night" className="flex min-h-dvh flex-col overflow-x-clip! overflow-y-visible!">
       <div className="mx-auto flex w-full max-w-md flex-1 flex-col px-4 pt-4 pb-8 sm:px-5">
         <div className="flex min-h-11 items-center justify-between gap-3">
           <Link to="/" aria-label="Ludora home" className="rounded-[var(--radius-s)]">
