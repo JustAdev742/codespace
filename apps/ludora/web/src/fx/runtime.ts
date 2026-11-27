@@ -262,8 +262,16 @@ export function burstAt(r: BurstRequest) {
  * The winner's shower. On a big screen two cannons fire from the foot of the stage and paper falls
  * across its whole width; on a phone, a lighter fall. `colors` are the game's own.
  */
-export function shower(opts: { big: boolean; colors: readonly string[] }) {
+export function shower(opts: { big: boolean; colors: readonly string[]; clearFrom?: number }) {
   if (!start()) return;
+  // Paper falls over the podium, not over the words beside it: from `clearFrom` (a share of the screen's width) the
+  // canvas fades out, so buttons, awards and standings stay as easy to read as they were.
+  const edge = opts.clearFrom && opts.clearFrom > 0.2 && opts.clearFrom < 1 ? opts.clearFrom : 0;
+  const mask = edge ? `linear-gradient(90deg, #000 ${Math.round((edge - 0.06) * 100)}%, transparent ${Math.round(edge * 100)}%)` : '';
+  if (canvas) {
+    canvas.style.maskImage = mask;
+    canvas.style.setProperty('-webkit-mask-image', mask);
+  }
   const w = window.innerWidth;
   const h = window.innerHeight;
   const c = colours(opts.colors);

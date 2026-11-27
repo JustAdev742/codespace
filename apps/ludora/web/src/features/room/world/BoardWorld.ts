@@ -440,7 +440,8 @@ export class BoardWorld extends World {
 
   private showNames() {
     // Names over a whole class are a wall of words: they show while there is room for them.
-    const on = this.names && this.actors.size <= 16;
+    // At the podium only the three on it are named (their plates): the crowd's names behind them would lie across the plates.
+    const on = this.names && this.actors.size <= 16 && this.shot !== 'podium';
     for (const a of this.actors.values()) if (a.label) a.label.el.style.display = on && !a.onPodium ? '' : 'none';
   }
 

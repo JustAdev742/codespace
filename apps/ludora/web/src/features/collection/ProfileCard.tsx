@@ -1,4 +1,5 @@
 import type { AvatarLite, GlimArt, ItemArt } from '@ludora/shared';
+import { NightScene } from '../../art/NightScene.tsx';
 import { Glim, type GlimPose } from '../../art/glim/Glim.tsx';
 import { BannerArt, FrameRing } from '../../art/cosmetics.tsx';
 
@@ -30,7 +31,10 @@ export function ProfileCard({ name, level, avatar, equipment, compact = false, e
         ) : theme ? (
           <div className="absolute inset-0" style={{ background: `linear-gradient(160deg, hsl(${theme.hue} 62% 44%) 0%, hsl(${theme.hue} 58% 30%) 60%, hsl(${theme.accentHue} 70% 40%) 100%)` }} aria-hidden />
         ) : (
-          <div className="stage absolute inset-0" aria-hidden />
+          // No banner of their own yet: the card's head is the night Ludora is set in (art/NightScene.tsx).
+          <div className="stage absolute inset-0 isolate overflow-hidden" aria-hidden>
+            <NightScene />
+          </div>
         )}
       </div>
       <div className="relative flex flex-col items-center px-5 pb-5" style={{ marginTop: -size / 2 }}>

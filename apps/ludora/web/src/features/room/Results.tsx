@@ -221,7 +221,10 @@ function useCeremony(plan: Ceremony | null, startedAgo: number, on: { land?: (be
  * fall on a phone. Only where the stage's effects are up (fx/); the plain game keeps its burst and nothing more.
  */
 function winnerShower(beat: Beat, big: boolean) {
-  if (beat.place === 0) fxShower({ big, colors: fxColors(document.documentElement) });
+  if (beat.place !== 0) return;
+  // On the big screen the results' second column (the host's buttons, the awards, the standings) is kept clear of the paper.
+  const side = big ? document.querySelector('[data-results-side]')?.getBoundingClientRect() : undefined;
+  fxShower({ big, colors: fxColors(document.documentElement), ...(side && side.left > 0 ? { clearFrom: side.left / window.innerWidth } : {}) });
 }
 
 /**
@@ -608,7 +611,7 @@ export function Results({ room, handle, isHost, guest }: { room: RoomView; handl
         ) : null}
         {held && big && plan ? (
           // The big screen during the ceremony: the caption for the place being revealed, and a way past it for a teacher in a hurry.
-          <div className="flex flex-col gap-4">
+          <div className="flex flex-col gap-4" data-results-side>
             <CeremonyCaption room={room} plan={plan} stage={stage} />
             {canSkip ? (
               <Button size="sm" variant="ghost" className="self-start" icon={<FastForward className="size-4" aria-hidden />} onClick={skip} title="Skip to the winner (Esc)" aria-keyshortcuts="Escape">
@@ -617,7 +620,7 @@ export function Results({ room, handle, isHost, guest }: { room: RoomView; handl
             ) : null}
           </div>
         ) : (
-          <div className="flex flex-col gap-4" style={big ? arrive : undefined}>
+          <div className="flex flex-col gap-4" style={big ? arrive : undefined} data-results-side>
             {isHost ? (
               // The host's next steps come first, so they stay on screen however long the standings are.
               <div ref={nextSteps} className="host-next paper stage-card flex flex-wrap items-center gap-2 p-3" role="group" aria-label="What next">

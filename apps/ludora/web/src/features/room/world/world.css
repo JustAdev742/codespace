@@ -96,3 +96,18 @@
   backdrop-filter: blur(12px) saturate(1.2);
 }
 
+/* A plate on the podium carries a whole name and its score: it is never cut short, and takes a second line before it loses its end. */
+.world-stage .s3-label.world-name:not(.small) {
+  max-width: min(22rem, 34vw);
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+  text-align: center;
+  line-height: 1.15;
+}
+
+/* At the podium only the three on it are named, on their plates: the crowd's small names behind them would lie across the plates. */
+.world-stage[data-shot='podium'] .s3-label.world-name.small {
+  display: none !important;
+}
+

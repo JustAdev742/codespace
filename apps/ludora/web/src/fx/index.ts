@@ -157,7 +157,7 @@ export function fxWhenReady(go: () => void, patience = 2500): () => void {
 }
 
 /** The winner's shower: cannons and falling paper on a big screen, a lighter fall on a phone. */
-export function fxShower(opts: { big: boolean; colors: readonly string[] }) {
+export function fxShower(opts: { big: boolean; colors: readonly string[]; clearFrom?: number }) {
   if (fxReady()) runtime!.shower(opts);
 }
 
