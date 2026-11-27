@@ -88,3 +88,30 @@ export function mostImproved(before: readonly SubjectWeek[], after: readonly Sub
   }
   return best;
 }
+
+export interface LastTry {
+  correct: boolean;
+  at: Date;
+}
+
+/**
+ * A set's questions in the order one player needs them, from their own record: what they last got
+ * wrong first (the most recent miss first), then what they have never met (in the set's order),
+ * then what they last got right, the longest ago first, because that is the nearest to fading.
+ * `latest` is their latest first try at each question. The questions are all still there: nothing
+ * is left out, so a round of any length starts with what is most worth practising.
+ */
+export function needOrder<T extends { id: string }>(questions: readonly T[], latest: ReadonlyMap<string, LastTry>): T[] {
+  const missed: T[] = [];
+  const unmet: T[] = [];
+  const known: T[] = [];
+  for (const q of questions) {
+    const last = latest.get(q.id);
+    (last ? (last.correct ? known : missed) : unmet).push(q);
+  }
+  const when = (q: T) => latest.get(q.id)!.at.getTime();
+  missed.sort((a, b) => when(b) - when(a));
+  known.sort((a, b) => when(a) - when(b));
+  return [...missed, ...unmet, ...known];
+}
+

@@ -76,6 +76,11 @@ item with how each was checked, in [features/README.md](features/README.md). The
   the class's assignments and live games; nothing new is stored. For the class's teachers only.
   Details and tests: [features/teaching.md](features/teaching.md).
 
+- **Practice that starts with what you need** (26 November). Playing alone, a player can choose
+  *Start with: What I need most*: the questions they last got wrong come first, then the ones
+  they have not met, then the rest. Their own record of that set, never used in a game with other
+  people, nothing new stored. Details: [features/teaching.md](features/teaching.md).
+
 - **Effects that scale with the device** (25 November, D62). The performance limit was relaxed:
   the game may aim at devices from the last four years, as long as an older one still works and
   simply looks plainer. Details: [features/stage-effects.md](features/stage-effects.md).
@@ -758,20 +763,27 @@ creates and drops its own database).
 |---|---|
 | content | 5 |
 | engine | 41 |
-| server | 53 |
+| server | 54 |
 | web | 39 |
 | shared | 5 |
-| **Total** | **143 files, 3013 tests passing** (full run on 2026-11-26) |
+| **Total** | **144 files, 3017 tests passing** (full run on 2026-11-27) |
 
 End-to-end: `npm run test:e2e` (needs Postgres; builds first, then runs 103 browser tests in 39
-files against a fresh `ludora_e2e` database). The full run on 2026-11-26 in Chromium, on the new
-art direction: 97 passed, 2 skipped and 4 failed. Three of the four were one fault (the shadow that
-light words carry on the night's picture was inherited by the dark words on a medal, which the
-contrast check rightly refused) and the fourth was a test whose words matched twice; both were
-fixed. Afterwards the four files and seventeen others that the later work touches were run again
-(72 tests): all passed but the effects test, which the board's world drawn by the processor had
-slowed to a stall; that was fixed too (D62) and its file then passed alone. The whole suite was
-not run again after those last changes.
+files against a fresh `ludora_e2e` database). Two full runs in Chromium on the new art direction:
+
+- 26 November, first: 97 passed, 2 skipped, 4 failed. Three of the four were one fault (the shadow
+  that light words carry on the night's picture was inherited by the dark words on a medal, which
+  the contrast check rightly refused) and the fourth was a test whose words matched twice. Both
+  were fixed. Running the files again then showed the effects test stalling, because the board's
+  world drawn by the processor had slowed the page to five frames a second; that was fixed too
+  (D62).
+- 26 to 27 November, after those fixes and the flat board's set: 99 passed, 2 skipped, 2 failed,
+  and both failures passed when their files were run alone. One was typing into Game Maker's code
+  box coming out short; the other was the daily challenge, which the run carried across midnight
+  UTC, so "today's" challenge changed under it.
+
+Solo practice's new "Start with" choice came after the second run: the solo, hosting and bots
+files were run with it and passed.
 `E2E_BROWSER=webkit` or `firefox` runs them in those engines; CI runs each of those two in three
 parts (`--shard`), because one long WebKit run used more memory than a CI machine has. Tests that need the 3D picture run in Chromium only (headless
 Firefox and WebKit have no WebGL) and skip elsewhere with the reason. On CI a failed browser test

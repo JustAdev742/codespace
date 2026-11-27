@@ -336,6 +336,8 @@ function Setup({ solo, preset, presetMode = null, gameId, making, again, classId
   }, [setFit.data, modes.data]);
   const suggested = profile ? suggestedSettings(profile) : null;
   const [onlyLevel, setOnlyLevel] = useState<'' | 'medium' | 'hard'>('');
+  // Playing alone: the set's own order (shuffled or not, as the game does), or what this player needs most first.
+  const [order, setOrder] = useState<'set' | 'need'>('set');
   const [settings, setSettings] = useState<Record<string, unknown>>({});
   const [common, setCommon] = useState<Record<string, number | boolean>>({});
   // Solo: practice bots to play against, and how good they are (the server decides what each level means).
@@ -493,6 +495,7 @@ function Setup({ solo, preset, presetMode = null, gameId, making, again, classId
         settings,
         common: filled,
         ...(onlyLevel ? { difficulty: onlyLevel } : {}),
+        ...(solo && order === 'need' ? { order: 'need' } : {}),
         options: { ...options, ...calmOptions },
         solo,
         ...(solo && bots > 0 && canHaveBots ? { practiceBots: { count: bots, level: botLevel } } : {}),
@@ -537,6 +540,17 @@ function Setup({ solo, preset, presetMode = null, gameId, making, again, classId
         )}
       </Field>
     ) : null;
+  // Practice that adapts to the player. Only when playing alone: with other people everyone is asked the same.
+  const startWith = solo ? (
+    <Field label="Start with" hint="What I need most: the questions you last got wrong come first, then the ones you have not met, then the rest. It is worked out from your own answers to this set.">
+      {(p) => (
+        <Select {...p} value={order} onChange={(e) => setOrder(e.target.value as 'set' | 'need')}>
+          <option value="set">Any of them</option>
+          <option value="need">What I need most</option>
+        </Select>
+      )}
+    </Field>
+  ) : null;
   return (
     <>
       <PageHeader
@@ -675,6 +689,7 @@ function Setup({ solo, preset, presetMode = null, gameId, making, again, classId
                     </Field>
                   ) : null}
                   {whichQuestions}
+                  {startWith}
                   {choice.mode.settings.map((f) => (
                     <SettingInput key={f.key} field={f} value={effective(f.key, f.default)} onChange={(v) => setSettings((s) => ({ ...s, [f.key]: v }))} locked={locked.has(f.key)} />
                   ))}

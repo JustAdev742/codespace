@@ -13,8 +13,8 @@ classroom. Ranked, with what Ludora already had:
 4. **A mastery map across topics** for a student and a class. A student's page had accuracy by
    subject and question type; the mastery grid was one assignment at a time. Built (below), with
    what to teach next, because they are the same counting.
-5. **Adaptive difficulty.** Not built. What exists already is close to it and is listed under
-   "Not built" below.
+5. **Adaptive difficulty.** Built for practice alone, as an order rather than a level (below).
+   Not built for games with other people, where everyone must be asked the same; see "Not built".
 
 ## What was built
 
@@ -25,6 +25,8 @@ classroom. Ranked, with what Ludora already had:
 | "My mistakes" played the most-missed questions first, whenever asked, and a question got right today could be asked again tomorrow. | Each mistake comes back when it is due: at once until it has been got right, then after a rest of two days, because coming back to something as it starts to fade is what makes it stick. The student's home page says how many are ready to try again and how many are resting; the list says "Ready now" or "Resting. Back on Thursday 28 November"; a round plays the ready ones first and is never refused for being early. Nothing new is stored: the schedule is worked out from the two things the list already kept (how many days a question has been got right, and the last of them). The rule that two right days clear a question is unchanged. | `packages/shared/src/students.ts` (`mistakeDue`), `server/src/modules/study/service.ts`, `web/src/features/profile/Mistakes.tsx`, `features/home/StudentHome.tsx` | `server/test/spaced-mistakes.test.ts` (3 tests of the schedule) and `students.test.ts` (with the database: both mistakes ready at once; after one is got right it rests and the other comes first). Not looked at in the browser. |
 
 | The class page had "most missed" across every assignment and a mastery grid for one assignment. Nothing was by topic, live games hosted for the class did not count, and nothing said what to do next. | A **Teach next** tab on the class page. One step for each topic the class has played, the most pressing first: **Teach it again** (the class is under 60% right first time), **Practise once more** (60% to under 80%), **Ready to move on** (80% or more), or **Too few have played to say** (under a third of the class). Each step has the class's share, how the class is spread over the levels, the questions that tripped them with the wrong answer at least two students gave, who is furthest from it or a small group to sit with, who has not played it, and two buttons: make a reteach set of that topic (hardest first) and host it again for the class. Under the steps, **Who knows what**: every student against every topic, as Secure, Nearly there, Still learning, Just started or Not played, each with its own shape and words and the numbers. A student's own report shows their own row, to them and to their teacher. A topic is what a set says it is about: its topic, or its title when it names none. A student is judged on their latest first try at each question, so getting it right the next time counts and the old miss stops counting. | `server/src/modules/classes/teachNext.ts` (the counting), `teach.ts` (the routes), `web/src/features/classes/TeachNext.tsx`, `StudentReport.tsx` | `server/test/teach-next.test.ts` (15 tests: the levels, the latest try counting, the map, the order of the steps, a class past a topic with a group still to sit with, the shared wrong answer and blocked language; then against a database: live games count as well as assignments, somebody outside the class is never counted, a student in the class is refused and anyone else is told there is no such class, a student sees their own topics and nobody else's, a reteach set holds only that topic's missed questions, a set moderators have hidden is left out). |
+
+| Solo practice asked a set's questions in the set's order or shuffled, whatever the player already knew. | On the solo setup page, **Start with: What I need most**. The questions the player last got wrong come first (the latest miss first), then the ones they have never met, then the ones they last got right, the longest ago first. A short round is then spent on what is most worth practising; nothing is left out of a long one. It is their own record of that set and nobody else's, and it is never used in a game with other people. Nothing new is stored. | `server/src/modules/study/logic.ts` (`needOrder`), `study/service.ts` (`questionsByNeed`), `rooms/routes.ts` (`order`), `web/src/features/host/HostSetup.tsx` | `server/test/practice-need.test.ts` (4 tests: the order; a solo room made in it, with the game told not to shuffle; another player's record never orders it; a hosted game never takes it; an unknown order is refused). |
 
 ## Rules it keeps
 
@@ -43,14 +45,12 @@ classroom. Ranked, with what Ludora already had:
 
 ## Not built
 
-- **Adaptive difficulty.** No game changes its questions to suit a player while it is being
-  played. In a game played in rounds everyone must be asked the same thing, so it would have to
-  live in solo practice and the self-paced modes, in the engine's own picking of questions, and
-  that was not started. What already adapts: "My mistakes" asks what a student got wrong, when it
-  is due; practice bots on "My level" stay close to the player; a reteach set holds only what the
-  class missed; and Teach next tells the teacher which topic and which students. The next step
-  would be solo practice that starts with a student's due mistakes and the questions they have
-  not met, from the record Ludora already keeps.
+- **Difficulty that changes during a game.** No game changes its questions to suit a player
+  while it is being played. In a game played in rounds everyone must be asked the same thing, and
+  in the self-paced modes it would live in the engine's own picking of questions, which was not
+  touched. What adapts is the order of solo practice (above), "My mistakes" (what a student got
+  wrong, when it is due), practice bots on "My level" (they stay close to the player), a reteach
+  set (only what the class missed) and Teach next (which topic, which students).
 - **Lessons that blend slides, checks and games** were already there (a lesson's steps are info
   slides, classroom tools, polls and exit tickets, and games, run in one room) and were not changed.
 - **AI.** Nothing here uses it. The AI module, its consent and its settings were not touched.

@@ -17,6 +17,7 @@ import { madeGameForRoom } from '../modestudio/routes.ts';
 import { schoolTeamPlan } from '../school/teams.ts';
 import { teacherClass } from '../classes/access.ts';
 import { newRoomOptions } from './options.ts';
+import { questionsByNeed } from '../study/service.ts';
 import { classMembers } from '../../db/schema.ts';
 
 const createSchema = z.object({
@@ -39,6 +40,8 @@ const createSchema = z.object({
   classId: z.string().uuid().optional(),
   /** Play only the questions their author marked this hard (and those marked harder). */
   difficulty: z.enum(DIFFICULTIES).optional(),
+  /** Solo only: `need` starts with what this player last got wrong, then what they have not met (study/service.ts). */
+  order: z.enum(['set', 'need']).optional(),
 });
 
 /**
@@ -110,8 +113,13 @@ export async function roomRoutes(app: FastifyInstance, deps: AppDeps) {
         cls = { id: row.id, name: row.name, members: members.map((m) => m.u), extra: Object.fromEntries(members.filter((m) => m.extra > 0).map((m) => [m.u, m.extra / 100])) };
       }
       const { set, questions: all } = await loadSetForPlay(deps.db, body.setId, auth);
-      const questions = body.difficulty ? atLeast(all, body.difficulty) : all;
-      if (!questions.length) throw new AppError(409, 'conflict', `None of this set's questions are marked ${body.difficulty}. Mark some in the editor, or play them all.`);
+      const chosen = body.difficulty ? atLeast(all, body.difficulty) : all;
+      if (!chosen.length) throw new AppError(409, 'conflict', `None of this set's questions are marked ${body.difficulty}. Mark some in the editor, or play them all.`);
+      // Practice that adapts to the player: on their own, they can ask for what they need most first. Their own record
+      // orders the questions, so the game must not shuffle them again. Never in a game with other people: everyone there is asked the same.
+      const byNeed = solo && body.order === 'need';
+      const questions = byNeed ? await questionsByNeed(deps.db, auth.user.id, set.id, chosen) : chosen;
+      const orderKept = byNeed ? { shuffleQuestions: false } : {};
       const teamPlan = body.school && !solo ? await schoolTeamPlan(deps, auth, body.school) : null;
       let room;
       try {
@@ -121,7 +129,7 @@ export async function roomRoutes(app: FastifyInstance, deps: AppDeps) {
           modeId: mode.meta.id,
           variantId: body.variantId ?? null,
           settings: body.settings ?? {},
-          common: teamPlan ? { ...body.common, teamCount: teamPlan.teams.length } : (body.common ?? {}),
+          common: teamPlan ? { ...body.common, teamCount: teamPlan.teams.length } : { ...body.common, ...orderKept },
           // Calm play and the walkthrough, when the request does not mention them: the host's saved choice and this copy's defaults.
           options: newRoomOptions(deps.config, auth.user.preferences, { ...body.options, ...(solo ? { maxPlayers: 1, lateJoin: false } : {}) }),
           set: { id: set.id, title: set.title, questions, feel: setFeelOf(set.defaults) },

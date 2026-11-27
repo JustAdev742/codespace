@@ -8,7 +8,7 @@ import { answerEvents, mistakes, practiceRuns, questionSets } from '../../db/sch
 import type { AuthContext } from '../../http/context.ts';
 import { AppError, conflict } from '../../lib/errors.ts';
 import { addDays, utcDay } from '../../lib/time.ts';
-import { dailyPick, dailySample, mistakeStep, questionOutcome } from './logic.ts';
+import { dailyPick, dailySample, mistakeStep, needOrder, questionOutcome, type LastTry } from './logic.ts';
 import { newRoomOptions } from '../rooms/options.ts';
 
 /*
@@ -252,3 +252,23 @@ export async function recordStudy(deps: AppDeps, game: { gameId: string; roomCod
   }
   return notes;
 }
+
+/**
+ * A set's questions in the order this player needs them (logic.ts, `needOrder`), from the answers
+ * Ludora already keeps: their first try at each question in each game, and of those the latest.
+ * Self-marked cards are left out, as everywhere. Nothing is stored for it.
+ */
+export async function questionsByNeed<T extends { id: string }>(db: DbOrTx, userId: string, setId: string, questions: readonly T[]): Promise<T[]> {
+  const res = await db.execute<{ question_id: string; correct: boolean; created_at: string }>(sql`
+    select distinct on (question_id) question_id, correct, created_at
+    from (
+      select distinct on (game_id, question_id) question_id, correct, created_at
+      from ${answerEvents}
+      where user_id = ${userId}::uuid and set_id = ${setId}::uuid and kind <> 'self'
+      order by game_id, question_id, id
+    ) firsts
+    order by question_id, created_at desc`);
+  const latest = new Map<string, LastTry>(res.rows.map((r) => [r.question_id, { correct: Boolean(r.correct), at: new Date(r.created_at) }]));
+  return needOrder(questions, latest);
+}
+
